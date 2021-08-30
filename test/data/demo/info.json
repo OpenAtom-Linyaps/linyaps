@@ -1,0 +1,28 @@
+{
+  "appid": "cn.wps.wps-office",
+  "name": "wps-office",
+  "version": "11.1.0.10161",
+  "arch": [
+    "amd64"
+  ],
+  "permissions": {
+    "autostart": true,
+    "notification": true,
+    "trayicon": true,
+    "clipboard": true,
+    "account": true,
+    "bluetooth": true,
+    "camera": true,
+    "audio_record": true,
+    "installed_apps": true,
+    "filesystem": [
+      "xdg-downloads",
+      "xdg-documnets",
+      "sys-media"
+    ]
+  },
+  "plugins": [
+    "plugin/webbrowser"
+  ],
+  "runtime": ""
+}

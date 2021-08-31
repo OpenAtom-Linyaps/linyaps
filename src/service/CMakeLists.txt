@@ -20,4 +20,4 @@ add_executable(ll-service
 
 target_link_libraries(ll-service PRIVATE ${LINK_LIBS})
 
-install(TARGETS ll-service RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS ll-service RUNTIME DESTINATION ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR})

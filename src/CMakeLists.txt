@@ -1,4 +1,3 @@
-add_subdirectory(box)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -13,7 +12,15 @@ set(Qt_LIBS Qt5::Core Qt5::DBus)
 set(DTK_LIBS dtkcore)
 set(LINK_LIBS ${Qt_LIBS} ${DTK_LIBS} stdc++)
 
+MESSAGE(STATUS "output " ${PROJECT_BINARY_DIR})
+MESSAGE(STATUS "source " ${PROJECT_SOURCE_DIR})
+
+SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
+
+add_subdirectory(box)
+
 add_subdirectory(service)
+
 add_subdirectory(cli)
 
 add_subdirectory(builder)

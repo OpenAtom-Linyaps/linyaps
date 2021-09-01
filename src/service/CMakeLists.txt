@@ -1,6 +1,17 @@
 set(LL_SERVICE_SOURCES
     impl/package_manager.cpp
-    main.cpp ../module/runtime/container.h impl/job_manager.cpp impl/job_manager.h impl/job.cpp impl/job.h ../module/uab/uab.cpp ../module/uab/uab.h ../module/uab/uap.cpp ../module/uab/uap.h)
+    main.cpp
+    impl/job_manager.cpp
+    impl/job_manager.h
+    impl/job.cpp
+    impl/job.h
+    ../module/util/json.h
+    ../module/runtime/oci.h
+    ../module/runtime/container.h
+    ../module/uab/uab.cpp
+    ../module/uab/uab.h
+    ../module/uab/uap.cpp
+    ../module/uab/uap.h)
 
 qt5_add_dbus_adaptor(LL_SERVICE_SOURCES
                      ../module/dbus_ipc/com.deepin.linglong.PackageManager.xml

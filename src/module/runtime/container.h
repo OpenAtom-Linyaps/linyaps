@@ -23,18 +23,19 @@
 
 #include <QDBusArgument>
 #include <QList>
+#include <QObject>
 
 #include "module/package/package.h"
 
-struct Container {
+#include "oci.h"
+
+class Container : public JsonSerialize
+{
+public:
     QString ID;
 };
 
-typedef QList<Container> ContainerList;
-
-Q_DECLARE_METATYPE(Container)
-
-Q_DECLARE_METATYPE(ContainerList)
+Q_JSON_DECLARE_PTR_METATYPE(Container)
 
 inline QDBusArgument &operator<<(QDBusArgument &argument,
                                  const Container &message)
@@ -51,6 +52,5 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument,
     argument.beginStructure();
     argument >> message.ID;
     argument.endStructure();
-
     return argument;
 }

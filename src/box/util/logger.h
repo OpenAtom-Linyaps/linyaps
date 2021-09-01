@@ -79,17 +79,6 @@ inline separated_stream operator<<(std::ostream &stream, with_separator wsep)
 #define logDbg() (std::cout << with_separator(" ") << std::endl)
 #define logErr() (std::cout << with_separator(" ") << std::endl)
 
-//#define ogStdout (std::cout << with_separator(" ") << std::endl \
-//                            << __FUNCTION__ << __LINE__)
-//#define logWar() (std::cout << with_separator(" ") << std::endl \
-//                            << __FUNCTION__ << __LINE__)
-//#define logInf() (std::cout << with_separator(" ") << std::endl \
-//                            << __FUNCTION__ << __LINE__)
-//#define logDbg() (std::cout << with_separator(" ") << std::endl \
-//                            << __FUNCTION__ << __LINE__)
-//#define logErr() (std::cout << with_separator(" ") << std::endl \
-//                            << __FUNCTION__ << __LINE__)
-
 namespace util {
 
 inline std::string errnoString()

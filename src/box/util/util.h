@@ -24,3 +24,27 @@
 #include "macro.h"
 #include "filesystem.h"
 #include "logger.h"
+
+#include <nlohmann/json.hpp>
+
+#include <fstream>
+
+namespace util {
+namespace json {
+
+inline nlohmann::json fromByteArray(const std::string &content)
+{
+    return nlohmann::json::parse(content);
+}
+
+inline nlohmann::json fromFile(const std::string &filepath)
+{
+    std::ifstream f(filepath);
+    std::string str((std::istreambuf_iterator<char>(f)),
+                    std::istreambuf_iterator<char>());
+    auto j = fromByteArray(str);
+    return j;
+}
+
+} // namespace json
+} // namespace util

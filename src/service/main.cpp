@@ -34,10 +34,10 @@ int main(int argc, char *argv[])
     Dtk::Core::DLogManager::registerConsoleAppender();
     Dtk::Core::DLogManager::registerFileAppender();
 
-    qRegisterMetaType<Container>("Container");
-    qDBusRegisterMetaType<Container>();
-    qRegisterMetaType<ContainerList>("ContainerList");
-    qDBusRegisterMetaType<ContainerList>();
+//    qRegisterMetaType<Container>("Container");
+//    qDBusRegisterMetaType<Container>();
+//    qRegisterMetaType<ContainerList>("ContainerList");
+//    qDBusRegisterMetaType<ContainerList>();
 
     PackageManagerAdaptor pma(PackageManager::instance());
 

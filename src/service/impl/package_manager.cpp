@@ -110,6 +110,7 @@ ContainerList PackageManager::ListContainer()
     setDelayedReply(true);
     sendErrorReply(QDBusError::NotSupported, message().member());
 
-    list.push_back(Container {.ID = "container id"});
+    // FIXME: DO NOT DO LIKE THAT
+    list.push_back(new Container {});
     return list;
 }

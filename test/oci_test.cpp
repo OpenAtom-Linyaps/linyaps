@@ -21,7 +21,7 @@
 
 #include <gtest/gtest.h>
 
-#include "module/oci/oci-runtime.h"
+#include "box/util/oci-runtime.h"
 
 TEST(OCI, Runtime)
 {

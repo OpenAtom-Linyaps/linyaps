@@ -37,7 +37,7 @@ std::string str_vec_join(const str_vec &vec, char sep)
     return s;
 }
 
-const str_vec str_spilt(std::string s, std::string sep)
+str_vec str_spilt(const std::string& s, const std::string& sep)
 {
     str_vec vec;
     size_t pos_begin = 0;

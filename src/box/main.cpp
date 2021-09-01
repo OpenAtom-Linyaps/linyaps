@@ -23,7 +23,7 @@
 #include <unistd.h>
 #include <util/logger.h>
 
-#include "module/oci/oci-runtime.h"
+#include "util/oci-runtime.h"
 #include "container/container.h"
 
 int main(int argc, char **argv)

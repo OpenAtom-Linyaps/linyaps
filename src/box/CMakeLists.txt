@@ -1,5 +1,5 @@
 add_executable(ll-box
-               ../module/util/common.cpp
+               util/common.cpp
                util/logger.cpp
                util/filesystem.cpp
                container/container.cpp

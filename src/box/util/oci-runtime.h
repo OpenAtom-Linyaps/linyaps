@@ -22,8 +22,8 @@
 #pragma once
 
 #include <sys/mount.h>
-#include "module/util/json.h"
-#include "module/util/common.h"
+
+#include "util.h"
 
 namespace linglong {
 

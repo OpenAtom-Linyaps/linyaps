@@ -37,6 +37,8 @@ TEST(OCI, QtJson)
     QVariant variant = json.toVariant();
     auto r = variant.value<Runtime *>();
 
+    EXPECT_EQ(r->root->parent(), r);
+    EXPECT_EQ(r->mounts.at(1)->parent(), r);
     EXPECT_EQ(r->ociVersion, "1.0.1");
     EXPECT_EQ(r->process->args[0], "/bin/bash");
     EXPECT_EQ(r->process->env[1], "TERM=xterm");

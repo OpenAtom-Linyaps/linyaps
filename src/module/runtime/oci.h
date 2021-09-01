@@ -26,6 +26,7 @@
 class Root : public JsonSerialize
 {
     Q_OBJECT;
+    Q_JSON_CONSTRUCTOR(Root)
     Q_JSON_PROPERTY(QString, path);
     Q_JSON_PROPERTY(bool, readonly);
 };
@@ -34,6 +35,7 @@ Q_JSON_DECLARE_PTR_METATYPE(Root)
 class Namespace : public JsonSerialize
 {
     Q_OBJECT;
+    Q_JSON_CONSTRUCTOR(Namespace)
     Q_JSON_PROPERTY(QString, type);
 };
 Q_JSON_DECLARE_PTR_METATYPE(Namespace)
@@ -41,6 +43,7 @@ Q_JSON_DECLARE_PTR_METATYPE(Namespace)
 class Linux : public JsonSerialize
 {
     Q_OBJECT;
+    Q_JSON_CONSTRUCTOR(Linux)
     Q_JSON_PROPERTY(NamespaceList, namespaces);
 };
 Q_JSON_DECLARE_PTR_METATYPE(Linux)
@@ -48,6 +51,7 @@ Q_JSON_DECLARE_PTR_METATYPE(Linux)
 class Process : public JsonSerialize
 {
     Q_OBJECT;
+    Q_JSON_CONSTRUCTOR(Process)
     Q_JSON_PROPERTY(QStringList, args);
     Q_JSON_PROPERTY(QStringList, env);
     Q_JSON_PROPERTY(QString, cwd);
@@ -58,6 +62,7 @@ Q_JSON_DECLARE_PTR_METATYPE(Process)
 class Mount : public JsonSerialize
 {
     Q_OBJECT
+    Q_JSON_CONSTRUCTOR(Mount)
     Q_JSON_PROPERTY(QString, destination);
     Q_JSON_PROPERTY(QString, type);
     Q_JSON_PROPERTY(QString, source);
@@ -70,6 +75,7 @@ Q_JSON_DECLARE_PTR_METATYPE(Mount)
 class Hook : public JsonSerialize
 {
     Q_OBJECT
+    Q_JSON_CONSTRUCTOR(Hook)
     Q_JSON_PROPERTY(QString, path);
     Q_JSON_PROPERTY(QStringList, args);
     Q_JSON_PROPERTY(QStringList, env);
@@ -80,12 +86,13 @@ Q_JSON_DECLARE_PTR_METATYPE(Hook)
 class Runtime : public JsonSerialize
 {
     Q_OBJECT
+    Q_JSON_CONSTRUCTOR(Runtime)
     Q_JSON_PROPERTY(QString, ociVersion);
-    Q_JSON_PROPERTY(Root *, root);
-    Q_JSON_PROPERTY(Process *, process);
+    Q_JSON_PTR_PROPERTY(Root, root);
+    Q_JSON_PTR_PROPERTY(Process, process);
     Q_JSON_PROPERTY(QString, hostname);
     Q_JSON_PROPERTY(MountList, mounts);
-    Q_JSON_PROPERTY(Linux *, linux);
+    Q_JSON_PTR_PROPERTY(Linux, linux);
     Q_JSON_PROPERTY(HookList, hooks);
 };
 Q_JSON_DECLARE_PTR_METATYPE(Runtime)

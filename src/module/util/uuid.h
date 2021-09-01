@@ -19,27 +19,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//
+// Created by iceyer on 2021/9/1.
+//
+
 #pragma once
 
-#include "oci.h"
+#include <QString>
 
-class AppPrivate;
-class App : public JsonSerialize
-{
-    Q_OBJECT;
-    //    Q_JSON_PROPERTY(Package *, Package);
-    Q_JSON_PROPERTY(QStringList, mounts);
-
-public:
-    explicit App(QObject *parent = nullptr);
-    ~App() override;
-
-    static App *load(const QString &configFilepath);
-
-    int start();
-
-private:
-    QScopedPointer<AppPrivate> dd_ptr;
-    Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), App)
-};
-Q_JSON_DECLARE_PTR_METATYPE(App)
+namespace linglong {
+namespace util {
+QString genUUID();
+}
+} // namespace linglong

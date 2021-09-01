@@ -31,6 +31,8 @@
 
 class Container : public JsonSerialize
 {
+    Q_OBJECT
+    Q_JSON_CONSTRUCTOR(Container)
 public:
     QString ID;
 };

@@ -19,10 +19,18 @@
 #
 version: 1.12
 
+package:
+  id: com.qq.weixin.deepin
+
 mounts:
-  - /usr/share/zoneinfo:/usr/share/zoneinfo
-  - /etc/localtime:/etc/localtime
+  - ${HOME}/Documents:${HOME}/Documents
+  - ${HOME}/Desktop:${HOME}/Desktop
+  - ${HOME}/Download:${HOME}/Download
 
 root:
-  path: "/run/user/1000/linglong/ab24ae64edff4ddfa8e6922eb29e2baf"
-  readonfy: false
+  readonly: false
+  path: /run/user/1000/linglong/ab24ae64edff4ddfa8e6922eb29e2baf
+
+namespaces:
+  - type: pid
+  - type: uts

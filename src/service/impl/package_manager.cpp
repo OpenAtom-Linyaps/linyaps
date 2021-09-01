@@ -26,6 +26,7 @@
 #include <QDebug>
 #include <QThread>
 #include <QProcess>
+#include <module/runtime/app.h>
 
 #include "job_manager.h"
 
@@ -94,6 +95,14 @@ QString PackageManager::Import(const QStringList &packagePathList)
 
 QString PackageManager::Start(const QString &packageID)
 {
+    qDebug() << "start package" << packageID;
+    return JobManager::instance()->CreateJob([=](Job *jr) {
+        auto app = App::load("/tmp/test.yaml");
+        if (nullptr == app) {
+            return;
+        }
+        app->start();
+    });
     sendErrorReply(QDBusError::NotSupported, message().member());
     return "";
 }

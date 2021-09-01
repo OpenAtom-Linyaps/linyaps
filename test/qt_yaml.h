@@ -21,25 +21,16 @@
 
 #pragma once
 
-#include "oci.h"
+#include "module/util/yaml.h"
+#include "module/runtime/oci.h"
 
-class AppPrivate;
-class App : public JsonSerialize
+class TestApp : public JsonSerialize
 {
     Q_OBJECT;
-    //    Q_JSON_PROPERTY(Package *, Package);
+    Q_JSON_CONSTRUCTOR(TestApp)
+    Q_JSON_PROPERTY(QString, version);
     Q_JSON_PROPERTY(QStringList, mounts);
-
-public:
-    explicit App(QObject *parent = nullptr);
-    ~App() override;
-
-    static App *load(const QString &configFilepath);
-
-    int start();
-
-private:
-    QScopedPointer<AppPrivate> dd_ptr;
-    Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), App)
+    Q_JSON_PROPERTY(NamespaceList, namespaces);
+    Q_JSON_PTR_PROPERTY(Root, root);
 };
-Q_JSON_DECLARE_PTR_METATYPE(App)
+Q_JSON_DECLARE_PTR_METATYPE(TestApp)

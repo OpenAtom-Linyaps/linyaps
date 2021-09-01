@@ -19,27 +19,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include "uuid.h"
 
-#include "oci.h"
+#include <QUuid>
 
-class AppPrivate;
-class App : public JsonSerialize
+namespace linglong {
+namespace util {
+QString genUUID()
 {
-    Q_OBJECT;
-    //    Q_JSON_PROPERTY(Package *, Package);
-    Q_JSON_PROPERTY(QStringList, mounts);
-
-public:
-    explicit App(QObject *parent = nullptr);
-    ~App() override;
-
-    static App *load(const QString &configFilepath);
-
-    int start();
-
-private:
-    QScopedPointer<AppPrivate> dd_ptr;
-    Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), App)
-};
-Q_JSON_DECLARE_PTR_METATYPE(App)
+    return QUuid::createUuid().toString(QUuid::Id128);
+}
+} // namespace util
+} // namespace linglong

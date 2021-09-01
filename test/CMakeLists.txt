@@ -19,10 +19,10 @@ add_executable(ll-test
                "../src/module/util/json.h"
                "../src/module/util/yaml.h"
                "../src/module/runtime/oci.h"
-               "../src/module/runtime/app.h"
                oci_test.cpp
                qt_json.cpp
-               qt_yaml.cpp qt_yaml.cpp)
+               qt_yaml.cpp
+               qt_yaml.h)
 
 target_link_libraries(ll-test ${LINK_LIBS})
 

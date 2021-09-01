@@ -28,6 +28,8 @@
 #include <QJsonValue>
 #include <QDebug>
 
+#include "json.h"
+
 namespace YAML {
 
 // QString
@@ -129,8 +131,29 @@ T *formYaml(YAML::Node &doc)
     auto mo = m->metaObject();
     for (int i = mo->propertyOffset(); i < mo->propertyCount(); ++i) {
         auto k = mo->property(i).name();
+        auto t = mo->property(i).userType();
         QVariant v = doc[k].template as<QVariant>();
-        m->setProperty(k, v);
+        // set parent
+        if (t >= QVariant::UserType) {
+            switch (v.type()) {
+            case QVariant::Map: {
+                auto map = v.toMap();
+                map[Q_JSON_PARENT_KEY] = QVariant::fromValue(m);
+                m->setProperty(k, map);
+                break;
+            }
+            case QVariant::List: {
+                auto list = v.toList();
+                list.push_front(QVariant::fromValue(m));
+                m->setProperty(k, list);
+                break;
+            }
+            default:
+                m->setProperty(k, v);
+            }
+        } else {
+            m->setProperty(k, v);
+        }
     }
     return m;
 }

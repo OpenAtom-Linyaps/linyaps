@@ -11,7 +11,11 @@ find_package(yaml-cpp REQUIRED)
 
 set(Qt_LIBS Qt5::Core Qt5::DBus)
 set(DTK_LIBS dtkcore)
-set(LINK_LIBS ${Qt_LIBS} ${DTK_LIBS} stdc++)
+set(LINK_LIBS
+    ${Qt_LIBS}
+    ${DTK_LIBS}
+    yaml-cpp
+    stdc++)
 
 MESSAGE(STATUS "output " ${PROJECT_BINARY_DIR})
 MESSAGE(STATUS "source " ${PROJECT_SOURCE_DIR})

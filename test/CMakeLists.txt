@@ -6,18 +6,23 @@ set(CMAKE_AUTORCC ON)
 find_package(GTest REQUIRED)
 find_package(Qt5Core REQUIRED)
 find_package(Qt5DBus REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 set(Qt_LIBS Qt5::Core Qt5::DBus)
 set(LINK_LIBS
     ${Qt_LIBS}
+    yaml-cpp
     GTest::GTest gtest_main
     stdc++)
 
 add_executable(ll-test
                "../src/module/util/json.h"
+               "../src/module/util/yaml.h"
                "../src/module/runtime/oci.h"
+               "../src/module/runtime/app.h"
                oci_test.cpp
-               qt_json.cpp)
+               qt_json.cpp
+               qt_yaml.cpp qt_yaml.cpp)
 
 target_link_libraries(ll-test ${LINK_LIBS})
 

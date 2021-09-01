@@ -24,6 +24,6 @@
 /*!
  * Uniontech App Package
  */
-class UAP {
-
+class UAP
+{
 };

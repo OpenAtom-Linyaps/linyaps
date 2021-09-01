@@ -75,7 +75,7 @@ namespace util {
 
 typedef std::vector<std::string> str_vec;
 
-str_vec str_spilt(const std::string& s, const std::string& sep);
+str_vec str_spilt(const std::string &s, const std::string &sep);
 
 std::string str_vec_join(const str_vec &vec, char sep);
 

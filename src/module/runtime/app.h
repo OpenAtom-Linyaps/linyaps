@@ -21,9 +21,13 @@
 
 #pragma once
 
-/*!
- * Uniontech App Bundle
- */
-class UAB
+#include "oci.h"
+
+class App : public JsonSerialize
 {
+    Q_OBJECT;
+    Q_JSON_PROPERTY(QString, version);
+    Q_JSON_PROPERTY(QStringList, mounts);
+    Q_JSON_PROPERTY(Root *, root);
 };
+Q_JSON_DECLARE_PTR_METATYPE(App)

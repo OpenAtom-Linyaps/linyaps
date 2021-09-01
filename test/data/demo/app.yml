@@ -17,8 +17,12 @@
 # You should have received a copy of the GNU General Public License
 # along with Copyright Header.  If not, see <http://www.gnu.org/licenses/>.
 #
-version: 1.0
+version: 1.12
 
-mount:
+mounts:
   - /usr/share/zoneinfo:/usr/share/zoneinfo
   - /etc/localtime:/etc/localtime
+
+root:
+  path: "/run/user/1000/linglong/ab24ae64edff4ddfa8e6922eb29e2baf"
+  readonfy: false

@@ -40,7 +40,6 @@ public:
     JobManager *q_ptr = nullptr;
 };
 
-
 JobManager::JobManager() = default;
 
 JobManager::~JobManager() = default;

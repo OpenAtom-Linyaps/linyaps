@@ -7,6 +7,7 @@ find_package(PkgConfig REQUIRED)
 find_package(Qt5Core REQUIRED)
 find_package(Qt5DBus REQUIRED)
 find_package(DtkCore REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 set(Qt_LIBS Qt5::Core Qt5::DBus)
 set(DTK_LIBS dtkcore)

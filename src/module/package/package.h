@@ -24,11 +24,40 @@
 #include <QDBusArgument>
 #include <QObject>
 #include <QList>
+#include <string>
 
-class Package
-{
-public:
+#include "module/uab/uap.h"
+#include "module/util/fs.h"
+
+using format::uap::UAP;
+using linglong::util::fileExists;
+using linglong::util::dirExists;
+
+class Package {
+ public:
     QString ID;
+    QString name;
+    QString appName;
+    QString configJson;
+    QString origData;
+
+ protected:
+    UAP *uap;
+
+ public:
+    // TODO(RD): 创建package
+    bool Init(const QString config) {
+        if (!fileExists(config)) { return false; }
+        this->configJson = config;
+        return true;
+    }
+
+    // TODO(RD): 创建package的数据包
+    bool InitData(const QString data) {
+        if (!dirExists(data)) { return false; }
+        this->origData = data;
+        return true;
+    }
 };
 
 typedef QList<Package> PackageList;
@@ -37,18 +66,14 @@ Q_DECLARE_METATYPE(Package)
 
 Q_DECLARE_METATYPE(PackageList)
 
-inline QDBusArgument &operator<<(QDBusArgument &argument,
-                                 const Package &message)
-{
+inline QDBusArgument &operator<<(QDBusArgument &argument, const Package &message) {
     argument.beginStructure();
     argument << message.ID;
     argument.endStructure();
     return argument;
 }
 
-inline const QDBusArgument &operator>>(const QDBusArgument &argument,
-                                       Package &message)
-{
+inline const QDBusArgument &operator>>(const QDBusArgument &argument, Package &message) {
     argument.beginStructure();
     argument >> message.ID;
     argument.endStructure();

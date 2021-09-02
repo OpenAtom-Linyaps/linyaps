@@ -21,29 +21,18 @@
 
 #include <gtest/gtest.h>
 
-#include "module/runtime/container.h"
+#include "module/package/package.h"
 
 #include <QJsonDocument>
 #include <QFile>
 
-TEST(OCI, QtJson)
-{
-    ociJsonRegister();
 
-    QFile jsonFile("../../test/data/demo/config-mini.json");
+TEST(Package, uap000) {
+    QFile jsonFile("../../test/data/demo/uab.json");
     jsonFile.open(QIODevice::ReadOnly);
     auto json = QJsonDocument::fromJson(jsonFile.readAll());
 
-    QVariant variant = json.toVariant();
-    auto r = variant.value<Runtime *>();
-
-    EXPECT_EQ(r->root->parent(), r);
-    EXPECT_EQ(r->mounts.at(1)->parent(), r);
-    EXPECT_EQ(r->ociVersion, "1.0.1");
-    EXPECT_EQ(r->process->args[0], "/bin/bash");
-    EXPECT_EQ(r->process->env[1], "TERM=xterm");
-    EXPECT_EQ(r->mounts.at(1)->options.at(1), "strictatime");
-    EXPECT_EQ(r->linux->namespaces.size(), 4);
-    EXPECT_EQ(r->root->readonly, false);
-    EXPECT_EQ(r->root->path, "/run/user/1000/linglong/ab24ae64edff4ddfa8e6922eb29e2baf");
+    Package pkg01;
+    EXPECT_EQ(pkg01.Init(QString("../../test/data/demo/uab.json")), true);
+    EXPECT_EQ(pkg01.InitData(QString("../../test/data/demo/")), true);
 }

@@ -1,7 +1,7 @@
 # 基于 https://clang.llvm.org/docs/ClangFormatStyleOptions.html
 BasedOnStyle: WebKit
 # 访问说明符的偏移(public private)
-AccessModifierOffset: -4
+AccessModifierOffset: -3
 # 括号之后,水平对齐参数: Align DontAlign AlwaysBreak。
 AlignAfterOpenBracket: Align
 #AlignConsecutiveBitFields: false
@@ -27,7 +27,7 @@ AllowShortCaseLabelsOnASingleLine: false
 # 允许短的函数放在同一行: None, InlineOnly(定义在类中), Empty(空函数), Inline(定义在类中，空函数), All
 AllowShortFunctionsOnASingleLine: InlineOnly
 # 是否允许短if单行 If true, if (a) return; 可以放到同一行
-AllowShortIfStatementsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: true
 #AllowShortLambdasOnASingleLine: Inline
 # 允许短的循环保持在同一行
 AllowShortLoopsOnASingleLine: false
@@ -39,19 +39,16 @@ BinPackArguments: true
 BinPackParameters: true
 BreakBeforeBraces: Custom
 BraceWrapping:
-  #  AfterCaseLabel: false
-  AfterClass: true
+  AfterClass: false
   AfterControlStatement: false
   AfterEnum: false
-  AfterFunction: true
+  AfterFunction: false
   AfterNamespace: false
   AfterStruct: false
   AfterUnion: false
   AfterExternBlock: false
   BeforeCatch: false
   BeforeElse: false
-  #  BeforeLambdaBody: false
-  #  BeforeWhile: false
   SplitEmptyFunction: true
   SplitEmptyRecord: true
   SplitEmptyNamespace: true
@@ -63,7 +60,7 @@ BreakConstructorInitializers: BeforeComma
 BreakInheritanceList: BeforeComma
 BreakStringLiterals: false
 # 每行字符的限制，0表示没有限制
-ColumnLimit: 0
+ColumnLimit: 120
 # 描述具有特殊意义的注释的正则表达式，它不应该被分割为多行或以其它方式改变
 # CommentPragmas: '^ IWYU pragma:'
 # 语言: None Cpp Java Objc Protp
@@ -124,7 +121,7 @@ SpaceBeforeRangeBasedForLoopColon: true
 #SpaceBeforeSquareBrackets: false
 #SpaceInEmptyBlock: true
 SpaceInEmptyParentheses: false
-SpacesBeforeTrailingComments: 1
+SpacesBeforeTrailingComments: 2
 SpacesInAngles: false
 SpacesInCStyleCastParentheses: false
 #SpacesInConditionalStatement: false

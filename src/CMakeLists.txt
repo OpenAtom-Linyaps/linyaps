@@ -17,10 +17,10 @@ set(LINK_LIBS
     yaml-cpp
     stdc++)
 
-MESSAGE(STATUS "output " ${PROJECT_BINARY_DIR})
-MESSAGE(STATUS "source " ${PROJECT_SOURCE_DIR})
+message(STATUS "output " ${PROJECT_BINARY_DIR})
+message(STATUS "source " ${PROJECT_SOURCE_DIR})
 
-SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 add_subdirectory(box)
 

@@ -26,43 +26,52 @@
 
 #include <DLog>
 
-int main(int argc, char **argv)
-{
+#include "module/package/package.h"
+
+//using Package;
+
+int main(int argc, char **argv) {
     QCoreApplication app(argc, argv);
 
     QCommandLineParser parser;
 
     parser.addHelpOption();
     parser.addPositionalArgument("subcommand", "build\npackage", "subcommand [sub-option]");
-    // TODO: for debug now
+    // TODO(SE): for debug now
     auto optDefaultConfig = QCommandLineOption("default-config", "default config json filepath", "");
     parser.addOption(optDefaultConfig);
 
     parser.parse(QCoreApplication::arguments());
 
     auto configPath = parser.value(optDefaultConfig);
-    if (configPath.isEmpty()) {
-        configPath = ":/config.json";
-    }
+    if (configPath.isEmpty()) { configPath = ":/config.json"; }
 
     QStringList args = parser.positionalArguments();
     QString command = args.isEmpty() ? QString() : args.first();
 
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
-        {"build", [&](QCommandLineParser &parser) -> int {
-             parser.clearPositionalArguments();
-             parser.addPositionalArgument("install", "install an application", "install");
-             parser.addPositionalArgument("app-id", "app id", "com.deepin.demo");
+        {"build",
+         [&](QCommandLineParser &parser) -> int {
+             parser.addPositionalArgument("build", "build uap package", "build");
+             parser.addPositionalArgument("config", "config json", "config.json");
+             parser.addPositionalArgument("data-dir", "data dir", "");
 
              parser.process(app);
 
              auto args = parser.positionalArguments();
-             auto appID = args.value(1);
-
-             // TODO:
+             qInfo() << args;
+             if (args.size() != 3) {
+                 qInfo() << "err! input config.json and data-dir";
+                 return 0;
+             }
+             Package newpkg;
+             newpkg.Init(args.at(1));
+             newpkg.InitData(args.at(2));
+             // TODO(SE):
              return 0;
          }},
-        {"package", [&](QCommandLineParser &parser) -> int {
+        {"package",
+         [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("ls", "show repo content", "ls");
              parser.addPositionalArgument("repo", "repo", "repo");
@@ -74,7 +83,7 @@ int main(int argc, char **argv)
              QString subCommand = args.isEmpty() ? QString() : args.first();
              auto repoID = args.value(1);
 
-             // TODO:
+             // TODO(SE):
              return 0;
          }},
     };

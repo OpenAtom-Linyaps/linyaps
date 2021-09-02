@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
     PackageManagerAdaptor pma(PackageManager::instance());
     JobManagerAdaptor jma(JobManager::instance());
 
-    // TODO: 需要进行错误处理
+    // TODO(se): 需要进行错误处理
     dbus.registerObject("/com/deepin/linglong/PackageManager",
                         PackageManager::instance());
     dbus.registerObject("/com/deepin/linglong/JobManager",

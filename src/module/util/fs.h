@@ -21,36 +21,16 @@
 
 #pragma once
 
-#include "oci.h"
+#include <QStringList>
 
-class PackageMoc : public JsonSerialize
-{
-    Q_OBJECT
-    Q_JSON_CONSTRUCTOR(PackageMoc)
-    Q_JSON_PROPERTY(QString, id);
-    Q_JSON_PROPERTY(QString, rootPath);
-    Q_JSON_PROPERTY(QStringList, args);
-};
-Q_JSON_DECLARE_PTR_METATYPE(PackageMoc)
+namespace linglong {
+namespace util {
 
-class AppPrivate;
-class App : public JsonSerialize
-{
-    Q_OBJECT;
-    Q_JSON_PTR_PROPERTY(PackageMoc, package);
-    Q_JSON_PTR_PROPERTY(PackageMoc, runtime);
-    Q_JSON_PROPERTY(QStringList, mounts);
+QString jonsPath(const QStringList &component);
 
-public:
-    explicit App(QObject *parent = nullptr);
-    ~App() override;
+QString getUserFile(const QString &path);
 
-    static App *load(const QString &configFilepath);
+QString ensureUserDir(const QStringList &relativeDirPathComponents);
 
-    int start();
-
-private:
-    QScopedPointer<AppPrivate> dd_ptr;
-    Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), App)
-};
-Q_JSON_DECLARE_PTR_METATYPE(App)
+} // namespace util
+} // namespace linglong

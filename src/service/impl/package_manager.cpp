@@ -99,6 +99,7 @@ QString PackageManager::Start(const QString &packageID)
     return JobManager::instance()->CreateJob([=](Job *jr) {
         auto app = App::load("/tmp/test.yaml");
         if (nullptr == app) {
+            qCritical() << "nullptr" << app;
             return;
         }
         app->start();

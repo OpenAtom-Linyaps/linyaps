@@ -58,7 +58,6 @@ class Process : public JsonSerialize
 };
 Q_JSON_DECLARE_PTR_METATYPE(Process)
 
-// TODO:
 class Mount : public JsonSerialize
 {
     Q_OBJECT
@@ -82,6 +81,16 @@ class Hook : public JsonSerialize
 };
 Q_JSON_DECLARE_PTR_METATYPE(Hook)
 
+class Hooks : public JsonSerialize
+{
+    Q_OBJECT
+    Q_JSON_CONSTRUCTOR(Hooks)
+    Q_JSON_PROPERTY(HookList, prestart);
+    Q_JSON_PROPERTY(HookList, poststart);
+    Q_JSON_PROPERTY(HookList, poststop);
+};
+Q_JSON_DECLARE_PTR_METATYPE(Hooks)
+
 #undef linux
 class Runtime : public JsonSerialize
 {
@@ -93,7 +102,7 @@ class Runtime : public JsonSerialize
     Q_JSON_PROPERTY(QString, hostname);
     Q_JSON_PROPERTY(MountList, mounts);
     Q_JSON_PTR_PROPERTY(Linux, linux);
-    Q_JSON_PROPERTY(HookList, hooks);
+    Q_JSON_PTR_PROPERTY(Hooks, hooks);
 };
 Q_JSON_DECLARE_PTR_METATYPE(Runtime)
 

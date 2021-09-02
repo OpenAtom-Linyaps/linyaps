@@ -21,6 +21,7 @@
 
 #include <DLog>
 #include <QCoreApplication>
+#include <module/runtime/app.h>
 
 #include "packagemanageradaptor.h"
 #include "jobmanageradaptor.h"
@@ -34,18 +35,21 @@ int main(int argc, char *argv[])
     Dtk::Core::DLogManager::registerConsoleAppender();
     Dtk::Core::DLogManager::registerFileAppender();
 
-    //    qRegisterMetaType<Container>("Container");
-    //    qDBusRegisterMetaType<Container>();
-    //    qRegisterMetaType<ContainerList>("ContainerList");
-    //    qDBusRegisterMetaType<ContainerList>();
+    QDBusConnection dbus = QDBusConnection::sessionBus();
+    if (!dbus.registerService("com.deepin.linglong.AppManager")) {
+        qCritical() << "service exist" << dbus.lastError();
+        return -1;
+    }
+
+    ociJsonRegister();
+
+    qJsonRegisterConverter<PackageMoc>();
+    qJsonRegisterConverter<App>();
 
     PackageManagerAdaptor pma(PackageManager::instance());
-
     JobManagerAdaptor jma(JobManager::instance());
 
     // TODO: 需要进行错误处理
-    QDBusConnection dbus = QDBusConnection::sessionBus();
-    dbus.registerService("com.deepin.linglong.AppManager");
     dbus.registerObject("/com/deepin/linglong/PackageManager",
                         PackageManager::instance());
     dbus.registerObject("/com/deepin/linglong/JobManager",

@@ -55,7 +55,6 @@ int main(int argc, char **argv)
     ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager",
                                                 "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());
-    qCritical() << pm.isValid();
 
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
         {"run", [&](QCommandLineParser &parser) -> int {

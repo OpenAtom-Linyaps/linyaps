@@ -63,7 +63,7 @@ public: \
     } \
 \
 public: \
-    TYPE *MEMBER_NAME;
+    TYPE *MEMBER_NAME = nullptr;
 
 #define Q_JSON_DECLARE_PTR_METATYPE(TYPE) \
     typedef QList<TYPE *> TYPE##List; \

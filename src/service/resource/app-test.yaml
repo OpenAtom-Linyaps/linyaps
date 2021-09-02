@@ -13,6 +13,6 @@ runtime:
 
 # TODO: support custom mount
 mounts:
-  - ${HOME}/Documents: ${HOME}/Documents
-  - ${HOME}/Desktop: ${HOME}/Desktop
-  - ${HOME}/Download: ${HOME}/Download
+  - ${HOME}/Documents:${HOME}/Documents
+  - ${HOME}/Desktop:${HOME}/Desktop
+  - ${HOME}/Downloads:${HOME}/Downloads

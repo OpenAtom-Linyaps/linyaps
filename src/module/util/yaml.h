@@ -81,7 +81,6 @@ struct convert<QVariant> {
         QVariantList list;
         QVariantMap map;
         switch (node.Type()) {
-            // FIXME: is null == invalid?
         case NodeType::Undefined:
         case NodeType::Null:
             rhs = QVariant(QVariant::Invalid);

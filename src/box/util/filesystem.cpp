@@ -20,7 +20,6 @@
  */
 
 #include <sys/stat.h>
-#include <cstdio>
 #include <string>
 #include <climits>
 #include <unistd.h>

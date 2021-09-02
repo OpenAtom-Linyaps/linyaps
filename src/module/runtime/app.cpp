@@ -87,7 +87,7 @@ public:
         // FIXME: get info from module/package
         //        auto runtimeID = q->runtime->id;
         QString runtimeRootPath = q->runtime->rootPath;
-        qCritical() << q->runtime;
+        qDebug() << "prepare runtime rootPath" << q->runtime->rootPath;
         stageRuntime(runtimeRootPath);
 
         QString appID = q->package->id;
@@ -96,6 +96,8 @@ public:
 
         stageHost();
         stageUser(appID);
+
+        stageMount();
 
         // FIXME: read from desktop file
         if (r->process->args.isEmpty()) {
@@ -194,7 +196,7 @@ public:
         return 0;
     }
 
-    int stageHost()
+    int stageHost() const
     {
         QList<QPair<QString, QString>> mountMap = {
             {"/etc/resolv.conf", "/run/host/network/etc/resolv.conf"},
@@ -226,7 +228,7 @@ public:
         return 0;
     }
 
-    int stageUser(const QString &appID)
+    int stageUser(const QString &appID) const
     {
         QList<QPair<QString, QString>> mountMap;
 
@@ -256,39 +258,21 @@ public:
                 QString("/run/dbus/system_bus_socket")));
         }
 
-        mountMap.push_back(qMakePair(userRuntimeDir + "/dconf",
-                                     userRuntimeDir + "/dconf"));
-
-        auto destHome = util::ensureUserDir({".linglong", appID, "home"});
-        util::ensureUserDir({".linglong", appID, "home", "Desktop"});
-        util::ensureUserDir({".linglong", appID, "home", "Documents"});
-        util::ensureUserDir({".linglong", appID, "home", "Downloads"});
-        mountMap.push_back(qMakePair(
-            destHome,
-            util::getUserFile("")));
-        mountMap.push_back(qMakePair(
-            util::getUserFile("Documents"),
-            util::getUserFile("Documents")));
-        mountMap.push_back(qMakePair(
-            util::getUserFile("Desktop"),
-            util::getUserFile("Desktop")));
-        mountMap.push_back(qMakePair(
-            util::getUserFile("Downloads"),
-            util::getUserFile("Downloads")));
+        auto hosApptHome = util::ensureUserDir({".linglong", appID, "home"});
+        mountMap.push_back(qMakePair(hosApptHome, util::getUserFile("")));
 
         auto appConfigPath = util::ensureUserDir({".linglong", appID, "/config"});
-        mountMap.push_back(qMakePair(
-            appConfigPath,
-            util::getUserFile(".config")));
+        mountMap.push_back(qMakePair(appConfigPath, util::getUserFile(".config")));
+
+        auto appCachePath = util::ensureUserDir({".linglong", appID, "/cache"});
+        mountMap.push_back(qMakePair(appCachePath, util::getUserFile(".cache")));
+
+        mountMap.push_back(qMakePair(userRuntimeDir + "/dconf",
+                                     userRuntimeDir + "/dconf"));
 
         mountMap.push_back(qMakePair(
             util::getUserFile(".config/user-dirs.dirs"),
             util::getUserFile(".config/user-dirs.dirs")));
-
-        auto appCachePath = util::ensureUserDir({".linglong", appID, "/cache"});
-        mountMap.push_back(qMakePair(
-            appCachePath,
-            util::getUserFile(".cache")));
 
         for (const auto &pair : mountMap) {
             Mount &m = *new Mount(r);
@@ -364,6 +348,38 @@ public:
         }
         qCritical() << r->process->env;
         r->process->cwd = util::getUserFile("");
+        return 0;
+    }
+
+    int stageMount()
+    {
+        Q_Q(const App);
+
+        QMap<QString, std::function<QString()>> replacementMap = {
+            {"${HOME}", []() -> QString {
+                 return util::getUserFile("");
+             }},
+        };
+
+        auto pathPreprocess = [&](QString path) -> QString {
+            auto keys = replacementMap.keys();
+            for (const auto &key : keys) {
+                path.replace(key, (replacementMap.value(key))());
+            }
+            return path;
+        };
+
+        for (const auto &mount : q->mounts) {
+            Mount &m = *new Mount(r);
+            m.type = "bind";
+            m.options = QStringList {};
+            auto component = mount.split(":");
+            m.source = pathPreprocess(component.value(0));
+            m.destination = pathPreprocess(component.value(1));
+            r->mounts.push_back(&m);
+            qCritical() << "mount app" << m.source << m.destination;
+        }
+
         return 0;
     }
 

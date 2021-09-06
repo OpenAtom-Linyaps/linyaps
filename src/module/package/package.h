@@ -46,6 +46,10 @@ protected:
     UAP *uap;
 
 public:
+    Package() { this->uap = new UAP(); }
+    ~Package() {
+        if (this->uap) { delete this->uap; }
+    }
     // TODO(RD): 创建package
     bool Init(const QString config)
     {

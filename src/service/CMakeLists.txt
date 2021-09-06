@@ -14,7 +14,11 @@ set(LL_SERVICE_SOURCES
     ../module/uab/uab.h
     ../module/uab/uap.cpp
     ../module/uab/uap.h
-    ../module/runtime/app.cpp ../module/util/fs.cpp ../module/util/fs.h)
+    ../module/runtime/app.cpp
+    ../module/util/fs.cpp
+    ../module/util/fs.h
+    ../module/runtime/tracker.h
+    ../module/runtime/tracker.cpp)
 
 qt5_add_dbus_adaptor(LL_SERVICE_SOURCES
                      ../module/dbus_ipc/com.deepin.linglong.PackageManager.xml

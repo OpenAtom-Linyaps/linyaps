@@ -30,17 +30,22 @@
 namespace util {
 namespace fs {
 
-class path {
- public:
+class path
+{
+public:
     explicit path(const std::string &s)
-        : p(util::str_spilt(s, "/")) {}
+        : p(util::str_spilt(s, "/"))
+    {
+    }
 
-    path &operator=(const std::string &s) {
+    path &operator=(const std::string &s)
+    {
         p = util::str_spilt(s, "/");
         return *this;
     }
 
-    path &operator=(const path &p1) {
+    path &operator=(const path &p1)
+    {
         p = p1.p;
         return *this;
     }
@@ -49,12 +54,14 @@ class path {
 
     const bool operator!=(const path &s) const { return this->p != s.p; }
 
-    path &operator/(const path &p1) {
+    path &operator/(const path &p1)
+    {
         std::copy(p1.p.begin(), p1.p.end(), back_inserter(p));
         return *this;
     }
 
-    path parent_path() const {
+    path parent_path() const
+    {
         path pn(*this);
         pn.p.pop_back();
         return pn;
@@ -64,12 +71,13 @@ class path {
 
     str_vec components() const { return p; }
 
- private:
+private:
     friend std::ostream &operator<<(std::ostream &cout, path obj);
     std::vector<std::string> p;
 };
 
-inline std::ostream &operator<<(std::ostream &cout, path obj) {
+inline std::ostream &operator<<(std::ostream &cout, path obj)
+{
     for (auto const &s : obj.p) {
         cout << "/" << s;
     }
@@ -117,8 +125,9 @@ enum perms {
     symlink_perms
 };
 
-class file_status {
- public:
+class file_status
+{
+public:
     // constructors
     file_status() noexcept;
     explicit file_status(file_type ft, perms p = perms_not_known) noexcept;
@@ -132,7 +141,7 @@ class file_status {
     file_type type() const noexcept;
     perms permissions() const noexcept;
 
- private:
+private:
     file_type ft;
     perms p;
 };
@@ -145,5 +154,5 @@ file_status status(const path &p, std::error_code &ec);
 
 path read_symlink(const path &p);
 
-}  // namespace fs
-}  // namespace util
+} // namespace fs
+} // namespace util

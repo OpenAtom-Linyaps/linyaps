@@ -26,8 +26,8 @@
 #include <QJsonDocument>
 #include <QFile>
 
-
-TEST(Package, uap000) {
+TEST(Package, uap000)
+{
     QFile jsonFile("../../test/data/demo/uab.json");
     jsonFile.open(QIODevice::ReadOnly);
     auto json = QJsonDocument::fromJson(jsonFile.readAll());

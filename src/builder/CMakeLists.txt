@@ -1,5 +1,5 @@
 set(LL_BUILDER_SOURCES
-    main.cpp 
+    main.cpp
     ../module/util/uuid.cpp
     ../module/package/package.h
     ../module/util/uuid.h)

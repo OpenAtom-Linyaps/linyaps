@@ -34,15 +34,17 @@ QString getUserFile(const QString &path);
 
 QString ensureUserDir(const QStringList &relativeDirPathComponents);
 
-bool inline fileExists(const QString &path) {
+bool inline fileExists(const QString &path)
+{
     QFileInfo fs(path);
     return fs.exists() && fs.isFile() ? true : false;
 }
 
-bool inline dirExists(const QString &path) {
+bool inline dirExists(const QString &path)
+{
     QFileInfo fs(path);
     return fs.exists() && fs.isDir() ? true : false;
 }
 
-}  // namespace util
-}  // namespace linglong
+} // namespace util
+} // namespace linglong

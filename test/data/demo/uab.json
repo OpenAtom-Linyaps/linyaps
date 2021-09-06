@@ -1,15 +1,15 @@
 {
-    "keyinfo": "null",
-    "license": "GPLv3",
-    "ownername": "UnionTech",
-    "website": "http://www.uniontech.com",
-    "hash": "sha256",
-    "maintainer": "deepin uos <uos@deepin.com>",
-    "tag": "network;tools",
-    "appname": "org.deepin.browser",
-    "arch": "x86_64",
-    "description": "UOS浏览器",
-    "name": "org.deepin.browser",
-    "runtime": "uos-v23",
-    "version": "5.11"
+  "keyinfo": "null",
+  "license": "GPLv3",
+  "ownername": "UnionTech",
+  "website": "http://www.uniontech.com",
+  "hash": "sha256",
+  "maintainer": "deepin uos <uos@deepin.com>",
+  "tag": "network;tools",
+  "appname": "org.deepin.browser",
+  "arch": "x86_64",
+  "description": "UOS浏览器",
+  "name": "org.deepin.browser",
+  "runtime": "uos-v23",
+  "version": "5.11"
 }

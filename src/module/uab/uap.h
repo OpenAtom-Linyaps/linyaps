@@ -36,8 +36,9 @@ class UAP;
 /*!
  * UAP PackageInfo
  */
-class PkgInfo {
- public:
+class PkgInfo
+{
+public:
     string name;
     string version;
     string appname;
@@ -47,16 +48,17 @@ class PkgInfo {
     string runtime;
     string description;
 
- public:
-    PkgInfo() {}
-    ~PkgInfo() {}
+public:
+    PkgInfo() { }
+    ~PkgInfo() { }
 };
 
 /*!
  * UAP Package Ext Info
  */
-class PkgExt {
- public:
+class PkgExt
+{
+public:
     int type = 0;
     int hashtype = 1;
     string ostree;
@@ -64,16 +66,17 @@ class PkgExt {
     string tag;
     string maintainer;
 
- public:
-    PkgExt() {}
-    ~PkgExt() {}
+public:
+    PkgExt() { }
+    ~PkgExt() { }
 };
 
 /*!
  * UAP Package Owner Info
  */
-class Owner {
- public:
+class Owner
+{
+public:
     string name;
     string website;
     string ostree;
@@ -81,40 +84,43 @@ class Owner {
     string license;
     string keyinfo;
 
- public:
-    Owner() {}
-    ~Owner() {}
+public:
+    Owner() { }
+    ~Owner() { }
 };
 
 /*!
  * UAP Package Meta Sign Info
  */
-class MetaSign {
- public:
+class MetaSign
+{
+public:
     string sign;
 
- public:
-    MetaSign() {}
-    ~MetaSign() {}
+public:
+    MetaSign() { }
+    ~MetaSign() { }
 };
 
 /*!
  * UAP Package Data Sign Info
  */
-class DataSign {
- public:
+class DataSign
+{
+public:
     string sign;
 
- public:
-    DataSign() {}
-    ~DataSign() {}
+public:
+    DataSign() { }
+    ~DataSign() { }
 };
 
 /*!
  * UAP meta
  */
-class Meta {
- public:
+class Meta
+{
+public:
     string version = "1";
     string name = "uap";
     PkgInfo pkgInfo;
@@ -123,12 +129,14 @@ class Meta {
     MetaSign metaSign;
     DataSign dataSign;
 
- public:
-    Meta() {}
+public:
+    Meta() { }
     Meta(const string version, const string name)
         : version(version)
-        , name(name) {}
-    ~Meta() {}
+        , name(name)
+    {
+    }
+    ~Meta() { }
     string getMetaName() const { return this->name + "-" + this->version; }
     string getMetaSignName() const { return "." + this->name + "-" + this->version + ".sig"; }
 };
@@ -136,15 +144,17 @@ class Meta {
 /*!
  * UAP Package Struct
  */
-class UAP {
- public:
+class UAP
+{
+public:
     Meta *meta;
 
     bool isOnlineUab() { return this->meta->pkgExt.type == 0 ? true : false; }
 
     bool isFullUab() { return this->meta->pkgExt.type == 1 ? true : false; }
 
-    string getUapName() const {
+    string getUapName() const
+    {
         return this->meta->pkgInfo.name + "-" + this->meta->pkgInfo.version + "-" + this->meta->pkgInfo.arch + "."
                + this->meta->name;
     }
@@ -153,21 +163,23 @@ class UAP {
 /*!
  * UAP OffLine Struct
  */
-class UapOffLine : public UAP {
- public:
-    UapOffLine() {}
-    ~UapOffLine() {}
+class UapOffLine : public UAP
+{
+public:
+    UapOffLine() { }
+    ~UapOffLine() { }
 };
 
 /*!
  * UAP OnLine Struct
  */
-class UapOnLine : public UAP {
- public:
-    UapOnLine() {}
-    ~UapOnLine() {}
+class UapOnLine : public UAP
+{
+public:
+    UapOnLine() { }
+    ~UapOnLine() { }
 };
 
-}  // namespace uap
+} // namespace uap
 
-}  // namespace format
+} // namespace format

@@ -28,9 +28,10 @@
 
 #include "module/package/package.h"
 
-//using Package;
+// using Package;
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
     QCoreApplication app(argc, argv);
 
     QCommandLineParser parser;
@@ -44,7 +45,9 @@ int main(int argc, char **argv) {
     parser.parse(QCoreApplication::arguments());
 
     auto configPath = parser.value(optDefaultConfig);
-    if (configPath.isEmpty()) { configPath = ":/config.json"; }
+    if (configPath.isEmpty()) {
+        configPath = ":/config.json";
+    }
 
     QStringList args = parser.positionalArguments();
     QString command = args.isEmpty() ? QString() : args.first();

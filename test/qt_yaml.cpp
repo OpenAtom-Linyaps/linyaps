@@ -37,6 +37,8 @@ TEST(LL, YAML)
     EXPECT_EQ(app->root->readonly, false);
     EXPECT_EQ(app->root->path, "/run/user/1000/linglong/ab24ae64edff4ddfa8e6922eb29e2baf");
 
+    app->deleteLater();
+
     TestApp app2;
 
     app2.root = new Root;
@@ -48,4 +50,6 @@ TEST(LL, YAML)
     EXPECT_EQ(doc2["version"].as<QString>(), "2");
     EXPECT_EQ(doc2["root"]["readonly"].as<QString>(), "true");
     EXPECT_EQ(doc2["root"]["readonly"].as<bool>(), true);
+
+    app2.root->deleteLater();
 }

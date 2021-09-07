@@ -34,5 +34,10 @@ TEST(Package, uap000)
 
     Package pkg01;
     EXPECT_EQ(pkg01.Init(QString("../../test/data/demo/uab.json")), true);
+    EXPECT_EQ(pkg01.Init(QString("../../test/data/demo/")), true);
+    EXPECT_EQ(pkg01.Init(QString("../../test/data/demo/ohOM5vOCS7ELFIUqsNPLwwoT.json")), false);
+
     EXPECT_EQ(pkg01.InitData(QString("../../test/data/demo/")), true);
+    EXPECT_EQ(pkg01.InitData(QString("../../test/data/demo/uab.json")), false);
+    EXPECT_EQ(pkg01.InitData(QString("../../test/data/demo/1")), false);
 }

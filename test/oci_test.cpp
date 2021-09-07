@@ -43,3 +43,9 @@ TEST(OCI, Runtime)
     EXPECT_EQ(r.linux.gidMappings.at(0).containerID, 0);
     EXPECT_EQ(r.linux.gidMappings.at(0).size, 1);
 }
+
+TEST(OCI, Util)
+{
+    EXPECT_EQ(util::format("%d %d %d\n", 1, 1, 1), "1 1 1\n");
+    EXPECT_EQ(util::format("%d %d %d\n", uint64_t(1), 1u, 1), "1 1 1\n");
+}

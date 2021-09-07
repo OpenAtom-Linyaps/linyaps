@@ -496,14 +496,16 @@ int Container::start()
     // write uid map
     std::ofstream uidMapFile(util::format("/proc/%d/uid_map", entryPid));
     for (auto const &idMap : dd_ptr->r.linux.uidMappings) {
-        uidMapFile << util::format("{} {} {}\n", idMap.containerID, idMap.hostID, idMap.size);
+        uidMapFile << util::format("%lu %lu %lu\n", idMap.containerID, idMap.hostID, idMap.size);
     }
+    uidMapFile.close();
 
     // write gid map
     std::ofstream gidMapFile(util::format("/proc/%d/gid_map", entryPid));
     for (auto const &idMap : dd_ptr->r.linux.gidMappings) {
-        gidMapFile << util::format("{} {} {}\n", idMap.containerID, idMap.hostID, idMap.size);
+        gidMapFile << util::format("%lu %lu %lu\n", idMap.containerID, idMap.hostID, idMap.size);
     }
+    gidMapFile.close();
 
     logDbg() << "finish write uid_map and pid_map" << std::flush;
     s.vrijgeven();

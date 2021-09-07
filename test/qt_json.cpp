@@ -56,4 +56,6 @@ TEST(OCI, QtJson)
     EXPECT_EQ(r->linux->gidMappings.at(0)->hostID, 65534);
     EXPECT_EQ(r->linux->gidMappings.at(0)->containerID, 0);
     EXPECT_EQ(r->linux->gidMappings.at(0)->size, 1);
+
+    r->deleteLater();
 }

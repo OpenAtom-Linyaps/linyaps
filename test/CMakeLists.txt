@@ -1,5 +1,8 @@
 enable_testing()
 
+set(CMAKE_C_FLAGS --coverage)
+set(CMAKE_CXX_FLAGS --coverage)
+
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 

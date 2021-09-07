@@ -130,10 +130,10 @@ T *formYaml(YAML::Node &doc)
     auto mo = m->metaObject();
     for (int i = mo->propertyOffset(); i < mo->propertyCount(); ++i) {
         auto k = mo->property(i).name();
-        auto t = mo->property(i).userType();
+        auto t = mo->property(i).type();
         QVariant v = doc[k].template as<QVariant>();
         // set parent
-        if (t >= QVariant::UserType) {
+        if (QVariant::UserType == t) {
             switch (v.type()) {
             case QVariant::Map: {
                 auto map = v.toMap();

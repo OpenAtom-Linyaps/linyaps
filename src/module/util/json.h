@@ -84,8 +84,8 @@ static T *fromVariant(const QVariant &v)
     auto mo = m->metaObject();
     for (int i = mo->propertyOffset(); i < mo->propertyCount(); ++i) {
         auto k = mo->property(i).name();
-        auto t = mo->property(i).userType();
-        if (t >= QVariant::UserType) {
+        auto t = mo->property(i).type();
+        if (QVariant::UserType == t) {
             switch (map[k].type()) {
             case QVariant::Map: {
                 auto value = map[k].toMap();
@@ -146,7 +146,7 @@ public:
     template<class T>
     QJsonValue toJson() const
     {
-        toVariant<T>(this).toJsonValue();
+        return toVariant<T>(this).toJsonValue();
     }
 };
 

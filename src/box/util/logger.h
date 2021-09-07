@@ -70,7 +70,7 @@ private:
 
 inline separated_stream operator<<(std::ostream &stream, with_separator wsep)
 {
-    return separated_stream(stream, std::move(wsep.sep));
+    return separated_stream {stream, std::move(wsep.sep)};
 }
 
 #define ogStdout (std::cout << with_separator(" ") << std::endl)

@@ -141,7 +141,7 @@ public:
         return 0;
     }
 
-    int stageApp(const QString &appID, const QString &appRootPath)
+    int stageApp(const QString &appID, const QString &appRootPath) const
     {
         {
             Mount &m = *new Mount(r);
@@ -348,6 +348,35 @@ public:
         }
         qCritical() << r->process->env;
         r->process->cwd = util::getUserFile("");
+
+        QList<QList<quint64>> uidMaps = {
+            // FIXME: get 65534 form nobody
+            {65534, 0, 1},
+            {getuid(), getuid(), 1},
+        };
+        for (auto const &uidMap : uidMaps) {
+            Q_ASSERT(uidMap.size() == 3);
+            auto idMap = new IDMap(r->linux);
+            idMap->hostID = uidMap.value(0);
+            idMap->containerID = uidMap.value(1);
+            idMap->size = uidMap.value(2);
+            r->linux->uidMappings.push_back(idMap);
+        }
+
+        QList<QList<quint64>> gidMaps = {
+            // FIXME: get 65534 form nogroup
+            {65534, 0, 1},
+            {getgid(), getgid(), 1},
+        };
+        for (auto const &gidMap : gidMaps) {
+            Q_ASSERT(gidMap.size() == 3);
+            auto idMap = new IDMap(r->linux);
+            idMap->hostID = gidMap.value(0);
+            idMap->containerID = gidMap.value(1);
+            idMap->size = gidMap.value(2);
+            r->linux->gidMappings.push_back(idMap);
+        }
+
         return 0;
     }
 

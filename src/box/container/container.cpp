@@ -367,17 +367,11 @@ int entryProc(void *arg)
     if (0 != ret) {
         logErr() << "unshare CLONE_NEWUSER failed" << util::retErrString(ret);
     }
-    logErr() << "wait parent write 5s" << c.semID;
 
+    logDbg() << "wait parent write uid/gid map" << c.semID << std::flush;
     Semaphore s(c.semID);
-
-    printf("\nclient vrijgeven start");
     s.vrijgeven();
-    printf("\nclient vrijgeven end");
-
-    printf("\nclient passeren start");
     s.passeren();
-    printf("\nclient passeren end");
 
     c.pivotRoot();
     c.preLinks();
@@ -448,7 +442,6 @@ int entryProc(void *arg)
             return 0;
         }
     }
-    return 0;
 }
 
 Container::Container(const Runtime &r)
@@ -495,23 +488,25 @@ int Container::start()
         return -1;
     }
 
-    printf("\nparent passeren start");
+    // NOTICE: log will not show
+    logDbg() << "wait child start" << std::flush;
     s.passeren();
-    printf("\nparent passeren end");
-    { // write uid map
-        std::ofstream uidMapFile(util::format("/proc/%d/uid_map", entryPid));
-        uidMapFile << "0 65534 1\n";
-        uidMapFile << "1000 1000 1\n";
+
+    logDbg() << "write uid_map and pid_map" << std::flush;
+    // write uid map
+    std::ofstream uidMapFile(util::format("/proc/%d/uid_map", entryPid));
+    for (auto const &idMap : dd_ptr->r.linux.uidMappings) {
+        uidMapFile << util::format("{} {} {}\n", idMap.containerID, idMap.hostID, idMap.size);
     }
 
-    { // write gid map
-        std::ofstream gidMapFile(util::format("/proc/%d/gid_map", entryPid));
-        gidMapFile << "0 65534 1\n";
-        gidMapFile << "1000 1000 1\n";
+    // write gid map
+    std::ofstream gidMapFile(util::format("/proc/%d/gid_map", entryPid));
+    for (auto const &idMap : dd_ptr->r.linux.gidMappings) {
+        gidMapFile << util::format("{} {} {}\n", idMap.containerID, idMap.hostID, idMap.size);
     }
-    printf("\nparent vrijgeven start");
+
+    logDbg() << "finish write uid_map and pid_map" << std::flush;
     s.vrijgeven();
-    printf("\nparent vrijgeven end");
 
     dd_ptr->dropPermissions();
     prctl(PR_SET_PDEATHSIG, SIGKILL);

@@ -12,6 +12,30 @@
     "cwd": "/"
   },
   "linux": {
+    "uidMappings": [
+      {
+        "hostID": 65534,
+        "containerID": 0,
+        "size": 1
+      },
+      {
+        "hostID": 1000,
+        "containerID": 1000,
+        "size": 1
+      }
+    ],
+    "gidMappings": [
+      {
+        "hostID": 65534,
+        "containerID": 0,
+        "size": 1
+      },
+      {
+        "hostID": 1000,
+        "containerID": 1000,
+        "size": 1
+      }
+    ],
     "namespaces": [
       {
         "type": "pid"

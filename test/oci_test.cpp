@@ -32,4 +32,14 @@ TEST(OCI, Runtime)
     EXPECT_EQ(r.process.env[1], "TERM=xterm");
     EXPECT_EQ(r.mounts.at(1).options.at(1), "strictatime");
     EXPECT_EQ(r.linux.namespaces.size(), 4);
+
+    EXPECT_EQ(r.linux.uidMappings.size(), 2);
+    EXPECT_EQ(r.linux.uidMappings.at(1).hostID, 1000);
+    EXPECT_EQ(r.linux.uidMappings.at(1).containerID, 1000);
+    EXPECT_EQ(r.linux.uidMappings.at(1).size, 1);
+
+    EXPECT_EQ(r.linux.gidMappings.size(), 2);
+    EXPECT_EQ(r.linux.gidMappings.at(0).hostID, 65534);
+    EXPECT_EQ(r.linux.gidMappings.at(0).containerID, 0);
+    EXPECT_EQ(r.linux.gidMappings.at(0).size, 1);
 }

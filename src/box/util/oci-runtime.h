@@ -157,18 +157,44 @@ inline void to_json(nlohmann::json &j, const Namespace &o)
     j["type"] = matchPair->first;
 }
 
+struct IDMap {
+    uint64_t hostID = 0u;
+    uint64_t containerID = 0u;
+    uint64_t size = 0u;
+};
+
+inline void from_json(const nlohmann::json &j, IDMap &o)
+{
+    o.hostID = j.value("hostID", 0);
+    o.containerID = j.value("containerID", 0);
+    o.size = j.value("size", 0);
+}
+
+inline void to_json(nlohmann::json &j, const IDMap &o)
+{
+    j["hostID"] = o.hostID;
+    j["containerID"] = o.containerID;
+    j["size"] = o.size;
+}
+
 struct Linux {
     std::vector<Namespace> namespaces;
+    std::vector<IDMap> uidMappings;
+    std::vector<IDMap> gidMappings;
 };
 
 inline void from_json(const nlohmann::json &j, Linux &o)
 {
     o.namespaces = j.at("namespaces").get<std::vector<Namespace>>();
+    o.uidMappings = j.at("uidMappings").get<std::vector<IDMap>>();
+    o.gidMappings = j.at("gidMappings").get<std::vector<IDMap>>();
 }
 
 inline void to_json(nlohmann::json &j, const Linux &o)
 {
     j["namespaces"] = o.namespaces;
+    j["uidMappings"] = o.uidMappings;
+    j["gidMappings"] = o.gidMappings;
 }
 
 /*
@@ -256,7 +282,7 @@ inline void from_json(const nlohmann::json &j, Runtime &o)
     o.mounts = j.at("mounts").get<std::vector<Mount>>();
     o.linux = j.at("linux");
     o.root = j.at("root");
-    //    o.hooks = j.value("hooks", Hooks());
+//    o.hooks = j.value("hooks", Hooks());
 }
 
 inline void to_json(nlohmann::json &j, const Runtime &o)
@@ -267,7 +293,7 @@ inline void to_json(nlohmann::json &j, const Runtime &o)
     j["mounts"] = o.mounts;
     j["linux"] = o.linux;
     j["root"] = o.root;
-    //    j["hooks"] = o.hooks;
+//    j["hooks"] = o.hooks;
 }
 
 inline static Runtime fromFile(const std::string &filepath)

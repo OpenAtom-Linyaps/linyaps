@@ -39,7 +39,7 @@ public:
     int passeren();
 
     //! passeren +1 to value
-    //! if value < 0, release process in queue
+    //! if value <= 0, release process in queue
     //! \return
     int vrijgeven();
 

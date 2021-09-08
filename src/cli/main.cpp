@@ -84,6 +84,7 @@ int main(int argc, char **argv)
              //
              //        runtime::Application ogApp(appID, r);
              //        return ogApp.start();
+             return -1;
          }},
         {"ps", [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
@@ -98,6 +99,7 @@ int main(int argc, char **argv)
 
              // TODO: show ps result
              //        return runtime::Manager::ps(outputFormat);
+             return -1;
          }},
         {"kill", [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
@@ -112,6 +114,7 @@ int main(int argc, char **argv)
 
              // TODO: show kill result
              //        return runtime::Manager::kill(containerID);
+             return -1;
          }},
         {"install", [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
@@ -142,6 +145,7 @@ int main(int argc, char **argv)
              // TODO: show repo result
              //        repo::Manager m;
              //        return m.ls(repoID);
+             return -1;
          }},
     };
 

@@ -21,9 +21,13 @@
 
 #pragma once
 
-#include <QObject>
 #include <QMetaProperty>
+#include <QObject>
+#include <QDBusArgument>
 #include <QJsonDocument>
+#include <QJsonObject>
+#include <QPointer>
+#include <QDBusMetaType>
 
 #define Q_JSON_PARENT_KEY "7bdcaad1-2f27-4092-a5cf-4919ad4caf2b"
 
@@ -48,7 +52,7 @@ public: \
     } \
 \
 public: \
-    TYPE MEMBER_NAME;
+    TYPE MEMBER_NAME = TYPE();
 
 #define Q_JSON_PTR_PROPERTY(TYPE, PROP) \
     Q_JSON_ITEM_MEMBER_PTR(TYPE, PROP, PROP)
@@ -64,16 +68,6 @@ public: \
 \
 public: \
     TYPE *MEMBER_NAME = nullptr;
-
-#define Q_JSON_DECLARE_PTR_METATYPE(TYPE) \
-    typedef QList<TYPE *> TYPE##List; \
-    Q_DECLARE_METATYPE(TYPE *) \
-    Q_DECLARE_METATYPE(TYPE##List) \
-    template<> \
-    inline TYPE *qvariant_cast(const QVariant &v) \
-    { \
-        return fromVariant<TYPE>(v); \
-    }
 
 template<typename T>
 static T *fromVariant(const QVariant &v)
@@ -109,7 +103,115 @@ static T *fromVariant(const QVariant &v)
 }
 
 template<typename T>
-QVariant toVariant(T *m)
+inline void qJsonRegister()
+{
+}
+
+#define Q_JSON_DECLARE_PTR_METATYPE(TYPE) \
+    Q_DECLARE_METATYPE(TYPE *) \
+    template<> \
+    inline TYPE *qvariant_cast(const QVariant &v) \
+    { \
+        return fromVariant<TYPE>(v); \
+    } \
+\
+    class TYPE##List : public QList<QPointer<TYPE>> \
+    { \
+    public: \
+        inline ~TYPE##List() \
+        { \
+            for (auto &c : *this) { \
+                if (c->parent() == nullptr) { \
+                    c->deleteLater(); \
+                } \
+            } \
+        } \
+\
+        static void registerMetaType(); \
+\
+        friend QDBusArgument &operator<<(QDBusArgument &argument, const TYPE##List &message); \
+        friend const QDBusArgument &operator>>(const QDBusArgument &argument, TYPE##List &message); \
+    }; \
+    Q_DECLARE_METATYPE(TYPE##List) \
+\
+    inline void TYPE##List::registerMetaType() \
+    { \
+        if (false) \
+            qRegisterMetaType<TYPE##List>("TYPE##List"); \
+        qDBusRegisterMetaType<TYPE##List>(); \
+    } \
+    template<> \
+    inline void qJsonRegister<TYPE>() \
+    { \
+        TYPE##List::registerMetaType(); \
+\
+        qRegisterMetaType<TYPE *>(); \
+\
+        QMetaType::registerConverter<QVariantMap, TYPE *>([](const QVariantMap &v) -> TYPE * { \
+            return fromVariant<TYPE>(v); \
+        }); \
+        QMetaType::registerConverter<TYPE *, QJsonValue>([](TYPE *m) -> QJsonValue { \
+            return toVariant(m).toJsonValue(); \
+        }); \
+\
+        QMetaType::registerConverter<QVariantList, TYPE##List>([](QVariantList list) -> TYPE##List { \
+            TYPE##List mountList; \
+            auto parent = qvariant_cast<QObject *>(list.value(0)); \
+            if (parent) { \
+                list.pop_front(); \
+            } \
+            for (const auto &v : list) { \
+                auto map = v.toMap(); \
+                map[Q_JSON_PARENT_KEY] = QVariant::fromValue(parent); \
+                mountList.push_back(fromVariant<TYPE>(map)); \
+            } \
+            return mountList; \
+        }); \
+\
+        QMetaType::registerConverter<TYPE##List, QJsonValue>([](TYPE##List valueList) -> QJsonValue { \
+            QVariantList list; \
+            for (auto v : valueList) { \
+                list.push_back(toVariant(v.data())); \
+            } \
+            return QVariant::fromValue(list).toJsonValue(); \
+        }); \
+    } \
+\
+    inline QDBusArgument &operator<<(QDBusArgument &argument, const TYPE##List &message) \
+    { \
+        argument.beginStructure(); \
+        argument.beginArray(qMetaTypeId<QByteArray>()); \
+        for (const auto &item : message) { \
+            argument << TYPE::dump<TYPE>(item.data()); \
+        } \
+        argument.endArray(); \
+        argument.endStructure(); \
+        return argument; \
+    } \
+\
+    inline const QDBusArgument &operator>>(const QDBusArgument &argument, TYPE##List &message) \
+    { \
+        message.clear(); \
+\
+        argument.beginStructure(); \
+\
+        argument.beginArray(); \
+        while (!argument.atEnd()) { \
+            QByteArray buf; \
+            argument >> buf; \
+            auto v = QJsonDocument::fromJson(buf).toVariant(); \
+            auto c = QPointer<TYPE>(fromVariant<TYPE>(v)); \
+            message.append(c); \
+        } \
+\
+        argument.endArray(); \
+\
+        argument.endStructure(); \
+        return argument; \
+    }
+
+template<typename T>
+QVariant toVariant(const T *m)
 {
     QVariantMap map;
     //    auto obj = qobject_cast<T *>(m);
@@ -143,49 +245,16 @@ public:
         return jsonKeys;
     }
 
-    template<class T>
-    QJsonValue toJson() const
+    template<typename T>
+    static QJsonValue toJson(T *m)
     {
-        return toVariant<T>(this).toJsonValue();
+        return toVariant<T>(m).toJsonValue();
+    }
+
+    template<typename T>
+    static QByteArray dump(T *m)
+    {
+        QJsonDocument doc(toJson(m).toObject());
+        return doc.toJson();
     }
 };
-
-template<typename To>
-bool qJsonRegisterListConverter()
-{
-    QMetaType::registerConverter<QVariantList, QList<To *>>([](QVariantList list) -> QList<To *> {
-        QList<To *> mountList;
-        auto parent = qvariant_cast<QObject *>(list.value(0));
-        if (parent) {
-            list.pop_front();
-        }
-        for (const auto &v : list) {
-            auto map = v.toMap();
-            map[Q_JSON_PARENT_KEY] = QVariant::fromValue(parent);
-            mountList.push_back(fromVariant<To>(map));
-        }
-        return mountList;
-    });
-
-    QMetaType::registerConverter<QList<To *>, QJsonValue>([](QList<To *> valueList) -> QJsonValue {
-        QVariantList list;
-        for (auto v : valueList) {
-            list.push_back(toVariant(v));
-        }
-        return QVariant::fromValue(list).toJsonValue();
-    });
-    return true;
-}
-
-template<typename To>
-bool qJsonRegisterConverter()
-{
-    qRegisterMetaType<To *>();
-    QMetaType::registerConverter<QVariantMap, To *>([](const QVariantMap &v) -> To * {
-        return fromVariant<To>(v);
-    });
-    QMetaType::registerConverter<To *, QJsonValue>([](To *m) -> QJsonValue {
-        return toVariant(m).toJsonValue();
-    });
-    return qJsonRegisterListConverter<To>();
-}

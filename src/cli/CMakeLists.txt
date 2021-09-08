@@ -1,8 +1,9 @@
 set(LL_CLI_SOURCES
+    main.cpp
     ../module/util/json.h
     ../module/runtime/oci.h
     ../module/runtime/container.h
-    main.cpp)
+    namespace_enter.cpp)
 
 set_source_files_properties(../module/dbus_ipc/com.deepin.linglong.PackageManager.xml
                             PROPERTIES INCLUDE module/runtime/container.h)

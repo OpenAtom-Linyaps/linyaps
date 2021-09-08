@@ -25,6 +25,7 @@
 
 #include <QJsonDocument>
 #include <QFile>
+#include <QtDBus>
 
 TEST(OCI, QtJson)
 {

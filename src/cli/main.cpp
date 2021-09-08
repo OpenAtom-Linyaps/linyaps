@@ -30,12 +30,19 @@
 #include "module/runtime/container.h"
 #include "package_manager.h"
 
+extern int namespaceEnter(qlonglong pid);
+
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
+    QCoreApplication::setOrganizationName("deepin");
+
+    Dtk::Core::DLogManager::registerConsoleAppender();
+    Dtk::Core::DLogManager::registerFileAppender();
+
+    qJsonRegister<Container>();
 
     QCommandLineParser parser;
-
     parser.addHelpOption();
     parser.addPositionalArgument("subcommand", "run\nbuild\nps\nkill\ninstall\nrepo", "subcommand [sub-option]");
     // TODO: for debug now
@@ -84,6 +91,35 @@ int main(int argc, char **argv)
              //
              //        runtime::Application ogApp(appID, r);
              //        return ogApp.start();
+             return -1;
+         }},
+        {"exec", [&](QCommandLineParser &parser) -> int {
+             parser.clearPositionalArguments();
+             parser.addPositionalArgument("containerID", "container id", "aebbe2f455cf443f89d5c92f36d154dd");
+             parser.addPositionalArgument("exec", "exec command in container", "/bin/bash");
+             parser.process(app);
+
+             auto containerID = parser.positionalArguments().value(1);
+             if (containerID.isEmpty()) {
+                 parser.showHelp();
+             }
+
+             auto cmd = parser.positionalArguments().value(2);
+             if (cmd.isEmpty()) {
+                 parser.showHelp();
+             }
+
+             auto containerList = pm.ListContainer().value();
+
+             //             qCritical() << "containerList.ID;" << containerList.ID;
+             qCritical() << "containerList size" << containerList.length();
+             //             auto mm = pm.ListContainer1().value();
+
+             //             qCritical() << "mm" << mm.m_text << mm.m_user;
+             //                          for (auto &c : containerList) {
+             //                              namespaceEnter(c.PID.toLongLong());
+             //                          }
+             return -1;
          }},
         {"ps", [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
@@ -98,6 +134,7 @@ int main(int argc, char **argv)
 
              // TODO: show ps result
              //        return runtime::Manager::ps(outputFormat);
+             return -1;
          }},
         {"kill", [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
@@ -112,6 +149,7 @@ int main(int argc, char **argv)
 
              // TODO: show kill result
              //        return runtime::Manager::kill(containerID);
+             return -1;
          }},
         {"install", [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
@@ -125,7 +163,7 @@ int main(int argc, char **argv)
 
              auto jobID = pm.Install({appID});
              // get progress
-             return 0;
+             return -1;
          }},
         {"repo", [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
@@ -142,6 +180,7 @@ int main(int argc, char **argv)
              // TODO: show repo result
              //        repo::Manager m;
              //        return m.ls(repoID);
+             return -1;
          }},
     };
 

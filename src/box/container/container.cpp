@@ -64,8 +64,8 @@ namespace linglong {
 struct Container::ContainerPrivate {
 public:
     ContainerPrivate(Runtime r, Container *parent)
-        : r(std::move(r))
-        , hostRoot(r.root.path)
+        : hostRoot(r.root.path)
+        , r(std::move(r))
     {
         if (!util::fs::is_dir(hostRoot) || !util::fs::exists(hostRoot)) {
             throw std::runtime_error((hostRoot + " not exist or not a dir").c_str());
@@ -387,10 +387,10 @@ int entryProc(void *arg)
 
     if (execPid == 0) {
         seteuid(0);
-        for (auto &prestart : c.r.hooks.poststart) {
-            //            FIXME:!!!!!!
-            //            hookExec(prestart.path, prestart.args, prestart.env);
-        }
+        //        for (auto &prestart : c.r.hooks.poststart) {
+        //            FIXME:!!!!!!
+        //            hookExec(prestart.path, prestart.args, prestart.env);
+        //        }
 
         c.dropPermissions();
         // PR_SET_PDEATHSIG will clear by drop permissions
@@ -401,7 +401,7 @@ int entryProc(void *arg)
         auto targetArgc = c.r.process.args.size();
         auto targetArgv = new const char *[targetArgc + 1];
         std::vector<std::string> argvStringList;
-        for (int i = 0; i < targetArgc; i++) {
+        for (size_t i = 0; i < targetArgc; i++) {
             argvStringList.push_back(c.r.process.args[i]);
             targetArgv[i] = (char *)(argvStringList[i].c_str());
         }
@@ -410,7 +410,7 @@ int entryProc(void *arg)
 
         auto targetEnvCount = c.r.process.env.size();
         auto targetEnvList = new const char *[targetEnvCount + 1];
-        for (int i = 0; i < targetEnvCount; i++) {
+        for (size_t i = 0; i < targetEnvCount; i++) {
             targetEnvList[i] = (char *)(c.r.process.env[i].c_str());
         }
         targetEnvList[targetEnvCount] = nullptr;

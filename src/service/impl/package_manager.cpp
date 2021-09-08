@@ -67,21 +67,25 @@ QString PackageManager::Install(const QStringList &packageIDList)
 QString PackageManager::Uninstall(const QStringList &packageIDList)
 {
     sendErrorReply(QDBusError::NotSupported, message().member());
+    return {};
 }
 
 QString PackageManager::Update(const QStringList &packageIDList)
 {
     sendErrorReply(QDBusError::NotSupported, message().member());
+    return {};
 }
 
 QString PackageManager::UpdateAll()
 {
     sendErrorReply(QDBusError::NotSupported, message().member());
+    return {};
 }
 
 PackageList PackageManager::Query(const QStringList &packageIDList)
 {
     sendErrorReply(QDBusError::NotSupported, message().member());
+    return {};
 }
 
 /*!
@@ -91,6 +95,7 @@ PackageList PackageManager::Query(const QStringList &packageIDList)
 QString PackageManager::Import(const QStringList &packagePathList)
 {
     sendErrorReply(QDBusError::NotSupported, message().member());
+    return {};
 }
 
 QString PackageManager::Start(const QString &packageID)
@@ -104,8 +109,7 @@ QString PackageManager::Start(const QString &packageID)
         }
         app->start();
     });
-    sendErrorReply(QDBusError::NotSupported, message().member());
-    return "";
+    //    sendErrorReply(QDBusError::NotSupported, message().member());
 }
 
 void PackageManager::Stop(const QString &containerID)
@@ -117,10 +121,18 @@ ContainerList PackageManager::ListContainer()
 {
     ContainerList list;
 
-    setDelayedReply(true);
-    sendErrorReply(QDBusError::NotSupported, message().member());
+    auto c = new Container();
+    c->ID = "1";
+    list.push_back(c);
 
-    // FIXME: DO NOT DO LIKE THAT
-    list.push_back(new Container {});
+    c = new Container();
+    c->ID = "2";
+    list.push_back(c);
+
+    c = new Container();
+    c->ID = "3";
+    list.push_back(c);
+    qCritical() << "end call";
     return list;
+    //    sendErrorReply(QDBusError::NotSupported, message().member());
 }

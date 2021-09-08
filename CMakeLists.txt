@@ -25,7 +25,8 @@ endif ()
 
 include(GNUInstallDirs)
 include_directories(${linglong_SOURCE_DIR}/src)
-#include_directories(${linglong_SOURCE_DIR}/third_party)
+
+add_subdirectory(${linglong_SOURCE_DIR}/third_party)
 
 add_subdirectory(src)
 

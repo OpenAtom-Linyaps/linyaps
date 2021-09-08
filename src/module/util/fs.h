@@ -24,6 +24,9 @@
 #include <QStringList>
 #include <QString>
 #include <QFileInfo>
+#include <QProcess>
+#include <stdlib.h>
+#include <iostream>
 
 namespace linglong {
 namespace util {
@@ -44,6 +47,26 @@ bool inline dirExists(const QString &path)
 {
     QFileInfo fs(path);
     return fs.exists() && fs.isDir() ? true : false;
+}
+
+bool inline makeData(const QString &src, QString &dest)
+{
+    QFileInfo fs1(src);
+
+    char temp_prefix[1024] = "/tmp/uap-XXXXXX";
+    char *dir_name = mkdtemp(temp_prefix);
+    QFileInfo fs2(dir_name);
+
+    if (!fs1.exists() || !fs2.exists()) {
+        return false;
+    }
+    dest = QString::fromStdString(dir_name) + "/data.tgz";
+    QString cmd = "tar -C " + src + " -cf - . | gzip --rsyncable >" + dest;
+    // std::cout << "cmd:" << cmd.toStdString() << std::endl;
+    // TODO:(FIX) ret value check
+    int ret = system(cmd.toStdString().c_str());
+
+    return true;
 }
 
 } // namespace util

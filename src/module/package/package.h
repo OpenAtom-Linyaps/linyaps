@@ -104,7 +104,7 @@ public:
         return true;
     }
 
-    bool MakeTar()
+    bool MakeUap()
     {
         // create uap-1
         auto uap_buffer = this->uap->dumpJson();

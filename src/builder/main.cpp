@@ -62,17 +62,24 @@ int main(int argc, char **argv)
              parser.process(app);
 
              auto args = parser.positionalArguments();
-             qInfo() << args;
-             if (args.size() != 3) {
-                 qInfo() << "err! input config.json and data-dir";
+             // TODO(SE):
+
+             if (args.size() == 3) {
+                 Package create_package;
+                 create_package.InitUap(args.at(1), args.at(2));
+                 create_package.MakeUap();
                  return 0;
              }
-             Package create_package;
-             create_package.Init(args.at(1));
-             create_package.InitData(args.at(2));
-             create_package.MakeTar();
-             // TODO(SE):
-             return 0;
+             if (args.size() == 2) {
+                 Package create_package;
+                 create_package.InitUap(args.at(1));
+                 create_package.MakeUap();
+
+                 return 0;
+             }
+             qInfo() << args;
+             qInfo() << "err! input config.json and data-dir";
+             return -1;
          }},
         {"package",
          [&](QCommandLineParser &parser) -> int {

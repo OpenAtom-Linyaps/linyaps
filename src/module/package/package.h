@@ -25,6 +25,12 @@
 #include <QObject>
 #include <QList>
 #include <string>
+#include <QFile>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <archive.h>
+#include <archive_entry.h>
 
 #include "module/uab/uap.h"
 #include "module/util/fs.h"
@@ -32,6 +38,7 @@
 using format::uap::UAP;
 using linglong::util::fileExists;
 using linglong::util::dirExists;
+using linglong::util::makeData;
 
 class Package
 {
@@ -40,33 +47,140 @@ public:
     QString name;
     QString appName;
     QString configJson;
-    QString origData;
+    QString dataDir;
+    QString dataPath;
 
 protected:
     UAP *uap;
 
 public:
     Package() { this->uap = new UAP(); }
-    ~Package() {
-        if (this->uap) { delete this->uap; }
+    ~Package()
+    {
+        if (this->uap) {
+            delete this->uap;
+        }
+        if (this->dataPath != "" && fileExists(this->dataPath)) {
+            QFile::remove(this->dataPath);
+            this->dataPath = nullptr;
+        }
     }
-    // TODO(RD): 创建package
-    bool Init(const QString config)
+    bool InitUap(const QString &config, const QString &data = "")
+    {
+        this->initConfig(config);
+        if (this->uap->isFullUab() && !data.isEmpty())
+            this->initData(data);
+        return true;
+    }
+
+    // TODO(RD): 创建package meta info
+    bool initConfig(const QString config)
     {
         if (!fileExists(config)) {
             return false;
         }
         this->configJson = config;
+        QFile jsonFile(this->configJson);
+        jsonFile.open(QIODevice::ReadOnly);
+        auto qbt = jsonFile.readAll();
+        if (!uap->setFromJson(std::string(qbt.constData(), qbt.length()))) {
+            return false;
+        }
         return true;
     }
 
     // TODO(RD): 创建package的数据包
-    bool InitData(const QString data)
+    bool initData(const QString data)
     {
         if (!dirExists(data)) {
             return false;
         }
-        this->origData = data;
+        this->dataDir = data;
+
+        // make data.gz
+        // tar -C /path/to/directory -cf - . | gzip --rsyncable >data.tgz
+        // TODO:(fix) set temp directory
+        makeData(this->dataDir, this->dataPath);
+        return true;
+    }
+
+    bool MakeTar()
+    {
+        // create uap-1
+        auto uap_buffer = this->uap->dumpJson();
+
+        struct archive *wb = nullptr;
+        struct archive_entry *entry = nullptr;
+        struct stat workdir_st, st;
+        stat(".", &workdir_st);
+        wb = archive_write_new();
+        if (wb == nullptr) {
+            // #TODO
+            return false;
+        }
+        archive_write_add_filter_none(wb);
+        archive_write_set_format_pax_restricted(wb);
+        archive_write_open_filename(wb, this->uap->getUapName().c_str());
+
+        // add uap-1
+        entry = archive_entry_new();
+        if (entry == nullptr) {
+            // #TODO
+            return false;
+        }
+        archive_entry_copy_stat(entry, &workdir_st);
+        archive_entry_set_pathname(entry, this->uap->meta.getMetaName().c_str());
+        archive_entry_set_size(entry, uap_buffer.length());
+        archive_entry_set_filetype(entry, AE_IFREG);
+        archive_entry_set_perm(entry, 0644);
+        archive_write_header(wb, entry);
+        archive_write_data(wb, uap_buffer.c_str(), uap_buffer.length());
+        archive_entry_free(entry);
+
+        // add sign file
+        entry = archive_entry_new();
+        if (entry == nullptr) {
+            // #TODO
+            return false;
+        }
+        archive_entry_copy_stat(entry, &workdir_st);
+        archive_entry_set_pathname(entry, this->uap->meta.getMetaSignName().c_str());
+        archive_entry_set_size(entry, uap_buffer.length());
+        archive_entry_set_filetype(entry, AE_IFREG);
+        archive_entry_set_perm(entry, 0644);
+        archive_write_header(wb, entry);
+        archive_write_data(wb, uap_buffer.c_str(), uap_buffer.length());
+        archive_entry_free(entry);
+
+        // add data.tgz
+        if (this->uap->isFullUab()) {
+            stat(this->dataPath.toStdString().c_str(), &st);
+            entry = archive_entry_new(); // Note 2
+            if (entry == nullptr) {
+                // #TODO
+                return false;
+            }
+            archive_entry_copy_stat(entry, &st);
+            archive_entry_set_pathname(entry, "data.tgz");
+            archive_write_header(wb, entry);
+            char buff[40960] = {
+                0,
+            };
+            int len = 0;
+            int fd = -1;
+            fd = open(this->dataPath.toStdString().c_str(), O_RDONLY);
+            len = read(fd, buff, sizeof(buff));
+            while (len > 0) {
+                archive_write_data(wb, buff, len);
+                len = read(fd, buff, sizeof(buff));
+            }
+            close(fd);
+            archive_entry_free(entry);
+        }
+        // create uap
+        archive_write_close(wb); // Note 4
+        archive_write_free(wb); // Note
+
         return true;
     }
 };

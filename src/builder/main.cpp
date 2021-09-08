@@ -67,9 +67,10 @@ int main(int argc, char **argv)
                  qInfo() << "err! input config.json and data-dir";
                  return 0;
              }
-             Package newpkg;
-             newpkg.Init(args.at(1));
-             newpkg.InitData(args.at(2));
+             Package create_package;
+             create_package.Init(args.at(1));
+             create_package.InitData(args.at(2));
+             create_package.MakeTar();
              // TODO(SE):
              return 0;
          }},

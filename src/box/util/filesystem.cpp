@@ -87,7 +87,7 @@ path read_symlink(const path &p)
 file_status status(const path &p, std::error_code &ec)
 {
     file_type ft;
-    perms perm;
+    perms perm = no_perms;
 
     struct stat st {
     };
@@ -103,7 +103,7 @@ file_status status(const path &p, std::error_code &ec)
 
     // FIXME: perms
     // https://www.boost.org/doc/libs/1_75_0/libs/filesystem/doc/reference.html#file_status
-    int st_perm = st.st_mode & 0xFFFF;
+    //    int st_perm = st.st_mode & 0xFFFF;
 
     //    switch (st_perm) {
     //    case S_IRUSR:

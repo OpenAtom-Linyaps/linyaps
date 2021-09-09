@@ -19,7 +19,8 @@ set(LL_SERVICE_SOURCES
     ../module/util/fs.cpp
     ../module/util/fs.h
     ../module/runtime/tracker.h
-    ../module/runtime/tracker.cpp)
+    ../module/runtime/tracker.cpp
+    )
 
 qt5_add_dbus_adaptor(LL_SERVICE_SOURCES
                      ../module/dbus_ipc/com.deepin.linglong.PackageManager.xml

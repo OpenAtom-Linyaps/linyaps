@@ -22,6 +22,7 @@
 #include <DLog>
 #include <QCoreApplication>
 #include <module/runtime/app.h>
+#include <module/runtime/container.h>
 
 #include "packagemanageradaptor.h"
 #include "jobmanageradaptor.h"
@@ -29,22 +30,21 @@
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
-
-    app.setOrganizationName("deepin");
+    QCoreApplication::setOrganizationName("deepin");
 
     Dtk::Core::DLogManager::registerConsoleAppender();
     Dtk::Core::DLogManager::registerFileAppender();
+
+    ociJsonRegister();
+    qJsonRegister<PackageMoc>();
+    qJsonRegister<App>();
+    qJsonRegister<Container>();
 
     QDBusConnection dbus = QDBusConnection::sessionBus();
     if (!dbus.registerService("com.deepin.linglong.AppManager")) {
         qCritical() << "service exist" << dbus.lastError();
         return -1;
     }
-
-    ociJsonRegister();
-
-    qJsonRegisterConverter<PackageMoc>();
-    qJsonRegisterConverter<App>();
 
     PackageManagerAdaptor pma(PackageManager::instance());
     JobManagerAdaptor jma(JobManager::instance());

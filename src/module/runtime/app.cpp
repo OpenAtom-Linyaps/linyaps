@@ -50,9 +50,8 @@ namespace {
 //! create an uuid dir, and run container
 //! TODO: use file lock to make sure only one process create
 //! \return
-QString ensureContainerPath()
+QString ensureContainerPath(const QString &containerID)
 {
-    auto containerID = linglong::util::genUUID();
     auto runtimePath = QStandardPaths::standardLocations(QStandardPaths::RuntimeLocation).value(0);
     QDir runtimeDir(runtimePath);
     auto path = runtimeDir.absoluteFilePath(QStringList {"linglong", containerID}.join("/"));
@@ -77,6 +76,9 @@ public:
         auto json = QJsonDocument::fromJson(jsonFile.readAll());
         r = fromVariant<Runtime>(json.toVariant());
         r->setParent(q_ptr);
+
+        q_ptr->container = new Container(q_ptr);
+        q_ptr->container->ID = linglong::util::genUUID();
         return true;
     }
 
@@ -346,7 +348,7 @@ public:
         for (auto &env : envList) {
             bypassENV(env.toStdString().c_str());
         }
-        qCritical() << r->process->env;
+        qDebug() << r->process->env;
         r->process->cwd = util::getUserFile("");
 
         QList<QList<quint64>> uidMaps = {
@@ -406,7 +408,7 @@ public:
             m.source = pathPreprocess(component.value(0));
             m.destination = pathPreprocess(component.value(1));
             r->mounts.push_back(&m);
-            qCritical() << "mount app" << m.source << m.destination;
+            qDebug() << "mount app" << m.source << m.destination;
         }
 
         return 0;
@@ -442,7 +444,7 @@ App *App::load(const QString &configFilepath)
 int App::start()
 {
     Q_D(App);
-    QString containerRoot = ensureContainerPath();
+    QString containerRoot = ensureContainerPath(container->ID);
     d->r->root->path = containerRoot;
 
     d->prepare();
@@ -464,6 +466,10 @@ int App::start()
     prctl(PR_SET_PDEATHSIG, SIGKILL);
 
     pid_t boxPid = fork();
+    if (boxPid < 0) {
+        return -1;
+    }
+
     if (0 == boxPid) {
         // child process
         (void)close(pipeEnds[1]);
@@ -472,12 +478,13 @@ int App::start()
         }
         (void)close(pipeEnds[0]);
         char const *const args[] = {"/usr/bin/ll-box", LL_TOSTRING(LINGLONG), NULL};
-        execvp(args[0], (char **)args);
+        return execvp(args[0], (char **)args);
     } else {
         close(pipeEnds[0]);
         write(pipeEnds[1], data.c_str(), data.size());
         close(pipeEnds[1]);
 
+        container->PID = boxPid;
         // FIXME(interactive bash): if need keep interactive shell
         waitpid(boxPid, nullptr, 0);
     }

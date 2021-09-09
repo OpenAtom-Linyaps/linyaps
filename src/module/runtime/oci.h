@@ -27,6 +27,7 @@ class Root : public JsonSerialize
 {
     Q_OBJECT;
     Q_JSON_CONSTRUCTOR(Root)
+public:
     Q_JSON_PROPERTY(QString, path);
     Q_JSON_PROPERTY(bool, readonly);
 };
@@ -120,12 +121,12 @@ Q_JSON_DECLARE_PTR_METATYPE(Runtime)
 
 inline void ociJsonRegister()
 {
-    qJsonRegisterConverter<Root>();
-    qJsonRegisterConverter<Linux>();
-    qJsonRegisterConverter<Mount>();
-    qJsonRegisterConverter<Namespace>();
-    qJsonRegisterConverter<Hook>();
-    qJsonRegisterConverter<Runtime>();
-    qJsonRegisterConverter<Process>();
-    qJsonRegisterConverter<IDMap>();
+    qJsonRegister<Root>();
+    qJsonRegister<Linux>();
+    qJsonRegister<Mount>();
+    qJsonRegister<Namespace>();
+    qJsonRegister<Hook>();
+    qJsonRegister<Runtime>();
+    qJsonRegister<Process>();
+    qJsonRegister<IDMap>();
 }

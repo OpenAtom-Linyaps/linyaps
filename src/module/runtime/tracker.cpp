@@ -102,4 +102,5 @@ int Tracker::start()
     //    }
     //
     //    return EXIT_SUCCESS;
+    return -1;
 }

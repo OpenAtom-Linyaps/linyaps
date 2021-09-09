@@ -22,6 +22,7 @@
 #pragma once
 
 #include "oci.h"
+#include "container.h"
 
 class PackageMoc : public JsonSerialize
 {
@@ -40,6 +41,7 @@ class App : public JsonSerialize
     Q_JSON_PTR_PROPERTY(PackageMoc, package);
     Q_JSON_PTR_PROPERTY(PackageMoc, runtime);
     Q_JSON_PROPERTY(QStringList, mounts);
+    Q_JSON_PTR_PROPERTY(Container, container);
 
 public:
     explicit App(QObject *parent = nullptr);

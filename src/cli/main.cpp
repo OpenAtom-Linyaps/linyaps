@@ -25,6 +25,7 @@
 #include <QMap>
 
 #include <DLog>
+#include <cmd/cmd.h>
 
 #include "module/package/package.h"
 #include "module/runtime/container.h"
@@ -33,9 +34,14 @@
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
+    QCoreApplication::setOrganizationName("deepin");
+
+    Dtk::Core::DLogManager::registerConsoleAppender();
+    Dtk::Core::DLogManager::registerFileAppender();
+
+    qJsonRegister<Container>();
 
     QCommandLineParser parser;
-
     parser.addHelpOption();
     parser.addPositionalArgument("subcommand", "run\nbuild\nps\nkill\ninstall\nrepo", "subcommand [sub-option]");
     // TODO: for debug now
@@ -86,6 +92,26 @@ int main(int argc, char **argv)
              //        return ogApp.start();
              return -1;
          }},
+        {"exec", [&](QCommandLineParser &parser) -> int {
+             parser.clearPositionalArguments();
+             parser.addPositionalArgument("containerID", "container id", "aebbe2f455cf443f89d5c92f36d154dd");
+             parser.addPositionalArgument("exec", "exec command in container", "/bin/bash");
+             parser.process(app);
+
+             auto containerID = parser.positionalArguments().value(1);
+             if (containerID.isEmpty()) {
+                 parser.showHelp();
+             }
+
+             auto cmd = parser.positionalArguments().value(2);
+             if (cmd.isEmpty()) {
+                 parser.showHelp();
+             }
+
+             auto pid = containerID.toInt();
+
+             return namespaceEnter(pid, QStringList {cmd});
+         }},
         {"ps", [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("ps", "show running applications", "ps");
@@ -96,10 +122,9 @@ int main(int argc, char **argv)
              parser.process(app);
 
              auto outputFormat = parser.value(optOutputFormat);
-
-             // TODO: show ps result
-             //        return runtime::Manager::ps(outputFormat);
-             return -1;
+             auto containerList = pm.ListContainer().value();
+             showContainer(containerList, outputFormat);
+             return 0;
          }},
         {"kill", [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
@@ -128,7 +153,7 @@ int main(int argc, char **argv)
 
              auto jobID = pm.Install({appID});
              // get progress
-             return 0;
+             return -1;
          }},
         {"repo", [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();

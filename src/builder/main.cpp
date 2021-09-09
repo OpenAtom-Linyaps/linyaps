@@ -25,6 +25,7 @@
 #include <QMap>
 
 #include <DLog>
+#include <QRegExp>
 
 #include "module/package/package.h"
 
@@ -81,6 +82,35 @@ int main(int argc, char **argv)
              qInfo() << "err! input config.json and data-dir";
              return -1;
          }},
+        {"install",
+         [&](QCommandLineParser &parser) -> int {
+             parser.clearPositionalArguments();
+             parser.addPositionalArgument("install", "install uap", "install");
+             parser.addPositionalArgument("list", "uap file list", "list");
+
+             parser.process(app);
+
+             QStringList args = parser.positionalArguments();
+
+             QString subCommand = args.isEmpty() ? QString() : args.first();
+
+             QStringList uap_list = args.filter(QRegExp("^*.uap$", Qt::CaseInsensitive));
+
+             qInfo() << uap_list;
+             if (!(uap_list.size() > 0)) {
+                 qInfo() << "err:input uap file!";
+                 return -1;
+             }
+             // install uap package
+             for(auto it : uap_list)
+             {
+                 Package pkg ;
+                 pkg.InitUapFromFile(it);
+             }
+
+             // TODO(SE):
+             return 0;
+         }},
         {"package",
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
@@ -97,6 +127,7 @@ int main(int argc, char **argv)
              // TODO(SE):
              return 0;
          }},
+
     };
 
     if (subcommandMap.contains(command)) {

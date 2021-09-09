@@ -25,6 +25,7 @@
 #include <QString>
 #include <QFileInfo>
 #include <QProcess>
+#include <QDir>
 #include <stdlib.h>
 #include <iostream>
 
@@ -66,6 +67,34 @@ bool inline makeData(const QString &src, QString &dest)
     // TODO:(FIX) ret value check
     int ret = system(cmd.toStdString().c_str());
 
+    return true;
+}
+
+bool inline extractUap(const QString &uapfile, QString &dest)
+{
+    QFileInfo fs1(uapfile);
+
+    char temp_prefix[1024] = "/tmp/uap-XXXXXX";
+    char *dir_name = mkdtemp(temp_prefix);
+    QFileInfo fs2(dir_name);
+
+    if (!fs1.exists() || !fs2.exists()) {
+        return false;
+    }
+    dest = QString::fromStdString(dir_name);
+    QString cmd = "tar -xf " + uapfile + " -C " + dest;
+    // TODO:(FIX) ret value check
+    std::cout << "cmd:" << cmd.toStdString() << std::endl;
+    int ret = system(cmd.toStdString().c_str());
+    return true;
+}
+
+bool inline createDir(const QString &path)
+{
+    if(!QDir().exists(path))
+    {
+        QDir().mkpath(path);
+    }
     return true;
 }
 

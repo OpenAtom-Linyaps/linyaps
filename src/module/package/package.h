@@ -39,6 +39,8 @@ using format::uap::UAP;
 using linglong::util::fileExists;
 using linglong::util::dirExists;
 using linglong::util::makeData;
+using linglong::util::extractUap;
+using linglong::util::createDir;
 
 class Package
 {
@@ -181,6 +183,26 @@ public:
         archive_write_close(wb); // Note 4
         archive_write_free(wb); // Note
 
+        return true;
+    }
+
+    //  init uap info from uap file
+    bool InitUapFromFile(const QString &uapFile)
+    {
+        if (!fileExists(uapFile)) {
+            return false;
+        }
+        QString uap_file_extract_dir;
+        extractUap(uapFile, uap_file_extract_dir);
+        this->initConfig(uap_file_extract_dir + "/uap-1");
+        if (this->uap->isFullUab()) {
+            this->dataPath = uap_file_extract_dir + "/data.tgz";
+        }
+        createDir(QString("/deepin/linglong/layers/"));
+        QString pkg_install_path = QString::fromStdString("/deepin/linglong/layers/" + this->uap->meta.pkginfo.appname + "/" + this->uap->meta.pkginfo.version
+                  + "/" + this->uap->meta.pkginfo.arch + "/entries");
+        std::cout<<pkg_install_path.toStdString()<<std::endl;
+        createDir(pkg_install_path);
         return true;
     }
 };

@@ -19,9 +19,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <QtGlobal>
+#pragma once
 
-int namespaceEnter(qlonglong pid)
-{
-    return -1;
-}
+#include "module/runtime/container.h"
+
+void showContainer(const ContainerList &list, const QString &format);
+
+int namespaceEnter(pid_t pid, const QStringList &args);

@@ -38,10 +38,15 @@ public:
     {
     }
 
+    QMap<QString, QPointer<App>> apps;
+
     PackageManager *q_ptr = nullptr;
 };
 
-PackageManager::PackageManager(void) = default;
+PackageManager::PackageManager()
+    : dd_ptr(new PackageManagerPrivate(this))
+{
+}
 
 PackageManager::~PackageManager() = default;
 
@@ -51,6 +56,8 @@ PackageManager::~PackageManager() = default;
  */
 QString PackageManager::Install(const QStringList &packageIDList)
 {
+    Q_D(PackageManager);
+
     return JobManager::instance()->CreateJob([](Job *jr) {
         // 在这里写入真正的实现
         QProcess p;
@@ -100,6 +107,8 @@ QString PackageManager::Import(const QStringList &packagePathList)
 
 QString PackageManager::Start(const QString &packageID)
 {
+    Q_D(PackageManager);
+
     qDebug() << "start package" << packageID;
     return JobManager::instance()->CreateJob([=](Job *jr) {
         auto app = App::load("/tmp/test.yaml");
@@ -107,6 +116,7 @@ QString PackageManager::Start(const QString &packageID)
             qCritical() << "nullptr" << app;
             return;
         }
+        d->apps[app->container->ID] = QPointer<App>(app);
         app->start();
     });
     //    sendErrorReply(QDBusError::NotSupported, message().member());
@@ -119,20 +129,14 @@ void PackageManager::Stop(const QString &containerID)
 
 ContainerList PackageManager::ListContainer()
 {
+    Q_D(PackageManager);
     ContainerList list;
 
-    auto c = new Container();
-    c->ID = "1";
-    list.push_back(c);
-
-    c = new Container();
-    c->ID = "2";
-    list.push_back(c);
-
-    c = new Container();
-    c->ID = "3";
-    list.push_back(c);
-    qCritical() << "end call";
+    for (const auto &app : d->apps) {
+        auto c = QPointer<Container>(new Container);
+        c->ID = app->container->ID;
+        c->PID = app->container->PID;
+        list.push_back(c);
+    }
     return list;
-    //    sendErrorReply(QDBusError::NotSupported, message().member());
 }

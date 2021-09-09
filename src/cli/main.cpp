@@ -25,12 +25,11 @@
 #include <QMap>
 
 #include <DLog>
+#include <cmd/cmd.h>
 
 #include "module/package/package.h"
 #include "module/runtime/container.h"
 #include "package_manager.h"
-
-extern int namespaceEnter(qlonglong pid);
 
 int main(int argc, char **argv)
 {
@@ -109,17 +108,9 @@ int main(int argc, char **argv)
                  parser.showHelp();
              }
 
-             auto containerList = pm.ListContainer().value();
+             auto pid = containerID.toInt();
 
-             //             qCritical() << "containerList.ID;" << containerList.ID;
-             qCritical() << "containerList size" << containerList.length();
-             //             auto mm = pm.ListContainer1().value();
-
-             //             qCritical() << "mm" << mm.m_text << mm.m_user;
-             //                          for (auto &c : containerList) {
-             //                              namespaceEnter(c.PID.toLongLong());
-             //                          }
-             return -1;
+             return namespaceEnter(pid, QStringList {cmd});
          }},
         {"ps", [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
@@ -131,10 +122,9 @@ int main(int argc, char **argv)
              parser.process(app);
 
              auto outputFormat = parser.value(optOutputFormat);
-
-             // TODO: show ps result
-             //        return runtime::Manager::ps(outputFormat);
-             return -1;
+             auto containerList = pm.ListContainer().value();
+             showContainer(containerList, outputFormat);
+             return 0;
          }},
         {"kill", [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();

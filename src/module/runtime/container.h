@@ -35,7 +35,7 @@ class Container : public JsonSerialize
     Q_JSON_CONSTRUCTOR(Container)
 public:
     Q_JSON_PROPERTY(QString, ID)
-    Q_JSON_PROPERTY(QStringList, PID)
+    Q_JSON_PROPERTY(qint64, PID)
 };
 Q_JSON_DECLARE_PTR_METATYPE(Container)
 

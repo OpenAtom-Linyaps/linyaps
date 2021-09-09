@@ -168,7 +168,7 @@ inline void qJsonRegister()
             return mountList; \
         }); \
 \
-        QMetaType::registerConverter<TYPE##List, QJsonValue>([](TYPE##List valueList) -> QJsonValue { \
+        QMetaType::registerConverter<TYPE##List, QJsonValue>([](const TYPE##List &valueList) -> QJsonValue { \
             QVariantList list; \
             for (auto v : valueList) { \
                 list.push_back(toVariant(v.data())); \

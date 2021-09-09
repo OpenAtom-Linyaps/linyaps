@@ -60,3 +60,9 @@ TEST(OCI, QtJson)
 
     r->deleteLater();
 }
+
+TEST(OCI, QByteArray)
+{
+    QByteArray data = "23282";
+    EXPECT_EQ(QString::fromLatin1(data).toLongLong(), 23282);
+}

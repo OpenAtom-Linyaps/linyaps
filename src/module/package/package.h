@@ -41,6 +41,7 @@ using linglong::util::dirExists;
 using linglong::util::makeData;
 using linglong::util::extractUap;
 using linglong::util::createDir;
+using linglong::util::extractUapData;
 
 class Package
 {
@@ -72,6 +73,8 @@ public:
         this->initConfig(config);
         if (this->uap->isFullUab() && !data.isEmpty())
             this->initData(data);
+        // this->initDataSing()
+        // this->getSign()
         return true;
     }
 
@@ -199,10 +202,16 @@ public:
             this->dataPath = uap_file_extract_dir + "/data.tgz";
         }
         createDir(QString("/deepin/linglong/layers/"));
-        QString pkg_install_path = QString::fromStdString("/deepin/linglong/layers/" + this->uap->meta.pkginfo.appname + "/" + this->uap->meta.pkginfo.version
-                  + "/" + this->uap->meta.pkginfo.arch + "/entries");
-        std::cout<<pkg_install_path.toStdString()<<std::endl;
-        createDir(pkg_install_path);
+        QString pkg_install_path =
+            QString::fromStdString("/deepin/linglong/layers/" + this->uap->meta.pkginfo.appname + "/"
+                                   + this->uap->meta.pkginfo.version + "/" + this->uap->meta.pkginfo.arch + "/entries");
+        std::cout << pkg_install_path.toStdString() << std::endl;
+        if (!createDir(pkg_install_path)) {
+            return false;
+        }
+        if (this->uap->isFullUab()) {
+            extractUapData(this->dataPath, pkg_install_path);
+        }
         return true;
     }
 };

@@ -89,11 +89,27 @@ bool inline extractUap(const QString &uapfile, QString &dest)
     return true;
 }
 
+bool inline extractUapData(const QString &uapfile, QString &dest)
+{
+    QFileInfo fs1(uapfile);
+    QFileInfo fs2(dest);
+
+    if (!fs1.exists() || !fs2.exists()) {
+        return false;
+    }
+    QString cmd = "tar -xf " + uapfile + " -C " + dest;
+    // TODO:(FIX) ret value check
+    std::cout << "cmd:" << cmd.toStdString() << std::endl;
+    int ret = system(cmd.toStdString().c_str());
+    return true;
+}
+
 bool inline createDir(const QString &path)
 {
-    if(!QDir().exists(path))
+    auto val = QDir().exists(path);
+    if(!val)
     {
-        QDir().mkpath(path);
+        return QDir().mkpath(path);
     }
     return true;
 }

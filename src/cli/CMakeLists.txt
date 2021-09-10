@@ -20,4 +20,4 @@ target_include_directories(llc PRIVATE ${JSONSTRUCT_INCLUDE_DIR})
 
 target_link_libraries(llc PRIVATE ${LINK_LIBS})
 
-install(TARGETS llc RUNTIME DESTINATION ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR})
+install(TARGETS llc RUNTIME DESTINATION bin)

@@ -11,4 +11,4 @@ target_include_directories(upkg-builder PRIVATE ${JSONSTRUCT_INCLUDE_DIR})
 
 target_link_libraries(upkg-builder PRIVATE ${LINK_LIBS} -larchive -lcrypto++)
 
-install(TARGETS upkg-builder RUNTIME DESTINATION ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR})
+install(TARGETS upkg-builder RUNTIME DESTINATION bin)

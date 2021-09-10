@@ -13,6 +13,8 @@ runtime:
 
 # TODO: support custom mount
 mounts:
+  - /etc/passwd:/etc/passwd
+  - /etc/group:/etc/group
   - ${HOME}/Documents:${HOME}/Documents
   - ${HOME}/Desktop:${HOME}/Desktop
   - ${HOME}/Downloads:${HOME}/Downloads

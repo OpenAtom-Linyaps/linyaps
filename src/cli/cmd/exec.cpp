@@ -49,22 +49,25 @@ inline int bringDownPermissionsTo(const struct stat &st)
     return 0;
 }
 
-int execArgs(const QStringList &args)
+int execArgs(const std::vector<std::string> &args, const std::vector<std::string> &envStrVector)
 {
-    std::vector<std::string> strVector(args.size());
-    std::transform(args.begin(), args.end(), strVector.begin(), [](const QString &str) -> std::string {
-        return str.toStdString();
-    });
-
-    std::vector<char *> argVec(strVector.size() + 1);
-    std::transform(strVector.begin(), strVector.end(), argVec.begin(), [](const std::string &str) -> char * {
+    std::vector<char *> argVec(args.size() + 1);
+    std::transform(args.begin(), args.end(), argVec.begin(), [](const std::string &str) -> char * {
         return const_cast<char *>(str.c_str());
     });
     argVec.push_back(nullptr);
 
     auto command = argVec.data();
 
-    return execvp(command[0], &command[0]);
+    std::vector<char *> envVec(envStrVector.size() + 1);
+    std::transform(envStrVector.begin(), envStrVector.end(), envVec.begin(), [](const std::string &str) -> char * {
+        return const_cast<char *>(str.c_str());
+    });
+    envVec.push_back(nullptr);
+
+    auto env = envVec.data();
+
+    return execve(command[0], &command[0], &env[0]);
 }
 
 // /proc/{pid}/task/{pid}/children
@@ -132,6 +135,8 @@ int namespaceEnter(pid_t pid, const QStringList &args)
         fds.push_back(fd);
     }
 
+    int rootfd = open(root.toStdString().c_str(), O_RDONLY);
+
     ret = unshare(CLONE_NEWNS);
     if (ret < 0) {
         qCritical() << "unshare failed" << ret << errno << strerror(errno);
@@ -145,15 +150,15 @@ int namespaceEnter(pid_t pid, const QStringList &args)
         close(fd);
     }
 
-    ret = chdir(root.toStdString().c_str());
+    ret = fchdir(rootfd);
     if (ret < 0) {
-        qCritical() << "chdir failed" << ret << errno << strerror(errno);
+        qCritical() << "chdir failed" << root << ret << errno << strerror(errno);
         return -1;
     }
 
-    ret = chroot(root.toStdString().c_str());
+    ret = chroot(".");
     if (ret < 0) {
-        qCritical() << "chroot failed" << ret << errno << strerror(errno);
+        qCritical() << "chroot failed" << root << ret << errno << strerror(errno);
         return -1;
     }
 
@@ -166,7 +171,24 @@ int namespaceEnter(pid_t pid, const QStringList &args)
     }
 
     if (0 == child) {
-        return execArgs(args);
+        QFile envFile("/run/app/env");
+        if (!envFile.open(QIODevice::ReadOnly)) {
+            qCritical() << "open failed" << envFile.fileName() << errno << strerror(errno);
+        }
+
+        std::vector<std::string> envVec;
+        for (const auto &l : envFile.readAll().split('\n')) {
+            if (!l.isEmpty()) {
+                envVec.push_back(l.toStdString());
+            }
+        }
+
+        std::vector<std::string> argVec(args.size());
+        std::transform(args.begin(), args.end(), argVec.begin(), [](const QString &str) -> std::string {
+            return str.toStdString();
+        });
+
+        return execArgs(argVec, envVec);
     }
 
     return waitpid(-1, nullptr, 0);

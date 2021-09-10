@@ -94,12 +94,29 @@ public:
 
         QString appID = q->package->id;
         QString appRootPath = q->package->rootPath;
-        stageApp(appID, appRootPath);
 
+        stageApp(appID, appRootPath);
         stageHost();
         stageUser(appID);
-
         stageMount();
+
+        auto envFilepath = containerRoot + QString("/env");
+        QFile envFile(envFilepath);
+        if (!envFile.open(QIODevice::WriteOnly)) {
+            qCritical() << "create env failed" << envFile.error();
+        }
+        for (const auto &env : r->process->env) {
+            envFile.write(env.toLocal8Bit());
+            envFile.write("\n");
+        }
+        envFile.close();
+
+        Mount &m = *new Mount(r);
+        m.type = "bind";
+        m.options = QStringList {};
+        m.source = envFilepath;
+        m.destination = "/run/app/env";
+        r->mounts.push_back(&m);
 
         // FIXME: read from desktop file
         if (r->process->args.isEmpty()) {
@@ -260,8 +277,8 @@ public:
                 QString("/run/dbus/system_bus_socket")));
         }
 
-        auto hosApptHome = util::ensureUserDir({".linglong", appID, "home"});
-        mountMap.push_back(qMakePair(hosApptHome, util::getUserFile("")));
+        auto hostAppHome = util::ensureUserDir({".linglong", appID, "home"});
+        mountMap.push_back(qMakePair(hostAppHome, util::getUserFile("")));
 
         auto appConfigPath = util::ensureUserDir({".linglong", appID, "/config"});
         mountMap.push_back(qMakePair(appConfigPath, util::getUserFile(".config")));
@@ -414,8 +431,10 @@ public:
         return 0;
     }
 
+    QString containerRoot;
     Runtime *r = nullptr;
     App *q_ptr = nullptr;
+
     Q_DECLARE_PUBLIC(App);
 };
 
@@ -444,17 +463,18 @@ App *App::load(const QString &configFilepath)
 int App::start()
 {
     Q_D(App);
-    QString containerRoot = ensureContainerPath(container->ID);
-    d->r->root->path = containerRoot;
+    d->containerRoot = ensureContainerPath(container->ID);
+    d->r->root->path = d->containerRoot + "/root";
+    QDir(d->r->root->path).mkpath(".");
 
     d->prepare();
 
     // write pid file
-    QFile pidFile(containerRoot + QString("/%1.pid").arg(getpid()));
+    QFile pidFile(d->containerRoot + QString("/%1.pid").arg(getpid()));
     pidFile.open(QIODevice::WriteOnly);
     pidFile.close();
 
-    qDebug() << "start container at" << containerRoot;
+    qDebug() << "start container at" << d->r->root->path;
     auto json = QJsonDocument::fromVariant(toVariant<Runtime>(d->r)).toJson();
     auto data = json.toStdString();
 

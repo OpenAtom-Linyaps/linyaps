@@ -82,6 +82,27 @@ int main(int argc, char **argv)
              qInfo() << "err! input config.json and data-dir";
              return -1;
          }},
+        {"extract",
+         [&](QCommandLineParser &parser) -> int {
+             parser.addPositionalArgument("extract", "extract uap package", "extract");
+             parser.addPositionalArgument("uap-package", "uap package", "");
+             parser.addPositionalArgument("dir", "dir", "");
+
+             parser.process(app);
+
+             auto args = parser.positionalArguments();
+             // TODO(SE):
+
+             if (args.size() == 3) {
+                 Package create_package;
+                 create_package.Extract(args.at(1), args.at(2));
+                 return 0;
+             }
+
+             qInfo() << args;
+             qInfo() << "err! input uap-package and dir";
+             return -1;
+         }},
         {"install",
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
@@ -102,9 +123,8 @@ int main(int argc, char **argv)
                  return -1;
              }
              // install uap package
-             for(auto it : uap_list)
-             {
-                 Package pkg ;
+             for (auto it : uap_list) {
+                 Package pkg;
                  pkg.InitUapFromFile(it);
              }
 

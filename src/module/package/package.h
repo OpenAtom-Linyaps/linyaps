@@ -286,6 +286,7 @@ public:
         // check entries desktop
         if (dirExists(this->dataDir + "/entries")) {
             // copy entries
+            return false;
         } else {
             qInfo() << "need: entries of desktop file !";
         }

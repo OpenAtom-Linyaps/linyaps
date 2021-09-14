@@ -25,6 +25,7 @@ add_executable(ll-test
                "../src/module/runtime/container.h"
                "../src/module/package/package.h"
                package_test.cpp
+	       extract_test.cpp
                oci_test.cpp
                qt_json.cpp
                qt_yaml.cpp

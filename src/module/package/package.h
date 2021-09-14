@@ -161,7 +161,7 @@ public:
         }
     }
 
-    void extract_archive(const char *filename, const char *outdir)
+    bool extract_archive(const char *filename, const char *outdir)
     {
         int flags;
         int r;
@@ -180,7 +180,7 @@ public:
         archive_write_disk_set_standard_lookup(ext);
         if ((r = archive_read_open_filename(a, filename, 10240))) {
             fprintf(stderr, "error\n");
-            return;
+            return false;
             // exit(1);
         }
         for (;;) {
@@ -191,7 +191,7 @@ public:
                 fprintf(stderr, "%s\n", archive_error_string(a));
             if (r < ARCHIVE_WARN)
                 // exit(1);
-                return;
+                return false;
 
             const char *path = archive_entry_pathname(entry);
             char newPath[255 + 1];
@@ -207,20 +207,21 @@ public:
                     fprintf(stderr, "%s\n", archive_error_string(ext));
                 if (r < ARCHIVE_WARN)
                     // exit(1);
-                    return;
+                    return false;
             }
             r = archive_write_finish_entry(ext);
             if (r < ARCHIVE_OK)
                 fprintf(stderr, "%s\n", archive_error_string(ext));
             if (r < ARCHIVE_WARN)
                 // exit(1);
-                return;
+                return false;
         }
         archive_read_close(a);
         archive_read_free(a);
         archive_write_close(ext);
         archive_write_free(ext);
         // exit(0);
+        return true;
     }
 };
 
@@ -343,7 +344,7 @@ public:
             return false;
         }
         createDir(outdir);
-        uap_archive.extract_archive(filename.toStdString().c_str(), outdir.toStdString().c_str());
+        return (uap_archive.extract_archive(filename.toStdString().c_str(), outdir.toStdString().c_str()));
     }
 
     //  init uap info from uap file

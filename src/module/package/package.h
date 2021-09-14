@@ -31,6 +31,7 @@
 #include <fcntl.h>
 #include <archive.h>
 #include <archive_entry.h>
+#include <QDebug>
 
 #include "module/uab/uap.h"
 #include "module/util/fs.h"
@@ -101,6 +102,26 @@ public:
             return false;
         }
         this->dataDir = data;
+
+        // check entries desktop
+        if (dirExists(this->dataDir + "/entries")) {
+            // copy entries
+        } else {
+            qInfo() << "need: entries of desktop file !";
+        }
+
+        // check files list 
+        if (dirExists(this->dataDir + "/files")) {
+            // copy files
+        } else {
+            qInfo() << "need: entries of desktop file !";
+        }
+        // check permission info.json
+        if (fileExists(this->dataDir + "/info.json")) {
+            // copy default permission info.json file to linglong
+        } else {
+            qInfo() << "need: info.json of permission !";
+        }
 
         // make data.gz
         // tar -C /path/to/directory -cf - . | gzip --rsyncable >data.tgz
@@ -204,7 +225,7 @@ public:
         createDir(QString("/deepin/linglong/layers/"));
         QString pkg_install_path =
             QString::fromStdString("/deepin/linglong/layers/" + this->uap->meta.pkginfo.appname + "/"
-                                   + this->uap->meta.pkginfo.version + "/" + this->uap->meta.pkginfo.arch + "/entries");
+                                   + this->uap->meta.pkginfo.version + "/" + this->uap->meta.pkginfo.arch);
         std::cout << pkg_install_path.toStdString() << std::endl;
         if (!createDir(pkg_install_path)) {
             return false;

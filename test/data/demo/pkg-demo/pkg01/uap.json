@@ -1,0 +1,42 @@
+{
+  "datasign": {
+    "sign": ""
+  },
+  "metasign": {
+    "sign": ""
+  },
+  "owner": {
+    "keyinfo": "null",
+    "name": "UnionTech",
+    "website": "http://www.uniontech.com"
+  },
+  "pkgext": {
+    "hashtype": 2,
+    "maintainer": "deepin uos <uos@deepin.com>",
+    "url": "http://www.uniontech.com",
+    "type": 1,
+    "tag": "application;tools",
+    "license": "GPLv3",
+    "uuid": "2013e1ea-f8ce-11eb-a615-633d5b0cf905",
+    "settings": {}
+  },
+  "appid": "org.app.authpass",
+  "arch": ["x86_64"],
+  "description": "AuthPass, Free and Open Source password manager for Android, iOS, MacOS, Linux and Windows. Compatible with KeePass.",
+  "name": "authpass",
+  "runtime": "aaa2668a-f67e-11eb-913a-23d17b06112b",
+  "version": "1.9.4",
+  "support-plugins": [],
+  "plugins": [],
+  "permission": {
+    "autostart": false,
+    "notification": false,
+    "trayicon": false,
+    "clipboard": false,
+    "account": false,
+    "bluetooth": false,
+    "camera": false,
+    "audio_record": false,
+    "installed_apps": false
+  }
+}

@@ -230,7 +230,6 @@ class Package
 public:
     QString ID;
     QString name;
-    QString appName;
     QString configJson;
     QString dataDir;
     QString dataPath;
@@ -361,8 +360,8 @@ public:
         }
         createDir(QString("/deepin/linglong/layers/"));
         QString pkg_install_path =
-            QString::fromStdString("/deepin/linglong/layers/" + this->uap->meta.pkginfo.appname + "/"
-                                   + this->uap->meta.pkginfo.version + "/" + this->uap->meta.pkginfo.arch);
+            QString::fromStdString("/deepin/linglong/layers/" + this->uap->meta.appid + "/"
+                                   + this->uap->meta.version + "/" + this->uap->meta.arch);
         std::cout << pkg_install_path.toStdString() << std::endl;
         if (!createDir(pkg_install_path)) {
             return false;

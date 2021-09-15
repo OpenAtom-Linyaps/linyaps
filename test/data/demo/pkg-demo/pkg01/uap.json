@@ -18,6 +18,7 @@
     "tag": "application;tools",
     "license": "GPLv3",
     "uuid": "2013e1ea-f8ce-11eb-a615-633d5b0cf905",
+    "sdk":"",
     "settings": {}
   },
   "appid": "org.app.authpass",
@@ -26,7 +27,7 @@
   "name": "authpass",
   "runtime": "aaa2668a-f67e-11eb-913a-23d17b06112b",
   "version": "1.9.4",
-  "support-plugins": [],
+  "support_plugins": [],
   "plugins": [],
   "permission": {
     "autostart": false,

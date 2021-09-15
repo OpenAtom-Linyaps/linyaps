@@ -31,6 +31,7 @@
 #include <crypto++/hex.h>
 
 using std::string;
+using std::vector;
 
 using namespace CryptoPP;
 
@@ -50,14 +51,14 @@ class PkgInfo
 public:
     string name;
     string version;
-    string appname;
+    string appid;
     string uuid;
     string arch;
     string sdk;
     string runtime;
     string description;
 
-    JS_OBJ(name, version, appname, uuid, arch, sdk, runtime, description);
+    JS_OBJ(name, version, appid, uuid, arch, sdk, runtime, description);
 
 public:
     PkgInfo() {}
@@ -75,9 +76,12 @@ public:
     string ostree;
     string url;
     string tag;
+    string uuid;
     string maintainer;
+    string license;
+    string sdk;
 
-    JS_OBJ(type, hashtype, ostree, url, tag, maintainer);
+    JS_OBJ(type, hashtype, ostree, url, tag, uuid, maintainer, license, sdk);
 
 public:
     PkgExt() {}
@@ -149,42 +153,75 @@ inline const string StringToHash256(const string &str)
 }
 
 /*!
+ * UAP Permission
+ */
+class Permission
+{
+public:
+    bool autostart = false;
+    bool notification = false;
+    bool trayicon = false;
+    bool clipboard = false;
+    bool account = false;
+    bool bluetooth = false;
+    bool camera = false;
+    bool audio_record = false;
+    bool installed_apps = false;
+
+    JS_OBJ(autostart,notification,trayicon,clipboard,account,bluetooth,camera,audio_record,installed_apps);
+};
+
+/*!
  * UAP meta
  */
 class Meta
 {
 public:
-    string version = "1";
-    string name = "uap";
-    PkgInfo pkginfo;
+    string _uap_version = "1";
+    string _uap_name = "uap";
+    //PkgInfo pkginfo;
+
+    string name;
+    string version;
+    string appid;
+    string arch;
+    string runtime;
+    string description;
+
+    vector<string> support_plugins;
+    vector<string> plugins;
+
     PkgExt pkgext;
     Owner owner;
+    Permission permissions;
     MetaSign metasign;
     DataSign datasign;
 
-    JS_OBJ(pkginfo, pkgext, owner, metasign, datasign);
+    JS_OBJ(name, version, appid, arch, runtime, description,
+           support_plugins, plugins, pkgext, owner,
+           permissions, metasign, datasign);
 
 public:
     Meta() {}
     Meta(const string version, const string name)
-        : version(version)
-        , name(name)
+        : _uap_version(version)
+        , _uap_name(name)
     {
     }
     ~Meta() {}
     // get meta file name
-    string getMetaName() const { return this->name + "-" + this->version; }
+    string getMetaName() const { return this->_uap_name + "-" + this->_uap_version; }
 
     // get meta sign file name
-    string getMetaSignName() const { return "." + this->name + "-" + this->version + ".sig"; }
+    string getMetaSignName() const { return "." + this->_uap_name + "-" + this->_uap_version + ".sig"; }
 
     // set meta sign
     void setMetaSign()
     {
-        std::string meta_json =
-            JS::serializeStruct(this->pkginfo) + JS::serializeStruct(this->pkgext) + JS::serializeStruct(this->owner);
-        if (meta_json != "")
-            this->metasign.sign = StringToHash256(meta_json);
+        std::string meta_json = "abc";
+        //     JS::serializeStruct(this->pkginfo) + JS::serializeStruct(this->pkgext) + JS::serializeStruct(this->owner);
+        // if (meta_json != "")
+        this->metasign.sign = StringToHash256(meta_json);
     }
 };
 
@@ -211,7 +248,7 @@ public:
                 return false;
             }
             // check meta data
-            if (this->meta.pkginfo.name == "" || this->meta.owner.name == "") {
+            if (this->meta.name == "" || this->meta.owner.name == "") {
                 return false;
             }
             // set meta sign
@@ -225,8 +262,8 @@ public:
 
     string getUapName() const
     {
-        return this->meta.pkginfo.name + "-" + this->meta.pkginfo.version + "-" + this->meta.pkginfo.arch + "."
-               + this->meta.name;
+        return this->meta.name + "-" + this->meta.version + "-" + this->meta.arch + "."
+               + this->meta._uap_name;
     }
 };
 

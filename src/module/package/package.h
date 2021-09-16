@@ -284,25 +284,24 @@ public:
         this->dataDir = data;
 
         // check entries desktop
-        if (dirExists(this->dataDir + "/entries")) {
+        if (!dirExists(this->dataDir + QString("/entries"))) {
             // copy entries
-            return false;
-        } else {
             qInfo() << "need: entries of desktop file !";
-        }
+            return false;
+        } 
 
         // check files list
-        if (dirExists(this->dataDir + "/files")) {
+        if (!dirExists(this->dataDir + QString("/files"))) {
             // copy files
-        } else {
             qInfo() << "need: entries of desktop file !";
-        }
+            return false;
+        } 
         // check permission info.json
-        if (fileExists(this->dataDir + "/info.json")) {
+        if (!fileExists(this->dataDir + QString("/info"))) {
             // copy default permission info.json file to linglong
-        } else {
-            qInfo() << "need: info.json of permission !";
-        }
+             qInfo() << "need: info.json of permission !";
+             return false;
+        } 
 
         // make data.gz
         // tar -C /path/to/directory -cf - . | gzip --rsyncable >data.tgz

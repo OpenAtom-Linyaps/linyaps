@@ -30,13 +30,13 @@
 TEST(Package, Extract)
 {
     Package pkg01;
-    QString pkg_name = "./org.deepin.browser-5.11-x86_64.uap";
+    QString pkg_name = "authpass-1.9.4-x86_64.uap";
     QFileInfo fs(pkg_name);
 
     if (fs.exists()) {
         QFile::remove(pkg_name);
     }
-    EXPECT_EQ(pkg01.InitUap(QString("../../test/data/demo/uab.json"), QString("/bin")), true);
+    EXPECT_EQ(pkg01.InitUap(QString("../../test/data/demo/pkg-demo/pkg01/uap.json"), QString("../../test/data/demo/pkg-demo/pkg01")), true);
     EXPECT_EQ(pkg01.MakeUap(), true);
     EXPECT_EQ(pkg01.Extract(fs.fileName(), QString("test1")), true);
     if (QFileInfo::exists(pkg_name)) {

@@ -22,7 +22,7 @@
     "settings": {}
   },
   "appid": "org.app.authpass",
-  "arch": ["x86_64"],
+  "arch": "x86_64",
   "description": "AuthPass, Free and Open Source password manager for Android, iOS, MacOS, Linux and Windows. Compatible with KeePass.",
   "name": "authpass",
   "runtime": "aaa2668a-f67e-11eb-913a-23d17b06112b",

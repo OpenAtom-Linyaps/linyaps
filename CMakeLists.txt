@@ -27,6 +27,12 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   endif ()
 endif ()
 
+# debug mode
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    ADD_DEFINITIONS(-DDEBUG)
+endif()
+
+
 include(GNUInstallDirs)
 include_directories(${linglong_SOURCE_DIR}/src)
 

@@ -154,7 +154,9 @@ public:
                 return (r);
             r = archive_write_data_block(aw, buff, size, offset);
             if (r != ARCHIVE_OK) {
+#ifdef DEBUG
                 fprintf(stderr, "%s\n", archive_error_string(aw));
+#endif
                 return (r);
             }
             // fprintf(stdout, "%s\n", (char*)buff);
@@ -179,7 +181,10 @@ public:
         archive_write_disk_set_options(ext, flags);
         archive_write_disk_set_standard_lookup(ext);
         if ((r = archive_read_open_filename(a, filename, 10240))) {
-            fprintf(stderr, "error\n");
+#ifdef DEBUG
+            perror("error:");
+#endif
+            goto release;
             return false;
             // exit(1);
         }
@@ -189,32 +194,48 @@ public:
                 break;
             if (r < ARCHIVE_OK)
                 fprintf(stderr, "%s\n", archive_error_string(a));
-            if (r < ARCHIVE_WARN)
+            if (r < ARCHIVE_WARN) {
                 // exit(1);
+                goto release;
                 return false;
+            }
 
             const char *path = archive_entry_pathname(entry);
             char newPath[255 + 1];
             snprintf(newPath, 255, "%s/%s", outdir, path);
+#ifdef DEBUG
             fprintf(stdout, "entry old path:%s, newPath:%s\n", path, newPath);
+#endif
             archive_entry_set_pathname(entry, newPath);
             r = archive_write_header(ext, entry);
-            if (r < ARCHIVE_OK)
+            if (r < ARCHIVE_OK) {
+#ifdef DEBUG
                 fprintf(stderr, "%s\n", archive_error_string(ext));
-            else if (archive_entry_size(entry) > 0) {
+#endif
+            } else if (archive_entry_size(entry) > 0) {
                 r = copy_data(a, ext);
-                if (r < ARCHIVE_OK)
+                if (r < ARCHIVE_OK) {
+#ifdef DEBUG
                     fprintf(stderr, "%s\n", archive_error_string(ext));
-                if (r < ARCHIVE_WARN)
+#endif
+                }
+                if (r < ARCHIVE_WARN) {
                     // exit(1);
+                    goto release;
                     return false;
+                }
             }
             r = archive_write_finish_entry(ext);
-            if (r < ARCHIVE_OK)
+            if (r < ARCHIVE_OK) {
+#ifdef DEBUG
                 fprintf(stderr, "%s\n", archive_error_string(ext));
-            if (r < ARCHIVE_WARN)
+#endif
+            }
+            if (r < ARCHIVE_WARN) {
                 // exit(1);
+                goto release;
                 return false;
+            }
         }
         archive_read_close(a);
         archive_read_free(a);
@@ -222,6 +243,14 @@ public:
         archive_write_free(ext);
         // exit(0);
         return true;
+    release:
+        if (NULL != a) {
+            archive_read_free(a);
+        }
+        if (NULL != ext) {
+            archive_write_free(ext);
+        }
+        return false;
     }
 };
 
@@ -288,20 +317,20 @@ public:
             // copy entries
             qInfo() << "need: entries of desktop file !";
             return false;
-        } 
+        }
 
         // check files list
         if (!dirExists(this->dataDir + QString("/files"))) {
             // copy files
             qInfo() << "need: entries of desktop file !";
             return false;
-        } 
+        }
         // check permission info.json
         if (!fileExists(this->dataDir + QString("/info.json"))) {
             // copy default permission info.json file to linglong
-             qInfo() << "need: info.json of permission !";
-             return false;
-        } 
+            qInfo() << "need: info.json of permission !";
+            return false;
+        }
 
         // make data.gz
         // tar -C /path/to/directory -cf - . | gzip --rsyncable >data.tgz

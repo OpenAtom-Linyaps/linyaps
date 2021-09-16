@@ -26,7 +26,7 @@
 #include <QJsonDocument>
 #include <QFile>
 
-#include <libuossv.h>
+#include <libuossv/uossv.h>
 
 TEST(UOSSign, UosSign)
 {

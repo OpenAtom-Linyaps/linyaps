@@ -297,7 +297,7 @@ public:
             return false;
         } 
         // check permission info.json
-        if (!fileExists(this->dataDir + QString("/info"))) {
+        if (!fileExists(this->dataDir + QString("/info.json"))) {
             // copy default permission info.json file to linglong
              qInfo() << "need: info.json of permission !";
              return false;

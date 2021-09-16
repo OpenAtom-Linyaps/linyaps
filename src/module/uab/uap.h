@@ -44,28 +44,6 @@ namespace uap {
 class UAP;
 
 /*!
- * UAP PackageInfo
- */
-class PkgInfo
-{
-public:
-    string name;
-    string version;
-    string appid;
-    string uuid;
-    string arch;
-    string sdk;
-    string runtime;
-    string description;
-
-    JS_OBJ(name, version, appid, uuid, arch, sdk, runtime, description);
-
-public:
-    PkgInfo() {}
-    ~PkgInfo() {}
-};
-
-/*!
  * UAP Package Ext Info
  */
 class PkgExt
@@ -168,7 +146,7 @@ public:
     bool audio_record = false;
     bool installed_apps = false;
 
-    JS_OBJ(autostart,notification,trayicon,clipboard,account,bluetooth,camera,audio_record,installed_apps);
+    JS_OBJ(autostart, notification, trayicon, clipboard, account, bluetooth, camera, audio_record, installed_apps);
 };
 
 /*!

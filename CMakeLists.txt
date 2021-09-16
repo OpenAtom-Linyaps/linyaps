@@ -1,10 +1,14 @@
-cmake_minimum_required(VERSION 3.0.0)
+cmake_minimum_required(VERSION 3.0)
 
 project(linglong)
 
 # 保证项目兼容性
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
+
+set(APP_VERSION "1.0")
+set(CMAKE_EXPORT_NO_PACKAGE_REGISTRY ON)
+set(VERSION "1.0")
 
 # configure debug mode and asan
 if (NOT CMAKE_BUILD_TYPE)

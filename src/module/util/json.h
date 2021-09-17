@@ -28,6 +28,7 @@
 #include <QJsonObject>
 #include <QPointer>
 #include <QDBusMetaType>
+#include <QDebug>
 
 #define Q_JSON_PARENT_KEY "7bdcaad1-2f27-4092-a5cf-4919ad4caf2b"
 

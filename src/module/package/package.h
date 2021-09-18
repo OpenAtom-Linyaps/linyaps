@@ -43,6 +43,8 @@ using linglong::util::makeData;
 using linglong::util::extractUap;
 using linglong::util::createDir;
 using linglong::util::extractUapData;
+using linglong::util::makeSign;
+using linglong::util::checkSign;
 
 class Uap_Archive
 {
@@ -68,7 +70,7 @@ public:
         archive_write_open_filename(wb, filename.c_str());
         return 0;
     }
-    bool add_uap_file(string uap_buffer, string metaname)
+    bool add_file(string uap_buffer, string metaname)
     {
         entry = archive_entry_new();
         if (entry == nullptr) {
@@ -77,23 +79,6 @@ public:
         }
         archive_entry_copy_stat(entry, &workdir_st);
         archive_entry_set_pathname(entry, metaname.c_str());
-        archive_entry_set_size(entry, uap_buffer.length());
-        archive_entry_set_filetype(entry, AE_IFREG);
-        archive_entry_set_perm(entry, 0644);
-        archive_write_header(wb, entry);
-        archive_write_data(wb, uap_buffer.c_str(), uap_buffer.length());
-        archive_entry_free(entry);
-        return true;
-    }
-    bool add_sign_file(string uap_buffer, string metasignname)
-    {
-        entry = archive_entry_new();
-        if (entry == nullptr) {
-            // #TODO
-            return false;
-        }
-        archive_entry_copy_stat(entry, &workdir_st);
-        archive_entry_set_pathname(entry, metasignname.c_str());
         archive_entry_set_size(entry, uap_buffer.length());
         archive_entry_set_filetype(entry, AE_IFREG);
         archive_entry_set_perm(entry, 0644);
@@ -298,6 +283,7 @@ public:
         QFile jsonFile(this->configJson);
         jsonFile.open(QIODevice::ReadOnly);
         auto qbt = jsonFile.readAll();
+        jsonFile.close();
         if (!uap->setFromJson(std::string(qbt.constData(), qbt.length()))) {
             return false;
         }
@@ -343,16 +329,46 @@ public:
     bool MakeUap()
     {
         Uap_Archive uap_archive;
-        // create uap-
+
         auto uap_buffer = this->uap->dumpJson();
+
+        // create uap
         uap_archive.write_new();
         uap_archive.write_open_filename(this->uap->getUapName());
 
         // add uap-1
-        uap_archive.add_uap_file(uap_buffer, this->uap->meta.getMetaName());
+        uap_archive.add_file(uap_buffer, this->uap->meta.getMetaName());
 
-        // add sign file
-        uap_archive.add_sign_file(uap_buffer, this->uap->meta.getMetaSignName());
+        /*
+        //get uap sign string
+        string uap_buffer_str = uap_buffer;
+        QString data_input = uap_buffer_str.c_str();
+        QString sign_data;
+        if (!makeSign(data_input, "/usr/share/ca-certificates/deepin/private/priv.crt", "/usr/share/ca-certificates/deepin/private/priv.key", sign_data)) {
+            qInfo() << "sign uap failed!!";
+            return false;
+        }
+        // add  .uap-1.sign
+        uap_archive.add_file(sign_data.toStdString(), this->uap->meta.getMetaSignName());
+        */
+        // add  .uap-1.sign
+        uap_archive.add_file(uap_buffer, this->uap->meta.getMetaSignName());
+
+        /*
+        //get data.tgz sign string
+        sign_data.clear();
+        QFile data_file(this->dataPath);
+        data_file.open(QIODevice::ReadOnly);
+        auto qbt = data_file.readAll();
+        if (!makeSign(qbt, "/usr/share/ca-certificates/deepin/private/priv.crt", "/usr/share/ca-certificates/deepin/private/priv.key", sign_data)) {
+            qInfo() << "sign data.tgz failed!!";
+            return false;
+        }
+        data_file.close();
+        uap_archive.add_file(sign_data.toStdString(), ".data.tgz.sig");
+        */
+        //add .data.tgz.sig
+        uap_archive.add_file(uap_buffer, ".data.tgz.sig");
 
         // add data.tgz
         if (this->uap->isFullUab()) {
@@ -372,6 +388,77 @@ public:
         }
         createDir(outdir);
         return (uap_archive.extract_archive(filename.toStdString().c_str(), outdir.toStdString().c_str()));
+    }
+
+    //校验uap
+    bool Check(QString dirpath)
+    {
+        if (!dirExists(dirpath)) {
+            qInfo() << "dirpath does not exist!!!";
+            return false;
+        }
+        if (!fileExists(dirpath + QString("/uap-1"))) {
+            qInfo() << "uap-1 does not exist!!!";
+            return false;
+        }
+        if (!fileExists(dirpath + QString("/.uap-1.sig"))) {
+            qInfo() << ".uap-1.sign does not exist!!!";
+            return false;
+        }
+
+        //校验uap-1
+        QFile uap_file(dirpath + QString("/uap-1"));
+        uap_file.open(QIODevice::ReadOnly);
+        auto qbt_uap = uap_file.readAll();
+
+        QFile uap_sign_file(dirpath + QString("/.uap-1.sig"));
+        uap_sign_file.open(QIODevice::ReadOnly);
+        auto qbt_uap_sign = uap_sign_file.readAll();
+
+        if (!checkSign(qbt_uap, qbt_uap_sign)) {
+            qInfo() << "check uap-1 failed!!!";
+            uap_file.close();
+            uap_sign_file.close();
+            return false;
+        } else {
+            qInfo() << "check uap-1 successed!!!";
+            uap_file.close();
+            uap_sign_file.close();
+        }
+        //初始化uap
+        this->initConfig(dirpath + QString("/uap-1"));
+
+        if (this->uap->isFullUab()) {
+            if (!fileExists(dirpath + QString("/.data.tgz.sig"))) {
+                qInfo() << ".data.tgz.sign does not exist!!!";
+                return false;
+            }
+            if (!fileExists(dirpath + QString("/data.tgz"))) {
+                qInfo() << "data.tgz does not exist!!!";
+                return false;
+            }
+            QFile data_file(dirpath + QString("/data.tgz"));
+            data_file.open(QIODevice::ReadOnly);
+            auto qbt_data = data_file.readAll();
+
+            QFile data_sign_file(dirpath + QString("/.data.tgz.sig"));
+            data_sign_file.open(QIODevice::ReadOnly);
+            auto qbt_data_sign = data_sign_file.readAll();
+
+            if (!checkSign(qbt_data, qbt_data_sign)) {
+                qInfo() << "check data.tgz failed!!!";
+                data_file.close();
+                data_sign_file.close();
+                return false;
+            } else {
+                qInfo() << "check data.tgz successed!!!";
+                data_file.close();
+                data_sign_file.close();
+                return true;
+            }
+        } else {
+            return true;
+        }
     }
 
     //  init uap info from uap file

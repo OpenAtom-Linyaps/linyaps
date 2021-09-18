@@ -28,6 +28,7 @@
 #include <QDir>
 #include <stdlib.h>
 #include <iostream>
+//#include <libuossv/uossv.h>
 
 namespace linglong {
 namespace util {
@@ -107,10 +108,70 @@ bool inline extractUapData(const QString &uapfile, QString &dest)
 bool inline createDir(const QString &path)
 {
     auto val = QDir().exists(path);
-    if(!val)
-    {
+    if (!val) {
         return QDir().mkpath(path);
     }
+    return true;
+}
+
+//sign uap-1 data.tgz
+bool inline makeSign(QString data_input, QString certpath, QString key_path, QString &sign_data)
+{/*
+    QString input = data_input;
+    std::string input_str = input.toStdString();
+    //certpath key_path to GoString cert and GoString key
+    GoSlice data = {
+        .data = (void *)input_str.c_str(),
+        .len = input_str.length(),
+        .cap = input_str.length(),
+    };
+    std::string priv_crt = certpath.toStdString();
+    std::string priv_key = key_path.toStdString();
+    GoString cert = {
+        .p = priv_crt.c_str(),
+        .n = priv_crt.length()};
+    GoString key = {
+        .p = priv_key.c_str(),
+        .n = priv_key.length()};
+
+    GoUint8 noTSA = 0; //time stamp 0 no   1 yes
+    GoUint8 timeout = 0;
+    GoSlice output;
+    int ret = (int)UOSSign(data, cert, key, noTSA, timeout, &output);
+    if (ret == 0) {
+        sign_data = ((char *)output.data);
+        return true;
+    } else {
+        return false;
+    }
+    */
+   return true;
+}
+
+bool inline checkSign(QString data_input, QString sign_data_Q)
+{
+    /*
+    QString input = data_input;
+    std::string input_str = input.toStdString();
+    std::string sign_data = sign_data_Q.toStdString();
+    GoSlice data = {
+        .data = (void *)input_str.c_str(),
+        .len = input_str.length(),
+        .cap = input_str.length(),
+    };
+    GoSlice sign = {
+        .data = (void *)sign_data.c_str(),
+        .len = sign_data.length(),
+        .cap = sign_data.length(),
+    };
+    GoUint8 dump = 0; //print cert 0 no   1  yes
+    int ret = (int)UOSVerify(data, sign, dump);
+    if (ret == 0) {
+        return true;
+    } else {
+        return false;
+    }
+    */
     return true;
 }
 

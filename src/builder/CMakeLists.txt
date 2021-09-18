@@ -7,7 +7,7 @@ set(LL_BUILDER_SOURCES
 add_executable(upkg-builder
                ${LL_BUILDER_SOURCES})
 
-target_include_directories(upkg-builder PRIVATE ${JSONSTRUCT_INCLUDE_DIR})
+       #target_include_directories(upkg-builder PRIVATE ${JSONSTRUCT_INCLUDE_DIR})
 
 target_link_libraries(upkg-builder PRIVATE ${LINK_LIBS} -larchive -lcrypto++)
 

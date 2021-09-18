@@ -12,7 +12,7 @@ set(LL_SERVICE_SOURCES
     ../module/runtime/container.h
     ../module/uab/uab.cpp
     ../module/uab/uab.h
-    ${JSONSTRUCT_INCLUDE_DIR}/json_struct.h
+    #${JSONSTRUCT_INCLUDE_DIR}/json_struct.h
     ../module/uab/uap.cpp
     ../module/uab/uap.h
     ../module/runtime/app.cpp
@@ -38,7 +38,7 @@ qt5_add_dbus_adaptor(LL_SERVICE_SOURCES
 add_executable(ll-service
                ${LL_SERVICE_SOURCES})
 
-target_include_directories(ll-service PRIVATE ${JSONSTRUCT_INCLUDE_DIR})
+       #target_include_directories(ll-service PRIVATE ${JSONSTRUCT_INCLUDE_DIR})
 
 target_link_libraries(ll-service PRIVATE ${LINK_LIBS})
 

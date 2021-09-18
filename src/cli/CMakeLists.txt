@@ -16,7 +16,7 @@ qt5_add_dbus_interface(LL_CLI_SOURCES
 add_executable(llc
                ${LL_CLI_SOURCES})
 
-target_include_directories(llc PRIVATE ${JSONSTRUCT_INCLUDE_DIR})
+       #target_include_directories(llc PRIVATE ${JSONSTRUCT_INCLUDE_DIR})
 
 target_link_libraries(llc PRIVATE ${LINK_LIBS})
 

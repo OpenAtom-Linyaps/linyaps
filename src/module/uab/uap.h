@@ -23,7 +23,7 @@
 
 #include <iostream>
 #include <string>
-#include "json_struct.h"
+#include <json-struct/json_struct.h>
 
 #define CRYPTOPP_ENABLE_NAMESPACE_WEAK 1
 #include <crypto++/sha.h>

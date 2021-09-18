@@ -32,7 +32,7 @@ add_executable(ll-test
                qt_yaml.cpp
                qt_yaml.h)
 
-target_include_directories(ll-test PRIVATE ${JSONSTRUCT_INCLUDE_DIR})
+       #target_include_directories(ll-test PRIVATE ${JSONSTRUCT_INCLUDE_DIR})
 target_link_libraries(ll-test ${LINK_LIBS} -larchive -lcrypto++ -lmkpkcs11 -luossv)
 
 add_test(NAME ll_test COMMAND ll-test)

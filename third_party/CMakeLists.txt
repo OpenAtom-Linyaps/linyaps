@@ -18,4 +18,4 @@ endif()
 
 # json_struct
 # ADD_SUBDIRECTORY(json_struct)
-set(JSONSTRUCT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/json_struct/include PARENT_SCOPE)
+#set(JSONSTRUCT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/json_struct/include PARENT_SCOPE)

@@ -15,13 +15,12 @@ Build-Depends:
  libcrypto++-dev,
  libarchive-dev,
  pkg-config,
- libuossv,
  json-struct
 Standards-Version: 4.1.3
 Homepage: http://www.deepin.org 
 
 Package: linglong
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libuossv, json-struct
+Depends: ${shlibs:Depends}, ${misc:Depends}, json-struct
 Description: Package Manager for UOS. 
  Package Manager...

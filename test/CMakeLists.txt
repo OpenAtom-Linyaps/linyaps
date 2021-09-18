@@ -25,7 +25,7 @@ add_executable(ll-test
                "../src/module/runtime/container.h"
                "../src/module/package/package.h"
                package_test.cpp
-               uossv_test.cpp
+	       #uossv_test.cpp
                extract_test.cpp
                oci_test.cpp
                qt_json.cpp
@@ -33,6 +33,6 @@ add_executable(ll-test
                qt_yaml.h)
 
        #target_include_directories(ll-test PRIVATE ${JSONSTRUCT_INCLUDE_DIR})
-target_link_libraries(ll-test ${LINK_LIBS} -larchive -lcrypto++ -lmkpkcs11 -luossv)
+target_link_libraries(ll-test ${LINK_LIBS} -larchive -lcrypto++)
 
 add_test(NAME ll_test COMMAND ll-test)

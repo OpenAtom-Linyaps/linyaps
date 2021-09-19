@@ -28,6 +28,7 @@
 #include <QDir>
 #include <stdlib.h>
 #include <iostream>
+#include <QDebug>
 //#include <libuossv/uossv.h>
 
 namespace linglong {
@@ -114,9 +115,19 @@ bool inline createDir(const QString &path)
     return true;
 }
 
+bool inline removeDir(const QString &path)
+{
+    QDir dir(path);
+    if (dir.exists()) {
+        return dir.removeRecursively();
+    }
+
+    return true;
+}
+
 //sign uap-1 data.tgz
 bool inline makeSign(QString data_input, QString certpath, QString key_path, QString &sign_data)
-{/*
+{ /*
     QString input = data_input;
     std::string input_str = input.toStdString();
     //certpath key_path to GoString cert and GoString key
@@ -145,7 +156,7 @@ bool inline makeSign(QString data_input, QString certpath, QString key_path, QSt
         return false;
     }
     */
-   return true;
+    return true;
 }
 
 bool inline checkSign(QString data_input, QString sign_data_Q)

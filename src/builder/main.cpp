@@ -123,6 +123,26 @@ int main(int argc, char **argv)
              qInfo() << "err! input  dirpath";
              return -1;
          }},
+         {"get-info",
+         [&](QCommandLineParser &parser) -> int {
+             parser.addPositionalArgument("get-info", "get  uap info", "get-info");
+             parser.addPositionalArgument("UapPath", "uap file path", "");
+
+             parser.process(app);
+
+             auto args = parser.positionalArguments();
+             // TODO(SE):
+
+             if (args.size() == 2) {
+                 Package create_package;
+                 create_package.GetInfo(args.at(1));
+                 return 0;
+             }
+
+             qInfo() << args;
+             qInfo() << "err! input  UapPath!";
+             return -1;
+         }},
         {"install",
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();

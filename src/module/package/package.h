@@ -42,6 +42,7 @@ using linglong::util::dirExists;
 using linglong::util::makeData;
 using linglong::util::extractUap;
 using linglong::util::createDir;
+using linglong::util::removeDir;
 using linglong::util::extractUapData;
 using linglong::util::makeSign;
 using linglong::util::checkSign;
@@ -459,6 +460,37 @@ public:
         } else {
             return true;
         }
+    }
+
+    //获取信息uap
+    bool GetInfo(QString uapFile_path){
+        QString uapFile = QFileInfo(uapFile_path).fileName();
+        QString extract_dir = QString("/tmp/") + uapFile;
+        //解压uap
+        if(! Extract(uapFile_path, extract_dir)){
+            qInfo() << "extract uap failed!!!";
+            return false;
+        }
+        if (! fileExists(extract_dir + QString("/uap-1"))) {
+            qInfo() << "uap-1 does not exist!!!";
+            return false;
+        }
+         //初始化uap
+        if(! this->initConfig(extract_dir + QString("/uap-1"))){
+            qInfo() << "init uapconfig failed!!!";
+            return false;
+        }
+        auto uap_buffer = this->uap->dumpJson();
+        QString info = uap_buffer.c_str();
+        if(info.isEmpty()){
+            qInfo() << "no info for uap !!!";
+        }
+        removeDir(extract_dir);
+        QFile newFile(uapFile + QString(".info"));
+        newFile.open(QIODevice::WriteOnly | QIODevice::Text);
+        newFile.write(info.toUtf8());
+        newFile.close();
+        return true;
     }
 
     //  init uap info from uap file

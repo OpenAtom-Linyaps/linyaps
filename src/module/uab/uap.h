@@ -62,8 +62,8 @@ public:
     JS_OBJ(type, hashtype, ostree, url, tag, uuid, maintainer, license, sdk);
 
 public:
-    PkgExt() {}
-    ~PkgExt() {}
+    PkgExt() { }
+    ~PkgExt() { }
 };
 
 /*!
@@ -82,8 +82,8 @@ public:
     JS_OBJ(name, website, ostree, info, license, keyinfo);
 
 public:
-    Owner() {}
-    ~Owner() {}
+    Owner() { }
+    ~Owner() { }
 };
 
 /*!
@@ -97,8 +97,8 @@ public:
     JS_OBJ(sign);
 
 public:
-    MetaSign() {}
-    ~MetaSign() {}
+    MetaSign() { }
+    ~MetaSign() { }
 };
 
 /*!
@@ -112,8 +112,8 @@ public:
     JS_OBJ(sign);
 
 public:
-    DataSign() {}
-    ~DataSign() {}
+    DataSign() { }
+    ~DataSign() { }
 };
 
 /*!
@@ -180,13 +180,13 @@ public:
            permissions, metasign, datasign);
 
 public:
-    Meta() {}
+    Meta() { }
     Meta(const string version, const string name)
         : _uap_version(version)
         , _uap_name(name)
     {
     }
-    ~Meta() {}
+    ~Meta() { }
     // get meta file name
     string getMetaName() const { return this->_uap_name + "-" + this->_uap_version; }
 
@@ -238,10 +238,15 @@ public:
 
     string dumpJson() const { return JS::serializeStruct(this->meta); }
 
-    string getUapName() const
+    string getUapName()
     {
-        return this->meta.name + "-" + this->meta.version + "-" + this->meta.arch + "."
-               + this->meta._uap_name;
+        if (isFullUab()) {
+            return this->meta.name + "-" + this->meta.version + "-" + this->meta.arch + "."
+                   + this->meta._uap_name;
+        } else {
+            return this->meta.name + "-" + this->meta.version + "-" + this->meta.arch + "."
+                   + string("o") + this->meta._uap_name;
+        }
     }
 };
 
@@ -251,8 +256,8 @@ public:
 class UapOffLine : public UAP
 {
 public:
-    UapOffLine() {}
-    ~UapOffLine() {}
+    UapOffLine() { }
+    ~UapOffLine() { }
 };
 
 /*!
@@ -261,8 +266,8 @@ public:
 class UapOnLine : public UAP
 {
 public:
-    UapOnLine() {}
-    ~UapOnLine() {}
+    UapOnLine() { }
+    ~UapOnLine() { }
 };
 
 } // namespace uap

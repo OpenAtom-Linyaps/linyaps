@@ -59,6 +59,7 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("build", "build uap package", "build");
              parser.addPositionalArgument("config", "config json", "config.json");
              parser.addPositionalArgument("data-dir", "data dir", "");
+             parser.addPositionalArgument("uap-path", "uap path", "");
 
              parser.process(app);
 
@@ -73,13 +74,12 @@ int main(int argc, char **argv)
              }
              if (args.size() == 2) {
                  Package create_package;
-                 create_package.InitUap(args.at(1));
-                 create_package.MakeUap();
+                 create_package.MakeOuap(args.at(1));
 
                  return 0;
              }
              qInfo() << args;
-             qInfo() << "err! input config.json and data-dir";
+             qInfo() << "err! input config.json and data-dir or input uap-path";
              return -1;
          }},
         {"extract",

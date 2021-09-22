@@ -17,15 +17,15 @@ sudo make install
 > curl https://sh.linglong.space | sh
 
 # install an app, just in deepin
-> llc install com.163.music
+> ll-cmd install com.163.music
 
 # run app with sandbox
-> llc run com.163.music
+> ll-cmd run com.163.music
 
 # show running container
-> llc ps
+> ll-cmd ps
 bc000426d8884c7fbe804996f24144ce 21751 @ /run/user/1000/linglong/bc000426d8884c7fbe804996f24144ce
 
 # kill container
-> llc kill bc00
+> ll-cmd kill bc00
 ```

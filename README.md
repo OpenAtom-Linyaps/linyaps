@@ -22,7 +22,7 @@
 
 ```bash
 #For release based on debian
-sudo apt-get install cmake build-essential libyaml-cpp-dev nlohmann-json3-dev libgtest-dev qt5-qmake qtbase5-dev libdtkcore-dev libcrypto++-dev libarchive-dev
+sudo apt-get install cmake build-essential libyaml-cpp-dev nlohmann-json3-dev libgtest-dev qt5-qmake qtbase5-dev libdtkcore-dev libcrypto++-dev libarchive-dev libcurl4-gnutls-dev libglib2.0-dev libostree-dev
 ```
 
 ## Installation

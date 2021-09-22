@@ -36,7 +36,10 @@ add_executable(ll-test
                oci_test.cpp
                qt_json.cpp
                qt_yaml.cpp
-               qt_yaml.h)
+               qt_yaml.h
+	       get_info_test.cpp
+	       build_ouap_test.cpp
+	       )
 
 # begin add by hqh debug 2021-9-16
 if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "x86_64")

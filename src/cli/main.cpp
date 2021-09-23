@@ -78,18 +78,19 @@ int main(int argc, char **argv)
              }
              auto exec = parser.value(optExec);
 
+             pm.Start({appID});
              // TODO
              //        QFile f(configPath);
              //        f.open(QIODevice::ReadOnly);
              //        auto r = linglong::fromString(f.readAll().toStdString());
              //        f.close();
              //
-             //        if (!exec.isEmpty()) {
-             //          r.process.args = {exec.toStdString()};
-             //        }
-             //
-             //        runtime::Application ogApp(appID, r);
-             //        return ogApp.start();
+             //  if (!exec.isEmpty()) {
+             //      r.process.args = {exec.toStdString()};
+             //  }
+
+             //  runtime::Application ogApp(appID, r);
+             //  return ogApp.start();
              return -1;
          }},
         {"exec", [&](QCommandLineParser &parser) -> int {

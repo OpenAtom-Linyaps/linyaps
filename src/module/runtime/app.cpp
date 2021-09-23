@@ -447,7 +447,9 @@ App::App(QObject *parent)
 App *App::load(const QString &configFilepath)
 {
     // TODO: fixme, replace with real conf
-    QFile appConfig(":/app-test.yaml");
+    // check configFilepath exists
+    qDebug() << " conf yaml" << configFilepath;
+    QFile appConfig(configFilepath);
     appConfig.open(QIODevice::ReadOnly);
     App *app = nullptr;
     try {

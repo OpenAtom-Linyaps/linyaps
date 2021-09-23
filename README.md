@@ -21,8 +21,11 @@
 ## Dependencies
 
 ```bash
+本项目依赖json-struct包，此包只在玲珑项目临时仓库里面，安装依赖，请先添加一下仓库，如下：
+deb  [trusted=yes] http://aptly.uniontech.com/pkg/eagle-1040/release-candidate/546y54-R5LiA5pyf6aG555uu5Li76aKYMjAyMS0wOS0xNyAyMDoxODowNg  unstable main
 #For release based on debian
-sudo apt-get install cmake build-essential libyaml-cpp-dev nlohmann-json3-dev libgtest-dev qt5-qmake qtbase5-dev libdtkcore-dev libcrypto++-dev libarchive-dev libcurl4-gnutls-dev libglib2.0-dev libostree-dev
+sudo apt update
+sudo apt-get install cmake build-essential libyaml-cpp-dev nlohmann-json3-dev libgtest-dev qt5-qmake qtbase5-dev libdtkcore-dev libcrypto++-dev libarchive-dev libcurl4-gnutls-dev libglib2.0-dev libostree-dev json-struct
 ```
 
 ## Installation

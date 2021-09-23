@@ -59,7 +59,6 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("build", "build uap package", "build");
              parser.addPositionalArgument("config", "config json", "config.json");
              parser.addPositionalArgument("data-dir", "data dir", "");
-             parser.addPositionalArgument("uap-path", "uap path", "");
 
              parser.process(app);
 
@@ -72,14 +71,36 @@ int main(int argc, char **argv)
                  create_package.MakeUap();
                  return 0;
              }
+            
+             qInfo() << args;
+             qInfo() << "err! input config.json and data-dir";
+             return -1;
+         }},
+         {"build-ouap",
+         [&](QCommandLineParser &parser) -> int {
+             parser.addPositionalArgument("build-ouap", "build ouap package", "build-ouap");
+             parser.addPositionalArgument("uap-path", "uap path", "");
+             parser.addPositionalArgument("repo-path", "repo path", "");
+             
+
+             parser.process(app);
+
+             auto args = parser.positionalArguments();
+             // TODO(SE):
+
+             if (args.size() == 3) {
+                 Package create_package;
+                 create_package.MakeOuap(args.at(1), args.at(2));
+                 return 0;
+             }
              if (args.size() == 2) {
                  Package create_package;
                  create_package.MakeOuap(args.at(1));
-
                  return 0;
              }
+             
              qInfo() << args;
-             qInfo() << "err! input config.json and data-dir or input uap-path";
+             qInfo() << "err! input uap-path and repo-path or input uap-path";
              return -1;
          }},
         {"extract",

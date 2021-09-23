@@ -381,7 +381,7 @@ public:
     }
 
     //make ouap
-    bool MakeOuap(QString uap_path){
+    bool MakeOuap(const QString uap_path,QString ostree_repo = "/deepin/linglong/repo"){
         QString uapFile = QFileInfo(uap_path).fileName();
         QString extract_dir = QString("/tmp/") + uapFile;
         QString dest_path = uapFile + QString(".dir");
@@ -430,7 +430,7 @@ public:
     }
 
     //解压uap
-    bool Extract(QString filename, QString outdir)
+    bool Extract(const QString filename, const QString outdir)
     {
         Uap_Archive uap_archive;
         if (!fileExists(filename)) {
@@ -441,7 +441,7 @@ public:
     }
 
     //校验uap
-    bool Check(QString dirpath)
+    bool Check(const QString dirpath)
     {
         if (!dirExists(dirpath)) {
             qInfo() << "dirpath does not exist!!!";
@@ -512,7 +512,7 @@ public:
     }
 
     //获取信息uap
-    bool GetInfo(QString uapFile_path){
+    bool GetInfo(const QString uapFile_path){
         QString uapFile = QFileInfo(uapFile_path).fileName();
         QString extract_dir = QString("/tmp/") + uapFile;
         //解压uap

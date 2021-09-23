@@ -18,7 +18,9 @@ Build-Depends:
  json-struct,
  libcurl4-gnutls-dev,
  libglib2.0-dev,
- libostree-dev
+ libostree-dev,
+ libgdk-pixbuf2.0-dev,
+ libappstream-glib-dev
 Standards-Version: 4.1.3
 Homepage: http://www.deepin.org 
 

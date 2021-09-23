@@ -426,6 +426,7 @@ public:
         }
 
         removeDir(extract_dir);
+        return true;
     }
 
     //解压uap

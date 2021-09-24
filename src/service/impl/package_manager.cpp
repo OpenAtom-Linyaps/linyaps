@@ -27,8 +27,12 @@
 #include <QThread>
 #include <QProcess>
 #include <module/runtime/app.h>
+#include <module/util/fs.h>
 
 #include "job_manager.h"
+
+using linglong::util::fileExists;
+using linglong::util::listDirFolders;
 
 class PackageManagerPrivate
 {
@@ -105,13 +109,41 @@ QString PackageManager::Import(const QStringList &packagePathList)
     return {};
 }
 
+/*!
+ * 执行软件包
+ * @param packageID 软件包的appid
+ */
 QString PackageManager::Start(const QString &packageID)
 {
     Q_D(PackageManager);
 
     qDebug() << "start package" << packageID;
     return JobManager::instance()->CreateJob([=](Job *jr) {
-        auto app = App::load("/tmp/test.yaml");
+        QString config = nullptr;
+        if (fileExists("~/.linglong/" + packageID + ".yaml")) {
+            config = "~/.linglong/" + packageID + ".yaml";
+        } else if (fileExists("/deepin/linglong/layers/" + packageID + "/latest/" + packageID + ".yaml")) {
+            config = "/deepin/linglong/layers/" + packageID + "/latest/" + packageID + ".yaml";
+        } else {
+            auto config_dir = listDirFolders("/deepin/linglong/layers/" + packageID);
+            if (config_dir.isEmpty()) {
+                qInfo() << "loader:: can not found config file!";
+                return;
+            }
+            if (config_dir.size() >= 2) {
+                std::sort(config_dir.begin(), config_dir.end(),
+                          [](const QString &s1, const QString &s2) {
+                              auto v1 = s1.split("/").last();
+                              auto v2 = s2.split("/").last();
+                              return v1.toDouble() > v2.toDouble();
+                          });
+            }
+            config = config_dir.first() + "/" + packageID + ".yaml";
+        }
+
+        qDebug() << "load package" << packageID << " config " << config;
+
+        auto app = App::load(config);
         if (nullptr == app) {
             qCritical() << "nullptr" << app;
             return;

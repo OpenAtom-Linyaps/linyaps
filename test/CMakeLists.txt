@@ -50,12 +50,20 @@ set(GLIB_LIBRARYDIR /usr/lib/x86_64-linux-gnu/libglib-2.0.so /usr/lib/x86_64-lin
 set(GOBJ_LIBRARYDIR /usr/lib/x86_64-linux-gnu/libgobject-2.0.so)
 #添加ostree 需要安装libostree-dev
 set(OSTREE_LIBRARYDIR /usr/lib/x86_64-linux-gnu/libostree-1.so)
+#appstream库 libappstream-glib-dev
+set(APPSTREAM_LIBRARYDIR /usr/lib/x86_64-linux-gnu/libappstream-glib.so)
+#添加appstream依赖库 libgdk-pixbuf2.0-dev
+set(APPSTREAMDEP_LIBRARY /usr/lib/x86_64-linux-gnu/libgdk_pixbuf-2.0.so)
 #libcurl头文件
 set(CURL_INCLUDEDIRS /usr/include/x86_64-linux-gnu/)
 #添加头文件目录
 set(GLIB_INCLUDEDIRS /usr/include/glib-2.0/ /usr/lib/x86_64-linux-gnu/glib-2.0/include/)
 set(OSTREE_INCLUDEDIRS /usr/include/ostree-1/)
 set(GOBJ_INCLUDEDIRS /usr/include/glib-2.0/)
+#appstream头文件 libappstream-glib-dev
+set(APPSTREAM_INCLUDEDIRS /usr/include/libappstream-glib/)
+#添加appstream依赖库 libgdk-pixbuf2.0-dev
+set(APPSTREAMDEP_INCLUDEDIRS /usr/include/gdk-pixbuf-2.0/)
 endif()
 # end add by hqh debug 2021-9-16
 
@@ -65,12 +73,16 @@ ${CURL_INCLUDEDIRS}
 ${GLIB_INCLUDEDIRS}
 ${OSTREE_INCLUDEDIRS}
 ${GOBJ_INCLUDEDIRS}
-)     
+${APPSTREAM_INCLUDEDIRS}
+${APPSTREAMDEP_INCLUDEDIRS}
+)
 target_link_libraries(ll-test ${LINK_LIBS} -larchive -lcrypto++
 ${CURL_LIBRARYDIR}
 ${GLIB_LIBRARYDIR}
 ${OSTREE_LIBRARYDIR}
 ${GOBJ_LIBRARYDIR}
+${APPSTREAM_LIBRARYDIR}
+${APPSTREAMDEP_LIBRARY}
 )
 
 add_test(NAME ll_test COMMAND ll-test)

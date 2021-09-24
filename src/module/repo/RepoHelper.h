@@ -3,6 +3,7 @@
 #include <gio/gio.h>
 #include <glib.h>
 #include <ostree-repo.h>
+#include <appstream-glib.h>
 
 #include <iostream>
 #include <string>
@@ -60,6 +61,8 @@ public:
     bool resolveMatchRefs(const QString qrepoPath, const QString qremoteName, const QString qpkgName, const QString qarch, QString &matchRef, QString &err);
     bool checkOutAppData(const QString qrepoPath, const QString qremoteName, const QString qref, const QString qdstPath, QString &err);
 
+    bool updateAppStream(const QString qrepoPath, const QString qremoteName, const QString qarch, QString &err);
+    bool repoSearchApp(QString qrepoPath, const QString qremoteName, const QString qpkgName, const QString qarch, QString &err);
 private:
     bool fetchRemoteSummary(OstreeRepo *repo, const char *name, GBytes **outSummary, GBytes **outSummarySig, GCancellable *cancellable, GError **error);
     void populate_hash_table_from_refs_map(map<string, string> &outRefs, GVariant *ref_map);
@@ -73,8 +76,13 @@ private:
     GVariant *repo_get_extra_data_sources(OstreeRepo *repo, const char *rev, GCancellable *cancellable, GError **error);
     GVariant *get_extra_data_sources_by_commit(GVariant *commitv, GError **error);
     bool repo_pull_extra_data(OstreeRepo *repo, const char *remoteName, const char *ref, const char *commitv, string &error);
-    bool repoPullLocal(OstreeRepo *repo, const char *remoteName, char *refFetch, OstreeRepoPullFlags flags, OstreeAsyncProgress *progress, GCancellable *cancellable, GError **error);
-    //OstreeRepo* create_system_child_repo(LingLongDir *self, const char *optional_commit, GError **error);
+    bool repoPullLocal(OstreeRepo *repo, const char *remoteName, const char *url, const char *ref, const char *checksum, OstreeAsyncProgress *progress, GCancellable *cancellable, GError **error);
+    OstreeRepo *createTmpRepo(LingLongDir *self, GError **error);
+    OstreeRepo *createChildRepo(LingLongDir *self, char *cache_dir, GError **error);
+    void delDirbyPath(const char *path);
+    char *getCacheDir();
+    char *repoReadLink(const char *path);
+
     LingLongDir *mDir;
 };
 } // namespace linglong

@@ -76,13 +76,14 @@ TEST(RepoHelperT02, getRemoteRepoList)
     if (!ret) {
         std::cout << err.toStdString();
         std::cout.flush();
+        EXPECT_EQ(ret, false);
     } else {
         for (auto iter = qvec.begin(); iter != qvec.end(); ++iter) {
             std::cout << (*iter).toStdString() << endl;
             std::cout.flush();
         }
+        EXPECT_EQ(ret, true);
     }
-    EXPECT_EQ(ret, true);
 }
 
 TEST(RepoHelperT03, getRemoteRefs)
@@ -101,6 +102,8 @@ TEST(RepoHelperT03, getRemoteRefs)
     if (!ret) {
         std::cout << err.toStdString();
         std::cout.flush();
+        EXPECT_EQ(ret, false);
+        return;
     } else {
         for (auto iter = qvec.begin(); iter != qvec.end(); ++iter) {
             std::cout << (*iter).toStdString() << endl;
@@ -108,17 +111,16 @@ TEST(RepoHelperT03, getRemoteRefs)
         }
     }
     EXPECT_EQ(ret, true);
-
     QMap<QString, QString> outRefs;
     ret = repo.getRemoteRefs(repoPath, qvec[0], outRefs, err);
     if (!ret) {
         std::cout << err.toStdString();
         std::cout.flush();
     } else {
-        for (auto iter = outRefs.begin(); iter != outRefs.end(); ++iter) {
-            std::cout << "ref:" << iter.key().toStdString() << ", commit value:" << iter.value().toStdString() << endl;
-            std::cout.flush();
-        }
+        // for (auto iter = outRefs.begin(); iter != outRefs.end(); ++iter) {
+        //     std::cout << "ref:" << iter.key().toStdString() << ", commit value:" << iter.value().toStdString() << endl;
+        //     std::cout.flush();
+        // }
     }
     EXPECT_EQ(ret, true);
 }
@@ -139,6 +141,8 @@ TEST(RepoHelperT04, resolveMatchRefs)
     if (!ret) {
         std::cout << err.toStdString();
         std::cout.flush();
+        EXPECT_EQ(ret, false);
+        return;
     } else {
         for (auto iter = qrepoList.begin(); iter != qrepoList.end(); ++iter) {
             std::cout << (*iter).toStdString() << endl;
@@ -146,17 +150,16 @@ TEST(RepoHelperT04, resolveMatchRefs)
         }
     }
     EXPECT_EQ(ret, true);
-
     QMap<QString, QString> outRefs;
     ret = repo.getRemoteRefs(repoPath, qrepoList[0], outRefs, err);
     if (!ret) {
         std::cout << err.toStdString();
         std::cout.flush();
     } else {
-        for (auto iter = outRefs.begin(); iter != outRefs.end(); ++iter) {
-            std::cout << "ref:" << iter.key().toStdString() << ", commit value:" << iter.value().toStdString() << endl;
-            std::cout.flush();
-        }
+        //  for (auto iter = outRefs.begin(); iter != outRefs.end(); ++iter) {
+        //      std::cout << "ref:" << iter.key().toStdString() << ", commit value:" << iter.value().toStdString() << endl;
+        //      std::cout.flush();
+        //  }
     }
     EXPECT_EQ(ret, true);
 
@@ -189,6 +192,8 @@ TEST(RepoHelperT05, repoPull)
     if (!ret) {
         std::cout << err.toStdString();
         std::cout.flush();
+        EXPECT_EQ(ret, false);
+        return;
     } else {
         for (auto iter = qrepoList.begin(); iter != qrepoList.end(); ++iter) {
             std::cout << (*iter).toStdString() << endl;
@@ -196,20 +201,18 @@ TEST(RepoHelperT05, repoPull)
         }
     }
     EXPECT_EQ(ret, true);
-
     QMap<QString, QString> outRefs;
     ret = repo.getRemoteRefs(repoPath, qrepoList[0], outRefs, err);
     if (!ret) {
         std::cout << err.toStdString();
         std::cout.flush();
     } else {
-        for (auto iter = outRefs.begin(); iter != outRefs.end(); ++iter) {
-            std::cout << "ref:" << iter.key().toStdString() << ", commit value:" << iter.value().toStdString() << endl;
-            std::cout.flush();
-        }
+        // for (auto iter = outRefs.begin(); iter != outRefs.end(); ++iter) {
+        //     std::cout << "ref:" << iter.key().toStdString() << ", commit value:" << iter.value().toStdString() << endl;
+        //     std::cout.flush();
+        // }
     }
     EXPECT_EQ(ret, true);
-
     QString matchRef = "";
     QString pkgName = "us.zoom.Zoom";
     QString arch = "x86_64";
@@ -249,6 +252,8 @@ TEST(RepoHelperT06, checkOutAppData)
     if (!ret) {
         std::cout << err.toStdString();
         std::cout.flush();
+        EXPECT_EQ(ret, false);
+        return;
     } else {
         for (auto iter = qrepoList.begin(); iter != qrepoList.end(); ++iter) {
             std::cout << (*iter).toStdString() << endl;
@@ -256,7 +261,6 @@ TEST(RepoHelperT06, checkOutAppData)
         }
     }
     EXPECT_EQ(ret, true);
-
     QString matchRef = "";
     QString pkgName = "us.zoom.Zoom";
     QString arch = "x86_64";
@@ -274,5 +278,52 @@ TEST(RepoHelperT06, checkOutAppData)
         std::cout << err.toStdString();
         std::cout.flush();
     }
+}
+
+TEST(RepoHelperT07, updateAppStream)
+{
+    const QString repoPath = "/home/xxxx/8.linglong/GitPrj/debug/linglong/build/repotest";
+    // 目录如果不存在 会自动创建目录
+    QString err = "";
+    QVector<QString> qrepoList;
+    linglong::RepoHelper repo;
+    bool ret = repo.ensureRepoEnv(repoPath, err);
+    if (!ret) {
+        std::cout << err.toStdString();
+        std::cout.flush();
+    }
+    EXPECT_EQ(ret, true);
+    ret = repo.getRemoteRepoList(repoPath, qrepoList, err);
+    if (!ret) {
+        std::cout << err.toStdString();
+        std::cout.flush();
+        EXPECT_EQ(ret, false);
+        return;
+    }
+    EXPECT_EQ(ret, true);
+    const QString qarch = "x86_64";
+    ret = repo.updateAppStream(repoPath, qrepoList[0], qarch, err);
+    if (!ret) {
+        std::cout << err.toStdString();
+        std::cout.flush();
+    }
+    EXPECT_EQ(ret, true);
+}
+
+TEST(RepoHelperT08, repoSearchApp)
+{
+    const QString repoPath = "/home/xxxx/8.linglong/GitPrj/debug/linglong/build/repotest";
+    // 目录如果不存在 会自动创建目录
+    QString err = "";
+    const QString qremoteName = "flathub";
+    const QString qpkgName = "com.skype.Client";
+    const QString qarch = "x86_64";
+    linglong::RepoHelper repo;
+    bool ret = repo.repoSearchApp(repoPath, qremoteName, qpkgName, qarch, err);
+    if (!ret) {
+        std::cout << err.toStdString();
+        std::cout.flush();
+    }
+    EXPECT_EQ(ret, true);
 }
 #endif

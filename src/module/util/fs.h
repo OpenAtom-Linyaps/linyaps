@@ -26,9 +26,11 @@
 #include <QFileInfo>
 #include <QProcess>
 #include <QDir>
+#include <QDirIterator>
+#include <QDebug>
+
 #include <stdlib.h>
 #include <iostream>
-#include <QDebug>
 //#include <libuossv/uossv.h>
 
 namespace linglong {
@@ -125,6 +127,18 @@ bool inline removeDir(const QString &path)
     return true;
 }
 
+QStringList inline listDirFolders(const QString &path, const bool subdir = false)
+{
+    QStringList parent;
+
+    QDirIterator dirs(path, QDir::Dirs | QDir::NoSymLinks | QDir::NoDotAndDotDot, subdir ? (QDirIterator::IteratorFlag)0x2 : (QDirIterator::IteratorFlag)0x0);
+
+    while (dirs.hasNext()) {
+        dirs.next();
+        parent << dirs.filePath();
+    }
+    return parent;
+}
 //sign uap-1 data.tgz
 bool inline makeSign(QString data_input, QString certpath, QString key_path, QString &sign_data)
 { /*

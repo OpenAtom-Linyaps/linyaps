@@ -27,8 +27,10 @@ add_executable(ll-test
                "../src/module/util/HttpClient.cpp"
                "../src/module/repo/RepoHelper.cpp"
                package_test.cpp
-	       #uossv_test.cpp
+	           # uossv_test.cpp
                extract_test.cpp
+# test mod util fs
+               util_fs_test.cpp
 #begin add by hqh for debug 2021-9-16
                HttpClient_test.cpp
                RepoHelper_test.cpp

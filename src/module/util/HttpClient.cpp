@@ -102,7 +102,7 @@ void HttpClient::setProgressCallback(DOWNLOADCALLBACK progressFun)
     mProgressFun = progressFun;
 }
 
-bool HttpClient::initHttpParam(const char *url)
+void HttpClient::initHttpParam(const char *url)
 {
     curl_global_init(CURL_GLOBAL_ALL);
 
@@ -140,8 +140,9 @@ void HttpClient::getFullPath(const char *url, const char *savePath, char *fullPa
     const char *ptr = url;
     ptr = strrchr(url, '/');
     int len = strlen(savePath);
+    int ptrlen = strlen(ptr);
     strncpy(fullPath, savePath, len);
-    if (strlen(ptr) + len < maxSize) {
+    if (ptrlen + len < maxSize) {
         if (savePath[len - 1] == '/') {
             strcat(fullPath, ptr + 1);
         } else {

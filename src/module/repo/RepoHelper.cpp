@@ -169,7 +169,7 @@ void RepoHelper::populate_hash_table_from_refs_map(map<string, string> &outRefs,
         ostree_parse_refspec(ref_name, NULL, &ref, NULL);
         if (ref == NULL)
             continue;
-        gboolean is_app = g_str_has_prefix(ref, "app/");
+        //gboolean is_app = g_str_has_prefix(ref, "app/");
 
         g_autoptr(GVariant) csum_v = NULL;
         char tmp_checksum[65];
@@ -239,7 +239,7 @@ bool RepoHelper::getRemoteRefs(const QString qrepoPath, const QString qremoteNam
 
 void split(string str, string separator, vector<string> &result)
 {
-    int cutAt;
+    size_t cutAt;
     while ((cutAt = str.find_first_of(separator)) != str.npos) {
         if (cutAt > 0) {
             result.push_back(str.substr(0, cutAt));
@@ -620,7 +620,7 @@ bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, co
     g_variant_builder_add(&builder, "{s@v}", "override-remote-name",
                           g_variant_new_variant(g_variant_new_string(remoteName.c_str())));
     options = g_variant_ref_sink(g_variant_builder_end(&builder));
-    fprintf(stdout, "ostree_repo_pull_with_options options:%s\n", g_variant_get_data(options));
+    //fprintf(stdout, "ostree_repo_pull_with_options options:%s\n", g_variant_get_data(options));
     // 下载到临时目录
     OstreeRepo *childRepo = createTmpRepo(mDir, &error);
     if (childRepo == NULL) {
@@ -792,7 +792,7 @@ bool RepoHelper::repo_pull_extra_data(OstreeRepo *repo, const char *remoteName, 
         fprintf(stdout, "repo_pull_extra_data n_extra_data is 0\n");
         return true;
     }
-    for (int i = 0; i < n_extra_data; i++) {
+    for (gsize i = 0; i < n_extra_data; i++) {
         const char *extra_data_uri = NULL;
         g_autofree char *extra_data_sha256 = NULL;
         const char *extra_data_name = NULL;
@@ -823,12 +823,13 @@ bool RepoHelper::repo_pull_extra_data(OstreeRepo *repo, const char *remoteName, 
         }
         // 使用http服务下载数据包
         char path[512] = {'\0'};
-        getwd(path);
+        getcwd(path, 512);
         linglong::util::HttpClient *httpClient = linglong::util::HttpClient::getInstance();
         //httpUtils->setProgressCallback(linglong_progress_callback);
         httpClient->loadHttpData(extra_data_uri, path);
         httpClient->release();
     }
+    return true;
 }
 
 bool RepoHelper::checkOutAppData(const QString qrepoPath, const QString qremoteName, const QString qref, const QString qdstPath, QString &err)
@@ -1075,11 +1076,11 @@ bool RepoHelper::repoSearchApp(QString qrepoPath, const QString qremoteName, con
     string errInfo = "";
     GSList *matches = NULL;
     g_autoptr(GPtrArray) remote_stores = getRemoteStores(dstPath.c_str(), remoteName.c_str(), arch.c_str(), errInfo);
-    for (int j = 0; j < remote_stores->len; ++j) {
+    for (guint j = 0; j < remote_stores->len; ++j) {
         AsStore *store = (AsStore *)g_ptr_array_index(remote_stores, j);
         GPtrArray *apps = as_store_get_apps(store);
         const char *search_text = pkgName.c_str();
-        for (int i = 0; i < apps->len; ++i) {
+        for (guint i = 0; i < apps->len; ++i) {
             AsApp *app = (AsApp *)g_ptr_array_index(apps, i);
             //fprintf(stdout, "repoSearchApp search_text:%s, appname:%s\n", search_text, as_app_get_id_filename(app));
             guint score = as_app_search_matches(app, search_text);

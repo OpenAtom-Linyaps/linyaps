@@ -60,7 +60,7 @@ private:
     }
     int getlock();
     int releaselock(int fd);
-    bool initHttpParam(const char *url);
+    void initHttpParam(const char *url);
     void getFullPath(const char *url, const char *savePath, char *fullPath, int maxSize);
     bool checkPara(const char *url, const char *savePath);
     void showInfo();

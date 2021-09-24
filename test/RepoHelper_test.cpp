@@ -25,7 +25,7 @@
 TEST(RepoHelperT01, ensureRepoEnv)
 {
     char path[512] = {'\0'};
-    getwd(path);
+    getcwd(path, 512);
     const QString repoPath = path;
     QString err = "";
     linglong::RepoHelper repo;

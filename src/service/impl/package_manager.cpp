@@ -131,12 +131,11 @@ QString PackageManager::Start(const QString &packageID)
                 return;
             }
             if (config_dir.size() >= 2) {
-                std::sort(config_dir.begin(), config_dir.end(),
-                          [](const QString &s1, const QString &s2) {
-                              auto v1 = s1.split("/").last();
-                              auto v2 = s2.split("/").last();
-                              return v1.toDouble() > v2.toDouble();
-                          });
+                std::sort(config_dir.begin(), config_dir.end(), [](const QString &s1, const QString &s2) {
+                    auto v1 = s1.split("/").last();
+                    auto v2 = s2.split("/").last();
+                    return v1.toDouble() > v2.toDouble();
+                });
             }
             config = config_dir.first() + "/" + packageID + ".yaml";
         }

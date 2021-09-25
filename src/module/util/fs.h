@@ -42,18 +42,34 @@ QString getUserFile(const QString &path);
 
 QString ensureUserDir(const QStringList &relativeDirPathComponents);
 
+/*!
+ * 判断文件是否存在
+ * @param path
+ * @return
+ */
 bool inline fileExists(const QString &path)
 {
     QFileInfo fs(path);
     return fs.exists() && fs.isFile() ? true : false;
 }
 
+/*!
+ * 判断目录是否存在
+ * @param path
+ * @return
+ */
 bool inline dirExists(const QString &path)
 {
     QFileInfo fs(path);
     return fs.exists() && fs.isDir() ? true : false;
 }
 
+/*!
+ * 压缩data.tgz文件
+ * @param src
+ * @param dest
+ * @return
+ */
 bool inline makeData(const QString &src, QString &dest)
 {
     QFileInfo fs1(src);
@@ -93,6 +109,12 @@ bool inline extractUap(const QString &uapfile, QString &dest)
     return true;
 }
 
+/*!
+ * 解压uap文件
+ * @param uapfile uap文件
+ * @param dest 解压路径
+ * @return bool
+ */
 bool inline extractUapData(const QString &uapfile, QString &dest)
 {
     QFileInfo fs1(uapfile);
@@ -108,6 +130,11 @@ bool inline extractUapData(const QString &uapfile, QString &dest)
     return true;
 }
 
+/*!
+ * 创建目录
+ * @param path 路径
+ * @return bool
+ */
 bool inline createDir(const QString &path)
 {
     auto val = QDir().exists(path);
@@ -117,6 +144,11 @@ bool inline createDir(const QString &path)
     return true;
 }
 
+/*!
+ * 移除目录
+ * @param path 路径
+ * @return bool
+ */
 bool inline removeDir(const QString &path)
 {
     QDir dir(path);
@@ -127,11 +159,18 @@ bool inline removeDir(const QString &path)
     return true;
 }
 
+/*!
+ * 获取指定目录下的子目录
+ * @param path 输入路径
+ * @param subdir 探测子目录，默认false
+ * @return QStringList
+ */
 QStringList inline listDirFolders(const QString &path, const bool subdir = false)
 {
     QStringList parent;
 
-    QDirIterator dirs(path, QDir::Dirs | QDir::NoSymLinks | QDir::NoDotAndDotDot, subdir ? (QDirIterator::IteratorFlag)0x2 : (QDirIterator::IteratorFlag)0x0);
+    QDirIterator dirs(path, QDir::Dirs | QDir::NoSymLinks | QDir::NoDotAndDotDot,
+                      subdir ? (QDirIterator::IteratorFlag)0x2 : (QDirIterator::IteratorFlag)0x0);
 
     while (dirs.hasNext()) {
         dirs.next();
@@ -139,7 +178,15 @@ QStringList inline listDirFolders(const QString &path, const bool subdir = false
     }
     return parent;
 }
-//sign uap-1 data.tgz
+
+/*!
+ * 制作data.tgz签名
+ * @param data_input
+ * @param certpath
+ * @param key_path
+ * @param sign_data
+ * @return bool
+ */
 bool inline makeSign(QString data_input, QString certpath, QString key_path, QString &sign_data)
 { /*
     QString input = data_input;
@@ -173,6 +220,12 @@ bool inline makeSign(QString data_input, QString certpath, QString key_path, QSt
     return true;
 }
 
+/*!
+ * 签名验证
+ * @param data_input
+ * @param sign_data_Q
+ * @return
+ */
 bool inline checkSign(QString data_input, QString sign_data_Q)
 {
     /*

@@ -29,23 +29,32 @@
 
 using namespace linglong::util;
 
-static bool compareNames(const QString &s1, const QString &s2)
-{
-    auto v1 = s1.split("/").takeLast();
-    auto v2 = s2.split("/").takeLast();
-    return v1.toDouble() > v2.toDouble();
-}
-
 TEST(mod_util_fs, mod_util_fs)
 {
     // listDirFolders
-    auto r1 = listDirFolders("/deepin/linglong");
-    EXPECT_EQ(r1.first(), "/deepin/linglong/layers");
+    bool delete_dir = false;
+    auto parent_path = "/tmp/deepin/linglong/layers";
+    if (!dirExists(parent_path)) {
+        delete_dir = true;
+        createDir(QString(parent_path) + "/1.0");
+        createDir(QString(parent_path) + "/2.0");
+    }
 
-    auto r2 = listDirFolders("/deepin/linglong", true);
+    auto r1 = listDirFolders("/tmp/deepin/linglong");
+    EXPECT_NE(r1.empty(), true);
+    EXPECT_EQ(r1.first(), parent_path);
+
+    auto r2 = listDirFolders("/tmp/deepin/linglong", true);
+    EXPECT_NE(r2.empty(), true);
     EXPECT_GT(r2.size(), 1);
 
-    auto r3 = listDirFolders("/deepin/linglong", false);
-    EXPECT_EQ(r3.first(), "/deepin/linglong/layers");
+    auto r3 = listDirFolders("/tmp/deepin/linglong", false);
+    EXPECT_NE(r3.empty(), true);
+    EXPECT_EQ(r3.first(), parent_path);
     EXPECT_EQ(r3.size(), 1);
+
+    if (delete_dir && dirExists(parent_path)) {
+        delete_dir = false;
+        removeDir(QString(parent_path));
+    }
 }

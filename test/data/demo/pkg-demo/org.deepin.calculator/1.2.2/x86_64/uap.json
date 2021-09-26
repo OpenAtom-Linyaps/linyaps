@@ -1,0 +1,33 @@
+{
+  "datasign": {
+    "sign": ""
+  },
+  "metasign": {
+    "sign": ""
+  },
+  "owner": {
+    "keyinfo": "null",
+    "license": "GPLv3",
+    "name": "UnionTech",
+    "website": "http://www.uniontech.com"
+  },
+  "pkgext": {
+    "hashtype": 2,
+    "maintainer": "deepin uos <uos@deepin.com>",
+    "tag": "application;tools",
+    "type": 1,
+    "url": "http://www.uniontech.com",
+    "settings": {
+      "permission": "d"
+    }
+  },
+  "pkginfo": {
+    "appname": "org.deepin.calculator",
+    "arch": "x86_64",
+    "description": "calculator, for deepin.",
+    "name": "calculator",
+    "runtime": "aaa2668a-f67e-11eb-913a-23d17b06112b",
+    "uuid": "2013e1ea-f8ce-11eb-a615-633d5b0cf905",
+    "version": "1.2.2"
+  }
+}

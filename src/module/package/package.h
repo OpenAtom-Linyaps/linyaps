@@ -52,7 +52,7 @@ class Uap_Archive
 public:
     struct archive *wb = nullptr;
     struct archive_entry *entry = nullptr;
-    struct archive *a = nullptr;
+    struct archive *wa = nullptr;
     struct archive *ext = nullptr;
     struct stat workdir_st, st;
     bool write_new()
@@ -160,13 +160,13 @@ public:
         flags |= ARCHIVE_EXTRACT_ACL;
         flags |= ARCHIVE_EXTRACT_FFLAGS;
 
-        a = archive_read_new();
-        archive_read_support_format_all(a);
-        archive_read_support_compression_all(a);
+        wa = archive_read_new();
+        archive_read_support_format_all(wa);
+        archive_read_support_filter_all(wa);
         ext = archive_write_disk_new();
         archive_write_disk_set_options(ext, flags);
         archive_write_disk_set_standard_lookup(ext);
-        if ((r = archive_read_open_filename(a, filename, 10240))) {
+        if ((r = archive_read_open_filename(wa, filename, 10240))) {
 #ifdef DEBUG
             perror("error:");
 #endif
@@ -175,11 +175,11 @@ public:
             // exit(1);
         }
         for (;;) {
-            r = archive_read_next_header(a, &entry);
+            r = archive_read_next_header(wa, &entry);
             if (r == ARCHIVE_EOF)
                 break;
             if (r < ARCHIVE_OK)
-                fprintf(stderr, "%s\n", archive_error_string(a));
+                fprintf(stderr, "%s\n", archive_error_string(wa));
             if (r < ARCHIVE_WARN) {
                 // exit(1);
                 goto release;
@@ -199,7 +199,7 @@ public:
                 fprintf(stderr, "%s\n", archive_error_string(ext));
 #endif
             } else if (archive_entry_size(entry) > 0) {
-                r = copy_data(a, ext);
+                r = copy_data(wa, ext);
                 if (r < ARCHIVE_OK) {
 #ifdef DEBUG
                     fprintf(stderr, "%s\n", archive_error_string(ext));
@@ -223,15 +223,15 @@ public:
                 return false;
             }
         }
-        archive_read_close(a);
-        archive_read_free(a);
+        archive_read_close(wa);
+        archive_read_free(wa);
         archive_write_close(ext);
         archive_write_free(ext);
         // exit(0);
         return true;
     release:
-        if (NULL != a) {
-            archive_read_free(a);
+        if (NULL != wa) {
+            archive_read_free(wa);
         }
         if (NULL != ext) {
             archive_write_free(ext);

@@ -119,7 +119,7 @@ public:
 /*!
  * String to Hash256
  */
-inline const string StringToHash256(const string &str)
+inline  const string StringToHash256(const string &str)
 {
     SHA256 hash;
     std::string digest;
@@ -128,6 +128,7 @@ inline const string StringToHash256(const string &str)
     if (digest != "") {
         return digest;
     }
+    return nullptr;
 }
 
 /*!

@@ -12,11 +12,17 @@ find_package(Qt5DBus REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
 set(Qt_LIBS Qt5::Core Qt5::DBus)
+
 set(LINK_LIBS
-    ${Qt_LIBS}
-    yaml-cpp
-    GTest::GTest gtest_main
-    stdc++)
+		${Qt_LIBS}
+		yaml-cpp
+		GTest::GTest gtest_main
+		stdc++
+		-larchive -lcrypto++
+		CURL::libcurl
+		${OSTREE1_LDFLAGS}
+		${APPSTREMGLIB_LDFLAGS}
+		)
 
 add_executable(ll-test
                "../src/module/util/json.h"
@@ -43,48 +49,16 @@ add_executable(ll-test
 	       build_ouap_test.cpp
 	       )
 
-# begin add by hqh debug 2021-9-16
-if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "x86_64")
-#添加 libcurl库 需要安装 libcurl4-gnutls-dev
-set(CURL_LIBRARYDIR /usr/lib/x86_64-linux-gnu/libcurl.so)
-#添加库glib和gio库 需要安装libglib2.0-dev
-set(GLIB_LIBRARYDIR /usr/lib/x86_64-linux-gnu/libglib-2.0.so /usr/lib/x86_64-linux-gnu/libgio-2.0.so)
-set(GOBJ_LIBRARYDIR /usr/lib/x86_64-linux-gnu/libgobject-2.0.so)
-#添加ostree 需要安装libostree-dev
-set(OSTREE_LIBRARYDIR /usr/lib/x86_64-linux-gnu/libostree-1.so)
-#appstream库 libappstream-glib-dev
-set(APPSTREAM_LIBRARYDIR /usr/lib/x86_64-linux-gnu/libappstream-glib.so)
-#添加appstream依赖库 libgdk-pixbuf2.0-dev
-set(APPSTREAMDEP_LIBRARY /usr/lib/x86_64-linux-gnu/libgdk_pixbuf-2.0.so)
-#libcurl头文件
-set(CURL_INCLUDEDIRS /usr/include/x86_64-linux-gnu/)
-#添加头文件目录
-set(GLIB_INCLUDEDIRS /usr/include/glib-2.0/ /usr/lib/x86_64-linux-gnu/glib-2.0/include/)
-set(OSTREE_INCLUDEDIRS /usr/include/ostree-1/)
-set(GOBJ_INCLUDEDIRS /usr/include/glib-2.0/)
-#appstream头文件 libappstream-glib-dev
-set(APPSTREAM_INCLUDEDIRS /usr/include/libappstream-glib/)
-#添加appstream依赖库 libgdk-pixbuf2.0-dev
-set(APPSTREAMDEP_INCLUDEDIRS /usr/include/gdk-pixbuf-2.0/)
-endif()
-# end add by hqh debug 2021-9-16
+find_package(CURL REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_search_module(OSTREE1 REQUIRED ostree-1)
+pkg_search_module(APPSTREMGLIB REQUIRED appstream-glib)
 
 target_include_directories(ll-test PRIVATE
-#${JSONSTRUCT_INCLUDE_DIR}
-${CURL_INCLUDEDIRS}
-${GLIB_INCLUDEDIRS}
-${OSTREE_INCLUDEDIRS}
-${GOBJ_INCLUDEDIRS}
-${APPSTREAM_INCLUDEDIRS}
-${APPSTREAMDEP_INCLUDEDIRS}
+		${OSTREE1_INCLUDE_DIRS}
+		${APPSTREMGLIB_INCLUDE_DIRS}
 )
-target_link_libraries(ll-test ${LINK_LIBS} -larchive -lcrypto++
-${CURL_LIBRARYDIR}
-${GLIB_LIBRARYDIR}
-${OSTREE_LIBRARYDIR}
-${GOBJ_LIBRARYDIR}
-${APPSTREAM_LIBRARYDIR}
-${APPSTREAMDEP_LIBRARY}
-)
+
+target_link_libraries(ll-test ${LINK_LIBS})
 
 add_test(NAME ll_test COMMAND ll-test)

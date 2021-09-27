@@ -261,12 +261,16 @@ public:
         }
         if (this->dataPath != "" && fileExists(this->dataPath)) {
             QFile::remove(this->dataPath);
+            if (dirExists(QFileInfo(this->dataPath).dir().path())) {
+                //删除临时解压目录
+                removeDir(QFileInfo(this->dataPath).dir().path());
+            }
             this->dataPath = nullptr;
         }
     }
     bool InitUap(const QString &config, const QString &data = "")
     {
-        if(! this->initConfig(config)){
+        if (!this->initConfig(config)) {
             qInfo() << "initconfig failed!!!";
             return false;
         }
@@ -378,27 +382,29 @@ public:
         if (this->uap->isFullUab()) {
             uap_archive.add_data_file(this->dataPath.toStdString(), "data.tgz");
         }
+
         // create uap
         uap_archive.write_free();
         return true;
     }
 
     //make ouap
-    bool MakeOuap(const QString uap_path,QString ostree_repo = "/deepin/linglong/repo"){
+    bool MakeOuap(const QString uap_path, QString ostree_repo = "/deepin/linglong/repo")
+    {
         QString uapFile = QFileInfo(uap_path).fileName();
         QString extract_dir = QString("/tmp/") + uapFile;
         QString dest_path = uapFile + QString(".dir");
         //解压uap
-        if(! Extract(uap_path, extract_dir)){
+        if (!Extract(uap_path, extract_dir)) {
             qInfo() << "extract uap failed!!!";
             return false;
         }
-        if (! fileExists(extract_dir + QString("/uap-1"))) {
+        if (!fileExists(extract_dir + QString("/uap-1"))) {
             qInfo() << "uap-1 does not exist!!!";
             return false;
         }
-         //初始化uap
-        if(! this->initConfig(extract_dir + QString("/uap-1"))){
+        //初始化uap
+        if (!this->initConfig(extract_dir + QString("/uap-1"))) {
             qInfo() << "init uapconfig failed!!!";
             return false;
         }
@@ -406,24 +412,24 @@ public:
         this->uap->meta.pkgext.type = 0;
         auto uap_buffer = this->uap->dumpJson();
         QString info = uap_buffer.c_str();
-        if(info.isEmpty()){
+        if (info.isEmpty()) {
             qInfo() << "no info for uap !!!";
         }
         Uap_Archive uap_archive;
-         // create ouap
+        // create ouap
         uap_archive.write_new();
         uap_archive.write_open_filename(this->uap->getUapName());
 
         // add uap-1
         uap_archive.add_file(uap_buffer, this->uap->meta.getMetaName());
-         // add  .uap-1.sign
+        // add  .uap-1.sign
         uap_archive.add_file(uap_buffer, this->uap->meta.getMetaSignName());
-         //add .data.tgz.sig
+        //add .data.tgz.sig
         uap_archive.add_file(uap_buffer, ".data.tgz.sig");
         // create ouap
         uap_archive.write_free();
         //解压data.tgz
-        if(! Extract(extract_dir + QString("/data.tgz"), dest_path)){
+        if (!Extract(extract_dir + QString("/data.tgz"), dest_path)) {
             qInfo() << "extract data.tgz failed!!!";
             return false;
         }
@@ -515,26 +521,27 @@ public:
     }
 
     //获取信息uap
-    bool GetInfo(const QString uapFile_path){
+    bool GetInfo(const QString uapFile_path)
+    {
         QString uapFile = QFileInfo(uapFile_path).fileName();
         QString extract_dir = QString("/tmp/") + uapFile;
         //解压uap
-        if(! Extract(uapFile_path, extract_dir)){
+        if (!Extract(uapFile_path, extract_dir)) {
             qInfo() << "extract uap failed!!!";
             return false;
         }
-        if (! fileExists(extract_dir + QString("/uap-1"))) {
+        if (!fileExists(extract_dir + QString("/uap-1"))) {
             qInfo() << "uap-1 does not exist!!!";
             return false;
         }
-         //初始化uap
-        if(! this->initConfig(extract_dir + QString("/uap-1"))){
+        //初始化uap
+        if (!this->initConfig(extract_dir + QString("/uap-1"))) {
             qInfo() << "init uapconfig failed!!!";
             return false;
         }
         auto uap_buffer = this->uap->dumpJson();
         QString info = uap_buffer.c_str();
-        if(info.isEmpty()){
+        if (info.isEmpty()) {
             qInfo() << "no info for uap !!!";
         }
         removeDir(extract_dir);

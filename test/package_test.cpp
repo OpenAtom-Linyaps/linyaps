@@ -25,8 +25,11 @@
 
 #include <QJsonDocument>
 #include <QFile>
+#include <module/util/fs.h>
 
-TEST(Package, UaPInit)
+using namespace linglong::util;
+
+TEST(Package, UaPInit_01)
 {
     QFile jsonFile("../../test/data/demo/uab.json");
     jsonFile.open(QIODevice::ReadOnly);
@@ -40,4 +43,23 @@ TEST(Package, UaPInit)
     EXPECT_EQ(pkg01.initData(QString("../../test/data/demo/pkg-demo/pkg01")), true);
     EXPECT_EQ(pkg01.initData(QString("../../test/data/demo/uab.json")), false);
     EXPECT_EQ(pkg01.initData(QString("../../test/data/demo/1")), false);
+}
+TEST(Package, UaPInit_02)
+{
+    // init data
+    Package *pkg01 = new Package();
+
+    EXPECT_EQ(pkg01->InitUap(QString("../../test/data/demo/pkg-demo/pkg01/uap.json"), QString("../../test/data/demo/pkg-demo/pkg01")), true);
+    EXPECT_EQ(fileExists(pkg01->dataPath), true);
+    EXPECT_EQ(dirExists(QFileInfo(pkg01->dataPath).dir().path()), true);
+
+    // copy data path
+    QString tmp_data = pkg01->dataPath;
+    QString tmp_data_path = QFileInfo(pkg01->dataPath).dir().path();
+
+    // release pkg object
+    delete pkg01;
+
+    EXPECT_EQ(fileExists(tmp_data), false);
+    EXPECT_EQ(dirExists(tmp_data_path), false);
 }

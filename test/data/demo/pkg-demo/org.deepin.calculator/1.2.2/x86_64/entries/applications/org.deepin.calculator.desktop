@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=Calculator
+Exec=/opt/apps/org.deepin.calculator/files/bin/deepin-calculator
+Terminal=false
+Type=Application
+Icon=Calculator
+StartupWMClass=Calculator
+GenericName=Calculator
+Comment=Calculator
+Categories=Utility;
+Keywords=password;security;
+Name[zh_CN]=org.deepin.calculator

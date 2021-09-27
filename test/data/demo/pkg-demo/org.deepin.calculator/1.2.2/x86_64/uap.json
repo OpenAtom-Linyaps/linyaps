@@ -7,27 +7,39 @@
   },
   "owner": {
     "keyinfo": "null",
-    "license": "GPLv3",
     "name": "UnionTech",
     "website": "http://www.uniontech.com"
   },
   "pkgext": {
     "hashtype": 2,
     "maintainer": "deepin uos <uos@deepin.com>",
-    "tag": "application;tools",
-    "type": 1,
     "url": "http://www.uniontech.com",
+    "type": 1,
+    "tag": "application;tools",
+    "license": "GPLv3",
+    "uuid": "2013e1ea-f8ce-11eb-a615-633d5b0cf905",
+    "sdk": "",
     "settings": {
       "permission": "d"
     }
   },
-  "pkginfo": {
-    "appname": "org.deepin.calculator",
-    "arch": "x86_64",
-    "description": "calculator, for deepin.",
-    "name": "calculator",
-    "runtime": "aaa2668a-f67e-11eb-913a-23d17b06112b",
-    "uuid": "2013e1ea-f8ce-11eb-a615-633d5b0cf905",
-    "version": "1.2.2"
+  "appid": "org.deepin.calculator",
+  "arch": "x86_64",
+  "description": "calculator, for deepin.",
+  "name": "calculator",
+  "runtime": "aaa2668a-f67e-11eb-913a-23d17b06112b",
+  "version": "1.2.2",
+  "support_plugins": [],
+  "plugins": [],
+  "permission": {
+    "autostart": false,
+    "notification": false,
+    "trayicon": false,
+    "clipboard": false,
+    "account": false,
+    "bluetooth": false,
+    "camera": false,
+    "audio_record": false,
+    "installed_apps": false
   }
 }

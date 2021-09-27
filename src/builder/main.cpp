@@ -67,7 +67,9 @@ int main(int argc, char **argv)
 
              if (args.size() == 3) {
                  Package create_package;
-                 create_package.InitUap(args.at(1), args.at(2));
+                 if(! create_package.InitUap(args.at(1), args.at(2))){
+                     return -1;
+                 }
                  create_package.MakeUap();
                  return 0;
              }

@@ -266,7 +266,10 @@ public:
     }
     bool InitUap(const QString &config, const QString &data = "")
     {
-        this->initConfig(config);
+        if(! this->initConfig(config)){
+            qInfo() << "initconfig failed!!!";
+            return false;
+        }
         if (this->uap->isFullUab() && !data.isEmpty())
             this->initData(data);
         // this->initDataSing()

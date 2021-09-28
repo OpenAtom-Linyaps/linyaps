@@ -44,6 +44,7 @@ TEST(Package, UaPInit_01)
     EXPECT_EQ(pkg01.initData(QString("../../test/data/demo/uab.json")), false);
     EXPECT_EQ(pkg01.initData(QString("../../test/data/demo/1")), false);
 }
+
 TEST(Package, UaPInit_02)
 {
     // init data
@@ -62,4 +63,20 @@ TEST(Package, UaPInit_02)
 
     EXPECT_EQ(fileExists(tmp_data), false);
     EXPECT_EQ(dirExists(tmp_data_path), false);
+}
+
+
+TEST(Package, UaPInit_03)
+{
+
+    // init data
+    Package *pkg01 = new Package();
+
+    EXPECT_EQ(pkg01->InitUap(QString("../../test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64/uap.json"), QString("../../test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64")), true);
+    EXPECT_EQ(fileExists(pkg01->dataPath), true);
+    EXPECT_EQ(dirExists(QFileInfo(pkg01->dataPath).dir().path()), true);
+    pkg01->MakeUap();
+
+    // test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64
+    delete pkg01;
 }

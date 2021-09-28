@@ -333,7 +333,7 @@ public:
         return true;
     }
 
-    //make uap
+    // make uap
     bool MakeUap()
     {
         Uap_Archive uap_archive;
@@ -375,7 +375,7 @@ public:
         data_file.close();
         uap_archive.add_file(sign_data.toStdString(), ".data.tgz.sig");
         */
-        //add .data.tgz.sig
+        // add .data.tgz.sig
         uap_archive.add_file(uap_buffer, ".data.tgz.sig");
 
         // add data.tgz
@@ -388,7 +388,7 @@ public:
         return true;
     }
 
-    //make ouap
+    // make ouap
     bool MakeOuap(const QString uap_path, QString ostree_repo = "/deepin/linglong/repo")
     {
         QString uapFile = QFileInfo(uap_path).fileName();
@@ -424,7 +424,7 @@ public:
         uap_archive.add_file(uap_buffer, this->uap->meta.getMetaName());
         // add  .uap-1.sign
         uap_archive.add_file(uap_buffer, this->uap->meta.getMetaSignName());
-        //add .data.tgz.sig
+        // add .data.tgz.sig
         uap_archive.add_file(uap_buffer, ".data.tgz.sig");
         // create ouap
         uap_archive.write_free();
@@ -574,6 +574,26 @@ public:
         }
         if (this->uap->isFullUab()) {
             extractUapData(this->dataPath, pkg_install_path);
+
+            // TODO: fix it ( will remove this )
+            QString yaml_path = QString::fromStdString("/deepin/linglong/layers/" + this->uap->meta.appid + "/"
+                                                       + this->uap->meta.version + "/" + this->uap->meta.arch + "/" + this->uap->meta.appid + ".yaml");
+            QString new_path = QString::fromStdString("/deepin/linglong/layers/" + this->uap->meta.appid + "/"
+                                                      + this->uap->meta.version + "/" + this->uap->meta.appid + ".yaml");
+            if (linglong::util::fileExists(yaml_path)) {
+                // link to file
+                linglong::util::linkFile(yaml_path, new_path);
+            }
+            // TODO: fix it ( will remove this )
+            QString info_path = QString::fromStdString("/deepin/linglong/layers/" + this->uap->meta.appid + "/"
+                                                       + this->uap->meta.version + "/" + this->uap->meta.arch + "/info.json");
+            QString info_new_path = QString::fromStdString("/deepin/linglong/layers/" + this->uap->meta.appid + "/"
+                                                           + this->uap->meta.version + "/" + this->uap->meta.arch + "/info");
+
+            if (linglong::util::fileExists(info_path)) {
+                // link to file
+                linglong::util::linkFile(info_path, info_new_path);
+            }
         }
         return true;
     }

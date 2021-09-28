@@ -253,5 +253,18 @@ bool inline checkSign(QString data_input, QString sign_data_Q)
     return true;
 }
 
+/*!
+ * 建立link
+ * @param src 来源
+ * @param dest 目标
+ * @param override 默认覆盖
+ * @return
+ */
+bool inline linkFile(const QString &src, const QString &dest, const bool override = true)
+{
+    // QFile::link(const QString &fileName, const QString &linkName)
+    QFile::link(src,dest);
+    return true;
+}
 } // namespace util
 } // namespace linglong

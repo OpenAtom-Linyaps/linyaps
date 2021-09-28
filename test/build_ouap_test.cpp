@@ -30,8 +30,8 @@
 TEST(Package, Make_ouap)
 {
     Package pkg02;
-    QString pkg_name = "authpass-1.9.4-x86_64.uap";
-    QString pkg_ouap_name = "authpass-1.9.4-x86_64.ouap";
+    QString pkg_name = "org.deepin.calculator-1.2.2-x86_64.uap";
+    QString pkg_ouap_name = "org.deepin.calculator-1.2.2-x86_64.ouap";
     QFileInfo fs(pkg_name);
 
     if (fs.exists()) {
@@ -40,7 +40,7 @@ TEST(Package, Make_ouap)
     if (QFileInfo::exists(pkg_ouap_name)) {
         QFile::remove(pkg_ouap_name);
     }
-    EXPECT_EQ(pkg02.InitUap(QString("../../test/data/demo/pkg-demo/pkg01/uap.json"), QString("../../test/data/demo/pkg-demo/pkg01")), true);
+    EXPECT_EQ(pkg02.InitUap(QString("../../test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64/uap.json"), QString("../../test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64")), true);
     EXPECT_EQ(pkg02.MakeUap(), true);
     EXPECT_EQ(pkg02.MakeOuap(pkg_name), true);
     

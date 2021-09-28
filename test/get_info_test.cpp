@@ -30,8 +30,8 @@
 TEST(Package, Get_info)
 {
     Package pkg01;
-    QString pkg_name = "authpass-1.9.4-x86_64.uap";
-    QString pkg_info = "authpass-1.9.4-x86_64.uap.info";
+    QString pkg_name = "org.deepin.calculator-1.2.2-x86_64.uap";
+    QString pkg_info = "org.deepin.calculator-1.2.2-x86_64.uap.info";
     QFileInfo fs(pkg_name);
 
     if (fs.exists()) {
@@ -40,7 +40,7 @@ TEST(Package, Get_info)
     if (QFileInfo::exists(pkg_info)) {
         QFile::remove(pkg_info);
     }
-    EXPECT_EQ(pkg01.InitUap(QString("../../test/data/demo/pkg-demo/pkg01/uap.json"), QString("../../test/data/demo/pkg-demo/pkg01")), true);
+    EXPECT_EQ(pkg01.InitUap(QString("../../test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64/uap.json"), QString("../../test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64")), true);
     EXPECT_EQ(pkg01.MakeUap(), true);
     EXPECT_EQ(pkg01.GetInfo(fs.fileName()), true);
     if (QFileInfo::exists(pkg_name)) {

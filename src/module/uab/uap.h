@@ -242,10 +242,10 @@ public:
     string getUapName()
     {
         if (isFullUab()) {
-            return this->meta.name + "-" + this->meta.version + "-" + this->meta.arch + "."
+            return this->meta.appid + "-" + this->meta.version + "-" + this->meta.arch + "."
                    + this->meta._uap_name;
         } else {
-            return this->meta.name + "-" + this->meta.version + "-" + this->meta.arch + "."
+            return this->meta.appid + "-" + this->meta.version + "-" + this->meta.arch + "."
                    + string("o") + this->meta._uap_name;
         }
     }

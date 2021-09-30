@@ -19,7 +19,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "HttpClient.h"
+#include "httpclient.h"
 
 #include <string.h>
 #include <sys/file.h>
@@ -29,7 +29,7 @@
 #include <unistd.h>
 
 #include <iostream>
-
+#include <QDebug>
 //#include <gio/gio.h>
 //#include <glib.h>
 //#include<pthread.h>
@@ -64,6 +64,11 @@ void HttpClient::release()
     }
 }
 
+/*
+ * 获取下文件锁
+ *
+ * @return int: 文件描述符
+ */
 int HttpClient::getlock()
 {
     int fd = -1;
@@ -71,13 +76,15 @@ int HttpClient::getlock()
     fd = open(LINGLONGHTTPCLIENTLOCK, O_CREAT | O_TRUNC | O_RDWR, 0777);
 
     if (fd < 0) {
-        fprintf(stdout, "getlock open err:[%d], message:%s\n", errno, strerror(errno));
+        //fprintf(stdout, "getlock open err:[%d], message:%s\n", errno, strerror(errno));
+        qInfo() << "getlock open err";
         return -1;
     }
 
     ret = flock(fd, LOCK_NB | LOCK_EX);
     if (ret < 0) {
-        fprintf(stdout, "getlock flock err:[%d], message:%s\n", errno, strerror(errno));
+        //fprintf(stdout, "getlock flock err:[%d], message:%s\n", errno, strerror(errno));
+        qInfo() << "getlock flock err";
         close(fd);
         // 确认临时文件是否需要删除
         return -1;
@@ -85,6 +92,13 @@ int HttpClient::getlock()
     return fd;
 }
 
+/*
+ * 释放文件锁
+ *
+ * @param fd: 文件描述符
+ *
+ * @return int: 0:成功 其它:失败
+ */
 int HttpClient::releaselock(int fd)
 {
     if (fd == -1) {
@@ -97,11 +111,22 @@ int HttpClient::releaselock(int fd)
     return 0;
 }
 
+/*
+ * 设置下载进度回调
+ *
+ * @param progressFun: 回调函数
+ *
+ */
 void HttpClient::setProgressCallback(DOWNLOADCALLBACK progressFun)
 {
     mProgressFun = progressFun;
 }
 
+/*
+ * 设置Http传输参数
+ *
+ * @param url: url地址
+ */
 void HttpClient::initHttpParam(const char *url)
 {
     curl_global_init(CURL_GLOBAL_ALL);
@@ -135,6 +160,14 @@ void HttpClient::initHttpParam(const char *url)
     //curl_easy_setopt(mCurlHandle, CURLOPT_WRITEFUNCTION, write_data);
 }
 
+/*
+ * 获取目标文件保存的全路径
+ *
+ * @param url: url地址
+ * @param savePath: 文件存储路径
+ * @param fullPath: 文件保存全路径
+ * @param maxSize: 路径长度阈值
+ */
 void HttpClient::getFullPath(const char *url, const char *savePath, char *fullPath, int maxSize)
 {
     const char *ptr = url;
@@ -149,23 +182,34 @@ void HttpClient::getFullPath(const char *url, const char *savePath, char *fullPa
             strcat(fullPath, ptr);
         }
     } else {
-        fprintf(stdout, "getFullPath error path is too long\n");
+        //fprintf(stdout, "getFullPath error path is too long\n");
+        qInfo() << "getFullPath error path is too long";
     }
 }
 
+/*
+ * 显示结果信息
+ */
 void HttpClient::showInfo()
 {
     if (!mIsFinish) {
         return;
     }
-    cout << "Http Respond Code:" << mData.resCode << endl;
-    cout << "Http file size:" << mData.fileSize << endl;
-    cout << "Http Content size:" << mData.contentSize << endl;
-    cout << "Http Content type:" << mData.contentType << endl;
-    cout << "Http total time:" << mData.spendTime << " s" << endl;
-    cout << "Http download speed:" << mData.downloadSpeed / 1024 << " kb/s" << endl;
+    qInfo() << "Http Respond Code:" << mData.resCode;
+    qInfo() << "Http file size:" << mData.fileSize;
+    qInfo() << "Http Content size:" << mData.contentSize;
+    qInfo() << "Http total time:" << mData.spendTime << " s";
+    qInfo() << "Http download speed:" << mData.downloadSpeed / 1024 << " kb/s";
 }
 
+/*
+ * 校验Http传输参数
+ *
+ * @param url: url地址
+ * @param savePath: 文件保存地址
+ *
+ * @return bool: true:成功 false:失败
+ */
 bool HttpClient::checkPara(const char *url, const char *savePath)
 {
     /* 判断目标文件夹是否存在 不存在则返回*/
@@ -182,8 +226,14 @@ bool HttpClient::checkPara(const char *url, const char *savePath)
     return true;
 }
 
-// https://cdn.zoom.us/prod/5.7.29123.0808/zoom_x86_64.tar.xz
-// http://10.20.52.184/hqhdebstore/pool/main/l/llcmd/llcmd_1.0.0-1_amd64.deb
+/*
+ * 下载文件
+ *
+ * @param qurl: 目标文件url
+ * @param qsavePath: 保存路径
+ *
+ * @return bool: true:成功 false:失败
+ */
 bool HttpClient::loadHttpData(const QString qurl, const QString qsavePath)
 {
     std::string strUrl = qurl.toStdString();
@@ -199,8 +249,9 @@ bool HttpClient::loadHttpData(const QString qurl, const QString qsavePath)
     // pthread_mutex_lock(&mutex);
     int fd = getlock();
     if (fd == -1) {
-        fprintf(stdout, "HttpClient loadHttpData is downloading, please wait a moment and retry\n");
-        return -1;
+        //fprintf(stdout, "HttpClient loadHttpData is downloading, please wait a moment and retry\n");
+        qInfo() << "HttpClient loadHttpData is downloading, please wait a moment and retry";
+        return false;
     }
     long start = getCurrentTime();
     char fullPath[256] = {'\0'};
@@ -217,32 +268,36 @@ bool HttpClient::loadHttpData(const QString qurl, const QString qsavePath)
         /* get it! */
         CURLcode code = curl_easy_perform(mCurlHandle);
         if (code != CURLE_OK) {
-            cout << "curl_easy_perform err code:" << curl_easy_strerror(code) << endl;
+            //cout << "curl_easy_perform err code:" << curl_easy_strerror(code) << endl;
+            qInfo() << "curl_easy_perform err code:" << curl_easy_strerror(code);
             curl_easy_cleanup(mCurlHandle);
             curl_global_cleanup();
             fclose(pagefile);
             //解锁
             // pthread_mutex_unlock(&mutex);
             releaselock(fd);
-            return -1;
+            return false;
         }
 
         long resCode = 0;
         code = curl_easy_getinfo(mCurlHandle, CURLINFO_RESPONSE_CODE, &resCode);
         if (code != CURLE_OK) {
-            cout << "1.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
+            //cout << "1.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
+            qInfo() << "1.curl_easy_getinfo err:" << curl_easy_strerror(code);
         }
         //获取下载文件的大小 字节
         double fileSize = 0;
         code = curl_easy_getinfo(mCurlHandle, CURLINFO_SIZE_DOWNLOAD, &fileSize);
         if (code != CURLE_OK) {
-            cout << "2.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
+            //cout << "2.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
+            qInfo() << "2.curl_easy_getinfo err:" << curl_easy_strerror(code);
         }
         //下载内容大小
         double contentSize = 0;
         code = curl_easy_getinfo(mCurlHandle, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &contentSize);
         if (code != CURLE_OK) {
-            cout << "3.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
+            //cout << "3.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
+            qInfo() << "3.curl_easy_getinfo err:" << curl_easy_strerror(code);
         }
         //下载文件类型 text/html application/x-tar application/x-debian-package image/jpeg
         // Http Header里的Content-Type一般有这三种：
@@ -252,26 +307,29 @@ bool HttpClient::loadHttpData(const QString qurl, const QString qsavePath)
         char *contentType = NULL;
         code = curl_easy_getinfo(mCurlHandle, CURLINFO_CONTENT_TYPE, &contentType);
         if (code != CURLE_OK) {
-            cout << "4.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
+            //cout << "4.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
+            qInfo() << "4.curl_easy_getinfo err:" << curl_easy_strerror(code);
         }
         //获取下载总耗时包括域名解析、TCP连接
         double spendTime = 0;
         code = curl_easy_getinfo(mCurlHandle, CURLINFO_TOTAL_TIME, &spendTime);
         if (code != CURLE_OK) {
-            cout << "5.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
+            //cout << "5.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
+            qInfo() << "5.curl_easy_getinfo err:" << curl_easy_strerror(code);
         }
 
         //下载速度 单位字节
         double downloadSpeed = 0;
         code = curl_easy_getinfo(mCurlHandle, CURLINFO_SPEED_DOWNLOAD, &downloadSpeed);
         if (code != CURLE_OK) {
-            cout << "6.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
+            //cout << "6.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
+            qInfo() << "6.curl_easy_getinfo err:" << curl_easy_strerror(code);
         }
 
         mData.resCode = resCode;
         mData.fileSize = (long)fileSize;
         mData.contentSize = (long)contentSize;
-        mData.contentType = contentType;
+        //mData.contentType = contentType;
         mData.downloadSpeed = downloadSpeed;
         mData.spendTime = spendTime;
         /* close the header file */
@@ -281,7 +339,8 @@ bool HttpClient::loadHttpData(const QString qurl, const QString qsavePath)
     curl_easy_cleanup(mCurlHandle);
     curl_global_cleanup();
     long end = getCurrentTime();
-    cout << "the program spend time is: " << end - start << " ms" << endl;
+    //cout << "the program spend time is: " << end - start << " ms" << endl;
+    qInfo() << "the program spend time is: " << end - start << " ms";
     //解锁
     // pthread_mutex_unlock(&mutex);
     releaselock(fd);

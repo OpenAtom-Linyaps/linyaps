@@ -30,16 +30,16 @@ add_executable(ll-test
                "../src/module/runtime/oci.h"
                "../src/module/runtime/container.h"
                "../src/module/package/package.h"
-               "../src/module/util/HttpClient.cpp"
-               "../src/module/repo/RepoHelper.cpp"
+               "../src/module/util/httpclient.cpp"
+               "../src/module/repo/repohelper.cpp"
                package_test.cpp
 	           # uossv_test.cpp
                extract_test.cpp
 # test mod util fs
                util_fs_test.cpp
 #begin add by hqh for debug 2021-9-16
-               HttpClient_test.cpp
-               RepoHelper_test.cpp
+               httpclient_test.cpp
+               repohelper_test.cpp
 #end add by hqh for debug 2021-9-16
                oci_test.cpp
                qt_json.cpp

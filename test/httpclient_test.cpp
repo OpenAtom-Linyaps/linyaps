@@ -21,7 +21,7 @@
 
 #include <gtest/gtest.h>
 
-#include "module/util/HttpClient.h"
+#include "module/util/httpclient.h"
 
 TEST(HttpClientT01, loadHttpData)
 {
@@ -61,11 +61,11 @@ TEST(HttpClientT04, loadHttpData)
     httpClient->release();
 }
 
-// TEST(HttpClientT05, loadHttpData)
-// {
-//     const QString savePath = "/home/xxxx/8.linglong/GitPrj/debug/linglong/build/test";
-//     const QString url = "http://10.20.52.184/hqhdebstore/pool/main/l/llcmd/llcmd_1.0.0-1_amd64.deb";
-//     linglong::util::HttpClient *httpClient = linglong::util::HttpClient::getInstance();
-//     EXPECT_EQ(httpClient->loadHttpData(url, savePath), true);
-//     httpClient->release();
-// }
+TEST(HttpClientT05, loadHttpData)
+{
+    const QString savePath = "/home/xxxx/8.linglong/GitPrj/debug/linglong/build/test";
+    const QString url = "http://10.20.52.184/hqhdebstore/pool/main/l/llcmd/llcmd_1.0.0-1_amd64.deb";
+    linglong::util::HttpClient *httpClient = linglong::util::HttpClient::getInstance();
+    EXPECT_EQ(httpClient->loadHttpData(url, savePath), false);
+    httpClient->release();
+}

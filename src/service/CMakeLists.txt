@@ -22,10 +22,10 @@ set(LL_SERVICE_SOURCES
     ../module/runtime/tracker.cpp
 
     # begin add by hqh debug 2021-9-16
-    ../module/util/HttpClient.cpp
-    ../module/util/HttpClient.h
-    ../module/repo/RepoHelper.cpp
-    ../module/repo/RepoHelper.h
+    ../module/util/httpclient.cpp
+    ../module/util/httpclient.h
+    ../module/repo/repohelper.cpp
+    ../module/repo/repohelper.h
     # end add by hqh debug 2021-9-16
     )
 

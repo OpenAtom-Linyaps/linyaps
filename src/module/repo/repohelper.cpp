@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
  *
- * Author:
+ * Author:    huqinghong@uniontech.com
  *
- * Maintainer:
+ * Maintainer:huqinghong@uniontech.com
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,17 +19,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "RepoHelper.h"
-#include "../util/HttpClient.h"
+#include "repohelper.h"
+#include "../util/httpclient.h"
 
 namespace linglong {
 
-typedef struct MatchResult {
-    AsApp *app;
-    GPtrArray *remotes;
-    guint score;
-} MatchResult;
-
+/*
+ * 创建本地repo仓库,当目标路径不存在时，自动新建路径
+ *
+ * @param qrepoPath: 本地仓库路径
+ * @param err: 错误信息
+ *
+ * @return bool: true:成功 false:失败
+ */
 bool RepoHelper::ensureRepoEnv(const QString qrepoPath, QString &err)
 {
     const string repoPath = qrepoPath.toStdString();
@@ -45,19 +47,23 @@ bool RepoHelper::ensureRepoEnv(const QString qrepoPath, QString &err)
     OstreeRepo *repo;
     g_autoptr(GFile) repodir = NULL;
     string tmpPath = "";
+    //适配目标路径末尾的‘/’，本地仓库目录名为repo
     if (repoPath.at(repoPath.size() - 1) == '/') {
         tmpPath = repoPath + "repo";
     } else {
         tmpPath = repoPath + "/repo";
     }
-    fprintf(stdout, "ensureRepoEnv repo path:%s\n", tmpPath.c_str());
+    //fprintf(stdout, "ensureRepoEnv repo path:%s\n", tmpPath.c_str());
+    qInfo() << "ensureRepoEnv repo path:" << QString::fromStdString(tmpPath);
     repodir = g_file_new_for_path(tmpPath.c_str());
-    //判断repo目录是否存在
+    //判断本地仓库repo目录是否存在
     if (!g_file_query_exists(repodir, cancellable)) {
-        fprintf(stdout, "ensureRepoEnv repo path:%s not exist create dir\n", tmpPath.c_str());
+        //fprintf(stdout, "ensureRepoEnv repo path:%s not exist create dir\n", tmpPath.c_str());
+        qInfo() << "ensureRepoEnv repo path:" << QString::fromStdString(tmpPath) << " not exist create dir";
         // 创建目录
         if (g_mkdir_with_parents(tmpPath.c_str(), 0755)) {
-            fprintf(stdout, "g_mkdir_with_parents fialed\n");
+            //fprintf(stdout, "g_mkdir_with_parents fialed\n");
+            qInfo() << "g_mkdir_with_parents fialed";
             snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s g_mkdir_with_parents fialed", __FILE__, __func__);
             //err = info;
             err = QString(QLatin1String(info));
@@ -65,8 +71,10 @@ bool RepoHelper::ensureRepoEnv(const QString qrepoPath, QString &err)
         }
         repo = ostree_repo_new(repodir);
         OstreeRepoMode mode = OSTREE_REPO_MODE_BARE_USER_ONLY;
+        // 创建ostree仓库
         if (!ostree_repo_create(repo, mode, cancellable, &error)) {
-            fprintf(stdout, "ostree_repo_create error:%s\n", error->message);
+            //fprintf(stdout, "ostree_repo_create error:%s\n", error->message);
+            qInfo() << "ostree_repo_create error:" << error->message;
             snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s ostree_repo_create error:%s", __FILE__, __func__, error->message);
             //err = info;
             err = QString(QLatin1String(info));
@@ -75,9 +83,10 @@ bool RepoHelper::ensureRepoEnv(const QString qrepoPath, QString &err)
     } else {
         repo = ostree_repo_new(repodir);
     }
-
+    // 校验创建的仓库是否ok
     if (!ostree_repo_open(repo, cancellable, &error)) {
-        fprintf(stdout, "ostree_repo_open:%s error:%s\n", repoPath.c_str(), error->message);
+        //fprintf(stdout, "ostree_repo_open:%s error:%s\n", repoPath.c_str(), error->message);
+        qInfo() << "ostree_repo_open error:" << error->message;
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s ostree_repo_open:%s error:%s", __FILE__, __func__, repoPath.c_str(), error->message);
         //err = info;
         err = QString(QLatin1String(info));
@@ -89,6 +98,15 @@ bool RepoHelper::ensureRepoEnv(const QString qrepoPath, QString &err)
     return true;
 }
 
+/*
+ * 查询ostree远端仓库列表
+ *
+ * @param qrepoPath: 远端仓库对应的本地仓库路径
+ * @param vec: 远端仓库列表
+ * @param err: 错误信息
+ *
+ * @return bool: true:查询成功 false:失败
+ */
 bool RepoHelper::getRemoteRepoList(const QString qrepoPath, QVector<QString> &vec, QString &err)
 {
     string repoPath = qrepoPath.toStdString();
@@ -99,7 +117,7 @@ bool RepoHelper::getRemoteRepoList(const QString qrepoPath, QVector<QString> &ve
         err = QString(QLatin1String(info));
         return false;
     }
-
+    // 校验本地仓库是否创建
     if (!mDir->repo || mDir->basedir != repoPath) {
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s repo has not been created", __FILE__, __func__);
         //err = info;
@@ -126,6 +144,18 @@ bool RepoHelper::getRemoteRepoList(const QString qrepoPath, QVector<QString> &ve
     return true;
 }
 
+/*
+ * 查询远端ostree仓库描述文件Summary信息
+ *
+ * @param repo: 远端仓库对应的本地仓库OstreeRepo对象
+ * @param name: 远端仓库名称
+ * @param outSummary: 远端仓库的Summary信息
+ * @param outSummarySig: 远端仓库的Summary签名信息
+ * @param cancellable: GCancellable对象
+ * @param error: 错误信息
+ *
+ * @return bool: true:成功 false:失败
+ */
 bool RepoHelper::fetchRemoteSummary(OstreeRepo *repo, const char *name, GBytes **outSummary, GBytes **outSummarySig, GCancellable *cancellable, GError **error)
 {
     g_autofree char *url = NULL;
@@ -133,18 +163,21 @@ bool RepoHelper::fetchRemoteSummary(OstreeRepo *repo, const char *name, GBytes *
     g_autoptr(GBytes) summarySig = NULL;
 
     if (!ostree_repo_remote_get_url(repo, name, &url, error)) {
-        fprintf(stdout, "fetchRemoteSummary ostree_repo_remote_get_url error:%s\n", (*error)->message);
+        //fprintf(stdout, "fetchRemoteSummary ostree_repo_remote_get_url error:%s\n", (*error)->message);
+        qInfo() << "fetchRemoteSummary ostree_repo_remote_get_url error:" << (*error)->message;
         return false;
     }
     fprintf(stdout, "fetchRemoteSummary remote %s,url:%s\n", name, url);
 
     if (!ostree_repo_remote_fetch_summary(repo, name, &summary, &summarySig, cancellable, error)) {
-        fprintf(stdout, "fetchRemoteSummary ostree_repo_remote_fetch_summary error:%s\n", (*error)->message);
+        //fprintf(stdout, "fetchRemoteSummary ostree_repo_remote_fetch_summary error:%s\n", (*error)->message);
+        qInfo() << "fetchRemoteSummary ostree_repo_remote_fetch_summary error:" << (*error)->message;
         return false;
     }
 
     if (summary == NULL) {
-        fprintf(stdout, "fetch summary error");
+        //fprintf(stdout, "fetch summary error");
+        qInfo() << "fetch summary error";
         return false;
     }
     *outSummary = (GBytes *)g_steal_pointer(&summary);
@@ -153,7 +186,13 @@ bool RepoHelper::fetchRemoteSummary(OstreeRepo *repo, const char *name, GBytes *
     return true;
 }
 
-void RepoHelper::populate_hash_table_from_refs_map(map<string, string> &outRefs, GVariant *ref_map)
+/*
+ * 从summary中的refMap中获取仓库所有软件包索引refs
+ *
+ * @param ref_map: summary信息中解析出的ref map信息
+ * @param outRefs: 仓库软件包索引信息
+ */
+void RepoHelper::getPkgRefsFromRefsMap(GVariant *ref_map, map<string, string> &outRefs)
 {
     GVariant *value;
     GVariantIter ref_iter;
@@ -187,7 +226,13 @@ void RepoHelper::populate_hash_table_from_refs_map(map<string, string> &outRefs,
     }
 }
 
-void RepoHelper::list_all_remote_refs(GVariant *summary, map<string, string> &outRefs)
+/*
+ * 从ostree仓库描述文件Summary信息中获取仓库所有软件包索引refs
+ *
+ * @param summary: 远端仓库Summary信息
+ * @param outRefs: 远端仓库软件包索引信息
+ */
+void RepoHelper::getPkgRefsBySummary(GVariant *summary, map<string, string> &outRefs)
 {
     //g_autoptr(GHashTable) ret_all_refs = NULL;
     g_autoptr(GVariant) ref_map = NULL;
@@ -196,16 +241,27 @@ void RepoHelper::list_all_remote_refs(GVariant *summary, map<string, string> &ou
     //ret_all_refs = g_hash_table_new(linglong_collection_ref_hash, linglong_collection_ref_equal);
     ref_map = g_variant_get_child_value(summary, 0);
     metadata = g_variant_get_child_value(summary, 1);
-    populate_hash_table_from_refs_map(outRefs, ref_map);
+    getPkgRefsFromRefsMap(ref_map, outRefs);
 }
 
+/*
+ * 查询远端仓库所有软件包索引信息refs
+ *
+ * @param qrepoPath: 远端仓库对应的本地仓库路径
+ * @param qremoteName: 远端仓库名称
+ * @param outRefs: 远端仓库软件包索引信息(key:refs, value:commit)
+ * @param err: 错误信息
+ *
+ * @return bool: true:成功 false:失败
+ */
 bool RepoHelper::getRemoteRefs(const QString qrepoPath, const QString qremoteName, QMap<QString, QString> &outRefs, QString &err)
 {
     const string repoPath = qrepoPath.toStdString();
     const string remoteName = qremoteName.toStdString();
     char info[MAX_ERRINFO_BUFSIZE] = {'\0'};
     if (remoteName.empty()) {
-        fprintf(stdout, "getRemoteRefs param err\n");
+        //fprintf(stdout, "getRemoteRefs param err\n");
+        qInfo() << "getRemoteRefs param err";
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s param err", __FILE__, __func__);
         err = info;
         return false;
@@ -230,14 +286,21 @@ bool RepoHelper::getRemoteRefs(const QString qrepoPath, const QString qremoteNam
     GVariant *summary = g_variant_ref_sink(g_variant_new_from_bytes(OSTREE_SUMMARY_GVARIANT_FORMAT, summaryBytes, FALSE));
     //std::map转QMap
     map<string, string> outRet;
-    list_all_remote_refs(summary, outRet);
+    getPkgRefsBySummary(summary, outRet);
     for (auto iter = outRet.begin(); iter != outRet.end(); ++iter) {
         outRefs.insert(QString::fromStdString(iter->first), QString::fromStdString(iter->second));
     }
     return true;
 }
 
-void split(string str, string separator, vector<string> &result)
+/*
+ * 按照指定字符分割字符串
+ *
+ * @param str: 目标字符串
+ * @param separator: 分割字符串
+ * @param result: 分割结果
+ */
+void RepoHelper::splitStr(string str, string separator, vector<string> &result)
 {
     size_t cutAt;
     while ((cutAt = str.find_first_of(separator)) != str.npos) {
@@ -251,22 +314,27 @@ void split(string str, string separator, vector<string> &result)
     }
 }
 
-void no_progress_cb(OstreeAsyncProgress *progress, gpointer user_data)
-{
-}
-
-//解析refs
-bool RepoHelper::decompose_ref(const string fullRef, vector<string> &result)
+/*
+ * 解析仓库软件包索引ref信息
+ *
+ * @param fullRef: 目标软件包索引ref信息
+ * @param result: 解析结果
+ *
+ * @return bool: true:成功 false:失败
+ */
+bool RepoHelper::resolveRef(const string fullRef, vector<string> &result)
 {
     //vector<string> result;
-    split(fullRef, "/", result);
+    splitStr(fullRef, "/", result);
     if (result.size() != 4) {
-        fprintf(stdout, "Wrong number of components in %s", fullRef.c_str());
+        //fprintf(stdout, "Wrong number of components in %s", fullRef.c_str());
+        qInfo() << "resolveRef Wrong number of components err";
         return false;
     }
 
     if (result[0] != "app" && result[0] != "runtime") {
-        fprintf(stdout, "%s is not application or runtime", fullRef.c_str());
+        //fprintf(stdout, "%s is not application or runtime", fullRef.c_str());
+        qInfo() << "resolveRef application or runtime err";
         return false;
     }
 
@@ -277,7 +345,8 @@ bool RepoHelper::decompose_ref(const string fullRef, vector<string> &result)
     //     }
 
     if (result[2].size() == 0) {
-        fprintf(stdout, "Invalid arch %s", result[2].c_str());
+        //fprintf(stdout, "Invalid arch %s", result[2].c_str());
+        qInfo() << "resolveRef arch err";
         return false;
     }
 
@@ -288,6 +357,18 @@ bool RepoHelper::decompose_ref(const string fullRef, vector<string> &result)
     return true;
 }
 
+/*
+ * 查询软件包在仓库中对应的索引信息ref
+ *
+ * @param qrepoPath: 远端仓库对应的本地仓库路径
+ * @param qremoteName: 远端仓库名称
+ * @param qpkgName: 软件包包名
+ * @param qarch: 架构名
+ * @param matchRef: 软件包对应的索引信息
+ * @param err: 错误信息
+ *
+ * @return bool: true:成功 false:失败
+ */
 bool RepoHelper::resolveMatchRefs(const QString qrepoPath, const QString qremoteName, const QString qpkgName, const QString qarch, QString &matchRef, QString &err)
 {
     const string repoPath = qrepoPath.toStdString();
@@ -296,7 +377,8 @@ bool RepoHelper::resolveMatchRefs(const QString qrepoPath, const QString qremote
     const string arch = qarch.toStdString();
     char info[MAX_ERRINFO_BUFSIZE] = {'\0'};
     if (remoteName.empty() || pkgName.empty()) {
-        fprintf(stdout, "resolveMatchRefs param err\n");
+        //fprintf(stdout, "resolveMatchRefs param err\n");
+        qInfo() << "resolveMatchRefs param err";
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s param err", __FILE__, __func__);
         err = info;
         return false;
@@ -313,7 +395,7 @@ bool RepoHelper::resolveMatchRefs(const QString qrepoPath, const QString qremote
     // if (ret) {
     //     for (auto it = outRefs.begin(); it != outRefs.end(); ++it) {
     //         vector<string> result;
-    //         ret = decompose_ref(it->first, result);
+    //         ret = resolveRef(it->first, result);
     //         if (ret && result[1] == pkgName && result[2] == arch) {
     //             matchRef = it->first;
     //             cout << it->first << endl;
@@ -328,12 +410,19 @@ bool RepoHelper::resolveMatchRefs(const QString qrepoPath, const QString qremote
     if (ret) {
         for (auto it = outRefs.begin(); it != outRefs.end(); ++it) {
             vector<string> result;
-            ret = decompose_ref(it.key().toStdString(), result);
+            ret = resolveRef(it.key().toStdString(), result);
             //appstream 特殊处理
             if (pkgName == "appstream2" && result[0] == pkgName && result[1] == arch) {
                 matchRef = it.key();
                 return true;
             }
+            // flatpak ref: flathub:app/us.zoom.Zoom/x86_64/stable
+            // if (ret && result[1] == pkgName && result[2] == arch) {
+            //     matchRef = it.key();
+            //     return true;
+            // }
+            //玲珑适配
+            //ref:app/org.deepin.calculator/x86_64/1.2.2
             if (ret && result[1] == pkgName && result[2] == arch) {
                 matchRef = it.key();
                 return true;
@@ -345,13 +434,25 @@ bool RepoHelper::resolveMatchRefs(const QString qrepoPath, const QString qremote
     return false;
 }
 
-void RepoHelper::get_common_pull_options(GVariantBuilder *builder,
-                                         const char *ref_to_fetch,
-                                         const gchar *const *dirs_to_pull,
-                                         const char *current_local_checksum,
-                                         gboolean force_disable_deltas,
-                                         OstreeRepoPullFlags flags,
-                                         OstreeAsyncProgress *progress)
+/*
+ * 查询ostree pull参数
+ *
+ * @param builder: ostree pull需要的builder
+ * @param ref_to_fetch: 目标软件包索引ref
+ * @param dirs_to_pull: pull目标子路径
+ * @param current_checksum: 软件包对应的commit值
+ * @param force_disable_deltas: 禁止delta设置
+ * @param flags: pull参数
+ * @param progress: ostree下载进度回调
+ *
+ */
+void RepoHelper::getCommonPullOptions(GVariantBuilder *builder,
+                                      const char *ref_to_fetch,
+                                      const gchar *const *dirs_to_pull,
+                                      const char *current_checksum,
+                                      gboolean force_disable_deltas,
+                                      OstreeRepoPullFlags flags,
+                                      OstreeAsyncProgress *progress)
 {
     guint32 update_freq = 0;
     GVariantBuilder hdr_builder;
@@ -375,8 +476,8 @@ void RepoHelper::get_common_pull_options(GVariantBuilder *builder,
 
     g_variant_builder_init(&hdr_builder, G_VARIANT_TYPE("a(ss)"));
     g_variant_builder_add(&hdr_builder, "(ss)", "ostree-Ref", ref_to_fetch);
-    if (current_local_checksum)
-        g_variant_builder_add(&hdr_builder, "(ss)", "linglong-Upgrade-From", current_local_checksum);
+    if (current_checksum)
+        g_variant_builder_add(&hdr_builder, "(ss)", "linglong-Upgrade-From", current_checksum);
     g_variant_builder_add(builder, "{s@v}", "http-headers",
                           g_variant_new_variant(g_variant_builder_end(&hdr_builder)));
     g_variant_builder_add(builder, "{s@v}", "append-user-agent",
@@ -391,6 +492,11 @@ void RepoHelper::get_common_pull_options(GVariantBuilder *builder,
                           g_variant_new_variant(g_variant_new_uint32(update_freq)));
 }
 
+/*
+ * 获取一个临时cache目录所指的文件路径。
+ *
+ * @return char*: 临时目录路径
+ */
 char *RepoHelper::repoReadLink(const char *path)
 {
     char buf[PATH_MAX + 1];
@@ -398,13 +504,19 @@ char *RepoHelper::repoReadLink(const char *path)
 
     symlink_size = readlink(path, buf, sizeof(buf) - 1);
     if (symlink_size < 0) {
-        fprintf(stdout, "repoReadLink err\n");
+        //fprintf(stdout, "repoReadLink err\n");
+        qInfo() << "repoReadLink err";
         return NULL;
     }
     buf[symlink_size] = 0;
     return g_strdup(buf);
 }
 
+/*
+ * 获取一个临时cache目录
+ *
+ * @return char*: 临时目录路径
+ */
 char *RepoHelper::getCacheDir()
 {
     g_autofree char *path = NULL;
@@ -422,17 +534,25 @@ char *RepoHelper::getCacheDir()
 
     path = g_strdup("/var/tmp/linglong-cache-XXXXXX");
     if (g_mkdtemp_full(path, 0755) == NULL) {
-        fprintf(stdout, "Can't create temporary directory\n");
+        //fprintf(stdout, "Can't create temporary directory\n");
+        qInfo() << "Can't create temporary directory";
         return NULL;
     }
     unlink(symlink_path);
     if (symlink(path, symlink_path) != 0) {
-        fprintf(stdout, "symlink err\n");
+        //fprintf(stdout, "symlink err\n");
+        qInfo() << "symlink err";
         return NULL;
     }
     return g_strdup(path);
 }
 
+/*
+ * 删除临时目录
+ *
+ * @param path: 待删除的路径
+ *
+ */
 void RepoHelper::delDirbyPath(const char *path)
 {
     char cmd[512];
@@ -440,9 +560,19 @@ void RepoHelper::delDirbyPath(const char *path)
     memset(cmd, 0, 512);
     sprintf(cmd, "rm -rf %s", path);
     result = system(cmd);
-    fprintf(stdout, "delete tmp repo, path:%s, ret:%d\n", path, result);
+    //fprintf(stdout, "delete tmp repo, path:%s, ret:%d\n", path, result);
+    qInfo() << "delete tmp repo";
 }
 
+/*
+ * 根据指定目录创建临时repo仓库对象
+ *
+ * @param self: 临时repo仓库对应目标仓库信息
+ * @param cache_dir: 临时仓库路径
+ * @param error: 错误信息
+ *
+ * @return OstreeRepo: 临时repo仓库对象
+ */
 OstreeRepo *RepoHelper::createChildRepo(LingLongDir *self, char *cachePath, GError **error)
 {
     g_autoptr(GFile) repo_dir = NULL;
@@ -466,7 +596,8 @@ OstreeRepo *RepoHelper::createChildRepo(LingLongDir *self, char *cachePath, GErr
 
     //g_autofree char *cachePath = g_file_get_path(cache_dir);
     g_autofree char *repoTmpPath = g_strconcat(cachePath, "/repoTmp", NULL);
-    fprintf(stdout, "createChildRepo repoTmpPath:%s\n", repoTmpPath);
+    //fprintf(stdout, "createChildRepo repoTmpPath:%s\n", repoTmpPath);
+    qInfo() << "createChildRepo repoTmpPath:" << repoTmpPath;
     repo_dir = g_file_new_for_path(repoTmpPath);
 
     if (g_file_query_exists(repo_dir, NULL)) {
@@ -475,7 +606,8 @@ OstreeRepo *RepoHelper::createChildRepo(LingLongDir *self, char *cachePath, GErr
 
     // 创建目录
     if (g_mkdir_with_parents(repoTmpPath, 0755)) {
-        fprintf(stdout, "g_mkdir_with_parents repoTmpPath fialed\n");
+        //fprintf(stdout, "g_mkdir_with_parents repoTmpPath fialed\n");
+        qInfo() << "g_mkdir_with_parents repoTmpPath fialed";
         return NULL;
     }
 
@@ -516,7 +648,8 @@ OstreeRepo *RepoHelper::createChildRepo(LingLongDir *self, char *cachePath, GErr
     /* Ensure the config is updated */
     g_autofree char *parentRepoPath = g_file_get_path(ostree_repo_get_path(self->repo));
     g_key_file_set_string(config, "core", "parent", parentRepoPath);
-    fprintf(stdout, "createChildRepo parent path:%s\n", parentRepoPath);
+    //fprintf(stdout, "createChildRepo parent path:%s\n", parentRepoPath);
+    qInfo() << "createChildRepo parent path:" << parentRepoPath;
     /* Copy the min space percent value so it affects the temporary repo too */
     orig_min_free_space_percent = g_key_file_get_value(orig_config, "core", "min-free-space-percent", NULL);
     if (orig_min_free_space_percent)
@@ -550,16 +683,35 @@ OstreeRepo *RepoHelper::createChildRepo(LingLongDir *self, char *cachePath, GErr
     return (OstreeRepo *)g_steal_pointer(&repo);
 }
 
+/*
+ * 创建临时repo仓库对象
+ *
+ * @param self: 临时repo仓库对应目标仓库信息
+ * @param error: 错误信息
+ *
+ * @return OstreeRepo: 临时repo仓库对象
+ */
 OstreeRepo *RepoHelper::createTmpRepo(LingLongDir *self, GError **error)
 {
     g_autofree char *cache_dir = NULL;
     cache_dir = getCacheDir();
-    fprintf(stdout, "createTmpRepo cache_dir path:%s\n", cache_dir);
+    //fprintf(stdout, "createTmpRepo cache_dir path:%s\n", cache_dir);
+    qInfo() << "createTmpRepo cache_dir path:" << cache_dir;
     if (cache_dir == NULL)
         return NULL;
     return createChildRepo(self, cache_dir, error);
 }
 
+/*
+ * 将软件包数据从远端仓库pull到本地
+ *
+ * @param qrepoPath: 远端仓库对应的本地仓库路径
+ * @param qremoteName: 远端仓库名称
+ * @param qpkgName: 软件包包名
+ * @param err: 错误信息
+ *
+ * @return bool: true:成功 false:失败
+ */
 bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, const QString qpkgName, QString &err)
 {
     const string repoPath = qrepoPath.toStdString();
@@ -568,7 +720,8 @@ bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, co
 
     char info[MAX_ERRINFO_BUFSIZE] = {'\0'};
     if (remoteName.empty() || pkgName.empty()) {
-        fprintf(stdout, "repoPull param err\n");
+        //fprintf(stdout, "repoPull param err\n");
+        qInfo() << "repoPull param err";
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s param err", __FILE__, __func__);
         err = info;
         return false;
@@ -592,10 +745,13 @@ bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, co
     //string checksum = outRefs.find(matchRef)->second;
     QMap<QString, QString> outRefs;
     ret = getRemoteRefs(qrepoPath, qremoteName, outRefs, err);
+    if (!ret) {
+        return false;
+    }
     string checksum = outRefs.find(qmatchRef).value().toStdString();
     GCancellable *cancellable = NULL;
     GError *error = NULL;
-    OstreeAsyncProgress *progress = ostree_async_progress_new_and_connect(no_progress_cb, NULL);
+    OstreeAsyncProgress *progress = ostree_async_progress_new_and_connect(RepoHelper::noProgressFunc, NULL);
 
     GVariantBuilder builder;
     g_autoptr(GVariant) options = NULL;
@@ -605,14 +761,13 @@ bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, co
     refs[0] = matchRef.c_str();
     commits[0] = checksum.c_str();
 
-    /* Pull options */
     // current_checksum "ce384fddb07dc50731858f655646da71f93fb6d6d22e9af308a5e69051b4c496"
     // refFetch "app/us.zoom.Zoom/x86_64/stable"
     // remote_name: "flathub"
     // dirs_to_pull: NULL
     g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
-    get_common_pull_options(&builder, matchRef.c_str(), NULL, checksum.c_str(),
-                            0, flags, progress);
+    getCommonPullOptions(&builder, matchRef.c_str(), NULL, checksum.c_str(),
+                         0, flags, progress);
     g_variant_builder_add(&builder, "{s@v}", "refs",
                           g_variant_new_variant(g_variant_new_strv((const char *const *)refs, -1)));
     g_variant_builder_add(&builder, "{s@v}", "override-commit-ids",
@@ -620,25 +775,25 @@ bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, co
     g_variant_builder_add(&builder, "{s@v}", "override-remote-name",
                           g_variant_new_variant(g_variant_new_string(remoteName.c_str())));
     options = g_variant_ref_sink(g_variant_builder_end(&builder));
-    //fprintf(stdout, "ostree_repo_pull_with_options options:%s\n", g_variant_get_data(options));
     // 下载到临时目录
     OstreeRepo *childRepo = createTmpRepo(mDir, &error);
     if (childRepo == NULL) {
-        fprintf(stdout, "createTmpRepo error\n");
+        //fprintf(stdout, "createTmpRepo error\n");
+        qInfo() << "createTmpRepo error";
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s createTmpRepo error err", __FILE__, __func__);
         err = info;
         return false;
     }
 
     if (!ostree_repo_prepare_transaction(childRepo, NULL, cancellable, &error)) {
-        fprintf(stdout, "ostree_repo_prepare_transaction error:%s\n", error->message);
+        //fprintf(stdout, "ostree_repo_prepare_transaction error:%s\n", error->message);
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s ostree_repo_prepare_transaction err:%s", __FILE__, __func__, error->message);
         err = info;
         return false;
     }
     if (!ostree_repo_pull_with_options(childRepo, remoteName.c_str(), options,
                                        progress, cancellable, &error)) {
-        fprintf(stdout, "ostree_repo_pull_with_options error:%s\n", error->message);
+        //fprintf(stdout, "ostree_repo_pull_with_options error:%s\n", error->message);
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s ostree_repo_pull_with_options err:%s", __FILE__, __func__, error->message);
         err = info;
         return false;
@@ -647,7 +802,7 @@ bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, co
         ostree_async_progress_finish(progress);
     }
     if (!ostree_repo_commit_transaction(childRepo, NULL, cancellable, &error)) {
-        fprintf(stdout, "ostree_repo_commit_transaction error:%s\n", error->message);
+        //fprintf(stdout, "ostree_repo_commit_transaction error:%s\n", error->message);
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s ostree_repo_commit_transaction err:%s", __FILE__, __func__, error->message);
         err = info;
         return false;
@@ -656,19 +811,32 @@ bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, co
     //将数据从临时目录拷贝到base目录
     g_autofree char *childRepoPath = g_file_get_path(ostree_repo_get_path(childRepo));
     g_autofree char *local_url = g_strconcat("file://", childRepoPath, NULL);
-    fprintf(stdout, "local_url:%s\n", local_url);
+    //fprintf(stdout, "local_url:%s\n", local_url);
+    qInfo() << "repoPullLocal local_url:" << local_url;
     ret = repoPullLocal(mDir->repo, remoteName.c_str(), local_url, matchRef.c_str(), checksum.c_str(), progress, cancellable, &error);
     if (!ret) {
-        fprintf(stdout, "repoPullLocal error:%s\n", error->message);
+        //fprintf(stdout, "repoPullLocal error:%s\n", error->message);
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s repoPullLocal err:%s", __FILE__, __func__, error->message);
         err = info;
         return false;
     }
     delDirbyPath(childRepoPath);
-    //ret = repo_pull_extra_data(mDir->repo, remoteName.c_str(), matchRef.c_str(), checksum.c_str(), err);
     return true;
 }
 
+/*
+ * 将软件包数据从本地临时repo仓库pull到目标repo仓库
+ *
+ * @param repo: 远端仓库对应的本地仓库OstreeRepo对象
+ * @param remoteName: 远端仓库名称
+ * @param url: 临时repo仓库对应的url
+ * @param ref: 目标软件包索引ref
+ * @param checksum: 软件包对应的commit值
+ * @param cancellable: GCancellable对象
+ * @param error: 错误信息
+ *
+ * @return bool: true:成功 false:失败
+ */
 bool RepoHelper::repoPullLocal(OstreeRepo *repo, const char *remoteName, const char *url, const char *ref, const char *checksum,
                                OstreeAsyncProgress *progress, GCancellable *cancellable, GError **error)
 {
@@ -712,7 +880,8 @@ bool RepoHelper::repoPullLocal(OstreeRepo *repo, const char *remoteName, const c
     options = g_variant_ref_sink(g_variant_builder_end(&builder));
 
     if (!ostree_repo_prepare_transaction(repo, NULL, cancellable, error)) {
-        fprintf(stdout, "ostree_repo_prepare_transaction error:%s\n", (*error)->message);
+        //fprintf(stdout, "ostree_repo_prepare_transaction error:%s\n", (*error)->message);
+        qInfo() << "ostree_repo_prepare_transaction error:" << (*error)->message;
     }
 
     res = ostree_repo_pull_with_options(repo, url, options,
@@ -723,119 +892,26 @@ bool RepoHelper::repoPullLocal(OstreeRepo *repo, const char *remoteName, const c
             ostree_async_progress_finish(progress);
 
     if (!ostree_repo_commit_transaction(repo, NULL, cancellable, error)) {
-        fprintf(stdout, "ostree_repo_commit_transaction error:%s\n", (*error)->message);
+        //fprintf(stdout, "ostree_repo_commit_transaction error:%s\n", (*error)->message);
+        qInfo() << "ostree_repo_commit_transaction error:" << (*error)->message;
     }
     return res;
 }
 
-GVariant *RepoHelper::get_extra_data_sources_by_commit(GVariant *commitv, GError **error)
-{
-    g_autoptr(GVariant) commit_metadata = NULL;
-    g_autoptr(GVariant) extra_data_sources = NULL;
-
-    commit_metadata = g_variant_get_child_value(commitv, 0);
-    extra_data_sources = g_variant_lookup_value(commit_metadata, "xa.extra-data-sources",
-                                                G_VARIANT_TYPE("a(ayttays)"));
-    if (extra_data_sources == NULL) {
-        g_set_error(error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                    "No extra data sources");
-        return NULL;
-    }
-
-    return (GVariant *)g_steal_pointer(&extra_data_sources);
-}
-
-GVariant *RepoHelper::repo_get_extra_data_sources(OstreeRepo *repo, const char *rev, GCancellable *cancellable, GError **error)
-{
-    g_autoptr(GVariant) commitv = NULL;
-
-    if (!ostree_repo_load_variant(repo, OSTREE_OBJECT_TYPE_COMMIT, rev, &commitv, error))
-        return NULL;
-
-    return get_extra_data_sources_by_commit(commitv, error);
-}
-
-void RepoHelper::repo_parse_extra_data_sources(GVariant *extra_data_sources, int index, const char **name,
-                                               guint64 *download_size, guint64 *installed_size, const guchar **sha256, const char **uri)
-{
-    g_autoptr(GVariant) sha256_v = NULL;
-    g_variant_get_child(extra_data_sources, index, "(^aytt@ay&s)",
-                        name,
-                        download_size,
-                        installed_size,
-                        &sha256_v,
-                        uri);
-
-    if (download_size)
-        *download_size = GUINT64_FROM_BE(*download_size);
-
-    if (installed_size)
-        *installed_size = GUINT64_FROM_BE(*installed_size);
-
-    if (sha256)
-        *sha256 = ostree_checksum_bytes_peek(sha256_v);
-}
-
-bool RepoHelper::repo_pull_extra_data(OstreeRepo *repo, const char *remoteName, const char *ref, const char *commitv, string &error)
-{
-    char info[MAX_ERRINFO_BUFSIZE] = {'\0'};
-    g_autoptr(GVariant) extra_data_sources = NULL;
-    GCancellable *cancellable = NULL;
-    extra_data_sources = repo_get_extra_data_sources(repo, commitv, cancellable, NULL);
-    if (extra_data_sources == NULL) {
-        fprintf(stdout, "repo_pull_extra_data extra_data_sources is null\n");
-        return true;
-    }
-    gsize n_extra_data;
-    n_extra_data = g_variant_n_children(extra_data_sources);
-    if (n_extra_data == 0) {
-        fprintf(stdout, "repo_pull_extra_data n_extra_data is 0\n");
-        return true;
-    }
-    for (gsize i = 0; i < n_extra_data; i++) {
-        const char *extra_data_uri = NULL;
-        g_autofree char *extra_data_sha256 = NULL;
-        const char *extra_data_name = NULL;
-        guint64 download_size;
-        guint64 installed_size;
-        g_autofree char *sha256 = NULL;
-        const guchar *sha256_bytes;
-        g_autoptr(GBytes) bytes = NULL;
-        g_autoptr(GFile) extra_local_file = NULL;
-        repo_parse_extra_data_sources(extra_data_sources, i,
-                                      &extra_data_name,
-                                      &download_size,
-                                      &installed_size,
-                                      &sha256_bytes,
-                                      &extra_data_uri);
-        if (sha256_bytes == NULL) {
-            fprintf(stdout, "Invalid checksum for extra data uri:%s\n", extra_data_uri);
-            snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s Invalid checksum for extra data uri:%s", __FILE__, __func__, extra_data_uri);
-            error = info;
-            return false;
-        }
-        extra_data_sha256 = ostree_checksum_from_bytes(sha256_bytes);
-        if (*extra_data_name == 0) {
-            fprintf(stdout, "Empty name for extra data uri:%s\n", extra_data_uri);
-            snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s Empty name for extra data uri:%s", __FILE__, __func__, extra_data_uri);
-            error = info;
-            return false;
-        }
-        // 使用http服务下载数据包
-        char path[512] = {'\0'};
-        getcwd(path, 512);
-        linglong::util::HttpClient *httpClient = linglong::util::HttpClient::getInstance();
-        //httpUtils->setProgressCallback(linglong_progress_callback);
-        httpClient->loadHttpData(extra_data_uri, path);
-        httpClient->release();
-    }
-    return true;
-}
-
+/*
+ * 将软件包数据从本地仓库签出到指定目录
+ *
+ * @param qrepoPath: 远端仓库对应的本地仓库路径
+ * @param qremoteName: 远端仓库名称
+ * @param qref: 软件包包名对应的仓库索引
+ * @param qdstPath: 软件包信息保存目录
+ * @param err: 错误信息
+ *
+ * @return bool: true:成功 false:失败
+ */
 bool RepoHelper::checkOutAppData(const QString qrepoPath, const QString qremoteName, const QString qref, const QString qdstPath, QString &err)
 {
     const string repoPath = qrepoPath.toStdString();
-    const string remoteName = qremoteName.toStdString();
     const string ref = qref.toStdString();
     const string dstPath = qdstPath.toStdString();
 
@@ -846,7 +922,7 @@ bool RepoHelper::checkOutAppData(const QString qrepoPath, const QString qremoteN
     };
     char info[MAX_ERRINFO_BUFSIZE] = {'\0'};
     if (dstPath.empty() || ref.empty()) {
-        fprintf(stdout, "checkOutAppData param err\n");
+        //fprintf(stdout, "checkOutAppData param err\n");
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s param err", __FILE__, __func__);
         err = info;
         return false;
@@ -859,7 +935,7 @@ bool RepoHelper::checkOutAppData(const QString qrepoPath, const QString qremoteN
     }
 
     if (g_mkdir_with_parents(dstPath.c_str(), 0755)) {
-        fprintf(stdout, "g_mkdir_with_parents failed\n");
+        //fprintf(stdout, "g_mkdir_with_parents failed\n");
         return false;
     }
 
@@ -886,263 +962,5 @@ bool RepoHelper::checkOutAppData(const QString qrepoPath, const QString qremoteN
         return false;
     }
     return true;
-}
-
-bool load_appstream_store(const char *xmlPath, const char *remote_name, const char *arch, AsStore *store, GCancellable *cancellable, GError **error)
-{
-    g_autoptr(GFile) appstream_file = NULL;
-    g_autoptr(GError) local_error = NULL;
-    bool ret = false;
-    //   if (arch == NULL)
-    //     arch = get_arch();
-    appstream_file = g_file_new_for_path(xmlPath);
-    as_store_from_file(store, appstream_file, NULL, cancellable, &local_error);
-    ret = (local_error == NULL);
-    /* We want to ignore ENOENT error as it is harmless and valid
-   * FIXME: appstream-glib doesn't have granular file-not-found error
-   * See: https://github.com/hughsie/appstream-glib/pull/268 */
-    if (local_error != NULL && g_str_has_suffix(local_error->message, "No such file or directory"))
-        g_clear_error(&local_error);
-    else if (local_error != NULL)
-        g_propagate_error(error, (GError *)g_steal_pointer(&local_error));
-    return ret;
-}
-
-//将appstream.xml文件加载到ASstore中
-GPtrArray *getRemoteStores(const char *xmlPath, const char *remoteName, const char *arch, string &err)
-{
-    GCancellable *cancellable = NULL;
-    GError *error = NULL;
-    GPtrArray *ret = g_ptr_array_new_with_free_func(g_object_unref);
-    g_autoptr(AsStore) store = as_store_new();
-
-#if AS_CHECK_VERSION(0, 6, 1)
-    // We want to see multiple versions/branches of same app-id's, e.g. org.gnome.Platform
-    as_store_set_add_flags(store, as_store_get_add_flags(store) | AS_STORE_ADD_FLAG_USE_UNIQUE_ID);
-#endif
-    char fullPath[512] = {'\0'};
-    int len = strlen(xmlPath);
-    strncpy(fullPath, xmlPath, len);
-    if (strlen("appstream.xml") + len < 512) {
-        if (xmlPath[len - 1] == '/') {
-            strcat(fullPath, "appstream.xml");
-        } else {
-            strcat(fullPath, "/appstream.xml");
-        }
-    } else {
-        fprintf(stdout, "getRemoteStores xmlPath is too long\n");
-        err = "getRemoteStores xmlPath is too long";
-        return NULL;
-    }
-    load_appstream_store(fullPath, remoteName, arch, store, cancellable, &error);
-    if (error) {
-        err = error->message;
-        g_clear_error(&error);
-    }
-    g_object_set_data_full(G_OBJECT(store), "remote-name", g_strdup(remoteName), g_free);
-    g_ptr_array_add(ret, g_steal_pointer(&store));
-    return ret;
-}
-
-const char *as_app_get_version(AsApp *app)
-{
-    AsRelease *release = as_app_get_release_default(app);
-
-    if (release)
-        return as_release_get_version(release);
-
-    return NULL;
-}
-
-const char *as_app_get_localized_name(AsApp *app)
-{
-    const char *const *languages = g_get_language_names();
-    gsize i;
-    for (i = 0; languages[i]; ++i) {
-        const char *name = as_app_get_name(app, languages[i]);
-        if (name != NULL)
-            return name;
-    }
-    return NULL;
-}
-
-const char *as_app_get_localized_comment(AsApp *app)
-{
-    const char *const *languages = g_get_language_names();
-    gsize i;
-    for (i = 0; languages[i]; ++i) {
-        const char *comment = as_app_get_comment(app, languages[i]);
-        if (comment != NULL)
-            return comment;
-    }
-    return NULL;
-}
-
-void print_app(MatchResult *res)
-{
-    const char *version = as_app_get_version(res->app);
-    const char *id = as_app_get_id_filename(res->app);
-    const char *name = as_app_get_localized_name(res->app);
-    const char *comment = as_app_get_localized_comment(res->app);
-    g_autofree char *description = g_strconcat(name, "-", comment, NULL);
-    //模拟输出查询结果
-    cout << version << "   " << id << "   " << name << "  " << comment << "   " << description << endl;
-}
-
-void print_matches(GSList *matches)
-{
-    GSList *s;
-    for (s = matches; s; s = s->next) {
-        MatchResult *res = (MatchResult *)s->data;
-        print_app(res);
-    }
-}
-
-void clear_app_arches(AsApp *app)
-{
-    GPtrArray *arches = as_app_get_architectures(app);
-
-    g_ptr_array_set_size(arches, 0);
-}
-
-int compare_apps(MatchResult *a, AsApp *b)
-{
-    /* For now we want to ignore arch when comparing applications
-   * It may be valuable to show runtime arches in the future though.
-   * This is a naughty hack but for our purposes totally fine.
-   */
-    clear_app_arches(b);
-    return !as_app_equal(a->app, b);
-}
-
-MatchResult *match_result_new(AsApp *app, guint score)
-{
-    MatchResult *result = g_new(MatchResult, 1);
-    result->app = (AsApp *)g_object_ref(app);
-    result->remotes = g_ptr_array_new_with_free_func(g_free);
-    result->score = score;
-    clear_app_arches(result->app);
-    return result;
-}
-
-void match_result_free(MatchResult *result)
-{
-    g_object_unref(result->app);
-    g_ptr_array_unref(result->remotes);
-    g_free(result);
-}
-
-int compare_by_score(MatchResult *a, MatchResult *b, gpointer user_data)
-{
-    // Reverse order, higher score comes first
-    return (int)b->score - (int)a->score;
-}
-
-void match_result_add_remote(MatchResult *self, const char *remote)
-{
-    guint i;
-
-    for (i = 0; i < self->remotes->len; ++i) {
-        const char *remote_entry = (char *)g_ptr_array_index(self->remotes, i);
-        if (!strcmp(remote, remote_entry))
-            return;
-    }
-    g_ptr_array_add(self->remotes, g_strdup(remote));
-}
-
-//根据appstream.xml文件搜索目标应用
-bool RepoHelper::repoSearchApp(QString qrepoPath, const QString qremoteName, const QString qpkgName, const QString qarch, QString &err)
-{
-    bool ret = true;
-    const string remoteName = qremoteName.toStdString();
-    const string arch = qarch.toStdString();
-    const string pkgName = qpkgName.toStdString();
-    const string repoPath = qrepoPath.toStdString();
-    char info[MAX_ERRINFO_BUFSIZE] = {'\0'};
-    if (remoteName.empty() || arch.empty() || pkgName.empty() || repoPath.empty()) {
-        fprintf(stdout, "repoSearchApp param err\n");
-        snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s param err", __FILE__, __func__);
-        err = info;
-        return false;
-    }
-
-    QString qdstPath = NULL;
-    if (qrepoPath.endsWith("/")) {
-        qdstPath = qrepoPath + "appstream";
-    } else {
-        qdstPath = qrepoPath + "/appstream";
-    }
-    const string dstPath = qdstPath.toStdString();
-    string errInfo = "";
-    GSList *matches = NULL;
-    g_autoptr(GPtrArray) remote_stores = getRemoteStores(dstPath.c_str(), remoteName.c_str(), arch.c_str(), errInfo);
-    for (guint j = 0; j < remote_stores->len; ++j) {
-        AsStore *store = (AsStore *)g_ptr_array_index(remote_stores, j);
-        GPtrArray *apps = as_store_get_apps(store);
-        const char *search_text = pkgName.c_str();
-        for (guint i = 0; i < apps->len; ++i) {
-            AsApp *app = (AsApp *)g_ptr_array_index(apps, i);
-            //fprintf(stdout, "repoSearchApp search_text:%s, appname:%s\n", search_text, as_app_get_id_filename(app));
-            guint score = as_app_search_matches(app, search_text);
-            if (score == 0) {
-                const char *app_id = as_app_get_id_filename(app);
-                if (strcasestr(app_id, search_text) != NULL)
-                    score = 50;
-                else
-                    continue;
-            }
-
-            // Avoid duplicate entries, but show multiple remotes
-            GSList *list_entry = g_slist_find_custom(matches, app,
-                                                     (GCompareFunc)compare_apps);
-            MatchResult *result = NULL;
-            if (list_entry != NULL)
-                result = (MatchResult *)list_entry->data;
-            else {
-                result = match_result_new(app, score);
-                matches = g_slist_insert_sorted_with_data(matches, result, (GCompareDataFunc)compare_by_score, NULL);
-            }
-            match_result_add_remote(result, (char *)g_object_get_data(G_OBJECT(store), "remote-name"));
-        }
-    }
-
-    if (matches != NULL) {
-        print_matches(matches);
-        g_slist_free_full(matches, (GDestroyNotify)match_result_free);
-    } else {
-        errInfo = "No matches found";
-        ret = false;
-    }
-    return ret;
-}
-
-bool RepoHelper::updateAppStream(const QString qrepoPath, const QString qremoteName, const QString qarch, QString &err)
-{
-    char info[MAX_ERRINFO_BUFSIZE] = {'\0'};
-    if (qrepoPath.isEmpty() || qremoteName.isEmpty()) {
-        fprintf(stdout, "updateAppStream param err\n");
-        snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s param err", __FILE__, __func__);
-        err = info;
-        return false;
-    }
-
-    const QString qpkgName = "appstream2";
-    bool ret = repoPull(qrepoPath, qremoteName, qpkgName, err);
-    if (!ret) {
-        return ret;
-    }
-    QString qdstPath = NULL;
-    if (qrepoPath.endsWith("/")) {
-        qdstPath = qrepoPath + "appstream";
-    } else {
-        qdstPath = qrepoPath + "/appstream";
-    }
-    QString matchRef = "";
-    ret = resolveMatchRefs(qrepoPath, qremoteName, qpkgName, qarch, matchRef, err);
-    if (!ret) {
-        return ret;
-    }
-    ret = checkOutAppData(qrepoPath, qremoteName, matchRef, qdstPath, err);
-    return ret;
 }
 } // namespace linglong

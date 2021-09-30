@@ -2,7 +2,10 @@ set(LL_BUILDER_SOURCES
     main.cpp
     ../module/util/uuid.cpp
     ../module/package/package.h
-    ../module/util/uuid.h)
+    ../module/util/uuid.h
+    ../module/util/fs.h
+    ../module/util/repo.h
+    )
 
 add_executable(upkg-builder
                ${LL_BUILDER_SOURCES})

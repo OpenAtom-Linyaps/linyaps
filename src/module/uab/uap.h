@@ -23,6 +23,7 @@
 
 #include <iostream>
 #include <string>
+#include <QString>
 #include <json-struct/json_struct.h>
 
 #define CRYPTOPP_ENABLE_NAMESPACE_WEAK 1
@@ -248,6 +249,11 @@ public:
             return this->meta.appid + "-" + this->meta.version + "-" + this->meta.arch + "."
                    + string("o") + this->meta._uap_name;
         }
+    }
+    //获取分之名称
+    QString getBranchName(){
+        string tmp_name = string("app/") + this->meta.appid + string("/") + this->meta.arch + string("/") + this->meta.version;
+        return QString::fromStdString(tmp_name);
     }
 };
 

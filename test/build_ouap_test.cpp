@@ -27,7 +27,7 @@
 #include <QFile>
 #include <QFileInfo>
 
-TEST(Package, Make_ouap)
+TEST(Package, Make_ouap1)
 {
     Package pkg02;
     QString pkg_name = "org.deepin.calculator-1.2.2-x86_64.uap";
@@ -43,7 +43,51 @@ TEST(Package, Make_ouap)
     EXPECT_EQ(pkg02.InitUap(QString("../../test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64/uap.json"), QString("../../test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64")), true);
     EXPECT_EQ(pkg02.MakeUap(), true);
     EXPECT_EQ(pkg02.MakeOuap(pkg_name), true);
+    EXPECT_EQ(fileExists(pkg_ouap_name),true);
+    if(fileExists(pkg_ouap_name)){
+        QFile::remove(pkg_ouap_name);
+    }
     
+    if (QFileInfo::exists(pkg_name)) {
+        QFile::remove(pkg_name);
+    }
+    if (QFileInfo::exists(pkg_ouap_name)) {
+        QFile::remove(pkg_ouap_name);
+    }
+    
+
+    EXPECT_EQ(pkg02.MakeOuap(QString("../../test/data/demo/uab.json")), false);
+    EXPECT_EQ(pkg02.MakeOuap(QString("../../test/data/demo/")), false);
+    EXPECT_EQ(pkg02.MakeOuap(QString("../../test/data/demo/sdfgssssert.uap")), false);
+    
+}
+TEST(Package, Make_ouap2)
+{
+    Package pkg02;
+    QString pkg_name = "org.deepin.calculator-1.2.2-x86_64.uap";
+    QString pkg_ouap_name = "org.deepin.calculator-1.2.2-x86_64.ouap";
+    QString repo_path = "ttest/repo";
+    QFileInfo fs(pkg_name);
+
+    if (fs.exists()) {
+        QFile::remove(pkg_name);
+    }
+    if (QFileInfo::exists(pkg_ouap_name)) {
+        QFile::remove(pkg_ouap_name);
+    }
+    EXPECT_EQ(pkg02.InitUap(QString("../../test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64/uap.json"), QString("../../test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64")), true);
+    EXPECT_EQ(pkg02.MakeUap(), true);
+    EXPECT_EQ(pkg02.MakeOuap(pkg_name,repo_path), true);
+    EXPECT_EQ(dirExists(repo_path),true);
+    EXPECT_EQ(fileExists(pkg_ouap_name),true);
+
+    if(dirExists(repo_path)){
+        removeDir(repo_path);
+        QDir().rmdir(repo_path.split("/").at(0));
+    }
+    if(fileExists(pkg_ouap_name)){
+        QFile::remove(pkg_ouap_name);
+    }
     if (QFileInfo::exists(pkg_name)) {
         QFile::remove(pkg_name);
     }

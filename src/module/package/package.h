@@ -35,6 +35,7 @@
 
 #include "module/uab/uap.h"
 #include "module/util/fs.h"
+#include "module/util/repo.h"
 
 using format::uap::UAP;
 using linglong::util::fileExists;
@@ -46,6 +47,8 @@ using linglong::util::removeDir;
 using linglong::util::extractUapData;
 using linglong::util::makeSign;
 using linglong::util::checkSign;
+using linglong::repo::makeOstree;
+using linglong::repo::commitOstree;
 
 class Uap_Archive
 {
@@ -394,6 +397,7 @@ public:
         QString uapFile = QFileInfo(uap_path).fileName();
         QString extract_dir = QString("/tmp/") + uapFile;
         QString dest_path = uapFile + QString(".dir");
+        QString out_commit = nullptr;
         //解压uap
         if (!Extract(uap_path, extract_dir)) {
             qInfo() << "extract uap failed!!!";
@@ -408,6 +412,28 @@ public:
             qInfo() << "init uapconfig failed!!!";
             return false;
         }
+
+        //解压data.tgz
+        if (!Extract(extract_dir + QString("/data.tgz"), dest_path)) {
+            qInfo() << "extract data.tgz failed!!!";
+            return false;
+        }
+
+        //制作数据仓库repo
+        if (!makeOstree(ostree_repo, "bare-user-only")) {
+            qInfo() << "make ostree repo failed!!!";
+            return false;
+        }
+
+        //导入数据到repo
+        if (!commitOstree(ostree_repo, QString("update ") + QString::fromStdString(this->uap->meta.version), QString("Name: ") + QString::fromStdString(this->uap->meta.appid), this->uap->getBranchName(), dest_path, out_commit)) {
+            qInfo() << "commit data failed!!!";
+            return false;
+        }
+
+        //导入commit值到uap-1
+        this->uap->meta.pkgext.ostree = out_commit.toStdString();
+
         //初始化config为在线包
         this->uap->meta.pkgext.type = 0;
         auto uap_buffer = this->uap->dumpJson();
@@ -428,13 +454,10 @@ public:
         uap_archive.add_file(uap_buffer, ".data.tgz.sig");
         // create ouap
         uap_archive.write_free();
-        //解压data.tgz
-        if (!Extract(extract_dir + QString("/data.tgz"), dest_path)) {
-            qInfo() << "extract data.tgz failed!!!";
-            return false;
-        }
 
         removeDir(extract_dir);
+        removeDir(dest_path);
+
         return true;
     }
 

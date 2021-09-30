@@ -26,6 +26,6 @@ Homepage: http://www.deepin.org
 
 Package: linglong-bin
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, json-struct
+Depends: ${shlibs:Depends}, ${misc:Depends}, json-struct, ostree
 Description: Package Manager for UOS. 
  Package Manager...

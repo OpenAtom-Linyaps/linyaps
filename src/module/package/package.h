@@ -337,7 +337,7 @@ public:
     }
 
     // make uap
-    bool MakeUap()
+    bool MakeUap(QString uap_path = "./")
     {
         Uap_Archive uap_archive;
 
@@ -388,6 +388,17 @@ public:
 
         // create uap
         uap_archive.write_free();
+
+        //move uap to uap_path
+        if ((fileExists(QString::fromStdString(this->uap->getUapName()))) && (uap_path != QString("./")) && (uap_path != QString("."))) {
+            QString uap_name = QString::fromStdString(this->uap->getUapName());
+            QString new_uap_name = uap_path + QString("/") + uap_name;
+            createDir(uap_path);
+            if (fileExists(new_uap_name)) {
+                QFile::remove(new_uap_name);
+            }
+            QFile::rename(uap_name, new_uap_name);
+        }
         return true;
     }
 

@@ -59,6 +59,7 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("build", "build uap package", "build");
              parser.addPositionalArgument("config", "config json", "config.json");
              parser.addPositionalArgument("data-dir", "data dir", "");
+             parser.addPositionalArgument("uap-path", "uap path", "");
 
              parser.process(app);
 
@@ -67,23 +68,29 @@ int main(int argc, char **argv)
 
              if (args.size() == 3) {
                  Package create_package;
-                 if(! create_package.InitUap(args.at(1), args.at(2))){
+                 if (!create_package.InitUap(args.at(1), args.at(2))) {
                      return -1;
                  }
                  create_package.MakeUap();
                  return 0;
+             }else if(args.size() == 4){
+                 Package create_package;
+                 if (!create_package.InitUap(args.at(1), args.at(2))) {
+                     return -1;
+                 }
+                 create_package.MakeUap(args.at(3));
+                 return 0;
              }
-            
+
              qInfo() << args;
              qInfo() << "err! input config.json and data-dir";
              return -1;
          }},
-         {"build-ouap",
+        {"build-ouap",
          [&](QCommandLineParser &parser) -> int {
              parser.addPositionalArgument("build-ouap", "build ouap package", "build-ouap");
              parser.addPositionalArgument("uap-path", "uap path", "");
              parser.addPositionalArgument("repo-path", "repo path", "");
-             
 
              parser.process(app);
 
@@ -100,7 +107,7 @@ int main(int argc, char **argv)
                  create_package.MakeOuap(args.at(1));
                  return 0;
              }
-             
+
              qInfo() << args;
              qInfo() << "err! input uap-path and repo-path or input uap-path";
              return -1;
@@ -146,7 +153,7 @@ int main(int argc, char **argv)
              qInfo() << "err! input  dirpath";
              return -1;
          }},
-         {"get-info",
+        {"get-info",
          [&](QCommandLineParser &parser) -> int {
              parser.addPositionalArgument("get-info", "get  uap info", "get-info");
              parser.addPositionalArgument("UapPath", "uap file path", "");

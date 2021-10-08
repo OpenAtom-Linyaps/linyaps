@@ -70,6 +70,8 @@ bool inline makeOstree(const QString &dest_path, const QString &mode)
     auto ret_code = myProcess->exitStatus();
     if (ret_code != 0) {
         qInfo() << "run failed: " << ret_code;
+        delete myProcess;
+        myProcess = nullptr;
         return false;
     }
     delete myProcess;
@@ -111,6 +113,13 @@ bool inline commitOstree(const QString &repo_path, const QString &summary, const
     }
     if (!myProcess->waitForFinished()) {
         qInfo() << "repo commit failed!!!";
+        delete myProcess;
+        myProcess = nullptr;
+        return false;
+    }
+    auto ret_code = myProcess->exitStatus();
+    if (ret_code != 0) {
+        qInfo() << "run failed: " << ret_code;
         delete myProcess;
         myProcess = nullptr;
         return false;

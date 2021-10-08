@@ -91,11 +91,17 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("build-ouap", "build ouap package", "build-ouap");
              parser.addPositionalArgument("uap-path", "uap path", "");
              parser.addPositionalArgument("repo-path", "repo path", "");
+             parser.addPositionalArgument("ouap-path", "ouap path", "");
 
              parser.process(app);
 
              auto args = parser.positionalArguments();
              // TODO(SE):
+             if (args.size() == 4) {
+                 Package create_package;
+                 create_package.MakeOuap(args.at(1), args.at(2),args.at(3));
+                 return 0;
+             }
 
              if (args.size() == 3) {
                  Package create_package;

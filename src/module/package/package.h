@@ -403,7 +403,7 @@ public:
     }
 
     // make ouap
-    bool MakeOuap(const QString uap_path, QString ostree_repo = "/deepin/linglong/repo")
+    bool MakeOuap(const QString uap_path, QString ostree_repo = "/deepin/linglong/repo", QString ouap_path = "./")
     {
         QString uapFile = QFileInfo(uap_path).fileName();
         QString extract_dir = QString("/tmp/") + uapFile;
@@ -468,6 +468,17 @@ public:
 
         removeDir(extract_dir);
         removeDir(dest_path);
+
+        //move ouap to ouap_path
+        if ((fileExists(QString::fromStdString(this->uap->getUapName()))) && (ouap_path != QString("./")) && (ouap_path != QString("."))) {
+            QString ouap_name = QString::fromStdString(this->uap->getUapName());
+            QString new_ouap_name = ouap_path + QString("/") + ouap_name;
+            createDir(ouap_path);
+            if (fileExists(new_ouap_name)) {
+                QFile::remove(new_ouap_name);
+            }
+            QFile::rename(ouap_name, new_ouap_name);
+        }
 
         return true;
     }

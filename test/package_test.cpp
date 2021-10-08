@@ -84,22 +84,22 @@ TEST(Package, UaPInit_03)
     pkg01->MakeUap();
 
     EXPECT_EQ(fileExists(uap_name), true);
-    
+
     if (dirExists(uap_data_path)) {
         // check install status
         rm_pkg_data = false;
     }
 
-    pkg01->InitUapFromFile(uap_name);
+    if (pkg01->InitUapFromFile(uap_name)) {
+        QString yaml_path_link = "/deepin/linglong/layers/org.deepin.calculator/1.2.2/org.deepin.calculator.yaml";
 
-    QString yaml_path_link = "/deepin/linglong/layers/org.deepin.calculator/1.2.2/org.deepin.calculator.yaml";
-
-    QString info_path_link = "/deepin/linglong/layers/org.deepin.calculator/1.2.2/x86_64/info";
-    // test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64
-    EXPECT_EQ(fileExists(yaml_path_link), true);
-    EXPECT_EQ(fileExists(info_path_link), true);
-    EXPECT_EQ(QFileInfo(yaml_path_link).isSymLink(), true);
-    EXPECT_EQ(QFileInfo(info_path_link).isSymLink(), true);
+        QString info_path_link = "/deepin/linglong/layers/org.deepin.calculator/1.2.2/x86_64/info";
+        // test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64
+        EXPECT_EQ(fileExists(yaml_path_link), true);
+        EXPECT_EQ(fileExists(info_path_link), true);
+        EXPECT_EQ(QFileInfo(yaml_path_link).isSymLink(), true);
+        EXPECT_EQ(QFileInfo(info_path_link).isSymLink(), true);
+    }
     delete pkg01;
     if (fileExists(uap_name)) {
         QFile::remove(uap_name);

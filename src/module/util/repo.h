@@ -34,8 +34,10 @@
 #include <stdlib.h>
 #include <iostream>
 #include "fs.h"
+#include "runner.h"
 
 using namespace linglong::util;
+using namespace linglong::runner;
 
 namespace linglong {
 namespace repo {
@@ -50,34 +52,14 @@ bool inline makeOstree(const QString &dest_path, const QString &mode)
     if (!dirExists(dest_path)) {
         createDir(dest_path);
     }
-    QString program = "ostree";
-    QStringList arguments;
-    arguments << QString("--repo=") + dest_path << QString("init") << QString("--mode=") + mode;
-    QProcess *myProcess = new QProcess();
-    myProcess->start(program, arguments);
-    if (!myProcess->waitForStarted()) {
-        qInfo() << "repo init failed!!!";
-        delete myProcess;
-        myProcess = nullptr;
-        return false;
-    }
-    if (!myProcess->waitForFinished()) {
-        qInfo() << "repo init failed!!!";
-        delete myProcess;
-        myProcess = nullptr;
-        return false;
-    }
-    auto ret_code = myProcess->exitStatus();
-    if (ret_code != 0) {
-        qInfo() << "run failed: " << ret_code;
-        delete myProcess;
-        myProcess = nullptr;
-        return false;
-    }
-    delete myProcess;
-    myProcess = nullptr;
-    qInfo() << "make ostree of " + dest_path + "successed!!!";
-    return true;
+    // QString program = "ostree";
+    // QStringList arguments;
+
+    // arguments << QString("--repo=") + dest_path << QString("init") << QString("--mode=") + mode;
+
+    auto ret = Runner("ostree", {"--repo=" + dest_path, "init", "--mode=" + mode}, 3000);
+
+    return ret;
 }
 
 /*!
@@ -100,38 +82,25 @@ bool inline commitOstree(const QString &repo_path, const QString &summary, const
         qInfo() << "repo_path not exists!!!";
         return false;
     }
+    bool retval {false};
+    QStringList retmsg;
+
     QString program = "ostree";
     QStringList arguments;
     arguments << QString("--repo=") + repo_path << QString("commit") << QString("-s") << summary << QString("-m") << body << QString("-b") << branch << QString("--tree=dir=") + dir_data;
-    QProcess *myProcess = new QProcess();
-    myProcess->start(program, arguments);
-    if (!myProcess->waitForStarted()) {
-        qInfo() << "repo commit failed!!!";
-        delete myProcess;
-        myProcess = nullptr;
+
+    auto ret = RunnerRet("ostree", arguments, 3000);
+    std::tie(retval, retmsg) = ret;
+    if (retval == false) {
+        qInfo() << retmsg;
         return false;
     }
-    if (!myProcess->waitForFinished()) {
-        qInfo() << "repo commit failed!!!";
-        delete myProcess;
-        myProcess = nullptr;
-        return false;
-    }
-    auto ret_code = myProcess->exitStatus();
-    if (ret_code != 0) {
-        qInfo() << "run failed: " << ret_code;
-        delete myProcess;
-        myProcess = nullptr;
-        return false;
-    }
-    out_commit = QString::fromLocal8Bit(myProcess->readAllStandardOutput());
+    out_commit = retmsg.first();
     out_commit = out_commit.simplified();
 
     qInfo() << "commit 值：" + out_commit;
     qInfo() << "commit successed!!!";
 
-    delete myProcess;
-    myProcess = nullptr;
     return true;
 }
 

@@ -27,7 +27,7 @@ set(LL_SERVICE_SOURCES
     ../module/repo/repohelper.cpp
     ../module/repo/repohelper.h
     # end add by hqh debug 2021-9-16
-    )
+        ../module/util/runner.h)
 
 qt5_add_dbus_adaptor(LL_SERVICE_SOURCES
                      ../module/dbus_ipc/com.deepin.linglong.PackageManager.xml

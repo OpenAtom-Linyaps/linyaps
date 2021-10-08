@@ -38,32 +38,38 @@
 using namespace linglong::util;
 
 namespace linglong {
-namespace repo{
+namespace repo {
 /*!
  * ostree仓库制作
  * @param dest_path 仓库路径
  * @param mode      仓库模式
  * @return
  */
-bool inline makeOstree(const QString& dest_path,const QString& mode){
-    if(!dirExists(dest_path)){
+bool inline makeOstree(const QString &dest_path, const QString &mode)
+{
+    if (!dirExists(dest_path)) {
         createDir(dest_path);
     }
     QString program = "ostree";
     QStringList arguments;
-    arguments << QString("--repo=")+dest_path << QString("init") << QString("--mode=")+mode;
-    QProcess* myProcess = new QProcess();
-    myProcess->start(program,arguments);
-    if(!myProcess->waitForStarted()){
+    arguments << QString("--repo=") + dest_path << QString("init") << QString("--mode=") + mode;
+    QProcess *myProcess = new QProcess();
+    myProcess->start(program, arguments);
+    if (!myProcess->waitForStarted()) {
         qInfo() << "repo init failed!!!";
         delete myProcess;
         myProcess = nullptr;
         return false;
     }
-    if(!myProcess->waitForFinished()){
+    if (!myProcess->waitForFinished()) {
         qInfo() << "repo init failed!!!";
         delete myProcess;
         myProcess = nullptr;
+        return false;
+    }
+    auto ret_code = myProcess->exitStatus();
+    if (ret_code != 0) {
+        qInfo() << "run failed: " << ret_code;
         return false;
     }
     delete myProcess;
@@ -73,7 +79,7 @@ bool inline makeOstree(const QString& dest_path,const QString& mode){
 }
 
 /*!
- * ostree commit 
+ * ostree commit
  * @param repo_path     仓库路径
  * @param summary       推送主题
  * @param body          推送概述
@@ -82,27 +88,28 @@ bool inline makeOstree(const QString& dest_path,const QString& mode){
  * @param out_commit    commit
  * @return
  */
-bool inline commitOstree(const QString& repo_path,const QString& summary,const QString& body,const QString& branch,const QString& dir_data,QString& out_commit){
-    if(!dirExists(dir_data)){
-       qInfo() << "datadir not exists!!!";
-       return false;
+bool inline commitOstree(const QString &repo_path, const QString &summary, const QString &body, const QString &branch, const QString &dir_data, QString &out_commit)
+{
+    if (!dirExists(dir_data)) {
+        qInfo() << "datadir not exists!!!";
+        return false;
     }
-    if(!dirExists(repo_path)){
-        qInfo()  << "repo_path not exists!!!";
+    if (!dirExists(repo_path)) {
+        qInfo() << "repo_path not exists!!!";
         return false;
     }
     QString program = "ostree";
     QStringList arguments;
-    arguments << QString("--repo=")+repo_path << QString("commit") << QString("-s") << summary << QString("-m") << body << QString("-b") << branch << QString("--tree=dir=")+dir_data;
-    QProcess* myProcess = new QProcess();
-    myProcess->start(program,arguments);
-    if(!myProcess->waitForStarted()){
+    arguments << QString("--repo=") + repo_path << QString("commit") << QString("-s") << summary << QString("-m") << body << QString("-b") << branch << QString("--tree=dir=") + dir_data;
+    QProcess *myProcess = new QProcess();
+    myProcess->start(program, arguments);
+    if (!myProcess->waitForStarted()) {
         qInfo() << "repo commit failed!!!";
         delete myProcess;
         myProcess = nullptr;
         return false;
     }
-    if(!myProcess->waitForFinished()){
+    if (!myProcess->waitForFinished()) {
         qInfo() << "repo commit failed!!!";
         delete myProcess;
         myProcess = nullptr;
@@ -119,5 +126,5 @@ bool inline commitOstree(const QString& repo_path,const QString& summary,const Q
     return true;
 }
 
-} // namespace util
+} // namespace repo
 } // namespace linglong

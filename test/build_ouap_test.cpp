@@ -42,7 +42,7 @@ TEST(Package, Make_ouap1)
     }
     EXPECT_EQ(pkg02.InitUap(QString("../../test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64/uap.json"), QString("../../test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64")), true);
     EXPECT_EQ(pkg02.MakeUap(), true);
-    if (QFileInfo::exists(pkg_name)) {
+    if (QFileInfo::exists(pkg_name) && QFileInfo("/deepin/linglong").isWritable()) {
         EXPECT_EQ(pkg02.MakeOuap(pkg_name), true);
         EXPECT_EQ(fileExists(pkg_ouap_name), true);
     }

@@ -53,6 +53,8 @@ set(LINK_LIBS
         CURL::libcurl
         ${OSTREE1_LDFLAGS}
         ${APPSTREMGLIB_LDFLAGS}
+        -larchive
+        -lcrypto++
         )
 
 add_executable(ll-service

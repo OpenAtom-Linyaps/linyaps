@@ -776,22 +776,22 @@ bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, co
                           g_variant_new_variant(g_variant_new_string(remoteName.c_str())));
     options = g_variant_ref_sink(g_variant_builder_end(&builder));
     // 下载到临时目录
-    OstreeRepo *childRepo = createTmpRepo(mDir, &error);
-    if (childRepo == NULL) {
-        //fprintf(stdout, "createTmpRepo error\n");
-        qInfo() << "createTmpRepo error";
-        snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s createTmpRepo error err", __FILE__, __func__);
-        err = info;
-        return false;
-    }
+    // OstreeRepo *childRepo = createTmpRepo(mDir, &error);
+    // if (childRepo == NULL) {
+    //     //fprintf(stdout, "createTmpRepo error\n");
+    //     qInfo() << "createTmpRepo error";
+    //     snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s createTmpRepo error err", __FILE__, __func__);
+    //     err = info;
+    //     return false;
+    // }
 
-    if (!ostree_repo_prepare_transaction(childRepo, NULL, cancellable, &error)) {
+    if (!ostree_repo_prepare_transaction(mDir->repo, NULL, cancellable, &error)) {
         //fprintf(stdout, "ostree_repo_prepare_transaction error:%s\n", error->message);
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s ostree_repo_prepare_transaction err:%s", __FILE__, __func__, error->message);
         err = info;
         return false;
     }
-    if (!ostree_repo_pull_with_options(childRepo, remoteName.c_str(), options,
+    if (!ostree_repo_pull_with_options(mDir->repo, remoteName.c_str(), options,
                                        progress, cancellable, &error)) {
         //fprintf(stdout, "ostree_repo_pull_with_options error:%s\n", error->message);
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s ostree_repo_pull_with_options err:%s", __FILE__, __func__, error->message);
@@ -801,7 +801,7 @@ bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, co
     if (progress) {
         ostree_async_progress_finish(progress);
     }
-    if (!ostree_repo_commit_transaction(childRepo, NULL, cancellable, &error)) {
+    if (!ostree_repo_commit_transaction(mDir->repo, NULL, cancellable, &error)) {
         //fprintf(stdout, "ostree_repo_commit_transaction error:%s\n", error->message);
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s ostree_repo_commit_transaction err:%s", __FILE__, __func__, error->message);
         err = info;
@@ -809,18 +809,18 @@ bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, co
     }
 
     //将数据从临时目录拷贝到base目录
-    g_autofree char *childRepoPath = g_file_get_path(ostree_repo_get_path(childRepo));
-    g_autofree char *local_url = g_strconcat("file://", childRepoPath, NULL);
+    // g_autofree char *childRepoPath = g_file_get_path(ostree_repo_get_path(childRepo));
+    // g_autofree char *local_url = g_strconcat("file://", childRepoPath, NULL);
     //fprintf(stdout, "local_url:%s\n", local_url);
-    qInfo() << "repoPullLocal local_url:" << local_url;
-    ret = repoPullLocal(mDir->repo, remoteName.c_str(), local_url, matchRef.c_str(), checksum.c_str(), progress, cancellable, &error);
-    if (!ret) {
-        //fprintf(stdout, "repoPullLocal error:%s\n", error->message);
-        snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s repoPullLocal err:%s", __FILE__, __func__, error->message);
-        err = info;
-        return false;
-    }
-    delDirbyPath(childRepoPath);
+    // qInfo() << "repoPullLocal local_url:" << local_url;
+    // ret = repoPullLocal(mDir->repo, remoteName.c_str(), local_url, matchRef.c_str(), checksum.c_str(), progress, cancellable, &error);
+    // if (!ret) {
+    //     //fprintf(stdout, "repoPullLocal error:%s\n", error->message);
+    //     snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s repoPullLocal err:%s", __FILE__, __func__, error->message);
+    //     err = info;
+    //     return false;
+    // }
+    // delDirbyPath(childRepoPath);
     return true;
 }
 

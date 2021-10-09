@@ -344,6 +344,10 @@ bool HttpClient::loadHttpData(const QString qurl, const QString qsavePath)
     //解锁
     // pthread_mutex_unlock(&mutex);
     releaselock(fd);
+    if (mData.resCode != 200) {
+        //删除空文件 to do
+        return false;
+    }
     mIsFinish = true;
     showInfo();
     return true;

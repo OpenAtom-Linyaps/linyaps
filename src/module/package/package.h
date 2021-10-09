@@ -566,7 +566,7 @@ public:
     }
 
     //获取信息uap
-    bool GetInfo(const QString uapFile_path)
+    bool GetInfo(const QString uapFile_path, const QString savePath = "")
     {
         QString uapFile = QFileInfo(uapFile_path).fileName();
         QString extract_dir = QString("/tmp/") + uapFile;
@@ -590,7 +590,13 @@ public:
             qInfo() << "no info for uap !!!";
         }
         removeDir(extract_dir);
-        QFile newFile(uapFile + QString(".info"));
+        //QFile newFile(uapFile + QString(".info"));
+        QFile newFile;
+        if (savePath.isNull() || savePath.isEmpty()) {
+            newFile.setFileName(uapFile + QString(".info"));
+        } else {
+            newFile.setFileName(savePath + "/" + uapFile + QString(".info"));
+        }
         newFile.open(QIODevice::WriteOnly | QIODevice::Text);
         newFile.write(info.toUtf8());
         newFile.close();

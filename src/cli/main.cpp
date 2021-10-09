@@ -43,7 +43,7 @@ int main(int argc, char **argv)
 
     QCommandLineParser parser;
     parser.addHelpOption();
-    parser.addPositionalArgument("subcommand", "run\nbuild\nps\nkill\ninstall\nrepo", "subcommand [sub-option]");
+    parser.addPositionalArgument("subcommand", "run\nps\nkill\ndownload\ninstall\nuninstall\nupdate\nquery\nbuild\nrepo", "subcommand [sub-option]");
     // TODO: for debug now
     auto optDefaultConfig = QCommandLineOption("default-config", "default config json filepath", "");
     parser.addOption(optDefaultConfig);
@@ -140,6 +140,29 @@ int main(int argc, char **argv)
 
              // TODO: show kill result
              //        return runtime::Manager::kill(containerID);
+             return -1;
+         }},
+        {"download", [&](QCommandLineParser &parser) -> int {
+             QString curPath = QDir::currentPath();
+             //qDebug() << curPath;
+             // ll-cmd download org.deepin.calculator -d ./test 无-d 参数默认当前路径
+             auto optDownload = QCommandLineOption("d", "dest path to save app", "dest path to save app", curPath);
+
+             parser.clearPositionalArguments();
+             parser.addPositionalArgument("app-id", "app id", "com.deepin.demo");
+             parser.addOption(optDownload);
+             parser.process(app);
+             auto args = parser.positionalArguments();
+             //第一个参数为命令字
+             auto appID = args.value(1);
+             auto savePath = parser.value(optDownload);
+             pm.Download({appID}, savePath);
+             //OperateRet ret = reply.value();
+             //if (v.canConvert<OperateRet>()) {
+             //OperateRet ret = v.value<OperateRet>();
+             //std::cout << ret.retCode << "," << ret.retInfo.toStdString() << std::endl;
+             // get progress
+             //}
              return -1;
          }},
         {"install", [&](QCommandLineParser &parser) -> int {

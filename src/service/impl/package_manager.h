@@ -32,6 +32,15 @@
 #include "module/package/package.h"
 #include "module/runtime/container.h"
 
+// 当前OUAP在线包对应的包名/版本/架构/存储URL信息 to do fix
+typedef struct _AppStreamPkgInfo {
+    QString appId;
+    QString appName;
+    QString appVer;
+    QString appArch;
+    QString appUrl;
+} AppStreamPkgInfo;
+
 class PackageManagerPrivate;
 class PackageManager : public QObject
     , protected QDBusContext
@@ -43,7 +52,7 @@ class PackageManager : public QObject
     friend class Dtk::Core::DSingleton<PackageManager>;
 
 public Q_SLOTS:
-
+    QString Download(const QStringList &packageIDList, const QString savePath);
     QString Install(const QStringList &packageIDList);
     QString Uninstall(const QStringList &packageIDList);
     QString Update(const QStringList &packageIDList);
@@ -64,4 +73,83 @@ protected:
 private:
     QScopedPointer<PackageManagerPrivate> dd_ptr;
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), PackageManager)
+
+    AppStreamPkgInfo appStreamPkgInfo;
+    /*
+     * 根据AppStream.json查询目标软件包信息
+     *
+     * @param savePath: AppStream.json文件存储路径
+     * @param remoteName: 远端仓库名称
+     * @param pkgName: 软件包包名
+     * @param pkgArch: 软件包对应的架构
+     * @param err: 错误信息
+     *
+     * @return bool: true:成功 false:失败
+     */
+    bool getAppInfoByAppStream(const QString savePath, const QString remoteName, const QString pkgName, const QString pkgArch, QString &err);
+
+    /*
+     * 更新本地AppStream.json文件
+     *
+     * @param savePath: AppStream.json文件存储路径
+     * @param remoteName: 远端仓库名称
+     * @param err: 错误信息
+     *
+     * @return bool: true:成功 false:失败
+     */
+    bool updateAppStream(const QString savePath, const QString remoteName, QString &err);
+
+    /*
+     * 通过AppStream.json更新OUAP在线包
+     *
+     * @param xmlPath: AppStream.json文件存储路径
+     * @param savePath: OUAP在线包存储路径
+     * @param err: 错误信息
+     *
+     * @return bool: true:成功 false:失败
+     */
+    bool updateOUAP(const QString xmlPath, const QString savePath, QString &err);
+
+    /*
+     * 解析OUAP在线包中的info.json配置信息
+     *
+     * @param infoPath: info.json文件存储路径
+     *
+     * @return bool: true:成功 false:失败
+     */
+    bool resolveOUAPCfg(const QString infoPath);
+
+    /*
+     * 将OUAP在线包数据部分签出到指定目录
+     *
+     * @param pkgName: 软件包包名
+     * @param pkgArch: 软件包对应的架构
+     * @param dstPath: OUAP在线包数据部分存储路径
+     * @param err: 错误信息
+     *
+     * @return bool: true:成功 false:失败
+     */
+    bool downloadOUAPData(const QString pkgName, const QString pkgArch, const QString dstPath, QString &err);
+
+    /*
+     * 将OUAP在线包解压到指定目录
+     *
+     * @param ouapPath: ouap在线包存储路径
+     * @param ouapName: ouapName在线包名称
+     * @param savePath: 解压后文件存储路径
+     * @param err: 错误信息
+     *
+     * @return bool: true:成功 false:失败
+     */
+    bool extractOUAP(const QString ouapPath, QString ouapName, const QString savePath, QString &err);
+
+    /*
+     * 根据OUAP在线包数据生成对应的离线包
+     *
+     * @param cfgPath: OUAP在线包数据存储路径
+     * @param dstPath: 生成离线包存储路径
+     *
+     * @return bool: true:成功 false:失败
+     */
+    bool makeUAPbyOUAP(QString cfgPath, QString dstPath);
 };

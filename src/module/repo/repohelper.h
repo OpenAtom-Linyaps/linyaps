@@ -33,17 +33,29 @@
 #include <QMap>
 #include <QVector>
 #include <QDebug>
+#include <mutex>
+#include <memory>
 
 using namespace std;
 
 namespace linglong {
 
 // ostree仓库信息
-typedef struct _LingLongDir {
-    GObject parent;
+class LingLongDir
+{
+public:
     string basedir;
-    OstreeRepo *repo;
-} LingLongDir;
+    OstreeRepo *repo = nullptr;
+    std::mutex write_mutx;
+    std::shared_ptr<LingLongDir> parent;
+    void setDirInfo(const string &basedir, OstreeRepo *repo)
+    {
+        std::unique_lock<std::mutex> lock(write_mutx);
+        this->basedir = basedir;
+        this->repo = repo;
+        lock.unlock();
+    }
+};
 
 const int MAX_ERRINFO_BUFSIZE = 512;
 const int DEFAULT_UPDATE_FREQUENCY = 100;
@@ -55,19 +67,17 @@ class RepoHelper
 public:
     RepoHelper()
     {
-        mDir = new LingLongDir;
-        mDir->repo = NULL;
+        this->linglong_dir = make_shared<LingLongDir>();
+        this->linglong_dir->repo = nullptr;
     }
     ~RepoHelper()
     {
-        if (mDir != nullptr) {
-            //std::cout << "~RepoHelper() called repo:" << mDir->repo << endl;
-            qInfo() << "~RepoHelper() called repo:" << mDir->repo;
-            if (mDir->repo) {
-                g_clear_object(&mDir->repo);
+        if (linglong_dir.use_count() != 0) {
+            // free ostree repo
+            if (linglong_dir->repo) {
+                qInfo() << "~RepoHelper() called repo:" << linglong_dir->repo;
+                g_clear_object(&linglong_dir->repo);
             }
-            delete mDir;
-            mDir = nullptr;
         }
     }
 
@@ -281,7 +291,8 @@ private:
      */
     char *repoReadLink(const char *path);
 
-    //ostree 仓库对象信息
-    LingLongDir *mDir;
+    // ostree 仓库对象信息
+    std::shared_ptr<LingLongDir> linglong_dir;
+    // LingLongDir *linglong_dir;
 };
 } // namespace linglong

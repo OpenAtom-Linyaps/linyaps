@@ -1,0 +1,26 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+        "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+    <interface name="com.deepin.linglong.UapManager">
+        <method name="BuildUap">
+            <arg name="Config" type="s" direction="in"/>
+            <arg name="DataDir" type="s" direction="in"/>
+            <arg name="UapPath" type="s" direction="in"/>
+        </method>
+        <method name="BuildOuap">
+            <arg name="UapPath" type="s" direction="in"/>
+            <arg name="RepoPath" type="s" direction="in"/>
+            <arg name="OuapPath" type="s" direction="in"/>
+        </method>
+        <method name="Extract">
+            <arg name="UapPath" type="s" direction="in"/>
+            <arg name="ExtractDir" type="s" direction="in"/>
+        </method>
+        <method name="Check">
+            <arg name="UapExtractDir" type="s" direction="in"/>
+        </method>
+        <method name="GetInfo">
+            <arg name="Uappath" type="s" direction="in"/>
+        </method>
+    </interface>
+</node>

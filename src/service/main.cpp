@@ -26,6 +26,7 @@
 
 #include "packagemanageradaptor.h"
 #include "jobmanageradaptor.h"
+#include "uapmanageradaptor.h"
 
 int main(int argc, char *argv[])
 {
@@ -48,12 +49,15 @@ int main(int argc, char *argv[])
 
     PackageManagerAdaptor pma(PackageManager::instance());
     JobManagerAdaptor jma(JobManager::instance());
+    UapManagerAdaptor uma(UapManager::instance());
 
     // TODO(se): 需要进行错误处理
     dbus.registerObject("/com/deepin/linglong/PackageManager",
                         PackageManager::instance());
     dbus.registerObject("/com/deepin/linglong/JobManager",
                         JobManager::instance());
+    dbus.registerObject("/com/deepin/linglong/UapManager",
+                        UapManager::instance());
 
     return QCoreApplication::exec();
 }

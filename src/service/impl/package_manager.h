@@ -159,6 +159,25 @@ private:
     bool makeUAPbyOUAP(QString cfgPath, QString dstPath);
 
     /*
+     * 更新应用安装状态到本地文件
+     *
+     * @param appStreamPkgInfo: 安装成功的软件包信息
+     *
+     * @return bool: true:成功 false:失败
+     */
+    bool updateAppStatus(AppStreamPkgInfo appStreamPkgInfo);
+
+    /*
+     * 查询软件包安装状态
+     *
+     * @param pkgName: 软件包包名
+     * @param userName: 用户名，默认为当前用户
+     *
+     * @return bool: 1:已安装 0:未安装 -1查询失败
+     */
+    int getIntallStatus(const QString pkgName, const QString userName = "");
+
+    /*
      * 查询系统架构
      *
      * @return QString: 系统架构字符串

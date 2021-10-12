@@ -93,6 +93,57 @@ const QString PackageManager::getHostArch()
 }
 
 /*
+ * 查询软件包安装状态
+ *
+ * @param pkgName: 软件包包名
+ * @param userName: 用户名，默认为当前用户
+ *
+ * @return bool: 1:已安装 0:未安装 -1查询失败
+ */
+int PackageManager::getIntallStatus(const QString pkgName, const QString userName)
+{
+    if (pkgName.isNull() || pkgName.isEmpty()) {
+        return -1;
+    }
+    // 数据库的文件路径
+    QString dbPath = "/deepin/linglong/layers/AppInfoDB.json";
+    if (!linglong::util::fileExists(dbPath)) {
+        return 0;
+    }
+
+    QString dstUserName = userName;
+    // 默认为当前用户
+    if (userName.isNull() || userName.isEmpty()) {
+        dstUserName = getUserName();
+    }
+    QFile dbFile(dbPath);
+    if (!dbFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qCritical() << "db file open failed!";
+        return -1;
+    }
+    // 读取文件的全部内容
+    QString qValue = dbFile.readAll();
+    dbFile.close();
+    QJsonParseError parseJsonErr;
+    QJsonDocument document = QJsonDocument::fromJson(qValue.toUtf8(), &parseJsonErr);
+    if (!(parseJsonErr.error == QJsonParseError::NoError)) {
+        qCritical() << "getIntallStatus parse json file err";
+        return -1;
+    }
+    QJsonObject jsonObject = document.object();
+    QJsonObject usersObject = jsonObject["users"].toObject();
+    // 用户名存在
+    if (usersObject.contains(dstUserName)) {
+        QJsonObject userNameObject = usersObject[dstUserName].toObject();
+        // 包名存在
+        if (userNameObject.contains(pkgName)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/*
  * 根据OUAP在线包数据生成对应的离线包
  *
  * @param cfgPath: OUAP在线包数据存储路径
@@ -408,6 +459,95 @@ QString PackageManager::Download(const QStringList &packageIDList, const QString
     return "";
 }
 
+
+/*
+ * 更新应用安装状态到本地文件
+ *
+ * @param appStreamPkgInfo: 安装成功的软件包信息
+ *
+ * @return bool: true:成功 false:失败
+ */
+bool PackageManager::updateAppStatus(AppStreamPkgInfo appStreamPkgInfo)
+{
+    // file lock to do
+    // 数据库的文件路径
+    QString dbPath = "/deepin/linglong/layers/AppInfoDB.json";
+    QFile dbFile(dbPath);
+    // 首次安装
+    if (!linglong::util::fileExists(dbPath)) {
+        dbFile.open(QIODevice::WriteOnly | QIODevice::Text);
+        QJsonObject jsonObject;
+        //QJsonArray emptyArray;
+        QJsonObject emptyObject;
+        //jsonObject.insert("pkgs", emptyArray);
+        jsonObject.insert("pkgs", emptyObject);
+        jsonObject.insert("users", emptyObject);
+        QJsonDocument jsonDocTmp;
+        jsonDocTmp.setObject(jsonObject);
+        dbFile.write(jsonDocTmp.toJson());
+        dbFile.close();
+    }
+
+    if (!dbFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qCritical() << "db file open failed!";
+        return false;
+    }
+    // 读取文件的全部内容
+    QString qValue = dbFile.readAll();
+    dbFile.close();
+    QJsonParseError parseJsonErr;
+    QJsonDocument document = QJsonDocument::fromJson(qValue.toUtf8(), &parseJsonErr);
+    if (!(parseJsonErr.error == QJsonParseError::NoError)) {
+        qCritical() << "updateAppStatus parse json file err";
+        return false;
+    }
+
+    QJsonObject jsonObject = document.object();
+    QJsonObject pkgsObject = jsonObject["pkgs"].toObject();
+    QJsonObject appItemValue;
+    appItemValue.insert("name", appStreamPkgInfo.appName);
+    appItemValue.insert("arch", appStreamPkgInfo.appArch);
+    appItemValue.insert("summary", appStreamPkgInfo.summary);
+    appItemValue.insert("runtime", appStreamPkgInfo.runtime);
+    appItemValue.insert("reponame", appStreamPkgInfo.reponame);
+    QJsonArray userArray;
+    // different user install same app to do fix
+    QString userName = getUserName();
+    userArray.append(userName);
+    appItemValue.insert("users", userArray);
+    pkgsObject.insert(appStreamPkgInfo.appId, appItemValue);
+
+    QJsonObject usersObject = jsonObject["users"].toObject();
+    QJsonObject usersSubItem;
+    usersSubItem.insert("version", appStreamPkgInfo.appVer);
+    usersSubItem.insert("ref", "app:" + appStreamPkgInfo.appId);
+    //usersSubItem.insert("commitv", "0123456789");
+    QJsonObject userItem;
+    userItem.insert(appStreamPkgInfo.appId, usersSubItem);
+    // users下用户名已存在,将软件包添加到该用户名对应的软件包列表中
+    QJsonObject userNameObject;
+    if (usersObject.contains(userName)) {
+        userNameObject = usersObject[userName].toObject();
+        userNameObject.insert(appStreamPkgInfo.appId, usersSubItem);
+        usersObject[userName] = userNameObject;
+    } else {
+        usersObject.insert(userName, userItem);
+    }
+
+    jsonObject.insert("pkgs", pkgsObject);
+    jsonObject.insert("users", usersObject);
+
+    document.setObject(jsonObject);
+    dbFile.open(QIODevice::WriteOnly | QIODevice::Text);
+    // 将修改后的内容写入文件
+    QTextStream wirteStream(&dbFile);
+    // 设置编码UTF8
+    wirteStream.setCodec("UTF-8");
+    wirteStream << document.toJson();
+    dbFile.close();
+    return true;
+}
+
 /*!
  * 在线安装软件包
  * @param packageIDList
@@ -446,8 +586,12 @@ QString PackageManager::Install(const QStringList &packageIDList)
     }
 
     // 根据OUAP在线包文件安装OUAP在线包 to do
-
-    // 判断是否已安装to do
+    
+    // 判断是否已安装
+    if (getIntallStatus(pkgName)) {
+        qInfo() << pkgName << " already installed";
+        return "";
+    }
 
     // 根据包名安装在线包
     QString err = "";
@@ -490,6 +634,7 @@ QString PackageManager::Install(const QStringList &packageIDList)
     downloadOUAPData(appStreamPkgInfo.appId, appStreamPkgInfo.appArch, savePath, err);
 
     // 更新本地数据库文件 to do
+    updateAppStatus(appStreamPkgInfo);
     return retInfo;
 }
 

@@ -566,7 +566,7 @@ public:
     }
 
     //获取信息uap
-    bool GetInfo(const QString uapFile_path, const QString savePath = "")
+    bool GetInfo(const QString uapFile_path,const QString savePath = "")
     {
         QString uapFile = QFileInfo(uapFile_path).fileName();
         QString extract_dir = QString("/tmp/") + uapFile;
@@ -586,6 +586,9 @@ public:
         }
         auto uap_buffer = this->uap->dumpJson();
         QString info = uap_buffer.c_str();
+        //打印获取信息
+        qInfo().noquote() << info;
+
         if (info.isEmpty()) {
             qInfo() << "no info for uap !!!";
         }
@@ -596,6 +599,7 @@ public:
             newFile.setFileName(uapFile + QString(".info"));
         } else {
             newFile.setFileName(savePath + "/" + uapFile + QString(".info"));
+            createDir(savePath);
         }
         newFile.open(QIODevice::WriteOnly | QIODevice::Text);
         newFile.write(info.toUtf8());

@@ -46,7 +46,7 @@ public Q_SLOTS:
     void BuildOuap(const QString UapPath,const QString RepoPath,const QString OuapPath);
     void Extract(const QString UapPath,const QString ExtractDir);
     void Check(const QString UapExtractDir);
-    void GetInfo(const QString Uappath);
+    void GetInfo(const QString Uappath,const QString InfoPath);
 
 protected:
     UapManager();

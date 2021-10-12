@@ -21,6 +21,7 @@
         </method>
         <method name="GetInfo">
             <arg name="Uappath" type="s" direction="in"/>
+            <arg name="InfoPath" type="s" direction="in"/>
         </method>
     </interface>
 </node>

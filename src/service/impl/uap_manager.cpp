@@ -89,10 +89,10 @@ void UapManager::Check(const QString UapExtractDir){
     });
 }
 
-void UapManager::GetInfo(const QString Uappath){
+void UapManager::GetInfo(const QString Uappath,const QString InfoPath){
     Q_D(UapManager);
     JobManager::instance()->CreateJob([=](Job *jr) {
         Package create_package;
-        create_package.GetInfo(Uappath);
+        create_package.GetInfo(Uappath,InfoPath);
     });
 }

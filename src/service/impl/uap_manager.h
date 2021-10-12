@@ -42,11 +42,11 @@ class UapManager : public QObject
     friend class Dtk::Core::DSingleton<UapManager>;
 
 public Q_SLOTS:
-    void BuildUap(const QString Config, const QString DataDir,const QString UapPath);
-    void BuildOuap(const QString UapPath,const QString RepoPath,const QString OuapPath);
-    void Extract(const QString UapPath,const QString ExtractDir);
-    void Check(const QString UapExtractDir);
-    void GetInfo(const QString Uappath,const QString InfoPath);
+    bool BuildUap(const QString Config, const QString DataDir,const QString UapPath);
+    bool BuildOuap(const QString UapPath,const QString RepoPath,const QString OuapPath);
+    bool Extract(const QString UapPath,const QString ExtractDir);
+    bool Check(const QString UapExtractDir);
+    bool GetInfo(const QString Uappath,const QString InfoPath);
 
 protected:
     UapManager();

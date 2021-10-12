@@ -6,22 +6,27 @@
             <arg name="Config" type="s" direction="in"/>
             <arg name="DataDir" type="s" direction="in"/>
             <arg name="UapPath" type="s" direction="in"/>
+            <arg name="BuildUapResult" type="b" direction="out"/>
         </method>
         <method name="BuildOuap">
             <arg name="UapPath" type="s" direction="in"/>
             <arg name="RepoPath" type="s" direction="in"/>
             <arg name="OuapPath" type="s" direction="in"/>
+            <arg name="BuildOuapResult" type="b" direction="out"/>
         </method>
         <method name="Extract">
             <arg name="UapPath" type="s" direction="in"/>
             <arg name="ExtractDir" type="s" direction="in"/>
+            <arg name="ExtractResult" type="b" direction="out"/>
         </method>
         <method name="Check">
             <arg name="UapExtractDir" type="s" direction="in"/>
+            <arg name="CheckResult" type="b" direction="out"/>
         </method>
         <method name="GetInfo">
             <arg name="Uappath" type="s" direction="in"/>
             <arg name="InfoPath" type="s" direction="in"/>
+            <arg name="GetInfoResult" type="b" direction="out"/>
         </method>
     </interface>
 </node>

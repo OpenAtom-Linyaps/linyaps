@@ -55,44 +55,38 @@ UapManager::UapManager()
 
 UapManager::~UapManager() = default;
 
-void UapManager::BuildUap(const QString Config, const QString DataDir, const QString UapPath)
+bool UapManager::BuildUap(const QString Config, const QString DataDir, const QString UapPath)
 {
     Q_D(UapManager);
-    JobManager::instance()->CreateJob([=](Job *jr) {
-        Package create_package;
-        create_package.InitUap(Config, DataDir);
-        create_package.MakeUap(UapPath);
-    });
+    Package create_package;
+    create_package.InitUap(Config, DataDir);
+    return create_package.MakeUap(UapPath);
 }
 
-void UapManager::BuildOuap(const QString UapPath,const QString RepoPath,const QString OuapPath){
+bool UapManager::BuildOuap(const QString UapPath, const QString RepoPath, const QString OuapPath)
+{
     Q_D(UapManager);
-    JobManager::instance()->CreateJob([=](Job *jr) {
-        Package create_package;
-        create_package.MakeOuap(UapPath,RepoPath,OuapPath);
-    });
+    Package create_package;
+    return create_package.MakeOuap(UapPath, RepoPath, OuapPath);
 }
 
-void UapManager::Extract(const QString UapPath,const QString ExtractDir){
+bool UapManager::Extract(const QString UapPath, const QString ExtractDir)
+{
     Q_D(UapManager);
-    JobManager::instance()->CreateJob([=](Job *jr) {
-        Package create_package;
-        create_package.Extract(UapPath,ExtractDir);
-    });
+    Package create_package;
+    return create_package.Extract(UapPath, ExtractDir);
 }
 
-void UapManager::Check(const QString UapExtractDir){
+bool UapManager::Check(const QString UapExtractDir)
+{
     Q_D(UapManager);
-    JobManager::instance()->CreateJob([=](Job *jr) {
-        Package create_package;
-        create_package.Check(UapExtractDir);
-    });
+    Package create_package;
+    return create_package.Check(UapExtractDir);
 }
 
-void UapManager::GetInfo(const QString Uappath,const QString InfoPath){
+bool UapManager::GetInfo(const QString Uappath, const QString InfoPath)
+{
     Q_D(UapManager);
-    JobManager::instance()->CreateJob([=](Job *jr) {
-        Package create_package;
-        create_package.GetInfo(Uappath,InfoPath);
-    });
+    Package create_package;
+    return create_package.GetInfo(Uappath, InfoPath);
 }

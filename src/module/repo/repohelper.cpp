@@ -136,7 +136,7 @@ bool RepoHelper::getRemoteRepoList(const QString qrepoPath, QVector<QString> &ve
             vec.append(QLatin1String(res[i]));
         }
     } else {
-        snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s no romote repo found", __FILE__, __func__);
+        snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s no remote repo found", __FILE__, __func__);
         // err = info;
         err = QString(QLatin1String(info));
         return false;

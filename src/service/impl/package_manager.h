@@ -39,6 +39,11 @@ typedef struct _AppStreamPkgInfo {
     QString appVer;
     QString appArch;
     QString appUrl;
+
+    QString summary;
+    QString runtime;
+    QString reponame;
+
 } AppStreamPkgInfo;
 
 class PackageManagerPrivate;
@@ -152,4 +157,18 @@ private:
      * @return bool: true:成功 false:失败
      */
     bool makeUAPbyOUAP(QString cfgPath, QString dstPath);
+
+    /*
+     * 查询系统架构
+     *
+     * @return QString: 系统架构字符串
+     */
+    const QString getHostArch();
+
+    /*
+     * 查询当前登陆用户名
+     *
+     * @return QString: 当前登陆用户名
+     */
+    const QString getUserName();
 };

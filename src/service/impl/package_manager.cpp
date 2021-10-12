@@ -27,10 +27,11 @@
 #include <QDebug>
 #include <QThread>
 #include <QProcess>
+#include <QJsonArray>
+#include <QStandardPaths>
+#include <QSysInfo>
 #include <module/runtime/app.h>
 #include <module/util/fs.h>
-#include <QJsonArray>
-
 #include "job_manager.h"
 #include "module/util/httpclient.h"
 
@@ -56,6 +57,40 @@ PackageManager::PackageManager()
 }
 
 PackageManager::~PackageManager() = default;
+
+/*
+ * 查询当前登陆用户名
+ *
+ * @return QString: 当前登陆用户名
+ */
+const QString PackageManager::getUserName()
+{
+    QString userPath = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
+    QString userName = userPath.section("/", -1, -1);
+    return userName;
+}
+
+/*
+ * 查询系统架构
+ *
+ * @return QString: 系统架构字符串
+ */
+const QString PackageManager::getHostArch()
+{
+    //other CpuArchitecture ie i386 i486 to do fix
+    const QString arch = QSysInfo::currentCpuArchitecture();
+    Qt::CaseSensitivity cs = Qt::CaseInsensitive;
+    if (arch.startsWith("x86_64", cs)) {
+        return "x86_64";
+    }
+    if (arch.startsWith("arm", cs)) {
+        return "arm64";
+    }
+    if (arch.startsWith("mips", cs)) {
+        return "mips64";
+    }
+    return "unknown";
+}
 
 /*
  * 根据OUAP在线包数据生成对应的离线包
@@ -147,6 +182,7 @@ bool PackageManager::downloadOUAPData(const QString pkgName, const QString pkgAr
     ret = repo.repoPull(repoPath, qrepoList[0], pkgName, err);
     if (!ret) {
         qInfo() << err;
+        return false;
     }
     // checkout 目录
     //const QString dstPath = repoPath + "/AppData";
@@ -177,7 +213,7 @@ bool PackageManager::resolveOUAPCfg(const QString infoPath)
     QJsonParseError parseJsonErr;
     QJsonDocument document = QJsonDocument::fromJson(qValue.toUtf8(), &parseJsonErr);
     if (!(parseJsonErr.error == QJsonParseError::NoError)) {
-        qDebug() << "解析json文件错误！";
+        qCritical() << "resolveOUAPCfg parse json file err";
         return false;
     }
     QJsonObject jsonObject = document.object();
@@ -270,11 +306,10 @@ bool PackageManager::getAppInfoByAppStream(const QString savePath, const QString
     QJsonParseError parseJsonErr;
     QJsonDocument document = QJsonDocument::fromJson(qValue.toUtf8(), &parseJsonErr);
     if (!(parseJsonErr.error == QJsonParseError::NoError)) {
-        qDebug() << "解析json文件错误！";
+        qCritical() << "getAppInfoByAppStream parse json file wrong";
         err = fullPath + " json file wrong";
         return false;
     }
-    QJsonObject jsonObject = document.object();
     if (document.isArray()) {
         QJsonArray array = document.array();
         int nSize = array.size();
@@ -285,6 +320,10 @@ bool PackageManager::getAppInfoByAppStream(const QString savePath, const QString
             QString appName = subObj["name"].toString();
             QString appVer = subObj["version"].toString();
             QString appUrl = subObj["appUrl"].toString();
+
+            QString summary = subObj["summary"].toString();
+            QString runtime = subObj["runtime"].toString();
+            QString reponame = subObj["reponame"].toString();
             QString arch = "";
             QJsonValue arrayValue = subObj.value(QStringLiteral("arch"));
             if (arrayValue.isArray()) {
@@ -304,6 +343,10 @@ bool PackageManager::getAppInfoByAppStream(const QString savePath, const QString
                 appStreamPkgInfo.appVer = appVer;
                 appStreamPkgInfo.appArch = arch;
                 appStreamPkgInfo.appUrl = appUrl;
+
+                appStreamPkgInfo.summary = summary;
+                appStreamPkgInfo.runtime = runtime;
+                appStreamPkgInfo.reponame = reponame;
                 return true;
             }
         }
@@ -346,8 +389,12 @@ QString PackageManager::Download(const QStringList &packageIDList, const QString
 
     // 根据AppStream.json 查找目标软件包
     const QString xmlPath = "/deepin/linglong/repo/AppStream.json";
-    // getAppArch() to do Fix
-    const QString arch = "x86_64";
+    //const QString arch = "x86_64";
+    const QString arch = getHostArch();
+    if (arch == "unknown") {
+        qInfo() << "the host arch is not recognized";
+        return "";
+    }
     bool ret = getAppInfoByAppStream("/deepin/linglong/", "repo", pkgName, arch, err);
     if (!ret) {
         qInfo() << err;
@@ -387,7 +434,7 @@ QString PackageManager::Install(const QStringList &packageIDList)
         return "";
     }
     QString retInfo = "Install success";
-    // 判断是否为离线包
+    // 判断是否为UAP离线包
     QStringList uap_list = packageIDList.filter(QRegExp("^*.uap$", Qt::CaseInsensitive));
     if (uap_list.size() > 0) {
         qInfo() << uap_list;
@@ -397,9 +444,12 @@ QString PackageManager::Install(const QStringList &packageIDList)
         }
         return retInfo;
     }
+
+    // 根据OUAP在线包文件安装OUAP在线包 to do
+
     // 判断是否已安装to do
 
-    // 安装在线包
+    // 根据包名安装在线包
     QString err = "";
     // 更新AppStream.json
     bool ret = updateAppStream("/deepin/linglong/", "repo", err);
@@ -409,8 +459,12 @@ QString PackageManager::Install(const QStringList &packageIDList)
     }
     // 根据AppStream.json 查找目标软件包
     const QString xmlPath = "/deepin/linglong/repo/AppStream.json";
-    // getAppArch() to do Fix
-    const QString arch = "x86_64";
+    // const QString arch = "x86_64";
+    const QString arch = getHostArch();
+    if (arch == "unknown") {
+        qInfo() << "the host arch is not recognized";
+        return "";
+    }
     ret = getAppInfoByAppStream("/deepin/linglong/", "repo", pkgName, arch, err);
     if (!ret) {
         qInfo() << err;

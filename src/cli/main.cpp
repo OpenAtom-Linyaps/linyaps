@@ -29,6 +29,8 @@
 
 #include "module/package/package.h"
 #include "module/runtime/container.h"
+#include "module/package/pkginfo.h"
+
 #include "package_manager.h"
 
 int main(int argc, char **argv)
@@ -40,6 +42,7 @@ int main(int argc, char **argv)
     Dtk::Core::DLogManager::registerFileAppender();
 
     qJsonRegister<Container>();
+    qJsonRegister<PKGInfo>();
 
     QCommandLineParser parser;
     parser.addHelpOption();
@@ -144,8 +147,8 @@ int main(int argc, char **argv)
          }},
         {"download", [&](QCommandLineParser &parser) -> int {
              QString curPath = QDir::currentPath();
-             //qDebug() << curPath;
-             // ll-cmd download org.deepin.calculator -d ./test 无-d 参数默认当前路径
+             // qDebug() << curPath;
+             //  ll-cmd download org.deepin.calculator -d ./test 无-d 参数默认当前路径
              auto optDownload = QCommandLineOption("d", "dest path to save app", "dest path to save app", curPath);
 
              parser.clearPositionalArguments();
@@ -157,12 +160,12 @@ int main(int argc, char **argv)
              auto appID = args.value(1);
              auto savePath = parser.value(optDownload);
              pm.Download({appID}, savePath);
-             //OperateRet ret = reply.value();
-             //if (v.canConvert<OperateRet>()) {
-             //OperateRet ret = v.value<OperateRet>();
-             //std::cout << ret.retCode << "," << ret.retInfo.toStdString() << std::endl;
-             // get progress
-             //}
+             // OperateRet ret = reply.value();
+             // if (v.canConvert<OperateRet>()) {
+             // OperateRet ret = v.value<OperateRet>();
+             // std::cout << ret.retCode << "," << ret.retInfo.toStdString() << std::endl;
+             //  get progress
+             // }
              return -1;
          }},
         {"install", [&](QCommandLineParser &parser) -> int {
@@ -195,6 +198,29 @@ int main(int argc, char **argv)
              //        repo::Manager m;
              //        return m.ls(repoID);
              return -1;
+         }},
+        {"list", [&](QCommandLineParser &parser) -> int {
+             parser.clearPositionalArguments();
+             parser.addPositionalArgument("list", "show install application", "list");
+             parser.addPositionalArgument("appid", "app id", "com.deepin.demo");
+
+             auto optOutputFormat = QCommandLineOption("output-format", "json/console", "console");
+             parser.addOption(optOutputFormat);
+
+             parser.process(app);
+
+             QString subCommand = args.isEmpty() ? QString() : args.first();
+             auto appid = args.value(1);
+
+             auto outputFormat = parser.value(optOutputFormat);
+             auto ret_msg = pm.QDbusRetInfo({appid}).value();
+             for (auto const &it : ret_msg) {
+                 qInfo() << "id:\t" << it->appid;
+                 qInfo() << "name:\t" << it->appname;
+                 qInfo() << "version:\t" << it->version;
+             }
+             // showContainer(ret_msg, outputFormat);
+             return 0;
          }},
     };
 

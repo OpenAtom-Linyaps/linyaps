@@ -43,5 +43,10 @@
             <arg name="ContainerList" type="a(s)" direction="out"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="ContainerList"/>
         </method>
+        <method name="QDbusRetInfo">
+            <arg name="PackageIDList" type="as" direction="in"/>
+            <arg name="PKGInfoList" type="a(s)" direction="out"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="PKGInfoList"/>
+        </method>
     </interface>
 </node>

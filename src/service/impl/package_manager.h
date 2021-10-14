@@ -31,6 +31,7 @@
 
 #include "module/package/package.h"
 #include "module/runtime/container.h"
+#include "module/package/pkginfo.h"
 
 // 当前OUAP在线包对应的包名/版本/架构/存储URL信息 to do fix
 typedef struct _AppStreamPkgInfo {
@@ -70,6 +71,23 @@ public Q_SLOTS:
     QString Start(const QString &packageID);
     void Stop(const QString &containerID);
     ContainerList ListContainer();
+
+    PKGInfoList QDbusRetInfo(const QStringList &packageIDList)
+    {
+        PKGInfoList list;
+        qInfo() << "recv: " + QString::number(packageIDList.size());
+        for (const auto &it : packageIDList) {
+            qInfo() << "appid:" << it;
+        }
+        for (int i = 0; i < 3; i++) {
+            auto c = QPointer<PKGInfo>(new PKGInfo);
+            c->appid = "org.deepin.test-" + QString::number(i);
+            c->appname = "test-" + QString::number(i);
+            c->version = "v" + QString::number(i);
+            list.push_back(c);
+        }
+        return list;
+    }
 
 protected:
     PackageManager();

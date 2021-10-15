@@ -247,6 +247,7 @@ bool PackageManager::downloadOUAPData(const QString pkgName, const QString pkgAr
     if (!ret) {
         qInfo() << err;
     }
+    qInfo() << "downloadOUAPData success, path:" << dstPath;
     // 方案2 将数据checkout到临时目录，临时目录制作一个离线包，再调用离线包的api安装
     //makeUAPbyOUAP(QString cfgPath, QString dstPath)
     //Package pkg;
@@ -661,6 +662,9 @@ bool PackageManager::installOUAPFile(const QString filePath, QString &err)
         qInfo() << err;
         return ret;
     }
+
+    // 判断软件包是否安装 to do
+
     const QString savePath = "/deepin/linglong/layers/" + appStreamPkgInfo.appId + "/" + appStreamPkgInfo.appVer + "/" + appStreamPkgInfo.appArch;
     // 创建路径
     linglong::util::createDir(savePath);
@@ -753,7 +757,7 @@ QString PackageManager::Install(const QStringList &packageIDList)
 
     // 解压OUAP 到指定目录
     const QString ouapName = appStreamPkgInfo.appId + "-" + appStreamPkgInfo.appVer + "-" + appStreamPkgInfo.appArch + ".ouap";
-    ret = extractOUAP(savePath + ouapName, savePath, err);
+    ret = extractOUAP(savePath + "/" + ouapName, savePath, err);
     if (!ret) {
         qInfo() << err;
         return "";

@@ -191,7 +191,7 @@ int main(int argc, char **argv)
 
              QString subCommand = args.isEmpty() ? QString() : args.first();
 
-             QStringList uap_list = args.filter(QRegExp("^*.uap$", Qt::CaseInsensitive));
+             QStringList uap_list = args.filter(QRegExp("^*\\.uap$", Qt::CaseInsensitive));
 
              qInfo() << uap_list;
              if (!(uap_list.size() > 0)) {

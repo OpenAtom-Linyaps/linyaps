@@ -31,6 +31,7 @@
 
 #include "service/impl/json_register_inc.h"
 
+
 #include "package_manager.h"
 
 int main(int argc, char **argv)

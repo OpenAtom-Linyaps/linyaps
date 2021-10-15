@@ -28,5 +28,10 @@
             <arg name="InfoPath" type="s" direction="in"/>
             <arg name="GetInfoResult" type="b" direction="out"/>
         </method>
+        <method name="Install">
+            <arg name="UapFileList" type="as" direction="in"/>
+            <arg name="RetMessageList" type="a(s)" direction="out"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="RetMessageList"/>
+        </method>
     </interface>
 </node>

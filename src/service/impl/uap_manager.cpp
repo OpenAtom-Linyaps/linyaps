@@ -90,3 +90,51 @@ bool UapManager::GetInfo(const QString Uappath, const QString InfoPath)
     Package create_package;
     return create_package.GetInfo(Uappath, InfoPath);
 }
+
+RetMessageList UapManager::Install(const QStringList UapFileList){
+    Q_D(UapManager);
+    //创建返回值对象
+    RetMessageList list;
+    list.clear();
+    for (auto it : UapFileList) {
+        auto c = QPointer<RetMessage>(new RetMessage);
+        Package* pkg = new Package;
+        //复制ret_QString uap包
+        c->message = QFileInfo(it).fileName();
+
+        if(!it.endsWith(".uap")){
+            qInfo() << it + QString(" isn't a uap package!!!");
+            delete pkg;
+            pkg = nullptr;
+            c->state = false;
+            c->code = UAP_NAME_ERROR;
+            continue;
+        }
+        if(!fileExists(it)){
+            qInfo() << it + QString(" don't exists!");
+            delete pkg;
+            pkg = nullptr;
+            c->state = false;
+            c->code = UAP_NO_EXISTS_ERROR;
+            continue;
+        }
+
+        if (!pkg->InitUapFromFile(it)) {
+            qInfo() << "install " + it + " failed!!!";
+            c->state = false;
+            c->code = UAP_INSTALL_ERROR;
+            list.push_back(c);
+            delete pkg;
+            pkg = nullptr;
+        } else {
+            qInfo() << "install " + it + " successed!!!";
+            c->state = true;
+            c->code = UAP_INSTALL_TRUE;
+            list.push_back(c);
+            delete pkg;
+            pkg = nullptr;
+        }
+    }
+    return list;
+
+}

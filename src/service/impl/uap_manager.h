@@ -26,9 +26,13 @@
 #include <QList>
 #include <QObject>
 #include <QScopedPointer>
+#include <QFileInfo>
 
 #include <DSingleton>
 
+#include "service/impl/qdbus_retmsg.h"
+#include "module/package/package.h"
+#include "service/impl/error_code_ret.h"
 
 
 class UapManagerPrivate;
@@ -47,6 +51,7 @@ public Q_SLOTS:
     bool Extract(const QString UapPath,const QString ExtractDir);
     bool Check(const QString UapExtractDir);
     bool GetInfo(const QString Uappath,const QString InfoPath);
+    RetMessageList Install(const QStringList UapFileList);
 
 protected:
     UapManager();

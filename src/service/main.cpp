@@ -23,6 +23,7 @@
 #include <QCoreApplication>
 #include <module/runtime/app.h>
 #include <impl/json_register_inc.h>
+#include <impl/qdbus_retmsg.h>
 
 #include "packagemanageradaptor.h"
 #include "jobmanageradaptor.h"
@@ -39,6 +40,7 @@ int main(int argc, char *argv[])
     ociJsonRegister();
     qJsonRegister<PackageMoc>();
     qJsonRegister<App>();
+    
 
     // register qdbus type
     RegisterDbusType();

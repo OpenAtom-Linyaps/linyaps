@@ -30,8 +30,10 @@
 #include <DSingleton>
 
 #include "module/package/package.h"
+#include "json_register_inc.h"
 #include "module/runtime/container.h"
 #include "module/package/pkginfo.h"
+#include "qdbus_retmsg.h"
 
 // 当前OUAP在线包对应的包名/版本/架构/存储URL信息 to do fix
 typedef struct _AppStreamPkgInfo {
@@ -72,6 +74,11 @@ public Q_SLOTS:
     void Stop(const QString &containerID);
     ContainerList ListContainer();
 
+    /*!
+     * QDbusRetInfo
+     * @param packageIDList appid
+     * @return PKGInfoList
+     */
     PKGInfoList QDbusRetInfo(const QStringList &packageIDList)
     {
         PKGInfoList list;
@@ -87,7 +94,28 @@ public Q_SLOTS:
             list.push_back(c);
         }
         return list;
-    }
+    };
+
+    /*!
+     * QDbusMessageRet
+     * @return RetMessageList
+     */
+    RetMessageList QDbusMessageRet(void)
+    {
+        RetMessageList list;
+
+        qInfo() << "call: QDbusMessageRet";
+
+        for (int i = 0; i < 3; i++) {
+            auto c = QPointer<RetMessage>(new RetMessage);
+            c->state = false;
+            c->code = 404;
+            c->message = "not found!";
+            list.push_back(c);
+        }
+
+        return list;
+    };
 
 protected:
     PackageManager();

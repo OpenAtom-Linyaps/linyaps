@@ -6,7 +6,9 @@ set(LL_CLI_SOURCES
         cmd/exec.cpp
         cmd/ps.cpp
         cmd/cmd.h
+        ../service/impl/json_register_inc.h
         ../module/package/pkginfo.h
+        ../service/impl/qdbus_retmsg.h
         )
 
 set_source_files_properties(../module/dbus_ipc/com.deepin.linglong.PackageManager.xml

@@ -7,11 +7,13 @@ set(LL_SERVICE_SOURCES
         impl/job_manager.h
         impl/job.cpp
         impl/job.h
+        impl/json_register_inc.h
+        impl/qdbus_retmsg.h
+        ../module/package/pkginfo.h
+        ../module/runtime/container.h
         ../module/util/json.h
         ../module/util/uuid.cpp
         ../module/runtime/oci.h
-        ../module/runtime/container.h
-        ../module/package/pkginfo.h
         ../module/uab/uab.cpp
         ../module/uab/uab.h
         ../module/uab/uap.cpp
@@ -28,7 +30,7 @@ set(LL_SERVICE_SOURCES
         ../module/repo/repohelper.cpp
         ../module/repo/repohelper.h
         # end add by hqh debug 2021-9-16
-        ../module/util/runner.h impl/json_register_inc.h)
+        ../module/util/runner.h)
 
 qt5_add_dbus_adaptor(LL_SERVICE_SOURCES
         ../module/dbus_ipc/com.deepin.linglong.PackageManager.xml

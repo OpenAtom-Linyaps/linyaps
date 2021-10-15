@@ -48,5 +48,9 @@
             <arg name="PKGInfoList" type="a(s)" direction="out"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="PKGInfoList"/>
         </method>
+        <method name="QDbusMessageRet">
+            <arg name="RetMessageList" type="a(s)" direction="out"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="RetMessageList"/>
+        </method>
     </interface>
 </node>

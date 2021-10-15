@@ -19,16 +19,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include <gtest/gtest.h>
 
-#include "module/util/json.h"
-#include "module/runtime/container.h"
-#include "module/package/pkginfo.h"
 #include "service/impl/qdbus_retmsg.h"
 
-inline void RegisterDbusType()
+TEST(QDbusRetMessage, Ret01)
 {
-    qJsonRegister<Container>();
-    qJsonRegister<PKGInfo>();
-    qJsonRegister<RetMessage>();
+    EXPECT_EQ(1, 1);
 }

@@ -28,8 +28,8 @@
 #include <cmd/cmd.h>
 
 #include "module/package/package.h"
-#include "module/runtime/container.h"
-#include "module/package/pkginfo.h"
+
+#include "service/impl/json_register_inc.h"
 
 #include "package_manager.h"
 
@@ -41,8 +41,8 @@ int main(int argc, char **argv)
     Dtk::Core::DLogManager::registerConsoleAppender();
     Dtk::Core::DLogManager::registerFileAppender();
 
-    qJsonRegister<Container>();
-    qJsonRegister<PKGInfo>();
+    // register qdbus type
+    RegisterDbusType();
 
     QCommandLineParser parser;
     parser.addHelpOption();

@@ -22,8 +22,7 @@
 #include <DLog>
 #include <QCoreApplication>
 #include <module/runtime/app.h>
-#include <module/runtime/container.h>
-#include <module/package/pkginfo.h>
+#include <impl/json_register_inc.h>
 
 #include "packagemanageradaptor.h"
 #include "jobmanageradaptor.h"
@@ -40,8 +39,9 @@ int main(int argc, char *argv[])
     ociJsonRegister();
     qJsonRegister<PackageMoc>();
     qJsonRegister<App>();
-    qJsonRegister<Container>();
-    qJsonRegister<PKGInfo>();
+
+    // register qdbus type
+    RegisterDbusType();
 
     QDBusConnection dbus = QDBusConnection::sessionBus();
     if (!dbus.registerService("com.deepin.linglong.AppManager")) {

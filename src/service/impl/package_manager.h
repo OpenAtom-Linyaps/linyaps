@@ -186,13 +186,12 @@ private:
      * 将OUAP在线包解压到指定目录
      *
      * @param ouapPath: ouap在线包存储路径
-     * @param ouapName: ouapName在线包名称
      * @param savePath: 解压后文件存储路径
      * @param err: 错误信息
      *
      * @return bool: true:成功 false:失败
      */
-    bool extractOUAP(const QString ouapPath, QString ouapName, const QString savePath, QString &err);
+    bool extractOUAP(const QString ouapPath, const QString savePath, QString &err);
 
     /*
      * 根据OUAP在线包数据生成对应的离线包
@@ -222,6 +221,31 @@ private:
      * @return bool: 1:已安装 0:未安装 -1查询失败
      */
     int getIntallStatus(const QString pkgName, const QString userName = "");
+
+    /*
+     * 建立box运行应用需要的软链接
+     */
+    void buildRequestedLink();
+
+    /*
+     * 根据OUAP在线包解压出来的uap文件查询软件包信息
+     *
+     * @param fileDir: OUAP在线包文件解压后的uap文件存储路径
+     * @param err: 错误信息
+     *
+     * @return bool: true:成功 false:失败
+     */
+    bool getAppInfoByOUAPFile(const QString fileDir, QString& err);
+
+    /*
+     * 根据OUAP在线包文件安装软件包
+     *
+     * @param filePath: OUAP在线包文件路径
+     * @param err: 错误信息
+     *
+     * @return bool: true:成功 false:失败
+     */
+    bool installOUAPFile(const QString filePath, QString &err);
 
     /*
      * 查询系统架构

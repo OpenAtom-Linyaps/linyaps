@@ -165,19 +165,24 @@ bool PackageManager::makeUAPbyOUAP(QString cfgPath, QString dstPath)
  * 将OUAP在线包解压到指定目录
  *
  * @param ouapPath: ouap在线包存储路径
- * @param ouapName: ouapName在线包名称
  * @param savePath: 解压后文件存储路径
  * @param err: 错误信息
  *
  * @return bool: true:成功 false:失败
  */
-bool PackageManager::extractOUAP(const QString ouapPath, QString ouapName, const QString savePath, QString &err)
+bool PackageManager::extractOUAP(const QString ouapPath, const QString savePath, QString &err)
 {
     Package create_package;
-    QString fullPath = ouapPath + "/" + ouapName;
-    create_package.Extract(fullPath, savePath);
-    create_package.GetInfo(fullPath, savePath);
-    return true;
+    bool ret = create_package.Extract(ouapPath, savePath);
+    if (!ret) {
+        err = "extractOUAP error";
+        return ret;
+    }
+    ret = create_package.GetInfo(ouapPath, savePath);
+    if (!ret) {
+        err = "get ouap info error";
+    }
+    return ret;
 }
 
 /*
@@ -226,10 +231,11 @@ bool PackageManager::downloadOUAPData(const QString pkgName, const QString pkgAr
     ret = repo.resolveMatchRefs(repoPath, qrepoList[0], pkgName, pkgArch, matchRef, err);
     if (!ret) {
         qInfo() << err;
+        return false;
     } else {
         qInfo() << matchRef;
     }
-    // bug 目前只能下载到临时目录 待解决 flatpak是ok的
+
     ret = repo.repoPull(repoPath, qrepoList[0], pkgName, err);
     if (!ret) {
         qInfo() << err;
@@ -245,7 +251,7 @@ bool PackageManager::downloadOUAPData(const QString pkgName, const QString pkgAr
     //makeUAPbyOUAP(QString cfgPath, QString dstPath)
     //Package pkg;
     //pkg.InitUapFromFile(uapPath);
-    return true;
+    return ret;
 }
 
 /*
@@ -548,6 +554,128 @@ bool PackageManager::updateAppStatus(AppStreamPkgInfo appStreamPkgInfo)
     return true;
 }
 
+/*
+ * 建立box运行应用需要的软链接
+ */
+void PackageManager::buildRequestedLink()
+{
+    // TODO: fix it ( will remove this )
+    QString yaml_path = "/deepin/linglong/layers/" + appStreamPkgInfo.appId + "/"
+                        + appStreamPkgInfo.appVer + "/" + appStreamPkgInfo.appArch + "/" + appStreamPkgInfo.appId + ".yaml";
+    QString new_path = "/deepin/linglong/layers/" + appStreamPkgInfo.appId + "/"
+                       + appStreamPkgInfo.appVer + "/" + appStreamPkgInfo.appId + ".yaml";
+    if (linglong::util::fileExists(yaml_path)) {
+        // link to file
+        linglong::util::linkFile(yaml_path, new_path);
+    }
+    // TODO: fix it ( will remove this )
+    QString info_path = "/deepin/linglong/layers/" + appStreamPkgInfo.appId + "/"
+                        + appStreamPkgInfo.appVer + "/" + appStreamPkgInfo.appArch + "/info.json";
+    QString info_new_path = "/deepin/linglong/layers/" + appStreamPkgInfo.appId + "/"
+                            + appStreamPkgInfo.appVer + "/" + appStreamPkgInfo.appArch + "/info";
+
+    if (linglong::util::fileExists(info_path)) {
+        // link to file
+        linglong::util::linkFile(info_path, info_new_path);
+    }
+}
+
+/*
+ * 根据OUAP在线包解压出来的uap文件查询软件包信息
+ *
+ * @param fileDir: OUAP在线包文件解压后的uap文件存储路径
+ * @param err: 错误信息
+ *
+ * @return bool: true:成功 false:失败
+ */
+bool PackageManager::getAppInfoByOUAPFile(const QString fileDir, QString &err)
+{
+    // uap-1 文件路径
+    QString uapPath = fileDir + "uap-1";
+    if (!linglong::util::fileExists(uapPath)) {
+        err = uapPath + " not exist";
+        return false;
+    }
+
+    QFile uapFile(uapPath);
+    if (!uapFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qCritical() << "uap-1 file open failed!";
+        return false;
+    }
+    // 读取文件的全部内容
+    QString qValue = uapFile.readAll();
+    uapFile.close();
+    QJsonParseError parseJsonErr;
+    QJsonDocument document = QJsonDocument::fromJson(qValue.toUtf8(), &parseJsonErr);
+    if (!(parseJsonErr.error == QJsonParseError::NoError)) {
+        qCritical() << "getAppInfoByOUAPFile parse json file err";
+        return false;
+    }
+    QJsonObject jsonObject = document.object();
+    if (jsonObject.contains("appid")) {
+        appStreamPkgInfo.appId = jsonObject["appid"].toString();
+    }
+    if (jsonObject.contains("name")) {
+        appStreamPkgInfo.appName = jsonObject["name"].toString();
+    }
+    if (jsonObject.contains("version")) {
+        appStreamPkgInfo.appVer = jsonObject["version"].toString();
+    }
+    if (jsonObject.contains("runtime")) {
+        appStreamPkgInfo.runtime = jsonObject["runtime"].toString();
+    }
+    appStreamPkgInfo.appArch = getHostArch();
+    if (jsonObject.contains("description")) {
+        appStreamPkgInfo.summary = jsonObject["description"].toString();
+    }
+    appStreamPkgInfo.reponame = "localApp";
+    return true;
+}
+
+/*
+ * 根据OUAP在线包文件安装软件包
+ *
+ * @param filePath: OUAP在线包文件路径
+ * @param err: 错误信息
+ *
+ * @return bool: true:成功 false:失败
+ */
+bool PackageManager::installOUAPFile(const QString filePath, QString &err)
+{
+    bool ret = false;
+    QDir temDir(filePath);
+    QString absPath = temDir.absolutePath();
+    qInfo() << absPath;
+    if (!linglong::util::fileExists(absPath)) {
+        return ret;
+    }
+    const QString tmpPath = "/tmp/linglong/";
+    // 解压OUAP
+    ret = extractOUAP(absPath, tmpPath, err);
+    if (!ret) {
+        qInfo() << err;
+        return ret;
+    }
+    ret = getAppInfoByOUAPFile(tmpPath, err);
+    if (!ret) {
+        qInfo() << err;
+        return ret;
+    }
+    const QString savePath = "/deepin/linglong/layers/" + appStreamPkgInfo.appId + "/" + appStreamPkgInfo.appVer + "/" + appStreamPkgInfo.appArch;
+    // 创建路径
+    linglong::util::createDir(savePath);
+    ret = downloadOUAPData(appStreamPkgInfo.appId, appStreamPkgInfo.appArch, savePath, err);
+    if (!ret) {
+        qInfo() << err;
+        return "";
+    }
+    // 根据box的安装要求建立软链接
+    buildRequestedLink();
+    // 更新本地数据库文件 to do
+    updateAppStatus(appStreamPkgInfo);
+    return ret;
+}
+
 /*!
  * 在线安装软件包
  * @param packageIDList
@@ -567,7 +695,6 @@ QString PackageManager::Install(const QStringList &packageIDList)
     //     qDebug() << p.readAllStandardOutput();
     //     qDebug() << "finish" << p.exitStatus() << p.state();
     // });
-
     QString pkgName = packageIDList.at(0);
     if (pkgName.isNull() || pkgName.isEmpty()) {
         qInfo() << "package name err";
@@ -575,7 +702,7 @@ QString PackageManager::Install(const QStringList &packageIDList)
     }
     QString retInfo = "Install success";
     // 判断是否为UAP离线包
-    QStringList uap_list = packageIDList.filter(QRegExp("^*.uap$", Qt::CaseInsensitive));
+    QStringList uap_list = packageIDList.filter(QRegExp("^*\\.uap$", Qt::CaseInsensitive));
     if (uap_list.size() > 0) {
         qInfo() << uap_list;
         for (auto it : uap_list) {
@@ -584,9 +711,14 @@ QString PackageManager::Install(const QStringList &packageIDList)
         }
         return retInfo;
     }
-
+    QString err = "";
+    Qt::CaseSensitivity cs = Qt::CaseInsensitive;
     // 根据OUAP在线包文件安装OUAP在线包 to do
-    
+    if (pkgName.endsWith(".ouap", cs)) {
+        installOUAPFile(pkgName, err);
+        return "";
+    }
+
     // 判断是否已安装
     if (getIntallStatus(pkgName)) {
         qInfo() << pkgName << " already installed";
@@ -594,7 +726,6 @@ QString PackageManager::Install(const QStringList &packageIDList)
     }
 
     // 根据包名安装在线包
-    QString err = "";
     // 更新AppStream.json
     bool ret = updateAppStream("/deepin/linglong/", "repo", err);
     if (!ret) {
@@ -622,8 +753,11 @@ QString PackageManager::Install(const QStringList &packageIDList)
 
     // 解压OUAP 到指定目录
     const QString ouapName = appStreamPkgInfo.appId + "-" + appStreamPkgInfo.appVer + "-" + appStreamPkgInfo.appArch + ".ouap";
-    extractOUAP(savePath, ouapName, savePath, err);
-
+    ret = extractOUAP(savePath + ouapName, savePath, err);
+    if (!ret) {
+        qInfo() << err;
+        return "";
+    }
     // 解析OUAP 在线包中的配置信息
     const QString infoPath = savePath + "/" + ouapName + ".info";
     resolveOUAPCfg(infoPath);
@@ -631,8 +765,13 @@ QString PackageManager::Install(const QStringList &packageIDList)
     // 下载OUAP 在线包数据到目标目录 安装完成
     //QString pkgName = "org.deepin.calculator";
     //QString pkgName = "us.zoom.Zoom";
-    downloadOUAPData(appStreamPkgInfo.appId, appStreamPkgInfo.appArch, savePath, err);
-
+    ret = downloadOUAPData(appStreamPkgInfo.appId, appStreamPkgInfo.appArch, savePath, err);
+    if (!ret) {
+        qInfo() << err;
+        return "";
+    }
+    // 根据box的安装要求建立软链接
+    buildRequestedLink();
     // 更新本地数据库文件 to do
     updateAppStatus(appStreamPkgInfo);
     return retInfo;

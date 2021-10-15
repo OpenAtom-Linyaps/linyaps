@@ -558,23 +558,23 @@ void RepoHelper::delDirbyPath(const char *path)
 {
     char cmd[512];
     pid_t result;
-    memset(cmd, 0, 512);
-    sprintf(cmd, "rm -rf %s", path);
+    memset(cmd, '\0', 512);
+    snprintf(cmd, 512, "rm -rf %s", path);
     result = system(cmd);
     // fprintf(stdout, "delete tmp repo, path:%s, ret:%d\n", path, result);
-    qInfo() << "delete tmp repo";
+    qInfo() << "delete tmp repo, path:" << path << ", ret:" << result;
 }
 
 /*
  * 根据指定目录创建临时repo仓库对象
  *
- * @param self: 临时repo仓库对应目标仓库信息
+ * @param linglong_dir: 临时repo仓库对应目标仓库信息
  * @param cache_dir: 临时仓库路径
  * @param error: 错误信息
  *
  * @return OstreeRepo: 临时repo仓库对象
  */
-OstreeRepo *RepoHelper::createChildRepo(LingLongDir *self, char *cachePath, GError **error)
+OstreeRepo *RepoHelper::createChildRepo(std::shared_ptr<LingLongDir> linglong_dir, char *cachePath, GError **error)
 {
     g_autoptr(GFile) repo_dir = NULL;
     g_autoptr(GFile) repo_dir_config = NULL;
@@ -593,7 +593,7 @@ OstreeRepo *RepoHelper::createChildRepo(LingLongDir *self, char *cachePath, GErr
     // if (!ensureRepoEnv(self, NULL, error))
     //      return NULL;
 
-    orig_config = ostree_repo_get_config(self->repo);
+    orig_config = ostree_repo_get_config(linglong_dir->repo);
 
     // g_autofree char *cachePath = g_file_get_path(cache_dir);
     g_autofree char *repoTmpPath = g_strconcat(cachePath, "/repoTmp", NULL);
@@ -647,7 +647,7 @@ OstreeRepo *RepoHelper::createChildRepo(LingLongDir *self, char *cachePath, GErr
     }
 
     /* Ensure the config is updated */
-    g_autofree char *parentRepoPath = g_file_get_path(ostree_repo_get_path(self->repo));
+    g_autofree char *parentRepoPath = g_file_get_path(ostree_repo_get_path(linglong_dir->repo));
     g_key_file_set_string(config, "core", "parent", parentRepoPath);
     // fprintf(stdout, "createChildRepo parent path:%s\n", parentRepoPath);
     qInfo() << "createChildRepo parent path:" << parentRepoPath;
@@ -687,12 +687,12 @@ OstreeRepo *RepoHelper::createChildRepo(LingLongDir *self, char *cachePath, GErr
 /*
  * 创建临时repo仓库对象
  *
- * @param self: 临时repo仓库对应目标仓库信息
+ * @param linglong_dir: 临时repo仓库对应目标仓库信息
  * @param error: 错误信息
  *
  * @return OstreeRepo: 临时repo仓库对象
  */
-OstreeRepo *RepoHelper::createTmpRepo(LingLongDir *self, GError **error)
+OstreeRepo *RepoHelper::createTmpRepo(std::shared_ptr<LingLongDir> linglong_dir, GError **error)
 {
     g_autofree char *cache_dir = NULL;
     cache_dir = getCacheDir();
@@ -700,7 +700,7 @@ OstreeRepo *RepoHelper::createTmpRepo(LingLongDir *self, GError **error)
     qInfo() << "createTmpRepo cache_dir path:" << cache_dir;
     if (cache_dir == NULL)
         return NULL;
-    return createChildRepo(self, cache_dir, error);
+    return createChildRepo(linglong_dir, cache_dir, error);
 }
 
 /*
@@ -777,22 +777,22 @@ bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, co
                           g_variant_new_variant(g_variant_new_string(remoteName.c_str())));
     options = g_variant_ref_sink(g_variant_builder_end(&builder));
     // 下载到临时目录
-    // OstreeRepo *childRepo = createTmpRepo(linglong_dir, &error);
-    // if (childRepo == NULL) {
-    //     //fprintf(stdout, "createTmpRepo error\n");
-    //     qInfo() << "createTmpRepo error";
-    //     snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s createTmpRepo error err", __FILE__, __func__);
-    //     err = info;
-    //     return false;
-    // }
+    OstreeRepo *childRepo = createTmpRepo(linglong_dir, &error);
+    if (childRepo == NULL) {
+        // fprintf(stdout, "createTmpRepo error\n");
+        qInfo() << "createTmpRepo error";
+        snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s createTmpRepo error err", __FILE__, __func__);
+        err = info;
+        return false;
+    }
 
-    if (!ostree_repo_prepare_transaction(linglong_dir->repo, NULL, cancellable, &error)) {
-        // fprintf(stdout, "ostree_repo_prepare_transaction error:%s\n", error->message);
+    if (!ostree_repo_prepare_transaction(childRepo, NULL, cancellable, &error)) {
+        //fprintf(stdout, "ostree_repo_prepare_transaction error:%s\n", error->message);
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s ostree_repo_prepare_transaction err:%s", __FILE__, __func__, error->message);
         err = info;
         return false;
     }
-    if (!ostree_repo_pull_with_options(linglong_dir->repo, remoteName.c_str(), options,
+    if (!ostree_repo_pull_with_options(childRepo, remoteName.c_str(), options,
                                        progress, cancellable, &error)) {
         // fprintf(stdout, "ostree_repo_pull_with_options error:%s\n", error->message);
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s ostree_repo_pull_with_options err:%s", __FILE__, __func__, error->message);
@@ -802,26 +802,26 @@ bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, co
     if (progress) {
         ostree_async_progress_finish(progress);
     }
-    if (!ostree_repo_commit_transaction(linglong_dir->repo, NULL, cancellable, &error)) {
-        // fprintf(stdout, "ostree_repo_commit_transaction error:%s\n", error->message);
+    if (!ostree_repo_commit_transaction(childRepo, NULL, cancellable, &error)) {
+        //fprintf(stdout, "ostree_repo_commit_transaction error:%s\n", error->message);
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s ostree_repo_commit_transaction err:%s", __FILE__, __func__, error->message);
         err = info;
         return false;
     }
 
     //将数据从临时目录拷贝到base目录
-    // g_autofree char *childRepoPath = g_file_get_path(ostree_repo_get_path(childRepo));
-    // g_autofree char *local_url = g_strconcat("file://", childRepoPath, NULL);
+    g_autofree char *childRepoPath = g_file_get_path(ostree_repo_get_path(childRepo));
+    g_autofree char *local_url = g_strconcat("file://", childRepoPath, NULL);
     // fprintf(stdout, "local_url:%s\n", local_url);
-    // qInfo() << "repoPullLocal local_url:" << local_url;
-    // ret = repoPullLocal(linglong_dir->repo, remoteName.c_str(), local_url, matchRef.c_str(), checksum.c_str(), progress, cancellable, &error);
-    // if (!ret) {
-    //     //fprintf(stdout, "repoPullLocal error:%s\n", error->message);
-    //     snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s repoPullLocal err:%s", __FILE__, __func__, error->message);
-    //     err = info;
-    //     return false;
-    // }
-    // delDirbyPath(childRepoPath);
+    qInfo() << "repoPullLocal local_url:" << local_url;
+    ret = repoPullLocal(linglong_dir->repo, remoteName.c_str(), local_url, matchRef.c_str(), checksum.c_str(), progress, cancellable, &error);
+    if (!ret) {
+        //fprintf(stdout, "repoPullLocal error:%s\n", error->message);
+        snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s repoPullLocal err:%s", __FILE__, __func__, error->message);
+        err = info;
+        return false;
+    }
+    delDirbyPath(childRepoPath);
     return true;
 }
 
@@ -841,7 +841,9 @@ bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, co
 bool RepoHelper::repoPullLocal(OstreeRepo *repo, const char *remoteName, const char *url, const char *ref, const char *checksum,
                                OstreeAsyncProgress *progress, GCancellable *cancellable, GError **error)
 {
-    const OstreeRepoPullFlags flags = (OstreeRepoPullFlags)(OSTREE_REPO_PULL_FLAGS_UNTRUSTED | OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES);
+    // 增加OSTREE_REPO_PULL_FLAGS_UNTRUSTED标志时，ostree会调用ostree_repo_fsck_object校验仓库文件 
+    //const OstreeRepoPullFlags flags = (OstreeRepoPullFlags)(OSTREE_REPO_PULL_FLAGS_UNTRUSTED | OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES);
+    const OstreeRepoPullFlags flags = (OstreeRepoPullFlags)(OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES);
     GVariantBuilder builder;
     g_autoptr(GVariant) options = NULL;
     gboolean res;
@@ -887,11 +889,12 @@ bool RepoHelper::repoPullLocal(OstreeRepo *repo, const char *remoteName, const c
 
     res = ostree_repo_pull_with_options(repo, url, options,
                                         progress, cancellable, error);
-    if (!res)
+    if (!res) {
         // translate_ostree_repo_pull_errors(error);
+        qInfo() << "ostree_repo_pull_with_options error:" << (*error)->message;
         if (progress)
             ostree_async_progress_finish(progress);
-
+    }
     if (!ostree_repo_commit_transaction(repo, NULL, cancellable, error)) {
         // fprintf(stdout, "ostree_repo_commit_transaction error:%s\n", (*error)->message);
         qInfo() << "ostree_repo_commit_transaction error:" << (*error)->message;

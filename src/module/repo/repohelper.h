@@ -251,23 +251,23 @@ private:
     /*
      * 创建临时repo仓库对象
      *
-     * @param self: 临时repo仓库对应目标仓库信息
+     * @param linglong_dir: 临时repo仓库对应目标仓库信息
      * @param error: 错误信息
      *
      * @return OstreeRepo: 临时repo仓库对象
      */
-    OstreeRepo *createTmpRepo(LingLongDir *self, GError **error);
+    OstreeRepo *createTmpRepo(std::shared_ptr<LingLongDir> linglong_dir, GError **error);
 
     /*
      * 根据指定目录创建临时repo仓库对象
      *
-     * @param self: 临时repo仓库对应目标仓库信息
+     * @param linglong_dir: 临时repo仓库对应目标仓库信息
      * @param cachePath: 临时仓库路径
      * @param error: 错误信息
      *
      * @return OstreeRepo: 临时repo仓库对象
      */
-    OstreeRepo *createChildRepo(LingLongDir *self, char *cachePath, GError **error);
+    OstreeRepo *createChildRepo(std::shared_ptr<LingLongDir> linglong_dir, char *cachePath, GError **error);
 
     /*
      * 删除临时目录

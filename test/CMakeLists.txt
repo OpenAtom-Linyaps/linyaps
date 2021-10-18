@@ -10,9 +10,11 @@ find_package(GTest REQUIRED)
 find_package(Qt5Core REQUIRED)
 find_package(Qt5DBus REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(DtkCore REQUIRED)
 
 set(Qt_LIBS Qt5::Core Qt5::DBus)
 
+set(DTK_LIBS dtkcore)
 set(LINK_LIBS
         ${Qt_LIBS}
         yaml-cpp
@@ -23,6 +25,14 @@ set(LINK_LIBS
         ${OSTREE1_LDFLAGS}
         ${APPSTREMGLIB_LDFLAGS}
         )
+# add qdbus call
+set_source_files_properties(../src/module/dbus_ipc/com.deepin.linglong.PackageManager.xml
+        PROPERTIES INCLUDE service/impl/json_register_inc.h)
+
+qt5_add_dbus_interface(LL_TEST_SOURCES
+        ../src/module/dbus_ipc/com.deepin.linglong.PackageManager.xml
+        package_manager)
+
 
 add_executable(ll-test
         "../src/module/util/json.h"
@@ -30,6 +40,7 @@ add_executable(ll-test
         "../src/module/runtime/oci.h"
         "../src/module/runtime/container.h"
         "../src/module/package/package.h"
+        "../src/module/package/pkginfo.h"
         "../src/module/util/httpclient.cpp"
         "../src/module/repo/repohelper.cpp"
         "../src/service/impl/json_register_inc.h"
@@ -49,7 +60,8 @@ add_executable(ll-test
         qt_yaml.h
         get_info_test.cpp
         build_ouap_test.cpp
-        qdbus_retmsg_test.cpp)
+        ${LL_TEST_SOURCES}
+        qdbus_retmsg_test.cpp qdbus_call_test.cpp)
 
 find_package(CURL REQUIRED)
 find_package(PkgConfig REQUIRED)

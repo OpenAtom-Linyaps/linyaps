@@ -32,8 +32,7 @@
 
 #include "service/impl/qdbus_retmsg.h"
 #include "module/package/package.h"
-#include "service/impl/error_code_ret.h"
-
+#include "service/impl/dbus_retcode.h"
 
 class UapManagerPrivate;
 class UapManager : public QObject

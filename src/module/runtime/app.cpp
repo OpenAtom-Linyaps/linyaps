@@ -231,6 +231,7 @@ public:
             {"/usr/share/zoneinfo", "/usr/share/zoneinfo"},
             {"/etc/localtime", "/run/host/etc/localtime"},
             {"/etc/machine-id", "/run/host/etc/machine-id"},
+            {"/etc/machine-id", "/etc/machine-id"},
             {"/var", "/var"}};
 
         for (const auto &pair : mountMap) {

@@ -431,7 +431,7 @@ public:
         }
 
         //制作数据仓库repo
-        if (!makeOstree(ostree_repo, "bare-user-only")) {
+        if (!makeOstree(ostree_repo, "archive")) {
             qInfo() << "make ostree repo failed!!!";
             return false;
         }

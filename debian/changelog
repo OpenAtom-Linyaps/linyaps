@@ -1,3 +1,9 @@
+linglong (1.0.2-1) unstable; urgency=medium
+
+  * fix: delete test case /tmp/uap-xxx
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Tue, 19 Oct 2021 11:12:04 +0800
+
 linglong (1.0.1-1) unstable; urgency=medium
 
   * add uap install dbus

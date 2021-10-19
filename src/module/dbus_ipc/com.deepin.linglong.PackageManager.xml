@@ -26,8 +26,8 @@
         </method>
         <method name="Query">
             <arg name="PackageIDList" type="as" direction="in"/>
-            <arg name="PackageList" type="a(s)" direction="out"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="PackageList"/>
+            <arg name="PKGInfoList" type="a(s)" direction="out"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="PKGInfoList"/>
         </method>
         <method name="Import">
             <arg name="PackageFileList" type="as" direction="in"/>

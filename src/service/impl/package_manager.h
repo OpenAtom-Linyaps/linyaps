@@ -66,7 +66,7 @@ public Q_SLOTS:
     QString Update(const QStringList &packageIDList);
     QString UpdateAll();
 
-    PackageList Query(const QStringList &packageIDList);
+    PKGInfoList Query(const QStringList &packageIDList);
 
     QString Import(const QStringList &packagePathList);
 
@@ -126,6 +126,7 @@ private:
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), PackageManager)
 
     AppStreamPkgInfo appStreamPkgInfo;
+
     /*
      * 根据AppStream.json查询目标软件包信息
      *
@@ -221,6 +222,27 @@ private:
      * @return bool: 1:已安装 0:未安装 -1查询失败
      */
     int getIntallStatus(const QString pkgName, const QString userName = "");
+
+    /*
+     * 查询已安装软件包信息
+     *
+     * @param pkgName: 软件包包名
+     * @param pkgList: 查询结果
+     *
+     * @return bool: true:成功 false:失败(软件包未安装)
+     */
+    bool getInstalledAppInfo(const QString pkgName, PKGInfoList &pkgList);
+
+    /*
+     * 查询未安装软件包信息
+     *
+     * @param pkgName: 软件包包名
+     * @param pkgList: 查询结果
+     * @param err: 错误信息
+     *
+     * @return bool: true:成功 false:失败
+     */
+    bool getUnInstalledAppInfo(const QString pkgName, PKGInfoList &pkgList, QString &err);
 
     /*
      * 建立box运行应用需要的软链接

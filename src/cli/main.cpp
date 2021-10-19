@@ -33,6 +33,23 @@
 
 #include "package_manager.h"
 
+void printAppInfo(PKGInfoList retMsg)
+{
+    if (retMsg.size() > 0) {
+        std::cout << "id\t\t\t"
+                  << "name\t\t"
+                  << "version\t\t"
+                  << "arch\t\t"
+                  << "description" << std::endl;
+        for (auto const &it : retMsg) {
+            std::cout << it->appid.toStdString() << "\t" << it->appname.toStdString() << "\t\t"
+                      << it->version.toStdString() << "\t\t" << it->arch.toStdString() << "\t\t" << it->description.toStdString() << std::endl;
+        }
+    } else {
+        std::cout << "app not found in repo" << std::endl;
+    }
+}
+
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
@@ -201,6 +218,23 @@ int main(int argc, char **argv)
                      qInfo() << "code:\t" << it->code;
                  }
              }
+             return 0;
+         }},
+        {"query", [&](QCommandLineParser &parser) -> int {
+             auto optType = QCommandLineOption("type", "query installed app", "--type=installed");
+
+             parser.clearPositionalArguments();
+             parser.addPositionalArgument("query", "query app info", "query");
+             parser.addPositionalArgument("app-id", "app id", "com.deepin.demo");
+             parser.addOption(optType);
+             parser.process(app);
+
+             auto args = parser.positionalArguments();
+             auto appID = args.value(1);
+             QDBusPendingReply<PKGInfoList> reply = pm.Query({appID});
+             reply.waitForFinished();
+             PKGInfoList ret_msg = reply.value();
+             printAppInfo(ret_msg);
              return 0;
          }},
         {"repo", [&](QCommandLineParser &parser) -> int {

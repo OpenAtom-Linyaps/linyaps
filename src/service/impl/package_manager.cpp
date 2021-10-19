@@ -593,6 +593,83 @@ bool PackageManager::updateAppStatus(AppStreamPkgInfo appStreamPkgInfo)
 }
 
 /*
+ * 查询已安装软件包信息
+ *
+ * @param pkgName: 软件包包名
+ * @param pkgList: 查询结果
+ *
+ * @return bool: true:成功 false:失败(软件包未安装)
+ */
+bool PackageManager::getInstalledAppInfo(const QString pkgName, PKGInfoList &pkgList)
+{
+    if (!getIntallStatus(pkgName)) {
+        return false;
+    }
+    // 判断查询类型 pkgName == installed to do
+    QString dbPath = "/deepin/linglong/layers/AppInfoDB.json";
+    QFile dbFile(dbPath);
+    // 读取文件的全部内容
+    dbFile.open(QIODevice::ReadOnly | QIODevice::Text);
+    QString qValue = dbFile.readAll();
+    dbFile.close();
+    QJsonDocument document = QJsonDocument::fromJson(qValue.toUtf8());
+    QJsonObject jsonObject = document.object();
+    QJsonObject pkgsObject = jsonObject["pkgs"].toObject();
+    QJsonObject pkgObject = pkgsObject[pkgName].toObject();
+
+    QString appName = pkgObject.value("name").toString();
+    QString appSummary = pkgObject["summary"].toString();
+    QString appRuntime = pkgObject["runtime"].toString();
+    QString appRepo = pkgObject["reponame"].toString();
+
+    QJsonObject usersObject = jsonObject["users"].toObject();
+    const QString dstUserName = getUserName();
+    QJsonObject userNameObject = usersObject[dstUserName].toObject();
+    QJsonObject usersPkgObject = userNameObject[pkgName].toObject();
+    QString appVer = usersPkgObject["version"].toString();
+    qInfo() << appName << " " << appVer << " " << appSummary << " " << appRuntime << " " << appRepo;
+
+    auto info = QPointer<PKGInfo>(new PKGInfo);
+    info->appid = pkgName;
+    info->appname = appName;
+    info->version = appVer;
+    info->arch = getHostArch();
+    info->description = appSummary;
+    pkgList.push_back(info);
+    return true;
+}
+
+/*
+ * 查询未安装软件包信息
+ *
+ * @param pkgName: 软件包包名
+ * @param pkgList: 查询结果
+ * @param err: 错误信息
+ *
+ * @return bool: true:成功 false:失败
+ */
+bool PackageManager::getUnInstalledAppInfo(const QString pkgName, PKGInfoList &pkgList, QString &err)
+{
+    const QString arch = getHostArch();
+    if (arch == "unknown") {
+        qInfo() << "the host arch is not recognized";
+        return false;
+    }
+    bool ret = getAppInfoByAppStream("/deepin/linglong/", "repo", pkgName, arch, err);
+    if (ret) {
+        qInfo() << appStreamPkgInfo.appName << " " << appStreamPkgInfo.appId << " " << appStreamPkgInfo.summary;
+        auto info = QPointer<PKGInfo>(new PKGInfo);
+        info->appid = pkgName;
+        info->appname = appStreamPkgInfo.appName;
+        info->version = appStreamPkgInfo.appVer;
+        info->arch = appStreamPkgInfo.appArch;
+        info->description = appStreamPkgInfo.summary;
+        pkgList.push_back(info);
+    }
+    return ret;
+}
+
+/*
  * 建立box运行应用需要的软链接
  */
 void PackageManager::buildRequestedLink()
@@ -890,10 +967,41 @@ QString PackageManager::UpdateAll()
     return {};
 }
 
-PackageList PackageManager::Query(const QStringList &packageIDList)
+/*!
+ * 查询软件包
+ * @param packageIDList: 软件包的appid
+ * 
+ * @return PKGInfoList 查询结果列表
+ */
+PKGInfoList PackageManager::Query(const QStringList &packageIDList)
 {
-    sendErrorReply(QDBusError::NotSupported, message().member());
-    return {};
+    QString pkgName = packageIDList.at(0);
+    if (pkgName.isNull() || pkgName.isEmpty()) {
+        qInfo() << "package name err";
+        return {};
+    }
+    PKGInfoList pkglist;
+    // 查找单个软件包 优先从本地数据库文件中查找
+    bool ret = getInstalledAppInfo(pkgName, pkglist);
+    // 目标软件包 已安装则终止查找
+    qInfo() << "PackageManager::Query called, ret:" << ret;
+    if (ret) {
+        return pkglist;
+    }
+    // 更新AppStream.json后，查找AppStream.json 文件
+    QString err = "";
+    // 更新AppStream.json
+    ret = updateAppStream("/deepin/linglong/", "repo", err);
+    if (!ret) {
+        qInfo() << err;
+        return pkglist;
+    }
+    // 查询未安装App信息
+    ret = getUnInstalledAppInfo(pkgName, pkglist, err);
+    if (!ret) {
+        qInfo() << err;
+    }
+    return pkglist;
 }
 
 /*!

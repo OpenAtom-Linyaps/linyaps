@@ -34,9 +34,11 @@
 #include <module/util/fs.h>
 #include "job_manager.h"
 #include "module/util/httpclient.h"
+#include "service/impl/dbus_retcode.h"
 
 using linglong::util::fileExists;
 using linglong::util::listDirFolders;
+using linglong::dbus::RetCode;
 
 class PackageManagerPrivate
 {
@@ -306,10 +308,10 @@ bool PackageManager::updateOUAP(const QString xmlPath, const QString savePath, Q
     linglong::util::HttpClient *httpClient = linglong::util::HttpClient::getInstance();
     bool ret = httpClient->loadHttpData(appStreamPkgInfo.appUrl + ouapName, absDir);
     if (!ret) {
-        qInfo() << err;
+        err = "updateOUAP load ouap err";
     }
     httpClient->release();
-    return true;
+    return ret;
 }
 
 /*
@@ -332,6 +334,9 @@ bool PackageManager::updateAppStream(const QString savePath, const QString remot
     linglong::util::HttpClient *httpClient = linglong::util::HttpClient::getInstance();
     bool ret = httpClient->loadHttpData(xmlPath, fullPath);
     httpClient->release();
+    if (!ret) {
+        err = "updateAppStream load appstream.json err";
+    }
     return ret;
 }
 
@@ -409,7 +414,7 @@ bool PackageManager::getAppInfoByAppStream(const QString savePath, const QString
             }
         }
     }
-    err = "getAppInfoByAppStream app:" + pkgName + " is not found";
+    err = "app:" + pkgName + " not found";
     return false;
 }
 
@@ -417,7 +422,7 @@ bool PackageManager::getAppInfoByAppStream(const QString savePath, const QString
  * 下载软件包
  * @param packageIDList
  */
-QString PackageManager::Download(const QStringList &packageIDList, const QString savePath)
+RetMessageList PackageManager::Download(const QStringList &packageIDList, const QString savePath)
 {
     Q_D(PackageManager);
 
@@ -432,38 +437,70 @@ QString PackageManager::Download(const QStringList &packageIDList, const QString
     //     qDebug() << p.readAllStandardOutput();
     //     qDebug() << "finish" << p.exitStatus() << p.state();
     // });
-    qInfo() << "PackageManager::Download called";
-
+    RetMessageList retMsg;
+    auto info = QPointer<RetMessage>(new RetMessage);
     QString pkgName = packageIDList.at(0);
     if (pkgName.isNull() || pkgName.isEmpty()) {
         qInfo() << "package name err";
-        return "";
+        info->setcode(RetCode(RetCode::user_input_param_err));
+        info->setmessage("package name err");
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
     }
 
     // 下载OUAP 在线包到指定目录
     QString err = "";
     // 更新AppStream.json
-    updateAppStream("/deepin/linglong/", "repo", err);
-
+    bool ret = updateAppStream("/deepin/linglong/", "repo", err);
+    if (!ret) {
+        qInfo() << err;
+        info->setcode(RetCode(RetCode::update_appstream_failed));
+        info->setmessage(err);
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
+    }
     // 根据AppStream.json 查找目标软件包
     const QString xmlPath = "/deepin/linglong/repo/AppStream.json";
     //const QString arch = "x86_64";
     const QString arch = getHostArch();
     if (arch == "unknown") {
         qInfo() << "the host arch is not recognized";
-        return "";
+        info->setcode(RetCode(RetCode::host_arch_not_recognized));
+        info->setmessage("the host arch is not recognized");
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
     }
-    bool ret = getAppInfoByAppStream("/deepin/linglong/", "repo", pkgName, arch, err);
+    ret = getAppInfoByAppStream("/deepin/linglong/", "repo", pkgName, arch, err);
     if (!ret) {
         qInfo() << err;
-        return "";
+        info->setcode(RetCode(RetCode::search_pkg_by_appstream_failed));
+        info->setmessage(err);
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
     }
 
     // 下载OUAP在线包到指定目录
-    updateOUAP(xmlPath, savePath, err);
+    ret = updateOUAP(xmlPath, savePath, err);
+    if (!ret) {
+        qInfo() << err;
+        info->setcode(RetCode(RetCode::load_ouap_file_failed));
+        info->setmessage(err);
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
+    }
 
     // 下载UAP离线包to do
-    return "";
+    info->setcode(RetCode(RetCode::ouap_download_success));
+    info->setmessage("download ouap success");
+    info->setstate(true);
+    retMsg.push_back(info);
+    qInfo() << "download ouap success savePath:" << savePath;
+    return retMsg;
 }
 
 
@@ -671,7 +708,7 @@ bool PackageManager::installOUAPFile(const QString filePath, QString &err)
     ret = downloadOUAPData(appStreamPkgInfo.appId, appStreamPkgInfo.appArch, savePath, err);
     if (!ret) {
         qInfo() << err;
-        return "";
+        return ret;
     }
     // 根据box的安装要求建立软链接
     buildRequestedLink();
@@ -684,7 +721,7 @@ bool PackageManager::installOUAPFile(const QString filePath, QString &err)
  * 在线安装软件包
  * @param packageIDList
  */
-QString PackageManager::Install(const QStringList &packageIDList)
+RetMessageList PackageManager::Install(const QStringList &packageIDList)
 {
     Q_D(PackageManager);
 
@@ -699,12 +736,18 @@ QString PackageManager::Install(const QStringList &packageIDList)
     //     qDebug() << p.readAllStandardOutput();
     //     qDebug() << "finish" << p.exitStatus() << p.state();
     // });
+    RetMessageList retMsg;
+    bool ret = false;
+    auto info = QPointer<RetMessage>(new RetMessage);
     QString pkgName = packageIDList.at(0);
     if (pkgName.isNull() || pkgName.isEmpty()) {
         qInfo() << "package name err";
-        return "";
+        info->setcode(RetCode(RetCode::user_input_param_err));
+        info->setmessage("package name err");
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
     }
-    QString retInfo = "Install success";
     // 判断是否为UAP离线包
     QStringList uap_list = packageIDList.filter(QRegExp("^*\\.uap$", Qt::CaseInsensitive));
     if (uap_list.size() > 0) {
@@ -713,28 +756,49 @@ QString PackageManager::Install(const QStringList &packageIDList)
             Package pkg;
             pkg.InitUapFromFile(it);
         }
-        return retInfo;
+        //prompt msg to do
+        info->setcode(RetCode(RetCode::uap_install_success));
+        info->setmessage("install uap success");
+        info->setstate(true);
+        retMsg.push_back(info);
+        return retMsg;
     }
     QString err = "";
     Qt::CaseSensitivity cs = Qt::CaseInsensitive;
     // 根据OUAP在线包文件安装OUAP在线包 to do
     if (pkgName.endsWith(".ouap", cs)) {
-        installOUAPFile(pkgName, err);
-        return "";
+        ret = installOUAPFile(pkgName, err);
+        info->setcode(RetCode(RetCode::ouap_install_success));
+        info->setmessage("install ouap success");
+        if (!ret) {
+            info->setcode(RetCode(RetCode::ouap_install_failed));
+            info->setmessage(err);
+        }
+        info->setstate(ret);
+        retMsg.push_back(info);
+        return retMsg;
     }
 
     // 判断是否已安装
     if (getIntallStatus(pkgName)) {
         qInfo() << pkgName << " already installed";
-        return "";
+        info->setcode(RetCode(RetCode::pkg_already_installed));
+        info->setmessage(pkgName + " already installed");
+        info->setstate(true);
+        retMsg.push_back(info);
+        return retMsg;
     }
 
     // 根据包名安装在线包
     // 更新AppStream.json
-    bool ret = updateAppStream("/deepin/linglong/", "repo", err);
+    ret = updateAppStream("/deepin/linglong/", "repo", err);
     if (!ret) {
         qInfo() << err;
-        return "";
+        info->setcode(RetCode(RetCode::update_appstream_failed));
+        info->setmessage(err);
+        info->setstate(ret);
+        retMsg.push_back(info);
+        return retMsg;
     }
     // 根据AppStream.json 查找目标软件包
     const QString xmlPath = "/deepin/linglong/repo/AppStream.json";
@@ -742,25 +806,44 @@ QString PackageManager::Install(const QStringList &packageIDList)
     const QString arch = getHostArch();
     if (arch == "unknown") {
         qInfo() << "the host arch is not recognized";
-        return "";
+        info->setcode(RetCode(RetCode::host_arch_not_recognized));
+        info->setmessage("the host arch is not recognized");
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
     }
     ret = getAppInfoByAppStream("/deepin/linglong/", "repo", pkgName, arch, err);
     if (!ret) {
         qInfo() << err;
-        return "";
+        info->setcode(RetCode(RetCode::search_pkg_by_appstream_failed));
+        info->setmessage(err);
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
     }
 
     // 下载OUAP 到指定目录
     //const QString tmpDir = "/tmp/linglong/";
     const QString savePath = "/deepin/linglong/layers/" + appStreamPkgInfo.appId + "/" + appStreamPkgInfo.appVer + "/" + appStreamPkgInfo.appArch;
-    updateOUAP(xmlPath, savePath, err);
-
+    ret = updateOUAP(xmlPath, savePath, err);
+    if (!ret) {
+        qInfo() << err;
+        info->setcode(RetCode(RetCode::load_ouap_file_failed));
+        info->setmessage(err);
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
+    }
     // 解压OUAP 到指定目录
     const QString ouapName = appStreamPkgInfo.appId + "-" + appStreamPkgInfo.appVer + "-" + appStreamPkgInfo.appArch + ".ouap";
     ret = extractOUAP(savePath + "/" + ouapName, savePath, err);
     if (!ret) {
         qInfo() << err;
-        return "";
+        info->setcode(RetCode(RetCode::extract_ouap_failed));
+        info->setmessage(err);
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
     }
     // 解析OUAP 在线包中的配置信息
     const QString infoPath = savePath + "/" + ouapName + ".info";
@@ -772,13 +855,21 @@ QString PackageManager::Install(const QStringList &packageIDList)
     ret = downloadOUAPData(appStreamPkgInfo.appId, appStreamPkgInfo.appArch, savePath, err);
     if (!ret) {
         qInfo() << err;
-        return "";
+        info->setcode(RetCode(RetCode::load_pkg_data_failed));
+        info->setmessage(err);
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
     }
     // 根据box的安装要求建立软链接
     buildRequestedLink();
     // 更新本地数据库文件 to do
     updateAppStatus(appStreamPkgInfo);
-    return retInfo;
+    info->setcode(RetCode(RetCode::pkg_install_success));
+    info->setmessage("install " + pkgName + " success");
+    info->setstate(true);
+    retMsg.push_back(info);
+    return retMsg;
 }
 
 QString PackageManager::Uninstall(const QStringList &packageIDList)

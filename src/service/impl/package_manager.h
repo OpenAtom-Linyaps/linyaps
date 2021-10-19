@@ -60,8 +60,8 @@ class PackageManager : public QObject
     friend class Dtk::Core::DSingleton<PackageManager>;
 
 public Q_SLOTS:
-    QString Download(const QStringList &packageIDList, const QString savePath);
-    QString Install(const QStringList &packageIDList);
+    RetMessageList Download(const QStringList &packageIDList, const QString savePath);
+    RetMessageList Install(const QStringList &packageIDList);
     QString Uninstall(const QStringList &packageIDList);
     QString Update(const QStringList &packageIDList);
     QString UpdateAll();

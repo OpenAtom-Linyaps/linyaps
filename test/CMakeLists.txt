@@ -61,7 +61,8 @@ add_executable(ll-test
         get_info_test.cpp
         build_ouap_test.cpp
         ${LL_TEST_SOURCES}
-        qdbus_retmsg_test.cpp qdbus_call_test.cpp)
+        qdbus_retmsg_test.cpp qdbus_call_test.cpp
+	package_manager_test.cpp)
 
 find_package(CURL REQUIRED)
 find_package(PkgConfig REQUIRED)

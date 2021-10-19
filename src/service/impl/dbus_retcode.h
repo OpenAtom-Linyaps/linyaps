@@ -37,6 +37,20 @@ enum class RetCode {
     uap_install_failed, // uap 安转失败
     uap_name_format_error = 501, // uap包名格式错误
     uap_file_not_exists, // uap包不存在
+
+    user_input_param_err = 600,
+    pkg_already_installed,
+    host_arch_not_recognized,
+    update_appstream_failed,
+    search_pkg_by_appstream_failed,
+    load_ouap_file_failed,
+    load_pkg_data_failed,
+    extract_ouap_failed,
+    ouap_install_file_not_exists, // 文件不存在
+    ouap_install_failed,
+    ouap_download_success,
+    ouap_install_success, // ouap文件安装正确
+    pkg_install_success, // 安装正确
 };
 template <typename T=quint32>
 inline T RetCode(RetCode code){

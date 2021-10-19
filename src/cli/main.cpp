@@ -159,14 +159,18 @@ int main(int argc, char **argv)
              //第一个参数为命令字
              auto appID = args.value(1);
              auto savePath = parser.value(optDownload);
-             pm.Download({appID}, savePath);
-             // OperateRet ret = reply.value();
-             // if (v.canConvert<OperateRet>()) {
-             // OperateRet ret = v.value<OperateRet>();
-             // std::cout << ret.retCode << "," << ret.retInfo.toStdString() << std::endl;
-             //  get progress
-             // }
-             return -1;
+             QFileInfo dstfs(savePath);
+             QDBusPendingReply<RetMessageList> reply = pm.Download({appID}, dstfs.absoluteFilePath());
+             reply.waitForFinished();
+             RetMessageList ret_msg = reply.value();
+             if (ret_msg.size() > 0) {
+                 auto it = ret_msg.at(0);
+                 qInfo() << "message:\t" << it->message;
+                 if (!it->state) {
+                     qInfo() << "code:\t" << it->code;
+                 }
+             }
+             return 0;
          }},
         {"install", [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
@@ -177,18 +181,27 @@ int main(int argc, char **argv)
 
              auto args = parser.positionalArguments();
              auto appID = args.value(1);
-             if (appID.endsWith(".uap", Qt::CaseInsensitive)) {
+             QDBusPendingReply<RetMessageList> reply;
+             if (appID.endsWith(".uap", Qt::CaseInsensitive) || appID.endsWith(".ouap", Qt::CaseInsensitive)) {
                  QFileInfo uap_fs(appID);
                  if (!uap_fs.exists()) {
                      qCritical() << "input file not found : " << appID;
                      return -1;
                  }
-                 auto jobID = pm.Install({uap_fs.absoluteFilePath()});
+                 reply = pm.Install({uap_fs.absoluteFilePath()});
              } else {
-                 auto jobID = pm.Install({appID});
+                 reply = pm.Install({appID});
              }
-             // get progress
-             return -1;
+             reply.waitForFinished();
+             RetMessageList ret_msg = reply.value();
+             if (ret_msg.size() > 0) {
+                 auto it = ret_msg.at(0);
+                 qInfo() << "message:\t" << it->message;
+                 if (!it->state) {
+                     qInfo() << "code:\t" << it->code;
+                 }
+             }
+             return 0;
          }},
         {"repo", [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();

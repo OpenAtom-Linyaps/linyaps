@@ -178,8 +178,12 @@ int main(int argc, char **argv)
 
              auto args = parser.positionalArguments();
              auto appID = args.value(1);
-
-             auto jobID = pm.Install({appID});
+             if (appID.endsWith(".uap",Qt::CaseInsensitive)) {
+                 QFileInfo uap_fs(appID);
+                 auto jobID = pm.Install({uap_fs.absoluteFilePath()});
+             } else {
+                 auto jobID = pm.Install({appID});
+             }
              // get progress
              return -1;
          }},

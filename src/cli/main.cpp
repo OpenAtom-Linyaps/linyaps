@@ -31,7 +31,6 @@
 
 #include "service/impl/json_register_inc.h"
 
-
 #include "package_manager.h"
 
 int main(int argc, char **argv)
@@ -178,8 +177,12 @@ int main(int argc, char **argv)
 
              auto args = parser.positionalArguments();
              auto appID = args.value(1);
-             if (appID.endsWith(".uap",Qt::CaseInsensitive)) {
+             if (appID.endsWith(".uap", Qt::CaseInsensitive)) {
                  QFileInfo uap_fs(appID);
+                 if (!uap_fs.exists()) {
+                     qCritical() << "input file not found : " << appID;
+                     return -1;
+                 }
                  auto jobID = pm.Install({uap_fs.absoluteFilePath()});
              } else {
                  auto jobID = pm.Install({appID});

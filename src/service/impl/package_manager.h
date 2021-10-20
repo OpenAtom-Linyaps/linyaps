@@ -34,7 +34,9 @@
 #include "module/runtime/container.h"
 #include "module/package/pkginfo.h"
 #include "qdbus_retmsg.h"
+#include "../util/singleton.h"
 
+using linglong::service::util::AppInstance;
 // 当前OUAP在线包对应的包名/版本/架构/存储URL信息 to do fix
 typedef struct _AppStreamPkgInfo {
     QString appId;
@@ -116,6 +118,9 @@ public Q_SLOTS:
 
         return list;
     };
+
+protected:
+    AppInstance *app_instance_list ;
 
 protected:
     PackageManager();

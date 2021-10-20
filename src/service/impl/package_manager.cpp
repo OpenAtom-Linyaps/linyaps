@@ -35,10 +35,14 @@
 #include "job_manager.h"
 #include "module/util/httpclient.h"
 #include "service/impl/dbus_retcode.h"
+#include "util/singleton.h"
 
 using linglong::util::fileExists;
 using linglong::util::listDirFolders;
 using linglong::dbus::RetCode;
+
+using linglong::service::util::AppInstance;
+using linglong::service::util::AppInfo;
 
 class PackageManagerPrivate
 {
@@ -54,8 +58,12 @@ public:
 };
 
 PackageManager::PackageManager()
-    : dd_ptr(new PackageManagerPrivate(this))
+    : dd_ptr(new PackageManagerPrivate(this)),app_instance_list(linglong::service::util::AppInstance::get())
 {
+    AppInfo app_info;
+    app_info.appid = "org.test.app1";
+    app_info.version = "v0.1";
+    this->app_instance_list->AppendAppInstance<AppInfo>(app_info);
 }
 
 PackageManager::~PackageManager() = default;
@@ -79,7 +87,7 @@ const QString PackageManager::getUserName()
  */
 const QString PackageManager::getHostArch()
 {
-    //other CpuArchitecture ie i386 i486 to do fix
+    // other CpuArchitecture ie i386 i486 to do fix
     const QString arch = QSysInfo::currentCpuArchitecture();
     Qt::CaseSensitivity cs = Qt::CaseInsensitive;
     if (arch.startsWith("x86_64", cs)) {
@@ -227,9 +235,9 @@ bool PackageManager::downloadOUAPData(const QString pkgName, const QString pkgAr
         // }
     }
     QString matchRef = "";
-    //QString pkgName = "org.deepin.calculator";
-    //QString pkgName = "us.zoom.Zoom";
-    //QString arch = "x86_64";
+    // QString pkgName = "org.deepin.calculator";
+    // QString pkgName = "us.zoom.Zoom";
+    // QString arch = "x86_64";
     ret = repo.resolveMatchRefs(repoPath, qrepoList[0], pkgName, pkgArch, matchRef, err);
     if (!ret) {
         qInfo() << err;
@@ -245,16 +253,16 @@ bool PackageManager::downloadOUAPData(const QString pkgName, const QString pkgAr
         return false;
     }
     // checkout 目录
-    //const QString dstPath = repoPath + "/AppData";
+    // const QString dstPath = repoPath + "/AppData";
     ret = repo.checkOutAppData(repoPath, qrepoList[0], matchRef, dstPath, err);
     if (!ret) {
         qInfo() << err;
     }
     qInfo() << "downloadOUAPData success, path:" << dstPath;
     // 方案2 将数据checkout到临时目录，临时目录制作一个离线包，再调用离线包的api安装
-    //makeUAPbyOUAP(QString cfgPath, QString dstPath)
-    //Package pkg;
-    //pkg.InitUapFromFile(uapPath);
+    // makeUAPbyOUAP(QString cfgPath, QString dstPath)
+    // Package pkg;
+    // pkg.InitUapFromFile(uapPath);
     return ret;
 }
 
@@ -296,8 +304,8 @@ bool PackageManager::resolveOUAPCfg(const QString infoPath)
 bool PackageManager::updateOUAP(const QString xmlPath, const QString savePath, QString &err)
 {
     //创建应用目录
-    //QString savePath = "/deepin/linglong/layers/" + appId + "/" + appVer;
-    //linglong::util::createDir(savePath);
+    // QString savePath = "/deepin/linglong/layers/" + appId + "/" + appVer;
+    // linglong::util::createDir(savePath);
     QDir temDir(savePath);
     QString absDir = temDir.absolutePath();
     // 路径必须是绝对路径
@@ -328,7 +336,7 @@ bool PackageManager::updateAppStream(const QString savePath, const QString remot
 {
     // 获取AppStream.json 地址
     const QString xmlPath = "http://10.20.54.2/linglong/xml/AppStream.json";
-    ///deepin/linglong
+    /// deepin/linglong
     QString fullPath = savePath + remoteName;
     //创建下载目录
     linglong::util::createDir(fullPath);
@@ -355,7 +363,7 @@ bool PackageManager::updateAppStream(const QString savePath, const QString remot
 bool PackageManager::getAppInfoByAppStream(const QString savePath, const QString remoteName, const QString pkgName, const QString pkgArch, QString &err)
 {
     //判断文件是否存在
-    //deepin/linglong
+    // deepin/linglong
     QString fullPath = savePath + remoteName + "/AppStream.json";
     if (!linglong::util::fileExists(fullPath)) {
         err = fullPath + " is not exist";
@@ -364,7 +372,7 @@ bool PackageManager::getAppInfoByAppStream(const QString savePath, const QString
 
     QFile jsonFile(fullPath);
     jsonFile.open(QIODevice::ReadOnly | QIODevice::Text);
-    //auto qbt = jsonFile.readAll();
+    // auto qbt = jsonFile.readAll();
     QString qValue = jsonFile.readAll();
     jsonFile.close();
     QJsonParseError parseJsonErr;
@@ -464,7 +472,7 @@ RetMessageList PackageManager::Download(const QStringList &packageIDList, const 
     }
     // 根据AppStream.json 查找目标软件包
     const QString xmlPath = "/deepin/linglong/repo/AppStream.json";
-    //const QString arch = "x86_64";
+    // const QString arch = "x86_64";
     const QString arch = getHostArch();
     if (arch == "unknown") {
         qInfo() << "the host arch is not recognized";
@@ -504,7 +512,6 @@ RetMessageList PackageManager::Download(const QStringList &packageIDList, const 
     return retMsg;
 }
 
-
 /*
  * 更新应用安装状态到本地文件
  *
@@ -522,9 +529,9 @@ bool PackageManager::updateAppStatus(AppStreamPkgInfo appStreamPkgInfo)
     if (!linglong::util::fileExists(dbPath)) {
         dbFile.open(QIODevice::WriteOnly | QIODevice::Text);
         QJsonObject jsonObject;
-        //QJsonArray emptyArray;
+        // QJsonArray emptyArray;
         QJsonObject emptyObject;
-        //jsonObject.insert("pkgs", emptyArray);
+        // jsonObject.insert("pkgs", emptyArray);
         jsonObject.insert("pkgs", emptyObject);
         jsonObject.insert("users", emptyObject);
         QJsonDocument jsonDocTmp;
@@ -566,7 +573,7 @@ bool PackageManager::updateAppStatus(AppStreamPkgInfo appStreamPkgInfo)
     QJsonObject usersSubItem;
     usersSubItem.insert("version", appStreamPkgInfo.appVer);
     usersSubItem.insert("ref", "app:" + appStreamPkgInfo.appId);
-    //usersSubItem.insert("commitv", "0123456789");
+    // usersSubItem.insert("commitv", "0123456789");
     QJsonObject userItem;
     userItem.insert(appStreamPkgInfo.appId, usersSubItem);
     // users下用户名已存在,将软件包添加到该用户名对应的软件包列表中
@@ -834,7 +841,7 @@ RetMessageList PackageManager::Install(const QStringList &packageIDList)
             Package pkg;
             pkg.InitUapFromFile(it);
         }
-        //prompt msg to do
+        // prompt msg to do
         info->setcode(RetCode(RetCode::uap_install_success));
         info->setmessage("install uap success");
         info->setstate(true);
@@ -901,7 +908,7 @@ RetMessageList PackageManager::Install(const QStringList &packageIDList)
     }
 
     // 下载OUAP 到指定目录
-    //const QString tmpDir = "/tmp/linglong/";
+    // const QString tmpDir = "/tmp/linglong/";
     const QString savePath = "/deepin/linglong/layers/" + appStreamPkgInfo.appId + "/" + appStreamPkgInfo.appVer + "/" + appStreamPkgInfo.appArch;
     ret = updateOUAP(xmlPath, savePath, err);
     if (!ret) {
@@ -928,8 +935,8 @@ RetMessageList PackageManager::Install(const QStringList &packageIDList)
     resolveOUAPCfg(infoPath);
 
     // 下载OUAP 在线包数据到目标目录 安装完成
-    //QString pkgName = "org.deepin.calculator";
-    //QString pkgName = "us.zoom.Zoom";
+    // QString pkgName = "org.deepin.calculator";
+    // QString pkgName = "us.zoom.Zoom";
     ret = downloadOUAPData(appStreamPkgInfo.appId, appStreamPkgInfo.appArch, savePath, err);
     if (!ret) {
         qInfo() << err;
@@ -971,7 +978,7 @@ QString PackageManager::UpdateAll()
 /*!
  * 查询软件包
  * @param packageIDList: 软件包的appid
- * 
+ *
  * @return PKGInfoList 查询结果列表
  */
 PKGInfoList PackageManager::Query(const QStringList &packageIDList)

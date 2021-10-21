@@ -153,6 +153,18 @@ public:
      */
     bool checkOutAppData(const QString qrepoPath, const QString qremoteName, const QString qref, const QString qdstPath, QString &err);
 
+    /*
+     * 通过ostree命令将软件包数据从远端仓库pull到本地
+     *
+     * @param destPath: 仓库路径
+     * @param remoteName: 远端仓库名称
+     * @param ref: 软件包对应的仓库索引ref
+     * @param err: 错误信息
+     *
+     * @return bool: true:成功 false:失败
+     */
+    bool repoPullbyCmd(const QString destPath, const QString remoteName, const QString ref, QString& err);
+
 private:
     // lint 禁止拷贝
     RepoHelper(const RepoHelper &);

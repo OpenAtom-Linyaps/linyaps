@@ -177,6 +177,8 @@ int main(int argc, char **argv)
              auto appID = args.value(1);
              auto savePath = parser.value(optDownload);
              QFileInfo dstfs(savePath);
+             // 设置 10 分钟超时 to do
+             pm.setTimeout(1000 * 60 * 10);
              QDBusPendingReply<RetMessageList> reply = pm.Download({appID}, dstfs.absoluteFilePath());
              reply.waitForFinished();
              RetMessageList ret_msg = reply.value();
@@ -198,6 +200,8 @@ int main(int argc, char **argv)
 
              auto args = parser.positionalArguments();
              auto appID = args.value(1);
+             // 设置 10 分钟超时 to do
+             pm.setTimeout(1000 * 60 * 10);
              QDBusPendingReply<RetMessageList> reply;
              if (appID.endsWith(".uap", Qt::CaseInsensitive) || appID.endsWith(".ouap", Qt::CaseInsensitive)) {
                  QFileInfo uap_fs(appID);

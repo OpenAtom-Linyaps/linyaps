@@ -238,7 +238,8 @@ bool PackageManager::downloadOUAPData(const QString pkgName, const QString pkgAr
         qInfo() << matchRef;
     }
 
-    ret = repo.repoPull(repoPath, qrepoList[0], pkgName, err);
+    //ret = repo.repoPull(repoPath, qrepoList[0], pkgName, err);
+    ret = repo.repoPullbyCmd(repoPath, qrepoList[0], matchRef, err);
     if (!ret) {
         qInfo() << err;
         return false;

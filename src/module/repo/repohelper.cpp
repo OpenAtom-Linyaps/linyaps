@@ -22,6 +22,10 @@
 #include "repohelper.h"
 #include "../util/httpclient.h"
 
+#include "../util/runner.h"
+
+using namespace linglong::runner;
+
 namespace linglong {
 
 /*
@@ -168,7 +172,7 @@ bool RepoHelper::fetchRemoteSummary(OstreeRepo *repo, const char *name, GBytes *
         qInfo() << "fetchRemoteSummary ostree_repo_remote_get_url error:" << (*error)->message;
         return false;
     }
-    fprintf(stdout, "fetchRemoteSummary remote %s,url:%s\n", name, url);
+    // fprintf(stdout, "fetchRemoteSummary remote %s,url:%s\n", name, url);
 
     if (!ostree_repo_remote_fetch_summary(repo, name, &summary, &summarySig, cancellable, error)) {
         // fprintf(stdout, "fetchRemoteSummary ostree_repo_remote_fetch_summary error:%s\n", (*error)->message);
@@ -280,8 +284,12 @@ bool RepoHelper::getRemoteRefs(const QString qrepoPath, const QString qremoteNam
     GError *error = NULL;
     bool ret = fetchRemoteSummary(linglong_dir->repo, remoteName.c_str(), &summaryBytes, &summarySigBytes, cancellable, &error);
     if (!ret) {
-        snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s err:%s", __FILE__, __func__, error->message);
-        err = info;
+        if (err != NULL) {
+            snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s err:%s", __FILE__, __func__, error->message);
+            err = info;
+        } else {
+            err = "getRemoteRefs remote repo err";
+        }
         return false;
     }
     GVariant *summary = g_variant_ref_sink(g_variant_new_from_bytes(OSTREE_SUMMARY_GVARIANT_FORMAT, summaryBytes, FALSE));
@@ -560,6 +568,7 @@ void RepoHelper::delDirbyPath(const char *path)
     pid_t result;
     memset(cmd, '\0', 512);
     snprintf(cmd, 512, "rm -rf %s", path);
+    qInfo() << "start delete tmp repo";
     result = system(cmd);
     // fprintf(stdout, "delete tmp repo, path:%s, ret:%d\n", path, result);
     qInfo() << "delete tmp repo, path:" << path << ", ret:" << result;
@@ -806,6 +815,7 @@ bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, co
         //fprintf(stdout, "ostree_repo_commit_transaction error:%s\n", error->message);
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s ostree_repo_commit_transaction err:%s", __FILE__, __func__, error->message);
         err = info;
+        ostree_repo_abort_transaction(childRepo, cancellable, NULL);
         return false;
     }
 
@@ -841,7 +851,7 @@ bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, co
 bool RepoHelper::repoPullLocal(OstreeRepo *repo, const char *remoteName, const char *url, const char *ref, const char *checksum,
                                OstreeAsyncProgress *progress, GCancellable *cancellable, GError **error)
 {
-    // 增加OSTREE_REPO_PULL_FLAGS_UNTRUSTED标志时，ostree会调用ostree_repo_fsck_object校验仓库文件 
+    // 增加OSTREE_REPO_PULL_FLAGS_UNTRUSTED标志时，ostree会调用ostree_repo_fsck_object校验仓库文件
     //const OstreeRepoPullFlags flags = (OstreeRepoPullFlags)(OSTREE_REPO_PULL_FLAGS_UNTRUSTED | OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES);
     const OstreeRepoPullFlags flags = (OstreeRepoPullFlags)(OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES);
     GVariantBuilder builder;
@@ -898,6 +908,7 @@ bool RepoHelper::repoPullLocal(OstreeRepo *repo, const char *remoteName, const c
     if (!ostree_repo_commit_transaction(repo, NULL, cancellable, error)) {
         // fprintf(stdout, "ostree_repo_commit_transaction error:%s\n", (*error)->message);
         qInfo() << "ostree_repo_commit_transaction error:" << (*error)->message;
+        ostree_repo_abort_transaction(repo, cancellable, NULL);
     }
     return res;
 }
@@ -966,5 +977,51 @@ bool RepoHelper::checkOutAppData(const QString qrepoPath, const QString qremoteN
         return false;
     }
     return true;
+}
+
+/*
+ * 通过ostree命令将软件包数据从远端仓库pull到本地
+ *
+ * @param destPath: 仓库路径
+ * @param remoteName: 远端仓库名称
+ * @param ref: 软件包对应的仓库索引ref
+ * @param err: 错误信息
+ *
+ * @return bool: true:成功 false:失败
+ */
+bool RepoHelper::repoPullbyCmd(const QString destPath, const QString remoteName, const QString ref, QString &err)
+{
+    // 创建临时仓库
+    GError *error = NULL;
+    OstreeRepo *childRepo = createTmpRepo(linglong_dir, &error);
+    if (childRepo == NULL) {
+        qInfo() << "createTmpRepo error";
+        err = "createTmpRepo error";
+        return false;
+    }
+    g_autofree char *tmpPath = g_file_get_path(ostree_repo_get_path(childRepo));
+    qInfo() << "tmpPath:" << tmpPath;
+    qInfo() << "destPath:" << destPath;
+    // 将数据pull到临时仓库
+    // ostree --repo=/var/tmp/linglong-cache-I80JB1/repoTmp pull --mirror repo:app/org.deepin.calculator/x86_64/1.2.2
+    const QString fullref = remoteName + ":" + ref;
+    auto ret = Runner("ostree", {"--repo=" + QString(QLatin1String(tmpPath)), "pull", "--mirror", fullref}, 1000 * 60 * 30);
+    if (!ret) {
+        qInfo() << "repoPullbyCmd pull error";
+        err = "repoPullbyCmd pull error";
+        return false;
+    }
+    qInfo() << "repoPullbyCmd pull success";
+    //ostree --repo=test-repo(目标)  pull-local /home/linglong/work/linglong/pool/repo(源)
+    // 将数据从临时仓库同步到目标仓库
+    ret = Runner("ostree", {"--repo=" + destPath + "/repo", "pull-local", QString(QLatin1String(tmpPath)), ref}, 30000);
+    if (!ret) {
+        qInfo() << "repoPullbyCmd pull-local error";
+        err = "repoPullbyCmd pull-local error";
+        return false;
+    }
+    // 删除临时目录 block to delete to do
+    delDirbyPath(tmpPath);
+    return ret;
 }
 } // namespace linglong

@@ -33,10 +33,18 @@ qt5_add_dbus_interface(LL_TEST_SOURCES
         ../src/module/dbus_ipc/com.deepin.linglong.PackageManager.xml
         package_manager)
 
+set_source_files_properties(../src/module/dbus_ipc/com.deepin.linglong.UapManager.xml
+        PROPERTIES INCLUDE service/impl/json_register_inc.h)
+
+qt5_add_dbus_interface(LL_TEST_SOURCES
+        ../src/module/dbus_ipc/com.deepin.linglong.UapManager.xml
+        uap_manager)
+
 
 add_executable(ll-test
         "../src/module/util/json.h"
         "../src/module/util/yaml.h"
+        "../src/module/util/fs.cpp"
         "../src/module/runtime/oci.h"
         "../src/module/runtime/container.h"
         "../src/module/package/package.h"
@@ -62,7 +70,9 @@ add_executable(ll-test
         build_ouap_test.cpp
         ${LL_TEST_SOURCES}
         qdbus_retmsg_test.cpp qdbus_call_test.cpp
-	package_manager_test.cpp singleton_test.cpp)
+	package_manager_test.cpp singleton_test.cpp
+        uap_manager_test.cpp
+        )
 
 find_package(CURL REQUIRED)
 find_package(PkgConfig REQUIRED)

@@ -1,48 +1,67 @@
 /*
- * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
+ * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
  *
- * Author:    huqinghong@uniontech.com
+ * Author:     huqinghong@uniontech.com
  *
- * Maintainer:huqinghong@uniontech.com
+ * Maintainer: huqinghong@uniontech.com
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#include "repohelper.h"
-#include "../util/httpclient.h"
-
+#include "ostree_repohelper.h"
 #include "../util/runner.h"
 
 using namespace linglong::runner;
 
+const int MAX_ERRINFO_BUFSIZE = 512;
+const int DEFAULT_UPDATE_FREQUENCY = 100;
+#define PACKAGE_VERSION "1.0.0"
+#define AT_FDCWD -100
+
 namespace linglong {
+
+/*
+ * 保存本地仓库信息
+ *
+ * @param basedir: 临时仓库路径
+ * @param repo: 错误信息
+ *
+ */
+void OstreeRepoHelper::setDirInfo(const QString &basedir, OstreeRepo *repo)
+{
+    pLingLongDir->basedir = basedir;
+    pLingLongDir->repo = repo;
+}
+
+OstreeRepoHelper::OstreeRepoHelper()
+{
+    pLingLongDir = new LingLongDir();
+}
+
+OstreeRepoHelper::~OstreeRepoHelper()
+{
+    if (pLingLongDir != nullptr) {
+        qInfo() << "~OstreeRepoHelper() called";
+        delete pLingLongDir;
+        pLingLongDir = nullptr;
+    }
+}
 
 /*
  * 创建本地repo仓库,当目标路径不存在时，自动新建路径
  *
- * @param qrepoPath: 本地仓库路径
+ * @param repoPath: 本地仓库路径
  * @param err: 错误信息
  *
  * @return bool: true:成功 false:失败
  */
-bool RepoHelper::ensureRepoEnv(const QString qrepoPath, QString &err)
+bool OstreeRepoHelper::ensureRepoEnv(const QString &repoPath, QString &err)
 {
-    const string repoPath = qrepoPath.toStdString();
+    const string repoPathTmp = repoPath.toStdString();
     GCancellable *cancellable = NULL;
     GError *error = NULL;
     char info[MAX_ERRINFO_BUFSIZE] = {'\0'};
-    if (repoPath.empty()) {
+    if (repoPathTmp.empty()) {
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s param err", __FILE__, __func__);
         err = info;
         // err = QString(QLatin1String(info));
@@ -52,10 +71,10 @@ bool RepoHelper::ensureRepoEnv(const QString qrepoPath, QString &err)
     g_autoptr(GFile) repodir = NULL;
     string tmpPath = "";
     //适配目标路径末尾的‘/’，本地仓库目录名为repo
-    if (repoPath.at(repoPath.size() - 1) == '/') {
-        tmpPath = repoPath + "repo";
+    if (repoPathTmp.at(repoPathTmp.size() - 1) == '/') {
+        tmpPath = repoPathTmp + "repo";
     } else {
-        tmpPath = repoPath + "/repo";
+        tmpPath = repoPathTmp + "/repo";
     }
     // fprintf(stdout, "ensureRepoEnv repo path:%s\n", tmpPath.c_str());
     qInfo() << "ensureRepoEnv repo path:" << QString::fromStdString(tmpPath);
@@ -91,14 +110,14 @@ bool RepoHelper::ensureRepoEnv(const QString qrepoPath, QString &err)
     if (!ostree_repo_open(repo, cancellable, &error)) {
         // fprintf(stdout, "ostree_repo_open:%s error:%s\n", repoPath.c_str(), error->message);
         qInfo() << "ostree_repo_open error:" << error->message;
-        snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s ostree_repo_open:%s error:%s", __FILE__, __func__, repoPath.c_str(), error->message);
+        snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s ostree_repo_open:%s error:%s", __FILE__, __func__, repoPathTmp.c_str(), error->message);
         // err = info;
         err = QString(QLatin1String(info));
         return false;
     }
 
     // set dir path info
-    this->linglong_dir->setDirInfo(repoPath, repo);
+    setDirInfo(repoPath, repo);
 
     return true;
 }
@@ -106,32 +125,31 @@ bool RepoHelper::ensureRepoEnv(const QString qrepoPath, QString &err)
 /*
  * 查询ostree远端仓库列表
  *
- * @param qrepoPath: 远端仓库对应的本地仓库路径
+ * @param repoPath: 远端仓库对应的本地仓库路径
  * @param vec: 远端仓库列表
  * @param err: 错误信息
  *
  * @return bool: true:查询成功 false:失败
  */
-bool RepoHelper::getRemoteRepoList(const QString qrepoPath, QVector<QString> &vec, QString &err)
+bool OstreeRepoHelper::getRemoteRepoList(const QString &repoPath, QVector<QString> &vec, QString &err)
 {
-    string repoPath = qrepoPath.toStdString();
     char info[MAX_ERRINFO_BUFSIZE] = {'\0'};
-    if (repoPath.empty()) {
+    if (repoPath.isEmpty()) {
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s param err", __FILE__, __func__);
         // err = info;
         err = QString(QLatin1String(info));
         return false;
     }
     // 校验本地仓库是否创建
-    if (!linglong_dir->repo || linglong_dir->basedir != repoPath) {
+    if (!pLingLongDir->repo || pLingLongDir->basedir != repoPath) {
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s repo has not been created", __FILE__, __func__);
         // err = info;
         err = QString(QLatin1String(info));
         return false;
     }
     g_auto(GStrv) res = NULL;
-    if (linglong_dir->repo) {
-        res = ostree_repo_remote_list(linglong_dir->repo, NULL);
+    if (pLingLongDir->repo) {
+        res = ostree_repo_remote_list(pLingLongDir->repo, NULL);
     }
 
     if (res != NULL) {
@@ -161,7 +179,7 @@ bool RepoHelper::getRemoteRepoList(const QString qrepoPath, QVector<QString> &ve
  *
  * @return bool: true:成功 false:失败
  */
-bool RepoHelper::fetchRemoteSummary(OstreeRepo *repo, const char *name, GBytes **outSummary, GBytes **outSummarySig, GCancellable *cancellable, GError **error)
+bool OstreeRepoHelper::fetchRemoteSummary(OstreeRepo *repo, const char *name, GBytes **outSummary, GBytes **outSummarySig, GCancellable *cancellable, GError **error)
 {
     g_autofree char *url = NULL;
     g_autoptr(GBytes) summary = NULL;
@@ -197,7 +215,7 @@ bool RepoHelper::fetchRemoteSummary(OstreeRepo *repo, const char *name, GBytes *
  * @param ref_map: summary信息中解析出的ref map信息
  * @param outRefs: 仓库软件包索引信息
  */
-void RepoHelper::getPkgRefsFromRefsMap(GVariant *ref_map, map<string, string> &outRefs)
+void OstreeRepoHelper::getPkgRefsFromRefsMap(GVariant *ref_map, map<string, string> &outRefs)
 {
     GVariant *value;
     GVariantIter ref_iter;
@@ -237,7 +255,7 @@ void RepoHelper::getPkgRefsFromRefsMap(GVariant *ref_map, map<string, string> &o
  * @param summary: 远端仓库Summary信息
  * @param outRefs: 远端仓库软件包索引信息
  */
-void RepoHelper::getPkgRefsBySummary(GVariant *summary, map<string, string> &outRefs)
+void OstreeRepoHelper::getPkgRefsBySummary(GVariant *summary, map<string, string> &outRefs)
 {
     // g_autoptr(GHashTable) ret_all_refs = NULL;
     g_autoptr(GVariant) ref_map = NULL;
@@ -252,19 +270,17 @@ void RepoHelper::getPkgRefsBySummary(GVariant *summary, map<string, string> &out
 /*
  * 查询远端仓库所有软件包索引信息refs
  *
- * @param qrepoPath: 远端仓库对应的本地仓库路径
- * @param qremoteName: 远端仓库名称
+ * @param repoPath: 远端仓库对应的本地仓库路径
+ * @param remoteName: 远端仓库名称
  * @param outRefs: 远端仓库软件包索引信息(key:refs, value:commit)
  * @param err: 错误信息
  *
  * @return bool: true:成功 false:失败
  */
-bool RepoHelper::getRemoteRefs(const QString qrepoPath, const QString qremoteName, QMap<QString, QString> &outRefs, QString &err)
+bool OstreeRepoHelper::getRemoteRefs(const QString &repoPath, const QString &remoteName, QMap<QString, QString> &outRefs, QString &err)
 {
-    const string repoPath = qrepoPath.toStdString();
-    const string remoteName = qremoteName.toStdString();
     char info[MAX_ERRINFO_BUFSIZE] = {'\0'};
-    if (remoteName.empty()) {
+    if (remoteName.isEmpty()) {
         // fprintf(stdout, "getRemoteRefs param err\n");
         qInfo() << "getRemoteRefs param err";
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s param err", __FILE__, __func__);
@@ -272,17 +288,17 @@ bool RepoHelper::getRemoteRefs(const QString qrepoPath, const QString qremoteNam
         return false;
     }
 
-    if (!linglong_dir->repo || linglong_dir->basedir != repoPath) {
+    if (!pLingLongDir->repo || pLingLongDir->basedir != repoPath) {
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s repo has not been created", __FILE__, __func__);
         err = info;
         return false;
     }
-
+    const string remoteNameTmp = remoteName.toStdString();
     g_autoptr(GBytes) summaryBytes = NULL;
     g_autoptr(GBytes) summarySigBytes = NULL;
     GCancellable *cancellable = NULL;
     GError *error = NULL;
-    bool ret = fetchRemoteSummary(linglong_dir->repo, remoteName.c_str(), &summaryBytes, &summarySigBytes, cancellable, &error);
+    bool ret = fetchRemoteSummary(pLingLongDir->repo, remoteNameTmp.c_str(), &summaryBytes, &summarySigBytes, cancellable, &error);
     if (!ret) {
         if (err != NULL) {
             snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s err:%s", __FILE__, __func__, error->message);
@@ -309,7 +325,7 @@ bool RepoHelper::getRemoteRefs(const QString qrepoPath, const QString qremoteNam
  * @param separator: 分割字符串
  * @param result: 分割结果
  */
-void RepoHelper::splitStr(string str, string separator, vector<string> &result)
+void OstreeRepoHelper::splitStr(string str, string separator, vector<string> &result)
 {
     size_t cutAt;
     while ((cutAt = str.find_first_of(separator)) != str.npos) {
@@ -331,7 +347,7 @@ void RepoHelper::splitStr(string str, string separator, vector<string> &result)
  *
  * @return bool: true:成功 false:失败
  */
-bool RepoHelper::resolveRef(const string fullRef, vector<string> &result)
+bool OstreeRepoHelper::resolveRef(const string &fullRef, vector<string> &result)
 {
     // vector<string> result;
     splitStr(fullRef, "/", result);
@@ -369,31 +385,27 @@ bool RepoHelper::resolveRef(const string fullRef, vector<string> &result)
 /*
  * 查询软件包在仓库中对应的索引信息ref
  *
- * @param qrepoPath: 远端仓库对应的本地仓库路径
- * @param qremoteName: 远端仓库名称
- * @param qpkgName: 软件包包名
- * @param qarch: 架构名
+ * @param repoPath: 远端仓库对应的本地仓库路径
+ * @param remoteName: 远端仓库名称
+ * @param pkgName: 软件包包名
+ * @param arch: 架构名
  * @param matchRef: 软件包对应的索引信息
  * @param err: 错误信息
  *
  * @return bool: true:成功 false:失败
  */
-bool RepoHelper::resolveMatchRefs(const QString qrepoPath, const QString qremoteName, const QString qpkgName, const QString qarch, QString &matchRef, QString &err)
+bool OstreeRepoHelper::queryMatchRefs(const QString &repoPath, const QString &remoteName, const QString &pkgName, const QString &arch, QString &matchRef, QString &err)
 {
-    const string repoPath = qrepoPath.toStdString();
-    const string remoteName = qremoteName.toStdString();
-    const string pkgName = qpkgName.toStdString();
-    const string arch = qarch.toStdString();
     char info[MAX_ERRINFO_BUFSIZE] = {'\0'};
-    if (remoteName.empty() || pkgName.empty()) {
-        // fprintf(stdout, "resolveMatchRefs param err\n");
-        qInfo() << "resolveMatchRefs param err";
+    if (remoteName.isEmpty() || pkgName.isEmpty()) {
+        // fprintf(stdout, "queryMatchRefs param err\n");
+        qInfo() << "queryMatchRefs param err";
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s param err", __FILE__, __func__);
         err = info;
         return false;
     }
 
-    if (!linglong_dir->repo || linglong_dir->basedir != repoPath) {
+    if (!pLingLongDir->repo || pLingLongDir->basedir != repoPath) {
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s repo has not been created", __FILE__, __func__);
         err = info;
         return false;
@@ -413,15 +425,16 @@ bool RepoHelper::resolveMatchRefs(const QString qrepoPath, const QString qremote
     //          }
     //      }
     //  }
-
+    const string pkgNameTmp = pkgName.toStdString();
+    const string archTmp = arch.toStdString();
     QMap<QString, QString> outRefs;
-    bool ret = getRemoteRefs(qrepoPath, qremoteName, outRefs, err);
+    bool ret = getRemoteRefs(repoPath, remoteName, outRefs, err);
     if (ret) {
         for (auto it = outRefs.begin(); it != outRefs.end(); ++it) {
             vector<string> result;
             ret = resolveRef(it.key().toStdString(), result);
             // appstream 特殊处理
-            if (pkgName == "appstream2" && result[0] == pkgName && result[1] == arch) {
+            if (pkgNameTmp == "appstream2" && result[0] == pkgNameTmp && result[1] == archTmp) {
                 matchRef = it.key();
                 return true;
             }
@@ -432,7 +445,7 @@ bool RepoHelper::resolveMatchRefs(const QString qrepoPath, const QString qremote
             // }
             //玲珑适配
             // ref:app/org.deepin.calculator/x86_64/1.2.2
-            if (ret && result[1] == pkgName && result[2] == arch) {
+            if (ret && result[1] == pkgNameTmp && result[2] == archTmp) {
                 matchRef = it.key();
                 return true;
             }
@@ -455,13 +468,13 @@ bool RepoHelper::resolveMatchRefs(const QString qrepoPath, const QString qremote
  * @param progress: ostree下载进度回调
  *
  */
-void RepoHelper::getCommonPullOptions(GVariantBuilder *builder,
-                                      const char *ref_to_fetch,
-                                      const gchar *const *dirs_to_pull,
-                                      const char *current_checksum,
-                                      gboolean force_disable_deltas,
-                                      OstreeRepoPullFlags flags,
-                                      OstreeAsyncProgress *progress)
+void OstreeRepoHelper::getCommonPullOptions(GVariantBuilder *builder,
+                                            const char *ref_to_fetch,
+                                            const gchar *const *dirs_to_pull,
+                                            const char *current_checksum,
+                                            gboolean force_disable_deltas,
+                                            OstreeRepoPullFlags flags,
+                                            OstreeAsyncProgress *progress)
 {
     guint32 update_freq = 0;
     GVariantBuilder hdr_builder;
@@ -506,7 +519,7 @@ void RepoHelper::getCommonPullOptions(GVariantBuilder *builder,
  *
  * @return char*: 临时目录路径
  */
-char *RepoHelper::repoReadLink(const char *path)
+char *OstreeRepoHelper::repoReadLink(const char *path)
 {
     char buf[PATH_MAX + 1];
     ssize_t symlink_size;
@@ -526,7 +539,7 @@ char *RepoHelper::repoReadLink(const char *path)
  *
  * @return char*: 临时目录路径
  */
-char *RepoHelper::getCacheDir()
+char *OstreeRepoHelper::getCacheDir()
 {
     g_autofree char *path = NULL;
     g_autofree char *symlink_path = NULL;
@@ -562,7 +575,7 @@ char *RepoHelper::getCacheDir()
  * @param path: 待删除的路径
  *
  */
-void RepoHelper::delDirbyPath(const char *path)
+void OstreeRepoHelper::delDirbyPath(const char *path)
 {
     char cmd[512];
     pid_t result;
@@ -583,7 +596,7 @@ void RepoHelper::delDirbyPath(const char *path)
  *
  * @return OstreeRepo: 临时repo仓库对象
  */
-OstreeRepo *RepoHelper::createChildRepo(std::shared_ptr<LingLongDir> linglong_dir, char *cachePath, GError **error)
+OstreeRepo *OstreeRepoHelper::createChildRepo(LingLongDir *linglong_dir, char *cachePath, GError **error)
 {
     g_autoptr(GFile) repo_dir = NULL;
     g_autoptr(GFile) repo_dir_config = NULL;
@@ -701,7 +714,7 @@ OstreeRepo *RepoHelper::createChildRepo(std::shared_ptr<LingLongDir> linglong_di
  *
  * @return OstreeRepo: 临时repo仓库对象
  */
-OstreeRepo *RepoHelper::createTmpRepo(std::shared_ptr<LingLongDir> linglong_dir, GError **error)
+OstreeRepo *OstreeRepoHelper::createTmpRepo(LingLongDir *linglong_dir, GError **error)
 {
     g_autofree char *cache_dir = NULL;
     cache_dir = getCacheDir();
@@ -715,21 +728,17 @@ OstreeRepo *RepoHelper::createTmpRepo(std::shared_ptr<LingLongDir> linglong_dir,
 /*
  * 将软件包数据从远端仓库pull到本地
  *
- * @param qrepoPath: 远端仓库对应的本地仓库路径
- * @param qremoteName: 远端仓库名称
- * @param qpkgName: 软件包包名
+ * @param repoPath: 远端仓库对应的本地仓库路径
+ * @param remoteName: 远端仓库名称
+ * @param pkgName: 软件包包名
  * @param err: 错误信息
  *
  * @return bool: true:成功 false:失败
  */
-bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, const QString qpkgName, QString &err)
+bool OstreeRepoHelper::repoPull(const QString &repoPath, const QString &remoteName, const QString &pkgName, QString &err)
 {
-    const string repoPath = qrepoPath.toStdString();
-    const string remoteName = qremoteName.toStdString();
-    const string pkgName = qpkgName.toStdString();
-
     char info[MAX_ERRINFO_BUFSIZE] = {'\0'};
-    if (remoteName.empty() || pkgName.empty()) {
+    if (remoteName.isEmpty() || pkgName.isEmpty()) {
         // fprintf(stdout, "repoPull param err\n");
         qInfo() << "repoPull param err";
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s param err", __FILE__, __func__);
@@ -737,7 +746,7 @@ bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, co
         return false;
     }
 
-    if (!linglong_dir->repo || linglong_dir->basedir != repoPath) {
+    if (!pLingLongDir->repo || pLingLongDir->basedir != repoPath) {
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s repo has not been created", __FILE__, __func__);
         err = info;
         return false;
@@ -746,7 +755,7 @@ bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, co
     OstreeRepoPullFlags flags = (OstreeRepoPullFlags)(OSTREE_REPO_PULL_FLAGS_MIRROR | OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES);
     QString qmatchRef = "";
     QString arch = "x86_64";
-    bool ret = resolveMatchRefs(qrepoPath, qremoteName, qpkgName, arch, qmatchRef, err);
+    bool ret = queryMatchRefs(repoPath, remoteName, pkgName, arch, qmatchRef, err);
     if (!ret) {
         return false;
     }
@@ -754,14 +763,15 @@ bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, co
     // map<string, string> outRefs;
     // string checksum = outRefs.find(matchRef)->second;
     QMap<QString, QString> outRefs;
-    ret = getRemoteRefs(qrepoPath, qremoteName, outRefs, err);
+    ret = getRemoteRefs(repoPath, remoteName, outRefs, err);
     if (!ret) {
         return false;
     }
+    const string remoteNameTmp = remoteName.toStdString();
     string checksum = outRefs.find(qmatchRef).value().toStdString();
     GCancellable *cancellable = NULL;
     GError *error = NULL;
-    OstreeAsyncProgress *progress = ostree_async_progress_new_and_connect(RepoHelper::noProgressFunc, NULL);
+    OstreeAsyncProgress *progress = ostree_async_progress_new_and_connect(OstreeRepoHelper::noProgressFunc, NULL);
 
     GVariantBuilder builder;
     g_autoptr(GVariant) options = NULL;
@@ -783,10 +793,10 @@ bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, co
     g_variant_builder_add(&builder, "{s@v}", "override-commit-ids",
                           g_variant_new_variant(g_variant_new_strv((const char *const *)commits, -1)));
     g_variant_builder_add(&builder, "{s@v}", "override-remote-name",
-                          g_variant_new_variant(g_variant_new_string(remoteName.c_str())));
+                          g_variant_new_variant(g_variant_new_string(remoteNameTmp.c_str())));
     options = g_variant_ref_sink(g_variant_builder_end(&builder));
     // 下载到临时目录
-    OstreeRepo *childRepo = createTmpRepo(linglong_dir, &error);
+    OstreeRepo *childRepo = createTmpRepo(pLingLongDir, &error);
     if (childRepo == NULL) {
         // fprintf(stdout, "createTmpRepo error\n");
         qInfo() << "createTmpRepo error";
@@ -796,12 +806,12 @@ bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, co
     }
 
     if (!ostree_repo_prepare_transaction(childRepo, NULL, cancellable, &error)) {
-        //fprintf(stdout, "ostree_repo_prepare_transaction error:%s\n", error->message);
+        // fprintf(stdout, "ostree_repo_prepare_transaction error:%s\n", error->message);
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s ostree_repo_prepare_transaction err:%s", __FILE__, __func__, error->message);
         err = info;
         return false;
     }
-    if (!ostree_repo_pull_with_options(childRepo, remoteName.c_str(), options,
+    if (!ostree_repo_pull_with_options(childRepo, remoteNameTmp.c_str(), options,
                                        progress, cancellable, &error)) {
         // fprintf(stdout, "ostree_repo_pull_with_options error:%s\n", error->message);
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s ostree_repo_pull_with_options err:%s", __FILE__, __func__, error->message);
@@ -824,9 +834,9 @@ bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, co
     g_autofree char *local_url = g_strconcat("file://", childRepoPath, NULL);
     // fprintf(stdout, "local_url:%s\n", local_url);
     qInfo() << "repoPullLocal local_url:" << local_url;
-    ret = repoPullLocal(linglong_dir->repo, remoteName.c_str(), local_url, matchRef.c_str(), checksum.c_str(), progress, cancellable, &error);
+    ret = repoPullLocal(pLingLongDir->repo, remoteNameTmp.c_str(), local_url, matchRef.c_str(), checksum.c_str(), progress, cancellable, &error);
     if (!ret) {
-        //fprintf(stdout, "repoPullLocal error:%s\n", error->message);
+        // fprintf(stdout, "repoPullLocal error:%s\n", error->message);
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s repoPullLocal err:%s", __FILE__, __func__, error->message);
         err = info;
         return false;
@@ -848,8 +858,8 @@ bool RepoHelper::repoPull(const QString qrepoPath, const QString qremoteName, co
  *
  * @return bool: true:成功 false:失败
  */
-bool RepoHelper::repoPullLocal(OstreeRepo *repo, const char *remoteName, const char *url, const char *ref, const char *checksum,
-                               OstreeAsyncProgress *progress, GCancellable *cancellable, GError **error)
+bool OstreeRepoHelper::repoPullLocal(OstreeRepo *repo, const char *remoteName, const char *url, const char *ref, const char *checksum,
+                                     OstreeAsyncProgress *progress, GCancellable *cancellable, GError **error)
 {
     // 增加OSTREE_REPO_PULL_FLAGS_UNTRUSTED标志时，ostree会调用ostree_repo_fsck_object校验仓库文件
     //const OstreeRepoPullFlags flags = (OstreeRepoPullFlags)(OSTREE_REPO_PULL_FLAGS_UNTRUSTED | OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES);
@@ -916,40 +926,36 @@ bool RepoHelper::repoPullLocal(OstreeRepo *repo, const char *remoteName, const c
 /*
  * 将软件包数据从本地仓库签出到指定目录
  *
- * @param qrepoPath: 远端仓库对应的本地仓库路径
- * @param qremoteName: 远端仓库名称
- * @param qref: 软件包包名对应的仓库索引
- * @param qdstPath: 软件包信息保存目录
+ * @param repoPath: 远端仓库对应的本地仓库路径
+ * @param remoteName: 远端仓库名称
+ * @param ref: 软件包包名对应的仓库索引
+ * @param dstPath: 软件包信息保存目录
  * @param err: 错误信息
  *
  * @return bool: true:成功 false:失败
  */
-bool RepoHelper::checkOutAppData(const QString qrepoPath, const QString qremoteName, const QString qref, const QString qdstPath, QString &err)
+bool OstreeRepoHelper::checkOutAppData(const QString &repoPath, const QString &remoteName, const QString &ref, const QString &dstPath, QString &err)
 {
-    const string repoPath = qrepoPath.toStdString();
-    const string ref = qref.toStdString();
-    const string dstPath = qdstPath.toStdString();
-
     GCancellable *cancellable = NULL;
     GError *error = NULL;
     OstreeRepoCheckoutAtOptions options = {
         OSTREE_REPO_CHECKOUT_MODE_NONE,
     };
     char info[MAX_ERRINFO_BUFSIZE] = {'\0'};
-    if (dstPath.empty() || ref.empty()) {
+    if (dstPath.isEmpty() || ref.isEmpty()) {
         // fprintf(stdout, "checkOutAppData param err\n");
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s param err", __FILE__, __func__);
         err = info;
         return false;
     }
 
-    if (!linglong_dir->repo || linglong_dir->basedir != repoPath) {
+    if (!pLingLongDir->repo || pLingLongDir->basedir != repoPath) {
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s repo has not been created", __FILE__, __func__);
         err = info;
         return false;
     }
-
-    if (g_mkdir_with_parents(dstPath.c_str(), 0755)) {
+    const string dstPathTmp = dstPath.toStdString();
+    if (g_mkdir_with_parents(dstPathTmp.c_str(), 0755)) {
         // fprintf(stdout, "g_mkdir_with_parents failed\n");
         return false;
     }
@@ -963,17 +969,18 @@ bool RepoHelper::checkOutAppData(const QString qrepoPath, const QString qremoteN
     // map<string, string> outRefs;
     // string checksum = outRefs.find(matchRef)->second;
     QMap<QString, QString> outRefs;
-    bool ret = getRemoteRefs(qrepoPath, qremoteName, outRefs, err);
+    bool ret = getRemoteRefs(repoPath, remoteName, outRefs, err);
     if (!ret) {
         return ret;
     }
-    string checksum = outRefs.find(qref).value().toStdString();
+    string checksum = outRefs.find(ref).value().toStdString();
 
     // extract_extra_data (self, checksum, extradir, &created_extra_data, cancellable, error)
-    if (!ostree_repo_checkout_at(linglong_dir->repo, &options,
-                                 AT_FDCWD, dstPath.c_str(), checksum.c_str(),
+    if (!ostree_repo_checkout_at(pLingLongDir->repo, &options,
+                                 AT_FDCWD, dstPathTmp.c_str(), checksum.c_str(),
                                  cancellable, &error)) {
-        fprintf(stdout, "ostree_repo_checkout_at error:%s\n", error->message);
+        // fprintf(stdout, "ostree_repo_checkout_at error:%s\n", error->message);
+        qInfo() << "ostree_repo_checkout_at error:" << error->message;
         return false;
     }
     return true;
@@ -989,11 +996,11 @@ bool RepoHelper::checkOutAppData(const QString qrepoPath, const QString qremoteN
  *
  * @return bool: true:成功 false:失败
  */
-bool RepoHelper::repoPullbyCmd(const QString destPath, const QString remoteName, const QString ref, QString &err)
+bool OstreeRepoHelper::repoPullbyCmd(const QString &destPath, const QString &remoteName, const QString &ref, QString &err)
 {
     // 创建临时仓库
     GError *error = NULL;
-    OstreeRepo *childRepo = createTmpRepo(linglong_dir, &error);
+    OstreeRepo *childRepo = createTmpRepo(pLingLongDir, &error);
     if (childRepo == NULL) {
         qInfo() << "createTmpRepo error";
         err = "createTmpRepo error";

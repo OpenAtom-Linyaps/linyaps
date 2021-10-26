@@ -1,28 +1,18 @@
 /*
  * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
  *
- * Author:
+ * Author:     huqinghong@uniontech.com
  *
- * Maintainer:
+ * Maintainer: huqinghong@uniontech.com
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 #include <gtest/gtest.h>
-#include "module/repo/repohelper.h"
 
-TEST(RepoHelperT01, ensureRepoEnv)
+#include "module/repo/ostree_repohelper.h"
+
+TEST(OstreeRepoHelperT01, ensureRepoEnv)
 {
     char curpath[512] = {'\0'};
     getcwd(curpath, 512);
@@ -30,7 +20,7 @@ TEST(RepoHelperT01, ensureRepoEnv)
     const QString repoPath = QString::fromStdString(path + "/repotest");
     //const QString repoPath = "/home/xxxx/8.linglong/GitPrj/debug/linglong/build/repotest";
     QString err = "";
-    linglong::RepoHelper repo;
+    linglong::OstreeRepoHelper repo;
     bool ret = repo.ensureRepoEnv(repoPath, err);
     if (!ret) {
         //std::cout << err.toStdString();
@@ -63,16 +53,16 @@ TEST(RepoHelperT01, ensureRepoEnv)
 // url=https://dl.flathub.org/repo/
 // xa.title=Flathub
 // xa.title-is-set=true
-//执行RepoHelperT02之后的用例需要将RepoHelperT01中生成的repo目录中的config文件改成上面的内容（相当于添加本地仓库操作）
+//执行OstreeRepoHelperT02之后的用例需要将OstreeRepoHelperT01中生成的repo目录中的config文件改成上面的内容（相当于添加本地仓库操作）
 // repoPath 目录要保证当前操作的用户可写，否则mkdir报错
-TEST(RepoHelperT02, getRemoteRepoList)
+TEST(OstreeRepoHelperT02, getRemoteRepoList)
 {
     char curpath[512] = {'\0'};
     getcwd(curpath, 512);
     string path = curpath;
     const QString repoPath = QString::fromStdString(path + "/repotest");
     QString err = "";
-    linglong::RepoHelper repo;
+    linglong::OstreeRepoHelper repo;
     bool ret = repo.ensureRepoEnv(repoPath, err);
     if (!ret) {
         //std::cout << err.toStdString();
@@ -95,14 +85,14 @@ TEST(RepoHelperT02, getRemoteRepoList)
     }
 }
 
-TEST(RepoHelperT03, getRemoteRefs)
+TEST(OstreeRepoHelperT03, getRemoteRefs)
 {
     char curpath[512] = {'\0'};
     getcwd(curpath, 512);
     string path = curpath;
     const QString repoPath = QString::fromStdString(path + "/repotest");
     QString err = "";
-    linglong::RepoHelper repo;
+    linglong::OstreeRepoHelper repo;
     bool ret = repo.ensureRepoEnv(repoPath, err);
     if (!ret) {
         //std::cout << err.toStdString();
@@ -137,14 +127,14 @@ TEST(RepoHelperT03, getRemoteRefs)
     EXPECT_EQ(ret, true);
 }
 
-TEST(RepoHelperT04, resolveMatchRefs)
+TEST(OstreeRepoHelperT04, resolveMatchRefs)
 {
     char curpath[512] = {'\0'};
     getcwd(curpath, 512);
     string path = curpath;
     const QString repoPath = QString::fromStdString(path + "/repotest");
     QString err = "";
-    linglong::RepoHelper repo;
+    linglong::OstreeRepoHelper repo;
     bool ret = repo.ensureRepoEnv(repoPath, err);
     if (!ret) {
         //std::cout << err.toStdString();
@@ -182,7 +172,7 @@ TEST(RepoHelperT04, resolveMatchRefs)
     QString pkgName = "org.deepin.calculator";
     //QString pkgName = "us.zoom.Zoom";
     QString arch = "x86_64";
-    ret = repo.resolveMatchRefs(repoPath, qrepoList[0], pkgName, arch, matchRef, err);
+    ret = repo.queryMatchRefs(repoPath, qrepoList[0], pkgName, arch, matchRef, err);
     if (!ret) {
         //std::cout << err.toStdString();
         qInfo() << err;
@@ -193,14 +183,14 @@ TEST(RepoHelperT04, resolveMatchRefs)
     EXPECT_EQ(ret, true);
 }
 
-TEST(RepoHelperT05, repoPull)
+TEST(OstreeRepoHelperT05, repoPull)
 {
     char curpath[512] = {'\0'};
     getcwd(curpath, 512);
     string path = curpath;
     const QString repoPath = QString::fromStdString(path + "/repotest");
     QString err = "";
-    linglong::RepoHelper repo;
+    linglong::OstreeRepoHelper repo;
     bool ret = repo.ensureRepoEnv(repoPath, err);
     if (!ret) {
         //std::cout << err.toStdString();
@@ -235,7 +225,7 @@ TEST(RepoHelperT05, repoPull)
     //QString pkgName = "org.deepin.calculator";
     QString pkgName = "us.zoom.Zoom";
     QString arch = "x86_64";
-    ret = repo.resolveMatchRefs(repoPath, qrepoList[0], pkgName, arch, matchRef, err);
+    ret = repo.queryMatchRefs(repoPath, qrepoList[0], pkgName, arch, matchRef, err);
     if (!ret) {
         //std::cout << err.toStdString();
         qInfo() << err;
@@ -253,7 +243,7 @@ TEST(RepoHelperT05, repoPull)
     EXPECT_EQ(ret, true);
 }
 
-TEST(RepoHelperT06, checkOutAppData)
+TEST(OstreeRepoHelperT06, checkOutAppData)
 {
     char curpath[512] = {'\0'};
     getcwd(curpath, 512);
@@ -263,7 +253,7 @@ TEST(RepoHelperT06, checkOutAppData)
     const QString dstPath = repoPath + "/AppData";
     QString err = "";
     QVector<QString> qrepoList;
-    linglong::RepoHelper repo;
+    linglong::OstreeRepoHelper repo;
 
     bool ret = repo.ensureRepoEnv(repoPath, err);
     if (!ret) {
@@ -288,7 +278,7 @@ TEST(RepoHelperT06, checkOutAppData)
     //QString pkgName = "org.deepin.calculator";
     QString pkgName = "us.zoom.Zoom";
     QString arch = "x86_64";
-    ret = repo.resolveMatchRefs(repoPath, qrepoList[0], pkgName, arch, matchRef, err);
+    ret = repo.queryMatchRefs(repoPath, qrepoList[0], pkgName, arch, matchRef, err);
     if (!ret) {
         qInfo() << err;
         return;
@@ -302,4 +292,64 @@ TEST(RepoHelperT06, checkOutAppData)
     if (!ret) {
         qInfo() << err;
     }
+}
+
+TEST(RepoHelperT06, repoPullbyCmd)
+{
+    char curpath[512] = {'\0'};
+    getcwd(curpath, 512);
+    string path = curpath;
+    const QString repoPath = QString::fromStdString(path + "/repotest");
+    QString err = "";
+    linglong::OstreeRepoHelper repo;
+    bool ret = repo.ensureRepoEnv(repoPath, err);
+    if (!ret) {
+        //std::cout << err.toStdString();
+        qInfo() << err;
+    }
+    EXPECT_EQ(ret, true);
+    QVector<QString> qrepoList;
+    ret = repo.getRemoteRepoList(repoPath, qrepoList, err);
+    if (!ret) {
+        //std::cout << err.toStdString();
+        qInfo() << err;
+        EXPECT_EQ(ret, false);
+        return;
+    } else {
+        for (auto iter = qrepoList.begin(); iter != qrepoList.end(); ++iter) {
+           qInfo() << *iter;
+        }
+    }
+    EXPECT_EQ(ret, true);
+    QMap<QString, QString> outRefs;
+    ret = repo.getRemoteRefs(repoPath, qrepoList[0], outRefs, err);
+    if (!ret) {
+        qInfo() << err;
+    } else {
+        // for (auto iter = outRefs.begin(); iter != outRefs.end(); ++iter) {
+        //     std::cout << "ref:" << iter.key().toStdString() << ", commit value:" << iter.value().toStdString() << endl;
+        //     std::cout.flush();
+        // }
+    }
+    EXPECT_EQ(ret, true);
+    QString matchRef = "";
+    QString pkgName = "org.deepin.calculator";
+    //QString pkgName = "us.zoom.Zoom";
+    QString arch = "x86_64";
+    ret = repo.queryMatchRefs(repoPath, qrepoList[0], pkgName, arch, matchRef, err);
+    if (!ret) {
+        //std::cout << err.toStdString();
+        qInfo() << err;
+    } else {
+        //std::cout << matchRef.toStdString();
+        qInfo() << matchRef;
+    }
+    EXPECT_EQ(ret, true);
+
+    ret = repo.repoPullbyCmd(repoPath, qrepoList[0], matchRef, err);
+    if (!ret) {
+        //std::cout << err.toStdString();
+        qInfo() << err;
+    }
+    EXPECT_EQ(ret, true);
 }

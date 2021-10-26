@@ -63,7 +63,7 @@ int main(int argc, char **argv)
 
     QCommandLineParser parser;
     parser.addHelpOption();
-    parser.addPositionalArgument("subcommand", "run\nps\nkill\ndownload\ninstall\nuninstall\nupdate\nquery\nbuild\nrepo", "subcommand [sub-option]");
+    parser.addPositionalArgument("subcommand", "run\nps\nkill\ndownload\ninstall\nuninstall\nupdate\nquery\nlist\nbuild\nrepo", "subcommand [sub-option]");
     // TODO: for debug now
     auto optDefaultConfig = QCommandLineOption("default-config", "default config json filepath", "");
     parser.addOption(optDefaultConfig);
@@ -225,14 +225,10 @@ int main(int argc, char **argv)
              return 0;
          }},
         {"query", [&](QCommandLineParser &parser) -> int {
-             auto optType = QCommandLineOption("type", "query installed app", "--type=installed");
-
              parser.clearPositionalArguments();
              parser.addPositionalArgument("query", "query app info", "query");
              parser.addPositionalArgument("app-id", "app id", "com.deepin.demo");
-             parser.addOption(optType);
              parser.process(app);
-
              auto args = parser.positionalArguments();
              auto appID = args.value(1);
              QDBusPendingReply<PKGInfoList> reply = pm.Query({appID});
@@ -259,26 +255,21 @@ int main(int argc, char **argv)
              return -1;
          }},
         {"list", [&](QCommandLineParser &parser) -> int {
+             auto optType = QCommandLineOption("type", "query installed app", "--type=installed", "installed");
              parser.clearPositionalArguments();
-             parser.addPositionalArgument("list", "show install application", "list");
-             parser.addPositionalArgument("appid", "app id", "com.deepin.demo");
-
-             auto optOutputFormat = QCommandLineOption("output-format", "json/console", "console");
-             parser.addOption(optOutputFormat);
-
+             parser.addPositionalArgument("list", "show installed application", "list");
+             parser.addOption(optType);
              parser.process(app);
-
-             QString subCommand = args.isEmpty() ? QString() : args.first();
-             auto appid = args.value(1);
-
-             auto outputFormat = parser.value(optOutputFormat);
-             auto ret_msg = pm.QDbusRetInfo({appid}).value();
-             for (auto const &it : ret_msg) {
-                 qInfo() << "id:\t" << it->appid;
-                 qInfo() << "name:\t" << it->appname;
-                 qInfo() << "version:\t" << it->version;
+             auto optPara = parser.value(optType);
+             if (optPara != "installed") {
+                qInfo() << "list param err, please see --help";
+                return -1;
              }
-             // showContainer(ret_msg, outputFormat);
+             QDBusPendingReply<PKGInfoList> reply = pm.Query({optPara});
+             // 默认超时时间为25s
+             reply.waitForFinished();
+             PKGInfoList retMsg = reply.value();
+             printAppInfo(retMsg);
              return 0;
          }},
     };

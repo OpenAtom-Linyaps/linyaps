@@ -42,7 +42,7 @@ add_executable(ll-test
         "../src/module/package/package.h"
         "../src/module/package/pkginfo.h"
         "../src/module/util/httpclient.cpp"
-        "../src/module/repo/repohelper.cpp"
+        "../src/module/repo/ostree_repohelper.cpp"
         "../src/service/impl/json_register_inc.h"
         "../src/service/impl/qdbus_retmsg.h"
         package_test.cpp

@@ -2,6 +2,7 @@ set(LL_SERVICE_SOURCES
         main.cpp
         resource/resource.qrc
         impl/package_manager.cpp
+        impl/package_manager_impl.cpp
         impl/uap_manager.cpp
         impl/job_manager.cpp
         impl/job_manager.h
@@ -28,10 +29,13 @@ set(LL_SERVICE_SOURCES
         # begin add by hqh debug 2021-9-16
         ../module/util/httpclient.cpp
         ../module/util/httpclient.h
-        ../module/repo/repohelper.cpp
         ../module/repo/repohelper.h
+        ../module/repo/ostree_repohelper.cpp
+        ../module/repo/repohelper_factory.cpp
+        ../module/repo/ostree_repohelper.h
         # end add by hqh debug 2021-9-16
-        ../module/util/runner.h util/singleton.h)
+        ../module/util/runner.h
+        ../module/util/singleton.h)
 
 qt5_add_dbus_adaptor(LL_SERVICE_SOURCES
         ../module/dbus_ipc/com.deepin.linglong.PackageManager.xml

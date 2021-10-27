@@ -5,18 +5,7 @@
  *
  * Maintainer: Iceyer <me@iceyer.net>
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 #pragma once
@@ -30,6 +19,8 @@
 #include <crypto++/sha.h>
 #include <crypto++/filters.h>
 #include <crypto++/hex.h>
+
+
 
 using std::string;
 using std::vector;
@@ -63,8 +54,8 @@ public:
     JS_OBJ(type, hashtype, ostree, url, tag, uuid, maintainer, license, sdk);
 
 public:
-    PkgExt() { }
-    ~PkgExt() { }
+    PkgExt() {}
+    ~PkgExt() {}
 };
 
 /*!
@@ -83,8 +74,8 @@ public:
     JS_OBJ(name, website, ostree, info, license, keyinfo);
 
 public:
-    Owner() { }
-    ~Owner() { }
+    Owner() {}
+    ~Owner() {}
 };
 
 /*!
@@ -98,8 +89,8 @@ public:
     JS_OBJ(sign);
 
 public:
-    MetaSign() { }
-    ~MetaSign() { }
+    MetaSign() {}
+    ~MetaSign() {}
 };
 
 /*!
@@ -113,14 +104,14 @@ public:
     JS_OBJ(sign);
 
 public:
-    DataSign() { }
-    ~DataSign() { }
+    DataSign() {}
+    ~DataSign() {}
 };
 
 /*!
  * String to Hash256
  */
-inline  const string StringToHash256(const string &str)
+inline const string StringToHash256(const string &str)
 {
     SHA256 hash;
     std::string digest;
@@ -159,7 +150,7 @@ class Meta
 public:
     string _uap_version = "1";
     string _uap_name = "uap";
-    //PkgInfo pkginfo;
+    // PkgInfo pkginfo;
 
     string name;
     string version;
@@ -177,18 +168,17 @@ public:
     MetaSign metasign;
     DataSign datasign;
 
-    JS_OBJ(name, version, appid, arch, runtime, description,
-           support_plugins, plugins, pkgext, owner,
-           permissions, metasign, datasign);
+    JS_OBJ(name, version, appid, arch, runtime, description, support_plugins, plugins, pkgext, owner, permissions,
+           metasign, datasign);
 
 public:
-    Meta() { }
+    Meta() {}
     Meta(const string version, const string name)
         : _uap_version(version)
         , _uap_name(name)
     {
     }
-    ~Meta() { }
+    ~Meta() {}
     // get meta file name
     string getMetaName() const { return this->_uap_name + "-" + this->_uap_version; }
 
@@ -199,7 +189,8 @@ public:
     void setMetaSign()
     {
         std::string meta_json = "abc";
-        //     JS::serializeStruct(this->pkginfo) + JS::serializeStruct(this->pkgext) + JS::serializeStruct(this->owner);
+        //     JS::serializeStruct(this->pkginfo) + JS::serializeStruct(this->pkgext) +
+        //     JS::serializeStruct(this->owner);
         // if (meta_json != "")
         this->metasign.sign = StringToHash256(meta_json);
     }
@@ -243,17 +234,23 @@ public:
     string getUapName()
     {
         if (isFullUab()) {
-            return this->meta.appid + "-" + this->meta.version + "-" + this->meta.arch + "."
-                   + this->meta._uap_name;
+            return this->meta.appid + "-" + this->meta.version + "-" + this->meta.arch + "." + this->meta._uap_name;
         } else {
-            return this->meta.appid + "-" + this->meta.version + "-" + this->meta.arch + "."
-                   + string("o") + this->meta._uap_name;
+            return this->meta.appid + "-" + this->meta.version + "-" + this->meta.arch + "." + string("o")
+                   + this->meta._uap_name;
         }
     }
     //获取分之名称
-    QString getBranchName(){
-        string tmp_name = string("app/") + this->meta.appid + string("/") + this->meta.arch + string("/") + this->meta.version;
+    QString getBranchName() const
+    {
+        string tmp_name =
+            string("app/") + this->meta.appid + string("/") + this->meta.arch + string("/") + this->meta.version;
         return QString::fromStdString(tmp_name);
+    }
+    QString getSquashfsName() const
+    {
+        return QString::fromStdString(this->meta.appid + "-" + this->meta.version + "-" + this->meta.arch + "."
+                                      + "squashfs");
     }
 };
 
@@ -263,8 +260,8 @@ public:
 class UapOffLine : public UAP
 {
 public:
-    UapOffLine() { }
-    ~UapOffLine() { }
+    UapOffLine() {}
+    ~UapOffLine() {}
 };
 
 /*!
@@ -273,8 +270,8 @@ public:
 class UapOnLine : public UAP
 {
 public:
-    UapOnLine() { }
-    ~UapOnLine() { }
+    UapOnLine() {}
+    ~UapOnLine() {}
 };
 
 } // namespace uap

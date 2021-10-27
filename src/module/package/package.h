@@ -5,50 +5,52 @@
  *
  * Maintainer: Iceyer <me@iceyer.net>
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 #pragma once
-
-#include <QDBusArgument>
-#include <QObject>
-#include <QList>
-#include <string>
-#include <QFile>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
 #include <archive.h>
 #include <archive_entry.h>
+
+#include <string>
+
+#include <QDBusArgument>
+#include <QObject>
+#include <QList>
+#include <QFile>
 #include <QDebug>
+#include <QTemporaryDir>
 
 #include "module/uab/uap.h"
 #include "module/util/fs.h"
 #include "module/util/repo.h"
+#include "module/util/retmessage.h"
+#include "service/impl/dbus_retcode.h"
+#include "module/util/runner.h"
+
+#define CONFIGJSON "/uap.json"
+#define INFOJSON "/info.json"
+#define ENTRIESDIR "/entries"
+#define FILEDIR "/files"
 
 using format::uap::UAP;
-using linglong::util::fileExists;
-using linglong::util::dirExists;
-using linglong::util::makeData;
-using linglong::util::extractUap;
-using linglong::util::createDir;
-using linglong::util::removeDir;
-using linglong::util::extractUapData;
-using linglong::util::makeSign;
-using linglong::util::checkSign;
-using linglong::repo::makeOstree;
+using linglong::dbus::RetCode;
 using linglong::repo::commitOstree;
+using linglong::repo::makeOstree;
+using linglong::util::checkSign;
+using linglong::util::copyDir;
+using linglong::util::createDir;
+using linglong::util::dirExists;
+using linglong::util::extractUap;
+using linglong::util::extractUapData;
+using linglong::util::fileExists;
+using linglong::util::makeData;
+using linglong::util::makeSign;
+using linglong::util::removeDir;
+using linglong::util::linkFile;
 
 class Uap_Archive
 {
@@ -355,9 +357,9 @@ public:
         string uap_buffer_str = uap_buffer;
         QString data_input = uap_buffer_str.c_str();
         QString sign_data;
-        if (!makeSign(data_input, "/usr/share/ca-certificates/deepin/private/priv.crt", "/usr/share/ca-certificates/deepin/private/priv.key", sign_data)) {
-            qInfo() << "sign uap failed!!";
-            return false;
+        if (!makeSign(data_input, "/usr/share/ca-certificates/deepin/private/priv.crt",
+        "/usr/share/ca-certificates/deepin/private/priv.key", sign_data)) { qInfo() << "sign uap failed!!"; return
+        false;
         }
         // add  .uap-1.sign
         uap_archive.add_file(sign_data.toStdString(), this->uap->meta.getMetaSignName());
@@ -371,9 +373,9 @@ public:
         QFile data_file(this->dataPath);
         data_file.open(QIODevice::ReadOnly);
         auto qbt = data_file.readAll();
-        if (!makeSign(qbt, "/usr/share/ca-certificates/deepin/private/priv.crt", "/usr/share/ca-certificates/deepin/private/priv.key", sign_data)) {
-            qInfo() << "sign data.tgz failed!!";
-            return false;
+        if (!makeSign(qbt, "/usr/share/ca-certificates/deepin/private/priv.crt",
+        "/usr/share/ca-certificates/deepin/private/priv.key", sign_data)) { qInfo() << "sign data.tgz failed!!"; return
+        false;
         }
         data_file.close();
         uap_archive.add_file(sign_data.toStdString(), ".data.tgz.sig");
@@ -389,8 +391,9 @@ public:
         // create uap
         uap_archive.write_free();
 
-        //move uap to uap_path
-        if ((fileExists(QString::fromStdString(this->uap->getUapName()))) && (uap_path != QString("./")) && (uap_path != QString("."))) {
+        // move uap to uap_path
+        if ((fileExists(QString::fromStdString(this->uap->getUapName()))) && (uap_path != QString("./"))
+            && (uap_path != QString("."))) {
             QString uap_name = QString::fromStdString(this->uap->getUapName());
             QString new_uap_name = uap_path + QString("/") + uap_name;
             createDir(uap_path);
@@ -437,7 +440,9 @@ public:
         }
 
         //导入数据到repo
-        if (!commitOstree(ostree_repo, QString("update ") + QString::fromStdString(this->uap->meta.version), QString("Name: ") + QString::fromStdString(this->uap->meta.appid), this->uap->getBranchName(), dest_path, out_commit)) {
+        if (!commitOstree(ostree_repo, QString("update ") + QString::fromStdString(this->uap->meta.version),
+                          QString("Name: ") + QString::fromStdString(this->uap->meta.appid), this->uap->getBranchName(),
+                          dest_path, out_commit)) {
             qInfo() << "commit data failed!!!";
             return false;
         }
@@ -469,8 +474,9 @@ public:
         removeDir(extract_dir);
         removeDir(dest_path);
 
-        //move ouap to ouap_path
-        if ((fileExists(QString::fromStdString(this->uap->getUapName()))) && (ouap_path != QString("./")) && (ouap_path != QString("."))) {
+        // move ouap to ouap_path
+        if ((fileExists(QString::fromStdString(this->uap->getUapName()))) && (ouap_path != QString("./"))
+            && (ouap_path != QString("."))) {
             QString ouap_name = QString::fromStdString(this->uap->getUapName());
             QString new_ouap_name = ouap_path + QString("/") + ouap_name;
             createDir(ouap_path);
@@ -566,7 +572,7 @@ public:
     }
 
     //获取信息uap
-    bool GetInfo(const QString uapFile_path,const QString savePath = "")
+    bool GetInfo(const QString uapFile_path, const QString savePath = "")
     {
         QString uapFile = QFileInfo(uapFile_path).fileName();
         QString extract_dir = QString("/tmp/") + uapFile;
@@ -593,7 +599,7 @@ public:
             qInfo() << "no info for uap !!!";
         }
         removeDir(extract_dir);
-        //QFile newFile(uapFile + QString(".info"));
+        // QFile newFile(uapFile + QString(".info"));
         QFile newFile;
         if (savePath.isNull() || savePath.isEmpty()) {
             newFile.setFileName(uapFile + QString(".info"));
@@ -620,9 +626,8 @@ public:
             this->dataPath = uap_file_extract_dir + "/data.tgz";
         }
         createDir(QString("/deepin/linglong/layers/"));
-        QString pkg_install_path =
-            QString::fromStdString("/deepin/linglong/layers/" + this->uap->meta.appid + "/"
-                                   + this->uap->meta.version + "/" + this->uap->meta.arch);
+        QString pkg_install_path = QString::fromStdString("/deepin/linglong/layers/" + this->uap->meta.appid + "/"
+                                                          + this->uap->meta.version + "/" + this->uap->meta.arch);
         std::cout << pkg_install_path.toStdString() << std::endl;
         if (!createDir(pkg_install_path)) {
             return false;
@@ -632,18 +637,22 @@ public:
 
             // TODO: fix it ( will remove this )
             QString yaml_path = QString::fromStdString("/deepin/linglong/layers/" + this->uap->meta.appid + "/"
-                                                       + this->uap->meta.version + "/" + this->uap->meta.arch + "/" + this->uap->meta.appid + ".yaml");
-            QString new_path = QString::fromStdString("/deepin/linglong/layers/" + this->uap->meta.appid + "/"
-                                                      + this->uap->meta.version + "/" + this->uap->meta.appid + ".yaml");
+                                                       + this->uap->meta.version + "/" + this->uap->meta.arch + "/"
+                                                       + this->uap->meta.appid + ".yaml");
+            QString new_path =
+                QString::fromStdString("/deepin/linglong/layers/" + this->uap->meta.appid + "/"
+                                       + this->uap->meta.version + "/" + this->uap->meta.appid + ".yaml");
             if (linglong::util::fileExists(yaml_path)) {
                 // link to file
                 linglong::util::linkFile(yaml_path, new_path);
             }
             // TODO: fix it ( will remove this )
-            QString info_path = QString::fromStdString("/deepin/linglong/layers/" + this->uap->meta.appid + "/"
-                                                       + this->uap->meta.version + "/" + this->uap->meta.arch + "/info.json");
-            QString info_new_path = QString::fromStdString("/deepin/linglong/layers/" + this->uap->meta.appid + "/"
-                                                           + this->uap->meta.version + "/" + this->uap->meta.arch + "/info");
+            QString info_path =
+                QString::fromStdString("/deepin/linglong/layers/" + this->uap->meta.appid + "/"
+                                       + this->uap->meta.version + "/" + this->uap->meta.arch + "/info.json");
+            QString info_new_path =
+                QString::fromStdString("/deepin/linglong/layers/" + this->uap->meta.appid + "/"
+                                       + this->uap->meta.version + "/" + this->uap->meta.arch + "/info");
 
             if (linglong::util::fileExists(info_path)) {
                 // link to file
@@ -651,6 +660,141 @@ public:
             }
         }
         return true;
+    }
+
+    // TODO: liujianqiang
+    // se: 后续整改为返回统一的错误类
+    bool makeSquashfsFromDataDir(const QString &dataPath, RetMessageFromUab &retMessage, const QString runTimePath = "",
+                                 const QString savePath = "")
+    {
+        //转换目录为绝对路径
+        QString absoluteDataPath = QDir(dataPath).absolutePath();
+
+        //判断目录是否存在
+        if (!dirExists(absoluteDataPath)) {
+            qInfo() << dataPath + QString(" don't exists!!!");
+            retMessage.setState(false);
+            retMessage.setMessage(dataPath);
+            retMessage.setCode(RetCode(RetCode::DataDirNotExists));
+            return false;
+        }
+
+        //判断uap.json是否存在
+        if (!fileExists(absoluteDataPath + QString(CONFIGJSON))) {
+            qInfo() << dataPath + QString("/uap.json don't exists!!!");
+            retMessage.setState(false);
+            retMessage.setMessage(dataPath + QString(CONFIGJSON));
+            retMessage.setCode(RetCode(RetCode::UapJsonFileNotExists));
+            return false;
+        }
+
+        //初始化uap.json文件
+        const QString uapJsonFilePath = absoluteDataPath + QString(CONFIGJSON);
+        if (!this->initConfig(uapJsonFilePath)) {
+            qInfo() << dataPath + QString(CONFIGJSON) + QString(" file format error!!!");
+            retMessage.setState(false);
+            retMessage.setMessage(dataPath + QString(CONFIGJSON));
+            retMessage.setCode(RetCode(RetCode::UapJsonFormatError));
+            return false;
+        }
+
+        //检查目录结构
+        // check entries
+        if (!dirExists(absoluteDataPath + QString(ENTRIESDIR))) {
+            qInfo() << QString("need: entries of desktop file !");
+            retMessage.setState(false);
+            retMessage.setMessage(absoluteDataPath + QString(ENTRIESDIR));
+            retMessage.setCode(RetCode(RetCode::DataEntriesDirNotExists));
+            return false;
+        }
+
+        // check files dir
+        if (!dirExists(absoluteDataPath + QString(FILEDIR))) {
+            qInfo() << "need: files of bin file !";
+            retMessage.setState(false);
+            retMessage.setMessage(absoluteDataPath + QString(FILEDIR));
+            retMessage.setCode(RetCode(RetCode::DataFilesDirNotExists));
+            return false;
+        }
+
+        // check permission info.json
+        if (!fileExists(absoluteDataPath + QString(INFOJSON))) {
+            qInfo() << "need: info.json of permission !";
+            retMessage.setState(false);
+            retMessage.setMessage(absoluteDataPath + QString(INFOJSON));
+            retMessage.setCode(RetCode(RetCode::DataInfoJsonNotExists));
+            return false;
+        }
+
+        //获取存储文件路径
+        QString absoluteSavePath;
+        if (savePath.isNull() || savePath.isEmpty()) {
+            absoluteSavePath = QDir(QString("./")).absolutePath() + QString("/") + this->uap->getSquashfsName();
+        } else {
+            createDir(QDir(QString(savePath)).absolutePath());
+            absoluteSavePath = QDir(QString(savePath)).absolutePath() + QString("/") + this->uap->getSquashfsName();
+        }
+
+        //创建临时工作目录
+        QString tmpWork;
+        QTemporaryDir tempDir;
+        if (tempDir.isValid()) {
+            qInfo() << tempDir.path();
+            tmpWork = tempDir.path();
+        } else {
+            qInfo() << tempDir.errorString();
+            retMessage.setState(false);
+            retMessage.setMessage(tempDir.errorString());
+            retMessage.setCode(RetCode(RetCode::MakeTempWorkDirError));
+            return false;
+        }
+
+        //创建对应的安装目录与runtime目录并复制对应的安装数据与runtime数据
+        QString runtimeDirPath = tmpWork + QString("/runtime");
+        QString installFilePath = tmpWork + QString("/")
+                                  + QString::fromStdString(this->uap->meta.appid + "/" + this->uap->meta.version + "/"
+                                                           + this->uap->meta.arch);
+        createDir(installFilePath);
+        createDir(runtimeDirPath);
+
+        if (runTimePath.isNull() || runTimePath.isEmpty()) {
+            copyDir(absoluteDataPath, installFilePath);
+        } else {
+            copyDir(QDir(runTimePath).absolutePath(), runtimeDirPath);
+            copyDir(absoluteDataPath, installFilePath);
+        }
+
+        //创建info链接文件
+        QString newInfoFilePath = installFilePath + QString("/info");
+        linkFile(QString(".") + QString(INFOJSON), newInfoFilePath);
+
+        //创建yaml链接文件
+        QString newYamlFilePath = tmpWork + QString("/")
+                                  + QString::fromStdString(this->uap->meta.appid + "/" + this->uap->meta.version + "/"
+                                                           + this->uap->meta.appid + ".yaml");
+        QString yamlFilePath =
+            QString("./") + QString::fromStdString(this->uap->meta.arch + "/" + this->uap->meta.appid + ".yaml");
+        linkFile(yamlFilePath, newYamlFilePath);
+
+        // mksquashfs
+        // TODO : 大应用mksquashfs时间较长，此处timeout 15min
+        auto ret = Runner("mksquashfs", {tmpWork, absoluteSavePath}, 15 * 60 * 1000);
+        if (!ret) {
+            qCritical() << "mksquashfs failed:" << ret << "with call Runner"
+                        << "mksquashfs" << tmpWork << absoluteSavePath;
+            retMessage.setState(false);
+            retMessage.setMessage(absoluteDataPath);
+            retMessage.setCode(RetCode(RetCode::DataMakeSquashfsError));
+            tempDir.remove();
+            return false;
+        } else {
+            qInfo() << "mksquashfs " + absoluteSavePath + " successed!!!";
+            retMessage.setState(true);
+            retMessage.setMessage(absoluteSavePath);
+            retMessage.setCode(RetCode(RetCode::DataMakeSquashfsSuccess));
+            tempDir.remove();
+            return true;
+        }
     }
 };
 

@@ -1,22 +1,11 @@
 /*
  * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
  *
- * Author:     Iceyer <me@iceyer.net>
+ * Author:     liujianqiang <liujianqiang@uniontech.com>
  *
- * Maintainer: Iceyer <me@iceyer.net>
+ * Maintainer: liujianqiang <liujianqiang@uniontech.com>
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 #pragma once
@@ -32,11 +21,20 @@ namespace linglong {
 namespace dbus {
 enum class RetCode {
     uap_install_success = 400, // 安装正确
+    DataMakeSquashfsSuccess, //mksquashfs success
     uap_install_file_not_exists = 401, // 文件不存在
     uap_install_directory_not_exists, // 目录不存在
     uap_install_failed, // uap 安转失败
     uap_name_format_error = 501, // uap包名格式错误
     uap_file_not_exists, // uap包不存在
+    DataDirNotExists,      //数据目录不存在
+    UapJsonFileNotExists,  //uap.json不存在
+    UapJsonFormatError,      //uap.json format error
+    DataEntriesDirNotExists,     //entries 目录不存在
+    DataFilesDirNotExists,     //files 目录不存在
+    DataInfoJsonNotExists,     //info.json 文件不存在
+    DataMakeSquashfsError,      //mksquashfs failed
+    MakeTempWorkDirError,       //制作临时目录失败
 
     user_input_param_err = 600,
     pkg_already_installed,

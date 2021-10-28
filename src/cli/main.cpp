@@ -19,31 +19,30 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <iomanip>
+
 #include <QCoreApplication>
 #include <QCommandLineParser>
 #include <QCommandLineOption>
 #include <QMap>
 
 #include <DLog>
-#include <cmd/cmd.h>
 
+#include "cmd/cmd.h"
 #include "module/package/package.h"
-
 #include "service/impl/json_register_inc.h"
-
 #include "package_manager.h"
 
 void printAppInfo(PKGInfoList retMsg)
 {
     if (retMsg.size() > 0) {
-        std::cout << "id\t\t\t"
-                  << "name\t\t"
-                  << "version\t\t"
-                  << "arch\t\t"
+        std::cout << std::setiosflags(std::ios::left) << std::setw(24) << "id" << std::setw(16)
+                  << "name" << std::setw(16) << "version" << std::setw(12) << "arch"
                   << "description" << std::endl;
         for (auto const &it : retMsg) {
-            std::cout << it->appid.toStdString() << "\t" << it->appname.toStdString() << "\t\t"
-                      << it->version.toStdString() << "\t\t" << it->arch.toStdString() << "\t\t" << it->description.toStdString() << std::endl;
+            std::cout << std::setiosflags(std::ios::left) << std::setw(24) << it->appid.toStdString()
+                      << std::setw(16) << it->appname.toStdString() << std::setw(16) << it->version.toStdString()
+                      << std::setw(12) << it->arch.toStdString() << it->description.toStdString() << std::endl;
         }
     } else {
         std::cout << "app not found in repo" << std::endl;
@@ -262,8 +261,8 @@ int main(int argc, char **argv)
              parser.process(app);
              auto optPara = parser.value(optType);
              if (optPara != "installed") {
-                qInfo() << "list param err, please see --help";
-                return -1;
+                 parser.showHelp(-1);
+                 return -1;
              }
              QDBusPendingReply<PKGInfoList> reply = pm.Query({optPara});
              // 默认超时时间为25s

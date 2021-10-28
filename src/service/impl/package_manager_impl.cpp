@@ -16,6 +16,7 @@
 #include "module/util/httpclient.h"
 #include "package_manager_impl.h"
 #include "service/impl/dbus_retcode.h"
+#include "version.h"
 
 using linglong::util::fileExists;
 using linglong::dbus::RetCode;
@@ -92,7 +93,7 @@ bool PackageManagerImpl::makeUAPbyOUAP(const QString &cfgPath, const QString &ds
 bool PackageManagerImpl::updateAppStream(const QString &savePath, const QString &remoteName, QString &err)
 {
     // FIXME(huqinghong): 获取AppStream.json 地址 to do fix
-    const QString xmlPath = "http://10.20.54.2/linglong/xml/AppStream.json";
+    const QString xmlPath = "https://linglong.uniontech.com/linglong/xml/AppStream.json";
     /// deepin/linglong
     QString fullPath = savePath + remoteName;
     //创建下载目录
@@ -102,6 +103,54 @@ bool PackageManagerImpl::updateAppStream(const QString &savePath, const QString 
     httpClient->release();
     if (!ret) {
         err = "updateAppStream load appstream.json err";
+    }
+    return ret;
+}
+
+/*
+ * 比较给定的软件包版本
+ *
+ * @param curVersion: 当前软件包版本
+ * @param dstVersion: 目标软件包版本
+ *
+ * @return bool: dstVersion 比 curVersion版本新返回true,否则返回false
+ */
+bool PackageManagerImpl::cmpAppVersion(const QString &curVersion, const QString &dstVersion)
+{
+    linglong::AppVersion curVer(curVersion);
+    linglong::AppVersion dstVer(dstVersion);
+    if (!curVer.isValid()) {
+        return true;
+    }
+    if (!dstVer.isValid()) {
+        return false;
+    }
+    qInfo() << "curVersion:" << curVersion << ", dstVersion:" << dstVersion;
+    return dstVer.isBigThan(curVer);
+}
+
+/*
+ * 根据匹配的软件包列表查找最新版本软件包信息
+ *
+ * @param verMap: 目标软件包版本信息
+ *
+ * @return QString: 最新版本软件包信息
+ */
+QString PackageManagerImpl::getLatestAppInfo(const QMap<QString, QString> &verMap)
+{
+    if (verMap.size() == 1) {
+        return verMap.keys().at(0);
+    }
+    QString latesVer = "0.0.0.0";
+    QString ret = "";
+    for (QString key : verMap.keys()) {
+        // AppStream.json中的key值格式为 "org.deepin.calculator_2.2.4"
+        QString ver = verMap[key];
+        if (cmpAppVersion(latesVer, ver)) {
+            latesVer = ver;
+            ret = key;
+        }
+        qInfo() << "latest version:" << latesVer;
     }
     return ret;
 }
@@ -129,7 +178,6 @@ bool PackageManagerImpl::getAppInfoByAppStream(const QString &savePath, const QS
 
     QFile jsonFile(fullPath);
     jsonFile.open(QIODevice::ReadOnly | QIODevice::Text);
-    // auto qbt = jsonFile.readAll();
     QString qValue = jsonFile.readAll();
     jsonFile.close();
     QJsonParseError parseJsonErr;
@@ -139,48 +187,56 @@ bool PackageManagerImpl::getAppInfoByAppStream(const QString &savePath, const QS
         err = fullPath + " json file wrong";
         return false;
     }
-    if (document.isArray()) {
-        QJsonArray array = document.array();
-        int nSize = array.size();
-        for (int i = 0; i < nSize; i++) {
-            QJsonValue sub = array.at(i);
-            QJsonObject subObj = sub.toObject();
-            QString appId = subObj["appid"].toString();
-            QString appName = subObj["name"].toString();
-            QString appVer = subObj["version"].toString();
-            QString appUrl = subObj["appUrl"].toString();
-
-            QString summary = subObj["summary"].toString();
-            QString runtime = subObj["runtime"].toString();
-            QString reponame = subObj["reponame"].toString();
-            QString arch = "";
-            QJsonValue arrayValue = subObj.value(QStringLiteral("arch"));
-            if (arrayValue.isArray()) {
-                QJsonArray arr = arrayValue.toArray();
-                arch = arr.at(0).toString();
-                // int nSize = arr.size();
-                // for (int i = 0; i < nSize; i++) {
-                //     QJsonValue item = arr.at(i);
-                //     if (item.isString()) {
-                //         arch = item.toString();
-                //     }
-                // }
+    // 自定义软件包信息metadata 继承JsonSerialize 来处理，to do fix
+    QJsonObject jsonObject = document.object();
+    if (jsonObject.size() > 0) {
+        QStringList pkgsList = jsonObject.keys();
+        QString filterString = "^" + pkgName + "*";
+        QStringList appList = pkgsList.filter(QRegExp(filterString, Qt::CaseSensitive));
+        if (appList.isEmpty()) {
+            err = "app:" + pkgName + " not found";
+            qInfo() << err;
+            return false;
+        } else {
+            QMap<QString, QString> verMap;
+            for (QString key : appList) {
+                QJsonObject tmp = jsonObject[key].toObject();
+                QString value = tmp["version"].toString();
+                verMap.insert(key, value);
             }
-            if (pkgName == appId && arch == pkgArch) {
-                appStreamPkgInfo.appId = appId;
-                appStreamPkgInfo.appName = appName;
-                appStreamPkgInfo.appVer = appVer;
-                appStreamPkgInfo.appArch = arch;
-                appStreamPkgInfo.appUrl = appUrl;
-
-                appStreamPkgInfo.summary = summary;
-                appStreamPkgInfo.runtime = runtime;
-                appStreamPkgInfo.reponame = reponame;
-                return true;
+            QString appKey = getLatestAppInfo(verMap);
+            qInfo() << "latest appKey:" << appKey;
+            if (!jsonObject.contains(appKey)) {
+                err = "getLatesAppInfo err";
+                return false;
             }
+            QJsonObject subObj = jsonObject[appKey].toObject();
+            appStreamPkgInfo.appId = subObj["appid"].toString();
+            appStreamPkgInfo.appName = subObj["name"].toString();
+            appStreamPkgInfo.appVer = subObj["version"].toString();
+            appStreamPkgInfo.appUrl = subObj["appUrl"].toString();
+
+            appStreamPkgInfo.summary = subObj["summary"].toString();
+            appStreamPkgInfo.runtime = subObj["runtime"].toString();
+            appStreamPkgInfo.reponame = subObj["reponame"].toString();
+            appStreamPkgInfo.appArch = getHostArch();
+            // QJsonValue arrayValue = subObj.value(QStringLiteral("arch"));
+            // if (arrayValue.isArray())
+            // {
+            //     QJsonArray arr = arrayValue.toArray();
+            //     arch = arr.at(0).toString();
+            //     // int nSize = arr.size();
+            //     // for (int i = 0; i < nSize; i++) {
+            //     //     QJsonValue item = arr.at(i);
+            //     //     if (item.isString()) {
+            //     //         arch = item.toString();
+            //     //     }
+            //     // }
+            // }
+            return true;
         }
     }
-    err = "app:" + pkgName + " not found";
+    err = fullPath + " is empty";
     return false;
 }
 

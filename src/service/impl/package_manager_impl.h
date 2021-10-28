@@ -216,4 +216,23 @@ private:
      * @return PKGInfoList: 查询结果
      */
     PKGInfoList queryAllInstalledApp();
+
+    /*
+     * 根据匹配的软件包列表查找最新版本软件包信息
+     *
+     * @param verMap: 目标软件包版本信息
+     *
+     * @return QString: 最新版本软件包信息
+     */
+    QString getLatestAppInfo(const QMap<QString, QString> &verMap);
+
+    /*
+     * 比较给定的软件包版本
+     *
+     * @param curVersion: 当前软件包版本
+     * @param dstVersion: 目标软件包版本
+     *
+     * @return bool: ver2 比 ver1版本新返回true,否则返回false
+     */
+    bool cmpAppVersion(const QString &curVersion, const QString &dstVersion);
 };

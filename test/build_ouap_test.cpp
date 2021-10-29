@@ -1,102 +1,71 @@
 /*
  * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
  *
- * Author:     Iceyer <me@iceyer.net>
+ * Author:     liujianqiang <liujianqiang@uniontech.com>
  *
- * Maintainer: Iceyer <me@iceyer.net>
+ * Maintainer: liujianqiang <liujianqiang@uniontech.com>
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 #include <gtest/gtest.h>
 
-#include "module/package/package.h"
-
 #include <QJsonDocument>
 #include <QFile>
 #include <QFileInfo>
+#include <QTemporaryDir>
+
+#include "module/package/package.h"
+
+#define UAPNAME "org.deepin.calculator-1.2.2-x86_64.uap"
+#define OUAPNAME "org.deepin.calculator-1.2.2-x86_64.ouap"
+#define CONFIGFILE "../../test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64/uap.json"
+#define DATADIR "../../test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64"
 
 TEST(Package, Make_ouap1)
 {
-    Package pkg02;
-    QString pkg_name = "org.deepin.calculator-1.2.2-x86_64.uap";
-    QString pkg_ouap_name = "org.deepin.calculator-1.2.2-x86_64.ouap";
-    QFileInfo fs(pkg_name);
+    Package pkg01;
+    QString uapName = UAPNAME;
+    QString ouapName = UAPNAME;
+    QFileInfo fs(uapName);
 
+    //预处理文件
     if (fs.exists()) {
-        QFile::remove(pkg_name);
+        QFile::remove(uapName);
     }
-    if (QFileInfo::exists(pkg_ouap_name)) {
-        QFile::remove(pkg_ouap_name);
-    }
-    EXPECT_EQ(pkg02.InitUap(QString("../../test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64/uap.json"), QString("../../test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64")), true);
-    EXPECT_EQ(pkg02.MakeUap(), true);
-    if (QFileInfo::exists(pkg_name) && QFileInfo("/deepin/linglong").isWritable()) {
-        EXPECT_EQ(pkg02.MakeOuap(pkg_name), true);
-        EXPECT_EQ(fileExists(pkg_ouap_name), true);
+    if (QFileInfo::exists(ouapName)) {
+        QFile::remove(ouapName);
     }
 
-    if (fileExists(pkg_ouap_name)) {
-        QFile::remove(pkg_ouap_name);
+    //创建临时仓库目录
+    QString pool;
+    QTemporaryDir tempDir;
+    if (tempDir.isValid()) {
+        qInfo() << tempDir.path();
+        pool = tempDir.path();
     }
 
-    if (QFileInfo::exists(pkg_name)) {
-        QFile::remove(pkg_name);
-    }
-    if (QFileInfo::exists(pkg_ouap_name)) {
-        QFile::remove(pkg_ouap_name);
-    }
-
-    EXPECT_EQ(pkg02.MakeOuap(QString("../../test/data/demo/uab.json")), false);
-    EXPECT_EQ(pkg02.MakeOuap(QString("../../test/data/demo/")), false);
-    EXPECT_EQ(pkg02.MakeOuap(QString("../../test/data/demo/sdfgssssert.uap")), false);
-}
-TEST(Package, Make_ouap2)
-{
-    Package pkg02;
-    QString pkg_name = "org.deepin.calculator-1.2.2-x86_64.uap";
-    QString pkg_ouap_name = "org.deepin.calculator-1.2.2-x86_64.ouap";
-    QString repo_path = "ttest/repo";
-    QFileInfo fs(pkg_name);
-
-    if (fs.exists()) {
-        QFile::remove(pkg_name);
-    }
-    if (QFileInfo::exists(pkg_ouap_name)) {
-        QFile::remove(pkg_ouap_name);
-    }
-    EXPECT_EQ(pkg02.InitUap(QString("../../test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64/uap.json"), QString("../../test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64")), true);
-    EXPECT_EQ(pkg02.MakeUap(), true);
-    EXPECT_EQ(pkg02.MakeOuap(pkg_name, repo_path), true);
-    EXPECT_EQ(dirExists(repo_path), true);
-    EXPECT_EQ(fileExists(pkg_ouap_name), true);
-
-    if (dirExists(repo_path)) {
-        removeDir(repo_path);
-        QDir().rmdir(repo_path.split("/").at(0));
-    }
-    if (fileExists(pkg_ouap_name)) {
-        QFile::remove(pkg_ouap_name);
-    }
-    if (QFileInfo::exists(pkg_name)) {
-        QFile::remove(pkg_name);
-    }
-    if (QFileInfo::exists(pkg_ouap_name)) {
-        QFile::remove(pkg_ouap_name);
+    //生产离线包uap
+    EXPECT_EQ(pkg01.InitUap(QString(CONFIGFILE), QString(DATADIR)), true);
+    EXPECT_EQ(pkg01.MakeUap(), true);
+    if (QFileInfo::exists(uapName)){
+        //生成在线包ouap
+        EXPECT_EQ(pkg01.MakeOuap(uapName, pool), true);
+        EXPECT_EQ(fileExists(ouapName), true);
     }
 
-    EXPECT_EQ(pkg02.MakeOuap(QString("../../test/data/demo/uab.json")), false);
-    EXPECT_EQ(pkg02.MakeOuap(QString("../../test/data/demo/")), false);
-    EXPECT_EQ(pkg02.MakeOuap(QString("../../test/data/demo/sdfgssssert.uap")), false);
+    //处理临时文件
+    if (fileExists(ouapName)) {
+        QFile::remove(ouapName);
+    }
+
+    if (QFileInfo::exists(uapName)) {
+        QFile::remove(uapName);
+    }
+    if (QFileInfo::exists(ouapName)) {
+        QFile::remove(ouapName);
+    }
+
+    //移除临时目录
+    tempDir.remove();
 }

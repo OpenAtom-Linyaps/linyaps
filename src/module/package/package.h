@@ -406,7 +406,7 @@ public:
     }
 
     // make ouap
-    bool MakeOuap(const QString uap_path, QString ostree_repo = "/deepin/linglong/repo", QString ouap_path = "./")
+    bool MakeOuap(const QString& uap_path, const QString& ostree_repo, QString ouap_path = "./")
     {
         QString uapFile = QFileInfo(uap_path).fileName();
         QString extract_dir = QString("/tmp/") + uapFile;

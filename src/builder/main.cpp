@@ -108,11 +108,6 @@ int main(int argc, char **argv)
                  create_package.MakeOuap(args.at(1), args.at(2));
                  return 0;
              }
-             if (args.size() == 2) {
-                 Package create_package;
-                 create_package.MakeOuap(args.at(1));
-                 return 0;
-             }
 
              qInfo() << args;
              qInfo() << "err! input uap-path and repo-path or input uap-path";

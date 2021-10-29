@@ -89,7 +89,7 @@ bool inline commitOstree(const QString &repo_path, const QString &summary, const
     QStringList arguments;
     arguments << QString("--repo=") + repo_path << QString("commit") << QString("-s") << summary << QString("-m") << body << QString("-b") << branch << QString("--tree=dir=") + dir_data;
 
-    auto ret = RunnerRet("ostree", arguments, 300000);
+    auto ret = RunnerRet("ostree", arguments, 15*60*1000);
     std::tie(retval, retmsg) = ret;
     if (retval == false) {
         qInfo() << retmsg;

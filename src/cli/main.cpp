@@ -253,6 +253,28 @@ int main(int argc, char **argv)
              //        return m.ls(repoID);
              return -1;
          }},
+        {"uninstall", [&](QCommandLineParser &parser) -> int {
+             parser.clearPositionalArguments();
+             parser.addPositionalArgument("uninstall", "uninstall an application", "uninstall");
+             parser.addPositionalArgument("app-id", "app id", "com.deepin.demo");
+             parser.process(app);
+             auto args = parser.positionalArguments();
+             auto appID = args.value(1);
+             // 设置 10 分钟超时 to do
+             pm.setTimeout(1000 * 60 * 10);
+             QDBusPendingReply<RetMessageList> reply;
+             reply = pm.Uninstall({appID});
+             reply.waitForFinished();
+             RetMessageList retMsg = reply.value();
+             if (retMsg.size() > 0) {
+                 auto it = retMsg.at(0);
+                 qInfo() << "message:\t" << it->message;
+                 if (!it->state) {
+                     qInfo() << "code:\t" << it->code;
+                 }
+             }
+             return 0;
+         }},
         {"list", [&](QCommandLineParser &parser) -> int {
              auto optType = QCommandLineOption("type", "query installed app", "--type=installed", "installed");
              parser.clearPositionalArguments();

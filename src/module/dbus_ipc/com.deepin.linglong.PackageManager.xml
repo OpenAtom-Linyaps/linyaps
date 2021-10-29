@@ -15,7 +15,8 @@
         </method>
         <method name="Uninstall">
             <arg name="PackageIDList" type="as" direction="in"/>
-            <arg name="JobID" type="s" direction="out"/>
+            <arg name="RetMessageList" type="a(s)" direction="out"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="RetMessageList"/> 
         </method>
         <method name="Update">
             <arg name="PackageIDList" type="as" direction="in"/>

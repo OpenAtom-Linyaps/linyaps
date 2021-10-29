@@ -40,7 +40,7 @@ class PackageManager : public QObject
 public Q_SLOTS:
     RetMessageList Download(const QStringList &packageIDList, const QString savePath);
     RetMessageList Install(const QStringList &packageIDList);
-    QString Uninstall(const QStringList &packageIDList);
+    RetMessageList Uninstall(const QStringList &packageIDList);
     QString Update(const QStringList &packageIDList);
     QString UpdateAll();
 

@@ -48,7 +48,7 @@ class PackageManagerImpl : public PackageManagerProxyBase
 public:
     RetMessageList Download(const QStringList &packageIDList, const QString &savePath);
     RetMessageList Install(const QStringList &packageIDList);
-    QString Uninstall(const QStringList &packageIDList);
+    RetMessageList Uninstall(const QStringList &packageIDList);
     PKGInfoList Query(const QStringList &packageIDList);
 
 private:
@@ -235,4 +235,13 @@ private:
      * @return bool: ver2 比 ver1版本新返回true,否则返回false
      */
     bool cmpAppVersion(const QString &curVersion, const QString &dstVersion);
+
+    /*
+     * 卸载操作下更新软件包状态信息
+     *
+     * @param pkgName: 卸载软件包包名
+     *
+     * @return bool: true:更新成功 false:失败
+     */
+    bool updateUninstallAppStatus(const QString &pkgName);
 };

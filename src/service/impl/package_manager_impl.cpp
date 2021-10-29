@@ -58,8 +58,9 @@ QString PackageManagerImpl::getUserName()
     QString userName = "";
     if (user && user->pw_name) {
         userName = QString(QLatin1String(user->pw_name));
+    } else {
+        qInfo() << "getUserName err";
     }
-    qInfo() << "current username:" << userName;
     return userName;
 }
 
@@ -1049,12 +1050,120 @@ PKGInfoList PackageManagerImpl::Query(const QStringList &packageIDList)
     return pkglist;
 }
 
-QString PackageManagerImpl::Uninstall(const QStringList &packageIDList)
+/*
+ * 卸载操作下更新软件包状态信息
+ *
+ * @param pkgName: 卸载软件包包名
+ *
+ * @return bool: true:更新成功 false:失败
+ */
+bool PackageManagerImpl::updateUninstallAppStatus(const QString &pkgName)
 {
-    // 校验包名参数
-    // 判断软件包是否安装
-    // 卸载
+    // file lock to do
+    // 数据库的文件路径
+    QString dbPath = "/deepin/linglong/layers/AppInfoDB.json";
+    if (!linglong::util::fileExists(dbPath)) {
+        qCritical() << "db file not exist!";
+        return false;
+    }
+    QFile dbFile(dbPath);
+    if (!dbFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qCritical() << "db file open failed!";
+        return false;
+    }
+    // 读取文件的全部内容
+    QString qValue = dbFile.readAll();
+    dbFile.close();
+    QJsonParseError parseJsonErr;
+    QJsonDocument document = QJsonDocument::fromJson(qValue.toUtf8(), &parseJsonErr);
+    if (!(parseJsonErr.error == QJsonParseError::NoError)) {
+        qCritical() << "updateUninstallAppStatus parse json file err";
+        return false;
+    }
+    // 自定义软件包信息metadata 继承JsonSerialize 来处理，to do fix
+    QJsonObject jsonObject = document.object();
+    QJsonObject pkgsObject = jsonObject["pkgs"].toObject();
+    QJsonObject usersObject = jsonObject["users"].toObject();
+    // 删除users 字段下 软件包对应的目录
+    QString userName = getUserName();
+    QJsonObject userNameObject;
+    if (usersObject.contains(userName)) {
+        userNameObject = usersObject[userName].toObject();
+        userNameObject.remove(pkgName);
+        usersObject[userName] = userNameObject;
+    } else {
+        qCritical() << "updateUninstallAppStatus user info err";
+        return false;
+    }
+    // 更新pkgs字段中的用户列表users字段
+    QJsonObject pkgObject = pkgsObject[pkgName].toObject();
+    QJsonObject pkgUsersObject = pkgObject["users"].toObject();
+    pkgUsersObject.remove(userName);
+    pkgObject["users"] = pkgUsersObject;
+    pkgsObject[pkgName] = pkgObject;
+
+    // 软件包无用户安装 删除对应的记录
+    if (pkgUsersObject.isEmpty()) {
+        pkgsObject.remove(pkgName);
+    }
+
+    // users 下面的用户未安装软件，删除对应的用户记录
+    if (userNameObject.isEmpty()) {
+        usersObject.remove(userName);
+    }
+
+    jsonObject.insert("pkgs", pkgsObject);
+    jsonObject.insert("users", usersObject);
+
+    document.setObject(jsonObject);
+    dbFile.open(QIODevice::WriteOnly | QIODevice::Text);
+    // 将修改后的内容写入文件
+    QTextStream wirteStream(&dbFile);
+    // 设置编码UTF8
+    wirteStream.setCodec("UTF-8");
+    wirteStream << document.toJson();
+    dbFile.close();
+    return true;
+}
+
+/*
+ * 卸载软件包
+ *
+ * @param packageIDList: 软件包的appid
+ *
+ * @return RetMessageList 卸载结果信息
+ */
+RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIDList)
+{
+    RetMessageList retMsg;
+    auto info = QPointer<RetMessage>(new RetMessage);
+    const QString pkgName = packageIDList.at(0);
+    // 判断是否已安装
+    if (!getIntallStatus(pkgName)) {
+        qInfo() << pkgName << " not installed";
+        info->setcode(RetCode(RetCode::pkg_not_installed));
+        info->setmessage(pkgName + " not installed");
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
+    }
+    QString err = "";
+    PKGInfoList pkglist;
+    // 卸载 删除文件（软链接？）判断是否有用户使用软件包 to do fix
+    // 根据已安装文件查询已经安装软件包信息
+    getInstalledAppInfo(pkgName, pkglist);
+    auto it = pkglist.at(0);
+    if (pkglist.size() > 0) {
+        const QString installPath = "/deepin/linglong/layers/" + it->appid + "/" + it->version;
+        linglong::util::removeDir(installPath);
+        qInfo() << "Uninstall del dir:" << installPath;
+    }
+
     // 更新安装数据库
-    // 更新本地软件包目录
-    return "";
+    updateUninstallAppStatus(pkgName);
+    info->setcode(RetCode(RetCode::pkg_uninstall_success));
+    info->setmessage("uninstall " + pkgName + " success");
+    info->setstate(true);
+    retMsg.push_back(info);
+    return retMsg;
 }

@@ -123,10 +123,33 @@ RetMessageList PackageManager::Install(const QStringList &packageIDList)
     return pImpl->Install(packageIDList);
 }
 
-QString PackageManager::Uninstall(const QStringList &packageIDList)
+RetMessageList PackageManager::Uninstall(const QStringList &packageIDList)
 {
-    sendErrorReply(QDBusError::NotSupported, message().member());
-    return {};
+    // 校验包名参数
+    // 判断软件包是否安装
+    // 卸载
+    // 更新安装数据库
+    // 更新本地软件包目录
+    RetMessageList retMsg;
+    auto info = QPointer<RetMessage>(new RetMessage);
+    if (packageIDList.size() == 0) {
+        qInfo() << "packageIDList input err";
+        info->setcode(RetCode(RetCode::user_input_param_err));
+        info->setmessage("packageIDList input err");
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
+    }
+    QString pkgName = packageIDList.at(0);
+    if (pkgName.isNull() || pkgName.isEmpty()) {
+        qInfo() << "package name err";
+        info->setcode(RetCode(RetCode::user_input_param_err));
+        info->setmessage("package name err");
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
+    }
+    return PackageManagerImpl::get()->Uninstall(packageIDList);
 }
 
 QString PackageManager::Update(const QStringList &packageIDList)

@@ -38,6 +38,7 @@ enum class RetCode {
 
     user_input_param_err = 600,
     pkg_already_installed,
+    pkg_not_installed,
     host_arch_not_recognized,
     update_appstream_failed,
     search_pkg_by_appstream_failed,
@@ -47,8 +48,9 @@ enum class RetCode {
     ouap_install_file_not_exists, // 文件不存在
     ouap_install_failed,
     ouap_download_success,
-    ouap_install_success, // ouap文件安装正确
-    pkg_install_success, // 安装正确
+    ouap_install_success, // ouap文件安装成功
+    pkg_install_success, // 安装成功
+    pkg_uninstall_success, // 卸载成功
 };
 template <typename T=quint32>
 inline T RetCode(RetCode code){

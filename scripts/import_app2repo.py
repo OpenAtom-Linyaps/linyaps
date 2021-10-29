@@ -16,7 +16,6 @@ from jinja2 import Environment, BaseLoader
 
 repo_sh = """
 #!/bin/bash
-set -e
 set +x
 LINGLONG_ROOT_REMOTE={{linglong_path}}
 
@@ -229,8 +228,10 @@ def get_ouap_info(ouap_file):
     return ouap_info
 
 
-def update_app_stream(ouap_files="org.deepin.calculator-1.2.4-x86_64.ouap"):
-    with open("AppStream.json", "r") as fd_json:
+def update_app_stream(ouap_files="org.deepin.calculator-1.2.4-x86_64.ouap",appstream_path="AppStream.json"):
+    if not ouap_files or os.path.exists(appstream_path):
+        return False
+    with open(appstream_path, "r") as fd_json:
         app_json = json.load(fd_json)
     ouap_info = {}
     if not app_json:
@@ -264,7 +265,7 @@ def update_app_stream(ouap_files="org.deepin.calculator-1.2.4-x86_64.ouap"):
             app_json[app_key]["arch"].append(app_arch)
 
     # update appstream
-    with open("AppStream.json", "w") as fd_w:
+    with open(appstream_path, "w") as fd_w:
         fd_w.write(json.dumps(app_json, ensure_ascii=False))
     return True
 
@@ -330,7 +331,7 @@ if __name__ == '__main__':
     parser.add_argument('--ouap', "-o",
                         dest='ouap_file',
                         action="store",
-                        required=True,
+                        required=False,
                         type=lambda f: check_file_exists(parser, f),
                         help='ouap file')
     # uap

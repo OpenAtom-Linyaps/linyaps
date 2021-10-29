@@ -1,13 +1,16 @@
 #!/usr/bin/env/python3
 #
 
-import paramiko
+
 import os
-import tempfile
-import json
+import sys
 import os.path
 import argparse
 import subprocess
+import tempfile
+import paramiko
+import json
+import tarfile
 import shutil
 from jinja2 import Environment, BaseLoader
 
@@ -22,13 +25,22 @@ function pre_func(){
 echo "pre"
 if [ -f {{remote_path}}/{{repo_tar}} ]
 then
+echo "{% for x in range(10) %}-{% endfor %}"
     tar xf {{remote_path}}/{{repo_tar}} -C {{remote_path}}
+    echo "prepare tarfile OK!"
+echo "{% for x in range(10) %}-{% endfor %}"
+else
+echo "{% for x in range(10) %}-{% endfor %}"
+    echo "prepare tarfile failed!"
+    exit 1
+echo "{% for x in range(10) %}-{% endfor %}"
 fi
 }
 
 # start_func
 function start_func(){
-echo "start"
+echo "{% for x in range(10) %}-{% endfor %}"
+echo "start copy data"
 cp  -vf {{remote_path}}/*.ouap ${LINGLONG_ROOT_REMOTE}/ouap/
 cp  -vf {{remote_path}}/*.uap ${LINGLONG_ROOT_REMOTE}/uap/
 if [ -f ${LINGLONG_ROOT_REMOTE}/xml/AppStream.json ]
@@ -40,8 +52,9 @@ then
 else
 cp  -vf {{remote_path}}/AppStream.json ${LINGLONG_ROOT_REMOTE}/xml/AppStream.json
 fi
-
+echo "{% for x in range(10) %}-{% endfor %}"
 ostree --repo=${LINGLONG_ROOT_REMOTE}/pool/repo pull-local {{remote_path}}/repo/
+
 if [ $? -eq 0 ]
 then
 echo "{% for x in range(10) %}-{% endfor %}"
@@ -148,7 +161,7 @@ def fetch_files_remote(remote_files, local_dir):
 def made_remote_shell(remote_path, repo_tar, linglong_path="/home/linglong/work/linglong"):
     rtemplate = Environment(loader=BaseLoader).from_string(repo_sh)
     remote_env = {"remote_path": remote_path,
-                  "repo_tar": repo_tar,
+                  "repo_tar": os.path.basename(repo_tar),
                   "linglong_path": linglong_path}
     data = rtemplate.render(**remote_env)
     with open("pkg.sh", "w") as f:
@@ -302,9 +315,16 @@ if __name__ == '__main__':
     parser.add_argument('--repo_tar', "-r",
                         dest='repo_tar',
                         action="store",
-                        required=True,
+                        required=False,
                         type=lambda f: check_file_exists(parser, f),
                         help='repo tar file')
+    # input repo path
+    parser.add_argument('--repo_path', "-d",
+                        dest='repo_path',
+                        action="store",
+                        required=False,
+                        type=lambda f: check_file_exists(parser, f),
+                        help='repo path directory')
     # ouap
     # TODO(fix): support uab
     parser.add_argument('--ouap', "-o",
@@ -354,8 +374,33 @@ if __name__ == '__main__':
                         default="repo.linglong.space",
                         help='remote ssh ip address')
     root_args = parser.parse_args()
-    print("opt: {0}".format(root_args))
     remote["ip"] = root_args.ssh_remote_ip
     remote["port"] = root_args.ssh_remote_port
     remote["username"] = root_args.ssh_remote_user
+    if not root_args.repo_tar:
+        if not root_args.repo_path:
+            print("Need Repo param")
+            parser.print_help()
+            sys.exit(2)
+        else:
+            repo_path_file_list = os.listdir(root_args.repo_path)
+            research = ["config", "state", "extensions", "objects", "refs"]
+            search_idx = 0
+            for rpfs in repo_path_file_list:
+                #print(os.path.basename(rpfs))
+                if rpfs in research:
+                    search_idx = search_idx + 1
+                    if (rpfs == "refs" and (not os.path.isdir("{0}/{1}".format(root_args.repo_path, rpfs)))) or (
+                            rpfs == "config" and (not os.path.isfile("{0}/{1}".format(root_args.repo_path, rpfs)))):
+                        print("Not Found Repo Data")
+                        sys.exit(1)
+            if search_idx != len(research):
+                print("Incorrect Repo Data")
+                sys.exit(3)
+            repo_tar_new = tarfile.open("repo.tar","w")
+            repo_tar_new.add(root_args.repo_path,arcname='repo')
+            repo_tar_new.close()
+            root_args.repo_tar = "./repo.tar"
+    print("opt: {0}".format(root_args))
+    #sys.exit(2)
     run_main(root_args)

@@ -229,7 +229,7 @@ def get_ouap_info(ouap_file):
 
 
 def update_app_stream(ouap_files="org.deepin.calculator-1.2.4-x86_64.ouap",appstream_path="AppStream.json"):
-    if not ouap_files or os.path.exists(appstream_path):
+    if not os.path.exists(ouap_files) or not os.path.exists(appstream_path):
         return False
     with open(appstream_path, "r") as fd_json:
         app_json = json.load(fd_json)

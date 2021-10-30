@@ -981,6 +981,7 @@ bool OstreeRepoHelper::checkOutAppData(const QString &repoPath, const QString &r
                                  cancellable, &error)) {
         // fprintf(stdout, "ostree_repo_checkout_at error:%s\n", error->message);
         qInfo() << "ostree_repo_checkout_at error:" << error->message;
+        err = "ostree_repo_checkout_at error:" + QString(QLatin1String(error->message));
         return false;
     }
     return true;

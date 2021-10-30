@@ -39,18 +39,14 @@ void stop_ll_service()
 /*
  * 查询测试服务器连接状态
  *
- * @param sIp: 测试服务器ip
- *
  * @return bool: true: 可以连上测试服务器 false:连不上服务器
  */
-bool getConnectStatus(QString sIp)
+bool getConnectStatus()
 {
-    if (sIp.isEmpty()) {
-        return false;
-    }
+    const QString testServer = "repo.linglong.space";
     QProcess proc;
     QStringList argstrList;
-    argstrList << "-s 1" << "-c 1" << sIp;
+    argstrList << "-s 1" << "-c 1" << testServer;
     proc.start("ping", argstrList);
     if (!proc.waitForStarted()) {
         qInfo() << "start ping failed!";
@@ -136,8 +132,7 @@ TEST(Package, downloadtest03)
     QString curPath = QDir::currentPath();
     QDBusPendingReply<RetMessageList> reply = pm.Download({appID}, curPath);
     reply.waitForFinished();
-    // 判断是否能访问临时服务器 to do fix
-    bool connect = getConnectStatus("10.20.54.2");
+    bool connect = getConnectStatus();
     if (!connect) {
         qInfo() << "warning can't connect to test server";
     }
@@ -234,8 +229,7 @@ TEST(Package, install03)
     }
     QDBusPendingReply<RetMessageList> reply = pm.Install({appID});
     reply.waitForFinished();
-    // 判断是否能访问临时服务器 to do fix
-    bool connect = getConnectStatus("10.20.54.2");
+    bool connect = getConnectStatus();
     if (!connect) {
         expectRet = false;
     }
@@ -309,7 +303,7 @@ TEST(Package, install05)
             break;
         }
     }
-    bool connect = getConnectStatus("10.20.54.2");
+    bool connect = getConnectStatus();
     if (!connect) {
         expectRet = false;
     }

@@ -94,7 +94,7 @@ bool PackageManagerImpl::makeUAPbyOUAP(const QString &cfgPath, const QString &ds
 bool PackageManagerImpl::updateAppStream(const QString &savePath, const QString &remoteName, QString &err)
 {
     // FIXME(huqinghong): 获取AppStream.json 地址 to do fix
-    const QString xmlPath = "https://linglong.uniontech.com/linglong/xml/AppStream.json";
+    const QString xmlPath = "https://repo.linglong.space/xml/AppStream.json";
     /// deepin/linglong
     QString fullPath = savePath + remoteName;
     //创建下载目录
@@ -402,7 +402,7 @@ bool PackageManagerImpl::downloadOUAPData(const QString &pkgName, const QString 
         return false;
     } else {
         for (auto iter = qrepoList.begin(); iter != qrepoList.end(); ++iter) {
-            qInfo() << *iter;
+            qInfo() << "downloadOUAPData remote reponame:" << *iter;
         }
     }
     QMap<QString, QString> outRefs;
@@ -424,7 +424,7 @@ bool PackageManagerImpl::downloadOUAPData(const QString &pkgName, const QString 
         qInfo() << err;
         return false;
     } else {
-        qInfo() << matchRef;
+        qInfo() << "downloadOUAPData ref:" << matchRef;
     }
 
     // ret = repo.repoPull(repoPath, qrepoList[0], pkgName, err);
@@ -438,6 +438,7 @@ bool PackageManagerImpl::downloadOUAPData(const QString &pkgName, const QString 
     ret = G_OSTREE_REPOHELPER->checkOutAppData(repoPath, qrepoList[0], matchRef, dstPath, err);
     if (!ret) {
         qInfo() << err;
+        return false;
     }
     qInfo() << "downloadOUAPData success, path:" << dstPath;
     // 方案2 将数据checkout到临时目录，临时目录制作一个离线包，再调用离线包的api安装
@@ -1158,7 +1159,7 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIDList)
         linglong::util::removeDir(installPath);
         qInfo() << "Uninstall del dir:" << installPath;
     }
-
+    // 更新本地repo 仓库 to do fix
     // 更新安装数据库
     updateUninstallAppStatus(pkgName);
     info->setcode(RetCode(RetCode::pkg_uninstall_success));

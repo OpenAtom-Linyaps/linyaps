@@ -218,6 +218,20 @@ private:
     PKGInfoList queryAllInstalledApp();
 
     /*
+     * 根据AppStream.json对软件包进行模糊查找
+     *
+     * @param savePath: AppStream.json文件存储路径
+     * @param remoteName: 远端仓库名称
+     * @param pkgName: 软件包包名
+     * @param pkgList: 查询结果
+     * @param err: 错误信息
+     *
+     * @return bool: true:成功 false:失败
+     */
+    bool getSimilarAppInfoByAppStream(const QString &savePath, const QString &remoteName, const QString &pkgName,
+                                      PKGInfoList &pkgList, QString &err);
+
+    /*
      * 根据匹配的软件包列表查找最新版本软件包信息
      *
      * @param verMap: 目标软件包版本信息

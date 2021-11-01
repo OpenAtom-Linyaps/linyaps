@@ -192,8 +192,8 @@ bool PackageManagerImpl::getAppInfoByAppStream(const QString &savePath, const QS
     QJsonObject jsonObject = document.object();
     if (jsonObject.size() > 0) {
         QStringList pkgsList = jsonObject.keys();
-        QString filterString = "^" + pkgName + "*";
-        QStringList appList = pkgsList.filter(QRegExp(filterString, Qt::CaseSensitive));
+        QString filterString = ".*" + pkgName + ".*";
+        QStringList appList = pkgsList.filter(QRegExp(filterString, Qt::CaseInsensitive));
         if (appList.isEmpty()) {
             err = "app:" + pkgName + " not found";
             qInfo() << err;
@@ -213,6 +213,11 @@ bool PackageManagerImpl::getAppInfoByAppStream(const QString &savePath, const QS
             }
             QJsonObject subObj = jsonObject[appKey].toObject();
             appStreamPkgInfo.appId = subObj["appid"].toString();
+            // 精确匹配
+            if (appStreamPkgInfo.appId != pkgName) {
+                err = "getLatesAppInfo " + pkgName + " err";
+                return false;
+            }
             appStreamPkgInfo.appName = subObj["name"].toString();
             appStreamPkgInfo.appVer = subObj["version"].toString();
             appStreamPkgInfo.appUrl = subObj["appUrl"].toString();
@@ -840,6 +845,75 @@ bool PackageManagerImpl::getInstalledAppInfo(const QString &pkgName, PKGInfoList
 }
 
 /*
+ * 根据AppStream.json对软件包进行模糊查找
+ *
+ * @param savePath: AppStream.json文件存储路径
+ * @param remoteName: 远端仓库名称
+ * @param pkgName: 软件包包名
+ * @param pkgList: 查询结果
+ * @param err: 错误信息
+ *
+ * @return bool: true:成功 false:失败
+ */
+bool PackageManagerImpl::getSimilarAppInfoByAppStream(const QString &savePath, const QString &remoteName,
+                                                      const QString &pkgName, PKGInfoList &pkgList, QString &err)
+{
+    //判断文件是否存在
+    // deepin/linglong
+    QString fullPath = savePath + remoteName + "/AppStream.json";
+    if (!linglong::util::fileExists(fullPath)) {
+        err = fullPath + " is not exist";
+        return false;
+    }
+
+    QFile jsonFile(fullPath);
+    jsonFile.open(QIODevice::ReadOnly | QIODevice::Text);
+    QString qValue = jsonFile.readAll();
+    jsonFile.close();
+    QJsonParseError parseJsonErr;
+    QJsonDocument document = QJsonDocument::fromJson(qValue.toUtf8(), &parseJsonErr);
+    if (!(parseJsonErr.error == QJsonParseError::NoError)) {
+        qCritical() << "getSimilarAppInfoByAppStream parse json file wrong";
+        err = fullPath + " json file wrong";
+        return false;
+    }
+    // 自定义软件包信息metadata 继承JsonSerialize 来处理，to do fix
+    QJsonObject jsonObject = document.object();
+    if (jsonObject.size() > 0) {
+        QStringList pkgsList = jsonObject.keys();
+        QString filterString = "(" + pkgName + ")+";
+        QStringList appList = pkgsList.filter(QRegExp(filterString, Qt::CaseInsensitive));
+        if (appList.isEmpty()) {
+            err = "app:" + pkgName + " not found";
+            qInfo() << err;
+            return false;
+        } else {
+            for (QString appKey : appList) {
+                auto info = QPointer<PKGInfo>(new PKGInfo);
+                QJsonObject subObj = jsonObject[appKey].toObject();
+                info->appid = subObj["appid"].toString();
+                info->appname = subObj["name"].toString();
+                info->version = subObj["version"].toString();
+                info->description = subObj["summary"].toString();
+                QString arch;
+                QJsonValue arrayValue = subObj.value(QStringLiteral("arch"));
+                if (arrayValue.isArray()) {
+                    QJsonArray arr = arrayValue.toArray();
+                    if (arr.size() > 0) {
+                        arch = arr.at(0).toString();
+                    }
+                }
+                info->arch = arch;
+                pkgList.push_back(info);
+            }
+            return true;
+        }
+    }
+    err = fullPath + " is empty";
+    return false;
+}
+
+/*
  * 查询未安装软件包信息
  *
  * @param pkgName: 软件包包名
@@ -859,12 +933,16 @@ bool PackageManagerImpl::getUnInstalledAppInfo(const QString &pkgName, PKGInfoLi
     if (ret) {
         qInfo() << appStreamPkgInfo.appName << " " << appStreamPkgInfo.appId << " " << appStreamPkgInfo.summary;
         auto info = QPointer<PKGInfo>(new PKGInfo);
-        info->appid = pkgName;
+        info->appid = appStreamPkgInfo.appId;
         info->appname = appStreamPkgInfo.appName;
         info->version = appStreamPkgInfo.appVer;
         info->arch = appStreamPkgInfo.appArch;
         info->description = appStreamPkgInfo.summary;
         pkgList.push_back(info);
+    } else {
+        qInfo() << "getUnInstalledAppInfo fuzzy search app:" << pkgName;
+        // 模糊匹配
+        ret = getSimilarAppInfoByAppStream("/deepin/linglong/", "repo", pkgName, pkgList, err);
     }
     return ret;
 }

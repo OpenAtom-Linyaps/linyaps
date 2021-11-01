@@ -364,6 +364,85 @@ TEST(Package, query02)
     stop_ll_service();
 }
 
+/*
+ * 包管理query方法模糊查找正则表达式测试用例
+ */
+TEST(Package, query03)
+{
+    QStringList pkgsList = {"ab", "adbc", "abdc", "aBc", "abCd", "dAbc", "aBcabcd"};
+    QString pkgName = "abc";
+    // 模糊查找 匹配 包名出现一次或多次，忽略大小写
+    QString filterString = "(" + pkgName + ")+";
+    QStringList appList = pkgsList.filter(QRegExp(filterString, Qt::CaseInsensitive));
+    bool ret = appList.size() == 4 ? true : false;
+    EXPECT_EQ(ret, true);
+}
+
+/*
+ * 包管理query方法查找仓库描述文件Appstream.json中软件包信息正则表达式测试用例
+ */
+TEST(Package, query04)
+{
+    QStringList pkgsList = {"ab", "adbc", "abdc", "aBc", "abCd", "dAbc", "abcabc", "abcabc"};
+    QString pkgName = "abc";
+    // 匹配以包名开头的字符串，区分大小写
+    QString filterString = "^" + pkgName + "+";
+    QStringList appList = pkgsList.filter(QRegExp(filterString, Qt::CaseSensitive));
+    bool ret = appList.size() == 2 ? true : false;
+    EXPECT_EQ(ret, true);
+}
+
+TEST(Package, IDQueryRegExp)
+{
+    auto filter = [](const QStringList &idList, const QString &query) -> QStringList {
+        QString filterString = ".*" + query + ".*";
+        return idList.filter(QRegExp(filterString, Qt::CaseInsensitive));
+    };
+
+    // data collect
+    QStringList packageIDList = {"com.gitlab.newsflash",
+                                 "com.nextcloud.desktopclient.nextcloud",
+                                 "io.typora.Typora",
+                                 "org.freedesktop.LinuxAudio.Plugins.swh",
+                                 "org.freedesktop.Platform.GL.default",
+                                 "org.freedesktop.Platform.GL.nvidia-470-74",
+                                 "org.zotero.Zotero",
+                                 "org.gabmus.gfeeds",
+                                 "com.diy_fever.DIYLayoutCreator"};
+
+    // normal
+    auto result = filter(packageIDList, "typora");
+    EXPECT_EQ(result.size(), 1);
+
+    // case insensitive
+    result = filter(packageIDList, "diyLayoutCreator");
+    EXPECT_EQ(result.size(), 1);
+
+    // multi result
+    result = filter(packageIDList, "GL");
+    EXPECT_EQ(result.size(), 2);
+
+    // empty
+    result = filter(packageIDList, "");
+    EXPECT_EQ(result.size(), packageIDList.size());
+
+    // special character -
+    result = filter(packageIDList, "-470-");
+    EXPECT_EQ(result.size(), 1);
+
+    // special character _
+    result = filter(packageIDList, "_");
+    EXPECT_EQ(result.size(), 1);
+
+    // special character .
+    result = filter(packageIDList, "lient.next");
+    EXPECT_EQ(result.size(), 1);
+
+    // illegal character 
+    result = filter(packageIDList, "\u0098");
+    EXPECT_EQ(result.size(), 0);
+}
+
 TEST(Package, list01)
 {
     // start service

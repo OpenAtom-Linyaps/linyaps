@@ -26,7 +26,6 @@
 #include <DLog>
 #include <QRegExp>
 
-
 #include "module/package/package.h"
 
 // using Package;
@@ -38,7 +37,8 @@ int main(int argc, char **argv)
     QCommandLineParser parser;
 
     parser.addHelpOption();
-    parser.addPositionalArgument("subcommand", "build\npackage", "subcommand [sub-option]");
+    parser.addPositionalArgument("subcommand", "build\nbuild-ouap\nextract\ncheck\nget-info\ninstall\npush\npackage",
+                                 "subcommand [sub-option]");
     // TODO(SE): for debug now
     auto optDefaultConfig = QCommandLineOption("default-config", "default config json filepath", "");
     parser.addOption(optDefaultConfig);
@@ -56,6 +56,7 @@ int main(int argc, char **argv)
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
         {"build",
          [&](QCommandLineParser &parser) -> int {
+             parser.clearPositionalArguments();
              parser.addPositionalArgument("build", "build uap package", "build");
              parser.addPositionalArgument("config", "config json", "config.json");
              parser.addPositionalArgument("data-dir", "data dir", "");
@@ -88,6 +89,7 @@ int main(int argc, char **argv)
          }},
         {"build-ouap",
          [&](QCommandLineParser &parser) -> int {
+             parser.clearPositionalArguments();
              parser.addPositionalArgument("build-ouap", "build ouap package", "build-ouap");
              parser.addPositionalArgument("uap-path", "uap path", "");
              parser.addPositionalArgument("repo-path", "repo path", "");
@@ -110,11 +112,12 @@ int main(int argc, char **argv)
              }
 
              qInfo() << args;
-             qInfo() << "err! input uap-path and repo-path or input uap-path";
+             qInfo() << "err! input uap-path repo-path or input uap-path repo-path ouap-path";
              return -1;
          }},
         {"extract",
          [&](QCommandLineParser &parser) -> int {
+             parser.clearPositionalArguments();
              parser.addPositionalArgument("extract", "extract uap package", "extract");
              parser.addPositionalArgument("uap-package", "uap package", "");
              parser.addPositionalArgument("dir", "dir", "");
@@ -136,6 +139,7 @@ int main(int argc, char **argv)
          }},
         {"check",
          [&](QCommandLineParser &parser) -> int {
+             parser.clearPositionalArguments();
              parser.addPositionalArgument("check", "check uap package", "check");
              parser.addPositionalArgument("dirpath", "dir path", "");
 
@@ -156,6 +160,7 @@ int main(int argc, char **argv)
          }},
         {"get-info",
          [&](QCommandLineParser &parser) -> int {
+             parser.clearPositionalArguments();
              parser.addPositionalArgument("get-info", "get  uap info", "get-info");
              parser.addPositionalArgument("UapPath", "uap file path", "");
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env/python3
+#!/usr/bin/env python3
 #
 
 
@@ -267,8 +267,8 @@ def update_app_stream(ouap_files="org.deepin.calculator-1.2.4-x86_64.ouap",appst
             app_json[app_key]["arch"].append(app_arch)
 
     # update appstream
-    with open(appstream_path, "w") as fd_w:
-        fd_w.write(json.dumps(app_json, ensure_ascii=False))
+    with open(appstream_path, "w",encoding='utf-8') as fd_w:
+        fd_w.write(json.dumps(app_json, ensure_ascii=False,indent=4))
     return True
 
 

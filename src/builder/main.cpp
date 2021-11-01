@@ -23,9 +23,9 @@
 #include <QCommandLineParser>
 #include <QCommandLineOption>
 #include <QMap>
-
 #include <DLog>
 #include <QRegExp>
+
 
 #include "module/package/package.h"
 
@@ -73,7 +73,7 @@ int main(int argc, char **argv)
                  }
                  create_package.MakeUap();
                  return 0;
-             }else if(args.size() == 4){
+             } else if (args.size() == 4) {
                  Package create_package;
                  if (!create_package.InitUap(args.at(1), args.at(2))) {
                      return -1;
@@ -99,7 +99,7 @@ int main(int argc, char **argv)
              // TODO(SE):
              if (args.size() == 4) {
                  Package create_package;
-                 create_package.MakeOuap(args.at(1), args.at(2),args.at(3));
+                 create_package.MakeOuap(args.at(1), args.at(2), args.at(3));
                  return 0;
              }
 
@@ -216,6 +216,38 @@ int main(int argc, char **argv)
              auto repoID = args.value(1);
 
              // TODO(SE):
+             return 0;
+         }},
+        {"push",
+         [&](QCommandLineParser &parser) -> int {
+             parser.clearPositionalArguments();
+             //添加push repo-path 命令参数
+             parser.addPositionalArgument("push", "push ouap and repo / push runtime", "push");
+             parser.addPositionalArgument("repo-path", "repo path / repo.tar", "repo");
+             //添加ouap-path uap-path force 选项参数
+             auto optOutputOuapPath = QCommandLineOption("ouap-path", "ouap file path", "ouap-path");
+             parser.addOption(optOutputOuapPath);
+             auto optOutputUapPath = QCommandLineOption("uap-path", "uap file path", "uap-path");
+             parser.addOption(optOutputUapPath);
+             auto optOutputForce = QCommandLineOption("force", "force push true or false", "force", "false");
+             parser.addOption(optOutputForce);
+
+             parser.process(app);
+
+             auto args = parser.positionalArguments();
+
+             //获取命令与想想参数
+             auto outputRepoPath = args.value(1);
+             auto outputOuapPath = parser.value(optOutputOuapPath);
+             auto outputuapPath = parser.value(optOutputUapPath);
+             auto OutputForce = parser.value(optOutputForce);
+
+             Package create_package;
+             if (!create_package.pushOuapOrRuntimeToServer(outputRepoPath, outputOuapPath, outputuapPath,
+                                                           OutputForce)) {
+                 return -1;
+             }
+
              return 0;
          }},
 

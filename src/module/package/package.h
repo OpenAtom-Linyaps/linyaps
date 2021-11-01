@@ -23,6 +23,7 @@
 #include <QFile>
 #include <QDebug>
 #include <QTemporaryDir>
+#include <QFileInfo>
 
 #include "module/uab/uap.h"
 #include "module/util/fs.h"
@@ -406,7 +407,7 @@ public:
     }
 
     // make ouap
-    bool MakeOuap(const QString& uap_path, const QString& ostree_repo, QString ouap_path = "./")
+    bool MakeOuap(const QString &uap_path, const QString &ostree_repo, QString ouap_path = "./")
     {
         QString uapFile = QFileInfo(uap_path).fileName();
         QString extract_dir = QString("/tmp/") + uapFile;
@@ -795,6 +796,176 @@ public:
             tempDir.remove();
             return true;
         }
+    }
+
+    //推包或者runtime到服务器接口
+    bool pushOuapOrRuntimeToServer(const QString &repoPath, const QString ouapPath = "", const QString uapPath = "",
+                                   const QString force = "false")
+    {
+        //判断仓库路径是否存在
+        if (!dirExists(repoPath) && !fileExists(repoPath)) {
+            qInfo() << repoPath + QString(" don't exists!!!");
+            return false;
+        }
+        //判断是否强制执行
+        if (force == "true") {
+            //判断是否传入ouap路径,执行runtime导入操作
+            if (ouapPath.isNull() || ouapPath.isEmpty()) {
+                if (QFileInfo(repoPath).isDir()) {
+                    //执行runtime导入操作， -d repo -f
+                    qInfo() << "imoirt_app2repo.py whit call Runner: "
+                            << "import_app2repo.py -d " + repoPath + " -f";
+                    auto ret = Runner("import_app2repo.py", {"-d", repoPath, "-f"}, 20 * 60 * 1000);
+                    if (!ret) {
+                        qInfo() << "import_app2repo.py run failed: " << ret << "with call Runner"
+                                << "import_app2repo.py"
+                                << "-d" << repoPath << "-f";
+                        return false;
+                    }
+                } else {
+                    //执行runtime导入操作，-r repo.tar -f
+                    qInfo() << "imoirt_app2repo.py whit call Runner: "
+                            << "import_app2repo.py -r " + repoPath + " -f";
+                    auto ret = Runner("import_app2repo.py", {"-r", repoPath, "-f"}, 20 * 60 * 1000);
+                    if (!ret) {
+                        qInfo() << "import_app2repo.py run failed: " << ret << "with call Runner"
+                                << "import_app2repo.py"
+                                << "-r" << repoPath << "-f";
+                        return false;
+                    }
+                }
+                //执行ouap导入操作
+            } else if (uapPath.isNull() || uapPath.isEmpty()) {
+                if (QFileInfo(repoPath).isDir()) {
+                    //执行导入ouap包，-d repo -o ouapPath -f
+                    qInfo() << "imoirt_app2repo.py whit call Runner: "
+                            << "import_app2repo.py -d " + repoPath + " -o " + ouapPath + " -f";
+                    auto ret = Runner("import_app2repo.py", {"-d", repoPath, "-o", ouapPath, "-f"}, 20 * 60 * 1000);
+                    if (!ret) {
+                        qInfo() << "import_app2repo.py run failed: " << ret << "with call Runner"
+                                << "import_app2repo.py"
+                                << "-d" << repoPath << "-o" << ouapPath << "-f";
+                        return false;
+                    }
+                } else {
+                    //执行导入ouap包，-r repo.tar -o ouapPath -f
+                    qInfo() << "imoirt_app2repo.py whit call Runner: "
+                            << "import_app2repo.py -r " + repoPath + " -o " + ouapPath + " -f";
+                    auto ret = Runner("import_app2repo.py", {"-d", repoPath, "-o", ouapPath, "-f"}, 20 * 60 * 1000);
+                    if (!ret) {
+                        qInfo() << "import_app2repo.py run failed: " << ret << "with call Runner"
+                                << "import_app2repo.py"
+                                << "-r" << repoPath << "-o" << ouapPath << "-f";
+                        return false;
+                    }
+                }
+            } else {
+                if (QFileInfo(repoPath).isDir()) {
+                    //执行导入ouap包， -d repo -o ouapPath -u uapPath -f
+                    qInfo() << "imoirt_app2repo.py whit call Runner: "
+                            << "import_app2repo.py -d " + repoPath + " -o " + ouapPath + " -u " + uapPath + " -f";
+                    auto ret = Runner("import_app2repo.py", {"-d", repoPath, "-o", ouapPath, "-u", uapPath, "-f"},
+                                      20 * 60 * 1000);
+                    if (!ret) {
+                        qInfo() << "import_app2repo.py run failed: " << ret << "with call Runner"
+                                << "import_app2repo.py"
+                                << "-d" << repoPath << "-o" << ouapPath << "-u" << uapPath << "-f";
+                        return false;
+                    }
+                } else {
+                    //执行导入ouap包，-r repo.tar -o ouapPath -u uapPath -f
+                    qInfo() << "imoirt_app2repo.py whit call Runner: "
+                            << "import_app2repo.py -r " + repoPath + " -o " + ouapPath + " -u " + uapPath + " -f";
+                    auto ret = Runner("import_app2repo.py", {"-r", repoPath, "-o", ouapPath, "-u", uapPath, "-f"},
+                                      20 * 60 * 1000);
+                    if (!ret) {
+                        qInfo() << "import_app2repo.py run failed: " << ret << "with call Runner"
+                                << "import_app2repo.py"
+                                << "-r" << repoPath << "-o" << ouapPath << "-u" << uapPath << "-f";
+                        return false;
+                    }
+                }
+            }
+        } else {
+            //判断是否传入ouap路径,执行runtime导入操作
+            if (ouapPath.isNull() || ouapPath.isEmpty()) {
+                if (QFileInfo(repoPath).isDir()) {
+                    //执行runtime导入操作， -d repo
+                    qInfo() << "imoirt_app2repo.py whit call Runner: "
+                            << "import_app2repo.py -d " + repoPath;
+                    auto ret = Runner("import_app2repo.py", {"-d", repoPath}, 20 * 60 * 1000);
+                    if (!ret) {
+                        qInfo() << "import_app2repo.py run failed: " << ret << "with call Runner"
+                                << "import_app2repo.py"
+                                << "-d" << repoPath;
+                        return false;
+                    }
+                } else {
+                    //执行runtime导入操作， -r repo.tar
+                    qInfo() << "imoirt_app2repo.py whit call Runner: "
+                            << "import_app2repo.py -r " + repoPath;
+                    auto ret = Runner("import_app2repo.py", {"-r", repoPath}, 20 * 60 * 1000);
+                    if (!ret) {
+                        qInfo() << "import_app2repo.py run failed: " << ret << "with call Runner"
+                                << "import_app2repo.py"
+                                << "-r" << repoPath;
+                        return false;
+                    }
+                }
+                //执行ouap导入操作
+            } else if (uapPath.isNull() || uapPath.isEmpty()) {
+                if (QFileInfo(repoPath).isDir()) {
+                    //执行导入ouap包，-d repo -o ouapPath
+                    qInfo() << "imoirt_app2repo.py whit call Runner: "
+                            << "import_app2repo.py -d " + repoPath + " -o " + ouapPath;
+                    auto ret = Runner("import_app2repo.py", {"-d", repoPath, "-o", ouapPath}, 20 * 60 * 1000);
+                    if (!ret) {
+                        qInfo() << "import_app2repo.py run failed: " << ret << "with call Runner"
+                                << "import_app2repo.py"
+                                << "-d" << repoPath << "-o" << ouapPath;
+                        return false;
+                    }
+                } else {
+                    //执行导入ouap包，-r repo.tar -o ouapPath
+                    qInfo() << "imoirt_app2repo.py whit call Runner: "
+                            << "import_app2repo.py -r " + repoPath + " -o " + ouapPath;
+                    auto ret = Runner("import_app2repo.py", {"-d", repoPath, "-o", ouapPath}, 20 * 60 * 1000);
+                    if (!ret) {
+                        qInfo() << "import_app2repo.py run failed: " << ret << "with call Runner"
+                                << "import_app2repo.py"
+                                << "-r" << repoPath << "-o" << ouapPath;
+                        return false;
+                    }
+                }
+            } else {
+                if (QFileInfo(repoPath).isDir()) {
+                    //执行导入ouap包，-d repo -o ouapPath -u uapPath
+                    qInfo() << "imoirt_app2repo.py whit call Runner: "
+                            << "import_app2repo.py -d " + repoPath + " -o " + ouapPath + " -u " + uapPath;
+                    auto ret =
+                        Runner("import_app2repo.py", {"-d", repoPath, "-o", ouapPath, "-u", uapPath}, 20 * 60 * 1000);
+                    if (!ret) {
+                        qInfo() << "import_app2repo.py run failed: " << ret << "with call Runner"
+                                << "import_app2repo.py"
+                                << "-d" << repoPath << "-o" << ouapPath << "-u" << uapPath;
+                        return false;
+                    }
+                } else {
+                    //执行导入ouap包，-r repo.tar -o ouapPath -u uapPath
+                    qInfo() << "imoirt_app2repo.py whit call Runner: "
+                            << "import_app2repo.py -r " + repoPath + " -o " + ouapPath + " -u " + uapPath;
+                    auto ret =
+                        Runner("import_app2repo.py", {"-r", repoPath, "-o", ouapPath, "-u", uapPath}, 20 * 60 * 1000);
+                    if (!ret) {
+                        qInfo() << "import_app2repo.py run failed: " << ret << "with call Runner"
+                                << "import_app2repo.py"
+                                << "-r" << repoPath << "-o" << ouapPath << "-u" << uapPath;
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
     }
 };
 

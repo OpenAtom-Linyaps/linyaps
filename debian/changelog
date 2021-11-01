@@ -1,3 +1,9 @@
+linglong (1.0.4-1) unstable; urgency=medium
+
+  * feat: add api pushOuapOrRuntimeToServer
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Mon, 01 Nov 2021 15:44:36 +0800
+
 linglong (1.0.3-1) unstable; urgency=medium
 
   *fix: add ostree commit timeout 

@@ -172,7 +172,7 @@ TEST(OstreeRepoHelperT04, resolveMatchRefs)
     QString pkgName = "org.deepin.calculator";
     //QString pkgName = "us.zoom.Zoom";
     QString arch = "x86_64";
-    ret = repo.queryMatchRefs(repoPath, qrepoList[0], pkgName, arch, matchRef, err);
+    ret = repo.queryMatchRefs(repoPath, qrepoList[0], pkgName, "", arch, matchRef, err);
     if (!ret) {
         //std::cout << err.toStdString();
         qInfo() << err;
@@ -225,7 +225,7 @@ TEST(OstreeRepoHelperT05, repoPull)
     //QString pkgName = "org.deepin.calculator";
     QString pkgName = "us.zoom.Zoom";
     QString arch = "x86_64";
-    ret = repo.queryMatchRefs(repoPath, qrepoList[0], pkgName, arch, matchRef, err);
+    ret = repo.queryMatchRefs(repoPath, qrepoList[0], pkgName, "", arch, matchRef, err);
     if (!ret) {
         //std::cout << err.toStdString();
         qInfo() << err;
@@ -278,7 +278,7 @@ TEST(OstreeRepoHelperT06, checkOutAppData)
     //QString pkgName = "org.deepin.calculator";
     QString pkgName = "us.zoom.Zoom";
     QString arch = "x86_64";
-    ret = repo.queryMatchRefs(repoPath, qrepoList[0], pkgName, arch, matchRef, err);
+    ret = repo.queryMatchRefs(repoPath, qrepoList[0], pkgName, "", arch, matchRef, err);
     if (!ret) {
         qInfo() << err;
         return;
@@ -336,7 +336,7 @@ TEST(RepoHelperT06, repoPullbyCmd)
     QString pkgName = "org.deepin.calculator";
     //QString pkgName = "us.zoom.Zoom";
     QString arch = "x86_64";
-    ret = repo.queryMatchRefs(repoPath, qrepoList[0], pkgName, arch, matchRef, err);
+    ret = repo.queryMatchRefs(repoPath, qrepoList[0], pkgName, "", arch, matchRef, err);
     if (!ret) {
         //std::cout << err.toStdString();
         qInfo() << err;

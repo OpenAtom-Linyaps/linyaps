@@ -95,12 +95,14 @@ private:
      * @param savePath: AppStream.json文件存储路径
      * @param remoteName: 远端仓库名称
      * @param pkgName: 软件包包名
+     * @param pkgVer: 软件包版本
      * @param pkgArch: 软件包对应的架构
      * @param err: 错误信息
      *
      * @return bool: true:成功 false:失败
      */
-    bool getAppInfoByAppStream(const QString &savePath, const QString &remoteName, const QString &pkgName, const QString &pkgArch, QString &err);
+    bool getAppInfoByAppStream(const QString &savePath, const QString &remoteName, const QString &pkgName,
+                               const QString &pkgVer, const QString &pkgArch, QString &err);
 
     /*
      * 通过AppStream.json更新OUAP在线包
@@ -117,11 +119,14 @@ private:
      * 查询软件包安装状态
      *
      * @param pkgName: 软件包包名
+     * @param pkgVer: 软件包版本号
+     * @param pkgArch: 软件包对应的架构
      * @param userName: 用户名，默认为当前用户
      *
      * @return bool: 1:已安装 0:未安装 -1查询失败
      */
-    int getIntallStatus(const QString &pkgName, const QString &userName = "");
+    int getIntallStatus(const QString &pkgName, const QString &pkgVer = "", const QString &pkgArch = "",
+                        const QString &userName = "");
 
     /*
      * 根据OUAP在线包解压出来的uap文件查询软件包信息
@@ -167,13 +172,15 @@ private:
      * 将OUAP在线包数据部分签出到指定目录
      *
      * @param pkgName: 软件包包名
+     * @param pkgVer: 软件包版本号
      * @param pkgArch: 软件包对应的架构
      * @param dstPath: OUAP在线包数据部分存储路径
      * @param err: 错误信息
      *
      * @return bool: true:成功 false:失败
      */
-    bool downloadOUAPData(const QString &pkgName, const QString &pkgArch, const QString &dstPath, QString &err);
+    bool downloadOUAPData(const QString &pkgName, const QString &pkgVer, const QString &pkgArch, const QString &dstPath,
+                          QString &err);
 
     /*
      * 建立box运行应用需要的软链接
@@ -193,22 +200,28 @@ private:
      * 查询未安装软件包信息
      *
      * @param pkgName: 软件包包名
+     * @param pkgVer: 软件包版本号
+     * @param pkgArch: 软件包对应的架构
      * @param pkgList: 查询结果
      * @param err: 错误信息
      *
      * @return bool: true:成功 false:失败
      */
-    bool getUnInstalledAppInfo(const QString &pkgName, PKGInfoList &pkgList, QString &err);
+    bool getUnInstalledAppInfo(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
+                               PKGInfoList &pkgList, QString &err);
 
     /*
      * 查询已安装软件包信息
      *
      * @param pkgName: 软件包包名
+     * @param pkgVer: 软件包版本号
+     * @param pkgArch: 软件包对应的架构
      * @param pkgList: 查询结果
      *
      * @return bool: true:成功 false:失败(软件包未安装)
      */
-    bool getInstalledAppInfo(const QString &pkgName, PKGInfoList &pkgList);
+    bool getInstalledAppInfo(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
+                             PKGInfoList &pkgList);
 
     /*
      * 查询当前用户已安装的软件包

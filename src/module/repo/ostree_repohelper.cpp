@@ -10,6 +10,7 @@
 
 #include "ostree_repohelper.h"
 #include "../util/runner.h"
+#include "service/impl/version.h"
 
 using namespace linglong::runner;
 
@@ -383,18 +384,20 @@ bool OstreeRepoHelper::resolveRef(const string &fullRef, vector<string> &result)
 }
 
 /*
- * 查询软件包在仓库中对应的索引信息ref
+ * 查询软件包在仓库中对应的索引信息ref，版本号为空查询最新版本，非空查询指定版本
  *
  * @param repoPath: 远端仓库对应的本地仓库路径
  * @param remoteName: 远端仓库名称
  * @param pkgName: 软件包包名
- * @param arch: 架构名
- * @param matchRef: 软件包对应的索引信息
+ * @param pkgVer: 软件包对应的版本号
+ * @param arch: 软件包对应的架构名
+ * @param matchRef: 软件包对应的索引信息ref
  * @param err: 错误信息
  *
  * @return bool: true:成功 false:失败
  */
-bool OstreeRepoHelper::queryMatchRefs(const QString &repoPath, const QString &remoteName, const QString &pkgName, const QString &arch, QString &matchRef, QString &err)
+bool OstreeRepoHelper::queryMatchRefs(const QString &repoPath, const QString &remoteName, const QString &pkgName,
+                                      const QString &pkgVer, const QString &arch, QString &matchRef, QString &err)
 {
     char info[MAX_ERRINFO_BUFSIZE] = {'\0'};
     if (remoteName.isEmpty() || pkgName.isEmpty()) {
@@ -411,42 +414,48 @@ bool OstreeRepoHelper::queryMatchRefs(const QString &repoPath, const QString &re
         return false;
     }
 
-    // map<string, string> outRefs;
-    // bool ret = getRemoteRefs(repoPath, remoteName, outRefs, err);
-    //  if (ret) {
-    //      for (auto it = outRefs.begin(); it != outRefs.end(); ++it) {
-    //          vector<string> result;
-    //          ret = resolveRef(it->first, result);
-    //          if (ret && result[1] == pkgName && result[2] == arch) {
-    //              matchRef = it->first;
-    //              cout << it->first << endl;
-    //              cout << it->second << endl;
-    //              return true;
-    //          }
-    //      }
-    //  }
     const string pkgNameTmp = pkgName.toStdString();
     const string archTmp = arch.toStdString();
     QMap<QString, QString> outRefs;
     bool ret = getRemoteRefs(repoPath, remoteName, outRefs, err);
     if (ret) {
-        for (auto it = outRefs.begin(); it != outRefs.end(); ++it) {
-            vector<string> result;
-            ret = resolveRef(it.key().toStdString(), result);
-            // appstream 特殊处理
-            if (pkgNameTmp == "appstream2" && result[0] == pkgNameTmp && result[1] == archTmp) {
-                matchRef = it.key();
-                return true;
+        QString filterString = "(" + pkgName + ")+";
+        QList<QString> keyRefs = outRefs.keys().filter(QRegExp(filterString, Qt::CaseSensitive));
+        // 版本号不为空，查找指定版本
+        if (!pkgVer.isEmpty()) {
+            for (QString ref : keyRefs) {
+                vector<string> result;
+                ret = resolveRef(ref.toStdString(), result);
+                // ref:app/org.deepin.calculator/x86_64/1.2.2
+                if (ret && result[3] == pkgVer.toStdString() && result[2] == arch.toStdString()) {
+                    matchRef = ref;
+                    return true;
+                }
             }
-            // flatpak ref: flathub:app/us.zoom.Zoom/x86_64/stable
-            // if (ret && result[1] == pkgName && result[2] == arch) {
-            //     matchRef = it.key();
-            //     return true;
-            // }
-            //玲珑适配
-            // ref:app/org.deepin.calculator/x86_64/1.2.2
-            if (ret && result[1] == pkgNameTmp && result[2] == archTmp) {
-                matchRef = it.key();
+        } else {
+            bool flag = false;
+            QString curVersion = linglong::APP_MIN_VERSION;
+            for (QString ref : keyRefs) {
+                vector<string> result;
+                ret = resolveRef(ref.toStdString(), result);
+                linglong::AppVersion curVer(curVersion);
+                // 玲珑适配
+                // ref:app/org.deepin.calculator/x86_64/1.2.2
+                if (ret) {
+                    QString dstVersion = QString::fromStdString(result[3]);
+                    linglong::AppVersion dstVer(dstVersion);
+                    if (!dstVer.isValid()) {
+                        qInfo() << "queryMatchRefs ref:" << ref << " version is not valid";
+                        continue;
+                    }
+                    if (dstVer.isBigThan(curVer)) {
+                        curVersion = dstVersion;
+                        matchRef = ref;
+                        flag = true;
+                    }
+                }
+            }
+            if (flag) {
                 return true;
             }
         }
@@ -755,7 +764,7 @@ bool OstreeRepoHelper::repoPull(const QString &repoPath, const QString &remoteNa
     OstreeRepoPullFlags flags = (OstreeRepoPullFlags)(OSTREE_REPO_PULL_FLAGS_MIRROR | OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES);
     QString qmatchRef = "";
     QString arch = "x86_64";
-    bool ret = queryMatchRefs(repoPath, remoteName, pkgName, arch, qmatchRef, err);
+    bool ret = queryMatchRefs(repoPath, remoteName, pkgName, "", arch, qmatchRef, err);
     if (!ret) {
         return false;
     }

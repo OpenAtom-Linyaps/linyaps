@@ -298,7 +298,7 @@ TEST(Package, install05)
     replyQuery.waitForFinished();
     PKGInfoList queryMsg = replyQuery.value();
     for (auto const &it : queryMsg) {
-        if (it->appid == "org.deepin.calculator") {
+        if (it->appid == "org.deepin.calculator" && it->version == "1.2.2") {
             expectRet = false;
             break;
         }

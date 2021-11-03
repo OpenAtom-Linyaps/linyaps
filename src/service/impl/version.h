@@ -15,6 +15,9 @@
 
 namespace linglong {
 
+// 默认最小版本号
+const QString APP_MIN_VERSION = "0.0.0.0";
+
 class AppVersion
 {
 public:

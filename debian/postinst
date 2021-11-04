@@ -8,6 +8,7 @@ then
 	ostree --repo=/deepin/linglong/repo/repo init --mode=bare-user
 	ostree --repo=/deepin/linglong/repo/repo remote add --no-gpg-verify repo  https://repo.linglong.space/ostree/
 	chmod -R 0777 /deepin/
+	xdg-mime default space.linglong.Installer.desktop x-scheme-handler/og
 else
 	echo "Directory is already exists."
 fi

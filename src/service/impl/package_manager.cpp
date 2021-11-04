@@ -85,7 +85,7 @@ RetMessageList PackageManager::Download(const QStringList &packageIDList, const 
         retMsg.push_back(info);
         return retMsg;
     }
-    PackageManagerProxyBase* pImpl = PackageManagerImpl::get();
+    PackageManagerProxyBase *pImpl = PackageManagerImpl::get();
     return pImpl->Download(packageIDList, savePath);
 }
 
@@ -119,7 +119,7 @@ RetMessageList PackageManager::Install(const QStringList &packageIDList)
         retMsg.push_back(info);
         return retMsg;
     }
-    PackageManagerProxyBase* pImpl = PackageManagerImpl::get();
+    PackageManagerProxyBase *pImpl = PackageManagerImpl::get();
     return pImpl->Install(packageIDList);
 }
 
@@ -164,8 +164,9 @@ QString PackageManager::UpdateAll()
     return {};
 }
 
-/*!
+/*
  * 查询软件包
+ *
  * @param packageIDList: 软件包的appid
  *
  * @return PKGInfoList 查询结果列表
@@ -177,7 +178,7 @@ PKGInfoList PackageManager::Query(const QStringList &packageIDList)
         qInfo() << "package name err";
         return {};
     }
-    PackageManagerProxyBase* pImpl = PackageManagerImpl::get();
+    PackageManagerProxyBase *pImpl = PackageManagerImpl::get();
     return pImpl->Query(packageIDList);
 }
 
@@ -223,7 +224,11 @@ QString PackageManager::Start(const QString &packageID)
         }
 
         qDebug() << "load package" << packageID << " config " << config;
-
+        // run org.deepin.calculator/ 配置文件不存在时会导致空指针
+        if (!fileExists(config)) {
+            qCritical() << config << " not exist";
+            return;
+        }
         auto app = App::load(config);
         if (nullptr == app) {
             qCritical() << "nullptr" << app;

@@ -58,6 +58,7 @@ add_executable(ll-test
         extract_test.cpp
         # test mod util fs
         util_fs_test.cpp
+        module/util/result_test.cpp
         #begin add by hqh for debug 2021-9-16
         httpclient_test.cpp
         repohelper_test.cpp

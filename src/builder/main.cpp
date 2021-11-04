@@ -23,12 +23,14 @@
 #include <QCommandLineParser>
 #include <QCommandLineOption>
 #include <QMap>
-#include <DLog>
 #include <QRegExp>
 
 #include "module/package/package.h"
 
-// using Package;
+#include "builder/builder.h"
+#include "builder/bst_builder.h"
+
+using namespace linglong;
 
 int main(int argc, char **argv)
 {
@@ -37,223 +39,110 @@ int main(int argc, char **argv)
     QCommandLineParser parser;
 
     parser.addHelpOption();
-    parser.addPositionalArgument("subcommand", "build\nbuild-ouap\nextract\ncheck\nget-info\ninstall\npush\npackage",
-                                 "subcommand [sub-option]");
-    // TODO(SE): for debug now
-    auto optDefaultConfig = QCommandLineOption("default-config", "default config json filepath", "");
-    parser.addOption(optDefaultConfig);
+
+    QStringList subCommandList = {
+        "create",
+        "build",
+        "export",
+        "push",
+    };
+
+    parser.addPositionalArgument("subcommand", subCommandList.join("\n"), "subcommand [sub-option]");
 
     parser.parse(QCoreApplication::arguments());
-
-    auto configPath = parser.value(optDefaultConfig);
-    if (configPath.isEmpty()) {
-        configPath = ":/config.json";
-    }
 
     QStringList args = parser.positionalArguments();
     QString command = args.isEmpty() ? QString() : args.first();
 
+    builder::Builder *builder = new builder::BstBuilder();
+
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
+        {"create",
+         [&](QCommandLineParser &parser) -> int {
+             parser.clearPositionalArguments();
+             parser.addPositionalArgument("create", "create build template project", "create");
+             parser.addPositionalArgument("name", "project name", "<org.deepin.demo>");
+
+             parser.process(app);
+
+             auto args = parser.positionalArguments();
+             auto projectName = args.value(1);
+
+             if (projectName.isEmpty()) {
+                 parser.showHelp(-1);
+             }
+
+             // TODO: extract an empty buildstream project from qrc file
+             auto result = builder->Create(projectName);
+
+             if (!result.success()) {
+                 qDebug() << result;
+             }
+
+             return result.code();
+         }},
         {"build",
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
-             parser.addPositionalArgument("build", "build uap package", "build");
-             parser.addPositionalArgument("config", "config json", "config.json");
-             parser.addPositionalArgument("data-dir", "data dir", "");
-             parser.addPositionalArgument("uap-path", "uap path", "");
+             parser.addPositionalArgument("build", "build project", "build");
 
              parser.process(app);
 
-             auto args = parser.positionalArguments();
-             // TODO(SE):
-
-             if (args.size() == 3) {
-                 Package create_package;
-                 if (!create_package.InitUap(args.at(1), args.at(2))) {
-                     return -1;
-                 }
-                 create_package.MakeUap();
-                 return 0;
-             } else if (args.size() == 4) {
-                 Package create_package;
-                 if (!create_package.InitUap(args.at(1), args.at(2))) {
-                     return -1;
-                 }
-                 create_package.MakeUap(args.at(3));
-                 return 0;
+             // TODO: build current project
+             auto result = builder->Build();
+             if (!result.success()) {
+                 qDebug() << result;
              }
 
-             qInfo() << args;
-             qInfo() << "err! input config.json and data-dir";
-             return -1;
+             return result.code();
          }},
-        {"build-ouap",
+        {"export",
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
-             parser.addPositionalArgument("build-ouap", "build ouap package", "build-ouap");
-             parser.addPositionalArgument("uap-path", "uap path", "");
-             parser.addPositionalArgument("repo-path", "repo path", "");
-             parser.addPositionalArgument("ouap-path", "ouap path", "");
+             parser.addPositionalArgument("export", "export build result to uab bundle", "export");
+             parser.addPositionalArgument("filename", "bundle file name", "<filename>");
 
              parser.process(app);
 
-             auto args = parser.positionalArguments();
-             // TODO(SE):
-             if (args.size() == 4) {
-                 Package create_package;
-                 create_package.MakeOuap(args.at(1), args.at(2), args.at(3));
-                 return 0;
+             auto outputFilepath = parser.positionalArguments().value(0);
+
+             if (outputFilepath.isEmpty()) {
+                 parser.showHelp(-1);
              }
 
-             if (args.size() == 3) {
-                 Package create_package;
-                 create_package.MakeOuap(args.at(1), args.at(2));
-                 return 0;
+             // TODO: export build result to bundle
+             auto result = builder->Export(outputFilepath);
+             if (!result.success()) {
+                 qDebug() << result;
              }
 
-             qInfo() << args;
-             qInfo() << "err! input uap-path repo-path or input uap-path repo-path ouap-path";
-             return -1;
-         }},
-        {"extract",
-         [&](QCommandLineParser &parser) -> int {
-             parser.clearPositionalArguments();
-             parser.addPositionalArgument("extract", "extract uap package", "extract");
-             parser.addPositionalArgument("uap-package", "uap package", "");
-             parser.addPositionalArgument("dir", "dir", "");
-
-             parser.process(app);
-
-             auto args = parser.positionalArguments();
-             // TODO(SE):
-
-             if (args.size() == 3) {
-                 Package create_package;
-                 create_package.Extract(args.at(1), args.at(2));
-                 return 0;
-             }
-
-             qInfo() << args;
-             qInfo() << "err! input uap-package and dir";
-             return -1;
-         }},
-        {"check",
-         [&](QCommandLineParser &parser) -> int {
-             parser.clearPositionalArguments();
-             parser.addPositionalArgument("check", "check uap package", "check");
-             parser.addPositionalArgument("dirpath", "dir path", "");
-
-             parser.process(app);
-
-             auto args = parser.positionalArguments();
-             // TODO(SE):
-
-             if (args.size() == 2) {
-                 Package create_package;
-                 create_package.Check(args.at(1));
-                 return 0;
-             }
-
-             qInfo() << args;
-             qInfo() << "err! input  dirpath";
-             return -1;
-         }},
-        {"get-info",
-         [&](QCommandLineParser &parser) -> int {
-             parser.clearPositionalArguments();
-             parser.addPositionalArgument("get-info", "get  uap info", "get-info");
-             parser.addPositionalArgument("UapPath", "uap file path", "");
-
-             parser.process(app);
-
-             auto args = parser.positionalArguments();
-             // TODO(SE):
-
-             if (args.size() == 2) {
-                 Package create_package;
-                 create_package.GetInfo(args.at(1));
-                 return 0;
-             }
-
-             qInfo() << args;
-             qInfo() << "err! input  UapPath!";
-             return -1;
-         }},
-        {"install",
-         [&](QCommandLineParser &parser) -> int {
-             parser.clearPositionalArguments();
-             parser.addPositionalArgument("install", "install uap", "install");
-             parser.addPositionalArgument("list", "uap file list", "list");
-
-             parser.process(app);
-
-             QStringList args = parser.positionalArguments();
-
-             QString subCommand = args.isEmpty() ? QString() : args.first();
-
-             QStringList uap_list = args.filter(QRegExp("^*\\.uap$", Qt::CaseInsensitive));
-
-             qInfo() << uap_list;
-             if (!(uap_list.size() > 0)) {
-                 qInfo() << "err:input uap file!";
-                 return -1;
-             }
-             // install uap package
-             for (auto it : uap_list) {
-                 Package pkg;
-                 pkg.InitUapFromFile(it);
-             }
-
-             // TODO(SE):
-             return 0;
-         }},
-        {"package",
-         [&](QCommandLineParser &parser) -> int {
-             parser.clearPositionalArguments();
-             parser.addPositionalArgument("ls", "show repo content", "ls");
-             parser.addPositionalArgument("repo", "repo", "repo");
-
-             parser.process(app);
-
-             QStringList args = parser.positionalArguments();
-
-             QString subCommand = args.isEmpty() ? QString() : args.first();
-             auto repoID = args.value(1);
-
-             // TODO(SE):
-             return 0;
+             return result.code();
          }},
         {"push",
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
-             //添加push repo-path 命令参数
-             parser.addPositionalArgument("push", "push ouap and repo / push runtime", "push");
-             parser.addPositionalArgument("repo-path", "repo path / repo.tar", "repo");
-             //添加ouap-path uap-path force 选项参数
-             auto optOutputOuapPath = QCommandLineOption("ouap-path", "ouap file path", "ouap-path");
-             parser.addOption(optOutputOuapPath);
-             auto optOutputUapPath = QCommandLineOption("uap-path", "uap file path", "uap-path");
-             parser.addOption(optOutputUapPath);
-             auto optOutputForce = QCommandLineOption("force", "force push true or false", "force", "false");
-             parser.addOption(optOutputForce);
+             parser.addPositionalArgument("push", "push build result to repo", "push");
+
+             auto optRepoURL = QCommandLineOption("repo-url", "repo url", "repo-url");
+             parser.addOption(optRepoURL);
+
+             auto optForce = QCommandLineOption("force", "force push true or false", "");
+             parser.addOption(optForce);
 
              parser.process(app);
 
              auto args = parser.positionalArguments();
 
-             //获取命令与想想参数
-             auto outputRepoPath = args.value(1);
-             auto outputOuapPath = parser.value(optOutputOuapPath);
-             auto outputuapPath = parser.value(optOutputUapPath);
-             auto OutputForce = parser.value(optOutputForce);
+             auto repoURL = parser.value(optRepoURL);
+             auto force = parser.isSet(optForce);
 
-             Package create_package;
-             if (!create_package.pushOuapOrRuntimeToServer(outputRepoPath, outputOuapPath, outputuapPath,
-                                                           OutputForce)) {
-                 return -1;
+             // TODO: push build result to repo
+             auto result = builder->Push(repoURL, force);
+             if (!result.success()) {
+                 qDebug() << result;
              }
 
-             return 0;
+             return result.code();
          }},
 
     };

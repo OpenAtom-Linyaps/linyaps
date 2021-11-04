@@ -69,7 +69,7 @@ private:
     QList<MessageMeta> msgMetaList {};
 };
 
-QDebug operator<<(QDebug dbg, const Result &result)
+inline QDebug operator<<(QDebug dbg, const Result &result)
 {
     for (const auto &meta : result.msgMetaList) {
         dbg << QString(meta.file) + ":" + QString("%1").arg(meta.line) + " " + QString(meta.func) << "\n";

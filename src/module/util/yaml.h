@@ -118,13 +118,14 @@ struct convert<QJsonValue> {
     static bool decode(const Node &node, QJsonValue &rhs)
     {
         Q_ASSERT(false);
+        return false;
     }
 };
 
 } // namespace YAML
 
 template<typename T>
-T *formYaml(YAML::Node &doc)
+T *formYaml(const YAML::Node &doc)
 {
     auto m = new T;
     auto mo = m->metaObject();

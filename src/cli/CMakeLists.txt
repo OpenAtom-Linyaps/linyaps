@@ -17,11 +17,11 @@ set_source_files_properties(../module/dbus_ipc/com.deepin.linglong.PackageManage
 qt5_add_dbus_interface(LL_CLI_SOURCES
         ../module/dbus_ipc/com.deepin.linglong.PackageManager.xml
         package_manager)
-add_executable(ll-cmd
+add_executable(ll-cli
         ${LL_CLI_SOURCES})
 
 #target_include_directories(llc PRIVATE ${JSONSTRUCT_INCLUDE_DIR})
 
-target_link_libraries(ll-cmd PRIVATE ${LINK_LIBS})
+target_link_libraries(ll-cli PRIVATE ${LINK_LIBS})
 
-install(TARGETS ll-cmd RUNTIME DESTINATION bin)
+install(TARGETS ll-cli RUNTIME DESTINATION bin)

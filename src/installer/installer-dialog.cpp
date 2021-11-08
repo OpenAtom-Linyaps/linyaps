@@ -71,7 +71,7 @@ InstallerDialog::InstallerDialog(QWidget *parent)
 
     setCentralWidget(w);
 
-    connect(d->actionButton, &QPushButton::released, [=]() { QProcess::startDetached("ll-cmd", {"run", d->appID}); });
+    connect(d->actionButton, &QPushButton::released, [=]() { QProcess::startDetached("ll-cli", {"run", d->appID}); });
 }
 
 InstallerDialog::~InstallerDialog()
@@ -84,7 +84,7 @@ void InstallerDialog::install(const QString &appID)
     d->appID = appID;
     d->titleLabel->setText(appID + " installing...");
 
-    d->og.setProgram("ll-cmd");
+    d->og.setProgram("ll-cli");
 
     QStringList ostreeArgs = {"install", appID};
     d->og.setArguments(ostreeArgs);

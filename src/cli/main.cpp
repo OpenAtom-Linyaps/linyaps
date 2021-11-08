@@ -164,7 +164,7 @@ int main(int argc, char **argv)
         {"download", [&](QCommandLineParser &parser) -> int {
              QString curPath = QDir::currentPath();
              // qDebug() << curPath;
-             //  ll-cmd download org.deepin.calculator -d ./test 无-d 参数默认当前路径
+             //  ll-cli download org.deepin.calculator -d ./test 无-d 参数默认当前路径
              auto optDownload = QCommandLineOption("d", "dest path to save app", "dest path to save app", curPath);
 
              parser.clearPositionalArguments();

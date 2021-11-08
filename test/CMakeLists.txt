@@ -20,7 +20,7 @@ set(LINK_LIBS
     yaml-cpp
     GTest::GTest gtest_main
     stdc++
-    -larchive -lcrypto++
+    -larchive
     CURL::libcurl
     ${OSTREE1_LDFLAGS}
     ${APPSTREMGLIB_LDFLAGS}

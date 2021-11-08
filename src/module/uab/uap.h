@@ -15,17 +15,8 @@
 #include <QString>
 #include <json-struct/json_struct.h>
 
-#define CRYPTOPP_ENABLE_NAMESPACE_WEAK 1
-#include <crypto++/sha.h>
-#include <crypto++/filters.h>
-#include <crypto++/hex.h>
-
-
-
 using std::string;
 using std::vector;
-
-using namespace CryptoPP;
 
 namespace format {
 namespace uap {
@@ -108,20 +99,6 @@ public:
     ~DataSign() {}
 };
 
-/*!
- * String to Hash256
- */
-inline const string StringToHash256(const string &str)
-{
-    SHA256 hash;
-    std::string digest;
-    if (str != "")
-        StringSource s(str, true, new HashFilter(hash, new HexEncoder(new StringSink(digest))));
-    if (digest != "") {
-        return digest;
-    }
-    return nullptr;
-}
 
 /*!
  * UAP Permission
@@ -192,7 +169,6 @@ public:
         //     JS::serializeStruct(this->pkginfo) + JS::serializeStruct(this->pkgext) +
         //     JS::serializeStruct(this->owner);
         // if (meta_json != "")
-        this->metasign.sign = StringToHash256(meta_json);
     }
 };
 

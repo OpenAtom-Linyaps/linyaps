@@ -67,7 +67,6 @@ set(LINK_LIBS
         ${OSTREE1_LDFLAGS}
         ${APPSTREMGLIB_LDFLAGS}
         -larchive
-        -lcrypto++
         )
 
 add_executable(ll-service

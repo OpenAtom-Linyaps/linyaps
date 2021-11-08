@@ -12,7 +12,6 @@ Build-Depends:
  qt5-qmake,
  qtbase5-dev,
  libdtkcore-dev,
- libcrypto++-dev,
  libarchive-dev,
  pkg-config,
  json-struct,

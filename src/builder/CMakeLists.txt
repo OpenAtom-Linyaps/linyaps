@@ -14,6 +14,6 @@ set(LL_BUILDER_SOURCES
 add_executable(ll-builder
                ${LL_BUILDER_SOURCES})
 
-target_link_libraries(ll-builder PRIVATE ${LINK_LIBS} -larchive -lcrypto++)
+target_link_libraries(ll-builder PRIVATE ${LINK_LIBS} -larchive)
 
 install(TARGETS ll-builder RUNTIME DESTINATION bin)

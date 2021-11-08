@@ -25,17 +25,26 @@
 namespace linglong {
 namespace builder {
 
-static auto projectConfTemplate = R"PCT0(
-# Unique project name
-name: %1
-id: %2
+// FIXME: there is some problem that in module/util/runner.h, replace later
+util::Result runner(const QString &program, const QStringList &args, int timeout = -1)
+{
+    QProcess process;
+    process.setProgram(program);
 
-# Required BuildStream format version
-format-version: 17
+    process.setArguments(args);
 
-# Subdirectory where elements are stored
-element-path: elements
-)PCT0";
+    QProcess::connect(&process, &QProcess::readyReadStandardOutput,
+                      [&]() { std::cout << process.readAllStandardOutput().toStdString().c_str(); });
+
+    QProcess::connect(&process, &QProcess::readyReadStandardError,
+                      [&]() { std::cout << process.readAllStandardError().toStdString().c_str(); });
+
+    process.start();
+    process.waitForStarted(timeout);
+    process.waitForFinished(timeout);
+
+    return dResultBase() << process.exitCode() << process.errorString();
+}
 
 util::Result templateDirCopy(const QString &srcDir, const QString &destDir, const QStringList &replaceFilenameList,
                              QMap<QString, QString> variables)
@@ -69,7 +78,9 @@ util::Result BstBuilder::create(const QString &projectName)
 {
     auto bstName = QString(projectName).replace(".", "-");
 
-    templateDirCopy(":org.deepin.demo", projectName, {"project.conf", "elements/export.bst", "files/loader.sh"},
+    // TODO: can read list from file
+    auto replaceFilenameList = QStringList {"project.conf", "elements/export.bst", "files/loader.sh"};
+    templateDirCopy(":org.deepin.demo", projectName, replaceFilenameList,
                     {
                         {"PROJECT_NAME", bstName},
                         {"APP_ID", projectName},
@@ -83,62 +94,35 @@ util::Result BstBuilder::create(const QString &projectName)
     return dResultBase();
 }
 
-util::Result BstBuilder::Build()
+util::Result BstBuilder::build()
 {
-    QProcess process;
-    process.setProgram("bst");
-
-    QStringList args = {"build"};
-    process.setArguments(args);
-
-    QProcess::connect(&process, &QProcess::readyReadStandardOutput,
-                      [&]() { std::cout << process.readAllStandardOutput().toStdString().c_str(); });
-
-    QProcess::connect(&process, &QProcess::readyReadStandardError,
-                      [&]() { std::cout << process.readAllStandardError().toStdString().c_str(); });
-
-    process.start();
-    process.waitForStarted(-1);
-    process.waitForFinished(-1);
-
-    return dResultBase() << process.exitCode() << process.errorString();
+    return runner("bst", {"build", "export.bst"});
 }
 
-util::Result BstBuilder::Push(const QString &repoURL, bool force)
+util::Result BstBuilder::exportBundle(const QString &outputFilepath)
 {
-    // TODO: push build result to repoURL
-    return dResultBase();
-}
-
-util::Result BstBuilder::Export(const QString &outputFilepath)
-{
-    // TODO: export build result to uab package
     auto project = formYaml<Project>(YAML::LoadFile("project.conf"));
 
-    auto id = project->id;
+    if (!project->variables) {
+        return dResultBase() << -1 << "bst project.conf must contains variables.id and it value should be appid";
+    }
+
+    auto id = project->variables->id;
 
     qDebug() << "export " << id << "to bundle file";
 
-    // TODO: fix runner problem
-    QProcess process;
-    process.setProgram("bst");
+    auto ret = runner("bst", {"checkout", "export.bst", "export"});
+    if (!ret.success()) {
+        return dResult(ret) << "call bst checkout failed";
+    }
 
-    QStringList args = {"checkout", "export", "export"};
+    // FIXME: export build result to uab package
+    return dResultBase();
+}
 
-    process.setArguments(args);
-
-    QProcess::connect(&process, &QProcess::readyReadStandardOutput,
-                      [&]() { std::cout << process.readAllStandardOutput().toStdString().c_str(); });
-
-    QProcess::connect(&process, &QProcess::readyReadStandardError,
-                      [&]() { std::cout << process.readAllStandardError().toStdString().c_str(); });
-
-    process.start();
-    process.waitForStarted(-1);
-    process.waitForFinished(-1);
-
-    // TODO: package export to uab
-
+util::Result BstBuilder::push(const QString &repoURL, bool force)
+{
+    // TODO: push build result to repoURL
     return dResultBase();
 }
 

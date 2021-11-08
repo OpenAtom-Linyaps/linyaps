@@ -25,8 +25,7 @@
 #include <QMap>
 #include <QRegExp>
 
-#include "module/package/package.h"
-
+#include "builder/project.h"
 #include "builder/builder.h"
 #include "builder/bst_builder.h"
 
@@ -35,6 +34,9 @@ using namespace linglong;
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
+
+    qJsonRegister<linglong::builder::Project>();
+    qJsonRegister<linglong::builder::Variables>();
 
     QCommandLineParser parser;
 
@@ -89,7 +91,7 @@ int main(int argc, char **argv)
              parser.process(app);
 
              // TODO: build current project
-             auto result = builder->Build();
+             auto result = builder->build();
              if (!result.success()) {
                  qDebug() << result;
              }
@@ -104,16 +106,16 @@ int main(int argc, char **argv)
 
              parser.process(app);
 
-             auto outputFilepath = parser.positionalArguments().value(0);
+             auto outputFilepath = parser.positionalArguments().value(1);
 
              if (outputFilepath.isEmpty()) {
                  parser.showHelp(-1);
              }
 
              // TODO: export build result to bundle
-             auto result = builder->Export(outputFilepath);
+             auto result = builder->exportBundle(outputFilepath);
              if (!result.success()) {
-                 qDebug() << result;
+                 qCritical() << result;
              }
 
              return result.code();
@@ -137,7 +139,7 @@ int main(int argc, char **argv)
              auto force = parser.isSet(optForce);
 
              // TODO: push build result to repo
-             auto result = builder->Push(repoURL, force);
+             auto result = builder->push(repoURL, force);
              if (!result.success()) {
                  qDebug() << result;
              }

@@ -23,11 +23,11 @@ class BstBuilder
 public:
     util::Result create(const QString &projectName) override;
 
-    util::Result Build() override;
+    util::Result build() override;
 
-    util::Result Export(const QString &outputFilepath) override;
+    util::Result exportBundle(const QString &outputFilepath) override;
 
-    util::Result Push(const QString &repoURL, bool force) override;
+    util::Result push(const QString &repoURL, bool force) override;
 };
 
 } // namespace builder

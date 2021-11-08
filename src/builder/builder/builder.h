@@ -22,11 +22,11 @@ class Builder
 public:
     virtual util::Result create(const QString &projectName) = 0;
 
-    virtual util::Result Build() = 0;
+    virtual util::Result build() = 0;
 
-    virtual util::Result Export(const QString &outputFilepath) = 0;
+    virtual util::Result exportBundle(const QString &outputFilepath) = 0;
 
-    virtual util::Result Push(const QString &repoURL, bool force) = 0;
+    virtual util::Result push(const QString &repoURL, bool force) = 0;
 };
 
 } // namespace builder

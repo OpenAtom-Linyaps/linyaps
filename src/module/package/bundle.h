@@ -8,15 +8,17 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_BOX_SRC_MODULE_PACKAGE_BUNDLE_H_
+#define LINGLONG_BOX_SRC_MODULE_PACKAGE_BUNDLE_H_
+
+#include <elf.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <iostream>
 #include <cstdlib>
 #include <cstdio>
-#include <elf.h>
-#include <sys/stat.h>
 #include <cstring>
-#include <unistd.h>
 
 #include <QFile>
 #include <QFileInfo>
@@ -25,8 +27,8 @@
 
 #include "module/util/result.h"
 #include "module/util/fs.h"
-#include "service/impl/dbus_retcode.h"
 #include "module/util/httpclient.h"
+#include "service/impl/dbus_retcode.h"
 #include "info.h"
 
 using linglong::dbus::RetCode;
@@ -110,3 +112,5 @@ private:
 
 } // namespace package
 } // namespace linglong
+
+#endif /* LINGLONG_BOX_SRC_MODULE_PACKAGE_BUNDLE_H_ */

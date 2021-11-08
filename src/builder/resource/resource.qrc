@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file>org.deepin.demo/project.conf</file>
+        <file>org.deepin.demo/elements/export.bst</file>
+        <file>org.deepin.demo/files/loader.sh</file>
+    </qresource>
+</RCC>

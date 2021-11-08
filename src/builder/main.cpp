@@ -73,7 +73,7 @@ int main(int argc, char **argv)
              }
 
              // TODO: extract an empty buildstream project from qrc file
-             auto result = builder->Create(projectName);
+             auto result = builder->create(projectName);
 
              if (!result.success()) {
                  qDebug() << result;

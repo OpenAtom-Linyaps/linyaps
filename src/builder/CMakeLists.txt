@@ -1,4 +1,5 @@
 set(LL_BUILDER_SOURCES
+    resource/resource.qrc
     main.cpp
     builder/bst_builder.cpp
     builder/project.cpp

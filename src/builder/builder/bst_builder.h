@@ -21,7 +21,7 @@ class BstBuilder
 {
     Q_OBJECT
 public:
-    util::Result Create(const QString &projectName) override;
+    util::Result create(const QString &projectName) override;
 
     util::Result Build() override;
 

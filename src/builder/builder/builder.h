@@ -20,7 +20,7 @@ namespace builder {
 class Builder
 {
 public:
-    virtual util::Result Create(const QString &projectName) = 0;
+    virtual util::Result create(const QString &projectName) = 0;
 
     virtual util::Result Build() = 0;
 

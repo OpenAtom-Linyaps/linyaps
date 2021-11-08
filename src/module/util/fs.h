@@ -267,7 +267,7 @@ void inline copyDir(const QString &src, const QString &dst)
     QDir dstDir(dst);
 
     if (!dstDir.exists()) {
-        dstDir.mkdir(dst);
+        dstDir.mkpath(dst);
     }
 
     QFileInfoList list = srcDir.entryInfoList();

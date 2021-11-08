@@ -37,18 +37,43 @@ format-version: 17
 element-path: elements
 )PCT0";
 
-util::Result BstBuilder::Create(const QString &projectName)
+util::Result templateDirCopy(const QString &srcDir, const QString &destDir, const QStringList &replaceFilenameList,
+                             QMap<QString, QString> variables)
 {
-    QDir(".").mkdir(projectName);
-    auto bstID = QString(projectName).replace(".", "-");
+    util::copyDir(srcDir, destDir);
 
-    // TODO: use copyDir to init data from qrc file
-    QFile projectConf(projectName + "/project.conf");
-    projectConf.open(QIODevice::WriteOnly);
-    projectConf.write(QString(projectConfTemplate).arg(bstID, projectName).toLocal8Bit());
-    projectConf.close();
+    QDir dest(destDir);
 
-    QDir(".").mkdir(projectName + "/elements");
+    foreach (auto filename, replaceFilenameList) {
+        auto filepath = dest.absoluteFilePath(filename);
+        QFile templateFile(filepath);
+        templateFile.setPermissions(QFile::ReadOwner | QFile::WriteOwner);
+
+        templateFile.open(QIODevice::ReadOnly);
+
+        auto templateData = templateFile.readAll();
+        foreach (auto const &k, variables.keys()) {
+            templateData.replace(QString("@%1@").arg(k).toLocal8Bit(), variables.value(k).toLocal8Bit());
+        }
+        templateFile.close();
+
+        templateFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
+        templateFile.write(templateData);
+        templateFile.close();
+    }
+
+    return dResultBase();
+}
+
+util::Result BstBuilder::create(const QString &projectName)
+{
+    auto bstName = QString(projectName).replace(".", "-");
+
+    templateDirCopy(":org.deepin.demo", projectName, {"project.conf", "elements/export.bst", "files/loader.sh"},
+                    {
+                        {"PROJECT_NAME", bstName},
+                        {"APP_ID", projectName},
+                    });
 
     auto hint =
         QString("run `cd %1 && %2 build` to build project").arg(projectName, QCoreApplication::applicationFilePath());

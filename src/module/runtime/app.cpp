@@ -21,20 +21,24 @@
 
 #include "app.h"
 
-#include <QProcess>
-#include <QFile>
-#include <QStandardPaths>
-
 #include <unistd.h>
 #include <sys/wait.h>
 #include <linux/prctl.h>
 #include <sys/prctl.h>
+
+#include <QProcess>
+#include <QFile>
+#include <QStandardPaths>
 #include <QDir>
 
 #include "module/util/yaml.h"
 #include "module/util/uuid.h"
 #include "module/util/json.h"
 #include "module/util/fs.h"
+#include "module/util/xdg.h"
+#include "module/util/desktop_entry.h"
+#include "module/package/info.h"
+#include "module/repo/repo.h"
 
 #define LINGLONG 118
 
@@ -43,23 +47,19 @@
 
 using namespace linglong;
 
-namespace {
-
 // const char *DefaultRuntimeID = "com.deepin.Runtime";
 
-//! create an uuid dir, and run container
-//! TODO: use file lock to make sure only one process create
-//! \return
-QString ensureContainerPath(const QString &containerID)
+namespace linglong {
+namespace util {
+// TODO: move to util
+bool ensureDir(const QString &path)
 {
-    auto runtimePath = QStandardPaths::standardLocations(QStandardPaths::RuntimeLocation).value(0);
-    QDir runtimeDir(runtimePath);
-    auto path = runtimeDir.absoluteFilePath(QStringList {"linglong", containerID}.join("/"));
-    runtimeDir.mkpath(path);
-    return path;
+    QDir dir(path);
+    dir.mkpath(".");
+    return true;
 }
-
-} // namespace
+} // namespace util
+} // namespace linglong
 
 class AppPrivate
 {
@@ -77,8 +77,11 @@ public:
         r = fromVariant<Runtime>(json.toVariant());
         r->setParent(q_ptr);
 
-        q_ptr->container = new Container(q_ptr);
-        q_ptr->container->ID = linglong::util::genUUID();
+        container = new Container(q_ptr);
+        container->ID = linglong::util::genUUID();
+        container->WorkingDirectory =
+            util::userRuntimeDir().absoluteFilePath(QString("linglong/%1").arg(container->ID));
+        util::ensureDir(container->WorkingDirectory);
         return true;
     }
 
@@ -87,20 +90,24 @@ public:
         Q_Q(App);
         stageSystem();
         // FIXME: get info from module/package
-        //        auto runtimeID = q->runtime->id;
-        QString runtimeRootPath = q->runtime->rootPath;
-        qDebug() << "prepare runtime rootPath" << q->runtime->rootPath;
-        stageRuntime(runtimeRootPath);
+        auto runtimeRef = package::Ref(q->runtime->refID);
+        QString runtimeRootPath = repo::rootOfLayer(runtimeRef);
 
-        QString appID = q->package->id;
-        QString appRootPath = q->package->rootPath;
+        qCritical() << runtimeRootPath;
 
-        stageApp(appID, appRootPath);
+        stageRuntime(runtimeRootPath + "/files");
+
+        auto appRef = package::Ref(q->package->refID);
+        QString appRootPath = repo::rootOfLayer(appRef);
+
+        qCritical() << appRootPath;
+
+        stageApp(appRef.id, appRootPath);
         stageHost();
-        stageUser(appID);
+        stageUser(appRef.id);
         stageMount();
 
-        auto envFilepath = containerRoot + QString("/env");
+        auto envFilepath = container->WorkingDirectory + QString("/env");
         QFile envFile(envFilepath);
         if (!envFile.open(QIODevice::WriteOnly)) {
             qCritical() << "create env failed" << envFile.error();
@@ -118,10 +125,20 @@ public:
         m.destination = "/run/app/env";
         r->mounts.push_back(&m);
 
-        // FIXME: read from desktop file
-        if (r->process->args.isEmpty()) {
-            r->process->args = q->package->args;
+        // TODO: move to class package
+        // find desktop file
+        QDir applicationsDir(QStringList {appRootPath, "entries", "applications"}.join(QDir::separator()));
+        auto desktopFilenameList = applicationsDir.entryList({"*.desktop"}, QDir::Files);
+        if (desktopFilenameList.length() <= 0) {
+            return -1;
         }
+
+        util::DesktopEntry desktopEntry(applicationsDir.absoluteFilePath(desktopFilenameList.value(0)));
+
+        if (r->process->args.isEmpty()) {
+            r->process->args = util::parseExec(desktopEntry.rawValue("Exec"));
+        }
+
         qDebug() << "exec" << r->process->args;
         return 0;
     }
@@ -142,21 +159,37 @@ public:
 
     int stageRuntime(const QString &runtimeRootPath) const
     {
-        Mount &m = *new Mount(r);
-        m.type = "bind";
-        m.options = QStringList {"ro"};
-        m.type = "bind";
+        QList<QPair<QString, QString>> mountMap;
 
-        m.destination = "/usr";
-        m.source = runtimeRootPath;
-        // FIXME: if runtime is empty, use the last
-        if (m.source.isEmpty()) {
-            qCritical() << "mount runtime failed" << runtimeRootPath;
-            return -1;
+        bool useThinRuntime = true;
+
+        if (useThinRuntime) {
+            mountMap = {
+                {"/usr", "/usr"},
+                {"/etc", "/etc"},
+                {runtimeRootPath, "/runtime"},
+            };
+        } else {
+            // FIXME: if runtime is empty, use the last
+            if (runtimeRootPath.isEmpty()) {
+                qCritical() << "mount runtime failed" << runtimeRootPath;
+                return -1;
+            }
+            mountMap = {
+                {runtimeRootPath, "/usr"},
+            };
         }
-        qDebug() << "mount runtime" << m.source << m.destination;
-        r->mounts.push_front(&m);
 
+        for (const auto &pair : mountMap) {
+            Mount &m = *new Mount(r);
+            m.type = "bind";
+            m.options = QStringList {"ro"};
+            m.type = "bind";
+            m.source = pair.first;
+            m.destination = pair.second;
+            r->mounts.push_back(&m);
+            qDebug() << "mount stageRuntime" << m.source << m.destination;
+        }
         return 0;
     }
 
@@ -217,22 +250,21 @@ public:
 
     int stageHost() const
     {
-        QList<QPair<QString, QString>> mountMap = {
-            {"/etc/resolv.conf", "/run/host/network/etc/resolv.conf"},
-            {"/run/resolvconf", "/run/resolvconf"},
-            {"/tmp/.X11-unix", "/tmp/.X11-unix"},
-            {"/usr/share/fonts", "/run/host/appearance/fonts"},
-            {"/var/cache/fontconfig", "/run/host/appearance/fonts-cache"},
-            {"/usr/share/locale/", "/usr/share/locale/"},
-            {"/usr/lib/locale/", "/usr/lib/locale/"},
-            {"/usr/share/fonts", "/usr/share/fonts"},
-            {"/usr/share/themes", "/usr/share/themes"},
-            {"/usr/share/icons", "/usr/share/icons"},
-            {"/usr/share/zoneinfo", "/usr/share/zoneinfo"},
-            {"/etc/localtime", "/run/host/etc/localtime"},
-            {"/etc/machine-id", "/run/host/etc/machine-id"},
-            {"/etc/machine-id", "/etc/machine-id"},
-            {"/var", "/var"}};
+        QList<QPair<QString, QString>> mountMap = {{"/etc/resolv.conf", "/run/host/network/etc/resolv.conf"},
+                                                   {"/run/resolvconf", "/run/resolvconf"},
+                                                   {"/tmp/.X11-unix", "/tmp/.X11-unix"},
+                                                   {"/usr/share/fonts", "/run/host/appearance/fonts"},
+                                                   {"/var/cache/fontconfig", "/run/host/appearance/fonts-cache"},
+                                                   {"/usr/share/locale/", "/usr/share/locale/"},
+                                                   {"/usr/lib/locale/", "/usr/lib/locale/"},
+                                                   {"/usr/share/fonts", "/usr/share/fonts"},
+                                                   {"/usr/share/themes", "/usr/share/themes"},
+                                                   {"/usr/share/icons", "/usr/share/icons"},
+                                                   {"/usr/share/zoneinfo", "/usr/share/zoneinfo"},
+                                                   {"/etc/localtime", "/run/host/etc/localtime"},
+                                                   {"/etc/machine-id", "/run/host/etc/machine-id"},
+                                                   {"/etc/machine-id", "/etc/machine-id"},
+                                                   {"/var", "/var"}};
 
         for (const auto &pair : mountMap) {
             Mount &m = *new Mount(r);
@@ -262,20 +294,13 @@ public:
         bool useDBusProxy = true;
         if (useDBusProxy) {
             // bind dbus-proxy-user, now use session bus
-            mountMap.push_back(qMakePair(
-                userRuntimeDir + "/user-bus",
-                userRuntimeDir + "/bus"));
+            mountMap.push_back(qMakePair(userRuntimeDir + "/user-bus", userRuntimeDir + "/bus"));
             // bind dbus-proxy
-            mountMap.push_back(qMakePair(
-                userRuntimeDir + "/system-bus",
-                QString("/run/dbus/system_bus_socket")));
+            mountMap.push_back(qMakePair(userRuntimeDir + "/system-bus", QString("/run/dbus/system_bus_socket")));
         } else {
-            mountMap.push_back(qMakePair(
-                userRuntimeDir + "/bus",
-                userRuntimeDir + "/bus"));
-            mountMap.push_back(qMakePair(
-                QString("/run/dbus/system_bus_socket"),
-                QString("/run/dbus/system_bus_socket")));
+            mountMap.push_back(qMakePair(userRuntimeDir + "/bus", userRuntimeDir + "/bus"));
+            mountMap.push_back(
+                qMakePair(QString("/run/dbus/system_bus_socket"), QString("/run/dbus/system_bus_socket")));
         }
 
         auto hostAppHome = util::ensureUserDir({".linglong", appID, "home"});
@@ -287,12 +312,10 @@ public:
         auto appCachePath = util::ensureUserDir({".linglong", appID, "/cache"});
         mountMap.push_back(qMakePair(appCachePath, util::getUserFile(".cache")));
 
-        mountMap.push_back(qMakePair(userRuntimeDir + "/dconf",
-                                     userRuntimeDir + "/dconf"));
+        mountMap.push_back(qMakePair(userRuntimeDir + "/dconf", userRuntimeDir + "/dconf"));
 
-        mountMap.push_back(qMakePair(
-            util::getUserFile(".config/user-dirs.dirs"),
-            util::getUserFile(".config/user-dirs.dirs")));
+        mountMap.push_back(
+            qMakePair(util::getUserFile(".config/user-dirs.dirs"), util::getUserFile(".config/user-dirs.dirs")));
 
         for (const auto &pair : mountMap) {
             Mount &m = *new Mount(r);
@@ -306,23 +329,19 @@ public:
         }
 
         QList<QPair<QString, QString>> roMountMap;
-        roMountMap.push_back(qMakePair(
-            util::getUserFile(".local/share/fonts"),
-            util::getUserFile(".local/share/fonts")));
+        roMountMap.push_back(
+            qMakePair(util::getUserFile(".local/share/fonts"), util::getUserFile(".local/share/fonts")));
 
-        roMountMap.push_back(qMakePair(
-            util::getUserFile(".config/fontconfig"),
-            util::getUserFile(".config/fontconfig")));
+        roMountMap.push_back(
+            qMakePair(util::getUserFile(".config/fontconfig"), util::getUserFile(".config/fontconfig")));
 
         // mount fonts
-        roMountMap.push_back(qMakePair(
-            util::getUserFile(".local/share/fonts"),
-            QString("/run/host/appearance/user-fonts")));
+        roMountMap.push_back(
+            qMakePair(util::getUserFile(".local/share/fonts"), QString("/run/host/appearance/user-fonts")));
 
         // mount fonts cache
-        mountMap.push_back(qMakePair(
-            util::getUserFile(".cache/fontconfig"),
-            QString("/run/host/appearance/user-fonts-cache")));
+        mountMap.push_back(
+            qMakePair(util::getUserFile(".cache/fontconfig"), QString("/run/host/appearance/user-fonts-cache")));
 
         QString xauthority = getenv("XAUTHORITY");
         roMountMap.push_back(qMakePair(xauthority, xauthority));
@@ -346,22 +365,21 @@ public:
             r->process->env.push_back(QString(constEnv) + "=" + getenv(constEnv));
         };
 
-        QStringList envList = {
-            "DISPLAY",
-            "LANG",
-            "LANGUAGE",
-            "XAUTHORITY",
-            "XDG_SESSION_DESKTOP",
-            "D_DISABLE_RT_SCREEN_SCALE",
-            "XMODIFIERS",
-            "DESKTOP_SESSION",
-            "DEEPIN_WINE_SCALE",
-            "XDG_CURRENT_DESKTOP",
-            "XIM",
-            "XDG_SESSION_TYPE=x11",
-            "CLUTTER_IM_MODULE",
-            "QT4_IM_MODULE",
-            "GTK_IM_MODULE"};
+        QStringList envList = {"DISPLAY",
+                               "LANG",
+                               "LANGUAGE",
+                               "XAUTHORITY",
+                               "XDG_SESSION_DESKTOP",
+                               "D_DISABLE_RT_SCREEN_SCALE",
+                               "XMODIFIERS",
+                               "DESKTOP_SESSION",
+                               "DEEPIN_WINE_SCALE",
+                               "XDG_CURRENT_DESKTOP",
+                               "XIM",
+                               "XDG_SESSION_TYPE=x11",
+                               "CLUTTER_IM_MODULE",
+                               "QT4_IM_MODULE",
+                               "GTK_IM_MODULE"};
 
         for (auto &env : envList) {
             bypassENV(env.toStdString().c_str());
@@ -404,35 +422,34 @@ public:
     {
         Q_Q(const App);
 
-        QMap<QString, std::function<QString()>> replacementMap = {
-            {"${HOME}", []() -> QString {
-                 return util::getUserFile("");
-             }},
-        };
+        //        QMap<QString, std::function<QString()>> replacementMap = {
+        //            {"${HOME}", []() -> QString { return util::getUserFile(""); }},
+        //        };
 
-        auto pathPreprocess = [&](QString path) -> QString {
-            auto keys = replacementMap.keys();
-            for (const auto &key : keys) {
-                path.replace(key, (replacementMap.value(key))());
-            }
-            return path;
-        };
+        //        auto pathPreprocess = [&](QString path) -> QString {
+        //            auto keys = replacementMap.keys();
+        //            for (const auto &key : keys) {
+        //                path.replace(key, (replacementMap.value(key))());
+        //            }
+        //            return path;
+        //        };
 
-        for (const auto &mount : q->mounts) {
-            Mount &m = *new Mount(r);
-            m.type = "bind";
-            m.options = QStringList {};
-            auto component = mount.split(":");
-            m.source = pathPreprocess(component.value(0));
-            m.destination = pathPreprocess(component.value(1));
-            r->mounts.push_back(&m);
-            qDebug() << "mount app" << m.source << m.destination;
-        }
+        // TODO: debug mount for developer
+        //        for (const auto &mount : q->mounts) {
+        //            Mount &m = *new Mount(r);
+        //            m.type = "bind";
+        //            m.options = QStringList {};
+        //            auto component = mount.split(":");
+        //            m.source = pathPreprocess(component.value(0));
+        //            m.destination = pathPreprocess(component.value(1));
+        //            r->mounts.push_back(&m);
+        //            qDebug() << "mount app" << m.source << m.destination;
+        //        }
 
         return 0;
     }
 
-    QString containerRoot;
+    Container *container = nullptr;
     Runtime *r = nullptr;
     App *q_ptr = nullptr;
 
@@ -447,9 +464,7 @@ App::App(QObject *parent)
 
 App *App::load(const QString &configFilepath)
 {
-    // TODO: fixme, replace with real conf
-    // check configFilepath exists
-    qDebug() << " conf yaml" << configFilepath;
+    qDebug() << "load conf yaml from" << configFilepath;
     QFile appConfig(configFilepath);
     appConfig.open(QIODevice::ReadOnly);
     App *app = nullptr;
@@ -466,14 +481,14 @@ App *App::load(const QString &configFilepath)
 int App::start()
 {
     Q_D(App);
-    d->containerRoot = ensureContainerPath(container->ID);
-    d->r->root->path = d->containerRoot + "/root";
-    QDir(d->r->root->path).mkpath(".");
+
+    d->r->root->path = d->container->WorkingDirectory + "/root";
+    util::ensureDir(d->r->root->path);
 
     d->prepare();
 
     // write pid file
-    QFile pidFile(d->containerRoot + QString("/%1.pid").arg(getpid()));
+    QFile pidFile(d->container->WorkingDirectory + QString("/%1.pid").arg(getpid()));
     pidFile.open(QIODevice::WriteOnly);
     pidFile.close();
 
@@ -507,12 +522,18 @@ int App::start()
         write(pipeEnds[1], data.c_str(), data.size());
         close(pipeEnds[1]);
 
-        container->PID = boxPid;
+        d->container->PID = boxPid;
         // FIXME(interactive bash): if need keep interactive shell
         waitpid(boxPid, nullptr, 0);
     }
 
     return EXIT_SUCCESS;
+}
+
+Container *App::container() const
+{
+    Q_D(const App);
+    return d->container;
 }
 
 App::~App() = default;

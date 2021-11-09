@@ -25,7 +25,7 @@ const auto kDefaultChannel = "main";
 class Ref
 {
 public:
-    Ref(const QString &id);
+    explicit Ref(const QString &id);
 
     Ref(const QString &remote, const QString &id, const QString &version, const QString &arch)
         : repo(remote)
@@ -35,11 +35,24 @@ public:
     {
     }
 
+    QString toString() const
+    {
+        QString ref = repo.isEmpty() ? "" : repo + ":";
+        return QString(ref + "%1/%2/%3").arg(id, version, arch);
+    }
+
+    // FIXME: local().toString()?
+    QString toLocalRefString() const { return QString("%1/%2/%3").arg(id, version, arch); }
+
     QString repo;
     QString channel;
     QString id;
     QString version;
     QString arch;
+
+private:
+    // TODO: now is app/runtime
+    QString classify;
 };
 
 /*!

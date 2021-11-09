@@ -29,6 +29,7 @@
 #include <QPointer>
 #include <QDBusMetaType>
 #include <QDebug>
+#include <QFile>
 
 #define Q_JSON_PARENT_KEY "7bdcaad1-2f27-4092-a5cf-4919ad4caf2b"
 
@@ -39,8 +40,7 @@ public: \
     { \
     }
 
-#define Q_JSON_PROPERTY(TYPE, PROP) \
-    Q_JSON_ITEM_MEMBER(TYPE, PROP, PROP)
+#define Q_JSON_PROPERTY(TYPE, PROP) Q_JSON_ITEM_MEMBER(TYPE, PROP, PROP)
 
 #define Q_JSON_ITEM_MEMBER(TYPE, PROP, MEMBER_NAME) \
 public: \
@@ -55,17 +55,13 @@ public: \
 public: \
     TYPE MEMBER_NAME = TYPE();
 
-#define Q_JSON_PTR_PROPERTY(TYPE, PROP) \
-    Q_JSON_ITEM_MEMBER_PTR(TYPE, PROP, PROP)
+#define Q_JSON_PTR_PROPERTY(TYPE, PROP) Q_JSON_ITEM_MEMBER_PTR(TYPE, PROP, PROP)
 
 #define Q_JSON_ITEM_MEMBER_PTR(TYPE, PROP, MEMBER_NAME) \
 public: \
     Q_PROPERTY(TYPE *PROP MEMBER MEMBER_NAME READ get##PROP WRITE set##PROP); \
     TYPE *get##PROP() const { return MEMBER_NAME; } \
-    inline void set##PROP(TYPE *val) \
-    { \
-        MEMBER_NAME = val; \
-    } \
+    inline void set##PROP(TYPE *val) { MEMBER_NAME = val; } \
 \
 public: \
     TYPE *MEMBER_NAME = nullptr;
@@ -148,12 +144,10 @@ inline void qJsonRegister()
 \
         qRegisterMetaType<TYPE *>(); \
 \
-        QMetaType::registerConverter<QVariantMap, TYPE *>([](const QVariantMap &v) -> TYPE * { \
-            return fromVariant<TYPE>(v); \
-        }); \
-        QMetaType::registerConverter<TYPE *, QJsonValue>([](TYPE *m) -> QJsonValue { \
-            return toVariant(m).toJsonValue(); \
-        }); \
+        QMetaType::registerConverter<QVariantMap, TYPE *>( \
+            [](const QVariantMap &v) -> TYPE * { return fromVariant<TYPE>(v); }); \
+        QMetaType::registerConverter<TYPE *, QJsonValue>( \
+            [](TYPE *m) -> QJsonValue { return toVariant(m).toJsonValue(); }); \
 \
         QMetaType::registerConverter<QVariantList, TYPE##List>([](QVariantList list) -> TYPE##List { \
             TYPE##List mountList; \
@@ -259,3 +253,17 @@ public:
         return doc.toJson();
     }
 };
+
+namespace linglong {
+namespace util {
+
+template<typename T>
+static T *loadJSON(const QString &filepath)
+{
+    QFile jsonFile(":/config.json");
+    jsonFile.open(QIODevice::ReadOnly);
+    auto json = QJsonDocument::fromJson(jsonFile.readAll());
+    return fromVariant<T>(json.toVariant());
+}
+} // namespace util
+} // namespace linglong

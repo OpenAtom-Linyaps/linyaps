@@ -35,10 +35,7 @@ namespace YAML {
 // QString
 template<>
 struct convert<QString> {
-    static Node encode(const QString &rhs)
-    {
-        return Node(rhs.toStdString());
-    }
+    static Node encode(const QString &rhs) { return Node(rhs.toStdString()); }
 
     static bool decode(const Node &node, QString &rhs)
     {
@@ -110,10 +107,7 @@ struct convert<QVariant> {
 // QJsonValue
 template<>
 struct convert<QJsonValue> {
-    static Node encode(const QJsonValue &rhs)
-    {
-        return Node(rhs.toVariant());
-    }
+    static Node encode(const QJsonValue &rhs) { return Node(rhs.toVariant()); }
 
     static bool decode(const Node &node, QJsonValue &rhs)
     {
@@ -132,6 +126,11 @@ T *formYaml(const YAML::Node &doc)
     for (int i = mo->propertyOffset(); i < mo->propertyCount(); ++i) {
         auto k = mo->property(i).name();
         auto t = mo->property(i).type();
+
+        if (!doc[k]) {
+            continue;
+        }
+
         QVariant v = doc[k].template as<QVariant>();
         // set parent
         if (QVariant::UserType == t) {

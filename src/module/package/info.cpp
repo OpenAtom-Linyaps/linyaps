@@ -13,7 +13,6 @@
 namespace linglong {
 namespace package {
 
-
 QString hostArch()
 {
     return QSysInfo::buildCpuArchitecture();
@@ -47,6 +46,8 @@ Ref parseID(const QString &id)
     QString arch = hostArch();
 
     switch (slice.length()) {
+    case 4:
+        qDebug() << "unknown" << slice.value(3);
     case 3:
         arch = slice.value(2);
     case 2:

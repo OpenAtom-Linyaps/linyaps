@@ -17,11 +17,15 @@
 #include <QStandardPaths>
 #include <QSysInfo>
 
-#include "job_manager.h"
 #include "module/runtime/app.h"
 #include "module/util/fs.h"
 #include "module/util/singleton.h"
+#include "module/util/sysinfo.h"
+#include "module/package/info.h"
+#include "module/repo/repo.h"
 #include "service/impl/dbus_retcode.h"
+
+#include "job_manager.h"
 #include "package_manager.h"
 
 using linglong::util::fileExists;
@@ -30,6 +34,8 @@ using linglong::dbus::RetCode;
 
 using linglong::service::util::AppInstance;
 using linglong::service::util::AppInfo;
+
+using namespace linglong;
 
 class PackageManagerPrivate
 {
@@ -45,7 +51,8 @@ public:
 };
 
 PackageManager::PackageManager()
-    : dd_ptr(new PackageManagerPrivate(this)),app_instance_list(linglong::service::util::AppInstance::get())
+    : dd_ptr(new PackageManagerPrivate(this))
+    , app_instance_list(linglong::service::util::AppInstance::get())
 {
     AppInfo app_info;
     app_info.appid = "org.test.app1";
@@ -192,6 +199,62 @@ QString PackageManager::Import(const QStringList &packagePathList)
     return {};
 }
 
+QString appConfigPath(const QString &appID)
+{
+    util::ensureUserDir({".linglong", appID});
+
+    auto configPath = getUserFile(QString("%1/%2/app.yaml").arg(".linglong", appID));
+
+    if (QFile::exists(configPath)) {
+        return configPath;
+    }
+
+    // create yaml form info
+    // auto appRoot = LocalRepo::get()->rootOfLatest();
+    auto latestAppRef = repo::latestOf(appID);
+
+    auto appInstallRoot = repo::rootOfLayer(latestAppRef);
+
+    auto appInfo = appInstallRoot + "/info.json";
+
+    // create a yaml config from json
+    auto info = util::loadJSON<package::Info>(appInfo);
+
+    if (info->runtime.isEmpty()) {
+        // FIXME: return error is not exist
+
+        // thin runtime
+        info->runtime = "com.deepin.Runtime/20/x86_64";
+
+        // full runtime
+        // info->runtime = "deepin.Runtime.Sdk/23/x86_64";
+    }
+
+    package::Ref runtimeRef(info->runtime);
+
+    QMap<QString, QString> variables = {
+        {"APP_REF", latestAppRef.toLocalRefString()},
+        {"RUNTIME_REF", runtimeRef.toLocalRefString()},
+    };
+
+    // TODO: remove to util module as file_template.cpp
+
+    QFile templateFile(":/app.yaml");
+    templateFile.open(QIODevice::ReadOnly);
+    auto templateData = templateFile.readAll();
+    foreach (auto const &k, variables.keys()) {
+        templateData.replace(QString("@%1@").arg(k).toLocal8Bit(), variables.value(k).toLocal8Bit());
+    }
+    templateFile.close();
+
+    QFile configFile(configPath);
+    configFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
+    configFile.write(templateData);
+    configFile.close();
+
+    return configPath;
+}
+
 /*!
  * 执行软件包
  * @param packageID 软件包的appid
@@ -202,39 +265,14 @@ QString PackageManager::Start(const QString &packageID)
 
     qDebug() << "start package" << packageID;
     return JobManager::instance()->CreateJob([=](Job *jr) {
-        QString config = nullptr;
-        if (fileExists("~/.linglong/" + packageID + ".yaml")) {
-            config = "~/.linglong/" + packageID + ".yaml";
-        } else if (fileExists("/deepin/linglong/layers/" + packageID + "/latest/" + packageID + ".yaml")) {
-            config = "/deepin/linglong/layers/" + packageID + "/latest/" + packageID + ".yaml";
-        } else {
-            auto config_dir = listDirFolders("/deepin/linglong/layers/" + packageID);
-            if (config_dir.isEmpty()) {
-                qInfo() << "loader:: can not found config file!";
-                return;
-            }
-            if (config_dir.size() >= 2) {
-                std::sort(config_dir.begin(), config_dir.end(), [](const QString &s1, const QString &s2) {
-                    auto v1 = s1.split("/").last();
-                    auto v2 = s2.split("/").last();
-                    return v1.toDouble() > v2.toDouble();
-                });
-            }
-            config = config_dir.first() + "/" + packageID + ".yaml";
-        }
-
-        qDebug() << "load package" << packageID << " config " << config;
-        // run org.deepin.calculator/ 配置文件不存在时会导致空指针
-        if (!fileExists(config)) {
-            qCritical() << config << " not exist";
-            return;
-        }
-        auto app = App::load(config);
+        QString configPath = appConfigPath(packageID);
+        auto app = App::load(configPath);
         if (nullptr == app) {
+            // FIXME: set job status to failed
             qCritical() << "nullptr" << app;
             return;
         }
-        d->apps[app->container->ID] = QPointer<App>(app);
+        d->apps[app->container()->ID] = QPointer<App>(app);
         app->start();
     });
     //    sendErrorReply(QDBusError::NotSupported, message().member());
@@ -252,8 +290,8 @@ ContainerList PackageManager::ListContainer()
 
     for (const auto &app : d->apps) {
         auto c = QPointer<Container>(new Container);
-        c->ID = app->container->ID;
-        c->PID = app->container->PID;
+        c->ID = app->container()->ID;
+        c->PID = app->container()->PID;
         list.push_back(c);
     }
     return list;

@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
     Dtk::Core::DLogManager::registerFileAppender();
 
     ociJsonRegister();
-    qJsonRegister<PackageMoc>();
+    qJsonRegister<Layer>();
     qJsonRegister<App>();
     
 

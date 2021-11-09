@@ -1,6 +1,6 @@
 <RCC>
     <qresource prefix="/">
         <file>config.json</file>
-        <file>app-test.yaml</file>
+        <file>app.yaml</file>
     </qresource>
 </RCC>

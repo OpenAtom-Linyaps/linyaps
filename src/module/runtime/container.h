@@ -36,6 +36,7 @@ class Container : public JsonSerialize
 public:
     Q_JSON_PROPERTY(QString, ID)
     Q_JSON_PROPERTY(qint64, PID)
+    Q_JSON_PROPERTY(QString, WorkingDirectory)
 };
 Q_JSON_DECLARE_PTR_METATYPE(Container)
 

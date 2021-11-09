@@ -134,6 +134,18 @@ public:
      */
     bool repoPullbyCmd(const QString &destPath, const QString &remoteName, const QString &ref, QString &err);
 
+    /*
+     * 删除本地repo仓库中软件包对应的ref分支信息及数据
+     *
+     * @param repoPath: 仓库路径
+     * @param remoteName: 远端仓库名称
+     * @param ref: 软件包对应的仓库索引ref
+     * @param err: 错误信息
+     *
+     * @return bool: true:成功 false:失败
+     */
+    bool repoDeleteDatabyRef(const QString &repoPath, const QString &remoteName, const QString &ref, QString &err);
+
 private:
     // lint 禁止拷贝
     OstreeRepoHelper(const OstreeRepoHelper &);

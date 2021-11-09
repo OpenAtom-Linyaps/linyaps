@@ -80,7 +80,6 @@ add_executable(ll-test
 find_package(CURL REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_search_module(OSTREE1 REQUIRED ostree-1)
-pkg_search_module(APPSTREMGLIB REQUIRED appstream-glib)
 
 target_include_directories(ll-test PRIVATE
                            ${OSTREE1_INCLUDE_DIRS}

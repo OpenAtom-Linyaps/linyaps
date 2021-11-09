@@ -1041,4 +1041,70 @@ bool OstreeRepoHelper::repoPullbyCmd(const QString &destPath, const QString &rem
     delDirbyPath(tmpPath);
     return ret;
 }
+
+/*
+ * 删除本地repo仓库中软件包对应的ref分支信息及数据
+ *
+ * @param repoPath: 仓库路径
+ * @param remoteName: 远端仓库名称
+ * @param ref: 软件包对应的仓库索引ref
+ * @param err: 错误信息
+ *
+ * @return bool: true:成功 false:失败
+ */
+bool OstreeRepoHelper::repoDeleteDatabyRef(const QString &repoPath, const QString &remoteName, const QString &ref,
+                                           QString &err)
+{
+    if (repoPath.isEmpty() || remoteName.isEmpty() || ref.isEmpty()) {
+        qCritical() << "repoDeleteDatabyRef param error";
+        err = "repoDeleteDatabyRef param error";
+        return false;
+    }
+
+    const string remoteNameTmp = remoteName.toStdString();
+    const string refTmp = ref.toStdString();
+    GCancellable *cancellable = NULL;
+    GError *error = NULL;
+
+    if (!ostree_repo_set_ref_immediate(pLingLongDir->repo, NULL, refTmp.c_str(), NULL, cancellable, &error)) {
+        qCritical() << "repoDeleteDatabyRef error:" << error->message;
+        err = "repoDeleteDatabyRef error:" + QString(QLatin1String(error->message));
+        return false;
+    }
+    qInfo() << "repoDeleteDatabyRef delete " << refTmp.c_str() << " success";
+
+    gint objectsTotal;
+    gint objectsPruned;
+    guint64 objsizeTotal;
+    g_autofree char *formattedFreedSize = NULL;
+    if (!ostree_repo_prune(pLingLongDir->repo, OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY, 0, &objectsTotal,
+                           &objectsPruned, &objsizeTotal, cancellable, &error)) {
+        qCritical() << "repoDeleteDatabyRef pruning repo failed:" << error->message;
+        return false;
+    }
+
+    formattedFreedSize = g_format_size_full(objsizeTotal, (GFormatSizeFlags)0);
+    qInfo() << "repoDeleteDatabyRef Total objects:" << objectsTotal;
+    if (objectsPruned == 0) {
+        qInfo() << "repoDeleteDatabyRef No unreachable objects";
+    } else {
+        qInfo() << "Deleted " << objectsPruned << " objects," << formattedFreedSize << " freed";
+    }
+
+    // const QString fullref = remoteName + ":" + ref;
+    // auto ret = Runner("ostree", {"--repo=" + repoPath + "/repo", "refs", "--delete", ref}, 1000 * 60 * 30);
+    // if (!ret) {
+    //     qInfo() << "repoDeleteDatabyRef delete ref error";
+    //     err = "repoDeleteDatabyRef delete ref error";
+    //     return false;
+    // }
+    // ret = Runner("ostree", {"--repo=" + repoPath + "/repo", "prune", "--refs-only"}, 1000 * 60 * 30);
+    // if (!ret) {
+    //     qInfo() << "repoDeleteDatabyRef prune data error";
+    //     err = "repoDeleteDatabyRef prune data error";
+    //     return false;
+    // }
+    // qInfo() << "repoDeleteDatabyRef delete " << ref << " success";
+    return true;
+}
 } // namespace linglong

@@ -28,7 +28,7 @@ using linglong::dbus::RetCode;
  */
 QString PackageManagerImpl::getHostArch()
 {
-    //other CpuArchitecture ie i386 i486 to do fix
+    // other CpuArchitecture ie i386 i486 to do fix
     const QString arch = QSysInfo::currentCpuArchitecture();
     Qt::CaseSensitivity cs = Qt::CaseInsensitive;
     if (arch.startsWith("x86_64", cs)) {
@@ -194,99 +194,101 @@ bool PackageManagerImpl::getAppInfoByAppStream(const QString &savePath, const QS
 
     // 自定义软件包信息metadata 继承JsonSerialize 来处理，to do fix
     QJsonObject jsonObject = document.object();
-    if (jsonObject.size() > 0) {
-        // 查找指定版本和架构的软件包是否存在
-        if (!pkgVer.isEmpty()) {
-            QString appKey = pkgName + "_" + pkgVer;
-            if (!jsonObject.contains(appKey)) {
-                err = pkgName + "-" + pkgVer + " not found";
-                return false;
+    if (jsonObject.size() == 0) {
+        err = fullPath + " is empty";
+        return false;
+    }
+
+    // 查找指定版本和架构的软件包是否存在
+    if (!pkgVer.isEmpty()) {
+        QString appKey = pkgName + "_" + pkgVer;
+        if (!jsonObject.contains(appKey)) {
+            err = pkgName + "-" + pkgVer + " not found";
+            return false;
+        }
+
+        QJsonObject subObj = jsonObject[appKey].toObject();
+        // 判断指定架构是否存在 to do fix optimized code
+        QJsonValue arrayValue = subObj.value(QStringLiteral("arch"));
+        if (arrayValue.isArray()) {
+            QJsonArray arr = arrayValue.toArray();
+            bool flag = false;
+            for (int i = 0; i < arr.size(); i++) {
+                QString item = arr.at(i).toString();
+                if (item == pkgArch) {
+                    flag = true;
+                    break;
+                }
             }
-            QJsonObject subObj = jsonObject[appKey].toObject();
-            // 判断指定架构是否存在 to do fix optimized code
-            QJsonValue arrayValue = subObj.value(QStringLiteral("arch"));
-            if (arrayValue.isArray()) {
-                QJsonArray arr = arrayValue.toArray();
-                bool flag = false;
-                for (int i = 0; i < arr.size(); i++) {
-                    QString item = arr.at(i).toString();
-                    if (item == pkgArch) {
-                        flag = true;
-                        break;
-                    }
-                }
-                if (!flag) {
-                    err = pkgName + "-" + pkgArch + " not support";
-                    return false;
-                }
-            }
-            appStreamPkgInfo.appId = subObj["appid"].toString();
-            appStreamPkgInfo.appName = subObj["name"].toString();
-            appStreamPkgInfo.appVer = subObj["version"].toString();
-            appStreamPkgInfo.appUrl = subObj["appUrl"].toString();
-            appStreamPkgInfo.summary = subObj["summary"].toString();
-            appStreamPkgInfo.runtime = subObj["runtime"].toString();
-            appStreamPkgInfo.reponame = subObj["reponame"].toString();
-            appStreamPkgInfo.appArch = pkgArch;
-            return true;
-        } else {
-            QStringList pkgsList = jsonObject.keys();
-            QString filterString = ".*" + pkgName + ".*";
-            QStringList appList = pkgsList.filter(QRegExp(filterString, Qt::CaseInsensitive));
-            if (appList.isEmpty()) {
-                err = "app:" + pkgName + " not found";
-                qInfo() << err;
+            if (!flag) {
+                err = pkgName + "-" + pkgArch + " not support";
                 return false;
-            } else {
-                QMap<QString, QString> verMap;
-                for (QString key : appList) {
-                    QJsonObject tmp = jsonObject[key].toObject();
-                    QString value = tmp["version"].toString();
-                    verMap.insert(key, value);
-                }
-                QString appKey = getLatestAppInfo(verMap);
-                qInfo() << "latest appKey:" << appKey;
-                if (!jsonObject.contains(appKey)) {
-                    err = "getLatesAppInfo err";
-                    return false;
-                }
-                QJsonObject subObj = jsonObject[appKey].toObject();
-                appStreamPkgInfo.appId = subObj["appid"].toString();
-                // 精确匹配
-                if (appStreamPkgInfo.appId != pkgName) {
-                    err = "getLatesAppInfo " + pkgName + " err";
-                    return false;
-                }
-                // 判断指定架构是否存在  to do fix optimized code
-                QJsonValue arrayValue = subObj.value(QStringLiteral("arch"));
-                if (arrayValue.isArray()) {
-                    QJsonArray arr = arrayValue.toArray();
-                    bool flag = false;
-                    for (int i = 0; i < arr.size(); i++) {
-                        QString item = arr.at(i).toString();
-                        if (item == pkgArch) {
-                            flag = true;
-                            break;
-                        }
-                    }
-                    if (!flag) {
-                        err = pkgName + "-" + pkgArch + " not support";
-                        return false;
-                    }
-                }
-                appStreamPkgInfo.appName = subObj["name"].toString();
-                appStreamPkgInfo.appVer = subObj["version"].toString();
-                appStreamPkgInfo.appUrl = subObj["appUrl"].toString();
-                appStreamPkgInfo.summary = subObj["summary"].toString();
-                appStreamPkgInfo.runtime = subObj["runtime"].toString();
-                appStreamPkgInfo.reponame = subObj["reponame"].toString();
-                appStreamPkgInfo.appArch = pkgArch;
-                return true;
             }
         }
+        appStreamPkgInfo.appId = subObj["appid"].toString();
+        appStreamPkgInfo.appName = subObj["name"].toString();
+        appStreamPkgInfo.appVer = subObj["version"].toString();
+        appStreamPkgInfo.appUrl = subObj["appUrl"].toString();
+        appStreamPkgInfo.summary = subObj["summary"].toString();
+        appStreamPkgInfo.runtime = subObj["runtime"].toString();
+        appStreamPkgInfo.reponame = subObj["reponame"].toString();
+        appStreamPkgInfo.appArch = pkgArch;
+        return true;
     }
-    err = fullPath + " is empty";
-    return false;
+
+    QStringList pkgsList = jsonObject.keys();
+    QString filterString = ".*" + pkgName + ".*";
+    QStringList appList = pkgsList.filter(QRegExp(filterString, Qt::CaseInsensitive));
+    if (appList.isEmpty()) {
+        err = "app:" + pkgName + " not found";
+        qInfo() << err;
+        return false;
+    }
+    QMap<QString, QString> verMap;
+    for (QString key : appList) {
+        QJsonObject tmp = jsonObject[key].toObject();
+        QString value = tmp["version"].toString();
+        verMap.insert(key, value);
+    }
+    QString appKey = getLatestAppInfo(verMap);
+    qInfo() << "latest appKey:" << appKey;
+    if (!jsonObject.contains(appKey)) {
+        err = "getLatestAppInfo err";
+        return false;
+    }
+    QJsonObject subObj = jsonObject[appKey].toObject();
+    appStreamPkgInfo.appId = subObj["appid"].toString();
+    // 精确匹配
+    if (appStreamPkgInfo.appId != pkgName) {
+        err = "getLatestAppInfo " + pkgName + " err";
+        return false;
+    }
+
+    // 判断指定架构是否存在  to do fix optimized code
+    QJsonValue arrayValue = subObj.value(QStringLiteral("arch"));
+    if (arrayValue.isArray()) {
+        QJsonArray arr = arrayValue.toArray();
+        bool flag = false;
+        for (int i = 0; i < arr.size(); i++) {
+            QString item = arr.at(i).toString();
+            if (item == pkgArch) {
+                flag = true;
+                break;
+            }
+        }
+        if (!flag) {
+            err = pkgName + "-" + pkgArch + " not support";
+            return false;
+        }
+    }
+    appStreamPkgInfo.appName = subObj["name"].toString();
+    appStreamPkgInfo.appVer = subObj["version"].toString();
+    appStreamPkgInfo.appUrl = subObj["appUrl"].toString();
+    appStreamPkgInfo.summary = subObj["summary"].toString();
+    appStreamPkgInfo.runtime = subObj["runtime"].toString();
+    appStreamPkgInfo.reponame = subObj["reponame"].toString();
+    appStreamPkgInfo.appArch = pkgArch;
+    return true;
 }
 
 /*
@@ -1296,7 +1298,7 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIDList)
     const QString pkgName = packageIDList.at(0);
     // 判断是否已安装
     if (!getIntallStatus(pkgName)) {
-        qInfo() << pkgName << " not installed";
+        qCritical() << pkgName << " not installed";
         info->setcode(RetCode(RetCode::pkg_not_installed));
         info->setmessage(pkgName + " not installed");
         info->setstate(false);
@@ -1315,7 +1317,41 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIDList)
         linglong::util::removeDir(installPath);
         qInfo() << "Uninstall del dir:" << installPath;
     }
-    // 更新本地repo 仓库 to do fix
+    // 更新本地repo仓库 to do fix
+    const QString repoPath = "/deepin/linglong/repo";
+    bool ret = G_OSTREE_REPOHELPER->ensureRepoEnv(repoPath, err);
+    if (!ret) {
+        qCritical() << err;
+        info->setcode(RetCode(RetCode::pkg_uninstall_failed));
+        info->setmessage("uninstall local repo not exist");
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
+    }
+    // 应从安装数据库获取应用所属仓库信息 to do fix
+    QVector<QString> qrepoList;
+    ret = G_OSTREE_REPOHELPER->getRemoteRepoList(repoPath, qrepoList, err);
+    if (!ret) {
+        qCritical() << err;
+        info->setcode(RetCode(RetCode::pkg_uninstall_failed));
+        info->setmessage("uninstall remote repo not exist");
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
+    }
+    // ref format --> app/org.deepin.calculator/x86_64/1.2.2
+    QString matchRef = QString("app/%1/%2/%3").arg(it->appid).arg(arch).arg(it->version);
+    qInfo() << "Uninstall app ref:" << matchRef;
+    ret = G_OSTREE_REPOHELPER->repoDeleteDatabyRef(repoPath, qrepoList[0], matchRef, err);
+    if (!ret) {
+        qCritical() << err;
+        info->setcode(RetCode(RetCode::pkg_uninstall_failed));
+        info->setmessage("uninstall " + pkgName + " failed");
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
+    }
+
     // 更新安装数据库
     updateUninstallAppStatus(pkgName);
     info->setcode(RetCode(RetCode::pkg_uninstall_success));

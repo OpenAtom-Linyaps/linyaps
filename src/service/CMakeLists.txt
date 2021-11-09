@@ -64,7 +64,6 @@ MESSAGE(STATUS "current CPU ARCH is: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 find_package(CURL REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_search_module(OSTREE1 REQUIRED ostree-1)
-pkg_search_module(APPSTREMGLIB REQUIRED appstream-glib)
 
 set(LINK_LIBS
     ${LINK_LIBS}

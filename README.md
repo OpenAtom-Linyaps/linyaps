@@ -25,7 +25,7 @@
 deb  [trusted=yes] http://aptly.uniontech.com/pkg/eagle-1040/release-candidate/546y54-R5LiA5pyf6aG555uu5Li76aKYMjAyMS0wOS0xNyAyMDoxODowNg  unstable main
 #For release based on debian
 sudo apt update
-sudo apt-get install cmake build-essential libyaml-cpp-dev nlohmann-json3-dev libgtest-dev qt5-qmake qtbase5-dev libdtkcore-dev libarchive-dev libcurl4-gnutls-dev libglib2.0-dev libostree-dev json-struct libgdk-pixbuf2.0-dev libappstream-glib-dev
+sudo apt-get install cmake build-essential libyaml-cpp-dev nlohmann-json3-dev libgtest-dev qt5-qmake qtbase5-dev libdtkcore-dev libarchive-dev libcurl4-gnutls-dev libglib2.0-dev libostree-dev json-struct libgdk-pixbuf2.0-dev
 ```
 
 ## Installation

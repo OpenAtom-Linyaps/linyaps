@@ -21,8 +21,6 @@ set(LL_SERVICE_SOURCES
     ../module/util/xdg.cpp
     ../module/util/desktop_entry.cpp
     ../module/runtime/oci.h
-    ../module/uab/uab.cpp
-    ../module/uab/uab.h
     ../module/uab/uap.cpp
     ../module/uab/uap.h
     ../module/runtime/app.cpp

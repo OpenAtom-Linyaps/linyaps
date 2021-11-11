@@ -10,6 +10,8 @@ set(LL_BUILDER_SOURCES
     ../module/util/result.h
     ../module/util/repo.h
     ../module/util/json.h
+    ../module/package/bundle.cpp
+    ../module/package/bundle.h
     )
 
 add_executable(ll-builder

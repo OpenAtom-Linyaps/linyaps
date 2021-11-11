@@ -25,27 +25,6 @@
 namespace linglong {
 namespace builder {
 
-// FIXME: there is some problem that in module/util/runner.h, replace later
-util::Result runner(const QString &program, const QStringList &args, int timeout = -1)
-{
-    QProcess process;
-    process.setProgram(program);
-
-    process.setArguments(args);
-
-    QProcess::connect(&process, &QProcess::readyReadStandardOutput,
-                      [&]() { std::cout << process.readAllStandardOutput().toStdString().c_str(); });
-
-    QProcess::connect(&process, &QProcess::readyReadStandardError,
-                      [&]() { std::cout << process.readAllStandardError().toStdString().c_str(); });
-
-    process.start();
-    process.waitForStarted(timeout);
-    process.waitForFinished(timeout);
-
-    return dResultBase() << process.exitCode() << process.errorString();
-}
-
 util::Result templateDirCopy(const QString &srcDir, const QString &destDir, const QStringList &replaceFilenameList,
                              QMap<QString, QString> variables)
 {
@@ -96,10 +75,10 @@ util::Result BstBuilder::create(const QString &projectName)
 
 util::Result BstBuilder::build()
 {
-    return runner("bst", {"build", "export.bst"});
+    return linglong::package::runner("bst", {"build", "export.bst"});
 }
 
-util::Result BstBuilder::exportBundle(const QString &outputFilepath)
+util::Result BstBuilder::exportBundle(const QString &outputFilePath)
 {
     auto project = formYaml<Project>(YAML::LoadFile("project.conf"));
 
@@ -109,14 +88,26 @@ util::Result BstBuilder::exportBundle(const QString &outputFilepath)
 
     auto id = project->variables->id;
 
-    qDebug() << "export " << id << "to bundle file";
+    QString dataDir = QString("export");
+    if (dirExists(dataDir)) {
+        removeDir(dataDir);
+    }
 
-    auto ret = runner("bst", {"checkout", "export.bst", "export"});
+    qDebug() << "export " << id << "to bundle file";
+    // checkout 应用包
+    auto ret = linglong::package::runner("bst", {"checkout", "export.bst", dataDir});
     if (!ret.success()) {
         return dResult(ret) << "call bst checkout failed";
     }
 
     // FIXME: export build result to uab package
+    //开始制作uab
+    linglong::package::Bundle uabBundle;
+    auto makeBundleResult = uabBundle.make(dataDir, outputFilePath);
+    if (!makeBundleResult.success()) {
+        return dResult(makeBundleResult) << "make bundle failed!!!";
+    }
+
     return dResultBase();
 }
 

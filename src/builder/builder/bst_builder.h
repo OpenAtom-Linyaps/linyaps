@@ -11,6 +11,7 @@
 #pragma once
 
 #include "builder.h"
+#include "module/package/bundle.h"
 
 namespace linglong {
 namespace builder {

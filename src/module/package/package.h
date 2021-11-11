@@ -255,7 +255,6 @@ public:
     QString dataDir;
     QString dataPath;
 
-protected:
     UAP *uap;
 
 public:

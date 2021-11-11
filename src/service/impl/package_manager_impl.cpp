@@ -164,13 +164,14 @@ QString PackageManagerImpl::getLatestAppInfo(const QMap<QString, QString> &verMa
  * @param pkgName: 软件包包名
  * @param pkgVer: 软件包版本
  * @param pkgArch: 软件包对应的架构
+ * @param pkgInfo: 查询结果
  * @param err: 错误信息
  *
  * @return bool: true:成功 false:失败
  */
 bool PackageManagerImpl::getAppInfoByAppStream(const QString &savePath, const QString &remoteName,
                                                const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
-                                               QString &err)
+                                               AppStreamPkgInfo &pkgInfo, QString &err)
 {
     //判断文件是否存在
     // deepin/linglong
@@ -225,14 +226,14 @@ bool PackageManagerImpl::getAppInfoByAppStream(const QString &savePath, const QS
                 return false;
             }
         }
-        appStreamPkgInfo.appId = subObj["appid"].toString();
-        appStreamPkgInfo.appName = subObj["name"].toString();
-        appStreamPkgInfo.appVer = subObj["version"].toString();
-        appStreamPkgInfo.appUrl = subObj["appUrl"].toString();
-        appStreamPkgInfo.summary = subObj["summary"].toString();
-        appStreamPkgInfo.runtime = subObj["runtime"].toString();
-        appStreamPkgInfo.reponame = subObj["reponame"].toString();
-        appStreamPkgInfo.appArch = pkgArch;
+        pkgInfo.appId = subObj["appid"].toString();
+        pkgInfo.appName = subObj["name"].toString();
+        pkgInfo.appVer = subObj["version"].toString();
+        pkgInfo.appUrl = subObj["appUrl"].toString();
+        pkgInfo.summary = subObj["summary"].toString();
+        pkgInfo.runtime = subObj["runtime"].toString();
+        pkgInfo.reponame = subObj["reponame"].toString();
+        pkgInfo.appArch = pkgArch;
         return true;
     }
 
@@ -281,13 +282,13 @@ bool PackageManagerImpl::getAppInfoByAppStream(const QString &savePath, const QS
             return false;
         }
     }
-    appStreamPkgInfo.appName = subObj["name"].toString();
-    appStreamPkgInfo.appVer = subObj["version"].toString();
-    appStreamPkgInfo.appUrl = subObj["appUrl"].toString();
-    appStreamPkgInfo.summary = subObj["summary"].toString();
-    appStreamPkgInfo.runtime = subObj["runtime"].toString();
-    appStreamPkgInfo.reponame = subObj["reponame"].toString();
-    appStreamPkgInfo.appArch = pkgArch;
+    pkgInfo.appName = subObj["name"].toString();
+    pkgInfo.appVer = subObj["version"].toString();
+    pkgInfo.appUrl = subObj["appUrl"].toString();
+    pkgInfo.summary = subObj["summary"].toString();
+    pkgInfo.runtime = subObj["runtime"].toString();
+    pkgInfo.reponame = subObj["reponame"].toString();
+    pkgInfo.appArch = pkgArch;
     return true;
 }
 
@@ -716,6 +717,12 @@ bool PackageManagerImpl::installOUAPFile(const QString &filePath, QString &err)
         return false;
     }
 
+    // 检查软件包依赖的runtime安装状态
+    ret = checkAppRuntime(err);
+    if (!ret) {
+        return false;
+    }
+
     const QString savePath = "/deepin/linglong/layers/" + appStreamPkgInfo.appId + "/" + appStreamPkgInfo.appVer + "/"
                              + appStreamPkgInfo.appArch;
     // 创建路径
@@ -775,7 +782,7 @@ RetMessageList PackageManagerImpl::Download(const QStringList &packageIDList, co
         return retMsg;
     }
     // 默认下载最新版本
-    ret = getAppInfoByAppStream("/deepin/linglong/", "repo", pkgName, "", arch, err);
+    ret = getAppInfoByAppStream("/deepin/linglong/", "repo", pkgName, "", arch, appStreamPkgInfo, err);
     if (!ret) {
         qInfo() << err;
         info->setcode(RetCode(RetCode::search_pkg_by_appstream_failed));
@@ -1001,7 +1008,7 @@ bool PackageManagerImpl::getSimilarAppInfoByAppStream(const QString &savePath, c
 bool PackageManagerImpl::getUnInstalledAppInfo(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
                                                PKGInfoList &pkgList, QString &err)
 {
-    bool ret = getAppInfoByAppStream("/deepin/linglong/", "repo", pkgName, pkgVer, pkgArch, err);
+    bool ret = getAppInfoByAppStream("/deepin/linglong/", "repo", pkgName, pkgVer, pkgArch, appStreamPkgInfo, err);
     if (ret) {
         qInfo() << appStreamPkgInfo.appName << " " << appStreamPkgInfo.appId << " " << appStreamPkgInfo.summary;
         auto info = QPointer<PKGInfo>(new PKGInfo);
@@ -1015,6 +1022,66 @@ bool PackageManagerImpl::getUnInstalledAppInfo(const QString &pkgName, const QSt
         qInfo() << "getUnInstalledAppInfo fuzzy search app:" << pkgName;
         // 模糊匹配
         ret = getSimilarAppInfoByAppStream("/deepin/linglong/", "repo", pkgName, pkgList, err);
+    }
+    return ret;
+}
+
+/*
+ * 安装应用runtime
+ *
+ * @param runtimeID: runtime对应的appID
+ * @param runtimeVer: runtime版本号
+ * @param runtimeArch: runtime对应的架构
+ * @param err: 错误信息
+ *
+ * @return bool: true:成功 false:失败
+ */
+bool PackageManagerImpl::installRuntime(const QString &runtimeID, const QString &runtimeVer, const QString &runtimeArch,
+                                        QString &err)
+{
+    AppStreamPkgInfo pkgInfo;
+    bool ret = getAppInfoByAppStream("/deepin/linglong/", "repo", runtimeID, runtimeVer, runtimeArch, pkgInfo, err);
+    if (!ret) {
+        err = "installRuntime get runtime info err";
+        return false;
+    }
+    const QString savePath = "/deepin/linglong/layers/" + runtimeID + "/" + runtimeVer + "/" + runtimeArch;
+    // 创建路径
+    linglong::util::createDir(savePath);
+    ret = downloadOUAPData(runtimeID, runtimeVer, runtimeArch, savePath, err);
+    if (!ret) {
+        err = "installRuntime download runtime data err";
+        return false;
+    }
+
+    // 更新本地数据库文件
+    updateAppStatus(pkgInfo);
+    return true;
+}
+
+/*
+ * 检查应用runtime安装状态
+ *
+ * @param err: 错误信息
+ *
+ * @return bool: true:安装成功或已安装返回true false:安装失败
+ */
+bool PackageManagerImpl::checkAppRuntime(QString &err)
+{
+    // runtime ref in AppStream com.deepin.Runtime/20/x86_64
+    QStringList runtimeInfo = appStreamPkgInfo.runtime.split("/");
+    if (runtimeInfo.size() != 3) {
+        err = "AppStream.json " + appStreamPkgInfo.appId + " runtime info err";
+        return false;
+    }
+    const QString runtimeID = runtimeInfo.at(0);
+    const QString runtimeVer = runtimeInfo.at(1);
+    const QString runtimeArch = runtimeInfo.at(2);
+    bool ret = true;
+
+    // 判断app依赖的runtime是否安装
+    if (!getIntallStatus(runtimeID, runtimeVer)) {
+        ret = installRuntime(runtimeID, runtimeVer, runtimeArch, err);
     }
     return ret;
 }
@@ -1103,10 +1170,21 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIDList)
     // 根据AppStream.json 查找目标软件包
     const QString xmlPath = "/deepin/linglong/repo/AppStream.json";
 
-    ret = getAppInfoByAppStream("/deepin/linglong/", "repo", pkgName, "", arch, err);
+    ret = getAppInfoByAppStream("/deepin/linglong/", "repo", pkgName, "", arch, appStreamPkgInfo, err);
     if (!ret) {
         qInfo() << err;
         info->setcode(RetCode(RetCode::search_pkg_by_appstream_failed));
+        info->setmessage(err);
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
+    }
+
+    // 检查软件包依赖的runtime安装状态
+    ret = checkAppRuntime(err);
+    if (!ret) {
+        qCritical() << err;
+        info->setcode(RetCode(RetCode::install_runtime_failed));
         info->setmessage(err);
         info->setstate(false);
         retMsg.push_back(info);

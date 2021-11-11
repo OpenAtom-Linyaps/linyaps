@@ -97,12 +97,13 @@ private:
      * @param pkgName: 软件包包名
      * @param pkgVer: 软件包版本
      * @param pkgArch: 软件包对应的架构
+     * @param pkgInfo: 查询结果
      * @param err: 错误信息
      *
      * @return bool: true:成功 false:失败
      */
     bool getAppInfoByAppStream(const QString &savePath, const QString &remoteName, const QString &pkgName,
-                               const QString &pkgVer, const QString &pkgArch, QString &err);
+                               const QString &pkgVer, const QString &pkgArch, AppStreamPkgInfo &pkgInfo, QString &err);
 
     /*
      * 通过AppStream.json更新OUAP在线包
@@ -271,4 +272,25 @@ private:
      * @return bool: true:更新成功 false:失败
      */
     bool updateUninstallAppStatus(const QString &pkgName);
+
+    /*
+     * 安装应用runtime
+     *
+     * @param runtimeID: runtime对应的appID
+     * @param runtimeVer: runtime版本号
+     * @param runtimeArch: runtime对应的架构
+     * @param err: 错误信息
+     *
+     * @return bool: true:成功 false:失败
+     */
+    bool installRuntime(const QString &runtimeID, const QString &runtimeVer, const QString &runtimeArch, QString &err);
+
+    /*
+     * 检查应用runtime安装状态
+     *
+     * @param err: 错误信息
+     *
+     * @return bool: true:安装成功或已安装返回true false:安装失败
+     */
+    bool checkAppRuntime(QString &err);
 };

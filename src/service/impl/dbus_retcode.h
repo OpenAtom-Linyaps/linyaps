@@ -41,6 +41,7 @@ enum class RetCode {
     pkg_not_installed,
     host_arch_not_recognized,
     update_appstream_failed,
+    install_runtime_failed,
     search_pkg_by_appstream_failed,
     load_ouap_file_failed,
     load_pkg_data_failed,

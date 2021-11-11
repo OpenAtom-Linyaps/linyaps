@@ -212,6 +212,7 @@ int main(int argc, char **argv)
              } else {
                  reply = pm.Install({appID});
              }
+             qInfo() << "install " << appID << ", please wait a few minutes...";
              reply.waitForFinished();
              RetMessageList ret_msg = reply.value();
              if (ret_msg.size() > 0) {
@@ -219,6 +220,7 @@ int main(int argc, char **argv)
                  qInfo() << "message:\t" << it->message;
                  if (!it->state) {
                      qInfo() << "code:\t" << it->code;
+                     return -1;
                  }
              }
              return 0;

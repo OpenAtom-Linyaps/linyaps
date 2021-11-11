@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Linglong Service
+Exec=ll-service
+Icon=
+NoDisplay=true
+Terminal=true

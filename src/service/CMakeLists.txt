@@ -84,3 +84,5 @@ target_link_libraries(ll-service PRIVATE
                       )
 
 install(TARGETS ll-service RUNTIME DESTINATION bin)
+install(FILES data/space.linglong.Service.desktop DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications)
+install(FILES data/space.linglong.Service.desktop DESTINATION /etc/xdg/autostart)

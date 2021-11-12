@@ -68,7 +68,7 @@ util::Result BstBuilder::create(const QString &projectName)
     auto hint =
         QString("run `cd %1 && %2 build` to build project").arg(projectName, QCoreApplication::applicationFilePath());
 
-    std::cout << hint.toStdString();
+    std::cout << hint.toStdString() << std::endl;
 
     return dResultBase();
 }

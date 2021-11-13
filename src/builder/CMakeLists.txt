@@ -7,6 +7,7 @@ set(LL_BUILDER_SOURCES
     ../module/package/package.h
     ../module/util/uuid.h
     ../module/util/fs.h
+    ../module/util/fs.cpp
     ../module/util/result.h
     ../module/util/repo.h
     ../module/util/json.h

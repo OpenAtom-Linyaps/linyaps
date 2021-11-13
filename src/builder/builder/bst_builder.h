@@ -28,7 +28,8 @@ public:
 
     util::Result exportBundle(const QString &outputFilepath) override;
 
-    util::Result push(const QString &repoURL, bool force) override;
+    // util::Result push(const QString &repoURL, bool force) override;
+    util::Result push(const QString &bundleFilePath, bool force) override;
 };
 
 } // namespace builder

@@ -311,25 +311,27 @@ public:
         }
         this->dataDir = data;
 
-        // check entries desktop
-        if (!dirExists(this->dataDir + QString("/entries"))) {
-            // copy entries
-            qInfo() << "need: entries of desktop file !";
-            return false;
-        }
+        //TODO:liujianqiang
+        //目录结构目前还存在争议，等后续调试确定结构后，再去检查
+        // // check entries desktop
+        // if (!dirExists(this->dataDir + QString("/entries"))) {
+        //     // copy entries
+        //     qInfo() << "need: entries of desktop file !";
+        //     return false;
+        // }
 
-        // check files list
-        if (!dirExists(this->dataDir + QString("/files"))) {
-            // copy files
-            qInfo() << "need: entries of desktop file !";
-            return false;
-        }
-        // check permission info.json
-        if (!fileExists(this->dataDir + QString("/info.json"))) {
-            // copy default permission info.json file to linglong
-            qInfo() << "need: info.json of permission !";
-            return false;
-        }
+        // // check files list
+        // if (!dirExists(this->dataDir + QString("/files"))) {
+        //     // copy files
+        //     qInfo() << "need: entries of desktop file !";
+        //     return false;
+        // }
+        // // check permission info.json
+        // if (!fileExists(this->dataDir + QString("/info.json"))) {
+        //     // copy default permission info.json file to linglong
+        //     qInfo() << "need: info.json of permission !";
+        //     return false;
+        // }
 
         // make data.gz
         // tar -C /path/to/directory -cf - . | gzip --rsyncable >data.tgz
@@ -799,7 +801,7 @@ public:
 
     //推包或者runtime到服务器接口
     bool pushOuapOrRuntimeToServer(const QString &repoPath, const QString ouapPath = "", const QString uapPath = "",
-                                   const QString force = "false")
+                                   bool force = false)
     {
         //判断仓库路径是否存在
         if (!dirExists(repoPath) && !fileExists(repoPath)) {
@@ -807,7 +809,7 @@ public:
             return false;
         }
         //判断是否强制执行
-        if (force == "true") {
+        if (force) {
             //判断是否传入ouap路径,执行runtime导入操作
             if (ouapPath.isNull() || ouapPath.isEmpty()) {
                 if (QFileInfo(repoPath).isDir()) {

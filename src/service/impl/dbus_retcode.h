@@ -35,6 +35,10 @@ enum class RetCode {
     DataInfoJsonNotExists,     //info.json 文件不存在
     DataMakeSquashfsError,      //mksquashfs failed
     MakeTempWorkDirError,       //制作临时目录失败
+    BundleFileNotExists,           //uab文件不存在
+    MakeUapFailed,              //制作uap包失败
+    MakeOuapFailed,             //制作ouap包失败
+    PushBundleFailed,           //推送uab包失败
 
     user_input_param_err = 600,
     pkg_already_installed,

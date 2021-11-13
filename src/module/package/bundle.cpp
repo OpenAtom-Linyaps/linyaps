@@ -13,7 +13,6 @@
 namespace linglong {
 namespace package {
 
-// FIXME: there is some problem that in module/util/runner.h, replace later
 util::Result runner(const QString &program, const QStringList &args, int timeout)
 {
     QProcess process;
@@ -37,10 +36,12 @@ util::Result runner(const QString &program, const QStringList &args, int timeout
 class BundlePrivate
 {
 public:
-    //Bundle *q_ptr = nullptr;
+    // Bundle *q_ptr = nullptr;
     QString bundleFilePath;
     QString squashfsFilePath;
     QString bundleDataPath;
+    int offsetValue;
+    QString tmpWorkDir;
     const QString linglongLoader = "/usr/libexec/linglong-loader";
 
     explicit BundlePrivate(Bundle *parent)
@@ -123,6 +124,163 @@ public:
 
         return dResultBase();
     }
+
+    template<typename P>
+    inline uint16_t file16ToCpu(uint16_t val, const P &ehdr)
+    {
+        if (ehdr.e_ident[EI_DATA] != ELFDATANATIVE)
+            val = bswap16(val);
+        return val;
+    }
+
+    template<typename P>
+    uint32_t file32ToCpu(uint32_t val, const P &ehdr)
+    {
+        if (ehdr.e_ident[EI_DATA] != ELFDATANATIVE)
+            val = bswap32(val);
+        return val;
+    }
+
+    template<typename P>
+    uint64_t file64ToCpu(uint64_t val, const P &ehdr)
+    {
+        if (ehdr.e_ident[EI_DATA] != ELFDATANATIVE)
+            val = bswap64(val);
+        return val;
+    }
+
+    // read elf64
+    auto readElf64(FILE *fd, Elf64_Ehdr &ehdr) -> decltype(ehdr.e_shoff + (ehdr.e_shentsize * ehdr.e_shnum))
+    {
+        Elf64_Ehdr ehdr64;
+        off_t ret = -1;
+
+        fseeko(fd, 0, SEEK_SET);
+        ret = fread(&ehdr64, 1, sizeof(ehdr64), fd);
+        if (ret < 0 || (size_t)ret != sizeof(ehdr64)) {
+            return -1;
+        }
+
+        ehdr.e_shoff = file64ToCpu<Elf64_Ehdr>(ehdr64.e_shoff, ehdr);
+        ehdr.e_shentsize = file16ToCpu<Elf64_Ehdr>(ehdr64.e_shentsize, ehdr);
+        ehdr.e_shnum = file16ToCpu<Elf64_Ehdr>(ehdr64.e_shnum, ehdr);
+
+        return (ehdr.e_shoff + (ehdr.e_shentsize * ehdr.e_shnum));
+    }
+
+    // get elf offset size
+    auto getElfSize(const QString elfFilePath) -> decltype(-1)
+    {
+        FILE *fd = nullptr;
+        off_t size = -1;
+        Elf64_Ehdr ehdr;
+
+        fd = fopen(elfFilePath.toStdString().c_str(), "rb");
+        if (fd == nullptr) {
+            return -1;
+        }
+        auto ret = fread(ehdr.e_ident, 1, EI_NIDENT, fd);
+        if (ret != EI_NIDENT) {
+            return -1;
+        }
+        if ((ehdr.e_ident[EI_DATA] != ELFDATA2LSB) && (ehdr.e_ident[EI_DATA] != ELFDATA2MSB)) {
+            return -1;
+        }
+        if (ehdr.e_ident[EI_CLASS] == ELFCLASS32) {
+            // size = read_elf32(fd);
+        } else if (ehdr.e_ident[EI_CLASS] == ELFCLASS64) {
+            size = readElf64(fd, ehdr);
+        } else {
+            return -1;
+        }
+        fclose(fd);
+        return size;
+    }
+
+    util::Result push(const QString &bundleFilePath, bool force)
+    {
+        //判断uab文件是否存在
+        if (!util::fileExists(bundleFilePath)) {
+            return dResultBase() << RetCode(RetCode::BundleFileNotExists) << bundleFilePath + " don't exists!";
+        }
+        //创建临时目录
+        this->tmpWorkDir = util::ensureUserDir({".linglong", QFileInfo(bundleFilePath).fileName()});
+        if (util::dirExists(this->tmpWorkDir)) {
+            util::removeDir(this->tmpWorkDir);
+        }
+        util::createDir(this->tmpWorkDir);
+
+        //转换成绝对路径
+        this->bundleFilePath = QFileInfo(bundleFilePath).absoluteFilePath();
+
+        //获取offset值
+        this->offsetValue = getElfSize(this->bundleFilePath);
+
+        //导出squashfs文件
+        this->squashfsFilePath = this->tmpWorkDir + "/squashfsFile";
+        // TODO:liujianqiang
+        //后续改成QFile处理
+        auto resultOutput = runner("dd",
+                                   {"if=" + this->bundleFilePath, "of=" + this->squashfsFilePath,
+                                    "bs=" + QString().setNum(this->offsetValue), "skip=1"},
+                                   15 * 60 * 1000);
+        if (!resultOutput.success()) {
+            if (util::dirExists(this->tmpWorkDir)) {
+                util::removeDir(this->tmpWorkDir);
+            }
+            return dResult(resultOutput) << "call dd failed";
+        }
+
+        //解压squashfs文件
+        this->bundleDataPath = this->tmpWorkDir + "/unsquashfs";
+        if (util::dirExists(this->bundleDataPath)) {
+            util::removeDir(this->bundleDataPath);
+        }
+        auto resultUnsquashfs = runner("unsquashfs", {"-dest", this->bundleDataPath, "-f", this->squashfsFilePath});
+
+        if (!resultUnsquashfs.success()) {
+            if (util::dirExists(this->tmpWorkDir)) {
+                util::removeDir(this->tmpWorkDir);
+            }
+            return dResult(resultUnsquashfs) << "call unsquashfs failed";
+        }
+
+        //制作在线包ouap
+        Package package;
+        if (!package.InitUap(this->bundleDataPath + "/uap.json", this->bundleDataPath)) {
+            if (util::dirExists(this->tmpWorkDir)) {
+                util::removeDir(this->tmpWorkDir);
+            }
+            return dResultBase() << RetCode(RetCode::UapJsonFormatError) << "inituap failed!";
+        }
+        if (!package.MakeUap(this->tmpWorkDir + "/uap")) {
+            if (util::dirExists(this->tmpWorkDir)) {
+                util::removeDir(this->tmpWorkDir);
+            }
+            return dResultBase() << RetCode(RetCode::MakeUapFailed) << "make uap failed!";
+        }
+        const QString uapFilePath = this->tmpWorkDir + "/uap/" + QString::fromStdString(package.uap->getUapName());
+        if (!package.MakeOuap(uapFilePath, this->tmpWorkDir + "/repo", this->tmpWorkDir + "/ouap")) {
+            if (util::dirExists(this->tmpWorkDir)) {
+                util::removeDir(this->tmpWorkDir);
+            }
+            return dResultBase() << RetCode(RetCode::MakeOuapFailed) << "make ouap failed!";
+        }
+        const QString ouapFilePath = this->tmpWorkDir + "/ouap/" + QString::fromStdString(package.uap->getUapName());
+
+        //上传软件包
+        if (!package.pushOuapOrRuntimeToServer(this->tmpWorkDir + "/repo", ouapFilePath, uapFilePath, force)) {
+            if (util::dirExists(this->tmpWorkDir)) {
+                util::removeDir(this->tmpWorkDir);
+            }
+            return dResultBase() << RetCode(RetCode::PushBundleFailed) << "push failed!";
+        }
+
+        if (util::dirExists(this->tmpWorkDir)) {
+            util::removeDir(this->tmpWorkDir);
+        }
+        return dResultBase();
+    }
 };
 
 Bundle::Bundle(QObject *parent)
@@ -147,6 +305,16 @@ util::Result Bundle::make(const QString &dataPath, const QString &outputFilePath
 {
     Q_D(Bundle);
     auto ret = d->make(dataPath, outputFilePath);
+    if (!ret.success()) {
+        return dResult(ret);
+    }
+    return dResultBase();
+}
+
+util::Result Bundle::push(const QString &bundleFilePath, bool force)
+{
+    Q_D(Bundle);
+    auto ret = d->push(bundleFilePath, force);
     if (!ret.success()) {
         return dResult(ret);
     }

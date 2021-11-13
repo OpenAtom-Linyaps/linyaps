@@ -125,9 +125,9 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("push", "push build result to repo", "push");
 
-             auto optRepoURL = QCommandLineOption("repo-url", "repo url", "repo-url");
-             parser.addOption(optRepoURL);
-
+             //  auto optRepoURL = QCommandLineOption("repo-url", "repo url", "repo-url");
+             //  parser.addOption(optRepoURL);
+             parser.addPositionalArgument("filePath", "bundle file path", "<filePath>");
              auto optForce = QCommandLineOption("force", "force push true or false", "");
              parser.addOption(optForce);
 
@@ -135,11 +135,14 @@ int main(int argc, char **argv)
 
              auto args = parser.positionalArguments();
 
-             auto repoURL = parser.value(optRepoURL);
+             auto outputFilepath = parser.positionalArguments().value(1);
+
+             // auto repoURL = parser.value(optRepoURL);
              auto force = parser.isSet(optForce);
 
              // TODO: push build result to repo
-             auto result = builder->push(repoURL, force);
+             // auto result = builder->push(repoURL, force);
+             auto result = builder->push(outputFilepath, force);
              if (!result.success()) {
                  qDebug() << result;
              }

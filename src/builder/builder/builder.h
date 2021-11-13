@@ -26,7 +26,8 @@ public:
 
     virtual util::Result exportBundle(const QString &outputFilepath) = 0;
 
-    virtual util::Result push(const QString &repoURL, bool force) = 0;
+    // virtual util::Result push(const QString &repoURL, bool force) = 0;
+    virtual util::Result push(const QString &bundleFilePath, bool force) = 0;
 };
 
 } // namespace builder

@@ -14,6 +14,7 @@
 #include "module/repo/repohelper_factory.h"
 #include "module/repo/ostree_repohelper.h"
 #include "module/util/httpclient.h"
+#include "module/util/package_manager_param.h"
 #include "package_manager_impl.h"
 #include "service/impl/dbus_retcode.h"
 #include "version.h"
@@ -333,8 +334,8 @@ bool PackageManagerImpl::updateOUAP(const QString &xmlPath, const QString &saveP
  *
  * @return bool: 1:已安装 0:未安装 -1查询失败
  */
-int PackageManagerImpl::getIntallStatus(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
-                                        const QString &userName)
+int PackageManagerImpl::getInstallStatus(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
+                                         const QString &userName)
 {
     if (pkgName.isNull() || pkgName.isEmpty()) {
         return -1;
@@ -361,7 +362,7 @@ int PackageManagerImpl::getIntallStatus(const QString &pkgName, const QString &p
     QJsonParseError parseJsonErr;
     QJsonDocument document = QJsonDocument::fromJson(qValue.toUtf8(), &parseJsonErr);
     if (!(parseJsonErr.error == QJsonParseError::NoError)) {
-        qCritical() << "getIntallStatus parse json file err";
+        qCritical() << "getInstallStatus parse json file err";
         return -1;
     }
     QJsonObject jsonObject = document.object();
@@ -377,8 +378,17 @@ int PackageManagerImpl::getIntallStatus(const QString &pkgName, const QString &p
         if (!pkgVer.isEmpty()) {
             QJsonObject userNameObject = usersObject[dstUserName].toObject();
             QJsonObject usersPkgObject = userNameObject[pkgName].toObject();
-            QString appVer = usersPkgObject["version"].toString();
-            if (pkgVer != appVer) {
+            QJsonValue arrayValue = usersPkgObject.value(QStringLiteral("version"));
+            QJsonArray versionArray = arrayValue.toArray();
+            bool flag = false;
+            for (int i = 0; i < versionArray.size(); i++) {
+                QString item = versionArray.at(i).toString();
+                if (item == pkgVer) {
+                    flag = true;
+                }
+            }
+            // 指定版本不存在
+            if (!flag) {
                 return 0;
             }
         }
@@ -446,7 +456,9 @@ bool PackageManagerImpl::getAppInfoByOUAPFile(const QString &fileDir, QString &e
     if (jsonObject.contains("description")) {
         appStreamPkgInfo.summary = jsonObject["description"].toString();
     }
-    appStreamPkgInfo.reponame = "localApp";
+    if (jsonObject.contains("reponame")) {
+        appStreamPkgInfo.reponame = jsonObject["reponame"].toString();
+    }
     return true;
 }
 
@@ -601,18 +613,33 @@ bool PackageManagerImpl::updateAppStatus(AppStreamPkgInfo appStreamPkgInfo)
 
     QJsonObject usersObject = jsonObject["users"].toObject();
     QJsonObject usersSubItem;
-    usersSubItem.insert("version", appStreamPkgInfo.appVer);
     usersSubItem.insert("ref", "app:" + appStreamPkgInfo.appId);
     // usersSubItem.insert("commitv", "0123456789");
     QJsonObject userItem;
-    userItem.insert(appStreamPkgInfo.appId, usersSubItem);
+
     // users下用户名已存在,将软件包添加到该用户名对应的软件包列表中
     QJsonObject userNameObject;
+    QJsonArray versionArray;
     if (usersObject.contains(userName)) {
         userNameObject = usersObject[userName].toObject();
-        userNameObject.insert(appStreamPkgInfo.appId, usersSubItem);
+        // 首次安装该应用
+        if (!userNameObject.contains(appStreamPkgInfo.appId)) {
+            versionArray.append(appStreamPkgInfo.appVer);
+            usersSubItem.insert("version", versionArray);
+            userNameObject.insert(appStreamPkgInfo.appId, usersSubItem);
+        } else {
+            QJsonObject usersPkgObject = userNameObject[appStreamPkgInfo.appId].toObject();
+            QJsonValue arrayValue = usersPkgObject.value(QStringLiteral("version"));
+            versionArray = arrayValue.toArray();
+            versionArray.append(appStreamPkgInfo.appVer);
+            usersPkgObject["version"] = versionArray;
+            userNameObject[appStreamPkgInfo.appId] = usersPkgObject;
+        }
         usersObject[userName] = userNameObject;
     } else {
+        versionArray.append(appStreamPkgInfo.appVer);
+        usersSubItem.insert("version", versionArray);
+        userItem.insert(appStreamPkgInfo.appId, usersSubItem);
         usersObject.insert(userName, userItem);
     }
 
@@ -711,9 +738,9 @@ bool PackageManagerImpl::installOUAPFile(const QString &filePath, QString &err)
     }
 
     // 判断软件包是否安装 是否需要判断架构 to do fix
-    if (getIntallStatus(appStreamPkgInfo.appId, appStreamPkgInfo.appVer)) {
-        qInfo() << appStreamPkgInfo.appId << " already installed";
-        err = appStreamPkgInfo.appId + " already installed";
+    if (getInstallStatus(appStreamPkgInfo.appId, appStreamPkgInfo.appVer)) {
+        qCritical() << appStreamPkgInfo.appId << ", version: " << appStreamPkgInfo.appVer << " already installed";
+        err = appStreamPkgInfo.appId + ", version: " + appStreamPkgInfo.appVer + " already installed";
         return false;
     }
 
@@ -852,17 +879,19 @@ PKGInfoList PackageManagerImpl::queryAllInstalledApp()
         QJsonObject pkgsObject = jsonObject["pkgs"].toObject();
         for (QString pkgName : appList) {
             QJsonObject pkgObject = pkgsObject[pkgName].toObject();
-            auto info = QPointer<PKGInfo>(new PKGInfo);
-            info->appid = pkgName;
-            info->appname = pkgObject.value("name").toString();
-            info->description = pkgObject["summary"].toString();
-            // QString appRuntime = pkgObject["runtime"].toString();
-            // QString appRepo = pkgObject["reponame"].toString();
-            // 取AppInfoDB.josn中的版本信息
             QJsonObject usersPkgObject = userNameObject[pkgName].toObject();
-            info->version = usersPkgObject["version"].toString();
-            info->arch = getHostArch();
-            pkglist.push_back(info);
+            QJsonValue arrayValue = usersPkgObject.value(QStringLiteral("version"));
+            QJsonArray versionArray = arrayValue.toArray();
+            for (int i = 0; i < versionArray.size(); i++) {
+                QString ver = versionArray.at(i).toString();
+                auto info = QPointer<PKGInfo>(new PKGInfo);
+                info->appid = pkgName;
+                info->appname = pkgObject.value("name").toString();
+                info->description = pkgObject["summary"].toString();
+                info->arch = pkgObject["arch"].toString();
+                info->version = ver;
+                pkglist.push_back(info);
+            }
         }
     }
     return pkglist;
@@ -881,7 +910,7 @@ PKGInfoList PackageManagerImpl::queryAllInstalledApp()
 bool PackageManagerImpl::getInstalledAppInfo(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
                                              PKGInfoList &pkgList)
 {
-    if (!getIntallStatus(pkgName)) {
+    if (!getInstallStatus(pkgName, pkgVer)) {
         return false;
     }
     // 判断查询类型 pkgName == installed to do
@@ -909,16 +938,26 @@ bool PackageManagerImpl::getInstalledAppInfo(const QString &pkgName, const QStri
     const QString dstUserName = getUserName();
     QJsonObject userNameObject = usersObject[dstUserName].toObject();
     QJsonObject usersPkgObject = userNameObject[pkgName].toObject();
-    QString appVer = usersPkgObject["version"].toString();
-    qInfo() << appName << " " << appVer << " " << appSummary << " " << appRuntime << " " << appRepo;
-    // 判断指定版本号app是否存在
-    if (!pkgVer.isEmpty() && appVer != pkgVer) {
-        return false;
+
+    QString dstVer = pkgVer;
+    // 版本号为空，返回最高版本信息
+    if (pkgVer.isEmpty()) {
+        QJsonValue arrayValue = usersPkgObject.value(QStringLiteral("version"));
+        QJsonArray versionArray = arrayValue.toArray();
+        QString latesVer = linglong::APP_MIN_VERSION;
+        for (int i = 0; i < versionArray.size(); i++) {
+            QString ver = versionArray.at(i).toString();
+            if (cmpAppVersion(latesVer, ver)) {
+                latesVer = ver;
+            }
+        }
+        dstVer = latesVer;
     }
+
     auto info = QPointer<PKGInfo>(new PKGInfo);
     info->appid = pkgName;
     info->appname = appName;
-    info->version = appVer;
+    info->version = dstVer;
     info->arch = appArch;
     info->description = appSummary;
     pkgList.push_back(info);
@@ -1080,7 +1119,7 @@ bool PackageManagerImpl::checkAppRuntime(QString &err)
     bool ret = true;
 
     // 判断app依赖的runtime是否安装
-    if (!getIntallStatus(runtimeID, runtimeVer)) {
+    if (!getInstallStatus(runtimeID, runtimeVer)) {
         ret = installRuntime(runtimeID, runtimeVer, runtimeArch, err);
     }
     return ret;
@@ -1090,7 +1129,7 @@ bool PackageManagerImpl::checkAppRuntime(QString &err)
  * 在线安装软件包
  * @param packageIDList
  */
-RetMessageList PackageManagerImpl::Install(const QStringList &packageIDList)
+RetMessageList PackageManagerImpl::Install(const QStringList &packageIDList, const ParamStringMap &paramMap)
 {
     RetMessageList retMsg;
     bool ret = false;
@@ -1146,14 +1185,10 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIDList)
         return retMsg;
     }
 
-    // 判断是否已安装
-    if (getIntallStatus(pkgName)) {
-        qInfo() << pkgName << " already installed";
-        info->setcode(RetCode(RetCode::pkg_already_installed));
-        info->setmessage(pkgName + " already installed");
-        info->setstate(false);
-        retMsg.push_back(info);
-        return retMsg;
+    // 获取版本信息
+    QString version = "";
+    if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_VERSION)) {
+        version = paramMap[linglong::util::KEY_VERSION];
     }
 
     // 根据包名安装在线包
@@ -1169,12 +1204,21 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIDList)
     }
     // 根据AppStream.json 查找目标软件包
     const QString xmlPath = "/deepin/linglong/repo/AppStream.json";
-
-    ret = getAppInfoByAppStream("/deepin/linglong/", "repo", pkgName, "", arch, appStreamPkgInfo, err);
+    ret = getAppInfoByAppStream("/deepin/linglong/", "repo", pkgName, version, arch, appStreamPkgInfo, err);
     if (!ret) {
         qInfo() << err;
         info->setcode(RetCode(RetCode::search_pkg_by_appstream_failed));
         info->setmessage(err);
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
+    }
+
+    // 判断对应版本的应用是否已安装
+    if (getInstallStatus(pkgName, appStreamPkgInfo.appVer)) {
+        qCritical() << pkgName << ", version: " << appStreamPkgInfo.appVer << " already installed";
+        info->setcode(RetCode(RetCode::pkg_already_installed));
+        info->setmessage(pkgName + ", version: " + appStreamPkgInfo.appVer + " already installed");
         info->setstate(false);
         retMsg.push_back(info);
         return retMsg;
@@ -1235,7 +1279,7 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIDList)
     // 更新本地数据库文件 to do
     updateAppStatus(appStreamPkgInfo);
     info->setcode(RetCode(RetCode::pkg_install_success));
-    info->setmessage("install " + pkgName + " success");
+    info->setmessage("install " + pkgName + ",version:" + appStreamPkgInfo.appVer + " success");
     info->setstate(true);
     retMsg.push_back(info);
     return retMsg;
@@ -1290,10 +1334,11 @@ PKGInfoList PackageManagerImpl::Query(const QStringList &packageIDList)
  * 卸载操作下更新软件包状态信息
  *
  * @param pkgName: 卸载软件包包名
+ * @param pkgVer: 卸载软件包对应的版本
  *
  * @return bool: true:更新成功 false:失败
  */
-bool PackageManagerImpl::updateUninstallAppStatus(const QString &pkgName)
+bool PackageManagerImpl::updateUninstallAppStatus(const QString &pkgName, const QString &pkgVer)
 {
     // file lock to do
     // 数据库的文件路径
@@ -1323,20 +1368,44 @@ bool PackageManagerImpl::updateUninstallAppStatus(const QString &pkgName)
     // 删除users 字段下 软件包对应的目录
     QString userName = getUserName();
     QJsonObject userNameObject;
+    bool isMulVer = false;
     if (usersObject.contains(userName)) {
         userNameObject = usersObject[userName].toObject();
-        userNameObject.remove(pkgName);
+        // 判断是否有多个版本
+        QJsonObject usersPkgObject = userNameObject[pkgName].toObject();
+        QJsonValue arrayValue = usersPkgObject.value(QStringLiteral("version"));
+        QJsonArray versionArray = arrayValue.toArray();
+        isMulVer = versionArray.size() > 1 ? true : false;
+        if (isMulVer) {
+            for (int i = 0; i < versionArray.size(); i++) {
+                QString item = versionArray.at(i).toString();
+                if (item == pkgVer) {
+                    versionArray.removeAt(i);
+                    usersPkgObject["version"] = versionArray;
+                    userNameObject[pkgName] = usersPkgObject;
+                    break;
+                }
+            }
+        } else {
+            userNameObject.remove(pkgName);
+        }
         usersObject[userName] = userNameObject;
-    } else {
-        qCritical() << "updateUninstallAppStatus user info err";
-        return false;
     }
+
     // 更新pkgs字段中的用户列表users字段
     QJsonObject pkgObject = pkgsObject[pkgName].toObject();
-    QJsonObject pkgUsersObject = pkgObject["users"].toObject();
-    pkgUsersObject.remove(userName);
-    pkgObject["users"] = pkgUsersObject;
-    pkgsObject[pkgName] = pkgObject;
+    QJsonArray pkgUsersObject = pkgObject["users"].toArray();
+    if (!isMulVer) {
+        for (int i = 0; i < pkgUsersObject.size(); i++) {
+            QString item = pkgUsersObject.at(i).toString();
+            if (item == userName) {
+                pkgUsersObject.removeAt(i);
+                pkgObject["users"] = pkgUsersObject;
+                pkgsObject[pkgName] = pkgObject;
+                break;
+            }
+        }
+    }
 
     // 软件包无用户安装 删除对应的记录
     if (pkgUsersObject.isEmpty()) {
@@ -1369,13 +1438,20 @@ bool PackageManagerImpl::updateUninstallAppStatus(const QString &pkgName)
  *
  * @return RetMessageList 卸载结果信息
  */
-RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIDList)
+RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIDList, const ParamStringMap &paramMap)
 {
     RetMessageList retMsg;
     auto info = QPointer<RetMessage>(new RetMessage);
     const QString pkgName = packageIDList.at(0);
+
+    // 获取版本信息
+    QString version = "";
+    if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_VERSION)) {
+        version = paramMap[linglong::util::KEY_VERSION];
+    }
+
     // 判断是否已安装
-    if (!getIntallStatus(pkgName)) {
+    if (!getInstallStatus(pkgName, version)) {
         qCritical() << pkgName << " not installed";
         info->setcode(RetCode(RetCode::pkg_not_installed));
         info->setmessage(pkgName + " not installed");
@@ -1388,14 +1464,14 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIDList)
     // 卸载 删除文件（软链接？）判断是否有用户使用软件包 to do fix
     // 根据已安装文件查询已经安装软件包信息
     QString arch = getHostArch();
-    getInstalledAppInfo(pkgName, "", arch, pkglist);
+    getInstalledAppInfo(pkgName, version, arch, pkglist);
     auto it = pkglist.at(0);
     if (pkglist.size() > 0) {
         const QString installPath = "/deepin/linglong/layers/" + it->appid + "/" + it->version;
         linglong::util::removeDir(installPath);
         qInfo() << "Uninstall del dir:" << installPath;
     }
-    // 更新本地repo仓库 to do fix
+    // 更新本地repo仓库
     const QString repoPath = "/deepin/linglong/repo";
     bool ret = G_OSTREE_REPOHELPER->ensureRepoEnv(repoPath, err);
     if (!ret) {
@@ -1424,16 +1500,16 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIDList)
     if (!ret) {
         qCritical() << err;
         info->setcode(RetCode(RetCode::pkg_uninstall_failed));
-        info->setmessage("uninstall " + pkgName + " failed");
+        info->setmessage("uninstall " + pkgName + ",version:" + it->version + " failed");
         info->setstate(false);
         retMsg.push_back(info);
         return retMsg;
     }
 
     // 更新安装数据库
-    updateUninstallAppStatus(pkgName);
+    updateUninstallAppStatus(pkgName, it->version);
     info->setcode(RetCode(RetCode::pkg_uninstall_success));
-    info->setmessage("uninstall " + pkgName + " success");
+    info->setmessage("uninstall " + pkgName + ",version:" + it->version + " success");
     info->setstate(true);
     retMsg.push_back(info);
     return retMsg;

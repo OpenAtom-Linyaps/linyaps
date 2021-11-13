@@ -47,8 +47,8 @@ class PackageManagerImpl : public PackageManagerProxyBase
 {
 public:
     RetMessageList Download(const QStringList &packageIDList, const QString &savePath);
-    RetMessageList Install(const QStringList &packageIDList);
-    RetMessageList Uninstall(const QStringList &packageIDList);
+    RetMessageList Install(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
+    RetMessageList Uninstall(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
     PKGInfoList Query(const QStringList &packageIDList);
 
 private:
@@ -126,8 +126,8 @@ private:
      *
      * @return bool: 1:已安装 0:未安装 -1查询失败
      */
-    int getIntallStatus(const QString &pkgName, const QString &pkgVer = "", const QString &pkgArch = "",
-                        const QString &userName = "");
+    int getInstallStatus(const QString &pkgName, const QString &pkgVer = "", const QString &pkgArch = "",
+                         const QString &userName = "");
 
     /*
      * 根据OUAP在线包解压出来的uap文件查询软件包信息
@@ -268,10 +268,11 @@ private:
      * 卸载操作下更新软件包状态信息
      *
      * @param pkgName: 卸载软件包包名
+     * @param pkgVer: 卸载软件包对应的版本
      *
      * @return bool: true:更新成功 false:失败
      */
-    bool updateUninstallAppStatus(const QString &pkgName);
+    bool updateUninstallAppStatus(const QString &pkgName, const QString &pkgVer);
 
     /*
      * 安装应用runtime

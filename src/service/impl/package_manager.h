@@ -41,8 +41,8 @@ public Q_SLOTS:
     QString Status();
 
     RetMessageList Download(const QStringList &packageIDList, const QString savePath);
-    RetMessageList Install(const QStringList &packageIDList);
-    RetMessageList Uninstall(const QStringList &packageIDList);
+    RetMessageList Install(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
+    RetMessageList Uninstall(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
     QString Update(const QStringList &packageIDList);
     QString UpdateAll();
 

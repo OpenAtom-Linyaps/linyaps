@@ -100,7 +100,7 @@ RetMessageList PackageManager::Download(const QStringList &packageIDList, const 
  * 在线安装软件包
  * @param packageIDList
  */
-RetMessageList PackageManager::Install(const QStringList &packageIDList)
+RetMessageList PackageManager::Install(const QStringList &packageIDList, const ParamStringMap &paramMap)
 {
     Q_D(PackageManager);
 
@@ -127,10 +127,10 @@ RetMessageList PackageManager::Install(const QStringList &packageIDList)
         return retMsg;
     }
     PackageManagerProxyBase *pImpl = PackageManagerImpl::get();
-    return pImpl->Install(packageIDList);
+    return pImpl->Install(packageIDList, paramMap);
 }
 
-RetMessageList PackageManager::Uninstall(const QStringList &packageIDList)
+RetMessageList PackageManager::Uninstall(const QStringList &packageIDList, const ParamStringMap &paramMap)
 {
     // 校验包名参数
     // 判断软件包是否安装
@@ -156,7 +156,7 @@ RetMessageList PackageManager::Uninstall(const QStringList &packageIDList)
         retMsg.push_back(info);
         return retMsg;
     }
-    return PackageManagerImpl::get()->Uninstall(packageIDList);
+    return PackageManagerImpl::get()->Uninstall(packageIDList, paramMap);
 }
 
 QString PackageManager::Update(const QStringList &packageIDList)

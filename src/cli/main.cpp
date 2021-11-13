@@ -30,6 +30,7 @@
 
 #include "cmd/cmd.h"
 #include "module/package/package.h"
+#include "module/util/package_manager_param.h"
 #include "service/impl/json_register_inc.h"
 #include "package_manager.h"
 
@@ -220,9 +221,7 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("install", "install an application", "install");
              parser.addPositionalArgument("app-id", "app id", "com.deepin.demo");
-
              parser.process(app);
-
              auto args = parser.positionalArguments();
              auto appID = args.value(1);
              // 设置 10 分钟超时 to do
@@ -234,9 +233,15 @@ int main(int argc, char **argv)
                      qCritical() << "input file not found : " << appID;
                      return -1;
                  }
-                 reply = pm.Install({uap_fs.absoluteFilePath()});
+                 reply = pm.Install({uap_fs.absoluteFilePath()}, {});
              } else {
-                 reply = pm.Install({appID});
+                 // appID format: org.deepin.calculator/1.2.6 in multi-version
+                 QMap<QString, QString> paramMap;
+                 QStringList appInfoList = appID.split("/");
+                 if (appInfoList.size() > 1) {
+                     paramMap.insert(linglong::util::KEY_VERSION, appInfoList.at(1));
+                 }
+                 reply = pm.Install({appInfoList.at(0)}, paramMap);
              }
              qInfo() << "install " << appID << ", please wait a few minutes...";
              reply.waitForFinished();
@@ -287,11 +292,18 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("app-id", "app id", "com.deepin.demo");
              parser.process(app);
              auto args = parser.positionalArguments();
-             auto appID = args.value(1);
+             auto appInfo = args.value(1);
              // 设置 10 分钟超时 to do
              pm.setTimeout(1000 * 60 * 10);
              QDBusPendingReply<RetMessageList> reply;
-             reply = pm.Uninstall({appID});
+
+             // appID format: org.deepin.calculator/1.2.6 in multi-version
+             QMap<QString, QString> paramMap;
+             QStringList appInfoList = appInfo.split("/");
+             if (appInfoList.size() > 1) {
+                 paramMap.insert(linglong::util::KEY_VERSION, appInfoList.at(1));
+             }
+             reply = pm.Uninstall({appInfoList.at(0)}, paramMap);
              reply.waitForFinished();
              RetMessageList retMsg = reply.value();
              if (retMsg.size() > 0) {

@@ -161,7 +161,7 @@ TEST(Package, install01)
                                                 QDBusConnection::sessionBus());
     // call dbus
     QString appID = "";
-    QDBusPendingReply<RetMessageList> reply = pm.Install({appID});
+    QDBusPendingReply<RetMessageList> reply = pm.Install({appID}, {});
     reply.waitForFinished();
     RetMessageList ret_msg = reply.value();
     if (ret_msg.size() > 0) {
@@ -188,7 +188,7 @@ TEST(Package, install02)
                                                 QDBusConnection::sessionBus());
     // test pkg not in repo
     QString appID = "test.deepin.test";
-    QDBusPendingReply<RetMessageList> reply = pm.Install({appID});
+    QDBusPendingReply<RetMessageList> reply = pm.Install({appID}, {});
     reply.waitForFinished();
     RetMessageList ret_msg = reply.value();
     if (ret_msg.size() > 0) {
@@ -227,7 +227,7 @@ TEST(Package, install03)
             break;
         }
     }
-    QDBusPendingReply<RetMessageList> reply = pm.Install({appID});
+    QDBusPendingReply<RetMessageList> reply = pm.Install({appID}, {});
     reply.waitForFinished();
     bool connect = getConnectStatus();
     if (!connect) {
@@ -259,7 +259,7 @@ TEST(Package, install04)
     //if the uap file in the cmd dir success
     QString appID = "org.deepin.calculator-1.2.2-x86_64.uap";
     QFileInfo uap_fs(appID);
-    QDBusPendingReply<RetMessageList> reply = pm.Install({uap_fs.absoluteFilePath()});
+    QDBusPendingReply<RetMessageList> reply = pm.Install({uap_fs.absoluteFilePath()}, {});
     reply.waitForFinished();
     RetMessageList ret_msg = reply.value();
     if (ret_msg.size() > 0) {
@@ -307,7 +307,7 @@ TEST(Package, install05)
     if (!connect) {
         expectRet = false;
     }
-    QDBusPendingReply<RetMessageList> reply = pm.Install({ouapPath});
+    QDBusPendingReply<RetMessageList> reply = pm.Install({ouapPath}, {});
     reply.waitForFinished();
     RetMessageList retMsg = reply.value();
     if (retMsg.size() > 0) {

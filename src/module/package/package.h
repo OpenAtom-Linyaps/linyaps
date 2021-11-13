@@ -992,3 +992,6 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, Package &m
 
     return argument;
 }
+
+typedef QMap<QString,QString> ParamStringMap;
+Q_DECLARE_METATYPE(ParamStringMap)

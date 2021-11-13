@@ -13,11 +13,15 @@
         </method>
         <method name="Install">
             <arg name="PackageIDList" type="as" direction="in"/>
+            <arg name="paramMap" type="{ss}" direction="in"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In1" value="ParamStringMap"/>
             <arg name="RetMessageList" type="a(s)" direction="out"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="RetMessageList"/> 
         </method>
         <method name="Uninstall">
             <arg name="PackageIDList" type="as" direction="in"/>
+            <arg name="paramMap" type="{ss}" direction="in"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In1" value="ParamStringMap"/>
             <arg name="RetMessageList" type="a(s)" direction="out"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="RetMessageList"/> 
         </method>

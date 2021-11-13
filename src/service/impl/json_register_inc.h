@@ -31,4 +31,5 @@ inline void RegisterDbusType()
     qJsonRegister<Container>();
     qJsonRegister<PKGInfo>();
     qJsonRegister<RetMessage>();
+    qDBusRegisterMetaType<ParamStringMap>();
 }

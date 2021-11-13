@@ -19,7 +19,7 @@ class PackageManagerProxyBase
 {
 public:
     virtual RetMessageList Download(const QStringList &packageIDList, const QString &savePath) = 0;
-    virtual RetMessageList Install(const QStringList &packageIDList) = 0;
-    virtual RetMessageList Uninstall(const QStringList &packageIDList) = 0;
+    virtual RetMessageList Install(const QStringList &packageIDList, const ParamStringMap &paramMap = {}) = 0;
+    virtual RetMessageList Uninstall(const QStringList &packageIDList, const ParamStringMap &paramMap = {}) = 0;
     virtual PKGInfoList Query(const QStringList &packageIDList) = 0;
 };

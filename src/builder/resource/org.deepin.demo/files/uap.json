@@ -1,0 +1,45 @@
+{
+    "datasign":{
+        "sign":""
+    },
+    "metasign":{
+        "sign":""
+    },
+    "owner":{
+        "keyinfo":"null",
+        "name":"deepin-demo",
+        "website":""
+    },
+    "pkgext":{
+        "hashtype":2,
+        "maintainer":"Deepin Packages Builder <packages@deepin.org>",
+        "url":"https://www.deepin.org",
+        "type":1,
+        "tag":"application;tools",
+        "license":"GPLv3",
+        "uuid":"fc04b25b-e744-4961-aaf0-fc5dd29583b7",
+        "sdk":"",
+        "settings":{
+            "permission":"d"
+        }
+    },
+    "runtime":"aaa2668a-f67e-11eb-913a-23d17b06112b",
+    "description":"deepin demo.",
+    "appid":"@APP_ID@",
+    "name":"deepin-demo",
+    "version":"1.2.1",
+    "arch":"x86_64",
+    "permissions":{
+        "autostart":false,
+        "notification":false,
+        "trayicon":false,
+        "clipboard":false,
+        "account":false,
+        "bluetooth":false,
+        "camera":false,
+        "audio_record":false,
+        "installed_apps":false
+    },
+    "support-plugins":[],
+    "plugins":[]
+}

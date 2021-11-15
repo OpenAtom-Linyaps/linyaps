@@ -58,12 +58,16 @@ util::Result BstBuilder::create(const QString &projectName)
     auto bstName = QString(projectName).replace(".", "-");
 
     // TODO: can read list from file
-    auto replaceFilenameList = QStringList {"project.conf", "elements/export.bst", "files/loader.sh"};
+    auto replaceFilenameList = QStringList {"project.conf", "elements/export.bst", "files/uap.json", "files/loader"};
     templateDirCopy(":org.deepin.demo", projectName, replaceFilenameList,
                     {
                         {"PROJECT_NAME", bstName},
                         {"APP_ID", projectName},
                     });
+
+    //设置loader运行权限
+    QFile(QDir(projectName).absoluteFilePath("files/loader"))
+        .setPermissions(QFileDevice::ExeOwner | QFileDevice::WriteOwner | QFileDevice::ReadOwner);
 
     auto hint =
         QString("run `cd %1 && %2 build` to build project").arg(projectName, QCoreApplication::applicationFilePath());

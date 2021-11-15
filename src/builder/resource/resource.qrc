@@ -2,6 +2,7 @@
     <qresource prefix="/">
         <file>org.deepin.demo/project.conf</file>
         <file>org.deepin.demo/elements/export.bst</file>
-        <file>org.deepin.demo/files/loader.sh</file>
+        <file>org.deepin.demo/files/loader</file>
+        <file>org.deepin.demo/files/uap.json</file>
     </qresource>
 </RCC>

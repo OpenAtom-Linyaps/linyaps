@@ -65,7 +65,6 @@ add_executable(ll-test
                httpclient_test.cpp
                repohelper_test.cpp
                #end add by hqh for debug 2021-9-16
-               oci_test.cpp
                qt_json.cpp
                qt_yaml.cpp
                qt_yaml.h

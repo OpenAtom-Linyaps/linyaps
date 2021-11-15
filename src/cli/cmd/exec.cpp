@@ -31,8 +31,6 @@
 #include <sys/wait.h>
 #include <grp.h>
 
-#include "box/container/semaphore.h"
-
 #include "cmd.h"
 
 inline int bringDownPermissionsTo(const struct stat &st)

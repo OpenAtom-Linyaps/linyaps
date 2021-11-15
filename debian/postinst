@@ -1,6 +1,5 @@
 #!/bin/bash
 
-[[ -f /usr/bin/ll-box ]] && chmod u+s /usr/bin/ll-box
 if [ ! -d /deepin ]
 then
 	mkdir -p /deepin/linglong/layers

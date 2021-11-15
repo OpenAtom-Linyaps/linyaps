@@ -7,7 +7,6 @@ Build-Depends:
  cmake,
  build-essential,
  libyaml-cpp-dev,
- nlohmann-json3-dev,
  libgtest-dev,
  qt5-qmake,
  qtbase5-dev,

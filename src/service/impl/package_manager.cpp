@@ -296,3 +296,7 @@ ContainerList PackageManager::ListContainer()
     }
     return list;
 }
+QString PackageManager::Status()
+{
+    return {"active"};
+}

@@ -49,6 +49,26 @@ void printAppInfo(PKGInfoList retMsg)
     }
 }
 
+void checkAndStartService(ComDeepinLinglongPackageManagerInterface &pm)
+{
+    const auto kStatusActive = "active";
+    QDBusReply<QString> status = pm.Status();
+    // FIXME: should use more precision to check status
+    if (kStatusActive != status.value()) {
+        QProcess::startDetached("ll-service", {});
+    }
+
+    for (int i = 0; i < 10; ++i) {
+        status = pm.Status();
+        if (kStatusActive == status.value()) {
+            return;
+        }
+        QThread::sleep(1);
+    }
+
+    qCritical() << "start ll-service failed";
+}
+
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
@@ -80,6 +100,7 @@ int main(int argc, char **argv)
     ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager",
                                                 "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());
+    checkAndStartService(pm);
 
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
         {"run", [&](QCommandLineParser &parser) -> int {

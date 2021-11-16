@@ -2,6 +2,9 @@
         "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
     <interface name="com.deepin.linglong.PackageManager">
+        <method name="Status">
+            <arg name="Status" type="s" direction="out"/>
+        </method>
         <method name="Download">
             <arg name="PackageIDList" type="as" direction="in"/>
             <arg name="savePath" type="s" direction="in"/>

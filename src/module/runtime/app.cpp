@@ -250,21 +250,26 @@ public:
 
     int stageHost() const
     {
-        QList<QPair<QString, QString>> mountMap = {{"/etc/resolv.conf", "/run/host/network/etc/resolv.conf"},
-                                                   {"/run/resolvconf", "/run/resolvconf"},
-                                                   {"/tmp/.X11-unix", "/tmp/.X11-unix"},
-                                                   {"/usr/share/fonts", "/run/host/appearance/fonts"},
-                                                   {"/var/cache/fontconfig", "/run/host/appearance/fonts-cache"},
-                                                   {"/usr/share/locale/", "/usr/share/locale/"},
-                                                   {"/usr/lib/locale/", "/usr/lib/locale/"},
-                                                   {"/usr/share/fonts", "/usr/share/fonts"},
-                                                   {"/usr/share/themes", "/usr/share/themes"},
-                                                   {"/usr/share/icons", "/usr/share/icons"},
-                                                   {"/usr/share/zoneinfo", "/usr/share/zoneinfo"},
-                                                   {"/etc/localtime", "/run/host/etc/localtime"},
-                                                   {"/etc/machine-id", "/run/host/etc/machine-id"},
-                                                   {"/etc/machine-id", "/etc/machine-id"},
-                                                   {"/var", "/var"}};
+        QList<QPair<QString, QString>> mountMap = {
+            // FIXME: import from runtime!!!
+            {"/opt/deepinwine", "/opt/deepinwine"},
+            {"/opt/deepin-wine6-stable", "/opt/deepin-wine6-stable"},
+            {"/tmp/.X11-unix", "/tmp/.X11-unix"},
+            {"/etc/resolv.conf", "/run/host/network/etc/resolv.conf"},
+            {"/run/resolvconf", "/run/resolvconf"},
+            {"/usr/share/fonts", "/run/host/appearance/fonts"},
+            {"/usr/share/locale/", "/usr/share/locale/"},
+            {"/usr/lib/locale/", "/usr/lib/locale/"},
+            {"/usr/share/fonts", "/usr/share/fonts"},
+            {"/usr/share/themes", "/usr/share/themes"},
+            {"/usr/share/icons", "/usr/share/icons"},
+            {"/usr/share/zoneinfo", "/usr/share/zoneinfo"},
+            {"/etc/localtime", "/run/host/etc/localtime"},
+            {"/etc/machine-id", "/run/host/etc/machine-id"},
+            {"/etc/machine-id", "/etc/machine-id"},
+            {"/var", "/var"},
+            {"/var/cache/fontconfig", "/run/host/appearance/fonts-cache"},
+        };
 
         for (const auto &pair : mountMap) {
             Mount &m = *new Mount(r);
@@ -286,12 +291,18 @@ public:
 
         // bind user data
         auto userRuntimeDir = QString("/run/user/%1").arg(getuid());
-        auto hostRuntimeDir = util::ensureUserDir({".linglong", appID, "runtime"});
-
-        mountMap.push_back(qMakePair(hostRuntimeDir, userRuntimeDir));
+        {
+            Mount &m = *new Mount(r);
+            m.type = "tmpfs";
+            m.options = QStringList {"nodev", "nosuid"};
+            m.source = "tmpfs";
+            m.destination = userRuntimeDir;
+            r->mounts.push_back(&m);
+            qDebug() << "mount app" << m.source << m.destination;
+        }
 
         // FIXME: use proxy dbus
-        bool useDBusProxy = true;
+        bool useDBusProxy = false;
         if (useDBusProxy) {
             // bind dbus-proxy-user, now use session bus
             mountMap.push_back(qMakePair(userRuntimeDir + "/user-bus", userRuntimeDir + "/bus"));

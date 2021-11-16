@@ -253,11 +253,10 @@ def update_app_stream(ouap_files="org.deepin.calculator-1.2.4-x86_64.ouap",appst
         app_key = "{0}_{1}".format(ouap_info["appid"], ouap_info["version"])
         app_arch = get_ouap_arch(ouap_files)
         if app_key in app_json:
-            if app_arch in app_json[app_key]["arch"]:
-                # have not update
-                return False
-            else:
+            if not app_arch in app_json[app_key]["arch"]:
                 app_json[app_key]["arch"].append(app_arch)
+            ouap_info["arch"] = app_json[app_key]["arch"]
+            app_json[app_key] = ouap_info
         else:
             ouap_info = get_ouap_info(ouap_files)
             if not ouap_info:

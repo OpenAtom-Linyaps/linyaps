@@ -95,7 +95,12 @@ public:
 
         qCritical() << runtimeRootPath;
 
-        stageRuntime(runtimeRootPath + "/files");
+        // FIXME: return error if files not exist
+        auto fixRuntimePath = runtimeRootPath + "/files";
+        if (!util::dirExists(fixRuntimePath)) {
+            fixRuntimePath = runtimeRootPath;
+        }
+        stageRuntime(fixRuntimePath);
 
         auto appRef = package::Ref(q->package->refID);
         QString appRootPath = repo::rootOfLayer(appRef);
@@ -167,8 +172,12 @@ public:
             mountMap = {
                 {"/usr", "/usr"},
                 {"/etc", "/etc"},
-                {runtimeRootPath, "/runtime"},
+                {runtimeRootPath + "/usr", "/runtime"},
+                // FIXME: extract for wine, remove later
+                {runtimeRootPath + "/opt/deepinwine", "/opt/deepinwine"},
+                {runtimeRootPath + "/opt/deepin-wine6-stable", "/opt/deepin-wine6-stable"},
             };
+
         } else {
             // FIXME: if runtime is empty, use the last
             if (runtimeRootPath.isEmpty()) {
@@ -241,8 +250,12 @@ public:
         //        }
 
         // FIXME: let application do this, ld config
-        auto ldLibraryPath = QStringList {"/opt/apps", appID, "files/libs"}.join("/");
-        r->process->env.push_back("LD_LIBRARY_PATH=" + ldLibraryPath);
+        auto appLdLibraryPath = QStringList {"/opt/apps", appID, "files/libs"}.join("/");
+        // FIXME: for wine
+        auto fixLdLibraryPath = QStringList {appLdLibraryPath, "/runtime/lib", "/runtime/lib/x86_64-linux-gnu",
+                                             "/runtime/lib/i386-linux-gnu"}
+                                    .join(":");
+        r->process->env.push_back("LD_LIBRARY_PATH=" + fixLdLibraryPath);
         r->process->env.push_back("QT_PLUGIN_PATH=/usr/lib/plugins");
         r->process->env.push_back("QT_QPA_PLATFORM_PLUGIN_PATH=/usr/lib/plugins/platforms");
         return 0;
@@ -251,9 +264,6 @@ public:
     int stageHost() const
     {
         QList<QPair<QString, QString>> mountMap = {
-            // FIXME: import from runtime!!!
-            {"/opt/deepinwine", "/opt/deepinwine"},
-            {"/opt/deepin-wine6-stable", "/opt/deepin-wine6-stable"},
             {"/tmp/.X11-unix", "/tmp/.X11-unix"},
             {"/etc/resolv.conf", "/run/host/network/etc/resolv.conf"},
             {"/run/resolvconf", "/run/resolvconf"},

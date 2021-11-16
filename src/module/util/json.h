@@ -260,7 +260,7 @@ namespace util {
 template<typename T>
 static T *loadJSON(const QString &filepath)
 {
-    QFile jsonFile(":/config.json");
+    QFile jsonFile(filepath);
     jsonFile.open(QIODevice::ReadOnly);
     auto json = QJsonDocument::fromJson(jsonFile.readAll());
     return fromVariant<T>(json.toVariant());

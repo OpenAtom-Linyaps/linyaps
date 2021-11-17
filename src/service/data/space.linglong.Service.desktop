@@ -1,7 +1,6 @@
 [Desktop Entry]
 Type=Application
 Name=Linglong Service
-Exec=ll-service
-Icon=
+Exec=/usr/bin/ll-service
 NoDisplay=true
-Terminal=true
+Terminal=false

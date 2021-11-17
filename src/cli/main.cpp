@@ -55,7 +55,12 @@ void checkAndStartService(ComDeepinLinglongPackageManagerInterface &pm)
     QDBusReply<QString> status = pm.Status();
     // FIXME: should use more precision to check status
     if (kStatusActive != status.value()) {
-        QProcess::startDetached("ll-service", {});
+        QProcess process;
+        process.setProgram("ll-service");
+        process.setStandardOutputFile("/dev/null");
+        process.setStandardErrorFile("/dev/null");
+        process.setArguments({});
+        process.startDetached();
     }
 
     for (int i = 0; i < 10; ++i) {

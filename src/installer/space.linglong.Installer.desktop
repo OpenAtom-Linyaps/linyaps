@@ -9,5 +9,5 @@ Icon=space.linglong.Installer
 Exec=/usr/bin/ll-installer -u %u
 Name=Linglong Store Installer
 Name[zh_CN]=Linglong Store Installer
-MimeType=x-scheme-handler/linglong
+MimeType=x-scheme-handler/og
 

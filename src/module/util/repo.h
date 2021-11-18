@@ -72,7 +72,8 @@ bool inline makeOstree(const QString &dest_path, const QString &mode)
  * @param out_commit    commit
  * @return
  */
-bool inline commitOstree(const QString &repo_path, const QString &summary, const QString &body, const QString &branch, const QString &dir_data, QString &out_commit)
+bool inline commitOstree(const QString &repo_path, const QString &summary, const QString &body, const QString &branch,
+                         const QString &dir_data, QString &out_commit)
 {
     if (!dirExists(dir_data)) {
         qInfo() << "datadir not exists!!!";
@@ -87,9 +88,10 @@ bool inline commitOstree(const QString &repo_path, const QString &summary, const
 
     QString program = "ostree";
     QStringList arguments;
-    arguments << QString("--repo=") + repo_path << QString("commit") << QString("-s") << summary << QString("-m") << body << QString("-b") << branch << QString("--tree=dir=") + dir_data;
+    arguments << QString("--repo=") + repo_path << QString("commit") << QString("-s") << summary << QString("-m")
+              << body << QString("-b") << branch << QString("--tree=dir=") + dir_data;
 
-    auto ret = RunnerRet("ostree", arguments, 15*60*1000);
+    auto ret = RunnerRet("ostree", arguments, 15 * 60 * 1000);
     std::tie(retval, retmsg) = ret;
     if (retval == false) {
         qInfo() << retmsg;
@@ -98,7 +100,7 @@ bool inline commitOstree(const QString &repo_path, const QString &summary, const
     out_commit = retmsg.first();
     out_commit = out_commit.simplified();
 
-    qInfo() << "commit 值：" + out_commit;
+    std::cout << "commit 值：" + out_commit.toStdString() << std::endl;
     qInfo() << "commit successed!!!";
 
     return true;

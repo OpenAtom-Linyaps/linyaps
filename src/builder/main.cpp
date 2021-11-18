@@ -33,6 +33,13 @@ using namespace linglong;
 
 int main(int argc, char **argv)
 {
+    //使用环境变量控制打印信息输出
+    if (QString(qgetenv("LL_BUILDER_CONSOLE_LOG_ENABLE")) == QString("true")) {
+        qputenv("QT_LOGGING_RULES", "*=true");
+    } else {
+        qputenv("QT_LOGGING_RULES", "*=false");
+    }
+
     QCoreApplication app(argc, argv);
 
     qJsonRegister<linglong::builder::Project>();

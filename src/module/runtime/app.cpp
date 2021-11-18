@@ -174,6 +174,7 @@ public:
                 {"/etc", "/etc"},
                 {runtimeRootPath + "/usr", "/runtime"},
                 // FIXME: extract for wine, remove later
+		{runtimeRootPath + "/usr/lib/i386-linux-gnu", "/usr/lib/i386-linux-gnu"},
                 {runtimeRootPath + "/opt/deepinwine", "/opt/deepinwine"},
                 {runtimeRootPath + "/opt/deepin-wine6-stable", "/opt/deepin-wine6-stable"},
             };

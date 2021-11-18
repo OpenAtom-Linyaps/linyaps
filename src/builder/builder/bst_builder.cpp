@@ -58,15 +58,22 @@ util::Result BstBuilder::create(const QString &projectName)
     auto bstName = QString(projectName).replace(".", "-");
 
     // TODO: can read list from file
-    auto replaceFilenameList = QStringList {"project.conf", "elements/export.bst", "files/uap.json", "files/loader"};
+    auto replaceFilenameList = QStringList {"project.conf",
+                                            "files/resource/uap.json",
+                                            "files/resource/loader",
+                                            "files/resource/info.json",
+                                            "files/resource/entries/applications/org.deepin.demo.desktop",
+                                            "files/src/mainwindow.cpp"};
     templateDirCopy(":org.deepin.demo", projectName, replaceFilenameList,
                     {
                         {"PROJECT_NAME", bstName},
                         {"APP_ID", projectName},
                     });
 
-    //设置loader运行权限
-    QFile(QDir(projectName).absoluteFilePath("files/loader"))
+    //设置loader、demo 、org.deepin.demo.desktop运行权限
+    QFile(QDir(projectName).absoluteFilePath("files/resource/loader"))
+        .setPermissions(QFileDevice::ExeOwner | QFileDevice::WriteOwner | QFileDevice::ReadOwner);
+    QFile(QDir(projectName).absoluteFilePath("files/resource/entries/applications/org.deepin.demo.desktop"))
         .setPermissions(QFileDevice::ExeOwner | QFileDevice::WriteOwner | QFileDevice::ReadOwner);
 
     auto hint =
@@ -119,7 +126,7 @@ util::Result BstBuilder::exportBundle(const QString &outputFilePath)
 util::Result BstBuilder::push(const QString &bundleFilePath, bool force)
 {
     // TODO: push build result to repoURL
-    std::cout << "start push ..." << std:: endl;
+    std::cout << "start push ..." << std::endl;
     linglong::package::Bundle uabBundle;
     auto pushBundleResult = uabBundle.push(bundleFilePath, force);
     if (!pushBundleResult.success()) {

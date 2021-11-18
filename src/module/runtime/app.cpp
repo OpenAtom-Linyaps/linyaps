@@ -257,8 +257,8 @@ public:
                                              "/runtime/lib/i386-linux-gnu"}
                                     .join(":");
         r->process->env.push_back("LD_LIBRARY_PATH=" + fixLdLibraryPath);
-        r->process->env.push_back("QT_PLUGIN_PATH=/usr/lib/plugins");
-        r->process->env.push_back("QT_QPA_PLATFORM_PLUGIN_PATH=/usr/lib/plugins/platforms");
+        r->process->env.push_back("QT_PLUGIN_PATH=/usr/lib/plugins:/runtime/plugins");
+        r->process->env.push_back("QT_QPA_PLATFORM_PLUGIN_PATH=/usr/lib/plugins/platforms:/runtime/plugins/platforms");
         return 0;
     }
 

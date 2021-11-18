@@ -2,7 +2,17 @@
     <qresource prefix="/">
         <file>org.deepin.demo/project.conf</file>
         <file>org.deepin.demo/elements/export.bst</file>
-        <file>org.deepin.demo/files/loader</file>
-        <file>org.deepin.demo/files/uap.json</file>
+        <file>org.deepin.demo/elements/demo.bst</file>
+        <file>org.deepin.demo/elements/info.bst</file>
+        <file>org.deepin.demo/elements/sdk.bst</file>
+        <file>org.deepin.demo/files/resource/info.json</file>
+        <file>org.deepin.demo/files/resource/loader</file>
+        <file>org.deepin.demo/files/resource/uap.json</file>
+        <file>org.deepin.demo/files/resource/entries/applications/org.deepin.demo.desktop</file>
+        <file>org.deepin.demo/files/src/demo.pro</file>
+        <file>org.deepin.demo/files/src/main.cpp</file>
+        <file>org.deepin.demo/files/src/mainwindow.cpp</file>
+        <file>org.deepin.demo/files/src/mainwindow.h</file>
+        <file>org.deepin.demo/files/src/mainwindow.ui</file>
     </qresource>
 </RCC>

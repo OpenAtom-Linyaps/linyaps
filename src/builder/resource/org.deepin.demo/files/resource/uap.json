@@ -23,7 +23,7 @@
             "permission":"d"
         }
     },
-    "runtime":"aaa2668a-f67e-11eb-913a-23d17b06112b",
+    "runtime":"com.deepin.Runtime/20/x86_64",
     "description":"deepin demo.",
     "appid":"@APP_ID@",
     "name":"deepin-demo",

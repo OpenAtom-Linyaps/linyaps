@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=demo
+Exec=/opt/apps/@APP_ID@/files/bin/demo
+Terminal=false
+Type=Application
+Icon=Demo
+StartupWMClass=Demo
+GenericName=Demo
+Comment=Demo
+Categories=Utility;
+Keywords=password;security;
+Name[zh_CN]=@APP_ID@

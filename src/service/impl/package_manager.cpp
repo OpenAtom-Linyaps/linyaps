@@ -199,23 +199,24 @@ QString PackageManager::Import(const QStringList &packagePathList)
     return {};
 }
 
-QString appConfigPath(const QString &appID)
+QString appConfigPath(const QString &appID, const QString &appVersion)
 {
     util::ensureUserDir({".linglong", appID});
 
     auto configPath = getUserFile(QString("%1/%2/app.yaml").arg(".linglong", appID));
 
-    if (QFile::exists(configPath)) {
-        return configPath;
-    }
-
     // create yaml form info
     // auto appRoot = LocalRepo::get()->rootOfLatest();
-    auto latestAppRef = repo::latestOf(appID);
+    auto latestAppRef = repo::latestOf(appID, appVersion);
 
     auto appInstallRoot = repo::rootOfLayer(latestAppRef);
 
     auto appInfo = appInstallRoot + "/info.json";
+    // 判断是否存在
+    if (!fileExists(appInfo)) {
+        qCritical() << appInfo << " not exist";
+        return "";
+    }
 
     // create a yaml config from json
     auto info = util::loadJSON<package::Info>(appInfo);
@@ -259,13 +260,23 @@ QString appConfigPath(const QString &appID)
  * 执行软件包
  * @param packageID 软件包的appid
  */
-QString PackageManager::Start(const QString &packageID)
+QString PackageManager::Start(const QString &packageID, const ParamStringMap &paramMap)
 {
     Q_D(PackageManager);
 
     qDebug() << "start package" << packageID;
+
+    // 获取版本信息
+    QString version = "";
+    if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_VERSION)) {
+        version = paramMap[linglong::util::KEY_VERSION];
+    }
     return JobManager::instance()->CreateJob([=](Job *jr) {
-        QString configPath = appConfigPath(packageID);
+        QString configPath = appConfigPath(packageID, version);
+        // 判断是否存在
+        if (!fileExists(configPath)) {
+            return;
+        }
         auto app = App::load(configPath);
         if (nullptr == app) {
             // FIXME: set job status to failed

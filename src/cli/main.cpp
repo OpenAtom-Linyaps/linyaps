@@ -124,7 +124,14 @@ int main(int argc, char **argv)
              }
              auto exec = parser.value(optExec);
 
-             pm.Start({appID});
+             // appID format: org.deepin.calculator/1.2.6 in multi-version
+             QMap<QString, QString> paramMap;
+             QStringList appInfoList = appID.split("/");
+             if (appInfoList.size() > 1) {
+                 paramMap.insert(linglong::util::KEY_VERSION, appInfoList.at(1));
+             }
+             pm.Start(appInfoList.at(0), paramMap);
+
              // TODO
              //        QFile f(configPath);
              //        f.open(QIODevice::ReadOnly);

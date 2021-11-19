@@ -21,6 +21,7 @@
 #include "module/package/package.h"
 #include "module/runtime/container.h"
 #include "module/package/pkginfo.h"
+#include "module/util/package_manager_param.h"
 #include "module/util/singleton.h"
 #include "package_manager_impl.h"
 #include "qdbus_retmsg.h"
@@ -50,7 +51,7 @@ public Q_SLOTS:
 
     QString Import(const QStringList &packagePathList);
 
-    QString Start(const QString &packageID);
+    QString Start(const QString &packageID, const ParamStringMap &paramMap = {});
     void Stop(const QString &containerID);
     ContainerList ListContainer();
 

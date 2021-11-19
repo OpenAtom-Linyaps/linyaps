@@ -22,7 +22,7 @@ namespace repo {
 const auto kLayersRoot = "/deepin/linglong/layers";
 
 // FIXME: move to class LocalRepo
-package::Ref latestOf(const QString &appID)
+package::Ref latestOf(const QString &appID, const QString &appVersion)
 {
     auto latestVersionOf = [](const QString &appID) {
         auto localRepoRoot = QString(kLayersRoot) + "/" + appID;
@@ -34,15 +34,20 @@ package::Ref latestOf(const QString &appID)
             return appRoot.absoluteFilePath("latest");
         }
 
-        auto verDirs = appRoot.entryList(QDir::NoDotAndDotDot | QDir::Dirs);
-
         // FIXME: found biggest version
+        appRoot.setSorting(QDir::Name | QDir::Reversed);
+        auto verDirs = appRoot.entryList(QDir::NoDotAndDotDot | QDir::Dirs);
         auto available = verDirs.value(0);
         qCritical() << "available version" << available << appRoot << verDirs;
         return available;
     };
 
-    auto refID = appID + "/" + latestVersionOf(appID) + "/" + util::hostArch();
+    // 未指定版本使用最新版本，指定版本下使用指定版本
+    auto version = latestVersionOf(appID);
+    if (!appVersion.isEmpty()) {
+        version = appVersion;
+    }
+    auto refID = appID + "/" + version + "/" + util::hostArch();
     return package::Ref(refID);
 }
 

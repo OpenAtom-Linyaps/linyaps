@@ -40,10 +40,16 @@ void printAppInfo(PKGInfoList retMsg)
         std::cout << std::setiosflags(std::ios::left) << std::setw(24) << "id" << std::setw(16)
                   << "name" << std::setw(16) << "version" << std::setw(12) << "arch"
                   << "description" << std::endl;
+        // 最长显示字符数
+        const int maxDisSize = 50;
         for (auto const &it : retMsg) {
+            QString simpleDescription = it->description;
+            if (it->description.length() > maxDisSize) {
+                simpleDescription = it->description.left(maxDisSize) + "...";
+            }
             std::cout << std::setiosflags(std::ios::left) << std::setw(24) << it->appid.toStdString()
                       << std::setw(16) << it->appname.toStdString() << std::setw(16) << it->version.toStdString()
-                      << std::setw(12) << it->arch.toStdString() << it->description.toStdString() << std::endl;
+                      << std::setw(12) << it->arch.toStdString() << simpleDescription.toStdString() << std::endl;
         }
     } else {
         std::cout << "app not found in repo" << std::endl;
@@ -217,10 +223,12 @@ int main(int argc, char **argv)
              RetMessageList ret_msg = reply.value();
              if (ret_msg.size() > 0) {
                  auto it = ret_msg.at(0);
-                 qInfo() << "message:\t" << it->message;
+                 std::cout << "message: " << it->message.toStdString();
                  if (!it->state) {
-                     qInfo() << "code:\t" << it->code;
+                     std::cout << ", errcode:" << it->code << std::endl;
+                     return -1;
                  }
+                 std::cout << std::endl;
              }
              return 0;
          }},
@@ -237,7 +245,7 @@ int main(int argc, char **argv)
              if (appID.endsWith(".uap", Qt::CaseInsensitive) || appID.endsWith(".ouap", Qt::CaseInsensitive)) {
                  QFileInfo uap_fs(appID);
                  if (!uap_fs.exists()) {
-                     qCritical() << "input file not found : " << appID;
+                     std::cout << "input file not found : " << appID.toStdString();
                      return -1;
                  }
                  reply = pm.Install({uap_fs.absoluteFilePath()}, {});
@@ -250,16 +258,17 @@ int main(int argc, char **argv)
                  }
                  reply = pm.Install({appInfoList.at(0)}, paramMap);
              }
-             qInfo() << "install " << appID << ", please wait a few minutes...";
+             std::cout << "install " << appID.toStdString() << ", please wait a few minutes..." << std::endl;
              reply.waitForFinished();
              RetMessageList ret_msg = reply.value();
              if (ret_msg.size() > 0) {
                  auto it = ret_msg.at(0);
-                 qInfo() << "message:\t" << it->message;
+                 std::cout << "message: " << it->message.toStdString();
                  if (!it->state) {
-                     qInfo() << "code:\t" << it->code;
+                     std::cout << ", errcode:" << it->code << std::endl;
                      return -1;
                  }
+                 std::cout << std::endl;
              }
              return 0;
          }},
@@ -315,10 +324,12 @@ int main(int argc, char **argv)
              RetMessageList retMsg = reply.value();
              if (retMsg.size() > 0) {
                  auto it = retMsg.at(0);
-                 qInfo() << "message:\t" << it->message;
+                 std::cout << "message: " << it->message.toStdString();
                  if (!it->state) {
-                     qInfo() << "code:\t" << it->code;
+                     std::cout << ", errcode:" << it->code << std::endl;
+                     return -1;
                  }
+                 std::cout << std::endl;
              }
              return 0;
          }},

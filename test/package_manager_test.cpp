@@ -217,7 +217,7 @@ TEST(Package, install03)
     QString appID = "org.deepin.calculator";
 
     // 查询是否已安装
-    QDBusPendingReply<PKGInfoList> replyQuery = pm.Query({"installed"});
+    QDBusPendingReply<PKGInfoList> replyQuery = pm.Query({"installed"}, {});
     replyQuery.waitForFinished();
     bool expectRet = true;
     PKGInfoList queryMsg = replyQuery.value();
@@ -294,7 +294,7 @@ TEST(Package, install05)
         qInfo() << ouapPath << " not exist";
     }
     // 查询是否已安装
-    QDBusPendingReply<PKGInfoList> replyQuery = pm.Query({"installed"});
+    QDBusPendingReply<PKGInfoList> replyQuery = pm.Query({"installed"}, {});
     replyQuery.waitForFinished();
     PKGInfoList queryMsg = replyQuery.value();
     for (auto const &it : queryMsg) {
@@ -334,7 +334,7 @@ TEST(Package, query01)
                                                 QDBusConnection::sessionBus());
     // test app not in repo
     auto appID = "test.deepin.test";
-    QDBusPendingReply<PKGInfoList> reply = pm.Query({appID});
+    QDBusPendingReply<PKGInfoList> reply = pm.Query({appID}, {});
     reply.waitForFinished();
     PKGInfoList ret_msg = reply.value();
     bool ret = ret_msg.size() == 0 ? true : false;
@@ -355,7 +355,7 @@ TEST(Package, query02)
                                                 QDBusConnection::sessionBus());
     // test app not in repo
     auto appID = "";
-    QDBusPendingReply<PKGInfoList> reply = pm.Query({appID});
+    QDBusPendingReply<PKGInfoList> reply = pm.Query({appID}, {});
     reply.waitForFinished();
     PKGInfoList ret_msg = reply.value();
     bool ret = ret_msg.size() == 0 ? true : false;
@@ -455,7 +455,7 @@ TEST(Package, list01)
                                                 QDBusConnection::sessionBus());
     // test app not in repo
     auto optPara = "";
-    QDBusPendingReply<PKGInfoList> reply = pm.Query({optPara});
+    QDBusPendingReply<PKGInfoList> reply = pm.Query({optPara}, {});
     reply.waitForFinished();
     PKGInfoList retMsg = reply.value();
     bool ret = retMsg.size() == 0 ? true : false;
@@ -475,7 +475,7 @@ TEST(Package, list02)
                                                 "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());
     auto optPara = "installed";
-    QDBusPendingReply<PKGInfoList> reply = pm.Query({optPara});
+    QDBusPendingReply<PKGInfoList> reply = pm.Query({optPara}, {});
     reply.waitForFinished();
     PKGInfoList retMsg = reply.value();
     bool ret = retMsg.size() > 0 ? true : false;

@@ -1291,7 +1291,7 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIDList, con
  *
  * @return PKGInfoList 查询结果列表
  */
-PKGInfoList PackageManagerImpl::Query(const QStringList &packageIDList)
+PKGInfoList PackageManagerImpl::Query(const QStringList &packageIDList, const ParamStringMap &paramMap)
 {
     const QString pkgName = packageIDList.at(0);
     if (pkgName.isNull() || pkgName.isEmpty()) {

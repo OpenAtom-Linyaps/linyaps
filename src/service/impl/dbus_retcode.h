@@ -55,6 +55,7 @@ enum class RetCode {
     ouap_download_success,
     ouap_install_success, // ouap文件安装成功
     pkg_install_success, // 安装成功
+    pkg_install_failed, // 安装失败
     pkg_uninstall_success, // 卸载成功
     pkg_uninstall_failed   // 卸载失败
 };

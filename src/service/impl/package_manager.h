@@ -26,6 +26,8 @@
 #include "package_manager_impl.h"
 #include "qdbus_retmsg.h"
 
+#include "package_manager_flatpak_impl.h"
+
 using linglong::service::util::AppInstance;
 
 class PackageManagerPrivate;
@@ -47,7 +49,7 @@ public Q_SLOTS:
     QString Update(const QStringList &packageIDList);
     QString UpdateAll();
 
-    PKGInfoList Query(const QStringList &packageIDList);
+    PKGInfoList Query(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
 
     QString Import(const QStringList &packagePathList);
 

@@ -3,6 +3,7 @@ set(LL_SERVICE_SOURCES
     resource/resource.qrc
     impl/package_manager.cpp
     impl/package_manager_impl.cpp
+    impl/package_manager_flatpak_impl.cpp
     impl/version.h
     impl/uap_manager.cpp
     impl/job_manager.cpp

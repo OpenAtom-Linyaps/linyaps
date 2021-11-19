@@ -102,6 +102,9 @@ RetMessageList PackageManager::Download(const QStringList &packageIDList, const 
  */
 RetMessageList PackageManager::Install(const QStringList &packageIDList, const ParamStringMap &paramMap)
 {
+    if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT)) {
+        return PackageManagerFlatpakImpl::get()->Install(packageIDList);
+    }
     Q_D(PackageManager);
 
     // return JobManager::instance()->CreateJob([](Job *jr) {
@@ -132,6 +135,9 @@ RetMessageList PackageManager::Install(const QStringList &packageIDList, const P
 
 RetMessageList PackageManager::Uninstall(const QStringList &packageIDList, const ParamStringMap &paramMap)
 {
+    if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT)) {
+        return PackageManagerFlatpakImpl::get()->Uninstall(packageIDList);
+    }
     // 校验包名参数
     // 判断软件包是否安装
     // 卸载
@@ -178,8 +184,11 @@ QString PackageManager::UpdateAll()
  *
  * @return PKGInfoList 查询结果列表
  */
-PKGInfoList PackageManager::Query(const QStringList &packageIDList)
+PKGInfoList PackageManager::Query(const QStringList &packageIDList, const ParamStringMap &paramMap)
 {
+    if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT)) {
+        return PackageManagerFlatpakImpl::get()->Query(packageIDList);
+    }
     QString pkgName = packageIDList.at(0);
     if (pkgName.isNull() || pkgName.isEmpty()) {
         qInfo() << "package name err";

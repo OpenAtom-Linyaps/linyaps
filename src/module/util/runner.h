@@ -41,16 +41,17 @@ auto Runner(const T program = "ostree", const Y args = "", const P timeout = 300
     qDebug() << program << args;
     runner.start(program, args);
     if (!runner.waitForStarted()) {
-        qInfo() << program << " init failed!";
+        qCritical() << program << " init failed!";
         return false;
     }
     if (!runner.waitForFinished(timeout)) {
-        qInfo() << program << " run finish failed!";
+        qCritical() << program << " run finish failed!";
         return false;
     }
-    auto ret_code = runner.exitStatus();
-    if (ret_code != 0) {
-        qInfo() << "run failed: " << ret_code;
+    auto retStatus = runner.exitStatus();
+    auto retCode = runner.exitCode();
+    if ((retStatus != 0) || (retStatus == 0 && retCode != 0)) {
+        qCritical() << program << " run failed, retCode:" << retCode;
         return false;
     }
     return true;

@@ -49,7 +49,7 @@ public:
     RetMessageList Download(const QStringList &packageIDList, const QString &savePath);
     RetMessageList Install(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
     RetMessageList Uninstall(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
-    PKGInfoList Query(const QStringList &packageIDList);
+    PKGInfoList Query(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
 
 private:
     AppStreamPkgInfo appStreamPkgInfo;
@@ -260,7 +260,7 @@ private:
      * @param curVersion: 当前软件包版本
      * @param dstVersion: 目标软件包版本
      *
-     * @return bool: ver2 比 ver1版本新返回true,否则返回false
+     * @return bool: dstVersion 比 curVersion版本新返回true,否则返回false
      */
     bool cmpAppVersion(const QString &curVersion, const QString &dstVersion);
 

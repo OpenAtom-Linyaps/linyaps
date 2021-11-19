@@ -34,6 +34,26 @@
 #include "service/impl/json_register_inc.h"
 #include "package_manager.h"
 
+void printFlatpakAppInfo(PKGInfoList retMsg)
+{
+    if (retMsg.size() > 0) {
+        if (retMsg.at(0)->appid == "flatpaklist") {
+            std::cout << std::setiosflags(std::ios::left) << std::setw(48) << "Description" << std::setw(16)
+                      << "Application" << std::setw(16) << "Version" << std::setw(12) << "Branch" << std::setw(12)
+                      << "Arch" << std::setw(12) << "Origin" << std::setw(12) << "Installation" << std::endl;
+        } else {
+            std::cout << std::setiosflags(std::ios::left) << std::setw(72) << "Description" << std::setw(16)
+                      << "Application" << std::setw(16) << "Version" << std::setw(12) << "Branch" << std::setw(12)
+                      << "Remotes" << std::endl;
+        }
+        QString ret = retMsg.at(0)->description;
+        QStringList strList = ret.split(QRegExp("[\r\n]"), QString::SkipEmptyParts);
+        for (int i = 0; i < strList.size(); ++i) {
+            std::cout << strList[i].simplified().toStdString() << std::endl;
+        }
+    }
+}
+
 void printAppInfo(PKGInfoList retMsg)
 {
     if (retMsg.size() > 0) {
@@ -236,9 +256,16 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("install", "install an application", "install");
              parser.addPositionalArgument("app-id", "app id", "com.deepin.demo");
+             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
+             parser.addOption(optRepoPoint);
              parser.process(app);
              auto args = parser.positionalArguments();
              auto appID = args.value(1);
+             auto repoType = parser.value(optRepoPoint);
+             if (appID.isEmpty() || (!repoType.isEmpty() && repoType != "flatpak")) {
+                 parser.showHelp(-1);
+                 return -1;
+             }
              // 设置 10 分钟超时 to do
              pm.setTimeout(1000 * 60 * 10);
              QDBusPendingReply<RetMessageList> reply;
@@ -255,6 +282,9 @@ int main(int argc, char **argv)
                  QStringList appInfoList = appID.split("/");
                  if (appInfoList.size() > 1) {
                      paramMap.insert(linglong::util::KEY_VERSION, appInfoList.at(1));
+                 }
+                 if (!repoType.isEmpty()) {
+                     paramMap.insert(linglong::util::KEY_REPO_POINT, repoType);
                  }
                  reply = pm.Install({appInfoList.at(0)}, paramMap);
              }
@@ -276,13 +306,28 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("query", "query app info", "query");
              parser.addPositionalArgument("app-id", "app id", "com.deepin.demo");
+             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
+             parser.addOption(optRepoPoint);
              parser.process(app);
+             auto repoType = parser.value(optRepoPoint);
+             if (!repoType.isEmpty() && repoType != "flatpak") {
+                 parser.showHelp(-1);
+                 return -1;
+             }
+             QMap<QString, QString> paramMap;
+             if (!repoType.isEmpty()) {
+                 paramMap.insert(linglong::util::KEY_REPO_POINT, repoType);
+             }
              auto args = parser.positionalArguments();
              auto appID = args.value(1);
-             QDBusPendingReply<PKGInfoList> reply = pm.Query({appID});
+             QDBusPendingReply<PKGInfoList> reply = pm.Query({appID}, paramMap);
              reply.waitForFinished();
-             PKGInfoList ret_msg = reply.value();
-             printAppInfo(ret_msg);
+             PKGInfoList retMsg = reply.value();
+             if (retMsg.size() == 1 && retMsg.at(0)->appid == "flatpakquery") {
+                 printFlatpakAppInfo(retMsg);
+             } else {
+                 printAppInfo(retMsg);
+             }
              return 0;
          }},
         {"repo", [&](QCommandLineParser &parser) -> int {
@@ -306,9 +351,16 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("uninstall", "uninstall an application", "uninstall");
              parser.addPositionalArgument("app-id", "app id", "com.deepin.demo");
+             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
+             parser.addOption(optRepoPoint);
              parser.process(app);
              auto args = parser.positionalArguments();
              auto appInfo = args.value(1);
+             auto repoType = parser.value(optRepoPoint);
+             if (appInfo.isEmpty() || (!repoType.isEmpty() && repoType != "flatpak")) {
+                 parser.showHelp(-1);
+                 return -1;
+             }
              // 设置 10 分钟超时 to do
              pm.setTimeout(1000 * 60 * 10);
              QDBusPendingReply<RetMessageList> reply;
@@ -318,6 +370,9 @@ int main(int argc, char **argv)
              QStringList appInfoList = appInfo.split("/");
              if (appInfoList.size() > 1) {
                  paramMap.insert(linglong::util::KEY_VERSION, appInfoList.at(1));
+             }
+             if (!repoType.isEmpty()) {
+                 paramMap.insert(linglong::util::KEY_REPO_POINT, repoType);
              }
              reply = pm.Uninstall({appInfoList.at(0)}, paramMap);
              reply.waitForFinished();
@@ -338,17 +393,32 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("list", "show installed application", "list");
              parser.addOption(optType);
+             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
+             parser.addOption(optRepoPoint);
              parser.process(app);
              auto optPara = parser.value(optType);
              if (optPara != "installed") {
                  parser.showHelp(-1);
                  return -1;
              }
-             QDBusPendingReply<PKGInfoList> reply = pm.Query({optPara});
+             auto repoType = parser.value(optRepoPoint);
+             if (!repoType.isEmpty() && repoType != "flatpak") {
+                 parser.showHelp(-1);
+                 return -1;
+             }
+             QMap<QString, QString> paramMap;
+             if (!repoType.isEmpty()) {
+                 paramMap.insert(linglong::util::KEY_REPO_POINT, repoType);
+             }
+             QDBusPendingReply<PKGInfoList> reply = pm.Query({optPara}, paramMap);
              // 默认超时时间为25s
              reply.waitForFinished();
              PKGInfoList retMsg = reply.value();
-             printAppInfo(retMsg);
+             if (retMsg.size() == 1 && retMsg.at(0)->appid == "flatpaklist") {
+                 printFlatpakAppInfo(retMsg);
+             } else {
+                 printAppInfo(retMsg);
+             }
              return 0;
          }},
     };

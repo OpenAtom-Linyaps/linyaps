@@ -1,0 +1,6 @@
+usr/bin/ll-service
+usr/bin/ll-installer
+usr/bin/ll-cli
+usr/share/applications/space.linglong.Service.desktop
+usr/share/applications/space.linglong.Installer.desktop
+etc/xdg/autostart/space.linglong.Service.desktop

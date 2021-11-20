@@ -21,3 +21,5 @@ target_link_libraries(ll-builder
                       PRIVATE -larchive)
 
 install(TARGETS ll-builder RUNTIME DESTINATION bin)
+
+install(PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/import_app2repo.py DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

@@ -11,8 +11,3 @@ override_dh_auto_configure:
 	  -DCMAKE_BUILD_TYPE=Release \
 	  -DCMAKE_INSTALL_PREFIX=/usr \
       -DAPP_VERSION=$(DEB_VERSION_UPSTREAM) -DVERSION=$(DEB_VERSION_UPSTREAM) LIB_INSTALL_DIR=/usr/lib DH_AUTO_ARGS = --parallel --buildsystem=cmake
-
-override_dh_install:
-	install -d debian/linglong-bin/usr/share/dbus-1/interfaces
-	install -m 0644 $(CURDIR)/src/module/dbus_ipc/*.xml debian/linglong-bin/usr/share/dbus-1/interfaces
-	install -m 0755 $(CURDIR)/scripts/import_app2repo.py debian/linglong-bin/usr/bin

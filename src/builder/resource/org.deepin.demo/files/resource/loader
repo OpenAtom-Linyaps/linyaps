@@ -22,7 +22,6 @@ NUMBER_OF_ARGS="$#"
 args=("$@")
 
 BIN="$WORK_DIR/files/bin/demo"
-bundle_exec
 
 bundle_exec() {
   if [ $NUMBER_OF_ARGS -eq 0 ]; then
@@ -31,3 +30,5 @@ bundle_exec() {
     exec "$BIN" "${args[@]}"
   fi
 }
+
+bundle_exec

@@ -47,8 +47,8 @@ package::Ref latestOf(const QString &appID, const QString &appVersion)
     if (!appVersion.isEmpty()) {
         version = appVersion;
     }
-    auto refID = appID + "/" + version + "/" + util::hostArch();
-    return package::Ref(refID);
+    auto ref = appID + "/" + version + "/" + util::hostArch();
+    return package::Ref(ref);
 }
 
 QString rootOfLayer(const package::Ref &ref)

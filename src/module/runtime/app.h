@@ -17,7 +17,7 @@ class Layer : public JsonSerialize
 {
     Q_OBJECT
     Q_JSON_CONSTRUCTOR(Layer)
-    Q_JSON_PROPERTY(QString, refID);
+    Q_JSON_PROPERTY(QString, ref);
 };
 Q_JSON_DECLARE_PTR_METATYPE(Layer)
 

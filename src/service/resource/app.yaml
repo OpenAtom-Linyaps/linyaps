@@ -1,8 +1,8 @@
 version: 1.0
 
 package:
-  refID: @APP_REF@
+  ref: @APP_REF@
 
 runtime:
-  refID: @RUNTIME_REF@
+  ref: @RUNTIME_REF@
 

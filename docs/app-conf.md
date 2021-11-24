@@ -21,10 +21,10 @@ If not exist, create it first from info.json.
 version: 1.0
 
 package:
-  refID: com.qq.weixin.deepin/3.2.1.154deepin8/x86_64
+  ref: com.qq.weixin.deepin/3.2.1.154deepin8/x86_64
 
 runtime:
-  refID: com.deepin.Runtime/20/x86_64
+  ref: com.deepin.Runtime/20/x86_64
 
 # the section only can set by develop, and only work with debug enable
 debug:

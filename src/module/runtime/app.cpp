@@ -78,7 +78,7 @@ public:
         Q_Q(App);
         stageSystem();
         // FIXME: get info from module/package
-        auto runtimeRef = package::Ref(q->runtime->refID);
+        auto runtimeRef = package::Ref(q->runtime->ref);
         QString runtimeRootPath = repo::rootOfLayer(runtimeRef);
 
         qCritical() << runtimeRootPath;
@@ -90,7 +90,7 @@ public:
         }
         stageRuntime(fixRuntimePath);
 
-        auto appRef = package::Ref(q->package->refID);
+        auto appRef = package::Ref(q->package->ref);
         QString appRootPath = repo::rootOfLayer(appRef);
 
         qCritical() << appRootPath;

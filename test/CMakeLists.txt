@@ -23,7 +23,6 @@ set(LINK_LIBS
     -larchive
     CURL::libcurl
     ${OSTREE1_LDFLAGS}
-    ${APPSTREMGLIB_LDFLAGS}
     )
 # add qdbus call
 set_source_files_properties(../src/module/dbus_ipc/com.deepin.linglong.PackageManager.xml
@@ -82,7 +81,6 @@ pkg_search_module(OSTREE1 REQUIRED ostree-1)
 
 target_include_directories(ll-test PRIVATE
                            ${OSTREE1_INCLUDE_DIRS}
-                           ${APPSTREMGLIB_INCLUDE_DIRS}
                            )
 
 target_link_libraries(ll-test ${LINK_LIBS})

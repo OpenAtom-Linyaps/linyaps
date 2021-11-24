@@ -114,7 +114,12 @@ int main(int argc, char **argv)
 
     QCommandLineParser parser;
     parser.addHelpOption();
-    parser.addPositionalArgument("subcommand", "run\nps\nkill\ndownload\ninstall\nuninstall\nupdate\nquery\nlist\nbuild\nrepo", "subcommand [sub-option]");
+    QStringList subCommandList = {
+        "run", "ps", "exec", "kill", "download", "install", "uninstall", "update", "query", "list",
+    };
+
+    parser.addPositionalArgument("subcommand", subCommandList.join("\n"), "subcommand [sub-option]");
+
     // TODO: for debug now
     auto optDefaultConfig = QCommandLineOption("default-config", "default config json filepath", "");
     parser.addOption(optDefaultConfig);
@@ -329,23 +334,6 @@ int main(int argc, char **argv)
                  printAppInfo(retMsg);
              }
              return 0;
-         }},
-        {"repo", [&](QCommandLineParser &parser) -> int {
-             parser.clearPositionalArguments();
-             parser.addPositionalArgument("ls", "show repo content", "ls");
-             parser.addPositionalArgument("repo", "repo", "repo");
-
-             parser.process(app);
-
-             QStringList args = parser.positionalArguments();
-
-             QString subCommand = args.isEmpty() ? QString() : args.first();
-             auto repoID = args.value(1);
-
-             // TODO: show repo result
-             //        repo::Manager m;
-             //        return m.ls(repoID);
-             return -1;
          }},
         {"uninstall", [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();

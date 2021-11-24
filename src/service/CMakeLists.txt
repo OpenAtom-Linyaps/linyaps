@@ -68,7 +68,6 @@ set(LINK_LIBS
     ${LINK_LIBS}
     CURL::libcurl
     ${OSTREE1_LDFLAGS}
-    ${APPSTREMGLIB_LDFLAGS}
     -larchive
     )
 
@@ -77,7 +76,6 @@ add_executable(ll-service
 
 target_include_directories(ll-service PRIVATE
                            ${OSTREE1_INCLUDE_DIRS}
-                           ${APPSTREMGLIB_INCLUDE_DIRS}
                            )
 
 target_link_libraries(ll-service PRIVATE

@@ -28,7 +28,6 @@
 #include "module/uab/uap.h"
 #include "module/util/fs.h"
 #include "module/util/repo.h"
-#include "module/util/retmessage.h"
 #include "service/impl/dbus_retcode.h"
 #include "module/util/runner.h"
 

@@ -8,6 +8,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+#include "package_manager.h"
+
 #include <QDBusConnection>
 #include <QDBusMessage>
 #include <QDebug>
@@ -23,10 +25,9 @@
 #include "module/util/sysinfo.h"
 #include "module/package/info.h"
 #include "module/repo/repo.h"
-#include "service/impl/dbus_retcode.h"
-
+#include "dbus_retcode.h"
 #include "job_manager.h"
-#include "package_manager.h"
+
 
 using linglong::util::fileExists;
 using linglong::util::listDirFolders;

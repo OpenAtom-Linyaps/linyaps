@@ -39,7 +39,6 @@ qt5_add_dbus_interface(LL_TEST_SOURCES
                        ../src/module/dbus_ipc/com.deepin.linglong.UapManager.xml
                        uap_manager)
 
-
 add_executable(ll-test
                "../src/module/util/json.h"
                "../src/module/util/yaml.h"

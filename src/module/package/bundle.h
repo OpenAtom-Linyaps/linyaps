@@ -17,7 +17,6 @@
 #include <sys/stat.h>
 #include <cstring>
 #include <unistd.h>
-
 #include <QFile>
 #include <QFileInfo>
 #include <QString>

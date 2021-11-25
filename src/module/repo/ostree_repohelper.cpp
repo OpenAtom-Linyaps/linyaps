@@ -1,15 +1,15 @@
 /*
  * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
  *
- * Author:     huqinghong@uniontech.com
+ * Author:     huqinghong <huqinghong@uniontech.com>
  *
- * Maintainer: huqinghong@uniontech.com
+ * Maintainer: huqinghong <huqinghong@uniontech.com>
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 #include "ostree_repohelper.h"
-#include "../util/runner.h"
+#include "module/util/runner.h"
 #include "service/impl/version.h"
 
 using namespace linglong::runner;

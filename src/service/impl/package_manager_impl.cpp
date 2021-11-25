@@ -16,7 +16,7 @@
 #include "module/util/httpclient.h"
 #include "module/util/package_manager_param.h"
 #include "package_manager_impl.h"
-#include "service/impl/dbus_retcode.h"
+#include "dbus_retcode.h"
 #include "version.h"
 
 using linglong::util::fileExists;

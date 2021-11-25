@@ -12,7 +12,6 @@
 
 #include <stdlib.h>
 #include <iostream>
-
 #include <QStringList>
 #include <QString>
 #include <QFileInfo>

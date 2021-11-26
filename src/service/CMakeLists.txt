@@ -8,7 +8,6 @@ set(LL_SERVICE_SOURCES
     impl/package_manager.cpp
     impl/package_manager_impl.cpp
     impl/package_manager_flatpak_impl.cpp
-    impl/uap_manager.cpp
     impl/job_manager.cpp
     impl/job.cpp
     impl/qdbus_retmsg.h
@@ -35,10 +34,6 @@ qt5_add_dbus_adaptor(LL_SERVICE_SOURCES
                      impl/package_manager.h
                      PackageManager)
 
-qt5_add_dbus_adaptor(LL_SERVICE_SOURCES
-                     ../module/dbus_ipc/com.deepin.linglong.UapManager.xml
-                     impl/uap_manager.h
-                     UapManager)
 
 qt5_add_dbus_adaptor(LL_SERVICE_SOURCES
                      ../module/dbus_ipc/com.deepin.linglong.JobManager.xml

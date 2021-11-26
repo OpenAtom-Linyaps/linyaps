@@ -13,7 +13,7 @@
 #include <vector>
 #include <thread>
 
-#include "module/util/singleton.h"
+#include "src/module/util/singleton.h"
 
 using std::cout;
 using std::endl;

@@ -62,9 +62,7 @@ include(GNUInstallDirs)
 include_directories(${linglong_SOURCE_DIR}/src)
 
 add_subdirectory(${linglong_SOURCE_DIR}/third_party)
-
 add_subdirectory(src)
-
 add_subdirectory(test)
 
 MESSAGE(STATUS "output " ${PROJECT_BINARY_DIR})

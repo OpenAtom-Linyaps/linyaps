@@ -13,13 +13,12 @@
 #include <gtest/gtest.h>
 #include <thread>
 #include <future>
-
 #include <QDebug>
 
-#include "module/package/package.h"
-#include "service/impl/json_register_inc.h"
-#include "service/impl/dbus_retcode.h"
-#include "module/util/fs.h"
+#include "src/module/package/package.h"
+#include "src/service/impl/json_register_inc.h"
+#include "src/service/impl/dbus_retcode.h"
+#include "src/module/util/fs.h"
 
 #define PKGUAPNAME "org.deepin.calculator-1.2.2-x86_64.uap"
 #define CONFIGFILE "../../test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64/uap.json"

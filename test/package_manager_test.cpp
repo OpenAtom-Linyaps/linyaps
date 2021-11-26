@@ -13,8 +13,8 @@
 #include <thread>
 #include <future>
 
-#include "../src/module/package/package.h"
-#include "../src/service/impl/json_register_inc.h"
+#include "src/module/package/package.h"
+#include "src/service/impl/json_register_inc.h"
 #include "package_manager.h"
 
 /*!

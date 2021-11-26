@@ -9,13 +9,12 @@
  */
 
 #include <gtest/gtest.h>
-
 #include <QJsonDocument>
 #include <QFile>
 #include <QFileInfo>
 #include <QTemporaryDir>
 
-#include "module/package/package.h"
+#include "src/module/package/package.h"
 
 #define UAPNAME "org.deepin.calculator-1.2.2-x86_64.uap"
 #define OUAPNAME "org.deepin.calculator-1.2.2-x86_64.ouap"

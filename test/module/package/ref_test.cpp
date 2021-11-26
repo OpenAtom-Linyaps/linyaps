@@ -10,7 +10,7 @@
 
 #include <gtest/gtest.h>
 
-#include "module/package/info.h"
+#include "src/module/package/info.h"
 
 using namespace linglong::package;
 

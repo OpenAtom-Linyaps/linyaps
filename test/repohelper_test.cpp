@@ -10,7 +10,7 @@
 
 #include <gtest/gtest.h>
 
-#include "module/repo/ostree_repohelper.h"
+#include "src/module/repo/ostree_repohelper.h"
 
 TEST(OstreeRepoHelperT01, ensureRepoEnv)
 {

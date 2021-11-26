@@ -261,25 +261,18 @@ int main(int argc, char **argv)
              // 设置 10 分钟超时 to do
              pm.setTimeout(1000 * 60 * 10);
              QDBusPendingReply<RetMessageList> reply;
-             if (appID.endsWith(".uap", Qt::CaseInsensitive) || appID.endsWith(".ouap", Qt::CaseInsensitive)) {
-                 QFileInfo uap_fs(appID);
-                 if (!uap_fs.exists()) {
-                     std::cout << "input file not found : " << appID.toStdString();
-                     return -1;
-                 }
-                 reply = pm.Install({uap_fs.absoluteFilePath()}, {});
-             } else {
-                 // appID format: org.deepin.calculator/1.2.6 in multi-version
-                 QMap<QString, QString> paramMap;
-                 QStringList appInfoList = appID.split("/");
-                 if (appInfoList.size() > 1) {
-                     paramMap.insert(linglong::util::KEY_VERSION, appInfoList.at(1));
-                 }
-                 if (!repoType.isEmpty()) {
-                     paramMap.insert(linglong::util::KEY_REPO_POINT, repoType);
-                 }
-                 reply = pm.Install({appInfoList.at(0)}, paramMap);
+
+             // appID format: org.deepin.calculator/1.2.6 in multi-version
+             QMap<QString, QString> paramMap;
+             QStringList appInfoList = appID.split("/");
+             if (appInfoList.size() > 1) {
+                 paramMap.insert(linglong::util::KEY_VERSION, appInfoList.at(1));
              }
+             if (!repoType.isEmpty()) {
+                 paramMap.insert(linglong::util::KEY_REPO_POINT, repoType);
+             }
+             reply = pm.Install({appInfoList.at(0)}, paramMap);
+
              std::cout << "install " << appID.toStdString() << ", please wait a few minutes..." << std::endl;
              reply.waitForFinished();
              RetMessageList ret_msg = reply.value();

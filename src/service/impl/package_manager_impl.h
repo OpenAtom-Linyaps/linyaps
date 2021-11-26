@@ -69,16 +69,6 @@ private:
     QString getUserName();
 
     /*
-     * 根据OUAP在线包数据生成对应的离线包
-     *
-     * @param cfgPath: OUAP在线包数据存储路径
-     * @param dstPath: 生成离线包存储路径
-     *
-     * @return bool: true:成功 false:失败
-     */
-    bool makeUAPbyOUAP(const QString &cfgPath, const QString &dstPath);
-
-    /*
      * 更新本地AppStream.json文件
      *
      * @param savePath: AppStream.json文件存储路径
@@ -106,17 +96,6 @@ private:
                                const QString &pkgVer, const QString &pkgArch, AppStreamPkgInfo &pkgInfo, QString &err);
 
     /*
-     * 通过AppStream.json更新OUAP在线包
-     *
-     * @param xmlPath: AppStream.json文件存储路径
-     * @param savePath: OUAP在线包存储路径
-     * @param err: 错误信息
-     *
-     * @return bool: true:成功 false:失败
-     */
-    bool updateOUAP(const QString &xmlPath, const QString &savePath, QString &err);
-
-    /*
      * 查询软件包安装状态
      *
      * @param pkgName: 软件包包名
@@ -130,46 +109,6 @@ private:
                          const QString &userName = "");
 
     /*
-     * 根据OUAP在线包解压出来的uap文件查询软件包信息
-     *
-     * @param fileDir: OUAP在线包文件解压后的uap文件存储路径
-     * @param err: 错误信息
-     *
-     * @return bool: true:成功 false:失败
-     */
-    bool getAppInfoByOUAPFile(const QString &fileDir, QString &err);
-
-    /*
-     * 根据OUAP在线包文件安装软件包
-     *
-     * @param filePath: OUAP在线包文件路径
-     * @param err: 错误信息
-     *
-     * @return bool: true:成功 false:失败
-     */
-    bool installOUAPFile(const QString &filePath, QString &err);
-
-    /*
-     * 解析OUAP在线包中的info.json配置信息
-     *
-     * @param infoPath: info.json文件存储路径
-     *
-     * @return bool: true:成功 false:失败
-     */
-    bool resolveOUAPCfg(const QString &infoPath);
-
-    /*
-     * 将OUAP在线包解压到指定目录
-     *
-     * @param ouapPath: ouap在线包存储路径
-     * @param savePath: 解压后文件存储路径
-     * @param err: 错误信息
-     *
-     * @return bool: true:成功 false:失败
-     */
-    bool extractOUAP(const QString &ouapPath, const QString &savePath, QString &err);
-
-    /*
      * 将OUAP在线包数据部分签出到指定目录
      *
      * @param pkgName: 软件包包名
@@ -180,7 +119,7 @@ private:
      *
      * @return bool: true:成功 false:失败
      */
-    bool downloadOUAPData(const QString &pkgName, const QString &pkgVer, const QString &pkgArch, const QString &dstPath,
+    bool downloadAppData(const QString &pkgName, const QString &pkgVer, const QString &pkgArch, const QString &dstPath,
                           QString &err);
 
     /*

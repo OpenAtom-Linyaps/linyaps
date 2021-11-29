@@ -26,6 +26,7 @@
 #include "module/util/fs.h"
 #include "module/package/package.h"
 #include "service/impl/dbus_retcode.h"
+#include "info.h"
 
 namespace linglong {
 namespace package {
@@ -39,12 +40,12 @@ namespace package {
 #error "Unknown machine endian"
 #endif
 
-//16 bit system binary  swap
+// 16 bit system binary  swap
 #define bswap16(value) ((((value)&0xff) << 8) | ((value) >> 8))
-//32 bit system binary  swap
+// 32 bit system binary  swap
 #define bswap32(value) \
     (((uint32_t)bswap16((uint16_t)((value)&0xffff)) << 16) | (uint32_t)bswap16((uint16_t)((value) >> 16)))
-//64 bit system binary  swap
+// 64 bit system binary  swap
 #define bswap64(value) \
     (((uint64_t)bswap32((uint32_t)((value)&0xffffffff)) << 32) | (uint64_t)bswap32((uint32_t)((value) >> 32)))
 

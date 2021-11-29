@@ -1,8 +1,10 @@
-set(LL_BUILDER_SOURCES 
+set(LL_BUILDER_SOURCES
     ../module/util/fs.cpp
     ../module/package/bundle.cpp
     ../module/util/json.h
-    resource/resource.qrc)
+    resource/resource.qrc
+    ../module/package/info.cpp
+    )
 
 aux_source_directory(. LL_BUILDER_SOURCES)
 aux_source_directory(builder LL_BUILDER_SOURCES)

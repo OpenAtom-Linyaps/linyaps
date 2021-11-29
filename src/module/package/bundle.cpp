@@ -42,7 +42,9 @@ public:
     QString bundleDataPath;
     int offsetValue;
     QString tmpWorkDir;
+    QString buildArch;
     const QString linglongLoader = "/usr/libexec/linglong-loader";
+    const QString configJson = "/info.json";
 
     explicit BundlePrivate(Bundle *parent)
     //    : q_ptr(parent)
@@ -64,21 +66,26 @@ public:
         if (!util::dirExists(this->bundleDataPath)) {
             return dResultBase() << RetCode(RetCode::DataDirNotExists) << this->bundleDataPath + " don't exists!";
         }
-        //判断uap.json是否存在
-        if (!util::fileExists(this->bundleDataPath + QString(CONFIGJSON))) {
+        //判断info.json是否存在
+        if (!util::fileExists(this->bundleDataPath + QString(configJson))) {
             return dResultBase() << RetCode(RetCode::UapJsonFileNotExists)
-                                 << this->bundleDataPath + QString("/uap.json don't exists!!!");
+                                 << this->bundleDataPath + QString("/info.json don't exists!!!");
         }
 
-        //初始化uap.json
-        Package package;
-        if (!package.initConfig(this->bundleDataPath + "/uap.json")) {
-            return dResultBase() << RetCode(RetCode::UapJsonFormatError)
-                                 << this->bundleDataPath + QString(CONFIGJSON) + QString(" file format error!!!");
+        //转换info.json为Info对象
+        auto info = util::loadJSON<package::Info>(this->bundleDataPath + QString(configJson));
+
+        //获取编译机器架构
+        this->buildArch = QSysInfo::buildCpuArchitecture();
+
+        //判断架构是否支持
+        if (!info->arch.contains(this->buildArch)) {
+            return dResultBase() << info->appid + QString(" : ") + this->buildArch + QString(" don't support!");
         }
 
         //赋值squashfsFilePath
-        QString squashfsName = package.uap->getSquashfsName();
+        QString squashfsName =
+            (QStringList {info->appid, info->version, this->buildArch}.join("-")) + QString(".squashfs");
         this->squashfsFilePath = bundleFileDirPath + "/" + squashfsName;
 
         //清理squashfs文件
@@ -88,7 +95,7 @@ public:
 
         //清理bundle文件
         if (util::fileExists(this->bundleFilePath)) {
-            QFile::remove(this->squashfsFilePath);
+            QFile::remove(this->bundleFilePath);
         }
 
         //制作squashfs文件
@@ -245,35 +252,52 @@ public:
             return dResult(resultUnsquashfs) << "call unsquashfs failed";
         }
 
-        //制作在线包ouap
-        Package package;
-        if (!package.InitUap(this->bundleDataPath + "/uap.json", this->bundleDataPath)) {
+        //转换info.json为Info对象
+        auto info = util::loadJSON<package::Info>(this->bundleDataPath + QString(configJson));
+
+        //建立临时仓库
+        auto resultMakeRepo =
+            runner("ostree", {"--repo=" + this->tmpWorkDir + "/repo", "init", "--mode=archive"}, 3000);
+        if (!resultMakeRepo.success()) {
             if (util::dirExists(this->tmpWorkDir)) {
                 util::removeDir(this->tmpWorkDir);
             }
-            return dResultBase() << RetCode(RetCode::UapJsonFormatError) << "inituap failed!";
+            return dResult(resultMakeRepo) << "call ostree init failed";
         }
-        if (!package.MakeUap(this->tmpWorkDir + "/uap")) {
+
+        //推送数据到临时仓库
+        QStringList arguments;
+        arguments << QString("--repo=") + this->tmpWorkDir + "/repo" << QString("commit") << QString("-s")
+                  << QString("update ") + info->version << QString("-m") << QString("Name: ") + info->appid
+                  << QString("-b")
+                  << (QStringList {"app", info->appid, info->arch[0], info->version}.join(QDir::separator()))
+                  << QString("--tree=dir=") + this->bundleDataPath;
+
+        auto resultCommit = runner("ostree", arguments);
+
+        if (!resultCommit.success()) {
             if (util::dirExists(this->tmpWorkDir)) {
                 util::removeDir(this->tmpWorkDir);
             }
-            return dResultBase() << RetCode(RetCode::MakeUapFailed) << "make uap failed!";
+            return dResult(resultCommit) << "call ostree commit failed";
         }
-        const QString uapFilePath = this->tmpWorkDir + "/uap/" + QString::fromStdString(package.uap->getUapName());
-        if (!package.MakeOuap(uapFilePath, this->tmpWorkDir + "/repo", this->tmpWorkDir + "/ouap")) {
-            if (util::dirExists(this->tmpWorkDir)) {
-                util::removeDir(this->tmpWorkDir);
-            }
-            return dResultBase() << RetCode(RetCode::MakeOuapFailed) << "make ouap failed!";
-        }
-        const QString ouapFilePath = this->tmpWorkDir + "/ouap/" + QString::fromStdString(package.uap->getUapName());
 
         //上传软件包
-        if (!package.pushOuapOrRuntimeToServer(this->tmpWorkDir + "/repo", ouapFilePath, uapFilePath, force)) {
+        arguments.clear();
+        if (force) {
+            arguments << QString("-d") << this->tmpWorkDir + "/repo" << QString("-b") << this->bundleFilePath
+                      << QString("-i") << this->bundleDataPath + "/info.json" << QString("-f");
+        } else {
+            arguments << QString("-d") << this->tmpWorkDir + "/repo" << QString("-b") << this->bundleFilePath
+                      << QString("-i") << this->bundleDataPath + "/info.json";
+        }
+        auto resultPushBundle = runner("import_app2repo.py", arguments);
+
+        if (!resultPushBundle.success()) {
             if (util::dirExists(this->tmpWorkDir)) {
                 util::removeDir(this->tmpWorkDir);
             }
-            return dResultBase() << RetCode(RetCode::PushBundleFailed) << "push failed!";
+            return dResult(resultPushBundle) << "call import_app2repo.py failed";
         }
 
         if (util::dirExists(this->tmpWorkDir)) {

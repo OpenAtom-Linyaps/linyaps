@@ -40,8 +40,7 @@ fi
 function start_func(){
 echo "{% for x in range(10) %}-{% endfor %}"
 echo "start copy data"
-cp  -vf {{remote_path}}/*.ouap ${LINGLONG_ROOT_REMOTE}/ouap/
-cp  -vf {{remote_path}}/*.uap ${LINGLONG_ROOT_REMOTE}/uap/
+cp  -vf {{remote_path}}/*.uab ${LINGLONG_ROOT_REMOTE}/uab/
 if [ -f ${LINGLONG_ROOT_REMOTE}/xml/AppStream.json ]
 then
     mv -fv ${LINGLONG_ROOT_REMOTE}/xml/AppStream.json.old.1 ${LINGLONG_ROOT_REMOTE}/xml/AppStream.json.old.2
@@ -179,89 +178,67 @@ def remote_unlock():
 
 
 # TODO(fix): if not fetch arch info default return x86_64 be keep had arch info
-def get_ouap_arch(ouap_file):
-    if not os.path.exists(ouap_file):
+def get_bundle_arch(info_file):
+    if not os.path.exists(info_file):
         return "x86_64"
-    linglong_get_arch_work_path = tempfile.mkdtemp(prefix="linglong-")
-
-    # get ouap info
-    subprocess.call(["tar", "-vxf", ouap_file, "-C", linglong_get_arch_work_path])
-    info_file_path = linglong_get_arch_work_path + "/uap-1"
-    if not os.path.exists(info_file_path):
-        return "x86_64"
-    with open(info_file_path, "r") as fd_json:
+    with open(info_file, "r") as fd_json:
         info_json = json.load(fd_json)
     if not info_json:
         return "x86_64"
-    shutil.rmtree(linglong_get_arch_work_path)
-    return info_json["arch"]
+    return info_json["arch"][0]
 
-
-# get ouap info
-def get_ouap_info(ouap_file):
-    # read ouap info
-    print(ouap_file)
-    if not os.path.exists(ouap_file):
+# get  info
+def get_bundle_info(info_file):
+    # read  info
+    print(info_file)
+    if not os.path.exists(info_file):
         return {}
 
-    ouap_info = {}
-    linglong_get_info_work_path = tempfile.mkdtemp(prefix="linglong-")
-    # get ouap info
-    subprocess.call(["tar", "-vxf", ouap_file, "-C", linglong_get_info_work_path])
-    info_file_path = linglong_get_info_work_path + "/uap-1"
-    if not os.path.exists(info_file_path):
-        return {}
-    with open(info_file_path, "r") as fd_json:
+    bundle_info = {}
+    with open(info_file, "r") as fd_json:
         info_json = json.load(fd_json)
     if not info_json:
         return {}
-    shutil.rmtree(linglong_get_info_work_path)
+    bundle_info["appid"] = info_json["appid"]
+    bundle_info["name"] = info_json["name"]
+    bundle_info["version"] = info_json["version"]
+    bundle_info["summary"] = info_json["description"]
+    bundle_info["runtime"] = info_json["runtime"]
+    bundle_info["reponame"] = "repo"
 
-    ouap_info["appid"] = info_json["appid"]
-    ouap_info["name"] = info_json["name"]
-    ouap_info["version"] = info_json["version"]
-    ouap_info["summary"] = info_json["description"]
-    ouap_info["runtime"] = info_json["runtime"]
-    ouap_info["appUrl"] = "https://repo.linglong.space/ouap/"
-    ouap_info["reponame"] = "repo"
+    return bundle_info
 
-    return ouap_info
-
-
-def update_app_stream(ouap_files="org.deepin.calculator-1.2.4-x86_64.ouap",appstream_path="AppStream.json"):
-    if not ouap_files:
+def update_app_stream(info_files="info.json",appstream_path="AppStream.json"):
+    if not info_files:
         return False
-    if not os.path.exists(ouap_files) or not os.path.exists(appstream_path):
+    if not os.path.exists(info_files) or not os.path.exists(appstream_path):
         return False
     with open(appstream_path, "r") as fd_json:
         app_json = json.load(fd_json)
-    ouap_info = {}
+    bundle_info = {}
     if not app_json:
         app_json = {}
-        ouap_info = get_ouap_info(ouap_files)
-        if not ouap_info:
+        bundle_info = get_bundle_info(info_files)
+        if not bundle_info:
             return False
-        app_key = "{0}_{1}".format(ouap_info["appid"], ouap_info["version"])
-        app_arch = get_ouap_arch(ouap_files)
-        app_json[app_key] = ouap_info
+        app_key = "{0}_{1}".format(bundle_info["appid"], bundle_info["version"])
+        app_arch = get_bundle_arch(info_files)
+        app_json[app_key] = bundle_info
         app_json[app_key]["arch"] = []
         app_json[app_key]["arch"].append(app_arch)
     else:
-        ouap_info = get_ouap_info(ouap_files)
-        if not ouap_info:
+        bundle_info = get_bundle_info(info_files)
+        if not bundle_info:
             return False
-        app_key = "{0}_{1}".format(ouap_info["appid"], ouap_info["version"])
-        app_arch = get_ouap_arch(ouap_files)
+        app_key = "{0}_{1}".format(bundle_info["appid"], bundle_info["version"])
+        app_arch = get_bundle_arch(info_files)
         if app_key in app_json:
             if not app_arch in app_json[app_key]["arch"]:
                 app_json[app_key]["arch"].append(app_arch)
-            ouap_info["arch"] = app_json[app_key]["arch"]
-            app_json[app_key] = ouap_info
+            bundle_info["arch"] = app_json[app_key]["arch"]
+            app_json[app_key] = bundle_info
         else:
-            ouap_info = get_ouap_info(ouap_files)
-            if not ouap_info:
-                return False
-            app_json[app_key] = ouap_info
+            app_json[app_key] = bundle_info
             app_json[app_key]["arch"] = []
             app_json[app_key]["arch"].append(app_arch)
 
@@ -284,16 +261,16 @@ def run_main(root_args):
         print("force unlock remote lock")
         remote_unlock()
     remote_lock()  # lock remote
+    #fetch appstream.json file
     fetch_files_remote(["{0}/xml/AppStream.json".format(root_args.linglong_remote_path)], "./")
-    update_app_stream(root_args.ouap_file)
+    update_app_stream(root_args.info_file)
     run_command_remote(["mkdir", "-pv", "{0}".format(linglong_work_path)])
 
     # upload data
     push_files_remote([remote_shell,
                        "./AppStream.json",
                        root_args.repo_tar,
-                       root_args.ouap_file,
-                       root_args.uap_file], linglong_work_path)
+                       root_args.bundle_file], linglong_work_path)
     # run shell
     run_command_remote(["bash", "-x", "{0}/{1}".format(linglong_work_path, remote_shell)])
 
@@ -302,7 +279,6 @@ def run_main(root_args):
     remote_unlock()  # unlock remote
     shutil.rmtree(linglong_work_path)
     # print("Upload OK!")
-
 
 def check_file_exists(parser, file):
     if not os.path.exists(file):
@@ -320,29 +296,32 @@ if __name__ == '__main__':
                         required=False,
                         type=lambda f: check_file_exists(parser, f),
                         help='repo tar file')
+
     # input repo path
     parser.add_argument('--repo_path', "-d",
                         dest='repo_path',
                         action="store",
                         required=False,
                         type=lambda f: check_file_exists(parser, f),
-                        help='repo path directory')
-    # ouap
-    # TODO(fix): support uab
-    parser.add_argument('--ouap', "-o",
-                        dest='ouap_file',
+                        help='repo path directory') 
+
+    # bundle
+    # TODO(fix): support bundle
+    parser.add_argument('--bundle', "-b",
+                        dest='bundle_file',
                         action="store",
                         required=False,
                         type=lambda f: check_file_exists(parser, f),
-                        help='ouap file')
-    # uap
-    # TODO(fix): support uab
-    parser.add_argument('--uap', "-u",
-                        dest='uap_file',
+                        help='bundle file')
+
+    # info.json
+    parser.add_argument('--info', "-i",
+                        dest='info_file',
                         action="store",
                         required=False,
                         type=lambda f: check_file_exists(parser, f),
-                        help='uap file')
+                        help='info file')
+
     parser.add_argument('--force', "-f",
                         dest='force',
                         action="store_true",
@@ -363,18 +342,21 @@ if __name__ == '__main__':
                         required=False,
                         default="linglong",
                         help='remote ssh user name')
+
     parser.add_argument('--remote_port',
                         dest='ssh_remote_port',
                         action="store",
                         required=False,
                         default=10022,
                         help='remote ssh port')
+
     parser.add_argument('--remote_ip',
                         dest='ssh_remote_ip',
                         action="store",
                         required=False,
                         default="repo.linglong.space",
                         help='remote ssh ip address')
+
     root_args = parser.parse_args()
     remote["ip"] = root_args.ssh_remote_ip
     remote["port"] = root_args.ssh_remote_port

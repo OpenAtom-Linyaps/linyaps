@@ -29,20 +29,6 @@
 
 using namespace linglong::service::util;
 
-// 当前OUAP在线包对应的包名/版本/架构/存储URL信息 to do fix
-struct AppStreamPkgInfo {
-    QString appId;
-    QString appName;
-    QString appVer;
-    QString appArch;
-    QString appUrl;
-
-    QString summary;
-    QString runtime;
-    QString reponame;
-
-};
-
 class PackageManagerImpl : public PackageManagerProxyBase
     , public Single<PackageManagerImpl>
 {
@@ -151,26 +137,6 @@ private:
      */
     bool getUnInstalledAppInfo(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
                                PKGInfoList &pkgList, QString &err);
-
-    /*
-     * 查询已安装软件包信息
-     *
-     * @param pkgName: 软件包包名
-     * @param pkgVer: 软件包版本号
-     * @param pkgArch: 软件包对应的架构
-     * @param pkgList: 查询结果
-     *
-     * @return bool: true:成功 false:失败(软件包未安装)
-     */
-    bool getInstalledAppInfo(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
-                             PKGInfoList &pkgList);
-
-    /*
-     * 查询当前用户已安装的软件包
-     *
-     * @return PKGInfoList: 查询结果
-     */
-    PKGInfoList queryAllInstalledApp();
 
     /*
      * 根据AppStream.json对软件包进行模糊查找

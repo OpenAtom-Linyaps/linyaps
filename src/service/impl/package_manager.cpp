@@ -20,6 +20,7 @@
 #include <QSysInfo>
 
 #include "module/runtime/app.h"
+#include "module/util/app_status.h"
 #include "module/util/fs.h"
 #include "module/util/singleton.h"
 #include "module/util/sysinfo.h"
@@ -59,6 +60,10 @@ PackageManager::PackageManager()
     app_info.appid = "org.test.app1";
     app_info.version = "v0.1";
     this->app_instance_list->AppendAppInstance<AppInfo>(app_info);
+
+    // 检查安装数据库信息
+    checkInstalledAppDb();
+    updateInstalledAppInfoDb();
 }
 
 PackageManager::~PackageManager() = default;

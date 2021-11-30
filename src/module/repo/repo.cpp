@@ -38,7 +38,7 @@ package::Ref latestOf(const QString &appID, const QString &appVersion)
         appRoot.setSorting(QDir::Name | QDir::Reversed);
         auto verDirs = appRoot.entryList(QDir::NoDotAndDotDot | QDir::Dirs);
         auto available = verDirs.value(0);
-        qCritical() << "available version" << available << appRoot << verDirs;
+        qInfo() << "available version" << available << appRoot << verDirs;
         return available;
     };
 

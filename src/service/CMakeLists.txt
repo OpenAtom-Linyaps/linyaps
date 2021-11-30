@@ -1,5 +1,7 @@
 find_package(CURL REQUIRED)
 find_package(PkgConfig REQUIRED)
+# QT sqlite支持
+find_package(Qt5Sql REQUIRED)
 pkg_search_module(OSTREE1 REQUIRED ostree-1)
 
 set(LL_SERVICE_SOURCES
@@ -26,7 +28,8 @@ set(LL_SERVICE_SOURCES
     ../module/package/pkginfo.h
     ../module/runtime/container.h
     ../module/util/json.h
-    ../module/runtime/oci.h)
+    ../module/runtime/oci.h
+    ../module/util/app_status.cpp)
 
 qt5_add_dbus_adaptor(LL_SERVICE_SOURCES
                      ../module/dbus_ipc/com.deepin.linglong.PackageManager.xml
@@ -49,7 +52,8 @@ MESSAGE(STATUS "current CPU ARCH is: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 set(LINK_LIBS
     ${LINK_LIBS}
     CURL::libcurl
-    ${OSTREE1_LDFLAGS})
+    ${OSTREE1_LDFLAGS}
+    Qt5::Sql)
 
 add_executable(ll-service ${LL_SERVICE_SOURCES})
 

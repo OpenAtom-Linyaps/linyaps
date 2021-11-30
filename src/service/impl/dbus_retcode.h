@@ -64,4 +64,11 @@ inline T RetCode(RetCode code){
     return static_cast<T>(code);
 }
 } // namespace dbus
+
+namespace Status {
+enum StatusCode {
+    SUCCESS = 0,
+    FAIL = 1
+};
+}
 } // namespace linglong

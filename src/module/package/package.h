@@ -28,6 +28,23 @@
 
 using linglong::dbus::RetCode;
 
+// 当前在线包对应的包名/版本/架构/uab存储URL信息
+struct AppStreamPkgInfo {
+    QString appId;
+    QString name;
+    QString version;
+    QString arch;
+    // app 类型
+    QString kind;
+    QString runtime;
+    // 软件包对应的uab存储地址
+    QString uabUrl;
+    // app 所属远端仓库名称
+    QString repoName;
+    // app 描述
+    QString description;
+};
+
 class Package
 {
 public:
@@ -61,5 +78,5 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, Package &m
     return argument;
 }
 
-typedef QMap<QString,QString> ParamStringMap;
+typedef QMap<QString, QString> ParamStringMap;
 Q_DECLARE_METATYPE(ParamStringMap)

@@ -16,7 +16,6 @@ set(LL_SERVICE_SOURCES
     ../module/util/uuid.cpp
     ../module/util/xdg.cpp
     ../module/util/desktop_entry.cpp
-    ../module/uab/uap.cpp
     ../module/runtime/app.cpp
     ../module/util/fs.cpp
     ../module/util/sysinfo.cpp
@@ -50,9 +49,7 @@ MESSAGE(STATUS "current CPU ARCH is: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 set(LINK_LIBS
     ${LINK_LIBS}
     CURL::libcurl
-    ${OSTREE1_LDFLAGS}
-    ${APPSTREMGLIB_LDFLAGS}
-    -larchive)
+    ${OSTREE1_LDFLAGS})
 
 add_executable(ll-service ${LL_SERVICE_SOURCES})
 
@@ -60,8 +57,7 @@ target_include_directories(ll-service
                            PRIVATE ${OSTREE1_INCLUDE_DIRS})
 
 target_include_directories(ll-service
-                           PRIVATE ${OSTREE1_INCLUDE_DIRS}
-                           PRIVATE ${APPSTREMGLIB_INCLUDE_DIRS})
+                           PRIVATE ${OSTREE1_INCLUDE_DIRS})
 
 target_link_libraries(ll-service
                       PRIVATE ${LINK_LIBS})

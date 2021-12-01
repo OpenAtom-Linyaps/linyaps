@@ -13,7 +13,6 @@ Build-Depends:
  libdtkcore-dev,
  libarchive-dev,
  pkg-config,
- json-struct,
  libcurl4-gnutls-dev,
  libglib2.0-dev,
  libostree-dev,

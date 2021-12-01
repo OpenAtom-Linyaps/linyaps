@@ -23,7 +23,6 @@ set(LINK_LIBS
     yaml-cpp
     GTest::GTest gtest_main
     stdc++
-    -larchive
     CURL::libcurl
     ${OSTREE1_LDFLAGS})
 
@@ -50,8 +49,6 @@ set_source_files_properties(../src/module/dbus_ipc/com.deepin.linglong.UapManage
                             PROPERTIES INCLUDE service/impl/json_register_inc.h)
 
 add_executable(ll-test
-               package_test.cpp
-               extract_test.cpp
                util_fs_test.cpp
                module/package/ref_test.cpp
                module/util/result_test.cpp
@@ -59,8 +56,6 @@ add_executable(ll-test
                repohelper_test.cpp
                qt_json.cpp
                qt_yaml.cpp
-               get_info_test.cpp
-               build_ouap_test.cpp
                qdbus_retmsg_test.cpp
                qdbus_call_test.cpp
                package_manager_test.cpp

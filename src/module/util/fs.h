@@ -286,5 +286,66 @@ void inline copyDir(const QString &src, const QString &dst)
     }
 }
 
+/*!
+ * 建立源目录下所有文件的链接到目标目录下并保持目录结构不变
+ * @param src 来源
+ * @param dst 目标目录
+ * @return
+ */
+void inline linkDirFiles(const QString &src, const QString &dst)
+{
+    QDir srcDir(src);
+
+    createDir(dst);
+
+    QFileInfoList list = srcDir.entryInfoList();
+
+    foreach (QFileInfo info, list) {
+        if (info.fileName() == "." || info.fileName() == "..") {
+            continue;
+        }
+        if (info.isDir()) {
+            createDir(dst + "/" + info.fileName());
+            // 穿越文件夹，递归调用
+            linkDirFiles(info.filePath(), dst + "/" + info.fileName());
+            continue;
+        }
+        // 链接文件
+        linkFile(info.absoluteFilePath(), QDir(dst).absolutePath() + "/" + info.fileName());
+    }
+}
+
+/*!
+ * 从src目录获取相应文件名称，删除目标目录中的对应链接文件
+ * @param src 来源
+ * @param dst 目标目录
+ * @return
+ */
+void inline removeDstDirLinkFiles(const QString &src, const QString &dst)
+{
+    if (!dirExists(dst)) {
+        return;
+    }
+
+    QDir srcDir(src);
+
+    QFileInfoList list = srcDir.entryInfoList();
+
+    foreach (QFileInfo info, list) {
+        if (info.fileName() == "." || info.fileName() == "..") {
+            continue;
+        }
+        if (info.isDir()) {
+            // 穿越文件夹，递归调用
+            removeDstDirLinkFiles(info.filePath(), dst + "/" + info.fileName());
+            continue;
+        }
+        // 删除链接文件
+        if (fileExists(QDir(dst).absolutePath() + "/" + info.fileName())) {
+            QFile(QDir(dst).absolutePath() + "/" + info.fileName()).remove();
+        }
+    }
+}
+
 } // namespace util
 } // namespace linglong

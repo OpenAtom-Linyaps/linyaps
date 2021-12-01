@@ -20,3 +20,6 @@ add_executable(ll-cli ${LL_CLI_SOURCES})
 target_link_libraries(ll-cli PRIVATE ${LINK_LIBS})
 
 install(TARGETS ll-cli RUNTIME DESTINATION bin)
+
+install(FILES ${CMAKE_SOURCE_DIR}/scripts/linglong.sh DESTINATION /etc/profile.d)
+install(FILES ${CMAKE_SOURCE_DIR}/scripts/linglong.sh DESTINATION /etc/X11/Xsession.d/ RENAME 21linglong)

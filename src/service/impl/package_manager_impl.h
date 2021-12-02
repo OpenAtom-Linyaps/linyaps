@@ -25,6 +25,7 @@
 #include "module/util/singleton.h"
 #include "package_manager_proxy_base.h"
 #include "qdbus_retmsg.h"
+#include "module/util/fs.h"
 
 using namespace linglong::service::util;
 
@@ -53,6 +54,7 @@ public:
 
 private:
     AppStreamPkgInfo appStreamPkgInfo;
+    const QString sysLinglongInstalltions="/deepin/linglong/entries/share";
 
     /*
      * 查询系统架构

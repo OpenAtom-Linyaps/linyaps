@@ -369,7 +369,7 @@ int PackageManagerImpl::getInstallStatus(const QString &pkgName, const QString &
  * @return bool: true:成功 false:失败
  */
 bool PackageManagerImpl::downloadAppData(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
-                                          const QString &dstPath, QString &err)
+                                         const QString &dstPath, QString &err)
 {
     // linglong::OstreeRepoHelper repo;
     const QString repoPath = "/deepin/linglong/repo";
@@ -902,7 +902,8 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIDList, con
 
     // 下载OUAP 在线包数据到目标目录 安装完成
     // QString pkgName = "org.deepin.calculator";
-    const QString savePath = "/deepin/linglong/layers/" + appStreamPkgInfo.appId + "/" + appStreamPkgInfo.appVer + "/" + appStreamPkgInfo.appArch;
+    const QString savePath = "/deepin/linglong/layers/" + appStreamPkgInfo.appId + "/" + appStreamPkgInfo.appVer + "/"
+                             + appStreamPkgInfo.appArch;
     ret = downloadAppData(appStreamPkgInfo.appId, appStreamPkgInfo.appVer, appStreamPkgInfo.appArch, savePath, err);
     if (!ret) {
         qInfo() << err;
@@ -912,6 +913,10 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIDList, con
         retMsg.push_back(info);
         return retMsg;
     }
+
+    //链接应用entries配置文件到系统配置目录
+    const QString appEntriesDirPath = savePath + "/entries";
+    linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstalltions);
 
     // 更新本地数据库文件 to do
     updateAppStatus(appStreamPkgInfo);
@@ -1105,9 +1110,13 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIDList, c
     auto it = pkglist.at(0);
     if (pkglist.size() > 0) {
         const QString installPath = "/deepin/linglong/layers/" + it->appid + "/" + it->version;
+        //删掉安装配置链接文件
+        const QString appEntriesDirPath = installPath + "/" + arch + "/entries";
+        linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
         linglong::util::removeDir(installPath);
         qInfo() << "Uninstall del dir:" << installPath;
     }
+
     // 更新本地repo仓库
     const QString repoPath = "/deepin/linglong/repo";
     bool ret = G_OSTREE_REPOHELPER->ensureRepoEnv(repoPath, err);

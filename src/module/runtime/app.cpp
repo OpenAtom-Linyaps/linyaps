@@ -214,7 +214,6 @@ public:
             Mount &m = *new Mount(r);
             m.type = "bind";
             m.options = QStringList {"rw"};
-            m.type = "bind";
             m.destination = "/run/app/libs";
             m.source = QStringList {appRootPath, "files/libs"}.join("/");
             r->mounts.push_back(&m);
@@ -274,7 +273,6 @@ public:
             Mount &m = *new Mount(r);
             m.type = "bind";
             m.options = QStringList {"ro"};
-            m.type = "bind";
             m.source = pair.first;
             m.destination = pair.second;
             r->mounts.push_back(&m);
@@ -360,7 +358,6 @@ public:
             Mount &m = *new Mount(r);
             m.type = "bind";
             m.options = QStringList {"ro"};
-
             m.source = pair.first;
             m.destination = pair.second;
             r->mounts.push_back(&m);
@@ -386,7 +383,7 @@ public:
                                "DEEPIN_WINE_SCALE",
                                "XDG_CURRENT_DESKTOP",
                                "XIM",
-                               "XDG_SESSION_TYPE=x11",
+                               "XDG_SESSION_TYPE",
                                "CLUTTER_IM_MODULE",
                                "QT4_IM_MODULE",
                                "GTK_IM_MODULE"};

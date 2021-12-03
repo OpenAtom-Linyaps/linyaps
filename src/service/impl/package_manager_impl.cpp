@@ -914,9 +914,14 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIDList, con
         return retMsg;
     }
 
-    //链接应用entries配置文件到系统配置目录
-    const QString appEntriesDirPath = savePath + "/entries";
-    linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstalltions);
+    //链接应用配置文件到系统配置目录
+    if (linglong::util::dirExists(savePath + "/outputs/share")) {
+        const QString appEntriesDirPath = savePath + "/outputs/share";
+        linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstalltions);
+    } else {
+        const QString appEntriesDirPath = savePath + "/entries";
+        linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstalltions);
+    }
 
     // 更新本地数据库文件 to do
     updateAppStatus(appStreamPkgInfo);
@@ -1111,8 +1116,13 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIDList, c
     if (pkglist.size() > 0) {
         const QString installPath = "/deepin/linglong/layers/" + it->appid + "/" + it->version;
         //删掉安装配置链接文件
-        const QString appEntriesDirPath = installPath + "/" + arch + "/entries";
-        linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
+        if (linglong::util::dirExists(installPath + "/" + arch + "/outputs/share")) {
+            const QString appEntriesDirPath = installPath + "/" + arch + "/outputs/share";
+            linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
+        } else {
+            const QString appEntriesDirPath = installPath + "/" + arch + "/entries";
+            linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
+        }
         linglong::util::removeDir(installPath);
         qInfo() << "Uninstall del dir:" << installPath;
     }

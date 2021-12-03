@@ -22,12 +22,12 @@ Homepage: http://www.deepin.org
 
 Package: linglong-bin
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ostree
+Depends: ${shlibs:Depends}, ${misc:Depends}, ostree, linglong-box
 Description: Package Manager for UOS.
  Package Manager...
 
 Package: linglong-builder
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, python3, python3-pip, python3-paramiko, python3-jinja2, squashfs-tools
+Depends: ${shlibs:Depends}, ${misc:Depends}, python3, python3-pip, python3-paramiko, python3-jinja2, squashfs-tools, linglong-loader
 Description: Package Manager for UOS.
  Package Manager...

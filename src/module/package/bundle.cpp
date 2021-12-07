@@ -270,7 +270,7 @@ public:
         arguments << QString("--repo=") + this->tmpWorkDir + "/repo" << QString("commit") << QString("-s")
                   << QString("update ") + info->version << QString("-m") << QString("Name: ") + info->appid
                   << QString("-b")
-                  << (QStringList {"app", info->appid, info->arch[0], info->version}.join(QDir::separator()))
+                  << (QStringList {info->appid, info->version, info->arch[0]}.join(QDir::separator()))
                   << QString("--tree=dir=") + this->bundleDataPath;
 
         auto resultCommit = runner("ostree", arguments);

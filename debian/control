@@ -5,7 +5,6 @@ Maintainer: Deepin Packages Builder <packages@deepin.com>
 Build-Depends:
  debhelper (>= 11),
  cmake,
- build-essential,
  libyaml-cpp-dev,
  libgtest-dev,
  qt5-qmake,

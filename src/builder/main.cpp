@@ -109,22 +109,16 @@ int main(int argc, char **argv)
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("export", "export build result to uab bundle", "export");
-             parser.addPositionalArgument("filename", "bundle file name", "<filename>");
-
+             parser.addPositionalArgument(
+                 "filename", "bundle file name , if filename is empty,export default format bundle", "[filename]");
              parser.process(app);
 
              auto outputFilepath = parser.positionalArguments().value(1);
-
-             if (outputFilepath.isEmpty()) {
-                 parser.showHelp(-1);
-             }
-
              // TODO: export build result to bundle
              auto result = builder->exportBundle(outputFilepath);
              if (!result.success()) {
                  qCritical() << result;
              }
-
              return result.code();
          }},
         {"push",

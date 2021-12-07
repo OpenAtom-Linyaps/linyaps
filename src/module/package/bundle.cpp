@@ -54,11 +54,15 @@ public:
     util::Result make(const QString &dataPath, const QString &outputFilePath)
     {
         //获取存储文件父目录路径
-        QString bundleFileDirPath = QFileInfo(outputFilePath).path();
+        QString bundleFileDirPath;
+        if (outputFilePath.isEmpty()) {
+            bundleFileDirPath = QDir("./").absolutePath();
+        } else {
+            bundleFileDirPath = QFileInfo(outputFilePath).path();
+        }
         //创建目录
         util::createDir(bundleFileDirPath);
-        //赋值bundleFilePath
-        this->bundleFilePath = outputFilePath;
+
         //数据目录路径赋值
         this->bundleDataPath = QDir(dataPath).absolutePath();
 
@@ -81,6 +85,13 @@ public:
         //判断架构是否支持
         if (!info->arch.contains(this->buildArch)) {
             return dResultBase() << info->appid + QString(" : ") + this->buildArch + QString(" don't support!");
+        }
+
+        //赋值bundleFilePath
+        if (outputFilePath.isEmpty()) {
+            this->bundleFilePath = bundleFileDirPath + "/" + info->appid + "_" + info->version + "_" + this->buildArch + ".uab";
+        } else {
+            this->bundleFilePath = outputFilePath;
         }
 
         //赋值squashfsFilePath

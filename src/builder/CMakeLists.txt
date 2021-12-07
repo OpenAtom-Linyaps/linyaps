@@ -17,8 +17,7 @@ target_include_directories(ll-builder
                            PRIVATE ../module/package)
 
 target_link_libraries(ll-builder
-                      PRIVATE ${LINK_LIBS}
-                      PRIVATE -larchive)
+                      PRIVATE ${LINK_LIBS})
 
 install(TARGETS ll-builder RUNTIME DESTINATION bin)
 

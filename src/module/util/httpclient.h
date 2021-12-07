@@ -103,6 +103,18 @@ private:
 public:
 
     /*
+     * 向服务器请求指定包名\版本\架构数据
+     *
+     * @param pkgName: 软件包包名
+     * @param pkgVer: 软件包版本号
+     * @param pkgArch: 软件包对应的架构
+     * @param outMsg: 服务端返回的结果
+     *
+     * @return bool: true:成功 false:失败
+     */
+    bool queryRemote(const QString &pkgName, const QString &pkgVer, const QString &pkgArch, QString &outMsg);
+
+    /*
      * 获取HttpClient实例
      */
     static HttpClient *getInstance();

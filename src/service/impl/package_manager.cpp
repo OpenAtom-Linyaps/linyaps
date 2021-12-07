@@ -21,6 +21,7 @@
 
 #include "module/runtime/app.h"
 #include "module/util/app_status.h"
+#include "module/util/appinfo_cache.h"
 #include "module/util/fs.h"
 #include "module/util/singleton.h"
 #include "module/util/sysinfo.h"
@@ -64,6 +65,9 @@ PackageManager::PackageManager()
     // 检查安装数据库信息
     checkInstalledAppDb();
     updateInstalledAppInfoDb();
+
+    // 检查应用缓存信息
+    checkAppCache();
 }
 
 PackageManager::~PackageManager() = default;

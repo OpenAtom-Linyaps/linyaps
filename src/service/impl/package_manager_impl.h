@@ -21,7 +21,6 @@
 #include <QThread>
 
 #include "module/package/package.h"
-#include "module/package/pkginfo.h"
 #include "module/util/singleton.h"
 #include "package_manager_proxy_base.h"
 #include "qdbus_retmsg.h"
@@ -39,8 +38,7 @@ public:
     PKGInfoList Query(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
 
 private:
-    AppStreamPkgInfo appStreamPkgInfo;
-    const QString sysLinglongInstalltions="/deepin/linglong/entries/share";
+    const QString sysLinglongInstalltions = "/deepin/linglong/entries/share";
 
     /*
      * 查询系统架构
@@ -57,129 +55,42 @@ private:
     QString getUserName();
 
     /*
-     * 更新本地AppStream.json文件
+     * 将json字符串转化为软件包数据
      *
-     * @param savePath: AppStream.json文件存储路径
-     * @param remoteName: 远端仓库名称
+     * @param jsonString: 软件包对应的json字符串
+     * @param appList: 转换结果
      * @param err: 错误信息
      *
      * @return bool: true:成功 false:失败
      */
-    bool updateAppStream(const QString &savePath, const QString &remoteName, QString &err);
+    bool loadAppInfo(const QString &jsonString, QList<AppMetaInfo *> &appList, QString &err);
 
     /*
-     * 根据AppStream.json查询目标软件包信息
+     * 从服务器查询指定包名/版本/架构的软件包数据
      *
-     * @param savePath: AppStream.json文件存储路径
-     * @param remoteName: 远端仓库名称
      * @param pkgName: 软件包包名
-     * @param pkgVer: 软件包版本
+     * @param pkgVer: 软件包版本号
      * @param pkgArch: 软件包对应的架构
-     * @param pkgInfo: 查询结果
+     * @param appData: 查询结果
      * @param err: 错误信息
      *
      * @return bool: true:成功 false:失败
      */
-    bool getAppInfoByAppStream(const QString &savePath, const QString &remoteName, const QString &pkgName,
-                               const QString &pkgVer, const QString &pkgArch, AppStreamPkgInfo &pkgInfo, QString &err);
-
+    bool getAppInfofromServer(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
+                                              QString &appData, QString &err);
     /*
-     * 查询软件包安装状态
+     * 将在线包数据部分签出到指定目录
      *
      * @param pkgName: 软件包包名
      * @param pkgVer: 软件包版本号
      * @param pkgArch: 软件包对应的架构
-     * @param userName: 用户名，默认为当前用户
-     *
-     * @return bool: 1:已安装 0:未安装 -1查询失败
-     */
-    int getInstallStatus(const QString &pkgName, const QString &pkgVer = "", const QString &pkgArch = "",
-                         const QString &userName = "");
-
-    /*
-     * 将OUAP在线包数据部分签出到指定目录
-     *
-     * @param pkgName: 软件包包名
-     * @param pkgVer: 软件包版本号
-     * @param pkgArch: 软件包对应的架构
-     * @param dstPath: OUAP在线包数据部分存储路径
+     * @param dstPath: 在线包数据部分存储路径
      * @param err: 错误信息
      *
      * @return bool: true:成功 false:失败
      */
     bool downloadAppData(const QString &pkgName, const QString &pkgVer, const QString &pkgArch, const QString &dstPath,
-                          QString &err);
-
-    /*
-     * 建立box运行应用需要的软链接
-     */
-    void buildRequestedLink();
-
-    /*
-     * 更新应用安装状态到本地文件
-     *
-     * @param appStreamPkgInfo: 安装成功的软件包信息
-     *
-     * @return bool: true:成功 false:失败
-     */
-    bool updateAppStatus(AppStreamPkgInfo appStreamPkgInfo);
-
-    /*
-     * 查询未安装软件包信息
-     *
-     * @param pkgName: 软件包包名
-     * @param pkgVer: 软件包版本号
-     * @param pkgArch: 软件包对应的架构
-     * @param pkgList: 查询结果
-     * @param err: 错误信息
-     *
-     * @return bool: true:成功 false:失败
-     */
-    bool getUnInstalledAppInfo(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
-                               PKGInfoList &pkgList, QString &err);
-
-    /*
-     * 根据AppStream.json对软件包进行模糊查找
-     *
-     * @param savePath: AppStream.json文件存储路径
-     * @param remoteName: 远端仓库名称
-     * @param pkgName: 软件包包名
-     * @param pkgList: 查询结果
-     * @param err: 错误信息
-     *
-     * @return bool: true:成功 false:失败
-     */
-    bool getSimilarAppInfoByAppStream(const QString &savePath, const QString &remoteName, const QString &pkgName,
-                                      PKGInfoList &pkgList, QString &err);
-
-    /*
-     * 根据匹配的软件包列表查找最新版本软件包信息
-     *
-     * @param verMap: 目标软件包版本信息
-     *
-     * @return QString: 最新版本软件包信息
-     */
-    QString getLatestAppInfo(const QMap<QString, QString> &verMap);
-
-    /*
-     * 比较给定的软件包版本
-     *
-     * @param curVersion: 当前软件包版本
-     * @param dstVersion: 目标软件包版本
-     *
-     * @return bool: dstVersion 比 curVersion版本新返回true,否则返回false
-     */
-    bool cmpAppVersion(const QString &curVersion, const QString &dstVersion);
-
-    /*
-     * 卸载操作下更新软件包状态信息
-     *
-     * @param pkgName: 卸载软件包包名
-     * @param pkgVer: 卸载软件包对应的版本
-     *
-     * @return bool: true:更新成功 false:失败
-     */
-    bool updateUninstallAppStatus(const QString &pkgName, const QString &pkgVer);
+                         QString &err);
 
     /*
      * 安装应用runtime
@@ -196,9 +107,10 @@ private:
     /*
      * 检查应用runtime安装状态
      *
+     * @param runtime: 应用runtime字符串
      * @param err: 错误信息
      *
      * @return bool: true:安装成功或已安装返回true false:安装失败
      */
-    bool checkAppRuntime(QString &err);
+    bool checkAppRuntime(const QString &runtime, QString &err);
 };

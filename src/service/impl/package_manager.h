@@ -20,7 +20,6 @@
 #include "json_register_inc.h"
 #include "module/package/package.h"
 #include "module/runtime/container.h"
-#include "module/package/pkginfo.h"
 #include "module/util/package_manager_param.h"
 #include "module/util/singleton.h"
 #include "package_manager_impl.h"
@@ -110,6 +109,4 @@ protected:
 private:
     QScopedPointer<PackageManagerPrivate> dd_ptr;
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), PackageManager)
-
-    AppStreamPkgInfo appStreamPkgInfo;
 };

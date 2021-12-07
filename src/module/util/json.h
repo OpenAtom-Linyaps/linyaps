@@ -254,5 +254,13 @@ static T *loadJSON(const QString &filepath)
     auto json = QJsonDocument::fromJson(jsonFile.readAll());
     return fromVariant<T>(json.toVariant());
 }
+
+template<typename T>
+static T *loadJSONString(const QString& jsonString)
+{
+    auto json = QJsonDocument::fromJson(jsonString.toLocal8Bit());
+    return fromVariant<T>(json.toVariant());
+}
+
 } // namespace util
 } // namespace linglong

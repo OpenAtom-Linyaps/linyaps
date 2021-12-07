@@ -55,7 +55,7 @@ int updateInstalledAppInfoDb();
  *
  * @return int: 0:成功 其它:失败
  */
-int insertAppRecord(AppStreamPkgInfo package, const QString &installType, const QString &userName);
+int insertAppRecord(AppMetaInfo *package, const QString &installType, const QString &userName);
 
 /*
  * 删除软件包安装信息

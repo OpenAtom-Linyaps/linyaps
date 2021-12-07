@@ -19,6 +19,9 @@
 #include <iostream>
 #include <QDebug>
 
+#include <iostream>
+#include <sstream>
+
 using namespace std;
 
 namespace linglong {
@@ -144,6 +147,100 @@ void HttpClient::initHttpParam(const char *url)
 
     /* send all data to this function  */
     //curl_easy_setopt(mCurlHandle, CURLOPT_WRITEFUNCTION, write_data);
+}
+
+/*
+ * 发送数据回调函数
+ *
+ * @param content: 返回数据指针
+ * @param size: 数据块大小
+ * @param nmemb: 数据块个数
+ * @param stream: 字符串流
+ *
+ * @return size_t: 写入数据size
+ */
+size_t writeData(void *content, size_t size, size_t nmemb, void *stream)
+{
+    string data((const char *)content, (size_t)size * nmemb);
+
+    *((stringstream *)stream) << data << endl;
+
+    return size * nmemb;
+}
+
+/*
+ * 向服务器请求指定包名\版本\架构数据
+ *
+ * @param pkgName: 软件包包名
+ * @param pkgVer: 软件包版本号
+ * @param pkgArch: 软件包对应的架构
+ * @param outMsg: 服务端返回的结果
+ *
+ * @return bool: true:成功 false:失败
+ */
+bool HttpClient::queryRemote(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
+                                   QString &outMsg)
+{
+    // curl --location --request POST '10.20.54.2:8888/linglong/app/fuzzySearchApp' --header 'Content-Type:
+    // application/json' --data '{"AppId":"org.deepin.calculator","version":"5.5.23"}'
+    const char *url = "10.20.54.2:8888/linglong/app/fuzzySearchApp";
+    int fd = getlock();
+    if (fd == -1) {
+        qInfo() << "HttpClient queryRemote app data is ongoing, please wait a moment and retry";
+        return false;
+    }
+    initHttpParam(url);
+    std::stringstream out;
+    // HTTP报文头
+    struct curl_slist *headers = NULL;
+    headers = curl_slist_append(headers, "Content-Type:application/json");
+    curl_easy_setopt(mCurlHandle, CURLOPT_HTTPHEADER, headers);
+    // 设置为非0表示本次操作为POST
+    curl_easy_setopt(mCurlHandle, CURLOPT_POST, 1);
+    // --location
+    curl_easy_setopt(mCurlHandle, CURLOPT_FOLLOWLOCATION, 1);
+
+    std::string sendString = "{\"AppID\":\"" + pkgName.toStdString() + "\"}";
+    if (!pkgVer.isEmpty()) {
+        sendString = "{\"AppID\":\"" + pkgName.toStdString() + "\",\"version\":\"" + pkgVer.toStdString() + "\"}";
+    }
+    if (!pkgVer.isEmpty() && !pkgArch.isEmpty()) {
+        sendString = "{\"AppID\":\"" + pkgName.toStdString() + "\",\"version\":\"" + pkgVer.toStdString()
+                     + "\",\"arch\":\"" + pkgArch.toStdString() + "\"}";
+    }
+
+    // 设置要POST的JSON数据
+    curl_easy_setopt(mCurlHandle, CURLOPT_POSTFIELDS, sendString.c_str());
+
+    // 设置接收数据的处理函数和存放变量
+    curl_easy_setopt(mCurlHandle, CURLOPT_WRITEFUNCTION, writeData);
+    // 设置写数据
+    curl_easy_setopt(mCurlHandle, CURLOPT_WRITEDATA, &out);
+
+    CURLcode code = curl_easy_perform(mCurlHandle);
+    if (code != CURLE_OK) {
+        qCritical() << "curl_easy_perform err code:" << curl_easy_strerror(code);
+        curl_easy_cleanup(mCurlHandle);
+        curl_global_cleanup();
+        releaselock(fd);
+        return false;
+    }
+
+    long resCode = 0;
+    code = curl_easy_getinfo(mCurlHandle, CURLINFO_RESPONSE_CODE, &resCode);
+    if (code != CURLE_OK || resCode != 200) {
+        qCritical() << "curl_easy_getinfo err:" << curl_easy_strerror(code) << ", resCode" << resCode;
+    }
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(mCurlHandle);
+    curl_global_cleanup();
+    releaselock(fd);
+
+    outMsg = QString::fromStdString(out.str());
+    // 返回请求值
+    // string str_json = out.str();
+    // printf("\nrequestServerData receive:\n%s\n", str_json.c_str());
+    return true;
 }
 
 /*

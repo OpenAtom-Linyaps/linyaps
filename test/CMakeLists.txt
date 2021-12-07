@@ -35,6 +35,7 @@ set(LL_TEST_SOURCES
     ../src/module/runtime/oci.h
     ../src/module/runtime/container.h
     ../src/module/package/pkginfo.h
+    ../src/module/package/package.h
     ../src/service/impl/qdbus_retmsg.h)
 
 # add qdbus call

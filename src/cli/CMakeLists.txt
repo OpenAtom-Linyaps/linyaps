@@ -6,6 +6,7 @@ set(LL_CLI_SOURCES
     ../module/runtime/oci.h
     ../module/runtime/container.h
     ../module/package/pkginfo.h
+    ../module/package/package.h
     ../service/impl/qdbus_retmsg.h)
 
 set_source_files_properties(../module/dbus_ipc/com.deepin.linglong.PackageManager.xml

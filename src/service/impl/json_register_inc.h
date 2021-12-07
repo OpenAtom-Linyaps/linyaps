@@ -12,6 +12,7 @@
 
 #include "module/util/json.h"
 #include "module/runtime/container.h"
+#include "module/package/package.h"
 #include "module/package/pkginfo.h"
 #include "qdbus_retmsg.h"
 
@@ -21,4 +22,6 @@ inline void RegisterDbusType()
     qJsonRegister<PKGInfo>();
     qJsonRegister<RetMessage>();
     qDBusRegisterMetaType<ParamStringMap>();
+
+    qJsonRegister<AppMetaInfo>();
 }

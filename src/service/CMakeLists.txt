@@ -26,10 +26,12 @@ set(LL_SERVICE_SOURCES
     ../module/repo/ostree_repohelper.cpp
     ../module/repo/repohelper_factory.cpp
     ../module/package/pkginfo.h
+    ../module/package/package.h
     ../module/runtime/container.h
     ../module/util/json.h
     ../module/runtime/oci.h
-    ../module/util/app_status.cpp)
+    ../module/util/app_status.cpp
+    ../module/util/appinfo_cache.cpp)
 
 qt5_add_dbus_adaptor(LL_SERVICE_SOURCES
                      ../module/dbus_ipc/com.deepin.linglong.PackageManager.xml

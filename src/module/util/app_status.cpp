@@ -153,7 +153,7 @@ int updateInstalledAppInfoDb()
  *
  * @return int: 0:成功 其它:失败
  */
-int insertAppRecord(AppStreamPkgInfo package, const QString &installType, const QString &userName)
+int insertAppRecord(AppMetaInfo *package, const QString &installType, const QString &userName)
 {
     QString err = "";
     QSqlDatabase dbConn;
@@ -166,16 +166,16 @@ int insertAppRecord(AppStreamPkgInfo package, const QString &installType, const 
     QString insertSql =
         QString("INSERT INTO installedAppInfo(appId,name,version,arch,kind,runtime,uabUrl,repoName,description,user)\
     VALUES('%1','%2','%3','%4','%5','%6','%7','%8','%9','%10')")
-            .arg(package.appId)
-            .arg(package.name)
-            .arg(package.version)
+            .arg(package->appId)
+            .arg(package->name)
+            .arg(package->version)
             //.arg(package.appArch.join(","))
-            .arg(package.arch)
-            .arg(package.kind)
-            .arg(package.runtime)
-            .arg(package.uabUrl)
-            .arg(package.repoName)
-            .arg(package.description)
+            .arg(package->arch)
+            .arg(package->kind)
+            .arg(package->runtime)
+            .arg(package->uabUrl)
+            .arg(package->repoName)
+            .arg(package->description)
             .arg(userName);
 
     sqlQuery.prepare(insertSql);
@@ -186,7 +186,7 @@ int insertAppRecord(AppStreamPkgInfo package, const QString &installType, const 
         return StatusCode::FAIL;
     }
     dbConn.close();
-    qDebug() << "insertAppRecord app:" << package.appId << ", version:" << package.version << " success";
+    qDebug() << "insertAppRecord app:" << package->appId << ", version:" << package->version << " success";
     return StatusCode::SUCCESS;
 }
 

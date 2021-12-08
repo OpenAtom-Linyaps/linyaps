@@ -42,7 +42,11 @@ typedef struct _downloadRet {
 class HttpClient
 {
 private:
-    HttpClient(): mIsFinish(false), mProgressFun(nullptr), mCurlHandle(nullptr), mData({0})
+    HttpClient()
+        : mIsFinish(false)
+        , mProgressFun(nullptr)
+        , mCurlHandle(nullptr)
+        , mData({0})
     {
     }
 
@@ -101,7 +105,6 @@ private:
     DownloadRet mData;
 
 public:
-
     /*
      * 向服务器请求指定包名\版本\架构数据
      *
@@ -144,10 +147,17 @@ public:
      *
      * @return bool: true:成功 false:失败
      */
-    bool getDownloadInfo(DownloadRet &dataInfo)
-    {
-        return true;
-    }
+    bool getDownloadInfo(DownloadRet &dataInfo) { return true; }
+
+    /*
+     * 上传bundle信息
+     *
+     * @param info: bundle文件信息
+     * @param outMsg: 返回上传结果信息
+     *
+     * @return bool: true:成功 false:失败
+     */
+    bool pushServerBundleData(const QString &info, QString &outMsg);
 
     /*
      * 释放HttpClient实例

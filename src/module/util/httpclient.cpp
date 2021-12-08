@@ -435,5 +435,69 @@ bool HttpClient::loadHttpData(const QString qurl, const QString qsavePath)
     showInfo();
     return true;
 }
+
+/*
+ * 上传bundle信息
+ *
+ * @param info: bundle文件信息
+ * @param outMsg: 返回上传结果信息
+ *
+ * @return bool: true:成功 false:失败
+ */
+bool HttpClient::pushServerBundleData(const QString& info, QString &outMsg)
+{
+    const char *url = "10.20.54.2:8888/linglong/app";
+    int fd = getlock();
+    if (fd == -1) {
+        qInfo() << "HttpClient requestServerData is doing, please wait a moment and retry";
+        return false;
+    }
+    initHttpParam(url);
+    std::stringstream out;
+    // HTTP报文头
+    struct curl_slist *headers = NULL;
+    headers = curl_slist_append(headers, "Content-Type:application/json");
+    curl_easy_setopt(mCurlHandle, CURLOPT_HTTPHEADER, headers);
+    // 设置为非0表示本次操作为POST
+    curl_easy_setopt(mCurlHandle, CURLOPT_POST, 1);
+    // --location
+    curl_easy_setopt(mCurlHandle, CURLOPT_FOLLOWLOCATION, 1);
+
+    std::string sendString = info.toStdString();
+
+    // printf("\nrequestServerData sendString:%s\n", sendString.c_str());
+    // 设置要POST的JSON数据
+    curl_easy_setopt(mCurlHandle, CURLOPT_POSTFIELDS, sendString.c_str());
+
+    // 设置接收数据的处理函数和存放变量
+    curl_easy_setopt(mCurlHandle, CURLOPT_WRITEFUNCTION, writeData);
+    // 设置写数据
+    curl_easy_setopt(mCurlHandle, CURLOPT_WRITEDATA, &out);
+
+    CURLcode code = curl_easy_perform(mCurlHandle);
+    if (code != CURLE_OK) {
+        // cout << "curl_easy_perform err code:" << curl_easy_strerror(code) << endl;
+        qCritical() << "curl_easy_perform err code:" << curl_easy_strerror(code);
+        curl_easy_cleanup(mCurlHandle);
+        curl_global_cleanup();
+        releaselock(fd);
+        return false;
+    }
+    int resCode = 0;
+    code = curl_easy_getinfo(mCurlHandle, CURLINFO_RESPONSE_CODE, &resCode);
+    if (code != CURLE_OK || resCode != 200) {
+        qInfo() << "curl_easy_getinfo err:" << curl_easy_strerror(code) << ", resCode" << resCode;
+    }
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(mCurlHandle);
+    curl_global_cleanup();
+    releaselock(fd);
+
+    outMsg = QString::fromStdString(out.str());
+    // 返回请求值
+    // string str_json = out.str();
+    // printf("\nrequestServerData receive:\n%s\n", str_json.c_str());
+    return true;
+}
 } // namespace util
 } // namespace linglong

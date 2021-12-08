@@ -68,6 +68,8 @@ public:
     Q_JSON_PROPERTY(QString, appid);
     Q_JSON_PROPERTY(QString, name);
     Q_JSON_PROPERTY(QString, version);
+    Q_JSON_PROPERTY(QString, kind);
+    Q_JSON_PROPERTY(QString, description);
     Q_JSON_PROPERTY(QStringList, arch);
 
     // ref of runtime

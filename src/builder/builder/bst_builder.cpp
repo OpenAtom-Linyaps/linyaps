@@ -125,13 +125,12 @@ util::Result BstBuilder::exportBundle(const QString &outputFilePath)
 util::Result BstBuilder::push(const QString &bundleFilePath, bool force)
 {
     // TODO: push build result to repoURL
-    std::cout << "start push ..." << std::endl;
+    std::cout << "start upload ..." << std::endl;
     linglong::package::Bundle uabBundle;
     auto pushBundleResult = uabBundle.push(bundleFilePath, force);
     if (!pushBundleResult.success()) {
         return dResult(pushBundleResult) << "push bundle failed!!!";
     }
-    std::cout << "push success !!!" << std::endl;
     return dResultBase();
 }
 

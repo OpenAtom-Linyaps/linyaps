@@ -4,7 +4,10 @@ set(LL_BUILDER_SOURCES
     ../module/util/json.h
     resource/resource.qrc
     ../module/package/info.cpp
+    ../module/util/httpclient.cpp
     )
+
+find_package(CURL REQUIRED)
 
 aux_source_directory(. LL_BUILDER_SOURCES)
 aux_source_directory(builder LL_BUILDER_SOURCES)
@@ -17,8 +20,6 @@ target_include_directories(ll-builder
                            PRIVATE ../module/package)
 
 target_link_libraries(ll-builder
-                      PRIVATE ${LINK_LIBS})
+                      PRIVATE ${LINK_LIBS} CURL::libcurl)
 
 install(TARGETS ll-builder RUNTIME DESTINATION bin)
-
-install(PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/import_app2repo.py DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

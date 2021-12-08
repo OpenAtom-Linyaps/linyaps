@@ -8,6 +8,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+#include <curl/curl.h>
+
 #include "bundle.h"
 
 namespace linglong {
@@ -89,14 +91,15 @@ public:
 
         //赋值bundleFilePath
         if (outputFilePath.isEmpty()) {
-            this->bundleFilePath = bundleFileDirPath + "/" + info->appid + "_" + info->version + "_" + this->buildArch + ".uab";
+            this->bundleFilePath =
+                bundleFileDirPath + "/" + info->appid + "_" + info->version + "_" + this->buildArch + ".uab";
         } else {
             this->bundleFilePath = outputFilePath;
         }
 
         //赋值squashfsFilePath
         QString squashfsName =
-            (QStringList {info->appid, info->version, this->buildArch}.join("-")) + QString(".squashfs");
+            (QStringList {info->appid, info->version, this->buildArch}.join("_")) + QString(".squashfs");
         this->squashfsFilePath = bundleFileDirPath + "/" + squashfsName;
 
         //清理squashfs文件
@@ -280,8 +283,7 @@ public:
         QStringList arguments;
         arguments << QString("--repo=") + this->tmpWorkDir + "/repo" << QString("commit") << QString("-s")
                   << QString("update ") + info->version << QString("-m") << QString("Name: ") + info->appid
-                  << QString("-b")
-                  << (QStringList {info->appid, info->version, info->arch[0]}.join(QDir::separator()))
+                  << QString("-b") << (QStringList {info->appid, info->version, info->arch[0]}.join(QDir::separator()))
                   << QString("--tree=dir=") + this->bundleDataPath;
 
         auto resultCommit = runner("ostree", arguments);
@@ -293,23 +295,89 @@ public:
             return dResult(resultCommit) << "call ostree commit failed";
         }
 
-        //上传软件包
+        //压缩仓库为repo.tar
         arguments.clear();
-        if (force) {
-            arguments << QString("-d") << this->tmpWorkDir + "/repo" << QString("-b") << this->bundleFilePath
-                      << QString("-i") << this->bundleDataPath + "/info.json" << QString("-f");
-        } else {
-            arguments << QString("-d") << this->tmpWorkDir + "/repo" << QString("-b") << this->bundleFilePath
-                      << QString("-i") << this->bundleDataPath + "/info.json";
+        arguments << "-cvpf" << this->tmpWorkDir + "/repo.tar"
+                  << "-C" + this->tmpWorkDir << "repo";
+        auto resultTar = runner("tar", arguments);
+        if (!resultTar.success()) {
+            if (util::dirExists(this->tmpWorkDir)) {
+                util::removeDir(this->tmpWorkDir);
+            }
+            return dResult(resultTar) << "call tar cvf failed";
         }
-        auto resultPushBundle = runner("import_app2repo.py", arguments);
+
+        //上传repo.tar文件
+        // TODO:刘建强，后续整改为api调用
+        arguments.clear();
+        arguments << "-location"
+                  << "--request"
+                  << "POST"
+                  << "10.20.54.2:8888/linglong/app/upload"
+                  << "--form"
+                  << "file=@" + this->tmpWorkDir + "/repo.tar"
+                  << "--form"
+                  << "uploadSubPath=ostree";
+        auto resultPushRepo = runner("curl", arguments);
+
+        if (!resultPushRepo.success()) {
+            if (util::dirExists(this->tmpWorkDir)) {
+                util::removeDir(this->tmpWorkDir);
+            }
+            return dResult(resultPushRepo) << "call curl push repo.tar failed";
+        }
+
+        //上传bundle文件
+        // TODO:刘建强，后续整改为api调用
+        arguments.clear();
+        arguments << "-location"
+                  << "--request"
+                  << "POST"
+                  << "10.20.54.2:8888/linglong/app/upload"
+                  << "--form"
+                  << "file=@" + this->bundleFilePath << "--form"
+                  << "uploadSubPath=bundle";
+
+        auto resultPushBundle = runner("curl", arguments);
 
         if (!resultPushBundle.success()) {
             if (util::dirExists(this->tmpWorkDir)) {
                 util::removeDir(this->tmpWorkDir);
             }
-            return dResult(resultPushBundle) << "call import_app2repo.py failed";
+            return dResult(resultPushBundle) << "call curl push bundle failed";
         }
+
+        //上传bundle信息到服务器
+        auto infoJson = QJsonDocument::fromJson(package::Info::dump(info));
+        auto infoJsonObject = infoJson.object();
+        const QString infoAppId = infoJsonObject.value("appid").toString();
+        infoJsonObject.remove("appid");
+        infoJsonObject.insert("appId", infoAppId);
+        infoJsonObject["arch"] = info->arch[0];
+
+        QJsonDocument doc;
+        doc.setObject(infoJsonObject);
+
+        linglong::util::HttpClient *httpClient = linglong::util::HttpClient::getInstance();
+        QString retMsg = "";
+        bool ret = httpClient->pushServerBundleData(doc.toJson(), retMsg);
+        httpClient->release();
+        if (!ret) {
+            QString err = "pushServerBundleData err";
+            qCritical() << err;
+        }
+
+        std::cout << doc.toJson().toStdString() << std::endl;
+        QJsonObject retMesgJsonObject = QJsonDocument::fromJson(retMsg.toUtf8()).object();
+        
+        if (retMesgJsonObject["msg"].toString() != "操作成功") {
+            std::cout << "Upload failed, please upload again！" << std::endl;
+            if (util::dirExists(this->tmpWorkDir)) {
+                util::removeDir(this->tmpWorkDir);
+            }
+            return dResultBase() << "Upload bundle failed";
+        }
+        std::cout << "Upload success" << std::endl;
 
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);

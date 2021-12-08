@@ -17,6 +17,7 @@
 #include <sys/stat.h>
 #include <cstring>
 #include <unistd.h>
+
 #include <QFile>
 #include <QFileInfo>
 #include <QString>
@@ -25,6 +26,7 @@
 #include "module/util/result.h"
 #include "module/util/fs.h"
 #include "service/impl/dbus_retcode.h"
+#include "module/util/httpclient.h"
 #include "info.h"
 
 using linglong::dbus::RetCode;

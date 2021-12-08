@@ -24,5 +24,3 @@ add_subdirectory(service)
 add_subdirectory(cli)
 
 add_subdirectory(builder)
-
-add_subdirectory(installer)

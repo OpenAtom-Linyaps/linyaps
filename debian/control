@@ -1,6 +1,6 @@
 Source: linglong
 Section: admin
-Priority: optional 
+Priority: optional
 Maintainer: Deepin Packages Builder <packages@deepin.com>
 Build-Depends:
  debhelper (>= 11),

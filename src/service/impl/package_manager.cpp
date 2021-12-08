@@ -192,9 +192,9 @@ QString PackageManager::UpdateAll()
  *
  * @param packageIDList: 软件包的appid
  *
- * @return PKGInfoList 查询结果列表
+ * @return AppMetaInfoList 查询结果列表
  */
-PKGInfoList PackageManager::Query(const QStringList &packageIDList, const ParamStringMap &paramMap)
+AppMetaInfoList PackageManager::Query(const QStringList &packageIDList, const ParamStringMap &paramMap)
 {
     if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT)) {
         return PackageManagerFlatpakImpl::get()->Query(packageIDList);

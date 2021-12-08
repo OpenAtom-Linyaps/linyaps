@@ -65,7 +65,7 @@ TEST(Package, install01)
     std::thread start_qdbus(start_ll_service);
     start_qdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
-
+    RegisterDbusType();
     ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager",
                                                 "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());
@@ -127,12 +127,12 @@ TEST(Package, install03)
     QString appID = "org.deepin.calculator";
 
     // 查询是否已安装
-    QDBusPendingReply<PKGInfoList> replyQuery = pm.Query({"installed"}, {});
+    QDBusPendingReply<AppMetaInfoList> replyQuery = pm.Query({"installed"}, {});
     replyQuery.waitForFinished();
     bool expectRet = true;
-    PKGInfoList queryMsg = replyQuery.value();
+    AppMetaInfoList queryMsg = replyQuery.value();
     for (auto const &it : queryMsg) {
-        if (it->appid == "org.deepin.calculator") {
+        if (it->appId == "org.deepin.calculator") {
             expectRet = false;
             break;
         }
@@ -168,9 +168,9 @@ TEST(Package, query01)
                                                 QDBusConnection::sessionBus());
     // test app not in repo
     auto appID = "test.deepin.test";
-    QDBusPendingReply<PKGInfoList> reply = pm.Query({appID}, {});
+    QDBusPendingReply<AppMetaInfoList> reply = pm.Query({appID}, {});
     reply.waitForFinished();
-    PKGInfoList ret_msg = reply.value();
+    AppMetaInfoList ret_msg = reply.value();
     bool ret = ret_msg.size() == 0 ? true : false;
     EXPECT_EQ(ret, true);
     // stop service
@@ -189,9 +189,9 @@ TEST(Package, query02)
                                                 QDBusConnection::sessionBus());
     // test app not in repo
     auto appID = "";
-    QDBusPendingReply<PKGInfoList> reply = pm.Query({appID}, {});
+    QDBusPendingReply<AppMetaInfoList> reply = pm.Query({appID}, {});
     reply.waitForFinished();
-    PKGInfoList ret_msg = reply.value();
+    AppMetaInfoList ret_msg = reply.value();
     bool ret = ret_msg.size() == 0 ? true : false;
     EXPECT_EQ(ret, true);
     // stop service
@@ -289,9 +289,9 @@ TEST(Package, list01)
                                                 QDBusConnection::sessionBus());
     // test app not in repo
     auto optPara = "";
-    QDBusPendingReply<PKGInfoList> reply = pm.Query({optPara}, {});
+    QDBusPendingReply<AppMetaInfoList> reply = pm.Query({optPara}, {});
     reply.waitForFinished();
-    PKGInfoList retMsg = reply.value();
+    AppMetaInfoList retMsg = reply.value();
     bool ret = retMsg.size() == 0 ? true : false;
     EXPECT_EQ(ret, true);
     // stop service
@@ -309,12 +309,12 @@ TEST(Package, list02)
                                                 "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());
     auto optPara = "installed";
-    QDBusPendingReply<PKGInfoList> reply = pm.Query({optPara}, {});
+    QDBusPendingReply<AppMetaInfoList> reply = pm.Query({optPara}, {});
     reply.waitForFinished();
-    PKGInfoList retMsg = reply.value();
+    AppMetaInfoList retMsg = reply.value();
     bool ret = retMsg.size() > 0 ? true : false;
 
-    QString dbPath = "/deepin/linglong/layers/AppInfoDB.json";
+    QString dbPath = "/deepin/linglong/layers/InstalledAppInfo.db";
     bool expectRet = true;
     if (!linglong::util::fileExists(dbPath)) {
         expectRet = false;

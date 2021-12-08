@@ -56,12 +56,12 @@ RetMessageList PackageManagerFlatpakImpl::Install(const QStringList &packageIDLi
  * @param packageIDList: 软件包的appid
  * @param paramMap: 查询参数
  *
- * @return PKGInfoList 查询结果列表
+ * @return AppMetaInfoList 查询结果列表
  */
-PKGInfoList PackageManagerFlatpakImpl::Query(const QStringList &packageIDList, const ParamStringMap &paramMap)
+AppMetaInfoList PackageManagerFlatpakImpl::Query(const QStringList &packageIDList, const ParamStringMap &paramMap)
 {
-    PKGInfoList pkglist;
-    auto info = QPointer<PKGInfo>(new PKGInfo);
+    AppMetaInfoList pkglist;
+    auto info = QPointer<AppMetaInfo>(new AppMetaInfo);
     if (packageIDList.size() == 0) {
         qCritical() << "packageIDList input err";
         return pkglist;
@@ -72,10 +72,10 @@ PKGInfoList PackageManagerFlatpakImpl::Query(const QStringList &packageIDList, c
     QStringList argStrList;
     if (pkgName == "installed") {
         argStrList << "list";
-        info->appid = "flatpaklist";
+        info->appId = "flatpaklist";
     } else {
         argStrList << "search" << pkgName;
-        info->appid = "flatpakquery";
+        info->appId = "flatpakquery";
     }
     proc.start("flatpak", argStrList);
     if (!proc.waitForStarted()) {

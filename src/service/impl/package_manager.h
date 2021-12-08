@@ -48,56 +48,13 @@ public Q_SLOTS:
     QString Update(const QStringList &packageIDList);
     QString UpdateAll();
 
-    PKGInfoList Query(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
+    AppMetaInfoList Query(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
 
     QString Import(const QStringList &packagePathList);
 
     QString Start(const QString &packageID, const ParamStringMap &paramMap = {});
     void Stop(const QString &containerID);
     ContainerList ListContainer();
-
-    /*!
-     * QDbusRetInfo
-     * @param packageIDList appid
-     * @return PKGInfoList
-     */
-    PKGInfoList QDbusRetInfo(const QStringList &packageIDList)
-    {
-        PKGInfoList list;
-        qInfo() << "recv: " + QString::number(packageIDList.size());
-        for (const auto &it : packageIDList) {
-            qInfo() << "appid:" << it;
-        }
-        for (int i = 0; i < 3; i++) {
-            auto c = QPointer<PKGInfo>(new PKGInfo);
-            c->appid = "org.deepin.test-" + QString::number(i);
-            c->appname = "test-" + QString::number(i);
-            c->version = "v" + QString::number(i);
-            list.push_back(c);
-        }
-        return list;
-    };
-
-    /*!
-     * QDbusMessageRet
-     * @return RetMessageList
-     */
-    RetMessageList QDbusMessageRet(void)
-    {
-        RetMessageList list;
-
-        qInfo() << "call: QDbusMessageRet";
-
-        for (int i = 0; i < 3; i++) {
-            auto c = QPointer<RetMessage>(new RetMessage);
-            c->state = false;
-            c->code = 404;
-            c->message = "not found!";
-            list.push_back(c);
-        }
-
-        return list;
-    };
 
 protected:
     AppInstance *app_instance_list ;

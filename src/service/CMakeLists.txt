@@ -25,7 +25,6 @@ set(LL_SERVICE_SOURCES
     ../module/util/httpclient.cpp
     ../module/repo/ostree_repohelper.cpp
     ../module/repo/repohelper_factory.cpp
-    ../module/package/pkginfo.h
     ../module/package/package.h
     ../module/runtime/container.h
     ../module/util/json.h

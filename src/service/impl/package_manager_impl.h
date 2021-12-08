@@ -35,7 +35,7 @@ public:
     RetMessageList Download(const QStringList &packageIDList, const QString &savePath);
     RetMessageList Install(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
     RetMessageList Uninstall(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
-    PKGInfoList Query(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
+    AppMetaInfoList Query(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
 
 private:
     const QString sysLinglongInstalltions = "/deepin/linglong/entries/share";
@@ -63,7 +63,7 @@ private:
      *
      * @return bool: true:成功 false:失败
      */
-    bool loadAppInfo(const QString &jsonString, QList<AppMetaInfo *> &appList, QString &err);
+    bool loadAppInfo(const QString &jsonString, AppMetaInfoList &appList, QString &err);
 
     /*
      * 从服务器查询指定包名/版本/架构的软件包数据

@@ -36,8 +36,8 @@
             <arg name="PackageIDList" type="as" direction="in"/>
             <arg name="paramMap" type="{ss}" direction="in"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.In1" value="ParamStringMap"/>
-            <arg name="PKGInfoList" type="a(s)" direction="out"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="PKGInfoList"/>
+            <arg name="AppMetaInfoList" type="a(s)" direction="out"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="AppMetaInfoList"/>
         </method>
         <method name="Import">
             <arg name="PackageFileList" type="as" direction="in"/>
@@ -56,15 +56,6 @@
         <method name="ListContainer">
             <arg name="ContainerList" type="a(s)" direction="out"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="ContainerList"/>
-        </method>
-        <method name="QDbusRetInfo">
-            <arg name="PackageIDList" type="as" direction="in"/>
-            <arg name="PKGInfoList" type="a(s)" direction="out"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="PKGInfoList"/>
-        </method>
-        <method name="QDbusMessageRet">
-            <arg name="RetMessageList" type="a(s)" direction="out"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="RetMessageList"/>
         </method>
     </interface>
 </node>

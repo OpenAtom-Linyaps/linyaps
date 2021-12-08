@@ -34,7 +34,6 @@ set(LL_TEST_SOURCES
     ../src/module/util/json.h
     ../src/module/runtime/oci.h
     ../src/module/runtime/container.h
-    ../src/module/package/pkginfo.h
     ../src/module/package/package.h
     ../src/service/impl/qdbus_retmsg.h)
 
@@ -57,8 +56,6 @@ add_executable(ll-test
                repohelper_test.cpp
                qt_json.cpp
                qt_yaml.cpp
-               qdbus_retmsg_test.cpp
-               qdbus_call_test.cpp
                package_manager_test.cpp
                singleton_test.cpp
                ${LL_TEST_SOURCES})

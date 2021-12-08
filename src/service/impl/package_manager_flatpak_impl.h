@@ -11,7 +11,6 @@
 #pragma once
 
 #include "module/package/package.h"
-#include "module/package/pkginfo.h"
 #include "module/util/singleton.h"
 #include "package_manager_proxy_base.h"
 #include "qdbus_retmsg.h"
@@ -26,5 +25,5 @@ public:
     RetMessageList Download(const QStringList &packageIDList, const QString &savePath) { return {}; }
     RetMessageList Install(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
     RetMessageList Uninstall(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
-    PKGInfoList Query(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
+    AppMetaInfoList Query(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
 };

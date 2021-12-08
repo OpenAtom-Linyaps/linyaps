@@ -79,7 +79,7 @@ QString PackageManagerImpl::getUserName()
  *
  * @return bool: true:成功 false:失败
  */
-bool PackageManagerImpl::loadAppInfo(const QString &jsonString, QList<AppMetaInfo *> &appList, QString &err)
+bool PackageManagerImpl::loadAppInfo(const QString &jsonString, AppMetaInfoList &appList, QString &err)
 {
     QJsonParseError parseJsonErr;
     QJsonDocument document = QJsonDocument::fromJson(jsonString.toUtf8(), &parseJsonErr);
@@ -236,7 +236,7 @@ RetMessageList PackageManagerImpl::Download(const QStringList &packageIDList, co
 bool PackageManagerImpl::installRuntime(const QString &runtimeID, const QString &runtimeVer, const QString &runtimeArch,
                                         QString &err)
 {
-    QList<AppMetaInfo *> appList;
+    AppMetaInfoList appList;
     QString appData = "";
 
     bool ret = getAppInfofromServer(runtimeID, runtimeVer, runtimeArch, appData, err);
@@ -350,7 +350,7 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIDList, con
         retMsg.push_back(info);
         return retMsg;
     }
-    QList<AppMetaInfo *> appList;
+    AppMetaInfoList appList;
     ret = loadAppInfo(appData, appList, err);
     if (!ret) {
         qCritical() << err;
@@ -428,9 +428,9 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIDList, con
  * 查询软件包
  * @param packageIDList: 软件包的appid
  *
- * @return PKGInfoList 查询结果列表
+ * @return AppMetaInfoList 查询结果列表
  */
-PKGInfoList PackageManagerImpl::Query(const QStringList &packageIDList, const ParamStringMap &paramMap)
+AppMetaInfoList PackageManagerImpl::Query(const QStringList &packageIDList, const ParamStringMap &paramMap)
 {
     const QString pkgName = packageIDList.at(0);
     if (pkgName.isNull() || pkgName.isEmpty()) {
@@ -440,7 +440,7 @@ PKGInfoList PackageManagerImpl::Query(const QStringList &packageIDList, const Pa
     if (pkgName == "installed") {
         return queryAllInstalledApp();
     }
-    PKGInfoList pkglist;
+    AppMetaInfoList pkglist;
     // 查找单个软件包 优先从本地数据库文件中查找
     QString arch = getHostArch();
     if (arch == "unknown") {
@@ -459,7 +459,6 @@ PKGInfoList PackageManagerImpl::Query(const QStringList &packageIDList, const Pa
 
     QString err = "";
     QString appData = "";
-    QList<AppMetaInfo *> appList;
     int status = queryLocalCache(pkgName, appData);
     bool fromServer = false;
     // 缓存查不到从服务器查
@@ -471,7 +470,7 @@ PKGInfoList PackageManagerImpl::Query(const QStringList &packageIDList, const Pa
         }
         fromServer = true;
     }
-    ret = loadAppInfo(appData, appList, err);
+    ret = loadAppInfo(appData, pkglist, err);
     if (!ret) {
         qCritical() << err;
         return pkglist;
@@ -479,15 +478,6 @@ PKGInfoList PackageManagerImpl::Query(const QStringList &packageIDList, const Pa
     // 若从服务器查询得到正确的数据则更新缓存
     if (fromServer) {
         updateCache(pkgName, appData);
-    }
-    for (auto it : appList) {
-        auto info = QPointer<PKGInfo>(new PKGInfo);
-        info->appid = it->appId;
-        info->appname = it->name;
-        info->version = it->version;
-        info->arch = it->arch;
-        info->description = it->description;
-        pkglist.push_back(info);
     }
     return pkglist;
 }
@@ -522,14 +512,14 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIDList, c
         return retMsg;
     }
     QString err = "";
-    PKGInfoList pkglist;
+    AppMetaInfoList pkglist;
     // 根据已安装文件查询已经安装软件包信息
     QString arch = getHostArch();
     getInstalledAppInfo(pkgName, version, arch, userName, pkglist);
 
     auto it = pkglist.at(0);
     if (pkglist.size() > 0) {
-        const QString installPath = kAppInstallPath + it->appid + "/" + it->version;
+        const QString installPath = kAppInstallPath + it->appId + "/" + it->version;
         // 删掉安装配置链接文件
         if (linglong::util::dirExists(installPath + "/" + arch + "/outputs/share")) {
             const QString appEntriesDirPath = installPath + "/" + arch + "/outputs/share";
@@ -564,7 +554,7 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIDList, c
         return retMsg;
     }
     // ref format --> app/org.deepin.calculator/x86_64/1.2.2
-    QString matchRef = QString("app/%1/%2/%3").arg(it->appid).arg(arch).arg(it->version);
+    QString matchRef = QString("app/%1/%2/%3").arg(it->appId).arg(arch).arg(it->version);
     qInfo() << "Uninstall app ref:" << matchRef;
     ret = G_OSTREE_REPOHELPER->repoDeleteDatabyRef(kLocalRepoPath, qrepoList[0], matchRef, err);
     if (!ret) {

@@ -330,7 +330,7 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
  * @return bool: true:成功 false:失败
  */
 bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QString &appArch, const QString &userName,
-                         PKGInfoList &pkgList)
+                         AppMetaInfoList &pkgList)
 {
     QString err = "";
     if (!getAppInstalledStatus(appId, appVer, appArch, userName)) {
@@ -367,9 +367,9 @@ bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QStr
     sqlQuery.last();
     int recordCount = sqlQuery.at() + 1;
     if (recordCount > 0) {
-        auto info = QPointer<PKGInfo>(new PKGInfo);
-        info->appid = sqlQuery.value(1).toString().trimmed();
-        info->appname = sqlQuery.value(2).toString().trimmed();
+        auto info = QPointer<AppMetaInfo>(new AppMetaInfo);
+        info->appId = sqlQuery.value(1).toString().trimmed();
+        info->name = sqlQuery.value(2).toString().trimmed();
         info->version = sqlQuery.value(3).toString().trimmed();
         info->arch = sqlQuery.value(4).toString().trimmed();
         info->description = sqlQuery.value(9).toString().trimmed();
@@ -384,9 +384,9 @@ bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QStr
  *
  * @param userName: 用户名
  *
- * @return pkgList:查询结果
+ * @return AppMetaInfoList:查询结果
  */
-PKGInfoList queryAllInstalledApp(const QString &userName)
+AppMetaInfoList queryAllInstalledApp(const QString &userName)
 {
     QString err = "";
     QSqlDatabase dbConn;
@@ -395,7 +395,7 @@ PKGInfoList queryAllInstalledApp(const QString &userName)
     }
     QSqlQuery sqlQuery(dbConn);
 
-    PKGInfoList pkglist;
+    AppMetaInfoList pkglist;
     // 默认不查找版本
     QString selectSql = "";
     if (userName.isEmpty()) {
@@ -411,9 +411,9 @@ PKGInfoList queryAllInstalledApp(const QString &userName)
         return {};
     }
     while (sqlQuery.next()) {
-        auto info = QPointer<PKGInfo>(new PKGInfo);
-        info->appid = sqlQuery.value(1).toString().trimmed();
-        info->appname = sqlQuery.value(2).toString().trimmed();
+        auto info = QPointer<AppMetaInfo>(new AppMetaInfo);
+        info->appId = sqlQuery.value(1).toString().trimmed();
+        info->name = sqlQuery.value(2).toString().trimmed();
         info->version = sqlQuery.value(3).toString().trimmed();
         info->arch = sqlQuery.value(4).toString().trimmed();
         info->description = sqlQuery.value(9).toString().trimmed();

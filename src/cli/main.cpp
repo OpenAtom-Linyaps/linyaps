@@ -21,10 +21,10 @@
 #include "service/impl/json_register_inc.h"
 #include "package_manager.h"
 
-void printFlatpakAppInfo(PKGInfoList retMsg)
+void printFlatpakAppInfo(AppMetaInfoList retMsg)
 {
     if (retMsg.size() > 0) {
-        if (retMsg.at(0)->appid == "flatpaklist") {
+        if (retMsg.at(0)->appId == "flatpaklist") {
             std::cout << std::setiosflags(std::ios::left) << std::setw(48) << "Description" << std::setw(16)
                       << "Application" << std::setw(16) << "Version" << std::setw(12) << "Branch" << std::setw(12)
                       << "Arch" << std::setw(12) << "Origin" << std::setw(12) << "Installation" << std::endl;
@@ -41,7 +41,7 @@ void printFlatpakAppInfo(PKGInfoList retMsg)
     }
 }
 
-void printAppInfo(PKGInfoList retMsg)
+void printAppInfo(AppMetaInfoList retMsg)
 {
     if (retMsg.size() > 0) {
         std::cout << std::setiosflags(std::ios::left) << std::setw(24) << "id" << std::setw(16)
@@ -54,8 +54,8 @@ void printAppInfo(PKGInfoList retMsg)
             if (it->description.length() > maxDisSize) {
                 simpleDescription = it->description.left(maxDisSize) + "...";
             }
-            std::cout << std::setiosflags(std::ios::left) << std::setw(24) << it->appid.toStdString()
-                      << std::setw(16) << it->appname.toStdString() << std::setw(16) << it->version.toStdString()
+            std::cout << std::setiosflags(std::ios::left) << std::setw(24) << it->appId.toStdString()
+                      << std::setw(16) << it->name.toStdString() << std::setw(16) << it->version.toStdString()
                       << std::setw(12) << it->arch.toStdString() << simpleDescription.toStdString() << std::endl;
         }
     } else {
@@ -305,10 +305,10 @@ int main(int argc, char **argv)
              }
              auto args = parser.positionalArguments();
              auto appID = args.value(1);
-             QDBusPendingReply<PKGInfoList> reply = pm.Query({appID}, paramMap);
+             QDBusPendingReply<AppMetaInfoList> reply = pm.Query({appID}, paramMap);
              reply.waitForFinished();
-             PKGInfoList retMsg = reply.value();
-             if (retMsg.size() == 1 && retMsg.at(0)->appid == "flatpakquery") {
+             AppMetaInfoList retMsg = reply.value();
+             if (retMsg.size() == 1 && retMsg.at(0)->appId == "flatpakquery") {
                  printFlatpakAppInfo(retMsg);
              } else {
                  printAppInfo(retMsg);
@@ -378,11 +378,11 @@ int main(int argc, char **argv)
              if (!repoType.isEmpty()) {
                  paramMap.insert(linglong::util::KEY_REPO_POINT, repoType);
              }
-             QDBusPendingReply<PKGInfoList> reply = pm.Query({optPara}, paramMap);
+             QDBusPendingReply<AppMetaInfoList> reply = pm.Query({optPara}, paramMap);
              // 默认超时时间为25s
              reply.waitForFinished();
-             PKGInfoList retMsg = reply.value();
-             if (retMsg.size() == 1 && retMsg.at(0)->appid == "flatpaklist") {
+             AppMetaInfoList retMsg = reply.value();
+             if (retMsg.size() == 1 && retMsg.at(0)->appId == "flatpaklist") {
                  printFlatpakAppInfo(retMsg);
              } else {
                  printAppInfo(retMsg);

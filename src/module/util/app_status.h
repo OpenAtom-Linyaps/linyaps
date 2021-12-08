@@ -18,7 +18,6 @@
 #include "service/impl/dbus_retcode.h"
 
 #include "module/package/package.h"
-#include "module/package/pkginfo.h"
 
 namespace linglong {
 namespace util {
@@ -94,15 +93,15 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
  * @return bool: true:已安装 false:未安装
  */
 bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QString &appArch, const QString &userName,
-                         PKGInfoList &pkgList);
+                         AppMetaInfoList &pkgList);
 
 /*
  * 查询所有已安装软件包信息
  *
  * @param userName: 用户名
  *
- * @return pkgList:查询结果
+ * @return AppMetaInfoList:查询结果
  */
-PKGInfoList queryAllInstalledApp(const QString &userName = "");
+AppMetaInfoList queryAllInstalledApp(const QString &userName = "");
 } // namespace util
 } // namespace linglong

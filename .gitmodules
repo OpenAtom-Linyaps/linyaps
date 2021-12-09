@@ -1,3 +1,0 @@
-[submodule "third_party/json_struct"]
-	path = third_party/json_struct
-	url = git@gitlabwh.uniontech.com:wuhan/se/v23/linglong/json_struct.git

@@ -281,7 +281,7 @@ bool PackageManagerImpl::installRuntime(const QString &runtimeID, const QString 
  */
 bool PackageManagerImpl::checkAppRuntime(const QString &runtime, QString &err)
 {
-    // runtime ref in repo com.deepin.Runtime/20/x86_64
+    // runtime ref in repo org.deepin.Runtime/20/x86_64
     QStringList runtimeInfo = runtime.split("/");
     if (runtimeInfo.size() != 3) {
         err = "app runtime:" + runtime + " runtime format err";
@@ -471,6 +471,7 @@ AppMetaInfoList PackageManagerImpl::Query(const QStringList &packageIDList, cons
         fromServer = true;
     }
     ret = loadAppInfo(appData, pkglist, err);
+    qInfo().noquote() << appData;
     if (!ret) {
         qCritical() << err;
         return pkglist;
@@ -553,8 +554,10 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIDList, c
         retMsg.push_back(info);
         return retMsg;
     }
-    // ref format --> app/org.deepin.calculator/x86_64/1.2.2
-    QString matchRef = QString("app/%1/%2/%3").arg(it->appId).arg(arch).arg(it->version);
+
+    // new ref format org.deepin.calculator/1.2.2/x86_64
+    // QString matchRef = QString("app/%1/%2/%3").arg(it->appId).arg(arch).arg(it->version);
+    QString matchRef = QString("%1/%2/%3").arg(it->appId).arg(it->version).arg(arch);
     qInfo() << "Uninstall app ref:" << matchRef;
     ret = G_OSTREE_REPOHELPER->repoDeleteDatabyRef(kLocalRepoPath, qrepoList[0], matchRef, err);
     if (!ret) {

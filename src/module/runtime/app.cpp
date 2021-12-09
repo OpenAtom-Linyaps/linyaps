@@ -35,8 +35,6 @@
 
 using namespace linglong;
 
-// const char *DefaultRuntimeID = "com.deepin.Runtime";
-
 namespace linglong {
 namespace util {
 // TODO: move to util

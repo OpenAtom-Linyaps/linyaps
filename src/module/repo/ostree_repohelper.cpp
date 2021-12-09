@@ -352,33 +352,11 @@ bool OstreeRepoHelper::resolveRef(const string &fullRef, vector<string> &result)
 {
     // vector<string> result;
     splitStr(fullRef, "/", result);
-    if (result.size() != 4) {
-        // fprintf(stdout, "Wrong number of components in %s", fullRef.c_str());
-        qInfo() << "resolveRef Wrong number of components err";
+    // new ref format org.deepin.calculator/1.2.2/x86_64
+    if (result.size() != 3) {
+        qCritical() << "resolveRef Wrong number of components err";
         return false;
     }
-
-    if (result[0] != "app" && result[0] != "runtime") {
-        // fprintf(stdout, "%s is not application or runtime", fullRef.c_str());
-        qInfo() << "resolveRef application or runtime err";
-        return false;
-    }
-
-    //   if (!check_valid_name (parts[1], &local_error))
-    //     {
-    //       fprintf (stdout, "Invalid name %s: %s", parts[1], local_error->message);
-    //       return false;
-    //     }
-
-    if (result[2].size() == 0) {
-        // fprintf(stdout, "Invalid arch %s", result[2].c_str());
-        qInfo() << "resolveRef arch err";
-        return false;
-    }
-
-    //   if (!check_is_valid_branch (parts[3], &local_error))
-    //     {
-    //     }
 
     return true;
 }
@@ -426,8 +404,8 @@ bool OstreeRepoHelper::queryMatchRefs(const QString &repoPath, const QString &re
             for (QString ref : keyRefs) {
                 vector<string> result;
                 ret = resolveRef(ref.toStdString(), result);
-                // ref:app/org.deepin.calculator/x86_64/1.2.2
-                if (ret && result[3] == pkgVer.toStdString() && result[2] == arch.toStdString()) {
+                // new ref format org.deepin.calculator/1.2.2/x86_64
+                if (ret && result[1] == pkgVer.toStdString() && result[2] == arch.toStdString()) {
                     matchRef = ref;
                     return true;
                 }
@@ -440,9 +418,9 @@ bool OstreeRepoHelper::queryMatchRefs(const QString &repoPath, const QString &re
                 ret = resolveRef(ref.toStdString(), result);
                 linglong::AppVersion curVer(curVersion);
                 // 玲珑适配
-                // ref:app/org.deepin.calculator/x86_64/1.2.2
+                // new ref format org.deepin.calculator/1.2.2/x86_64
                 if (ret) {
-                    QString dstVersion = QString::fromStdString(result[3]);
+                    QString dstVersion = QString::fromStdString(result[1]);
                     linglong::AppVersion dstVer(dstVersion);
                     if (!dstVer.isValid()) {
                         qInfo() << "queryMatchRefs ref:" << ref << " version is not valid";

@@ -24,7 +24,7 @@ package:
   ref: com.qq.weixin.deepin/3.2.1.154deepin8/x86_64
 
 runtime:
-  ref: com.deepin.Runtime/20/x86_64
+  ref: org.deepin.Runtime/20/x86_64
 
 # the section only can set by develop, and only work with debug enable
 debug:

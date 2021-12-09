@@ -6,7 +6,7 @@ package:
   args:
         - /opt/apps/org.deepin.calculator/files/bin/deepin-calculator
 
-# TODO: support short id like: com.deepin.Runtime.Wine or com.deepin.Runtime.Wine/6
+# TODO: support short id like: org.deepin.Runtime.Wine or org.deepin.Runtime.Wine/6
 runtime:
   id: deepin.Runtime.Sdk
   rootPath: /deepin/linglong/layers/deepin.Runtime.Sdk/23/x86_64/files

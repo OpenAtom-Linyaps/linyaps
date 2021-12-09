@@ -244,7 +244,7 @@ QString appConfigPath(const QString &appID, const QString &appVersion)
         // FIXME: return error is not exist
 
         // thin runtime
-        info->runtime = "com.deepin.Runtime/20/x86_64";
+        info->runtime = "org.deepin.Runtime/20/x86_64";
 
         // full runtime
         // info->runtime = "deepin.Runtime.Sdk/23/x86_64";

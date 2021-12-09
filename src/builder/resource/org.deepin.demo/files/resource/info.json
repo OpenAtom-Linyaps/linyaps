@@ -2,7 +2,7 @@
     "appid":"@APP_ID@",
     "name":"deepin-demo",
     "version":"1.2.1",
-    "runtime":"com.deepin.Runtime/20/x86_64",
+    "runtime":"org.deepin.Runtime/20/x86_64",
     "description":"deepin demo",
     "kind":"app",
     "arch":[

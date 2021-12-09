@@ -19,6 +19,7 @@
 #include "module/package/package.h"
 #include "module/util/package_manager_param.h"
 #include "service/impl/json_register_inc.h"
+#include "service/impl/package_manager.h"
 #include "package_manager.h"
 
 void printFlatpakAppInfo(AppMetaInfoList retMsg)
@@ -125,7 +126,9 @@ int main(int argc, char **argv)
                                                 "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());
     checkAndStartService(pm);
-
+    PackageManager *noDbusPm = PackageManager::instance();
+    auto optNoDbus = QCommandLineOption("nodbus", "execute cmd directly, not via dbus", "");
+    parser.addOption(optNoDbus);
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
         {"run", [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
@@ -271,6 +274,19 @@ int main(int argc, char **argv)
              if (!repoType.isEmpty()) {
                  paramMap.insert(linglong::util::KEY_REPO_POINT, repoType);
              }
+
+             auto noDbus = parser.isSet(optNoDbus);
+             if (noDbus) {
+                 RetMessageList retMsg = noDbusPm->Install({appInfoList.at(0)}, paramMap);
+                 if (retMsg.size() > 0) {
+                     auto it = retMsg.at(0);
+                     std::cout << "message: " << it->message.toStdString() << std::endl;
+                     if (!it->state) {
+                         return -1;
+                     }
+                     return 0;
+                 }
+             }
              reply = pm.Install({appInfoList.at(0)}, paramMap);
 
              std::cout << "install " << appID.toStdString() << ", please wait a few minutes..." << std::endl;
@@ -341,6 +357,18 @@ int main(int argc, char **argv)
              }
              if (!repoType.isEmpty()) {
                  paramMap.insert(linglong::util::KEY_REPO_POINT, repoType);
+             }
+             auto noDbus = parser.isSet(optNoDbus);
+             if (noDbus) {
+                 RetMessageList retMsg = noDbusPm->Uninstall({appInfoList.at(0)}, paramMap);
+                 if (retMsg.size() > 0) {
+                     auto it = retMsg.at(0);
+                     std::cout << "message: " << it->message.toStdString() << std::endl;;
+                     if (!it->state) {
+                         return -1;
+                     }
+                     return 0;
+                 }
              }
              reply = pm.Uninstall({appInfoList.at(0)}, paramMap);
              reply.waitForFinished();

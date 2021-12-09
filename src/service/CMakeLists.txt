@@ -61,9 +61,6 @@ add_executable(ll-service ${LL_SERVICE_SOURCES})
 target_include_directories(ll-service
                            PRIVATE ${OSTREE1_INCLUDE_DIRS})
 
-target_include_directories(ll-service
-                           PRIVATE ${OSTREE1_INCLUDE_DIRS})
-
 target_link_libraries(ll-service
                       PRIVATE ${LINK_LIBS})
 

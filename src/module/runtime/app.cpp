@@ -362,6 +362,8 @@ public:
             qDebug() << "mount app" << m.source << m.destination;
         }
 
+        auto appBinaryPath = QStringList {"/opt/apps",q_ptr->package->ref,"files/bin"}.join("/");
+        r->process->env.push_back("PATH="+appBinaryPath + ":" + getenv("PATH"));
         r->process->env.push_back("HOME=" + util::getUserFile(""));
         r->process->env.push_back("XDG_RUNTIME_DIR=" + userRuntimeDir);
         r->process->env.push_back("DBUS_SESSION_BUS_ADDRESS=unix:path=" + util::jonsPath({userRuntimeDir, "bus"}));

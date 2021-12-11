@@ -213,7 +213,7 @@ public:
             m.type = "bind";
             m.options = QStringList {"rw"};
             m.destination = "/run/app/libs";
-            m.source = QStringList {appRootPath, "files/libs"}.join("/");
+            m.source = QStringList {appRootPath, "files/lib"}.join("/");
             r->mounts.push_back(&m);
             qDebug() << "mount app" << m.source << m.destination;
         }
@@ -236,7 +236,7 @@ public:
         //        }
 
         // FIXME: let application do this, ld config
-        auto appLdLibraryPath = QStringList {"/opt/apps", appID, "files/libs"}.join("/");
+        auto appLdLibraryPath = QStringList {"/opt/apps", appID, "files/lib"}.join("/");
         // FIXME: for wine
         auto fixLdLibraryPath = QStringList {appLdLibraryPath, "/runtime/lib", "/runtime/lib/x86_64-linux-gnu",
                                              "/runtime/lib/i386-linux-gnu"}

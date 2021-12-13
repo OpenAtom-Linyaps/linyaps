@@ -361,8 +361,8 @@ public:
             r->mounts.push_back(&m);
             qDebug() << "mount app" << m.source << m.destination;
         }
-
-        auto appBinaryPath = QStringList {"/opt/apps",q_ptr->package->ref,"files/bin"}.join("/");
+        auto appRef = package::Ref(q_ptr->package->ref);
+        auto appBinaryPath = QStringList {"/opt/apps",appRef.id,"files/bin"}.join("/");
         r->process->env.push_back("PATH="+appBinaryPath + ":" + getenv("PATH"));
         r->process->env.push_back("HOME=" + util::getUserFile(""));
         r->process->env.push_back("XDG_RUNTIME_DIR=" + userRuntimeDir);

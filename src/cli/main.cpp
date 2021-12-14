@@ -103,7 +103,7 @@ int main(int argc, char **argv)
     QCommandLineParser parser;
     parser.addHelpOption();
     QStringList subCommandList = {
-        "run", "ps", "exec", "kill", "download", "install", "uninstall", "update", "query", "list",
+        "run", "ps", "exec", "kill", "download", "install", "uninstall", "update", "query", "list"
     };
 
     parser.addPositionalArgument("subcommand", subCommandList.join("\n"), "subcommand [sub-option]");

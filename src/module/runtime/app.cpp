@@ -136,15 +136,21 @@ public:
 
     int stageSystem() const
     {
-        Mount &m = *new Mount(r);
-        m.type = "bind";
-        m.options = QStringList {"bind"};
-        m.type = "bind";
+        QList<QPair<QString,QString>> mountMap;
+        mountMap = {
+            {"/dev/dri","/dev/dri"},
+            {"/dev/snd","/dev/snd"}
+        };
 
-        m.destination = "/dev/dri";
-        m.source = "/dev/dri";
-        r->mounts.push_front(&m);
-
+        for (const auto &pair : mountMap) {
+            Mount &m = *new Mount(r);
+            m.type = "bind";
+            m.options = QStringList {"bind"};
+            m.source = pair.first;
+            m.destination = pair.second;
+            r->mounts.push_back(&m);
+            qDebug() << "mount stageSystem" << m.source << m.destination;
+        }
         return 0;
     }
 

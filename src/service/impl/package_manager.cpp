@@ -78,7 +78,7 @@ PackageManager::~PackageManager() = default;
  */
 RetMessageList PackageManager::Download(const QStringList &packageIDList, const QString savePath)
 {
-    Q_D(PackageManager);
+    // Q_D(PackageManager);
 
     // return JobManager::instance()->CreateJob([](Job *jr) {
     //     在这里写入真正的实现
@@ -115,7 +115,7 @@ RetMessageList PackageManager::Install(const QStringList &packageIDList, const P
     if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT)) {
         return PackageManagerFlatpakImpl::get()->Install(packageIDList);
     }
-    Q_D(PackageManager);
+    // Q_D(PackageManager);
 
     // return JobManager::instance()->CreateJob([](Job *jr) {
     //     // 在这里写入真正的实现

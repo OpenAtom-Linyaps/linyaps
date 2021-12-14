@@ -56,14 +56,14 @@ public Q_SLOTS:
     void Stop(const QString &containerID);
     ContainerList ListContainer();
 
+private:
+    QScopedPointer<PackageManagerPrivate> dd_ptr;
+    Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), PackageManager)
+
 protected:
     AppInstance *app_instance_list ;
 
 protected:
     PackageManager();
     ~PackageManager() override;
-
-private:
-    QScopedPointer<PackageManagerPrivate> dd_ptr;
-    Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), PackageManager)
 };

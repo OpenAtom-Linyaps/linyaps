@@ -26,7 +26,7 @@ QDir userRuntimeDir()
 //!     env a=b c
 QStringList parseExec(const QString &exec)
 {
-    const auto Backtick = '`';
+    // const auto Backtick = '`';
     const auto Quote = '"';
     const auto Space = ' ';
     const auto BackSlash = '\\';

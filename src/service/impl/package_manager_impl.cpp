@@ -83,7 +83,7 @@ bool PackageManagerImpl::loadAppInfo(const QString &jsonString, AppMetaInfoList 
 {
     QJsonParseError parseJsonErr;
     QJsonDocument document = QJsonDocument::fromJson(jsonString.toUtf8(), &parseJsonErr);
-    if (!(parseJsonErr.error == QJsonParseError::NoError)) {
+    if (QJsonParseError::NoError != parseJsonErr.error) {
         err = "parse json data err";
         return false;
     }

@@ -22,10 +22,9 @@
 #include <QVector>
 #include <QDebug>
 
-#include "module/util/singleton.h"
-#include "repohelper.h"
+#include <DSingleton>
 
-using namespace linglong::service::util;
+#include "repohelper.h"
 
 using std::map;
 using std::vector;
@@ -40,7 +39,7 @@ struct LingLongDir {
 };
 
 class OstreeRepoHelper : public RepoHelper
-    , public Single<OstreeRepoHelper>
+    , public Dtk::Core::DSingleton<OstreeRepoHelper>
 {
 public:
     OstreeRepoHelper();
@@ -297,4 +296,4 @@ private:
     LingLongDir *pLingLongDir;
 };
 } // namespace linglong
-#define G_OSTREE_REPOHELPER linglong::OstreeRepoHelper::get()
+#define G_OSTREE_REPOHELPER linglong::OstreeRepoHelper::instance()

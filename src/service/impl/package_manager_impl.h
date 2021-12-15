@@ -20,16 +20,15 @@
 #include <QSysInfo>
 #include <QThread>
 
+#include <DSingleton>
+
 #include "module/package/package.h"
-#include "module/util/singleton.h"
+#include "module/util/fs.h"
 #include "package_manager_proxy_base.h"
 #include "qdbus_retmsg.h"
-#include "module/util/fs.h"
-
-using namespace linglong::service::util;
 
 class PackageManagerImpl : public PackageManagerProxyBase
-    , public Single<PackageManagerImpl>
+    , public Dtk::Core::DSingleton<PackageManagerImpl>
 {
 public:
     RetMessageList Download(const QStringList &packageIDList, const QString &savePath);

@@ -23,7 +23,7 @@ namespace linglong {
 RepoHelper *RepoHelperFactory::createRepoHelper(RepoType type)
 {
     if (RepoType::OSTreeRepo == type) {
-        return OstreeRepoHelper::get();
+        return OstreeRepoHelper::instance();
     }
     return nullptr;
 }

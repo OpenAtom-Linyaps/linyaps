@@ -23,13 +23,11 @@
 #include "module/util/app_status.h"
 #include "module/util/appinfo_cache.h"
 #include "module/util/fs.h"
-#include "module/util/singleton.h"
 #include "module/util/sysinfo.h"
 #include "module/package/info.h"
 #include "module/repo/repo.h"
 #include "dbus_retcode.h"
 #include "job_manager.h"
-
 
 using linglong::util::fileExists;
 using linglong::util::listDirFolders;
@@ -102,7 +100,7 @@ RetMessageList PackageManager::Download(const QStringList &packageIDList, const 
         retMsg.push_back(info);
         return retMsg;
     }
-    PackageManagerProxyBase *pImpl = PackageManagerImpl::get();
+    PackageManagerProxyBase *pImpl = PackageManagerImpl::instance();
     return pImpl->Download(packageIDList, savePath);
 }
 
@@ -113,7 +111,7 @@ RetMessageList PackageManager::Download(const QStringList &packageIDList, const 
 RetMessageList PackageManager::Install(const QStringList &packageIDList, const ParamStringMap &paramMap)
 {
     if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT)) {
-        return PackageManagerFlatpakImpl::get()->Install(packageIDList);
+        return PackageManagerFlatpakImpl::instance()->Install(packageIDList);
     }
     // Q_D(PackageManager);
 
@@ -139,14 +137,14 @@ RetMessageList PackageManager::Install(const QStringList &packageIDList, const P
         retMsg.push_back(info);
         return retMsg;
     }
-    PackageManagerProxyBase *pImpl = PackageManagerImpl::get();
+    PackageManagerProxyBase *pImpl = PackageManagerImpl::instance();
     return pImpl->Install(packageIDList, paramMap);
 }
 
 RetMessageList PackageManager::Uninstall(const QStringList &packageIDList, const ParamStringMap &paramMap)
 {
     if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT)) {
-        return PackageManagerFlatpakImpl::get()->Uninstall(packageIDList);
+        return PackageManagerFlatpakImpl::instance()->Uninstall(packageIDList);
     }
     // 校验包名参数
     // 判断软件包是否安装
@@ -172,7 +170,7 @@ RetMessageList PackageManager::Uninstall(const QStringList &packageIDList, const
         retMsg.push_back(info);
         return retMsg;
     }
-    return PackageManagerImpl::get()->Uninstall(packageIDList, paramMap);
+    return PackageManagerImpl::instance()->Uninstall(packageIDList, paramMap);
 }
 
 QString PackageManager::Update(const QStringList &packageIDList)
@@ -197,14 +195,14 @@ QString PackageManager::UpdateAll()
 AppMetaInfoList PackageManager::Query(const QStringList &packageIDList, const ParamStringMap &paramMap)
 {
     if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT)) {
-        return PackageManagerFlatpakImpl::get()->Query(packageIDList);
+        return PackageManagerFlatpakImpl::instance()->Query(packageIDList);
     }
     QString pkgName = packageIDList.at(0);
     if (pkgName.isNull() || pkgName.isEmpty()) {
         qInfo() << "package name err";
         return {};
     }
-    PackageManagerProxyBase *pImpl = PackageManagerImpl::get();
+    PackageManagerProxyBase *pImpl = PackageManagerImpl::instance();
     return pImpl->Query(packageIDList);
 }
 

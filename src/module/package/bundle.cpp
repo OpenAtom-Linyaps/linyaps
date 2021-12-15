@@ -298,13 +298,22 @@ util::Result BundlePrivate::push(const QString &bundleFilePath, bool force)
         return dResult(resultTar) << "call tar cvf failed";
     }
 
+    //从配置文件获取服务器域名url
+    linglong::util::HttpClient *httpClient = linglong::util::HttpClient::getInstance();
+
+    QString configUrl = "";
+    int statusCode = httpClient->getLocalConfig("appDbUrl", configUrl);
+    if (Status::StatusCode::SUCCESS != statusCode) {
+        httpClient->release();
+        return dResultBase() << "call getLocalConfig api failed";
+    }
+
     //上传repo.tar文件
     // TODO:刘建强，后续整改为api调用
     arguments.clear();
     arguments << "-location"
               << "--request"
-              << "POST"
-              << "10.20.54.2:8888/linglong/app/upload"
+              << "POST" << configUrl + "apps/upload"
               << "--form"
               << "file=@" + this->tmpWorkDir + "/repo.tar"
               << "--form"
@@ -323,8 +332,7 @@ util::Result BundlePrivate::push(const QString &bundleFilePath, bool force)
     arguments.clear();
     arguments << "-location"
               << "--request"
-              << "POST"
-              << "10.20.54.2:8888/linglong/app/upload"
+              << "POST" << configUrl + "apps/upload"
               << "--form"
               << "file=@" + this->bundleFilePath << "--form"
               << "uploadSubPath=bundle";
@@ -349,9 +357,8 @@ util::Result BundlePrivate::push(const QString &bundleFilePath, bool force)
     QJsonDocument doc;
     doc.setObject(infoJsonObject);
 
-    linglong::util::HttpClient *httpClient = linglong::util::HttpClient::getInstance();
     QString retMsg = "";
-    bool ret = httpClient->pushServerBundleData(doc.toJson(), retMsg);
+    bool ret = httpClient->pushServerBundleData(doc.toJson(), configUrl, retMsg);
     httpClient->release();
     if (!ret) {
         QString err = "pushServerBundleData err";

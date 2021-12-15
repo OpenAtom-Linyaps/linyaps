@@ -98,16 +98,6 @@ private:
      */
     void showInfo();
 
-    /*
-     * 从配置文件获取服务器配置参数
-     *
-     * @param key: 参数名称
-     * @param value: 查询结果
-     *
-     * @return int: 0:成功 其它:失败
-     */
-    int getLocalConfig(const QString &key, QString &value);
-
     static HttpClient *sInstance;
     bool mIsFinish;
     DOWNLOADCALLBACK mProgressFun;
@@ -164,15 +154,26 @@ public:
      *
      * @param info: bundle文件信息
      * @param outMsg: 返回上传结果信息
-     *
+     * @param dnsOfLinglong: 玲珑仓库域名地址
+     * 
      * @return bool: true:成功 false:失败
      */
-    bool pushServerBundleData(const QString &info, QString &outMsg);
+    bool pushServerBundleData(const QString &info, const QString& dnsOfLinglong , QString &outMsg);
 
     /*
      * 释放HttpClient实例
      */
     static void release();
+
+    /*
+     * 从配置文件获取服务器配置参数
+     *
+     * @param key: 参数名称
+     * @param value: 查询结果
+     *
+     * @return int: 0:成功 其它:失败
+     */
+    int getLocalConfig(const QString &key, QString &value);
 };
 } // namespace util
 } // namespace linglong

@@ -75,14 +75,14 @@ int HttpClient::getlock()
     fd = open(LINGLONGHTTPCLIENTLOCK, O_CREAT | O_TRUNC | O_RDWR, 0777);
 
     if (fd < 0) {
-        //fprintf(stdout, "getlock open err:[%d], message:%s\n", errno, strerror(errno));
+        // fprintf(stdout, "getlock open err:[%d], message:%s\n", errno, strerror(errno));
         qInfo() << "getlock open err";
         return -1;
     }
 
     ret = flock(fd, LOCK_NB | LOCK_EX);
     if (ret < 0) {
-        //fprintf(stdout, "getlock flock err:[%d], message:%s\n", errno, strerror(errno));
+        // fprintf(stdout, "getlock flock err:[%d], message:%s\n", errno, strerror(errno));
         qInfo() << "getlock flock err";
         close(fd);
         // 确认临时文件是否需要删除
@@ -320,7 +320,7 @@ void HttpClient::getFullPath(const char *url, const char *savePath, char *fullPa
             strcat(fullPath, ptr);
         }
     } else {
-        //fprintf(stdout, "getFullPath error path is too long\n");
+        // fprintf(stdout, "getFullPath error path is too long\n");
         qInfo() << "getFullPath error path is too long";
     }
 }
@@ -387,7 +387,7 @@ bool HttpClient::loadHttpData(const QString qurl, const QString qsavePath)
     // pthread_mutex_lock(&mutex);
     int fd = getlock();
     if (fd == -1) {
-        //fprintf(stdout, "HttpClient loadHttpData is downloading, please wait a moment and retry\n");
+        // fprintf(stdout, "HttpClient loadHttpData is downloading, please wait a moment and retry\n");
         qInfo() << "HttpClient loadHttpData is downloading, please wait a moment and retry";
         return false;
     }
@@ -406,7 +406,7 @@ bool HttpClient::loadHttpData(const QString qurl, const QString qsavePath)
         /* get it! */
         CURLcode code = curl_easy_perform(mCurlHandle);
         if (code != CURLE_OK) {
-            //cout << "curl_easy_perform err code:" << curl_easy_strerror(code) << endl;
+            // cout << "curl_easy_perform err code:" << curl_easy_strerror(code) << endl;
             qInfo() << "curl_easy_perform err code:" << curl_easy_strerror(code);
             curl_easy_cleanup(mCurlHandle);
             curl_global_cleanup();
@@ -420,21 +420,21 @@ bool HttpClient::loadHttpData(const QString qurl, const QString qsavePath)
         long resCode = 0;
         code = curl_easy_getinfo(mCurlHandle, CURLINFO_RESPONSE_CODE, &resCode);
         if (code != CURLE_OK) {
-            //cout << "1.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
+            // cout << "1.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
             qInfo() << "1.curl_easy_getinfo err:" << curl_easy_strerror(code);
         }
         //获取下载文件的大小 字节
         double fileSize = 0;
         code = curl_easy_getinfo(mCurlHandle, CURLINFO_SIZE_DOWNLOAD, &fileSize);
         if (code != CURLE_OK) {
-            //cout << "2.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
+            // cout << "2.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
             qInfo() << "2.curl_easy_getinfo err:" << curl_easy_strerror(code);
         }
         //下载内容大小
         double contentSize = 0;
         code = curl_easy_getinfo(mCurlHandle, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &contentSize);
         if (code != CURLE_OK) {
-            //cout << "3.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
+            // cout << "3.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
             qInfo() << "3.curl_easy_getinfo err:" << curl_easy_strerror(code);
         }
         //下载文件类型 text/html application/x-tar application/x-debian-package image/jpeg
@@ -445,14 +445,14 @@ bool HttpClient::loadHttpData(const QString qurl, const QString qsavePath)
         char *contentType = NULL;
         code = curl_easy_getinfo(mCurlHandle, CURLINFO_CONTENT_TYPE, &contentType);
         if (code != CURLE_OK) {
-            //cout << "4.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
+            // cout << "4.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
             qInfo() << "4.curl_easy_getinfo err:" << curl_easy_strerror(code);
         }
         //获取下载总耗时包括域名解析、TCP连接
         double spendTime = 0;
         code = curl_easy_getinfo(mCurlHandle, CURLINFO_TOTAL_TIME, &spendTime);
         if (code != CURLE_OK) {
-            //cout << "5.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
+            // cout << "5.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
             qInfo() << "5.curl_easy_getinfo err:" << curl_easy_strerror(code);
         }
 
@@ -460,14 +460,14 @@ bool HttpClient::loadHttpData(const QString qurl, const QString qsavePath)
         double downloadSpeed = 0;
         code = curl_easy_getinfo(mCurlHandle, CURLINFO_SPEED_DOWNLOAD, &downloadSpeed);
         if (code != CURLE_OK) {
-            //cout << "6.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
+            // cout << "6.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
             qInfo() << "6.curl_easy_getinfo err:" << curl_easy_strerror(code);
         }
 
         mData.resCode = resCode;
         mData.fileSize = (long)fileSize;
         mData.contentSize = (long)contentSize;
-        //mData.contentType = contentType;
+        // mData.contentType = contentType;
         mData.downloadSpeed = downloadSpeed;
         mData.spendTime = spendTime;
         /* close the header file */
@@ -477,7 +477,7 @@ bool HttpClient::loadHttpData(const QString qurl, const QString qsavePath)
     curl_easy_cleanup(mCurlHandle);
     curl_global_cleanup();
     long end = getCurrentTime();
-    //cout << "the program spend time is: " << end - start << " ms" << endl;
+    // cout << "the program spend time is: " << end - start << " ms" << endl;
     qInfo() << "the program spend time is: " << end - start << " ms";
     //解锁
     // pthread_mutex_unlock(&mutex);
@@ -499,9 +499,11 @@ bool HttpClient::loadHttpData(const QString qurl, const QString qsavePath)
  *
  * @return bool: true:成功 false:失败
  */
-bool HttpClient::pushServerBundleData(const QString& info, QString &outMsg)
+bool HttpClient::pushServerBundleData(const QString &info, const QString &dnsOfLinglong, QString &outMsg)
 {
-    const char *url = "10.20.54.2:8888/linglong/app";
+    QString dnsUrl = dnsOfLinglong + "apps";
+    QByteArray dnsUrlByteArr = dnsUrl.toLocal8Bit();
+    const char *url = dnsUrlByteArr.data();
     int fd = getlock();
     if (fd == -1) {
         qInfo() << "HttpClient requestServerData is doing, please wait a moment and retry";

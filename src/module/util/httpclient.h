@@ -98,6 +98,16 @@ private:
      */
     void showInfo();
 
+    /*
+     * 从配置文件获取服务器配置参数
+     *
+     * @param key: 参数名称
+     * @param value: 查询结果
+     *
+     * @return int: 0:成功 其它:失败
+     */
+    int getLocalConfig(const QString &key, QString &value);
+
     static HttpClient *sInstance;
     bool mIsFinish;
     DOWNLOADCALLBACK mProgressFun;

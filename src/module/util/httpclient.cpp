@@ -16,19 +16,29 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <iostream>
-#include <QDebug>
 
 #include <iostream>
 #include <sstream>
 
+#include <QDebug>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+
+#include "module/util/fs.h"
+#include "service/impl/dbus_retcode.h"
+
 using namespace std;
+using namespace linglong::Status;
 
 namespace linglong {
 namespace util {
 
 const char *LINGLONGHTTPCLIENTLOCK = "/tmp/linglongHttpDownload.lock";
 HttpClient *HttpClient::sInstance = nullptr;
+
+// 存储软件包信息服务器配置文件
+const QString kServerConfigPath = "/deepin/linglong/config/config";
 
 long getCurrentTime()
 {
@@ -146,7 +156,40 @@ void HttpClient::initHttpParam(const char *url)
     curl_easy_setopt(mCurlHandle, CURLOPT_NOPROGRESS, 0L);
 
     /* send all data to this function  */
-    //curl_easy_setopt(mCurlHandle, CURLOPT_WRITEFUNCTION, write_data);
+    // curl_easy_setopt(mCurlHandle, CURLOPT_WRITEFUNCTION, write_data);
+}
+
+/*
+ * 从配置文件获取服务器配置参数
+ *
+ * @param key: 参数名称
+ * @param value: 查询结果
+ *
+ * @return int: 0:成功 其它:失败
+ */
+int HttpClient::getLocalConfig(const QString &key, QString &value)
+{
+    if (!linglong::util::fileExists(kServerConfigPath)) {
+        qCritical() << kServerConfigPath << " not exist";
+        return StatusCode::FAIL;
+    }
+    QFile dbFile(kServerConfigPath);
+    dbFile.open(QIODevice::ReadOnly);
+    QString qValue = dbFile.readAll();
+    dbFile.close();
+    QJsonParseError parseJsonErr;
+    QJsonDocument document = QJsonDocument::fromJson(qValue.toUtf8(), &parseJsonErr);
+    if (QJsonParseError::NoError != parseJsonErr.error) {
+        qCritical() << "parse linglong config file err";
+        return StatusCode::FAIL;
+    }
+    QJsonObject dataObject = document.object();
+    if (!dataObject.contains(key)) {
+        qWarning() << "key:" << key << " not found in config";
+        return StatusCode::FAIL;
+    }
+    value = dataObject[key].toString();
+    return StatusCode::SUCCESS;
 }
 
 /*
@@ -178,18 +221,30 @@ size_t writeData(void *content, size_t size, size_t nmemb, void *stream)
  *
  * @return bool: true:成功 false:失败
  */
-bool HttpClient::queryRemote(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
-                                   QString &outMsg)
+bool HttpClient::queryRemote(const QString &pkgName, const QString &pkgVer, const QString &pkgArch, QString &outMsg)
 {
-    // curl --location --request POST '10.20.54.2:8888/linglong/app/fuzzySearchApp' --header 'Content-Type:
+    // curl --location --request POST 'https://linglong-api-dev.deepin.com/apps/fuzzysearchapp' --header 'Content-Type:
     // application/json' --data '{"AppId":"org.deepin.calculator","version":"5.5.23"}'
-    const char *url = "10.20.54.2:8888/linglong/app/fuzzySearchApp";
+    QString configUrl = "";
+    int statusCode = getLocalConfig("appDbUrl", configUrl);
+    if (StatusCode::SUCCESS != statusCode) {
+        return false;
+    }
+    qDebug() << "queryRemote configUrl:" << configUrl;
+
+    QString postUrl = "";
+    if (configUrl.endsWith("/")) {
+        postUrl = configUrl + "apps/fuzzysearchapp";
+    } else {
+        postUrl = configUrl + "/apps/fuzzysearchapp";
+    }
     int fd = getlock();
     if (fd == -1) {
         qInfo() << "HttpClient queryRemote app data is ongoing, please wait a moment and retry";
         return false;
     }
-    initHttpParam(url);
+    std::string url = postUrl.toStdString();
+    initHttpParam(url.c_str());
     std::stringstream out;
     // HTTP报文头
     struct curl_slist *headers = NULL;

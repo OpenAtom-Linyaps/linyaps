@@ -4,11 +4,9 @@ if [ ! -d /deepin ]
 then
 	mkdir -p /deepin/linglong/layers
 	mkdir -p /deepin/linglong/repo
-	ostree --repo=/deepin/linglong/repo/repo init --mode=bare-user
-	ostree --repo=/deepin/linglong/repo/repo remote add --no-gpg-verify repo  https://repo.linglong.space/ostree/
+	ostree --repo=/deepin/linglong/repo/repo init --mode=bare-user-only
+	ostree --repo=/deepin/linglong/repo/repo remote add --no-gpg-verify repo  https://linglong-api-dev.deepin.com/ostree/
 	chmod -R 0777 /deepin/
 else
 	echo "Directory is already exists."
 fi
-
-

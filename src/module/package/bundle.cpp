@@ -235,18 +235,14 @@ util::Result BundlePrivate::push(const QString &bundleFilePath, bool force)
 
     //导出squashfs文件
     this->squashfsFilePath = this->tmpWorkDir + "/squashfsFile";
-    // TODO:liujianqiang
-    //后续改成QFile处理
-    auto resultOutput = runner("dd",
-                               {"if=" + this->bundleFilePath, "of=" + this->squashfsFilePath,
-                                "bs=" + QString().setNum(this->offsetValue), "skip=1"},
-                               15 * 60 * 1000);
-    if (!resultOutput.success()) {
-        if (util::dirExists(this->tmpWorkDir)) {
-            util::removeDir(this->tmpWorkDir);
-        }
-        return dResult(resultOutput) << "call dd failed";
-    }
+    QFile bundleFile(this->bundleFilePath);
+    QFile squashfsFile(this->squashfsFilePath);
+    bundleFile.open(QIODevice::ReadOnly);
+    bundleFile.seek(this->offsetValue);
+    squashfsFile.open(QIODevice::WriteOnly);
+    squashfsFile.write(bundleFile.readAll());
+    bundleFile.close();
+    squashfsFile.close();
 
     //解压squashfs文件
     this->bundleDataPath = this->tmpWorkDir + "/unsquashfs";

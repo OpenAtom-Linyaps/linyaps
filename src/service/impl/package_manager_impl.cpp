@@ -8,67 +8,23 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#include <pwd.h>
-#include <sys/types.h>
-
 #include "module/repo/repohelper_factory.h"
 #include "module/repo/ostree_repohelper.h"
 #include "module/util/app_status.h"
 #include "module/util/appinfo_cache.h"
 #include "module/util/httpclient.h"
 #include "module/util/package_manager_param.h"
+#include "module/util/sysinfo.h"
 
 #include "package_manager_impl.h"
 #include "dbus_retcode.h"
 
 using linglong::dbus::RetCode;
 using namespace linglong::Status;
+using namespace linglong::util;
 
 const QString kAppInstallPath = "/deepin/linglong/layers/";
 const QString kLocalRepoPath = "/deepin/linglong/repo";
-
-/*
- * 查询系统架构
- *
- * @return QString: 系统架构字符串
- */
-QString PackageManagerImpl::getHostArch()
-{
-    // other CpuArchitecture ie i386 i486 to do fix
-    const QString arch = QSysInfo::currentCpuArchitecture();
-    Qt::CaseSensitivity cs = Qt::CaseInsensitive;
-    if (arch.startsWith("x86_64", cs)) {
-        return "x86_64";
-    }
-    if (arch.startsWith("arm", cs)) {
-        return "arm64";
-    }
-    if (arch.startsWith("mips", cs)) {
-        return "mips64";
-    }
-    return "unknown";
-}
-
-/*
- * 查询当前登陆用户名
- *
- * @return QString: 当前登陆用户名
- */
-QString PackageManagerImpl::getUserName()
-{
-    // QString userPath = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
-    // QString userName = userPath.section("/", -1, -1);
-    // return userName;
-    uid_t uid = geteuid();
-    struct passwd *user = getpwuid(uid);
-    QString userName = "";
-    if (user && user->pw_name) {
-        userName = QString(QLatin1String(user->pw_name));
-    } else {
-        qInfo() << "getUserName err";
-    }
-    return userName;
-}
 
 /*
  * 将json字符串转化为软件包数据
@@ -322,7 +278,7 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIDList, con
     QString err = "";
 
     // const QString arch = "x86_64";
-    const QString arch = getHostArch();
+    const QString arch = hostArch();
     if (arch == "unknown") {
         qInfo() << "the host arch is not recognized";
         info->setcode(RetCode(RetCode::host_arch_not_recognized));
@@ -442,7 +398,7 @@ AppMetaInfoList PackageManagerImpl::Query(const QStringList &packageIDList, cons
     }
     AppMetaInfoList pkglist;
     // 查找单个软件包 优先从本地数据库文件中查找
-    QString arch = getHostArch();
+    QString arch = hostArch();
     if (arch == "unknown") {
         qInfo() << "the host arch is not recognized";
         return pkglist;
@@ -515,7 +471,7 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIDList, c
     QString err = "";
     AppMetaInfoList pkglist;
     // 根据已安装文件查询已经安装软件包信息
-    QString arch = getHostArch();
+    QString arch = hostArch();
     getInstalledAppInfo(pkgName, version, arch, userName, pkglist);
 
     auto it = pkglist.at(0);

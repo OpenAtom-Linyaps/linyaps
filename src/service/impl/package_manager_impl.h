@@ -40,20 +40,6 @@ private:
     const QString sysLinglongInstalltions = "/deepin/linglong/entries/share";
 
     /*
-     * 查询系统架构
-     *
-     * @return QString: 系统架构字符串
-     */
-    QString getHostArch();
-
-    /*
-     * 查询当前登陆用户名
-     *
-     * @return QString: 当前登陆用户名
-     */
-    QString getUserName();
-
-    /*
      * 将json字符串转化为软件包数据
      *
      * @param jsonString: 软件包对应的json字符串

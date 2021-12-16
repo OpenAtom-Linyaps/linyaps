@@ -15,5 +15,7 @@ namespace util {
 
 QString hostArch();
 
+QString getUserName();
+
 } // namespace util
 } // namespace linglong

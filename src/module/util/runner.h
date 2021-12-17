@@ -43,6 +43,7 @@ auto Runner(const T program = "ostree", const Y args = "", const P timeout = 300
     auto retCode = runner.exitCode();
     if ((retStatus != 0) || (retStatus == 0 && retCode != 0)) {
         qCritical() << program << " run failed, retCode:" << retCode;
+        qCritical() << program << " err msg:" << runner.readAllStandardOutput();
         return false;
     }
     return true;

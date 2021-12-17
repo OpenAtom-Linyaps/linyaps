@@ -200,10 +200,16 @@ QVariant toVariant(const T *m)
     QVariantMap map;
     //    auto obj = qobject_cast<T *>(m);
     //    map[Q_JSON_PARENT_KEY] = QVariant::fromValue(obj);
-    //    qCritical() << "toVariant" << map[Q_JSON_PARENT_KEY];
+    if (nullptr == m) {
+        return {};
+    }
+
     auto mo = m->metaObject();
     for (int i = mo->propertyOffset(); i < mo->propertyCount(); ++i) {
         auto k = mo->property(i).name();
+        if (QVariant::fromValue((QObject *const)nullptr) == m->property(k)) {
+            continue;
+        }
         map[k] = m->property(k).toJsonValue();
     }
     return map;
@@ -256,7 +262,7 @@ static T *loadJSON(const QString &filepath)
 }
 
 template<typename T>
-static T *loadJSONString(const QString& jsonString)
+static T *loadJSONString(const QString &jsonString)
 {
     auto json = QJsonDocument::fromJson(jsonString.toLocal8Bit());
     return fromVariant<T>(json.toVariant());

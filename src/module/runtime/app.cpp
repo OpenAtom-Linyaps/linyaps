@@ -74,26 +74,23 @@ public:
     int prepare()
     {
         Q_Q(App);
-        stageSystem();
+
         // FIXME: get info from module/package
         auto runtimeRef = package::Ref(q->runtime->ref);
         QString runtimeRootPath = repo::rootOfLayer(runtimeRef);
-
-        qCritical() << runtimeRootPath;
 
         // FIXME: return error if files not exist
         auto fixRuntimePath = runtimeRootPath + "/files";
         if (!util::dirExists(fixRuntimePath)) {
             fixRuntimePath = runtimeRootPath;
         }
-        stageRuntime(fixRuntimePath);
 
         auto appRef = package::Ref(q->package->ref);
         QString appRootPath = repo::rootOfLayer(appRef);
 
-        qCritical() << appRootPath;
+        stageRootfs(runtimeRef.id, fixRuntimePath, appRef.id, appRootPath);
 
-        stageApp(appRef.id, appRootPath);
+        stageSystem();
         stageHost();
         stageUser(appRef.id);
         stageMount();
@@ -136,10 +133,10 @@ public:
 
     int stageSystem() const
     {
-        QList<QPair<QString,QString>> mountMap;
+        QList<QPair<QString, QString>> mountMap;
         mountMap = {
-            {"/dev/dri","/dev/dri"},
-            {"/dev/snd","/dev/snd"}
+            {"/dev/dri", "/dev/dri"},
+            {"/dev/snd", "/dev/snd"},
         };
 
         for (const auto &pair : mountMap) {
@@ -154,25 +151,50 @@ public:
         return 0;
     }
 
-    int stageRuntime(const QString &runtimeRootPath) const
+    int stageRootfs(const QString &runtimeID, const QString &runtimeRootPath, const QString &appID,
+                    const QString &appRootPath) const
     {
-        QList<QPair<QString, QString>> mountMap;
-
         bool useThinRuntime = true;
+        bool fuseMount = false;
+
+        // if use wine runtime, mount with fuse
+        // FIXME(iceyer): use info.json to decide use fuse or not
+        if (runtimeRootPath.contains("org.deepin.Wine")) {
+            fuseMount = true;
+        }
+
+        r->annotations = new Annotations(r);
+        r->annotations->container_root_path = container->WorkingDirectory;
+
+        if (fuseMount) {
+            r->annotations->overlayfs = new AnnotationsOverlayfsRootfs(r->annotations);
+            r->annotations->overlayfs->lower_parent =
+                QStringList {container->WorkingDirectory, ".overlayfs", "lower_parent"}.join("/");
+            r->annotations->overlayfs->upper =
+                QStringList {container->WorkingDirectory, ".overlayfs", "upper"}.join("/");
+            r->annotations->overlayfs->workdir =
+                QStringList {container->WorkingDirectory, ".overlayfs", "workdir"}.join("/");
+        } else {
+            r->annotations->native = new AnnotationsNativeRootfs(r->annotations);
+        }
+
+        QList<QPair<QString, QString>> mountMap;
 
         if (useThinRuntime) {
             mountMap = {
                 {"/usr", "/usr"},
                 {"/etc", "/etc"},
                 {runtimeRootPath + "/usr", "/runtime"},
-                // FIXME: extract for wine, remove later
-		{runtimeRootPath + "/usr/lib/i386-linux-gnu", "/usr/lib/i386-linux-gnu"},
-                {runtimeRootPath + "/opt/deepinwine", "/opt/deepinwine"},
-                {runtimeRootPath + "/opt/deepin-wine6-stable", "/opt/deepin-wine6-stable"},
             };
 
+            // FIXME(iceyer): extract for wine, remove later
+            if (fuseMount) {
+                mountMap.push_back({runtimeRootPath + "/usr/lib/i386-linux-gnu", "/usr/lib/i386-linux-gnu"});
+                mountMap.push_back({runtimeRootPath + "/opt/deepinwine", "/opt/deepinwine"});
+                mountMap.push_back({runtimeRootPath + "/opt/deepin-wine6-stable", "/opt/deepin-wine6-stable"});
+            }
         } else {
-            // FIXME: if runtime is empty, use the last
+            // FIXME(iceyer): if runtime is empty, use the last
             if (runtimeRootPath.isEmpty()) {
                 qCritical() << "mount runtime failed" << runtimeRootPath;
                 return -1;
@@ -182,72 +204,34 @@ public:
             };
         }
 
+        mountMap.push_back({appRootPath, "/opt/apps/" + appID});
+        // TODO(iceyer): add doc for this or remove
+        mountMap.push_back({QStringList {appRootPath, "files/lib"}.join("/"), "/run/app/lib"});
+
         for (const auto &pair : mountMap) {
-            Mount &m = *new Mount(r);
-            m.type = "bind";
-            m.options = QStringList {"ro"};
-            m.type = "bind";
-            m.source = pair.first;
-            m.destination = pair.second;
-            r->mounts.push_back(&m);
-            qDebug() << "mount stageRuntime" << m.source << m.destination;
-        }
-        return 0;
-    }
+            auto m = new Mount(r);
+            m->type = "bind";
+            m->options = QStringList {"ro"};
+            m->source = pair.first;
+            m->destination = pair.second;
 
-    int stageApp(const QString &appID, const QString &appRootPath) const
-    {
-        {
-            Mount &m = *new Mount(r);
-            m.type = "bind";
-            m.options = QStringList {"rw"};
-            m.type = "bind";
-
-            m.destination = "/opt/apps/" + appID;
-            m.source = appRootPath;
-            r->mounts.push_back(&m);
+            if (fuseMount) {
+                r->annotations->overlayfs->mounts.push_back(m);
+            } else {
+                r->annotations->native->mounts.push_back(m);
+            }
         }
 
-        // FIXME: only app.conf
-        //    m.destination = "/run/layer/ld.so.conf.d/";
-        //    m.source = util::jonsPath({appInfo.rootPath(), "entries", "ld.so.conf.d"});
-        //    r.mounts.push_front(m);
-
-        // FIXME: not work because readonly etc
-        {
-            Mount &m = *new Mount(r);
-            m.type = "bind";
-            m.options = QStringList {"rw"};
-            m.destination = "/run/app/libs";
-            m.source = QStringList {appRootPath, "files/lib"}.join("/");
-            r->mounts.push_back(&m);
-            qDebug() << "mount app" << m.source << m.destination;
-        }
-
-        //        for (auto const &f : appInfo.suidFiles()) {
-        //            Hook &h = *new Hook(r);
-        //            h.path = "/usr/bin/chown";
-        //            h.args = std::vector<std::string> {
-        //                "0",
-        //                linglong::util::jonsPath({"/opt/apps", appInfo.appID(), f.toStdString()}),
-        //            };
-        //            r->hooks->poststart.push_back(&h);
-        //
-        //            h.path = "/usr/bin/chmod";
-        //            h.args = std::vector<std::string> {
-        //                "u+s",
-        //                util::jonsPath({"/opt/apps", appInfo.appID(), f.toStdString()}),
-        //            };
-        //            r->hooks->poststart.push_back(&h);
-        //        }
-
-        // FIXME: let application do this, ld config
+        // TODO(iceyer): let application do this or add to doc
         auto appLdLibraryPath = QStringList {"/opt/apps", appID, "files/lib"}.join("/");
-        // FIXME: for wine
-        auto fixLdLibraryPath = QStringList {appLdLibraryPath, "/runtime/lib", "/runtime/lib/x86_64-linux-gnu",
-                                             "/runtime/lib/i386-linux-gnu"}
-                                    .join(":");
-        r->process->env.push_back("LD_LIBRARY_PATH=" + fixLdLibraryPath);
+        // TODO(iceyer): support other arch, or just no arch?
+        auto fixLdLibraryPath = QStringList {
+            appLdLibraryPath,
+            "/runtime/lib",
+            "/runtime/lib/x86_64-linux-gnu",
+            "/runtime/lib/i386-linux-gnu",
+        };
+        r->process->env.push_back("LD_LIBRARY_PATH=" + fixLdLibraryPath.join(":"));
         r->process->env.push_back("QT_PLUGIN_PATH=/usr/lib/plugins:/runtime/plugins");
         r->process->env.push_back("QT_QPA_PLATFORM_PLUGIN_PATH=/usr/lib/plugins/platforms:/runtime/plugins/platforms");
         return 0;
@@ -368,8 +352,8 @@ public:
             qDebug() << "mount app" << m.source << m.destination;
         }
         auto appRef = package::Ref(q_ptr->package->ref);
-        auto appBinaryPath = QStringList {"/opt/apps",appRef.id,"files/bin"}.join("/");
-        r->process->env.push_back("PATH="+appBinaryPath + ":" + getenv("PATH"));
+        auto appBinaryPath = QStringList {"/opt/apps", appRef.id, "files/bin"}.join("/");
+        r->process->env.push_back("PATH=" + appBinaryPath + ":" + getenv("PATH"));
         r->process->env.push_back("HOME=" + util::getUserFile(""));
         r->process->env.push_back("XDG_RUNTIME_DIR=" + userRuntimeDir);
         r->process->env.push_back("DBUS_SESSION_BUS_ADDRESS=unix:path=" + util::jonsPath({userRuntimeDir, "bus"}));
@@ -401,9 +385,7 @@ public:
         r->process->cwd = util::getUserFile("");
 
         QList<QList<quint64>> uidMaps = {
-            // FIXME: get 65534 form nobody
-            {65534, 0, 1},
-            {getuid(), getuid(), 1},
+            {getuid(), 0, 1},
         };
         for (auto const &uidMap : uidMaps) {
             Q_ASSERT(uidMap.size() == 3);
@@ -415,9 +397,7 @@ public:
         }
 
         QList<QList<quint64>> gidMaps = {
-            // FIXME: get 65534 form nogroup
-            {65534, 0, 1},
-            {getgid(), getgid(), 1},
+            {getgid(), 0, 1},
         };
         for (auto const &gidMap : gidMaps) {
             Q_ASSERT(gidMap.size() == 3);

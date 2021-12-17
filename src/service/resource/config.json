@@ -25,10 +25,23 @@
       },
       {
         "type": "uts"
+      },
+      {
+        "type": "user"
       }
     ]
   },
   "mounts": [
+    {
+      "destination": "/sys",
+      "type": "sysfs",
+      "source": "sysfs",
+      "options": [
+        "nosuid",
+        "noexec",
+        "nodev"
+      ]
+    },
     {
       "destination": "/proc",
       "type": "proc",
@@ -74,16 +87,6 @@
       "destination": "/dev/mqueue",
       "type": "mqueue",
       "source": "mqueue",
-      "options": [
-        "nosuid",
-        "noexec",
-        "nodev"
-      ]
-    },
-    {
-      "destination": "/sys",
-      "type": "sysfs",
-      "source": "sysfs",
       "options": [
         "nosuid",
         "noexec",

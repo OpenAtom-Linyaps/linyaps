@@ -93,6 +93,35 @@ class Hooks : public JsonSerialize
 };
 Q_JSON_DECLARE_PTR_METATYPE(Hooks)
 
+class AnnotationsOverlayfsRootfs : public JsonSerialize
+{
+    Q_OBJECT;
+    Q_JSON_CONSTRUCTOR(AnnotationsOverlayfsRootfs)
+    Q_JSON_PROPERTY(QString, lower_parent);
+    Q_JSON_PROPERTY(QString, upper);
+    Q_JSON_PROPERTY(QString, workdir);
+    Q_JSON_PROPERTY(MountList, mounts);
+};
+Q_JSON_DECLARE_PTR_METATYPE(AnnotationsOverlayfsRootfs)
+
+class AnnotationsNativeRootfs : public JsonSerialize
+{
+    Q_OBJECT;
+    Q_JSON_CONSTRUCTOR(AnnotationsNativeRootfs)
+    Q_JSON_PROPERTY(MountList, mounts);
+};
+Q_JSON_DECLARE_PTR_METATYPE(AnnotationsNativeRootfs)
+
+class Annotations : public JsonSerialize
+{
+    Q_OBJECT;
+    Q_JSON_CONSTRUCTOR(Annotations)
+    Q_JSON_PROPERTY(QString, container_root_path);
+    Q_JSON_PTR_PROPERTY(AnnotationsOverlayfsRootfs, overlayfs);
+    Q_JSON_PTR_PROPERTY(AnnotationsNativeRootfs, native);
+};
+Q_JSON_DECLARE_PTR_METATYPE(Annotations)
+
 #undef linux
 class Runtime : public JsonSerialize
 {
@@ -105,6 +134,7 @@ class Runtime : public JsonSerialize
     Q_JSON_PROPERTY(MountList, mounts);
     Q_JSON_PTR_PROPERTY(Linux, linux);
     Q_JSON_PTR_PROPERTY(Hooks, hooks);
+    Q_JSON_PTR_PROPERTY(Annotations, annotations);
 };
 Q_JSON_DECLARE_PTR_METATYPE(Runtime)
 
@@ -118,4 +148,8 @@ inline void ociJsonRegister()
     qJsonRegister<Runtime>();
     qJsonRegister<Process>();
     qJsonRegister<IDMap>();
+
+    qJsonRegister<Annotations>();
+    qJsonRegister<AnnotationsOverlayfsRootfs>();
+    qJsonRegister<AnnotationsNativeRootfs>();
 }

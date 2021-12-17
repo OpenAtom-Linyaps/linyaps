@@ -1,3 +1,9 @@
+linglong (1.0.5-1) unstable; urgency=medium
+
+  * update version 
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Fri, 17 Dec 2021 20:16:56 +0800
+
 linglong (1.0.4-1) unstable; urgency=medium
 
   * feat: add api pushOuapOrRuntimeToServer

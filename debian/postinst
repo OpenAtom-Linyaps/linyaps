@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ ! -d /deepin ]
+if [ ! -d /deepin/linglong/repo ]
 then
 	mkdir -p /deepin/linglong/layers
 	mkdir -p /deepin/linglong/repo

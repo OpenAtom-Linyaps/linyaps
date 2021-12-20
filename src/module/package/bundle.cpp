@@ -368,7 +368,7 @@ util::Result BundlePrivate::push(const QString &bundleFilePath, bool force)
     std::cout << doc.toJson().toStdString() << std::endl;
     QJsonObject retMesgJsonObject = QJsonDocument::fromJson(retMsg.toUtf8()).object();
 
-    if (retMesgJsonObject["msg"].toString() != "操作成功") {
+    if (retMesgJsonObject["code"].toInt() != 0) {
         std::cout << "Upload failed, please upload again！" << std::endl;
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);

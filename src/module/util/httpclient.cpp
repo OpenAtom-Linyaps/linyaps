@@ -492,22 +492,94 @@ bool HttpClient::loadHttpData(const QString qurl, const QString qsavePath)
 }
 
 /*
+ * 上传文件
+ *
+ * @param filePath: 文件路径
+ * @param dnsOfLinglong: 玲珑仓库域名地址
+ * @param flags: bundle：上传bundle文件  ostree： 上传repo仓库
+ *
+ * @return int: SUCCESS:成功 FAIL:失败
+ */
+int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong, const QString &flags)
+{
+    QString dnsUrl = dnsOfLinglong + "apps/upload";
+    QByteArray dnsUrlByteArr = dnsUrl.toLocal8Bit();
+    const char *url = dnsUrlByteArr.data();
+    int fd = getlock();
+    if (fd == -1) {
+        qCritical() << "HttpClient requestServerData is doing, please wait a moment and retry";
+        return Status::StatusCode::FAIL;
+    }
+    initHttpParam(url);
+    std::stringstream out;
+    curl_httppost *post = nullptr;
+    curl_httppost *last = nullptr;
+
+    // 设置为非0表示本次操作为POST
+    curl_easy_setopt(mCurlHandle, CURLOPT_POST, 1);
+    // --location
+    curl_easy_setopt(mCurlHandle, CURLOPT_FOLLOWLOCATION, 1);
+
+    std::string filePathString = filePath.toStdString();
+
+    curl_formadd(&post, &last, CURLFORM_PTRNAME, "uploadSubPath", CURLFORM_PTRCONTENTS, flags.toStdString().c_str(),
+                 CURLFORM_END);
+    curl_formadd(&post, &last, CURLFORM_PTRNAME, "file", CURLFORM_FILE, filePathString.c_str(), CURLFORM_END);
+
+    curl_easy_setopt(mCurlHandle, CURLOPT_HTTPPOST, post);
+    // 设置接收数据的处理函数和存放变量
+    curl_easy_setopt(mCurlHandle, CURLOPT_WRITEFUNCTION, writeData);
+    // 设置写数据
+    curl_easy_setopt(mCurlHandle, CURLOPT_WRITEDATA, &out);
+
+    CURLcode code = curl_easy_perform(mCurlHandle);
+    if (code != CURLE_OK) {
+        qCritical() << "curl_easy_perform err code:" << curl_easy_strerror(code);
+        curl_easy_cleanup(mCurlHandle);
+        curl_global_cleanup();
+        releaselock(fd);
+        return Status::StatusCode::FAIL;
+    }
+    int resCode = 0;
+    code = curl_easy_getinfo(mCurlHandle, CURLINFO_RESPONSE_CODE, &resCode);
+    if (code != CURLE_OK || resCode != 200) {
+        qCritical() << "curl_easy_getinfo err:" << curl_easy_strerror(code) << ", resCode" << resCode;
+        curl_easy_cleanup(mCurlHandle);
+        curl_global_cleanup();
+        releaselock(fd);
+        return Status::StatusCode::FAIL;
+    }
+    curl_easy_cleanup(mCurlHandle);
+    curl_global_cleanup();
+    releaselock(fd);
+
+    auto outMsg = QString::fromStdString(out.str());
+    QJsonObject retUploadObject = QJsonDocument::fromJson(outMsg.toUtf8()).object();
+    if (retUploadObject["code"].toInt() != 0) {
+        qCritical() << "upload file failed: " + filePath;
+        qCritical() << retUploadObject["msg"].toString();
+        return Status::StatusCode::FAIL;
+    }
+    return Status::StatusCode::SUCCESS;
+}
+
+/*
  * 上传bundle信息
  *
  * @param info: bundle文件信息
- * @param outMsg: 返回上传结果信息
+ * @param dnsOfLinglong: 玲珑仓库域名地址
  *
- * @return bool: true:成功 false:失败
+ * @return int: SUCCESS:成功 FAIL:失败
  */
-bool HttpClient::pushServerBundleData(const QString &info, const QString &dnsOfLinglong, QString &outMsg)
+int HttpClient::pushServerBundleData(const QString &info, const QString &dnsOfLinglong)
 {
     QString dnsUrl = dnsOfLinglong + "apps";
     QByteArray dnsUrlByteArr = dnsUrl.toLocal8Bit();
     const char *url = dnsUrlByteArr.data();
     int fd = getlock();
     if (fd == -1) {
-        qInfo() << "HttpClient requestServerData is doing, please wait a moment and retry";
-        return false;
+        qCritical() << "HttpClient requestServerData is doing, please wait a moment and retry";
+        return Status::StatusCode::FAIL;
     }
     initHttpParam(url);
     std::stringstream out;
@@ -538,23 +610,26 @@ bool HttpClient::pushServerBundleData(const QString &info, const QString &dnsOfL
         curl_easy_cleanup(mCurlHandle);
         curl_global_cleanup();
         releaselock(fd);
-        return false;
+        return Status::StatusCode::FAIL;
     }
     int resCode = 0;
     code = curl_easy_getinfo(mCurlHandle, CURLINFO_RESPONSE_CODE, &resCode);
     if (code != CURLE_OK || resCode != 200) {
-        qInfo() << "curl_easy_getinfo err:" << curl_easy_strerror(code) << ", resCode" << resCode;
+        qCritical() << "curl_easy_getinfo err:" << curl_easy_strerror(code) << ", resCode" << resCode;
     }
     curl_slist_free_all(headers);
     curl_easy_cleanup(mCurlHandle);
     curl_global_cleanup();
     releaselock(fd);
 
-    outMsg = QString::fromStdString(out.str());
-    // 返回请求值
-    // string str_json = out.str();
-    // printf("\nrequestServerData receive:\n%s\n", str_json.c_str());
-    return true;
+    auto outMsg = QString::fromStdString(out.str());
+    QJsonObject retUploadObject = QJsonDocument::fromJson(outMsg.toUtf8()).object();
+    if (retUploadObject["code"].toInt() != 0) {
+        qCritical() << "upload bundle info failed: " + info;
+        qCritical() << retUploadObject["msg"].toString();
+        return Status::StatusCode::FAIL;
+    }
+    return Status::StatusCode::SUCCESS;
 }
 } // namespace util
 } // namespace linglong

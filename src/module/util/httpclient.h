@@ -150,15 +150,25 @@ public:
     bool getDownloadInfo(DownloadRet &dataInfo) { return true; }
 
     /*
+     * 上传文件
+     *
+     * @param filePath: 文件路径
+     * @param dnsOfLinglong: 玲珑仓库域名地址
+     * @param flags: bundle：上传bundle文件  ostree： 上传repo仓库
+     *
+     * @return int: SUCCESS:成功 FAIL:失败
+     */
+    int uploadFile(const QString &filePath, const QString &dnsOfLinglong, const QString &flags);
+
+    /*
      * 上传bundle信息
      *
      * @param info: bundle文件信息
-     * @param outMsg: 返回上传结果信息
      * @param dnsOfLinglong: 玲珑仓库域名地址
-     * 
-     * @return bool: true:成功 false:失败
+     *
+     * @return int: SUCCESS:成功 FAIL:失败
      */
-    bool pushServerBundleData(const QString &info, const QString& dnsOfLinglong , QString &outMsg);
+    int pushServerBundleData(const QString &info, const QString &dnsOfLinglong);
 
     /*
      * 释放HttpClient实例

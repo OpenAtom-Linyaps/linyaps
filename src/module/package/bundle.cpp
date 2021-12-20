@@ -304,46 +304,33 @@ util::Result BundlePrivate::push(const QString &bundleFilePath, bool force)
     QString configUrl = "";
     int statusCode = httpClient->getLocalConfig("appDbUrl", configUrl);
     if (Status::StatusCode::SUCCESS != statusCode) {
+        if (util::dirExists(this->tmpWorkDir)) {
+            util::removeDir(this->tmpWorkDir);
+        }
         httpClient->release();
         return dResultBase() << "call getLocalConfig api failed";
     }
 
     //上传repo.tar文件
-    // TODO:刘建强，后续整改为api调用
-    arguments.clear();
-    arguments << "-location"
-              << "--request"
-              << "POST" << configUrl + "apps/upload"
-              << "--form"
-              << "file=@" + this->tmpWorkDir + "/repo.tar"
-              << "--form"
-              << "uploadSubPath=ostree";
-    auto resultPushRepo = runner("curl", arguments);
-
-    if (!resultPushRepo.success()) {
+    auto retUploadRepo = httpClient->uploadFile(this->tmpWorkDir + "/repo.tar", configUrl, "ostree");
+    if (Status::StatusCode::SUCCESS != retUploadRepo) {
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
         }
-        return dResult(resultPushRepo) << "call curl push repo.tar failed";
+        httpClient->release();
+        std::cout << "upload repo.tar failed, please check and try again!" << std::endl;
+        return dResultBase() << "upload repo.tar failed";
     }
 
     //上传bundle文件
-    // TODO:刘建强，后续整改为api调用
-    arguments.clear();
-    arguments << "-location"
-              << "--request"
-              << "POST" << configUrl + "apps/upload"
-              << "--form"
-              << "file=@" + this->bundleFilePath << "--form"
-              << "uploadSubPath=bundle";
-
-    auto resultPushBundle = runner("curl", arguments);
-
-    if (!resultPushBundle.success()) {
+    auto retUploadBundle = httpClient->uploadFile(this->bundleFilePath, configUrl, "bundle");
+    if (Status::StatusCode::SUCCESS != retUploadBundle) {
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
         }
-        return dResult(resultPushBundle) << "call curl push bundle failed";
+        httpClient->release();
+        std::cout << "Upload bundle failed, please check and try again!" << std::endl;
+        return dResultBase() << "upload bundle failed";
     }
 
     //上传bundle信息到服务器
@@ -357,29 +344,21 @@ util::Result BundlePrivate::push(const QString &bundleFilePath, bool force)
     QJsonDocument doc;
     doc.setObject(infoJsonObject);
 
-    QString retMsg = "";
-    bool ret = httpClient->pushServerBundleData(doc.toJson(), configUrl, retMsg);
-    httpClient->release();
-    if (!ret) {
-        QString err = "pushServerBundleData err";
-        qCritical() << err;
-    }
-
-    std::cout << doc.toJson().toStdString() << std::endl;
-    QJsonObject retMesgJsonObject = QJsonDocument::fromJson(retMsg.toUtf8()).object();
-
-    if (retMesgJsonObject["code"].toInt() != 0) {
-        std::cout << "Upload failed, please upload again！" << std::endl;
+    auto retUploadBundleInfo = httpClient->pushServerBundleData(doc.toJson(), configUrl);
+    if (Status::StatusCode::SUCCESS != retUploadBundleInfo) {
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
         }
-        return dResultBase() << "Upload bundle failed";
+        httpClient->release();
+        std::cout << "upload bundle info failed, please check and try again!" << std::endl;
+        return dResultBase() << "upload bundle info failed";
     }
-    std::cout << "Upload success" << std::endl;
 
+    httpClient->release();
     if (util::dirExists(this->tmpWorkDir)) {
         util::removeDir(this->tmpWorkDir);
     }
+    std::cout << "Upload success" << std::endl;
     return dResultBase();
 }
 

@@ -21,7 +21,7 @@
 #include <QMap>
 #include <QVector>
 #include <QDebug>
-
+#include <QTemporaryDir>
 #include <DSingleton>
 
 #include "repohelper.h"

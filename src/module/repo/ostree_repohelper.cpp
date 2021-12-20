@@ -43,6 +43,10 @@ OstreeRepoHelper::~OstreeRepoHelper()
 {
     if (pLingLongDir != nullptr) {
         qInfo() << "~OstreeRepoHelper() called";
+        // free ostree repo
+        if (pLingLongDir->repo) {
+            g_clear_object(&pLingLongDir->repo);
+        }
         delete pLingLongDir;
         pLingLongDir = nullptr;
     }
@@ -528,32 +532,13 @@ char *OstreeRepoHelper::repoReadLink(const char *path)
  */
 char *OstreeRepoHelper::getCacheDir()
 {
-    g_autofree char *path = NULL;
-    g_autofree char *symlink_path = NULL;
-    struct stat st_buf;
-    symlink_path = g_build_filename(g_get_user_runtime_dir(), ".linglong-cache", NULL);
-    path = repoReadLink(symlink_path);
-    if (stat(path, &st_buf) == 0 &&
-        /* Must be owned by us */
-        st_buf.st_uid == getuid() &&
-        /* and not writeable by others */
-        (st_buf.st_mode & 0022) == 0)
-        // return g_file_new_for_path(path);
-        return g_strdup(path);
-
-    path = g_strdup("/var/tmp/linglong-cache-XXXXXX");
-    if (g_mkdtemp_full(path, 0755) == NULL) {
-        // fprintf(stdout, "Can't create temporary directory\n");
-        qInfo() << "Can't create temporary directory";
-        return NULL;
+    QTemporaryDir dir("/tmp/linglong-cache-XXXXXX");
+    if (dir.isValid()) {
+        const string tmpPath = dir.path().toStdString();
+        return g_strdup(tmpPath.c_str());
     }
-    unlink(symlink_path);
-    if (symlink(path, symlink_path) != 0) {
-        // fprintf(stdout, "symlink err\n");
-        qInfo() << "symlink err";
-        return NULL;
-    }
-    return g_strdup(path);
+    qCritical() << "Can't create temporary directory";
+    return NULL;
 }
 
 /*
@@ -1015,8 +1000,10 @@ bool OstreeRepoHelper::repoPullbyCmd(const QString &destPath, const QString &rem
         err = "repoPullbyCmd pull-local error";
         return false;
     }
-    // 删除临时目录 block to delete to do
-    delDirbyPath(tmpPath);
+    // 删除临时目录
+    char tmpRepoDir[64] = {'\0'};
+    strncpy(tmpRepoDir, tmpPath, strlen(tmpPath) - strlen("repoTmp"));
+    delDirbyPath(tmpRepoDir);
     return ret;
 }
 

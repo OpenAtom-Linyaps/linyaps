@@ -137,10 +137,7 @@ void HttpClient::initHttpParam(const char *url)
     curl_easy_setopt(mCurlHandle, CURLOPT_URL, url);
 
     curl_easy_setopt(mCurlHandle, CURLOPT_TIMEOUT, 3600); // 超时(单位S)
-
-    curl_easy_setopt(mCurlHandle, CURLOPT_LOW_SPEED_LIMIT, 1); //如果15秒内平均速度低于每秒1字节就停止
-
-    curl_easy_setopt(mCurlHandle, CURLOPT_LOW_SPEED_TIME, 15);
+    curl_easy_setopt(mCurlHandle, CURLOPT_CONNECTTIMEOUT, 3600); // 超时(单位S)
 
     // curl_easy_setopt(mCurlHandle, CURLOPT_HEADER, 1); //下载数据包括HTTP头部
     // 此时若保存文件侧文件数据打不开

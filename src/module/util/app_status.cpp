@@ -258,6 +258,24 @@ int deleteAppRecord(const QString &appId, const QString &appVer, const QString &
 }
 
 /*
+ * 判断软件包类型是否为runtime
+ *
+ * @param appId: 软件包包名
+ *
+ * @return bool: true:是 其它: 否
+ */
+bool isRuntime(const QString &appId)
+{
+    // FIXME: 通过元信息判断是否为runtime
+    const QString runtimeId = "org.deepin.Runtime";
+    const QString wineRuntimeId = "org.deepin.Wine";
+    if (runtimeId == appId || wineRuntimeId == appId) {
+        return true;
+    }
+    return false;
+}
+
+/*
  * 查询软件包是否安装
  *
  * @param appId: 软件包包名
@@ -276,27 +294,20 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
     }
     QSqlQuery sqlQuery(dbConn);
 
-    // 默认不查找版本 fix to runtime runtime应该不区分用户
-    QString selectSql =
-        QString("SELECT * FROM installedAppInfo WHERE appId = '%1' AND user = '%2'").arg(appId).arg(userName);
-
+    QString selectSql = QString("SELECT * FROM installedAppInfo WHERE appId = '%1'").arg(appId);
+    QString condition = "";
+    // runtime不区分用户
+    if (!isRuntime(appId)) {
+        condition.append(QString(" AND user = '%1'").arg(userName));
+    }
     if (!appVer.isEmpty()) {
-        selectSql = QString("SELECT * FROM installedAppInfo WHERE appId = '%1' AND version = '%2' AND user = '%3' ")
-                        .arg(appId)
-                        .arg(appVer)
-                        .arg(userName);
+        condition.append(QString(" AND version = '%1'").arg(appVer));
     }
-
-    // 查找指定版本和架构 指定架构必须指定版本 暂不支持单独指定架构
-    if (!appArch.isEmpty() && !appVer.isEmpty()) {
-        selectSql =
-            QString(
-                "SELECT * FROM installedAppInfo WHERE appId = '%1' AND version = '%2' AND user = '%3' AND arch like '%%4%'")
-                .arg(appId)
-                .arg(appVer)
-                .arg(userName)
-                .arg(appArch);
+    if (!appArch.isEmpty()) {
+        condition.append(QString(" AND arch like '%%1%'").arg(appArch));
     }
+    qDebug() << "sql condition:" << condition;
+    selectSql.append(condition);
     sqlQuery.prepare(selectSql);
     if (!sqlQuery.exec()) {
         err = "getAppInstalledStatus fail to exec sql:" + selectSql + ", error:" + sqlQuery.lastError().text();

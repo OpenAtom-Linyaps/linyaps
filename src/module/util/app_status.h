@@ -69,6 +69,15 @@ int insertAppRecord(AppMetaInfo *package, const QString &installType, const QStr
 int deleteAppRecord(const QString &appId, const QString &appVer, const QString &appArch, const QString &userName);
 
 /*
+ * 判断软件包类型是否为runtime
+ *
+ * @param appId: 软件包包名
+ *
+ * @return bool: true:是 其它: 否
+ */
+bool isRuntime(const QString &appId);
+
+/*
  * 查询软件包是否安装
  *
  * @param appId: 软件包包名

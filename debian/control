@@ -27,6 +27,6 @@ Description: Package Manager for UOS.
 
 Package: linglong-builder
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, python3, python3-pip, python3-paramiko, python3-jinja2, squashfs-tools, linglong-loader
+Depends: ${shlibs:Depends}, ${misc:Depends}, squashfs-tools, linglong-loader, python3-buildstream
 Description: Package Manager for UOS.
  Package Manager...

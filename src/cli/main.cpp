@@ -270,8 +270,8 @@ int main(int argc, char **argv)
                  parser.showHelp(-1);
                  return -1;
              }
-             // 设置 10 分钟超时 to do
-             pm.setTimeout(1000 * 60 * 10);
+             // 设置 24 h超时
+             pm.setTimeout(1000 * 60 * 60 * 24);
              QDBusPendingReply<RetMessageList> reply;
 
              // appID format: org.deepin.calculator/1.2.6 in multi-version
@@ -309,6 +309,10 @@ int main(int argc, char **argv)
                      return -1;
                  }
                  std::cout << std::endl;
+             }
+             if (reply.isError()) {
+                 std::cout << "install: " << appID.toStdString() << " timeout";
+                 return -1;
              }
              return 0;
          }},

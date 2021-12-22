@@ -13,6 +13,7 @@ set(LL_SERVICE_SOURCES
     impl/job_manager.cpp
     impl/job.cpp
     impl/qdbus_retmsg.h
+    ../module/flatpak/flatpak_manager.cpp
     ../module/package/info.cpp
     ../module/repo/repo.cpp
     ../module/util/uuid.cpp

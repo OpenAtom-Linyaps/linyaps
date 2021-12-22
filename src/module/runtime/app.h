@@ -45,7 +45,7 @@ public:
     explicit App(QObject *parent = nullptr);
     ~App() override;
 
-    static App *load(const QString &configFilepath);
+    static App *load(const QString &configFilepath, bool useFlatpakRuntime);
 
     Container *container() const;
 

@@ -33,6 +33,7 @@ RetMessageList PackageManagerFlatpakImpl::Install(const QStringList &packageIDLi
     QString pkgName = packageIDList.at(0);
     QStringList argStrList;
     argStrList << "install"
+               << "--user"
                << "-y" << pkgName;
     argStrList.join(" ");
     auto ret = Runner("flatpak", argStrList, 1000 * 60 * 30);
@@ -114,6 +115,7 @@ RetMessageList PackageManagerFlatpakImpl::Uninstall(const QStringList &packageID
     QString pkgName = packageIDList.at(0);
     QStringList argStrList;
     argStrList << "uninstall"
+               << "--user"
                << "-y" << pkgName;
     argStrList.join(" ");
     auto ret = Runner("flatpak", argStrList, 1000 * 60 * 30);

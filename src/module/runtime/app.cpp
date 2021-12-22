@@ -27,6 +27,7 @@
 #include "module/util/desktop_entry.h"
 #include "module/package/info.h"
 #include "module/repo/repo.h"
+#include "module/flatpak/flatpak_manager.h"
 
 #define LINGLONG 118
 
@@ -117,6 +118,9 @@ public:
         // find desktop file
         QDir applicationsDir(QStringList {appRootPath, "entries", "applications"}.join(QDir::separator()));
         auto desktopFilenameList = applicationsDir.entryList({"*.desktop"}, QDir::Files);
+        if (useFlatpakRuntime) {
+            desktopFilenameList = flatpak::FlatpakManager::instance()->getAppDesktopFileList(appRef.id);
+        }
         if (desktopFilenameList.length() <= 0) {
             return -1;
         }
@@ -151,8 +155,7 @@ public:
         return 0;
     }
 
-    int stageRootfs(const QString &runtimeID, const QString &runtimeRootPath, const QString &appID,
-                    const QString &appRootPath) const
+    int stageRootfs(const QString &runtimeID, QString runtimeRootPath, const QString &appID, QString appRootPath) const
     {
         bool useThinRuntime = true;
         bool fuseMount = false;
@@ -161,6 +164,11 @@ public:
         // FIXME(iceyer): use info.json to decide use fuse or not
         if (runtimeRootPath.contains("org.deepin.Wine")) {
             fuseMount = true;
+        }
+
+        if (useFlatpakRuntime) {
+            fuseMount = false;
+            useThinRuntime = false;
         }
 
         r->annotations = new Annotations(r);
@@ -194,19 +202,26 @@ public:
                 mountMap.push_back({runtimeRootPath + "/opt/deepin-wine6-stable", "/opt/deepin-wine6-stable"});
             }
         } else {
+            if (useFlatpakRuntime) {
+                runtimeRootPath = flatpak::FlatpakManager::instance()->getRuntimePath(appID);
+            }
             // FIXME(iceyer): if runtime is empty, use the last
             if (runtimeRootPath.isEmpty()) {
                 qCritical() << "mount runtime failed" << runtimeRootPath;
                 return -1;
             }
-            mountMap = {
-                {runtimeRootPath, "/usr"},
-            };
+
+            mountMap.push_back({runtimeRootPath, "/usr"});
         }
 
-        mountMap.push_back({appRootPath, "/opt/apps/" + appID});
-        // TODO(iceyer): add doc for this or remove
-        mountMap.push_back({QStringList {appRootPath, "files/lib"}.join("/"), "/run/app/lib"});
+        if (useFlatpakRuntime) {
+            appRootPath = flatpak::FlatpakManager::instance()->getAppPath(appID);
+            mountMap.push_back({appRootPath, "/app"});
+        } else {
+            mountMap.push_back({appRootPath, "/opt/apps/" + appID});
+            // TODO(iceyer): add doc for this or remove
+            mountMap.push_back({QStringList {appRootPath, "files/lib"}.join("/"), "/run/app/lib"});
+        }
 
         for (const auto &pair : mountMap) {
             auto m = new Mount(r);
@@ -224,6 +239,12 @@ public:
 
         // TODO(iceyer): let application do this or add to doc
         auto appLdLibraryPath = QStringList {"/opt/apps", appID, "files/lib"}.join("/");
+        if (useFlatpakRuntime) {
+            appLdLibraryPath = "/app/lib";
+            r->process->env.push_back(
+                "XDG_DATA_DIRS=/app/share:/usr/share:/usr/share/runtime/share:/run/host/user-share:/run/host/share");
+        }
+
         // TODO(iceyer): support other arch, or just no arch?
         auto fixLdLibraryPath = QStringList {
             appLdLibraryPath,
@@ -353,6 +374,9 @@ public:
         }
         auto appRef = package::Ref(q_ptr->package->ref);
         auto appBinaryPath = QStringList {"/opt/apps", appRef.id, "files/bin"}.join("/");
+        if (useFlatpakRuntime) {
+            appBinaryPath = "/app/bin";
+        }
         r->process->env.push_back("PATH=" + appBinaryPath + ":" + getenv("PATH"));
         r->process->env.push_back("HOME=" + util::getUserFile(""));
         r->process->env.push_back("XDG_RUNTIME_DIR=" + userRuntimeDir);
@@ -442,6 +466,8 @@ public:
         return 0;
     }
 
+    bool useFlatpakRuntime = false;
+
     Container *container = nullptr;
     Runtime *r = nullptr;
     App *q_ptr = nullptr;
@@ -455,7 +481,7 @@ App::App(QObject *parent)
 {
 }
 
-App *App::load(const QString &configFilepath)
+App *App::load(const QString &configFilepath, bool useFlatpakRuntime)
 {
     qDebug() << "load conf yaml from" << configFilepath;
     QFile appConfig(configFilepath);
@@ -464,10 +490,12 @@ App *App::load(const QString &configFilepath)
     try {
         YAML::Node doc = YAML::Load(appConfig.readAll().toStdString());
         app = formYaml<App>(doc);
+        // TODO: maybe set as an arg of init is better
+        app->dd_ptr->useFlatpakRuntime = useFlatpakRuntime;
+        app->dd_ptr->init();
     } catch (...) {
         qCritical() << "FIXME: load config failed, use default app config";
     }
-    app->dd_ptr->init();
     return app;
 }
 

@@ -136,9 +136,15 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("appID", "application id", "com.deepin.demo");
 
              auto optExec = QCommandLineOption("exec", "run exec", "/bin/bash");
+             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
+             parser.addOption(optRepoPoint);
              parser.addOption(optExec);
              parser.process(app);
-
+             auto repoType = parser.value(optRepoPoint);
+             if ((!repoType.isEmpty() && repoType != "flatpak")) {
+                 parser.showHelp();
+                 return -1;
+             }
              auto appID = parser.positionalArguments().value(1);
              if (appID.isEmpty()) {
                  parser.showHelp();
@@ -150,6 +156,9 @@ int main(int argc, char **argv)
              QStringList appInfoList = appID.split("/");
              if (appInfoList.size() > 1) {
                  paramMap.insert(linglong::util::KEY_VERSION, appInfoList.at(1));
+             }
+             if (!repoType.isEmpty()) {
+                 paramMap.insert(linglong::util::KEY_REPO_POINT, repoType);
              }
              pm.Start(appInfoList.at(0), paramMap);
 

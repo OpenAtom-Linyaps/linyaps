@@ -216,7 +216,7 @@ QString PackageManager::Import(const QStringList &packagePathList)
     return {};
 }
 
-QString appConfigPath(const QString &appID, const QString &appVersion)
+QString appConfigPath(const QString &appID, const QString &appVersion, bool isFlatpakApp = false)
 {
     util::ensureUserDir({".linglong", appID});
 
@@ -230,7 +230,7 @@ QString appConfigPath(const QString &appID, const QString &appVersion)
 
     auto appInfo = appInstallRoot + "/info.json";
     // 判断是否存在
-    if (!fileExists(appInfo)) {
+    if (!isFlatpakApp && !fileExists(appInfo)) {
         qCritical() << appInfo << " not exist";
         return "";
     }
@@ -289,12 +289,13 @@ QString PackageManager::Start(const QString &packageID, const ParamStringMap &pa
         version = paramMap[linglong::util::KEY_VERSION];
     }
     return JobManager::instance()->CreateJob([=](Job *jr) {
-        QString configPath = appConfigPath(packageID, version);
         // 判断是否存在
+        bool isFlatpakApp = !paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT);
+        QString configPath = appConfigPath(packageID, version, isFlatpakApp);
         if (!fileExists(configPath)) {
             return;
         }
-        auto app = App::load(configPath);
+        auto app = App::load(configPath, isFlatpakApp);
         if (nullptr == app) {
             // FIXME: set job status to failed
             qCritical() << "nullptr" << app;

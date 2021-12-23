@@ -415,7 +415,12 @@ AppMetaInfoList PackageManagerImpl::Query(const QStringList &packageIDList, cons
 
     QString err = "";
     QString appData = "";
-    int status = queryLocalCache(pkgName, appData);
+    int status = StatusCode::FAIL;
+
+    if (!paramMap.contains(linglong::util::KEY_NO_CACHE)) {
+        status = queryLocalCache(pkgName, appData);
+    }
+
     bool fromServer = false;
     // 缓存查不到从服务器查
     if (status != StatusCode::SUCCESS) {

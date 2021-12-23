@@ -20,6 +20,6 @@ const QString KEY_VERSION = "version";
 const QString KEY_REPO_POINT = "repo-point";
 const QString KEY_ARCH = "arch";
 const QString KEY_DELDATA = "delete-data";
-
+const QString KEY_NO_CACHE = "force";
 } // namespace util
 } // namespace linglong

@@ -322,6 +322,8 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("app-id", "app id", "com.deepin.demo");
              auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
              parser.addOption(optRepoPoint);
+             auto optNoCache = QCommandLineOption("force", "query from server directly, not from cache", "");
+             parser.addOption(optNoCache);
              parser.process(app);
              auto repoType = parser.value(optRepoPoint);
              if (!repoType.isEmpty() && repoType != "flatpak") {
@@ -331,6 +333,10 @@ int main(int argc, char **argv)
              QMap<QString, QString> paramMap;
              if (!repoType.isEmpty()) {
                  paramMap.insert(linglong::util::KEY_REPO_POINT, repoType);
+             }
+             auto noCache = parser.isSet(optNoCache);
+             if (noCache) {
+                  paramMap.insert(linglong::util::KEY_NO_CACHE, "");
              }
              auto args = parser.positionalArguments();
              auto appID = args.value(1);
@@ -376,7 +382,7 @@ int main(int argc, char **argv)
                  RetMessageList retMsg = noDbusPm->Uninstall({appInfoList.at(0)}, paramMap);
                  if (retMsg.size() > 0) {
                      auto it = retMsg.at(0);
-                     std::cout << "message: " << it->message.toStdString() << std::endl;;
+                     std::cout << "message: " << it->message.toStdString() << std::endl;
                      if (!it->state) {
                          return -1;
                      }

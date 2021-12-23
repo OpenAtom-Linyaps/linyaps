@@ -203,7 +203,7 @@ AppMetaInfoList PackageManager::Query(const QStringList &packageIDList, const Pa
         return {};
     }
     PackageManagerProxyBase *pImpl = PackageManagerImpl::instance();
-    return pImpl->Query(packageIDList);
+    return pImpl->Query(packageIDList, paramMap);
 }
 
 /*!

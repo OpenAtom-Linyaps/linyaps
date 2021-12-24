@@ -374,6 +374,7 @@ public:
         }
         auto appRef = package::Ref(q_ptr->package->ref);
         auto appBinaryPath = QStringList {"/opt/apps", appRef.id, "files/bin"}.join("/");
+        auto appSharePath = QStringList {"/opt/apps", appRef.id, "files/share"}.join("/");
         if (useFlatpakRuntime) {
             appBinaryPath = "/app/bin";
         }
@@ -381,7 +382,11 @@ public:
         r->process->env.push_back("HOME=" + util::getUserFile(""));
         r->process->env.push_back("XDG_RUNTIME_DIR=" + userRuntimeDir);
         r->process->env.push_back("DBUS_SESSION_BUS_ADDRESS=unix:path=" + util::jonsPath({userRuntimeDir, "bus"}));
-
+        if (QString(getenv("XDG_DATA_DIRS")).isEmpty()) {
+            r->process->env.push_back("XDG_DATA_DIRS=" + appSharePath + ":" + "/usr/local/share:/usr/share");
+        } else {
+            r->process->env.push_back("XDG_DATA_DIRS=" + appSharePath + ":" + getenv("XDG_DATA_DIRS"));
+        }
         auto bypassENV = [&](const char *constEnv) {
             r->process->env.push_back(QString(constEnv) + "=" + getenv(constEnv));
         };

@@ -22,15 +22,15 @@ class Layer : public JsonSerialize
 Q_JSON_DECLARE_PTR_METATYPE(Layer)
 
 /*!
- * AppBase: base for run, you can use full run or let it empty
+ * Permission: base for run, you can use full run or let it empty
  */
-class AppBase : public JsonSerialize
+class Permission : public JsonSerialize
 {
     Q_OBJECT
-    Q_JSON_CONSTRUCTOR(AppBase)
+    Q_JSON_CONSTRUCTOR(Permission)
     Q_JSON_PROPERTY(QStringList, mounts);
 };
-Q_JSON_DECLARE_PTR_METATYPE(AppBase)
+Q_JSON_DECLARE_PTR_METATYPE(Permission)
 
 class AppPrivate;
 class App : public JsonSerialize
@@ -38,8 +38,9 @@ class App : public JsonSerialize
     Q_OBJECT;
     Q_JSON_PTR_PROPERTY(Layer, package);
     Q_JSON_PTR_PROPERTY(Layer, runtime);
-    //    TODO: should config base mount point
-    //    Q_JSON_PTR_PROPERTY(AppBase, base);
+
+    // TODO: should config base mount point
+    Q_JSON_PTR_PROPERTY(Permission, permission);
 
 public:
     explicit App(QObject *parent = nullptr);

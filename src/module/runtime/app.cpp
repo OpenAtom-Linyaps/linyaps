@@ -445,29 +445,33 @@ public:
     {
         Q_Q(const App);
 
-        //        QMap<QString, std::function<QString()>> replacementMap = {
-        //            {"${HOME}", []() -> QString { return util::getUserFile(""); }},
-        //        };
+        if (!q->permission) {
+            return 0;
+        }
 
-        //        auto pathPreprocess = [&](QString path) -> QString {
-        //            auto keys = replacementMap.keys();
-        //            for (const auto &key : keys) {
-        //                path.replace(key, (replacementMap.value(key))());
-        //            }
-        //            return path;
-        //        };
+        QMap<QString, std::function<QString()>> replacementMap = {
+            {"${HOME}", []() -> QString { return util::getUserFile(""); }},
+        };
 
-        // TODO: debug mount for developer
-        //        for (const auto &mount : q->mounts) {
-        //            Mount &m = *new Mount(r);
-        //            m.type = "bind";
-        //            m.options = QStringList {};
-        //            auto component = mount.split(":");
-        //            m.source = pathPreprocess(component.value(0));
-        //            m.destination = pathPreprocess(component.value(1));
-        //            r->mounts.push_back(&m);
-        //            qDebug() << "mount app" << m.source << m.destination;
-        //        }
+        auto pathPreprocess = [&](QString path) -> QString {
+            auto keys = replacementMap.keys();
+            for (const auto &key : keys) {
+                path.replace(key, (replacementMap.value(key))());
+            }
+            return path;
+        };
+
+        //    TODO: debug mount for developer
+        for (const auto &mount : q->permission->mounts) {
+            Mount &m = *new Mount(r);
+            m.type = "bind";
+            m.options = QStringList {};
+            auto component = mount.split(":");
+            m.source = pathPreprocess(component.value(0));
+            m.destination = pathPreprocess(component.value(1));
+            r->mounts.push_back(&m);
+            qDebug() << "mount app" << m.source << m.destination;
+        }
 
         return 0;
     }
@@ -542,8 +546,10 @@ int App::start()
             return EXIT_FAILURE;
         }
         (void)close(pipeEnds[0]);
+
         char const *const args[] = {"/usr/bin/ll-box", LL_TOSTRING(LINGLONG), NULL};
-        return execvp(args[0], (char **)args);
+        int ret = execvp(args[0], (char **)args);
+        exit(ret);
     } else {
         close(pipeEnds[0]);
         write(pipeEnds[1], data.c_str(), data.size());

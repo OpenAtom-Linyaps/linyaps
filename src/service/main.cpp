@@ -27,6 +27,7 @@ int main(int argc, char *argv[])
 
     ociJsonRegister();
     qJsonRegister<Layer>();
+    qJsonRegister<Permission>();
     qJsonRegister<App>();
     
 

@@ -1,14 +1,15 @@
 /*
-* Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
-*
-* Author:     Iceyer <me@iceyer.net>
-*
-* Maintainer: Iceyer <me@iceyer.net>
-*
-* SPDX-License-Identifier: GPL-3.0-or-later
+ * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ *
+ * Author:     Iceyer <me@iceyer.net>
+ *
+ * Maintainer: Iceyer <me@iceyer.net>
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 #include <QDir>
+#include <QMap>
 #include <QStandardPaths>
 
 namespace linglong {
@@ -79,6 +80,27 @@ QStringList parseExec(const QString &exec)
         args.push_back(arg);
     }
     return args;
+}
+
+QPair<QString, QString> parseEnvKeyValue(QString env, const QString &sep)
+{
+    QRegExp exp("(\\$\\{.*\\})");
+    exp.setMinimal(true);
+    exp.indexIn(env);
+
+    for (auto const &envReplace : exp.capturedTexts()) {
+        auto envKey = QString(envReplace).replace("$", "").replace("{", "").replace("}", "");
+        auto envValue = qEnvironmentVariable(envKey.toStdString().c_str());
+        env.replace(envReplace, envValue);
+    }
+
+    auto sepPos = env.indexOf(sep);
+
+    if (sepPos < 0) {
+        return {env, ""};
+    }
+
+    return {env.left(sepPos), env.right(env.length() - sepPos - 1)};
 }
 
 } // namespace util

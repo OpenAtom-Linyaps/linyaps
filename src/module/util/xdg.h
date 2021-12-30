@@ -19,5 +19,15 @@ QDir userRuntimeDir();
 
 QStringList parseExec(const QString &exec);
 
+/*!
+ * parseEnv will convert ${HOME}/Desktop:${HOME}/Desktop to real value as pair
+ * /home/linglong/Desktop, /home/linglong/Desktop
+ * support format:
+ * ${HOME}/Desktop:${HOME}/Desktop
+ * ${HOME}/Desktop=${HOME}/Desktop
+ * @return
+ */
+QPair<QString, QString> parseEnvKeyValue(QString env, const QString &sep);
+
 } // namespace util
 } // namespace linglong

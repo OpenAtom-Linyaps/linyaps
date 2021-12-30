@@ -28,6 +28,7 @@ set(LINK_LIBS
 
 set(LL_TEST_SOURCES
     ../src/module/util/fs.cpp
+    ../src/module/util/xdg.cpp
     ../src/module/package/info.cpp
     ../src/module/util/httpclient.cpp
     ../src/module/repo/ostree_repohelper.cpp
@@ -52,6 +53,7 @@ add_executable(ll-test
                util_fs_test.cpp
                module/package/ref_test.cpp
                module/util/result_test.cpp
+               module/util/xdg_test.cpp
                httpclient_test.cpp
                repohelper_test.cpp
                qt_json.cpp

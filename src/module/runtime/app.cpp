@@ -279,6 +279,10 @@ public:
             {"/var/cache/fontconfig", "/run/host/appearance/fonts-cache"},
         };
 
+        for (auto const &item : QDir("/dev").entryInfoList({"nvidia*"}, QDir::AllEntries | QDir::System)) {
+            mountMap.push_back({item.canonicalFilePath(), item.canonicalFilePath()});
+        }
+
         for (const auto &pair : mountMap) {
             Mount &m = *new Mount(r);
             m.type = "bind";

@@ -15,6 +15,7 @@
 #include "module/util/httpclient.h"
 #include "module/util/package_manager_param.h"
 #include "module/util/sysinfo.h"
+#include "module/util/runner.h"
 
 #include "package_manager_impl.h"
 #include "dbus_retcode.h"
@@ -369,6 +370,12 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIDList, con
         const QString appEntriesDirPath = savePath + "/entries";
         linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstalltions);
     }
+    //更新desktop database
+    auto retRunner = linglong::runner::Runner("update-desktop-database", {sysLinglongInstalltions + "/applications/"},
+                                   1000 * 60 * 1);
+    if (!retRunner) {
+         qWarning() << "warning: update desktop database of " + sysLinglongInstalltions + "/applications/ failed!";
+    }
     // 更新本地数据库文件
     appInfo->kind = "app";
     insertAppRecord(appInfo, "user", userName);
@@ -492,6 +499,13 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIDList, c
         }
         linglong::util::removeDir(installPath);
         qInfo() << "Uninstall del dir:" << installPath;
+    }
+
+     //更新desktop database
+    auto retRunner = linglong::runner::Runner("update-desktop-database", {sysLinglongInstalltions + "/applications/"},
+                                   1000 * 60 * 1);
+    if (!retRunner) {
+        qWarning() << "warning: update desktop database of " + sysLinglongInstalltions + "/applications/ failed!";
     }
 
     // 更新本地repo仓库

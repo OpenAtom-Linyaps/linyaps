@@ -123,17 +123,15 @@ bool PackageManagerImpl::getAppInfofromServer(const QString &pkgName, const QStr
 bool PackageManagerImpl::downloadAppData(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
                                          const QString &dstPath, QString &err)
 {
-    // linglong::OstreeRepoHelper repo;
     bool ret = G_OSTREE_REPOHELPER->ensureRepoEnv(kLocalRepoPath, err);
-    // bool ret = repo->ensureRepoEnv(repoPath, err);
     if (!ret) {
-        qInfo() << err;
+        qCritical() << err;
         return false;
     }
     QVector<QString> qrepoList;
     ret = G_OSTREE_REPOHELPER->getRemoteRepoList(kLocalRepoPath, qrepoList, err);
     if (!ret) {
-        qInfo() << err;
+        qCritical() << err;
         return false;
     } else {
         for (auto iter = qrepoList.begin(); iter != qrepoList.end(); ++iter) {
@@ -147,7 +145,7 @@ bool PackageManagerImpl::downloadAppData(const QString &pkgName, const QString &
     QString matchRef = "";
     ret = G_REPOHELPER->queryMatchRefs(kLocalRepoPath, qrepoList[0], pkgName, pkgVer, pkgArch, matchRef, err);
     if (!ret) {
-        qInfo() << err;
+        qCritical() << err;
         return false;
     } else {
         qInfo() << "downloadAppData ref:" << matchRef;
@@ -156,14 +154,14 @@ bool PackageManagerImpl::downloadAppData(const QString &pkgName, const QString &
     // ret = repo.repoPull(repoPath, qrepoList[0], pkgName, err);
     ret = G_REPOHELPER->repoPullbyCmd(kLocalRepoPath, qrepoList[0], matchRef, err);
     if (!ret) {
-        qInfo() << err;
+        qCritical() << err;
         return false;
     }
     // checkout 目录
     // const QString dstPath = repoPath + "/AppData";
     ret = G_OSTREE_REPOHELPER->checkOutAppData(kLocalRepoPath, qrepoList[0], matchRef, dstPath, err);
     if (!ret) {
-        qInfo() << err;
+        qCritical() << err;
         return false;
     }
     qInfo() << "downloadAppData success, path:" << dstPath;
@@ -268,7 +266,7 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIDList, con
     auto info = QPointer<RetMessage>(new RetMessage);
     QString pkgName = packageIDList.at(0);
     if (pkgName.isNull() || pkgName.isEmpty()) {
-        qInfo() << "package name err";
+        qCritical() << "package name err";
         info->setcode(RetCode(RetCode::user_input_param_err));
         info->setmessage("package name err");
         info->setstate(false);
@@ -281,7 +279,7 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIDList, con
     // const QString arch = "x86_64";
     const QString arch = hostArch();
     if (arch == "unknown") {
-        qInfo() << "the host arch is not recognized";
+        qCritical() << "the host arch is not recognized";
         info->setcode(RetCode(RetCode::host_arch_not_recognized));
         info->setmessage("the host arch is not recognized");
         info->setstate(false);
@@ -354,7 +352,7 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIDList, con
     const QString savePath = kAppInstallPath + appInfo->appId + "/" + appInfo->version + "/" + appInfo->arch;
     ret = downloadAppData(appInfo->appId, appInfo->version, appInfo->arch, savePath, err);
     if (!ret) {
-        qInfo() << err;
+        qCritical() << err;
         info->setcode(RetCode(RetCode::load_pkg_data_failed));
         info->setmessage(err);
         info->setstate(false);
@@ -397,27 +395,27 @@ AppMetaInfoList PackageManagerImpl::Query(const QStringList &packageIDList, cons
 {
     const QString pkgName = packageIDList.at(0);
     if (pkgName.isNull() || pkgName.isEmpty()) {
-        qInfo() << "package name err";
+        qWarning() << "package name err";
         return {};
     }
     if (pkgName == "installed") {
         return queryAllInstalledApp();
     }
-    AppMetaInfoList pkglist;
+    AppMetaInfoList pkgList;
     // 查找单个软件包 优先从本地数据库文件中查找
     QString arch = hostArch();
     if (arch == "unknown") {
-        qInfo() << "the host arch is not recognized";
-        return pkglist;
+        qCritical() << "the host arch is not recognized";
+        return pkgList;
     }
 
     QString userName = getUserName();
-    bool ret = getInstalledAppInfo(pkgName, "", arch, userName, pkglist);
+    bool ret = getInstalledAppInfo(pkgName, "", arch, userName, pkgList);
 
     // 目标软件包 已安装则终止查找
     qInfo() << "PackageManager::Query called, ret:" << ret;
     if (ret) {
-        return pkglist;
+        return pkgList;
     }
 
     QString err = "";
@@ -434,21 +432,21 @@ AppMetaInfoList PackageManagerImpl::Query(const QStringList &packageIDList, cons
         ret = getAppInfofromServer(pkgName, "", arch, appData, err);
         if (!ret) {
             qCritical() << err;
-            return pkglist;
+            return pkgList;
         }
         fromServer = true;
     }
-    ret = loadAppInfo(appData, pkglist, err);
+    ret = loadAppInfo(appData, pkgList, err);
     qInfo().noquote() << appData;
     if (!ret) {
         qCritical() << err;
-        return pkglist;
+        return pkgList;
     }
     // 若从服务器查询得到正确的数据则更新缓存
     if (fromServer) {
         updateCache(pkgName, appData);
     }
-    return pkglist;
+    return pkgList;
 }
 
 /*
@@ -481,13 +479,13 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIDList, c
         return retMsg;
     }
     QString err = "";
-    AppMetaInfoList pkglist;
+    AppMetaInfoList pkgList;
     // 根据已安装文件查询已经安装软件包信息
     QString arch = hostArch();
-    getInstalledAppInfo(pkgName, version, arch, userName, pkglist);
+    getInstalledAppInfo(pkgName, version, arch, userName, pkgList);
 
-    auto it = pkglist.at(0);
-    if (pkglist.size() > 0) {
+    auto it = pkgList.at(0);
+    if (pkgList.size() > 0) {
         const QString installPath = kAppInstallPath + it->appId + "/" + it->version;
         // 删掉安装配置链接文件
         if (linglong::util::dirExists(installPath + "/" + arch + "/outputs/share")) {

@@ -35,7 +35,6 @@ RetMessageList PackageManagerFlatpakImpl::Install(const QStringList &packageIDLi
     argStrList << "install"
                << "--user"
                << "-y" << pkgName;
-    argStrList.join(" ");
     auto ret = Runner("flatpak", argStrList, 1000 * 60 * 30);
     if (!ret) {
         info->setcode(RetCode(RetCode::pkg_install_failed));
@@ -117,7 +116,6 @@ RetMessageList PackageManagerFlatpakImpl::Uninstall(const QStringList &packageID
     argStrList << "uninstall"
                << "--user"
                << "-y" << pkgName;
-    argStrList.join(" ");
     auto ret = Runner("flatpak", argStrList, 1000 * 60 * 30);
     if (!ret) {
         info->setcode(RetCode(RetCode::pkg_uninstall_failed));

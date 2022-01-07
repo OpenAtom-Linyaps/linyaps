@@ -45,8 +45,8 @@ void printFlatpakAppInfo(AppMetaInfoList retMsg)
 void printAppInfo(AppMetaInfoList retMsg)
 {
     if (retMsg.size() > 0) {
-        std::cout << std::setiosflags(std::ios::left) << std::setw(24) << "id" << std::setw(16)
-                  << "name" << std::setw(16) << "version" << std::setw(12) << "arch"
+        std::cout << std::setiosflags(std::ios::left) << std::setw(32) << "id" << std::setw(20) << "name"
+                  << std::setw(16) << "version" << std::setw(12) << "arch"
                   << "description" << std::endl;
         // 最长显示字符数
         const int maxDisSize = 50;
@@ -55,9 +55,9 @@ void printAppInfo(AppMetaInfoList retMsg)
             if (it->description.length() > maxDisSize) {
                 simpleDescription = it->description.left(maxDisSize) + "...";
             }
-            std::cout << std::setiosflags(std::ios::left) << std::setw(24) << it->appId.toStdString()
-                      << std::setw(16) << it->name.toStdString() << std::setw(16) << it->version.toStdString()
-                      << std::setw(12) << it->arch.toStdString() << simpleDescription.toStdString() << std::endl;
+            std::cout << std::setiosflags(std::ios::left) << std::setw(32) << it->appId.toStdString() << std::setw(20)
+                      << it->name.toStdString() << std::setw(16) << it->version.toStdString() << std::setw(12)
+                      << it->arch.toStdString() << simpleDescription.toStdString() << std::endl;
         }
     } else {
         std::cout << "app not found in repo" << std::endl;
@@ -240,13 +240,13 @@ int main(int argc, char **argv)
              auto appID = args.value(1);
              auto savePath = parser.value(optDownload);
              QFileInfo dstfs(savePath);
-             // 设置 10 分钟超时 to do
-             pm.setTimeout(1000 * 60 * 10);
+
+             pm.setTimeout(1000 * 60 * 60 * 24);
              QDBusPendingReply<RetMessageList> reply = pm.Download({appID}, dstfs.absoluteFilePath());
              reply.waitForFinished();
-             RetMessageList ret_msg = reply.value();
-             if (ret_msg.size() > 0) {
-                 auto it = ret_msg.at(0);
+             RetMessageList retMsg = reply.value();
+             if (retMsg.size() > 0) {
+                 auto it = retMsg.at(0);
                  std::cout << "message: " << it->message.toStdString();
                  if (!it->state) {
                      std::cout << ", errcode:" << it->code << std::endl;
@@ -300,9 +300,9 @@ int main(int argc, char **argv)
 
              std::cout << "install " << appID.toStdString() << ", please wait a few minutes..." << std::endl;
              reply.waitForFinished();
-             RetMessageList ret_msg = reply.value();
-             if (ret_msg.size() > 0) {
-                 auto it = ret_msg.at(0);
+             RetMessageList retMsg = reply.value();
+             if (retMsg.size() > 0) {
+                 auto it = retMsg.at(0);
                  std::cout << "message: " << it->message.toStdString();
                  if (!it->state) {
                      std::cout << ", errcode:" << it->code << std::endl;
@@ -336,7 +336,7 @@ int main(int argc, char **argv)
              }
              auto noCache = parser.isSet(optNoCache);
              if (noCache) {
-                  paramMap.insert(linglong::util::KEY_NO_CACHE, "");
+                 paramMap.insert(linglong::util::KEY_NO_CACHE, "");
              }
              auto args = parser.positionalArguments();
              auto appID = args.value(1);

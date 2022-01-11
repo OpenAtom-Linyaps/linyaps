@@ -10,6 +10,9 @@
 
 #include "package_manager.h"
 
+#include <signal.h>
+#include <sys/types.h>
+
 #include <QDBusConnection>
 #include <QDBusMessage>
 #include <QDebug>
@@ -330,9 +333,42 @@ RetMessageList PackageManager::Start(const QString &packageID, const ParamString
     return retMsg;
 }
 
-void PackageManager::Stop(const QString &containerID)
+/*
+ * 停止应用
+ *
+ * @param containerID: 应用启动对应的容器ID
+ *
+ * @return RetMessageList 执行结果信息
+ */
+RetMessageList PackageManager::Stop(const QString &containerID)
 {
-    sendErrorReply(QDBusError::NotSupported, message().member());
+    Q_D(PackageManager);
+
+    RetMessageList retMsg;
+    auto info = QPointer<RetMessage>(new RetMessage);
+    QString err = "";
+    if (!d->apps.contains(containerID)) {
+        err = "containerID:" + containerID + " not exist";
+        qCritical() << err;
+        info->setcode(RetCode(RetCode::user_input_param_err));
+        info->setmessage(err);
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
+    }
+    pid_t pid = d->apps[containerID]->container()->PID;
+    int ret = kill(pid, SIGKILL);
+    if (ret == 0) {
+        d->apps.remove(containerID);
+    } else {
+        err = "kill container failed, containerID:" + containerID;
+        info->setcode(RetCode(RetCode::ErrorPkgKillFailed));
+        info->setmessage(err);
+        info->setstate(false);
+        retMsg.push_back(info);
+    }
+    qInfo() << "kill containerID:" << containerID << ",ret:" << ret;
+    return retMsg;
 }
 
 ContainerList PackageManager::ListContainer()

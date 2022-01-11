@@ -234,8 +234,19 @@ int main(int argc, char **argv)
              auto containerID = args.value(1);
 
              // TODO: show kill result
-             //        return runtime::Manager::kill(containerID);
-             return -1;
+             QDBusPendingReply<RetMessageList> reply = pm.Stop(containerID);
+             reply.waitForFinished();
+             RetMessageList retMsg = reply.value();
+             if (retMsg.size() > 0) {
+                 auto it = retMsg.at(0);
+                 std::cout << "message: " << it->message.toStdString();
+                 if (!it->state) {
+                     std::cout << ", errcode:" << it->code << std::endl;
+                     return -1;
+                 }
+                 std::cout << std::endl;
+             }
+             return 0;
          }},
         {"download", [&](QCommandLineParser &parser) -> int {
              QString curPath = QDir::currentPath();

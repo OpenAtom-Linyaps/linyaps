@@ -53,7 +53,7 @@ public Q_SLOTS:
     QString Import(const QStringList &packagePathList);
 
     RetMessageList Start(const QString &packageID, const ParamStringMap &paramMap = {});
-    void Stop(const QString &containerID);
+    RetMessageList Stop(const QString &containerID);
     ContainerList ListContainer();
 
 private:

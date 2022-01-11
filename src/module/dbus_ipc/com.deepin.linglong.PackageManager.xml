@@ -47,8 +47,8 @@
             <arg name="PackageID" type="s" direction="in"/>
             <arg name="paramMap" type="{ss}" direction="in"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.In1" value="ParamStringMap"/>
-            <arg name="Container" type="s" direction="out"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="Container"/>
+            <arg name="RetMessageList" type="a(bus)" direction="out"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="RetMessageList"/> 
         </method>
         <method name="Stop">
             <arg name="ContainerID" type="s" direction="in"/>

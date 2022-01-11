@@ -276,22 +276,42 @@ QString appConfigPath(const QString &appID, const QString &appVersion, bool isFl
     return configPath;
 }
 
-/*!
+/*
  * 执行软件包
- * @param packageID 软件包的appid
+ *
+ * @param packageID: 软件包的appid
+ * @param paramMap: 运行参数信息
+ *
+ * @return RetMessageList: 运行结果信息
  */
-QString PackageManager::Start(const QString &packageID, const ParamStringMap &paramMap)
+RetMessageList PackageManager::Start(const QString &packageID, const ParamStringMap &paramMap)
 {
     Q_D(PackageManager);
 
     qDebug() << "start package" << packageID;
+
+    RetMessageList retMsg;
+    auto info = QPointer<RetMessage>(new RetMessage);
 
     // 获取版本信息
     QString version = "";
     if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_VERSION)) {
         version = paramMap[linglong::util::KEY_VERSION];
     }
-    return JobManager::instance()->CreateJob([=](Job *jr) {
+
+    // 判断是否已安装
+    QString err = "";
+    QString userName = getUserName();
+    if (!getAppInstalledStatus(packageID, version, "", userName)) {
+        err = packageID + " not installed";
+        qCritical() << err;
+        info->setcode(RetCode(RetCode::pkg_not_installed));
+        info->setmessage(err);
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
+    }
+    JobManager::instance()->CreateJob([=](Job *jr) {
         // 判断是否存在
         bool isFlatpakApp = !paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT);
         QString configPath = appConfigPath(packageID, version, isFlatpakApp);
@@ -307,7 +327,7 @@ QString PackageManager::Start(const QString &packageID, const ParamStringMap &pa
         d->apps[app->container()->ID] = QPointer<App>(app);
         app->start();
     });
-    //    sendErrorReply(QDBusError::NotSupported, message().member());
+    return retMsg;
 }
 
 void PackageManager::Stop(const QString &containerID)

@@ -160,7 +160,19 @@ int main(int argc, char **argv)
              if (!repoType.isEmpty()) {
                  paramMap.insert(linglong::util::KEY_REPO_POINT, repoType);
              }
-             pm.Start(appInfoList.at(0), paramMap);
+
+             QDBusPendingReply<RetMessageList> reply = pm.Start(appInfoList.at(0), paramMap);
+             reply.waitForFinished();
+             RetMessageList retMsg = reply.value();
+             if (retMsg.size() > 0) {
+                 auto it = retMsg.at(0);
+                 std::cout << "message: " << it->message.toStdString();
+                 if (!it->state) {
+                     std::cout << ", errcode:" << it->code << std::endl;
+                     return -1;
+                 }
+                 std::cout << std::endl;
+             }
 
              // TODO
              //        QFile f(configPath);
@@ -174,7 +186,7 @@ int main(int argc, char **argv)
 
              //  runtime::Application ogApp(appID, r);
              //  return ogApp.start();
-             return -1;
+             return 0;
          }},
         {"exec", [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();

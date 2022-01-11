@@ -102,9 +102,8 @@ int main(int argc, char **argv)
 
     QCommandLineParser parser;
     parser.addHelpOption();
-    QStringList subCommandList = {
-        "run", "ps", "exec", "kill", "download", "install", "uninstall", "update", "query", "list"
-    };
+    QStringList subCommandList = {"run",     "ps",        "exec",   "kill",  "download",
+                                  "install", "uninstall", "update", "query", "list"};
 
     parser.addPositionalArgument("subcommand", subCommandList.join("\n"), "subcommand [sub-option]");
 
@@ -122,15 +121,15 @@ int main(int argc, char **argv)
     QStringList args = parser.positionalArguments();
     QString command = args.isEmpty() ? QString() : args.first();
 
-    ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager",
-                                                "/com/deepin/linglong/PackageManager",
+    ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());
     checkAndStartService(pm);
     PackageManager *noDbusPm = PackageManager::instance();
     auto optNoDbus = QCommandLineOption("nodbus", "execute cmd directly, not via dbus", "");
     parser.addOption(optNoDbus);
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
-        {"run", [&](QCommandLineParser &parser) -> int {
+        {"run",
+         [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("run", "run application", "run");
              parser.addPositionalArgument("appID", "application id", "com.deepin.demo");
@@ -145,11 +144,23 @@ int main(int argc, char **argv)
                  parser.showHelp();
                  return -1;
              }
-             auto appID = parser.positionalArguments().value(1);
+             auto args = parser.positionalArguments();
+             auto appID = args.value(1);
              if (appID.isEmpty()) {
                  parser.showHelp();
              }
              auto exec = parser.value(optExec);
+             //移除run appid两个参数 获取 exec 执行参数
+             // eg: ll-cli run deepin-music --exec deepin-music /usr/share/music/test.mp3
+             //    exec = "deepin-music /usr/share/music/test.mp3"
+             QString desktopArgs;
+             desktopArgs.clear();
+             if (args.length() > 2 && !exec.isEmpty()) {
+                 args.removeAt(0);
+                 args.removeAt(0);
+                 desktopArgs = args.join(" ");
+                 exec = QStringList {exec, desktopArgs}.join(" ");
+             }
 
              // appID format: org.deepin.calculator/1.2.6 in multi-version
              QMap<QString, QString> paramMap;
@@ -159,6 +170,10 @@ int main(int argc, char **argv)
              }
              if (!repoType.isEmpty()) {
                  paramMap.insert(linglong::util::KEY_REPO_POINT, repoType);
+             }
+
+             if (!exec.isEmpty()) {
+                 paramMap.insert(linglong::util::KEY_EXEC, exec);
              }
 
              QDBusPendingReply<RetMessageList> reply = pm.Start(appInfoList.at(0), paramMap);
@@ -188,7 +203,8 @@ int main(int argc, char **argv)
              //  return ogApp.start();
              return 0;
          }},
-        {"exec", [&](QCommandLineParser &parser) -> int {
+        {"exec",
+         [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("containerID", "container id", "aebbe2f455cf443f89d5c92f36d154dd");
              parser.addPositionalArgument("exec", "exec command in container", "/bin/bash");
@@ -208,7 +224,8 @@ int main(int argc, char **argv)
 
              return namespaceEnter(pid, QStringList {cmd});
          }},
-        {"ps", [&](QCommandLineParser &parser) -> int {
+        {"ps",
+         [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("ps", "show running applications", "ps");
 
@@ -222,7 +239,8 @@ int main(int argc, char **argv)
              showContainer(containerList, outputFormat);
              return 0;
          }},
-        {"kill", [&](QCommandLineParser &parser) -> int {
+        {"kill",
+         [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("kill", "kill container with id", "kill");
              parser.addPositionalArgument("container-id", "container id", "");
@@ -248,7 +266,8 @@ int main(int argc, char **argv)
              }
              return 0;
          }},
-        {"download", [&](QCommandLineParser &parser) -> int {
+        {"download",
+         [&](QCommandLineParser &parser) -> int {
              QString curPath = QDir::currentPath();
              // qDebug() << curPath;
              //  ll-cli download org.deepin.calculator -d ./test 无-d 参数默认当前路径
@@ -279,7 +298,8 @@ int main(int argc, char **argv)
              }
              return 0;
          }},
-        {"install", [&](QCommandLineParser &parser) -> int {
+        {"install",
+         [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("install", "install an application", "install");
              parser.addPositionalArgument("app-id", "app id", "com.deepin.demo");
@@ -339,7 +359,8 @@ int main(int argc, char **argv)
              }
              return 0;
          }},
-        {"query", [&](QCommandLineParser &parser) -> int {
+        {"query",
+         [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("query", "query app info", "query");
              parser.addPositionalArgument("app-id", "app id", "com.deepin.demo");
@@ -373,7 +394,8 @@ int main(int argc, char **argv)
              }
              return 0;
          }},
-        {"uninstall", [&](QCommandLineParser &parser) -> int {
+        {"uninstall",
+         [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("uninstall", "uninstall an application", "uninstall");
              parser.addPositionalArgument("app-id", "app id", "com.deepin.demo");
@@ -426,7 +448,8 @@ int main(int argc, char **argv)
              }
              return 0;
          }},
-        {"list", [&](QCommandLineParser &parser) -> int {
+        {"list",
+         [&](QCommandLineParser &parser) -> int {
              auto optType = QCommandLineOption("type", "query installed app", "--type=installed", "installed");
              parser.clearPositionalArguments();
              parser.addPositionalArgument("list", "show installed application", "list");

@@ -127,7 +127,9 @@ public:
 
         util::DesktopEntry desktopEntry(applicationsDir.absoluteFilePath(desktopFilenameList.value(0)));
 
-        if (r->process->args.isEmpty()) {
+        if (r->process->args.isEmpty() && !desktopExec.isEmpty()) {
+            r->process->args = util::parseExec(desktopExec);
+        } else if (r->process->args.isEmpty()) {
             r->process->args = util::parseExec(desktopEntry.rawValue("Exec"));
         }
 
@@ -481,6 +483,7 @@ public:
     }
 
     bool useFlatpakRuntime = false;
+    QString desktopExec = nullptr;
 
     Container *container = nullptr;
     Runtime *r = nullptr;
@@ -495,7 +498,7 @@ App::App(QObject *parent)
 {
 }
 
-App *App::load(const QString &configFilepath, bool useFlatpakRuntime)
+App *App::load(const QString &configFilepath, const QString &desktopExec, bool useFlatpakRuntime)
 {
     qDebug() << "load conf yaml from" << configFilepath;
     QFile appConfig(configFilepath);
@@ -506,6 +509,7 @@ App *App::load(const QString &configFilepath, bool useFlatpakRuntime)
         app = formYaml<App>(doc);
         // TODO: maybe set as an arg of init is better
         app->dd_ptr->useFlatpakRuntime = useFlatpakRuntime;
+        app->dd_ptr->desktopExec = desktopExec;
         app->dd_ptr->init();
     } catch (...) {
         qCritical() << "FIXME: load config failed, use default app config";

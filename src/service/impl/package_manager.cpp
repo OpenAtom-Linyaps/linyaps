@@ -302,6 +302,13 @@ RetMessageList PackageManager::Start(const QString &packageID, const ParamString
         version = paramMap[linglong::util::KEY_VERSION];
     }
 
+    //获取exec参数
+    QString desktopExec;
+    desktopExec.clear();
+    if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_EXEC)) {
+        desktopExec = paramMap[linglong::util::KEY_EXEC];
+    }
+
     // 判断是否已安装
     QString err = "";
     QString userName = getUserName();
@@ -321,7 +328,7 @@ RetMessageList PackageManager::Start(const QString &packageID, const ParamString
         if (!fileExists(configPath)) {
             return;
         }
-        auto app = App::load(configPath, isFlatpakApp);
+        auto app = App::load(configPath, desktopExec, isFlatpakApp);
         if (nullptr == app) {
             // FIXME: set job status to failed
             qCritical() << "nullptr" << app;

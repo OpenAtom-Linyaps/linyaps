@@ -296,8 +296,11 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
 
     QString selectSql = QString("SELECT * FROM installedAppInfo WHERE appId = '%1'").arg(appId);
     QString condition = "";
+    // FIXME: 预装应用类型应该为system，目前未实现
+    // 暂时不用区分用户，当前应用安装目录未区分用户
+    // 若区分用户，当前升级镜像后切普通用户预装应用可以重复安装
     // runtime不区分用户
-    if (!isRuntime(appId)) {
+    if (!isRuntime(appId) && !userName.isEmpty()) {
         condition.append(QString(" AND user = '%1'").arg(userName));
     }
     if (!appVer.isEmpty()) {

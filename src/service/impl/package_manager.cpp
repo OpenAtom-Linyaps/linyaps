@@ -311,8 +311,7 @@ RetMessageList PackageManager::Start(const QString &packageID, const ParamString
 
     // 判断是否已安装
     QString err = "";
-    QString userName = getUserName();
-    if (!getAppInstalledStatus(packageID, version, "", userName)) {
+    if (!getAppInstalledStatus(packageID, version, "", "")) {
         err = packageID + " not installed";
         qCritical() << err;
         info->setcode(RetCode(RetCode::pkg_not_installed));

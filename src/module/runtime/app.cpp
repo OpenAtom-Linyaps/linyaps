@@ -132,6 +132,14 @@ public:
         } else if (r->process->args.isEmpty()) {
             r->process->args = util::parseExec(desktopEntry.rawValue("Exec"));
         }
+        // ll-cli run appid 获取的是原生desktop exec ,有的包含%F等参数，需要去掉
+        //FIXME(liujianqiang):后续整改，参考下面链接
+        //https://github.com/linuxdeepin/go-lib/blob/28a4ee3e8dbe6d6316d3b0053ee4bda1a7f63f98/appinfo/desktopappinfo/desktopappinfo.go
+        //https://github.com/linuxdeepin/go-lib/commit/bd52a27688413e1273f8b516ef55dc472d7978fd
+        auto indexNum = r->process->args.indexOf(QRegExp("^%\\w$"));
+        if (indexNum != -1) {
+            r->process->args.removeAt(indexNum);
+        }
 
         qDebug() << "exec" << r->process->args;
         return 0;

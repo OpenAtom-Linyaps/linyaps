@@ -1,3 +1,9 @@
+linglong (1.2.0-1) unstable; urgency=medium
+
+  *  Some bug fixes and support mime type association.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Fri, 14 Jan 2022 10:43:27 +0800
+
 linglong (1.0.7-1) unstable; urgency=medium
 
   * add env XDG_DATA_DIRS

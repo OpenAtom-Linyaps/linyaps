@@ -225,9 +225,6 @@ QString appConfigPath(const QString &appID, const QString &appVersion, bool isFl
 
     auto configPath = getUserFile(QString("%1/%2/app.yaml").arg(".linglong", appID));
 
-    if (QFile::exists(configPath)) {
-        return configPath;
-    }
     // create yaml form info
     // auto appRoot = LocalRepo::get()->rootOfLatest();
     auto latestAppRef = repo::latestOf(appID, appVersion);

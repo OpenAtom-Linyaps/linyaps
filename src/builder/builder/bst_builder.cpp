@@ -93,7 +93,7 @@ util::Result BstBuilder::exportBundle(const QString &outputFilePath)
     auto project = formYaml<Project>(YAML::LoadFile("project.conf"));
 
     if (!project->variables) {
-        return dResultBase() << -1 << "bst project.conf must contains variables.id and it value should be appid";
+        return dResultBase() << -1 << "bst project.conf must contains variables.id and it value should be appId";
     }
 
     auto id = project->variables->id;

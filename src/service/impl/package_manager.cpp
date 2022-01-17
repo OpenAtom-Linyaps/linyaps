@@ -221,7 +221,7 @@ QString appConfigPath(const QString &appId, const QString &appVersion, bool isFl
 
     // create yaml form info
     // auto appRoot = LocalRepo::get()->rootOfLatest();
-    auto latestAppRef = repo::latestOf(appId, appVersion);
+    auto latestAppRef = repo::latestOfRef(appId, appVersion);
 
     auto appInstallRoot = repo::rootOfLayer(latestAppRef);
 

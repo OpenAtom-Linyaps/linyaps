@@ -25,7 +25,7 @@ class Ref;
 namespace repo {
 
 // FIXME: move to class LocalRepo
-package::Ref latestOf(const QString &appID, const QString &appVersion = "");
+package::Ref latestOfRef(const QString &appId, const QString &appVersion = "");
 
 QString rootOfLayer(const package::Ref &ref);
 

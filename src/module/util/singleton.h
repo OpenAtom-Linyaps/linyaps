@@ -21,7 +21,7 @@ namespace util {
 class AppInfo
 {
 public:
-    std::string appid;
+    std::string appId;
     std::string pid;
     std::string version;
 };
@@ -64,14 +64,14 @@ public:
     bool AppendAppInstance(const T &app)
     {
         std::unique_lock<std::mutex> lock(this->mtx_lock);
-        auto iter = this->app_ump.find(app.appid);
+        auto iter = this->app_ump.find(app.appId);
         if (iter == app_ump.end()) {
             std::vector<T> app_list;
             app_list.push_back(std::move(app));
-            this->app_ump[app_list.at(0).appid] = app_list;
+            this->app_ump[app_list.at(0).appId] = app_list;
             lock.unlock();
         } else {
-            auto &app_list = this->app_ump[app.appid];
+            auto &app_list = this->app_ump[app.appId];
             app_list.push_back(app);
             lock.unlock();
         }

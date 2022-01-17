@@ -89,11 +89,11 @@ public:
         auto appRef = package::Ref(q->package->ref);
         QString appRootPath = repo::rootOfLayer(appRef);
 
-        stageRootfs(runtimeRef.id, fixRuntimePath, appRef.id, appRootPath);
+        stageRootfs(runtimeRef.appId, fixRuntimePath, appRef.appId, appRootPath);
 
         stageSystem();
         stageHost();
-        stageUser(appRef.id);
+        stageUser(appRef.appId);
         stageMount();
 
         auto envFilepath = container->WorkingDirectory + QString("/env");
@@ -119,7 +119,7 @@ public:
         QDir applicationsDir(QStringList {appRootPath, "entries", "applications"}.join(QDir::separator()));
         auto desktopFilenameList = applicationsDir.entryList({"*.desktop"}, QDir::Files);
         if (useFlatpakRuntime) {
-            desktopFilenameList = flatpak::FlatpakManager::instance()->getAppDesktopFileList(appRef.id);
+            desktopFilenameList = flatpak::FlatpakManager::instance()->getAppDesktopFileList(appRef.appId);
         }
         if (desktopFilenameList.length() <= 0) {
             return -1;
@@ -132,7 +132,7 @@ public:
         } else if (r->process->args.isEmpty()) {
             r->process->args = util::parseExec(desktopEntry.rawValue("Exec"));
         }
-        // ll-cli run appid 获取的是原生desktop exec ,有的包含%F等参数，需要去掉
+        // ll-cli run appId 获取的是原生desktop exec ,有的包含%F等参数，需要去掉
         //FIXME(liujianqiang):后续整改，参考下面链接
         //https://github.com/linuxdeepin/go-lib/blob/28a4ee3e8dbe6d6316d3b0053ee4bda1a7f63f98/appinfo/desktopappinfo/desktopappinfo.go
         //https://github.com/linuxdeepin/go-lib/commit/bd52a27688413e1273f8b516ef55dc472d7978fd
@@ -165,7 +165,7 @@ public:
         return 0;
     }
 
-    int stageRootfs(const QString &runtimeID, QString runtimeRootPath, const QString &appID, QString appRootPath) const
+    int stageRootfs(const QString &runtimeId, QString runtimeRootPath, const QString &appId, QString appRootPath) const
     {
         bool useThinRuntime = true;
         bool fuseMount = false;
@@ -214,7 +214,7 @@ public:
             }
         } else {
             if (useFlatpakRuntime) {
-                runtimeRootPath = flatpak::FlatpakManager::instance()->getRuntimePath(appID);
+                runtimeRootPath = flatpak::FlatpakManager::instance()->getRuntimePath(appId);
             }
             // FIXME(iceyer): if runtime is empty, use the last
             if (runtimeRootPath.isEmpty()) {
@@ -226,10 +226,10 @@ public:
         }
 
         if (useFlatpakRuntime) {
-            appRootPath = flatpak::FlatpakManager::instance()->getAppPath(appID);
+            appRootPath = flatpak::FlatpakManager::instance()->getAppPath(appId);
             mountMap.push_back({appRootPath, "/app"});
         } else {
-            mountMap.push_back({appRootPath, "/opt/apps/" + appID});
+            mountMap.push_back({appRootPath, "/opt/apps/" + appId});
             // TODO(iceyer): add doc for this or remove
             mountMap.push_back({QStringList {appRootPath, "files/lib"}.join("/"), "/run/app/lib"});
         }
@@ -249,7 +249,7 @@ public:
         }
 
         // TODO(iceyer): let application do this or add to doc
-        auto appLdLibraryPath = QStringList {"/opt/apps", appID, "files/lib"}.join("/");
+        auto appLdLibraryPath = QStringList {"/opt/apps", appId, "files/lib"}.join("/");
         if (useFlatpakRuntime) {
             appLdLibraryPath = "/app/lib";
             r->process->env.push_back(
@@ -306,7 +306,7 @@ public:
         return 0;
     }
 
-    int stageUser(const QString &appID) const
+    int stageUser(const QString &appId) const
     {
         QList<QPair<QString, QString>> mountMap;
 
@@ -335,13 +335,13 @@ public:
                 qMakePair(QString("/run/dbus/system_bus_socket"), QString("/run/dbus/system_bus_socket")));
         }
 
-        auto hostAppHome = util::ensureUserDir({".linglong", appID, "home"});
+        auto hostAppHome = util::ensureUserDir({".linglong", appId, "home"});
         mountMap.push_back(qMakePair(hostAppHome, util::getUserFile("")));
 
-        auto appConfigPath = util::ensureUserDir({".linglong", appID, "/config"});
+        auto appConfigPath = util::ensureUserDir({".linglong", appId, "/config"});
         mountMap.push_back(qMakePair(appConfigPath, util::getUserFile(".config")));
 
-        auto appCachePath = util::ensureUserDir({".linglong", appID, "/cache"});
+        auto appCachePath = util::ensureUserDir({".linglong", appId, "/cache"});
         mountMap.push_back(qMakePair(appCachePath, util::getUserFile(".cache")));
 
         mountMap.push_back(qMakePair(userRuntimeDir + "/dconf", userRuntimeDir + "/dconf"));
@@ -388,8 +388,8 @@ public:
             qDebug() << "mount app" << m.source << m.destination;
         }
         auto appRef = package::Ref(q_ptr->package->ref);
-        auto appBinaryPath = QStringList {"/opt/apps", appRef.id, "files/bin"}.join("/");
-        auto appSharePath = QStringList {"/opt/apps", appRef.id, "files/share"}.join("/");
+        auto appBinaryPath = QStringList {"/opt/apps", appRef.appId, "files/bin"}.join("/");
+        auto appSharePath = QStringList {"/opt/apps", appRef.appId, "files/share"}.join("/");
         if (useFlatpakRuntime) {
             appBinaryPath = "/app/bin";
         }

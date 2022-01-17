@@ -55,7 +55,7 @@ TEST(Singleton, singleinit_01)
     EXPECT_EQ(app, app2);
 
     AppInfo app_info;
-    app_info.appid = "org.test.app1";
+    app_info.appId = "org.test.app1";
     app_info.version = "v0.1";
     app->AppendAppInstance<AppInfo>(app_info);
 
@@ -63,8 +63,8 @@ TEST(Singleton, singleinit_01)
     std::unique_lock<std::mutex> lock(app->mtx_lock);
     for (const auto &it : app->app_ump) {
         for (const auto &app : it.second) {
-            cout << "appid: " << app.appid << "\tversion: " << app.version << endl;
-            EXPECT_EQ(app_info.appid, app.appid);
+            cout << "appId: " << app.appId << "\tversion: " << app.version << endl;
+            EXPECT_EQ(app_info.appId, app.appId);
             EXPECT_EQ(app_info.version, app.version);
         }
     }

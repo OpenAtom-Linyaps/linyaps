@@ -19,29 +19,29 @@ QString hostArch()
 }
 
 /*!
- * deepin/channel:appID/version/arch -> appID/version -> appID
+ * deepin/channel:appId/version/arch -> appId/version -> appId
  * \param ref string
  */
-Ref parseID(const QString &id)
+Ref parseId(const QString &id)
 {
     QStringList slice = id.split(":");
     QString remoteRepo = kDefaultRepo;
-    QString localID = id;
+    QString localId = id;
     switch (slice.length()) {
     case 2:
         remoteRepo = slice.value(0);
-        localID = slice.value(1);
+        localId = slice.value(1);
         break;
     case 1:
-        localID = slice.value(0);
+        localId = slice.value(0);
         break;
     default:
         qCritical() << "invalid id" << id;
     }
 
-    slice = localID.split("/");
+    slice = localId.split("/");
 
-    QString appID = localID;
+    QString appId = localId;
     QString version = "latest";
     QString arch = hostArch();
 
@@ -53,17 +53,17 @@ Ref parseID(const QString &id)
     case 2:
         version = slice.value(1);
     case 1:
-        appID = slice.value(0);
+        appId = slice.value(0);
         break;
     default:
         qCritical() << "invalid id" << id;
     }
-    return Ref {remoteRepo, appID, version, arch};
+    return Ref {remoteRepo, appId, version, arch};
 }
 
 Ref::Ref(const QString &id)
 {
-    *this = parseID(id);
+    *this = parseId(id);
 }
 
 } // namespace package

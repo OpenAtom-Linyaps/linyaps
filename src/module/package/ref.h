@@ -22,11 +22,11 @@ const auto kDefaultChannel = "main";
 class Ref
 {
 public:
-    explicit Ref(const QString &id);
+    explicit Ref(const QString &appId);
 
-    Ref(const QString &remote, const QString &id, const QString &version, const QString &arch)
+    Ref(const QString &remote, const QString &appId, const QString &version, const QString &arch)
         : repo(remote)
-        , id(id)
+        , appId(appId)
         , version(version)
         , arch(arch)
     {
@@ -35,15 +35,15 @@ public:
     QString toString() const
     {
         QString ref = repo.isEmpty() ? "" : repo + ":";
-        return QString(ref + "%1/%2/%3").arg(id, version, arch);
+        return QString(ref + "%1/%2/%3").arg(appId, version, arch);
     }
 
     // FIXME: local().toString()?
-    QString toLocalRefString() const { return QString("%1/%2/%3").arg(id, version, arch); }
+    QString toLocalRefString() const { return QString("%1/%2/%3").arg(appId, version, arch); }
 
     QString repo;
     QString channel;
-    QString id;
+    QString appId;
     QString version;
     QString arch;
 

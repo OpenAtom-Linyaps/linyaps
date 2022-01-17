@@ -42,7 +42,7 @@ The spec of the export bundle:
 - The loader mount squashfs with `squashfuse -o ro,offset=xxx`
 - The filesystem now is squashfs
   - The root of the filesystem should contain a file name loader(by the way, now is .loader)
-  - the directory structure should be: /{id}/{version}/{arch}/
+  - the directory structure should be: /{appId}/{version}/{arch}/
 
 a full example of the filesystem is:
 

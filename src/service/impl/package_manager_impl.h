@@ -80,14 +80,14 @@ private:
     /*
      * 安装应用runtime
      *
-     * @param runtimeID: runtime对应的appID
+     * @param runtimeId: runtime对应的appId
      * @param runtimeVer: runtime版本号
      * @param runtimeArch: runtime对应的架构
      * @param err: 错误信息
      *
      * @return bool: true:成功 false:失败
      */
-    bool installRuntime(const QString &runtimeID, const QString &runtimeVer, const QString &runtimeArch, QString &err);
+    bool installRuntime(const QString &runtimeId, const QString &runtimeVer, const QString &runtimeArch, QString &err);
 
     /*
      * 检查应用runtime安装状态

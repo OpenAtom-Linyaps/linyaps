@@ -10,7 +10,7 @@ Should be a yaml file.
 
 ## Storage
 
-The config is highly user related, it should store in ~/.linglong/{appid}/app.yaml
+The config is highly user related, it should store in ~/.linglong/{appId}/app.yaml
 
 If not exist, create it first from info.json.
 

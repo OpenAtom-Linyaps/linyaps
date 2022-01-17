@@ -22,10 +22,10 @@ namespace repo {
 const auto kLayersRoot = "/deepin/linglong/layers";
 
 // FIXME: move to class LocalRepo
-package::Ref latestOf(const QString &appID, const QString &appVersion)
+package::Ref latestOfRef(const QString &appId, const QString &appVersion)
 {
-    auto latestVersionOf = [](const QString &appID) {
-        auto localRepoRoot = QString(kLayersRoot) + "/" + appID;
+    auto latestVersionOf = [](const QString &appId) {
+        auto localRepoRoot = QString(kLayersRoot) + "/" + appId;
 
         QDir appRoot(localRepoRoot);
 
@@ -43,17 +43,17 @@ package::Ref latestOf(const QString &appID, const QString &appVersion)
     };
 
     // 未指定版本使用最新版本，指定版本下使用指定版本
-    auto version = latestVersionOf(appID);
+    auto version = latestVersionOf(appId);
     if (!appVersion.isEmpty()) {
         version = appVersion;
     }
-    auto ref = appID + "/" + version + "/" + util::hostArch();
+    auto ref = appId + "/" + version + "/" + util::hostArch();
     return package::Ref(ref);
 }
 
 QString rootOfLayer(const package::Ref &ref)
 {
-    return QString(kLayersRoot) + "/" + ref.id + "/" + ref.version + "/" + ref.arch;
+    return QString(kLayersRoot) + "/" + ref.appId + "/" + ref.version + "/" + ref.arch;
 }
 
 } // namespace repo

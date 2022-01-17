@@ -19,5 +19,5 @@ TEST(Moduel_Package, Ref)
     Ref ref("deepin/channel:app/1.0/la");
 
     EXPECT_EQ(ref.repo, "deepin");
-    EXPECT_EQ(ref.id, "app");
+    EXPECT_EQ(ref.appId, "app");
 }

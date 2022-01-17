@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
     qJsonRegister<App>();
 
     // register qdbus type
-    RegisterDbusType();
+    registerDbusType();
 
     QDBusConnection dbus = QDBusConnection::sessionBus();
     if (!dbus.registerService("com.deepin.linglong.AppManager")) {

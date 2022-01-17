@@ -171,9 +171,9 @@ bool PackageManagerImpl::downloadAppData(const QString &pkgName, const QString &
 
 /*!
  * 下载软件包
- * @param packageIDList
+ * @param packageIdList
  */
-RetMessageList PackageManagerImpl::Download(const QStringList &packageIDList, const QString &savePath)
+RetMessageList PackageManagerImpl::Download(const QStringList &packageIdList, const QString &savePath)
 {
     return {};
 }
@@ -181,20 +181,20 @@ RetMessageList PackageManagerImpl::Download(const QStringList &packageIDList, co
 /*
  * 安装应用runtime
  *
- * @param runtimeID: runtime对应的appID
+ * @param runtimeId: runtime对应的appId
  * @param runtimeVer: runtime版本号
  * @param runtimeArch: runtime对应的架构
  * @param err: 错误信息
  *
  * @return bool: true:成功 false:失败
  */
-bool PackageManagerImpl::installRuntime(const QString &runtimeID, const QString &runtimeVer, const QString &runtimeArch,
+bool PackageManagerImpl::installRuntime(const QString &runtimeId, const QString &runtimeVer, const QString &runtimeArch,
                                         QString &err)
 {
     AppMetaInfoList appList;
     QString appData = "";
 
-    bool ret = getAppInfofromServer(runtimeID, runtimeVer, runtimeArch, appData, err);
+    bool ret = getAppInfofromServer(runtimeId, runtimeVer, runtimeArch, appData, err);
     if (!ret) {
         return false;
     }
@@ -205,15 +205,15 @@ bool PackageManagerImpl::installRuntime(const QString &runtimeID, const QString 
     }
     // app runtime 只能匹配一个
     if (appList.size() != 1) {
-        err = "app:" + runtimeID + ", version:" + runtimeVer + " not found in repo";
+        err = "app:" + runtimeId + ", version:" + runtimeVer + " not found in repo";
         return false;
     }
 
     auto pkgInfo = appList.at(0);
-    const QString savePath = kAppInstallPath + runtimeID + "/" + runtimeVer + "/" + runtimeArch;
+    const QString savePath = kAppInstallPath + runtimeId + "/" + runtimeVer + "/" + runtimeArch;
     // 创建路径
     linglong::util::createDir(savePath);
-    ret = downloadAppData(runtimeID, runtimeVer, runtimeArch, savePath, err);
+    ret = downloadAppData(runtimeId, runtimeVer, runtimeArch, savePath, err);
     if (!ret) {
         err = "installRuntime download runtime data err";
         return false;
@@ -242,29 +242,29 @@ bool PackageManagerImpl::checkAppRuntime(const QString &runtime, QString &err)
         err = "app runtime:" + runtime + " runtime format err";
         return false;
     }
-    const QString runtimeID = runtimeInfo.at(0);
+    const QString runtimeId = runtimeInfo.at(0);
     const QString runtimeVer = runtimeInfo.at(1);
     const QString runtimeArch = runtimeInfo.at(2);
 
     bool ret = true;
     // 判断app依赖的runtime是否安装
     QString userName = getUserName();
-    if (!getAppInstalledStatus(runtimeID, runtimeVer, "", userName)) {
-        ret = installRuntime(runtimeID, runtimeVer, runtimeArch, err);
+    if (!getAppInstalledStatus(runtimeId, runtimeVer, "", userName)) {
+        ret = installRuntime(runtimeId, runtimeVer, runtimeArch, err);
     }
     return ret;
 }
 
 /*!
  * 在线安装软件包
- * @param packageIDList
+ * @param packageIdList
  */
-RetMessageList PackageManagerImpl::Install(const QStringList &packageIDList, const ParamStringMap &paramMap)
+RetMessageList PackageManagerImpl::Install(const QStringList &packageIdList, const ParamStringMap &paramMap)
 {
     RetMessageList retMsg;
     bool ret = false;
     auto info = QPointer<RetMessage>(new RetMessage);
-    QString pkgName = packageIDList.at(0);
+    QString pkgName = packageIdList.at(0);
     if (pkgName.isNull() || pkgName.isEmpty()) {
         qCritical() << "package name err";
         info->setcode(RetCode(RetCode::user_input_param_err));
@@ -360,7 +360,7 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIDList, con
         return retMsg;
     }
 
-    //链接应用配置文件到系统配置目录
+    // 链接应用配置文件到系统配置目录
     if (linglong::util::dirExists(savePath + "/outputs/share")) {
         const QString appEntriesDirPath = savePath + "/outputs/share";
         linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstalltions);
@@ -368,7 +368,7 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIDList, con
         const QString appEntriesDirPath = savePath + "/entries";
         linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstalltions);
     }
-    //更新desktop database
+    // 更新desktop database
     auto retRunner = linglong::runner::Runner("update-desktop-database", {sysLinglongInstalltions + "/applications/"},
                                    1000 * 60 * 1);
     if (!retRunner) {
@@ -387,13 +387,13 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIDList, con
 
 /*!
  * 查询软件包
- * @param packageIDList: 软件包的appid
+ * @param packageIdList: 软件包的appId
  *
  * @return AppMetaInfoList 查询结果列表
  */
-AppMetaInfoList PackageManagerImpl::Query(const QStringList &packageIDList, const ParamStringMap &paramMap)
+AppMetaInfoList PackageManagerImpl::Query(const QStringList &packageIdList, const ParamStringMap &paramMap)
 {
-    const QString pkgName = packageIDList.at(0);
+    const QString pkgName = packageIdList.at(0);
     if (pkgName.isNull() || pkgName.isEmpty()) {
         qWarning() << "package name err";
         return {};
@@ -452,15 +452,15 @@ AppMetaInfoList PackageManagerImpl::Query(const QStringList &packageIDList, cons
 /*
  * 卸载软件包
  *
- * @param packageIDList: 软件包的appid
+ * @param packageIdList: 软件包的appId
  *
  * @return RetMessageList 卸载结果信息
  */
-RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIDList, const ParamStringMap &paramMap)
+RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIdList, const ParamStringMap &paramMap)
 {
     RetMessageList retMsg;
     auto info = QPointer<RetMessage>(new RetMessage);
-    const QString pkgName = packageIDList.at(0);
+    const QString pkgName = packageIdList.at(0);
 
     // 获取版本信息
     QString version = "";
@@ -499,7 +499,7 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIDList, c
         qInfo() << "Uninstall del dir:" << installPath;
     }
 
-     //更新desktop database
+     // 更新desktop database
     auto retRunner = linglong::runner::Runner("update-desktop-database", {sysLinglongInstalltions + "/applications/"},
                                    1000 * 60 * 1);
     if (!retRunner) {

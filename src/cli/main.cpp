@@ -98,7 +98,7 @@ int main(int argc, char **argv)
     Dtk::Core::DLogManager::registerFileAppender();
 
     // register qdbus type
-    RegisterDbusType();
+    registerDbusType();
 
     QCommandLineParser parser;
     parser.addHelpOption();
@@ -132,7 +132,7 @@ int main(int argc, char **argv)
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("run", "run application", "run");
-             parser.addPositionalArgument("appID", "application id", "com.deepin.demo");
+             parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
 
              auto optExec = QCommandLineOption("exec", "run exec", "/bin/bash");
              auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
@@ -145,8 +145,8 @@ int main(int argc, char **argv)
                  return -1;
              }
              auto args = parser.positionalArguments();
-             auto appID = args.value(1);
-             if (appID.isEmpty()) {
+             auto appId = args.value(1);
+             if (appId.isEmpty()) {
                  parser.showHelp();
              }
              auto exec = parser.value(optExec);
@@ -162,9 +162,9 @@ int main(int argc, char **argv)
                  exec = QStringList {exec, desktopArgs}.join(" ");
              }
 
-             // appID format: org.deepin.calculator/1.2.6 in multi-version
+             // appId format: org.deepin.calculator/1.2.6 in multi-version
              QMap<QString, QString> paramMap;
-             QStringList appInfoList = appID.split("/");
+             QStringList appInfoList = appId.split("/");
              if (appInfoList.size() > 1) {
                  paramMap.insert(linglong::util::KEY_VERSION, appInfoList.at(1));
              }
@@ -199,19 +199,19 @@ int main(int argc, char **argv)
              //      r.process.args = {exec.toStdString()};
              //  }
 
-             //  runtime::Application ogApp(appID, r);
+             //  runtime::Application ogApp(appId, r);
              //  return ogApp.start();
              return 0;
          }},
         {"exec",
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
-             parser.addPositionalArgument("containerID", "container id", "aebbe2f455cf443f89d5c92f36d154dd");
+             parser.addPositionalArgument("containerId", "container id", "aebbe2f455cf443f89d5c92f36d154dd");
              parser.addPositionalArgument("exec", "exec command in container", "/bin/bash");
              parser.process(app);
 
-             auto containerID = parser.positionalArguments().value(1);
-             if (containerID.isEmpty()) {
+             auto containerId = parser.positionalArguments().value(1);
+             if (containerId.isEmpty()) {
                  parser.showHelp();
              }
 
@@ -220,7 +220,7 @@ int main(int argc, char **argv)
                  parser.showHelp();
              }
 
-             auto pid = containerID.toInt();
+             auto pid = containerId.toInt();
 
              return namespaceEnter(pid, QStringList {cmd});
          }},
@@ -249,10 +249,10 @@ int main(int argc, char **argv)
 
              QStringList args = parser.positionalArguments();
 
-             auto containerID = args.value(1);
+             auto containerId = args.value(1);
 
              // TODO: show kill result
-             QDBusPendingReply<RetMessageList> reply = pm.Stop(containerID);
+             QDBusPendingReply<RetMessageList> reply = pm.Stop(containerId);
              reply.waitForFinished();
              RetMessageList retMsg = reply.value();
              if (retMsg.size() > 0) {
@@ -270,21 +270,21 @@ int main(int argc, char **argv)
          [&](QCommandLineParser &parser) -> int {
              QString curPath = QDir::currentPath();
              // qDebug() << curPath;
-             //  ll-cli download org.deepin.calculator -d ./test 无-d 参数默认当前路径
+             // ll-cli download org.deepin.calculator -d ./test 无-d 参数默认当前路径
              auto optDownload = QCommandLineOption("d", "dest path to save app", "dest path to save app", curPath);
 
              parser.clearPositionalArguments();
-             parser.addPositionalArgument("app-id", "app id", "com.deepin.demo");
+             parser.addPositionalArgument("appId", "app id", "com.deepin.demo");
              parser.addOption(optDownload);
              parser.process(app);
              auto args = parser.positionalArguments();
-             //第一个参数为命令字
-             auto appID = args.value(1);
+             // 第一个参数为命令字
+             auto appId = args.value(1);
              auto savePath = parser.value(optDownload);
              QFileInfo dstfs(savePath);
 
              pm.setTimeout(1000 * 60 * 60 * 24);
-             QDBusPendingReply<RetMessageList> reply = pm.Download({appID}, dstfs.absoluteFilePath());
+             QDBusPendingReply<RetMessageList> reply = pm.Download({appId}, dstfs.absoluteFilePath());
              reply.waitForFinished();
              RetMessageList retMsg = reply.value();
              if (retMsg.size() > 0) {
@@ -302,14 +302,14 @@ int main(int argc, char **argv)
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("install", "install an application", "install");
-             parser.addPositionalArgument("app-id", "app id", "com.deepin.demo");
+             parser.addPositionalArgument("appId", "app id", "com.deepin.demo");
              auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
              parser.addOption(optRepoPoint);
              parser.process(app);
              auto args = parser.positionalArguments();
-             auto appID = args.value(1);
+             auto appId = args.value(1);
              auto repoType = parser.value(optRepoPoint);
-             if (appID.isEmpty() || (!repoType.isEmpty() && repoType != "flatpak")) {
+             if (appId.isEmpty() || (!repoType.isEmpty() && repoType != "flatpak")) {
                  parser.showHelp(-1);
                  return -1;
              }
@@ -317,9 +317,9 @@ int main(int argc, char **argv)
              pm.setTimeout(1000 * 60 * 60 * 24);
              QDBusPendingReply<RetMessageList> reply;
 
-             // appID format: org.deepin.calculator/1.2.6 in multi-version
+             // appId format: org.deepin.calculator/1.2.6 in multi-version
              QMap<QString, QString> paramMap;
-             QStringList appInfoList = appID.split("/");
+             QStringList appInfoList = appId.split("/");
              if (appInfoList.size() > 1) {
                  paramMap.insert(linglong::util::KEY_VERSION, appInfoList.at(1));
              }
@@ -341,7 +341,7 @@ int main(int argc, char **argv)
              }
              reply = pm.Install({appInfoList.at(0)}, paramMap);
 
-             std::cout << "install " << appID.toStdString() << ", please wait a few minutes..." << std::endl;
+             std::cout << "install " << appId.toStdString() << ", please wait a few minutes..." << std::endl;
              reply.waitForFinished();
              RetMessageList retMsg = reply.value();
              if (retMsg.size() > 0) {
@@ -354,7 +354,7 @@ int main(int argc, char **argv)
                  std::cout << std::endl;
              }
              if (reply.isError()) {
-                 std::cout << "install: " << appID.toStdString() << " timeout";
+                 std::cout << "install: " << appId.toStdString() << " timeout";
                  return -1;
              }
              return 0;
@@ -363,7 +363,7 @@ int main(int argc, char **argv)
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("query", "query app info", "query");
-             parser.addPositionalArgument("app-id", "app id", "com.deepin.demo");
+             parser.addPositionalArgument("appId", "app id", "com.deepin.demo");
              auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
              parser.addOption(optRepoPoint);
              auto optNoCache = QCommandLineOption("force", "query from server directly, not from cache", "");
@@ -383,8 +383,8 @@ int main(int argc, char **argv)
                  paramMap.insert(linglong::util::KEY_NO_CACHE, "");
              }
              auto args = parser.positionalArguments();
-             auto appID = args.value(1);
-             QDBusPendingReply<AppMetaInfoList> reply = pm.Query({appID}, paramMap);
+             auto appId = args.value(1);
+             QDBusPendingReply<AppMetaInfoList> reply = pm.Query({appId}, paramMap);
              reply.waitForFinished();
              AppMetaInfoList retMsg = reply.value();
              if (retMsg.size() == 1 && retMsg.at(0)->appId == "flatpakquery") {
@@ -398,7 +398,7 @@ int main(int argc, char **argv)
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("uninstall", "uninstall an application", "uninstall");
-             parser.addPositionalArgument("app-id", "app id", "com.deepin.demo");
+             parser.addPositionalArgument("appId", "app id", "com.deepin.demo");
              auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
              parser.addOption(optRepoPoint);
              parser.process(app);
@@ -413,7 +413,7 @@ int main(int argc, char **argv)
              pm.setTimeout(1000 * 60 * 10);
              QDBusPendingReply<RetMessageList> reply;
 
-             // appID format: org.deepin.calculator/1.2.6 in multi-version
+             // appId format: org.deepin.calculator/1.2.6 in multi-version
              QMap<QString, QString> paramMap;
              QStringList appInfoList = appInfo.split("/");
              if (appInfoList.size() > 1) {

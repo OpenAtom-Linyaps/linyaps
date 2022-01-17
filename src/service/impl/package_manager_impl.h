@@ -31,10 +31,10 @@ class PackageManagerImpl : public PackageManagerProxyBase
     , public Dtk::Core::DSingleton<PackageManagerImpl>
 {
 public:
-    RetMessageList Download(const QStringList &packageIDList, const QString &savePath);
-    RetMessageList Install(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
-    RetMessageList Uninstall(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
-    AppMetaInfoList Query(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
+    RetMessageList Download(const QStringList &packageIdList, const QString &savePath);
+    RetMessageList Install(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
+    RetMessageList Uninstall(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
+    AppMetaInfoList Query(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
 
 private:
     const QString sysLinglongInstalltions = "/deepin/linglong/entries/share";

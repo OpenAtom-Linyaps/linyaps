@@ -42,26 +42,23 @@ class PackageManager : public QObject
 public Q_SLOTS:
     QString Status();
 
-    RetMessageList Download(const QStringList &packageIDList, const QString savePath);
-    RetMessageList Install(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
-    RetMessageList Uninstall(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
-    QString Update(const QStringList &packageIDList);
+    RetMessageList Download(const QStringList &packageIdList, const QString savePath);
+    RetMessageList Install(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
+    RetMessageList Uninstall(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
+    QString Update(const QStringList &packageIdList);
     QString UpdateAll();
 
-    AppMetaInfoList Query(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
+    AppMetaInfoList Query(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
 
     QString Import(const QStringList &packagePathList);
 
-    RetMessageList Start(const QString &packageID, const ParamStringMap &paramMap = {});
-    RetMessageList Stop(const QString &containerID);
+    RetMessageList Start(const QString &packageId, const ParamStringMap &paramMap = {});
+    RetMessageList Stop(const QString &containerId);
     ContainerList ListContainer();
 
 private:
     QScopedPointer<PackageManagerPrivate> dd_ptr;
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), PackageManager)
-
-protected:
-    AppInstance *app_instance_list ;
 
 protected:
     PackageManager();

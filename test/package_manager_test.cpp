@@ -62,20 +62,20 @@ bool getConnectStatus()
 TEST(Package, install01)
 {
     // start service
-    std::thread start_qdbus(start_ll_service);
-    start_qdbus.detach();
+    std::thread startQdbus(start_ll_service);
+    startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    RegisterDbusType();
+    registerDbusType();
     ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager",
                                                 "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());
     // call dbus
-    QString appID = "";
-    QDBusPendingReply<RetMessageList> reply = pm.Install({appID}, {});
+    QString appId = "";
+    QDBusPendingReply<RetMessageList> reply = pm.Install({appId}, {});
     reply.waitForFinished();
-    RetMessageList ret_msg = reply.value();
-    if (ret_msg.size() > 0) {
-        auto it = ret_msg.at(0);
+    RetMessageList retMsg = reply.value();
+    if (retMsg.size() > 0) {
+        auto it = retMsg.at(0);
         qInfo() << "message:\t" << it->message;
         if (!it->state) {
             qInfo() << "code:\t" << it->code;
@@ -89,20 +89,20 @@ TEST(Package, install01)
 TEST(Package, install02)
 {
     // start service
-    std::thread start_qdbus(start_ll_service);
-    start_qdbus.detach();
+    std::thread startQdbus(start_ll_service);
+    startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
     ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager",
                                                 "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());
     // test pkg not in repo
-    QString appID = "test.deepin.test";
-    QDBusPendingReply<RetMessageList> reply = pm.Install({appID}, {});
+    QString appId = "test.deepin.test";
+    QDBusPendingReply<RetMessageList> reply = pm.Install({appId}, {});
     reply.waitForFinished();
-    RetMessageList ret_msg = reply.value();
-    if (ret_msg.size() > 0) {
-        auto it = ret_msg.at(0);
+    RetMessageList retMsg = reply.value();
+    if (retMsg.size() > 0) {
+        auto it = retMsg.at(0);
         qInfo() << "message:\t" << it->message;
         if (!it->state) {
             qInfo() << "code:\t" << it->code;
@@ -116,15 +116,15 @@ TEST(Package, install02)
 TEST(Package, install03)
 {
     // start service
-    std::thread start_qdbus(start_ll_service);
-    start_qdbus.detach();
+    std::thread startQdbus(start_ll_service);
+    startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
     ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager",
                                                 "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());
     // call dbus
-    QString appID = "org.deepin.calculator";
+    QString appId = "org.deepin.calculator";
 
     // 查询是否已安装
     QDBusPendingReply<AppMetaInfoList> replyQuery = pm.Query({"installed"}, {});
@@ -137,7 +137,7 @@ TEST(Package, install03)
             break;
         }
     }
-    QDBusPendingReply<RetMessageList> reply = pm.Install({appID}, {});
+    QDBusPendingReply<RetMessageList> reply = pm.Install({appId}, {});
     reply.waitForFinished();
     bool connect = getConnectStatus();
     if (!connect) {
@@ -159,19 +159,19 @@ TEST(Package, install03)
 TEST(Package, query01)
 {
     // start service
-    std::thread start_qdbus(start_ll_service);
-    start_qdbus.detach();
+    std::thread startQdbus(start_ll_service);
+    startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
     ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager",
                                                 "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());
     // test app not in repo
-    auto appID = "test.deepin.test";
-    QDBusPendingReply<AppMetaInfoList> reply = pm.Query({appID}, {});
+    auto appId = "test.deepin.test";
+    QDBusPendingReply<AppMetaInfoList> reply = pm.Query({appId}, {});
     reply.waitForFinished();
-    AppMetaInfoList ret_msg = reply.value();
-    bool ret = ret_msg.size() == 0 ? true : false;
+    AppMetaInfoList retMsg = reply.value();
+    bool ret = retMsg.size() == 0 ? true : false;
     EXPECT_EQ(ret, true);
     // stop service
     stop_ll_service();
@@ -180,19 +180,19 @@ TEST(Package, query01)
 TEST(Package, query02)
 {
     // start service
-    std::thread start_qdbus(start_ll_service);
-    start_qdbus.detach();
+    std::thread startQdbus(start_ll_service);
+    startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
     ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager",
                                                 "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());
     // test app not in repo
-    auto appID = "";
-    QDBusPendingReply<AppMetaInfoList> reply = pm.Query({appID}, {});
+    auto appId = "";
+    QDBusPendingReply<AppMetaInfoList> reply = pm.Query({appId}, {});
     reply.waitForFinished();
-    AppMetaInfoList ret_msg = reply.value();
-    bool ret = ret_msg.size() == 0 ? true : false;
+    AppMetaInfoList retMsg = reply.value();
+    bool ret = retMsg.size() == 0 ? true : false;
     EXPECT_EQ(ret, true);
     // stop service
     stop_ll_service();
@@ -280,8 +280,8 @@ TEST(Package, IDQueryRegExp)
 TEST(Package, list01)
 {
     // start service
-    std::thread start_qdbus(start_ll_service);
-    start_qdbus.detach();
+    std::thread startQdbus(start_ll_service);
+    startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
     ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager",
@@ -301,8 +301,8 @@ TEST(Package, list01)
 TEST(Package, list02)
 {
     // start service
-    std::thread start_qdbus(start_ll_service);
-    start_qdbus.detach();
+    std::thread startQdbus(start_ll_service);
+    startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
     ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager",

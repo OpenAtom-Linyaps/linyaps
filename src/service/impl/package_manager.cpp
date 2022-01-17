@@ -56,13 +56,7 @@ public:
 
 PackageManager::PackageManager()
     : dd_ptr(new PackageManagerPrivate(this))
-    , app_instance_list(linglong::service::util::AppInstance::get())
 {
-    AppInfo app_info;
-    app_info.appid = "org.test.app1";
-    app_info.version = "v0.1";
-    this->app_instance_list->AppendAppInstance<AppInfo>(app_info);
-
     // 检查安装数据库信息
     checkInstalledAppDb();
     updateInstalledAppInfoDb();
@@ -75,9 +69,9 @@ PackageManager::~PackageManager() = default;
 
 /*!
  * 下载软件包
- * @param packageIDList
+ * @param packageIdList
  */
-RetMessageList PackageManager::Download(const QStringList &packageIDList, const QString savePath)
+RetMessageList PackageManager::Download(const QStringList &packageIdList, const QString savePath)
 {
     // Q_D(PackageManager);
 
@@ -94,7 +88,7 @@ RetMessageList PackageManager::Download(const QStringList &packageIDList, const 
     // });
     RetMessageList retMsg;
     auto info = QPointer<RetMessage>(new RetMessage);
-    QString pkgName = packageIDList.at(0);
+    QString pkgName = packageIdList.at(0);
     if (pkgName.isNull() || pkgName.isEmpty()) {
         qInfo() << "package name err";
         info->setcode(RetCode(RetCode::user_input_param_err));
@@ -104,17 +98,17 @@ RetMessageList PackageManager::Download(const QStringList &packageIDList, const 
         return retMsg;
     }
     PackageManagerProxyBase *pImpl = PackageManagerImpl::instance();
-    return pImpl->Download(packageIDList, savePath);
+    return pImpl->Download(packageIdList, savePath);
 }
 
 /*!
  * 在线安装软件包
- * @param packageIDList
+ * @param packageIdList
  */
-RetMessageList PackageManager::Install(const QStringList &packageIDList, const ParamStringMap &paramMap)
+RetMessageList PackageManager::Install(const QStringList &packageIdList, const ParamStringMap &paramMap)
 {
     if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT)) {
-        return PackageManagerFlatpakImpl::instance()->Install(packageIDList);
+        return PackageManagerFlatpakImpl::instance()->Install(packageIdList);
     }
     // Q_D(PackageManager);
 
@@ -131,7 +125,7 @@ RetMessageList PackageManager::Install(const QStringList &packageIDList, const P
     // });
     RetMessageList retMsg;
     auto info = QPointer<RetMessage>(new RetMessage);
-    QString pkgName = packageIDList.at(0);
+    QString pkgName = packageIdList.at(0);
     if (pkgName.isNull() || pkgName.isEmpty()) {
         qInfo() << "package name err";
         info->setcode(RetCode(RetCode::user_input_param_err));
@@ -141,13 +135,13 @@ RetMessageList PackageManager::Install(const QStringList &packageIDList, const P
         return retMsg;
     }
     PackageManagerProxyBase *pImpl = PackageManagerImpl::instance();
-    return pImpl->Install(packageIDList, paramMap);
+    return pImpl->Install(packageIdList, paramMap);
 }
 
-RetMessageList PackageManager::Uninstall(const QStringList &packageIDList, const ParamStringMap &paramMap)
+RetMessageList PackageManager::Uninstall(const QStringList &packageIdList, const ParamStringMap &paramMap)
 {
     if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT)) {
-        return PackageManagerFlatpakImpl::instance()->Uninstall(packageIDList);
+        return PackageManagerFlatpakImpl::instance()->Uninstall(packageIdList);
     }
     // 校验包名参数
     // 判断软件包是否安装
@@ -156,15 +150,15 @@ RetMessageList PackageManager::Uninstall(const QStringList &packageIDList, const
     // 更新本地软件包目录
     RetMessageList retMsg;
     auto info = QPointer<RetMessage>(new RetMessage);
-    if (packageIDList.size() == 0) {
-        qInfo() << "packageIDList input err";
+    if (packageIdList.size() == 0) {
+        qInfo() << "packageIdList input err";
         info->setcode(RetCode(RetCode::user_input_param_err));
-        info->setmessage("packageIDList input err");
+        info->setmessage("packageIdList input err");
         info->setstate(false);
         retMsg.push_back(info);
         return retMsg;
     }
-    QString pkgName = packageIDList.at(0);
+    QString pkgName = packageIdList.at(0);
     if (pkgName.isNull() || pkgName.isEmpty()) {
         qInfo() << "package name err";
         info->setcode(RetCode(RetCode::user_input_param_err));
@@ -173,10 +167,10 @@ RetMessageList PackageManager::Uninstall(const QStringList &packageIDList, const
         retMsg.push_back(info);
         return retMsg;
     }
-    return PackageManagerImpl::instance()->Uninstall(packageIDList, paramMap);
+    return PackageManagerImpl::instance()->Uninstall(packageIdList, paramMap);
 }
 
-QString PackageManager::Update(const QStringList &packageIDList)
+QString PackageManager::Update(const QStringList &packageIdList)
 {
     sendErrorReply(QDBusError::NotSupported, message().member());
     return {};
@@ -191,22 +185,22 @@ QString PackageManager::UpdateAll()
 /*
  * 查询软件包
  *
- * @param packageIDList: 软件包的appid
+ * @param packageIdList: 软件包的appId
  *
  * @return AppMetaInfoList 查询结果列表
  */
-AppMetaInfoList PackageManager::Query(const QStringList &packageIDList, const ParamStringMap &paramMap)
+AppMetaInfoList PackageManager::Query(const QStringList &packageIdList, const ParamStringMap &paramMap)
 {
     if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT)) {
-        return PackageManagerFlatpakImpl::instance()->Query(packageIDList);
+        return PackageManagerFlatpakImpl::instance()->Query(packageIdList);
     }
-    QString pkgName = packageIDList.at(0);
+    QString pkgName = packageIdList.at(0);
     if (pkgName.isNull() || pkgName.isEmpty()) {
         qInfo() << "package name err";
         return {};
     }
     PackageManagerProxyBase *pImpl = PackageManagerImpl::instance();
-    return pImpl->Query(packageIDList, paramMap);
+    return pImpl->Query(packageIdList, paramMap);
 }
 
 /*!
@@ -219,15 +213,15 @@ QString PackageManager::Import(const QStringList &packagePathList)
     return {};
 }
 
-QString appConfigPath(const QString &appID, const QString &appVersion, bool isFlatpakApp = false)
+QString appConfigPath(const QString &appId, const QString &appVersion, bool isFlatpakApp = false)
 {
-    util::ensureUserDir({".linglong", appID});
+    util::ensureUserDir({".linglong", appId});
 
-    auto configPath = getUserFile(QString("%1/%2/app.yaml").arg(".linglong", appID));
+    auto configPath = getUserFile(QString("%1/%2/app.yaml").arg(".linglong", appId));
 
     // create yaml form info
     // auto appRoot = LocalRepo::get()->rootOfLatest();
-    auto latestAppRef = repo::latestOf(appID, appVersion);
+    auto latestAppRef = repo::latestOf(appId, appVersion);
 
     auto appInstallRoot = repo::rootOfLayer(latestAppRef);
 
@@ -279,16 +273,16 @@ QString appConfigPath(const QString &appID, const QString &appVersion, bool isFl
 /*
  * 执行软件包
  *
- * @param packageID: 软件包的appid
+ * @param packageId: 软件包的appId
  * @param paramMap: 运行参数信息
  *
  * @return RetMessageList: 运行结果信息
  */
-RetMessageList PackageManager::Start(const QString &packageID, const ParamStringMap &paramMap)
+RetMessageList PackageManager::Start(const QString &packageId, const ParamStringMap &paramMap)
 {
     Q_D(PackageManager);
 
-    qDebug() << "start package" << packageID;
+    qDebug() << "start package" << packageId;
 
     RetMessageList retMsg;
     auto info = QPointer<RetMessage>(new RetMessage);
@@ -308,8 +302,8 @@ RetMessageList PackageManager::Start(const QString &packageID, const ParamString
 
     // 判断是否已安装
     QString err = "";
-    if (!getAppInstalledStatus(packageID, version, "", "")) {
-        err = packageID + " not installed";
+    if (!getAppInstalledStatus(packageId, version, "", "")) {
+        err = packageId + " not installed";
         qCritical() << err;
         info->setcode(RetCode(RetCode::pkg_not_installed));
         info->setmessage(err);
@@ -320,7 +314,7 @@ RetMessageList PackageManager::Start(const QString &packageID, const ParamString
     JobManager::instance()->CreateJob([=](Job *jr) {
         // 判断是否存在
         bool isFlatpakApp = !paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT);
-        QString configPath = appConfigPath(packageID, version, isFlatpakApp);
+        QString configPath = appConfigPath(packageId, version, isFlatpakApp);
         if (!fileExists(configPath)) {
             return;
         }
@@ -339,19 +333,19 @@ RetMessageList PackageManager::Start(const QString &packageID, const ParamString
 /*
  * 停止应用
  *
- * @param containerID: 应用启动对应的容器ID
+ * @param containerId: 应用启动对应的容器Id
  *
  * @return RetMessageList 执行结果信息
  */
-RetMessageList PackageManager::Stop(const QString &containerID)
+RetMessageList PackageManager::Stop(const QString &containerId)
 {
     Q_D(PackageManager);
 
     RetMessageList retMsg;
     auto info = QPointer<RetMessage>(new RetMessage);
     QString err = "";
-    if (!d->apps.contains(containerID)) {
-        err = "containerID:" + containerID + " not exist";
+    if (!d->apps.contains(containerId)) {
+        err = "containerId:" + containerId + " not exist";
         qCritical() << err;
         info->setcode(RetCode(RetCode::user_input_param_err));
         info->setmessage(err);
@@ -359,18 +353,18 @@ RetMessageList PackageManager::Stop(const QString &containerID)
         retMsg.push_back(info);
         return retMsg;
     }
-    pid_t pid = d->apps[containerID]->container()->PID;
+    pid_t pid = d->apps[containerId]->container()->PID;
     int ret = kill(pid, SIGKILL);
     if (ret == 0) {
-        d->apps.remove(containerID);
+        d->apps.remove(containerId);
     } else {
-        err = "kill container failed, containerID:" + containerID;
+        err = "kill container failed, containerId:" + containerId;
         info->setcode(RetCode(RetCode::ErrorPkgKillFailed));
         info->setmessage(err);
         info->setstate(false);
         retMsg.push_back(info);
     }
-    qInfo() << "kill containerID:" << containerID << ",ret:" << ret;
+    qInfo() << "kill containerId:" << containerId << ",ret:" << ret;
     return retMsg;
 }
 

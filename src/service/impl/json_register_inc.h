@@ -15,7 +15,7 @@
 #include "module/package/package.h"
 #include "qdbus_retmsg.h"
 
-inline void RegisterDbusType()
+inline void registerDbusType()
 {
     qJsonRegister<Container>();
     qJsonRegister<RetMessage>();

@@ -12,6 +12,7 @@
 
 #include <curl/curl.h>
 #include <QString>
+#include <DSingleton>
 
 namespace linglong {
 namespace util {
@@ -39,16 +40,9 @@ typedef struct _downloadRet {
 
 } DownloadRet;
 
-class HttpClient
+class HttpClient : public Dtk::Core::DSingleton<HttpClient>
 {
 private:
-    HttpClient()
-        : mIsFinish(false)
-        , mProgressFun(nullptr)
-        , mCurlHandle(nullptr)
-        , mData({0})
-    {
-    }
 
     /*
      * 获取文件锁
@@ -98,11 +92,10 @@ private:
      */
     void showInfo();
 
-    static HttpClient *sInstance;
-    bool mIsFinish;
-    DOWNLOADCALLBACK mProgressFun;
-    CURL *mCurlHandle;
-    DownloadRet mData;
+    bool isFinish;
+    DOWNLOADCALLBACK progressFun;
+    CURL *curlHandle;
+    DownloadRet data;
 
 public:
     /*
@@ -116,11 +109,6 @@ public:
      * @return bool: true:成功 false:失败
      */
     bool queryRemote(const QString &pkgName, const QString &pkgVer, const QString &pkgArch, QString &outMsg);
-
-    /*
-     * 获取HttpClient实例
-     */
-    static HttpClient *getInstance();
 
     /*
      * 下载文件
@@ -171,11 +159,6 @@ public:
     int pushServerBundleData(const QString &info, const QString &dnsOfLinglong);
 
     /*
-     * 释放HttpClient实例
-     */
-    static void release();
-
-    /*
      * 从配置文件获取服务器配置参数
      *
      * @param key: 参数名称
@@ -187,3 +170,5 @@ public:
 };
 } // namespace util
 } // namespace linglong
+
+#define G_HTTPCLIENT linglong::util::HttpClient::instance()

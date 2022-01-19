@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
  *
- * Author:     Iceyer <me@iceyer.net>
+ * Author:     huqinghong <huqinghong@uniontech.com>
  *
- * Maintainer: Iceyer <me@iceyer.net>
+ * Maintainer: huqinghong <huqinghong@uniontech.com>
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
@@ -34,33 +34,16 @@ using namespace linglong::Status;
 namespace linglong {
 namespace util {
 
-const char *LINGLONGHTTPCLIENTLOCK = "/tmp/linglongHttpDownload.lock";
-HttpClient *HttpClient::sInstance = nullptr;
+const char *pkgDownloadLock = "/tmp/linglongHttpDownload.lock";
 
 // 存储软件包信息服务器配置文件
-const QString kServerConfigPath = "/deepin/linglong/config/config";
+const QString serverConfigPath = "/deepin/linglong/config/config";
 
 long getCurrentTime()
 {
     struct timeval timeVal;
     gettimeofday(&timeVal, NULL);
     return timeVal.tv_sec * 1000 + timeVal.tv_usec / 1000;
-}
-
-HttpClient *HttpClient::getInstance()
-{
-    if (sInstance == nullptr) {
-        sInstance = new HttpClient();
-    }
-    return sInstance;
-}
-
-void HttpClient::release()
-{
-    if (sInstance != nullptr) {
-        delete sInstance;
-        sInstance = nullptr;
-    }
 }
 
 /*
@@ -72,8 +55,8 @@ int HttpClient::getlock()
 {
     int fd = -1;
     int ret = -1;
-    fd = open(LINGLONGHTTPCLIENTLOCK, O_CREAT | O_TRUNC | O_RDWR, 0777);
 
+    fd = open(pkgDownloadLock, O_CREAT | O_TRUNC | O_RDWR, 0777);
     if (fd < 0) {
         // fprintf(stdout, "getlock open err:[%d], message:%s\n", errno, strerror(errno));
         qInfo() << "getlock open err";
@@ -105,8 +88,7 @@ int HttpClient::releaselock(int fd)
     }
     flock(fd, LOCK_UN);
     close(fd);
-    unlink(LINGLONGHTTPCLIENTLOCK);
-    // 确认临时文件是否需要删除
+    unlink(pkgDownloadLock);
     return 0;
 }
 
@@ -118,7 +100,7 @@ int HttpClient::releaselock(int fd)
  */
 void HttpClient::setProgressCallback(DOWNLOADCALLBACK progressFun)
 {
-    mProgressFun = progressFun;
+    this->progressFun = progressFun;
 }
 
 /*
@@ -128,32 +110,33 @@ void HttpClient::setProgressCallback(DOWNLOADCALLBACK progressFun)
  */
 void HttpClient::initHttpParam(const char *url)
 {
-    curl_global_init(CURL_GLOBAL_ALL);
+    isFinish = false;
 
+    curl_global_init(CURL_GLOBAL_ALL);
     /* init the curl session */
-    mCurlHandle = curl_easy_init();
+    curlHandle = curl_easy_init();
 
     /* set URL to get here */
-    curl_easy_setopt(mCurlHandle, CURLOPT_URL, url);
+    curl_easy_setopt(curlHandle, CURLOPT_URL, url);
 
-    curl_easy_setopt(mCurlHandle, CURLOPT_TIMEOUT, 3600); // 超时(单位S)
-    curl_easy_setopt(mCurlHandle, CURLOPT_CONNECTTIMEOUT, 3600); // 超时(单位S)
+    curl_easy_setopt(curlHandle, CURLOPT_TIMEOUT, 3600); // 超时(单位S)
+    curl_easy_setopt(curlHandle, CURLOPT_CONNECTTIMEOUT, 3600); // 超时(单位S)
 
-    // curl_easy_setopt(mCurlHandle, CURLOPT_HEADER, 1); //下载数据包括HTTP头部
+    // curl_easy_setopt(curlHandle, CURLOPT_HEADER, 1); //下载数据包括HTTP头部
     // 此时若保存文件侧文件数据打不开
 
     /* Switch on full protocol/debug output while testing */
-    // curl_easy_setopt(mCurlHandle, CURLOPT_VERBOSE, 1L);
+    // curl_easy_setopt(curlHandle, CURLOPT_VERBOSE, 1L);
 
     /* disable progress meter, set to 0L to enable it */
-    if (mProgressFun != nullptr && mProgressFun != NULL) {
-        curl_easy_setopt(mCurlHandle, CURLOPT_PROGRESSFUNCTION, mProgressFun);
+    if (progressFun != nullptr && progressFun != NULL) {
+        curl_easy_setopt(curlHandle, CURLOPT_PROGRESSFUNCTION, progressFun);
     }
-    curl_easy_setopt(mCurlHandle, CURLOPT_PROGRESSDATA, NULL);
-    curl_easy_setopt(mCurlHandle, CURLOPT_NOPROGRESS, 0L);
+    curl_easy_setopt(curlHandle, CURLOPT_PROGRESSDATA, NULL);
+    curl_easy_setopt(curlHandle, CURLOPT_NOPROGRESS, 0L);
 
     /* send all data to this function  */
-    // curl_easy_setopt(mCurlHandle, CURLOPT_WRITEFUNCTION, write_data);
+    // curl_easy_setopt(curlHandle, CURLOPT_WRITEFUNCTION, write_data);
 }
 
 /*
@@ -166,11 +149,11 @@ void HttpClient::initHttpParam(const char *url)
  */
 int HttpClient::getLocalConfig(const QString &key, QString &value)
 {
-    if (!linglong::util::fileExists(kServerConfigPath)) {
-        qCritical() << kServerConfigPath << " not exist";
+    if (!linglong::util::fileExists(serverConfigPath)) {
+        qCritical() << serverConfigPath << " not exist";
         return StatusCode::FAIL;
     }
-    QFile dbFile(kServerConfigPath);
+    QFile dbFile(serverConfigPath);
     dbFile.open(QIODevice::ReadOnly);
     QString qValue = dbFile.readAll();
     dbFile.close();
@@ -246,45 +229,45 @@ bool HttpClient::queryRemote(const QString &pkgName, const QString &pkgVer, cons
     // HTTP报文头
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Content-Type:application/json");
-    curl_easy_setopt(mCurlHandle, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curlHandle, CURLOPT_HTTPHEADER, headers);
     // 设置为非0表示本次操作为POST
-    curl_easy_setopt(mCurlHandle, CURLOPT_POST, 1);
+    curl_easy_setopt(curlHandle, CURLOPT_POST, 1);
     // --location
-    curl_easy_setopt(mCurlHandle, CURLOPT_FOLLOWLOCATION, 1);
+    curl_easy_setopt(curlHandle, CURLOPT_FOLLOWLOCATION, 1);
 
-    std::string sendString = "{\"AppID\":\"" + pkgName.toStdString() + "\"}";
+    std::string sendString = "{\"AppId\":\"" + pkgName.toStdString() + "\"}";
     if (!pkgVer.isEmpty()) {
-        sendString = "{\"AppID\":\"" + pkgName.toStdString() + "\",\"version\":\"" + pkgVer.toStdString() + "\"}";
+        sendString = "{\"AppId\":\"" + pkgName.toStdString() + "\",\"version\":\"" + pkgVer.toStdString() + "\"}";
     }
     if (!pkgVer.isEmpty() && !pkgArch.isEmpty()) {
-        sendString = "{\"AppID\":\"" + pkgName.toStdString() + "\",\"version\":\"" + pkgVer.toStdString()
+        sendString = "{\"AppId\":\"" + pkgName.toStdString() + "\",\"version\":\"" + pkgVer.toStdString()
                      + "\",\"arch\":\"" + pkgArch.toStdString() + "\"}";
     }
 
     // 设置要POST的JSON数据
-    curl_easy_setopt(mCurlHandle, CURLOPT_POSTFIELDS, sendString.c_str());
+    curl_easy_setopt(curlHandle, CURLOPT_POSTFIELDS, sendString.c_str());
 
     // 设置接收数据的处理函数和存放变量
-    curl_easy_setopt(mCurlHandle, CURLOPT_WRITEFUNCTION, writeData);
+    curl_easy_setopt(curlHandle, CURLOPT_WRITEFUNCTION, writeData);
     // 设置写数据
-    curl_easy_setopt(mCurlHandle, CURLOPT_WRITEDATA, &out);
+    curl_easy_setopt(curlHandle, CURLOPT_WRITEDATA, &out);
 
-    CURLcode code = curl_easy_perform(mCurlHandle);
+    CURLcode code = curl_easy_perform(curlHandle);
     if (code != CURLE_OK) {
         qCritical() << "curl_easy_perform err code:" << curl_easy_strerror(code);
-        curl_easy_cleanup(mCurlHandle);
+        curl_easy_cleanup(curlHandle);
         curl_global_cleanup();
         releaselock(fd);
         return false;
     }
 
     long resCode = 0;
-    code = curl_easy_getinfo(mCurlHandle, CURLINFO_RESPONSE_CODE, &resCode);
+    code = curl_easy_getinfo(curlHandle, CURLINFO_RESPONSE_CODE, &resCode);
     if (code != CURLE_OK || resCode != 200) {
         qCritical() << "curl_easy_getinfo err:" << curl_easy_strerror(code) << ", resCode" << resCode;
     }
     curl_slist_free_all(headers);
-    curl_easy_cleanup(mCurlHandle);
+    curl_easy_cleanup(curlHandle);
     curl_global_cleanup();
     releaselock(fd);
 
@@ -327,14 +310,14 @@ void HttpClient::getFullPath(const char *url, const char *savePath, char *fullPa
  */
 void HttpClient::showInfo()
 {
-    if (!mIsFinish) {
+    if (!isFinish) {
         return;
     }
-    qInfo() << "Http Respond Code:" << mData.resCode;
-    qInfo() << "Http file size:" << mData.fileSize;
-    qInfo() << "Http Content size:" << mData.contentSize;
-    qInfo() << "Http total time:" << mData.spendTime << " s";
-    qInfo() << "Http download speed:" << mData.downloadSpeed / 1024 << " kb/s";
+    qInfo() << "Http Respond Code:" << data.resCode;
+    qInfo() << "Http file size:" << data.fileSize;
+    qInfo() << "Http Content size:" << data.contentSize;
+    qInfo() << "Http total time:" << data.spendTime << " s";
+    qInfo() << "Http download speed:" << data.downloadSpeed / 1024 << " kb/s";
 }
 
 /*
@@ -380,7 +363,6 @@ bool HttpClient::loadHttpData(const QString qurl, const QString qsavePath)
     if (!checkPara(url, savePath)) {
         return false;
     }
-    //加锁
     // pthread_mutex_lock(&mutex);
     int fd = getlock();
     if (fd == -1) {
@@ -393,97 +375,92 @@ bool HttpClient::loadHttpData(const QString qurl, const QString qsavePath)
     getFullPath(url, savePath, fullPath, 256);
     FILE *pagefile;
     initHttpParam(url);
-    /* open the file */
     pagefile = fopen(fullPath, "wb");
     if (pagefile) {
         /* write the page body to this file handle */
-        curl_easy_setopt(mCurlHandle, CURLOPT_WRITEDATA, pagefile);
+        curl_easy_setopt(curlHandle, CURLOPT_WRITEDATA, pagefile);
 
-        mIsFinish = false;
-        /* get it! */
-        CURLcode code = curl_easy_perform(mCurlHandle);
+        isFinish = false;
+        CURLcode code = curl_easy_perform(curlHandle);
         if (code != CURLE_OK) {
             // cout << "curl_easy_perform err code:" << curl_easy_strerror(code) << endl;
             qInfo() << "curl_easy_perform err code:" << curl_easy_strerror(code);
-            curl_easy_cleanup(mCurlHandle);
+            curl_easy_cleanup(curlHandle);
             curl_global_cleanup();
             fclose(pagefile);
-            //解锁
             // pthread_mutex_unlock(&mutex);
             releaselock(fd);
             return false;
         }
 
         long resCode = 0;
-        code = curl_easy_getinfo(mCurlHandle, CURLINFO_RESPONSE_CODE, &resCode);
+        code = curl_easy_getinfo(curlHandle, CURLINFO_RESPONSE_CODE, &resCode);
         if (code != CURLE_OK) {
             // cout << "1.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
             qInfo() << "1.curl_easy_getinfo err:" << curl_easy_strerror(code);
         }
-        //获取下载文件的大小 字节
+        // 获取下载文件的大小 字节
         double fileSize = 0;
-        code = curl_easy_getinfo(mCurlHandle, CURLINFO_SIZE_DOWNLOAD, &fileSize);
+        code = curl_easy_getinfo(curlHandle, CURLINFO_SIZE_DOWNLOAD, &fileSize);
         if (code != CURLE_OK) {
             // cout << "2.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
             qInfo() << "2.curl_easy_getinfo err:" << curl_easy_strerror(code);
         }
-        //下载内容大小
+        // 下载内容大小
         double contentSize = 0;
-        code = curl_easy_getinfo(mCurlHandle, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &contentSize);
+        code = curl_easy_getinfo(curlHandle, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &contentSize);
         if (code != CURLE_OK) {
             // cout << "3.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
             qInfo() << "3.curl_easy_getinfo err:" << curl_easy_strerror(code);
         }
-        //下载文件类型 text/html application/x-tar application/x-debian-package image/jpeg
+        // 下载文件类型 text/html application/x-tar application/x-debian-package image/jpeg
         // Http Header里的Content-Type一般有这三种：
         // application/x-www-form-urlencoded：数据被编码为名称/值对。这是标准的编码格式。
         // multipart/form-data： 数据被编码为一条消息，页上的每个控件对应消息中的一个部分。
         // text/plain
         char *contentType = NULL;
-        code = curl_easy_getinfo(mCurlHandle, CURLINFO_CONTENT_TYPE, &contentType);
+        code = curl_easy_getinfo(curlHandle, CURLINFO_CONTENT_TYPE, &contentType);
         if (code != CURLE_OK) {
             // cout << "4.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
             qInfo() << "4.curl_easy_getinfo err:" << curl_easy_strerror(code);
         }
-        //获取下载总耗时包括域名解析、TCP连接
+        // 获取下载总耗时包括域名解析、TCP连接
         double spendTime = 0;
-        code = curl_easy_getinfo(mCurlHandle, CURLINFO_TOTAL_TIME, &spendTime);
+        code = curl_easy_getinfo(curlHandle, CURLINFO_TOTAL_TIME, &spendTime);
         if (code != CURLE_OK) {
             // cout << "5.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
             qInfo() << "5.curl_easy_getinfo err:" << curl_easy_strerror(code);
         }
 
-        //下载速度 单位字节
+        // 下载速度 单位字节
         double downloadSpeed = 0;
-        code = curl_easy_getinfo(mCurlHandle, CURLINFO_SPEED_DOWNLOAD, &downloadSpeed);
+        code = curl_easy_getinfo(curlHandle, CURLINFO_SPEED_DOWNLOAD, &downloadSpeed);
         if (code != CURLE_OK) {
             // cout << "6.curl_easy_getinfo err:" << curl_easy_strerror(code) << endl;
             qInfo() << "6.curl_easy_getinfo err:" << curl_easy_strerror(code);
         }
 
-        mData.resCode = resCode;
-        mData.fileSize = (long)fileSize;
-        mData.contentSize = (long)contentSize;
-        // mData.contentType = contentType;
-        mData.downloadSpeed = downloadSpeed;
-        mData.spendTime = spendTime;
+        data.resCode = resCode;
+        data.fileSize = (long)fileSize;
+        data.contentSize = (long)contentSize;
+        // data.contentType = contentType;
+        data.downloadSpeed = downloadSpeed;
+        data.spendTime = spendTime;
         /* close the header file */
         fclose(pagefile);
     }
     /* cleanup curl stuff */
-    curl_easy_cleanup(mCurlHandle);
+    curl_easy_cleanup(curlHandle);
     curl_global_cleanup();
     long end = getCurrentTime();
     // cout << "the program spend time is: " << end - start << " ms" << endl;
     qInfo() << "the program spend time is: " << end - start << " ms";
-    //解锁
     // pthread_mutex_unlock(&mutex);
     releaselock(fd);
-    if (mData.resCode != 200) {
-        //删除空文件 to do
+    if (data.resCode != 200) {
         return false;
     }
-    mIsFinish = true;
+    isFinish = true;
     showInfo();
     return true;
 }
@@ -513,9 +490,9 @@ int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong
     curl_httppost *last = nullptr;
 
     // 设置为非0表示本次操作为POST
-    curl_easy_setopt(mCurlHandle, CURLOPT_POST, 1);
+    curl_easy_setopt(curlHandle, CURLOPT_POST, 1);
     // --location
-    curl_easy_setopt(mCurlHandle, CURLOPT_FOLLOWLOCATION, 1);
+    curl_easy_setopt(curlHandle, CURLOPT_FOLLOWLOCATION, 1);
 
     std::string filePathString = filePath.toStdString();
 
@@ -523,30 +500,30 @@ int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong
                  CURLFORM_END);
     curl_formadd(&post, &last, CURLFORM_PTRNAME, "file", CURLFORM_FILE, filePathString.c_str(), CURLFORM_END);
 
-    curl_easy_setopt(mCurlHandle, CURLOPT_HTTPPOST, post);
+    curl_easy_setopt(curlHandle, CURLOPT_HTTPPOST, post);
     // 设置接收数据的处理函数和存放变量
-    curl_easy_setopt(mCurlHandle, CURLOPT_WRITEFUNCTION, writeData);
+    curl_easy_setopt(curlHandle, CURLOPT_WRITEFUNCTION, writeData);
     // 设置写数据
-    curl_easy_setopt(mCurlHandle, CURLOPT_WRITEDATA, &out);
+    curl_easy_setopt(curlHandle, CURLOPT_WRITEDATA, &out);
 
-    CURLcode code = curl_easy_perform(mCurlHandle);
+    CURLcode code = curl_easy_perform(curlHandle);
     if (code != CURLE_OK) {
         qCritical() << "curl_easy_perform err code:" << curl_easy_strerror(code);
-        curl_easy_cleanup(mCurlHandle);
+        curl_easy_cleanup(curlHandle);
         curl_global_cleanup();
         releaselock(fd);
         return Status::StatusCode::FAIL;
     }
     int resCode = 0;
-    code = curl_easy_getinfo(mCurlHandle, CURLINFO_RESPONSE_CODE, &resCode);
+    code = curl_easy_getinfo(curlHandle, CURLINFO_RESPONSE_CODE, &resCode);
     if (code != CURLE_OK || resCode != 200) {
         qCritical() << "curl_easy_getinfo err:" << curl_easy_strerror(code) << ", resCode" << resCode;
-        curl_easy_cleanup(mCurlHandle);
+        curl_easy_cleanup(curlHandle);
         curl_global_cleanup();
         releaselock(fd);
         return Status::StatusCode::FAIL;
     }
-    curl_easy_cleanup(mCurlHandle);
+    curl_easy_cleanup(curlHandle);
     curl_global_cleanup();
     releaselock(fd);
 
@@ -583,39 +560,39 @@ int HttpClient::pushServerBundleData(const QString &info, const QString &dnsOfLi
     // HTTP报文头
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Content-Type:application/json");
-    curl_easy_setopt(mCurlHandle, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curlHandle, CURLOPT_HTTPHEADER, headers);
     // 设置为非0表示本次操作为POST
-    curl_easy_setopt(mCurlHandle, CURLOPT_POST, 1);
+    curl_easy_setopt(curlHandle, CURLOPT_POST, 1);
     // --location
-    curl_easy_setopt(mCurlHandle, CURLOPT_FOLLOWLOCATION, 1);
+    curl_easy_setopt(curlHandle, CURLOPT_FOLLOWLOCATION, 1);
 
     std::string sendString = info.toStdString();
 
     // printf("\nrequestServerData sendString:%s\n", sendString.c_str());
     // 设置要POST的JSON数据
-    curl_easy_setopt(mCurlHandle, CURLOPT_POSTFIELDS, sendString.c_str());
+    curl_easy_setopt(curlHandle, CURLOPT_POSTFIELDS, sendString.c_str());
 
     // 设置接收数据的处理函数和存放变量
-    curl_easy_setopt(mCurlHandle, CURLOPT_WRITEFUNCTION, writeData);
+    curl_easy_setopt(curlHandle, CURLOPT_WRITEFUNCTION, writeData);
     // 设置写数据
-    curl_easy_setopt(mCurlHandle, CURLOPT_WRITEDATA, &out);
+    curl_easy_setopt(curlHandle, CURLOPT_WRITEDATA, &out);
 
-    CURLcode code = curl_easy_perform(mCurlHandle);
+    CURLcode code = curl_easy_perform(curlHandle);
     if (code != CURLE_OK) {
         // cout << "curl_easy_perform err code:" << curl_easy_strerror(code) << endl;
         qCritical() << "curl_easy_perform err code:" << curl_easy_strerror(code);
-        curl_easy_cleanup(mCurlHandle);
+        curl_easy_cleanup(curlHandle);
         curl_global_cleanup();
         releaselock(fd);
         return Status::StatusCode::FAIL;
     }
     int resCode = 0;
-    code = curl_easy_getinfo(mCurlHandle, CURLINFO_RESPONSE_CODE, &resCode);
+    code = curl_easy_getinfo(curlHandle, CURLINFO_RESPONSE_CODE, &resCode);
     if (code != CURLE_OK || resCode != 200) {
         qCritical() << "curl_easy_getinfo err:" << curl_easy_strerror(code) << ", resCode" << resCode;
     }
     curl_slist_free_all(headers);
-    curl_easy_cleanup(mCurlHandle);
+    curl_easy_cleanup(curlHandle);
     curl_global_cleanup();
     releaselock(fd);
 

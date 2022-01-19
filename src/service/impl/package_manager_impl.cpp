@@ -96,9 +96,7 @@ bool PackageManagerImpl::loadAppInfo(const QString &jsonString, AppMetaInfoList 
 bool PackageManagerImpl::getAppInfofromServer(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
                                               QString &appData, QString &err)
 {
-    linglong::util::HttpClient *httpClient = linglong::util::HttpClient::getInstance();
-    bool ret = httpClient->queryRemote(pkgName, pkgVer, pkgArch, appData);
-    httpClient->release();
+    bool ret = G_HTTPCLIENT->queryRemote(pkgName, pkgVer, pkgArch, appData);
     if (!ret) {
         err = "getAppInfofromServer err";
         qCritical() << err;

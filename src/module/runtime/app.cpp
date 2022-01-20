@@ -335,6 +335,9 @@ public:
                 qMakePair(QString("/run/dbus/system_bus_socket"), QString("/run/dbus/system_bus_socket")));
         }
 
+        //bind /run/usr/$(uid)/pulse
+        mountMap.push_back(qMakePair(userRuntimeDir + "/pulse", userRuntimeDir + "/pulse"));
+
         auto hostAppHome = util::ensureUserDir({".linglong", appId, "home"});
         mountMap.push_back(qMakePair(hostAppHome, util::getUserFile("")));
 

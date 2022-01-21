@@ -8,7 +8,6 @@
     "args": [
     ],
     "env": [
-      "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
       "TERM=xterm",
       "_=/usr/bin/env",
       "PS1=️\\033[48;5;214;38;5;26m${debian_chroot:+($debian_chroot)}\\h ⚛ \\w\\033[0m"

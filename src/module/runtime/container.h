@@ -16,6 +16,7 @@
 
 #include "module/package/package.h"
 #include "oci.h"
+#include "module/util/result.h"
 
 class Container : public JsonSerialize
 {
@@ -25,11 +26,12 @@ public:
     Q_JSON_ITEM_MEMBER(QString, ID, id)
     Q_JSON_ITEM_MEMBER(qint64, PID, pid)
     Q_JSON_ITEM_MEMBER(QString, WorkingDirectory, workingDirectory)
+
+    linglong::util::Error create();
 };
 Q_JSON_DECLARE_PTR_METATYPE(Container)
 
-inline QDBusArgument &operator<<(QDBusArgument &argument,
-                                 const Container &message)
+inline QDBusArgument &operator<<(QDBusArgument &argument, const Container &message)
 {
     argument.beginStructure();
     argument << message.id;
@@ -38,8 +40,7 @@ inline QDBusArgument &operator<<(QDBusArgument &argument,
     return argument;
 }
 
-inline const QDBusArgument &operator>>(const QDBusArgument &argument,
-                                       Container &message)
+inline const QDBusArgument &operator>>(const QDBusArgument &argument, Container &message)
 {
     argument.beginStructure();
     argument >> message.id;

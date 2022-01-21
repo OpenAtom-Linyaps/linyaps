@@ -53,7 +53,7 @@
       "options": [
         "nosuid",
         "strictatime",
-        "mode=755",
+        "mode=0755",
         "size=65536k"
       ]
     },
@@ -66,8 +66,7 @@
         "noexec",
         "newinstance",
         "ptmxmode=0666",
-        "mode=0620",
-        "gid=5"
+        "mode=0620"
       ]
     },
     {

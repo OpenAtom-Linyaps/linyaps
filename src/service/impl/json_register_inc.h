@@ -15,11 +15,8 @@
 #include "module/package/package.h"
 #include "qdbus_retmsg.h"
 
-inline void registerDbusType()
+inline void registerAllMetaType()
 {
-    qJsonRegister<Container>();
     qJsonRegister<RetMessage>();
     qDBusRegisterMetaType<ParamStringMap>();
-
-    qJsonRegister<AppMetaInfo>();
 }

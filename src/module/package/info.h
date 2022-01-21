@@ -32,39 +32,38 @@ class Info : public JsonSerialize
 
 public:
     Q_JSON_PROPERTY(QString, appid);
-    Q_JSON_PROPERTY(QString, name);
     Q_JSON_PROPERTY(QString, version);
-    Q_JSON_PROPERTY(QString, kind);
-    Q_JSON_PROPERTY(QString, description);
     Q_JSON_PROPERTY(QStringList, arch);
+    Q_JSON_PROPERTY(QString, kind);
+    Q_JSON_PROPERTY(QString, name);
+    Q_JSON_PROPERTY(QString, description);
 
     // ref of runtime
     Q_JSON_PROPERTY(QString, runtime);
+    Q_JSON_PROPERTY(QString, base);
 };
 
 } // namespace package
 } // namespace linglong
 
-using linglong::package::Info;
+Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::package, Info)
 
-Q_JSON_DECLARE_PTR_METATYPE(Info)
-
-inline QDBusArgument &operator<<(QDBusArgument &argument, const Info &message)
-{
-    argument.beginStructure();
-    argument << message.appid;
-    argument << message.name;
-    argument.endStructure();
-    return argument;
-}
-
-inline const QDBusArgument &operator>>(const QDBusArgument &argument, Info &message)
-{
-    argument.beginStructure();
-    argument >> message.appid;
-    argument >> message.name;
-    argument.endStructure();
-    return argument;
-}
+// inline QDBusArgument &operator<<(QDBusArgument &argument, const linglong::package::Info &message)
+//{
+//     argument.beginStructure();
+//     argument << message.appid;
+//     argument << message.name;
+//     argument.endStructure();
+//     return argument;
+// }
+//
+// inline const QDBusArgument &operator>>(const QDBusArgument &argument, linglong::package::Info &message)
+//{
+//     argument.beginStructure();
+//     argument >> message.appid;
+//     argument >> message.name;
+//     argument.endStructure();
+//     return argument;
+// }
 
 #endif /* LINGLONG_BOX_SRC_MODULE_PACKAGE_INFO_H_ */

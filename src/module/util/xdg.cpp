@@ -8,6 +8,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+#include "xdg.h"
+
 #include <QDir>
 #include <QMap>
 #include <QStandardPaths>
@@ -18,6 +20,11 @@ namespace util {
 QDir userRuntimeDir()
 {
     return QDir(QStandardPaths::standardLocations(QStandardPaths::RuntimeLocation).value(0));
+}
+
+QDir userCacheDir()
+{
+    return QDir(QStandardPaths::standardLocations(QStandardPaths::GenericCacheLocation).value(0));
 }
 
 //! https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html#exec-variables

@@ -17,6 +17,8 @@
 namespace linglong {
 namespace util {
 
+const char *DesktopEntry::SectionDesktopEntry = "Desktop Entry";
+
 class DesktopEntryPrivate
 {
 public:
@@ -116,6 +118,35 @@ QString DesktopEntry::rawValue(const QString &key, const QString &section, const
 {
     Q_D(DesktopEntry);
     return d->dataMaps.value(section).value(key).toString();
+}
+
+util::Error DesktopEntry::save(const QString &filepath)
+{
+    Q_D(DesktopEntry);
+
+    QFile file(filepath);
+    if (!file.open(QIODevice::WriteOnly)) {
+        return NewError(file.error(), file.errorString() + filepath);
+    }
+
+    for (const auto &section : d->dataMaps.keys()) {
+        file.write(QString("[%1]\n").arg(section).toLocal8Bit());
+        auto groupValues = d->dataMaps[section];
+        for (const auto &key : groupValues.keys()) {
+            file.write(QString("%1=%2\n").arg(key, groupValues[key].toString()).toLocal8Bit());
+        }
+        file.write("\n");
+    }
+
+    file.close();
+    return NoError();
+}
+
+void DesktopEntry::set(const QString &section, const QString &key, const QString &defaultValue)
+{
+    Q_D(DesktopEntry);
+
+    d->dataMaps[section][key] = defaultValue;
 }
 
 } // namespace util

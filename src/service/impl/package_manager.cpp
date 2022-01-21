@@ -31,6 +31,7 @@
 #include "module/repo/repo.h"
 #include "dbus_retcode.h"
 #include "job_manager.h"
+#include "module/repo/ostree.h"
 
 using linglong::util::fileExists;
 using linglong::util::listDirFolders;
@@ -46,12 +47,15 @@ class PackageManagerPrivate
 public:
     explicit PackageManagerPrivate(PackageManager *parent)
         : q_ptr(parent)
+        , repo(repo::kRepoRoot)
     {
     }
 
     QMap<QString, QPointer<App>> apps;
 
     PackageManager *q_ptr = nullptr;
+
+    repo::OSTree repo;
 };
 
 PackageManager::PackageManager()
@@ -213,63 +217,6 @@ QString PackageManager::Import(const QStringList &packagePathList)
     return {};
 }
 
-QString appConfigPath(const QString &appId, const QString &appVersion, bool isFlatpakApp = false)
-{
-    util::ensureUserDir({".linglong", appId});
-
-    auto configPath = getUserFile(QString("%1/%2/app.yaml").arg(".linglong", appId));
-
-    // create yaml form info
-    // auto appRoot = LocalRepo::get()->rootOfLatest();
-    auto latestAppRef = repo::latestOfRef(appId, appVersion);
-
-    auto appInstallRoot = repo::rootOfLayer(latestAppRef);
-
-    auto appInfo = appInstallRoot + "/info.json";
-    // 判断是否存在
-    if (!isFlatpakApp && !fileExists(appInfo)) {
-        qCritical() << appInfo << " not exist";
-        return "";
-    }
-
-    // create a yaml config from json
-    auto info = util::loadJSON<package::Info>(appInfo);
-
-    if (info->runtime.isEmpty()) {
-        // FIXME: return error is not exist
-
-        // thin runtime
-        info->runtime = "org.deepin.Runtime/20/x86_64";
-
-        // full runtime
-        // info->runtime = "deepin.Runtime.Sdk/23/x86_64";
-    }
-
-    package::Ref runtimeRef(info->runtime);
-
-    QMap<QString, QString> variables = {
-        {"APP_REF", latestAppRef.toLocalRefString()},
-        {"RUNTIME_REF", runtimeRef.toLocalRefString()},
-    };
-
-    // TODO: remove to util module as file_template.cpp
-
-    QFile templateFile(":/app.yaml");
-    templateFile.open(QIODevice::ReadOnly);
-    auto templateData = templateFile.readAll();
-    foreach (auto const &k, variables.keys()) {
-        templateData.replace(QString("@%1@").arg(k).toLocal8Bit(), variables.value(k).toLocal8Bit());
-    }
-    templateFile.close();
-
-    QFile configFile(configPath);
-    configFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
-    configFile.write(templateData);
-    configFile.close();
-
-    return configPath;
-}
-
 /*
  * 执行软件包
  *
@@ -313,12 +260,11 @@ RetMessageList PackageManager::Start(const QString &packageId, const ParamString
     }
     JobManager::instance()->CreateJob([=](Job *jr) {
         // 判断是否存在
+        package::Ref ref("", packageId, version, hostArch());
+
         bool isFlatpakApp = !paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT);
-        QString configPath = appConfigPath(packageId, version, isFlatpakApp);
-        if (!fileExists(configPath)) {
-            return;
-        }
-        auto app = App::load(configPath, desktopExec, isFlatpakApp);
+
+        auto app = App::load(&d->repo, ref, desktopExec, isFlatpakApp);
         if (nullptr == app) {
             // FIXME: set job status to failed
             qCritical() << "nullptr" << app;

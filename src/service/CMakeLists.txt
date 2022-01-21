@@ -16,6 +16,7 @@ set(LL_SERVICE_SOURCES
     ../module/flatpak/flatpak_manager.cpp
     ../module/package/info.cpp
     ../module/repo/repo.cpp
+    ../module/repo/ostree.cpp
     ../module/util/uuid.cpp
     ../module/util/xdg.cpp
     ../module/util/desktop_entry.cpp
@@ -26,8 +27,8 @@ set(LL_SERVICE_SOURCES
     ../module/util/httpclient.cpp
     ../module/repo/ostree_repohelper.cpp
     ../module/repo/repohelper_factory.cpp
-    ../module/package/package.h
-    ../module/runtime/container.h
+    ../module/package/package.cpp
+    ../module/runtime/container.cpp
     ../module/util/json.h
     ../module/runtime/oci.h
     ../module/util/app_status.cpp

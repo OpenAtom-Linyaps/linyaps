@@ -36,7 +36,8 @@ set(LL_TEST_SOURCES
     ../src/module/runtime/oci.h
     ../src/module/runtime/container.h
     ../src/module/package/package.h
-    ../src/service/impl/qdbus_retmsg.h)
+    ../src/service/impl/qdbus_retmsg.h
+    module/util/fs_test.cpp)
 
 # add qdbus call
 set_source_files_properties(../src/module/dbus_ipc/com.deepin.linglong.PackageManager.xml

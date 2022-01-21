@@ -138,7 +138,9 @@ class Runtime : public JsonSerialize
 };
 Q_JSON_DECLARE_PTR_METATYPE(Runtime)
 
-inline void ociJsonRegister()
+namespace linglong {
+namespace runtime {
+inline void registerAllOciMetaType()
 {
     qJsonRegister<Root>();
     qJsonRegister<Linux>();
@@ -152,4 +154,7 @@ inline void ociJsonRegister()
     qJsonRegister<Annotations>();
     qJsonRegister<AnnotationsOverlayfsRootfs>();
     qJsonRegister<AnnotationsNativeRootfs>();
+
 }
+} // namespace runtime
+} // namespace linglong

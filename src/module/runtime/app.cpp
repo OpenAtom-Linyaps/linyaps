@@ -36,18 +36,6 @@
 
 using namespace linglong;
 
-namespace linglong {
-namespace util {
-// TODO: move to util
-bool ensureDir(const QString &path)
-{
-    QDir dir(path);
-    dir.mkpath(".");
-    return true;
-}
-} // namespace util
-} // namespace linglong
-
 class AppPrivate
 {
 public:
@@ -59,16 +47,17 @@ public:
     bool init()
     {
         QFile jsonFile(":/config.json");
-        jsonFile.open(QIODevice::ReadOnly);
+        if (!jsonFile.open(QIODevice::ReadOnly)) {
+            qCritical() << jsonFile.error() << jsonFile.errorString();
+            return false;
+        }
         auto json = QJsonDocument::fromJson(jsonFile.readAll());
         r = fromVariant<Runtime>(json.toVariant());
         r->setParent(q_ptr);
 
         container = new Container(q_ptr);
-        container->id = linglong::util::genUuid();
-        container->workingDirectory =
-            util::userRuntimeDir().absoluteFilePath(QString("linglong/%1").arg(container->id));
-        util::ensureDir(container->workingDirectory);
+        container->create();
+
         return true;
     }
 
@@ -78,7 +67,7 @@ public:
 
         // FIXME: get info from module/package
         auto runtimeRef = package::Ref(q->runtime->ref);
-        QString runtimeRootPath = repo::rootOfLayer(runtimeRef);
+        QString runtimeRootPath = repo->rootOfLayer(runtimeRef);
 
         // FIXME: return error if files not exist
         auto fixRuntimePath = runtimeRootPath + "/files";
@@ -87,7 +76,7 @@ public:
         }
 
         auto appRef = package::Ref(q->package->ref);
-        QString appRootPath = repo::rootOfLayer(appRef);
+        QString appRootPath = repo->rootOfLayer(appRef);
 
         stageRootfs(runtimeRef.appId, fixRuntimePath, appRef.appId, appRootPath);
 
@@ -133,9 +122,9 @@ public:
             r->process->args = util::parseExec(desktopEntry.rawValue("Exec"));
         }
         // ll-cli run appId 获取的是原生desktop exec ,有的包含%F等参数，需要去掉
-        //FIXME(liujianqiang):后续整改，参考下面链接
-        //https://github.com/linuxdeepin/go-lib/blob/28a4ee3e8dbe6d6316d3b0053ee4bda1a7f63f98/appinfo/desktopappinfo/desktopappinfo.go
-        //https://github.com/linuxdeepin/go-lib/commit/bd52a27688413e1273f8b516ef55dc472d7978fd
+        // FIXME(liujianqiang):后续整改，参考下面链接
+        // https://github.com/linuxdeepin/go-lib/blob/28a4ee3e8dbe6d6316d3b0053ee4bda1a7f63f98/appinfo/desktopappinfo/desktopappinfo.go
+        // https://github.com/linuxdeepin/go-lib/commit/bd52a27688413e1273f8b516ef55dc472d7978fd
         auto indexNum = r->process->args.indexOf(QRegExp("^%\\w$"));
         if (indexNum != -1) {
             r->process->args.removeAt(indexNum);
@@ -335,7 +324,7 @@ public:
                 qMakePair(QString("/run/dbus/system_bus_socket"), QString("/run/dbus/system_bus_socket")));
         }
 
-        //bind /run/usr/$(uid)/pulse
+        // bind /run/usr/$(uid)/pulse
         mountMap.push_back(qMakePair(userRuntimeDir + "/pulse", userRuntimeDir + "/pulse"));
 
         auto hostAppHome = util::ensureUserDir({".linglong", appId, "home"});
@@ -501,12 +490,73 @@ public:
         return 0;
     }
 
+    // FIXME: none static
+    static QString loadConfig(linglong::repo::Repo *repo, const QString &appId, const QString &appVersion,
+                              bool isFlatpakApp = false)
+    {
+        util::ensureUserDir({".linglong", appId});
+
+        auto configPath = getUserFile(QString("%1/%2/app.yaml").arg(".linglong", appId));
+
+        // create yaml form info
+        // auto appRoot = LocalRepo::get()->rootOfLatest();
+        auto latestAppRef = repo->latestOfRef(appId, appVersion);
+
+        auto appInstallRoot = repo->rootOfLayer(latestAppRef);
+
+        auto appInfo = appInstallRoot + "/info.json";
+        // 判断是否存在
+        if (!isFlatpakApp && !fileExists(appInfo)) {
+            qCritical() << appInfo << " not exist";
+            return "";
+        }
+
+        // create a yaml config from json
+        auto info = util::loadJSON<package::Info>(appInfo);
+
+        if (info->runtime.isEmpty()) {
+            // FIXME: return error is not exist
+
+            // thin runtime
+            info->runtime = "org.deepin.Runtime/20/x86_64";
+
+            // full runtime
+            // info->runtime = "deepin.Runtime.Sdk/23/x86_64";
+        }
+
+        package::Ref runtimeRef(info->runtime);
+
+        QMap<QString, QString> variables = {
+            {"APP_REF", latestAppRef.toLocalRefString()},
+            {"RUNTIME_REF", runtimeRef.toLocalRefString()},
+        };
+
+        // TODO: remove to util module as file_template.cpp
+
+        QFile templateFile(":/app.yaml");
+        templateFile.open(QIODevice::ReadOnly);
+        auto templateData = templateFile.readAll();
+        foreach (auto const &k, variables.keys()) {
+            templateData.replace(QString("@%1@").arg(k).toLocal8Bit(), variables.value(k).toLocal8Bit());
+        }
+        templateFile.close();
+
+        QFile configFile(configPath);
+        configFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
+        configFile.write(templateData);
+        configFile.close();
+
+        return configPath;
+    }
+
     bool useFlatpakRuntime = false;
     QString desktopExec = nullptr;
 
     Container *container = nullptr;
     Runtime *r = nullptr;
     App *q_ptr = nullptr;
+
+    repo::Repo *repo;
 
     Q_DECLARE_PUBLIC(App);
 };
@@ -517,18 +567,30 @@ App::App(QObject *parent)
 {
 }
 
-App *App::load(const QString &configFilepath, const QString &desktopExec, bool useFlatpakRuntime)
+App *App::load(linglong::repo::Repo *repo, const package::Ref &ref, const QString &desktopExec, bool useFlatpakRuntime)
 {
-    qDebug() << "load conf yaml from" << configFilepath;
-    QFile appConfig(configFilepath);
+    QString configPath = AppPrivate::loadConfig(repo, ref.appId, ref.version, useFlatpakRuntime);
+    if (!fileExists(configPath)) {
+        return nullptr;
+    }
+
+    QFile appConfig(configPath);
     appConfig.open(QIODevice::ReadOnly);
+
+    qDebug() << "load conf yaml from" << configPath;
+
     App *app = nullptr;
     try {
-        YAML::Node doc = YAML::Load(appConfig.readAll().toStdString());
+        auto data = QString::fromLocal8Bit(appConfig.readAll());
+        qDebug() << data;
+        YAML::Node doc = YAML::Load(data.toStdString());
         app = formYaml<App>(doc);
+
+        qDebug() << app << app->runtime << app->package << app->version;
         // TODO: maybe set as an arg of init is better
         app->dd_ptr->useFlatpakRuntime = useFlatpakRuntime;
         app->dd_ptr->desktopExec = desktopExec;
+        app->dd_ptr->repo = repo;
         app->dd_ptr->init();
     } catch (...) {
         qCritical() << "FIXME: load config failed, use default app config";

@@ -14,31 +14,45 @@
 #include <QMap>
 #include <QRegExp>
 
+#include <DLog>
+
 #include "builder/project.h"
 #include "builder/builder.h"
 #include "builder/bst_builder.h"
+#include "builder/linglong_builder.h"
+#include "builder/builder_config.h"
+#include "module/package/package.h"
+#include "module/runtime/oci.h"
+#include "module/runtime/runtime.h"
 
 using namespace linglong;
+
+static void qJsonRegisterAll()
+{
+    builder::registerAllMetaType();
+    package::registerAllMetaType();
+    runtime::registerAllMetaType();
+}
 
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
+    QCoreApplication::setOrganizationName("deepin");
 
-    qJsonRegister<linglong::builder::Project>();
-    qJsonRegister<linglong::builder::Variables>();
+    Dtk::Core::DLogManager::registerConsoleAppender();
+    Dtk::Core::DLogManager::registerFileAppender();
+
+    qJsonRegisterAll();
+
+    builder::BuilderConfig::instance()->setProjectRoot(QDir::currentPath());
 
     QCommandLineParser parser;
 
-    auto optVerbose = QCommandLineOption("verbose", "show detail log", "");
+    auto optVerbose = QCommandLineOption({"v", "verbose"}, "show detail log", "");
     parser.addOption(optVerbose);
     parser.addHelpOption();
 
-    QStringList subCommandList = {
-        "create",
-        "build",
-        "export",
-        "push",
-    };
+    QStringList subCommandList = {"create", "build", "run", "export", "push"};
 
     parser.addPositionalArgument("subcommand", subCommandList.join("\n"), "subcommand [sub-option]");
 
@@ -48,11 +62,12 @@ int main(int argc, char **argv)
         qputenv("QT_LOGGING_RULES", "*=true");
     }
 
-
     QStringList args = parser.positionalArguments();
     QString command = args.isEmpty() ? QString() : args.first();
 
-    builder::Builder *builder = new builder::BstBuilder();
+    builder::BstBuilder _bb;
+    builder::LinglongBuilder _llb;
+    builder::Builder *builder = &_llb;
 
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
         {"create",
@@ -70,7 +85,6 @@ int main(int argc, char **argv)
                  parser.showHelp(-1);
              }
 
-             // TODO: extract an empty buildstream project from qrc file
              auto result = builder->create(projectName);
 
              if (!result.success()) {
@@ -82,14 +96,43 @@ int main(int argc, char **argv)
         {"build",
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
+
+             auto execVerbose = QCommandLineOption("exec", "run exec than build script", "exec");
+             parser.addOption(execVerbose);
+
              parser.addPositionalArgument("build", "build project", "build");
 
              parser.process(app);
 
-             // TODO: build current project
+             if (parser.isSet(execVerbose)) {
+                 builder::BuilderConfig::instance()->setExec(parser.value(execVerbose));
+             }
+
              auto result = builder->build();
              if (!result.success()) {
-                 qDebug() << result;
+                 qCritical() << result;
+             }
+
+             return result.code();
+         }},
+        {"run",
+         [&](QCommandLineParser &parser) -> int {
+             parser.clearPositionalArguments();
+
+             auto execVerbose = QCommandLineOption("exec", "run exec than build script", "exec");
+             parser.addOption(execVerbose);
+
+             parser.addPositionalArgument("run", "run project", "build");
+
+             parser.process(app);
+
+             if (parser.isSet(execVerbose)) {
+                 builder::BuilderConfig::instance()->setExec(parser.value(execVerbose));
+             }
+
+             auto result = builder->run();
+             if (!result.success()) {
+                 qCritical() << result;
              }
 
              return result.code();
@@ -103,7 +146,7 @@ int main(int argc, char **argv)
              parser.process(app);
 
              auto outputFilepath = parser.positionalArguments().value(1);
-             // TODO: export build result to bundle
+
              auto result = builder->exportBundle(outputFilepath);
              if (!result.success()) {
                  qCritical() << result;
@@ -130,11 +173,10 @@ int main(int argc, char **argv)
              // auto repoURL = parser.value(optRepoURL);
              auto force = parser.isSet(optForce);
 
-             // TODO: push build result to repo
              // auto result = builder->push(repoURL, force);
              auto result = builder->push(outputFilepath, force);
              if (!result.success()) {
-                 qDebug() << result;
+                 qCritical() << result;
              }
 
              return result.code();

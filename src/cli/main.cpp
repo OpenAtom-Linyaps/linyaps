@@ -98,7 +98,7 @@ int main(int argc, char **argv)
     Dtk::Core::DLogManager::registerFileAppender();
 
     // register qdbus type
-    registerDbusType();
+    registerAllMetaType();
 
     QCommandLineParser parser;
     parser.addHelpOption();

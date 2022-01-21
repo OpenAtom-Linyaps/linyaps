@@ -16,6 +16,7 @@ set(LL_CLI_SOURCES
     ../service/impl/job.cpp
     ../service/resource/resource.qrc
     ../module/util/httpclient.cpp
+    ../module/repo/ostree.cpp
     ../module/repo/ostree_repohelper.cpp
     ../module/repo/repohelper_factory.cpp
     ../module/util/app_status.cpp
@@ -23,6 +24,7 @@ set(LL_CLI_SOURCES
     ../module/package/info.cpp
     ../module/repo/repo.cpp
     ../module/runtime/app.cpp
+    ../module/runtime/container.cpp
     ../module/util/fs.cpp
     ../module/util/sysinfo.cpp
     ../module/util/uuid.cpp

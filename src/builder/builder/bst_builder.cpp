@@ -24,8 +24,8 @@
 namespace linglong {
 namespace builder {
 
-util::Result templateDirCopy(const QString &srcDir, const QString &destDir, const QStringList &replaceFilenameList,
-                             QMap<QString, QString> variables)
+util::Error templateDirCopy(const QString &srcDir, const QString &destDir, const QStringList &replaceFilenameList,
+                            QMap<QString, QString> variables)
 {
     util::copyDir(srcDir, destDir);
 
@@ -49,10 +49,10 @@ util::Result templateDirCopy(const QString &srcDir, const QString &destDir, cons
         templateFile.close();
     }
 
-    return dResultBase();
+    return NewError();
 }
 
-util::Result BstBuilder::create(const QString &projectName)
+util::Error BstBuilder::create(const QString &projectName)
 {
     auto bstName = QString(projectName).replace(".", "-");
 
@@ -80,20 +80,20 @@ util::Result BstBuilder::create(const QString &projectName)
 
     std::cout << hint.toStdString() << std::endl;
 
-    return dResultBase();
+    return NewError();
 }
 
-util::Result BstBuilder::build()
+util::Error BstBuilder::build()
 {
     return linglong::package::runner("bst", {"build", "export.bst"});
 }
 
-util::Result BstBuilder::exportBundle(const QString &outputFilePath)
+util::Error BstBuilder::exportBundle(const QString &outputFilePath)
 {
     auto project = formYaml<Project>(YAML::LoadFile("project.conf"));
 
     if (!project->variables) {
-        return dResultBase() << -1 << "bst project.conf must contains variables.id and it value should be appId";
+        return NewError() << -1 << "bst project.conf must contains variables.id and it value should be appId";
     }
 
     auto id = project->variables->id;
@@ -106,8 +106,8 @@ util::Result BstBuilder::exportBundle(const QString &outputFilePath)
     qDebug() << "export " << id << "to bundle file";
     // checkout 应用包
     auto ret = linglong::package::runner("bst", {"checkout", "export.bst", dataDir});
-    if (!ret.success()) {
-        return dResult(ret) << "call bst checkout failed";
+    if (ret.success()) {
+        return NewError(ret, -1, "call bst checkout failed");
     }
 
     // FIXME: export build result to uab package
@@ -115,23 +115,23 @@ util::Result BstBuilder::exportBundle(const QString &outputFilePath)
     linglong::package::Bundle uabBundle;
     auto makeBundleResult = uabBundle.make(dataDir, outputFilePath);
     if (!makeBundleResult.success()) {
-        return dResult(makeBundleResult) << "make bundle failed!!!";
+        return NewError(makeBundleResult, -1, "make bundle failed");
     }
 
-    return dResultBase();
+    return NoError();
 }
 
 // util::Result BstBuilder::push(const QString &repoURL, bool force)
-util::Result BstBuilder::push(const QString &bundleFilePath, bool force)
+util::Error BstBuilder::push(const QString &bundleFilePath, bool force)
 {
     // TODO: push build result to repoURL
     std::cout << "start upload ..." << std::endl;
     linglong::package::Bundle uabBundle;
     auto pushBundleResult = uabBundle.push(bundleFilePath, force);
     if (!pushBundleResult.success()) {
-        return dResult(pushBundleResult) << "push bundle failed!!!";
+        return NewError(pushBundleResult) << "push bundle failed!!!";
     }
-    return dResultBase();
+    return NewError();
 }
 
 } // namespace builder

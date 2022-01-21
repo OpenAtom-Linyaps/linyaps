@@ -16,6 +16,7 @@
 #include "impl/qdbus_retmsg.h"
 #include "packagemanageradaptor.h"
 #include "jobmanageradaptor.h"
+#include "module/runtime/runtime.h"
 
 int main(int argc, char *argv[])
 {
@@ -25,13 +26,11 @@ int main(int argc, char *argv[])
     Dtk::Core::DLogManager::registerConsoleAppender();
     Dtk::Core::DLogManager::registerFileAppender();
 
-    ociJsonRegister();
-    qJsonRegister<Layer>();
-    qJsonRegister<Permission>();
-    qJsonRegister<App>();
+    linglong::runtime::registerAllMetaType();
+    linglong::package::registerAllMetaType();
 
     // register qdbus type
-    registerDbusType();
+    registerAllMetaType();
 
     QDBusConnection dbus = QDBusConnection::sessionBus();
     if (!dbus.registerService("com.deepin.linglong.AppManager")) {

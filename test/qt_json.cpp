@@ -14,10 +14,11 @@
 #include <QtDBus>
 
 #include "src/module/runtime/container.h"
+#include "src/module/runtime/oci.h"
 
 TEST(OCI, QtJson)
 {
-    ociJsonRegister();
+    linglong::runtime::registerAllOciMetaType();
 
     QFile jsonFile("../../test/data/demo/config-mini.json");
     jsonFile.open(QIODevice::ReadOnly);

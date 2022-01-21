@@ -14,5 +14,7 @@
         <file>org.deepin.demo/files/src/mainwindow.cpp</file>
         <file>org.deepin.demo/files/src/mainwindow.h</file>
         <file>org.deepin.demo/files/src/mainwindow.ui</file>
+        <file alias="config.json">../../service/resource/config.json</file>
+        <file alias="app.yaml">../../service/resource/app.yaml</file>
     </qresource>
 </RCC>

@@ -42,8 +42,9 @@ auto Runner(const T program = "ostree", const Y args = "", const P timeout = 300
     auto retStatus = runner.exitStatus();
     auto retCode = runner.exitCode();
     if ((retStatus != 0) || (retStatus == 0 && retCode != 0)) {
-        qCritical() << program << " run failed, retCode:" << retCode << ", info msg:" << runner.readAllStandardOutput()
-                    << ", err msg:" << runner.readAllStandardError();
+        qCritical() << program << " run failed, retCode:" << retCode << ", args:" << program << args
+                    << ", info msg:" << QString::fromLocal8Bit(runner.readAllStandardOutput())
+                    << ", err msg:" << QString::fromLocal8Bit(runner.readAllStandardError());
         return false;
     }
     return true;

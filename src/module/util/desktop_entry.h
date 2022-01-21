@@ -12,6 +12,7 @@
 
 #include <QString>
 #include <QScopedPointer>
+#include "result.h"
 
 namespace linglong {
 namespace util {
@@ -20,11 +21,17 @@ class DesktopEntryPrivate;
 class DesktopEntry
 {
 public:
+    static const char *SectionDesktopEntry;
+
     explicit DesktopEntry(const QString &filePath) noexcept;
     ~DesktopEntry();
 
-    QString rawValue(const QString &key, const QString &section = "Desktop Entry",
+    void set(const QString &section, const QString &key, const QString &defaultValue = QString());
+
+    QString rawValue(const QString &key, const QString &section = SectionDesktopEntry,
                      const QString &defaultValue = QString());
+
+    util::Error save(const QString &filepath);
 
 private:
     QScopedPointer<DesktopEntryPrivate> dd_ptr;

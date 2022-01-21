@@ -12,6 +12,14 @@
 
 #include "oci.h"
 #include "container.h"
+#include "module/package/ref.h"
+
+namespace linglong {
+namespace repo {
+class Repo;
+}
+} // namespace linglong
+// namespace linglong
 
 class Layer : public JsonSerialize
 {
@@ -36,6 +44,7 @@ class AppPrivate;
 class App : public JsonSerialize
 {
     Q_OBJECT;
+    Q_JSON_PROPERTY(QString, version);
     Q_JSON_PTR_PROPERTY(Layer, package);
     Q_JSON_PTR_PROPERTY(Layer, runtime);
 
@@ -46,7 +55,8 @@ public:
     explicit App(QObject *parent = nullptr);
     ~App() override;
 
-    static App *load(const QString &configFilepath, const QString &desktopExec, bool useFlatpakRuntime);
+    static App *load(linglong::repo::Repo *repo, const linglong::package::Ref &ref, const QString &desktopExec,
+                     bool useFlatpakRuntime);
 
     Container *container() const;
 

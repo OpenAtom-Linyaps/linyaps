@@ -20,31 +20,34 @@ namespace linglong {
 namespace package {
 class Bundle;
 class Ref;
-}
+} // namespace package
 
 namespace repo {
 
-// FIXME: move to class LocalRepo
-package::Ref latestOfRef(const QString &appId, const QString &appVersion = "");
-
-QString rootOfLayer(const package::Ref &ref);
+extern const char *kRepoRoot;
 
 class Repo
 {
 public:
-    virtual util::Result import(const package::Bundle &bundle) = 0;
+    virtual util::Error importDirectory(const package::Ref &ref, const QString &path) = 0;
 
-    virtual util::Result exportBundle(package::Bundle &bundle) = 0;
+    virtual util::Error import(const package::Bundle &bundle) = 0;
 
-    virtual std::tuple<util::Result, QList<package::Ref>> list(const QString &filter) = 0;
+    virtual util::Error exportBundle(package::Bundle &bundle) = 0;
 
-    virtual std::tuple<util::Result, QList<package::Ref>> query(const QString &filter) = 0;
+    virtual std::tuple<util::Error, QList<package::Ref>> list(const QString &filter) = 0;
 
-    virtual util::Result push(const package::Ref &ref, bool force) = 0;
+    virtual std::tuple<util::Error, QList<package::Ref>> query(const QString &filter) = 0;
 
-    virtual util::Result push(const package::Bundle &bundle, bool force) = 0;
+    virtual util::Error push(const package::Ref &ref, bool force) = 0;
 
-    virtual util::Result pull(const package::Ref &ref, bool force) = 0;
+    virtual util::Error push(const package::Bundle &bundle, bool force) = 0;
+
+    virtual util::Error pull(const package::Ref &ref, bool force) = 0;
+
+    virtual QString rootOfLayer(const package::Ref &ref) = 0;
+
+    virtual package::Ref latestOfRef(const QString &appId, const QString &appVersion) = 0;
 };
 
 } // namespace repo

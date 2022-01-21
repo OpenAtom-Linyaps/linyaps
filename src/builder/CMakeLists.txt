@@ -1,11 +1,32 @@
 set(LL_BUILDER_SOURCES
-    ../module/util/fs.cpp
     ../module/package/bundle.cpp
-    ../module/util/json.h
-    resource/resource.qrc
     ../module/package/info.cpp
+    ../module/package/package.cpp
+    ../module/repo/ostree.cpp
+    ../module/runtime/oci.h
+    ../module/runtime/app.cpp
+    ../module/runtime/container.cpp
+    ../module/flatpak/flatpak_manager.cpp
+    ../module/util/fs.cpp
+    ../module/util/fs.cpp
+    ../module/util/http_client.cpp
+    ../module/util/http_client.h
     ../module/util/httpclient.cpp
-    )
+    ../module/util/json.h
+    ../module/util/sysinfo.cpp
+    ../module/util/uuid.cpp
+    ../module/util/xdg.cpp
+    ../module/util/desktop_entry.cpp
+    builder/builder.cpp
+    builder/builder_config.cpp
+    builder/builder_config.h
+    builder/project.cpp
+    builder/project.h
+    builder/source_fetcher.cpp
+    builder/source_fetcher.h
+    resource/resource.qrc
+    builder/depend_fetcher.cpp
+    builder/depend_fetcher.h)
 
 find_package(CURL REQUIRED)
 
@@ -14,12 +35,8 @@ aux_source_directory(builder LL_BUILDER_SOURCES)
 
 add_executable(ll-builder ${LL_BUILDER_SOURCES})
 
-target_include_directories(ll-builder
-                           PRIVATE builder
-                           PRIVATE ../module/util
-                           PRIVATE ../module/package)
+target_include_directories(ll-builder PRIVATE ../)
 
-target_link_libraries(ll-builder
-                      PRIVATE ${LINK_LIBS} CURL::libcurl)
+target_link_libraries(ll-builder PRIVATE ${LINK_LIBS} CURL::libcurl)
 
 install(TARGETS ll-builder RUNTIME DESTINATION bin)

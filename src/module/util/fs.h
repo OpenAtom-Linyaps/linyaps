@@ -29,6 +29,8 @@ QString getUserFile(const QString &path);
 
 QString ensureUserDir(const QStringList &relativeDirPathComponents);
 
+bool ensureDir(const QString &path);
+
 /*!
  * 判断文件是否存在
  * @param path
@@ -133,11 +135,16 @@ bool inline createDir(const QString &path)
 
 /*!
  * 移除目录
- * @param path 路径
+ * @param path 绝对路径
  * @return bool
  */
 bool inline removeDir(const QString &path)
 {
+    // if path is empty, the QDir will remove pwd, we do not except that.
+    if (path.isEmpty()) {
+        return false;
+    }
+
     QDir dir(path);
     if (dir.exists()) {
         return dir.removeRecursively();

@@ -11,9 +11,12 @@
 #pragma once
 
 #include <QString>
+#include <QDir>
 
 namespace linglong {
 namespace util {
+
+QDir userCacheDir();
 
 QDir userRuntimeDir();
 

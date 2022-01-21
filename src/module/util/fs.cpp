@@ -46,5 +46,12 @@ QString ensureUserDir(const QStringList &relativeDirPathComponents)
     return ensureUserDir(relativeFilepath);
 }
 
+bool ensureDir(const QString &path)
+{
+    QDir dir(path);
+    dir.mkpath(".");
+    return true;
+}
+
 } // namespace util
 } // namespace linglong

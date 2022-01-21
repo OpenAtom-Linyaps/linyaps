@@ -12,15 +12,15 @@
 
 #include "src/module/util/result.h"
 
-using linglong::util::Result;
+using linglong::util::Error;
 
 TEST(Moduel_Util, Result)
 {
-    auto funcLevel_1 = []() -> Result { return dResultBase() << -1 << "this is level 1 error"; };
+    auto funcLevel_1 = []() -> Error { return NewError() << -1 << "this is level 1 error"; };
 
-    auto funcLevel_2 = [=]() -> Result {
+    auto funcLevel_2 = [=]() -> Error {
         auto r = funcLevel_1();
-        return dResult(r) << -2 << "this is level 2 error";
+        return NewError(r) << -2 << "this is level 2 error";
     };
 
     auto result = funcLevel_2();

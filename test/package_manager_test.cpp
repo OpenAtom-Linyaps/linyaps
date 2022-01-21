@@ -65,7 +65,7 @@ TEST(Package, install01)
     std::thread startQdbus(start_ll_service);
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    registerDbusType();
+    registerAllMetaType();
     ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager",
                                                 "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());

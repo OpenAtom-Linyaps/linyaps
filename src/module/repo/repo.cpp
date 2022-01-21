@@ -19,42 +19,7 @@
 namespace linglong {
 namespace repo {
 
-const auto kLayersRoot = "/deepin/linglong/layers";
-
-// FIXME: move to class LocalRepo
-package::Ref latestOfRef(const QString &appId, const QString &appVersion)
-{
-    auto latestVersionOf = [](const QString &appId) {
-        auto localRepoRoot = QString(kLayersRoot) + "/" + appId;
-
-        QDir appRoot(localRepoRoot);
-
-        // found latest
-        if (appRoot.exists("latest")) {
-            return appRoot.absoluteFilePath("latest");
-        }
-
-        // FIXME: found biggest version
-        appRoot.setSorting(QDir::Name | QDir::Reversed);
-        auto verDirs = appRoot.entryList(QDir::NoDotAndDotDot | QDir::Dirs);
-        auto available = verDirs.value(0);
-        qInfo() << "available version" << available << appRoot << verDirs;
-        return available;
-    };
-
-    // 未指定版本使用最新版本，指定版本下使用指定版本
-    auto version = latestVersionOf(appId);
-    if (!appVersion.isEmpty()) {
-        version = appVersion;
-    }
-    auto ref = appId + "/" + version + "/" + util::hostArch();
-    return package::Ref(ref);
-}
-
-QString rootOfLayer(const package::Ref &ref)
-{
-    return QString(kLayersRoot) + "/" + ref.appId + "/" + ref.version + "/" + ref.arch;
-}
+const char *kRepoRoot = "/deepin/linglong/";
 
 } // namespace repo
 } // namespace linglong

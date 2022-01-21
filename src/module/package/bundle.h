@@ -56,7 +56,7 @@ namespace package {
     (((uint64_t)bswap32((uint32_t)((value)&0xffffffff)) << 32) | (uint64_t)bswap32((uint32_t)((value) >> 32)))
 
 // FIXME: there is some problem that in module/util/runner.h, replace later
-util::Result runner(const QString &program, const QStringList &args, int timeout = -1);
+util::Error runner(const QString &program, const QStringList &args, int timeout = -1);
 
 class BundlePrivate;
 
@@ -78,14 +78,14 @@ public:
      * @param path
      * @return
      */
-    util::Result load(const QString &path);
+    util::Error load(const QString &path);
 
     /**
      * Save Bundle to path, create parent if not exist
      * @param path
      * @return
      */
-    util::Result save(const QString &path);
+    util::Error save(const QString &path);
 
     // Info info() const;
 
@@ -95,7 +95,7 @@ public:
      * @param outputFilePath : output file path
      * @return Result
      */
-    util::Result make(const QString &dataPath, const QString &outputFilePath);
+    util::Error make(const QString &dataPath, const QString &outputFilePath);
 
     /**
      * push Bundle
@@ -103,7 +103,7 @@ public:
      * @param force :  force to push
      * @return Result
      */
-    util::Result push(const QString &bundleFilePath, bool force);
+    util::Error push(const QString &bundleFilePath, bool force);
 
 private:
     QScopedPointer<BundlePrivate> dd_ptr;

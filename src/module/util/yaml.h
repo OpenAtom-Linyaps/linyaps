@@ -143,6 +143,8 @@ T *formYaml(const YAML::Node &doc)
             m->setProperty(k, v);
         }
     }
+
+    m->onPostSerialize();
     return m;
 }
 

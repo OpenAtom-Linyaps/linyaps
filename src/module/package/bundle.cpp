@@ -16,7 +16,7 @@
 namespace linglong {
 namespace package {
 
-util::Result runner(const QString &program, const QStringList &args, int timeout)
+util::Error runner(const QString &program, const QStringList &args, int timeout)
 {
     QProcess process;
     process.setProgram(program);
@@ -33,7 +33,7 @@ util::Result runner(const QString &program, const QStringList &args, int timeout
     process.waitForStarted(timeout);
     process.waitForFinished(timeout);
 
-    return dResultBase() << process.exitCode() << process.errorString();
+    return NewError() << process.exitCode() << process.errorString();
 }
 
 Bundle::Bundle(QObject *parent)
@@ -45,36 +45,36 @@ Bundle::~Bundle()
 {
 }
 
-util::Result Bundle::load(const QString &path)
+util::Error Bundle::load(const QString &path)
 {
-    return dResultBase();
+    return NewError();
 }
-util::Result Bundle::save(const QString &path)
+util::Error Bundle::save(const QString &path)
 {
-    return dResultBase();
+    return NewError();
 }
 
-util::Result Bundle::make(const QString &dataPath, const QString &outputFilePath)
+util::Error Bundle::make(const QString &dataPath, const QString &outputFilePath)
 {
     Q_D(Bundle);
     auto ret = d->make(dataPath, outputFilePath);
     if (!ret.success()) {
-        return dResult(ret);
+        return NewError(ret);
     }
-    return dResultBase();
+    return NewError();
 }
 
-util::Result Bundle::push(const QString &bundleFilePath, bool force)
+util::Error Bundle::push(const QString &bundleFilePath, bool force)
 {
     Q_D(Bundle);
     auto ret = d->push(bundleFilePath, force);
     if (!ret.success()) {
-        return dResult(ret);
+        return NewError(ret);
     }
-    return dResultBase();
+    return NewError();
 }
 
-util::Result BundlePrivate::make(const QString &dataPath, const QString &outputFilePath)
+util::Error BundlePrivate::make(const QString &dataPath, const QString &outputFilePath)
 {
     // 获取存储文件父目录路径
     QString bundleFileDirPath;
@@ -91,11 +91,11 @@ util::Result BundlePrivate::make(const QString &dataPath, const QString &outputF
 
     // 判断数据目录是否存在
     if (!util::dirExists(this->bundleDataPath)) {
-        return dResultBase() << RetCode(RetCode::DataDirNotExists) << this->bundleDataPath + " don't exists!";
+        return NewError() << RetCode(RetCode::DataDirNotExists) << this->bundleDataPath + " don't exists!";
     }
     // 判断info.json是否存在
     if (!util::fileExists(this->bundleDataPath + QString(configJson))) {
-        return dResultBase() << RetCode(RetCode::UapJsonFileNotExists)
+        return NewError() << RetCode(RetCode::UapJsonFileNotExists)
                              << this->bundleDataPath + QString("/info.json don't exists!!!");
     }
 
@@ -107,7 +107,7 @@ util::Result BundlePrivate::make(const QString &dataPath, const QString &outputF
 
     // 判断架构是否支持
     if (!info->arch.contains(this->buildArch)) {
-        return dResultBase() << info->appid + QString(" : ") + this->buildArch + QString(" don't support!");
+        return NewError() << info->appid + QString(" : ") + this->buildArch + QString(" don't support!");
     }
 
     // 赋值bundleFilePath
@@ -136,7 +136,7 @@ util::Result BundlePrivate::make(const QString &dataPath, const QString &outputF
     auto resultMakeSquashfs =
         runner("mksquashfs", {this->bundleDataPath, this->squashfsFilePath, "-comp", "xz"}, 15 * 60 * 1000);
     if (!resultMakeSquashfs.success()) {
-        return dResult(resultMakeSquashfs) << "call mksquashfs failed";
+        return NewError(resultMakeSquashfs) << "call mksquashfs failed";
     }
 
     // 生产bundle文件
@@ -163,7 +163,7 @@ util::Result BundlePrivate::make(const QString &dataPath, const QString &outputF
     QFile(this->bundleFilePath)
         .setPermissions(QFileDevice::ExeOwner | QFileDevice::WriteOwner | QFileDevice::ReadOwner);
 
-    return dResultBase();
+    return NewError();
 }
 
 // read elf64
@@ -214,11 +214,11 @@ auto BundlePrivate::getElfSize(const QString elfFilePath) -> decltype(-1)
     return size;
 }
 
-util::Result BundlePrivate::push(const QString &bundleFilePath, bool force)
+util::Error BundlePrivate::push(const QString &bundleFilePath, bool force)
 {
     // 判断uab文件是否存在
     if (!util::fileExists(bundleFilePath)) {
-        return dResultBase() << RetCode(RetCode::BundleFileNotExists) << bundleFilePath + " don't exists!";
+        return NewError() << RetCode(RetCode::BundleFileNotExists) << bundleFilePath + " don't exists!";
     }
     // 创建临时目录
     this->tmpWorkDir = util::ensureUserDir({".linglong", QFileInfo(bundleFilePath).fileName()});
@@ -255,7 +255,7 @@ util::Result BundlePrivate::push(const QString &bundleFilePath, bool force)
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
         }
-        return dResult(resultUnsquashfs) << "call unsquashfs failed";
+        return NewError(resultUnsquashfs) << "call unsquashfs failed";
     }
 
     // 转换info.json为Info对象
@@ -267,7 +267,7 @@ util::Result BundlePrivate::push(const QString &bundleFilePath, bool force)
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
         }
-        return dResult(resultMakeRepo) << "call ostree init failed";
+        return NewError(resultMakeRepo) << "call ostree init failed";
     }
 
     // 推送数据到临时仓库
@@ -283,7 +283,7 @@ util::Result BundlePrivate::push(const QString &bundleFilePath, bool force)
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
         }
-        return dResult(resultCommit) << "call ostree commit failed";
+        return NewError(resultCommit) << "call ostree commit failed";
     }
 
     // 压缩仓库为repo.tar
@@ -295,7 +295,7 @@ util::Result BundlePrivate::push(const QString &bundleFilePath, bool force)
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
         }
-        return dResult(resultTar) << "call tar cvf failed";
+        return NewError(resultTar) << "call tar cvf failed";
     }
 
     // 从配置文件获取服务器域名url
@@ -305,7 +305,7 @@ util::Result BundlePrivate::push(const QString &bundleFilePath, bool force)
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
         }
-        return dResultBase() << "call getLocalConfig api failed";
+        return NewError() << "call getLocalConfig api failed";
     }
 
     // 上传repo.tar文件
@@ -315,7 +315,7 @@ util::Result BundlePrivate::push(const QString &bundleFilePath, bool force)
             util::removeDir(this->tmpWorkDir);
         }
         std::cout << "upload repo.tar failed, please check and try again!" << std::endl;
-        return dResultBase() << "upload repo.tar failed";
+        return NewError() << "upload repo.tar failed";
     }
 
     // 上传bundle文件
@@ -325,7 +325,7 @@ util::Result BundlePrivate::push(const QString &bundleFilePath, bool force)
             util::removeDir(this->tmpWorkDir);
         }
         std::cout << "Upload bundle failed, please check and try again!" << std::endl;
-        return dResultBase() << "upload bundle failed";
+        return NewError() << "upload bundle failed";
     }
 
     // 上传bundle信息到服务器
@@ -345,14 +345,14 @@ util::Result BundlePrivate::push(const QString &bundleFilePath, bool force)
             util::removeDir(this->tmpWorkDir);
         }
         std::cout << "upload bundle info failed, please check and try again!" << std::endl;
-        return dResultBase() << "upload bundle info failed";
+        return NewError() << "upload bundle info failed";
     }
 
     if (util::dirExists(this->tmpWorkDir)) {
         util::removeDir(this->tmpWorkDir);
     }
     std::cout << "Upload success" << std::endl;
-    return dResultBase();
+    return NewError();
 }
 
 } // namespace package

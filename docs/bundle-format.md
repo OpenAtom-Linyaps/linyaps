@@ -33,8 +33,6 @@ The spec of the export bundle:
 
 ## Implementation
 
-**The implementation change with time，If you change the implement, update this selection as soon as possible !!!**
-
 ### prototype
 
 - The bundle is a sample elf loader that joins a squashfs with cat.
@@ -44,8 +42,3 @@ The spec of the export bundle:
   - The root of the filesystem should contain a file name loader(by the way, now is .loader)
   - the directory structure should be: /{appId}/{version}/{arch}/
 
-a full example of the filesystem is:
-
-```bash
-
-```

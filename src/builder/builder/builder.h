@@ -20,15 +20,20 @@ namespace builder {
 class Builder
 {
 public:
-    virtual util::Result create(const QString &projectName) = 0;
+    virtual util::Error create(const QString &projectName) = 0;
 
-    virtual util::Result build() = 0;
+    virtual util::Error build() = 0;
 
-    virtual util::Result exportBundle(const QString &outputFilepath) = 0;
+    virtual util::Error exportBundle(const QString &outputFilepath) = 0;
 
     // virtual util::Result push(const QString &repoURL, bool force) = 0;
-    virtual util::Result push(const QString &bundleFilePath, bool force) = 0;
+    virtual util::Error push(const QString &bundleFilePath, bool force) = 0;
+
+    virtual util::Error run() = 0;
 };
+
+
+void registerAllMetaType();
 
 } // namespace builder
 } // namespace linglong

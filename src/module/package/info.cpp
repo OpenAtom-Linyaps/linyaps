@@ -25,7 +25,7 @@ QString hostArch()
 Ref parseId(const QString &id)
 {
     QStringList slice = id.split(":");
-    QString remoteRepo = kDefaultRepo;
+    QString remoteRepo = "";
     QString localId = id;
     switch (slice.length()) {
     case 2:

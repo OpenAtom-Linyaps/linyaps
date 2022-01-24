@@ -30,23 +30,23 @@ class Namespace : public JsonSerialize
 };
 Q_JSON_DECLARE_PTR_METATYPE(Namespace)
 
-class IDMap : public JsonSerialize
+class IdMap : public JsonSerialize
 {
     Q_OBJECT;
-    Q_JSON_CONSTRUCTOR(IDMap)
-    Q_JSON_PROPERTY(quint64, hostID);
-    Q_JSON_PROPERTY(quint64, containerID);
+    Q_JSON_CONSTRUCTOR(IdMap)
+    Q_JSON_PROPERTY(quint64, hostId);
+    Q_JSON_PROPERTY(quint64, containerId);
     Q_JSON_PROPERTY(quint64, size);
 };
-Q_JSON_DECLARE_PTR_METATYPE(IDMap)
+Q_JSON_DECLARE_PTR_METATYPE(IdMap)
 
 class Linux : public JsonSerialize
 {
     Q_OBJECT;
     Q_JSON_CONSTRUCTOR(Linux)
     Q_JSON_PROPERTY(NamespaceList, namespaces);
-    Q_JSON_PROPERTY(IDMapList, uidMappings);
-    Q_JSON_PROPERTY(IDMapList, gidMappings);
+    Q_JSON_PROPERTY(IdMapList, uidMappings);
+    Q_JSON_PROPERTY(IdMapList, gidMappings);
 };
 Q_JSON_DECLARE_PTR_METATYPE(Linux)
 
@@ -147,7 +147,7 @@ inline void ociJsonRegister()
     qJsonRegister<Hook>();
     qJsonRegister<Runtime>();
     qJsonRegister<Process>();
-    qJsonRegister<IDMap>();
+    qJsonRegister<IdMap>();
 
     qJsonRegister<Annotations>();
     qJsonRegister<AnnotationsOverlayfsRootfs>();

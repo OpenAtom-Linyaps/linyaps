@@ -22,9 +22,9 @@ class Container : public JsonSerialize
     Q_OBJECT
     Q_JSON_CONSTRUCTOR(Container)
 public:
-    Q_JSON_PROPERTY(QString, ID)
-    Q_JSON_PROPERTY(qint64, PID)
-    Q_JSON_PROPERTY(QString, WorkingDirectory)
+    Q_JSON_PROPERTY(QString, id)
+    Q_JSON_PROPERTY(qint64, pid)
+    Q_JSON_PROPERTY(QString, workingDirectory)
 };
 Q_JSON_DECLARE_PTR_METATYPE(Container)
 
@@ -32,8 +32,8 @@ inline QDBusArgument &operator<<(QDBusArgument &argument,
                                  const Container &message)
 {
     argument.beginStructure();
-    argument << message.ID;
-    argument << message.PID;
+    argument << message.id;
+    argument << message.pid;
     argument.endStructure();
     return argument;
 }
@@ -42,8 +42,8 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument,
                                        Container &message)
 {
     argument.beginStructure();
-    argument >> message.ID;
-    argument >> message.PID;
+    argument >> message.id;
+    argument >> message.pid;
     argument.endStructure();
     return argument;
 }

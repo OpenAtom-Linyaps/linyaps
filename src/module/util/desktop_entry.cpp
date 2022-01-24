@@ -20,8 +20,8 @@ namespace util {
 class DesktopEntryPrivate
 {
 public:
-    DesktopEntryPrivate(const QString &filePath, DesktopEntry *qq)
-        : q_ptr(qq)
+    DesktopEntryPrivate(const QString &filePath, DesktopEntry *parent)
+        : q_ptr(parent)
     {
         parse(filePath);
     }

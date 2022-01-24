@@ -19,8 +19,8 @@ void showContainer(const ContainerList &list, const QString &format)
     QJsonArray js;
     for (auto const &c : list) {
         js.push_back(QJsonObject {
-            {"id", c->ID},
-            {"pid", c->PID},
+            {"id", c->id},
+            {"pid", c->pid},
         });
     }
 

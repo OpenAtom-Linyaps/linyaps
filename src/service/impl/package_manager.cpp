@@ -324,7 +324,7 @@ RetMessageList PackageManager::Start(const QString &packageId, const ParamString
             qCritical() << "nullptr" << app;
             return;
         }
-        d->apps[app->container()->ID] = QPointer<App>(app);
+        d->apps[app->container()->id] = QPointer<App>(app);
         app->start();
     });
     return retMsg;
@@ -353,7 +353,7 @@ RetMessageList PackageManager::Stop(const QString &containerId)
         retMsg.push_back(info);
         return retMsg;
     }
-    pid_t pid = d->apps[containerId]->container()->PID;
+    pid_t pid = d->apps[containerId]->container()->pid;
     int ret = kill(pid, SIGKILL);
     if (ret == 0) {
         d->apps.remove(containerId);
@@ -375,8 +375,8 @@ ContainerList PackageManager::ListContainer()
 
     for (const auto &app : d->apps) {
         auto c = QPointer<Container>(new Container);
-        c->ID = app->container()->ID;
-        c->PID = app->container()->PID;
+        c->id = app->container()->id;
+        c->pid = app->container()->pid;
         list.push_back(c);
     }
     return list;

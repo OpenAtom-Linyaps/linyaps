@@ -37,13 +37,13 @@ TEST(OCI, QtJson)
     EXPECT_EQ(r->root->path, "/run/user/1000/linglong/ab24ae64edff4ddfa8e6922eb29e2baf");
 
     EXPECT_EQ(r->linux->uidMappings.size(), 2);
-    EXPECT_EQ(r->linux->uidMappings.at(1)->hostID, 1000);
-    EXPECT_EQ(r->linux->uidMappings.at(1)->containerID, 1000);
+    EXPECT_EQ(r->linux->uidMappings.at(1)->hostId, 1000);
+    EXPECT_EQ(r->linux->uidMappings.at(1)->containerId, 1000);
     EXPECT_EQ(r->linux->uidMappings.at(1)->size, 1);
 
     EXPECT_EQ(r->linux->gidMappings.size(), 2);
-    EXPECT_EQ(r->linux->gidMappings.at(0)->hostID, 65534);
-    EXPECT_EQ(r->linux->gidMappings.at(0)->containerID, 0);
+    EXPECT_EQ(r->linux->gidMappings.at(0)->hostId, 65534);
+    EXPECT_EQ(r->linux->gidMappings.at(0)->containerId, 0);
     EXPECT_EQ(r->linux->gidMappings.at(0)->size, 1);
 
     r->deleteLater();

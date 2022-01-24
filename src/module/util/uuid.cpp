@@ -14,7 +14,7 @@
 
 namespace linglong {
 namespace util {
-QString genUUID()
+QString genUuid()
 {
     return QUuid::createUuid().toString(QUuid::Id128);
 }

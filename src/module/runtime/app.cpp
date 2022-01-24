@@ -65,10 +65,10 @@ public:
         r->setParent(q_ptr);
 
         container = new Container(q_ptr);
-        container->ID = linglong::util::genUUID();
-        container->WorkingDirectory =
-            util::userRuntimeDir().absoluteFilePath(QString("linglong/%1").arg(container->ID));
-        util::ensureDir(container->WorkingDirectory);
+        container->id = linglong::util::genUuid();
+        container->workingDirectory =
+            util::userRuntimeDir().absoluteFilePath(QString("linglong/%1").arg(container->id));
+        util::ensureDir(container->workingDirectory);
         return true;
     }
 
@@ -96,7 +96,7 @@ public:
         stageUser(appRef.appId);
         stageMount();
 
-        auto envFilepath = container->WorkingDirectory + QString("/env");
+        auto envFilepath = container->workingDirectory + QString("/env");
         QFile envFile(envFilepath);
         if (!envFile.open(QIODevice::WriteOnly)) {
             qCritical() << "create env failed" << envFile.error();
@@ -182,16 +182,16 @@ public:
         }
 
         r->annotations = new Annotations(r);
-        r->annotations->container_root_path = container->WorkingDirectory;
+        r->annotations->container_root_path = container->workingDirectory;
 
         if (fuseMount) {
             r->annotations->overlayfs = new AnnotationsOverlayfsRootfs(r->annotations);
             r->annotations->overlayfs->lower_parent =
-                QStringList {container->WorkingDirectory, ".overlayfs", "lower_parent"}.join("/");
+                QStringList {container->workingDirectory, ".overlayfs", "lower_parent"}.join("/");
             r->annotations->overlayfs->upper =
-                QStringList {container->WorkingDirectory, ".overlayfs", "upper"}.join("/");
+                QStringList {container->workingDirectory, ".overlayfs", "upper"}.join("/");
             r->annotations->overlayfs->workdir =
-                QStringList {container->WorkingDirectory, ".overlayfs", "workdir"}.join("/");
+                QStringList {container->workingDirectory, ".overlayfs", "workdir"}.join("/");
         } else {
             r->annotations->native = new AnnotationsNativeRootfs(r->annotations);
         }
@@ -436,9 +436,9 @@ public:
         };
         for (auto const &uidMap : uidMaps) {
             Q_ASSERT(uidMap.size() == 3);
-            auto idMap = new IDMap(r->linux);
-            idMap->hostID = uidMap.value(0);
-            idMap->containerID = uidMap.value(1);
+            auto idMap = new IdMap(r->linux);
+            idMap->hostId = uidMap.value(0);
+            idMap->containerId = uidMap.value(1);
             idMap->size = uidMap.value(2);
             r->linux->uidMappings.push_back(idMap);
         }
@@ -448,9 +448,9 @@ public:
         };
         for (auto const &gidMap : gidMaps) {
             Q_ASSERT(gidMap.size() == 3);
-            auto idMap = new IDMap(r->linux);
-            idMap->hostID = gidMap.value(0);
-            idMap->containerID = gidMap.value(1);
+            auto idMap = new IdMap(r->linux);
+            idMap->hostId = gidMap.value(0);
+            idMap->containerId = gidMap.value(1);
             idMap->size = gidMap.value(2);
             r->linux->gidMappings.push_back(idMap);
         }
@@ -532,13 +532,13 @@ int App::start()
 {
     Q_D(App);
 
-    d->r->root->path = d->container->WorkingDirectory + "/root";
+    d->r->root->path = d->container->workingDirectory + "/root";
     util::ensureDir(d->r->root->path);
 
     d->prepare();
 
     // write pid file
-    QFile pidFile(d->container->WorkingDirectory + QString("/%1.pid").arg(getpid()));
+    QFile pidFile(d->container->workingDirectory + QString("/%1.pid").arg(getpid()));
     pidFile.open(QIODevice::WriteOnly);
     pidFile.close();
 
@@ -574,7 +574,7 @@ int App::start()
         write(pipeEnds[1], data.c_str(), data.size());
         close(pipeEnds[1]);
 
-        d->container->PID = boxPid;
+        d->container->pid = boxPid;
         // FIXME(interactive bash): if need keep interactive shell
         waitpid(boxPid, nullptr, 0);
     }

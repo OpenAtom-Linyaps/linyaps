@@ -366,12 +366,23 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIdList, con
         const QString appEntriesDirPath = savePath + "/entries";
         linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstalltions);
     }
+
     // 更新desktop database
     auto retRunner = linglong::runner::Runner("update-desktop-database", {sysLinglongInstalltions + "/applications/"},
-                                   1000 * 60 * 1);
+                                              1000 * 60 * 1);
     if (!retRunner) {
-         qWarning() << "warning: update desktop database of " + sysLinglongInstalltions + "/applications/ failed!";
+        qWarning() << "warning: update desktop database of " + sysLinglongInstalltions + "/applications/ failed!";
     }
+
+    // 更新mime type database
+    if (linglong::util::dirExists(sysLinglongInstalltions + "/mime/packages")) {
+        auto retUpdateMime =
+            linglong::runner::Runner("update-mime-database", {sysLinglongInstalltions + "/mime/"}, 1000 * 60 * 1);
+        if (!retUpdateMime) {
+            qWarning() << "warning: update mime type database of " + sysLinglongInstalltions + "/mime/ failed!";
+        }
+    }
+
     // 更新本地数据库文件
     appInfo->kind = "app";
     insertAppRecord(appInfo, "user", userName);
@@ -497,11 +508,20 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIdList, c
         qInfo() << "Uninstall del dir:" << installPath;
     }
 
-     // 更新desktop database
+    // 更新desktop database
     auto retRunner = linglong::runner::Runner("update-desktop-database", {sysLinglongInstalltions + "/applications/"},
-                                   1000 * 60 * 1);
+                                              1000 * 60 * 1);
     if (!retRunner) {
         qWarning() << "warning: update desktop database of " + sysLinglongInstalltions + "/applications/ failed!";
+    }
+
+    // 更新mime type database
+    if (linglong::util::dirExists(sysLinglongInstalltions + "/mime/packages")) {
+        auto retUpdateMime =
+            linglong::runner::Runner("update-mime-database", {sysLinglongInstalltions + "/mime/"}, 1000 * 60 * 1);
+        if (!retUpdateMime) {
+            qWarning() << "warning: update mime type database of " + sysLinglongInstalltions + "/mime/ failed!";
+        }
     }
 
     // 更新本地repo仓库

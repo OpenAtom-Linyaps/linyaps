@@ -22,9 +22,9 @@ class Container : public JsonSerialize
     Q_OBJECT
     Q_JSON_CONSTRUCTOR(Container)
 public:
-    Q_JSON_PROPERTY(QString, id)
-    Q_JSON_PROPERTY(qint64, pid)
-    Q_JSON_PROPERTY(QString, workingDirectory)
+    Q_JSON_ITEM_MEMBER(QString, ID, id)
+    Q_JSON_ITEM_MEMBER(qint64, PID, pid)
+    Q_JSON_ITEM_MEMBER(QString, WorkingDirectory, workingDirectory)
 };
 Q_JSON_DECLARE_PTR_METATYPE(Container)
 

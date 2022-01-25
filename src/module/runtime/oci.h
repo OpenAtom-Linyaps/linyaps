@@ -34,8 +34,8 @@ class IdMap : public JsonSerialize
 {
     Q_OBJECT;
     Q_JSON_CONSTRUCTOR(IdMap)
-    Q_JSON_PROPERTY(quint64, hostId);
-    Q_JSON_PROPERTY(quint64, containerId);
+    Q_JSON_ITEM_MEMBER(quint64, hostID, hostId);
+    Q_JSON_ITEM_MEMBER(quint64, containerID, containerId);
     Q_JSON_PROPERTY(quint64, size);
 };
 Q_JSON_DECLARE_PTR_METATYPE(IdMap)

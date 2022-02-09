@@ -341,6 +341,10 @@ public:
         auto hostAppHome = util::ensureUserDir({".linglong", appId, "home"});
         mountMap.push_back(qMakePair(hostAppHome, util::getUserFile("")));
 
+        //bind $(HOME)/.linglong/$(appId)
+        auto appLinglongPath = util::ensureUserDir({".linglong", appId});
+        mountMap.push_back(qMakePair(appLinglongPath, util::getUserFile(".linglong/" + appId)));
+
         auto appConfigPath = util::ensureUserDir({".linglong", appId, "/config"});
         mountMap.push_back(qMakePair(appConfigPath, util::getUserFile(".config")));
 
@@ -405,6 +409,10 @@ public:
         } else {
             r->process->env.push_back("XDG_DATA_DIRS=" + appSharePath + ":" + getenv("XDG_DATA_DIRS"));
         }
+
+        //set env XDG_DATA_HOME=$(HOME)/.linglong/$(appId)/share
+        r->process->env.push_back("XDG_DATA_HOME=" + util::getUserFile(".linglong/" + appId + "/share"));
+
         auto bypassENV = [&](const char *constEnv) {
             r->process->env.push_back(QString(constEnv) + "=" + getenv(constEnv));
         };

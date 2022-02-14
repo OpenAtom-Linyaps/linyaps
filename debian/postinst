@@ -10,3 +10,9 @@ then
 else
 	echo "Directory is already exists."
 fi
+
+#daemon-reload for /usr/lib/systemd/user-environment-generators/61-linglong
+if [ -f /usr/lib/systemd/user-environment-generators/61-linglong ]
+then
+	systemctl daemon-reload
+fi

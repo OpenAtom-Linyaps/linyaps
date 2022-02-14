@@ -5,3 +5,4 @@ etc/xdg/autostart/space.linglong.Service.desktop
 etc/profile.d/linglong.sh
 etc/X11/Xsession.d/21linglong
 deepin/linglong/config/config
+usr/lib/systemd/user-environment-generators/61-linglong

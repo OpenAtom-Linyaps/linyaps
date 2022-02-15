@@ -241,8 +241,6 @@ public:
         auto appLdLibraryPath = QStringList {"/opt/apps", appId, "files/lib"}.join("/");
         if (useFlatpakRuntime) {
             appLdLibraryPath = "/app/lib";
-            r->process->env.push_back(
-                "XDG_DATA_DIRS=/app/share:/usr/share:/usr/share/runtime/share:/run/host/user-share:/run/host/share");
         }
 
         // TODO(iceyer): support other arch, or just no arch?
@@ -330,7 +328,7 @@ public:
         auto hostAppHome = util::ensureUserDir({".linglong", appId, "home"});
         mountMap.push_back(qMakePair(hostAppHome, util::getUserFile("")));
 
-        //bind $(HOME)/.linglong/$(appId)
+        // bind $(HOME)/.linglong/$(appId)
         auto appLinglongPath = util::ensureUserDir({".linglong", appId});
         mountMap.push_back(qMakePair(appLinglongPath, util::getUserFile(".linglong/" + appId)));
 
@@ -385,7 +383,6 @@ public:
         }
         auto appRef = package::Ref(q_ptr->package->ref);
         auto appBinaryPath = QStringList {"/opt/apps", appRef.appId, "files/bin"}.join("/");
-        auto appSharePath = QStringList {"/opt/apps", appRef.appId, "files/share"}.join("/");
         if (useFlatpakRuntime) {
             appBinaryPath = "/app/bin";
         }
@@ -393,13 +390,16 @@ public:
         r->process->env.push_back("HOME=" + util::getUserFile(""));
         r->process->env.push_back("XDG_RUNTIME_DIR=" + userRuntimeDir);
         r->process->env.push_back("DBUS_SESSION_BUS_ADDRESS=unix:path=" + util::jonsPath({userRuntimeDir, "bus"}));
-        if (QString(getenv("XDG_DATA_DIRS")).isEmpty()) {
-            r->process->env.push_back("XDG_DATA_DIRS=" + appSharePath + ":" + "/usr/local/share:/usr/share");
-        } else {
-            r->process->env.push_back("XDG_DATA_DIRS=" + appSharePath + ":" + getenv("XDG_DATA_DIRS"));
-        }
 
-        //set env XDG_DATA_HOME=$(HOME)/.linglong/$(appId)/share
+        auto appSharePath = QStringList {"/opt/apps", appRef.appId, "files/share"}.join("/");
+        if (useFlatpakRuntime) {
+            appSharePath = "/app/share";
+        }
+        auto xdgDataDirs = QStringList {appSharePath, "/runtime/share"};
+        xdgDataDirs.append(qEnvironmentVariable("XDG_DATA_DIRS", "/usr/local/share:/usr/share"));
+        r->process->env.push_back("XDG_DATA_DIRS=" + xdgDataDirs.join(":"));
+
+        // set env XDG_DATA_HOME=$(HOME)/.linglong/$(appId)/share
         r->process->env.push_back("XDG_DATA_HOME=" + util::getUserFile(".linglong/" + appId + "/share"));
 
         auto bypassENV = [&](const char *constEnv) {

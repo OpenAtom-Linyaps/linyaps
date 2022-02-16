@@ -259,7 +259,7 @@ public:
     int stageHost() const
     {
         QList<QPair<QString, QString>> mountMap = {
-            {"/tmp/.X11-unix", "/tmp/.X11-unix"},
+            {"/tmp/.X11-unix", "/tmp/.X11-unix"}, // FIXME: only mount one DISPLAY
             {"/etc/resolv.conf", "/run/host/network/etc/resolv.conf"},
             {"/run/resolvconf", "/run/resolvconf"},
             {"/usr/share/fonts", "/run/host/appearance/fonts"},
@@ -272,7 +272,7 @@ public:
             {"/etc/localtime", "/run/host/etc/localtime"},
             {"/etc/machine-id", "/run/host/etc/machine-id"},
             {"/etc/machine-id", "/etc/machine-id"},
-            {"/var", "/var"},
+            {"/var", "/var"}, // FIXME: should we mount /var as "ro"?
             {"/var/cache/fontconfig", "/run/host/appearance/fonts-cache"},
         };
 

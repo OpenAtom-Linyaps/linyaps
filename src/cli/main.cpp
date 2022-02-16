@@ -22,6 +22,11 @@
 #include "service/impl/package_manager.h"
 #include "package_manager.h"
 
+static void qJsonRegisterAll(){
+    registerAllMetaType();
+    linglong::package::registerAllMetaType();
+}
+
 void printFlatpakAppInfo(AppMetaInfoList retMsg)
 {
     if (retMsg.size() > 0) {
@@ -98,7 +103,7 @@ int main(int argc, char **argv)
     Dtk::Core::DLogManager::registerFileAppender();
 
     // register qdbus type
-    registerAllMetaType();
+    qJsonRegisterAll();
 
     QCommandLineParser parser;
     parser.addHelpOption();

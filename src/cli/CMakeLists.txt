@@ -29,7 +29,8 @@ set(LL_CLI_SOURCES
     ../module/util/sysinfo.cpp
     ../module/util/uuid.cpp
     ../module/util/xdg.cpp
-    ../module/util/desktop_entry.cpp)
+    ../module/util/desktop_entry.cpp
+    ../module/package/package.cpp)
 
 set_source_files_properties(../module/dbus_ipc/com.deepin.linglong.PackageManager.xml
                             PROPERTIES INCLUDE service/impl/json_register_inc.h)

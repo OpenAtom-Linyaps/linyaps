@@ -98,7 +98,7 @@ public:
 
         Mount &m = *new Mount(r);
         m.type = "bind";
-        m.options = QStringList {};
+        m.options = QStringList {"rbind"};
         m.source = envFilepath;
         m.destination = "/run/app/env";
         r->mounts.push_back(&m);
@@ -145,7 +145,7 @@ public:
         for (const auto &pair : mountMap) {
             Mount &m = *new Mount(r);
             m.type = "bind";
-            m.options = QStringList {"bind"};
+            m.options = QStringList {"rbind"};
             m.source = pair.first;
             m.destination = pair.second;
             r->mounts.push_back(&m);
@@ -226,7 +226,7 @@ public:
         for (const auto &pair : mountMap) {
             auto m = new Mount(r);
             m->type = "bind";
-            m->options = QStringList {"ro"};
+            m->options = QStringList {"ro", "rbind"};
             m->source = pair.first;
             m->destination = pair.second;
 
@@ -258,8 +258,7 @@ public:
 
     int stageHost() const
     {
-        QList<QPair<QString, QString>> mountMap = {
-            {"/tmp/.X11-unix", "/tmp/.X11-unix"}, // FIXME: only mount one DISPLAY
+        QList<QPair<QString, QString>> roMountMap = {
             {"/etc/resolv.conf", "/run/host/network/etc/resolv.conf"},
             {"/run/resolvconf", "/run/resolvconf"},
             {"/usr/share/fonts", "/run/host/appearance/fonts"},
@@ -277,13 +276,27 @@ public:
         };
 
         for (auto const &item : QDir("/dev").entryInfoList({"nvidia*"}, QDir::AllEntries | QDir::System)) {
-            mountMap.push_back({item.canonicalFilePath(), item.canonicalFilePath()});
+            roMountMap.push_back({item.canonicalFilePath(), item.canonicalFilePath()});
         }
+
+        for (const auto &pair : roMountMap) {
+            Mount &m = *new Mount(r);
+            m.type = "bind";
+            m.options = QStringList {"ro", "rbind"};
+            m.source = pair.first;
+            m.destination = pair.second;
+            r->mounts.push_back(&m);
+            qDebug() << "mount app" << m.source << m.destination;
+        }
+
+        QList<QPair<QString, QString>> mountMap = {
+            {"/tmp/.X11-unix", "/tmp/.X11-unix"}, // FIXME: only mount one DISPLAY
+        };
 
         for (const auto &pair : mountMap) {
             Mount &m = *new Mount(r);
             m.type = "bind";
-            m.options = QStringList {"ro"};
+            m.options = QStringList {"rbind"};
             m.source = pair.first;
             m.destination = pair.second;
             r->mounts.push_back(&m);
@@ -346,7 +359,7 @@ public:
         for (const auto &pair : mountMap) {
             Mount &m = *new Mount(r);
             m.type = "bind";
-            m.options = QStringList {};
+            m.options = QStringList {"rbind"};
 
             m.source = pair.first;
             m.destination = pair.second;
@@ -375,7 +388,7 @@ public:
         for (const auto &pair : roMountMap) {
             Mount &m = *new Mount(r);
             m.type = "bind";
-            m.options = QStringList {"ro"};
+            m.options = QStringList {"ro", "rbind"};
             m.source = pair.first;
             m.destination = pair.second;
             r->mounts.push_back(&m);
@@ -479,7 +492,7 @@ public:
         for (const auto &mount : q->permission->mounts) {
             Mount &m = *new Mount(r);
             m.type = "bind";
-            m.options = QStringList {};
+            m.options = QStringList {"rbind"};
             auto component = mount.split(":");
             m.source = pathPreprocess(component.value(0));
             m.destination = pathPreprocess(component.value(1));

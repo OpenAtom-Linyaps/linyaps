@@ -138,37 +138,58 @@
     {
       "destination": "/usr",
       "type": "bind",
-      "source": "/usr"
+      "source": "/usr",
+      "options": [
+        "rbind"
+      ]
     },
     {
       "destination": "/bin",
       "type": "bind",
-      "source": "/bin"
+      "source": "/bin",
+      "options": [
+        "rbind"
+      ]
     },
     {
       "destination": "/opt/apps",
       "type": "bind",
-      "source": "/opt/apps"
+      "source": "/opt/apps",
+      "options": [
+        "rbind"
+      ]
     },
     {
       "destination": "/run/user/1000",
       "type": "bind",
-      "source": "/run/user/1000"
+      "source": "/run/user/1000",
+      "options": [
+        "rbind"
+      ]
     },
     {
       "destination": "/home",
       "type": "bind",
-      "source": "/home"
+      "source": "/home",
+      "options": [
+        "rbind"
+      ]
     },
     {
       "destination": "/dev/dri",
       "type": "bind",
-      "source": "/dev/dri"
+      "source": "/dev/dri",
+      "options": [
+        "rbind"
+      ]
     },
     {
       "destination": "/tmp",
       "type": "bind",
-      "source": "/tmp"
+      "source": "/tmp",
+      "options": [
+        "rbind"
+      ]
     }
   ],
   "linux": {

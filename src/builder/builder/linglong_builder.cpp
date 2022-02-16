@@ -331,7 +331,7 @@ util::Error LinglongBuilder::build()
     for (const auto &rpath : QStringList {"/usr", "/etc", "/var"}) {
         auto m = new Mount(r);
         m->type = "bind";
-        m->options = QStringList {"ro"};
+        m->options = QStringList {"ro", "rbind"};
         m->source = QStringList {hostBasePath, rpath}.join("/");
         m->destination = rpath;
         r->annotations->overlayfs->mounts.push_back(m);

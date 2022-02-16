@@ -128,22 +128,37 @@
     {
       "destination": "/dev/dri",
       "type": "bind",
-      "source": "/dev/dri"
+      "source": "/dev/dri",
+      "options": [
+          "rbind"
+      ]
     },
     {
       "destination": "/etc",
       "type": "bind",
-      "source": "/etc"
+      "source": "/etc",
+      "options": [
+          "rbind"
+      ]
+
     },
     {
       "destination": "/usr",
       "type": "bind",
-      "source": "/usr"
+      "source": "/usr",
+      "options": [
+          "rbind"
+      ]
+
     },
     {
       "destination": "/etc",
       "type": "bind",
-      "source": "/etc"
+      "source": "/etc",
+      "options": [
+          "rbind"
+      ]
+
     },
     {
       "destination": "/tmp",

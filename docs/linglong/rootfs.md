@@ -12,7 +12,8 @@ The example of annotations is：
         {
           "destination": "/usr",
           "options": [
-            "ro"
+            "ro",
+            "rbind"
           ],
           "source": "/usr",
           "type": "bind"
@@ -20,7 +21,8 @@ The example of annotations is：
         {
           "destination": "/runtime",
           "options": [
-            "ro"
+            "ro",
+            "rbind"
           ],
           "source": "/deepin/linglong/layers/org.deepin.Runtime/20/x86_64",
           "type": "bind"
@@ -28,7 +30,8 @@ The example of annotations is：
         {
           "destination": "/opt/apps/org.deepin.music",
           "options": [
-            "ro"
+            "ro",
+            "rbind"
           ],
           "source": "/deepin/linglong/layers/org.deepin.music/6.0.1.54/x86_64/",
           "type": "bind"
@@ -43,7 +46,8 @@ The example of annotations is：
         {
           "destination": "/usr",
           "options": [
-            "ro"
+            "ro",
+            "rbind"
           ],
           "source": "/usr",
           "type": "bind"
@@ -51,7 +55,8 @@ The example of annotations is：
         {
           "destination": "/usr",
           "options": [
-            "ro"
+            "ro",
+            "rbind"
           ],
           "source": "/usr",
           "type": "bind"
@@ -59,7 +64,8 @@ The example of annotations is：
         {
           "destination": "/opt",
           "options": [
-            "ro"
+            "ro",
+            "rbind"
           ],
           "source": "/opt",
           "type": "bind"
@@ -67,7 +73,8 @@ The example of annotations is：
         {
           "destination": "/opt/apps/com.qq.weixin.deepin",
           "options": [
-            "ro"
+            "ro",
+            "rbind"
           ],
           "source": "/opt/apps/com.qq.weixin.work.deepin/",
           "type": "bind"

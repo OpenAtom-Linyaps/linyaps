@@ -366,7 +366,7 @@ public:
             qMakePair(util::getUserFile(".local/share/fonts"), QString("/run/host/appearance/user-fonts")));
 
         // mount fonts cache
-        mountMap.push_back(
+        roMountMap.push_back(
             qMakePair(util::getUserFile(".cache/fontconfig"), QString("/run/host/appearance/user-fonts-cache")));
 
         QString xauthority = getenv("XAUTHORITY");

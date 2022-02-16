@@ -1,3 +1,18 @@
+linglong (1.2.2-1) unstable; urgency=medium
+
+  * 1. update mime type database.
+  * 2. add docs for builder.
+  * 3. customize environment variable XDG_DATA_HOME.
+  * 4. fix app dbus service files register failed.
+  * 5. support gitbook.
+  * 6. add directory for linglong doc.
+  * 7. add builder for library.
+  * 8. add /runtime/share for XDG_DATA_DIRS.
+  * 9. fix ro bind mount ~/.cache/fontconfig.
+  * 10. fix add rbind to all bind mounts.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Wed, 16 Feb 2022 13:20:33 +0800
+
 linglong (1.2.1-1) unstable; urgency=medium
 
   *  Code optimization and audio adjustment repair.

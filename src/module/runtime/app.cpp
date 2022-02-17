@@ -315,7 +315,7 @@ public:
         {
             Mount &m = *new Mount(r);
             m.type = "tmpfs";
-            m.options = QStringList {"nodev", "nosuid"};
+            m.options = QStringList {"nodev", "nosuid", "mode=700"};
             m.source = "tmpfs";
             m.destination = userRuntimeDir;
             r->mounts.push_back(&m);

@@ -21,7 +21,7 @@ Homepage: http://www.deepin.org
 
 Package: linglong-bin
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ostree, linglong-box, libqt5sql5-sqlite (>= 5.11.3), desktop-file-utils, shared-mime-info
+Depends: ${shlibs:Depends}, ${misc:Depends}, ostree, linglong-box, libqt5sql5-sqlite (>= 5.11.3), desktop-file-utils, shared-mime-info, fuse-overlayfs
 Description: Package Manager for UOS.
  Package Manager...
 

@@ -1,3 +1,9 @@
+linglong (1.2.3-1) unstable; urgency=medium
+
+  * fix 61-linglong permission.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Thu, 17 Feb 2022 17:50:15 +0800
+
 linglong (1.2.2-1) unstable; urgency=medium
 
   * 1. update mime type database.

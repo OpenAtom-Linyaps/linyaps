@@ -69,4 +69,4 @@ install(TARGETS ll-cli RUNTIME DESTINATION bin)
 
 install(FILES ${CMAKE_SOURCE_DIR}/scripts/linglong.sh DESTINATION /etc/profile.d)
 install(FILES ${CMAKE_SOURCE_DIR}/scripts/linglong.sh DESTINATION /etc/X11/Xsession.d/ RENAME 21linglong)
-install(FILES ${CMAKE_SOURCE_DIR}/scripts/61-linglong DESTINATION /usr/lib/systemd/user-environment-generators/)
+install(PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/61-linglong DESTINATION /usr/lib/systemd/user-environment-generators/)

@@ -21,10 +21,12 @@
 #include "service/impl/json_register_inc.h"
 #include "service/impl/package_manager.h"
 #include "package_manager.h"
+#include "module/runtime/runtime.h"
 
 static void qJsonRegisterAll(){
     registerAllMetaType();
     linglong::package::registerAllMetaType();
+    linglong::runtime::registerAllMetaType();
 }
 
 void printFlatpakAppInfo(AppMetaInfoList retMsg)

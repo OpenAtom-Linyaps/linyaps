@@ -382,6 +382,11 @@ public:
         roMountMap.push_back(
             qMakePair(util::getUserFile(".cache/fontconfig"), QString("/run/host/appearance/user-fonts-cache")));
 
+        // mount dde-api
+        // TODO ：主题相关，后续dde是否写成标准? 或者 此相关应用（如欢迎）不使用玲珑格式。
+        roMountMap.push_back(
+            qMakePair(util::getUserFile(".cache/deepin/dde-api"), util::getUserFile(".cache/deepin/dde-api")));
+
         QString xauthority = getenv("XAUTHORITY");
         roMountMap.push_back(qMakePair(xauthority, xauthority));
 

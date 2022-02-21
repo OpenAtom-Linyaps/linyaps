@@ -1,5 +1,9 @@
 # Summary
 * [Introduction](README.md)
+* [Linglong Cli](linglong/README.md)
+    * [Install](linglong/quick-started/install.md)
+    * [Usage](linglong/usage.md)
+    * [Debugging](linglong/debug.md)
 * [Builder](builder/README.md)
 * [Quick Started]()
     * [Install](builder/quick-started/install.md)

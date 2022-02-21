@@ -1,0 +1,20 @@
+ {
+    "plugins": [
+	"chapter-fold",
+	"expandable-chapters",
+	"code",
+	"back-to-top-button",
+	"splitter",
+	"pageview-count",
+	"search-pro",
+	"fontsettings",
+	"theme-default",
+	"theme-comscore",
+	"-search",
+	"-sharing",
+	"-lunr"
+    ],
+        "styles": {
+        "website": "styles/book.css"
+    }
+}

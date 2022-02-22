@@ -20,9 +20,14 @@
 #include "module/util/package_manager_param.h"
 #include "service/impl/json_register_inc.h"
 #include "service/impl/package_manager.h"
+#include "service/impl/package_manager_option.h"
 #include "package_manager.h"
 #include "module/runtime/runtime.h"
 #include "module/util/xdg.h"
+
+using linglong::service::PackageManagerOption;
+using linglong::service::PackageManagerOptionList;
+using linglong::service::wrapOption;
 
 static void qJsonRegisterAll()
 {
@@ -368,6 +373,34 @@ int main(int argc, char **argv)
              }
              if (reply.isError()) {
                  std::cout << "install: " << appId.toStdString() << " timeout";
+                 return -1;
+             }
+             return 0;
+         }},
+        {"update",
+         [&](QCommandLineParser &parser) -> int {
+             parser.clearPositionalArguments();
+             parser.addPositionalArgument("update", "update an application", "update");
+             parser.addPositionalArgument("appId", "app id", "com.deepin.demo");
+             parser.process(app);
+
+             auto args = parser.positionalArguments();
+             auto appId = args.value(1);
+             if (appId.isEmpty()) {
+                 parser.showHelp(-1);
+                 return -1;
+             }
+
+             QPointer<PackageManagerOption> pmOpt(new PackageManagerOption);
+             pmOpt->ref = appId;
+
+             pm.setTimeout(1000 * 60 * 60 * 24);
+             QDBusPendingReply<void> reply = pm.Update(wrapOption(pmOpt));
+             std::cout << "update " << appId.toStdString() << ", please wait a few minutes..." << std::endl;
+             reply.waitForFinished();
+
+             if (reply.isError()) {
+                 qCritical().noquote() << "update" << appId << reply.error();
                  return -1;
              }
              return 0;

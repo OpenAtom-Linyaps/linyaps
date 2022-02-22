@@ -27,7 +27,8 @@
 #include "package_manager_proxy_base.h"
 #include "qdbus_retmsg.h"
 
-class PackageManagerImpl : public PackageManagerProxyBase
+class PackageManagerImpl
+    : public PackageManagerProxyBase
     , public Dtk::Core::DSingleton<PackageManagerImpl>
 {
 public:
@@ -35,6 +36,8 @@ public:
     RetMessageList Install(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
     RetMessageList Uninstall(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
     AppMetaInfoList Query(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
+
+    linglong::util::Error Update(const linglong::package::Ref &ref);
 
 private:
     const QString sysLinglongInstalltions = "/deepin/linglong/entries/share";
@@ -61,8 +64,8 @@ private:
      *
      * @return bool: true:成功 false:失败
      */
-    bool getAppInfofromServer(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
-                                              QString &appData, QString &err);
+    bool getAppInfofromServer(const QString &pkgName, const QString &pkgVer, const QString &pkgArch, QString &appData,
+                              QString &err);
     /*
      * 将在线包数据部分签出到指定目录
      *

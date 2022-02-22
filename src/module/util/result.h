@@ -78,6 +78,14 @@ public:
         return *this;
     }
 
+    QString toJson() const
+    {
+        QJsonObject obj;
+        obj["code"] = errorCode;
+        obj["message"] = msgMeta.message;
+        return QJsonDocument(obj).toJson(QJsonDocument::Compact);
+    }
+
     friend QDebug operator<<(QDebug d, const linglong::util::Error &result);
 
 private:

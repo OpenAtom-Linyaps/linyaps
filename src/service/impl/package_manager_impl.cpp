@@ -568,3 +568,83 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIdList, c
     retMsg.push_back(info);
     return retMsg;
 }
+
+/*
+ * 更新软件包
+ *
+ * @param packageIdList: 软件包的appId
+ *
+ * @return RetMessageList 更新结果信息
+ */
+linglong::util::Error PackageManagerImpl::Update(const linglong::package::Ref &ref)
+{
+    RetMessageList retMsg;
+    auto info = QPointer<RetMessage>(new RetMessage);
+
+    auto pkgName = ref.appId;
+    auto version = ref.version;
+
+    // 判断是否已安装
+    QString err = QString();
+    QString userName = getUserName();
+    if (!getAppInstalledStatus(pkgName, version, "", userName)) {
+        return NewError(static_cast<int>(RetCode::pkg_not_installed), ref.toString() + " not installed");
+    }
+
+    // 检查是否存在版本更新
+    AppMetaInfoList pkgList;
+    // 根据已安装文件查询已经安装软件包信息
+    QString arch = hostArch();
+    getInstalledAppInfo(pkgName, version, arch, userName, pkgList);
+    auto installedApp = pkgList.at(0);
+    if (pkgList.size() != 1) {
+        return NewError(static_cast<int>(RetCode::ErrorPkgUpdateFailed), "query local app:" + pkgName + " info err");
+    }
+
+    QString currentVersion = installedApp->version;
+    QString appData = QString();
+    auto ret = getAppInfofromServer(pkgName, "", arch, appData, err);
+    if (!ret) {
+        err = "query server app:" + pkgName + " info err";
+        return NewError(static_cast<int>(RetCode::ErrorPkgUpdateFailed), err);
+    }
+
+    AppMetaInfoList serverPkgList;
+    ret = loadAppInfo(appData, serverPkgList, err);
+    if (!ret) {
+        err = "load app:" + pkgName + " info err";
+        return NewError(static_cast<int>(RetCode::ErrorPkgUpdateFailed), err);
+    }
+
+    auto serverApp = serverPkgList.at(0);
+    if (currentVersion == serverApp->version) {
+        err = "app:" + pkgName + ", version:" + currentVersion + " is latest";
+        return NewError(static_cast<int>(RetCode::ErrorPkgUpdateFailed), err);
+    }
+
+    // FIXME 安装最新软件
+    RetMessageList installRet = Install({pkgName});
+    if (installRet.size() > 0) {
+        auto it = installRet.at(0);
+        if (!it->state) {
+            err = "install app:" + pkgName + " err";
+            return NewError(static_cast<int>(RetCode::ErrorPkgUpdateFailed), err);
+        }
+    }
+
+    QMap<QString, QString> uninstallParamMap;
+    uninstallParamMap.insert(linglong::util::KEY_VERSION, currentVersion);
+    RetMessageList uninstallRet = Uninstall({pkgName}, uninstallParamMap);
+    if (uninstallRet.size() > 0) {
+        auto it = uninstallRet.at(0);
+        if (!it->state) {
+            err = "uninstall app:" + pkgName + " err";
+            return NewError(static_cast<int>(RetCode::ErrorPkgUpdateFailed), err);
+        }
+    }
+
+    // FIXME: return no version
+    // info->setmessage("update " + pkgName + " success, version:" + currentVersion + " --> " + serverApp->version);
+
+    return NoError();
+}

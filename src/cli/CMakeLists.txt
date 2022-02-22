@@ -30,7 +30,8 @@ set(LL_CLI_SOURCES
     ../module/util/uuid.cpp
     ../module/util/xdg.cpp
     ../module/util/desktop_entry.cpp
-    ../module/package/package.cpp)
+    ../module/package/package.cpp
+    ../service/impl/package_manager_option.h)
 
 set_source_files_properties(../module/dbus_ipc/com.deepin.linglong.PackageManager.xml
                             PROPERTIES INCLUDE service/impl/json_register_inc.h)

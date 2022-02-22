@@ -9,25 +9,26 @@
             <arg name="PackageIDList" type="as" direction="in"/>
             <arg name="savePath" type="s" direction="in"/>
             <arg name="RetMessageList" type="a(s)" direction="out"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="RetMessageList"/> 
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="RetMessageList"/>
         </method>
         <method name="Install">
             <arg name="PackageIDList" type="as" direction="in"/>
             <arg name="paramMap" type="{ss}" direction="in"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.In1" value="ParamStringMap"/>
             <arg name="RetMessageList" type="a(s)" direction="out"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="RetMessageList"/> 
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="RetMessageList"/>
         </method>
         <method name="Uninstall">
             <arg name="PackageIDList" type="as" direction="in"/>
             <arg name="paramMap" type="{ss}" direction="in"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.In1" value="ParamStringMap"/>
             <arg name="RetMessageList" type="a(s)" direction="out"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="RetMessageList"/> 
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="RetMessageList"/>
         </method>
         <method name="Update">
-            <arg name="PackageIDList" type="as" direction="in"/>
-            <arg name="JobID" type="s" direction="out"/>
+            <arg name="Options" type="(aay)" direction="in"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In0"
+                        value="linglong::service::PackageManagerOptionList"/>
         </method>
         <method name="UpdateAll">
             <arg name="JobID" type="s" direction="out"/>

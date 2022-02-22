@@ -52,38 +52,6 @@ public:
 };
 Q_JSON_DECLARE_PTR_METATYPE(AppMetaInfo)
 
-inline QDBusArgument &operator<<(QDBusArgument &argument, const AppMetaInfo &message)
-{
-    argument.beginStructure();
-    argument << message.appId;
-    argument << message.name;
-    argument << message.version;
-    argument << message.arch;
-    argument << message.kind;
-    argument << message.runtime;
-    argument << message.uabUrl;
-    argument << message.repoName;
-    argument << message.description;
-    argument.endStructure();
-    return argument;
-}
-
-inline const QDBusArgument &operator>>(const QDBusArgument &argument, AppMetaInfo &message)
-{
-    argument.beginStructure();
-    argument >> message.appId;
-    argument >> message.name;
-    argument >> message.version;
-    argument >> message.arch;
-    argument >> message.kind;
-    argument >> message.runtime;
-    argument >> message.uabUrl;
-    argument >> message.repoName;
-    argument >> message.description;
-    argument.endStructure();
-    return argument;
-}
-
 class Package
 {
 public:

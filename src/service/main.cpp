@@ -28,8 +28,6 @@ int main(int argc, char *argv[])
 
     linglong::runtime::registerAllMetaType();
     linglong::package::registerAllMetaType();
-
-    // register qdbus type
     linglong::service::registerAllMetaType();
 
     QDBusConnection dbus = QDBusConnection::sessionBus();

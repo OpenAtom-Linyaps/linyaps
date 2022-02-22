@@ -174,10 +174,27 @@ RetMessageList PackageManager::Uninstall(const QStringList &packageIdList, const
     return PackageManagerImpl::instance()->Uninstall(packageIdList, paramMap);
 }
 
-QString PackageManager::Update(const QStringList &packageIdList)
+void PackageManager::Update(const linglong::service::PackageManagerOptionList &opts)
 {
-    sendErrorReply(QDBusError::NotSupported, message().member());
-    return {};
+    auto option = linglong::service::unwrapOption(opts);
+    if (option.isNull()) {
+        return sendErrorReply(QDBusError::InvalidArgs,
+                              NewError(static_cast<int>(RetCode::user_input_param_err), "package list empty").toJson());
+    }
+
+    if (option->ref.isEmpty()) {
+        sendErrorReply(QDBusError::InvalidArgs,
+                       NewError(static_cast<int>(RetCode::user_input_param_err), "package name err").toJson());
+        return;
+    }
+
+    auto ref = package::Ref(option->ref);
+
+    auto err = PackageManagerImpl::instance()->Update(ref);
+    if (!err.success()) {
+        sendErrorReply(QDBusError::Failed, err.toJson());
+        qWarning() << err;
+    }
 }
 
 QString PackageManager::UpdateAll()

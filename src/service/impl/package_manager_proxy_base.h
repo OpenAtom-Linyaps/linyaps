@@ -14,6 +14,8 @@
 #include <QStringList>
 
 #include "qdbus_retmsg.h"
+#include "module/package/ref.h"
+#include "module/util/result.h"
 
 class PackageManagerProxyBase
 {
@@ -22,4 +24,8 @@ public:
     virtual RetMessageList Install(const QStringList &packageIDList, const ParamStringMap &paramMap = {}) = 0;
     virtual RetMessageList Uninstall(const QStringList &packageIDList, const ParamStringMap &paramMap = {}) = 0;
     virtual AppMetaInfoList Query(const QStringList &packageIDList, const ParamStringMap &paramMap = {}) = 0;
+
+    // TODO: move PackageManagerProxyBase to namespace
+    // TODO: need pure virtual
+    virtual linglong::util::Error Update(const linglong::package::Ref &ref) { return NoError(); }
 };

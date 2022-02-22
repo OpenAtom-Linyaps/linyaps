@@ -26,11 +26,13 @@
 #include "qdbus_retmsg.h"
 
 #include "package_manager_flatpak_impl.h"
+#include "package_manager_option.h"
 
 using linglong::service::util::AppInstance;
 
 class PackageManagerPrivate;
-class PackageManager : public QObject
+class PackageManager
+    : public QObject
     , protected QDBusContext
     , public Dtk::Core::DSingleton<PackageManager>
 {
@@ -45,7 +47,7 @@ public Q_SLOTS:
     RetMessageList Download(const QStringList &packageIdList, const QString savePath);
     RetMessageList Install(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
     RetMessageList Uninstall(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
-    QString Update(const QStringList &packageIdList);
+    void Update(const linglong::service::PackageManagerOptionList &options);
     QString UpdateAll();
 
     AppMetaInfoList Query(const QStringList &packageIdList, const ParamStringMap &paramMap = {});

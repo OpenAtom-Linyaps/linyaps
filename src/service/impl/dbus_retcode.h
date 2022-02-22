@@ -58,6 +58,8 @@ enum class RetCode {
     pkg_install_failed, // 安装失败
     pkg_uninstall_success, // 卸载成功
     pkg_uninstall_failed,  // 卸载失败
+    ErrorPkgUpdateFailed,
+    ErrorPkgUpdateSuccess,
     ErrorPkgKillFailed
 };
 template <typename T=quint32>

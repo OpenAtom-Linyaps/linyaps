@@ -387,6 +387,11 @@ public:
         roMountMap.push_back(
             qMakePair(util::getUserFile(".cache/deepin/dde-api"), util::getUserFile(".cache/deepin/dde-api")));
 
+        // mount ~/.config/dconf
+        // TODO: 所有应用主题相关设置数据保存在~/.config/dconf/user 中，是否安全？一个应用沙箱中可以读取其他应用设置数据？
+        // issues: https://gitlabwh.uniontech.com/wuhan/v23/linglong/linglong/-/issues/72
+        roMountMap.push_back(qMakePair(util::getUserFile(".config/dconf"), util::getUserFile(".config/dconf")));
+
         QString xauthority = getenv("XAUTHORITY");
         roMountMap.push_back(qMakePair(xauthority, xauthority));
 

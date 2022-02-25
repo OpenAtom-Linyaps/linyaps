@@ -1,3 +1,10 @@
+linglong (1.2.4-1) unstable; urgency=medium
+
+  * 1. some bug fixed.
+  * 2. add docs for ll-cli.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Fri, 25 Feb 2022 10:40:22 +0800
+
 linglong (1.2.3-1) unstable; urgency=medium
 
   * fix 61-linglong permission.

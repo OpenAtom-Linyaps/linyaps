@@ -43,19 +43,21 @@ void stop_ll_service()
  */
 bool getConnectStatus()
 {
-    const QString testServer = "repo.linglong.space";
+    // curl -o /dev/null -s -m 10 --connect-timeout 10 -w %{http_code} "https://linglong-api-dev.deepin.com/ostree/"
+    // 返回200表示通
+    const QString testServer = "https://linglong-api-dev.deepin.com/ostree/";
     QProcess proc;
     QStringList argstrList;
-    argstrList << "-s 1" << "-c 1" << testServer;
-    proc.start("ping", argstrList);
+    argstrList << " -o /dev/null -s -m 10 --connect-timeout 10 -w %{http_code} " << testServer;
+    proc.start("curl", argstrList);
     if (!proc.waitForStarted()) {
-        qInfo() << "start ping failed!";
+        qCritical() << "start curl failed!";
         return false;
     }
     proc.waitForFinished(3000);
     QString ret = proc.readAllStandardOutput();
     qInfo() << "ret msg:" << ret;
-    bool connect = (ret.indexOf("ttl", Qt::CaseInsensitive) >= 0);
+    bool connect = (ret.indexOf("200", Qt::CaseInsensitive) >= 0);
     return connect;
 }
 
@@ -66,6 +68,8 @@ TEST(Package, install01)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
     registerAllMetaType();
+    linglong::package::registerAllMetaType();
+
     ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager",
                                                 "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());

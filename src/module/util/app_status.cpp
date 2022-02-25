@@ -10,6 +10,8 @@
 
 #include "app_status.h"
 
+#include "service/impl/version.h"
+
 // 安装数据库路径
 const QString installedAppInfoPath = "/deepin/linglong/layers/";
 // 安装数据库版本
@@ -239,6 +241,15 @@ int deleteAppRecord(const QString &appId, const QString &appVer, const QString &
         // int fieldNo = query.record().indexOf("version");
         sqlQuery.first();
         dstVer = sqlQuery.value(0).toString().trimmed();
+        // sqlite逐字符比较导致获取的最高版本号不准，e.g: 5.9.1比5.10.1版本高
+        while (sqlQuery.next()) {
+            QString verIter = sqlQuery.value(0).toString().trimmed();
+            linglong::AppVersion versionIter(verIter);
+            linglong::AppVersion dstVersion(dstVer);
+            if (versionIter.isValid() && versionIter.isBigThan(dstVersion)) {
+                dstVer = verIter;
+            }
+        }
     }
 
     QString deleteSql = QString("DELETE FROM installedAppInfo WHERE appId = '%1' AND version = '%2' AND user = '%3'")
@@ -384,12 +395,26 @@ bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QStr
         auto info = QPointer<AppMetaInfo>(new AppMetaInfo);
         info->appId = sqlQuery.value(1).toString().trimmed();
         info->name = sqlQuery.value(2).toString().trimmed();
-        info->version = sqlQuery.value(3).toString().trimmed();
         info->arch = sqlQuery.value(4).toString().trimmed();
         info->description = sqlQuery.value(9).toString().trimmed();
+        QString dstVer = sqlQuery.value(3).toString().trimmed();
+        // sqlite逐字符比较导致获取的最高版本号不准，e.g: 5.9.1比5.10.1版本高
+        sqlQuery.first();
+        do {
+            QString verIter = sqlQuery.value(3).toString().trimmed();
+            linglong::AppVersion versionIter(verIter);
+            linglong::AppVersion dstVersion(dstVer);
+            if (versionIter.isValid() && versionIter.isBigThan(dstVersion)) {
+                dstVer = verIter;
+                info->description = sqlQuery.value(9).toString().trimmed();
+            }
+        } while (sqlQuery.next());
+        info->version = dstVer;
         pkgList.push_back(info);
+        dbConn.close();
         return true;
     }
+    dbConn.close();
     return false;
 }
 
@@ -433,6 +458,7 @@ AppMetaInfoList queryAllInstalledApp(const QString &userName)
         info->description = sqlQuery.value(9).toString().trimmed();
         pkglist.push_back(info);
     }
+    dbConn.close();
     return pkglist;
 }
 } // namespace util

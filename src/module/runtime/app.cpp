@@ -384,13 +384,14 @@ public:
 
         // mount dde-api
         // TODO ：主题相关，后续dde是否写成标准? 或者 此相关应用（如欢迎）不使用玲珑格式。
-        roMountMap.push_back(
-            qMakePair(util::getUserFile(".cache/deepin/dde-api"), util::getUserFile(".cache/deepin/dde-api")));
+        auto ddeApiPath = util::ensureUserDir({".cache","deepin","dde-api"});
+        roMountMap.push_back(qMakePair(ddeApiPath,ddeApiPath));
 
         // mount ~/.config/dconf
         // TODO: 所有应用主题相关设置数据保存在~/.config/dconf/user 中，是否安全？一个应用沙箱中可以读取其他应用设置数据？
         // issues: https://gitlabwh.uniontech.com/wuhan/v23/linglong/linglong/-/issues/72
-        roMountMap.push_back(qMakePair(util::getUserFile(".config/dconf"), util::getUserFile(".config/dconf")));
+        auto dconfPath = util::ensureUserDir({".config","dconf"});
+        roMountMap.push_back(qMakePair(dconfPath, dconfPath));
 
         QString xauthority = getenv("XAUTHORITY");
         roMountMap.push_back(qMakePair(xauthority, xauthority));

@@ -77,8 +77,7 @@
         "nosuid",
         "noexec",
         "nodev",
-        "mode=1777",
-        "size=65536k"
+        "mode=1777"
       ]
     },
     {

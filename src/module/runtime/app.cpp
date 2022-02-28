@@ -84,6 +84,7 @@ public:
         stageHost();
         stageUser(appRef.appId);
         stageMount();
+        fixMount();
 
         auto envFilepath = container->workingDirectory + QString("/env");
         QFile envFile(envFilepath);
@@ -517,6 +518,29 @@ public:
             m.destination = pathPreprocess(component.value(1));
             r->mounts.push_back(&m);
             qDebug() << "mount app" << m.source << m.destination;
+        }
+
+        return 0;
+    }
+
+    int fixMount()
+    {
+        Q_Q(const App);
+        // 360浏览器需要/apps-data/private/com.360.browser-stable目录可写
+        // todo:后续360整改
+        // 参考：https://gitlabwh.uniontech.com/wuhan/se/deepin-specifications/-/blob/master/unstable/%E5%BA%94%E7%94%A8%E6%95%B0%E6%8D%AE%E7%9B%AE%E5%BD%95%E8%A7%84%E8%8C%83.md
+        auto appRef = linglong::package::Ref(q->package->ref);
+
+        if (QString("com.360.browser-stable") == appRef.appId) {
+            // FIXME: 需要一个所有用户都有可读可写权限的目录
+            QString appDataPath = util::getUserFile(".linglong/" + appRef.appId + "/share/appdata");
+            linglong::util::ensureDir(appDataPath);
+            Mount &m = *new Mount(r);
+            m.type = "bind";
+            m.options = QStringList {"rw", "rbind"};
+            m.source = appDataPath;
+            m.destination = "/apps-data/private/com.360.browser-stable";
+            r->mounts.push_back(&m);
         }
 
         return 0;

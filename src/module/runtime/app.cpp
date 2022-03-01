@@ -197,8 +197,8 @@ public:
 
             // FIXME(iceyer): extract for wine, remove later
             if (fuseMount) {
-                // NOTE: the override should be before host /usr, MUST in the front of all
-                mountMap.push_front({runtimeRootPath + "/usr", "/usr"});
+                // NOTE: the override should be behind host /usr
+                mountMap.push_back({runtimeRootPath + "/usr", "/usr"});
                 mountMap.push_back({runtimeRootPath + "/opt/deepinwine", "/opt/deepinwine"});
                 mountMap.push_back({runtimeRootPath + "/opt/deepin-wine6-stable", "/opt/deepin-wine6-stable"});
             }

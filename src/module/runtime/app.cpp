@@ -543,6 +543,18 @@ public:
             r->mounts.push_back(&m);
         }
 
+        // 临时默认挂载用户相关目录
+        // todo: 后续加权限后整改
+        auto usrDirList =
+            QStringList {"Desktop", "Documents", "Downloads", "Music", "Pictures", "Videos", ".Public", ".Templates"};
+        for (auto dir : usrDirList) {
+            Mount &m = *new Mount(r);
+            m.type = "bind";
+            m.options = QStringList {"rw", "rbind"};
+            m.source = util::getUserFile(dir);
+            m.destination = util::getUserFile(dir);
+            r->mounts.push_back(&m);
+        }
         return 0;
     }
 

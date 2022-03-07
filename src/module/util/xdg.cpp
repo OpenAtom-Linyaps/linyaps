@@ -110,5 +110,17 @@ QPair<QString, QString> parseEnvKeyValue(QString env, const QString &sep)
     return {env.left(sepPos), env.right(env.length() - sepPos - 1)};
 }
 
+QStringList convertSpecialCharacters(const QStringList &args)
+{
+    QStringList retArgs;
+    retArgs.clear();
+    for (auto arg : args) {
+        arg.replace(' ', QString("\\%1").arg(' '));
+        arg.replace('"', QString("\\%1").arg('"'));
+        retArgs.push_back(arg);
+    }
+    return retArgs;
+}
+
 } // namespace util
 } // namespace linglong

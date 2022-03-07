@@ -32,5 +32,9 @@ QStringList parseExec(const QString &exec);
  */
 QPair<QString, QString> parseEnvKeyValue(QString env, const QString &sep);
 
+//转换参数中的特殊字符
+//参数中的空格与”加上双斜杠
+QStringList convertSpecialCharacters(const QStringList &args);
+
 } // namespace util
 } // namespace linglong

@@ -22,6 +22,7 @@
 #include "service/impl/package_manager.h"
 #include "package_manager.h"
 #include "module/runtime/runtime.h"
+#include "module/util/xdg.h"
 
 static void qJsonRegisterAll(){
     registerAllMetaType();
@@ -157,6 +158,10 @@ int main(int argc, char **argv)
                  parser.showHelp();
              }
              auto exec = parser.value(optExec);
+
+             //转化特殊字符
+             args = linglong::util::convertSpecialCharacters(args);
+
              //移除run appid两个参数 获取 exec 执行参数
              // eg: ll-cli run deepin-music --exec deepin-music /usr/share/music/test.mp3
              //    exec = "deepin-music /usr/share/music/test.mp3"

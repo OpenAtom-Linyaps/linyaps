@@ -411,7 +411,7 @@ public:
         if (useFlatpakRuntime) {
             appBinaryPath = "/app/bin";
         }
-        r->process->env.push_back("PATH=" + appBinaryPath + ":" + getenv("PATH"));
+        r->process->env.push_back("PATH=" + appBinaryPath + ":" + "/runtime/bin" + ":" + getenv("PATH"));
         r->process->env.push_back("HOME=" + util::getUserFile(""));
         r->process->env.push_back("XDG_RUNTIME_DIR=" + userRuntimeDir);
         r->process->env.push_back("DBUS_SESSION_BUS_ADDRESS=unix:path=" + util::jonsPath({userRuntimeDir, "bus"}));

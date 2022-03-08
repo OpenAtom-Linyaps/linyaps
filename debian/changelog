@@ -1,3 +1,15 @@
+linglong (1.2.6-1) unstable; urgency=medium
+
+  * 1. fix wine app launch failed.
+  * 2. fix home mounts.
+  * 3. user defalut size limit for /tmp.
+  * 4. add /runtime/bin to env Path.
+  * 5. add env XDG_CONFIG_HOME and XDG_CACHE_HOME.
+  * 6. fix add env variables for QtWebEngine.
+  * 7. fix exec args.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Tue, 08 Mar 2022 13:16:49 +0800
+
 linglong (1.2.5-1) unstable; urgency=medium
 
   * 1. fix correct permission on runtime directory.

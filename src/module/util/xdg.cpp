@@ -122,5 +122,36 @@ QStringList convertSpecialCharacters(const QStringList &args)
     return retArgs;
 }
 
+static QMap<QString, QString> const USER_DIR_MAP = {
+    {"desktop", QStandardPaths::writableLocation(QStandardPaths::DesktopLocation)},
+    {"documents", QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)},
+    {"download", QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)},
+    {"music", QStandardPaths::writableLocation(QStandardPaths::MusicLocation)},
+    {"pictures", QStandardPaths::writableLocation(QStandardPaths::PicturesLocation)},
+    {"picture", QStandardPaths::writableLocation(QStandardPaths::PicturesLocation)},
+    {"videos", QStandardPaths::writableLocation(QStandardPaths::MoviesLocation)},
+    {"templates", QStandardPaths::writableLocation(QStandardPaths::TempLocation)},
+    {"home", QStandardPaths::writableLocation(QStandardPaths::HomeLocation)},
+    {"cache", QStandardPaths::writableLocation(QStandardPaths::CacheLocation)},
+    {"config", QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)},
+    {"data", QStandardPaths::writableLocation(QStandardPaths::DataLocation)},
+    {"runtime", QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation)},
+    {"temp", QStandardPaths::writableLocation(QStandardPaths::TempLocation)}
+};
+
+QPair<bool, QString> getXdgDir(QString name)
+{
+    auto foundResult = USER_DIR_MAP.value(name.toLower(), "");
+    if (!foundResult.isEmpty()) {
+        QFileInfo fileInfo(foundResult);
+        if (fileInfo.exists()) {
+            return {true, foundResult};
+        }
+        return {false, foundResult};
+    }
+    return {false, ""};
+
+}
+
 } // namespace util
 } // namespace linglong

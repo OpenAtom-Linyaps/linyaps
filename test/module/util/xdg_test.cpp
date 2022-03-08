@@ -11,6 +11,8 @@
 #include <gtest/gtest.h>
 
 #include <QDir>
+#include <QDebug>
+#include <QStandardPaths>
 
 #include "module/util/xdg.h"
 
@@ -48,4 +50,63 @@ TEST(Moduel_Util, convertSpecialCharacters)
 
     EXPECT_EQ(retExec1.size(), 2);
     EXPECT_EQ(retExec2.size(), 1);
+}
+
+TEST(Module_Util, Xdg01)
+{
+
+    auto r1 = linglong::util::getXdgDir("Desktop");
+    qInfo() << r1;
+    EXPECT_EQ(r1.first, true);
+    EXPECT_EQ(r1.second, QDir::homePath() + "/Desktop");
+
+    auto r2 = linglong::util::getXdgDir("documentS");
+    qInfo() << r2;
+    EXPECT_EQ(r2.first, true);
+    EXPECT_EQ(r2.second, QDir::homePath() + "/Documents");
+
+    auto r3 = linglong::util::getXdgDir("download");
+    qInfo() << r3;
+    EXPECT_EQ(r3.first, true);
+    EXPECT_EQ(r3.second, QDir::homePath() + "/Downloads");
+
+    auto r4 = linglong::util::getXdgDir("music");
+    qInfo() << r4;
+    EXPECT_EQ(r4.first, true);
+    EXPECT_EQ(r4.second, QDir::homePath() + "/Music");
+
+    auto r5 = linglong::util::getXdgDir("pictures");
+    qInfo() << r5;
+    EXPECT_EQ(r5.first, true);
+    EXPECT_EQ(r5.second, QDir::homePath() + "/Pictures");
+
+    auto r5_2 = linglong::util::getXdgDir("picture");
+    qInfo() << r5_2;
+    EXPECT_EQ(r5_2.first, true);
+    EXPECT_EQ(r5_2.second, QDir::homePath() + "/Pictures");
+
+    auto r6 = linglong::util::getXdgDir("home");
+    qInfo() << r6;
+    EXPECT_EQ(r6.first, true);
+    EXPECT_EQ(r6.second, QDir::homePath());
+
+    auto r7 = linglong::util::getXdgDir("");
+    qInfo() << r7;
+    EXPECT_EQ(r7.first, false);
+    EXPECT_EQ(r7.second, "");
+
+    auto r8 = linglong::util::getXdgDir("temp");
+    qInfo() << r8;
+    EXPECT_EQ(r8.first, true);
+    EXPECT_EQ(r8.second, QDir::tempPath());
+
+    auto r9 = linglong::util::getXdgDir("runtime");
+    qInfo() << r9;
+    EXPECT_EQ(r9.first, true);
+    EXPECT_EQ(r9.second, QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation));
+
+    auto r10 = linglong::util::getXdgDir("cxx");
+    qInfo() << r10;
+    EXPECT_EQ(r10.first, false);
+    EXPECT_EQ(r10.second, "");
 }

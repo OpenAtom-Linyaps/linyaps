@@ -125,7 +125,7 @@ QStringList convertSpecialCharacters(const QStringList &args)
 static QMap<QString, QString> const USER_DIR_MAP = {
     {"desktop", QStandardPaths::writableLocation(QStandardPaths::DesktopLocation)},
     {"documents", QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)},
-    {"download", QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)},
+    {"downloads", QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)},
     {"music", QStandardPaths::writableLocation(QStandardPaths::MusicLocation)},
     {"pictures", QStandardPaths::writableLocation(QStandardPaths::PicturesLocation)},
     {"picture", QStandardPaths::writableLocation(QStandardPaths::PicturesLocation)},
@@ -151,6 +151,13 @@ QPair<bool, QString> getXdgDir(QString name)
     }
     return {false, ""};
 
+}
+
+QList<QString> getXdgUserDir(){
+    if(USER_DIR_MAP.isEmpty()){
+        return QList<QString>();
+    }
+    return USER_DIR_MAP.keys();
 }
 
 } // namespace util

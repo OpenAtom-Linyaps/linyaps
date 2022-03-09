@@ -15,11 +15,12 @@
     "camera": true,
     "audio_record": true,
     "installed_apps": true,
-    "filesystem": [
-      "xdg-downloads",
-      "xdg-documnets",
-      "sys-media"
-    ]
+    "filesystem": {
+      "user": {
+        "desktop":"rw",
+        "documents":"r"
+      }
+    }
   },
   "plugins": [
     "plugin/webbrowser"

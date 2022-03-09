@@ -36,6 +36,7 @@ set(LL_TEST_SOURCES
     ../src/module/runtime/oci.h
     ../src/module/runtime/container.h
     ../src/module/package/package.h
+    ../src/module/package/info.h
     ../src/module/package/package.cpp
     ../src/service/impl/qdbus_retmsg.h
     ../src/module/util/sysinfo.cpp
@@ -62,6 +63,7 @@ add_executable(ll-test
                repohelper_test.cpp
                qt_json.cpp
                qt_yaml.cpp
+               qt_json_permission.cpp
                package_manager_test.cpp
                singleton_test.cpp
                app_status_test.cpp

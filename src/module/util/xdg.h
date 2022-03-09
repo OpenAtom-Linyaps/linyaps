@@ -44,6 +44,12 @@ QStringList convertSpecialCharacters(const QStringList &args);
  */
 QPair<bool, QString> getXdgDir(QString name);
 
+/*!
+ * \brief getXdgUserDir get user dir by xdg key list
+ * \return QList<QString> 目录列表
+ *
+ */
+QList<QString> getXdgUserDir();
 
 } // namespace util
 } // namespace linglong

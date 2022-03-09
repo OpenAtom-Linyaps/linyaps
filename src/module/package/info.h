@@ -21,6 +21,54 @@
 namespace linglong {
 namespace package {
 
+/**
+ * @brief User The Info class
+ *
+ * 包信息类
+ */
+class User : public JsonSerialize
+{
+    Q_OBJECT
+    Q_JSON_CONSTRUCTOR(User)
+    Q_JSON_PROPERTY(QString, desktop);
+    Q_JSON_PROPERTY(QString, documents);
+    Q_JSON_PROPERTY(QString, downloads);
+    Q_JSON_PROPERTY(QString, music);
+    Q_JSON_PROPERTY(QString, pictures);
+    Q_JSON_PROPERTY(QString, videos);
+    Q_JSON_PROPERTY(QString, templates);
+};
+/*!
+ * \brief The Info class
+ * \details 文件系统挂载权限信息
+ */
+class Filesystem : public JsonSerialize
+{
+    Q_OBJECT
+    Q_JSON_CONSTRUCTOR(Filesystem)
+    Q_JSON_PTR_PROPERTY(User, user);
+};
+
+/*!
+ * \brief The Info class
+ * \details 权限信息类
+ */
+class Permission : public JsonSerialize
+{
+    Q_OBJECT
+    Q_JSON_CONSTRUCTOR(Permission)
+    Q_JSON_PROPERTY(bool, autostart);
+    Q_JSON_PROPERTY(bool, notification);
+    Q_JSON_PROPERTY(bool, trayicon);
+    Q_JSON_PROPERTY(bool, clipboard);
+    Q_JSON_PROPERTY(bool, account);
+    Q_JSON_PROPERTY(bool, bluetooth);
+    Q_JSON_PROPERTY(bool, camera);
+    Q_JSON_ITEM_MEMBER(bool, audioRecord, audio_record);
+    Q_JSON_ITEM_MEMBER(bool, installedApps, installed_apps);
+    Q_JSON_PTR_PROPERTY(Filesystem, filesystem);
+};
+
 /*!
  * Info is the data of /opt/apps/{package-id}/info.json. The spec can get from here:
  * https://doc.chinauos.com/content/M7kCi3QB_uwzIp6HyF5J
@@ -41,12 +89,19 @@ public:
     // ref of runtime
     Q_JSON_PROPERTY(QString, runtime);
     Q_JSON_PROPERTY(QString, base);
+
+    // permissions
+    Q_JSON_PTR_PROPERTY(Permission, permissions);
+
 };
 
 } // namespace package
 } // namespace linglong
 
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::package, Info)
+Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::package, Permission)
+Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::package, Filesystem)
+Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::package, User)
 
 // inline QDBusArgument &operator<<(QDBusArgument &argument, const linglong::package::Info &message)
 //{

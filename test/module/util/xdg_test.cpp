@@ -65,7 +65,7 @@ TEST(Module_Util, Xdg01)
     EXPECT_EQ(r2.first, true);
     EXPECT_EQ(r2.second, QDir::homePath() + "/Documents");
 
-    auto r3 = linglong::util::getXdgDir("download");
+    auto r3 = linglong::util::getXdgDir("downloads");
     qInfo() << r3;
     EXPECT_EQ(r3.first, true);
     EXPECT_EQ(r3.second, QDir::homePath() + "/Downloads");

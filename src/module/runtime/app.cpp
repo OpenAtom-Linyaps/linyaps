@@ -188,6 +188,8 @@ public:
             r->annotations->native = new AnnotationsNativeRootfs(r->annotations);
         }
 
+        r->annotations->dbusProxyInfo = new DBusProxy(r->annotations);
+
         QList<QPair<QString, QString>> mountMap;
 
         if (useThinRuntime) {

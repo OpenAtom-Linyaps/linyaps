@@ -112,6 +112,20 @@ class AnnotationsNativeRootfs : public JsonSerialize
 };
 Q_JSON_DECLARE_PTR_METATYPE(AnnotationsNativeRootfs)
 
+class DBusProxy : public JsonSerialize
+{
+    Q_OBJECT;
+    Q_JSON_CONSTRUCTOR(DBusProxy)
+    Q_JSON_PROPERTY(bool, enable);
+    Q_JSON_PROPERTY(QString, busType);
+    Q_JSON_ITEM_MEMBER(QString, appID, appId);
+    Q_JSON_PROPERTY(QString, proxyPath);
+    Q_JSON_PROPERTY(QStringList, name);
+    Q_JSON_PROPERTY(QStringList, path);
+    Q_JSON_PROPERTY(QStringList, interface);
+};
+Q_JSON_DECLARE_PTR_METATYPE(DBusProxy)
+
 class Annotations : public JsonSerialize
 {
     Q_OBJECT;
@@ -119,6 +133,8 @@ class Annotations : public JsonSerialize
     Q_JSON_PROPERTY(QString, containerRootPath);
     Q_JSON_PTR_PROPERTY(AnnotationsOverlayfsRootfs, overlayfs);
     Q_JSON_PTR_PROPERTY(AnnotationsNativeRootfs, native);
+
+    Q_JSON_PTR_PROPERTY(DBusProxy, dbusProxyInfo);
 };
 Q_JSON_DECLARE_PTR_METATYPE(Annotations)
 
@@ -150,6 +166,9 @@ inline void registerAllOciMetaType()
     qJsonRegister<Runtime>();
     qJsonRegister<Process>();
     qJsonRegister<IdMap>();
+
+    // add by hqh
+    qJsonRegister<DBusProxy>();
 
     qJsonRegister<Annotations>();
     qJsonRegister<AnnotationsOverlayfsRootfs>();

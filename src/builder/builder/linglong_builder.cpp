@@ -322,7 +322,7 @@ util::Error LinglongBuilder::build()
 
         util::removeDir(project->config().cacheAbsoluteFilePath({"overlayfs"}));
 
-        r->annotations->overlayfs->lower_parent = project->config().cacheAbsoluteFilePath({"overlayfs", "lp"});
+        r->annotations->overlayfs->lowerParent = project->config().cacheAbsoluteFilePath({"overlayfs", "lp"});
         r->annotations->overlayfs->workdir = project->config().cacheAbsoluteFilePath({"overlayfs", "wk"});
         r->annotations->overlayfs->upper = project->config().cacheAbsoluteFilePath({"overlayfs", "up"});
     }
@@ -357,7 +357,7 @@ util::Error LinglongBuilder::build()
 
         r->annotations->overlayfs->mounts.push_back(m);
     }
-    r->annotations->container_root_path = container->workingDirectory;
+    r->annotations->containerRootPath = container->workingDirectory;
 
     auto containerSourcePath = "/source";
 

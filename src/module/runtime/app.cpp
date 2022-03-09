@@ -172,11 +172,11 @@ public:
         }
 
         r->annotations = new Annotations(r);
-        r->annotations->container_root_path = container->workingDirectory;
+        r->annotations->containerRootPath = container->workingDirectory;
 
         if (fuseMount) {
             r->annotations->overlayfs = new AnnotationsOverlayfsRootfs(r->annotations);
-            r->annotations->overlayfs->lower_parent =
+            r->annotations->overlayfs->lowerParent =
                 QStringList {container->workingDirectory, ".overlayfs", "lower_parent"}.join("/");
             r->annotations->overlayfs->upper =
                 QStringList {container->workingDirectory, ".overlayfs", "upper"}.join("/");

@@ -97,7 +97,7 @@ class AnnotationsOverlayfsRootfs : public JsonSerialize
 {
     Q_OBJECT;
     Q_JSON_CONSTRUCTOR(AnnotationsOverlayfsRootfs)
-    Q_JSON_PROPERTY(QString, lower_parent);
+    Q_JSON_PROPERTY(QString, lowerParent);
     Q_JSON_PROPERTY(QString, upper);
     Q_JSON_PROPERTY(QString, workdir);
     Q_JSON_PROPERTY(MountList, mounts);
@@ -116,7 +116,7 @@ class Annotations : public JsonSerialize
 {
     Q_OBJECT;
     Q_JSON_CONSTRUCTOR(Annotations)
-    Q_JSON_PROPERTY(QString, container_root_path);
+    Q_JSON_PROPERTY(QString, containerRootPath);
     Q_JSON_PTR_PROPERTY(AnnotationsOverlayfsRootfs, overlayfs);
     Q_JSON_PTR_PROPERTY(AnnotationsNativeRootfs, native);
 };
@@ -154,7 +154,6 @@ inline void registerAllOciMetaType()
     qJsonRegister<Annotations>();
     qJsonRegister<AnnotationsOverlayfsRootfs>();
     qJsonRegister<AnnotationsNativeRootfs>();
-
 }
 } // namespace runtime
 } // namespace linglong

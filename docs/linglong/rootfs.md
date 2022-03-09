@@ -6,7 +6,7 @@ The example of annotations is：
 
 ```json
   "annotations": {
-    "container_root_path": "/run/user/1000/linglong/375f5681145f4f4f9ffeb3a67aebd444",
+    "containerRootPath": "/run/user/1000/linglong/375f5681145f4f4f9ffeb3a67aebd444",
     "native": {
       "mounts": [
         {
@@ -86,4 +86,4 @@ The example of annotations is：
 
 The ll-box support two method to build rootfs, use native ro bind mount or with overlayfs. 
 
-`container_root_path` is the work directory of ll-box.
+`containerRootPath` is the work directory of ll-box.

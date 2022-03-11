@@ -544,6 +544,9 @@ public:
         // todo:后续360整改
         // 参考：https://gitlabwh.uniontech.com/wuhan/se/deepin-specifications/-/blob/master/unstable/%E5%BA%94%E7%94%A8%E6%95%B0%E6%8D%AE%E7%9B%AE%E5%BD%95%E8%A7%84%E8%8C%83.md
         auto appRef = linglong::package::Ref(q->package->ref);
+        //获取runtime安装路径
+        auto runtimeRef = linglong::package::Ref(q->runtime->ref);
+        auto runtimeInstallRoot = repo->rootOfLayer(runtimeRef);
 
         if (QString("com.360.browser-stable") == appRef.appId) {
             // FIXME: 需要一个所有用户都有可读可写权限的目录
@@ -567,6 +570,17 @@ public:
             m.options = QStringList {"rw", "rbind"};
             m.source = util::getUserFile(dir);
             m.destination = util::getUserFile(dir);
+            r->mounts.push_back(&m);
+        }
+
+        //挂载runtime的xdg-open和xdg-email到沙箱/usr/bin下
+        auto xdgFileDirList = QStringList {"xdg-open","xdg-email"};
+        for (auto dir : xdgFileDirList) {
+            Mount &m = *new Mount(r);
+            m.type = "bind";
+            m.options = QStringList {"rbind"};
+            m.source = runtimeInstallRoot + "/usr/bin/" + dir;
+            m.destination = "/usr/bin/" + dir;
             r->mounts.push_back(&m);
         }
         return 0;

@@ -252,10 +252,13 @@ public:
             "/runtime/lib/i386-linux-gnu",
         };
         r->process->env.push_back("LD_LIBRARY_PATH=" + fixLdLibraryPath.join(":"));
-        r->process->env.push_back("QT_PLUGIN_PATH=/runtime/lib/x86_64-linux-gnu/qt5/plugins:/usr/lib/x86_64-linux-gnu/qt5/plugins");
-        r->process->env.push_back("QT_QPA_PLATFORM_PLUGIN_PATH=/runtime/lib/x86_64-linux-gnu/qt5/plugins/platforms:/usr/lib/x86_64-linux-gnu/qt5/plugins/platforms");
+        r->process->env.push_back(
+            "QT_PLUGIN_PATH=/runtime/lib/x86_64-linux-gnu/qt5/plugins:/usr/lib/x86_64-linux-gnu/qt5/plugins");
+        r->process->env.push_back(
+            "QT_QPA_PLATFORM_PLUGIN_PATH=/runtime/lib/x86_64-linux-gnu/qt5/plugins/platforms:/usr/lib/x86_64-linux-gnu/qt5/plugins/platforms");
         r->process->env.push_back("QTWEBENGINEPROCESS_PATH=/runtime/lib/x86_64-linux-gnu/qt5/libexec");
-        r->process->env.push_back("QTWEBENGINERESOURCE_PATH=/runtime/share/qt5/translations:/runtime/share/qt5/resources");
+        r->process->env.push_back(
+            "QTWEBENGINERESOURCE_PATH=/runtime/share/qt5/translations:/runtime/share/qt5/resources");
         return 0;
     }
 
@@ -387,13 +390,14 @@ public:
 
         // mount dde-api
         // TODO ：主题相关，后续dde是否写成标准? 或者 此相关应用（如欢迎）不使用玲珑格式。
-        auto ddeApiPath = util::ensureUserDir({".cache","deepin","dde-api"});
-        roMountMap.push_back(qMakePair(ddeApiPath,ddeApiPath));
+        auto ddeApiPath = util::ensureUserDir({".cache", "deepin", "dde-api"});
+        roMountMap.push_back(qMakePair(ddeApiPath, ddeApiPath));
 
         // mount ~/.config/dconf
-        // TODO: 所有应用主题相关设置数据保存在~/.config/dconf/user 中，是否安全？一个应用沙箱中可以读取其他应用设置数据？
-        // issues: https://gitlabwh.uniontech.com/wuhan/v23/linglong/linglong/-/issues/72
-        auto dconfPath = util::ensureUserDir({".config","dconf"});
+        // TODO: 所有应用主题相关设置数据保存在~/.config/dconf/user
+        // 中，是否安全？一个应用沙箱中可以读取其他应用设置数据？ issues:
+        // https://gitlabwh.uniontech.com/wuhan/v23/linglong/linglong/-/issues/72
+        auto dconfPath = util::ensureUserDir({".config", "dconf"});
         roMountMap.push_back(qMakePair(dconfPath, dconfPath));
 
         QString xauthority = getenv("XAUTHORITY");
@@ -426,7 +430,7 @@ public:
         xdgDataDirs.append(qEnvironmentVariable("XDG_DATA_DIRS", "/usr/local/share:/usr/share"));
         r->process->env.push_back("XDG_DATA_DIRS=" + xdgDataDirs.join(":"));
 
-        //add env XDG_CONFIG_HOME XDG_CACHE_HOME
+        // add env XDG_CONFIG_HOME XDG_CACHE_HOME
         r->process->env.push_back("XDG_CONFIG_HOME=" + util::getUserFile(".config"));
         r->process->env.push_back("XDG_CACHE_HOME=" + util::getUserFile(".cache"));
 
@@ -434,7 +438,7 @@ public:
         r->process->env.push_back("XDG_DATA_HOME=" + util::getUserFile(".linglong/" + appId + "/share"));
 
         auto bypassENV = [&](const char *constEnv) {
-            if (qEnvironmentVariableIsSet(constEnv)){
+            if (qEnvironmentVariableIsSet(constEnv)) {
                 r->process->env.push_back(QString(constEnv) + "=" + getenv(constEnv));
             }
         };
@@ -454,12 +458,12 @@ public:
                                "CLUTTER_IM_MODULE",
                                "QT4_IM_MODULE",
                                "GTK_IM_MODULE",
-                               "auto_proxy",    //网络系统代理自动代理
-                               "http_proxy",    //网络系统代理手动http代理
-                               "https_proxy",   //网络系统代理手动https代理
-                               "ftp_proxy",     //网络系统代理手动ftp代理
-                               "SOCKS_SERVER",  //网络系统代理手动socks代理
-                               "no_proxy"};     //网络系统代理手动配置代理
+                               "auto_proxy", //网络系统代理自动代理
+                               "http_proxy", //网络系统代理手动http代理
+                               "https_proxy", //网络系统代理手动https代理
+                               "ftp_proxy", //网络系统代理手动ftp代理
+                               "SOCKS_SERVER", //网络系统代理手动socks代理
+                               "no_proxy"}; //网络系统代理手动配置代理
 
         for (auto &env : envList) {
             bypassENV(env.toStdString().c_str());

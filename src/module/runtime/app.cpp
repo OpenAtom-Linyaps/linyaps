@@ -458,12 +458,14 @@ public:
                                "CLUTTER_IM_MODULE",
                                "QT4_IM_MODULE",
                                "GTK_IM_MODULE",
-                               "auto_proxy", //网络系统代理自动代理
-                               "http_proxy", //网络系统代理手动http代理
-                               "https_proxy", //网络系统代理手动https代理
-                               "ftp_proxy", //网络系统代理手动ftp代理
-                               "SOCKS_SERVER", //网络系统代理手动socks代理
-                               "no_proxy"}; //网络系统代理手动配置代理
+                               "auto_proxy",    //网络系统代理自动代理
+                               "http_proxy",    //网络系统代理手动http代理
+                               "https_proxy",   //网络系统代理手动https代理
+                               "ftp_proxy",     //网络系统代理手动ftp代理
+                               "SOCKS_SERVER",  //网络系统代理手动socks代理
+                               "no_proxy",      //网络系统代理手动配置代理
+                               "USER"           //wine应用会读取此环境变量
+        };
 
         for (auto &env : envList) {
             bypassENV(env.toStdString().c_str());

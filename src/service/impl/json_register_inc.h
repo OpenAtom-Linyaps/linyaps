@@ -15,8 +15,14 @@
 #include "module/package/package.h"
 #include "qdbus_retmsg.h"
 
+namespace linglong {
+namespace service {
+
 inline void registerAllMetaType()
 {
     qJsonRegister<RetMessage>();
     qDBusRegisterMetaType<ParamStringMap>();
 }
+
+} // namespace service
+} // namespace linglong

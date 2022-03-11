@@ -477,7 +477,7 @@ util::Error LinglongBuilder::run()
         return NewError(-1, "checkout runtime files failed");
     }
 
-    auto app = App::load(&repo, project->ref(), BuilderConfig::instance()->exec(), false);
+    auto app = runtime::App::load(&repo, project->ref(), BuilderConfig::instance()->exec(), false);
     if (nullptr == app) {
         return NewError(-1, "load App::load failed");
     }

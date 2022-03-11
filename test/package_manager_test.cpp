@@ -67,7 +67,7 @@ TEST(Package, install01)
     std::thread startQdbus(start_ll_service);
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    registerAllMetaType();
+    linglong::service::registerAllMetaType();
     linglong::package::registerAllMetaType();
 
     ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager",

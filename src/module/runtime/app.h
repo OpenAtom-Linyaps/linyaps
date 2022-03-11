@@ -19,7 +19,9 @@ namespace repo {
 class Repo;
 }
 } // namespace linglong
-// namespace linglong
+
+namespace linglong {
+namespace runtime {
 
 class Layer : public JsonSerialize
 {
@@ -27,7 +29,6 @@ class Layer : public JsonSerialize
     Q_JSON_CONSTRUCTOR(Layer)
     Q_JSON_PROPERTY(QString, ref);
 };
-Q_JSON_DECLARE_PTR_METATYPE(Layer)
 
 /*!
  * Permission: base for run, you can use full run or let it empty
@@ -38,7 +39,6 @@ class Permission : public JsonSerialize
     Q_JSON_CONSTRUCTOR(Permission)
     Q_JSON_PROPERTY(QStringList, mounts);
 };
-Q_JSON_DECLARE_PTR_METATYPE(Permission)
 
 class AppPrivate;
 class App : public JsonSerialize
@@ -66,4 +66,10 @@ private:
     QScopedPointer<AppPrivate> dd_ptr;
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), App)
 };
-Q_JSON_DECLARE_PTR_METATYPE(App)
+
+} // namespace runtime
+} // namespace linglong
+
+Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::runtime, Layer)
+Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::runtime, Permission)
+Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::runtime, App)

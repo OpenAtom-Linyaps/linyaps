@@ -51,7 +51,7 @@ public:
     {
     }
 
-    QMap<QString, QPointer<App>> apps;
+    QMap<QString, QPointer<runtime::App>> apps;
 
     PackageManager *q_ptr = nullptr;
 
@@ -264,13 +264,13 @@ RetMessageList PackageManager::Start(const QString &packageId, const ParamString
 
         bool isFlatpakApp = !paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT);
 
-        auto app = App::load(&d->repo, ref, desktopExec, isFlatpakApp);
+        auto app = runtime::App::load(&d->repo, ref, desktopExec, isFlatpakApp);
         if (nullptr == app) {
             // FIXME: set job status to failed
             qCritical() << "nullptr" << app;
             return;
         }
-        d->apps[app->container()->id] = QPointer<App>(app);
+        d->apps[app->container()->id] = QPointer<runtime::App>(app);
         app->start();
     });
     return retMsg;

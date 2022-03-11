@@ -35,6 +35,8 @@
 #define LL_TOSTRING(str) LL_VAL(str)
 
 using namespace linglong;
+namespace linglong {
+namespace runtime {
 
 class AppPrivate
 {
@@ -613,17 +615,64 @@ public:
 
         // TODO: remove to util module as file_template.cpp
 
+        // permission load
+        QMap<QString, QString> permissionMountsMap;
+
+        auto permissionUserMounts = info->permissions->filesystem->user;
+        if (permissionUserMounts != nullptr) {
+            auto permVariant = toVariant<linglong::package::User>(permissionUserMounts);
+            auto loadPermissionMap = permVariant.toMap();
+            if (!loadPermissionMap.empty()) {
+                QStringList userTypeList = linglong::util::getXdgUserDir();
+                for (const auto &it : loadPermissionMap.keys()) {
+                    auto itValue = loadPermissionMap.value(it).toString();
+                    if (itValue != "" && (itValue == "r" || itValue == "rw" || itValue == "ro")
+                        && userTypeList.indexOf(it) != -1) {
+                        permissionMountsMap.insert(it, itValue);
+                    }
+                }
+            }
+        }
+
         QFile templateFile(":/app.yaml");
         templateFile.open(QIODevice::ReadOnly);
         auto templateData = templateFile.readAll();
         foreach (auto const &k, variables.keys()) {
             templateData.replace(QString("@%1@").arg(k).toLocal8Bit(), variables.value(k).toLocal8Bit());
         }
+
+        // permission data to yaml
+        QString permissionMountsData;
+        if (!permissionMountsMap.empty()) {
+            permissionMountsData += "\npermissions:";
+            permissionMountsData += "\n  mounts:";
+            for (auto const &it : permissionMountsMap.keys()) {
+                auto sourceDir = util::getXdgDir(it);
+                if (sourceDir.first) {
+                    QString optionStr = permissionMountsMap.value(it) == "rw" ? "rw,bind" : "";
+                    if (optionStr == "") {
+                        permissionMountsData +=
+                            QString("\n    - source: %2\n      dest: %3").arg(sourceDir.second).arg(sourceDir.second);
+                    } else {
+                        permissionMountsData +=
+                            QString("\n    - type: bind\n      options: %1\n      source: %2\n      dest: %3")
+                                .arg(optionStr)
+                                .arg(sourceDir.second)
+                                .arg(sourceDir.second);
+                    }
+                } else {
+                    continue;
+                }
+            }
+            permissionMountsData += "\n";
+        }
         templateFile.close();
 
         QFile configFile(configPath);
         configFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
         configFile.write(templateData);
+        if (!permissionMountsData.isEmpty())
+            configFile.write(permissionMountsData.toLocal8Bit());
         configFile.close();
 
         return configPath;
@@ -739,3 +788,6 @@ Container *App::container() const
 }
 
 App::~App() = default;
+
+}
+}

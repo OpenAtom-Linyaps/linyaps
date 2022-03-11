@@ -24,10 +24,11 @@
 #include "module/runtime/runtime.h"
 #include "module/util/xdg.h"
 
-static void qJsonRegisterAll(){
-    registerAllMetaType();
+static void qJsonRegisterAll()
+{
     linglong::package::registerAllMetaType();
     linglong::runtime::registerAllMetaType();
+    linglong::service::registerAllMetaType();
 }
 
 void printFlatpakAppInfo(AppMetaInfoList retMsg)

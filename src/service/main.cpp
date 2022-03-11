@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
     linglong::package::registerAllMetaType();
 
     // register qdbus type
-    registerAllMetaType();
+    linglong::service::registerAllMetaType();
 
     QDBusConnection dbus = QDBusConnection::sessionBus();
     if (!dbus.registerService("com.deepin.linglong.AppManager")) {

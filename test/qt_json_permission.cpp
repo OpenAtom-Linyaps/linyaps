@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
  *
  * Author:     Heysion <heysion@deepin.com>
  *

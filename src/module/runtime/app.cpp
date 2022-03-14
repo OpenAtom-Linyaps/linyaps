@@ -445,28 +445,29 @@ public:
             }
         };
 
-        QStringList envList = {"DISPLAY",
-                               "LANG",
-                               "LANGUAGE",
-                               "XAUTHORITY",
-                               "XDG_SESSION_DESKTOP",
-                               "D_DISABLE_RT_SCREEN_SCALE",
-                               "XMODIFIERS",
-                               "DESKTOP_SESSION",
-                               "DEEPIN_WINE_SCALE",
-                               "XDG_CURRENT_DESKTOP",
-                               "XIM",
-                               "XDG_SESSION_TYPE",
-                               "CLUTTER_IM_MODULE",
-                               "QT4_IM_MODULE",
-                               "GTK_IM_MODULE",
-                               "auto_proxy",    //网络系统代理自动代理
-                               "http_proxy",    //网络系统代理手动http代理
-                               "https_proxy",   //网络系统代理手动https代理
-                               "ftp_proxy",     //网络系统代理手动ftp代理
-                               "SOCKS_SERVER",  //网络系统代理手动socks代理
-                               "no_proxy",      //网络系统代理手动配置代理
-                               "USER"           //wine应用会读取此环境变量
+        QStringList envList = {
+            "DISPLAY",
+            "LANG",
+            "LANGUAGE",
+            "XAUTHORITY",
+            "XDG_SESSION_DESKTOP",
+            "D_DISABLE_RT_SCREEN_SCALE",
+            "XMODIFIERS",
+            "DESKTOP_SESSION",
+            "DEEPIN_WINE_SCALE",
+            "XDG_CURRENT_DESKTOP",
+            "XIM",
+            "XDG_SESSION_TYPE",
+            "CLUTTER_IM_MODULE",
+            "QT4_IM_MODULE",
+            "GTK_IM_MODULE",
+            "auto_proxy", //网络系统代理自动代理
+            "http_proxy", //网络系统代理手动http代理
+            "https_proxy", //网络系统代理手动https代理
+            "ftp_proxy", //网络系统代理手动ftp代理
+            "SOCKS_SERVER", //网络系统代理手动socks代理
+            "no_proxy", //网络系统代理手动配置代理
+            "USER" // wine应用会读取此环境变量
         };
 
         for (auto &env : envList) {
@@ -574,7 +575,7 @@ public:
         }
 
         //挂载runtime的xdg-open和xdg-email到沙箱/usr/bin下
-        auto xdgFileDirList = QStringList {"xdg-open","xdg-email"};
+        auto xdgFileDirList = QStringList {"xdg-open", "xdg-email"};
         for (auto dir : xdgFileDirList) {
             Mount &m = *new Mount(r);
             m.type = "bind";
@@ -632,7 +633,12 @@ public:
         // permission load
         QMap<QString, QString> permissionMountsMap;
 
-        auto permissionUserMounts = info->permissions->filesystem->user;
+        const package::User *permissionUserMounts = nullptr;
+        // old info.json load permission failed
+        permissionUserMounts = info->permissions && info->permissions->filesystem && info->permissions->filesystem->user
+                                   ? info->permissions->filesystem->user
+                                   : nullptr;
+
         if (permissionUserMounts != nullptr) {
             auto permVariant = toVariant<linglong::package::User>(permissionUserMounts);
             auto loadPermissionMap = permVariant.toMap();
@@ -803,5 +809,5 @@ Container *App::container() const
 
 App::~App() = default;
 
-}
-}
+} // namespace runtime
+} // namespace linglong

@@ -37,6 +37,7 @@ class User : public JsonSerialize
     Q_JSON_PROPERTY(QString, pictures);
     Q_JSON_PROPERTY(QString, videos);
     Q_JSON_PROPERTY(QString, templates);
+    Q_JSON_ITEM_MEMBER(QString, public_share, publicShare);
 };
 /*!
  * \brief The Info class
@@ -64,8 +65,8 @@ class Permission : public JsonSerialize
     Q_JSON_PROPERTY(bool, account);
     Q_JSON_PROPERTY(bool, bluetooth);
     Q_JSON_PROPERTY(bool, camera);
-    Q_JSON_ITEM_MEMBER(bool, audioRecord, audio_record);
-    Q_JSON_ITEM_MEMBER(bool, installedApps, installed_apps);
+    Q_JSON_ITEM_MEMBER(bool, audio_record, audioRecord);
+    Q_JSON_ITEM_MEMBER(bool, installed_apps, installedApps);
     Q_JSON_PTR_PROPERTY(Filesystem, filesystem);
 };
 

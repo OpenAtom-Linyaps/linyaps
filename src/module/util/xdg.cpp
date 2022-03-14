@@ -130,14 +130,14 @@ static QMap<QString, QString> const USER_DIR_MAP = {
     {"pictures", QStandardPaths::writableLocation(QStandardPaths::PicturesLocation)},
     {"picture", QStandardPaths::writableLocation(QStandardPaths::PicturesLocation)},
     {"videos", QStandardPaths::writableLocation(QStandardPaths::MoviesLocation)},
-    {"templates", QStandardPaths::writableLocation(QStandardPaths::TempLocation)},
+    {"templates", ""},
     {"home", QStandardPaths::writableLocation(QStandardPaths::HomeLocation)},
     {"cache", QStandardPaths::writableLocation(QStandardPaths::CacheLocation)},
     {"config", QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)},
     {"data", QStandardPaths::writableLocation(QStandardPaths::DataLocation)},
     {"runtime", QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation)},
-    {"temp", QStandardPaths::writableLocation(QStandardPaths::TempLocation)}
-};
+    {"temp", QStandardPaths::writableLocation(QStandardPaths::TempLocation)},
+    {"public_share", ""}};
 
 QPair<bool, QString> getXdgDir(QString name)
 {
@@ -148,13 +148,19 @@ QPair<bool, QString> getXdgDir(QString name)
             return {true, foundResult};
         }
         return {false, foundResult};
+    } else if (name.toLower() == "public_share") {
+        // FIXME: need read user-dirs.dirs XDG_PUBLICSHARE_DIR
+        return {true, QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/.Public"};
+    } else if (name.toLower() == "templates") {
+        // FIXME: need read user-dirs.dirs XDG_TEMPLATES_DIR
+        return {true, QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/.Templates"};
     }
     return {false, ""};
-
 }
 
-QList<QString> getXdgUserDir(){
-    if(USER_DIR_MAP.isEmpty()){
+QList<QString> getXdgUserDir()
+{
+    if (USER_DIR_MAP.isEmpty()) {
         return QList<QString>();
     }
     return USER_DIR_MAP.keys();

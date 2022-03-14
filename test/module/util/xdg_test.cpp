@@ -109,4 +109,9 @@ TEST(Module_Util, Xdg01)
     qInfo() << r10;
     EXPECT_EQ(r10.first, false);
     EXPECT_EQ(r10.second, "");
+
+    auto r11 = linglong::util::getXdgDir("public_share");
+    qInfo() << r11;
+    EXPECT_EQ(r11.first, true);
+    EXPECT_EQ(r11.second, QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/.Public");
 }

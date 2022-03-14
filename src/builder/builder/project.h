@@ -70,8 +70,7 @@ public:
     // git
     Q_JSON_PROPERTY(QString, commit);
 
-    // TODO: support multi patch file
-    Q_JSON_PROPERTY(QString, patch);
+    Q_JSON_PROPERTY(QStringList, patch);
 };
 
 class BuildManual : public JsonSerialize

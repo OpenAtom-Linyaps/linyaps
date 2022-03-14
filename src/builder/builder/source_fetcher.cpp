@@ -159,12 +159,22 @@ public:
         }
 
         // apply patch
-        if (!source->patch.isEmpty()) {
+        if (source->patch.size() == 0) {
+            qInfo() << "Nothing to patch.";
+            return NoError();
+        }
+      
+        for(auto localPatch : source->patch) {
+            if (localPatch.isEmpty()) {
+                qWarning() << "This patch is empty, check it.";
+                continue;
+            }
+            qDebug() << QString("Applying patch: %1").arg(localPatch);
             if (!runner::Runner("patch",
                                 {
                                     "-p1",
                                     "-i",
-                                    project->config().absoluteFilePath({source->patch}),
+                                    project->config().absoluteFilePath({localPatch})
                                 },
                                 -1)) {
                 return NewError(-1, "patch failed");

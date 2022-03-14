@@ -17,6 +17,7 @@
 
 #include <QCoreApplication>
 #include <QUrl>
+#include <QDir>
 #include <QTemporaryFile>
 #include <QThread>
 
@@ -220,9 +221,23 @@ int startContainer(Container *c, Runtime *r)
     return EXIT_SUCCESS;
 }
 
-Error LinglongBuilder::create(const QString &projectName)
+util::Error LinglongBuilder::create(const QString &projectName)
 {
-    return {nullptr, 0, nullptr};
+    auto projectPath = QStringList {QDir::currentPath(), projectName}.join("/");
+    auto configFilePath = QStringList {projectPath, "linglong.yaml"}.join("/");
+
+    //TODO: 判断projectName名称合法性
+    //在当前目录创建项目文件夹
+    auto ret = QDir().mkdir(projectPath);
+    if (!ret) {
+        return NewError(-1, "project already exists");
+    }
+
+    if(!QFile::copy(":templete.yaml",configFilePath)){
+        return NewError(-1, "templete file is not found");
+    }
+
+    return NoError();
 }
 
 util::Error LinglongBuilder::build()

@@ -1,0 +1,36 @@
+#Package metadata.
+package:
+  id: org.deepin.demo #Unique name for this package.
+  version: 0.0.0.1 #Package version.
+  kind: app #Package type. Such as app, lib and runtime.
+  description: This is a demo. #Shot description for this package.
+
+#Base enviriment for build.
+base:
+  id: org.deepin.base #Unique name for base.
+  version: 20.0.0 #Base version.
+
+#Common enviriment for build and running.
+#runtime:
+#  id: org.deepin.runtime #Unique name for runtime.
+#  version: 20.0.0 #Runtime version.
+
+#Private library for build.
+#depends:
+#  - id: #Unique name of depends.
+#    version: #Depends version.
+
+#Package source info.
+source:
+  kind: archive #Source type. Such as git and archive.
+  url: https://pools.uniontech.com/org.deepin.demo.tar.xz #Source url. It is used to fetch source code.
+  version: 0.0.0.1 #Source version.
+#  commit: #Git reference. If the kind is archive, we don't need this item.
+#  patch: #Source pacth. This will applyed to the source.
+
+#Build rules.
+build:
+  kind: #Build type. Such as manual...
+  manual:
+    configure:|
+    echo "Building start." #Shell Command to build source.

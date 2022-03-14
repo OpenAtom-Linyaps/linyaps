@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
+        <file>templete.yaml</file>
         <file>org.deepin.demo/project.conf</file>
         <file>org.deepin.demo/elements/export.bst</file>
         <file>org.deepin.demo/elements/demo.bst</file>

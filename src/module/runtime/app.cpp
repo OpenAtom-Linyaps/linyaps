@@ -506,32 +506,38 @@ public:
     {
         Q_Q(const App);
 
-        if (!q->permission) {
+        if (!q->permissions || q->permissions->mounts.isEmpty()) {
+            // not found permission static mount
             return 0;
         }
 
-        QMap<QString, std::function<QString()>> replacementMap = {
-            {"${HOME}", []() -> QString { return util::getUserFile(""); }},
-        };
+        // static mount
+        for (const auto &mount : q->permissions->mounts) {
+            auto &m = *new Mount(r);
 
-        auto pathPreprocess = [&](QString path) -> QString {
-            auto keys = replacementMap.keys();
-            for (const auto &key : keys) {
-                path.replace(key, (replacementMap.value(key))());
+            // illegal mount rules
+            if (mount->source.isEmpty() || mount->destination.isEmpty()) {
+                continue;
             }
-            return path;
-        };
+            // fix default type
+            if (mount->type.isEmpty()) {
+                m.type = "bind";
+            } else {
+                m.type = mount->type;
+            }
 
-        //    TODO: debug mount for developer
-        for (const auto &mount : q->permission->mounts) {
-            Mount &m = *new Mount(r);
-            m.type = "bind";
-            m.options = QStringList {"rbind"};
-            auto component = mount.split(":");
-            m.source = pathPreprocess(component.value(0));
-            m.destination = pathPreprocess(component.value(1));
+            // fix default options
+            if (mount->options.isEmpty()) {
+                m.options = QStringList({"ro", "rbind"});
+            } else {
+                m.options = mount->options.split(",");
+            }
+
+            m.source = mount->source;
+            m.destination = mount->destination;
             r->mounts.push_back(&m);
-            qDebug() << "mount app" << m.source << m.destination;
+
+            qDebug() << "add static mount:" << mount->source << " => " << mount->destination;
         }
 
         return 0;
@@ -562,6 +568,7 @@ public:
 
         // 临时默认挂载用户相关目录
         // todo: 后续加权限后整改
+        // Fixme: modify static mount that after this comment code.
         auto usrDirList =
             QStringList {"Desktop", "Documents", "Downloads", "Music", "Pictures", "Videos", ".Public", ".Templates"};
         for (auto dir : usrDirList) {
@@ -663,18 +670,19 @@ public:
         // permission data to yaml
         QString permissionMountsData;
         if (!permissionMountsMap.empty()) {
-            permissionMountsData += "\npermissions:";
+            permissionMountsData += "\n\npermissions:";
             permissionMountsData += "\n  mounts:";
             for (auto const &it : permissionMountsMap.keys()) {
                 auto sourceDir = util::getXdgDir(it);
                 if (sourceDir.first) {
-                    QString optionStr = permissionMountsMap.value(it) == "rw" ? "rw,bind" : "";
+                    QString optionStr = permissionMountsMap.value(it) == "rw" ? "rw,rbind" : "";
                     if (optionStr == "") {
-                        permissionMountsData +=
-                            QString("\n    - source: %2\n      dest: %3").arg(sourceDir.second).arg(sourceDir.second);
+                        permissionMountsData += QString("\n    - source: %2\n      destination: %3")
+                                                    .arg(sourceDir.second)
+                                                    .arg(sourceDir.second);
                     } else {
                         permissionMountsData +=
-                            QString("\n    - type: bind\n      options: %1\n      source: %2\n      dest: %3")
+                            QString("\n    - type: bind\n      options: %1\n      source: %2\n      destination: %3")
                                 .arg(optionStr)
                                 .arg(sourceDir.second)
                                 .arg(sourceDir.second);

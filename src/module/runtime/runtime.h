@@ -22,10 +22,10 @@ inline void registerAllMetaType()
 {
     registerAllOciMetaType();
 
-    qJsonRegister<App>();
     qJsonRegister<Layer>();
-    qJsonRegister<Permission>();
-
+    qJsonRegister<MountYaml>();
+    qJsonRegister<AppPermission>();
+    qJsonRegister<App>();
     qJsonRegister<Container>();
 }
 

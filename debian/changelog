@@ -1,3 +1,23 @@
+linglong (1.2.7-1) unstable; urgency=medium
+
+  * 1. add xdg key to dir path.
+  * 2. update build docs.
+  * 3. add permissions on pachage info struct.
+  * 4. format app.cpp.
+  * 5. rename json fields.
+  * 6. add env USER.
+  * 7. app loadconfig load user filesystem permission.
+  * 8. mount bind xdg-open and xdg-email.
+  * 9. add xdg publicshare dir.
+  * 10. fix old info.json miss permission.
+  * 11. add dbus proxy.
+  * 12. add cli update function.
+  * 13. implement ll-builder create function.
+  * 14. add document for builder.
+  * 15. QtWebEngineProcess env.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Tue, 15 Mar 2022 09:46:52 +0800
+
 linglong (1.2.6-1) unstable; urgency=medium
 
   * 1. fix wine app launch failed.

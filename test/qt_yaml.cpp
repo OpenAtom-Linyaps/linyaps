@@ -12,8 +12,28 @@
 
 #include "qt_yaml.h"
 
+TEST(LL, YAML_NS)
+{
+    qJsonRegister<linglong::test::MountRule>();
+    qJsonRegister<linglong::test::Permission>();
+    qJsonRegister<linglong::test::App>();
+
+    auto path = "../../test/data/demo/app.yml";
+    YAML::Node doc = YAML::LoadFile(path);
+
+    auto app = formYaml<linglong::test::App>(doc);
+
+    EXPECT_EQ(app->permissions->mounts.value(0)->type, "test_type");
+}
+
 TEST(LL, YAML)
 {
+    qJsonRegister<Namespace>();
+    qJsonRegister<TestMount>();
+    qJsonRegister<TestPermission>();
+    qJsonRegister<Root>();
+    qJsonRegister<TestApp>();
+
     auto path = "../../test/data/demo/app.yml";
     YAML::Node doc = YAML::LoadFile(path);
 
@@ -25,6 +45,8 @@ TEST(LL, YAML)
     EXPECT_EQ(app->mounts.length(), 3);
     EXPECT_EQ(app->root->readonly, false);
     EXPECT_EQ(app->root->path, "/run/user/1000/linglong/ab24ae64edff4ddfa8e6922eb29e2baf");
+
+    EXPECT_EQ(app->permissions->mounts.value(0)->type, "test_type");
 
     app->deleteLater();
 

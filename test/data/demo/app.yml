@@ -31,6 +31,11 @@ root:
   readonly: false
   path: /run/user/1000/linglong/ab24ae64edff4ddfa8e6922eb29e2baf
 
+permissions:
+  mounts:
+    - type: test_type
+      source: test_source
+
 namespaces:
   - type: pid
   - type: uts

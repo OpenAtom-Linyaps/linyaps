@@ -10,8 +10,8 @@
 
 #include "job.h"
 
-#include <QtConcurrent/QtConcurrentRun>
-#include <QDBusConnection>
+// #include <QtConcurrent/QtConcurrentRun>
+// #include <QDBusConnection>
 
 class JobPrivate
 {
@@ -26,15 +26,10 @@ public:
     int progress;
 };
 
-Job::Job(const std::function<void(Job *)> &f, QObject *parent)
-    : QObject(parent)
-    , dd_ptr(new JobPrivate(this))
+Job::Job(std::function<void()> f, QObject *parent)
+    :func(f)
+    ,dd_ptr(new JobPrivate(this))
 {
-    QtConcurrent::run([=]() {
-        f(this);
-        Q_EMIT this->Finish();
-        this->deleteLater();
-    });
 }
 
 int Job::Progress() const
@@ -46,6 +41,13 @@ int Job::Progress() const
 QString Job::Status() const
 {
     return QString();
+}
+
+void Job::run()
+{
+    func();
+    Q_EMIT this->Finish();
+    this->deleteLater();
 }
 
 Job::~Job() = default;

@@ -10,26 +10,27 @@
 
 #pragma once
 
-#include <QObject>
 #include <QScopedPointer>
-#include <QDBusContext>
+#include <QThread>
 
 class JobPrivate;
-class Job : public QObject
-    , protected QDBusContext
+class Job : public QThread
 {
     Q_OBJECT
-    Q_CLASSINFO("D-Bus Interface", "com.deepin.linglong.Job")
 public:
-    Job(const std::function<void(Job *jr)> &f, QObject *parent);
+    Job(std::function<void()> f, QObject *parent);
     ~Job() override;
 
 public Q_SLOTS:
     QString Status() const;
     int Progress() const;
+    void run();
 
 Q_SIGNALS: // SIGNALS
     void Finish();
+
+public:
+    std::function<void()> func;
 
 private:
     QScopedPointer<JobPrivate> dd_ptr;

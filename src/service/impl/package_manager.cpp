@@ -246,7 +246,7 @@ RetMessageList PackageManager::Start(const QString &packageId, const ParamString
 {
     Q_D(PackageManager);
 
-    qDebug() << "start package" << packageId;
+    qInfo() << "start package" << packageId;
 
     RetMessageList retMsg;
     auto info = QPointer<RetMessage>(new RetMessage);
@@ -275,7 +275,7 @@ RetMessageList PackageManager::Start(const QString &packageId, const ParamString
         retMsg.push_back(info);
         return retMsg;
     }
-    JobManager::instance()->CreateJob([=](Job *jr) {
+    JobManager::instance()->CreateJob([=]() {
         // 判断是否存在
         package::Ref ref("", packageId, version, hostArch());
 

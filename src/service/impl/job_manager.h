@@ -30,7 +30,7 @@ class JobManager : public QObject
     friend class Dtk::Core::DSingleton<JobManager>;
 
 public:
-    QString CreateJob(std::function<void(Job *job)> f);
+    QString CreateJob(std::function<void()> f);
 
 public Q_SLOTS:
     QStringList List() { return {}; };

@@ -15,7 +15,6 @@
 #include <QUuid>
 
 #include "job.h"
-#include "jobadaptor.h"
 
 class JobManagerPrivate
 {
@@ -32,16 +31,12 @@ JobManager::JobManager() = default;
 
 JobManager::~JobManager() = default;
 
-QString JobManager::CreateJob(std::function<void(Job *)> f)
+QString JobManager::CreateJob(std::function<void()> f)
 {
     auto jobID = QUuid::createUuid().toString(QUuid::Id128);
     auto jobPath = "/com/deepin/linglong/Job/List/" + jobID;
     auto jr = new Job(f, this);
-
-    // auto free with jr
-    new JobAdaptor(jr);
-
-    QDBusConnection::sessionBus().registerObject(jobPath, jr);
+    jr->start();
 
     return jobID;
 }

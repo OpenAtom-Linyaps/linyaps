@@ -51,5 +51,12 @@ QPair<bool, QString> getXdgDir(QString name);
  */
 QList<QString> getXdgUserDir();
 
+/*!
+ * \brief getPathInXdgUserConfig  get xdg key in config file
+ * \return QString xdg path 如果为空，表示没有找到
+ *
+ */
+QString getPathInXdgUserConfig(const QString &key);
+
 } // namespace util
 } // namespace linglong

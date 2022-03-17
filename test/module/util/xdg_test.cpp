@@ -115,3 +115,26 @@ TEST(Module_Util, Xdg01)
     EXPECT_EQ(r11.first, true);
     EXPECT_EQ(r11.second, QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/.Public");
 }
+
+TEST(Module_Util, Xdg02)
+{
+    QString r1 = "XDG_DESKTOP_DIR";
+    auto r1XdgPath = getPathInXdgUserConfig(r1);
+    qInfo() << r1XdgPath;
+    EXPECT_EQ(r1XdgPath, QStandardPaths::writableLocation(QStandardPaths::DesktopLocation));
+
+    QString r2 = "XDG_DOCUMENTS_DIR";
+    auto r2XdgPath = getPathInXdgUserConfig(r2);
+    qInfo() << r2XdgPath;
+    EXPECT_EQ(r2XdgPath, QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
+
+    QString r3 = "XXXX";
+    auto r3XdgPath = getPathInXdgUserConfig(r3);
+    qInfo() << r3;
+    EXPECT_EQ(r3XdgPath, "");
+
+    QString r4 = "XDG_PUBLICSHARE_DIR";
+    auto r4XdgPath = getPathInXdgUserConfig(r4);
+    qInfo() << r4;
+    EXPECT_EQ(r4XdgPath, QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/.Public");
+}

@@ -13,6 +13,7 @@
 #include <QDir>
 #include <QMap>
 #include <QStandardPaths>
+#include <QDebug>
 
 namespace linglong {
 namespace util {
@@ -139,21 +140,45 @@ static QMap<QString, QString> const USER_DIR_MAP = {
     {"temp", QStandardPaths::writableLocation(QStandardPaths::TempLocation)},
     {"public_share", ""}};
 
+inline bool checkPathIsExists(const QString &name)
+{
+    if (!name.isEmpty()) {
+        QFileInfo fileInfo(name);
+        if (fileInfo.exists()) {
+            return true;
+        }
+        return false;
+    } else {
+        return false;
+    }
+}
+
 QPair<bool, QString> getXdgDir(QString name)
 {
+    // mostly check cache map first
+    // after process the special key find in user-dirs.dirs config file
     auto foundResult = USER_DIR_MAP.value(name.toLower(), "");
+
     if (!foundResult.isEmpty()) {
-        QFileInfo fileInfo(foundResult);
-        if (fileInfo.exists()) {
-            return {true, foundResult};
-        }
-        return {false, foundResult};
+        return {checkPathIsExists(foundResult), foundResult};
     } else if (name.toLower() == "public_share") {
-        // FIXME: need read user-dirs.dirs XDG_PUBLICSHARE_DIR
-        return {true, QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/.Public"};
+#if QT_VERSION >= QT_VERSION_CHECK(6, 4, 0)
+        auto publicSharePath = QStandardPaths::writableLocation(QStandardPaths::PublicShareLocation);
+        return {checkPathIsExists(publicSharePath), publicSharePath};
+#else
+        // read user-dirs.dirs XDG_PUBLICSHARE_DIR
+        auto publicSharePath = getPathInXdgUserConfig("XDG_PUBLICSHARE_DIR");
+        return {checkPathIsExists(publicSharePath), publicSharePath};
+#endif
     } else if (name.toLower() == "templates") {
-        // FIXME: need read user-dirs.dirs XDG_TEMPLATES_DIR
-        return {true, QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/.Templates"};
+#if QT_VERSION >= QT_VERSION_CHECK(6, 4, 0)
+        auto templatesPath = QStandardPaths::writableLocation(QStandardPaths::TemplatesLocation);
+        return {checkPathIsExists(templatesPath), templatesPath};
+#else
+        // read user-dirs.dirs XDG_TEMPLATES_DIR
+        auto templatesPath = getPathInXdgUserConfig("XDG_TEMPLATES_DIR");
+        return {checkPathIsExists(templatesPath), templatesPath};
+#endif
     }
     return {false, ""};
 }
@@ -164,6 +189,47 @@ QList<QString> getXdgUserDir()
         return QList<QString>();
     }
     return USER_DIR_MAP.keys();
+}
+
+QString getPathInXdgUserConfig(const QString &key)
+{
+    auto userDirPath = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/user-dirs.dirs";
+
+    // check user-dirs.dirs file
+    QFile userDirFile(userDirPath);
+    if (!userDirFile.exists()) {
+        qDebug() << "user-dirs.dirs not found";
+        return "";
+    }
+
+    // read user-dirs.dirs file
+    if (!userDirFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qDebug() << "user-dirs.dirs open failed";
+        return "";
+    }
+
+    // load data for user-dirs.dirs file
+    auto originData = userDirFile.readAll();
+    for (auto const &line : originData.split('\n')) {
+        // search spec key
+        if (line.startsWith(key.toStdString().c_str())) {
+            auto readLine = line.split('=');
+            if(readLine.size() != 2) {
+                continue;
+            }
+            auto specLine = readLine.at(1);
+            if (specLine.isEmpty()) {
+                return "";
+            }
+
+            // convert  xdg path to local path
+            auto specData = QString(specLine);
+            specData.replace("$HOME", QStandardPaths::writableLocation(QStandardPaths::HomeLocation));
+            specData.replace("\"", "");
+            return specData;
+        }
+    }
+    return "";
 }
 
 } // namespace util

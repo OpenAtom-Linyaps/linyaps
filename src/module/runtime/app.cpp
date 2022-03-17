@@ -432,8 +432,10 @@ public:
         r->process->env.push_back("XDG_DATA_DIRS=" + xdgDataDirs.join(":"));
 
         // add env XDG_CONFIG_HOME XDG_CACHE_HOME
-        r->process->env.push_back("XDG_CONFIG_HOME=" + util::getUserFile(".config"));
-        r->process->env.push_back("XDG_CACHE_HOME=" + util::getUserFile(".cache"));
+        // set env XDG_CONFIG_HOME=$(HOME)/.linglong/$(appId)/config
+        r->process->env.push_back("XDG_CONFIG_HOME=" + util::getUserFile(".linglong/" + appId + "/config"));
+        // set env XDG_CACHE_HOME=$(HOME)/.linglong/$(appId)/cache
+        r->process->env.push_back("XDG_CACHE_HOME=" + util::getUserFile(".linglong/" + appId + "/cache"));
 
         // set env XDG_DATA_HOME=$(HOME)/.linglong/$(appId)/share
         r->process->env.push_back("XDG_DATA_HOME=" + util::getUserFile(".linglong/" + appId + "/share"));

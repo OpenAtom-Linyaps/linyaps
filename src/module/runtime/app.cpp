@@ -345,6 +345,18 @@ public:
         // bind /run/usr/$(uid)/pulse
         mountMap.push_back(qMakePair(userRuntimeDir + "/pulse", userRuntimeDir + "/pulse"));
 
+        // 处理摄像头挂载问题
+        // bind /run/udev    /dev/video*
+        if(linglong::util::dirExists("/run/udev")){
+            mountMap.push_back(qMakePair(QString("run/udev"),QString("run/udev")));
+        }
+        auto videoFileList = QDir("/dev").entryList({"video*"},QDir::System);
+        if(!videoFileList.isEmpty()){
+            for(auto video : videoFileList){
+                mountMap.push_back(qMakePair(QString("/dev/" + video),QString("/dev/" + video)));
+            }
+        }
+
         auto hostAppHome = util::ensureUserDir({".linglong", appId, "home"});
         mountMap.push_back(qMakePair(hostAppHome, util::getUserFile("")));
 

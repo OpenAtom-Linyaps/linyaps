@@ -54,7 +54,7 @@ public Q_SLOTS:
 
     QString Import(const QStringList &packagePathList);
 
-    RetMessageList Start(const QString &packageId, const ParamStringMap &paramMap = {});
+    RetMessageList Start(const linglong::service::PackageManagerOptionList &options);
     RetMessageList Stop(const QString &containerId);
     ContainerList ListContainer();
 

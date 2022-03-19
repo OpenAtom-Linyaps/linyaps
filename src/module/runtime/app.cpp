@@ -28,6 +28,7 @@
 #include "module/package/info.h"
 #include "module/repo/repo.h"
 #include "module/flatpak/flatpak_manager.h"
+#include "module/util/env.h"
 
 #define LINGLONG 118
 
@@ -256,10 +257,14 @@ public:
             "/runtime/lib/i386-linux-gnu",
         };
         r->process->env.push_back("LD_LIBRARY_PATH=" + fixLdLibraryPath.join(":"));
-        r->process->env.push_back("QT_PLUGIN_PATH=/runtime/lib/x86_64-linux-gnu/qt5/plugins:/usr/lib/x86_64-linux-gnu/qt5/plugins");
-        r->process->env.push_back("QT_QPA_PLATFORM_PLUGIN_PATH=/runtime/lib/x86_64-linux-gnu/qt5/plugins/platforms:/usr/lib/x86_64-linux-gnu/qt5/plugins/platforms");
-        r->process->env.push_back("QTWEBENGINEPROCESS_PATH=/runtime/lib/x86_64-linux-gnu/qt5/libexec/QtWebEngineProcess");
-        r->process->env.push_back("QTWEBENGINERESOURCE_PATH=/runtime/share/qt5/translations:/runtime/share/qt5/resources");
+        r->process->env.push_back(
+            "QT_PLUGIN_PATH=/runtime/lib/x86_64-linux-gnu/qt5/plugins:/usr/lib/x86_64-linux-gnu/qt5/plugins");
+        r->process->env.push_back(
+            "QT_QPA_PLATFORM_PLUGIN_PATH=/runtime/lib/x86_64-linux-gnu/qt5/plugins/platforms:/usr/lib/x86_64-linux-gnu/qt5/plugins/platforms");
+        r->process->env.push_back(
+            "QTWEBENGINEPROCESS_PATH=/runtime/lib/x86_64-linux-gnu/qt5/libexec/QtWebEngineProcess");
+        r->process->env.push_back(
+            "QTWEBENGINERESOURCE_PATH=/runtime/share/qt5/translations:/runtime/share/qt5/resources");
         return 0;
     }
 
@@ -425,13 +430,32 @@ public:
             r->mounts.push_back(&m);
             qDebug() << "mount app" << m.source << m.destination;
         }
+
+        //处理环境变量
+        for (auto key : paramMap.keys()) {
+            if (linglong::util::envList.contains(key)) {
+                r->process->env.push_back(key + "=" + paramMap[key]);
+            }
+        }
         auto appRef = package::Ref(q_ptr->package->ref);
         auto appBinaryPath = QStringList {"/opt/apps", appRef.appId, "files/bin"}.join("/");
         if (useFlatpakRuntime) {
             appBinaryPath = "/app/bin";
         }
-        r->process->env.push_back("PATH=" + appBinaryPath + ":" + "/runtime/bin" + ":" + getenv("PATH"));
-        r->process->env.push_back("HOME=" + util::getUserFile(""));
+
+        //特殊处理env PATH
+        if (paramMap.contains("PATH")) {
+            r->process->env.removeAt(r->process->env.indexOf("^PATH="));
+            r->process->env.push_back("PATH=" + appBinaryPath + ":" + "/runtime/bin" + ":" + paramMap["PATH"]);
+        } else {
+            r->process->env.push_back("PATH=" + appBinaryPath + ":" + "/runtime/bin" + ":" + getenv("PATH"));
+        }
+
+        //特殊处理env HOME
+        if (!paramMap.contains("HOME")) {
+            r->process->env.push_back("HOME=" + util::getUserFile(""));
+        }
+
         r->process->env.push_back("XDG_RUNTIME_DIR=" + userRuntimeDir);
         r->process->env.push_back("DBUS_SESSION_BUS_ADDRESS=unix:path=" + util::jonsPath({userRuntimeDir, "bus"}));
 
@@ -452,40 +476,6 @@ public:
         // set env XDG_DATA_HOME=$(HOME)/.linglong/$(appId)/share
         r->process->env.push_back("XDG_DATA_HOME=" + util::getUserFile(".linglong/" + appId + "/share"));
 
-        auto bypassENV = [&](const char *constEnv) {
-            if (qEnvironmentVariableIsSet(constEnv)) {
-                r->process->env.push_back(QString(constEnv) + "=" + getenv(constEnv));
-            }
-        };
-
-        QStringList envList = {
-            "DISPLAY",
-            "LANG",
-            "LANGUAGE",
-            "XAUTHORITY",
-            "XDG_SESSION_DESKTOP",
-            "D_DISABLE_RT_SCREEN_SCALE",
-            "XMODIFIERS",
-            "DESKTOP_SESSION",
-            "DEEPIN_WINE_SCALE",
-            "XDG_CURRENT_DESKTOP",
-            "XIM",
-            "XDG_SESSION_TYPE",
-            "CLUTTER_IM_MODULE",
-            "QT4_IM_MODULE",
-            "GTK_IM_MODULE",
-            "auto_proxy", //网络系统代理自动代理
-            "http_proxy", //网络系统代理手动http代理
-            "https_proxy", //网络系统代理手动https代理
-            "ftp_proxy", //网络系统代理手动ftp代理
-            "SOCKS_SERVER", //网络系统代理手动socks代理
-            "no_proxy", //网络系统代理手动配置代理
-            "USER" // wine应用会读取此环境变量
-        };
-
-        for (auto &env : envList) {
-            bypassENV(env.toStdString().c_str());
-        }
         qDebug() << r->process->env;
         r->process->cwd = util::getUserFile("");
 
@@ -721,6 +711,7 @@ public:
 
     bool useFlatpakRuntime = false;
     QString desktopExec = nullptr;
+    ParamStringMap paramMap;
 
     Container *container = nullptr;
     Runtime *r = nullptr;
@@ -826,6 +817,15 @@ Container *App::container() const
 {
     Q_D(const App);
     return d->container;
+}
+
+void App::saveUserEnvList(const QStringList &userEnvList)
+{
+    Q_D(App);
+    for(auto env : userEnvList){
+        auto sepPos = env.indexOf("=");
+        d->paramMap.insert(env.left(sepPos),env.right(env.length() - sepPos - 1));
+    }
 }
 
 App::~App() = default;

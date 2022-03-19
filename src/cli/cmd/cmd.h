@@ -15,3 +15,5 @@
 void showContainer(const ContainerList &list, const QString &format);
 
 int namespaceEnter(pid_t pid, const QStringList &args);
+
+QStringList getUserEnv(const QStringList &envList);

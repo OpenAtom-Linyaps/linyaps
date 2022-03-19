@@ -41,6 +41,7 @@ enum class RetCode {
     PushBundleFailed,           //推送uab包失败
 
     user_input_param_err = 600,
+    user_env_list_err,
     pkg_already_installed,
     pkg_not_installed,
     host_arch_not_recognized,

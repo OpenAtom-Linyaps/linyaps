@@ -28,6 +28,7 @@ inline void registerAllMetaType()
     qJsonRegister<RetMessage>();
     qDBusRegisterMetaType<ParamStringMap>();
     qJsonRegister<PackageManagerOption>();
+    qJsonRegister<RunParamOption>();
 }
 
 } // namespace service

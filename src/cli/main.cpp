@@ -24,10 +24,12 @@
 #include "package_manager.h"
 #include "module/runtime/runtime.h"
 #include "module/util/xdg.h"
+#include "module/util/env.h"
 
 using linglong::service::PackageManagerOption;
 using linglong::service::PackageManagerOptionList;
 using linglong::service::wrapOption;
+using linglong::service::RunParamOption;
 
 static void qJsonRegisterAll()
 {
@@ -181,20 +183,17 @@ int main(int argc, char **argv)
              }
 
              // appId format: org.deepin.calculator/1.2.6 in multi-version
-             QMap<QString, QString> paramMap;
-             QStringList appInfoList = appId.split("/");
-             if (appInfoList.size() > 1) {
-                 paramMap.insert(linglong::util::KEY_VERSION, appInfoList.at(1));
-             }
-             if (!repoType.isEmpty()) {
-                 paramMap.insert(linglong::util::KEY_REPO_POINT, repoType);
-             }
 
-             if (!exec.isEmpty()) {
-                 paramMap.insert(linglong::util::KEY_EXEC, exec);
-             }
+             QPointer<PackageManagerOption> pmOpt(new PackageManagerOption);
+             pmOpt->runParamOption = QPointer<RunParamOption>(new RunParamOption);
 
-             QDBusPendingReply<RetMessageList> reply = pm.Start(appInfoList.at(0), paramMap);
+             // 获取用户环境变量
+             pmOpt->runParamOption->envList = getUserEnv(linglong::util::envList);
+             pmOpt->ref = appId;
+             pmOpt->runParamOption->exec = exec;
+             pmOpt->runParamOption->repoPoint = repoType;
+
+             QDBusPendingReply<RetMessageList> reply = pm.Start(wrapOption(pmOpt));
              reply.waitForFinished();
              RetMessageList retMsg = reply.value();
              if (retMsg.size() > 0) {
@@ -206,6 +205,10 @@ int main(int argc, char **argv)
                  }
                  std::cout << std::endl;
              }
+
+             // delete new pointer
+             delete pmOpt->runParamOption;
+             delete pmOpt;
 
              // TODO
              //        QFile f(configPath);

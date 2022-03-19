@@ -78,6 +78,8 @@ public:
 
     int start();
 
+    void saveUserEnvList(const QStringList &userEnvList);
+
 private:
     QScopedPointer<AppPrivate> dd_ptr;
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), App)

@@ -237,32 +237,47 @@ QString PackageManager::Import(const QStringList &packagePathList)
 /*
  * 执行软件包
  *
- * @param packageId: 软件包的appId
- * @param paramMap: 运行参数信息
+ * @param opts: 软件包运行参数
  *
  * @return RetMessageList: 运行结果信息
  */
-RetMessageList PackageManager::Start(const QString &packageId, const ParamStringMap &paramMap)
+RetMessageList PackageManager::Start(const linglong::service::PackageManagerOptionList &opts)
 {
     Q_D(PackageManager);
-
-    qInfo() << "start package" << packageId;
 
     RetMessageList retMsg;
     auto info = QPointer<RetMessage>(new RetMessage);
 
-    // 获取版本信息
-    QString version = "";
-    if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_VERSION)) {
-        version = paramMap[linglong::util::KEY_VERSION];
+    //获取user env list
+    auto option = linglong::service::unwrapOption(opts);
+    if (option.isNull()) {
+        sendErrorReply(QDBusError::InvalidArgs,
+                       NewError(static_cast<int>(RetCode::user_input_param_err), "package list empty").toJson());
+    }
+    if (option->runParamOption->envList.isEmpty()) {
+        sendErrorReply(QDBusError::InvalidArgs,
+                       NewError(static_cast<int>(RetCode::user_env_list_err), "get usr env list err").toJson());
     }
 
-    //获取exec参数
-    QString desktopExec;
-    desktopExec.clear();
-    if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_EXEC)) {
-        desktopExec = paramMap[linglong::util::KEY_EXEC];
+    auto appRef = package::Ref(option->ref);
+
+    // 获取appId
+    const QString packageId = appRef.appId;
+
+    // 获取版本信息
+    QString version = appRef.version;
+    if ("latest" == version) {
+        version = "";
     }
+
+    // 获取envList
+    auto envList = option->runParamOption->envList;
+
+    // 获取exec参数
+    auto desktopExec = option->runParamOption->exec;
+
+    // 获取repoPoint
+    auto repoPoint = option->runParamOption->repoPoint;
 
     // 判断是否已安装
     QString err = "";
@@ -279,7 +294,7 @@ RetMessageList PackageManager::Start(const QString &packageId, const ParamString
         // 判断是否存在
         package::Ref ref("", packageId, version, hostArch());
 
-        bool isFlatpakApp = !paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT);
+        bool isFlatpakApp = !repoPoint.isNull() && !repoPoint.isEmpty();
 
         auto app = runtime::App::load(&d->repo, ref, desktopExec, isFlatpakApp);
         if (nullptr == app) {
@@ -287,6 +302,7 @@ RetMessageList PackageManager::Start(const QString &packageId, const ParamString
             qCritical() << "nullptr" << app;
             return;
         }
+        app->saveUserEnvList(envList);
         d->apps[app->container()->id] = QPointer<runtime::App>(app);
         app->start();
     });

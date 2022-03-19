@@ -2,6 +2,7 @@ set(LL_CLI_SOURCES
     main.cpp
     cmd/exec.cpp
     cmd/ps.cpp
+    cmd/get_env.cpp
     ../module/flatpak/flatpak_manager.cpp
     ../module/util/json.h
     ../module/runtime/oci.h

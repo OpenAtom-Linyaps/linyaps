@@ -32,6 +32,8 @@ public:
     util::Error push(const QString &bundleFilePath, bool force) override;
 
     util::Error run() override;
+
+    util::Error initRepo();
 };
 
 } // namespace builder

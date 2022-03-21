@@ -136,6 +136,38 @@ package::Ref fuzzyRef(const JsonSerialize *obj)
     return ref;
 }
 
+util::Error LinglongBuilder::initRepo()
+{
+    // if local ostree is not exist, create and init it
+    if (!QDir(BuilderConfig::instance()->ostreePath()).exists()) {
+        util::ensureDir(BuilderConfig::instance()->ostreePath());
+
+        repo::OSTree repo(BuilderConfig::instance()->repoPath());
+
+        auto ret = repo.init("bare-user-only");
+        if (!ret.success()) {
+            return NewError(-1, "init ostree repo failed");
+        }
+
+        QString defaultRepoName = "repo";
+        QString configUrl = "";
+
+        int statusCode = G_HTTPCLIENT->getLocalConfig("appDbUrl", configUrl);
+        if (Status::StatusCode::SUCCESS != statusCode) {
+            return NewError() << "call getLocalConfig api failed";
+        }
+
+        QString repoUrl = QStringList {configUrl, "ostree"}.join("/");
+
+        ret = repo.remoteAdd(defaultRepoName, repoUrl);
+        if (!ret.success()) {
+            return NewError(-1, "add ostree remote failed");
+        }
+    }
+
+    return NoError();
+}
+
 class BuilderContainer
 {
 public:
@@ -243,6 +275,11 @@ util::Error LinglongBuilder::create(const QString &projectName)
 util::Error LinglongBuilder::build()
 {
     util::Error ret(NoError());
+
+    ret = initRepo();
+    if (!ret.success()) {
+        return NewError(-1, "load local repo failed");
+    }
 
     auto projectConfigPath = QStringList {BuilderConfig::instance()->projectRoot(), "linglong.yaml"}.join("/");
     QScopedPointer<Project> project(formYaml<Project>(YAML::LoadFile(projectConfigPath.toStdString())));

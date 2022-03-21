@@ -130,7 +130,23 @@ util::Error OSTree::push(const package::Bundle &bundle, bool force)
 
 util::Error OSTree::pull(const package::Ref &ref, bool force)
 {
-    return NoError();
+    Q_D(OSTree);
+    //Fixme: remote name maybe not repo and there should support multiple remote
+    return WrapError(d->ostreeRun({"pull", "repo", "--mirror", ref.toString()}));
+}
+
+util::Error OSTree::init(const QString &mode)
+{
+    Q_D(OSTree);
+
+    return WrapError(d->ostreeRun({"init", mode}));
+}
+
+util::Error OSTree::remoteAdd(const QString &repoName, const QString &repoUrl)
+{
+    Q_D(OSTree);
+
+    return WrapError(d->ostreeRun({"remote", "add", "--no-gpg-verify", repoName, repoUrl}));
 }
 
 OSTree::OSTree(const QString &path)

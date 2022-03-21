@@ -38,6 +38,9 @@ public:
     explicit OSTree(const QString &path);
 
     ~OSTree() override;
+    util::Error init(const QString &repoMode);
+
+    util::Error remoteAdd(const QString &repoName, const QString &repoUrl);
 
     util::Error importDirectory(const package::Ref &ref, const QString &path) override;
 

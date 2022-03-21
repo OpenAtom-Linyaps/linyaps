@@ -451,9 +451,30 @@ util::Error LinglongBuilder::build()
     return NoError();
 }
 
-util::Error LinglongBuilder::exportBundle(const QString &outputFilepath)
+util::Error LinglongBuilder::exportBundle(const QString &outputFilePath)
 {
-    // TODO: export result to bundle
+    QScopedPointer<Project> project(formYaml<Project>(YAML::LoadFile("linglong.yaml")));
+
+    repo::OSTree repo(BuilderConfig::instance()->repoPath());
+
+    // checkout data from local ostree
+    auto exportPath = QStringList {BuilderConfig::instance()->projectRoot(), "export"}.join("/");
+    util::ensureDir(exportPath);
+
+    auto ret = repo.checkout(project->ref(), "", exportPath);
+    if (!ret.success()) {
+        return NewError(-1, "checkout files failed, you need build first");
+    }
+
+    // TODO: if the kind is not app, don't make bundle
+    // make bundle package
+    linglong::package::Bundle uabBundle;
+
+    auto makeBundleResult = uabBundle.make(exportPath, outputFilePath);
+    if (!makeBundleResult.success()) {
+        return NewError(makeBundleResult, -1, "make bundle failed");
+    }
+
     return NoError();
 }
 

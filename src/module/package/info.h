@@ -37,6 +37,7 @@ class User : public JsonSerialize
     Q_JSON_PROPERTY(QString, pictures);
     Q_JSON_PROPERTY(QString, videos);
     Q_JSON_PROPERTY(QString, templates);
+    Q_JSON_PROPERTY(QString, temp);
     Q_JSON_ITEM_MEMBER(QString, public_share, publicShare);
 };
 /*!

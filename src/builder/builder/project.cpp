@@ -23,6 +23,8 @@
 namespace linglong {
 namespace builder {
 
+const char *DependTypeRuntime = "runtime";
+
 const char *BuildScriptPath = "/entry.sh";
 const char *BuildCacheDirectoryName = "linglong-builder";
 

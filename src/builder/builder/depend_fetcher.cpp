@@ -23,19 +23,20 @@ namespace builder {
 class DependFetcherPrivate
 {
 public:
-    explicit DependFetcherPrivate(const BuildDepend &bd)
-        : ref(fuzzyRef(&bd))
+    explicit DependFetcherPrivate(const BuildDepend &bd, Project *parent)
+        : ref(fuzzyRef(&bd)), project(parent), dependType(bd.type)
     {
     }
+    //TODO: dependType should be removed, buildDepend include it
     package::Ref ref;
-    //    Project *project;
+    Project *project;
+    QString dependType;
 };
 
 DependFetcher::DependFetcher(const BuildDepend &bd, Project *parent)
     : QObject(parent)
-    , dd_ptr(new DependFetcherPrivate(bd))
+    , dd_ptr(new DependFetcherPrivate(bd, parent))
 {
-    //    dd_ptr->project = parent;
 }
 
 DependFetcher::~DependFetcher() = default;
@@ -56,6 +57,10 @@ util::Error DependFetcher::fetch(const QString &subPath, const QString &targetPa
     targetParentDir.mkpath(".");
 
     ret = ostree.checkout(remoteRef, subPath, targetPath);
+    //for app,lib. if the dependType match runtime, should be submitted together.
+    if (dd_ptr->dependType == DependTypeRuntime) {
+        ret = ostree.checkout(remoteRef, subPath, dd_ptr->project->config().cacheAbsoluteFilePath({"overlayfs", "lower"}));
+    }
 
     return WrapError(ret, QString("ostree checkout %1 with subpath '%2' to %3")
                               .arg(remoteRef.toLocalRefString())

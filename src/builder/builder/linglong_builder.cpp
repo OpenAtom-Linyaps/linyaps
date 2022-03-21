@@ -261,6 +261,10 @@ util::Error LinglongBuilder::build()
     }
 
     util::removeDir(project->config().cacheRuntimePath({}));
+    util::removeDir(project->config().cacheInstallPath(""));
+    util::ensureDir(project->config().cacheAbsoluteFilePath({"overlayfs"}));
+    util::ensureDir(project->config().cacheAbsoluteFilePath({"overlayfs", "lower"}));
+    util::ensureDir(project->config().cacheInstallPath(""));
 
     package::Ref baseRef("");
 

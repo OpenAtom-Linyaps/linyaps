@@ -19,6 +19,8 @@
 namespace linglong {
 namespace builder {
 
+extern const char *DependTypeRuntime;
+
 extern const char *BuildScriptPath;
 
 extern const char *PackageKindApp;
@@ -103,6 +105,7 @@ class BuildDepend : public JsonSerialize
 public:
     Q_JSON_PROPERTY(QString, id);
     Q_JSON_PROPERTY(QString, version);
+    Q_JSON_PROPERTY(QString, type);
 };
 } // namespace builder
 } // namespace linglong

@@ -478,13 +478,19 @@ util::Error LinglongBuilder::exportBundle(const QString &outputFilePath)
     return NoError();
 }
 
-util::Error LinglongBuilder::push(const QString &ref, bool force)
+util::Error LinglongBuilder::push(const QString &bundleFilePath, bool force)
 {
-    QScopedPointer<Project> project(formYaml<Project>(YAML::LoadFile("linglong.yaml")));
+    // TODO: if the kind is not app, don't push bundle
+    qInfo() << "start upload ...";
 
-    repo::OSTree repo(BuilderConfig::instance()->repoPath());
+    linglong::package::Bundle uabBundle;
 
-    return WrapError(repo.push(project->ref(), false));
+    auto pushBundleResult = uabBundle.push(bundleFilePath, force);
+    if (!pushBundleResult.success()) {
+        return NewError(pushBundleResult) << "push bundle failed!!!";
+    }
+
+    return NoError();
 }
 
 util::Error LinglongBuilder::run()

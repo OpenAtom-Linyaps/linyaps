@@ -9,25 +9,12 @@
  */
 
 #include "source_fetcher.h"
-
-#include <QEventLoop>
-#include <QFileInfo>
-#include <QUrl>
-
-#include "module/util/http_client.h"
-#include "module/util/runner.h"
-#include "module/util/fs.h"
-#include "module/util/result.h"
-
-#include "project.h"
-#include "builder_config.h"
+#include "source_fetcher_p.h"
 
 namespace linglong {
 namespace builder {
 
-const char *CompressedFileTarXz = "tar.xz";
-
-QString fixSuffix(const QFileInfo &fi)
+QString SourceFetcher::fixSuffix(const QFileInfo &fi)
 {
     if (fi.completeSuffix().endsWith(CompressedFileTarXz)) {
         return CompressedFileTarXz;
@@ -35,7 +22,7 @@ QString fixSuffix(const QFileInfo &fi)
     return fi.suffix();
 }
 
-util::Error extractFile(const QString &path, const QString &dir)
+util::Error SourceFetcher::extractFile(const QString &path, const QString &dir)
 {
     QFileInfo fi(path);
 
@@ -61,143 +48,187 @@ util::Error extractFile(const QString &path, const QString &dir)
     return NewError(-1, "unkonwn error");
 }
 
-class SourceFetcherPrivate
+SourceFetcherPrivate::SourceFetcherPrivate(Source *src, SourceFetcher *parent)
+    : project(nullptr), source(src), file(nullptr), q_ptr(parent)
 {
-public:
-    explicit SourceFetcherPrivate(Source *s)
-        : source(s)
-    {
+}
+  
+QString SourceFetcherPrivate::filename()
+{
+    QUrl url(source->url);
+    return url.fileName();
+}
+
+// TODO: use share cache for all project
+QString SourceFetcherPrivate::sourceTargetPath() const
+{
+    auto path =
+        QStringList {
+            BuilderConfig::instance()->targetSourcePath(),
+            //                source->commit,
+        }
+            .join("/");
+    util::ensureDir(path);
+    return path;
+}
+
+util::Error SourceFetcherPrivate::fetchArchiveFile()
+{
+    Q_Q(SourceFetcher);
+
+    QUrl url(source->url);
+    auto path = BuilderConfig::instance()->targetFetchCachePath() + "/" + filename();
+
+    file.reset(new QFile(path));
+    if (!file->open(QIODevice::WriteOnly)) {
+        return NewError(-1, file->errorString());
     }
 
-    QString filename()
-    {
-        QUrl url(source->url);
-        return url.fileName();
+    QNetworkRequest request;
+    request.setUrl(url);
+
+    auto reply = util::networkMgr().get(request);
+
+    QObject::connect(reply, &QNetworkReply::metaDataChanged,
+                     [this, reply]() { qDebug() << reply->header(QNetworkRequest::ContentLengthHeader); });
+
+    QObject::connect(reply, &QNetworkReply::readyRead, [this, reply]() { file->write(reply->readAll()); });
+
+    QEventLoop loop;
+    QEventLoop::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    loop.exec();
+    
+    return q->extractFile(path, sourceTargetPath());
+}
+
+// TODO: DO NOT clone all repo, see here for more:
+// https://stackoverflow.com/questions/3489173/how-to-clone-git-repository-with-specific-revision-changeset/3489576
+util::Error SourceFetcherPrivate::fetchGitRepo() const
+{
+    util::ensureDir(sourceTargetPath());
+
+    if (!QDir::setCurrent(sourceTargetPath())) {
+        return NewError(-1, QString("change to %1 failed").arg(sourceTargetPath()));
     }
 
-    // TODO: use share cache for all project
-    QString sourceTargetPath() const
-    {
-        auto path =
-            QStringList {
-                BuilderConfig::instance()->targetSourcePath(),
-                //                source->commit,
-            }
-                .join("/");
-        util::ensureDir(path);
-        return path;
+    if (!runner::Runner("git",
+                        {
+                            "clone",
+                            source->url,
+                            sourceTargetPath(),
+                        },
+                        -1)) {
+        qDebug() << NewError(-1, "git clone failed");
     }
 
-    util::Error fetchArchiveFile()
-    {
-        QUrl url(source->url);
-        auto path = BuilderConfig::instance()->targetFetchCachePath() + "/" + filename();
+    QDir::setCurrent(sourceTargetPath());
 
-        file.reset(new QFile(path));
-        if (!file->open(QIODevice::WriteOnly)) {
-            return NewError(-1, file->errorString());
-        }
-
-        QNetworkRequest request;
-        request.setUrl(url);
-
-        auto reply = util::networkMgr().get(request);
-
-        QObject::connect(reply, &QNetworkReply::metaDataChanged,
-                         [this, reply]() { qDebug() << reply->header(QNetworkRequest::ContentLengthHeader); });
-
-        QObject::connect(reply, &QNetworkReply::readyRead, [this, reply]() { file->write(reply->readAll()); });
-
-        QEventLoop loop;
-        QEventLoop::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-        loop.exec();
-
-        return extractFile(path, sourceTargetPath());
+    if (!runner::Runner("git",
+                        {
+                            "checkout",
+                            "-b",
+                            source->version,
+                            source->commit,
+                        },
+                        -1)) {
+        qDebug() << NewError(-1, "git checkout failed");
     }
 
-    // TODO: DO NOT clone all repo, see here for more:
-    // https://stackoverflow.com/questions/3489173/how-to-clone-git-repository-with-specific-revision-changeset/3489576
-    util::Error fetchGitRepo() const
-    {
-        util::ensureDir(sourceTargetPath());
+    if (!runner::Runner("git",
+                        {
+                            "reset",
+                            "--hard",
+                            source->commit,
+                        },
+                        -1)) {
+        return NewError(-1, "git reset failed");
+    }
 
-        if (!QDir::setCurrent(sourceTargetPath())) {
-            return NewError(-1, QString("change to %1 failed").arg(sourceTargetPath()));
-        }
+    return NoError();
+};
 
-        if (!runner::Runner("git",
-                            {
-                                "clone",
-                                source->url,
-                                sourceTargetPath(),
-                            },
-                            -1)) {
-            qDebug() << NewError(-1, "git clone failed");
-        }
+util::Error SourceFetcherPrivate::handleDebianPatch() const
+{
+    qInfo() << "debian source here, find debian patch ...";
 
-        QDir::setCurrent(sourceTargetPath());
+    QString patchPath = "debian/patches";
+    QString seriesPath = QStringList {patchPath, "series"}.join("/");
 
-        if (!runner::Runner("git",
-                            {
-                                "checkout",
-                                "-b",
-                                source->version,
-                                source->commit,
-                            },
-                            -1)) {
-            qDebug() << NewError(-1, "git checkout failed");
-        }
+    auto result = runner::RunnerRet("sh", {"-c", QString("cat %1 | grep -e '^[0-9:a-z:A-Z]'").arg(seriesPath)}, -1);
 
-        if (!runner::Runner("git",
-                            {
-                                "reset",
-                                "--hard",
-                                source->commit,
-                            },
-                            -1)) {
-            return NewError(-1, "git reset failed");
-        }
-
-        // apply patch
-        if (source->patch.size() == 0) {
-            qInfo() << "Nothing to patch.";
-            return NoError();
-        }
-      
-        for(auto localPatch : source->patch) {
-            if (localPatch.isEmpty()) {
-                qWarning() << "This patch is empty, check it.";
+    if (std::get<0>(result)) {
+        for (auto patchName : std::get<1>(result)) {
+            if (patchName.isEmpty()) {
+                // the data from stdout maybe null
                 continue;
             }
-            qDebug() << QString("Applying patch: %1").arg(localPatch);
-            if (!runner::Runner("patch",
-                                {
-                                    "-p1",
-                                    "-i",
-                                    project->config().absoluteFilePath({localPatch})
-                                },
-                                -1)) {
+
+            auto debianPatch = QStringList {sourceTargetPath(), patchPath, patchName}.join("/");
+
+            qDebug() << QString("applying debian patch: %1").arg(patchName);
+            if (!runner::Runner("patch", {"-p1", "-i", debianPatch}, -1)) {
                 return NewError(-1, "patch failed");
             }
         }
+    }
 
+    return NoError();
+}
+
+util::Error SourceFetcherPrivate::handleLocalPatch() const
+{
+    // apply local patch
+    qInfo() << "find local patch ...";
+    if (source->patch.size() == 0) {
+        qInfo() << "Nothing to patch.";
         return NoError();
-    };
+    }
 
-    Project *project;
-    Source *source;
-    QScopedPointer<QFile> file;
-};
+    for (auto localPatch : source->patch) {
+        if (localPatch.isEmpty()) {
+            qWarning() << "This patch is empty, check it.";
+            continue;
+        }
+        qDebug() << QString("Applying patch: %1").arg(localPatch);
+        if (!runner::Runner("patch", {"-p1", "-i", project->config().absoluteFilePath({localPatch})}, -1)) {
+            return NewError(-1, "patch failed");
+        }
+    }
+
+    return NoError();
+}
+
+util::Error SourceFetcher::patch()
+{
+    util::Error ret(NoError());
+
+    QDir::setCurrent(dd_ptr->sourceTargetPath());
+
+    // TODO: remove later
+    if (QDir("debian").exists()) {
+        WrapError(dd_ptr->handleDebianPatch());
+    }
+
+    return dd_ptr->handleLocalPatch();
+}
 
 util::Error SourceFetcher::fetch()
 {
+    util::Error ret(NoError());
+
     if (dd_ptr->source->kind == "git") {
-        return dd_ptr->fetchGitRepo();
+        ret = dd_ptr->fetchGitRepo();
     } else if (dd_ptr->source->kind == "archive") {
-        return dd_ptr->fetchArchiveFile();
+        ret = dd_ptr->fetchArchiveFile();
+    } else {
+        return NewError(-1, "unknown source kind");
     }
 
-    return NewError(-1, "unknown source kind");
+    if (!ret.success()) {
+        return ret;
+    }
+
+    return patch();
 }
 
 QString SourceFetcher::sourceRoot()
@@ -206,12 +237,14 @@ QString SourceFetcher::sourceRoot()
 }
 
 SourceFetcher::SourceFetcher(Source *s, Project *project)
-    : dd_ptr(new SourceFetcherPrivate(s))
+    : dd_ptr(new SourceFetcherPrivate(s, this))
+    ,CompressedFileTarXz("tar.xz")
 {
     dd_ptr->project = project;
 }
 
-SourceFetcher::~SourceFetcher() = default;
-
+SourceFetcher::~SourceFetcher()
+{
+}
 } // namespace builder
 } // namespace linglong

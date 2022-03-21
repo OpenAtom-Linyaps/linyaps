@@ -12,6 +12,11 @@
 #define LINGLONG_SRC_BUILDER_SOURCE_FETCHER_H_
 
 #include <QObject>
+#include <QFileInfo>
+#include <QUrl>
+
+#include "project.h"
+#include "builder_config.h"
 
 #include "module/util/result.h"
 
@@ -32,9 +37,16 @@ public:
 
     linglong::util::Error fetch();
 
+    linglong::util::Error patch();
+
+public:
+    QString fixSuffix(const QFileInfo &fi);
+    util::Error extractFile(const QString &path, const QString &dir);
+
 private:
     QScopedPointer<SourceFetcherPrivate> dd_ptr;
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), SourceFetcher)
+    const char *CompressedFileTarXz;
 };
 
 } // namespace builder

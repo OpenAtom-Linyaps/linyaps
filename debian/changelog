@@ -1,3 +1,19 @@
+linglong (1.2.8-1) unstable; urgency=medium
+
+  * 1. support mutiple patches.
+  * 2. support serialize with full namespace.
+  * 3. add D_SERIALIZE_DECLARE replace Q_JSON_DECLARE_PTR_METATYPE_NM.
+  * 4. fix app layer nullptr load for app.yaml.
+  * 5. set env XDG_CONFIG_HOME XDG_CACHE_HOME.
+  * 6. multi-threaded start.
+  * 7. add getPathInXdgUserConfig.
+  * 8. mount /dev/video*.
+  * 9. adjust the process of reading environment variables.
+  * 10. implement exportBundle function.
+  * 11. add temp directory mount api.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Tue, 22 Mar 2022 13:25:57 +0800
+
 linglong (1.2.7-1) unstable; urgency=medium
 
   * 1. add xdg key to dir path.

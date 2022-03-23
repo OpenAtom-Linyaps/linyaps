@@ -276,7 +276,6 @@ public:
             {"/usr/share/fonts", "/run/host/appearance/fonts"},
             {"/usr/share/locale/", "/usr/share/locale/"},
             {"/usr/lib/locale/", "/usr/lib/locale/"},
-            {"/usr/share/fonts", "/usr/share/fonts"},
             {"/usr/share/themes", "/usr/share/themes"},
             {"/usr/share/icons", "/usr/share/icons"},
             {"/usr/share/zoneinfo", "/usr/share/zoneinfo"},

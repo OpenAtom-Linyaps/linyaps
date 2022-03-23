@@ -29,8 +29,13 @@ class Layer : public JsonSerialize
     Q_JSON_CONSTRUCTOR(Layer)
     Q_JSON_PROPERTY(QString, ref);
 };
+} // namespace runtime
+} // namespace linglong
 
-D_SERIALIZE_DECLARE(Layer)
+Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::runtime, Layer)
+
+namespace linglong {
+namespace runtime {
 
 class MountYaml : public JsonSerialize
 {
@@ -41,9 +46,15 @@ class MountYaml : public JsonSerialize
     Q_JSON_PROPERTY(QString, source);
     Q_JSON_PROPERTY(QString, destination);
 };
+} // namespace runtime
+} // namespace linglong
 
-D_SERIALIZE_DECLARE(MountYaml)
+Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::runtime, MountYaml)
 
+//Q_JSON_DECLARE_PTR_METATYPE(MountYaml)
+
+namespace linglong {
+namespace runtime {
 /*!
  * Permission: base for run, you can use full run or let it empty
  */
@@ -54,15 +65,21 @@ class AppPermission : public JsonSerialize
     Q_JSON_PROPERTY(linglong::runtime::MountYamlList, mounts);
 };
 
-D_SERIALIZE_DECLARE(AppPermission)
+} // namespace runtime
+} // namespace linglong
+
+Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::runtime, AppPermission)
+
+namespace linglong {
+namespace runtime {
 
 class AppPrivate;
 class App : public JsonSerialize
 {
     Q_OBJECT;
     Q_JSON_PROPERTY(QString, version);
-    Q_JSON_PTR_PROPERTY(linglong::runtime::Layer, package);
-    Q_JSON_PTR_PROPERTY(linglong::runtime::Layer, runtime);
+    Q_JSON_PTR_PROPERTY(Layer, package);
+    Q_JSON_PTR_PROPERTY(Layer, runtime);
 
     // TODO: should config base mount point
     Q_JSON_PTR_PROPERTY(linglong::runtime::AppPermission, permissions);

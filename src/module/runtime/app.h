@@ -88,5 +88,4 @@ private:
 } // namespace runtime
 } // namespace linglong
 
-D_SERIALIZE_REGISTER_TYPE_NM(linglong::runtime, Layer)
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::runtime, App)

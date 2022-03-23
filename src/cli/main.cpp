@@ -206,10 +206,6 @@ int main(int argc, char **argv)
                  std::cout << std::endl;
              }
 
-             // delete new pointer
-             delete pmOpt->runParamOption;
-             delete pmOpt;
-
              // TODO
              //        QFile f(configPath);
              //        f.open(QIODevice::ReadOnly);

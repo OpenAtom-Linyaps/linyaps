@@ -417,13 +417,13 @@ public:
 
         // 处理摄像头挂载问题
         // bind /run/udev    /dev/video*
-        if(linglong::util::dirExists("/run/udev")){
-            mountMap.push_back(qMakePair(QString("run/udev"),QString("run/udev")));
+        if (linglong::util::dirExists("/run/udev")) {
+            mountMap.push_back(qMakePair(QString("run/udev"), QString("run/udev")));
         }
-        auto videoFileList = QDir("/dev").entryList({"video*"},QDir::System);
-        if(!videoFileList.isEmpty()){
-            for(auto video : videoFileList){
-                mountMap.push_back(qMakePair(QString("/dev/" + video),QString("/dev/" + video)));
+        auto videoFileList = QDir("/dev").entryList({"video*"}, QDir::System);
+        if (!videoFileList.isEmpty()) {
+            for (auto video : videoFileList) {
+                mountMap.push_back(qMakePair(QString("/dev/" + video), QString("/dev/" + video)));
             }
         }
 
@@ -510,7 +510,7 @@ public:
 
         //特殊处理env PATH
         if (envMap.contains("PATH")) {
-            r->process->env.removeAt(r->process->env.indexOf("^PATH="));
+            r->process->env.removeAt(r->process->env.indexOf(QRegExp("^PATH=.*"), 0));
             r->process->env.push_back("PATH=" + appBinaryPath + ":" + "/runtime/bin" + ":" + envMap["PATH"]);
         } else {
             r->process->env.push_back("PATH=" + appBinaryPath + ":" + "/runtime/bin" + ":" + getenv("PATH"));
@@ -895,7 +895,7 @@ void App::saveUserEnvList(const QStringList &userEnvList)
     }
 }
 
-void App::setAppParamMap(const ParamStringMap& paramMap)
+void App::setAppParamMap(const ParamStringMap &paramMap)
 {
     Q_D(App);
     d->runParamMap = paramMap;

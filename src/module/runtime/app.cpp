@@ -138,6 +138,10 @@ public:
         qDebug() << "exec" << r->process->args;
 
         bool noDbusProxy = runParamMap.contains(linglong::util::KEY_NO_PROXY);
+        if (!linglong::util::fileExists("/usr/bin/ll-dbus-proxy")) {
+            noDbusProxy = true;
+            qWarning() << "ll-dbus-proxy not installed";
+        }
         QString sessionSocketPath = "";
         if (!noDbusProxy) {
             sessionSocketPath = linglong::util::createProxySocket("session-bus-proxy-XXXXXX");

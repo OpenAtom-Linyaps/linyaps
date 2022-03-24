@@ -248,7 +248,7 @@ RetMessageList PackageManager::Start(const linglong::service::PackageManagerOpti
     RetMessageList retMsg;
     auto info = QPointer<RetMessage>(new RetMessage);
 
-    //获取user env list
+    // 获取user env list
     auto option = linglong::service::unwrapOption(opts);
     if (option.isNull()) {
         sendErrorReply(QDBusError::InvalidArgs,
@@ -260,10 +260,8 @@ RetMessageList PackageManager::Start(const linglong::service::PackageManagerOpti
     }
 
     auto appRef = package::Ref(option->ref);
-
     // 获取appId
     const QString packageId = appRef.appId;
-
     // 获取版本信息
     QString version = appRef.version;
     if ("latest" == version) {
@@ -272,13 +270,27 @@ RetMessageList PackageManager::Start(const linglong::service::PackageManagerOpti
 
     // 获取envList
     auto envList = option->runParamOption->envList;
-
     // 获取exec参数
     auto desktopExec = option->runParamOption->exec;
-
     // 获取repoPoint
     auto repoPoint = option->runParamOption->repoPoint;
 
+    ParamStringMap paramMap;
+    if (option->runParamOption->noDbusProxy) {
+        paramMap.insert(linglong::util::KEY_NO_PROXY, "");
+    }
+    if (!option->runParamOption->busType.isEmpty()) {
+        paramMap.insert(linglong::util::KEY_BUS_TYPE, option->runParamOption->busType);
+    }
+    if (!option->runParamOption->filterName.isEmpty()) {
+        paramMap.insert(linglong::util::KEY_FILTER_NAME, option->runParamOption->filterName);
+    }
+    if (!option->runParamOption->filterPath.isEmpty()) {
+        paramMap.insert(linglong::util::KEY_FILTER_PATH, option->runParamOption->filterPath);
+    }
+    if (!option->runParamOption->filterInterface.isEmpty()) {
+        paramMap.insert(linglong::util::KEY_FILTER_IFACE, option->runParamOption->filterInterface);
+    }
     // 判断是否已安装
     QString err = "";
     if (!getAppInstalledStatus(packageId, version, "", "")) {
@@ -303,6 +315,7 @@ RetMessageList PackageManager::Start(const linglong::service::PackageManagerOpti
             return;
         }
         app->saveUserEnvList(envList);
+        app->setAppParamMap(paramMap);
         d->apps[app->container()->id] = QPointer<runtime::App>(app);
         app->start();
     });

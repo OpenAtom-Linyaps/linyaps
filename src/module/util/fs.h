@@ -11,6 +11,7 @@
 #pragma once
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <iostream>
 #include <QStringList>
 #include <QString>
@@ -19,6 +20,7 @@
 #include <QDir>
 #include <QDirIterator>
 #include <QDebug>
+#include <QTemporaryFile>
 
 namespace linglong {
 namespace util {
@@ -30,6 +32,15 @@ QString getUserFile(const QString &path);
 QString ensureUserDir(const QStringList &relativeDirPathComponents);
 
 bool ensureDir(const QString &path);
+
+/*!
+ * 创建一个pattern格式的随机文件
+ *
+ * @param pattern 文件格式
+ *
+ * @return 文件路径
+ */
+QString createProxySocket(const QString &pattern);
 
 /*!
  * 判断文件是否存在

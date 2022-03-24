@@ -53,5 +53,23 @@ bool ensureDir(const QString &path)
     return true;
 }
 
+QString createProxySocket(const QString &pattern)
+{
+    auto userRuntimeDir = QString("/run/user/%1/").arg(getuid());
+    QString socketDir = userRuntimeDir + ".dbus-proxy/";
+    bool ret = util::createDir(socketDir);
+    if (!ret) {
+        qCritical() << "createProxySocket pattern:" << pattern << " failed";
+        return "";
+    }
+    QTemporaryFile tmpFile(socketDir + pattern);
+    tmpFile.setAutoRemove(false);
+    if (!tmpFile.open()) {
+        qCritical() << "create " << socketDir + pattern << " failed";
+        return "";
+    }
+    tmpFile.close();
+    return tmpFile.fileName();
+}
 } // namespace util
 } // namespace linglong

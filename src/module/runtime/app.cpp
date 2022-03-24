@@ -25,6 +25,7 @@
 #include "module/util/fs.h"
 #include "module/util/xdg.h"
 #include "module/util/desktop_entry.h"
+#include "module/util/package_manager_param.h"
 #include "module/package/info.h"
 #include "module/repo/repo.h"
 #include "module/flatpak/flatpak_manager.h"
@@ -135,6 +136,18 @@ public:
         }
 
         qDebug() << "exec" << r->process->args;
+
+        bool noDbusProxy = runParamMap.contains(linglong::util::KEY_NO_PROXY);
+        QString sessionSocketPath = "";
+        if (!noDbusProxy) {
+            sessionSocketPath = linglong::util::createProxySocket("session-bus-proxy-XXXXXX");
+            std::string pathString = sessionSocketPath.toStdString();
+            unlink(pathString.c_str());
+        }
+
+        stageDBusProxy(sessionSocketPath, !noDbusProxy);
+        qInfo() << "createProxySocket path:" << sessionSocketPath << ", noDbusProxy:" << noDbusProxy;
+        stateDBusProxyArgs(!noDbusProxy, appRef.appId, sessionSocketPath);
         return 0;
     }
 
@@ -317,6 +330,68 @@ public:
         return 0;
     }
 
+    void stateDBusProxyArgs(bool enable, const QString &appId, const QString &proxyPath)
+    {
+        r->annotations->dbusProxyInfo->appId = appId;
+        r->annotations->dbusProxyInfo->enable = enable;
+        if (!enable) {
+            return;
+        }
+        r->annotations->dbusProxyInfo->busType = runParamMap[linglong::util::KEY_BUS_TYPE];
+        r->annotations->dbusProxyInfo->proxyPath = proxyPath;
+        // FIX to do load filter from yaml
+        // FIX to do 加载用户配置参数（权限管限器上）
+        // 添加cli command运行参数
+        if (runParamMap.contains(linglong::util::KEY_FILTER_NAME)) {
+            QString name = runParamMap[linglong::util::KEY_FILTER_NAME];
+            if (!r->annotations->dbusProxyInfo->name.contains(name)) {
+                r->annotations->dbusProxyInfo->name.push_back(name);
+            }
+        }
+        if (runParamMap.contains(linglong::util::KEY_FILTER_PATH)) {
+            QString path = runParamMap[linglong::util::KEY_FILTER_PATH];
+            if (!r->annotations->dbusProxyInfo->path.contains(path)) {
+                r->annotations->dbusProxyInfo->path.push_back(path);
+            }
+        }
+        if (runParamMap.contains(linglong::util::KEY_FILTER_IFACE)) {
+            QString interface = runParamMap[linglong::util::KEY_FILTER_IFACE];
+            if (!r->annotations->dbusProxyInfo->interface.contains(interface)) {
+                r->annotations->dbusProxyInfo->interface.push_back(interface);
+            }
+        }
+    }
+
+    // Fix to do 当前仅处理session bus
+    int stageDBusProxy(const QString &socketPath, bool useDBusProxy = false)
+    {
+        QList<QPair<QString, QString>> mountMap;
+        auto userRuntimeDir = QString("/run/user/%1/").arg(getuid());
+        if (useDBusProxy) {
+            // bind dbus-proxy-user, now use session bus
+            mountMap.push_back(qMakePair(socketPath, userRuntimeDir + "/bus"));
+            // fix to do, system bus in no-proxy mode
+            mountMap.push_back(
+                qMakePair(QString("/run/dbus/system_bus_socket"), QString("/run/dbus/system_bus_socket")));
+        } else {
+            mountMap.push_back(qMakePair(userRuntimeDir + "/bus", userRuntimeDir + "/bus"));
+            mountMap.push_back(
+                qMakePair(QString("/run/dbus/system_bus_socket"), QString("/run/dbus/system_bus_socket")));
+        }
+        for (const auto &pair : mountMap) {
+            Mount &m = *new Mount(r);
+            m.type = "bind";
+            m.options = QStringList {};
+
+            m.source = pair.first;
+            m.destination = pair.second;
+            r->mounts.push_back(&m);
+            qDebug() << "mount app" << m.source << m.destination;
+        }
+
+        return 0;
+    }
+
     int stageUser(const QString &appId) const
     {
         QList<QPair<QString, QString>> mountMap;
@@ -331,19 +406,6 @@ public:
             m.destination = userRuntimeDir;
             r->mounts.push_back(&m);
             qDebug() << "mount app" << m.source << m.destination;
-        }
-
-        // FIXME: use proxy dbus
-        bool useDBusProxy = false;
-        if (useDBusProxy) {
-            // bind dbus-proxy-user, now use session bus
-            mountMap.push_back(qMakePair(userRuntimeDir + "/user-bus", userRuntimeDir + "/bus"));
-            // bind dbus-proxy
-            mountMap.push_back(qMakePair(userRuntimeDir + "/system-bus", QString("/run/dbus/system_bus_socket")));
-        } else {
-            mountMap.push_back(qMakePair(userRuntimeDir + "/bus", userRuntimeDir + "/bus"));
-            mountMap.push_back(
-                qMakePair(QString("/run/dbus/system_bus_socket"), QString("/run/dbus/system_bus_socket")));
         }
 
         // bind /run/usr/$(uid)/pulse
@@ -431,9 +493,9 @@ public:
         }
 
         //处理环境变量
-        for (auto key : paramMap.keys()) {
+        for (auto key : envMap.keys()) {
             if (linglong::util::envList.contains(key)) {
-                r->process->env.push_back(key + "=" + paramMap[key]);
+                r->process->env.push_back(key + "=" + envMap[key]);
             }
         }
         auto appRef = package::Ref(q_ptr->package->ref);
@@ -443,15 +505,15 @@ public:
         }
 
         //特殊处理env PATH
-        if (paramMap.contains("PATH")) {
+        if (envMap.contains("PATH")) {
             r->process->env.removeAt(r->process->env.indexOf("^PATH="));
-            r->process->env.push_back("PATH=" + appBinaryPath + ":" + "/runtime/bin" + ":" + paramMap["PATH"]);
+            r->process->env.push_back("PATH=" + appBinaryPath + ":" + "/runtime/bin" + ":" + envMap["PATH"]);
         } else {
             r->process->env.push_back("PATH=" + appBinaryPath + ":" + "/runtime/bin" + ":" + getenv("PATH"));
         }
 
         //特殊处理env HOME
-        if (!paramMap.contains("HOME")) {
+        if (!envMap.contains("HOME")) {
             r->process->env.push_back("HOME=" + util::getUserFile(""));
         }
 
@@ -710,7 +772,8 @@ public:
 
     bool useFlatpakRuntime = false;
     QString desktopExec = nullptr;
-    ParamStringMap paramMap;
+    ParamStringMap envMap;
+    ParamStringMap runParamMap;
 
     Container *container = nullptr;
     Runtime *r = nullptr;
@@ -807,6 +870,7 @@ int App::start()
         d->container->pid = boxPid;
         // FIXME(interactive bash): if need keep interactive shell
         waitpid(boxPid, nullptr, 0);
+        // FIXME to do 删除代理socket临时文件
     }
 
     return EXIT_SUCCESS;
@@ -821,12 +885,17 @@ Container *App::container() const
 void App::saveUserEnvList(const QStringList &userEnvList)
 {
     Q_D(App);
-    for(auto env : userEnvList){
+    for (auto env : userEnvList) {
         auto sepPos = env.indexOf("=");
-        d->paramMap.insert(env.left(sepPos),env.right(env.length() - sepPos - 1));
+        d->envMap.insert(env.left(sepPos), env.right(env.length() - sepPos - 1));
     }
 }
 
+void App::setAppParamMap(const ParamStringMap& paramMap)
+{
+    Q_D(App);
+    d->runParamMap = paramMap;
+}
 App::~App() = default;
 
 } // namespace runtime

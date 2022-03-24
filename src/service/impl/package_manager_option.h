@@ -16,7 +16,7 @@
 namespace linglong {
 namespace service {
 
-//ll-cli run args
+// ll-cli run args
 class RunParamOption : public JsonSerialize
 {
     Q_OBJECT;
@@ -25,6 +25,12 @@ class RunParamOption : public JsonSerialize
 public:
     Q_JSON_PROPERTY(QString, exec);
     Q_JSON_PROPERTY(QString, repoPoint);
+
+    Q_JSON_PROPERTY(bool, noDbusProxy);
+    Q_JSON_PROPERTY(QString, busType);
+    Q_JSON_PROPERTY(QString, filterName);
+    Q_JSON_PROPERTY(QString, filterPath);
+    Q_JSON_PROPERTY(QString, filterInterface);
     Q_JSON_PROPERTY(QStringList, envList);
 };
 
@@ -36,7 +42,7 @@ class PackageManagerOption : public JsonSerialize
 
 public:
     Q_JSON_PROPERTY(QString, ref);
-    Q_JSON_PTR_PROPERTY(RunParamOption,runParamOption);
+    Q_JSON_PTR_PROPERTY(RunParamOption, runParamOption);
 };
 
 } // namespace service

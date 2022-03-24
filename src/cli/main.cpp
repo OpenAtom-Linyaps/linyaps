@@ -154,6 +154,19 @@ int main(int argc, char **argv)
              auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
              parser.addOption(optRepoPoint);
              parser.addOption(optExec);
+
+             auto optNoProxy = QCommandLineOption("no-proxy", "whether to use dbus proxy in box", "");
+
+             auto optNameFilter = QCommandLineOption("filter-name", "dbus name filter to use",
+                                                     "--filter-name=com.deepin.linglong.AppManager", "");
+             auto optPathFilter = QCommandLineOption("filter-path", "dbus path filter to use",
+                                                     "--filter-path=/com/deepin/linglong/PackageManager", "");
+             auto optInterfaceFilter = QCommandLineOption("filter-interface", "dbus interface filter to use",
+                                                          "--filter-interface=com.deepin.linglong.PackageManager", "");
+             parser.addOption(optNoProxy);
+             parser.addOption(optNameFilter);
+             parser.addOption(optPathFilter);
+             parser.addOption(optInterfaceFilter);
              parser.process(app);
              auto repoType = parser.value(optRepoPoint);
              if ((!repoType.isEmpty() && repoType != "flatpak")) {
@@ -164,15 +177,16 @@ int main(int argc, char **argv)
              auto appId = args.value(1);
              if (appId.isEmpty()) {
                  parser.showHelp();
+                 return -1;
              }
-             auto exec = parser.value(optExec);
 
-             //转化特殊字符
+             auto exec = parser.value(optExec);
+             // 转化特殊字符
              args = linglong::util::convertSpecialCharacters(args);
 
-             //移除run appid两个参数 获取 exec 执行参数
+             // 移除run appid两个参数 获取 exec 执行参数
              // eg: ll-cli run deepin-music --exec deepin-music /usr/share/music/test.mp3
-             //    exec = "deepin-music /usr/share/music/test.mp3"
+             // exec = "deepin-music /usr/share/music/test.mp3"
              QString desktopArgs;
              desktopArgs.clear();
              if (args.length() > 2 && !exec.isEmpty()) {
@@ -182,16 +196,32 @@ int main(int argc, char **argv)
                  exec = QStringList {exec, desktopArgs}.join(" ");
              }
 
-             // appId format: org.deepin.calculator/1.2.6 in multi-version
-
              QPointer<PackageManagerOption> pmOpt(new PackageManagerOption);
              pmOpt->runParamOption = QPointer<RunParamOption>(new RunParamOption);
 
              // 获取用户环境变量
              pmOpt->runParamOption->envList = getUserEnv(linglong::util::envList);
+             // appId format: org.deepin.calculator/1.2.6 in multi-version
              pmOpt->ref = appId;
              pmOpt->runParamOption->exec = exec;
              pmOpt->runParamOption->repoPoint = repoType;
+             pmOpt->runParamOption->noDbusProxy = parser.isSet(optNoProxy);
+             if (!parser.isSet(optNoProxy)) {
+                 // FIX to do only deal with session bus
+                 pmOpt->runParamOption->busType = "session";
+                 auto nameFilter = parser.value(optNameFilter);
+                 if (!nameFilter.isEmpty()) {
+                     pmOpt->runParamOption->filterName = nameFilter;
+                 }
+                 auto pathFilter = parser.value(optPathFilter);
+                 if (!pathFilter.isEmpty()) {
+                     pmOpt->runParamOption->filterPath = pathFilter;
+                 }
+                 auto interfaceFilter = parser.value(optInterfaceFilter);
+                 if (!interfaceFilter.isEmpty()) {
+                     pmOpt->runParamOption->filterInterface = interfaceFilter;
+                 }
+             }
 
              QDBusPendingReply<RetMessageList> reply = pm.Start(wrapOption(pmOpt));
              reply.waitForFinished();

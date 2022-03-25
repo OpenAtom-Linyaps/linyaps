@@ -179,6 +179,7 @@ public:
     {
         bool useThinRuntime = true;
         bool fuseMount = false;
+        bool specialCase = false;
 
         // if use wine runtime, mount with fuse
         // FIXME(iceyer): use info.json to decide use fuse or not
@@ -189,6 +190,12 @@ public:
         if (useFlatpakRuntime) {
             fuseMount = false;
             useThinRuntime = false;
+        }
+
+        // 特殊处理帮助手册
+        if("org.deepin.manual" == appId){
+            fuseMount = true;
+            specialCase = true;
         }
 
         r->annotations = new Annotations(r);
@@ -218,11 +225,15 @@ public:
             };
 
             // FIXME(iceyer): extract for wine, remove later
-            if (fuseMount) {
+            if (fuseMount && !specialCase) {
                 // NOTE: the override should be behind host /usr
                 mountMap.push_back({runtimeRootPath + "/usr", "/usr"});
                 mountMap.push_back({runtimeRootPath + "/opt/deepinwine", "/opt/deepinwine"});
                 mountMap.push_back({runtimeRootPath + "/opt/deepin-wine6-stable", "/opt/deepin-wine6-stable"});
+            }
+            if(fuseMount && specialCase){
+                mountMap.push_back({"/deepin/linglong/layers", "/deepin/linglong/layers"});
+                mountMap.push_back({"/deepin/linglong/entries/share/deepin-manual", "/usr/share/deepin-manual"});
             }
         } else {
             if (useFlatpakRuntime) {

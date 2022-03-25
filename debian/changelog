@@ -1,3 +1,14 @@
+linglong (1.2.11-1) unstable; urgency=medium
+
+  * 1. support debian patches.
+  * 2. add dbus proxy.
+  * 3. add agent verifications.
+  * 4. fix matching rule.
+  * 5. add linglng-bin depends linglong-dbus-proxy.
+  * 6. fuse-overlays mount org.deepin.manual.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Fri, 25 Mar 2022 14:25:51 +0800
+
 linglong (1.2.10-1) unstable; urgency=medium
 
   * 1. revert fix app layer nullptr load for app.yaml.

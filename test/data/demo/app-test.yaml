@@ -1,0 +1,14 @@
+version: 1.0
+
+package:
+  ref: org.deepin.calculator/5.7.16/x86_64
+
+runtime:
+  ref: org.deepin.Runtime/20.5.0/x86_64
+
+permissions:
+  mounts:
+    - type: bind
+      options: rw,rbind
+      source: /home/linglong/Desktop
+      destination: /home/linglong/Desktop

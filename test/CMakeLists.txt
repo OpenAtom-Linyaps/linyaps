@@ -34,7 +34,11 @@ set(LL_TEST_SOURCES
     ../src/module/repo/ostree_repohelper.cpp
     ../src/module/util/json.h
     ../src/module/runtime/oci.h
-    ../src/module/runtime/container.h
+    ../src/module/runtime/container.cpp
+    ../src/module/util/uuid.cpp
+    ../src/module/util/desktop_entry.cpp
+    ../src/module/flatpak/flatpak_manager.cpp
+    ../src/module/runtime/app.cpp
     ../src/module/package/package.h
     ../src/module/package/info.h
     ../src/module/package/package.cpp
@@ -61,6 +65,7 @@ add_executable(ll-test
         module/util/xdg_test.cpp
         module/util/fs_test.cpp
         module/package/package_info_test.cpp
+        module/runtime/app_test.cpp
         httpclient_test.cpp
         repohelper_test.cpp
         qt_json.cpp

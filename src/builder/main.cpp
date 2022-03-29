@@ -14,6 +14,8 @@
 #include <QMap>
 #include <QRegExp>
 
+#include <fstream>
+
 #include "builder/project.h"
 #include "builder/builder.h"
 #include "builder/bst_builder.h"
@@ -22,6 +24,7 @@
 #include "module/package/package.h"
 #include "module/runtime/oci.h"
 #include "module/runtime/runtime.h"
+#include "module/util/yaml.h"
 
 using namespace linglong;
 
@@ -93,7 +96,13 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
 
              auto execVerbose = QCommandLineOption("exec", "run exec than build script", "exec");
+	     auto pkgVersion = QCommandLineOption("pversion", "set pacakge version", "pacakge version");
+             auto srcVersion = QCommandLineOption("sversion", "set source version", "source version");
+             auto srcCommit = QCommandLineOption("commit", "set commit refs", "source commit");
              parser.addOption(execVerbose);
+             parser.addOption(pkgVersion);
+             parser.addOption(srcVersion);
+             parser.addOption(srcCommit);
 
              parser.addPositionalArgument("build", "build project", "build");
 
@@ -102,7 +111,30 @@ int main(int argc, char **argv)
              if (parser.isSet(execVerbose)) {
                  builder::BuilderConfig::instance()->setExec(parser.value(execVerbose));
              }
+            // config linglong.yaml before build if necessary
+             if (parser.isSet(pkgVersion) || parser.isSet(srcVersion) || parser.isSet(srcCommit)) {
 
+                 auto projectConfigPath = QStringList {builder::BuilderConfig::instance()->projectRoot(), "linglong.yaml"}.join("/");
+
+                 QScopedPointer<builder::Project> project(formYaml<builder::Project>(YAML::LoadFile(projectConfigPath.toStdString())));
+                 
+                 auto node = YAML::LoadFile(projectConfigPath.toStdString());
+
+                 node["package"]["version"] = parser.value(pkgVersion).isEmpty()
+                                                 ? project->package->version.toStdString()
+                                                 : parser.value(pkgVersion).toStdString();
+
+                 node["source"]["version"] = parser.value(srcVersion).isEmpty() 
+                                                 ? project->source->version.toStdString()
+                                                 : parser.value(srcVersion).toStdString();
+
+                 node["source"]["commit"] = parser.value(srcCommit).isEmpty()
+                                                 ? project->source->commit.toStdString()
+                                                 : parser.value(srcCommit).toStdString();
+                 // fixme: use qt file stream
+                 std::ofstream fout(projectConfigPath.toStdString());
+                 fout << node;
+             }
              auto result = builder->build();
              if (!result.success()) {
                  qCritical() << result;

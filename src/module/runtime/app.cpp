@@ -88,7 +88,7 @@ public:
         stageHost();
         stageUser(appRef.appId);
         stageMount();
-        fixMount();
+        fixMount(runtimeRef.appId, fixRuntimePath, appRef.appId, appRootPath);
 
         auto envFilepath = container->workingDirectory + QString("/env");
         QFile envFile(envFilepath);
@@ -623,20 +623,16 @@ public:
         return 0;
     }
 
-    int fixMount()
+    int fixMount(const QString &runtimeId, QString runtimeRootPath, const QString &appId, QString appRootPath)
     {
         Q_Q(const App);
         // 360浏览器需要/apps-data/private/com.360.browser-stable目录可写
         // todo:后续360整改
         // 参考：https://gitlabwh.uniontech.com/wuhan/se/deepin-specifications/-/blob/master/unstable/%E5%BA%94%E7%94%A8%E6%95%B0%E6%8D%AE%E7%9B%AE%E5%BD%95%E8%A7%84%E8%8C%83.md
-        auto appRef = linglong::package::Ref(q->package->ref);
-        //获取runtime安装路径
-        auto runtimeRef = linglong::package::Ref(q->runtime->ref);
-        auto runtimeInstallRoot = repo->rootOfLayer(runtimeRef);
 
-        if (QString("com.360.browser-stable") == appRef.appId) {
+        if (QString("com.360.browser-stable") == appId) {
             // FIXME: 需要一个所有用户都有可读可写权限的目录
-            QString appDataPath = util::getUserFile(".linglong/" + appRef.appId + "/share/appdata");
+            QString appDataPath = util::getUserFile(".linglong/" + appId + "/share/appdata");
             linglong::util::ensureDir(appDataPath);
             Mount &m = *new Mount(r);
             m.type = "bind";
@@ -666,7 +662,7 @@ public:
             Mount &m = *new Mount(r);
             m.type = "bind";
             m.options = QStringList {"rbind"};
-            m.source = runtimeInstallRoot + "/usr/bin/" + dir;
+            m.source = runtimeRootPath + "/usr/bin/" + dir;
             m.destination = "/usr/bin/" + dir;
             r->mounts.push_back(&m);
         }

@@ -7,14 +7,11 @@ find_package(PkgConfig REQUIRED)
 find_package(Qt5Core REQUIRED)
 find_package(Qt5DBus REQUIRED)
 find_package(Qt5Network REQUIRED)
-find_package(DtkCore REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
 set(Qt_LIBS Qt5::Core Qt5::DBus Qt5::Network)
-set(DTK_LIBS dtkcore)
 set(LINK_LIBS
     ${Qt_LIBS}
-    ${DTK_LIBS}
     yaml-cpp
     stdc++)
 

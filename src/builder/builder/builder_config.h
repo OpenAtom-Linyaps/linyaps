@@ -12,7 +12,8 @@
 #define LINGLONG_SRC_BUILDER_BUILDER_BUILDER_CONFIG_H_
 
 #include <QString>
-#include <DSingleton>
+
+#include "module/util/singleton.h"
 
 namespace linglong {
 namespace builder {
@@ -20,9 +21,9 @@ namespace builder {
 /*!
  * Builder is the global config of the builder system
  */
-class BuilderConfig : public Dtk::Core::DSingleton<BuilderConfig>
+class BuilderConfig : public linglong::util::Singleton<BuilderConfig>
 {
-    friend class DSingleton<BuilderConfig>;
+    friend class linglong::util::Singleton<BuilderConfig>;
 
 public:
     QString repoPath() const;

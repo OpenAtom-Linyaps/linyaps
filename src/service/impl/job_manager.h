@@ -14,20 +14,20 @@
 #include <QDBusContext>
 #include <QList>
 #include <QObject>
-#include <DSingleton>
 
+#include "module/util/singleton.h"
 #include "module/runtime/container.h"
 
 class Job;
 class JobManagerPrivate;
 class JobManager : public QObject
     , protected QDBusContext
-    , public Dtk::Core::DSingleton<JobManager>
+    , public linglong::util::Singleton<JobManager>
 {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", "com.deepin.linglong.JobManager")
 
-    friend class Dtk::Core::DSingleton<JobManager>;
+    friend class linglong::util::Singleton<JobManager>;
 
 public:
     QString CreateJob(std::function<void()> f);

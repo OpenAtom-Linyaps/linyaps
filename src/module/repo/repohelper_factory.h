@@ -10,9 +10,8 @@
 
 #pragma once
 
-#include <DSingleton>
-
 #include "repohelper.h"
+#include "module/util/singleton.h"
 
 namespace linglong {
 
@@ -21,7 +20,7 @@ enum RepoType {
     LinglongRepo // uos自研
 };
 
-class RepoHelperFactory : public Dtk::Core::DSingleton<RepoHelperFactory>
+class RepoHelperFactory : public linglong::util::Singleton<RepoHelperFactory>
 {
 public:
     /*

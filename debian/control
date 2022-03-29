@@ -9,7 +9,6 @@ Build-Depends:
  libgtest-dev,
  qt5-qmake,
  qtbase5-dev,
- libdtkcore-dev,
  libarchive-dev,
  pkg-config,
  libcurl4-gnutls-dev,

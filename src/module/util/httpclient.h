@@ -12,7 +12,7 @@
 
 #include <curl/curl.h>
 #include <QString>
-#include <DSingleton>
+#include "module/util/singleton.h"
 
 namespace linglong {
 namespace util {
@@ -40,7 +40,7 @@ typedef struct _downloadRet {
 
 } DownloadRet;
 
-class HttpClient : public Dtk::Core::DSingleton<HttpClient>
+class HttpClient : public linglong::util::Singleton<HttpClient>
 {
 private:
 

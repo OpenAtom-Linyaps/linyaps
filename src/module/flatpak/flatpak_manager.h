@@ -11,13 +11,14 @@
 #ifndef LINGLONG_SRC_MODULE_FLATPAK_FLATPAK_MANAGER_H_
 #define LINGLONG_SRC_MODULE_FLATPAK_FLATPAK_MANAGER_H_
 
-#include <DSingleton>
 #include <QStringList>
+
+#include "module/util/singleton.h"
 
 namespace linglong {
 namespace flatpak {
 
-class FlatpakManager : public Dtk::Core::DSingleton<FlatpakManager>
+class FlatpakManager : public linglong::util::Singleton<FlatpakManager>
 {
 public:
     QString getAppPath(const QString &appId);
@@ -26,7 +27,7 @@ public:
 
     QStringList getAppDesktopFileList(const QString &appId);
 
-    friend class DSingleton<FlatpakManager>;
+    friend class linglong::util::Singleton<FlatpakManager>;
 };
 
 } // namespace flatpak

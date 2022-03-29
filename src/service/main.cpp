@@ -8,7 +8,6 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#include <DLog>
 #include <QCoreApplication>
 
 #include "module/runtime/app.h"
@@ -22,9 +21,6 @@ int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
     QCoreApplication::setOrganizationName("deepin");
-
-    Dtk::Core::DLogManager::registerConsoleAppender();
-    Dtk::Core::DLogManager::registerFileAppender();
 
     linglong::runtime::registerAllMetaType();
     linglong::package::registerAllMetaType();

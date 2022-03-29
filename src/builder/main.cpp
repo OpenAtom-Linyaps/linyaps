@@ -14,8 +14,6 @@
 #include <QMap>
 #include <QRegExp>
 
-#include <DLog>
-
 #include "builder/project.h"
 #include "builder/builder.h"
 #include "builder/bst_builder.h"
@@ -38,9 +36,6 @@ int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
     QCoreApplication::setOrganizationName("deepin");
-
-    Dtk::Core::DLogManager::registerConsoleAppender();
-    Dtk::Core::DLogManager::registerFileAppender();
 
     qJsonRegisterAll();
 

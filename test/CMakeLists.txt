@@ -9,14 +9,11 @@ set(CMAKE_AUTORCC ON)
 find_package(GTest REQUIRED)
 find_package(Qt5 REQUIRED COMPONENTS Core DBus Sql)
 find_package(yaml-cpp REQUIRED)
-find_package(DtkCore REQUIRED)
 find_package(CURL REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_search_module(OSTREE1 REQUIRED ostree-1)
 
 set(Qt_LIBS Qt5::Core Qt5::DBus Qt5::Sql)
-
-set(DTK_LIBS dtkcore)
 
 set(LINK_LIBS
     ${Qt_LIBS}
@@ -71,7 +68,6 @@ add_executable(ll-test
         qt_json.cpp
         qt_yaml.cpp
         package_manager_test.cpp
-        singleton_test.cpp
         app_status_test.cpp
         ${LL_TEST_SOURCES})
 

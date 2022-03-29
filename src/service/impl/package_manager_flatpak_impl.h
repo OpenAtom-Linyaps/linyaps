@@ -10,15 +10,14 @@
 
 #pragma once
 
-#include <DSingleton>
-
+#include "module/util/singleton.h"
 #include "module/package/package.h"
 #include "package_manager_proxy_base.h"
 #include "qdbus_retmsg.h"
 
 class PackageManagerFlatpakImpl
     : public PackageManagerProxyBase
-    , public Dtk::Core::DSingleton<PackageManagerFlatpakImpl>
+    , public linglong::util::Singleton<PackageManagerFlatpakImpl>
 {
 public:
     RetMessageList Download(const QStringList &packageIDList, const QString &savePath) { return {}; }

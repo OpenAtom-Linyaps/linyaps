@@ -15,7 +15,6 @@
 #include <QList>
 #include <QObject>
 #include <QScopedPointer>
-#include <DSingleton>
 
 #include "json_register_inc.h"
 #include "module/package/package.h"
@@ -28,18 +27,16 @@
 #include "package_manager_flatpak_impl.h"
 #include "package_manager_option.h"
 
-using linglong::service::util::AppInstance;
-
 class PackageManagerPrivate;
 class PackageManager
     : public QObject
     , protected QDBusContext
-    , public Dtk::Core::DSingleton<PackageManager>
+    , public linglong::util::Singleton<PackageManager>
 {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", "com.deepin.linglong.PackageManager")
 
-    friend class Dtk::Core::DSingleton<PackageManager>;
+    friend class linglong::util::Singleton<PackageManager>;
 
 public Q_SLOTS:
     QString Status();

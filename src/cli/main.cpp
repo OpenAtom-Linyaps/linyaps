@@ -13,7 +13,6 @@
 #include <QCommandLineParser>
 #include <QCommandLineOption>
 #include <QMap>
-#include <DLog>
 
 #include "cmd/cmd.h"
 #include "module/package/package.h"
@@ -109,9 +108,6 @@ int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
     QCoreApplication::setOrganizationName("deepin");
-
-    Dtk::Core::DLogManager::registerConsoleAppender();
-    Dtk::Core::DLogManager::registerFileAppender();
 
     // register qdbus type
     qJsonRegisterAll();

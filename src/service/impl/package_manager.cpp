@@ -37,9 +37,6 @@ using linglong::util::fileExists;
 using linglong::util::listDirFolders;
 using linglong::dbus::RetCode;
 
-using linglong::service::util::AppInstance;
-using linglong::service::util::AppInfo;
-
 using namespace linglong;
 
 class PackageManagerPrivate

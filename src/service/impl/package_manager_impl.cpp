@@ -324,8 +324,8 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIdList, con
     }
 
     auto appInfo = appList.at(0);
-    // 判断对应版本的应用是否已安装
-    if (getAppInstalledStatus(pkgName, appInfo->version, "", userName)) {
+    // 判断对应版本的应用是否已安装 Fix to do 多用户
+    if (getAppInstalledStatus(pkgName, appInfo->version, "", "")) {
         qCritical() << pkgName << ", version: " << appInfo->version << " already installed";
         info->setcode(RetCode(RetCode::pkg_already_installed));
         info->setmessage(pkgName + ", version: " + appInfo->version + " already installed");
@@ -477,9 +477,9 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIdList, c
         version = paramMap[linglong::util::KEY_VERSION];
     }
 
-    // 判断是否已安装
+    // 判断是否已安装 不校验用户名 普通用户无法卸载预装应用 提示信息不对
     QString userName = getUserName();
-    if (!getAppInstalledStatus(pkgName, version, "", userName)) {
+    if (!getAppInstalledStatus(pkgName, version, "", "")) {
         qCritical() << pkgName << " not installed";
         info->setcode(RetCode(RetCode::pkg_not_installed));
         info->setmessage(pkgName + " not installed");
@@ -491,22 +491,31 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIdList, c
     AppMetaInfoList pkgList;
     // 根据已安装文件查询已经安装软件包信息
     QString arch = hostArch();
-    getInstalledAppInfo(pkgName, version, arch, userName, pkgList);
-
+    getInstalledAppInfo(pkgName, version, arch, "", pkgList);
     auto it = pkgList.at(0);
-    if (pkgList.size() > 0) {
-        const QString installPath = kAppInstallPath + it->appId + "/" + it->version;
-        // 删掉安装配置链接文件
-        if (linglong::util::dirExists(installPath + "/" + arch + "/outputs/share")) {
-            const QString appEntriesDirPath = installPath + "/" + arch + "/outputs/share";
-            linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
-        } else {
-            const QString appEntriesDirPath = installPath + "/" + arch + "/entries";
-            linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
-        }
-        linglong::util::removeDir(installPath);
-        qInfo() << "Uninstall del dir:" << installPath;
+    bool isRoot = (getgid() == 0) ? true : false;
+    qInfo() << "install app user:" << it->user << ", current user:" << userName << ", has root permission:" << isRoot;
+    // 非root用户卸载不属于该用户安装的应用
+    if (userName != it->user && !isRoot) {
+        qCritical() << pkgName << " uninstall permission deny";
+        info->setcode(RetCode(RetCode::pkg_uninstall_failed));
+        info->setmessage(pkgName + " uninstall permission deny");
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
     }
+
+    const QString installPath = kAppInstallPath + it->appId + "/" + it->version;
+    // 删掉安装配置链接文件
+    if (linglong::util::dirExists(installPath + "/" + arch + "/outputs/share")) {
+        const QString appEntriesDirPath = installPath + "/" + arch + "/outputs/share";
+        linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
+    } else {
+        const QString appEntriesDirPath = installPath + "/" + arch + "/entries";
+        linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
+    }
+    linglong::util::removeDir(installPath);
+    qInfo() << "Uninstall del dir:" << installPath;
 
     // 更新desktop database
     auto retRunner = linglong::runner::Runner("update-desktop-database", {sysLinglongInstalltions + "/applications/"},

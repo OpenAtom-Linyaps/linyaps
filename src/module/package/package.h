@@ -49,6 +49,8 @@ public:
     Q_JSON_PROPERTY(QString, repoName);
     // app 描述
     Q_JSON_PROPERTY(QString, description);
+    // 安装应用对应的用户
+    Q_JSON_PROPERTY(QString, user);
 };
 Q_JSON_DECLARE_PTR_METATYPE(AppMetaInfo)
 

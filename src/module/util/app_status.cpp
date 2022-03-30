@@ -370,16 +370,21 @@ bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QStr
     }
 
     QSqlQuery sqlQuery(dbConn);
-    QString selectSql =
-        QString("SELECT * FROM installedAppInfo WHERE appId = '%1' AND user = '%2' order by version ASC")
-            .arg(appId)
-            .arg(userName);
-    if (!appVer.isEmpty()) {
-        selectSql = QString("SELECT * FROM installedAppInfo WHERE appId = '%1' AND version = '%2' AND user = '%3'")
-                        .arg(appId)
-                        .arg(appVer)
-                        .arg(userName);
+    QString selectSql = QString("SELECT * FROM installedAppInfo WHERE appId = '%1'").arg(appId);
+    QString condition = "";
+    if (!userName.isEmpty()) {
+        condition.append(QString(" AND user = '%1'").arg(userName));
     }
+    if (!appVer.isEmpty()) {
+        condition.append(QString(" AND version = '%1'").arg(appVer));
+    }
+    if (!appArch.isEmpty()) {
+        condition.append(QString(" AND arch like '%%1%'").arg(appArch));
+    }
+    qDebug() << "sql condition:" << condition;
+    selectSql.append(condition);
+    selectSql.append(" order by version ASC");
+    qDebug() << selectSql;
     sqlQuery.prepare(selectSql);
     if (!sqlQuery.exec()) {
         err = "getInstalledAppInfo fail to exec sql:" + selectSql + ", error:" + sqlQuery.lastError().text();
@@ -397,6 +402,7 @@ bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QStr
         info->name = sqlQuery.value(2).toString().trimmed();
         info->arch = sqlQuery.value(4).toString().trimmed();
         info->description = sqlQuery.value(9).toString().trimmed();
+        info->user = sqlQuery.value(10).toString().trimmed();
         QString dstVer = sqlQuery.value(3).toString().trimmed();
         // sqlite逐字符比较导致获取的最高版本号不准，e.g: 5.9.1比5.10.1版本高
         sqlQuery.first();

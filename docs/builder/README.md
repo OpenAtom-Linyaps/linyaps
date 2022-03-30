@@ -1,6 +1,15 @@
 # Builder
 
-## Target
+linglong builder 是为应用开发者提供的一款打包工具。
+
+主要提供以下几点功能：
+
+- 支持在独立沙箱内构建。
+- 定义了一套版本管理系统。
+- 提供sdk开发套件列表。
+- 包含完整推送发布流程。
+
+<!--## Target
 
 A package tool for applications developer.
 
@@ -22,4 +31,4 @@ Key features:
 
 ## Project Refs
 
-The 
+The -->

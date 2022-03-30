@@ -1,6 +1,6 @@
 # ll-builder build
-
-```bash
+ll-builder提供build命令进行构建。参数如下：
+```plain
 Usage: ll-builder [options] build
 
 Options:
@@ -99,12 +99,20 @@ build:
       echo skip configure
 ```
 ll-builder build流程:
+
 1.解析配置文件，读取应用信息，判断构建类型。
 
 2.检查并导出所需runtime以及依赖应用(无依赖跳过)。
 
 3.拉取应用源码，对比ref值验证源码完整性。
 
-4.运行构建命令进行应用构建，导入仓库由ll-builder push导出uab包。
+4.运行构建命令进行应用构建包。
 
-ll-builder --exec={path} build：该参数可以在应用构建之前运行命令，此功能用于调试构建，不要在生产环境中使用此参数。
+5.构建完成后推送到本地缓存。
+
+构建调试:
+
+```bash
+ll-builder --exec=/bin/bash build
+```
+该参数可以在应用构建之前运行命令，此功能用于调试构建，不要在生产环境中使用此参数。

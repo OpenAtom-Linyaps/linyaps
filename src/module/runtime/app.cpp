@@ -451,6 +451,10 @@ public:
         auto appCachePath = util::ensureUserDir({".linglong", appId, "/cache"});
         mountMap.push_back(qMakePair(appCachePath, util::getUserFile(".cache")));
 
+        //bind $HOME/.deepinwine
+        auto deepinWinePath = util::ensureUserDir({".deepinwine"});
+        mountMap.push_back(qMakePair(deepinWinePath, util::getUserFile(".deepinwine")));
+
         mountMap.push_back(qMakePair(userRuntimeDir + "/dconf", userRuntimeDir + "/dconf"));
 
         mountMap.push_back(

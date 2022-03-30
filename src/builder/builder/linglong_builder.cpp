@@ -435,6 +435,7 @@ util::Error LinglongBuilder::build()
     r->process->env.push_back(
         "PATH=/runtime/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games:/sbin:/usr/sbin");
     r->process->env.push_back("PKG_CONFIG_PATH=/runtime/lib/pkgconfig");
+    r->process->env.push_back("LIBRARY_PATH=/runtime/lib");
     r->process->env.push_back("PREFIX=" + project->config().targetInstallPath(""));
 
     if (!r->hooks) {

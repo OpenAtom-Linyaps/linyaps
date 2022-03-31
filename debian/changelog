@@ -1,3 +1,16 @@
+linglong (1.2.12-1) unstable; urgency=medium
+
+  * 1. add testcase for info header file.
+  * 2. add testcase for runtime app header file.
+  * 3. mount wine runtime /usr/bin/xdg-open.
+  * 4. resolve the crp and dtk dependency conflicts.
+  * 5. edit linglong.yaml by options.
+  * 6. mount ~/.deepinwine.
+  * 7. add docs for builder.
+  * 8. fix an error message is prompted when an ordinary user uninstalls a pre installed user.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Thu, 31 Mar 2022 10:53:40 +0800
+
 linglong (1.2.11-1) unstable; urgency=medium
 
   * 1. support debian patches.

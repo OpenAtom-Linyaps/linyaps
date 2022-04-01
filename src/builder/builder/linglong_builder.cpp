@@ -296,12 +296,12 @@ util::Error LinglongBuilder::build()
             return NewError(ret, -1, "fetch source failed");
         }
     }
-
+    //initialize some directories
     util::removeDir(project->config().cacheRuntimePath({}));
     util::removeDir(project->config().cacheInstallPath(""));
-    util::ensureDir(project->config().cacheAbsoluteFilePath({"overlayfs"}));
-    util::ensureDir(project->config().cacheAbsoluteFilePath({"overlayfs", "lower"}));
+    util::removeDir(project->config().cacheAbsoluteFilePath({"overlayfs"}));
     util::ensureDir(project->config().cacheInstallPath(""));
+    util::ensureDir(project->config().cacheAbsoluteFilePath({"overlayfs", "up", project->config().targetInstallPath("")}));
 
     package::Ref baseRef("");
 
@@ -375,8 +375,6 @@ util::Error LinglongBuilder::build()
 
     if (!r->annotations->overlayfs) {
         r->annotations->overlayfs = new AnnotationsOverlayfsRootfs(r);
-
-        util::removeDir(project->config().cacheAbsoluteFilePath({"overlayfs"}));
 
         r->annotations->overlayfs->lowerParent = project->config().cacheAbsoluteFilePath({"overlayfs", "lp"});
         r->annotations->overlayfs->workdir = project->config().cacheAbsoluteFilePath({"overlayfs", "wk"});
@@ -477,9 +475,6 @@ util::Error LinglongBuilder::build()
 
         return NoError();
     };
-
-    removeDir(project->config().cacheInstallPath(""));
-    ensureDir(project->config().cacheInstallPath(""));
 
     ret = createInfo(project.get());
     if (!ret.success()) {

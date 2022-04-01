@@ -59,7 +59,10 @@ util::Error DependFetcher::fetch(const QString &subPath, const QString &targetPa
     ret = ostree.checkout(remoteRef, subPath, targetPath);
     //for app,lib. if the dependType match runtime, should be submitted together.
     if (dd_ptr->dependType == DependTypeRuntime) {
-        ret = ostree.checkout(remoteRef, subPath, dd_ptr->project->config().cacheAbsoluteFilePath({"overlayfs", "lower"}));
+        auto targetInstallPath = dd_ptr->project->config().cacheAbsoluteFilePath(
+            {"overlayfs", "up", dd_ptr->project->config().targetInstallPath("")});
+
+        ret = ostree.checkout(remoteRef, subPath, targetInstallPath);
     }
 
     return WrapError(ret, QString("ostree checkout %1 with subpath '%2' to %3")

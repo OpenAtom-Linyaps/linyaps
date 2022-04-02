@@ -218,8 +218,11 @@ int startContainer(Container *c, Runtime *r)
     auto json = QJsonDocument::fromVariant(toVariant<Runtime>(r)).toJson();
     auto data = json.toStdString();
 
+    QString result;
     int pipeEnds[2];
-    if (pipe(pipeEnds) != 0) {
+    int pipeRet[2];
+
+    if (pipe(pipeEnds) != 0 || pipe(pipeRet) != 0) {
         return EXIT_FAILURE;
     }
 
@@ -233,24 +236,43 @@ int startContainer(Container *c, Runtime *r)
     if (0 == boxPid) {
         // child process
         (void)close(pipeEnds[1]);
-        if (dup2(pipeEnds[0], 118) == -1) {
+        (void)close(pipeRet[0]);
+
+        if (dup2(pipeEnds[0], 118) == -1 || dup2(pipeRet[1], 119) == -1) {
             return EXIT_FAILURE;
         }
-        (void)close(pipeEnds[0]);
 
-        char const *const args[] = {"/usr/bin/ll-box", LL_TOSTRING(118), NULL};
+        (void)close(pipeEnds[0]);
+        (void)close(pipeRet[1]);
+
+        char const *const args[] = {"/usr/bin/ll-box", LL_TOSTRING(118), LL_TOSTRING(119), NULL};
         int ret = execvp(args[0], (char **)args);
         exit(ret);
     } else {
         close(pipeEnds[0]);
+        close(pipeRet[1]);
         write(pipeEnds[1], data.c_str(), data.size());
         close(pipeEnds[1]);
 
         c->pid = boxPid;
+        //read exit status of build task from pipe
+        const size_t bufSize = 1024;
+        char buf[bufSize] = {};
+        size_t ret = 0;
+
+        ret = read(pipeRet[0], buf, bufSize);
+        if (ret > 0) {
+            result.append(buf);
+        }
+
+        close(pipeRet[0]);
         waitpid(boxPid, nullptr, 0);
     }
+    //return exit status of build task
+    //result format: namespaceId exitStatus exitInfo
+    auto exitStatus = result.split(" ").at(1);
 
-    return EXIT_SUCCESS;
+    return exitStatus.toInt();
 }
 
 util::Error LinglongBuilder::create(const QString &projectName)
@@ -443,8 +465,9 @@ util::Error LinglongBuilder::build()
         r->hooks->prestart.push_back(hook);
     }
 
-    // FIXME: get result
-    startContainer(container, r);
+    if (startContainer(container, r)) {
+        return NewError(-1, "build task failed in container");
+    }
 
     auto createInfo = [](Project *project) -> util::Error {
         package::Info info;

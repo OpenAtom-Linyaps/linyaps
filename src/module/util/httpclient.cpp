@@ -236,10 +236,7 @@ bool HttpClient::queryRemote(const QString &pkgName, const QString &pkgVer, cons
     curl_easy_setopt(curlHandle, CURLOPT_FOLLOWLOCATION, 1);
 
     std::string sendString = "{\"AppId\":\"" + pkgName.toStdString() + "\"}";
-    if (!pkgVer.isEmpty()) {
-        sendString = "{\"AppId\":\"" + pkgName.toStdString() + "\",\"version\":\"" + pkgVer.toStdString() + "\"}";
-    }
-    if (!pkgVer.isEmpty() && !pkgArch.isEmpty()) {
+    if (!pkgVer.isEmpty() || !pkgArch.isEmpty()) {
         sendString = "{\"AppId\":\"" + pkgName.toStdString() + "\",\"version\":\"" + pkgVer.toStdString()
                      + "\",\"arch\":\"" + pkgArch.toStdString() + "\"}";
     }

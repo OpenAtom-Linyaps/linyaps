@@ -487,9 +487,10 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIdList, c
         version = paramMap[linglong::util::KEY_VERSION];
     }
 
+    QString arch = hostArch();
     // 判断是否已安装 不校验用户名 普通用户无法卸载预装应用 提示信息不对
     QString userName = getUserName();
-    if (!getAppInstalledStatus(pkgName, version, "", "")) {
+    if (!getAppInstalledStatus(pkgName, version, arch, "")) {
         qCritical() << pkgName << " not installed";
         info->setcode(RetCode(RetCode::pkg_not_installed));
         info->setmessage(pkgName + " not installed");
@@ -500,7 +501,6 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIdList, c
     QString err = "";
     AppMetaInfoList pkgList;
     // 根据已安装文件查询已经安装软件包信息
-    QString arch = hostArch();
     getInstalledAppInfo(pkgName, version, arch, "", pkgList);
     auto it = pkgList.at(0);
     bool isRoot = (getgid() == 0) ? true : false;
@@ -601,19 +601,22 @@ linglong::util::Error PackageManagerImpl::Update(const linglong::package::Ref &r
     auto info = QPointer<RetMessage>(new RetMessage);
 
     auto pkgName = ref.appId;
+    // 获取的版本号是 latest
     auto version = ref.version;
-
+    if ("latest" == version) {
+        version = "";
+    }
+    QString arch = hostArch();
     // 判断是否已安装
     QString err = QString();
     QString userName = getUserName();
-    if (!getAppInstalledStatus(pkgName, version, "", userName)) {
+    if (!getAppInstalledStatus(pkgName, version, arch, userName)) {
         return NewError(static_cast<int>(RetCode::pkg_not_installed), ref.toString() + " not installed");
     }
 
     // 检查是否存在版本更新
     AppMetaInfoList pkgList;
     // 根据已安装文件查询已经安装软件包信息
-    QString arch = hostArch();
     getInstalledAppInfo(pkgName, version, arch, userName, pkgList);
     auto installedApp = pkgList.at(0);
     if (pkgList.size() != 1) {

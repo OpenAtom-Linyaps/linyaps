@@ -42,6 +42,16 @@ private:
     const QString sysLinglongInstalltions = "/deepin/linglong/entries/share";
 
     /*
+     * 从给定的软件包列表中查找最新版本的软件包
+     *
+     * @param appList: 待搜索的软件包列表信息
+     *
+     * @return AppMetaInfo: 最新版本的软件包
+     *
+     */
+    AppMetaInfo *getLatestApp(const AppMetaInfoList &appList);
+
+    /*
      * 将json字符串转化为软件包数据
      *
      * @param jsonString: 软件包对应的json字符串

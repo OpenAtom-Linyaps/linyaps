@@ -21,6 +21,7 @@ int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
     QCoreApplication::setOrganizationName("deepin");
+    qSetMessagePattern("%{time yyyy-MM-dd hh:mm:ss.zzz} [%{appname}] [%{type}] %{message}");
 
     linglong::runtime::registerAllMetaType();
     linglong::package::registerAllMetaType();

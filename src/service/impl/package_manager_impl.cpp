@@ -19,6 +19,7 @@
 
 #include "package_manager_impl.h"
 #include "dbus_retcode.h"
+#include "version.h"
 
 using linglong::dbus::RetCode;
 using namespace linglong::Status;
@@ -253,6 +254,34 @@ bool PackageManagerImpl::checkAppRuntime(const QString &runtime, QString &err)
     return ret;
 }
 
+/*
+ * 从给定的软件包列表中查找最新版本的软件包
+ *
+ * @param appList: 待搜索的软件包列表信息
+ *
+ * @return AppMetaInfo: 最新版本的软件包
+ *
+ */
+AppMetaInfo *PackageManagerImpl::getLatestApp(const AppMetaInfoList &appList)
+{
+    AppMetaInfo *latestApp = appList.at(0);
+    if (appList.size() == 1) {
+        return latestApp;
+    }
+
+    QString curVersion = latestApp->version;
+    QString arch = hostArch();
+    for (auto item : appList) {
+        linglong::AppVersion dstVersion(curVersion);
+        linglong::AppVersion iterVersion(item->version);
+        if (arch == item->arch && iterVersion.isBigThan(dstVersion)) {
+            curVersion = item->version;
+            latestApp = item;
+        }
+    }
+    return latestApp;
+}
+
 /*!
  * 在线安装软件包
  * @param packageIdList
@@ -263,23 +292,14 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIdList, con
     bool ret = false;
     auto info = QPointer<RetMessage>(new RetMessage);
     QString pkgName = packageIdList.at(0);
-    if (pkgName.isNull() || pkgName.isEmpty()) {
-        qCritical() << "package name err";
-        info->setcode(RetCode(RetCode::user_input_param_err));
-        info->setmessage("package name err");
-        info->setstate(false);
-        retMsg.push_back(info);
-        return retMsg;
-    }
 
     QString err = "";
-
-    // const QString arch = "x86_64";
     const QString arch = hostArch();
     if (arch == "unknown") {
-        qCritical() << "the host arch is not recognized";
+        err = "the host arch is not recognized";
+        qCritical() << err;
         info->setcode(RetCode(RetCode::host_arch_not_recognized));
-        info->setmessage("the host arch is not recognized");
+        info->setmessage(err);
         info->setstate(false);
         retMsg.push_back(info);
         return retMsg;
@@ -313,7 +333,8 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIdList, con
         retMsg.push_back(info);
         return retMsg;
     }
-    if (appList.size() != 1) {
+
+    if (appList.size() < 1) {
         err = "app:" + pkgName + ", version:" + version + " not found in repo";
         qCritical() << err;
         info->setcode(RetCode(RetCode::pkg_install_failed));
@@ -323,7 +344,8 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIdList, con
         return retMsg;
     }
 
-    auto appInfo = appList.at(0);
+    // 查找最高版本
+    AppMetaInfo *appInfo = getLatestApp(appList);
     // 判断对应版本的应用是否已安装 Fix to do 多用户
     if (getAppInstalledStatus(pkgName, appInfo->version, "", "")) {
         qCritical() << pkgName << ", version: " << appInfo->version << " already installed";
@@ -403,30 +425,18 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIdList, con
 AppMetaInfoList PackageManagerImpl::Query(const QStringList &packageIdList, const ParamStringMap &paramMap)
 {
     const QString pkgName = packageIdList.at(0);
-    if (pkgName.isNull() || pkgName.isEmpty()) {
-        qWarning() << "package name err";
-        return {};
-    }
     if (pkgName == "installed") {
         return queryAllInstalledApp();
     }
+
     AppMetaInfoList pkgList;
-    // 查找单个软件包 优先从本地数据库文件中查找
     QString arch = hostArch();
     if (arch == "unknown") {
         qCritical() << "the host arch is not recognized";
         return pkgList;
     }
 
-    QString userName = getUserName();
-    bool ret = getInstalledAppInfo(pkgName, "", arch, userName, pkgList);
-
-    // 目标软件包 已安装则终止查找
-    qInfo() << "PackageManager::Query called, ret:" << ret;
-    if (ret) {
-        return pkgList;
-    }
-
+    bool ret = false;
     QString err = "";
     QString appData = "";
     int status = StatusCode::FAIL;

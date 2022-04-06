@@ -59,13 +59,13 @@ public:
         if (Major > ver.Major) {
             return true;
         }
-        if (Minor > ver.Minor) {
+        if (Major == ver.Major && Minor > ver.Minor) {
             return true;
         }
-        if (Revision > ver.Revision) {
+        if (Major == ver.Major && Minor == ver.Minor && Revision > ver.Revision) {
             return true;
         }
-        if (Build > ver.Build) {
+        if (Major == ver.Major && Minor == ver.Minor && Revision == ver.Revision && Build > ver.Build) {
             return true;
         }
         return false;

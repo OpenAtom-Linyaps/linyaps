@@ -441,7 +441,7 @@ bool OstreeRepoHelper::queryMatchRefs(const QString &repoPath, const QString &re
                 return true;
             }
         }
-        snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s pkgName not found", __FILE__, __func__);
+        snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s %s not found in remote repo", __FILE__, __func__, pkgNameTmp.c_str());
         err = info;
     }
     return false;

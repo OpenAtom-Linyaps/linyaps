@@ -40,6 +40,11 @@ using namespace linglong;
 namespace linglong {
 namespace runtime {
 
+enum RunArch {
+    ARM64,
+    X86_64,
+};
+
 class AppPrivate
 {
 public:
@@ -305,20 +310,51 @@ public:
             appLdLibraryPath = "/app/lib";
         }
 
-        // TODO(iceyer): support other arch, or just no arch?
-        auto fixLdLibraryPath = QStringList {
-            appLdLibraryPath,
-            "/runtime/lib",
-            "/runtime/lib/x86_64-linux-gnu",
-            "/runtime/lib/i386-linux-gnu",
-        };
+        // todo: 代码冗余，后续整改，配置文件？
+        QStringList fixLdLibraryPath;
+        RunArch runArch;
+        auto appRef = package::Ref(q_ptr->package->ref);
+        if (appRef.arch == "arm64") {
+            runArch = ARM64;
+        } else if (appRef.arch == "x86_64") {
+            runArch = X86_64;
+        }
+        switch (runArch) {
+        case ARM64:
+            fixLdLibraryPath = QStringList {
+                appLdLibraryPath,
+                appLdLibraryPath + "/aarch64-linux-gnu",
+                "/runtime/lib",
+                "/runtime/lib/aarch64-linux-gnu",
+            };
+            r->process->env.push_back(
+                "QT_PLUGIN_PATH=/runtime/lib/aarch64-linux-gnu/qt5/plugins:/usr/lib/aarch64-linux-gnu/qt5/plugins");
+            r->process->env.push_back(
+                "QT_QPA_PLATFORM_PLUGIN_PATH=/runtime/lib/aarch64-linux-gnu/qt5/plugins/platforms:/usr/lib/aarch64-linux-gnu/qt5/plugins/platforms");
+            r->process->env.push_back(
+                "QTWEBENGINEPROCESS_PATH=/runtime/lib/aarch64-linux-gnu/qt5/libexec/QtWebEngineProcess");
+            break;
+        case X86_64:
+            fixLdLibraryPath = QStringList {
+                appLdLibraryPath,
+                appLdLibraryPath + "/x86_64-linux-gnu",
+                "/runtime/lib",
+                "/runtime/lib/x86_64-linux-gnu",
+                "/runtime/lib/i386-linux-gnu",
+            };
+            r->process->env.push_back(
+                "QT_PLUGIN_PATH=/runtime/lib/x86_64-linux-gnu/qt5/plugins:/usr/lib/x86_64-linux-gnu/qt5/plugins");
+            r->process->env.push_back(
+                "QT_QPA_PLATFORM_PLUGIN_PATH=/runtime/lib/x86_64-linux-gnu/qt5/plugins/platforms:/usr/lib/x86_64-linux-gnu/qt5/plugins/platforms");
+            r->process->env.push_back(
+                "QTWEBENGINEPROCESS_PATH=/runtime/lib/x86_64-linux-gnu/qt5/libexec/QtWebEngineProcess");
+            break;
+        default:
+            qInfo() << "no supported arch :" << appRef.arch;
+            return -1;
+        }
+
         r->process->env.push_back("LD_LIBRARY_PATH=" + fixLdLibraryPath.join(":"));
-        r->process->env.push_back(
-            "QT_PLUGIN_PATH=/runtime/lib/x86_64-linux-gnu/qt5/plugins:/usr/lib/x86_64-linux-gnu/qt5/plugins");
-        r->process->env.push_back(
-            "QT_QPA_PLATFORM_PLUGIN_PATH=/runtime/lib/x86_64-linux-gnu/qt5/plugins/platforms:/usr/lib/x86_64-linux-gnu/qt5/plugins/platforms");
-        r->process->env.push_back(
-            "QTWEBENGINEPROCESS_PATH=/runtime/lib/x86_64-linux-gnu/qt5/libexec/QtWebEngineProcess");
         r->process->env.push_back(
             "QTWEBENGINERESOURCE_PATH=/runtime/share/qt5/translations:/runtime/share/qt5/resources");
         return 0;

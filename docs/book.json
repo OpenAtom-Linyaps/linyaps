@@ -9,9 +9,9 @@
 	"search-pro",
 	"fontsettings",
 	"theme-default",
-	"theme-comscore",
 	"-search",
 	"-sharing",
+	"auto-scroll-table",
 	"-lunr"
     ],
         "styles": {

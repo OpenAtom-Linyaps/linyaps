@@ -1,3 +1,23 @@
 # FAQ
-
-TODO
+| 序号 | 修复bug单 | 根因分析 | 打玲珑应用注意事项（主要统计项，不要重复） |
+|---|---|---|---|
+| 1 | https://pms.uniontech.com/bug-view-118913.html | 根因分析：<br><br>文管默认读取位置从/usr/share /usr/local/share  以及 ~/.config/share等路径读取，不包含/deepin/linglong/entry/share目录，应改成从XDG_DATA_DIRS环境变量路径读取。 | 应用读取share目录存放配置，采用XDG_DATA_DIRS环境变量读取，不要写死/usr/share下读取，因为应用的share配置一般会安装挂载到/opt/apps/appid/files/share下，此路径会导入上述环境变量。 |
+| 2 | https://pms.uniontech.com/bug-view-117223.html | 根因分析：<br>应用依赖的字体库原来是deb依赖包，目前玲珑包格式变化，依赖的字体库需要添加到应用内。 | 应用依赖公共的字体库文件可以放入runtime的share目录中，从XDG_DATA_DIRS环境变量下读取；不是公共字体库文件，需要添加到应用files/user/share路径下，最终挂载到/opt/apps/appid/files/share下，从XDG_DATA_DIRS环境变量读取。 |
+| 3 | https://pms.uniontech.com/bug-view-117211.html | 根因分析：<br><br>缺少字体库文件，添加附件字体库到files/kingsoft/wps-office/office6下即可。字体库如附件。 | 应用依赖配置与资源，尽量放入files/user/share路径下，从XDG_DATA_DIRS环境变量读取。 |
+| 4 | https://pms.uniontech.com/bug-view-116831.html | gio 类型问题，解决方法：<br><br>通过将 inode/directory 类型的mimetype 与自定义desktop 文件绑定，再使用自定义desktop 文件调用xdg-open，将gio类型消息转化为xdg-open类型消息，最终由宿主机外真正的xdg-open 读取消息并执行打开dde-file-manager<br>引入新问题：<br><br>该应用将调用dde-file-manager，打开~/.config/sublime-text/pacakge 目录，该路径为沙箱内路径，在沙箱外实际路径为~/.linglong/sublime/config;<br><br>dde-file-manager 尝试在沙箱外打开沙箱内路径，导致无法打开 | 因玲珑应用遵循互不干涉原则，XDG_DATA_HOME,XDG_CONFIG_HOME,XDG_CACHE_HOME环境变量路径被重定义到~/.linglong/appid/路径下，因此用户应用数据要保存到此路径下，应用获取路径要不需要拼接，从环境变量读取路径。禁止应用间相互配置调用。 |
+| 5 | https://pms.uniontech.com/bug-view-116829.html | 根因分析：<br><br>问题： 帮助菜单里面选项点击会走g_app_info_launch_default_for_uri接口函数，而此接口函数不是走的xdg-open这一套，调用此接口会去沙箱${XDG_DATA_DIRS}/applications/路径下找mimeinfo.cache文件，找到匹配项，打开沙箱内的desktop文件，执行exec段。（目前沙箱内这样操作是有问题的，1.沙箱内没有相应mimeinfo.cache；2. 沙箱内不允许直接运行其他应用）<br>解决方案：在打runtime的时候，放入一个伪造的desktop文件，关联相应mimetype类型，exec段执行xdg-open,传出链接用玲珑应用打开，并且要求打runtime的时候，要执行update-desktop-database命令，更新出mimeinfo.cache文件。 | 走gio接口，打开类型文件，需要确认其mimetype类型包含在系统中或着runtime中，因为玲珑应用采用伪造desktop打开方式，需要确认其类型在其中，才能通过debus传出其文件路径，进行打开；如果应用自定义的mimetype类型，需要按照entries/mime/packages/org.desktopspec.demo.xml格式存放。并且此类型需要添加到runtime里面进行存储。 |
+| 6 | https://pms.uniontech.com/bug-view-116619.html | 根因分析：<br><br>帮助手册读取帮助信息路径为/usr/share/deepin-manual路径下存放的各个应用提供的帮助信息，玲珑中预装自研应用自带的帮助信息存放在/deepin/linglong/entries/share/deepin-manual下，导致帮助手册应用读取不到/deepin目录下的帮助信息，现通过沙盒中overlays方法处理后暂时解决。应用启动后可以显示两个目录中的所用应用帮助信息。 | 此应用会提供dbus service文件，注意exec如果为启动相关应用，要改成玲珑相关启动方式，别直接二进制启动；share目录文件读取，要从XDG_DATA_DIRS环境变量获取。 |
+| 7 | https://pms.uniontech.com/bug-view-116489.html | 默认下载路径是～/迅雷下载 ，但玲珑设计标准里家目录下不允许新建目录； | 不允许直接向$HOME目录直接写入文件 |
+| 8 | https://pms.uniontech.com/bug-view-116357.html | entries目录没有放图标文件 | 放置应用图标 icons，目录结构与系统 icons 目录结构保持一致即可，建议路径为 icons/hicolor/scalable/apps/org.desktopspec.demo.svg，使用 svg 格式图标。参考图标文件格式规范<br>如果使用非矢量格式，请按照分辨率来放置图标，注意desktop文件不要写死图标路径，直接写图标名即可。 |
+| 9 | https://pms.uniontech.com/bug-view-116017.html | xdg-open 类型问题，使用faker xdg-open发送dbus消息时，报dbus-send使用异常。原因是该应用集成了库libdbus-1.so.3，符号不匹配导致无法被系统中dbus-send使用<br><br>解决方法：<br><br> 应用集成 与自身库匹配的dbus-send程序 或 删除应用携带的libdbus库，使用系统的 | 打包时要检查应用携带的库文件是否影响应用调用的系统二进制执行，因为沙箱内优先使用的是应用自身携带的库文件。 |
+| 10 | https://pms.uniontech.com/bug-view-115433.html | 修改desktop文件中name项后解决。 | 自研应用desktop文件名称需要跟原来一致，不然启动器里面无法中文翻译。 |
+| 11 | https://pms.uniontech.com/bug-view-115195.html | 缺少 $USER 环境变量 | 应用如使用相关环境变量，需要确认沙箱内环境变量是否存在。 |
+| 12 | https://pms.uniontech.com/bug-view-114382.html | 应用集成游戏roms后可以运行 | 应用使用的资源文件，尽量包含到应用中。 |
+| 13 | https://pms.uniontech.com/bug-view-114364.html | 应用添加mpv库后播放正常 | 应用使用过程需要的库，如果runtime不存在，应用自身需要携带。 |
+| 14 | https://pms.uniontech.com/bug-view-114273.html | 根因分析：<br><br>360浏览器二进制会在/apps-data/private/com.360.browser-stable/下生成配置文件，并且会读取此配置。 | 应用私有数据需要安装到DSG_APP_DATA环境变量下，供不同用户使用。（目前还未支持） |
+| 15 | https://pms.uniontech.com/bug-view-114091.html | 根因分析：<br><br>应用启动脚本修改了环境变量QT_PLUGIN_PATH，并把沙箱内的值丢弃掉了，应用脚本已修改。 | 应用启动脚修改沙箱环境变量时，注意验证其功能是否正常。 |
+| 16 | https://pms.uniontech.com/bug-view-114078.html | 临时方案<br>将用户主目录下的Desktop、Documents、Downloads、Music、Pictures、Videos、Public、Templates目录挂载到容器里，上述目录可读写，其他目录不能写入，后续采用授权模式 | 用户下载目录只能选择用户主目录下Desktop、Documents、Downloads、Music、Pictures、Videos、Public、Templates目录，不能下载到其他目录 |
+| 17 | https://pms.uniontech.com/bug-view-114051.html | 根因分析：<br>此处获取剩余空间方式是： df -h &#124; grep /dev 遍历存储所有磁盘与挂载点，当用户选择目录路径时，跟存储挂载点匹配，当匹配上时返回对应磁盘分区剩余空间。<br>因沙箱内/挂载的文件系统是tempfs， df -h &#124; grep "/dev" 并不会显示并存储其内容，当选择/home/linglong/Desktop等路径时，路径不在存储挂载点路径下，无法获取数据。 | 统计可写目录磁盘空间时，最好只统计可写磁盘目录。 |
+| 18 | https://pms.uniontech.com/bug-view-112017.html | 选择在文件管理器中显示的操作实际是在沙箱环境内调用dde-file-manager程序，由于沙箱会优先使用runtime内的qt库，如果runtime qt版本与系统不一致，会导致dde-file-manager调用失败。 | 打开文管时，采用xdg-open或者dbus打开 |
+| 19 | https://pms.uniontech.com/bug-view-111916.html | 自研应用均依赖于deepin-shortcut-viewer, 暂时runtime内集成处理 | 应用公共依赖的二进制，需要集成进runtime中。 |
+| 20 | https://pms.uniontech.com/bug-view-111729.html | 根因分析：<br><br>欢迎应用主题显示，会调用dbus接口，在宿主机器/home/linglong/.cache/deepin/dde-api/theme_thumb/X1.00/icon-v1/路径下生成主题图标，然后应用再调用dbus获取每个相应主题的路径，再去显示。 | 应用用户数据保存到，XDG_DATA_HOME,XDG_CONFIG_HOME,XDG_CACHE_HOME环境变量路径下；不要在宿主机~/.local ~/.config ~/.cache目录生成配置文件 |

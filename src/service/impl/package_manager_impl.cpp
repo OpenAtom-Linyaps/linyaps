@@ -638,7 +638,7 @@ linglong::util::Error PackageManagerImpl::Update(const linglong::package::Ref &r
         return NewError(static_cast<int>(RetCode::ErrorPkgUpdateFailed), err);
     }
 
-    auto serverApp = serverPkgList.at(0);
+    auto serverApp = getLatestApp(serverPkgList);
     if (currentVersion == serverApp->version) {
         err = "app:" + pkgName + ", version:" + currentVersion + " is latest";
         return NewError(static_cast<int>(RetCode::ErrorPkgUpdateFailed), err);

@@ -148,6 +148,21 @@ public:
             r->process->args.removeAt(indexNum);
         }
 
+        // desktop文件修改或者添加环境变量支持
+        tmpArgs = util::parseExec(desktopEntry.rawValue("Exec"));
+        auto indexOfEnv = tmpArgs.indexOf(QRegExp("^env$"));
+        if (indexOfEnv != -1) {
+            auto env = tmpArgs[indexOfEnv + 1];
+            auto sepPos = env.indexOf("=");
+            auto indexResult = r->process->env.indexOf(QRegExp("^" + env.left(sepPos + 1) + ".*"));
+            if (indexResult != -1) {
+                r->process->env.removeAt(indexResult);
+                r->process->env.push_back(env);
+            } else {
+                r->process->env.push_back(env);
+            }
+        }
+
         qDebug() << "exec" << r->process->args;
 
         bool noDbusProxy = runParamMap.contains(linglong::util::KEY_NO_PROXY);

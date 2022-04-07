@@ -139,7 +139,7 @@ util::Error OSTree::init(const QString &mode)
 {
     Q_D(OSTree);
 
-    return WrapError(d->ostreeRun({"init", mode}));
+    return WrapError(d->ostreeRun({"init", QString("--mode=%1").arg(mode)}));
 }
 
 util::Error OSTree::remoteAdd(const QString &repoName, const QString &repoUrl)

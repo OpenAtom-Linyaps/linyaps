@@ -121,10 +121,23 @@ public:
 
         util::DesktopEntry desktopEntry(applicationsDir.absoluteFilePath(desktopFilenameList.value(0)));
 
+        // 当执行ll-cli run appid时，从entries目录获取执行参数，同时兼容旧的outputs打包模式。
+        QStringList tmpArgs;
+        QStringList execArgs;
+        if (util::dirExists(QStringList {appRootPath, "outputs", "share"}.join(QDir::separator()))) {
+            execArgs = util::parseExec(desktopEntry.rawValue("Exec"));
+        } else {
+            tmpArgs = util::parseExec(desktopEntry.rawValue("Exec"));
+            // 移除 ll-cli run  appid --exec 参数
+            for (auto i = tmpArgs.indexOf("^--exec$") + 1; i < tmpArgs.length(); ++i) {
+                execArgs << tmpArgs[i];
+            }
+        }
+
         if (r->process->args.isEmpty() && !desktopExec.isEmpty()) {
             r->process->args = util::parseExec(desktopExec);
         } else if (r->process->args.isEmpty()) {
-            r->process->args = util::parseExec(desktopEntry.rawValue("Exec"));
+            r->process->args = execArgs;
         }
         // ll-cli run appId 获取的是原生desktop exec ,有的包含%F等参数，需要去掉
         // FIXME(liujianqiang):后续整改，参考下面链接
@@ -193,7 +206,7 @@ public:
         }
 
         // 特殊处理帮助手册
-        if("org.deepin.manual" == appId){
+        if ("org.deepin.manual" == appId) {
             fuseMount = true;
             specialCase = true;
         }
@@ -231,7 +244,7 @@ public:
                 mountMap.push_back({runtimeRootPath + "/opt/deepinwine", "/opt/deepinwine"});
                 mountMap.push_back({runtimeRootPath + "/opt/deepin-wine6-stable", "/opt/deepin-wine6-stable"});
             }
-            if(fuseMount && specialCase){
+            if (fuseMount && specialCase) {
                 mountMap.push_back({"/deepin/linglong/layers", "/deepin/linglong/layers"});
                 mountMap.push_back({"/deepin/linglong/entries/share/deepin-manual", "/usr/share/deepin-manual"});
             }
@@ -451,7 +464,7 @@ public:
         auto appCachePath = util::ensureUserDir({".linglong", appId, "/cache"});
         mountMap.push_back(qMakePair(appCachePath, util::getUserFile(".cache")));
 
-        //bind $HOME/.deepinwine
+        // bind $HOME/.deepinwine
         auto deepinWinePath = util::ensureUserDir({".deepinwine"});
         mountMap.push_back(qMakePair(deepinWinePath, util::getUserFile(".deepinwine")));
 

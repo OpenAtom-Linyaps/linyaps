@@ -1,3 +1,20 @@
+linglong (1.3.0-1) unstable; urgency=medium
+
+  * 1. fix link library failed when using cmake.
+  * 2. fix adjust dependency checkout directory.
+  * 3. fix adjust dependency checkout directory.
+  * 4. modify the inaccurate query results of package management query.
+  * 5. package management arm support.
+  * 6. add faq docs.
+  * 7. remove outputs.
+  * 8. get build status from ll-box.
+  * 9. desktop env support.
+  * 10. When there are multiple versions in the warehouse, update to the
+  *     highest version.
+  * 11. ll-cli run support multi arch.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Fri, 08 Apr 2022 13:56:34 +0800
+
 linglong (1.2.12-1) unstable; urgency=medium
 
   * 1. add testcase for info header file.

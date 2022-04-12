@@ -30,21 +30,3 @@ public:
     linglong::util::Error create();
 };
 Q_JSON_DECLARE_PTR_METATYPE(Container)
-
-inline QDBusArgument &operator<<(QDBusArgument &argument, const Container &message)
-{
-    argument.beginStructure();
-    argument << message.id;
-    argument << message.pid;
-    argument.endStructure();
-    return argument;
-}
-
-inline const QDBusArgument &operator>>(const QDBusArgument &argument, Container &message)
-{
-    argument.beginStructure();
-    argument >> message.id;
-    argument >> message.pid;
-    argument.endStructure();
-    return argument;
-}

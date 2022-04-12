@@ -25,11 +25,6 @@
 #include "module/util/xdg.h"
 #include "module/util/env.h"
 
-using linglong::service::PackageManagerOption;
-using linglong::service::PackageManagerOptionList;
-using linglong::service::wrapOption;
-using linglong::service::RunParamOption;
-
 static void qJsonRegisterAll()
 {
     linglong::package::registerAllMetaType();
@@ -259,6 +254,7 @@ int main(int argc, char **argv)
 
              //  runtime::Application ogApp(appId, r);
              //  return ogApp.start();
+
              return 0;
          }},
         {"exec",
@@ -431,11 +427,11 @@ int main(int argc, char **argv)
                  return -1;
              }
 
-             QPointer<PackageManagerOption> pmOpt(new PackageManagerOption);
+             QPointer<linglong::service::PackageManagerOption> pmOpt(new linglong::service::PackageManagerOption);
              pmOpt->ref = appId;
 
              pm.setTimeout(1000 * 60 * 60 * 24);
-             QDBusPendingReply<void> reply = pm.Update(wrapOption(pmOpt));
+             QDBusPendingReply<void> reply = pm.Update(linglong::service::wrapOption(pmOpt));
              std::cout << "update " << appId.toStdString() << ", please wait a few minutes..." << std::endl;
              reply.waitForFinished();
 

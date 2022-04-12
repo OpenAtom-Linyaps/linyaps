@@ -419,24 +419,33 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("update", "update an application", "update");
              parser.addPositionalArgument("appId", "app id", "com.deepin.demo");
              parser.process(app);
-
              auto args = parser.positionalArguments();
              auto appId = args.value(1);
              if (appId.isEmpty()) {
                  parser.showHelp(-1);
                  return -1;
              }
-
-             QPointer<linglong::service::PackageManagerOption> pmOpt(new linglong::service::PackageManagerOption);
-             pmOpt->ref = appId;
-
+             QMap<QString, QString> paramMap;
+             QStringList appInfoList = appId.split("/");
+             if (appInfoList.size() > 1) {
+                 paramMap.insert(linglong::util::KEY_VERSION, appInfoList.at(1));
+             }
              pm.setTimeout(1000 * 60 * 60 * 24);
-             QDBusPendingReply<void> reply = pm.Update(linglong::service::wrapOption(pmOpt));
+             QDBusPendingReply<RetMessageList> reply = pm.Update({appInfoList.at(0)}, paramMap);
              std::cout << "update " << appId.toStdString() << ", please wait a few minutes..." << std::endl;
              reply.waitForFinished();
-
+             RetMessageList retMsg = reply.value();
+             if (retMsg.size() > 0) {
+                 auto it = retMsg.at(0);
+                 std::cout << "message: " << it->message.toStdString();
+                 if (!it->state) {
+                     std::cout << ", errcode:" << it->code << std::endl;
+                     return -1;
+                 }
+                 std::cout << std::endl;
+             }
              if (reply.isError()) {
-                 qCritical().noquote() << "update" << appId << reply.error();
+                 std::cout << "update: " << appId.toStdString() << " timeout";
                  return -1;
              }
              return 0;

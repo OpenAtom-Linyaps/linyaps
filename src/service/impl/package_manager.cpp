@@ -89,7 +89,7 @@ RetMessageList PackageManager::Download(const QStringList &packageIdList, const 
     // });
     RetMessageList retMsg;
     auto info = QPointer<RetMessage>(new RetMessage);
-    QString pkgName = packageIdList.at(0);
+    QString pkgName = packageIdList.at(0).trimmed();
     if (pkgName.isNull() || pkgName.isEmpty()) {
         qInfo() << "package name err";
         info->setcode(RetCode(RetCode::user_input_param_err));
@@ -134,7 +134,7 @@ RetMessageList PackageManager::Install(const QStringList &packageIdList, const P
         retMsg.push_back(info);
         return retMsg;
     }
-    QString pkgName = packageIdList.at(0);
+    QString pkgName = packageIdList.at(0).trimmed();
     if (pkgName.isNull() || pkgName.isEmpty()) {
         qCritical() << "package name err";
         info->setcode(RetCode(RetCode::user_input_param_err));
@@ -163,7 +163,7 @@ RetMessageList PackageManager::Uninstall(const QStringList &packageIdList, const
         retMsg.push_back(info);
         return retMsg;
     }
-    QString pkgName = packageIdList.at(0);
+    QString pkgName = packageIdList.at(0).trimmed();
     if (pkgName.isNull() || pkgName.isEmpty()) {
         qCritical() << "package name err";
         info->setcode(RetCode(RetCode::user_input_param_err));
@@ -175,27 +175,28 @@ RetMessageList PackageManager::Uninstall(const QStringList &packageIdList, const
     return PackageManagerImpl::instance()->Uninstall(packageIdList, paramMap);
 }
 
-void PackageManager::Update(const linglong::service::PackageManagerOptionList &opts)
+RetMessageList PackageManager::Update(const QStringList &packageIdList, const ParamStringMap &paramMap)
 {
-    auto option = linglong::service::unwrapOption(opts);
-    if (option.isNull()) {
-        return sendErrorReply(QDBusError::InvalidArgs,
-                              NewError(static_cast<int>(RetCode::user_input_param_err), "package list empty").toJson());
+    RetMessageList retMsg;
+    auto info = QPointer<RetMessage>(new RetMessage);
+    if (packageIdList.size() == 0) {
+        qCritical() << "packageIdList input err";
+        info->setcode(RetCode(RetCode::user_input_param_err));
+        info->setmessage("packageIdList input err");
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
     }
-
-    if (option->ref.isEmpty()) {
-        sendErrorReply(QDBusError::InvalidArgs,
-                       NewError(static_cast<int>(RetCode::user_input_param_err), "package name err").toJson());
-        return;
+    QString pkgName = packageIdList.at(0).trimmed();
+    if (pkgName.isNull() || pkgName.isEmpty()) {
+        qCritical() << "package name err";
+        info->setcode(RetCode(RetCode::user_input_param_err));
+        info->setmessage("package name err");
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
     }
-
-    auto ref = package::Ref(option->ref);
-
-    auto err = PackageManagerImpl::instance()->Update(ref);
-    if (!err.success()) {
-        sendErrorReply(QDBusError::Failed, err.toJson());
-        qWarning() << err;
-    }
+    return PackageManagerImpl::instance()->Update(packageIdList, paramMap);
 }
 
 QString PackageManager::UpdateAll()
@@ -220,7 +221,7 @@ AppMetaInfoList PackageManager::Query(const QStringList &packageIdList, const Pa
         qCritical() << "packageIdList input err";
         return {};
     }
-    QString pkgName = packageIdList.at(0);
+    QString pkgName = packageIdList.at(0).trimmed();
     if (pkgName.isNull() || pkgName.isEmpty()) {
         qCritical() << "package name err";
         return {};
@@ -272,7 +273,7 @@ RetMessageList PackageManager::Start(const QString &packageId, const ParamString
     if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_EXEC)) {
         desktopExec = paramMap[linglong::util::KEY_EXEC];
     }
-    
+
     // 判断是否已安装
     QString err = "";
     if (!getAppInstalledStatus(packageId, version, "", "")) {

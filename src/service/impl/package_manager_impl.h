@@ -36,7 +36,7 @@ public:
     RetMessageList Uninstall(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
     AppMetaInfoList Query(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
 
-    linglong::util::Error Update(const linglong::package::Ref &ref);
+    RetMessageList Update(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
 
 private:
     const QString sysLinglongInstalltions = "/deepin/linglong/entries/share";

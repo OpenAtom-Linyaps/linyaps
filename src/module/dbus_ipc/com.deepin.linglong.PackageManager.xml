@@ -26,9 +26,11 @@
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="RetMessageList"/>
         </method>
         <method name="Update">
-            <arg name="Options" type="(aay)" direction="in"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.In0"
-                        value="linglong::service::PackageManagerOptionList"/>
+            <arg name="PackageIdList" type="as" direction="in"/>
+            <arg name="paramMap" type="a{ss}" direction="in"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In1" value="ParamStringMap"/>
+            <arg name="RetMessageList" type="a(bus)" direction="out"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="RetMessageList"/>
         </method>
         <method name="UpdateAll">
             <arg name="JobID" type="s" direction="out"/>

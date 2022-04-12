@@ -27,5 +27,5 @@ public:
 
     // TODO: move PackageManagerProxyBase to namespace
     // TODO: need pure virtual
-    virtual linglong::util::Error Update(const linglong::package::Ref &ref) { return NoError(); }
+    virtual RetMessageList Update(const QStringList &packageIDList, const ParamStringMap &paramMap = {}) { return {}; }
 };

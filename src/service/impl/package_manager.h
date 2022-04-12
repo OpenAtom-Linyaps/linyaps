@@ -44,7 +44,7 @@ public Q_SLOTS:
     RetMessageList Download(const QStringList &packageIdList, const QString savePath);
     RetMessageList Install(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
     RetMessageList Uninstall(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
-    void Update(const linglong::service::PackageManagerOptionList &options);
+    RetMessageList Update(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
     QString UpdateAll();
 
     AppMetaInfoList Query(const QStringList &packageIdList, const ParamStringMap &paramMap = {});

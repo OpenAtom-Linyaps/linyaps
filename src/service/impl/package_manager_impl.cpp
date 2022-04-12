@@ -291,7 +291,7 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIdList, con
     RetMessageList retMsg;
     bool ret = false;
     auto info = QPointer<RetMessage>(new RetMessage);
-    QString pkgName = packageIdList.at(0);
+    QString pkgName = packageIdList.at(0).trimmed();
 
     QString err = "";
     const QString arch = hostArch();
@@ -424,7 +424,7 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIdList, con
  */
 AppMetaInfoList PackageManagerImpl::Query(const QStringList &packageIdList, const ParamStringMap &paramMap)
 {
-    const QString pkgName = packageIdList.at(0);
+    const QString pkgName = packageIdList.at(0).trimmed();
     if (pkgName == "installed") {
         return queryAllInstalledApp();
     }
@@ -479,7 +479,7 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIdList, c
 {
     RetMessageList retMsg;
     auto info = QPointer<RetMessage>(new RetMessage);
-    const QString pkgName = packageIdList.at(0);
+    const QString pkgName = packageIdList.at(0).trimmed();
 
     // 获取版本信息
     QString version = "";
@@ -592,26 +592,33 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIdList, c
  * 更新软件包
  *
  * @param packageIdList: 软件包的appId
+ * @param paramMap: 命令参数信息
  *
  * @return RetMessageList 更新结果信息
  */
-linglong::util::Error PackageManagerImpl::Update(const linglong::package::Ref &ref)
+RetMessageList PackageManagerImpl::Update(const QStringList &packageIdList, const ParamStringMap &paramMap)
 {
     RetMessageList retMsg;
     auto info = QPointer<RetMessage>(new RetMessage);
-
-    auto pkgName = ref.appId;
-    // 获取的版本号是 latest
-    auto version = ref.version;
-    if ("latest" == version) {
-        version = "";
+    const QString pkgName = packageIdList.at(0).trimmed();
+    // 获取版本信息
+    QString version = QString();
+    if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_VERSION)) {
+        version = paramMap[linglong::util::KEY_VERSION];
     }
+
     QString arch = hostArch();
     // 判断是否已安装
     QString err = QString();
     QString userName = getUserName();
     if (!getAppInstalledStatus(pkgName, version, arch, userName)) {
-        return NewError(static_cast<int>(RetCode::pkg_not_installed), ref.toString() + " not installed");
+        err = pkgName + " not installed";
+        qCritical() << err;
+        info->setcode(RetCode(RetCode::pkg_not_installed));
+        info->setmessage(err);
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
     }
 
     // 检查是否存在版本更新
@@ -620,7 +627,13 @@ linglong::util::Error PackageManagerImpl::Update(const linglong::package::Ref &r
     getInstalledAppInfo(pkgName, version, arch, userName, pkgList);
     auto installedApp = pkgList.at(0);
     if (pkgList.size() != 1) {
-        return NewError(static_cast<int>(RetCode::ErrorPkgUpdateFailed), "query local app:" + pkgName + " info err");
+        err = "query local app:" + pkgName + " info err";
+        qCritical() << err;
+        info->setcode(RetCode(RetCode::ErrorPkgUpdateFailed));
+        info->setmessage(err);
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
     }
 
     QString currentVersion = installedApp->version;
@@ -628,20 +641,35 @@ linglong::util::Error PackageManagerImpl::Update(const linglong::package::Ref &r
     auto ret = getAppInfofromServer(pkgName, "", arch, appData, err);
     if (!ret) {
         err = "query server app:" + pkgName + " info err";
-        return NewError(static_cast<int>(RetCode::ErrorPkgUpdateFailed), err);
+        qCritical() << err;
+        info->setcode(RetCode(RetCode::ErrorPkgUpdateFailed));
+        info->setmessage(err);
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
     }
 
     AppMetaInfoList serverPkgList;
     ret = loadAppInfo(appData, serverPkgList, err);
     if (!ret) {
         err = "load app:" + pkgName + " info err";
-        return NewError(static_cast<int>(RetCode::ErrorPkgUpdateFailed), err);
+        qCritical() << err;
+        info->setcode(RetCode(RetCode::ErrorPkgUpdateFailed));
+        info->setmessage(err);
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
     }
 
     auto serverApp = getLatestApp(serverPkgList);
     if (currentVersion == serverApp->version) {
         err = "app:" + pkgName + ", version:" + currentVersion + " is latest";
-        return NewError(static_cast<int>(RetCode::ErrorPkgUpdateFailed), err);
+        qCritical() << err;
+        info->setcode(RetCode(RetCode::ErrorPkgUpdateFailed));
+        info->setmessage(err);
+        info->setstate(false);
+        retMsg.push_back(info);
+        return retMsg;
     }
 
     // FIXME 安装最新软件
@@ -650,7 +678,12 @@ linglong::util::Error PackageManagerImpl::Update(const linglong::package::Ref &r
         auto it = installRet.at(0);
         if (!it->state) {
             err = "install app:" + pkgName + " err";
-            return NewError(static_cast<int>(RetCode::ErrorPkgUpdateFailed), err);
+            qCritical() << err;
+            info->setcode(RetCode(RetCode::ErrorPkgUpdateFailed));
+            info->setmessage(err);
+            info->setstate(false);
+            retMsg.push_back(info);
+            return retMsg;
         }
     }
 
@@ -661,12 +694,17 @@ linglong::util::Error PackageManagerImpl::Update(const linglong::package::Ref &r
         auto it = uninstallRet.at(0);
         if (!it->state) {
             err = "uninstall app:" + pkgName + " err";
-            return NewError(static_cast<int>(RetCode::ErrorPkgUpdateFailed), err);
+            qCritical() << err;
+            info->setcode(RetCode(RetCode::ErrorPkgUpdateFailed));
+            info->setmessage(err);
+            info->setstate(false);
+            retMsg.push_back(info);
+            return retMsg;
         }
     }
-
-    // FIXME: return no version
-    // info->setmessage("update " + pkgName + " success, version:" + currentVersion + " --> " + serverApp->version);
-
-    return NoError();
+    info->setcode(RetCode(RetCode::ErrorPkgUpdateSuccess));
+    info->setmessage("update " + pkgName + " success, version:" + currentVersion + " --> " + serverApp->version);
+    info->setstate(true);
+    retMsg.push_back(info);
+    return retMsg;
 }

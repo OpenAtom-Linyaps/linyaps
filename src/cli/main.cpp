@@ -192,34 +192,49 @@ int main(int argc, char **argv)
                  exec = QStringList {exec, desktopArgs}.join(" ");
              }
 
-             QPointer<PackageManagerOption> pmOpt(new PackageManagerOption);
-             pmOpt->runParamOption = QPointer<RunParamOption>(new RunParamOption);
+             // appId format: org.deepin.calculator/1.2.6 in multi-version
+             QMap<QString, QString> paramMap;
+             QStringList appInfoList = appId.split("/");
+             if (appInfoList.size() > 1) {
+                 paramMap.insert(linglong::util::KEY_VERSION, appInfoList.at(1));
+             }
+             if (!repoType.isEmpty()) {
+                 paramMap.insert(linglong::util::KEY_REPO_POINT, repoType);
+             }
+
+             if (!exec.isEmpty()) {
+                 paramMap.insert(linglong::util::KEY_EXEC, exec);
+             }
 
              // 获取用户环境变量
-             pmOpt->runParamOption->envList = getUserEnv(linglong::util::envList);
-             // appId format: org.deepin.calculator/1.2.6 in multi-version
-             pmOpt->ref = appId;
-             pmOpt->runParamOption->exec = exec;
-             pmOpt->runParamOption->repoPoint = repoType;
-             pmOpt->runParamOption->noDbusProxy = parser.isSet(optNoProxy);
+             QStringList envList = getUserEnv(linglong::util::envList);
+             if (!envList.isEmpty()) {
+                 paramMap.insert(linglong::util::KEY_ENVLIST, envList.join(","));
+             }
+
+             // 判断是否设置了no-proxy参数
+             if(parser.isSet(optNoProxy)){
+                 paramMap.insert(linglong::util::KEY_NO_PROXY, "");
+             }
+
              if (!parser.isSet(optNoProxy)) {
                  // FIX to do only deal with session bus
-                 pmOpt->runParamOption->busType = "session";
+                 paramMap.insert(linglong::util::KEY_BUS_TYPE, "session");
                  auto nameFilter = parser.value(optNameFilter);
                  if (!nameFilter.isEmpty()) {
-                     pmOpt->runParamOption->filterName = nameFilter;
+                     paramMap.insert(linglong::util::KEY_FILTER_NAME, nameFilter);
                  }
                  auto pathFilter = parser.value(optPathFilter);
                  if (!pathFilter.isEmpty()) {
-                     pmOpt->runParamOption->filterPath = pathFilter;
+                     paramMap.insert(linglong::util::KEY_FILTER_PATH, pathFilter);
                  }
                  auto interfaceFilter = parser.value(optInterfaceFilter);
                  if (!interfaceFilter.isEmpty()) {
-                     pmOpt->runParamOption->filterInterface = interfaceFilter;
+                     paramMap.insert(linglong::util::KEY_FILTER_IFACE, interfaceFilter);
                  }
              }
 
-             QDBusPendingReply<RetMessageList> reply = pm.Start(wrapOption(pmOpt));
+             QDBusPendingReply<RetMessageList> reply = pm.Start(appInfoList.at(0), paramMap);
              reply.waitForFinished();
              RetMessageList retMsg = reply.value();
              if (retMsg.size() > 0) {

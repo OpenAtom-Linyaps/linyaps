@@ -15,13 +15,13 @@
 namespace linglong {
 namespace util {
 
-// 包管理命令可选参数
 const QString KEY_VERSION = "version";
 const QString KEY_REPO_POINT = "repo-point";
 const QString KEY_ARCH = "arch";
 const QString KEY_DELDATA = "delete-data";
 const QString KEY_NO_CACHE = "force";
 const QString KEY_EXEC = "exec";
+const QString KEY_ENVLIST = "env-list";
 
 const QString KEY_BUS_TYPE = "bus-type";
 const QString KEY_NO_PROXY = "no-proxy";

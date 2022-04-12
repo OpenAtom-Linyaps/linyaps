@@ -242,60 +242,37 @@ QString PackageManager::Import(const QStringList &packagePathList)
 /*
  * 执行软件包
  *
- * @param opts: 软件包运行参数
- *
+ * @param packageId: 软件包的appId
+ * @param paramMap: 运行参数信息
+ * 
  * @return RetMessageList: 运行结果信息
  */
-RetMessageList PackageManager::Start(const linglong::service::PackageManagerOptionList &opts)
+RetMessageList PackageManager::Start(const QString &packageId, const ParamStringMap &paramMap)
 {
     Q_D(PackageManager);
 
     RetMessageList retMsg;
     auto info = QPointer<RetMessage>(new RetMessage);
 
-    // 获取user env list
-    auto option = linglong::service::unwrapOption(opts);
-    if (option.isNull()) {
-        sendErrorReply(QDBusError::InvalidArgs,
-                       NewError(static_cast<int>(RetCode::user_input_param_err), "package list empty").toJson());
-    }
-    if (option->runParamOption->envList.isEmpty()) {
-        sendErrorReply(QDBusError::InvalidArgs,
-                       NewError(static_cast<int>(RetCode::user_env_list_err), "get usr env list err").toJson());
-    }
-
-    auto appRef = package::Ref(option->ref);
-    // 获取appId
-    const QString packageId = appRef.appId;
     // 获取版本信息
-    QString version = appRef.version;
-    if ("latest" == version) {
-        version = "";
+    QString version = "";
+    if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_VERSION)) {
+        version = paramMap[linglong::util::KEY_VERSION];
     }
 
-    // 获取envList
-    auto envList = option->runParamOption->envList;
+    // 获取user env list
+    QStringList userEnvList;
+    if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_ENVLIST)) {
+        userEnvList = paramMap[linglong::util::KEY_ENVLIST].split(",");
+    }
+
     // 获取exec参数
-    auto desktopExec = option->runParamOption->exec;
-    // 获取repoPoint
-    auto repoPoint = option->runParamOption->repoPoint;
-
-    ParamStringMap paramMap;
-    if (option->runParamOption->noDbusProxy) {
-        paramMap.insert(linglong::util::KEY_NO_PROXY, "");
+    QString desktopExec;
+    desktopExec.clear();
+    if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_EXEC)) {
+        desktopExec = paramMap[linglong::util::KEY_EXEC];
     }
-    if (!option->runParamOption->busType.isEmpty()) {
-        paramMap.insert(linglong::util::KEY_BUS_TYPE, option->runParamOption->busType);
-    }
-    if (!option->runParamOption->filterName.isEmpty()) {
-        paramMap.insert(linglong::util::KEY_FILTER_NAME, option->runParamOption->filterName);
-    }
-    if (!option->runParamOption->filterPath.isEmpty()) {
-        paramMap.insert(linglong::util::KEY_FILTER_PATH, option->runParamOption->filterPath);
-    }
-    if (!option->runParamOption->filterInterface.isEmpty()) {
-        paramMap.insert(linglong::util::KEY_FILTER_IFACE, option->runParamOption->filterInterface);
-    }
+    
     // 判断是否已安装
     QString err = "";
     if (!getAppInstalledStatus(packageId, version, "", "")) {
@@ -311,7 +288,7 @@ RetMessageList PackageManager::Start(const linglong::service::PackageManagerOpti
         // 判断是否存在
         package::Ref ref("", packageId, version, hostArch());
 
-        bool isFlatpakApp = !repoPoint.isNull() && !repoPoint.isEmpty();
+        bool isFlatpakApp = !paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT);
 
         auto app = runtime::App::load(&d->repo, ref, desktopExec, isFlatpakApp);
         if (nullptr == app) {
@@ -319,7 +296,7 @@ RetMessageList PackageManager::Start(const linglong::service::PackageManagerOpti
             qCritical() << "nullptr" << app;
             return;
         }
-        app->saveUserEnvList(envList);
+        app->saveUserEnvList(userEnvList);
         app->setAppParamMap(paramMap);
         d->apps[app->container()->id] = QPointer<runtime::App>(app);
         app->start();

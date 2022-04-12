@@ -34,7 +34,8 @@ public:
 
 public Q_SLOTS:
     QStringList List() { return {}; };
-    void Stop(const QString &jobID) {};
+    void Start(const QString &jobId);
+    void Stop(const QString &jobId);
 
 protected:
     JobManager();

@@ -32,6 +32,13 @@ namespace util {
 int openDatabaseConnection(QSqlDatabase &dbConn);
 
 /*
+ * 关闭数据库连接
+ *
+ * @param dbConn: QSqlDatabase 数据库连接
+ */
+void closeDbConnection(QSqlDatabase &dbConn);
+
+/*
  * 检查安装信息数据库表及版本信息表
  *
  * @return int: 0:成功 其它:失败

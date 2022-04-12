@@ -133,6 +133,27 @@ public:
     bool repoPullbyCmd(const QString &destPath, const QString &remoteName, const QString &ref, QString &err);
 
     /*
+     * 获取下载任务对应的进程Id
+     *
+     * @param ref: ostree软件包对应的ref
+     *
+     * @return int: ostree命令任务对应的进程id
+     */
+    int getOstreeJobId(const QString &ref)
+    {
+        if (jobMap.contains(ref)) {
+            return jobMap[ref];
+        } else {
+            for (auto item : jobMap.keys()) {
+                if (item.indexOf(ref) > -1) {
+                    return jobMap[item];
+                }
+            }
+        }
+        return -1;
+    }
+
+    /*
      * 删除本地repo仓库中软件包对应的ref分支信息及数据
      *
      * @param repoPath: 仓库路径
@@ -145,6 +166,9 @@ public:
     bool repoDeleteDatabyRef(const QString &repoPath, const QString &remoteName, const QString &ref, QString &err);
 
 private:
+    // multi-thread
+    QMap<QString, int> jobMap;
+
     // lint 禁止拷贝
     OstreeRepoHelper(const OstreeRepoHelper &);
 
@@ -290,6 +314,17 @@ private:
      *
      */
     void setDirInfo(const QString &basedir, OstreeRepo *repo);
+
+    /*
+     * 启动一个ostree 命令任务
+     *
+     * @param ref: ostree软件包对应的ref
+     * @param argList: 参数列表
+     * @param timeout: 任务超时时间
+     *
+     * @return bool: true:成功 false:失败
+     */
+    bool startOstreeJob(const QString &ref, const QStringList &argList, const int timeout);
 
 private:
     // ostree 仓库对象信息

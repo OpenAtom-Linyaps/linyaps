@@ -3,10 +3,13 @@
 <node>
     <interface name="com.deepin.linglong.JobManager">
         <method name="List">
-            <arg name="JobIDList" type="as" direction="out"/>
+            <arg name="JobIdList" type="as" direction="out"/>
+        </method>
+        <method name="Start">
+            <arg name="JobId" type="s" direction="in"/>
         </method>
         <method name="Stop">
-            <arg name="JobID" type="s" direction="in"/>
+            <arg name="JobId" type="s" direction="in"/>
         </method>
     </interface>
 </node>

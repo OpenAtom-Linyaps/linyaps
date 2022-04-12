@@ -10,6 +10,9 @@
 
 #include "app_status.h"
 
+#include <QMutexLocker>
+#include <QThread>
+
 #include "service/impl/version.h"
 
 // 安装数据库路径
@@ -31,12 +34,16 @@ namespace util {
  */
 int openDatabaseConnection(QSqlDatabase &dbConn)
 {
+    QString dbConnName =
+        QStringLiteral("installed_package_connection_%1").arg(qintptr(QThread::currentThreadId()), 0, 16);
+    static QMutex appSqliteDatabaseMutex;
+    QMutexLocker locker(&appSqliteDatabaseMutex);
     QString err = "";
     // 添加数据库驱动，并指定连接名称installed_package_connection
-    if (QSqlDatabase::contains("installed_package_connection")) {
-        dbConn = QSqlDatabase::database("installed_package_connection");
+    if (QSqlDatabase::contains(dbConnName)) {
+        dbConn = QSqlDatabase::database(dbConnName);
     } else {
-        dbConn = QSqlDatabase::addDatabase("QSQLITE", "installed_package_connection");
+        dbConn = QSqlDatabase::addDatabase("QSQLITE", dbConnName);
         dbConn.setDatabaseName(installedAppInfoPath + "InstalledAppInfo.db");
     }
     if (!dbConn.isOpen() && !dbConn.open()) {
@@ -45,6 +52,19 @@ int openDatabaseConnection(QSqlDatabase &dbConn)
         return StatusCode::FAIL;
     }
     return StatusCode::SUCCESS;
+}
+
+/*
+ * 关闭数据库连接
+ *
+ * @param dbConn: QSqlDatabase 数据库连接
+ */
+void closeDbConnection(QSqlDatabase &dbConn)
+{
+    QString connName = dbConn.connectionName();
+    dbConn.close();
+    dbConn = QSqlDatabase();
+    QSqlDatabase::removeDatabase(connName);
 }
 
 /*
@@ -77,7 +97,7 @@ int checkInstalledAppDb()
     if (!sqlQuery.exec()) {
         err = "fail to create installed appinfo table, err:" + sqlQuery.lastError().text();
         qCritical() << err;
-        dbConn.close();
+        closeDbConnection(dbConn);
         return StatusCode::FAIL;
     }
 
@@ -87,10 +107,10 @@ int checkInstalledAppDb()
     if (!sqlQuery.exec()) {
         err = "fail to create appInfoDbVersion, err:" + sqlQuery.lastError().text();
         qCritical() << err;
-        dbConn.close();
+        closeDbConnection(dbConn);
         return StatusCode::FAIL;
     }
-    dbConn.close();
+    closeDbConnection(dbConn);
     return StatusCode::SUCCESS;
 }
 
@@ -113,7 +133,7 @@ int updateInstalledAppInfoDb()
     if (!sqlQuery.exec()) {
         err = "checkAppDbUpgrade fail to exec sql:" + selectSql + ", error:" + sqlQuery.lastError().text();
         qCritical() << err;
-        dbConn.close();
+        closeDbConnection(dbConn);
         return StatusCode::FAIL;
     }
 
@@ -138,11 +158,11 @@ int updateInstalledAppInfoDb()
         if (!sqlQuery.exec()) {
             err = "checkAppDbUpgrade fail to exec sql:" + insertSql + ", error:" + sqlQuery.lastError().text();
             qCritical() << err;
-            dbConn.close();
+            closeDbConnection(dbConn);
             return StatusCode::FAIL;
         }
     }
-    dbConn.close();
+    closeDbConnection(dbConn);
     return StatusCode::SUCCESS;
 }
 
@@ -184,10 +204,10 @@ int insertAppRecord(AppMetaInfo *package, const QString &installType, const QStr
     if (!sqlQuery.exec()) {
         err = "insertAppRecord fail to exec sql:" + insertSql + ", error:" + sqlQuery.lastError().text();
         qCritical() << err;
-        dbConn.close();
+        closeDbConnection(dbConn);
         return StatusCode::FAIL;
     }
-    dbConn.close();
+    closeDbConnection(dbConn);
     qDebug() << "insertAppRecord app:" << package->appId << ", version:" << package->version << " success";
     return StatusCode::SUCCESS;
 }
@@ -224,7 +244,7 @@ int deleteAppRecord(const QString &appId, const QString &appVer, const QString &
         if (!sqlQuery.exec()) {
             err = "deleteAppRecord fail to exec sql:" + selectSql + ", error:" + sqlQuery.lastError().text();
             qCritical() << err;
-            dbConn.close();
+            closeDbConnection(dbConn);
             return StatusCode::FAIL;
         }
 
@@ -234,7 +254,7 @@ int deleteAppRecord(const QString &appId, const QString &appVer, const QString &
         if (recordCount < 1) {
             err = "deleteAppRecord app:" + appId + ",userName:" + userName + " not found";
             qCritical() << err;
-            dbConn.close();
+            closeDbConnection(dbConn);
             return StatusCode::FAIL;
         }
 
@@ -260,10 +280,10 @@ int deleteAppRecord(const QString &appId, const QString &appVer, const QString &
     if (!sqlQuery.exec()) {
         err = "deleteAppRecord fail to exec sql:" + deleteSql + ", error:" + sqlQuery.lastError().text();
         qCritical() << err;
-        dbConn.close();
+        closeDbConnection(dbConn);
         return StatusCode::FAIL;
     }
-    dbConn.close();
+    closeDbConnection(dbConn);
     qDebug() << "delete app:" << appId << ", version:" << dstVer << ", arch:" << appArch << " success";
     return StatusCode::SUCCESS;
 }
@@ -326,7 +346,7 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
     if (!sqlQuery.exec()) {
         err = "getAppInstalledStatus fail to exec sql:" + selectSql + ", error:" + sqlQuery.lastError().text();
         qCritical() << err;
-        dbConn.close();
+        closeDbConnection(dbConn);
         return false;
     }
     // 指定用户和版本找不到
@@ -336,10 +356,10 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
     if (recordCount < 1) {
         err = "getAppInstalledStatus app:" + appId + ",version:" + appVer + ",userName:" + userName + " not found";
         qDebug() << err;
-        dbConn.close();
+        closeDbConnection(dbConn);
         return false;
     }
-    dbConn.close();
+    closeDbConnection(dbConn);
     return true;
 }
 
@@ -389,7 +409,7 @@ bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QStr
     if (!sqlQuery.exec()) {
         err = "getInstalledAppInfo fail to exec sql:" + selectSql + ", error:" + sqlQuery.lastError().text();
         qCritical() << err;
-        dbConn.close();
+        closeDbConnection(dbConn);
         return false;
     }
 
@@ -417,10 +437,10 @@ bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QStr
         } while (sqlQuery.next());
         info->version = dstVer;
         pkgList.push_back(info);
-        dbConn.close();
+        closeDbConnection(dbConn);
         return true;
     }
-    dbConn.close();
+    closeDbConnection(dbConn);
     return false;
 }
 
@@ -452,7 +472,7 @@ AppMetaInfoList queryAllInstalledApp(const QString &userName)
     if (!sqlQuery.exec()) {
         err = "queryAllInstalledApp fail to exec sql:" + selectSql + ", error:" + sqlQuery.lastError().text();
         qCritical() << err;
-        dbConn.close();
+        closeDbConnection(dbConn);
         return {};
     }
     while (sqlQuery.next()) {
@@ -464,7 +484,7 @@ AppMetaInfoList queryAllInstalledApp(const QString &userName)
         info->description = sqlQuery.value(9).toString().trimmed();
         pkglist.push_back(info);
     }
-    dbConn.close();
+    closeDbConnection(dbConn);
     return pkglist;
 }
 } // namespace util

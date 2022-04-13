@@ -62,3 +62,15 @@ This project is licensed under [GPLv3]().
 ## Credits and references
 
 - [OStree](https://github.com/ostreedev/ostree)
+
+## Test
+add --coverage in CMakeLists.txt
+```bash
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+```
+
+use gcov、lcov to generate convert html report, make shure at the top level of the project
+```bash
+./code_coverage.sh
+```

@@ -33,7 +33,8 @@ set(LL_SERVICE_SOURCES
     ../module/util/json.h
     ../module/runtime/oci.h
     ../module/util/app_status.cpp
-    ../module/util/appinfo_cache.cpp)
+    ../module/util/appinfo_cache.cpp
+    ../module/util/log_handler.cpp)
 
 qt5_add_dbus_adaptor(LL_SERVICE_SOURCES
                      ../module/dbus_ipc/com.deepin.linglong.PackageManager.xml

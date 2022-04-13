@@ -16,12 +16,15 @@
 #include "packagemanageradaptor.h"
 #include "jobmanageradaptor.h"
 #include "module/runtime/runtime.h"
+#include "module/util/log_handler.h"
 
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
     QCoreApplication::setOrganizationName("deepin");
-    qSetMessagePattern("%{time yyyy-MM-dd hh:mm:ss.zzz} [%{appname}] [%{type}] %{message}");
+
+    // 安装消息处理函数
+    linglong::util::LogHandler::instance()->installMessageHandler();
 
     linglong::runtime::registerAllMetaType();
     linglong::package::registerAllMetaType();

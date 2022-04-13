@@ -25,6 +25,7 @@
 #include "module/runtime/oci.h"
 #include "module/runtime/runtime.h"
 #include "module/util/yaml.h"
+#include "module/util/log_handler.h"
 
 using namespace linglong;
 
@@ -39,6 +40,9 @@ int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
     QCoreApplication::setOrganizationName("deepin");
+
+    // 安装消息处理函数
+    linglong::util::LogHandler::instance()->installMessageHandler();
 
     qJsonRegisterAll();
 

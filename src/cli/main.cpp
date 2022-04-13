@@ -24,6 +24,7 @@
 #include "module/runtime/runtime.h"
 #include "module/util/xdg.h"
 #include "module/util/env.h"
+#include "module/util/log_handler.h"
 
 static void qJsonRegisterAll()
 {
@@ -103,6 +104,9 @@ int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
     QCoreApplication::setOrganizationName("deepin");
+
+    // 安装消息处理函数
+    linglong::util::LogHandler::instance()->installMessageHandler();
 
     // register qdbus type
     qJsonRegisterAll();

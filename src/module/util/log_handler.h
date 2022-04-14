@@ -26,6 +26,7 @@ class LogHandler
 
 public:
     explicit LogHandler(QObject *parent = nullptr);
+    ~LogHandler();
     void installMessageHandler(); // 给Qt安装消息处理函数
     void uninstallMessageHandler(); // 取消安装消息处理函数并释放资源
 

@@ -235,6 +235,11 @@ linglong::util::LogHandler::LogHandler(QObject *parent)
 {
 }
 
+linglong::util::LogHandler::~LogHandler()
+{
+    uninstallMessageHandler();
+}
+
 // 给Qt安装消息处理函数
 void linglong::util::LogHandler::installMessageHandler()
 {

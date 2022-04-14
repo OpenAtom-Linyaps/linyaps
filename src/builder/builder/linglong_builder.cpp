@@ -93,12 +93,28 @@ util::Error commitBuildOutput(Project *project, AnnotationsOverlayfsRootfs *over
 
         // FIXME: set all section
         auto exec = desktopEntry.rawValue("Exec", DesktopEntry::SectionDesktopEntry);
-        exec = QString("ll-cli run %1 %2").arg(project->package->id, exec);
+        exec = QString("ll-cli run %1 --exec %2").arg(project->package->id, exec);
         desktopEntry.set(DesktopEntry::SectionDesktopEntry, "Exec", exec);
+        // The section TryExec affects starting from the launcher, set it to null.
+        desktopEntry.set(DesktopEntry::SectionDesktopEntry, "TryExec", "");
 
         auto ret = desktopEntry.save(QStringList {targetPath, fileInfo.fileName()}.join(QDir::separator()));
         if (!ret.success()) {
             return WrapError(ret, "save desktop failed");
+        }
+    }
+    // Move some directories in files/share to entries
+    // directories like icons, mime, dbus-1, locale
+    auto targetList = {"icons", "mime", "dbus-1", "locale", "autostart"};
+    auto srcPath = project->config().cacheInstallPath("files/share");
+
+    for (auto target : targetList) {
+        auto srcDir = QStringList {srcPath, target}.join(QDir::separator());
+        auto destDir = QStringList {entriesPath, target}.join(QDir::separator());
+
+        if (util::dirExists(srcDir)) {
+            util::copyDir(srcDir, destDir);
+            util::removeDir(srcDir);
         }
     }
 

@@ -573,7 +573,7 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIdList, c
     if (!ret) {
         qCritical() << err;
         info->setcode(RetCode(RetCode::pkg_uninstall_failed));
-        info->setmessage("uninstall " + pkgName + ",version:" + it->version + " failed");
+        info->setmessage("uninstall " + pkgName + ", version:" + it->version + " failed");
         info->setstate(false);
         retMsg.push_back(info);
         return retMsg;
@@ -582,7 +582,7 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIdList, c
     // 更新安装数据库
     deleteAppRecord(pkgName, it->version, "", userName);
     info->setcode(RetCode(RetCode::pkg_uninstall_success));
-    info->setmessage("uninstall " + pkgName + ",version:" + it->version + " success");
+    info->setmessage("uninstall " + pkgName + ", version:" + it->version + " success");
     info->setstate(true);
     retMsg.push_back(info);
     return retMsg;

@@ -8,7 +8,6 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#include <iomanip>
 #include <QCoreApplication>
 #include <QCommandLineParser>
 #include <QCommandLineOption>
@@ -37,41 +36,62 @@ void printFlatpakAppInfo(AppMetaInfoList retMsg)
 {
     if (retMsg.size() > 0) {
         if (retMsg.at(0)->appId == "flatpaklist") {
-            std::cout << std::setiosflags(std::ios::left) << std::setw(48) << "Description" << std::setw(16)
-                      << "Application" << std::setw(16) << "Version" << std::setw(12) << "Branch" << std::setw(12)
-                      << "Arch" << std::setw(12) << "Origin" << std::setw(12) << "Installation" << std::endl;
+            qInfo("%-48s%-16s%-16s%-12s%-12s%-12s%-12s", "Description", "Application", "Version", "Branch", "Arch",
+                  "Origin", "Installation");
         } else {
-            std::cout << std::setiosflags(std::ios::left) << std::setw(72) << "Description" << std::setw(16)
-                      << "Application" << std::setw(16) << "Version" << std::setw(12) << "Branch" << std::setw(12)
-                      << "Remotes" << std::endl;
+            qInfo("%-72s%-16s%-16s%-12s%-12s", "Description", "Application", "Version", "Branch", "Remotes");
         }
         QString ret = retMsg.at(0)->description;
         QStringList strList = ret.split(QRegExp("[\r\n]"), QString::SkipEmptyParts);
         for (int i = 0; i < strList.size(); ++i) {
-            std::cout << strList[i].simplified().toStdString() << std::endl;
+            qInfo().noquote() << strList[i].simplified();
         }
     }
+}
+
+// 中文字符串对齐特殊处理
+int getUnicodeNum(const QString &name)
+{
+    int num = 0;
+    int cnt = name.count();
+    for (int i = 0; i < cnt; i++) {
+        QChar ch = name.at(i);
+        ushort uNum = ch.unicode();
+        if (uNum >= 0x4E00 && uNum <= 0x9FA5) {
+            num++;
+        }
+    }
+    return num;
 }
 
 void printAppInfo(AppMetaInfoList retMsg)
 {
     if (retMsg.size() > 0) {
-        std::cout << std::setiosflags(std::ios::left) << std::setw(32) << "id" << std::setw(20) << "name"
-                  << std::setw(16) << "version" << std::setw(12) << "arch"
-                  << "description" << std::endl;
-        // 最长显示字符数
-        const int maxDisSize = 50;
+        qInfo("%-32s%-32s%-16s%-12s%-s", qUtf8Printable("id"), qUtf8Printable("name"), qUtf8Printable("version"),
+              qUtf8Printable("arch"), qUtf8Printable("description"));
         for (auto const &it : retMsg) {
-            QString simpleDescription = it->description;
-            if (it->description.length() > maxDisSize) {
-                simpleDescription = it->description.left(maxDisSize) + "...";
+            QString simpleDescription = it->description.trimmed();
+            if (simpleDescription.length() > 56) {
+                simpleDescription = it->description.trimmed().left(53) + "...";
             }
-            std::cout << std::setiosflags(std::ios::left) << std::setw(32) << it->appId.toStdString() << std::setw(20)
-                      << it->name.toStdString() << std::setw(16) << it->version.toStdString() << std::setw(12)
-                      << it->arch.toStdString() << simpleDescription.toStdString() << std::endl;
+            QString id = it->appId.trimmed();
+            if (id.length() > 32) {
+                id = it->appId.trimmed().left(29) + "...";
+            }
+            QString name = it->name.trimmed();
+            if (name.length() > 32) {
+                name = it->name.trimmed().left(29) + "...";
+            }
+            int count = getUnicodeNum(name);
+            qInfo().noquote() << QString("%1%2%3%4%5")
+                                     .arg(id, -32, QLatin1Char(' '))
+                                     .arg(name, count - 32, QLatin1Char(' '))
+                                     .arg(it->version.trimmed(), -16, QLatin1Char(' '))
+                                     .arg(it->arch.trimmed(), -12, QLatin1Char(' '))
+                                     .arg(simpleDescription, -56, QLatin1Char(' '));
         }
     } else {
-        std::cout << "app not found in repo" << std::endl;
+        qInfo().noquote() << "app not found in repo";
     }
 }
 
@@ -212,7 +232,7 @@ int main(int argc, char **argv)
              }
 
              // 判断是否设置了no-proxy参数
-             if(parser.isSet(optNoProxy)){
+             if (parser.isSet(optNoProxy)) {
                  paramMap.insert(linglong::util::KEY_NO_PROXY, "");
              }
 
@@ -238,27 +258,13 @@ int main(int argc, char **argv)
              RetMessageList retMsg = reply.value();
              if (retMsg.size() > 0) {
                  auto it = retMsg.at(0);
-                 std::cout << "message: " << it->message.toStdString();
+                 QString prompt = "message: " + it->message;
                  if (!it->state) {
-                     std::cout << ", errcode:" << it->code << std::endl;
+                     qCritical().noquote() << prompt << ", errcode:" << it->code;
                      return -1;
                  }
-                 std::cout << std::endl;
+                 qInfo().noquote() << prompt;
              }
-
-             // TODO
-             //        QFile f(configPath);
-             //        f.open(QIODevice::ReadOnly);
-             //        auto r = linglong::fromString(f.readAll().toStdString());
-             //        f.close();
-             //
-             //  if (!exec.isEmpty()) {
-             //      r.process.args = {exec.toStdString()};
-             //  }
-
-             //  runtime::Application ogApp(appId, r);
-             //  return ogApp.start();
-
              return 0;
          }},
         {"exec",
@@ -315,12 +321,12 @@ int main(int argc, char **argv)
              RetMessageList retMsg = reply.value();
              if (retMsg.size() > 0) {
                  auto it = retMsg.at(0);
-                 std::cout << "message: " << it->message.toStdString();
+                 QString prompt = "message: " + it->message;
                  if (!it->state) {
-                     std::cout << ", errcode:" << it->code << std::endl;
+                     qCritical().noquote() << prompt << ", errcode:" << it->code;
                      return -1;
                  }
-                 std::cout << std::endl;
+                 qInfo().noquote() << prompt;
              }
              return 0;
          }},
@@ -347,12 +353,12 @@ int main(int argc, char **argv)
              RetMessageList retMsg = reply.value();
              if (retMsg.size() > 0) {
                  auto it = retMsg.at(0);
-                 std::cout << "message: " << it->message.toStdString();
+                 QString prompt = "message: " + it->message;
                  if (!it->state) {
-                     std::cout << ", errcode:" << it->code << std::endl;
+                     qCritical().noquote() << prompt << ", errcode:" << it->code;
                      return -1;
                  }
-                 std::cout << std::endl;
+                 qInfo().noquote() << prompt;
              }
              return 0;
          }},
@@ -390,7 +396,7 @@ int main(int argc, char **argv)
                  RetMessageList retMsg = noDbusPm->Install({appInfoList.at(0)}, paramMap);
                  if (retMsg.size() > 0) {
                      auto it = retMsg.at(0);
-                     std::cout << "message: " << it->message.toStdString() << std::endl;
+                     qInfo().noquote() << "message: " << it->message;
                      if (!it->state) {
                          return -1;
                      }
@@ -399,20 +405,20 @@ int main(int argc, char **argv)
              }
              reply = pm.Install({appInfoList.at(0)}, paramMap);
 
-             std::cout << "install " << appId.toStdString() << ", please wait a few minutes..." << std::endl;
+             qInfo().noquote() << "install " << appId << ", please wait a few minutes...";
              reply.waitForFinished();
              RetMessageList retMsg = reply.value();
              if (retMsg.size() > 0) {
                  auto it = retMsg.at(0);
-                 std::cout << "message: " << it->message.toStdString();
+                 QString prompt = "message: " + it->message;
                  if (!it->state) {
-                     std::cout << ", errcode:" << it->code << std::endl;
+                     qCritical().noquote() << prompt << ", errcode:" << it->code;
                      return -1;
                  }
-                 std::cout << std::endl;
+                 qInfo().noquote() << prompt;
              }
              if (reply.isError()) {
-                 std::cout << "install: " << appId.toStdString() << " timeout";
+                 qCritical().noquote() << "install: " << appId << " timeout";
                  return -1;
              }
              return 0;
@@ -436,20 +442,20 @@ int main(int argc, char **argv)
              }
              pm.setTimeout(1000 * 60 * 60 * 24);
              QDBusPendingReply<RetMessageList> reply = pm.Update({appInfoList.at(0)}, paramMap);
-             std::cout << "update " << appId.toStdString() << ", please wait a few minutes..." << std::endl;
+             qInfo().noquote() << "update " << appId << ", please wait a few minutes...";
              reply.waitForFinished();
              RetMessageList retMsg = reply.value();
              if (retMsg.size() > 0) {
                  auto it = retMsg.at(0);
-                 std::cout << "message: " << it->message.toStdString();
+                 QString prompt = "message: " + it->message;
                  if (!it->state) {
-                     std::cout << ", errcode:" << it->code << std::endl;
+                     qCritical().noquote() << prompt << ", errcode:" << it->code;
                      return -1;
                  }
-                 std::cout << std::endl;
+                 qInfo().noquote() << prompt;
              }
              if (reply.isError()) {
-                 std::cout << "update: " << appId.toStdString() << " timeout";
+                 qCritical().noquote() << "update: " << appId << " timeout";
                  return -1;
              }
              return 0;
@@ -522,7 +528,7 @@ int main(int argc, char **argv)
                  RetMessageList retMsg = noDbusPm->Uninstall({appInfoList.at(0)}, paramMap);
                  if (retMsg.size() > 0) {
                      auto it = retMsg.at(0);
-                     std::cout << "message: " << it->message.toStdString() << std::endl;
+                     qInfo().noquote() << "message: " << it->message;
                      if (!it->state) {
                          return -1;
                      }
@@ -534,12 +540,12 @@ int main(int argc, char **argv)
              RetMessageList retMsg = reply.value();
              if (retMsg.size() > 0) {
                  auto it = retMsg.at(0);
-                 std::cout << "message: " << it->message.toStdString();
+                 QString prompt = "message: " + it->message;
                  if (!it->state) {
-                     std::cout << ", errcode:" << it->code << std::endl;
+                     qCritical().noquote() << prompt << ", errcode:" << it->code;
                      return -1;
                  }
-                 std::cout << std::endl;
+                 qInfo().noquote() << prompt;
              }
              return 0;
          }},

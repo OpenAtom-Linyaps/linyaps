@@ -42,6 +42,7 @@ class Package : public JsonSerialize
 public:
     Q_JSON_PROPERTY(QString, id);
     Q_JSON_PROPERTY(QString, kind);
+    Q_JSON_PROPERTY(QString, name);
     Q_JSON_PROPERTY(QString, version);
     Q_JSON_PROPERTY(QString, description);
 };

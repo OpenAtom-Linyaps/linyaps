@@ -496,6 +496,8 @@ util::Error LinglongBuilder::build()
         info.runtime = project->runtimeRef().toLocalRefString();
 
         info.appid = project->package->id;
+        info.name = project->package->name;
+        info.description = project->package->description;
         info.arch = QStringList {project->config().targetArch()};
 
         QFile infoFile(project->config().cacheInstallPath("info.json"));

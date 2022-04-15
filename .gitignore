@@ -4,3 +4,7 @@
 out/
 .vscode/
 _book
+
+**html/
+**latex/
+Doxyfile*

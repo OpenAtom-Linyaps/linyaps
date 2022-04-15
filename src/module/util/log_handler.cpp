@@ -28,13 +28,13 @@ linglong::util::LogHandlerPrivate::LogHandlerPrivate(LogHandler *parent)
     // ========获取日志文件创建的时间========
     // QFileInfo::created(): On most Unix systems, this function returns the time of the last status change.
     // 所以不能运行时使用这个函数检查创建时间，因为会在运行时变化，于是在程序启动时保存下日志文件的最后修改时间，
-    logFileCreatedDate = QFileInfo(logPath).lastModified().date(); // 若日志文件不存在，返回nullptr
+    logFileCreatedDateTime = QFileInfo(logPath).lastModified(); // 若日志文件不存在，返回nullptr
 
     // 打开日志文件，如果不是当天创建的，备份已有日志文件
     openAndBackupLogFile();
 
     // 十分钟检查一次日志文件创建时间
-    renameLogFileTimer.setInterval(1000 * 2); // TODO: 可从配置文件读取
+    renameLogFileTimer.setInterval(1000 * 60 * 10); // TODO: 可从配置文件读取
     renameLogFileTimer.start();
     QObject::connect(&renameLogFileTimer, &QTimer::timeout, [this] {
         QMutexLocker locker(&LogHandlerPrivate::logMutex);
@@ -95,21 +95,20 @@ void linglong::util::LogHandlerPrivate::openAndBackupLogFile()
             logOut->setCodec("UTF-8");
 
         // [[2]] 如果文件是第一次创建，则创建日期是无效的，把其设置为当前日期
-        if (logFileCreatedDate.isNull()) {
-            logFileCreatedDate = QDate::currentDate();
+        if (logFileCreatedDateTime.isNull()) {
+            logFileCreatedDateTime = QDateTime::currentDateTime();
         }
     }
 
     // [[3]] 程序运行时如果创建日期不是当前日期，则使用创建日期重命名，并生成一个新的 log.txt
-    if (logFileCreatedDate != QDate::currentDate()) {
+    if (logFileCreatedDateTime.date() != QDate::currentDate()) {
         logFile->flush();
         logFile->close();
         delete logOut;
         delete logFile;
 
         QString newLogPath = logDir.absoluteFilePath(QCoreApplication::applicationName() + "_"
-                                                     + logFileCreatedDate.toString("yyyy-MM-dd.log"));
-        ;
+                                                     + logFileCreatedDateTime.toString("yyyy-MM-dd hh:mm:ss.zzz.log"));
         QFile::copy(logPath, newLogPath); // Bug: 按理说 rename 会更合适，但是 rename 时最后一个文件总是显示不出来，需要
                                           // killall Finder 后才出现
         QFile::remove(logPath); // 删除重新创建，改变创建时间
@@ -119,7 +118,7 @@ void linglong::util::LogHandlerPrivate::openAndBackupLogFile()
         logOut = (logFile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
                      ? new QTextStream(logFile)
                      : nullptr;
-        logFileCreatedDate = QDate::currentDate();
+        logFileCreatedDateTime = QDateTime::currentDateTime();
         if (logOut != nullptr)
             logOut->setCodec("UTF-8");
     }
@@ -129,7 +128,7 @@ void linglong::util::LogHandlerPrivate::openAndBackupLogFile()
 void linglong::util::LogHandlerPrivate::checkLogFiles()
 {
     // 如果 protocal.log 文件大小超过10M，重新创建一个日志文件，原文件存档为yyyy-MM-dd_hhmmss.log
-    if (logFile->size() > 1024 * g_logLimitSize) {
+    if (logFile->size() > 1024 * 1024 * g_logLimitSize) {
         logFile->flush();
         logFile->close();
         delete logOut;
@@ -137,7 +136,7 @@ void linglong::util::LogHandlerPrivate::checkLogFiles()
 
         QString logPath = logDir.absoluteFilePath(QCoreApplication::applicationName() + ".log"); // 日志的路径
         QString newLogPath = logDir.absoluteFilePath(QCoreApplication::applicationName() + "_"
-                                                     + logFileCreatedDate.toString("yyyy-MM-dd.log"));
+                                                     + logFileCreatedDateTime.toString("yyyy-MM-dd hh:mm:ss.zzz.log"));
         QFile::copy(logPath, newLogPath); // Bug: 按理说 rename 会更合适，但是 rename 时最后一个文件总是显示不出来，需要
                                           // killall Finder 后才出现
         QFile::remove(logPath); // 删除重新创建，改变创建时间
@@ -146,7 +145,7 @@ void linglong::util::LogHandlerPrivate::checkLogFiles()
         logOut = (logFile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
                      ? new QTextStream(logFile)
                      : NULL;
-        logFileCreatedDate = QDate::currentDate();
+        logFileCreatedDateTime = QDateTime::currentDateTime();
         if (logOut != nullptr)
             logOut->setCodec("UTF-8");
     }

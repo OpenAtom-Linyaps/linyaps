@@ -116,7 +116,11 @@ cd latex
 \end{CJK}
 \end{document}
 ```
-8. 生成pdf文件
+7. 生成pdf文件
 ```bash
 make -j
+```
+8. 简化上述流程，使用脚本一键在工程顶级目录下生成pdf接口文档
+```bash
+./doxygen_pdf.sh
 ```

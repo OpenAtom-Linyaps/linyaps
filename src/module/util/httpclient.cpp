@@ -133,7 +133,7 @@ void HttpClient::initHttpParam(const char *url)
         curl_easy_setopt(curlHandle, CURLOPT_PROGRESSFUNCTION, progressFun);
     }
     curl_easy_setopt(curlHandle, CURLOPT_PROGRESSDATA, NULL);
-    curl_easy_setopt(curlHandle, CURLOPT_NOPROGRESS, 0L);
+    curl_easy_setopt(curlHandle, CURLOPT_NOPROGRESS, 1L);
 
     /* send all data to this function  */
     // curl_easy_setopt(curlHandle, CURLOPT_WRITEFUNCTION, write_data);
@@ -186,7 +186,7 @@ size_t writeData(void *content, size_t size, size_t nmemb, void *stream)
 {
     string data((const char *)content, (size_t)size * nmemb);
 
-    *((stringstream *)stream) << data << endl;
+    *((stringstream *)stream) << data;
 
     return size * nmemb;
 }

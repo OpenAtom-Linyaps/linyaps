@@ -234,48 +234,17 @@ int deleteAppRecord(const QString &appId, const QString &appVer, const QString &
     // 若未指定版本，则查找最高版本
     QString dstVer = appVer;
     QSqlQuery sqlQuery(dbConn);
-    if (appVer.isEmpty()) {
-        // 查找最高版本
-        QString selectSql =
-            QString("SELECT version FROM installedAppInfo WHERE appId = '%1' AND user = '%2' order by version DESC")
-                .arg(appId)
-                .arg(userName);
-        sqlQuery.prepare(selectSql);
-        if (!sqlQuery.exec()) {
-            err = "deleteAppRecord fail to exec sql:" + selectSql + ", error:" + sqlQuery.lastError().text();
-            qCritical() << err;
-            closeDbConnection(dbConn);
-            return StatusCode::FAIL;
-        }
-
-        // sqlite3不支持size属性
-        sqlQuery.last();
-        int recordCount = sqlQuery.at() + 1;
-        if (recordCount < 1) {
-            err = "deleteAppRecord app:" + appId + ",userName:" + userName + " not found";
-            qCritical() << err;
-            closeDbConnection(dbConn);
-            return StatusCode::FAIL;
-        }
-
-        // int fieldNo = query.record().indexOf("version");
-        sqlQuery.first();
-        dstVer = sqlQuery.value(0).toString().trimmed();
-        // sqlite逐字符比较导致获取的最高版本号不准，e.g: 5.9.1比5.10.1版本高
-        while (sqlQuery.next()) {
-            QString verIter = sqlQuery.value(0).toString().trimmed();
-            linglong::AppVersion versionIter(verIter);
-            linglong::AppVersion dstVersion(dstVer);
-            if (versionIter.isValid() && versionIter.isBigThan(dstVersion)) {
-                dstVer = verIter;
-            }
-        }
+    QString deleteSql =
+        QString("DELETE FROM installedAppInfo WHERE appId = '%1' AND version = '%2'").arg(appId).arg(dstVer);
+    QString condition = "";
+    if (!appArch.isEmpty()) {
+        condition.append(QString(" AND arch like '%%1%'").arg(appArch));
     }
-
-    QString deleteSql = QString("DELETE FROM installedAppInfo WHERE appId = '%1' AND version = '%2' AND user = '%3'")
-                            .arg(appId)
-                            .arg(dstVer)
-                            .arg(userName);
+    if (!userName.isEmpty()) {
+        condition.append(QString(" AND user = '%1'").arg(userName));
+    }
+    qDebug() << "sql condition:" << condition;
+    deleteSql.append(condition);
     sqlQuery.prepare(deleteSql);
     if (!sqlQuery.exec()) {
         err = "deleteAppRecord fail to exec sql:" + deleteSql + ", error:" + sqlQuery.lastError().text();

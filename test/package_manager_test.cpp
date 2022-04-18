@@ -48,7 +48,16 @@ bool getConnectStatus()
     const QString testServer = "https://linglong-api-dev.deepin.com/ostree/";
     QProcess proc;
     QStringList argstrList;
-    argstrList << " -o /dev/null -s -m 10 --connect-timeout 10 -w %{http_code} " << testServer;
+    argstrList << "-o"
+               << "/dev/null"
+               << "-s"
+               << "-m"
+               << "10"
+               << "--connect-timeout"
+               << "10"
+               << "-w"
+               << "%{http_code}" << testServer;
+    argstrList.join(" ");
     proc.start("curl", argstrList);
     if (!proc.waitForStarted()) {
         qCritical() << "start curl failed!";

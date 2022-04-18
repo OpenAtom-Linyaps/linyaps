@@ -40,7 +40,7 @@ TEST(AppStatus, GetInstalledAppInfo)
     auto it = pkgList.at(0);
     EXPECT_EQ(it->version, "8.3.21");
 
-    ret = deleteAppRecord("org.demo.test", "", "x86_64", userName);
+    ret = deleteAppRecord("org.demo.test", "8.3.21", "x86_64", userName);
     EXPECT_EQ(ret, 0);
 
     linglong::package::AppMetaInfoList pkgList1;

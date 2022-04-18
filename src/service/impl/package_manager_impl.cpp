@@ -578,9 +578,12 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIdList, c
         retMsg.push_back(info);
         return retMsg;
     }
-
+    // A 用户 sudo 卸载 B 用户安装的软件
+    if (isRoot) {
+        userName = "";
+    }
     // 更新安装数据库
-    deleteAppRecord(pkgName, it->version, "", userName);
+    deleteAppRecord(pkgName, it->version, arch, userName);
     info->setcode(RetCode(RetCode::pkg_uninstall_success));
     info->setmessage("uninstall " + pkgName + ", version:" + it->version + " success");
     info->setstate(true);

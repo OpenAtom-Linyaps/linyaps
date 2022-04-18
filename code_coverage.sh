@@ -2,6 +2,15 @@
 
 # 此脚本生成行覆盖率报告路径：build/coverage/coverage_report/index.html
 
+dpkg -l | grep lcov
+if [ $? -eq 0 ];
+then
+echo "lcov is install"
+else
+echo "lcov is not install"
+sudo apt install -y lcov
+fi
+
 if [ ! -d "build" ];then
 mkdir build
 else

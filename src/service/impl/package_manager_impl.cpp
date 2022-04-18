@@ -37,7 +37,7 @@ const QString kLocalRepoPath = "/deepin/linglong/repo";
  *
  * @return bool: true:成功 false:失败
  */
-bool PackageManagerImpl::loadAppInfo(const QString &jsonString, AppMetaInfoList &appList, QString &err)
+bool PackageManagerImpl::loadAppInfo(const QString &jsonString, linglong::package::AppMetaInfoList &appList, QString &err)
 {
     QJsonParseError parseJsonErr;
     QJsonDocument document = QJsonDocument::fromJson(jsonString.toUtf8(), &parseJsonErr);
@@ -77,7 +77,7 @@ bool PackageManagerImpl::loadAppInfo(const QString &jsonString, AppMetaInfoList 
         QJsonObject dataObj = arr.at(i).toObject();
         const QString jsonString = QString(QJsonDocument(dataObj).toJson(QJsonDocument::Compact));
         // qInfo().noquote() << jsonString;
-        auto appItem = linglong::util::loadJSONString<AppMetaInfo>(jsonString);
+        auto appItem = linglong::util::loadJSONString<linglong::package::AppMetaInfo>(jsonString);
         appList.push_back(appItem);
     }
     return true;
@@ -190,7 +190,7 @@ RetMessageList PackageManagerImpl::Download(const QStringList &packageIdList, co
 bool PackageManagerImpl::installRuntime(const QString &runtimeId, const QString &runtimeVer, const QString &runtimeArch,
                                         QString &err)
 {
-    AppMetaInfoList appList;
+    linglong::package::AppMetaInfoList appList;
     QString appData = "";
 
     bool ret = getAppInfofromServer(runtimeId, runtimeVer, runtimeArch, appData, err);
@@ -262,9 +262,9 @@ bool PackageManagerImpl::checkAppRuntime(const QString &runtime, QString &err)
  * @return AppMetaInfo: 最新版本的软件包
  *
  */
-AppMetaInfo *PackageManagerImpl::getLatestApp(const AppMetaInfoList &appList)
+linglong::package::AppMetaInfo *PackageManagerImpl::getLatestApp(const linglong::package::AppMetaInfoList &appList)
 {
-    AppMetaInfo *latestApp = appList.at(0);
+    linglong::package::AppMetaInfo *latestApp = appList.at(0);
     if (appList.size() == 1) {
         return latestApp;
     }
@@ -323,7 +323,7 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIdList, con
         retMsg.push_back(info);
         return retMsg;
     }
-    AppMetaInfoList appList;
+    linglong::package::AppMetaInfoList appList;
     ret = loadAppInfo(appData, appList, err);
     if (!ret) {
         qCritical() << err;
@@ -345,7 +345,7 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIdList, con
     }
 
     // 查找最高版本
-    AppMetaInfo *appInfo = getLatestApp(appList);
+    linglong::package::AppMetaInfo *appInfo = getLatestApp(appList);
     // 判断对应版本的应用是否已安装 Fix to do 多用户
     if (getAppInstalledStatus(pkgName, appInfo->version, "", "")) {
         qCritical() << pkgName << ", version: " << appInfo->version << " already installed";
@@ -420,16 +420,16 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIdList, con
  * 查询软件包
  * @param packageIdList: 软件包的appId
  *
- * @return AppMetaInfoList 查询结果列表
+ * @return linglong::package::AppMetaInfoList 查询结果列表
  */
-AppMetaInfoList PackageManagerImpl::Query(const QStringList &packageIdList, const ParamStringMap &paramMap)
+linglong::package::AppMetaInfoList PackageManagerImpl::Query(const QStringList &packageIdList, const ParamStringMap &paramMap)
 {
     const QString pkgName = packageIdList.at(0).trimmed();
     if (pkgName == "installed") {
         return queryAllInstalledApp();
     }
 
-    AppMetaInfoList pkgList;
+    linglong::package::AppMetaInfoList pkgList;
     QString arch = hostArch();
     if (arch == "unknown") {
         qCritical() << "the host arch is not recognized";
@@ -499,7 +499,7 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIdList, c
         return retMsg;
     }
     QString err = "";
-    AppMetaInfoList pkgList;
+    linglong::package::AppMetaInfoList pkgList;
     // 根据已安装文件查询已经安装软件包信息
     getInstalledAppInfo(pkgName, version, arch, "", pkgList);
     auto it = pkgList.at(0);
@@ -622,7 +622,7 @@ RetMessageList PackageManagerImpl::Update(const QStringList &packageIdList, cons
     }
 
     // 检查是否存在版本更新
-    AppMetaInfoList pkgList;
+    linglong::package::AppMetaInfoList pkgList;
     // 根据已安装文件查询已经安装软件包信息
     getInstalledAppInfo(pkgName, version, arch, userName, pkgList);
     auto installedApp = pkgList.at(0);
@@ -649,7 +649,7 @@ RetMessageList PackageManagerImpl::Update(const QStringList &packageIdList, cons
         return retMsg;
     }
 
-    AppMetaInfoList serverPkgList;
+    linglong::package::AppMetaInfoList serverPkgList;
     ret = loadAppInfo(appData, serverPkgList, err);
     if (!ret) {
         err = "load app:" + pkgName + " info err";

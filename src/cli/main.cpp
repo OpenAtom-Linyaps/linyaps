@@ -32,7 +32,7 @@ static void qJsonRegisterAll()
     linglong::service::registerAllMetaType();
 }
 
-void printFlatpakAppInfo(AppMetaInfoList retMsg)
+void printFlatpakAppInfo(linglong::package::AppMetaInfoList retMsg)
 {
     if (retMsg.size() > 0) {
         if (retMsg.at(0)->appId == "flatpaklist") {
@@ -64,7 +64,7 @@ int getUnicodeNum(const QString &name)
     return num;
 }
 
-void printAppInfo(AppMetaInfoList retMsg)
+void printAppInfo(linglong::package::AppMetaInfoList retMsg)
 {
     if (retMsg.size() > 0) {
         qInfo("%-32s%-32s%-16s%-12s%-s", qUtf8Printable("id"), qUtf8Printable("name"), qUtf8Printable("version"),
@@ -485,9 +485,9 @@ int main(int argc, char **argv)
              }
              auto args = parser.positionalArguments();
              auto appId = args.value(1);
-             QDBusPendingReply<AppMetaInfoList> reply = pm.Query({appId}, paramMap);
+             QDBusPendingReply<linglong::package::AppMetaInfoList> reply = pm.Query({appId}, paramMap);
              reply.waitForFinished();
-             AppMetaInfoList retMsg = reply.value();
+             linglong::package::AppMetaInfoList retMsg = reply.value();
              if (retMsg.size() == 1 && retMsg.at(0)->appId == "flatpakquery") {
                  printFlatpakAppInfo(retMsg);
              } else {
@@ -572,10 +572,10 @@ int main(int argc, char **argv)
              if (!repoType.isEmpty()) {
                  paramMap.insert(linglong::util::KEY_REPO_POINT, repoType);
              }
-             QDBusPendingReply<AppMetaInfoList> reply = pm.Query({optPara}, paramMap);
+             QDBusPendingReply<linglong::package::AppMetaInfoList> reply = pm.Query({optPara}, paramMap);
              // 默认超时时间为25s
              reply.waitForFinished();
-             AppMetaInfoList retMsg = reply.value();
+             linglong::package::AppMetaInfoList retMsg = reply.value();
              if (retMsg.size() == 1 && retMsg.at(0)->appId == "flatpaklist") {
                  printFlatpakAppInfo(retMsg);
              } else {

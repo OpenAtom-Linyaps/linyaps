@@ -61,7 +61,7 @@ int updateInstalledAppInfoDb();
  *
  * @return int: 0:成功 其它:失败
  */
-int insertAppRecord(AppMetaInfo *package, const QString &installType, const QString &userName);
+int insertAppRecord(linglong::package::AppMetaInfo *package, const QString &installType, const QString &userName);
 
 /*
  * 删除软件包安装信息
@@ -109,15 +109,15 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
  * @return bool: true:已安装 false:未安装
  */
 bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QString &appArch, const QString &userName,
-                         AppMetaInfoList &pkgList);
+                         linglong::package::AppMetaInfoList &pkgList);
 
 /*
  * 查询所有已安装软件包信息
  *
  * @param userName: 用户名
  *
- * @return AppMetaInfoList:查询结果
+ * @return linglong::package::AppMetaInfoList:查询结果
  */
-AppMetaInfoList queryAllInstalledApp(const QString &userName = "");
+linglong::package::AppMetaInfoList queryAllInstalledApp(const QString &userName = "");
 } // namespace util
 } // namespace linglong

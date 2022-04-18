@@ -34,7 +34,7 @@ public:
     RetMessageList Download(const QStringList &packageIdList, const QString &savePath);
     RetMessageList Install(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
     RetMessageList Uninstall(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
-    AppMetaInfoList Query(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
+    linglong::package::AppMetaInfoList Query(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
 
     RetMessageList Update(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
 
@@ -49,7 +49,7 @@ private:
      * @return AppMetaInfo: 最新版本的软件包
      *
      */
-    AppMetaInfo *getLatestApp(const AppMetaInfoList &appList);
+    linglong::package::AppMetaInfo *getLatestApp(const linglong::package::AppMetaInfoList &appList);
 
     /*
      * 将json字符串转化为软件包数据
@@ -60,7 +60,7 @@ private:
      *
      * @return bool: true:成功 false:失败
      */
-    bool loadAppInfo(const QString &jsonString, AppMetaInfoList &appList, QString &err);
+    bool loadAppInfo(const QString &jsonString, linglong::package::AppMetaInfoList &appList, QString &err);
 
     /*
      * 从服务器查询指定包名/版本/架构的软件包数据

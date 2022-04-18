@@ -131,10 +131,10 @@ TEST(Package, install03)
     QString appId = "org.deepin.calculator";
 
     // 查询是否已安装
-    QDBusPendingReply<AppMetaInfoList> replyQuery = pm.Query({"installed"}, {});
+    QDBusPendingReply<linglong::package::AppMetaInfoList> replyQuery = pm.Query({"installed"}, {});
     replyQuery.waitForFinished();
     bool expectRet = true;
-    AppMetaInfoList queryMsg = replyQuery.value();
+    linglong::package::AppMetaInfoList queryMsg = replyQuery.value();
     for (auto const &it : queryMsg) {
         if (it->appId == "org.deepin.calculator") {
             expectRet = false;
@@ -172,9 +172,9 @@ TEST(Package, query01)
                                                 QDBusConnection::sessionBus());
     // test app not in repo
     auto appId = "test.deepin.test";
-    QDBusPendingReply<AppMetaInfoList> reply = pm.Query({appId}, {});
+    QDBusPendingReply<linglong::package::AppMetaInfoList> reply = pm.Query({appId}, {});
     reply.waitForFinished();
-    AppMetaInfoList retMsg = reply.value();
+    linglong::package::AppMetaInfoList retMsg = reply.value();
     bool ret = retMsg.size() == 0 ? true : false;
     EXPECT_EQ(ret, true);
     // stop service
@@ -193,9 +193,9 @@ TEST(Package, query02)
                                                 QDBusConnection::sessionBus());
     // test app not in repo
     auto appId = "";
-    QDBusPendingReply<AppMetaInfoList> reply = pm.Query({appId}, {});
+    QDBusPendingReply<linglong::package::AppMetaInfoList> reply = pm.Query({appId}, {});
     reply.waitForFinished();
-    AppMetaInfoList retMsg = reply.value();
+    linglong::package::AppMetaInfoList retMsg = reply.value();
     bool ret = retMsg.size() == 0 ? true : false;
     EXPECT_EQ(ret, true);
     // stop service
@@ -293,9 +293,9 @@ TEST(Package, list01)
                                                 QDBusConnection::sessionBus());
     // test app not in repo
     auto optPara = "";
-    QDBusPendingReply<AppMetaInfoList> reply = pm.Query({optPara}, {});
+    QDBusPendingReply<linglong::package::AppMetaInfoList> reply = pm.Query({optPara}, {});
     reply.waitForFinished();
-    AppMetaInfoList retMsg = reply.value();
+    linglong::package::AppMetaInfoList retMsg = reply.value();
     bool ret = retMsg.size() == 0 ? true : false;
     EXPECT_EQ(ret, true);
     // stop service
@@ -313,9 +313,9 @@ TEST(Package, list02)
                                                 "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());
     auto optPara = "installed";
-    QDBusPendingReply<AppMetaInfoList> reply = pm.Query({optPara}, {});
+    QDBusPendingReply<linglong::package::AppMetaInfoList> reply = pm.Query({optPara}, {});
     reply.waitForFinished();
-    AppMetaInfoList retMsg = reply.value();
+    linglong::package::AppMetaInfoList retMsg = reply.value();
     bool ret = retMsg.size() > 0 ? true : false;
 
     QString dbPath = "/deepin/linglong/layers/InstalledAppInfo.db";

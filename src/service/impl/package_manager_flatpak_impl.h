@@ -23,5 +23,5 @@ public:
     RetMessageList Download(const QStringList &packageIDList, const QString &savePath) { return {}; }
     RetMessageList Install(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
     RetMessageList Uninstall(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
-    AppMetaInfoList Query(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
+    linglong::package::AppMetaInfoList Query(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
 };

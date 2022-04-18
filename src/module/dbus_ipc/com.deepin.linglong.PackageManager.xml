@@ -39,8 +39,8 @@
             <arg name="PackageIDList" type="as" direction="in"/>
             <arg name="paramMap" type="a{ss}" direction="in"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.In1" value="ParamStringMap"/>
-            <arg name="AppMetaInfoList" type="a(s)" direction="out"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="AppMetaInfoList"/>
+            <arg name="linglong::package::AppMetaInfoList" type="a(s)" direction="out"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::package::AppMetaInfoList"/>
         </method>
         <method name="Import">
             <arg name="PackageFileList" type="as" direction="in"/>

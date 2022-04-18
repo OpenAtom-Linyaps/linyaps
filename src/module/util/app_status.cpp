@@ -175,7 +175,7 @@ int updateInstalledAppInfoDb()
  *
  * @return int: 0:成功 其它:失败
  */
-int insertAppRecord(AppMetaInfo *package, const QString &installType, const QString &userName)
+int insertAppRecord(linglong::package::AppMetaInfo *package, const QString &installType, const QString &userName)
 {
     QString err = "";
     QSqlDatabase dbConn;
@@ -375,7 +375,7 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
  * @return bool: true:成功 false:失败
  */
 bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QString &appArch, const QString &userName,
-                         AppMetaInfoList &pkgList)
+                         linglong::package::AppMetaInfoList &pkgList)
 {
     QString err = "";
     if (!getAppInstalledStatus(appId, appVer, appArch, userName)) {
@@ -417,7 +417,7 @@ bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QStr
     sqlQuery.last();
     int recordCount = sqlQuery.at() + 1;
     if (recordCount > 0) {
-        auto info = QPointer<AppMetaInfo>(new AppMetaInfo);
+        auto info = QPointer<linglong::package::AppMetaInfo>(new linglong::package::AppMetaInfo);
         info->appId = sqlQuery.value(1).toString().trimmed();
         info->name = sqlQuery.value(2).toString().trimmed();
         info->arch = sqlQuery.value(4).toString().trimmed();
@@ -449,9 +449,9 @@ bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QStr
  *
  * @param userName: 用户名
  *
- * @return AppMetaInfoList:查询结果
+ * @return linglong::package::AppMetaInfoList:查询结果
  */
-AppMetaInfoList queryAllInstalledApp(const QString &userName)
+linglong::package::AppMetaInfoList queryAllInstalledApp(const QString &userName)
 {
     QString err = "";
     QSqlDatabase dbConn;
@@ -460,7 +460,7 @@ AppMetaInfoList queryAllInstalledApp(const QString &userName)
     }
     QSqlQuery sqlQuery(dbConn);
 
-    AppMetaInfoList pkglist;
+    linglong::package::AppMetaInfoList pkglist;
     // 默认不查找版本
     QString selectSql = "";
     if (userName.isEmpty()) {
@@ -476,7 +476,7 @@ AppMetaInfoList queryAllInstalledApp(const QString &userName)
         return {};
     }
     while (sqlQuery.next()) {
-        auto info = QPointer<AppMetaInfo>(new AppMetaInfo);
+        auto info = QPointer<linglong::package::AppMetaInfo>(new linglong::package::AppMetaInfo);
         info->appId = sqlQuery.value(1).toString().trimmed();
         info->name = sqlQuery.value(2).toString().trimmed();
         info->version = sqlQuery.value(3).toString().trimmed();

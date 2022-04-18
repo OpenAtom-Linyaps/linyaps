@@ -23,7 +23,7 @@ public:
     virtual RetMessageList Download(const QStringList &packageIDList, const QString &savePath) = 0;
     virtual RetMessageList Install(const QStringList &packageIDList, const ParamStringMap &paramMap = {}) = 0;
     virtual RetMessageList Uninstall(const QStringList &packageIDList, const ParamStringMap &paramMap = {}) = 0;
-    virtual AppMetaInfoList Query(const QStringList &packageIDList, const ParamStringMap &paramMap = {}) = 0;
+    virtual linglong::package::AppMetaInfoList Query(const QStringList &packageIDList, const ParamStringMap &paramMap = {}) = 0;
 
     // TODO: move PackageManagerProxyBase to namespace
     // TODO: need pure virtual

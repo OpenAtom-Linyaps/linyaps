@@ -210,9 +210,9 @@ QString PackageManager::UpdateAll()
  *
  * @param packageIdList: 软件包的appId
  *
- * @return AppMetaInfoList 查询结果列表
+ * @return linglong::package::AppMetaInfoList 查询结果列表
  */
-AppMetaInfoList PackageManager::Query(const QStringList &packageIdList, const ParamStringMap &paramMap)
+linglong::package::AppMetaInfoList PackageManager::Query(const QStringList &packageIdList, const ParamStringMap &paramMap)
 {
     if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT)) {
         return PackageManagerFlatpakImpl::instance()->Query(packageIdList);

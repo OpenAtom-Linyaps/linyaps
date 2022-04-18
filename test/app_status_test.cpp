@@ -21,7 +21,7 @@ TEST(AppStatus, GetInstalledAppInfo)
     QString appDataJson =
         "{\"appId\":\"org.demo.test\",\"name\":\"test1\",\"version\":\"8.3.9\",\"arch\":\"x86_64\",\"kind\":\"app\",\"runtime\":\"org.deepin.Runtime/20.5.0/x86_64\",\"uabUrl\":\"\",\"repoName\":\"repo\",\"description\":\"demo for unit test\"}";
 
-    auto appItem = linglong::util::loadJSONString<AppMetaInfo>(appDataJson);
+    auto appItem = linglong::util::loadJSONString<linglong::package::AppMetaInfo>(appDataJson);
     const QString userName = linglong::util::getUserName();
     int ret = insertAppRecord(appItem, "user", userName);
     EXPECT_EQ(ret, 0);
@@ -29,11 +29,11 @@ TEST(AppStatus, GetInstalledAppInfo)
     QString appDataJson1 =
         "{\"appId\":\"org.demo.test\",\"name\":\"test1\",\"version\":\"8.3.21\",\"arch\":\"x86_64\",\"kind\":\"app\",\"runtime\":\"org.deepin.Runtime/20.5.0/x86_64\",\"uabUrl\":\"\",\"repoName\":\"repo\",\"description\":\"demo for unit test\"}";
 
-    auto appItem1 = linglong::util::loadJSONString<AppMetaInfo>(appDataJson1);
+    auto appItem1 = linglong::util::loadJSONString<linglong::package::AppMetaInfo>(appDataJson1);
     ret = insertAppRecord(appItem1, "user", userName);
     EXPECT_EQ(ret, 0);
 
-    AppMetaInfoList pkgList;
+    linglong::package::AppMetaInfoList pkgList;
     auto result = getInstalledAppInfo("org.demo.test", "", "x86_64", userName, pkgList);
     EXPECT_EQ(result, true);
 
@@ -43,7 +43,7 @@ TEST(AppStatus, GetInstalledAppInfo)
     ret = deleteAppRecord("org.demo.test", "", "x86_64", userName);
     EXPECT_EQ(ret, 0);
 
-    AppMetaInfoList pkgList1;
+    linglong::package::AppMetaInfoList pkgList1;
     result = getInstalledAppInfo("org.demo.test", "", "x86_64", userName, pkgList1);
     EXPECT_EQ(result, true);
 

@@ -30,6 +30,8 @@
 using linglong::dbus::RetCode;
 
 // 当前在线包对应的包名/版本/架构/uab存储URL信息
+namespace linglong {
+namespace package {
 class AppMetaInfo : public JsonSerialize
 {
     Q_OBJECT
@@ -52,7 +54,10 @@ public:
     // 安装应用对应的用户
     Q_JSON_PROPERTY(QString, user);
 };
-Q_JSON_DECLARE_PTR_METATYPE(AppMetaInfo)
+}
+}
+
+Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::package, AppMetaInfo)
 
 typedef QMap<QString, QString> ParamStringMap;
 Q_DECLARE_METATYPE(ParamStringMap)

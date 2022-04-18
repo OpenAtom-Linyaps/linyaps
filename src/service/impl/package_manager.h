@@ -130,7 +130,7 @@ public Q_SLOTS:
      *         description 软件包描述信息 \n
      *         user 安装应用对应的用户
      */
-    AppMetaInfoList Query(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
+    linglong::package::AppMetaInfoList Query(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
 
     /**
      * @brief

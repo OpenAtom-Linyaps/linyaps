@@ -56,12 +56,12 @@ RetMessageList PackageManagerFlatpakImpl::Install(const QStringList &packageIDLi
  * @param packageIDList: 软件包的appid
  * @param paramMap: 查询参数
  *
- * @return AppMetaInfoList 查询结果列表
+ * @return linglong::package::AppMetaInfoList 查询结果列表
  */
-AppMetaInfoList PackageManagerFlatpakImpl::Query(const QStringList &packageIDList, const ParamStringMap &paramMap)
+linglong::package::AppMetaInfoList PackageManagerFlatpakImpl::Query(const QStringList &packageIDList, const ParamStringMap &paramMap)
 {
-    AppMetaInfoList pkglist;
-    auto info = QPointer<AppMetaInfo>(new AppMetaInfo);
+    linglong::package::AppMetaInfoList pkglist;
+    auto info = QPointer<linglong::package::AppMetaInfo>(new linglong::package::AppMetaInfo);
     if (packageIDList.size() == 0) {
         qCritical() << "packageIDList input err";
         return pkglist;

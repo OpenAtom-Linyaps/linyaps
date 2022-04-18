@@ -45,97 +45,130 @@ class PackageManager
     friend class linglong::util::Singleton<PackageManager>;
 
 public Q_SLOTS:
+
     /**
-     * @brief get status of package manager
-     * @return
+     * @brief 查询包管理服务状态
+     *
+     * @return "active"
      */
     QString Status();
 
     /**
      * @brief download the package
-     * 
-     * @param packageIdList 玲珑包ID列表
-     * @param savePath 下载存储路径
-     * @return RetMessageList 消息列表 \n
-     *          state:true or false \n
-     *          code:状态码(0:成功,1:失败) \n
-     *          message:消息
      *
+     * @param packageIdList 应用appId列表
+     * @param savePath 目标软件包存储路径
+     *
+     * @return RetMessageList 消息列表 \n
+     *          state:操作状态 true 成功， false 失败 \n
+     *          code:操作错误码(0 成功, 其它 失败) \n
+     *          message:错误信息
      */
     RetMessageList Download(const QStringList &packageIdList, const QString savePath);
 
     /**
-     * @brief 
-     * 
-     * @param packageIdList 
-     * @param paramMap 
-     * @return RetMessageList 
+     * @brief 安装软件包
+     *
+     * @param packageIdList 应用appId列表
+     * @param paramMap 安装参数 \n
+     *        key为version时，value范围不涉及，用于安装指定版本应用 \n
+     *        key为repo-point，value为flatpak，用于安装flatpak类型应用
+     *
+     * @return RetMessageList 消息列表 \n
+     *          state:操作状态 true 成功， false 失败 \n
+     *          code:操作错误码(0 成功, 其它 失败) \n
+     *          message:错误信息
      */
     RetMessageList Install(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
 
     /**
-     * @brief 
-     * 
-     * @param packageIdList 
-     * @param paramMap 
-     * @return RetMessageList 
+     * @brief 卸载软件包
+     *
+     * @param packageIdList 应用appId列表
+     * @param paramMap 卸载参数 \n
+     *        key为version时，value范围不涉及，用于卸载指定版本应用 \n
+     *        key为repo-point，value为flatpak，用于卸载flatpak类型应用
+     *
+     * @return RetMessageList 同Install
      */
     RetMessageList Uninstall(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
 
     /**
-     * @brief 
-     * 
-     * @param packageIdList 
-     * @param paramMap 
-     * @return RetMessageList 
+     * @brief 更新软件包
+     *
+     * @param packageIdList 应用appId列表
+     * @param paramMap 更新参数 \n
+     *        key为version时，value范围不涉及，用于更新指定版本应用
+     *
+     * @return RetMessageList 同Install
      */
     RetMessageList Update(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
 
     /**
-     * @brief 
-     * 
-     * @return QString 
+     * @brief
+     *
+     * @return QString
      */
     QString UpdateAll();
 
     /**
-     * @brief 
-     * 
-     * @param packageIdList 
-     * @param paramMap 
-     * @return AppMetaInfoList 
+     * @brief 查询软件包信息
+     *
+     * @param packageIdList 应用appId列表; {"installed"}时，查询已安装应用
+     * @param paramMap 查询参数 \n
+     *        key为repo-point，value为flatpak，用于查询flatpak类型应用 \n
+     *        key为force，value为""，用于直接从服务端查询，不经过本地缓存
+     *
+     * @return AppMetaInfoList 查询结果信息 \n
+     *         appId 软件包appId \n
+     *         name  软件包名称 \n
+     *         version 软件包版本号 \n
+     *         kind  软件包类型，app和runtime \n
+     *         runtime 软件包依赖的runtime对应的appId \n
+     *         uabUrl 软件包对应的uab存储地址 \n
+     *         repoName 软件包所属远端仓库名称 \n
+     *         description 软件包描述信息 \n
+     *         user 安装应用对应的用户
      */
     AppMetaInfoList Query(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
 
     /**
-     * @brief 
-     * 
-     * @param packageIdList 
-     * @return QString 
+     * @brief
+     *
+     * @param packageIdList
+     * @return QString
      */
     QString Import(const QStringList &packagePathList);
 
     /**
-     * @brief 
-     * 
-     * @param packageId 
-     * @param paramMap 
-     * @return RetMessageList 
+     * @brief 运行应用
+     *
+     * @param packageId 应用appId
+     * @param paramMap 运行命令参数 \n
+     *        key为version时，value范围不涉及，用于运行指定版本应用 \n
+     *        key为repo-point，value为flatpak，用于运行flatpak类型应用 \n
+     *        key为no-proxy，value为""，用于以非代理模式运行应用
+     *
+     * @return RetMessageList 同Install 
      */
     RetMessageList Start(const QString &packageId, const ParamStringMap &paramMap = {});
 
     /**
-     * @brief 
-     * 
-     * @param containerId 
-     * @return RetMessageList 
+     * @brief 退出应用
+     *
+     * @param containerId 运行应用容器对应的Id（使用ListContainer查询）
+     *
+     * @return RetMessageList 同Install 
      */
     RetMessageList Stop(const QString &containerId);
 
     /**
-     * @brief 
-     * 
-     * @return ContainerList 
+     * @brief 查询正在运行的应用信息
+     *
+     * @return ContainerList \n
+     *         Id 容器id \n
+     *         pid 容器对应的进程id \n
+     *         workingDirectory 应用运行目录
      */
     ContainerList ListContainer();
 

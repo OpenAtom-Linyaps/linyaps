@@ -54,39 +54,6 @@ public:
 };
 Q_JSON_DECLARE_PTR_METATYPE(AppMetaInfo)
 
-class Package
-{
-public:
-    QString ID;
-    QString name;
-    QString configJson;
-    QString dataDir;
-    QString dataPath;
-};
-
-typedef QList<Package> PackageList;
-
-Q_DECLARE_METATYPE(Package)
-
-Q_DECLARE_METATYPE(PackageList)
-
-inline QDBusArgument &operator<<(QDBusArgument &argument, const Package &message)
-{
-    argument.beginStructure();
-    argument << message.ID;
-    argument.endStructure();
-    return argument;
-}
-
-inline const QDBusArgument &operator>>(const QDBusArgument &argument, Package &message)
-{
-    argument.beginStructure();
-    argument >> message.ID;
-    argument.endStructure();
-
-    return argument;
-}
-
 typedef QMap<QString, QString> ParamStringMap;
 Q_DECLARE_METATYPE(ParamStringMap)
 

@@ -21,7 +21,7 @@ QTextStream *linglong::util::LogHandlerPrivate::logOut = nullptr;
 linglong::util::LogHandlerPrivate::LogHandlerPrivate(LogHandler *parent)
     : q_ptr(parent)
 {
-    logDir.setPath(QString("/deepin/linglong/log/")
+    logDir.setPath(QDir::homePath() + QString("/.cache/linglong/log/")
                    + QCoreApplication::applicationName()); // 日志建议放到/var/log下，可从配置文件读取
     QString logPath = logDir.absoluteFilePath(QCoreApplication::applicationName() + ".log"); // 获取日志的路径
 

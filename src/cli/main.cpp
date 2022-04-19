@@ -25,6 +25,10 @@
 #include "module/util/env.h"
 #include "module/util/log_handler.h"
 
+/**
+ * @brief 注册QT对象类型
+ *
+ */
 static void qJsonRegisterAll()
 {
     linglong::package::registerAllMetaType();
@@ -32,16 +36,22 @@ static void qJsonRegisterAll()
     linglong::service::registerAllMetaType();
 }
 
-void printFlatpakAppInfo(linglong::package::AppMetaInfoList retMsg)
+/**
+ * @brief 输出flatpak命令的查询结果
+ *
+ * @param appMetaInfoList 软件包元信息列表
+ *
+ */
+void printFlatpakAppInfo(linglong::package::AppMetaInfoList appMetaInfoList)
 {
-    if (retMsg.size() > 0) {
-        if (retMsg.at(0)->appId == "flatpaklist") {
+    if (appMetaInfoList.size() > 0) {
+        if ("flatpaklist" == appMetaInfoList.at(0)->appId) {
             qInfo("%-48s%-16s%-16s%-12s%-12s%-12s%-12s", "Description", "Application", "Version", "Branch", "Arch",
                   "Origin", "Installation");
         } else {
             qInfo("%-72s%-16s%-16s%-12s%-12s", "Description", "Application", "Version", "Branch", "Remotes");
         }
-        QString ret = retMsg.at(0)->description;
+        QString ret = appMetaInfoList.at(0)->description;
         QStringList strList = ret.split(QRegExp("[\r\n]"), QString::SkipEmptyParts);
         for (int i = 0; i < strList.size(); ++i) {
             qInfo().noquote() << strList[i].simplified();
@@ -49,34 +59,45 @@ void printFlatpakAppInfo(linglong::package::AppMetaInfoList retMsg)
     }
 }
 
-// 中文字符串对齐特殊处理
+/**
+ * @brief 统计字符串中中文字符的个数
+ * 
+ * @param name 软件包名称
+ * @return int 中文字符个数
+ */
 int getUnicodeNum(const QString &name)
 {
     int num = 0;
-    int cnt = name.count();
-    for (int i = 0; i < cnt; i++) {
+    int count = name.count();
+    for (int i = 0; i < count; i++) {
         QChar ch = name.at(i);
-        ushort uNum = ch.unicode();
-        if (uNum >= 0x4E00 && uNum <= 0x9FA5) {
+        ushort decode = ch.unicode();
+        if (decode >= 0x4E00 && decode <= 0x9FA5) {
             num++;
         }
     }
     return num;
 }
 
-void printAppInfo(linglong::package::AppMetaInfoList retMsg)
+/**
+ * @brief 输出软件包的查询结果
+ * 
+ * @param appMetaInfoList 软件包元信息列表
+ *
+ */
+void printAppInfo(linglong::package::AppMetaInfoList appMetaInfoList)
 {
-    if (retMsg.size() > 0) {
-        qInfo("%-32s%-32s%-16s%-12s%-s", qUtf8Printable("id"), qUtf8Printable("name"), qUtf8Printable("version"),
+    if (appMetaInfoList.size() > 0) {
+        qInfo("%-32s%-32s%-16s%-12s%-s", qUtf8Printable("appId"), qUtf8Printable("name"), qUtf8Printable("version"),
               qUtf8Printable("arch"), qUtf8Printable("description"));
-        for (auto const &it : retMsg) {
+        for (auto const &it : appMetaInfoList) {
             QString simpleDescription = it->description.trimmed();
             if (simpleDescription.length() > 56) {
                 simpleDescription = it->description.trimmed().left(53) + "...";
             }
-            QString id = it->appId.trimmed();
-            if (id.length() > 32) {
-                id = it->appId.trimmed().left(29) + "...";
+            QString appId = it->appId.trimmed();
+            if (appId.length() > 32) {
+                appId = it->appId.trimmed().left(29) + "...";
             }
             QString name = it->name.trimmed();
             if (name.length() > 32) {
@@ -84,7 +105,7 @@ void printAppInfo(linglong::package::AppMetaInfoList retMsg)
             }
             int count = getUnicodeNum(name);
             qInfo().noquote() << QString("%1%2%3%4%5")
-                                     .arg(id, -32, QLatin1Char(' '))
+                                     .arg(appId, -32, QLatin1Char(' '))
                                      .arg(name, count - 32, QLatin1Char(' '))
                                      .arg(it->version.trimmed(), -16, QLatin1Char(' '))
                                      .arg(it->arch.trimmed(), -12, QLatin1Char(' '))
@@ -95,10 +116,16 @@ void printAppInfo(linglong::package::AppMetaInfoList retMsg)
     }
 }
 
-void checkAndStartService(ComDeepinLinglongPackageManagerInterface &pm)
+/**
+ * @brief 检测ll-service dbus服务是否已经启动，未启动则启动
+ * 
+ * @param packageManager ll-service dbus服务
+ *
+ */
+void checkAndStartService(ComDeepinLinglongPackageManagerInterface &packageManager)
 {
     const auto kStatusActive = "active";
-    QDBusReply<QString> status = pm.Status();
+    QDBusReply<QString> status = packageManager.Status();
     // FIXME: should use more precision to check status
     if (kStatusActive != status.value()) {
         QProcess process;
@@ -109,8 +136,9 @@ void checkAndStartService(ComDeepinLinglongPackageManagerInterface &pm)
         process.startDetached();
     }
 
+    // todo: check if service is running
     for (int i = 0; i < 10; ++i) {
-        status = pm.Status();
+        status = packageManager.Status();
         if (kStatusActive == status.value()) {
             return;
         }
@@ -128,7 +156,7 @@ int main(int argc, char **argv)
     // 安装消息处理函数
     linglong::util::LogHandler::instance()->installMessageHandler();
 
-    // register qdbus type
+    // 注册QT对象类型
     qJsonRegisterAll();
 
     QCommandLineParser parser;
@@ -152,14 +180,14 @@ int main(int argc, char **argv)
     QStringList args = parser.positionalArguments();
     QString command = args.isEmpty() ? QString() : args.first();
 
-    ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager",
+    ComDeepinLinglongPackageManagerInterface packageManager("com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());
-    checkAndStartService(pm);
-    PackageManager *noDbusPm = PackageManager::instance();
+    checkAndStartService(packageManager);
+    PackageManager *noDbusPackageManager = PackageManager::instance();
     auto optNoDbus = QCommandLineOption("nodbus", "execute cmd directly, not via dbus", "");
     parser.addOption(optNoDbus);
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
-        {"run",
+        {"run",     // 启动玲珑应用
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("run", "run application", "run");
@@ -253,11 +281,11 @@ int main(int argc, char **argv)
                  }
              }
 
-             QDBusPendingReply<RetMessageList> reply = pm.Start(appInfoList.at(0), paramMap);
+             QDBusPendingReply<RetMessageList> reply = packageManager.Start(appInfoList.at(0), paramMap);
              reply.waitForFinished();
-             RetMessageList retMsg = reply.value();
-             if (retMsg.size() > 0) {
-                 auto it = retMsg.at(0);
+             RetMessageList retMessageList = reply.value();
+             if (retMessageList.size() > 0) {
+                 auto it = retMessageList.at(0);
                  QString prompt = "message: " + it->message;
                  if (!it->state) {
                      qCritical().noquote() << prompt << ", errcode:" << it->code;
@@ -267,7 +295,7 @@ int main(int argc, char **argv)
              }
              return 0;
          }},
-        {"exec",
+        {"exec",    // 进入玲珑沙箱
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("containerId", "container id", "aebbe2f455cf443f89d5c92f36d154dd");
@@ -288,7 +316,7 @@ int main(int argc, char **argv)
 
              return namespaceEnter(pid, QStringList {cmd});
          }},
-        {"ps",
+        {"ps",      // 查看玲珑沙箱进程
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("ps", "show running applications", "ps");
@@ -299,11 +327,11 @@ int main(int argc, char **argv)
              parser.process(app);
 
              auto outputFormat = parser.value(optOutputFormat);
-             auto containerList = pm.ListContainer().value();
+             auto containerList = packageManager.ListContainer().value();
              showContainer(containerList, outputFormat);
              return 0;
          }},
-        {"kill",
+        {"kill",    // 关闭玲珑沙箱
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("kill", "kill container with id", "kill");
@@ -316,11 +344,11 @@ int main(int argc, char **argv)
              auto containerId = args.value(1);
 
              // TODO: show kill result
-             QDBusPendingReply<RetMessageList> reply = pm.Stop(containerId);
+             QDBusPendingReply<RetMessageList> reply = packageManager.Stop(containerId);
              reply.waitForFinished();
-             RetMessageList retMsg = reply.value();
-             if (retMsg.size() > 0) {
-                 auto it = retMsg.at(0);
+             RetMessageList retMessageList = reply.value();
+             if (retMessageList.size() > 0) {
+                 auto it = retMessageList.at(0);
                  QString prompt = "message: " + it->message;
                  if (!it->state) {
                      qCritical().noquote() << prompt << ", errcode:" << it->code;
@@ -330,7 +358,7 @@ int main(int argc, char **argv)
              }
              return 0;
          }},
-        {"download",
+        {"download",    // TODO: download命令当前没用到
          [&](QCommandLineParser &parser) -> int {
              QString curPath = QDir::currentPath();
              // qDebug() << curPath;
@@ -347,12 +375,12 @@ int main(int argc, char **argv)
              auto savePath = parser.value(optDownload);
              QFileInfo dstfs(savePath);
 
-             pm.setTimeout(1000 * 60 * 60 * 24);
-             QDBusPendingReply<RetMessageList> reply = pm.Download({appId}, dstfs.absoluteFilePath());
+             packageManager.setTimeout(1000 * 60 * 60 * 24);
+             QDBusPendingReply<RetMessageList> reply = packageManager.Download({appId}, dstfs.absoluteFilePath());
              reply.waitForFinished();
-             RetMessageList retMsg = reply.value();
-             if (retMsg.size() > 0) {
-                 auto it = retMsg.at(0);
+             RetMessageList retMessageList = reply.value();
+             if (retMessageList.size() > 0) {
+                 auto it = retMessageList.at(0);
                  QString prompt = "message: " + it->message;
                  if (!it->state) {
                      qCritical().noquote() << prompt << ", errcode:" << it->code;
@@ -362,7 +390,7 @@ int main(int argc, char **argv)
              }
              return 0;
          }},
-        {"install",
+        {"install",     // 下载玲珑包
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("install", "install an application", "install");
@@ -378,7 +406,7 @@ int main(int argc, char **argv)
                  return -1;
              }
              // 设置 24 h超时
-             pm.setTimeout(1000 * 60 * 60 * 24);
+             packageManager.setTimeout(1000 * 60 * 60 * 24);
              QDBusPendingReply<RetMessageList> reply;
 
              // appId format: org.deepin.calculator/1.2.6 in multi-version
@@ -393,9 +421,9 @@ int main(int argc, char **argv)
 
              auto noDbus = parser.isSet(optNoDbus);
              if (noDbus) {
-                 RetMessageList retMsg = noDbusPm->Install({appInfoList.at(0)}, paramMap);
-                 if (retMsg.size() > 0) {
-                     auto it = retMsg.at(0);
+                 RetMessageList retMessageList = noDbusPackageManager->Install({appInfoList.at(0)}, paramMap);
+                 if (retMessageList.size() > 0) {
+                     auto it = retMessageList.at(0);
                      qInfo().noquote() << "message: " << it->message;
                      if (!it->state) {
                          return -1;
@@ -403,13 +431,13 @@ int main(int argc, char **argv)
                      return 0;
                  }
              }
-             reply = pm.Install({appInfoList.at(0)}, paramMap);
+             reply = packageManager.Install({appInfoList.at(0)}, paramMap);
 
              qInfo().noquote() << "install " << appId << ", please wait a few minutes...";
              reply.waitForFinished();
-             RetMessageList retMsg = reply.value();
-             if (retMsg.size() > 0) {
-                 auto it = retMsg.at(0);
+             RetMessageList retMessageList = reply.value();
+             if (retMessageList.size() > 0) {
+                 auto it = retMessageList.at(0);
                  QString prompt = "message: " + it->message;
                  if (!it->state) {
                      qCritical().noquote() << prompt << ", errcode:" << it->code;
@@ -423,7 +451,7 @@ int main(int argc, char **argv)
              }
              return 0;
          }},
-        {"update",
+        {"update",  // 更新玲珑包
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("update", "update an application", "update");
@@ -440,13 +468,13 @@ int main(int argc, char **argv)
              if (appInfoList.size() > 1) {
                  paramMap.insert(linglong::util::KEY_VERSION, appInfoList.at(1));
              }
-             pm.setTimeout(1000 * 60 * 60 * 24);
-             QDBusPendingReply<RetMessageList> reply = pm.Update({appInfoList.at(0)}, paramMap);
+             packageManager.setTimeout(1000 * 60 * 60 * 24);
+             QDBusPendingReply<RetMessageList> reply = packageManager.Update({appInfoList.at(0)}, paramMap);
              qInfo().noquote() << "update " << appId << ", please wait a few minutes...";
              reply.waitForFinished();
-             RetMessageList retMsg = reply.value();
-             if (retMsg.size() > 0) {
-                 auto it = retMsg.at(0);
+             RetMessageList retMessageList = reply.value();
+             if (retMessageList.size() > 0) {
+                 auto it = retMessageList.at(0);
                  QString prompt = "message: " + it->message;
                  if (!it->state) {
                      qCritical().noquote() << prompt << ", errcode:" << it->code;
@@ -460,7 +488,7 @@ int main(int argc, char **argv)
              }
              return 0;
          }},
-        {"query",
+        {"query",   // 查询玲珑包
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("query", "query app info", "query");
@@ -485,17 +513,17 @@ int main(int argc, char **argv)
              }
              auto args = parser.positionalArguments();
              auto appId = args.value(1);
-             QDBusPendingReply<linglong::package::AppMetaInfoList> reply = pm.Query({appId}, paramMap);
+             QDBusPendingReply<linglong::package::AppMetaInfoList> reply = packageManager.Query({appId}, paramMap);
              reply.waitForFinished();
-             linglong::package::AppMetaInfoList retMsg = reply.value();
-             if (retMsg.size() == 1 && retMsg.at(0)->appId == "flatpakquery") {
-                 printFlatpakAppInfo(retMsg);
+             linglong::package::AppMetaInfoList appMetaInfoList = reply.value();
+             if (appMetaInfoList.size() == 1 && appMetaInfoList.at(0)->appId == "flatpakquery") {
+                 printFlatpakAppInfo(appMetaInfoList);
              } else {
-                 printAppInfo(retMsg);
+                 printAppInfo(appMetaInfoList);
              }
              return 0;
          }},
-        {"uninstall",
+        {"uninstall",   // 卸载玲珑包
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("uninstall", "uninstall an application", "uninstall");
@@ -510,8 +538,8 @@ int main(int argc, char **argv)
                  parser.showHelp(-1);
                  return -1;
              }
-             // 设置 10 分钟超时 to do
-             pm.setTimeout(1000 * 60 * 10);
+             // TOTO:设置 10 分钟超时 to do
+             packageManager.setTimeout(1000 * 60 * 10);
              QDBusPendingReply<RetMessageList> reply;
 
              // appId format: org.deepin.calculator/1.2.6 in multi-version
@@ -525,9 +553,9 @@ int main(int argc, char **argv)
              }
              auto noDbus = parser.isSet(optNoDbus);
              if (noDbus) {
-                 RetMessageList retMsg = noDbusPm->Uninstall({appInfoList.at(0)}, paramMap);
-                 if (retMsg.size() > 0) {
-                     auto it = retMsg.at(0);
+                 RetMessageList retMessageList = noDbusPackageManager->Uninstall({appInfoList.at(0)}, paramMap);
+                 if (retMessageList.size() > 0) {
+                     auto it = retMessageList.at(0);
                      qInfo().noquote() << "message: " << it->message;
                      if (!it->state) {
                          return -1;
@@ -535,11 +563,11 @@ int main(int argc, char **argv)
                      return 0;
                  }
              }
-             reply = pm.Uninstall({appInfoList.at(0)}, paramMap);
+             reply = packageManager.Uninstall({appInfoList.at(0)}, paramMap);
              reply.waitForFinished();
-             RetMessageList retMsg = reply.value();
-             if (retMsg.size() > 0) {
-                 auto it = retMsg.at(0);
+             RetMessageList retMessageList = reply.value();
+             if (retMessageList.size() > 0) {
+                 auto it = retMessageList.at(0);
                  QString prompt = "message: " + it->message;
                  if (!it->state) {
                      qCritical().noquote() << prompt << ", errcode:" << it->code;
@@ -549,7 +577,7 @@ int main(int argc, char **argv)
              }
              return 0;
          }},
-        {"list",
+        {"list",    // 查询已安装玲珑包
          [&](QCommandLineParser &parser) -> int {
              auto optType = QCommandLineOption("type", "query installed app", "--type=installed", "installed");
              parser.clearPositionalArguments();
@@ -572,14 +600,14 @@ int main(int argc, char **argv)
              if (!repoType.isEmpty()) {
                  paramMap.insert(linglong::util::KEY_REPO_POINT, repoType);
              }
-             QDBusPendingReply<linglong::package::AppMetaInfoList> reply = pm.Query({optPara}, paramMap);
+             QDBusPendingReply<linglong::package::AppMetaInfoList> reply = packageManager.Query({optPara}, paramMap);
              // 默认超时时间为25s
              reply.waitForFinished();
-             linglong::package::AppMetaInfoList retMsg = reply.value();
-             if (retMsg.size() == 1 && retMsg.at(0)->appId == "flatpaklist") {
-                 printFlatpakAppInfo(retMsg);
+             linglong::package::AppMetaInfoList appMetaInfoList = reply.value();
+             if (appMetaInfoList.size() == 1 && "flatpaklist" == appMetaInfoList.at(0)->appId) {
+                 printFlatpakAppInfo(appMetaInfoList);
              } else {
-                 printAppInfo(retMsg);
+                 printAppInfo(appMetaInfoList);
              }
              return 0;
          }},

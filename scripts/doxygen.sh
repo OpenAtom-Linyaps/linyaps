@@ -17,11 +17,14 @@ for package in doxygen graphviz; do
     fi
 done
 
+cd ../
+echo $(dirname $(readlink -f "$0"))
+
 # 2. 生成配置文件Doxyfile
 if [ ! -f "Doxyfile" ]; then
     echo "Doxyfile not found"
 else
-    rm -rf Doxyfile
+    rm -f Doxyfile
     echo "Doxyfile has been removed"
     if [ ! -d "build/doxygen" ]; then
         echo "dir build/doxygen not found"

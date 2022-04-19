@@ -108,7 +108,7 @@ RetMessageList PackageManager::Download(const QStringList &packageIdList, const 
  */
 RetMessageList PackageManager::Install(const QStringList &packageIdList, const ParamStringMap &paramMap)
 {
-    if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT)) {
+    if (!paramMap.empty() && paramMap.contains(linglong::util::kKeyRepoPoint)) {
         return PackageManagerFlatpakImpl::instance()->Install(packageIdList);
     }
     // Q_D(PackageManager);
@@ -149,7 +149,7 @@ RetMessageList PackageManager::Install(const QStringList &packageIdList, const P
 
 RetMessageList PackageManager::Uninstall(const QStringList &packageIdList, const ParamStringMap &paramMap)
 {
-    if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT)) {
+    if (!paramMap.empty() && paramMap.contains(linglong::util::kKeyRepoPoint)) {
         return PackageManagerFlatpakImpl::instance()->Uninstall(packageIdList);
     }
 
@@ -214,7 +214,7 @@ QString PackageManager::UpdateAll()
  */
 linglong::package::AppMetaInfoList PackageManager::Query(const QStringList &packageIdList, const ParamStringMap &paramMap)
 {
-    if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT)) {
+    if (!paramMap.empty() && paramMap.contains(linglong::util::kKeyRepoPoint)) {
         return PackageManagerFlatpakImpl::instance()->Query(packageIdList);
     }
     if (packageIdList.size() == 0) {
@@ -257,21 +257,21 @@ RetMessageList PackageManager::Start(const QString &packageId, const ParamString
 
     // 获取版本信息
     QString version = "";
-    if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_VERSION)) {
-        version = paramMap[linglong::util::KEY_VERSION];
+    if (!paramMap.empty() && paramMap.contains(linglong::util::kKeyVersion)) {
+        version = paramMap[linglong::util::kKeyVersion];
     }
 
     // 获取user env list
     QStringList userEnvList;
-    if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_ENVLIST)) {
-        userEnvList = paramMap[linglong::util::KEY_ENVLIST].split(",");
+    if (!paramMap.empty() && paramMap.contains(linglong::util::kKeyEnvlist)) {
+        userEnvList = paramMap[linglong::util::kKeyEnvlist].split(",");
     }
 
     // 获取exec参数
     QString desktopExec;
     desktopExec.clear();
-    if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_EXEC)) {
-        desktopExec = paramMap[linglong::util::KEY_EXEC];
+    if (!paramMap.empty() && paramMap.contains(linglong::util::kKeyExec)) {
+        desktopExec = paramMap[linglong::util::kKeyExec];
     }
 
     // 判断是否已安装
@@ -289,7 +289,7 @@ RetMessageList PackageManager::Start(const QString &packageId, const ParamString
         // 判断是否存在
         package::Ref ref("", packageId, version, hostArch());
 
-        bool isFlatpakApp = !paramMap.empty() && paramMap.contains(linglong::util::KEY_REPO_POINT);
+        bool isFlatpakApp = !paramMap.empty() && paramMap.contains(linglong::util::kKeyRepoPoint);
 
         auto app = runtime::App::load(&d->repo, ref, desktopExec, isFlatpakApp);
         if (nullptr == app) {

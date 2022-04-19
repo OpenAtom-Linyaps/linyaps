@@ -307,8 +307,8 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIdList, con
 
     // 获取版本信息
     QString version = "";
-    if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_VERSION)) {
-        version = paramMap[linglong::util::KEY_VERSION];
+    if (!paramMap.empty() && paramMap.contains(linglong::util::kKeyVersion)) {
+        version = paramMap[linglong::util::kKeyVersion];
     }
 
     QString userName = getUserName();
@@ -441,7 +441,7 @@ linglong::package::AppMetaInfoList PackageManagerImpl::Query(const QStringList &
     QString appData = "";
     int status = StatusCode::FAIL;
 
-    if (!paramMap.contains(linglong::util::KEY_NO_CACHE)) {
+    if (!paramMap.contains(linglong::util::kKeyNoCache)) {
         status = queryLocalCache(pkgName, appData);
     }
 
@@ -483,8 +483,8 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIdList, c
 
     // 获取版本信息
     QString version = "";
-    if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_VERSION)) {
-        version = paramMap[linglong::util::KEY_VERSION];
+    if (!paramMap.empty() && paramMap.contains(linglong::util::kKeyVersion)) {
+        version = paramMap[linglong::util::kKeyVersion];
     }
 
     QString arch = hostArch();
@@ -606,8 +606,8 @@ RetMessageList PackageManagerImpl::Update(const QStringList &packageIdList, cons
     const QString pkgName = packageIdList.at(0).trimmed();
     // 获取版本信息
     QString version = QString();
-    if (!paramMap.empty() && paramMap.contains(linglong::util::KEY_VERSION)) {
-        version = paramMap[linglong::util::KEY_VERSION];
+    if (!paramMap.empty() && paramMap.contains(linglong::util::kKeyVersion)) {
+        version = paramMap[linglong::util::kKeyVersion];
     }
 
     QString arch = hostArch();
@@ -691,7 +691,7 @@ RetMessageList PackageManagerImpl::Update(const QStringList &packageIdList, cons
     }
 
     QMap<QString, QString> uninstallParamMap;
-    uninstallParamMap.insert(linglong::util::KEY_VERSION, currentVersion);
+    uninstallParamMap.insert(linglong::util::kKeyVersion, currentVersion);
     RetMessageList uninstallRet = Uninstall({pkgName}, uninstallParamMap);
     if (uninstallRet.size() > 0) {
         auto it = uninstallRet.at(0);

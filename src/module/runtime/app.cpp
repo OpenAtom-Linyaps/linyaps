@@ -170,7 +170,7 @@ public:
 
         qDebug() << "exec" << r->process->args;
 
-        bool noDbusProxy = runParamMap.contains(linglong::util::KEY_NO_PROXY);
+        bool noDbusProxy = runParamMap.contains(linglong::util::kKeyNoProxy);
         if (!linglong::util::fileExists("/usr/bin/ll-dbus-proxy")) {
             noDbusProxy = true;
             qWarning() << "ll-dbus-proxy not installed";
@@ -416,25 +416,25 @@ public:
         if (!enable) {
             return;
         }
-        r->annotations->dbusProxyInfo->busType = runParamMap[linglong::util::KEY_BUS_TYPE];
+        r->annotations->dbusProxyInfo->busType = runParamMap[linglong::util::kKeyBusType];
         r->annotations->dbusProxyInfo->proxyPath = proxyPath;
         // FIX to do load filter from yaml
         // FIX to do 加载用户配置参数（权限管限器上）
         // 添加cli command运行参数
-        if (runParamMap.contains(linglong::util::KEY_FILTER_NAME)) {
-            QString name = runParamMap[linglong::util::KEY_FILTER_NAME];
+        if (runParamMap.contains(linglong::util::kKeyFilterName)) {
+            QString name = runParamMap[linglong::util::kKeyFilterName];
             if (!r->annotations->dbusProxyInfo->name.contains(name)) {
                 r->annotations->dbusProxyInfo->name.push_back(name);
             }
         }
-        if (runParamMap.contains(linglong::util::KEY_FILTER_PATH)) {
-            QString path = runParamMap[linglong::util::KEY_FILTER_PATH];
+        if (runParamMap.contains(linglong::util::kKeyFilterPath)) {
+            QString path = runParamMap[linglong::util::kKeyFilterPath];
             if (!r->annotations->dbusProxyInfo->path.contains(path)) {
                 r->annotations->dbusProxyInfo->path.push_back(path);
             }
         }
-        if (runParamMap.contains(linglong::util::KEY_FILTER_IFACE)) {
-            QString interface = runParamMap[linglong::util::KEY_FILTER_IFACE];
+        if (runParamMap.contains(linglong::util::kKeyFilterIface)) {
+            QString interface = runParamMap[linglong::util::kKeyFilterIface];
             if (!r->annotations->dbusProxyInfo->interface.contains(interface)) {
                 r->annotations->dbusProxyInfo->interface.push_back(interface);
             }

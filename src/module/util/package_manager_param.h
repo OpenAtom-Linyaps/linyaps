@@ -14,19 +14,15 @@
 
 namespace linglong {
 namespace util {
-
-const QString KEY_VERSION = "version";
-const QString KEY_REPO_POINT = "repo-point";
-const QString KEY_ARCH = "arch";
-const QString KEY_DELDATA = "delete-data";
-const QString KEY_NO_CACHE = "force";
-const QString KEY_EXEC = "exec";
-const QString KEY_ENVLIST = "env-list";
-
-const QString KEY_BUS_TYPE = "bus-type";
-const QString KEY_NO_PROXY = "no-proxy";
-const QString KEY_FILTER_NAME = "filter-name";
-const QString KEY_FILTER_PATH = "filter-path";
-const QString KEY_FILTER_IFACE = "filter-interface";
+const QString kKeyVersion = "version";
+const QString kKeyRepoPoint = "repo-point";
+const QString kKeyNoCache = "force";
+const QString kKeyExec = "exec";
+const QString kKeyEnvlist = "env-list";
+const QString kKeyBusType = "bus-type";
+const QString kKeyNoProxy = "no-proxy";
+const QString kKeyFilterName = "filter-name";
+const QString kKeyFilterPath = "filter-path";
+const QString kKeyFilterIface = "filter-interface";
 } // namespace util
 } // namespace linglong

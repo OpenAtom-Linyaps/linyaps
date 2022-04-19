@@ -243,41 +243,41 @@ int main(int argc, char **argv)
              QMap<QString, QString> paramMap;
              QStringList appInfoList = appId.split("/");
              if (appInfoList.size() > 1) {
-                 paramMap.insert(linglong::util::KEY_VERSION, appInfoList.at(1));
+                 paramMap.insert(linglong::util::kKeyVersion, appInfoList.at(1));
              }
              if (!repoType.isEmpty()) {
-                 paramMap.insert(linglong::util::KEY_REPO_POINT, repoType);
+                 paramMap.insert(linglong::util::kKeyRepoPoint, repoType);
              }
 
              if (!exec.isEmpty()) {
-                 paramMap.insert(linglong::util::KEY_EXEC, exec);
+                 paramMap.insert(linglong::util::kKeyExec, exec);
              }
 
              // 获取用户环境变量
              QStringList envList = getUserEnv(linglong::util::envList);
              if (!envList.isEmpty()) {
-                 paramMap.insert(linglong::util::KEY_ENVLIST, envList.join(","));
+                 paramMap.insert(linglong::util::kKeyEnvlist, envList.join(","));
              }
 
              // 判断是否设置了no-proxy参数
              if (parser.isSet(optNoProxy)) {
-                 paramMap.insert(linglong::util::KEY_NO_PROXY, "");
+                 paramMap.insert(linglong::util::kKeyNoProxy, "");
              }
 
              if (!parser.isSet(optNoProxy)) {
                  // FIX to do only deal with session bus
-                 paramMap.insert(linglong::util::KEY_BUS_TYPE, "session");
+                 paramMap.insert(linglong::util::kKeyBusType, "session");
                  auto nameFilter = parser.value(optNameFilter);
                  if (!nameFilter.isEmpty()) {
-                     paramMap.insert(linglong::util::KEY_FILTER_NAME, nameFilter);
+                     paramMap.insert(linglong::util::kKeyFilterName, nameFilter);
                  }
                  auto pathFilter = parser.value(optPathFilter);
                  if (!pathFilter.isEmpty()) {
-                     paramMap.insert(linglong::util::KEY_FILTER_PATH, pathFilter);
+                     paramMap.insert(linglong::util::kKeyFilterPath, pathFilter);
                  }
                  auto interfaceFilter = parser.value(optInterfaceFilter);
                  if (!interfaceFilter.isEmpty()) {
-                     paramMap.insert(linglong::util::KEY_FILTER_IFACE, interfaceFilter);
+                     paramMap.insert(linglong::util::kKeyFilterIface, interfaceFilter);
                  }
              }
 
@@ -413,10 +413,10 @@ int main(int argc, char **argv)
              QMap<QString, QString> paramMap;
              QStringList appInfoList = appId.split("/");
              if (appInfoList.size() > 1) {
-                 paramMap.insert(linglong::util::KEY_VERSION, appInfoList.at(1));
+                 paramMap.insert(linglong::util::kKeyVersion, appInfoList.at(1));
              }
              if (!repoType.isEmpty()) {
-                 paramMap.insert(linglong::util::KEY_REPO_POINT, repoType);
+                 paramMap.insert(linglong::util::kKeyRepoPoint, repoType);
              }
 
              auto noDbus = parser.isSet(optNoDbus);
@@ -466,7 +466,7 @@ int main(int argc, char **argv)
              QMap<QString, QString> paramMap;
              QStringList appInfoList = appId.split("/");
              if (appInfoList.size() > 1) {
-                 paramMap.insert(linglong::util::KEY_VERSION, appInfoList.at(1));
+                 paramMap.insert(linglong::util::kKeyVersion, appInfoList.at(1));
              }
              packageManager.setTimeout(1000 * 60 * 60 * 24);
              QDBusPendingReply<RetMessageList> reply = packageManager.Update({appInfoList.at(0)}, paramMap);
@@ -505,11 +505,11 @@ int main(int argc, char **argv)
              }
              QMap<QString, QString> paramMap;
              if (!repoType.isEmpty()) {
-                 paramMap.insert(linglong::util::KEY_REPO_POINT, repoType);
+                 paramMap.insert(linglong::util::kKeyRepoPoint, repoType);
              }
              auto noCache = parser.isSet(optNoCache);
              if (noCache) {
-                 paramMap.insert(linglong::util::KEY_NO_CACHE, "");
+                 paramMap.insert(linglong::util::kKeyNoCache, "");
              }
              auto args = parser.positionalArguments();
              auto appId = args.value(1);
@@ -546,10 +546,10 @@ int main(int argc, char **argv)
              QMap<QString, QString> paramMap;
              QStringList appInfoList = appInfo.split("/");
              if (appInfoList.size() > 1) {
-                 paramMap.insert(linglong::util::KEY_VERSION, appInfoList.at(1));
+                 paramMap.insert(linglong::util::kKeyVersion, appInfoList.at(1));
              }
              if (!repoType.isEmpty()) {
-                 paramMap.insert(linglong::util::KEY_REPO_POINT, repoType);
+                 paramMap.insert(linglong::util::kKeyRepoPoint, repoType);
              }
              auto noDbus = parser.isSet(optNoDbus);
              if (noDbus) {
@@ -598,7 +598,7 @@ int main(int argc, char **argv)
              }
              QMap<QString, QString> paramMap;
              if (!repoType.isEmpty()) {
-                 paramMap.insert(linglong::util::KEY_REPO_POINT, repoType);
+                 paramMap.insert(linglong::util::kKeyRepoPoint, repoType);
              }
              QDBusPendingReply<linglong::package::AppMetaInfoList> reply = packageManager.Query({optPara}, paramMap);
              // 默认超时时间为25s

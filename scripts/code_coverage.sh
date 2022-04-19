@@ -11,13 +11,15 @@ echo "lcov is not install"
 sudo apt install -y lcov
 fi
 
+cd ../
+
 if [ ! -d "build" ];then
 mkdir build
 else
 rm -rf build && mkdir build
 fi
 
-cd build && cmake .. && make -j
+cd build && rm -rf ./* && clear && cmake .. && make -j
 cd test
 ./ll-test
 cd ../../

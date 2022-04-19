@@ -65,7 +65,7 @@ public:
         r->setParent(q_ptr);
 
         container = new Container(q_ptr);
-        container->create();
+        container->create(q_ptr->package->ref);
 
         return true;
     }

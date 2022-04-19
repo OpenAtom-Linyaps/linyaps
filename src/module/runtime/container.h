@@ -25,8 +25,9 @@ class Container : public JsonSerialize
 public:
     Q_JSON_ITEM_MEMBER(QString, ID, id)
     Q_JSON_ITEM_MEMBER(qint64, PID, pid)
+    Q_JSON_ITEM_MEMBER(QString, PackageName, packageName)
     Q_JSON_ITEM_MEMBER(QString, WorkingDirectory, workingDirectory)
 
-    linglong::util::Error create();
+    linglong::util::Error create(const QString& ref);
 };
 Q_JSON_DECLARE_PTR_METATYPE(Container)

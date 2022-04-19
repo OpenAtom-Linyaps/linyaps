@@ -27,7 +27,7 @@
 #include "package_manager_flatpak_impl.h"
 #include "package_manager_option.h"
 
-class PackageManagerPrivate;    /**< forward declaration PackageManagerPrivate */
+class PackageManagerPrivate; /**< forward declaration PackageManagerPrivate */
 
 /**
  * @brief The PackageManager class
@@ -149,7 +149,7 @@ public Q_SLOTS:
      *        key为repo-point，value为flatpak，用于运行flatpak类型应用 \n
      *        key为no-proxy，value为""，用于以非代理模式运行应用
      *
-     * @return RetMessageList 同Install 
+     * @return RetMessageList 同Install
      */
     RetMessageList Start(const QString &packageId, const ParamStringMap &paramMap = {});
 
@@ -158,7 +158,7 @@ public Q_SLOTS:
      *
      * @param containerId 运行应用容器对应的Id（使用ListContainer查询）
      *
-     * @return RetMessageList 同Install 
+     * @return RetMessageList 同Install
      */
     RetMessageList Stop(const QString &containerId);
 
@@ -168,12 +168,13 @@ public Q_SLOTS:
      * @return ContainerList \n
      *         Id 容器id \n
      *         pid 容器对应的进程id \n
+     *         packageName 应用名称 \n
      *         workingDirectory 应用运行目录
      */
     ContainerList ListContainer();
 
 private:
-    QScopedPointer<PackageManagerPrivate> dd_ptr;   ///< private data
+    QScopedPointer<PackageManagerPrivate> dd_ptr; ///< private data
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), PackageManager)
 
 protected:

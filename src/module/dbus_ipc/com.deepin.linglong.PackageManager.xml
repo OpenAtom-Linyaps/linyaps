@@ -59,7 +59,7 @@
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="RetMessageList"/>
         </method>
         <method name="ListContainer">
-            <arg name="ContainerList" type="a(s)" direction="out"/>
+            <arg name="ContainerList" type="a(sxss)" direction="out"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="ContainerList"/>
         </method>
     </interface>

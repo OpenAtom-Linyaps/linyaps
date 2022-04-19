@@ -402,7 +402,7 @@ util::Error LinglongBuilder::build()
     auto r = rt.get();
 
     auto container = new Container(this);
-    ret = container->create();
+    ret = container->create("");
     if (!ret.success()) {
         return WrapError(ret, "create container failed");
     }

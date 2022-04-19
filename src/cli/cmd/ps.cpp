@@ -19,8 +19,10 @@ void showContainer(const ContainerList &list, const QString &format)
     QJsonArray js;
     for (auto const &c : list) {
         js.push_back(QJsonObject {
+            {"app", c->packageName},
             {"id", c->id},
             {"pid", c->pid},
+            {"path", c->workingDirectory},
         });
     }
 
@@ -28,15 +30,14 @@ void showContainer(const ContainerList &list, const QString &format)
         std::cout << QJsonDocument(js).toJson().toStdString();
     } else {
         std::cout << "\033[1m\033[38;5;214m";
-        std::cout << std::left << std::setw(40) << "ContainerID"
-                  << std::left << std::setw(12) << "Pid"
-                  << std::left << "Path";
+        std::cout << std::left << std::setw(12) << "App" << std::left << std::setw(40) << "ContainerID" << std::left
+                  << std::setw(12) << "Pid" << std::left << "Path";
         std::cout << "\033[0m" << std::endl;
         for (auto const &item : js) {
-            std::cout << std::left << std::setw(40) << item.toObject().value("id").toString().toStdString()
-                      << std::left << std::setw(12) << item.toObject().value("pid").toInt()
-                      << std::left << item.toObject().value("path").toString().toStdString()
-                      << std::endl;
+            std::cout << std::left << std::setw(12) << item.toObject().value("app").toString().toStdString()
+                      << std::left << std::setw(40) << item.toObject().value("id").toString().toStdString() << std::left
+                      << std::setw(12) << item.toObject().value("pid").toInt() << std::left
+                      << item.toObject().value("path").toString().toStdString() << std::endl;
         }
     }
 }

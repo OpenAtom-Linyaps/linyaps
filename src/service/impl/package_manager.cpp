@@ -352,6 +352,8 @@ ContainerList PackageManager::ListContainer()
         auto c = QPointer<Container>(new Container);
         c->id = app->container()->id;
         c->pid = app->container()->pid;
+        c->packageName = app->container()->packageName;
+        c->workingDirectory = app->container()->workingDirectory;
         list.push_back(c);
     }
     return list;

@@ -16,7 +16,7 @@
 
 using namespace linglong;
 
-linglong::util::Error Container::create()
+linglong::util::Error Container::create(const QString& ref)
 {
     auto containerID = util::genUuid();
     auto containerWorkDirectory = util::userRuntimeDir().absoluteFilePath(QString("linglong/%1").arg(containerID));
@@ -24,6 +24,8 @@ linglong::util::Error Container::create()
     id = containerID;
     workingDirectory = containerWorkDirectory;
     util::ensureDir(workingDirectory);
+
+    packageName = ref;
 
     return NoError();
 }

@@ -20,17 +20,17 @@
 
 #include "cmd.h"
 
-inline int bringDownPermissionsTo(const struct stat &st)
+inline int bringDownPermissionsTo(const struct stat &fileStat)
 {
-    __gid_t newGid[1] = {st.st_gid};
+    __gid_t newGid[1] = {fileStat.st_gid};
 
     setgroups(1, newGid);
 
-    setgid(st.st_gid);
-    setegid(st.st_gid);
+    setgid(fileStat.st_gid);
+    setegid(fileStat.st_gid);
 
-    setuid(st.st_uid);
-    seteuid(st.st_uid);
+    setuid(fileStat.st_uid);
+    seteuid(fileStat.st_uid);
     return 0;
 }
 
@@ -79,7 +79,7 @@ QList<pid_t> childrenOf(pid_t p)
 int namespaceEnter(pid_t pid, const QStringList &args)
 {
     int ret;
-    struct stat st = {};
+    struct stat fileStat = {};
 
     auto children = childrenOf(pid);
     if (children.isEmpty()) {
@@ -92,13 +92,13 @@ int namespaceEnter(pid_t pid, const QStringList &args)
     auto root = QString("/proc/%1/root").arg(pid);
     auto proc = QString("/proc/%1").arg(pid);
 
-    ret = lstat(proc.toStdString().c_str(), &st);
+    ret = lstat(proc.toStdString().c_str(), &fileStat);
     if (ret < 0) {
         qDebug() << "lstat failed" << root << ret << errno << strerror(errno);
         return -1;
     }
 
-    QStringList nsList = {
+    QStringList nameSpaceList = {
         "mnt",
         "ipc",
         "uts",
@@ -109,18 +109,18 @@ int namespaceEnter(pid_t pid, const QStringList &args)
     };
 
     QList<int> fds;
-    for (auto const &ns : nsList) {
-        auto currentNS = (prefix + ns).toStdString();
-        int fd = open(currentNS.c_str(), O_RDONLY);
+    for (auto const &nameSpace : nameSpaceList) {
+        auto currentNameSpace = (prefix + nameSpace).toStdString();
+        int fd = open(currentNameSpace.c_str(), O_RDONLY);
         if (fd < 0) {
-            qCritical() << "open failed" << currentNS.c_str() << fd << errno << strerror(errno);
+            qCritical() << "open failed" << currentNameSpace.c_str() << fd << errno << strerror(errno);
             continue;
         }
-        qDebug() << "push" << fd << currentNS.c_str();
+        qDebug() << "push" << fd << currentNameSpace.c_str();
         fds.push_back(fd);
     }
 
-    int rootfd = open(root.toStdString().c_str(), O_RDONLY);
+    int rootFd = open(root.toStdString().c_str(), O_RDONLY);
 
     ret = unshare(CLONE_NEWNS);
     if (ret < 0) {
@@ -135,7 +135,7 @@ int namespaceEnter(pid_t pid, const QStringList &args)
         close(fd);
     }
 
-    ret = fchdir(rootfd);
+    ret = fchdir(rootFd);
     if (ret < 0) {
         qCritical() << "chdir failed" << root << ret << errno << strerror(errno);
         return -1;
@@ -147,7 +147,7 @@ int namespaceEnter(pid_t pid, const QStringList &args)
         return -1;
     }
 
-    bringDownPermissionsTo(st);
+    bringDownPermissionsTo(fileStat);
 
     int child = fork();
     if (child < 0) {
@@ -162,9 +162,9 @@ int namespaceEnter(pid_t pid, const QStringList &args)
         }
 
         std::vector<std::string> envVec;
-        for (const auto &l : envFile.readAll().split('\n')) {
-            if (!l.isEmpty()) {
-                envVec.push_back(l.toStdString());
+        for (const auto &env : envFile.readAll().split('\n')) {
+            if (!env.isEmpty()) {
+                envVec.push_back(env.toStdString());
             }
         }
 

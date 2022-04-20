@@ -213,7 +213,7 @@ int main(int argc, char **argv)
              parser.addOption(optInterfaceFilter);
              parser.process(app);
              auto repoType = parser.value(optRepoPoint);
-             if ((!repoType.isEmpty() && repoType != "flatpak")) {
+             if ((!repoType.isEmpty() && "flatpak" != repoType)) {
                  parser.showHelp();
                  return -1;
              }
@@ -402,7 +402,7 @@ int main(int argc, char **argv)
              auto args = parser.positionalArguments();
              auto appId = args.value(1);
              auto repoType = parser.value(optRepoPoint);
-             if (appId.isEmpty() || (!repoType.isEmpty() && repoType != "flatpak")) {
+             if (appId.isEmpty() || (!repoType.isEmpty() && "flatpak" != repoType)) {
                  parser.showHelp(-1);
                  return -1;
              }
@@ -500,7 +500,7 @@ int main(int argc, char **argv)
              parser.addOption(optNoCache);
              parser.process(app);
              auto repoType = parser.value(optRepoPoint);
-             if (!repoType.isEmpty() && repoType != "flatpak") {
+             if (!repoType.isEmpty() && "flatpak" != repoType) {
                  parser.showHelp(-1);
                  return -1;
              }
@@ -517,7 +517,7 @@ int main(int argc, char **argv)
              QDBusPendingReply<linglong::package::AppMetaInfoList> reply = packageManager.Query({appId}, paramMap);
              reply.waitForFinished();
              linglong::package::AppMetaInfoList appMetaInfoList = reply.value();
-             if (appMetaInfoList.size() == 1 && appMetaInfoList.at(0)->appId == "flatpakquery") {
+             if (1 == appMetaInfoList.size() && "flatpakquery" == appMetaInfoList.at(0)->appId) {
                  printFlatpakAppInfo(appMetaInfoList);
              } else {
                  printAppInfo(appMetaInfoList);
@@ -588,12 +588,12 @@ int main(int argc, char **argv)
              parser.addOption(optRepoPoint);
              parser.process(app);
              auto optPara = parser.value(optType);
-             if (optPara != "installed") {
+             if ("installed" != optPara) {
                  parser.showHelp(-1);
                  return -1;
              }
              auto repoType = parser.value(optRepoPoint);
-             if (!repoType.isEmpty() && repoType != "flatpak") {
+             if (!repoType.isEmpty() && "flatpak" != repoType) {
                  parser.showHelp(-1);
                  return -1;
              }
@@ -605,7 +605,7 @@ int main(int argc, char **argv)
              // 默认超时时间为25s
              reply.waitForFinished();
              linglong::package::AppMetaInfoList appMetaInfoList = reply.value();
-             if (appMetaInfoList.size() == 1 && "flatpaklist" == appMetaInfoList.at(0)->appId) {
+             if (1 == appMetaInfoList.size() && "flatpaklist" == appMetaInfoList.at(0)->appId) {
                  printFlatpakAppInfo(appMetaInfoList);
              } else {
                  printAppInfo(appMetaInfoList);

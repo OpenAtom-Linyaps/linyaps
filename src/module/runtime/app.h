@@ -51,8 +51,6 @@ class MountYaml : public JsonSerialize
 
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::runtime, MountYaml)
 
-//Q_JSON_DECLARE_PTR_METATYPE(MountYaml)
-
 namespace linglong {
 namespace runtime {
 /*!
@@ -97,7 +95,17 @@ public:
 
     void saveUserEnvList(const QStringList &userEnvList);
 
-    void setAppParamMap(const ParamStringMap& paramMap);
+    void setAppParamMap(const ParamStringMap &paramMap);
+
+signals:
+
+    /**
+     * @brief 应用退出信号
+     *
+     * @param containerId 应用对应的容器id
+     */
+    void containerIdChange(const QString &containerId);
+
 private:
     QScopedPointer<AppPrivate> dd_ptr;
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), App)

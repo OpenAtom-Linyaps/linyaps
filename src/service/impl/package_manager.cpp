@@ -245,7 +245,7 @@ QString PackageManager::Import(const QStringList &packagePathList)
  *
  * @param packageId: 软件包的appId
  * @param paramMap: 运行参数信息
- * 
+ *
  * @return RetMessageList: 运行结果信息
  */
 RetMessageList PackageManager::Start(const QString &packageId, const ParamStringMap &paramMap)
@@ -297,6 +297,8 @@ RetMessageList PackageManager::Start(const QString &packageId, const ParamString
             qCritical() << "nullptr" << app;
             return;
         }
+        QObject::connect(app, SIGNAL(containerIdChange(const QString &)), this,
+                         SLOT(removeContainerId(const QString &)));
         app->saveUserEnvList(userEnvList);
         app->setAppParamMap(paramMap);
         d->apps[app->container()->id] = QPointer<runtime::App>(app);
@@ -341,6 +343,22 @@ RetMessageList PackageManager::Stop(const QString &containerId)
     }
     qInfo() << "kill containerId:" << containerId << ",ret:" << ret;
     return retMsg;
+}
+
+/**
+ * @brief 移除启动应用列表中已退出应用对应的容器id
+ *
+ * @param containerId 容器id
+ */
+void PackageManager::removeContainerId(const QString &containerId)
+{
+    qInfo() << "receive containerId:" << containerId;
+    Q_D(PackageManager);
+    if (!d->apps.contains(containerId)) {
+        qWarning() << "removeContainerId containerId:" + containerId + " not exist";
+        return;
+    }
+    d->apps.remove(containerId);
 }
 
 ContainerList PackageManager::ListContainer()

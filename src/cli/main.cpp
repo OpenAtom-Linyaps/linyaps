@@ -306,11 +306,13 @@ int main(int argc, char **argv)
              auto containerId = parser.positionalArguments().value(1);
              if (containerId.isEmpty()) {
                  parser.showHelp();
+                 return -1;
              }
 
              auto cmd = parser.positionalArguments().value(2);
              if (cmd.isEmpty()) {
                  parser.showHelp();
+                 return -1;
              }
 
              auto pid = containerId.toInt();

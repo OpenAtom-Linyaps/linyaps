@@ -401,7 +401,7 @@ bool OstreeRepoHelper::queryMatchRefs(const QString &repoPath, const QString &re
     QMap<QString, QString> outRefs;
     bool ret = getRemoteRefs(repoPath, remoteName, outRefs, err);
     if (ret) {
-        QString filterString = "(" + pkgName + ")+";
+        QString filterString = "(" + pkgName + "/)+";
         QList<QString> keyRefs = outRefs.keys().filter(QRegExp(filterString, Qt::CaseSensitive));
         // 版本号不为空，查找指定版本
         if (!pkgVer.isEmpty()) {

@@ -370,7 +370,7 @@ RetMessageList PackageManagerImpl::Install(const QStringList &packageIdList, con
     // 下载在线包数据到目标目录 安装完成
     // QString pkgName = "org.deepin.calculator";
     const QString savePath = kAppInstallPath + appInfo->appId + "/" + appInfo->version + "/" + appInfo->arch;
-    ret = downloadAppData(appInfo->appId, appInfo->version, appInfo->arch, savePath, err);
+    ret = downloadAppData(pkgName, appInfo->version, appInfo->arch, savePath, err);
     if (!ret) {
         qCritical() << err;
         info->setcode(RetCode(RetCode::load_pkg_data_failed));

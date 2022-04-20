@@ -61,7 +61,7 @@ void printFlatpakAppInfo(linglong::package::AppMetaInfoList appMetaInfoList)
 
 /**
  * @brief 统计字符串中中文字符的个数
- * 
+ *
  * @param name 软件包名称
  * @return int 中文字符个数
  */
@@ -81,14 +81,14 @@ int getUnicodeNum(const QString &name)
 
 /**
  * @brief 输出软件包的查询结果
- * 
+ *
  * @param appMetaInfoList 软件包元信息列表
  *
  */
 void printAppInfo(linglong::package::AppMetaInfoList appMetaInfoList)
 {
     if (appMetaInfoList.size() > 0) {
-        qInfo("%-32s%-32s%-16s%-12s%-s", qUtf8Printable("appId"), qUtf8Printable("name"), qUtf8Printable("version"),
+        qInfo("\033[1m\033[38;5;214m%-32s%-32s%-16s%-12s%-s\033[0m", qUtf8Printable("appId"), qUtf8Printable("name"), qUtf8Printable("version"),
               qUtf8Printable("arch"), qUtf8Printable("description"));
         for (auto const &it : appMetaInfoList) {
             QString simpleDescription = it->description.trimmed();
@@ -104,12 +104,13 @@ void printAppInfo(linglong::package::AppMetaInfoList appMetaInfoList)
                 name = it->name.trimmed().left(29) + "...";
             }
             int count = getUnicodeNum(name);
+            int length = simpleDescription.length() < 56 ? simpleDescription.length() : 56;
             qInfo().noquote() << QString("%1%2%3%4%5")
                                      .arg(appId, -32, QLatin1Char(' '))
                                      .arg(name, count - 32, QLatin1Char(' '))
                                      .arg(it->version.trimmed(), -16, QLatin1Char(' '))
                                      .arg(it->arch.trimmed(), -12, QLatin1Char(' '))
-                                     .arg(simpleDescription, -56, QLatin1Char(' '));
+                                     .arg(simpleDescription, -length, QLatin1Char(' '));
         }
     } else {
         qInfo().noquote() << "app not found in repo";
@@ -118,7 +119,7 @@ void printAppInfo(linglong::package::AppMetaInfoList appMetaInfoList)
 
 /**
  * @brief 检测ll-service dbus服务是否已经启动，未启动则启动
- * 
+ *
  * @param packageManager ll-service dbus服务
  *
  */

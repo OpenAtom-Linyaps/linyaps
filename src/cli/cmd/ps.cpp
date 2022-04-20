@@ -9,8 +9,6 @@
  */
 
 #include <QJsonArray>
-#include <iostream>
-#include <iomanip>
 
 #include "cmd.h"
 
@@ -27,17 +25,16 @@ void showContainer(const ContainerList &list, const QString &format)
     }
 
     if ("json" == format) {
-        std::cout << QJsonDocument(js).toJson().toStdString();
+        qInfo().noquote() << QJsonDocument(js).toJson();
     } else {
-        std::cout << "\033[1m\033[38;5;214m";
-        std::cout << std::left << std::setw(12) << "App" << std::left << std::setw(40) << "ContainerID" << std::left
-                  << std::setw(12) << "Pid" << std::left << "Path";
-        std::cout << "\033[0m" << std::endl;
+        qInfo("\033[1m\033[38;5;214m%-48s%-36s%-8s%-s\033[0m", "App", "ContainerID", "Pid", "Path");
         for (auto const &item : js) {
-            std::cout << std::left << std::setw(12) << item.toObject().value("app").toString().toStdString()
-                      << std::left << std::setw(40) << item.toObject().value("id").toString().toStdString() << std::left
-                      << std::setw(12) << item.toObject().value("pid").toInt() << std::left
-                      << item.toObject().value("path").toString().toStdString() << std::endl;
+            QString path = item.toObject().value("path").toString();
+            qInfo().noquote() << QString("%1%2%3%4")
+                                     .arg(item.toObject().value("app").toString(), -48, QLatin1Char(' '))
+                                     .arg(item.toObject().value("id").toString(), -36, QLatin1Char(' '))
+                                     .arg(QString::number(item.toObject().value("pid").toInt()), -8, QLatin1Char(' '))
+                                     .arg(path, -path.length(), QLatin1Char(' '));
         }
     }
 }

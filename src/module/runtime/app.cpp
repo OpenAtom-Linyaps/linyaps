@@ -134,7 +134,7 @@ public:
         } else {
             tmpArgs = util::parseExec(desktopEntry.rawValue("Exec"));
             // 移除 ll-cli run  appid --exec 参数
-            for (auto i = tmpArgs.indexOf("^--exec$") + 1; i < tmpArgs.length(); ++i) {
+            for (auto i = tmpArgs.indexOf(QRegExp("^--exec$")) + 1; i < tmpArgs.length(); ++i) {
                 execArgs << tmpArgs[i];
             }
         }

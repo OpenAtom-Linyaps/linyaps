@@ -14,13 +14,15 @@
 #include <QStringList>
 
 #include "qdbus_retmsg.h"
+#include "reply.h"
+#include "param_option.h"
 #include "module/package/ref.h"
 #include "module/util/result.h"
 
 class PackageManagerProxyBase
 {
 public:
-    virtual RetMessageList Download(const QStringList &packageIDList, const QString &savePath) = 0;
+    virtual linglong::service::Reply Download(const linglong::service::DownloadParamOption &downloadParamOption) = 0;
     virtual RetMessageList Install(const QStringList &packageIDList, const ParamStringMap &paramMap = {}) = 0;
     virtual RetMessageList Uninstall(const QStringList &packageIDList, const ParamStringMap &paramMap = {}) = 0;
     virtual linglong::package::AppMetaInfoList Query(const QStringList &packageIDList, const ParamStringMap &paramMap = {}) = 0;

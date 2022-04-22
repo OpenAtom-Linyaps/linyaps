@@ -14,13 +14,15 @@
 #include "module/package/package.h"
 #include "package_manager_proxy_base.h"
 #include "qdbus_retmsg.h"
+#include "reply.h"
+#include "param_option.h"
 
 class PackageManagerFlatpakImpl
     : public PackageManagerProxyBase
     , public linglong::util::Singleton<PackageManagerFlatpakImpl>
 {
 public:
-    RetMessageList Download(const QStringList &packageIDList, const QString &savePath) { return {}; }
+    linglong::service::Reply Download(const linglong::service::DownloadParamOption &downloadParamOption) { return linglong::service::Reply(); }
     RetMessageList Install(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
     RetMessageList Uninstall(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
     linglong::package::AppMetaInfoList Query(const QStringList &packageIDList, const ParamStringMap &paramMap = {});

@@ -364,36 +364,36 @@ int main(int argc, char **argv)
          }},
         {"download", // TODO: download命令当前没用到
          [&](QCommandLineParser &parser) -> int {
+
+            //  auto optArch = QCommandLineOption("arch", "cpu arch", "cpu arch", "x86_64");
              QString curPath = QDir::currentPath();
              // qDebug() << curPath;
              // ll-cli download org.deepin.calculator -d ./test 无-d 参数默认当前路径
              auto optDownload = QCommandLineOption("d", "dest path to save app", "dest path to save app", curPath);
-
+             
              parser.clearPositionalArguments();
              parser.addPositionalArgument("appId", "app id", "com.deepin.demo");
              parser.addOption(optDownload);
              parser.process(app);
              auto args = parser.positionalArguments();
              // 第一个参数为命令字
-             auto appId = args.value(1);
-             auto savePath = parser.value(optDownload);
-             QFileInfo dstfs(savePath);
+             linglong::service::DownloadParamOption downloadParamOption;
+             QStringList appInfoList = args.value(1).split("/");
+             if (appInfoList.size() > 2) {
+                 downloadParamOption.appId = appInfoList.at(0);
+                 downloadParamOption.version = appInfoList.at(1);
+                 downloadParamOption.arch = appInfoList.at(2);
+             }
+             downloadParamOption.savePath = parser.value(optDownload);
 
              packageManager.setTimeout(1000 * 60 * 60 * 24);
-             QDBusPendingReply<RetMessageList> reply = packageManager.Download({appId}, dstfs.absoluteFilePath());
+             QDBusPendingReply<linglong::service::Reply> reply = packageManager.Download(downloadParamOption);
              reply.waitForFinished();
-             RetMessageList retMessageList = reply.value();
-             if (retMessageList.size() > 0) {
-                 auto it = retMessageList.at(0);
-                 QString prompt = "message: " + it->message;
-                 if (!it->state) {
-                     qCritical().noquote() << prompt << ", errcode:" << it->code;
-                     return -1;
-                 }
-                 qInfo().noquote() << prompt;
+             linglong::service::Reply retReply = reply.value();
+             qInfo().noquote() << retReply.code << retReply.message;
+             return retReply.code;
              }
-             return 0;
-         }},
+        },
         {"install", // 下载玲珑包
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();

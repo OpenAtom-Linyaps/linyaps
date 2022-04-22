@@ -14,6 +14,8 @@
 #include "module/runtime/container.h"
 #include "module/package/package.h"
 #include "qdbus_retmsg.h"
+#include "reply.h"
+#include "param_option.h"
 #include "package_manager_option.h"
 
 
@@ -26,6 +28,9 @@ namespace service {
 inline void registerAllMetaType()
 {
     qJsonRegister<RetMessage>();
+    qDBusRegisterMetaType<linglong::service::Reply>();
+    qDBusRegisterMetaType<linglong::service::ParamOption>();
+    qDBusRegisterMetaType<linglong::service::DownloadParamOption>();
     qDBusRegisterMetaType<ParamStringMap>();
     qJsonRegister<PackageManagerOption>();
     qJsonRegister<RunParamOption>();

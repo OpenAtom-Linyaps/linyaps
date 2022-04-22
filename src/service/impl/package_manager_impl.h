@@ -25,13 +25,15 @@
 #include "module/util/fs.h"
 #include "package_manager_proxy_base.h"
 #include "qdbus_retmsg.h"
+#include "reply.h"
+#include "param_option.h"
 
 class PackageManagerImpl
     : public PackageManagerProxyBase
     , public linglong::util::Singleton<PackageManagerImpl>
 {
 public:
-    RetMessageList Download(const QStringList &packageIdList, const QString &savePath);
+    linglong::service::Reply Download(const linglong::service::DownloadParamOption &downloadParamOption);
     RetMessageList Install(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
     RetMessageList Uninstall(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
     linglong::package::AppMetaInfoList Query(const QStringList &packageIdList, const ParamStringMap &paramMap = {});

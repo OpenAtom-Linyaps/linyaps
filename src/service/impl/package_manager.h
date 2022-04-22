@@ -23,6 +23,8 @@
 #include "module/util/singleton.h"
 #include "package_manager_impl.h"
 #include "qdbus_retmsg.h"
+#include "reply.h"
+#include "param_option.h"
 
 #include "package_manager_flatpak_impl.h"
 #include "package_manager_option.h"
@@ -56,15 +58,13 @@ public Q_SLOTS:
     /**
      * @brief download the package
      *
-     * @param packageIdList 应用appId列表
-     * @param savePath 目标软件包存储路径
+     * @param paramOption 下载参数
      *
-     * @return RetMessageList 消息列表 \n
-     *          state:操作状态 true 成功， false 失败 \n
+     * @return Reply dbus方法调用应答 \n
      *          code:操作错误码(0 成功, 其它 失败) \n
      *          message:错误信息
      */
-    RetMessageList Download(const QStringList &packageIdList, const QString savePath);
+    linglong::service::Reply Download(const linglong::service::DownloadParamOption &downloadParamOption);
 
     /**
      * @brief 安装软件包

@@ -172,9 +172,13 @@ bool PackageManagerImpl::downloadAppData(const QString &pkgName, const QString &
  * 下载软件包
  * @param packageIdList
  */
-RetMessageList PackageManagerImpl::Download(const QStringList &packageIdList, const QString &savePath)
+linglong::service::Reply PackageManagerImpl::Download(const linglong::service::DownloadParamOption &downloadParamOption)
 {
-    return {};
+    qInfo() << downloadParamOption.appId << downloadParamOption.version << downloadParamOption.arch;
+    linglong::service::Reply reply;
+    reply.code = 0;
+    reply.message = downloadParamOption.appId;
+    return reply;
 }
 
 /*

@@ -70,36 +70,20 @@ PackageManager::~PackageManager() = default;
 
 /*!
  * 下载软件包
- * @param packageIdList
+ * @param paramOption
  */
-RetMessageList PackageManager::Download(const QStringList &packageIdList, const QString savePath)
+linglong::service::Reply PackageManager::Download(const linglong::service::DownloadParamOption &downloadParamOption)
 {
-    // Q_D(PackageManager);
-
-    // return JobManager::instance()->CreateJob([](Job *jr) {
-    //     在这里写入真正的实现
-    //     QProcess p;
-    //     p.setProgram("curl");
-    //     p.setArguments({"https://www.baidu.com"});
-    //     p.start();
-    //     p.waitForStarted();
-    //     p.waitForFinished(-1);
-    //     qDebug() << p.readAllStandardOutput();
-    //     qDebug() << "finish" << p.exitStatus() << p.state();
-    // });
-    RetMessageList retMsg;
-    auto info = QPointer<RetMessage>(new RetMessage);
-    QString pkgName = packageIdList.at(0).trimmed();
-    if (pkgName.isNull() || pkgName.isEmpty()) {
-        qInfo() << "package name err";
-        info->setcode(RetCode(RetCode::user_input_param_err));
-        info->setmessage("package name err");
-        info->setstate(false);
-        retMsg.push_back(info);
-        return retMsg;
+    linglong::service::Reply reply;
+    QString appId = downloadParamOption.appId;
+    if (appId.isNull() || appId.isEmpty()) {
+        qCritical() << "package name err";
+        reply.code = RetCode(RetCode::user_input_param_err);
+        reply.message = "package name err";
+        return reply;
     }
     PackageManagerProxyBase *pImpl = PackageManagerImpl::instance();
-    return pImpl->Download(packageIdList, savePath);
+    return pImpl->Download(downloadParamOption);
 }
 
 /*!

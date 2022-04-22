@@ -7,6 +7,8 @@ set(LL_CLI_SOURCES
     ../module/runtime/container.h
     ../module/package/package.h
     ../service/impl/qdbus_retmsg.h
+    ../service/impl/reply.h
+    ../service/impl/param_option.h
     ../module/util/singleton.h
     #add for cli no dbus support
     ../service/impl/package_manager.cpp

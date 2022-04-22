@@ -1,14 +1,13 @@
 set(LL_CLI_SOURCES
     main.cpp
-    cmd/exec.cpp
-    cmd/ps.cpp
-    cmd/get_env.cpp
+    cmd/command_helper.cpp
     ../module/flatpak/flatpak_manager.cpp
     ../module/util/json.h
     ../module/runtime/oci.h
     ../module/runtime/container.h
     ../module/package/package.h
     ../service/impl/qdbus_retmsg.h
+    ../module/util/singleton.h
     #add for cli no dbus support
     ../service/impl/package_manager.cpp
     ../service/impl/package_manager_impl.cpp

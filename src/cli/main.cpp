@@ -13,7 +13,8 @@
 #include <QCommandLineOption>
 #include <QMap>
 
-#include "cmd/cmd.h"
+// #include "cmd/cmd.h"
+#include "cmd/command_helper.h"
 #include "module/package/package.h"
 #include "module/util/package_manager_param.h"
 #include "service/impl/json_register_inc.h"
@@ -88,8 +89,8 @@ int getUnicodeNum(const QString &name)
 void printAppInfo(linglong::package::AppMetaInfoList appMetaInfoList)
 {
     if (appMetaInfoList.size() > 0) {
-        qInfo("\033[1m\033[38;5;214m%-32s%-32s%-16s%-12s%-s\033[0m", qUtf8Printable("appId"), qUtf8Printable("name"), qUtf8Printable("version"),
-              qUtf8Printable("arch"), qUtf8Printable("description"));
+        qInfo("\033[1m\033[38;5;214m%-32s%-32s%-16s%-12s%-s\033[0m", qUtf8Printable("appId"), qUtf8Printable("name"),
+              qUtf8Printable("version"), qUtf8Printable("arch"), qUtf8Printable("description"));
         for (auto const &it : appMetaInfoList) {
             QString simpleDescription = it->description.trimmed();
             if (simpleDescription.length() > 56) {
@@ -181,14 +182,14 @@ int main(int argc, char **argv)
     QStringList args = parser.positionalArguments();
     QString command = args.isEmpty() ? QString() : args.first();
 
-    ComDeepinLinglongPackageManagerInterface packageManager("com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager",
-                                                QDBusConnection::sessionBus());
+    ComDeepinLinglongPackageManagerInterface packageManager(
+        "com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager", QDBusConnection::sessionBus());
     checkAndStartService(packageManager);
     PackageManager *noDbusPackageManager = PackageManager::instance();
     auto optNoDbus = QCommandLineOption("nodbus", "execute cmd directly, not via dbus", "");
     parser.addOption(optNoDbus);
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
-        {"run",     // 启动玲珑应用
+        {"run", // 启动玲珑应用
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("run", "run application", "run");
@@ -255,7 +256,7 @@ int main(int argc, char **argv)
              }
 
              // 获取用户环境变量
-             QStringList envList = getUserEnv(linglong::util::envList);
+             QStringList envList = COMMAND_HELPER->getUserEnv(linglong::util::envList);
              if (!envList.isEmpty()) {
                  paramMap.insert(linglong::util::kKeyEnvlist, envList.join(","));
              }
@@ -296,7 +297,7 @@ int main(int argc, char **argv)
              }
              return 0;
          }},
-        {"exec",    // 进入玲珑沙箱
+        {"exec", // 进入玲珑沙箱
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("containerId", "container id", "aebbe2f455cf443f89d5c92f36d154dd");
@@ -317,9 +318,9 @@ int main(int argc, char **argv)
 
              auto pid = containerId.toInt();
 
-             return namespaceEnter(pid, QStringList {cmd});
+             return COMMAND_HELPER->namespaceEnter(pid, QStringList {cmd});
          }},
-        {"ps",      // 查看玲珑沙箱进程
+        {"ps", // 查看玲珑沙箱进程
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("ps", "show running applications", "ps");
@@ -331,10 +332,10 @@ int main(int argc, char **argv)
 
              auto outputFormat = parser.value(optOutputFormat);
              auto containerList = packageManager.ListContainer().value();
-             showContainer(containerList, outputFormat);
+             COMMAND_HELPER->showContainer(containerList, outputFormat);
              return 0;
          }},
-        {"kill",    // 关闭玲珑沙箱
+        {"kill", // 关闭玲珑沙箱
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("kill", "kill container with id", "kill");
@@ -361,7 +362,7 @@ int main(int argc, char **argv)
              }
              return 0;
          }},
-        {"download",    // TODO: download命令当前没用到
+        {"download", // TODO: download命令当前没用到
          [&](QCommandLineParser &parser) -> int {
              QString curPath = QDir::currentPath();
              // qDebug() << curPath;
@@ -393,7 +394,7 @@ int main(int argc, char **argv)
              }
              return 0;
          }},
-        {"install",     // 下载玲珑包
+        {"install", // 下载玲珑包
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("install", "install an application", "install");
@@ -454,7 +455,7 @@ int main(int argc, char **argv)
              }
              return 0;
          }},
-        {"update",  // 更新玲珑包
+        {"update", // 更新玲珑包
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("update", "update an application", "update");
@@ -491,7 +492,7 @@ int main(int argc, char **argv)
              }
              return 0;
          }},
-        {"query",   // 查询玲珑包
+        {"query", // 查询玲珑包
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("query", "query app info", "query");
@@ -526,7 +527,7 @@ int main(int argc, char **argv)
              }
              return 0;
          }},
-        {"uninstall",   // 卸载玲珑包
+        {"uninstall", // 卸载玲珑包
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("uninstall", "uninstall an application", "uninstall");
@@ -580,7 +581,7 @@ int main(int argc, char **argv)
              }
              return 0;
          }},
-        {"list",    // 查询已安装玲珑包
+        {"list", // 查询已安装玲珑包
          [&](QCommandLineParser &parser) -> int {
              auto optType = QCommandLineOption("type", "query installed app", "--type=installed", "installed");
              parser.clearPositionalArguments();

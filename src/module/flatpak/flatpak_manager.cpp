@@ -63,6 +63,7 @@ QString FlatpakManager::getRuntimePath(const QString &appId)
 
     QJsonParseError parseJsonErr {};
     QJsonDocument document = QJsonDocument::fromJson(jsonFile.readAll(), &parseJsonErr);
+    jsonFile.close();
     if (parseJsonErr.error != QJsonParseError::NoError) {
         qCritical() << "flatpak parse manifest.json err" << parseJsonErr.errorString();
         return "";

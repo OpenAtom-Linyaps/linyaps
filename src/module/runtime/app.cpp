@@ -61,6 +61,7 @@ public:
             return false;
         }
         auto json = QJsonDocument::fromJson(jsonFile.readAll());
+        jsonFile.close();
         r = fromVariant<Runtime>(json.toVariant());
         r->setParent(q_ptr);
 

@@ -96,12 +96,12 @@ void printAppInfo(linglong::package::AppMetaInfoList appMetaInfoList)
                 simpleDescription = it->description.trimmed().left(53) + "...";
             }
             QString appId = it->appId.trimmed();
-            if (appId.length() > 32) {
-                appId = it->appId.trimmed().left(29) + "...";
-            }
             QString name = it->name.trimmed();
             if (name.length() > 32) {
                 name = it->name.trimmed().left(29) + "...";
+            }
+            if (appId.length() > 32) {
+                name.push_front(" ");
             }
             int count = getUnicodeNum(name);
             int length = simpleDescription.length() < 56 ? simpleDescription.length() : 56;

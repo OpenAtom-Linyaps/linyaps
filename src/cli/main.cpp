@@ -136,18 +136,17 @@ void checkAndStartService(ComDeepinLinglongPackageManagerInterface &packageManag
         process.setStandardErrorFile("/dev/null");
         process.setArguments({});
         process.startDetached();
-    }
 
-    // todo: check if service is running
-    for (int i = 0; i < 10; ++i) {
-        status = packageManager.Status();
-        if (kStatusActive == status.value()) {
-            return;
+        for (int i = 0; i < 10; ++i) {
+            status = packageManager.Status();
+            if (kStatusActive == status.value()) {
+                return;
+            }
+            QThread::sleep(1);
         }
-        QThread::sleep(1);
-    }
 
-    qCritical() << "start ll-service failed";
+        qCritical() << "start ll-service failed";
+    }
 }
 
 int main(int argc, char **argv)

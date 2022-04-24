@@ -23,7 +23,7 @@ class PackageManagerFlatpakImpl
 {
 public:
     linglong::service::Reply Download(const linglong::service::DownloadParamOption &downloadParamOption) { return linglong::service::Reply(); }
-    RetMessageList Install(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
+    linglong::service::Reply Install(const linglong::service::InstallParamOption &installParamOption);
     RetMessageList Uninstall(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
     linglong::package::AppMetaInfoList Query(const QStringList &packageIDList, const ParamStringMap &paramMap = {});
 };

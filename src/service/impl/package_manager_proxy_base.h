@@ -23,7 +23,7 @@ class PackageManagerProxyBase
 {
 public:
     virtual linglong::service::Reply Download(const linglong::service::DownloadParamOption &downloadParamOption) = 0;
-    virtual RetMessageList Install(const QStringList &packageIDList, const ParamStringMap &paramMap = {}) = 0;
+    virtual linglong::service::Reply Install(const linglong::service::InstallParamOption &installParamOption) = 0;
     virtual RetMessageList Uninstall(const QStringList &packageIDList, const ParamStringMap &paramMap = {}) = 0;
     virtual linglong::package::AppMetaInfoList Query(const QStringList &packageIDList, const ParamStringMap &paramMap = {}) = 0;
 

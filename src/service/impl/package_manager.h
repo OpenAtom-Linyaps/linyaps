@@ -21,11 +21,10 @@
 #include "module/runtime/container.h"
 #include "module/util/package_manager_param.h"
 #include "module/util/singleton.h"
-#include "package_manager_impl.h"
 #include "qdbus_retmsg.h"
 #include "reply.h"
 #include "param_option.h"
-
+#include "package_manager_impl.h"
 #include "package_manager_flatpak_impl.h"
 #include "package_manager_option.h"
 
@@ -61,25 +60,21 @@ public Q_SLOTS:
      * @param paramOption 下载参数
      *
      * @return Reply dbus方法调用应答 \n
-     *          code:操作错误码(0 成功, 其它 失败) \n
-     *          message:错误信息
+     *          code:状态码 \n
+     *          message:信息
      */
     linglong::service::Reply Download(const linglong::service::DownloadParamOption &downloadParamOption);
 
     /**
      * @brief 安装软件包
      *
-     * @param packageIdList 应用appId列表
-     * @param paramMap 安装参数 \n
-     *        key为version时，value范围不涉及，用于安装指定版本应用 \n
-     *        key为repo-point，value为flatpak，用于安装flatpak类型应用
+     * @param installParamOption 安装参数
      *
-     * @return RetMessageList 消息列表 \n
-     *          state:操作状态 true 成功， false 失败 \n
-     *          code:操作错误码(0 成功, 其它 失败) \n
-     *          message:错误信息
+     * @return Reply dbus方法调用应答 \n
+     *          code:状态码 \n
+     *          message:信息
      */
-    RetMessageList Install(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
+    linglong::service::Reply Install(const linglong::service::InstallParamOption &installParamOption);
 
     /**
      * @brief 卸载软件包
@@ -96,13 +91,11 @@ public Q_SLOTS:
     /**
      * @brief 更新软件包
      *
-     * @param packageIdList 应用appId列表
-     * @param paramMap 更新参数 \n
-     *        key为version时，value范围不涉及，用于更新指定版本应用
+     * @param paramOption 更新包参数
      *
-     * @return RetMessageList 同Install
+     * @return Reply 同Install
      */
-    RetMessageList Update(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
+    linglong::service::Reply Update(linglong::service::ParamOption paramOption);
 
     /**
      * @brief

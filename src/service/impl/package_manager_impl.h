@@ -32,13 +32,14 @@ class PackageManagerImpl
     : public PackageManagerProxyBase
     , public linglong::util::Singleton<PackageManagerImpl>
 {
+    friend class linglong::util::Singleton<PackageManagerImpl>;
 public:
     linglong::service::Reply Download(const linglong::service::DownloadParamOption &downloadParamOption);
-    RetMessageList Install(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
+    linglong::service::Reply Install(const linglong::service::InstallParamOption &installParamOption);
     RetMessageList Uninstall(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
     linglong::package::AppMetaInfoList Query(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
 
-    RetMessageList Update(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
+    linglong::service::Reply Update(linglong::service::ParamOption paramOption);
 
 private:
     const QString sysLinglongInstalltions = "/deepin/linglong/entries/share";

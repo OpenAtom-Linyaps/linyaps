@@ -25,6 +25,7 @@
 #include "module/util/xdg.h"
 #include "module/util/env.h"
 #include "module/util/log_handler.h"
+#include "module/util/sysinfo.h"
 
 /**
  * @brief 注册QT对象类型
@@ -53,7 +54,7 @@ void printFlatpakAppInfo(linglong::package::AppMetaInfoList appMetaInfoList)
             qInfo("%-72s%-16s%-16s%-12s%-12s", "Description", "Application", "Version", "Branch", "Remotes");
         }
         QString ret = appMetaInfoList.at(0)->description;
-        QStringList strList = ret.split(QRegExp("[\r\n]"), Qt::SkipEmptyParts);
+        QStringList strList = ret.split(QRegExp("[\r\n]"), QString::SkipEmptyParts);
         for (int i = 0; i < strList.size(); ++i) {
             qInfo().noquote() << strList[i].simplified();
         }
@@ -364,13 +365,12 @@ int main(int argc, char **argv)
          }},
         {"download", // TODO: download命令当前没用到
          [&](QCommandLineParser &parser) -> int {
-
-            //  auto optArch = QCommandLineOption("arch", "cpu arch", "cpu arch", "x86_64");
+             // auto optArch = QCommandLineOption("arch", "cpu arch", "cpu arch", "x86_64");
              QString curPath = QDir::currentPath();
              // qDebug() << curPath;
              // ll-cli download org.deepin.calculator -d ./test 无-d 参数默认当前路径
              auto optDownload = QCommandLineOption("d", "dest path to save app", "dest path to save app", curPath);
-             
+
              parser.clearPositionalArguments();
              parser.addPositionalArgument("appId", "app id", "com.deepin.demo");
              parser.addOption(optDownload);
@@ -392,66 +392,65 @@ int main(int argc, char **argv)
              linglong::service::Reply retReply = reply.value();
              qInfo().noquote() << retReply.code << retReply.message;
              return retReply.code;
-             }
-        },
+         }},
         {"install", // 下载玲珑包
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("install", "install an application", "install");
-             parser.addPositionalArgument("appId", "app id", "com.deepin.demo");
+             parser.addPositionalArgument("app", "appId version arch", "com.deepin.demo/1.2.1/x86_64");
              auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
              parser.addOption(optRepoPoint);
              parser.process(app);
-             auto args = parser.positionalArguments();
-             auto appId = args.value(1);
+             QStringList appList = parser.positionalArguments();
+
+             // auto appId = args.value(1);
              auto repoType = parser.value(optRepoPoint);
-             if (appId.isEmpty() || (!repoType.isEmpty() && "flatpak" != repoType)) {
+             if (appList.isEmpty() || (!repoType.isEmpty() && "flatpak" != repoType)) {
                  parser.showHelp(-1);
                  return -1;
              }
              // 设置 24 h超时
              packageManager.setTimeout(1000 * 60 * 60 * 24);
-             QDBusPendingReply<RetMessageList> reply;
+             QDBusPendingReply<linglong::service::Reply> reply;
 
              // appId format: org.deepin.calculator/1.2.6 in multi-version
-             QMap<QString, QString> paramMap;
-             QStringList appInfoList = appId.split("/");
-             if (appInfoList.size() > 1) {
-                 paramMap.insert(linglong::util::kKeyVersion, appInfoList.at(1));
-             }
-             if (!repoType.isEmpty()) {
-                 paramMap.insert(linglong::util::kKeyRepoPoint, repoType);
-             }
-
-             auto noDbus = parser.isSet(optNoDbus);
-             if (noDbus) {
-                 RetMessageList retMessageList = noDbusPackageManager->Install({appInfoList.at(0)}, paramMap);
-                 if (retMessageList.size() > 0) {
-                     auto it = retMessageList.at(0);
-                     qInfo().noquote() << "message: " << it->message;
-                     if (!it->state) {
-                         return -1;
-                     }
-                     return 0;
+             foreach (const QString &app, appList) {
+                 if ("install" == app) {
+                     continue;
                  }
-             }
-             reply = packageManager.Install({appInfoList.at(0)}, paramMap);
+                 linglong::service::InstallParamOption installParamOption;
+                 installParamOption.nodbus = parser.isSet(optNoDbus);
+                 installParamOption.repoPoint = parser.value(optRepoPoint);
 
-             qInfo().noquote() << "install " << appId << ", please wait a few minutes...";
-             reply.waitForFinished();
-             RetMessageList retMessageList = reply.value();
-             if (retMessageList.size() > 0) {
-                 auto it = retMessageList.at(0);
-                 QString prompt = "message: " + it->message;
-                 if (!it->state) {
-                     qCritical().noquote() << prompt << ", errcode:" << it->code;
-                     return -1;
+                 QStringList appInfoList = app.split("/");
+                 installParamOption.appId = appInfoList.at(0);
+                 installParamOption.arch = linglong::util::hostArch();
+                 if (appInfoList.size() == 2) {
+                     installParamOption.version = appInfoList.at(1);
+                 } else if (appInfoList.size() == 3) {
+                     installParamOption.arch = appInfoList.at(2);
                  }
-                 qInfo().noquote() << prompt;
-             }
-             if (reply.isError()) {
-                 qCritical().noquote() << "install: " << appId << " timeout";
-                 return -1;
+                 //  appMap[app] = installParamOption;
+                 linglong::service::Reply reply;
+                 qInfo().noquote() << "install" << app << ", please wait a few minutes...";
+                 if (!installParamOption.nodbus) {
+                     QDBusPendingReply<linglong::service::Reply> dbusReply = packageManager.Install(installParamOption);
+                     reply = dbusReply.value();
+                     if (reply.code != RetCode(RetCode::pkg_install_success)) {
+                         qCritical().noquote() << "install " << installParamOption.appId
+                                               << " failed, errcode:" << reply.code << ", message:" << reply.message;
+                         return reply.code;
+                     } else
+                         qInfo().noquote() << "install " << installParamOption.appId << " success";
+                 } else {
+                     reply = noDbusPackageManager->Install(installParamOption);
+                     if (reply.code != RetCode(RetCode::pkg_install_success)) {
+                         qCritical().noquote() << "install " << installParamOption.appId
+                                               << " failed, errcode:" << reply.code << ", message:" << reply.message;
+                         return reply.code;
+                     } else
+                         qInfo().noquote() << "install " << installParamOption.appId << " success";
+                 }
              }
              return 0;
          }},
@@ -461,34 +460,22 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("update", "update an application", "update");
              parser.addPositionalArgument("appId", "app id", "com.deepin.demo");
              parser.process(app);
-             auto args = parser.positionalArguments();
-             auto appId = args.value(1);
-             if (appId.isEmpty()) {
+             linglong::service::ParamOption paramOption;
+             QStringList appInfoList = parser.positionalArguments().value(1).split("/");
+             if (args.isEmpty()) {
                  parser.showHelp(-1);
                  return -1;
              }
-             QMap<QString, QString> paramMap;
-             QStringList appInfoList = appId.split("/");
-             if (appInfoList.size() > 1) {
-                 paramMap.insert(linglong::util::kKeyVersion, appInfoList.at(1));
-             }
-             packageManager.setTimeout(1000 * 60 * 60 * 24);
-             QDBusPendingReply<RetMessageList> reply = packageManager.Update({appInfoList.at(0)}, paramMap);
-             qInfo().noquote() << "update " << appId << ", please wait a few minutes...";
-             reply.waitForFinished();
-             RetMessageList retMessageList = reply.value();
-             if (retMessageList.size() > 0) {
-                 auto it = retMessageList.at(0);
-                 QString prompt = "message: " + it->message;
-                 if (!it->state) {
-                     qCritical().noquote() << prompt << ", errcode:" << it->code;
-                     return -1;
-                 }
-                 qInfo().noquote() << prompt;
-             }
-             if (reply.isError()) {
-                 qCritical().noquote() << "update: " << appId << " timeout";
-                 return -1;
+             paramOption.appId = appInfoList.at(0);
+             paramOption.arch = linglong::util::hostArch();
+             if (appInfoList.size() == 2)
+                 paramOption.version = appInfoList.at(1);
+             QDBusPendingReply<linglong::service::Reply> dbusReply = packageManager.Update(paramOption);
+             linglong::service::Reply reply = dbusReply.value();
+             if (!reply.code) {
+                 qCritical().noquote() << "install " << paramOption.appId << " failed, errcode:" << reply.code
+                                       << ", message:" << reply.message;
+                 return reply.code;
              }
              return 0;
          }},

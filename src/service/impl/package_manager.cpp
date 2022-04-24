@@ -37,22 +37,22 @@ using linglong::util::fileExists;
 using linglong::util::listDirFolders;
 using linglong::dbus::RetCode;
 
-using namespace linglong;
+// using namespace linglong;
 
 class PackageManagerPrivate
 {
 public:
     explicit PackageManagerPrivate(PackageManager *parent)
         : q_ptr(parent)
-        , repo(repo::kRepoRoot)
+        , repo(linglong::repo::kRepoRoot)
     {
     }
 
-    QMap<QString, QPointer<runtime::App>> apps;
+    QMap<QString, QPointer<linglong::runtime::App>> apps;
 
     PackageManager *q_ptr = nullptr;
 
-    repo::OSTree repo;
+    linglong::repo::OSTree repo;
 };
 
 PackageManager::PackageManager()
@@ -88,47 +88,16 @@ linglong::service::Reply PackageManager::Download(const linglong::service::Downl
 
 /*!
  * 在线安装软件包
- * @param packageIdList
+ * @param installParamOption
  */
-RetMessageList PackageManager::Install(const QStringList &packageIdList, const ParamStringMap &paramMap)
+linglong::service::Reply PackageManager::Install(const linglong::service::InstallParamOption &installParamOption)
 {
-    if (!paramMap.empty() && paramMap.contains(linglong::util::kKeyRepoPoint)) {
-        return PackageManagerFlatpakImpl::instance()->Install(packageIdList);
-    }
-    // Q_D(PackageManager);
-
-    // return JobManager::instance()->CreateJob([](Job *jr) {
-    //     // 在这里写入真正的实现
-    //     QProcess p;
-    //     p.setProgram("curl");
-    //     p.setArguments({"https://www.baidu.com"});
-    //     p.start();
-    //     p.waitForStarted();
-    //     p.waitForFinished(-1);
-    //     qDebug() << p.readAllStandardOutput();
-    //     qDebug() << "finish" << p.exitStatus() << p.state();
-    // });
-    RetMessageList retMsg;
-    auto info = QPointer<RetMessage>(new RetMessage);
-    if (packageIdList.size() == 0) {
-        qCritical() << "packageIdList input err";
-        info->setcode(RetCode(RetCode::user_input_param_err));
-        info->setmessage("packageIdList input err");
-        info->setstate(false);
-        retMsg.push_back(info);
-        return retMsg;
-    }
-    QString pkgName = packageIdList.at(0).trimmed();
-    if (pkgName.isNull() || pkgName.isEmpty()) {
-        qCritical() << "package name err";
-        info->setcode(RetCode(RetCode::user_input_param_err));
-        info->setmessage("package name err");
-        info->setstate(false);
-        retMsg.push_back(info);
-        return retMsg;
-    }
+    linglong::service::Reply reply;
+    if ("flatpak" == installParamOption.repoPoint)
+        reply = PackageManagerFlatpakImpl::instance()->Install(installParamOption);
     PackageManagerProxyBase *pImpl = PackageManagerImpl::instance();
-    return pImpl->Install(packageIdList, paramMap);
+    reply = pImpl->Install(installParamOption);
+    return reply;
 }
 
 RetMessageList PackageManager::Uninstall(const QStringList &packageIdList, const ParamStringMap &paramMap)
@@ -159,28 +128,11 @@ RetMessageList PackageManager::Uninstall(const QStringList &packageIdList, const
     return PackageManagerImpl::instance()->Uninstall(packageIdList, paramMap);
 }
 
-RetMessageList PackageManager::Update(const QStringList &packageIdList, const ParamStringMap &paramMap)
+linglong::service::Reply PackageManager::Update(linglong::service::ParamOption paramOption)
 {
-    RetMessageList retMsg;
-    auto info = QPointer<RetMessage>(new RetMessage);
-    if (packageIdList.size() == 0) {
-        qCritical() << "packageIdList input err";
-        info->setcode(RetCode(RetCode::user_input_param_err));
-        info->setmessage("packageIdList input err");
-        info->setstate(false);
-        retMsg.push_back(info);
-        return retMsg;
-    }
-    QString pkgName = packageIdList.at(0).trimmed();
-    if (pkgName.isNull() || pkgName.isEmpty()) {
-        qCritical() << "package name err";
-        info->setcode(RetCode(RetCode::user_input_param_err));
-        info->setmessage("package name err");
-        info->setstate(false);
-        retMsg.push_back(info);
-        return retMsg;
-    }
-    return PackageManagerImpl::instance()->Update(packageIdList, paramMap);
+    linglong::service::Reply reply;
+    reply = PackageManagerImpl::instance()->Update(paramOption);
+    return reply;
 }
 
 QString PackageManager::UpdateAll()
@@ -271,11 +223,11 @@ RetMessageList PackageManager::Start(const QString &packageId, const ParamString
     }
     JobManager::instance()->CreateJob([=]() {
         // 判断是否存在
-        package::Ref ref("", packageId, version, hostArch());
+        linglong::package::Ref ref("", packageId, version, hostArch());
 
         bool isFlatpakApp = !paramMap.empty() && paramMap.contains(linglong::util::kKeyRepoPoint);
 
-        auto app = runtime::App::load(&d->repo, ref, desktopExec, isFlatpakApp);
+        auto app = linglong::runtime::App::load(&d->repo, ref, desktopExec, isFlatpakApp);
         if (nullptr == app) {
             // FIXME: set job status to failed
             qCritical() << "nullptr" << app;
@@ -285,7 +237,7 @@ RetMessageList PackageManager::Start(const QString &packageId, const ParamString
                          SLOT(removeContainerId(const QString &)));
         app->saveUserEnvList(userEnvList);
         app->setAppParamMap(paramMap);
-        d->apps[app->container()->id] = QPointer<runtime::App>(app);
+        d->apps[app->container()->id] = QPointer<linglong::runtime::App>(app);
         app->start();
     });
     return retMsg;

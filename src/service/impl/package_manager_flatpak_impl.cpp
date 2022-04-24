@@ -10,44 +10,22 @@
 
 #include "package_manager_flatpak_impl.h"
 
-/*
- * 在线安装软件包
- *
- * @param packageIDList: 软件包的appid
- * @param paramMap: 安装参数
- *
- * @param packageIDList
- */
-RetMessageList PackageManagerFlatpakImpl::Install(const QStringList &packageIDList, const ParamStringMap &paramMap)
+linglong::service::Reply PackageManagerFlatpakImpl::Install(const linglong::service::InstallParamOption &installParamOption)
 {
-    RetMessageList retMsg;
-    auto info = QPointer<RetMessage>(new RetMessage);
-    if (packageIDList.size() == 0) {
-        qCritical() << "install packageIDList input err";
-        info->setcode(RetCode(RetCode::user_input_param_err));
-        info->setmessage("install packageIDList input err");
-        info->setstate(false);
-        retMsg.push_back(info);
-        return retMsg;
-    }
-    QString pkgName = packageIDList.at(0);
+    linglong::service::Reply reply;
     QStringList argStrList;
     argStrList << "install"
                << "--user"
-               << "-y" << pkgName;
+               << "-y" << installParamOption.appId;
     auto ret = Runner("flatpak", argStrList, 1000 * 60 * 30);
     if (!ret) {
-        info->setcode(RetCode(RetCode::pkg_install_failed));
-        info->setmessage("install " + pkgName + " failed");
-        info->setstate(false);
+        reply.code = RetCode(RetCode::pkg_install_failed);
+        reply.message = "install " + installParamOption.appId + " failed";
     } else {
-        info->setcode(RetCode(RetCode::pkg_install_success));
-        info->setmessage("install " + pkgName + " success");
-        info->setstate(true);
+        reply.code = RetCode(RetCode::pkg_install_success);
+        reply.message = "install " + installParamOption.appId + " success";
     }
-    retMsg.push_back(info);
-    qInfo() << "flatpak Install " << pkgName << ", ret:" << ret;
-    return retMsg;
+    return reply;
 }
 
 /*

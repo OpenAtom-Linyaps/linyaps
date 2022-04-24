@@ -15,6 +15,8 @@
 
 #include "src/module/package/package.h"
 #include "src/service/impl/json_register_inc.h"
+#include "src/service/impl/param_option.h"
+#include "src/service/impl/reply.h"
 #include "package_manager.h"
 
 /*!
@@ -83,18 +85,12 @@ TEST(Package, install01)
                                                 "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());
     // call dbus
-    QString appId = "";
-    QDBusPendingReply<RetMessageList> reply = pm.Install({appId}, {});
+    linglong::service::InstallParamOption installParam;
+    installParam.appId = "com.deepin.linglong.test";
+    QDBusPendingReply<linglong::service::Reply> reply = pm.Install(installParam);
     reply.waitForFinished();
-    RetMessageList retMsg = reply.value();
-    if (retMsg.size() > 0) {
-        auto it = retMsg.at(0);
-        qInfo() << "message:\t" << it->message;
-        if (!it->state) {
-            qInfo() << "code:\t" << it->code;
-        }
-        EXPECT_EQ(it->state, false);
-    }
+    linglong::service::Reply retReply = reply.value();
+    EXPECT_NE(retReply.code, RetCode(RetCode::pkg_install_success));
     // stop service
     stop_ll_service();
 }
@@ -109,36 +105,10 @@ TEST(Package, install02)
     ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager",
                                                 "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());
-    // test pkg not in repo
-    QString appId = "test.deepin.test";
-    QDBusPendingReply<RetMessageList> reply = pm.Install({appId}, {});
-    reply.waitForFinished();
-    RetMessageList retMsg = reply.value();
-    if (retMsg.size() > 0) {
-        auto it = retMsg.at(0);
-        qInfo() << "message:\t" << it->message;
-        if (!it->state) {
-            qInfo() << "code:\t" << it->code;
-        }
-        EXPECT_EQ(it->state, false);
-    }
-    // stop service
-    stop_ll_service();
-}
-
-TEST(Package, install03)
-{
-    // start service
-    std::thread startQdbus(start_ll_service);
-    startQdbus.detach();
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-
-    ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager",
-                                                "/com/deepin/linglong/PackageManager",
-                                                QDBusConnection::sessionBus());
     // call dbus
-    QString appId = "org.deepin.calculator";
 
+    linglong::service::InstallParamOption installParam;
+    installParam.appId = "org.deepin.calculator";
     // 查询是否已安装
     QDBusPendingReply<linglong::package::AppMetaInfoList> replyQuery = pm.Query({"installed"}, {});
     replyQuery.waitForFinished();
@@ -150,21 +120,21 @@ TEST(Package, install03)
             break;
         }
     }
-    QDBusPendingReply<RetMessageList> reply = pm.Install({appId}, {});
+    QDBusPendingReply<linglong::service::Reply> reply = pm.Install(installParam);
     reply.waitForFinished();
+    linglong::service::Reply retReply = reply.value();
+    reply.waitForFinished();
+
     bool connect = getConnectStatus();
     if (!connect) {
         expectRet = false;
     }
-    RetMessageList retMsg = reply.value();
-    if (retMsg.size() > 0) {
-        auto it = retMsg.at(0);
-        qInfo() << "message:\t" << it->message;
-        if (!it->state) {
-            qInfo() << "code:\t" << it->code;
-        }
-        EXPECT_EQ(it->state, expectRet);
+    if (expectRet) {
+        EXPECT_EQ(retReply.code, RetCode(RetCode::pkg_install_success));
+    } else {
+        EXPECT_NE(retReply.code, RetCode(RetCode::pkg_install_success));
     }
+
     // stop service
     stop_ll_service();
 }

@@ -61,8 +61,35 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, DownloadPa
     argument.endStructure();
     return argument;
 }
+
+class InstallParamOption : public ParamOption
+{
+public:
+    bool nodbus = false;
+    QString repoPoint;
+};
+
+inline QDBusArgument &operator<<(QDBusArgument &argument, const InstallParamOption &installParamOption)
+{
+    argument.beginStructure();
+    argument << installParamOption.appId << installParamOption.version << installParamOption.arch
+             << installParamOption.nodbus << installParamOption.repoPoint;
+    argument.endStructure();
+    return argument;
+}
+
+inline const QDBusArgument &operator>>(const QDBusArgument &argument, InstallParamOption &installParamOption)
+{
+    argument.beginStructure();
+    argument >> installParamOption.appId >> installParamOption.version >> installParamOption.arch
+        >> installParamOption.nodbus >> installParamOption.repoPoint;
+    argument.endStructure();
+    return argument;
+}
+
 } // namespace service
 } // namespace linglong
 
 Q_DECLARE_METATYPE(linglong::service::ParamOption)
 Q_DECLARE_METATYPE(linglong::service::DownloadParamOption)
+Q_DECLARE_METATYPE(linglong::service::InstallParamOption)

@@ -12,9 +12,14 @@
 
 #include <QDir>
 #include <QStandardPaths>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 namespace linglong {
 namespace util {
+
+// 存储软件包信息服务器配置文件
+const QString serverConfigPath = "/deepin/linglong/config/config";
 
 QString jonsPath(const QStringList &component)
 {
@@ -70,6 +75,39 @@ QString createProxySocket(const QString &pattern)
     }
     tmpFile.close();
     return tmpFile.fileName();
+}
+
+/*
+ * 从配置文件获取服务器配置参数
+ *
+ * @param key: 参数名称
+ * @param value: 查询结果
+ *
+ * @return int: 0:成功 其它:失败
+ */
+int getLocalConfig(const QString &key, QString &value)
+{
+    if (!linglong::util::fileExists(serverConfigPath)) {
+        qCritical() << serverConfigPath << " not exist";
+        return linglong::Status::StatusCode::FAIL;
+    }
+    QFile dbFile(serverConfigPath);
+    dbFile.open(QIODevice::ReadOnly);
+    QString qValue = dbFile.readAll();
+    dbFile.close();
+    QJsonParseError parseJsonErr;
+    QJsonDocument document = QJsonDocument::fromJson(qValue.toUtf8(), &parseJsonErr);
+    if (QJsonParseError::NoError != parseJsonErr.error) {
+        qCritical() << "parse linglong config file err";
+        return linglong::Status::StatusCode::FAIL;
+    }
+    QJsonObject dataObject = document.object();
+    if (!dataObject.contains(key)) {
+        qWarning() << "key:" << key << " not found in config";
+        return linglong::Status::StatusCode::FAIL;
+    }
+    value = dataObject[key].toString();
+    return linglong::Status::StatusCode::SUCCESS;
 }
 } // namespace util
 } // namespace linglong

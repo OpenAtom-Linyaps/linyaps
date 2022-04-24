@@ -27,7 +27,7 @@ using namespace linglong::util;
 
 const QString kAppInstallPath = "/deepin/linglong/layers/";
 const QString kLocalRepoPath = "/deepin/linglong/repo";
-
+const QString kRemoteRepoName = "repo";
 /*
  * 将json字符串转化为软件包数据
  *
@@ -127,38 +127,20 @@ bool PackageManagerImpl::downloadAppData(const QString &pkgName, const QString &
         qCritical() << err;
         return false;
     }
-    QVector<QString> qrepoList;
-    ret = G_OSTREE_REPOHELPER->getRemoteRepoList(kLocalRepoPath, qrepoList, err);
-    if (!ret) {
-        qCritical() << err;
-        return false;
-    } else {
-        for (auto iter = qrepoList.begin(); iter != qrepoList.end(); ++iter) {
-            qInfo() << "downloadAppData remote reponame:" << *iter;
-        }
-    }
 
-    // ref format --> app/org.deepin.calculator/x86_64/1.2.2
-    // QString matchRef = QString("app/%1/%2/%3").arg(pkgName).arg(pkgArch).arg(pkgVer);
-    // QString pkgName = "us.zoom.Zoom";
-    QString matchRef = "";
-    ret = G_REPOHELPER->queryMatchRefs(kLocalRepoPath, qrepoList[0], pkgName, pkgVer, pkgArch, matchRef, err);
-    if (!ret) {
-        qCritical() << err;
-        return false;
-    } else {
-        qInfo() << "downloadAppData ref:" << matchRef;
-    }
+    // ref format --> app/org.deepin.calculator/1.2.2/x86_64
+    QString matchRef = QString("%1/%2/%3").arg(pkgName).arg(pkgVer).arg(pkgArch);
+    qInfo() << "downloadAppData ref:" << matchRef;
 
     // ret = repo.repoPull(repoPath, qrepoList[0], pkgName, err);
-    ret = G_REPOHELPER->repoPullbyCmd(kLocalRepoPath, qrepoList[0], matchRef, err);
+    ret = G_OSTREE_REPOHELPER->repoPullbyCmd(kLocalRepoPath, kRemoteRepoName, matchRef, err);
     if (!ret) {
         qCritical() << err;
         return false;
     }
     // checkout 目录
     // const QString dstPath = repoPath + "/AppData";
-    ret = G_OSTREE_REPOHELPER->checkOutAppData(kLocalRepoPath, qrepoList[0], matchRef, dstPath, err);
+    ret = G_OSTREE_REPOHELPER->checkOutAppData(kLocalRepoPath, kRemoteRepoName, matchRef, dstPath, err);
     if (!ret) {
         qCritical() << err;
         return false;

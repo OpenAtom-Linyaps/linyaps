@@ -168,7 +168,7 @@ util::Error LinglongBuilder::initRepo()
         QString defaultRepoName = "repo";
         QString configUrl = "";
 
-        int statusCode = G_HTTPCLIENT->getLocalConfig("appDbUrl", configUrl);
+        int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
         if (Status::StatusCode::SUCCESS != statusCode) {
             return NewError() << "call getLocalConfig api failed";
         }

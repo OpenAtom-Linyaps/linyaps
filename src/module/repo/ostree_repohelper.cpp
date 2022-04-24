@@ -9,6 +9,7 @@
  */
 
 #include "ostree_repohelper.h"
+#include "module/util/fs.h"
 #include "module/util/runner.h"
 #include "service/impl/version.h"
 
@@ -965,6 +966,39 @@ bool OstreeRepoHelper::startOstreeJob(const QString &ref, const QStringList &arg
 }
 
 /*
+ * 在/tmp目录下创建一个临时repo仓库
+ *
+ * @return QString: 临时repo路径
+ */
+QString OstreeRepoHelper::createTmpRepo()
+{
+    QTemporaryDir dir("/tmp/linglong-cache-XXXXXX");
+    QString tmpPath;
+    if (dir.isValid()) {
+        tmpPath = dir.path();
+    }
+    dir.setAutoRemove(false);
+    linglong::util::createDir(tmpPath);
+    auto ret = Runner("ostree", {"--repo=" + tmpPath + "/repoTmp", "init", "--mode=bare-user-only"}, 1000 * 60 * 5);
+    if (!ret) {
+        return "";
+    }
+    QString configUrl = "";
+    int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
+    if (linglong::Status::StatusCode::SUCCESS != statusCode) {
+        return "";
+    }
+    QString ostreeUrl = configUrl.endsWith("/") ? configUrl.append("ostree/") : configUrl.append("/ostree/");
+    // 添加远程仓库
+    ret = Runner("ostree", {"--repo=" + tmpPath + "/repoTmp", "remote", "add", "--no-gpg-verify", "repo", ostreeUrl},
+                 1000 * 60 * 5);
+    if (!ret) {
+        return "";
+    }
+    qInfo() << "create tmp repo path:" << tmpPath << ", ret:" << QDir().exists(tmpPath + "/repoTmp");
+    return tmpPath + "/repoTmp";
+}
+/*
  * 通过ostree命令将软件包数据从远端仓库pull到本地
  *
  * @param destPath: 仓库路径
@@ -978,28 +1012,23 @@ bool OstreeRepoHelper::repoPullbyCmd(const QString &destPath, const QString &rem
                                      QString &err)
 {
     // 创建临时仓库
-    GError *error = NULL;
-    OstreeRepo *childRepo = createTmpRepo(pLingLongDir, &error);
-    if (childRepo == NULL) {
-        qInfo() << "createTmpRepo error";
-        err = "createTmpRepo error";
+    QString tmpPath = createTmpRepo();
+    if (tmpPath.isEmpty()) {
+        err = "create tmp repo err";
+        qCritical() << err;
         return false;
     }
-    g_autofree char *tmpPath = g_file_get_path(ostree_repo_get_path(childRepo));
-    qInfo() << "tmpPath:" << tmpPath;
-    qInfo() << "destPath:" << destPath;
+
     // 将数据pull到临时仓库
     // ostree --repo=/var/tmp/linglong-cache-I80JB1/repoTmp pull --mirror repo:app/org.deepin.calculator/x86_64/1.2.2
     const QString fullref = remoteName + ":" + ref;
     // auto ret = Runner("ostree", {"--repo=" + QString(QLatin1String(tmpPath)), "pull", "--mirror", fullref}, 1000 * 60
     // * 60 * 24);
-    auto ret = startOstreeJob(ref, {"--repo=" + QString(QLatin1String(tmpPath)), "pull", "--mirror", fullref},
+    auto ret = startOstreeJob(ref, {"--repo=" + tmpPath, "pull", "--mirror", fullref},
                               1000 * 60 * 60 * 24);
     if (!ret) {
-        qCritical() << "repoPullbyCmd pull error";
         err = "repoPullbyCmd pull error";
-        g_object_unref(ostree_repo_get_path(childRepo));
-        g_object_unref(childRepo);
+        qCritical() << err;
         return false;
     }
     qInfo() << "repoPullbyCmd pull success";
@@ -1007,19 +1036,17 @@ bool OstreeRepoHelper::repoPullbyCmd(const QString &destPath, const QString &rem
     // 将数据从临时仓库同步到目标仓库
     // ret = Runner("ostree", {"--repo=" + destPath + "/repo", "pull-local", QString(QLatin1String(tmpPath)), ref}, 1000
     // * 60 * 60);
-    ret = startOstreeJob(ref, {"--repo=" + destPath + "/repo", "pull-local", QString(QLatin1String(tmpPath)), ref},
+    ret = startOstreeJob(ref, {"--repo=" + destPath + "/repo", "pull-local", tmpPath, ref},
                          1000 * 60 * 60);
-    g_object_unref(ostree_repo_get_path(childRepo));
-    g_object_unref(childRepo);
     if (!ret) {
-        qInfo() << "repoPullbyCmd pull-local error";
         err = "repoPullbyCmd pull-local error";
+        qInfo() << err;
         return false;
     }
-    // 删除临时目录
-    char tmpRepoDir[64] = {'\0'};
-    strncpy(tmpRepoDir, tmpPath, strlen(tmpPath) - strlen("repoTmp"));
-    delDirbyPath(tmpRepoDir);
+    // 删除临时仓库
+    QString tmpRepoDir = tmpPath.left(tmpPath.length() - QString("/repoTmp").length());
+    qInfo() << "delete tmp repo path:" << tmpRepoDir;
+    linglong::util::removeDir(tmpRepoDir);
     return ret;
 }
 

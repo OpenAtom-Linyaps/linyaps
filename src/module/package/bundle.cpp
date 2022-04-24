@@ -300,7 +300,7 @@ util::Error BundlePrivate::push(const QString &bundleFilePath, bool force)
 
     // 从配置文件获取服务器域名url
     QString configUrl = "";
-    int statusCode = G_HTTPCLIENT->getLocalConfig("appDbUrl", configUrl);
+    int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
     if (Status::StatusCode::SUCCESS != statusCode) {
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);

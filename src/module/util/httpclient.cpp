@@ -26,10 +26,8 @@
 #include <QJsonObject>
 
 #include "module/util/fs.h"
-#include "service/impl/dbus_retcode.h"
 
 using namespace std;
-using namespace linglong::Status;
 
 namespace linglong {
 namespace util {
@@ -140,39 +138,6 @@ void HttpClient::initHttpParam(const char *url)
 }
 
 /*
- * 从配置文件获取服务器配置参数
- *
- * @param key: 参数名称
- * @param value: 查询结果
- *
- * @return int: 0:成功 其它:失败
- */
-int HttpClient::getLocalConfig(const QString &key, QString &value)
-{
-    if (!linglong::util::fileExists(serverConfigPath)) {
-        qCritical() << serverConfigPath << " not exist";
-        return StatusCode::FAIL;
-    }
-    QFile dbFile(serverConfigPath);
-    dbFile.open(QIODevice::ReadOnly);
-    QString qValue = dbFile.readAll();
-    dbFile.close();
-    QJsonParseError parseJsonErr;
-    QJsonDocument document = QJsonDocument::fromJson(qValue.toUtf8(), &parseJsonErr);
-    if (QJsonParseError::NoError != parseJsonErr.error) {
-        qCritical() << "parse linglong config file err";
-        return StatusCode::FAIL;
-    }
-    QJsonObject dataObject = document.object();
-    if (!dataObject.contains(key)) {
-        qWarning() << "key:" << key << " not found in config";
-        return StatusCode::FAIL;
-    }
-    value = dataObject[key].toString();
-    return StatusCode::SUCCESS;
-}
-
-/*
  * 发送数据回调函数
  *
  * @param content: 返回数据指针
@@ -206,8 +171,8 @@ bool HttpClient::queryRemote(const QString &pkgName, const QString &pkgVer, cons
     // curl --location --request POST 'https://linglong-api-dev.deepin.com/apps/fuzzysearchapp' --header 'Content-Type:
     // application/json' --data '{"AppId":"org.deepin.calculator","version":"5.5.23"}'
     QString configUrl = "";
-    int statusCode = getLocalConfig("appDbUrl", configUrl);
-    if (StatusCode::SUCCESS != statusCode) {
+    int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
+    if (linglong::Status::StatusCode::SUCCESS != statusCode) {
         return false;
     }
     qDebug() << "queryRemote configUrl:" << configUrl;

@@ -22,6 +22,8 @@
 #include <QDebug>
 #include <QTemporaryFile>
 
+#include "service/impl/dbus_retcode.h"
+
 namespace linglong {
 namespace util {
 
@@ -41,6 +43,16 @@ bool ensureDir(const QString &path);
  * @return 文件路径
  */
 QString createProxySocket(const QString &pattern);
+
+/*
+ * 从配置文件获取服务器配置参数
+ *
+ * @param key: 参数名称
+ * @param value: 查询结果
+ *
+ * @return int: 0:成功 其它:失败
+ */
+int getLocalConfig(const QString &key, QString &value);
 
 /*!
  * 判断文件是否存在

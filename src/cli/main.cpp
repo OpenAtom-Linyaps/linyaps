@@ -53,7 +53,7 @@ void printFlatpakAppInfo(linglong::package::AppMetaInfoList appMetaInfoList)
             qInfo("%-72s%-16s%-16s%-12s%-12s", "Description", "Application", "Version", "Branch", "Remotes");
         }
         QString ret = appMetaInfoList.at(0)->description;
-        QStringList strList = ret.split(QRegExp("[\r\n]"), QString::SkipEmptyParts);
+        QStringList strList = ret.split(QRegExp("[\r\n]"), Qt::SkipEmptyParts);
         for (int i = 0; i < strList.size(); ++i) {
             qInfo().noquote() << strList[i].simplified();
         }

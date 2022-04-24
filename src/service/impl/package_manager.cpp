@@ -242,8 +242,10 @@ RetMessageList PackageManager::Start(const QString &packageId, const ParamString
         }
         app->saveUserEnvList(userEnvList);
         app->setAppParamMap(paramMap);
-        d->apps[app->container()->id] = QPointer<linglong::runtime::App>(app);
+        auto it = d->apps.insert(app->container()->id, QPointer<linglong::runtime::App>(app));
         app->start();
+        d->apps.erase(it);
+        app->deleteLater();
     });
     return retMsg;
 }
@@ -262,7 +264,8 @@ RetMessageList PackageManager::Stop(const QString &containerId)
     RetMessageList retMsg;
     auto info = QPointer<RetMessage>(new RetMessage);
     QString err = "";
-    if (!d->apps.contains(containerId)) {
+    auto it = d->apps.find(containerId);
+    if (it == d->apps.end()) {
         err = "containerId:" + containerId + " not exist";
         qCritical() << err;
         info->setcode(RetCode(RetCode::user_input_param_err));
@@ -271,11 +274,10 @@ RetMessageList PackageManager::Stop(const QString &containerId)
         retMsg.push_back(info);
         return retMsg;
     }
-    pid_t pid = d->apps[containerId]->container()->pid;
+    auto app = it->data();
+    pid_t pid = app->container()->pid;
     int ret = kill(pid, SIGKILL);
-    if (ret == 0) {
-        d->apps.remove(containerId);
-    } else {
+    if (ret != 0) {
         err = "kill container failed, containerId:" + containerId;
         info->setcode(RetCode(RetCode::ErrorPkgKillFailed));
         info->setmessage(err);

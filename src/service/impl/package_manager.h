@@ -160,15 +160,6 @@ public Q_SLOTS:
      */
     ContainerList ListContainer();
 
-private Q_SLOTS:
-
-    /**
-     * @brief 移除启动应用列表中已退出应用对应的容器id
-     *
-     * @param containerId 容器id
-     */
-    void removeContainerId(const QString &containerId);
-
 private:
     QScopedPointer<PackageManagerPrivate> dd_ptr; ///< private data
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), PackageManager)

@@ -999,10 +999,6 @@ int App::start()
         // FIXME(interactive bash): if need keep interactive shell
         waitpid(boxPid, nullptr, 0);
         // FIXME to do 删除代理socket临时文件
-
-        // 应用退出时，更新ps命令结果
-        emit containerIdChange(d->container->id);
-        qInfo() << d->container->packageName << " exit, id:" << d->container->id;
     }
 
     return EXIT_SUCCESS;

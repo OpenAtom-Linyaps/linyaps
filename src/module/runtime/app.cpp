@@ -227,7 +227,8 @@ public:
         }
 
         // 特殊处理应用清单
-        const QStringList appList = {"org.deepin.manual", "org.gnome.gnome-mines", "org.gnome.eog"};
+        const QStringList appList = {"org.deepin.manual", "org.gnome.gnome-mines", "org.gnome.eog",
+                                     "com.game.gnome-nibbles"};
         if (appList.contains(appId)) {
             fuseMount = true;
             specialCase = true;
@@ -280,6 +281,11 @@ public:
                 // 特殊挂载图像查看器翻译文件
                 if ("org.gnome.eog" == appId) {
                     mountMap.push_back({appRootPath + "/files/share/locale", "/usr/share/locale"});
+                }
+                //特殊挂载贪吃蛇翻译文件与配置目录
+                if("com.game.gnome-nibbles" == appId){
+                    mountMap.push_back({appRootPath + "/files/share/locale", "/usr/share/locale"});
+                    mountMap.push_back({appRootPath + "/files/share/gnome-nibbles", "/usr/share/gnome-nibbles"});
                 }
             }
         } else {

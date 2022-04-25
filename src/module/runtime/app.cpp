@@ -226,8 +226,9 @@ public:
             useThinRuntime = false;
         }
 
-        // 特殊处理帮助手册
-        if ("org.deepin.manual" == appId) {
+        // 特殊处理应用清单
+        const QStringList appList = {"org.deepin.manual", "org.gnome.gnome-mines"};
+        if (appList.contains(appId)) {
             fuseMount = true;
             specialCase = true;
         }
@@ -266,8 +267,15 @@ public:
                 mountMap.push_back({runtimeRootPath + "/opt/deepin-wine6-stable", "/opt/deepin-wine6-stable"});
             }
             if (fuseMount && specialCase) {
-                mountMap.push_back({"/deepin/linglong/layers", "/deepin/linglong/layers"});
-                mountMap.push_back({"/deepin/linglong/entries/share/deepin-manual", "/usr/share/deepin-manual"});
+                // 特殊挂载帮助手册
+                if ("org.deepin.manual" == appId) {
+                    mountMap.push_back({"/deepin/linglong/layers", "/deepin/linglong/layers"});
+                    mountMap.push_back({sysLinglongInstalltions + "/deepin-manual", "/usr/share/deepin-manual"});
+                }
+                // 特殊挂载扫雷
+                if("org.gnome.gnome-mines" == appId){
+                    mountMap.push_back({appRootPath + "/files/share/gnome-mines", "/usr/share/gnome-mines"});
+                }
             }
         } else {
             if (useFlatpakRuntime) {
@@ -737,7 +745,7 @@ public:
         }
 
         // 存在 gschemas.compiled,需要挂载进沙箱
-        if(linglong::util::fileExists(sysLinglongInstalltions + "/glib-2.0/schemas/gschemas.compiled")){
+        if (linglong::util::fileExists(sysLinglongInstalltions + "/glib-2.0/schemas/gschemas.compiled")) {
             Mount &m = *new Mount(r);
             m.type = "bind";
             m.options = QStringList {"rbind"};

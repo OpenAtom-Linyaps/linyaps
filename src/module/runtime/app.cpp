@@ -227,8 +227,9 @@ public:
         }
 
         // 特殊处理应用清单
-        const QStringList appList = {"org.deepin.manual", "org.gnome.gnome-mines", "org.gnome.eog",
-                                     "com.game.gnome-nibbles", "org.gnome.iagno", "org.gnome.gnome-mahjongg"};
+        const QStringList appList = {"org.deepin.manual",      "org.gnome.gnome-mines", "org.gnome.eog",
+                                     "com.game.gnome-nibbles", "org.gnome.iagno",       "org.gnome.gnome-mahjongg",
+                                     "org.gnome.gnome-chess"};
         if (appList.contains(appId)) {
             fuseMount = true;
             specialCase = true;
@@ -283,20 +284,26 @@ public:
                     mountMap.push_back({appRootPath + "/files/share/locale", "/usr/share/locale"});
                 }
                 // 特殊挂载贪吃蛇翻译文件与配置目录
-                if("com.game.gnome-nibbles" == appId){
+                if ("com.game.gnome-nibbles" == appId) {
                     mountMap.push_back({appRootPath + "/files/share/locale", "/usr/share/locale"});
                     mountMap.push_back({appRootPath + "/files/share/gnome-nibbles", "/usr/share/gnome-nibbles"});
                 }
                 // 特殊挂载黑白棋配置目录与翻译文件
-                if("org.gnome.iagno" == appId){
+                if ("org.gnome.iagno" == appId) {
                     mountMap.push_back({appRootPath + "/files/locale", "/usr/share/locale"});
                     mountMap.push_back({appRootPath + "/files/iagno", "/usr/share/iagno"});
                 }
                 // 特殊挂载对对碰配置目录与翻译文件
-                if("org.gnome.gnome-mahjongg" == appId){
+                if ("org.gnome.gnome-mahjongg" == appId) {
                     mountMap.push_back({appRootPath + "/files/share/appdata", "/usr/share/appdata"});
                     mountMap.push_back({appRootPath + "/files/share/gnome-mahjongg", "/usr/share/gnome-mahjongg"});
                     mountMap.push_back({appRootPath + "/files/share/locale", "/usr/share/locale"});
+                }
+                // 特殊挂载国际象棋配置目录与翻译文件
+                if ("org.gnome.gnome-chess" == appId) {
+                    mountMap.push_back({appRootPath + "/files/etc", "/etc"});
+                    mountMap.push_back({appRootPath + "/files/gnome-chess", "/usr/share/gnome-chess"});
+                    mountMap.push_back({appRootPath + "/files/locale", "/usr/share/locale"});
                 }
             }
         } else {

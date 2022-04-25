@@ -228,7 +228,7 @@ public:
 
         // 特殊处理应用清单
         const QStringList appList = {"org.deepin.manual", "org.gnome.gnome-mines", "org.gnome.eog",
-                                     "com.game.gnome-nibbles", "org.gnome.iagno"};
+                                     "com.game.gnome-nibbles", "org.gnome.iagno", "org.gnome.gnome-mahjongg"};
         if (appList.contains(appId)) {
             fuseMount = true;
             specialCase = true;
@@ -291,6 +291,12 @@ public:
                 if("org.gnome.iagno" == appId){
                     mountMap.push_back({appRootPath + "/files/locale", "/usr/share/locale"});
                     mountMap.push_back({appRootPath + "/files/iagno", "/usr/share/iagno"});
+                }
+                // 特殊挂载对对碰配置目录与翻译文件
+                if("org.gnome.gnome-mahjongg" == appId){
+                    mountMap.push_back({appRootPath + "/files/share/appdata", "/usr/share/appdata"});
+                    mountMap.push_back({appRootPath + "/files/share/gnome-mahjongg", "/usr/share/gnome-mahjongg"});
+                    mountMap.push_back({appRootPath + "/files/share/locale", "/usr/share/locale"});
                 }
             }
         } else {

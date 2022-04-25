@@ -348,6 +348,15 @@ linglong::service::Reply PackageManagerImpl::Install(const linglong::service::In
         }
     }
 
+    // 更新 glib-2.0/schemas
+    if(linglong::util::dirExists(sysLinglongInstalltions + "/glib-2.0/schemas")){
+        auto retUpdateSchemas = linglong::runner::Runner(
+            "glib-compile-schemas", {sysLinglongInstalltions + "/glib-2.0/schemas"}, 1000 * 60 * 1);
+        if (!retUpdateSchemas) {
+            qWarning() << "warning: update schemas of " + sysLinglongInstalltions + "/glib-2.0/schemas failed!";
+        }
+    }
+
     // 更新本地数据库文件
     appInfo->kind = "app";
     insertAppRecord(appInfo, "user", userName);
@@ -484,6 +493,15 @@ RetMessageList PackageManagerImpl::Uninstall(const QStringList &packageIdList, c
             linglong::runner::Runner("update-mime-database", {sysLinglongInstalltions + "/mime/"}, 1000 * 60 * 1);
         if (!retUpdateMime) {
             qWarning() << "warning: update mime type database of " + sysLinglongInstalltions + "/mime/ failed!";
+        }
+    }
+
+    // 更新 glib-2.0/schemas
+    if(linglong::util::dirExists(sysLinglongInstalltions + "/glib-2.0/schemas")){
+        auto retUpdateSchemas = linglong::runner::Runner(
+            "glib-compile-schemas", {sysLinglongInstalltions + "/glib-2.0/schemas"}, 1000 * 60 * 1);
+        if (!retUpdateSchemas) {
+            qWarning() << "warning: update schemas of " + sysLinglongInstalltions + "/glib-2.0/schemas failed!";
         }
     }
 

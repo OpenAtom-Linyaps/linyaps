@@ -735,6 +735,16 @@ public:
             m.destination = "/usr/bin/" + dir;
             r->mounts.push_back(&m);
         }
+
+        // 存在 gschemas.compiled,需要挂载进沙箱
+        if(linglong::util::fileExists(sysLinglongInstalltions + "/glib-2.0/schemas/gschemas.compiled")){
+            Mount &m = *new Mount(r);
+            m.type = "bind";
+            m.options = QStringList {"rbind"};
+            m.source = sysLinglongInstalltions + "/glib-2.0/schemas/gschemas.compiled";
+            m.destination = sysLinglongInstalltions + "/glib-2.0/schemas/gschemas.compiled";
+            r->mounts.push_back(&m);
+        }
         return 0;
     }
 
@@ -860,6 +870,8 @@ public:
     App *q_ptr = nullptr;
 
     repo::Repo *repo;
+
+    const QString sysLinglongInstalltions = "/deepin/linglong/entries/share";
 
     Q_DECLARE_PUBLIC(App);
 };

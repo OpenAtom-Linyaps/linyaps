@@ -93,44 +93,54 @@ linglong::service::Reply PackageManager::Download(const linglong::service::Downl
 linglong::service::Reply PackageManager::Install(const linglong::service::InstallParamOption &installParamOption)
 {
     linglong::service::Reply reply;
-    if ("flatpak" == installParamOption.repoPoint)
-        reply = PackageManagerFlatpakImpl::instance()->Install(installParamOption);
+    QString appId = installParamOption.appId.trimmed();
+    // 校验参数
+    if (appId.isNull() || appId.isEmpty()) {
+        reply.message = "appId input err";
+        reply.code = RetCode(RetCode::user_input_param_err);
+        return reply;
+    }
+
+    if ("flatpak" == installParamOption.repoPoint) {
+        return PackageManagerFlatpakImpl::instance()->Install(installParamOption);
+    }
+    // JobManager::instance()->CreateJob([=]() {
     PackageManagerProxyBase *pImpl = PackageManagerImpl::instance();
     reply = pImpl->Install(installParamOption);
     return reply;
+    //});
+    // return retMsg;
 }
 
-RetMessageList PackageManager::Uninstall(const QStringList &packageIdList, const ParamStringMap &paramMap)
-{
-    if (!paramMap.empty() && paramMap.contains(linglong::util::kKeyRepoPoint)) {
-        return PackageManagerFlatpakImpl::instance()->Uninstall(packageIdList);
-    }
-
-    RetMessageList retMsg;
-    auto info = QPointer<RetMessage>(new RetMessage);
-    if (packageIdList.size() == 0) {
-        qCritical() << "packageIdList input err";
-        info->setcode(RetCode(RetCode::user_input_param_err));
-        info->setmessage("packageIdList input err");
-        info->setstate(false);
-        retMsg.push_back(info);
-        return retMsg;
-    }
-    QString pkgName = packageIdList.at(0).trimmed();
-    if (pkgName.isNull() || pkgName.isEmpty()) {
-        qCritical() << "package name err";
-        info->setcode(RetCode(RetCode::user_input_param_err));
-        info->setmessage("package name err");
-        info->setstate(false);
-        retMsg.push_back(info);
-        return retMsg;
-    }
-    return PackageManagerImpl::instance()->Uninstall(packageIdList, paramMap);
-}
-
-linglong::service::Reply PackageManager::Update(linglong::service::ParamOption paramOption)
+linglong::service::Reply PackageManager::Uninstall(const linglong::service::UninstallParamOption &paramOption)
 {
     linglong::service::Reply reply;
+    QString appId = paramOption.appId.trimmed();
+    // 校验参数
+    if (appId.isNull() || appId.isEmpty()) {
+        reply.message = "appId input err";
+        reply.code = RetCode(RetCode::user_input_param_err);
+        return reply;
+    }
+
+    if ("flatpak" == paramOption.repoPoint) {
+        return PackageManagerFlatpakImpl::instance()->Uninstall(paramOption);
+    }
+
+    return PackageManagerImpl::instance()->Uninstall(paramOption);
+}
+
+linglong::service::Reply PackageManager::Update(const linglong::service::ParamOption &paramOption)
+{
+    linglong::service::Reply reply;
+    QString appId = paramOption.appId.trimmed();
+    // 校验参数
+    if (appId.isNull() || appId.isEmpty()) {
+        reply.message = "appId input err";
+        reply.code = RetCode(RetCode::user_input_param_err);
+        return reply;
+    }
+
     reply = PackageManagerImpl::instance()->Update(paramOption);
     return reply;
 }
@@ -144,26 +154,23 @@ QString PackageManager::UpdateAll()
 /*
  * 查询软件包
  *
- * @param packageIdList: 软件包的appId
+ * @param paramOption 查询命令参数
  *
  * @return linglong::package::AppMetaInfoList 查询结果列表
  */
-linglong::package::AppMetaInfoList PackageManager::Query(const QStringList &packageIdList, const ParamStringMap &paramMap)
+linglong::package::AppMetaInfoList PackageManager::Query(const linglong::service::QueryParamOption &paramOption)
 {
-    if (!paramMap.empty() && paramMap.contains(linglong::util::kKeyRepoPoint)) {
-        return PackageManagerFlatpakImpl::instance()->Query(packageIdList);
+    if ("flatpak" == paramOption.repoPoint) {
+        return PackageManagerFlatpakImpl::instance()->Query(paramOption);
     }
-    if (packageIdList.size() == 0) {
-        qCritical() << "packageIdList input err";
-        return {};
-    }
-    QString pkgName = packageIdList.at(0).trimmed();
-    if (pkgName.isNull() || pkgName.isEmpty()) {
-        qCritical() << "package name err";
+
+    QString appId = paramOption.appId.trimmed();
+    if (appId.isNull() || appId.isEmpty()) {
+        qCritical() << "appId input err";
         return {};
     }
     PackageManagerProxyBase *pImpl = PackageManagerImpl::instance();
-    return pImpl->Query(packageIdList, paramMap);
+    return pImpl->Query(paramOption);
 }
 
 /*!

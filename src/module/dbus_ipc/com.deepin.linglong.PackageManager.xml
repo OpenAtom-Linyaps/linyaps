@@ -18,11 +18,10 @@
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
         </method>
         <method name="Uninstall">
-            <arg name="PackageIDList" type="as" direction="in"/>
-            <arg name="paramMap" type="a{ss}" direction="in"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.In1" value="ParamStringMap"/>
-            <arg name="RetMessageList" type="a(s)" direction="out"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="RetMessageList"/>
+            <arg name="paramOption" type="(sssbs)" direction="in"/>
+            <arg name="reply" type="(is)" direction="out"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::UninstallParamOption"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
         </method>
         <method name="Update">
             <arg name="paramOption" type="(sss)" direction="in"/>
@@ -34,9 +33,8 @@
             <arg name="JobID" type="s" direction="out"/>
         </method>
         <method name="Query">
-            <arg name="PackageIDList" type="as" direction="in"/>
-            <arg name="paramMap" type="a{ss}" direction="in"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.In1" value="ParamStringMap"/>
+            <arg name="paramOption" type="(sssbbs)" direction="in"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::QueryParamOption"/>
             <arg name="linglong::package::AppMetaInfoList" type="a(s)" direction="out"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::package::AppMetaInfoList"/>
         </method>

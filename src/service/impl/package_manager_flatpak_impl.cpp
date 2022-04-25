@@ -10,49 +10,53 @@
 
 #include "package_manager_flatpak_impl.h"
 
-linglong::service::Reply PackageManagerFlatpakImpl::Install(const linglong::service::InstallParamOption &installParamOption)
+linglong::service::Reply
+PackageManagerFlatpakImpl::Install(const linglong::service::InstallParamOption &installParamOption)
 {
     linglong::service::Reply reply;
+    QString appId = installParamOption.appId.trimmed();
     QStringList argStrList;
     argStrList << "install"
                << "--user"
-               << "-y" << installParamOption.appId;
+               << "-y" << appId;
     auto ret = Runner("flatpak", argStrList, 1000 * 60 * 30);
     if (!ret) {
         reply.code = RetCode(RetCode::pkg_install_failed);
-        reply.message = "install " + installParamOption.appId + " failed";
+        reply.message = "install " + appId + " failed";
     } else {
         reply.code = RetCode(RetCode::pkg_install_success);
-        reply.message = "install " + installParamOption.appId + " success";
+        reply.message = "install " + appId + " success";
     }
+    qInfo() << "flatpak Install " << appId << ", ret:" << ret;
     return reply;
 }
 
 /*
  * 查询软件包
  *
- * @param packageIDList: 软件包的appid
- * @param paramMap: 查询参数
+ * @param paramOption: 查询参数
  *
  * @return linglong::package::AppMetaInfoList 查询结果列表
  */
-linglong::package::AppMetaInfoList PackageManagerFlatpakImpl::Query(const QStringList &packageIDList, const ParamStringMap &paramMap)
+linglong::package::AppMetaInfoList
+PackageManagerFlatpakImpl::Query(const linglong::service::QueryParamOption &paramOption)
 {
     linglong::package::AppMetaInfoList pkglist;
     auto info = QPointer<linglong::package::AppMetaInfo>(new linglong::package::AppMetaInfo);
-    if (packageIDList.size() == 0) {
-        qCritical() << "packageIDList input err";
-        return pkglist;
+
+    QString appId = paramOption.appId.trimmed();
+    if (appId.isNull() || appId.isEmpty()) {
+        qCritical() << "appId input err";
+        return {};
     }
 
-    QString pkgName = packageIDList.at(0);
     QProcess proc;
     QStringList argStrList;
-    if (pkgName == "installed") {
+    if ("installed" == appId) {
         argStrList << "list";
         info->appId = "flatpaklist";
     } else {
-        argStrList << "search" << pkgName;
+        argStrList << "search" << appId;
         info->appId = "flatpakquery";
     }
     proc.start("flatpak", argStrList);
@@ -63,7 +67,7 @@ linglong::package::AppMetaInfoList PackageManagerFlatpakImpl::Query(const QStrin
     proc.waitForFinished(1000 * 60 * 5);
     QString ret = proc.readAllStandardOutput();
     auto retCode = proc.exitCode();
-    qInfo() << "flatpak Query " << pkgName << ", exitStatus:" << proc.exitStatus() << ", retCode:" << retCode;
+    qInfo() << "flatpak Query " << appId << ", exitStatus:" << proc.exitStatus() << ", retCode:" << retCode;
     info->description = ret;
     pkglist.push_back(info);
     return pkglist;
@@ -72,39 +76,27 @@ linglong::package::AppMetaInfoList PackageManagerFlatpakImpl::Query(const QStrin
 /*
  * 卸载软件包
  *
- * @param packageIDList: 软件包的appid
- * @param paramMap: 卸载参数
+ * @param paramOption: 卸载命令参数
  *
- * @return RetMessageList 卸载结果信息
+ * @return linglong::service::Reply 卸载结果信息
  */
-RetMessageList PackageManagerFlatpakImpl::Uninstall(const QStringList &packageIDList, const ParamStringMap &paramMap)
+linglong::service::Reply
+PackageManagerFlatpakImpl::Uninstall(const linglong::service::UninstallParamOption &paramOption)
 {
-    RetMessageList retMsg;
-    auto info = QPointer<RetMessage>(new RetMessage);
-    if (packageIDList.size() == 0) {
-        qCritical() << "uninstall packageIDList input err";
-        info->setcode(RetCode(RetCode::user_input_param_err));
-        info->setmessage("uninstall packageIDList input err");
-        info->setstate(false);
-        retMsg.push_back(info);
-        return retMsg;
-    }
-    QString pkgName = packageIDList.at(0);
+    linglong::service::Reply reply;
+    QString appId = paramOption.appId.trimmed();
     QStringList argStrList;
     argStrList << "uninstall"
                << "--user"
-               << "-y" << pkgName;
+               << "-y" << appId;
     auto ret = Runner("flatpak", argStrList, 1000 * 60 * 30);
     if (!ret) {
-        info->setcode(RetCode(RetCode::pkg_uninstall_failed));
-        info->setmessage("uninstall " + pkgName + " failed");
-        info->setstate(false);
+        reply.code = RetCode(RetCode::pkg_uninstall_failed);
+        reply.message = "uninstall " + appId + " failed";
     } else {
-        info->setcode(RetCode(RetCode::pkg_uninstall_success));
-        info->setmessage("uninstall " + pkgName + " success");
-        info->setstate(true);
+        reply.code = RetCode(RetCode::pkg_uninstall_success);
+        reply.message = "uninstall " + appId + " success";
     }
-    retMsg.push_back(info);
-    qInfo() << "flatpak Uninstall " << pkgName << ", ret:" << ret;
-    return retMsg;
+    qInfo() << "flatpak Uninstall " << appId << ", ret:" << ret;
+    return reply;
 }

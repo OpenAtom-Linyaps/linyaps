@@ -79,14 +79,11 @@ public Q_SLOTS:
     /**
      * @brief 卸载软件包
      *
-     * @param packageIdList 应用appId列表
-     * @param paramMap 卸载参数 \n
-     *        key为version时，value范围不涉及，用于卸载指定版本应用 \n
-     *        key为repo-point，value为flatpak，用于卸载flatpak类型应用
+     * @param paramOption 卸载参数
      *
-     * @return RetMessageList 同Install
+     * @return linglong::service::Reply 同Install
      */
-    RetMessageList Uninstall(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
+    linglong::service::Reply Uninstall(const linglong::service::UninstallParamOption &paramOption);
 
     /**
      * @brief 更新软件包
@@ -95,7 +92,7 @@ public Q_SLOTS:
      *
      * @return Reply 同Install
      */
-    linglong::service::Reply Update(linglong::service::ParamOption paramOption);
+    linglong::service::Reply Update(const linglong::service::ParamOption &paramOption);
 
     /**
      * @brief
@@ -107,10 +104,7 @@ public Q_SLOTS:
     /**
      * @brief 查询软件包信息
      *
-     * @param packageIdList 应用appId列表; {"installed"}时，查询已安装应用
-     * @param paramMap 查询参数 \n
-     *        key为repo-point，value为flatpak，用于查询flatpak类型应用 \n
-     *        key为force，value为""，用于直接从服务端查询，不经过本地缓存
+     * @param paramOption 查询命令参数
      *
      * @return AppMetaInfoList 查询结果信息 \n
      *         appId 软件包appId \n
@@ -123,7 +117,7 @@ public Q_SLOTS:
      *         description 软件包描述信息 \n
      *         user 安装应用对应的用户
      */
-    linglong::package::AppMetaInfoList Query(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
+    linglong::package::AppMetaInfoList Query(const linglong::service::QueryParamOption &paramOption);
 
     /**
      * @brief

@@ -36,10 +36,10 @@ class PackageManagerImpl
 public:
     linglong::service::Reply Download(const linglong::service::DownloadParamOption &downloadParamOption);
     linglong::service::Reply Install(const linglong::service::InstallParamOption &installParamOption);
-    RetMessageList Uninstall(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
-    linglong::package::AppMetaInfoList Query(const QStringList &packageIdList, const ParamStringMap &paramMap = {});
+    linglong::service::Reply Uninstall(const linglong::service::UninstallParamOption &paramOption);
+    linglong::package::AppMetaInfoList Query(const linglong::service::QueryParamOption &paramOption);
 
-    linglong::service::Reply Update(linglong::service::ParamOption paramOption);
+    linglong::service::Reply Update(const linglong::service::ParamOption &paramOption);
 
 private:
     const QString sysLinglongInstalltions = "/deepin/linglong/entries/share";

@@ -87,9 +87,61 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, InstallPar
     return argument;
 }
 
+class QueryParamOption : public ParamOption
+{
+public:
+    bool force = false;
+    QString repoPoint;
+};
+
+inline QDBusArgument &operator<<(QDBusArgument &argument, const QueryParamOption &paramOption)
+{
+    argument.beginStructure();
+    argument << paramOption.appId << paramOption.version << paramOption.arch << paramOption.force
+             << paramOption.repoPoint;
+    argument.endStructure();
+    return argument;
+}
+
+inline const QDBusArgument &operator>>(const QDBusArgument &argument, QueryParamOption &paramOption)
+{
+    argument.beginStructure();
+    argument >> paramOption.appId >> paramOption.version >> paramOption.arch >> paramOption.force
+        >> paramOption.repoPoint;
+    argument.endStructure();
+    return argument;
+}
+
+class UninstallParamOption : public ParamOption
+{
+public:
+    bool nodbus = false;
+    QString repoPoint;
+};
+
+inline QDBusArgument &operator<<(QDBusArgument &argument, const UninstallParamOption &paramOption)
+{
+    argument.beginStructure();
+    argument << paramOption.appId << paramOption.version << paramOption.arch
+             << paramOption.nodbus << paramOption.repoPoint;
+    argument.endStructure();
+    return argument;
+}
+
+inline const QDBusArgument &operator>>(const QDBusArgument &argument, UninstallParamOption &paramOption)
+{
+    argument.beginStructure();
+    argument >> paramOption.appId >> paramOption.version >> paramOption.arch
+        >> paramOption.nodbus >> paramOption.repoPoint;
+    argument.endStructure();
+    return argument;
+}
+
 } // namespace service
 } // namespace linglong
 
 Q_DECLARE_METATYPE(linglong::service::ParamOption)
 Q_DECLARE_METATYPE(linglong::service::DownloadParamOption)
 Q_DECLARE_METATYPE(linglong::service::InstallParamOption)
+Q_DECLARE_METATYPE(linglong::service::QueryParamOption)
+Q_DECLARE_METATYPE(linglong::service::UninstallParamOption)

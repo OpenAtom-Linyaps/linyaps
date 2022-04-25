@@ -437,19 +437,19 @@ int main(int argc, char **argv)
                      QDBusPendingReply<linglong::service::Reply> dbusReply = packageManager.Install(installParamOption);
                      reply = dbusReply.value();
                      if (reply.code != RetCode(RetCode::pkg_install_success)) {
-                         qCritical().noquote() << "install " << installParamOption.appId
-                                               << " failed, errcode:" << reply.code << ", message:" << reply.message;
-                         return reply.code;
-                     } else
-                         qInfo().noquote() << "install " << installParamOption.appId << " success";
+                         qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
+                         return -1;
+                     } else {
+                         qInfo().noquote() << "message:" << reply.message;
+                     }
                  } else {
                      reply = noDbusPackageManager->Install(installParamOption);
                      if (reply.code != RetCode(RetCode::pkg_install_success)) {
-                         qCritical().noquote() << "install " << installParamOption.appId
-                                               << " failed, errcode:" << reply.code << ", message:" << reply.message;
-                         return reply.code;
-                     } else
+                         qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
+                         return -1;
+                     } else {
                          qInfo().noquote() << "install " << installParamOption.appId << " success";
+                     }
                  }
              }
              return 0;
@@ -472,11 +472,11 @@ int main(int argc, char **argv)
                  paramOption.version = appInfoList.at(1);
              QDBusPendingReply<linglong::service::Reply> dbusReply = packageManager.Update(paramOption);
              linglong::service::Reply reply = dbusReply.value();
-             if (!reply.code) {
-                 qCritical().noquote() << "install " << paramOption.appId << " failed, errcode:" << reply.code
-                                       << ", message:" << reply.message;
-                 return reply.code;
+             if (reply.code != RetCode(RetCode::ErrorPkgUpdateSuccess)) {
+                 qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
+                 return -1;
              }
+             qInfo().noquote() << "message:" << reply.message;
              return 0;
          }},
         {"query", // 查询玲珑包
@@ -494,17 +494,12 @@ int main(int argc, char **argv)
                  parser.showHelp(-1);
                  return -1;
              }
-             QMap<QString, QString> paramMap;
-             if (!repoType.isEmpty()) {
-                 paramMap.insert(linglong::util::kKeyRepoPoint, repoType);
-             }
-             auto noCache = parser.isSet(optNoCache);
-             if (noCache) {
-                 paramMap.insert(linglong::util::kKeyNoCache, "");
-             }
-             auto args = parser.positionalArguments();
-             auto appId = args.value(1);
-             QDBusPendingReply<linglong::package::AppMetaInfoList> reply = packageManager.Query({appId}, paramMap);
+
+             linglong::service::QueryParamOption paramOption;
+             paramOption.force = parser.isSet(optNoCache);
+             paramOption.repoPoint = repoType;
+             paramOption.appId = args.value(1);
+             QDBusPendingReply<linglong::package::AppMetaInfoList> reply = packageManager.Query(paramOption);
              reply.waitForFinished();
              linglong::package::AppMetaInfoList appMetaInfoList = reply.value();
              if (1 == appMetaInfoList.size() && "flatpakquery" == appMetaInfoList.at(0)->appId) {
@@ -531,46 +526,42 @@ int main(int argc, char **argv)
              }
              // TOTO:设置 10 分钟超时 to do
              packageManager.setTimeout(1000 * 60 * 10);
-             QDBusPendingReply<RetMessageList> reply;
-
+             QDBusPendingReply<linglong::service::Reply> dbusReply;
+             linglong::service::UninstallParamOption paramOption;
              // appId format: org.deepin.calculator/1.2.6 in multi-version
-             QMap<QString, QString> paramMap;
              QStringList appInfoList = appInfo.split("/");
+             paramOption.appId = appInfo;
              if (appInfoList.size() > 1) {
-                 paramMap.insert(linglong::util::kKeyVersion, appInfoList.at(1));
+                 paramOption.appId = appInfoList.at(0);
+                 paramOption.version = appInfoList.at(1);
              }
-             if (!repoType.isEmpty()) {
-                 paramMap.insert(linglong::util::kKeyRepoPoint, repoType);
-             }
-             auto noDbus = parser.isSet(optNoDbus);
-             if (noDbus) {
-                 RetMessageList retMessageList = noDbusPackageManager->Uninstall({appInfoList.at(0)}, paramMap);
-                 if (retMessageList.size() > 0) {
-                     auto it = retMessageList.at(0);
-                     qInfo().noquote() << "message: " << it->message;
-                     if (!it->state) {
-                         return -1;
-                     }
-                     return 0;
-                 }
-             }
-             reply = packageManager.Uninstall({appInfoList.at(0)}, paramMap);
-             reply.waitForFinished();
-             RetMessageList retMessageList = reply.value();
-             if (retMessageList.size() > 0) {
-                 auto it = retMessageList.at(0);
-                 QString prompt = "message: " + it->message;
-                 if (!it->state) {
-                     qCritical().noquote() << prompt << ", errcode:" << it->code;
+             paramOption.nodbus = parser.isSet(optNoDbus);
+             paramOption.repoPoint = repoType;
+             linglong::service::Reply reply;
+             if (paramOption.nodbus) {
+                 reply = noDbusPackageManager->Uninstall(paramOption);
+                 if (reply.code != RetCode(RetCode::pkg_uninstall_success)) {
+                     qInfo().noquote() << "message: " << reply.message << ", errcode:" << reply.code;
                      return -1;
+                 } else {
+                     qInfo().noquote() << "uninstall " << appInfo << " success";
                  }
-                 qInfo().noquote() << prompt;
+                 return 0;
              }
+             dbusReply = packageManager.Uninstall(paramOption);
+             dbusReply.waitForFinished();
+             reply = dbusReply.value();
+
+             if (reply.code != RetCode(RetCode::pkg_uninstall_success)) {
+                 qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
+                 return -1;
+             }
+             qInfo().noquote() << "message:" << reply.message;
              return 0;
          }},
         {"list", // 查询已安装玲珑包
          [&](QCommandLineParser &parser) -> int {
-             auto optType = QCommandLineOption("type", "query installed app", "--type=installed", "installed");
+             auto optType = QCommandLineOption("installed", "query installed app", "list --installed", "installed");
              parser.clearPositionalArguments();
              parser.addPositionalArgument("list", "show installed application", "list");
              parser.addOption(optType);
@@ -587,11 +578,11 @@ int main(int argc, char **argv)
                  parser.showHelp(-1);
                  return -1;
              }
-             QMap<QString, QString> paramMap;
-             if (!repoType.isEmpty()) {
-                 paramMap.insert(linglong::util::kKeyRepoPoint, repoType);
-             }
-             QDBusPendingReply<linglong::package::AppMetaInfoList> reply = packageManager.Query({optPara}, paramMap);
+
+             linglong::service::QueryParamOption paramOption;
+             paramOption.appId = optPara;
+             paramOption.repoPoint = repoType;
+             QDBusPendingReply<linglong::package::AppMetaInfoList> reply = packageManager.Query(paramOption);
              // 默认超时时间为25s
              reply.waitForFinished();
              linglong::package::AppMetaInfoList appMetaInfoList = reply.value();

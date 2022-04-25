@@ -63,7 +63,7 @@ enum class RetCode {
     ErrorPkgUpdateSuccess,
     ErrorPkgKillFailed
 };
-template <typename T=quint32>
+template <typename T=int>
 inline T RetCode(RetCode code){
     return static_cast<T>(code);
 }

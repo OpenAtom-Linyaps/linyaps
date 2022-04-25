@@ -227,7 +227,7 @@ public:
         }
 
         // 特殊处理应用清单
-        const QStringList appList = {"org.deepin.manual", "org.gnome.gnome-mines"};
+        const QStringList appList = {"org.deepin.manual", "org.gnome.gnome-mines", "org.gnome.eog"};
         if (appList.contains(appId)) {
             fuseMount = true;
             specialCase = true;
@@ -257,6 +257,7 @@ public:
                 {"/usr", "/usr"},
                 {"/etc", "/etc"},
                 {runtimeRootPath + "/usr", "/runtime"},
+                {"/usr/share/locale/", "/usr/share/locale/"},
             };
 
             // FIXME(iceyer): extract for wine, remove later
@@ -273,8 +274,12 @@ public:
                     mountMap.push_back({sysLinglongInstalltions + "/deepin-manual", "/usr/share/deepin-manual"});
                 }
                 // 特殊挂载扫雷
-                if("org.gnome.gnome-mines" == appId){
+                if ("org.gnome.gnome-mines" == appId) {
                     mountMap.push_back({appRootPath + "/files/share/gnome-mines", "/usr/share/gnome-mines"});
+                }
+                // 特殊挂载图像查看器翻译文件
+                if ("org.gnome.eog" == appId) {
+                    mountMap.push_back({appRootPath + "/files/share/locale", "/usr/share/locale"});
                 }
             }
         } else {
@@ -375,7 +380,6 @@ public:
             {"/etc/resolv.conf", "/run/host/network/etc/resolv.conf"},
             {"/run/resolvconf", "/run/resolvconf"},
             {"/usr/share/fonts", "/run/host/appearance/fonts"},
-            {"/usr/share/locale/", "/usr/share/locale/"},
             {"/usr/lib/locale/", "/usr/lib/locale/"},
             {"/usr/share/themes", "/usr/share/themes"},
             {"/usr/share/icons", "/usr/share/icons"},

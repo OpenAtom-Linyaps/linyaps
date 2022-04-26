@@ -33,7 +33,7 @@
             <arg name="JobID" type="s" direction="out"/>
         </method>
         <method name="Query">
-            <arg name="paramOption" type="(sssbbs)" direction="in"/>
+            <arg name="paramOption" type="(sssbs)" direction="in"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::QueryParamOption"/>
             <arg name="linglong::package::AppMetaInfoList" type="a(s)" direction="out"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::package::AppMetaInfoList"/>

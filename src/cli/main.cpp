@@ -187,8 +187,6 @@ int main(int argc, char **argv)
         "com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager", QDBusConnection::sessionBus());
     checkAndStartService(packageManager);
     PackageManager *noDbusPackageManager = PackageManager::instance();
-    auto optNoDbus = QCommandLineOption("nodbus", "execute cmd directly, not via dbus", "");
-    parser.addOption(optNoDbus);
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
         {"run", // 启动玲珑应用
          [&](QCommandLineParser &parser) -> int {
@@ -346,8 +344,11 @@ int main(int argc, char **argv)
 
              QStringList args = parser.positionalArguments();
 
-             auto containerId = args.value(1);
-
+             auto containerId = args.value(1).trimmed();
+             if (containerId.isEmpty()) {
+                 parser.showHelp();
+                 return -1;
+             }
              // TODO: show kill result
              QDBusPendingReply<RetMessageList> reply = packageManager.Stop(containerId);
              reply.waitForFinished();
@@ -400,6 +401,8 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("app", "appId version arch", "com.deepin.demo/1.2.1/x86_64");
              auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
              parser.addOption(optRepoPoint);
+             auto optNoDbus = QCommandLineOption("nodbus", "execute cmd directly, not via dbus", "");
+             parser.addOption(optNoDbus);
              parser.process(app);
              QStringList appList = parser.positionalArguments();
 
@@ -466,7 +469,11 @@ int main(int argc, char **argv)
                  parser.showHelp(-1);
                  return -1;
              }
-             paramOption.appId = appInfoList.at(0);
+             paramOption.appId = appInfoList.at(0).trimmed();
+             if (paramOption.appId.isEmpty()) {
+                 parser.showHelp(-1);
+                 return -1;
+             }
              paramOption.arch = linglong::util::hostArch();
              if (appInfoList.size() == 2)
                  paramOption.version = appInfoList.at(1);
@@ -496,6 +503,11 @@ int main(int argc, char **argv)
              }
 
              linglong::service::QueryParamOption paramOption;
+             paramOption.appId = args.value(1).trimmed();
+             if (paramOption.appId.isEmpty()) {
+                 parser.showHelp(-1);
+                 return -1;
+             }
              paramOption.force = parser.isSet(optNoCache);
              paramOption.repoPoint = repoType;
              paramOption.appId = args.value(1);
@@ -515,6 +527,8 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("uninstall", "uninstall an application", "uninstall");
              parser.addPositionalArgument("appId", "app id", "com.deepin.demo");
              auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
+             auto optNoDbus = QCommandLineOption("nodbus", "execute cmd directly, not via dbus", "");
+             parser.addOption(optNoDbus);
              parser.addOption(optRepoPoint);
              parser.process(app);
              auto args = parser.positionalArguments();
@@ -561,7 +575,7 @@ int main(int argc, char **argv)
          }},
         {"list", // 查询已安装玲珑包
          [&](QCommandLineParser &parser) -> int {
-             auto optType = QCommandLineOption("installed", "query installed app", "list --installed", "installed");
+             auto optType = QCommandLineOption("type", "query installed app", "--type=installed", "installed");
              parser.clearPositionalArguments();
              parser.addPositionalArgument("list", "show installed application", "list");
              parser.addOption(optType);

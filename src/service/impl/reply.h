@@ -14,11 +14,15 @@
 
 namespace linglong {
 namespace service {
+
+/**
+ * @brief DBus方法调用的应答
+ */
 class Reply
 {
 public:
-    int code;
-    QString message;
+    int code; ///< 状态码
+    QString message; ///< 状态码对应的消息
 };
 
 inline QDBusArgument &operator<<(QDBusArgument &argument, const Reply &reply)

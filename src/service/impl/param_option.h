@@ -14,12 +14,17 @@
 
 namespace linglong {
 namespace service {
+
+/**
+ * @brief DBus方法调用参数
+ * @details service服务公共请求参数
+ */
 class ParamOption
 {
 public:
-    QString appId;
-    QString version;
-    QString arch;
+    QString appId; ///< 应用appId
+    QString version; ///< 应用版本
+    QString arch; ///< 应用架构
 };
 
 inline QDBusArgument &operator<<(QDBusArgument &argument, const ParamOption &paramOption)
@@ -38,10 +43,13 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, ParamOptio
     return argument;
 }
 
+/**
+ * @brief DBus Download方法调用参数
+ */
 class DownloadParamOption : public ParamOption
 {
 public:
-    QString savePath;
+    QString savePath; ///< 下载文件保存路径
 };
 
 inline QDBusArgument &operator<<(QDBusArgument &argument, const DownloadParamOption &downloadParamOption)
@@ -62,11 +70,14 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, DownloadPa
     return argument;
 }
 
+/**
+ * @brief DBus Install方法调用参数
+ */
 class InstallParamOption : public ParamOption
 {
 public:
-    bool nodbus = false;
-    QString repoPoint;
+    bool nodbus = false; ///< 是否不使用dbus
+    QString repoPoint; ///< 是否安装非玲珑格式应用
 };
 
 inline QDBusArgument &operator<<(QDBusArgument &argument, const InstallParamOption &installParamOption)
@@ -87,11 +98,14 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, InstallPar
     return argument;
 }
 
+/**
+ * @brief DBus Query方法调用参数
+ */
 class QueryParamOption : public ParamOption
 {
 public:
-    bool force = false;
-    QString repoPoint;
+    bool force = false; ///< 是否强制从服务端查询
+    QString repoPoint; ///< 是否安装非玲珑格式应用
 };
 
 inline QDBusArgument &operator<<(QDBusArgument &argument, const QueryParamOption &paramOption)
@@ -112,11 +126,14 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, QueryParam
     return argument;
 }
 
+/**
+ * @brief DBus Uninstall方法调用参数
+ */
 class UninstallParamOption : public ParamOption
 {
 public:
-    bool nodbus = false;
-    QString repoPoint;
+    bool nodbus = false; ///< 是否不使用dbus
+    QString repoPoint; ///< 是否安装非玲珑格式应用
 };
 
 inline QDBusArgument &operator<<(QDBusArgument &argument, const UninstallParamOption &paramOption)
@@ -137,17 +154,20 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, UninstallP
     return argument;
 }
 
+/**
+ * @brief DBus Run方法调用参数
+ */
 class RunParamOption : public ParamOption
 {
 public:
-    QString exec;
-    QString repoPoint;
-    bool noDbusProxy = false;
-    QString busType = "session";
-    QString filterName;
-    QString filterPath;
-    QString filterInterface;
-    QString appEnv;
+    QString exec; ///< 运行命令,如：/bin/bash
+    QString repoPoint; ///< 非玲珑格式应用
+    bool noDbusProxy = false; ///< 是否不使用dbus代理
+    QString busType = "session"; ///< dbus总线类型，默认session总线
+    QString filterName; ///< DBus过滤名称
+    QString filterPath; ///< DBus过滤路径
+    QString filterInterface; ///< DBus过滤接口
+    QString appEnv; ///< 应用环境变量
 };
 
 inline QDBusArgument &operator<<(QDBusArgument &argument, const RunParamOption &paramOption)

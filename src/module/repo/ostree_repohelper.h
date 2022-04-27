@@ -25,6 +25,7 @@
 
 #include "repohelper.h"
 #include "module/util/singleton.h"
+#include "module/util/status_code.h"
 
 using std::map;
 using std::vector;

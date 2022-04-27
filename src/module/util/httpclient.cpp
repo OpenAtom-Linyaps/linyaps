@@ -172,7 +172,7 @@ bool HttpClient::queryRemote(const QString &pkgName, const QString &pkgVer, cons
     // application/json' --data '{"AppId":"org.deepin.calculator","version":"5.5.23"}'
     QString configUrl = "";
     int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
-    if (linglong::Status::StatusCode::SUCCESS != statusCode) {
+    if (STATUS_CODE(kSuccess) != statusCode) {
         return false;
     }
     qDebug() << "queryRemote configUrl:" << configUrl;
@@ -434,7 +434,7 @@ bool HttpClient::loadHttpData(const QString qurl, const QString qsavePath)
  * @param dnsOfLinglong: 玲珑仓库域名地址
  * @param flags: bundle：上传bundle文件  ostree： 上传repo仓库
  *
- * @return int: SUCCESS:成功 FAIL:失败
+ * @return int: kSuccess:成功 kFail:失败
  */
 int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong, const QString &flags)
 {
@@ -444,7 +444,7 @@ int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong
     int fd = getlock();
     if (fd == -1) {
         qCritical() << "HttpClient requestServerData is doing, please wait a moment and retry";
-        return Status::StatusCode::FAIL;
+        return STATUS_CODE(kFail);
     }
     initHttpParam(url);
     std::stringstream out;
@@ -474,7 +474,7 @@ int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong
         curl_easy_cleanup(curlHandle);
         curl_global_cleanup();
         releaselock(fd);
-        return Status::StatusCode::FAIL;
+        return STATUS_CODE(kFail);
     }
     int resCode = 0;
     code = curl_easy_getinfo(curlHandle, CURLINFO_RESPONSE_CODE, &resCode);
@@ -483,7 +483,7 @@ int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong
         curl_easy_cleanup(curlHandle);
         curl_global_cleanup();
         releaselock(fd);
-        return Status::StatusCode::FAIL;
+        return STATUS_CODE(kFail);
     }
     curl_easy_cleanup(curlHandle);
     curl_global_cleanup();
@@ -494,9 +494,9 @@ int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong
     if (retUploadObject["code"].toInt() != 0) {
         qCritical() << "upload file failed: " + filePath;
         qCritical() << retUploadObject["msg"].toString();
-        return Status::StatusCode::FAIL;
+        return STATUS_CODE(kFail);
     }
-    return Status::StatusCode::SUCCESS;
+    return STATUS_CODE(kSuccess);
 }
 
 /*
@@ -505,7 +505,7 @@ int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong
  * @param info: bundle文件信息
  * @param dnsOfLinglong: 玲珑仓库域名地址
  *
- * @return int: SUCCESS:成功 FAIL:失败
+ * @return int: kSuccess:成功 kFail:失败
  */
 int HttpClient::pushServerBundleData(const QString &info, const QString &dnsOfLinglong)
 {
@@ -515,7 +515,7 @@ int HttpClient::pushServerBundleData(const QString &info, const QString &dnsOfLi
     int fd = getlock();
     if (fd == -1) {
         qCritical() << "HttpClient requestServerData is doing, please wait a moment and retry";
-        return Status::StatusCode::FAIL;
+        return STATUS_CODE(kFail);
     }
     initHttpParam(url);
     std::stringstream out;
@@ -546,7 +546,7 @@ int HttpClient::pushServerBundleData(const QString &info, const QString &dnsOfLi
         curl_easy_cleanup(curlHandle);
         curl_global_cleanup();
         releaselock(fd);
-        return Status::StatusCode::FAIL;
+        return STATUS_CODE(kFail);
     }
     int resCode = 0;
     code = curl_easy_getinfo(curlHandle, CURLINFO_RESPONSE_CODE, &resCode);
@@ -563,9 +563,9 @@ int HttpClient::pushServerBundleData(const QString &info, const QString &dnsOfLi
     if (retUploadObject["code"].toInt() != 0) {
         qCritical() << "upload bundle info failed: " + info;
         qCritical() << retUploadObject["msg"].toString();
-        return Status::StatusCode::FAIL;
+        return STATUS_CODE(kFail);
     }
-    return Status::StatusCode::SUCCESS;
+    return STATUS_CODE(kSuccess);
 }
 } // namespace util
 } // namespace linglong

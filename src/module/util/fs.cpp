@@ -89,7 +89,7 @@ int getLocalConfig(const QString &key, QString &value)
 {
     if (!linglong::util::fileExists(serverConfigPath)) {
         qCritical() << serverConfigPath << " not exist";
-        return linglong::Status::StatusCode::FAIL;
+        return STATUS_CODE(kFail);
     }
     QFile dbFile(serverConfigPath);
     dbFile.open(QIODevice::ReadOnly);
@@ -99,15 +99,15 @@ int getLocalConfig(const QString &key, QString &value)
     QJsonDocument document = QJsonDocument::fromJson(qValue.toUtf8(), &parseJsonErr);
     if (QJsonParseError::NoError != parseJsonErr.error) {
         qCritical() << "parse linglong config file err";
-        return linglong::Status::StatusCode::FAIL;
+        return STATUS_CODE(kFail);
     }
     QJsonObject dataObject = document.object();
     if (!dataObject.contains(key)) {
         qWarning() << "key:" << key << " not found in config";
-        return linglong::Status::StatusCode::FAIL;
+        return STATUS_CODE(kFail);
     }
     value = dataObject[key].toString();
-    return linglong::Status::StatusCode::SUCCESS;
+    return STATUS_CODE(kSuccess);
 }
 } // namespace util
 } // namespace linglong

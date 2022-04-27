@@ -20,8 +20,6 @@ const QString installedAppInfoPath = "/deepin/linglong/layers/";
 // 安装数据库版本
 const QString infoDbVersion = "1.0.0";
 
-using namespace linglong::Status;
-
 namespace linglong {
 namespace util {
 
@@ -49,9 +47,9 @@ int openDatabaseConnection(QSqlDatabase &dbConn)
     if (!dbConn.isOpen() && !dbConn.open()) {
         err = "open " + installedAppInfoPath + "InstalledAppInfo.db failed";
         qCritical() << err;
-        return StatusCode::FAIL;
+        return STATUS_CODE(kFail);
     }
-    return StatusCode::SUCCESS;
+    return STATUS_CODE(kSuccess);
 }
 
 /*
@@ -76,8 +74,8 @@ int checkInstalledAppDb()
 {
     QString err = "";
     QSqlDatabase dbConn;
-    if (openDatabaseConnection(dbConn) != StatusCode::SUCCESS) {
-        return StatusCode::FAIL;
+    if (STATUS_CODE(kSuccess) != openDatabaseConnection(dbConn)) {
+        return STATUS_CODE(kFail);
     }
     QString createInfoTable = "CREATE TABLE IF NOT EXISTS installedAppInfo(\
          ID INTEGER PRIMARY KEY AUTOINCREMENT,\
@@ -98,7 +96,7 @@ int checkInstalledAppDb()
         err = "fail to create installed appinfo table, err:" + sqlQuery.lastError().text();
         qCritical() << err;
         closeDbConnection(dbConn);
-        return StatusCode::FAIL;
+        return STATUS_CODE(kFail);
     }
 
     QString createVersionTable = "CREATE TABLE IF NOT EXISTS appInfoDbVersion(\
@@ -108,10 +106,10 @@ int checkInstalledAppDb()
         err = "fail to create appInfoDbVersion, err:" + sqlQuery.lastError().text();
         qCritical() << err;
         closeDbConnection(dbConn);
-        return StatusCode::FAIL;
+        return STATUS_CODE(kFail);
     }
     closeDbConnection(dbConn);
-    return StatusCode::SUCCESS;
+    return STATUS_CODE(kSuccess);
 }
 
 /*
@@ -123,8 +121,8 @@ int updateInstalledAppInfoDb()
 {
     QString err = "";
     QSqlDatabase dbConn;
-    if (openDatabaseConnection(dbConn) != StatusCode::SUCCESS) {
-        return StatusCode::FAIL;
+    if (STATUS_CODE(kSuccess) != openDatabaseConnection(dbConn)) {
+        return STATUS_CODE(kFail);
     }
 
     // 版本升序排列
@@ -134,7 +132,7 @@ int updateInstalledAppInfoDb()
         err = "checkAppDbUpgrade fail to exec sql:" + selectSql + ", error:" + sqlQuery.lastError().text();
         qCritical() << err;
         closeDbConnection(dbConn);
-        return StatusCode::FAIL;
+        return STATUS_CODE(kFail);
     }
 
     // sqlite3不支持size属性
@@ -159,11 +157,11 @@ int updateInstalledAppInfoDb()
             err = "checkAppDbUpgrade fail to exec sql:" + insertSql + ", error:" + sqlQuery.lastError().text();
             qCritical() << err;
             closeDbConnection(dbConn);
-            return StatusCode::FAIL;
+            return STATUS_CODE(kFail);
         }
     }
     closeDbConnection(dbConn);
-    return StatusCode::SUCCESS;
+    return STATUS_CODE(kSuccess);
 }
 
 /*
@@ -179,8 +177,8 @@ int insertAppRecord(linglong::package::AppMetaInfo *package, const QString &inst
 {
     QString err = "";
     QSqlDatabase dbConn;
-    if (openDatabaseConnection(dbConn) != StatusCode::SUCCESS) {
-        return StatusCode::FAIL;
+    if (STATUS_CODE(kSuccess) != openDatabaseConnection(dbConn)) {
+        return STATUS_CODE(kFail);
     }
 
     QSqlQuery sqlQuery(dbConn);
@@ -205,11 +203,11 @@ int insertAppRecord(linglong::package::AppMetaInfo *package, const QString &inst
         err = "insertAppRecord fail to exec sql:" + insertSql + ", error:" + sqlQuery.lastError().text();
         qCritical() << err;
         closeDbConnection(dbConn);
-        return StatusCode::FAIL;
+        return STATUS_CODE(kFail);
     }
     closeDbConnection(dbConn);
     qDebug() << "insertAppRecord app:" << package->appId << ", version:" << package->version << " success";
-    return StatusCode::SUCCESS;
+    return STATUS_CODE(kSuccess);
 }
 
 /*
@@ -227,8 +225,8 @@ int deleteAppRecord(const QString &appId, const QString &appVer, const QString &
     QString err = "";
     // 查询是否安装由调用方负责
     QSqlDatabase dbConn;
-    if (openDatabaseConnection(dbConn) != StatusCode::SUCCESS) {
-        return StatusCode::FAIL;
+    if (STATUS_CODE(kSuccess) != openDatabaseConnection(dbConn)) {
+        return STATUS_CODE(kFail);
     }
 
     // 若未指定版本，则查找最高版本
@@ -250,11 +248,11 @@ int deleteAppRecord(const QString &appId, const QString &appVer, const QString &
         err = "deleteAppRecord fail to exec sql:" + deleteSql + ", error:" + sqlQuery.lastError().text();
         qCritical() << err;
         closeDbConnection(dbConn);
-        return StatusCode::FAIL;
+        return STATUS_CODE(kFail);
     }
     closeDbConnection(dbConn);
     qDebug() << "delete app:" << appId << ", version:" << dstVer << ", arch:" << appArch << " success";
-    return StatusCode::SUCCESS;
+    return STATUS_CODE(kSuccess);
 }
 
 /*
@@ -289,7 +287,7 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
 {
     QString err = "";
     QSqlDatabase dbConn;
-    if (openDatabaseConnection(dbConn) != StatusCode::SUCCESS) {
+    if (STATUS_CODE(kSuccess) != openDatabaseConnection(dbConn)) {
         return false;
     }
     QSqlQuery sqlQuery(dbConn);
@@ -354,7 +352,7 @@ bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QStr
     }
 
     QSqlDatabase dbConn;
-    if (openDatabaseConnection(dbConn) != StatusCode::SUCCESS) {
+    if (STATUS_CODE(kSuccess) != openDatabaseConnection(dbConn)) {
         return false;
     }
 
@@ -425,7 +423,7 @@ bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QStr
 bool queryAllInstalledApp(const QString &userName, QString &result, QString &err)
 {
     QSqlDatabase dbConn;
-    if (openDatabaseConnection(dbConn) != StatusCode::SUCCESS) {
+    if (STATUS_CODE(kSuccess) != openDatabaseConnection(dbConn)) {
         err = "openDatabaseConnection err";
         return false;
     }

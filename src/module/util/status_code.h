@@ -11,8 +11,11 @@
 #pragma once
 
 namespace linglong {
-namespace dbus {
-enum class RetCode {
+namespace util {
+
+enum class StatusCode {
+    kSuccess = 0,   ///< 成功
+    kFail = 1,    ///< 失败
     DataDirNotExists, //数据目录不存在
     UapJsonFileNotExists, // uap.json不存在
     BundleFileNotExists, // uab文件不存在
@@ -34,13 +37,12 @@ enum class RetCode {
 };
 
 template<typename T = int>
-inline T RetCode(RetCode code)
+inline T statuCode(StatusCode statuCode)
 {
-    return static_cast<T>(code);
+    return static_cast<T>(statuCode);
 }
-} // namespace dbus
 
-namespace Status {
-enum StatusCode { SUCCESS = 0, FAIL = 1 };
-}
-} // namespace linglong
+}   // namespace util
+}   // namespace linglong
+
+#define STATUS_CODE(code) linglong::util::statuCode<int>(linglong::util::StatusCode::code)

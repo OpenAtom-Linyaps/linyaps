@@ -21,6 +21,7 @@
 #include <QThread>
 
 #include "module/util/singleton.h"
+#include "module/util/status_code.h"
 #include "module/package/package.h"
 #include "module/util/fs.h"
 #include "package_manager_proxy_base.h"

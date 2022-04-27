@@ -985,7 +985,7 @@ QString OstreeRepoHelper::createTmpRepo()
     }
     QString configUrl = "";
     int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
-    if (linglong::Status::StatusCode::SUCCESS != statusCode) {
+    if (STATUS_CODE(kSuccess) != statusCode) {
         return "";
     }
     QString ostreeUrl = configUrl.endsWith("/") ? configUrl.append("ostree/") : configUrl.append("/ostree/");

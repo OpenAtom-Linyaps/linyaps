@@ -91,11 +91,11 @@ util::Error BundlePrivate::make(const QString &dataPath, const QString &outputFi
 
     // 判断数据目录是否存在
     if (!util::dirExists(this->bundleDataPath)) {
-        return NewError() << RetCode(RetCode::DataDirNotExists) << this->bundleDataPath + " don't exists!";
+        return NewError() << STATUS_CODE(DataDirNotExists) << this->bundleDataPath + " don't exists!";
     }
     // 判断info.json是否存在
     if (!util::fileExists(this->bundleDataPath + QString(configJson))) {
-        return NewError() << RetCode(RetCode::UapJsonFileNotExists)
+        return NewError() << STATUS_CODE(UapJsonFileNotExists)
                              << this->bundleDataPath + QString("/info.json don't exists!!!");
     }
 
@@ -218,7 +218,7 @@ util::Error BundlePrivate::push(const QString &bundleFilePath, bool force)
 {
     // 判断uab文件是否存在
     if (!util::fileExists(bundleFilePath)) {
-        return NewError() << RetCode(RetCode::BundleFileNotExists) << bundleFilePath + " don't exists!";
+        return NewError() << STATUS_CODE(BundleFileNotExists) << bundleFilePath + " don't exists!";
     }
     // 创建临时目录
     this->tmpWorkDir = util::ensureUserDir({".linglong", QFileInfo(bundleFilePath).fileName()});
@@ -301,7 +301,7 @@ util::Error BundlePrivate::push(const QString &bundleFilePath, bool force)
     // 从配置文件获取服务器域名url
     QString configUrl = "";
     int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
-    if (Status::StatusCode::SUCCESS != statusCode) {
+    if (STATUS_CODE(kSuccess) != statusCode) {
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
         }
@@ -310,7 +310,7 @@ util::Error BundlePrivate::push(const QString &bundleFilePath, bool force)
 
     // 上传repo.tar文件
     auto retUploadRepo = G_HTTPCLIENT->uploadFile(this->tmpWorkDir + "/repo.tar", configUrl, "ostree");
-    if (Status::StatusCode::SUCCESS != retUploadRepo) {
+    if (STATUS_CODE(kSuccess) != retUploadRepo) {
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
         }
@@ -320,7 +320,7 @@ util::Error BundlePrivate::push(const QString &bundleFilePath, bool force)
 
     // 上传bundle文件
     auto retUploadBundle = G_HTTPCLIENT->uploadFile(this->bundleFilePath, configUrl, "bundle");
-    if (Status::StatusCode::SUCCESS != retUploadBundle) {
+    if (STATUS_CODE(kSuccess) != retUploadBundle) {
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
         }
@@ -340,7 +340,7 @@ util::Error BundlePrivate::push(const QString &bundleFilePath, bool force)
     doc.setObject(infoJsonObject);
 
     auto retUploadBundleInfo = G_HTTPCLIENT->pushServerBundleData(doc.toJson(), configUrl);
-    if (Status::StatusCode::SUCCESS != retUploadBundleInfo) {
+    if (STATUS_CODE(kSuccess) != retUploadBundleInfo) {
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
         }

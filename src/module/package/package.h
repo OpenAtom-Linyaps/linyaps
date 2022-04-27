@@ -25,9 +25,8 @@
 #include "module/util/fs.h"
 #include "module/util/json.h"
 #include "module/util/repo.h"
-#include "service/impl/dbus_retcode.h"
+#include "module/util/status_code.h"
 
-using linglong::dbus::RetCode;
 
 // 当前在线包对应的包名/版本/架构/uab存储URL信息
 namespace linglong {

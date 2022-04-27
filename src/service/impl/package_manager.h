@@ -21,6 +21,7 @@
 #include "module/runtime/container.h"
 #include "module/util/package_manager_param.h"
 #include "module/util/singleton.h"
+#include "module/util/status_code.h"
 #include "reply.h"
 #include "param_option.h"
 #include "package_manager_impl.h"

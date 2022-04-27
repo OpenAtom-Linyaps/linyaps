@@ -16,7 +16,7 @@
 #include <QSqlError>
 #include <QSqlQuery>
 
-#include "service/impl/dbus_retcode.h"
+#include "module/util/status_code.h"
 
 #include "module/package/package.h"
 

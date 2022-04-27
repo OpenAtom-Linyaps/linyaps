@@ -13,8 +13,6 @@
 // app 缓存有效期 分钟为单位
 const int kCacheValidTime = 10;
 
-using namespace linglong::Status;
-
 namespace linglong {
 namespace util {
 
@@ -41,9 +39,9 @@ int openCacheDbConn(QSqlDatabase &dbConn)
     if (!dbConn.isOpen() && !dbConn.open()) {
         err = "open " + appInfoCachePath + " AppInfoCache.db failed";
         qCritical() << err;
-        return StatusCode::FAIL;
+        return STATUS_CODE(kFail);
     }
-    return StatusCode::SUCCESS;
+    return STATUS_CODE(kSuccess);
 }
 
 /*
@@ -55,8 +53,8 @@ int checkAppCache()
 {
     QString err = "";
     QSqlDatabase dbConn;
-    if (openCacheDbConn(dbConn) != StatusCode::SUCCESS) {
-        return StatusCode::FAIL;
+    if (STATUS_CODE(kSuccess) != openCacheDbConn(dbConn)) {
+        return STATUS_CODE(kFail);
     }
 
     QString createCacheTable = "CREATE TABLE IF NOT EXISTS appInfo(\
@@ -70,10 +68,10 @@ int checkAppCache()
         err = "fail to create cache appinfo table, err:" + sqlQuery.lastError().text();
         qCritical() << err;
         dbConn.close();
-        return StatusCode::FAIL;
+        return STATUS_CODE(kFail);
     }
     dbConn.close();
-    return StatusCode::SUCCESS;
+    return STATUS_CODE(kSuccess);
 }
 
 /*
@@ -89,8 +87,8 @@ int queryLocalCache(const QString &key, QString &appData)
     QString err = "";
     QString selectSql = QString("SELECT * FROM appInfo WHERE key = '%1'").arg(key);
     QSqlDatabase dbConn;
-    if (openCacheDbConn(dbConn) != StatusCode::SUCCESS) {
-        return StatusCode::FAIL;
+    if (STATUS_CODE(kSuccess) != openCacheDbConn(dbConn)) {
+        return STATUS_CODE(kFail);
     }
 
     QSqlQuery sqlQuery(dbConn);
@@ -99,7 +97,7 @@ int queryLocalCache(const QString &key, QString &appData)
         err = "queryLocalCache fail to exec sql:" + selectSql + ", error:" + sqlQuery.lastError().text();
         qCritical() << err;
         dbConn.close();
-        return StatusCode::FAIL;
+        return STATUS_CODE(kFail);
     }
 
     sqlQuery.last();
@@ -109,7 +107,7 @@ int queryLocalCache(const QString &key, QString &appData)
         err = "queryLocalCache fail key:" + key + " not found";
         qDebug() << err;
         dbConn.close();
-        return StatusCode::FAIL;
+        return STATUS_CODE(kFail);
     }
     // 检查缓存结果是否有效
     QString recordTime = sqlQuery.value(3).toString().trimmed();
@@ -120,7 +118,7 @@ int queryLocalCache(const QString &key, QString &appData)
     if (current < validDate) {
         appData = sqlQuery.value(2).toString().trimmed();
         dbConn.close();
-        return StatusCode::SUCCESS;
+        return STATUS_CODE(kSuccess);
     } else {
         QString deleteSql = QString("DELETE FROM appInfo WHERE key = '%1'").arg(key);
         sqlQuery.prepare(deleteSql);
@@ -128,12 +126,12 @@ int queryLocalCache(const QString &key, QString &appData)
             err = "queryLocalCache fail to exec sql:" + deleteSql + ", error:" + sqlQuery.lastError().text();
             qCritical() << err;
             dbConn.close();
-            return StatusCode::FAIL;
+            return STATUS_CODE(kFail);
         }
     }
     dbConn.close();
     qDebug() << key << " not valid in cache";
-    return StatusCode::FAIL;
+    return STATUS_CODE(kFail);
 }
 
 /*
@@ -148,8 +146,8 @@ int updateCache(const QString &key, const QString &appData)
 {
     QString err = "";
     QSqlDatabase dbConn;
-    if (openCacheDbConn(dbConn) != StatusCode::SUCCESS) {
-        return StatusCode::FAIL;
+    if (STATUS_CODE(kSuccess) != openCacheDbConn(dbConn)) {
+        return STATUS_CODE(kFail);
     }
     // 调用方保证插入cache表前已经调用queryLocalCache查询了cache
     QString currentTime = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
@@ -163,11 +161,11 @@ int updateCache(const QString &key, const QString &appData)
         err = "updateCache fail to exec sql:" + insertSql + ", error:" + sqlQuery.lastError().text();
         qCritical() << err;
         dbConn.close();
-        return StatusCode::FAIL;
+        return STATUS_CODE(kFail);
     }
     dbConn.close();
     qDebug() << key << " update cache success";
-    return StatusCode::SUCCESS;
+    return STATUS_CODE(kSuccess);
 }
 } // namespace util
 } // namespace linglong

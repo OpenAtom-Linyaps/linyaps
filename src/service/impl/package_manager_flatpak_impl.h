@@ -13,6 +13,7 @@
 #include <QJsonArray>
 
 #include "module/util/singleton.h"
+#include "module/util/status_code.h"
 #include "module/package/package.h"
 #include "package_manager_proxy_base.h"
 #include "reply.h"

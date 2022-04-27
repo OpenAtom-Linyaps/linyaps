@@ -13,6 +13,7 @@
 #include <curl/curl.h>
 #include <QString>
 #include "module/util/singleton.h"
+#include "module/util/status_code.h"
 
 namespace linglong {
 namespace util {
@@ -144,7 +145,7 @@ public:
      * @param dnsOfLinglong: 玲珑仓库域名地址
      * @param flags: bundle：上传bundle文件  ostree： 上传repo仓库
      *
-     * @return int: SUCCESS:成功 FAIL:失败
+     * @return int: kSuccess:成功 kFail:失败
      */
     int uploadFile(const QString &filePath, const QString &dnsOfLinglong, const QString &flags);
 
@@ -154,7 +155,7 @@ public:
      * @param info: bundle文件信息
      * @param dnsOfLinglong: 玲珑仓库域名地址
      *
-     * @return int: SUCCESS:成功 FAIL:失败
+     * @return int: kSuccess:成功 kFail:失败
      */
     int pushServerBundleData(const QString &info, const QString &dnsOfLinglong);
 };

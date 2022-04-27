@@ -27,11 +27,10 @@
 
 #include "module/util/result.h"
 #include "module/util/fs.h"
+#include "module/util/status_code.h"
 #include "module/util/httpclient.h"
-#include "service/impl/dbus_retcode.h"
 #include "info.h"
 
-using linglong::dbus::RetCode;
 using namespace linglong::util;
 
 namespace linglong {

@@ -8,11 +8,11 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#ifndef LINGLONG_SRC_BUILDER_BUILDER_LINGLONG_BUILDER_H_
-#define LINGLONG_SRC_BUILDER_BUILDER_LINGLONG_BUILDER_H_
+#pragma once
 
 #include "builder.h"
 #include "module/package/bundle.h"
+#include "module/util/status_code.h"
 
 namespace linglong {
 namespace builder {
@@ -38,5 +38,3 @@ public:
 
 } // namespace builder
 } // namespace linglong
-
-#endif // LINGLONG_SRC_BUILDER_BUILDER_LINGLONG_BUILDER_H_

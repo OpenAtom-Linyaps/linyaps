@@ -22,7 +22,7 @@
 #include <QDebug>
 #include <QTemporaryFile>
 
-#include "service/impl/dbus_retcode.h"
+#include "status_code.h"
 
 namespace linglong {
 namespace util {

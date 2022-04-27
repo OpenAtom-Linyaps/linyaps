@@ -169,7 +169,7 @@ util::Error LinglongBuilder::initRepo()
         QString configUrl = "";
 
         int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
-        if (Status::StatusCode::SUCCESS != statusCode) {
+        if (STATUS_CODE(kSuccess) != statusCode) {
             return NewError() << "call getLocalConfig api failed";
         }
 

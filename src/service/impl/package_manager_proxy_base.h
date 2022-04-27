@@ -13,7 +13,6 @@
 #include <QString>
 #include <QStringList>
 
-#include "qdbus_retmsg.h"
 #include "reply.h"
 #include "param_option.h"
 #include "module/package/ref.h"

@@ -24,7 +24,6 @@
 #include "module/package/package.h"
 #include "module/util/fs.h"
 #include "package_manager_proxy_base.h"
-#include "qdbus_retmsg.h"
 #include "reply.h"
 #include "param_option.h"
 

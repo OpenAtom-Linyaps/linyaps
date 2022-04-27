@@ -6,7 +6,6 @@ set(LL_CLI_SOURCES
     ../module/runtime/oci.h
     ../module/runtime/container.h
     ../module/package/package.h
-    ../service/impl/qdbus_retmsg.h
     ../service/impl/reply.h
     ../service/impl/param_option.h
     ../module/util/singleton.h
@@ -33,8 +32,7 @@ set(LL_CLI_SOURCES
     ../module/util/xdg.cpp
     ../module/util/desktop_entry.cpp
     ../module/util/log_handler.cpp
-    ../module/package/package.cpp
-    ../service/impl/package_manager_option.h)
+    ../module/package/package.cpp)
 
 set_source_files_properties(../module/dbus_ipc/com.deepin.linglong.PackageManager.xml
                             PROPERTIES INCLUDE service/impl/json_register_inc.h)

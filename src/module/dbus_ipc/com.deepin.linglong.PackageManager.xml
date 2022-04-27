@@ -43,16 +43,15 @@
             <arg name="JobID" type="s" direction="out"/>
         </method>
         <method name="Start">
-            <arg name="PackageId" type="s" direction="in"/>
-            <arg name="paramMap" type="a{ss}" direction="in"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.In1" value="ParamStringMap"/>
-            <arg name="RetMessageList" type="a(bus)" direction="out"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="RetMessageList"/>
+            <arg name="paramOption" type="(sssssbsssss)" direction="in"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::RunParamOption"/>
+            <arg type="(is)" direction="out"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
         </method>
         <method name="Stop">
             <arg name="ContainerID" type="s" direction="in"/>
-            <arg name="RetMessageList" type="a(bus)" direction="out"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="RetMessageList"/>
+            <arg type="(is)" direction="out"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
         </method>
         <method name="ListContainer">
             <arg name="ContainerList" type="a(sxss)" direction="out"/>

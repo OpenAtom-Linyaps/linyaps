@@ -12,7 +12,6 @@
 
 #include "module/runtime/app.h"
 #include "impl/json_register_inc.h"
-#include "impl/qdbus_retmsg.h"
 #include "packagemanageradaptor.h"
 #include "jobmanageradaptor.h"
 #include "module/runtime/runtime.h"

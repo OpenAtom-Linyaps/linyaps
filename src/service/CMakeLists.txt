@@ -12,10 +12,8 @@ set(LL_SERVICE_SOURCES
     impl/package_manager_flatpak_impl.cpp
     impl/job_manager.cpp
     impl/job.cpp
-    impl/qdbus_retmsg.h
     impl/reply.h
     impl/param_option.h
-    impl/package_manager_option.h
     ../module/flatpak/flatpak_manager.cpp
     ../module/package/info.cpp
     ../module/repo/repo.cpp

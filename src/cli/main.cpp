@@ -18,7 +18,6 @@
 #include "module/util/package_manager_param.h"
 #include "service/impl/json_register_inc.h"
 #include "service/impl/package_manager.h"
-#include "service/impl/package_manager_option.h"
 #include "package_manager.h"
 #include "module/runtime/runtime.h"
 #include "module/util/app_status.h"
@@ -240,59 +239,45 @@ int main(int argc, char **argv)
                  exec = QStringList {exec, desktopArgs}.join(" ");
              }
 
+             linglong::service::RunParamOption paramOption;
              // appId format: org.deepin.calculator/1.2.6 in multi-version
              QMap<QString, QString> paramMap;
              QStringList appInfoList = appId.split("/");
+             paramOption.appId = appId;
              if (appInfoList.size() > 1) {
-                 paramMap.insert(linglong::util::kKeyVersion, appInfoList.at(1));
+                 paramOption.appId = appInfoList.at(0);
+                 paramOption.version = appInfoList.at(1);
              }
              if (!repoType.isEmpty()) {
-                 paramMap.insert(linglong::util::kKeyRepoPoint, repoType);
+                 paramOption.repoPoint = repoType;
              }
 
              if (!exec.isEmpty()) {
-                 paramMap.insert(linglong::util::kKeyExec, exec);
+                 paramOption.exec = exec;
              }
 
              // 获取用户环境变量
              QStringList envList = COMMAND_HELPER->getUserEnv(linglong::util::envList);
              if (!envList.isEmpty()) {
-                 paramMap.insert(linglong::util::kKeyEnvlist, envList.join(","));
+                 paramOption.appEnv = envList.join(",");
              }
 
              // 判断是否设置了no-proxy参数
-             if (parser.isSet(optNoProxy)) {
-                 paramMap.insert(linglong::util::kKeyNoProxy, "");
-             }
-
+             paramOption.noDbusProxy = parser.isSet(optNoProxy);
              if (!parser.isSet(optNoProxy)) {
                  // FIX to do only deal with session bus
-                 paramMap.insert(linglong::util::kKeyBusType, "session");
-                 auto nameFilter = parser.value(optNameFilter);
-                 if (!nameFilter.isEmpty()) {
-                     paramMap.insert(linglong::util::kKeyFilterName, nameFilter);
-                 }
-                 auto pathFilter = parser.value(optPathFilter);
-                 if (!pathFilter.isEmpty()) {
-                     paramMap.insert(linglong::util::kKeyFilterPath, pathFilter);
-                 }
-                 auto interfaceFilter = parser.value(optInterfaceFilter);
-                 if (!interfaceFilter.isEmpty()) {
-                     paramMap.insert(linglong::util::kKeyFilterIface, interfaceFilter);
-                 }
+                 paramOption.busType = "session";
+                 paramOption.filterName = parser.value(optNameFilter);
+                 paramOption.filterPath = parser.value(optPathFilter);
+                 paramOption.filterInterface = parser.value(optInterfaceFilter);
              }
 
-             QDBusPendingReply<RetMessageList> reply = packageManager.Start(appInfoList.at(0), paramMap);
-             reply.waitForFinished();
-             RetMessageList retMessageList = reply.value();
-             if (retMessageList.size() > 0) {
-                 auto it = retMessageList.at(0);
-                 QString prompt = "message: " + it->message;
-                 if (!it->state) {
-                     qCritical().noquote() << prompt << ", errcode:" << it->code;
-                     return -1;
-                 }
-                 qInfo().noquote() << prompt;
+             QDBusPendingReply<linglong::service::Reply> dbusReply = packageManager.Start(paramOption);
+             dbusReply.waitForFinished();
+             linglong::service::Reply reply = dbusReply.value();
+             if (reply.code != 0) {
+                 qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
+                 return -1;
              }
              return 0;
          }},
@@ -350,18 +335,15 @@ int main(int argc, char **argv)
                  return -1;
              }
              // TODO: show kill result
-             QDBusPendingReply<RetMessageList> reply = packageManager.Stop(containerId);
-             reply.waitForFinished();
-             RetMessageList retMessageList = reply.value();
-             if (retMessageList.size() > 0) {
-                 auto it = retMessageList.at(0);
-                 QString prompt = "message: " + it->message;
-                 if (!it->state) {
-                     qCritical().noquote() << prompt << ", errcode:" << it->code;
-                     return -1;
-                 }
-                 qInfo().noquote() << prompt;
+             QDBusPendingReply<linglong::service::Reply> dbusReply = packageManager.Stop(containerId);
+             dbusReply.waitForFinished();
+             linglong::service::Reply reply = dbusReply.value();
+             if (reply.code != RetCode(RetCode::ErrorPkgKillSuccess)) {
+                 qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
+                 return -1;
              }
+
+             qInfo().noquote() << reply.message;
              return 0;
          }},
         {"download", // TODO: download命令当前没用到

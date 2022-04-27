@@ -39,8 +39,6 @@ set(LL_TEST_SOURCES
     ../src/module/package/package.h
     ../src/module/package/info.h
     ../src/module/package/package.cpp
-    ../src/service/impl/qdbus_retmsg.h
-    ../src/service/impl/package_manager_option.h
     ../src/service/impl/param_option.h
     ../src/service/impl/reply.h
     ../src/module/util/sysinfo.cpp

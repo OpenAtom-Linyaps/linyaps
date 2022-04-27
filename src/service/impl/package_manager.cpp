@@ -188,53 +188,82 @@ QString PackageManager::Import(const QStringList &packagePathList)
 /*
  * 执行软件包
  *
- * @param packageId: 软件包的appId
- * @param paramMap: 运行参数信息
+ * @param paramOption 启动命令参数
  *
- * @return RetMessageList: 运行结果信息
+ * @return linglong::service::Reply: 运行结果信息
  */
-RetMessageList PackageManager::Start(const QString &packageId, const ParamStringMap &paramMap)
+linglong::service::Reply PackageManager::Start(const linglong::service::RunParamOption &paramOption)
 {
     Q_D(PackageManager);
 
-    RetMessageList retMsg;
-    auto info = QPointer<RetMessage>(new RetMessage);
-
-    // 获取版本信息
-    QString version = "";
-    if (!paramMap.empty() && paramMap.contains(linglong::util::kKeyVersion)) {
-        version = paramMap[linglong::util::kKeyVersion];
+    linglong::service::QueryReply reply;
+    reply.code = 0;
+    QString appId = paramOption.appId.trimmed();
+    if (appId.isNull() || appId.isEmpty()) {
+        reply.code = RetCode(RetCode::user_input_param_err);
+        reply.message = "appId input err";
+        qCritical() << reply.message;
+        return reply;
     }
 
+    QString arch = paramOption.arch.trimmed();
+    if (arch.isNull() || arch.isEmpty()) {
+        arch = hostArch();
+    }
+
+    ParamStringMap paramMap;
+    // 获取版本信息
+    QString version = "";
+    if (!paramOption.version.isEmpty()) {
+        version = paramOption.version.trimmed();
+    }
+
+    if (paramOption.noDbusProxy) {
+        paramMap.insert(linglong::util::kKeyNoProxy, "");
+    }
+
+    if (!paramOption.noDbusProxy) {
+        // FIX to do only deal with session bus
+        paramMap.insert(linglong::util::kKeyBusType, paramOption.busType);
+        auto nameFilter = paramOption.filterName.trimmed();
+        if (!nameFilter.isEmpty()) {
+            paramMap.insert(linglong::util::kKeyFilterName, nameFilter);
+        }
+        auto pathFilter = paramOption.filterPath.trimmed();
+        if (!pathFilter.isEmpty()) {
+            paramMap.insert(linglong::util::kKeyFilterPath, pathFilter);
+        }
+        auto interfaceFilter = paramOption.filterInterface.trimmed();
+        if (!interfaceFilter.isEmpty()) {
+            paramMap.insert(linglong::util::kKeyFilterIface, interfaceFilter);
+        }
+    }
     // 获取user env list
     QStringList userEnvList;
-    if (!paramMap.empty() && paramMap.contains(linglong::util::kKeyEnvlist)) {
-        userEnvList = paramMap[linglong::util::kKeyEnvlist].split(",");
+    if (!paramOption.appEnv.isEmpty()) {
+        userEnvList = paramOption.appEnv.split(",");
     }
 
     // 获取exec参数
     QString desktopExec;
     desktopExec.clear();
-    if (!paramMap.empty() && paramMap.contains(linglong::util::kKeyExec)) {
-        desktopExec = paramMap[linglong::util::kKeyExec];
+    if (!paramOption.exec.isEmpty()) {
+        desktopExec = paramOption.exec;
     }
 
     // 判断是否已安装
-    QString err = "";
-    if (!getAppInstalledStatus(packageId, version, "", "")) {
-        err = packageId + " not installed";
-        qCritical() << err;
-        info->setcode(RetCode(RetCode::pkg_not_installed));
-        info->setmessage(err);
-        info->setstate(false);
-        retMsg.push_back(info);
-        return retMsg;
+    if (!getAppInstalledStatus(appId, version, "", "")) {
+        reply.message = appId + " not installed";
+        qCritical() << reply.message;
+        reply.code = RetCode(RetCode::pkg_not_installed);
+        return reply;
     }
+    QString repoPoint = paramOption.repoPoint;
     JobManager::instance()->CreateJob([=]() {
         // 判断是否存在
-        linglong::package::Ref ref("", packageId, version, hostArch());
+        linglong::package::Ref ref("", appId, version, arch);
 
-        bool isFlatpakApp = !paramMap.empty() && paramMap.contains(linglong::util::kKeyRepoPoint);
+        bool isFlatpakApp = "flatpak" == repoPoint;
 
         auto app = linglong::runtime::App::load(&d->repo, ref, desktopExec, isFlatpakApp);
         if (nullptr == app) {
@@ -249,7 +278,7 @@ RetMessageList PackageManager::Start(const QString &packageId, const ParamString
         d->apps.erase(it);
         app->deleteLater();
     });
-    return retMsg;
+    return reply;
 }
 
 /*
@@ -257,37 +286,32 @@ RetMessageList PackageManager::Start(const QString &packageId, const ParamString
  *
  * @param containerId: 应用启动对应的容器Id
  *
- * @return RetMessageList 执行结果信息
+ * @return linglong::service::Reply 执行结果信息
  */
-RetMessageList PackageManager::Stop(const QString &containerId)
+linglong::service::Reply PackageManager::Stop(const QString &containerId)
 {
     Q_D(PackageManager);
 
-    RetMessageList retMsg;
-    auto info = QPointer<RetMessage>(new RetMessage);
-    QString err = "";
+    linglong::service::Reply reply;
     auto it = d->apps.find(containerId);
     if (it == d->apps.end()) {
-        err = "containerId:" + containerId + " not exist";
-        qCritical() << err;
-        info->setcode(RetCode(RetCode::user_input_param_err));
-        info->setmessage(err);
-        info->setstate(false);
-        retMsg.push_back(info);
-        return retMsg;
+        reply.code = RetCode(RetCode::user_input_param_err);
+        reply.message = "containerId:" + containerId + " not exist";
+        qCritical() << reply.message;
+        return reply;
     }
     auto app = it->data();
     pid_t pid = app->container()->pid;
     int ret = kill(pid, SIGKILL);
     if (ret != 0) {
-        err = "kill container failed, containerId:" + containerId;
-        info->setcode(RetCode(RetCode::ErrorPkgKillFailed));
-        info->setmessage(err);
-        info->setstate(false);
-        retMsg.push_back(info);
+        reply.message = "kill container failed, containerId:" + containerId;
+        reply.code = RetCode(RetCode::ErrorPkgKillFailed);
+    } else {
+        reply.code = RetCode(RetCode::ErrorPkgKillSuccess);
+        reply.message = "kill app:" + app->container()->packageName + " success";
     }
     qInfo() << "kill containerId:" << containerId << ",ret:" << ret;
-    return retMsg;
+    return reply;
 }
 
 ContainerList PackageManager::ListContainer()

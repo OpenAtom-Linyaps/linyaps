@@ -62,6 +62,7 @@ enum class RetCode {
     ErrorPkgUpdateFailed,
     ErrorPkgUpdateSuccess,
     ErrorPkgKillFailed,
+    ErrorPkgKillSuccess, // kill成功
     ErrorPkgQuerySuccess, // 查询成功
     ErrorPkgQueryFailed // 查询失败
 };

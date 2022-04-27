@@ -21,12 +21,10 @@
 #include "module/runtime/container.h"
 #include "module/util/package_manager_param.h"
 #include "module/util/singleton.h"
-#include "qdbus_retmsg.h"
 #include "reply.h"
 #include "param_option.h"
 #include "package_manager_impl.h"
 #include "package_manager_flatpak_impl.h"
-#include "package_manager_option.h"
 
 class PackageManagerPrivate; /**< forward declaration PackageManagerPrivate */
 
@@ -124,24 +122,20 @@ public Q_SLOTS:
     /**
      * @brief 运行应用
      *
-     * @param packageId 应用appId
-     * @param paramMap 运行命令参数 \n
-     *        key为version时，value范围不涉及，用于运行指定版本应用 \n
-     *        key为repo-point，value为flatpak，用于运行flatpak类型应用 \n
-     *        key为no-proxy，value为""，用于以非代理模式运行应用
+     * @param paramOption 启动命令参数
      *
-     * @return RetMessageList 同Install
+     * @return linglong::service::Reply 同Install
      */
-    RetMessageList Start(const QString &packageId, const ParamStringMap &paramMap = {});
+    linglong::service::Reply Start(const linglong::service::RunParamOption &paramOption);
 
     /**
      * @brief 退出应用
      *
      * @param containerId 运行应用容器对应的Id（使用ListContainer查询）
      *
-     * @return RetMessageList 同Install
+     * @return linglong::service::Reply 执行结果信息
      */
-    RetMessageList Stop(const QString &containerId);
+    linglong::service::Reply Stop(const QString &containerId);
 
     /**
      * @brief 查询正在运行的应用信息

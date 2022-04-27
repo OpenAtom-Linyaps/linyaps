@@ -122,8 +122,8 @@ public:
 inline QDBusArgument &operator<<(QDBusArgument &argument, const UninstallParamOption &paramOption)
 {
     argument.beginStructure();
-    argument << paramOption.appId << paramOption.version << paramOption.arch
-             << paramOption.nodbus << paramOption.repoPoint;
+    argument << paramOption.appId << paramOption.version << paramOption.arch << paramOption.nodbus
+             << paramOption.repoPoint;
     argument.endStructure();
     return argument;
 }
@@ -131,8 +131,41 @@ inline QDBusArgument &operator<<(QDBusArgument &argument, const UninstallParamOp
 inline const QDBusArgument &operator>>(const QDBusArgument &argument, UninstallParamOption &paramOption)
 {
     argument.beginStructure();
-    argument >> paramOption.appId >> paramOption.version >> paramOption.arch
-        >> paramOption.nodbus >> paramOption.repoPoint;
+    argument >> paramOption.appId >> paramOption.version >> paramOption.arch >> paramOption.nodbus
+        >> paramOption.repoPoint;
+    argument.endStructure();
+    return argument;
+}
+
+class RunParamOption : public ParamOption
+{
+public:
+    QString exec;
+    QString repoPoint;
+    bool noDbusProxy = false;
+    QString busType = "session";
+    QString filterName;
+    QString filterPath;
+    QString filterInterface;
+    QString appEnv;
+};
+
+inline QDBusArgument &operator<<(QDBusArgument &argument, const RunParamOption &paramOption)
+{
+    argument.beginStructure();
+    argument << paramOption.appId << paramOption.version << paramOption.arch << paramOption.exec
+             << paramOption.repoPoint << paramOption.noDbusProxy << paramOption.busType << paramOption.filterName
+             << paramOption.filterPath << paramOption.filterInterface << paramOption.appEnv;
+    argument.endStructure();
+    return argument;
+}
+
+inline const QDBusArgument &operator>>(const QDBusArgument &argument, RunParamOption &paramOption)
+{
+    argument.beginStructure();
+    argument >> paramOption.appId >> paramOption.version >> paramOption.arch >> paramOption.exec
+        >> paramOption.repoPoint >> paramOption.noDbusProxy >> paramOption.busType >> paramOption.filterName
+        >> paramOption.filterPath >> paramOption.filterInterface >> paramOption.appEnv;
     argument.endStructure();
     return argument;
 }
@@ -145,3 +178,4 @@ Q_DECLARE_METATYPE(linglong::service::DownloadParamOption)
 Q_DECLARE_METATYPE(linglong::service::InstallParamOption)
 Q_DECLARE_METATYPE(linglong::service::QueryParamOption)
 Q_DECLARE_METATYPE(linglong::service::UninstallParamOption)
+Q_DECLARE_METATYPE(linglong::service::RunParamOption)

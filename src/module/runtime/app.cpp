@@ -278,10 +278,13 @@ public:
                 // 特殊挂载扫雷
                 if ("org.gnome.gnome-mines" == appId) {
                     mountMap.push_back({appRootPath + "/files/share/gnome-mines", "/usr/share/gnome-mines"});
+                    mountMap.push_back({appRootPath + "/files/share/locale", "/usr/share/locale"});
+                    mountMap.push_back({appRootPath + "/files/share/help", "/usr/share/help"});
                 }
                 // 特殊挂载图像查看器翻译文件
                 if ("org.gnome.eog" == appId) {
                     mountMap.push_back({appRootPath + "/files/share/locale", "/usr/share/locale"});
+                    mountMap.push_back({appRootPath + "/files/share/help", "/usr/share/help"});
                 }
                 // 特殊挂载贪吃蛇翻译文件与配置目录
                 if ("com.game.gnome-nibbles" == appId) {
@@ -292,18 +295,21 @@ public:
                 if ("org.gnome.iagno" == appId) {
                     mountMap.push_back({appRootPath + "/files/locale", "/usr/share/locale"});
                     mountMap.push_back({appRootPath + "/files/iagno", "/usr/share/iagno"});
+                    mountMap.push_back({appRootPath + "/files/help", "/usr/share/help"});
                 }
                 // 特殊挂载对对碰配置目录与翻译文件
                 if ("org.gnome.gnome-mahjongg" == appId) {
                     mountMap.push_back({appRootPath + "/files/share/appdata", "/usr/share/appdata"});
                     mountMap.push_back({appRootPath + "/files/share/gnome-mahjongg", "/usr/share/gnome-mahjongg"});
                     mountMap.push_back({appRootPath + "/files/share/locale", "/usr/share/locale"});
+                    mountMap.push_back({appRootPath + "/files/share/help", "/usr/share/help"});
                 }
                 // 特殊挂载国际象棋配置目录与翻译文件
                 if ("org.gnome.gnome-chess" == appId) {
                     mountMap.push_back({appRootPath + "/files/etc", "/etc"});
                     mountMap.push_back({appRootPath + "/files/gnome-chess", "/usr/share/gnome-chess"});
                     mountMap.push_back({appRootPath + "/files/locale", "/usr/share/locale"});
+                    mountMap.push_back({appRootPath + "/files/help", "/usr/share/help"});
                 }
             }
         } else {

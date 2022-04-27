@@ -14,6 +14,7 @@
 #include <future>
 
 #include "src/module/package/package.h"
+#include "src/module/util/app_status.h"
 #include "src/service/impl/json_register_inc.h"
 #include "src/service/impl/param_option.h"
 #include "src/service/impl/reply.h"
@@ -81,8 +82,7 @@ TEST(Package, install01)
     linglong::service::registerAllMetaType();
     linglong::package::registerAllMetaType();
 
-    ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager",
-                                                "/com/deepin/linglong/PackageManager",
+    ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());
     // call dbus
     linglong::service::InstallParamOption installParam;
@@ -102,8 +102,7 @@ TEST(Package, install02)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager",
-                                                "/com/deepin/linglong/PackageManager",
+    ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());
     // call dbus
     linglong::service::InstallParamOption installParam;
@@ -112,20 +111,21 @@ TEST(Package, install02)
     linglong::service::QueryParamOption paramOption;
     paramOption.appId = "installed";
     // 查询是否已安装
-    QDBusPendingReply<linglong::package::AppMetaInfoList> replyQuery = pm.Query(paramOption);
-    replyQuery.waitForFinished();
+    linglong::package::AppMetaInfoList retMsg;
+    QDBusPendingReply<linglong::service::QueryReply> dbusQuery = pm.Query(paramOption);
+    dbusQuery.waitForFinished();
+    linglong::service::QueryReply reply = dbusQuery.value();
+    linglong::util::getAppMetaInfoListByJson(reply.result, retMsg);
     bool expectRet = true;
-    linglong::package::AppMetaInfoList queryMsg = replyQuery.value();
-    for (auto const &it : queryMsg) {
+    for (auto const &it : retMsg) {
         if (it->appId == "org.deepin.calculator") {
             expectRet = false;
             break;
         }
     }
-    QDBusPendingReply<linglong::service::Reply> reply = pm.Install(installParam);
-    reply.waitForFinished();
-    linglong::service::Reply retReply = reply.value();
-    reply.waitForFinished();
+    QDBusPendingReply<linglong::service::Reply> dbusReply = pm.Install(installParam);
+    dbusReply.waitForFinished();
+    linglong::service::Reply retReply = dbusReply.value();
 
     bool connect = getConnectStatus();
     if (!connect) {
@@ -148,16 +148,17 @@ TEST(Package, query01)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager",
-                                                "/com/deepin/linglong/PackageManager",
+    ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());
     // test app not in repo
     linglong::service::QueryParamOption paramOption;
     paramOption.appId = "test.deepin.test";
 
-    QDBusPendingReply<linglong::package::AppMetaInfoList> reply = pm.Query(paramOption);
-    reply.waitForFinished();
-    linglong::package::AppMetaInfoList retMsg = reply.value();
+    linglong::package::AppMetaInfoList retMsg;
+    QDBusPendingReply<linglong::service::QueryReply> dbusReply = pm.Query(paramOption);
+    dbusReply.waitForFinished();
+    linglong::service::QueryReply reply = dbusReply.value();
+    linglong::util::getAppMetaInfoListByJson(reply.result, retMsg);
     bool ret = retMsg.size() == 0 ? true : false;
     EXPECT_EQ(ret, true);
     // stop service
@@ -171,16 +172,17 @@ TEST(Package, query02)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager",
-                                                "/com/deepin/linglong/PackageManager",
+    ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());
     // test app not in repo
     linglong::service::QueryParamOption paramOption;
     paramOption.appId = QString();
 
-    QDBusPendingReply<linglong::package::AppMetaInfoList> reply = pm.Query(paramOption);
-    reply.waitForFinished();
-    linglong::package::AppMetaInfoList retMsg = reply.value();
+    linglong::package::AppMetaInfoList retMsg;
+    QDBusPendingReply<linglong::service::QueryReply> dbusReply = pm.Query(paramOption);
+    dbusReply.waitForFinished();
+    linglong::service::QueryReply reply = dbusReply.value();
+    linglong::util::getAppMetaInfoListByJson(reply.result, retMsg);
     bool ret = retMsg.size() == 0 ? true : false;
     EXPECT_EQ(ret, true);
     // stop service
@@ -273,16 +275,17 @@ TEST(Package, list01)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager",
-                                                "/com/deepin/linglong/PackageManager",
+    ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());
     // test app not in repo
     linglong::service::QueryParamOption paramOption;
     paramOption.appId = "";
 
-    QDBusPendingReply<linglong::package::AppMetaInfoList> reply = pm.Query(paramOption);
-    reply.waitForFinished();
-    linglong::package::AppMetaInfoList retMsg = reply.value();
+    linglong::package::AppMetaInfoList retMsg;
+    QDBusPendingReply<linglong::service::QueryReply> dbusReply = pm.Query(paramOption);
+    dbusReply.waitForFinished();
+    linglong::service::QueryReply reply = dbusReply.value();
+    linglong::util::getAppMetaInfoListByJson(reply.result, retMsg);
     bool ret = retMsg.size() == 0 ? true : false;
     EXPECT_EQ(ret, true);
     // stop service
@@ -296,14 +299,15 @@ TEST(Package, list02)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager",
-                                                "/com/deepin/linglong/PackageManager",
+    ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager",
                                                 QDBusConnection::sessionBus());
     linglong::service::QueryParamOption paramOption;
     paramOption.appId = "installed";
-    QDBusPendingReply<linglong::package::AppMetaInfoList> reply = pm.Query(paramOption);
-    reply.waitForFinished();
-    linglong::package::AppMetaInfoList retMsg = reply.value();
+    linglong::package::AppMetaInfoList retMsg;
+    QDBusPendingReply<linglong::service::QueryReply> dbusReply = pm.Query(paramOption);
+    dbusReply.waitForFinished();
+    linglong::service::QueryReply reply = dbusReply.value();
+    linglong::util::getAppMetaInfoListByJson(reply.result, retMsg);
     bool ret = retMsg.size() > 0 ? true : false;
 
     QString dbPath = "/deepin/linglong/layers/InstalledAppInfo.db";

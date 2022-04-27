@@ -25,7 +25,7 @@ public:
     virtual linglong::service::Reply Download(const linglong::service::DownloadParamOption &downloadParamOption) = 0;
     virtual linglong::service::Reply Install(const linglong::service::InstallParamOption &installParamOption) = 0;
     virtual linglong::service::Reply Uninstall(const linglong::service::UninstallParamOption &paramOption) = 0;
-    virtual linglong::package::AppMetaInfoList Query(const linglong::service::QueryParamOption &paramOption) = 0;
+    virtual linglong::service::QueryReply Query(const linglong::service::QueryParamOption &paramOption) = 0;
 
     // TODO: move PackageManagerProxyBase to namespace
     // TODO: need pure virtual

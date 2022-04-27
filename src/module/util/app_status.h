@@ -11,6 +11,7 @@
 #pragma once
 
 #include <QDateTime>
+#include <QJsonArray>
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
@@ -115,9 +116,21 @@ bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QStr
  * 查询所有已安装软件包信息
  *
  * @param userName: 用户名
+ * @param result: 查询结果
+ * @param err: 错误信息
  *
- * @return linglong::package::AppMetaInfoList:查询结果
+ * @return bool: true: 成功 false: 失败
  */
-linglong::package::AppMetaInfoList queryAllInstalledApp(const QString &userName = "");
+bool queryAllInstalledApp(const QString &userName, QString &result, QString &err);
+
+/**
+ * @brief 将json字符串转化为软件包列表
+ *
+ * @param jsonString json字符串
+ * @param appList 软件包元信息列表
+ *
+ * @return bool: true: 成功 false: 失败
+ */
+bool getAppMetaInfoListByJson(const QString &jsonString, linglong::package::AppMetaInfoList &appList);
 } // namespace util
 } // namespace linglong

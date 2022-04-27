@@ -36,41 +36,48 @@ PackageManagerFlatpakImpl::Install(const linglong::service::InstallParamOption &
  *
  * @param paramOption: 查询参数
  *
- * @return linglong::package::AppMetaInfoList 查询结果列表
+ * @return QueryReply dbus方法调用应答
  */
-linglong::package::AppMetaInfoList
-PackageManagerFlatpakImpl::Query(const linglong::service::QueryParamOption &paramOption)
+linglong::service::QueryReply PackageManagerFlatpakImpl::Query(const linglong::service::QueryParamOption &paramOption)
 {
-    linglong::package::AppMetaInfoList pkglist;
-    auto info = QPointer<linglong::package::AppMetaInfo>(new linglong::package::AppMetaInfo);
-
+    linglong::service::QueryReply reply;
     QString appId = paramOption.appId.trimmed();
     if (appId.isNull() || appId.isEmpty()) {
-        qCritical() << "appId input err";
-        return {};
+        reply.code = RetCode(RetCode::user_input_param_err);
+        reply.message = "appId input err";
+        qCritical() << reply.message;
+        return reply;
     }
 
     QProcess proc;
     QStringList argStrList;
+    QJsonObject appItem;
     if ("installed" == appId) {
         argStrList << "list";
-        info->appId = "flatpaklist";
+        appItem["appId"] = "flatpaklist";
     } else {
         argStrList << "search" << appId;
-        info->appId = "flatpakquery";
+        appItem["appId"] = "flatpakquery";
     }
     proc.start("flatpak", argStrList);
     if (!proc.waitForStarted()) {
-        qCritical() << "flatpak not installed";
-        return pkglist;
+        reply.code = RetCode(RetCode::ErrorPkgQueryFailed);
+        reply.message = "flatpak not installed";
+        qCritical() << reply.message;
+        return reply;
     }
     proc.waitForFinished(1000 * 60 * 5);
     QString ret = proc.readAllStandardOutput();
     auto retCode = proc.exitCode();
-    qInfo() << "flatpak Query " << appId << ", exitStatus:" << proc.exitStatus() << ", retCode:" << retCode;
-    info->description = ret;
-    pkglist.push_back(info);
-    return pkglist;
+    qInfo() << "flatpak query " << appId << ", exitStatus:" << proc.exitStatus() << ", retCode:" << retCode;
+    QJsonArray appList;
+    appItem["description"] = ret;
+    appList.append(appItem);
+    QJsonDocument document = QJsonDocument(appList);
+    reply.code = RetCode(RetCode::ErrorPkgQuerySuccess);
+    reply.message = "flatpak query " + appId + " success";
+    reply.result = QString(document.toJson());
+    return reply;
 }
 
 /*

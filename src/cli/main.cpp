@@ -13,7 +13,6 @@
 #include <QCommandLineOption>
 #include <QMap>
 
-// #include "cmd/cmd.h"
 #include "cmd/command_helper.h"
 #include "module/package/package.h"
 #include "module/util/package_manager_param.h"
@@ -22,6 +21,7 @@
 #include "service/impl/package_manager_option.h"
 #include "package_manager.h"
 #include "module/runtime/runtime.h"
+#include "module/util/app_status.h"
 #include "module/util/xdg.h"
 #include "module/util/env.h"
 #include "module/util/log_handler.h"
@@ -511,9 +511,11 @@ int main(int argc, char **argv)
              paramOption.force = parser.isSet(optNoCache);
              paramOption.repoPoint = repoType;
              paramOption.appId = args.value(1);
-             QDBusPendingReply<linglong::package::AppMetaInfoList> reply = packageManager.Query(paramOption);
-             reply.waitForFinished();
-             linglong::package::AppMetaInfoList appMetaInfoList = reply.value();
+             linglong::package::AppMetaInfoList appMetaInfoList;
+             QDBusPendingReply<linglong::service::QueryReply> dbusReply = packageManager.Query(paramOption);
+             dbusReply.waitForFinished();
+             linglong::service::QueryReply reply = dbusReply.value();
+             linglong::util::getAppMetaInfoListByJson(reply.result, appMetaInfoList);
              if (1 == appMetaInfoList.size() && "flatpakquery" == appMetaInfoList.at(0)->appId) {
                  printFlatpakAppInfo(appMetaInfoList);
              } else {
@@ -596,10 +598,12 @@ int main(int argc, char **argv)
              linglong::service::QueryParamOption paramOption;
              paramOption.appId = optPara;
              paramOption.repoPoint = repoType;
-             QDBusPendingReply<linglong::package::AppMetaInfoList> reply = packageManager.Query(paramOption);
+             linglong::package::AppMetaInfoList appMetaInfoList;
+             QDBusPendingReply<linglong::service::QueryReply> dbusReply = packageManager.Query(paramOption);
              // 默认超时时间为25s
-             reply.waitForFinished();
-             linglong::package::AppMetaInfoList appMetaInfoList = reply.value();
+             dbusReply.waitForFinished();
+             linglong::service::QueryReply reply = dbusReply.value();
+             linglong::util::getAppMetaInfoListByJson(reply.result, appMetaInfoList);
              if (1 == appMetaInfoList.size() && "flatpaklist" == appMetaInfoList.at(0)->appId) {
                  printFlatpakAppInfo(appMetaInfoList);
              } else {

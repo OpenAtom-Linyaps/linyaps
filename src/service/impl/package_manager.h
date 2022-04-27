@@ -106,18 +106,12 @@ public Q_SLOTS:
      *
      * @param paramOption 查询命令参数
      *
-     * @return AppMetaInfoList 查询结果信息 \n
-     *         appId 软件包appId \n
-     *         name  软件包名称 \n
-     *         version 软件包版本号 \n
-     *         kind  软件包类型，app和runtime \n
-     *         runtime 软件包依赖的runtime对应的appId \n
-     *         uabUrl 软件包对应的uab存储地址 \n
-     *         repoName 软件包所属远端仓库名称 \n
-     *         description 软件包描述信息 \n
-     *         user 安装应用对应的用户
+     * @return QueryReply dbus方法调用应答 \n
+     *         code 状态码 \n
+     *         message 状态信息 \n
+     *         result 查询结果
      */
-    linglong::package::AppMetaInfoList Query(const linglong::service::QueryParamOption &paramOption);
+    linglong::service::QueryReply Query(const linglong::service::QueryParamOption &paramOption);
 
     /**
      * @brief

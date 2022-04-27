@@ -35,7 +35,31 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, Reply &rep
     argument.endStructure();
     return argument;
 }
+
+class QueryReply : public Reply
+{
+public:
+    // 查询结果为一个json字符串 失败场景为空串
+    QString result;
+};
+
+inline QDBusArgument &operator<<(QDBusArgument &argument, const QueryReply &reply)
+{
+    argument.beginStructure();
+    argument << reply.code << reply.message << reply.result;
+    argument.endStructure();
+    return argument;
+}
+inline const QDBusArgument &operator>>(const QDBusArgument &argument, QueryReply &reply)
+{
+    argument.beginStructure();
+    argument >> reply.code >> reply.message >> reply.result;
+    argument.endStructure();
+    return argument;
+}
+
 } // namespace service
 } // namespace linglong
 
 Q_DECLARE_METATYPE(linglong::service::Reply)
+Q_DECLARE_METATYPE(linglong::service::QueryReply)

@@ -29,6 +29,7 @@ inline void registerAllMetaType()
 {
     qJsonRegister<RetMessage>();
     qDBusRegisterMetaType<linglong::service::Reply>();
+    qDBusRegisterMetaType<linglong::service::QueryReply>();
     qDBusRegisterMetaType<linglong::service::ParamOption>();
     qDBusRegisterMetaType<linglong::service::DownloadParamOption>();
     qDBusRegisterMetaType<linglong::service::InstallParamOption>();

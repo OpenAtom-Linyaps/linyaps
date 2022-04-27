@@ -35,8 +35,8 @@
         <method name="Query">
             <arg name="paramOption" type="(sssbs)" direction="in"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::QueryParamOption"/>
-            <arg name="linglong::package::AppMetaInfoList" type="a(s)" direction="out"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::package::AppMetaInfoList"/>
+            <arg type="(iss)" direction="out"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::QueryReply"/>
         </method>
         <method name="Import">
             <arg name="PackageFileList" type="as" direction="in"/>

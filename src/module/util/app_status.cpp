@@ -417,19 +417,20 @@ bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QStr
  * 查询所有已安装软件包信息
  *
  * @param userName: 用户名
+ * @param result: 查询结果
+ * @param err: 错误信息
  *
- * @return linglong::package::AppMetaInfoList:查询结果
+ * @return bool: true: 成功 false: 失败
  */
-linglong::package::AppMetaInfoList queryAllInstalledApp(const QString &userName)
+bool queryAllInstalledApp(const QString &userName, QString &result, QString &err)
 {
-    QString err = "";
     QSqlDatabase dbConn;
     if (openDatabaseConnection(dbConn) != StatusCode::SUCCESS) {
-        return {};
+        err = "openDatabaseConnection err";
+        return false;
     }
     QSqlQuery sqlQuery(dbConn);
 
-    linglong::package::AppMetaInfoList pkglist;
     // 默认不查找版本
     QString selectSql = "";
     if (userName.isEmpty()) {
@@ -442,19 +443,53 @@ linglong::package::AppMetaInfoList queryAllInstalledApp(const QString &userName)
         err = "queryAllInstalledApp fail to exec sql:" + selectSql + ", error:" + sqlQuery.lastError().text();
         qCritical() << err;
         closeDbConnection(dbConn);
-        return {};
+        return false;
     }
+    QJsonArray appList;
     while (sqlQuery.next()) {
-        auto info = QPointer<linglong::package::AppMetaInfo>(new linglong::package::AppMetaInfo);
-        info->appId = sqlQuery.value(1).toString().trimmed();
-        info->name = sqlQuery.value(2).toString().trimmed();
-        info->version = sqlQuery.value(3).toString().trimmed();
-        info->arch = sqlQuery.value(4).toString().trimmed();
-        info->description = sqlQuery.value(9).toString().trimmed();
-        pkglist.push_back(info);
+        QJsonObject appItem;
+        appItem["appId"] = sqlQuery.value(1).toString().trimmed();
+        appItem["name"] = sqlQuery.value(2).toString().trimmed();
+        appItem["version"] = sqlQuery.value(3).toString().trimmed();
+        appItem["arch"] = sqlQuery.value(4).toString().trimmed();
+        appItem["kind"] = sqlQuery.value(5).toString().trimmed();
+        appItem["runtime"] = sqlQuery.value(6).toString().trimmed();
+        appItem["uabUrl"] = sqlQuery.value(7).toString().trimmed();
+        appItem["repoName"] = sqlQuery.value(8).toString().trimmed();
+        appItem["description"] = sqlQuery.value(9).toString().trimmed();
+        appList.append(appItem);
     }
     closeDbConnection(dbConn);
-    return pkglist;
+    QJsonDocument document = QJsonDocument(appList);
+    result = QString(document.toJson());
+    return true;
 }
+
+/**
+ * @brief 将json字符串转化为软件包列表
+ *
+ * @param jsonString json字符串
+ * @param appList 软件包元信息列表
+ *
+ * @return bool: true: 成功 false: 失败
+ */
+bool getAppMetaInfoListByJson(const QString &jsonString, linglong::package::AppMetaInfoList &appList)
+{
+    QJsonParseError parseJsonErr;
+    QJsonDocument document = QJsonDocument::fromJson(jsonString.toUtf8(), &parseJsonErr);
+    if (jsonString.isEmpty() || QJsonParseError::NoError != parseJsonErr.error) {
+        qDebug() << "parse json data err " << jsonString;
+        return false;
+    }
+    QJsonArray array(document.array());
+    for (int i = 0; i < array.size(); ++i) {
+        QJsonObject dataObj = array.at(i).toObject();
+        const QString jsonItem = QString(QJsonDocument(dataObj).toJson(QJsonDocument::Compact));
+        auto appItem = linglong::util::loadJSONString<linglong::package::AppMetaInfo>(jsonItem);
+        appList.push_back(appItem);
+    }
+    return true;
+}
+
 } // namespace util
 } // namespace linglong

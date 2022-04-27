@@ -58,13 +58,15 @@ enum class RetCode {
     pkg_install_success, // 安装成功
     pkg_install_failed, // 安装失败
     pkg_uninstall_success, // 卸载成功
-    pkg_uninstall_failed,  // 卸载失败
+    pkg_uninstall_failed, // 卸载失败
     ErrorPkgUpdateFailed,
     ErrorPkgUpdateSuccess,
-    ErrorPkgKillFailed
+    ErrorPkgKillFailed,
+    ErrorPkgQuerySuccess, // 查询成功
+    ErrorPkgQueryFailed // 查询失败
 };
 template <typename T=int>
-inline T RetCode(RetCode code){
+inline T RetCode(RetCode code) {
     return static_cast<T>(code);
 }
 } // namespace dbus

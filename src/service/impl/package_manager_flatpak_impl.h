@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include <QJsonArray>
+
 #include "module/util/singleton.h"
 #include "module/package/package.h"
 #include "package_manager_proxy_base.h"
@@ -25,5 +27,5 @@ public:
     linglong::service::Reply Download(const linglong::service::DownloadParamOption &downloadParamOption) { return linglong::service::Reply(); }
     linglong::service::Reply Install(const linglong::service::InstallParamOption &installParamOption);
     linglong::service::Reply Uninstall(const linglong::service::UninstallParamOption &paramOption);
-    linglong::package::AppMetaInfoList Query(const linglong::service::QueryParamOption &paramOption);
+    linglong::service::QueryReply Query(const linglong::service::QueryParamOption &paramOption);
 };

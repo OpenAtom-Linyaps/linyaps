@@ -156,18 +156,20 @@ QString PackageManager::UpdateAll()
  *
  * @param paramOption 查询命令参数
  *
- * @return linglong::package::AppMetaInfoList 查询结果列表
+ * @return QueryReply dbus方法调用应答
  */
-linglong::package::AppMetaInfoList PackageManager::Query(const linglong::service::QueryParamOption &paramOption)
+linglong::service::QueryReply PackageManager::Query(const linglong::service::QueryParamOption &paramOption)
 {
     if ("flatpak" == paramOption.repoPoint) {
         return PackageManagerFlatpakImpl::instance()->Query(paramOption);
     }
-
+    linglong::service::QueryReply reply;
     QString appId = paramOption.appId.trimmed();
     if (appId.isNull() || appId.isEmpty()) {
-        qCritical() << "appId input err";
-        return {};
+        reply.code = RetCode(RetCode::user_input_param_err);
+        reply.message = "appId input err";
+        qCritical() << reply.message;
+        return reply;
     }
     PackageManagerProxyBase *pImpl = PackageManagerImpl::instance();
     return pImpl->Query(paramOption);

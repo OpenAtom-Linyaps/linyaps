@@ -28,17 +28,17 @@ using namespace linglong::util;
 const QString kAppInstallPath = "/deepin/linglong/layers/";
 const QString kLocalRepoPath = "/deepin/linglong/repo";
 const QString kRemoteRepoName = "repo";
+
 /*
- * 将json字符串转化为软件包数据
+ * 从json字符串中提取软件包对应的JsonArray数据
  *
  * @param jsonString: 软件包对应的json字符串
- * @param appList: 转换结果
+ * @param jsonValue: 转换结果
  * @param err: 错误信息
  *
  * @return bool: true:成功 false:失败
  */
-bool PackageManagerImpl::loadAppInfo(const QString &jsonString, linglong::package::AppMetaInfoList &appList,
-                                     QString &err)
+bool PackageManagerImpl::getAppJsonArray(const QString &jsonString, QJsonValue &jsonValue, QString &err)
 {
     QJsonParseError parseJsonErr;
     QJsonDocument document = QJsonDocument::fromJson(jsonString.toUtf8(), &parseJsonErr);
@@ -65,8 +65,30 @@ bool PackageManagerImpl::loadAppInfo(const QString &jsonString, linglong::packag
         return false;
     }
 
-    QJsonValue arrayValue = jsonObject.value(QStringLiteral("data"));
-    if (!arrayValue.isArray()) {
+    jsonValue = jsonObject.value(QStringLiteral("data"));
+    if (!jsonValue.isArray()) {
+        err = "jsonString from server data format is not array";
+        qCritical().noquote() << jsonString;
+        return false;
+    }
+    return true;
+}
+
+/*
+ * 将json字符串转化为软件包数据
+ *
+ * @param jsonString: 软件包对应的json字符串
+ * @param appList: 转换结果
+ * @param err: 错误信息
+ *
+ * @return bool: true:成功 false:失败
+ */
+bool PackageManagerImpl::loadAppInfo(const QString &jsonString, linglong::package::AppMetaInfoList &appList,
+                                     QString &err)
+{
+    QJsonValue arrayValue;
+    auto ret = getAppJsonArray(jsonString, arrayValue, err);
+    if (!ret) {
         err = "jsonString from server data format is not array";
         qCritical().noquote() << jsonString;
         return false;
@@ -379,24 +401,33 @@ linglong::service::Reply PackageManagerImpl::Install(const linglong::service::In
  * 查询软件包
  * @param packageIdList: 软件包的appId
  *
- * @return linglong::package::AppMetaInfoList 查询结果列表
+ * @return QueryReply dbus方法调用应答
  */
-linglong::package::AppMetaInfoList PackageManagerImpl::Query(const linglong::service::QueryParamOption &paramOption)
+linglong::service::QueryReply PackageManagerImpl::Query(const linglong::service::QueryParamOption &paramOption)
 {
+    linglong::service::QueryReply reply;
     QString appId = paramOption.appId.trimmed();
+    bool ret = false;
     if ("installed" == appId) {
-        return queryAllInstalledApp();
+        ret = queryAllInstalledApp("", reply.result, reply.message);
+        if (ret) {
+            reply.code = RetCode(RetCode::ErrorPkgQuerySuccess);
+            reply.message = "query " + appId + " success";
+        } else {
+            reply.code = RetCode(RetCode::ErrorPkgQueryFailed);
+        }
+        return reply;
     }
 
     linglong::package::AppMetaInfoList pkgList;
     QString arch = hostArch();
     if (arch == "unknown") {
-        qCritical() << "the host arch is not recognized";
-        return pkgList;
+        reply.code = RetCode(RetCode::ErrorPkgQueryFailed);
+        reply.message = "the host arch is not recognized";
+        qCritical() << reply.message;
+        return reply;
     }
 
-    bool ret = false;
-    QString err = "";
     QString appData = "";
     int status = StatusCode::FAIL;
 
@@ -407,24 +438,33 @@ linglong::package::AppMetaInfoList PackageManagerImpl::Query(const linglong::ser
     bool fromServer = false;
     // 缓存查不到从服务器查
     if (status != StatusCode::SUCCESS) {
-        ret = getAppInfofromServer(appId, "", arch, appData, err);
+        ret = getAppInfofromServer(appId, "", arch, appData, reply.message);
         if (!ret) {
-            qCritical() << err;
-            return pkgList;
+            reply.code = RetCode(RetCode::ErrorPkgQueryFailed);
+            qCritical() << reply.message;
+            return reply;
         }
         fromServer = true;
     }
-    ret = loadAppInfo(appData, pkgList, err);
-    qInfo().noquote() << appData;
+
+    QJsonValue jsonValue;
+    ret = getAppJsonArray(appData, jsonValue, reply.message);
     if (!ret) {
-        qCritical() << err;
-        return pkgList;
+        reply.code = RetCode(RetCode::ErrorPkgQueryFailed);
+        qCritical() << reply.message;
+        return reply;
     }
     // 若从服务器查询得到正确的数据则更新缓存
     if (fromServer) {
         updateCache(appId, appData);
     }
-    return pkgList;
+
+    // QJsonArray转换成QByteArray
+    QJsonDocument document = QJsonDocument(jsonValue.toArray());
+    reply.code = RetCode(RetCode::ErrorPkgQuerySuccess);
+    reply.message = "query " + appId + " success";
+    reply.result = QString(document.toJson());
+    return reply;
 }
 
 /*

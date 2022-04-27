@@ -33,11 +33,12 @@ class PackageManagerImpl
     , public linglong::util::Singleton<PackageManagerImpl>
 {
     friend class linglong::util::Singleton<PackageManagerImpl>;
+
 public:
     linglong::service::Reply Download(const linglong::service::DownloadParamOption &downloadParamOption);
     linglong::service::Reply Install(const linglong::service::InstallParamOption &installParamOption);
     linglong::service::Reply Uninstall(const linglong::service::UninstallParamOption &paramOption);
-    linglong::package::AppMetaInfoList Query(const linglong::service::QueryParamOption &paramOption);
+    linglong::service::QueryReply Query(const linglong::service::QueryParamOption &paramOption);
 
     linglong::service::Reply Update(const linglong::service::ParamOption &paramOption);
 
@@ -53,6 +54,17 @@ private:
      *
      */
     linglong::package::AppMetaInfo *getLatestApp(const linglong::package::AppMetaInfoList &appList);
+
+    /*
+     * 从json字符串中提取软件包对应的JsonArray数据
+     *
+     * @param jsonString: 软件包对应的json字符串
+     * @param jsonValue: 转换结果
+     * @param err: 错误信息
+     *
+     * @return bool: true:成功 false:失败
+     */
+    bool getAppJsonArray(const QString &jsonString, QJsonValue &jsonValue, QString &err);
 
     /*
      * 将json字符串转化为软件包数据

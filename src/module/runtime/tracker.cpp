@@ -23,8 +23,6 @@
 #include "module/util/uuid.h"
 #include "module/util/json.h"
 
-using namespace linglong;
-
 class TrackerPrivate
 {
 public:

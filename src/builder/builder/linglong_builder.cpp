@@ -39,20 +39,20 @@
 namespace linglong {
 namespace builder {
 
-util::Error commitBuildOutput(Project *project, AnnotationsOverlayfsRootfs *overlayfs)
+linglong::util::Error commitBuildOutput(Project *project, AnnotationsOverlayfsRootfs *overlayfs)
 {
     auto output = project->config().cacheInstallPath("files");
-    ensureDir(output);
+    linglong::util::ensureDir(output);
 
     auto upperDir = QStringList {overlayfs->upper, project->config().targetInstallPath("")}.join("/");
-    ensureDir(upperDir);
+    linglong::util::ensureDir(upperDir);
 
     auto lowerDir = project->config().cacheAbsoluteFilePath({"overlayfs", "lower"});
     // if combine runtime, lower is ${PROJECT_CACHE}/runtime/files
     if (PackageKindRuntime == project->package->kind) {
         lowerDir = project->config().cacheAbsoluteFilePath({"runtime", "files"});
     }
-    ensureDir(lowerDir);
+    linglong::util::ensureDir(lowerDir);
 
     QProcess fuseOverlayfs;
     fuseOverlayfs.setProgram("fuse-overlayfs");
@@ -83,20 +83,20 @@ util::Error commitBuildOutput(Project *project, AnnotationsOverlayfsRootfs *over
 
     // replace desktop to entries
     auto entriesPath = project->config().cacheInstallPath("entries");
-    ensureDir(entriesPath);
+    linglong::util::ensureDir(entriesPath);
 
     auto targetPath = QStringList {entriesPath, "applications"}.join(QDir::separator());
-    ensureDir(targetPath);
+    linglong::util::ensureDir(targetPath);
 
     for (auto const &fileInfo : desktopFileInfoList) {
         util::DesktopEntry desktopEntry(fileInfo.filePath());
 
         // FIXME: set all section
-        auto exec = desktopEntry.rawValue("Exec", DesktopEntry::SectionDesktopEntry);
+        auto exec = desktopEntry.rawValue("Exec", linglong::util::DesktopEntry::SectionDesktopEntry);
         exec = QString("ll-cli run %1 --exec %2").arg(project->package->id, exec);
-        desktopEntry.set(DesktopEntry::SectionDesktopEntry, "Exec", exec);
+        desktopEntry.set(linglong::util::DesktopEntry::SectionDesktopEntry, "Exec", exec);
         // The section TryExec affects starting from the launcher, set it to null.
-        desktopEntry.set(DesktopEntry::SectionDesktopEntry, "TryExec", "");
+        desktopEntry.set(linglong::util::DesktopEntry::SectionDesktopEntry, "TryExec", "");
 
         auto ret = desktopEntry.save(QStringList {targetPath, fileInfo.fileName()}.join(QDir::separator()));
         if (!ret.success()) {
@@ -152,7 +152,7 @@ package::Ref fuzzyRef(const JsonSerialize *obj)
     return ref;
 }
 
-util::Error LinglongBuilder::initRepo()
+linglong::util::Error LinglongBuilder::initRepo()
 {
     // if local ostree is not exist, create and init it
     if (!QDir(BuilderConfig::instance()->ostreePath()).exists()) {
@@ -291,7 +291,7 @@ int startContainer(Container *c, Runtime *r)
     return exitStatus.toInt();
 }
 
-util::Error LinglongBuilder::create(const QString &projectName)
+linglong::util::Error LinglongBuilder::create(const QString &projectName)
 {
     auto projectPath = QStringList {QDir::currentPath(), projectName}.join("/");
     auto configFilePath = QStringList {projectPath, "linglong.yaml"}.join("/");
@@ -310,9 +310,9 @@ util::Error LinglongBuilder::create(const QString &projectName)
     return NoError();
 }
 
-util::Error LinglongBuilder::build()
+linglong::util::Error LinglongBuilder::build()
 {
-    util::Error ret(NoError());
+    linglong::util::Error ret(NoError());
 
     ret = initRepo();
     if (!ret.success()) {
@@ -433,7 +433,7 @@ util::Error LinglongBuilder::build()
     // for runtime/lib, use overlayfs
     // for app, mount to opt
     auto hostInstallPath = project->config().cacheInstallPath("files");
-    ensureDir(hostInstallPath);
+    linglong::util::ensureDir(hostInstallPath);
     QList<QPair<QString, QString>> overlaysMountMap = {};
 
     if (project->runtime || !project->depends.isEmpty()) {
@@ -485,7 +485,7 @@ util::Error LinglongBuilder::build()
         return NewError(-1, "build task failed in container");
     }
 
-    auto createInfo = [](Project *project) -> util::Error {
+    auto createInfo = [](Project *project) -> linglong::util::Error {
         package::Info info;
 
         info.kind = project->package->kind;
@@ -529,7 +529,7 @@ util::Error LinglongBuilder::build()
     return NoError();
 }
 
-util::Error LinglongBuilder::exportBundle(const QString &outputFilePath)
+linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePath)
 {
     QScopedPointer<Project> project(formYaml<Project>(YAML::LoadFile("linglong.yaml")));
 
@@ -556,7 +556,7 @@ util::Error LinglongBuilder::exportBundle(const QString &outputFilePath)
     return NoError();
 }
 
-util::Error LinglongBuilder::push(const QString &bundleFilePath, bool force)
+linglong::util::Error LinglongBuilder::push(const QString &bundleFilePath, bool force)
 {
     // TODO: if the kind is not app, don't push bundle
     qInfo() << "start upload ...";
@@ -571,11 +571,11 @@ util::Error LinglongBuilder::push(const QString &bundleFilePath, bool force)
     return NoError();
 }
 
-util::Error LinglongBuilder::run()
+linglong::util::Error LinglongBuilder::run()
 {
     repo::OSTree repo(BuilderConfig::instance()->repoPath());
 
-    util::Error ret(NoError());
+    linglong::util::Error ret(NoError());
 
     auto projectConfigPath = QStringList {BuilderConfig::instance()->projectRoot(), "linglong.yaml"}.join("/");
     QScopedPointer<Project> project(formYaml<Project>(YAML::LoadFile(projectConfigPath.toStdString())));
@@ -583,7 +583,7 @@ util::Error LinglongBuilder::run()
 
     // check app
     auto targetPath = BuilderConfig::instance()->layerPath({project->ref().toLocalRefString()});
-    ensureDir(targetPath);
+    linglong::util::ensureDir(targetPath);
     ret = repo.checkout(project->ref(), "", targetPath);
     if (!ret.success()) {
         return NewError(-1, "checkout app files failed");
@@ -591,7 +591,7 @@ util::Error LinglongBuilder::run()
 
     // check runtime
     targetPath = BuilderConfig::instance()->layerPath({project->runtimeRef().toLocalRefString()});
-    ensureDir(targetPath);
+    linglong::util::ensureDir(targetPath);
     ret = repo.checkout(project->runtimeRef(), "", targetPath);
     if (!ret.success()) {
         return NewError(-1, "checkout runtime files failed");

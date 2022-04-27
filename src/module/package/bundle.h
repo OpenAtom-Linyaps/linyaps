@@ -31,8 +31,6 @@
 #include "module/util/httpclient.h"
 #include "info.h"
 
-using namespace linglong::util;
-
 namespace linglong {
 namespace package {
 
@@ -55,7 +53,7 @@ namespace package {
     (((uint64_t)bswap32((uint32_t)((value)&0xffffffff)) << 32) | (uint64_t)bswap32((uint32_t)((value) >> 32)))
 
 // FIXME: there is some problem that in module/util/runner.h, replace later
-util::Error runner(const QString &program, const QStringList &args, int timeout = -1);
+linglong::util::Error runner(const QString &program, const QStringList &args, int timeout = -1);
 
 class BundlePrivate;
 
@@ -77,14 +75,14 @@ public:
      * @param path
      * @return
      */
-    util::Error load(const QString &path);
+    linglong::util::Error load(const QString &path);
 
     /**
      * Save Bundle to path, create parent if not exist
      * @param path
      * @return
      */
-    util::Error save(const QString &path);
+    linglong::util::Error save(const QString &path);
 
     // Info info() const;
 
@@ -94,7 +92,7 @@ public:
      * @param outputFilePath : output file path
      * @return Result
      */
-    util::Error make(const QString &dataPath, const QString &outputFilePath);
+    linglong::util::Error make(const QString &dataPath, const QString &outputFilePath);
 
     /**
      * push Bundle
@@ -102,7 +100,7 @@ public:
      * @param force :  force to push
      * @return Result
      */
-    util::Error push(const QString &bundleFilePath, bool force);
+    linglong::util::Error push(const QString &bundleFilePath, bool force);
 
 private:
     QScopedPointer<BundlePrivate> dd_ptr;

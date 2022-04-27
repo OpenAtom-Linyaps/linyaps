@@ -27,10 +27,6 @@
 #include "module/util/singleton.h"
 #include "module/util/status_code.h"
 
-using std::map;
-using std::vector;
-using std::string;
-
 namespace linglong {
 
 // ostree 仓库对象信息
@@ -195,7 +191,7 @@ private:
      * @param summary: 远端仓库Summary信息
      * @param outRefs: 远端仓库软件包索引信息
      */
-    void getPkgRefsBySummary(GVariant *summary, map<string, string> &outRefs);
+    void getPkgRefsBySummary(GVariant *summary, std::map<std::string, std::string> &outRefs);
 
     /*
      * 从summary中的refMap中获取仓库所有软件包索引refs
@@ -203,7 +199,7 @@ private:
      * @param ref_map: summary信息中解析出的ref map信息
      * @param outRefs: 仓库软件包索引信息
      */
-    void getPkgRefsFromRefsMap(GVariant *ref_map, map<string, string> &outRefs);
+    void getPkgRefsFromRefsMap(GVariant *ref_map, std::map<std::string, std::string> &outRefs);
 
     /*
      * ostree 下载进度默认回调
@@ -222,7 +218,7 @@ private:
      * @param separator: 分割字符串
      * @param result: 分割结果
      */
-    void splitStr(string str, string separator, vector<string> &result);
+    void splitStr(std::string str, std::string separator, std::vector<std::string> &result);
 
     /*
      * 解析仓库软件包索引ref信息
@@ -232,7 +228,7 @@ private:
      *
      * @return bool: true:成功 false:失败
      */
-    bool resolveRef(const string &fullRef, vector<string> &result);
+    bool resolveRef(const std::string &fullRef, std::vector<std::string> &result);
 
     /*
      * 查询ostree pull参数

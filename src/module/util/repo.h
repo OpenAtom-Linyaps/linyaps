@@ -25,9 +25,6 @@
 #include "fs.h"
 #include "runner.h"
 
-using namespace linglong::util;
-using namespace linglong::runner;
-
 namespace linglong {
 namespace repo {
 /*!
@@ -38,15 +35,15 @@ namespace repo {
  */
 bool inline makeOstree(const QString &dest_path, const QString &mode)
 {
-    if (!dirExists(dest_path)) {
-        createDir(dest_path);
+    if (!linglong::util::dirExists(dest_path)) {
+        linglong::util::createDir(dest_path);
     }
     // QString program = "ostree";
     // QStringList arguments;
 
     // arguments << QString("--repo=") + dest_path << QString("init") << QString("--mode=") + mode;
 
-    auto ret = Runner("ostree", {"--repo=" + dest_path, "init", "--mode=" + mode}, 3000);
+    auto ret = linglong::runner::Runner("ostree", {"--repo=" + dest_path, "init", "--mode=" + mode}, 3000);
 
     return ret;
 }
@@ -64,11 +61,11 @@ bool inline makeOstree(const QString &dest_path, const QString &mode)
 bool inline commitOstree(const QString &repo_path, const QString &summary, const QString &body, const QString &branch,
                          const QString &dir_data, QString &out_commit)
 {
-    if (!dirExists(dir_data)) {
+    if (!linglong::util::dirExists(dir_data)) {
         qInfo() << "datadir not exists!!!";
         return false;
     }
-    if (!dirExists(repo_path)) {
+    if (!linglong::util::dirExists(repo_path)) {
         qInfo() << "repo_path not exists!!!";
         return false;
     }
@@ -80,7 +77,7 @@ bool inline commitOstree(const QString &repo_path, const QString &summary, const
     arguments << QString("--repo=") + repo_path << QString("commit") << QString("-s") << summary << QString("-m")
               << body << QString("-b") << branch << QString("--tree=dir=") + dir_data;
 
-    auto ret = RunnerRet("ostree", arguments, 15 * 60 * 1000);
+    auto ret = linglong::runner::RunnerRet("ostree", arguments, 15 * 60 * 1000);
     std::tie(retval, retmsg) = ret;
     if (retval == false) {
         qInfo() << retmsg;

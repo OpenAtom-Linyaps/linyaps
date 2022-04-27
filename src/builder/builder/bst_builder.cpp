@@ -24,7 +24,7 @@
 namespace linglong {
 namespace builder {
 
-util::Error templateDirCopy(const QString &srcDir, const QString &destDir, const QStringList &replaceFilenameList,
+linglong::util::Error templateDirCopy(const QString &srcDir, const QString &destDir, const QStringList &replaceFilenameList,
                             QMap<QString, QString> variables)
 {
     util::copyDir(srcDir, destDir);
@@ -52,7 +52,7 @@ util::Error templateDirCopy(const QString &srcDir, const QString &destDir, const
     return NewError();
 }
 
-util::Error BstBuilder::create(const QString &projectName)
+linglong::util::Error BstBuilder::create(const QString &projectName)
 {
     auto bstName = QString(projectName).replace(".", "-");
 
@@ -83,12 +83,12 @@ util::Error BstBuilder::create(const QString &projectName)
     return NewError();
 }
 
-util::Error BstBuilder::build()
+linglong::util::Error BstBuilder::build()
 {
     return linglong::package::runner("bst", {"build", "export.bst"});
 }
 
-util::Error BstBuilder::exportBundle(const QString &outputFilePath)
+linglong::util::Error BstBuilder::exportBundle(const QString &outputFilePath)
 {
     auto project = formYaml<Project>(YAML::LoadFile("project.conf"));
 
@@ -99,8 +99,8 @@ util::Error BstBuilder::exportBundle(const QString &outputFilePath)
     auto id = project->variables->id;
 
     QString dataDir = QString("export");
-    if (dirExists(dataDir)) {
-        removeDir(dataDir);
+    if (linglong::util::dirExists(dataDir)) {
+        linglong::util::removeDir(dataDir);
     }
 
     qDebug() << "export " << id << "to bundle file";
@@ -122,7 +122,7 @@ util::Error BstBuilder::exportBundle(const QString &outputFilePath)
 }
 
 // util::Result BstBuilder::push(const QString &repoURL, bool force)
-util::Error BstBuilder::push(const QString &bundleFilePath, bool force)
+linglong::util::Error BstBuilder::push(const QString &bundleFilePath, bool force)
 {
     // TODO: push build result to repoURL
     std::cout << "start upload ..." << std::endl;

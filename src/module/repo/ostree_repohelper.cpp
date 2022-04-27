@@ -13,8 +13,6 @@
 #include "module/util/runner.h"
 #include "service/impl/version.h"
 
-using namespace linglong::runner;
-
 const int MAX_ERRINFO_BUFSIZE = 512;
 const int DEFAULT_UPDATE_FREQUENCY = 100;
 #define PACKAGE_VERSION "1.0.0"
@@ -64,7 +62,7 @@ OstreeRepoHelper::~OstreeRepoHelper()
  */
 bool OstreeRepoHelper::ensureRepoEnv(const QString &repoPath, QString &err)
 {
-    const string repoPathTmp = repoPath.toStdString();
+    const std::string repoPathTmp = repoPath.toStdString();
     GCancellable *cancellable = NULL;
     GError *error = NULL;
     char info[MAX_ERRINFO_BUFSIZE] = {'\0'};
@@ -75,7 +73,7 @@ bool OstreeRepoHelper::ensureRepoEnv(const QString &repoPath, QString &err)
     }
     OstreeRepo *repo;
     g_autoptr(GFile) repodir = NULL;
-    string tmpPath = "";
+    std::string tmpPath = "";
     //适配目标路径末尾的‘/’，本地仓库目录名为repo
     if (repoPathTmp.at(repoPathTmp.size() - 1) == '/') {
         tmpPath = repoPathTmp + "repo";
@@ -195,7 +193,7 @@ bool OstreeRepoHelper::fetchRemoteSummary(OstreeRepo *repo, const char *name, GB
  * @param ref_map: summary信息中解析出的ref map信息
  * @param outRefs: 仓库软件包索引信息
  */
-void OstreeRepoHelper::getPkgRefsFromRefsMap(GVariant *ref_map, map<string, string> &outRefs)
+void OstreeRepoHelper::getPkgRefsFromRefsMap(GVariant *ref_map, std::map<std::string, std::string> &outRefs)
 {
     GVariant *value;
     GVariantIter ref_iter;
@@ -225,7 +223,7 @@ void OstreeRepoHelper::getPkgRefsFromRefsMap(GVariant *ref_map, map<string, stri
         // char* newRef = NULL;
         // newRef = g_strdup(ref);
         // g_hash_table_insert(ret_all_refs, newRef, g_strdup(tmp_checksum));
-        outRefs.insert(map<string, string>::value_type(ref, tmp_checksum));
+        outRefs.insert(std::map<std::string, std::string>::value_type(ref, tmp_checksum));
     }
 }
 
@@ -235,7 +233,7 @@ void OstreeRepoHelper::getPkgRefsFromRefsMap(GVariant *ref_map, map<string, stri
  * @param summary: 远端仓库Summary信息
  * @param outRefs: 远端仓库软件包索引信息
  */
-void OstreeRepoHelper::getPkgRefsBySummary(GVariant *summary, map<string, string> &outRefs)
+void OstreeRepoHelper::getPkgRefsBySummary(GVariant *summary, std::map<std::string, std::string> &outRefs)
 {
     // g_autoptr(GHashTable) ret_all_refs = NULL;
     g_autoptr(GVariant) ref_map = NULL;
@@ -274,7 +272,7 @@ bool OstreeRepoHelper::getRemoteRefs(const QString &repoPath, const QString &rem
         err = info;
         return false;
     }
-    const string remoteNameTmp = remoteName.toStdString();
+    const std::string remoteNameTmp = remoteName.toStdString();
     g_autoptr(GBytes) summaryBytes = NULL;
     g_autoptr(GBytes) summarySigBytes = NULL;
     GCancellable *cancellable = NULL;
@@ -293,7 +291,7 @@ bool OstreeRepoHelper::getRemoteRefs(const QString &repoPath, const QString &rem
     GVariant *summary =
         g_variant_ref_sink(g_variant_new_from_bytes(OSTREE_SUMMARY_GVARIANT_FORMAT, summaryBytes, FALSE));
     // std::map转QMap
-    map<string, string> outRet;
+    std::map<std::string, std::string> outRet;
     getPkgRefsBySummary(summary, outRet);
     for (auto iter = outRet.begin(); iter != outRet.end(); ++iter) {
         outRefs.insert(QString::fromStdString(iter->first), QString::fromStdString(iter->second));
@@ -308,7 +306,7 @@ bool OstreeRepoHelper::getRemoteRefs(const QString &repoPath, const QString &rem
  * @param separator: 分割字符串
  * @param result: 分割结果
  */
-void OstreeRepoHelper::splitStr(string str, string separator, vector<string> &result)
+void OstreeRepoHelper::splitStr(std::string str, std::string separator, std::vector<std::string> &result)
 {
     size_t cutAt;
     while ((cutAt = str.find_first_of(separator)) != str.npos) {
@@ -330,7 +328,7 @@ void OstreeRepoHelper::splitStr(string str, string separator, vector<string> &re
  *
  * @return bool: true:成功 false:失败
  */
-bool OstreeRepoHelper::resolveRef(const string &fullRef, vector<string> &result)
+bool OstreeRepoHelper::resolveRef(const std::string &fullRef, std::vector<std::string> &result)
 {
     // vector<string> result;
     splitStr(fullRef, "/", result);
@@ -374,8 +372,7 @@ bool OstreeRepoHelper::queryMatchRefs(const QString &repoPath, const QString &re
         return false;
     }
 
-    const string pkgNameTmp = pkgName.toStdString();
-    const string archTmp = arch.toStdString();
+    const std::string pkgNameTmp = pkgName.toStdString();
     QMap<QString, QString> outRefs;
     bool ret = getRemoteRefs(repoPath, remoteName, outRefs, err);
     if (ret) {
@@ -384,7 +381,7 @@ bool OstreeRepoHelper::queryMatchRefs(const QString &repoPath, const QString &re
         // 版本号不为空，查找指定版本
         if (!pkgVer.isEmpty()) {
             for (QString ref : keyRefs) {
-                vector<string> result;
+                std::vector<std::string> result;
                 ret = resolveRef(ref.toStdString(), result);
                 // new ref format org.deepin.calculator/1.2.2/x86_64
                 if (ret && result[1] == pkgVer.toStdString() && result[2] == arch.toStdString()) {
@@ -396,7 +393,7 @@ bool OstreeRepoHelper::queryMatchRefs(const QString &repoPath, const QString &re
             bool flag = false;
             QString curVersion = linglong::APP_MIN_VERSION;
             for (QString ref : keyRefs) {
-                vector<string> result;
+                std::vector<std::string> result;
                 ret = resolveRef(ref.toStdString(), result);
                 linglong::AppVersion curVer(curVersion);
                 // 玲珑适配
@@ -507,7 +504,7 @@ char *OstreeRepoHelper::getCacheDir()
 {
     QTemporaryDir dir("/tmp/linglong-cache-XXXXXX");
     if (dir.isValid()) {
-        const string tmpPath = dir.path().toStdString();
+        const std::string tmpPath = dir.path().toStdString();
         return g_strdup(tmpPath.c_str());
     }
     qCritical() << "Can't create temporary directory";
@@ -703,7 +700,7 @@ bool OstreeRepoHelper::repoPull(const QString &repoPath, const QString &remoteNa
     if (!ret) {
         return false;
     }
-    string matchRef = qmatchRef.toStdString();
+    std::string matchRef = qmatchRef.toStdString();
     // map<string, string> outRefs;
     // string checksum = outRefs.find(matchRef)->second;
     QMap<QString, QString> outRefs;
@@ -711,8 +708,8 @@ bool OstreeRepoHelper::repoPull(const QString &repoPath, const QString &remoteNa
     if (!ret) {
         return false;
     }
-    const string remoteNameTmp = remoteName.toStdString();
-    string checksum = outRefs.find(qmatchRef).value().toStdString();
+    const std::string remoteNameTmp = remoteName.toStdString();
+    std::string checksum = outRefs.find(qmatchRef).value().toStdString();
     GCancellable *cancellable = NULL;
     GError *error = NULL;
     OstreeAsyncProgress *progress = ostree_async_progress_new_and_connect(OstreeRepoHelper::noProgressFunc, NULL);
@@ -898,7 +895,7 @@ bool OstreeRepoHelper::checkOutAppData(const QString &repoPath, const QString &r
         err = info;
         return false;
     }
-    const string dstPathTmp = dstPath.toStdString();
+    const std::string dstPathTmp = dstPath.toStdString();
     if (g_mkdir_with_parents(dstPathTmp.c_str(), 0755)) {
         // fprintf(stdout, "g_mkdir_with_parents failed\n");
         return false;
@@ -917,7 +914,7 @@ bool OstreeRepoHelper::checkOutAppData(const QString &repoPath, const QString &r
     if (!ret) {
         return ret;
     }
-    string checksum = outRefs.find(ref).value().toStdString();
+    std::string checksum = outRefs.find(ref).value().toStdString();
 
     // extract_extra_data (self, checksum, extradir, &created_extra_data, cancellable, error)
     if (!ostree_repo_checkout_at(pLingLongDir->repo, &options, AT_FDCWD, dstPathTmp.c_str(), checksum.c_str(),
@@ -979,7 +976,7 @@ QString OstreeRepoHelper::createTmpRepo()
     }
     dir.setAutoRemove(false);
     linglong::util::createDir(tmpPath);
-    auto ret = Runner("ostree", {"--repo=" + tmpPath + "/repoTmp", "init", "--mode=bare-user-only"}, 1000 * 60 * 5);
+    auto ret = linglong::runner::Runner("ostree", {"--repo=" + tmpPath + "/repoTmp", "init", "--mode=bare-user-only"}, 1000 * 60 * 5);
     if (!ret) {
         return "";
     }
@@ -990,7 +987,7 @@ QString OstreeRepoHelper::createTmpRepo()
     }
     QString ostreeUrl = configUrl.endsWith("/") ? configUrl.append("ostree/") : configUrl.append("/ostree/");
     // 添加远程仓库
-    ret = Runner("ostree", {"--repo=" + tmpPath + "/repoTmp", "remote", "add", "--no-gpg-verify", "repo", ostreeUrl},
+    ret = linglong::runner::Runner("ostree", {"--repo=" + tmpPath + "/repoTmp", "remote", "add", "--no-gpg-verify", "repo", ostreeUrl},
                  1000 * 60 * 5);
     if (!ret) {
         return "";
@@ -1069,8 +1066,7 @@ bool OstreeRepoHelper::repoDeleteDatabyRef(const QString &repoPath, const QStrin
         return false;
     }
 
-    const string remoteNameTmp = remoteName.toStdString();
-    const string refTmp = ref.toStdString();
+    const std::string refTmp = ref.toStdString();
     GCancellable *cancellable = NULL;
     GError *error = NULL;
 

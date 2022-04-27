@@ -22,13 +22,13 @@ QString SourceFetcher::fixSuffix(const QFileInfo &fi)
     return fi.suffix();
 }
 
-util::Error SourceFetcher::extractFile(const QString &path, const QString &dir)
+linglong::util::Error SourceFetcher::extractFile(const QString &path, const QString &dir)
 {
     QFileInfo fi(path);
 
-    QMap<QString, std::function<util::Error(const QString &path, const QString &dir)>> subcommandMap = {
+    QMap<QString, std::function<linglong::util::Error(const QString &path, const QString &dir)>> subcommandMap = {
         {CompressedFileTarXz,
-         [](const QString &path, const QString &dir) -> util::Error {
+         [](const QString &path, const QString &dir) -> linglong::util::Error {
              auto ret = runner::Runner("tar", {"-C", dir, "-xvf", path}, -1);
              if (!ret) {
                  return NewError(-1, "extract " + path + "failed");
@@ -72,7 +72,7 @@ QString SourceFetcherPrivate::sourceTargetPath() const
     return path;
 }
 
-util::Error SourceFetcherPrivate::fetchArchiveFile()
+linglong::util::Error SourceFetcherPrivate::fetchArchiveFile()
 {
     Q_Q(SourceFetcher);
 
@@ -97,13 +97,13 @@ util::Error SourceFetcherPrivate::fetchArchiveFile()
     QEventLoop loop;
     QEventLoop::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
     loop.exec();
-    
+
     return q->extractFile(path, sourceTargetPath());
 }
 
 // TODO: DO NOT clone all repo, see here for more:
 // https://stackoverflow.com/questions/3489173/how-to-clone-git-repository-with-specific-revision-changeset/3489576
-util::Error SourceFetcherPrivate::fetchGitRepo() const
+linglong::util::Error SourceFetcherPrivate::fetchGitRepo() const
 {
     util::ensureDir(sourceTargetPath());
 
@@ -147,7 +147,7 @@ util::Error SourceFetcherPrivate::fetchGitRepo() const
     return NoError();
 };
 
-util::Error SourceFetcherPrivate::handleDebianPatch() const
+linglong::util::Error SourceFetcherPrivate::handleDebianPatch() const
 {
     qInfo() << "debian source here, find debian patch ...";
 
@@ -175,7 +175,7 @@ util::Error SourceFetcherPrivate::handleDebianPatch() const
     return NoError();
 }
 
-util::Error SourceFetcherPrivate::handleLocalPatch() const
+linglong::util::Error SourceFetcherPrivate::handleLocalPatch() const
 {
     // apply local patch
     qInfo() << "find local patch ...";
@@ -198,9 +198,9 @@ util::Error SourceFetcherPrivate::handleLocalPatch() const
     return NoError();
 }
 
-util::Error SourceFetcher::patch()
+linglong::util::Error SourceFetcher::patch()
 {
-    util::Error ret(NoError());
+    linglong::util::Error ret(NoError());
 
     QDir::setCurrent(dd_ptr->sourceTargetPath());
 
@@ -212,9 +212,9 @@ util::Error SourceFetcher::patch()
     return dd_ptr->handleLocalPatch();
 }
 
-util::Error SourceFetcher::fetch()
+linglong::util::Error SourceFetcher::fetch()
 {
-    util::Error ret(NoError());
+    linglong::util::Error ret(NoError());
 
     if (dd_ptr->source->kind == "git") {
         ret = dd_ptr->fetchGitRepo();

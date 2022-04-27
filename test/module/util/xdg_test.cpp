@@ -16,8 +16,6 @@
 
 #include "module/util/xdg.h"
 
-using namespace linglong::util;
-
 TEST(Moduel_Util, Tool)
 {
     QString env = "${HOME}/Desktop:${HOME}/Desktop";
@@ -45,8 +43,8 @@ TEST(Moduel_Util, convertSpecialCharacters)
     EXPECT_EQ(retArgs1.value(0), "/home/qwe/Video/test\\ test/test.mp4");
     EXPECT_EQ(retArgs2.value(0), "/home/qwe/Video/test/测试\\ 音乐.mp4");
 
-    auto retExec1 = parseExec(args1.value(0));
-    auto retExec2 = parseExec(retArgs1.value(0));
+    auto retExec1 = linglong::util::parseExec(args1.value(0));
+    auto retExec2 = linglong::util::parseExec(retArgs1.value(0));
 
     EXPECT_EQ(retExec1.size(), 2);
     EXPECT_EQ(retExec2.size(), 1);
@@ -119,22 +117,22 @@ TEST(Module_Util, Xdg01)
 TEST(Module_Util, Xdg02)
 {
     QString r1 = "XDG_DESKTOP_DIR";
-    auto r1XdgPath = getPathInXdgUserConfig(r1);
+    auto r1XdgPath = linglong::util::getPathInXdgUserConfig(r1);
     qInfo() << r1XdgPath;
     EXPECT_EQ(r1XdgPath, QStandardPaths::writableLocation(QStandardPaths::DesktopLocation));
 
     QString r2 = "XDG_DOCUMENTS_DIR";
-    auto r2XdgPath = getPathInXdgUserConfig(r2);
+    auto r2XdgPath = linglong::util::getPathInXdgUserConfig(r2);
     qInfo() << r2XdgPath;
     EXPECT_EQ(r2XdgPath, QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
 
     QString r3 = "XXXX";
-    auto r3XdgPath = getPathInXdgUserConfig(r3);
+    auto r3XdgPath = linglong::util::getPathInXdgUserConfig(r3);
     qInfo() << r3;
     EXPECT_EQ(r3XdgPath, "");
 
     QString r4 = "XDG_PUBLICSHARE_DIR";
-    auto r4XdgPath = getPathInXdgUserConfig(r4);
+    auto r4XdgPath = linglong::util::getPathInXdgUserConfig(r4);
     qInfo() << r4;
     EXPECT_EQ(r4XdgPath, QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/.Public");
 }

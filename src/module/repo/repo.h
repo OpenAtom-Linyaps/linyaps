@@ -29,21 +29,21 @@ extern const char *kRepoRoot;
 class Repo
 {
 public:
-    virtual util::Error importDirectory(const package::Ref &ref, const QString &path) = 0;
+    virtual linglong::util::Error importDirectory(const package::Ref &ref, const QString &path) = 0;
 
-    virtual util::Error import(const package::Bundle &bundle) = 0;
+    virtual linglong::util::Error import(const package::Bundle &bundle) = 0;
 
-    virtual util::Error exportBundle(package::Bundle &bundle) = 0;
+    virtual linglong::util::Error exportBundle(package::Bundle &bundle) = 0;
 
-    virtual std::tuple<util::Error, QList<package::Ref>> list(const QString &filter) = 0;
+    virtual std::tuple<linglong::util::Error, QList<package::Ref>> list(const QString &filter) = 0;
 
-    virtual std::tuple<util::Error, QList<package::Ref>> query(const QString &filter) = 0;
+    virtual std::tuple<linglong::util::Error, QList<package::Ref>> query(const QString &filter) = 0;
 
-    virtual util::Error push(const package::Ref &ref, bool force) = 0;
+    virtual linglong::util::Error push(const package::Ref &ref, bool force) = 0;
 
-    virtual util::Error push(const package::Bundle &bundle, bool force) = 0;
+    virtual linglong::util::Error push(const package::Bundle &bundle, bool force) = 0;
 
-    virtual util::Error pull(const package::Ref &ref, bool force) = 0;
+    virtual linglong::util::Error pull(const package::Ref &ref, bool force) = 0;
 
     virtual QString rootOfLayer(const package::Ref &ref) = 0;
 

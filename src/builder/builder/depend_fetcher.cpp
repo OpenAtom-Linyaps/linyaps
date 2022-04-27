@@ -41,7 +41,7 @@ DependFetcher::DependFetcher(const BuildDepend &bd, Project *parent)
 
 DependFetcher::~DependFetcher() = default;
 
-util::Error DependFetcher::fetch(const QString &subPath, const QString &targetPath)
+linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString &targetPath)
 {
     repo::OSTree ostree(BuilderConfig::instance()->repoPath());
 

@@ -12,11 +12,9 @@
 
 #include "src/module/package/info.h"
 
-using namespace linglong::package;
-
 TEST(Moduel_Package, Ref)
 {
-    Ref ref("deepin/channel:app/1.0/la");
+    linglong::package::Ref ref("deepin/channel:app/1.0/la");
 
     EXPECT_EQ(ref.repo, "deepin");
     EXPECT_EQ(ref.appId, "app");

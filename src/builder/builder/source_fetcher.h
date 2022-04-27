@@ -41,7 +41,7 @@ public:
 
 public:
     QString fixSuffix(const QFileInfo &fi);
-    util::Error extractFile(const QString &path, const QString &dir);
+    linglong::util::Error extractFile(const QString &path, const QString &dir);
 
 private:
     QScopedPointer<SourceFetcherPrivate> dd_ptr;

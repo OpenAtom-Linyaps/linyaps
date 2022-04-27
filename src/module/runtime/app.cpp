@@ -36,7 +36,6 @@
 #define LL_VAL(str) #str
 #define LL_TOSTRING(str) LL_VAL(str)
 
-using namespace linglong;
 namespace linglong {
 namespace runtime {
 
@@ -796,7 +795,7 @@ public:
     {
         util::ensureUserDir({".linglong", appId});
 
-        auto configPath = getUserFile(QString("%1/%2/app.yaml").arg(".linglong", appId));
+        auto configPath = linglong::util::getUserFile(QString("%1/%2/app.yaml").arg(".linglong", appId));
 
         // create yaml form info
         // auto appRoot = LocalRepo::get()->rootOfLatest();
@@ -806,7 +805,7 @@ public:
 
         auto appInfo = appInstallRoot + "/info.json";
         // 判断是否存在
-        if (!isFlatpakApp && !fileExists(appInfo)) {
+        if (!isFlatpakApp && !linglong::util::fileExists(appInfo)) {
             qCritical() << appInfo << " not exist";
             return "";
         }
@@ -927,7 +926,7 @@ App::App(QObject *parent)
 App *App::load(linglong::repo::Repo *repo, const package::Ref &ref, const QString &desktopExec, bool useFlatpakRuntime)
 {
     QString configPath = AppPrivate::loadConfig(repo, ref.appId, ref.version, useFlatpakRuntime);
-    if (!fileExists(configPath)) {
+    if (!linglong::util::fileExists(configPath)) {
         return nullptr;
     }
 

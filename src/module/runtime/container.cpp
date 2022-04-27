@@ -14,16 +14,15 @@
 #include "module/util/xdg.h"
 #include "module/util/fs.h"
 
-using namespace linglong;
 
 linglong::util::Error Container::create(const QString& ref)
 {
-    auto containerID = util::genUuid();
-    auto containerWorkDirectory = util::userRuntimeDir().absoluteFilePath(QString("linglong/%1").arg(containerID));
+    auto containerID = linglong::util::genUuid();
+    auto containerWorkDirectory = linglong::util::userRuntimeDir().absoluteFilePath(QString("linglong/%1").arg(containerID));
 
     id = containerID;
     workingDirectory = containerWorkDirectory;
-    util::ensureDir(workingDirectory);
+    linglong::util::ensureDir(workingDirectory);
 
     packageName = ref;
 

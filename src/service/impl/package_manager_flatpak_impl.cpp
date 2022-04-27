@@ -19,7 +19,7 @@ PackageManagerFlatpakImpl::Install(const linglong::service::InstallParamOption &
     argStrList << "install"
                << "--user"
                << "-y" << appId;
-    auto ret = Runner("flatpak", argStrList, 1000 * 60 * 30);
+    auto ret = linglong::runner::Runner("flatpak", argStrList, 1000 * 60 * 30);
     if (!ret) {
         reply.code = STATUS_CODE(pkg_install_failed);
         reply.message = "install " + appId + " failed";
@@ -96,7 +96,7 @@ PackageManagerFlatpakImpl::Uninstall(const linglong::service::UninstallParamOpti
     argStrList << "uninstall"
                << "--user"
                << "-y" << appId;
-    auto ret = Runner("flatpak", argStrList, 1000 * 60 * 30);
+    auto ret = linglong::runner::Runner("flatpak", argStrList, 1000 * 60 * 30);
     if (!ret) {
         reply.code = STATUS_CODE(pkg_uninstall_failed);
         reply.message = "uninstall " + appId + " failed";

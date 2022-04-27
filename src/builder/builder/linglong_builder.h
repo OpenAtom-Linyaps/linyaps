@@ -23,17 +23,17 @@ class LinglongBuilder
 {
     Q_OBJECT
 public:
-    util::Error create(const QString &projectName) override;
+    linglong::util::Error create(const QString &projectName) override;
 
-    util::Error build() override;
+    linglong::util::Error build() override;
 
-    util::Error exportBundle(const QString &outputFilepath) override;
+    linglong::util::Error exportBundle(const QString &outputFilepath) override;
 
-    util::Error push(const QString &bundleFilePath, bool force) override;
+    linglong::util::Error push(const QString &bundleFilePath, bool force) override;
 
-    util::Error run() override;
+    linglong::util::Error run() override;
 
-    util::Error initRepo();
+    linglong::util::Error initRepo();
 };
 
 } // namespace builder

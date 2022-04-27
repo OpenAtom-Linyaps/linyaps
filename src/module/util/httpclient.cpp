@@ -27,8 +27,6 @@
 
 #include "module/util/fs.h"
 
-using namespace std;
-
 namespace linglong {
 namespace util {
 
@@ -149,9 +147,9 @@ void HttpClient::initHttpParam(const char *url)
  */
 size_t writeData(void *content, size_t size, size_t nmemb, void *stream)
 {
-    string data((const char *)content, (size_t)size * nmemb);
+    std::string data((const char *)content, (size_t)size * nmemb);
 
-    *((stringstream *)stream) << data;
+    *((std::stringstream *)stream) << data;
 
     return size * nmemb;
 }

@@ -70,8 +70,6 @@ TEST(PermissionTest, LoadJson)
     info->deleteLater();
 }
 
-using namespace linglong::package;
-
 TEST(PermissionTest, TestPermission)
 {
     linglong::package::registerAllMetaType();
@@ -87,7 +85,7 @@ TEST(PermissionTest, TestPermission)
     EXPECT_NE(variant, "");
 
     // convert json to info
-    auto r = variant.value<Info *>();
+    auto r = variant.value<linglong::package::Info *>();
 
     EXPECT_NE(r, nullptr);
 

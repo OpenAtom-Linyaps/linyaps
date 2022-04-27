@@ -22,16 +22,16 @@ class BstBuilder
 {
     Q_OBJECT
 public:
-    util::Error create(const QString &projectName) override;
+    linglong::util::Error create(const QString &projectName) override;
 
-    util::Error build() override;
+    linglong::util::Error build() override;
 
-    util::Error exportBundle(const QString &outputFilepath) override;
+    linglong::util::Error exportBundle(const QString &outputFilepath) override;
 
     // util::Result push(const QString &repoURL, bool force) override;
-    util::Error push(const QString &bundleFilePath, bool force) override;
+    linglong::util::Error push(const QString &bundleFilePath, bool force) override;
 
-    util::Error run() override { return NoError(); }
+    linglong::util::Error run() override { return NoError(); }
 };
 
 } // namespace builder

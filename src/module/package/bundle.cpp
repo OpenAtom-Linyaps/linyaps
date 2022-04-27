@@ -16,7 +16,7 @@
 namespace linglong {
 namespace package {
 
-util::Error runner(const QString &program, const QStringList &args, int timeout)
+linglong::util::Error runner(const QString &program, const QStringList &args, int timeout)
 {
     QProcess process;
     process.setProgram(program);
@@ -45,16 +45,16 @@ Bundle::~Bundle()
 {
 }
 
-util::Error Bundle::load(const QString &path)
+linglong::util::Error Bundle::load(const QString &path)
 {
     return NewError();
 }
-util::Error Bundle::save(const QString &path)
+linglong::util::Error Bundle::save(const QString &path)
 {
     return NewError();
 }
 
-util::Error Bundle::make(const QString &dataPath, const QString &outputFilePath)
+linglong::util::Error Bundle::make(const QString &dataPath, const QString &outputFilePath)
 {
     Q_D(Bundle);
     auto ret = d->make(dataPath, outputFilePath);
@@ -64,7 +64,7 @@ util::Error Bundle::make(const QString &dataPath, const QString &outputFilePath)
     return NewError();
 }
 
-util::Error Bundle::push(const QString &bundleFilePath, bool force)
+linglong::util::Error Bundle::push(const QString &bundleFilePath, bool force)
 {
     Q_D(Bundle);
     auto ret = d->push(bundleFilePath, force);
@@ -74,7 +74,7 @@ util::Error Bundle::push(const QString &bundleFilePath, bool force)
     return NewError();
 }
 
-util::Error BundlePrivate::make(const QString &dataPath, const QString &outputFilePath)
+linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString &outputFilePath)
 {
     // 获取存储文件父目录路径
     QString bundleFileDirPath;
@@ -214,7 +214,7 @@ auto BundlePrivate::getElfSize(const QString elfFilePath) -> decltype(-1)
     return size;
 }
 
-util::Error BundlePrivate::push(const QString &bundleFilePath, bool force)
+linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, bool force)
 {
     // 判断uab文件是否存在
     if (!util::fileExists(bundleFilePath)) {

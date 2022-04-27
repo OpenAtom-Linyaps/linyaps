@@ -30,13 +30,13 @@ public:
     // TODO: use share cache for all project
     QString sourceTargetPath() const;
 
-    util::Error fetchArchiveFile();
+    linglong::util::Error fetchArchiveFile();
 
-    util::Error fetchGitRepo() const;
+    linglong::util::Error fetchGitRepo() const;
 
-    util::Error handleDebianPatch() const;
+    linglong::util::Error handleDebianPatch() const;
 
-    util::Error handleLocalPatch() const;
+    linglong::util::Error handleLocalPatch() const;
 
     Project *project;
     Source *source;

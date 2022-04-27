@@ -20,8 +20,6 @@
 #include "package_manager_impl.h"
 #include "version.h"
 
-using namespace linglong::util;
-
 const QString kAppInstallPath = "/deepin/linglong/layers/";
 const QString kLocalRepoPath = "/deepin/linglong/repo";
 const QString kRemoteRepoName = "repo";
@@ -221,9 +219,9 @@ bool PackageManagerImpl::installRuntime(const QString &runtimeId, const QString 
     }
 
     // 更新本地数据库文件
-    QString userName = getUserName();
+    QString userName = linglong::util::getUserName();
     pkgInfo->kind = "runtime";
-    insertAppRecord(pkgInfo, "user", userName);
+    linglong::util::insertAppRecord(pkgInfo, "user", userName);
     return true;
 }
 
@@ -249,8 +247,8 @@ bool PackageManagerImpl::checkAppRuntime(const QString &runtime, QString &err)
 
     bool ret = true;
     // 判断app依赖的runtime是否安装
-    QString userName = getUserName();
-    if (!getAppInstalledStatus(runtimeId, runtimeVer, "", userName)) {
+    QString userName = linglong::util::getUserName();
+    if (!linglong::util::getAppInstalledStatus(runtimeId, runtimeVer, "", userName)) {
         ret = installRuntime(runtimeId, runtimeVer, runtimeArch, err);
     }
     return ret;
@@ -272,7 +270,7 @@ linglong::package::AppMetaInfo *PackageManagerImpl::getLatestApp(const linglong:
     }
 
     QString curVersion = latestApp->version;
-    QString arch = hostArch();
+    QString arch = linglong::util::hostArch();
     for (auto item : appList) {
         linglong::AppVersion dstVersion(curVersion);
         linglong::AppVersion iterVersion(item->version);
@@ -288,13 +286,13 @@ linglong::service::Reply PackageManagerImpl::Install(const linglong::service::In
 {
     linglong::service::Reply reply;
 
-    QString userName = getUserName();
+    QString userName = linglong::util::getUserName();
     QString appData = "";
 
     QString appId = installParamOption.appId.trimmed();
     QString arch = installParamOption.arch.trimmed();
     if (arch.isNull() || arch.isEmpty()) {
-        arch = hostArch();
+        arch = linglong::util::hostArch();
     }
 
     // 安装不查缓存
@@ -316,7 +314,7 @@ linglong::service::Reply PackageManagerImpl::Install(const linglong::service::In
     // 查找最高版本
     linglong::package::AppMetaInfo *appInfo = getLatestApp(appList);
     // 判断对应版本的应用是否已安装 Fix to do 多用户
-    if (getAppInstalledStatus(appInfo->appId, appInfo->version, "", "")) {
+    if (linglong::util::getAppInstalledStatus(appInfo->appId, appInfo->version, "", "")) {
         reply.code = STATUS_CODE(pkg_already_installed);
         reply.message = appInfo->appId + ", version: " + appInfo->version + " already installed";
         qCritical() << reply.message;
@@ -385,7 +383,7 @@ linglong::service::Reply PackageManagerImpl::Install(const linglong::service::In
 
     // 更新本地数据库文件
     appInfo->kind = "app";
-    insertAppRecord(appInfo, "user", userName);
+    linglong::util::insertAppRecord(appInfo, "user", userName);
 
     reply.code = STATUS_CODE(pkg_install_success);
     reply.message = "install " + appInfo->appId + ", version:" + appInfo->version + " success";
@@ -406,7 +404,7 @@ linglong::service::QueryReply PackageManagerImpl::Query(const linglong::service:
     QString appId = paramOption.appId.trimmed();
     bool ret = false;
     if ("installed" == appId) {
-        ret = queryAllInstalledApp("", reply.result, reply.message);
+        ret = linglong::util::queryAllInstalledApp("", reply.result, reply.message);
         if (ret) {
             reply.code = STATUS_CODE(ErrorPkgQuerySuccess);
             reply.message = "query " + appId + " success";
@@ -417,7 +415,7 @@ linglong::service::QueryReply PackageManagerImpl::Query(const linglong::service:
     }
 
     linglong::package::AppMetaInfoList pkgList;
-    QString arch = hostArch();
+    QString arch = linglong::util::hostArch();
     if (arch == "unknown") {
         reply.code = STATUS_CODE(ErrorPkgQueryFailed);
         reply.message = "the host arch is not recognized";
@@ -429,7 +427,7 @@ linglong::service::QueryReply PackageManagerImpl::Query(const linglong::service:
     int status = STATUS_CODE(kFail);
 
     if (!paramOption.force) {
-        status = queryLocalCache(appId, appData);
+        status = linglong::util::queryLocalCache(appId, appData);
     }
 
     bool fromServer = false;
@@ -453,7 +451,7 @@ linglong::service::QueryReply PackageManagerImpl::Query(const linglong::service:
     }
     // 若从服务器查询得到正确的数据则更新缓存
     if (fromServer) {
-        updateCache(appId, appData);
+        linglong::util::updateCache(appId, appData);
     }
 
     // QJsonArray转换成QByteArray
@@ -480,11 +478,11 @@ linglong::service::Reply PackageManagerImpl::Uninstall(const linglong::service::
     QString version = paramOption.version;
     QString arch = paramOption.arch.trimmed();
     if (arch.isNull() || arch.isEmpty()) {
-        arch = hostArch();
+        arch = linglong::util::hostArch();
     }
     // 判断是否已安装 不校验用户名 普通用户无法卸载预装应用 提示信息不对
-    QString userName = getUserName();
-    if (!getAppInstalledStatus(appId, version, arch, "")) {
+    QString userName = linglong::util::getUserName();
+    if (!linglong::util::getAppInstalledStatus(appId, version, arch, "")) {
         reply.message = appId + ", version:" + version + " not installed";
         reply.code = STATUS_CODE(pkg_not_installed);
         qCritical() << reply.message;
@@ -493,7 +491,7 @@ linglong::service::Reply PackageManagerImpl::Uninstall(const linglong::service::
     QString err = "";
     linglong::package::AppMetaInfoList pkgList;
     // 根据已安装文件查询已经安装软件包信息
-    getInstalledAppInfo(appId, version, arch, "", pkgList);
+    linglong::util::getInstalledAppInfo(appId, version, arch, "", pkgList);
     auto it = pkgList.at(0);
     bool isRoot = (getgid() == 0) ? true : false;
     qInfo() << "install app user:" << it->user << ", current user:" << userName << ", has root permission:" << isRoot;
@@ -576,7 +574,7 @@ linglong::service::Reply PackageManagerImpl::Uninstall(const linglong::service::
         userName = "";
     }
     // 更新安装数据库
-    deleteAppRecord(appId, it->version, arch, userName);
+    linglong::util::deleteAppRecord(appId, it->version, arch, userName);
     reply.code = STATUS_CODE(pkg_uninstall_success);
     reply.message = "uninstall " + appId + ", version:" + it->version + " success";
     return reply;
@@ -590,12 +588,12 @@ linglong::service::Reply PackageManagerImpl::Update(const linglong::service::Par
     QString appId = paramOption.appId.trimmed();
     QString arch = paramOption.arch.trimmed();
     if (arch.isNull() || arch.isEmpty()) {
-        arch = hostArch();
+        arch = linglong::util::hostArch();
     }
 
     // 判断是否已安装
-    QString userName = getUserName();
-    if (!getAppInstalledStatus(appId, paramOption.version, arch, userName)) {
+    QString userName = linglong::util::getUserName();
+    if (!linglong::util::getAppInstalledStatus(appId, paramOption.version, arch, userName)) {
         reply.message = appId + " not installed";
         qCritical() << reply.message;
         reply.code = STATUS_CODE(pkg_not_installed);
@@ -605,7 +603,7 @@ linglong::service::Reply PackageManagerImpl::Update(const linglong::service::Par
     // 检查是否存在版本更新
     linglong::package::AppMetaInfoList pkgList;
     // 根据已安装文件查询已经安装软件包信息
-    getInstalledAppInfo(appId, paramOption.version, arch, userName, pkgList);
+    linglong::util::getInstalledAppInfo(appId, paramOption.version, arch, userName, pkgList);
     auto installedApp = pkgList.at(0);
     if (pkgList.size() != 1) {
         reply.message = "query local app:" + appId + " info err";

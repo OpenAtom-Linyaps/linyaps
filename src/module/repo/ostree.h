@@ -38,27 +38,27 @@ public:
     explicit OSTree(const QString &path);
 
     ~OSTree() override;
-    util::Error init(const QString &repoMode);
+    linglong::util::Error init(const QString &repoMode);
 
-    util::Error remoteAdd(const QString &repoName, const QString &repoUrl);
+    linglong::util::Error remoteAdd(const QString &repoName, const QString &repoUrl);
 
-    util::Error importDirectory(const package::Ref &ref, const QString &path) override;
+    linglong::util::Error importDirectory(const package::Ref &ref, const QString &path) override;
 
-    util::Error import(const package::Bundle &bundle) override;
+    linglong::util::Error import(const package::Bundle &bundle) override;
 
-    util::Error exportBundle(package::Bundle &bundle) override;
+    linglong::util::Error exportBundle(package::Bundle &bundle) override;
 
-    std::tuple<util::Error, QList<package::Ref>> list(const QString &filter) override;
+    std::tuple<linglong::util::Error, QList<package::Ref>> list(const QString &filter) override;
 
-    std::tuple<util::Error, QList<package::Ref>> query(const QString &filter) override;
+    std::tuple<linglong::util::Error, QList<package::Ref>> query(const QString &filter) override;
 
-    util::Error push(const package::Ref &ref, bool force) override;
+    linglong::util::Error push(const package::Ref &ref, bool force) override;
 
-    util::Error push(const package::Bundle &bundle, bool force) override;
+    linglong::util::Error push(const package::Bundle &bundle, bool force) override;
 
-    util::Error pull(const package::Ref &ref, bool force) override;
+    linglong::util::Error pull(const package::Ref &ref, bool force) override;
 
-    util::Error checkout(const package::Ref &ref, const QString &subPath, const QString &target);
+    linglong::util::Error checkout(const package::Ref &ref, const QString &subPath, const QString &target);
 
     QString rootOfLayer(const package::Ref &ref) override;
 

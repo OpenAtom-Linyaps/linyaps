@@ -32,11 +32,6 @@
 #include "job_manager.h"
 #include "module/repo/ostree.h"
 
-using linglong::util::fileExists;
-using linglong::util::listDirFolders;
-
-// using namespace linglong;
-
 class PackageManagerPrivate
 {
 public:
@@ -57,11 +52,11 @@ PackageManager::PackageManager()
     : dd_ptr(new PackageManagerPrivate(this))
 {
     // 检查安装数据库信息
-    checkInstalledAppDb();
-    updateInstalledAppInfoDb();
+    linglong::util::checkInstalledAppDb();
+    linglong::util::updateInstalledAppInfoDb();
 
     // 检查应用缓存信息
-    checkAppCache();
+    linglong::util::checkAppCache();
 }
 
 PackageManager::~PackageManager() = default;
@@ -206,7 +201,7 @@ linglong::service::Reply PackageManager::Start(const linglong::service::RunParam
 
     QString arch = paramOption.arch.trimmed();
     if (arch.isNull() || arch.isEmpty()) {
-        arch = hostArch();
+        arch = linglong::util::hostArch();
     }
 
     ParamStringMap paramMap;
@@ -250,7 +245,7 @@ linglong::service::Reply PackageManager::Start(const linglong::service::RunParam
     }
 
     // 判断是否已安装
-    if (!getAppInstalledStatus(appId, version, "", "")) {
+    if (!linglong::util::getAppInstalledStatus(appId, version, "", "")) {
         reply.message = appId + " not installed";
         qCritical() << reply.message;
         reply.code = STATUS_CODE(pkg_not_installed);

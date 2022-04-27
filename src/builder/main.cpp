@@ -27,13 +27,11 @@
 #include "module/util/yaml.h"
 #include "module/util/log_handler.h"
 
-using namespace linglong;
-
 static void qJsonRegisterAll()
 {
-    builder::registerAllMetaType();
-    package::registerAllMetaType();
-    runtime::registerAllMetaType();
+    linglong::builder::registerAllMetaType();
+    linglong::package::registerAllMetaType();
+    linglong::runtime::registerAllMetaType();
 }
 
 int main(int argc, char **argv)
@@ -46,7 +44,7 @@ int main(int argc, char **argv)
 
     qJsonRegisterAll();
 
-    builder::BuilderConfig::instance()->setProjectRoot(QDir::currentPath());
+    linglong::builder::BuilderConfig::instance()->setProjectRoot(QDir::currentPath());
 
     QCommandLineParser parser;
 
@@ -67,9 +65,9 @@ int main(int argc, char **argv)
     QStringList args = parser.positionalArguments();
     QString command = args.isEmpty() ? QString() : args.first();
 
-    builder::BstBuilder _bb;
-    builder::LinglongBuilder _llb;
-    builder::Builder *builder = &_llb;
+    linglong::builder::BstBuilder _bb;
+    linglong::builder::LinglongBuilder _llb;
+    linglong::builder::Builder *builder = &_llb;
 
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
         {"create",
@@ -100,7 +98,7 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
 
              auto execVerbose = QCommandLineOption("exec", "run exec than build script", "exec");
-	     auto pkgVersion = QCommandLineOption("pversion", "set pacakge version", "pacakge version");
+             auto pkgVersion = QCommandLineOption("pversion", "set pacakge version", "pacakge version");
              auto srcVersion = QCommandLineOption("sversion", "set source version", "source version");
              auto srcCommit = QCommandLineOption("commit", "set commit refs", "source commit");
              parser.addOption(execVerbose);
@@ -113,28 +111,29 @@ int main(int argc, char **argv)
              parser.process(app);
 
              if (parser.isSet(execVerbose)) {
-                 builder::BuilderConfig::instance()->setExec(parser.value(execVerbose));
+                 linglong::builder::BuilderConfig::instance()->setExec(parser.value(execVerbose));
              }
-            // config linglong.yaml before build if necessary
+             // config linglong.yaml before build if necessary
              if (parser.isSet(pkgVersion) || parser.isSet(srcVersion) || parser.isSet(srcCommit)) {
+                 auto projectConfigPath =
+                     QStringList {linglong::builder::BuilderConfig::instance()->projectRoot(), "linglong.yaml"}.join(
+                         "/");
 
-                 auto projectConfigPath = QStringList {builder::BuilderConfig::instance()->projectRoot(), "linglong.yaml"}.join("/");
+                 QScopedPointer<linglong::builder::Project> project(
+                     formYaml<linglong::builder::Project>(YAML::LoadFile(projectConfigPath.toStdString())));
 
-                 QScopedPointer<builder::Project> project(formYaml<builder::Project>(YAML::LoadFile(projectConfigPath.toStdString())));
-                 
                  auto node = YAML::LoadFile(projectConfigPath.toStdString());
 
                  node["package"]["version"] = parser.value(pkgVersion).isEmpty()
-                                                 ? project->package->version.toStdString()
-                                                 : parser.value(pkgVersion).toStdString();
+                                                  ? project->package->version.toStdString()
+                                                  : parser.value(pkgVersion).toStdString();
 
-                 node["source"]["version"] = parser.value(srcVersion).isEmpty() 
+                 node["source"]["version"] = parser.value(srcVersion).isEmpty()
                                                  ? project->source->version.toStdString()
                                                  : parser.value(srcVersion).toStdString();
 
-                 node["source"]["commit"] = parser.value(srcCommit).isEmpty()
-                                                 ? project->source->commit.toStdString()
-                                                 : parser.value(srcCommit).toStdString();
+                 node["source"]["commit"] = parser.value(srcCommit).isEmpty() ? project->source->commit.toStdString()
+                                                                              : parser.value(srcCommit).toStdString();
                  // fixme: use qt file stream
                  std::ofstream fout(projectConfigPath.toStdString());
                  fout << node;
@@ -158,7 +157,7 @@ int main(int argc, char **argv)
              parser.process(app);
 
              if (parser.isSet(execVerbose)) {
-                 builder::BuilderConfig::instance()->setExec(parser.value(execVerbose));
+                 linglong::builder::BuilderConfig::instance()->setExec(parser.value(execVerbose));
              }
 
              auto result = builder->run();

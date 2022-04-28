@@ -12,28 +12,29 @@
 
 namespace linglong {
 namespace util {
-
 enum class StatusCode {
-    kSuccess = 0,   ///< 成功
-    kFail = 1,    ///< 失败
-    DataDirNotExists, //数据目录不存在
-    UapJsonFileNotExists, // uap.json不存在
-    BundleFileNotExists, // uab文件不存在
-    user_input_param_err = 600,
-    pkg_already_installed,
-    pkg_not_installed,
-    install_runtime_failed,
-    load_pkg_data_failed,
-    pkg_install_success, // 安装成功
-    pkg_install_failed, // 安装失败
-    pkg_uninstall_success, // 卸载成功
-    pkg_uninstall_failed, // 卸载失败
-    ErrorPkgUpdateFailed,
-    ErrorPkgUpdateSuccess,
-    ErrorPkgKillFailed,
-    ErrorPkgKillSuccess, // kill成功
-    ErrorPkgQuerySuccess, // 查询成功
-    ErrorPkgQueryFailed // 查询失败
+    kSuccess = 0, ///< 成功
+    kFail = 1, ///< 失败
+    /// ll-builder模块状态码范围为100~299
+    kDataDirNotExists = 100, ///< 数据目录不存在
+    kUapJsonFileNotExists, ///< uap.json不存在
+    kBundleFileNotExists, ///< uab文件不存在
+    /// ll-service模块状态码范围为600~899
+    kUserInputParamErr = 600, ///< 用户输入参数错误
+    kPkgAlreadyInstalled, ///< 已安装
+    kPkgNotInstalled, ///< 未安装
+    kInstallRuntimeFailed, ///< 安装runtime失败
+    kLoadPkgDataFailed, ///< 加载应用数据失败
+    kPkgInstallSuccess, ///< 安装成功
+    kPkgInstallFailed, ///< 安装失败
+    kPkgUninstallSuccess, ///< 卸载成功
+    kPkgUninstallFailed, ///< 卸载失败
+    kErrorPkgUpdateFailed, ///< 更新失败
+    kErrorPkgUpdateSuccess, ///< 更新成功
+    kErrorPkgKillFailed, ///< kill应用失败
+    kErrorPkgKillSuccess, ///< kill成功
+    kErrorPkgQuerySuccess, ///< 查询成功
+    kErrorPkgQueryFailed ///< 查询失败
 };
 
 template<typename T = int>
@@ -42,7 +43,7 @@ inline T statuCode(StatusCode statuCode)
     return static_cast<T>(statuCode);
 }
 
-}   // namespace util
-}   // namespace linglong
+} // namespace util
+} // namespace linglong
 
 #define STATUS_CODE(code) linglong::util::statuCode<int>(linglong::util::StatusCode::code)

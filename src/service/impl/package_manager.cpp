@@ -71,7 +71,7 @@ linglong::service::Reply PackageManager::Download(const linglong::service::Downl
     QString appId = downloadParamOption.appId;
     if (appId.isNull() || appId.isEmpty()) {
         qCritical() << "package name err";
-        reply.code = STATUS_CODE(user_input_param_err);
+        reply.code = STATUS_CODE(kUserInputParamErr);
         reply.message = "package name err";
         return reply;
     }
@@ -90,7 +90,7 @@ linglong::service::Reply PackageManager::Install(const linglong::service::Instal
     // 校验参数
     if (appId.isNull() || appId.isEmpty()) {
         reply.message = "appId input err";
-        reply.code = STATUS_CODE(user_input_param_err);
+        reply.code = STATUS_CODE(kUserInputParamErr);
         return reply;
     }
 
@@ -112,7 +112,7 @@ linglong::service::Reply PackageManager::Uninstall(const linglong::service::Unin
     // 校验参数
     if (appId.isNull() || appId.isEmpty()) {
         reply.message = "appId input err";
-        reply.code = STATUS_CODE(user_input_param_err);
+        reply.code = STATUS_CODE(kUserInputParamErr);
         return reply;
     }
 
@@ -130,7 +130,7 @@ linglong::service::Reply PackageManager::Update(const linglong::service::ParamOp
     // 校验参数
     if (appId.isNull() || appId.isEmpty()) {
         reply.message = "appId input err";
-        reply.code = STATUS_CODE(user_input_param_err);
+        reply.code = STATUS_CODE(kUserInputParamErr);
         return reply;
     }
 
@@ -159,7 +159,7 @@ linglong::service::QueryReply PackageManager::Query(const linglong::service::Que
     linglong::service::QueryReply reply;
     QString appId = paramOption.appId.trimmed();
     if (appId.isNull() || appId.isEmpty()) {
-        reply.code = STATUS_CODE(user_input_param_err);
+        reply.code = STATUS_CODE(kUserInputParamErr);
         reply.message = "appId input err";
         qCritical() << reply.message;
         return reply;
@@ -193,7 +193,7 @@ linglong::service::Reply PackageManager::Start(const linglong::service::RunParam
     reply.code = 0;
     QString appId = paramOption.appId.trimmed();
     if (appId.isNull() || appId.isEmpty()) {
-        reply.code = STATUS_CODE(user_input_param_err);
+        reply.code = STATUS_CODE(kUserInputParamErr);
         reply.message = "appId input err";
         qCritical() << reply.message;
         return reply;
@@ -248,7 +248,7 @@ linglong::service::Reply PackageManager::Start(const linglong::service::RunParam
     if (!linglong::util::getAppInstalledStatus(appId, version, "", "")) {
         reply.message = appId + " not installed";
         qCritical() << reply.message;
-        reply.code = STATUS_CODE(pkg_not_installed);
+        reply.code = STATUS_CODE(kPkgNotInstalled);
         return reply;
     }
     QString repoPoint = paramOption.repoPoint;
@@ -288,7 +288,7 @@ linglong::service::Reply PackageManager::Stop(const QString &containerId)
     linglong::service::Reply reply;
     auto it = d->apps.find(containerId);
     if (it == d->apps.end()) {
-        reply.code = STATUS_CODE(user_input_param_err);
+        reply.code = STATUS_CODE(kUserInputParamErr);
         reply.message = "containerId:" + containerId + " not exist";
         qCritical() << reply.message;
         return reply;
@@ -298,9 +298,9 @@ linglong::service::Reply PackageManager::Stop(const QString &containerId)
     int ret = kill(pid, SIGKILL);
     if (ret != 0) {
         reply.message = "kill container failed, containerId:" + containerId;
-        reply.code = STATUS_CODE(ErrorPkgKillFailed);
+        reply.code = STATUS_CODE(kErrorPkgKillFailed);
     } else {
-        reply.code = STATUS_CODE(ErrorPkgKillSuccess);
+        reply.code = STATUS_CODE(kErrorPkgKillSuccess);
         reply.message = "kill app:" + app->container()->packageName + " success";
     }
     qInfo() << "kill containerId:" << containerId << ",ret:" << ret;

@@ -338,7 +338,7 @@ int main(int argc, char **argv)
              QDBusPendingReply<linglong::service::Reply> dbusReply = packageManager.Stop(containerId);
              dbusReply.waitForFinished();
              linglong::service::Reply reply = dbusReply.value();
-             if (reply.code != STATUS_CODE(ErrorPkgKillSuccess)) {
+             if (reply.code != STATUS_CODE(kErrorPkgKillSuccess)) {
                  qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
                  return -1;
              }
@@ -421,7 +421,7 @@ int main(int argc, char **argv)
                  if (!installParamOption.nodbus) {
                      QDBusPendingReply<linglong::service::Reply> dbusReply = packageManager.Install(installParamOption);
                      reply = dbusReply.value();
-                     if (reply.code != STATUS_CODE(pkg_install_success)) {
+                     if (reply.code != STATUS_CODE(kPkgInstallSuccess)) {
                          qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
                          return -1;
                      } else {
@@ -429,7 +429,7 @@ int main(int argc, char **argv)
                      }
                  } else {
                      reply = noDbusPackageManager->Install(installParamOption);
-                     if (reply.code != STATUS_CODE(pkg_install_success)) {
+                     if (reply.code != STATUS_CODE(kPkgInstallSuccess)) {
                          qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
                          return -1;
                      } else {
@@ -461,7 +461,7 @@ int main(int argc, char **argv)
                  paramOption.version = appInfoList.at(1);
              QDBusPendingReply<linglong::service::Reply> dbusReply = packageManager.Update(paramOption);
              linglong::service::Reply reply = dbusReply.value();
-             if (reply.code != STATUS_CODE(ErrorPkgUpdateSuccess)) {
+             if (reply.code != STATUS_CODE(kErrorPkgUpdateSuccess)) {
                  qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
                  return -1;
              }
@@ -538,7 +538,7 @@ int main(int argc, char **argv)
              linglong::service::Reply reply;
              if (paramOption.nodbus) {
                  reply = noDbusPackageManager->Uninstall(paramOption);
-                 if (reply.code != STATUS_CODE(pkg_uninstall_success)) {
+                 if (reply.code != STATUS_CODE(kPkgUninstallSuccess)) {
                      qInfo().noquote() << "message: " << reply.message << ", errcode:" << reply.code;
                      return -1;
                  } else {
@@ -550,7 +550,7 @@ int main(int argc, char **argv)
              dbusReply.waitForFinished();
              reply = dbusReply.value();
 
-             if (reply.code != STATUS_CODE(pkg_uninstall_success)) {
+             if (reply.code != STATUS_CODE(kPkgUninstallSuccess)) {
                  qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
                  return -1;
              }

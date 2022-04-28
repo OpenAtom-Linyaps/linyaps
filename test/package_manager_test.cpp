@@ -90,7 +90,7 @@ TEST(Package, install01)
     QDBusPendingReply<linglong::service::Reply> reply = pm.Install(installParam);
     reply.waitForFinished();
     linglong::service::Reply retReply = reply.value();
-    EXPECT_NE(retReply.code, STATUS_CODE(pkg_install_success));
+    EXPECT_NE(retReply.code, STATUS_CODE(kPkgInstallSuccess));
     // stop service
     stop_ll_service();
 }
@@ -132,9 +132,9 @@ TEST(Package, install02)
         expectRet = false;
     }
     if (expectRet) {
-        EXPECT_EQ(retReply.code, STATUS_CODE(pkg_install_success));
+        EXPECT_EQ(retReply.code, STATUS_CODE(kPkgInstallSuccess));
     } else {
-        EXPECT_NE(retReply.code, STATUS_CODE(pkg_install_success));
+        EXPECT_NE(retReply.code, STATUS_CODE(kPkgInstallSuccess));
     }
 
     // stop service

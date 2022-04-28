@@ -91,11 +91,11 @@ linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString
 
     // 判断数据目录是否存在
     if (!util::dirExists(this->bundleDataPath)) {
-        return NewError() << STATUS_CODE(DataDirNotExists) << this->bundleDataPath + " don't exists!";
+        return NewError() << STATUS_CODE(kDataDirNotExists) << this->bundleDataPath + " don't exists!";
     }
     // 判断info.json是否存在
     if (!util::fileExists(this->bundleDataPath + QString(configJson))) {
-        return NewError() << STATUS_CODE(UapJsonFileNotExists)
+        return NewError() << STATUS_CODE(kUapJsonFileNotExists)
                              << this->bundleDataPath + QString("/info.json don't exists!!!");
     }
 
@@ -218,7 +218,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, bool fo
 {
     // 判断uab文件是否存在
     if (!util::fileExists(bundleFilePath)) {
-        return NewError() << STATUS_CODE(BundleFileNotExists) << bundleFilePath + " don't exists!";
+        return NewError() << STATUS_CODE(kBundleFileNotExists) << bundleFilePath + " don't exists!";
     }
     // 创建临时目录
     this->tmpWorkDir = util::ensureUserDir({".linglong", QFileInfo(bundleFilePath).fileName()});

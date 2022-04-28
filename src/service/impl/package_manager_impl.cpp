@@ -298,7 +298,7 @@ linglong::service::Reply PackageManagerImpl::Install(const linglong::service::In
     // 安装不查缓存
     auto ret = getAppInfofromServer(appId, installParamOption.version, arch, appData, reply.message);
     if (!ret) {
-        reply.code = STATUS_CODE(pkg_install_failed);
+        reply.code = STATUS_CODE(kPkgInstallFailed);
         return reply;
     }
 
@@ -307,7 +307,7 @@ linglong::service::Reply PackageManagerImpl::Install(const linglong::service::In
     if (!ret || appList.size() < 1) {
         reply.message = "app:" + appId + ", version:" + installParamOption.version + " not found in repo";
         qCritical() << reply.message;
-        reply.code = STATUS_CODE(pkg_install_failed);
+        reply.code = STATUS_CODE(kPkgInstallFailed);
         return reply;
     }
 
@@ -315,7 +315,7 @@ linglong::service::Reply PackageManagerImpl::Install(const linglong::service::In
     linglong::package::AppMetaInfo *appInfo = getLatestApp(appList);
     // 判断对应版本的应用是否已安装 Fix to do 多用户
     if (linglong::util::getAppInstalledStatus(appInfo->appId, appInfo->version, "", "")) {
-        reply.code = STATUS_CODE(pkg_already_installed);
+        reply.code = STATUS_CODE(kPkgAlreadyInstalled);
         reply.message = appInfo->appId + ", version: " + appInfo->version + " already installed";
         qCritical() << reply.message;
         return reply;
@@ -325,7 +325,7 @@ linglong::service::Reply PackageManagerImpl::Install(const linglong::service::In
     if (appList.size() > 1 && appId != appInfo->appId) {
         reply.message = "app:" + appId + ", version:" + installParamOption.version + " not found in repo";
         qCritical() << reply.message;
-        reply.code = STATUS_CODE(pkg_install_failed);
+        reply.code = STATUS_CODE(kPkgInstallFailed);
         return reply;
     }
 
@@ -333,7 +333,7 @@ linglong::service::Reply PackageManagerImpl::Install(const linglong::service::In
     ret = checkAppRuntime(appInfo->runtime, reply.message);
     if (!ret) {
         qCritical() << reply.message;
-        reply.code = STATUS_CODE(install_runtime_failed);
+        reply.code = STATUS_CODE(kInstallRuntimeFailed);
         return reply;
     }
 
@@ -343,7 +343,7 @@ linglong::service::Reply PackageManagerImpl::Install(const linglong::service::In
     ret = downloadAppData(appInfo->appId, appInfo->version, appInfo->arch, savePath, reply.message);
     if (!ret) {
         qCritical() << reply.message;
-        reply.code = STATUS_CODE(load_pkg_data_failed);
+        reply.code = STATUS_CODE(kLoadPkgDataFailed);
         return reply;
     }
 
@@ -385,7 +385,7 @@ linglong::service::Reply PackageManagerImpl::Install(const linglong::service::In
     appInfo->kind = "app";
     linglong::util::insertAppRecord(appInfo, "user", userName);
 
-    reply.code = STATUS_CODE(pkg_install_success);
+    reply.code = STATUS_CODE(kPkgInstallSuccess);
     reply.message = "install " + appInfo->appId + ", version:" + appInfo->version + " success";
     qInfo() << reply.message;
 
@@ -406,10 +406,10 @@ linglong::service::QueryReply PackageManagerImpl::Query(const linglong::service:
     if ("installed" == appId) {
         ret = linglong::util::queryAllInstalledApp("", reply.result, reply.message);
         if (ret) {
-            reply.code = STATUS_CODE(ErrorPkgQuerySuccess);
+            reply.code = STATUS_CODE(kErrorPkgQuerySuccess);
             reply.message = "query " + appId + " success";
         } else {
-            reply.code = STATUS_CODE(ErrorPkgQueryFailed);
+            reply.code = STATUS_CODE(kErrorPkgQueryFailed);
         }
         return reply;
     }
@@ -417,7 +417,7 @@ linglong::service::QueryReply PackageManagerImpl::Query(const linglong::service:
     linglong::package::AppMetaInfoList pkgList;
     QString arch = linglong::util::hostArch();
     if (arch == "unknown") {
-        reply.code = STATUS_CODE(ErrorPkgQueryFailed);
+        reply.code = STATUS_CODE(kErrorPkgQueryFailed);
         reply.message = "the host arch is not recognized";
         qCritical() << reply.message;
         return reply;
@@ -435,7 +435,7 @@ linglong::service::QueryReply PackageManagerImpl::Query(const linglong::service:
     if (status != STATUS_CODE(kSuccess)) {
         ret = getAppInfofromServer(appId, "", arch, appData, reply.message);
         if (!ret) {
-            reply.code = STATUS_CODE(ErrorPkgQueryFailed);
+            reply.code = STATUS_CODE(kErrorPkgQueryFailed);
             qCritical() << reply.message;
             return reply;
         }
@@ -445,7 +445,7 @@ linglong::service::QueryReply PackageManagerImpl::Query(const linglong::service:
     QJsonValue jsonValue;
     ret = getAppJsonArray(appData, jsonValue, reply.message);
     if (!ret) {
-        reply.code = STATUS_CODE(ErrorPkgQueryFailed);
+        reply.code = STATUS_CODE(kErrorPkgQueryFailed);
         qCritical() << reply.message;
         return reply;
     }
@@ -456,7 +456,7 @@ linglong::service::QueryReply PackageManagerImpl::Query(const linglong::service:
 
     // QJsonArray转换成QByteArray
     QJsonDocument document = QJsonDocument(jsonValue.toArray());
-    reply.code = STATUS_CODE(ErrorPkgQuerySuccess);
+    reply.code = STATUS_CODE(kErrorPkgQuerySuccess);
     reply.message = "query " + appId + " success";
     reply.result = QString(document.toJson());
     return reply;
@@ -484,7 +484,7 @@ linglong::service::Reply PackageManagerImpl::Uninstall(const linglong::service::
     QString userName = linglong::util::getUserName();
     if (!linglong::util::getAppInstalledStatus(appId, version, arch, "")) {
         reply.message = appId + ", version:" + version + " not installed";
-        reply.code = STATUS_CODE(pkg_not_installed);
+        reply.code = STATUS_CODE(kPkgNotInstalled);
         qCritical() << reply.message;
         return reply;
     }
@@ -497,7 +497,7 @@ linglong::service::Reply PackageManagerImpl::Uninstall(const linglong::service::
     qInfo() << "install app user:" << it->user << ", current user:" << userName << ", has root permission:" << isRoot;
     // 非root用户卸载不属于该用户安装的应用
     if (userName != it->user && !isRoot) {
-        reply.code = STATUS_CODE(pkg_uninstall_failed);
+        reply.code = STATUS_CODE(kPkgUninstallFailed);
         reply.message = appId + " uninstall permission deny";
         qCritical() << reply.message;
         return reply;
@@ -544,7 +544,7 @@ linglong::service::Reply PackageManagerImpl::Uninstall(const linglong::service::
     bool ret = G_OSTREE_REPOHELPER->ensureRepoEnv(kLocalRepoPath, err);
     if (!ret) {
         qCritical() << err;
-        reply.code = STATUS_CODE(pkg_uninstall_failed);
+        reply.code = STATUS_CODE(kPkgUninstallFailed);
         reply.message = "uninstall local repo not exist";
         return reply;
     }
@@ -553,7 +553,7 @@ linglong::service::Reply PackageManagerImpl::Uninstall(const linglong::service::
     ret = G_OSTREE_REPOHELPER->getRemoteRepoList(kLocalRepoPath, qrepoList, err);
     if (!ret) {
         qCritical() << err;
-        reply.code = STATUS_CODE(pkg_uninstall_failed);
+        reply.code = STATUS_CODE(kPkgUninstallFailed);
         reply.message = "uninstall remote repo not exist";
         return reply;
     }
@@ -565,7 +565,7 @@ linglong::service::Reply PackageManagerImpl::Uninstall(const linglong::service::
     ret = G_OSTREE_REPOHELPER->repoDeleteDatabyRef(kLocalRepoPath, qrepoList[0], matchRef, err);
     if (!ret) {
         qCritical() << err;
-        reply.code = STATUS_CODE(pkg_uninstall_failed);
+        reply.code = STATUS_CODE(kPkgUninstallFailed);
         reply.message = "uninstall " + appId + ", version:" + it->version + " failed";
         return reply;
     }
@@ -575,7 +575,7 @@ linglong::service::Reply PackageManagerImpl::Uninstall(const linglong::service::
     }
     // 更新安装数据库
     linglong::util::deleteAppRecord(appId, it->version, arch, userName);
-    reply.code = STATUS_CODE(pkg_uninstall_success);
+    reply.code = STATUS_CODE(kPkgUninstallSuccess);
     reply.message = "uninstall " + appId + ", version:" + it->version + " success";
     return reply;
 }
@@ -596,7 +596,7 @@ linglong::service::Reply PackageManagerImpl::Update(const linglong::service::Par
     if (!linglong::util::getAppInstalledStatus(appId, paramOption.version, arch, userName)) {
         reply.message = appId + " not installed";
         qCritical() << reply.message;
-        reply.code = STATUS_CODE(pkg_not_installed);
+        reply.code = STATUS_CODE(kPkgNotInstalled);
         return reply;
     }
 
@@ -608,7 +608,7 @@ linglong::service::Reply PackageManagerImpl::Update(const linglong::service::Par
     if (pkgList.size() != 1) {
         reply.message = "query local app:" + appId + " info err";
         qCritical() << reply.message;
-        reply.code = STATUS_CODE(ErrorPkgUpdateFailed);
+        reply.code = STATUS_CODE(kErrorPkgUpdateFailed);
         return reply;
     }
 
@@ -618,7 +618,7 @@ linglong::service::Reply PackageManagerImpl::Update(const linglong::service::Par
     if (!ret) {
         reply.message = "query server app:" + appId + " info err";
         qCritical() << reply.message;
-        reply.code = STATUS_CODE(ErrorPkgUpdateFailed);
+        reply.code = STATUS_CODE(kErrorPkgUpdateFailed);
         return reply;
     }
 
@@ -627,7 +627,7 @@ linglong::service::Reply PackageManagerImpl::Update(const linglong::service::Par
     if (!ret) {
         reply.message = "load app:" + appId + " info err";
         qCritical() << reply.message;
-        reply.code = STATUS_CODE(ErrorPkgUpdateFailed);
+        reply.code = STATUS_CODE(kErrorPkgUpdateFailed);
         return reply;
     }
 
@@ -635,7 +635,7 @@ linglong::service::Reply PackageManagerImpl::Update(const linglong::service::Par
     if (currentVersion == serverApp->version) {
         reply.message = "app:" + appId + ", version:" + currentVersion + " is latest";
         qCritical() << reply.message;
-        reply.code = STATUS_CODE(ErrorPkgUpdateFailed);
+        reply.code = STATUS_CODE(kErrorPkgUpdateFailed);
         return reply;
     }
 
@@ -645,10 +645,10 @@ linglong::service::Reply PackageManagerImpl::Update(const linglong::service::Par
     installParamOption.version = serverApp->version;
     installParamOption.arch = arch;
     reply = Install({installParamOption});
-    if (reply.code != STATUS_CODE(pkg_install_success)) {
+    if (reply.code != STATUS_CODE(kPkgInstallSuccess)) {
         reply.message = "download app:" + appId + ", version:" + installParamOption.version + " err";
         qCritical() << reply.message;
-        reply.code = STATUS_CODE(ErrorPkgUpdateFailed);
+        reply.code = STATUS_CODE(kErrorPkgUpdateFailed);
         return reply;
     }
 
@@ -656,13 +656,13 @@ linglong::service::Reply PackageManagerImpl::Update(const linglong::service::Par
     uninstallParamOption.appId = appId;
     uninstallParamOption.version = currentVersion;
     reply = Uninstall(uninstallParamOption);
-    if (reply.code != STATUS_CODE(pkg_uninstall_success)) {
+    if (reply.code != STATUS_CODE(kPkgUninstallSuccess)) {
         reply.message = "uninstall app:" + appId + ", version:" + currentVersion + " err";
         qCritical() << reply.message;
-        reply.code = STATUS_CODE(ErrorPkgUpdateFailed);
+        reply.code = STATUS_CODE(kErrorPkgUpdateFailed);
         return reply;
     }
-    reply.code = STATUS_CODE(ErrorPkgUpdateSuccess);
+    reply.code = STATUS_CODE(kErrorPkgUpdateSuccess);
     reply.message = "update " + appId + " success, version:" + currentVersion + " --> " + serverApp->version;
     return reply;
 }

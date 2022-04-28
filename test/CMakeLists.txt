@@ -46,14 +46,14 @@ set(LL_TEST_SOURCES
 
 # add qdbus call
 set_source_files_properties(../src/module/dbus_ipc/com.deepin.linglong.PackageManager.xml
-                            PROPERTIES INCLUDE service/impl/json_register_inc.h)
+                            PROPERTIES INCLUDE service/impl/register_meta_type.h)
 
 qt5_add_dbus_interface(LL_TEST_SOURCES
                        ../src/module/dbus_ipc/com.deepin.linglong.PackageManager.xml
                        package_manager)
 
 set_source_files_properties(../src/module/dbus_ipc/com.deepin.linglong.UapManager.xml
-                            PROPERTIES INCLUDE service/impl/json_register_inc.h)
+                            PROPERTIES INCLUDE service/impl/register_meta_type.h)
 
 add_executable(ll-test
         util_fs_test.cpp

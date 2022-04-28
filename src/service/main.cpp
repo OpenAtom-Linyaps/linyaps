@@ -11,7 +11,7 @@
 #include <QCoreApplication>
 
 #include "module/runtime/app.h"
-#include "impl/json_register_inc.h"
+#include "impl/register_meta_type.h"
 #include "packagemanageradaptor.h"
 #include "jobmanageradaptor.h"
 #include "module/runtime/runtime.h"

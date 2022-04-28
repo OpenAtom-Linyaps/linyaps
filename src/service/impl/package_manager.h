@@ -16,7 +16,7 @@
 #include <QObject>
 #include <QScopedPointer>
 
-#include "json_register_inc.h"
+#include "register_meta_type.h"
 #include "module/package/package.h"
 #include "module/runtime/container.h"
 #include "module/util/package_manager_param.h"
@@ -24,7 +24,6 @@
 #include "module/util/status_code.h"
 #include "reply.h"
 #include "param_option.h"
-// #include "package_manager_impl.h"
 #include "package_manager_flatpak_impl.h"
 
 namespace linglong {

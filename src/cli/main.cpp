@@ -16,7 +16,7 @@
 #include "cmd/command_helper.h"
 #include "module/package/package.h"
 #include "module/util/package_manager_param.h"
-#include "service/impl/json_register_inc.h"
+#include "service/impl/register_meta_type.h"
 #include "service/impl/package_manager.h"
 #include "package_manager.h"
 #include "module/runtime/runtime.h"

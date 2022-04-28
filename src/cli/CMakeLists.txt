@@ -34,7 +34,7 @@ set(LL_CLI_SOURCES
     ../module/package/package.cpp)
 
 set_source_files_properties(../module/dbus_ipc/com.deepin.linglong.PackageManager.xml
-                            PROPERTIES INCLUDE service/impl/json_register_inc.h)
+                            PROPERTIES INCLUDE service/impl/register_meta_type.h)
 
 qt5_add_dbus_interface(LL_CLI_SOURCES
                        ../module/dbus_ipc/com.deepin.linglong.PackageManager.xml

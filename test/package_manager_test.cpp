@@ -15,7 +15,7 @@
 
 #include "src/module/package/package.h"
 #include "src/module/util/app_status.h"
-#include "src/service/impl/json_register_inc.h"
+#include "src/service/impl/register_meta_type.h"
 #include "src/service/impl/param_option.h"
 #include "src/service/impl/reply.h"
 #include "package_manager.h"

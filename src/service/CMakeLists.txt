@@ -8,7 +8,6 @@ set(LL_SERVICE_SOURCES
     main.cpp
     resource/resource.qrc
     impl/package_manager.cpp
-    impl/package_manager_impl.cpp
     impl/package_manager_flatpak_impl.cpp
     impl/job_manager.cpp
     impl/job.cpp
@@ -39,7 +38,7 @@ set(LL_SERVICE_SOURCES
 qt5_add_dbus_adaptor(LL_SERVICE_SOURCES
                      ../module/dbus_ipc/com.deepin.linglong.PackageManager.xml
                      impl/package_manager.h
-                     PackageManager)
+                     linglong::service::PackageManager)
 
 
 qt5_add_dbus_adaptor(LL_SERVICE_SOURCES

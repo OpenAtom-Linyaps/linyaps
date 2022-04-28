@@ -10,10 +10,11 @@
 
 #include "package_manager_flatpak_impl.h"
 
-linglong::service::Reply
-PackageManagerFlatpakImpl::Install(const linglong::service::InstallParamOption &installParamOption)
+namespace linglong {
+namespace service {
+Reply PackageManagerFlatpakImpl::Install(const InstallParamOption &installParamOption)
 {
-    linglong::service::Reply reply;
+    Reply reply;
     QString appId = installParamOption.appId.trimmed();
     QStringList argStrList;
     argStrList << "install"
@@ -38,9 +39,9 @@ PackageManagerFlatpakImpl::Install(const linglong::service::InstallParamOption &
  *
  * @return QueryReply dbus方法调用应答
  */
-linglong::service::QueryReply PackageManagerFlatpakImpl::Query(const linglong::service::QueryParamOption &paramOption)
+QueryReply PackageManagerFlatpakImpl::Query(const QueryParamOption &paramOption)
 {
-    linglong::service::QueryReply reply;
+    QueryReply reply;
     QString appId = paramOption.appId.trimmed();
     if (appId.isNull() || appId.isEmpty()) {
         reply.code = STATUS_CODE(kUserInputParamErr);
@@ -85,12 +86,11 @@ linglong::service::QueryReply PackageManagerFlatpakImpl::Query(const linglong::s
  *
  * @param paramOption: 卸载命令参数
  *
- * @return linglong::service::Reply 卸载结果信息
+ * @return Reply 卸载结果信息
  */
-linglong::service::Reply
-PackageManagerFlatpakImpl::Uninstall(const linglong::service::UninstallParamOption &paramOption)
+Reply PackageManagerFlatpakImpl::Uninstall(const UninstallParamOption &paramOption)
 {
-    linglong::service::Reply reply;
+    Reply reply;
     QString appId = paramOption.appId.trimmed();
     QStringList argStrList;
     argStrList << "uninstall"
@@ -107,3 +107,5 @@ PackageManagerFlatpakImpl::Uninstall(const linglong::service::UninstallParamOpti
     qInfo() << "flatpak Uninstall " << appId << ", ret:" << ret;
     return reply;
 }
+} // namespace service
+} // namespace linglong

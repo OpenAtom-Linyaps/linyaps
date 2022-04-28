@@ -185,7 +185,7 @@ int main(int argc, char **argv)
     ComDeepinLinglongPackageManagerInterface packageManager(
         "com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager", QDBusConnection::sessionBus());
     checkAndStartService(packageManager);
-    PackageManager *noDbusPackageManager = PackageManager::instance();
+    linglong::service::PackageManager *noDbusPackageManager = linglong::service::PackageManager::instance();
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
         {"run", // 启动玲珑应用
          [&](QCommandLineParser &parser) -> int {

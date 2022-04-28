@@ -29,18 +29,11 @@
             <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::ParamOption"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
         </method>
-        <method name="UpdateAll">
-            <arg name="JobID" type="s" direction="out"/>
-        </method>
         <method name="Query">
             <arg name="paramOption" type="(sssbs)" direction="in"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::QueryParamOption"/>
             <arg type="(iss)" direction="out"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::QueryReply"/>
-        </method>
-        <method name="Import">
-            <arg name="PackageFileList" type="as" direction="in"/>
-            <arg name="JobID" type="s" direction="out"/>
         </method>
         <method name="Start">
             <arg name="paramOption" type="(sssssbsssss)" direction="in"/>

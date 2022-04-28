@@ -15,17 +15,22 @@
 #include "module/util/singleton.h"
 #include "module/util/status_code.h"
 #include "module/package/package.h"
-#include "package_manager_proxy_base.h"
+#include "package_manager_interface.h"
 #include "reply.h"
 #include "param_option.h"
 
+namespace linglong {
+namespace service {
 class PackageManagerFlatpakImpl
-    : public PackageManagerProxyBase
+    : public PackageManagerInterface
     , public linglong::util::Singleton<PackageManagerFlatpakImpl>
 {
 public:
-    linglong::service::Reply Download(const linglong::service::DownloadParamOption &downloadParamOption) { return linglong::service::Reply(); }
-    linglong::service::Reply Install(const linglong::service::InstallParamOption &installParamOption);
-    linglong::service::Reply Uninstall(const linglong::service::UninstallParamOption &paramOption);
-    linglong::service::QueryReply Query(const linglong::service::QueryParamOption &paramOption);
+    ~PackageManagerFlatpakImpl() override = default;
+    Reply Download(const DownloadParamOption &downloadParamOption) { return Reply(); }
+    Reply Install(const InstallParamOption &installParamOption);
+    Reply Uninstall(const UninstallParamOption &paramOption);
+    QueryReply Query(const QueryParamOption &paramOption);
 };
+} // namespace service
+} // namespace linglong

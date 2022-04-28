@@ -1,49 +1,44 @@
 /*
- * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
+ * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
  *
- * Author:     huqinghong@uniontech.com
+ * Author:     yuanqiliang <yuanqiliang@uniontech.com>
  *
- * Maintainer: huqinghong@uniontech.com
+ * Maintainer: yuanqiliang <yuanqiliang@uniontech.com>
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#pragma once
+#include "module/runtime/app.h"
+#include "module/repo/repo.h"
+#include "module/repo/ostree.h"
+#include "module/repo/repohelper_factory.h"
+#include "module/util/app_status.h"
+#include "module/util/appinfo_cache.h"
+#include "module/util/httpclient.h"
+#include "module/util/package_manager_param.h"
+#include "module/util/sysinfo.h"
+#include "module/util/runner.h"
+#include "version.h"
 
-#include <QDebug>
-#include <QDBusArgument>
-#include <QDBusContext>
-#include <QJsonArray>
-#include <QList>
-#include <QObject>
-#include <QProcess>
-#include <QSysInfo>
-#include <QThread>
 
-#include "module/util/singleton.h"
-#include "module/util/status_code.h"
-#include "module/package/package.h"
-#include "module/util/fs.h"
-#include "package_manager_proxy_base.h"
-#include "reply.h"
-#include "param_option.h"
-
-class PackageManagerImpl
-    : public PackageManagerProxyBase
-    , public linglong::util::Singleton<PackageManagerImpl>
+namespace linglong {
+namespace service {
+class PackageManager;
+class PackageManagerPrivate
+    : public QObject
+    , public PackageManagerInterface
 {
-    friend class linglong::util::Singleton<PackageManagerImpl>;
-
+    Q_OBJECT
 public:
-    linglong::service::Reply Download(const linglong::service::DownloadParamOption &downloadParamOption);
-    linglong::service::Reply Install(const linglong::service::InstallParamOption &installParamOption);
-    linglong::service::Reply Uninstall(const linglong::service::UninstallParamOption &paramOption);
-    linglong::service::QueryReply Query(const linglong::service::QueryParamOption &paramOption);
-
-    linglong::service::Reply Update(const linglong::service::ParamOption &paramOption);
+    explicit PackageManagerPrivate(PackageManager *parent);
+    ~PackageManagerPrivate() override = default;
 
 private:
-    const QString sysLinglongInstalltions = "/deepin/linglong/entries/share";
+    Reply Download(const DownloadParamOption &downloadParamOption);
+    Reply Install(const InstallParamOption &installParamOption);
+    Reply Uninstall(const UninstallParamOption &paramOption);
+    QueryReply Query(const QueryParamOption &paramOption);
+    Reply Update(const ParamOption &paramOption);
 
     /*
      * 从给定的软件包列表中查找最新版本的软件包
@@ -125,4 +120,18 @@ private:
      * @return bool: true:安装成功或已安装返回true false:安装失败
      */
     bool checkAppRuntime(const QString &runtime, QString &err);
+
+private:
+    QMap<QString, QPointer<linglong::runtime::App>> apps;
+    linglong::repo::OSTree repo;
+    const QString sysLinglongInstalltions;
+    const QString kAppInstallPath = "/deepin/linglong/layers/";
+    const QString kLocalRepoPath = "/deepin/linglong/repo";
+    const QString kRemoteRepoName = "repo";
+
+public:
+    PackageManager *const q_ptr;
+    Q_DECLARE_PUBLIC(PackageManager);
 };
+} // namespace service
+} // namespace linglong

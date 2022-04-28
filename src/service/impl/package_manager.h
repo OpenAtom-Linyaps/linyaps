@@ -24,9 +24,11 @@
 #include "module/util/status_code.h"
 #include "reply.h"
 #include "param_option.h"
-#include "package_manager_impl.h"
+// #include "package_manager_impl.h"
 #include "package_manager_flatpak_impl.h"
 
+namespace linglong {
+namespace service {
 class PackageManagerPrivate; /**< forward declaration PackageManagerPrivate */
 
 /**
@@ -62,7 +64,7 @@ public Q_SLOTS:
      *          code:状态码 \n
      *          message:信息
      */
-    linglong::service::Reply Download(const linglong::service::DownloadParamOption &downloadParamOption);
+    Reply Download(const DownloadParamOption &downloadParamOption);
 
     /**
      * @brief 安装软件包
@@ -73,16 +75,16 @@ public Q_SLOTS:
      *          code:状态码 \n
      *          message:信息
      */
-    linglong::service::Reply Install(const linglong::service::InstallParamOption &installParamOption);
+    Reply Install(const InstallParamOption &installParamOption);
 
     /**
      * @brief 卸载软件包
      *
      * @param paramOption 卸载参数
      *
-     * @return linglong::service::Reply 同Install
+     * @return Reply 同Install
      */
-    linglong::service::Reply Uninstall(const linglong::service::UninstallParamOption &paramOption);
+    Reply Uninstall(const UninstallParamOption &paramOption);
 
     /**
      * @brief 更新软件包
@@ -91,14 +93,8 @@ public Q_SLOTS:
      *
      * @return Reply 同Install
      */
-    linglong::service::Reply Update(const linglong::service::ParamOption &paramOption);
+    Reply Update(const ParamOption &paramOption);
 
-    /**
-     * @brief
-     *
-     * @return QString
-     */
-    QString UpdateAll();
 
     /**
      * @brief 查询软件包信息
@@ -110,33 +106,25 @@ public Q_SLOTS:
      *         message 状态信息 \n
      *         result 查询结果
      */
-    linglong::service::QueryReply Query(const linglong::service::QueryParamOption &paramOption);
-
-    /**
-     * @brief
-     *
-     * @param packageIdList
-     * @return QString
-     */
-    QString Import(const QStringList &packagePathList);
+    QueryReply Query(const QueryParamOption &paramOption);
 
     /**
      * @brief 运行应用
      *
      * @param paramOption 启动命令参数
      *
-     * @return linglong::service::Reply 同Install
+     * @return Reply 同Install
      */
-    linglong::service::Reply Start(const linglong::service::RunParamOption &paramOption);
+    Reply Start(const RunParamOption &paramOption);
 
     /**
      * @brief 退出应用
      *
      * @param containerId 运行应用容器对应的Id（使用ListContainer查询）
      *
-     * @return linglong::service::Reply 执行结果信息
+     * @return Reply 执行结果信息
      */
-    linglong::service::Reply Stop(const QString &containerId);
+    Reply Stop(const QString &containerId);
 
     /**
      * @brief 查询正在运行的应用信息
@@ -150,10 +138,13 @@ public Q_SLOTS:
     ContainerList ListContainer();
 
 private:
-    QScopedPointer<PackageManagerPrivate> dd_ptr; ///< private data
-    Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), PackageManager)
+    PackageManagerPrivate *const d_ptr;
+    Q_DECLARE_PRIVATE(PackageManager);
 
 protected:
     PackageManager();
     ~PackageManager() override;
 };
+
+} // namespace service
+} // namespace linglong

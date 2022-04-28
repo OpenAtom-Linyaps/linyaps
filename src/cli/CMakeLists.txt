@@ -11,7 +11,6 @@ set(LL_CLI_SOURCES
     ../module/util/singleton.h
     #add for cli no dbus support
     ../service/impl/package_manager.cpp
-    ../service/impl/package_manager_impl.cpp
     ../service/impl/package_manager_flatpak_impl.cpp
     ../service/impl/job_manager.cpp
     ../service/impl/job.cpp

@@ -147,3 +147,5 @@ protected:
 
 } // namespace service
 } // namespace linglong
+
+#define PACKAGE_MANAGER linglong::service::PackageManager::instance()

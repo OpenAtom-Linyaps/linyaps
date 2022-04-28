@@ -34,4 +34,4 @@ public:
 };
 } // namespace linglong
 
-#define G_REPOHELPER linglong::RepoHelperFactory::instance()->createRepoHelper(linglong::RepoType::OSTreeRepo)
+#define REPO_HELPER linglong::RepoHelperFactory::instance()->createRepoHelper(linglong::RepoType::OSTreeRepo)

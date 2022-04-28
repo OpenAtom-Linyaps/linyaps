@@ -36,3 +36,5 @@ private:
 };
 } // namespace util
 } // namespace linglong
+
+#define LOG_HANDLER linglong::util::LogHandler::instance()

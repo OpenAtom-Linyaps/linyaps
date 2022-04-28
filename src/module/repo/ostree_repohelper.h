@@ -335,4 +335,4 @@ private:
     LingLongDir *pLingLongDir;
 };
 } // namespace linglong
-#define G_OSTREE_REPOHELPER linglong::OstreeRepoHelper::instance()
+#define OSTREE_REPO_HELPER linglong::OstreeRepoHelper::instance()

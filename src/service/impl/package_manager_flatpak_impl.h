@@ -34,3 +34,5 @@ public:
 };
 } // namespace service
 } // namespace linglong
+
+#define PACKAGEMANAGER_FLATPAK_IMPL linglong::service::PackageManagerFlatpakImpl::instance()

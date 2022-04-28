@@ -156,7 +156,7 @@ int main(int argc, char **argv)
     QCoreApplication::setOrganizationName("deepin");
 
     // 安装消息处理函数
-    linglong::util::LogHandler::instance()->installMessageHandler();
+    LOG_HANDLER->installMessageHandler();
 
     // 注册QT对象类型
     qJsonRegisterAll();

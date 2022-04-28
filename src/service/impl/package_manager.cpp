@@ -164,7 +164,7 @@ bool PackageManagerPrivate::getAppInfofromServer(const QString &pkgName, const Q
 bool PackageManagerPrivate::downloadAppData(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
                                          const QString &dstPath, QString &err)
 {
-    bool ret = G_OSTREE_REPOHELPER->ensureRepoEnv(kLocalRepoPath, err);
+    bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(kLocalRepoPath, err);
     if (!ret) {
         qCritical() << err;
         return false;
@@ -175,14 +175,14 @@ bool PackageManagerPrivate::downloadAppData(const QString &pkgName, const QStrin
     qInfo() << "downloadAppData ref:" << matchRef;
 
     // ret = repo.repoPull(repoPath, qrepoList[0], pkgName, err);
-    ret = G_OSTREE_REPOHELPER->repoPullbyCmd(kLocalRepoPath, kRemoteRepoName, matchRef, err);
+    ret = OSTREE_REPO_HELPER->repoPullbyCmd(kLocalRepoPath, kRemoteRepoName, matchRef, err);
     if (!ret) {
         qCritical() << err;
         return false;
     }
     // checkout 目录
     // const QString dstPath = repoPath + "/AppData";
-    ret = G_OSTREE_REPOHELPER->checkOutAppData(kLocalRepoPath, kRemoteRepoName, matchRef, dstPath, err);
+    ret = OSTREE_REPO_HELPER->checkOutAppData(kLocalRepoPath, kRemoteRepoName, matchRef, dstPath, err);
     if (!ret) {
         qCritical() << err;
         return false;
@@ -565,7 +565,7 @@ Reply PackageManagerPrivate::Uninstall(const UninstallParamOption &paramOption)
     }
 
     // 更新本地repo仓库
-    bool ret = G_OSTREE_REPOHELPER->ensureRepoEnv(kLocalRepoPath, err);
+    bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(kLocalRepoPath, err);
     if (!ret) {
         qCritical() << err;
         reply.code = STATUS_CODE(kPkgUninstallFailed);
@@ -574,7 +574,7 @@ Reply PackageManagerPrivate::Uninstall(const UninstallParamOption &paramOption)
     }
     // 应从安装数据库获取应用所属仓库信息 to do fix
     QVector<QString> qrepoList;
-    ret = G_OSTREE_REPOHELPER->getRemoteRepoList(kLocalRepoPath, qrepoList, err);
+    ret = OSTREE_REPO_HELPER->getRemoteRepoList(kLocalRepoPath, qrepoList, err);
     if (!ret) {
         qCritical() << err;
         reply.code = STATUS_CODE(kPkgUninstallFailed);
@@ -586,7 +586,7 @@ Reply PackageManagerPrivate::Uninstall(const UninstallParamOption &paramOption)
     // QString matchRef = QString("app/%1/%2/%3").arg(it->appId).arg(arch).arg(it->version);
     QString matchRef = QString("%1/%2/%3").arg(it->appId).arg(it->version).arg(arch);
     qInfo() << "Uninstall app ref:" << matchRef;
-    ret = G_OSTREE_REPOHELPER->repoDeleteDatabyRef(kLocalRepoPath, qrepoList[0], matchRef, err);
+    ret = OSTREE_REPO_HELPER->repoDeleteDatabyRef(kLocalRepoPath, qrepoList[0], matchRef, err);
     if (!ret) {
         qCritical() << err;
         reply.code = STATUS_CODE(kPkgUninstallFailed);
@@ -743,7 +743,7 @@ Reply PackageManager::Install(const InstallParamOption &installParamOption)
     }
 
     if ("flatpak" == installParamOption.repoPoint) {
-        return PackageManagerFlatpakImpl::instance()->Install(installParamOption);
+        return PACKAGEMANAGER_FLATPAK_IMPL->Install(installParamOption);
     }
 
     reply = d->Install(installParamOption);
@@ -763,7 +763,7 @@ Reply PackageManager::Uninstall(const UninstallParamOption &paramOption)
     }
 
     if ("flatpak" == paramOption.repoPoint) {
-        return PackageManagerFlatpakImpl::instance()->Uninstall(paramOption);
+        return PACKAGEMANAGER_FLATPAK_IMPL->Uninstall(paramOption);
     }
 
     return d->Uninstall(paramOption);
@@ -796,7 +796,7 @@ QueryReply PackageManager::Query(const QueryParamOption &paramOption)
 {
     Q_D(PackageManager);
     if ("flatpak" == paramOption.repoPoint) {
-        return PackageManagerFlatpakImpl::instance()->Query(paramOption);
+        return PACKAGEMANAGER_FLATPAK_IMPL->Query(paramOption);
     }
     QueryReply reply;
     QString appId = paramOption.appId.trimmed();

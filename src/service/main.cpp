@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
     QCoreApplication::setOrganizationName("deepin");
 
     // 安装消息处理函数
-    linglong::util::LogHandler::instance()->installMessageHandler();
+    LOG_HANDLER->installMessageHandler();
 
     linglong::runtime::registerAllMetaType();
     linglong::package::registerAllMetaType();
@@ -35,11 +35,11 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    PackageManagerAdaptor pma(linglong::service::PackageManager::instance());
+    PackageManagerAdaptor pma(PACKAGE_MANAGER);
     JobManagerAdaptor jma(JobManager::instance());
 
     // TODO(se): 需要进行错误处理
-    dbus.registerObject("/com/deepin/linglong/PackageManager", linglong::service::PackageManager::instance());
+    dbus.registerObject("/com/deepin/linglong/PackageManager", PACKAGE_MANAGER);
     dbus.registerObject("/com/deepin/linglong/JobManager", JobManager::instance());
 
     return QCoreApplication::exec();

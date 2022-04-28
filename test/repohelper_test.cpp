@@ -17,7 +17,7 @@ TEST(OstreeRepoHelperT01, ensureRepoEnv)
     const QString repoPath = "/deepin/linglong/repo";
     // const QString repoPath = "/home/xxxx/8.linglong/GitPrj/debug/linglong/build/repotest";
     QString err = "";
-    bool ret = G_OSTREE_REPOHELPER->ensureRepoEnv(repoPath, err);
+    bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(repoPath, err);
     if (!ret) {
         qInfo() << err;
     } else {
@@ -52,13 +52,13 @@ TEST(OstreeRepoHelperT02, getRemoteRepoList)
 {
     const QString repoPath = "/deepin/linglong/repo";
     QString err = "";
-    bool ret = G_OSTREE_REPOHELPER->ensureRepoEnv(repoPath, err);
+    bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(repoPath, err);
     if (!ret) {
         qInfo() << err;
     }
     EXPECT_EQ(ret, true);
     QVector<QString> qvec;
-    ret = G_OSTREE_REPOHELPER->getRemoteRepoList(repoPath, qvec, err);
+    ret = OSTREE_REPO_HELPER->getRemoteRepoList(repoPath, qvec, err);
     if (!ret) {
         qInfo() << err;
         EXPECT_EQ(ret, false);
@@ -74,13 +74,13 @@ TEST(OstreeRepoHelperT03, getRemoteRefs)
 {
     const QString repoPath = "/deepin/linglong/repo";
     QString err = "";
-    bool ret = G_OSTREE_REPOHELPER->ensureRepoEnv(repoPath, err);
+    bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(repoPath, err);
     if (!ret) {
         qInfo() << err;
     }
     EXPECT_EQ(ret, true);
     QVector<QString> qvec;
-    ret = G_OSTREE_REPOHELPER->getRemoteRepoList(repoPath, qvec, err);
+    ret = OSTREE_REPO_HELPER->getRemoteRepoList(repoPath, qvec, err);
     if (!ret) {
         qInfo() << err;
         EXPECT_EQ(ret, false);
@@ -92,7 +92,7 @@ TEST(OstreeRepoHelperT03, getRemoteRefs)
     }
     EXPECT_EQ(ret, true);
     QMap<QString, QString> outRefs;
-    ret = G_OSTREE_REPOHELPER->getRemoteRefs(repoPath, qvec[0], outRefs, err);
+    ret = OSTREE_REPO_HELPER->getRemoteRefs(repoPath, qvec[0], outRefs, err);
     if (!ret) {
         qInfo() << err;
     } else {
@@ -108,13 +108,13 @@ TEST(OstreeRepoHelperT04, resolveMatchRefs)
 {
     const QString repoPath = "/deepin/linglong/repo";
     QString err = "";
-    bool ret = G_OSTREE_REPOHELPER->ensureRepoEnv(repoPath, err);
+    bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(repoPath, err);
     if (!ret) {
         qInfo() << err;
     }
     EXPECT_EQ(ret, true);
     QVector<QString> qrepoList;
-    ret = G_OSTREE_REPOHELPER->getRemoteRepoList(repoPath, qrepoList, err);
+    ret = OSTREE_REPO_HELPER->getRemoteRepoList(repoPath, qrepoList, err);
     if (!ret) {
         qInfo() << err;
         EXPECT_EQ(ret, false);
@@ -126,7 +126,7 @@ TEST(OstreeRepoHelperT04, resolveMatchRefs)
     }
     EXPECT_EQ(ret, true);
     QMap<QString, QString> outRefs;
-    ret = G_OSTREE_REPOHELPER->getRemoteRefs(repoPath, qrepoList[0], outRefs, err);
+    ret = OSTREE_REPO_HELPER->getRemoteRefs(repoPath, qrepoList[0], outRefs, err);
     if (!ret) {
         qInfo() << err;
     } else {
@@ -140,7 +140,7 @@ TEST(OstreeRepoHelperT04, resolveMatchRefs)
     QString matchRef = "";
     QString pkgName = "org.deepin.calculator";
     QString arch = "x86_64";
-    ret = G_OSTREE_REPOHELPER->queryMatchRefs(repoPath, qrepoList[0], pkgName, "", arch, matchRef, err);
+    ret = OSTREE_REPO_HELPER->queryMatchRefs(repoPath, qrepoList[0], pkgName, "", arch, matchRef, err);
     if (!ret) {
         qInfo() << err;
     } else {
@@ -153,13 +153,13 @@ TEST(OstreeRepoHelperT05, repoPull)
 {
     const QString repoPath = "/deepin/linglong/repo";
     QString err = "";
-    bool ret = G_OSTREE_REPOHELPER->ensureRepoEnv(repoPath, err);
+    bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(repoPath, err);
     if (!ret) {
         qInfo() << err;
     }
     EXPECT_EQ(ret, true);
     QVector<QString> qrepoList;
-    ret = G_OSTREE_REPOHELPER->getRemoteRepoList(repoPath, qrepoList, err);
+    ret = OSTREE_REPO_HELPER->getRemoteRepoList(repoPath, qrepoList, err);
     if (!ret) {
         qInfo() << err;
         EXPECT_EQ(ret, false);
@@ -171,7 +171,7 @@ TEST(OstreeRepoHelperT05, repoPull)
     }
     EXPECT_EQ(ret, true);
     QMap<QString, QString> outRefs;
-    ret = G_OSTREE_REPOHELPER->getRemoteRefs(repoPath, qrepoList[0], outRefs, err);
+    ret = OSTREE_REPO_HELPER->getRemoteRefs(repoPath, qrepoList[0], outRefs, err);
     if (!ret) {
         qInfo() << err;
     } else {
@@ -184,7 +184,7 @@ TEST(OstreeRepoHelperT05, repoPull)
     QString matchRef = "";
     QString pkgName = "org.deepin.calculator";
     QString arch = "x86_64";
-    ret = G_OSTREE_REPOHELPER->queryMatchRefs(repoPath, qrepoList[0], pkgName, "", arch, matchRef, err);
+    ret = OSTREE_REPO_HELPER->queryMatchRefs(repoPath, qrepoList[0], pkgName, "", arch, matchRef, err);
     if (!ret) {
         qInfo() << err;
     } else {
@@ -201,12 +201,12 @@ TEST(OstreeRepoHelperT06, checkOutAppData)
     QString err = "";
     QVector<QString> qrepoList;
 
-    bool ret = G_OSTREE_REPOHELPER->ensureRepoEnv(repoPath, err);
+    bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(repoPath, err);
     if (!ret) {
         qInfo() << err;
     }
 
-    ret = G_OSTREE_REPOHELPER->getRemoteRepoList(repoPath, qrepoList, err);
+    ret = OSTREE_REPO_HELPER->getRemoteRepoList(repoPath, qrepoList, err);
     if (!ret) {
         qInfo() << err;
         EXPECT_EQ(ret, false);
@@ -220,7 +220,7 @@ TEST(OstreeRepoHelperT06, checkOutAppData)
     QString matchRef = "";
     QString pkgName = "org.deepin.calculator";
     QString arch = "x86_64";
-    ret = G_OSTREE_REPOHELPER->queryMatchRefs(repoPath, qrepoList[0], pkgName, "", arch, matchRef, err);
+    ret = OSTREE_REPO_HELPER->queryMatchRefs(repoPath, qrepoList[0], pkgName, "", arch, matchRef, err);
     if (!ret) {
         qInfo() << err;
         return;
@@ -229,7 +229,7 @@ TEST(OstreeRepoHelperT06, checkOutAppData)
     }
     EXPECT_EQ(ret, true);
 
-    ret = G_OSTREE_REPOHELPER->checkOutAppData(repoPath, qrepoList[0], matchRef, dstPath, err);
+    ret = OSTREE_REPO_HELPER->checkOutAppData(repoPath, qrepoList[0], matchRef, dstPath, err);
     if (!ret) {
         qInfo() << err;
     }
@@ -239,13 +239,13 @@ TEST(RepoHelperT06, repoPullbyCmd)
 {
     const QString repoPath = "/deepin/linglong/repo";
     QString err = "";
-    bool ret = G_OSTREE_REPOHELPER->ensureRepoEnv(repoPath, err);
+    bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(repoPath, err);
     if (!ret) {
         qInfo() << err;
     }
     EXPECT_EQ(ret, true);
     QVector<QString> qrepoList;
-    ret = G_OSTREE_REPOHELPER->getRemoteRepoList(repoPath, qrepoList, err);
+    ret = OSTREE_REPO_HELPER->getRemoteRepoList(repoPath, qrepoList, err);
     if (!ret) {
         qInfo() << err;
         EXPECT_EQ(ret, false);
@@ -257,7 +257,7 @@ TEST(RepoHelperT06, repoPullbyCmd)
     }
     EXPECT_EQ(ret, true);
     QMap<QString, QString> outRefs;
-    ret = G_OSTREE_REPOHELPER->getRemoteRefs(repoPath, qrepoList[0], outRefs, err);
+    ret = OSTREE_REPO_HELPER->getRemoteRefs(repoPath, qrepoList[0], outRefs, err);
     if (!ret) {
         qInfo() << err;
     } else {
@@ -270,7 +270,7 @@ TEST(RepoHelperT06, repoPullbyCmd)
     QString matchRef = "";
     QString pkgName = "org.deepin.calculator";
     QString arch = "x86_64";
-    ret = G_OSTREE_REPOHELPER->queryMatchRefs(repoPath, qrepoList[0], pkgName, "", arch, matchRef, err);
+    ret = OSTREE_REPO_HELPER->queryMatchRefs(repoPath, qrepoList[0], pkgName, "", arch, matchRef, err);
     if (!ret) {
         qInfo() << err;
     } else {
@@ -278,7 +278,7 @@ TEST(RepoHelperT06, repoPullbyCmd)
     }
     EXPECT_EQ(ret, true);
 
-    ret = G_OSTREE_REPOHELPER->repoPullbyCmd(repoPath, qrepoList[0], matchRef, err);
+    ret = OSTREE_REPO_HELPER->repoPullbyCmd(repoPath, qrepoList[0], matchRef, err);
     if (!ret) {
         qInfo() << err;
     }

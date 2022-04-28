@@ -51,7 +51,7 @@ void JobManager::Start(const QString &jobId)
         return;
     }
 
-    int processId = G_OSTREE_REPOHELPER->getOstreeJobId(jobId);
+    int processId = OSTREE_REPO_HELPER->getOstreeJobId(jobId);
     if (processId == -1) {
         qWarning() << jobId << " not exist";
         return;
@@ -86,7 +86,7 @@ void JobManager::Stop(const QString &jobId)
         return;
     }
 
-    int processId = G_OSTREE_REPOHELPER->getOstreeJobId(jobId);
+    int processId = OSTREE_REPO_HELPER->getOstreeJobId(jobId);
     if (processId == -1) {
         qWarning() << jobId << " not exist";
         return;

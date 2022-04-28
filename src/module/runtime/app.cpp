@@ -371,11 +371,11 @@ public:
                 "/runtime/lib/aarch64-linux-gnu",
             };
             r->process->env.push_back(
-                "QT_PLUGIN_PATH=/runtime/lib/aarch64-linux-gnu/qt5/plugins:/usr/lib/aarch64-linux-gnu/qt5/plugins");
+                "QT_PLUGIN_PATH=/opt/apps/" + appId
+                + "/files/plugins:/runtime/lib/aarch64-linux-gnu/qt5/plugins:/usr/lib/aarch64-linux-gnu/qt5/plugins");
             r->process->env.push_back(
-                "QT_QPA_PLATFORM_PLUGIN_PATH=/runtime/lib/aarch64-linux-gnu/qt5/plugins/platforms:/usr/lib/aarch64-linux-gnu/qt5/plugins/platforms");
-            r->process->env.push_back(
-                "QTWEBENGINEPROCESS_PATH=/runtime/lib/aarch64-linux-gnu/qt5/libexec/QtWebEngineProcess");
+                "QT_QPA_PLATFORM_PLUGIN_PATH=/opt/apps/" + appId
+                + "/files/plugins/platforms:/runtime/lib/aarch64-linux-gnu/qt5/plugins/platforms:/usr/lib/aarch64-linux-gnu/qt5/plugins/platforms");
             break;
         case X86_64:
             fixLdLibraryPath = QStringList {
@@ -386,11 +386,11 @@ public:
                 "/runtime/lib/i386-linux-gnu",
             };
             r->process->env.push_back(
-                "QT_PLUGIN_PATH=/runtime/lib/x86_64-linux-gnu/qt5/plugins:/usr/lib/x86_64-linux-gnu/qt5/plugins");
+                "QT_PLUGIN_PATH=/opt/apps/" + appId
+                + "/files/plugins:/runtime/lib/x86_64-linux-gnu/qt5/plugins:/usr/lib/x86_64-linux-gnu/qt5/plugins");
             r->process->env.push_back(
-                "QT_QPA_PLATFORM_PLUGIN_PATH=/runtime/lib/x86_64-linux-gnu/qt5/plugins/platforms:/usr/lib/x86_64-linux-gnu/qt5/plugins/platforms");
-            r->process->env.push_back(
-                "QTWEBENGINEPROCESS_PATH=/runtime/lib/x86_64-linux-gnu/qt5/libexec/QtWebEngineProcess");
+                "QT_QPA_PLATFORM_PLUGIN_PATH=/opt/apps/" + appId
+                + "/files/plugins/platforms:/runtime/lib/x86_64-linux-gnu/qt5/plugins/platforms:/usr/lib/x86_64-linux-gnu/qt5/plugins/platforms");
             break;
         default:
             qInfo() << "no supported arch :" << appRef.arch;
@@ -398,8 +398,6 @@ public:
         }
 
         r->process->env.push_back("LD_LIBRARY_PATH=" + fixLdLibraryPath.join(":"));
-        r->process->env.push_back(
-            "QTWEBENGINERESOURCE_PATH=/runtime/share/qt5/translations:/runtime/share/qt5/resources");
         return 0;
     }
 

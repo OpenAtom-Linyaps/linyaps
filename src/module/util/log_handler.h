@@ -26,13 +26,13 @@ class LogHandler
 
 public:
     explicit LogHandler(QObject *parent = nullptr);
-    ~LogHandler();
+    ~LogHandler() override;
     void installMessageHandler(); // 给Qt安装消息处理函数
     void uninstallMessageHandler(); // 取消安装消息处理函数并释放资源
 
 private:
-    LogHandlerPrivate *const d_ptr;
-    Q_DECLARE_PRIVATE(LogHandler);
+    QScopedPointer<LogHandlerPrivate> dd_ptr;
+    Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), LogHandler)
 };
 } // namespace util
 } // namespace linglong

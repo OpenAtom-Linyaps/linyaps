@@ -230,7 +230,7 @@ void linglong::util::LogHandlerPrivate::messageHandler(QtMsgType type, const QMe
 }
 
 linglong::util::LogHandler::LogHandler(QObject *parent)
-    : d_ptr(new LogHandlerPrivate(this))
+    : dd_ptr(new LogHandlerPrivate(this))
 {
 }
 
@@ -253,6 +253,4 @@ void linglong::util::LogHandler::uninstallMessageHandler()
     QMutexLocker locker(&LogHandlerPrivate::logMutex);
 
     qInstallMessageHandler(nullptr);
-    Q_D(LogHandler);
-    delete d;
 }

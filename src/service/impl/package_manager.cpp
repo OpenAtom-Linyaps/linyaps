@@ -692,7 +692,7 @@ Reply PackageManagerPrivate::Update(const ParamOption &paramOption)
 }
 
 PackageManager::PackageManager()
-    : d_ptr(new PackageManagerPrivate(this))
+    : dd_ptr(new PackageManagerPrivate(this))
 {
     // 检查安装数据库信息
     linglong::util::checkInstalledAppDb();
@@ -704,8 +704,6 @@ PackageManager::PackageManager()
 
 PackageManager::~PackageManager()
 {
-    Q_D(PackageManager);
-    delete d;
 }
 
 /*!

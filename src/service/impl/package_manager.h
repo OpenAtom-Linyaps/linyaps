@@ -137,8 +137,8 @@ public Q_SLOTS:
     ContainerList ListContainer();
 
 private:
-    PackageManagerPrivate *const d_ptr;
-    Q_DECLARE_PRIVATE(PackageManager);
+    QScopedPointer<PackageManagerPrivate> dd_ptr;
+    Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), PackageManager)
 
 protected:
     PackageManager();

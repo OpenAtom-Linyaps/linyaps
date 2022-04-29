@@ -1,7 +1,7 @@
 find_package(CURL REQUIRED)
 find_package(PkgConfig REQUIRED)
 # QT sqlite支持
-find_package(Qt5Sql REQUIRED)
+find_package(Qt5 COMPONENTS Concurrent Sql REQUIRED)
 pkg_search_module(OSTREE1 REQUIRED ostree-1)
 
 set(LL_SERVICE_SOURCES

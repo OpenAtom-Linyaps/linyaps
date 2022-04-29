@@ -15,6 +15,9 @@
 #include <QList>
 #include <QObject>
 #include <QScopedPointer>
+#include <QThreadPool>
+#include <QtConcurrent/QtConcurrent>
+#include <QFuture>
 
 #include "register_meta_type.h"
 #include "module/package/package.h"
@@ -94,7 +97,6 @@ public Q_SLOTS:
      */
     Reply Update(const ParamOption &paramOption);
 
-
     /**
      * @brief 查询软件包信息
      *
@@ -137,6 +139,8 @@ public Q_SLOTS:
     ContainerList ListContainer();
 
 private:
+    QScopedPointer<QThreadPool> runPool; ///< 启动应用线程池
+    QScopedPointer<QThreadPool> pool; ///< 下载、卸载、更新应用线程池
     QScopedPointer<PackageManagerPrivate> dd_ptr;
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), PackageManager)
 
@@ -148,4 +152,6 @@ protected:
 } // namespace service
 } // namespace linglong
 
+#define RUN__POOL_MAX_THREAD 100000000 ///< 启动应用线程池最大线程数
+#define POOL_MAX_THREAD 10 ///< 下载、卸载、更新应用线程池最大线程数
 #define PACKAGE_MANAGER linglong::service::PackageManager::instance()

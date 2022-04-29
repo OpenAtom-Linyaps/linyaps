@@ -103,7 +103,7 @@ bool PackageManagerPrivate::getAppJsonArray(const QString &jsonString, QJsonValu
  * @return bool: true:成功 false:失败
  */
 bool PackageManagerPrivate::loadAppInfo(const QString &jsonString, linglong::package::AppMetaInfoList &appList,
-                                     QString &err)
+                                        QString &err)
 {
     QJsonValue arrayValue;
     auto ret = getAppJsonArray(jsonString, arrayValue, err);
@@ -137,7 +137,7 @@ bool PackageManagerPrivate::loadAppInfo(const QString &jsonString, linglong::pac
  * @return bool: true:成功 false:失败
  */
 bool PackageManagerPrivate::getAppInfofromServer(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
-                                              QString &appData, QString &err)
+                                                 QString &appData, QString &err)
 {
     bool ret = G_HTTPCLIENT->queryRemote(pkgName, pkgVer, pkgArch, appData);
     if (!ret) {
@@ -162,7 +162,7 @@ bool PackageManagerPrivate::getAppInfofromServer(const QString &pkgName, const Q
  * @return bool: true:成功 false:失败
  */
 bool PackageManagerPrivate::downloadAppData(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
-                                         const QString &dstPath, QString &err)
+                                            const QString &dstPath, QString &err)
 {
     bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(kLocalRepoPath, err);
     if (!ret) {
@@ -211,8 +211,8 @@ Reply PackageManagerPrivate::Download(const DownloadParamOption &downloadParamOp
  *
  * @return bool: true:成功 false:失败
  */
-bool PackageManagerPrivate::installRuntime(const QString &runtimeId, const QString &runtimeVer, const QString &runtimeArch,
-                                        QString &err)
+bool PackageManagerPrivate::installRuntime(const QString &runtimeId, const QString &runtimeVer,
+                                           const QString &runtimeArch, QString &err)
 {
     linglong::package::AppMetaInfoList appList;
     QString appData = "";
@@ -692,8 +692,12 @@ Reply PackageManagerPrivate::Update(const ParamOption &paramOption)
 }
 
 PackageManager::PackageManager()
-    : dd_ptr(new PackageManagerPrivate(this))
+    : runPool(new QThreadPool)
+    , pool(new QThreadPool)
+    , dd_ptr(new PackageManagerPrivate(this))
 {
+    runPool->setMaxThreadCount(RUN__POOL_MAX_THREAD);
+    pool->setMaxThreadCount(POOL_MAX_THREAD);
     // 检查安装数据库信息
     linglong::util::checkInstalledAppDb();
     linglong::util::updateInstalledAppInfoDb();
@@ -733,18 +737,21 @@ Reply PackageManager::Install(const InstallParamOption &installParamOption)
     Q_D(PackageManager);
     Reply reply;
     QString appId = installParamOption.appId.trimmed();
-    // 校验参数
     if (appId.isNull() || appId.isEmpty()) {
         reply.message = "appId input err";
         reply.code = STATUS_CODE(kUserInputParamErr);
         return reply;
     }
 
-    if ("flatpak" == installParamOption.repoPoint) {
-        return PACKAGEMANAGER_FLATPAK_IMPL->Install(installParamOption);
-    }
+    QFuture<void> future = QtConcurrent::run(pool.data(), [=]() {
+        if ("flatpak" == installParamOption.repoPoint) {
+            PACKAGEMANAGER_FLATPAK_IMPL->Install(installParamOption);
+        }
+        d->Install(installParamOption);
+    });
 
-    reply = d->Install(installParamOption);
+    reply.code = STATUS_CODE(kPkgInstalling);
+    reply.message = installParamOption.appId + "is installing";
     return reply;
 }
 
@@ -760,11 +767,16 @@ Reply PackageManager::Uninstall(const UninstallParamOption &paramOption)
         return reply;
     }
 
-    if ("flatpak" == paramOption.repoPoint) {
-        return PACKAGEMANAGER_FLATPAK_IMPL->Uninstall(paramOption);
-    }
+    QFuture<void> future = QtConcurrent::run(pool.data(), [=]() {
+        if ("flatpak" == paramOption.repoPoint) {
+            PACKAGEMANAGER_FLATPAK_IMPL->Uninstall(paramOption);
+        }
+        d->Uninstall(paramOption);
+    });
 
-    return d->Uninstall(paramOption);
+    reply.code = STATUS_CODE(kPkgUninstalling);
+    reply.message = paramOption.appId + "is uninstalling";
+    return reply;
 }
 
 Reply PackageManager::Update(const ParamOption &paramOption)
@@ -779,7 +791,10 @@ Reply PackageManager::Update(const ParamOption &paramOption)
         return reply;
     }
 
-    reply = d->Update(paramOption);
+    QFuture<void> future = QtConcurrent::run(pool.data(), [=]() { d->Update(paramOption); });
+
+    reply.code = STATUS_CODE(kPkgUpdateing);
+    reply.message = paramOption.appId + "is undateing";
     return reply;
 }
 
@@ -804,7 +819,6 @@ QueryReply PackageManager::Query(const QueryParamOption &paramOption)
         qCritical() << reply.message;
         return reply;
     }
-    // PackageManagerInterface *pImpl = PackageManagerImpl::instance();
     return d->Query(paramOption);
 }
 
@@ -882,7 +896,7 @@ Reply PackageManager::Start(const RunParamOption &paramOption)
         return reply;
     }
     QString repoPoint = paramOption.repoPoint;
-    JobManager::instance()->CreateJob([=]() {
+    QFuture<void> future = QtConcurrent::run(runPool.data(), [=]() {
         // 判断是否存在
         linglong::package::Ref ref("", appId, version, arch);
 
@@ -901,6 +915,7 @@ Reply PackageManager::Start(const RunParamOption &paramOption)
         d->apps.erase(it);
         app->deleteLater();
     });
+    // future.waitForFinished();
     return reply;
 }
 

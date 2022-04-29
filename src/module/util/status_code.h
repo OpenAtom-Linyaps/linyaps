@@ -26,11 +26,14 @@ enum class StatusCode {
     kInstallRuntimeFailed, ///< 安装runtime失败
     kLoadPkgDataFailed, ///< 加载应用数据失败
     kPkgInstallSuccess, ///< 安装成功
+    kPkgInstalling, ///< 安装中
     kPkgInstallFailed, ///< 安装失败
     kPkgUninstallSuccess, ///< 卸载成功
+    kPkgUninstalling, ///< 卸载中
     kPkgUninstallFailed, ///< 卸载失败
     kErrorPkgUpdateFailed, ///< 更新失败
     kErrorPkgUpdateSuccess, ///< 更新成功
+    kPkgUpdateing, ///< 更新中
     kErrorPkgKillFailed, ///< kill应用失败
     kErrorPkgKillSuccess, ///< kill成功
     kErrorPkgQuerySuccess, ///< 查询成功

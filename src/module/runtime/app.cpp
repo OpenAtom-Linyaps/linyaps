@@ -12,6 +12,7 @@
 
 #include <unistd.h>
 #include <sys/wait.h>
+#include <sys/socket.h>
 #include <linux/prctl.h>
 #include <sys/prctl.h>
 #include <QProcess>
@@ -30,8 +31,6 @@
 #include "module/repo/repo.h"
 #include "module/flatpak/flatpak_manager.h"
 #include "module/util/env.h"
-
-#define LINGLONG 118
 
 #define LL_VAL(str) #str
 #define LL_TOSTRING(str) LL_VAL(str)
@@ -894,6 +893,7 @@ public:
     App *q_ptr = nullptr;
 
     repo::Repo *repo;
+    int sockets[2]; // save file describers of sockets used to communicate with ll-box
 
     const QString sysLinglongInstalltions = util::getLinglongRootPath() + "/entries/share";
 
@@ -955,8 +955,7 @@ int App::start()
     auto json = QJsonDocument::fromVariant(toVariant<Runtime>(d->r)).toJson();
     auto data = json.toStdString();
 
-    int pipeEnds[2];
-    if (pipe(pipeEnds) != 0) {
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, d->sockets) != 0) {
         return EXIT_FAILURE;
     }
 
@@ -969,24 +968,20 @@ int App::start()
 
     if (0 == boxPid) {
         // child process
-        (void)close(pipeEnds[1]);
-        if (dup2(pipeEnds[0], LINGLONG) == -1) {
-            return EXIT_FAILURE;
-        }
-        (void)close(pipeEnds[0]);
-
-        char const *const args[] = {"/usr/bin/ll-box", LL_TOSTRING(LINGLONG), NULL};
+        (void)close(d->sockets[1]);
+        auto socket = std::to_string(d->sockets[0]);
+        char const *const args[] = {"/usr/bin/ll-box", socket.c_str(), NULL};
         int ret = execvp(args[0], (char **)args);
         exit(ret);
     } else {
-        close(pipeEnds[0]);
-        // FIXME: should handle error
-        (void)write(pipeEnds[1], data.c_str(), data.size());
-        close(pipeEnds[1]);
-
+        close(d->sockets[0]);
+        // FIXME: handle error
+        (void)write(d->sockets[1], data.c_str(), data.size());
+        (void)write(d->sockets[1], "\0", 1); // each data write into sockets should ended with '\0'
         d->container->pid = boxPid;
         // FIXME(interactive bash): if need keep interactive shell
         waitpid(boxPid, nullptr, 0);
+        close(d->sockets[1]);
         // FIXME to do 删除代理socket临时文件
     }
 

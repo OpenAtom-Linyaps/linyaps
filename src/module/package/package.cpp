@@ -20,5 +20,6 @@ void linglong::package::registerAllMetaType()
     qJsonRegister<linglong::package::Permission>();
     qJsonRegister<linglong::package::Filesystem>();
     qJsonRegister<linglong::package::User>();
+    qJsonRegister<linglong::package::OverlayfsRootfs>();
     qJsonRegister<AppMetaInfo>();
 }

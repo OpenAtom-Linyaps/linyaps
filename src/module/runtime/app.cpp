@@ -225,17 +225,32 @@ public:
             useThinRuntime = false;
         }
 
-        // 特殊处理应用清单
-        const QStringList appList = {"org.deepin.manual",      "org.gnome.gnome-mines", "org.gnome.eog",
-                                     "com.game.gnome-nibbles", "org.gnome.iagno",       "org.gnome.gnome-mahjongg",
-                                     "org.gnome.gnome-chess"};
-        if (appList.contains(appId)) {
-            fuseMount = true;
-            specialCase = true;
-        }
-
         r->annotations = new Annotations(r);
         r->annotations->containerRootPath = container->workingDirectory;
+
+        // 通过info.json文件判断是否要overlay mount
+        auto appInfoFile = appRootPath + "/info.json";
+        package::Info *info = nullptr;
+        if (util::fileExists(appInfoFile)) {
+            info = util::loadJSON<package::Info>(appInfoFile);
+            if (info->overlayfs && info->overlayfs->mounts.size() > 0) {
+                fuseMount = true;
+                specialCase = true;
+            }
+        }
+
+        // 转化特殊变量
+        QMap<QString, QString> variables = {
+            {"APP_ROOT_PATH", appRootPath},
+            {"RUNTIME_ROOT_PATH", runtimeRootPath},
+            {"APP_ROOT_SHARE_PATH", sysLinglongInstalltions},
+        };
+        auto getPath = [&](QString &path) -> QString {
+            for (auto key : variables.keys()) {
+                path.replace(QString("$%1").arg(key).toLocal8Bit(), variables.value(key).toLocal8Bit());
+            }
+            return path;
+        };
 
         if (fuseMount) {
             r->annotations->overlayfs = new AnnotationsOverlayfsRootfs(r->annotations);
@@ -268,47 +283,10 @@ public:
                 mountMap.push_back({runtimeRootPath + "/opt/deepinwine", "/opt/deepinwine"});
                 mountMap.push_back({runtimeRootPath + "/opt/deepin-wine6-stable", "/opt/deepin-wine6-stable"});
             }
+            // overlay mount
             if (fuseMount && specialCase) {
-                // 特殊挂载帮助手册
-                if ("org.deepin.manual" == appId) {
-                    mountMap.push_back({"/deepin/linglong/layers", "/deepin/linglong/layers"});
-                    mountMap.push_back({sysLinglongInstalltions + "/deepin-manual", "/usr/share/deepin-manual"});
-                }
-                // 特殊挂载扫雷
-                if ("org.gnome.gnome-mines" == appId) {
-                    mountMap.push_back({appRootPath + "/files/share/gnome-mines", "/usr/share/gnome-mines"});
-                    mountMap.push_back({appRootPath + "/files/share/locale", "/usr/share/locale"});
-                    mountMap.push_back({appRootPath + "/files/share/help", "/usr/share/help"});
-                }
-                // 特殊挂载图像查看器翻译文件
-                if ("org.gnome.eog" == appId) {
-                    mountMap.push_back({appRootPath + "/files/share/locale", "/usr/share/locale"});
-                    mountMap.push_back({appRootPath + "/files/share/help", "/usr/share/help"});
-                }
-                // 特殊挂载贪吃蛇翻译文件与配置目录
-                if ("com.game.gnome-nibbles" == appId) {
-                    mountMap.push_back({appRootPath + "/files/share/locale", "/usr/share/locale"});
-                    mountMap.push_back({appRootPath + "/files/share/gnome-nibbles", "/usr/share/gnome-nibbles"});
-                }
-                // 特殊挂载黑白棋配置目录与翻译文件
-                if ("org.gnome.iagno" == appId) {
-                    mountMap.push_back({appRootPath + "/files/locale", "/usr/share/locale"});
-                    mountMap.push_back({appRootPath + "/files/iagno", "/usr/share/iagno"});
-                    mountMap.push_back({appRootPath + "/files/help", "/usr/share/help"});
-                }
-                // 特殊挂载对对碰配置目录与翻译文件
-                if ("org.gnome.gnome-mahjongg" == appId) {
-                    mountMap.push_back({appRootPath + "/files/share/appdata", "/usr/share/appdata"});
-                    mountMap.push_back({appRootPath + "/files/share/gnome-mahjongg", "/usr/share/gnome-mahjongg"});
-                    mountMap.push_back({appRootPath + "/files/share/locale", "/usr/share/locale"});
-                    mountMap.push_back({appRootPath + "/files/share/help", "/usr/share/help"});
-                }
-                // 特殊挂载国际象棋配置目录与翻译文件
-                if ("org.gnome.gnome-chess" == appId) {
-                    mountMap.push_back({appRootPath + "/files/etc", "/etc"});
-                    mountMap.push_back({appRootPath + "/files/gnome-chess", "/usr/share/gnome-chess"});
-                    mountMap.push_back({appRootPath + "/files/locale", "/usr/share/locale"});
-                    mountMap.push_back({appRootPath + "/files/help", "/usr/share/help"});
+                for (auto mount : info->overlayfs->mounts) {
+                    mountMap.push_back({getPath(mount->source), getPath(mount->destination)});
                 }
             }
         } else {
@@ -834,6 +812,7 @@ public:
         QMap<QString, QString> permissionMountsMap;
 
         const package::User *permissionUserMounts = nullptr;
+
         // old info.json load permission failed
         permissionUserMounts = info->permissions && info->permissions->filesystem && info->permissions->filesystem->user
                                    ? info->permissions->filesystem->user

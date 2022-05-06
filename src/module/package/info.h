@@ -16,6 +16,7 @@
 #include <QObject>
 
 #include "module/util/json.h"
+#include "module/runtime/oci.h"
 #include "ref.h"
 
 namespace linglong {
@@ -71,6 +72,13 @@ class Permission : public JsonSerialize
     Q_JSON_PTR_PROPERTY(Filesystem, filesystem);
 };
 
+class OverlayfsRootfs : public JsonSerialize
+{
+    Q_OBJECT;
+    Q_JSON_CONSTRUCTOR(OverlayfsRootfs)
+    Q_JSON_PROPERTY(MountList, mounts);
+};
+
 /*!
  * Info is the data of /opt/apps/{package-id}/info.json. The spec can get from here:
  * https://doc.chinauos.com/content/M7kCi3QB_uwzIp6HyF5J
@@ -95,6 +103,9 @@ public:
     // permissions
     Q_JSON_PTR_PROPERTY(Permission, permissions);
 
+    //overlayfs mount
+    Q_JSON_PTR_PROPERTY(OverlayfsRootfs, overlayfs);
+
 };
 
 } // namespace package
@@ -104,6 +115,7 @@ Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::package, Info)
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::package, Permission)
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::package, Filesystem)
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::package, User)
+Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::package, OverlayfsRootfs)
 
 // inline QDBusArgument &operator<<(QDBusArgument &argument, const linglong::package::Info &message)
 //{

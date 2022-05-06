@@ -390,14 +390,12 @@ int main(int argc, char **argv)
 
              // auto appId = args.value(1);
              auto repoType = parser.value(optRepoPoint);
-             if (appList.isEmpty() || (!repoType.isEmpty() && "flatpak" != repoType)) {
+             if (appList.size() < 2 || (!repoType.isEmpty() && "flatpak" != repoType)) {
                  parser.showHelp(-1);
                  return -1;
              }
              // 设置 24 h超时
              packageManager.setTimeout(1000 * 60 * 60 * 24);
-             QDBusPendingReply<linglong::service::Reply> reply;
-
              // appId format: org.deepin.calculator/1.2.6 in multi-version
              foreach (const QString &app, appList) {
                  if ("install" == app) {
@@ -415,7 +413,7 @@ int main(int argc, char **argv)
                  } else if (appInfoList.size() == 3) {
                      installParamOption.arch = appInfoList.at(2);
                  }
-                 //  appMap[app] = installParamOption;
+
                  linglong::service::Reply reply;
                  qInfo().noquote() << "install" << app << ", please wait a few minutes...";
                  if (!installParamOption.nodbus) {

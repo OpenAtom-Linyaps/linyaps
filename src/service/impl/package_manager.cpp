@@ -746,6 +746,7 @@ Reply PackageManager::Install(const InstallParamOption &installParamOption)
     QFuture<void> future = QtConcurrent::run(pool.data(), [=]() {
         if ("flatpak" == installParamOption.repoPoint) {
             PACKAGEMANAGER_FLATPAK_IMPL->Install(installParamOption);
+            return;
         }
         d->Install(installParamOption);
     });
@@ -770,6 +771,7 @@ Reply PackageManager::Uninstall(const UninstallParamOption &paramOption)
     QFuture<void> future = QtConcurrent::run(pool.data(), [=]() {
         if ("flatpak" == paramOption.repoPoint) {
             PACKAGEMANAGER_FLATPAK_IMPL->Uninstall(paramOption);
+            return;
         }
         d->Uninstall(paramOption);
     });

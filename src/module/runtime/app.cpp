@@ -40,6 +40,7 @@ namespace linglong {
 namespace runtime {
 
 enum RunArch {
+    UNKNOWN,
     ARM64,
     X86_64,
 };
@@ -339,6 +340,8 @@ public:
             runArch = ARM64;
         } else if (appRef.arch == "x86_64") {
             runArch = X86_64;
+        } else {
+            runArch = UNKNOWN;
         }
         switch (runArch) {
         case ARM64:

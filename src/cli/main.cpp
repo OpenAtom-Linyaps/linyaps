@@ -185,7 +185,6 @@ int main(int argc, char **argv)
     ComDeepinLinglongPackageManagerInterface packageManager(
         "com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager", QDBusConnection::sessionBus());
     checkAndStartService(packageManager);
-    linglong::service::PackageManager *noDbusPackageManager = PACKAGE_MANAGER;
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
         {"run", // 启动玲珑应用
          [&](QCommandLineParser &parser) -> int {
@@ -426,10 +425,10 @@ int main(int argc, char **argv)
                          qInfo().noquote() << "message:" << reply.message;
                      }
                  } else {
-                     reply = noDbusPackageManager->Install(installParamOption);
+                     reply = PACKAGE_MANAGER->Install(installParamOption);
+                     PACKAGE_MANAGER->pool->waitForDone(-1);
                      if (reply.code != STATUS_CODE(kPkgInstallSuccess)) {
                          qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
-                         return -1;
                      } else {
                          qInfo().noquote() << "install " << installParamOption.appId << " success";
                      }
@@ -535,7 +534,7 @@ int main(int argc, char **argv)
              paramOption.repoPoint = repoType;
              linglong::service::Reply reply;
              if (paramOption.nodbus) {
-                 reply = noDbusPackageManager->Uninstall(paramOption);
+                 reply = PACKAGE_MANAGER->Uninstall(paramOption);
                  if (reply.code != STATUS_CODE(kPkgUninstallSuccess)) {
                      qInfo().noquote() << "message: " << reply.message << ", errcode:" << reply.code;
                      return -1;

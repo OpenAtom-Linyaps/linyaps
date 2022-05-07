@@ -271,9 +271,21 @@ int main(int argc, char **argv)
                  paramOption.filterInterface = parser.value(optInterfaceFilter);
              }
 
+             // ll-cli 进沙箱环境
+             linglong::service::Reply reply;
+             if ("/bin/bash" == parser.value(optExec) || "bash" == parser.value(optExec)) {
+                 reply = PACKAGE_MANAGER->Start(paramOption);
+                 PACKAGE_MANAGER->runPool->waitForDone(-1);
+                 if (0 != reply.code) {
+                     qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
+                     return -1;
+                 }
+                 return 0;
+             }
+
              QDBusPendingReply<linglong::service::Reply> dbusReply = packageManager.Start(paramOption);
              dbusReply.waitForFinished();
-             linglong::service::Reply reply = dbusReply.value();
+             reply = dbusReply.value();
              if (reply.code != 0) {
                  qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
                  return -1;

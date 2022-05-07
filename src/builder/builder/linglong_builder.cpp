@@ -271,7 +271,7 @@ int startContainer(Container *c, Runtime *r)
         close(pipeEnds[1]);
 
         c->pid = boxPid;
-        //read exit status of build task from pipe
+        // read exit status of build task from pipe
         const size_t bufSize = 1024;
         char buf[bufSize] = {};
         size_t ret = 0;
@@ -284,8 +284,8 @@ int startContainer(Container *c, Runtime *r)
         close(pipeRet[0]);
         waitpid(boxPid, nullptr, 0);
     }
-    //return exit status of build task
-    //result format: namespaceId exitStatus exitInfo
+    // return exit status of build task
+    // result format: namespaceId exitStatus exitInfo
     auto exitStatus = result.split(" ").at(1);
 
     return exitStatus.toInt();
@@ -296,14 +296,14 @@ linglong::util::Error LinglongBuilder::create(const QString &projectName)
     auto projectPath = QStringList {QDir::currentPath(), projectName}.join("/");
     auto configFilePath = QStringList {projectPath, "linglong.yaml"}.join("/");
 
-    //TODO: 判断projectName名称合法性
+    // TODO: 判断projectName名称合法性
     //在当前目录创建项目文件夹
     auto ret = QDir().mkdir(projectPath);
     if (!ret) {
         return NewError(-1, "project already exists");
     }
 
-    if(!QFile::copy(":templete.yaml",configFilePath)){
+    if (!QFile::copy(":templete.yaml", configFilePath)) {
         return NewError(-1, "templete file is not found");
     }
 
@@ -334,12 +334,13 @@ linglong::util::Error LinglongBuilder::build()
             return NewError(ret, -1, "fetch source failed");
         }
     }
-    //initialize some directories
+    // initialize some directories
     util::removeDir(project->config().cacheRuntimePath({}));
     util::removeDir(project->config().cacheInstallPath(""));
     util::removeDir(project->config().cacheAbsoluteFilePath({"overlayfs"}));
     util::ensureDir(project->config().cacheInstallPath(""));
-    util::ensureDir(project->config().cacheAbsoluteFilePath({"overlayfs", "up", project->config().targetInstallPath("")}));
+    util::ensureDir(
+        project->config().cacheAbsoluteFilePath({"overlayfs", "up", project->config().targetInstallPath("")}));
 
     package::Ref baseRef("");
 

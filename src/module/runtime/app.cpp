@@ -974,7 +974,8 @@ int App::start()
         exit(ret);
     } else {
         close(pipeEnds[0]);
-        write(pipeEnds[1], data.c_str(), data.size());
+        // FIXME: should handle error
+        (void)write(pipeEnds[1], data.c_str(), data.size());
         close(pipeEnds[1]);
 
         d->container->pid = boxPid;

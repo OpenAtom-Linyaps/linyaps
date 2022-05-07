@@ -979,7 +979,8 @@ QString OstreeRepoHelper::createTmpRepo()
     }
     dir.setAutoRemove(false);
     linglong::util::createDir(tmpPath);
-    auto ret = linglong::runner::Runner("ostree", {"--repo=" + tmpPath + "/repoTmp", "init", "--mode=bare-user-only"}, 1000 * 60 * 5);
+    auto ret = linglong::runner::Runner("ostree", {"--repo=" + tmpPath + "/repoTmp", "init", "--mode=bare-user-only"},
+                                        1000 * 60 * 5);
     if (!ret) {
         return "";
     }
@@ -990,8 +991,9 @@ QString OstreeRepoHelper::createTmpRepo()
     }
     QString ostreeUrl = configUrl.endsWith("/") ? configUrl.append("ostree/") : configUrl.append("/ostree/");
     // 添加远程仓库
-    ret = linglong::runner::Runner("ostree", {"--repo=" + tmpPath + "/repoTmp", "remote", "add", "--no-gpg-verify", "repo", ostreeUrl},
-                 1000 * 60 * 5);
+    ret = linglong::runner::Runner(
+        "ostree", {"--repo=" + tmpPath + "/repoTmp", "remote", "add", "--no-gpg-verify", "repo", ostreeUrl},
+        1000 * 60 * 5);
     if (!ret) {
         return "";
     }

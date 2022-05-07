@@ -711,7 +711,6 @@ public:
 
     int fixMount(const QString &runtimeId, QString runtimeRootPath, const QString &appId, QString appRootPath)
     {
-        Q_Q(const App);
         // 360浏览器需要/apps-data/private/com.360.browser-stable目录可写
         // todo:后续360整改
         // 参考：https://gitlabwh.uniontech.com/wuhan/se/deepin-specifications/-/blob/master/unstable/%E5%BA%94%E7%94%A8%E6%95%B0%E6%8D%AE%E7%9B%AE%E5%BD%95%E8%A7%84%E8%8C%83.md

@@ -237,11 +237,11 @@ void OstreeRepoHelper::getPkgRefsBySummary(GVariant *summary, std::map<std::stri
 {
     // g_autoptr(GHashTable) ret_all_refs = NULL;
     g_autoptr(GVariant) ref_map = NULL;
-    g_autoptr(GVariant) metadata = NULL;
+    // g_autoptr(GVariant) metadata = NULL;
 
     // ret_all_refs = g_hash_table_new(linglong_collection_ref_hash, linglong_collection_ref_equal);
     ref_map = g_variant_get_child_value(summary, 0);
-    metadata = g_variant_get_child_value(summary, 1);
+    // metadata = g_variant_get_child_value(summary, 1);
     getPkgRefsFromRefsMap(ref_map, outRefs);
 }
 
@@ -543,7 +543,7 @@ OstreeRepo *OstreeRepoHelper::createChildRepo(LingLongDir *linglong_dir, char *c
     g_autoptr(GFile) repo_dir = NULL;
     g_autoptr(GFile) repo_dir_config = NULL;
     OstreeRepo *repo = NULL;
-    g_autofree char *tmpdir_name = NULL;
+    // g_autofree char *tmpdir_name = NULL;
     OstreeRepo *new_repo = NULL;
     g_autoptr(GKeyFile) config = NULL;
     g_autofree char *current_mode = NULL;

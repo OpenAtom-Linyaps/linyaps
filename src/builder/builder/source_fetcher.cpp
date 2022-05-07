@@ -90,7 +90,7 @@ linglong::util::Error SourceFetcherPrivate::fetchArchiveFile()
     auto reply = util::networkMgr().get(request);
 
     QObject::connect(reply, &QNetworkReply::metaDataChanged,
-                     [this, reply]() { qDebug() << reply->header(QNetworkRequest::ContentLengthHeader); });
+                     [reply]() { qDebug() << reply->header(QNetworkRequest::ContentLengthHeader); });
 
     QObject::connect(reply, &QNetworkReply::readyRead, [this, reply]() { file->write(reply->readAll()); });
 

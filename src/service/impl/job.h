@@ -24,7 +24,7 @@ public:
 public Q_SLOTS:
     QString Status() const;
     int Progress() const;
-    void run();
+    void run() override;
 
 Q_SIGNALS: // SIGNALS
     void Finish();

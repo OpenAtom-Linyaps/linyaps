@@ -27,10 +27,10 @@ class PackageManagerFlatpakImpl
 {
 public:
     ~PackageManagerFlatpakImpl() override = default;
-    Reply Download(const DownloadParamOption &downloadParamOption) { return Reply(); }
-    Reply Install(const InstallParamOption &installParamOption);
-    Reply Uninstall(const UninstallParamOption &paramOption);
-    QueryReply Query(const QueryParamOption &paramOption);
+    Reply Download(const DownloadParamOption &downloadParamOption) override { return Reply(); }
+    Reply Install(const InstallParamOption &installParamOption) override;
+    Reply Uninstall(const UninstallParamOption &paramOption) override;
+    QueryReply Query(const QueryParamOption &paramOption) override;
 };
 } // namespace service
 } // namespace linglong

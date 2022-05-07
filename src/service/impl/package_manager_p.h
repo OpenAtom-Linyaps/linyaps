@@ -33,11 +33,11 @@ public:
     ~PackageManagerPrivate() override = default;
 
 private:
-    Reply Download(const DownloadParamOption &downloadParamOption);
-    Reply Install(const InstallParamOption &installParamOption);
-    Reply Uninstall(const UninstallParamOption &paramOption);
-    QueryReply Query(const QueryParamOption &paramOption);
-    Reply Update(const ParamOption &paramOption);
+    Reply Download(const DownloadParamOption &downloadParamOption) override;
+    Reply Install(const InstallParamOption &installParamOption)override;
+    Reply Uninstall(const UninstallParamOption &paramOption)override;
+    QueryReply Query(const QueryParamOption &paramOption)override;
+    Reply Update(const ParamOption &paramOption)override;
 
     /**
      * @brief 查询软件包下载安装状态

@@ -19,6 +19,7 @@
 #include <QFile>
 #include <QStandardPaths>
 #include <QDir>
+#include <wordexp.h>
 
 #include "module/util/yaml.h"
 #include "module/util/uuid.h"
@@ -955,7 +956,7 @@ int App::start()
     auto json = QJsonDocument::fromVariant(toVariant<Runtime>(d->r)).toJson();
     auto data = json.toStdString();
 
-    if (socketpair(AF_UNIX, SOCK_STREAM, 0, d->sockets) != 0) {
+    if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, d->sockets) != 0) {
         return EXIT_FAILURE;
     }
 
@@ -986,6 +987,38 @@ int App::start()
     }
 
     return EXIT_SUCCESS;
+}
+
+void App::exec(QString cmd, QString env, QString cwd)
+{
+    auto split = [](QString input) -> QStringList {
+        auto words = input.toStdString();
+        wordexp_t p;
+        auto ret = wordexp(words.c_str(), &p, WRDE_SHOWERR);
+        if (ret != 0) {
+            qWarning() << "wordexp" << strerror(errno);
+            wordfree(&p);
+            return {};
+        }
+        QStringList res;
+        for (int i = 0; i < p.we_wordc; i++) {
+            res << p.we_wordv[i];
+        }
+        wordfree(&p);
+        return res;
+    };
+    Q_D(App);
+
+    Process p(nullptr);
+    p.setcwd(cwd);
+    p.setenv(env.split(','));
+    p.setargs(split(cmd));
+    auto data = dump(&p).toStdString();
+
+    // FIXME: retry on temporary fail
+    // FIXME: add lock
+    write(d->sockets[1], data.c_str(), data.size());
+    write(d->sockets[1], "\0", 1);
 }
 
 Container *App::container() const

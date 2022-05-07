@@ -130,6 +130,15 @@ public Q_SLOTS:
     Reply Start(const RunParamOption &paramOption);
 
     /**
+     * @brief 运行命令
+     *
+     * @param paramOption 启动命令参数
+     *
+     * @return Reply 同 Install
+     */
+    Reply Exec(const ExecParamOption &paramOption);
+
+    /**
      * @brief 退出应用
      *
      * @param containerId 运行应用容器对应的Id（使用ListContainer查询）

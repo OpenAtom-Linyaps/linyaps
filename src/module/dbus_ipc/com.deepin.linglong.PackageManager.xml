@@ -47,6 +47,12 @@
             <arg type="(is)" direction="out"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
         </method>
+        <method name="Exec">
+            <arg name="paramOption" type="(ssss)" direction="in"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::ExecParamOption"/>
+            <arg type="(is)" direction="out"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
+        </method>
         <method name="Stop">
             <arg name="ContainerID" type="s" direction="in"/>
             <arg type="(is)" direction="out"/>

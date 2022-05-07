@@ -92,10 +92,12 @@ public:
     Container *container() const;
 
     int start();
+    void exec(QString cmd, QString env, QString cwd);
 
     void saveUserEnvList(const QStringList &userEnvList);
 
     void setAppParamMap(const ParamStringMap &paramMap);
+
 private:
     QScopedPointer<AppPrivate> dd_ptr;
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), App)

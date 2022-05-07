@@ -28,11 +28,20 @@ public:
     virtual Reply Install(const InstallParamOption &installParamOption) = 0;
     virtual Reply Uninstall(const UninstallParamOption &paramOption) = 0;
     virtual QueryReply Query(const QueryParamOption &paramOption) = 0;
+    virtual Reply Exec(const ExecParamOption &paramOption);
 
     // TODO: move PackageManagerInterface to namespace
     // TODO: need pure virtual
     virtual Reply Update(const ParamOption &paramOption) { return Reply(); }
 };
+
+inline Reply PackageManagerInterface::Exec(const ExecParamOption &paramOption)
+{
+    Reply reply;
+    reply.code = STATUS_CODE(kFail);
+    reply.message = "Not supported";
+    return reply;
+}
 
 } // namespace service
 } // namespace linglong

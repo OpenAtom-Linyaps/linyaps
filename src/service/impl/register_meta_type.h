@@ -30,6 +30,7 @@ inline void registerAllMetaType()
     qDBusRegisterMetaType<linglong::service::UninstallParamOption>();
     qDBusRegisterMetaType<ParamStringMap>();
     qDBusRegisterMetaType<linglong::service::RunParamOption>();
+    qDBusRegisterMetaType<linglong::service::ExecParamOption>();
 }
 
 } // namespace service

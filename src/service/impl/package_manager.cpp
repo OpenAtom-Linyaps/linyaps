@@ -1145,6 +1145,22 @@ Reply PackageManager::Start(const RunParamOption &paramOption)
     return reply;
 }
 
+Reply PackageManager::Exec(const ExecParamOption &paramOption)
+{
+    Q_D(PackageManager);
+    Reply reply;
+    reply.code = STATUS_CODE(kFail);
+    auto const &containerID = paramOption.containerID;
+    for (auto it : d->apps) {
+        if (it->container()->id == containerID) {
+            it->exec(paramOption.cmd, paramOption.env, paramOption.cwd);
+            reply.code = STATUS_CODE(kSuccess);
+            return reply;
+        }
+    }
+    return reply;
+}
+
 /*
  * 停止应用
  *

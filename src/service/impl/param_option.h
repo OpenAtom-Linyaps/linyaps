@@ -186,6 +186,34 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, RunParamOp
     return argument;
 }
 
+/**
+ * @brief DBus Exec 方法调用参数
+ */
+class ExecParamOption
+{
+public:
+    QString containerID; ///< 需要执行命令的容器的ID
+    QString cmd; ///< 需要执行的命令
+    QString env; ///< 该命令需要的额外环境变量
+    QString cwd; ///< 该命令执行时的工作目录（容器中）
+};
+
+inline QDBusArgument &operator<<(QDBusArgument &argument, const ExecParamOption &paramOption)
+{
+    argument.beginStructure();
+    argument << paramOption.containerID << paramOption.cmd << paramOption.env << paramOption.cwd;
+    argument.endStructure();
+    return argument;
+}
+
+inline const QDBusArgument &operator>>(const QDBusArgument &argument, ExecParamOption &paramOption)
+{
+    argument.beginStructure();
+    argument >> paramOption.containerID >> paramOption.cmd >> paramOption.env >> paramOption.cwd;
+    argument.endStructure();
+    return argument;
+}
+
 } // namespace service
 } // namespace linglong
 
@@ -195,3 +223,4 @@ Q_DECLARE_METATYPE(linglong::service::InstallParamOption)
 Q_DECLARE_METATYPE(linglong::service::QueryParamOption)
 Q_DECLARE_METATYPE(linglong::service::UninstallParamOption)
 Q_DECLARE_METATYPE(linglong::service::RunParamOption)
+Q_DECLARE_METATYPE(linglong::service::ExecParamOption)

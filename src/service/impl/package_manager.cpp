@@ -743,6 +743,13 @@ Reply PackageManager::Install(const InstallParamOption &installParamOption)
         return reply;
     }
 
+    QString arch = installParamOption.arch.trimmed();
+    if (!arch.isEmpty() && arch != linglong::util::hostArch()) {
+        reply.message = "app arch:" + arch + " not support in host";
+        reply.code = STATUS_CODE(kUserInputParamErr);
+        return reply;
+    }
+
     QFuture<void> future = QtConcurrent::run(pool.data(), [=]() {
         if ("flatpak" == installParamOption.repoPoint) {
             PACKAGEMANAGER_FLATPAK_IMPL->Install(installParamOption);

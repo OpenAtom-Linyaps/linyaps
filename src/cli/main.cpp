@@ -429,7 +429,23 @@ int main(int argc, char **argv)
                  qInfo().noquote() << "install" << app << ", please wait a few minutes...";
                  if (!installParamOption.nodbus) {
                      QDBusPendingReply<linglong::service::Reply> dbusReply = packageManager.Install(installParamOption);
+                     dbusReply.waitForFinished();
+                     // 1 秒 查询一次进度
+                     dbusReply = packageManager.GetDownloadStatus(installParamOption);
+                     dbusReply.waitForFinished();
                      reply = dbusReply.value();
+                     while (reply.code == STATUS_CODE(kPkgInstalling)) {
+                         // 隐藏光标
+                         std::cout << "\033[?25l";
+                         std::cout << "\rmessage:" << reply.message.toStdString();
+                         std::cout.flush();
+                         QThread::sleep(1);
+                         dbusReply = packageManager.GetDownloadStatus(installParamOption);
+                         dbusReply.waitForFinished();
+                         reply = dbusReply.value();
+                     }
+                     // 显示光标
+                     std::cout << "\033[?25h" << std::endl;
                      if (reply.code != STATUS_CODE(kPkgInstallSuccess)) {
                          qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
                          return -1;

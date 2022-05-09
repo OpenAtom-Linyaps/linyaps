@@ -928,33 +928,35 @@ bool OstreeRepoHelper::checkOutAppData(const QString &repoPath, const QString &r
 }
 
 /*
- * 启动一个ostree 命令任务
+ * 启动一个ostree 命令相关的任务
  *
+ * @param cmd: 需要运行的命令
  * @param ref: ostree软件包对应的ref
  * @param argList: 参数列表
  * @param timeout: 任务超时时间
  *
  * @return bool: true:成功 false:失败
  */
-bool OstreeRepoHelper::startOstreeJob(const QString &ref, const QStringList &argList, const int timeout)
+bool OstreeRepoHelper::startOstreeJob(const QString &cmd, const QString &ref, const QStringList &argList,
+                                      const int timeout)
 {
     QProcess process;
-    process.start("ostree", argList);
+    process.start(cmd, argList);
     if (!process.waitForStarted()) {
-        qCritical() << "start ostree failed!";
+        qCritical() << "start " + cmd + " failed!";
         return false;
     }
     int processId = process.processId();
     jobMap.insert(ref, processId);
     if (!process.waitForFinished(timeout)) {
-        qCritical() << "run ostree finish failed!";
+        qCritical() << "run " + cmd + " finish failed!";
         return false;
     }
     jobMap.remove(ref);
     auto retStatus = process.exitStatus();
     auto retCode = process.exitCode();
     if (retStatus != 0 || retCode != 0) {
-        qCritical() << "run ostree failed, retCode:" << retCode << ", args:" << argList
+        qCritical() << "run " + cmd + " failed, retCode:" << retCode << ", args:" << argList
                     << ", info msg:" << QString::fromLocal8Bit(process.readAllStandardOutput())
                     << ", err msg:" << QString::fromLocal8Bit(process.readAllStandardError());
         return false;
@@ -995,6 +997,7 @@ QString OstreeRepoHelper::createTmpRepo()
     qInfo() << "create tmp repo path:" << tmpPath << ", ret:" << QDir().exists(tmpPath + "/repoTmp");
     return tmpPath + "/repoTmp";
 }
+
 /*
  * 通过ostree命令将软件包数据从远端仓库pull到本地
  *
@@ -1021,8 +1024,16 @@ bool OstreeRepoHelper::repoPullbyCmd(const QString &destPath, const QString &rem
     const QString fullref = remoteName + ":" + ref;
     // auto ret = Runner("ostree", {"--repo=" + QString(QLatin1String(tmpPath)), "pull", "--mirror", fullref}, 1000 * 60
     // * 60 * 24);
-    auto ret = startOstreeJob(ref, {"--repo=" + tmpPath, "pull", "--mirror", fullref},
-                              1000 * 60 * 60 * 24);
+    // auto ret = startOstreeJob(ref, {"--repo=" + tmpPath, "pull", "--mirror", fullref},
+    //                           1000 * 60 * 60 * 24);
+    // script -q -f ostree.log -c "ostree --repo=/deepin/linglong/repo/repo pull --mirror
+    // repo:com.qq.weixin.work.deepin/4.0.0.6007/x86_64"
+    QString logPath = QString("/tmp/.linglong");
+    linglong::util::createDir(logPath);
+    QString logName = ref.split("/").join("-");
+    QString ostreeCmd = "ostree --repo=" + tmpPath + " pull --mirror " + fullref;
+    auto ret =
+        startOstreeJob("script", ref, {"-q", "-f", logPath + "/" + logName, "-c", ostreeCmd}, 1000 * 60 * 60 * 24);
     if (!ret) {
         err = "repoPullbyCmd pull error";
         qCritical() << err;
@@ -1033,8 +1044,7 @@ bool OstreeRepoHelper::repoPullbyCmd(const QString &destPath, const QString &rem
     // 将数据从临时仓库同步到目标仓库
     // ret = Runner("ostree", {"--repo=" + destPath + "/repo", "pull-local", QString(QLatin1String(tmpPath)), ref}, 1000
     // * 60 * 60);
-    ret = startOstreeJob(ref, {"--repo=" + destPath + "/repo", "pull-local", tmpPath, ref},
-                         1000 * 60 * 60);
+    ret = startOstreeJob("ostree", ref, {"--repo=" + destPath + "/repo", "pull-local", tmpPath, ref}, 1000 * 60 * 60);
     if (!ret) {
         err = "repoPullbyCmd pull-local error";
         qInfo() << err;

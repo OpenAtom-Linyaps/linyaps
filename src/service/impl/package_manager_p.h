@@ -20,7 +20,6 @@
 #include "module/util/runner.h"
 #include "module/util/version.h"
 
-
 namespace linglong {
 namespace service {
 class PackageManager;
@@ -39,6 +38,17 @@ private:
     Reply Uninstall(const UninstallParamOption &paramOption);
     QueryReply Query(const QueryParamOption &paramOption);
     Reply Update(const ParamOption &paramOption);
+
+    /**
+     * @brief 查询软件包下载安装状态
+     *
+     * @param paramOption 查询参数
+     *
+     * @return Reply dbus方法调用应答 \n
+     *          code:状态码 \n
+     *          message:信息
+     */
+    Reply GetDownloadStatus(const ParamOption &paramOption);
 
     /*
      * 从给定的软件包列表中查找最新版本的软件包
@@ -128,6 +138,8 @@ private:
     const QString kAppInstallPath = "/deepin/linglong/layers/";
     const QString kLocalRepoPath = "/deepin/linglong/repo";
     const QString kRemoteRepoName = "repo";
+    // Fix to do 记录子线程安装状态 供查询进度信息使用 未序列化 重启service后失效
+    QMap<QString, Reply> appState;
 
 public:
     PackageManager *const q_ptr;

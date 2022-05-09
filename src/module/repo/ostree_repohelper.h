@@ -315,13 +315,14 @@ private:
     /*
      * 启动一个ostree 命令任务
      *
+     * @param cmd: 需要运行的命令
      * @param ref: ostree软件包对应的ref
      * @param argList: 参数列表
      * @param timeout: 任务超时时间
      *
      * @return bool: true:成功 false:失败
      */
-    bool startOstreeJob(const QString &ref, const QStringList &argList, const int timeout);
+    bool startOstreeJob(const QString &cmd, const QString &ref, const QStringList &argList, const int timeout);
 
     /*
      * 在/tmp目录下创建一个临时repo仓库

@@ -69,6 +69,17 @@ public Q_SLOTS:
     Reply Download(const DownloadParamOption &downloadParamOption);
 
     /**
+     * @brief 查询软件包下载安装状态
+     *
+     * @param paramOption 查询参数
+     *
+     * @return Reply dbus方法调用应答 \n
+     *          code:状态码 \n
+     *          message:信息
+     */
+    Reply GetDownloadStatus(const ParamOption &paramOption);
+
+    /**
      * @brief 安装软件包
      *
      * @param installParamOption 安装参数

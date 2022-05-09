@@ -201,6 +201,65 @@ Reply PackageManagerPrivate::Download(const DownloadParamOption &downloadParamOp
     return reply;
 }
 
+Reply PackageManagerPrivate::GetDownloadStatus(const ParamOption &paramOption)
+{
+    Reply reply;
+    QString appId = paramOption.appId.trimmed();
+    QString version = paramOption.version.trimmed();
+    QString arch = linglong::util::hostArch();
+    if (version.isEmpty()) {
+        QString appData = "";
+        // 安装不查缓存
+        auto ret = getAppInfofromServer(appId, version, arch, appData, reply.message);
+        if (!ret) {
+            reply.code = STATUS_CODE(kPkgInstallFailed);
+            return reply;
+        }
+
+        linglong::package::AppMetaInfoList appList;
+        ret = loadAppInfo(appData, appList, reply.message);
+        if (!ret || appList.size() < 1) {
+            reply.message = "app:" + appId + ", version:" + paramOption.version + " not found in repo";
+            qCritical() << reply.message;
+            reply.code = STATUS_CODE(kPkgInstallFailed);
+            return reply;
+        }
+
+        // 查找最高版本
+        linglong::package::AppMetaInfo *appInfo = getLatestApp(appList);
+        version = appInfo->version;
+    }
+
+    reply.message = appId + " is installing";
+    // 判断对应版本的应用是否已安装 Fix to do 多用户
+    QString key = appId + "/" + version + "/" + arch;
+    if (appState.contains(key) && appState[key].code == STATUS_CODE(kPkgInstallSuccess)) {
+        return appState[key];
+    } else {
+        // Fix to do get more specific param 首次安装应用的时候 安装runtime 提示不准
+        QString fileName = QStringList {appId, version, arch}.join("-");
+        QString filePath = "/tmp/.linglong/" + fileName;
+        QFile progressFile(filePath);
+        if (progressFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QStringList ret = QString(progressFile.readAll()).split(QRegExp("[\r\n]"), QString::SkipEmptyParts);
+            if (ret.size() > 1) {
+                QStringList processList = ret.at(1).trimmed().split("\u001B8");
+                reply.message = processList.at(processList.size() - 1).trimmed();
+            }
+            qInfo() << reply.message;
+            progressFile.close();
+        } else {
+            // 正在下载应用runtime 或者 未走到ostree 下载流程
+            qWarning() << filePath << " not exist";
+        }
+        reply.code = STATUS_CODE(kPkgInstalling);
+    }
+    if (appState.contains(key)) {
+        return appState[key];
+    }
+    return reply;
+}
+
 /*
  * 安装应用runtime
  *
@@ -323,6 +382,7 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
     auto ret = getAppInfofromServer(appId, installParamOption.version, arch, appData, reply.message);
     if (!ret) {
         reply.code = STATUS_CODE(kPkgInstallFailed);
+        appState.insert(appId + "/" + installParamOption.version + "/" + arch, reply);
         return reply;
     }
 
@@ -332,6 +392,7 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
         reply.message = "app:" + appId + ", version:" + installParamOption.version + " not found in repo";
         qCritical() << reply.message;
         reply.code = STATUS_CODE(kPkgInstallFailed);
+        appState.insert(appId + "/" + installParamOption.version + "/" + arch, reply);
         return reply;
     }
 
@@ -342,6 +403,7 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
         reply.code = STATUS_CODE(kPkgAlreadyInstalled);
         reply.message = appInfo->appId + ", version: " + appInfo->version + " already installed";
         qCritical() << reply.message;
+        appState.insert(appId + "/" + appInfo->version + "/" + arch, reply);
         return reply;
     }
 
@@ -350,6 +412,7 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
         reply.message = "app:" + appId + ", version:" + installParamOption.version + " not found in repo";
         qCritical() << reply.message;
         reply.code = STATUS_CODE(kPkgInstallFailed);
+        appState.insert(appId + "/" + appInfo->version + "/" + arch, reply);
         return reply;
     }
 
@@ -358,6 +421,7 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
     if (!ret) {
         qCritical() << reply.message;
         reply.code = STATUS_CODE(kInstallRuntimeFailed);
+        appState.insert(appId + "/" + appInfo->version + "/" + arch, reply);
         return reply;
     }
 
@@ -368,8 +432,14 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
     if (!ret) {
         qCritical() << reply.message;
         reply.code = STATUS_CODE(kLoadPkgDataFailed);
+        appState.insert(appId + "/" + appInfo->version + "/" + arch, reply);
         return reply;
     }
+
+    // 删除下载进度的重定向文件
+    QString fileName = QStringList {appInfo->appId, appInfo->version, appInfo->arch}.join("-");
+    QString filePath = "/tmp/.linglong/" + fileName;
+    QFile(filePath).remove();
 
     // 链接应用配置文件到系统配置目录
     if (linglong::util::dirExists(savePath + "/outputs/share")) {
@@ -412,7 +482,7 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
     reply.code = STATUS_CODE(kPkgInstallSuccess);
     reply.message = "install " + appInfo->appId + ", version:" + appInfo->version + " success";
     qInfo() << reply.message;
-
+    appState.insert(appId + "/" + appInfo->version + "/" + arch, reply);
     return reply;
 }
 
@@ -537,6 +607,12 @@ Reply PackageManagerPrivate::Uninstall(const UninstallParamOption &paramOption)
         linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
     }
     linglong::util::removeDir(installPath);
+
+    QDir dir(kAppInstallPath + it->appId);
+    dir.setFilter(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
+    if (dir.entryInfoList().size() <= 0) {
+        linglong::util::removeDir(kAppInstallPath + it->appId);
+    }
     qInfo() << "Uninstall del dir:" << installPath;
 
     // 更新desktop database
@@ -601,6 +677,7 @@ Reply PackageManagerPrivate::Uninstall(const UninstallParamOption &paramOption)
     linglong::util::deleteAppRecord(appId, it->version, arch, userName);
     reply.code = STATUS_CODE(kPkgUninstallSuccess);
     reply.message = "uninstall " + appId + ", version:" + it->version + " success";
+    appState.remove(appId + "/" + it->version + "/" + arch);
     return reply;
 }
 
@@ -726,6 +803,36 @@ Reply PackageManager::Download(const DownloadParamOption &downloadParamOption)
         return reply;
     }
     return d->Download(downloadParamOption);
+}
+
+/**
+ * @brief 查询软件包下载安装状态
+ *
+ * @param paramOption 查询参数
+ *
+ * @return Reply dbus方法调用应答 \n
+ *          code:状态码 \n
+ *          message:信息
+ */
+Reply PackageManager::GetDownloadStatus(const ParamOption &paramOption)
+{
+    Q_D(PackageManager);
+    Reply reply;
+    QString appId = paramOption.appId;
+    if (appId.isNull() || appId.isEmpty()) {
+        qCritical() << "package name err";
+        reply.code = STATUS_CODE(kUserInputParamErr);
+        reply.message = "package name err";
+        return reply;
+    }
+
+    QString arch = paramOption.arch.trimmed();
+    if (!arch.isEmpty() && arch != linglong::util::hostArch()) {
+        reply.message = "app arch:" + arch + " not support in host";
+        reply.code = STATUS_CODE(kUserInputParamErr);
+        return reply;
+    }
+    return d->GetDownloadStatus(paramOption);
 }
 
 /*!

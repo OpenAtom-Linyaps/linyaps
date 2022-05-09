@@ -16,6 +16,7 @@
 #include "module/package/ref.h"
 #include "module/util/runner.h"
 #include "module/util/sysinfo.h"
+#include "module/util/version.h"
 
 namespace linglong {
 namespace repo {
@@ -131,7 +132,7 @@ linglong::util::Error OSTree::push(const package::Bundle &bundle, bool force)
 linglong::util::Error OSTree::pull(const package::Ref &ref, bool force)
 {
     Q_D(OSTree);
-    //Fixme: remote name maybe not repo and there should support multiple remote
+    // Fixme: remote name maybe not repo and there should support multiple remote
     return WrapError(d->ostreeRun({"pull", "repo", "--mirror", ref.toString()}));
 }
 
@@ -185,14 +186,23 @@ package::Ref OSTree::latestOfRef(const QString &appId, const QString &appVersion
         appRoot.setSorting(QDir::Name | QDir::Reversed);
         auto verDirs = appRoot.entryList(QDir::NoDotAndDotDot | QDir::Dirs);
         auto available = verDirs.value(0);
+        for (auto item : verDirs) {
+            linglong::util::AppVersion versionIter(item);
+            linglong::util::AppVersion dstVersion(available);
+            if (versionIter.isValid() && versionIter.isBigThan(dstVersion)) {
+                available = item;
+            }
+        }
         qDebug() << "available version" << available << appRoot << verDirs;
         return available;
     };
 
     // 未指定版本使用最新版本，指定版本下使用指定版本
-    auto version = latestVersionOf(appId);
+    QString version;
     if (!appVersion.isEmpty()) {
         version = appVersion;
+    } else {
+        version = latestVersionOf(appId);
     }
     auto ref = appId + "/" + version + "/" + util::hostArch();
     return package::Ref(ref);

@@ -13,8 +13,6 @@
 #include <QMutexLocker>
 #include <QThread>
 
-#include "service/impl/version.h"
-
 // 安装数据库路径
 const QString installedAppInfoPath = "/deepin/linglong/layers/";
 // 安装数据库版本
@@ -395,8 +393,8 @@ bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QStr
         sqlQuery.first();
         do {
             QString verIter = sqlQuery.value(3).toString().trimmed();
-            linglong::AppVersion versionIter(verIter);
-            linglong::AppVersion dstVersion(dstVer);
+            linglong::util::AppVersion versionIter(verIter);
+            linglong::util::AppVersion dstVersion(dstVer);
             if (versionIter.isValid() && versionIter.isBigThan(dstVersion)) {
                 dstVer = verIter;
                 info->description = sqlQuery.value(9).toString().trimmed();

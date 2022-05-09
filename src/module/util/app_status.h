@@ -17,6 +17,7 @@
 #include <QSqlQuery>
 
 #include "module/util/status_code.h"
+#include "module/util/version.h"
 
 #include "module/package/package.h"
 

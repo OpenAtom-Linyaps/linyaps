@@ -11,7 +11,7 @@
 #include "ostree_repohelper.h"
 #include "module/util/fs.h"
 #include "module/util/runner.h"
-#include "service/impl/version.h"
+#include "module/util/version.h"
 
 const int MAX_ERRINFO_BUFSIZE = 512;
 const int DEFAULT_UPDATE_FREQUENCY = 100;
@@ -391,16 +391,16 @@ bool OstreeRepoHelper::queryMatchRefs(const QString &repoPath, const QString &re
             }
         } else {
             bool flag = false;
-            QString curVersion = linglong::APP_MIN_VERSION;
+            QString curVersion = linglong::util::APP_MIN_VERSION;
             for (QString ref : keyRefs) {
                 std::vector<std::string> result;
                 ret = resolveRef(ref.toStdString(), result);
-                linglong::AppVersion curVer(curVersion);
+                linglong::util::AppVersion curVer(curVersion);
                 // 玲珑适配
                 // new ref format org.deepin.calculator/1.2.2/x86_64
                 if (ret) {
                     QString dstVersion = QString::fromStdString(result[1]);
-                    linglong::AppVersion dstVer(dstVersion);
+                    linglong::util::AppVersion dstVer(dstVersion);
                     if (!dstVer.isValid()) {
                         qInfo() << "queryMatchRefs ref:" << ref << " version is not valid";
                         continue;

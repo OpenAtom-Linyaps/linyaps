@@ -14,7 +14,7 @@
 #include <QStringList>
 
 namespace linglong {
-
+namespace util {
 // 默认最小版本号
 const QString APP_MIN_VERSION = "0.0.0.0";
 
@@ -44,10 +44,7 @@ public:
      *
      * @return bool: true:有效 false:无效
      */
-    bool isValid()
-    {
-        return Major >= 0;
-    }
+    bool isValid() { return Major >= 0; }
 
     /*
      * 将当前版本号与给定的版本号比较
@@ -76,7 +73,11 @@ public:
      */
     QString toString()
     {
-        QString result = QString("%1.%2.%3.%4").arg(QString::number(Major)).arg(QString::number(Minor)).arg(QString::number(Revision)).arg(QString::number(Build));
+        QString result = QString("%1.%2.%3.%4")
+                             .arg(QString::number(Major))
+                             .arg(QString::number(Minor))
+                             .arg(QString::number(Revision))
+                             .arg(QString::number(Build));
         return result;
     }
 
@@ -94,4 +95,5 @@ private:
 //              << ver.Revision << "."
 //              << ver.Build;
 // }
+} // namespace util
 } // namespace linglong

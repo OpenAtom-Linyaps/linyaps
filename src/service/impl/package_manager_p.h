@@ -18,7 +18,7 @@
 #include "module/util/package_manager_param.h"
 #include "module/util/sysinfo.h"
 #include "module/util/runner.h"
-#include "version.h"
+#include "module/util/version.h"
 
 
 namespace linglong {

@@ -296,8 +296,8 @@ linglong::package::AppMetaInfo *PackageManagerPrivate::getLatestApp(const linglo
     QString curVersion = latestApp->version;
     QString arch = linglong::util::hostArch();
     for (auto item : appList) {
-        linglong::AppVersion dstVersion(curVersion);
-        linglong::AppVersion iterVersion(item->version);
+        linglong::util::AppVersion dstVersion(curVersion);
+        linglong::util::AppVersion iterVersion(item->version);
         if (arch == item->arch && iterVersion.isBigThan(dstVersion)) {
             curVersion = item->version;
             latestApp = item;

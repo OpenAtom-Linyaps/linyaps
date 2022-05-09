@@ -578,7 +578,7 @@ public:
         // 中，是否安全？一个应用沙箱中可以读取其他应用设置数据？ issues:
         // https://gitlabwh.uniontech.com/wuhan/v23/linglong/linglong/-/issues/72
         auto dconfPath = util::ensureUserDir({".config", "dconf"});
-        roMountMap.push_back(qMakePair(dconfPath, dconfPath));
+        roMountMap.push_back(qMakePair(dconfPath, util::getUserFile(".linglong/" + appId + "/config/dconf")));
 
         QString xauthority = getenv("XAUTHORITY");
         roMountMap.push_back(qMakePair(xauthority, xauthority));

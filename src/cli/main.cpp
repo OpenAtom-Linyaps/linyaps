@@ -291,7 +291,57 @@ int main(int argc, char **argv)
              }
              return 0;
          }},
-        {"exec", // 进入玲珑沙箱
+        {"exec", // exec new command in a existed container.
+         [&](QCommandLineParser &parser) -> int {
+             parser.clearPositionalArguments();
+             parser.addPositionalArgument("exec", "exec command in container", "exec");
+             parser.addPositionalArgument("containerId", "container id", "aebbe2f455cf443f89d5c92f36d154dd");
+             parser.addPositionalArgument("cmd", "command", "\"bash\"");
+             auto envArg = QCommandLineOption({"e", "env"}, "extra environment variables splited by comma", "env", "");
+             auto pwdArg =
+                 QCommandLineOption({"d", "path"}, "location to exec the new command", "pwd", qgetenv("HOME"));
+             parser.addOption(envArg);
+             parser.addOption(pwdArg);
+             parser.process(app);
+
+             auto containerId = parser.positionalArguments().value(1);
+             if (containerId.isEmpty()) {
+                 parser.showHelp();
+                 return -1;
+             }
+
+             auto cmd = parser.positionalArguments().value(2);
+             if (cmd.isEmpty()) {
+                 parser.showHelp();
+                 return -1;
+             }
+
+             linglong::service::ExecParamOption p;
+             p.cmd = cmd;
+             p.containerID = containerId;
+
+             auto envs = parser.value(envArg).split(",", Qt::SkipEmptyParts);
+             for (auto env : envs) {
+                 auto pos = env.indexOf('=');
+                 auto key = QStringRef(&env, 0, pos), val = QStringRef(&env, pos + 1, env.length() - pos - 1);
+                 qputenv(key.toString().toStdString().c_str(), QByteArray(val.toString().toUtf8()));
+             }
+
+             // 获取用户环境变量
+             QStringList envList = COMMAND_HELPER->getUserEnv(linglong::util::envList);
+             if (!envList.isEmpty()) {
+                 p.env = envList.join(",");
+             }
+
+             auto pendingReply = packageManager.Exec(p);
+             auto reply = pendingReply.value();
+             if (reply.code != STATUS_CODE(kSuccess)) {
+                 qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
+                 return -1;
+             }
+             return 0;
+         }},
+        {"enter",
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
              parser.addPositionalArgument("containerId", "container id", "aebbe2f455cf443f89d5c92f36d154dd");

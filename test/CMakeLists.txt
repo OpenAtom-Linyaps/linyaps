@@ -42,7 +42,8 @@ set(LL_TEST_SOURCES
     ../src/service/impl/param_option.h
     ../src/service/impl/reply.h
     ../src/module/util/sysinfo.cpp
-    ../src/module/util/app_status.cpp)
+    ../src/module/util/app_status.cpp
+    ../src/module/util/connection.cpp)
 
 # add qdbus call
 set_source_files_properties(../src/module/dbus_ipc/com.deepin.linglong.PackageManager.xml

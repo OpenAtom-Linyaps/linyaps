@@ -31,7 +31,8 @@ set(LL_CLI_SOURCES
     ../module/util/xdg.cpp
     ../module/util/desktop_entry.cpp
     ../module/util/log_handler.cpp
-    ../module/package/package.cpp)
+    ../module/package/package.cpp
+    ../module/util/connection.cpp)
 
 set_source_files_properties(../module/dbus_ipc/com.deepin.linglong.PackageManager.xml
                             PROPERTIES INCLUDE service/impl/register_meta_type.h)

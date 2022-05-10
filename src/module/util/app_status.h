@@ -18,28 +18,11 @@
 
 #include "module/util/status_code.h"
 #include "module/util/version.h"
-
+#include "module/util/connection.h"
 #include "module/package/package.h"
 
 namespace linglong {
 namespace util {
-
-/*
- * 创建数据库连接
- *
- * @param dbConn: QSqlDatabase 数据库
- *
- * @return int: 0:创建成功 其它:失败
- */
-int openDatabaseConnection(QSqlDatabase &dbConn);
-
-/*
- * 关闭数据库连接
- *
- * @param dbConn: QSqlDatabase 数据库连接
- */
-void closeDbConnection(QSqlDatabase &dbConn);
-
 /*
  * 检查安装信息数据库表及版本信息表
  *

@@ -70,11 +70,6 @@ void closeDbConnection(QSqlDatabase &dbConn)
  */
 int checkInstalledAppDb()
 {
-    QString err = "";
-    QSqlDatabase dbConn;
-    if (STATUS_CODE(kSuccess) != openDatabaseConnection(dbConn)) {
-        return STATUS_CODE(kFail);
-    }
     QString createInfoTable = "CREATE TABLE IF NOT EXISTS installedAppInfo(\
          ID INTEGER PRIMARY KEY AUTOINCREMENT,\
          appId VARCHAR(32) NOT NULL,\
@@ -88,27 +83,23 @@ int checkInstalledAppDb()
          description NVARCHAR,\
          user VARCHAR,\
          installType CHAR(16) DEFAULT 'user')";
-
-    QSqlQuery sqlQuery(createInfoTable, dbConn);
-    if (!sqlQuery.exec()) {
-        err = "fail to create installed appinfo table, err:" + sqlQuery.lastError().text();
-        qCritical() << err;
-        closeDbConnection(dbConn);
+    Connection connection;
+    QSqlQuery sqlQuery = connection.execute(createInfoTable);
+    if (QSqlError::NoError != sqlQuery.lastError().type()) {
+        qCritical() << "execute createInfoTable error:" << sqlQuery.lastError().text();
         return STATUS_CODE(kFail);
     }
 
     QString createVersionTable = "CREATE TABLE IF NOT EXISTS appInfoDbVersion(\
          version VARCHAR(32) PRIMARY KEY,description NVARCHAR)";
-    sqlQuery.prepare(createVersionTable);
-    if (!sqlQuery.exec()) {
-        err = "fail to create appInfoDbVersion, err:" + sqlQuery.lastError().text();
-        qCritical() << err;
-        closeDbConnection(dbConn);
+    sqlQuery = connection.execute(createVersionTable);
+    if (QSqlError::NoError != sqlQuery.lastError().type()) {
+        qCritical() << "fail to create appInfoDbVersion, err:" << sqlQuery.lastError().text();
         return STATUS_CODE(kFail);
     }
-    closeDbConnection(dbConn);
+
     // 设置 db 文件权限
-    QFile file(installedAppInfoPath + "/linglong.db");
+    QFile file(installedAppInfoPath + "/" + QString(DATABASE_NAME));
     QFile::Permissions permissions = file.permissions();
     permissions |= QFile::ReadGroup;
     permissions |= QFile::WriteGroup;
@@ -125,19 +116,12 @@ int checkInstalledAppDb()
  */
 int updateInstalledAppInfoDb()
 {
-    QString err = "";
-    QSqlDatabase dbConn;
-    if (STATUS_CODE(kSuccess) != openDatabaseConnection(dbConn)) {
-        return STATUS_CODE(kFail);
-    }
-
     // 版本升序排列
     QString selectSql = "SELECT * FROM appInfoDbVersion order by version ASC ";
-    QSqlQuery sqlQuery(selectSql, dbConn);
-    if (!sqlQuery.exec()) {
-        err = "checkAppDbUpgrade fail to exec sql:" + selectSql + ", error:" + sqlQuery.lastError().text();
-        qCritical() << err;
-        closeDbConnection(dbConn);
+    Connection connection;
+    QSqlQuery sqlQuery = connection.execute(selectSql);
+    if (QSqlError::NoError != sqlQuery.lastError().type()) {
+        qCritical() << "execute selectSql error:" << sqlQuery.lastError().text();
         return STATUS_CODE(kFail);
     }
 
@@ -158,15 +142,13 @@ int updateInstalledAppInfoDb()
         qDebug() << "installedAppInfoDb currentVersion:" << currentVersion << ", dstVersion:" << infoDbVersion;
     }
     if (!insertSql.isEmpty()) {
-        sqlQuery.prepare(insertSql);
-        if (!sqlQuery.exec()) {
-            err = "checkAppDbUpgrade fail to exec sql:" + insertSql + ", error:" + sqlQuery.lastError().text();
-            qCritical() << err;
-            closeDbConnection(dbConn);
+        sqlQuery = connection.execute(insertSql);
+        if (QSqlError::NoError != sqlQuery.lastError().type()) {
+            qCritical() << "execute insertSql error:" << sqlQuery.lastError().text();
             return STATUS_CODE(kFail);
         }
     }
-    closeDbConnection(dbConn);
+
     return STATUS_CODE(kSuccess);
 }
 
@@ -181,13 +163,6 @@ int updateInstalledAppInfoDb()
  */
 int insertAppRecord(linglong::package::AppMetaInfo *package, const QString &installType, const QString &userName)
 {
-    QString err = "";
-    QSqlDatabase dbConn;
-    if (STATUS_CODE(kSuccess) != openDatabaseConnection(dbConn)) {
-        return STATUS_CODE(kFail);
-    }
-
-    QSqlQuery sqlQuery(dbConn);
     // installType 字段暂时保留
     QString insertSql =
         QString("INSERT INTO installedAppInfo(appId,name,version,arch,kind,runtime,uabUrl,repoName,description,user)\
@@ -204,14 +179,12 @@ int insertAppRecord(linglong::package::AppMetaInfo *package, const QString &inst
             .arg(package->description)
             .arg(userName);
 
-    sqlQuery.prepare(insertSql);
-    if (!sqlQuery.exec()) {
-        err = "insertAppRecord fail to exec sql:" + insertSql + ", error:" + sqlQuery.lastError().text();
-        qCritical() << err;
-        closeDbConnection(dbConn);
+    Connection connection;
+    QSqlQuery sqlQuery = connection.execute(insertSql);
+    if (QSqlError::NoError != sqlQuery.lastError().type()) {
+        qCritical() << "execute insertSql error:" << sqlQuery.lastError().text();
         return STATUS_CODE(kFail);
     }
-    closeDbConnection(dbConn);
     qDebug() << "insertAppRecord app:" << package->appId << ", version:" << package->version << " success";
     return STATUS_CODE(kSuccess);
 }
@@ -228,16 +201,8 @@ int insertAppRecord(linglong::package::AppMetaInfo *package, const QString &inst
  */
 int deleteAppRecord(const QString &appId, const QString &appVer, const QString &appArch, const QString &userName)
 {
-    QString err = "";
-    // 查询是否安装由调用方负责
-    QSqlDatabase dbConn;
-    if (STATUS_CODE(kSuccess) != openDatabaseConnection(dbConn)) {
-        return STATUS_CODE(kFail);
-    }
-
     // 若未指定版本，则查找最高版本
     QString dstVer = appVer;
-    QSqlQuery sqlQuery(dbConn);
     QString deleteSql =
         QString("DELETE FROM installedAppInfo WHERE appId = '%1' AND version = '%2'").arg(appId).arg(dstVer);
     QString condition = "";
@@ -249,14 +214,13 @@ int deleteAppRecord(const QString &appId, const QString &appVer, const QString &
     }
     qDebug() << "sql condition:" << condition;
     deleteSql.append(condition);
-    sqlQuery.prepare(deleteSql);
-    if (!sqlQuery.exec()) {
-        err = "deleteAppRecord fail to exec sql:" + deleteSql + ", error:" + sqlQuery.lastError().text();
-        qCritical() << err;
-        closeDbConnection(dbConn);
+
+    Connection connection;
+    QSqlQuery sqlQuery = connection.execute(deleteSql);
+    if (QSqlError::NoError != sqlQuery.lastError().type()) {
+        qCritical() << "execute deleteSql error:" << sqlQuery.lastError().text();
         return STATUS_CODE(kFail);
     }
-    closeDbConnection(dbConn);
     qDebug() << "delete app:" << appId << ", version:" << dstVer << ", arch:" << appArch << " success";
     return STATUS_CODE(kSuccess);
 }
@@ -291,13 +255,6 @@ bool isRuntime(const QString &appId)
  */
 bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QString &appArch, const QString &userName)
 {
-    QString err = "";
-    QSqlDatabase dbConn;
-    if (STATUS_CODE(kSuccess) != openDatabaseConnection(dbConn)) {
-        return false;
-    }
-    QSqlQuery sqlQuery(dbConn);
-
     QString selectSql = QString("SELECT * FROM installedAppInfo WHERE appId = '%1'").arg(appId);
     QString condition = "";
     // FIXME: 预装应用类型应该为system，目前未实现
@@ -315,11 +272,11 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
     }
     qDebug() << "sql condition:" << condition;
     selectSql.append(condition);
-    sqlQuery.prepare(selectSql);
-    if (!sqlQuery.exec()) {
-        err = "getAppInstalledStatus fail to exec sql:" + selectSql + ", error:" + sqlQuery.lastError().text();
-        qCritical() << err;
-        closeDbConnection(dbConn);
+
+    Connection connection;
+    QSqlQuery sqlQuery = connection.execute(selectSql);
+    if (QSqlError::NoError != sqlQuery.lastError().type()) {
+        qCritical() << "execute deleteSql error:" << sqlQuery.lastError().text();
         return false;
     }
     // 指定用户和版本找不到
@@ -327,12 +284,10 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
     sqlQuery.last();
     int recordCount = sqlQuery.at() + 1;
     if (recordCount < 1) {
-        err = "getAppInstalledStatus app:" + appId + ",version:" + appVer + ",userName:" + userName + " not found";
-        qDebug() << err;
-        closeDbConnection(dbConn);
+        qCritical() << "getAppInstalledStatus app:" + appId + ",version:" + appVer + ",userName:" + userName
+                           + " not found";
         return false;
     }
-    closeDbConnection(dbConn);
     return true;
 }
 
@@ -350,19 +305,12 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
 bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QString &appArch, const QString &userName,
                          linglong::package::AppMetaInfoList &pkgList)
 {
-    QString err = "";
     if (!getAppInstalledStatus(appId, appVer, appArch, userName)) {
-        err = "getInstalledAppInfo app:" + appId + ",version:" + appVer + ",userName:" + userName + " not installed";
-        qCritical() << err;
+        qCritical() << "getInstalledAppInfo app:" + appId + ",version:" + appVer + ",userName:" + userName
+                           + " not installed";
         return false;
     }
 
-    QSqlDatabase dbConn;
-    if (STATUS_CODE(kSuccess) != openDatabaseConnection(dbConn)) {
-        return false;
-    }
-
-    QSqlQuery sqlQuery(dbConn);
     QString selectSql = QString("SELECT * FROM installedAppInfo WHERE appId = '%1'").arg(appId);
     QString condition = "";
     if (!userName.isEmpty()) {
@@ -378,11 +326,11 @@ bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QStr
     selectSql.append(condition);
     selectSql.append(" order by version ASC");
     qDebug() << selectSql;
-    sqlQuery.prepare(selectSql);
-    if (!sqlQuery.exec()) {
-        err = "getInstalledAppInfo fail to exec sql:" + selectSql + ", error:" + sqlQuery.lastError().text();
-        qCritical() << err;
-        closeDbConnection(dbConn);
+
+    Connection connection;
+    QSqlQuery sqlQuery = connection.execute(selectSql);
+    if (QSqlError::NoError != sqlQuery.lastError().type()) {
+        qCritical() << "execute selectSql error:" << sqlQuery.lastError().text();
         return false;
     }
 
@@ -410,10 +358,8 @@ bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QStr
         } while (sqlQuery.next());
         info->version = dstVer;
         pkgList.push_back(info);
-        closeDbConnection(dbConn);
         return true;
     }
-    closeDbConnection(dbConn);
     return false;
 }
 
@@ -428,13 +374,6 @@ bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QStr
  */
 bool queryAllInstalledApp(const QString &userName, QString &result, QString &err)
 {
-    QSqlDatabase dbConn;
-    if (STATUS_CODE(kSuccess) != openDatabaseConnection(dbConn)) {
-        err = "openDatabaseConnection err";
-        return false;
-    }
-    QSqlQuery sqlQuery(dbConn);
-
     // 默认不查找版本
     QString selectSql = "";
     if (userName.isEmpty()) {
@@ -442,11 +381,11 @@ bool queryAllInstalledApp(const QString &userName, QString &result, QString &err
     } else {
         selectSql = QString("SELECT * FROM installedAppInfo WHERE user = '%1'").arg(userName);
     }
-    sqlQuery.prepare(selectSql);
-    if (!sqlQuery.exec()) {
-        err = "queryAllInstalledApp fail to exec sql:" + selectSql + ", error:" + sqlQuery.lastError().text();
-        qCritical() << err;
-        closeDbConnection(dbConn);
+
+    Connection connection;
+    QSqlQuery sqlQuery = connection.execute(selectSql);
+    if (QSqlError::NoError != sqlQuery.lastError().type()) {
+        qCritical() << "execute selectSql error:" << sqlQuery.lastError().text();
         return false;
     }
     QJsonArray appList;
@@ -463,7 +402,6 @@ bool queryAllInstalledApp(const QString &userName, QString &result, QString &err
         appItem["description"] = sqlQuery.value(9).toString().trimmed();
         appList.append(appItem);
     }
-    closeDbConnection(dbConn);
     QJsonDocument document = QJsonDocument(appList);
     result = QString(document.toJson());
     return true;

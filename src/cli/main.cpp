@@ -430,6 +430,8 @@ int main(int argc, char **argv)
                  if (!installParamOption.nodbus) {
                      QDBusPendingReply<linglong::service::Reply> dbusReply = packageManager.Install(installParamOption);
                      dbusReply.waitForFinished();
+                     // Fix to do 多线程场景下httpclient.cpp中curl 暂未支持多线程
+                     QThread::sleep(1);
                      // 1 秒 查询一次进度
                      dbusReply = packageManager.GetDownloadStatus(installParamOption);
                      dbusReply.waitForFinished();

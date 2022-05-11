@@ -241,7 +241,7 @@ Reply PackageManagerPrivate::GetDownloadStatus(const ParamOption &paramOption)
         QString filePath = "/tmp/.linglong/" + fileName;
         QFile progressFile(filePath);
         if (progressFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            QStringList ret = QString(progressFile.readAll()).split(QRegExp("[\r\n]"), QString::SkipEmptyParts);
+            QStringList ret = QString(progressFile.readAll()).split(QRegExp("[\r\n]"), Qt::SkipEmptyParts);
             if (ret.size() > 1) {
                 QStringList processList = ret.at(1).trimmed().split("\u001B8");
                 reply.message = processList.at(processList.size() - 1).trimmed();
@@ -250,7 +250,7 @@ Reply PackageManagerPrivate::GetDownloadStatus(const ParamOption &paramOption)
             progressFile.close();
         } else {
             // 正在下载应用runtime 或者 未走到ostree 下载流程
-            qWarning() << filePath << " not exist";
+            qDebug() << filePath << " not exist";
         }
         reply.code = STATUS_CODE(kPkgInstalling);
     }

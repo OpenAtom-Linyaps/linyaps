@@ -11,10 +11,11 @@
 #include <gtest/gtest.h>
 
 #include "src/module/repo/ostree_repohelper.h"
+#include "src/module/util/fs.h"
 
 TEST(OstreeRepoHelperT01, ensureRepoEnv)
 {
-    const QString repoPath = "/deepin/linglong/repo";
+    const QString repoPath = linglong::util::getLinglongRootPath();
     // const QString repoPath = "/home/xxxx/8.linglong/GitPrj/debug/linglong/build/repotest";
     QString err = "";
     bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(repoPath, err);
@@ -50,7 +51,7 @@ TEST(OstreeRepoHelperT01, ensureRepoEnv)
 // repoPath 目录要保证当前操作的用户可写，否则mkdir报错
 TEST(OstreeRepoHelperT02, getRemoteRepoList)
 {
-    const QString repoPath = "/deepin/linglong/repo";
+    const QString repoPath = linglong::util::getLinglongRootPath();
     QString err = "";
     bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(repoPath, err);
     if (!ret) {
@@ -72,7 +73,7 @@ TEST(OstreeRepoHelperT02, getRemoteRepoList)
 
 TEST(OstreeRepoHelperT03, getRemoteRefs)
 {
-    const QString repoPath = "/deepin/linglong/repo";
+    const QString repoPath = linglong::util::getLinglongRootPath();
     QString err = "";
     bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(repoPath, err);
     if (!ret) {
@@ -106,7 +107,7 @@ TEST(OstreeRepoHelperT03, getRemoteRefs)
 
 TEST(OstreeRepoHelperT04, resolveMatchRefs)
 {
-    const QString repoPath = "/deepin/linglong/repo";
+    const QString repoPath = linglong::util::getLinglongRootPath();
     QString err = "";
     bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(repoPath, err);
     if (!ret) {
@@ -151,7 +152,7 @@ TEST(OstreeRepoHelperT04, resolveMatchRefs)
 
 TEST(OstreeRepoHelperT05, repoPull)
 {
-    const QString repoPath = "/deepin/linglong/repo";
+    const QString repoPath = linglong::util::getLinglongRootPath();
     QString err = "";
     bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(repoPath, err);
     if (!ret) {
@@ -195,7 +196,7 @@ TEST(OstreeRepoHelperT05, repoPull)
 
 TEST(OstreeRepoHelperT06, checkOutAppData)
 {
-    const QString repoPath = "/deepin/linglong/repo";
+    const QString repoPath = linglong::util::getLinglongRootPath();
     // 目录如果不存在 会自动创建目录
     const QString dstPath = repoPath + "/AppData";
     QString err = "";
@@ -237,7 +238,7 @@ TEST(OstreeRepoHelperT06, checkOutAppData)
 
 TEST(RepoHelperT06, repoPullbyCmd)
 {
-    const QString repoPath = "/deepin/linglong/repo";
+    const QString repoPath = linglong::util::getLinglongRootPath();
     QString err = "";
     bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(repoPath, err);
     if (!ret) {

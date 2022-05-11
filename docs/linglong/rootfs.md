@@ -24,7 +24,7 @@ The example of annotations is：
             "ro",
             "rbind"
           ],
-          "source": "/deepin/linglong/layers/org.deepin.Runtime/20/x86_64",
+          "source": "/persistent/linglong/layers/org.deepin.Runtime/20/x86_64",
           "type": "bind"
         },
         {
@@ -33,7 +33,7 @@ The example of annotations is：
             "ro",
             "rbind"
           ],
-          "source": "/deepin/linglong/layers/org.deepin.music/6.0.1.54/x86_64/",
+          "source": "/persistent/linglong/layers/org.deepin.music/6.0.1.54/x86_64/",
           "type": "bind"
         }
       ]

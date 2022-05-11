@@ -24,8 +24,6 @@ class Ref;
 
 namespace repo {
 
-extern const char *kRepoRoot;
-
 class Repo
 {
 public:

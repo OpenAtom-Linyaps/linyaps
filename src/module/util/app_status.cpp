@@ -14,7 +14,7 @@
 #include <QThread>
 
 // 安装数据库路径
-const QString installedAppInfoPath = "/deepin/linglong/layers/";
+const QString installedAppInfoPath = linglong::util::getLinglongRootPath() + "/layers/";
 // 安装数据库版本
 const QString infoDbVersion = "1.0.0";
 

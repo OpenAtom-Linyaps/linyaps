@@ -19,7 +19,5 @@
 namespace linglong {
 namespace repo {
 
-const char *kRepoRoot = "/deepin/linglong/";
-
 } // namespace repo
 } // namespace linglong

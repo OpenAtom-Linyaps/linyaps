@@ -135,9 +135,9 @@ private:
     QMap<QString, QPointer<linglong::runtime::App>> apps;
     linglong::repo::OSTree repo;
     const QString sysLinglongInstalltions;
-    const QString kAppInstallPath = "/deepin/linglong/layers/";
-    const QString kLocalRepoPath = "/deepin/linglong/repo";
-    const QString kRemoteRepoName = "repo";
+    const QString kAppInstallPath;
+    const QString kLocalRepoPath;
+    const QString kRemoteRepoName;
     // Fix to do 记录子线程安装状态 供查询进度信息使用 未序列化 重启service后失效
     QMap<QString, Reply> appState;
 

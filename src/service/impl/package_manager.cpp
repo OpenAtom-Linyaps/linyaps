@@ -39,13 +39,15 @@
 namespace linglong {
 namespace service {
 PackageManagerPrivate::PackageManagerPrivate(PackageManager *parent)
-    : repo(linglong::repo::kRepoRoot)
-    , sysLinglongInstalltions("/deepin/linglong/entries/share")
-    , kAppInstallPath("/deepin/linglong/layers/")
-    , kLocalRepoPath("/deepin/linglong/repo")
+    : repo(util::getLinglongRootPath())
+    , sysLinglongInstalltions(util::getLinglongRootPath() + "/entries/share")
+    , kAppInstallPath(util::getLinglongRootPath() + "/layers/")
+    , kLocalRepoPath(util::getLinglongRootPath())
     , kRemoteRepoName("repo")
     , q_ptr(parent)
 {
+    // 如果没有config.json拷贝一份到${LINGLONG_ROOT}
+    util::copyConfig();
 }
 
 /*

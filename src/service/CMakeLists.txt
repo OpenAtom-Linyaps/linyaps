@@ -70,8 +70,8 @@ target_link_libraries(ll-service
 install(TARGETS ll-service
         RUNTIME DESTINATION bin)
 
-install(FILES data/config
-        DESTINATION /deepin/linglong/config)
+install(FILES data/config.json
+        DESTINATION /usr/share/linglong/)
 
 install(FILES data/space.linglong.Service.desktop
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications)

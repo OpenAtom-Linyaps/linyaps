@@ -79,7 +79,7 @@ Ref支持进行简写，主要规则如下：
 目前，layers存储路径为：
 
 ```
-/deepin/linglong/layers
+${LINGLONG_ROOT}/layers
 ```
 
 这个路径后面一定会被替换，所以请务必不要有太多地方硬编码这个字段的地方。

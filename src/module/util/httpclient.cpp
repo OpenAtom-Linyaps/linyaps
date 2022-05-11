@@ -33,7 +33,7 @@ namespace util {
 const char *pkgDownloadLock = "/tmp/linglongHttpDownload.lock";
 
 // 存储软件包信息服务器配置文件
-const QString serverConfigPath = "/deepin/linglong/config/config";
+const QString serverConfigPath = getLinglongRootPath() + "/config.json";
 
 long getCurrentTime()
 {

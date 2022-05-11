@@ -21,6 +21,7 @@
 #include <QDirIterator>
 #include <QDebug>
 #include <QTemporaryFile>
+#include <QSysInfo>
 
 #include "status_code.h"
 
@@ -374,6 +375,39 @@ void inline removeDstDirLinkFiles(const QString &src, const QString &dst)
         if (fileExists(QDir(dst).absolutePath() + "/" + info.fileName())) {
             QFile(QDir(dst).absolutePath() + "/" + info.fileName()).remove();
         }
+    }
+}
+
+/*!
+ * 根据系统版本获取玲珑安装路径
+ * @return QString 玲珑安装路径
+ */
+QString inline getLinglongRootPath()
+{
+    auto sysType = QSysInfo::productType();
+    if ("uos" != sysType && "Deepin" != sysType) {
+        return QString("/var/lib/linglong");
+    }
+    // v20系统
+    if ("20" == QSysInfo::productVersion()) {
+        return QString("/data/linglong");
+    }
+
+    // v23系统
+    if ("23" == QSysInfo::productVersion()) {
+        return QString("/persistent/linglong");
+    }
+    return QString();
+}
+
+/*!
+ * 拷贝config.json到安装目录
+ */
+void inline copyConfig()
+{
+    if(!fileExists(getLinglongRootPath() + "/config.json") && fileExists("/usr/share/linglong/config.json")){
+        QFile configFile("/usr/share/linglong/config.json");
+        configFile.copy(getLinglongRootPath() + "/config.json");
     }
 }
 

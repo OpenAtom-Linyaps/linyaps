@@ -1,5 +1,20 @@
 #!/bin/bash
 
+LINGLONG_ROOT="/var/lib/linglong"
+VERSION=""
+
+if [ -f /etc/os-release ]
+then
+        VERSION="$(sed -ne '/^VERSION_ID=.*$/P' /etc/os-release | awk -F = '{print $2}' | sed -e 's/"//g')"
+        if [ "${VERSION}" = "20" ]
+        then
+                LINGLONG_ROOT="/data/linglong"
+        elif [ "${VERSION}" = "23" ]
+        then
+                LINGLONG_ROOT="/persistent/linglong"
+        fi
+fi
+
 new_dirs=
 while read -r install_path
 do
@@ -9,7 +24,8 @@ do
         *":$share_path/:"*) :;;
         *) new_dirs=${new_dirs:+${new_dirs}:}$share_path;;
     esac
-done < <(echo "${XDG_DATA_HOME:-"$HOME/.local/share"}/linglong"; echo "/deepin/linglong")
+done < <(echo "${XDG_DATA_HOME:-"$HOME/.local/share"}/linglong"; echo "${LINGLONG_ROOT}")
 
 XDG_DATA_DIRS="${new_dirs:+${new_dirs}:}${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
 echo "XDG_DATA_DIRS=$XDG_DATA_DIRS"
+echo LINGLONG_ROOT=${LINGLONG_ROOT}

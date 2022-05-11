@@ -889,7 +889,7 @@ public:
 
     repo::Repo *repo;
 
-    const QString sysLinglongInstalltions = "/deepin/linglong/entries/share";
+    const QString sysLinglongInstalltions = util::getLinglongRootPath() + "/entries/share";
 
     Q_DECLARE_PUBLIC(App);
 };

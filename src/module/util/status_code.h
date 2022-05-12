@@ -33,7 +33,7 @@ enum class StatusCode {
     kPkgUninstallFailed, ///< 卸载失败
     kErrorPkgUpdateFailed, ///< 更新失败
     kErrorPkgUpdateSuccess, ///< 更新成功
-    kPkgUpdateing, ///< 更新中
+    kPkgUpdating, ///< 更新中
     kErrorPkgKillFailed, ///< kill应用失败
     kErrorPkgKillSuccess, ///< kill成功
     kErrorPkgQuerySuccess, ///< 查询成功

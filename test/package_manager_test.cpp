@@ -310,7 +310,7 @@ TEST(Package, list02)
     linglong::util::getAppMetaInfoListByJson(reply.result, retMsg);
     bool ret = retMsg.size() > 0 ? true : false;
 
-    QString dbPath = linglong::util::getLinglongRootPath() + "/layers/InstalledAppInfo.db";
+    QString dbPath = linglong::util::getLinglongRootPath() + "/linglong.db";
     bool expectRet = true;
     if (!linglong::util::fileExists(dbPath)) {
         expectRet = false;

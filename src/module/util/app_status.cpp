@@ -14,7 +14,7 @@
 #include <QThread>
 
 // 安装数据库路径
-const QString installedAppInfoPath = linglong::util::getLinglongRootPath() + "/layers/";
+const QString installedAppInfoPath = linglong::util::getLinglongRootPath();
 // 安装数据库版本
 const QString infoDbVersion = "1.0.0";
 
@@ -40,10 +40,10 @@ int openDatabaseConnection(QSqlDatabase &dbConn)
         dbConn = QSqlDatabase::database(dbConnName);
     } else {
         dbConn = QSqlDatabase::addDatabase("QSQLITE", dbConnName);
-        dbConn.setDatabaseName(installedAppInfoPath + "InstalledAppInfo.db");
+        dbConn.setDatabaseName(installedAppInfoPath + "/linglong.db");
     }
     if (!dbConn.isOpen() && !dbConn.open()) {
-        err = "open " + installedAppInfoPath + "InstalledAppInfo.db failed";
+        err = "open " + installedAppInfoPath + "/linglong.db failed";
         qCritical() << err;
         return STATUS_CODE(kFail);
     }

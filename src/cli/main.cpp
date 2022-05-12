@@ -439,7 +439,7 @@ int main(int argc, char **argv)
                      while (reply.code == STATUS_CODE(kPkgInstalling)) {
                          // 隐藏光标
                          std::cout << "\033[?25l";
-                         std::cout << "\rmessage:" << reply.message.toStdString();
+                         std::cout << "\r" << reply.message.toStdString();
                          std::cout.flush();
                          QThread::sleep(1);
                          dbusReply = packageManager.GetDownloadStatus(installParamOption);

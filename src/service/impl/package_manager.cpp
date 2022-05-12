@@ -232,7 +232,7 @@ Reply PackageManagerPrivate::GetDownloadStatus(const ParamOption &paramOption)
         version = appInfo->version;
     }
 
-    reply.message = appId + " is installing";
+    reply.message = appId + " is installing...";
     // 判断对应版本的应用是否已安装 Fix to do 多用户
     QString key = appId + "/" + version + "/" + arch;
     if (appState.contains(key) && appState[key].code == STATUS_CODE(kPkgInstallSuccess)) {
@@ -296,7 +296,7 @@ bool PackageManagerPrivate::installRuntime(const QString &runtimeId, const QStri
     auto pkgInfo = appList.at(0);
     const QString savePath = kAppInstallPath + runtimeId + "/" + runtimeVer + "/" + runtimeArch;
     // 创建路径
-    linglong::util::createDir(savePath);
+    linglong::util::createDir(kAppInstallPath + runtimeId);
     ret = downloadAppData(runtimeId, runtimeVer, runtimeArch, savePath, err);
     if (!ret) {
         err = "installRuntime download runtime data err";
@@ -331,9 +331,9 @@ bool PackageManagerPrivate::checkAppRuntime(const QString &runtime, QString &err
     const QString runtimeArch = runtimeInfo.at(2);
 
     bool ret = true;
-    // 判断app依赖的runtime是否安装
-    QString userName = linglong::util::getUserName();
-    if (!linglong::util::getAppInstalledStatus(runtimeId, runtimeVer, "", userName)) {
+    // 判断app依赖的runtime是否安装 runtime 不区分用户
+    // Fix to do 不同版本应用依赖于不同版本runtime导致切用户后 ostree 限制导致runtime无法下载
+    if (!linglong::util::getAppInstalledStatus(runtimeId, runtimeVer, "", "")) {
         ret = installRuntime(runtimeId, runtimeVer, runtimeArch, err);
     }
     return ret;
@@ -430,9 +430,11 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
     // 下载在线包数据到目标目录 安装完成
     // QString pkgName = "org.deepin.calculator";
     const QString savePath = kAppInstallPath + appInfo->appId + "/" + appInfo->version + "/" + appInfo->arch;
+    // 多用户支持需要创建 777 权限
+    linglong::util::createDir(kAppInstallPath + appInfo->appId);
     ret = downloadAppData(appInfo->appId, appInfo->version, appInfo->arch, savePath, reply.message);
     if (!ret) {
-        qCritical() << reply.message;
+        qCritical() << "downloadAppData app:" << appInfo->appId << ", version:" << appInfo->version << " error";
         reply.code = STATUS_CODE(kLoadPkgDataFailed);
         appState.insert(appId + "/" + appInfo->version + "/" + arch, reply);
         return reply;
@@ -695,8 +697,7 @@ Reply PackageManagerPrivate::Update(const ParamOption &paramOption)
     }
 
     // 判断是否已安装
-    QString userName = linglong::util::getUserName();
-    if (!linglong::util::getAppInstalledStatus(appId, paramOption.version, arch, userName)) {
+    if (!linglong::util::getAppInstalledStatus(appId, paramOption.version, arch, "")) {
         reply.message = appId + " not installed";
         qCritical() << reply.message;
         reply.code = STATUS_CODE(kPkgNotInstalled);
@@ -706,7 +707,7 @@ Reply PackageManagerPrivate::Update(const ParamOption &paramOption)
     // 检查是否存在版本更新
     linglong::package::AppMetaInfoList pkgList;
     // 根据已安装文件查询已经安装软件包信息
-    linglong::util::getInstalledAppInfo(appId, paramOption.version, arch, userName, pkgList);
+    linglong::util::getInstalledAppInfo(appId, paramOption.version, arch, "", pkgList);
     auto installedApp = pkgList.at(0);
     if (pkgList.size() != 1) {
         reply.message = "query local app:" + appId + " info err";
@@ -911,8 +912,8 @@ Reply PackageManager::Update(const ParamOption &paramOption)
 
     QFuture<void> future = QtConcurrent::run(pool.data(), [=]() { d->Update(paramOption); });
 
-    reply.code = STATUS_CODE(kPkgUpdateing);
-    reply.message = paramOption.appId + "is undateing";
+    reply.code = STATUS_CODE(kPkgUpdating);
+    reply.message = paramOption.appId + "is updating";
     return reply;
 }
 

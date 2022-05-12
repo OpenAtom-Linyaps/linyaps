@@ -896,10 +896,11 @@ bool OstreeRepoHelper::checkOutAppData(const QString &repoPath, const QString &r
         return false;
     }
     const std::string dstPathTmp = dstPath.toStdString();
-    if (g_mkdir_with_parents(dstPathTmp.c_str(), 0755)) {
-        // fprintf(stdout, "g_mkdir_with_parents failed\n");
-        return false;
-    }
+    // if (g_mkdir_with_parents(dstPathTmp.c_str(), 0755)) {
+    //    return false;
+    // }
+    linglong::util::createDir(dstPath);
+    qDebug() << "checkOutAppData dstPath:" << dstPath;
 
     options.mode = OSTREE_REPO_CHECKOUT_MODE_USER;
     options.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES;

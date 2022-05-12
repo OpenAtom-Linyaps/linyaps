@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#include "fs.h"
+#include "file.h"
 
 #include <QDir>
 #include <QStandardPaths>

@@ -12,7 +12,7 @@
 
 #include "module/util/uuid.h"
 #include "module/util/xdg.h"
-#include "module/util/fs.h"
+#include "module/util/file.h"
 
 
 linglong::util::Error Container::create(const QString& ref)

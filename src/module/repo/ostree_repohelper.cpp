@@ -9,7 +9,7 @@
  */
 
 #include "ostree_repohelper.h"
-#include "module/util/fs.h"
+#include "module/util/file.h"
 #include "module/util/runner.h"
 #include "module/util/version.h"
 

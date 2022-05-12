@@ -11,7 +11,7 @@
 #include <gtest/gtest.h>
 
 #include "src/module/repo/ostree_repohelper.h"
-#include "src/module/util/fs.h"
+#include "src/module/util/file.h"
 
 TEST(OstreeRepoHelperT01, ensureRepoEnv)
 {

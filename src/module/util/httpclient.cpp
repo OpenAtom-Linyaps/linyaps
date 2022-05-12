@@ -25,7 +25,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
-#include "module/util/fs.h"
+#include "module/util/file.h"
 
 namespace linglong {
 namespace util {

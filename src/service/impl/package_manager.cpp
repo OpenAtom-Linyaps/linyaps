@@ -28,7 +28,7 @@
 #include "module/runtime/app.h"
 #include "module/util/app_status.h"
 #include "module/util/appinfo_cache.h"
-#include "module/util/fs.h"
+#include "module/util/file.h"
 #include "module/util/sysinfo.h"
 #include "module/package/info.h"
 #include "module/repo/repo.h"

@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <iostream>
 
-#include "fs.h"
+#include "file.h"
 #include "runner.h"
 
 namespace linglong {

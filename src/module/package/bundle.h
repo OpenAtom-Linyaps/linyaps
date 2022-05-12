@@ -26,7 +26,7 @@
 #include <QDir>
 
 #include "module/util/result.h"
-#include "module/util/fs.h"
+#include "module/util/file.h"
 #include "module/util/status_code.h"
 #include "module/util/httpclient.h"
 #include "info.h"

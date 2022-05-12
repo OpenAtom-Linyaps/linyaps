@@ -7,8 +7,7 @@ set(LL_BUILDER_SOURCES
     ../module/runtime/app.cpp
     ../module/runtime/container.cpp
     ../module/flatpak/flatpak_manager.cpp
-    ../module/util/fs.cpp
-    ../module/util/fs.cpp
+    ../module/util/file.cpp
     ../module/util/http_client.cpp
     ../module/util/http_client.h
     ../module/util/httpclient.cpp

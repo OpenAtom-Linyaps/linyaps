@@ -17,7 +17,7 @@
 #include <QMutexLocker>
 
 #include "singleton.h"
-#include "fs.h"
+#include "file.h"
 
 #define DATABASE_NAME "linglong.db"
 

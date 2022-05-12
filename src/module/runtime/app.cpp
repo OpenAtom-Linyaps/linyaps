@@ -22,7 +22,7 @@
 #include "module/util/yaml.h"
 #include "module/util/uuid.h"
 #include "module/util/json.h"
-#include "module/util/fs.h"
+#include "module/util/file.h"
 #include "module/util/xdg.h"
 #include "module/util/desktop_entry.h"
 #include "module/util/package_manager_param.h"

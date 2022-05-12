@@ -24,7 +24,7 @@ set(LINK_LIBS
     ${OSTREE1_LDFLAGS})
 
 set(LL_TEST_SOURCES
-    ../src/module/util/fs.cpp
+    ../src/module/util/file.cpp
     ../src/module/util/xdg.cpp
     ../src/module/package/info.cpp
     ../src/module/util/httpclient.cpp

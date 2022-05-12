@@ -11,7 +11,7 @@
 #include "builder_config.h"
 
 #include "module/util/xdg.h"
-#include "module/util/fs.h"
+#include "module/util/file.h"
 #include "module/util/sysinfo.h"
 
 namespace linglong {

@@ -14,7 +14,7 @@
 #include <QJsonParseError>
 #include <QJsonObject>
 
-#include "module/util/fs.h"
+#include "module/util/file.h"
 #include "module/util/sysinfo.h"
 
 namespace linglong {

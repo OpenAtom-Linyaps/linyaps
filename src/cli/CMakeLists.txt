@@ -25,7 +25,7 @@ set(LL_CLI_SOURCES
     ../module/repo/repo.cpp
     ../module/runtime/app.cpp
     ../module/runtime/container.cpp
-    ../module/util/fs.cpp
+    ../module/util/file.cpp
     ../module/util/sysinfo.cpp
     ../module/util/uuid.cpp
     ../module/util/xdg.cpp

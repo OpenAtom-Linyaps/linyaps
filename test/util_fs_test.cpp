@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#include "src/module/util/fs.h"
+#include "src/module/util/file.h"
 
 #include <gtest/gtest.h>
 #include <QString>

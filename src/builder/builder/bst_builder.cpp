@@ -16,7 +16,7 @@
 #include <QProcess>
 #include <QDir>
 
-#include "module/util/fs.h"
+#include "module/util/file.h"
 #include "module/util/yaml.h"
 
 #include "project.h"

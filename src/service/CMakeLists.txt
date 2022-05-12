@@ -21,7 +21,7 @@ set(LL_SERVICE_SOURCES
     ../module/util/xdg.cpp
     ../module/util/desktop_entry.cpp
     ../module/runtime/app.cpp
-    ../module/util/fs.cpp
+    ../module/util/file.cpp
     ../module/util/sysinfo.cpp
     ../module/runtime/tracker.cpp
     ../module/util/httpclient.cpp

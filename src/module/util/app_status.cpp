@@ -107,6 +107,14 @@ int checkInstalledAppDb()
         return STATUS_CODE(kFail);
     }
     closeDbConnection(dbConn);
+    // 设置 db 文件权限
+    QFile file(installedAppInfoPath + "/linglong.db");
+    QFile::Permissions permissions = file.permissions();
+    permissions |= QFile::ReadGroup;
+    permissions |= QFile::WriteGroup;
+    permissions |= QFile::ReadOther;
+    permissions |= QFile::WriteOther;
+    file.setPermissions(permissions);
     return STATUS_CODE(kSuccess);
 }
 

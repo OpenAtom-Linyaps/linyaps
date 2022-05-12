@@ -131,6 +131,24 @@ private:
      */
     bool checkAppRuntime(const QString &runtime, QString &err);
 
+    /*
+     * 安装应用时更新包括desktop文件在内的配置文件
+     *
+     * @param appId: 应用的appId
+     * @param version: 应用的版本号
+     * @param arch: 应用对应的架构
+     */
+    void addAppConfig(const QString &appId, const QString &version, const QString &arch);
+
+    /*
+     * 卸载应用时更新包括desktop文件在内的配置文件
+     *
+     * @param appId: 应用的appId
+     * @param version: 应用的版本号
+     * @param arch: 应用对应的架构
+     */
+    void delAppConfig(const QString &appId, const QString &version, const QString &arch);
+
 private:
     QMap<QString, QPointer<linglong::runtime::App>> apps;
     linglong::repo::OSTree repo;

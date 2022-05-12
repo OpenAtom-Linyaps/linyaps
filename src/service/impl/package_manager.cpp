@@ -243,7 +243,7 @@ Reply PackageManagerPrivate::GetDownloadStatus(const ParamOption &paramOption)
         QString filePath = "/tmp/.linglong/" + fileName;
         QFile progressFile(filePath);
         if (progressFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            QStringList ret = QString(progressFile.readAll()).split(QRegExp("[\r\n]"), Qt::SkipEmptyParts);
+            QStringList ret = QString(progressFile.readAll()).split(QRegExp("[\r\n]"), QString::SkipEmptyParts);
             if (ret.size() > 1) {
                 QStringList processList = ret.at(1).trimmed().split("\u001B8");
                 reply.message = processList.at(processList.size() - 1).trimmed();
@@ -367,6 +367,104 @@ linglong::package::AppMetaInfo *PackageManagerPrivate::getLatestApp(const linglo
     return latestApp;
 }
 
+/*
+ * 安装应用时更新包括desktop文件在内的配置文件
+ *
+ * @param appId: 应用的appId
+ * @param version: 应用的版本号
+ * @param arch: 应用对应的架构
+ */
+void PackageManagerPrivate::addAppConfig(const QString &appId, const QString &version, const QString &arch)
+{
+    // 是否为多版本
+    if (linglong::util::getAppInstalledStatus(appId, "", arch, "")) {
+        linglong::package::AppMetaInfoList pkgList;
+        // 查找当前已安装软件包的最高版本
+        linglong::util::getInstalledAppInfo(appId, "", arch, "", pkgList);
+        auto it = pkgList.at(0);
+        linglong::util::AppVersion dstVersion(version);
+        linglong::util::AppVersion curVersion(it->version);
+        if (curVersion.isBigThan(dstVersion)) {
+            return;
+        }
+        // 目标版本较已有版本高，先删除旧的desktop
+        const QString installPath = kAppInstallPath + it->appId + "/" + it->version;
+        // 删掉安装配置链接文件
+        if (linglong::util::dirExists(installPath + "/" + arch + "/outputs/share")) {
+            const QString appEntriesDirPath = installPath + "/" + arch + "/outputs/share";
+            linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
+        } else {
+            const QString appEntriesDirPath = installPath + "/" + arch + "/entries";
+            linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
+        }
+    }
+
+    const QString savePath = kAppInstallPath + appId + "/" + version + "/" + arch;
+    // 链接应用配置文件到系统配置目录
+    if (linglong::util::dirExists(savePath + "/outputs/share")) {
+        const QString appEntriesDirPath = savePath + "/outputs/share";
+        linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstalltions);
+    } else {
+        const QString appEntriesDirPath = savePath + "/entries";
+        linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstalltions);
+    }
+}
+
+/*
+ * 卸载应用时更新包括desktop文件在内的配置文件
+ *
+ * @param appId: 应用的appId
+ * @param version: 应用的版本号
+ * @param arch: 应用对应的架构
+ */
+void PackageManagerPrivate::delAppConfig(const QString &appId, const QString &version, const QString &arch)
+{
+    // 是否为多版本
+    if (linglong::util::getAppInstalledStatus(appId, "", arch, "")) {
+        linglong::package::AppMetaInfoList pkgList;
+        // 查找当前已安装软件包的最高版本
+        linglong::util::getInstalledAppInfo(appId, "", arch, "", pkgList);
+        auto it = pkgList.at(0);
+        linglong::util::AppVersion dstVersion(version);
+        linglong::util::AppVersion curVersion(it->version);
+        if (curVersion.isBigThan(dstVersion)) {
+            return;
+        }
+
+        // 目标版本较已有版本高，先删除旧的desktop
+        const QString installPath = kAppInstallPath + appId + "/" + version;
+        // 删掉安装配置链接文件
+        if (linglong::util::dirExists(installPath + "/" + arch + "/outputs/share")) {
+            const QString appEntriesDirPath = installPath + "/" + arch + "/outputs/share";
+            linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
+        } else {
+            const QString appEntriesDirPath = installPath + "/" + arch + "/entries";
+            linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
+        }
+
+        const QString savePath = kAppInstallPath + appId + "/" + it->version + "/" + arch;
+        // 链接应用配置文件到系统配置目录
+        if (linglong::util::dirExists(savePath + "/outputs/share")) {
+            const QString appEntriesDirPath = savePath + "/outputs/share";
+            linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstalltions);
+        } else {
+            const QString appEntriesDirPath = savePath + "/entries";
+            linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstalltions);
+        }
+        return;
+    }
+    // 目标版本较已有版本高，先删除旧的desktop
+    const QString installPath = kAppInstallPath + appId + "/" + version;
+    // 删掉安装配置链接文件
+    if (linglong::util::dirExists(installPath + "/" + arch + "/outputs/share")) {
+        const QString appEntriesDirPath = installPath + "/" + arch + "/outputs/share";
+        linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
+    } else {
+        const QString appEntriesDirPath = installPath + "/" + arch + "/entries";
+        linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
+    }
+}
+
 Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOption)
 {
     Reply reply;
@@ -446,13 +544,7 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
     QFile(filePath).remove();
 
     // 链接应用配置文件到系统配置目录
-    if (linglong::util::dirExists(savePath + "/outputs/share")) {
-        const QString appEntriesDirPath = savePath + "/outputs/share";
-        linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstalltions);
-    } else {
-        const QString appEntriesDirPath = savePath + "/entries";
-        linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstalltions);
-    }
+    addAppConfig(appInfo->appId, appInfo->version, appInfo->arch);
 
     // 更新desktop database
     auto retRunner = linglong::runner::Runner("update-desktop-database", {sysLinglongInstalltions + "/applications/"},
@@ -601,49 +693,6 @@ Reply PackageManagerPrivate::Uninstall(const UninstallParamOption &paramOption)
         return reply;
     }
 
-    const QString installPath = kAppInstallPath + it->appId + "/" + it->version;
-    // 删掉安装配置链接文件
-    if (linglong::util::dirExists(installPath + "/" + arch + "/outputs/share")) {
-        const QString appEntriesDirPath = installPath + "/" + arch + "/outputs/share";
-        linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
-    } else {
-        const QString appEntriesDirPath = installPath + "/" + arch + "/entries";
-        linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
-    }
-    linglong::util::removeDir(installPath);
-
-    QDir dir(kAppInstallPath + it->appId);
-    dir.setFilter(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
-    if (dir.entryInfoList().size() <= 0) {
-        linglong::util::removeDir(kAppInstallPath + it->appId);
-    }
-    qInfo() << "Uninstall del dir:" << installPath;
-
-    // 更新desktop database
-    auto retRunner = linglong::runner::Runner("update-desktop-database", {sysLinglongInstalltions + "/applications/"},
-                                              1000 * 60 * 1);
-    if (!retRunner) {
-        qWarning() << "warning: update desktop database of " + sysLinglongInstalltions + "/applications/ failed!";
-    }
-
-    // 更新mime type database
-    if (linglong::util::dirExists(sysLinglongInstalltions + "/mime/packages")) {
-        auto retUpdateMime =
-            linglong::runner::Runner("update-mime-database", {sysLinglongInstalltions + "/mime/"}, 1000 * 60 * 1);
-        if (!retUpdateMime) {
-            qWarning() << "warning: update mime type database of " + sysLinglongInstalltions + "/mime/ failed!";
-        }
-    }
-
-    // 更新 glib-2.0/schemas
-    if (linglong::util::dirExists(sysLinglongInstalltions + "/glib-2.0/schemas")) {
-        auto retUpdateSchemas = linglong::runner::Runner(
-            "glib-compile-schemas", {sysLinglongInstalltions + "/glib-2.0/schemas"}, 1000 * 60 * 1);
-        if (!retUpdateSchemas) {
-            qWarning() << "warning: update schemas of " + sysLinglongInstalltions + "/glib-2.0/schemas failed!";
-        }
-    }
-
     // 更新本地repo仓库
     bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(kLocalRepoPath, err);
     if (!ret) {
@@ -679,6 +728,43 @@ Reply PackageManagerPrivate::Uninstall(const UninstallParamOption &paramOption)
     }
     // 更新安装数据库
     linglong::util::deleteAppRecord(appId, it->version, arch, userName);
+
+    delAppConfig(appId, it->version, arch);
+    // 更新desktop database
+    auto retRunner = linglong::runner::Runner("update-desktop-database", {sysLinglongInstalltions + "/applications/"},
+                                              1000 * 60 * 1);
+    if (!retRunner) {
+        qWarning() << "warning: update desktop database of " + sysLinglongInstalltions + "/applications/ failed!";
+    }
+
+    // 更新mime type database
+    if (linglong::util::dirExists(sysLinglongInstalltions + "/mime/packages")) {
+        auto retUpdateMime =
+            linglong::runner::Runner("update-mime-database", {sysLinglongInstalltions + "/mime/"}, 1000 * 60 * 1);
+        if (!retUpdateMime) {
+            qWarning() << "warning: update mime type database of " + sysLinglongInstalltions + "/mime/ failed!";
+        }
+    }
+
+    // 更新 glib-2.0/schemas
+    if (linglong::util::dirExists(sysLinglongInstalltions + "/glib-2.0/schemas")) {
+        auto retUpdateSchemas = linglong::runner::Runner(
+            "glib-compile-schemas", {sysLinglongInstalltions + "/glib-2.0/schemas"}, 1000 * 60 * 1);
+        if (!retUpdateSchemas) {
+            qWarning() << "warning: update schemas of " + sysLinglongInstalltions + "/glib-2.0/schemas failed!";
+        }
+    }
+
+    // 删除应用对应的安装目录
+    const QString installPath = kAppInstallPath + it->appId + "/" + it->version;
+    linglong::util::removeDir(installPath);
+    QDir dir(kAppInstallPath + it->appId);
+    dir.setFilter(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
+    if (dir.entryInfoList().size() <= 0) {
+        linglong::util::removeDir(kAppInstallPath + it->appId);
+    }
+    qInfo() << "Uninstall del dir:" << installPath;
+
     reply.code = STATUS_CODE(kPkgUninstallSuccess);
     reply.message = "uninstall " + appId + ", version:" + it->version + " success";
     appState.remove(appId + "/" + it->version + "/" + arch);

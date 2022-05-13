@@ -53,8 +53,8 @@
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
         </method>
         <method name="ListContainer">
-            <arg name="ContainerList" type="a(sxss)" direction="out"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="ContainerList"/>
+            <arg name="ContainerList" type="(iss)" direction="out"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::QueryReply"/>
         </method>
     </interface>
 </node>

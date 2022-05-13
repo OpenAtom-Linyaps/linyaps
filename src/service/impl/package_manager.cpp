@@ -1177,10 +1177,10 @@ Reply PackageManager::Stop(const QString &containerId)
     return reply;
 }
 
-ContainerList PackageManager::ListContainer()
+QueryReply PackageManager::ListContainer()
 {
     Q_D(PackageManager);
-    ContainerList list;
+    QJsonArray jsonArray;
 
     for (const auto &app : d->apps) {
         auto c = QPointer<Container>(new Container);
@@ -1188,9 +1188,14 @@ ContainerList PackageManager::ListContainer()
         c->pid = app->container()->pid;
         c->packageName = app->container()->packageName;
         c->workingDirectory = app->container()->workingDirectory;
-        list.push_back(c);
+        jsonArray.push_back(c->toJson(c.data()));
     }
-    return list;
+
+    QueryReply r;
+    r.code = STATUS_CODE(kSuccess);
+    r.message = "";
+    r.result = QLatin1String(QJsonDocument(jsonArray).toJson(QJsonDocument::Compact));
+    return r;
 }
 
 QString PackageManager::Status()

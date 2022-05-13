@@ -325,7 +325,17 @@ int main(int argc, char **argv)
              parser.process(app);
 
              auto outputFormat = parser.value(optOutputFormat);
-             auto containerList = packageManager.ListContainer().value();
+             auto replyString = packageManager.ListContainer().value().result;
+
+             ContainerList containerList;
+             auto doc = QJsonDocument::fromJson(replyString.toUtf8(), nullptr);
+             if (doc.isArray()) {
+                 for (auto container : doc.array()) {
+                     auto str = QString(QJsonDocument(container.toObject()).toJson());
+                     auto con = linglong::util::loadJSONString<Container>(str);
+                     containerList.push_back(con);
+                 }
+             }
              COMMAND_HELPER->showContainer(containerList, outputFormat);
              return 0;
          }},

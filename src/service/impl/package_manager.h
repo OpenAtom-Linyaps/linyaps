@@ -147,7 +147,7 @@ public Q_SLOTS:
      *         packageName 应用名称 \n
      *         workingDirectory 应用运行目录
      */
-    ContainerList ListContainer();
+    QueryReply ListContainer();
 
 public:
     QScopedPointer<QThreadPool> runPool; ///< 启动应用线程池

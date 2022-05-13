@@ -33,7 +33,9 @@ public:
     explicit SourceFetcher(Source *s, Project *project);
     ~SourceFetcher() override;
 
-    QString sourceRoot();
+    QString sourceRoot() const;
+
+    void setSourceRoot(const QString &path);
 
     linglong::util::Error fetch();
 
@@ -44,6 +46,7 @@ public:
     linglong::util::Error extractFile(const QString &path, const QString &dir);
 
 private:
+    QString srcRoot;
     QScopedPointer<SourceFetcherPrivate> dd_ptr;
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), SourceFetcher)
     const char *CompressedFileTarXz;

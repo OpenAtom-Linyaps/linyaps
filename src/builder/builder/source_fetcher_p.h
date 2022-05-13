@@ -32,11 +32,13 @@ public:
 
     linglong::util::Error fetchArchiveFile();
 
-    linglong::util::Error fetchGitRepo() const;
+    util::Error fetchGitRepo();
 
-    linglong::util::Error handleDebianPatch() const;
+    util::Error handleLocalSource();
 
-    linglong::util::Error handleLocalPatch() const;
+    util::Error handleDebianPatch();
+
+    util::Error handleLocalPatch();
 
     Project *project;
     Source *source;

@@ -76,6 +76,8 @@ linglong::util::Error SourceFetcherPrivate::fetchArchiveFile()
 {
     Q_Q(SourceFetcher);
 
+    q->setSourceRoot(sourceTargetPath());
+
     QUrl url(source->url);
     auto path = BuilderConfig::instance()->targetFetchCachePath() + "/" + filename();
 
@@ -103,8 +105,11 @@ linglong::util::Error SourceFetcherPrivate::fetchArchiveFile()
 
 // TODO: DO NOT clone all repo, see here for more:
 // https://stackoverflow.com/questions/3489173/how-to-clone-git-repository-with-specific-revision-changeset/3489576
-linglong::util::Error SourceFetcherPrivate::fetchGitRepo() const
+util::Error SourceFetcherPrivate::fetchGitRepo()
 {
+    Q_Q(SourceFetcher);
+
+    q->setSourceRoot(sourceTargetPath());
     util::ensureDir(sourceTargetPath());
 
     if (!QDir::setCurrent(sourceTargetPath())) {
@@ -147,8 +152,10 @@ linglong::util::Error SourceFetcherPrivate::fetchGitRepo() const
     return NoError();
 };
 
-linglong::util::Error SourceFetcherPrivate::handleDebianPatch() const
+util::Error SourceFetcherPrivate::handleDebianPatch()
 {
+    Q_Q(SourceFetcher);
+
     qInfo() << "debian source here, find debian patch ...";
 
     QString patchPath = "debian/patches";
@@ -163,7 +170,7 @@ linglong::util::Error SourceFetcherPrivate::handleDebianPatch() const
                 continue;
             }
 
-            auto debianPatch = QStringList {sourceTargetPath(), patchPath, patchName}.join("/");
+            auto debianPatch = QStringList {q->sourceRoot(), patchPath, patchName}.join("/");
 
             qDebug() << QString("applying debian patch: %1").arg(patchName);
             if (!runner::Runner("patch", {"-p1", "-i", debianPatch}, -1)) {
@@ -175,7 +182,7 @@ linglong::util::Error SourceFetcherPrivate::handleDebianPatch() const
     return NoError();
 }
 
-linglong::util::Error SourceFetcherPrivate::handleLocalPatch() const
+util::Error SourceFetcherPrivate::handleLocalPatch()
 {
     // apply local patch
     qInfo() << "find local patch ...";
@@ -198,28 +205,42 @@ linglong::util::Error SourceFetcherPrivate::handleLocalPatch() const
     return NoError();
 }
 
-linglong::util::Error SourceFetcher::patch()
+util::Error SourceFetcherPrivate::handleLocalSource()
 {
-    linglong::util::Error ret(NoError());
+    Q_Q(SourceFetcher);
 
-    QDir::setCurrent(dd_ptr->sourceTargetPath());
+    q->setSourceRoot(BuilderConfig::instance()->projectRoot());
+    return NoError();
+}
+
+util::Error SourceFetcher::patch()
+{
+    Q_D(SourceFetcher);
+
+    util::Error ret(NoError());
+
+    QDir::setCurrent(sourceRoot());
 
     // TODO: remove later
-    if (QDir("debian").exists()) {
-        WrapError(dd_ptr->handleDebianPatch());
-    }
+    //if (QDir("debian").exists()) {
+    //    WrapError(d->handleDebianPatch());
+    //}
 
-    return dd_ptr->handleLocalPatch();
+    return d->handleLocalPatch();
 }
 
 linglong::util::Error SourceFetcher::fetch()
 {
-    linglong::util::Error ret(NoError());
+    Q_D(SourceFetcher);
 
-    if (dd_ptr->source->kind == "git") {
-        ret = dd_ptr->fetchGitRepo();
-    } else if (dd_ptr->source->kind == "archive") {
-        ret = dd_ptr->fetchArchiveFile();
+    util::Error ret(NoError());
+
+    if (d->source->kind == "git") {
+        ret = d->fetchGitRepo();
+    } else if (d->source->kind == "archive") {
+        ret = d->fetchArchiveFile();
+    } else if (d->source->kind == "local") {
+        ret = d->handleLocalSource();
     } else {
         return NewError(-1, "unknown source kind");
     }
@@ -231,16 +252,23 @@ linglong::util::Error SourceFetcher::fetch()
     return patch();
 }
 
-QString SourceFetcher::sourceRoot()
+QString SourceFetcher::sourceRoot() const
 {
-    return dd_ptr->sourceTargetPath();
+    return srcRoot;
+}
+
+void SourceFetcher::setSourceRoot(const QString &path) 
+{
+    srcRoot = path;
 }
 
 SourceFetcher::SourceFetcher(Source *s, Project *project)
     : dd_ptr(new SourceFetcherPrivate(s, this))
     ,CompressedFileTarXz("tar.xz")
 {
-    dd_ptr->project = project;
+    Q_D(SourceFetcher);
+      
+    d->project = project;
 }
 
 SourceFetcher::~SourceFetcher()

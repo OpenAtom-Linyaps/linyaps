@@ -39,7 +39,8 @@ const QStringList envList = {
     "USER", // wine应用会读取此环境变量
     "PATH",
     "HOME",
-    "QT_IM_MODULE" //输入法
+    "QT_IM_MODULE", //输入法
+    "LINGLONG_ROOT" // 玲珑安装位置
 };
 }
 } // namespace linglong

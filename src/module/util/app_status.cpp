@@ -82,7 +82,7 @@ int checkInstalledAppDb()
          repoName CHAR(16),\
          description NVARCHAR,\
          user VARCHAR,\
-         installType CHAR(16) DEFAULT 'user')";
+         installType CHAR(16) DEFAULT 'user',unique(appId,version,arch))";
     Connection connection;
     QSqlQuery sqlQuery = connection.execute(createInfoTable);
     if (QSqlError::NoError != sqlQuery.lastError().type()) {

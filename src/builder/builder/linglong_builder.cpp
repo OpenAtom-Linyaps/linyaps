@@ -295,6 +295,7 @@ linglong::util::Error LinglongBuilder::create(const QString &projectName)
 {
     auto projectPath = QStringList {QDir::currentPath(), projectName}.join("/");
     auto configFilePath = QStringList {projectPath, "linglong.yaml"}.join("/");
+    auto templeteFile = QStringList {BuilderConfig::instance()->templatePath(), "template.yaml"}.join("/");
 
     // TODO: 判断projectName名称合法性
     //在当前目录创建项目文件夹
@@ -303,7 +304,7 @@ linglong::util::Error LinglongBuilder::create(const QString &projectName)
         return NewError(-1, "project already exists");
     }
 
-    if (!QFile::copy(":templete.yaml", configFilePath)) {
+    if(!QFile::copy(templeteFile, configFilePath)){
         return NewError(-1, "templete file is not found");
     }
 

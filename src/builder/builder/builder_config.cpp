@@ -68,5 +68,16 @@ QString BuilderConfig::exec() const
     return m_exec;
 }
 
+QString BuilderConfig::templatePath() const
+{
+    for (auto dataPath : QStandardPaths::standardLocations(QStandardPaths::DataLocation)) {
+        QString templatePath = QStringList {dataPath, "template"}.join("/");
+        if (util::dirExists(templatePath)) {
+            return templatePath;
+        }
+    }
+    return QString();
+}
+
 } // namespace builder
 } // namespace linglong

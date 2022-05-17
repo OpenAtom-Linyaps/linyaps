@@ -1,0 +1,13 @@
+variables:
+  build_dir: |
+  conf_args: |
+  extra_args: |
+  destdir: |
+  jobs: -j${JOBS}
+
+build:
+  kind: manual
+  manual :
+    configure: |
+    build: |
+    install: |

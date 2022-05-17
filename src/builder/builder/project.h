@@ -15,6 +15,7 @@
 
 #include "module/util/json.h"
 #include "module/package/ref.h"
+#include "module/package/package.h"
 
 namespace linglong {
 namespace builder {
@@ -32,7 +33,20 @@ class Variables : public JsonSerialize
     Q_OBJECT;
     Q_JSON_CONSTRUCTOR(Variables)
 public:
+    Q_JSON_PROPERTY(QString, CC);
+    Q_JSON_PROPERTY(QString, CXX);
+    Q_JSON_PROPERTY(QString, NM);
+    Q_JSON_PROPERTY(QString, AR);
+    Q_JSON_PROPERTY(QString, CFLAGS);
+    Q_JSON_PROPERTY(QString, CXXFLAGS);
+    Q_JSON_PROPERTY(QString, LDFLAGS);
     Q_JSON_PROPERTY(QString, id);
+    Q_JSON_PROPERTY(QString, triplet);
+    Q_JSON_PROPERTY(QString, build_dir);
+    Q_JSON_PROPERTY(QString, dest_dir);
+    Q_JSON_PROPERTY(QString, conf_args);
+    Q_JSON_PROPERTY(QString, extra_args);
+    Q_JSON_PROPERTY(QString, jobs);
 };
 
 class Package : public JsonSerialize
@@ -82,6 +96,8 @@ class BuildManual : public JsonSerialize
     Q_JSON_CONSTRUCTOR(BuildManual)
 public:
     Q_JSON_PROPERTY(QString, configure);
+    Q_JSON_PROPERTY(QString, build);
+    Q_JSON_PROPERTY(QString, install);
 };
 
 class Build : public JsonSerialize
@@ -190,6 +206,19 @@ private:
 
 package::Ref fuzzyRef(const JsonSerialize *obj);
 
+} // namespace builder
+} // namespace linglong
+
+namespace linglong {
+namespace builder {
+class Template : public JsonSerialize
+{
+    Q_OBJECT;
+
+public:
+    Q_JSON_PTR_PROPERTY(Variables, variables);
+    Q_JSON_PTR_PROPERTY(Build, build);
+};
 } // namespace builder
 } // namespace linglong
 

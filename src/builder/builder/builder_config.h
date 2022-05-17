@@ -12,6 +12,7 @@
 #define LINGLONG_SRC_BUILDER_BUILDER_BUILDER_CONFIG_H_
 
 #include <QString>
+#include <QStandardPaths>
 
 #include "module/util/singleton.h"
 
@@ -46,6 +47,7 @@ public:
     // TODO: remove later
     QString targetSourcePath() const;
 
+    QString templatePath() const;
 private:
     QString m_projectRoot;
     QString m_exec;

@@ -28,6 +28,13 @@ set(LL_BUILDER_SOURCES
     builder/depend_fetcher.cpp
     builder/depend_fetcher.h)
 
+set (RESOURCES
+    resource/template.yaml
+    resource/default.yaml
+    resource/autotools.yaml
+    resource/qmake.yaml
+    resource/cmake.yaml)
+
 find_package(CURL REQUIRED)
 
 aux_source_directory(. LL_BUILDER_SOURCES)
@@ -40,3 +47,4 @@ target_include_directories(ll-builder PRIVATE ../)
 target_link_libraries(ll-builder PRIVATE ${LINK_LIBS} CURL::libcurl)
 
 install(TARGETS ll-builder RUNTIME DESTINATION bin)
+install(FILES ${RESOURCES} DESTINATION share/deepin/ll-builder/template)

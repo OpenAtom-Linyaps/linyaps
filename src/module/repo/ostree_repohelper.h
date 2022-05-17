@@ -151,6 +151,19 @@ public:
     }
 
     /*
+     * 获取正在下载的任务列表
+     *
+     * @return QStringList: 正在下载的应用对应的ref列表
+     */
+    QStringList getOstreeJobList()
+    {
+        if (jobMap.isEmpty()) {
+            return {};
+        }
+        return jobMap.keys();
+    }
+
+    /*
      * 删除本地repo仓库中软件包对应的ref分支信息及数据
      *
      * @param repoPath: 仓库路径

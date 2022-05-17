@@ -33,10 +33,10 @@ public:
     QString CreateJob(std::function<void()> f);
 
 public Q_SLOTS:
-    QStringList List() { return {}; };
+    QStringList List();
     void Start(const QString &jobId);
     void Stop(const QString &jobId);
-
+    void Cancel(const QString &jobId);
 protected:
     JobManager();
     ~JobManager() override;

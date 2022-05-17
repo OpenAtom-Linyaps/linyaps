@@ -112,3 +112,44 @@ void JobManager::Stop(const QString &jobId)
                     << ", err msg:" << QString::fromLocal8Bit(process.readAllStandardError());
     }
 }
+
+// Fix to do 取消之后再下载问题
+void JobManager::Cancel(const QString &jobId)
+{
+    if (jobId.isNull() || jobId.isEmpty()) {
+        qCritical() << "jobId err";
+        return;
+    }
+
+    int processId = OSTREE_REPO_HELPER->getOstreeJobId(jobId);
+    if (processId == -1) {
+        qWarning() << jobId << " not exist";
+        return;
+    }
+
+    qInfo() << "cancel job:" << jobId << ", process:" << processId;
+    QProcess process;
+    QStringList argStrList = {"-9", QString::number(processId)};
+    process.start("kill", argStrList);
+    if (!process.waitForStarted()) {
+        qCritical() << "kill failed!";
+        return;
+    }
+    if (!process.waitForFinished(3000)) {
+        qCritical() << "run finish failed!";
+        return;
+    }
+
+    auto retStatus = process.exitStatus();
+    auto retCode = process.exitCode();
+    if (retStatus != 0 || retCode != 0) {
+        qCritical() << " run failed, retCode:" << retCode
+                    << ", info msg:" << QString::fromLocal8Bit(process.readAllStandardOutput())
+                    << ", err msg:" << QString::fromLocal8Bit(process.readAllStandardError());
+    }
+}
+
+QStringList JobManager::List()
+{
+    return OSTREE_REPO_HELPER->getOstreeJobList();
+}

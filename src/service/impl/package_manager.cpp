@@ -683,6 +683,19 @@ Reply PackageManagerPrivate::Uninstall(const UninstallParamOption &paramOption)
     // 根据已安装文件查询已经安装软件包信息
     linglong::util::getInstalledAppInfo(appId, version, arch, "", pkgList);
     auto it = pkgList.at(0);
+
+    // new ref format org.deepin.calculator/1.2.2/x86_64
+    QString matchRef = QString("%1/%2/%3").arg(it->appId).arg(it->version).arg(arch);
+    // 判断应用是否正在运行
+    for (const auto &app : apps) {
+        if (matchRef == app->container()->packageName) {
+            reply.code = STATUS_CODE(kPkgUninstallFailed);
+            reply.message = matchRef + " is running, please stop first";
+            qCritical() << reply.message;
+            return reply;
+        }
+    }
+
     bool isRoot = (getgid() == 0) ? true : false;
     qInfo() << "install app user:" << it->user << ", current user:" << userName << ", has root permission:" << isRoot;
     // 非root用户卸载不属于该用户安装的应用
@@ -711,9 +724,6 @@ Reply PackageManagerPrivate::Uninstall(const UninstallParamOption &paramOption)
         return reply;
     }
 
-    // new ref format org.deepin.calculator/1.2.2/x86_64
-    // QString matchRef = QString("app/%1/%2/%3").arg(it->appId).arg(arch).arg(it->version);
-    QString matchRef = QString("%1/%2/%3").arg(it->appId).arg(it->version).arg(arch);
     qInfo() << "Uninstall app ref:" << matchRef;
     ret = OSTREE_REPO_HELPER->repoDeleteDatabyRef(kLocalRepoPath, qrepoList[0], matchRef, err);
     if (!ret) {
@@ -800,6 +810,17 @@ Reply PackageManagerPrivate::Update(const ParamOption &paramOption)
         qCritical() << reply.message;
         reply.code = STATUS_CODE(kErrorPkgUpdateFailed);
         return reply;
+    }
+
+    // 判断应用是否正在运行
+    QString matchRef = QString("%1/%2/%3").arg(appId).arg(installedApp->version).arg(arch);
+    for (const auto &app : apps) {
+        if (matchRef == app->container()->packageName) {
+            reply.code = STATUS_CODE(kErrorPkgUpdateFailed);
+            reply.message = matchRef + " is running, please stop first";
+            qCritical() << reply.message;
+            return reply;
+        }
     }
 
     QString currentVersion = installedApp->version;

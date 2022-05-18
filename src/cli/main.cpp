@@ -412,7 +412,6 @@ int main(int argc, char **argv)
                      continue;
                  }
                  linglong::service::InstallParamOption installParamOption;
-                 installParamOption.nodbus = parser.isSet(optNoDbus);
                  installParamOption.repoPoint = parser.value(optRepoPoint);
 
                  QStringList appInfoList = app.split("/");
@@ -426,7 +425,7 @@ int main(int argc, char **argv)
 
                  linglong::service::Reply reply;
                  qInfo().noquote() << "install" << app << ", please wait a few minutes...";
-                 if (!installParamOption.nodbus) {
+                 if (!parser.isSet(optNoDbus)) {
                      QDBusPendingReply<linglong::service::Reply> dbusReply = packageManager.Install(installParamOption);
                      dbusReply.waitForFinished();
                      // Fix to do 多线程场景下httpclient.cpp中curl 暂未支持多线程
@@ -559,11 +558,11 @@ int main(int argc, char **argv)
                  paramOption.appId = appInfoList.at(0);
                  paramOption.version = appInfoList.at(1);
              }
-             paramOption.nodbus = parser.isSet(optNoDbus);
              paramOption.repoPoint = repoType;
              linglong::service::Reply reply;
-             if (paramOption.nodbus) {
+             if (parser.isSet(optNoDbus)) {
                  reply = PACKAGE_MANAGER->Uninstall(paramOption);
+                 PACKAGE_MANAGER->pool->waitForDone(-1);
                  if (reply.code != STATUS_CODE(kPkgUninstallSuccess)) {
                      qInfo().noquote() << "message: " << reply.message << ", errcode:" << reply.code;
                      return -1;

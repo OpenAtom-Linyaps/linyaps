@@ -76,7 +76,6 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, DownloadPa
 class InstallParamOption : public ParamOption
 {
 public:
-    bool nodbus = false; ///< 是否不使用dbus
     QString repoPoint; ///< 是否安装非玲珑格式应用
 };
 
@@ -84,7 +83,7 @@ inline QDBusArgument &operator<<(QDBusArgument &argument, const InstallParamOpti
 {
     argument.beginStructure();
     argument << installParamOption.appId << installParamOption.version << installParamOption.arch
-             << installParamOption.nodbus << installParamOption.repoPoint;
+             << installParamOption.repoPoint;
     argument.endStructure();
     return argument;
 }
@@ -93,7 +92,7 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, InstallPar
 {
     argument.beginStructure();
     argument >> installParamOption.appId >> installParamOption.version >> installParamOption.arch
-        >> installParamOption.nodbus >> installParamOption.repoPoint;
+        >> installParamOption.repoPoint;
     argument.endStructure();
     return argument;
 }
@@ -132,15 +131,13 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, QueryParam
 class UninstallParamOption : public ParamOption
 {
 public:
-    bool nodbus = false; ///< 是否不使用dbus
     QString repoPoint; ///< 是否安装非玲珑格式应用
 };
 
 inline QDBusArgument &operator<<(QDBusArgument &argument, const UninstallParamOption &paramOption)
 {
     argument.beginStructure();
-    argument << paramOption.appId << paramOption.version << paramOption.arch << paramOption.nodbus
-             << paramOption.repoPoint;
+    argument << paramOption.appId << paramOption.version << paramOption.arch << paramOption.repoPoint;
     argument.endStructure();
     return argument;
 }
@@ -148,8 +145,7 @@ inline QDBusArgument &operator<<(QDBusArgument &argument, const UninstallParamOp
 inline const QDBusArgument &operator>>(const QDBusArgument &argument, UninstallParamOption &paramOption)
 {
     argument.beginStructure();
-    argument >> paramOption.appId >> paramOption.version >> paramOption.arch >> paramOption.nodbus
-        >> paramOption.repoPoint;
+    argument >> paramOption.appId >> paramOption.version >> paramOption.arch >> paramOption.repoPoint;
     argument.endStructure();
     return argument;
 }

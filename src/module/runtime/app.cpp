@@ -518,7 +518,7 @@ public:
         // 处理摄像头挂载问题
         // bind /run/udev    /dev/video*
         if (linglong::util::dirExists("/run/udev")) {
-            mountMap.push_back(qMakePair(QString("run/udev"), QString("run/udev")));
+            mountMap.push_back(qMakePair(QString("/run/udev"), QString("/run/udev")));
         }
         auto videoFileList = QDir("/dev").entryList({"video*"}, QDir::System);
         if (!videoFileList.isEmpty()) {

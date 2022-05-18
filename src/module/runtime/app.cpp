@@ -960,7 +960,7 @@ int App::start()
         return EXIT_FAILURE;
     }
 
-    prctl(PR_SET_PDEATHSIG, SIGKILL);
+    pid_t parent = getpid();
 
     pid_t boxPid = fork();
     if (boxPid < 0) {
@@ -968,6 +968,10 @@ int App::start()
     }
 
     if (0 == boxPid) {
+        prctl(PR_SET_PDEATHSIG, SIGKILL);
+        if (getppid() != parent) {
+            raise(SIGKILL);
+        }
         // child process
         (void)close(d->sockets[1]);
         auto socket = std::to_string(d->sockets[0]);

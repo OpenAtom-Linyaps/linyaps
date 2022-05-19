@@ -36,3 +36,8 @@ if [ -f /usr/lib/systemd/user-environment-generators/61-linglong ]
 then
 	systemctl daemon-reload
 fi
+
+if [ -d /usr/share/permission/policy/linglong ]
+then
+	rm -rf /usr/share/permission/policy/linglong
+fi

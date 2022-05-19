@@ -1,0 +1,24 @@
+{
+    "id":"mic",
+    "skip_auto_allow":"",
+    "name":"麦克风",
+    "title":"Allow \"%1\" to use mic permissions",
+    "description":"Supplementary Instructions for mic Permissions",
+    "prefer":"",
+    "type":"system",
+    "options":["allow", "deny"],
+    "translations": {
+        "title":[
+            {"language":"zh_CN", "text":"是否允许\"%1\"使用麦克风权限"},
+            {"language":"ko", "text":"\"%1\"이(가) 테스트 권한을 사용하도록 허용"}
+        ],
+        "description":[
+            {"language":"zh_CN", "text":"麦克风权限的补充说明"},
+            {"language":"ko", "text":"테스트 권한에 대한 추가 지침"}
+        ],
+        "name":[
+            {"language":"zh_CN", "text":"麦克风"},
+            {"language":"ko", "text":"마이크로폰"}
+        ]
+    }
+}

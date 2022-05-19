@@ -1,0 +1,24 @@
+{
+    "id":"calendar",
+    "skip_auto_allow":"",
+    "name":"日历",
+    "title":"Allow \"%1\" to use calendar permissions",
+    "description":"Supplementary Instructions for calendar Permissions",
+    "prefer":"",
+    "type":"session",
+    "options":["allow", "deny"],
+    "translations": {
+        "title":[
+            {"language":"zh_CN", "text":"是否允许\"%1\"使用日历权限"},
+            {"language":"ko", "text":"\"%1\"이(가) 테스트 권한을 사용하도록 허용"}
+        ],
+        "description":[
+            {"language":"zh_CN", "text":"日历权限的补充说明"},
+            {"language":"ko", "text":"테스트 권한에 대한 추가 지침"}
+        ],
+        "name":[
+            {"language":"zh_CN", "text":"日历"},
+            {"language":"ko", "text":"달력"}
+        ]
+    }
+}

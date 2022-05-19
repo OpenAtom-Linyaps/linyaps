@@ -6,3 +6,4 @@ etc/profile.d/linglong.sh
 etc/X11/Xsession.d/21linglong
 usr/share/linglong/config.json
 usr/lib/systemd/user-environment-generators/61-linglong
+usr/share/permission/policy/linglong/*.json

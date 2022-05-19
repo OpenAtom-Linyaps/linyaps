@@ -79,3 +79,12 @@ install(FILES data/space.linglong.Service.desktop
 
 install(FILES data/space.linglong.Service.desktop
         DESTINATION /etc/xdg/autostart)
+
+set(PERMISSION data/linglong/hostdir.json
+               data/linglong/calendar.json
+               data/linglong/camera.json
+               data/linglong/mic.json
+               data/linglong/screenshot.json
+               data/linglong/userdir.json)
+install(FILES ${PERMISSION}
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/permission/policy/linglong)

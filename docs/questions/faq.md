@@ -1,23 +1,83 @@
 # FAQ
-| 序号 | 修复bug单 | 根因分析 | 打玲珑应用注意事项（主要统计项，不要重复） |
-|---|---|---|---|
-| 1 | https://pms.uniontech.com/bug-view-118913.html | 根因分析：<br><br>文管默认读取位置从/usr/share /usr/local/share  以及 ~/.config/share等路径读取，不包含/persistent/linglong/entry/share目录，应改成从XDG_DATA_DIRS环境变量路径读取。 | 应用读取share目录存放配置，采用XDG_DATA_DIRS环境变量读取，不要写死/usr/share下读取，因为应用的share配置一般会安装挂载到/opt/apps/appid/files/share下，此路径会导入上述环境变量。 |
-| 2 | https://pms.uniontech.com/bug-view-117223.html | 根因分析：<br>应用依赖的字体库原来是deb依赖包，目前玲珑包格式变化，依赖的字体库需要添加到应用内。 | 应用依赖公共的字体库文件可以放入runtime的share目录中，从XDG_DATA_DIRS环境变量下读取；不是公共字体库文件，需要添加到应用files/user/share路径下，最终挂载到/opt/apps/appid/files/share下，从XDG_DATA_DIRS环境变量读取。 |
-| 3 | https://pms.uniontech.com/bug-view-117211.html | 根因分析：<br><br>缺少字体库文件，添加附件字体库到files/kingsoft/wps-office/office6下即可。字体库如附件。 | 应用依赖配置与资源，尽量放入files/user/share路径下，从XDG_DATA_DIRS环境变量读取。 |
-| 4 | https://pms.uniontech.com/bug-view-116831.html | gio 类型问题，解决方法：<br><br>通过将 inode/directory 类型的mimetype 与自定义desktop 文件绑定，再使用自定义desktop 文件调用xdg-open，将gio类型消息转化为xdg-open类型消息，最终由宿主机外真正的xdg-open 读取消息并执行打开dde-file-manager<br>引入新问题：<br><br>该应用将调用dde-file-manager，打开~/.config/sublime-text/pacakge 目录，该路径为沙箱内路径，在沙箱外实际路径为~/.linglong/sublime/config;<br><br>dde-file-manager 尝试在沙箱外打开沙箱内路径，导致无法打开 | 因玲珑应用遵循互不干涉原则，XDG_DATA_HOME,XDG_CONFIG_HOME,XDG_CACHE_HOME环境变量路径被重定义到~/.linglong/appid/路径下，因此用户应用数据要保存到此路径下，应用获取路径要不需要拼接，从环境变量读取路径。禁止应用间相互配置调用。 |
-| 5 | https://pms.uniontech.com/bug-view-116829.html | 根因分析：<br><br>问题： 帮助菜单里面选项点击会走g_app_info_launch_default_for_uri接口函数，而此接口函数不是走的xdg-open这一套，调用此接口会去沙箱${XDG_DATA_DIRS}/applications/路径下找mimeinfo.cache文件，找到匹配项，打开沙箱内的desktop文件，执行exec段。（目前沙箱内这样操作是有问题的，1.沙箱内没有相应mimeinfo.cache；2. 沙箱内不允许直接运行其他应用）<br>解决方案：在打runtime的时候，放入一个伪造的desktop文件，关联相应mimetype类型，exec段执行xdg-open,传出链接用玲珑应用打开，并且要求打runtime的时候，要执行update-desktop-database命令，更新出mimeinfo.cache文件。 | 走gio接口，打开类型文件，需要确认其mimetype类型包含在系统中或着runtime中，因为玲珑应用采用伪造desktop打开方式，需要确认其类型在其中，才能通过debus传出其文件路径，进行打开；如果应用自定义的mimetype类型，需要按照entries/mime/packages/org.desktopspec.demo.xml格式存放。并且此类型需要添加到runtime里面进行存储。 |
-| 6 | https://pms.uniontech.com/bug-view-116619.html | 根因分析：<br><br>帮助手册读取帮助信息路径为/usr/share/deepin-manual路径下存放的各个应用提供的帮助信息，玲珑中预装自研应用自带的帮助信息存放在/persistent/linglong/entries/share/deepin-manual下，导致帮助手册应用读取不到/deepin目录下的帮助信息，现通过沙盒中overlays方法处理后暂时解决。应用启动后可以显示两个目录中的所用应用帮助信息。 | 此应用会提供dbus service文件，注意exec如果为启动相关应用，要改成玲珑相关启动方式，别直接二进制启动；share目录文件读取，要从XDG_DATA_DIRS环境变量获取。 |
-| 7 | https://pms.uniontech.com/bug-view-116489.html | 默认下载路径是～/迅雷下载 ，但玲珑设计标准里家目录下不允许新建目录； | 不允许直接向$HOME目录直接写入文件 |
-| 8 | https://pms.uniontech.com/bug-view-116357.html | entries目录没有放图标文件 | 放置应用图标 icons，目录结构与系统 icons 目录结构保持一致即可，建议路径为 icons/hicolor/scalable/apps/org.desktopspec.demo.svg，使用 svg 格式图标。参考图标文件格式规范<br>如果使用非矢量格式，请按照分辨率来放置图标，注意desktop文件不要写死图标路径，直接写图标名即可。 |
-| 9 | https://pms.uniontech.com/bug-view-116017.html | xdg-open 类型问题，使用faker xdg-open发送dbus消息时，报dbus-send使用异常。原因是该应用集成了库libdbus-1.so.3，符号不匹配导致无法被系统中dbus-send使用<br><br>解决方法：<br><br> 应用集成 与自身库匹配的dbus-send程序 或 删除应用携带的libdbus库，使用系统的 | 打包时要检查应用携带的库文件是否影响应用调用的系统二进制执行，因为沙箱内优先使用的是应用自身携带的库文件。 |
-| 10 | https://pms.uniontech.com/bug-view-115433.html | 修改desktop文件中name项后解决。 | 自研应用desktop文件名称需要跟原来一致，不然启动器里面无法中文翻译。 |
-| 11 | https://pms.uniontech.com/bug-view-115195.html | 缺少 $USER 环境变量 | 应用如使用相关环境变量，需要确认沙箱内环境变量是否存在。 |
-| 12 | https://pms.uniontech.com/bug-view-114382.html | 应用集成游戏roms后可以运行 | 应用使用的资源文件，尽量包含到应用中。 |
-| 13 | https://pms.uniontech.com/bug-view-114364.html | 应用添加mpv库后播放正常 | 应用使用过程需要的库，如果runtime不存在，应用自身需要携带。 |
-| 14 | https://pms.uniontech.com/bug-view-114273.html | 根因分析：<br><br>360浏览器二进制会在/apps-data/private/com.360.browser-stable/下生成配置文件，并且会读取此配置。 | 应用私有数据需要安装到DSG_APP_DATA环境变量下，供不同用户使用。（目前还未支持） |
-| 15 | https://pms.uniontech.com/bug-view-114091.html | 根因分析：<br><br>应用启动脚本修改了环境变量QT_PLUGIN_PATH，并把沙箱内的值丢弃掉了，应用脚本已修改。 | 应用启动脚修改沙箱环境变量时，注意验证其功能是否正常。 |
-| 16 | https://pms.uniontech.com/bug-view-114078.html | 临时方案<br>将用户主目录下的Desktop、Documents、Downloads、Music、Pictures、Videos、Public、Templates目录挂载到容器里，上述目录可读写，其他目录不能写入，后续采用授权模式 | 用户下载目录只能选择用户主目录下Desktop、Documents、Downloads、Music、Pictures、Videos、Public、Templates目录，不能下载到其他目录 |
-| 17 | https://pms.uniontech.com/bug-view-114051.html | 根因分析：<br>此处获取剩余空间方式是： df -h &#124; grep /dev 遍历存储所有磁盘与挂载点，当用户选择目录路径时，跟存储挂载点匹配，当匹配上时返回对应磁盘分区剩余空间。<br>因沙箱内/挂载的文件系统是tempfs， df -h &#124; grep "/dev" 并不会显示并存储其内容，当选择/home/linglong/Desktop等路径时，路径不在存储挂载点路径下，无法获取数据。 | 统计可写目录磁盘空间时，最好只统计可写磁盘目录。 |
-| 18 | https://pms.uniontech.com/bug-view-112017.html | 选择在文件管理器中显示的操作实际是在沙箱环境内调用dde-file-manager程序，由于沙箱会优先使用runtime内的qt库，如果runtime qt版本与系统不一致，会导致dde-file-manager调用失败。 | 打开文管时，采用xdg-open或者dbus打开 |
-| 19 | https://pms.uniontech.com/bug-view-111916.html | 自研应用均依赖于deepin-shortcut-viewer, 暂时runtime内集成处理 | 应用公共依赖的二进制，需要集成进runtime中。 |
-| 20 | https://pms.uniontech.com/bug-view-111729.html | 根因分析：<br><br>欢迎应用主题显示，会调用dbus接口，在宿主机器/home/linglong/.cache/deepin/dde-api/theme_thumb/X1.00/icon-v1/路径下生成主题图标，然后应用再调用dbus获取每个相应主题的路径，再去显示。 | 应用用户数据保存到，XDG_DATA_HOME,XDG_CONFIG_HOME,XDG_CACHE_HOME环境变量路径下；不要在宿主机~/.local ~/.config ~/.cache目录生成配置文件 |
+
+## 1. 应用运行读取/usr/share下应用安装资源文件，为什么读取失败？
+
+玲珑应用是在沙箱环境中运行，应用数据会挂载到/opt/apps/`<appid>`/下，/usr/share目录下只会存在系统数据，不会存在应用相关数据。因此直接读取/usr/share下会失败。建议处理：采用XDG_DATA_DIRS环境变量读取资源，/opt/apps/`<appid>`/files/share会存在在此环境变量搜索路径中。
+
+## 2. 应用安装的数据在系统中会存在哪里？能不能在沙箱中直接修改内容调试应用？
+
+v20系统会安装到/data/linglong/layers目录下，v23系统会安装到/persistent/linglong/layers目录下。沙箱内数据基本是只读挂载，建议修改调试时，在安装目录下修改。
+
+## 3. 应用运行时找不到字体库文件？为什么deb包安装时能读取到对应的字体库？
+
+deb包安装时，会依赖带入对应的字体库文件。而玲珑包格式采用自给自足打包格式。除了基本的系统库，runtime里面提供的qt库与dtk库文件不用自己提供外，其他依赖数据文件，均需自己提供。建议对应的数据文件放入files/share下，采用环境变量XDG_DATA_DIRS读取路径。
+
+## 4. 玲珑应用runtime里面有什么？能不能往里面添加一些库文件进去？
+
+目前玲珑应用依赖的runtime里面提供的是qt库与dtk库。因runtime有严格的大小限制。目前不允许往runtime里面添加额外的库文件。
+
+## 5. 应用在沙箱内运行，运行过程中能不能往沙箱任意路径下创建配置文件？
+
+这是不允许的行为，沙箱内文件系统是只读文件系统，不允许随意路径下创建配置文件。
+
+## 6. 应用数据保存到哪里？在沙箱外哪里能找到？
+
+因玲珑应用遵循互不干涉原则，XDG_DATA_HOME,XDG_CONFIG_HOME,XDG_CACHE_HOME环境变量被定义到宿主机~/.linglong/`<appid>`/对应的路径下，因此用户应用数据会保存在此路径下，应用运行过程中写入数据时，也应该读取对应的环境变量写入数据。禁止应用间互相配置调用。
+
+## 7. 应用走gio接口，打开特定类型文件，无法打开？
+
+走gio接口，打开特定类型文件，会去沙箱内${XDG_DATA_DIRS}/applications/mineinfo.cache文件中，查找对应desktop打开。因玲珑采用沙箱运行，因此需要将打开类型传出沙箱外。玲珑在runtime中伪造了一个desktop文件，添加了各种mimetype类型，而desktop的Exec执行的是沙箱内特制的xdg-open命令，会将打开类型传出沙箱外执行。如果类型无法打开，需要确认desktop文件中是否添加对应了对应的mimetype。如果没有，需要联系玲珑团队添加。如果应用自定义了mimetype类型，需要按照entries/mime/packages/org.desktopspec.demo.xml格式存放。并且此类型需要添加到runtime里面进行存储。
+
+## 8. 应用提供了dbus service文件，如何放置？Exec段写什么？
+
+应用提供dbus service文件时，需要放到entries/dbus-1/services目录下，如果Exec执行玲珑包内二进制，使用--exec选项参数执行对应的二进制。
+
+## 9. 应用能不能默认往$HOME目录下下载文件？下载了文件，为什么宿主机器下找不到？
+
+v23规范，不允许往$HOME目录下创建文件与目录。
+
+## 10. 桌面快捷方式为什么显示齿轮状？或者为空？图标文件如何放置？
+
+显示齿轮状是图标未获取到，需要确认Icon路径名称是否正确。图标为空时，是存在tryExec字段，当命令不存在时，会导致快捷方式显示异常。放置应用图标 icons，目录结构与系统 icons 目录结构保持一致即可，建议路径为 icons/hicolor/scalable/apps/org.desktopspec.demo.svg，使用 svg 格式图标。参考图标文件格式规范如果使用非矢量格式，请按照分辨率来放置图标，注意desktop文件不要写死图标路径，直接写图标名即可。
+
+## 11. 应用自带的xdg-open,xdg-email为什么失效？
+
+runtime中玲珑特殊处理了xdg-open,xdg-email，因此应用禁止带此二进制。
+
+## 12. 为什么应用运行时，调用系统命令失效？
+
+在v23系统中，glibc版本是2.35版本，有的应用携带低版本的c库，会导致系统命令执行失败。因此应用打包时不要携带c库，同时达到减小软件包体积的效果。
+
+## 13. 为什么desktop文件在启动器显示英文？
+
+目前dde会处理自研应用desktop名称翻译，因此命名需要和原desktop保持一致。或者联系dde那边修改对应软件包。
+
+## 14. 应用使用系统环境变量未生效。
+
+当使用环境变量时，需要确认沙箱内是否存在对应的环境变量，如果没有，需要联系玲珑团队处理。
+
+## 15. 应用运行需要的库文件没找到，如何提供？
+
+应用需要使用的资源文件，与库文件需要应用自身提供。库文件放到files/lib路径下。
+
+## 16. 在多用户时，应用激活相关私有数据存放到哪里？
+
+v23设计了DSG_APP_DATA环境变量，应用私有数据存放到此路径下。
+
+## 17. 应用修改了环境变量，导致应用启动失败。
+
+应用启动脚修改沙箱环境变量时，注意验证其功能是否正常。
+
+## 18. 应用下载目录可以选择哪里？
+
+目前玲珑用户下载目录只能选择用户主目录下Desktop、Documents、Downloads、Music、Pictures、Videos、Public、Templates目录，不能下载到其他目录。
+
+## 19. 打开文管操作如何执行？
+
+打开文管时，采用xdg-open或者dbus打开，直接运行二进制会在沙箱内运行，由于沙箱会优先使用runtime内的qt库，如果runtime qt版本与系统不一致，会导致dde-file-manager调用失败。
+
+## 20. 应用运行时，为什么QT WebEngine渲染进程已崩溃？
+
+因v23升级了glibc，导致应用使用内置浏览器时失败，需要应用在v23环境适配。临时解决方案是设置环境变量：QTWEBENGINE_DISABLE_SANDBOX=1。
+## 21. 应用运行时，找不到libqxcb.so库或者qtwebengin报错？
+存在qt.conf文件时，在文件中配置正确路径，或者使用QTWEBENGINEPROCESS_PATH、QTWEBENGINERESOURCE_PATH、QT_QPA_PLATFORM_PLUGIN_PATH、QT_PLUGIN_PATH环境变量配置搜索路径。

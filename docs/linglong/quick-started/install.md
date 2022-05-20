@@ -2,8 +2,7 @@
 添加内网源地址
 
 ```plain
-deb  [trusted=yes] https://aptly.uniontech.com/pkg/eagle-sp2/release-candidate/546y54-R5LiA5pyfMjAyMS0xMS0xNiAxMTowODowMA/  unstable main
-deb  [trusted=yes] https://aptly.uniontech.com/pkg/nonfree-eagle-sp2/release-candidate/546y54-R5LiA5pyfMjAyMS0xMS0xNiAxMTowODowMA/  unstable non-free
+deb [by-hash=force trusted=yes] http://ci.uniontech.com/sniperepo/snipe/snipe-develop/ develop main
 ```
 使用apt安装linglong-bin程序
 ```plain

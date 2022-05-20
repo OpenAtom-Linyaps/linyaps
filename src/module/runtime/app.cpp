@@ -307,13 +307,6 @@ public:
             mountMap.push_back({runtimeRootPath, "/usr"});
         }
 
-        if (useFlatpakRuntime) {
-            appRootPath = flatpak::FlatpakManager::instance()->getAppPath(appId);
-            mountMap.push_back({appRootPath, "/app"});
-        } else {
-            mountMap.push_back({appRootPath, "/opt/apps/" + appId});
-        }
-
         for (const auto &pair : mountMap) {
             auto m = new Mount(r);
             m->type = "bind";
@@ -326,6 +319,26 @@ public:
             } else {
                 r->annotations->native->mounts.push_back(m);
             }
+        }
+
+        // 读写挂载/opt,有的应用需要读写自身携带的资源文件。eg:云看盘
+        QString appMountPath = "";
+        if (useFlatpakRuntime) {
+            appRootPath = flatpak::FlatpakManager::instance()->getAppPath(appId);
+            appMountPath = "/app";
+        } else {
+            appMountPath = "/opt/apps/" + appId;
+        }
+        auto m = new Mount(r);
+        m->type = "bind";
+        m->options = QStringList {"rw", "rbind"};
+        m->source = appRootPath;
+        m->destination = appMountPath;
+
+        if (fuseMount) {
+            r->annotations->overlayfs->mounts.push_back(m);
+        } else {
+            r->annotations->native->mounts.push_back(m);
         }
 
         // TODO(iceyer): let application do this or add to doc

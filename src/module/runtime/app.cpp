@@ -312,8 +312,6 @@ public:
             mountMap.push_back({appRootPath, "/app"});
         } else {
             mountMap.push_back({appRootPath, "/opt/apps/" + appId});
-            // TODO(iceyer): add doc for this or remove
-            mountMap.push_back({QStringList {appRootPath, "files/lib"}.join("/"), "/run/app/lib"});
         }
 
         for (const auto &pair : mountMap) {
@@ -1005,7 +1003,7 @@ void App::exec(QString cmd, QString env, QString cwd)
             return {};
         }
         QStringList res;
-        for (int i = 0; i < p.we_wordc; i++) {
+        for (int i = 0; i < (int)p.we_wordc; i++) {
             res << p.we_wordv[i];
         }
         wordfree(&p);

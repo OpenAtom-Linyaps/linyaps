@@ -320,7 +320,7 @@ int main(int argc, char **argv)
              p.cmd = cmd;
              p.containerID = containerId;
 
-             auto envs = parser.value(envArg).split(",", Qt::SkipEmptyParts);
+             auto envs = parser.value(envArg).split(",", QString::SkipEmptyParts);
              for (auto env : envs) {
                  auto pos = env.indexOf('=');
                  auto key = QStringRef(&env, 0, pos), val = QStringRef(&env, pos + 1, env.length() - pos - 1);

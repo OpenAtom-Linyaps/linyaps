@@ -234,11 +234,9 @@ int startContainer(Container *c, Runtime *r)
     auto json = QJsonDocument::fromVariant(toVariant<Runtime>(r)).toJson();
     auto data = json.toStdString();
 
-    QString result;
-    int pipeEnds[2];
-    int pipeRet[2];
+    int sockets[2]; // save file describers of sockets used to communicate with ll-box
 
-    if (pipe(pipeEnds) != 0 || pipe(pipeRet) != 0) {
+    if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, sockets) != 0) {
         return EXIT_FAILURE;
     }
 
@@ -251,44 +249,34 @@ int startContainer(Container *c, Runtime *r)
 
     if (0 == boxPid) {
         // child process
-        (void)close(pipeEnds[1]);
-        (void)close(pipeRet[0]);
-
-        if (dup2(pipeEnds[0], 118) == -1 || dup2(pipeRet[1], 119) == -1) {
-            return EXIT_FAILURE;
-        }
-
-        (void)close(pipeEnds[0]);
-        (void)close(pipeRet[1]);
-
-        char const *const args[] = {"/usr/bin/ll-box", LL_TOSTRING(118), LL_TOSTRING(119), NULL};
+        (void)close(sockets[1]);
+        auto socket = std::to_string(sockets[0]);
+        char const *const args[] = {"/usr/bin/ll-box", socket.c_str(), NULL};
         int ret = execvp(args[0], (char **)args);
         exit(ret);
     } else {
-        close(pipeEnds[0]);
-        close(pipeRet[1]);
-        write(pipeEnds[1], data.c_str(), data.size());
-        close(pipeEnds[1]);
+        close(sockets[0]);
+        // FIXME: handle error
+        (void)write(sockets[1], data.c_str(), data.size());
+        (void)write(sockets[1], "\0", 1); // each data write into sockets should ended with '\0'
 
         c->pid = boxPid;
-        // read exit status of build task from pipe
-        const size_t bufSize = 1024;
-        char buf[bufSize] = {};
-        size_t ret = 0;
-
-        ret = read(pipeRet[0], buf, bufSize);
-        if (ret > 0) {
-            result.append(buf);
-        }
-
-        close(pipeRet[0]);
         waitpid(boxPid, nullptr, 0);
     }
-    // return exit status of build task
-    // result format: namespaceId exitStatus exitInfo
-    auto exitStatus = result.split(" ").at(1);
+    // return exit status from ll-box
+    QString msg;
+    const size_t bufSize = 1024;
+    char buf[bufSize] = {};
+    size_t ret = 0;
 
-    return exitStatus.toInt();
+    ret = read(sockets[1], buf, bufSize);
+    if (ret > 0) {
+        msg.append(buf);
+    }
+
+    auto result = util::loadJSONString<message>(msg);
+
+    return result->wstatus;
 }
 
 linglong::util::Error LinglongBuilder::create(const QString &projectName)

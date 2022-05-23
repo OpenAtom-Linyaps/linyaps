@@ -35,6 +35,18 @@ public:
 
     linglong::util::Error initRepo();
 };
-
+  
+//TODO: remove later
+class message : public JsonSerialize
+{
+    Q_OBJECT;
+    Q_JSON_CONSTRUCTOR(message)
+public:
+    Q_JSON_PROPERTY(QString, type);
+    Q_JSON_PROPERTY(int, pid);
+    Q_JSON_PROPERTY(QString, arg0);
+    Q_JSON_PROPERTY(int, wstatus);
+    Q_JSON_PROPERTY(QString, information);
+};
 } // namespace builder
 } // namespace linglong

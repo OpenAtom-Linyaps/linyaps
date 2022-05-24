@@ -24,6 +24,11 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QEventLoop>
+#include <QTimer>
+#include <QtNetwork/QNetworkAccessManager>
+#include <QtNetwork/QNetworkRequest>
+#include <QtNetwork/QNetworkReply>
 
 #include "module/util/file.h"
 
@@ -152,6 +157,62 @@ size_t writeData(void *content, size_t size, size_t nmemb, void *stream)
     *((std::stringstream *)stream) << data;
 
     return size * nmemb;
+}
+
+/*
+ * 向服务器请求指定包名\版本\架构数据
+ *
+ * @param pkgName: 软件包包名
+ * @param pkgVer: 软件包版本号
+ * @param pkgArch: 软件包对应的架构
+ * @param outMsg: 服务端返回的结果
+ *
+ * @return bool: true:成功 false:失败
+ */
+bool HttpClient::queryRemoteApp(const QString &pkgName, const QString &pkgVer, const QString &pkgArch, QString &outMsg)
+{
+    QString configUrl = "";
+    int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
+    if (STATUS_CODE(kSuccess) != statusCode) {
+        return false;
+    }
+    qDebug() << "queryRemote configUrl:" << configUrl;
+    QString postUrl = "";
+    if (configUrl.endsWith("/")) {
+        postUrl = configUrl + "apps/fuzzysearchapp";
+    } else {
+        postUrl = configUrl + "/apps/fuzzysearchapp";
+    }
+
+    bool ret = false;
+    QJsonObject obj;
+    obj["AppId"] = pkgName;
+    obj["version"] = pkgVer;
+    obj["arch"] = pkgArch;
+    const QUrl url(postUrl);
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    QJsonDocument doc(obj);
+    QByteArray data = doc.toJson();
+    QNetworkAccessManager mgr;
+    QNetworkReply *reply = mgr.post(request, data);
+    QEventLoop eventLoop;
+    QObject::connect(reply, &QNetworkReply::finished, &eventLoop, [&]() {
+        if (reply->error() == QNetworkReply::NoError) {
+            outMsg = QString::fromUtf8(reply->readAll());
+            qDebug().noquote() << "receive data from server:" << outMsg;
+            ret = true;
+        } else {
+            qCritical() << reply->errorString();
+            reply->abort();
+        }
+        reply->deleteLater();
+        eventLoop.quit();
+    });
+    // 3s 超时
+    QTimer::singleShot(3000, &eventLoop, &QEventLoop::quit);
+    eventLoop.exec();
+    return ret;
 }
 
 /*

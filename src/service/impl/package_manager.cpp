@@ -141,7 +141,7 @@ bool PackageManagerPrivate::loadAppInfo(const QString &jsonString, linglong::pac
 bool PackageManagerPrivate::getAppInfofromServer(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
                                                  QString &appData, QString &err)
 {
-    bool ret = G_HTTPCLIENT->queryRemote(pkgName, pkgVer, pkgArch, appData);
+    bool ret = G_HTTPCLIENT->queryRemoteApp(pkgName, pkgVer, pkgArch, appData);
     if (!ret) {
         err = "getAppInfofromServer err";
         qCritical() << err;

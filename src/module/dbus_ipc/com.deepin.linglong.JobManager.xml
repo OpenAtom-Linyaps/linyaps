@@ -11,5 +11,8 @@
         <method name="Stop">
             <arg name="JobId" type="s" direction="in"/>
         </method>
+        <method name="Cancel">
+            <arg name="JobId" type="s" direction="in"/>
+        </method>
     </interface>
 </node>

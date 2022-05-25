@@ -101,16 +101,6 @@
         "relatime",
         "ro"
       ]
-    },
-    {
-      "destination": "/tmp",
-      "type": "tmpfs",
-      "source": "tmpfs",
-      "options": [
-        "nosuid",
-        "strictatime",
-        "mode=777"
-      ]
     }
   ]
 }

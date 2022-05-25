@@ -91,9 +91,9 @@ public:
         stageRootfs(runtimeRef.appId, fixRuntimePath, appRef.appId, appRootPath);
 
         stageSystem();
-        stageHost();
         stageUser(appRef.appId);
         stageMount();
+        stageHost();
         fixMount(runtimeRef.appId, fixRuntimePath, appRef.appId, appRootPath);
 
         auto envFilepath = container->workingDirectory + QString("/env");
@@ -690,40 +690,67 @@ public:
     {
         Q_Q(const App);
 
-        if (!q->permissions || q->permissions->mounts.isEmpty()) {
-            // not found permission static mount
-            return 0;
+        bool hasMountTmp = false;
+
+        if (q->permissions && !q->permissions->mounts.isEmpty()) {
+            // static mount
+            for (const auto &mount : q->permissions->mounts) {
+                auto &m = *new Mount(r);
+
+                // illegal mount rules
+                if (mount->source.isEmpty() || mount->destination.isEmpty()) {
+                    continue;
+                }
+                // fix default type
+                if (mount->type.isEmpty()) {
+                    m.type = "bind";
+                } else {
+                    m.type = mount->type;
+                }
+
+                // fix default options
+                if (mount->options.isEmpty()) {
+                    m.options = QStringList({"ro", "rbind"});
+                } else {
+                    m.options = mount->options.split(",");
+                }
+
+                m.source = mount->source;
+                m.destination = mount->destination;
+                r->mounts.push_back(&m);
+
+                if (m.destination == "/tmp") {
+                    hasMountTmp = true;
+                }
+
+                qDebug() << "add static mount:" << mount->source << " => " << mount->destination;
+            }
         }
 
-        // static mount
-        for (const auto &mount : q->permissions->mounts) {
-            auto &m = *new Mount(r);
-
-            // illegal mount rules
-            if (mount->source.isEmpty() || mount->destination.isEmpty()) {
-                continue;
-            }
-            // fix default type
-            if (mount->type.isEmpty()) {
-                m.type = "bind";
-            } else {
-                m.type = mount->type;
-            }
-
-            // fix default options
-            if (mount->options.isEmpty()) {
-                m.options = QStringList({"ro", "rbind"});
-            } else {
-                m.options = mount->options.split(",");
-            }
-
-            m.source = mount->source;
-            m.destination = mount->destination;
-            r->mounts.push_back(&m);
-
-            qDebug() << "add static mount:" << mount->source << " => " << mount->destination;
+        if ((!hasMountTmp) && !mountTmp()) {
+            qWarning() << "fail to generate /tmp mount";
         }
 
+        return 0;
+    }
+
+    int mountTmp()
+    {
+        const auto &tmpPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+
+        // /tmp/linglong/{containerId}
+        QDir tmp(QDir::cleanPath(tmpPath + QDir::separator() + "linglong" + QDir::separator() + this->container->id));
+        if (!tmp.exists()) {
+            if (!tmp.mkpath(".")) {
+                return -1;
+            }
+        }
+        auto &m = *new Mount(r);
+        m.type = "bind";
+        m.source = tmp.absolutePath();
+        m.destination = tmpPath;
+        m.options = QStringList({"rbind"});
+        r->mounts.push_back(&m);
         return 0;
     }
 

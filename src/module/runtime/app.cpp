@@ -545,6 +545,9 @@ public:
         auto appLinglongPath = util::ensureUserDir({".linglong", appId});
         mountMap.push_back(qMakePair(appLinglongPath, util::getUserFile(".linglong/" + appId)));
 
+        auto appLocalDataPath = util::ensureUserDir({".linglong", appId, "/share"});
+        mountMap.push_back(qMakePair(appLocalDataPath, util::getUserFile(".local/share")));
+
         auto appConfigPath = util::ensureUserDir({".linglong", appId, "/config"});
         mountMap.push_back(qMakePair(appConfigPath, util::getUserFile(".config")));
 
@@ -557,8 +560,10 @@ public:
 
         mountMap.push_back(qMakePair(userRuntimeDir + "/dconf", userRuntimeDir + "/dconf"));
 
+        // mount .config/user-dirs.dirs todo:移除挂载到~/.config下？
         mountMap.push_back(
             qMakePair(util::getUserFile(".config/user-dirs.dirs"), util::getUserFile(".config/user-dirs.dirs")));
+        mountMap.push_back(qMakePair(util::getUserFile(".config/user-dirs.dirs"), appConfigPath + "/user-dirs.dirs"));
 
         for (const auto &pair : mountMap) {
             Mount &m = *new Mount(r);
@@ -572,11 +577,9 @@ public:
         }
 
         QList<QPair<QString, QString>> roMountMap;
-        roMountMap.push_back(
-            qMakePair(util::getUserFile(".local/share/fonts"), util::getUserFile(".local/share/fonts")));
+        roMountMap.push_back(qMakePair(util::getUserFile(".local/share/fonts"), appLocalDataPath + "/fonts"));
 
-        roMountMap.push_back(
-            qMakePair(util::getUserFile(".config/fontconfig"), util::getUserFile(".config/fontconfig")));
+        roMountMap.push_back(qMakePair(util::getUserFile(".config/fontconfig"), appConfigPath + "/fontconfig"));
 
         // mount fonts
         roMountMap.push_back(
@@ -590,13 +593,14 @@ public:
         // TODO ：主题相关，后续dde是否写成标准? 或者 此相关应用（如欢迎）不使用玲珑格式。
         auto ddeApiPath = util::ensureUserDir({".cache", "deepin", "dde-api"});
         roMountMap.push_back(qMakePair(ddeApiPath, ddeApiPath));
+        roMountMap.push_back(qMakePair(ddeApiPath, appCachePath + "/deepin/dde-api"));
 
         // mount ~/.config/dconf
         // TODO: 所有应用主题相关设置数据保存在~/.config/dconf/user
         // 中，是否安全？一个应用沙箱中可以读取其他应用设置数据？ issues:
         // https://gitlabwh.uniontech.com/wuhan/v23/linglong/linglong/-/issues/72
         auto dconfPath = util::ensureUserDir({".config", "dconf"});
-        roMountMap.push_back(qMakePair(dconfPath, util::getUserFile(".linglong/" + appId + "/config/dconf")));
+        roMountMap.push_back(qMakePair(dconfPath, appConfigPath + "/dconf"));
 
         QString xauthority = getenv("XAUTHORITY");
         roMountMap.push_back(qMakePair(xauthority, xauthority));
@@ -649,12 +653,12 @@ public:
 
         // add env XDG_CONFIG_HOME XDG_CACHE_HOME
         // set env XDG_CONFIG_HOME=$(HOME)/.linglong/$(appId)/config
-        r->process->env.push_back("XDG_CONFIG_HOME=" + util::getUserFile(".linglong/" + appId + "/config"));
+        r->process->env.push_back("XDG_CONFIG_HOME=" + appConfigPath);
         // set env XDG_CACHE_HOME=$(HOME)/.linglong/$(appId)/cache
-        r->process->env.push_back("XDG_CACHE_HOME=" + util::getUserFile(".linglong/" + appId + "/cache"));
+        r->process->env.push_back("XDG_CACHE_HOME=" + appCachePath);
 
         // set env XDG_DATA_HOME=$(HOME)/.linglong/$(appId)/share
-        r->process->env.push_back("XDG_DATA_HOME=" + util::getUserFile(".linglong/" + appId + "/share"));
+        r->process->env.push_back("XDG_DATA_HOME=" + appLocalDataPath);
 
         qDebug() << r->process->env;
         r->process->cwd = util::getUserFile("");

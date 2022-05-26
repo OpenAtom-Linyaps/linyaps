@@ -277,7 +277,7 @@ public:
             mountMap = {
                 {"/usr", "/usr"},
                 {"/etc", "/etc"},
-                {runtimeRootPath + "/usr", "/runtime"},
+                {runtimeRootPath, "/runtime"},
                 {"/usr/share/locale/", "/usr/share/locale/"},
             };
 
@@ -765,7 +765,7 @@ public:
             Mount &m = *new Mount(r);
             m.type = "bind";
             m.options = QStringList {"rbind"};
-            m.source = runtimeRootPath + "/usr/bin/" + dir;
+            m.source = runtimeRootPath + "/bin/" + dir;
             m.destination = "/usr/bin/" + dir;
             r->mounts.push_back(&m);
         }

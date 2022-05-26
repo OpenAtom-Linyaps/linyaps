@@ -1,6 +1,6 @@
-# Builder
+# ll-builder user guide
 
-linglong builder 是为应用开发者提供的一款打包工具。
+ll-builder是为应用开发者提供的一款打包工具。
 
 主要提供以下几点功能：
 
@@ -8,6 +8,26 @@ linglong builder 是为应用开发者提供的一款打包工具。
 - 定义了一套版本管理系统。
 - 提供sdk开发套件列表。
 - 包含完整推送发布流程。
+
+```bash
+ll-builder --help
+```
+
+```plain
+Usage: ll-builder [options] subcommand [sub-option]
+
+Options:
+  -v, --verbose  show detail log
+  -h, --help     Displays this help.
+
+Arguments:
+  subcommand     create
+                 build
+                 run
+                 export
+                 push
+```
+
 
 <!--## Target
 

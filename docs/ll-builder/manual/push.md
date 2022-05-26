@@ -17,5 +17,5 @@ Arguments:
 通过push命令， ll-builder将根据输入的文件路径，读取bundle格式软件包内容，将软件数据及bundle格式软件包传输到服务端。
 
 ```bash
-ll-builder push org.deepin.demo-1.0.0_x86_64.uab
+ll-builder push <org.deepin.demo-1.0.0_x86_64.uab>
 ```

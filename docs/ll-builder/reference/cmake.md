@@ -1,6 +1,6 @@
 # cmake.yaml
 
-`cmake.yaml` 提供了通用的cmake构建模板, 模板文件如下:
+`cmake.yaml` 提供了通用的`cmake`构建模板, 模板文件如下:
 
 ```yaml
 variables:

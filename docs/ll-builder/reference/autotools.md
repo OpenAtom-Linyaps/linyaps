@@ -1,6 +1,6 @@
 # autotools.yaml
 
-`autotools.yaml` 提供了通用的automake类型构建模板, 模板文件如下:
+`autotools.yaml` 提供了通用的`automake`类型构建模板, 模板文件如下:
 
 ```yaml
 variables:

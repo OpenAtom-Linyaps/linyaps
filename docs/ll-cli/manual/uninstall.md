@@ -1,8 +1,14 @@
 ## ll-cli uninstall
 
+`ll-cli uninstall`命令可以安装玲珑应用。
+
+查看`ll-cli uninstall`命令的帮助信息：
+
 ```bash
 ll-cli uninstall --help
 ```
+
+`ll-cli uninstall`命令的帮助信息如下：
 
 ```plain
 Usage: ll-cli [options] uninstall com.deepin.demo
@@ -18,10 +24,16 @@ Arguments:
   appId                                app id
 ```
 
-卸载应用程序，使用uninstall命令：
+使用`ll-cli uninstall`命令卸载玲珑应用：
 
 ```bash
 ll-cli uninstall <org.deepin.music>
 ```
 
-该命令执行成功后，应用程序将从系统中被移除，但并不包含用户使用该应用过程中产生的数据信息。
+默认卸载最高版本，可以通过`appid`后附加对应版本号卸载指定版本：
+
+```bash
+ll-cli uninstall <org.deepin.music/5.1.2>
+```
+
+该命令执行成功后，该玲珑应用将从系统中被卸载掉。

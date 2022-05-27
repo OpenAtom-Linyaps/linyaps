@@ -10,6 +10,7 @@
     * [ll-cli ps](ll-cli/manual/ps.md)
     * [ll-cli exec](ll-cli/manual/exec.md)
     * [ll-cli kill](ll-cli/manual/kill.md)
+    * [FAQ](ll-cli/manual/faq.md)
 * [ll-builder](ll-builder/README.md)
     * [ll-builder create](ll-builder/manual/create.md)
     * [ll-builder build](ll-builder/manual/build.md)
@@ -25,4 +26,3 @@
         * [debug](ll-builder/reference/debug.md)
         * [faq](ll-builder/reference/faq.md)
     <!-- * [permission.yaml](ll-builder/reference/permission.md) -->
-* [FAQ](questions/linglong-app-faq.md)

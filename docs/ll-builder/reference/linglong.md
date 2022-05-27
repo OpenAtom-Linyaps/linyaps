@@ -1,8 +1,8 @@
 # linglong.yaml
 
-`linglong.yaml` is the description of build config of project. With linglong.yaml, you can use create an artifacts repeatable in an container environment.
+`linglong.yaml` 是项目构建配置的描述。 `linglong.yaml`支持在容器环境中重复构建。
 
-The content of linglong.yaml like this:
+`linglong.yaml` 示例如下:
 
 ```yaml
 package:

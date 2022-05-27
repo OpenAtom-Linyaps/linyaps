@@ -1,5 +1,14 @@
 # ll-builder push
-ll-builder 提供push命令将bundle格式软件包推送至远程服务器。参数如下：
+
+`ll-builder push`命令用来将玲珑软件包推送至玲珑远程仓库。
+
+查看`ll-builder push`命令的帮助信息：
+
+```bash
+ll-builder push --help
+```
+
+`ll-builder push`命令的帮助信息如下：
 
 ```plain
 Usage: ll-builder [options] push <filePath>
@@ -14,7 +23,7 @@ Arguments:
   filePath       bundle file path
 ```
 
-通过push命令， ll-builder将根据输入的文件路径，读取bundle格式软件包内容，将软件数据及bundle格式软件包传输到服务端。
+`ll-builder push`命令根据输入的文件路径，读取`bundle`格式软件包内容，将软件数据及`bundle`格式软件包传输到服务端。
 
 ```bash
 ll-builder push <org.deepin.demo-1.0.0_x86_64.uab>

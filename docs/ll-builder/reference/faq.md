@@ -1,6 +1,6 @@
 # ll-builder 构建问题
 
-#### 1. cmake 类型构建，出现 -lxxx 失败，但ldconfig 与 pkg-config均能查询到该库信息
+#### 1. cmake类型构建，出现 -lxxx 失败，但ldconfig 与 pkg-config均能查询到该库信息
 链接库路径不在常规路径，新路径为/runtime/lib。添加环境变量 LIBRARY_PATH=<libpath>， 目前构建环境已默认包含该环境变量。
 
 #### 2. 构建时link静态库失败，要求重新使用 fPIC构建

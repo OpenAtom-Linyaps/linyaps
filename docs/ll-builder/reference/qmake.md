@@ -1,6 +1,6 @@
 # qmake.yaml
 
-`qmake.yaml` 提供了通用的qmake构建模板, 模板文件如下:
+`qmake.yaml` 提供了通用的`qmake`构建模板, 模板文件如下:
 
 ```yaml
 variables:

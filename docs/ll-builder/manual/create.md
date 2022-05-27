@@ -1,5 +1,14 @@
 # ll-builder create
-ll-builder 提供了create命令来创建一个项目。如下：
+
+`ll-builder create`命令用来来创建玲珑项目。
+
+查看`ll-builder create`命令的帮助信息：
+
+```bash
+ll-builder create --help
+```
+
+`ll-builder create`命令的帮助信息如下：
 
 ```plain
 Usage: ll-builder [options] create org.deepin.demo
@@ -13,7 +22,7 @@ Arguments:
   name           project name
 ```
 
-通过create命令， ll-builder将根据输入的项目名称在当前目录创建一个对应的文件夹，同时生成构建所需的linglong.yaml模板文件。
+`ll-builder create`命令根据输入的项目名称在当前目录创建对应的文件夹，同时生成构建所需的linglong.yaml模板文件。示例如下：
 
 ```bash
 ll-builder create <org.deepin.demo>
@@ -21,7 +30,7 @@ ll-builder create <org.deepin.demo>
 
 模板文件如下：
 
-```
+```plain
 org.deepin.demo/
 └── linglong.yaml
 ```

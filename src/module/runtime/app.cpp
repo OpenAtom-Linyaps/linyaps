@@ -284,7 +284,11 @@ public:
             // FIXME(iceyer): extract for wine, remove later
             if (fuseMount && !specialCase) {
                 // NOTE: the override should be behind host /usr
-                mountMap.push_back({runtimeRootPath + "/usr", "/usr"});
+                mountMap.push_back({runtimeRootPath + "/bin", "/usr/bin"});
+                mountMap.push_back({runtimeRootPath + "/include", "/usr/include"});
+                mountMap.push_back({runtimeRootPath + "/lib", "/usr/lib"});
+                mountMap.push_back({runtimeRootPath + "/sbin", "/usr/sbin"});
+                mountMap.push_back({runtimeRootPath + "/share", "/usr/share"});
                 mountMap.push_back({runtimeRootPath + "/opt/deepinwine", "/opt/deepinwine"});
                 mountMap.push_back({runtimeRootPath + "/opt/deepin-wine6-stable", "/opt/deepin-wine6-stable"});
             }

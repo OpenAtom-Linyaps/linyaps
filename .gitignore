@@ -3,7 +3,8 @@
 /cmake-build-debug
 out/
 .vscode/
-_book
+**_book
+**node_modules
 
 **html/
 **latex/

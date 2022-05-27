@@ -24,5 +24,5 @@
         * [qmake.yaml](ll-builder/reference/qmake.md)
         * [cmake.yaml](ll-builder/reference/cmake.md)
         * [debug](ll-builder/reference/debug.md)
-        * [faq](ll-builder/reference/faq.md)
+        * [FAQ](ll-builder/reference/faq.md)
     <!-- * [permission.yaml](ll-builder/reference/permission.md) -->

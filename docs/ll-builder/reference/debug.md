@@ -21,37 +21,38 @@ gdbserver  :10240 deepin-draw
 
 这里以调试应用`org.deepin.draw`为例。上述命令中，`:10240`为任意当前没有被占用的 tcp 端口。之后我们还需要做两件事情：
 
-1. 在`Host`主机中使用`gdb`连接上容器中的`gdbserver`；
+1. 在`Host`主机中使用`gdb`连接上容器中的`gdbserver`
 2. 设置源码映射路径。（按需求来设置）
 
 ## 在终端中使用 gdb 进行调试
 
-1. 找到玲珑应用实际上启动的二进制在宿主机上的位置。
-   例如 `/var/lib/linglong/layers/org.deepin.draw/5.10.8/x86_64/files/bin/deepin-draw`
+1. 找到玲珑应用实际上启动的二进制在宿主机上的位置，例如：
 
-*其中版本号和架构按照实际情况填写。*
+   ```plain
+   /var/lib/linglong/layers/org.deepin.draw/5.10.8/x86_64/files/bin/deepin-draw
+   ```
 
-在`Host`环境中使用`gdb`加载二进制文件，即`deepin-draw`。
+   *其中版本号和架构按照实际情况填写。*
 
-操作如下所示：
+   在`Host`环境中使用`gdb`加载二进制文件，即`deepin-draw`。
 
-```bash
-gdb  /var/lib/linglong/layers/org.deepin.draw/5.10.8/x86_64/files/bin/deepin-draw
-```
-
-2. 在`gdb`中使用`target`命令连接`gdbserver`。
    操作如下所示：
 
-```bash
-target remote :10240
-```
+   ```bash
+   gdb  /var/lib/linglong/layers/org.deepin.draw/5.10.8/x86_64/files/bin/deepin-draw
+   ```
 
-3. 在`gdb`中输入以下命令以设置路径映射，帮助`gdb`找到对应的源代码：
-   假定源码放置在`Host`主机的`Desktop`。命令如下：
+2. 在`gdb`中使用`target`命令连接`gdbserver`，操作如下所示：
 
-```bash
-set substitute-path /buildstream/deepin-draw/deepin-draw.bst ~/Desktop/deepin-draw
-```
+   ```bash
+   target remote :10240
+   ```
+
+3. 在`gdb`中输入以下命令以设置路径映射，帮助`gdb`找到对应的源代码，假定源码放置在`Host`主机的`Desktop`。命令如下：
+
+   ```bash
+   set substitute-path /buildstream/deepin-draw/deepin-draw.bst ~/Desktop/deepin-draw
+   ```
 
 之后正常使用`gdb`即可。
 

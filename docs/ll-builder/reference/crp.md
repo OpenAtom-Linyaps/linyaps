@@ -8,10 +8,10 @@
 
 2. `crp`平台配置
 
-{'build': 'll-builder'}  构建参数这里需要填写前面这个参数用户shuttle节点判断构建使用, 如下图:
+当构建参数列表内容为`{'build': 'll-builder'}`时，shuttle使用ll-builder构建，具体参考下图：
 
 ![构建参数列表](../images/build_parameter_list.png)
 
-打包时，节点需要填写`llbuilder`指定对应节点（只有该节点有`ll-builder`运行环境）才可进行玲珑构建。如下图：
+更新项目打包时，节点需指定为`ll-builder`，才可进行玲珑构建。具体参考下图：
 
 ![节点](../images/node.png)

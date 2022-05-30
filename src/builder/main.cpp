@@ -18,7 +18,6 @@
 
 #include "builder/project.h"
 #include "builder/builder.h"
-#include "builder/bst_builder.h"
 #include "builder/linglong_builder.h"
 #include "builder/builder_config.h"
 #include "module/package/package.h"
@@ -65,7 +64,6 @@ int main(int argc, char **argv)
     QStringList args = parser.positionalArguments();
     QString command = args.isEmpty() ? QString() : args.first();
 
-    linglong::builder::BstBuilder _bb;
     linglong::builder::LinglongBuilder _llb;
     linglong::builder::Builder *builder = &_llb;
 

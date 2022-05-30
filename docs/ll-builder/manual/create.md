@@ -22,7 +22,7 @@ Arguments:
   name           project name
 ```
 
-`ll-builder create`命令根据输入的项目名称在当前目录创建对应的文件夹，同时生成构建所需的linglong.yaml模板文件。示例如下：
+`ll-builder create`命令根据输入的项目名称在当前目录创建对应的文件夹，同时生成构建所需的`linglong.yaml`模板文件。示例如下：
 
 ```bash
 ll-builder create <org.deepin.demo>

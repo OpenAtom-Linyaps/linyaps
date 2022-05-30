@@ -18,7 +18,7 @@
     * [ll-builder export](ll-builder/manual/export.md)
     * [ll-builder push](ll-builder/manual/push.md)
     * [reference](ll-builder/reference/index.md)
-        * [crp & ll-builder](ll-builder/manual/crp.md)
+        * [crp & ll-builder](ll-builder/reference/crp.md)
         * [linglong.yaml](ll-builder/reference/linglong.md)
         * [autotools.yaml](ll-builder/reference/autotools.md)
         * [qmake.yaml](ll-builder/reference/qmake.md)

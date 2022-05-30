@@ -12,7 +12,8 @@
 	"-search",
 	"-sharing",
 	"auto-scroll-table",
-	"-lunr"
+	"-lunr",
+	"popup"
     ],
         "styles": {
         "website": "styles/book.css"

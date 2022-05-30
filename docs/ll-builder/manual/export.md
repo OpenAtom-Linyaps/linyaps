@@ -1,6 +1,6 @@
 # ll-builder export
 
-`ll-builder export`命令用来检出构建内容, 生成bundle格式软件包（简称 uab）。
+`ll-builder export`命令用来检出构建内容, 生成`bundle`格式软件包（简称 uab）。
 
 查看`ll-builder export`命令的帮助信息：
 
@@ -23,7 +23,7 @@ Arguments:
                  bundle
 ```
 
-`ll-builder export`命令在工程根目录下创建以`appid`为名称的目录，并将本地构建缓存检出到该目录。同时根据该构建结果制作出bundle格式软件包。
+`ll-builder export`命令在工程根目录下创建以`appid`为名称的目录，并将本地构建缓存检出到该目录。同时根据该构建结果制作出`bundle`格式软件包。
 
 `ll-builder export`命令使用示例如下：
 

@@ -23,7 +23,7 @@ Arguments:
   build          build project
 ```
 
-build 命令必须运行在工程的根目录，即 linglong.yaml 文件所在位置。以一个简单[qt demo](https://gitlabwh.uniontech.com/ut001198/org.deepin.demo.git)为例：
+`ll-builder build`命令必须运行在工程的根目录，即`linglong.yaml`文件所在位置。以一个简单[qt demo](https://gitlabwh.uniontech.com/ut001198/org.deepin.demo.git)为例：
 
 该项目配置文件如下：
 

@@ -15,8 +15,8 @@
 3. 建议在v23镜像中使用玲珑工具：
 
     ```plain
-    linglong-builder : ll-builder
+    linglong-builder : ll-builder ll-loader
     linglong-box : ll-box
     linglong-dbus-proxy : ll-dbus-proxy
-    linglong-bin : ll-cli
+    linglong-bin : ll-cli ll-service
     ```

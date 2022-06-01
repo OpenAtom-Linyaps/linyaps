@@ -1,0 +1,14 @@
+[Unit]
+Description=Linglong dbus service
+
+[Service]
+Type=dbus
+User=deepin-linglong
+Group=users
+BusName=com.deepin.linglong.SystemPackageManager
+ExecStart=/usr/bin/ll-system-helper
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

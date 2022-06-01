@@ -1,5 +1,6 @@
 usr/bin/ll-service
 usr/bin/ll-cli
+usr/bin/ll-system-helper
 usr/share/applications/space.linglong.Service.desktop
 etc/xdg/autostart/space.linglong.Service.desktop
 etc/profile.d/linglong.sh
@@ -7,3 +8,6 @@ etc/X11/Xsession.d/21linglong
 usr/share/linglong/config.json
 usr/lib/systemd/user-environment-generators/61-linglong
 usr/share/permission/policy/linglong/*.json
+usr/share/dbus-1/system.d/com.deepin.linglong.SystemPackageManager.conf
+usr/share/dbus-1/system-services/deepin-linglong-SystemPackageManager.service
+usr/lib/systemd/system/deepin-linglong-SystemHelper.service

@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
  *
- * Author:     Iceyer <me@iceyer.net>
+ * Author:     HuQinghong <huqinghong@uniontech.com>
  *
- * Maintainer: Iceyer <me@iceyer.net>
+ * Maintainer: HuQinghong <huqinghong@uniontech.com>
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
@@ -19,42 +19,37 @@
 #include <QtConcurrent/QtConcurrent>
 #include <QFuture>
 
-#include "register_meta_type.h"
-#include "module/package/package.h"
-#include "module/runtime/container.h"
+
 #include "module/util/package_manager_param.h"
 #include "module/util/singleton.h"
 #include "module/util/status_code.h"
-#include "reply.h"
-#include "param_option.h"
+#include "service/impl/reply.h"
+#include "service/impl/param_option.h"
+#include "module/package/package.h"
+#include "package_manager_flatpak_impl.h"
+#include "service/impl/register_meta_type.h"
+#include "module/runtime/container.h"
 
 namespace linglong {
 namespace service {
-class PackageManagerPrivate; /**< forward declaration PackageManagerPrivate */
+class SystemPackageManagerPrivate;
 
 /**
  * @brief The PackageManager class
  * @details PackageManager is a singleton class, and it is used to manage the package
  *          information.
  */
-class PackageManager
+class SystemPackageManager
     : public QObject
     , protected QDBusContext
-    , public linglong::util::Singleton<PackageManager>
+    , public linglong::util::Singleton<SystemPackageManager>
 {
     Q_OBJECT
-    Q_CLASSINFO("D-Bus Interface", "com.deepin.linglong.PackageManager")
+    Q_CLASSINFO("D-Bus Interface", "com.deepin.linglong.SystemPackageManager")
 
-    friend class linglong::util::Singleton<PackageManager>;
+    friend class linglong::util::Singleton<SystemPackageManager>;
 
 public Q_SLOTS:
-
-    /**
-     * @brief 查询包管理服务状态
-     *
-     * @return "active"
-     */
-    QString Status();
 
     /**
      * @brief download the package
@@ -119,58 +114,21 @@ public Q_SLOTS:
      */
     QueryReply Query(const QueryParamOption &paramOption);
 
-    /**
-     * @brief 运行应用
-     *
-     * @param paramOption 启动命令参数
-     *
-     * @return Reply 同Install
-     */
-    Reply Start(const RunParamOption &paramOption);
-
-    /**
-     * @brief 运行命令
-     *
-     * @param paramOption 启动命令参数
-     *
-     * @return Reply 同 Install
-     */
-    Reply Exec(const ExecParamOption &paramOption);
-
-    /**
-     * @brief 退出应用
-     *
-     * @param containerId 运行应用容器对应的Id（使用ListContainer查询）
-     *
-     * @return Reply 执行结果信息
-     */
-    Reply Stop(const QString &containerId);
-
-    /**
-     * @brief 查询正在运行的应用信息
-     *
-     * @return ContainerList \n
-     *         Id 容器id \n
-     *         pid 容器对应的进程id \n
-     *         packageName 应用名称 \n
-     *         workingDirectory 应用运行目录
-     */
-    QueryReply ListContainer();
-
 public:
-    QScopedPointer<QThreadPool> runPool; ///< 启动应用线程池
+    QScopedPointer<QThreadPool> pool; ///< 下载、卸载、更新应用线程池
 
 private:
-    QScopedPointer<PackageManagerPrivate> dd_ptr;
-    Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), PackageManager)
+    QScopedPointer<SystemPackageManagerPrivate> dd_ptr;
+    Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), SystemPackageManager)
 
 protected:
-    PackageManager();
-    ~PackageManager() override;
+    SystemPackageManager();
+    ~SystemPackageManager() override;
 };
 
 } // namespace service
 } // namespace linglong
 
-#define RUN_POOL_MAX_THREAD 100000000 ///< 启动应用线程池最大线程数
-#define PACKAGE_MANAGER linglong::service::PackageManager::instance()
+#define POOL_MAX_THREAD 10 ///< 下载、卸载、更新应用线程池最大线程数
+#define SYSTEM_MANAGER_HELPER linglong::service::SystemPackageManager::instance()
+

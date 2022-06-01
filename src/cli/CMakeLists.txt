@@ -11,7 +11,8 @@ set(LL_CLI_SOURCES
     ../module/util/singleton.h
     #add for cli no dbus support
     ../service/impl/package_manager.cpp
-    ../service/impl/package_manager_flatpak_impl.cpp
+    ../system/impl/system_package_manager.cpp
+    ../system/impl/package_manager_flatpak_impl.cpp
     ../service/impl/job_manager.cpp
     ../service/impl/job.cpp
     ../service/resource/resource.qrc
@@ -56,7 +57,7 @@ find_package(CURL REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(Qt5Sql REQUIRED)
 pkg_search_module(OSTREE1 REQUIRED ostree-1)
-#add for cli no dbus 
+#add for cli no dbus
 set(CLI_NO_DBUS
     CURL::libcurl
     ${OSTREE1_LDFLAGS}

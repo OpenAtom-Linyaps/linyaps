@@ -20,6 +20,8 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 add_subdirectory(service)
 
+add_subdirectory(system)
+
 add_subdirectory(cli)
 
 add_subdirectory(builder)

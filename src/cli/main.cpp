@@ -18,6 +18,7 @@
 #include "module/util/package_manager_param.h"
 #include "service/impl/register_meta_type.h"
 #include "service/impl/package_manager.h"
+#include "system/impl/system_package_manager.h"
 #include "package_manager.h"
 #include "module/runtime/runtime.h"
 #include "module/util/app_status.h"
@@ -214,7 +215,6 @@ int main(int argc, char **argv)
                  parser.showHelp();
                  return -1;
              }
-             auto args = parser.positionalArguments();
              auto appId = args.value(1);
              if (appId.isEmpty()) {
                  parser.showHelp();
@@ -397,8 +397,6 @@ int main(int argc, char **argv)
 
              parser.process(app);
 
-             QStringList args = parser.positionalArguments();
-
              auto containerId = args.value(1).trimmed();
              if (containerId.isEmpty()) {
                  parser.showHelp();
@@ -428,7 +426,6 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("appId", "app id", "com.deepin.demo");
              parser.addOption(optDownload);
              parser.process(app);
-             auto args = parser.positionalArguments();
              // 第一个参数为命令字
              linglong::service::DownloadParamOption downloadParamOption;
              QStringList appInfoList = args.value(1).split("/");
@@ -488,24 +485,27 @@ int main(int argc, char **argv)
                  if (!parser.isSet(optNoDbus)) {
                      QDBusPendingReply<linglong::service::Reply> dbusReply = packageManager.Install(installParamOption);
                      dbusReply.waitForFinished();
-                     // Fix to do 多线程场景下httpclient.cpp中curl 暂未支持多线程
-                     QThread::sleep(1);
-                     // 1 秒 查询一次进度
-                     dbusReply = packageManager.GetDownloadStatus(installParamOption);
-                     dbusReply.waitForFinished();
                      reply = dbusReply.value();
-                     while (reply.code == STATUS_CODE(kPkgInstalling)) {
-                         // 隐藏光标
-                         std::cout << "\033[?25l";
-                         std::cout << "\r" << reply.message.toStdString();
-                         std::cout.flush();
-                         QThread::sleep(1);
-                         dbusReply = packageManager.GetDownloadStatus(installParamOption);
-                         dbusReply.waitForFinished();
-                         reply = dbusReply.value();
+                     if ("flatpak" != repoType) {
+                        // Fix to do 多线程场景下httpclient.cpp中curl 暂未支持多线程
+                        QThread::sleep(1);
+                        // 1 秒 查询一次进度
+                        dbusReply = packageManager.GetDownloadStatus(installParamOption);
+                        dbusReply.waitForFinished();
+                        reply = dbusReply.value();
+                        while (reply.code == STATUS_CODE(kPkgInstalling)) {
+                            // 隐藏光标
+                            std::cout << "\033[?25l";
+                            std::cout << "\r" << reply.message.toStdString();
+                            std::cout.flush();
+                            QThread::sleep(1);
+                            dbusReply = packageManager.GetDownloadStatus(installParamOption);
+                            dbusReply.waitForFinished();
+                            reply = dbusReply.value();
+                        }
+                        // 显示光标
+                        std::cout << "\033[?25h" << std::endl;
                      }
-                     // 显示光标
-                     std::cout << "\033[?25h" << std::endl;
                      if (reply.code != STATUS_CODE(kPkgInstallSuccess)) {
                          qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
                          return -1;
@@ -513,8 +513,8 @@ int main(int argc, char **argv)
                          qInfo().noquote() << "message:" << reply.message;
                      }
                  } else {
-                     reply = PACKAGE_MANAGER->Install(installParamOption);
-                     PACKAGE_MANAGER->pool->waitForDone(-1);
+                     reply = SYSTEM_MANAGER_HELPER->Install(installParamOption);
+                     SYSTEM_MANAGER_HELPER->pool->waitForDone(-1);
                      if (reply.code != STATUS_CODE(kPkgInstallSuccess)) {
                          qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
                      } else {
@@ -600,7 +600,6 @@ int main(int argc, char **argv)
              parser.addOption(optNoDbus);
              parser.addOption(optRepoPoint);
              parser.process(app);
-             auto args = parser.positionalArguments();
              auto appInfo = args.value(1);
              auto repoType = parser.value(optRepoPoint);
              if (appInfo.isEmpty() || (!repoType.isEmpty() && repoType != "flatpak")) {
@@ -620,9 +619,10 @@ int main(int argc, char **argv)
              }
              paramOption.repoPoint = repoType;
              linglong::service::Reply reply;
+             qInfo().noquote() << "uninstall" << appInfo << ", please wait a few minutes...";
              if (parser.isSet(optNoDbus)) {
-                 reply = PACKAGE_MANAGER->Uninstall(paramOption);
-                 PACKAGE_MANAGER->pool->waitForDone(-1);
+                 reply = SYSTEM_MANAGER_HELPER->Uninstall(paramOption);
+                 SYSTEM_MANAGER_HELPER->pool->waitForDone(-1);
                  if (reply.code != STATUS_CODE(kPkgUninstallSuccess)) {
                      qInfo().noquote() << "message: " << reply.message << ", errcode:" << reply.code;
                      return -1;

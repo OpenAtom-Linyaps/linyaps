@@ -13,8 +13,8 @@
 #include <QString>
 #include <QStringList>
 
-#include "reply.h"
-#include "param_option.h"
+#include "service/impl/reply.h"
+#include "service/impl/param_option.h"
 #include "module/package/ref.h"
 #include "module/util/result.h"
 

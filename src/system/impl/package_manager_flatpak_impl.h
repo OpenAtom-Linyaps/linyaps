@@ -16,8 +16,8 @@
 #include "module/util/status_code.h"
 #include "module/package/package.h"
 #include "package_manager_interface.h"
-#include "reply.h"
-#include "param_option.h"
+#include "service/impl/reply.h"
+#include "service/impl/param_option.h"
 
 namespace linglong {
 namespace service {

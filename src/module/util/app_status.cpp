@@ -284,7 +284,7 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
     sqlQuery.last();
     int recordCount = sqlQuery.at() + 1;
     if (recordCount < 1) {
-        qCritical() << "getAppInstalledStatus app:" + appId + ",version:" + appVer + ",userName:" + userName
+        qWarning() << "getAppInstalledStatus app:" + appId + ",version:" + appVer + ",userName:" + userName
                            + " not found";
         return false;
     }

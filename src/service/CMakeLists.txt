@@ -8,7 +8,6 @@ set(LL_SERVICE_SOURCES
     main.cpp
     resource/resource.qrc
     impl/package_manager.cpp
-    impl/package_manager_flatpak_impl.cpp
     impl/job_manager.cpp
     impl/job.cpp
     impl/reply.h

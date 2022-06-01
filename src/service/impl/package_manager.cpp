@@ -142,6 +142,7 @@ Reply PackageManager::Start(const RunParamOption &paramOption)
 
     QueryReply reply;
     reply.code = 0;
+    reply.message = "Start " + paramOption.appId + " success!";
     QString appId = paramOption.appId.trimmed();
     if (appId.isNull() || appId.isEmpty()) {
         reply.code = STATUS_CODE(kUserInputParamErr);
@@ -272,11 +273,13 @@ Reply PackageManager::Exec(const ExecParamOption &paramOption)
     Q_D(PackageManager);
     Reply reply;
     reply.code = STATUS_CODE(kFail);
+    reply.message = "No such container " + paramOption.containerID;
     auto const &containerID = paramOption.containerID;
     for (auto it : d->apps) {
         if (it->container()->id == containerID) {
             it->exec(paramOption.cmd, paramOption.env, paramOption.cwd);
             reply.code = STATUS_CODE(kSuccess);
+            reply.message = "Exec successed";
             return reply;
         }
     }
@@ -331,7 +334,7 @@ QueryReply PackageManager::ListContainer()
 
     QueryReply r;
     r.code = STATUS_CODE(kSuccess);
-    r.message = "";
+    r.message = "Success";
     r.result = QLatin1String(QJsonDocument(jsonArray).toJson(QJsonDocument::Compact));
     return r;
 }

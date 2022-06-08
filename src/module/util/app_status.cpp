@@ -98,14 +98,6 @@ int checkInstalledAppDb()
         return STATUS_CODE(kFail);
     }
 
-    // 设置 db 文件权限
-    QFile file(installedAppInfoPath + "/" + QString(DATABASE_NAME));
-    QFile::Permissions permissions = file.permissions();
-    permissions |= QFile::ReadGroup;
-    permissions |= QFile::WriteGroup;
-    permissions |= QFile::ReadOther;
-    permissions |= QFile::WriteOther;
-    file.setPermissions(permissions);
     return STATUS_CODE(kSuccess);
 }
 

@@ -152,17 +152,7 @@ bool inline createDir(const QString &path)
 {
     auto val = QDir().exists(path);
     if (!val) {
-        bool ret = QDir().mkpath(path);
-        QFile file(path);
-        QFile::Permissions permissions = file.permissions();
-        permissions |= QFile::ReadGroup;
-        permissions |= QFile::WriteGroup;
-        permissions |= QFile::ExeGroup;
-        permissions |= QFile::ReadOther;
-        permissions |= QFile::WriteOther;
-        permissions |= QFile::ExeOther;
-        file.setPermissions(permissions);
-        return ret;
+        return QDir().mkpath(path);
     }
     return true;
 }

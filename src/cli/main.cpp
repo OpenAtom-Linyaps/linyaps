@@ -215,6 +215,7 @@ int main(int argc, char **argv)
                  parser.showHelp();
                  return -1;
              }
+             args = parser.positionalArguments();
              auto appId = args.value(1);
              if (appId.isEmpty()) {
                  parser.showHelp();
@@ -396,6 +397,7 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("container-id", "container id", "");
 
              parser.process(app);
+             args = parser.positionalArguments();
 
              auto containerId = args.value(1).trimmed();
              if (containerId.isEmpty()) {
@@ -426,6 +428,7 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("appId", "app id", "com.deepin.demo");
              parser.addOption(optDownload);
              parser.process(app);
+             args = parser.positionalArguments();
              // 第一个参数为命令字
              linglong::service::DownloadParamOption downloadParamOption;
              QStringList appInfoList = args.value(1).split("/");
@@ -600,6 +603,7 @@ int main(int argc, char **argv)
              parser.addOption(optNoDbus);
              parser.addOption(optRepoPoint);
              parser.process(app);
+             args = parser.positionalArguments();
              auto appInfo = args.value(1);
              auto repoType = parser.value(optRepoPoint);
              if (appInfo.isEmpty() || (!repoType.isEmpty() && repoType != "flatpak")) {

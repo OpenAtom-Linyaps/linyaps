@@ -5,11 +5,11 @@ VERSION=""
 
 if [ -f /etc/os-release ]
 then
-        VERSION="$(sed -ne '/^VERSION_ID=.*$/P' /etc/os-release | awk -F = '{print $2}' | sed -e 's/"//g')"
-        if [ "${VERSION}" = "20" ]
+        VERSION=$(sed -ne '/^VERSION_ID=.*$/P' /etc/os-release | awk -F = '{print $2}' | sed -e 's/"//g')
+        if [ $(echo "${VERSION} >= 20 && ${VERSION} < 23" | bc) = 1 ]
         then
                 LINGLONG_ROOT="/data/linglong"
-        elif [ "${VERSION}" = "23" ]
+        elif [ $(echo "${VERSION} >= 23" | bc) = 1 ]
         then
                 LINGLONG_ROOT="/persistent/linglong"
         fi

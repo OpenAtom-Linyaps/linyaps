@@ -385,16 +385,17 @@ void inline removeDstDirLinkFiles(const QString &src, const QString &dst)
 QString inline getLinglongRootPath()
 {
     auto sysType = QSysInfo::productType();
+    auto sysProductVersion = QSysInfo::productVersion().toDouble();
     if ("uos" != sysType && "Deepin" != sysType) {
         return QString("/var/lib/linglong");
     }
     // v20系统
-    if ("20" == QSysInfo::productVersion()) {
+    if (20 <= sysProductVersion && 23 > sysProductVersion) {
         return QString("/data/linglong");
     }
 
     // v23系统
-    if ("23" == QSysInfo::productVersion()) {
+    if (23 <= sysProductVersion) {
         return QString("/persistent/linglong");
     }
     return QString();
@@ -405,7 +406,7 @@ QString inline getLinglongRootPath()
  */
 void inline copyConfig()
 {
-    if(!fileExists(getLinglongRootPath() + "/config.json") && fileExists("/usr/share/linglong/config.json")){
+    if (!fileExists(getLinglongRootPath() + "/config.json") && fileExists("/usr/share/linglong/config.json")) {
         QFile configFile("/usr/share/linglong/config.json");
         configFile.copy(getLinglongRootPath() + "/config.json");
     }

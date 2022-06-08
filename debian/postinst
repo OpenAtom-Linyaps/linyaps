@@ -5,11 +5,11 @@ VERSION=""
 
 if [ -f /etc/os-release ]
 then
-        VERSION="$(sed -ne '/^VERSION_ID=.*$/P' /etc/os-release | awk -F = '{print $2}' | sed -e 's/"//g')"
-        if [ "${VERSION}" = "20" ]
+        VERSION=$(sed -ne '/^VERSION_ID=.*$/P' /etc/os-release | awk -F = '{print $2}' | sed -e 's/"//g')
+        if [ $(echo "${VERSION} >= 20 && ${VERSION} < 23" | bc) = 1 ]
         then
                 LINGLONG_ROOT="/data/linglong"
-        elif [ "${VERSION}" = "23" ]
+        elif [ $(echo "${VERSION} >= 23" | bc) = 1 ]
         then
                 LINGLONG_ROOT="/persistent/linglong"
         fi
@@ -20,7 +20,7 @@ then
 	mkdir -p ${LINGLONG_ROOT}/layers
 	ostree --repo=${LINGLONG_ROOT}/repo init --mode=bare-user-only
 	ostree --repo=${LINGLONG_ROOT}/repo remote add --no-gpg-verify repo  https://linglong-api-dev.deepin.com/ostree/
-	chmod -R 0777 $(dirname ${LINGLONG_ROOT})
+	chmod -R 0755 $(dirname ${LINGLONG_ROOT})
 else
 	echo "Directory is already exists."
 fi

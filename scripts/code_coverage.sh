@@ -19,7 +19,9 @@ else
 rm -rf build && mkdir build
 fi
 
-cd build && rm -rf ./* && clear && cmake .. && make -j
+unset https_proxy http_proxy
+
+cd build && rm -rf ./* && clear && cmake -DCMAKE_INSTALL_PREFIX=/usr .. && make -j12 && sudo make install && sudo ../debian/postinst
 cd test
 ./ll-test
 cd ../../

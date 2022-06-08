@@ -473,6 +473,12 @@ Reply SystemPackageManagerPrivate::Install(const InstallParamOption &installPara
         arch = linglong::util::hostArch();
     }
 
+    if (arch != linglong::util::hostArch()) {
+        reply.message = "app arch:" + arch + " not support in host";
+        reply.code = STATUS_CODE(kUserInputParamErr);
+        return reply;
+    }
+
     // 安装不查缓存
     auto ret = getAppInfofromServer(appId, installParamOption.version, arch, appData, reply.message);
     if (!ret) {
@@ -501,6 +507,9 @@ Reply SystemPackageManagerPrivate::Install(const InstallParamOption &installPara
         appState.insert(appId + "/" + appInfo->version + "/" + arch, reply);
         return reply;
     }
+
+    // 异常后重新安装需要清除上次状态
+    appState.remove(appId + "/" + appInfo->version + "/" + arch);
 
     // 模糊安装要求查询到的记录是惟一的 之前是在调用downloadAppData传参校验
     if (appList.size() > 1 && appId != appInfo->appId) {
@@ -936,13 +945,6 @@ Reply SystemPackageManager::Install(const InstallParamOption &installParamOption
     QString appId = installParamOption.appId.trimmed();
     if (appId.isNull() || appId.isEmpty()) {
         reply.message = "appId input err";
-        reply.code = STATUS_CODE(kUserInputParamErr);
-        return reply;
-    }
-
-    QString arch = installParamOption.arch.trimmed();
-    if (!arch.isEmpty() && arch != linglong::util::hostArch()) {
-        reply.message = "app arch:" + arch + " not support in host";
         reply.code = STATUS_CODE(kUserInputParamErr);
         return reply;
     }

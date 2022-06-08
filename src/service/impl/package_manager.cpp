@@ -13,15 +13,7 @@
 
 #include "package_manager.h"
 
-#include <QDBusConnection>
-#include <QDBusMessage>
 #include <QDebug>
-#include <QThread>
-#include <QProcess>
-#include <QJsonArray>
-#include <QStandardPaths>
-#include <QSysInfo>
-
 #include <QDBusInterface>
 #include <QDBusReply>
 

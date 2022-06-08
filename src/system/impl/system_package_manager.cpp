@@ -13,20 +13,10 @@
 
 #include "system_package_manager.h"
 
-#include <signal.h>
-#include <sys/types.h>
-
-#include <QDBusConnection>
-#include <QDBusMessage>
 #include <QDebug>
-#include <QThread>
-#include <QProcess>
-#include <QJsonArray>
-#include <QStandardPaths>
-#include <QSysInfo>
-
 #include <QDBusInterface>
 #include <QDBusReply>
+#include <QJsonArray>
 
 #include "module/runtime/app.h"
 #include "module/util/app_status.h"
@@ -531,7 +521,6 @@ Reply SystemPackageManagerPrivate::Install(const InstallParamOption &installPara
     // 下载在线包数据到目标目录 安装完成
     // QString pkgName = "org.deepin.calculator";
     const QString savePath = kAppInstallPath + appInfo->appId + "/" + appInfo->version + "/" + appInfo->arch;
-    // 多用户支持需要创建 777 权限
     linglong::util::createDir(kAppInstallPath + appInfo->appId);
     ret = downloadAppData(appInfo->appId, appInfo->version, appInfo->arch, savePath, reply.message);
     if (!ret) {
@@ -982,10 +971,8 @@ Reply SystemPackageManager::Uninstall(const UninstallParamOption &paramOption)
     if ("flatpak" == paramOption.repoPoint) {
         return PACKAGEMANAGER_FLATPAK_IMPL->Uninstall(paramOption);
     }
-    QFuture<void> future = QtConcurrent::run(pool.data(), [=]() { d->Uninstall(paramOption); });
-    reply.code = STATUS_CODE(kPkgUninstalling);
-    reply.message = paramOption.appId + " is uninstalling";
-    return reply;
+    // QFuture<void> future = QtConcurrent::run(pool.data(), [=]() { d->Uninstall(paramOption); });
+    return d->Uninstall(paramOption);
 }
 
 Reply SystemPackageManager::Update(const ParamOption &paramOption)
@@ -1001,10 +988,7 @@ Reply SystemPackageManager::Update(const ParamOption &paramOption)
     }
 
     // QFuture<void> future = QtConcurrent::run(pool.data(), [=]() { d->Update(paramOption); });
-    d->Update(paramOption);
-    reply.code = STATUS_CODE(kPkgUpdating);
-    reply.message = paramOption.appId + " is updating";
-    return reply;
+    return d->Update(paramOption);
 }
 
 QueryReply SystemPackageManager::Query(const QueryParamOption &paramOption)

@@ -490,24 +490,24 @@ int main(int argc, char **argv)
                      dbusReply.waitForFinished();
                      reply = dbusReply.value();
                      if ("flatpak" != repoType) {
-                        // Fix to do 多线程场景下httpclient.cpp中curl 暂未支持多线程
-                        QThread::sleep(1);
-                        // 1 秒 查询一次进度
-                        dbusReply = packageManager.GetDownloadStatus(installParamOption);
-                        dbusReply.waitForFinished();
-                        reply = dbusReply.value();
-                        while (reply.code == STATUS_CODE(kPkgInstalling)) {
-                            // 隐藏光标
-                            std::cout << "\033[?25l";
-                            std::cout << "\r" << reply.message.toStdString();
-                            std::cout.flush();
-                            QThread::sleep(1);
-                            dbusReply = packageManager.GetDownloadStatus(installParamOption);
-                            dbusReply.waitForFinished();
-                            reply = dbusReply.value();
-                        }
-                        // 显示光标
-                        std::cout << "\033[?25h" << std::endl;
+                         // Fix to do 多线程场景下httpclient.cpp中curl 暂未支持多线程
+                         QThread::sleep(1);
+                         // 1 秒 查询一次进度
+                         dbusReply = packageManager.GetDownloadStatus(installParamOption);
+                         dbusReply.waitForFinished();
+                         reply = dbusReply.value();
+                         while (reply.code == STATUS_CODE(kPkgInstalling)) {
+                             // 隐藏光标
+                             std::cout << "\033[?25l";
+                             std::cout << "\r\33[K" << reply.message.toStdString();
+                             std::cout.flush();
+                             QThread::sleep(1);
+                             dbusReply = packageManager.GetDownloadStatus(installParamOption);
+                             dbusReply.waitForFinished();
+                             reply = dbusReply.value();
+                         }
+                         // 显示光标
+                         std::cout << "\033[?25h" << std::endl;
                      }
                      if (reply.code != STATUS_CODE(kPkgInstallSuccess)) {
                          qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
@@ -545,9 +545,12 @@ int main(int argc, char **argv)
                  return -1;
              }
              paramOption.arch = linglong::util::hostArch();
-             if (appInfoList.size() == 2)
+             if (appInfoList.size() == 2) {
                  paramOption.version = appInfoList.at(1);
+             }
+             qInfo().noquote() << "update" << paramOption.appId << ", please wait a few minutes...";
              QDBusPendingReply<linglong::service::Reply> dbusReply = packageManager.Update(paramOption);
+             dbusReply.waitForFinished();
              linglong::service::Reply reply = dbusReply.value();
              if (reply.code != STATUS_CODE(kErrorPkgUpdateSuccess)) {
                  qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;

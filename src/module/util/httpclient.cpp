@@ -134,7 +134,7 @@ void HttpClient::initHttpParam(const char *url)
         curl_easy_setopt(curlHandle, CURLOPT_PROGRESSFUNCTION, progressFun);
     }
     curl_easy_setopt(curlHandle, CURLOPT_PROGRESSDATA, NULL);
-    curl_easy_setopt(curlHandle, CURLOPT_NOPROGRESS, 1L);
+    curl_easy_setopt(curlHandle, CURLOPT_NOPROGRESS, 0L);
 
     /* send all data to this function  */
     // curl_easy_setopt(curlHandle, CURLOPT_WRITEFUNCTION, write_data);

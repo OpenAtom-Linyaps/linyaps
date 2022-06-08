@@ -227,14 +227,17 @@ Reply PackageManager::Start(const RunParamOption &paramOption)
         desktopExec = paramOption.exec;
     }
 
-    // 判断是否已安装
-    if (!linglong::util::getAppInstalledStatus(appId, version, "", "")) {
-        reply.message = appId + " not installed";
-        qCritical() << reply.message;
-        reply.code = STATUS_CODE(kPkgNotInstalled);
-        return reply;
-    }
     QString repoPoint = paramOption.repoPoint;
+    if ("flatpak" != repoPoint) {
+        // 判断是否已安装
+        if (!linglong::util::getAppInstalledStatus(appId, version, "", "")) {
+            reply.message = appId + " not installed";
+            qCritical() << reply.message;
+            reply.code = STATUS_CODE(kPkgNotInstalled);
+            return reply;
+        }
+    }
+
     QFuture<void> future = QtConcurrent::run(runPool.data(), [=]() {
         // 判断是否存在
         linglong::package::Ref ref("", appId, version, arch);

@@ -42,7 +42,7 @@ then
 	rm -rf /usr/share/permission/policy/linglong
 fi
 
-if [ `grep -cw "deepin-linglong" /etc/passwd` -gt '0']
+if [ `grep -cw "deepin-linglong" /etc/passwd` -gt '0' ]
 then
         if ! `groups deepin-linglong |grep -qw "users"`
         then

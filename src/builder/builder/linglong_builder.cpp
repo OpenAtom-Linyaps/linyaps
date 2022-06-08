@@ -460,9 +460,16 @@ linglong::util::Error LinglongBuilder::build()
     r->process->cwd = containerSourcePath;
     r->process->env.push_back(
         "PATH=/runtime/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games:/sbin:/usr/sbin");
-    r->process->env.push_back("PKG_CONFIG_PATH=/runtime/lib/pkgconfig");
-    r->process->env.push_back("LIBRARY_PATH=/runtime/lib");
-    r->process->env.push_back("PREFIX=" + project->config().targetInstallPath(""));
+
+    if (project->config().targetArch() == "x86_64") {
+        r->process->env.push_back("PKG_CONFIG_PATH=/runtime/lib/x86_64-linux-gnu/pkgconfig");
+        r->process->env.push_back("LIBRARY_PATH=/runtime/lib:/runtime/lib/x86_64-linux-gnu");
+        r->process->env.push_back("LD_LIBRARY_PATH=/runtime/lib:/runtime/lib/x86_64-linux-gnu");
+    } else if (project->config().targetArch() == "arm64") {
+        r->process->env.push_back("PKG_CONFIG_PATH=/runtime/lib/aarch64-linux-gnu/pkgconfig");
+        r->process->env.push_back("LIBRARY_PATH=/runtime/lib:/runtime/lib/aarch64-linux-gnu");
+        r->process->env.push_back("LD_LIBRARY_PATH=/runtime/lib:/runtime/lib/aarch64-linux-gnu");
+    }
 
     if (!r->hooks) {
         r->hooks = new Hooks(r);

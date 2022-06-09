@@ -109,5 +109,42 @@ int getLocalConfig(const QString &key, QString &value)
     value = dataObject[key].toString();
     return STATUS_CODE(kSuccess);
 }
+
+QStringList getUserInfo()
+{
+    auto filePath = util::getUserFile(".linglong/.user.json");
+    QStringList userInfo;
+
+    QTextStream qin(stdin, QIODevice::ReadOnly);
+
+    QFile file(filePath);
+
+    if (file.exists())
+    {
+        file.open(QIODevice::ReadOnly);
+
+        QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+        QJsonObject infoObj = doc.object();
+
+        userInfo.append(infoObj["username"].toString());
+        userInfo.append(infoObj["password"].toString());
+
+        file.close();
+    } else {
+        QString name;
+        QString password;
+
+        qInfo() << "please enter ldap account: ";
+        qin >> name;
+        qInfo() << "please enter password: ";
+        qin >> password;
+
+        userInfo.append(name);
+        userInfo.append(password);
+    }
+
+    return userInfo;
+}
+
 } // namespace util
 } // namespace linglong

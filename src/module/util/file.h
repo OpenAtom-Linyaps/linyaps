@@ -28,6 +28,8 @@
 namespace linglong {
 namespace util {
 
+QStringList getUserInfo();
+
 QString jonsPath(const QStringList &component);
 
 QString getUserFile(const QString &path);
@@ -411,6 +413,5 @@ void inline copyConfig()
         configFile.copy(getLinglongRootPath() + "/config.json");
     }
 }
-
 } // namespace util
 } // namespace linglong

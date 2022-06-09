@@ -557,8 +557,6 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
 linglong::util::Error LinglongBuilder::push(const QString &bundleFilePath, bool force)
 {
     // TODO: if the kind is not app, don't push bundle
-    qInfo() << "start upload ...";
-
     linglong::package::Bundle uabBundle;
 
     auto pushBundleResult = uabBundle.push(bundleFilePath, force);

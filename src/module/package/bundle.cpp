@@ -216,6 +216,25 @@ auto BundlePrivate::getElfSize(const QString elfFilePath) -> decltype(-1)
 
 linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, bool force)
 {
+    auto userInfo = util::getUserInfo();
+
+   // 从配置文件获取服务器域名url
+    QString configUrl = "";
+    int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
+
+    if (STATUS_CODE(kSuccess) != statusCode) {
+        if (util::dirExists(this->tmpWorkDir)) {
+            util::removeDir(this->tmpWorkDir);
+        }
+        return NewError() << "call getLocalConfig api failed";
+    }
+
+    auto token = G_HTTPCLIENT->getToken(configUrl, userInfo);
+
+    if (token.isEmpty()) {
+        return NewError() << "get token failed!";
+    }
+    qInfo() << "start upload ...";
     // 判断uab文件是否存在
     if (!util::fileExists(bundleFilePath)) {
         return NewError() << STATUS_CODE(kBundleFileNotExists) << bundleFilePath + " don't exists!";
@@ -298,18 +317,8 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, bool fo
         return NewError(resultTar) << "call tar cvf failed";
     }
 
-    // 从配置文件获取服务器域名url
-    QString configUrl = "";
-    int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
-    if (STATUS_CODE(kSuccess) != statusCode) {
-        if (util::dirExists(this->tmpWorkDir)) {
-            util::removeDir(this->tmpWorkDir);
-        }
-        return NewError() << "call getLocalConfig api failed";
-    }
-
     // 上传repo.tar文件
-    auto retUploadRepo = G_HTTPCLIENT->uploadFile(this->tmpWorkDir + "/repo.tar", configUrl, "ostree");
+    auto retUploadRepo = G_HTTPCLIENT->uploadFile(this->tmpWorkDir + "/repo.tar", configUrl, "ostree" , token);
     if (STATUS_CODE(kSuccess) != retUploadRepo) {
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
@@ -319,7 +328,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, bool fo
     }
 
     // 上传bundle文件
-    auto retUploadBundle = G_HTTPCLIENT->uploadFile(this->bundleFilePath, configUrl, "bundle");
+    auto retUploadBundle = G_HTTPCLIENT->uploadFile(this->bundleFilePath, configUrl, "bundle", token);
     if (STATUS_CODE(kSuccess) != retUploadBundle) {
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
@@ -339,7 +348,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, bool fo
     QJsonDocument doc;
     doc.setObject(infoJsonObject);
 
-    auto retUploadBundleInfo = G_HTTPCLIENT->pushServerBundleData(doc.toJson(), configUrl);
+    auto retUploadBundleInfo = G_HTTPCLIENT->pushServerBundleData(doc.toJson(), configUrl, token);
     if (STATUS_CODE(kSuccess) != retUploadBundleInfo) {
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);

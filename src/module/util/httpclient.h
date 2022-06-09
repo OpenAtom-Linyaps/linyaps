@@ -159,7 +159,7 @@ public:
      *
      * @return int: kSuccess:成功 kFail:失败
      */
-    int uploadFile(const QString &filePath, const QString &dnsOfLinglong, const QString &flags);
+    int uploadFile(const QString &filePath, const QString &dnsOfLinglong, const QString &flags, const QString &token);
 
     /*
      * 上传bundle信息
@@ -169,7 +169,17 @@ public:
      *
      * @return int: kSuccess:成功 kFail:失败
      */
-    int pushServerBundleData(const QString &info, const QString &dnsOfLinglong);
+    int pushServerBundleData(const QString &info, const QString &dnsOfLinglong, const QString &token);
+
+    /*
+     * 获取服务器token
+     *
+     * @param dnsOfLinglong: 玲珑仓库域名地址
+     * @param userInfo: 账户信息 
+     *
+     * @return QString: token数据
+     */
+    QString getToken(const QString &dnsOfLinglong, QStringList userInfo);
 };
 } // namespace util
 } // namespace linglong

@@ -31,6 +31,7 @@
 #include <QtNetwork/QNetworkReply>
 
 #include "module/util/file.h"
+#include "builder/builder/builder_config.h"
 
 namespace linglong {
 namespace util {
@@ -495,7 +496,7 @@ bool HttpClient::loadHttpData(const QString qurl, const QString qsavePath)
  *
  * @return int: kSuccess:成功 kFail:失败
  */
-int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong, const QString &flags)
+int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong, const QString &flags, const QString &token)
 {
     QString dnsUrl = dnsOfLinglong + "apps/upload";
     QByteArray dnsUrlByteArr = dnsUrl.toLocal8Bit();
@@ -510,7 +511,10 @@ int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong
     curl_httppost *post = nullptr;
     curl_httppost *last = nullptr;
 
-    // 设置为非0表示本次操作为POST
+    struct curl_slist *headers = NULL;
+    headers = curl_slist_append(headers, token.toStdString().c_str());
+    curl_easy_setopt(curlHandle, CURLOPT_HTTPHEADER, headers);
+    //设置为非0表示本次操作为POST
     curl_easy_setopt(curlHandle, CURLOPT_POST, 1);
     // --location
     curl_easy_setopt(curlHandle, CURLOPT_FOLLOWLOCATION, 1);
@@ -544,6 +548,7 @@ int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong
         releaselock(fd);
         return STATUS_CODE(kFail);
     }
+    curl_slist_free_all(headers);
     curl_easy_cleanup(curlHandle);
     curl_global_cleanup();
     releaselock(fd);
@@ -566,7 +571,7 @@ int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong
  *
  * @return int: kSuccess:成功 kFail:失败
  */
-int HttpClient::pushServerBundleData(const QString &info, const QString &dnsOfLinglong)
+int HttpClient::pushServerBundleData(const QString &info, const QString &dnsOfLinglong, const QString &token)
 {
     QString dnsUrl = dnsOfLinglong + "apps";
     QByteArray dnsUrlByteArr = dnsUrl.toLocal8Bit();
@@ -580,7 +585,9 @@ int HttpClient::pushServerBundleData(const QString &info, const QString &dnsOfLi
     std::stringstream out;
     // HTTP报文头
     struct curl_slist *headers = NULL;
-    headers = curl_slist_append(headers, "Content-Type:application/json");
+    
+    headers = curl_slist_append(headers, token.toStdString().c_str());
+    headers = curl_slist_append(headers, "Content-Type: application/json");
     curl_easy_setopt(curlHandle, CURLOPT_HTTPHEADER, headers);
     // 设置为非0表示本次操作为POST
     curl_easy_setopt(curlHandle, CURLOPT_POST, 1);
@@ -626,5 +633,72 @@ int HttpClient::pushServerBundleData(const QString &info, const QString &dnsOfLi
     }
     return STATUS_CODE(kSuccess);
 }
+
+QString HttpClient::getToken(const QString &dnsOfLinglong, QStringList userInfo)
+{
+    QString token = "";
+    auto username = userInfo.first();
+    auto password = userInfo.last();
+
+    int fd = getlock();
+    if (fd == -1) {
+        qInfo() << "HttpClient gettoken is ongoing, please wait a moment and retry";
+        return token;
+    }
+
+    QString postUrl = dnsOfLinglong + "auth";
+    std::string url = postUrl.toStdString();
+    initHttpParam(url.c_str());
+    std::stringstream out;
+    // HTTP报文头
+    struct curl_slist *headers = NULL;
+    headers = curl_slist_append(headers, "Content-Type:application/json");
+    curl_easy_setopt(curlHandle, CURLOPT_HTTPHEADER, headers);
+    // 设置为非0表示本次操作为POST
+    curl_easy_setopt(curlHandle, CURLOPT_POST, 1);
+    // --location
+    curl_easy_setopt(curlHandle, CURLOPT_FOLLOWLOCATION, 1);
+
+    std::string sendString = "{\"username\":\"" + username.toStdString() + "\",\"password\":\"" + password.toStdString() + "\"}";
+
+    // 设置要POST的JSON数据
+    curl_easy_setopt(curlHandle, CURLOPT_POSTFIELDS, sendString.c_str());
+
+    // 设置接收数据的处理函数和存放变量
+    curl_easy_setopt(curlHandle, CURLOPT_WRITEFUNCTION, writeData);
+    // 设置写数据
+    curl_easy_setopt(curlHandle, CURLOPT_WRITEDATA, &out);
+
+    CURLcode code = curl_easy_perform(curlHandle);
+    if (code != CURLE_OK) {
+        qCritical() << "curl_easy_perform err code:" << curl_easy_strerror(code);
+        curl_easy_cleanup(curlHandle);
+        curl_global_cleanup();
+        releaselock(fd);
+        return token;
+    }
+
+    long resCode = 0;
+    code = curl_easy_getinfo(curlHandle, CURLINFO_RESPONSE_CODE, &resCode);
+    if (code != CURLE_OK || resCode != 200) {
+        qCritical() << "curl_easy_getinfo err:" << curl_easy_strerror(code) << ", resCode" << resCode;
+    }
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curlHandle);
+    curl_global_cleanup();
+    releaselock(fd);
+
+    auto ret = QString::fromStdString(out.str());
+    // 返回请求值
+
+    QJsonObject retObject = QJsonDocument::fromJson(ret.toUtf8()).object();
+
+    auto data = retObject["data"].toObject();
+
+    token = "X-Token: " + data["token"].toString();
+
+    return token;
+}
+
 } // namespace util
 } // namespace linglong

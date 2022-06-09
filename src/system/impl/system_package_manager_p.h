@@ -157,6 +157,8 @@ private:
     // Fix to do 记录子线程安装状态 供查询进度信息使用 未序列化 重启service后失效
     QMap<QString, Reply> appState;
 
+    bool noDBusMode = false;
+
 public:
     SystemPackageManager *const q_ptr;
     Q_DECLARE_PUBLIC(SystemPackageManager);

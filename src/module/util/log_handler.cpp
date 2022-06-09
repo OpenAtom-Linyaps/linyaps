@@ -21,9 +21,15 @@ QTextStream *linglong::util::LogHandlerPrivate::logOut = nullptr;
 linglong::util::LogHandlerPrivate::LogHandlerPrivate(LogHandler *parent)
     : q_ptr(parent)
 {
-    logDir.setPath(QDir::homePath() + QString("/.cache/linglong/log/")
+    logDir.setPath(QString("/tmp/.cache/linglong/log/")
                    + QCoreApplication::applicationName()); // 日志建议放到/var/log下，可从配置文件读取
     QString logPath = logDir.absoluteFilePath(QCoreApplication::applicationName() + ".log"); // 获取日志的路径
+    // 设置日志目录权限
+    QFile file("/tmp/.cache/linglong/log");
+    QFile::Permissions permissions = file.permissions();
+    permissions |= QFile::ReadOther;
+    permissions |= QFile::WriteOther;
+    file.setPermissions(permissions);
 
     // ========获取日志文件创建的时间========
     // QFileInfo::created(): On most Unix systems, this function returns the time of the last status change.

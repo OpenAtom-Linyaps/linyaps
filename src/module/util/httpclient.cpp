@@ -177,7 +177,7 @@ bool HttpClient::queryRemoteApp(const QString &pkgName, const QString &pkgVer, c
     if (STATUS_CODE(kSuccess) != statusCode) {
         return false;
     }
-    qDebug() << "queryRemote configUrl:" << configUrl;
+    qDebug() << "queryRemoteApp configUrl:" << configUrl;
     QString postUrl = "";
     if (configUrl.endsWith("/")) {
         postUrl = configUrl + "apps/fuzzysearchapp";

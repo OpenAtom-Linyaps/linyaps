@@ -516,13 +516,10 @@ int main(int argc, char **argv)
                          qInfo().noquote() << "message:" << reply.message;
                      }
                  } else {
+                     SYSTEM_MANAGER_HELPER->setNoDBusMode(true);
                      reply = SYSTEM_MANAGER_HELPER->Install(installParamOption);
                      SYSTEM_MANAGER_HELPER->pool->waitForDone(-1);
-                     if (reply.code != STATUS_CODE(kPkgInstallSuccess)) {
-                         qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
-                     } else {
-                         qInfo().noquote() << "install " << installParamOption.appId << " success";
-                     }
+                     qInfo().noquote() << "install " << installParamOption.appId << " done";
                  }
              }
              return 0;
@@ -629,7 +626,6 @@ int main(int argc, char **argv)
              qInfo().noquote() << "uninstall" << appInfo << ", please wait a few minutes...";
              if (parser.isSet(optNoDbus)) {
                  reply = SYSTEM_MANAGER_HELPER->Uninstall(paramOption);
-                 SYSTEM_MANAGER_HELPER->pool->waitForDone(-1);
                  if (reply.code != STATUS_CODE(kPkgUninstallSuccess)) {
                      qInfo().noquote() << "message: " << reply.message << ", errcode:" << reply.code;
                      return -1;

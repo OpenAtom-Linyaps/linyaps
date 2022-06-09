@@ -37,11 +37,6 @@ then
 	systemctl daemon-reload
 fi
 
-if [ -d /usr/share/permission/policy/linglong ]
-then
-	rm -rf /usr/share/permission/policy/linglong
-fi
-
 if [ `grep -cw "deepin-linglong" /etc/passwd` -gt '0' ]
 then
 	usermod -s /sbin/nologin deepin-linglong

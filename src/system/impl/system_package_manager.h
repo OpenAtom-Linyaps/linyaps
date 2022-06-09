@@ -117,6 +117,13 @@ public Q_SLOTS:
 public:
     QScopedPointer<QThreadPool> pool; ///< 下载、卸载、更新应用线程池
 
+    /**
+     * @brief 设置是否为nodbus安装模式
+     *
+     * @param enable true:nodbus false:dbus
+     */
+    void setNoDBusMode(bool enable);
+
 private:
     QScopedPointer<SystemPackageManagerPrivate> dd_ptr;
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), SystemPackageManager)

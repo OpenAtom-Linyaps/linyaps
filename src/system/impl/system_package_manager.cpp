@@ -465,6 +465,9 @@ Reply SystemPackageManagerPrivate::Install(const InstallParamOption &installPara
 {
     Reply reply;
     QString userName = linglong::util::getUserName();
+    if (noDBusMode) {
+        userName = "deepin-linglong";
+    }
     QString appData = "";
 
     QString appId = installParamOption.appId.trimmed();
@@ -1008,6 +1011,13 @@ QueryReply SystemPackageManager::Query(const QueryParamOption &paramOption)
         return reply;
     }
     return d->Query(paramOption);
+}
+
+void SystemPackageManager::setNoDBusMode(bool enable)
+{
+    Q_D(SystemPackageManager);
+    d->noDBusMode = true;
+    qInfo() << "setNoDBusMode enable:" << enable;
 }
 
 } // namespace service

@@ -25,8 +25,8 @@ namespace util {
  */
 int openCacheDbConn(QSqlDatabase &dbConn)
 {
-    // /home/用户名/.cache
-    const QString appInfoCachePath = QString(qgetenv("XDG_CACHE_HOME"));
+    // 多用户支持 deepin-linglong 无home目录
+    const QString appInfoCachePath = linglong::util::getLinglongRootPath();
     qDebug() << "app cache path:" << appInfoCachePath;
     QString err = "";
     // 添加数据库驱动，并指定连接名称cache_package_connection
@@ -34,10 +34,10 @@ int openCacheDbConn(QSqlDatabase &dbConn)
         dbConn = QSqlDatabase::database("cache_package_connection");
     } else {
         dbConn = QSqlDatabase::addDatabase("QSQLITE", "cache_package_connection");
-        dbConn.setDatabaseName(appInfoCachePath + "/AppInfoCache.db");
+        dbConn.setDatabaseName(appInfoCachePath + "/.appInfoCache.db");
     }
     if (!dbConn.isOpen() && !dbConn.open()) {
-        err = "open " + appInfoCachePath + " AppInfoCache.db failed";
+        err = "open " + appInfoCachePath + " .appInfoCache.db failed";
         qCritical() << err;
         return STATUS_CODE(kFail);
     }

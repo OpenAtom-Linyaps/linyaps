@@ -44,12 +44,13 @@ fi
 
 if [ `grep -cw "deepin-linglong" /etc/passwd` -gt '0' ]
 then
+	usermod -s /sbin/nologin deepin-linglong
         if ! `groups deepin-linglong |grep -qw "users"`
         then
                 gpasswd -a deepin-linglong users
         fi
 else
-        useradd deepin-linglong
+        useradd -s /sbin/nologin deepin-linglong
         gpasswd -a deepin-linglong users
 fi
 chown deepin-linglong:users /usr/bin/ll-system-helper

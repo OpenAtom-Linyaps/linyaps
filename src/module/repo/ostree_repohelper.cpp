@@ -978,7 +978,6 @@ QString OstreeRepoHelper::createTmpRepo()
         tmpPath = dir.path();
     }
     dir.setAutoRemove(false);
-    linglong::util::createDir(tmpPath);
     auto ret = linglong::runner::Runner("ostree", {"--repo=" + tmpPath + "/repoTmp", "init", "--mode=bare-user-only"},
                                         1000 * 60 * 5);
     if (!ret) {

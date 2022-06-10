@@ -527,19 +527,21 @@ linglong::util::Error LinglongBuilder::build()
     return NoError();
 }
 
-linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePath)
+linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePath, bool useLocalDir)
 {
-    QScopedPointer<Project> project(formYaml<Project>(YAML::LoadFile("linglong.yaml")));
-
-    repo::OSTree repo(BuilderConfig::instance()->repoPath());
-
-    // checkout data from local ostree
     auto exportPath = QStringList {BuilderConfig::instance()->projectRoot(), "export"}.join("/");
     util::ensureDir(exportPath);
+    
+    // checkout data from local ostree
+    if (!useLocalDir) {
+        QScopedPointer<Project> project(formYaml<Project>(YAML::LoadFile("linglong.yaml")));
 
-    auto ret = repo.checkout(project->ref(), "", exportPath);
-    if (!ret.success()) {
-        return NewError(-1, "checkout files failed, you need build first");
+        repo::OSTree repo(BuilderConfig::instance()->repoPath());
+      
+        auto ret = repo.checkout(project->ref(), "", exportPath);
+        if (!ret.success()) {
+            return NewError(-1, "checkout files failed, you need build first");
+        }
     }
 
     // TODO: if the kind is not app, don't make bundle

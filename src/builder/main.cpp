@@ -168,14 +168,24 @@ int main(int argc, char **argv)
         {"export",
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();
+
              parser.addPositionalArgument("export", "export build result to uab bundle", "export");
              parser.addPositionalArgument(
                  "filename", "bundle file name , if filename is empty,export default format bundle", "[filename]");
+
+             auto localParam = QCommandLineOption("local", "make bundle with local directory", "");
+
+             parser.addOption(localParam);
              parser.process(app);
 
              auto outputFilepath = parser.positionalArguments().value(1);
+             bool useLocalDir = false;
 
-             auto result = builder->exportBundle(outputFilepath);
+             if (parser.isSet(localParam)) {
+                 useLocalDir = true;
+             }
+
+             auto result = builder->exportBundle(outputFilepath, useLocalDir);
              if (!result.success()) {
                  qCritical() << result;
              }

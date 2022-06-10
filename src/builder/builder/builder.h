@@ -24,7 +24,7 @@ public:
 
     virtual linglong::util::Error build() = 0;
 
-    virtual linglong::util::Error exportBundle(const QString &outputFilepath) = 0;
+    virtual linglong::util::Error exportBundle(const QString &outputFilepath, bool useLocalDir) = 0;
 
     // virtual util::Result push(const QString &repoURL, bool force) = 0;
     virtual linglong::util::Error push(const QString &bundleFilePath, bool force) = 0;

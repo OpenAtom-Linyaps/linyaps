@@ -27,7 +27,7 @@ public:
 
     linglong::util::Error build() override;
 
-    linglong::util::Error exportBundle(const QString &outputFilepath) override;
+    linglong::util::Error exportBundle(const QString &outputFilepath, bool useLocalDir) override;
 
     linglong::util::Error push(const QString &bundleFilePath, bool force) override;
 
@@ -35,7 +35,7 @@ public:
 
     linglong::util::Error initRepo();
 };
-  
+
 //TODO: remove later
 class message : public JsonSerialize
 {

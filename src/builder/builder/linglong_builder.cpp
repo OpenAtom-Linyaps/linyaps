@@ -409,6 +409,14 @@ linglong::util::Error LinglongBuilder::build()
         r->annotations->overlayfs->upper = project->config().cacheAbsoluteFilePath({"overlayfs", "up"});
     }
 
+    // mount tmpfs to /tmp in container
+    auto m = new Mount(r);
+    m->type = "tmpfs";
+    m->options = QStringList {"nosuid", "strictatime","mode=777"};
+    m->source = "tmp";
+    m->destination = "/tmp";
+    r->mounts.push_back(m);
+
     // get runtime, and parse base from runtime
     for (const auto &rpath : QStringList {"/usr", "/etc", "/var"}) {
         auto m = new Mount(r);

@@ -64,7 +64,8 @@ public:
         // TODO: genarate global config, load from builder config file.
         command += "#global variable\n";
         command += QString("JOBS=%1\n").arg("6");
-    
+        command += QString("VERSION=%1\n").arg(q_ptr->package->version);
+
         if (q_ptr->config().targetArch() == "x86_64") {
             command += QString("ARCH=\"%1\"\n").arg("x86_64");
             command += QString("TRIPLET=\"%1\"\n").arg("x86_64-linux-gnu");

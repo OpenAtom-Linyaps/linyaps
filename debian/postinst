@@ -20,7 +20,7 @@ then
 	mkdir -p ${LINGLONG_ROOT}/layers
 	ostree --repo=${LINGLONG_ROOT}/repo init --mode=bare-user-only
 	ostree --repo=${LINGLONG_ROOT}/repo remote add --no-gpg-verify repo  https://linglong-api-dev.deepin.com/ostree/
-	chmod -R 0755 $(dirname ${LINGLONG_ROOT})
+	chmod -R 0775 ${LINGLONG_ROOT}
 else
 	echo "Directory is already exists."
 fi
@@ -37,15 +37,39 @@ then
 	systemctl daemon-reload
 fi
 
+useruid=400
 if [ `grep -cw "deepin-linglong" /etc/passwd` -gt '0' ]
 then
-	usermod -s /sbin/nologin deepin-linglong
+	deepinlinglonguid=`id deepin-linglong | awk -F= '{print $2}' | awk -F"(" '{print $1}'`
+        if [ $deepinlinglonguid -ge 400 ] && [ $deepinlinglonguid -le 499 ]
+        then
+        	useruid=$deepinlinglonguid
+        else
+        	while [ `getent passwd $useruid | wc -l` -gt 0 ]
+        	do
+                	useruid=`expr $useruid + 1`
+                	if [ $useruid -ge 499 ]
+                	then
+                        	echo "uid400-499被占用"
+                	fi
+        	done
+        fi
+	usermod -u $useruid -s /sbin/nologin deepin-linglong
         if ! `groups deepin-linglong |grep -qw "users"`
         then
                 gpasswd -a deepin-linglong users
         fi
 else
-        useradd -s /sbin/nologin deepin-linglong
+        while [ `getent passwd $useruid | wc -l` -gt 0 ]
+        do
+                useruid=`expr $useruid + 1`
+                if [ $useruid -ge 499 ]
+                then
+                        echo "uid400-499被占用"
+                fi
+        done
+        useradd -u $useruid -s /sbin/nologin deepin-linglong
         gpasswd -a deepin-linglong users
 fi
 chown deepin-linglong:users /usr/bin/ll-system-helper
+chown -R deepin-linglong:users ${LINGLONG_ROOT}

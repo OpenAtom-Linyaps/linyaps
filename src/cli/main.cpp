@@ -453,7 +453,7 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("app", "appId version arch", "com.deepin.demo/1.2.1/x86_64");
              auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
              parser.addOption(optRepoPoint);
-             auto optNoDbus = QCommandLineOption("nodbus", "execute cmd directly, not via dbus", "");
+             auto optNoDbus = QCommandLineOption("nodbus", "execute cmd directly, not via dbus(only for root user)", "");
              parser.addOption(optNoDbus);
              parser.process(app);
              QStringList appList = parser.positionalArguments();
@@ -599,7 +599,7 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("uninstall", "uninstall an application", "uninstall");
              parser.addPositionalArgument("appId", "app id", "com.deepin.demo");
              auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
-             auto optNoDbus = QCommandLineOption("nodbus", "execute cmd directly, not via dbus", "");
+             auto optNoDbus = QCommandLineOption("nodbus", "execute cmd directly, not via dbus(only for root user)", "");
              parser.addOption(optNoDbus);
              parser.addOption(optRepoPoint);
              parser.process(app);
@@ -653,6 +653,8 @@ int main(int argc, char **argv)
              parser.addOption(optType);
              auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
              parser.addOption(optRepoPoint);
+             auto optNoDbus = QCommandLineOption("nodbus", "execute cmd directly, not via dbus", "");
+             parser.addOption(optNoDbus);
              parser.process(app);
              auto optPara = parser.value(optType);
              if ("installed" != optPara) {
@@ -669,10 +671,15 @@ int main(int argc, char **argv)
              paramOption.appId = optPara;
              paramOption.repoPoint = repoType;
              linglong::package::AppMetaInfoList appMetaInfoList;
-             QDBusPendingReply<linglong::service::QueryReply> dbusReply = packageManager.Query(paramOption);
-             // 默认超时时间为25s
-             dbusReply.waitForFinished();
-             linglong::service::QueryReply reply = dbusReply.value();
+             linglong::service::QueryReply reply;
+             if (parser.isSet(optNoDbus)) {
+                 reply = SYSTEM_MANAGER_HELPER->Query(paramOption);
+             } else {
+                 QDBusPendingReply<linglong::service::QueryReply> dbusReply = packageManager.Query(paramOption);
+                 // 默认超时时间为25s
+                 dbusReply.waitForFinished();
+                 reply = dbusReply.value();
+             }
              linglong::util::getAppMetaInfoListByJson(reply.result, appMetaInfoList);
              if (1 == appMetaInfoList.size() && "flatpaklist" == appMetaInfoList.at(0)->appId) {
                  printFlatpakAppInfo(appMetaInfoList);

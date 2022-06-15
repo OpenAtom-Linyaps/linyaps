@@ -498,21 +498,20 @@ bool HttpClient::loadHttpData(const QString qurl, const QString qsavePath)
  */
 int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong, const QString &flags, const QString &token)
 {
-    QString dnsUrl = dnsOfLinglong + "apps/upload";
-    QByteArray dnsUrlByteArr = dnsUrl.toLocal8Bit();
-    const char *url = dnsUrlByteArr.data();
-    int fd = getlock();
-    if (fd == -1) {
-        qCritical() << "HttpClient requestServerData is doing, please wait a moment and retry";
-        return STATUS_CODE(kFail);
-    }
+    std::string urlStr = QString(dnsOfLinglong + "apps/upload").toStdString();
+    const char *url = urlStr.c_str();
+
     initHttpParam(url);
+
     std::stringstream out;
     curl_httppost *post = nullptr;
     curl_httppost *last = nullptr;
 
     struct curl_slist *headers = NULL;
-    headers = curl_slist_append(headers, token.toStdString().c_str());
+    std::string tokenStr = QString("X-Token: " + token).toStdString();
+    const char * tokenMsg = tokenStr.c_str();
+
+    headers = curl_slist_append(headers, tokenMsg);
     curl_easy_setopt(curlHandle, CURLOPT_HTTPHEADER, headers);
     //设置为非0表示本次操作为POST
     curl_easy_setopt(curlHandle, CURLOPT_POST, 1);
@@ -536,7 +535,6 @@ int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong
         qCritical() << "curl_easy_perform err code:" << curl_easy_strerror(code);
         curl_easy_cleanup(curlHandle);
         curl_global_cleanup();
-        releaselock(fd);
         return STATUS_CODE(kFail);
     }
     int resCode = 0;
@@ -545,13 +543,11 @@ int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong
         qCritical() << "curl_easy_getinfo err:" << curl_easy_strerror(code) << ", resCode" << resCode;
         curl_easy_cleanup(curlHandle);
         curl_global_cleanup();
-        releaselock(fd);
         return STATUS_CODE(kFail);
     }
     curl_slist_free_all(headers);
     curl_easy_cleanup(curlHandle);
     curl_global_cleanup();
-    releaselock(fd);
 
     auto outMsg = QString::fromStdString(out.str());
     QJsonObject retUploadObject = QJsonDocument::fromJson(outMsg.toUtf8()).object();
@@ -573,20 +569,18 @@ int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong
  */
 int HttpClient::pushServerBundleData(const QString &info, const QString &dnsOfLinglong, const QString &token)
 {
-    QString dnsUrl = dnsOfLinglong + "apps";
-    QByteArray dnsUrlByteArr = dnsUrl.toLocal8Bit();
-    const char *url = dnsUrlByteArr.data();
-    int fd = getlock();
-    if (fd == -1) {
-        qCritical() << "HttpClient requestServerData is doing, please wait a moment and retry";
-        return STATUS_CODE(kFail);
-    }
+    std::string urlStr = QString(dnsOfLinglong + "apps").toStdString();
+    const char *url = urlStr.c_str();
+
     initHttpParam(url);
+
     std::stringstream out;
     // HTTP报文头
     struct curl_slist *headers = NULL;
-    
-    headers = curl_slist_append(headers, token.toStdString().c_str());
+    std::string tokenStr = QString("X-Token: " + token).toStdString();
+    const char * tokenMsg = tokenStr.c_str();
+
+    headers = curl_slist_append(headers, tokenMsg);
     headers = curl_slist_append(headers, "Content-Type: application/json");
     curl_easy_setopt(curlHandle, CURLOPT_HTTPHEADER, headers);
     // 设置为非0表示本次操作为POST
@@ -611,7 +605,6 @@ int HttpClient::pushServerBundleData(const QString &info, const QString &dnsOfLi
         qCritical() << "curl_easy_perform err code:" << curl_easy_strerror(code);
         curl_easy_cleanup(curlHandle);
         curl_global_cleanup();
-        releaselock(fd);
         return STATUS_CODE(kFail);
     }
     int resCode = 0;
@@ -622,7 +615,6 @@ int HttpClient::pushServerBundleData(const QString &info, const QString &dnsOfLi
     curl_slist_free_all(headers);
     curl_easy_cleanup(curlHandle);
     curl_global_cleanup();
-    releaselock(fd);
 
     auto outMsg = QString::fromStdString(out.str());
     QJsonObject retUploadObject = QJsonDocument::fromJson(outMsg.toUtf8()).object();
@@ -639,12 +631,6 @@ QString HttpClient::getToken(const QString &dnsOfLinglong, QStringList userInfo)
     QString token = "";
     auto username = userInfo.first();
     auto password = userInfo.last();
-
-    int fd = getlock();
-    if (fd == -1) {
-        qInfo() << "HttpClient gettoken is ongoing, please wait a moment and retry";
-        return token;
-    }
 
     QString postUrl = dnsOfLinglong + "auth";
     std::string url = postUrl.toStdString();
@@ -674,7 +660,6 @@ QString HttpClient::getToken(const QString &dnsOfLinglong, QStringList userInfo)
         qCritical() << "curl_easy_perform err code:" << curl_easy_strerror(code);
         curl_easy_cleanup(curlHandle);
         curl_global_cleanup();
-        releaselock(fd);
         return token;
     }
 
@@ -686,16 +671,12 @@ QString HttpClient::getToken(const QString &dnsOfLinglong, QStringList userInfo)
     curl_slist_free_all(headers);
     curl_easy_cleanup(curlHandle);
     curl_global_cleanup();
-    releaselock(fd);
 
     auto ret = QString::fromStdString(out.str());
-    // 返回请求值
 
     QJsonObject retObject = QJsonDocument::fromJson(ret.toUtf8()).object();
-
     auto data = retObject["data"].toObject();
-
-    token = "X-Token: " + data["token"].toString();
+    token = data["token"].toString();
 
     return token;
 }

@@ -232,8 +232,10 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, bool fo
     auto token = G_HTTPCLIENT->getToken(configUrl, userInfo);
 
     if (token.isEmpty()) {
+        qCritical() << "get token failed!";
         return NewError() << "get token failed!";
     }
+
     qInfo() << "start upload ...";
     // 判断uab文件是否存在
     if (!util::fileExists(bundleFilePath)) {

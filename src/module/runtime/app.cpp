@@ -564,6 +564,10 @@ public:
 
         mountMap.push_back(qMakePair(userRuntimeDir + "/dconf", userRuntimeDir + "/dconf"));
 
+        // bind systemd/user to box
+        auto appUserSystemdPath = util::ensureUserDir({".linglong", appId, "/config/systemd/user"});
+        mountMap.push_back(qMakePair(util::getUserFile(".config/systemd/user"), appUserSystemdPath));
+
         // mount .config/user-dirs.dirs todo:移除挂载到~/.config下？
         mountMap.push_back(
             qMakePair(util::getUserFile(".config/user-dirs.dirs"), util::getUserFile(".config/user-dirs.dirs")));

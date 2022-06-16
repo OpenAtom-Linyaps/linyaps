@@ -13,6 +13,8 @@
 #include "log_handler.h"
 #include "log_handler_p.h"
 
+#include "module/util/sysinfo.h"
+
 // 初始化 static 变量
 QMutex linglong::util::LogHandlerPrivate::logMutex;
 QFile *linglong::util::LogHandlerPrivate::logFile = nullptr;
@@ -21,8 +23,8 @@ QTextStream *linglong::util::LogHandlerPrivate::logOut = nullptr;
 linglong::util::LogHandlerPrivate::LogHandlerPrivate(LogHandler *parent)
     : q_ptr(parent)
 {
-    logDir.setPath(QString("/tmp/.cache/linglong/log/")
-                   + QCoreApplication::applicationName()); // 日志建议放到/var/log下，可从配置文件读取
+    QString userName = linglong::util::getUserName();
+    logDir.setPath(QString("/var/log/linglong/" + userName + "/") + QCoreApplication::applicationName());
     QString logPath = logDir.absoluteFilePath(QCoreApplication::applicationName() + ".log"); // 获取日志的路径
     // 设置日志目录权限
     QFile file("/tmp/.cache/linglong/log");

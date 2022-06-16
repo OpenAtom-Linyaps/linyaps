@@ -73,3 +73,8 @@ else
 fi
 chown deepin-linglong:users /usr/bin/ll-system-helper
 chown -R deepin-linglong:users ${LINGLONG_ROOT}
+
+if [ -d /var/log/linglong ]
+then
+     chmod o+w /var/log/linglong
+fi

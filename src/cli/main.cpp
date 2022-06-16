@@ -82,6 +82,19 @@ int getUnicodeNum(const QString &name)
 }
 
 /**
+ * @brief 处理安装中断请求
+ *
+ * @param sig 中断信号
+ */
+void doIntOperate(int sig)
+{
+    // 显示光标
+    std::cout << "\033[?25h" << std::endl;
+    // Fix to 调用jobManager中止下载安装操作
+    exit(0);
+}
+
+/**
  * @brief 输出软件包的查询结果
  *
  * @param appMetaInfoList 软件包元信息列表
@@ -464,6 +477,10 @@ int main(int argc, char **argv)
                  parser.showHelp(-1);
                  return -1;
              }
+
+             // 收到中断信号后恢复操作
+             signal(SIGINT, doIntOperate);
+
              // 设置 24 h超时
              packageManager.setTimeout(1000 * 60 * 60 * 24);
              // appId format: org.deepin.calculator/1.2.6 in multi-version

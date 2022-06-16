@@ -338,11 +338,13 @@ private:
     bool startOstreeJob(const QString &cmd, const QString &ref, const QStringList &argList, const int timeout);
 
     /*
-     * 在/tmp目录下创建一个临时repo仓库
+     * 在/tmp目录下创建一个临时repo子仓库
+     *
+     * @param parentRepo: 父repo仓库路径
      *
      * @return QString: 临时repo路径
      */
-    QString createTmpRepo();
+    QString createTmpRepo(const QString &parentRepo);
 
 private:
     // ostree 仓库对象信息

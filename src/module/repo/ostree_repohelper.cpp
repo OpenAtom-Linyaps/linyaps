@@ -966,11 +966,13 @@ bool OstreeRepoHelper::startOstreeJob(const QString &cmd, const QString &ref, co
 }
 
 /*
- * 在/tmp目录下创建一个临时repo仓库
+ * 在/tmp目录下创建一个临时repo子仓库
+ *
+ * @param parentRepo: 父repo仓库路径
  *
  * @return QString: 临时repo路径
  */
-QString OstreeRepoHelper::createTmpRepo()
+QString OstreeRepoHelper::createTmpRepo(const QString &parentRepo)
 {
     QTemporaryDir dir("/tmp/linglong-cache-XXXXXX");
     QString tmpPath;
@@ -988,14 +990,15 @@ QString OstreeRepoHelper::createTmpRepo()
     if (STATUS_CODE(kSuccess) != statusCode) {
         return "";
     }
-    QString ostreeUrl = configUrl.endsWith("/") ? configUrl.append("ostree/") : configUrl.append("/ostree/");
-    // 添加远程仓库
-    ret = linglong::runner::Runner(
-        "ostree", {"--repo=" + tmpPath + "/repoTmp", "remote", "add", "--no-gpg-verify", "repo", ostreeUrl},
-        1000 * 60 * 5);
-    if (!ret) {
+
+    QFile cfgFile(tmpPath + "/repoTmp/config");
+    if (!cfgFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
+        qCritical() << "write " << tmpPath + "/repoTmp/config fail";
         return "";
     }
+    cfgFile.write(QString("parent=" + parentRepo).toUtf8());
+    cfgFile.close();
+
     qInfo() << "create tmp repo path:" << tmpPath << ", ret:" << QDir().exists(tmpPath + "/repoTmp");
     return tmpPath + "/repoTmp";
 }
@@ -1014,7 +1017,7 @@ bool OstreeRepoHelper::repoPullbyCmd(const QString &destPath, const QString &rem
                                      QString &err)
 {
     // 创建临时仓库
-    QString tmpPath = createTmpRepo();
+    QString tmpPath = createTmpRepo(destPath + "/repo");
     if (tmpPath.isEmpty()) {
         err = "create tmp repo err";
         qCritical() << err;

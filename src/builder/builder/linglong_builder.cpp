@@ -35,6 +35,8 @@
 #include "module/util/desktop_entry.h"
 #include "module/util/sysinfo.h"
 #include "module/runtime/app.h"
+#include "cli/cmd/command_helper.h"
+#include "module/util/env.h"
 
 namespace linglong {
 namespace builder {
@@ -603,10 +605,14 @@ linglong::util::Error LinglongBuilder::run()
         return NewError(-1, "checkout runtime files failed");
     }
 
+    //获取环境变量
+    QStringList userEnvList = COMMAND_HELPER->getUserEnv(linglong::util::envList);
+
     auto app = runtime::App::load(&repo, project->ref(), BuilderConfig::instance()->exec(), false);
     if (nullptr == app) {
         return NewError(-1, "load App::load failed");
     }
+    app->saveUserEnvList(userEnvList);
     app->start();
     return ret;
 }

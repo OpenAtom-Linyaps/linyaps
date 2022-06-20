@@ -17,6 +17,7 @@ set(LL_BUILDER_SOURCES
     ../module/util/xdg.cpp
     ../module/util/desktop_entry.cpp
     ../module/util/log_handler.cpp
+    ../cli/cmd/command_helper.cpp
     builder/builder.cpp
     builder/builder_config.cpp
     builder/builder_config.h

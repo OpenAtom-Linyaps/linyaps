@@ -565,6 +565,8 @@ public:
         mountMap.push_back(qMakePair(userRuntimeDir + "/dconf", userRuntimeDir + "/dconf"));
 
         // bind systemd/user to box
+        // create ~/.config/systemd/user
+        util::ensureUserDir({".config/systemd/user"});
         auto appUserSystemdPath = util::ensureUserDir({".linglong", appId, "/config/systemd/user"});
         mountMap.push_back(qMakePair(util::getUserFile(".config/systemd/user"), appUserSystemdPath));
 

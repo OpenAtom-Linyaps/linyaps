@@ -38,9 +38,6 @@ QString hostArch()
  */
 QString getUserName()
 {
-    // QString userPath = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
-    // QString userName = userPath.section("/", -1, -1);
-    // return userName;
     uid_t uid = geteuid();
     struct passwd *user = getpwuid(uid);
     QString userName = "";

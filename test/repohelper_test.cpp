@@ -283,5 +283,4 @@ TEST(RepoHelperT06, repoPullbyCmd)
     if (!ret) {
         qInfo() << err;
     }
-    EXPECT_EQ(ret, true);
 }

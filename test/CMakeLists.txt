@@ -35,7 +35,6 @@ set(LL_TEST_SOURCES
     ../src/module/util/uuid.cpp
     ../src/module/util/desktop_entry.cpp
     ../src/module/flatpak/flatpak_manager.cpp
-    ../src/module/runtime/app.cpp
     ../src/module/package/package.h
     ../src/module/package/info.h
     ../src/module/package/package.cpp
@@ -43,6 +42,7 @@ set(LL_TEST_SOURCES
     ../src/service/impl/reply.h
     ../src/module/util/sysinfo.cpp
     ../src/module/util/app_status.cpp
+    ../src/module/util/appinfo_cache.cpp
     ../src/module/util/connection.cpp)
 
 # add qdbus call
@@ -57,19 +57,19 @@ set_source_files_properties(../src/module/dbus_ipc/com.deepin.linglong.UapManage
                             PROPERTIES INCLUDE service/impl/register_meta_type.h)
 
 add_executable(ll-test
-        util_fs_test.cpp
         module/package/ref_test.cpp
         module/util/result_test.cpp
         module/util/xdg_test.cpp
         module/util/fs_test.cpp
+        module/util/runner_test.cpp
+        module/util/app_status_test.cpp
+        module/util/httpclient_test.cpp
+        module/util/uuid_test.cpp
         module/package/package_info_test.cpp
-        module/runtime/app_test.cpp
-        httpclient_test.cpp
         repohelper_test.cpp
         qt_json.cpp
         qt_yaml.cpp
         package_manager_test.cpp
-        app_status_test.cpp
         ${LL_TEST_SOURCES})
 
 target_include_directories(ll-test

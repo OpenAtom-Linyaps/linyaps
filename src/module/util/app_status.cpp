@@ -22,48 +22,6 @@ namespace linglong {
 namespace util {
 
 /*
- * 创建数据库连接
- *
- * @param dbConn: QSqlDatabase 数据库
- *
- * @return int: 0:创建成功 其它:失败
- */
-int openDatabaseConnection(QSqlDatabase &dbConn)
-{
-    QString dbConnName =
-        QStringLiteral("installed_package_connection_%1").arg(qintptr(QThread::currentThreadId()), 0, 16);
-    static QMutex appSqliteDatabaseMutex;
-    QMutexLocker locker(&appSqliteDatabaseMutex);
-    QString err = "";
-    // 添加数据库驱动，并指定连接名称installed_package_connection
-    if (QSqlDatabase::contains(dbConnName)) {
-        dbConn = QSqlDatabase::database(dbConnName);
-    } else {
-        dbConn = QSqlDatabase::addDatabase("QSQLITE", dbConnName);
-        dbConn.setDatabaseName(installedAppInfoPath + "/linglong.db");
-    }
-    if (!dbConn.isOpen() && !dbConn.open()) {
-        err = "open " + installedAppInfoPath + "/linglong.db failed";
-        qCritical() << err;
-        return STATUS_CODE(kFail);
-    }
-    return STATUS_CODE(kSuccess);
-}
-
-/*
- * 关闭数据库连接
- *
- * @param dbConn: QSqlDatabase 数据库连接
- */
-void closeDbConnection(QSqlDatabase &dbConn)
-{
-    QString connName = dbConn.connectionName();
-    dbConn.close();
-    dbConn = QSqlDatabase();
-    QSqlDatabase::removeDatabase(connName);
-}
-
-/*
  * 检查安装信息数据库表及版本信息表
  *
  * @return int: 0:成功 其它:失败

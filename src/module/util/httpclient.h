@@ -99,17 +99,6 @@ private:
     DownloadRet data;
 
 public:
-    /*
-     * 向服务器请求指定包名\版本\架构数据
-     *
-     * @param pkgName: 软件包包名
-     * @param pkgVer: 软件包版本号
-     * @param pkgArch: 软件包对应的架构
-     * @param outMsg: 服务端返回的结果
-     *
-     * @return bool: true:成功 false:失败
-     */
-    bool queryRemote(const QString &pkgName, const QString &pkgVer, const QString &pkgArch, QString &outMsg);
 
     /*
      * 向服务器请求指定包名\版本\架构数据
@@ -122,33 +111,6 @@ public:
      * @return bool: true:成功 false:失败
      */
     bool queryRemoteApp(const QString &pkgName, const QString &pkgVer, const QString &pkgArch, QString &outMsg);
-
-    /*
-     * 下载文件
-     *
-     * @param qurl: 目标文件url
-     * @param qsavePath: 保存路径
-     *
-     * @return bool: true:成功 false:失败
-     */
-    bool loadHttpData(const QString qurl, const QString qsavePath);
-
-    /*
-     * 设置下载进度回调
-     *
-     * @param progressFun: 回调函数
-     *
-     */
-    void setProgressCallback(DOWNLOADCALLBACK progressFun);
-
-    /*
-     * 查询下载文件结果信息
-     *
-     * @param dataInfo: 结果信息结构体
-     *
-     * @return bool: true:成功 false:失败
-     */
-    bool getDownloadInfo(DownloadRet &dataInfo) { return true; }
 
     /*
      * 上传文件

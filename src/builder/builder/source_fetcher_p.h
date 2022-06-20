@@ -36,8 +36,6 @@ public:
 
     util::Error handleLocalSource();
 
-    util::Error handleDebianPatch();
-
     util::Error handleLocalPatch();
 
     Project *project;

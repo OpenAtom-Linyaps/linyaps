@@ -152,36 +152,6 @@ util::Error SourceFetcherPrivate::fetchGitRepo()
     return NoError();
 };
 
-util::Error SourceFetcherPrivate::handleDebianPatch()
-{
-    Q_Q(SourceFetcher);
-
-    qInfo() << "debian source here, find debian patch ...";
-
-    QString patchPath = "debian/patches";
-    QString seriesPath = QStringList {patchPath, "series"}.join("/");
-
-    auto result = runner::RunnerRet("sh", {"-c", QString("cat %1 | grep -e '^[0-9:a-z:A-Z]'").arg(seriesPath)}, -1);
-
-    if (std::get<0>(result)) {
-        for (auto patchName : std::get<1>(result)) {
-            if (patchName.isEmpty()) {
-                // the data from stdout maybe null
-                continue;
-            }
-
-            auto debianPatch = QStringList {q->sourceRoot(), patchPath, patchName}.join("/");
-
-            qDebug() << QString("applying debian patch: %1").arg(patchName);
-            if (!runner::Runner("patch", {"-p1", "-i", debianPatch}, -1)) {
-                return NewError(-1, "patch failed");
-            }
-        }
-    }
-
-    return NoError();
-}
-
 util::Error SourceFetcherPrivate::handleLocalPatch()
 {
     // apply local patch

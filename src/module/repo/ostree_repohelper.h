@@ -102,7 +102,7 @@ public:
      *
      * @return bool: true:成功 false:失败
      */
-    bool repoPull(const QString &repoPath, const QString &remoteName, const QString &pkgName, QString &err);
+    bool repoPull(const QString &repoPath, const QString &remoteName, const QString &pkgName, QString &err) { return false;}
 
     /*
      * 将软件包数据从本地仓库签出到指定目录
@@ -215,16 +215,6 @@ private:
     void getPkgRefsFromRefsMap(GVariant *ref_map, std::map<std::string, std::string> &outRefs);
 
     /*
-     * ostree 下载进度默认回调
-     *
-     * @param progress: OstreeAsyncProgress 对象
-     * @param user_data: 用户数据
-     */
-    static void noProgressFunc(OstreeAsyncProgress *progress, gpointer user_data)
-    {
-    }
-
-    /*
      * 按照指定字符分割字符串
      *
      * @param str: 目标字符串
@@ -242,79 +232,6 @@ private:
      * @return bool: true:成功 false:失败
      */
     bool resolveRef(const std::string &fullRef, std::vector<std::string> &result);
-
-    /*
-     * 查询ostree pull参数
-     *
-     * @param builder: ostree pull需要的builder
-     * @param ref_to_fetch: 目标软件包索引ref
-     * @param dirs_to_pull: pull目标子路径
-     * @param current_checksum: 软件包对应的commit值
-     * @param force_disable_deltas: 禁止delta设置
-     * @param flags: pull参数
-     * @param progress: ostree下载进度回调
-     *
-     */
-    void getCommonPullOptions(GVariantBuilder *builder, const char *ref_to_fetch, const gchar *const *dirs_to_pull,
-                              const char *current_checksum, gboolean force_disable_deltas, OstreeRepoPullFlags flags, OstreeAsyncProgress *progress);
-
-    /*
-     * 将软件包数据从本地临时repo仓库pull到目标repo仓库
-     *
-     * @param repo: 远端仓库对应的本地仓库OstreeRepo对象
-     * @param remoteName: 远端仓库名称
-     * @param url: 临时repo仓库对应的url
-     * @param ref: 目标软件包索引ref
-     * @param checksum: 软件包对应的commit值
-     * @param cancellable: GCancellable对象
-     * @param error: 错误信息
-     *
-     * @return bool: true:成功 false:失败
-     */
-    bool repoPullLocal(OstreeRepo *repo, const char *remoteName, const char *url, const char *ref, const char *checksum, OstreeAsyncProgress *progress, GCancellable *cancellable, GError **error);
-
-    /*
-     * 创建临时repo仓库对象
-     *
-     * @param linglong_dir: 临时repo仓库对应目标仓库信息
-     * @param error: 错误信息
-     *
-     * @return OstreeRepo: 临时repo仓库对象
-     */
-    OstreeRepo *createTmpRepo(LingLongDir *linglong_dir, GError **error);
-
-    /*
-     * 根据指定目录创建临时repo仓库对象
-     *
-     * @param linglong_dir: 临时repo仓库对应目标仓库信息
-     * @param cachePath: 临时仓库路径
-     * @param error: 错误信息
-     *
-     * @return OstreeRepo: 临时repo仓库对象
-     */
-    OstreeRepo *createChildRepo(LingLongDir *linglong_dir, char *cachePath, GError **error);
-
-    /*
-     * 删除临时目录
-     *
-     * @param path: 待删除的路径
-     *
-     */
-    void delDirbyPath(const char *path);
-
-    /*
-     * 获取一个临时cache目录
-     *
-     * @return char*: 临时目录路径
-     */
-    char *getCacheDir();
-
-    /*
-     * 获取一个临时cache目录所指的文件路径。
-     *
-     * @return char*: 临时目录路径
-     */
-    char *repoReadLink(const char *path);
 
     /*
      * 保存本地仓库信息

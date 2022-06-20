@@ -49,45 +49,5 @@ auto Runner(const T program = "ostree", const Y args = "", const P timeout = 300
     }
     return true;
 };
-
-/*!
- * RunnerRet 带返回值的命令调用
- * @tparam T
- * @tparam Y
- * @tparam P
- * @param program
- * @param args
- * @param timeout
- * @return
- */
-template<typename T = QString, typename Y = QStringList, typename P = int>
-std::tuple<bool, QStringList> RunnerRet(const T program = "ostree", const Y args = "", const P timeout = 30000)
-{
-    QProcess runner;
-    qDebug() << program << args;
-    runner.start(program, args);
-
-    if (!runner.waitForStarted()) {
-        qInfo() << program << " init failed!";
-        return {false, QStringList()};
-    }
-
-    if (!runner.waitForFinished(timeout)) {
-        qInfo() << program << " run finish failed!";
-        return {false, QStringList()};
-    }
-
-    auto ret_code = runner.exitStatus();
-    if (ret_code != 0) {
-        qInfo() << "run failed: " << ret_code;
-        return {false, QStringList()};
-    }
-
-    QString outputTxt = runner.readAllStandardOutput();
-
-    // auto list = outputTxt.split("\n");
-
-    return {true, outputTxt.split("\n")};
-};
 } // namespace runner
 } // namespace linglong

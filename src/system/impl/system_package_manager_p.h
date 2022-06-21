@@ -42,12 +42,13 @@ private:
      * @brief 查询软件包下载安装状态
      *
      * @param paramOption 查询参数
+     * @param type 查询类型 0:查询应用安装进度 1:查询应用更新进度
      *
      * @return Reply dbus方法调用应答 \n
      *          code:状态码 \n
      *          message:信息
      */
-    Reply GetDownloadStatus(const ParamOption &paramOption);
+    Reply GetDownloadStatus(const ParamOption &paramOption, int type);
 
     /*
      * 从给定的软件包列表中查找最新版本的软件包
@@ -154,7 +155,8 @@ private:
     const QString kAppInstallPath;
     const QString kLocalRepoPath;
     const QString kRemoteRepoName;
-    // Fix to do 记录子线程安装状态 供查询进度信息使用 未序列化 重启service后失效
+
+    // 记录子线程安装及更新状态 供查询进度信息使用
     QMap<QString, Reply> appState;
 
     bool noDBusMode = false;

@@ -71,12 +71,13 @@ public Q_SLOTS:
      * @brief 查询软件包下载安装状态
      *
      * @param paramOption 查询参数
+     * @param type 查询类型 0:查询应用安装进度 1:查询应用更新进度
      *
      * @return Reply dbus方法调用应答 \n
      *          code:状态码 \n
      *          message:信息
      */
-    Reply GetDownloadStatus(const ParamOption &paramOption);
+    Reply GetDownloadStatus(const ParamOption &paramOption, int type);
 
     /**
      * @brief 安装软件包

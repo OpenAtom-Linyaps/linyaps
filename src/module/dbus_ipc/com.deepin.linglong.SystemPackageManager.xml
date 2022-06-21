@@ -10,6 +10,7 @@
         </method>
         <method name="GetDownloadStatus">
             <arg name="paramOption" type="(sss)" direction="in"/>
+            <arg name="type" type="i" direction="in"/>
             <arg name="reply" type="(is)" direction="out"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::ParamOption"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>

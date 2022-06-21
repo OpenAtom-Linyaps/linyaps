@@ -54,8 +54,8 @@ PackageManager::~PackageManager()
  */
 Reply PackageManager::Download(const DownloadParamOption &downloadParamOption)
 {
-    QDBusInterface interface("com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager", "com.deepin.linglong.SystemPackageManager",
-                             QDBusConnection::systemBus());
+    QDBusInterface interface("com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager",
+                             "com.deepin.linglong.SystemPackageManager", QDBusConnection::systemBus());
     // 设置 24 h超时
     interface.setTimeout(1000 * 60 * 60 * 24);
     QDBusPendingReply<Reply> dbusReply = interface.call("Download", QVariant::fromValue(downloadParamOption));
@@ -72,16 +72,17 @@ Reply PackageManager::Download(const DownloadParamOption &downloadParamOption)
  * @brief 查询软件包下载安装状态
  *
  * @param paramOption 查询参数
+ * @param type 查询类型 0:查询应用安装进度 1:查询应用更新进度
  *
  * @return Reply dbus方法调用应答 \n
  *          code:状态码 \n
  *          message:信息
  */
-Reply PackageManager::GetDownloadStatus(const ParamOption &paramOption)
+Reply PackageManager::GetDownloadStatus(const ParamOption &paramOption, int type)
 {
-    QDBusInterface interface("com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager", "com.deepin.linglong.SystemPackageManager",
-                             QDBusConnection::systemBus());
-    QDBusPendingReply<Reply> dbusReply = interface.call("GetDownloadStatus", QVariant::fromValue(paramOption));
+    QDBusInterface interface("com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager",
+                             "com.deepin.linglong.SystemPackageManager", QDBusConnection::systemBus());
+    QDBusPendingReply<Reply> dbusReply = interface.call("GetDownloadStatus", QVariant::fromValue(paramOption), type);
     dbusReply.waitForFinished();
     linglong::service::Reply reply;
     reply.code = STATUS_CODE(kSuccess);
@@ -97,8 +98,8 @@ Reply PackageManager::GetDownloadStatus(const ParamOption &paramOption)
  */
 Reply PackageManager::Install(const InstallParamOption &installParamOption)
 {
-    QDBusInterface interface("com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager", "com.deepin.linglong.SystemPackageManager",
-                             QDBusConnection::systemBus());
+    QDBusInterface interface("com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager",
+                             "com.deepin.linglong.SystemPackageManager", QDBusConnection::systemBus());
     // 设置 24 h超时
     interface.setTimeout(1000 * 60 * 60 * 24);
     QDBusPendingReply<Reply> dbusReply = interface.call("Install", QVariant::fromValue(installParamOption));
@@ -113,8 +114,8 @@ Reply PackageManager::Install(const InstallParamOption &installParamOption)
 
 Reply PackageManager::Uninstall(const UninstallParamOption &paramOption)
 {
-    QDBusInterface interface("com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager", "com.deepin.linglong.SystemPackageManager",
-                             QDBusConnection::systemBus());
+    QDBusInterface interface("com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager",
+                             "com.deepin.linglong.SystemPackageManager", QDBusConnection::systemBus());
     // 设置 30分钟超时
     interface.setTimeout(1000 * 60 * 30);
     QDBusPendingReply<Reply> dbusReply = interface.call("Uninstall", QVariant::fromValue(paramOption));
@@ -129,8 +130,8 @@ Reply PackageManager::Uninstall(const UninstallParamOption &paramOption)
 
 Reply PackageManager::Update(const ParamOption &paramOption)
 {
-    QDBusInterface interface("com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager", "com.deepin.linglong.SystemPackageManager",
-                             QDBusConnection::systemBus());
+    QDBusInterface interface("com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager",
+                             "com.deepin.linglong.SystemPackageManager", QDBusConnection::systemBus());
     QDBusPendingReply<Reply> dbusReply = interface.call("Update", QVariant::fromValue(paramOption));
     dbusReply.waitForFinished();
     linglong::service::Reply reply;
@@ -150,8 +151,8 @@ Reply PackageManager::Update(const ParamOption &paramOption)
  */
 QueryReply PackageManager::Query(const QueryParamOption &paramOption)
 {
-    QDBusInterface interface("com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager", "com.deepin.linglong.SystemPackageManager",
-                             QDBusConnection::systemBus());
+    QDBusInterface interface("com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager",
+                             "com.deepin.linglong.SystemPackageManager", QDBusConnection::systemBus());
     QDBusPendingReply<QueryReply> dbusReply = interface.call("Query", QVariant::fromValue(paramOption));
     dbusReply.waitForFinished();
     linglong::service::QueryReply reply;

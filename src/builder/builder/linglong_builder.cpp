@@ -119,6 +119,13 @@ linglong::util::Error commitBuildOutput(Project *project, AnnotationsOverlayfsRo
             util::removeDir(srcDir);
         }
     }
+    // Move files/lib/systemd to entries/systemd
+    if (util::dirExists(project->config().cacheInstallPath("files/lib/systemd"))) {
+        util::copyDir(project->config().cacheInstallPath("files/lib/systemd"),
+                      QStringList {entriesPath, "systemd"}.join(QDir::separator()));
+
+        util::removeDir(project->config().cacheInstallPath("files/lib/systemd"));
+    }
 
     repo::OSTree repo(BuilderConfig::instance()->repoPath());
 

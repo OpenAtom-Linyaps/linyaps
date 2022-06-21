@@ -126,12 +126,14 @@ int main(int argc, char **argv)
                                                   ? project->package->version.toStdString()
                                                   : parser.value(pkgVersion).toStdString();
 
-                 node["source"]["version"] = parser.value(srcVersion).isEmpty()
-                                                 ? project->source->version.toStdString()
-                                                 : parser.value(srcVersion).toStdString();
+                 if(project->package->kind != linglong::builder::PackageKindRuntime) {
+                     node["source"]["version"] = parser.value(srcVersion).isEmpty()
+                                                     ? project->source->version.toStdString()
+                                                     : parser.value(srcVersion).toStdString();
 
-                 node["source"]["commit"] = parser.value(srcCommit).isEmpty() ? project->source->commit.toStdString()
+                     node["source"]["commit"] = parser.value(srcCommit).isEmpty() ? project->source->commit.toStdString()
                                                                               : parser.value(srcCommit).toStdString();
+                 }
                  // fixme: use qt file stream
                  std::ofstream fout(projectConfigPath.toStdString());
                  fout << node;

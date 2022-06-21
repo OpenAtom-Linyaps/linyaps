@@ -38,6 +38,7 @@ then
 fi
 
 useruid=400
+usergid=400
 if [ `grep -cw "deepin-linglong" /etc/passwd` -gt '0' ]
 then
 	deepinlinglonguid=`id deepin-linglong | awk -F= '{print $2}' | awk -F"(" '{print $1}'`
@@ -54,6 +55,21 @@ then
                 	fi
         	done
         fi
+        deepinlinglonggid=`id deepin-linglong | awk -F= '{print $3}' | awk -F"(" '{print $1}'`
+        if [ $deepinlinglonggid -ge 400 ] && [ $deepinlinglonggid -le 499 ]
+        then
+        	useruid=$deepinlinglonggid
+        else
+        	while [ `getent passwd $usergid | wc -l` -gt 0 ]
+        	do
+                	useruid=`expr $usergid + 1`
+                	if [ $usergid -ge 499 ]
+                	then
+                        	echo "gid400-499被占用"
+                	fi
+        	done
+        fi
+        groupmod -g $usergid deepin-linglong
 	usermod -u $useruid -s /sbin/nologin deepin-linglong
         if ! `groups deepin-linglong |grep -qw "users"`
         then
@@ -68,7 +84,16 @@ else
                         echo "uid400-499被占用"
                 fi
         done
-        useradd -u $useruid -s /sbin/nologin deepin-linglong
+        while [ `getent group $usergid | wc -l` -gt 0 ]
+        do
+                useruid=`expr $usergid + 1`
+                if [ $usergid -ge 499 ]
+                then
+                        echo "gid400-499被占用"
+                fi
+        done
+        groupadd -g $usergid deepin-linglong
+        useradd -u $useruid -g deepin-linglong -s /sbin/nologin deepin-linglong
         gpasswd -a deepin-linglong users
 fi
 chown deepin-linglong:users /usr/bin/ll-system-helper

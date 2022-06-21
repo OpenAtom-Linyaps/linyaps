@@ -58,11 +58,11 @@ then
         deepinlinglonggid=`id deepin-linglong | awk -F= '{print $3}' | awk -F"(" '{print $1}'`
         if [ $deepinlinglonggid -ge 400 ] && [ $deepinlinglonggid -le 499 ]
         then
-        	useruid=$deepinlinglonggid
+        	usergid=$deepinlinglonggid
         else
         	while [ `getent passwd $usergid | wc -l` -gt 0 ]
         	do
-                	useruid=`expr $usergid + 1`
+                	usergid=`expr $usergid + 1`
                 	if [ $usergid -ge 499 ]
                 	then
                         	echo "gid400-499被占用"
@@ -86,7 +86,7 @@ else
         done
         while [ `getent group $usergid | wc -l` -gt 0 ]
         do
-                useruid=`expr $usergid + 1`
+                usergid=`expr $usergid + 1`
                 if [ $usergid -ge 499 ]
                 then
                         echo "gid400-499被占用"

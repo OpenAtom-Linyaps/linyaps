@@ -238,6 +238,14 @@ Reply PackageManager::Start(const RunParamOption &paramOption)
         }
     }
 
+    //链接${LINGLONG_ROOT}/entries/share到~/.config/systemd/user下
+    //FIXME:后续上了提权模块，放入安装处理。
+    const QString appUserServicePath = linglong::util::getLinglongRootPath() + "/entries/share/systemd/user";
+    const QString userSystemdServicePath = linglong::util::ensureUserDir({".config/systemd/user"});
+    if(linglong::util::dirExists(appUserServicePath)){
+        linglong::util::linkDirFiles(appUserServicePath,userSystemdServicePath);
+    }
+
     QFuture<void> future = QtConcurrent::run(runPool.data(), [=]() {
         // 判断是否存在
         linglong::package::Ref ref("", appId, version, arch);

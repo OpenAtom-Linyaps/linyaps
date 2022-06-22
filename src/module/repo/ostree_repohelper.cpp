@@ -437,52 +437,14 @@ bool OstreeRepoHelper::queryMatchRefs(const QString &repoPath, const QString &re
 bool OstreeRepoHelper::checkOutAppData(const QString &repoPath, const QString &remoteName, const QString &ref,
                                        const QString &dstPath, QString &err)
 {
-    GCancellable *cancellable = NULL;
-    GError *error = NULL;
-    OstreeRepoCheckoutAtOptions options = {
-        OSTREE_REPO_CHECKOUT_MODE_NONE,
-    };
-    char info[MAX_ERRINFO_BUFSIZE] = {'\0'};
-    if (dstPath.isEmpty() || ref.isEmpty()) {
-        // fprintf(stdout, "checkOutAppData param err\n");
-        snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s param err", __FILE__, __func__);
-        err = info;
-        return false;
-    }
-
-    if (!pLingLongDir->repo || pLingLongDir->basedir != repoPath) {
-        snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s repo has not been created", __FILE__, __func__);
-        err = info;
-        return false;
-    }
-    const std::string dstPathTmp = dstPath.toStdString();
-    // if (g_mkdir_with_parents(dstPathTmp.c_str(), 0755)) {
-    //    return false;
-    // }
+    // ostree --repo=repo checkout -U --union org.deepin.calculator/x86_64/1.2.2 /persistent/linglong/layers/XXX
     linglong::util::createDir(dstPath);
-    qDebug() << "checkOutAppData dstPath:" << dstPath;
-
-    options.mode = OSTREE_REPO_CHECKOUT_MODE_USER;
-    options.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES;
-    options.enable_fsync = FALSE;
-    options.bareuseronly_dirs = TRUE;
-    // options.subpath = "/metadata";
-
-    // map<string, string> outRefs;
-    // string checksum = outRefs.find(matchRef)->second;
-    QMap<QString, QString> outRefs;
-    bool ret = getRemoteRefs(repoPath, remoteName, outRefs, err);
+    auto ret = linglong::runner::Runner(
+        "ostree", {"--repo=" + repoPath + "/repo", "checkout", "-U", "--union", ref, dstPath}, 1000 * 60 * 60 * 24);
     if (!ret) {
-        return ret;
-    }
-    std::string checksum = outRefs.find(ref).value().toStdString();
-
-    // extract_extra_data (self, checksum, extradir, &created_extra_data, cancellable, error)
-    if (!ostree_repo_checkout_at(pLingLongDir->repo, &options, AT_FDCWD, dstPathTmp.c_str(), checksum.c_str(),
-                                 cancellable, &error)) {
-        // fprintf(stdout, "ostree_repo_checkout_at error:%s\n", error->message);
-        qInfo() << "ostree_repo_checkout_at error:" << error->message;
-        err = "ostree_repo_checkout_at error:" + QString(QLatin1String(error->message));
+        err = "checkOutAppData " + ref + " err";
+        qCritical() << "checkOutAppData err, repoPath:" << repoPath << ", remoteName:" << remoteName
+                    << ", dstPath:" << dstPath << ", ref:" << ref;
         return false;
     }
     return true;

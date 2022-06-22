@@ -22,7 +22,7 @@ Options:
 
 Arguments:
   query                                query app info
-  appId                                app id
+  appId                                application id
 ```
 
 通过`ll-cli query`命令可以从远程 repo 中找到应用程序信息:

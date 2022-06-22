@@ -19,7 +19,7 @@ Options:
 
 Arguments:
   update            update an application
-  appId             app id
+  appId             application id
 ```
 
 通过`ll-cli update`命令将本地软件包版本更新到远端仓库中的最新版本，如:
@@ -28,7 +28,7 @@ Arguments:
 ll-cli update <org.deepin.music>
 ```
 
-更新特定版本的软件包
+更新指定版本的软件包
 
 ```bash
 ll-cli update <org.deepin.calculator/5.5.23>

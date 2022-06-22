@@ -21,7 +21,7 @@ Options:
 
 Arguments:
   uninstall                            uninstall an application
-  appId                                app id
+  appId                                application id
 ```
 
 使用`ll-cli uninstall`命令卸载玲珑应用：

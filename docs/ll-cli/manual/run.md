@@ -42,6 +42,12 @@ Arguments:
 ll-cli run <org.deepin.music>
 ```
 
+默认情况下执行run命令会启动最高版本的应用，若需运行指定版本应用，需在`appid`后附加对应版本号：
+
+```bash
+ll-cli run <org.deepin.music/5.1.2>
+```
+
 默认情况下会使用`ll-dbus-proxy`拦截转发`dbus`消息，如果不想使用`ll-dbus-proxy`，可以使用`--no-proxy`参数：
 
 ```bash

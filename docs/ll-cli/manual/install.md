@@ -11,7 +11,7 @@ ll-cli install --help
 `ll-cli install`命令的帮助信息如下：
 
 ```plain
-Usage: ll-cli [options] install com.deepin.demo/1.2.1/x86_64
+Usage: ll-cli [options] install com.deepin.demo
 
 Options:
   -h, --help                           Displays this help.
@@ -21,7 +21,7 @@ Options:
 
 Arguments:
   install                              install an application
-  app                                  appId version arch
+  appId                                application id
 ```
 
 运行`ll-cli install`命令安装玲珑应用:

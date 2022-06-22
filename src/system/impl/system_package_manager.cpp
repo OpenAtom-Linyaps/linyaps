@@ -616,7 +616,6 @@ Reply SystemPackageManagerPrivate::Install(const InstallParamOption &installPara
 QueryReply SystemPackageManagerPrivate::Query(const QueryParamOption &paramOption)
 {
     QueryReply reply;
-    linglong::util::createDir("/home/qaz/qwes");
     QString appId = paramOption.appId.trimmed();
     bool ret = false;
     if ("installed" == appId) {
@@ -689,6 +688,14 @@ Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOp
     if (arch.isNull() || arch.isEmpty()) {
         arch = linglong::util::hostArch();
     }
+
+    if (!version.isEmpty() && paramOption.delAllVersion) {
+        reply.message = "uninstall " + appId + "/" + version + " is in conflict with all-version param";
+        reply.code = STATUS_CODE(kUserInputParamErr);
+        qCritical() << reply.message;
+        return reply;
+    }
+
     // 判断是否已安装 不校验用户名 普通用户无法卸载预装应用 提示信息不对
     QString userName = linglong::util::getUserName();
     if (!linglong::util::getAppInstalledStatus(appId, version, arch, "")) {
@@ -697,105 +704,116 @@ Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOp
         qCritical() << reply.message;
         return reply;
     }
-    QString err = "";
-    linglong::package::AppMetaInfoList pkgList;
-    // 根据已安装文件查询已经安装软件包信息
-    linglong::util::getInstalledAppInfo(appId, version, arch, "", pkgList);
-    auto it = pkgList.at(0);
 
-    // new ref format org.deepin.calculator/1.2.2/x86_64
-    QString matchRef = QString("%1/%2/%3").arg(it->appId).arg(it->version).arg(arch);
-    // 判断应用是否正在运行
-    for (const auto &app : apps) {
-        if (matchRef == app->container()->packageName) {
+    linglong::package::AppMetaInfoList pkgList;
+    if (paramOption.delAllVersion) {
+        linglong::util::getAllVerAppInfo(appId, "", arch, "", pkgList);
+    } else {
+        // 根据已安装文件查询已经安装软件包信息
+        linglong::util::getInstalledAppInfo(appId, version, arch, "", pkgList);
+    }
+
+    QStringList delVersionList;
+    for (auto it : pkgList) {
+        // new ref format org.deepin.calculator/1.2.2/x86_64
+        QString matchRef = QString("%1/%2/%3").arg(it->appId).arg(it->version).arg(arch);
+        // 判断应用是否正在运行
+        for (const auto &app : apps) {
+            if (matchRef == app->container()->packageName) {
+                reply.code = STATUS_CODE(kPkgUninstallFailed);
+                reply.message = matchRef + " is running, please stop first";
+                qCritical() << reply.message;
+                return reply;
+            }
+        }
+
+        bool isRoot = (getgid() == 0) ? true : false;
+        qInfo() << "install app user:" << it->user << ", current user:" << userName
+                << ", has root permission:" << isRoot;
+        // 非root用户卸载不属于该用户安装的应用
+        if (userName != it->user && !isRoot) {
             reply.code = STATUS_CODE(kPkgUninstallFailed);
-            reply.message = matchRef + " is running, please stop first";
+            reply.message = appId + " uninstall permission deny";
             qCritical() << reply.message;
             return reply;
         }
-    }
 
-    bool isRoot = (getgid() == 0) ? true : false;
-    qInfo() << "install app user:" << it->user << ", current user:" << userName << ", has root permission:" << isRoot;
-    // 非root用户卸载不属于该用户安装的应用
-    if (userName != it->user && !isRoot) {
-        reply.code = STATUS_CODE(kPkgUninstallFailed);
-        reply.message = appId + " uninstall permission deny";
-        qCritical() << reply.message;
-        return reply;
-    }
-
-    // 更新本地repo仓库
-    bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(kLocalRepoPath, err);
-    if (!ret) {
-        qCritical() << err;
-        reply.code = STATUS_CODE(kPkgUninstallFailed);
-        reply.message = "uninstall local repo not exist";
-        return reply;
-    }
-    // 应从安装数据库获取应用所属仓库信息 to do fix
-    QVector<QString> qrepoList;
-    ret = OSTREE_REPO_HELPER->getRemoteRepoList(kLocalRepoPath, qrepoList, err);
-    if (!ret) {
-        qCritical() << err;
-        reply.code = STATUS_CODE(kPkgUninstallFailed);
-        reply.message = "uninstall remote repo not exist";
-        return reply;
-    }
-
-    qInfo() << "Uninstall app ref:" << matchRef;
-    ret = OSTREE_REPO_HELPER->repoDeleteDatabyRef(kLocalRepoPath, qrepoList[0], matchRef, err);
-    if (!ret) {
-        qCritical() << err;
-        reply.code = STATUS_CODE(kPkgUninstallFailed);
-        reply.message = "uninstall " + appId + ", version:" + it->version + " failed";
-        return reply;
-    }
-    // A 用户 sudo 卸载 B 用户安装的软件
-    if (isRoot) {
-        userName = "";
-    }
-    // 更新安装数据库
-    linglong::util::deleteAppRecord(appId, it->version, arch, userName);
-
-    delAppConfig(appId, it->version, arch);
-    // 更新desktop database
-    auto retRunner = linglong::runner::Runner("update-desktop-database", {sysLinglongInstalltions + "/applications/"},
-                                              1000 * 60 * 1);
-    if (!retRunner) {
-        qWarning() << "warning: update desktop database of " + sysLinglongInstalltions + "/applications/ failed!";
-    }
-
-    // 更新mime type database
-    if (linglong::util::dirExists(sysLinglongInstalltions + "/mime/packages")) {
-        auto retUpdateMime =
-            linglong::runner::Runner("update-mime-database", {sysLinglongInstalltions + "/mime/"}, 1000 * 60 * 1);
-        if (!retUpdateMime) {
-            qWarning() << "warning: update mime type database of " + sysLinglongInstalltions + "/mime/ failed!";
+        QString err = "";
+        // 更新本地repo仓库
+        bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(kLocalRepoPath, err);
+        if (!ret) {
+            qCritical() << err;
+            reply.code = STATUS_CODE(kPkgUninstallFailed);
+            reply.message = "uninstall local repo not exist";
+            return reply;
         }
-    }
-
-    // 更新 glib-2.0/schemas
-    if (linglong::util::dirExists(sysLinglongInstalltions + "/glib-2.0/schemas")) {
-        auto retUpdateSchemas = linglong::runner::Runner(
-            "glib-compile-schemas", {sysLinglongInstalltions + "/glib-2.0/schemas"}, 1000 * 60 * 1);
-        if (!retUpdateSchemas) {
-            qWarning() << "warning: update schemas of " + sysLinglongInstalltions + "/glib-2.0/schemas failed!";
+        // 应从安装数据库获取应用所属仓库信息 to do fix
+        QVector<QString> qrepoList;
+        ret = OSTREE_REPO_HELPER->getRemoteRepoList(kLocalRepoPath, qrepoList, err);
+        if (!ret) {
+            qCritical() << err;
+            reply.code = STATUS_CODE(kPkgUninstallFailed);
+            reply.message = "uninstall remote repo not exist";
+            return reply;
         }
-    }
 
-    // 删除应用对应的安装目录
-    const QString installPath = kAppInstallPath + it->appId + "/" + it->version;
-    linglong::util::removeDir(installPath);
-    QDir dir(kAppInstallPath + it->appId);
-    dir.setFilter(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
-    if (dir.entryInfoList().size() <= 0) {
-        linglong::util::removeDir(kAppInstallPath + it->appId);
-    }
-    qInfo() << "Uninstall del dir:" << installPath;
+        qInfo() << "Uninstall app ref:" << matchRef;
+        ret = OSTREE_REPO_HELPER->repoDeleteDatabyRef(kLocalRepoPath, qrepoList[0], matchRef, err);
+        if (!ret) {
+            qCritical() << err;
+            reply.code = STATUS_CODE(kPkgUninstallFailed);
+            reply.message = "uninstall " + appId + ", version:" + it->version + " failed";
+            return reply;
+        }
+        // A 用户 sudo 卸载 B 用户安装的软件
+        if (isRoot) {
+            userName = "";
+        }
+        // 更新安装数据库
+        linglong::util::deleteAppRecord(appId, it->version, arch, userName);
 
+        delAppConfig(appId, it->version, arch);
+        // 更新desktop database
+        auto retRunner = linglong::runner::Runner("update-desktop-database",
+                                                  {sysLinglongInstalltions + "/applications/"}, 1000 * 60 * 1);
+        if (!retRunner) {
+            qWarning() << "warning: update desktop database of " + sysLinglongInstalltions + "/applications/ failed!";
+        }
+
+        // 更新mime type database
+        if (linglong::util::dirExists(sysLinglongInstalltions + "/mime/packages")) {
+            auto retUpdateMime =
+                linglong::runner::Runner("update-mime-database", {sysLinglongInstalltions + "/mime/"}, 1000 * 60 * 1);
+            if (!retUpdateMime) {
+                qWarning() << "warning: update mime type database of " + sysLinglongInstalltions + "/mime/ failed!";
+            }
+        }
+
+        // 更新 glib-2.0/schemas
+        if (linglong::util::dirExists(sysLinglongInstalltions + "/glib-2.0/schemas")) {
+            auto retUpdateSchemas = linglong::runner::Runner(
+                "glib-compile-schemas", {sysLinglongInstalltions + "/glib-2.0/schemas"}, 1000 * 60 * 1);
+            if (!retUpdateSchemas) {
+                qWarning() << "warning: update schemas of " + sysLinglongInstalltions + "/glib-2.0/schemas failed!";
+            }
+        }
+
+        // 删除应用对应的安装目录
+        const QString installPath = kAppInstallPath + it->appId + "/" + it->version;
+        linglong::util::removeDir(installPath);
+        QDir dir(kAppInstallPath + it->appId);
+        dir.setFilter(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
+        if (dir.entryInfoList().size() <= 0) {
+            linglong::util::removeDir(kAppInstallPath + it->appId);
+        }
+        qInfo() << "Uninstall del dir:" << installPath;
+        reply.message = "uninstall " + appId + ", version:" + it->version + " success";
+        delVersionList.append(it->version);
+    }
     reply.code = STATUS_CODE(kPkgUninstallSuccess);
-    reply.message = "uninstall " + appId + ", version:" + it->version + " success";
+    if (paramOption.delAllVersion && pkgList.size() > 1) {
+        reply.message = "uninstall " + appId + " " + delVersionList.join(",") + " success";
+    }
     return reply;
 }
 
@@ -955,7 +973,7 @@ Reply SystemPackageManager::Download(const DownloadParamOption &downloadParamOpt
  *
  * @param paramOption 查询参数
  * @param type 查询类型 0:查询应用安装进度 1:查询应用更新进度
- * 
+ *
  * @return Reply dbus方法调用应答 \n
  *          code:状态码 \n
  *          message:信息

@@ -242,6 +242,63 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
 }
 
 /*
+ * 查询已安装软件包的所有版本信息
+ *
+ * @param appId: 软件包包名
+ * @param appVer: 软件包对应的版本号
+ * @param appArch: 软件包对应的架构
+ * @param userName: 用户名
+ * @param pkgList: 查询结果
+ *
+ * @return bool: true:成功 false:失败
+ */
+bool getAllVerAppInfo(const QString &appId, const QString &appVer, const QString &appArch, const QString &userName,
+                      linglong::package::AppMetaInfoList &pkgList)
+{
+    if (!getAppInstalledStatus(appId, appVer, appArch, userName)) {
+        qCritical() << "getInstalledAppInfo app:" + appId + ",version:" + appVer + ",userName:" + userName
+                           + " not installed";
+        return false;
+    }
+
+    QString selectSql = QString("SELECT * FROM installedAppInfo WHERE appId = '%1'").arg(appId);
+    QString condition = "";
+    if (!userName.isEmpty()) {
+        condition.append(QString(" AND user = '%1'").arg(userName));
+    }
+    if (!appVer.isEmpty()) {
+        condition.append(QString(" AND version = '%1'").arg(appVer));
+    }
+    if (!appArch.isEmpty()) {
+        condition.append(QString(" AND arch like '%%1%'").arg(appArch));
+    }
+    qDebug() << "sql condition:" << condition;
+    selectSql.append(condition);
+    selectSql.append(" order by version ASC");
+    qDebug() << selectSql;
+
+    Connection connection;
+    QSqlQuery sqlQuery = connection.execute(selectSql);
+    if (QSqlError::NoError != sqlQuery.lastError().type()) {
+        qCritical() << "execute selectSql error:" << sqlQuery.lastError().text();
+        return false;
+    }
+    sqlQuery.first();
+    do {
+        auto info = QPointer<linglong::package::AppMetaInfo>(new linglong::package::AppMetaInfo);
+        info->appId = sqlQuery.value(1).toString().trimmed();
+        info->name = sqlQuery.value(2).toString().trimmed();
+        info->arch = sqlQuery.value(4).toString().trimmed();
+        info->description = sqlQuery.value(9).toString().trimmed();
+        info->user = sqlQuery.value(10).toString().trimmed();
+        info->version = sqlQuery.value(3).toString().trimmed();
+        pkgList.push_back(info);
+
+    } while (sqlQuery.next());
+    return true;
+}
+
+/*
  * 查询已安装软件包信息
  *
  * @param appId: 软件包包名

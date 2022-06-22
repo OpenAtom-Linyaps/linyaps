@@ -83,6 +83,20 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
                            const QString &userName);
 
 /*
+ * 查询已安装软件包的所有版本信息
+ *
+ * @param appId: 软件包包名
+ * @param appVer: 软件包对应的版本号
+ * @param appArch: 软件包对应的架构
+ * @param userName: 用户名
+ * @param pkgList: 查询结果
+ *
+ * @return bool: true:成功 false:失败
+ */
+bool getAllVerAppInfo(const QString &appId, const QString &appVer, const QString &appArch, const QString &userName,
+                      linglong::package::AppMetaInfoList &pkgList);
+
+/*
  * 查询已安装软件包信息
  *
  * @param appId: 软件包包名

@@ -637,8 +637,10 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
              auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
              auto optNoDbus = QCommandLineOption("nodbus", "execute cmd directly, not via dbus(only for root user)", "");
+             auto optAllVer = QCommandLineOption("all-version", "uninstall all version application", "");
              parser.addOption(optNoDbus);
              parser.addOption(optRepoPoint);
+             parser.addOption(optAllVer);
              parser.process(app);
              args = parser.positionalArguments();
              auto appInfo = args.value(1);
@@ -661,6 +663,7 @@ int main(int argc, char **argv)
              paramOption.repoPoint = repoType;
              linglong::service::Reply reply;
              qInfo().noquote() << "uninstall" << appInfo << ", please wait a few minutes...";
+             paramOption.delAllVersion = parser.isSet(optAllVer);
              if (parser.isSet(optNoDbus)) {
                  reply = SYSTEM_MANAGER_HELPER->Uninstall(paramOption);
                  if (reply.code != STATUS_CODE(kPkgUninstallSuccess)) {

@@ -25,7 +25,7 @@
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
         </method>
         <method name="Uninstall">
-            <arg name="paramOption" type="(ssss)" direction="in"/>
+            <arg name="paramOption" type="(ssssb)" direction="in"/>
             <arg name="reply" type="(is)" direction="out"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::UninstallParamOption"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>

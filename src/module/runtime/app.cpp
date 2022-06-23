@@ -369,6 +369,8 @@ public:
                 appLdLibraryPath + "/aarch64-linux-gnu",
                 "/runtime/lib",
                 "/runtime/lib/aarch64-linux-gnu",
+                "/usr/lib",
+                "/usr/lib/aarch64-linux-gnu",
             };
             r->process->env.push_back(
                 "QT_PLUGIN_PATH=/opt/apps/" + appId
@@ -384,6 +386,8 @@ public:
                 "/runtime/lib",
                 "/runtime/lib/x86_64-linux-gnu",
                 "/runtime/lib/i386-linux-gnu",
+                "/usr/lib",
+                "/usr/lib/x86_64-linux-gnu",
             };
             r->process->env.push_back(
                 "QT_PLUGIN_PATH=/opt/apps/" + appId

@@ -557,6 +557,13 @@ bool OstreeRepoHelper::repoPullbyCmd(const QString &destPath, const QString &rem
     // repo:com.qq.weixin.work.deepin/4.0.0.6007/x86_64"
     QString logPath = QString("/tmp/.linglong");
     linglong::util::createDir(logPath);
+
+    // add for ll-test
+    QFile file(logPath);
+    QFile::Permissions permissions = file.permissions();
+    permissions |= QFile::WriteOther;
+    file.setPermissions(permissions);
+
     QString logName = ref.split("/").join("-");
     QString ostreeCmd = "ostree --repo=" + tmpPath + " pull --mirror " + fullref;
     auto ret =

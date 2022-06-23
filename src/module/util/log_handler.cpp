@@ -223,17 +223,9 @@ void linglong::util::LogHandlerPrivate::messageHandler(QtMsgType type, const QMe
         return;
     }
 
-    // 输出到日志文件, 格式: 时间 - [Level] (文件名:行数, 函数): 消息
-    QString fileName = context.file;
-    int index = fileName.lastIndexOf(QDir::separator());
-    fileName = fileName.mid(index + 1);
-
-    (*LogHandlerPrivate::logOut) << QString("%1 - [%2] (%3:%4, %5): %6\n")
+    (*LogHandlerPrivate::logOut) << QString("%1 [%2] : %3\n")
                                         .arg(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz"))
                                         .arg(level)
-                                        .arg(fileName)
-                                        .arg(context.line)
-                                        .arg(context.function)
                                         .arg(msg);
 }
 

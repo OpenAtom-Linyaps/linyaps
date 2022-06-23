@@ -111,7 +111,7 @@ bool HttpClient::queryRemoteApp(const QString &pkgName, const QString &pkgVer, c
     if (STATUS_CODE(kSuccess) != statusCode) {
         return false;
     }
-    qDebug() << "queryRemoteApp configUrl:" << configUrl;
+
     QString postUrl = "";
     if (configUrl.endsWith("/")) {
         postUrl = configUrl + "apps/fuzzysearchapp";
@@ -135,7 +135,6 @@ bool HttpClient::queryRemoteApp(const QString &pkgName, const QString &pkgVer, c
     QObject::connect(reply, &QNetworkReply::finished, &eventLoop, [&]() {
         if (reply->error() == QNetworkReply::NoError) {
             outMsg = QString::fromUtf8(reply->readAll());
-            qDebug().noquote() << "receive data from server:" << outMsg;
             ret = true;
         } else {
             qCritical() << reply->errorString();

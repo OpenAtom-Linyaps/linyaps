@@ -250,9 +250,6 @@ Reply SystemPackageManagerPrivate::GetDownloadStatus(const ParamOption &paramOpt
             }
             qInfo() << reply.message;
             progressFile.close();
-        } else {
-            // 正在下载应用runtime 或者 未走到ostree 下载流程
-            qDebug() << filePath << " not exist";
         }
         if (type > 0) {
             reply.code = STATUS_CODE(kPkgUpdating);
@@ -316,6 +313,9 @@ bool SystemPackageManagerPrivate::installRuntime(const QString &runtimeId, const
 
     // 更新本地数据库文件
     QString userName = linglong::util::getUserName();
+    if (noDBusMode) {
+        userName = "deepin-linglong";
+    }
     pkgInfo->kind = "runtime";
     linglong::util::insertAppRecord(pkgInfo, "user", userName);
     return true;

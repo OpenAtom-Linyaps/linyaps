@@ -365,12 +365,9 @@ public:
         switch (runArch) {
         case ARM64:
             fixLdLibraryPath = QStringList {
-                appLdLibraryPath,
-                appLdLibraryPath + "/aarch64-linux-gnu",
-                "/runtime/lib",
-                "/runtime/lib/aarch64-linux-gnu",
-                "/usr/lib",
-                "/usr/lib/aarch64-linux-gnu",
+                appLdLibraryPath, appLdLibraryPath + "/aarch64-linux-gnu",
+                "/runtime/lib",   "/runtime/lib/aarch64-linux-gnu",
+                "/usr/lib",       "/usr/lib/aarch64-linux-gnu",
             };
             r->process->env.push_back(
                 "QT_PLUGIN_PATH=/opt/apps/" + appId
@@ -378,6 +375,10 @@ public:
             r->process->env.push_back(
                 "QT_QPA_PLATFORM_PLUGIN_PATH=/opt/apps/" + appId
                 + "/files/plugins/platforms:/runtime/lib/aarch64-linux-gnu/qt5/plugins/platforms:/usr/lib/aarch64-linux-gnu/qt5/plugins/platforms");
+            if (!fuseMount) {
+                r->process->env.push_back("GST_PLUGIN_PATH=/opt/apps/" + appId
+                                          + "/files/lib/aarch64-linux-gnu/gstreamer-1.0");
+            }
             break;
         case X86_64:
             fixLdLibraryPath = QStringList {
@@ -395,6 +396,10 @@ public:
             r->process->env.push_back(
                 "QT_QPA_PLATFORM_PLUGIN_PATH=/opt/apps/" + appId
                 + "/files/plugins/platforms:/runtime/lib/x86_64-linux-gnu/qt5/plugins/platforms:/usr/lib/x86_64-linux-gnu/qt5/plugins/platforms");
+            if (!fuseMount) {
+                r->process->env.push_back("GST_PLUGIN_PATH=/opt/apps/" + appId
+                                          + "/files/lib/x86_64-linux-gnu/gstreamer-1.0");
+            }
             break;
         default:
             qInfo() << "no supported arch :" << appRef.arch;

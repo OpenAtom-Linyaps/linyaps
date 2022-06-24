@@ -35,6 +35,17 @@ private:
     QMap<QString, QPointer<linglong::runtime::App>> apps;
     linglong::repo::OSTree repo;
 
+    /**
+     * @brief 查询应用是否正在运行
+     *
+     * @param appId: 应用的appId
+     * @param version: 应用的版本
+     * @param arch: 应用的架构
+     *
+     * @return bool: true 正在运行 false 未运行
+     */
+    bool isAppRunning(const QString &appId, const QString &version, const QString &arch);
+
 public:
     PackageManager *const q_ptr;
     Q_DECLARE_PUBLIC(PackageManager);

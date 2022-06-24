@@ -507,7 +507,6 @@ int main(int argc, char **argv)
                      dbusReply.waitForFinished();
                      reply = dbusReply.value();
                      if ("flatpak" != repoType) {
-                         // Fix to do 多线程场景下httpclient.cpp中curl 暂未支持多线程
                          QThread::sleep(1);
                          // 1 秒 查询一次进度
                          dbusReply = packageManager.GetDownloadStatus(installParamOption, 0);
@@ -565,27 +564,29 @@ int main(int argc, char **argv)
              qInfo().noquote() << "update" << paramOption.appId << ", please wait a few minutes...";
              QDBusPendingReply<linglong::service::Reply> dbusReply = packageManager.Update(paramOption);
              dbusReply.waitForFinished();
+             linglong::service::Reply reply;
+             reply = dbusReply.value();
+             if (reply.code == STATUS_CODE(kPkgUpdating)) {
+                 signal(SIGINT, doIntOperate);
 
-             signal(SIGINT, doIntOperate);
-
-             QThread::sleep(1);
-             // 1 秒 查询一次进度
-             dbusReply = packageManager.GetDownloadStatus(paramOption, 1);
-             dbusReply.waitForFinished();
-             linglong::service::Reply reply = dbusReply.value();
-             while (reply.code == STATUS_CODE(kPkgUpdating)) {
-                 // 隐藏光标
-                 std::cout << "\033[?25l";
-                 std::cout << "\r\33[K" << reply.message.toStdString();
-                 std::cout.flush();
                  QThread::sleep(1);
+                 // 1 秒 查询一次进度
                  dbusReply = packageManager.GetDownloadStatus(paramOption, 1);
                  dbusReply.waitForFinished();
                  reply = dbusReply.value();
+                 while (reply.code == STATUS_CODE(kPkgUpdating)) {
+                     // 隐藏光标
+                     std::cout << "\033[?25l";
+                     std::cout << "\r\33[K" << reply.message.toStdString();
+                     std::cout.flush();
+                     QThread::sleep(1);
+                     dbusReply = packageManager.GetDownloadStatus(paramOption, 1);
+                     dbusReply.waitForFinished();
+                     reply = dbusReply.value();
+                 }
+                 // 显示光标
+                 std::cout << "\033[?25h" << std::endl;
              }
-             // 显示光标
-             std::cout << "\033[?25h" << std::endl;
-
              if (reply.code != STATUS_CODE(kErrorPkgUpdateSuccess)) {
                  qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
                  return -1;

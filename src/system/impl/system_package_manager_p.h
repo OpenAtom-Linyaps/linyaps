@@ -150,7 +150,7 @@ private:
     void delAppConfig(const QString &appId, const QString &version, const QString &arch);
 
 private:
-    QMap<QString, QPointer<linglong::runtime::App>> apps;
+
     const QString sysLinglongInstalltions;
     const QString kAppInstallPath;
     const QString kLocalRepoPath;

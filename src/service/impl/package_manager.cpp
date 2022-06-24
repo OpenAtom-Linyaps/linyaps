@@ -48,6 +48,26 @@ PackageManager::~PackageManager()
 {
 }
 
+bool PackageManagerPrivate::isAppRunning(const QString &appId, const QString &version, const QString &arch)
+{
+    linglong::package::AppMetaInfoList pkgList;
+    if (!appId.isEmpty()) {
+        linglong::util::getInstalledAppInfo(appId, version, arch, "", pkgList);
+        if (pkgList.size() > 0) {
+            auto it = pkgList.at(0);
+            // new ref format org.deepin.calculator/1.2.2/x86_64
+            QString matchRef = QString("%1/%2/%3").arg(it->appId).arg(it->version).arg(arch);
+            // 判断应用是否正在运行
+            for (const auto &app : apps) {
+                if (matchRef == app->container()->packageName) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
 /*!
  * 下载软件包
  * @param paramOption
@@ -114,13 +134,26 @@ Reply PackageManager::Install(const InstallParamOption &installParamOption)
 
 Reply PackageManager::Uninstall(const UninstallParamOption &paramOption)
 {
+    Q_D(PackageManager);
+
+    linglong::service::Reply reply;
+    QString appId = paramOption.appId.trimmed();
+    QString version = paramOption.version.trimmed();
+    QString arch = linglong::util::hostArch();
+
+    if (d->isAppRunning(appId, version, arch)) {
+        reply.code = STATUS_CODE(kPkgUninstallFailed);
+        reply.message = appId + " is running, please stop first";
+        qCritical() << reply.message;
+        return reply;
+    }
+
     QDBusInterface interface("com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager",
                              "com.deepin.linglong.SystemPackageManager", QDBusConnection::systemBus());
     // 设置 30分钟超时
     interface.setTimeout(1000 * 60 * 30);
     QDBusPendingReply<Reply> dbusReply = interface.call("Uninstall", QVariant::fromValue(paramOption));
     dbusReply.waitForFinished();
-    linglong::service::Reply reply;
     reply.code = STATUS_CODE(kPkgUninstalling);
     if (dbusReply.isValid()) {
         reply = dbusReply.value();
@@ -130,11 +163,23 @@ Reply PackageManager::Uninstall(const UninstallParamOption &paramOption)
 
 Reply PackageManager::Update(const ParamOption &paramOption)
 {
+    Q_D(PackageManager);
+    linglong::service::Reply reply;
+    QString appId = paramOption.appId.trimmed();
+    QString version = paramOption.version.trimmed();
+    QString arch = linglong::util::hostArch();
+
+    if (d->isAppRunning(appId, version, arch)) {
+        reply.code = STATUS_CODE(kErrorPkgUpdateFailed);
+        reply.message = appId + " is running, please stop first";
+        qCritical() << reply.message;
+        return reply;
+    }
+
     QDBusInterface interface("com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager",
                              "com.deepin.linglong.SystemPackageManager", QDBusConnection::systemBus());
     QDBusPendingReply<Reply> dbusReply = interface.call("Update", QVariant::fromValue(paramOption));
     dbusReply.waitForFinished();
-    linglong::service::Reply reply;
     reply.code = STATUS_CODE(kPkgUpdating);
     if (dbusReply.isValid()) {
         reply = dbusReply.value();
@@ -240,11 +285,11 @@ Reply PackageManager::Start(const RunParamOption &paramOption)
     }
 
     //链接${LINGLONG_ROOT}/entries/share到~/.config/systemd/user下
-    //FIXME:后续上了提权模块，放入安装处理。
+    // FIXME:后续上了提权模块，放入安装处理。
     const QString appUserServicePath = linglong::util::getLinglongRootPath() + "/entries/share/systemd/user";
     const QString userSystemdServicePath = linglong::util::ensureUserDir({".config/systemd/user"});
-    if(linglong::util::dirExists(appUserServicePath)){
-        linglong::util::linkDirFiles(appUserServicePath,userSystemdServicePath);
+    if (linglong::util::dirExists(appUserServicePath)) {
+        linglong::util::linkDirFiles(appUserServicePath, userSystemdServicePath);
     }
 
     QFuture<void> future = QtConcurrent::run(runPool.data(), [=]() {
@@ -313,6 +358,8 @@ Reply PackageManager::Stop(const QString &containerId)
     } else {
         reply.code = STATUS_CODE(kErrorPkgKillSuccess);
         reply.message = "kill app:" + app->container()->packageName + " success";
+        d->apps.erase(it);
+        app->deleteLater();
     }
     qInfo() << "kill containerId:" << containerId << ",ret:" << ret;
     return reply;

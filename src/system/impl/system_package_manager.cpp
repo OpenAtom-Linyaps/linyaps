@@ -135,7 +135,7 @@ bool SystemPackageManagerPrivate::getAppInfofromServer(const QString &pkgName, c
 {
     bool ret = G_HTTPCLIENT->queryRemoteApp(pkgName, pkgVer, pkgArch, appData);
     if (!ret) {
-        err = "getAppInfofromServer err";
+        err = "getAppInfofromServer err, please check the network";
         qCritical() << err;
 
         qDebug().noquote() << appData;
@@ -640,7 +640,6 @@ QueryReply SystemPackageManagerPrivate::Query(const QueryParamOption &paramOptio
 
     QString appData = "";
     int status = STATUS_CODE(kFail);
-
     if (!paramOption.force) {
         status = linglong::util::queryLocalCache(appId, appData);
     }
@@ -715,21 +714,11 @@ Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOp
 
     QStringList delVersionList;
     for (auto it : pkgList) {
-        // new ref format org.deepin.calculator/1.2.2/x86_64
-        QString matchRef = QString("%1/%2/%3").arg(it->appId).arg(it->version).arg(arch);
-        // 判断应用是否正在运行
-        for (const auto &app : apps) {
-            if (matchRef == app->container()->packageName) {
-                reply.code = STATUS_CODE(kPkgUninstallFailed);
-                reply.message = matchRef + " is running, please stop first";
-                qCritical() << reply.message;
-                return reply;
-            }
-        }
 
         bool isRoot = (getgid() == 0) ? true : false;
         qInfo() << "install app user:" << it->user << ", current user:" << userName
                 << ", has root permission:" << isRoot;
+
         // 非root用户卸载不属于该用户安装的应用
         if (userName != it->user && !isRoot) {
             reply.code = STATUS_CODE(kPkgUninstallFailed);
@@ -757,6 +746,8 @@ Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOp
             return reply;
         }
 
+        // new ref format org.deepin.calculator/1.2.2/x86_64
+        QString matchRef = QString("%1/%2/%3").arg(it->appId).arg(it->version).arg(arch);
         qInfo() << "Uninstall app ref:" << matchRef;
         ret = OSTREE_REPO_HELPER->repoDeleteDatabyRef(kLocalRepoPath, qrepoList[0], matchRef, err);
         if (!ret) {
@@ -765,6 +756,7 @@ Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOp
             reply.message = "uninstall " + appId + ", version:" + it->version + " failed";
             return reply;
         }
+
         // A 用户 sudo 卸载 B 用户安装的软件
         if (isRoot) {
             userName = "";
@@ -854,17 +846,6 @@ Reply SystemPackageManagerPrivate::Update(const ParamOption &paramOption)
 
         appState.insert(appId + "/" + version + "/" + arch, reply);
         return reply;
-    }
-
-    // 判断应用是否正在运行
-    QString matchRef = QString("%1/%2/%3").arg(appId).arg(installedApp->version).arg(arch);
-    for (const auto &app : apps) {
-        if (matchRef == app->container()->packageName) {
-            reply.code = STATUS_CODE(kErrorPkgUpdateFailed);
-            reply.message = matchRef + " is running, please stop first";
-            qCritical() << reply.message;
-            return reply;
-        }
     }
 
     QString currentVersion = installedApp->version;

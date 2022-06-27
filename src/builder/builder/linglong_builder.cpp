@@ -182,7 +182,7 @@ linglong::util::Error LinglongBuilder::initRepo()
             return NewError() << "call getLocalConfig api failed";
         }
 
-        QString repoUrl = configUrl.endsWith("/") ? configUrl + "ostree" : QStringList {configUrl, "ostree"}.join("/");
+        QString repoUrl = configUrl.endsWith("/") ? configUrl + "repo" : QStringList {configUrl, "repo"}.join("/");
 
         ret = repo.remoteAdd(defaultRepoName, repoUrl);
         if (!ret.success()) {

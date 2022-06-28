@@ -335,20 +335,22 @@ int main(int argc, char **argv)
              p.containerID = containerId;
 
              auto envs = parser.value(envArg).split(",", QString::SkipEmptyParts);
-             for (auto env : envs) {
-                 auto pos = env.indexOf('=');
-                 auto key = QStringRef(&env, 0, pos), val = QStringRef(&env, pos + 1, env.length() - pos - 1);
-                 qputenv(key.toString().toStdString().c_str(), QByteArray(val.toString().toUtf8()));
-             }
+             QStringList envList = envs;
+             p.env = envList.join(",");
+             //  for (auto env : envs) {
+             //      auto pos = env.indexOf('=');
+             //      auto key = QStringRef(&env, 0, pos), val = QStringRef(&env, pos + 1, env.length() - pos - 1);
+             //      qputenv(key.toString().toStdString().c_str(), QByteArray(val.toString().toUtf8()));
+             //  }
 
              // 获取用户环境变量
-             QStringList envList = COMMAND_HELPER->getUserEnv(linglong::util::envList);
-             if (!envList.isEmpty()) {
-                 p.env = envList.join(",");
-             }
+             //  QStringList envList = COMMAND_HELPER->getUserEnv(linglong::util::envList);
+             //  if (!envList.isEmpty()) {
+             //      p.env = envList.join(",");
+             //  }
 
-             auto pendingReply = packageManager.Exec(p);
-             auto reply = pendingReply.value();
+             auto dbusReply = packageManager.Exec(p);
+             auto reply = dbusReply.value();
              if (reply.code != STATUS_CODE(kSuccess)) {
                  qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
                  return -1;
@@ -466,7 +468,8 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
              auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
              parser.addOption(optRepoPoint);
-             auto optNoDbus = QCommandLineOption("nodbus", "execute cmd directly, not via dbus(only for root user)", "");
+             auto optNoDbus =
+                 QCommandLineOption("nodbus", "execute cmd directly, not via dbus(only for root user)", "");
              parser.addOption(optNoDbus);
              parser.process(app);
              QStringList appList = parser.positionalArguments();
@@ -637,7 +640,8 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("uninstall", "uninstall an application", "uninstall");
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
              auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
-             auto optNoDbus = QCommandLineOption("nodbus", "execute cmd directly, not via dbus(only for root user)", "");
+             auto optNoDbus =
+                 QCommandLineOption("nodbus", "execute cmd directly, not via dbus(only for root user)", "");
              auto optAllVer = QCommandLineOption("all-version", "uninstall all version application", "");
              parser.addOption(optNoDbus);
              parser.addOption(optRepoPoint);

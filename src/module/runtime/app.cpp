@@ -1069,9 +1069,12 @@ void App::exec(QString cmd, QString env, QString cwd)
     };
     Q_D(App);
 
+    QStringList envList = d->r->process->env;
+    envList = envList + env.split(",");
+
     Process p(nullptr);
     p.setcwd(cwd);
-    p.setenv(env.split(','));
+    p.setenv(envList);
     p.setargs(split(cmd));
     auto data = dump(&p).toStdString();
 

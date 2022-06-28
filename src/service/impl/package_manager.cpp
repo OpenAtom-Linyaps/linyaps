@@ -358,8 +358,6 @@ Reply PackageManager::Stop(const QString &containerId)
     } else {
         reply.code = STATUS_CODE(kErrorPkgKillSuccess);
         reply.message = "kill app:" + app->container()->packageName + " success";
-        d->apps.erase(it);
-        app->deleteLater();
     }
     qInfo() << "kill containerId:" << containerId << ",ret:" << ret;
     return reply;

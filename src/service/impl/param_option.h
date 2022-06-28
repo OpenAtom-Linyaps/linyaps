@@ -131,7 +131,7 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, QueryParam
 class UninstallParamOption : public ParamOption
 {
 public:
-    QString repoPoint; ///< 是否安装非玲珑格式应用
+    QString repoPoint; ///< 是否卸载非玲珑格式应用
     bool delAllVersion = false; ///< 是否卸载所有版本应用
 };
 

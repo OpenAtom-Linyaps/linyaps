@@ -14,9 +14,6 @@
 #include "module/util/version.h"
 
 const int MAX_ERRINFO_BUFSIZE = 512;
-const int DEFAULT_UPDATE_FREQUENCY = 100;
-#define PACKAGE_VERSION "1.0.0"
-#define AT_FDCWD -100
 
 namespace linglong {
 
@@ -500,6 +497,9 @@ QString OstreeRepoHelper::createTmpRepo(const QString &parentRepo)
     QString tmpPath;
     if (dir.isValid()) {
         tmpPath = dir.path();
+    } else {
+        qCritical() << "create tmpPath failed, please check /tmp dir";
+        return "";
     }
     dir.setAutoRemove(false);
     auto ret = linglong::runner::Runner("ostree", {"--repo=" + tmpPath + "/repoTmp", "init", "--mode=bare-user-only"},
@@ -579,15 +579,15 @@ bool OstreeRepoHelper::repoPullbyCmd(const QString &destPath, const QString &rem
     // ret = Runner("ostree", {"--repo=" + destPath + "/repo", "pull-local", QString(QLatin1String(tmpPath)), ref}, 1000
     // * 60 * 60);
     ret = startOstreeJob("ostree", ref, {"--repo=" + destPath + "/repo", "pull-local", tmpPath, ref}, 1000 * 60 * 60);
-    if (!ret) {
-        err = "repoPullbyCmd pull-local error";
-        qInfo() << err;
-        return false;
-    }
+
     // 删除临时仓库
     QString tmpRepoDir = tmpPath.left(tmpPath.length() - QString("/repoTmp").length());
     qInfo() << "delete tmp repo path:" << tmpRepoDir;
     linglong::util::removeDir(tmpRepoDir);
+    if (!ret) {
+        err = "repoPullbyCmd pull-local error";
+        qCritical() << err;
+    }
     return ret;
 }
 

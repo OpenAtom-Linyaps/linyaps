@@ -1078,17 +1078,30 @@ void App::exec(QString cmd, QString env, QString cwd)
     Q_D(App);
 
     QStringList envList = d->r->process->env;
-    envList = envList + env.split(",");
-
+    if (!env.isEmpty() && !env.isNull()) {
+        envList = envList + env.split(",");
+    }
     Process p(nullptr);
+    if (cwd.isEmpty() || cwd.isNull()) {
+        cwd = d->r->process->cwd;
+    }
     p.setcwd(cwd);
     p.setenv(envList);
-    p.setargs(split(cmd));
+    auto appCmd = split(cmd);
+    if (cmd.isEmpty() || cmd.isNull()) {
+        appCmd = d->r->process->args;
+    }
+    p.setargs(appCmd);
     auto data = dump(&p).toStdString();
 
     // FIXME: retry on temporary fail
     // FIXME: add lock
-    write(d->sockets[1], data.c_str(), data.size());
+    int sizeOfData = data.size();
+    while(sizeOfData){
+        auto sizeOfWrite =  write(d->sockets[1], data.c_str(), sizeOfData);
+        sizeOfData = sizeOfData - sizeOfWrite;
+        data = data.erase(0,sizeOfWrite);
+    }
     write(d->sockets[1], "\0", 1);
 }
 

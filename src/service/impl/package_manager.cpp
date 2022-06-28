@@ -219,6 +219,14 @@ Reply PackageManager::Start(const RunParamOption &paramOption)
         linglong::package::Ref ref("", appId, version, arch);
 
         bool isFlatpakApp = "flatpak" == repoPoint;
+        // 判断是否是正在运行应用
+        auto latestAppRef = d->repo.latestOfRef(appId, version);
+        for (const auto &app : d->apps) {
+            if (latestAppRef.toLocalRefString() == app->container()->packageName) {
+                app->exec(desktopExec, "", "");
+                return;
+            }
+        }
 
         auto app = linglong::runtime::App::load(&d->repo, ref, desktopExec, isFlatpakApp);
         if (nullptr == app) {

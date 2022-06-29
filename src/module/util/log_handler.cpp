@@ -26,12 +26,6 @@ linglong::util::LogHandlerPrivate::LogHandlerPrivate(LogHandler *parent)
     QString userName = linglong::util::getUserName();
     logDir.setPath(QString("/var/log/linglong/" + userName + "/") + QCoreApplication::applicationName());
     QString logPath = logDir.absoluteFilePath(QCoreApplication::applicationName() + ".log"); // 获取日志的路径
-    // 设置日志目录权限
-    QFile file("/tmp/.cache/linglong/log");
-    QFile::Permissions permissions = file.permissions();
-    permissions |= QFile::ReadOther;
-    permissions |= QFile::WriteOther;
-    file.setPermissions(permissions);
 
     // ========获取日志文件创建的时间========
     // QFileInfo::created(): On most Unix systems, this function returns the time of the last status change.

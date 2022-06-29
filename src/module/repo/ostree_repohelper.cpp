@@ -493,12 +493,12 @@ bool OstreeRepoHelper::startOstreeJob(const QString &cmd, const QString &ref, co
  */
 QString OstreeRepoHelper::createTmpRepo(const QString &parentRepo)
 {
-    QTemporaryDir dir("/tmp/linglong-cache-XXXXXX");
+    QTemporaryDir dir("/var/tmp/linglong-cache-XXXXXX");
     QString tmpPath;
     if (dir.isValid()) {
         tmpPath = dir.path();
     } else {
-        qCritical() << "create tmpPath failed, please check /tmp dir";
+        qCritical() << "create tmpPath failed, please check /var/tmp dir";
         return "";
     }
     dir.setAutoRemove(false);

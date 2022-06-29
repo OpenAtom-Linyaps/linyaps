@@ -18,7 +18,7 @@ fi
 if [ ! -d ${LINGLONG_ROOT}/repo ]
 then
 	mkdir -p ${LINGLONG_ROOT}/layers
-	ostree --repo=${LINGLONG_ROOT}/repo init --mode=bare-user-only
+	ostree --repo=${LINGLONG_ROOT}/repo init --mode=bare-user
 	ostree --repo=${LINGLONG_ROOT}/repo remote add --no-gpg-verify repo  https://linglong-api-dev.deepin.com/repo/
 	chmod -R 0775 ${LINGLONG_ROOT}
 else

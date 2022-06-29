@@ -39,7 +39,7 @@ TEST(OstreeRepoHelperT01, ensureRepoEnv)
 // 上述命令执行完成后 会在/usr/local/var/lib/flatpak 目录生成一个 repo 目录 repo目录的config文件 就是仓库配置文件。
 // [core]
 // repo_version=1
-// mode=bare-user-only
+// mode=bare-user
 
 // [remote "flathub"]
 // gpg-verify=true

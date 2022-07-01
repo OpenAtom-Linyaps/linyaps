@@ -472,74 +472,65 @@ int main(int argc, char **argv)
                  QCommandLineOption("nodbus", "execute cmd directly, not via dbus(only for root user)", "");
              parser.addOption(optNoDbus);
              parser.process(app);
-             QStringList appList = parser.positionalArguments();
 
-             // auto appId = args.value(1);
+             args = parser.positionalArguments();
              auto repoType = parser.value(optRepoPoint);
-             if (appList.size() < 2 || (!repoType.isEmpty() && "flatpak" != repoType)) {
+             // 参数个数校验
+             if (args.size() != 2 || (!repoType.isEmpty() && "flatpak" != repoType)) {
                  parser.showHelp(-1);
                  return -1;
              }
 
              // 收到中断信号后恢复操作
              signal(SIGINT, doIntOperate);
-
-             // 设置 24 h超时
-             packageManager.setTimeout(1000 * 60 * 60 * 24);
              // appId format: org.deepin.calculator/1.2.6 in multi-version
-             foreach (const QString &app, appList) {
-                 if ("install" == app) {
-                     continue;
-                 }
-                 linglong::service::InstallParamOption installParamOption;
-                 installParamOption.repoPoint = parser.value(optRepoPoint);
+             linglong::service::InstallParamOption installParamOption;
+             installParamOption.repoPoint = repoType;
+             QStringList appInfoList = args.at(1).split("/");
+             installParamOption.appId = appInfoList.at(0);
+             installParamOption.arch = linglong::util::hostArch();
+             if (appInfoList.size() == 2) {
+                 installParamOption.version = appInfoList.at(1);
+             } else if (appInfoList.size() == 3) {
+                 installParamOption.arch = appInfoList.at(2);
+             }
 
-                 QStringList appInfoList = app.split("/");
-                 installParamOption.appId = appInfoList.at(0);
-                 installParamOption.arch = linglong::util::hostArch();
-                 if (appInfoList.size() == 2) {
-                     installParamOption.version = appInfoList.at(1);
-                 } else if (appInfoList.size() == 3) {
-                     installParamOption.arch = appInfoList.at(2);
-                 }
-
-                 linglong::service::Reply reply;
-                 qInfo().noquote() << "install" << app << ", please wait a few minutes...";
-                 if (!parser.isSet(optNoDbus)) {
-                     QDBusPendingReply<linglong::service::Reply> dbusReply = packageManager.Install(installParamOption);
+             linglong::service::Reply reply;
+             qInfo().noquote() << "install" << args.at(1) << ", please wait a few minutes...";
+             if (!parser.isSet(optNoDbus)) {
+                 QDBusPendingReply<linglong::service::Reply> dbusReply = packageManager.Install(installParamOption);
+                 dbusReply.waitForFinished();
+                 reply = dbusReply.value();
+                 if ("flatpak" != repoType) {
+                     QThread::sleep(1);
+                     // 1 秒 查询一次进度
+                     dbusReply = packageManager.GetDownloadStatus(installParamOption, 0);
                      dbusReply.waitForFinished();
                      reply = dbusReply.value();
-                     if ("flatpak" != repoType) {
+                     while (reply.code == STATUS_CODE(kPkgInstalling)) {
+                         // 隐藏光标
+                         std::cout << "\033[?25l";
+                         std::cout << "\r\33[K" << reply.message.toStdString();
+                         std::cout.flush();
                          QThread::sleep(1);
-                         // 1 秒 查询一次进度
                          dbusReply = packageManager.GetDownloadStatus(installParamOption, 0);
                          dbusReply.waitForFinished();
                          reply = dbusReply.value();
-                         while (reply.code == STATUS_CODE(kPkgInstalling)) {
-                             // 隐藏光标
-                             std::cout << "\033[?25l";
-                             std::cout << "\r\33[K" << reply.message.toStdString();
-                             std::cout.flush();
-                             QThread::sleep(1);
-                             dbusReply = packageManager.GetDownloadStatus(installParamOption, 0);
-                             dbusReply.waitForFinished();
-                             reply = dbusReply.value();
-                         }
-                         // 显示光标
-                         std::cout << "\033[?25h" << std::endl;
                      }
-                     if (reply.code != STATUS_CODE(kPkgInstallSuccess)) {
-                         qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
-                         return -1;
-                     } else {
-                         qInfo().noquote() << "message:" << reply.message;
-                     }
-                 } else {
-                     SYSTEM_MANAGER_HELPER->setNoDBusMode(true);
-                     reply = SYSTEM_MANAGER_HELPER->Install(installParamOption);
-                     SYSTEM_MANAGER_HELPER->pool->waitForDone(-1);
-                     qInfo().noquote() << "install " << installParamOption.appId << " done";
+                     // 显示光标
+                     std::cout << "\033[?25h" << std::endl;
                  }
+                 if (reply.code != STATUS_CODE(kPkgInstallSuccess)) {
+                     qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
+                     return -1;
+                 } else {
+                     qInfo().noquote() << "message:" << reply.message;
+                 }
+             } else {
+                 SYSTEM_MANAGER_HELPER->setNoDBusMode(true);
+                 reply = SYSTEM_MANAGER_HELPER->Install(installParamOption);
+                 SYSTEM_MANAGER_HELPER->pool->waitForDone(-1);
+                 qInfo().noquote() << "install " << installParamOption.appId << " done";
              }
              return 0;
          }},
@@ -550,8 +541,9 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
              parser.process(app);
              linglong::service::ParamOption paramOption;
-             QStringList appInfoList = parser.positionalArguments().value(1).split("/");
-             if (args.isEmpty()) {
+             args = parser.positionalArguments();
+             QStringList appInfoList = args.value(1).split("/");
+             if (args.size() != 2) {
                  parser.showHelp(-1);
                  return -1;
              }
@@ -607,8 +599,10 @@ int main(int argc, char **argv)
              auto optNoCache = QCommandLineOption("force", "query from server directly, not from cache", "");
              parser.addOption(optNoCache);
              parser.process(app);
+
+             args = parser.positionalArguments();
              auto repoType = parser.value(optRepoPoint);
-             if (!repoType.isEmpty() && "flatpak" != repoType) {
+             if (args.size() != 2 || (!repoType.isEmpty() && "flatpak" != repoType)) {
                  parser.showHelp(-1);
                  return -1;
              }
@@ -647,13 +641,14 @@ int main(int argc, char **argv)
              parser.addOption(optRepoPoint);
              parser.addOption(optAllVer);
              parser.process(app);
+
              args = parser.positionalArguments();
-             auto appInfo = args.value(1);
              auto repoType = parser.value(optRepoPoint);
-             if (appInfo.isEmpty() || (!repoType.isEmpty() && repoType != "flatpak")) {
+             if (args.size() != 2 || (!repoType.isEmpty() && "flatpak" != repoType)) {
                  parser.showHelp(-1);
                  return -1;
              }
+             auto appInfo = args.value(1);
              // TOTO:设置 10 分钟超时 to do
              packageManager.setTimeout(1000 * 60 * 10);
              QDBusPendingReply<linglong::service::Reply> dbusReply;
@@ -706,8 +701,10 @@ int main(int argc, char **argv)
                  parser.showHelp(-1);
                  return -1;
              }
+
+             args = parser.positionalArguments();
              auto repoType = parser.value(optRepoPoint);
-             if (!repoType.isEmpty() && "flatpak" != repoType) {
+             if (args.size() != 1 || (!repoType.isEmpty() && "flatpak" != repoType)) {
                  parser.showHelp(-1);
                  return -1;
              }

@@ -189,7 +189,6 @@ bool SystemPackageManagerPrivate::downloadAppData(const QString &pkgName, const 
 
 Reply SystemPackageManagerPrivate::Download(const DownloadParamOption &downloadParamOption)
 {
-    qInfo() << downloadParamOption.appId << downloadParamOption.version << downloadParamOption.arch;
     Reply reply;
     // reply.code = 0;
     // reply.message = downloadParamOption.appId;
@@ -486,10 +485,9 @@ Reply SystemPackageManagerPrivate::Install(const InstallParamOption &installPara
     if (noDBusMode) {
         userName = "deepin-linglong";
     }
-    QString appData = "";
 
     QString appId = installParamOption.appId.trimmed();
-    QString arch = installParamOption.arch.trimmed();
+    QString arch = installParamOption.arch.trimmed().toLower();
     QString version = installParamOption.version.trimmed();
     if (arch.isNull() || arch.isEmpty()) {
         arch = linglong::util::hostArch();
@@ -505,6 +503,7 @@ Reply SystemPackageManagerPrivate::Install(const InstallParamOption &installPara
         return reply;
     }
 
+    QString appData = "";
     // 安装不查缓存
     auto ret = getAppInfofromServer(appId, version, arch, appData, reply.message);
     if (!ret) {
@@ -631,12 +630,6 @@ QueryReply SystemPackageManagerPrivate::Query(const QueryParamOption &paramOptio
 
     linglong::package::AppMetaInfoList pkgList;
     QString arch = linglong::util::hostArch();
-    if (arch == "unknown") {
-        reply.code = STATUS_CODE(kErrorPkgQueryFailed);
-        reply.message = "the host arch is not recognized";
-        qCritical() << reply.message;
-        return reply;
-    }
 
     QString appData = "";
     int status = STATUS_CODE(kFail);
@@ -683,7 +676,7 @@ Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOp
 
     // 获取版本信息
     QString version = paramOption.version.trimmed();
-    QString arch = paramOption.arch.trimmed();
+    QString arch = paramOption.arch.trimmed().toLower();
     if (arch.isNull() || arch.isEmpty()) {
         arch = linglong::util::hostArch();
     }
@@ -812,10 +805,9 @@ Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOp
 Reply SystemPackageManagerPrivate::Update(const ParamOption &paramOption)
 {
     Reply reply;
-    qDebug() << "paramOption.arch:" << paramOption.arch;
 
     QString appId = paramOption.appId.trimmed();
-    QString arch = paramOption.arch.trimmed();
+    QString arch = paramOption.arch.trimmed().toLower();
     QString version = paramOption.version.trimmed();
     if (arch.isNull() || arch.isEmpty()) {
         arch = linglong::util::hostArch();
@@ -971,7 +963,7 @@ Reply SystemPackageManager::GetDownloadStatus(const ParamOption &paramOption, in
         return reply;
     }
 
-    QString arch = paramOption.arch.trimmed();
+    QString arch = paramOption.arch.trimmed().toLower();
     if (!arch.isEmpty() && arch != linglong::util::hostArch()) {
         reply.message = "app arch:" + arch + " not support in host";
         reply.code = STATUS_CODE(kUserInputParamErr);

@@ -492,6 +492,7 @@ int main(int argc, char **argv)
              if (appInfoList.size() == 2) {
                  installParamOption.version = appInfoList.at(1);
              } else if (appInfoList.size() == 3) {
+                 installParamOption.version = appInfoList.at(1);
                  installParamOption.arch = appInfoList.at(2);
              }
 
@@ -521,6 +522,10 @@ int main(int argc, char **argv)
                      std::cout << "\033[?25h" << std::endl;
                  }
                  if (reply.code != STATUS_CODE(kPkgInstallSuccess)) {
+                     if (reply.message.isEmpty()) {
+                         reply.message = "unknown err";
+                         reply.code = -1;
+                     }
                      qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
                      return -1;
                  } else {

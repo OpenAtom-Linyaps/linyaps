@@ -97,10 +97,11 @@ public:
     /**
      * push Bundle
      * @param uabFilePath : uab file path
+     * @param repoUrl : remote repo url
      * @param force :  force to push
      * @return Result
      */
-    linglong::util::Error push(const QString &bundleFilePath, bool force);
+    linglong::util::Error push(const QString &bundleFilePath, const QString &repoUrl, bool force);
 
 private:
     QScopedPointer<BundlePrivate> dd_ptr;

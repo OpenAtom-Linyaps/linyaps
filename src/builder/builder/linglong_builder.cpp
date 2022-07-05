@@ -567,20 +567,20 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
 
     auto makeBundleResult = uabBundle.make(exportPath, outputFilePath);
     if (!makeBundleResult.success()) {
-        return NewError(makeBundleResult, -1, "make bundle failed");
+        return NewError(-1, "make bundle failed");
     }
 
     return NoError();
 }
 
-linglong::util::Error LinglongBuilder::push(const QString &bundleFilePath, bool force)
+linglong::util::Error LinglongBuilder::push(const QString &bundleFilePath, const QString &repoUrl, bool force)
 {
     // TODO: if the kind is not app, don't push bundle
     linglong::package::Bundle uabBundle;
 
-    auto pushBundleResult = uabBundle.push(bundleFilePath, force);
+    auto pushBundleResult = uabBundle.push(bundleFilePath, repoUrl, force);
     if (!pushBundleResult.success()) {
-        return NewError(pushBundleResult) << "push bundle failed!!!";
+        return NewError(-1, "push bundle failed");
     }
 
     return NoError();

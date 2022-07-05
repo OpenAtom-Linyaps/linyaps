@@ -64,10 +64,10 @@ linglong::util::Error Bundle::make(const QString &dataPath, const QString &outpu
     return NewError();
 }
 
-linglong::util::Error Bundle::push(const QString &bundleFilePath, bool force)
+linglong::util::Error Bundle::push(const QString &bundleFilePath, const QString &repoUrl, bool force)
 {
     Q_D(Bundle);
-    auto ret = d->push(bundleFilePath, force);
+    auto ret = d->push(bundleFilePath, repoUrl, force);
     if (!ret.success()) {
         return NewError(ret);
     }
@@ -214,26 +214,28 @@ auto BundlePrivate::getElfSize(const QString elfFilePath) -> decltype(-1)
     return size;
 }
 
-linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, bool force)
+linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const QString &repoUrl, bool force)
 {
     auto userInfo = util::getUserInfo();
 
    // 从配置文件获取服务器域名url
-    QString configUrl = "";
-    int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
+    QString configUrl = repoUrl;
+    if (configUrl.isEmpty()) {
+        int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
 
-    if (STATUS_CODE(kSuccess) != statusCode) {
-        if (util::dirExists(this->tmpWorkDir)) {
-            util::removeDir(this->tmpWorkDir);
+        if (STATUS_CODE(kSuccess) != statusCode) {
+            if (util::dirExists(this->tmpWorkDir)) {
+                util::removeDir(this->tmpWorkDir);
+            }
+            return NewError() << "call getLocalConfig api failed";
         }
-        return NewError() << "call getLocalConfig api failed";
     }
 
     auto token = G_HTTPCLIENT->getToken(configUrl, userInfo);
 
     if (token.isEmpty()) {
         qCritical() << "get token failed!";
-        return NewError() << "get token failed!";
+        return NewError() << -1 << "get token failed!";
     }
 
     qInfo() << "start upload ...";

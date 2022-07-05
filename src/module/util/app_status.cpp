@@ -384,9 +384,9 @@ bool queryAllInstalledApp(const QString &userName, QString &result, QString &err
     // 默认不查找版本
     QString selectSql = "";
     if (userName.isEmpty()) {
-        selectSql = QString("SELECT * FROM installedAppInfo");
+        selectSql = QString("SELECT * FROM installedAppInfo order by appId,version");
     } else {
-        selectSql = QString("SELECT * FROM installedAppInfo WHERE user = '%1'").arg(userName);
+        selectSql = QString("SELECT * FROM installedAppInfo WHERE user = '%1' order by appId,version").arg(userName);
     }
 
     Connection connection;

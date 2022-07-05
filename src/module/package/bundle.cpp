@@ -47,11 +47,11 @@ Bundle::~Bundle()
 
 linglong::util::Error Bundle::load(const QString &path)
 {
-    return NewError();
+    return NoError();
 }
 linglong::util::Error Bundle::save(const QString &path)
 {
-    return NewError();
+    return NoError();
 }
 
 linglong::util::Error Bundle::make(const QString &dataPath, const QString &outputFilePath)
@@ -69,9 +69,9 @@ linglong::util::Error Bundle::push(const QString &bundleFilePath, const QString 
     Q_D(Bundle);
     auto ret = d->push(bundleFilePath, repoUrl, force);
     if (!ret.success()) {
-        return NewError(ret);
+        return NewError(ret, -1);
     }
-    return NewError();
+    return NoError();
 }
 
 linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString &outputFilePath)

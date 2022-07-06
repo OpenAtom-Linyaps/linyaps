@@ -483,6 +483,8 @@ int main(int argc, char **argv)
 
              // 收到中断信号后恢复操作
              signal(SIGINT, doIntOperate);
+             // 设置 24 h超时
+             packageManager.setTimeout(1000 * 60 * 60 * 24);
              // appId format: org.deepin.calculator/1.2.6 in multi-version
              linglong::service::InstallParamOption installParamOption;
              installParamOption.repoPoint = repoType;
@@ -504,7 +506,7 @@ int main(int argc, char **argv)
                  reply = dbusReply.value();
                  if ("flatpak" != repoType) {
                      QThread::sleep(1);
-                     // 1 秒 查询一次进度
+                     // 查询一次进度
                      dbusReply = packageManager.GetDownloadStatus(installParamOption, 0);
                      dbusReply.waitForFinished();
                      reply = dbusReply.value();

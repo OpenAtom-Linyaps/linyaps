@@ -123,22 +123,28 @@ QStringList convertSpecialCharacters(const QStringList &args)
     return retArgs;
 }
 
-static QMap<QString, QString> const USER_DIR_MAP = {
-    {"desktop", QStandardPaths::writableLocation(QStandardPaths::DesktopLocation)},
-    {"documents", QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)},
-    {"downloads", QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)},
-    {"music", QStandardPaths::writableLocation(QStandardPaths::MusicLocation)},
-    {"pictures", QStandardPaths::writableLocation(QStandardPaths::PicturesLocation)},
-    {"picture", QStandardPaths::writableLocation(QStandardPaths::PicturesLocation)},
-    {"videos", QStandardPaths::writableLocation(QStandardPaths::MoviesLocation)},
-    {"templates", ""},
-    {"home", QStandardPaths::writableLocation(QStandardPaths::HomeLocation)},
-    {"cache", QStandardPaths::writableLocation(QStandardPaths::CacheLocation)},
-    {"config", QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)},
-    {"data", QStandardPaths::writableLocation(QStandardPaths::DataLocation)},
-    {"runtime", QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation)},
-    {"temp", QStandardPaths::writableLocation(QStandardPaths::TempLocation)},
-    {"public_share", ""}};
+
+QMap<QString, QString> getUserDirMap()
+{
+    static QMap<QString, QString> const USER_DIR_MAP = {
+        {"desktop", QStandardPaths::writableLocation(QStandardPaths::DesktopLocation)},
+        {"documents", QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)},
+        {"downloads", QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)},
+        {"music", QStandardPaths::writableLocation(QStandardPaths::MusicLocation)},
+        {"pictures", QStandardPaths::writableLocation(QStandardPaths::PicturesLocation)},
+        {"picture", QStandardPaths::writableLocation(QStandardPaths::PicturesLocation)},
+        {"videos", QStandardPaths::writableLocation(QStandardPaths::MoviesLocation)},
+        {"templates", ""},
+        {"home", QStandardPaths::writableLocation(QStandardPaths::HomeLocation)},
+        {"cache", QStandardPaths::writableLocation(QStandardPaths::CacheLocation)},
+        {"config", QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)},
+        {"data", QStandardPaths::writableLocation(QStandardPaths::DataLocation)},
+        {"runtime", QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation)},
+        {"temp", QStandardPaths::writableLocation(QStandardPaths::TempLocation)},
+        {"public_share", ""}};
+
+    return USER_DIR_MAP;
+}
 
 inline bool checkPathIsExists(const QString &name)
 {
@@ -157,7 +163,7 @@ QPair<bool, QString> getXdgDir(QString name)
 {
     // mostly check cache map first
     // after process the special key find in user-dirs.dirs config file
-    auto foundResult = USER_DIR_MAP.value(name.toLower(), "");
+    auto foundResult = getUserDirMap().value(name.toLower(), "");
 
     if (!foundResult.isEmpty()) {
         return {checkPathIsExists(foundResult), foundResult};
@@ -185,10 +191,10 @@ QPair<bool, QString> getXdgDir(QString name)
 
 QList<QString> getXdgUserDir()
 {
-    if (USER_DIR_MAP.isEmpty()) {
+    if (getUserDirMap().isEmpty()) {
         return QList<QString>();
     }
-    return USER_DIR_MAP.keys();
+    return getUserDirMap().keys();
 }
 
 QString getPathInXdgUserConfig(const QString &key)
@@ -214,7 +220,7 @@ QString getPathInXdgUserConfig(const QString &key)
         // search spec key
         if (line.startsWith(key.toStdString().c_str())) {
             auto readLine = line.split('=');
-            if(readLine.size() != 2) {
+            if (readLine.size() != 2) {
                 continue;
             }
             auto specLine = readLine.at(1);

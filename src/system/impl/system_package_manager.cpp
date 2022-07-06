@@ -221,7 +221,7 @@ Reply SystemPackageManagerPrivate::GetDownloadStatus(const ParamOption &paramOpt
         }
 
         // 查找最高版本
-        linglong::package::AppMetaInfo *appInfo = getLatestApp(appList);
+        linglong::package::AppMetaInfo *appInfo = getLatestApp(appId, appList);
         latestVersion = appInfo->version;
     }
 
@@ -351,12 +351,13 @@ bool SystemPackageManagerPrivate::checkAppRuntime(const QString &runtime, QStrin
 /*
  * 从给定的软件包列表中查找最新版本的软件包
  *
+ * @param appId: 待匹配应用的appId
  * @param appList: 待搜索的软件包列表信息
  *
  * @return AppMetaInfo: 最新版本的软件包
  *
  */
-linglong::package::AppMetaInfo *SystemPackageManagerPrivate::getLatestApp(const linglong::package::AppMetaInfoList &appList)
+linglong::package::AppMetaInfo *SystemPackageManagerPrivate::getLatestApp(const QString &appId, const linglong::package::AppMetaInfoList &appList)
 {
     linglong::package::AppMetaInfo *latestApp = appList.at(0);
     if (appList.size() == 1) {
@@ -364,11 +365,10 @@ linglong::package::AppMetaInfo *SystemPackageManagerPrivate::getLatestApp(const 
     }
 
     QString curVersion = latestApp->version;
-    QString arch = linglong::util::hostArch();
     for (auto item : appList) {
         linglong::util::AppVersion dstVersion(curVersion);
         linglong::util::AppVersion iterVersion(item->version);
-        if (arch == item->arch && iterVersion.isBigThan(dstVersion)) {
+        if (appId == item->appId && iterVersion.isBigThan(dstVersion)) {
             curVersion = item->version;
             latestApp = item;
         }
@@ -515,15 +515,15 @@ Reply SystemPackageManagerPrivate::Install(const InstallParamOption &installPara
     linglong::package::AppMetaInfoList appList;
     ret = loadAppInfo(appData, appList, reply.message);
     if (!ret || appList.size() < 1) {
-        reply.message = appId + ", version:" + version + " not found in repo";
+        reply.message = "app:" + appId + ", version:" + version + " not found in repo";
         qCritical() << reply.message;
         reply.code = STATUS_CODE(kPkgInstallFailed);
         appState.insert(appId + "/" + version + "/" + arch, reply);
         return reply;
     }
 
-    // 查找最高版本
-    linglong::package::AppMetaInfo *appInfo = getLatestApp(appList);
+    // 查找最高版本，多版本场景安装应用appId要求完全匹配
+    linglong::package::AppMetaInfo *appInfo = getLatestApp(appId, appList);
     // 判断对应版本的应用是否已安装
     if (linglong::util::getAppInstalledStatus(appInfo->appId, appInfo->version, "", "")) {
         reply.code = STATUS_CODE(kPkgAlreadyInstalled);
@@ -533,14 +533,15 @@ Reply SystemPackageManagerPrivate::Install(const InstallParamOption &installPara
         return reply;
     }
 
-    // 模糊安装要求查询到的记录是惟一的 之前是在调用downloadAppData传参校验
-    if (appList.size() > 1 && appId != appInfo->appId) {
+    // 不支持模糊安装
+    if (appId != appInfo->appId) {
         reply.message = "app:" + appId + ", version:" + version + " not found in repo";
         qCritical() << reply.message;
         reply.code = STATUS_CODE(kPkgInstallFailed);
         appState.insert(appId + "/" + version + "/" + arch, reply);
         return reply;
     }
+
     // 检查软件包依赖的runtime安装状态
     ret = checkAppRuntime(appInfo->runtime, reply.message);
     if (!ret) {
@@ -707,7 +708,6 @@ Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOp
 
     QStringList delVersionList;
     for (auto it : pkgList) {
-
         bool isRoot = (getgid() == 0) ? true : false;
         qInfo() << "install app user:" << it->user << ", current user:" << userName
                 << ", has root permission:" << isRoot;
@@ -863,7 +863,7 @@ Reply SystemPackageManagerPrivate::Update(const ParamOption &paramOption)
         return reply;
     }
 
-    auto serverApp = getLatestApp(serverPkgList);
+    auto serverApp = getLatestApp(appId, serverPkgList);
     if (currentVersion == serverApp->version) {
         reply.message = "app:" + appId + ", version:" + currentVersion + " is latest";
         qCritical() << reply.message;

@@ -53,12 +53,13 @@ private:
     /*
      * 从给定的软件包列表中查找最新版本的软件包
      *
+     * @param appId: 待匹配应用的appId
      * @param appList: 待搜索的软件包列表信息
      *
      * @return AppMetaInfo: 最新版本的软件包
      *
      */
-    linglong::package::AppMetaInfo *getLatestApp(const linglong::package::AppMetaInfoList &appList);
+    linglong::package::AppMetaInfo *getLatestApp(const QString &appId, const linglong::package::AppMetaInfoList &appList);
 
     /*
      * 从json字符串中提取软件包对应的JsonArray数据

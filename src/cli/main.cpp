@@ -560,7 +560,7 @@ int main(int argc, char **argv)
                  return -1;
              }
              paramOption.arch = linglong::util::hostArch();
-             if (appInfoList.size() == 2) {
+             if (appInfoList.size() > 1) {
                  paramOption.version = appInfoList.at(1);
              }
              qInfo().noquote() << "update" << paramOption.appId << ", please wait a few minutes...";

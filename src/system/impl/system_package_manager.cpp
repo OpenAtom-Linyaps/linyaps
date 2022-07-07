@@ -296,7 +296,7 @@ bool SystemPackageManagerPrivate::installRuntime(const QString &runtimeId, const
     }
     // app runtime 只能匹配一个
     if (appList.size() != 1) {
-        err = "app:" + runtimeId + ", version:" + runtimeVer + " not found in repo";
+        err = "installRuntime app:" + runtimeId + ", version:" + runtimeVer + " not found in repo";
         return false;
     }
 
@@ -340,6 +340,12 @@ bool SystemPackageManagerPrivate::checkAppRuntime(const QString &runtime, QStrin
     const QString runtimeVer = runtimeInfo.at(1);
     const QString runtimeArch = runtimeInfo.at(2);
 
+    // runtimeId 校验
+    if (runtimeId.isEmpty()) {
+        err = "app runtime:" + runtime + " runtimeId format err";
+        return false;
+    }
+
     bool ret = true;
     // 判断app依赖的runtime是否安装 runtime 不区分用户
     if (!linglong::util::getAppInstalledStatus(runtimeId, runtimeVer, "", "")) {
@@ -364,7 +370,7 @@ linglong::package::AppMetaInfo *SystemPackageManagerPrivate::getLatestApp(const 
         return latestApp;
     }
 
-    QString curVersion = latestApp->version;
+    QString curVersion = linglong::util::APP_MIN_VERSION;
     for (auto item : appList) {
         linglong::util::AppVersion dstVersion(curVersion);
         linglong::util::AppVersion iterVersion(item->version);
@@ -524,20 +530,20 @@ Reply SystemPackageManagerPrivate::Install(const InstallParamOption &installPara
 
     // 查找最高版本，多版本场景安装应用appId要求完全匹配
     linglong::package::AppMetaInfo *appInfo = getLatestApp(appId, appList);
+    // 不支持模糊安装
+    if (appId != appInfo->appId) {
+        reply.message = "app:" + appId + ", version:" + version + " not found in repo";
+        qCritical() << "found latest app:" << appInfo->appId << ", " << reply.message;
+        reply.code = STATUS_CODE(kPkgInstallFailed);
+        appState.insert(appId + "/" + version + "/" + arch, reply);
+        return reply;
+    }
+
     // 判断对应版本的应用是否已安装
     if (linglong::util::getAppInstalledStatus(appInfo->appId, appInfo->version, "", "")) {
         reply.code = STATUS_CODE(kPkgAlreadyInstalled);
         reply.message = appInfo->appId + ", version: " + appInfo->version + " already installed";
         qCritical() << reply.message;
-        appState.insert(appId + "/" + version + "/" + arch, reply);
-        return reply;
-    }
-
-    // 不支持模糊安装
-    if (appId != appInfo->appId) {
-        reply.message = "app:" + appId + ", version:" + version + " not found in repo";
-        qCritical() << reply.message;
-        reply.code = STATUS_CODE(kPkgInstallFailed);
         appState.insert(appId + "/" + version + "/" + arch, reply);
         return reply;
     }

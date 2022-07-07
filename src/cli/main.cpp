@@ -415,7 +415,7 @@ int main(int argc, char **argv)
              args = parser.positionalArguments();
 
              auto containerId = args.value(1).trimmed();
-             if (containerId.isEmpty()) {
+             if (containerId.isEmpty() || args.size() > 2) {
                  parser.showHelp();
                  return -1;
              }

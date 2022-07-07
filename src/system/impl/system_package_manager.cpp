@@ -203,6 +203,15 @@ Reply SystemPackageManagerPrivate::GetDownloadStatus(const ParamOption &paramOpt
     QString arch = linglong::util::hostArch();
     QString latestVersion = version;
     if (version.isEmpty() || type == 1) {
+        if (type == 1) {
+            // 判断是否已安装 bug 146229
+            if (!linglong::util::getAppInstalledStatus(appId, "", arch, "")) {
+                reply.message = appId + ", version:" + version + " not installed";
+                reply.code = STATUS_CODE(kPkgNotInstalled);
+                appState.insert(appId + "/" + version + "/" + arch, reply);
+                return reply;
+            }
+        }
         QString appData = "";
         // 安装不查缓存
         auto ret = getAppInfofromServer(appId, "", arch, appData, reply.message);

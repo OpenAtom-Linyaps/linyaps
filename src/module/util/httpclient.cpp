@@ -138,6 +138,7 @@ bool HttpClient::queryRemoteApp(const QString &pkgName, const QString &pkgVer, c
             ret = true;
         } else {
             qCritical() << reply->errorString();
+            outMsg = reply->errorString();
             reply->abort();
         }
         reply->deleteLater();

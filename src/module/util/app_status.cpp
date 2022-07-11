@@ -427,7 +427,6 @@ bool getAppMetaInfoListByJson(const QString &jsonString, linglong::package::AppM
     QJsonParseError parseJsonErr;
     QJsonDocument document = QJsonDocument::fromJson(jsonString.toUtf8(), &parseJsonErr);
     if (jsonString.isEmpty() || QJsonParseError::NoError != parseJsonErr.error) {
-        qDebug() << "parse json data err " << jsonString;
         return false;
     }
     QJsonArray array(document.array());

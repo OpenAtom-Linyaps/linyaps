@@ -627,7 +627,11 @@ int main(int argc, char **argv)
              QDBusPendingReply<linglong::service::QueryReply> dbusReply = packageManager.Query(paramOption);
              dbusReply.waitForFinished();
              linglong::service::QueryReply reply = dbusReply.value();
-             linglong::util::getAppMetaInfoListByJson(reply.result, appMetaInfoList);
+             auto ret = linglong::util::getAppMetaInfoListByJson(reply.result, appMetaInfoList);
+             if (!ret) {
+                 qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
+                 return -1;
+             }
              if (1 == appMetaInfoList.size() && "flatpakquery" == appMetaInfoList.at(0)->appId) {
                  printFlatpakAppInfo(appMetaInfoList);
              } else {

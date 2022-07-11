@@ -56,7 +56,7 @@ bool SystemPackageManagerPrivate::getAppJsonArray(const QString &jsonString, QJs
     QJsonParseError parseJsonErr;
     QJsonDocument document = QJsonDocument::fromJson(jsonString.toUtf8(), &parseJsonErr);
     if (QJsonParseError::NoError != parseJsonErr.error) {
-        err = "parse json data err";
+        err = "parse server's json data err, please check the network " + jsonString;
         return false;
     }
 
@@ -102,7 +102,6 @@ bool SystemPackageManagerPrivate::loadAppInfo(const QString &jsonString, linglon
     QJsonValue arrayValue;
     auto ret = getAppJsonArray(jsonString, arrayValue, err);
     if (!ret) {
-        err = "jsonString from server data format is not array";
         qCritical().noquote() << jsonString;
         return false;
     }
@@ -135,7 +134,7 @@ bool SystemPackageManagerPrivate::getAppInfofromServer(const QString &pkgName, c
 {
     bool ret = G_HTTPCLIENT->queryRemoteApp(pkgName, pkgVer, pkgArch, appData);
     if (!ret) {
-        err = "getAppInfofromServer err, please check the network";
+        err = "getAppInfofromServer err, " + appData + " ,please check the network";
         qCritical() << err;
 
         qDebug().noquote() << appData;

@@ -96,7 +96,7 @@ linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString
     // 判断info.json是否存在
     if (!util::fileExists(this->bundleDataPath + QString(configJson))) {
         return NewError() << STATUS_CODE(kUapJsonFileNotExists)
-                             << this->bundleDataPath + QString("/info.json don't exists!!!");
+                          << this->bundleDataPath + QString("/info.json don't exists!!!");
     }
 
     // 转换info.json为Info对象
@@ -218,7 +218,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
 {
     auto userInfo = util::getUserInfo();
 
-   // 从配置文件获取服务器域名url
+    // 从配置文件获取服务器域名url
     QString configUrl = repoUrl;
     if (configUrl.isEmpty()) {
         int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
@@ -296,7 +296,8 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
     // 推送数据到临时仓库
     QStringList arguments;
     arguments << QString("--repo=") + this->tmpWorkDir + "/repo" << QString("commit") << QString("-s")
-              << QString("update ") + info->version << QString("-m") << QString("Name: ") + info->appid << QString("-b")
+              << QString("update ") + info->version << QString("--canonical-permissions") << QString("-m")
+              << QString("Name: ") + info->appid << QString("-b")
               << (QStringList {info->appid, info->version, info->arch[0]}.join(QDir::separator()))
               << QString("--tree=dir=") + this->bundleDataPath;
 
@@ -322,7 +323,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
     }
 
     // 上传repo.tar文件
-    auto retUploadRepo = G_HTTPCLIENT->uploadFile(this->tmpWorkDir + "/repo.tar", configUrl, "ostree" , token);
+    auto retUploadRepo = G_HTTPCLIENT->uploadFile(this->tmpWorkDir + "/repo.tar", configUrl, "ostree", token);
     if (STATUS_CODE(kSuccess) != retUploadRepo) {
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);

@@ -504,7 +504,7 @@ QString OstreeRepoHelper::createTmpRepo(const QString &parentRepo)
         return "";
     }
     dir.setAutoRemove(false);
-    auto ret = linglong::runner::Runner("ostree", {"--repo=" + tmpPath + "/repoTmp", "init", "--mode=bare-user"},
+    auto ret = linglong::runner::Runner("ostree", {"--repo=" + tmpPath + "/repoTmp", "init", "--mode=bare-user-only"},
                                         1000 * 60 * 5);
     if (!ret) {
         return "";

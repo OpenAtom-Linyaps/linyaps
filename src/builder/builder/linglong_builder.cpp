@@ -169,7 +169,7 @@ linglong::util::Error LinglongBuilder::initRepo()
 
         repo::OSTree repo(BuilderConfig::instance()->repoPath());
 
-        auto ret = repo.init("bare-user");
+        auto ret = repo.init("bare-user-only");
         if (!ret.success()) {
             return NewError(-1, "init ostree repo failed");
         }

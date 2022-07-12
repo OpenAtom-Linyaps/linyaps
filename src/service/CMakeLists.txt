@@ -20,7 +20,6 @@ set(LL_SERVICE_SOURCES
     ../module/runtime/app.cpp
     ../module/util/file.cpp
     ../module/util/sysinfo.cpp
-    ../module/runtime/tracker.cpp
     ../module/util/httpclient.cpp
     ../module/repo/ostree_repohelper.cpp
     ../module/repo/repohelper_factory.cpp

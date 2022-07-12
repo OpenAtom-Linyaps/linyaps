@@ -21,7 +21,6 @@ set(LL_SYSTEM_SERVICE_SOURCES
     ../module/util/file.cpp
     ../module/util/sysinfo.cpp
     ../module/util/httpclient.cpp
-    ../module/runtime/tracker.cpp
     ../module/repo/ostree_repohelper.cpp
     ../module/repo/repohelper_factory.h
     ../module/package/package.h

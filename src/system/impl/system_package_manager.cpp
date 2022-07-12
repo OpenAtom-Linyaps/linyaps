@@ -13,19 +13,18 @@
 
 #include "system_package_manager.h"
 
+#include <pwd.h>
+#include <sys/types.h>
+
 #include <QDebug>
 #include <QDBusInterface>
 #include <QDBusReply>
 #include <QJsonArray>
+#include <QDBusConnectionInterface>
 
-#include "module/runtime/app.h"
 #include "module/util/app_status.h"
 #include "module/util/appinfo_cache.h"
-#include "module/util/file.h"
 #include "module/util/sysinfo.h"
-#include "module/package/info.h"
-#include "module/repo/repo.h"
-#include "module/repo/ostree.h"
 #include "module/util/httpclient.h"
 #include "system_package_manager_p.h"
 
@@ -189,8 +188,6 @@ bool SystemPackageManagerPrivate::downloadAppData(const QString &pkgName, const 
 Reply SystemPackageManagerPrivate::Download(const DownloadParamOption &downloadParamOption)
 {
     Reply reply;
-    // reply.code = 0;
-    // reply.message = downloadParamOption.appId;
     return reply;
 }
 
@@ -921,6 +918,16 @@ Reply SystemPackageManagerPrivate::Update(const ParamOption &paramOption)
     return reply;
 }
 
+QString SystemPackageManagerPrivate::getUserName(uid_t uid)
+{
+    struct passwd *user;
+    user = getpwuid(uid);
+    if (user) {
+        return QString::fromLocal8Bit(user->pw_name);
+    }
+    return "";
+}
+
 SystemPackageManager::SystemPackageManager()
     : pool(new QThreadPool)
     , dd_ptr(new SystemPackageManagerPrivate(this))
@@ -951,6 +958,14 @@ Reply SystemPackageManager::Download(const DownloadParamOption &downloadParamOpt
         reply.code = STATUS_CODE(kUserInputParamErr);
         reply.message = "package name err";
         return reply;
+    }
+
+    qInfo() << "Pid is:" << connection().interface()->servicePid(message().service());
+    qInfo() << "Uid is:" << connection().interface()->serviceUid(message().service());
+    QDBusReply<uint> dbusReply = connection().interface()->serviceUid(message().service());
+    if (dbusReply.isValid()) {
+        QString userName = d->getUserName(dbusReply.value());
+        qInfo() << dbusReply.value() << userName;
     }
     return d->Download(downloadParamOption);
 }

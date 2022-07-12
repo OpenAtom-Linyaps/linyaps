@@ -20,6 +20,8 @@
 #include "service/impl/package_manager.h"
 #include "system/impl/system_package_manager.h"
 #include "package_manager.h"
+#include "system_package_manager.h"
+
 #include "module/runtime/runtime.h"
 #include "module/util/app_status.h"
 #include "module/util/xdg.h"
@@ -197,6 +199,10 @@ int main(int argc, char **argv)
 
     ComDeepinLinglongPackageManagerInterface packageManager(
         "com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager", QDBusConnection::sessionBus());
+
+    ComDeepinLinglongSystemPackageManagerInterface sysPackageManager(
+        "com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager", QDBusConnection::systemBus());
+
     checkAndStartService(packageManager);
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
         {"run", // 启动玲珑应用
@@ -455,7 +461,7 @@ int main(int argc, char **argv)
              downloadParamOption.savePath = parser.value(optDownload);
 
              packageManager.setTimeout(1000 * 60 * 60 * 24);
-             QDBusPendingReply<linglong::service::Reply> reply = packageManager.Download(downloadParamOption);
+             QDBusPendingReply<linglong::service::Reply> reply = sysPackageManager.Download(downloadParamOption);
              reply.waitForFinished();
              linglong::service::Reply retReply = reply.value();
              qInfo().noquote() << retReply.code << retReply.message;
@@ -501,13 +507,13 @@ int main(int argc, char **argv)
              linglong::service::Reply reply;
              qInfo().noquote() << "install" << args.at(1) << ", please wait a few minutes...";
              if (!parser.isSet(optNoDbus)) {
-                 QDBusPendingReply<linglong::service::Reply> dbusReply = packageManager.Install(installParamOption);
+                 QDBusPendingReply<linglong::service::Reply> dbusReply = sysPackageManager.Install(installParamOption);
                  dbusReply.waitForFinished();
                  reply = dbusReply.value();
                  if ("flatpak" != repoType) {
                      QThread::sleep(1);
                      // 查询一次进度
-                     dbusReply = packageManager.GetDownloadStatus(installParamOption, 0);
+                     dbusReply = sysPackageManager.GetDownloadStatus(installParamOption, 0);
                      dbusReply.waitForFinished();
                      reply = dbusReply.value();
                      while (reply.code == STATUS_CODE(kPkgInstalling)) {
@@ -516,7 +522,7 @@ int main(int argc, char **argv)
                          std::cout << "\r\33[K" << reply.message.toStdString();
                          std::cout.flush();
                          QThread::sleep(1);
-                         dbusReply = packageManager.GetDownloadStatus(installParamOption, 0);
+                         dbusReply = sysPackageManager.GetDownloadStatus(installParamOption, 0);
                          dbusReply.waitForFinished();
                          reply = dbusReply.value();
                      }
@@ -564,7 +570,7 @@ int main(int argc, char **argv)
                  paramOption.version = appInfoList.at(1);
              }
              qInfo().noquote() << "update" << paramOption.appId << ", please wait a few minutes...";
-             QDBusPendingReply<linglong::service::Reply> dbusReply = packageManager.Update(paramOption);
+             QDBusPendingReply<linglong::service::Reply> dbusReply = sysPackageManager.Update(paramOption);
              dbusReply.waitForFinished();
              linglong::service::Reply reply;
              reply = dbusReply.value();
@@ -573,7 +579,7 @@ int main(int argc, char **argv)
 
                  QThread::sleep(1);
                  // 1 秒 查询一次进度
-                 dbusReply = packageManager.GetDownloadStatus(paramOption, 1);
+                 dbusReply = sysPackageManager.GetDownloadStatus(paramOption, 1);
                  dbusReply.waitForFinished();
                  reply = dbusReply.value();
                  while (reply.code == STATUS_CODE(kPkgUpdating)) {
@@ -582,7 +588,7 @@ int main(int argc, char **argv)
                      std::cout << "\r\33[K" << reply.message.toStdString();
                      std::cout.flush();
                      QThread::sleep(1);
-                     dbusReply = packageManager.GetDownloadStatus(paramOption, 1);
+                     dbusReply = sysPackageManager.GetDownloadStatus(paramOption, 1);
                      dbusReply.waitForFinished();
                      reply = dbusReply.value();
                  }
@@ -624,7 +630,7 @@ int main(int argc, char **argv)
              paramOption.repoPoint = repoType;
              paramOption.appId = args.value(1);
              linglong::package::AppMetaInfoList appMetaInfoList;
-             QDBusPendingReply<linglong::service::QueryReply> dbusReply = packageManager.Query(paramOption);
+             QDBusPendingReply<linglong::service::QueryReply> dbusReply = sysPackageManager.Query(paramOption);
              dbusReply.waitForFinished();
              linglong::service::QueryReply reply = dbusReply.value();
              auto ret = linglong::util::getAppMetaInfoListByJson(reply.result, appMetaInfoList);
@@ -685,7 +691,7 @@ int main(int argc, char **argv)
                  }
                  return 0;
              }
-             dbusReply = packageManager.Uninstall(paramOption);
+             dbusReply = sysPackageManager.Uninstall(paramOption);
              dbusReply.waitForFinished();
              reply = dbusReply.value();
 
@@ -728,7 +734,7 @@ int main(int argc, char **argv)
              if (parser.isSet(optNoDbus)) {
                  reply = SYSTEM_MANAGER_HELPER->Query(paramOption);
              } else {
-                 QDBusPendingReply<linglong::service::QueryReply> dbusReply = packageManager.Query(paramOption);
+                 QDBusPendingReply<linglong::service::QueryReply> dbusReply = sysPackageManager.Query(paramOption);
                  // 默认超时时间为25s
                  dbusReply.waitForFinished();
                  reply = dbusReply.value();

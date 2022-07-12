@@ -42,6 +42,13 @@ qt5_add_dbus_interface(LL_CLI_SOURCES
                        ../module/dbus_ipc/com.deepin.linglong.PackageManager.xml
                        package_manager)
 
+set_source_files_properties(../module/dbus_ipc/com.deepin.linglong.SystemPackageManager.xml
+                           PROPERTIES INCLUDE service/impl/register_meta_type.h)
+
+qt5_add_dbus_interface(LL_CLI_SOURCES
+                       ../module/dbus_ipc/com.deepin.linglong.SystemPackageManager.xml
+                       system_package_manager)
+
 #add for cli no dbus support
 qt5_add_dbus_adaptor(LL_CLI_SOURCES
                      ../module/dbus_ipc/com.deepin.linglong.JobManager.xml

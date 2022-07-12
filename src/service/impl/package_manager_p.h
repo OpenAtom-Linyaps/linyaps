@@ -11,14 +11,8 @@
 #include "module/runtime/app.h"
 #include "module/repo/repo.h"
 #include "module/repo/ostree.h"
-#include "module/repo/repohelper_factory.h"
 #include "module/util/app_status.h"
-#include "module/util/appinfo_cache.h"
-#include "module/util/httpclient.h"
-#include "module/util/package_manager_param.h"
 #include "module/util/sysinfo.h"
-#include "module/util/runner.h"
-#include "module/util/version.h"
 
 namespace linglong {
 namespace service {

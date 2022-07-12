@@ -8,24 +8,12 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-// todo: 该头文件必须放在QDBus前，否则会报错
-#include "module/repo/ostree_repohelper.h"
-
 #include "package_manager.h"
 
-#include <QDebug>
-#include <QDBusInterface>
-#include <QDBusReply>
+#include <sys/types.h>
+#include <signal.h>
 
 #include "module/runtime/app.h"
-#include "module/util/app_status.h"
-#include "module/util/appinfo_cache.h"
-#include "module/util/file.h"
-#include "module/util/sysinfo.h"
-#include "module/package/info.h"
-#include "module/repo/repo.h"
-#include "job_manager.h"
-#include "module/repo/ostree.h"
 #include "package_manager_p.h"
 
 namespace linglong {
@@ -74,17 +62,7 @@ bool PackageManagerPrivate::isAppRunning(const QString &appId, const QString &ve
  */
 Reply PackageManager::Download(const DownloadParamOption &downloadParamOption)
 {
-    QDBusInterface interface("com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager",
-                             "com.deepin.linglong.SystemPackageManager", QDBusConnection::systemBus());
-    // 设置 24 h超时
-    interface.setTimeout(1000 * 60 * 60 * 24);
-    QDBusPendingReply<Reply> dbusReply = interface.call("Download", QVariant::fromValue(downloadParamOption));
-    dbusReply.waitForFinished();
     linglong::service::Reply reply;
-    reply.code = STATUS_CODE(kSuccess);
-    if (dbusReply.isValid()) {
-        reply = dbusReply.value();
-    }
     return reply;
 }
 
@@ -100,15 +78,7 @@ Reply PackageManager::Download(const DownloadParamOption &downloadParamOption)
  */
 Reply PackageManager::GetDownloadStatus(const ParamOption &paramOption, int type)
 {
-    QDBusInterface interface("com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager",
-                             "com.deepin.linglong.SystemPackageManager", QDBusConnection::systemBus());
-    QDBusPendingReply<Reply> dbusReply = interface.call("GetDownloadStatus", QVariant::fromValue(paramOption), type);
-    dbusReply.waitForFinished();
     linglong::service::Reply reply;
-    reply.code = STATUS_CODE(kSuccess);
-    if (dbusReply.isValid()) {
-        reply = dbusReply.value();
-    }
     return reply;
 }
 
@@ -118,72 +88,31 @@ Reply PackageManager::GetDownloadStatus(const ParamOption &paramOption, int type
  */
 Reply PackageManager::Install(const InstallParamOption &installParamOption)
 {
-    QDBusInterface interface("com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager",
-                             "com.deepin.linglong.SystemPackageManager", QDBusConnection::systemBus());
+    // QDBusInterface interface("com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager",
+    //                          "com.deepin.linglong.SystemPackageManager", QDBusConnection::systemBus());
     // 设置 24 h超时
-    interface.setTimeout(1000 * 60 * 60 * 24);
-    QDBusPendingReply<Reply> dbusReply = interface.call("Install", QVariant::fromValue(installParamOption));
-    dbusReply.waitForFinished();
+    // interface.setTimeout(1000 * 60 * 60 * 24);
+    // QDBusPendingReply<Reply> dbusReply = interface.call("Install", QVariant::fromValue(installParamOption));
+    // dbusReply.waitForFinished();
     linglong::service::Reply reply;
-    reply.code = STATUS_CODE(kPkgInstalling);
-    if (dbusReply.isValid()) {
-        reply = dbusReply.value();
-    }
+    // reply.code = STATUS_CODE(kPkgInstalling);
+    // if (dbusReply.isValid()) {
+    //     reply = dbusReply.value();
+    // }
+    qInfo() << "PackageManager::Install called";
     return reply;
 }
 
 Reply PackageManager::Uninstall(const UninstallParamOption &paramOption)
 {
-    Q_D(PackageManager);
-
     linglong::service::Reply reply;
-    QString appId = paramOption.appId.trimmed();
-    QString version = paramOption.version.trimmed();
-    QString arch = linglong::util::hostArch();
-
-    if (d->isAppRunning(appId, version, arch)) {
-        reply.code = STATUS_CODE(kPkgUninstallFailed);
-        reply.message = appId + " is running, please stop first";
-        qCritical() << reply.message;
-        return reply;
-    }
-
-    QDBusInterface interface("com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager",
-                             "com.deepin.linglong.SystemPackageManager", QDBusConnection::systemBus());
-    // 设置 30分钟超时
-    interface.setTimeout(1000 * 60 * 30);
-    QDBusPendingReply<Reply> dbusReply = interface.call("Uninstall", QVariant::fromValue(paramOption));
-    dbusReply.waitForFinished();
-    reply.code = STATUS_CODE(kPkgUninstalling);
-    if (dbusReply.isValid()) {
-        reply = dbusReply.value();
-    }
+    qInfo() << "PackageManager::Uninstall called";
     return reply;
 }
 
 Reply PackageManager::Update(const ParamOption &paramOption)
 {
-    Q_D(PackageManager);
     linglong::service::Reply reply;
-    QString appId = paramOption.appId.trimmed();
-    QString version = paramOption.version.trimmed();
-    QString arch = linglong::util::hostArch();
-
-    if (d->isAppRunning(appId, version, arch)) {
-        reply.code = STATUS_CODE(kErrorPkgUpdateFailed);
-        reply.message = appId + " is running, please stop first";
-        qCritical() << reply.message;
-        return reply;
-    }
-
-    QDBusInterface interface("com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager",
-                             "com.deepin.linglong.SystemPackageManager", QDBusConnection::systemBus());
-    QDBusPendingReply<Reply> dbusReply = interface.call("Update", QVariant::fromValue(paramOption));
-    dbusReply.waitForFinished();
-    reply.code = STATUS_CODE(kPkgUpdating);
-    if (dbusReply.isValid()) {
-        reply = dbusReply.value();
-    }
     return reply;
 }
 
@@ -196,14 +125,7 @@ Reply PackageManager::Update(const ParamOption &paramOption)
  */
 QueryReply PackageManager::Query(const QueryParamOption &paramOption)
 {
-    QDBusInterface interface("com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager",
-                             "com.deepin.linglong.SystemPackageManager", QDBusConnection::systemBus());
-    QDBusPendingReply<QueryReply> dbusReply = interface.call("Query", QVariant::fromValue(paramOption));
-    dbusReply.waitForFinished();
     linglong::service::QueryReply reply;
-    if (dbusReply.isValid()) {
-        reply = dbusReply.value();
-    }
     return reply;
 }
 

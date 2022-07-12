@@ -8,23 +8,15 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#include "module/runtime/app.h"
-#include "module/repo/repo.h"
-#include "module/repo/ostree.h"
-#include "module/repo/repohelper_factory.h"
 #include "module/util/app_status.h"
-#include "module/util/appinfo_cache.h"
 #include "module/util/httpclient.h"
 #include "module/util/package_manager_param.h"
 #include "module/util/sysinfo.h"
-#include "module/util/runner.h"
-#include "module/util/version.h"
 
 namespace linglong {
 namespace service {
 class SystemPackageManager;
-class SystemPackageManagerPrivate
-    : public QObject
+class SystemPackageManagerPrivate : public QObject
 {
     Q_OBJECT
 public:
@@ -32,7 +24,7 @@ public:
     ~SystemPackageManagerPrivate() override = default;
 
 private:
-    Reply Download(const DownloadParamOption &downloadParamOption) ;
+    Reply Download(const DownloadParamOption &downloadParamOption);
     Reply Install(const InstallParamOption &installParamOption);
     Reply Uninstall(const UninstallParamOption &paramOption);
     QueryReply Query(const QueryParamOption &paramOption);
@@ -149,6 +141,15 @@ private:
      * @param arch: 应用对应的架构
      */
     void delAppConfig(const QString &appId, const QString &version, const QString &arch);
+
+    /*
+     * 通过用户uid获取对应的用户名
+     *
+     * @param uid: 用户uid
+     *
+     * @return QString: uid对应的用户名
+     */
+    QString getUserName(uid_t uid);
 
 private:
 

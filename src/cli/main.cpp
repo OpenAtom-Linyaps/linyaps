@@ -178,21 +178,11 @@ int main(int argc, char **argv)
 
     QCommandLineParser parser;
     parser.addHelpOption();
-    QStringList subCommandList = {"run",     "ps",        "exec",   "kill",  "download",
-                                  "install", "uninstall", "update", "query", "list"};
+    QStringList subCommandList = {"run", "ps", "exec", "kill", "install", "uninstall", "update", "query", "list"};
 
     parser.addPositionalArgument("subcommand", subCommandList.join("\n"), "subcommand [sub-option]");
 
-    // TODO: for debug now
-    auto optDefaultConfig = QCommandLineOption("default-config", "default config json filepath", "");
-    parser.addOption(optDefaultConfig);
-
     parser.parse(QCoreApplication::arguments());
-
-    auto configPath = parser.value(optDefaultConfig);
-    if (configPath.isEmpty()) {
-        configPath = ":/config.json";
-    }
 
     QStringList args = parser.positionalArguments();
     QString command = args.isEmpty() ? QString() : args.first();
@@ -453,8 +443,8 @@ int main(int argc, char **argv)
              // 第一个参数为命令字
              linglong::service::DownloadParamOption downloadParamOption;
              QStringList appInfoList = args.value(1).split("/");
+             downloadParamOption.appId = appInfoList.at(0);
              if (appInfoList.size() > 2) {
-                 downloadParamOption.appId = appInfoList.at(0);
                  downloadParamOption.version = appInfoList.at(1);
                  downloadParamOption.arch = appInfoList.at(2);
              }
@@ -682,6 +672,7 @@ int main(int argc, char **argv)
              qInfo().noquote() << "uninstall" << appInfo << ", please wait a few minutes...";
              paramOption.delAllVersion = parser.isSet(optAllVer);
              if (parser.isSet(optNoDbus)) {
+                 SYSTEM_MANAGER_HELPER->setNoDBusMode(true);
                  reply = SYSTEM_MANAGER_HELPER->Uninstall(paramOption);
                  if (reply.code != STATUS_CODE(kPkgUninstallSuccess)) {
                      qInfo().noquote() << "message: " << reply.message << ", errcode:" << reply.code;

@@ -12,6 +12,7 @@
 
 #include "service/impl/register_meta_type.h"
 #include "systempackagemanageradaptor.h"
+#include "jobmanageradaptor.h"
 #include "module/util/log_handler.h"
 
 int main(int argc, char *argv[])
@@ -31,8 +32,9 @@ int main(int argc, char *argv[])
     }
 
     SystemPackageManagerAdaptor pma(SYSTEM_MANAGER_HELPER);
+    JobManagerAdaptor jma(JobManager::instance());
 
     dbus.registerObject("/com/deepin/linglong/SystemPackageManager", SYSTEM_MANAGER_HELPER);
-
+    dbus.registerObject("/com/deepin/linglong/JobManager", JobManager::instance());
     return QCoreApplication::exec();
 }

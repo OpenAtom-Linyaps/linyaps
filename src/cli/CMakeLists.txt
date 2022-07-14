@@ -13,8 +13,8 @@ set(LL_CLI_SOURCES
     ../service/impl/package_manager.cpp
     ../system/impl/system_package_manager.cpp
     ../system/impl/package_manager_flatpak_impl.cpp
-    ../service/impl/job_manager.cpp
-    ../service/impl/job.cpp
+    ../system/impl/job_manager.cpp
+    ../system/impl/job.cpp
     ../service/resource/resource.qrc
     ../module/util/httpclient.cpp
     ../module/repo/ostree.cpp
@@ -52,12 +52,12 @@ qt5_add_dbus_interface(LL_CLI_SOURCES
 #add for cli no dbus support
 qt5_add_dbus_adaptor(LL_CLI_SOURCES
                      ../module/dbus_ipc/com.deepin.linglong.JobManager.xml
-                     ../service/impl/job_manager.h
+                     ../system/impl/job_manager.h
                      JobManager)
 
 qt5_add_dbus_adaptor(LL_CLI_SOURCES
                      ../module/dbus_ipc/com.deepin.linglong.Job.xml
-                     ../service/impl/job.h
+                     ../system/impl/job.h
                      Job)
 
 find_package(CURL REQUIRED)

@@ -263,6 +263,15 @@ private:
      */
     QString createTmpRepo(const QString &parentRepo);
 
+    /*
+     * 通过父进程id查找子进程id
+     *
+     * @param qint64: 父进程id
+     *
+     * @return qint64: 子进程id
+     */
+    qint64 getChildPid(qint64 pid);
+
 private:
     // ostree 仓库对象信息
     LingLongDir *pLingLongDir;

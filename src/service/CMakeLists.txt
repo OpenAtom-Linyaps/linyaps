@@ -8,8 +8,6 @@ set(LL_SERVICE_SOURCES
     main.cpp
     resource/resource.qrc
     impl/package_manager.cpp
-    impl/job_manager.cpp
-    impl/job.cpp
     impl/reply.h
     impl/param_option.h
     ../module/flatpak/flatpak_manager.cpp
@@ -39,17 +37,6 @@ qt5_add_dbus_adaptor(LL_SERVICE_SOURCES
                      ../module/dbus_ipc/com.deepin.linglong.PackageManager.xml
                      impl/package_manager.h
                      linglong::service::PackageManager)
-
-
-qt5_add_dbus_adaptor(LL_SERVICE_SOURCES
-                     ../module/dbus_ipc/com.deepin.linglong.JobManager.xml
-                     impl/job_manager.h
-                     JobManager)
-
-qt5_add_dbus_adaptor(LL_SERVICE_SOURCES
-                     ../module/dbus_ipc/com.deepin.linglong.Job.xml
-                     impl/job.h
-                     Job)
 
 MESSAGE(STATUS "current CPU ARCH is: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 

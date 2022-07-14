@@ -448,6 +448,43 @@ bool OstreeRepoHelper::checkOutAppData(const QString &repoPath, const QString &r
 }
 
 /*
+ * 通过父进程id查找子进程id
+ *
+ * @param qint64: 父进程id
+ *
+ * @return qint64: 子进程id
+ */
+qint64 OstreeRepoHelper::getChildPid(qint64 pid)
+{
+    QProcess process;
+    const QStringList argList = {"-P", QString::number(pid)};
+    process.start("pgrep", argList);
+    if (!process.waitForStarted()) {
+        qCritical() << "start pgrep failed!";
+        return 0;
+    }
+    if (!process.waitForFinished(1000 * 60)) {
+        qCritical() << "run pgrep finish failed!";
+        return 0;
+    }
+
+    auto retStatus = process.exitStatus();
+    auto retCode = process.exitCode();
+    QString childPid = "";
+    if (retStatus != 0 || retCode != 0) {
+        qCritical() << "run pgrep failed, retCode:" << retCode << ", args:" << argList
+                    << ", info msg:" << QString::fromLocal8Bit(process.readAllStandardOutput())
+                    << ", err msg:" << QString::fromLocal8Bit(process.readAllStandardError());
+        return 0;
+    } else {
+        childPid = QString::fromLocal8Bit(process.readAllStandardOutput());
+        qDebug() << "getChildPid ostree pid:" << childPid;
+    }
+
+    return childPid.toLongLong();
+}
+
+/*
  * 启动一个ostree 命令相关的任务
  *
  * @param cmd: 需要运行的命令
@@ -466,13 +503,22 @@ bool OstreeRepoHelper::startOstreeJob(const QString &cmd, const QString &ref, co
         qCritical() << "start " + cmd + " failed!";
         return false;
     }
-    int processId = process.processId();
-    jobMap.insert(ref, processId);
+
+    qint64 processId = process.processId();
+    // 通过script pid 查找对应的ostree pid
+    if ("script" == cmd) {
+        qint64 shPid = getChildPid(processId);
+        qint64 ostreePid = getChildPid(shPid);
+        jobMap.insert(ref, ostreePid);
+    }
     if (!process.waitForFinished(timeout)) {
         qCritical() << "run " + cmd + " finish failed!";
         return false;
     }
-    jobMap.remove(ref);
+    if ("script" == cmd) {
+        jobMap.remove(ref);
+    }
+
     auto retStatus = process.exitStatus();
     auto retCode = process.exitCode();
     if (retStatus != 0 || retCode != 0) {

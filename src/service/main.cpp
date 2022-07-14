@@ -13,7 +13,6 @@
 #include "module/runtime/app.h"
 #include "impl/register_meta_type.h"
 #include "packagemanageradaptor.h"
-#include "jobmanageradaptor.h"
 #include "module/runtime/runtime.h"
 #include "module/util/log_handler.h"
 
@@ -36,11 +35,9 @@ int main(int argc, char *argv[])
     }
 
     PackageManagerAdaptor pma(PACKAGE_MANAGER);
-    JobManagerAdaptor jma(JobManager::instance());
 
     // TODO(se): 需要进行错误处理
     dbus.registerObject("/com/deepin/linglong/PackageManager", PACKAGE_MANAGER);
-    dbus.registerObject("/com/deepin/linglong/JobManager", JobManager::instance());
 
     return QCoreApplication::exec();
 }

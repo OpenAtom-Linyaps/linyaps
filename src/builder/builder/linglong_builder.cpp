@@ -26,7 +26,7 @@
 #include "module/util/xdg.h"
 #include "module/runtime/oci.h"
 #include "module/runtime/container.h"
-#include "module/repo/ostree.h"
+#include "module/repo/ostree_repo.h"
 
 #include "project.h"
 #include "source_fetcher.h"
@@ -127,7 +127,7 @@ linglong::util::Error commitBuildOutput(Project *project, AnnotationsOverlayfsRo
         util::removeDir(project->config().cacheInstallPath("files/lib/systemd"));
     }
 
-    repo::OSTree repo(BuilderConfig::instance()->repoPath());
+    repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath());
 
     auto ret = repo.importDirectory(project->ref(), project->config().cacheInstallPath(""));
 
@@ -167,7 +167,7 @@ linglong::util::Error LinglongBuilder::initRepo()
     if (!QDir(BuilderConfig::instance()->ostreePath()).exists()) {
         util::ensureDir(BuilderConfig::instance()->ostreePath());
 
-        repo::OSTree repo(BuilderConfig::instance()->repoPath());
+        repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath());
 
         auto ret = repo.init("bare-user-only");
         if (!ret.success()) {
@@ -295,13 +295,13 @@ linglong::util::Error LinglongBuilder::create(const QString &projectName)
     auto templeteFile = QStringList {BuilderConfig::instance()->templatePath(), "template.yaml"}.join("/");
 
     // TODO: 判断projectName名称合法性
-    //在当前目录创建项目文件夹
+    // 在当前目录创建项目文件夹
     auto ret = QDir().mkdir(projectPath);
     if (!ret) {
         return NewError(-1, "project already exists");
     }
 
-    if(!QFile::copy(templeteFile, configFilePath)){
+    if (!QFile::copy(templeteFile, configFilePath)) {
         return NewError(-1, "templete file is not found");
     }
 
@@ -421,7 +421,7 @@ linglong::util::Error LinglongBuilder::build()
     // mount tmpfs to /tmp in container
     auto m = new Mount(r);
     m->type = "tmpfs";
-    m->options = QStringList {"nosuid", "strictatime","mode=777"};
+    m->options = QStringList {"nosuid", "strictatime", "mode=777"};
     m->source = "tmp";
     m->destination = "/tmp";
     r->mounts.push_back(m);
@@ -548,13 +548,13 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
 {
     auto exportPath = QStringList {BuilderConfig::instance()->projectRoot(), "export"}.join("/");
     util::ensureDir(exportPath);
-    
+
     // checkout data from local ostree
     if (!useLocalDir) {
         QScopedPointer<Project> project(formYaml<Project>(YAML::LoadFile("linglong.yaml")));
 
-        repo::OSTree repo(BuilderConfig::instance()->repoPath());
-      
+        repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath());
+
         auto ret = repo.checkout(project->ref(), "", exportPath);
         if (!ret.success()) {
             return NewError(-1, "checkout files failed, you need build first");
@@ -588,7 +588,7 @@ linglong::util::Error LinglongBuilder::push(const QString &bundleFilePath, const
 
 linglong::util::Error LinglongBuilder::run()
 {
-    repo::OSTree repo(BuilderConfig::instance()->repoPath());
+    repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath());
 
     linglong::util::Error ret(NoError());
 
@@ -612,7 +612,7 @@ linglong::util::Error LinglongBuilder::run()
         return NewError(-1, "checkout runtime files failed");
     }
 
-    //获取环境变量
+    // 获取环境变量
     QStringList userEnvList = COMMAND_HELPER->getUserEnv(linglong::util::envList);
 
     auto app = runtime::App::load(&repo, project->ref(), BuilderConfig::instance()->exec(), false);

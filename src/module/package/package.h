@@ -24,13 +24,13 @@
 
 #include "module/util/file.h"
 #include "module/util/json.h"
-#include "module/util/repo.h"
 #include "module/util/status_code.h"
-
+#include "ref.h"
 
 // 当前在线包对应的包名/版本/架构/uab存储URL信息
 namespace linglong {
 namespace package {
+
 class AppMetaInfo : public JsonSerialize
 {
     Q_OBJECT
@@ -52,7 +52,13 @@ public:
     Q_JSON_PROPERTY(QString, description);
     // 安装应用对应的用户
     Q_JSON_PROPERTY(QString, user);
+
+public:
+    inline package::Ref ref() {
+        return package::Ref("", appId, version, arch);
+    }
 };
+
 }
 }
 

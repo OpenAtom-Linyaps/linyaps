@@ -23,6 +23,12 @@ namespace util {
 class Error
 {
 public:
+    Error(const Error &err){
+        errorCode = err.errorCode;
+        msgMeta = err.msgMeta;
+        msgMetaList = err.msgMetaList;
+    }
+
     Error(const char *file, int line, const char *func, const Error &base, int code = 0, const QString &msg = "")
         : errorCode(code)
         , msgMeta(MessageMeta {

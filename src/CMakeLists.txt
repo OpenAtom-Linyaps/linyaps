@@ -1,5 +1,6 @@
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
+
 add_definitions("-DQT_MESSAGELOGCONTEXT")
 
 find_package(PkgConfig REQUIRED)
@@ -8,6 +9,7 @@ find_package(Qt5DBus REQUIRED)
 find_package(Qt5Network REQUIRED)
 find_package(Qt5Sql REQUIRED)
 find_package(yaml-cpp REQUIRED)
+pkg_search_module(GLIB REQUIRED glib-2.0)
 
 set(Qt_LIBS
     Qt5::Core

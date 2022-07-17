@@ -27,6 +27,7 @@
 #include "module/util/sysinfo.h"
 #include "module/util/httpclient.h"
 #include "system_package_manager_p.h"
+#include "module/util/runner.h"
 
 namespace linglong {
 namespace service {
@@ -35,6 +36,7 @@ SystemPackageManagerPrivate::SystemPackageManagerPrivate(SystemPackageManager *p
     , kAppInstallPath(util::getLinglongRootPath() + "/layers/")
     , kLocalRepoPath(util::getLinglongRootPath())
     , kRemoteRepoName("repo")
+    , ostree(kLocalRepoPath)
     , q_ptr(parent)
 {
     // 如果没有config.json拷贝一份到${LINGLONG_ROOT}

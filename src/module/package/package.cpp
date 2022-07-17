@@ -21,5 +21,5 @@ void linglong::package::registerAllMetaType()
     qJsonRegister<linglong::package::Filesystem>();
     qJsonRegister<linglong::package::User>();
     qJsonRegister<linglong::package::OverlayfsRootfs>();
-    qJsonRegister<AppMetaInfo>();
+    qJsonRegister<linglong::package::AppMetaInfo>();
 }

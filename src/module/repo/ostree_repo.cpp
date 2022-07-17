@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#include "ostree.h"
+#include "ostree_repo.h"
 
 #include <QProcess>
 #include <QDir>
@@ -21,9 +21,9 @@
 namespace linglong {
 namespace repo {
 
-class OSTreePrivate
+class OSTreeRepoPrivate
 {
-    OSTreePrivate(const QString &path, OSTree *parent)
+    OSTreeRepoPrivate(const QString &path, OSTreeRepo *parent)
         : path(path)
         , q_ptr(parent)
     {
@@ -66,33 +66,33 @@ class OSTreePrivate
     QString path;
     QString ostreePath;
 
-    OSTree *q_ptr;
-    Q_DECLARE_PUBLIC(OSTree);
+    OSTreeRepo *q_ptr;
+    Q_DECLARE_PUBLIC(OSTreeRepo);
 };
 
-linglong::util::Error OSTree::importDirectory(const package::Ref &ref, const QString &path)
+linglong::util::Error OSTreeRepo::importDirectory(const package::Ref &ref, const QString &path)
 {
-    Q_D(OSTree);
+    Q_D(OSTreeRepo);
 
     return NewError(d->ostreeRun({"commit", "-b", ref.toString(), "--tree=dir=" + path}));
 }
 
-linglong::util::Error OSTree::import(const package::Bundle &bundle)
+linglong::util::Error OSTreeRepo::import(const package::Bundle &bundle)
 {
     return linglong::util::Error(nullptr, 0, nullptr);
 }
 
-linglong::util::Error OSTree::exportBundle(package::Bundle &bundle)
+linglong::util::Error OSTreeRepo::exportBundle(package::Bundle &bundle)
 {
     return linglong::util::Error(nullptr, 0, nullptr);
 }
 
-std::tuple<linglong::util::Error, QList<package::Ref>> OSTree::list(const QString &filter)
+std::tuple<linglong::util::Error, QList<package::Ref>> OSTreeRepo::list(const QString &filter)
 {
     return std::tuple<linglong::util::Error, QList<package::Ref>>(NewError(), {});
 }
 
-std::tuple<linglong::util::Error, QList<package::Ref>> OSTree::query(const QString &filter)
+std::tuple<linglong::util::Error, QList<package::Ref>> OSTreeRepo::query(const QString &filter)
 {
     return std::tuple<linglong::util::Error, QList<package::Ref>>(NewError(), {});
 }
@@ -105,9 +105,9 @@ std::tuple<linglong::util::Error, QList<package::Ref>> OSTree::query(const QStri
  * @param force
  * @return
  */
-linglong::util::Error OSTree::push(const package::Ref &ref, bool force)
+linglong::util::Error OSTreeRepo::push(const package::Ref &ref, bool force)
 {
-    Q_D(OSTree);
+    Q_D(OSTreeRepo);
 
     auto serverUri = qEnvironmentVariable("OSTREE_UPLOAD_SERVER");
     auto serverToken = qEnvironmentVariable("OSTREE_UPLOAD_TOKEN");
@@ -124,38 +124,38 @@ linglong::util::Error OSTree::push(const package::Ref &ref, bool force)
     return (success ? NoError() : NewError(-1, "ostree upload failed"));
 }
 
-linglong::util::Error OSTree::push(const package::Bundle &bundle, bool force)
+linglong::util::Error OSTreeRepo::push(const package::Bundle &bundle, bool force)
 {
     return linglong::util::Error(nullptr, 0, nullptr);
 }
 
-linglong::util::Error OSTree::pull(const package::Ref &ref, bool force)
+linglong::util::Error OSTreeRepo::pull(const package::Ref &ref, bool force)
 {
-    Q_D(OSTree);
+    Q_D(OSTreeRepo);
     // Fixme: remote name maybe not repo and there should support multiple remote
     return WrapError(d->ostreeRun({"pull", "repo", "--mirror", ref.toString()}));
 }
 
-linglong::util::Error OSTree::init(const QString &mode)
+linglong::util::Error OSTreeRepo::init(const QString &mode)
 {
-    Q_D(OSTree);
+    Q_D(OSTreeRepo);
 
     return WrapError(d->ostreeRun({"init", QString("--mode=%1").arg(mode)}));
 }
 
-linglong::util::Error OSTree::remoteAdd(const QString &repoName, const QString &repoUrl)
+linglong::util::Error OSTreeRepo::remoteAdd(const QString &repoName, const QString &repoUrl)
 {
-    Q_D(OSTree);
+    Q_D(OSTreeRepo);
 
     return WrapError(d->ostreeRun({"remote", "add", "--no-gpg-verify", repoName, repoUrl}));
 }
 
-OSTree::OSTree(const QString &path)
-    : dd_ptr(new OSTreePrivate(path, this))
+OSTreeRepo::OSTreeRepo(const QString &path)
+    : dd_ptr(new OSTreeRepoPrivate(path, this))
 {
 }
 
-linglong::util::Error OSTree::checkout(const package::Ref &ref, const QString &subPath, const QString &target)
+linglong::util::Error OSTreeRepo::checkout(const package::Ref &ref, const QString &subPath, const QString &target)
 {
     QStringList args = {"checkout", "--union"};
     if (!subPath.isEmpty()) {
@@ -165,12 +165,12 @@ linglong::util::Error OSTree::checkout(const package::Ref &ref, const QString &s
     return WrapError(dd_ptr->ostreeRun(args));
 }
 
-QString OSTree::rootOfLayer(const package::Ref &ref)
+QString OSTreeRepo::rootOfLayer(const package::Ref &ref)
 {
     return QStringList {dd_ptr->path, "layers", ref.appId, ref.version, ref.arch}.join(QDir::separator());
 }
 
-package::Ref OSTree::latestOfRef(const QString &appId, const QString &appVersion)
+package::Ref OSTreeRepo::latestOfRef(const QString &appId, const QString &appVersion)
 {
     auto latestVersionOf = [this](const QString &appId) {
         auto localRepoRoot = QString(dd_ptr->path) + "/layers" + "/" + appId;
@@ -208,7 +208,38 @@ package::Ref OSTree::latestOfRef(const QString &appId, const QString &appVersion
     return package::Ref(ref);
 }
 
-OSTree::~OSTree() = default;
+linglong::util::Error OSTreeRepo::removeRef(const package::Ref &ref)
+{
+    QStringList args = {"refs", "--delete", ref.toString()};
+    auto ret = dd_ptr->ostreeRun(args);
+    if (!ret.success()) {
+        return WrapError(ret, "delete refs failed");
+    }
+
+    args = QStringList {"prune"};
+    return WrapError(dd_ptr->ostreeRun(args));
+}
+
+std::tuple<linglong::util::Error, QStringList> OSTreeRepo::remoteList()
+{
+    QStringList remoteList;
+    QStringList args = {"remote", "list"};
+    QByteArray output;
+    auto ret = dd_ptr->ostreeRun(args, &output);
+    if (!ret.success()) {
+        return {WrapError(ret, "remote list failed"), QStringList {}};
+    }
+
+    for (const auto &item : QString::fromLocal8Bit(output).trimmed().split('\n')) {
+        if (!item.trimmed().isEmpty()) {
+            remoteList.push_back(item);
+        }
+    }
+
+    return {NoError(), remoteList};
+}
+
+OSTreeRepo::~OSTreeRepo() = default;
 
 } // namespace repo
 } // namespace linglong

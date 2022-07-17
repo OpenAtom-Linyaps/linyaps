@@ -165,6 +165,8 @@ void checkAndStartService(ComDeepinLinglongPackageManagerInterface &packageManag
     }
 }
 
+using namespace linglong;
+
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
@@ -190,8 +192,9 @@ int main(int argc, char **argv)
     ComDeepinLinglongPackageManagerInterface packageManager(
         "com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager", QDBusConnection::sessionBus());
 
-    ComDeepinLinglongSystemPackageManagerInterface sysPackageManager(
-        "com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager", QDBusConnection::systemBus());
+    ComDeepinLinglongSystemPackageManagerInterface sysPackageManager("com.deepin.linglong.SystemPackageManager",
+                                                                     "/com/deepin/linglong/SystemPackageManager",
+                                                                     QDBusConnection::systemBus());
 
     checkAndStartService(packageManager);
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
@@ -629,15 +632,13 @@ int main(int argc, char **argv)
              paramOption.force = parser.isSet(optNoCache);
              paramOption.repoPoint = repoType;
              paramOption.appId = args.value(1);
-             linglong::package::AppMetaInfoList appMetaInfoList;
+
              QDBusPendingReply<linglong::service::QueryReply> dbusReply = sysPackageManager.Query(paramOption);
              dbusReply.waitForFinished();
              linglong::service::QueryReply reply = dbusReply.value();
-             auto ret = linglong::util::getAppMetaInfoListByJson(reply.result, appMetaInfoList);
-             if (!ret) {
-                 qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
-                 return -1;
-             }
+
+             auto appMetaInfoList = util::arrayFromJson<package::AppMetaInfoList>(reply.result);
+
              if (1 == appMetaInfoList.size() && "flatpakquery" == appMetaInfoList.at(0)->appId) {
                  printFlatpakAppInfo(appMetaInfoList);
              } else {

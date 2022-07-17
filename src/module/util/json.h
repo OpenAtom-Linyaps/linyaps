@@ -34,8 +34,14 @@ public: \
 #define Q_JSON_ITEM_MEMBER(TYPE, PROP, MEMBER_NAME) \
 public: \
     Q_PROPERTY(TYPE PROP MEMBER MEMBER_NAME READ get##PROP WRITE set##PROP); \
-    TYPE get##PROP() const { return MEMBER_NAME; } \
-    inline void set##PROP(const TYPE &val) { MEMBER_NAME = val; } \
+    TYPE get##PROP() const \
+    { \
+        return MEMBER_NAME; \
+    } \
+    inline void set##PROP(const TYPE &val) \
+    { \
+        MEMBER_NAME = val; \
+    } \
 \
 public: \
     TYPE MEMBER_NAME = TYPE();
@@ -45,8 +51,14 @@ public: \
 #define Q_JSON_ITEM_MEMBER_PTR(TYPE, PROP, MEMBER_NAME) \
 public: \
     Q_PROPERTY(TYPE *PROP MEMBER MEMBER_NAME READ get##PROP WRITE set##PROP); \
-    TYPE *get##PROP() const { return MEMBER_NAME; } \
-    inline void set##PROP(TYPE *val) { MEMBER_NAME = val; } \
+    TYPE *get##PROP() const \
+    { \
+        return MEMBER_NAME; \
+    } \
+    inline void set##PROP(TYPE *val) \
+    { \
+        MEMBER_NAME = val; \
+    } \
 \
 public: \
     TYPE *MEMBER_NAME = nullptr;
@@ -84,6 +96,21 @@ static T *fromVariant(const QVariant &v)
 
     m->onPostSerialize();
     return m;
+}
+
+template<typename LIST>
+static LIST fromVariantList(const QVariant &l)
+{
+    LIST list;
+    using TP = typename std::decay<decltype((*list.begin()).data())>::type;
+    using T= typename std::remove_pointer<TP>::type;
+
+    auto varList = l.toList();
+    for (auto v : varList) {
+        auto o = fromVariant<T>(v);
+        list.push_back(o);
+    }
+    return list;
 }
 
 template<typename T>
@@ -144,7 +171,10 @@ inline void qJsonRegister()
     { \
         return fromVariant<TYPE>(v); \
     } \
-    inline void TYPE_LIST::registerMetaType() { qDBusRegisterMetaType<TYPE_LIST>(); } \
+    inline void TYPE_LIST::registerMetaType() \
+    { \
+        qDBusRegisterMetaType<TYPE_LIST>(); \
+    } \
     template<> \
     inline void qJsonRegister<TYPE>() \
     { \
@@ -266,6 +296,20 @@ template<typename T>
 static T *loadJSONString(const QString &jsonString)
 {
     auto json = QJsonDocument::fromJson(jsonString.toLocal8Bit());
+    return fromVariant<T>(json.toVariant());
+}
+
+template<typename LIST>
+static LIST arrayFromJson(const QString &str)
+{
+    auto json = QJsonDocument::fromJson(str.toLocal8Bit());
+    return fromVariantList<LIST>(json.toVariant());
+}
+
+template<typename T>
+static T *loadJSONBytes(const QByteArray &jsonString)
+{
+    auto json = QJsonDocument::fromJson(jsonString);
     return fromVariant<T>(json.toVariant());
 }
 

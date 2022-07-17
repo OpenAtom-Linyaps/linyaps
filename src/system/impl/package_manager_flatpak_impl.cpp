@@ -9,6 +9,7 @@
  */
 
 #include "package_manager_flatpak_impl.h"
+#include "module/util/runner.h"
 
 namespace linglong {
 namespace service {

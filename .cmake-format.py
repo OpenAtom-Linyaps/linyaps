@@ -82,7 +82,7 @@ with section("format"):
 
   # If a candidate layout is wrapped horizontally but it exceeds this many
   # lines, then reject the layout.
-  max_lines_hwrap = 4
+  max_lines_hwrap = 2
 
   # What style line endings to use in the output.
   line_ending = 'unix'

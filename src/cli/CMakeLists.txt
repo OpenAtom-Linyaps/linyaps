@@ -4,17 +4,21 @@ set(LL_CLI_SOURCES
     ../module/package/info.cpp
     ../module/package/package.cpp
     ../module/package/package.h
-    ../module/repo/ostree.cpp
+    ../module/repo/ostree_repo.cpp
     ../module/repo/ostree_repohelper.cpp
     ../module/repo/repo.cpp
-    ../module/repo/repohelper_factory.cpp
+    ../module/repo/repo_client.cpp
+    ../module/repo/repo_client.h
     ../module/runtime/app.cpp
     ../module/runtime/container.cpp
     ../module/runtime/container.h
     ../module/runtime/oci.h
+    ../module/util/config/config.h
     ../module/util/connection.cpp
     ../module/util/desktop_entry.cpp
     ../module/util/file.cpp
+    ../module/util/http/http_client.cpp
+    ../module/util/http/http_client.h
     ../module/util/httpclient.cpp
     ../module/util/json.h
     ../module/util/log_handler.cpp

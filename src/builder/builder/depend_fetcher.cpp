@@ -11,7 +11,7 @@
 #include <QDir>
 #include "project.h"
 
-#include "module/repo/ostree.h"
+#include "module/repo/ostree_repo.h"
 
 #include "builder_config.h"
 #include "depend_fetcher.h"
@@ -43,7 +43,7 @@ DependFetcher::~DependFetcher() = default;
 
 linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString &targetPath)
 {
-    repo::OSTree ostree(BuilderConfig::instance()->repoPath());
+    repo::OSTreeRepo ostree(BuilderConfig::instance()->repoPath());
 
     auto remoteRef = package::Ref("", dd_ptr->ref.appId, dd_ptr->ref.version, dd_ptr->ref.arch);
 

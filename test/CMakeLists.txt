@@ -53,6 +53,16 @@ set(LL_TEST_SOURCES
     ../src/module/util/connection.cpp
     ../src/module/util/desktop_entry.cpp
     ../src/module/util/file.cpp
+    ../src/module/repo/repo_client.cpp
+    ../src/module/repo/repo_client.h
+    ../src/module/runtime/container.cpp
+    ../src/module/runtime/oci.h
+    ../src/module/util/config/config.h
+    ../src/module/util/connection.cpp
+    ../src/module/util/desktop_entry.cpp
+    ../src/module/util/file.cpp
+    ../src/module/util/http/http_client.cpp
+    ../src/module/util/http/http_client.h
     ../src/module/util/httpclient.cpp
     ../src/module/util/json.h
     ../src/module/util/sysinfo.cpp
@@ -89,7 +99,10 @@ qt5_add_dbus_interface(
   package_manager
 )
 
-add_executable(ll-test ${LL_TEST_SOURCES})
+add_executable(
+  ll-test
+  ${LL_TEST_SOURCES}
+)
 
 target_include_directories(
   ll-test

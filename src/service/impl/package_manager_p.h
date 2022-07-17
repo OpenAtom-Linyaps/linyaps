@@ -10,7 +10,7 @@
 
 #include "module/runtime/app.h"
 #include "module/repo/repo.h"
-#include "module/repo/ostree.h"
+#include "module/repo/ostree_repo.h"
 #include "system/impl/app_status.h"
 #include "module/util/sysinfo.h"
 
@@ -27,7 +27,7 @@ public:
 
 private:
     QMap<QString, QPointer<linglong::runtime::App>> apps;
-    linglong::repo::OSTree repo;
+    linglong::repo::OSTreeRepo repo;
 
     /**
      * @brief 查询应用是否正在运行

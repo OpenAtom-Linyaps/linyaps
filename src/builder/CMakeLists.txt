@@ -5,14 +5,20 @@ set(LL_BUILDER_SOURCES
     ../module/package/bundle.cpp
     ../module/package/info.cpp
     ../module/package/package.cpp
-    ../module/repo/ostree.cpp
+    ../module/repo/ostree_repo.cpp
+    ../module/repo/ostree_repo.h
+    ../module/repo/ostree_repohelper.cpp
+    ../module/repo/repo.cpp
+    ../module/repo/repo_client.cpp
+    ../module/repo/repo_client.h
     ../module/runtime/app.cpp
     ../module/runtime/container.cpp
     ../module/runtime/oci.h
+    ../module/util/config/config.h
     ../module/util/desktop_entry.cpp
     ../module/util/file.cpp
-    ../module/util/http_client.cpp
-    ../module/util/http_client.h
+    ../module/util/http/http_client.cpp
+    ../module/util/http/http_client.h
     ../module/util/httpclient.cpp
     ../module/util/json.h
     ../module/util/log_handler.cpp
@@ -47,9 +53,20 @@ aux_source_directory(builder LL_BUILDER_SOURCES)
 
 add_executable(ll-builder ${LL_BUILDER_SOURCES})
 
-target_include_directories(ll-builder PRIVATE ../)
+target_include_directories(
+  ll-builder
+  PRIVATE ../
+          ${GLIB_INCLUDE_DIRS}
+          ${OSTREE1_INCLUDE_DIRS}
+)
 
-target_link_libraries(ll-builder PRIVATE ${LINK_LIBS} CURL::libcurl)
+target_link_libraries(
+  ll-builder
+  PRIVATE ${LINK_LIBS}
+          CURL::libcurl
+          ${GLIB_LDFLAGS}
+          ${OSTREE1_LDFLAGS}
+)
 
 install(TARGETS ll-builder RUNTIME DESTINATION bin)
 install(FILES ${RESOURCES} DESTINATION share/deepin/ll-builder/template)

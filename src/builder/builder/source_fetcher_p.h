@@ -12,7 +12,7 @@
 
 #include <QEventLoop>
 
-#include "module/util/http_client.h"
+#include "module/util/http/http_client.h"
 #include "module/util/runner.h"
 #include "module/util/file.h"
 

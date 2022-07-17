@@ -9,6 +9,8 @@
  */
 
 #include "app_status.h"
+#include "module/repo/ostree_repo.h"
+#include "module/repo/repo_client.h"
 #include "module/util/httpclient.h"
 #include "module/util/package_manager_param.h"
 #include "module/util/sysinfo.h"
@@ -172,6 +174,9 @@ private:
     QMap<QString, Reply> appState;
 
     bool noDBusMode = false;
+
+    repo::OSTreeRepo ostree;
+    repo::RepoClient repoClient;
 
 public:
     SystemPackageManager *const q_ptr;

@@ -14,14 +14,14 @@
 #include <QObject>
 #include <QScopedPointer>
 
-#include "repo.h"
+#include "module/repo/repo.h"
 
 namespace linglong {
 
 namespace repo {
 
-class OSTreePrivate;
-class OSTree
+class OSTreeRepoPrivate;
+class OSTreeRepo
     : public QObject
     , public Repo
 {
@@ -35,12 +35,14 @@ public:
     };
     Q_ENUM(Mode);
 
-    explicit OSTree(const QString &path);
+    explicit OSTreeRepo(const QString &path);
 
-    ~OSTree() override;
+    ~OSTreeRepo() override;
     linglong::util::Error init(const QString &repoMode);
 
     linglong::util::Error remoteAdd(const QString &repoName, const QString &repoUrl);
+
+    std::tuple<linglong::util::Error, QStringList> remoteList();
 
     linglong::util::Error importDirectory(const package::Ref &ref, const QString &path) override;
 
@@ -60,13 +62,15 @@ public:
 
     linglong::util::Error checkout(const package::Ref &ref, const QString &subPath, const QString &target);
 
+    linglong::util::Error removeRef(const package::Ref &ref);
+
     QString rootOfLayer(const package::Ref &ref) override;
 
     package::Ref latestOfRef(const QString &appId, const QString &appVersion) override;
 
 private:
-    QScopedPointer<OSTreePrivate> dd_ptr;
-    Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), OSTree)
+    QScopedPointer<OSTreeRepoPrivate> dd_ptr;
+    Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), OSTreeRepo)
 };
 
 } // namespace repo

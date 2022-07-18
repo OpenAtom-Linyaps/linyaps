@@ -798,15 +798,18 @@ public:
         // 临时默认挂载用户相关目录
         // todo: 后续加权限后整改
         // Fixme: modify static mount that after this comment code.
-        auto usrDirList =
-            QStringList {"Desktop", "Documents", "Downloads", "Music", "Pictures", "Videos", ".Public", ".Templates"};
+        auto usrDirList = QStringList {"desktop",  "documents", "downloads",    "music",
+                                       "pictures", "videos",    "public_share", "templates"};
         for (auto dir : usrDirList) {
-            Mount &m = *new Mount(r);
-            m.type = "bind";
-            m.options = QStringList {"rw", "rbind"};
-            m.source = util::getUserFile(dir);
-            m.destination = util::getUserFile(dir);
-            r->mounts.push_back(&m);
+            auto xdgDir = linglong::util::getXdgDir(dir);
+            if (xdgDir.first) {
+                Mount &m = *new Mount(r);
+                m.type = "bind";
+                m.options = QStringList {"rw", "rbind"};
+                m.source = xdgDir.second;
+                m.destination = xdgDir.second;
+                r->mounts.push_back(&m);
+            }
         }
 
         //挂载runtime的xdg-open和xdg-email到沙箱/usr/bin下

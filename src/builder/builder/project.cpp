@@ -60,6 +60,9 @@ public:
 
         if (!BuilderConfig::instance()->exec().isEmpty()) {
             command += BuilderConfig::instance()->exec().toLocal8Bit() + "\n";
+            scriptFile.write(command.toLocal8Bit());
+            scriptFile.close();
+            return 0;
         }
         // TODO: genarate global config, load from builder config file.
         command += "#global variable\n";

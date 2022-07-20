@@ -841,7 +841,6 @@ Reply SystemPackageManagerPrivate::Update(const ParamOption &paramOption)
     linglong::package::AppMetaInfoList pkgList;
     // 根据已安装文件查询已经安装软件包信息
     linglong::util::getInstalledAppInfo(appId, version, arch, "", pkgList);
-    auto installedApp = pkgList.at(0);
     if (pkgList.size() != 1) {
         reply.message = "query local app:" + appId + " info err";
         qCritical() << reply.message;
@@ -851,6 +850,7 @@ Reply SystemPackageManagerPrivate::Update(const ParamOption &paramOption)
         return reply;
     }
 
+    auto installedApp = pkgList.at(0);
     QString currentVersion = installedApp->version;
     QString appData = QString();
     auto ret = getAppInfofromServer(appId, "", arch, appData, reply.message);
@@ -876,7 +876,7 @@ Reply SystemPackageManagerPrivate::Update(const ParamOption &paramOption)
 
     auto serverApp = getLatestApp(appId, serverPkgList);
     if (currentVersion == serverApp->version) {
-        reply.message = "app:" + appId + ", version:" + currentVersion + " is latest";
+        reply.message = "app:" + appId + ", latest version:" + currentVersion + " already installed";
         qCritical() << reply.message;
         reply.code = STATUS_CODE(kErrorPkgUpdateFailed);
 
@@ -884,7 +884,16 @@ Reply SystemPackageManagerPrivate::Update(const ParamOption &paramOption)
         return reply;
     }
 
-    // FIXME 安装最新软件
+    // 判断是否已安装最新版本软件
+    if (linglong::util::getAppInstalledStatus(appId, serverApp->version, arch, "")) {
+        reply.message = appId + ", latest version:" + serverApp->version + " already installed";
+        qCritical() << reply.message;
+        reply.code = STATUS_CODE(kErrorPkgUpdateFailed);
+
+        appState.insert(appId + "/" + version + "/" + arch, reply);
+        return reply;
+    }
+
     InstallParamOption installParamOption;
     installParamOption.appId = appId;
     installParamOption.version = serverApp->version;

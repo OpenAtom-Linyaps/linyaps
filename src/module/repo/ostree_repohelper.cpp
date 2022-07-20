@@ -531,7 +531,7 @@ bool OstreeRepoHelper::startOstreeJob(const QString &cmd, const QString &ref, co
 }
 
 /*
- * 在/tmp目录下创建一个临时repo子仓库
+ * 在玲珑应用安装目录创建一个临时repo子仓库
  *
  * @param parentRepo: 父repo仓库路径
  *

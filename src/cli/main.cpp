@@ -506,6 +506,7 @@ int main(int argc, char **argv)
                      dbusReply = sysPackageManager.GetDownloadStatus(installParamOption, 0);
                      dbusReply.waitForFinished();
                      reply = dbusReply.value();
+                     bool disProgress = false;
                      // 隐藏光标
                      std::cout << "\033[?25l";
                      while (reply.code == STATUS_CODE(kPkgInstalling)) {
@@ -515,9 +516,13 @@ int main(int argc, char **argv)
                          dbusReply = sysPackageManager.GetDownloadStatus(installParamOption, 0);
                          dbusReply.waitForFinished();
                          reply = dbusReply.value();
+                         disProgress = true;
                      }
                      // 显示光标
-                     std::cout << "\033[?25h" << std::endl;
+                     std::cout << "\033[?25h";
+                     if (disProgress) {
+                         std::cout << std::endl;
+                     }
                  }
                  if (reply.code != STATUS_CODE(kPkgInstallSuccess)) {
                      if (reply.message.isEmpty()) {
@@ -572,6 +577,7 @@ int main(int argc, char **argv)
                  dbusReply = sysPackageManager.GetDownloadStatus(paramOption, 1);
                  dbusReply.waitForFinished();
                  reply = dbusReply.value();
+                 bool disProgress = false;
                  // 隐藏光标
                  std::cout << "\033[?25l";
                  while (reply.code == STATUS_CODE(kPkgUpdating)) {
@@ -581,9 +587,13 @@ int main(int argc, char **argv)
                      dbusReply = sysPackageManager.GetDownloadStatus(paramOption, 1);
                      dbusReply.waitForFinished();
                      reply = dbusReply.value();
+                     disProgress = true;
                  }
                  // 显示光标
-                 std::cout << "\033[?25h" << std::endl;
+                 std::cout << "\033[?25h";
+                 if (disProgress) {
+                     std::cout << std::endl;
+                 }
              }
              if (reply.code != STATUS_CODE(kErrorPkgUpdateSuccess)) {
                  qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;

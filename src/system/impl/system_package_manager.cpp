@@ -322,6 +322,7 @@ bool SystemPackageManagerPrivate::installRuntime(const QString &runtimeId, const
     }
     pkgInfo->kind = "runtime";
     linglong::util::insertAppRecord(pkgInfo, "user", userName);
+
     return true;
 }
 
@@ -360,6 +361,69 @@ bool SystemPackageManagerPrivate::checkAppRuntime(const QString &runtime, QStrin
 }
 
 /*
+ * 检查应用base安装状态
+ *
+ * @param runtime: runtime ref
+ * @param err: 错误信息
+ *
+ * @return bool: true:安装成功或已安装返回true false:安装失败
+ */
+bool SystemPackageManagerPrivate::checkAppBase(const QString &runtime, QString &err)
+{
+    // 通过runtime获取base ref
+    QStringList runtimeList = runtime.split("/");
+    if (runtimeList.size() != 3) {
+        err = "app runtime:" + runtime + " runtime format err";
+        return false;
+    }
+    const QString runtimeId = runtimeList.at(0);
+    const QString runtimeVer = runtimeList.at(1);
+    const QString runtimeArch = runtimeList.at(2);
+
+    // runtimeId 校验
+    if (runtimeId.isEmpty()) {
+        err = "app runtime:" + runtime + " runtimeId format err";
+        return false;
+    }
+
+    linglong::package::AppMetaInfoList appList;
+    QString appData = "";
+
+    bool ret = getAppInfofromServer(runtimeId, runtimeVer, runtimeArch, appData, err);
+    if (!ret) {
+        return false;
+    }
+    ret = loadAppInfo(appData, appList, err);
+    if (!ret) {
+        qCritical() << err;
+        return false;
+    }
+    // app runtime 只能匹配一个
+    if (appList.size() != 1) {
+        err = "installBase app:" + runtimeId + ", version:" + runtimeVer + " not found in repo";
+        return false;
+    }
+
+    auto runtimeInfo = appList.at(0);
+    auto baseRef = runtimeInfo->runtime;
+    QStringList baseList = baseRef.split('/');
+    if (baseList.size() != 3) {
+        err = "app base:" + baseRef + " base format err";
+        return false;
+    }
+    const QString baseId = baseList.at(0);
+    const QString baseVer = baseList.at(1);
+    const QString baseArch = baseList.at(2);
+
+    bool retbase = true;
+    // 判断app依赖的runtime是否安装 runtime 不区分用户
+    if (!linglong::util::getAppInstalledStatus(baseId, baseVer, "", "")) {
+        retbase = installRuntime(baseId, baseVer, baseArch, err);
+    }
+    return retbase;
+}
+
+/*
  * 从给定的软件包列表中查找最新版本的软件包
  *
  * @param appId: 待匹配应用的appId
@@ -368,7 +432,8 @@ bool SystemPackageManagerPrivate::checkAppRuntime(const QString &runtime, QStrin
  * @return AppMetaInfo: 最新版本的软件包
  *
  */
-linglong::package::AppMetaInfo *SystemPackageManagerPrivate::getLatestApp(const QString &appId, const linglong::package::AppMetaInfoList &appList)
+linglong::package::AppMetaInfo *
+SystemPackageManagerPrivate::getLatestApp(const QString &appId, const linglong::package::AppMetaInfoList &appList)
 {
     linglong::package::AppMetaInfo *latestApp = appList.at(0);
     if (appList.size() == 1) {
@@ -561,6 +626,18 @@ Reply SystemPackageManagerPrivate::Install(const InstallParamOption &installPara
         appState.insert(appId + "/" + version + "/" + arch, reply);
         return reply;
     }
+
+    // 检查软件包依赖的base安装状态
+    if (!linglong::util::isDeepinSysProduct()) {
+        ret = checkAppBase(appInfo->runtime, reply.message);
+        if (!ret) {
+            qCritical() << reply.message;
+            reply.code = STATUS_CODE(kInstallBaseFailed);
+            appState.insert(appId + "/" + version + "/" + arch, reply);
+            return reply;
+        }
+    }
+
     // 下载在线包数据到目标目录 安装完成
     // QString pkgName = "org.deepin.calculator";
     const QString savePath = kAppInstallPath + appInfo->appId + "/" + appInfo->version + "/" + appInfo->arch;

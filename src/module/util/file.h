@@ -381,14 +381,26 @@ void inline removeDstDirLinkFiles(const QString &src, const QString &dst)
 }
 
 /*!
+ * 判断是否是deepin系统或者其发型版
+ * @return bool: true:是deepin系统产品
+ */
+bool inline isDeepinSysProduct()
+{
+    auto sysType = QSysInfo::productType();
+    if ("uos" == sysType || "Deepin" == sysType) {
+        return true;
+    }
+    return false;
+}
+
+/*!
  * 根据系统版本获取玲珑安装路径
  * @return QString 玲珑安装路径
  */
 QString inline getLinglongRootPath()
 {
-    auto sysType = QSysInfo::productType();
     auto sysProductVersion = QSysInfo::productVersion().toDouble();
-    if ("uos" != sysType && "Deepin" != sysType) {
+    if (!isDeepinSysProduct()) {
         return QString("/var/lib/linglong");
     }
     // v20系统

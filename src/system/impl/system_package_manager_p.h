@@ -51,7 +51,8 @@ private:
      * @return AppMetaInfo: 最新版本的软件包
      *
      */
-    linglong::package::AppMetaInfo *getLatestApp(const QString &appId, const linglong::package::AppMetaInfoList &appList);
+    linglong::package::AppMetaInfo *getLatestApp(const QString &appId,
+                                                 const linglong::package::AppMetaInfoList &appList);
 
     /*
      * 从json字符串中提取软件包对应的JsonArray数据
@@ -125,6 +126,16 @@ private:
     bool checkAppRuntime(const QString &runtime, QString &err);
 
     /*
+     * 检查应用base安装状态
+     *
+     * @param runtime: runtime ref
+     * @param err: 错误信息
+     *
+     * @return bool: true:安装成功或已安装返回true false:安装失败
+     */
+    bool checkAppBase(const QString &runtime, QString &err);
+
+    /*
      * 安装应用时更新包括desktop文件在内的配置文件
      *
      * @param appId: 应用的appId
@@ -152,7 +163,6 @@ private:
     QString getUserName(uid_t uid);
 
 private:
-
     const QString sysLinglongInstalltions;
     const QString kAppInstallPath;
     const QString kLocalRepoPath;

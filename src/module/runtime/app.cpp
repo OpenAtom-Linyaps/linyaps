@@ -211,13 +211,21 @@ public:
 
     int stageRootfs(const QString &runtimeId, QString runtimeRootPath, const QString &appId, QString appRootPath) const
     {
+        // 使用linglong runtime标志
         bool useThinRuntime = true;
+        // overlay 挂载标志
         bool fuseMount = false;
+        // wine 应用挂载标志
+        bool wineMount = false;
+        // 通过info.json中overlay挂载标志
         bool specialCase = false;
+        // other sys overlay 挂载标志
+        bool otherSysMount = false;
 
         // if use wine runtime, mount with fuse
         // FIXME(iceyer): use info.json to decide use fuse or not
         if (runtimeRootPath.contains("org.deepin.Wine")) {
+            wineMount = true;
             fuseMount = true;
         }
 
@@ -257,6 +265,23 @@ public:
             return path;
         };
 
+        // 通过runtime info.json文件获取basicsRootPath路径
+        auto runtimeRef = package::Ref(q_ptr->runtime->ref);
+        QString runtimePath = repo->rootOfLayer(runtimeRef);
+        auto runtimeInfoFile = runtimePath + "/info.json";
+        QString basicsRootPath = "";
+        if (!linglong::util::isDeepinSysProduct() && useThinRuntime) {
+            package::Info *runtimeInfo = nullptr;
+            if (util::fileExists(runtimeInfoFile)) {
+                runtimeInfo = util::loadJSON<package::Info>(runtimeInfoFile);
+                if (!runtimeInfo->runtime.isEmpty()) {
+                    basicsRootPath = linglongRootPath + "/layers/" + runtimeInfo->runtime + "/files";
+                    fuseMount = true;
+                    otherSysMount = true;
+                }
+            }
+        }
+
         if (fuseMount) {
             r->annotations->overlayfs = new AnnotationsOverlayfsRootfs(r->annotations);
             r->annotations->overlayfs->lowerParent =
@@ -282,7 +307,7 @@ public:
             };
 
             // FIXME(iceyer): extract for wine, remove later
-            if (fuseMount && !specialCase) {
+            if (fuseMount && wineMount) {
                 // NOTE: the override should be behind host /usr
                 mountMap.push_back({runtimeRootPath + "/bin", "/usr/bin"});
                 mountMap.push_back({runtimeRootPath + "/include", "/usr/include"});
@@ -292,11 +317,15 @@ public:
                 mountMap.push_back({runtimeRootPath + "/opt/deepinwine", "/opt/deepinwine"});
                 mountMap.push_back({runtimeRootPath + "/opt/deepin-wine6-stable", "/opt/deepin-wine6-stable"});
             }
-            // overlay mount
+            // overlay mount 通过info.json
             if (fuseMount && specialCase) {
                 for (auto mount : info->overlayfs->mounts) {
                     mountMap.push_back({getPath(mount->source), getPath(mount->destination)});
                 }
+            }
+            // overlay mount basics
+            if (fuseMount && otherSysMount) {
+                mountMap.push_back({basicsRootPath, "/usr"});
             }
         } else {
             if (useFlatpakRuntime) {
@@ -1097,10 +1126,10 @@ void App::exec(QString cmd, QString env, QString cwd)
     // FIXME: retry on temporary fail
     // FIXME: add lock
     int sizeOfData = data.size();
-    while(sizeOfData){
-        auto sizeOfWrite =  write(d->sockets[1], data.c_str(), sizeOfData);
+    while (sizeOfData) {
+        auto sizeOfWrite = write(d->sockets[1], data.c_str(), sizeOfData);
         sizeOfData = sizeOfData - sizeOfWrite;
-        data = data.erase(0,sizeOfWrite);
+        data = data.erase(0, sizeOfWrite);
     }
     write(d->sockets[1], "\0", 1);
 }

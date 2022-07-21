@@ -24,6 +24,7 @@ enum class StatusCode {
     kPkgAlreadyInstalled, ///< 已安装
     kPkgNotInstalled, ///< 未安装
     kInstallRuntimeFailed, ///< 安装runtime失败
+    kInstallBaseFailed, ///< 安装base失败
     kLoadPkgDataFailed, ///< 加载应用数据失败
     kPkgInstallSuccess, ///< 安装成功
     kPkgInstalling, ///< 安装中

@@ -269,13 +269,17 @@ public:
         auto runtimeRef = package::Ref(q_ptr->runtime->ref);
         QString runtimePath = repo->rootOfLayer(runtimeRef);
         auto runtimeInfoFile = runtimePath + "/info.json";
-        QString basicsRootPath = "";
+        // basics usr
+        QString basicsUsrRootPath = "";
+        // basics etc
+        QString basicsEtcRootPath = "";
         if (!linglong::util::isDeepinSysProduct() && useThinRuntime) {
             package::Info *runtimeInfo = nullptr;
             if (util::fileExists(runtimeInfoFile)) {
                 runtimeInfo = util::loadJSON<package::Info>(runtimeInfoFile);
                 if (!runtimeInfo->runtime.isEmpty()) {
-                    basicsRootPath = linglongRootPath + "/layers/" + runtimeInfo->runtime + "/files";
+                    basicsUsrRootPath = linglongRootPath + "/layers/" + runtimeInfo->runtime + "/files/usr";
+                    basicsEtcRootPath = linglongRootPath + "/layers/" + runtimeInfo->runtime + "/files/etc";
                     fuseMount = true;
                     otherSysMount = true;
                 }
@@ -325,7 +329,8 @@ public:
             }
             // overlay mount basics
             if (fuseMount && otherSysMount) {
-                mountMap.push_back({basicsRootPath, "/usr"});
+                mountMap.push_back({basicsUsrRootPath, "/usr"});
+                mountMap.push_back({basicsEtcRootPath, "/etc"});
             }
         } else {
             if (useFlatpakRuntime) {
@@ -348,7 +353,8 @@ public:
             m->destination = pair.second;
 
             if (fuseMount) {
-                r->annotations->overlayfs->mounts.push_back(m);
+                // overlay mount 顺序是反向的
+                r->annotations->overlayfs->mounts.push_front(m);
             } else {
                 r->annotations->native->mounts.push_back(m);
             }
@@ -369,7 +375,8 @@ public:
         m->destination = appMountPath;
 
         if (fuseMount) {
-            r->annotations->overlayfs->mounts.push_back(m);
+            // overlay mount 顺序是反向的
+            r->annotations->overlayfs->mounts.push_front(m);
         } else {
             r->annotations->native->mounts.push_back(m);
         }

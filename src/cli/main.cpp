@@ -23,7 +23,7 @@
 #include "system_package_manager.h"
 
 #include "module/runtime/runtime.h"
-#include "module/util/app_status.h"
+#include "system/impl/app_status.h"
 #include "module/util/xdg.h"
 #include "module/util/env.h"
 #include "module/util/log_handler.h"

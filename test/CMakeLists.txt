@@ -50,8 +50,6 @@ set(LL_TEST_SOURCES
     ../src/module/repo/ostree_repohelper.cpp
     ../src/module/runtime/container.cpp
     ../src/module/runtime/oci.h
-    ../src/module/util/app_status.cpp
-    ../src/module/util/appinfo_cache.cpp
     ../src/module/util/connection.cpp
     ../src/module/util/desktop_entry.cpp
     ../src/module/util/file.cpp
@@ -62,6 +60,8 @@ set(LL_TEST_SOURCES
     ../src/module/util/xdg.cpp
     ../src/service/impl/param_option.h
     ../src/service/impl/reply.h
+    ../src/system/impl/app_status.cpp
+    ../src/system/impl/appinfo_cache.cpp
     module/package/package_info_test.cpp
     module/package/ref_test.cpp
     module/util/app_status_test.cpp

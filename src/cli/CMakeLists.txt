@@ -12,8 +12,6 @@ set(LL_CLI_SOURCES
     ../module/runtime/container.cpp
     ../module/runtime/container.h
     ../module/runtime/oci.h
-    ../module/util/app_status.cpp
-    ../module/util/appinfo_cache.cpp
     ../module/util/connection.cpp
     ../module/util/desktop_entry.cpp
     ../module/util/file.cpp
@@ -28,6 +26,8 @@ set(LL_CLI_SOURCES
     ../service/impl/param_option.h
     ../service/impl/reply.h
     ../service/resource/resource.qrc
+    ../system/impl/app_status.cpp
+    ../system/impl/appinfo_cache.cpp
     ../system/impl/job.cpp
     ../system/impl/job_manager.cpp
     ../system/impl/package_manager_flatpak_impl.cpp

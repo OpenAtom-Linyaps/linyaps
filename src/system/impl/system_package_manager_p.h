@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#include "module/util/app_status.h"
+#include "app_status.h"
 #include "module/util/httpclient.h"
 #include "module/util/package_manager_param.h"
 #include "module/util/sysinfo.h"

@@ -24,8 +24,6 @@ set(LL_SYSTEM_SERVICE_SOURCES
     ../module/runtime/app.cpp
     ../module/runtime/container.cpp
     ../module/runtime/oci.h
-    ../module/util/app_status.cpp
-    ../module/util/appinfo_cache.cpp
     ../module/util/connection.cpp
     ../module/util/desktop_entry.cpp
     ../module/util/file.cpp
@@ -36,6 +34,8 @@ set(LL_SYSTEM_SERVICE_SOURCES
     ../module/util/uuid.cpp
     ../module/util/xdg.cpp
     ../service/impl/param_option.h
+    impl/app_status.cpp
+    impl/appinfo_cache.cpp
     impl/job.cpp
     impl/job_manager.cpp
     impl/package_manager_flatpak_impl.cpp

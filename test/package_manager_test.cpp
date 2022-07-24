@@ -15,7 +15,7 @@
 
 #include "src/module/flatpak/flatpak_manager.h"
 #include "src/module/package/package.h"
-#include "src/module/util/app_status.h"
+#include "system/impl/app_status.h"
 #include "src/service/impl/register_meta_type.h"
 #include "src/service/impl/param_option.h"
 #include "src/service/impl/reply.h"

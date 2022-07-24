@@ -22,8 +22,8 @@
 #include <QJsonArray>
 #include <QDBusConnectionInterface>
 
-#include "module/util/app_status.h"
-#include "module/util/appinfo_cache.h"
+#include "app_status.h"
+#include "appinfo_cache.h"
 #include "module/util/sysinfo.h"
 #include "module/util/httpclient.h"
 #include "system_package_manager_p.h"

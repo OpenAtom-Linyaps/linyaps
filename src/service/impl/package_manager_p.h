@@ -11,7 +11,7 @@
 #include "module/runtime/app.h"
 #include "module/repo/repo.h"
 #include "module/repo/ostree.h"
-#include "module/util/app_status.h"
+#include "system/impl/app_status.h"
 #include "module/util/sysinfo.h"
 
 namespace linglong {

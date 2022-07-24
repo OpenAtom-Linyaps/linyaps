@@ -24,8 +24,6 @@ set(LL_SERVICE_SOURCES
     ../module/runtime/app.cpp
     ../module/runtime/container.cpp
     ../module/runtime/oci.h
-    ../module/util/app_status.cpp
-    ../module/util/appinfo_cache.cpp
     ../module/util/connection.cpp
     ../module/util/desktop_entry.cpp
     ../module/util/file.cpp
@@ -35,6 +33,8 @@ set(LL_SERVICE_SOURCES
     ../module/util/sysinfo.cpp
     ../module/util/uuid.cpp
     ../module/util/xdg.cpp
+    ../system/impl/app_status.cpp
+    ../system/impl/appinfo_cache.cpp
     impl/package_manager.cpp
     impl/param_option.h
     impl/reply.h

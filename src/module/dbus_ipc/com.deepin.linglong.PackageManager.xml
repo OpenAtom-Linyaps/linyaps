@@ -63,5 +63,11 @@
             <arg name="ContainerList" type="(iss)" direction="out"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::QueryReply"/>
         </method>
+        <method name="RunCommand">
+            <arg name="exe" type="s" direction="in"/>
+            <arg name="args" type="as" direction="in"/>
+            <arg type="(is)" direction="out"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
+        </method>
     </interface>
 </node>

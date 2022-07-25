@@ -158,6 +158,16 @@ public Q_SLOTS:
      */
     QueryReply ListContainer();
 
+    /**
+     * @brief 执行终端命令
+     *
+     * @param exe 命令
+     * @param args 参数
+     *
+     * @return Reply 执行结果信息
+     */
+    Reply RunCommand(const QString &exe, const QStringList args);
+
 public:
     QScopedPointer<QThreadPool> runPool; ///< 启动应用线程池
 

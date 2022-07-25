@@ -314,6 +314,38 @@ QueryReply PackageManager::ListContainer()
     return r;
 }
 
+/**
+ * @brief 执行终端命令
+ *
+ * @param exe 命令
+ * @param args 参数
+ *
+ * @return Reply 执行结果信息
+ */
+Reply PackageManager::RunCommand(const QString &exe, const QStringList args)
+{
+    Reply reply;
+    QProcess process;
+    process.setProgram(exe);
+
+    process.setArguments(args);
+
+    QProcess::connect(&process, &QProcess::readyReadStandardOutput,
+                      [&]() { std::cout << process.readAllStandardOutput().toStdString().c_str(); });
+
+    QProcess::connect(&process, &QProcess::readyReadStandardError,
+                      [&]() { std::cout << process.readAllStandardError().toStdString().c_str(); });
+
+    process.start();
+    process.waitForStarted(15 * 60 * 1000);
+    process.waitForFinished(15 * 60 * 1000);
+
+    reply.code = process.exitCode();
+    reply.message = process.errorString();
+
+    return reply;
+}
+
 QString PackageManager::Status()
 {
     return {"active"};

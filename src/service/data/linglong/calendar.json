@@ -2,23 +2,46 @@
     "id":"calendar",
     "skip_auto_allow":"",
     "name":"日历",
-    "title":"Allow \"%1\" to use calendar permissions",
-    "description":"Supplementary Instructions for calendar Permissions",
-    "prefer":"",
-    "type":"session",
-    "options":["allow", "deny"],
+    "prefer":"deny",
+    "type":"system",
+    "registerMode":"notlimit",
+    "options":["deny", "allow"],
+    "dialogContent":[
+        {
+            "dialogName":"requestPermission",
+            "title":"Allow \"%1\" to use calendar permissions?",
+            "description":"Supplementary Instructions for calendar Permissions.",
+            "translations": {
+                "title":[
+                    {"language":"zh_CN", "text":"是否允许\"%1\"使用日历权限？"},
+                    {"language":"en_US", "text":"Allow \"%1\" to use your calendar?"}
+                ],
+                "description":[
+                    {"language":"zh_CN", "text":"日历"},
+                    {"language":"en_US", "text":"calendar"}
+                ]
+            }
+        },
+        {
+            "dialogName":"denyPrompt",
+            "title":"\"%1\" has been blocked to use the calendar.",
+            "description":"",
+            "translations": {
+                "title":[
+                    {"language":"zh_CN", "text":"\"%1\"已被禁止使用日历权限"},
+                    {"language":"en_US", "text":"\"%1\" has been blocked to use the calendar."}
+                ],
+                "description":[
+                    {"language":"zh_CN", "text":"请前往控制中心 > 隐私和安全，打开应用权限。"},
+                    {"language":"en_US", "text":"Go to Control Center > Privacy and Security, and allow its access."}
+                ]
+            }
+        }
+    ],
     "translations": {
-        "title":[
-            {"language":"zh_CN", "text":"是否允许\"%1\"使用日历权限"},
-            {"language":"ko", "text":"\"%1\"이(가) 테스트 권한을 사용하도록 허용"}
-        ],
-        "description":[
-            {"language":"zh_CN", "text":"日历权限的补充说明"},
-            {"language":"ko", "text":"테스트 권한에 대한 추가 지침"}
-        ],
         "name":[
             {"language":"zh_CN", "text":"日历"},
-            {"language":"ko", "text":"달력"}
+            {"language":"en_US", "text":"calendar"}
         ]
     }
 }

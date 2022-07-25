@@ -2,23 +2,46 @@
     "id":"userdir",
     "skip_auto_allow":"",
     "name":"用户目录",
-    "title":"Allow \"%1\" to use userdir permissions",
-    "description":"Supplementary Instructions for userdir Permissions",
-    "prefer":"",
-    "type":"system",
-    "options":["allow", "deny"],
+    "prefer":"deny",
+    "type":"session",
+    "registerMode":"notlimit",
+    "options":["deny", "allow"],
+    "dialogContent":[
+        {
+            "dialogName":"requestPermission",
+            "title":"Allow \"%1\" to use your dir?",
+            "description":"Supplementary Instructions for userdir Permissions.",
+            "translations": {
+                "title":[
+                    {"language":"zh_CN", "text":"是否允许\"%1\"使用用户目录权限？"},
+                    {"language":"en_US", "text":"Allow \"%1\" to use your user dir?"}
+                ],
+                "description":[
+                    {"language":"zh_CN", "text":"用户目录权限的补充说明"},
+                    {"language":"en_US", "text":"Supplementary Instructions for userdir Permissions."}
+                ]
+            }
+        },
+        {
+            "dialogName":"denyPrompt",
+            "title":"\"%1\" has been blocked to use user dir.",
+            "description":"",
+            "translations": {
+                "title":[
+                    {"language":"zh_CN", "text":"\"%1\"已被禁止使用用户目录权限"},
+                    {"language":"en_US", "text":"\"%1\" has been blocked to use the userdir."}
+                ],
+                "description":[
+                    {"language":"zh_CN", "text":"请前往控制中心 > 隐私和安全，打开应用权限。"},
+                    {"language":"en_US", "text":"Go to Control Center > Privacy and Security, and allow its access."}
+                ]
+            }
+        }
+    ],
     "translations": {
-        "title":[
-            {"language":"zh_CN", "text":"是否允许\"%1\"使用用户目录权限"},
-            {"language":"ko", "text":"\"%1\"이(가) 테스트 권한을 사용하도록 허용"}
-        ],
-        "description":[
-            {"language":"zh_CN", "text":"用户目录权限的补充说明"},
-            {"language":"ko", "text":"테스트 권한에 대한 추가 지침"}
-        ],
         "name":[
             {"language":"zh_CN", "text":"用户目录"},
-            {"language":"ko", "text":"사용자 디렉토리"}
+            {"language":"en_US", "text":"userdir"}
         ]
     }
 }

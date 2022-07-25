@@ -378,7 +378,7 @@ linglong::util::Error LinglongBuilder::build()
     baseDepend.version = baseRef.version;
     DependFetcher baseFetcher(baseDepend, project.get());
     // TODO: the base filesystem hierarchy is just an debian now. we should change it
-    hostBasePath = BuilderConfig::instance()->layerPath({baseRef.toLocalRefString(), "files"});
+    hostBasePath = BuilderConfig::instance()->layerPath({baseRef.toLocalRefString(), ""});
     ret = baseFetcher.fetch("", hostBasePath);
     if (!ret.success()) {
         return NewError(ret, -1, "fetch runtime failed");
@@ -431,7 +431,7 @@ linglong::util::Error LinglongBuilder::build()
         auto m = new Mount(r);
         m->type = "bind";
         m->options = QStringList {"ro", "rbind"};
-        m->source = QStringList {hostBasePath, rpath}.join("/");
+        m->source = QStringList {hostBasePath, "files", rpath}.join("/");
         m->destination = rpath;
         r->annotations->overlayfs->mounts.push_back(m);
     }

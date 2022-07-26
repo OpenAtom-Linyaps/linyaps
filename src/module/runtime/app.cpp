@@ -354,7 +354,12 @@ public:
 
             if (fuseMount) {
                 // overlay mount 顺序是反向的
-                r->annotations->overlayfs->mounts.push_front(m);
+                if (wineMount) {
+                    // wine应用先保持不变（会导致wine应用运行失败），后续整改
+                    r->annotations->overlayfs->mounts.push_back(m);
+                } else {
+                    r->annotations->overlayfs->mounts.push_front(m);
+                }
             } else {
                 r->annotations->native->mounts.push_back(m);
             }
@@ -376,7 +381,12 @@ public:
 
         if (fuseMount) {
             // overlay mount 顺序是反向的
-            r->annotations->overlayfs->mounts.push_front(m);
+            if (wineMount) {
+                // wine应用先保持不变（会导致wine应用运行失败），后续整改
+                r->annotations->overlayfs->mounts.push_back(m);
+            } else {
+                r->annotations->overlayfs->mounts.push_front(m);
+            }
         } else {
             r->annotations->native->mounts.push_back(m);
         }

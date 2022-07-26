@@ -64,10 +64,10 @@ linglong::util::Error Bundle::make(const QString &dataPath, const QString &outpu
     return NewError();
 }
 
-linglong::util::Error Bundle::push(const QString &bundleFilePath, const QString &repoUrl, bool force)
+linglong::util::Error Bundle::push(const QString &bundleFilePath, const QString &repoUrl, const QString &repoChannel, bool force)
 {
     Q_D(Bundle);
-    auto ret = d->push(bundleFilePath, repoUrl, force);
+    auto ret = d->push(bundleFilePath, repoUrl, repoChannel, force);
     if (!ret.success()) {
         return NewError(ret, -1);
     }
@@ -146,10 +146,9 @@ linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString
     linglongLoaderFile.open(QIODevice::ReadOnly);
     QFile squashfsFile(this->squashfsFilePath);
     squashfsFile.open(QIODevice::ReadOnly);
-
     outputFile.write(linglongLoaderFile.readAll());
     outputFile.write(squashfsFile.readAll());
-
+  
     linglongLoaderFile.close();
     squashfsFile.close();
     outputFile.close();
@@ -214,7 +213,7 @@ auto BundlePrivate::getElfSize(const QString elfFilePath) -> decltype(-1)
     return size;
 }
 
-linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const QString &repoUrl, bool force)
+linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const QString &repoUrl, const QString &repoChannel, bool force)
 {
     auto userInfo = util::getUserInfo();
 
@@ -264,6 +263,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
     bundleFile.seek(this->offsetValue);
     squashfsFile.open(QIODevice::WriteOnly);
     squashfsFile.write(bundleFile.readAll());
+
     bundleFile.close();
     squashfsFile.close();
 
@@ -282,7 +282,8 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
     }
 
     // 转换info.json为Info对象
-    auto info = util::loadJSON<package::Info>(this->bundleDataPath + QString(configJson));
+    auto runtimeInfo = util::loadJSON<package::Info>(QStringList {this->bundleDataPath, "runtime", configJson}.join("/"));
+    auto develInfo = util::loadJSON<package::Info>(QStringList {this->bundleDataPath, "devel", configJson}.join("/"));
 
     // 建立临时仓库
     auto resultMakeRepo = runner("ostree", {"--repo=" + this->tmpWorkDir + "/repo", "init", "--mode=archive"}, 3000);
@@ -294,15 +295,27 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
     }
 
     // 推送数据到临时仓库
+    // TODO: remove later
     QStringList arguments;
     arguments << QString("--repo=") + this->tmpWorkDir + "/repo" << QString("commit") << QString("-s")
-              << QString("update ") + info->version << QString("--canonical-permissions") << QString("-m")
-              << QString("Name: ") + info->appid << QString("-b")
-              << (QStringList {info->appid, info->version, info->arch[0]}.join(QDir::separator()))
-              << QString("--tree=dir=") + this->bundleDataPath;
+              << QString("update ") + runtimeInfo->version << QString("--canonical-permissions") << QString("-m")
+              << QString("Name: ") + runtimeInfo->appid << QString("-b")
+              << (QStringList {repoChannel, runtimeInfo->appid, runtimeInfo->version, runtimeInfo->arch[0],
+                               runtimeInfo->module}
+                      .join(QDir::separator()))
+              << QString("--tree=dir=") + this->bundleDataPath + "/runtime";
+
+    QStringList commitArgs;
+    commitArgs
+        << QString("--repo=") + this->tmpWorkDir + "/repo" << QString("commit") << QString("-s")
+        << QString("update ") + develInfo->version << QString("--canonical-permissions") << QString("-m")
+        << QString("Name: ") + develInfo->appid << QString("-b")
+        << (QStringList {repoChannel, develInfo->appid, develInfo->version, develInfo->arch[0], develInfo->module}.join(
+               QDir::separator()))
+        << QString("--tree=dir=") + this->bundleDataPath + "/devel";
 
     auto resultCommit = runner("ostree", arguments);
-
+    resultCommit = runner("ostree", commitArgs);
     if (!resultCommit.success()) {
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
@@ -343,18 +356,35 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
     }
 
     // 上传bundle信息到服务器
-    auto infoJson = QJsonDocument::fromJson(package::Info::dump(info));
-    auto infoJsonObject = infoJson.object();
-    const QString infoAppId = infoJsonObject.value("appid").toString();
-    infoJsonObject.remove("appid");
-    infoJsonObject.insert("appId", infoAppId);
-    infoJsonObject["arch"] = info->arch[0];
+    auto runtimeJson = QJsonDocument::fromJson(package::Info::dump(runtimeInfo));
+    auto develJson = QJsonDocument::fromJson(package::Info::dump(develInfo));
 
-    QJsonDocument doc;
-    doc.setObject(infoJsonObject);
+    auto runtimeJsonObject = runtimeJson.object();
+    auto develJsonObject = develJson.object();
 
-    auto retUploadBundleInfo = G_HTTPCLIENT->pushServerBundleData(doc.toJson(), configUrl, token);
-    if (STATUS_CODE(kSuccess) != retUploadBundleInfo) {
+    const QString runtimeAppId = runtimeJsonObject.value("appid").toString();
+    const QString develAppId = develJsonObject.value("appid").toString();
+
+    runtimeJsonObject.remove("appid");
+    develJsonObject.remove("appid");
+
+    runtimeJsonObject.insert("appId", runtimeAppId);
+    develJsonObject.insert("appId", develAppId);
+    
+    runtimeJsonObject.insert("channel", repoChannel);
+    develJsonObject.insert("channel", repoChannel);
+
+    runtimeJsonObject["arch"] = runtimeInfo->arch[0];
+    develJsonObject["arch"] = develInfo->arch[0];
+
+    QJsonDocument runtimeDoc;
+    QJsonDocument develDoc;
+    runtimeDoc.setObject(runtimeJsonObject);
+    develDoc.setObject(develJsonObject);
+
+    auto runtimeRet = G_HTTPCLIENT->pushServerBundleData(runtimeDoc.toJson(), configUrl, token);
+    auto develRet = G_HTTPCLIENT->pushServerBundleData(develDoc.toJson(), configUrl, token);
+    if (STATUS_CODE(kSuccess) != runtimeRet || STATUS_CODE(kSuccess) != develRet) {
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
         }

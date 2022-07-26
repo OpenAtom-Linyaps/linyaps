@@ -59,7 +59,7 @@ class OSTreeRepoPrivate
         ostree.start();
         ostree.waitForFinished(-1);
         qDebug() << ostree.exitStatus() << "with exit code:" << ostree.exitCode();
-
+ 
         return NewError(ostree.exitCode(), ostree.errorString());
     }
 
@@ -74,7 +74,9 @@ linglong::util::Error OSTreeRepo::importDirectory(const package::Ref &ref, const
 {
     Q_D(OSTreeRepo);
 
-    return NewError(d->ostreeRun({"commit", "-b", ref.toString(), "--tree=dir=" + path}));
+    auto ret = d->ostreeRun({"commit", "-b", ref.toString(), "--tree=dir=" + path});
+
+    return ret;
 }
 
 linglong::util::Error OSTreeRepo::import(const package::Bundle &bundle)
@@ -136,6 +138,20 @@ linglong::util::Error OSTreeRepo::pull(const package::Ref &ref, bool force)
     return WrapError(d->ostreeRun({"pull", "repo", "--mirror", ref.toString()}));
 }
 
+linglong::util::Error OSTreeRepo::pullAll(const package::Ref &ref, bool force)
+{
+    Q_D(OSTreeRepo);
+    // Fixme: remote name maybe not repo and there should support multiple remote
+    auto ret = d->ostreeRun({"pull", "repo", "--mirror", QStringList {ref.toString(), "runtime"}.join("/")});
+    if (!ret.success()) {
+        return NewError(ret);
+    }
+
+    ret = d->ostreeRun({"pull", "repo", "--mirror", QStringList {ref.toString(), "devel"}.join("/")});
+
+    return WrapError(ret);
+}
+
 linglong::util::Error OSTreeRepo::init(const QString &mode)
 {
     Q_D(OSTreeRepo);
@@ -165,9 +181,40 @@ linglong::util::Error OSTreeRepo::checkout(const package::Ref &ref, const QStrin
     return WrapError(dd_ptr->ostreeRun(args));
 }
 
+linglong::util::Error OSTreeRepo::checkoutAll(const package::Ref &ref, const QString &subPath, const QString &target)
+{
+    Q_D(OSTreeRepo);
+
+    QStringList runtimeArgs = {"checkout", "--union", QStringList {ref.toString(), "runtime"}.join("/"), target};
+    QStringList develArgs = {"checkout", "--union", QStringList {ref.toString(), "devel"}.join("/"), target};
+
+    if (!subPath.isEmpty()) {
+        runtimeArgs.push_back("--subpath=" + subPath);
+        develArgs.push_back("--subpath=" + subPath);
+    }
+
+    auto ret = d->ostreeRun(runtimeArgs);
+    if (!ret.success()) {
+        return NewError(ret);
+    }
+
+    ret = d->ostreeRun(develArgs);
+
+    return WrapError(ret);
+}
+
 QString OSTreeRepo::rootOfLayer(const package::Ref &ref)
 {
     return QStringList {dd_ptr->path, "layers", ref.appId, ref.version, ref.arch}.join(QDir::separator());
+}
+
+bool OSTreeRepo::isRefExists(const package::Ref &ref)
+{
+    Q_D(OSTreeRepo);
+    auto runtimeRef = ref.toString() + '/' + "runtime";
+    auto ret = runner::Runner("sh", {"-c", QString("ostree refs --repo=%1 | grep -Fx %2").arg(d->ostreePath).arg(runtimeRef)}, -1);
+
+    return ret;
 }
 
 package::Ref OSTreeRepo::latestOfRef(const QString &appId, const QString &appVersion)

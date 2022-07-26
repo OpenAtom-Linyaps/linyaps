@@ -47,28 +47,34 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
 
     auto remoteRef = package::Ref("", dd_ptr->ref.appId, dd_ptr->ref.version, dd_ptr->ref.arch);
 
-    auto ret = ostree.pull(remoteRef, true);
-    if (!ret.success()) {
-        return NewError(ret, -1, "pull " + remoteRef.toString() + " failed");
+    if (!ostree.isRefExists(remoteRef)) {
+        // TODO: support more channel
+        remoteRef = package::Ref("", "linglong", dd_ptr->ref.appId, dd_ptr->ref.version, dd_ptr->ref.arch);
+        auto ret = ostree.pullAll(remoteRef, true);
+        if (!ret.success()) {
+            return NewError(ret, -1, "pull " + remoteRef.toString() + " failed");
+        }
     }
-
+    
     QDir targetParentDir(targetPath);
     targetParentDir.cdUp();
     targetParentDir.mkpath(".");
 
-    ret = ostree.checkout(remoteRef, subPath, targetPath);
+    auto ret = ostree.checkoutAll(remoteRef, subPath, targetPath);
+
     //for app,lib. if the dependType match runtime, should be submitted together.
     if (dd_ptr->dependType == DependTypeRuntime) {
         auto targetInstallPath = dd_ptr->project->config().cacheAbsoluteFilePath(
             {"overlayfs", "up", dd_ptr->project->config().targetInstallPath("")});
 
-        ret = ostree.checkout(remoteRef, subPath, targetInstallPath);
+        ret = ostree.checkoutAll(remoteRef, subPath, targetInstallPath);
     }
 
     return WrapError(ret, QString("ostree checkout %1 with subpath '%2' to %3")
                               .arg(remoteRef.toLocalRefString())
                               .arg(subPath)
                               .arg(targetPath));
+
 }
 
 } // namespace builder

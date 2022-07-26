@@ -60,11 +60,17 @@ public:
 
     linglong::util::Error pull(const package::Ref &ref, bool force) override;
 
+    linglong::util::Error pullAll(const package::Ref &ref, bool force);
+
     linglong::util::Error checkout(const package::Ref &ref, const QString &subPath, const QString &target);
 
     linglong::util::Error removeRef(const package::Ref &ref);
 
+    linglong::util::Error checkoutAll(const package::Ref &ref, const QString &subPath, const QString &target);
+
     QString rootOfLayer(const package::Ref &ref) override;
+
+    bool isRefExists(const package::Ref &ref);
 
     package::Ref latestOfRef(const QString &appId, const QString &appVersion) override;
 

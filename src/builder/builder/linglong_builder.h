@@ -29,7 +29,7 @@ public:
 
     linglong::util::Error exportBundle(const QString &outputFilepath, bool useLocalDir) override;
 
-    linglong::util::Error push(const QString &bundleFilePath, const QString &repoUrl, bool force) override;
+    linglong::util::Error push(const QString &bundleFilePath, const QString &repoUrl, const QString &repoChannel, bool force) override;
 
     linglong::util::Error run() override;
 

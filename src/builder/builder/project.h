@@ -159,6 +159,8 @@ public:
 
 public:
     package::Ref ref() const;
+    package::Ref fullRef(const QString &channel, const QString &module) const;
+    package::Ref refWithModule(const QString &module) const;
     package::Ref runtimeRef() const;
     package::Ref baseRef() const;
 
@@ -184,6 +186,8 @@ public:
         QString cacheAbsoluteFilePath(const QStringList &filenames) const;
         QString cacheRuntimePath(const QString &subPath) const;
         QString cacheInstallPath(const QString &subPath) const;
+        QString cacheInstallPath(const QString &moduleDir,const QString &subPath) const;
+
 
         QString targetArch() const;
 

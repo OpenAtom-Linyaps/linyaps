@@ -46,6 +46,16 @@ public:
 
     package::Ref ref() const { return package::Ref("", q_ptr->package->id, q_ptr->package->version, buildArch()); }
 
+    package::Ref fullRef(const QString &channel, const QString &module) const
+    {
+        return package::Ref("", channel, q_ptr->package->id, q_ptr->package->version, buildArch(), module);
+    }
+
+    package::Ref refWithModule(const QString &module) const
+    {
+        return package::Ref("", q_ptr->package->id, q_ptr->package->version, buildArch(), module);
+    }
+
     int generateBuildScript(const QString &path) const
     {
         QFile scriptFile(path);
@@ -126,7 +136,14 @@ public:
         command += q_ptr->build->manual->build.isNull() ? temp->build->manual->build : q_ptr->build->manual->build;
         command += q_ptr->build->manual->install.isNull() ? temp->build->manual->install : q_ptr->build->manual->install;
 
+        // strip script
+        QFile stripScript(":/strip.sh");
+        stripScript.open(QIODevice::ReadOnly);
+
+        command += QString::fromLocal8Bit(stripScript.readAll());
+
         scriptFile.write(command.toLocal8Bit());
+        stripScript.close();
         scriptFile.close();
 
         return 0;
@@ -169,6 +186,17 @@ package::Ref Project::ref() const
 {
     return dd_ptr->ref();
 }
+
+package::Ref Project::fullRef(const QString &channel, const QString &module) const
+{
+    return dd_ptr->fullRef(channel, module);
+}
+
+package::Ref Project::refWithModule(const QString &module) const
+{
+    return dd_ptr->refWithModule(module);
+}
+
 
 const Project::Config &Project::config() const
 {
@@ -236,6 +264,18 @@ QString Project::Config::cacheInstallPath(const QString &subPath) const
     return "";
 }
 
+QString Project::Config::cacheInstallPath(const QString &moduleDir, const QString &subPath) const
+{
+    if (PackageKindRuntime == m_project->package->kind) {
+        return cacheAbsoluteFilePath({moduleDir, subPath});
+    } else if (PackageKindLib == m_project->package->kind) {
+        return cacheAbsoluteFilePath({moduleDir, subPath});
+    } else if (PackageKindApp == m_project->package->kind) {
+        return cacheAbsoluteFilePath({moduleDir, subPath});
+    };
+    return "";
+}
+
 QString Project::Config::targetArch() const
 {
     return util::hostArch();
@@ -244,11 +284,12 @@ QString Project::Config::targetArch() const
 QString Project::Config::targetInstallPath(const QString &sub) const
 {
     if (PackageKindRuntime == m_project->package->kind) {
-        return QStringList {"/runtime", sub}.join("/");
+        return (sub.isEmpty() ? QString("/runtime") : QStringList {"/runtime", sub}.join("/"));
     } else if (PackageKindLib == m_project->package->kind) {
-        return QStringList {"/runtime", sub}.join("/");
+        return (sub.isEmpty() ? QString("/runtime") : QStringList {"/runtime", sub}.join("/"));
     } else if (PackageKindApp == m_project->package->kind) {
-        return QStringList {QString("/opt/apps/%1/files").arg(m_project->ref().appId), sub}.join("/");
+        return (sub.isEmpty() ? QString(QString("/opt/apps/%1/files").arg(m_project->ref().appId)) :
+                QStringList {QString("/opt/apps/%1/files").arg(m_project->ref().appId), sub}.join("/"));
     };
     return "";
 }

@@ -30,12 +30,36 @@ public:
         , version(version)
         , arch(arch)
     {
+        channel = "";
+        module = "";
+    }
+
+    Ref(const QString &remote, const QString &appId, const QString &version, const QString &arch, const QString &module)
+        : repo(remote)
+        , appId(appId)
+        , version(version)
+        , arch(arch)
+        , module(module)
+    {
+    }
+
+    Ref(const QString &remote, const QString &channel, const QString &appId, const QString &version, const QString &arch, const QString &module)
+        : repo(remote)
+        , channel(channel)
+        , appId(appId)
+        , version(version)
+        , arch(arch)
+        , module(module)
+    {
     }
 
     QString toString() const
     {
         QString ref = repo.isEmpty() ? "" : repo + ":";
-        return QString(ref + "%1/%2/%3").arg(appId, version, arch);
+        QString channelRef = channel.isEmpty() ? "" : channel + "/";
+        QString moduleRef = module.isEmpty() ? "" : "/" + module;
+
+        return QString(ref + channelRef + "%1/%2/%3" + moduleRef).arg(appId, version, arch);
     }
 
     // FIXME: local().toString()?
@@ -46,6 +70,7 @@ public:
     QString appId;
     QString version;
     QString arch;
+    QString module;
 
 private:
     // TODO: now is app/runtime

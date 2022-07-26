@@ -25,12 +25,15 @@ public:
     QString appId; ///< 应用appId
     QString version; ///< 应用版本
     QString arch; ///< 应用架构
+    QString channel; ///< 应用渠道
+    QString appModule; ///< 版本类型
 };
 
 inline QDBusArgument &operator<<(QDBusArgument &argument, const ParamOption &paramOption)
 {
     argument.beginStructure();
-    argument << paramOption.appId << paramOption.version << paramOption.arch;
+    argument << paramOption.appId << paramOption.version << paramOption.arch << paramOption.channel
+             << paramOption.appModule;
     argument.endStructure();
     return argument;
 }
@@ -38,7 +41,8 @@ inline QDBusArgument &operator<<(QDBusArgument &argument, const ParamOption &par
 inline const QDBusArgument &operator>>(const QDBusArgument &argument, ParamOption &paramOption)
 {
     argument.beginStructure();
-    argument >> paramOption.appId >> paramOption.version >> paramOption.arch;
+    argument >> paramOption.appId >> paramOption.version >> paramOption.arch >> paramOption.channel
+        >> paramOption.appModule;
     argument.endStructure();
     return argument;
 }
@@ -83,7 +87,7 @@ inline QDBusArgument &operator<<(QDBusArgument &argument, const InstallParamOpti
 {
     argument.beginStructure();
     argument << installParamOption.appId << installParamOption.version << installParamOption.arch
-             << installParamOption.repoPoint;
+             << installParamOption.channel << installParamOption.appModule << installParamOption.repoPoint;
     argument.endStructure();
     return argument;
 }
@@ -92,7 +96,7 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, InstallPar
 {
     argument.beginStructure();
     argument >> installParamOption.appId >> installParamOption.version >> installParamOption.arch
-        >> installParamOption.repoPoint;
+        >> installParamOption.channel >> installParamOption.appModule >> installParamOption.repoPoint;
     argument.endStructure();
     return argument;
 }
@@ -110,8 +114,8 @@ public:
 inline QDBusArgument &operator<<(QDBusArgument &argument, const QueryParamOption &paramOption)
 {
     argument.beginStructure();
-    argument << paramOption.appId << paramOption.version << paramOption.arch << paramOption.force
-             << paramOption.repoPoint;
+    argument << paramOption.appId << paramOption.version << paramOption.arch << paramOption.channel
+             << paramOption.appModule << paramOption.force << paramOption.repoPoint;
     argument.endStructure();
     return argument;
 }
@@ -119,8 +123,8 @@ inline QDBusArgument &operator<<(QDBusArgument &argument, const QueryParamOption
 inline const QDBusArgument &operator>>(const QDBusArgument &argument, QueryParamOption &paramOption)
 {
     argument.beginStructure();
-    argument >> paramOption.appId >> paramOption.version >> paramOption.arch >> paramOption.force
-        >> paramOption.repoPoint;
+    argument >> paramOption.appId >> paramOption.version >> paramOption.arch >> paramOption.channel
+        >> paramOption.appModule >> paramOption.force >> paramOption.repoPoint;
     argument.endStructure();
     return argument;
 }
@@ -138,8 +142,8 @@ public:
 inline QDBusArgument &operator<<(QDBusArgument &argument, const UninstallParamOption &paramOption)
 {
     argument.beginStructure();
-    argument << paramOption.appId << paramOption.version << paramOption.arch << paramOption.repoPoint
-             << paramOption.delAllVersion;
+    argument << paramOption.appId << paramOption.version << paramOption.arch << paramOption.channel
+             << paramOption.appModule << paramOption.repoPoint << paramOption.delAllVersion;
     argument.endStructure();
     return argument;
 }
@@ -147,8 +151,8 @@ inline QDBusArgument &operator<<(QDBusArgument &argument, const UninstallParamOp
 inline const QDBusArgument &operator>>(const QDBusArgument &argument, UninstallParamOption &paramOption)
 {
     argument.beginStructure();
-    argument >> paramOption.appId >> paramOption.version >> paramOption.arch >> paramOption.repoPoint
-        >> paramOption.delAllVersion;
+    argument >> paramOption.appId >> paramOption.version >> paramOption.arch >> paramOption.channel
+        >> paramOption.appModule >> paramOption.repoPoint >> paramOption.delAllVersion;
     argument.endStructure();
     return argument;
 }
@@ -172,9 +176,10 @@ public:
 inline QDBusArgument &operator<<(QDBusArgument &argument, const RunParamOption &paramOption)
 {
     argument.beginStructure();
-    argument << paramOption.appId << paramOption.version << paramOption.arch << paramOption.exec
-             << paramOption.repoPoint << paramOption.noDbusProxy << paramOption.busType << paramOption.filterName
-             << paramOption.filterPath << paramOption.filterInterface << paramOption.appEnv;
+    argument << paramOption.appId << paramOption.version << paramOption.arch << paramOption.channel
+             << paramOption.appModule << paramOption.exec << paramOption.repoPoint << paramOption.noDbusProxy
+             << paramOption.busType << paramOption.filterName << paramOption.filterPath << paramOption.filterInterface
+             << paramOption.appEnv;
     argument.endStructure();
     return argument;
 }
@@ -182,9 +187,10 @@ inline QDBusArgument &operator<<(QDBusArgument &argument, const RunParamOption &
 inline const QDBusArgument &operator>>(const QDBusArgument &argument, RunParamOption &paramOption)
 {
     argument.beginStructure();
-    argument >> paramOption.appId >> paramOption.version >> paramOption.arch >> paramOption.exec
-        >> paramOption.repoPoint >> paramOption.noDbusProxy >> paramOption.busType >> paramOption.filterName
-        >> paramOption.filterPath >> paramOption.filterInterface >> paramOption.appEnv;
+    argument >> paramOption.appId >> paramOption.version >> paramOption.arch >> paramOption.channel
+        >> paramOption.appModule >> paramOption.exec >> paramOption.repoPoint >> paramOption.noDbusProxy
+        >> paramOption.busType >> paramOption.filterName >> paramOption.filterPath >> paramOption.filterInterface
+        >> paramOption.appEnv;
     argument.endStructure();
     return argument;
 }

@@ -1,12 +1,12 @@
 /*
-* Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
-*
-* Author:     huqinghong@uniontech.com
-*
-* Maintainer: huqinghong@uniontech.com
-*
-* SPDX-License-Identifier: GPL-3.0-or-later
-*/
+ * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ *
+ * Author:     huqinghong@uniontech.com
+ *
+ * Maintainer: huqinghong@uniontech.com
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
 
 #include <gtest/gtest.h>
 

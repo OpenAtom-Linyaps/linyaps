@@ -105,8 +105,9 @@ void doIntOperate(int sig)
 void printAppInfo(linglong::package::AppMetaInfoList appMetaInfoList)
 {
     if (appMetaInfoList.size() > 0) {
-        qInfo("\033[1m\033[38;5;214m%-32s%-32s%-16s%-12s%-s\033[0m", qUtf8Printable("appId"), qUtf8Printable("name"),
-              qUtf8Printable("version"), qUtf8Printable("arch"), qUtf8Printable("description"));
+        qInfo("\033[1m\033[38;5;214m%-32s%-32s%-16s%-12s%-16s%-12s%-s\033[0m", qUtf8Printable("appId"),
+              qUtf8Printable("name"), qUtf8Printable("version"), qUtf8Printable("arch"), qUtf8Printable("channel"),
+              qUtf8Printable("module"), qUtf8Printable("description"));
         for (auto const &it : appMetaInfoList) {
             QString simpleDescription = it->description.trimmed();
             if (simpleDescription.length() > 56) {
@@ -122,11 +123,13 @@ void printAppInfo(linglong::package::AppMetaInfoList appMetaInfoList)
             }
             int count = getUnicodeNum(name);
             int length = simpleDescription.length() < 56 ? simpleDescription.length() : 56;
-            qInfo().noquote() << QString("%1%2%3%4%5")
+            qInfo().noquote() << QString("%1%2%3%4%5%6%7")
                                      .arg(appId, -32, QLatin1Char(' '))
                                      .arg(name, count - 32, QLatin1Char(' '))
                                      .arg(it->version.trimmed(), -16, QLatin1Char(' '))
                                      .arg(it->arch.trimmed(), -12, QLatin1Char(' '))
+                                     .arg(it->channel.trimmed(), -16, QLatin1Char(' '))
+                                     .arg(it->module.trimmed(), -12, QLatin1Char(' '))
                                      .arg(simpleDescription, -length, QLatin1Char(' '));
         }
     } else {
@@ -470,6 +473,12 @@ int main(int argc, char **argv)
              auto optNoDbus =
                  QCommandLineOption("nodbus", "execute cmd directly, not via dbus(only for root user)", "");
              parser.addOption(optNoDbus);
+
+             auto optChannel = QCommandLineOption("channel", "the channnel of app", "--channel=linglong", "linglong");
+             parser.addOption(optChannel);
+             auto optModule = QCommandLineOption("module", "the module of app", "--module=runtime", "runtime");
+             parser.addOption(optModule);
+
              parser.process(app);
 
              args = parser.positionalArguments();
@@ -487,6 +496,9 @@ int main(int argc, char **argv)
              // appId format: org.deepin.calculator/1.2.6 in multi-version
              linglong::service::InstallParamOption installParamOption;
              installParamOption.repoPoint = repoType;
+             // 增加 channel/module
+             installParamOption.channel = parser.value(optChannel);
+             installParamOption.appModule = parser.value(optModule);
              QStringList appInfoList = args.at(1).split("/");
              installParamOption.appId = appInfoList.at(0);
              installParamOption.arch = linglong::util::hostArch();
@@ -550,6 +562,12 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("update", "update an application", "update");
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
+
+             auto optChannel = QCommandLineOption("channel", "the channnel of app", "--channel=linglong", "linglong");
+             parser.addOption(optChannel);
+             auto optModule = QCommandLineOption("module", "the module of app", "--module=runtime", "runtime");
+             parser.addOption(optModule);
+
              parser.process(app);
              linglong::service::ParamOption paramOption;
              args = parser.positionalArguments();
@@ -567,6 +585,10 @@ int main(int argc, char **argv)
              if (appInfoList.size() > 1) {
                  paramOption.version = appInfoList.at(1);
              }
+             // 增加 channel/module
+             paramOption.channel = parser.value(optChannel);
+             paramOption.appModule = parser.value(optModule);
+
              qInfo().noquote() << "update" << paramOption.appId << ", please wait a few minutes...";
              QDBusPendingReply<linglong::service::Reply> dbusReply = sysPackageManager.Update(paramOption);
              dbusReply.waitForFinished();
@@ -658,6 +680,12 @@ int main(int argc, char **argv)
              parser.addOption(optNoDbus);
              parser.addOption(optRepoPoint);
              parser.addOption(optAllVer);
+
+             auto optChannel = QCommandLineOption("channel", "the channnel of app", "--channel=linglong", "linglong");
+             parser.addOption(optChannel);
+             auto optModule = QCommandLineOption("module", "the module of app", "--module=runtime", "runtime");
+             parser.addOption(optModule);
+
              parser.process(app);
 
              args = parser.positionalArguments();
@@ -678,6 +706,9 @@ int main(int argc, char **argv)
                  paramOption.appId = appInfoList.at(0);
                  paramOption.version = appInfoList.at(1);
              }
+
+             paramOption.channel = parser.value(optChannel);
+             paramOption.appModule = parser.value(optModule);
              paramOption.repoPoint = repoType;
              linglong::service::Reply reply;
              qInfo().noquote() << "uninstall" << appInfo << ", please wait a few minutes...";

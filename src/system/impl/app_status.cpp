@@ -40,7 +40,10 @@ int checkInstalledAppDb()
          repoName CHAR(16),\
          description NVARCHAR,\
          user VARCHAR,\
-         installType CHAR(16) DEFAULT 'user',unique(appId,version,arch))";
+         installType CHAR(16) DEFAULT 'user',\
+         size INTEGER,\
+         channel VARCHAR(32),\
+         module VARCHAR(32),unique(appId,version,arch,channel,module))";
     Connection connection;
     QSqlQuery sqlQuery = connection.execute(createInfoTable);
     if (QSqlError::NoError != sqlQuery.lastError().type()) {
@@ -115,8 +118,8 @@ int insertAppRecord(linglong::package::AppMetaInfo *package, const QString &inst
 {
     // installType 字段暂时保留
     QString insertSql =
-        QString("INSERT INTO installedAppInfo(appId,name,version,arch,kind,runtime,uabUrl,repoName,description,user)\
-    VALUES('%1','%2','%3','%4','%5','%6','%7','%8','%9','%10')")
+        QString("INSERT INTO installedAppInfo(appId,name,version,arch,kind,runtime,uabUrl,repoName,description,user,size,channel,module)\
+    VALUES('%1','%2','%3','%4','%5','%6','%7','%8','%9','%10','%11','%12','%13')")
             .arg(package->appId)
             .arg(package->name)
             .arg(package->version)
@@ -127,7 +130,10 @@ int insertAppRecord(linglong::package::AppMetaInfo *package, const QString &inst
             .arg(package->uabUrl)
             .arg(package->repoName)
             .arg(package->description)
-            .arg(userName);
+            .arg(userName)
+            .arg(package->size)
+            .arg(package->channel)
+            .arg(package->module);
 
     Connection connection;
     QSqlQuery sqlQuery = connection.execute(insertSql);
@@ -234,8 +240,8 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
     sqlQuery.last();
     int recordCount = sqlQuery.at() + 1;
     if (recordCount < 1) {
-        qWarning() << "getAppInstalledStatus app:" + appId + ",version:" + appVer + ",userName:" + userName
-                           + " not found";
+        qDebug() << "getAppInstalledStatus app:" + appId + ",version:" + appVer + ",userName:" + userName
+                           + " not installed";
         return false;
     }
     return true;
@@ -256,7 +262,7 @@ bool getAllVerAppInfo(const QString &appId, const QString &appVer, const QString
                       linglong::package::AppMetaInfoList &pkgList)
 {
     if (!getAppInstalledStatus(appId, appVer, appArch, userName)) {
-        qCritical() << "getInstalledAppInfo app:" + appId + ",version:" + appVer + ",userName:" + userName
+        qCritical() << "getAllVerAppInfo app:" + appId + ",version:" + appVer + ",userName:" + userName
                            + " not installed";
         return false;
     }
@@ -341,6 +347,7 @@ bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QStr
         return false;
     }
 
+    // int fieldNo = sqlQuery.record().indexOf("appId");
     // 多个版本返回最高版本信息
     sqlQuery.last();
     int recordCount = sqlQuery.at() + 1;
@@ -407,6 +414,9 @@ bool queryAllInstalledApp(const QString &userName, QString &result, QString &err
         appItem["uabUrl"] = sqlQuery.value(7).toString().trimmed();
         appItem["repoName"] = sqlQuery.value(8).toString().trimmed();
         appItem["description"] = sqlQuery.value(9).toString().trimmed();
+
+        appItem["channel"] = sqlQuery.value(13).toString().trimmed();
+        appItem["module"] = sqlQuery.value(14).toString().trimmed();
         appList.append(appItem);
     }
     QJsonDocument document = QJsonDocument(appList);

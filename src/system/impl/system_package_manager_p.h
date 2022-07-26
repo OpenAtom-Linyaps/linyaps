@@ -102,8 +102,8 @@ private:
      *
      * @return bool: true:成功 false:失败
      */
-    bool downloadAppData(const QString &pkgName, const QString &pkgVer, const QString &pkgArch, const QString &dstPath,
-                         QString &err);
+    bool downloadAppData(const QString &pkgName, const QString &pkgVer, const QString &pkgArch, const QString &channel,
+                         const QString &module, const QString &dstPath, QString &err);
 
     /*
      * 安装应用runtime
@@ -111,31 +111,38 @@ private:
      * @param runtimeId: runtime对应的appId
      * @param runtimeVer: runtime版本号
      * @param runtimeArch: runtime对应的架构
+     * @param channel: 软件包对应的渠道
+     * @param module: 软件包类型
      * @param err: 错误信息
      *
      * @return bool: true:成功 false:失败
      */
-    bool installRuntime(const QString &runtimeId, const QString &runtimeVer, const QString &runtimeArch, QString &err);
+    bool installRuntime(const QString &runtimeId, const QString &runtimeVer, const QString &runtimeArch,
+                        const QString &channel, const QString &module, QString &err);
 
     /*
      * 检查应用runtime安装状态
      *
      * @param runtime: 应用runtime字符串
+     * @param channel: 软件包对应的渠道
+     * @param module: 软件包类型
      * @param err: 错误信息
      *
      * @return bool: true:安装成功或已安装返回true false:安装失败
      */
-    bool checkAppRuntime(const QString &runtime, QString &err);
+    bool checkAppRuntime(const QString &runtime, const QString &channel, const QString &module, QString &err);
 
     /*
-     * 检查应用base安装状态
+     * 针对非deepin发行版检查应用base安装状态
      *
      * @param runtime: runtime ref
+     * @param channel: 软件包对应的渠道
+     * @param module: 软件包类型
      * @param err: 错误信息
      *
      * @return bool: true:安装成功或已安装返回true false:安装失败
      */
-    bool checkAppBase(const QString &runtime, QString &err);
+    bool checkAppBase(const QString &runtime, const QString &channel, const QString &module, QString &err);
 
     /*
      * 安装应用时更新包括desktop文件在内的配置文件

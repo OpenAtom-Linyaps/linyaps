@@ -53,6 +53,13 @@ public:
     // 安装应用对应的用户
     Q_JSON_PROPERTY(QString, user);
 
+    // app 大小
+    Q_JSON_PROPERTY(QString, size);
+    // app 渠道
+    Q_JSON_PROPERTY(QString, channel);
+    // app 版本类型 devel/release
+    Q_JSON_PROPERTY(QString, module);
+
 public:
     inline package::Ref ref() {
         return package::Ref("", appId, version, arch);

@@ -6,13 +6,13 @@
             <arg name="Status" type="s" direction="out"/>
         </method>
         <method name="Download">
-            <arg name="downloadParamOption" type="(ssss)" direction="in"/>
+            <arg name="downloadParamOption" type="(ssssss)" direction="in"/>
             <arg name="reply" type="(is)" direction="out"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::DownloadParamOption"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
         </method>
         <method name="GetDownloadStatus">
-            <arg name="paramOption" type="(sss)" direction="in"/>
+            <arg name="paramOption" type="(sssss)" direction="in"/>
             <arg name="type" type="i" direction="in"/>
             <arg name="reply" type="(is)" direction="out"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::ParamOption"/>
@@ -25,25 +25,25 @@
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
         </method>
         <method name="Uninstall">
-            <arg name="paramOption" type="(ssssb)" direction="in"/>
+            <arg name="paramOption" type="(ssssssb)" direction="in"/>
             <arg name="reply" type="(is)" direction="out"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::UninstallParamOption"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
         </method>
         <method name="Update">
-            <arg name="paramOption" type="(sss)" direction="in"/>
+            <arg name="paramOption" type="(sssss)" direction="in"/>
             <arg name="reply" type="(is)" direction="out"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::ParamOption"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
         </method>
         <method name="Query">
-            <arg name="paramOption" type="(sssbs)" direction="in"/>
+            <arg name="paramOption" type="(sssssbs)" direction="in"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::QueryParamOption"/>
             <arg type="(iss)" direction="out"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::QueryReply"/>
         </method>
         <method name="Start">
-            <arg name="paramOption" type="(sssssbsssss)" direction="in"/>
+            <arg name="paramOption" type="(sssssssbsssss)" direction="in"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::RunParamOption"/>
             <arg type="(is)" direction="out"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>

@@ -317,8 +317,6 @@ bool SystemPackageManagerPrivate::installRuntime(const QString &runtimeId, const
 
     auto pkgInfo = appList.at(0);
     const QString savePath = kAppInstallPath + runtimeId + "/" + runtimeVer + "/" + runtimeArch;
-    // 创建路径
-    linglong::util::createDir(kAppInstallPath + runtimeId);
     ret = downloadAppData(runtimeId, runtimeVer, runtimeArch, channel, module, savePath, err);
     if (!ret) {
         err = "installRuntime download runtime data err";
@@ -351,7 +349,7 @@ bool SystemPackageManagerPrivate::checkAppRuntime(const QString &runtime, const 
 {
     // runtime ref in repo org.deepin.Runtime/20/x86_64
     QStringList runtimeInfo = runtime.split("/");
-    if (runtimeInfo.size() != 3) {
+    if (runtimeInfo.size() < 3) {
         err = "app runtime:" + runtime + " runtime format err";
         return false;
     }
@@ -388,7 +386,7 @@ bool SystemPackageManagerPrivate::checkAppBase(const QString &runtime, const QSt
 {
     // 通过runtime获取base ref
     QStringList runtimeList = runtime.split("/");
-    if (runtimeList.size() != 3) {
+    if (runtimeList.size() < 3) {
         err = "app runtime:" + runtime + " runtime format err";
         return false;
     }
@@ -664,9 +662,8 @@ Reply SystemPackageManagerPrivate::Install(const InstallParamOption &installPara
         }
     }
 
-    // 下载在线包数据到目标目录 安装完成
+    // 下载在线包数据到目标目录
     const QString savePath = kAppInstallPath + appInfo->appId + "/" + appInfo->version + "/" + appInfo->arch;
-    linglong::util::createDir(kAppInstallPath + appInfo->appId);
     ret =
         downloadAppData(appInfo->appId, appInfo->version, appInfo->arch, channel, appModule, savePath, reply.message);
     if (!ret) {
@@ -802,7 +799,7 @@ Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOp
         return reply;
     }
 
-    // 判断是否已安装 不校验用户名 普通用户无法卸载预装应用 提示信息不对
+    // 判断是否已安装 不校验用户名
     QString userName = linglong::util::getUserName();
     if (!linglong::util::getAppInstalledStatus(appId, version, arch, "")) {
         reply.message = appId + ", version:" + version + " not installed";
@@ -1000,8 +997,8 @@ Reply SystemPackageManagerPrivate::Update(const ParamOption &paramOption)
     if (currentVersion == serverApp->version) {
         reply.message = "app:" + appId + ", latest version:" + currentVersion + " already installed";
         qCritical() << reply.message;
-        reply.code = STATUS_CODE(kErrorPkgUpdateFailed);
-
+        // bug 149881
+        reply.code = STATUS_CODE(kErrorPkgUpdateSuccess);
         appState.insert(appId + "/" + version + "/" + arch, reply);
         return reply;
     }
@@ -1010,7 +1007,8 @@ Reply SystemPackageManagerPrivate::Update(const ParamOption &paramOption)
     if (linglong::util::getAppInstalledStatus(appId, serverApp->version, arch, "")) {
         reply.message = appId + ", latest version:" + serverApp->version + " already installed";
         qCritical() << reply.message;
-        reply.code = STATUS_CODE(kErrorPkgUpdateFailed);
+        // bug 149881
+        reply.code = STATUS_CODE(kErrorPkgUpdateSuccess);
 
         appState.insert(appId + "/" + version + "/" + arch, reply);
         return reply;

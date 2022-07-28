@@ -555,19 +555,22 @@ QString OstreeRepoHelper::createTmpRepo(const QString &parentRepo)
     if (!ret) {
         return "";
     }
-    QString configUrl = "";
-    int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
-    if (STATUS_CODE(kSuccess) != statusCode) {
+
+    // 设置最小空间要求
+    ret = linglong::runner::Runner(
+        "ostree", {"config", "set", "--group", "core", "min-free-space-size", "600MB", "--repo", tmpPath + "/repoTmp"},
+        1000 * 60 * 5);
+    if (!ret) {
         return "";
     }
 
-    QFile cfgFile(tmpPath + "/repoTmp/config");
-    if (!cfgFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
-        qCritical() << "write " << tmpPath + "/repoTmp/config fail";
+    // 添加父仓库路径
+    ret = linglong::runner::Runner(
+        "ostree", {"config", "set", "--group", "core", "parent", parentRepo, "--repo", tmpPath + "/repoTmp"},
+        1000 * 60 * 5);
+    if (!ret) {
         return "";
     }
-    cfgFile.write(QString("parent=" + parentRepo).toUtf8());
-    cfgFile.close();
 
     qInfo() << "create tmp repo path:" << tmpPath << ", ret:" << QDir().exists(tmpPath + "/repoTmp");
     return tmpPath + "/repoTmp";

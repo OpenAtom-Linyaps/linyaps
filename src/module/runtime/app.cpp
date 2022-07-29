@@ -796,7 +796,7 @@ public:
             }
         }
 
-        if ((!hasMountTmp) && !mountTmp()) {
+        if ((!hasMountTmp) && mountTmp()) {
             qWarning() << "fail to generate /tmp mount";
         }
 

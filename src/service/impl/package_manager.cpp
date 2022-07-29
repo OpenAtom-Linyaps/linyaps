@@ -199,14 +199,14 @@ Reply PackageManager::Start(const RunParamOption &paramOption)
     if ("flatpak" != repoPoint) {
         // 判断是否已安装
         if (!linglong::util::getAppInstalledStatus(appId, version, "", "")) {
-            reply.message = appId + " not installed";
+            reply.message = appId + " ,version:" + version + " ,arch:" + arch + " not installed";
             qCritical() << reply.message;
             reply.code = STATUS_CODE(kPkgNotInstalled);
             return reply;
         }
     }
 
-    //链接${LINGLONG_ROOT}/entries/share到~/.config/systemd/user下
+    // 链接${LINGLONG_ROOT}/entries/share到~/.config/systemd/user下
     // FIXME:后续上了提权模块，放入安装处理。
     const QString appUserServicePath = linglong::util::getLinglongRootPath() + "/entries/share/systemd/user";
     const QString userSystemdServicePath = linglong::util::ensureUserDir({".config/systemd/user"});
@@ -231,7 +231,7 @@ Reply PackageManager::Start(const RunParamOption &paramOption)
         auto app = linglong::runtime::App::load(&d->repo, ref, desktopExec, isFlatpakApp);
         if (nullptr == app) {
             // FIXME: set job status to failed
-            qCritical() << "nullptr" << app;
+            qCritical() << "load app failed " << app;
             return;
         }
         app->saveUserEnvList(userEnvList);

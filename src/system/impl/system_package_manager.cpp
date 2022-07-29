@@ -57,18 +57,20 @@ bool SystemPackageManagerPrivate::getAppJsonArray(const QString &jsonString, QJs
     QJsonParseError parseJsonErr;
     QJsonDocument document = QJsonDocument::fromJson(jsonString.toUtf8(), &parseJsonErr);
     if (QJsonParseError::NoError != parseJsonErr.error) {
-        err = "parse server's json data err, please check the network " + jsonString;
+        err = "parse server's json data failed, please check the network " + jsonString;
         return false;
     }
 
     QJsonObject jsonObject = document.object();
     if (jsonObject.size() == 0) {
-        err = "receive data is empty";
+        err = "query failed, receive data is empty";
+        qCritical().noquote() << jsonString;
         return false;
     }
 
     if (!jsonObject.contains("code") || !jsonObject.contains("data")) {
-        err = "receive data format err";
+        err = "query failed, receive data format err";
+        qCritical().noquote() << jsonString;
         return false;
     }
 
@@ -81,7 +83,7 @@ bool SystemPackageManagerPrivate::getAppJsonArray(const QString &jsonString, QJs
 
     jsonValue = jsonObject.value(QStringLiteral("data"));
     if (!jsonValue.isArray()) {
-        err = "jsonString from server data format is not array";
+        err = "query failed, jsonString from server data format is not array";
         qCritical().noquote() << jsonString;
         return false;
     }
@@ -799,6 +801,15 @@ Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOp
         return reply;
     }
 
+    QString channel = paramOption.channel.trimmed();
+    QString appModule = paramOption.appModule.trimmed();
+    if (channel.isEmpty()) {
+        channel = "linglong";
+    }
+    if (appModule.isEmpty()) {
+        appModule = "runtime";
+    }
+
     // 判断是否已安装 不校验用户名
     QString userName = linglong::util::getUserName();
     if (!linglong::util::getAppInstalledStatus(appId, version, arch, "")) {
@@ -814,15 +825,6 @@ Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOp
     } else {
         // 根据已安装文件查询已安装软件包信息
         linglong::util::getInstalledAppInfo(appId, version, arch, "", pkgList);
-    }
-
-    QString channel = paramOption.channel.trimmed();
-    QString appModule = paramOption.appModule.trimmed();
-    if (channel.isEmpty()) {
-        channel = "linglong";
-    }
-    if (appModule.isEmpty()) {
-        appModule = "runtime";
     }
 
     QStringList delVersionList;

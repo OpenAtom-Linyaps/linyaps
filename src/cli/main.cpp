@@ -208,7 +208,7 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
 
              auto optExec = QCommandLineOption("exec", "run exec", "/bin/bash");
-             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
+             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "", "");
              parser.addOption(optRepoPoint);
              parser.addOption(optExec);
 
@@ -468,7 +468,7 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("install", "install an application", "install");
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
-             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
+             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "", "");
              parser.addOption(optRepoPoint);
              auto optNoDbus =
                  QCommandLineOption("nodbus", "execute cmd directly, not via dbus(only for root user)", "");
@@ -632,7 +632,7 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("query", "query app info", "query");
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
-             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
+             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "", "");
              parser.addOption(optRepoPoint);
              auto optNoCache = QCommandLineOption("force", "query from server directly, not from cache", "");
              parser.addOption(optNoCache);
@@ -673,7 +673,7 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("uninstall", "uninstall an application", "uninstall");
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
-             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
+             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "", "");
              auto optNoDbus =
                  QCommandLineOption("nodbus", "execute cmd directly, not via dbus(only for root user)", "");
              auto optAllVer = QCommandLineOption("all-version", "uninstall all version application", "");
@@ -741,7 +741,7 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("list", "show installed application", "list");
              parser.addOption(optType);
-             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "--repo-point=flatpak", "");
+             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "", "");
              parser.addOption(optRepoPoint);
              auto optNoDbus = QCommandLineOption("nodbus", "execute cmd directly, not via dbus", "");
              parser.addOption(optNoDbus);

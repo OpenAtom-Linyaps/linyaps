@@ -39,7 +39,7 @@ auto Runner(const T program = "ostree", const Y args = "", const P timeout = 300
         qCritical() << program << " run finish failed!";
         return false;
     }
-    auto retStatus = runner.exitStatus();
+//    auto retStatus = runner.exitStatus();
     auto retCode = runner.exitCode();
     if (retCode != 0) {
         qCritical() << program << " run failed, retCode:" << retCode << ", args:" << program << args

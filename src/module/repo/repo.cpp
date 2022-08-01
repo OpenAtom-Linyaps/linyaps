@@ -16,8 +16,20 @@
 #include "module/util/sysinfo.h"
 #include "module/package/info.h"
 
+#include "repo_client.h"
+#include "ostree_repo.h"
+
 namespace linglong {
 namespace repo {
+
+void registerAllMetaType()
+{
+    qJsonRegister<ParamStringMap>();
+    qJsonRegister<linglong::repo::InfoResponse>();
+    qJsonRegister<linglong::repo::Response>();
+    qJsonRegister<linglong::repo::RevPair>();
+    qJsonRegister<linglong::repo::UploadTaskRequest>();
+}
 
 } // namespace repo
 } // namespace linglong

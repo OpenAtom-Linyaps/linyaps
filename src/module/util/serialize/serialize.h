@@ -263,4 +263,7 @@ QVariant toVariant(const T *m)
     return map;
 }
 
+typedef QMap<QString, QString> StringMap;
+Q_DECLARE_METATYPE(StringMap)
+
 #endif // LINGLONG_SRC_MODULE_UTIL_SERIALIZE_SERIALIZE_H

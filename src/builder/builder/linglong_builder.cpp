@@ -105,7 +105,7 @@ linglong::util::Error commitBuildOutput(Project *project, AnnotationsOverlayfsRo
         }
     }
 
-    auto moveDir = [] (const QStringList targetList, const QString &srcPath,
+    auto moveDir = [](const QStringList targetList, const QString &srcPath,
                       const QString &destPath) -> linglong::util::Error {
         for (auto target : targetList) {
             auto srcDir = QStringList {srcPath, target}.join(QDir::separator());
@@ -121,10 +121,9 @@ linglong::util::Error commitBuildOutput(Project *project, AnnotationsOverlayfsRo
 
     // Move some directories in files/share to entries
     // directories like icons, mime, dbus-1, locale
-    auto moveStatus = moveDir({"icons", "mime", "dbus-1", "locale", "autostart"}, 
-                               project->config().cacheInstallPath("files/share"), entriesPath);
+    auto moveStatus = moveDir({"icons", "mime", "dbus-1", "locale", "autostart"},
+                              project->config().cacheInstallPath("files/share"), entriesPath);
     if (!moveStatus.success()) {
-
         kill(fuseOverlayfsPid, SIGTERM);
         return moveStatus;
     }
@@ -159,7 +158,7 @@ linglong::util::Error commitBuildOutput(Project *project, AnnotationsOverlayfsRo
     }
 
     ret =
-       repo.importDirectory(project->refWithModule("devel"), project->config().cacheInstallPath("devel-install", ""));
+        repo.importDirectory(project->refWithModule("devel"), project->config().cacheInstallPath("devel-install", ""));
 
     //        fuseOverlayfs.kill();
     kill(fuseOverlayfsPid, SIGTERM);
@@ -679,9 +678,9 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
             return NewError(-1, "checkout files failed, you need build first");
         }
     }
-
-    //TODO: for bundle. remove later
-    QFile::copy(QStringList {exportPath, "runtime", "info.json"}.join("/"), QStringList {exportPath, "info.json"}.join("/"));
+    // TODO: for bundle. remove later
+    QFile::copy(QStringList {exportPath, "runtime", "info.json"}.join("/"),
+                QStringList {exportPath, "info.json"}.join("/"));
     // TODO: if the kind is not app, don't make bundle
     // make bundle package
     linglong::package::Bundle uabBundle;
@@ -694,7 +693,17 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
     return NoError();
 }
 
-linglong::util::Error LinglongBuilder::push(const QString &bundleFilePath, const QString &repoUrl, const QString &repoChannel, bool force)
+linglong::util::Error LinglongBuilder::push(const QString &ref)
+{
+    repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath(), BuilderConfig::instance()->remoteRepoEndpoint,
+                          BuilderConfig::instance()->remoteRepoName);
+    repo.push(package::Ref(ref), false);
+
+    return linglong::util::Error(NoError());
+}
+
+linglong::util::Error LinglongBuilder::push(const QString &bundleFilePath, const QString &repoUrl,
+                                            const QString &repoChannel, bool force)
 {
     // TODO: if the kind is not app, don't push bundle
     linglong::package::Bundle uabBundle;

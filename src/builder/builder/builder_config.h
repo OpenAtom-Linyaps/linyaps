@@ -15,6 +15,7 @@
 #include <QStandardPaths>
 
 #include "module/util/singleton.h"
+#include "module/util/json.h"
 
 namespace linglong {
 namespace builder {
@@ -22,11 +23,17 @@ namespace builder {
 /*!
  * Builder is the global config of the builder system
  */
-class BuilderConfig : public linglong::util::Singleton<BuilderConfig>
+class BuilderConfig : public Serialize
 {
-    friend class linglong::util::Singleton<BuilderConfig>;
-
+    Q_OBJECT;
+    // FIXME: it seam an fake singleton, and ref to fromVariant may fix this.
+    Q_JSON_CONSTRUCTOR(BuilderConfig)
 public:
+    static BuilderConfig *instance();
+
+    Q_JSON_PROPERTY(QString, remoteRepoEndpoint);
+    Q_JSON_PROPERTY(QString, remoteRepoName);
+
     QString repoPath() const;
 
     QString ostreePath() const;
@@ -51,11 +58,13 @@ public:
     QString targetSourcePath() const;
 
     QString templatePath() const;
+
 private:
     QString m_projectRoot;
     QString m_projectName;
     QString m_exec;
 };
+
 } // namespace builder
 } // namespace linglong
 

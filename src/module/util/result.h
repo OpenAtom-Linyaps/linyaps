@@ -23,7 +23,9 @@ namespace util {
 class Error
 {
 public:
-    Error(const Error &err){
+    Error() = default;
+    Error(const Error &err)
+    {
         errorCode = err.errorCode;
         msgMeta = err.msgMeta;
         msgMetaList = err.msgMetaList;
@@ -116,24 +118,6 @@ inline QDebug operator<<(QDebug dbg, const Error &result)
     }
     return dbg;
 }
-
-//
-// template<typename T>
-// class Result
-//{
-//    typedef T Type;
-//
-// public:
-//    inline explicit Result(const Error &error)
-//        : m_error(error)
-//        , m_data(Type())
-//    {
-//    }
-//
-// private:
-//    Error m_error;
-//    Type m_data;
-//};
 
 } // namespace util
 } // namespace linglong

@@ -22,6 +22,7 @@
 #include "builder/builder_config.h"
 #include "module/package/package.h"
 #include "module/runtime/oci.h"
+#include "module/repo/repo.h"
 #include "module/runtime/runtime.h"
 #include "module/util/yaml.h"
 #include "module/util/log_handler.h"
@@ -31,6 +32,7 @@ static void qJsonRegisterAll()
     linglong::builder::registerAllMetaType();
     linglong::package::registerAllMetaType();
     linglong::runtime::registerAllMetaType();
+    linglong::repo::registerAllMetaType();
 }
 
 int main(int argc, char **argv)
@@ -131,13 +133,14 @@ int main(int argc, char **argv)
                                                   ? project->package->version.toStdString()
                                                   : parser.value(pkgVersion).toStdString();
 
-                 if(project->package->kind != linglong::builder::PackageKindRuntime) {
+                 if (project->package->kind != linglong::builder::PackageKindRuntime) {
                      node["source"]["version"] = parser.value(srcVersion).isEmpty()
                                                      ? project->source->version.toStdString()
                                                      : parser.value(srcVersion).toStdString();
 
-                     node["source"]["commit"] = parser.value(srcCommit).isEmpty() ? project->source->commit.toStdString()
-                                                                              : parser.value(srcCommit).toStdString();
+                     node["source"]["commit"] = parser.value(srcCommit).isEmpty()
+                                                    ? project->source->commit.toStdString()
+                                                    : parser.value(srcCommit).toStdString();
                  }
                  // fixme: use qt file stream
                  std::ofstream fout(projectConfigPath.toStdString());

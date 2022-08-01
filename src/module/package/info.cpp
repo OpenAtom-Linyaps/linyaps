@@ -44,10 +44,11 @@ Ref parseId(const QString &id)
     QString appId = localId;
     QString version = "latest";
     QString arch = hostArch();
+    QString module = "runtime";
 
     switch (slice.length()) {
-    case 4:
-        qDebug() << "unknown" << slice.value(3);
+    case 4: // module
+        module = slice.value(3);
     case 3:
         arch = slice.value(2);
     case 2:
@@ -58,7 +59,7 @@ Ref parseId(const QString &id)
     default:
         qCritical() << "invalid id" << id;
     }
-    return Ref {remoteRepo, appId, version, arch};
+    return Ref {remoteRepo, appId, version, arch, module};
 }
 
 Ref::Ref(const QString &id)

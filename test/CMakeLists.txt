@@ -86,6 +86,7 @@ set(LL_TEST_SOURCES
     package_manager_test.cpp
     module/serialize/qt_json.cpp
     module/serialize/qt_yaml.cpp
+    module/config/config_test.cpp
     repohelper_test.cpp
 )
 

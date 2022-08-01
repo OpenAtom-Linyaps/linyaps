@@ -29,12 +29,14 @@ public:
     QNetworkReply *post(QNetworkRequest &request, const QByteArray &data);
     //    QNetworkReply *put(const QNetworkRequest &request, QIODevice *data);
     QNetworkReply *put(QNetworkRequest &request, const QByteArray &data);
+    QNetworkReply *put(QNetworkRequest &request, QHttpMultiPart *multiPart);
     QNetworkReply *del(QNetworkRequest &request);
 
     QString userAgent;
+
 private:
     QNetworkReply *doRequest(const QByteArray &verb, QNetworkRequest &request, QIODevice *data,
-                             const QByteArray &bytes);
+                             QHttpMultiPart *multiPart, const QByteArray &bytes);
 };
 
 } // namespace util

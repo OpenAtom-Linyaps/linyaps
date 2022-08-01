@@ -71,8 +71,7 @@ public:
 
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::package, AppMetaInfo)
 
-typedef QMap<QString, QString> ParamStringMap;
-Q_DECLARE_METATYPE(ParamStringMap)
+typedef StringMap ParamStringMap;
 
 namespace linglong {
 namespace package {

@@ -13,11 +13,13 @@
 
 #include <QObject>
 #include <QScopedPointer>
+#include <QPointer>
+#include <QMap>
 
 #include "module/repo/repo.h"
+#include "module/package/package.h"
 
 namespace linglong {
-
 namespace repo {
 
 class OSTreeRepoPrivate;
@@ -36,6 +38,7 @@ public:
     Q_ENUM(Mode);
 
     explicit OSTreeRepo(const QString &path);
+    explicit OSTreeRepo(const QString &localRepoPath, const QString &remoteEndpoint, const QString &remoteRepoName);
 
     ~OSTreeRepo() override;
     linglong::util::Error init(const QString &repoMode);
@@ -81,5 +84,58 @@ private:
 
 } // namespace repo
 } // namespace linglong
+
+namespace linglong {
+namespace repo {
+
+class InfoResponse : public JsonSerialize
+{
+    Q_OBJECT;
+    Q_JSON_CONSTRUCTOR(InfoResponse)
+
+    Q_JSON_PROPERTY(ParamStringMap, revs);
+};
+
+class RevPair : public JsonSerialize
+{
+    Q_OBJECT;
+    Q_JSON_CONSTRUCTOR(RevPair)
+
+    Q_JSON_PROPERTY(QString, server);
+    Q_JSON_PROPERTY(QString, client);
+};
+
+} // namespace repo
+} // namespace linglong
+
+Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::repo, InfoResponse)
+Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::repo, RevPair)
+
+namespace linglong {
+namespace repo {
+
+class UploadTaskRequest : public JsonSerialize
+{
+    Q_OBJECT;
+    Q_JSON_CONSTRUCTOR(UploadTaskRequest)
+
+    Q_JSON_PROPERTY(int, code);
+    Q_JSON_PROPERTY(QStringList, objects);
+    Q_JSON_PROPERTY(linglong::repo::RevPairStrMap, refs);
+};
+
+class UploadTaskResponse : public JsonSerialize
+{
+    Q_OBJECT;
+    Q_JSON_CONSTRUCTOR(UploadTaskResponse)
+
+    Q_JSON_PROPERTY(QString, id);
+};
+
+} // namespace repo
+} // namespace linglong
+
+Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::repo, UploadTaskRequest)
+Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::repo, UploadTaskResponse)
 
 #endif // LINGLONG_SRC_MODULE_REPO_OSTREE_H_

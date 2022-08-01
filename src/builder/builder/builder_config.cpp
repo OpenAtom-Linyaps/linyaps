@@ -10,6 +10,7 @@
 
 #include "builder_config.h"
 
+#include "module/util/yaml.h"
 #include "module/util/xdg.h"
 #include "module/util/file.h"
 #include "module/util/sysinfo.h"
@@ -36,7 +37,7 @@ QString BuilderConfig::targetFetchCachePath() const
 
 QString BuilderConfig::targetSourcePath() const
 {
-    auto target = QStringList {projectRoot(), ".linglong-target", projectName(),"source"}.join("/");
+    auto target = QStringList {projectRoot(), ".linglong-target", projectName(), "source"}.join("/");
     util::ensureDir(target);
     return target;
 }
@@ -87,6 +88,28 @@ QString BuilderConfig::templatePath() const
         }
     }
     return QString();
+}
+
+QString configPath()
+{
+    const QString filename = "linglong/builder.yaml";
+    QStringList configDirs = QStandardPaths::standardLocations(QStandardPaths::ConfigLocation);
+    configDirs.push_front("/etc");
+
+    for (const auto &configDir : configDirs) {
+        QString configPath = QStringList {configDir, filename}.join(QDir::separator());
+        if (QFile::exists(configPath)) {
+            qDebug() << "use" << configPath;
+            return configPath;
+        }
+    }
+    return {};
+}
+
+BuilderConfig *BuilderConfig::instance()
+{
+    static auto config = formYaml<BuilderConfig>(YAML::LoadFile(configPath().toStdString()));
+    return config;
 }
 
 } // namespace builder

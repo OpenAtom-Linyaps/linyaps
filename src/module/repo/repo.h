@@ -14,7 +14,6 @@
 #include <QString>
 
 #include "module/util/result.h"
-#include "repo_client.h"
 
 namespace linglong {
 
@@ -49,10 +48,7 @@ public:
     virtual package::Ref latestOfRef(const QString &appId, const QString &appVersion) = 0;
 };
 
-inline void registerAllMetaType()
-{
-    qJsonRegister<linglong::repo::Response>();
-}
+void registerAllMetaType();
 
 } // namespace repo
 } // namespace linglong

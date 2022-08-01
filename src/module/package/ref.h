@@ -43,7 +43,8 @@ public:
     {
     }
 
-    Ref(const QString &remote, const QString &channel, const QString &appId, const QString &version, const QString &arch, const QString &module)
+    Ref(const QString &remote, const QString &channel, const QString &appId, const QString &version,
+        const QString &arch, const QString &module)
         : repo(remote)
         , channel(channel)
         , appId(appId)
@@ -64,6 +65,8 @@ public:
 
     // FIXME: local().toString()?
     QString toLocalRefString() const { return QString("%1/%2/%3").arg(appId, version, arch); }
+
+    QString toLocalFullRef() const { return QString("%1/%2/%3/%4").arg(appId, version, arch, module); }
 
     QString repo;
     QString channel;

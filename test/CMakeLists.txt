@@ -81,9 +81,11 @@ set(LL_TEST_SOURCES
     module/util/runner_test.cpp
     module/util/uuid_test.cpp
     module/util/xdg_test.cpp
+    module/serialize/serialize_test.h
+    module/serialize/serialize_test.cpp
     package_manager_test.cpp
-    qt_json.cpp
-    qt_yaml.cpp
+    module/serialize/qt_json.cpp
+    module/serialize/qt_yaml.cpp
     repohelper_test.cpp
 )
 

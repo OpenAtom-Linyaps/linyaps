@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include <mutex>
+
 #include "module/util/json.h"
 
 class Root : public JsonSerialize
@@ -156,23 +158,25 @@ Q_JSON_DECLARE_PTR_METATYPE(Runtime)
 
 namespace linglong {
 namespace runtime {
+
 inline void registerAllOciMetaType()
 {
-    qJsonRegister<Root>();
-    qJsonRegister<Linux>();
-    qJsonRegister<Mount>();
-    qJsonRegister<Namespace>();
-    qJsonRegister<Hook>();
-    qJsonRegister<Runtime>();
-    qJsonRegister<Process>();
-    qJsonRegister<IdMap>();
-
-    // add by hqh
-    qJsonRegister<DBusProxy>();
-
-    qJsonRegister<Annotations>();
-    qJsonRegister<AnnotationsOverlayfsRootfs>();
-    qJsonRegister<AnnotationsNativeRootfs>();
+    static std::once_flag flag;
+    std::call_once(flag, []() {
+        qJsonRegister<Root>();
+        qJsonRegister<Linux>();
+        qJsonRegister<Mount>();
+        qJsonRegister<Namespace>();
+        qJsonRegister<Hook>();
+        qJsonRegister<Runtime>();
+        qJsonRegister<Process>();
+        qJsonRegister<IdMap>();
+        qJsonRegister<DBusProxy>();
+        qJsonRegister<Annotations>();
+        qJsonRegister<AnnotationsOverlayfsRootfs>();
+        qJsonRegister<AnnotationsNativeRootfs>();
+    });
 }
+
 } // namespace runtime
 } // namespace linglong

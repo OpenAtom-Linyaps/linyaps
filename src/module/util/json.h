@@ -20,234 +20,44 @@
 #include <QDebug>
 #include <QFile>
 
-#define Q_JSON_PARENT_KEY "7bdcaad1-2f27-4092-a5cf-4919ad4caf2b"
+#include "module/util/serialize/serialize.h"
 
-#define Q_JSON_CONSTRUCTOR(TYPE) \
-public: \
-    explicit TYPE(QObject *parent = nullptr) \
-        : JsonSerialize(parent) \
-    { \
-    }
+// deprecated, use Q_SERIALIZE_CONSTRUCTOR
+#define Q_JSON_CONSTRUCTOR(TYPE) Q_SERIALIZE_CONSTRUCTOR(TYPE)
 
-#define Q_JSON_PROPERTY(TYPE, PROP) Q_JSON_ITEM_MEMBER(TYPE, PROP, PROP)
+// deprecated, use Q_SERIALIZE_PROPERTY
+#define Q_JSON_PROPERTY(TYPE, PROP) Q_SERIALIZE_PROPERTY(TYPE, PROP)
 
-#define Q_JSON_ITEM_MEMBER(TYPE, PROP, MEMBER_NAME) \
-public: \
-    Q_PROPERTY(TYPE PROP MEMBER MEMBER_NAME READ get##PROP WRITE set##PROP); \
-    TYPE get##PROP() const \
-    { \
-        return MEMBER_NAME; \
-    } \
-    inline void set##PROP(const TYPE &val) \
-    { \
-        MEMBER_NAME = val; \
-    } \
-\
-public: \
-    TYPE MEMBER_NAME = TYPE();
+// deprecated, use Q_SERIALIZE_ITEM_MEMBER
+#define Q_JSON_ITEM_MEMBER(TYPE, PROP, MEMBER_NAME) Q_SERIALIZE_ITEM_MEMBER(TYPE, PROP, MEMBER_NAME)
 
+// deprecated, use Q_JSON_ITEM_MEMBER_PTR
 #define Q_JSON_PTR_PROPERTY(TYPE, PROP) Q_JSON_ITEM_MEMBER_PTR(TYPE, PROP, PROP)
 
-#define Q_JSON_ITEM_MEMBER_PTR(TYPE, PROP, MEMBER_NAME) \
-public: \
-    Q_PROPERTY(TYPE *PROP MEMBER MEMBER_NAME READ get##PROP WRITE set##PROP); \
-    TYPE *get##PROP() const \
-    { \
-        return MEMBER_NAME; \
-    } \
-    inline void set##PROP(TYPE *val) \
-    { \
-        MEMBER_NAME = val; \
-    } \
-\
-public: \
-    TYPE *MEMBER_NAME = nullptr;
+// deprecated, use Q_SERIALIZE_ITEM_MEMBER_PTR
+#define Q_JSON_ITEM_MEMBER_PTR(TYPE, PROP, MEMBER_NAME) Q_SERIALIZE_ITEM_MEMBER_PTR(TYPE, PROP, MEMBER_NAME)
 
-template<typename T>
-static T *fromVariant(const QVariant &v)
-{
-    auto map = v.toMap();
-    auto parent = qvariant_cast<QObject *>(map[Q_JSON_PARENT_KEY]);
-    auto m = new T(parent);
-    auto mo = m->metaObject();
-    for (int i = mo->propertyOffset(); i < mo->propertyCount(); ++i) {
-        auto k = mo->property(i).name();
-        auto t = mo->property(i).type();
-        if (QVariant::UserType == t) {
-            switch (map[k].type()) {
-            case QVariant::Map: {
-                auto value = map[k].toMap();
-                value[Q_JSON_PARENT_KEY] = QVariant::fromValue(m);
-                m->setProperty(k, value);
-                break;
-            }
-            default: {
-                auto value = map[k].toList();
-                value.push_front(QVariant::fromValue(m));
-                m->setProperty(k, value);
-                break;
-            }
-            }
-        } else {
-            auto value = map[k];
-            m->setProperty(k, value);
-        }
-    }
+// deprecated, use Q_SERIALIZE_DECLARE
+#define D_SERIALIZE_DECLARE(TYPE) Q_SERIALIZE_DECLARE(TYPE)
 
-    m->onPostSerialize();
-    return m;
-}
+// deprecated, use Q_SERIALIZE_REGISTER_TYPE
+#define D_SERIALIZE_REGISTER_TYPE_NM(NM, TYPE) Q_SERIALIZE_REGISTER_TYPE(NM::TYPE, NM::TYPE##List, NM::TYPE##StrMap)
 
-template<typename LIST>
-static LIST fromVariantList(const QVariant &l)
-{
-    LIST list;
-    using TP = typename std::decay<decltype((*list.begin()).data())>::type;
-    using T= typename std::remove_pointer<TP>::type;
+// deprecated, use Q_SERIALIZE_DECLARE_METATYPE_NM
+#define Q_JSON_DECLARE_PTR_METATYPE_NM(NM, TYPE) Q_SERIALIZE_DECLARE_METATYPE_NM(NM, TYPE)
 
-    auto varList = l.toList();
-    for (auto v : varList) {
-        auto o = fromVariant<T>(v);
-        list.push_back(o);
-    }
-    return list;
-}
+// deprecated, use Q_SERIALIZE_DECLARE_METATYPE
+#define Q_JSON_DECLARE_PTR_METATYPE(TYPE) Q_SERIALIZE_DECLARE_METATYPE(TYPE)
 
-template<typename T>
-inline void qJsonRegister()
-{
-}
+// deprecated, use qSerializeRegister
+#define qJsonRegister qSerializeRegister
 
-#define D_SERIALIZE_DECLARE_LIST(TYPE) \
-    class TYPE##List : public QList<QPointer<TYPE>> \
-    { \
-    public: \
-        inline ~TYPE##List() \
-        { \
-            for (auto &c : *this) { \
-                if (c->parent() == nullptr) { \
-                    c->deleteLater(); \
-                } \
-            } \
-        } \
-        static void registerMetaType(); \
-        friend QDBusArgument &operator<<(QDBusArgument &argument, const TYPE##List &message); \
-        friend const QDBusArgument &operator>>(const QDBusArgument &argument, TYPE##List &message); \
-    }; \
-    inline QDBusArgument &operator<<(QDBusArgument &argument, const TYPE##List &message) \
-    { \
-        argument.beginStructure(); \
-        argument.beginArray(qMetaTypeId<QByteArray>()); \
-        for (const auto &item : message) { \
-            argument << TYPE::dump<TYPE>(item.data()); \
-        } \
-        argument.endArray(); \
-        argument.endStructure(); \
-        return argument; \
-    } \
-\
-    inline const QDBusArgument &operator>>(const QDBusArgument &argument, TYPE##List &message) \
-    { \
-        message.clear(); \
-        argument.beginStructure(); \
-        argument.beginArray(); \
-        while (!argument.atEnd()) { \
-            QByteArray buf; \
-            argument >> buf; \
-            auto v = QJsonDocument::fromJson(buf).toVariant(); \
-            auto c = QPointer<TYPE>(fromVariant<TYPE>(v)); \
-            message.append(c); \
-        } \
-        argument.endArray(); \
-        argument.endStructure(); \
-        return argument; \
-    }
-
-#define D_SERIALIZE_REGISTER_TYPE(TYPE, TYPE_LIST) \
-    Q_DECLARE_METATYPE(TYPE *) \
-    Q_DECLARE_METATYPE(TYPE_LIST) \
-    template<> \
-    inline TYPE *qvariant_cast(const QVariant &v) \
-    { \
-        return fromVariant<TYPE>(v); \
-    } \
-    inline void TYPE_LIST::registerMetaType() \
-    { \
-        qDBusRegisterMetaType<TYPE_LIST>(); \
-    } \
-    template<> \
-    inline void qJsonRegister<TYPE>() \
-    { \
-        TYPE_LIST::registerMetaType(); \
-        qRegisterMetaType<TYPE *>(); \
-\
-        QMetaType::registerConverter<QVariantMap, TYPE *>( \
-            [](const QVariantMap &v) -> TYPE * { return fromVariant<TYPE>(v); }); \
-        QMetaType::registerConverter<TYPE *, QJsonValue>( \
-            [](TYPE *m) -> QJsonValue { return toVariant(m).toJsonValue(); }); \
-\
-        QMetaType::registerConverter<QVariantList, TYPE_LIST>([](QVariantList list) -> TYPE_LIST { \
-            TYPE_LIST mountList; \
-            auto parent = qvariant_cast<QObject *>(list.value(0)); \
-            if (parent) { \
-                list.pop_front(); \
-            } \
-            for (const auto &v : list) { \
-                auto map = v.toMap(); \
-                map[Q_JSON_PARENT_KEY] = QVariant::fromValue(parent); \
-                mountList.push_back(fromVariant<TYPE>(map)); \
-            } \
-            return mountList; \
-        }); \
-        QMetaType::registerConverter<TYPE_LIST, QJsonValue>([](const TYPE_LIST &valueList) -> QJsonValue { \
-            QVariantList list; \
-            for (auto v : valueList) { \
-                list.push_back(toVariant(v.data())); \
-            } \
-            return QVariant::fromValue(list).toJsonValue(); \
-        }); \
-    }
-
-#define D_SERIALIZE_DECLARE(TYPE) D_SERIALIZE_DECLARE_LIST(TYPE)
-
-#define D_SERIALIZE_REGISTER_TYPE_NM(NM, TYPE) D_SERIALIZE_REGISTER_TYPE(NM::TYPE, NM::TYPE##List)
-
-#define Q_JSON_DECLARE_PTR_METATYPE_NM(NM, TYPE) \
-    namespace NM { \
-    D_SERIALIZE_DECLARE_LIST(TYPE) \
-    } \
-    D_SERIALIZE_REGISTER_TYPE(NM::TYPE, NM::TYPE##List)
-
-#define Q_JSON_DECLARE_PTR_METATYPE(TYPE) \
-    D_SERIALIZE_DECLARE_LIST(TYPE) \
-    D_SERIALIZE_REGISTER_TYPE(TYPE, TYPE##List)
-
-template<typename T>
-QVariant toVariant(const T *m)
-{
-    QVariantMap map;
-    //    auto obj = qobject_cast<T *>(m);
-    //    map[Q_JSON_PARENT_KEY] = QVariant::fromValue(obj);
-    if (nullptr == m) {
-        return {};
-    }
-
-    auto mo = m->metaObject();
-    for (int i = mo->propertyOffset(); i < mo->propertyCount(); ++i) {
-        auto k = mo->property(i).name();
-        if (QVariant::fromValue((QObject *const)nullptr) == m->property(k)) {
-            continue;
-        }
-        map[k] = m->property(k).toJsonValue();
-    }
-    return map;
-}
-
-class JsonSerialize : public QObject
+// TODO: move to serialize.h, and update all CMakeLists.txt
+class Serialize : public QObject
 {
     Q_OBJECT
 protected:
-    explicit JsonSerialize(QObject *parent = nullptr)
+    explicit Serialize(QObject *parent = nullptr)
         : QObject(parent)
     {
     }
@@ -280,6 +90,8 @@ public:
     virtual void onPostSerialize() { }
 };
 
+typedef Serialize JsonSerialize;
+
 namespace linglong {
 namespace util {
 
@@ -307,7 +119,7 @@ static LIST arrayFromJson(const QString &str)
 }
 
 template<typename T>
-static T *loadJSONBytes(const QByteArray &jsonString)
+static T *loadJsonBytes(const QByteArray &jsonString)
 {
     auto json = QJsonDocument::fromJson(jsonString);
     return fromVariant<T>(json.toVariant());

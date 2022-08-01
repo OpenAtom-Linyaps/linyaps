@@ -12,7 +12,7 @@
 
 #include "qt_yaml.h"
 
-TEST(LL, YAML_NS)
+TEST(Serialize, YAML_NS)
 {
     qJsonRegister<linglong::test::MountRule>();
     qJsonRegister<linglong::test::Permission>();
@@ -26,12 +26,12 @@ TEST(LL, YAML_NS)
     EXPECT_EQ(app->permissions->mounts.value(0)->type, "test_type");
 }
 
-TEST(LL, YAML)
+TEST(Serialize, YAML)
 {
-    qJsonRegister<Namespace>();
+    linglong::runtime::registerAllOciMetaType();
+
     qJsonRegister<TestMount>();
     qJsonRegister<TestPermission>();
-    qJsonRegister<Root>();
     qJsonRegister<TestApp>();
 
     auto path = "../../test/data/demo/app.yml";

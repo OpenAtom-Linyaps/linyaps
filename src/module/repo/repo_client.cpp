@@ -41,7 +41,7 @@ std::tuple<util::Error, package::AppMetaInfoList> RepoClient::QueryApps(const pa
     data = reply->readAll();
     qCritical() << "readall";
     qCritical().noquote() << QString::fromLocal8Bit(data);
-    auto resp = util::loadJSONBytes<linglong::repo::Response>(data);
+    auto resp = util::loadJsonBytes<linglong::repo::Response>(data);
 
     return {NoError(), (resp->data)};
 }

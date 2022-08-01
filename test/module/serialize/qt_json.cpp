@@ -16,7 +16,7 @@
 #include "src/module/runtime/container.h"
 #include "src/module/runtime/oci.h"
 
-TEST(OCI, QtJson)
+TEST(Serialize, QtJsonOCI)
 {
     linglong::runtime::registerAllOciMetaType();
 
@@ -50,7 +50,7 @@ TEST(OCI, QtJson)
     r->deleteLater();
 }
 
-TEST(OCI, QByteArray)
+TEST(Serialize, QByteArray)
 {
     QByteArray data = "23282";
     EXPECT_EQ(QString::fromLatin1(data).toLongLong(), 23282);

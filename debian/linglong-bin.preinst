@@ -1,0 +1,18 @@
+#!/bin/bash
+
+case "$1" in
+install | upgrade)
+    if [ "x$2" != "x" ]; then
+        killall ll-service >/dev/null 2<&1
+        killall ll-system-helper >/dev/null 2<&1
+    fi
+    ;;
+
+abort-upgrade) ;;
+*)
+    echo "preinst called with unknown argument \`$1'" >&2
+    exit 1
+    ;;
+esac
+
+exit 0

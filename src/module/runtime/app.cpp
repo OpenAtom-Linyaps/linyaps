@@ -358,7 +358,8 @@ public:
                     // wine应用先保持不变（会导致wine应用运行失败），后续整改
                     r->annotations->overlayfs->mounts.push_back(m);
                 } else {
-                    r->annotations->overlayfs->mounts.push_front(m);
+                    // ll-box overlay失效，待修复后改为push_front（gnome应用运行失效）
+                    r->annotations->overlayfs->mounts.push_back(m);
                 }
             } else {
                 r->annotations->native->mounts.push_back(m);
@@ -385,7 +386,8 @@ public:
                 // wine应用先保持不变（会导致wine应用运行失败），后续整改
                 r->annotations->overlayfs->mounts.push_back(m);
             } else {
-                r->annotations->overlayfs->mounts.push_front(m);
+                // ll-box overlay失效，待修复后改为push_front（gnome应用运行失效）
+                r->annotations->overlayfs->mounts.push_back(m);
             }
         } else {
             r->annotations->native->mounts.push_back(m);

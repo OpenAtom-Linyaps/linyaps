@@ -1,15 +1,15 @@
 #set XDG_DATA_DIRS to include linglong installations
 
 LINGLONG_ROOT="/var/lib/linglong"
-VERSION=""
+VERSION=0
 
 if [ -f /etc/os-release ]
 then
         VERSION=$(sed -ne '/^VERSION_ID=.*$/P' /etc/os-release | awk -F = '{print $2}' | sed -e 's/"//g' | awk -F . '{print $1}')
-        if [ ${VERSION} -eq '20' ]
+        if [ ${VERSION} -eq 20 ]
         then
                 LINGLONG_ROOT="/data/linglong"
-        elif [ ${VERSION} -eq '23' ]
+        elif [ ${VERSION} -eq 23 ]
         then
                 LINGLONG_ROOT="/persistent/linglong"
         fi
@@ -25,7 +25,6 @@ case ":${XDG_DATA_DIRS}:" in
 		export XDG_DATA_DIRS
 		XDG_DATA_DIRS="${USR_LINGLONG_INSTALLATIONS}:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
 		export LINGLONG_ROOT
-		LINGLONG_ROOT="${LINGLONG_ROOT}"
 		;;
 esac
 
@@ -36,6 +35,5 @@ case ":${XDG_DATA_DIRS}:" in
 		export XDG_DATA_DIRS
 		XDG_DATA_DIRS="${SYS_LINGLONG_INSTALLATIONS}:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
 		export LINGLONG_ROOT
-		LINGLONG_ROOT="${LINGLONG_ROOT}"
 		;;
 esac

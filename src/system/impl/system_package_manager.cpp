@@ -139,8 +139,7 @@ bool SystemPackageManagerPrivate::getAppInfofromServer(const QString &pkgName, c
     if (!ret) {
         err = "getAppInfofromServer err, " + appData + " ,please check the network";
         qCritical() << err;
-
-        qDebug().noquote() << appData;
+        qCritical().noquote() << "receive from server:" << appData;
         return false;
     }
 

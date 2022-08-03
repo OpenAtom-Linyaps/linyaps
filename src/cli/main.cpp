@@ -492,7 +492,7 @@ int main(int argc, char **argv)
              // 收到中断信号后恢复操作
              signal(SIGINT, doIntOperate);
              // 设置 24 h超时
-             packageManager.setTimeout(1000 * 60 * 60 * 24);
+             sysPackageManager.setTimeout(1000 * 60 * 60 * 24);
              // appId format: org.deepin.calculator/1.2.6 in multi-version
              linglong::service::InstallParamOption installParamOption;
              installParamOption.repoPoint = repoType;
@@ -588,7 +588,7 @@ int main(int argc, char **argv)
              // 增加 channel/module
              paramOption.channel = parser.value(optChannel);
              paramOption.appModule = parser.value(optModule);
-
+             sysPackageManager.setTimeout(1000 * 60 * 60 * 24);
              qInfo().noquote() << "update" << paramOption.appId << ", please wait a few minutes...";
              QDBusPendingReply<linglong::service::Reply> dbusReply = sysPackageManager.Update(paramOption);
              dbusReply.waitForFinished();
@@ -596,9 +596,7 @@ int main(int argc, char **argv)
              reply = dbusReply.value();
              if (reply.code == STATUS_CODE(kPkgUpdating)) {
                  signal(SIGINT, doIntOperate);
-
                  QThread::sleep(1);
-                 // 1 秒 查询一次进度
                  dbusReply = sysPackageManager.GetDownloadStatus(paramOption, 1);
                  dbusReply.waitForFinished();
                  reply = dbusReply.value();
@@ -695,8 +693,7 @@ int main(int argc, char **argv)
                  return -1;
              }
              auto appInfo = args.value(1);
-             // TOTO:设置 10 分钟超时 to do
-             packageManager.setTimeout(1000 * 60 * 10);
+             sysPackageManager.setTimeout(1000 * 60 * 60 * 24);
              QDBusPendingReply<linglong::service::Reply> dbusReply;
              linglong::service::UninstallParamOption paramOption;
              // appId format: org.deepin.calculator/1.2.6 in multi-version

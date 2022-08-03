@@ -144,8 +144,8 @@ bool HttpClient::queryRemoteApp(const QString &pkgName, const QString &pkgVer, c
         reply->deleteLater();
         eventLoop.quit();
     });
-    // 10s 超时
-    QTimer::singleShot(10000, &eventLoop, &QEventLoop::quit);
+    // 5min 超时
+    QTimer::singleShot(5 * 60 * 1000, &eventLoop, &QEventLoop::quit);
     eventLoop.exec();
     return ret;
 }

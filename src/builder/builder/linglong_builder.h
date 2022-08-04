@@ -11,6 +11,7 @@
 #pragma once
 
 #include "builder.h"
+#include "project.h"
 #include "module/package/bundle.h"
 #include "module/util/status_code.h"
 
@@ -34,6 +35,8 @@ public:
     linglong::util::Error run() override;
 
     linglong::util::Error initRepo();
+
+    linglong::util::Error buildFlow(Project* project);
 };
 
 //TODO: remove later

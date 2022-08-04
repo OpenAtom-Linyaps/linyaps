@@ -28,7 +28,6 @@
 #include "module/runtime/container.h"
 #include "module/repo/ostree_repo.h"
 
-#include "project.h"
 #include "source_fetcher.h"
 #include "builder_config.h"
 #include "depend_fetcher.h"
@@ -347,17 +346,73 @@ linglong::util::Error LinglongBuilder::build()
     if (!ret.success()) {
         return NewError(-1, "load local repo failed");
     }
-    
-    auto projectConfigPath = QStringList {BuilderConfig::instance()->projectRoot(), "linglong.yaml"}.join("/");
 
+    auto projectConfigPath = QStringList {BuilderConfig::instance()->projectRoot(), "linglong.yaml"}.join("/");
     QScopedPointer<Project> project(formYaml<Project>(YAML::LoadFile(projectConfigPath.toStdString())));
+
+    // convert dependencies which with 'source' and 'build' tag to a project type
+    // TODO: building dependencies should be concurrency
+    for (auto const &depend : project->depends) {
+        if (depend->source && depend->build) {
+            YAML::Node node;
+
+            node["package"]["kind"] = "lib";
+            node["package"]["id"] = depend->id.toStdString();
+            node["package"]["version"] = depend->version.toStdString();
+
+            if (project->runtime) {
+                node["runtime"]["id"] = project->runtime->id.toStdString();
+                node["runtime"]["version"] = project->runtime->version.toStdString();
+            }
+
+            if (project->base) {
+                node["base"]["id"] = project->base->id.toStdString();
+                node["base"]["version"] = project->base->version.toStdString();
+            }
+
+            QScopedPointer<Project> subProject(formYaml<Project>(node));
+
+            subProject->source = depend->source;
+            subProject->build = depend->build;
+
+            subProject->generateBuildScript();
+            subProject->setConfigFilePath(projectConfigPath);
+
+            qInfo() << QString("Building %1").arg(subProject->package->id);
+
+            ret = buildFlow(subProject.get());
+            if (!ret.success()) {
+                qInfo() << QString("task %1 build failed").arg(subProject->package->id);
+                return NewError(-1, QString("task %1 build failed").arg(subProject->package->id));
+            }
+        }
+    }
+
+    project->generateBuildScript();
     project->setConfigFilePath(projectConfigPath);
+
+    qInfo() << QString("Building %1").arg(project->package->id);
+
+    ret = buildFlow(project.get());
+    if (!ret.success()) {
+        return NewError(-1, QString("task %1 build failed").arg(project->package->id));
+    }
+
+    return NoError();
+
+}
+
+linglong::util::Error LinglongBuilder::buildFlow(Project *project)
+{
+    linglong::util::Error ret(NoError());
+
+    linglong::builder::BuilderConfig::instance()->setProjectName(project->package->id);
 
     if (!project->package || project->package->kind.isEmpty()) {
         return NewError(-1, "unknown package kind");
     }
 
-    SourceFetcher sf(project->source, project.get());
+    SourceFetcher sf(project->source, project);
     if (project->source) {
         auto ret = sf.fetch();
         if (!ret.success()) {
@@ -387,7 +442,7 @@ linglong::util::Error LinglongBuilder::build()
         BuildDepend runtimeDepend;
         runtimeDepend.id = runtimeRef.appId;
         runtimeDepend.version = runtimeRef.version;
-        DependFetcher df(runtimeDepend, project.get());
+        DependFetcher df(runtimeDepend, project);
         ret = df.fetch("", project->config().cacheRuntimePath(""));
         if (!ret.success()) {
             return NewError(ret, -1, "fetch runtime failed");
@@ -410,7 +465,7 @@ linglong::util::Error LinglongBuilder::build()
     BuildDepend baseDepend;
     baseDepend.id = baseRef.appId;
     baseDepend.version = baseRef.version;
-    DependFetcher baseFetcher(baseDepend, project.get());
+    DependFetcher baseFetcher(baseDepend, project);
     // TODO: the base filesystem hierarchy is just an debian now. we should change it
     hostBasePath = BuilderConfig::instance()->layerPath({baseRef.toLocalRefString(), ""});
     ret = baseFetcher.fetch("", hostBasePath);
@@ -420,7 +475,7 @@ linglong::util::Error LinglongBuilder::build()
 
     // depends fetch
     for (auto const &depend : project->depends) {
-        DependFetcher df(*depend, project.get());
+        DependFetcher df(*depend, project);
         ret = df.fetch("files", project->config().cacheRuntimePath("files"));
         if (!ret.success()) {
             return NewError(ret, -1, "fetch dependency failed");
@@ -507,7 +562,7 @@ linglong::util::Error LinglongBuilder::build()
         r->mounts.push_back(m);
     }
 
-    r->process->args = QStringList {"/bin/bash", BuildScriptPath};
+    r->process->args = QStringList {"/bin/bash", "-e", BuildScriptPath};
     r->process->cwd = containerSourcePath;
     r->process->env.push_back(
         "PATH=/runtime/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games:/sbin:/usr/sbin");
@@ -577,12 +632,12 @@ linglong::util::Error LinglongBuilder::build()
         return NoError();
     };
 
-    ret = createInfo(project.get());
+    ret = createInfo(project);
     if (!ret.success()) {
         return NewError(ret, -1, "createInfo failed");
     }
 
-    ret = commitBuildOutput(project.get(), r->annotations->overlayfs);
+    ret = commitBuildOutput(project, r->annotations->overlayfs);
     if (!ret.success()) {
         return NewError(-1, "commitBuildOutput failed");
     }
@@ -600,7 +655,6 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
         QScopedPointer<Project> project(formYaml<Project>(YAML::LoadFile("linglong.yaml")));
 
         repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath());
-
         auto ret = repo.checkout(project->refWithModule("runtime"), "", QStringList {exportPath, "runtime"}.join("/"));
         ret = repo.checkout(project->refWithModule("devel"), "", QStringList {exportPath, "devel"}.join("/"));
         if (!ret.success()) {

@@ -29,14 +29,14 @@ QString BuilderConfig::ostreePath() const
 
 QString BuilderConfig::targetFetchCachePath() const
 {
-    auto target = QStringList {projectRoot(), ".linglong-target", "fetch", "cache"}.join("/");
+    auto target = QStringList {projectRoot(), ".linglong-target", projectName(), "fetch", "cache"}.join("/");
     util::ensureDir(target);
     return target;
 }
 
 QString BuilderConfig::targetSourcePath() const
 {
-    auto target = QStringList {projectRoot(), ".linglong-target", "source"}.join("/");
+    auto target = QStringList {projectRoot(), ".linglong-target", projectName(),"source"}.join("/");
     util::ensureDir(target);
     return target;
 }
@@ -49,6 +49,16 @@ void BuilderConfig::setProjectRoot(const QString &path)
 QString BuilderConfig::projectRoot() const
 {
     return m_projectRoot;
+}
+
+void BuilderConfig::setProjectName(const QString &name)
+{
+    m_projectName = name;
+}
+
+QString BuilderConfig::projectName() const
+{
+    return m_projectName;
 }
 
 QString BuilderConfig::layerPath(const QStringList &subPathList) const

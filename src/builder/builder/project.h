@@ -123,6 +123,9 @@ public:
     Q_JSON_PROPERTY(QString, id);
     Q_JSON_PROPERTY(QString, version);
     Q_JSON_PROPERTY(QString, type);
+
+    Q_JSON_PTR_PROPERTY(Source, source);
+    Q_JSON_PTR_PROPERTY(Build, build);
 };
 } // namespace builder
 } // namespace linglong
@@ -202,6 +205,8 @@ public:
     const Config &config() const;
 
     void onPostSerialize() override;
+
+    void generateBuildScript();
 
 private:
     QScopedPointer<ProjectPrivate> dd_ptr;

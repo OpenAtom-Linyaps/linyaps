@@ -136,6 +136,7 @@ public:
         command += q_ptr->build->manual->build.isNull() ? temp->build->manual->build : q_ptr->build->manual->build;
         command += q_ptr->build->manual->install.isNull() ? temp->build->manual->install : q_ptr->build->manual->install;
 
+        command += "\n";
         // strip script
         QFile stripScript(":/strip.sh");
         stripScript.open(QIODevice::ReadOnly);
@@ -158,7 +159,10 @@ public:
 void Project::onPostSerialize()
 {
     dd_ptr.reset(new ProjectPrivate(this));
+}
 
+void Project::generateBuildScript()
+{
     // TODO: how to define an build task
     auto cacheDirectory = config().cacheAbsoluteFilePath({"tmp"});
     util::ensureDir(cacheDirectory);
@@ -241,7 +245,7 @@ QString Project::Config::absoluteFilePath(const QStringList &filenames) const
 
 QString Project::Config::cacheAbsoluteFilePath(const QStringList &filenames) const
 {
-    auto targetList = QStringList {rootPath(), ".linglong-target"};
+    auto targetList = QStringList {rootPath(), ".linglong-target", m_project->package->id};
     targetList.append(filenames);
     auto target = targetList.join("/");
     return target;

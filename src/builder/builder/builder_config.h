@@ -38,6 +38,9 @@ public:
     void setProjectRoot(const QString &path);
     QString projectRoot() const;
 
+    void setProjectName(const QString &name);
+    QString projectName() const;
+
     void setExec(const QString &exec);
     QString exec() const;
 
@@ -50,6 +53,7 @@ public:
     QString templatePath() const;
 private:
     QString m_projectRoot;
+    QString m_projectName;
     QString m_exec;
 };
 } // namespace builder

@@ -7,6 +7,9 @@ configure)
 
         if [ -f /etc/os-release ]; then
                 VERSION=$(sed -ne '/^VERSION_ID=.*$/P' /etc/os-release | awk -F = '{print $2}' | sed -e 's/"//g' | awk -F . '{print $1}')
+                if [ -z "${VERSION}" ]; then
+                        VERSION=0
+                fi
                 if [ ${VERSION} -eq 20 ]; then
                         LINGLONG_ROOT="/data/linglong"
                 elif [ ${VERSION} -eq 23 ]; then

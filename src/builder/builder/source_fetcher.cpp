@@ -155,18 +155,18 @@ util::Error SourceFetcherPrivate::fetchGitRepo()
 util::Error SourceFetcherPrivate::handleLocalPatch()
 {
     // apply local patch
-    qInfo() << "find local patch ...";
+    qInfo() << QString("finding local patch");
     if (source->patch.size() == 0) {
-        qInfo() << "Nothing to patch.";
+        qInfo() << QString("nothing to patch");
         return NoError();
     }
 
     for (auto localPatch : source->patch) {
         if (localPatch.isEmpty()) {
-            qWarning() << "This patch is empty, check it.";
+            qWarning() << QString("this patch is empty, check it"）;
             continue;
         }
-        qDebug() << QString("Applying patch: %1").arg(localPatch);
+        qInfo() << QString("applying patch: %1").arg(localPatch);
         if (!runner::Runner("patch", {"-p1", "-i", project->config().absoluteFilePath({localPatch})}, -1)) {
             return NewError(-1, "patch failed");
         }

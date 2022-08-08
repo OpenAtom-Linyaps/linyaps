@@ -326,7 +326,7 @@ linglong::util::Error LinglongBuilder::create(const QString &projectName)
 
     // TODO: 判断projectName名称合法性
     // 在当前目录创建项目文件夹
-    auto ret = QDir().mkdir(projectPath);
+    auto ret = QDir().mkpath(projectPath);
     if (!ret) {
         return NewError(-1, "project already exists");
     }
@@ -378,28 +378,29 @@ linglong::util::Error LinglongBuilder::build()
             subProject->generateBuildScript();
             subProject->setConfigFilePath(projectConfigPath);
 
-            qInfo() << QString("Building %1").arg(subProject->package->id);
+            qInfo() << QString("building target: %1").arg(subProject->package->id);
 
             ret = buildFlow(subProject.get());
             if (!ret.success()) {
-                qInfo() << QString("task %1 build failed").arg(subProject->package->id);
-                return NewError(-1, QString("task %1 build failed").arg(subProject->package->id));
+                return ret;
             }
+
+            qInfo() << QString("build %1 success").arg(project->package->id);
         }
     }
 
     project->generateBuildScript();
     project->setConfigFilePath(projectConfigPath);
 
-    qInfo() << QString("Building %1").arg(project->package->id);
+    qInfo() << QString("building target: %1").arg(project->package->id);
 
     ret = buildFlow(project.get());
     if (!ret.success()) {
-        return NewError(-1, QString("task %1 build failed").arg(project->package->id));
+        return ret;
     }
 
+    qInfo() << QString("build %1 success").arg(project->package->id);
     return NoError();
-
 }
 
 linglong::util::Error LinglongBuilder::buildFlow(Project *project)
@@ -414,9 +415,10 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
 
     SourceFetcher sf(project->source, project);
     if (project->source) {
+        qInfo() << QString("fetching source code from: %1").arg(project->source->url);
         auto ret = sf.fetch();
         if (!ret.success()) {
-            return NewError(ret, -1, "fetch source failed");
+            return NewError(-1, "fetch source failed");
         }
     }
     // initialize some directories
@@ -698,18 +700,26 @@ linglong::util::Error LinglongBuilder::run()
     QScopedPointer<Project> project(formYaml<Project>(YAML::LoadFile(projectConfigPath.toStdString())));
     project->setConfigFilePath(projectConfigPath);
 
-    // check app
+    // checkout app
     auto targetPath = BuilderConfig::instance()->layerPath({project->ref().toLocalRefString()});
     linglong::util::ensureDir(targetPath);
-    ret = repo.checkout(project->ref(), "", targetPath);
+    ret = repo.checkoutAll(project->ref(), "", targetPath);
     if (!ret.success()) {
         return NewError(-1, "checkout app files failed");
     }
 
-    // check runtime
+    // checkout runtime
     targetPath = BuilderConfig::instance()->layerPath({project->runtimeRef().toLocalRefString()});
     linglong::util::ensureDir(targetPath);
-    ret = repo.checkout(project->runtimeRef(), "", targetPath);
+
+    if (!repo.isRefExists(project->runtimeRef())) {
+        ret = repo.checkoutAll(project->runtimeRef(), "", targetPath);
+    } else {
+        auto remoteRuntimeRef = package::Ref("", "linglong", project->runtimeRef().appId, project->runtimeRef().version,
+                                             project->runtimeRef().arch);
+        ret = repo.checkoutAll(remoteRuntimeRef, "", targetPath);
+    }
+
     if (!ret.success()) {
         return NewError(-1, "checkout runtime files failed");
     }

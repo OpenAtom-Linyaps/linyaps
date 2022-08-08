@@ -229,7 +229,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
             return NewError() << "call getLocalConfig api failed";
         }
     }
-
+    configUrl = configUrl.endsWith("/")  ? configUrl : (configUrl + "/");
     auto token = G_HTTPCLIENT->getToken(configUrl, userInfo);
 
     if (token.isEmpty()) {

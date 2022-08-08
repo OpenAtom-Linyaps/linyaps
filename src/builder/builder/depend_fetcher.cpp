@@ -45,6 +45,8 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
 {
     repo::OSTreeRepo ostree(BuilderConfig::instance()->repoPath());
 
+    qInfo() << QString("fetching dependency: %1 %2").arg(dd_ptr->ref.appId).arg(dd_ptr->ref.version);
+
     auto remoteRef = package::Ref("", dd_ptr->ref.appId, dd_ptr->ref.version, dd_ptr->ref.arch);
 
     if (!ostree.isRefExists(remoteRef)) {

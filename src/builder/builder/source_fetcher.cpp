@@ -163,7 +163,7 @@ util::Error SourceFetcherPrivate::handleLocalPatch()
 
     for (auto localPatch : source->patch) {
         if (localPatch.isEmpty()) {
-            qWarning() << QString("this patch is empty, check it"）;
+            qWarning() << QString("this patch is empty, check it");
             continue;
         }
         qInfo() << QString("applying patch: %1").arg(localPatch);

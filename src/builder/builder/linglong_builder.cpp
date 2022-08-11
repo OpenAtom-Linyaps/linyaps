@@ -651,11 +651,13 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
 {
     auto exportPath = QStringList {BuilderConfig::instance()->projectRoot(), "export"}.join("/");
 
-    util::ensureDir(exportPath);
-
     // checkout data from local ostree
     if (!useLocalDir) {
         QScopedPointer<Project> project(formYaml<Project>(YAML::LoadFile("linglong.yaml")));
+
+        exportPath = QStringList {BuilderConfig::instance()->projectRoot(), project->package->id}.join("/");
+
+        util::ensureDir(exportPath);
 
         repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath());
         auto ret = repo.checkout(project->refWithModule("runtime"), "", QStringList {exportPath, "runtime"}.join("/"));
@@ -664,6 +666,7 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
             return NewError(-1, "checkout files failed, you need build first");
         }
     }
+
     //TODO: for bundle. remove later
     QFile::copy(QStringList {exportPath, "runtime", "info.json"}.join("/"), QStringList {exportPath, "info.json"}.join("/"));
     // TODO: if the kind is not app, don't make bundle

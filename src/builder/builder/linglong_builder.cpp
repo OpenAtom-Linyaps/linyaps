@@ -372,6 +372,7 @@ linglong::util::Error LinglongBuilder::build()
 
             QScopedPointer<Project> subProject(formYaml<Project>(node));
 
+            subProject->variables = depend->variables;
             subProject->source = depend->source;
             subProject->build = depend->build;
 

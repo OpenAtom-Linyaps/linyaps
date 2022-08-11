@@ -348,6 +348,12 @@ linglong::util::Error LinglongBuilder::build()
     }
 
     auto projectConfigPath = QStringList {BuilderConfig::instance()->projectRoot(), "linglong.yaml"}.join("/");
+
+    if (!QFileInfo::exists(projectConfigPath)) {
+        qCritical() << "ll-builder should running in project root";
+        return NewError(-1, "can not found linglong.yaml");
+    }
+
     QScopedPointer<Project> project(formYaml<Project>(YAML::LoadFile(projectConfigPath.toStdString())));
 
     // convert dependencies which with 'source' and 'build' tag to a project type
@@ -653,7 +659,14 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
 
     // checkout data from local ostree
     if (!useLocalDir) {
-        QScopedPointer<Project> project(formYaml<Project>(YAML::LoadFile("linglong.yaml")));
+        auto projectConfigPath = QStringList {BuilderConfig::instance()->projectRoot(), "linglong.yaml"}.join("/");
+        if (!QFileInfo::exists(projectConfigPath)) {
+            qCritical() << "ll-builder should running in project root";
+            return NewError(-1, "can not found linglong.yaml");
+        }
+
+        QScopedPointer<Project> project(formYaml<Project>(YAML::LoadFile(projectConfigPath.toStdString())));
+        project->setConfigFilePath(projectConfigPath);
 
         exportPath = QStringList {BuilderConfig::instance()->projectRoot(), project->package->id}.join("/");
 
@@ -701,6 +714,12 @@ linglong::util::Error LinglongBuilder::run()
     linglong::util::Error ret(NoError());
 
     auto projectConfigPath = QStringList {BuilderConfig::instance()->projectRoot(), "linglong.yaml"}.join("/");
+
+    if (!QFileInfo::exists(projectConfigPath)) {
+        qCritical() << "ll-builder should running in project root";
+        return NewError(-1, "can not found linglong.yaml");
+    }
+
     QScopedPointer<Project> project(formYaml<Project>(YAML::LoadFile(projectConfigPath.toStdString())));
     project->setConfigFilePath(projectConfigPath);
 

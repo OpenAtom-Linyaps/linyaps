@@ -105,6 +105,12 @@ public:
         };
 
         auto templatePath = QStringList {BuilderConfig::instance()->templatePath(), templateName}.join("/");
+
+        if (!QFileInfo::exists(templatePath)) {
+            qCritical() << templatePath << "is not found";
+            return -1;
+        }
+
         QScopedPointer<Template> temp(formYaml<Template>(YAML::LoadFile(templatePath.toStdString())));
 
         if (q_ptr->variables == nullptr) {

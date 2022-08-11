@@ -117,6 +117,11 @@ int main(int argc, char **argv)
                      QStringList {linglong::builder::BuilderConfig::instance()->projectRoot(), "linglong.yaml"}.join(
                          "/");
 
+                 if (!QFileInfo::exists(projectConfigPath)) {
+                     qCritical() << "ll-builder should running in project root";
+                     return -1;
+                 }
+
                  QScopedPointer<linglong::builder::Project> project(
                      formYaml<linglong::builder::Project>(YAML::LoadFile(projectConfigPath.toStdString())));
 

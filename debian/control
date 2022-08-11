@@ -23,11 +23,12 @@ Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, ostree, linglong-dbus-proxy,
  linglong-box, libqt5sql5-sqlite (>= 5.11.3), desktop-file-utils, shared-mime-info,
  fuse-overlayfs, libglib2.0-bin
-Description: Package Manager for UOS.
- Package Manager...
+Description: Linglong package manager.
+ Linglong package manager ... 
 
 Package: linglong-builder
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, squashfs-tools, linglong-loader
-Description: Package Manager for UOS.
- Package Manager...
+Depends: ${shlibs:Depends}, ${misc:Depends}, squashfs-tools, linglong-loader, 
+ linglong-bin, linglong-box
+Description: Linglong application building tools.
+ ll-builder is a tool that makes it easy to build applications and dependencies.

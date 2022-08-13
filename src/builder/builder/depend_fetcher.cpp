@@ -24,15 +24,15 @@ class DependFetcherPrivate
 {
 public:
     explicit DependFetcherPrivate(const BuildDepend &bd, Project *parent)
-        : ref(fuzzyRef(&bd)), project(parent), dependType(bd.type)
+        : ref(fuzzyRef(&bd)), project(parent), buildDepend(&bd), dependType(bd.type)
     {
     }
     //TODO: dependType should be removed, buildDepend include it
     package::Ref ref;
     Project *project;
+    const BuildDepend *buildDepend;
     QString dependType;
 };
-
 DependFetcher::DependFetcher(const BuildDepend &bd, Project *parent)
     : QObject(parent)
     , dd_ptr(new DependFetcherPrivate(bd, parent))
@@ -44,39 +44,45 @@ DependFetcher::~DependFetcher() = default;
 linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString &targetPath)
 {
     repo::OSTreeRepo ostree(BuilderConfig::instance()->repoPath());
+    // depends with source > depends from remote > depends from local
+    auto dependRef = package::Ref("", dd_ptr->ref.appId, dd_ptr->ref.version, dd_ptr->ref.arch);
 
-    qInfo() << QString("fetching dependency: %1 %2").arg(dd_ptr->ref.appId).arg(dd_ptr->ref.version);
+    if (!dd_ptr->buildDepend->source) {
+        dependRef = package::Ref("", "linglong", dd_ptr->ref.appId, dd_ptr->ref.version, dd_ptr->ref.arch, "");
+        if ("latest" == dd_ptr->ref.version) {
+            dependRef = ostree.remoteLatestRef(dependRef);
+        }
 
-    auto remoteRef = package::Ref("", dd_ptr->ref.appId, dd_ptr->ref.version, dd_ptr->ref.arch);
+        qInfo() << QString("fetching dependency: %1 %2").arg(dependRef.appId).arg(dependRef.version);
 
-    if (!ostree.isRefExists(remoteRef)) {
-        // TODO: support more channel
-        remoteRef = package::Ref("", "linglong", dd_ptr->ref.appId, dd_ptr->ref.version, dd_ptr->ref.arch);
-        auto ret = ostree.pullAll(remoteRef, true);
+        auto ret = ostree.pullAll(dependRef, true);
         if (!ret.success()) {
-            return NewError(ret, -1, "pull " + remoteRef.toString() + " failed");
+            return NewError(ret, -1, "pull " + dependRef.toString() + " failed");
         }
     }
-    
+
     QDir targetParentDir(targetPath);
     targetParentDir.cdUp();
     targetParentDir.mkpath(".");
 
-    auto ret = ostree.checkoutAll(remoteRef, subPath, targetPath);
+   
+    auto ret = ostree.checkoutAll(dependRef, subPath, targetPath);
 
-    //for app,lib. if the dependType match runtime, should be submitted together.
+    if (!ret.success()) {
+        return NewError(ret, -1, QString("ostree checkout %1 failed").arg(dependRef.toLocalRefString()));
+    }
+    // for app,lib. if the dependType match runtime, should be submitted together.
     if (dd_ptr->dependType == DependTypeRuntime) {
         auto targetInstallPath = dd_ptr->project->config().cacheAbsoluteFilePath(
             {"overlayfs", "up", dd_ptr->project->config().targetInstallPath("")});
 
-        ret = ostree.checkoutAll(remoteRef, subPath, targetInstallPath);
+        ret = ostree.checkoutAll(dependRef, subPath, targetInstallPath);
     }
 
     return WrapError(ret, QString("ostree checkout %1 with subpath '%2' to %3")
-                              .arg(remoteRef.toLocalRefString())
+                              .arg(dependRef.toLocalRefString())
                               .arg(subPath)
                               .arg(targetPath));
-
 }
 
 } // namespace builder

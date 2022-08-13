@@ -744,12 +744,12 @@ linglong::util::Error LinglongBuilder::run()
     targetPath = BuilderConfig::instance()->layerPath({project->runtimeRef().toLocalRefString()});
     linglong::util::ensureDir(targetPath);
 
-    if (!repo.isRefExists(project->runtimeRef())) {
-        ret = repo.checkoutAll(project->runtimeRef(), "", targetPath);
-    } else {
-        auto remoteRuntimeRef = package::Ref("", "linglong", project->runtimeRef().appId, project->runtimeRef().version,
+    auto remoteRuntimeRef = package::Ref("", "linglong", project->runtimeRef().appId, project->runtimeRef().version,
                                              project->runtimeRef().arch);
-        ret = repo.checkoutAll(remoteRuntimeRef, "", targetPath);
+
+    ret = repo.checkoutAll(remoteRuntimeRef, "", targetPath);
+    if (!ret.success()) {
+        ret = repo.checkoutAll(project->runtimeRef(), "", targetPath);
     }
 
     if (!ret.success()) {

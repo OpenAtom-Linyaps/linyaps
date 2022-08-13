@@ -20,11 +20,14 @@
 #include <utility>
 
 #include "module/package/ref.h"
+#include "module/package/info.h"
 #include "module/util/runner.h"
 #include "module/util/sysinfo.h"
 #include "module/util/version.h"
 #include "module/util/http/http_client.h"
 #include "module/util/config/config.h"
+#include "module/util/semver.h"
+#include "module/util/httpclient.h"
 
 namespace linglong {
 namespace repo {
@@ -531,8 +534,9 @@ linglong::util::Error OSTreeRepo::checkoutAll(const package::Ref &ref, const QSt
     }
 
     auto ret = d->ostreeRun(runtimeArgs);
+
     if (!ret.success()) {
-        return NewError(ret);
+        return ret;
     }
 
     ret = d->ostreeRun(develArgs);
@@ -553,6 +557,52 @@ bool OSTreeRepo::isRefExists(const package::Ref &ref)
         "sh", {"-c", QString("ostree refs --repo=%1 | grep -Fx %2").arg(d->ostreePath).arg(runtimeRef)}, -1);
 
     return ret;
+}
+
+package::Ref OSTreeRepo::localLatestRef(const package::Ref &ref)
+{
+    Q_D(OSTreeRepo);
+
+    QString latestVer = "latest";
+
+    QString args = QString("ostree refs repo --repo=%1 | grep %2 | grep %3")
+                   .arg(d->ostreePath)
+                   .arg(ref.appId)
+                   .arg(util::hostArch() + "/" + "runtime");
+
+    auto result = runner::RunnerRet("sh", {"-c", args}, -1);
+
+    if (std::get<0>(result)) {
+        // last line of result is null, remove it
+        std::get<1>(result).removeLast();
+
+        latestVer = linglong::util::latestVersion(std::get<1>(result));
+    }
+
+    return package::Ref("", ref.channel, ref.appId, latestVer, ref.arch, ref.module);
+}
+
+package::Ref OSTreeRepo::remoteLatestRef(const package::Ref &ref)
+{
+    Q_D(OSTreeRepo);
+
+    QString latestVer = "latest";
+    QString ret;
+
+    if (!G_HTTPCLIENT->queryRemoteApp(ref.appId, "", util::hostArch(), ret)) {
+        qCritical() << "query remote app failed";
+        return package::Ref("", ref.channel, ref.appId, latestVer, ref.arch, ref.module);
+    }
+
+    auto retObject = QJsonDocument::fromJson(ret.toUtf8()).object();
+
+    auto infoList = fromVariantList<linglong::package::InfoList>(retObject.value(QStringLiteral("data")));
+
+     for(auto info : infoList) {
+         latestVer = linglong::util::compareVersion(latestVer, info->version) > 0 ? latestVer : info->version;
+     }
+
+    return package::Ref("", ref.channel, ref.appId, latestVer, ref.arch, ref.module);
 }
 
 package::Ref OSTreeRepo::latestOfRef(const QString &appId, const QString &appVersion)

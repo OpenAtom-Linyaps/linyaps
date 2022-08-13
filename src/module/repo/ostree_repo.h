@@ -75,6 +75,10 @@ public:
 
     bool isRefExists(const package::Ref &ref);
 
+    package::Ref localLatestRef(const package::Ref &ref);
+
+    package::Ref remoteLatestRef(const package::Ref &ref);
+
     package::Ref latestOfRef(const QString &appId, const QString &appVersion) override;
 
 private:

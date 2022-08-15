@@ -92,3 +92,7 @@ set(PERMISSION
 install(FILES ${PERMISSION}
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/permission/policy/linglong
 )
+
+install(FILES data/deepin-linglong.xml
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/mime/packages
+)

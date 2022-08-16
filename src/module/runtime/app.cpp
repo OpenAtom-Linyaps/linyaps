@@ -634,6 +634,7 @@ public:
         auto deepinWinePath = util::ensureUserDir({".deepinwine"});
         mountMap.push_back(qMakePair(deepinWinePath, util::getUserFile(".deepinwine")));
 
+        // FIXME: should not bind mount dconf
         mountMap.push_back(qMakePair(userRuntimeDir + "/dconf", userRuntimeDir + "/dconf"));
 
         // bind systemd/user to box

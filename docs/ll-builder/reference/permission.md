@@ -1,3 +1,0 @@
-# permission.yaml
-
-NOT CONFIRM

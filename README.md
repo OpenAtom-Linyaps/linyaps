@@ -1,6 +1,6 @@
 # 玲珑
 
-玲珑（Linglong） is the container application toolkit of deepin.
+玲珑（Linglong）is the container application toolkit of deepin.
 
 玲珑是玲珑塔的简称，既表示容器能对应用有管控作用，也表明了应用/运行时/系统向塔一样分层的思想。
 
@@ -15,17 +15,23 @@
 
 - [ ] OCI Standard Box
 - [ ] App Manager Service
-    - [ ] Offline package installer
-    - [ ] Download && Install
+  - [ ] Offline package installer
+  - [ ] Download && Install
 
 ## Dependencies
 
 ```bash
-本项目依赖json-struct包，此包只在玲珑项目临时仓库里面，安装依赖，请先添加一下仓库，如下：
-deb  [trusted=yes] http://aptly.uniontech.com/pkg/eagle-1040/release-candidate/546y54-R5LiA5pyf6aG555uu5Li76aKYMjAyMS0wOS0xNyAyMDoxODowNg  unstable main
 #For release based on debian
 sudo apt update
-sudo apt-get install cmake build-essential libyaml-cpp-dev nlohmann-json3-dev libgtest-dev qt5-qmake qtbase5-dev libarchive-dev libcurl4-gnutls-dev libglib2.0-dev libostree-dev libgdk-pixbuf2.0-dev
+sudo apt-get install cmake build-essential \
+  libyaml-cpp-dev \
+  nlohmann-json3-dev \
+  libgtest-dev \
+  qt5-qmake \
+  qtbase5-dev \
+  libcurl4-gnutls-dev \
+  libglib2.0-dev \
+  libostree-dev
 ```
 
 ## Installation
@@ -33,7 +39,7 @@ sudo apt-get install cmake build-essential libyaml-cpp-dev nlohmann-json3-dev li
 Install from web:
 
 ```bash
-curl https://sh.linglong.space | sh
+curl https://sh.linglong.dev | sh
 ```
 
 Or you can install form source: [INSTALL.md](INSTALL.md)
@@ -62,44 +68,3 @@ This project is licensed under [GPLv3]().
 ## Credits and references
 
 - [OStree](https://github.com/ostreedev/ostree)
-
-## Test
-add --coverage in CMakeLists.txt
-```bash
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
-```
-
-use gcov、lcov to generate convert html report, make shure at the top level of the project
-```bash
-./code_coverage.sh
-```
-
-## Doxygen生成接口文档
-1. 安装环境
-```bash
-sudo apt-get install doxygen graphviz
-```
-2. 生成配置文件
-```bash
-Doxygen –g
-```
-3. 打开Doxyfile，递归遍历当前目录的子目录，寻找被文档化的程序源文件，修改如下：
-```bash
-sed -i 's/RECURSIVE.*= NO/RECURSIVE = YES/' Doxyfile
-```
-
-4. OUTPUT_DIRECTORY       = 替换为 OUTPUT_DIRECTORY       = build/doxygen
-```bash
-sed -i 's/OUTPUT_DIRECTORY.*=/OUTPUT_DIRECTORY = build\/doxygen/' Doxyfile
-```
-
-5. 文档生成
-```bash
-doxygen Doxyfile
-```
-
-6. 简化上述流程
-```bash
-./doxygen.sh
-```

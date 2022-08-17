@@ -1,9 +1,0 @@
-Package: app.authpass
-Version: 1.9.4
-Architecture: amd64
-Section: application
-Priority: optional
-Installed-Size: 33860
-Maintainer: Liu Heng <liuhenga@uniontech.com>
-Description: AuthPass
- , Free and Open Source password manager for Android, iOS, MacOS, Linux and Windows. Compatible with KeePass.

@@ -48,6 +48,6 @@ TEST(AppStatus, GetInstalledAppInfo)
     linglong::util::getAppMetaInfoListByJson(ret, appMetaInfoList);
 
     auto code = linglong::util::insertAppRecord(appItem, "user", userName);
-    code = linglong::util::deleteAppRecord(appItem->appId, "1.0.0", linglong::util::hostArch(), userName);
+    code = linglong::util::deleteAppRecord(appItem->appId, "1.0.0", linglong::util::hostArch(), "", "", userName);
     EXPECT_NE(code, 0);
 }

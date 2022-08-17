@@ -102,6 +102,17 @@ qt5_add_dbus_interface(
   package_manager
 )
 
+set_source_files_properties(
+  ../src/module/dbus_ipc/com.deepin.linglong.SystemPackageManager.xml
+  PROPERTIES INCLUDE service/impl/register_meta_type.h
+)
+
+qt5_add_dbus_interface(
+  LL_TEST_SOURCES
+  ../src/module/dbus_ipc/com.deepin.linglong.SystemPackageManager.xml
+  system_package_manager
+)
+
 add_executable(
   ll-test
   ${LL_TEST_SOURCES}

@@ -208,7 +208,7 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
 
              auto optExec = QCommandLineOption("exec", "run exec", "/bin/bash");
-             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "", "");
+             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "repo-point", "");
              parser.addOption(optRepoPoint);
              parser.addOption(optExec);
 
@@ -220,6 +220,13 @@ int main(int argc, char **argv)
                                                      "--filter-path=/com/deepin/linglong/PackageManager", "");
              auto optInterfaceFilter = QCommandLineOption("filter-interface", "dbus interface filter to use",
                                                           "--filter-interface=com.deepin.linglong.PackageManager", "");
+
+             // 增加channel/module
+             auto optChannel = QCommandLineOption("channel", "the channnel of app", "--channel=linglong", "linglong");
+             parser.addOption(optChannel);
+             auto optModule = QCommandLineOption("module", "the module of app", "--module=runtime", "runtime");
+             parser.addOption(optModule);
+
              parser.addOption(optNoProxy);
              parser.addOption(optNameFilter);
              parser.addOption(optPathFilter);
@@ -269,6 +276,9 @@ int main(int argc, char **argv)
              if (!exec.isEmpty()) {
                  paramOption.exec = exec;
              }
+
+             paramOption.channel = parser.value(optChannel);
+             paramOption.appModule = parser.value(optModule);
 
              // 获取用户环境变量
              QStringList envList = COMMAND_HELPER->getUserEnv(linglong::util::envList);
@@ -468,7 +478,7 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("install", "install an application", "install");
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
-             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "", "");
+             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "repo-point", "");
              parser.addOption(optRepoPoint);
              auto optNoDbus =
                  QCommandLineOption("nodbus", "execute cmd directly, not via dbus(only for root user)", "");
@@ -630,7 +640,7 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("query", "query app info", "query");
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
-             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "", "");
+             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "repo-point", "");
              parser.addOption(optRepoPoint);
              auto optNoCache = QCommandLineOption("force", "query from server directly, not from cache", "");
              parser.addOption(optNoCache);
@@ -671,7 +681,7 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("uninstall", "uninstall an application", "uninstall");
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
-             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "", "");
+             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "repo-point", "");
              auto optNoDbus =
                  QCommandLineOption("nodbus", "execute cmd directly, not via dbus(only for root user)", "");
              auto optAllVer = QCommandLineOption("all-version", "uninstall all version application", "");
@@ -738,7 +748,7 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("list", "show installed application", "list");
              parser.addOption(optType);
-             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "", "");
+             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "repo-point", "");
              parser.addOption(optRepoPoint);
              auto optNoDbus = QCommandLineOption("nodbus", "execute cmd directly, not via dbus", "");
              parser.addOption(optNoDbus);

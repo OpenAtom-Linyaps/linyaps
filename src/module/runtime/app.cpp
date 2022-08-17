@@ -286,6 +286,12 @@ public:
             }
         }
 
+        // 使用overlayfs挂载debug调试符号
+        auto debugRef = package::Ref(q_ptr->package->ref);
+        if ("devel" == debugRef.module) {
+            fuseMount = true;
+        }
+
         if (fuseMount) {
             r->annotations->overlayfs = new AnnotationsOverlayfsRootfs(r->annotations);
             r->annotations->overlayfs->lowerParent =
@@ -309,6 +315,15 @@ public:
                 {runtimeRootPath, "/runtime"},
                 {"/usr/share/locale/", "/usr/share/locale/"},
             };
+
+            // appRootPath/devel/files/debug /usr/lib/debug/opt/apps/appid/files 挂载调试符号
+            if ("devel" == debugRef.module) {
+                mountMap.push_back(
+                    {appRootPath + "/devel/files/debug", "/usr/lib/debug/opt/apps/" + debugRef.appId + "/files"});
+                mountMap.push_back(
+                    {runtimeRootPath.left(runtimeRootPath.length() - QString("/files").length()) + "/devel/files/debug",
+                     "/usr/lib/debug/" + runtimeRef.appId});
+            }
 
             // FIXME(iceyer): extract for wine, remove later
             if (fuseMount && wineMount) {
@@ -885,7 +900,7 @@ public:
 
     // FIXME: none static
     static QString loadConfig(linglong::repo::Repo *repo, const QString &appId, const QString &appVersion,
-                              bool isFlatpakApp = false)
+                              const QString &channel, const QString &module, bool isFlatpakApp = false)
     {
         util::ensureUserDir({".linglong", appId});
 
@@ -894,7 +909,7 @@ public:
         // create yaml form info
         // auto appRoot = LocalRepo::get()->rootOfLatest();
         auto latestAppRef = repo->latestOfRef(appId, appVersion);
-
+        qDebug() << "loadConfig ref:" << latestAppRef.toLocalRefString();
         auto appInstallRoot = repo->rootOfLayer(latestAppRef);
 
         auto appInfo = appInstallRoot + "/info.json";
@@ -919,9 +934,13 @@ public:
 
         package::Ref runtimeRef(info->runtime);
 
+        QString appRef =
+            QString("%1/").arg(channel) + latestAppRef.toLocalRefString().append(QString("/%1").arg(module));
+        QString runtimeFullRef =
+            QString("%1/").arg(channel) + runtimeRef.toLocalRefString().append(QString("/%1").arg(module));
         QMap<QString, QString> variables = {
-            {"APP_REF", latestAppRef.toLocalRefString()},
-            {"RUNTIME_REF", runtimeRef.toLocalRefString()},
+            {"APP_REF", appRef},
+            {"RUNTIME_REF", runtimeFullRef},
         };
 
         // TODO: remove to util module as file_template.cpp
@@ -1021,7 +1040,8 @@ App::App(QObject *parent)
 
 App *App::load(linglong::repo::Repo *repo, const package::Ref &ref, const QString &desktopExec, bool useFlatpakRuntime)
 {
-    QString configPath = AppPrivate::loadConfig(repo, ref.appId, ref.version, useFlatpakRuntime);
+    QString configPath =
+        AppPrivate::loadConfig(repo, ref.appId, ref.version, ref.channel, ref.module, useFlatpakRuntime);
     if (!linglong::util::fileExists(configPath)) {
         return nullptr;
     }

@@ -195,14 +195,36 @@ Reply PackageManager::Start(const RunParamOption &paramOption)
         desktopExec = paramOption.exec;
     }
 
+    QString channel = paramOption.channel.trimmed();
+    QString appModule = paramOption.appModule.trimmed();
     QString repoPoint = paramOption.repoPoint;
+    if (channel.isEmpty()) {
+        channel = "linglong";
+    }
+    if (appModule.isEmpty()) {
+        appModule = "runtime";
+    }
     if ("flatpak" != repoPoint) {
         // 判断是否已安装
-        if (!linglong::util::getAppInstalledStatus(appId, version, "", "")) {
-            reply.message = appId + " ,version:" + version + " ,arch:" + arch + " not installed";
+        if (!linglong::util::getAppInstalledStatus(appId, version, arch, channel, appModule, "")) {
+            reply.message = appId + ", version:" + version + ", arch:" + arch + ", channel:" + channel
+                            + ", module:" + appModule + " not installed";
             qCritical() << reply.message;
             reply.code = STATUS_CODE(kPkgNotInstalled);
             return reply;
+        }
+
+        // 直接运行debug版本时，校验release包是否安装
+        if ("devel" == appModule) {
+            linglong::package::AppMetaInfoList pkgList;
+            linglong::util::getAllVerAppInfo(appId, version, arch, "", pkgList);
+            if (pkgList.size() < 2) {
+                reply.message = appId + ", version:" + version + ", arch:" + arch + ", channel:" + channel
+                                + ", module:" + appModule + ", no corresponding release package found";
+                qCritical() << reply.message;
+                reply.code = STATUS_CODE(kPkgNotInstalled);
+                return reply;
+            }
         }
     }
 
@@ -216,7 +238,7 @@ Reply PackageManager::Start(const RunParamOption &paramOption)
 
     QFuture<void> future = QtConcurrent::run(runPool.data(), [=]() {
         // 判断是否存在
-        linglong::package::Ref ref("", appId, version, arch);
+        linglong::package::Ref ref("", channel, appId, version, arch, appModule);
 
         bool isFlatpakApp = "flatpak" == repoPoint;
         // 判断是否是正在运行应用

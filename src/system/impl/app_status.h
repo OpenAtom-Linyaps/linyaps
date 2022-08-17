@@ -54,11 +54,14 @@ int insertAppRecord(linglong::package::AppMetaInfo *package, const QString &inst
  * @param appId: 软件包包名
  * @param appVer: 软件包对应的版本号
  * @param appArch: 软件包对应的架构
+ * @param channel: 软件包对应的渠道
+ * @param module: 软件包类型
  * @param userName: 用户名
  *
  * @return int: 0:成功 其它:失败
  */
-int deleteAppRecord(const QString &appId, const QString &appVer, const QString &appArch, const QString &userName);
+int deleteAppRecord(const QString &appId, const QString &appVer, const QString &appArch, const QString &channel,
+                    const QString &module, const QString &userName);
 
 /*
  * 判断软件包类型是否为runtime
@@ -75,12 +78,14 @@ bool isRuntime(const QString &appId);
  * @param appId: 软件包包名
  * @param appVer: 软件包对应的版本号
  * @param appArch: 软件包对应的架构
+ * @param channel: 软件包对应的渠道
+ * @param module: 软件包类型
  * @param userName: 用户名
  *
  * @return bool: true:已安装 false:未安装
  */
-bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QString &appArch,
-                           const QString &userName);
+bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QString &appArch, const QString &channel,
+                           const QString &module, const QString &userName);
 
 /*
  * 查询已安装软件包的所有版本信息

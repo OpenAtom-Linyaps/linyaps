@@ -118,7 +118,8 @@ int insertAppRecord(linglong::package::AppMetaInfo *package, const QString &inst
 {
     // installType 字段暂时保留
     QString insertSql =
-        QString("INSERT INTO installedAppInfo(appId,name,version,arch,kind,runtime,uabUrl,repoName,description,user,size,channel,module)\
+        QString(
+            "INSERT INTO installedAppInfo(appId,name,version,arch,kind,runtime,uabUrl,repoName,description,user,size,channel,module)\
     VALUES('%1','%2','%3','%4','%5','%6','%7','%8','%9','%10','%11','%12','%13')")
             .arg(package->appId)
             .arg(package->name)
@@ -151,11 +152,14 @@ int insertAppRecord(linglong::package::AppMetaInfo *package, const QString &inst
  * @param appId: 软件包包名
  * @param appVer: 软件包对应的版本号
  * @param appArch: 软件包对应的架构
+ * @param channel: 软件包对应的渠道
+ * @param module: 软件包类型
  * @param userName: 用户名
  *
  * @return int: 0:成功 其它:失败
  */
-int deleteAppRecord(const QString &appId, const QString &appVer, const QString &appArch, const QString &userName)
+int deleteAppRecord(const QString &appId, const QString &appVer, const QString &appArch, const QString &channel,
+                    const QString &module, const QString &userName)
 {
     // 若未指定版本，则查找最高版本
     QString dstVer = appVer;
@@ -165,6 +169,14 @@ int deleteAppRecord(const QString &appId, const QString &appVer, const QString &
     if (!appArch.isEmpty()) {
         condition.append(QString(" AND arch like '%%1%'").arg(appArch));
     }
+
+    if (!channel.isEmpty()) {
+        condition.append(QString(" AND channel = '%1'").arg(channel));
+    }
+    if (!module.isEmpty()) {
+        condition.append(QString(" AND module = '%1'").arg(module));
+    }
+
     if (!userName.isEmpty()) {
         condition.append(QString(" AND user = '%1'").arg(userName));
     }
@@ -205,11 +217,14 @@ bool isRuntime(const QString &appId)
  * @param appId: 软件包包名
  * @param appVer: 软件包对应的版本号
  * @param appArch: 软件包对应的架构
+ * @param channel: 软件包对应的渠道
+ * @param module: 软件包类型
  * @param userName: 用户名
  *
  * @return bool: true:已安装 false:未安装
  */
-bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QString &appArch, const QString &userName)
+bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QString &appArch, const QString &channel,
+                           const QString &module, const QString &userName)
 {
     QString selectSql = QString("SELECT * FROM installedAppInfo WHERE appId = '%1'").arg(appId);
     QString condition = "";
@@ -226,6 +241,12 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
     if (!appArch.isEmpty()) {
         condition.append(QString(" AND arch like '%%1%'").arg(appArch));
     }
+    if (!channel.isEmpty()) {
+        condition.append(QString(" AND channel = '%1'").arg(channel));
+    }
+    if (!module.isEmpty()) {
+        condition.append(QString(" AND module = '%1'").arg(module));
+    }
     qDebug() << "sql condition:" << condition;
     selectSql.append(condition);
 
@@ -240,8 +261,8 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
     sqlQuery.last();
     int recordCount = sqlQuery.at() + 1;
     if (recordCount < 1) {
-        qDebug() << "getAppInstalledStatus app:" + appId + ",version:" + appVer + ",userName:" + userName
-                           + " not installed";
+        qDebug() << "getAppInstalledStatus app:" + appId + ",version:" + appVer + ",channel:" + channel
+                        + ",module:" + module + ",userName:" + userName + " not installed";
         return false;
     }
     return true;
@@ -261,7 +282,7 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
 bool getAllVerAppInfo(const QString &appId, const QString &appVer, const QString &appArch, const QString &userName,
                       linglong::package::AppMetaInfoList &pkgList)
 {
-    if (!getAppInstalledStatus(appId, appVer, appArch, userName)) {
+    if (!getAppInstalledStatus(appId, appVer, appArch, "", "", userName)) {
         qCritical() << "getAllVerAppInfo app:" + appId + ",version:" + appVer + ",userName:" + userName
                            + " not installed";
         return false;
@@ -318,7 +339,7 @@ bool getAllVerAppInfo(const QString &appId, const QString &appVer, const QString
 bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QString &appArch, const QString &userName,
                          linglong::package::AppMetaInfoList &pkgList)
 {
-    if (!getAppInstalledStatus(appId, appVer, appArch, userName)) {
+    if (!getAppInstalledStatus(appId, appVer, appArch, "", "", userName)) {
         qCritical() << "getInstalledAppInfo app:" + appId + ",version:" + appVer + ",userName:" + userName
                            + " not installed";
         return false;

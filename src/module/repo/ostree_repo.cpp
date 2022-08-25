@@ -302,8 +302,8 @@ class OSTreeRepoPrivate
 
         auto reply = httpClient.post(request, data);
         data = reply->readAll();
-        auto info = util::loadJsonBytes<UploadTaskResponse>(data);
 
+        QScopedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
         return {info->id, NoError()};
     }
 
@@ -419,7 +419,7 @@ linglong::util::Error OSTreeRepo::push(const package::Ref &ref, bool force)
     UploadTaskRequest uploadTaskReq;
 
     // FIXME: no need,use /v1/meta/:id
-    d->getRepoInfo(d->remoteRepoName);
+    QScopedPointer<InfoResponse> repoInfo(d->getRepoInfo(d->remoteRepoName));
 
     QString commitID;
     std::tie(commitID, err) = d->resolveRev(ref.toLocalFullRef());
@@ -566,9 +566,9 @@ package::Ref OSTreeRepo::localLatestRef(const package::Ref &ref)
     QString latestVer = "latest";
 
     QString args = QString("ostree refs repo --repo=%1 | grep %2 | grep %3")
-                   .arg(d->ostreePath)
-                   .arg(ref.appId)
-                   .arg(util::hostArch() + "/" + "runtime");
+                       .arg(d->ostreePath)
+                       .arg(ref.appId)
+                       .arg(util::hostArch() + "/" + "runtime");
 
     auto result = runner::RunnerRet("sh", {"-c", args}, -1);
 
@@ -598,9 +598,9 @@ package::Ref OSTreeRepo::remoteLatestRef(const package::Ref &ref)
 
     auto infoList = fromVariantList<linglong::package::InfoList>(retObject.value(QStringLiteral("data")));
 
-     for(auto info : infoList) {
-         latestVer = linglong::util::compareVersion(latestVer, info->version) > 0 ? latestVer : info->version;
-     }
+    for (auto info : infoList) {
+        latestVer = linglong::util::compareVersion(latestVer, info->version) > 0 ? latestVer : info->version;
+    }
 
     return package::Ref("", ref.channel, ref.appId, latestVer, ref.arch, ref.module);
 }

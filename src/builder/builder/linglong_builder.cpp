@@ -291,7 +291,7 @@ int startContainer(Container *c, Runtime *r)
         {getuid(), 0, 1},
     };
     for (auto const &uidMap : uidMaps) {
-        auto idMap = new IdMap(r->linux);
+        QPointer<IdMap> idMap(new IdMap(r->linux));
         idMap->hostId = uidMap.value(0);
         idMap->containerId = uidMap.value(1);
         idMap->size = uidMap.value(2);
@@ -302,7 +302,7 @@ int startContainer(Container *c, Runtime *r)
         {getgid(), 0, 1},
     };
     for (auto const &gidMap : gidMaps) {
-        auto idMap = new IdMap(r->linux);
+        QPointer<IdMap> idMap(new IdMap(r->linux));
         idMap->hostId = gidMap.value(0);
         idMap->containerId = gidMap.value(1);
         idMap->size = gidMap.value(2);
@@ -363,7 +363,8 @@ int startContainer(Container *c, Runtime *r)
         msg.append(buf);
     }
 
-    auto result = util::loadJSONString<message>(msg);
+    // FIXME: DO NOT name a class as "message" if it not for an common usage.
+    QScopedPointer<message> result(util::loadJSONString<message>(msg));
 
     return result->wstatus;
 }
@@ -567,7 +568,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
     }
 
     // mount tmpfs to /tmp in container
-    auto m = new Mount(r);
+    QPointer<Mount> m(new Mount(r));
     m->type = "tmpfs";
     m->options = QStringList {"nosuid", "strictatime", "mode=777"};
     m->source = "tmp";
@@ -576,7 +577,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
 
     // get runtime, and parse base from runtime
     for (const auto &rpath : QStringList {"/usr", "/etc", "/var"}) {
-        auto m = new Mount(r);
+        QPointer<Mount> m(new Mount(r));
         m->type = "bind";
         m->options = QStringList {"ro", "rbind"};
         m->source = QStringList {hostBasePath, "files", rpath}.join("/");
@@ -596,12 +597,11 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
     }
 
     for (const auto &pair : overlaysMountMap) {
-        auto m = new Mount(r);
+        QPointer<Mount> m(new Mount(r));
         m->type = "bind";
         m->options = QStringList {"ro"};
         m->source = pair.first;
         m->destination = pair.second;
-
         r->annotations->overlayfs->mounts.push_back(m);
     }
     r->annotations->containerRootPath = container->workingDirectory;
@@ -614,7 +614,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
     };
 
     for (const auto &pair : mountMap) {
-        auto m = new Mount(r);
+        QPointer<Mount> m(new Mount(r));
         m->type = "bind";
         m->source = pair.first;
         m->destination = pair.second;
@@ -639,7 +639,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
 
     if (!r->hooks) {
         r->hooks = new Hooks(r);
-        auto hook = new Hook(r->hooks);
+        QPointer<Hook> hook(new Hook(r->hooks));
         hook->path = "/usr/sbin/ldconfig";
         r->hooks->prestart.push_back(hook);
     }
@@ -748,7 +748,7 @@ linglong::util::Error LinglongBuilder::run()
     linglong::util::ensureDir(targetPath);
 
     auto remoteRuntimeRef = package::Ref("", "linglong", project->runtimeRef().appId, project->runtimeRef().version,
-                                             project->runtimeRef().arch);
+                                         project->runtimeRef().arch);
 
     ret = repo.checkoutAll(remoteRuntimeRef, "", targetPath);
     if (!ret.success()) {

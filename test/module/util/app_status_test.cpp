@@ -29,7 +29,8 @@ TEST(AppStatus, GetInstalledAppInfo)
     linglong::util::checkInstalledAppDb();
     linglong::util::updateInstalledAppInfoDb();
 
-    auto appItem = linglong::util::loadJSONString<linglong::package::AppMetaInfo>(appDataJson);
+    QScopedPointer<linglong::package::AppMetaInfo> appItem(
+        linglong::util::loadJSONString<linglong::package::AppMetaInfo>(appDataJson));
     const QString userName = linglong::util::getUserName();
 
     linglong::package::AppMetaInfoList pkgList;
@@ -47,7 +48,7 @@ TEST(AppStatus, GetInstalledAppInfo)
     linglong::package::AppMetaInfoList appMetaInfoList;
     linglong::util::getAppMetaInfoListByJson(ret, appMetaInfoList);
 
-    auto code = linglong::util::insertAppRecord(appItem, "user", userName);
+    auto code = linglong::util::insertAppRecord(appItem.data(), "user", userName);
     code = linglong::util::deleteAppRecord(appItem->appId, "1.0.0", linglong::util::hostArch(), "", "", userName);
     EXPECT_NE(code, 0);
 }

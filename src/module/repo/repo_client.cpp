@@ -24,6 +24,7 @@ std::tuple<util::Error, package::AppMetaInfoList> RepoClient::QueryApps(const pa
     QUrl url(ConfigInstance().repoUrl);
     url.setPath(url.path() + "apps/fuzzysearchapp");
 
+    qDebug() << "query" << url;
     QNetworkRequest request(url);
 
     QJsonObject obj;
@@ -35,14 +36,9 @@ std::tuple<util::Error, package::AppMetaInfoList> RepoClient::QueryApps(const pa
     QByteArray data = doc.toJson();
 
     util::HttpRestClient hc;
-    qCritical() << "start";
     auto reply = hc.post(request, data);
-    qCritical() << "start do";
     data = reply->readAll();
-    qCritical() << "readall";
-    qCritical().noquote() << QString::fromLocal8Bit(data);
     auto resp = util::loadJsonBytes<linglong::repo::Response>(data);
-
     return {NoError(), (resp->data)};
 }
 

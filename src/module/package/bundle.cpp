@@ -64,7 +64,8 @@ linglong::util::Error Bundle::make(const QString &dataPath, const QString &outpu
     return NewError();
 }
 
-linglong::util::Error Bundle::push(const QString &bundleFilePath, const QString &repoUrl, const QString &repoChannel, bool force)
+linglong::util::Error Bundle::push(const QString &bundleFilePath, const QString &repoUrl, const QString &repoChannel,
+                                   bool force)
 {
     Q_D(Bundle);
     auto ret = d->push(bundleFilePath, repoUrl, repoChannel, force);
@@ -100,7 +101,7 @@ linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString
     }
 
     // 转换info.json为Info对象
-    auto info = util::loadJSON<package::Info>(this->bundleDataPath + QString(configJson));
+    QScopedPointer<package::Info> info(util::loadJSON<package::Info>(this->bundleDataPath + QString(configJson)));
 
     // 获取编译机器架构
     this->buildArch = QSysInfo::buildCpuArchitecture();
@@ -148,7 +149,7 @@ linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString
     squashfsFile.open(QIODevice::ReadOnly);
     outputFile.write(linglongLoaderFile.readAll());
     outputFile.write(squashfsFile.readAll());
-  
+
     linglongLoaderFile.close();
     squashfsFile.close();
     outputFile.close();
@@ -213,7 +214,8 @@ auto BundlePrivate::getElfSize(const QString elfFilePath) -> decltype(-1)
     return size;
 }
 
-linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const QString &repoUrl, const QString &repoChannel, bool force)
+linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const QString &repoUrl,
+                                          const QString &repoChannel, bool force)
 {
     auto userInfo = util::getUserInfo();
 
@@ -229,7 +231,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
             return NewError() << "call getLocalConfig api failed";
         }
     }
-    configUrl = configUrl.endsWith("/")  ? configUrl : (configUrl + "/");
+    configUrl = configUrl.endsWith("/") ? configUrl : (configUrl + "/");
     auto token = G_HTTPCLIENT->getToken(configUrl, userInfo);
 
     if (token.isEmpty()) {
@@ -282,8 +284,10 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
     }
 
     // 转换info.json为Info对象
-    auto runtimeInfo = util::loadJSON<package::Info>(QStringList {this->bundleDataPath, "runtime", configJson}.join("/"));
-    auto develInfo = util::loadJSON<package::Info>(QStringList {this->bundleDataPath, "devel", configJson}.join("/"));
+    QScopedPointer<package::Info> runtimeInfo(
+        util::loadJSON<package::Info>(QStringList {this->bundleDataPath, "runtime", configJson}.join("/")));
+    QScopedPointer<package::Info> develInfo(
+        util::loadJSON<package::Info>(QStringList {this->bundleDataPath, "devel", configJson}.join("/")));
 
     // 建立临时仓库
     auto resultMakeRepo = runner("ostree", {"--repo=" + this->tmpWorkDir + "/repo", "init", "--mode=archive"}, 3000);
@@ -356,8 +360,8 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
     }
 
     // 上传bundle信息到服务器
-    auto runtimeJson = QJsonDocument::fromJson(package::Info::dump(runtimeInfo));
-    auto develJson = QJsonDocument::fromJson(package::Info::dump(develInfo));
+    auto runtimeJson = QJsonDocument::fromJson(package::Info::dump(runtimeInfo.data()));
+    auto develJson = QJsonDocument::fromJson(package::Info::dump(develInfo.data()));
 
     auto runtimeJsonObject = runtimeJson.object();
     auto develJsonObject = develJson.object();
@@ -370,7 +374,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
 
     runtimeJsonObject.insert("appId", runtimeAppId);
     develJsonObject.insert("appId", develAppId);
-    
+
     runtimeJsonObject.insert("channel", repoChannel);
     develJsonObject.insert("channel", repoChannel);
 

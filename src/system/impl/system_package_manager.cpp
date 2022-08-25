@@ -115,7 +115,7 @@ bool SystemPackageManagerPrivate::loadAppInfo(const QString &jsonString, linglon
         QJsonObject dataObj = arr.at(i).toObject();
         const QString jsonString = QString(QJsonDocument(dataObj).toJson(QJsonDocument::Compact));
         // qInfo().noquote() << jsonString;
-        auto appItem = linglong::util::loadJSONString<linglong::package::AppMetaInfo>(jsonString);
+        QPointer<package::AppMetaInfo> appItem(util::loadJSONString<package::AppMetaInfo>(jsonString));
         appList.push_back(appItem);
     }
     return true;
@@ -338,7 +338,7 @@ bool SystemPackageManagerPrivate::installRuntime(const QString &runtimeId, const
     // fix 当前服务端不支持按channel查询，返回的结果是默认channel，需要刷新channel/module
     pkgInfo->channel = channel;
     pkgInfo->module = module;
-    linglong::util::insertAppRecord(pkgInfo, "user", userName);
+    linglong::util::insertAppRecord(pkgInfo.data(), "user", userName);
 
     return true;
 }
@@ -458,7 +458,7 @@ bool SystemPackageManagerPrivate::checkAppBase(const QString &runtime, const QSt
 linglong::package::AppMetaInfo *
 SystemPackageManagerPrivate::getLatestApp(const QString &appId, const linglong::package::AppMetaInfoList &appList)
 {
-    linglong::package::AppMetaInfo *latestApp = appList.at(0);
+    linglong::package::AppMetaInfo *latestApp = appList.at(0).data();
     if (appList.size() == 1) {
         return latestApp;
     }
@@ -469,7 +469,7 @@ SystemPackageManagerPrivate::getLatestApp(const QString &appId, const linglong::
         linglong::util::AppVersion iterVersion(item->version);
         if (appId == item->appId && iterVersion.isBigThan(dstVersion)) {
             curVersion = item->version;
-            latestApp = item;
+            latestApp = item.data();
         }
     }
     return latestApp;

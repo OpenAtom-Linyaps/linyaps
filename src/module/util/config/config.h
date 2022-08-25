@@ -23,10 +23,10 @@ class Config : public JsonSerialize
 
 inline Config &ConfigInstance()
 {
-    static auto config = util::loadJSON<Config>(Config::path());
+    static QScopedPointer<Config> config(util::loadJSON<Config>(Config::path()));
     return *config;
 }
 
-}
+} // namespace linglong
 
 #endif // LINGLONG_SRC_MODULE_UTIL_CONFIG_CONFIG_H_

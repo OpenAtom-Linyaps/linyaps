@@ -107,12 +107,12 @@ public:
         }
         envFile.close();
 
-        Mount &m = *new Mount(r);
-        m.type = "bind";
-        m.options = QStringList {"rbind"};
-        m.source = envFilepath;
-        m.destination = "/run/app/env";
-        r->mounts.push_back(&m);
+        QPointer<Mount> m(new Mount);
+        m->type = "bind";
+        m->options = QStringList {"rbind"};
+        m->source = envFilepath;
+        m->destination = "/run/app/env";
+        r->mounts.push_back(m);
 
         // TODO: move to class package
         // find desktop file
@@ -198,13 +198,13 @@ public:
         };
 
         for (const auto &pair : mountMap) {
-            Mount &m = *new Mount(r);
-            m.type = "bind";
-            m.options = QStringList {"rbind"};
-            m.source = pair.first;
-            m.destination = pair.second;
-            r->mounts.push_back(&m);
-            qDebug() << "mount stageSystem" << m.source << m.destination;
+            QPointer<Mount> m(new Mount(r));
+            m->type = "bind";
+            m->options = QStringList {"rbind"};
+            m->source = pair.first;
+            m->destination = pair.second;
+            r->mounts.push_back(m);
+            qDebug() << "mount stageSystem" << m->source << m->destination;
         }
         return 0;
     }
@@ -239,9 +239,10 @@ public:
 
         // 通过info.json文件判断是否要overlay mount
         auto appInfoFile = appRootPath + "/info.json";
-        package::Info *info = nullptr;
+
+        QScopedPointer<package::Info> info;
         if (util::fileExists(appInfoFile)) {
-            info = util::loadJSON<package::Info>(appInfoFile);
+            info.reset(util::loadJSON<package::Info>(appInfoFile));
             if (info->overlayfs && info->overlayfs->mounts.size() > 0) {
                 fuseMount = true;
                 specialCase = true;
@@ -274,9 +275,9 @@ public:
         // basics etc
         QString basicsEtcRootPath = "";
         if (!linglong::util::isDeepinSysProduct() && useThinRuntime) {
-            package::Info *runtimeInfo = nullptr;
+            QScopedPointer<package::Info> runtimeInfo;
             if (util::fileExists(runtimeInfoFile)) {
-                runtimeInfo = util::loadJSON<package::Info>(runtimeInfoFile);
+                runtimeInfo.reset(util::loadJSON<package::Info>(runtimeInfoFile));
                 if (!runtimeInfo->runtime.isEmpty()) {
                     basicsUsrRootPath = linglongRootPath + "/layers/" + runtimeInfo->runtime + "/files/usr";
                     basicsEtcRootPath = linglongRootPath + "/layers/" + runtimeInfo->runtime + "/files/etc";
@@ -361,7 +362,7 @@ public:
         }
 
         for (const auto &pair : mountMap) {
-            auto m = new Mount(r);
+            QPointer<Mount> m(new Mount(r));
             m->type = "bind";
             m->options = QStringList {"ro", "rbind"};
             m->source = pair.first;
@@ -389,7 +390,7 @@ public:
         } else {
             appMountPath = "/opt/apps/" + appId;
         }
-        auto m = new Mount(r);
+        QPointer<Mount> m(new Mount(r));
         m->type = "bind";
         m->options = QStringList {"rw", "rbind"};
         m->source = appRootPath;
@@ -495,13 +496,13 @@ public:
         }
 
         for (const auto &pair : roMountMap) {
-            Mount &m = *new Mount(r);
-            m.type = "bind";
-            m.options = QStringList {"ro", "rbind"};
-            m.source = pair.first;
-            m.destination = pair.second;
-            r->mounts.push_back(&m);
-            qDebug() << "mount app" << m.source << m.destination;
+            QPointer<Mount> m(new Mount(r));
+            m->type = "bind";
+            m->options = QStringList {"ro", "rbind"};
+            m->source = pair.first;
+            m->destination = pair.second;
+            r->mounts.push_back(m);
+            qDebug() << "mount app" << m->source << m->destination;
         }
 
         QList<QPair<QString, QString>> mountMap = {
@@ -509,13 +510,13 @@ public:
         };
 
         for (const auto &pair : mountMap) {
-            Mount &m = *new Mount(r);
-            m.type = "bind";
-            m.options = QStringList {"rbind"};
-            m.source = pair.first;
-            m.destination = pair.second;
-            r->mounts.push_back(&m);
-            qDebug() << "mount app" << m.source << m.destination;
+            QPointer<Mount> m(new Mount(r));
+            m->type = "bind";
+            m->options = QStringList {"rbind"};
+            m->source = pair.first;
+            m->destination = pair.second;
+            r->mounts.push_back(m);
+            qDebug() << "mount app" << m->source << m->destination;
         }
 
         return 0;
@@ -570,14 +571,14 @@ public:
                 qMakePair(QString("/run/dbus/system_bus_socket"), QString("/run/dbus/system_bus_socket")));
         }
         for (const auto &pair : mountMap) {
-            Mount &m = *new Mount(r);
-            m.type = "bind";
-            m.options = QStringList {};
+            QPointer<Mount> m(new Mount(r));
+            m->type = "bind";
+            m->options = QStringList {};
 
-            m.source = pair.first;
-            m.destination = pair.second;
-            r->mounts.push_back(&m);
-            qDebug() << "mount app" << m.source << m.destination;
+            m->source = pair.first;
+            m->destination = pair.second;
+            r->mounts.push_back(m);
+            qDebug() << "mount app" << m->source << m->destination;
         }
 
         return 0;
@@ -590,13 +591,13 @@ public:
         // bind user data
         auto userRuntimeDir = QString("/run/user/%1").arg(getuid());
         {
-            Mount &m = *new Mount(r);
-            m.type = "tmpfs";
-            m.options = QStringList {"nodev", "nosuid", "mode=700"};
-            m.source = "tmpfs";
-            m.destination = userRuntimeDir;
-            r->mounts.push_back(&m);
-            qDebug() << "mount app" << m.source << m.destination;
+            QPointer<Mount> m(new Mount(r));
+            m->type = "tmpfs";
+            m->options = QStringList {"nodev", "nosuid", "mode=700"};
+            m->source = "tmpfs";
+            m->destination = userRuntimeDir;
+            r->mounts.push_back(m);
+            qDebug() << "mount app" << m->source << m->destination;
         }
 
         // bind /run/usr/$(uid)/pulse
@@ -648,14 +649,14 @@ public:
         mountMap.push_back(qMakePair(util::getUserFile(".config/user-dirs.dirs"), appConfigPath + "/user-dirs.dirs"));
 
         for (const auto &pair : mountMap) {
-            Mount &m = *new Mount(r);
-            m.type = "bind";
-            m.options = QStringList {"rbind"};
+            QPointer<Mount> m(new Mount(r));
+            m->type = "bind";
+            m->options = QStringList {"rbind"};
 
-            m.source = pair.first;
-            m.destination = pair.second;
-            r->mounts.push_back(&m);
-            qDebug() << "mount app" << m.source << m.destination;
+            m->source = pair.first;
+            m->destination = pair.second;
+            r->mounts.push_back(m);
+            qDebug() << "mount app" << m->source << m->destination;
         }
 
         QList<QPair<QString, QString>> roMountMap;
@@ -688,16 +689,16 @@ public:
         roMountMap.push_back(qMakePair(xauthority, xauthority));
 
         for (const auto &pair : roMountMap) {
-            Mount &m = *new Mount(r);
-            m.type = "bind";
-            m.options = QStringList {"ro", "rbind"};
-            m.source = pair.first;
-            m.destination = pair.second;
-            r->mounts.push_back(&m);
-            qDebug() << "mount app" << m.source << m.destination;
+            QPointer<Mount> m(new Mount(r));
+            m->type = "bind";
+            m->options = QStringList {"ro", "rbind"};
+            m->source = pair.first;
+            m->destination = pair.second;
+            r->mounts.push_back(m);
+            qDebug() << "mount app" << m->source << m->destination;
         }
 
-        //处理环境变量
+        // 处理环境变量
         for (auto key : envMap.keys()) {
             if (linglong::util::envList.contains(key)) {
                 r->process->env.push_back(key + "=" + envMap[key]);
@@ -709,7 +710,7 @@ public:
             appBinaryPath = "/app/bin";
         }
 
-        //特殊处理env PATH
+        // 特殊处理env PATH
         if (envMap.contains("PATH")) {
             r->process->env.removeAt(r->process->env.indexOf(QRegExp("^PATH=.*"), 0));
             r->process->env.push_back("PATH=" + appBinaryPath + ":" + "/runtime/bin" + ":" + envMap["PATH"]);
@@ -717,7 +718,7 @@ public:
             r->process->env.push_back("PATH=" + appBinaryPath + ":" + "/runtime/bin" + ":" + getenv("PATH"));
         }
 
-        //特殊处理env HOME
+        // 特殊处理env HOME
         if (!envMap.contains("HOME")) {
             r->process->env.push_back("HOME=" + util::getUserFile(""));
         }
@@ -750,7 +751,7 @@ public:
         };
         for (auto const &uidMap : uidMaps) {
             Q_ASSERT(uidMap.size() == 3);
-            auto idMap = new IdMap(r->linux);
+            QPointer<IdMap> idMap(new IdMap(r->linux));
             idMap->hostId = uidMap.value(0);
             idMap->containerId = uidMap.value(1);
             idMap->size = uidMap.value(2);
@@ -762,7 +763,7 @@ public:
         };
         for (auto const &gidMap : gidMaps) {
             Q_ASSERT(gidMap.size() == 3);
-            auto idMap = new IdMap(r->linux);
+            QPointer<IdMap> idMap(new IdMap(r->linux));
             idMap->hostId = gidMap.value(0);
             idMap->containerId = gidMap.value(1);
             idMap->size = gidMap.value(2);
@@ -781,7 +782,7 @@ public:
         if (q->permissions && !q->permissions->mounts.isEmpty()) {
             // static mount
             for (const auto &mount : q->permissions->mounts) {
-                auto &m = *new Mount(r);
+                QPointer<Mount> m(new Mount(r));
 
                 // illegal mount rules
                 if (mount->source.isEmpty() || mount->destination.isEmpty()) {
@@ -789,23 +790,23 @@ public:
                 }
                 // fix default type
                 if (mount->type.isEmpty()) {
-                    m.type = "bind";
+                    m->type = "bind";
                 } else {
-                    m.type = mount->type;
+                    m->type = mount->type;
                 }
 
                 // fix default options
                 if (mount->options.isEmpty()) {
-                    m.options = QStringList({"ro", "rbind"});
+                    m->options = QStringList({"ro", "rbind"});
                 } else {
-                    m.options = mount->options.split(",");
+                    m->options = mount->options.split(",");
                 }
 
-                m.source = mount->source;
-                m.destination = mount->destination;
-                r->mounts.push_back(&m);
+                m->source = mount->source;
+                m->destination = mount->destination;
+                r->mounts.push_back(m);
 
-                if (m.destination == "/tmp") {
+                if (m->destination == "/tmp") {
                     hasMountTmp = true;
                 }
 
@@ -831,31 +832,31 @@ public:
                 return -1;
             }
         }
-        auto &m = *new Mount(r);
-        m.type = "bind";
-        m.source = tmp.absolutePath();
-        m.destination = tmpPath;
-        m.options = QStringList({"rbind"});
-        r->mounts.push_back(&m);
+        QPointer<Mount> m(new Mount(r));
+        m->type = "bind";
+        m->source = tmp.absolutePath();
+        m->destination = tmpPath;
+        m->options = QStringList({"rbind"});
+        r->mounts.push_back(m);
         return 0;
     }
 
     int fixMount(const QString &runtimeId, QString runtimeRootPath, const QString &appId, QString appRootPath)
     {
-        // 360浏览器需要/apps-data/private/com.360.browser-stable目录可写
+        // 360浏览器需要/apps-data/private/com->360.browser-stable目录可写
         // todo:后续360整改
         // 参考：https://gitlabwh.uniontech.com/wuhan/se/deepin-specifications/-/blob/master/unstable/%E5%BA%94%E7%94%A8%E6%95%B0%E6%8D%AE%E7%9B%AE%E5%BD%95%E8%A7%84%E8%8C%83.md
 
-        if (QString("com.360.browser-stable") == appId) {
+        if (QString("com->360.browser-stable") == appId) {
             // FIXME: 需要一个所有用户都有可读可写权限的目录
             QString appDataPath = util::getUserFile(".linglong/" + appId + "/share/appdata");
             linglong::util::ensureDir(appDataPath);
-            Mount &m = *new Mount(r);
-            m.type = "bind";
-            m.options = QStringList {"rw", "rbind"};
-            m.source = appDataPath;
-            m.destination = "/apps-data/private/com.360.browser-stable";
-            r->mounts.push_back(&m);
+            QPointer<Mount> m(new Mount(r));
+            m->type = "bind";
+            m->options = QStringList {"rw", "rbind"};
+            m->source = appDataPath;
+            m->destination = "/apps-data/private/com->360.browser-stable";
+            r->mounts.push_back(m);
         }
 
         // 临时默认挂载用户相关目录
@@ -866,34 +867,34 @@ public:
         for (auto dir : usrDirList) {
             auto xdgDir = linglong::util::getXdgDir(dir);
             if (xdgDir.first) {
-                Mount &m = *new Mount(r);
-                m.type = "bind";
-                m.options = QStringList {"rw", "rbind"};
-                m.source = xdgDir.second;
-                m.destination = xdgDir.second;
-                r->mounts.push_back(&m);
+                QPointer<Mount> m(new Mount(r));
+                m->type = "bind";
+                m->options = QStringList {"rw", "rbind"};
+                m->source = xdgDir.second;
+                m->destination = xdgDir.second;
+                r->mounts.push_back(m);
             }
         }
 
-        //挂载runtime的xdg-open和xdg-email到沙箱/usr/bin下
+        // 挂载runtime的xdg-open和xdg-email到沙箱/usr/bin下
         auto xdgFileDirList = QStringList {"xdg-open", "xdg-email"};
         for (auto dir : xdgFileDirList) {
-            Mount &m = *new Mount(r);
-            m.type = "bind";
-            m.options = QStringList {"rbind"};
-            m.source = runtimeRootPath + "/bin/" + dir;
-            m.destination = "/usr/bin/" + dir;
-            r->mounts.push_back(&m);
+            QPointer<Mount> m(new Mount(r));
+            m->type = "bind";
+            m->options = QStringList {"rbind"};
+            m->source = runtimeRootPath + "/bin/" + dir;
+            m->destination = "/usr/bin/" + dir;
+            r->mounts.push_back(m);
         }
 
         // 存在 gschemas.compiled,需要挂载进沙箱
         if (linglong::util::fileExists(sysLinglongInstalltions + "/glib-2.0/schemas/gschemas.compiled")) {
-            Mount &m = *new Mount(r);
-            m.type = "bind";
-            m.options = QStringList {"rbind"};
-            m.source = sysLinglongInstalltions + "/glib-2.0/schemas/gschemas.compiled";
-            m.destination = sysLinglongInstalltions + "/glib-2.0/schemas/gschemas.compiled";
-            r->mounts.push_back(&m);
+            QPointer<Mount> m(new Mount(r));
+            m->type = "bind";
+            m->options = QStringList {"rbind"};
+            m->source = sysLinglongInstalltions + "/glib-2.0/schemas/gschemas.compiled";
+            m->destination = sysLinglongInstalltions + "/glib-2.0/schemas/gschemas.compiled";
+            r->mounts.push_back(m);
         }
         return 0;
     }
@@ -920,7 +921,7 @@ public:
         }
 
         // create a yaml config from json
-        auto info = util::loadJSON<package::Info>(appInfo);
+        QScopedPointer<package::Info> info(util::loadJSON<package::Info>(appInfo));
 
         if (info->runtime.isEmpty()) {
             // FIXME: return error is not exist

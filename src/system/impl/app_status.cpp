@@ -465,7 +465,7 @@ bool getAppMetaInfoListByJson(const QString &jsonString, linglong::package::AppM
         QJsonObject dataObj = array.at(i).toObject();
         const QString jsonItem = QString(QJsonDocument(dataObj).toJson(QJsonDocument::Compact));
         auto appItem = linglong::util::loadJSONString<linglong::package::AppMetaInfo>(jsonItem);
-        appList.push_back(appItem);
+        appList.push_back(QPointer<linglong::package::AppMetaInfo>(appItem));
     }
     return true;
 }

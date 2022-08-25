@@ -41,6 +41,7 @@ class UploadTaskRequest : public JsonSerialize
 
     Q_SERIALIZE_PROPERTY(int, code);
     Q_SERIALIZE_PROPERTY(QStringList, objects);
+    Q_SERIALIZE_PROPERTY(linglong::repo::PairList, refList);
     Q_SERIALIZE_PROPERTY(linglong::repo::PairStrMap, refs);
 };
 

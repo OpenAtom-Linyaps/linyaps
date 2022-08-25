@@ -410,7 +410,7 @@ int main(int argc, char **argv)
              if (doc.isArray()) {
                  for (auto container : doc.array()) {
                      auto str = QString(QJsonDocument(container.toObject()).toJson());
-                     auto con = linglong::util::loadJSONString<Container>(str);
+                     QPointer<Container> con(linglong::util::loadJSONString<Container>(str));
                      containerList.push_back(con);
                  }
              }

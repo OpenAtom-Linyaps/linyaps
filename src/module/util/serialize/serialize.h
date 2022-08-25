@@ -109,7 +109,7 @@ static LIST fromVariantList(const QVariant &l)
     auto varList = l.toList();
     for (auto v : varList) {
         auto o = fromVariant<T>(v);
-        list.push_back(o);
+        list.push_back(QPointer<T>(o));
     }
     return list;
 }
@@ -125,14 +125,24 @@ inline void qSerializeRegister()
     class TYPE##List : public QList<QPointer<TYPE>> \
     { \
     public: \
+        inline TYPE##List() = default; \
         inline ~TYPE##List() \
         { \
             for (auto &c : *this) { \
-                if (c->parent() == nullptr) { \
+                if (c && c->parent() == nullptr) { \
                     c->deleteLater(); \
                 } \
             } \
         } \
+        inline TYPE##List(const TYPE##List &list) \
+        { \
+            for (auto c : list) { \
+                /* transport owner */ \
+                c.data()->setParent(parent); \
+                this->push_back(c.data()); \
+            } \
+        } \
+        QObject *parent = nullptr; \
         static void registerMetaType(); \
         friend QDBusArgument &operator<<(QDBusArgument &argument, const TYPE##List &message); \
         friend const QDBusArgument &operator>>(const QDBusArgument &argument, TYPE##List &message); \
@@ -219,7 +229,7 @@ inline void qSerializeRegister()
             for (const auto &v : list) { \
                 auto map = v.toMap(); \
                 map[Q_SERIALIZE_PARENT_KEY] = QVariant::fromValue(parent); \
-                vList.push_back(fromVariant<TYPE>(map)); \
+                vList.push_back(QPointer<TYPE>(fromVariant<TYPE>(map))); \
             } \
             return vList; \
         }); \

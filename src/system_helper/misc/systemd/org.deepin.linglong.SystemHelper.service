@@ -1,0 +1,14 @@
+[Unit]
+Description=linglong system helper, only portal can process with root.
+
+[Service]
+Type=dbus
+User=root
+Group=root
+BusName=org.deepin.linglong.SystemHelper
+ExecStart=/usr/bin/ll-system-helper
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -6,7 +6,11 @@ find_package(
   COMPONENTS Concurrent Sql
   REQUIRED
 )
-pkg_search_module(OSTREE1 REQUIRED ostree-1)
+pkg_search_module(
+  OSTREE1
+  REQUIRED
+  ostree-1
+)
 
 set(LL_SYSTEM_SERVICE_SOURCES
     # cmake-format: sortable
@@ -50,23 +54,32 @@ set(LL_SYSTEM_SERVICE_SOURCES
 qt5_add_dbus_adaptor(
   LL_SYSTEM_SERVICE_SOURCES
   ../module/dbus_ipc/org.deepin.linglong.PackageManager.xml
-  impl/system_package_manager.h linglong::service::SystemPackageManager
+  impl/system_package_manager.h
+  linglong::service::SystemPackageManager
 )
 
 qt5_add_dbus_adaptor(
   LL_SYSTEM_SERVICE_SOURCES
-  ../module/dbus_ipc/com.deepin.linglong.JobManager.xml impl/job_manager.h
+  ../module/dbus_ipc/com.deepin.linglong.JobManager.xml
+  impl/job_manager.h
   JobManager
 )
 
 qt5_add_dbus_adaptor(
-  LL_SYSTEM_SERVICE_SOURCES ../module/dbus_ipc/com.deepin.linglong.Job.xml
-  impl/job.h Job
+  LL_SYSTEM_SERVICE_SOURCES
+  ../module/dbus_ipc/com.deepin.linglong.Job.xml
+  impl/job.h
+  Job
 )
 
 message(STATUS "current CPU ARCH is: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 
-set(LINK_LIBS ${LINK_LIBS} CURL::libcurl ${OSTREE1_LDFLAGS} Qt5::Sql)
+set(LINK_LIBS
+    ${LINK_LIBS}
+    CURL::libcurl
+    ${OSTREE1_LDFLAGS}
+    Qt5::Sql
+)
 
 add_executable(ll-package-manager ${LL_SYSTEM_SERVICE_SOURCES})
 

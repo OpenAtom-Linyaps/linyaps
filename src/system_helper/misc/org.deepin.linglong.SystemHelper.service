@@ -1,0 +1,5 @@
+[D-BUS Service]
+Name=org.deepin.linglong.SystemHelper
+Exec=/usr/bin/ll-system-helper
+User=root
+SystemdService=org.deepin.linglong.SystemHelper.service

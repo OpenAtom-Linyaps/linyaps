@@ -147,9 +147,60 @@ linglong::util::Error commitBuildOutput(Project *project, AnnotationsOverlayfsRo
         return moveStatus;
     }
 
+    auto createInfo = [](Project *project) -> linglong::util::Error {
+        package::Info info;
+
+        info.kind = project->package->kind;
+        info.version = project->package->version;
+
+        info.base = project->baseRef().toLocalRefString();
+
+        info.runtime = project->runtimeRef().toLocalRefString();
+
+        info.appid = project->package->id;
+        info.name = project->package->name;
+        info.description = project->package->description;
+        info.arch = QStringList {project->config().targetArch()};
+
+        info.module = "runtime";
+        info.size = linglong::util::sizeOfDir(project->config().cacheInstallPath(""));
+        QFile infoFile(project->config().cacheInstallPath("info.json"));
+        if (!infoFile.open(QIODevice::WriteOnly)) {
+            return NewError(infoFile.error(), infoFile.errorString() + " " + infoFile.fileName());
+        }
+        if (infoFile.write(QJsonDocument::fromVariant(toVariant<package::Info>(&info)).toJson()) < 0) {
+            return NewError(infoFile.error(), infoFile.errorString());
+        }
+        infoFile.close();
+
+        info.module = "devel";
+        info.size = linglong::util::sizeOfDir(project->config().cacheInstallPath("devel-install"));
+        QFile develInfoFile(project->config().cacheInstallPath("devel-install", "info.json"));
+        if (!develInfoFile.open(QIODevice::WriteOnly)) {
+            return NewError(develInfoFile.error(), develInfoFile.errorString() + " " + develInfoFile.fileName());
+        }
+        if (develInfoFile.write(QJsonDocument::fromVariant(toVariant<package::Info>(&info)).toJson()) < 0) {
+            return NewError(develInfoFile.error(), develInfoFile.errorString());
+        }
+        develInfoFile.close();
+
+        QFile sourceConfigFile(project->configFilePath());
+        if (!sourceConfigFile.copy(project->config().cacheInstallPath("linglong.yaml"))) {
+            return NewError(sourceConfigFile.error(), sourceConfigFile.errorString());
+        }
+
+        return NoError();
+    };
+
+    auto ret = createInfo(project);
+    if (!ret.success()) {
+        kill(fuseOverlayfsPid, SIGTERM);
+        return NewError(ret, -1, "createInfo failed");
+    }
+
     repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath());
 
-    auto ret = repo.importDirectory(project->refWithModule("runtime"), project->config().cacheInstallPath(""));
+    ret = repo.importDirectory(project->refWithModule("runtime"), project->config().cacheInstallPath(""));
 
     if (!ret.success()) {
         kill(fuseOverlayfsPid, SIGTERM);
@@ -595,54 +646,6 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
 
     if (startContainer(container, r)) {
         return NewError(-1, "build task failed in container");
-    }
-
-    auto createInfo = [](Project *project) -> linglong::util::Error {
-        package::Info info;
-
-        info.kind = project->package->kind;
-        info.version = project->package->version;
-
-        info.base = project->baseRef().toLocalRefString();
-
-        info.runtime = project->runtimeRef().toLocalRefString();
-
-        info.appid = project->package->id;
-        info.name = project->package->name;
-        info.description = project->package->description;
-        info.arch = QStringList {project->config().targetArch()};
-
-        info.module = "runtime";
-        QFile infoFile(project->config().cacheInstallPath("info.json"));
-        if (!infoFile.open(QIODevice::WriteOnly)) {
-            return NewError(infoFile.error(), infoFile.errorString() + " " + infoFile.fileName());
-        }
-        if (infoFile.write(QJsonDocument::fromVariant(toVariant<package::Info>(&info)).toJson()) < 0) {
-            return NewError(infoFile.error(), infoFile.errorString());
-        }
-        infoFile.close();
-
-        info.module = "devel";
-        QFile develInfoFile(project->config().cacheInstallPath("devel-install", "info.json"));
-        if (!develInfoFile.open(QIODevice::WriteOnly)) {
-            return NewError(develInfoFile.error(), develInfoFile.errorString() + " " + develInfoFile.fileName());
-        }
-        if (develInfoFile.write(QJsonDocument::fromVariant(toVariant<package::Info>(&info)).toJson()) < 0) {
-            return NewError(develInfoFile.error(), develInfoFile.errorString());
-        }
-        develInfoFile.close();
-
-        QFile sourceConfigFile(project->configFilePath());
-        if (!sourceConfigFile.copy(project->config().cacheInstallPath("linglong.yaml"))) {
-            return NewError(sourceConfigFile.error(), sourceConfigFile.errorString());
-        }
-
-        return NoError();
-    };
-
-    ret = createInfo(project);
-    if (!ret.success()) {
-        return NewError(ret, -1, "createInfo failed");
     }
 
     ret = commitBuildOutput(project, r->annotations->overlayfs);

@@ -95,6 +95,7 @@ public:
     Q_JSON_PROPERTY(QString, kind);
     Q_JSON_PROPERTY(QString, name);
     Q_JSON_PROPERTY(QString, module);
+    Q_JSON_PROPERTY(quint64, size);
     Q_JSON_PROPERTY(QString, description);
 
     // ref of runtime

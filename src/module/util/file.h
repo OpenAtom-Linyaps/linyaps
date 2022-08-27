@@ -39,6 +39,15 @@ QString ensureUserDir(const QStringList &relativeDirPathComponents);
 bool ensureDir(const QString &path);
 
 /*!
+ * 计算文件夹大小
+ *
+ * @param: srcPath: 文件夹路径
+ *
+ * @return quint64: byte 文件夹大小
+ */
+quint64 sizeOfDir(const QString &srcPath);
+
+/*!
  * 创建一个pattern格式的随机文件
  *
  * @param pattern 文件格式
@@ -425,5 +434,6 @@ void inline copyConfig()
         configFile.copy(getLinglongRootPath() + "/config.json");
     }
 }
+
 } // namespace util
 } // namespace linglong

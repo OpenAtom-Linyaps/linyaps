@@ -10,6 +10,8 @@
 
 #include "file.h"
 
+#include <sys/stat.h>
+
 #include <QDir>
 #include <QStandardPaths>
 #include <QJsonDocument>
@@ -144,6 +146,33 @@ QStringList getUserInfo()
     }
 
     return userInfo;
+}
+
+quint64 sizeOfDir(const QString &srcPath)
+{
+    QDir srcDir(srcPath);
+    quint64 size = 0;
+    QFileInfoList list = srcDir.entryInfoList();
+
+    for (auto info : list) {
+        if (info.fileName() == "." || info.fileName() == "..") {
+            continue;
+        }
+        if (info.isSymLink()) {
+            //FIXME: https://bugreports.qt.io/browse/QTBUG-50301
+            struct stat symlinkStat;
+            lstat(info.absoluteFilePath().toLocal8Bit(), &symlinkStat);
+            size += symlinkStat.st_size;
+        } else if (info.isDir()) {
+            // 一个文件夹大小为4K
+            size += 4 * 1024;
+            size += sizeOfDir(QStringList {srcPath, info.fileName()}.join("/"));
+        } else {
+            size += info.size();
+        }
+    }
+
+    return size;
 }
 
 } // namespace util

@@ -81,9 +81,9 @@ install(FILES data/com.deepin.linglong.SystemPackageManager.conf
 )
 
 install(FILES data/deepin-linglong-SystemHelper.service
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system
+        DESTINATION /lib/systemd/system
 )
 
-install(FILES data/deepin-linglong-SystemPackageManager.service
+install(FILES data/com.deepin.linglong.SystemPackageManager.service
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/dbus-1/system-services
 )

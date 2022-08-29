@@ -9,6 +9,6 @@ usr/share/linglong/config.json
 usr/lib/systemd/user-environment-generators/61-linglong
 usr/share/permission/policy/linglong/*.json
 usr/share/dbus-1/system.d/com.deepin.linglong.SystemPackageManager.conf
-usr/share/dbus-1/system-services/deepin-linglong-SystemPackageManager.service
-usr/lib/systemd/system/deepin-linglong-SystemHelper.service
+usr/share/dbus-1/system-services/com.deepin.linglong.SystemPackageManager.service
+lib/systemd/system/deepin-linglong-SystemHelper.service
 usr/share/mime/packages/deepin-linglong.xml

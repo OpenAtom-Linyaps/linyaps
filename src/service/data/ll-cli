@@ -1,0 +1,43 @@
+# linglong cli completion
+ _ll_cli()
+{
+    COMPREPLY=()
+    local cur=${COMP_WORDS[COMP_CWORD]};
+    local pre=${COMP_WORDS[COMP_CWORD-1]};
+
+    opts="query list install update uninstall ps run kill"
+    if [[ ${COMP_CWORD} -eq 1 ]]; then
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+    fi
+
+    case $pre in
+    'install')
+          COMPREPLY=( $(compgen -W '--help --repo-point --nodbus --channel --module' -- $cur) )
+          ;;
+    'uninstall')
+          COMPREPLY=( $(compgen -W '--help --repo-point --nodbus --all-version --channel --module' -- $cur) )
+          ;;
+    'update')
+          COMPREPLY=( $(compgen -W '--help --channel --module' -- $cur) )
+          ;;
+    'query')
+          COMPREPLY=( $(compgen -W '--help --repo-point --force' -- $cur) )
+          ;;
+    'list')
+          COMPREPLY=( $(compgen -W '--help --repo-point --nodbus' -- $cur) )
+          ;;
+    'run')
+          COMPREPLY=( $(compgen -W '--help --repo-point --channel --module --exec --no-proxy --filter-name --filter-path --filter-interface' -- $cur) )
+          ;;
+    'ps')
+          COMPREPLY=( $(compgen -W '--help --output-format' -- $cur) )
+          ;;
+    'kill')
+          COMPREPLY=( $(compgen -W '--help' -- $cur) )
+          ;;
+    '*')
+          ;;
+    esac
+    return 0
+}
+complete -F _ll_cli ll-cli

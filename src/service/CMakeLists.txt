@@ -81,6 +81,10 @@ install(FILES data/space.linglong.Service.desktop
         DESTINATION /etc/xdg/autostart
 )
 
+install(FILES data/ll-cli
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/bash-completion/completions
+)
+
 set(PERMISSION
     data/linglong/hostdir.json
     data/linglong/calendar.json

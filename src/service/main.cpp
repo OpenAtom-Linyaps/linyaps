@@ -39,5 +39,10 @@ int main(int argc, char *argv[])
     // TODO(se): 需要进行错误处理
     dbus.registerObject("/com/deepin/linglong/PackageManager", PACKAGE_MANAGER);
 
+    app.connect(&app, &QCoreApplication::aboutToQuit, &app, [&] {
+        dbus.unregisterObject("com.deepin.linglong.AppManager");
+        dbus.unregisterService("/com/deepin/linglong/PackageManager");
+    });
+
     return QCoreApplication::exec();
 }

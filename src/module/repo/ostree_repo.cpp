@@ -42,6 +42,16 @@ typedef QMap<QString, OstreeRepoObject> RepoObjectMap;
 
 class OSTreeRepoPrivate
 {
+public:
+    ~OSTreeRepoPrivate()
+    {
+        if (repoPtr) {
+            g_object_unref(repoPtr);
+            repoPtr = nullptr;
+        }
+    };
+
+private:
     OSTreeRepoPrivate(QString localRepoRootPath, QString remoteEndpoint, QString remoteRepoName, OSTreeRepo *parent)
         : repoRootPath(std::move(localRepoRootPath))
         , remoteEndpoint(std::move(remoteEndpoint))
@@ -165,12 +175,10 @@ class OSTreeRepoPrivate
         auto repo = ostree_repo_new(repoPath);
         if (!ostree_repo_open(repo, nullptr, &gErr)) {
             qCritical() << "open repo" << path << "failed" << QString::fromStdString(std::string(gErr->message));
-
-            repo = nullptr;
         }
-
         g_object_unref(repoPath);
 
+        Q_ASSERT(nullptr != repo);
         return repo;
     }
 
@@ -189,10 +197,6 @@ class OSTreeRepoPrivate
         QStringList objects;
 
         std::string str = rev.toStdString();
-        if (!repoPtr) {
-            qCritical() << "null repo";
-            return {};
-        }
 
         if (!ostree_repo_traverse_commit(repoPtr, str.c_str(), maxDepth, &hashTable, nullptr, &gErr)) {
             qCritical() << "ostree_repo_traverse_commit failed"

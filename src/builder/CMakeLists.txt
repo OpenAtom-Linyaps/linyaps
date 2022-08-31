@@ -46,6 +46,11 @@ set(RESOURCES
     resource/template.yaml
 )
 
+set(CONFIG_FILE
+    # cmake-format: sortable
+    resource/builder.yaml
+)
+
 find_package(CURL REQUIRED)
 
 aux_source_directory(. LL_BUILDER_SOURCES)
@@ -70,3 +75,4 @@ target_link_libraries(
 
 install(TARGETS ll-builder RUNTIME DESTINATION bin)
 install(FILES ${RESOURCES} DESTINATION share/deepin/ll-builder/template)
+install(FILES ${CONFIG_FILE} DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/linglong)

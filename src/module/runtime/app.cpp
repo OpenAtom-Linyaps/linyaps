@@ -19,7 +19,6 @@
 #include <QFile>
 #include <QStandardPaths>
 #include <QDir>
-#include <wordexp.h>
 
 #include "module/util/yaml.h"
 #include "module/util/uuid.h"
@@ -141,7 +140,7 @@ public:
         }
 
         if (r->process->args.isEmpty() && !desktopExec.isEmpty()) {
-            r->process->args = util::parseExec(desktopExec);
+            r->process->args = util::splitExec(desktopExec);
         } else if (r->process->args.isEmpty()) {
             r->process->args = execArgs;
         }
@@ -1128,22 +1127,6 @@ int App::start()
 
 void App::exec(QString cmd, QString env, QString cwd)
 {
-    auto split = [](QString input) -> QStringList {
-        auto words = input.toStdString();
-        wordexp_t p;
-        auto ret = wordexp(words.c_str(), &p, WRDE_SHOWERR);
-        if (ret != 0) {
-            qWarning() << "wordexp" << strerror(errno);
-            wordfree(&p);
-            return {};
-        }
-        QStringList res;
-        for (int i = 0; i < (int)p.we_wordc; i++) {
-            res << p.we_wordv[i];
-        }
-        wordfree(&p);
-        return res;
-    };
     Q_D(App);
 
     QStringList envList = d->r->process->env;
@@ -1156,7 +1139,7 @@ void App::exec(QString cmd, QString env, QString cwd)
     }
     p.setcwd(cwd);
     p.setenv(envList);
-    auto appCmd = split(cmd);
+    auto appCmd = util::splitExec(cmd);
     if (cmd.isEmpty() || cmd.isNull()) {
         appCmd = d->r->process->args;
     }

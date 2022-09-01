@@ -10,6 +10,8 @@
 
 #include "xdg.h"
 
+#include <wordexp.h>
+
 #include <QDir>
 #include <QMap>
 #include <QStandardPaths>
@@ -90,6 +92,39 @@ QStringList parseExec(const QString &exec)
     return args;
 }
 
+QStringList splitExec(const QString &exec)
+{
+    auto words = exec.toStdString();
+    wordexp_t p;
+    auto ret = wordexp(words.c_str(), &p, WRDE_SHOWERR);
+    if (ret != 0) {
+        QString errMessage;
+        switch (ret) {
+        case WRDE_BADCHAR:
+            errMessage = "BADCHAR";
+        case WRDE_BADVAL:
+            errMessage = "BADVAL";
+        case WRDE_CMDSUB:
+            errMessage = "CMDSUB";
+        case WRDE_NOSPACE:
+            errMessage = "NOSPACE";
+        case WRDE_SYNTAX:
+            errMessage = "SYNTAX";
+        default:
+            errMessage = "unknown";
+        }
+        qWarning() << "wordexp error: " << errMessage;
+        wordfree(&p);
+        return {};
+    }
+    QStringList res;
+    for (int i = 0; i < (int)p.we_wordc; i++) {
+        res << p.we_wordv[i];
+    }
+    wordfree(&p);
+    return res;
+}
+
 QPair<QString, QString> parseEnvKeyValue(QString env, const QString &sep)
 {
     QRegExp exp("(\\$\\{.*\\})");
@@ -118,11 +153,18 @@ QStringList convertSpecialCharacters(const QStringList &args)
     for (auto arg : args) {
         arg.replace(' ', QString("\\%1").arg(' '));
         arg.replace('"', QString("\\%1").arg('"'));
+        arg.replace('(', QString("\\%1").arg('('));
+        arg.replace(')', QString("\\%1").arg(')'));
+        arg.replace('{', QString("\\%1").arg('{'));
+        arg.replace('}', QString("\\%1").arg('}'));
+        arg.replace('>', QString("\\%1").arg('>'));
+        arg.replace('<', QString("\\%1").arg('<'));
+        arg.replace('|', QString("\\%1").arg('|'));
+        arg.replace('&', QString("\\%1").arg('&'));
         retArgs.push_back(arg);
     }
     return retArgs;
 }
-
 
 QMap<QString, QString> getUserDirMap()
 {

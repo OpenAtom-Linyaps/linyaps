@@ -22,6 +22,8 @@ QDir userRuntimeDir();
 
 QStringList parseExec(const QString &exec);
 
+QStringList splitExec(const QString &exec);
+
 /*!
  * parseEnv will convert ${HOME}/Desktop:${HOME}/Desktop to real value as pair
  * /home/linglong/Desktop, /home/linglong/Desktop

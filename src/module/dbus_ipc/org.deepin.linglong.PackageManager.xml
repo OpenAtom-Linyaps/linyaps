@@ -2,12 +2,6 @@
         "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
     <interface name="org.deepin.linglong.PackageManager">
-        <method name="Download">
-            <arg name="downloadParamOption" type="(ssssss)" direction="in"/>
-            <arg name="reply" type="(is)" direction="out"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::DownloadParamOption"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
-        </method>
         <method name="GetDownloadStatus">
             <arg name="paramOption" type="(sssss)" direction="in"/>
             <arg name="type" type="i" direction="in"/>

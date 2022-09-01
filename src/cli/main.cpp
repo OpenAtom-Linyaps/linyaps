@@ -195,9 +195,8 @@ int main(int argc, char **argv)
     ComDeepinLinglongPackageManagerInterface packageManager(
         "com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager", QDBusConnection::sessionBus());
 
-    OrgDeepinLinglongPackageManagerInterface sysPackageManager("org.deepin.linglong.PackageManager",
-                                                                     "/org/deepin/linglong/PackageManager",
-                                                                     QDBusConnection::systemBus());
+    OrgDeepinLinglongPackageManagerInterface sysPackageManager(
+        "org.deepin.linglong.PackageManager", "/org/deepin/linglong/PackageManager", QDBusConnection::systemBus());
 
     checkAndStartService(packageManager);
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
@@ -442,36 +441,6 @@ int main(int argc, char **argv)
 
              qInfo().noquote() << reply.message;
              return 0;
-         }},
-        {"download", // TODO: download命令当前没用到
-         [&](QCommandLineParser &parser) -> int {
-             // auto optArch = QCommandLineOption("arch", "cpu arch", "cpu arch", "x86_64");
-             QString curPath = QDir::currentPath();
-             // qDebug() << curPath;
-             // ll-cli download org.deepin.calculator -d ./test 无-d 参数默认当前路径
-             auto optDownload = QCommandLineOption("d", "dest path to save app", "dest path to save app", curPath);
-
-             parser.clearPositionalArguments();
-             parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
-             parser.addOption(optDownload);
-             parser.process(app);
-             args = parser.positionalArguments();
-             // 第一个参数为命令字
-             linglong::service::DownloadParamOption downloadParamOption;
-             QStringList appInfoList = args.value(1).split("/");
-             downloadParamOption.appId = appInfoList.at(0);
-             if (appInfoList.size() > 2) {
-                 downloadParamOption.version = appInfoList.at(1);
-                 downloadParamOption.arch = appInfoList.at(2);
-             }
-             downloadParamOption.savePath = parser.value(optDownload);
-
-             packageManager.setTimeout(1000 * 60 * 60 * 24);
-             QDBusPendingReply<linglong::service::Reply> reply = sysPackageManager.Download(downloadParamOption);
-             reply.waitForFinished();
-             linglong::service::Reply retReply = reply.value();
-             qInfo().noquote() << retReply.code << retReply.message;
-             return retReply.code;
          }},
         {"install", // 下载玲珑包
          [&](QCommandLineParser &parser) -> int {

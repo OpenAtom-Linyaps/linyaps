@@ -26,7 +26,6 @@ public:
     ~SystemPackageManagerPrivate() override = default;
 
 private:
-    Reply Download(const DownloadParamOption &downloadParamOption);
     Reply Install(const InstallParamOption &installParamOption);
     Reply Uninstall(const UninstallParamOption &paramOption);
     QueryReply Query(const QueryParamOption &paramOption);

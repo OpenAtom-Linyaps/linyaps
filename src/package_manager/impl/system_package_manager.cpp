@@ -191,12 +191,6 @@ bool SystemPackageManagerPrivate::downloadAppData(const QString &pkgName, const 
     return ret;
 }
 
-Reply SystemPackageManagerPrivate::Download(const DownloadParamOption &downloadParamOption)
-{
-    Reply reply;
-    return reply;
-}
-
 Reply SystemPackageManagerPrivate::GetDownloadStatus(const ParamOption &paramOption, int type)
 {
     Reply reply;
@@ -1121,34 +1115,6 @@ SystemPackageManager::SystemPackageManager()
 
 SystemPackageManager::~SystemPackageManager()
 {
-}
-
-/*!
- * 下载软件包
- * @param paramOption
- */
-Reply SystemPackageManager::Download(const DownloadParamOption &downloadParamOption)
-{
-    Q_D(SystemPackageManager);
-    Reply reply;
-    QString appId = downloadParamOption.appId;
-    if (appId.isEmpty()) {
-        qCritical() << "package name err";
-        reply.code = STATUS_CODE(kUserInputParamErr);
-        reply.message = "package name err";
-        return reply;
-    }
-
-    if (!d->noDBusMode) {
-        qInfo() << "Pid is:" << connection().interface()->servicePid(message().service());
-        qInfo() << "Uid is:" << connection().interface()->serviceUid(message().service());
-        QDBusReply<uint> dbusReply = connection().interface()->serviceUid(message().service());
-        if (dbusReply.isValid()) {
-            QString userName = d->getUserName(dbusReply.value());
-            qInfo() << dbusReply.value() << userName;
-        }
-    }
-    return d->Download(downloadParamOption);
 }
 
 /**

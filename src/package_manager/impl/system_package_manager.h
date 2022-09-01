@@ -50,18 +50,6 @@ class SystemPackageManager
     friend class linglong::util::Singleton<SystemPackageManager>;
 
 public Q_SLOTS:
-
-    /**
-     * @brief download the package
-     *
-     * @param paramOption 下载参数
-     *
-     * @return Reply dbus方法调用应答 \n
-     *          code:状态码 \n
-     *          message:信息
-     */
-    Reply Download(const DownloadParamOption &downloadParamOption);
-
     /**
      * @brief 查询软件包下载安装状态
      *

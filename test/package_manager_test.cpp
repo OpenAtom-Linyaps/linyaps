@@ -15,7 +15,7 @@
 
 #include "src/module/flatpak/flatpak_manager.h"
 #include "src/module/package/package.h"
-#include "system/impl/app_status.h"
+#include "package_manager/impl/app_status.h"
 #include "src/service/impl/register_meta_type.h"
 #include "src/service/impl/param_option.h"
 #include "src/service/impl/reply.h"
@@ -84,8 +84,8 @@ TEST(Package, install01)
     linglong::service::registerAllMetaType();
     linglong::package::registerAllMetaType();
 
-    ComDeepinLinglongSystemPackageManagerInterface pm("com.deepin.linglong.SystemPackageManager",
-                                                "/com/deepin/linglong/SystemPackageManager",
+    OrgDeepinLinglongPackageManagerInterface pm("org.deepin.linglong.PackageManager",
+                                                "/org/deepin/linglong/PackageManager",
                                                 QDBusConnection::systemBus());
     linglong::service::InstallParamOption installParam;
     installParam.appId = "com.deepin.linglong.test";
@@ -104,8 +104,8 @@ TEST(Package, install02)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongSystemPackageManagerInterface pm("com.deepin.linglong.SystemPackageManager",
-                                                "/com/deepin/linglong/SystemPackageManager",
+    OrgDeepinLinglongPackageManagerInterface pm("org.deepin.linglong.PackageManager",
+                                                "/org/deepin/linglong/PackageManager",
                                                 QDBusConnection::systemBus());
 
     linglong::service::UninstallParamOption uninstallParam;
@@ -133,8 +133,8 @@ TEST(Package, update01)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongSystemPackageManagerInterface pm("com.deepin.linglong.SystemPackageManager",
-                                                "/com/deepin/linglong/SystemPackageManager",
+    OrgDeepinLinglongPackageManagerInterface pm("org.deepin.linglong.PackageManager",
+                                                "/org/deepin/linglong/PackageManager",
                                                 QDBusConnection::systemBus());
 
     linglong::service::UninstallParamOption uninstallParam;
@@ -168,8 +168,8 @@ TEST(Package, install03)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongSystemPackageManagerInterface pm("com.deepin.linglong.SystemPackageManager",
-                                                "/com/deepin/linglong/SystemPackageManager",
+    OrgDeepinLinglongPackageManagerInterface pm("org.deepin.linglong.PackageManager",
+                                                "/org/deepin/linglong/PackageManager",
                                                 QDBusConnection::systemBus());
 
     // 重复安装
@@ -190,8 +190,8 @@ TEST(Package, install04)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongSystemPackageManagerInterface pm("com.deepin.linglong.SystemPackageManager",
-                                                "/com/deepin/linglong/SystemPackageManager",
+    OrgDeepinLinglongPackageManagerInterface pm("org.deepin.linglong.PackageManager",
+                                                "/org/deepin/linglong/PackageManager",
                                                 QDBusConnection::systemBus());
 
     linglong::service::InstallParamOption installParam;
@@ -211,8 +211,8 @@ TEST(Package, install05)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongSystemPackageManagerInterface pm("com.deepin.linglong.SystemPackageManager",
-                                                "/com/deepin/linglong/SystemPackageManager",
+    OrgDeepinLinglongPackageManagerInterface pm("org.deepin.linglong.PackageManager",
+                                                "/org/deepin/linglong/PackageManager",
                                                 QDBusConnection::systemBus());
 
     linglong::service::InstallParamOption installParam;
@@ -235,8 +235,8 @@ TEST(Package, install06)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongSystemPackageManagerInterface pm("com.deepin.linglong.SystemPackageManager",
-                                                "/com/deepin/linglong/SystemPackageManager",
+    OrgDeepinLinglongPackageManagerInterface pm("org.deepin.linglong.PackageManager",
+                                                "/org/deepin/linglong/PackageManager",
                                                 QDBusConnection::systemBus());
 
     linglong::service::InstallParamOption installParam;
@@ -331,8 +331,8 @@ TEST(Package, query01)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongSystemPackageManagerInterface pm("com.deepin.linglong.SystemPackageManager",
-                                                "/com/deepin/linglong/SystemPackageManager",
+    OrgDeepinLinglongPackageManagerInterface pm("org.deepin.linglong.PackageManager",
+                                                "/org/deepin/linglong/PackageManager",
                                                 QDBusConnection::systemBus());
     // test app not in repo
     linglong::service::QueryParamOption paramOption;
@@ -356,8 +356,8 @@ TEST(Package, query02)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongSystemPackageManagerInterface pm("com.deepin.linglong.SystemPackageManager",
-                                                "/com/deepin/linglong/SystemPackageManager",
+    OrgDeepinLinglongPackageManagerInterface pm("org.deepin.linglong.PackageManager",
+                                                "/org/deepin/linglong/PackageManager",
                                                 QDBusConnection::systemBus());
     // test app not in repo
     linglong::service::QueryParamOption paramOption;
@@ -381,8 +381,8 @@ TEST(Package, query03)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongSystemPackageManagerInterface pm("com.deepin.linglong.SystemPackageManager",
-                                                "/com/deepin/linglong/SystemPackageManager",
+    OrgDeepinLinglongPackageManagerInterface pm("org.deepin.linglong.PackageManager",
+                                                "/org/deepin/linglong/PackageManager",
                                                 QDBusConnection::systemBus());
     linglong::service::QueryParamOption paramOption;
     paramOption.appId = "cal";
@@ -405,8 +405,8 @@ TEST(Package, query04)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongSystemPackageManagerInterface pm("com.deepin.linglong.SystemPackageManager",
-                                                "/com/deepin/linglong/SystemPackageManager",
+    OrgDeepinLinglongPackageManagerInterface pm("org.deepin.linglong.PackageManager",
+                                                "/org/deepin/linglong/PackageManager",
                                                 QDBusConnection::systemBus());
     linglong::service::QueryParamOption paramOption;
     paramOption.appId = "com.360.browser-stable";
@@ -429,8 +429,8 @@ TEST(Package, query05)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongSystemPackageManagerInterface pm("com.deepin.linglong.SystemPackageManager",
-                                                "/com/deepin/linglong/SystemPackageManager",
+    OrgDeepinLinglongPackageManagerInterface pm("org.deepin.linglong.PackageManager",
+                                                "/org/deepin/linglong/PackageManager",
                                                 QDBusConnection::systemBus());
     // test flatpak app
     linglong::service::QueryParamOption paramOption;
@@ -455,8 +455,8 @@ TEST(Package, list01)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongSystemPackageManagerInterface pm("com.deepin.linglong.SystemPackageManager",
-                                                "/com/deepin/linglong/SystemPackageManager",
+    OrgDeepinLinglongPackageManagerInterface pm("org.deepin.linglong.PackageManager",
+                                                "/org/deepin/linglong/PackageManager",
                                                 QDBusConnection::systemBus());
     linglong::service::QueryParamOption paramOption;
     paramOption.appId = "";
@@ -479,8 +479,8 @@ TEST(Package, list02)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongSystemPackageManagerInterface pm("com.deepin.linglong.SystemPackageManager",
-                                                "/com/deepin/linglong/SystemPackageManager",
+    OrgDeepinLinglongPackageManagerInterface pm("org.deepin.linglong.PackageManager",
+                                                "/org/deepin/linglong/PackageManager",
                                                 QDBusConnection::systemBus());
     linglong::service::QueryParamOption paramOption;
     paramOption.appId = "installed";
@@ -502,8 +502,8 @@ TEST(Package, list03)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongSystemPackageManagerInterface pm("com.deepin.linglong.SystemPackageManager",
-                                                "/com/deepin/linglong/SystemPackageManager",
+    OrgDeepinLinglongPackageManagerInterface pm("org.deepin.linglong.PackageManager",
+                                                "/org/deepin/linglong/PackageManager",
                                                 QDBusConnection::systemBus());
     linglong::service::QueryParamOption paramOption;
     paramOption.appId = "installed";
@@ -569,8 +569,8 @@ TEST(Package, uninstall01)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongSystemPackageManagerInterface pm("com.deepin.linglong.SystemPackageManager",
-                                                "/com/deepin/linglong/SystemPackageManager",
+    OrgDeepinLinglongPackageManagerInterface pm("org.deepin.linglong.PackageManager",
+                                                "/org/deepin/linglong/PackageManager",
                                                 QDBusConnection::systemBus());
     linglong::service::UninstallParamOption uninstallParam;
     uninstallParam.appId = "org.deepin.calculator";
@@ -592,8 +592,8 @@ TEST(Package, uninstall02)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongSystemPackageManagerInterface pm("com.deepin.linglong.SystemPackageManager",
-                                                "/com/deepin/linglong/SystemPackageManager",
+    OrgDeepinLinglongPackageManagerInterface pm("org.deepin.linglong.PackageManager",
+                                                "/org/deepin/linglong/PackageManager",
                                                 QDBusConnection::systemBus());
     linglong::service::UninstallParamOption uninstallParam;
     uninstallParam.appId = "org.deepin.calculator123";
@@ -615,8 +615,8 @@ TEST(Package, uninstall03)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongSystemPackageManagerInterface pm("com.deepin.linglong.SystemPackageManager",
-                                                "/com/deepin/linglong/SystemPackageManager",
+    OrgDeepinLinglongPackageManagerInterface pm("org.deepin.linglong.PackageManager",
+                                                "/org/deepin/linglong/PackageManager",
                                                 QDBusConnection::systemBus());
     linglong::service::UninstallParamOption uninstallParam;
     uninstallParam.appId = "";
@@ -638,8 +638,8 @@ TEST(Package, uninstall04)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongSystemPackageManagerInterface pm("com.deepin.linglong.SystemPackageManager",
-                                                "/com/deepin/linglong/SystemPackageManager",
+    OrgDeepinLinglongPackageManagerInterface pm("org.deepin.linglong.PackageManager",
+                                                "/org/deepin/linglong/PackageManager",
                                                 QDBusConnection::systemBus());
     linglong::service::UninstallParamOption uninstallParam;
     uninstallParam.appId = "com.belmoussaoui.Decoder";

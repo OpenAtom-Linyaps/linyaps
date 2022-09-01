@@ -18,12 +18,12 @@
 #include "module/util/package_manager_param.h"
 #include "service/impl/register_meta_type.h"
 #include "service/impl/package_manager.h"
-#include "system/impl/system_package_manager.h"
+#include "package_manager/impl/system_package_manager.h"
 #include "package_manager.h"
 #include "system_package_manager.h"
 
 #include "module/runtime/runtime.h"
-#include "system/impl/app_status.h"
+#include "package_manager/impl/app_status.h"
 #include "module/util/xdg.h"
 #include "module/util/env.h"
 #include "module/util/log_handler.h"
@@ -195,8 +195,8 @@ int main(int argc, char **argv)
     ComDeepinLinglongPackageManagerInterface packageManager(
         "com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager", QDBusConnection::sessionBus());
 
-    ComDeepinLinglongSystemPackageManagerInterface sysPackageManager("com.deepin.linglong.SystemPackageManager",
-                                                                     "/com/deepin/linglong/SystemPackageManager",
+    OrgDeepinLinglongPackageManagerInterface sysPackageManager("org.deepin.linglong.PackageManager",
+                                                                     "/org/deepin/linglong/PackageManager",
                                                                      QDBusConnection::systemBus());
 
     checkAndStartService(packageManager);

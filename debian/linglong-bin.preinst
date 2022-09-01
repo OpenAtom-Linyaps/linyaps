@@ -4,7 +4,7 @@ case "$1" in
 install | upgrade)
     if [ "x$2" != "x" ]; then
         killall ll-service >/dev/null 2<&1
-        killall ll-system-helper >/dev/null 2<&1
+        killall ll-package-manager >/dev/null 2<&1
     fi
     ;;
 

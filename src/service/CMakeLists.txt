@@ -38,8 +38,8 @@ set(LL_SERVICE_SOURCES
     ../module/util/sysinfo.cpp
     ../module/util/uuid.cpp
     ../module/util/xdg.cpp
-    ../system/impl/app_status.cpp
-    ../system/impl/appinfo_cache.cpp
+    ../package_manager/impl/app_status.cpp
+    ../package_manager/impl/appinfo_cache.cpp
     impl/package_manager.cpp
     impl/param_option.h
     impl/reply.h

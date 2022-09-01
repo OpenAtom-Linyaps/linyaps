@@ -5,8 +5,8 @@ Description=Linglong dbus service
 Type=dbus
 User=deepin-linglong
 Group=users
-BusName=com.deepin.linglong.SystemPackageManager
-ExecStart=/usr/bin/ll-system-helper
+BusName=org.deepin.linglong.PackageManager
+ExecStart=/usr/bin/ll-package-manager
 Restart=on-failure
 RestartSec=10
 

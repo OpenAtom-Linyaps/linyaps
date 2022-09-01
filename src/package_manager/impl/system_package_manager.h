@@ -45,7 +45,7 @@ class SystemPackageManager
     , public linglong::util::Singleton<SystemPackageManager>
 {
     Q_OBJECT
-    Q_CLASSINFO("D-Bus Interface", "com.deepin.linglong.SystemPackageManager")
+    Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.PackageManager")
 
     friend class linglong::util::Singleton<SystemPackageManager>;
 

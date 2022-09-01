@@ -30,12 +30,12 @@ set(LL_CLI_SOURCES
     ../service/impl/param_option.h
     ../service/impl/reply.h
     ../service/resource/resource.qrc
-    ../system/impl/app_status.cpp
-    ../system/impl/appinfo_cache.cpp
-    ../system/impl/job.cpp
-    ../system/impl/job_manager.cpp
-    ../system/impl/package_manager_flatpak_impl.cpp
-    ../system/impl/system_package_manager.cpp
+    ../package_manager/impl/app_status.cpp
+    ../package_manager/impl/appinfo_cache.cpp
+    ../package_manager/impl/job.cpp
+    ../package_manager/impl/job_manager.cpp
+    ../package_manager/impl/package_manager_flatpak_impl.cpp
+    ../package_manager/impl/system_package_manager.cpp
     cmd/command_helper.cpp
     main.cpp
 )
@@ -52,13 +52,13 @@ qt5_add_dbus_interface(
 )
 
 set_source_files_properties(
-  ../module/dbus_ipc/com.deepin.linglong.SystemPackageManager.xml
+  ../module/dbus_ipc/org.deepin.linglong.PackageManager.xml
   PROPERTIES INCLUDE service/impl/register_meta_type.h
 )
 
 qt5_add_dbus_interface(
   LL_CLI_SOURCES
-  ../module/dbus_ipc/com.deepin.linglong.SystemPackageManager.xml
+  ../module/dbus_ipc/org.deepin.linglong.PackageManager.xml
   system_package_manager
 )
 
@@ -66,14 +66,14 @@ qt5_add_dbus_interface(
 qt5_add_dbus_adaptor(
   LL_CLI_SOURCES
   ../module/dbus_ipc/com.deepin.linglong.JobManager.xml
-  ../system/impl/job_manager.h
+  ../package_manager/impl/job_manager.h
   JobManager
 )
 
 qt5_add_dbus_adaptor(
   LL_CLI_SOURCES
   ../module/dbus_ipc/com.deepin.linglong.Job.xml
-  ../system/impl/job.h
+  ../package_manager/impl/job.h
   Job
 )
 

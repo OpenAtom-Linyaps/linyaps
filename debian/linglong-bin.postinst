@@ -84,7 +84,7 @@ configure)
                 useradd -u $useruid -g deepin-linglong -s /sbin/nologin deepin-linglong
                 gpasswd -a deepin-linglong users
         fi
-        chown deepin-linglong:users /usr/bin/ll-system-helper >/dev/null 2<&1
+        chown deepin-linglong:users /usr/bin/ll-package-manager >/dev/null 2<&1
         chown -R deepin-linglong:users ${LINGLONG_ROOT} >/dev/null 2<&1
 
         if [ -d /var/log/linglong ]; then

@@ -1,5 +1,0 @@
-[D-BUS Service]
-Name=com.deepin.linglong.SystemPackageManager
-Exec=/usr/bin/ll-system-helper
-User=deepin-linglong
-SystemdService=deepin-linglong-SystemHelper.service

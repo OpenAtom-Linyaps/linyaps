@@ -70,8 +70,8 @@ set(LL_TEST_SOURCES
     ../src/module/util/xdg.cpp
     ../src/service/impl/param_option.h
     ../src/service/impl/reply.h
-    ../src/system/impl/app_status.cpp
-    ../src/system/impl/appinfo_cache.cpp
+    ../src/package_manager/impl/app_status.cpp
+    ../src/package_manager/impl/appinfo_cache.cpp
     module/package/package_info_test.cpp
     module/package/ref_test.cpp
     module/util/app_status_test.cpp
@@ -103,13 +103,13 @@ qt5_add_dbus_interface(
 )
 
 set_source_files_properties(
-  ../src/module/dbus_ipc/com.deepin.linglong.SystemPackageManager.xml
+  ../src/module/dbus_ipc/org.deepin.linglong.PackageManager.xml
   PROPERTIES INCLUDE service/impl/register_meta_type.h
 )
 
 qt5_add_dbus_interface(
   LL_TEST_SOURCES
-  ../src/module/dbus_ipc/com.deepin.linglong.SystemPackageManager.xml
+  ../src/module/dbus_ipc/org.deepin.linglong.PackageManager.xml
   system_package_manager
 )
 

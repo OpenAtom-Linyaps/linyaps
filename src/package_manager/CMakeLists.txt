@@ -49,7 +49,7 @@ set(LL_SYSTEM_SERVICE_SOURCES
 
 qt5_add_dbus_adaptor(
   LL_SYSTEM_SERVICE_SOURCES
-  ../module/dbus_ipc/com.deepin.linglong.SystemPackageManager.xml
+  ../module/dbus_ipc/org.deepin.linglong.PackageManager.xml
   impl/system_package_manager.h linglong::service::SystemPackageManager
 )
 
@@ -68,22 +68,22 @@ message(STATUS "current CPU ARCH is: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 
 set(LINK_LIBS ${LINK_LIBS} CURL::libcurl ${OSTREE1_LDFLAGS} Qt5::Sql)
 
-add_executable(ll-system-helper ${LL_SYSTEM_SERVICE_SOURCES})
+add_executable(ll-package-manager ${LL_SYSTEM_SERVICE_SOURCES})
 
-target_include_directories(ll-system-helper PRIVATE ${OSTREE1_INCLUDE_DIRS})
+target_include_directories(ll-package-manager PRIVATE ${OSTREE1_INCLUDE_DIRS})
 
-target_link_libraries(ll-system-helper PRIVATE ${LINK_LIBS})
+target_link_libraries(ll-package-manager PRIVATE ${LINK_LIBS})
 
-install(TARGETS ll-system-helper RUNTIME DESTINATION bin)
+install(TARGETS ll-package-manager RUNTIME DESTINATION bin)
 
-install(FILES data/com.deepin.linglong.SystemPackageManager.conf
+install(FILES misc/org.deepin.linglong.PackageManager.conf
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/dbus-1/system.d
-)
+        )
 
-install(FILES data/deepin-linglong-SystemHelper.service
+install(FILES misc/systemd/org.deepin.linglong.PackageManager.service
         DESTINATION /lib/systemd/system
-)
+        )
 
-install(FILES data/com.deepin.linglong.SystemPackageManager.service
+install(FILES misc/org.deepin.linglong.PackageManager.service
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/dbus-1/system-services
-)
+        )

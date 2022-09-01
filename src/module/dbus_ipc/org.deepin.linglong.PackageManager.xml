@@ -1,7 +1,7 @@
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
         "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
-    <interface name="com.deepin.linglong.SystemPackageManager">
+    <interface name="org.deepin.linglong.PackageManager">
         <method name="Download">
             <arg name="downloadParamOption" type="(ssssss)" direction="in"/>
             <arg name="reply" type="(is)" direction="out"/>

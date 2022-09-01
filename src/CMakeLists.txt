@@ -28,7 +28,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 add_subdirectory(service)
 
-add_subdirectory(system)
+add_subdirectory(package_manager)
 
 add_subdirectory(cli)
 

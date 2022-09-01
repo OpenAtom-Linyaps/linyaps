@@ -12,7 +12,7 @@
 
 #include <QDebug>
 
-#include "system/impl/app_status.h"
+#include "package_manager/impl/app_status.h"
 #include "src/module/util/sysinfo.h"
 
 TEST(AppStatus, GetInstalledAppInfo)

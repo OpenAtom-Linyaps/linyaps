@@ -88,8 +88,8 @@ Reply PackageManager::GetDownloadStatus(const ParamOption &paramOption, int type
  */
 Reply PackageManager::Install(const InstallParamOption &installParamOption)
 {
-    // QDBusInterface interface("com.deepin.linglong.SystemPackageManager", "/com/deepin/linglong/SystemPackageManager",
-    //                          "com.deepin.linglong.SystemPackageManager", QDBusConnection::systemBus());
+    // QDBusInterface interface("org.deepin.linglong.PackageManager", "/org/deepin/linglong/PackageManager",
+    //                          "org.deepin.linglong.PackageManager", QDBusConnection::systemBus());
     // 设置 24 h超时
     // interface.setTimeout(1000 * 60 * 60 * 24);
     // QDBusPendingReply<Reply> dbusReply = interface.call("Install", QVariant::fromValue(installParamOption));

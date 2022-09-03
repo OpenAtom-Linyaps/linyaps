@@ -72,6 +72,12 @@ qt5_add_dbus_adaptor(
   Job
 )
 
+qt5_add_dbus_interface(
+    LL_SYSTEM_SERVICE_SOURCES
+    ../module/dbus_ipc/org.deepin.linglong.SystemHelper.xml
+    dbus_system_helper
+)
+
 message(STATUS "current CPU ARCH is: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 
 set(LINK_LIBS

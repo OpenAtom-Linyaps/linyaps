@@ -1,6 +1,10 @@
 set(LL_SYSTEM_HELPER_SOURCES
     # cmake-format: sortable
+    ../module/util/json.h
+    ../module/util/serialize/serialize.h
     main.cpp
+    privilege/privilege_install_portal.cpp
+    privilege/privilege_install_portal.h
     system_helper.cpp
     system_helper.h
 )
@@ -12,7 +16,11 @@ qt5_add_dbus_adaptor(
   linglong::system::helper::SystemHelper
 )
 
-set(LINK_LIBS Qt5::Core Qt5::DBus)
+set(LINK_LIBS
+    yaml-cpp
+    Qt5::Core
+    Qt5::DBus
+)
 
 add_executable(ll-system-helper ${LL_SYSTEM_HELPER_SOURCES})
 

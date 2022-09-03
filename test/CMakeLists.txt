@@ -113,6 +113,12 @@ qt5_add_dbus_interface(
   system_package_manager
 )
 
+qt5_add_dbus_interface(
+  LL_TEST_SOURCES
+  ../src/module/dbus_ipc/org.deepin.linglong.SystemHelper.xml
+  dbus_system_helper
+)
+
 add_executable(
   ll-test
   ${LL_TEST_SOURCES}

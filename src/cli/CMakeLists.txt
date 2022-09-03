@@ -62,6 +62,12 @@ qt5_add_dbus_interface(
   system_package_manager
 )
 
+qt5_add_dbus_interface(
+  LL_CLI_SOURCES
+  ../module/dbus_ipc/org.deepin.linglong.SystemHelper.xml
+  dbus_system_helper
+)
+
 # add for cli no dbus support
 qt5_add_dbus_adaptor(
   LL_CLI_SOURCES

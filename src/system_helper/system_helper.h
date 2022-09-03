@@ -25,8 +25,8 @@ class SystemHelper
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.SystemHelper")
 public:
-    const char *ServiceName = "org.deepin.linglong.SystemHelper";
-    const char *ServicePath = "/org/deepin/linglong/SystemHelper";
+    void RebuildInstallPortal(const QString &installPath, const QString &ref, const QVariantMap &options);
+    void RuinInstallPortal(const QString &installPath, const QString &ref, const QVariantMap &options);
 };
 
 } // namespace helper

@@ -29,6 +29,9 @@
 #include "module/util/runner.h"
 #include "system_package_manager_p.h"
 
+#include "dbus_system_helper.h"
+#include "module/dbus_ipc/dbus_system_helper_common.h"
+
 namespace linglong {
 namespace service {
 SystemPackageManagerPrivate::SystemPackageManagerPrivate(SystemPackageManager *parent)
@@ -596,6 +599,8 @@ Reply SystemPackageManagerPrivate::Install(const InstallParamOption &installPara
         appModule = "runtime";
     }
 
+    package::Ref ref("", channel, appId, version, arch, appModule);
+
     // 异常后重新安装需要清除上次状态
     appState.remove(appId + "/" + version + "/" + arch);
 
@@ -719,6 +724,18 @@ Reply SystemPackageManagerPrivate::Install(const InstallParamOption &installPara
 
     linglong::util::insertAppRecord(appInfo, "user", userName);
 
+    // process portal after install
+    {
+        OrgDeepinLinglongSystemHelperInterface systemHelperInterface(SystemHelperDBusName, SystemHelperDBusPath,
+                                                                     QDBusConnection::systemBus());
+        auto installPath = savePath;
+        qDebug() << "call systemHelperInterface.RebuildInstallPortal" << installPath, ref.toLocalFullRef();
+        QDBusReply<void> reply = systemHelperInterface.RebuildInstallPortal(installPath, ref.toString(), {});
+        if (!reply.isValid()) {
+            qCritical() << "process post install portal failed:" << reply.error();
+        }
+    }
+
     reply.code = STATUS_CODE(kPkgInstallSuccess);
     reply.message = "install " + appInfo->appId + ", version:" + appInfo->version + " success";
     qInfo() << reply.message;
@@ -816,6 +833,8 @@ Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOp
     if (appModule.isEmpty()) {
         appModule = "runtime";
     }
+
+    package::Ref ref("", channel, appId, version, arch, appModule);
 
     // 判断是否已安装 不校验用户名
     QString userName = linglong::util::getUserName();
@@ -916,6 +935,19 @@ Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOp
 
         // 删除应用对应的安装目录
         const QString installPath = kAppInstallPath + it->appId + "/" + it->version;
+
+        // process portal before uninstall
+        {
+            auto packageRootPath = installPath + "/" + arch;
+            OrgDeepinLinglongSystemHelperInterface systemHelperInterface(SystemHelperDBusName, SystemHelperDBusPath,
+                                                                         QDBusConnection::systemBus());
+            qDebug() << "call systemHelperInterface.RuinInstallPortal" << packageRootPath << ref.toLocalFullRef();
+            QDBusReply<void> reply = systemHelperInterface.RuinInstallPortal(packageRootPath, ref.toString(), {});
+            if (!reply.isValid()) {
+                qCritical() << "process pre uninstall portal failed:" << reply.error();
+            }
+        }
+
         // 删除目录需要判断是否存在debug版本
         if (linglong::util::getAppInstalledStatus(appId, version, arch, channel, "devel", "")) {
             // 删除安装目录下除devel外的所有文件

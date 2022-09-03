@@ -13,7 +13,9 @@
 #include <QDBusConnection>
 
 #include "system_helper.h"
+#include "privilege/privilege_install_portal.h"
 
+#include "module/dbus_ipc/dbus_system_helper_common.h"
 #include "systemhelperadaptor.h"
 
 int main(int argc, char *argv[])
@@ -21,16 +23,19 @@ int main(int argc, char *argv[])
     using namespace linglong::system::helper;
     QCoreApplication app(argc, argv);
 
+    qJsonRegister<linglong::system::helper::FilePortalRule>();
+    qJsonRegister<linglong::system::helper::PortalRule>();
+
     SystemHelper systemHelper;
     SystemHelperAdaptor systemHelperAdaptor(&systemHelper);
 
     QDBusConnection dbus = QDBusConnection::systemBus();
-    if (!dbus.registerService(systemHelper.ServiceName)) {
+    if (!dbus.registerService(linglong::SystemHelperDBusName)) {
         qCritical() << "registerService failed" << dbus.lastError();
         return -1;
     }
 
-    if (!dbus.registerObject(systemHelper.ServicePath, &systemHelper)) {
+    if (!dbus.registerObject(linglong::SystemHelperDBusPath, &systemHelper)) {
         qCritical() << "registerObject failed" << dbus.lastError();
         return -1;
     }

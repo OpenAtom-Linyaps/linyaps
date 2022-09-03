@@ -2,5 +2,17 @@
         "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
     <interface name="org.deepin.linglong.SystemHelper">
+        <method name="RebuildInstallPortal">
+            <arg name="installPath" type="s" direction="in"/>
+            <arg name="refs" type="s" direction="in"/>
+            <arg name="options" type="a{sv}" direction="in"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In2" value="QVariantMap"/>
+        </method>
+        <method name="RuinInstallPortal">
+            <arg name="installPath" type="s" direction="in"/>
+            <arg name="refs" type="s" direction="in"/>
+            <arg name="options" type="a{sv}" direction="in"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In2" value="QVariantMap"/>
+    </method>
     </interface>
 </node>

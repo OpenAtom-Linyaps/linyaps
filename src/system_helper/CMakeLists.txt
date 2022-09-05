@@ -2,6 +2,10 @@ set(LL_SYSTEM_HELPER_SOURCES
     # cmake-format: sortable
     ../module/util/json.h
     ../module/util/serialize/serialize.h
+    ../module/package/info.cpp
+    ../module/package/ref.h
+    ../module/package/info.h
+    ../module/runtime/oci.h
     main.cpp
     privilege/privilege_install_portal.cpp
     privilege/privilege_install_portal.h

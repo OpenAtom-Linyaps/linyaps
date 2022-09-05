@@ -16,6 +16,7 @@
 
 #include "module/util/serialize/serialize.h"
 #include "module/util/json.h"
+#include "module/util/result.h"
 
 namespace linglong {
 namespace system {
@@ -36,12 +37,13 @@ class PortalRule : public Serialize
     Q_OBJECT
     Q_SERIALIZE_CONSTRUCTOR(PortalRule)
 public:
+    Q_SERIALIZE_PROPERTY(QStringList, whiteList)
     Q_SERIALIZE_PROPERTY(linglong::system::helper::FilePortalRuleList, fileRuleList)
 };
 Q_SERIALIZE_DECLARE_LIST_MAP(PortalRule)
 
-void rebuildPrivilegeInstallPortal(const QString &repoRoot, const QString &ref, const QVariantMap &options);
-void ruinPrivilegeInstallPortal(const QString &repoRoot, const QString &ref, const QVariantMap &options);
+util::Error rebuildPrivilegeInstallPortal(const QString &repoRoot, const QString &ref, const QVariantMap &options);
+util::Error ruinPrivilegeInstallPortal(const QString &repoRoot, const QString &ref, const QVariantMap &options);
 
 } // namespace helper
 } // namespace system

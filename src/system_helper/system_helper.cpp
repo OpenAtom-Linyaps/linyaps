@@ -25,7 +25,10 @@ namespace helper {
 void SystemHelper::RebuildInstallPortal(const QString &installPath, const QString &ref, const QVariantMap &options)
 {
     qDebug() << "call PostInstall" << installPath << ref << options;
-    rebuildPrivilegeInstallPortal(installPath, ref, options);
+    auto err = rebuildPrivilegeInstallPortal(installPath, ref, options);
+    if (!err.success()) {
+        sendErrorReply(static_cast<QDBusError::ErrorType>(err.code()), err.message());
+    }
 }
 
 /*!
@@ -36,7 +39,10 @@ void SystemHelper::RebuildInstallPortal(const QString &installPath, const QStrin
  */
 void SystemHelper::RuinInstallPortal(const QString &installPath, const QString &ref, const QVariantMap &options)
 {
-    ruinPrivilegeInstallPortal(installPath, ref, options);
+    auto err = ruinPrivilegeInstallPortal(installPath, ref, options);
+    if (!err.success()) {
+        sendErrorReply(static_cast<QDBusError::ErrorType>(err.code()), err.message());
+    }
 }
 
 } // namespace helper

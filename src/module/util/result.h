@@ -73,6 +73,8 @@ public:
 
     int code() const { return errorCode; }
 
+    QString message() const { return msgMeta.message; }
+
     Error &operator<<(const QString &msg)
     {
         msgMeta.message = msg;

@@ -1,43 +1,61 @@
+#!/bin/env bash
+
 # linglong cli completion
- _ll_cli()
+
+__ll_cli_find_subcommand()
 {
-    COMPREPLY=()
-    local cur=${COMP_WORDS[COMP_CWORD]};
-    local pre=${COMP_WORDS[COMP_CWORD-1]};
-
-    opts="query list install update uninstall ps run kill"
-    if [[ ${COMP_CWORD} -eq 1 ]]; then
-        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
-    fi
-
-    case $pre in
-    'install')
-          COMPREPLY=( $(compgen -W '--help --repo-point --nodbus --channel --module' -- $cur) )
-          ;;
-    'uninstall')
-          COMPREPLY=( $(compgen -W '--help --repo-point --nodbus --all-version --channel --module' -- $cur) )
-          ;;
-    'update')
-          COMPREPLY=( $(compgen -W '--help --channel --module' -- $cur) )
-          ;;
-    'query')
-          COMPREPLY=( $(compgen -W '--help --repo-point --force' -- $cur) )
-          ;;
-    'list')
-          COMPREPLY=( $(compgen -W '--help --repo-point --nodbus' -- $cur) )
-          ;;
-    'run')
-          COMPREPLY=( $(compgen -W '--help --repo-point --channel --module --exec --no-proxy --filter-name --filter-path --filter-interface' -- $cur) )
-          ;;
-    'ps')
-          COMPREPLY=( $(compgen -W '--help --output-format' -- $cur) )
-          ;;
-    'kill')
-          COMPREPLY=( $(compgen -W '--help' -- $cur) )
-          ;;
-    '*')
-          ;;
-    esac
-    return 0
+        for i in "${COMP_WORDS[@]}"
+        do
+                if ! [[ $i = -* ]] && ! [[ $i = ll-cli ]]
+                then
+                        echo "$i"
+                        return
+                fi
+        done
+        echo ""
+        return
 }
+
+__ll_cli_get_container_list()
+{
+        ll-cli ps | tail -n+2 | awk '{print $2}' | tr '\n' ' '
+}
+
+__ll_cli_get_installed_list()
+{
+        ll-cli list | tail -n+2 | awk '{print $1}' | tr '\n' ' '
+}
+
+__ll_cli_get_app_list()
+{
+        ll-cli query . | tail -n+2 | awk '{print $1}' | tr '\n' ' '
+}
+
+_ll_cli()
+{
+        local subcommand
+        local wordlist
+
+        subcommand=$(__ll_cli_find_subcommand)
+        wordlist=$(ll-cli "$subcommand" --help | grep -Po '((?<= )-\w|(?<= )--[\w-]+)|(?<=subcommand  )\w+|^ +\w+$' | tr '\n' ' ')
+
+        case "$subcommand" in
+                exec|kill)
+                        wordlist="$wordlist $(__ll_cli_get_container_list)"
+                ;;
+                install)
+                        wordlist="$wordlist $(__ll_cli_get_app_list)"
+                ;;
+                update|uninstall|run)
+                        wordlist="$wordlist $(__ll_cli_get_installed_list)"
+                ;;
+        esac
+
+
+        local cur=${COMP_WORDS[COMP_CWORD]};
+        COMPREPLY=( $(compgen -W "${wordlist}" -- "${cur}") )
+
+        return 0
+}
+
 complete -F _ll_cli ll-cli

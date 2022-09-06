@@ -517,7 +517,7 @@ OSTreeRepo::OSTreeRepo(const QString &localRepoPath, const QString &remoteEndpoi
 
 linglong::util::Error OSTreeRepo::checkout(const package::Ref &ref, const QString &subPath, const QString &target)
 {
-    QStringList args = {"checkout", "--union"};
+    QStringList args = {"checkout", "--union", "--force-copy"};
     if (!subPath.isEmpty()) {
         args.push_back("--subpath=" + subPath);
     }

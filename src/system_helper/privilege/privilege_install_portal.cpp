@@ -34,6 +34,10 @@ fileRuleList:
     target: /usr/lib/dde-dock/plugins
   - source: files/share/applications/context-menus/*.conf
     target: /usr/share/applications/context-menus
+  - source: entries/systemd/user/*.service
+    target: /etc/systemd/user
+  - source: entries/systemd/user/*.timer
+    target: /etc/systemd/user
 #  - source: files/share/glib-2.0/schemas/*.xml
 #    target: /usr/share/glib-2.0/schemas
 )MLS00";

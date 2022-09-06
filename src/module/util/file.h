@@ -22,6 +22,7 @@
 #include <QDebug>
 #include <QTemporaryFile>
 #include <QSysInfo>
+#include <QCryptographicHash>
 
 #include "status_code.h"
 
@@ -37,6 +38,17 @@ QString getUserFile(const QString &path);
 QString ensureUserDir(const QStringList &relativeDirPathComponents);
 
 bool ensureDir(const QString &path);
+
+/*!
+ * 计算文件hash
+ *
+ * @param: path: 文件路径
+ *
+ * @param: method: hash算法
+ *
+ * @return QString: hash字符串
+ */
+QString fileHash(const QString &path, QCryptographicHash::Algorithm method);
 
 /*!
  * 计算文件夹大小

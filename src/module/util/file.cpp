@@ -175,5 +175,31 @@ quint64 sizeOfDir(const QString &srcPath)
     return size;
 }
 
+QString fileHash(const QString &path, QCryptographicHash::Algorithm method)
+{
+    QFile sourceFile(path);
+    qint64 fileSize = sourceFile.size();
+    const qint64 bufferSize = 2 * 1024 * 1024;
+
+    if (sourceFile.open(QIODevice::ReadOnly)) {
+        char buffer[bufferSize];
+        int bytesRead;
+        int readSize = qMin(fileSize, bufferSize);
+
+        QCryptographicHash hash(method);
+
+        while (readSize > 0 && (bytesRead = sourceFile.read(buffer, readSize)) > 0) {
+            fileSize -= bytesRead;
+            hash.addData(buffer, bytesRead);
+            readSize = qMin(fileSize, bufferSize);
+        }
+
+        sourceFile.close();
+        return QString(hash.result().toHex());
+    }
+
+    return QString();
+}
+
 } // namespace util
 } // namespace linglong

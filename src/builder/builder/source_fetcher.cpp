@@ -9,6 +9,7 @@
  */
 
 #include "source_fetcher.h"
+#include "project.h"
 #include "source_fetcher_p.h"
 
 namespace linglong {
@@ -99,6 +100,13 @@ linglong::util::Error SourceFetcherPrivate::fetchArchiveFile()
     QEventLoop loop;
     QEventLoop::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
     loop.exec();
+    // 将缓存写入文件
+    file->close();
+
+    if (source->digest != util::fileHash(path, QCryptographicHash::Sha256)) {
+        qCritical() << QString("mismatched hash: %1").arg(util::fileHash(path, QCryptographicHash::Sha256));
+        return NewError(-1, "download failed");
+    }
 
     return q->extractFile(path, sourceTargetPath());
 }

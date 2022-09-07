@@ -22,15 +22,18 @@ namespace system {
 namespace helper {
 
 const char *PrivilegePortalRule = R"MLS00(
-# the target must be absolute path
 whiteList:
   - org.deepin.screen-recorder
   - org.deepin.calendar
+  - org.deepin.compressor
 # TODO: use org.deepin.calendar instead
   - org.dde.calendar
+# the target must be absolute path
 fileRuleList:
   - source: files/lib/dde-dock/plugins/*.so
     target: /usr/lib/dde-dock/plugins
+  - source: files/share/applications/context-menus/*.conf
+    target: /usr/share/applications/context-menus
 #  - source: files/share/glib-2.0/schemas/*.xml
 #    target: /usr/share/glib-2.0/schemas
 )MLS00";

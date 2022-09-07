@@ -18,7 +18,7 @@ void CommandHelper::showContainer(const ContainerList &containerList, const QStr
     QJsonArray jsonArray;
     for (auto const &container : containerList) {
         jsonArray.push_back(QJsonObject {
-            {"app", container->packageName},
+            {"app", package::Ref(container->packageName).appId},
             {"id", container->id},
             {"pid", container->pid},
             {"path", container->workingDirectory},

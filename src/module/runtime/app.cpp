@@ -614,10 +614,11 @@ public:
             }
         }
 
-        auto hostAppHome = util::ensureUserDir({".linglong", appId, "home"});
-        mountMap.push_back(qMakePair(hostAppHome, util::getUserFile("")));
+        // 挂载宿主机home目录
+        auto hostHome = util::getUserFile("");
+        mountMap.push_back(qMakePair(hostHome, hostHome));
 
-        // bind $(HOME)/.linglong/$(appId)
+        // home目录下隐藏目录如.config .cache .local .deepinwine 需要特殊处理
         auto appLinglongPath = util::ensureUserDir({".linglong", appId});
         mountMap.push_back(qMakePair(appLinglongPath, util::getUserFile(".linglong/" + appId)));
 
@@ -859,21 +860,15 @@ public:
             r->mounts.push_back(m);
         }
 
-        // 临时默认挂载用户相关目录
-        // todo: 后续加权限后整改
-        // Fixme: modify static mount that after this comment code.
-        auto usrDirList = QStringList {"desktop",  "documents", "downloads",    "music",
-                                       "pictures", "videos",    "public_share", "templates"};
-        for (auto dir : usrDirList) {
-            auto xdgDir = linglong::util::getXdgDir(dir);
-            if (xdgDir.first) {
-                QPointer<Mount> m(new Mount(r));
-                m->type = "bind";
-                m->options = QStringList {"rw", "rbind"};
-                m->source = xdgDir.second;
-                m->destination = xdgDir.second;
-                r->mounts.push_back(m);
-            }
+        // 挂载U盘目录
+        auto uDiskDir = QStringList {"/media", "/mnt"};
+        for (auto dir : uDiskDir) {
+            QPointer<Mount> m(new Mount(r));
+            m->type = "bind";
+            m->options = QStringList {"rw", "rbind"};
+            m->source = dir;
+            m->destination = dir;
+            r->mounts.push_back(m);
         }
 
         // 挂载runtime的xdg-open和xdg-email到沙箱/usr/bin下

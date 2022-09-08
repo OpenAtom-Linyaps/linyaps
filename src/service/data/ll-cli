@@ -37,7 +37,7 @@ _ll_cli()
         local wordlist
 
         subcommand=$(__ll_cli_find_subcommand)
-        wordlist=$(ll-cli "$subcommand" --help | grep -Po '((?<= )-\w|(?<= )--[\w-]+)|(?<=subcommand  )\w+|^ +\w+$' | tr '\n' ' ')
+        wordlist=$(ll-cli "$subcommand" --help | grep -Po '((?<= )-\w|(?<= )--[\w-]+)|(?<=subcommand  )\w+|^ +  \w+$' | tr '\n' ' ')
 
         case "$subcommand" in
                 exec|kill)
@@ -49,9 +49,14 @@ _ll_cli()
                 update|uninstall|run)
                         wordlist="$wordlist $(__ll_cli_get_installed_list)"
                 ;;
+                repo)
+                        wordlist="$wordlist modify"
+                ;;
         esac
-
-
+        local pre=${COMP_WORDS[COMP_CWORD-1]};
+        if [ $pre = "modify" ];then
+             wordlist="-h --help"
+        fi
         local cur=${COMP_WORDS[COMP_CWORD]};
         COMPREPLY=( $(compgen -W "${wordlist}" -- "${cur}") )
 

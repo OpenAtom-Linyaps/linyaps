@@ -40,7 +40,7 @@ bool PackageManagerPrivate::isAppRunning(const QString &appId, const QString &ve
 {
     linglong::package::AppMetaInfoList pkgList;
     if (!appId.isEmpty()) {
-        linglong::util::getInstalledAppInfo(appId, version, arch, "", pkgList);
+        linglong::util::getInstalledAppInfo(appId, version, arch, "", "", "", pkgList);
         if (pkgList.size() > 0) {
             auto it = pkgList.at(0);
             // new ref format org.deepin.calculator/1.2.2/x86_64

@@ -418,16 +418,11 @@ bool SystemPackageManagerPrivate::checkAppBase(const QString &runtime, const QSt
         qCritical() << err;
         return false;
     }
-    // app runtime 只能匹配一个
-    if (appList.size() != 1) {
-        err = "installBase app:" + runtimeId + ", version:" + runtimeVer + " not found in repo";
-        return false;
-    }
 
     auto runtimeInfo = appList.at(0);
     auto baseRef = runtimeInfo->runtime;
     QStringList baseList = baseRef.split('/');
-    if (baseList.size() != 3) {
+    if (baseList.size() < 3) {
         err = "app base:" + baseRef + " base format err";
         return false;
     }
@@ -485,7 +480,7 @@ void SystemPackageManagerPrivate::addAppConfig(const QString &appId, const QStri
     if (linglong::util::getAppInstalledStatus(appId, "", arch, "", "", "")) {
         linglong::package::AppMetaInfoList pkgList;
         // 查找当前已安装软件包的最高版本
-        linglong::util::getInstalledAppInfo(appId, "", arch, "", pkgList);
+        linglong::util::getInstalledAppInfo(appId, "", arch, "", "", "", pkgList);
         auto it = pkgList.at(0);
         linglong::util::AppVersion dstVersion(version);
         linglong::util::AppVersion curVersion(it->version);
@@ -528,7 +523,7 @@ void SystemPackageManagerPrivate::delAppConfig(const QString &appId, const QStri
     if (linglong::util::getAppInstalledStatus(appId, "", arch, "", "", "")) {
         linglong::package::AppMetaInfoList pkgList;
         // 查找当前已安装软件包的最高版本
-        linglong::util::getInstalledAppInfo(appId, "", arch, "", pkgList);
+        linglong::util::getInstalledAppInfo(appId, "", arch, "", "", "", pkgList);
         auto it = pkgList.at(0);
         linglong::util::AppVersion dstVersion(version);
         linglong::util::AppVersion curVersion(it->version);
@@ -851,7 +846,7 @@ Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOp
         linglong::util::getAllVerAppInfo(appId, "", arch, "", pkgList);
     } else {
         // 根据已安装文件查询已安装软件包信息
-        linglong::util::getInstalledAppInfo(appId, version, arch, "", pkgList);
+        linglong::util::getInstalledAppInfo(appId, version, arch, channel, appModule, "", pkgList);
     }
 
     QStringList delVersionList;
@@ -866,6 +861,10 @@ Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOp
             reply.message = appId + " uninstall permission deny";
             qCritical() << reply.message;
             return reply;
+        }
+
+        if (paramOption.delAllVersion && (it->channel != channel || it->module != appModule)) {
+            continue;
         }
 
         QString err = "";
@@ -1031,7 +1030,7 @@ Reply SystemPackageManagerPrivate::Update(const ParamOption &paramOption)
     // 检查是否存在版本更新
     linglong::package::AppMetaInfoList pkgList;
     // 根据已安装文件查询已经安装软件包信息
-    linglong::util::getInstalledAppInfo(appId, version, arch, "", pkgList);
+    linglong::util::getInstalledAppInfo(appId, version, arch, channel, appModule, "", pkgList);
     if (pkgList.size() != 1) {
         reply.message = "query local app:" + appId + " info err";
         qCritical() << reply.message;

@@ -107,13 +107,15 @@ bool getAllVerAppInfo(const QString &appId, const QString &appVer, const QString
  * @param appId: 软件包包名
  * @param appVer: 软件包对应的版本号
  * @param appArch: 软件包对应的架构
+ * @param channel: 软件包对应的渠道
+ * @param module: 软件包类型
  * @param userName: 用户名
  * @param pkgList: 查询结果
  *
  * @return bool: true:已安装 false:未安装
  */
-bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QString &appArch, const QString &userName,
-                         linglong::package::AppMetaInfoList &pkgList);
+bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QString &appArch, const QString &channel,
+                         const QString &module, const QString &userName, linglong::package::AppMetaInfoList &pkgList);
 
 /*
  * 查询所有已安装软件包信息

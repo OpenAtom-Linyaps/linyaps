@@ -34,11 +34,11 @@ TEST(AppStatus, GetInstalledAppInfo)
     const QString userName = linglong::util::getUserName();
 
     linglong::package::AppMetaInfoList pkgList;
-    auto result = linglong::util::getInstalledAppInfo(appItem->appId, "", appItem->arch, "", pkgList);
+    auto result = linglong::util::getInstalledAppInfo(appItem->appId, "", appItem->arch, "", "", "", pkgList);
     EXPECT_EQ(result, true);
 
     linglong::package::AppMetaInfoList pkgList1;
-    result = linglong::util::getInstalledAppInfo(appItem->appId, "", appItem->arch, "", pkgList1);
+    result = linglong::util::getInstalledAppInfo(appItem->appId, "", appItem->arch, "", "", "", pkgList1);
     EXPECT_EQ(result, true);
 
     QString ret = "";

@@ -299,7 +299,7 @@ bool getAllVerAppInfo(const QString &appId, const QString &appVer, const QString
     if (!appArch.isEmpty()) {
         condition.append(QString(" AND arch like '%%1%'").arg(appArch));
     }
-    qDebug() << "sql condition:" << condition;
+
     selectSql.append(condition);
     selectSql.append(" order by version ASC");
     qDebug() << selectSql;
@@ -331,17 +331,19 @@ bool getAllVerAppInfo(const QString &appId, const QString &appVer, const QString
  * @param appId: 软件包包名
  * @param appVer: 软件包对应的版本号
  * @param appArch: 软件包对应的架构
+ * @param channel: 软件包对应的渠道
+ * @param module: 软件包类型
  * @param userName: 用户名
  * @param pkgList: 查询结果
  *
  * @return bool: true:成功 false:失败
  */
-bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QString &appArch, const QString &userName,
-                         linglong::package::AppMetaInfoList &pkgList)
+bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QString &appArch, const QString &channel,
+                         const QString &module, const QString &userName, linglong::package::AppMetaInfoList &pkgList)
 {
-    if (!getAppInstalledStatus(appId, appVer, appArch, "", "", userName)) {
-        qCritical() << "getInstalledAppInfo app:" + appId + ",version:" + appVer + ",userName:" + userName
-                           + " not installed";
+    if (!getAppInstalledStatus(appId, appVer, appArch, channel, module, userName)) {
+        qCritical() << "getInstalledAppInfo app:" + appId + ",version:" + appVer + ",channel:" + channel
+                           + ",module:" + module + ",userName:" + userName + " not installed";
         return false;
     }
 
@@ -356,7 +358,13 @@ bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QStr
     if (!appArch.isEmpty()) {
         condition.append(QString(" AND arch like '%%1%'").arg(appArch));
     }
-    qDebug() << "sql condition:" << condition;
+    if (!channel.isEmpty()) {
+        condition.append(QString(" AND channel = '%1'").arg(channel));
+    }
+    if (!module.isEmpty()) {
+        condition.append(QString(" AND module = '%1'").arg(module));
+    }
+
     selectSql.append(condition);
     selectSql.append(" order by version ASC");
     qDebug() << selectSql;

@@ -319,6 +319,8 @@ bool getAllVerAppInfo(const QString &appId, const QString &appVer, const QString
         info->description = sqlQuery.value(9).toString().trimmed();
         info->user = sqlQuery.value(10).toString().trimmed();
         info->version = sqlQuery.value(3).toString().trimmed();
+        info->channel = sqlQuery.value(13).toString().trimmed();
+        info->module = sqlQuery.value(14).toString().trimmed();
         pkgList.push_back(info);
 
     } while (sqlQuery.next());
@@ -387,6 +389,8 @@ bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QStr
         info->arch = sqlQuery.value(4).toString().trimmed();
         info->description = sqlQuery.value(9).toString().trimmed();
         info->user = sqlQuery.value(10).toString().trimmed();
+        info->channel = sqlQuery.value(13).toString().trimmed();
+        info->module = sqlQuery.value(14).toString().trimmed();
         QString dstVer = sqlQuery.value(3).toString().trimmed();
         // sqlite逐字符比较导致获取的最高版本号不准，e.g: 5.9.1比5.10.1版本高
         sqlQuery.first();

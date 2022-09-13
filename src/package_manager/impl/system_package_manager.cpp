@@ -947,28 +947,28 @@ Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOp
             }
         }
 
-        // 删除目录需要判断是否存在debug版本
-        if (linglong::util::getAppInstalledStatus(appId, version, arch, channel, "devel", "")) {
-            // 删除安装目录下除devel外的所有文件
-            QDir dir(installPath + "/" + arch);
-            dir.setFilter(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
-            QFileInfoList fileList = dir.entryInfoList();
-            foreach (QFileInfo file, fileList) {
-                if (file.isFile()) {
-                    file.dir().remove(file.fileName());
-                } else {
-                    if ("devel" != file.fileName()) {
-                        linglong::util::removeDir(file.absoluteFilePath());
+        // 删除release版本时需要判断是否存在debug版本
+        if ("devel" != appModule) {
+            if (linglong::util::getAppInstalledStatus(appId, it->version, arch, channel, "devel", "")) {
+                // 删除安装目录下除devel外的所有文件
+                QDir dir(installPath + "/" + arch);
+                dir.setFilter(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
+                QFileInfoList fileList = dir.entryInfoList();
+                foreach (QFileInfo file, fileList) {
+                    if (file.isFile()) {
+                        file.dir().remove(file.fileName());
+                    } else {
+                        if ("devel" != file.fileName()) {
+                            linglong::util::removeDir(file.absoluteFilePath());
+                        }
                     }
                 }
-            }
-        } else {
-            // 卸载debug版本
-            if ("devel" == appModule) {
-                linglong::util::removeDir(installPath + "/" + arch + "/devel");
             } else {
                 linglong::util::removeDir(installPath);
             }
+        } else {
+            // 卸载debug版本
+            linglong::util::removeDir(installPath + "/" + arch + "/devel");
         }
 
         QDir archDir(installPath + "/" + arch);

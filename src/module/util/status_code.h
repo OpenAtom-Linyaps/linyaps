@@ -38,7 +38,9 @@ enum class StatusCode {
     kErrorPkgKillFailed, ///< kill应用失败
     kErrorPkgKillSuccess, ///< kill成功
     kErrorPkgQuerySuccess, ///< 查询成功
-    kErrorPkgQueryFailed ///< 查询失败
+    kErrorPkgQueryFailed, ///< 查询失败
+    kErrorModifyRepoFailed, ///< 更新仓库url失败
+    kErrorModifyRepoSuccess ///< 更新仓库url成功
 };
 
 template<typename T = int>

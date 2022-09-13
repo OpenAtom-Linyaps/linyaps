@@ -183,7 +183,8 @@ int main(int argc, char **argv)
 
     QCommandLineParser parser;
     parser.addHelpOption();
-    QStringList subCommandList = {"run", "ps", "exec", "kill", "install", "uninstall", "update", "query", "list"};
+    QStringList subCommandList = {"run",       "ps",     "exec",  "kill", "install",
+                                  "uninstall", "update", "query", "list", "repo"};
 
     parser.addPositionalArgument("subcommand", subCommandList.join("\n"), "subcommand [sub-option]");
 
@@ -757,6 +758,30 @@ int main(int argc, char **argv)
              } else if (appMetaInfoList.size() > 1) {
                  printAppInfo(appMetaInfoList);
              }
+             return 0;
+         }},
+        {"repo",
+         [&](QCommandLineParser &parser) -> int {
+             parser.clearPositionalArguments();
+             parser.addPositionalArgument("repo", "config remote repo", "repo");
+             parser.addPositionalArgument("modify", "modify the url of repo", "modify");
+             parser.addPositionalArgument("url", "the url of repo", "");
+             parser.process(app);
+             args = parser.positionalArguments();
+             auto subCmd = args.value(1).trimmed();
+             auto url = args.value(2).trimmed();
+             if (url.isEmpty() || "modify" != subCmd || args.size() != 3) {
+                 parser.showHelp(-1);
+                 return -1;
+             }
+             QDBusPendingReply<linglong::service::Reply> dbusReply = sysPackageManager.ModifyRepo(url);
+             dbusReply.waitForFinished();
+             linglong::service::Reply reply = dbusReply.value();
+             if (reply.code != STATUS_CODE(kErrorModifyRepoSuccess)) {
+                 qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
+                 return -1;
+             }
+             qInfo().noquote() << reply.message;
              return 0;
          }},
     };

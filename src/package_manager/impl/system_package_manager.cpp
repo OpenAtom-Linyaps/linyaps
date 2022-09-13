@@ -1148,6 +1148,64 @@ SystemPackageManager::~SystemPackageManager()
 {
 }
 
+Reply SystemPackageManager::ModifyRepo(const QString &url)
+{
+    Reply reply;
+    Q_D(SystemPackageManager);
+    QUrl cfgUrl(url);
+    if ((cfgUrl.scheme().toLower() != "http" && cfgUrl.scheme().toLower() != "https") || !cfgUrl.isValid()) {
+        reply.message = "url format error";
+        reply.code = STATUS_CODE(kUserInputParamErr);
+        return reply;
+    }
+    auto ostreeCfg = d->kLocalRepoPath + "/repo/config";
+    auto serverCfg = d->kLocalRepoPath + "/config.json";
+    if (!linglong::util::fileExists(ostreeCfg)) {
+        reply.message = ostreeCfg + " no exist";
+        reply.code = STATUS_CODE(kErrorModifyRepoFailed);
+        return reply;
+    }
+
+    if (!linglong::util::fileExists(serverCfg)) {
+        reply.message = serverCfg + " no exist";
+        reply.code = STATUS_CODE(kErrorModifyRepoFailed);
+        return reply;
+    }
+
+    QString dstUrl = "";
+    if (url.endsWith("/")) {
+        dstUrl = url + "repo";
+    } else {
+        dstUrl = url + "/repo";
+    }
+
+    // ostree config --repo=/persistent/linglong/repo set "remote \"repo\".url" https://repo-dev.linglong.space/repo/
+    // ostree config文件中节名有""，QSettings会自动转义，不用QSettings直接修改ostree config文件
+    auto ret = linglong::runner::Runner(
+        "ostree", {"config", "--repo=" + d->kLocalRepoPath + "/repo", "set", "remote \"repo\".url", dstUrl},
+        1000 * 60 * 5);
+    if (!ret) {
+        reply.message = "modify repo url failed";
+        qWarning() << reply.message;
+        reply.code = STATUS_CODE(kErrorModifyRepoFailed);
+        return reply;
+    }
+
+    QJsonObject obj;
+    obj["appDbUrl"] = url;
+    QJsonDocument doc(obj);
+    QFile jsonFile(serverCfg);
+    jsonFile.open(QIODevice::WriteOnly | QIODevice::Text);
+    QTextStream wirteStream(&jsonFile);
+    wirteStream.setCodec("UTF-8");
+    wirteStream << doc.toJson();
+    jsonFile.close();
+
+    reply.code = STATUS_CODE(kErrorModifyRepoSuccess);
+    reply.message = "modify repo url success";
+    return reply;
+}
+
 /**
  * @brief 查询软件包下载安装状态
  *

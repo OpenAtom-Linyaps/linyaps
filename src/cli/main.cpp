@@ -451,6 +451,7 @@ int main(int argc, char **argv)
              parser.addOption(optRepoPoint);
              auto optNoDbus =
                  QCommandLineOption("nodbus", "execute cmd directly, not via dbus(only for root user)", "");
+             optNoDbus.setFlags(QCommandLineOption::HiddenFromHelp);
              parser.addOption(optNoDbus);
 
              auto optChannel = QCommandLineOption("channel", "the channnel of app", "--channel=linglong", "linglong");
@@ -654,6 +655,7 @@ int main(int argc, char **argv)
              auto optNoDbus =
                  QCommandLineOption("nodbus", "execute cmd directly, not via dbus(only for root user)", "");
              auto optAllVer = QCommandLineOption("all-version", "uninstall all version application", "");
+             optNoDbus.setFlags(QCommandLineOption::HiddenFromHelp);
              parser.addOption(optNoDbus);
              parser.addOption(optRepoPoint);
              parser.addOption(optAllVer);
@@ -720,6 +722,7 @@ int main(int argc, char **argv)
              auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "repo-point", "");
              parser.addOption(optRepoPoint);
              auto optNoDbus = QCommandLineOption("nodbus", "execute cmd directly, not via dbus", "");
+             optNoDbus.setFlags(QCommandLineOption::HiddenFromHelp);
              parser.addOption(optNoDbus);
              parser.process(app);
              auto optPara = parser.value(optType);

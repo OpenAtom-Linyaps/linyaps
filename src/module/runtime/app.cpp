@@ -602,6 +602,9 @@ public:
         // bind /run/usr/$(uid)/pulse
         mountMap.push_back(qMakePair(userRuntimeDir + "/pulse", userRuntimeDir + "/pulse"));
 
+        // bind /run/user/uid/gvfs
+        mountMap.push_back(qMakePair(userRuntimeDir + "/gvfs", userRuntimeDir + "/gvfs"));
+
         // 处理摄像头挂载问题
         // bind /run/udev    /dev/video*
         if (linglong::util::dirExists("/run/udev")) {

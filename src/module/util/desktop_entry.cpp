@@ -120,6 +120,18 @@ QString DesktopEntry::rawValue(const QString &key, const QString &section, const
     return d->dataMaps.value(section).value(key).toString();
 }
 
+QStringList DesktopEntry::sections()
+{
+    Q_D(DesktopEntry);
+
+    QStringList sections;
+    for (const auto &section : d->dataMaps.keys()) {
+        sections.append(section);
+    }
+
+    return sections;
+}
+
 linglong::util::Error DesktopEntry::save(const QString &filepath)
 {
     Q_D(DesktopEntry);
@@ -129,7 +141,19 @@ linglong::util::Error DesktopEntry::save(const QString &filepath)
         return NewError(file.error(), file.errorString() + filepath);
     }
 
+    // write DesktopEnty first
+    file.write(QString("[%1]\n").arg(SectionDesktopEntry).toLocal8Bit());
+    auto desktopEntryValues = d->dataMaps[SectionDesktopEntry];
+    for (const auto &key : desktopEntryValues.keys()) {
+        file.write(QString("%1=%2\n").arg(key, desktopEntryValues[key].toString()).toLocal8Bit());
+    }
+
+    // write other section exclude SectionDesktopEntry
     for (const auto &section : d->dataMaps.keys()) {
+        if (section == SectionDesktopEntry) {
+            continue;
+        }
+
         file.write(QString("[%1]\n").arg(section).toLocal8Bit());
         auto groupValues = d->dataMaps[section];
         for (const auto &key : groupValues.keys()) {

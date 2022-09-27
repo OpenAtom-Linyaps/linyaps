@@ -92,16 +92,19 @@ linglong::util::Error commitBuildOutput(Project *project, AnnotationsOverlayfsRo
     for (auto const &fileInfo : desktopFileInfoList) {
         util::DesktopEntry desktopEntry(fileInfo.filePath());
 
-        // FIXME: set all section
-        auto exec = desktopEntry.rawValue("Exec", linglong::util::DesktopEntry::SectionDesktopEntry);
-        exec = QString("ll-cli run %1 --exec %2").arg(project->package->id, exec);
-        desktopEntry.set(linglong::util::DesktopEntry::SectionDesktopEntry, "Exec", exec);
-        // The section TryExec affects starting from the launcher, set it to null.
-        desktopEntry.set(linglong::util::DesktopEntry::SectionDesktopEntry, "TryExec", "");
+        // set all section
+        auto desktopEntrySections = desktopEntry.sections();
+        for (auto section : desktopEntrySections) {
+            auto exec = desktopEntry.rawValue("Exec", section);
+            exec = QString("ll-cli run %1 --exec %2").arg(project->package->id, exec);
+            desktopEntry.set(section, "Exec", exec);
 
-        auto ret = desktopEntry.save(QStringList {targetPath, fileInfo.fileName()}.join(QDir::separator()));
-        if (!ret.success()) {
-            return WrapError(ret, "save desktop failed");
+            // The section TryExec affects starting from the launcher, set it to null.
+            desktopEntry.set(section, "TryExec", "");
+            auto ret = desktopEntry.save(QStringList {targetPath, fileInfo.fileName()}.join(QDir::separator()));
+            if (!ret.success()) {
+                return WrapError(ret, "save desktop failed");
+            }
         }
     }
 

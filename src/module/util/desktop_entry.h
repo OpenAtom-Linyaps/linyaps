@@ -31,7 +31,9 @@ public:
     QString rawValue(const QString &key, const QString &section = SectionDesktopEntry,
                      const QString &defaultValue = QString());
 
-    linglong::util::Error save(const QString &filepath);
+    QStringList sections();
+
+    util::Error save(const QString &filepath);
 
 private:
     QScopedPointer<DesktopEntryPrivate> dd_ptr;

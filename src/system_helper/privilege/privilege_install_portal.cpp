@@ -30,6 +30,7 @@ whiteList:
   - org.deepin.compressor
 # TODO: use org.deepin.calendar instead
   - org.dde.calendar
+  - org.deepin.downloader
 # the target must be absolute path
 fileRuleList:
   - source: files/lib/dde-dock/plugins/*.so
@@ -40,6 +41,10 @@ fileRuleList:
     target: /etc/systemd/user
   - source: entries/systemd/user/*.timer
     target: /etc/systemd/user
+  - source: files/etc/browser/native-messaging-hosts/*
+    target: /etc/browser/native-messaging-hosts
+  - source: files/libexec/openconnect/*
+    target: /usr/libexec/openconnect
 #  - source: files/share/glib-2.0/schemas/*.xml
 #    target: /usr/share/glib-2.0/schemas
 )MLS00";

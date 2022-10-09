@@ -490,7 +490,13 @@ public:
             {"/var/cache/fontconfig", "/run/host/appearance/fonts-cache"},
         };
 
+        // bind /dev/nvidia*
         for (auto const &item : QDir("/dev").entryInfoList({"nvidia*"}, QDir::AllEntries | QDir::System)) {
+            roMountMap.push_back({item.canonicalFilePath(), item.canonicalFilePath()});
+        }
+
+        // bind /dev/sr*
+        for (auto const &item : QDir("/dev").entryInfoList({"sr*"}, QDir::AllEntries | QDir::System)) {
             roMountMap.push_back({item.canonicalFilePath(), item.canonicalFilePath()});
         }
 

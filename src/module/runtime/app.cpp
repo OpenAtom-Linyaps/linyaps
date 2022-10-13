@@ -900,6 +900,46 @@ public:
             m->destination = sysLinglongInstalltions + "/glib-2.0/schemas/gschemas.compiled";
             r->mounts.push_back(m);
         }
+
+        // deepin-kwin share data with /tmp/screen-recorder
+        {
+            auto deepinKWinTmpSharePath = "/tmp/screen-recorder";
+            util::ensureDir(deepinKWinTmpSharePath);
+            QPointer<Mount> m(new Mount(r));
+            m->type = "bind";
+            m->options = QStringList {"rbind"};
+            m->source = deepinKWinTmpSharePath;
+            m->destination = deepinKWinTmpSharePath;
+            r->mounts.push_back(m);
+        }
+
+        // deepin-mail need save data with /tmp/deepin-mail-web
+        {
+            auto deepinEmailTmpSharePath = "/tmp/deepin-mail-web";
+            util::ensureDir(deepinEmailTmpSharePath);
+            QPointer<Mount> m(new Mount(r));
+            m->type = "bind";
+            m->options = QStringList {"rbind"};
+            m->source = deepinEmailTmpSharePath;
+            m->destination = deepinEmailTmpSharePath;
+            r->mounts.push_back(m);
+        }
+
+        // Fixme: deepin-manual share data, should be removed later
+        {
+            auto deepinManualFilePath =
+                QStringList {util::getLinglongRootPath(), "entries/share/deepin-manual"}.join(QDir::separator());
+
+            if (util::dirExists(deepinManualFilePath)) {
+                QPointer<Mount> m(new Mount(r));
+                m->type = "bind";
+                m->options = QStringList {"rbind"};
+                m->source = deepinManualFilePath;
+                m->destination = deepinManualFilePath;
+                r->mounts.push_back(m);
+            }
+        }
+
         return 0;
     }
 

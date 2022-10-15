@@ -506,9 +506,9 @@ int main(int argc, char **argv)
                      dbusReply = sysPackageManager.GetDownloadStatus(installParamOption, 0);
                      dbusReply.waitForFinished();
                      reply = dbusReply.value();
+                     // 隐藏光标
+                     std::cout << "\033[?25l";
                      while (reply.code == STATUS_CODE(kPkgInstalling)) {
-                         // 隐藏光标
-                         std::cout << "\033[?25l";
                          std::cout << "\r\33[K" << reply.message.toStdString();
                          std::cout.flush();
                          QThread::sleep(1);
@@ -572,9 +572,9 @@ int main(int argc, char **argv)
                  dbusReply = sysPackageManager.GetDownloadStatus(paramOption, 1);
                  dbusReply.waitForFinished();
                  reply = dbusReply.value();
+                 // 隐藏光标
+                 std::cout << "\033[?25l";
                  while (reply.code == STATUS_CODE(kPkgUpdating)) {
-                     // 隐藏光标
-                     std::cout << "\033[?25l";
                      std::cout << "\r\33[K" << reply.message.toStdString();
                      std::cout.flush();
                      QThread::sleep(1);

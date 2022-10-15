@@ -110,7 +110,7 @@ void linglong::util::LogHandlerPrivate::openAndBackupLogFile()
         delete logFile;
 
         QString newLogPath = logDir.absoluteFilePath(QCoreApplication::applicationName() + "_"
-                                                     + logFileCreatedDateTime.toString("yyyy-MM-dd hh:mm:ss.zzz.log"));
+                                                     + logFileCreatedDateTime.toString("yyyy-MM-dd_hh:mm:ss.zzz.log"));
         QFile::copy(logPath, newLogPath); // Bug: 按理说 rename 会更合适，但是 rename 时最后一个文件总是显示不出来，需要
                                           // killall Finder 后才出现
         QFile::remove(logPath); // 删除重新创建，改变创建时间
@@ -129,7 +129,7 @@ void linglong::util::LogHandlerPrivate::openAndBackupLogFile()
 // 检测当前日志文件大小
 void linglong::util::LogHandlerPrivate::checkLogFiles()
 {
-    // 如果 protocal.log 文件大小超过10M，重新创建一个日志文件，原文件存档为yyyy-MM-dd_hhmmss.log
+    // 如果 protocal.log 文件大小超过10M，重新创建一个日志文件，原文件存档为yyyy-MM-dd_hh:mm:ss.zzz.log
     if (logFile->size() > 1024 * 1024 * g_logLimitSize) {
         logFile->flush();
         logFile->close();
@@ -138,7 +138,7 @@ void linglong::util::LogHandlerPrivate::checkLogFiles()
 
         QString logPath = logDir.absoluteFilePath(QCoreApplication::applicationName() + ".log"); // 日志的路径
         QString newLogPath = logDir.absoluteFilePath(QCoreApplication::applicationName() + "_"
-                                                     + logFileCreatedDateTime.toString("yyyy-MM-dd hh:mm:ss.zzz.log"));
+                                                     + logFileCreatedDateTime.toString("yyyy-MM-dd_hh:mm:ss.zzz.log"));
         QFile::copy(logPath, newLogPath); // Bug: 按理说 rename 会更合适，但是 rename 时最后一个文件总是显示不出来，需要
                                           // killall Finder 后才出现
         QFile::remove(logPath); // 删除重新创建，改变创建时间
@@ -162,14 +162,9 @@ void linglong::util::LogHandlerPrivate::autoDeleteLog()
     QDateTime dateTime1 = now.addDays(-30);
     QDateTime dateTime2;
 
-    QString logPath = logDir.absoluteFilePath(QCoreApplication::applicationName() + ".log"); // 日志的路径
-    QDir dir(logPath);
-    QFileInfoList fileList = dir.entryInfoList();
+    QDir dir(logDir.path());
+    QFileInfoList fileList = dir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot);
     foreach (QFileInfo f, fileList) {
-        // "."和".."跳过
-        if (f.baseName() == "")
-            continue;
-
         dateTime2 = f.lastModified();
         if (dateTime2 < dateTime1) { // 只要日志时间小于前30天的时间就删除
             dir.remove(f.absoluteFilePath());

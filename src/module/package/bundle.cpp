@@ -120,12 +120,12 @@ linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString
     }
 
     // 赋值squashfsFilePath
-    QString squashfsName = (QStringList {info->appid, info->version, this->buildArch}.join("_")) + QString(".squashfs");
-    this->squashfsFilePath = bundleFileDirPath + "/" + squashfsName;
+    QString erofsName = (QStringList {info->appid, info->version, this->buildArch}.join("_")) + QString(".erofs");
+    this->erofsFilePath = bundleFileDirPath + "/" + erofsName;
 
-    // 清理squashfs文件
-    if (util::fileExists(this->squashfsFilePath)) {
-        QFile::remove(this->squashfsFilePath);
+    // 清理erofs文件
+    if (util::fileExists(this->erofsFilePath)) {
+        QFile::remove(this->erofsFilePath);
     }
 
     // 清理bundle文件
@@ -134,29 +134,22 @@ linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString
     }
 
     // 制作squashfs文件
-    auto resultMakeSquashfs =
-        runner("mksquashfs", {this->bundleDataPath, this->squashfsFilePath, "-comp", "xz"}, 15 * 60 * 1000);
-    if (!resultMakeSquashfs.success()) {
-        return NewError(resultMakeSquashfs) << "call mksquashfs failed";
+    auto resultMkfs = runner("mkfs.erofs", {"-zlz4hc,9", this->erofsFilePath, this->bundleDataPath}, 15 * 60 * 1000);
+    if (!resultMkfs.success()) {
+        return NewError(resultMkfs) << "call mkfs.erofs failed";
     }
 
     // 生产bundle文件
-    QFile outputFile(this->bundleFilePath);
-    outputFile.open(QIODevice::Append);
-    QFile linglongLoaderFile(this->linglongLoader);
-    linglongLoaderFile.open(QIODevice::ReadOnly);
-    QFile squashfsFile(this->squashfsFilePath);
-    squashfsFile.open(QIODevice::ReadOnly);
-    outputFile.write(linglongLoaderFile.readAll());
-    outputFile.write(squashfsFile.readAll());
-
-    linglongLoaderFile.close();
-    squashfsFile.close();
-    outputFile.close();
+    auto resultObjcopy = runner("objcopy", {"--add-section", QStringList {".bundle=", this->erofsFilePath}.join(""),
+                                            "--set-section-flags", ".bundle=noload,readonly", this->linglongLoader,
+                                            this->bundleFilePath});
+    if (!resultObjcopy.success()) {
+        return NewError(resultObjcopy) << "call objcopy failed";
+    }
 
     // 清理squashfs文件
-    if (util::fileExists(this->squashfsFilePath)) {
-        QFile::remove(this->squashfsFilePath);
+    if (util::fileExists(this->erofsFilePath)) {
+        QFile::remove(this->erofsFilePath);
     }
 
     // 设置执行权限
@@ -258,9 +251,9 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
     this->offsetValue = getElfSize(this->bundleFilePath);
 
     // 导出squashfs文件
-    this->squashfsFilePath = this->tmpWorkDir + "/squashfsFile";
+    this->erofsFilePath = this->tmpWorkDir + "/squashfsFile";
     QFile bundleFile(this->bundleFilePath);
-    QFile squashfsFile(this->squashfsFilePath);
+    QFile squashfsFile(this->erofsFilePath);
     bundleFile.open(QIODevice::ReadOnly);
     bundleFile.seek(this->offsetValue);
     squashfsFile.open(QIODevice::WriteOnly);
@@ -274,7 +267,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
     if (util::dirExists(this->bundleDataPath)) {
         util::removeDir(this->bundleDataPath);
     }
-    auto resultUnsquashfs = runner("unsquashfs", {"-dest", this->bundleDataPath, "-f", this->squashfsFilePath});
+    auto resultUnsquashfs = runner("unsquashfs", {"-dest", this->bundleDataPath, "-f", this->erofsFilePath});
 
     if (!resultUnsquashfs.success()) {
         if (util::dirExists(this->tmpWorkDir)) {

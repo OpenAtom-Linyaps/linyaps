@@ -18,7 +18,7 @@ class BundlePrivate
 public:
     // Bundle *q_ptr = nullptr;
     QString bundleFilePath;
-    QString squashfsFilePath;
+    QString erofsFilePath;
     QString bundleDataPath;
     int offsetValue;
     QString tmpWorkDir;

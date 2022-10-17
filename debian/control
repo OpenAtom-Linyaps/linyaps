@@ -28,7 +28,7 @@ Description: Linglong package manager.
 
 Package: linglong-builder
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, squashfs-tools, linglong-loader,
- linglong-bin, linglong-box
+Depends: ${shlibs:Depends}, ${misc:Depends}, linglong-loader, linglong-bin,
+ linglong-box, erofs-utils
 Description: Linglong application building tools.
  ll-builder is a tool that makes it easy to build applications and dependencies.

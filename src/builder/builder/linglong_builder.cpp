@@ -717,15 +717,21 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
         util::ensureDir(exportPath);
 
         repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath());
-        auto ret = repo.checkout(project->refWithModule("runtime"), "", QStringList {exportPath, "runtime"}.join("/"));
+        auto ret = repo.checkout(project->refWithModule("runtime"), "", exportPath);
         ret = repo.checkout(project->refWithModule("devel"), "", QStringList {exportPath, "devel"}.join("/"));
         if (!ret.success()) {
             return NewError(-1, "checkout files failed, you need build first");
         }
+
+        QFile::copy("/usr/libexec/ll-box-static", QStringList {exportPath, "ll-box"}.join("/"));
+
+        auto loaderFilePath = QStringList {BuilderConfig::instance()->projectRoot(), "loader"}.join("/");
+        if (util::fileExists(loaderFilePath)) {
+            QFile::copy(loaderFilePath, QStringList {exportPath, "loader"}.join("/"));
+        } else {
+            qCritical() << "ll-builder need loader to build a runnable uab";
+        }
     }
-    // TODO: for bundle. remove later
-    QFile::copy(QStringList {exportPath, "runtime", "info.json"}.join("/"),
-                QStringList {exportPath, "info.json"}.join("/"));
     // TODO: if the kind is not app, don't make bundle
     // make bundle package
     linglong::package::Bundle uabBundle;

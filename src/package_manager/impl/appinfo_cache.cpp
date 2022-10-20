@@ -151,12 +151,13 @@ int updateCache(const QString &key, const QString &appData)
     }
     // 调用方保证插入cache表前已经调用queryLocalCache查询了cache
     QString currentTime = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
-    QString insertSql = QString("INSERT INTO appInfo(key,data,timestamp) VALUES('%1','%2','%3')")
-                            .arg(key)
-                            .arg(appData)
-                            .arg(currentTime);
+    QString insertSql = QString("INSERT INTO appInfo(key,data,timestamp) VALUES(?,?,?)");
+
     QSqlQuery sqlQuery(dbConn);
     sqlQuery.prepare(insertSql);
+    sqlQuery.bindValue(0, key);
+    sqlQuery.bindValue(1, appData);
+    sqlQuery.bindValue(2, currentTime);
     if (!sqlQuery.exec()) {
         err = "updateCache fail to exec sql:" + insertSql + ", error:" + sqlQuery.lastError().text();
         qCritical() << err;

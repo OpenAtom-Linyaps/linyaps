@@ -803,6 +803,7 @@ QueryReply SystemPackageManagerPrivate::Query(const QueryParamOption &paramOptio
 
 Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOption)
 {
+    Q_Q(SystemPackageManager);
     Reply reply;
 
     QString appId = paramOption.appId.trimmed();
@@ -937,11 +938,28 @@ Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOp
 
         // process portal before uninstall
         {
+            QVariantMap variantMap;
+            if (paramOption.delAppData) {
+                if (!noDBusMode) {
+                    QDBusReply<uint> dbusReply = q->connection().interface()->serviceUid(q->message().service());
+                    QString caller = "";
+                    if (dbusReply.isValid()) {
+                        caller = getUserName(dbusReply.value());
+                    }
+                    qDebug() << "Uninstall app call user:" << caller << dbusReply.error();
+                    if (!caller.isEmpty()) {
+                        QString appDataPath = QString("/home/%1/.linglong/%2").arg(caller).arg(it->appId);
+                        variantMap.insert(linglong::util::kKeyDelData, appDataPath);
+                    }
+                }
+            }
             auto packageRootPath = installPath + "/" + arch;
-            OrgDeepinLinglongSystemHelperInterface systemHelperInterface(SystemHelperDBusName, SystemHelperDBusPath,
-                                                                         QDBusConnection::systemBus());
-            qDebug() << "call systemHelperInterface.RuinInstallPortal" << packageRootPath << ref.toLocalFullRef();
-            QDBusReply<void> reply = systemHelperInterface.RuinInstallPortal(packageRootPath, ref.toString(), {});
+            OrgDeepinLinglongSystemHelperInterface systemHelperInterface(
+                SystemHelperDBusName, SystemHelperDBusPath, QDBusConnection::systemBus());
+            qDebug() << "call systemHelperInterface.RuinInstallPortal" << packageRootPath << ref.toLocalFullRef()
+                     << paramOption.delAppData;
+            QDBusReply<void> reply =
+                systemHelperInterface.RuinInstallPortal(packageRootPath, ref.toString(), variantMap);
             if (!reply.isValid()) {
                 qCritical() << "process pre uninstall portal failed:" << reply.error();
             }

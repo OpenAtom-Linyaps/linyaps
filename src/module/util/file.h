@@ -121,7 +121,7 @@ bool inline makeData(const QString &src, QString &dest)
     QString cmd = "tar -C " + src + " -cf - . | gzip --rsyncable >" + dest;
     // std::cout << "cmd:" << cmd.toStdString() << std::endl;
     // TODO:(FIX) ret value check
-    system(cmd.toStdString().c_str());
+    ::system(cmd.toStdString().c_str());
 
     return true;
 }
@@ -141,7 +141,7 @@ bool inline extractUap(const QString &uapfile, QString &dest)
     QString cmd = "tar -xf " + uapfile + " -C " + dest;
     // TODO:(FIX) ret value check
     std::cout << "cmd:" << cmd.toStdString() << std::endl;
-    system(cmd.toStdString().c_str());
+    ::system(cmd.toStdString().c_str());
     return true;
 }
 
@@ -162,7 +162,7 @@ bool inline extractUapData(const QString &uapfile, QString &dest)
     QString cmd = "tar -xf " + uapfile + " -C " + dest;
     // TODO:(FIX) ret value check
     std::cout << "cmd:" << cmd.toStdString() << std::endl;
-    system(cmd.toStdString().c_str());
+    ::system(cmd.toStdString().c_str());
     return true;
 }
 

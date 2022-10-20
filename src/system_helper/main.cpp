@@ -12,6 +12,7 @@
 #include <QCoreApplication>
 #include <QDBusConnection>
 
+#include "module/util/log_handler.h"
 #include "system_helper.h"
 #include "privilege/privilege_install_portal.h"
 
@@ -22,6 +23,8 @@ int main(int argc, char *argv[])
 {
     using namespace linglong::system::helper;
     QCoreApplication app(argc, argv);
+
+    LOG_HANDLER->installMessageHandler();
 
     qJsonRegister<linglong::system::helper::FilePortalRule>();
     qJsonRegister<linglong::system::helper::PortalRule>();

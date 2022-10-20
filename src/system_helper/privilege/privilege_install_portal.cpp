@@ -14,6 +14,8 @@
 #include <QDirIterator>
 #include <QDBusError>
 
+#include "module/util/file.h"
+#include "module/util/package_manager_param.h"
 #include "module/util/yaml.h"
 #include "module/package/ref.h"
 
@@ -124,7 +126,10 @@ util::Error ruinPrivilegeInstallPortal(const QString &installPath, const QString
 {
     YAML::Node doc = YAML::Load(PrivilegePortalRule);
     QScopedPointer<PortalRule> privilegePortalRule(formYaml<PortalRule>(doc));
-
+    if (options.contains(linglong::util::kKeyDelData)) {
+        auto appLinglongPath = options[linglong::util::kKeyDelData].toString();
+        linglong::util::removeDir(appLinglongPath);
+    }
     if (!hasPrivilege(ref, privilegePortalRule->whiteList)) {
         return NewError(QDBusError::AccessDenied, "No Privilege Package");
     }

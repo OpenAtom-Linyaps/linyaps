@@ -656,10 +656,12 @@ int main(int argc, char **argv)
              auto optNoDbus =
                  QCommandLineOption("nodbus", "execute cmd directly, not via dbus(only for root user)", "");
              auto optAllVer = QCommandLineOption("all-version", "uninstall all version application", "");
+             auto optDelData = QCommandLineOption("delete-data", "delete app data", "");
              optNoDbus.setFlags(QCommandLineOption::HiddenFromHelp);
              parser.addOption(optNoDbus);
              parser.addOption(optRepoPoint);
              parser.addOption(optAllVer);
+             parser.addOption(optDelData);
 
              auto optChannel = QCommandLineOption("channel", "the channnel of app", "--channel=linglong", "linglong");
              parser.addOption(optChannel);
@@ -688,6 +690,7 @@ int main(int argc, char **argv)
 
              paramOption.channel = parser.value(optChannel);
              paramOption.appModule = parser.value(optModule);
+             paramOption.delAppData = parser.isSet(optDelData);
              paramOption.repoPoint = repoType;
              linglong::service::Reply reply;
              qInfo().noquote() << "uninstall" << appInfo << ", please wait a few minutes...";

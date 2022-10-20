@@ -24,5 +24,7 @@ const QString kKeyNoProxy = "no-proxy";
 const QString kKeyFilterName = "filter-name";
 const QString kKeyFilterPath = "filter-path";
 const QString kKeyFilterIface = "filter-interface";
+
+const QString kKeyDelData = "delete-data";
 } // namespace util
 } // namespace linglong

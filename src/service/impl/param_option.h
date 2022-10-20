@@ -137,13 +137,14 @@ class UninstallParamOption : public ParamOption
 public:
     QString repoPoint; ///< 是否卸载非玲珑格式应用
     bool delAllVersion = false; ///< 是否卸载所有版本应用
+    bool delAppData = false; ///< 卸载时是否删除应用数据
 };
 
 inline QDBusArgument &operator<<(QDBusArgument &argument, const UninstallParamOption &paramOption)
 {
     argument.beginStructure();
     argument << paramOption.appId << paramOption.version << paramOption.arch << paramOption.channel
-             << paramOption.appModule << paramOption.repoPoint << paramOption.delAllVersion;
+             << paramOption.appModule << paramOption.repoPoint << paramOption.delAllVersion << paramOption.delAppData;
     argument.endStructure();
     return argument;
 }
@@ -152,7 +153,7 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, UninstallP
 {
     argument.beginStructure();
     argument >> paramOption.appId >> paramOption.version >> paramOption.arch >> paramOption.channel
-        >> paramOption.appModule >> paramOption.repoPoint >> paramOption.delAllVersion;
+        >> paramOption.appModule >> paramOption.repoPoint >> paramOption.delAllVersion >> paramOption.delAppData;
     argument.endStructure();
     return argument;
 }

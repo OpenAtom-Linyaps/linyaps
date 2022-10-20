@@ -13,6 +13,7 @@
 
 #include "oci.h"
 #include "app.h"
+#include "app_config.h"
 
 namespace linglong {
 namespace runtime {
@@ -27,6 +28,7 @@ inline void registerAllMetaType()
     qJsonRegister<AppPermission>();
     qJsonRegister<App>();
     qJsonRegister<Container>();
+    qJsonRegister<AppConfig>();
 }
 
 } // namespace runtime

@@ -13,6 +13,7 @@
 #include "oci.h"
 #include "container.h"
 #include "module/package/ref.h"
+#include "app_config.h"
 
 namespace linglong {
 namespace repo {

@@ -943,6 +943,30 @@ public:
             }
         }
 
+        // mount /dev for app
+        {
+            QFile jsonFile(":/app_config.json");
+            if (!jsonFile.open(QIODevice::ReadOnly)) {
+                qCritical() << jsonFile.error() << jsonFile.errorString();
+                return false;
+            }
+            auto json = QJsonDocument::fromJson(jsonFile.readAll());
+            jsonFile.close();
+            appConfig = fromVariant<linglong::runtime::AppConfig>(json.toVariant());
+            appConfig->setParent(q_ptr);
+            for (const auto &appOfId : appConfig->appMountDevList) {
+                if (appOfId == appId) {
+                    QPointer<Mount> m(new Mount(r));
+                    m->type = "bind";
+                    m->options = QStringList {"rbind"};
+                    m->source = "/dev";
+                    m->destination = "/dev";
+                    r->mounts.push_back(m);
+                    break;
+                }
+            }
+        }
+
         return 0;
     }
 
@@ -1071,6 +1095,7 @@ public:
     Container *container = nullptr;
     Runtime *r = nullptr;
     App *q_ptr = nullptr;
+    linglong::runtime::AppConfig *appConfig = nullptr;
 
     repo::Repo *repo;
     int sockets[2]; // save file describers of sockets used to communicate with ll-box

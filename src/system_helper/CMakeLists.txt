@@ -8,6 +8,7 @@ set(LL_SYSTEM_HELPER_SOURCES
     ../module/package/ref.h
     ../module/package/info.h
     ../module/runtime/oci.h
+    ../module/runtime/app_config.h
     ../module/util/sysinfo.cpp
     ../module/util/log_handler.cpp
     main.cpp

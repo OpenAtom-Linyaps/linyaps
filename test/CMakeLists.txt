@@ -57,6 +57,7 @@ set(LL_TEST_SOURCES
     ../src/module/repo/repo_client.h
     ../src/module/runtime/container.cpp
     ../src/module/runtime/oci.h
+    ../src/module/runtime/app_config.h
     ../src/module/util/config/config.h
     ../src/module/util/connection.cpp
     ../src/module/util/desktop_entry.cpp

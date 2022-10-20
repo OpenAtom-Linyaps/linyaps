@@ -2,5 +2,6 @@
     <qresource prefix="/">
         <file>config.json</file>
         <file>app.yaml</file>
+        <file>app_config.json</file>
     </qresource>
 </RCC>

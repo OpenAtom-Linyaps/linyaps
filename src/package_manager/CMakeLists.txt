@@ -29,6 +29,7 @@ set(LL_SYSTEM_SERVICE_SOURCES
     ../module/runtime/container.cpp
     ../module/runtime/container.cpp
     ../module/runtime/oci.h
+    ../module/runtime/app_config.h
     ../module/util/config/config.h
     ../module/util/connection.cpp
     ../module/util/desktop_entry.cpp

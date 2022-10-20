@@ -116,28 +116,25 @@ int updateInstalledAppInfoDb()
  */
 int insertAppRecord(linglong::package::AppMetaInfo *package, const QString &installType, const QString &userName)
 {
-    // installType 字段暂时保留
-    QString insertSql =
-        QString(
-            "INSERT INTO installedAppInfo(appId,name,version,arch,kind,runtime,uabUrl,repoName,description,user,size,channel,module)\
-    VALUES('%1','%2','%3','%4','%5','%6','%7','%8','%9','%10','%11','%12','%13')")
-            .arg(package->appId)
-            .arg(package->name)
-            .arg(package->version)
-            //.arg(package.appArch.join(","))
-            .arg(package->arch)
-            .arg(package->kind)
-            .arg(package->runtime)
-            .arg(package->uabUrl)
-            .arg(package->repoName)
-            .arg(package->description)
-            .arg(userName)
-            .arg(package->size)
-            .arg(package->channel)
-            .arg(package->module);
-
     Connection connection;
-    QSqlQuery sqlQuery = connection.execute(insertSql);
+    QString insertSql =
+        "INSERT INTO installedAppInfo(appId,name,version,arch,kind,runtime,uabUrl,repoName,description,user,size,channel,module) "
+        "VALUES(:appId,:name,:version,:arch,:kind,:runtime,:uabUrl,:repoName,:description,:user,:size,:channel,:module)";
+    QVariantMap valueMap;
+    valueMap.insert(":appId", package->appId);
+    valueMap.insert(":name", package->name);
+    valueMap.insert(":version", package->version);
+    valueMap.insert(":arch", package->arch);
+    valueMap.insert(":kind", package->kind);
+    valueMap.insert(":runtime", package->runtime);
+    valueMap.insert(":uabUrl", package->uabUrl);
+    valueMap.insert(":repoName", package->repoName);
+    valueMap.insert(":description", package->description);
+    valueMap.insert(":user", userName);
+    valueMap.insert(":size", package->size);
+    valueMap.insert(":channel", package->channel);
+    valueMap.insert(":module", package->module);
+    QSqlQuery sqlQuery = connection.execute(insertSql, valueMap);
     if (QSqlError::NoError != sqlQuery.lastError().type()) {
         qCritical() << "execute insertSql error:" << sqlQuery.lastError().text();
         return STATUS_CODE(kFail);
@@ -180,8 +177,9 @@ int deleteAppRecord(const QString &appId, const QString &appVer, const QString &
     if (!userName.isEmpty()) {
         condition.append(QString(" AND user = '%1'").arg(userName));
     }
-    qDebug() << "sql condition:" << condition;
     deleteSql.append(condition);
+
+    qDebug().noquote() << "sql:" << deleteSql;
 
     Connection connection;
     QSqlQuery sqlQuery = connection.execute(deleteSql);
@@ -247,13 +245,13 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
     if (!module.isEmpty()) {
         condition.append(QString(" AND module = '%1'").arg(module));
     }
-    qDebug() << "sql condition:" << condition;
     selectSql.append(condition);
 
+    qDebug().noquote() << "sql:" << selectSql;
     Connection connection;
     QSqlQuery sqlQuery = connection.execute(selectSql);
     if (QSqlError::NoError != sqlQuery.lastError().type()) {
-        qCritical() << "execute deleteSql error:" << sqlQuery.lastError().text();
+        qCritical() << "execute sql error:" << sqlQuery.lastError().text();
         return false;
     }
     // 指定用户和版本找不到

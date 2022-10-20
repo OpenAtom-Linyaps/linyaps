@@ -10,8 +10,12 @@
 
 #include "connection.h"
 
+#include "module/util/file.h"
+
 #define DATABASE_TYPE "QSQLITE"
-#define TEST_ON_BORROW_SQL "SELECT 1"
+#define TEST_STATE_SQL "SELECT 1"
+
+Q_LOGGING_CATEGORY(database, "linglong.database", QtWarningMsg)
 
 QMutex linglong::util::Connection::mutex;
 
@@ -21,14 +25,15 @@ Connection::Connection(QObject *parent)
     : QObject(parent)
     , databaseName(getLinglongRootPath() + "/" + QString(DATABASE_NAME))
     , databaseType(DATABASE_TYPE)
-    , testOnBorrow(true)
-    , testOnBorrowSql(TEST_ON_BORROW_SQL)
+    , testStateSql(TEST_STATE_SQL)
 {
+    qCDebug(database) << "open databaseName" << databaseName;
 }
 
 Connection::~Connection()
 {
     closeConnection(connection);
+    qCDebug(database) << "close databaseName" << databaseName;
 }
 
 QSqlDatabase Connection::getConnection()
@@ -48,9 +53,9 @@ QSqlDatabase Connection::getConnection()
     if (!connection.open()) {
         qCritical() << "open database failed:" << connection.lastError().text();
     } else {
-        QSqlQuery query(testOnBorrowSql, connection);
+        QSqlQuery query(testStateSql, connection);
         if (QSqlError::NoError != query.lastError().type()) {
-            qCritical() << "Open datatabase error:" << connection.lastError().text();
+            qCritical() << "open database error:" << query.lastError().text();
         }
     }
 
@@ -64,7 +69,7 @@ void Connection::closeConnection(QSqlDatabase &connection)
     connection.close();
     connection = QSqlDatabase();
     QSqlDatabase::removeDatabase(connectionName);
-    // qDebug() << "connectionNames:" << QSqlDatabase::connectionNames();
+    qCDebug(database) << "connectionNames:" << QSqlDatabase::connectionNames();
 }
 
 QSqlQuery Connection::execute(const QString &sql)
@@ -74,9 +79,30 @@ QSqlQuery Connection::execute(const QString &sql)
     connection = getConnection();
     QSqlQuery query(sql, connection);
     if (QSqlError::NoError != query.lastError().type()) {
-        qCritical() << "Open datatabase error:" << connection.lastError().text();
+        qCritical() << "execute sql error:" << query.lastError().text();
     }
     return query;
 }
+
+QSqlQuery Connection::execute(const QString &sql, const QVariantMap &valueMap)
+{
+    QMutexLocker locker(&mutex);
+    connection = getConnection();
+    QSqlQuery query(connection);
+    query.prepare(sql);
+    for (const auto &key : valueMap.keys()) {
+        if (":size" == key) {
+            query.bindValue(key, valueMap.value(key).toInt());
+            continue;
+        }
+        query.bindValue(key, valueMap.value(key).toString());
+    }
+    query.exec();
+    if (QSqlError::NoError != query.lastError().type()) {
+        qCritical() << "execute pre sql error:" << query.lastError().text();
+    }
+    return query;
+}
+
 } // namespace util
 } // namespace linglong

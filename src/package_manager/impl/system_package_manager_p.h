@@ -44,6 +44,17 @@ private:
     Reply GetDownloadStatus(const ParamOption &paramOption, int type);
 
     /*
+     * 从给定的软件包列表中查找最新版本的runtime
+     *
+     * @param appId: 待匹配runtime的appId
+     * @param appList: 待搜索的软件包列表信息
+     *
+     * @return AppMetaInfo: 最新版本的runtime
+     *
+     */
+    linglong::package::AppMetaInfo *getLatestRuntime(const QString &appId, const QString &version,
+                                                     const linglong::package::AppMetaInfoList &appList);
+    /*
      * 从给定的软件包列表中查找最新版本的软件包
      *
      * @param appId: 待匹配应用的appId
@@ -107,17 +118,12 @@ private:
     /*
      * 安装应用runtime
      *
-     * @param runtimeId: runtime对应的appId
-     * @param runtimeVer: runtime版本号
-     * @param runtimeArch: runtime对应的架构
-     * @param channel: 软件包对应的渠道
-     * @param module: 软件包类型
+     * @param appInfo: runtime对象
      * @param err: 错误信息
      *
      * @return bool: true:成功 false:失败
      */
-    bool installRuntime(const QString &runtimeId, const QString &runtimeVer, const QString &runtimeArch,
-                        const QString &channel, const QString &module, QString &err);
+    bool installRuntime(linglong::package::AppMetaInfo *appInfo, QString &err);
 
     /*
      * 检查应用runtime安装状态

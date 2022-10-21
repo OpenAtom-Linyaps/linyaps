@@ -283,44 +283,18 @@ Reply SystemPackageManagerPrivate::GetDownloadStatus(const ParamOption &paramOpt
 /*
  * 安装应用runtime
  *
- * @param runtimeId: runtime对应的appId
- * @param runtimeVer: runtime版本号
- * @param runtimeArch: runtime对应的架构
- * @param channel: 软件包对应的渠道
- * @param module: 软件包类型
+ * @param appInfo: runtime对象
  * @param err: 错误信息
  *
  * @return bool: true:成功 false:失败
  */
-bool SystemPackageManagerPrivate::installRuntime(const QString &runtimeId, const QString &runtimeVer,
-                                                 const QString &runtimeArch, const QString &channel,
-                                                 const QString &module, QString &err)
+bool SystemPackageManagerPrivate::installRuntime(linglong::package::AppMetaInfo *appInfo, QString &err)
 {
-    linglong::package::AppMetaInfoList appList;
-    QString appData = "";
-
-    bool ret = getAppInfofromServer(runtimeId, runtimeVer, runtimeArch, appData, err);
-    if (!ret) {
-        return false;
+    QString savePath = kAppInstallPath + appInfo->appId + "/" + appInfo->version + "/" + appInfo->arch;
+    if ("devel" == appInfo->module) {
+        savePath.append("/" + appInfo->module);
     }
-    ret = loadAppInfo(appData, appList, err);
-    if (!ret) {
-        qCritical() << err;
-        return false;
-    }
-
-    // app runtime 只能匹配一个 debug模式会有两个同版本的runtime
-    // if (appList.size() != 1) {
-    //     err = "installRuntime app:" + runtimeId + ", version:" + runtimeVer + " not found in repo";
-    //     return false;
-    // }
-
-    auto pkgInfo = appList.at(0);
-    QString savePath = kAppInstallPath + runtimeId + "/" + runtimeVer + "/" + runtimeArch;
-    if ("devel" == module) {
-        savePath.append("/" + module);
-    }
-    ret = downloadAppData(runtimeId, runtimeVer, runtimeArch, channel, module, savePath, err);
+    bool ret = downloadAppData(appInfo->appId, appInfo->version, appInfo->arch, appInfo->channel, appInfo->module, savePath, err);
     if (!ret) {
         err = "installRuntime download runtime data err";
         return false;
@@ -331,11 +305,8 @@ bool SystemPackageManagerPrivate::installRuntime(const QString &runtimeId, const
     if (noDBusMode) {
         userName = "deepin-linglong";
     }
-    pkgInfo->kind = "runtime";
-    // fix 当前服务端不支持按channel查询，返回的结果是默认channel，需要刷新channel/module
-    pkgInfo->channel = channel;
-    pkgInfo->module = module;
-    linglong::util::insertAppRecord(pkgInfo.data(), "user", userName);
+    appInfo->kind = "runtime";
+    linglong::util::insertAppRecord(appInfo, "user", userName);
 
     return true;
 }
@@ -369,10 +340,36 @@ bool SystemPackageManagerPrivate::checkAppRuntime(const QString &runtime, const 
         return false;
     }
 
-    bool ret = true;
+    QStringList runtimeVersion = runtimeVer.split(".");
+    // runtime更新只匹配前面三位，info.json中的runtime version格式必须是3位或4位点分十进制
+    if (runtimeVersion.size() < 3) {
+        err = "app runtime:" + runtime + " runtime version format err";
+        return false;
+    }
+
+    QString version = "";
+    if (runtimeVersion.size() == 4) {
+        version = runtimeVer;
+    }
+    QString appData = "";
+    bool ret = getAppInfofromServer(runtimeId, version, runtimeArch, appData, err);
+    if (!ret) {
+        return false;
+    }
+    linglong::package::AppMetaInfoList appList;
+    ret = loadAppInfo(appData, appList, err);
+    if (!ret) {
+        qCritical() << err;
+        return false;
+    }
+    // 查找最高版本，多版本场景安装应用appId要求完全匹配
+    linglong::package::AppMetaInfo *appInfo = getLatestRuntime(runtimeId, runtimeVer, appList);
+    // fix 当前服务端不支持按channel查询，返回的结果是默认channel，需要刷新channel/module
+    appInfo->channel = channel;
+    appInfo->module = module;
     // 判断app依赖的runtime是否安装 runtime 不区分用户
-    if (!linglong::util::getAppInstalledStatus(runtimeId, runtimeVer, runtimeArch, channel, module, "")) {
-        ret = installRuntime(runtimeId, runtimeVer, runtimeArch, channel, module, err);
+    if (!linglong::util::getAppInstalledStatus(appInfo->appId, appInfo->version, appInfo->arch, channel, module, "")) {
+        ret = installRuntime(appInfo, err);
     }
     return ret;
 }
@@ -431,11 +428,58 @@ bool SystemPackageManagerPrivate::checkAppBase(const QString &runtime, const QSt
     const QString baseArch = baseList.at(2);
 
     bool retbase = true;
+
+    linglong::package::AppMetaInfoList baseRuntimeList;
+    QString baseData = "";
+
+    ret = getAppInfofromServer(baseId, baseVer, baseArch, baseData, err);
+    if (!ret) {
+        return false;
+    }
+    ret = loadAppInfo(baseData, baseRuntimeList, err);
+    if (!ret) {
+        qCritical() << err;
+        return false;
+    }
+    // fix to do base runtime debug info, base runtime update
+    auto baseInfo = baseRuntimeList.at(0);
+    baseInfo->channel = channel;
+    baseInfo->module = module;
     // 判断app依赖的runtime是否安装 runtime 不区分用户
     if (!linglong::util::getAppInstalledStatus(baseId, baseVer, baseArch, channel, module, "")) {
-        retbase = installRuntime(baseId, baseVer, baseArch, channel, module, err);
+        retbase = installRuntime(baseInfo, err);
     }
     return retbase;
+}
+
+/*
+ * 从给定的软件包列表中查找最新版本的runtime
+ *
+ * @param appId: 待匹配runtime的appId
+ * @param appList: 待搜索的软件包列表信息
+ *
+ * @return AppMetaInfo: 最新版本的runtime
+ *
+ */
+linglong::package::AppMetaInfo *
+SystemPackageManagerPrivate::getLatestRuntime(const QString &appId, const QString &version,
+                                              const linglong::package::AppMetaInfoList &appList)
+{
+    linglong::package::AppMetaInfo *latestApp = appList.at(0).data();
+    if (appList.size() == 1) {
+        return latestApp;
+    }
+
+    QString curVersion = linglong::util::APP_MIN_VERSION;
+    for (auto item : appList) {
+        linglong::util::AppVersion dstVersion(curVersion);
+        linglong::util::AppVersion iterVersion(item->version);
+        if (appId == item->appId && iterVersion.isBigThan(dstVersion) && item->version.startsWith(version)) {
+            curVersion = item->version;
+            latestApp = item.data();
+        }
+    }
+    return latestApp;
 }
 
 /*
@@ -727,7 +771,7 @@ Reply SystemPackageManagerPrivate::Install(const InstallParamOption &installPara
         qDebug() << "call systemHelperInterface.RebuildInstallPortal" << installPath, ref.toLocalFullRef();
         QDBusReply<void> reply = systemHelperInterface.RebuildInstallPortal(installPath, ref.toString(), {});
         if (!reply.isValid()) {
-            qCritical() << "process post install portal failed:" << reply.error();
+            qWarning() << "process post install portal failed:" << reply.error();
         }
     }
 
@@ -961,7 +1005,7 @@ Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOp
             QDBusReply<void> reply =
                 systemHelperInterface.RuinInstallPortal(packageRootPath, ref.toString(), variantMap);
             if (!reply.isValid()) {
-                qCritical() << "process pre uninstall portal failed:" << reply.error();
+                qWarning() << "process pre uninstall portal failed:" << reply.error();
             }
         }
 

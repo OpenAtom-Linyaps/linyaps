@@ -758,7 +758,7 @@ int main(int argc, char **argv)
              linglong::util::getAppMetaInfoListByJson(reply.result, appMetaInfoList);
              if (1 == appMetaInfoList.size() && "flatpaklist" == appMetaInfoList.at(0)->appId) {
                  printFlatpakAppInfo(appMetaInfoList);
-             } else if (appMetaInfoList.size() > 1) {
+             } else if (appMetaInfoList.size() >= 1) {
                  printAppInfo(appMetaInfoList);
              }
              return 0;

@@ -26,9 +26,12 @@ void registerAllMetaType()
 {
     qJsonRegister<ParamStringMap>();
     qJsonRegister<linglong::repo::InfoResponse>();
-    qJsonRegister<linglong::repo::Response>();
+    qJsonRegister<linglong::repo::UploadResponseData>();
+    qJsonRegister<linglong::repo::AuthResponse>();
+    qJsonRegister<linglong::repo::AuthResponseData>();
     qJsonRegister<linglong::repo::RevPair>();
     qJsonRegister<linglong::repo::UploadTaskRequest>();
+    qJsonRegister<linglong::repo::UploadTaskResponse>();
 }
 
 } // namespace repo

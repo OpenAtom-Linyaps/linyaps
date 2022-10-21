@@ -30,10 +30,8 @@ public:
 
     linglong::util::Error exportBundle(const QString &outputFilepath, bool useLocalDir) override;
 
-    linglong::util::Error push(const QString &ref) override;
-
-    linglong::util::Error push(const QString &bundleFilePath, const QString &repoUrl, const QString &repoChannel,
-                               bool force) override;
+    linglong::util::Error push(const QString &repoUrl, const QString &repoName, const QString &channel,
+                               bool pushWithDevel) override;
 
     linglong::util::Error run() override;
 

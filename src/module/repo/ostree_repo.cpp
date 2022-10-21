@@ -287,7 +287,7 @@ private:
 
     InfoResponse *getRepoInfo(const QString &repoName)
     {
-        QUrl url(QString("%1/%2/%3").arg(ConfigInstance().repoUrl, "v1/repo", repoName));
+        QUrl url(QString("%1/%2/%3").arg(ConfigInstance().repoUrl, "api/v1/repos", repoName));
 
         QNetworkRequest request(url);
 
@@ -299,16 +299,17 @@ private:
 
     std::tuple<QString, util::Error> newUploadTask(const QString &repoName, UploadTaskRequest *req)
     {
-        QUrl url(QString("%1/v1/blob/%2/upload").arg(ConfigInstance().repoUrl, repoName));
+        QUrl url(QString("%1/api/v1/blob/%2/upload").arg(ConfigInstance().repoUrl, repoName));
         QNetworkRequest request(url);
 
         auto data = QJsonDocument(toVariant(req).toJsonObject()).toJson();
 
+        request.setRawHeader(QByteArray("X-Token"), remoteToken.toLocal8Bit());
         auto reply = httpClient.post(request, data);
         data = reply->readAll();
 
         QScopedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
-        return {info->id, NoError()};
+        return {info->data->id, NoError()};
     }
 
     util::Error doUploadTask(const QString &repoName, const QString &taskID, const QList<OstreeRepoObject> &objects)
@@ -316,8 +317,9 @@ private:
         util::Error err(NoError());
         QByteArray fileData;
 
-        QUrl url(QString("%1/v1/blob/%2/upload/%3").arg(ConfigInstance().repoUrl, repoName, taskID));
+        QUrl url(QString("%1/api/v1/blob/%2/upload/%3").arg(ConfigInstance().repoUrl, repoName, taskID));
         QNetworkRequest request(url);
+        request.setRawHeader(QByteArray("X-Token"), remoteToken.toLocal8Bit());
 
         QScopedPointer<QHttpMultiPart> multiPart(new QHttpMultiPart(QHttpMultiPart::FormDataType));
 
@@ -365,16 +367,41 @@ private:
 
     util::Error cleanUploadTask(const QString &repoName, const QString &taskID)
     {
-        QUrl url(QString("%1/v1/blob/%2/upload/%3").arg(ConfigInstance().repoUrl, repoName, taskID));
+        QUrl url(QString("%1/api/v1/blob/%2/upload/%3").arg(ConfigInstance().repoUrl, repoName, taskID));
         QNetworkRequest request(url);
         // FIXME: check error
         httpClient.del(request);
         return NoError();
     }
 
+    util::Error getToken()
+    {
+        QUrl url(QString("%1/%2").arg(ConfigInstance().repoUrl, "api/v1/sign-in"));
+        QNetworkRequest request(url);
+        auto userInfo = util::getUserInfo();
+        QString userJsonData =
+            QString("{\"username\": \"%1\", \"password\": \"%2\"}").arg(userInfo.first()).arg(userInfo.last());
+
+        auto reply = httpClient.post(request, userJsonData.toLocal8Bit());
+        auto data = reply->readAll();
+        auto result = util::loadJsonBytes<AuthResponse>(data);
+
+        // Fixme: use status macro
+        if (result->code != 200) {
+            auto err = result->msg.isEmpty() ? QString("%1 is unreachable").arg(url.toString()) : result->msg;
+            return NewError(-1, err);
+        }
+
+        remoteToken = result->data->token;
+
+        return NoError();
+    }
+
     QString repoRootPath;
     QString remoteEndpoint;
     QString remoteRepoName;
+
+    QString remoteToken;
 
     OstreeRepo *repoPtr = nullptr;
     QString ostreePath;
@@ -418,6 +445,11 @@ linglong::util::Error OSTreeRepo::push(const package::Ref &ref, bool force)
 {
     Q_D(OSTreeRepo);
 
+    auto ret = d->getToken();
+    if (!ret.success()) {
+        return WrapError(ret, "get token failed");
+    }
+
     util::Error err(NoError());
     QList<OstreeRepoObject> objects;
     UploadTaskRequest uploadTaskReq;
@@ -433,7 +465,9 @@ linglong::util::Error OSTreeRepo::push(const package::Ref &ref, bool force)
     qDebug() << "push commit" << commitID << ref.toLocalFullRef();
 
     auto revPair = new RevPair(&uploadTaskReq);
-    uploadTaskReq.refs[ref.toLocalFullRef()] = revPair;
+
+    // upload msg, should specific channel in ref
+    uploadTaskReq.refs[ref.toOSTreeRefLocalString()] = revPair;
     revPair->client = commitID;
     // FIXME: get server version to compare
     revPair->server = "";

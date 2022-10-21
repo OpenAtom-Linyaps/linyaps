@@ -109,11 +109,28 @@ class RevPair : public JsonSerialize
     Q_JSON_PROPERTY(QString, client);
 };
 
+class UploadResponseData : public Serialize
+{
+    Q_OBJECT;
+    Q_JSON_CONSTRUCTOR(UploadResponseData)
+
+    Q_JSON_PROPERTY(QString, id);
+};
+
+class AuthResponseData : public Serialize
+{
+    Q_OBJECT;
+    Q_JSON_CONSTRUCTOR(AuthResponseData)
+
+    Q_JSON_PROPERTY(QString, token);
+};
 } // namespace repo
 } // namespace linglong
 
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::repo, InfoResponse)
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::repo, RevPair)
+Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::repo, UploadResponseData)
+Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::repo, AuthResponseData)
 
 namespace linglong {
 namespace repo {
@@ -128,12 +145,23 @@ class UploadTaskRequest : public JsonSerialize
     Q_JSON_PROPERTY(linglong::repo::RevPairStrMap, refs);
 };
 
-class UploadTaskResponse : public JsonSerialize
+class UploadTaskResponse : public Serialize
 {
-    Q_OBJECT;
+    Q_OBJECT; 
     Q_JSON_CONSTRUCTOR(UploadTaskResponse)
 
-    Q_JSON_PROPERTY(QString, id);
+    Q_JSON_PROPERTY(int, code);
+    Q_JSON_PTR_PROPERTY(linglong::repo::UploadResponseData, data);
+};
+
+class AuthResponse : public Serialize
+{
+    Q_OBJECT; 
+    Q_JSON_CONSTRUCTOR(AuthResponse)
+
+    Q_JSON_PROPERTY(int, code);
+    Q_JSON_PTR_PROPERTY(linglong::repo::AuthResponseData, data);
+    Q_JSON_PROPERTY(QString, msg);
 };
 
 } // namespace repo

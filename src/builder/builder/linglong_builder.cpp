@@ -427,8 +427,8 @@ linglong::util::Error LinglongBuilder::build()
     auto projectConfigPath = QStringList {BuilderConfig::instance()->projectRoot(), "linglong.yaml"}.join("/");
 
     if (!QFileInfo::exists(projectConfigPath)) {
-        qCritical() << "ll-builder should running in project root";
-        return NewError(-1, "can not found linglong.yaml");
+        qCritical() << "ll-builder should be run in project root directory";
+        return NewError(-1, "linglong.yaml not found");
     }
 
     QScopedPointer<Project> project(formYaml<Project>(YAML::LoadFile(projectConfigPath.toStdString())));
@@ -689,8 +689,8 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
     if (!useLocalDir) {
         auto projectConfigPath = QStringList {BuilderConfig::instance()->projectRoot(), "linglong.yaml"}.join("/");
         if (!QFileInfo::exists(projectConfigPath)) {
-            qCritical() << "ll-builder should running in project root";
-            return NewError(-1, "can not found linglong.yaml");
+            qCritical() << "ll-builder should be run in project root directory";
+            return NewError(-1, "linglong.yaml not found");
         }
 
         QScopedPointer<Project> project(formYaml<Project>(YAML::LoadFile(projectConfigPath.toStdString())));
@@ -722,27 +722,49 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
     return NoError();
 }
 
-linglong::util::Error LinglongBuilder::push(const QString &ref)
+util::Error LinglongBuilder::push(const QString &repoUrl, const QString &repoName, const QString &channel,
+                                  bool pushWithDevel)
 {
-    repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath(), BuilderConfig::instance()->remoteRepoEndpoint,
-                          BuilderConfig::instance()->remoteRepoName);
-    repo.push(package::Ref(ref), false);
+    auto projectConfigPath = QStringList {BuilderConfig::instance()->projectRoot(), "linglong.yaml"}.join("/");
 
-    return linglong::util::Error(NoError());
-}
-
-linglong::util::Error LinglongBuilder::push(const QString &bundleFilePath, const QString &repoUrl,
-                                            const QString &repoChannel, bool force)
-{
-    // TODO: if the kind is not app, don't push bundle
-    linglong::package::Bundle uabBundle;
-
-    auto pushBundleResult = uabBundle.push(bundleFilePath, repoUrl, repoChannel, force);
-    if (!pushBundleResult.success()) {
-        return NewError(-1, "push bundle failed");
+    if (!QFileInfo::exists(projectConfigPath)) {
+        qCritical() << "ll-builder should be run in project root directory";
+        return NewError(-1, "linglong.yaml not found");
     }
 
-    return NoError();
+    QScopedPointer<Project> project(formYaml<Project>(YAML::LoadFile(projectConfigPath.toStdString())));
+
+    // set remote repo url
+    auto remoteRepoEndpoint = repoUrl.isEmpty() ? BuilderConfig::instance()->remoteRepoEndpoint : repoUrl;
+    auto remoteRepoName = repoName.isEmpty() ? BuilderConfig::instance()->remoteRepoName : repoName;
+    repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath(), remoteRepoEndpoint, remoteRepoName);
+
+    // Fixme: should be buildArch.
+    auto refWithRuntime = package::Ref("", channel, project->package->id, project->package->version, util::hostArch(), "runtime");
+    auto refWithDevel = package::Ref("", channel, project->package->id, project->package->version, util::hostArch(), "devel");
+
+    // push ostree data by ref
+    auto ret = repo.push(refWithRuntime, false);
+
+    if (ret.success()) {
+        qInfo().noquote() << QString("push %1 success").arg(project->package->id);
+    } else {
+        qInfo().noquote() << QString("push %1 failed").arg(project->package->id);
+        return ret;
+    }
+
+    if (pushWithDevel) {
+        ret = repo.push(package::Ref(refWithDevel), false);
+
+        if (ret.success()) {
+            qInfo().noquote() << QString("push %1 success").arg(project->package->id);
+        } else {
+            qInfo().noquote() << QString("push %1 failed").arg(project->package->id);
+        }
+    }
+
+    return ret;
+    // return util::Error(NoError());
 }
 
 linglong::util::Error LinglongBuilder::run()
@@ -754,8 +776,8 @@ linglong::util::Error LinglongBuilder::run()
     auto projectConfigPath = QStringList {BuilderConfig::instance()->projectRoot(), "linglong.yaml"}.join("/");
 
     if (!QFileInfo::exists(projectConfigPath)) {
-        qCritical() << "ll-builder should running in project root";
-        return NewError(-1, "can not found linglong.yaml");
+        qCritical() << "ll-builder should be run in project root directory";
+        return NewError(-1, "linglong.yaml not found");
     }
 
     QScopedPointer<Project> project(formYaml<Project>(YAML::LoadFile(projectConfigPath.toStdString())));

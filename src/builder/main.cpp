@@ -206,33 +206,31 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("push", "push build result to repo", "push");
 
-             auto optRepoUrl = QCommandLineOption("repo-url", "repo url", "--repo-url");
-             auto optRepoChannel = QCommandLineOption("channel", "repo channel", "--channel", "linglong");
+             auto optRepoUrl = QCommandLineOption("repo-url", "remote repo url", "--repo-url");
+             auto optRepoName = QCommandLineOption("repo-name", "remote repo name", "--repo-name");
+             auto optRepoChannel = QCommandLineOption("channel", "remote repo channel", "--channel", "linglong");
+             auto optNoDevel = QCommandLineOption("no-devel", "push without devel", "");
              parser.addOption(optRepoUrl);
+             parser.addOption(optRepoName);
              parser.addOption(optRepoChannel);
-             parser.addPositionalArgument("filePath", "bundle file path", "<filePath>");
-             auto optForce = QCommandLineOption("force", "force push true or false", "");
-             parser.addOption(optForce);
+             parser.addOption(optNoDevel);
 
              parser.process(app);
 
-             auto args = parser.positionalArguments();
-
-             auto outputFilepath = parser.positionalArguments().value(1);
-
              auto repoUrl = parser.value(optRepoUrl);
+             auto repoName = parser.value(optRepoName);
              auto repoChannel = parser.value(optRepoChannel);
-             auto force = parser.isSet(optForce);
 
-             // auto result = builder->push(repoURL, force);
-             auto result = builder->push(outputFilepath, repoUrl, repoChannel, force);
+             bool pushWithDevel = parser.isSet(optNoDevel) ? false : true;
+
+             auto result = builder->push(repoUrl, repoName, repoChannel, pushWithDevel);
+
              if (!result.success()) {
                  qCritical() << result;
              }
 
              return result.code();
          }},
-
     };
 
     if (subcommandMap.contains(command)) {

@@ -30,8 +30,6 @@ public:
         , version(version)
         , arch(arch)
     {
-        channel = "";
-        module = "";
     }
 
     Ref(const QString &remote, const QString &appId, const QString &version, const QString &arch, const QString &module)
@@ -54,7 +52,39 @@ public:
     {
     }
 
-    QString toString() const
+    /*!
+     * toOSTreeRefString return
+     * {repo}:/{channel}/{id}/{version}/{arch}/{module}
+     * or
+     * {channel}/{id}/{version}/{arch}/{module}
+     * @return
+     */
+    QString toOSTreeRefString() const
+    {
+        // {repo}:/{channel}/{id}/{version}/{arch}/{module}
+        return QString("%1:%2/%3/%4/%5/%6").arg(repo, channel, appId, version, arch, module);
+    }
+
+    /*!
+     * toOSTreeRefLocalString return
+     * {channel}/{id}/{version}/{arch}/{module}
+     * @return
+     */
+    QString toOSTreeRefLocalString() const
+    {
+        return QString("%1/%2/%3/%4/%5").arg(channel, appId, version, arch, module);
+    }
+
+    /*!
+     * toSpecString return {repo}/{channel}:{id}/{version}/{arch}/{module}
+     * @return
+     */
+    QString toSpecString() const
+    {
+        return QString("%1/%2:%3/%4/%5/%6").arg(repo, channel, appId, version, arch, module);
+    }
+
+    Q_DECL_DEPRECATED QString toString() const
     {
         QString ref = repo.isEmpty() ? "" : repo + ":";
         QString channelRef = channel.isEmpty() ? "" : channel + "/";
@@ -64,9 +94,12 @@ public:
     }
 
     // FIXME: local().toString()?
-    QString toLocalRefString() const { return QString("%1/%2/%3").arg(appId, version, arch); }
+    Q_DECL_DEPRECATED QString toLocalRefString() const { return QString("%1/%2/%3").arg(appId, version, arch); }
 
-    QString toLocalFullRef() const { return QString("%1/%2/%3/%4").arg(appId, version, arch, module); }
+    Q_DECL_DEPRECATED QString toLocalFullRef() const
+    {
+        return QString("%1/%2/%3/%4").arg(appId, version, arch, module);
+    }
 
     QString repo;
     QString channel;

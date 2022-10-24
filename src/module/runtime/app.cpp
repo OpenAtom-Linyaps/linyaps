@@ -636,6 +636,14 @@ public:
         auto hostHome = util::getUserFile("");
         mountMap.push_back(qMakePair(hostHome, hostHome));
 
+        // 挂载/persistent/home/$username or /data/home/$username
+        auto linglongRootPath = linglong::util::getLinglongRootPath();
+        if("/persistent/linglong" == linglongRootPath){
+            mountMap.push_back(qMakePair("/persistent" + hostHome, "/persistent" + hostHome));
+        }else if("/data/linglong" == linglongRootPath){
+            mountMap.push_back(qMakePair("/data" + hostHome, "/data" + hostHome));
+        }
+
         // home目录下隐藏目录如.config .cache .local .deepinwine 需要特殊处理
         auto appLinglongPath = util::ensureUserDir({".linglong", appId});
         mountMap.push_back(qMakePair(appLinglongPath, util::getUserFile(".linglong/" + appId)));

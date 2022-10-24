@@ -40,7 +40,12 @@ const QStringList envList = {
     "PATH",
     "HOME",
     "QT_IM_MODULE", //输入法
-    "LINGLONG_ROOT" // 玲珑安装位置
+    "LINGLONG_ROOT", // 玲珑安装位置
+    "WAYLAND_DISPLAY", // 导入wayland相关环境变量
+    "QT_QPA_PLATFORM",
+    "QT_WAYLAND_SHELL_INTEGRATION",
+    "GDMSESSION",
+    "QT_WAYLAND_FORCE_DPI"
 };
 }
 } // namespace linglong

@@ -627,6 +627,11 @@ public:
             }
         }
 
+         // bind /run/user/$(uid)/wayland-0
+        for (auto const &item : QDir(userRuntimeDir).entryInfoList({"wayland*"}, QDir::AllEntries | QDir::System)) {
+            mountMap.push_back({item.canonicalFilePath(), item.canonicalFilePath()});
+        }
+
         // 挂载宿主机home目录
         auto hostHome = util::getUserFile("");
         mountMap.push_back(qMakePair(hostHome, hostHome));

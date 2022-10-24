@@ -937,19 +937,27 @@ public:
             r->mounts.push_back(m);
         }
 
-        // Fixme: deepin-manual share data, should be removed later
-        {
-            auto deepinManualFilePath =
-                QStringList {util::getLinglongRootPath(), "entries/share/deepin-manual"}.join(QDir::separator());
+        // Fixme: temporarily mount linglong root path into the container, remove later
+        if (QString("org.deepin.manual") == appId) {
 
-            if (util::dirExists(deepinManualFilePath)) {
-                QPointer<Mount> m(new Mount(r));
-                m->type = "bind";
-                m->options = QStringList {"rbind"};
-                m->source = deepinManualFilePath;
-                m->destination = deepinManualFilePath;
-                r->mounts.push_back(m);
-            }
+            QPointer<Mount> m(new Mount(r));
+            m->type = "bind";
+            m->options = QStringList {"ro", "rbind"};
+            m->source = util::getLinglongRootPath();
+            m->destination = util::getLinglongRootPath();
+            r->mounts.push_back(m);
+        }
+
+        // Fixme: temporarily mount linglong root path into the container, remove later
+        // depends commit 248b39c8930deacea8f4e89b7ffedeee48fd8e0f
+        if (QString("org.deepin.browser") == appId) {
+            auto downloaderPath = util::getLinglongRootPath() + "/" + "layers/org.deepin.downloader";
+            QPointer<Mount> m(new Mount(r));
+            m->type = "bind";
+            m->options = QStringList {"ro", "rbind"};
+            m->source = downloaderPath;
+            m->destination = downloaderPath;
+            r->mounts.push_back(m);
         }
 
         // mount /dev for app

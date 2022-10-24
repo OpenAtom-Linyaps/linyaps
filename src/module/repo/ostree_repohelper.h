@@ -35,7 +35,8 @@ struct LingLongDir {
     OstreeRepo *repo;
 };
 
-class OstreeRepoHelper : public RepoHelper
+class OstreeRepoHelper
+    : public RepoHelper
     , public linglong::util::Singleton<OstreeRepoHelper>
 {
 public:
@@ -74,7 +75,8 @@ public:
      *
      * @return bool: true:查询成功 false:失败
      */
-    bool getRemoteRefs(const QString &repoPath, const QString &remoteName, QMap<QString, QString> &outRefs, QString &err);
+    bool getRemoteRefs(const QString &repoPath, const QString &remoteName, QMap<QString, QString> &outRefs,
+                       QString &err);
 
     /*
      * 查询软件包在仓库中对应的索引信息ref，版本号为空查询最新版本，非空查询指定版本
@@ -102,7 +104,10 @@ public:
      *
      * @return bool: true:成功 false:失败
      */
-    bool repoPull(const QString &repoPath, const QString &remoteName, const QString &pkgName, QString &err) { return false;}
+    bool repoPull(const QString &repoPath, const QString &remoteName, const QString &pkgName, QString &err)
+    {
+        return false;
+    }
 
     /*
      * 将软件包数据从本地仓库签出到指定目录
@@ -115,7 +120,8 @@ public:
      *
      * @return bool: true:成功 false:失败
      */
-    bool checkOutAppData(const QString &repoPath, const QString &remoteName, const QString &ref, const QString &dstPath, QString &err);
+    bool checkOutAppData(const QString &repoPath, const QString &remoteName, const QString &ref, const QString &dstPath,
+                         QString &err);
 
     /*
      * 通过ostree命令将软件包数据从远端仓库pull到本地
@@ -196,7 +202,8 @@ private:
      *
      * @return bool: true:成功 false:失败
      */
-    bool fetchRemoteSummary(OstreeRepo *repo, const char *name, GBytes **outSummary, GBytes **outSummarySig, GCancellable *cancellable, GError **error);
+    bool fetchRemoteSummary(OstreeRepo *repo, const char *name, GBytes **outSummary, GBytes **outSummarySig,
+                            GCancellable *cancellable, GError **error);
 
     /*
      * 从ostree仓库描述文件Summary信息中获取仓库所有软件包索引refs

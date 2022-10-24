@@ -37,14 +37,14 @@
 
 TEST(RepoHelperT06, repoPullbyCmd)
 {
-   const QString repoPath = linglong::util::getLinglongRootPath();
-   QString err = "";
-   QVector<QString> repoList = {"repo"};
+    const QString repoPath = linglong::util::getLinglongRootPath();
+    QString err = "";
+    QVector<QString> repoList = {"repo"};
 
-   QString matchRef = "org.deepin.calculator/1.0.0/x86_64";
+    QString matchRef = "org.deepin.calculator/1.0.0/x86_64";
 
-   auto ret = OSTREE_REPO_HELPER->repoPullbyCmd(repoPath, repoList[0], matchRef, err);
-   if (!ret) {
-       qInfo() << err;
-   }
+    auto ret = OSTREE_REPO_HELPER->repoPullbyCmd(repoPath, repoList[0], matchRef, err);
+    if (!ret) {
+        qInfo() << err;
+    }
 }

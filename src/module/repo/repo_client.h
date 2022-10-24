@@ -1,11 +1,11 @@
 /*
-* Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
-*
-* Author:     Iceyer <me@iceyer.net>
-*
-* Maintainer: Iceyer <me@iceyer.net>
-*
-* SPDX-License-Identifier: GPL-3.0-or-later
+ * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
+ *
+ * Author:     Iceyer <me@iceyer.net>
+ *
+ * Maintainer: Iceyer <me@iceyer.net>
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 #ifndef LINGLONG_SRC_MODULE_REPO_REPO_CLIENT_H_
@@ -36,12 +36,11 @@ class Response : public JsonSerialize
 class RepoClient
 {
 public:
-//    RepoClient(const QString& repoPath);
+    //    RepoClient(const QString& repoPath);
 
-    std::tuple<util::Error, package::AppMetaInfoList> QueryApps(const package::Ref& ref);
+    std::tuple<util::Error, package::AppMetaInfoList> QueryApps(const package::Ref &ref);
 
 private:
-
 };
 
 } // namespace repo

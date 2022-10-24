@@ -54,7 +54,7 @@ QStringList matchGroup(const QString &version)
     QRegularExpressionMatch matched = regexExp.match(version);
 
     for (int index = 1; index <= matched.lastCapturedIndex(); ++index) {
-        matchVersion.replace(index-1, matched.captured(index));
+        matchVersion.replace(index - 1, matched.captured(index));
     }
 
     return matchVersion;
@@ -105,7 +105,7 @@ int compareVersion(const QString &first, const QString &second)
 QString latestVersion(const QStringList &refStrList)
 {
     QString latestVer = "latest";
-    for(auto refStr : refStrList) {
+    for (auto refStr : refStrList) {
         auto tmpRef = package::Ref(refStr);
         latestVer = compareVersion(latestVer, tmpRef.version) > 0 ? latestVer : tmpRef.version;
     }

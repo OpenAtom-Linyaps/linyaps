@@ -63,7 +63,8 @@ public:
     // get elf offset size
     auto getElfSize(const QString elfFilePath) -> decltype(-1);
 
-    linglong::util::Error push(const QString &bundleFilePath, const QString &repoUrl, const QString &repoChannel, bool force);
+    linglong::util::Error push(const QString &bundleFilePath, const QString &repoUrl, const QString &repoChannel,
+                               bool force);
 };
 } // namespace package
 } // namespace linglong

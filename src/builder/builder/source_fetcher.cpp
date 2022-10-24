@@ -50,10 +50,13 @@ linglong::util::Error SourceFetcher::extractFile(const QString &path, const QStr
 }
 
 SourceFetcherPrivate::SourceFetcherPrivate(Source *src, SourceFetcher *parent)
-    : project(nullptr), source(src), file(nullptr), q_ptr(parent)
+    : project(nullptr)
+    , source(src)
+    , file(nullptr)
+    , q_ptr(parent)
 {
 }
-  
+
 QString SourceFetcherPrivate::filename()
 {
     QUrl url(source->url);
@@ -200,7 +203,7 @@ util::Error SourceFetcher::patch()
     QDir::setCurrent(sourceRoot());
 
     // TODO: remove later
-    //if (QDir("debian").exists()) {
+    // if (QDir("debian").exists()) {
     //    WrapError(d->handleDebianPatch());
     //}
 
@@ -235,17 +238,17 @@ QString SourceFetcher::sourceRoot() const
     return srcRoot;
 }
 
-void SourceFetcher::setSourceRoot(const QString &path) 
+void SourceFetcher::setSourceRoot(const QString &path)
 {
     srcRoot = path;
 }
 
 SourceFetcher::SourceFetcher(Source *s, Project *project)
     : dd_ptr(new SourceFetcherPrivate(s, this))
-    ,CompressedFileTarXz("tar.xz")
+    , CompressedFileTarXz("tar.xz")
 {
     Q_D(SourceFetcher);
-      
+
     d->project = project;
 }
 

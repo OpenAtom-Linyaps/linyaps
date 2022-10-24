@@ -2,9 +2,9 @@
 #include "ui_mainwindow.h"
 #include <QtGui>
 
-MainWindow::MainWindow(QWidget *parent) :
-    QMainWindow(parent),
-    ui(new Ui::MainWindow)
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent)
+    , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
     this->setWindowTitle("@APP_ID@");
@@ -14,7 +14,6 @@ MainWindow::MainWindow(QWidget *parent) :
     }
 
     this->move(parentRect.center() - this->rect().center());
-
 }
 
 MainWindow::~MainWindow()

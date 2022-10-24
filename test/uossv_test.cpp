@@ -25,21 +25,17 @@ TEST(UOSSign, UosSign)
     };
     string priv_crt = "/usr/share/ca-certificates/deepin/private/priv.crt";
     string priv_key = "/usr/share/ca-certificates/deepin/private/priv.key";
-    GoString certPath = {
-        .p = priv_crt.c_str(),
-        .n = priv_crt.length()
+    GoString certPath = {.p = priv_crt.c_str(), .n = priv_crt.length()
 
     };
-    GoString key = {
-        .p = priv_key.c_str(),
-        .n = priv_key.length()
+    GoString key = {.p = priv_key.c_str(), .n = priv_key.length()
 
     };
     GoUint8 noTSA = 0;
     GoUint8 timeout = 0;
     GoUint8 dump = 1;
-    //GoSlice *sd = (GoSlice *)malloc(sizeof(GoInt) * 2 + sizeof(char) * 1024);
-    GoSlice output ;
+    // GoSlice *sd = (GoSlice *)malloc(sizeof(GoInt) * 2 + sizeof(char) * 1024);
+    GoSlice output;
     int ret = (int)UOSSign(data, certPath, key, noTSA, timeout, &output);
     EXPECT_EQ(ret, 0);
     ret = -1;

@@ -294,7 +294,8 @@ bool SystemPackageManagerPrivate::installRuntime(linglong::package::AppMetaInfo 
     if ("devel" == appInfo->module) {
         savePath.append("/" + appInfo->module);
     }
-    bool ret = downloadAppData(appInfo->appId, appInfo->version, appInfo->arch, appInfo->channel, appInfo->module, savePath, err);
+    bool ret = downloadAppData(appInfo->appId, appInfo->version, appInfo->arch, appInfo->channel, appInfo->module,
+                               savePath, err);
     if (!ret) {
         err = "installRuntime download runtime data err";
         return false;
@@ -998,8 +999,8 @@ Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOp
                 }
             }
             auto packageRootPath = installPath + "/" + arch;
-            OrgDeepinLinglongSystemHelperInterface systemHelperInterface(
-                SystemHelperDBusName, SystemHelperDBusPath, QDBusConnection::systemBus());
+            OrgDeepinLinglongSystemHelperInterface systemHelperInterface(SystemHelperDBusName, SystemHelperDBusPath,
+                                                                         QDBusConnection::systemBus());
             qDebug() << "call systemHelperInterface.RuinInstallPortal" << packageRootPath << ref.toLocalFullRef()
                      << paramOption.delAppData;
             QDBusReply<void> reply =

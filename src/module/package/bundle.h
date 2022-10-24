@@ -101,7 +101,8 @@ public:
      * @param force :  force to push
      * @return Result
      */
-    linglong::util::Error push(const QString &bundleFilePath, const QString &repoUrl, const QString &repoChannel, bool force);
+    linglong::util::Error push(const QString &bundleFilePath, const QString &repoUrl, const QString &repoChannel,
+                               bool force);
 
 private:
     QScopedPointer<BundlePrivate> dd_ptr;

@@ -124,23 +124,24 @@ public:
         }
 
         command += "#local variable\n";
-        for (int i = q_ptr->variables->metaObject()->propertyOffset(); i < q_ptr->variables->metaObject()->propertyCount(); ++i) {
+        for (int i = q_ptr->variables->metaObject()->propertyOffset();
+             i < q_ptr->variables->metaObject()->propertyCount(); ++i) {
             auto propertyName = q_ptr->variables->metaObject()->property(i).name();
             if (q_ptr->variables->property(propertyName).toString().isNull()) {
-                command += QString("%1=\"%2\"\n")
-                               .arg(propertyName)
-                               .arg(temp->variables->property(propertyName).toString());
+                command +=
+                    QString("%1=\"%2\"\n").arg(propertyName).arg(temp->variables->property(propertyName).toString());
             } else {
-                command += QString("%1=\"%2\"\n")
-                               .arg(propertyName)
-                               .arg(q_ptr->variables->property(propertyName).toString());
+                command +=
+                    QString("%1=\"%2\"\n").arg(propertyName).arg(q_ptr->variables->property(propertyName).toString());
             }
         }
 
         command += "#build commands\n";
-        command += q_ptr->build->manual->configure.isNull() ? temp->build->manual->configure : q_ptr->build->manual->configure;
+        command +=
+            q_ptr->build->manual->configure.isNull() ? temp->build->manual->configure : q_ptr->build->manual->configure;
         command += q_ptr->build->manual->build.isNull() ? temp->build->manual->build : q_ptr->build->manual->build;
-        command += q_ptr->build->manual->install.isNull() ? temp->build->manual->install : q_ptr->build->manual->install;
+        command +=
+            q_ptr->build->manual->install.isNull() ? temp->build->manual->install : q_ptr->build->manual->install;
 
         command += "\n";
         // strip script
@@ -206,7 +207,6 @@ package::Ref Project::refWithModule(const QString &module) const
 {
     return dd_ptr->refWithModule(module);
 }
-
 
 const Project::Config &Project::config() const
 {
@@ -298,8 +298,8 @@ QString Project::Config::targetInstallPath(const QString &sub) const
     } else if (PackageKindLib == m_project->package->kind) {
         return (sub.isEmpty() ? QString("/runtime") : QStringList {"/runtime", sub}.join("/"));
     } else if (PackageKindApp == m_project->package->kind) {
-        return (sub.isEmpty() ? QString(QString("/opt/apps/%1/files").arg(m_project->ref().appId)) :
-                QStringList {QString("/opt/apps/%1/files").arg(m_project->ref().appId), sub}.join("/"));
+        return (sub.isEmpty() ? QString(QString("/opt/apps/%1/files").arg(m_project->ref().appId))
+                              : QStringList {QString("/opt/apps/%1/files").arg(m_project->ref().appId), sub}.join("/"));
     };
     return "";
 }

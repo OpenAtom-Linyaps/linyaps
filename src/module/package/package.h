@@ -61,13 +61,11 @@ public:
     Q_JSON_PROPERTY(QString, module);
 
 public:
-    inline package::Ref ref() {
-        return package::Ref("", appId, version, arch);
-    }
+    inline package::Ref ref() { return package::Ref("", appId, version, arch); }
 };
 
-}
-}
+} // namespace package
+} // namespace linglong
 
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::package, AppMetaInfo)
 

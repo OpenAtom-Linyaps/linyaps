@@ -24,10 +24,13 @@ class DependFetcherPrivate
 {
 public:
     explicit DependFetcherPrivate(const BuildDepend &bd, Project *parent)
-        : ref(fuzzyRef(&bd)), project(parent), buildDepend(&bd), dependType(bd.type)
+        : ref(fuzzyRef(&bd))
+        , project(parent)
+        , buildDepend(&bd)
+        , dependType(bd.type)
     {
     }
-    //TODO: dependType should be removed, buildDepend include it
+    // TODO: dependType should be removed, buildDepend include it
     package::Ref ref;
     Project *project;
     const BuildDepend *buildDepend;
@@ -65,7 +68,6 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
     targetParentDir.cdUp();
     targetParentDir.mkpath(".");
 
-   
     auto ret = ostree.checkoutAll(dependRef, subPath, targetPath);
 
     if (!ret.success()) {

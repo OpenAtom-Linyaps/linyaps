@@ -46,7 +46,7 @@ const QStringList envList = {
     "QT_WAYLAND_SHELL_INTEGRATION",
     "GDMSESSION",
     "QT_WAYLAND_FORCE_DPI",
-    "GIO_LAUNCHED_DESKTOP_FILE"  // 系统监视器
+    "GIO_LAUNCHED_DESKTOP_FILE" // 系统监视器
 };
 }
 } // namespace linglong

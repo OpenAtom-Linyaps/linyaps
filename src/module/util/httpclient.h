@@ -44,7 +44,6 @@ typedef struct _downloadRet {
 class HttpClient : public linglong::util::Singleton<HttpClient>
 {
 private:
-
     /*
      * 获取文件锁
      *
@@ -99,7 +98,6 @@ private:
     DownloadRet data;
 
 public:
-
     /*
      * 向服务器请求指定包名\版本\架构数据
      *
@@ -137,7 +135,7 @@ public:
      * 获取服务器token
      *
      * @param dnsOfLinglong: 玲珑仓库域名地址
-     * @param userInfo: 账户信息 
+     * @param userInfo: 账户信息
      *
      * @return QString: token数据
      */

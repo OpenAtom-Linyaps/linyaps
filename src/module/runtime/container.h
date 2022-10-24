@@ -28,6 +28,6 @@ public:
     Q_JSON_ITEM_MEMBER(QString, PackageName, packageName)
     Q_JSON_ITEM_MEMBER(QString, WorkingDirectory, workingDirectory)
 
-    linglong::util::Error create(const QString& ref);
+    linglong::util::Error create(const QString &ref);
 };
 Q_JSON_DECLARE_PTR_METATYPE(Container)

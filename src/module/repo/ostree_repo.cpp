@@ -151,7 +151,7 @@ private:
         } else {
             info = g_file_query_info(file, G_FILE_ATTRIBUTE_STANDARD_SIZE, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, nullptr,
                                      nullptr);
-            qDebug() << "fize size:" <<g_file_info_get_size(info);
+            qDebug() << "fize size:" << g_file_info_get_size(info);
 
             // Q_ASSERT(g_file_info_get_size(info) > 0);
             g_file_info_set_size(info, g_file_info_get_size(info));

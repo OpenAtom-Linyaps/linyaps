@@ -19,7 +19,6 @@
 #include <QtConcurrent/QtConcurrent>
 #include <QFuture>
 
-
 #include "module/util/package_manager_param.h"
 #include "module/util/singleton.h"
 #include "module/util/status_code.h"
@@ -139,4 +138,3 @@ protected:
 
 #define POOL_MAX_THREAD 10 ///< 下载、卸载、更新应用线程池最大线程数
 #define SYSTEM_MANAGER_HELPER linglong::service::SystemPackageManager::instance()
-

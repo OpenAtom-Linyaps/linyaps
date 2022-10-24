@@ -21,14 +21,14 @@ TEST(httpclient, test01)
     QString configUrl = "";
     int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
 
-    EXPECT_EQ (statusCode, STATUS_CODE(kSuccess));
+    EXPECT_EQ(statusCode, STATUS_CODE(kSuccess));
 
     auto token = G_HTTPCLIENT->getToken(configUrl, userInfo);
-    EXPECT_EQ (token.size() > 0, true);
+    EXPECT_EQ(token.size() > 0, true);
 
     QtConcurrent::run([=]() {
         QString outMsg;
         G_HTTPCLIENT->queryRemoteApp("cal", "", "x86_64", outMsg);
-        EXPECT_EQ (outMsg.size() > 0, true);
+        EXPECT_EQ(outMsg.size() > 0, true);
     });
 }

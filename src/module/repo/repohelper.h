@@ -17,9 +17,9 @@ namespace linglong {
 class RepoHelper
 {
 public:
-    RepoHelper() {}
+    RepoHelper() { }
 
-    virtual ~RepoHelper() {}
+    virtual ~RepoHelper() { }
 
     /*
      * 查询软件包在仓库中对应的索引信息ref，版本号为空查询最新版本，非空查询指定版本
@@ -59,6 +59,7 @@ public:
      *
      * @return bool: true:成功 false:失败
      */
-    virtual bool repoPullbyCmd(const QString &destPath, const QString &remoteName, const QString &ref, QString &err) = 0;
+    virtual bool repoPullbyCmd(const QString &destPath, const QString &remoteName, const QString &ref,
+                               QString &err) = 0;
 };
 } // namespace linglong

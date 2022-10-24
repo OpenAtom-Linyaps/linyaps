@@ -27,8 +27,8 @@ public:
 };
 
 Job::Job(std::function<void()> f, QObject *parent)
-    :func(f)
-    ,dd_ptr(new JobPrivate(this))
+    : func(f)
+    , dd_ptr(new JobPrivate(this))
 {
 }
 

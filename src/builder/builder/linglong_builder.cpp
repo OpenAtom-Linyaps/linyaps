@@ -757,8 +757,10 @@ util::Error LinglongBuilder::push(const QString &repoUrl, const QString &repoNam
     repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath(), remoteRepoEndpoint, remoteRepoName);
 
     // Fixme: should be buildArch.
-    auto refWithRuntime = package::Ref("", channel, project->package->id, project->package->version, util::hostArch(), "runtime");
-    auto refWithDevel = package::Ref("", channel, project->package->id, project->package->version, util::hostArch(), "devel");
+    auto refWithRuntime =
+        package::Ref("", channel, project->package->id, project->package->version, util::hostArch(), "runtime");
+    auto refWithDevel =
+        package::Ref("", channel, project->package->id, project->package->version, util::hostArch(), "devel");
 
     ret = repo.renameBranch(package::Ref(refWithRuntime.toLocalFullRef()), refWithRuntime);
     if (!ret.success()) {
@@ -811,7 +813,8 @@ util::Error LinglongBuilder::import()
 
     repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath());
 
-    auto refWithRuntime = package::Ref("", project->package->id, project->package->version, util::hostArch(), "runtime");
+    auto refWithRuntime =
+        package::Ref("", project->package->id, project->package->version, util::hostArch(), "runtime");
 
     ret = repo.importDirectory(refWithRuntime, BuilderConfig::instance()->projectRoot());
 

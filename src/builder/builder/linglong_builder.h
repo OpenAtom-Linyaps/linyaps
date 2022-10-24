@@ -24,7 +24,7 @@ class LinglongBuilder
 {
     Q_OBJECT
 public:
-    linglong::util::Error config (const QString &userName, const QString &password) override;
+    linglong::util::Error config(const QString &userName, const QString &password) override;
 
     linglong::util::Error create(const QString &projectName) override;
 
@@ -41,7 +41,7 @@ public:
 
     linglong::util::Error initRepo();
 
-    linglong::util::Error buildFlow(Project* project);
+    linglong::util::Error buildFlow(Project *project);
 };
 
 // TODO: remove later

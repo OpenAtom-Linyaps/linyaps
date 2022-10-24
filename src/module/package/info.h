@@ -105,9 +105,8 @@ public:
     // permissions
     Q_JSON_PTR_PROPERTY(Permission, permissions);
 
-    //overlayfs mount
+    // overlayfs mount
     Q_JSON_PTR_PROPERTY(OverlayfsRootfs, overlayfs);
-
 };
 
 } // namespace package

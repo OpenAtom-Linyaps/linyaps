@@ -159,7 +159,8 @@ bool HttpClient::queryRemoteApp(const QString &pkgName, const QString &pkgVer, c
  *
  * @return int: kSuccess:成功 kFail:失败
  */
-int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong, const QString &flags, const QString &token)
+int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong, const QString &flags,
+                           const QString &token)
 {
     std::string urlStr = QString(dnsOfLinglong + "apps/upload").toStdString();
     const char *url = urlStr.c_str();
@@ -308,7 +309,8 @@ QString HttpClient::getToken(const QString &dnsOfLinglong, QStringList userInfo)
     // --location
     curl_easy_setopt(curlHandle, CURLOPT_FOLLOWLOCATION, 1);
 
-    std::string sendString = "{\"username\":\"" + username.toStdString() + "\",\"password\":\"" + password.toStdString() + "\"}";
+    std::string sendString =
+        "{\"username\":\"" + username.toStdString() + "\",\"password\":\"" + password.toStdString() + "\"}";
 
     // 设置要POST的JSON数据
     curl_easy_setopt(curlHandle, CURLOPT_POSTFIELDS, sendString.c_str());

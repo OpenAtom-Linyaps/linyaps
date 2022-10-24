@@ -18,9 +18,8 @@
 TEST(Moduel_Util, runner)
 {
     auto ret = linglong::runner::Runner("ostree1", {"--repo=/tmp/linglongtest", "init", "--mode=bare-user-only"}, 3000);
-    EXPECT_EQ (ret, false);
+    EXPECT_EQ(ret, false);
 
     ret = linglong::runner::Runner("ostree", {"--repo=/tmp/linglongtest", "init", "--mode=bare-user-only1"}, 3000);
-    EXPECT_EQ (ret, false);
-
+    EXPECT_EQ(ret, false);
 }

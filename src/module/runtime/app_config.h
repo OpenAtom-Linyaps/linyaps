@@ -21,7 +21,6 @@ class AppConfig : public Serialize
     Q_SERIALIZE_CONSTRUCTOR(AppConfig)
 public:
     Q_SERIALIZE_PROPERTY(QStringList, appMountDevList);
-
 };
 
 } // namespace runtime

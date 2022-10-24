@@ -52,7 +52,6 @@ TEST(Moduel_Util, convertSpecialCharacters)
 
 TEST(Module_Util, Xdg01)
 {
-
     auto r1 = linglong::util::getXdgDir("Desktop");
     qInfo() << r1;
     EXPECT_EQ(r1.first, true);

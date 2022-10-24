@@ -121,8 +121,7 @@ QStringList getUserInfo()
 
     QFile file(filePath);
 
-    if (file.exists())
-    {
+    if (file.exists()) {
         file.open(QIODevice::ReadOnly);
 
         QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
@@ -159,7 +158,7 @@ quint64 sizeOfDir(const QString &srcPath)
             continue;
         }
         if (info.isSymLink()) {
-            //FIXME: https://bugreports.qt.io/browse/QTBUG-50301
+            // FIXME: https://bugreports.qt.io/browse/QTBUG-50301
             struct stat symlinkStat;
             lstat(info.absoluteFilePath().toLocal8Bit(), &symlinkStat);
             size += symlinkStat.st_size;

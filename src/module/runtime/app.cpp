@@ -622,7 +622,7 @@ public:
             }
         }
 
-         // bind /run/user/$(uid)/wayland-0
+        // bind /run/user/$(uid)/wayland-0
         for (auto const &item : QDir(userRuntimeDir).entryInfoList({"wayland*"}, QDir::AllEntries | QDir::System)) {
             mountMap.push_back({item.canonicalFilePath(), item.canonicalFilePath()});
         }
@@ -633,9 +633,9 @@ public:
 
         // 挂载/persistent/home/$username or /data/home/$username
         auto linglongRootPath = linglong::util::getLinglongRootPath();
-        if("/persistent/linglong" == linglongRootPath){
+        if ("/persistent/linglong" == linglongRootPath) {
             mountMap.push_back(qMakePair("/persistent" + hostHome, "/persistent" + hostHome));
-        }else if("/data/linglong" == linglongRootPath){
+        } else if ("/data/linglong" == linglongRootPath) {
             mountMap.push_back(qMakePair("/data" + hostHome, "/data" + hostHome));
         }
 
@@ -939,7 +939,6 @@ public:
 
         // Fixme: temporarily mount linglong root path into the container, remove later
         if (QString("org.deepin.manual") == appId) {
-
             QPointer<Mount> m(new Mount(r));
             m->type = "bind";
             m->options = QStringList {"ro", "rbind"};
@@ -1048,7 +1047,7 @@ public:
             runtimeRef.version = getMathedRuntime(runtimeRef.appId, runtimeRef.version);
         }
         QString runtimeFullRef =
-        QString("%1/").arg(channel) + runtimeRef.toLocalRefString().append(QString("/%1").arg(module));
+            QString("%1/").arg(channel) + runtimeRef.toLocalRefString().append(QString("/%1").arg(module));
         QMap<QString, QString> variables = {
             {"APP_REF", appRef},
             {"RUNTIME_REF", runtimeFullRef},

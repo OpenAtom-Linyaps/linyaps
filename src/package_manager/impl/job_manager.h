@@ -20,7 +20,8 @@
 
 class Job;
 class JobManagerPrivate;
-class JobManager : public QObject
+class JobManager
+    : public QObject
     , protected QDBusContext
     , public linglong::util::Singleton<JobManager>
 {
@@ -37,6 +38,7 @@ public Q_SLOTS:
     void Start(const QString &jobId);
     void Stop(const QString &jobId);
     void Cancel(const QString &jobId);
+
 protected:
     JobManager();
     ~JobManager() override;

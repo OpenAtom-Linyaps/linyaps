@@ -17,8 +17,7 @@
 namespace linglong {
 namespace service {
 class PackageManager;
-class PackageManagerPrivate
-    : public QObject
+class PackageManagerPrivate : public QObject
 {
     Q_OBJECT
 public:

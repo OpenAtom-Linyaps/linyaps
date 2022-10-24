@@ -85,6 +85,9 @@ install(FILES data/space.linglong.Service.desktop
 install(FILES data/ll-cli
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/bash-completion/completions
 )
+install(FILES data/llpkg
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/bash-completion/completions
+)
 
 set(PERMISSION
     data/linglong/hostdir.json

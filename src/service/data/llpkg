@@ -1,0 +1,66 @@
+#!/bin/env bash
+
+# linglong cli completion
+
+__llpkg_find_subcommand()
+{
+        for i in "${COMP_WORDS[@]}"
+        do
+                if ! [[ $i = -* ]] && ! [[ $i = llpkg ]]
+                then
+                        echo "$i"
+                        return
+                fi
+        done
+        echo ""
+        return
+}
+
+__llpkg_get_container_list()
+{
+        llpkg ps | tail -n+2 | awk '{print $2}' | tr '\n' ' '
+}
+
+__llpkg_get_installed_list()
+{
+        llpkg list | tail -n+2 | awk '{print $1}' | tr '\n' ' '
+}
+
+__llpkg_get_app_list()
+{
+        llpkg query . | tail -n+2 | awk '{print $1}' | tr '\n' ' '
+}
+
+_llpkg()
+{
+        local subcommand
+        local wordlist
+
+        subcommand=$(__llpkg_find_subcommand)
+        wordlist=$(llpkg "$subcommand" --help | grep -Po '((?<= )-\w|(?<= )--[\w-]+)|(?<=subcommand  )\w+|^ +  \w+$' | tr '\n' ' ')
+
+        case "$subcommand" in
+                exec|kill)
+                        wordlist="$wordlist $(__llpkg_get_container_list)"
+                ;;
+                install)
+                        wordlist="$wordlist $(__llpkg_get_app_list)"
+                ;;
+                update|uninstall|run)
+                        wordlist="$wordlist $(__llpkg_get_installed_list)"
+                ;;
+                repo)
+                        wordlist="$wordlist modify"
+                ;;
+        esac
+        local pre=${COMP_WORDS[COMP_CWORD-1]};
+        if [ $pre = "modify" ];then
+             wordlist="-h --help"
+        fi
+        local cur=${COMP_WORDS[COMP_CWORD]};
+        COMPREPLY=( $(compgen -W "${wordlist}" -- "${cur}") )
+
+        return 0
+}
+
+complete -F _llpkg llpkg

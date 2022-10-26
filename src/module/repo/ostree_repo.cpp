@@ -307,8 +307,13 @@ private:
         request.setRawHeader(QByteArray("X-Token"), remoteToken.toLocal8Bit());
         auto reply = httpClient.post(request, data);
         data = reply->readAll();
-        
+
         QScopedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
+
+        if (200 != info->code) {
+            return {QString(), NewError(-1, info->msg)};
+        }
+
         return {info->data->id, NoError()};
     }
 
@@ -387,7 +392,7 @@ private:
         auto result = util::loadJsonBytes<AuthResponse>(data);
 
         // Fixme: use status macro
-        if (result->code != 200) {
+        if (200 != result->code) {
             auto err = result->msg.isEmpty() ? QString("%1 is unreachable").arg(url.toString()) : result->msg;
             return NewError(-1, err);
         }
@@ -456,6 +461,9 @@ linglong::util::Error OSTreeRepo::push(const package::Ref &ref, bool force)
 
     // FIXME: no need,use /v1/meta/:id
     QScopedPointer<InfoResponse> repoInfo(d->getRepoInfo(d->remoteRepoName));
+    if (repoInfo->code != 200) {
+        return NewError(-1, repoInfo->msg);
+    }
 
     QString commitID;
     std::tie(commitID, err) = d->resolveRev(ref.toLocalFullRef());

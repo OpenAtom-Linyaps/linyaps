@@ -97,6 +97,8 @@ class InfoResponse : public JsonSerialize
     Q_OBJECT;
     Q_JSON_CONSTRUCTOR(InfoResponse)
 
+    Q_JSON_PROPERTY(int, code);
+    Q_JSON_PROPERTY(QString, msg);
     Q_JSON_PROPERTY(ParamStringMap, revs);
 };
 
@@ -147,16 +149,17 @@ class UploadTaskRequest : public JsonSerialize
 
 class UploadTaskResponse : public Serialize
 {
-    Q_OBJECT; 
+    Q_OBJECT;
     Q_JSON_CONSTRUCTOR(UploadTaskResponse)
 
     Q_JSON_PROPERTY(int, code);
+    Q_JSON_PROPERTY(QString, msg);
     Q_JSON_PTR_PROPERTY(linglong::repo::UploadResponseData, data);
 };
 
 class AuthResponse : public Serialize
 {
-    Q_OBJECT; 
+    Q_OBJECT;
     Q_JSON_CONSTRUCTOR(AuthResponse)
 
     Q_JSON_PROPERTY(int, code);

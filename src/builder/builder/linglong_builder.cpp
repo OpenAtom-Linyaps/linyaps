@@ -731,6 +731,84 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
         } else {
             qCritical() << "ll-builder need loader to build a runnable uab";
         }
+
+        package::Ref baseRef("");
+
+        if (!project->base) {
+            QFile infoFile(project->config().cacheRuntimePath("info.json"));
+            if (!infoFile.open(QIODevice::ReadOnly)) {
+                return NewError(infoFile.error(), infoFile.errorString());
+            }
+            auto info = fromVariant<package::Info>(QJsonDocument::fromJson(infoFile.readAll()).toVariant());
+
+            package::Ref runtimeBaseRef(info->base);
+
+            baseRef.appId = runtimeBaseRef.appId;
+            baseRef.version = runtimeBaseRef.version;
+        }
+
+        const auto extraFileListPath =
+            QStringList {BuilderConfig::instance()->projectRoot(), "extra_files.txt"}.join("/");
+        if (util::fileExists(extraFileListPath)) {
+            auto copyExtraFile = [baseRef, exportPath, &project](const QString &path) -> util::Error {
+                QString containerFilePath;
+                QString filePath;
+                QString exportFilePath;
+
+                if (path.startsWith("/runtime")) {
+                    filePath = project->config().cacheRuntimePath(
+                        QStringList {"files", path.right(path.length() - sizeof("/runtime"))}.join("/"));
+
+                    exportFilePath = QStringList {exportPath, "lib", path}.join("/");
+                } else {
+                    filePath = BuilderConfig::instance()->layerPath({baseRef.toLocalRefString(), "files", path});
+                    exportFilePath = QStringList {exportPath, "lib", path}.join("/");
+                }
+
+                if (!util::fileExists(filePath) && !util::dirExists(filePath)) {
+                    return NewError(-1, QString("file %1 not exist").arg(filePath));
+                }
+
+                // ensure parent path
+                util::ensureDir(exportFilePath);
+                util::removeDir(exportFilePath);
+
+                QProcess p;
+                p.setProgram("cp");
+                p.setArguments({"-Pr", filePath, exportFilePath}); // use cp -Pr to keep symlink
+                if (!p.startDetached()) {
+                    return NewError(-1, "failed to start cp");
+                }
+                p.waitForStarted(1000);
+                p.waitForFinished(1000 * 60 * 60); // one hour
+                if (p.exitCode() != 0) {
+                    return NewError(-1, QString("failed to copy %1 to  %2 ").arg(filePath).arg(exportFilePath));
+                }
+                return NewError();
+            };
+
+            QFile extraFileList(extraFileListPath);
+            if (!extraFileList.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                return NewError(-1, "cannot open extra_files.txt");
+            }
+            QTextStream textStream(&extraFileList);
+            while (true) {
+                QString line = textStream.readLine();
+                if (line.isNull()) {
+                    break;
+
+                } else {
+                    auto error = copyExtraFile(line);
+                    if (!error.success()) {
+                        return error;
+                    }
+                }
+            }
+
+            if (!extraFileList.copy(QStringList {exportPath, "lib", "extra_files.txt"}.join("/"))) {
+                return NewError(-1, "cannot copy extra_files.txt");
+            }
+        }
     }
     // TODO: if the kind is not app, don't make bundle
     // make bundle package

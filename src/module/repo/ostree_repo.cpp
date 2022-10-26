@@ -287,7 +287,7 @@ private:
 
     InfoResponse *getRepoInfo(const QString &repoName)
     {
-        QUrl url(QString("%1/%2/%3").arg(ConfigInstance().repoUrl, "api/v1/repos", repoName));
+        QUrl url(QString("%1/%2/%3").arg(remoteEndpoint, "api/v1/repos", repoName));
 
         QNetworkRequest request(url);
 
@@ -299,7 +299,7 @@ private:
 
     std::tuple<QString, util::Error> newUploadTask(const QString &repoName, UploadTaskRequest *req)
     {
-        QUrl url(QString("%1/api/v1/blob/%2/upload").arg(ConfigInstance().repoUrl, repoName));
+        QUrl url(QString("%1/api/v1/blob/%2/upload").arg(remoteEndpoint, repoName));
         QNetworkRequest request(url);
 
         auto data = QJsonDocument(toVariant(req).toJsonObject()).toJson();
@@ -307,7 +307,7 @@ private:
         request.setRawHeader(QByteArray("X-Token"), remoteToken.toLocal8Bit());
         auto reply = httpClient.post(request, data);
         data = reply->readAll();
-
+        
         QScopedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
         return {info->data->id, NoError()};
     }
@@ -317,7 +317,7 @@ private:
         util::Error err(NoError());
         QByteArray fileData;
 
-        QUrl url(QString("%1/api/v1/blob/%2/upload/%3").arg(ConfigInstance().repoUrl, repoName, taskID));
+        QUrl url(QString("%1/api/v1/blob/%2/upload/%3").arg(remoteEndpoint, repoName, taskID));
         QNetworkRequest request(url);
         request.setRawHeader(QByteArray("X-Token"), remoteToken.toLocal8Bit());
 
@@ -367,7 +367,7 @@ private:
 
     util::Error cleanUploadTask(const QString &repoName, const QString &taskID)
     {
-        QUrl url(QString("%1/api/v1/blob/%2/upload/%3").arg(ConfigInstance().repoUrl, repoName, taskID));
+        QUrl url(QString("%1/api/v1/blob/%2/upload/%3").arg(remoteEndpoint, repoName, taskID));
         QNetworkRequest request(url);
         // FIXME: check error
         httpClient.del(request);
@@ -376,7 +376,7 @@ private:
 
     util::Error getToken()
     {
-        QUrl url(QString("%1/%2").arg(ConfigInstance().repoUrl, "api/v1/sign-in"));
+        QUrl url(QString("%1/%2").arg(remoteEndpoint, "api/v1/sign-in"));
         QNetworkRequest request(url);
         auto userInfo = util::getUserInfo();
         QString userJsonData =
@@ -416,7 +416,7 @@ linglong::util::Error OSTreeRepo::importDirectory(const package::Ref &ref, const
 {
     Q_D(OSTreeRepo);
 
-    auto ret = d->ostreeRun({"commit", "-b", ref.toString(), "--tree=dir=" + path});
+    auto ret = d->ostreeRun({"commit", "-b", ref.toString(), "--canonical-permissions", "--tree=dir=" + path});
 
     return ret;
 }

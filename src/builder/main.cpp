@@ -201,6 +201,41 @@ int main(int argc, char **argv)
              }
              return result.code();
          }},
+        {"config",
+         [&](QCommandLineParser &parser) -> int {
+             parser.clearPositionalArguments();
+
+             parser.addPositionalArgument("config", "config user info", "config");
+             auto optUserName = QCommandLineOption("name", "user name", "--name");
+             auto optUserPassword = QCommandLineOption("password", "user password", "--password");
+             parser.addOption(optUserName);
+             parser.addOption(optUserPassword);
+
+             parser.process(app);
+             auto userName = parser.value(optUserName);
+             auto userPassword = parser.value(optUserPassword);
+             auto result = builder->config(userName, userPassword);
+             if (!result.success()) {
+                 qCritical() << result;
+             }
+
+             return result.code();
+         }},
+        {"import",
+         [&](QCommandLineParser &parser) -> int {
+             parser.clearPositionalArguments();
+
+             parser.addPositionalArgument("import", "import package data to local repo", "import");
+
+             parser.process(app);
+
+             auto result = builder->import();
+             if (!result.success()) {
+                 qCritical() << result;
+             }
+
+             return result.code();
+         }},
         {"push",
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();

@@ -24,6 +24,8 @@ class LinglongBuilder
 {
     Q_OBJECT
 public:
+    linglong::util::Error config (const QString &userName, const QString &password) override;
+
     linglong::util::Error create(const QString &projectName) override;
 
     linglong::util::Error build() override;
@@ -32,6 +34,8 @@ public:
 
     linglong::util::Error push(const QString &repoUrl, const QString &repoName, const QString &channel,
                                bool pushWithDevel) override;
+
+    linglong::util::Error import() override;
 
     linglong::util::Error run() override;
 

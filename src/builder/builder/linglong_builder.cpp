@@ -267,6 +267,22 @@ package::Ref fuzzyRef(const JsonSerialize *obj)
     return ref;
 }
 
+linglong::util::Error LinglongBuilder::config(const QString &userName, const QString &password)
+{
+    auto userJsonData = QString("{\"username\": \"%1\",\n \"password\": \"%2\"}").arg(userName).arg(password);
+
+    QFile infoFile(util::getUserFile(".linglong/.user.json"));
+    if (!infoFile.open(QIODevice::WriteOnly)) {
+        return NewError(infoFile.error(), infoFile.errorString() + " " + infoFile.fileName());
+    }
+    if (infoFile.write(userJsonData.toLocal8Bit()) < 0) {
+        return NewError(infoFile.error(), infoFile.errorString());
+    }
+    infoFile.close();
+
+    return NoError();
+}
+
 linglong::util::Error LinglongBuilder::initRepo()
 {
     // if local ostree is not exist, create and init it
@@ -765,6 +781,36 @@ util::Error LinglongBuilder::push(const QString &repoUrl, const QString &repoNam
 
     return ret;
     // return util::Error(NoError());
+}
+
+util::Error LinglongBuilder::import()
+{
+    auto ret = initRepo();
+    if (!ret.success()) {
+        return NewError(-1, "load local repo failed");
+    }
+
+    auto projectConfigPath = QStringList {BuilderConfig::instance()->projectRoot(), "linglong.yaml"}.join("/");
+
+    if (!QFileInfo::exists(projectConfigPath)) {
+        qCritical() << "ll-builder should running in project root";
+        return NewError(-1, "can not found linglong.yaml");
+    }
+
+    QScopedPointer<Project> project(formYaml<Project>(YAML::LoadFile(projectConfigPath.toStdString())));
+
+    repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath());
+
+    auto refWithRuntime = package::Ref("", project->package->id, project->package->version, util::hostArch(), "runtime");
+
+    ret = repo.importDirectory(refWithRuntime, BuilderConfig::instance()->projectRoot());
+
+    if (!ret.success()) {
+        return NewError(-1, "import package failed");
+    }
+
+    qInfo().noquote() << QString("import %1 success").arg(refWithRuntime.toOSTreeRefLocalString());
+    return NoError();
 }
 
 linglong::util::Error LinglongBuilder::run()

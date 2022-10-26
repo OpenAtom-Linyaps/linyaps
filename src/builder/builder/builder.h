@@ -20,6 +20,8 @@ namespace builder {
 class Builder
 {
 public:
+    virtual linglong::util::Error config(const QString &userName, const QString &password) = 0;
+
     virtual linglong::util::Error create(const QString &projectName) = 0;
 
     virtual linglong::util::Error build() = 0;
@@ -28,6 +30,8 @@ public:
 
     virtual util::Error push(const QString &repoUrl, const QString &repoName, const QString &channel,
                              bool pushWithDevel) = 0;
+
+    virtual linglong::util::Error import() = 0;
 
     virtual linglong::util::Error run() = 0;
 };

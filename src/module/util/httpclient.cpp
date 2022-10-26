@@ -114,9 +114,9 @@ bool HttpClient::queryRemoteApp(const QString &pkgName, const QString &pkgVer, c
 
     QString postUrl = "";
     if (configUrl.endsWith("/")) {
-        postUrl = configUrl + "apps/fuzzysearchapp";
+        postUrl = configUrl + "api/v0/apps/fuzzysearchapp";
     } else {
-        postUrl = configUrl + "/apps/fuzzysearchapp";
+        postUrl = configUrl + "/api/v0/apps/fuzzysearchapp";
     }
 
     bool ret = false;
@@ -137,8 +137,8 @@ bool HttpClient::queryRemoteApp(const QString &pkgName, const QString &pkgVer, c
             outMsg = QString::fromUtf8(reply->readAll());
             ret = true;
         } else {
-            qCritical() << reply->errorString();
             outMsg = reply->errorString();
+            qCritical() << outMsg << reply->error();
             reply->abort();
         }
         reply->deleteLater();
@@ -172,11 +172,11 @@ int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong
 
     struct curl_slist *headers = NULL;
     std::string tokenStr = QString("X-Token: " + token).toStdString();
-    const char * tokenMsg = tokenStr.c_str();
+    const char *tokenMsg = tokenStr.c_str();
 
     headers = curl_slist_append(headers, tokenMsg);
     curl_easy_setopt(curlHandle, CURLOPT_HTTPHEADER, headers);
-    //设置为非0表示本次操作为POST
+    // 设置为非0表示本次操作为POST
     curl_easy_setopt(curlHandle, CURLOPT_POST, 1);
     // --location
     curl_easy_setopt(curlHandle, CURLOPT_FOLLOWLOCATION, 1);
@@ -241,7 +241,7 @@ int HttpClient::pushServerBundleData(const QString &info, const QString &dnsOfLi
     // HTTP报文头
     struct curl_slist *headers = NULL;
     std::string tokenStr = QString("X-Token: " + token).toStdString();
-    const char * tokenMsg = tokenStr.c_str();
+    const char *tokenMsg = tokenStr.c_str();
 
     headers = curl_slist_append(headers, tokenMsg);
     headers = curl_slist_append(headers, "Content-Type: application/json");

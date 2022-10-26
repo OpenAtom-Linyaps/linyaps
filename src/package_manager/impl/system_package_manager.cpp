@@ -78,7 +78,7 @@ bool SystemPackageManagerPrivate::getAppJsonArray(const QString &jsonString, QJs
     }
 
     int code = jsonObject["code"].toInt();
-    if (code != 0) {
+    if (code != 200) {
         err = "app not found in repo";
         qCritical().noquote() << jsonString;
         return false;
@@ -1236,9 +1236,9 @@ Reply SystemPackageManager::ModifyRepo(const QString &url)
 
     QString dstUrl = "";
     if (url.endsWith("/")) {
-        dstUrl = url + "repo";
+        dstUrl = url + "repos/repo";
     } else {
-        dstUrl = url + "/repo";
+        dstUrl = url + "/repos/repo";
     }
 
     // ostree config --repo=/persistent/linglong/repo set "remote \"repo\".url" https://repo-dev.linglong.space/repo/

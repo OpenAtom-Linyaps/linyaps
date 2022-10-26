@@ -1,5 +1,6 @@
 {
     "appMountDevList": [
-        "org.deepin.camera"
+        "org.deepin.camera",
+        "org.deepin.music"
     ]
 }

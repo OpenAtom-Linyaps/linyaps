@@ -499,11 +499,6 @@ public:
             roMountMap.push_back({item.canonicalFilePath(), item.canonicalFilePath()});
         }
 
-        // bind /dev/sr*
-        for (auto const &item : QDir("/dev").entryInfoList({"sr*"}, QDir::AllEntries | QDir::System)) {
-            roMountMap.push_back({item.canonicalFilePath(), item.canonicalFilePath()});
-        }
-
         for (const auto &pair : roMountMap) {
             QPointer<Mount> m(new Mount(r));
             m->type = "bind";

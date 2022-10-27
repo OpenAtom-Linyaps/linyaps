@@ -741,6 +741,7 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
 util::Error LinglongBuilder::push(const QString &repoUrl, const QString &repoName, const QString &channel,
                                   bool pushWithDevel)
 {
+    auto ret = NoError();
     auto projectConfigPath = QStringList {BuilderConfig::instance()->projectRoot(), "linglong.yaml"}.join("/");
 
     if (!QFileInfo::exists(projectConfigPath)) {
@@ -759,23 +760,32 @@ util::Error LinglongBuilder::push(const QString &repoUrl, const QString &repoNam
     auto refWithRuntime = package::Ref("", channel, project->package->id, project->package->version, util::hostArch(), "runtime");
     auto refWithDevel = package::Ref("", channel, project->package->id, project->package->version, util::hostArch(), "devel");
 
+    ret = repo.renameBranch(package::Ref(refWithRuntime.toLocalFullRef()), refWithRuntime);
+    if (!ret.success()) {
+        return WrapError(ret, "rename runtime branch failed");
+    }
     // push ostree data by ref
-    auto ret = repo.push(refWithRuntime, false);
+    ret = repo.push(refWithRuntime, false);
 
-    if (ret.success()) {
-        qInfo().noquote() << QString("push %1 success").arg(project->package->id);
-    } else {
+    if (!ret.success()) {
         qInfo().noquote() << QString("push %1 failed").arg(project->package->id);
         return ret;
+    } else {
+        qInfo().noquote() << QString("push %1 success").arg(project->package->id);
     }
 
     if (pushWithDevel) {
+        ret = repo.renameBranch(package::Ref(refWithDevel.toLocalFullRef()), refWithDevel);
+        if (!ret.success()) {
+            return WrapError(ret, "rename devel branch failed");
+        }
+
         ret = repo.push(package::Ref(refWithDevel), false);
 
-        if (ret.success()) {
-            qInfo().noquote() << QString("push %1 success").arg(project->package->id);
-        } else {
+        if (!ret.success()) {
             qInfo().noquote() << QString("push %1 failed").arg(project->package->id);
+        } else {
+            qInfo().noquote() << QString("push %1 success").arg(project->package->id);
         }
     }
 

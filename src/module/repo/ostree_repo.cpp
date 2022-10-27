@@ -147,7 +147,14 @@ private:
             info = g_file_query_info(file, G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET,
                                      G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, nullptr, nullptr);
             g_file_info_set_file_type(info, G_FILE_TYPE_SYMBOLIC_LINK);
+            g_file_info_set_size(info, 0);
         } else {
+            info = g_file_query_info(file, G_FILE_ATTRIBUTE_STANDARD_SIZE, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, nullptr,
+                                     nullptr);
+            qDebug() << "fize size:" <<g_file_info_get_size(info);
+
+            // Q_ASSERT(g_file_info_get_size(info) > 0);
+            g_file_info_set_size(info, g_file_info_get_size(info));
             inputBytes = g_file_load_bytes(file, nullptr, nullptr, nullptr);
         }
         // TODO: set uid/gid with G_FILE_ATTRIBUTE_UNIX_UID/G_FILE_ATTRIBUTE_UNIX_GID
@@ -309,8 +316,8 @@ private:
         data = reply->readAll();
 
         QScopedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
-
-        if (200 != info->code) {
+        qDebug() << "new upload task" << data;
+        if (info->code != 200) {
             return {QString(), NewError(-1, info->msg)};
         }
 
@@ -364,8 +371,15 @@ private:
             qDebug() << fi.isSymLink() << "send " << obj.objectName << obj.path;
         }
 
-        // FIXME: check error
-        httpClient.put(request, multiPart.data());
+        auto reply = httpClient.put(request, multiPart.data());
+        auto data = reply->readAll();
+
+        qDebug() << "doUpload" << data;
+
+        QScopedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
+        if (200 != info->code) {
+            return NewError(-1, info->msg);
+        }
 
         return NoError();
     }
@@ -426,6 +440,17 @@ linglong::util::Error OSTreeRepo::importDirectory(const package::Ref &ref, const
     return ret;
 }
 
+linglong::util::Error OSTreeRepo::renameBranch(const package::Ref &oldRef, const package::Ref &newRef)
+{
+    Q_D(OSTreeRepo);
+
+    qInfo() << newRef.toOSTreeRefLocalString() << oldRef.toLocalFullRef();
+    auto ret = d->ostreeRun({"commit", "-b", newRef.toOSTreeRefLocalString(), "--canonical-permissions",
+                             "--tree=ref=" + oldRef.toLocalFullRef()});
+    qInfo() << ret.success();
+    return ret;
+}
+
 linglong::util::Error OSTreeRepo::import(const package::Bundle &bundle)
 {
     return NoError();
@@ -466,11 +491,11 @@ linglong::util::Error OSTreeRepo::push(const package::Ref &ref, bool force)
     }
 
     QString commitID;
-    std::tie(commitID, err) = d->resolveRev(ref.toLocalFullRef());
+    std::tie(commitID, err) = d->resolveRev(ref.toOSTreeRefLocalString());
     if (!err.success()) {
-        return WrapError(err, "push failed:" + ref.toLocalFullRef());
+        return WrapError(err, "push failed:" + ref.toOSTreeRefLocalString());
     }
-    qDebug() << "push commit" << commitID << ref.toLocalFullRef();
+    qDebug() << "push commit" << commitID << ref.toOSTreeRefLocalString();
 
     auto revPair = new RevPair(&uploadTaskReq);
 
@@ -497,10 +522,10 @@ linglong::util::Error OSTreeRepo::push(const package::Ref &ref, bool force)
         return WrapError(err, "call newUploadTask failed");
     }
 
-    d->doUploadTask(d->remoteRepoName, taskID, objects);
-    if (!err.success()) {
+    auto uploadStatus = d->doUploadTask(d->remoteRepoName, taskID, objects);
+    if (!uploadStatus.success()) {
         d->cleanUploadTask(d->remoteRepoName, taskID);
-        return WrapError(err, "call newUploadTask failed");
+        return WrapError(uploadStatus, "call newUploadTask failed");
     }
 
     return WrapError(d->cleanUploadTask(d->remoteRepoName, taskID), "call cleanUploadTask failed");

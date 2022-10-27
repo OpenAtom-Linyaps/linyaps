@@ -49,6 +49,8 @@ public:
 
     linglong::util::Error importDirectory(const package::Ref &ref, const QString &path) override;
 
+    linglong::util::Error renameBranch(const package::Ref &oldRef, const package::Ref &newRef);
+
     linglong::util::Error import(const package::Bundle &bundle) override;
 
     linglong::util::Error exportBundle(package::Bundle &bundle) override;

@@ -133,12 +133,13 @@ bool HttpClient::queryRemoteApp(const QString &pkgName, const QString &pkgVer, c
     QNetworkReply *reply = mgr.post(request, data);
     QEventLoop eventLoop;
     QObject::connect(reply, &QNetworkReply::finished, &eventLoop, [&]() {
+        outMsg = QString::fromUtf8(reply->readAll());
         if (reply->error() == QNetworkReply::NoError) {
-            outMsg = QString::fromUtf8(reply->readAll());
             ret = true;
         } else {
-            outMsg = reply->errorString();
+            outMsg.append(QString(" err info:%1").arg(reply->errorString()));
             qCritical() << outMsg << reply->error();
+            qDebug() << "queryRemoteApp param:" << postUrl << pkgName << pkgVer << pkgArch;
             reply->abort();
         }
         reply->deleteLater();

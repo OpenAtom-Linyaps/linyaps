@@ -20,14 +20,14 @@
 #include <QFuture>
 
 
-#include "module/util/package_manager_param.h"
+#include "module/dbus_ipc/package_manager_param.h"
 #include "module/util/singleton.h"
 #include "module/util/status_code.h"
-#include "service/impl/reply.h"
-#include "service/impl/param_option.h"
+#include "module/dbus_ipc/reply.h"
+#include "module/dbus_ipc/param_option.h"
 #include "module/package/package.h"
 #include "package_manager_flatpak_impl.h"
-#include "service/impl/register_meta_type.h"
+#include "module/dbus_ipc/register_meta_type.h"
 #include "module/runtime/container.h"
 
 namespace linglong {

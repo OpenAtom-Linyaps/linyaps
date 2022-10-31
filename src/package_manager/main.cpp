@@ -10,10 +10,10 @@
 
 #include <QCoreApplication>
 
-#include "service/impl/register_meta_type.h"
+#include "module/dbus_ipc/register_meta_type.h"
 #include "packagemanageradaptor.h"
 #include "jobmanageradaptor.h"
-#include "module/util/log_handler.h"
+#include "module/util/log/log_handler.h"
 #include "module/repo/repo.h"
 
 using namespace linglong;

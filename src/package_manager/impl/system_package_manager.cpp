@@ -24,7 +24,7 @@
 
 #include "app_status.h"
 #include "appinfo_cache.h"
-#include "module/util/httpclient.h"
+#include "module/util/http/httpclient.h"
 #include "module/util/sysinfo.h"
 #include "module/util/runner.h"
 #include "system_package_manager_p.h"

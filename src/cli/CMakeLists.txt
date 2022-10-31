@@ -20,16 +20,16 @@ set(LL_CLI_SOURCES
     ../module/util/file.cpp
     ../module/util/http/http_client.cpp
     ../module/util/http/http_client.h
-    ../module/util/httpclient.cpp
+    ../module/util/http/httpclient.cpp
     ../module/util/json.h
-    ../module/util/log_handler.cpp
+    ../module/util/log/log_handler.cpp
     ../module/util/singleton.h
     ../module/util/sysinfo.cpp
     ../module/util/uuid.cpp
     ../module/util/xdg.cpp
     ../service/impl/package_manager.cpp
-    ../service/impl/param_option.h
-    ../service/impl/reply.h
+    ../module/dbus_ipc/param_option.h
+    ../module/dbus_ipc/reply.h
     ../service/resource/resource.qrc
     ../package_manager/impl/app_status.cpp
     ../package_manager/impl/appinfo_cache.cpp
@@ -43,7 +43,7 @@ set(LL_CLI_SOURCES
 
 set_source_files_properties(
   ../module/dbus_ipc/com.deepin.linglong.PackageManager.xml
-  PROPERTIES INCLUDE service/impl/register_meta_type.h
+  PROPERTIES INCLUDE module/dbus_ipc/register_meta_type.h
 )
 
 qt5_add_dbus_interface(
@@ -54,7 +54,7 @@ qt5_add_dbus_interface(
 
 set_source_files_properties(
   ../module/dbus_ipc/org.deepin.linglong.PackageManager.xml
-  PROPERTIES INCLUDE service/impl/register_meta_type.h
+  PROPERTIES INCLUDE module/dbus_ipc/register_meta_type.h
 )
 
 qt5_add_dbus_interface(
@@ -105,6 +105,13 @@ target_link_libraries(ll-cli PRIVATE ${LINK_LIBS} ${CLI_NO_DBUS})
 target_include_directories(ll-cli PRIVATE ${OSTREE1_INCLUDE_DIRS})
 
 install(TARGETS ll-cli RUNTIME DESTINATION bin)
+
+install(FILES misc/bash_completion/ll-cli
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/bash-completion/completions
+)
+install(FILES misc/bash_completion/llpkg
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/bash-completion/completions
+)
 
 install(FILES ${CMAKE_SOURCE_DIR}/scripts/linglong.sh
         DESTINATION /etc/profile.d

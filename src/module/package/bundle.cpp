@@ -324,7 +324,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
     arguments.clear();
     arguments << "-cvpf" << this->tmpWorkDir + "/repo.tar"
               << "-C" + this->tmpWorkDir << "repo";
-    auto resultTar = runner("tar", arguments);
+    auto resultTar = runner("pwd", arguments);
     if (!resultTar.success()) {
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);

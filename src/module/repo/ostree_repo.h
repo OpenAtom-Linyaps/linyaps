@@ -61,6 +61,8 @@ public:
 
     linglong::util::Error push(const package::Ref &ref, bool force) override;
 
+    linglong::util::Error push(const package::Ref &ref) override;
+
     linglong::util::Error push(const package::Bundle &bundle, bool force) override;
 
     linglong::util::Error pull(const package::Ref &ref, bool force) override;
@@ -72,6 +74,8 @@ public:
     linglong::util::Error removeRef(const package::Ref &ref);
 
     linglong::util::Error checkoutAll(const package::Ref &ref, const QString &subPath, const QString &target);
+
+    std::tuple<QString, util::Error> compressOstreeData(const package::Ref &ref);
 
     QString rootOfLayer(const package::Ref &ref) override;
 
@@ -119,6 +123,8 @@ class UploadResponseData : public Serialize
     Q_JSON_CONSTRUCTOR(UploadResponseData)
 
     Q_JSON_PROPERTY(QString, id);
+    Q_JSON_PROPERTY(QString, watchId);
+    Q_JSON_PROPERTY(QString, status);
 };
 
 class AuthResponseData : public Serialize
@@ -149,6 +155,15 @@ class UploadTaskRequest : public JsonSerialize
     Q_JSON_PROPERTY(linglong::repo::RevPairStrMap, refs);
 };
 
+class UploadRequest : public JsonSerialize
+{
+    Q_OBJECT;
+    Q_JSON_CONSTRUCTOR(UploadRequest)
+
+    Q_JSON_PROPERTY(QString, repoName);
+    Q_JSON_PROPERTY(QString, ref);
+};
+
 class UploadTaskResponse : public Serialize
 {
     Q_OBJECT;
@@ -172,6 +187,7 @@ class AuthResponse : public Serialize
 } // namespace repo
 } // namespace linglong
 
+Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::repo, UploadRequest)
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::repo, UploadTaskRequest)
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::repo, UploadTaskResponse)
 

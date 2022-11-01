@@ -13,6 +13,7 @@ find_package(
              DBus
              Sql
              Network
+             WebSockets
 )
 find_package(yaml-cpp REQUIRED)
 find_package(CURL REQUIRED)
@@ -28,6 +29,7 @@ set(Qt_LIBS
     Qt5::DBus
     Qt5::Sql
     Qt5::Network
+    Qt5::WebSockets
 )
 
 set(LINK_LIBS

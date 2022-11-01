@@ -5,6 +5,7 @@ find_package(
   Qt5
   COMPONENTS Concurrent Sql
   REQUIRED
+  WebSockets
 )
 pkg_search_module(
   OSTREE1
@@ -62,6 +63,7 @@ set(LINK_LIBS
     CURL::libcurl
     ${OSTREE1_LDFLAGS}
     Qt5::Sql
+    Qt5::WebSockets
 )
 
 add_executable(ll-service ${LL_SERVICE_SOURCES})

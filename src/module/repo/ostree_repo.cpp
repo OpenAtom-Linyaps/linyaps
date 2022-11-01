@@ -18,6 +18,9 @@
 #include <QDir>
 #include <QHttpPart>
 #include <utility>
+#include <QThread>
+
+#include <QtWebSockets/QWebSocket>
 
 #include "module/package/ref.h"
 #include "module/package/info.h"
@@ -300,8 +303,29 @@ private:
 
         auto reply = httpClient.get(request);
         auto data = reply->readAll();
+        qDebug() << "url" << url << "repo info" << data;
         auto info = util::loadJsonBytes<InfoResponse>(data);
         return info;
+    }
+
+    std::tuple<QString, util::Error> newUploadTask(UploadRequest *req)
+    {
+        QUrl url(QString("%1/api/v1/upload-tasks").arg(remoteEndpoint));
+        QNetworkRequest request(url);
+        qDebug() << "upload url" << url;
+        auto data = QJsonDocument(toVariant(req).toJsonObject()).toJson();
+
+        request.setRawHeader(QByteArray("X-Token"), remoteToken.toLocal8Bit());
+        auto reply = httpClient.post(request, data);
+        data = reply->readAll();
+
+        QScopedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
+        qDebug() << "new upload task" << data;
+        if (info->code != 200) {
+            return {QString(), NewError(-1, info->msg)};
+        }
+
+        return {info->data->id, NoError()};
     }
 
     std::tuple<QString, util::Error> newUploadTask(const QString &repoName, UploadTaskRequest *req)
@@ -322,6 +346,43 @@ private:
         }
 
         return {info->data->id, NoError()};
+    }
+
+    util::Error doUploadTask(const QString &taskID, const QString &filePath)
+    {
+        util::Error err(NoError());
+        QByteArray fileData;
+
+        QUrl uploadUrl(QString("%1/api/v1/upload-tasks/%2/tar").arg(remoteEndpoint, taskID));
+        QNetworkRequest request(uploadUrl);
+        request.setRawHeader(QByteArray("X-Token"), remoteToken.toLocal8Bit());
+
+        QScopedPointer<QHttpMultiPart> multiPart(new QHttpMultiPart(QHttpMultiPart::FormDataType));
+
+        // FIXME: add link support
+        QList<QHttpPart> partList;
+        partList.reserve(filePath.size());
+
+        partList.push_back(QHttpPart());
+        auto filePart = partList.last();
+
+        auto *file = new QFile(filePath, multiPart.data());
+        file->open(QIODevice::ReadOnly);
+        filePart.setHeader(QNetworkRequest::ContentDispositionHeader,
+                           QVariant(QString(R"(form-data; name="%1"; filename="%2")").arg("file", filePath)));
+        filePart.setBodyDevice(file);
+
+        multiPart->append(filePart);
+        qDebug() << "send " << filePath;
+
+        auto reply = httpClient.put(request, multiPart.data());
+        auto data = reply->readAll();
+
+        qDebug() << "doUpload" << data;
+
+        QScopedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
+
+        return NoError();
     }
 
     util::Error doUploadTask(const QString &repoName, const QString &taskID, const QList<OstreeRepoObject> &objects)
@@ -393,6 +454,49 @@ private:
         return NoError();
     }
 
+    util::Error cleanUploadTask(const package::Ref &ref, const QString &filePath)
+    {
+        const auto savePath = QStringList {util::getUserFile(".linglong/builder"), ref.appId}.join(QDir::separator());
+
+        util::removeDir(savePath);
+
+        QFile file(filePath);
+        file.remove();
+
+        qDebug() << "clean Upload Task";
+        return NoError();
+    }
+
+    util::Error getUploadStatus(const QString &taskID)
+    {
+        QUrl url(QString("%1/%2/%3/status").arg(remoteEndpoint, "api/v1/upload-tasks", taskID));
+        QNetworkRequest request(url);
+
+        while (1) {
+            auto reply = httpClient.get(request);
+            auto data = reply->readAll();
+
+            qDebug() << "url" << url << "repo info" << data;
+
+            auto info = util::loadJsonBytes<UploadTaskResponse>(data);
+
+            if (200 != info->code) {
+                return NewError(-1, "get upload status faild, remote server is unreachable");
+            }
+
+            if ("complete" == info->data->status) {
+                break;
+            } else if ("failed" == info->data->status) {
+                return NewError(-1, info->data->status);
+            }
+
+            qInfo().noquote() << info->data->status;
+            QThread::sleep(1);
+        }
+
+        return NoError();
+    }
+
     util::Error getToken()
     {
         QUrl url(QString("%1/%2").arg(remoteEndpoint, "api/v1/sign-in"));
@@ -404,7 +508,8 @@ private:
         auto reply = httpClient.post(request, userJsonData.toLocal8Bit());
         auto data = reply->readAll();
         auto result = util::loadJsonBytes<AuthResponse>(data);
-
+        
+        qDebug() << "get token reply" << data;
         // Fixme: use status macro
         if (200 != result->code) {
             auto err = result->msg.isEmpty() ? QString("%1 is unreachable").arg(url.toString()) : result->msg;
@@ -469,6 +574,57 @@ std::tuple<linglong::util::Error, QList<package::Ref>> OSTreeRepo::list(const QS
 std::tuple<linglong::util::Error, QList<package::Ref>> OSTreeRepo::query(const QString &filter)
 {
     return {NoError(), {}};
+}
+
+linglong::util::Error OSTreeRepo::push(const package::Ref &ref)
+{
+    Q_D(OSTreeRepo);
+
+    auto ret = d->getToken();
+    if (!ret.success()) {
+        return WrapError(ret, "get token failed");
+    }
+
+    util::Error err(NoError());
+    UploadRequest uploadReq;
+
+    uploadReq.repoName = d->remoteRepoName;
+    uploadReq.ref = ref.toOSTreeRefLocalString();
+
+    // FIXME: no need,use /v1/meta/:id
+    QScopedPointer<InfoResponse> repoInfo(d->getRepoInfo(d->remoteRepoName));
+    if (repoInfo->code != 200) {
+        return NewError(-1, repoInfo->msg);
+    }
+
+    // send files
+    QString taskID;
+    std::tie(taskID, err) = d->newUploadTask(&uploadReq);
+    if (!err.success()) {
+        return WrapError(err, "call newUploadTask failed");
+    }
+
+    // compress form data
+    QString filePath;
+    std::tie(filePath, err) = compressOstreeData(ref);
+    if (!err.success()) {
+        return WrapError(err, "compress ostree data failed");
+    }
+
+    auto uploadStatus = d->doUploadTask(taskID, filePath);
+    if (!uploadStatus.success()) {
+        //d->cleanUploadTask(d->remoteRepoName, taskID);
+        return WrapError(uploadStatus, "call doUploadTask failed");
+    }
+
+    auto getUploadStatus = d->getUploadStatus(taskID);
+
+    if (!getUploadStatus.success()) {
+        d->cleanUploadTask(ref, filePath);
+        return getUploadStatus;
+    }
+
+    return WrapError(d->cleanUploadTask(ref, filePath), "call cleanUploadTask failed");
 }
 
 linglong::util::Error OSTreeRepo::push(const package::Ref &ref, bool force)
@@ -743,6 +899,45 @@ std::tuple<linglong::util::Error, QStringList> OSTreeRepo::remoteList()
     }
 
     return {NoError(), remoteList};
+}
+
+std::tuple<QString, util::Error> OSTreeRepo::compressOstreeData(const package::Ref &ref)
+{
+    // check out ostree data
+    // Fixme: use /tmp
+    const auto savePath = QStringList {util::getUserFile(".linglong/builder"), ref.appId}.join(QDir::separator());
+    util::ensureDir(savePath);
+
+    auto ret = checkout(package::Ref("", ref.appId, ref.version, ref.arch, ref.module), "", savePath);
+    if (!ret.success()) {
+        return {QString(), NewError(-1, QString("checkout %1 to %2 failed").arg(ref.appId).arg(savePath))};
+    }
+
+    // compress data
+    QStringList args;
+    const QString fileName = QString("%1.tgz").arg(ref.appId);
+    const QString filePath = QStringList {util::getUserFile(".linglong/builder"), fileName}.join(QDir::separator());
+
+    QDir::setCurrent(savePath);
+
+    args << "-zcf" << filePath << ".";
+
+    QProcess tar;
+    tar.setProgram("tar");
+    tar.setArguments(args);
+
+    QProcess::connect(&tar, &QProcess::readyReadStandardOutput,
+                      [&]() { std::cout << tar.readAllStandardOutput().toStdString().c_str(); });
+
+    QProcess::connect(&tar, &QProcess::readyReadStandardError,
+                      [&]() { std::cout << tar.readAllStandardError().toStdString().c_str(); });
+
+    qDebug() << "start" << tar.arguments().join(" ");
+    tar.start();
+    tar.waitForFinished(-1);
+    qDebug() << tar.exitStatus() << "with exit code:" << tar.exitCode();
+
+    return {filePath, NoError()};
 }
 
 OSTreeRepo::~OSTreeRepo() = default;

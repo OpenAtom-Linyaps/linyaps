@@ -39,6 +39,8 @@ public:
 
     virtual linglong::util::Error push(const package::Ref &ref, bool force) = 0;
 
+    virtual linglong::util::Error push(const package::Ref &ref) = 0;
+
     virtual linglong::util::Error push(const package::Bundle &bundle, bool force) = 0;
 
     virtual linglong::util::Error pull(const package::Ref &ref, bool force) = 0;

@@ -3,7 +3,7 @@ find_package(PkgConfig REQUIRED)
 # QT sqlite 支持
 find_package(
   Qt5
-  COMPONENTS Concurrent Sql
+  COMPONENTS Concurrent Sql WebSockets
   REQUIRED
 )
 pkg_search_module(
@@ -86,6 +86,7 @@ set(LINK_LIBS
     CURL::libcurl
     ${OSTREE1_LDFLAGS}
     Qt5::Sql
+    Qt5::WebSockets
 )
 
 add_executable(ll-package-manager ${LL_SYSTEM_SERVICE_SOURCES})

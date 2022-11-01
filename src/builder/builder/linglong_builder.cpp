@@ -304,7 +304,7 @@ linglong::util::Error LinglongBuilder::initRepo()
             return NewError() << "call getLocalConfig api failed";
         }
 
-        QString repoUrl = configUrl.endsWith("/") ? configUrl + "repo" : QStringList {configUrl, "repo"}.join("/");
+        QString repoUrl = configUrl.endsWith("/") ? configUrl + "repos/repo" : QStringList {configUrl, "repos/repo"}.join("/");
 
         ret = repo.remoteAdd(defaultRepoName, repoUrl);
         if (!ret.success()) {
@@ -846,12 +846,9 @@ util::Error LinglongBuilder::push(const QString &repoUrl, const QString &repoNam
     auto refWithDevel =
         package::Ref("", channel, project->package->id, project->package->version, util::hostArch(), "devel");
 
-    ret = repo.renameBranch(package::Ref(refWithRuntime.toLocalFullRef()), refWithRuntime);
-    if (!ret.success()) {
-        return WrapError(ret, "rename runtime branch failed");
-    }
     // push ostree data by ref
-    ret = repo.push(refWithRuntime, false);
+    // ret = repo.push(refWithRuntime, false);
+    ret = repo.push(refWithRuntime);
 
     if (!ret.success()) {
         qInfo().noquote() << QString("push %1 failed").arg(project->package->id);
@@ -861,12 +858,7 @@ util::Error LinglongBuilder::push(const QString &repoUrl, const QString &repoNam
     }
 
     if (pushWithDevel) {
-        ret = repo.renameBranch(package::Ref(refWithDevel.toLocalFullRef()), refWithDevel);
-        if (!ret.success()) {
-            return WrapError(ret, "rename devel branch failed");
-        }
-
-        ret = repo.push(package::Ref(refWithDevel), false);
+        ret = repo.push(package::Ref(refWithDevel));
 
         if (!ret.success()) {
             qInfo().noquote() << QString("push %1 failed").arg(project->package->id);

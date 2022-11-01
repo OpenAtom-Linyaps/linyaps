@@ -87,6 +87,7 @@ qt5_add_dbus_adaptor(
 find_package(CURL REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(Qt5Sql REQUIRED)
+find_package(Qt5 REQUIRED COMPONENTS WebSockets)
 pkg_search_module(
   OSTREE1
   REQUIRED
@@ -97,6 +98,7 @@ set(CLI_NO_DBUS
     CURL::libcurl
     ${OSTREE1_LDFLAGS}
     Qt5::Sql
+    Qt5::WebSockets
 )
 
 add_executable(ll-cli ${LL_CLI_SOURCES})

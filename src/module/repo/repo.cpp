@@ -30,6 +30,7 @@ void registerAllMetaType()
     qJsonRegister<linglong::repo::AuthResponse>();
     qJsonRegister<linglong::repo::AuthResponseData>();
     qJsonRegister<linglong::repo::RevPair>();
+    qJsonRegister<linglong::repo::UploadRequest>();
     qJsonRegister<linglong::repo::UploadTaskRequest>();
     qJsonRegister<linglong::repo::UploadTaskResponse>();
 }

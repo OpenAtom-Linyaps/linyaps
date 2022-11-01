@@ -1,3 +1,4 @@
+
 set(LL_BUILDER_SOURCES
     # cmake-format: sortable
     ../cli/cmd/command_helper.cpp
@@ -53,6 +54,8 @@ set(CONFIG_FILE
 )
 
 find_package(CURL REQUIRED)
+# find_package(Qt5WebSockets REQUIRED)
+find_package(Qt5 REQUIRED COMPONENTS Core WebSockets)
 
 aux_source_directory(. LL_BUILDER_SOURCES)
 aux_source_directory(builder LL_BUILDER_SOURCES)
@@ -72,6 +75,7 @@ target_link_libraries(
           CURL::libcurl
           ${GLIB_LDFLAGS}
           ${OSTREE1_LDFLAGS}
+          Qt5::WebSockets
 )
 
 install(TARGETS ll-builder RUNTIME DESTINATION bin)

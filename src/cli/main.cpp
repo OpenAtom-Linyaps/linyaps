@@ -17,9 +17,9 @@
 #include "module/package/package.h"
 #include "module/dbus_ipc/package_manager_param.h"
 #include "module/dbus_ipc/register_meta_type.h"
-#include "service/impl/package_manager.h"
+#include "service/impl/app_manager.h"
 #include "package_manager/impl/system_package_manager.h"
-#include "package_manager.h"
+#include "app_manager.h"
 #include "system_package_manager.h"
 
 #include "module/runtime/runtime.h"
@@ -143,10 +143,10 @@ void printAppInfo(linglong::package::AppMetaInfoList appMetaInfoList)
  * @param packageManager ll-service dbus服务
  *
  */
-void checkAndStartService(ComDeepinLinglongPackageManagerInterface &packageManager)
+void checkAndStartService(OrgDeepinLinglongAppManagerInterface &appManager)
 {
     const auto kStatusActive = "active";
-    QDBusReply<QString> status = packageManager.Status();
+    QDBusReply<QString> status = appManager.Status();
     // FIXME: should use more precision to check status
     if (kStatusActive != status.value()) {
         QProcess process;
@@ -157,7 +157,7 @@ void checkAndStartService(ComDeepinLinglongPackageManagerInterface &packageManag
         process.startDetached();
 
         for (int i = 0; i < 10; ++i) {
-            status = packageManager.Status();
+            status = appManager.Status();
             if (kStatusActive == status.value()) {
                 return;
             }
@@ -193,13 +193,13 @@ int main(int argc, char **argv)
     QStringList args = parser.positionalArguments();
     QString command = args.isEmpty() ? QString() : args.first();
 
-    ComDeepinLinglongPackageManagerInterface packageManager(
-        "com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager", QDBusConnection::sessionBus());
+    OrgDeepinLinglongAppManagerInterface appManager(
+        "org.deepin.linglong.AppManager", "/org/deepin/linglong/AppManager", QDBusConnection::sessionBus());
 
     OrgDeepinLinglongPackageManagerInterface sysPackageManager(
         "org.deepin.linglong.PackageManager", "/org/deepin/linglong/PackageManager", QDBusConnection::systemBus());
 
-    checkAndStartService(packageManager);
+    checkAndStartService(appManager);
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
         {"run", // 启动玲珑应用
          [&](QCommandLineParser &parser) -> int {
@@ -215,11 +215,11 @@ int main(int argc, char **argv)
              auto optNoProxy = QCommandLineOption("no-proxy", "whether to use dbus proxy in box", "");
 
              auto optNameFilter = QCommandLineOption("filter-name", "dbus name filter to use",
-                                                     "--filter-name=com.deepin.linglong.AppManager", "");
+                                                     "--filter-name=org.deepin.linglong.AppManager", "");
              auto optPathFilter = QCommandLineOption("filter-path", "dbus path filter to use",
-                                                     "--filter-path=/com/deepin/linglong/PackageManager", "");
+                                                     "--filter-path=/org/deepin/linglong/AppManager", "");
              auto optInterfaceFilter = QCommandLineOption("filter-interface", "dbus interface filter to use",
-                                                          "--filter-interface=com.deepin.linglong.PackageManager", "");
+                                                          "--filter-interface=org.deepin.linglong.AppManager", "");
 
              // 增加channel/module
              auto optChannel = QCommandLineOption("channel", "the channnel of app", "--channel=linglong", "linglong");
@@ -299,8 +299,8 @@ int main(int argc, char **argv)
              // ll-cli 进沙箱环境
              linglong::service::Reply reply;
              if ("/bin/bash" == parser.value(optExec) || "bash" == parser.value(optExec)) {
-                 reply = PACKAGE_MANAGER->Start(paramOption);
-                 PACKAGE_MANAGER->runPool->waitForDone(-1);
+                 reply = APP_MANAGER->Start(paramOption);
+                 APP_MANAGER->runPool->waitForDone(-1);
                  if (0 != reply.code) {
                      qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
                      return -1;
@@ -308,7 +308,7 @@ int main(int argc, char **argv)
                  return 0;
              }
 
-             QDBusPendingReply<linglong::service::Reply> dbusReply = packageManager.Start(paramOption);
+             QDBusPendingReply<linglong::service::Reply> dbusReply = appManager.Start(paramOption);
              dbusReply.waitForFinished();
              reply = dbusReply.value();
              if (reply.code != 0) {
@@ -361,7 +361,7 @@ int main(int argc, char **argv)
              //      p.env = envList.join(",");
              //  }
 
-             auto dbusReply = packageManager.Exec(p);
+             auto dbusReply = appManager.Exec(p);
              auto reply = dbusReply.value();
              if (reply.code != STATUS_CODE(kSuccess)) {
                  qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
@@ -403,7 +403,7 @@ int main(int argc, char **argv)
              parser.process(app);
 
              auto outputFormat = parser.value(optOutputFormat);
-             auto replyString = packageManager.ListContainer().value().result;
+             auto replyString = appManager.ListContainer().value().result;
 
              ContainerList containerList;
              auto doc = QJsonDocument::fromJson(replyString.toUtf8(), nullptr);
@@ -432,7 +432,7 @@ int main(int argc, char **argv)
                  return -1;
              }
              // TODO: show kill result
-             QDBusPendingReply<linglong::service::Reply> dbusReply = packageManager.Stop(containerId);
+             QDBusPendingReply<linglong::service::Reply> dbusReply = appManager.Stop(containerId);
              dbusReply.waitForFinished();
              linglong::service::Reply reply = dbusReply.value();
              if (reply.code != STATUS_CODE(kErrorPkgKillSuccess)) {

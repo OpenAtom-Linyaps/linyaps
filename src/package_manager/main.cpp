@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
     JobManagerAdaptor jma(JobManager::instance());
 
     dbus.registerObject("/org/deepin/linglong/PackageManager", service::SystemPackageManager::instance());
-    dbus.registerObject("/com/deepin/linglong/JobManager", JobManager::instance());
+    dbus.registerObject("/org/deepin/linglong/JobManager", JobManager::instance());
 
     return QCoreApplication::exec();
 }

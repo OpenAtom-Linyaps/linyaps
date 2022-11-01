@@ -93,14 +93,14 @@ set(LL_TEST_SOURCES
 
 # add qdbus call
 set_source_files_properties(
-  ../src/module/dbus_ipc/com.deepin.linglong.PackageManager.xml
+  ../src/module/dbus_ipc/org.deepin.linglong.AppManager.xml
   PROPERTIES INCLUDE module/dbus_ipc/register_meta_type.h
 )
 
 qt5_add_dbus_interface(
   LL_TEST_SOURCES
-  ../src/module/dbus_ipc/com.deepin.linglong.PackageManager.xml
-  package_manager
+  ../src/module/dbus_ipc/org.deepin.linglong.AppManager.xml
+  app_manager
 )
 
 set_source_files_properties(

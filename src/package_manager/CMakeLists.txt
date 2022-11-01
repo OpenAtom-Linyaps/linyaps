@@ -61,14 +61,14 @@ qt5_add_dbus_adaptor(
 
 qt5_add_dbus_adaptor(
   LL_SYSTEM_SERVICE_SOURCES
-  ../module/dbus_ipc/com.deepin.linglong.JobManager.xml
+  ../module/dbus_ipc/org.deepin.linglong.JobManager.xml
   impl/job_manager.h
   JobManager
 )
 
 qt5_add_dbus_adaptor(
   LL_SYSTEM_SERVICE_SOURCES
-  ../module/dbus_ipc/com.deepin.linglong.Job.xml
+  ../module/dbus_ipc/org.deepin.linglong.Job.xml
   impl/job.h
   Job
 )

@@ -26,7 +26,7 @@ class JobManager
     , public linglong::util::Singleton<JobManager>
 {
     Q_OBJECT
-    Q_CLASSINFO("D-Bus Interface", "com.deepin.linglong.JobManager")
+    Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.JobManager")
 
     friend class linglong::util::Singleton<JobManager>;
 

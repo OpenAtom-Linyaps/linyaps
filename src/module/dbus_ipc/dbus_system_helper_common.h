@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022. ${ORGANIZATION_NAME}. All rights reserved.
+ * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
  *
  * Author:     Iceyer <me@iceyer.net>
  *

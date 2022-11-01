@@ -35,15 +35,15 @@ JobManager::~JobManager() = default;
 QString JobManager::CreateJob(std::function<void()> f)
 {
     auto jobId = QUuid::createUuid().toString(QUuid::Id128);
-    auto jobPath = "/com/deepin/linglong/Job/List/" + jobId;
+    auto jobPath = "/org/deepin/linglong/Job/List/" + jobId;
     auto jr = new Job(f, this);
     jr->start();
 
     return jobId;
 }
 
-// dbus-send --session --type=method_call --print-reply --dest=com.deepin.linglong.AppManager
-// /com/deepin/linglong/JobManager com.deepin.linglong.JobManager.Start string:"org.deepin.demo"
+// dbus-send --system --type=method_call --print-reply --dest=org.deepin.linglong.PackageManager
+// /org/deepin/linglong/JobManager org.deepin.linglong.JobManager.Start string:"org.deepin.demo"
 void JobManager::Start(const QString &jobId)
 {
     if (jobId.isNull() || jobId.isEmpty()) {

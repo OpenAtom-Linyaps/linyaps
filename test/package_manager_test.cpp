@@ -19,7 +19,7 @@
 #include "src/module/dbus_ipc/register_meta_type.h"
 #include "src/module/dbus_ipc/param_option.h"
 #include "src/module/dbus_ipc/reply.h"
-#include "package_manager.h"
+#include "app_manager.h"
 #include "system_package_manager.h"
 
 /*!
@@ -252,7 +252,7 @@ TEST(Package, run01)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager",
+    OrgDeepinLinglongAppManagerInterface pm("org.deepin.linglong.AppManager", "/org/deepin/linglong/AppManager",
                                                 QDBusConnection::sessionBus());
 
     linglong::service::RunParamOption paramOption;
@@ -280,7 +280,7 @@ TEST(Package, run02)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager",
+    OrgDeepinLinglongAppManagerInterface pm("org.deepin.linglong.AppManager", "/org/deepin/linglong/AppManager",
                                                 QDBusConnection::sessionBus());
 
     linglong::service::RunParamOption paramOption;
@@ -302,7 +302,7 @@ TEST(Package, run03)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager",
+    OrgDeepinLinglongAppManagerInterface pm("org.deepin.linglong.AppManager", "/org/deepin/linglong/AppManager",
                                                 QDBusConnection::sessionBus());
     linglong::service::ExecParamOption paramOption;
     paramOption.containerID = "org.deepin.test";
@@ -511,7 +511,7 @@ TEST(Package, ps01)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager",
+    OrgDeepinLinglongAppManagerInterface pm("org.deepin.linglong.AppManager", "/org/deepin/linglong/AppManager",
                                                 QDBusConnection::sessionBus());
 
     linglong::service::RunParamOption paramOption;
@@ -536,7 +536,7 @@ TEST(Package, kill)
     startQdbus.detach();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    ComDeepinLinglongPackageManagerInterface pm("com.deepin.linglong.AppManager", "/com/deepin/linglong/PackageManager",
+    OrgDeepinLinglongAppManagerInterface pm("org.deepin.linglong.AppManager", "/org/deepin/linglong/AppManager",
                                                 QDBusConnection::sessionBus());
 
     QDBusPendingReply<linglong::service::Reply> dbusReply = pm.Stop("org.deepin.calculator");

@@ -30,22 +30,22 @@
 
 namespace linglong {
 namespace service {
-class PackageManagerPrivate; /**< forward declaration PackageManagerPrivate */
+class AppManagerPrivate; /**< forward declaration AppManagerPrivate */
 
 /**
- * @brief The PackageManager class
- * @details PackageManager is a singleton class, and it is used to manage the package
+ * @brief The AppManager class
+ * @details AppManager is a singleton class, and it is used to manage the package
  *          information.
  */
-class PackageManager
+class AppManager
     : public QObject
     , protected QDBusContext
-    , public linglong::util::Singleton<PackageManager>
+    , public linglong::util::Singleton<AppManager>
 {
     Q_OBJECT
-    Q_CLASSINFO("D-Bus Interface", "com.deepin.linglong.PackageManager")
+    Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.AppManager")
 
-    friend class linglong::util::Singleton<PackageManager>;
+    friend class linglong::util::Singleton<AppManager>;
 
 public Q_SLOTS:
 
@@ -55,70 +55,6 @@ public Q_SLOTS:
      * @return "active"
      */
     QString Status();
-
-    /**
-     * @brief download the package
-     *
-     * @param paramOption 下载参数
-     *
-     * @return Reply dbus方法调用应答 \n
-     *          code:状态码 \n
-     *          message:信息
-     */
-    Reply Download(const DownloadParamOption &downloadParamOption);
-
-    /**
-     * @brief 查询软件包下载安装状态
-     *
-     * @param paramOption 查询参数
-     * @param type 查询类型 0:查询应用安装进度 1:查询应用更新进度
-     *
-     * @return Reply dbus方法调用应答 \n
-     *          code:状态码 \n
-     *          message:信息
-     */
-    Reply GetDownloadStatus(const ParamOption &paramOption, int type);
-
-    /**
-     * @brief 安装软件包
-     *
-     * @param installParamOption 安装参数
-     *
-     * @return Reply dbus方法调用应答 \n
-     *          code:状态码 \n
-     *          message:信息
-     */
-    Reply Install(const InstallParamOption &installParamOption);
-
-    /**
-     * @brief 卸载软件包
-     *
-     * @param paramOption 卸载参数
-     *
-     * @return Reply 同Install
-     */
-    Reply Uninstall(const UninstallParamOption &paramOption);
-
-    /**
-     * @brief 更新软件包
-     *
-     * @param paramOption 更新包参数
-     *
-     * @return Reply 同Install
-     */
-    Reply Update(const ParamOption &paramOption);
-
-    /**
-     * @brief 查询软件包信息
-     *
-     * @param paramOption 查询命令参数
-     *
-     * @return QueryReply dbus方法调用应答 \n
-     *         code 状态码 \n
-     *         message 状态信息 \n
-     *         result 查询结果
-     */
-    QueryReply Query(const QueryParamOption &paramOption);
 
     /**
      * @brief 运行应用
@@ -172,16 +108,16 @@ public:
     QScopedPointer<QThreadPool> runPool; ///< 启动应用线程池
 
 private:
-    QScopedPointer<PackageManagerPrivate> dd_ptr;
-    Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), PackageManager)
+    QScopedPointer<AppManagerPrivate> dd_ptr;
+    Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), AppManager)
 
 protected:
-    PackageManager();
-    ~PackageManager() override;
+    AppManager();
+    ~AppManager() override;
 };
 
 } // namespace service
 } // namespace linglong
 
 #define RUN_POOL_MAX_THREAD 100000000 ///< 启动应用线程池最大线程数
-#define PACKAGE_MANAGER linglong::service::PackageManager::instance()
+#define APP_MANAGER linglong::service::AppManager::instance()

@@ -12,7 +12,7 @@
 
 #include "module/runtime/app.h"
 #include "module/dbus_ipc/register_meta_type.h"
-#include "packagemanageradaptor.h"
+#include "appmanageradaptor.h"
 #include "module/runtime/runtime.h"
 #include "module/util/log/log_handler.h"
 
@@ -29,19 +29,19 @@ int main(int argc, char *argv[])
     linglong::service::registerAllMetaType();
 
     QDBusConnection dbus = QDBusConnection::sessionBus();
-    if (!dbus.registerService("com.deepin.linglong.AppManager")) {
+    if (!dbus.registerService("org.deepin.linglong.AppManager")) {
         qCritical() << "service exist" << dbus.lastError();
         return -1;
     }
 
-    PackageManagerAdaptor pma(PACKAGE_MANAGER);
+    AppManagerAdaptor pma(APP_MANAGER);
 
     // TODO(se): 需要进行错误处理
-    dbus.registerObject("/com/deepin/linglong/PackageManager", PACKAGE_MANAGER);
+    dbus.registerObject("/org/deepin/linglong/AppManager", APP_MANAGER);
 
     app.connect(&app, &QCoreApplication::aboutToQuit, &app, [&] {
-        dbus.unregisterObject("com.deepin.linglong.AppManager");
-        dbus.unregisterService("/com/deepin/linglong/PackageManager");
+        dbus.unregisterObject("/org/deepin/linglong/AppManager");
+        dbus.unregisterService("org.deepin.linglong.AppManager");
     });
 
     return QCoreApplication::exec();

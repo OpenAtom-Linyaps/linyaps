@@ -8,35 +8,35 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#include "package_manager.h"
+#include "app_manager.h"
 
 #include <sys/types.h>
 #include <signal.h>
 
 #include "module/runtime/app.h"
-#include "package_manager_p.h"
+#include "app_manager_p.h"
 
 namespace linglong {
 namespace service {
 
-PackageManagerPrivate::PackageManagerPrivate(PackageManager *parent)
+AppManagerPrivate::AppManagerPrivate(AppManager *parent)
     : repo(util::getLinglongRootPath())
     , q_ptr(parent)
 {
 }
 
-PackageManager::PackageManager()
+AppManager::AppManager()
     : runPool(new QThreadPool)
-    , dd_ptr(new PackageManagerPrivate(this))
+    , dd_ptr(new AppManagerPrivate(this))
 {
     runPool->setMaxThreadCount(RUN_POOL_MAX_THREAD);
 }
 
-PackageManager::~PackageManager()
+AppManager::~AppManager()
 {
 }
 
-bool PackageManagerPrivate::isAppRunning(const QString &appId, const QString &version, const QString &arch)
+bool AppManagerPrivate::isAppRunning(const QString &appId, const QString &version, const QString &arch)
 {
     linglong::package::AppMetaInfoList pkgList;
     if (!appId.isEmpty()) {
@@ -56,79 +56,6 @@ bool PackageManagerPrivate::isAppRunning(const QString &appId, const QString &ve
     return false;
 }
 
-/*!
- * 下载软件包
- * @param paramOption
- */
-Reply PackageManager::Download(const DownloadParamOption &downloadParamOption)
-{
-    linglong::service::Reply reply;
-    return reply;
-}
-
-/**
- * @brief 查询软件包下载安装状态
- *
- * @param paramOption 查询参数
- * @param type 查询类型 0:查询应用安装进度 1:查询应用更新进度
- *
- * @return Reply dbus方法调用应答 \n
- *          code:状态码 \n
- *          message:信息
- */
-Reply PackageManager::GetDownloadStatus(const ParamOption &paramOption, int type)
-{
-    linglong::service::Reply reply;
-    return reply;
-}
-
-/*!
- * 在线安装软件包
- * @param installParamOption
- */
-Reply PackageManager::Install(const InstallParamOption &installParamOption)
-{
-    // QDBusInterface interface("org.deepin.linglong.PackageManager", "/org/deepin/linglong/PackageManager",
-    //                          "org.deepin.linglong.PackageManager", QDBusConnection::systemBus());
-    // 设置 24 h超时
-    // interface.setTimeout(1000 * 60 * 60 * 24);
-    // QDBusPendingReply<Reply> dbusReply = interface.call("Install", QVariant::fromValue(installParamOption));
-    // dbusReply.waitForFinished();
-    linglong::service::Reply reply;
-    // reply.code = STATUS_CODE(kPkgInstalling);
-    // if (dbusReply.isValid()) {
-    //     reply = dbusReply.value();
-    // }
-    qInfo() << "PackageManager::Install called";
-    return reply;
-}
-
-Reply PackageManager::Uninstall(const UninstallParamOption &paramOption)
-{
-    linglong::service::Reply reply;
-    qInfo() << "PackageManager::Uninstall called";
-    return reply;
-}
-
-Reply PackageManager::Update(const ParamOption &paramOption)
-{
-    linglong::service::Reply reply;
-    return reply;
-}
-
-/*
- * 查询软件包
- *
- * @param paramOption 查询命令参数
- *
- * @return QueryReply dbus方法调用应答
- */
-QueryReply PackageManager::Query(const QueryParamOption &paramOption)
-{
-    linglong::service::QueryReply reply;
-    return reply;
-}
-
 /*
  * 执行软件包
  *
@@ -136,9 +63,9 @@ QueryReply PackageManager::Query(const QueryParamOption &paramOption)
  *
  * @return Reply: 运行结果信息
  */
-Reply PackageManager::Start(const RunParamOption &paramOption)
+Reply AppManager::Start(const RunParamOption &paramOption)
 {
-    Q_D(PackageManager);
+    Q_D(AppManager);
 
     QueryReply reply;
     reply.code = 0;
@@ -268,9 +195,9 @@ Reply PackageManager::Start(const RunParamOption &paramOption)
     return reply;
 }
 
-Reply PackageManager::Exec(const ExecParamOption &paramOption)
+Reply AppManager::Exec(const ExecParamOption &paramOption)
 {
-    Q_D(PackageManager);
+    Q_D(AppManager);
     Reply reply;
     reply.code = STATUS_CODE(kFail);
     reply.message = "No such container " + paramOption.containerID;
@@ -293,9 +220,9 @@ Reply PackageManager::Exec(const ExecParamOption &paramOption)
  *
  * @return Reply 执行结果信息
  */
-Reply PackageManager::Stop(const QString &containerId)
+Reply AppManager::Stop(const QString &containerId)
 {
-    Q_D(PackageManager);
+    Q_D(AppManager);
     Reply reply;
     auto it = d->apps.find(containerId);
     if (it == d->apps.end()) {
@@ -318,9 +245,9 @@ Reply PackageManager::Stop(const QString &containerId)
     return reply;
 }
 
-QueryReply PackageManager::ListContainer()
+QueryReply AppManager::ListContainer()
 {
-    Q_D(PackageManager);
+    Q_D(AppManager);
     QJsonArray jsonArray;
 
     for (const auto &app : d->apps) {
@@ -347,7 +274,7 @@ QueryReply PackageManager::ListContainer()
  *
  * @return Reply 执行结果信息
  */
-Reply PackageManager::RunCommand(const QString &exe, const QStringList args)
+Reply AppManager::RunCommand(const QString &exe, const QStringList args)
 {
     Reply reply;
     QProcess process;
@@ -371,7 +298,7 @@ Reply PackageManager::RunCommand(const QString &exe, const QStringList args)
     return reply;
 }
 
-QString PackageManager::Status()
+QString AppManager::Status()
 {
     return {"active"};
 }

@@ -11,9 +11,9 @@
 #pragma once
 
 #include "module/util/json.h"
-#include "module/dbus_ipc/reply.h"
-#include "module/dbus_ipc/param_option.h"
 #include "module/package/package.h"
+#include "reply.h"
+#include "param_option.h"
 
 namespace linglong {
 namespace service {

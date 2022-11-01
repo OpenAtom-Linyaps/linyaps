@@ -16,9 +16,9 @@
 #include "src/module/flatpak/flatpak_manager.h"
 #include "src/module/package/package.h"
 #include "package_manager/impl/app_status.h"
-#include "src/module/dbus_ipc/register_meta_type.h"
-#include "src/module/dbus_ipc/param_option.h"
-#include "src/module/dbus_ipc/reply.h"
+#include "src/service/impl/register_meta_type.h"
+#include "src/service/impl/param_option.h"
+#include "src/service/impl/reply.h"
 #include "package_manager.h"
 #include "system_package_manager.h"
 

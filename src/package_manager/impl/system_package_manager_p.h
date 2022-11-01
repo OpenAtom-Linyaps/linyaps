@@ -11,8 +11,8 @@
 #include "app_status.h"
 #include "module/repo/ostree_repo.h"
 #include "module/repo/repo_client.h"
-#include "module/util/http/httpclient.h"
-#include "module/dbus_ipc/package_manager_param.h"
+#include "module/util/httpclient.h"
+#include "module/util/package_manager_param.h"
 #include "module/util/sysinfo.h"
 
 namespace linglong {

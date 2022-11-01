@@ -16,8 +16,8 @@
 #include "module/util/status_code.h"
 #include "module/package/package.h"
 #include "package_manager_interface.h"
-#include "module/dbus_ipc/reply.h"
-#include "module/dbus_ipc/param_option.h"
+#include "service/impl/reply.h"
+#include "service/impl/param_option.h"
 
 namespace linglong {
 namespace service {

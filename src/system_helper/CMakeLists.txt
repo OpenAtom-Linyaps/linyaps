@@ -10,7 +10,7 @@ set(LL_SYSTEM_HELPER_SOURCES
     ../module/runtime/oci.h
     ../module/runtime/app_config.h
     ../module/util/sysinfo.cpp
-    ../module/util/log/log_handler.cpp
+    ../module/util/log_handler.cpp
     main.cpp
     privilege/privilege_install_portal.cpp
     privilege/privilege_install_portal.h

@@ -19,14 +19,14 @@
 #include <QtConcurrent/QtConcurrent>
 #include <QFuture>
 
-#include "module/dbus_ipc/register_meta_type.h"
+#include "register_meta_type.h"
 #include "module/package/package.h"
 #include "module/runtime/container.h"
-#include "module/dbus_ipc/package_manager_param.h"
+#include "module/util/package_manager_param.h"
 #include "module/util/singleton.h"
 #include "module/util/status_code.h"
-#include "module/dbus_ipc/reply.h"
-#include "module/dbus_ipc/param_option.h"
+#include "reply.h"
+#include "param_option.h"
 
 namespace linglong {
 namespace service {

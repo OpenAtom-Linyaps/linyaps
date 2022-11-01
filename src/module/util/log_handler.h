@@ -12,7 +12,7 @@
 
 #include <QObject>
 
-#include "module/util/singleton.h"
+#include "singleton.h"
 
 namespace linglong {
 namespace util {

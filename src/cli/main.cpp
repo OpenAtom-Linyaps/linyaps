@@ -15,8 +15,8 @@
 
 #include "cmd/command_helper.h"
 #include "module/package/package.h"
-#include "module/dbus_ipc/package_manager_param.h"
-#include "module/dbus_ipc/register_meta_type.h"
+#include "module/util/package_manager_param.h"
+#include "service/impl/register_meta_type.h"
 #include "service/impl/package_manager.h"
 #include "package_manager/impl/system_package_manager.h"
 #include "package_manager.h"
@@ -26,7 +26,7 @@
 #include "package_manager/impl/app_status.h"
 #include "module/util/xdg.h"
 #include "module/util/env.h"
-#include "module/util/log/log_handler.h"
+#include "module/util/log_handler.h"
 #include "module/util/sysinfo.h"
 
 /**

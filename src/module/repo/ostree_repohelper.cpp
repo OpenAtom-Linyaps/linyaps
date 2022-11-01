@@ -11,7 +11,7 @@
 #include "ostree_repohelper.h"
 #include "module/util/file.h"
 #include "module/util/runner.h"
-#include "module/util/version/version.h"
+#include "module/util/version.h"
 
 const int MAX_ERRINFO_BUFSIZE = 512;
 

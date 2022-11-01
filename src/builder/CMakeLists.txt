@@ -20,9 +20,9 @@ set(LL_BUILDER_SOURCES
     ../module/util/file.cpp
     ../module/util/http/http_client.cpp
     ../module/util/http/http_client.h
-    ../module/util/http/httpclient.cpp
+    ../module/util/httpclient.cpp
     ../module/util/json.h
-    ../module/util/log/log_handler.cpp
+    ../module/util/log_handler.cpp
     ../module/util/sysinfo.cpp
     ../module/util/uuid.cpp
     ../module/util/xdg.cpp

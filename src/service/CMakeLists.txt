@@ -33,17 +33,17 @@ set(LL_SERVICE_SOURCES
     ../module/util/file.cpp
     ../module/util/http/http_client.cpp
     ../module/util/http/http_client.h
-    ../module/util/http/httpclient.cpp
+    ../module/util/httpclient.cpp
     ../module/util/json.h
-    ../module/util/log/log_handler.cpp
+    ../module/util/log_handler.cpp
     ../module/util/sysinfo.cpp
     ../module/util/uuid.cpp
     ../module/util/xdg.cpp
     ../package_manager/impl/app_status.cpp
     ../package_manager/impl/appinfo_cache.cpp
     impl/package_manager.cpp
-    ../module/dbus_ipc/param_option.h
-    ../module/dbus_ipc/reply.h
+    impl/param_option.h
+    impl/reply.h
     main.cpp
     resource/resource.qrc
 )
@@ -80,6 +80,13 @@ install(FILES data/space.linglong.Service.desktop
 
 install(FILES data/space.linglong.Service.desktop
         DESTINATION /etc/xdg/autostart
+)
+
+install(FILES data/ll-cli
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/bash-completion/completions
+)
+install(FILES data/llpkg
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/bash-completion/completions
 )
 
 set(PERMISSION

@@ -11,10 +11,10 @@
 #include <QCoreApplication>
 
 #include "module/runtime/app.h"
-#include "module/dbus_ipc/register_meta_type.h"
+#include "impl/register_meta_type.h"
 #include "packagemanageradaptor.h"
 #include "module/runtime/runtime.h"
-#include "module/util/log/log_handler.h"
+#include "module/util/log_handler.h"
 
 int main(int argc, char *argv[])
 {

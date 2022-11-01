@@ -13,8 +13,8 @@
 #include <QString>
 #include <QStringList>
 
-#include "module/dbus_ipc/reply.h"
-#include "module/dbus_ipc/param_option.h"
+#include "service/impl/reply.h"
+#include "service/impl/param_option.h"
 #include "module/package/ref.h"
 #include "module/util/result.h"
 

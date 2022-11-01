@@ -11,7 +11,7 @@
 #include "ostree_repohelper.h"
 #include "module/util/file.h"
 #include "module/util/runner.h"
-#include "module/util/version.h"
+#include "module/util/version/version.h"
 
 const int MAX_ERRINFO_BUFSIZE = 512;
 
@@ -71,7 +71,7 @@ bool OstreeRepoHelper::ensureRepoEnv(const QString &repoPath, QString &err)
     OstreeRepo *repo;
     g_autoptr(GFile) repodir = NULL;
     std::string tmpPath = "";
-    //适配目标路径末尾的‘/’，本地仓库目录名为repo
+    // 适配目标路径末尾的‘/’，本地仓库目录名为repo
     if (repoPathTmp.at(repoPathTmp.size() - 1) == '/') {
         tmpPath = repoPathTmp + "repo";
     } else {

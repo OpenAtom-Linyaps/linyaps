@@ -64,13 +64,13 @@ set(LL_TEST_SOURCES
     ../src/module/util/file.cpp
     ../src/module/util/http/http_client.cpp
     ../src/module/util/http/http_client.h
-    ../src/module/util/httpclient.cpp
+    ../src/module/util/http/httpclient.cpp
     ../src/module/util/json.h
     ../src/module/util/sysinfo.cpp
     ../src/module/util/uuid.cpp
     ../src/module/util/xdg.cpp
-    ../src/service/impl/param_option.h
-    ../src/service/impl/reply.h
+    ../src/module/dbus_ipc/param_option.h
+    ../src/module/dbus_ipc/reply.h
     ../src/package_manager/impl/app_status.cpp
     ../src/package_manager/impl/appinfo_cache.cpp
     module/package/package_info_test.cpp
@@ -94,7 +94,7 @@ set(LL_TEST_SOURCES
 # add qdbus call
 set_source_files_properties(
   ../src/module/dbus_ipc/com.deepin.linglong.PackageManager.xml
-  PROPERTIES INCLUDE service/impl/register_meta_type.h
+  PROPERTIES INCLUDE module/dbus_ipc/register_meta_type.h
 )
 
 qt5_add_dbus_interface(
@@ -105,7 +105,7 @@ qt5_add_dbus_interface(
 
 set_source_files_properties(
   ../src/module/dbus_ipc/org.deepin.linglong.PackageManager.xml
-  PROPERTIES INCLUDE service/impl/register_meta_type.h
+  PROPERTIES INCLUDE module/dbus_ipc/register_meta_type.h
 )
 
 qt5_add_dbus_interface(

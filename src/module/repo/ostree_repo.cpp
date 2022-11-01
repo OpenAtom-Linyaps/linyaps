@@ -23,11 +23,11 @@
 #include "module/package/info.h"
 #include "module/util/runner.h"
 #include "module/util/sysinfo.h"
-#include "module/util/version.h"
+#include "module/util/version/version.h"
 #include "module/util/http/http_client.h"
 #include "module/util/config/config.h"
-#include "module/util/semver.h"
-#include "module/util/httpclient.h"
+#include "module/util/version/semver.h"
+#include "module/util/http/httpclient.h"
 
 namespace linglong {
 namespace repo {

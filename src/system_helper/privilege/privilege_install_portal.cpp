@@ -15,7 +15,7 @@
 #include <QDBusError>
 
 #include "module/util/file.h"
-#include "module/util/package_manager_param.h"
+#include "module/dbus_ipc/package_manager_param.h"
 #include "module/util/yaml.h"
 #include "module/package/ref.h"
 

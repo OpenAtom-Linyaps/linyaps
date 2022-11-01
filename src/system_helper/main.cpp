@@ -12,7 +12,7 @@
 #include <QCoreApplication>
 #include <QDBusConnection>
 
-#include "module/util/log_handler.h"
+#include "module/util/log/log_handler.h"
 #include "system_helper.h"
 #include "privilege/privilege_install_portal.h"
 

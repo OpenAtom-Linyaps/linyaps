@@ -14,6 +14,7 @@
 #include "module/util/http/httpclient.h"
 #include "module/dbus_ipc/package_manager_param.h"
 #include "module/util/sysinfo.h"
+#include "dbus_system_helper.h"
 
 namespace linglong {
 namespace service {
@@ -189,6 +190,7 @@ private:
 
     repo::OSTreeRepo ostree;
     repo::RepoClient repoClient;
+    OrgDeepinLinglongSystemHelperInterface systemHelperInterface;
 
 public:
     SystemPackageManager *const q_ptr;

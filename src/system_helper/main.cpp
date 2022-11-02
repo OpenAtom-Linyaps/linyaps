@@ -16,11 +16,13 @@
 #include "system_helper.h"
 #include "privilege/privilege_install_portal.h"
 
+#include "module/dbus_ipc/dbus_common.h"
 #include "module/dbus_ipc/dbus_system_helper_common.h"
 #include "systemhelperadaptor.h"
 
 int main(int argc, char *argv[])
 {
+    using namespace linglong;
     using namespace linglong::system::helper;
     QCoreApplication app(argc, argv);
 
@@ -32,15 +34,37 @@ int main(int argc, char *argv[])
     SystemHelper systemHelper;
     SystemHelperAdaptor systemHelperAdaptor(&systemHelper);
 
-    QDBusConnection dbus = QDBusConnection::systemBus();
-    if (!dbus.registerService(linglong::SystemHelperDBusName)) {
-        qCritical() << "registerService failed" << dbus.lastError();
-        return -1;
-    }
+    QCommandLineParser parser;
+    QCommandLineOption optBus("bus", "service bus address", "bus");
+    optBus.setFlags(QCommandLineOption::HiddenFromHelp);
 
-    if (!dbus.registerObject(linglong::SystemHelperDBusPath, &systemHelper)) {
-        qCritical() << "registerObject failed" << dbus.lastError();
-        return -1;
+    parser.addOptions({optBus});
+    parser.parse(QCoreApplication::arguments());
+
+    QScopedPointer<QDBusServer> dbusServer;
+    if (parser.isSet(optBus)) {
+        auto busAddress = parser.value(optBus);
+        dbusServer.reset(new QDBusServer(busAddress));
+        if (!dbusServer->isConnected()) {
+            qCritical() << "dbusServer is not connected" << dbusServer->lastError();
+            return -1;
+        }
+        QObject::connect(dbusServer.data(), &QDBusServer::newConnection, [&systemHelper](const QDBusConnection &conn) {
+            // FIXME: work round to keep conn alive, but we finally need to free clientConn.
+            auto clientConn = new QDBusConnection(conn);
+            registerServiceAndObject(clientConn, "",
+                                     {
+                                         {linglong::SystemHelperDBusPath, &systemHelper},
+                                     });
+        });
+    } else {
+        QDBusConnection bus = QDBusConnection::systemBus();
+        if (!registerServiceAndObject(&bus, linglong::SystemHelperDBusName,
+                                      {
+                                          {linglong::SystemHelperDBusPath, &systemHelper},
+                                      })) {
+            return -1;
+        }
     }
 
     return app.exec();

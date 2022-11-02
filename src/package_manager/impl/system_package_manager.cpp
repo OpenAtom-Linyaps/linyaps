@@ -29,7 +29,6 @@
 #include "module/util/runner.h"
 #include "system_package_manager_p.h"
 
-#include "dbus_system_helper.h"
 #include "module/dbus_ipc/dbus_system_helper_common.h"
 
 namespace linglong {
@@ -38,6 +37,14 @@ SystemPackageManagerPrivate::SystemPackageManagerPrivate(SystemPackageManager *p
     : sysLinglongInstalltions(linglong::util::getLinglongRootPath() + "/entries/share")
     , kAppInstallPath(linglong::util::getLinglongRootPath() + "/layers/")
     , kLocalRepoPath(linglong::util::getLinglongRootPath())
+    , systemHelperInterface(linglong::SystemHelperDBusName, linglong::SystemHelperDBusPath,
+                            []() -> QDBusConnection {
+                                auto address = QString(getenv("LINGLONG_SYSTEM_HELPER_ADDRESS"));
+                                if (address.length()) {
+                                    return QDBusConnection::connectToPeer(address, "ll-package-manager");
+                                }
+                                return QDBusConnection::systemBus();
+                            }())
     , kRemoteRepoName("repo")
     , ostree(kLocalRepoPath)
     , q_ptr(parent)
@@ -141,7 +148,6 @@ bool SystemPackageManagerPrivate::getAppInfofromServer(const QString &pkgName, c
     bool ret = G_HTTPCLIENT->queryRemoteApp(pkgName, pkgVer, pkgArch, appData);
     if (!ret) {
         err = "getAppInfofromServer err, " + appData + " ,please check the network";
-        qCritical() << err;
         qCritical().noquote() << "receive from server:" << appData;
         return false;
     }
@@ -766,8 +772,6 @@ Reply SystemPackageManagerPrivate::Install(const InstallParamOption &installPara
 
     // process portal after install
     {
-        OrgDeepinLinglongSystemHelperInterface systemHelperInterface(SystemHelperDBusName, SystemHelperDBusPath,
-                                                                     QDBusConnection::systemBus());
         auto installPath = savePath;
         qDebug() << "call systemHelperInterface.RebuildInstallPortal" << installPath, ref.toLocalFullRef();
         QDBusReply<void> reply = systemHelperInterface.RebuildInstallPortal(installPath, ref.toString(), {});
@@ -999,8 +1003,6 @@ Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOp
                 }
             }
             auto packageRootPath = installPath + "/" + arch;
-            OrgDeepinLinglongSystemHelperInterface systemHelperInterface(SystemHelperDBusName, SystemHelperDBusPath,
-                                                                         QDBusConnection::systemBus());
             qDebug() << "call systemHelperInterface.RuinInstallPortal" << packageRootPath << ref.toLocalFullRef()
                      << paramOption.delAppData;
             QDBusReply<void> reply =
@@ -1285,9 +1287,9 @@ Reply SystemPackageManager::GetDownloadStatus(const ParamOption &paramOption, in
     Reply reply;
     QString appId = paramOption.appId.trimmed();
     if (appId.isEmpty()) {
-        qCritical() << "package name err";
         reply.code = STATUS_CODE(kUserInputParamErr);
         reply.message = "package name err";
+        qCritical() << reply.message;
         return reply;
     }
 

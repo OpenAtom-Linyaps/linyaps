@@ -29,10 +29,10 @@
 #include "module/util/log/log_handler.h"
 #include "module/util/sysinfo.h"
 
-/**
- * @brief 注册QT对象类型
- *
- */
+using namespace linglong;
+
+static qint64 systemHelperPID = -1;
+
 static void qJsonRegisterAll()
 {
     linglong::package::registerAllMetaType();
@@ -94,6 +94,13 @@ void doIntOperate(int sig)
     std::cout << "\033[?25h" << std::endl;
     // Fix to 调用jobManager中止下载安装操作
     exit(0);
+}
+
+void handleOnExit(int, void *)
+{
+    if (systemHelperPID != -1) {
+        kill(systemHelperPID, SIGTERM);
+    }
 }
 
 /**
@@ -168,7 +175,15 @@ void checkAndStartService(OrgDeepinLinglongAppManagerInterface &appManager)
     }
 }
 
-using namespace linglong;
+void startDaemon(QString program, QStringList args = {}, qint64 *pid = nullptr)
+{
+    QProcess process;
+    process.setProgram(program);
+    process.setStandardOutputFile("/dev/null");
+    process.setStandardErrorFile("/dev/null");
+    process.setArguments(args);
+    process.startDetached(pid);
+}
 
 int main(int argc, char **argv)
 {
@@ -187,7 +202,13 @@ int main(int argc, char **argv)
                                   "uninstall", "update", "query", "list", "repo"};
 
     parser.addPositionalArgument("subcommand", subCommandList.join("\n"), "subcommand [sub-option]");
+    auto optNoDbus = QCommandLineOption("nodbus", "execute cmd directly, not via dbus(only for root user)", "");
+    optNoDbus.setFlags(QCommandLineOption::HiddenFromHelp);
+    auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "repo-point", "");
+    // TODO: may not support flatpak from cli, hidden it now.
+    optRepoPoint.setFlags(QCommandLineOption::HiddenFromHelp);
 
+    parser.addOptions({optNoDbus, optRepoPoint});
     parser.parse(QCoreApplication::arguments());
 
     QStringList args = parser.positionalArguments();
@@ -199,7 +220,30 @@ int main(int argc, char **argv)
     OrgDeepinLinglongPackageManagerInterface sysPackageManager(
         "org.deepin.linglong.PackageManager", "/org/deepin/linglong/PackageManager", QDBusConnection::systemBus());
 
-    checkAndStartService(appManager);
+    auto systemHelperDBusConnection = QDBusConnection::systemBus();
+    auto systemHelperAddress = QString("unix:path=/run/linglong_system_helper_socket");
+
+    if (parser.isSet(optNoDbus)) {
+        on_exit(handleOnExit, nullptr);
+        // NOTE: isConnected will NOT RETRY
+        // NOTE: name cannot be duplicate
+        systemHelperDBusConnection = QDBusConnection::connectToPeer(systemHelperAddress, "ll-system-helper-1");
+        if (!systemHelperDBusConnection.isConnected()) {
+            startDaemon("ll-system-helper", {"--bus=" + systemHelperAddress}, &systemHelperPID);
+            QThread::sleep(1);
+            systemHelperDBusConnection = QDBusConnection::connectToPeer(systemHelperAddress, "ll-system-helper");
+            if (!systemHelperDBusConnection.isConnected()) {
+                qCritical() << "failed to start ll-system-helper";
+                exit(-1);
+            }
+        }
+        setenv("LINGLONG_SYSTEM_HELPER_ADDRESS", systemHelperAddress.toStdString().c_str(), true);
+    }
+
+    if (!parser.isSet(optNoDbus)) {
+        checkAndStartService(appManager);
+    }
+
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
         {"run", // 启动玲珑应用
          [&](QCommandLineParser &parser) -> int {
@@ -208,8 +252,6 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
 
              auto optExec = QCommandLineOption("exec", "run exec", "/bin/bash");
-             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "repo-point", "");
-             parser.addOption(optRepoPoint);
              parser.addOption(optExec);
 
              auto optNoProxy = QCommandLineOption("no-proxy", "whether to use dbus proxy in box", "");
@@ -448,12 +490,6 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("install", "install an application", "install");
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
-             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "repo-point", "");
-             parser.addOption(optRepoPoint);
-             auto optNoDbus =
-                 QCommandLineOption("nodbus", "execute cmd directly, not via dbus(only for root user)", "");
-             optNoDbus.setFlags(QCommandLineOption::HiddenFromHelp);
-             parser.addOption(optNoDbus);
 
              auto optChannel = QCommandLineOption("channel", "the channnel of app", "--channel=linglong", "linglong");
              parser.addOption(optChannel);
@@ -611,8 +647,6 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("query", "query app info", "query");
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
-             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "repo-point", "");
-             parser.addOption(optRepoPoint);
              auto optNoCache = QCommandLineOption("force", "query from server directly, not from cache", "");
              parser.addOption(optNoCache);
              parser.process(app);
@@ -652,14 +686,8 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("uninstall", "uninstall an application", "uninstall");
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
-             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "repo-point", "");
-             auto optNoDbus =
-                 QCommandLineOption("nodbus", "execute cmd directly, not via dbus(only for root user)", "");
              auto optAllVer = QCommandLineOption("all-version", "uninstall all version application", "");
              auto optDelData = QCommandLineOption("delete-data", "delete app data", "");
-             optNoDbus.setFlags(QCommandLineOption::HiddenFromHelp);
-             parser.addOption(optNoDbus);
-             parser.addOption(optRepoPoint);
              parser.addOption(optAllVer);
              parser.addOption(optDelData);
 
@@ -723,11 +751,6 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("list", "show installed application", "list");
              parser.addOption(optType);
-             auto optRepoPoint = QCommandLineOption("repo-point", "app repo type to use", "repo-point", "");
-             parser.addOption(optRepoPoint);
-             auto optNoDbus = QCommandLineOption("nodbus", "execute cmd directly, not via dbus", "");
-             optNoDbus.setFlags(QCommandLineOption::HiddenFromHelp);
-             parser.addOption(optNoDbus);
              parser.process(app);
              auto optPara = parser.value(optType);
              if ("installed" != optPara) {

@@ -18,13 +18,13 @@
 
 namespace linglong {
 namespace service {
-class SystemPackageManager;
-class SystemPackageManagerPrivate : public QObject
+class PackageManager;
+class PackageManagerPrivate : public QObject
 {
     Q_OBJECT
 public:
-    explicit SystemPackageManagerPrivate(SystemPackageManager *parent);
-    ~SystemPackageManagerPrivate() override = default;
+    explicit PackageManagerPrivate(PackageManager *parent);
+    ~PackageManagerPrivate() override = default;
 
 private:
     Reply Install(const InstallParamOption &installParamOption);
@@ -193,8 +193,8 @@ private:
     OrgDeepinLinglongSystemHelperInterface systemHelperInterface;
 
 public:
-    SystemPackageManager *const q_ptr;
-    Q_DECLARE_PUBLIC(SystemPackageManager);
+    PackageManager *const q_ptr;
+    Q_DECLARE_PUBLIC(PackageManager);
 };
 } // namespace service
 } // namespace linglong

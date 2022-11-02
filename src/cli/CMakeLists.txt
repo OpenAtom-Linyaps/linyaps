@@ -36,7 +36,7 @@ set(LL_CLI_SOURCES
     ../package_manager/impl/job.cpp
     ../package_manager/impl/job_manager.cpp
     ../package_manager/impl/package_manager_flatpak_impl.cpp
-    ../package_manager/impl/system_package_manager.cpp
+    ../package_manager/impl/package_manager.cpp
     cmd/command_helper.cpp
     main.cpp
 )
@@ -60,7 +60,7 @@ set_source_files_properties(
 qt5_add_dbus_interface(
   LL_CLI_SOURCES
   ../module/dbus_ipc/org.deepin.linglong.PackageManager.xml
-  system_package_manager
+  package_manager
 )
 
 qt5_add_dbus_interface(

@@ -11,7 +11,7 @@
 // todo: 该头文件必须放在QDBus前，否则会报错
 #include "module/repo/ostree_repohelper.h"
 
-#include "system_package_manager.h"
+#include "package_manager.h"
 
 #include <pwd.h>
 #include <sys/types.h>
@@ -27,13 +27,13 @@
 #include "module/util/http/httpclient.h"
 #include "module/util/sysinfo.h"
 #include "module/util/runner.h"
-#include "system_package_manager_p.h"
+#include "package_manager_p.h"
 
 #include "module/dbus_ipc/dbus_system_helper_common.h"
 
 namespace linglong {
 namespace service {
-SystemPackageManagerPrivate::SystemPackageManagerPrivate(SystemPackageManager *parent)
+PackageManagerPrivate::PackageManagerPrivate(PackageManager *parent)
     : sysLinglongInstalltions(linglong::util::getLinglongRootPath() + "/entries/share")
     , kAppInstallPath(linglong::util::getLinglongRootPath() + "/layers/")
     , kLocalRepoPath(linglong::util::getLinglongRootPath())
@@ -62,7 +62,7 @@ SystemPackageManagerPrivate::SystemPackageManagerPrivate(SystemPackageManager *p
  *
  * @return bool: true:成功 false:失败
  */
-bool SystemPackageManagerPrivate::getAppJsonArray(const QString &jsonString, QJsonValue &jsonValue, QString &err)
+bool PackageManagerPrivate::getAppJsonArray(const QString &jsonString, QJsonValue &jsonValue, QString &err)
 {
     QJsonParseError parseJsonErr;
     QJsonDocument document = QJsonDocument::fromJson(jsonString.toUtf8(), &parseJsonErr);
@@ -109,7 +109,7 @@ bool SystemPackageManagerPrivate::getAppJsonArray(const QString &jsonString, QJs
  *
  * @return bool: true:成功 false:失败
  */
-bool SystemPackageManagerPrivate::loadAppInfo(const QString &jsonString, linglong::package::AppMetaInfoList &appList,
+bool PackageManagerPrivate::loadAppInfo(const QString &jsonString, linglong::package::AppMetaInfoList &appList,
                                               QString &err)
 {
     QJsonValue arrayValue;
@@ -142,7 +142,7 @@ bool SystemPackageManagerPrivate::loadAppInfo(const QString &jsonString, linglon
  *
  * @return bool: true:成功 false:失败
  */
-bool SystemPackageManagerPrivate::getAppInfofromServer(const QString &pkgName, const QString &pkgVer,
+bool PackageManagerPrivate::getAppInfofromServer(const QString &pkgName, const QString &pkgVer,
                                                        const QString &pkgArch, QString &appData, QString &err)
 {
     bool ret = G_HTTPCLIENT->queryRemoteApp(pkgName, pkgVer, pkgArch, appData);
@@ -168,7 +168,7 @@ bool SystemPackageManagerPrivate::getAppInfofromServer(const QString &pkgName, c
  *
  * @return bool: true:成功 false:失败
  */
-bool SystemPackageManagerPrivate::downloadAppData(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
+bool PackageManagerPrivate::downloadAppData(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
                                                   const QString &channel, const QString &module, const QString &dstPath,
                                                   QString &err)
 {
@@ -200,7 +200,7 @@ bool SystemPackageManagerPrivate::downloadAppData(const QString &pkgName, const 
     return ret;
 }
 
-Reply SystemPackageManagerPrivate::GetDownloadStatus(const ParamOption &paramOption, int type)
+Reply PackageManagerPrivate::GetDownloadStatus(const ParamOption &paramOption, int type)
 {
     Reply reply;
     QString appId = paramOption.appId.trimmed();
@@ -294,7 +294,7 @@ Reply SystemPackageManagerPrivate::GetDownloadStatus(const ParamOption &paramOpt
  *
  * @return bool: true:成功 false:失败
  */
-bool SystemPackageManagerPrivate::installRuntime(linglong::package::AppMetaInfo *appInfo, QString &err)
+bool PackageManagerPrivate::installRuntime(linglong::package::AppMetaInfo *appInfo, QString &err)
 {
     QString savePath = kAppInstallPath + appInfo->appId + "/" + appInfo->version + "/" + appInfo->arch;
     if ("devel" == appInfo->module) {
@@ -328,7 +328,7 @@ bool SystemPackageManagerPrivate::installRuntime(linglong::package::AppMetaInfo 
  *
  * @return bool: true:安装成功或已安装返回true false:安装失败
  */
-bool SystemPackageManagerPrivate::checkAppRuntime(const QString &runtime, const QString &channel, const QString &module,
+bool PackageManagerPrivate::checkAppRuntime(const QString &runtime, const QString &channel, const QString &module,
                                                   QString &err)
 {
     // runtime ref in repo org.deepin.Runtime/20/x86_64
@@ -391,7 +391,7 @@ bool SystemPackageManagerPrivate::checkAppRuntime(const QString &runtime, const 
  *
  * @return bool: true:安装成功或已安装返回true false:安装失败
  */
-bool SystemPackageManagerPrivate::checkAppBase(const QString &runtime, const QString &channel, const QString &module,
+bool PackageManagerPrivate::checkAppBase(const QString &runtime, const QString &channel, const QString &module,
                                                QString &err)
 {
     // 通过runtime获取base ref
@@ -469,7 +469,7 @@ bool SystemPackageManagerPrivate::checkAppBase(const QString &runtime, const QSt
  *
  */
 linglong::package::AppMetaInfo *
-SystemPackageManagerPrivate::getLatestRuntime(const QString &appId, const QString &version,
+PackageManagerPrivate::getLatestRuntime(const QString &appId, const QString &version,
                                               const linglong::package::AppMetaInfoList &appList)
 {
     linglong::package::AppMetaInfo *latestApp = appList.at(0).data();
@@ -499,7 +499,7 @@ SystemPackageManagerPrivate::getLatestRuntime(const QString &appId, const QStrin
  *
  */
 linglong::package::AppMetaInfo *
-SystemPackageManagerPrivate::getLatestApp(const QString &appId, const linglong::package::AppMetaInfoList &appList)
+PackageManagerPrivate::getLatestApp(const QString &appId, const linglong::package::AppMetaInfoList &appList)
 {
     linglong::package::AppMetaInfo *latestApp = appList.at(0).data();
     if (appList.size() == 1) {
@@ -525,7 +525,7 @@ SystemPackageManagerPrivate::getLatestApp(const QString &appId, const linglong::
  * @param version: 应用的版本号
  * @param arch: 应用对应的架构
  */
-void SystemPackageManagerPrivate::addAppConfig(const QString &appId, const QString &version, const QString &arch)
+void PackageManagerPrivate::addAppConfig(const QString &appId, const QString &version, const QString &arch)
 {
     // 是否为多版本
     if (linglong::util::getAppInstalledStatus(appId, "", arch, "", "", "")) {
@@ -568,7 +568,7 @@ void SystemPackageManagerPrivate::addAppConfig(const QString &appId, const QStri
  * @param version: 应用的版本号
  * @param arch: 应用对应的架构
  */
-void SystemPackageManagerPrivate::delAppConfig(const QString &appId, const QString &version, const QString &arch)
+void PackageManagerPrivate::delAppConfig(const QString &appId, const QString &version, const QString &arch)
 {
     // 是否为多版本
     if (linglong::util::getAppInstalledStatus(appId, "", arch, "", "", "")) {
@@ -620,7 +620,7 @@ void SystemPackageManagerPrivate::delAppConfig(const QString &appId, const QStri
  * 在线安装软件包
  * @param installParamOption
  */
-Reply SystemPackageManagerPrivate::Install(const InstallParamOption &installParamOption)
+Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOption)
 {
     Reply reply;
     QString userName = linglong::util::getUserName();
@@ -794,7 +794,7 @@ Reply SystemPackageManagerPrivate::Install(const InstallParamOption &installPara
  *
  * @return QueryReply dbus方法调用应答
  */
-QueryReply SystemPackageManagerPrivate::Query(const QueryParamOption &paramOption)
+QueryReply PackageManagerPrivate::Query(const QueryParamOption &paramOption)
 {
     QueryReply reply;
     QString appId = paramOption.appId.trimmed();
@@ -850,9 +850,9 @@ QueryReply SystemPackageManagerPrivate::Query(const QueryParamOption &paramOptio
     return reply;
 }
 
-Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOption)
+Reply PackageManagerPrivate::Uninstall(const UninstallParamOption &paramOption)
 {
-    Q_Q(SystemPackageManager);
+    Q_Q(PackageManager);
     Reply reply;
 
     QString appId = paramOption.appId.trimmed();
@@ -1058,7 +1058,7 @@ Reply SystemPackageManagerPrivate::Uninstall(const UninstallParamOption &paramOp
     return reply;
 }
 
-Reply SystemPackageManagerPrivate::Update(const ParamOption &paramOption)
+Reply PackageManagerPrivate::Update(const ParamOption &paramOption)
 {
     Reply reply;
 
@@ -1187,7 +1187,7 @@ Reply SystemPackageManagerPrivate::Update(const ParamOption &paramOption)
     return reply;
 }
 
-QString SystemPackageManagerPrivate::getUserName(uid_t uid)
+QString PackageManagerPrivate::getUserName(uid_t uid)
 {
     struct passwd *user;
     user = getpwuid(uid);
@@ -1197,9 +1197,9 @@ QString SystemPackageManagerPrivate::getUserName(uid_t uid)
     return "";
 }
 
-SystemPackageManager::SystemPackageManager()
+PackageManager::PackageManager()
     : pool(new QThreadPool)
-    , dd_ptr(new SystemPackageManagerPrivate(this))
+    , dd_ptr(new PackageManagerPrivate(this))
 {
     // 检查安装数据库信息
     linglong::util::checkInstalledAppDb();
@@ -1209,14 +1209,14 @@ SystemPackageManager::SystemPackageManager()
     linglong::util::checkAppCache();
 }
 
-SystemPackageManager::~SystemPackageManager()
+PackageManager::~PackageManager()
 {
 }
 
-Reply SystemPackageManager::ModifyRepo(const QString &url)
+Reply PackageManager::ModifyRepo(const QString &url)
 {
     Reply reply;
-    Q_D(SystemPackageManager);
+    Q_D(PackageManager);
     QUrl cfgUrl(url);
     if ((cfgUrl.scheme().toLower() != "http" && cfgUrl.scheme().toLower() != "https") || !cfgUrl.isValid()) {
         reply.message = "url format error";
@@ -1281,9 +1281,9 @@ Reply SystemPackageManager::ModifyRepo(const QString &url)
  *          code:状态码 \n
  *          message:信息
  */
-Reply SystemPackageManager::GetDownloadStatus(const ParamOption &paramOption, int type)
+Reply PackageManager::GetDownloadStatus(const ParamOption &paramOption, int type)
 {
-    Q_D(SystemPackageManager);
+    Q_D(PackageManager);
     Reply reply;
     QString appId = paramOption.appId.trimmed();
     if (appId.isEmpty()) {
@@ -1302,9 +1302,9 @@ Reply SystemPackageManager::GetDownloadStatus(const ParamOption &paramOption, in
     return d->GetDownloadStatus(paramOption, type);
 }
 
-Reply SystemPackageManager::Install(const InstallParamOption &installParamOption)
+Reply PackageManager::Install(const InstallParamOption &installParamOption)
 {
-    Q_D(SystemPackageManager);
+    Q_D(PackageManager);
 
     Reply reply;
     QString appId = installParamOption.appId.trimmed();
@@ -1323,9 +1323,9 @@ Reply SystemPackageManager::Install(const InstallParamOption &installParamOption
     return reply;
 }
 
-Reply SystemPackageManager::Uninstall(const UninstallParamOption &paramOption)
+Reply PackageManager::Uninstall(const UninstallParamOption &paramOption)
 {
-    Q_D(SystemPackageManager);
+    Q_D(PackageManager);
     Reply reply;
     QString appId = paramOption.appId.trimmed();
 
@@ -1342,9 +1342,9 @@ Reply SystemPackageManager::Uninstall(const UninstallParamOption &paramOption)
     return d->Uninstall(paramOption);
 }
 
-Reply SystemPackageManager::Update(const ParamOption &paramOption)
+Reply PackageManager::Update(const ParamOption &paramOption)
 {
-    Q_D(SystemPackageManager);
+    Q_D(PackageManager);
 
     Reply reply;
     QString appId = paramOption.appId.trimmed();
@@ -1360,9 +1360,9 @@ Reply SystemPackageManager::Update(const ParamOption &paramOption)
     return reply;
 }
 
-QueryReply SystemPackageManager::Query(const QueryParamOption &paramOption)
+QueryReply PackageManager::Query(const QueryParamOption &paramOption)
 {
-    Q_D(SystemPackageManager);
+    Q_D(PackageManager);
     if ("flatpak" == paramOption.repoPoint) {
         return PACKAGEMANAGER_FLATPAK_IMPL->Query(paramOption);
     }
@@ -1377,9 +1377,9 @@ QueryReply SystemPackageManager::Query(const QueryParamOption &paramOption)
     return d->Query(paramOption);
 }
 
-void SystemPackageManager::setNoDBusMode(bool enable)
+void PackageManager::setNoDBusMode(bool enable)
 {
-    Q_D(SystemPackageManager);
+    Q_D(PackageManager);
     d->noDBusMode = true;
     qInfo() << "setNoDBusMode enable:" << enable;
 }

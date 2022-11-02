@@ -31,22 +31,22 @@
 
 namespace linglong {
 namespace service {
-class SystemPackageManagerPrivate;
+class PackageManagerPrivate;
 
 /**
  * @brief The PackageManager class
  * @details PackageManager is a singleton class, and it is used to manage the package
  *          information.
  */
-class SystemPackageManager
+class PackageManager
     : public QObject
     , protected QDBusContext
-    , public linglong::util::Singleton<SystemPackageManager>
+    , public linglong::util::Singleton<PackageManager>
 {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.PackageManager")
 
-    friend class linglong::util::Singleton<SystemPackageManager>;
+    friend class linglong::util::Singleton<PackageManager>;
 
 public Q_SLOTS:
 
@@ -125,16 +125,16 @@ public:
     void setNoDBusMode(bool enable);
 
 private:
-    QScopedPointer<SystemPackageManagerPrivate> dd_ptr;
-    Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), SystemPackageManager)
+    QScopedPointer<PackageManagerPrivate> dd_ptr;
+    Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), PackageManager)
 
 protected:
-    SystemPackageManager();
-    ~SystemPackageManager() override;
+    PackageManager();
+    ~PackageManager() override;
 };
 
 } // namespace service
 } // namespace linglong
 
 #define POOL_MAX_THREAD 10 ///< 下载、卸载、更新应用线程池最大线程数
-#define SYSTEM_MANAGER_HELPER linglong::service::SystemPackageManager::instance()
+#define PACKAGE_MANAGER linglong::service::PackageManager::instance()

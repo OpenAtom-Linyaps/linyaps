@@ -48,15 +48,15 @@ set(LL_SYSTEM_SERVICE_SOURCES
     impl/job.cpp
     impl/job_manager.cpp
     impl/package_manager_flatpak_impl.cpp
-    impl/system_package_manager.cpp
+    impl/package_manager.cpp
     main.cpp
 )
 
 qt5_add_dbus_adaptor(
   LL_SYSTEM_SERVICE_SOURCES
   ../module/dbus_ipc/org.deepin.linglong.PackageManager.xml
-  impl/system_package_manager.h
-  linglong::service::SystemPackageManager
+  impl/package_manager.h
+  linglong::service::PackageManager
 )
 
 qt5_add_dbus_adaptor(

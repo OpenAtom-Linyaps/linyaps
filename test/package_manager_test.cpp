@@ -20,7 +20,7 @@
 #include "src/module/dbus_ipc/param_option.h"
 #include "src/module/dbus_ipc/reply.h"
 #include "app_manager.h"
-#include "system_package_manager.h"
+#include "package_manager.h"
 
 /*!
  * start service

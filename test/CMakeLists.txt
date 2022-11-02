@@ -113,7 +113,7 @@ set_source_files_properties(
 qt5_add_dbus_interface(
   LL_TEST_SOURCES
   ../src/module/dbus_ipc/org.deepin.linglong.PackageManager.xml
-  system_package_manager
+  package_manager
 )
 
 qt5_add_dbus_interface(

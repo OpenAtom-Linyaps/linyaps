@@ -35,10 +35,10 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    PackageManagerAdaptor packageManagerAdaptor(service::SystemPackageManager::instance());
+    PackageManagerAdaptor packageManagerAdaptor(service::PackageManager::instance());
     JobManagerAdaptor jma(JobManager::instance());
 
-    dbus.registerObject("/org/deepin/linglong/PackageManager", service::SystemPackageManager::instance());
+    dbus.registerObject("/org/deepin/linglong/PackageManager", service::PackageManager::instance());
     dbus.registerObject("/org/deepin/linglong/JobManager", JobManager::instance());
 
     return QCoreApplication::exec();

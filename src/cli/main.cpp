@@ -18,9 +18,9 @@
 #include "module/dbus_ipc/package_manager_param.h"
 #include "module/dbus_ipc/register_meta_type.h"
 #include "service/impl/app_manager.h"
-#include "package_manager/impl/system_package_manager.h"
+#include "package_manager/impl/package_manager.h"
 #include "app_manager.h"
-#include "system_package_manager.h"
+#include "package_manager.h"
 
 #include "module/runtime/runtime.h"
 #include "package_manager/impl/app_status.h"
@@ -567,9 +567,9 @@ int main(int argc, char **argv)
                      qInfo().noquote() << "message:" << reply.message;
                  }
              } else {
-                 SYSTEM_MANAGER_HELPER->setNoDBusMode(true);
-                 reply = SYSTEM_MANAGER_HELPER->Install(installParamOption);
-                 SYSTEM_MANAGER_HELPER->pool->waitForDone(-1);
+                 PACKAGE_MANAGER->setNoDBusMode(true);
+                 reply = PACKAGE_MANAGER->Install(installParamOption);
+                 PACKAGE_MANAGER->pool->waitForDone(-1);
                  qInfo().noquote() << "install " << installParamOption.appId << " done";
              }
              return 0;
@@ -724,8 +724,8 @@ int main(int argc, char **argv)
              qInfo().noquote() << "uninstall" << appInfo << ", please wait a few minutes...";
              paramOption.delAllVersion = parser.isSet(optAllVer);
              if (parser.isSet(optNoDbus)) {
-                 SYSTEM_MANAGER_HELPER->setNoDBusMode(true);
-                 reply = SYSTEM_MANAGER_HELPER->Uninstall(paramOption);
+                 PACKAGE_MANAGER->setNoDBusMode(true);
+                 reply = PACKAGE_MANAGER->Uninstall(paramOption);
                  if (reply.code != STATUS_CODE(kPkgUninstallSuccess)) {
                      qInfo().noquote() << "message: " << reply.message << ", errcode:" << reply.code;
                      return -1;
@@ -771,7 +771,7 @@ int main(int argc, char **argv)
              linglong::package::AppMetaInfoList appMetaInfoList;
              linglong::service::QueryReply reply;
              if (parser.isSet(optNoDbus)) {
-                 reply = SYSTEM_MANAGER_HELPER->Query(paramOption);
+                 reply = PACKAGE_MANAGER->Query(paramOption);
              } else {
                  QDBusPendingReply<linglong::service::QueryReply> dbusReply = sysPackageManager.Query(paramOption);
                  // 默认超时时间为25s

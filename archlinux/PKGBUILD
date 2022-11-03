@@ -16,7 +16,7 @@ package() {
         mkdir -p "${pkgdir}/${LINGLONG_ROOT}/layers"
         ostree --repo="${pkgdir}/${LINGLONG_ROOT}/repo" init --mode=bare-user-only
         ostree --repo="${pkgdir}/${LINGLONG_ROOT}/repo" config set --group core min-free-space-size 600MB
-        ostree --repo="${pkgdir}/${LINGLONG_ROOT}/repo" remote add --no-gpg-verify repo https://repo.linglong.space/repo
+        ostree --repo="${pkgdir}/${LINGLONG_ROOT}/repo" remote add --no-gpg-verify repo https://repo-dev.linglong.space/repos/repo
         chown -R 400:users "${pkgdir}/${LINGLONG_ROOT}"
         install -vDm644 ../linglong.conf "$pkgdir/usr/lib/sysusers.d/linglong.conf"
         DESTDIR="$pkgdir" cmake --install build

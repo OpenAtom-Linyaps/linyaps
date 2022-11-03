@@ -21,7 +21,7 @@
 #include <QTemporaryFile>
 #include <QThread>
 
-#include "module/util/yaml.h"
+#include "module/util/serialize/yaml.h"
 #include "module/util/uuid.h"
 #include "module/util/xdg.h"
 #include "module/runtime/oci.h"

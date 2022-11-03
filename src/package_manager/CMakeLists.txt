@@ -37,7 +37,7 @@ set(LL_SYSTEM_SERVICE_SOURCES
     ../module/util/http/http_client.cpp
     ../module/util/http/http_client.h
     ../module/util/http/httpclient.cpp
-    ../module/util/json.h
+    ../module/util/serialize/json.h
     ../module/util/log/log_handler.cpp
     ../module/util/sysinfo.cpp
     ../module/util/uuid.cpp

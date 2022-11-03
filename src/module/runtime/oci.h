@@ -12,7 +12,7 @@
 
 #include <mutex>
 
-#include "module/util/json.h"
+#include "module/util/serialize/json.h"
 
 class Root : public JsonSerialize
 {

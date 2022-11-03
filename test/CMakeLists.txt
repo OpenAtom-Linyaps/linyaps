@@ -67,7 +67,7 @@ set(LL_TEST_SOURCES
     ../src/module/util/http/http_client.cpp
     ../src/module/util/http/http_client.h
     ../src/module/util/http/httpclient.cpp
-    ../src/module/util/json.h
+    ../src/module/util/serialize/json.h
     ../src/module/util/sysinfo.cpp
     ../src/module/util/uuid.cpp
     ../src/module/util/xdg.cpp
@@ -86,7 +86,7 @@ set(LL_TEST_SOURCES
     module/util/xdg_test.cpp
     module/serialize/serialize_test.h
     module/serialize/serialize_test.cpp
-    package_manager_test.cpp
+    manager_test.cpp
     module/serialize/qt_json.cpp
     module/serialize/qt_yaml.cpp
     module/config/config_test.cpp

@@ -16,7 +16,7 @@
 
 #include "module/util/file.h"
 #include "module/dbus_ipc/package_manager_param.h"
-#include "module/util/yaml.h"
+#include "module/util/serialize/yaml.h"
 #include "module/package/ref.h"
 
 namespace linglong {

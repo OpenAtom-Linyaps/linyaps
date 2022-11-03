@@ -15,7 +15,7 @@
 #include <QList>
 #include <QObject>
 
-#include "module/util/json.h"
+#include "module/util/serialize/json.h"
 #include "module/runtime/oci.h"
 #include "ref.h"
 

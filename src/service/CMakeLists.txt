@@ -35,7 +35,7 @@ set(LL_SERVICE_SOURCES
     ../module/util/http/http_client.cpp
     ../module/util/http/http_client.h
     ../module/util/http/httpclient.cpp
-    ../module/util/json.h
+    ../module/util/serialize/json.h
     ../module/util/log/log_handler.cpp
     ../module/util/sysinfo.cpp
     ../module/util/uuid.cpp
@@ -74,28 +74,28 @@ target_link_libraries(ll-service PRIVATE ${LINK_LIBS})
 
 install(TARGETS ll-service RUNTIME DESTINATION bin)
 
-install(FILES data/config.json DESTINATION /usr/share/linglong/)
+install(FILES misc/config.json DESTINATION /usr/share/linglong/)
 
-install(FILES data/space.linglong.Service.desktop
+install(FILES misc/xdg/org.deepin.linglong.service.desktop
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications
 )
 
-install(FILES data/space.linglong.Service.desktop
+install(FILES misc/xdg/org.deepin.linglong.service.desktop
         DESTINATION /etc/xdg/autostart
 )
 
 set(PERMISSION
-    data/linglong/hostdir.json
-    data/linglong/calendar.json
-    data/linglong/camera.json
-    data/linglong/mic.json
-    data/linglong/screenshot.json
-    data/linglong/userdir.json
+    misc/linglong/hostdir.json
+    misc/linglong/calendar.json
+    misc/linglong/camera.json
+    misc/linglong/mic.json
+    misc/linglong/screenshot.json
+    misc/linglong/userdir.json
 )
 install(FILES ${PERMISSION}
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/permission/policy/linglong
 )
 
-install(FILES data/deepin-linglong.xml
+install(FILES misc/xdg/deepin-linglong.xml
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/mime/packages
 )

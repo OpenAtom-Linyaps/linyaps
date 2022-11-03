@@ -23,7 +23,7 @@
 #include <QFileInfo>
 
 #include "module/util/file.h"
-#include "module/util/json.h"
+#include "module/util/serialize/json.h"
 #include "module/util/status_code.h"
 #include "ref.h"
 

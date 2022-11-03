@@ -8,7 +8,7 @@
 // yaml/json format config
 
 #include "module/util/file.h"
-#include "module/util/json.h"
+#include "module/util/serialize/json.h"
 
 namespace linglong {
 

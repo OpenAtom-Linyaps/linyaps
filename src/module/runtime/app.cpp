@@ -20,9 +20,9 @@
 #include <QStandardPaths>
 #include <QDir>
 
-#include "module/util/yaml.h"
+#include "module/util/serialize/yaml.h"
 #include "module/util/uuid.h"
-#include "module/util/json.h"
+#include "module/util/serialize/json.h"
 #include "module/util/file.h"
 #include "module/util/xdg.h"
 #include "module/util/desktop_entry.h"

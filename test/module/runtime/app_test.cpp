@@ -13,7 +13,7 @@
 #include <QFile>
 #include <QDebug>
 
-#include "src/module/util/yaml.h"
+#include "src/module/util/serialize/yaml.h"
 #include "src/module/runtime/oci.h"
 #include "src/module/runtime/app.h"
 #include "src/module/runtime/runtime.h"

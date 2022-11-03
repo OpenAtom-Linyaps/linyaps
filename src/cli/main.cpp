@@ -264,7 +264,7 @@ int main(int argc, char **argv)
                                                           "--filter-interface=org.deepin.linglong.AppManager", "");
 
              // 增加channel/module
-             auto optChannel = QCommandLineOption("channel", "the channnel of app", "--channel=linglong", "linglong");
+             auto optChannel = QCommandLineOption("channel", "the channel of app", "--channel=linglong", "linglong");
              parser.addOption(optChannel);
              auto optModule = QCommandLineOption("module", "the module of app", "--module=runtime", "runtime");
              parser.addOption(optModule);
@@ -491,7 +491,7 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("install", "install an application", "install");
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
 
-             auto optChannel = QCommandLineOption("channel", "the channnel of app", "--channel=linglong", "linglong");
+             auto optChannel = QCommandLineOption("channel", "the channel of app", "--channel=linglong", "linglong");
              parser.addOption(optChannel);
              auto optModule = QCommandLineOption("module", "the module of app", "--module=runtime", "runtime");
              parser.addOption(optModule);
@@ -580,7 +580,7 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("update", "update an application", "update");
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
 
-             auto optChannel = QCommandLineOption("channel", "the channnel of app", "--channel=linglong", "linglong");
+             auto optChannel = QCommandLineOption("channel", "the channel of app", "--channel=linglong", "linglong");
              parser.addOption(optChannel);
              auto optModule = QCommandLineOption("module", "the module of app", "--module=runtime", "runtime");
              parser.addOption(optModule);
@@ -691,7 +691,7 @@ int main(int argc, char **argv)
              parser.addOption(optAllVer);
              parser.addOption(optDelData);
 
-             auto optChannel = QCommandLineOption("channel", "the channnel of app", "--channel=linglong", "linglong");
+             auto optChannel = QCommandLineOption("channel", "the channel of app", "--channel=linglong", "linglong");
              parser.addOption(optChannel);
              auto optModule = QCommandLineOption("module", "the module of app", "--module=runtime", "runtime");
              parser.addOption(optModule);

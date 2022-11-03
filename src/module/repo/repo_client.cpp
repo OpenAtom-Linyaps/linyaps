@@ -12,7 +12,7 @@
 
 #include "module/util/config/config.h"
 #include "module/util/http/http_client.h"
-#include "module/util/json.h"
+#include "module/util/serialize/json.h"
 #include "module/package/package.h"
 
 namespace linglong {

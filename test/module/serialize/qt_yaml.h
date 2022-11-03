@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "src/module/util/yaml.h"
+#include "src/module/util/serialize/yaml.h"
 #include "src/module/runtime/oci.h"
 
 namespace linglong {

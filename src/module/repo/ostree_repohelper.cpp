@@ -631,6 +631,10 @@ bool OstreeRepoHelper::repoPullbyCmd(const QString &destPath, const QString &rem
     // * 60 * 60);
     ret = startOstreeJob("ostree", ref, {"--repo=" + destPath + "/repo", "pull-local", tmpPath, ref}, 1000 * 60 * 60);
 
+    // 删除下载进度的重定向文件
+    QString filePath = "/tmp/.linglong/" + logName;
+    QFile(filePath).remove();
+
     // 删除临时仓库
     QString tmpRepoDir = tmpPath.left(tmpPath.length() - QString("/repoTmp").length());
     qInfo() << "delete tmp repo path:" << tmpRepoDir;

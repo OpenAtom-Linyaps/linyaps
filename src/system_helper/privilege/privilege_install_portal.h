@@ -15,7 +15,7 @@
 #include <QVariantMap>
 
 #include "module/util/serialize/serialize.h"
-#include "module/util/json.h"
+#include "module/util/serialize/json.h"
 #include "module/util/result.h"
 
 namespace linglong {

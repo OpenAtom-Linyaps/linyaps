@@ -17,7 +17,7 @@
 #include <QJsonValue>
 #include <QDebug>
 
-#include "module/util/json.h"
+#include "module/util/serialize/json.h"
 
 namespace YAML {
 

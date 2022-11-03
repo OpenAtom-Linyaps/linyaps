@@ -729,11 +729,6 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
         return reply;
     }
 
-    // 删除下载进度的重定向文件
-    QString fileName = QStringList {channel, appInfo->appId, appInfo->version, appInfo->arch, appModule}.join("-");
-    QString filePath = "/tmp/.linglong/" + fileName;
-    QFile(filePath).remove();
-
     // 链接应用配置文件到系统配置目录
     addAppConfig(appInfo->appId, appInfo->version, appInfo->arch);
 

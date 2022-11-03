@@ -13,7 +13,7 @@
 #include <QObject>
 #include <QScopedPointer>
 
-#include "module/util/json.h"
+#include "module/util/serialize/json.h"
 #include "module/package/ref.h"
 #include "module/package/package.h"
 

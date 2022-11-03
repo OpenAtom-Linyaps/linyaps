@@ -24,7 +24,7 @@
 #include "module/runtime/oci.h"
 #include "module/repo/repo.h"
 #include "module/runtime/runtime.h"
-#include "module/util/yaml.h"
+#include "module/util/serialize/yaml.h"
 #include "module/util/log/log_handler.h"
 
 static void qJsonRegisterAll()

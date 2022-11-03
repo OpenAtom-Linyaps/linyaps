@@ -16,7 +16,7 @@
 #include "module/util/uuid.h"
 #include "module/util/file.h"
 #include "module/util/sysinfo.h"
-#include "module/util/yaml.h"
+#include "module/util/serialize/yaml.h"
 #include "module/package/ref.h"
 
 #include "builder_config.h"

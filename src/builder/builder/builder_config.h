@@ -15,7 +15,7 @@
 #include <QStandardPaths>
 
 #include "module/util/singleton.h"
-#include "module/util/json.h"
+#include "module/util/serialize/json.h"
 
 namespace linglong {
 namespace builder {

@@ -2,7 +2,7 @@ set(LL_SYSTEM_HELPER_SOURCES
     # cmake-format: sortable
     ../module/util/file.h
     ../module/util/file.cpp
-    ../module/util/json.h
+    ../module/util/serialize/json.h
     ../module/util/serialize/serialize.h
     ../module/package/info.cpp
     ../module/package/ref.h

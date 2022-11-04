@@ -1254,6 +1254,9 @@ void App::exec(QString cmd, QString env, QString cwd)
     if (cmd.isEmpty() || cmd.isNull()) {
         appCmd = d->r->process->args;
     }
+    if(appCmd.isEmpty()){
+        return;
+    }
     p.setargs(appCmd);
     auto data = dump(&p).toStdString();
 

@@ -102,14 +102,20 @@ QStringList splitExec(const QString &exec)
         switch (ret) {
         case WRDE_BADCHAR:
             errMessage = "BADCHAR";
+            qWarning() << "wordexp error: " << errMessage;
+            return {};
         case WRDE_BADVAL:
             errMessage = "BADVAL";
+            break;
         case WRDE_CMDSUB:
             errMessage = "CMDSUB";
+            break;
         case WRDE_NOSPACE:
             errMessage = "NOSPACE";
+            break;
         case WRDE_SYNTAX:
             errMessage = "SYNTAX";
+            break;
         default:
             errMessage = "unknown";
         }

@@ -103,13 +103,24 @@ QString configPath()
             return configPath;
         }
     }
+
     return {};
 }
 
 BuilderConfig *BuilderConfig::instance()
 {
-    static auto config = formYaml<BuilderConfig>(YAML::LoadFile(configPath().toStdString()));
-    return config;
+    if (!configPath().isEmpty()) {
+        try {
+            static auto config = formYaml<BuilderConfig>(YAML::LoadFile(configPath().toStdString()));
+            return config;
+        } catch (std::exception &e) {
+            qCritical() << e.what();
+            qCritical().noquote() << QString("failed to parse builder.yaml");
+        }
+    }
+    
+    static BuilderConfig *cfg = new BuilderConfig();
+    return cfg;
 }
 
 } // namespace builder

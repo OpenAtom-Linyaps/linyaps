@@ -61,7 +61,7 @@ public:
         QFile scriptFile(path);
         // Warning: using QString maybe out of range
         QString command;
-        QString templateName;
+        QString templateName = "default.yaml";
 
         if (!scriptFile.open(QIODevice::WriteOnly)) {
             qCritical() << "failed to open" << path << scriptFile.error();
@@ -93,16 +93,24 @@ public:
             command += QString("TRIPLET=\"%1\"\n").arg("sw_64-linux-gnu");
         };
 
-        // genarate local config, from .yaml.
-        if (q_ptr->build->kind == "manual") {
-            templateName = "default.yaml";
-        } else if (q_ptr->build->kind == "qmake") {
-            templateName = "qmake.yaml";
-        } else if (q_ptr->build->kind == "cmake") {
-            templateName = "cmake.yaml";
-        } else if (q_ptr->build->kind == "autotools") {
-            templateName = "autotools.yaml";
-        };
+        // genarate local config, from *.yaml.
+        if (q_ptr->build != nullptr) {
+            if (q_ptr->build->kind == "manual") {
+                templateName = "default.yaml";
+            } else if (q_ptr->build->kind == "qmake") {
+                templateName = "qmake.yaml";
+            } else if (q_ptr->build->kind == "cmake") {
+                templateName = "cmake.yaml";
+            } else if (q_ptr->build->kind == "autotools") {
+                templateName = "autotools.yaml";
+            } else {
+                qWarning().noquote() << QString("unknown build type: %1").arg(q_ptr->build->kind);
+                return -1;
+            }
+        } else {
+            qWarning().noquote() << "build rule not found, check your linglong.yaml";
+            return -1;
+        }
 
         auto templatePath = QStringList {BuilderConfig::instance()->templatePath(), templateName}.join("/");
 

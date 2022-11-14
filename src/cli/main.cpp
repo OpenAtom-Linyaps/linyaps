@@ -1,37 +1,29 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include <QCoreApplication>
 #include <QCommandLineParser>
 #include <QCommandLineOption>
-#include <QMap>
 
+#include "app_manager.h"
 #include "cmd/command_helper.h"
-#include "module/package/package.h"
 #include "module/dbus_ipc/package_manager_param.h"
 #include "module/dbus_ipc/register_meta_type.h"
-#include "service/impl/app_manager.h"
-#include "package_manager/impl/package_manager.h"
-#include "app_manager.h"
-#include "package_manager.h"
-
+#include "module/package/package.h"
 #include "module/runtime/runtime.h"
-#include "package_manager/impl/app_status.h"
 #include "module/util/xdg.h"
 #include "module/util/env.h"
 #include "module/util/log/log_handler.h"
 #include "module/util/sysinfo.h"
+#include "package_manager.h"
+#include "package_manager/impl/app_status.h"
+#include "package_manager/impl/package_manager.h"
+#include "service/impl/app_manager.h"
 
-using namespace linglong;
-
-static qint64 systemHelperPID = -1;
+static qint64 systemHelperPid = -1;
 
 static void qJsonRegisterAll()
 {
@@ -41,35 +33,12 @@ static void qJsonRegisterAll()
 }
 
 /**
- * @brief 输出flatpak命令的查询结果
- *
- * @param appMetaInfoList 软件包元信息列表
- *
- */
-void printFlatpakAppInfo(linglong::package::AppMetaInfoList appMetaInfoList)
-{
-    if (appMetaInfoList.size() > 0) {
-        if ("flatpaklist" == appMetaInfoList.at(0)->appId) {
-            qInfo("%-48s%-16s%-16s%-12s%-12s%-12s%-12s", "Description", "Application", "Version", "Branch", "Arch",
-                  "Origin", "Installation");
-        } else {
-            qInfo("%-72s%-16s%-16s%-12s%-12s", "Description", "Application", "Version", "Branch", "Remotes");
-        }
-        QString ret = appMetaInfoList.at(0)->description;
-        QStringList strList = ret.split(QRegExp("[\r\n]"), QString::SkipEmptyParts);
-        for (int i = 0; i < strList.size(); ++i) {
-            qInfo().noquote() << strList[i].simplified();
-        }
-    }
-}
-
-/**
  * @brief 统计字符串中中文字符的个数
  *
  * @param name 软件包名称
  * @return int 中文字符个数
  */
-int getUnicodeNum(const QString &name)
+static int getUnicodeNum(const QString &name)
 {
     int num = 0;
     int count = name.count();
@@ -88,7 +57,7 @@ int getUnicodeNum(const QString &name)
  *
  * @param sig 中断信号
  */
-void doIntOperate(int sig)
+static void doIntOperate(int sig)
 {
     // 显示光标
     std::cout << "\033[?25h" << std::endl;
@@ -96,10 +65,10 @@ void doIntOperate(int sig)
     exit(0);
 }
 
-void handleOnExit(int, void *)
+static void handleOnExit(int, void *)
 {
-    if (systemHelperPID != -1) {
-        kill(systemHelperPID, SIGTERM);
+    if (systemHelperPid != -1) {
+        kill(systemHelperPid, SIGTERM);
     }
 }
 
@@ -109,13 +78,13 @@ void handleOnExit(int, void *)
  * @param appMetaInfoList 软件包元信息列表
  *
  */
-void printAppInfo(linglong::package::AppMetaInfoList appMetaInfoList)
+static void printAppInfo(linglong::package::AppMetaInfoList appMetaInfoList)
 {
     if (appMetaInfoList.size() > 0) {
         qInfo("\033[1m\033[38;5;214m%-32s%-32s%-16s%-12s%-16s%-12s%-s\033[0m", qUtf8Printable("appId"),
               qUtf8Printable("name"), qUtf8Printable("version"), qUtf8Printable("arch"), qUtf8Printable("channel"),
               qUtf8Printable("module"), qUtf8Printable("description"));
-        for (auto const &it : appMetaInfoList) {
+        for (const auto &it : appMetaInfoList) {
             QString simpleDescription = it->description.trimmed();
             if (simpleDescription.length() > 56) {
                 simpleDescription = it->description.trimmed().left(53) + "...";
@@ -150,7 +119,7 @@ void printAppInfo(linglong::package::AppMetaInfoList appMetaInfoList)
  * @param packageManager ll-service dbus服务
  *
  */
-void checkAndStartService(OrgDeepinLinglongAppManagerInterface &appManager)
+static void checkAndStartService(OrgDeepinLinglongAppManagerInterface &appManager)
 {
     const auto kStatusActive = "active";
     QDBusReply<QString> status = appManager.Status();
@@ -175,7 +144,7 @@ void checkAndStartService(OrgDeepinLinglongAppManagerInterface &appManager)
     }
 }
 
-void startDaemon(QString program, QStringList args = {}, qint64 *pid = nullptr)
+static void startDaemon(QString program, QStringList args = {}, qint64 *pid = nullptr)
 {
     QProcess process;
     process.setProgram(program);
@@ -221,7 +190,7 @@ int main(int argc, char **argv)
         "org.deepin.linglong.PackageManager", "/org/deepin/linglong/PackageManager", QDBusConnection::systemBus());
 
     auto systemHelperDBusConnection = QDBusConnection::systemBus();
-    auto systemHelperAddress = QString("unix:path=/run/linglong_system_helper_socket");
+    const auto systemHelperAddress = QString("unix:path=/run/linglong_system_helper_socket");
 
     if (parser.isSet(optNoDbus)) {
         on_exit(handleOnExit, nullptr);
@@ -229,7 +198,7 @@ int main(int argc, char **argv)
         // NOTE: name cannot be duplicate
         systemHelperDBusConnection = QDBusConnection::connectToPeer(systemHelperAddress, "ll-system-helper-1");
         if (!systemHelperDBusConnection.isConnected()) {
-            startDaemon("ll-system-helper", {"--bus=" + systemHelperAddress}, &systemHelperPID);
+            startDaemon("ll-system-helper", {"--bus=" + systemHelperAddress}, &systemHelperPid);
             QThread::sleep(1);
             systemHelperDBusConnection = QDBusConnection::connectToPeer(systemHelperAddress, "ll-system-helper");
             if (!systemHelperDBusConnection.isConnected()) {
@@ -251,22 +220,24 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("run", "run application", "run");
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
 
-             auto optExec = QCommandLineOption("exec", "run exec", "/bin/bash");
+             const auto optExec = QCommandLineOption("exec", "run exec", "/bin/bash");
              parser.addOption(optExec);
 
-             auto optNoProxy = QCommandLineOption("no-proxy", "whether to use dbus proxy in box", "");
+             const auto optNoProxy = QCommandLineOption("no-proxy", "whether to use dbus proxy in box", "");
 
-             auto optNameFilter = QCommandLineOption("filter-name", "dbus name filter to use",
-                                                     "--filter-name=org.deepin.linglong.AppManager", "");
-             auto optPathFilter = QCommandLineOption("filter-path", "dbus path filter to use",
-                                                     "--filter-path=/org/deepin/linglong/AppManager", "");
-             auto optInterfaceFilter = QCommandLineOption("filter-interface", "dbus interface filter to use",
-                                                          "--filter-interface=org.deepin.linglong.AppManager", "");
+             const auto optNameFilter = QCommandLineOption("filter-name", "dbus name filter to use",
+                                                           "--filter-name=org.deepin.linglong.AppManager", "");
+             const auto optPathFilter = QCommandLineOption("filter-path", "dbus path filter to use",
+                                                           "--filter-path=/org/deepin/linglong/AppManager", "");
+             const auto optInterfaceFilter =
+                 QCommandLineOption("filter-interface", "dbus interface filter to use",
+                                    "--filter-interface=org.deepin.linglong.AppManager", "");
 
              // 增加channel/module
-             auto optChannel = QCommandLineOption("channel", "the channel of app", "--channel=linglong", "linglong");
+             const auto optChannel =
+                 QCommandLineOption("channel", "the channel of app", "--channel=linglong", "linglong");
              parser.addOption(optChannel);
-             auto optModule = QCommandLineOption("module", "the module of app", "--module=runtime", "runtime");
+             const auto optModule = QCommandLineOption("module", "the module of app", "--module=runtime", "runtime");
              parser.addOption(optModule);
 
              parser.addOption(optNoProxy);
@@ -274,13 +245,13 @@ int main(int argc, char **argv)
              parser.addOption(optPathFilter);
              parser.addOption(optInterfaceFilter);
              parser.process(app);
-             auto repoType = parser.value(optRepoPoint);
+             const auto repoType = parser.value(optRepoPoint);
              if ((!repoType.isEmpty() && "flatpak" != repoType)) {
                  parser.showHelp();
                  return -1;
              }
              args = parser.positionalArguments();
-             auto appId = args.value(1);
+             const auto appId = args.value(1);
              if (appId.isEmpty()) {
                  parser.showHelp();
                  return -1;
@@ -365,46 +336,36 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("exec", "exec command in container", "exec");
              parser.addPositionalArgument("containerId", "container id", "aebbe2f455cf443f89d5c92f36d154dd");
              parser.addPositionalArgument("cmd", "command", "\"bash\"");
-             auto envArg = QCommandLineOption({"e", "env"}, "extra environment variables splited by comma", "env", "");
-             auto pwdArg =
+             const auto envArg =
+                 QCommandLineOption({"e", "env"}, "extra environment variables splited by comma", "env", "");
+             const auto pwdArg =
                  QCommandLineOption({"d", "path"}, "location to exec the new command", "pwd", qgetenv("HOME"));
              parser.addOption(envArg);
              parser.addOption(pwdArg);
              parser.process(app);
 
-             auto containerId = parser.positionalArguments().value(1);
+             const auto containerId = parser.positionalArguments().value(1);
              if (containerId.isEmpty()) {
                  parser.showHelp();
                  return -1;
              }
 
-             auto cmd = parser.positionalArguments().value(2);
+             const auto cmd = parser.positionalArguments().value(2);
              if (cmd.isEmpty()) {
                  parser.showHelp();
                  return -1;
              }
 
-             linglong::service::ExecParamOption p;
-             p.cmd = cmd;
-             p.containerID = containerId;
+             linglong::service::ExecParamOption execOption;
+             execOption.cmd = cmd;
+             execOption.containerID = containerId;
 
-             auto envs = parser.value(envArg).split(",", QString::SkipEmptyParts);
+             const auto envs = parser.value(envArg).split(",", QString::SkipEmptyParts);
              QStringList envList = envs;
-             p.env = envList.join(",");
-             //  for (auto env : envs) {
-             //      auto pos = env.indexOf('=');
-             //      auto key = QStringRef(&env, 0, pos), val = QStringRef(&env, pos + 1, env.length() - pos - 1);
-             //      qputenv(key.toString().toStdString().c_str(), QByteArray(val.toString().toUtf8()));
-             //  }
+             execOption.env = envList.join(",");
 
-             // 获取用户环境变量
-             //  QStringList envList = COMMAND_HELPER->getUserEnv(linglong::util::envList);
-             //  if (!envList.isEmpty()) {
-             //      p.env = envList.join(",");
-             //  }
-
-             auto dbusReply = appManager.Exec(p);
-             auto reply = dbusReply.value();
+             const auto dbusReply = appManager.Exec(execOption);
+             const auto reply = dbusReply.value();
              if (reply.code != STATUS_CODE(kSuccess)) {
                  qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
                  return -1;
@@ -418,19 +379,19 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("exec", "exec command in container", "/bin/bash");
              parser.process(app);
 
-             auto containerId = parser.positionalArguments().value(1);
+             const auto containerId = parser.positionalArguments().value(1);
              if (containerId.isEmpty()) {
                  parser.showHelp();
                  return -1;
              }
 
-             auto cmd = parser.positionalArguments().value(2);
+             const auto cmd = parser.positionalArguments().value(2);
              if (cmd.isEmpty()) {
                  parser.showHelp();
                  return -1;
              }
 
-             auto pid = containerId.toInt();
+             const auto pid = containerId.toInt();
 
              return COMMAND_HELPER->namespaceEnter(pid, QStringList {cmd});
          }},
@@ -439,19 +400,19 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("ps", "show running applications", "ps");
 
-             auto optOutputFormat = QCommandLineOption("output-format", "json/console", "console");
+             const auto optOutputFormat = QCommandLineOption("output-format", "json/console", "console");
              parser.addOption(optOutputFormat);
 
              parser.process(app);
 
-             auto outputFormat = parser.value(optOutputFormat);
-             auto replyString = appManager.ListContainer().value().result;
+             const auto outputFormat = parser.value(optOutputFormat);
+             const auto replyString = appManager.ListContainer().value().result;
 
              ContainerList containerList;
-             auto doc = QJsonDocument::fromJson(replyString.toUtf8(), nullptr);
+             const auto doc = QJsonDocument::fromJson(replyString.toUtf8(), nullptr);
              if (doc.isArray()) {
-                 for (auto container : doc.array()) {
-                     auto str = QString(QJsonDocument(container.toObject()).toJson());
+                 for (const auto container : doc.array()) {
+                     const auto str = QString(QJsonDocument(container.toObject()).toJson());
                      QPointer<Container> con(linglong::util::loadJSONString<Container>(str));
                      containerList.push_back(con);
                  }
@@ -468,7 +429,7 @@ int main(int argc, char **argv)
              parser.process(app);
              args = parser.positionalArguments();
 
-             auto containerId = args.value(1).trimmed();
+             const auto containerId = args.value(1).trimmed();
              if (containerId.isEmpty() || args.size() > 2) {
                  parser.showHelp();
                  return -1;
@@ -491,15 +452,16 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("install", "install an application", "install");
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
 
-             auto optChannel = QCommandLineOption("channel", "the channel of app", "--channel=linglong", "linglong");
+             const auto optChannel =
+                 QCommandLineOption("channel", "the channel of app", "--channel=linglong", "linglong");
              parser.addOption(optChannel);
-             auto optModule = QCommandLineOption("module", "the module of app", "--module=runtime", "runtime");
+             const auto optModule = QCommandLineOption("module", "the module of app", "--module=runtime", "runtime");
              parser.addOption(optModule);
 
              parser.process(app);
 
              args = parser.positionalArguments();
-             auto repoType = parser.value(optRepoPoint);
+             const auto repoType = parser.value(optRepoPoint);
              // 参数个数校验
              if (args.size() != 2 || (!repoType.isEmpty() && "flatpak" != repoType)) {
                  parser.showHelp(-1);
@@ -580,9 +542,10 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("update", "update an application", "update");
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
 
-             auto optChannel = QCommandLineOption("channel", "the channel of app", "--channel=linglong", "linglong");
+             const auto optChannel =
+                 QCommandLineOption("channel", "the channel of app", "--channel=linglong", "linglong");
              parser.addOption(optChannel);
-             auto optModule = QCommandLineOption("module", "the module of app", "--module=runtime", "runtime");
+             const auto optModule = QCommandLineOption("module", "the module of app", "--module=runtime", "runtime");
              parser.addOption(optModule);
 
              parser.process(app);
@@ -647,12 +610,12 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("query", "query app info", "query");
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
-             auto optNoCache = QCommandLineOption("force", "query from server directly, not from cache", "");
+             const auto optNoCache = QCommandLineOption("force", "query from server directly, not from cache", "");
              parser.addOption(optNoCache);
              parser.process(app);
 
              args = parser.positionalArguments();
-             auto repoType = parser.value(optRepoPoint);
+             const auto repoType = parser.value(optRepoPoint);
              if (args.size() != 2 || (!repoType.isEmpty() && "flatpak" != repoType)) {
                  parser.showHelp(-1);
                  return -1;
@@ -672,13 +635,9 @@ int main(int argc, char **argv)
              dbusReply.waitForFinished();
              linglong::service::QueryReply reply = dbusReply.value();
 
-             auto appMetaInfoList = util::arrayFromJson<package::AppMetaInfoList>(reply.result);
-
-             if (1 == appMetaInfoList.size() && "flatpakquery" == appMetaInfoList.at(0)->appId) {
-                 printFlatpakAppInfo(appMetaInfoList);
-             } else {
-                 printAppInfo(appMetaInfoList);
-             }
+             const auto appMetaInfoList =
+                 linglong::util::arrayFromJson<linglong::package::AppMetaInfoList>(reply.result);
+             printAppInfo(appMetaInfoList);
              return 0;
          }},
         {"uninstall", // 卸载玲珑包
@@ -686,25 +645,26 @@ int main(int argc, char **argv)
              parser.clearPositionalArguments();
              parser.addPositionalArgument("uninstall", "uninstall an application", "uninstall");
              parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
-             auto optAllVer = QCommandLineOption("all-version", "uninstall all version application", "");
-             auto optDelData = QCommandLineOption("delete-data", "delete app data", "");
+             const auto optAllVer = QCommandLineOption("all-version", "uninstall all version application", "");
+             const auto optDelData = QCommandLineOption("delete-data", "delete app data", "");
              parser.addOption(optAllVer);
              parser.addOption(optDelData);
 
-             auto optChannel = QCommandLineOption("channel", "the channel of app", "--channel=linglong", "linglong");
+             const auto optChannel =
+                 QCommandLineOption("channel", "the channel of app", "--channel=linglong", "linglong");
              parser.addOption(optChannel);
-             auto optModule = QCommandLineOption("module", "the module of app", "--module=runtime", "runtime");
+             const auto optModule = QCommandLineOption("module", "the module of app", "--module=runtime", "runtime");
              parser.addOption(optModule);
 
              parser.process(app);
 
              args = parser.positionalArguments();
-             auto repoType = parser.value(optRepoPoint);
+             const auto repoType = parser.value(optRepoPoint);
              if (args.size() != 2 || (!repoType.isEmpty() && "flatpak" != repoType)) {
                  parser.showHelp(-1);
                  return -1;
              }
-             auto appInfo = args.value(1);
+             const auto appInfo = args.value(1);
              sysPackageManager.setTimeout(1000 * 60 * 60 * 24);
              QDBusPendingReply<linglong::service::Reply> dbusReply;
              linglong::service::UninstallParamOption paramOption;
@@ -747,19 +707,19 @@ int main(int argc, char **argv)
          }},
         {"list", // 查询已安装玲珑包
          [&](QCommandLineParser &parser) -> int {
-             auto optType = QCommandLineOption("type", "query installed app", "--type=installed", "installed");
+             const auto optType = QCommandLineOption("type", "query installed app", "--type=installed", "installed");
              parser.clearPositionalArguments();
              parser.addPositionalArgument("list", "show installed application", "list");
              parser.addOption(optType);
              parser.process(app);
-             auto optPara = parser.value(optType);
+             const auto optPara = parser.value(optType);
              if ("installed" != optPara) {
                  parser.showHelp(-1);
                  return -1;
              }
 
              args = parser.positionalArguments();
-             auto repoType = parser.value(optRepoPoint);
+             const auto repoType = parser.value(optRepoPoint);
              if (args.size() != 1 || (!repoType.isEmpty() && "flatpak" != repoType)) {
                  parser.showHelp(-1);
                  return -1;
@@ -779,11 +739,7 @@ int main(int argc, char **argv)
                  reply = dbusReply.value();
              }
              linglong::util::getAppMetaInfoListByJson(reply.result, appMetaInfoList);
-             if (1 == appMetaInfoList.size() && "flatpaklist" == appMetaInfoList.at(0)->appId) {
-                 printFlatpakAppInfo(appMetaInfoList);
-             } else if (appMetaInfoList.size() >= 1) {
-                 printAppInfo(appMetaInfoList);
-             }
+             printAppInfo(appMetaInfoList);
              return 0;
          }},
         {"repo",
@@ -794,8 +750,8 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("url", "the url of repo", "");
              parser.process(app);
              args = parser.positionalArguments();
-             auto subCmd = args.value(1).trimmed();
-             auto url = args.value(2).trimmed();
+             const auto subCmd = args.value(1).trimmed();
+             const auto url = args.value(2).trimmed();
              if (url.isEmpty() || "modify" != subCmd || args.size() != 3) {
                  parser.showHelp(-1);
                  return -1;
@@ -813,7 +769,7 @@ int main(int argc, char **argv)
     };
 
     if (subcommandMap.contains(command)) {
-        auto subcommand = subcommandMap[command];
+        const auto subcommand = subcommandMap[command];
         return subcommand(parser);
     } else {
         parser.showHelp();

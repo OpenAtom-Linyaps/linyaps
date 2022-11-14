@@ -86,8 +86,7 @@ qt5_add_dbus_adaptor(
 
 find_package(CURL REQUIRED)
 find_package(PkgConfig REQUIRED)
-find_package(Qt5Sql REQUIRED)
-find_package(Qt5 REQUIRED COMPONENTS WebSockets)
+find_package(Qt5 REQUIRED COMPONENTS Sql WebSockets)
 pkg_search_module(
   OSTREE1
   REQUIRED

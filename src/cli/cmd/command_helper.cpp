@@ -1,17 +1,27 @@
 /*
- * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     yuanqiliang <yuanqiliang@uniontech.com>
- *
- * Maintainer: yuanqiliang <yuanqiliang@uniontech.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include "command_helper.h"
 
 namespace linglong {
 namespace cli {
+
+int CommandHelper::bringDownPermissionsTo(const struct stat &fileStat)
+{
+    __gid_t newGid[1] = {fileStat.st_gid};
+
+    setgroups(1, newGid);
+
+    setgid(fileStat.st_gid);
+    setegid(fileStat.st_gid);
+
+    setuid(fileStat.st_uid);
+    seteuid(fileStat.st_uid);
+    return 0;
+}
 
 void CommandHelper::showContainer(const ContainerList &containerList, const QString &format)
 {

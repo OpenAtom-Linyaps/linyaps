@@ -1,14 +1,11 @@
 /*
- * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     yuanqiliang <yuanqiliang@uniontech.com>
- *
- * Maintainer: yuanqiliang <yuanqiliang@uniontech.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_CLI_CMD_COMMAND_HELPER_H_
+#define LINGLONG_SRC_CLI_CMD_COMMAND_HELPER_H_
 
 #include <QtGlobal>
 #include <QDebug>
@@ -49,21 +46,8 @@ private:
     QList<pid_t> childrenOf(pid_t p);
 };
 
-inline int CommandHelper::bringDownPermissionsTo(const struct stat &fileStat)
-{
-    __gid_t newGid[1] = {fileStat.st_gid};
-
-    setgroups(1, newGid);
-
-    setgid(fileStat.st_gid);
-    setegid(fileStat.st_gid);
-
-    setuid(fileStat.st_uid);
-    seteuid(fileStat.st_uid);
-    return 0;
-}
-
 } // namespace cli
 } // namespace linglong
+#endif
 
 #define COMMAND_HELPER linglong::cli::CommandHelper::instance()

@@ -420,17 +420,19 @@ bool inline isDeepinSysProduct()
  */
 QString inline getLinglongRootPath()
 {
-    auto sysProductVersion = QSysInfo::productVersion().toDouble();
+    auto sysProductVersion = QSysInfo::productVersion();
+    QStringList verList = sysProductVersion.split('.');
+    auto majorVersion = verList[0].toInt();
     if (!isDeepinSysProduct()) {
         return QString("/var/lib/linglong");
     }
     // v20系统
-    if (20 <= sysProductVersion && 23 > sysProductVersion) {
+    if (20 <= majorVersion && 23 > majorVersion) {
         return QString("/data/linglong");
     }
 
     // v23系统
-    if (23 <= sysProductVersion) {
+    if (23 <= majorVersion) {
         return QString("/persistent/linglong");
     }
     return QString();

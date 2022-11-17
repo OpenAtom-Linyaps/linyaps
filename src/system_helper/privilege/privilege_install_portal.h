@@ -1,11 +1,7 @@
 /*
- * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #ifndef LINGLONG_SRC_SYSTEM_HELPER_PRIVILEGE_PRIVILEGE_INSTALL_PORTAL_H_
@@ -14,9 +10,9 @@
 #include <QString>
 #include <QVariantMap>
 
+#include "module/util/result.h"
 #include "module/util/serialize/serialize.h"
 #include "module/util/serialize/json.h"
-#include "module/util/result.h"
 
 namespace linglong {
 namespace system {

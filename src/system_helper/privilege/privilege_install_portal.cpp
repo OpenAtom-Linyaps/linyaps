@@ -1,11 +1,7 @@
 /*
- * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include "privilege_install_portal.h"
@@ -14,10 +10,10 @@
 #include <QDirIterator>
 #include <QDBusError>
 
-#include "module/util/file.h"
 #include "module/dbus_ipc/package_manager_param.h"
-#include "module/util/serialize/yaml.h"
 #include "module/package/ref.h"
+#include "module/util/file.h"
+#include "module/util/serialize/yaml.h"
 
 namespace linglong {
 namespace system {
@@ -51,8 +47,8 @@ fileRuleList:
 
 static bool hasPrivilege(const QString &ref, const QStringList &whiteList)
 {
-    for (auto packageID : whiteList) {
-        if (package::Ref(ref).appId == packageID) {
+    for (const auto &packageId : whiteList) {
+        if (package::Ref(ref).appId == packageId) {
             return true;
         }
     }
@@ -67,9 +63,9 @@ static void rebuildFileRule(const QString &installPath, const QString &ref, cons
     QDirIterator iter(installPath, QDir::Files | QDir::NoSymLinks | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
     while (iter.hasNext()) {
         iter.next();
-        auto relativeFilePath = sourceDir.relativeFilePath(iter.filePath());
+        const auto relativeFilePath = sourceDir.relativeFilePath(iter.filePath());
         if (QDir::match(rule->source, relativeFilePath)) {
-            auto targetFilePath = rule->target + QDir::separator() + iter.fileName();
+            const auto targetFilePath = rule->target + QDir::separator() + iter.fileName();
             // TODO: save file to db and remove when uninstall
             QFileInfo targetFileInfo(targetFilePath);
             // FIXME: if another version is install, need an conflict or force, just remove is not so safe
@@ -93,11 +89,11 @@ static void ruinFileRule(const QString &installPath, const QString &ref, const F
     QDirIterator iter(installPath, QDir::Files | QDir::NoSymLinks | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
     while (iter.hasNext()) {
         iter.next();
-        auto relativeFilePath = sourceDir.relativeFilePath(iter.filePath());
+        const auto relativeFilePath = sourceDir.relativeFilePath(iter.filePath());
         if (QDir::match(rule->source, relativeFilePath)) {
-            auto targetFilePath = rule->target + QDir::separator() + iter.fileName();
+            const auto targetFilePath = rule->target + QDir::separator() + iter.fileName();
             qDebug() << "remove link file" << iter.filePath() << targetFilePath;
-            auto checkSource = QFile::symLinkTarget(targetFilePath);
+            const auto checkSource = QFile::symLinkTarget(targetFilePath);
             if (checkSource != iter.filePath()) {
                 qWarning() << "ignore file not link to source version";
             } else {
@@ -116,7 +112,7 @@ util::Error rebuildPrivilegeInstallPortal(const QString &installPath, const QStr
         return NewError(QDBusError::AccessDenied, "No Privilege Package");
     }
 
-    for (auto rule : privilegePortalRule->fileRuleList) {
+    for (const auto &rule : privilegePortalRule->fileRuleList) {
         if (!QDir::isAbsolutePath(rule->target)) {
             qWarning() << "target must be absolute path" << rule->target;
             continue;
@@ -132,14 +128,14 @@ util::Error ruinPrivilegeInstallPortal(const QString &installPath, const QString
     YAML::Node doc = YAML::Load(PrivilegePortalRule);
     QScopedPointer<PortalRule> privilegePortalRule(formYaml<PortalRule>(doc));
     if (options.contains(linglong::util::kKeyDelData)) {
-        auto appLinglongPath = options[linglong::util::kKeyDelData].toString();
+        const auto appLinglongPath = options[linglong::util::kKeyDelData].toString();
         linglong::util::removeDir(appLinglongPath);
     }
     if (!hasPrivilege(ref, privilegePortalRule->whiteList)) {
         return NewError(QDBusError::AccessDenied, "No Privilege Package");
     }
 
-    for (auto rule : privilegePortalRule->fileRuleList) {
+    for (const auto &rule : privilegePortalRule->fileRuleList) {
         if (!QDir::isAbsolutePath(rule->target)) {
             qWarning() << "target must be absolute path" << rule->target;
             continue;

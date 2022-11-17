@@ -1,11 +1,7 @@
 /*
- * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include "system_helper.h"
@@ -25,7 +21,7 @@ namespace helper {
 void SystemHelper::RebuildInstallPortal(const QString &installPath, const QString &ref, const QVariantMap &options)
 {
     qDebug() << "call PostInstall" << installPath << ref << options;
-    auto err = rebuildPrivilegeInstallPortal(installPath, ref, options);
+    const auto err = rebuildPrivilegeInstallPortal(installPath, ref, options);
     if (!err.success()) {
         sendErrorReply(static_cast<QDBusError::ErrorType>(err.code()), err.message());
     }
@@ -39,7 +35,7 @@ void SystemHelper::RebuildInstallPortal(const QString &installPath, const QStrin
  */
 void SystemHelper::RuinInstallPortal(const QString &installPath, const QString &ref, const QVariantMap &options)
 {
-    auto err = ruinPrivilegeInstallPortal(installPath, ref, options);
+    const auto err = ruinPrivilegeInstallPortal(installPath, ref, options);
     if (!err.success()) {
         sendErrorReply(static_cast<QDBusError::ErrorType>(err.code()), err.message());
     }

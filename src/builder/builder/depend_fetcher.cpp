@@ -46,19 +46,19 @@ DependFetcher::~DependFetcher() = default;
 
 linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString &targetPath)
 {
+    auto ret = NoError();
+
     repo::OSTreeRepo ostree(BuilderConfig::instance()->repoPath());
     // depends with source > depends from remote > depends from local
     auto dependRef = package::Ref("", dd_ptr->ref.appId, dd_ptr->ref.version, dd_ptr->ref.arch);
 
     if (!dd_ptr->buildDepend->source) {
         dependRef = package::Ref("", "linglong", dd_ptr->ref.appId, dd_ptr->ref.version, dd_ptr->ref.arch, "");
-        if ("latest" == dd_ptr->ref.version) {
-            dependRef = ostree.remoteLatestRef(dependRef);
-        }
+        dependRef = ostree.remoteLatestRef(dependRef);
 
         qInfo() << QString("fetching dependency: %1 %2").arg(dependRef.appId).arg(dependRef.version);
 
-        auto ret = ostree.pullAll(dependRef, true);
+        ret = ostree.pullAll(dependRef, true);
         if (!ret.success()) {
             return NewError(ret, -1, "pull " + dependRef.toString() + " failed");
         }
@@ -68,7 +68,7 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
     targetParentDir.cdUp();
     targetParentDir.mkpath(".");
 
-    auto ret = ostree.checkoutAll(dependRef, subPath, targetPath);
+    ret = ostree.checkoutAll(dependRef, subPath, targetPath);
 
     if (!ret.success()) {
         return NewError(ret, -1, QString("ostree checkout %1 failed").arg(dependRef.toLocalRefString()));

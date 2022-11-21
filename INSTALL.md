@@ -10,6 +10,17 @@ make -j
 sudo make install
 ```
 
+## Build For Developers
+```bash
+mkdir -v build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_DEBUG_SANIT=address ..
+make -j
+sudo make install
+```
+DCMAKE_DEBUG_SANIT = 'address' open asan for debug builds
+DCMAKE_DEBUG_SANIT = 'thread' open tasn for debug builds
+
 ## Run
 
 ```bash

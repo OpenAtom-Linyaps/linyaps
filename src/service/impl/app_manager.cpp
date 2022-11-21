@@ -1,20 +1,16 @@
 /*
- * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include "app_manager.h"
 
-#include <sys/types.h>
 #include <signal.h>
+#include <sys/types.h>
 
-#include "module/runtime/app.h"
 #include "app_manager_p.h"
+#include "module/runtime/app.h"
 
 namespace linglong {
 namespace service {
@@ -34,26 +30,6 @@ AppManager::AppManager()
 
 AppManager::~AppManager()
 {
-}
-
-bool AppManagerPrivate::isAppRunning(const QString &appId, const QString &version, const QString &arch)
-{
-    linglong::package::AppMetaInfoList pkgList;
-    if (!appId.isEmpty()) {
-        linglong::util::getInstalledAppInfo(appId, version, arch, "", "", "", pkgList);
-        if (pkgList.size() > 0) {
-            auto it = pkgList.at(0);
-            // new ref format org.deepin.calculator/1.2.2/x86_64
-            QString matchRef = QString("%1/%2/%3").arg(it->appId).arg(it->version).arg(arch);
-            // 判断应用是否正在运行
-            for (const auto &app : apps) {
-                if (matchRef == app->container()->packageName) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
 }
 
 /*
@@ -251,19 +227,19 @@ QueryReply AppManager::ListContainer()
     QJsonArray jsonArray;
 
     for (const auto &app : d->apps) {
-        auto c = QPointer<Container>(new Container);
-        c->id = app->container()->id;
-        c->pid = app->container()->pid;
-        c->packageName = app->container()->packageName;
-        c->workingDirectory = app->container()->workingDirectory;
-        jsonArray.push_back(c->toJson(c.data()));
+        auto container = QPointer<Container>(new Container);
+        container->id = app->container()->id;
+        container->pid = app->container()->pid;
+        container->packageName = app->container()->packageName;
+        container->workingDirectory = app->container()->workingDirectory;
+        jsonArray.push_back(container->toJson(container.data()));
     }
 
-    QueryReply r;
-    r.code = STATUS_CODE(kSuccess);
-    r.message = "Success";
-    r.result = QLatin1String(QJsonDocument(jsonArray).toJson(QJsonDocument::Compact));
-    return r;
+    QueryReply reply;
+    reply.code = STATUS_CODE(kSuccess);
+    reply.message = "Success";
+    reply.result = QLatin1String(QJsonDocument(jsonArray).toJson(QJsonDocument::Compact));
+    return reply;
 }
 
 /**
@@ -300,7 +276,7 @@ Reply AppManager::RunCommand(const QString &exe, const QStringList args)
 
 QString AppManager::Status()
 {
-    return {"active"};
+    return "active";
 }
 } // namespace service
 } // namespace linglong

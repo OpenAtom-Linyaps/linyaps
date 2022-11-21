@@ -1,18 +1,17 @@
 /*
- * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     yuanqiliang <yuanqiliang@uniontech.com>
- *
- * Maintainer: yuanqiliang <yuanqiliang@uniontech.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "module/runtime/app.h"
-#include "module/repo/repo.h"
+#ifndef LINGLONG_SRC_SERVICE_IMPL_APP_MANAGER_P_H_
+#define LINGLONG_SRC_SERVICE_IMPL_APP_MANAGER_P_H_
+
 #include "module/repo/ostree_repo.h"
-#include "package_manager/impl/app_status.h"
+#include "module/repo/repo.h"
+#include "module/runtime/app.h"
 #include "module/util/sysinfo.h"
+#include "package_manager/impl/app_status.h"
 
 namespace linglong {
 namespace service {
@@ -28,20 +27,10 @@ private:
     QMap<QString, QPointer<linglong::runtime::App>> apps;
     linglong::repo::OSTreeRepo repo;
 
-    /**
-     * @brief 查询应用是否正在运行
-     *
-     * @param appId: 应用的appId
-     * @param version: 应用的版本
-     * @param arch: 应用的架构
-     *
-     * @return bool: true 正在运行 false 未运行
-     */
-    bool isAppRunning(const QString &appId, const QString &version, const QString &arch);
-
 public:
     AppManager *const q_ptr;
     Q_DECLARE_PUBLIC(AppManager);
 };
 } // namespace service
 } // namespace linglong
+#endif

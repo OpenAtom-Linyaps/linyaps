@@ -1,32 +1,29 @@
 /*
- * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_SERVICE_IMPL_APP_MANAGER_H_
+#define LINGLONG_SRC_SERVICE_IMPL_APP_MANAGER_H_
 
 #include <QDBusArgument>
 #include <QDBusContext>
+#include <QFuture>
 #include <QList>
 #include <QObject>
 #include <QScopedPointer>
 #include <QThreadPool>
 #include <QtConcurrent/QtConcurrent>
-#include <QFuture>
 
+#include "module/dbus_ipc/package_manager_param.h"
+#include "module/dbus_ipc/param_option.h"
 #include "module/dbus_ipc/register_meta_type.h"
+#include "module/dbus_ipc/reply.h"
 #include "module/package/package.h"
 #include "module/runtime/container.h"
-#include "module/dbus_ipc/package_manager_param.h"
 #include "module/util/singleton.h"
 #include "module/util/status_code.h"
-#include "module/dbus_ipc/reply.h"
-#include "module/dbus_ipc/param_option.h"
 
 namespace linglong {
 namespace service {
@@ -35,7 +32,7 @@ class AppManagerPrivate; /**< forward declaration AppManagerPrivate */
 /**
  * @brief The AppManager class
  * @details AppManager is a singleton class, and it is used to manage the package
- *          information.
+ *          running state information.
  */
 class AppManager
     : public QObject
@@ -121,3 +118,4 @@ protected:
 
 #define RUN_POOL_MAX_THREAD 100000000 ///< 启动应用线程池最大线程数
 #define APP_MANAGER linglong::service::AppManager::instance()
+#endif

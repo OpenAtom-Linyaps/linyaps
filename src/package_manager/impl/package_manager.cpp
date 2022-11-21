@@ -1,11 +1,7 @@
 /*
- * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     KeZhihuan <kezhihuan@uniontech.com>
- *
- * Maintainer: KeZhihuan <kezhihuan@uniontech.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 // todo: 该头文件必须放在QDBus前，否则会报错
@@ -17,19 +13,18 @@
 #include <sys/types.h>
 
 #include <QDebug>
+#include <QDBusConnectionInterface>
 #include <QDBusInterface>
 #include <QDBusReply>
 #include <QJsonArray>
-#include <QDBusConnectionInterface>
 
 #include "app_status.h"
 #include "appinfo_cache.h"
-#include "module/util/http/httpclient.h"
-#include "module/util/sysinfo.h"
-#include "module/util/runner.h"
-#include "package_manager_p.h"
-
 #include "module/dbus_ipc/dbus_system_helper_common.h"
+#include "module/util/http/httpclient.h"
+#include "module/util/runner.h"
+#include "module/util/sysinfo.h"
+#include "package_manager_p.h"
 
 namespace linglong {
 namespace service {
@@ -125,7 +120,7 @@ bool PackageManagerPrivate::loadAppInfo(const QString &jsonString, linglong::pac
         QJsonObject dataObj = arr.at(i).toObject();
         const QString jsonString = QString(QJsonDocument(dataObj).toJson(QJsonDocument::Compact));
         // qInfo().noquote() << jsonString;
-        QPointer<package::AppMetaInfo> appItem(util::loadJSONString<package::AppMetaInfo>(jsonString));
+        QPointer<package::AppMetaInfo> appItem(util::loadJsonString<package::AppMetaInfo>(jsonString));
         appList.push_back(appItem);
     }
     return true;
@@ -145,7 +140,7 @@ bool PackageManagerPrivate::loadAppInfo(const QString &jsonString, linglong::pac
 bool PackageManagerPrivate::getAppInfofromServer(const QString &pkgName, const QString &pkgVer,
                                                        const QString &pkgArch, QString &appData, QString &err)
 {
-    bool ret = G_HTTPCLIENT->queryRemoteApp(pkgName, pkgVer, pkgArch, appData);
+    bool ret = HTTPCLIENT->queryRemoteApp(pkgName, pkgVer, pkgArch, appData);
     if (!ret) {
         err = "getAppInfofromServer err, " + appData + " ,please check the network";
         qCritical().noquote() << "receive from server:" << appData;

@@ -23,7 +23,7 @@ class Config : public JsonSerialize
 
 inline Config &ConfigInstance()
 {
-    static QScopedPointer<Config> config(util::loadJSON<Config>(Config::path()));
+    static QScopedPointer<Config> config(util::loadJson<Config>(Config::path()));
     return *config;
 }
 

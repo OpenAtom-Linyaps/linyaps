@@ -1,11 +1,7 @@
 /*
- * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     huqinghong <huqinghong@uniontech.com>
- *
- * Maintainer: huqinghong <huqinghong@uniontech.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include <gtest/gtest.h>
@@ -30,7 +26,7 @@ TEST(AppStatus, GetInstalledAppInfo)
     linglong::util::updateInstalledAppInfoDb();
 
     QScopedPointer<linglong::package::AppMetaInfo> appItem(
-        linglong::util::loadJSONString<linglong::package::AppMetaInfo>(appDataJson));
+        linglong::util::loadJsonString<linglong::package::AppMetaInfo>(appDataJson));
     const QString userName = linglong::util::getUserName();
 
     linglong::package::AppMetaInfoList pkgList;

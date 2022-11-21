@@ -101,7 +101,7 @@ linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString
     }
 
     // 转换info.json为Info对象
-    QScopedPointer<package::Info> info(util::loadJSON<package::Info>(this->bundleDataPath + QString(configJson)));
+    QScopedPointer<package::Info> info(util::loadJson<package::Info>(this->bundleDataPath + QString(configJson)));
 
     // 获取编译机器架构
     this->buildArch = QSysInfo::buildCpuArchitecture();
@@ -225,7 +225,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
         }
     }
     configUrl = configUrl.endsWith("/") ? configUrl : (configUrl + "/");
-    auto token = G_HTTPCLIENT->getToken(configUrl, userInfo);
+    auto token = HTTPCLIENT->getToken(configUrl, userInfo);
 
     if (token.isEmpty()) {
         qCritical() << "get token failed!";
@@ -278,9 +278,9 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
 
     // 转换info.json为Info对象
     QScopedPointer<package::Info> runtimeInfo(
-        util::loadJSON<package::Info>(QStringList {this->bundleDataPath, "runtime", configJson}.join("/")));
+        util::loadJson<package::Info>(QStringList {this->bundleDataPath, "runtime", configJson}.join("/")));
     QScopedPointer<package::Info> develInfo(
-        util::loadJSON<package::Info>(QStringList {this->bundleDataPath, "devel", configJson}.join("/")));
+        util::loadJson<package::Info>(QStringList {this->bundleDataPath, "devel", configJson}.join("/")));
 
     // 建立临时仓库
     auto resultMakeRepo = runner("ostree", {"--repo=" + this->tmpWorkDir + "/repo", "init", "--mode=archive"}, 3000);
@@ -333,7 +333,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
     }
 
     // 上传repo.tar文件
-    auto retUploadRepo = G_HTTPCLIENT->uploadFile(this->tmpWorkDir + "/repo.tar", configUrl, "ostree", token);
+    auto retUploadRepo = HTTPCLIENT->uploadFile(this->tmpWorkDir + "/repo.tar", configUrl, "ostree", token);
     if (STATUS_CODE(kSuccess) != retUploadRepo) {
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
@@ -343,7 +343,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
     }
 
     // 上传bundle文件
-    auto retUploadBundle = G_HTTPCLIENT->uploadFile(this->bundleFilePath, configUrl, "bundle", token);
+    auto retUploadBundle = HTTPCLIENT->uploadFile(this->bundleFilePath, configUrl, "bundle", token);
     if (STATUS_CODE(kSuccess) != retUploadBundle) {
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
@@ -379,8 +379,8 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
     runtimeDoc.setObject(runtimeJsonObject);
     develDoc.setObject(develJsonObject);
 
-    auto runtimeRet = G_HTTPCLIENT->pushServerBundleData(runtimeDoc.toJson(), configUrl, token);
-    auto develRet = G_HTTPCLIENT->pushServerBundleData(develDoc.toJson(), configUrl, token);
+    auto runtimeRet = HTTPCLIENT->pushServerBundleData(runtimeDoc.toJson(), configUrl, token);
+    auto develRet = HTTPCLIENT->pushServerBundleData(develDoc.toJson(), configUrl, token);
     if (STATUS_CODE(kSuccess) != runtimeRet || STATUS_CODE(kSuccess) != develRet) {
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);

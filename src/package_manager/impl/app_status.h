@@ -1,14 +1,11 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     huqinghong <huqinghong@uniontech.com>
- *
- * Maintainer: huqinghong <huqinghong@uniontech.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_PACKAGE_MANAGER_IMPL_APP_STATUS_H_
+#define LINGLONG_SRC_PACKAGE_MANAGER_IMPL_APP_STATUS_H_
 
 #include <QDateTime>
 #include <QJsonArray>
@@ -139,3 +136,4 @@ bool queryAllInstalledApp(const QString &userName, QString &result, QString &err
 bool getAppMetaInfoListByJson(const QString &jsonString, linglong::package::AppMetaInfoList &appList);
 } // namespace util
 } // namespace linglong
+#endif

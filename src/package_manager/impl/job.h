@@ -1,14 +1,11 @@
 /*
- * Copyright (c) 2020. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_PACKAGE_MANAGER_IMPL_JOB_H_
+#define LINGLONG_SRC_PACKAGE_MANAGER_IMPL_JOB_H_
 
 #include <QScopedPointer>
 #include <QThread>
@@ -36,3 +33,4 @@ private:
     QScopedPointer<JobPrivate> dd_ptr;
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), Job)
 };
+#endif

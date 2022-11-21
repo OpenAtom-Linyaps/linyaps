@@ -1,20 +1,19 @@
 /*
- * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     KeZhihuan <kezhihuan@uniontech.com>
- *
- * Maintainer: KeZhihuan <kezhihuan@uniontech.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
+#ifndef LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_P_H_
+#define LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_P_H_
+
 #include "app_status.h"
+#include "dbus_system_helper.h"
+#include "module/dbus_ipc/package_manager_param.h"
 #include "module/repo/ostree_repo.h"
 #include "module/repo/repo_client.h"
 #include "module/util/http/httpclient.h"
-#include "module/dbus_ipc/package_manager_param.h"
 #include "module/util/sysinfo.h"
-#include "dbus_system_helper.h"
 
 namespace linglong {
 namespace service {
@@ -198,3 +197,4 @@ public:
 };
 } // namespace service
 } // namespace linglong
+#endif

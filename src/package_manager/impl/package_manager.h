@@ -1,33 +1,30 @@
 /*
- * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     huqinghong <huqinghong@uniontech.com>
- *
- * Maintainer: huqinghong <huqinghong@uniontech.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_H_
+#define LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_H_
 
 #include <QDBusArgument>
 #include <QDBusContext>
+#include <QFuture>
 #include <QList>
 #include <QObject>
 #include <QScopedPointer>
 #include <QThreadPool>
 #include <QtConcurrent/QtConcurrent>
-#include <QFuture>
 
 #include "module/dbus_ipc/package_manager_param.h"
+#include "module/dbus_ipc/param_option.h"
+#include "module/dbus_ipc/register_meta_type.h"
+#include "module/dbus_ipc/reply.h"
+#include "module/package/package.h"
 #include "module/util/singleton.h"
 #include "module/util/status_code.h"
-#include "module/dbus_ipc/reply.h"
-#include "module/dbus_ipc/param_option.h"
-#include "module/package/package.h"
-#include "package_manager_flatpak_impl.h"
-#include "module/dbus_ipc/register_meta_type.h"
 #include "module/runtime/container.h"
+#include "package_manager_flatpak_impl.h"
 
 namespace linglong {
 namespace service {
@@ -138,3 +135,4 @@ protected:
 
 #define POOL_MAX_THREAD 10 ///< 下载、卸载、更新应用线程池最大线程数
 #define PACKAGE_MANAGER linglong::service::PackageManager::instance()
+#endif

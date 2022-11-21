@@ -242,7 +242,7 @@ public:
 
         QScopedPointer<package::Info> info;
         if (util::fileExists(appInfoFile)) {
-            info.reset(util::loadJSON<package::Info>(appInfoFile));
+            info.reset(util::loadJson<package::Info>(appInfoFile));
             if (info->overlayfs && info->overlayfs->mounts.size() > 0) {
                 fuseMount = true;
                 specialCase = true;
@@ -277,7 +277,7 @@ public:
         if (!linglong::util::isDeepinSysProduct() && useThinRuntime) {
             QScopedPointer<package::Info> runtimeInfo;
             if (util::fileExists(runtimeInfoFile)) {
-                runtimeInfo.reset(util::loadJSON<package::Info>(runtimeInfoFile));
+                runtimeInfo.reset(util::loadJson<package::Info>(runtimeInfoFile));
                 if (!runtimeInfo->runtime.isEmpty()) {
                     basicsUsrRootPath = linglongRootPath + "/layers/" + runtimeInfo->runtime + "/files/usr";
                     basicsEtcRootPath = linglongRootPath + "/layers/" + runtimeInfo->runtime + "/files/etc";
@@ -1026,7 +1026,7 @@ public:
         }
 
         // create a yaml config from json
-        QScopedPointer<package::Info> info(util::loadJSON<package::Info>(appInfo));
+        QScopedPointer<package::Info> info(util::loadJson<package::Info>(appInfo));
 
         if (info->runtime.isEmpty()) {
             // FIXME: return error is not exist

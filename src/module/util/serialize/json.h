@@ -96,7 +96,7 @@ namespace linglong {
 namespace util {
 
 template<typename T>
-static T *loadJSON(const QString &filepath)
+static T *loadJson(const QString &filepath)
 {
     QFile jsonFile(filepath);
     jsonFile.open(QIODevice::ReadOnly);
@@ -105,7 +105,7 @@ static T *loadJSON(const QString &filepath)
 }
 
 template<typename T>
-static T *loadJSONString(const QString &jsonString)
+static T *loadJsonString(const QString &jsonString)
 {
     auto json = QJsonDocument::fromJson(jsonString.toLocal8Bit());
     return fromVariant<T>(json.toVariant());

@@ -1,11 +1,7 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     huqinghong <huqinghong@uniontech.com>
- *
- * Maintainer: huqinghong <huqinghong@uniontech.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include "app_status.h"
@@ -474,7 +470,7 @@ bool getAppMetaInfoListByJson(const QString &jsonString, linglong::package::AppM
     for (int i = 0; i < array.size(); ++i) {
         QJsonObject dataObj = array.at(i).toObject();
         const QString jsonItem = QString(QJsonDocument(dataObj).toJson(QJsonDocument::Compact));
-        auto appItem = linglong::util::loadJSONString<linglong::package::AppMetaInfo>(jsonItem);
+        auto appItem = linglong::util::loadJsonString<linglong::package::AppMetaInfo>(jsonItem);
         appList.push_back(QPointer<linglong::package::AppMetaInfo>(appItem));
     }
     return true;

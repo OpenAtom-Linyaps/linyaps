@@ -144,4 +144,4 @@ public:
 } // namespace util
 } // namespace linglong
 
-#define G_HTTPCLIENT linglong::util::HttpClient::instance()
+#define HTTPCLIENT linglong::util::HttpClient::instance()

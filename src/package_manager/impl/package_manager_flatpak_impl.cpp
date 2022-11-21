@@ -1,11 +1,7 @@
 /*
- * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     huqinghong <huqinghong@uniontech.com>
- *
- * Maintainer: huqinghong <huqinghong@uniontech.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include "package_manager_flatpak_impl.h"
@@ -21,7 +17,7 @@ Reply PackageManagerFlatpakImpl::Install(const InstallParamOption &installParamO
     argStrList << "install"
                << "--user"
                << "-y" << appId;
-    auto ret = linglong::runner::Runner("flatpak", argStrList, 1000 * 60 * 30);
+    const auto ret = linglong::runner::Runner("flatpak", argStrList, 1000 * 60 * 30);
     if (!ret) {
         reply.code = STATUS_CODE(kPkgInstallFailed);
         reply.message = "install " + appId + " failed";
@@ -70,7 +66,7 @@ QueryReply PackageManagerFlatpakImpl::Query(const QueryParamOption &paramOption)
     }
     proc.waitForFinished(1000 * 60 * 5);
     QString ret = proc.readAllStandardOutput();
-    auto retCode = proc.exitCode();
+    const auto retCode = proc.exitCode();
     qInfo() << "flatpak query " << appId << ", exitStatus:" << proc.exitStatus() << ", retCode:" << retCode;
     QJsonArray appList;
     appItem["description"] = ret;
@@ -97,7 +93,7 @@ Reply PackageManagerFlatpakImpl::Uninstall(const UninstallParamOption &paramOpti
     argStrList << "uninstall"
                << "--user"
                << "-y" << appId;
-    auto ret = linglong::runner::Runner("flatpak", argStrList, 1000 * 60 * 30);
+    const auto ret = linglong::runner::Runner("flatpak", argStrList, 1000 * 60 * 30);
     if (!ret) {
         reply.code = STATUS_CODE(kPkgUninstallFailed);
         reply.message = "uninstall " + appId + " failed";

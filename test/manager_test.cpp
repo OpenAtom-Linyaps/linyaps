@@ -1,26 +1,23 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     huqinghong@uniontech.com
- *
- * Maintainer: huqinghong@uniontech.com
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include <gtest/gtest.h>
-#include <QDebug>
-#include <thread>
 #include <future>
+#include <thread>
 
-#include "src/module/flatpak/flatpak_manager.h"
-#include "src/module/package/package.h"
+#include <QDebug>
+
+#include "app_manager.h"
+#include "package_manager.h"
 #include "package_manager/impl/app_status.h"
 #include "src/module/dbus_ipc/register_meta_type.h"
 #include "src/module/dbus_ipc/param_option.h"
 #include "src/module/dbus_ipc/reply.h"
-#include "app_manager.h"
-#include "package_manager.h"
+#include "src/module/flatpak/flatpak_manager.h"
+#include "src/module/package/package.h"
 
 /*!
  * start service

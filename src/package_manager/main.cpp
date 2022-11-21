@@ -1,22 +1,16 @@
 /*
- * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     HuQinghong <huqinghong@uniontech.com>
- *
- * Maintainer: HuQinghong <huqinghong@uniontech.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include <QCoreApplication>
 
-#include "module/dbus_ipc/register_meta_type.h"
-#include "packagemanageradaptor.h"
 #include "jobmanageradaptor.h"
+#include "module/dbus_ipc/register_meta_type.h"
 #include "module/util/log/log_handler.h"
 #include "module/repo/repo.h"
-
-using namespace linglong;
+#include "packagemanageradaptor.h"
 
 int main(int argc, char *argv[])
 {
@@ -35,10 +29,10 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    PackageManagerAdaptor packageManagerAdaptor(service::PackageManager::instance());
+    PackageManagerAdaptor packageManagerAdaptor(PACKAGE_MANAGER);
     JobManagerAdaptor jma(JobManager::instance());
 
-    dbus.registerObject("/org/deepin/linglong/PackageManager", service::PackageManager::instance());
+    dbus.registerObject("/org/deepin/linglong/PackageManager", PACKAGE_MANAGER);
     dbus.registerObject("/org/deepin/linglong/JobManager", JobManager::instance());
 
     return QCoreApplication::exec();

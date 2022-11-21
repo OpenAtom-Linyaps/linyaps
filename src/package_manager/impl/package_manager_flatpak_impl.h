@@ -1,23 +1,20 @@
 /*
- * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     huqinghong <huqinghong@uniontech.com>
- *
- * Maintainer: huqinghong <huqinghong@uniontech.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_FLATPAK_H_
+#define LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_FLATPAK_H_
 
 #include <QJsonArray>
 
+#include "module/dbus_ipc/param_option.h"
+#include "module/dbus_ipc/reply.h"
+#include "module/package/package.h"
 #include "module/util/singleton.h"
 #include "module/util/status_code.h"
-#include "module/package/package.h"
 #include "package_manager_interface.h"
-#include "module/dbus_ipc/reply.h"
-#include "module/dbus_ipc/param_option.h"
 
 namespace linglong {
 namespace service {
@@ -31,8 +28,17 @@ public:
     Reply Install(const InstallParamOption &installParamOption) override;
     Reply Uninstall(const UninstallParamOption &paramOption) override;
     QueryReply Query(const QueryParamOption &paramOption) override;
+    Reply Update(const ParamOption &paramOption) override { return Reply(); }
+    inline Reply Exec(const ExecParamOption &paramOption)
+    {
+        Reply reply;
+        reply.code = STATUS_CODE(kFail);
+        reply.message = "Not supported";
+        return reply;
+    }
 };
 } // namespace service
 } // namespace linglong
 
 #define PACKAGEMANAGER_FLATPAK_IMPL linglong::service::PackageManagerFlatpakImpl::instance()
+#endif

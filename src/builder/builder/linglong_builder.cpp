@@ -406,7 +406,7 @@ int startContainer(Container *c, Runtime *r)
     }
 
     // FIXME: DO NOT name a class as "message" if it not for an common usage.
-    QScopedPointer<message> result(util::loadJSONString<message>(msg));
+    QScopedPointer<message> result(util::loadJsonString<message>(msg));
 
     return result->wstatus;
 }

@@ -1,17 +1,13 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     huqinghong <huqinghong@uniontech.com>
- *
- * Maintainer: huqinghong <huqinghong@uniontech.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include "appinfo_cache.h"
 
-// app 缓存有效期 分钟为单位
-const int kCacheValidTime = 10;
+// app 缓存有效期 秒为单位
+const int kCacheValidTime = 10 * 60;
 
 namespace linglong {
 namespace util {
@@ -114,7 +110,7 @@ int queryLocalCache(const QString &key, QString &appData)
     QDateTime recordDateTime = QDateTime::fromString(recordTime, "yyyy-MM-dd hh:mm:ss");
     QDateTime current = QDateTime::currentDateTime();
     // 10 分钟有效
-    QDateTime validDate = recordDateTime.addSecs(kCacheValidTime * 60);
+    QDateTime validDate = recordDateTime.addSecs(kCacheValidTime);
     if (current < validDate) {
         appData = sqlQuery.value(2).toString().trimmed();
         dbConn.close();

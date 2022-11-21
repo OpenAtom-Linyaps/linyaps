@@ -4,8 +4,7 @@ find_package(PkgConfig REQUIRED)
 find_package(
   Qt5
   COMPONENTS Concurrent Sql
-  REQUIRED
-  WebSockets
+  REQUIRED WebSockets
 )
 pkg_search_module(
   OSTREE1
@@ -15,6 +14,8 @@ pkg_search_module(
 
 set(LL_SERVICE_SOURCES
     # cmake-format: sortable
+    ../module/dbus_ipc/param_option.h
+    ../module/dbus_ipc/reply.h
     ../module/flatpak/flatpak_manager.cpp
     ../module/package/info.cpp
     ../module/package/package.cpp
@@ -25,9 +26,9 @@ set(LL_SERVICE_SOURCES
     ../module/repo/repo_client.cpp
     ../module/repo/repo_client.h
     ../module/runtime/app.cpp
+    ../module/runtime/app_config.h
     ../module/runtime/container.cpp
     ../module/runtime/oci.h
-    ../module/runtime/app_config.h
     ../module/util/config/config.h
     ../module/util/connection.cpp
     ../module/util/desktop_entry.cpp
@@ -35,16 +36,14 @@ set(LL_SERVICE_SOURCES
     ../module/util/http/http_client.cpp
     ../module/util/http/http_client.h
     ../module/util/http/httpclient.cpp
-    ../module/util/serialize/json.h
     ../module/util/log/log_handler.cpp
+    ../module/util/serialize/json.h
     ../module/util/sysinfo.cpp
     ../module/util/uuid.cpp
     ../module/util/xdg.cpp
     ../package_manager/impl/app_status.cpp
     ../package_manager/impl/appinfo_cache.cpp
     impl/app_manager.cpp
-    ../module/dbus_ipc/param_option.h
-    ../module/dbus_ipc/reply.h
     main.cpp
     resource/resource.qrc
 )

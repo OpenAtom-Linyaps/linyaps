@@ -1,16 +1,16 @@
 set(LL_SYSTEM_HELPER_SOURCES
     # cmake-format: sortable
-    ../module/util/file.h
+    ../module/package/info.cpp
+    ../module/package/info.h
+    ../module/package/ref.h
+    ../module/runtime/app_config.h
+    ../module/runtime/oci.h
     ../module/util/file.cpp
+    ../module/util/file.h
+    ../module/util/log/log_handler.cpp
     ../module/util/serialize/json.h
     ../module/util/serialize/serialize.h
-    ../module/package/info.cpp
-    ../module/package/ref.h
-    ../module/package/info.h
-    ../module/runtime/oci.h
-    ../module/runtime/app_config.h
     ../module/util/sysinfo.cpp
-    ../module/util/log/log_handler.cpp
     main.cpp
     privilege/privilege_install_portal.cpp
     privilege/privilege_install_portal.h

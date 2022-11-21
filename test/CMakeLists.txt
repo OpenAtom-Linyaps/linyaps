@@ -44,25 +44,27 @@ set(LINK_LIBS
 
 set(LL_TEST_SOURCES
     # cmake-format: sortable
+    ../src/module/dbus_ipc/param_option.h
+    ../src/module/dbus_ipc/reply.h
     ../src/module/flatpak/flatpak_manager.cpp
     ../src/module/package/info.cpp
     ../src/module/package/info.h
     ../src/module/package/package.cpp
     ../src/module/package/package.h
     ../src/module/repo/ostree_repohelper.cpp
-    ../src/module/runtime/container.cpp
-    ../src/module/runtime/oci.h
-    ../src/module/util/connection.cpp
-    ../src/module/util/desktop_entry.cpp
-    ../src/module/util/file.cpp
     ../src/module/repo/repo_client.cpp
     ../src/module/repo/repo_client.h
+    ../src/module/runtime/app_config.h
+    ../src/module/runtime/container.cpp
     ../src/module/runtime/container.cpp
     ../src/module/runtime/oci.h
-    ../src/module/runtime/app_config.h
+    ../src/module/runtime/oci.h
     ../src/module/util/config/config.h
     ../src/module/util/connection.cpp
+    ../src/module/util/connection.cpp
     ../src/module/util/desktop_entry.cpp
+    ../src/module/util/desktop_entry.cpp
+    ../src/module/util/file.cpp
     ../src/module/util/file.cpp
     ../src/module/util/http/http_client.cpp
     ../src/module/util/http/http_client.h
@@ -71,12 +73,16 @@ set(LL_TEST_SOURCES
     ../src/module/util/sysinfo.cpp
     ../src/module/util/uuid.cpp
     ../src/module/util/xdg.cpp
-    ../src/module/dbus_ipc/param_option.h
-    ../src/module/dbus_ipc/reply.h
     ../src/package_manager/impl/app_status.cpp
     ../src/package_manager/impl/appinfo_cache.cpp
+    manager_test.cpp
+    module/config/config_test.cpp
     module/package/package_info_test.cpp
     module/package/ref_test.cpp
+    module/serialize/qt_json.cpp
+    module/serialize/qt_yaml.cpp
+    module/serialize/serialize_test.cpp
+    module/serialize/serialize_test.h
     module/util/app_status_test.cpp
     module/util/fs_test.cpp
     module/util/httpclient_test.cpp
@@ -84,12 +90,6 @@ set(LL_TEST_SOURCES
     module/util/runner_test.cpp
     module/util/uuid_test.cpp
     module/util/xdg_test.cpp
-    module/serialize/serialize_test.h
-    module/serialize/serialize_test.cpp
-    manager_test.cpp
-    module/serialize/qt_json.cpp
-    module/serialize/qt_yaml.cpp
-    module/config/config_test.cpp
     repohelper_test.cpp
 )
 
@@ -122,10 +122,7 @@ qt5_add_dbus_interface(
   dbus_system_helper
 )
 
-add_executable(
-  ll-test
-  ${LL_TEST_SOURCES}
-)
+add_executable(ll-test ${LL_TEST_SOURCES})
 
 target_include_directories(
   ll-test

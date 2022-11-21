@@ -1,4 +1,3 @@
-
 set(LL_BUILDER_SOURCES
     # cmake-format: sortable
     ../cli/cmd/command_helper.cpp
@@ -13,17 +12,17 @@ set(LL_BUILDER_SOURCES
     ../module/repo/repo_client.cpp
     ../module/repo/repo_client.h
     ../module/runtime/app.cpp
+    ../module/runtime/app_config.h
     ../module/runtime/container.cpp
     ../module/runtime/oci.h
-    ../module/runtime/app_config.h
     ../module/util/config/config.h
     ../module/util/desktop_entry.cpp
     ../module/util/file.cpp
     ../module/util/http/http_client.cpp
     ../module/util/http/http_client.h
     ../module/util/http/httpclient.cpp
-    ../module/util/serialize/json.h
     ../module/util/log/log_handler.cpp
+    ../module/util/serialize/json.h
     ../module/util/sysinfo.cpp
     ../module/util/uuid.cpp
     ../module/util/xdg.cpp
@@ -48,9 +47,8 @@ set(RESOURCES
     resource/template.yaml
 )
 
-set(CONFIG_FILE
-    # cmake-format: sortable
-    resource/builder.yaml
+set(CONFIG_FILE # cmake-format: sortable
+                resource/builder.yaml
 )
 
 find_package(CURL REQUIRED)

@@ -1,5 +1,7 @@
 set(LL_CLI_SOURCES
     # cmake-format: sortable
+    ../module/dbus_ipc/param_option.h
+    ../module/dbus_ipc/reply.h
     ../module/flatpak/flatpak_manager.cpp
     ../module/package/info.cpp
     ../module/package/package.cpp
@@ -10,10 +12,10 @@ set(LL_CLI_SOURCES
     ../module/repo/repo_client.cpp
     ../module/repo/repo_client.h
     ../module/runtime/app.cpp
+    ../module/runtime/app_config.h
     ../module/runtime/container.cpp
     ../module/runtime/container.h
     ../module/runtime/oci.h
-    ../module/runtime/app_config.h
     ../module/util/config/config.h
     ../module/util/connection.cpp
     ../module/util/desktop_entry.cpp
@@ -21,22 +23,20 @@ set(LL_CLI_SOURCES
     ../module/util/http/http_client.cpp
     ../module/util/http/http_client.h
     ../module/util/http/httpclient.cpp
-    ../module/util/serialize/json.h
     ../module/util/log/log_handler.cpp
+    ../module/util/serialize/json.h
     ../module/util/singleton.h
     ../module/util/sysinfo.cpp
     ../module/util/uuid.cpp
     ../module/util/xdg.cpp
-    ../service/impl/app_manager.cpp
-    ../module/dbus_ipc/param_option.h
-    ../module/dbus_ipc/reply.h
-    ../service/resource/resource.qrc
     ../package_manager/impl/app_status.cpp
     ../package_manager/impl/appinfo_cache.cpp
     ../package_manager/impl/job.cpp
     ../package_manager/impl/job_manager.cpp
-    ../package_manager/impl/package_manager_flatpak_impl.cpp
     ../package_manager/impl/package_manager.cpp
+    ../package_manager/impl/package_manager_flatpak_impl.cpp
+    ../service/impl/app_manager.cpp
+    ../service/resource/resource.qrc
     cmd/command_helper.cpp
     main.cpp
 )

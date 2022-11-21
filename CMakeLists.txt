@@ -14,25 +14,43 @@ set(VERSION "1.0")
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE
       "Release"
-      CACHE STRING "Choose Release or Debug" FORCE
+      CACHE STRING
+            "Choose Release or Debug"
+            FORCE
   )
 endif()
 
-# set sanitizer for debug that default disabled.
-# thread --> tasn ; address --> asan ; default --> none
+# set sanitizer for debug that default disabled. thread --> tasn ; address -->
+# asan ; default --> none
 if(NOT CMAKE_DEBUG_SANIT)
   set(CMAKE_DEBUG_SANIT
       "none"
-      CACHE STRING "Choose [none,thread,address]" FORCE
+      CACHE STRING
+            "Choose [none,thread,address]"
+            FORCE
   )
 endif()
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+if(CMAKE_BUILD_TYPE
+   STREQUAL
+   "Debug"
+)
   add_definitions(-DDEBUG) # debug mode
-  message("STATUS" "Compiler Feature: " ${CMAKE_DEBUG_SANIT})
-  if(CMAKE_DEBUG_SANIT STREQUAL "thread")
+  message(
+    "STATUS"
+    "Compiler Feature: "
+    ${CMAKE_DEBUG_SANIT}
+  )
+  if(CMAKE_DEBUG_SANIT
+     STREQUAL
+     "thread"
+  )
     set(CMAKE_CXX_FLAGS_DEBUG "-O0 -fsanitize=thread -Wall -g -ggdb3")
-  elseif(CMAKE_DEBUG_SANIT STREQUAL "address")
+  elseif(
+    CMAKE_DEBUG_SANIT
+    STREQUAL
+    "address"
+  )
     set(CMAKE_CXX_FLAGS_DEBUG
         "-O0 -fsanitize=undefined,address -Wall -g -ggdb3"
     )

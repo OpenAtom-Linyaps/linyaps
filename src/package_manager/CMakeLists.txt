@@ -3,7 +3,9 @@ find_package(PkgConfig REQUIRED)
 # QT sqlite 支持
 find_package(
   Qt5
-  COMPONENTS Concurrent Sql WebSockets
+  COMPONENTS Concurrent
+             Sql
+             WebSockets
   REQUIRED
 )
 pkg_search_module(
@@ -14,6 +16,7 @@ pkg_search_module(
 
 set(LL_SYSTEM_SERVICE_SOURCES
     # cmake-format: sortable
+    ../module/dbus_ipc/param_option.h
     ../module/flatpak/flatpak_manager.cpp
     ../module/package/info.cpp
     ../module/package/package.cpp
@@ -26,10 +29,10 @@ set(LL_SYSTEM_SERVICE_SOURCES
     ../module/repo/repo_client.cpp
     ../module/repo/repo_client.h
     ../module/runtime/app.cpp
+    ../module/runtime/app_config.h
     ../module/runtime/container.cpp
     ../module/runtime/container.cpp
     ../module/runtime/oci.h
-    ../module/runtime/app_config.h
     ../module/util/config/config.h
     ../module/util/connection.cpp
     ../module/util/desktop_entry.cpp
@@ -37,18 +40,17 @@ set(LL_SYSTEM_SERVICE_SOURCES
     ../module/util/http/http_client.cpp
     ../module/util/http/http_client.h
     ../module/util/http/httpclient.cpp
-    ../module/util/serialize/json.h
     ../module/util/log/log_handler.cpp
+    ../module/util/serialize/json.h
     ../module/util/sysinfo.cpp
     ../module/util/uuid.cpp
     ../module/util/xdg.cpp
-    ../module/dbus_ipc/param_option.h
     impl/app_status.cpp
     impl/appinfo_cache.cpp
     impl/job.cpp
     impl/job_manager.cpp
-    impl/package_manager_flatpak_impl.cpp
     impl/package_manager.cpp
+    impl/package_manager_flatpak_impl.cpp
     main.cpp
 )
 
@@ -74,9 +76,9 @@ qt5_add_dbus_adaptor(
 )
 
 qt5_add_dbus_interface(
-    LL_SYSTEM_SERVICE_SOURCES
-    ../module/dbus_ipc/org.deepin.linglong.SystemHelper.xml
-    dbus_system_helper
+  LL_SYSTEM_SERVICE_SOURCES
+  ../module/dbus_ipc/org.deepin.linglong.SystemHelper.xml
+  dbus_system_helper
 )
 
 message(STATUS "current CPU ARCH is: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
@@ -99,12 +101,12 @@ install(TARGETS ll-package-manager RUNTIME DESTINATION bin)
 
 install(FILES misc/org.deepin.linglong.PackageManager.conf
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/dbus-1/system.d
-        )
+)
 
 install(FILES misc/systemd/org.deepin.linglong.PackageManager.service
         DESTINATION /lib/systemd/system
-        )
+)
 
 install(FILES misc/org.deepin.linglong.PackageManager.service
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/dbus-1/system-services
-        )
+)

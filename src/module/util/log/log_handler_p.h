@@ -1,25 +1,23 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     yuanqiliang <yuanqiliang@uniontech.com>
- *
- * Maintainer: yuanqiliang <yuanqiliang@uniontech.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_MODULE_UTIL_LOG_LOG_HANDLER_P_H_
+#define LINGLONG_SRC_MODULE_UTIL_LOG_LOG_HANDLER_P_H_
 
 #include <iostream>
+
 #include <QDebug>
 #include <QDateTime>
-#include <QMutexLocker>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
-#include <QTimer>
-#include <QTextStream>
+#include <QMutexLocker>
 #include <QTextCodec>
+#include <QTextStream>
+#include <QTimer>
 
 namespace linglong {
 namespace util {
@@ -59,3 +57,4 @@ private:
 };
 } // namespace util
 } // namespace linglong
+#endif

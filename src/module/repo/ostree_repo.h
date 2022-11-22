@@ -1,23 +1,17 @@
 /*
- * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_SRC_MODULE_REPO_OSTREE_H_
-#define LINGLONG_SRC_MODULE_REPO_OSTREE_H_
+#ifndef LINGLONG_SRC_MODULE_REPO_OSTREE_REPO_H_
+#define LINGLONG_SRC_MODULE_REPO_OSTREE_REPO_H_
 
-#include <QObject>
-#include <QScopedPointer>
 #include <QPointer>
-#include <QMap>
+#include <QScopedPointer>
 
-#include "module/repo/repo.h"
 #include "module/package/package.h"
+#include "module/repo/repo.h"
 
 namespace linglong {
 namespace repo {
@@ -191,4 +185,4 @@ Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::repo, UploadRequest)
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::repo, UploadTaskRequest)
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::repo, UploadTaskResponse)
 
-#endif // LINGLONG_SRC_MODULE_REPO_OSTREE_H_
+#endif // LINGLONG_SRC_MODULE_REPO_OSTREE_REPO_H_

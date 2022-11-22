@@ -1,14 +1,11 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     yuanqiliang <yuanqiliang@uniontech.com>
- *
- * Maintainer: yuanqiliang <yuanqiliang@uniontech.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_MODULE_UTIL_LOG_LOG_HANDLER_H_
+#define LINGLONG_SRC_MODULE_UTIL_LOG_LOG_HANDLER_H_
 
 #include <QObject>
 
@@ -38,3 +35,4 @@ private:
 } // namespace linglong
 
 #define LOG_HANDLER linglong::util::LogHandler::instance()
+#endif

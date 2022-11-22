@@ -1,18 +1,15 @@
 /*
- * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     chenhuixing@uniontech.com
- *
- * Maintainer: chenhuixing@uniontech.com
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_MODULE_UTIL_VERSION_SEMVER_H_
+#define LINGLONG_SRC_MODULE_UTIL_VERSION_SEMVER_H_
 
+#include <QRegularExpression>
 #include <QString>
 #include <QStringList>
-#include <QRegularExpression>
 
 #include "module/package/ref.h"
 
@@ -115,3 +112,4 @@ QString latestVersion(const QStringList &refStrList)
 
 } // namespace util
 } // namespace linglong
+#endif

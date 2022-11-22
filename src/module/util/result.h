@@ -1,14 +1,12 @@
 /*
- * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_MODULE_UTIL_RESULT_H_
+#define LINGLONG_SRC_MODULE_UTIL_RESULT_H_
+
 
 #include "module/util/serialize/json.h"
 
@@ -129,3 +127,4 @@ inline QDebug operator<<(QDebug dbg, const Error &result)
 #define NoError() linglong::util::Error(__FILE__, __LINE__, __FUNCTION__)
 
 #define WrapError(base, ...) linglong::util::Error(__FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__, base)
+#endif

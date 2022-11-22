@@ -1,11 +1,7 @@
 /*
- * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     huqinghong <huqinghong@uniontech.com>
- *
- * Maintainer: huqinghong <huqinghong@uniontech.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include "httpclient.h"
@@ -21,17 +17,18 @@
 #include <sstream>
 
 #include <QDebug>
+#include <QEventLoop>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QEventLoop>
+
 #include <QTimer>
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtNetwork/QNetworkRequest>
 #include <QtNetwork/QNetworkReply>
 
-#include "module/util/file.h"
 #include "builder/builder/builder_config.h"
+#include "module/util/file.h"
 
 namespace linglong {
 namespace util {

@@ -1,15 +1,11 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_BOX_SRC_MODULE_REPO_REPO_H_
-#define LINGLONG_BOX_SRC_MODULE_REPO_REPO_H_
+#ifndef LINGLONG_SRC_MODULE_REPO_REPO_H_
+#define LINGLONG_SRC_MODULE_REPO_REPO_H_
 
 #include <QString>
 
@@ -55,4 +51,4 @@ void registerAllMetaType();
 } // namespace repo
 } // namespace linglong
 
-#endif /* LINGLONG_BOX_SRC_MODULE_REPO_REPO_H_ */
+#endif /* LINGLONG_SRC_MODULE_REPO_REPO_H_ */

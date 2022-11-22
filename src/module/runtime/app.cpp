@@ -1,37 +1,34 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include "app.h"
 
-#include <unistd.h>
+#include <linux/prctl.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
-#include <linux/prctl.h>
 #include <sys/prctl.h>
-#include <QProcess>
-#include <QFile>
-#include <QStandardPaths>
-#include <QDir>
+#include <unistd.h>
 
-#include "module/util/serialize/yaml.h"
-#include "module/util/uuid.h"
-#include "module/util/serialize/json.h"
-#include "module/util/file.h"
-#include "module/util/xdg.h"
-#include "module/util/desktop_entry.h"
-#include "module/util/version/version.h"
+#include <QDir>
+#include <QFile>
+#include <QProcess>
+#include <QStandardPaths>
+
 #include "module/dbus_ipc/package_manager_param.h"
+#include "module/flatpak/flatpak_manager.h"
 #include "module/package/info.h"
 #include "module/repo/repo.h"
-#include "module/flatpak/flatpak_manager.h"
+#include "module/util/desktop_entry.h"
 #include "module/util/env.h"
+#include "module/util/file.h"
+#include "module/util/serialize/json.h"
+#include "module/util/serialize/yaml.h"
+#include "module/util/uuid.h"
+#include "module/util/version/version.h"
+#include "module/util/xdg.h"
 
 #define LL_VAL(str) #str
 #define LL_TOSTRING(str) LL_VAL(str)

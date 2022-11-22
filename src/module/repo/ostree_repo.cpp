@@ -1,11 +1,7 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include <gio/gio.h>
@@ -14,23 +10,23 @@
 
 #include "ostree_repo.h"
 
-#include <QProcess>
+#include <utility>
+
 #include <QDir>
 #include <QHttpPart>
-#include <utility>
+#include <QProcess>
 #include <QThread>
-
 #include <QtWebSockets/QWebSocket>
 
-#include "module/package/ref.h"
 #include "module/package/info.h"
+#include "module/package/ref.h"
+#include "module/util/config/config.h"
+#include "module/util/http/http_client.h"
+#include "module/util/http/httpclient.h"
 #include "module/util/runner.h"
 #include "module/util/sysinfo.h"
 #include "module/util/version/version.h"
-#include "module/util/http/http_client.h"
-#include "module/util/config/config.h"
 #include "module/util/version/semver.h"
-#include "module/util/http/httpclient.h"
 
 namespace linglong {
 namespace repo {

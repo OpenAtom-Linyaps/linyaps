@@ -1,35 +1,32 @@
 /*
- * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_BOX_SRC_MODULE_PACKAGE_BUNDLE_H_
-#define LINGLONG_BOX_SRC_MODULE_PACKAGE_BUNDLE_H_
+#ifndef LINGLONG_SRC_MODULE_PACKAGE_BUNDLE_H_
+#define LINGLONG_SRC_MODULE_PACKAGE_BUNDLE_H_
 
 #include <elf.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <iostream>
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
 
+#include <iostream>
+
+#include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QString>
-#include <QDir>
 
-#include "module/util/result.h"
-#include "module/util/file.h"
-#include "module/util/status_code.h"
-#include "module/util/http/httpclient.h"
 #include "info.h"
+#include "module/util/file.h"
+#include "module/util/http/httpclient.h"
+#include "module/util/result.h"
+#include "module/util/status_code.h"
 
 namespace linglong {
 namespace package {
@@ -112,4 +109,4 @@ private:
 } // namespace package
 } // namespace linglong
 
-#endif /* LINGLONG_BOX_SRC_MODULE_PACKAGE_BUNDLE_H_ */
+#endif /* LINGLONG_SRC_MODULE_PACKAGE_BUNDLE_H_ */

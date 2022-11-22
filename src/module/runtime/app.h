@@ -1,19 +1,16 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_MODULE_RUNTIME_APP_H_
+#define LINGLONG_SRC_MODULE_RUNTIME_APP_H_
 
-#include "oci.h"
+#include "app_config.h"
 #include "container.h"
 #include "module/package/ref.h"
-#include "app_config.h"
+#include "oci.h"
 
 namespace linglong {
 namespace repo {
@@ -108,3 +105,4 @@ private:
 } // namespace linglong
 
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::runtime, App)
+#endif

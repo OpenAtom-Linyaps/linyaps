@@ -1,21 +1,18 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_MODULE_UTIL_SERIALIZE_YAML_H_
+#define LINGLONG_SRC_MODULE_UTIL_SERIALIZE_YAML_H_
 
 #include <yaml-cpp/yaml.h>
 
+#include <QDebug>
+#include <QJsonValue>
 #include <QString>
 #include <QVariant>
-#include <QJsonValue>
-#include <QDebug>
 
 #include "module/util/serialize/json.h"
 
@@ -159,3 +156,4 @@ YAML::Node toYaml(T *m)
     }
     return n;
 }
+#endif

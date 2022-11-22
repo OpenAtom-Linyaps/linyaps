@@ -1,26 +1,24 @@
 /*
- * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_MODULE_PACKAGE_PACKAGE_H_
+#define LINGLONG_SRC_MODULE_PACKAGE_PACKAGE_H_
 
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <fcntl.h>
 #include <string>
+#include <sys/stat.h>
+#include <sys/types.h>
+
 #include <QDBusArgument>
-#include <QObject>
-#include <QList>
-#include <QFile>
 #include <QDebug>
-#include <QTemporaryDir>
+#include <QFile>
 #include <QFileInfo>
+#include <QList>
+#include <QObject>
+#include <QTemporaryDir>
 
 #include "module/util/file.h"
 #include "module/util/serialize/json.h"
@@ -76,3 +74,4 @@ namespace package {
 void registerAllMetaType();
 } // namespace package
 } // namespace linglong
+#endif

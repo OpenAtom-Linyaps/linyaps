@@ -1,31 +1,30 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     huqinghong <huqinghong@uniontech.com>
- *
- * Maintainer: huqinghong <huqinghong@uniontech.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_MODULE_REPO_OSTREE_REPOHELPER_H_
+#define LINGLONG_SRC_MODULE_REPO_OSTREE_REPOHELPER_H_
 
 #include <gio/gio.h>
 #include <glib.h>
 #include <ostree-repo.h>
+
 #include <iostream>
 #include <map>
-#include <string>
 #include <vector>
-#include <QString>
-#include <QMap>
-#include <QVector>
+#include <string>
+
 #include <QDebug>
+#include <QMap>
+#include <QString>
+#include <QVector>
 #include <QTemporaryDir>
 
-#include "repohelper.h"
 #include "module/util/singleton.h"
 #include "module/util/status_code.h"
+#include "repohelper.h"
 
 namespace linglong {
 
@@ -285,3 +284,4 @@ private:
 };
 } // namespace linglong
 #define OSTREE_REPO_HELPER linglong::OstreeRepoHelper::instance()
+#endif

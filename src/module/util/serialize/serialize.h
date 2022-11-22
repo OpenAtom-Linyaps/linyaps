@@ -1,25 +1,21 @@
 /*
- * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #ifndef LINGLONG_SRC_MODULE_UTIL_SERIALIZE_SERIALIZE_H
 #define LINGLONG_SRC_MODULE_UTIL_SERIALIZE_SERIALIZE_H
 
-#include <QMetaProperty>
-#include <QObject>
 #include <QDBusArgument>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QPointer>
 #include <QDBusMetaType>
 #include <QDebug>
 #include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QMetaProperty>
+#include <QObject>
+#include <QPointer>
 
 #define Q_SERIALIZE_PARENT_KEY "7bdcaad1-2f27-4092-a5cf-4919ad4caf2b"
 

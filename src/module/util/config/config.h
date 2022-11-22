@@ -1,6 +1,8 @@
-//
-// Created by iceyer on 7/16/2022.
-//
+/*
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: LGPL-3.0-or-later
+ */
 
 #ifndef LINGLONG_SRC_MODULE_UTIL_CONFIG_CONFIG_H_
 #define LINGLONG_SRC_MODULE_UTIL_CONFIG_CONFIG_H_

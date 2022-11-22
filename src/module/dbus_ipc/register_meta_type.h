@@ -1,19 +1,16 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_MODULE_DBUS_IPC_REGISTER_META_TYPE_H_
+#define LINGLONG_SRC_MODULE_DBUS_IPC_REGISTER_META_TYPE_H_
 
-#include "module/util/serialize/json.h"
 #include "module/dbus_ipc/reply.h"
 #include "module/dbus_ipc/param_option.h"
 #include "module/package/package.h"
+#include "module/util/serialize/json.h"
 
 namespace linglong {
 namespace service {
@@ -34,3 +31,4 @@ inline void registerAllMetaType()
 
 } // namespace service
 } // namespace linglong
+#endif

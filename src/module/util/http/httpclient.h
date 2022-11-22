@@ -1,17 +1,16 @@
 /*
- * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     huqinghong <huqinghong@uniontech.com>
- *
- * Maintainer: huqinghong <huqinghong@uniontech.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_MODULE_UTIL_HTTPCLIENT_H_
+#define LINGLONG_SRC_MODULE_UTIL_HTTPCLIENT_H_
 
 #include <curl/curl.h>
+
 #include <QString>
+
 #include "module/util/singleton.h"
 #include "module/util/status_code.h"
 
@@ -145,3 +144,4 @@ public:
 } // namespace linglong
 
 #define HTTPCLIENT linglong::util::HttpClient::instance()
+#endif

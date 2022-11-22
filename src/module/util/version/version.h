@@ -1,14 +1,11 @@
 /*
- * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     huqinghong@uniontech.com
- *
- * Maintainer: huqinghong@uniontech.com
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_MODULE_UTIL_VERSION_VERSION_H_
+#define LINGLONG_SRC_MODULE_UTIL_VERSION_VERSION_H_
 
 #include <QString>
 #include <QStringList>
@@ -88,12 +85,6 @@ private:
     int Build = 0;
 };
 
-// inline std::ostream &operator<<(std::ostream &o, const linglong::AppVersion &ver)
-// {
-//     return o << ver.Major << "."
-//              << ver.Minor << "."
-//              << ver.Revision << "."
-//              << ver.Build;
-// }
 } // namespace util
 } // namespace linglong
+#endif

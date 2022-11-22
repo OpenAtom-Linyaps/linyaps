@@ -1,19 +1,15 @@
 /*
- * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include "repo_client.h"
 
+#include "module/package/package.h"
 #include "module/util/config/config.h"
 #include "module/util/http/http_client.h"
 #include "module/util/serialize/json.h"
-#include "module/package/package.h"
 
 namespace linglong {
 namespace repo {

@@ -1,23 +1,19 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include "repo.h"
 
-#include <QString>
 #include <QDir>
+#include <QString>
 
-#include "module/util/sysinfo.h"
 #include "module/package/info.h"
+#include "module/util/sysinfo.h"
 
-#include "repo_client.h"
 #include "ostree_repo.h"
+#include "repo_client.h"
 
 namespace linglong {
 namespace repo {

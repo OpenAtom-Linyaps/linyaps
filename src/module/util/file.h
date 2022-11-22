@@ -1,28 +1,27 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_MODULE_UTIL_FILE_H_
+#define LINGLONG_SRC_MODULE_UTIL_FILE_H_
 
 #include <stdlib.h>
 #include <unistd.h>
+
 #include <iostream>
-#include <QStringList>
-#include <QString>
-#include <QFileInfo>
-#include <QProcess>
+
+#include <QCryptographicHash>
+#include <QDebug>
 #include <QDir>
 #include <QDirIterator>
-#include <QDebug>
-#include <QTemporaryFile>
+#include <QFileInfo>
+#include <QProcess>
+#include <QString>
+#include <QStringList>
 #include <QSysInfo>
-#include <QCryptographicHash>
+#include <QTemporaryFile>
 
 #include "status_code.h"
 
@@ -221,80 +220,6 @@ QStringList inline listDirFolders(const QString &path, const bool subdir = false
 }
 
 /*!
- * 制作data.tgz签名
- * @param data_input
- * @param certpath
- * @param key_path
- * @param sign_data
- * @return bool
- */
-bool inline makeSign(QString data_input, QString certpath, QString key_path, QString &sign_data)
-{ /*
-QString input = data_input;
-std::string input_str = input.toStdString();
-//certpath key_path to GoString cert and GoString key
-GoSlice data = {
-.data = (void *)input_str.c_str(),
-.len = input_str.length(),
-.cap = input_str.length(),
-};
-std::string priv_crt = certpath.toStdString();
-std::string priv_key = key_path.toStdString();
-GoString cert = {
-.p = priv_crt.c_str(),
-.n = priv_crt.length()};
-GoString key = {
-.p = priv_key.c_str(),
-.n = priv_key.length()};
-
-GoUint8 noTSA = 0; //time stamp 0 no   1 yes
-GoUint8 timeout = 0;
-GoSlice output;
-int ret = (int)UOSSign(data, cert, key, noTSA, timeout, &output);
-if (ret == 0) {
-sign_data = ((char *)output.data);
-return true;
-} else {
-return false;
-}
-*/
-    return true;
-}
-
-/*!
- * 签名验证
- * @param data_input
- * @param sign_data_Q
- * @return
- */
-bool inline checkSign(QString data_input, QString sign_data_Q)
-{
-    /*
-QString input = data_input;
-std::string input_str = input.toStdString();
-std::string sign_data = sign_data_Q.toStdString();
-GoSlice data = {
-.data = (void *)input_str.c_str(),
-.len = input_str.length(),
-.cap = input_str.length(),
-};
-GoSlice sign = {
-.data = (void *)sign_data.c_str(),
-.len = sign_data.length(),
-.cap = sign_data.length(),
-};
-GoUint8 dump = 0; //print cert 0 no   1  yes
-int ret = (int)UOSVerify(data, sign, dump);
-if (ret == 0) {
-return true;
-} else {
-return false;
-}
-*/
-    return true;
-}
-
-/*!
  * 建立link
  * @param src 来源
  * @param dest 目标
@@ -451,3 +376,4 @@ void inline copyConfig()
 
 } // namespace util
 } // namespace linglong
+#endif

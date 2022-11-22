@@ -1,17 +1,15 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_MODULE_UTIL_DESKTOP_ENTRY_H_
+#define LINGLONG_SRC_MODULE_UTIL_DESKTOP_ENTRY_H_
 
 #include <QString>
 #include <QScopedPointer>
+
 #include "result.h"
 
 namespace linglong {
@@ -42,3 +40,4 @@ private:
 
 } // namespace util
 } // namespace linglong
+#endif

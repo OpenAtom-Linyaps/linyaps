@@ -1,14 +1,11 @@
 /*
- * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:    liujianqiang <liujianqiang@uniontech.com>
- *
- * Maintainer: liujianqiang <liujianqiang@uniontech.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_MODULE_UTIL_ENV_H_
+#define LINGLONG_SRC_MODULE_UTIL_ENV_H_
 
 #include <QStringList>
 
@@ -50,3 +47,4 @@ const QStringList envList = {
 };
 }
 } // namespace linglong
+#endif

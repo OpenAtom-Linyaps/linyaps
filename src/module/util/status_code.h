@@ -1,14 +1,11 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     liujianqiang <liujianqiang@uniontech.com>
- *
- * Maintainer: liujianqiang <liujianqiang@uniontech.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_MODULE_UTIL_STATUS_CODE_H_
+#define LINGLONG_SRC_MODULE_UTIL_STATUS_CODE_H_
 
 namespace linglong {
 namespace util {
@@ -53,3 +50,4 @@ inline T statuCode(StatusCode statuCode)
 } // namespace linglong
 
 #define STATUS_CODE(code) linglong::util::statuCode<int>(linglong::util::StatusCode::code)
+#endif

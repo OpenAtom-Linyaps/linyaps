@@ -1,14 +1,11 @@
 /*
- * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     yuanqiliang@uniontech.com
- *
- * Maintainer: yuanqiliang@uniontech.com
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_MODULE_DBUS_IPC_REPLY_H_
+#define LINGLONG_SRC_MODULE_DBUS_IPC_REPLY_H_
 
 #include <QDBusArgument>
 
@@ -67,3 +64,4 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, QueryReply
 
 Q_DECLARE_METATYPE(linglong::service::Reply)
 Q_DECLARE_METATYPE(linglong::service::QueryReply)
+#endif

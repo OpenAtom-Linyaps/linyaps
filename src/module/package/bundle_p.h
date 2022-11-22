@@ -1,12 +1,11 @@
 /*
- * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
+
+#ifndef LINGLONG_SRC_MODULE_PACKAGE_BUNDLE_P_H_
+#define LINGLONG_SRC_MODULE_PACKAGE_BUNDLE_P_H_
 
 #include "bundle.h"
 
@@ -68,3 +67,4 @@ public:
 };
 } // namespace package
 } // namespace linglong
+#endif

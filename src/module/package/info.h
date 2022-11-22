@@ -1,22 +1,18 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_BOX_SRC_MODULE_PACKAGE_INFO_H_
-#define LINGLONG_BOX_SRC_MODULE_PACKAGE_INFO_H_
+#ifndef LINGLONG_SRC_MODULE_PACKAGE_INFO_H_
+#define LINGLONG_SRC_MODULE_PACKAGE_INFO_H_
 
 #include <QDBusArgument>
 #include <QList>
 #include <QObject>
 
-#include "module/util/serialize/json.h"
 #include "module/runtime/oci.h"
+#include "module/util/serialize/json.h"
 #include "ref.h"
 
 namespace linglong {
@@ -118,22 +114,4 @@ Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::package, Filesystem)
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::package, User)
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::package, OverlayfsRootfs)
 
-// inline QDBusArgument &operator<<(QDBusArgument &argument, const linglong::package::Info &message)
-//{
-//     argument.beginStructure();
-//     argument << message.appid;
-//     argument << message.name;
-//     argument.endStructure();
-//     return argument;
-// }
-//
-// inline const QDBusArgument &operator>>(const QDBusArgument &argument, linglong::package::Info &message)
-//{
-//     argument.beginStructure();
-//     argument >> message.appid;
-//     argument >> message.name;
-//     argument.endStructure();
-//     return argument;
-// }
-
-#endif /* LINGLONG_BOX_SRC_MODULE_PACKAGE_INFO_H_ */
+#endif /* LINGLONG_SRC_MODULE_PACKAGE_INFO_H_ */

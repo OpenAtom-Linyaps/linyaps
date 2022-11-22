@@ -1,14 +1,11 @@
 /*
- * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     liujianqiang <liujianqiang@uniontech.com>
- *
- * Maintainer: liujianqiang <liujianqiang@uniontech.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_MODULE_RUNTIME_APP_CONFIG_H_
+#define LINGLONG_SRC_MODULE_RUNTIME_APP_CONFIG_H_
 
 #include "module/util/serialize/json.h"
 
@@ -27,3 +24,4 @@ public:
 } // namespace linglong
 
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::runtime, AppConfig)
+#endif

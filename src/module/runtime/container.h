@@ -1,22 +1,19 @@
 /*
- * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_MODULE_RUNTIME_CONTAINER_H_
+#define LINGLONG_SRC_MODULE_RUNTIME_CONTAINER_H_
 
 #include <QDBusArgument>
 #include <QList>
 #include <QObject>
 
 #include "module/package/package.h"
-#include "oci.h"
 #include "module/util/result.h"
+#include "oci.h"
 
 class Container : public JsonSerialize
 {
@@ -31,3 +28,4 @@ public:
     linglong::util::Error create(const QString &ref);
 };
 Q_JSON_DECLARE_PTR_METATYPE(Container)
+#endif

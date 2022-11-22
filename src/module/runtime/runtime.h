@@ -1,19 +1,15 @@
 /*
- * Copyright (c) 2022. ${ORGANIZATION_NAME}. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #ifndef LINGLONG_SRC_MODULE_RUNTIME_RUNTIME_H_
 #define LINGLONG_SRC_MODULE_RUNTIME_RUNTIME_H_
 
-#include "oci.h"
 #include "app.h"
 #include "app_config.h"
+#include "oci.h"
 
 namespace linglong {
 namespace runtime {

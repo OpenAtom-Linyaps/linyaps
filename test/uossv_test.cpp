@@ -1,16 +1,14 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include <gtest/gtest.h>
-#include <QJsonDocument>
+
 #include <QFile>
+#include <QJsonDocument>
+
 #include <libuossv/uossv.h>
 
 #include "module/package/package.h"
@@ -34,17 +32,10 @@ TEST(UOSSign, UosSign)
     GoUint8 noTSA = 0;
     GoUint8 timeout = 0;
     GoUint8 dump = 1;
-    // GoSlice *sd = (GoSlice *)malloc(sizeof(GoInt) * 2 + sizeof(char) * 1024);
     GoSlice output;
     int ret = (int)UOSSign(data, certPath, key, noTSA, timeout, &output);
     EXPECT_EQ(ret, 0);
     ret = -1;
-    // GoSlice signData = {
-    //     .data = sd->data,
-    //     .len = sd->len,
-    //     .cap = sd->cap,
-    // };
     ret = (int)UOSVerify(data, output, dump);
     EXPECT_EQ(ret, 0);
-    // free(sd);
 }

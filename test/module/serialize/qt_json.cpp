@@ -1,16 +1,13 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include <gtest/gtest.h>
-#include <QJsonDocument>
+
 #include <QFile>
+#include <QJsonDocument>
 #include <QtDBus>
 
 #include "src/module/runtime/container.h"

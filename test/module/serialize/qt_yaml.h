@@ -1,14 +1,12 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_TEST_MODULE_SERIALIZE_QT_YAML_H_
+#define LINGLONG_TEST_MODULE_SERIALIZE_QT_YAML_H_
+
 
 #include "src/module/util/serialize/yaml.h"
 #include "src/module/runtime/oci.h"
@@ -81,3 +79,4 @@ class TestApp : public JsonSerialize
     Q_JSON_PTR_PROPERTY(TestPermission, permissions);
 };
 Q_JSON_DECLARE_PTR_METATYPE(TestApp)
+#endif

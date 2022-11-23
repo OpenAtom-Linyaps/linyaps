@@ -544,13 +544,13 @@ QString OstreeRepoHelper::createTmpRepo(const QString &parentRepo)
         tmpPath = dir.path();
     } else {
         qCritical() << "create tmpPath failed, please check " << baseDir << "," << dir.errorString();
-        return "";
+        return QString();
     }
     dir.setAutoRemove(false);
     auto ret = linglong::runner::Runner("ostree", {"--repo=" + tmpPath + "/repoTmp", "init", "--mode=bare-user-only"},
                                         1000 * 60 * 5);
     if (!ret) {
-        return "";
+        return QString();
     }
 
     // 设置最小空间要求
@@ -558,7 +558,7 @@ QString OstreeRepoHelper::createTmpRepo(const QString &parentRepo)
         "ostree", {"config", "set", "--group", "core", "min-free-space-size", "600MB", "--repo", tmpPath + "/repoTmp"},
         1000 * 60 * 5);
     if (!ret) {
-        return "";
+        return QString();
     }
 
     // 添加父仓库路径
@@ -566,7 +566,7 @@ QString OstreeRepoHelper::createTmpRepo(const QString &parentRepo)
         "ostree", {"config", "set", "--group", "core", "parent", parentRepo, "--repo", tmpPath + "/repoTmp"},
         1000 * 60 * 5);
     if (!ret) {
-        return "";
+        return QString();
     }
 
     qInfo() << "create tmp repo path:" << tmpPath << ", ret:" << QDir().exists(tmpPath + "/repoTmp");

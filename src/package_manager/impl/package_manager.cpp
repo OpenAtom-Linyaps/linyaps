@@ -1184,7 +1184,7 @@ QString PackageManagerPrivate::getUserName(uid_t uid)
     if (user) {
         return QString::fromLocal8Bit(user->pw_name);
     }
-    return "";
+    return QString();
 }
 
 PackageManager::PackageManager()

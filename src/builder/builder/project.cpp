@@ -1,11 +1,7 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include "project.h"
@@ -24,20 +20,20 @@
 namespace linglong {
 namespace builder {
 
-const char *DependTypeRuntime = "runtime";
+const char * const DependTypeRuntime = "runtime";
 
-const char *BuildScriptPath = "/entry.sh";
-const char *BuildCacheDirectoryName = "linglong-builder";
+const char * const BuildScriptPath = "/entry.sh";
+const char * const BuildCacheDirectoryName = "linglong-builder";
 
-const char *PackageKindApp = "app";
-const char *PackageKindLib = "lib";
-const char *PackageKindRuntime = "runtime";
+const char * const PackageKindApp = "app";
+const char * const PackageKindLib = "lib";
+const char * const PackageKindRuntime = "runtime";
 
 class ProjectPrivate
 {
 public:
     explicit ProjectPrivate(Project *parent)
-        : cfg(BuilderConfig::instance()->projectRoot(), parent)
+        : cfg(BuilderConfig::instance()->getProjectRoot(), parent)
         , q_ptr(parent)
     {
     }
@@ -68,8 +64,8 @@ public:
             return -1;
         }
 
-        if (!BuilderConfig::instance()->exec().isEmpty()) {
-            command += BuilderConfig::instance()->exec().toLocal8Bit() + "\n";
+        if (!BuilderConfig::instance()->getExec().isEmpty()) {
+            command += BuilderConfig::instance()->getExec().toLocal8Bit() + "\n";
             scriptFile.write(command.toLocal8Bit());
             scriptFile.close();
             return 0;
@@ -245,7 +241,7 @@ Project::~Project() = default;
 
 QString Project::Config::rootPath() const
 {
-    return m_projectRoot;
+    return projectRoot;
 }
 
 QString Project::Config::absoluteFilePath(const QStringList &filenames) const
@@ -259,7 +255,7 @@ QString Project::Config::absoluteFilePath(const QStringList &filenames) const
 
 QString Project::Config::cacheAbsoluteFilePath(const QStringList &filenames) const
 {
-    auto targetList = QStringList {rootPath(), ".linglong-target", m_project->package->id};
+    auto targetList = QStringList {rootPath(), ".linglong-target", project->package->id};
     targetList.append(filenames);
     auto target = targetList.join("/");
     return target;
@@ -272,26 +268,26 @@ QString Project::Config::cacheRuntimePath(const QString &subPath) const
 
 QString Project::Config::cacheInstallPath(const QString &subPath) const
 {
-    if (PackageKindRuntime == m_project->package->kind) {
+    if (PackageKindRuntime == project->package->kind) {
         return cacheAbsoluteFilePath({"runtime-install", subPath});
-    } else if (PackageKindLib == m_project->package->kind) {
+    } else if (PackageKindLib == project->package->kind) {
         return cacheAbsoluteFilePath({"runtime-install", subPath});
-    } else if (PackageKindApp == m_project->package->kind) {
+    } else if (PackageKindApp == project->package->kind) {
         return cacheAbsoluteFilePath({"runtime-install", subPath});
     };
-    return "";
+    return QString();
 }
 
 QString Project::Config::cacheInstallPath(const QString &moduleDir, const QString &subPath) const
 {
-    if (PackageKindRuntime == m_project->package->kind) {
+    if (PackageKindRuntime == project->package->kind) {
         return cacheAbsoluteFilePath({moduleDir, subPath});
-    } else if (PackageKindLib == m_project->package->kind) {
+    } else if (PackageKindLib == project->package->kind) {
         return cacheAbsoluteFilePath({moduleDir, subPath});
-    } else if (PackageKindApp == m_project->package->kind) {
+    } else if (PackageKindApp == project->package->kind) {
         return cacheAbsoluteFilePath({moduleDir, subPath});
     };
-    return "";
+    return QString();
 }
 
 QString Project::Config::targetArch() const
@@ -301,15 +297,15 @@ QString Project::Config::targetArch() const
 
 QString Project::Config::targetInstallPath(const QString &sub) const
 {
-    if (PackageKindRuntime == m_project->package->kind) {
+    if (PackageKindRuntime == project->package->kind) {
         return (sub.isEmpty() ? QString("/runtime") : QStringList {"/runtime", sub}.join("/"));
-    } else if (PackageKindLib == m_project->package->kind) {
+    } else if (PackageKindLib == project->package->kind) {
         return (sub.isEmpty() ? QString("/runtime") : QStringList {"/runtime", sub}.join("/"));
-    } else if (PackageKindApp == m_project->package->kind) {
-        return (sub.isEmpty() ? QString(QString("/opt/apps/%1/files").arg(m_project->ref().appId))
-                              : QStringList {QString("/opt/apps/%1/files").arg(m_project->ref().appId), sub}.join("/"));
+    } else if (PackageKindApp == project->package->kind) {
+        return (sub.isEmpty() ? QString(QString("/opt/apps/%1/files").arg(project->ref().appId))
+                              : QStringList {QString("/opt/apps/%1/files").arg(project->ref().appId), sub}.join("/"));
     };
-    return "";
+    return QString();
 }
 
 } // namespace builder

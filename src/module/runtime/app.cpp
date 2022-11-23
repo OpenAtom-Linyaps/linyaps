@@ -1019,7 +1019,7 @@ public:
         // 判断是否存在
         if (!isFlatpakApp && !linglong::util::fileExists(appInfo)) {
             qCritical() << appInfo << " not exist";
-            return "";
+            return QString();
         }
 
         // create a yaml config from json

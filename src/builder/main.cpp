@@ -1,11 +1,7 @@
 /*
- * Copyright (c) 2020-2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include <QCoreApplication>
@@ -116,7 +112,7 @@ int main(int argc, char **argv)
              // config linglong.yaml before build if necessary
              if (parser.isSet(pkgVersion) || parser.isSet(srcVersion) || parser.isSet(srcCommit)) {
                  auto projectConfigPath =
-                     QStringList {linglong::builder::BuilderConfig::instance()->projectRoot(), "linglong.yaml"}.join(
+                     QStringList {linglong::builder::BuilderConfig::instance()->getProjectRoot(), "linglong.yaml"}.join(
                          "/");
 
                  if (!QFileInfo::exists(projectConfigPath)) {

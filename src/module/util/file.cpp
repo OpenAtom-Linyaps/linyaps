@@ -63,13 +63,13 @@ QString createProxySocket(const QString &pattern)
     bool ret = util::createDir(socketDir);
     if (!ret) {
         qCritical() << "createProxySocket pattern:" << pattern << " failed";
-        return "";
+        return QString();
     }
     QTemporaryFile tmpFile(socketDir + pattern);
     tmpFile.setAutoRemove(false);
     if (!tmpFile.open()) {
         qCritical() << "create " << socketDir + pattern << " failed";
-        return "";
+        return QString();
     }
     tmpFile.close();
     return tmpFile.fileName();

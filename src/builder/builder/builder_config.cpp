@@ -1,11 +1,7 @@
 /*
- * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include "builder_config.h"
@@ -30,36 +26,36 @@ QString BuilderConfig::ostreePath() const
 
 QString BuilderConfig::targetFetchCachePath() const
 {
-    auto target = QStringList {projectRoot(), ".linglong-target", projectName(), "fetch", "cache"}.join("/");
+    auto target = QStringList {getProjectRoot(), ".linglong-target", getProjectName(), "fetch", "cache"}.join("/");
     util::ensureDir(target);
     return target;
 }
 
 QString BuilderConfig::targetSourcePath() const
 {
-    auto target = QStringList {projectRoot(), ".linglong-target", projectName(), "source"}.join("/");
+    auto target = QStringList {getProjectRoot(), ".linglong-target", getProjectName(), "source"}.join("/");
     util::ensureDir(target);
     return target;
 }
 
 void BuilderConfig::setProjectRoot(const QString &path)
 {
-    m_projectRoot = path;
+    projectRoot = path;
 }
 
-QString BuilderConfig::projectRoot() const
+QString BuilderConfig::getProjectRoot() const
 {
-    return m_projectRoot;
+    return projectRoot;
 }
 
 void BuilderConfig::setProjectName(const QString &name)
 {
-    m_projectName = name;
+    projectName = name;
 }
 
-QString BuilderConfig::projectName() const
+QString BuilderConfig::getProjectName() const
 {
-    return m_projectName;
+    return projectName;
 }
 
 QString BuilderConfig::layerPath(const QStringList &subPathList) const
@@ -69,14 +65,14 @@ QString BuilderConfig::layerPath(const QStringList &subPathList) const
     return list.join(QDir::separator());
 }
 
-void BuilderConfig::setExec(const QString &exec)
+void BuilderConfig::setExec(const QString &execParam)
 {
-    m_exec = exec;
+    exec = execParam;
 }
 
-QString BuilderConfig::exec() const
+QString BuilderConfig::getExec() const
 {
-    return m_exec;
+    return exec;
 }
 
 QString BuilderConfig::templatePath() const
@@ -99,12 +95,11 @@ QString configPath()
     for (const auto &configDir : configDirs) {
         QString configPath = QStringList {configDir, filename}.join(QDir::separator());
         if (QFile::exists(configPath)) {
-            qDebug() << "use" << configPath;
             return configPath;
         }
     }
 
-    return {};
+    return QString();
 }
 
 BuilderConfig *BuilderConfig::instance()

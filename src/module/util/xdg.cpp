@@ -249,13 +249,13 @@ QString getPathInXdgUserConfig(const QString &key)
     QFile userDirFile(userDirPath);
     if (!userDirFile.exists()) {
         qDebug() << "user-dirs.dirs not found";
-        return "";
+        return QString();
     }
 
     // read user-dirs.dirs file
     if (!userDirFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
         qDebug() << "user-dirs.dirs open failed";
-        return "";
+        return QString();
     }
 
     // load data for user-dirs.dirs file
@@ -269,7 +269,7 @@ QString getPathInXdgUserConfig(const QString &key)
             }
             auto specLine = readLine.at(1);
             if (specLine.isEmpty()) {
-                return "";
+                return QString();
             }
 
             // convert  xdg path to local path
@@ -279,7 +279,7 @@ QString getPathInXdgUserConfig(const QString &key)
             return specData;
         }
     }
-    return "";
+    return QString();
 }
 
 } // namespace util

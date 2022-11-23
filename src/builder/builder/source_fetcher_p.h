@@ -1,12 +1,11 @@
 /*
- * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     chenhuixing <chenhuixing@uniontech.com>
- *
- * Maintainer: chenhuixing <chenhuixing@uniontech.com>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
+
+#ifndef LINGLONG_SRC_BUILDER_BUILDER_SOURCE_FETCHER_P_H_
+#define LINGLONG_SRC_BUILDER_BUILDER_SOURCE_FETCHER_P_H_
 
 #include "source_fetcher.h"
 
@@ -47,3 +46,5 @@ public:
 };
 } // namespace builder
 } // namespace linglong
+
+#endif // LINGLONG_SRC_BUILDER_BUILDER_SOURCE_FETCHER_P_H_

@@ -1,14 +1,11 @@
 /*
- * Copyright (c) 2021. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#pragma once
+#ifndef LINGLONG_SRC_BUILDER_BUILDER_PROJECT_H_
+#define LINGLONG_SRC_BUILDER_BUILDER_PROJECT_H_
 
 #include <QObject>
 #include <QScopedPointer>
@@ -20,13 +17,13 @@
 namespace linglong {
 namespace builder {
 
-extern const char *DependTypeRuntime;
+extern const char * const DependTypeRuntime;
 
-extern const char *BuildScriptPath;
+extern const char * const BuildScriptPath;
 
-extern const char *PackageKindApp;
-extern const char *PackageKindLib;
-extern const char *PackageKindRuntime;
+extern const char * const PackageKindApp;
+extern const char * const PackageKindLib;
+extern const char * const PackageKindRuntime;
 
 class Variables : public JsonSerialize
 {
@@ -178,8 +175,8 @@ public:
     {
     public:
         explicit Config(const QString &root, const Project *project)
-            : m_projectRoot(root)
-            , m_project(project)
+            : projectRoot(root)
+            , project(project)
         {
         }
 
@@ -198,8 +195,8 @@ public:
         QString targetInstallPath(const QString &sub) const;
 
     private:
-        const QString m_projectRoot;
-        const Project *m_project;
+        const QString projectRoot;
+        const Project *project;
     };
 
     const Config &config() const;
@@ -220,6 +217,8 @@ package::Ref fuzzyRef(const JsonSerialize *obj);
 
 namespace linglong {
 namespace builder {
+
+// build template
 class Template : public JsonSerialize
 {
     Q_OBJECT;
@@ -232,3 +231,5 @@ public:
 } // namespace linglong
 
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::builder, Project)
+
+#endif // LINGLONG_SRC_BUILDER_BUILDER_PROJECT_H_

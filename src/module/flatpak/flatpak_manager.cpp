@@ -51,7 +51,7 @@ QString FlatpakManager::getRuntimePath(const QString &appId)
 
     if (!util::fileExists(manifestPath)) {
         qCritical() << manifestPath << " is not exist";
-        return "";
+        return QString();
     }
 
     QFile jsonFile(manifestPath);
@@ -62,13 +62,13 @@ QString FlatpakManager::getRuntimePath(const QString &appId)
     jsonFile.close();
     if (parseJsonErr.error != QJsonParseError::NoError) {
         qCritical() << "flatpak parse manifest.json err" << parseJsonErr.errorString();
-        return "";
+        return QString();
     }
 
     QJsonObject jsonObject = document.object();
     if (!jsonObject.contains("runtime") || !jsonObject.contains("runtime-version")) {
         qCritical() << "can not found key runtime or runtime-version";
-        return "";
+        return QString();
     }
 
     QString runtimeId = jsonObject["runtime"].toString();

@@ -1,11 +1,7 @@
 /*
- * Copyright (c) 2022. Uniontech Software Ltd. All rights reserved.
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
  *
- * Author:     Iceyer <me@iceyer.net>
- *
- * Maintainer: Iceyer <me@iceyer.net>
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include "source_fetcher.h"
@@ -167,7 +163,7 @@ util::Error SourceFetcherPrivate::handleLocalPatch()
 {
     // apply local patch
     qInfo() << QString("finding local patch");
-    if (source->patch.size() == 0) {
+    if (source->patch.isEmpty()) {
         qInfo() << QString("nothing to patch");
         return NoError();
     }
@@ -190,7 +186,7 @@ util::Error SourceFetcherPrivate::handleLocalSource()
 {
     Q_Q(SourceFetcher);
 
-    q->setSourceRoot(BuilderConfig::instance()->projectRoot());
+    q->setSourceRoot(BuilderConfig::instance()->getProjectRoot());
     return NoError();
 }
 

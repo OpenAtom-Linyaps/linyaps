@@ -142,9 +142,17 @@ linglong::util::Error commitBuildOutput(Project *project, AnnotationsOverlayfsRo
     };
 
     // Move some directories in files/share to entries
-    // directories like icons, mime, dbus-1, locale, deepin-manual
-    auto moveStatus = moveDir({"icons", "mime", "dbus-1", "locale", "autostart", "deepin-manual"},
+    // directories like icons, mime, dbus-1, locale
+    auto moveStatus = moveDir({"icons", "mime", "dbus-1", "locale", "autostart"},
                               project->config().cacheInstallPath("files/share"), entriesPath);
+    if (!moveStatus.success()) {
+        kill(fuseOverlayfsPid, SIGTERM);
+        return moveStatus;
+    }
+
+    // Move files/share/deepin-manual/manual-assets to entries/share/deepin-manual/manual-assets
+    moveStatus = moveDir({"manual-assets"}, project->config().cacheInstallPath("files/share/deepin-manual"),
+                         QStringList {entriesPath, "deepin-manual"}.join(QDir::separator()));
     if (!moveStatus.success()) {
         kill(fuseOverlayfsPid, SIGTERM);
         return moveStatus;

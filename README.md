@@ -4,46 +4,6 @@
 
 玲珑是玲珑塔的简称，既表示容器能对应用有管控作用，也表明了应用/运行时/系统向塔一样分层的思想。
 
-## Feature
-
-- [x] No root daemon, use setuid
-- [x] Standard oci runtime
-
-## Roadmap
-
-### Current
-
-- [ ] OCI Standard Box
-- [ ] App Manager Service
-  - [ ] Offline package installer
-  - [ ] Download && Install
-
-## Dependencies
-
-```bash
-#For release based on debian
-sudo apt update
-sudo apt-get install cmake build-essential \
-  libyaml-cpp-dev \
-  nlohmann-json3-dev \
-  libgtest-dev \
-  qt5-qmake \
-  qtbase5-dev \
-  libcurl4-gnutls-dev \
-  libglib2.0-dev \
-  libostree-dev
-```
-
-## Installation
-
-Install from web:
-
-```bash
-curl https://sh.linglong.dev | sh
-```
-
-Or you can install form source: [INSTALL.md](INSTALL.md)
-
 ## Getting help
 
 Any usage issues can ask for help via
@@ -63,7 +23,7 @@ We encourage you to report issues and contribute changes
 
 ## License
 
-This project is licensed under [GPLv3]().
+This project is licensed under [LGPL-3.0-or-later](LICENSE).
 
 ## Credits and references
 

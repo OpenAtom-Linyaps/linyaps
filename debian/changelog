@@ -1,6 +1,12 @@
+linglong (1.3.3.21-1) unstable; urgency=medium
+
+  * update version to 1.3.3.21-1 for deepin.
+
+ -- huqinghong <huqinghong@uniontech.com>  Thu, 24 Nov 2022 11:03:42 +0800
+
 linglong (1.3.3.20-1) unstable; urgency=medium
 
-  * update version to 1.3.3.19-1 for deepin.
+  * update version to 1.3.3.20-1 for deepin.
 
  -- chenhuixing <chenhuixing@uniontech.com>  Fri, 18 Nov 2022 18:38:12 +0800
 

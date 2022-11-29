@@ -634,7 +634,10 @@ int main(int argc, char **argv)
              QDBusPendingReply<linglong::service::QueryReply> dbusReply = sysPackageManager.Query(paramOption);
              dbusReply.waitForFinished();
              linglong::service::QueryReply reply = dbusReply.value();
-
+             if (reply.code != STATUS_CODE(kErrorPkgQuerySuccess)) {
+                 qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
+                 return -1;
+             }
              const auto appMetaInfoList =
                  linglong::util::arrayFromJson<linglong::package::AppMetaInfoList>(reply.result);
              printAppInfo(appMetaInfoList);

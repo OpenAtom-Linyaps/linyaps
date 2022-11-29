@@ -87,6 +87,11 @@ bool PackageManagerPrivate::getAppJsonArray(const QString &jsonString, QJsonValu
     }
 
     jsonValue = jsonObject.value(QStringLiteral("data"));
+    // 转义服务端传的ｎull
+    if (jsonValue.isNull()) {
+        jsonValue = QJsonArray::fromStringList({});
+        qWarning().noquote() << "recevied from server:" << jsonString;
+    }
     if (!jsonValue.isArray()) {
         err = "query failed, jsonString from server data format is not array";
         qCritical().noquote() << jsonString;
@@ -360,8 +365,8 @@ bool PackageManagerPrivate::checkAppRuntime(const QString &runtime, const QStrin
     }
     linglong::package::AppMetaInfoList appList;
     ret = loadAppInfo(appData, appList, err);
-    if (!ret) {
-        qCritical() << err;
+    if (!ret || appList.size() < 1) {
+        qCritical() << runtimeInfo << " not found in repo";
         return false;
     }
     // 查找最高版本，多版本场景安装应用appId要求完全匹配
@@ -413,8 +418,8 @@ bool PackageManagerPrivate::checkAppBase(const QString &runtime, const QString &
         return false;
     }
     ret = loadAppInfo(appData, appList, err);
-    if (!ret) {
-        qCritical() << err;
+    if (!ret || appList.size() < 1) {
+        qCritical() << runtimeList << " not found in repo";
         return false;
     }
 
@@ -439,8 +444,8 @@ bool PackageManagerPrivate::checkAppBase(const QString &runtime, const QString &
         return false;
     }
     ret = loadAppInfo(baseData, baseRuntimeList, err);
-    if (!ret) {
-        qCritical() << err;
+    if (!ret || appList.size() < 1) {
+        qCritical() << baseList << " not found in repo";
         return false;
     }
     // fix to do base runtime debug info, base runtime update
@@ -1110,7 +1115,7 @@ Reply PackageManagerPrivate::Update(const ParamOption &paramOption)
 
     linglong::package::AppMetaInfoList serverPkgList;
     ret = loadAppInfo(appData, serverPkgList, reply.message);
-    if (!ret) {
+    if (!ret || serverPkgList.size() < 1) {
         reply.message = "load app:" + appId + " info err";
         qCritical() << reply.message;
         reply.code = STATUS_CODE(kErrorPkgUpdateFailed);

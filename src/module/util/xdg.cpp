@@ -163,6 +163,7 @@ QStringList convertSpecialCharacters(const QStringList &args)
         arg.replace('<', QString("\\%1").arg('<'));
         arg.replace('|', QString("\\%1").arg('|'));
         arg.replace('&', QString("\\%1").arg('&'));
+        arg.replace(';', QString("\\%1").arg(';'));
         retArgs.push_back(arg);
     }
     return retArgs;

@@ -23,7 +23,7 @@ We encourage you to report issues and contribute changes
 
 ## License
 
-This project is licensed under [LGPL-3.0-or-later](LICENSES/LGPL-3.0-or-later.txt).
+This project is licensed under [LGPL-3.0-or-later](LICENSE).
 
 ## Credits and references
 

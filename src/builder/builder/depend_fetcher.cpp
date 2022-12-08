@@ -44,7 +44,9 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
 {
     auto ret = NoError();
 
-    repo::OSTreeRepo ostree(BuilderConfig::instance()->repoPath());
+    repo::OSTreeRepo ostree(BuilderConfig::instance()->repoPath(), BuilderConfig::instance()->remoteRepoEndpoint,
+                            BuilderConfig::instance()->remoteRepoName);
+
     // depends with source > depends from remote > depends from local
     auto dependRef = package::Ref("", dd_ptr->ref.appId, dd_ptr->ref.version, dd_ptr->ref.arch);
 

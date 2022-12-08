@@ -1,3 +1,11 @@
+linglong (1.3.4-1) unstable; urgency=medium
+
+  * 1. fix ll-cli query prompt in the case of a network failure
+  * 2. fix ll-cli run with special symbol
+  * 3. fix ll-cli support any repo name
+
+ -- huqinghong <huqinghong@uniontech.com>  Wed, 07 Dec 2022 15:44:01 +0800
+
 linglong (1.3.3.23-1) unstable; urgency=medium
 
   * update version to 1.3.3.23-1 for deepin.

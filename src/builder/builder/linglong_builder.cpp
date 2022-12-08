@@ -293,26 +293,21 @@ linglong::util::Error LinglongBuilder::initRepo()
     if (!QDir(BuilderConfig::instance()->ostreePath()).exists()) {
         util::ensureDir(BuilderConfig::instance()->ostreePath());
 
-        repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath());
+
+        const QString defaultRepoName = BuilderConfig::instance()->remoteRepoName;
+        const QString configUrl = BuilderConfig::instance()->remoteRepoEndpoint;
+
+        QString repoUrl =
+            configUrl.endsWith("/") ? configUrl + "repos/" + defaultRepoName : configUrl + "/repos/" + defaultRepoName;
+
+        repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath(), repoUrl, defaultRepoName);
 
         auto ret = repo.init("bare-user-only");
         if (!ret.success()) {
             return NewError(-1, "init ostree repo failed");
         }
 
-        QString defaultRepoName = "repo";
-        QString configUrl = "";
-
-        int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
-        if (STATUS_CODE(kSuccess) != statusCode) {
-            return NewError() << "call getLocalConfig api failed";
-        }
-
-        linglong::util::getLocalConfig("repoName", defaultRepoName);
-        QString repoUrl =
-            configUrl.endsWith("/") ? configUrl + "repos/" + defaultRepoName : configUrl + "/repos/" + defaultRepoName;
-
-        ret = repo.remoteAdd("repo", repoUrl);
+        ret = repo.remoteAdd(defaultRepoName, repoUrl);
         if (!ret.success()) {
             return NewError(-1, "add ostree remote failed");
         }

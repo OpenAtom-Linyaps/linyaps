@@ -1,8 +1,8 @@
 # 玲珑
 
-玲珑（Linglong）is the container application toolkit of deepin.
+Linglong is the container application toolkit of deepin.
 
-玲珑是玲珑塔的简称，既表示容器能对应用有管控作用，也表明了应用/运行时/系统向塔一样分层的思想。
+Linglong is the abbreviation of Linglong Tower, which not only means that the container can control the application, but also shows the idea that the application/runtime/system is layered like a tower.
 
 ## Getting help
 
@@ -17,9 +17,8 @@ Any usage issues can ask for help via
 
 We encourage you to report issues and contribute changes
 
-- [Contribution guide for developers](https://github.com/linuxdeepin/developer-center/wiki/Contribution-Guidelines-for-Developers-en)
-  . (English)
-- [开发者代码贡献指南](https://github.com/linuxdeepin/developer-center/wiki/Contribution-Guidelines-for-Developers) (中文)
+- [Contribution guide for developers](https://github.com/linuxdeepin/developer-center/wiki/Contribution-Guidelines-for-Developers-en) (English)
+- [Code Contribution Guidelines for Developers](https://github.com/linuxdeepin/developer-center/wiki/Contribution-Guidelines-for-Developers) (Chinese)
 
 ## License
 

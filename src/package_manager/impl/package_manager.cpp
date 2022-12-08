@@ -17,6 +17,7 @@
 #include <QDBusInterface>
 #include <QDBusReply>
 #include <QJsonArray>
+#include <QSettings>
 
 #include "app_status.h"
 #include "appinfo_cache.h"
@@ -40,12 +41,12 @@ PackageManagerPrivate::PackageManagerPrivate(PackageManager *parent)
                                 }
                                 return QDBusConnection::systemBus();
                             }())
-    , kRemoteRepoName("repo")
     , ostree(kLocalRepoPath)
     , q_ptr(parent)
 {
     // 如果没有config.json拷贝一份到${LINGLONG_ROOT}
     linglong::util::copyConfig();
+    linglong::util::getLocalConfig("repoName", remoteRepoName);
 }
 
 /*
@@ -110,7 +111,7 @@ bool PackageManagerPrivate::getAppJsonArray(const QString &jsonString, QJsonValu
  * @return bool: true:成功 false:失败
  */
 bool PackageManagerPrivate::loadAppInfo(const QString &jsonString, linglong::package::AppMetaInfoList &appList,
-                                              QString &err)
+                                        QString &err)
 {
     QJsonValue arrayValue;
     auto ret = getAppJsonArray(jsonString, arrayValue, err);
@@ -145,7 +146,7 @@ bool PackageManagerPrivate::loadAppInfo(const QString &jsonString, linglong::pac
 bool PackageManagerPrivate::getAppInfofromServer(const QString &pkgName, const QString &pkgVer,
                                                        const QString &pkgArch, QString &appData, QString &err)
 {
-    bool ret = HTTPCLIENT->queryRemoteApp(pkgName, pkgVer, pkgArch, appData);
+    bool ret = HTTPCLIENT->queryRemoteApp(remoteRepoName, pkgName, pkgVer, pkgArch, appData);
     if (!ret) {
         err = "getAppInfofromServer err, " + appData + " ,please check the network";
         qCritical().noquote() << "receive from server:" << appData;
@@ -169,8 +170,8 @@ bool PackageManagerPrivate::getAppInfofromServer(const QString &pkgName, const Q
  * @return bool: true:成功 false:失败
  */
 bool PackageManagerPrivate::downloadAppData(const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
-                                                  const QString &channel, const QString &module, const QString &dstPath,
-                                                  QString &err)
+                                            const QString &channel, const QString &module, const QString &dstPath,
+                                            QString &err)
 {
     bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(kLocalRepoPath, err);
     if (!ret) {
@@ -183,14 +184,14 @@ bool PackageManagerPrivate::downloadAppData(const QString &pkgName, const QStrin
     qInfo() << "downloadAppData ref:" << matchRef;
 
     // ret = repo.repoPull(repoPath, qrepoList[0], pkgName, err);
-    ret = OSTREE_REPO_HELPER->repoPullbyCmd(kLocalRepoPath, kRemoteRepoName, matchRef, err);
+    ret = OSTREE_REPO_HELPER->repoPullbyCmd(kLocalRepoPath, remoteRepoName, matchRef, err);
     if (!ret) {
         qCritical() << err;
         return false;
     }
     // checkout 目录
     // const QString dstPath = repoPath + "/AppData";
-    ret = OSTREE_REPO_HELPER->checkOutAppData(kLocalRepoPath, kRemoteRepoName, matchRef, dstPath, err);
+    ret = OSTREE_REPO_HELPER->checkOutAppData(kLocalRepoPath, remoteRepoName, matchRef, dstPath, err);
     if (!ret) {
         qCritical() << err;
         return false;
@@ -329,7 +330,7 @@ bool PackageManagerPrivate::installRuntime(linglong::package::AppMetaInfo *appIn
  * @return bool: true:安装成功或已安装返回true false:安装失败
  */
 bool PackageManagerPrivate::checkAppRuntime(const QString &runtime, const QString &channel, const QString &module,
-                                                  QString &err)
+                                            QString &err)
 {
     // runtime ref in repo org.deepin.Runtime/20/x86_64
     QStringList runtimeInfo = runtime.split("/");
@@ -366,7 +367,8 @@ bool PackageManagerPrivate::checkAppRuntime(const QString &runtime, const QStrin
     linglong::package::AppMetaInfoList appList;
     ret = loadAppInfo(appData, appList, err);
     if (!ret || appList.size() < 1) {
-        qCritical() << runtimeInfo << " not found in repo";
+        err = runtime + " not found in repo";
+        qCritical() << err;
         return false;
     }
     // 查找最高版本，多版本场景安装应用appId要求完全匹配
@@ -392,7 +394,7 @@ bool PackageManagerPrivate::checkAppRuntime(const QString &runtime, const QStrin
  * @return bool: true:安装成功或已安装返回true false:安装失败
  */
 bool PackageManagerPrivate::checkAppBase(const QString &runtime, const QString &channel, const QString &module,
-                                               QString &err)
+                                         QString &err)
 {
     // 通过runtime获取base ref
     QStringList runtimeList = runtime.split("/");
@@ -419,7 +421,8 @@ bool PackageManagerPrivate::checkAppBase(const QString &runtime, const QString &
     }
     ret = loadAppInfo(appData, appList, err);
     if (!ret || appList.size() < 1) {
-        qCritical() << runtimeList << " not found in repo";
+        err = runtime + " not found in repo";
+        qCritical() << err;
         return false;
     }
 
@@ -445,7 +448,8 @@ bool PackageManagerPrivate::checkAppBase(const QString &runtime, const QString &
     }
     ret = loadAppInfo(baseData, baseRuntimeList, err);
     if (!ret || appList.size() < 1) {
-        qCritical() << baseList << " not found in repo";
+        err = baseRef + " not found in repo";
+        qCritical() << err;
         return false;
     }
     // fix to do base runtime debug info, base runtime update
@@ -470,7 +474,7 @@ bool PackageManagerPrivate::checkAppBase(const QString &runtime, const QString &
  */
 linglong::package::AppMetaInfo *
 PackageManagerPrivate::getLatestRuntime(const QString &appId, const QString &version,
-                                              const linglong::package::AppMetaInfoList &appList)
+                                        const linglong::package::AppMetaInfoList &appList)
 {
     linglong::package::AppMetaInfo *latestApp = appList.at(0).data();
     if (appList.size() == 1) {
@@ -1208,12 +1212,13 @@ PackageManager::~PackageManager()
 {
 }
 
-Reply PackageManager::ModifyRepo(const QString &url)
+Reply PackageManager::ModifyRepo(const QString &name, const QString &url)
 {
     Reply reply;
     Q_D(PackageManager);
     QUrl cfgUrl(url);
-    if ((cfgUrl.scheme().toLower() != "http" && cfgUrl.scheme().toLower() != "https") || !cfgUrl.isValid()) {
+    if (name.trimmed().isEmpty() || (cfgUrl.scheme().toLower() != "http" && cfgUrl.scheme().toLower() != "https")
+        || !cfgUrl.isValid()) {
         reply.message = "url format error";
         reply.code = STATUS_CODE(kUserInputParamErr);
         return reply;
@@ -1234,24 +1239,42 @@ Reply PackageManager::ModifyRepo(const QString &url)
 
     QString dstUrl = "";
     if (url.endsWith("/")) {
-        dstUrl = url + "repos/repo";
+        dstUrl = url + "repos/" + name;
     } else {
-        dstUrl = url + "/repos/repo";
+        dstUrl = url + "/repos/" + name;
     }
+
+    // ostree 没有删除的命令 更换仓库需要先删除之前的老仓库配置,当前使用的仓库名需要从文件中读取
+    QString currentRepoName = "repo";
+    linglong::util::getLocalConfig("repoName", currentRepoName);
+    QString sectionName = QString("remote \"%1\"").arg(currentRepoName);
+
+    QSettings *repoCfg = new QSettings(ostreeCfg, QSettings::IniFormat);
+    repoCfg->beginGroup(sectionName);
+    QString oldUrl = repoCfg->value("url").toString();
+    repoCfg->remove("");
+    repoCfg->endGroup();
+    delete repoCfg;
+    qDebug() << "modify repo delete" << currentRepoName << oldUrl;
 
     // ostree config --repo=/persistent/linglong/repo set "remote \"repo\".url" https://repo-dev.linglong.space/repo/
     // ostree config文件中节名有""，QSettings会自动转义，不用QSettings直接修改ostree config文件
+    auto keyUrl = QString("remote \"%1\".url").arg(name);
     auto ret = linglong::runner::Runner(
-        "ostree", {"config", "--repo=" + d->kLocalRepoPath + "/repo", "set", "remote \"repo\".url", dstUrl},
-        1000 * 60 * 5);
+        "ostree", {"config", "--repo=" + d->kLocalRepoPath + "/repo", "set", keyUrl, dstUrl}, 1000 * 60 * 5);
+    auto keyGpg = QString("remote \"%1\".gpg-verify").arg(name);
+    ret |= linglong::runner::Runner(
+        "ostree", {"config", "--repo=" + d->kLocalRepoPath + "/repo", "set", keyGpg, "false"}, 1000 * 60 * 5);
     if (!ret) {
-        reply.message = "modify repo url failed";
+        reply.message = "modify repo config failed";
         qWarning() << reply.message;
         reply.code = STATUS_CODE(kErrorModifyRepoFailed);
         return reply;
     }
 
+    d->remoteRepoName = name;
     QJsonObject obj;
+    obj["repoName"] = name;
     obj["appDbUrl"] = url;
     QJsonDocument doc(obj);
     QFile jsonFile(serverCfg);
@@ -1260,7 +1283,7 @@ Reply PackageManager::ModifyRepo(const QString &url)
     wirteStream.setCodec("UTF-8");
     wirteStream << doc.toJson();
     jsonFile.close();
-
+    qDebug() << QString("modify repo name:%1 url:%2 success").arg(name).arg(url);
     reply.code = STATUS_CODE(kErrorModifyRepoSuccess);
     reply.message = "modify repo url success";
     return reply;

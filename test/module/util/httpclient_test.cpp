@@ -25,7 +25,7 @@ TEST(httpclient, test01)
 
     QtConcurrent::run([=]() {
         QString outMsg;
-        HTTPCLIENT->queryRemoteApp("cal", "", "x86_64", outMsg);
+        HTTPCLIENT->queryRemoteApp("repo", "cal", "", "x86_64", outMsg);
         EXPECT_EQ(outMsg.size() > 0, true);
     });
 }

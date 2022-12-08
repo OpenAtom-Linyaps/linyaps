@@ -812,7 +812,7 @@ package::Ref OSTreeRepo::remoteLatestRef(const package::Ref &ref)
     QString latestVer = "latest";
     QString ret;
 
-    if (!HTTPCLIENT->queryRemoteApp(ref.appId, ref.version, util::hostArch(), ret)) {
+    if (!HTTPCLIENT->queryRemoteApp(ref.repo, ref.appId, ref.version, util::hostArch(), ret)) {
         qCritical() << "query remote app failed";
         return package::Ref("", ref.channel, ref.appId, latestVer, ref.arch, ref.module);
     }

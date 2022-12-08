@@ -308,7 +308,9 @@ linglong::util::Error LinglongBuilder::initRepo()
             return NewError() << "call getLocalConfig api failed";
         }
 
-        QString repoUrl = configUrl.endsWith("/") ? configUrl + "repos/repo" : QStringList {configUrl, "repos/repo"}.join("/");
+        linglong::util::getLocalConfig("repoName", defaultRepoName);
+        QString repoUrl =
+            configUrl.endsWith("/") ? configUrl + "repos/" + defaultRepoName : configUrl + "/repos/" + defaultRepoName;
 
         ret = repo.remoteAdd(defaultRepoName, repoUrl);
         if (!ret.success()) {

@@ -312,7 +312,7 @@ linglong::util::Error LinglongBuilder::initRepo()
         QString repoUrl =
             configUrl.endsWith("/") ? configUrl + "repos/" + defaultRepoName : configUrl + "/repos/" + defaultRepoName;
 
-        ret = repo.remoteAdd(defaultRepoName, repoUrl);
+        ret = repo.remoteAdd("repo", repoUrl);
         if (!ret.success()) {
             return NewError(-1, "add ostree remote failed");
         }

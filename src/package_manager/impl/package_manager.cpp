@@ -124,9 +124,9 @@ bool PackageManagerPrivate::loadAppInfo(const QString &jsonString, linglong::pac
     QJsonArray arr = arrayValue.toArray();
     for (int i = 0; i < arr.size(); ++i) {
         QJsonObject dataObj = arr.at(i).toObject();
-        const QString jsonString = QString(QJsonDocument(dataObj).toJson(QJsonDocument::Compact));
-        // qInfo().noquote() << jsonString;
-        QPointer<package::AppMetaInfo> appItem(util::loadJsonString<package::AppMetaInfo>(jsonString));
+        const QString appString = QString(QJsonDocument(dataObj).toJson(QJsonDocument::Compact));
+        // qInfo().noquote() << appString;
+        QPointer<package::AppMetaInfo> appItem(util::loadJsonString<package::AppMetaInfo>(appString));
         appList.push_back(appItem);
     }
     return true;

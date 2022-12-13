@@ -630,7 +630,7 @@ int main(int argc, char **argv)
              paramOption.force = parser.isSet(optNoCache);
              paramOption.repoPoint = repoType;
              paramOption.appId = args.value(1);
-
+             sysPackageManager.setTimeout(1000 * 60 * 60 * 24);
              QDBusPendingReply<linglong::service::QueryReply> dbusReply = sysPackageManager.Query(paramOption);
              dbusReply.waitForFinished();
              linglong::service::QueryReply reply = dbusReply.value();
@@ -751,15 +751,18 @@ int main(int argc, char **argv)
              parser.addPositionalArgument("repo", "config remote repo", "repo");
              parser.addPositionalArgument("modify", "modify the url of repo", "modify");
              parser.addPositionalArgument("url", "the url of repo", "");
+             const auto optRepoName = QCommandLineOption("name", "the name of remote repo", "repo name", "repo");
+             parser.addOption(optRepoName);
              parser.process(app);
              args = parser.positionalArguments();
              const auto subCmd = args.value(1).trimmed();
              const auto url = args.value(2).trimmed();
+             const auto name = parser.value(optRepoName);
              if (url.isEmpty() || "modify" != subCmd || args.size() != 3) {
                  parser.showHelp(-1);
                  return -1;
              }
-             QDBusPendingReply<linglong::service::Reply> dbusReply = sysPackageManager.ModifyRepo(url);
+             QDBusPendingReply<linglong::service::Reply> dbusReply = sysPackageManager.ModifyRepo(name, url);
              dbusReply.waitForFinished();
              linglong::service::Reply reply = dbusReply.value();
              if (reply.code != STATUS_CODE(kErrorModifyRepoSuccess)) {

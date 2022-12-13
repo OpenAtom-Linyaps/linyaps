@@ -50,13 +50,14 @@ public Q_SLOTS:
     /**
      * @brief 修改仓库url
      *
+     * @param name 仓库name
      * @param url 仓库url地址
      *
      * @return Reply dbus方法调用应答 \n
      *          code:状态码 \n
      *          message:信息
      */
-    Reply ModifyRepo(const QString &url);
+    Reply ModifyRepo(const QString &name, const QString &url);
 
     /**
      * @brief 查询软件包下载安装状态

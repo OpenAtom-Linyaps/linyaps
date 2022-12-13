@@ -180,7 +180,7 @@ private:
     const QString sysLinglongInstalltions;
     const QString kAppInstallPath;
     const QString kLocalRepoPath;
-    const QString kRemoteRepoName;
+    QString remoteRepoName = "repo";
 
     // 记录子线程安装及更新状态 供查询进度信息使用
     QMap<QString, Reply> appState;

@@ -94,6 +94,7 @@ size_t writeData(void *content, size_t size, size_t nmemb, void *stream)
 /*
  * 向服务器请求指定包名\版本\架构数据
  *
+ * @param repoName: 查询仓库名
  * @param pkgName: 软件包包名
  * @param pkgVer: 软件包版本号
  * @param pkgArch: 软件包对应的架构
@@ -101,7 +102,8 @@ size_t writeData(void *content, size_t size, size_t nmemb, void *stream)
  *
  * @return bool: true:成功 false:失败
  */
-bool HttpClient::queryRemoteApp(const QString &pkgName, const QString &pkgVer, const QString &pkgArch, QString &outMsg)
+bool HttpClient::queryRemoteApp(const QString &repoName, const QString &pkgName, const QString &pkgVer,
+                                const QString &pkgArch, QString &outMsg)
 {
     QString configUrl = "";
     int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
@@ -121,6 +123,7 @@ bool HttpClient::queryRemoteApp(const QString &pkgName, const QString &pkgVer, c
     obj["AppId"] = pkgName;
     obj["version"] = pkgVer;
     obj["arch"] = pkgArch;
+    obj["repoName"] = repoName;
     const QUrl url(postUrl);
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
@@ -136,7 +139,62 @@ bool HttpClient::queryRemoteApp(const QString &pkgName, const QString &pkgVer, c
         } else {
             outMsg.append(QString(" err info:%1").arg(reply->errorString()));
             qCritical() << outMsg << reply->error();
-            qDebug() << "queryRemoteApp param:" << postUrl << pkgName << pkgVer << pkgArch;
+            qDebug() << "queryRemoteApp param:" << postUrl << repoName << pkgName << pkgVer << pkgArch;
+            reply->abort();
+        }
+        reply->deleteLater();
+        eventLoop.quit();
+    });
+    // 5min 超时
+    QTimer::singleShot(5 * 60 * 1000, &eventLoop, &QEventLoop::quit);
+    eventLoop.exec();
+    return ret;
+}
+
+/*
+ * 向服务器请求指定包名\版本\架构数据
+ *
+ * @param repoName: 查询仓库名
+ * @param repoUrl: 查询仓库Url地址
+ * @param pkgName: 软件包包名
+ * @param pkgVer: 软件包版本号
+ * @param pkgArch: 软件包对应的架构
+ * @param outMsg: 服务端返回的结果
+ *
+ * @return bool: true:成功 false:失败
+ */
+bool HttpClient::queryRemoteApp(const QString &repoName, const QString &repoUrl, const QString &pkgName, const QString &pkgVer,
+                                const QString &pkgArch, QString &outMsg)
+{
+    QString postUrl = "";
+    if (repoUrl.endsWith("/")) {
+        postUrl = repoUrl + "api/v0/apps/fuzzysearchapp";
+    } else {
+        postUrl = repoUrl + "/api/v0/apps/fuzzysearchapp";
+    }
+
+    bool ret = false;
+    QJsonObject obj;
+    obj["AppId"] = pkgName;
+    obj["version"] = pkgVer;
+    obj["arch"] = pkgArch;
+    obj["repoName"] = repoName;
+    const QUrl url(postUrl);
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    QJsonDocument doc(obj);
+    QByteArray data = doc.toJson();
+    QNetworkAccessManager mgr;
+    QNetworkReply *reply = mgr.post(request, data);
+    QEventLoop eventLoop;
+    QObject::connect(reply, &QNetworkReply::finished, &eventLoop, [&]() {
+        outMsg = QString::fromUtf8(reply->readAll());
+        if (reply->error() == QNetworkReply::NoError) {
+            ret = true;
+        } else {
+            outMsg.append(QString(" err info:%1").arg(reply->errorString()));
+            qCritical() << outMsg << reply->error();
+            qDebug() << "queryRemoteApp param:" << postUrl << repoName << pkgName << pkgVer << pkgArch;
             reply->abort();
         }
         reply->deleteLater();

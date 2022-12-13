@@ -693,19 +693,19 @@ linglong::util::Error OSTreeRepo::pull(const package::Ref &ref, bool force)
     Q_D(OSTreeRepo);
 
     // Fixme: remote name maybe not repo and there should support multiple remote
-    return WrapError(d->ostreeRun({"pull", "repo", "--mirror", ref.toString()}));
+    return WrapError(d->ostreeRun({"pull", d->remoteRepoName, "--mirror", ref.toString()}));
 }
 
 linglong::util::Error OSTreeRepo::pullAll(const package::Ref &ref, bool force)
 {
     Q_D(OSTreeRepo);
     // Fixme: remote name maybe not repo and there should support multiple remote
-    auto ret = d->ostreeRun({"pull", "repo", "--mirror", QStringList {ref.toString(), "runtime"}.join("/")});
+    auto ret = d->ostreeRun({"pull", d->remoteRepoName, "--mirror", QStringList {ref.toString(), "runtime"}.join("/")});
     if (!ret.success()) {
         return NewError(ret);
     }
 
-    ret = d->ostreeRun({"pull", "repo", "--mirror", QStringList {ref.toString(), "devel"}.join("/")});
+    ret = d->ostreeRun({"pull", d->remoteRepoName, "--mirror", QStringList {ref.toString(), "devel"}.join("/")});
 
     return WrapError(ret);
 }
@@ -812,7 +812,8 @@ package::Ref OSTreeRepo::remoteLatestRef(const package::Ref &ref)
     QString latestVer = "latest";
     QString ret;
 
-    if (!HTTPCLIENT->queryRemoteApp(ref.appId, ref.version, util::hostArch(), ret)) {
+    if (!HTTPCLIENT->queryRemoteApp(d->remoteRepoName, d->remoteEndpoint, ref.appId, ref.version, util::hostArch(),
+                                    ret)) {
         qCritical() << "query remote app failed";
         return package::Ref("", ref.channel, ref.appId, latestVer, ref.arch, ref.module);
     }

@@ -41,7 +41,6 @@ PackageManagerPrivate::PackageManagerPrivate(PackageManager *parent)
                                 }
                                 return QDBusConnection::systemBus();
                             }())
-    , ostree(kLocalRepoPath)
     , q_ptr(parent)
 {
     // 如果没有config.json拷贝一份到${LINGLONG_ROOT}
@@ -773,9 +772,9 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
     {
         auto installPath = savePath;
         qDebug() << "call systemHelperInterface.RebuildInstallPortal" << installPath, ref.toLocalFullRef();
-        QDBusReply<void> reply = systemHelperInterface.RebuildInstallPortal(installPath, ref.toString(), {});
-        if (!reply.isValid()) {
-            qWarning() << "process post install portal failed:" << reply.error();
+        QDBusReply<void> helperRet = systemHelperInterface.RebuildInstallPortal(installPath, ref.toString(), {});
+        if (!helperRet.isValid()) {
+            qWarning() << "process post install portal failed:" << helperRet.error();
         }
     }
 
@@ -1004,10 +1003,10 @@ Reply PackageManagerPrivate::Uninstall(const UninstallParamOption &paramOption)
             auto packageRootPath = installPath + "/" + arch;
             qDebug() << "call systemHelperInterface.RuinInstallPortal" << packageRootPath << ref.toLocalFullRef()
                      << paramOption.delAppData;
-            QDBusReply<void> reply =
+            QDBusReply<void> helperRet =
                 systemHelperInterface.RuinInstallPortal(packageRootPath, ref.toString(), variantMap);
-            if (!reply.isValid()) {
-                qWarning() << "process pre uninstall portal failed:" << reply.error();
+            if (!helperRet.isValid()) {
+                qWarning() << "process pre uninstall portal failed:" << helperRet.error();
             }
         }
 

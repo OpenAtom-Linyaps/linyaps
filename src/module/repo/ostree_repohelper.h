@@ -91,7 +91,7 @@ public:
      * @return bool: true:成功 false:失败
      */
     bool queryMatchRefs(const QString &repoPath, const QString &remoteName, const QString &pkgName,
-                        const QString &pkgVer, const QString &arch, QString &matchRef, QString &err);
+                        const QString &pkgVer, const QString &arch, QString &matchRef, QString &err) override;
 
     /*
      * 软件包数据从远端仓库pull到本地仓库
@@ -103,7 +103,7 @@ public:
      *
      * @return bool: true:成功 false:失败
      */
-    bool repoPull(const QString &repoPath, const QString &remoteName, const QString &pkgName, QString &err)
+    bool repoPull(const QString &repoPath, const QString &remoteName, const QString &pkgName, QString &err) override
     {
         return false;
     }
@@ -132,7 +132,7 @@ public:
      *
      * @return bool: true:成功 false:失败
      */
-    bool repoPullbyCmd(const QString &destPath, const QString &remoteName, const QString &ref, QString &err);
+    bool repoPullbyCmd(const QString &destPath, const QString &remoteName, const QString &ref, QString &err) override;
 
     /*
      * 获取下载任务对应的进程Id

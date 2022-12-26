@@ -187,8 +187,6 @@ private:
 
     bool noDBusMode = false;
 
-    repo::OSTreeRepo ostree;
-    repo::RepoClient repoClient;
     OrgDeepinLinglongSystemHelperInterface systemHelperInterface;
 
 public:

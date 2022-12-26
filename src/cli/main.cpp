@@ -762,9 +762,14 @@ int main(int argc, char **argv)
                  parser.showHelp(-1);
                  return -1;
              }
-             QDBusPendingReply<linglong::service::Reply> dbusReply = sysPackageManager.ModifyRepo(name, url);
-             dbusReply.waitForFinished();
-             linglong::service::Reply reply = dbusReply.value();
+             linglong::service::Reply reply;
+             if (!parser.isSet(optNoDbus)) {
+                 QDBusPendingReply<linglong::service::Reply> dbusReply = sysPackageManager.ModifyRepo(name, url);
+                 dbusReply.waitForFinished();
+                 reply = dbusReply.value();
+             } else {
+                 reply = PACKAGE_MANAGER->ModifyRepo(name, url);
+             }
              if (reply.code != STATUS_CODE(kErrorModifyRepoSuccess)) {
                  qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
                  return -1;

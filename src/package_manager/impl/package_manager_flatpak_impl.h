@@ -29,7 +29,7 @@ public:
     Reply Uninstall(const UninstallParamOption &paramOption) override;
     QueryReply Query(const QueryParamOption &paramOption) override;
     Reply Update(const ParamOption &paramOption) override { return Reply(); }
-    inline Reply Exec(const ExecParamOption &paramOption)
+    inline Reply Exec(const ExecParamOption &paramOption) override
     {
         Reply reply;
         reply.code = STATUS_CODE(kFail);

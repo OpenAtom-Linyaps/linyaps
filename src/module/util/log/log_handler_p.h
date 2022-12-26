@@ -28,7 +28,7 @@ class LogHandlerPrivate : public QObject
 {
     Q_OBJECT
 public:
-    LogHandlerPrivate(LogHandler *parent);
+    explicit LogHandlerPrivate(LogHandler *parent);
     ~LogHandlerPrivate();
 
 private:

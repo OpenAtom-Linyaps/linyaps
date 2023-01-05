@@ -1249,8 +1249,31 @@ void App::exec(QString cmd, QString env, QString cwd)
     p.setenv(envList);
     auto appCmd = util::splitExec(cmd);
     if (cmd.isEmpty() || cmd.isNull()) {
-        appCmd = d->r->process->args;
+        // find desktop file
+        auto appRef = package::Ref(package->ref);
+        QString appRootPath = d->repo->rootOfLayer(appRef);
+        
+        QDir applicationsDir(QStringList {appRootPath, "entries", "applications"}.join(QDir::separator()));
+        auto desktopFilenameList = applicationsDir.entryList({"*.desktop"}, QDir::Files);
+        if (desktopFilenameList.length() <= 0) {
+            return;
+        }
+        
+        util::DesktopEntry desktopEntry(applicationsDir.absoluteFilePath(desktopFilenameList.value(0)));
+        
+        // 当执行ll-cli run appid时，从entries目录获取执行参数
+        auto execArgs = util::parseExec(desktopEntry.rawValue("Exec"));
+        
+        // 移除 ll-cli run xxx --exec参数
+        auto execIndex = execArgs.indexOf("--exec");
+        for (int i = 0; i <= execIndex; ++i) {
+             execArgs.removeFirst();
+        }
+        // 移除类似%u/%F类型参数
+        execArgs.removeAt(execArgs.indexOf(QRegExp("^%\\w$")));
+        appCmd = execArgs; 
     }
+
     if(appCmd.isEmpty()){
         return;
     }

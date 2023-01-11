@@ -640,8 +640,14 @@ public:
         auto appLinglongPath = util::ensureUserDir({".linglong", appId});
         mountMap.push_back(qMakePair(appLinglongPath, util::getUserFile(".linglong/" + appId)));
 
+        // .local/share/icons需要被沙箱外程序访问，临时挂载到.linglong/下
+        auto appLocalIconPath = util::ensureUserDir({".linglong", appId, "/share/icons"});
+        mountMap.push_back(qMakePair(util::getUserFile(".local/share/icons"), appLocalIconPath));
+
         auto appLocalDataPath = util::ensureUserDir({".linglong", appId, "/share"});
         mountMap.push_back(qMakePair(appLocalDataPath, util::getUserFile(".local/share")));
+
+        mountMap.push_back(qMakePair(appLocalIconPath, util::getUserFile(".local/share/icons")));
 
         auto appConfigPath = util::ensureUserDir({".linglong", appId, "/config"});
         mountMap.push_back(qMakePair(appConfigPath, util::getUserFile(".config")));
@@ -1252,29 +1258,29 @@ void App::exec(QString cmd, QString env, QString cwd)
         // find desktop file
         auto appRef = package::Ref(package->ref);
         QString appRootPath = d->repo->rootOfLayer(appRef);
-        
+
         QDir applicationsDir(QStringList {appRootPath, "entries", "applications"}.join(QDir::separator()));
         auto desktopFilenameList = applicationsDir.entryList({"*.desktop"}, QDir::Files);
         if (desktopFilenameList.length() <= 0) {
             return;
         }
-        
+
         util::DesktopEntry desktopEntry(applicationsDir.absoluteFilePath(desktopFilenameList.value(0)));
-        
+
         // 当执行ll-cli run appid时，从entries目录获取执行参数
         auto execArgs = util::parseExec(desktopEntry.rawValue("Exec"));
-        
+
         // 移除 ll-cli run xxx --exec参数
         auto execIndex = execArgs.indexOf("--exec");
         for (int i = 0; i <= execIndex; ++i) {
-             execArgs.removeFirst();
+            execArgs.removeFirst();
         }
         // 移除类似%u/%F类型参数
         execArgs.removeAt(execArgs.indexOf(QRegExp("^%\\w$")));
-        appCmd = execArgs; 
+        appCmd = execArgs;
     }
 
-    if(appCmd.isEmpty()){
+    if (appCmd.isEmpty()) {
         return;
     }
     p.setargs(appCmd);

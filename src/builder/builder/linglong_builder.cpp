@@ -89,7 +89,7 @@ linglong::util::Error commitBuildOutput(Project *project, AnnotationsOverlayfsRo
             auto configSections = desktopEntry.sections();
             for (auto section : configSections) {
                 auto exec = desktopEntry.rawValue("Exec", section);
-                exec = QString("ll-cli run %1 --exec %2").arg(appId, exec);
+                exec = QString("ll-cli run %1 --exec '%2'").arg(appId, exec);
                 desktopEntry.set(section, "Exec", exec);
 
                 // The section TryExec affects starting from the launcher, set it to null.

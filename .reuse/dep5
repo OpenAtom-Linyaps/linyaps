@@ -44,7 +44,7 @@ Copyright: None
 License: CC0-1.0
 
 # in
-Files: .clang-format .cmake-format.py test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64/entries/applications/org.deepin.calculator.desktop src/builder/resource/org.deepin.demo/elements/*.bst src/builder/resource/org.deepin.demo/files/resource/entries/applications/org.deepin.demo.desktop src/builder/resource/org.deepin.demo/project.conf
+Files: .editorconfig .clang-format .cmake-format.py test/data/demo/pkg-demo/org.deepin.calculator/1.2.2/x86_64/entries/applications/org.deepin.calculator.desktop src/builder/resource/org.deepin.demo/elements/*.bst src/builder/resource/org.deepin.demo/files/resource/entries/applications/org.deepin.demo.desktop src/builder/resource/org.deepin.demo/project.conf
 Copyright: None
 License: CC0-1.0
 

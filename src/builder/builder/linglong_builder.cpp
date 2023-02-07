@@ -161,7 +161,7 @@ linglong::util::Error commitBuildOutput(Project *project, AnnotationsOverlayfsRo
     // Move files/lib/systemd to entries/systemd
     if (util::dirExists(project->config().cacheInstallPath("files/lib/systemd"))) {
         util::copyDir(project->config().cacheInstallPath("files/lib/systemd"),
-                      QStringList {entriesPath, "systemd"}.join(QDir::separator()));
+                                 QStringList {entriesPath, "systemd"}.join(QDir::separator()));
 
         util::removeDir(project->config().cacheInstallPath("files/lib/systemd"));
     }
@@ -289,24 +289,34 @@ linglong::util::Error LinglongBuilder::config(const QString &userName, const QSt
 
 linglong::util::Error LinglongBuilder::initRepo()
 {
+    auto ret = NoError();
+
+    const QString defaultRepoName = BuilderConfig::instance()->remoteRepoName;
+    const QString configUrl = BuilderConfig::instance()->remoteRepoEndpoint;
+
+    QString repoUrl =
+        configUrl.endsWith("/") ? configUrl + "repos/" + defaultRepoName : configUrl + "/repos/" + defaultRepoName;
+
+    repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath(), repoUrl, defaultRepoName);
     // if local ostree is not exist, create and init it
     if (!QDir(BuilderConfig::instance()->ostreePath()).exists()) {
         util::ensureDir(BuilderConfig::instance()->ostreePath());
 
-
-        const QString defaultRepoName = BuilderConfig::instance()->remoteRepoName;
-        const QString configUrl = BuilderConfig::instance()->remoteRepoEndpoint;
-
-        QString repoUrl =
-            configUrl.endsWith("/") ? configUrl + "repos/" + defaultRepoName : configUrl + "/repos/" + defaultRepoName;
-
-        repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath(), repoUrl, defaultRepoName);
-
-        auto ret = repo.init("bare-user-only");
+        ret = repo.init("bare-user-only");
         if (!ret.success()) {
             return NewError(-1, "init ostree repo failed");
         }
+    }
 
+    // async builder.yaml to ostree config
+    auto currentRemoteUrl = repo.remoteShowUrl(defaultRepoName);
+    if (currentRemoteUrl.isEmpty()) {
+        ret = repo.remoteAdd(defaultRepoName, repoUrl);
+        if (!ret.success()) {
+            return NewError(-1, "add ostree remote failed");
+        }
+    } else if (currentRemoteUrl != repoUrl) {
+        repo.remoteDelete(defaultRepoName);
         ret = repo.remoteAdd(defaultRepoName, repoUrl);
         if (!ret.success()) {
             return NewError(-1, "add ostree remote failed");
@@ -910,8 +920,8 @@ util::Error LinglongBuilder::import()
 
 linglong::util::Error LinglongBuilder::run()
 {
-    repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath());
-
+    repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath(), BuilderConfig::instance()->remoteRepoEndpoint,
+                            BuilderConfig::instance()->remoteRepoName);
     linglong::util::Error ret(NoError());
 
     auto projectConfigPath = QStringList {BuilderConfig::instance()->getProjectRoot(), "linglong.yaml"}.join("/");
@@ -937,14 +947,12 @@ linglong::util::Error LinglongBuilder::run()
         targetPath = BuilderConfig::instance()->layerPath({project->runtimeRef().toLocalRefString()});
         linglong::util::ensureDir(targetPath);
 
-        auto remoteRuntimeRef = package::Ref("", "linglong", project->runtimeRef().appId, project->runtimeRef().version,
-                                             project->runtimeRef().arch);
+        auto remoteRuntimeRef =
+            package::Ref(BuilderConfig::instance()->remoteRepoName, "linglong", project->runtimeRef().appId,
+                         project->runtimeRef().version, project->runtimeRef().arch, "");
 
-        ret = repo.checkoutAll(remoteRuntimeRef, "", targetPath);
-        if (!ret.success()) {
-            ret = repo.checkoutAll(project->runtimeRef(), "", targetPath);
-        }
-
+        auto latestRuntimeRef = repo.remoteLatestRef(remoteRuntimeRef);
+        ret = repo.checkoutAll(latestRuntimeRef, "", targetPath);
         if (!ret.success()) {
             return NewError(-1, "checkout runtime files failed");
         }

@@ -78,9 +78,12 @@ private:
         ostree.setArguments(ostreeArgs);
 
         QProcess::connect(&ostree, &QProcess::readyReadStandardOutput, [&]() {
-            qDebug() << QString::fromLocal8Bit(ostree.readAllStandardOutput());
+            // ostree.readAllStandardOutput() can only be read once.
             if (stdout) {
                 *stdout += ostree.readAllStandardOutput();
+                 qDebug() << QString::fromLocal8Bit(*stdout);
+            } else {
+                 qDebug() << QString::fromLocal8Bit(ostree.readAllStandardOutput());
             }
         });
 
@@ -699,13 +702,13 @@ linglong::util::Error OSTreeRepo::pull(const package::Ref &ref, bool force)
 linglong::util::Error OSTreeRepo::pullAll(const package::Ref &ref, bool force)
 {
     Q_D(OSTreeRepo);
-    // Fixme: remote name maybe not repo and there should support multiple remote
-    auto ret = d->ostreeRun({"pull", d->remoteRepoName, "--mirror", QStringList {ref.toString(), "runtime"}.join("/")});
+
+    auto ret = d->ostreeRun({"pull", QStringList {ref.toString(), "runtime"}.join("/")});
     if (!ret.success()) {
         return NewError(ret);
     }
 
-    ret = d->ostreeRun({"pull", d->remoteRepoName, "--mirror", QStringList {ref.toString(), "devel"}.join("/")});
+    ret = d->ostreeRun({"pull", QStringList {ref.toString(), "devel"}.join("/")});
 
     return WrapError(ret);
 }
@@ -722,6 +725,13 @@ linglong::util::Error OSTreeRepo::remoteAdd(const QString &repoName, const QStri
     Q_D(OSTreeRepo);
 
     return WrapError(d->ostreeRun({"remote", "add", "--no-gpg-verify", repoName, repoUrl}));
+}
+
+linglong::util::Error OSTreeRepo::remoteDelete(const QString &repoName) 
+{
+    Q_D(OSTreeRepo);
+
+    return WrapError(d->ostreeRun({"remote", "delete", repoName}));
 }
 
 OSTreeRepo::OSTreeRepo(const QString &path)
@@ -782,6 +792,23 @@ bool OSTreeRepo::isRefExists(const package::Ref &ref)
     return ret;
 }
 
+QString OSTreeRepo::remoteShowUrl(const QString &repoName)
+{
+    Q_D(OSTreeRepo);
+
+    QByteArray ostreeOutput;
+    QString repoUrl;
+    auto ret = d->ostreeRun({"remote", "show-url", repoName}, &ostreeOutput);
+
+    for (const auto &item : QString::fromLocal8Bit(ostreeOutput).trimmed().split('\n')) {
+        if (!item.trimmed().isEmpty()) {
+            repoUrl = item;
+        }
+    }
+
+    return repoUrl;
+}
+
 package::Ref OSTreeRepo::localLatestRef(const package::Ref &ref)
 {
     Q_D(OSTreeRepo);
@@ -815,7 +842,7 @@ package::Ref OSTreeRepo::remoteLatestRef(const package::Ref &ref)
     if (!HTTPCLIENT->queryRemoteApp(d->remoteRepoName, d->remoteEndpoint, ref.appId, ref.version, util::hostArch(),
                                     ret)) {
         qCritical() << "query remote app failed";
-        return package::Ref("", ref.channel, ref.appId, latestVer, ref.arch, ref.module);
+        return package::Ref(ref.repo, ref.channel, ref.appId, latestVer, ref.arch, ref.module);
     }
 
     auto retObject = QJsonDocument::fromJson(ret.toUtf8()).object();
@@ -826,7 +853,7 @@ package::Ref OSTreeRepo::remoteLatestRef(const package::Ref &ref)
         latestVer = linglong::util::compareVersion(latestVer, info->version) > 0 ? latestVer : info->version;
     }
 
-    return package::Ref("", ref.channel, ref.appId, latestVer, ref.arch, ref.module);
+    return package::Ref(ref.repo, ref.channel, ref.appId, latestVer, ref.arch, ref.module);
 }
 
 package::Ref OSTreeRepo::latestOfRef(const QString &appId, const QString &appVersion)

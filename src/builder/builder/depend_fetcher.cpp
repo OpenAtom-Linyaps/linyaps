@@ -51,7 +51,8 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
     auto dependRef = package::Ref("", dd_ptr->ref.appId, dd_ptr->ref.version, dd_ptr->ref.arch);
 
     if (!dd_ptr->buildDepend->source) {
-        dependRef = package::Ref("", "linglong", dd_ptr->ref.appId, dd_ptr->ref.version, dd_ptr->ref.arch, "");
+        dependRef = package::Ref(BuilderConfig::instance()->remoteRepoName, "linglong", dd_ptr->ref.appId,
+                                 dd_ptr->ref.version, dd_ptr->ref.arch, "");
         dependRef = ostree.remoteLatestRef(dependRef);
 
         qInfo() << QString("fetching dependency: %1 %2").arg(dependRef.appId).arg(dependRef.version);

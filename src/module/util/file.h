@@ -289,8 +289,10 @@ void inline linkDirFiles(const QString &src, const QString &dst)
             linkDirFiles(info.filePath(), dst + "/" + info.fileName());
             continue;
         }
-        // 链接文件
-        linkFile(info.absoluteFilePath(), QDir(dst).absolutePath() + "/" + info.fileName());
+        // 计算src下文件相对于dst目录的路径，做软链接
+        //linkFile(info.absoluteFilePath(), QDir(dst).absolutePath() + "/" + info.fileName());
+        linkFile(QDir(dst).relativeFilePath(info.absoluteFilePath()), QDir(dst).absolutePath() + "/" + info.fileName());
+
     }
 }
 

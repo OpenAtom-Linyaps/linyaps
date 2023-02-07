@@ -141,34 +141,15 @@ linglong::util::Error commitBuildOutput(Project *project, AnnotationsOverlayfsRo
         return NoError();
     };
 
-    // Move some directories in files/share to entries
-    // directories like icons, mime, dbus-1, locale
-    auto moveStatus = moveDir({"icons", "mime", "dbus-1", "locale", "autostart"},
-                              project->config().cacheInstallPath("files/share"), entriesPath);
-    if (!moveStatus.success()) {
-        kill(fuseOverlayfsPid, SIGTERM);
-        return moveStatus;
-    }
-
-    // Move files/share/deepin-manual/manual-assets to entries/share/deepin-manual/manual-assets
-    moveStatus = moveDir({"manual-assets"}, project->config().cacheInstallPath("files/share/deepin-manual"),
-                         QStringList {entriesPath, "deepin-manual"}.join(QDir::separator()));
-    if (!moveStatus.success()) {
-        kill(fuseOverlayfsPid, SIGTERM);
-        return moveStatus;
-    }
-
-    // Move files/lib/systemd to entries/systemd
-    if (util::dirExists(project->config().cacheInstallPath("files/lib/systemd"))) {
-        util::copyDir(project->config().cacheInstallPath("files/lib/systemd"),
-                                 QStringList {entriesPath, "systemd"}.join(QDir::separator()));
-
-        util::removeDir(project->config().cacheInstallPath("files/lib/systemd"));
-    }
+    // link files/share to entries/share/
+    linglong::util::linkDirFiles(project->config().cacheInstallPath("files/share"), entriesPath);
+    // link files/lib/systemd to entries/systemd
+    linglong::util::linkDirFiles(project->config().cacheInstallPath("files/lib/systemd/user"),
+                                 QStringList {entriesPath, "systemd/user"}.join(QDir::separator()));
 
     // Move runtime-install/files/debug to devel-install/files/debug
     linglong::util::ensureDir(project->config().cacheInstallPath("devel-install", "files"));
-    moveStatus =
+    auto moveStatus =
         moveDir({"debug", "include", "mkspec ", "cmake", "pkgconfig"}, project->config().cacheInstallPath("files"),
                 project->config().cacheInstallPath("devel-install", "files"));
     if (!moveStatus.success()) {

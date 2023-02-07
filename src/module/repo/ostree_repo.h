@@ -67,6 +67,8 @@ public:
 
     linglong::util::Error removeRef(const package::Ref &ref);
 
+    linglong::util::Error remoteDelete(const QString &repoName);
+
     linglong::util::Error checkoutAll(const package::Ref &ref, const QString &subPath, const QString &target);
 
     std::tuple<QString, util::Error> compressOstreeData(const package::Ref &ref);
@@ -74,6 +76,8 @@ public:
     QString rootOfLayer(const package::Ref &ref) override;
 
     bool isRefExists(const package::Ref &ref);
+
+    QString remoteShowUrl(const QString &repoName);
 
     package::Ref localLatestRef(const package::Ref &ref);
 

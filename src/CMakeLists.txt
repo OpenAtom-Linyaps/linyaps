@@ -2,6 +2,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
 add_definitions("-DQT_MESSAGELOGCONTEXT")
+add_definitions("-DQT_NO_KEYWORDS")
 
 find_package(PkgConfig REQUIRED)
 find_package(Qt5Core REQUIRED)

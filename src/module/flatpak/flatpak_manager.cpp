@@ -30,11 +30,11 @@ QStringList findFileList(const QString &startPath, const QStringList &filter)
     QStringList fileName;
     QDir dir(startPath);
     // 搜索当前目录符合条件的文件
-    foreach (QString file, dir.entryList(filter, QDir::Files)) {
+    for (const auto &file : dir.entryList(filter, QDir::Files)) {
         fileName += startPath + '/' + file;
     }
     // 搜索当前目录的子目录符合条件的文件
-    foreach (QString subDir, dir.entryList(QDir::AllDirs | QDir::NoDotAndDotDot)) {
+    for (const auto &subDir : dir.entryList(QDir::AllDirs | QDir::NoDotAndDotDot)) {
         // 过滤掉export目录
         if (subDir == "export") {
             continue;

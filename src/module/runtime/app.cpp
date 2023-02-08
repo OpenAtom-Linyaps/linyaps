@@ -1128,7 +1128,7 @@ public:
         QFile templateFile(":/app.yaml");
         templateFile.open(QIODevice::ReadOnly);
         auto templateData = templateFile.readAll();
-        foreach (auto const &k, variables.keys()) {
+        for (const auto &k : variables.keys()) {
             templateData.replace(QString("@%1@").arg(k).toLocal8Bit(),
                                  variables.value(k).toLocal8Bit());
         }

@@ -91,6 +91,7 @@ QString configPath()
     const QString filename = "linglong/builder.yaml";
     QStringList configDirs = QStandardPaths::standardLocations(QStandardPaths::ConfigLocation);
     configDirs.push_front("/etc");
+    configDirs.push_front("/usr/local/etc");
     configDirs.push_front(QStringList{QDir::currentPath(), ".."}.join(QDir::separator()));
     configDirs.push_front(QDir::currentPath());
 

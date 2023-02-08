@@ -15,16 +15,15 @@ namespace linglong {
 namespace runner {
 
 /*!
- * Runner 不带返回值的命令调用
- * @tparam T QString
- * @tparam Y QStringList
+ * Runner 带返回值的命令调用
  * @param program 执行的应用程序
  * @param args 参数
  * @param timeout 30000
+ * @param stdout 命令输出内容 
  * @return
  */
-template<typename T = QString, typename Y = QStringList, typename P = int>
-auto Runner(const T program = "ostree", const Y args = "", const P timeout = 30000) -> decltype(true)
+inline bool Runner(const QString program = "ostree", const QStringList args = {}, const int timeout = 30000,
+            QByteArray *stdout = nullptr)
 {
     QProcess runner;
     qDebug() << program << args;
@@ -44,6 +43,10 @@ auto Runner(const T program = "ostree", const Y args = "", const P timeout = 300
                     << ", info msg:" << QString::fromLocal8Bit(runner.readAllStandardOutput())
                     << ", err msg:" << QString::fromLocal8Bit(runner.readAllStandardError());
         return false;
+    } else {
+        if (stdout) {
+            *stdout += runner.readAllStandardOutput();
+        }
     }
     return true;
 };

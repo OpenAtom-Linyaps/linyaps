@@ -232,6 +232,21 @@ int main(int argc, char **argv)
 
              return result.code();
          }},
+        {"track",
+         [&](QCommandLineParser &parser) -> int {
+             parser.clearPositionalArguments();
+
+             parser.addPositionalArgument("track", "track the latest commit and update it", "track");
+
+             parser.process(app);
+
+             auto result = builder->track();
+             if (!result.success()) {
+                 qCritical() << result;
+             }
+
+             return result.code();
+         }},
         {"push",
          [&](QCommandLineParser &parser) -> int {
              parser.clearPositionalArguments();

@@ -36,6 +36,8 @@ public:
 
     linglong::util::Error run() override;
 
+    linglong::util::Error track() override;
+
     linglong::util::Error initRepo();
 
     linglong::util::Error buildFlow(Project *project);

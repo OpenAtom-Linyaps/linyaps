@@ -10,6 +10,7 @@
 #include <linux/prctl.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
+#include <fstream>
 
 #include <QCoreApplication>
 #include <QUrl>
@@ -20,6 +21,7 @@
 #include "module/util/serialize/yaml.h"
 #include "module/util/uuid.h"
 #include "module/util/xdg.h"
+#include "module/util/runner.h"
 #include "module/runtime/oci.h"
 #include "module/runtime/container.h"
 #include "module/repo/ostree_repo.h"
@@ -410,6 +412,41 @@ linglong::util::Error LinglongBuilder::create(const QString &projectName)
 
     if (!QFile::copy(templeteFile, configFilePath)) {
         return NewError(-1, "templete file is not found");
+    }
+
+    return NoError();
+}
+
+linglong::util::Error LinglongBuilder::track()
+{
+    auto projectConfigPath =
+        QStringList {BuilderConfig::instance()->getProjectRoot(), "linglong.yaml"}.join(QDir::separator());
+
+    if (!QFileInfo::exists(projectConfigPath)) {
+        qCritical() << "ll-builder should run in the root directory of the linglong project";
+        return NewError(-1, "linglong.yaml not found");
+    }
+
+    QScopedPointer<Project> project(formYaml<Project>(YAML::LoadFile(projectConfigPath.toStdString())));
+
+    if ("git" == project->source->kind) {
+        QByteArray gitOutput;
+        QString latestCommit;
+        // default git ref is HEAD
+        auto gitRef = project->source->version.isEmpty() ? "HEAD" : project->source->version;
+        auto ret = runner::Runner("git", {"ls-remote", project->source->url, gitRef}, -1, &gitOutput);
+        if (ret) {
+            latestCommit = QString::fromLocal8Bit(gitOutput).trimmed().split("\t").first();
+            qDebug() << latestCommit;
+
+            if (project->source->commit == latestCommit) {
+                qInfo() << "current commit is the latest, nothing to update";
+            } else {
+                std::ofstream fout(projectConfigPath.toStdString());
+                fout << toYaml(project.get());
+                qInfo() << "update commit to:" << latestCommit;
+            }
+        }
     }
 
     return NoError();

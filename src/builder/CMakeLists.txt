@@ -44,10 +44,10 @@ set(RESOURCES
     resource/cmake.yaml
     resource/default.yaml
     resource/qmake.yaml
-    resource/template.yaml
+    resource/example.yaml
 )
 
-set(CONFIG_FILE # cmake-format: sortable
+set(SYS_CONFIG_FILE # cmake-format: sortable
                 resource/builder.yaml
 )
 
@@ -76,6 +76,6 @@ target_link_libraries(
           Qt5::WebSockets
 )
 
-install(TARGETS ll-builder RUNTIME DESTINATION bin)
-install(FILES ${RESOURCES} DESTINATION share/deepin/ll-builder/template)
-install(FILES ${CONFIG_FILE} DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/linglong)
+install(TARGETS ll-builder RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES ${RESOURCES} DESTINATION ${CMAKE_INSTALL_DATADIR}/deepin/ll-builder/template)
+install(FILES ${SYS_CONFIG_FILE} DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/linglong)

@@ -108,14 +108,28 @@ public:
             return -1;
         }
 
-        auto templatePath = QStringList {BuilderConfig::instance()->templatePath(), templateName}.join("/");
+        auto templatePath =
+            QStringList {BuilderConfig::instance()->templatePath(), templateName}.join(QDir::separator());
 
-        if (!QFileInfo::exists(templatePath)) {
-            qCritical() << templatePath << "is not found";
-            return -1;
+        QScopedPointer<Template> temp;
+        YAML::Node tempNode;
+
+        if (QFileInfo::exists(templatePath)) {
+            tempNode = YAML::LoadFile(templatePath.toStdString());
+        } else {
+            QFile templateFile(QStringList {":", templateName}.join(QDir::separator()));
+
+            if (templateFile.open(QFile::ReadOnly | QFile::Text)) {
+                QTextStream ts(&templateFile);
+                QString fileContent = ts.readAll();
+
+                tempNode = YAML::Load(fileContent.toStdString());
+            }
+
+            templateFile.close();
         }
 
-        QScopedPointer<Template> temp(formYaml<Template>(YAML::LoadFile(templatePath.toStdString())));
+        temp.reset(formYaml<Template>(tempNode));
 
         if (q_ptr->variables == nullptr) {
             auto variable = new Variables();

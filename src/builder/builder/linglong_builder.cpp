@@ -399,19 +399,20 @@ int startContainer(Container *c, Runtime *r)
 
 linglong::util::Error LinglongBuilder::create(const QString &projectName)
 {
-    auto projectPath = QStringList {QDir::currentPath(), projectName}.join("/");
-    auto configFilePath = QStringList {projectPath, "linglong.yaml"}.join("/");
-    auto templeteFile = QStringList {BuilderConfig::instance()->templatePath(), "template.yaml"}.join("/");
+    auto projectPath = QStringList {QDir::currentPath(), projectName}.join(QDir::separator());
+    auto configFilePath = QStringList {projectPath, "linglong.yaml"}.join(QDir::separator());
+    auto templeteFilePath =
+        QStringList {BuilderConfig::instance()->templatePath(), "example.yaml"}.join(QDir::separator());
 
-    // TODO: 判断projectName名称合法性
-    // 在当前目录创建项目文件夹
     auto ret = QDir().mkpath(projectPath);
     if (!ret) {
         return NewError(-1, "project already exists");
     }
 
-    if (!QFile::copy(templeteFile, configFilePath)) {
-        return NewError(-1, "templete file is not found");
+    if (QFileInfo::exists(templeteFilePath)) {
+        QFile::copy(templeteFilePath, configFilePath);
+    } else {
+        QFile::copy(":/example.yaml", configFilePath);
     }
 
     return NoError();

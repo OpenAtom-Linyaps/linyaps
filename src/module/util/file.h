@@ -251,7 +251,7 @@ void inline copyDir(const QString &src, const QString &dst)
 
     QFileInfoList list = srcDir.entryInfoList();
 
-    foreach (QFileInfo info, list) {
+    for (const auto &info : list) {
         if (info.fileName() == "." || info.fileName() == "..") {
             continue;
         }
@@ -280,7 +280,7 @@ void inline linkDirFiles(const QString &src, const QString &dst)
 
     QFileInfoList list = srcDir.entryInfoList();
 
-    foreach (QFileInfo info, list) {
+    for (const auto &info : list) {
         if (info.fileName() == "." || info.fileName() == "..") {
             continue;
         }
@@ -313,7 +313,7 @@ void inline removeDstDirLinkFiles(const QString &src, const QString &dst)
 
     QFileInfoList list = srcDir.entryInfoList();
 
-    foreach (QFileInfo info, list) {
+    for (const auto &info : list) {
         if (info.fileName() == "." || info.fileName() == "..") {
             continue;
         }

@@ -1103,7 +1103,7 @@ Reply PackageManagerPrivate::Uninstall(const UninstallParamOption &paramOption)
                 QDir dir(installPath + "/" + arch);
                 dir.setFilter(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
                 QFileInfoList fileList = dir.entryInfoList();
-                foreach (QFileInfo file, fileList) {
+                for (const auto &file : fileList) {
                     if (file.isFile()) {
                         file.dir().remove(file.fileName());
                     } else {

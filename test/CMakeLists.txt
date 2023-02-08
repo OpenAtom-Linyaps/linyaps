@@ -2,6 +2,7 @@ enable_testing()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+add_definitions("-DQT_NO_KEYWORDS")
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)

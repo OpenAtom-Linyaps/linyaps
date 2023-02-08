@@ -174,7 +174,7 @@ void linglong::util::LogHandlerPrivate::autoDeleteLog()
 
     QDir dir(logDir.path());
     QFileInfoList fileList = dir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot);
-    foreach (QFileInfo f, fileList) {
+    for (const auto &f : fileList) {
         dateTime2 = f.lastModified();
         if (dateTime2 < dateTime1) { // 只要日志时间小于前30天的时间就删除
             dir.remove(f.absoluteFilePath());

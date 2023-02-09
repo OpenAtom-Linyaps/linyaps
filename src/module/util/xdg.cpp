@@ -6,12 +6,12 @@
 
 #include "xdg.h"
 
-#include <wordexp.h>
-
 #include <QDebug>
 #include <QDir>
 #include <QMap>
 #include <QStandardPaths>
+
+#include <wordexp.h>
 
 namespace linglong {
 namespace util {
@@ -142,10 +142,10 @@ QPair<QString, QString> parseEnvKeyValue(QString env, const QString &sep)
     auto sepPos = env.indexOf(sep);
 
     if (sepPos < 0) {
-        return {env, ""};
+        return { env, "" };
     }
 
-    return {env.left(sepPos), env.right(env.length() - sepPos - 1)};
+    return { env.left(sepPos), env.right(env.length() - sepPos - 1) };
 }
 
 QStringList convertSpecialCharacters(const QStringList &args)
@@ -172,21 +172,22 @@ QStringList convertSpecialCharacters(const QStringList &args)
 QMap<QString, QString> getUserDirMap()
 {
     static QMap<QString, QString> const USER_DIR_MAP = {
-        {"desktop", QStandardPaths::writableLocation(QStandardPaths::DesktopLocation)},
-        {"documents", QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)},
-        {"downloads", QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)},
-        {"music", QStandardPaths::writableLocation(QStandardPaths::MusicLocation)},
-        {"pictures", QStandardPaths::writableLocation(QStandardPaths::PicturesLocation)},
-        {"picture", QStandardPaths::writableLocation(QStandardPaths::PicturesLocation)},
-        {"videos", QStandardPaths::writableLocation(QStandardPaths::MoviesLocation)},
-        {"templates", ""},
-        {"home", QStandardPaths::writableLocation(QStandardPaths::HomeLocation)},
-        {"cache", QStandardPaths::writableLocation(QStandardPaths::CacheLocation)},
-        {"config", QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)},
-        {"data", QStandardPaths::writableLocation(QStandardPaths::DataLocation)},
-        {"runtime", QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation)},
-        {"temp", QStandardPaths::writableLocation(QStandardPaths::TempLocation)},
-        {"public_share", ""}};
+        { "desktop", QStandardPaths::writableLocation(QStandardPaths::DesktopLocation) },
+        { "documents", QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) },
+        { "downloads", QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) },
+        { "music", QStandardPaths::writableLocation(QStandardPaths::MusicLocation) },
+        { "pictures", QStandardPaths::writableLocation(QStandardPaths::PicturesLocation) },
+        { "picture", QStandardPaths::writableLocation(QStandardPaths::PicturesLocation) },
+        { "videos", QStandardPaths::writableLocation(QStandardPaths::MoviesLocation) },
+        { "templates", "" },
+        { "home", QStandardPaths::writableLocation(QStandardPaths::HomeLocation) },
+        { "cache", QStandardPaths::writableLocation(QStandardPaths::CacheLocation) },
+        { "config", QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) },
+        { "data", QStandardPaths::writableLocation(QStandardPaths::DataLocation) },
+        { "runtime", QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation) },
+        { "temp", QStandardPaths::writableLocation(QStandardPaths::TempLocation) },
+        { "public_share", "" }
+    };
 
     return USER_DIR_MAP;
 }
@@ -211,27 +212,28 @@ QPair<bool, QString> getXdgDir(QString name)
     auto foundResult = getUserDirMap().value(name.toLower(), "");
 
     if (!foundResult.isEmpty()) {
-        return {checkPathIsExists(foundResult), foundResult};
+        return { checkPathIsExists(foundResult), foundResult };
     } else if (name.toLower() == "public_share") {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 4, 0)
-        auto publicSharePath = QStandardPaths::writableLocation(QStandardPaths::PublicShareLocation);
-        return {checkPathIsExists(publicSharePath), publicSharePath};
+        auto publicSharePath =
+                QStandardPaths::writableLocation(QStandardPaths::PublicShareLocation);
+        return { checkPathIsExists(publicSharePath), publicSharePath };
 #else
         // read user-dirs.dirs XDG_PUBLICSHARE_DIR
         auto publicSharePath = getPathInXdgUserConfig("XDG_PUBLICSHARE_DIR");
-        return {checkPathIsExists(publicSharePath), publicSharePath};
+        return { checkPathIsExists(publicSharePath), publicSharePath };
 #endif
     } else if (name.toLower() == "templates") {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 4, 0)
         auto templatesPath = QStandardPaths::writableLocation(QStandardPaths::TemplatesLocation);
-        return {checkPathIsExists(templatesPath), templatesPath};
+        return { checkPathIsExists(templatesPath), templatesPath };
 #else
         // read user-dirs.dirs XDG_TEMPLATES_DIR
         auto templatesPath = getPathInXdgUserConfig("XDG_TEMPLATES_DIR");
-        return {checkPathIsExists(templatesPath), templatesPath};
+        return { checkPathIsExists(templatesPath), templatesPath };
 #endif
     }
-    return {false, ""};
+    return { false, "" };
 }
 
 QList<QString> getXdgUserDir()
@@ -244,7 +246,8 @@ QList<QString> getXdgUserDir()
 
 QString getPathInXdgUserConfig(const QString &key)
 {
-    auto userDirPath = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/user-dirs.dirs";
+    auto userDirPath =
+            QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/user-dirs.dirs";
 
     // check user-dirs.dirs file
     QFile userDirFile(userDirPath);
@@ -275,7 +278,8 @@ QString getPathInXdgUserConfig(const QString &key)
 
             // convert  xdg path to local path
             auto specData = QString(specLine);
-            specData.replace("$HOME", QStandardPaths::writableLocation(QStandardPaths::HomeLocation));
+            specData.replace("$HOME",
+                             QStandardPaths::writableLocation(QStandardPaths::HomeLocation));
             specData.replace("\"", "");
             return specData;
         }

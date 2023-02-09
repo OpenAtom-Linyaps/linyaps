@@ -7,15 +7,16 @@
 #ifndef LINGLONG_SRC_MODULE_UTIL_DESKTOP_ENTRY_H_
 #define LINGLONG_SRC_MODULE_UTIL_DESKTOP_ENTRY_H_
 
-#include <QString>
-#include <QScopedPointer>
-
 #include "result.h"
+
+#include <QScopedPointer>
+#include <QString>
 
 namespace linglong {
 namespace util {
 
 class DesktopEntryPrivate;
+
 class DesktopEntry
 {
 public:
@@ -26,7 +27,8 @@ public:
 
     void set(const QString &section, const QString &key, const QString &defaultValue = QString());
 
-    QString rawValue(const QString &key, const QString &section = SectionDesktopEntry,
+    QString rawValue(const QString &key,
+                     const QString &section = SectionDesktopEntry,
                      const QString &defaultValue = QString());
 
     QStringList sections();

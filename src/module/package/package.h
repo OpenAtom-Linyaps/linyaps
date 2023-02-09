@@ -7,10 +7,10 @@
 #ifndef LINGLONG_SRC_MODULE_PACKAGE_PACKAGE_H_
 #define LINGLONG_SRC_MODULE_PACKAGE_PACKAGE_H_
 
-#include <fcntl.h>
-#include <string>
-#include <sys/stat.h>
-#include <sys/types.h>
+#include "module/util/file.h"
+#include "module/util/serialize/json.h"
+#include "module/util/status_code.h"
+#include "ref.h"
 
 #include <QDBusArgument>
 #include <QDebug>
@@ -20,10 +20,11 @@
 #include <QObject>
 #include <QTemporaryDir>
 
-#include "module/util/file.h"
-#include "module/util/serialize/json.h"
-#include "module/util/status_code.h"
-#include "ref.h"
+#include <string>
+
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 // 当前在线包对应的包名/版本/架构/uab存储URL信息
 namespace linglong {

@@ -6,11 +6,11 @@
 
 #include <gtest/gtest.h>
 
+#include "module/util/xdg.h"
+
 #include <QDebug>
 #include <QDir>
 #include <QStandardPaths>
-
-#include "module/util/xdg.h"
 
 TEST(Moduel_Util, Tool)
 {
@@ -30,8 +30,8 @@ TEST(Moduel_Util, Tool)
 
 TEST(Moduel_Util, convertSpecialCharacters)
 {
-    QStringList args1 = {"/home/qwe/Video/test test/test.mp4"};
-    QStringList args2 = {"/home/qwe/Video/test/测试 音乐.mp4"};
+    QStringList args1 = { "/home/qwe/Video/test test/test.mp4" };
+    QStringList args2 = { "/home/qwe/Video/test/测试 音乐.mp4" };
 
     auto retArgs1 = linglong::util::convertSpecialCharacters(args1);
     auto retArgs2 = linglong::util::convertSpecialCharacters(args2);
@@ -106,7 +106,8 @@ TEST(Module_Util, Xdg01)
     auto r11 = linglong::util::getXdgDir("public_share");
     qInfo() << r11;
     EXPECT_EQ(r11.first, true);
-    EXPECT_EQ(r11.second, QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/.Public");
+    EXPECT_EQ(r11.second,
+              QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/.Public");
 }
 
 TEST(Module_Util, Xdg02)
@@ -129,5 +130,6 @@ TEST(Module_Util, Xdg02)
     QString r4 = "XDG_PUBLICSHARE_DIR";
     auto r4XdgPath = linglong::util::getPathInXdgUserConfig(r4);
     qInfo() << r4;
-    EXPECT_EQ(r4XdgPath, QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/.Public");
+    EXPECT_EQ(r4XdgPath,
+              QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/.Public");
 }

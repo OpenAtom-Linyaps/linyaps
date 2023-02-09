@@ -6,12 +6,12 @@
 
 #include <gtest/gtest.h>
 
+#include "src/module/runtime/container.h"
+#include "src/module/runtime/oci.h"
+
 #include <QFile>
 #include <QJsonDocument>
 #include <QtDBus>
-
-#include "src/module/runtime/container.h"
-#include "src/module/runtime/oci.h"
 
 TEST(Serialize, QtJsonOCI)
 {

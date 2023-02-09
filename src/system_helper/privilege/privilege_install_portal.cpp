@@ -6,14 +6,14 @@
 
 #include "privilege_install_portal.h"
 
-#include <QDir>
-#include <QDirIterator>
-#include <QDBusError>
-
 #include "module/dbus_ipc/package_manager_param.h"
 #include "module/package/ref.h"
 #include "module/util/file.h"
 #include "module/util/serialize/yaml.h"
+
+#include <QDBusError>
+#include <QDir>
+#include <QDirIterator>
 
 namespace linglong {
 namespace system {
@@ -55,12 +55,16 @@ static bool hasPrivilege(const QString &ref, const QStringList &whiteList)
     return false;
 }
 
-static void rebuildFileRule(const QString &installPath, const QString &ref, const FilePortalRule *rule)
+static void rebuildFileRule(const QString &installPath,
+                            const QString &ref,
+                            const FilePortalRule *rule)
 {
     QDir sourceDir(installPath);
 
     qDebug() << "rebuild file rule" << installPath << ref << rule;
-    QDirIterator iter(installPath, QDir::Files | QDir::NoSymLinks | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+    QDirIterator iter(installPath,
+                      QDir::Files | QDir::NoSymLinks | QDir::NoDotAndDotDot,
+                      QDirIterator::Subdirectories);
     while (iter.hasNext()) {
         iter.next();
         const auto relativeFilePath = sourceDir.relativeFilePath(iter.filePath());
@@ -68,9 +72,11 @@ static void rebuildFileRule(const QString &installPath, const QString &ref, cons
             const auto targetFilePath = rule->target + QDir::separator() + iter.fileName();
             // TODO: save file to db and remove when uninstall
             QFileInfo targetFileInfo(targetFilePath);
-            // FIXME: if another version is install, need an conflict or force, just remove is not so safe
+            // FIXME: if another version is install, need an conflict or force, just remove is not
+            // so safe
             if (targetFileInfo.isSymLink()) {
-                qWarning() << "remove" << targetFilePath << "-->" << QFile(targetFilePath).symLinkTarget();
+                qWarning() << "remove" << targetFilePath << "-->"
+                           << QFile(targetFilePath).symLinkTarget();
                 QFile::remove(targetFilePath);
             }
             qDebug() << "link file" << iter.filePath() << targetFilePath;
@@ -86,7 +92,9 @@ static void ruinFileRule(const QString &installPath, const QString &ref, const F
     QDir sourceDir(installPath);
 
     qDebug() << "ruin file rule" << installPath << ref << rule;
-    QDirIterator iter(installPath, QDir::Files | QDir::NoSymLinks | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+    QDirIterator iter(installPath,
+                      QDir::Files | QDir::NoSymLinks | QDir::NoDotAndDotDot,
+                      QDirIterator::Subdirectories);
     while (iter.hasNext()) {
         iter.next();
         const auto relativeFilePath = sourceDir.relativeFilePath(iter.filePath());
@@ -103,7 +111,9 @@ static void ruinFileRule(const QString &installPath, const QString &ref, const F
     }
 }
 
-util::Error rebuildPrivilegeInstallPortal(const QString &installPath, const QString &ref, const QVariantMap &options)
+util::Error rebuildPrivilegeInstallPortal(const QString &installPath,
+                                          const QString &ref,
+                                          const QVariantMap &options)
 {
     YAML::Node doc = YAML::Load(PrivilegePortalRule);
     QScopedPointer<PortalRule> privilegePortalRule(formYaml<PortalRule>(doc));
@@ -123,7 +133,9 @@ util::Error rebuildPrivilegeInstallPortal(const QString &installPath, const QStr
     return NoError();
 }
 
-util::Error ruinPrivilegeInstallPortal(const QString &installPath, const QString &ref, const QVariantMap &options)
+util::Error ruinPrivilegeInstallPortal(const QString &installPath,
+                                       const QString &ref,
+                                       const QVariantMap &options)
 {
     YAML::Node doc = YAML::Load(PrivilegePortalRule);
     QScopedPointer<PortalRule> privilegePortalRule(formYaml<PortalRule>(doc));

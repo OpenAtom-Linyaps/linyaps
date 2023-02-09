@@ -7,20 +7,22 @@
 #ifndef LINGLONG_SRC_MODULE_UTIL_VERSION_SEMVER_H_
 #define LINGLONG_SRC_MODULE_UTIL_VERSION_SEMVER_H_
 
+#include "module/package/ref.h"
+
 #include <QRegularExpression>
 #include <QString>
 #include <QStringList>
 
-#include "module/package/ref.h"
-
 namespace linglong {
 namespace util {
 
-const QString regex =
-    "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:\\.(0|[1-9]\\d*))?(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$";
+const QString regex = "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:\\.(0|[1-9]\\d*))?(?:-((?:"
+                      "0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-"
+                      "9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$";
 
-// semver2.0 regex matches major.minor.patch-prerelease+buildinfo. https://semver.org/spec/v2.0.0.html
-// linglong regex matches major.minor.patch.unknow-prerelease+buildinfo
+// semver2.0 regex matches major.minor.patch-prerelease+buildinfo.
+// https://semver.org/spec/v2.0.0.html linglong regex matches
+// major.minor.patch.unknow-prerelease+buildinfo
 
 /*!
  * 判断版本号是否满足规范
@@ -46,7 +48,7 @@ bool isRegular(const QString &version)
  */
 QStringList matchGroup(const QString &version)
 {
-    QStringList matchVersion = {"-1", "-1", "-1", "-1", "", ""};
+    QStringList matchVersion = { "-1", "-1", "-1", "-1", "", "" };
     QRegularExpression regexExp(regex);
     QRegularExpressionMatch matched = regexExp.match(version);
 

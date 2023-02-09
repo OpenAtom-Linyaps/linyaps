@@ -6,10 +6,10 @@
 
 #include <gtest/gtest.h>
 
+#include "src/module/util/uuid.h"
+
 #include <QDebug>
 #include <QDir>
-
-#include "src/module/util/uuid.h"
 
 TEST(Moduel_Util, uuid)
 {

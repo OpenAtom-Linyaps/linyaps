@@ -59,7 +59,7 @@ bool OstreeRepoHelper::ensureRepoEnv(const QString &repoPath, QString &err)
     const std::string repoPathTmp = repoPath.toStdString();
     GCancellable *cancellable = NULL;
     GError *error = NULL;
-    char info[MAX_ERRINFO_BUFSIZE] = {'\0'};
+    char info[MAX_ERRINFO_BUFSIZE] = { '\0' };
     if (repoPathTmp.empty()) {
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s param err", __FILE__, __func__);
         err = info;
@@ -81,8 +81,13 @@ bool OstreeRepoHelper::ensureRepoEnv(const QString &repoPath, QString &err)
         // 校验创建的仓库是否ok
         if (!ostree_repo_open(repo, cancellable, &error)) {
             qInfo() << "ostree_repo_open error:" << error->message;
-            snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s ostree_repo_open:%s error:%s", __FILE__, __func__,
-                     repoPathTmp.c_str(), error->message);
+            snprintf(info,
+                     MAX_ERRINFO_BUFSIZE,
+                     "%s, function:%s ostree_repo_open:%s error:%s",
+                     __FILE__,
+                     __func__,
+                     repoPathTmp.c_str(),
+                     error->message);
             err = QString(QLatin1String(info));
             g_object_unref(repodir);
             return false;
@@ -102,9 +107,11 @@ bool OstreeRepoHelper::ensureRepoEnv(const QString &repoPath, QString &err)
  *
  * @return bool: true:查询成功 false:失败
  */
-bool OstreeRepoHelper::getRemoteRepoList(const QString &repoPath, QVector<QString> &vec, QString &err)
+bool OstreeRepoHelper::getRemoteRepoList(const QString &repoPath,
+                                         QVector<QString> &vec,
+                                         QString &err)
 {
-    char info[MAX_ERRINFO_BUFSIZE] = {'\0'};
+    char info[MAX_ERRINFO_BUFSIZE] = { '\0' };
     if (repoPath.isEmpty()) {
         snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s param err", __FILE__, __func__);
         // err = info;
@@ -113,7 +120,11 @@ bool OstreeRepoHelper::getRemoteRepoList(const QString &repoPath, QVector<QStrin
     }
     // 校验本地仓库是否创建
     if (!pLingLongDir->repo || pLingLongDir->basedir != repoPath) {
-        snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s repo has not been created", __FILE__, __func__);
+        snprintf(info,
+                 MAX_ERRINFO_BUFSIZE,
+                 "%s, function:%s repo has not been created",
+                 __FILE__,
+                 __func__);
         // err = info;
         err = QString(QLatin1String(info));
         return false;
@@ -129,7 +140,11 @@ bool OstreeRepoHelper::getRemoteRepoList(const QString &repoPath, QVector<QStrin
             vec.append(QLatin1String(res[i]));
         }
     } else {
-        snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s no remote repo found", __FILE__, __func__);
+        snprintf(info,
+                 MAX_ERRINFO_BUFSIZE,
+                 "%s, function:%s no remote repo found",
+                 __FILE__,
+                 __func__);
         // err = info;
         err = QString(QLatin1String(info));
         return false;
@@ -150,23 +165,30 @@ bool OstreeRepoHelper::getRemoteRepoList(const QString &repoPath, QVector<QStrin
  *
  * @return bool: true:成功 false:失败
  */
-bool OstreeRepoHelper::fetchRemoteSummary(OstreeRepo *repo, const char *name, GBytes **outSummary,
-                                          GBytes **outSummarySig, GCancellable *cancellable, GError **error)
+bool OstreeRepoHelper::fetchRemoteSummary(OstreeRepo *repo,
+                                          const char *name,
+                                          GBytes **outSummary,
+                                          GBytes **outSummarySig,
+                                          GCancellable *cancellable,
+                                          GError **error)
 {
     g_autofree char *url = NULL;
     g_autoptr(GBytes) summary = NULL;
     g_autoptr(GBytes) summarySig = NULL;
 
     if (!ostree_repo_remote_get_url(repo, name, &url, error)) {
-        // fprintf(stdout, "fetchRemoteSummary ostree_repo_remote_get_url error:%s\n", (*error)->message);
+        // fprintf(stdout, "fetchRemoteSummary ostree_repo_remote_get_url error:%s\n",
+        // (*error)->message);
         qInfo() << "fetchRemoteSummary ostree_repo_remote_get_url error:" << (*error)->message;
         return false;
     }
     // fprintf(stdout, "fetchRemoteSummary remote %s,url:%s\n", name, url);
 
     if (!ostree_repo_remote_fetch_summary(repo, name, &summary, &summarySig, cancellable, error)) {
-        // fprintf(stdout, "fetchRemoteSummary ostree_repo_remote_fetch_summary error:%s\n", (*error)->message);
-        qInfo() << "fetchRemoteSummary ostree_repo_remote_fetch_summary error:" << (*error)->message;
+        // fprintf(stdout, "fetchRemoteSummary ostree_repo_remote_fetch_summary error:%s\n",
+        // (*error)->message);
+        qInfo() << "fetchRemoteSummary ostree_repo_remote_fetch_summary error:"
+                << (*error)->message;
         return false;
     }
 
@@ -187,7 +209,8 @@ bool OstreeRepoHelper::fetchRemoteSummary(OstreeRepo *repo, const char *name, GB
  * @param ref_map: summary信息中解析出的ref map信息
  * @param outRefs: 仓库软件包索引信息
  */
-void OstreeRepoHelper::getPkgRefsFromRefsMap(GVariant *ref_map, std::map<std::string, std::string> &outRefs)
+void OstreeRepoHelper::getPkgRefsFromRefsMap(GVariant *ref_map,
+                                             std::map<std::string, std::string> &outRefs)
 {
     GVariant *value;
     GVariantIter ref_iter;
@@ -227,7 +250,8 @@ void OstreeRepoHelper::getPkgRefsFromRefsMap(GVariant *ref_map, std::map<std::st
  * @param summary: 远端仓库Summary信息
  * @param outRefs: 远端仓库软件包索引信息
  */
-void OstreeRepoHelper::getPkgRefsBySummary(GVariant *summary, std::map<std::string, std::string> &outRefs)
+void OstreeRepoHelper::getPkgRefsBySummary(GVariant *summary,
+                                           std::map<std::string, std::string> &outRefs)
 {
     // g_autoptr(GHashTable) ret_all_refs = NULL;
     g_autoptr(GVariant) ref_map = NULL;
@@ -249,10 +273,12 @@ void OstreeRepoHelper::getPkgRefsBySummary(GVariant *summary, std::map<std::stri
  *
  * @return bool: true:成功 false:失败
  */
-bool OstreeRepoHelper::getRemoteRefs(const QString &repoPath, const QString &remoteName,
-                                     QMap<QString, QString> &outRefs, QString &err)
+bool OstreeRepoHelper::getRemoteRefs(const QString &repoPath,
+                                     const QString &remoteName,
+                                     QMap<QString, QString> &outRefs,
+                                     QString &err)
 {
-    char info[MAX_ERRINFO_BUFSIZE] = {'\0'};
+    char info[MAX_ERRINFO_BUFSIZE] = { '\0' };
     if (remoteName.isEmpty()) {
         // fprintf(stdout, "getRemoteRefs param err\n");
         qInfo() << "getRemoteRefs param err";
@@ -262,7 +288,11 @@ bool OstreeRepoHelper::getRemoteRefs(const QString &repoPath, const QString &rem
     }
 
     if (!pLingLongDir->repo || pLingLongDir->basedir != repoPath) {
-        snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s repo has not been created", __FILE__, __func__);
+        snprintf(info,
+                 MAX_ERRINFO_BUFSIZE,
+                 "%s, function:%s repo has not been created",
+                 __FILE__,
+                 __func__);
         err = info;
         return false;
     }
@@ -271,19 +301,28 @@ bool OstreeRepoHelper::getRemoteRefs(const QString &repoPath, const QString &rem
     g_autoptr(GBytes) summarySigBytes = NULL;
     GCancellable *cancellable = NULL;
     GError *error = NULL;
-    bool ret = fetchRemoteSummary(pLingLongDir->repo, remoteNameTmp.c_str(), &summaryBytes, &summarySigBytes,
-                                  cancellable, &error);
+    bool ret = fetchRemoteSummary(pLingLongDir->repo,
+                                  remoteNameTmp.c_str(),
+                                  &summaryBytes,
+                                  &summarySigBytes,
+                                  cancellable,
+                                  &error);
     if (!ret) {
         if (err != NULL) {
-            snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s err:%s", __FILE__, __func__, error->message);
+            snprintf(info,
+                     MAX_ERRINFO_BUFSIZE,
+                     "%s, function:%s err:%s",
+                     __FILE__,
+                     __func__,
+                     error->message);
             err = info;
         } else {
             err = "getRemoteRefs remote repo err";
         }
         return false;
     }
-    GVariant *summary =
-        g_variant_ref_sink(g_variant_new_from_bytes(OSTREE_SUMMARY_GVARIANT_FORMAT, summaryBytes, FALSE));
+    GVariant *summary = g_variant_ref_sink(
+            g_variant_new_from_bytes(OSTREE_SUMMARY_GVARIANT_FORMAT, summaryBytes, FALSE));
     // std::map转QMap
     std::map<std::string, std::string> outRet;
     getPkgRefsBySummary(summary, outRet);
@@ -300,7 +339,9 @@ bool OstreeRepoHelper::getRemoteRefs(const QString &repoPath, const QString &rem
  * @param separator: 分割字符串
  * @param result: 分割结果
  */
-void OstreeRepoHelper::splitStr(std::string str, std::string separator, std::vector<std::string> &result)
+void OstreeRepoHelper::splitStr(std::string str,
+                                std::string separator,
+                                std::vector<std::string> &result)
 {
     size_t cutAt;
     while ((cutAt = str.find_first_of(separator)) != str.npos) {
@@ -348,10 +389,15 @@ bool OstreeRepoHelper::resolveRef(const std::string &fullRef, std::vector<std::s
  *
  * @return bool: true:成功 false:失败
  */
-bool OstreeRepoHelper::queryMatchRefs(const QString &repoPath, const QString &remoteName, const QString &pkgName,
-                                      const QString &pkgVer, const QString &arch, QString &matchRef, QString &err)
+bool OstreeRepoHelper::queryMatchRefs(const QString &repoPath,
+                                      const QString &remoteName,
+                                      const QString &pkgName,
+                                      const QString &pkgVer,
+                                      const QString &arch,
+                                      QString &matchRef,
+                                      QString &err)
 {
-    char info[MAX_ERRINFO_BUFSIZE] = {'\0'};
+    char info[MAX_ERRINFO_BUFSIZE] = { '\0' };
     if (remoteName.isEmpty() || pkgName.isEmpty()) {
         // fprintf(stdout, "queryMatchRefs param err\n");
         qInfo() << "queryMatchRefs param err";
@@ -361,7 +407,11 @@ bool OstreeRepoHelper::queryMatchRefs(const QString &repoPath, const QString &re
     }
 
     if (!pLingLongDir->repo || pLingLongDir->basedir != repoPath) {
-        snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s repo has not been created", __FILE__, __func__);
+        snprintf(info,
+                 MAX_ERRINFO_BUFSIZE,
+                 "%s, function:%s repo has not been created",
+                 __FILE__,
+                 __func__);
         err = info;
         return false;
     }
@@ -410,7 +460,11 @@ bool OstreeRepoHelper::queryMatchRefs(const QString &repoPath, const QString &re
                 return true;
             }
         }
-        snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s %s not found in remote repo", __FILE__, __func__,
+        snprintf(info,
+                 MAX_ERRINFO_BUFSIZE,
+                 "%s, function:%s %s not found in remote repo",
+                 __FILE__,
+                 __func__,
                  pkgNameTmp.c_str());
         err = info;
     }
@@ -428,13 +482,19 @@ bool OstreeRepoHelper::queryMatchRefs(const QString &repoPath, const QString &re
  *
  * @return bool: true:成功 false:失败
  */
-bool OstreeRepoHelper::checkOutAppData(const QString &repoPath, const QString &remoteName, const QString &ref,
-                                       const QString &dstPath, QString &err)
+bool OstreeRepoHelper::checkOutAppData(const QString &repoPath,
+                                       const QString &remoteName,
+                                       const QString &ref,
+                                       const QString &dstPath,
+                                       QString &err)
 {
-    // ostree --repo=repo checkout -U --union org.deepin.calculator/x86_64/1.2.2 /persistent/linglong/layers/XXX
+    // ostree --repo=repo checkout -U --union org.deepin.calculator/x86_64/1.2.2
+    // /persistent/linglong/layers/XXX
     linglong::util::createDir(dstPath);
     auto ret = linglong::runner::Runner(
-        "ostree", {"--repo=" + repoPath + "/repo", "checkout", "-U", "--union", ref, dstPath}, 1000 * 60 * 60 * 24);
+            "ostree",
+            { "--repo=" + repoPath + "/repo", "checkout", "-U", "--union", ref, dstPath },
+            1000 * 60 * 60 * 24);
     if (!ret) {
         err = "checkOutAppData " + ref + " err";
         qCritical() << "checkOutAppData err, repoPath:" << repoPath << ", remoteName:" << remoteName
@@ -454,7 +514,7 @@ bool OstreeRepoHelper::checkOutAppData(const QString &repoPath, const QString &r
 qint64 OstreeRepoHelper::getChildPid(qint64 pid)
 {
     QProcess process;
-    const QStringList argList = {"-P", QString::number(pid)};
+    const QStringList argList = { "-P", QString::number(pid) };
     process.start("pgrep", argList);
     if (!process.waitForStarted()) {
         qCritical() << "start pgrep failed!";
@@ -491,7 +551,9 @@ qint64 OstreeRepoHelper::getChildPid(qint64 pid)
  *
  * @return bool: true:成功 false:失败
  */
-bool OstreeRepoHelper::startOstreeJob(const QString &cmd, const QString &ref, const QStringList &argList,
+bool OstreeRepoHelper::startOstreeJob(const QString &cmd,
+                                      const QString &ref,
+                                      const QStringList &argList,
                                       const int timeout)
 {
     QProcess process;
@@ -543,33 +605,51 @@ QString OstreeRepoHelper::createTmpRepo(const QString &parentRepo)
     if (dir.isValid()) {
         tmpPath = dir.path();
     } else {
-        qCritical() << "create tmpPath failed, please check " << baseDir << "," << dir.errorString();
+        qCritical() << "create tmpPath failed, please check " << baseDir << ","
+                    << dir.errorString();
         return QString();
     }
     dir.setAutoRemove(false);
-    auto ret = linglong::runner::Runner("ostree", {"--repo=" + tmpPath + "/repoTmp", "init", "--mode=bare-user-only"},
-                                        1000 * 60 * 5);
+    auto ret = linglong::runner::Runner(
+            "ostree",
+            { "--repo=" + tmpPath + "/repoTmp", "init", "--mode=bare-user-only" },
+            1000 * 60 * 5);
     if (!ret) {
         return QString();
     }
 
     // 设置最小空间要求
-    ret = linglong::runner::Runner(
-        "ostree", {"config", "set", "--group", "core", "min-free-space-size", "600MB", "--repo", tmpPath + "/repoTmp"},
-        1000 * 60 * 5);
+    ret = linglong::runner::Runner("ostree",
+                                   { "config",
+                                     "set",
+                                     "--group",
+                                     "core",
+                                     "min-free-space-size",
+                                     "600MB",
+                                     "--repo",
+                                     tmpPath + "/repoTmp" },
+                                   1000 * 60 * 5);
     if (!ret) {
         return QString();
     }
 
     // 添加父仓库路径
-    ret = linglong::runner::Runner(
-        "ostree", {"config", "set", "--group", "core", "parent", parentRepo, "--repo", tmpPath + "/repoTmp"},
-        1000 * 60 * 5);
+    ret = linglong::runner::Runner("ostree",
+                                   { "config",
+                                     "set",
+                                     "--group",
+                                     "core",
+                                     "parent",
+                                     parentRepo,
+                                     "--repo",
+                                     tmpPath + "/repoTmp" },
+                                   1000 * 60 * 5);
     if (!ret) {
         return QString();
     }
 
-    qInfo() << "create tmp repo path:" << tmpPath << ", ret:" << QDir().exists(tmpPath + "/repoTmp");
+    qInfo() << "create tmp repo path:" << tmpPath
+            << ", ret:" << QDir().exists(tmpPath + "/repoTmp");
     return tmpPath + "/repoTmp";
 }
 
@@ -583,7 +663,9 @@ QString OstreeRepoHelper::createTmpRepo(const QString &parentRepo)
  *
  * @return bool: true:成功 false:失败
  */
-bool OstreeRepoHelper::repoPullbyCmd(const QString &destPath, const QString &remoteName, const QString &ref,
+bool OstreeRepoHelper::repoPullbyCmd(const QString &destPath,
+                                     const QString &remoteName,
+                                     const QString &ref,
                                      QString &err)
 {
     // 创建临时仓库
@@ -595,9 +677,11 @@ bool OstreeRepoHelper::repoPullbyCmd(const QString &destPath, const QString &rem
     }
 
     // 将数据pull到临时仓库
-    // ostree --repo=/var/tmp/linglong-cache-I80JB1/repoTmp pull --mirror repo:app/org.deepin.calculator/x86_64/1.2.2
+    // ostree --repo=/var/tmp/linglong-cache-I80JB1/repoTmp pull --mirror
+    // repo:app/org.deepin.calculator/x86_64/1.2.2
     const QString fullref = remoteName + ":" + ref;
-    // auto ret = Runner("ostree", {"--repo=" + QString(QLatin1String(tmpPath)), "pull", "--mirror", fullref}, 1000 * 60
+    // auto ret = Runner("ostree", {"--repo=" + QString(QLatin1String(tmpPath)), "pull", "--mirror",
+    // fullref}, 1000 * 60
     // * 60 * 24);
     // auto ret = startOstreeJob(ref, {"--repo=" + tmpPath, "pull", "--mirror", fullref},
     //                           1000 * 60 * 60 * 24);
@@ -614,8 +698,10 @@ bool OstreeRepoHelper::repoPullbyCmd(const QString &destPath, const QString &rem
 
     QString logName = ref.split("/").join("-");
     QString ostreeCmd = "ostree --repo=" + tmpPath + " pull --mirror " + fullref;
-    auto ret =
-        startOstreeJob("script", ref, {"-q", "-f", logPath + "/" + logName, "-c", ostreeCmd}, 1000 * 60 * 60 * 24);
+    auto ret = startOstreeJob("script",
+                              ref,
+                              { "-q", "-f", logPath + "/" + logName, "-c", ostreeCmd },
+                              1000 * 60 * 60 * 24);
     if (!ret) {
         err = "repoPullbyCmd pull error";
         qCritical() << err;
@@ -624,9 +710,13 @@ bool OstreeRepoHelper::repoPullbyCmd(const QString &destPath, const QString &rem
     qInfo() << "repoPullbyCmd pull success";
     // ostree --repo=test-repo(目标)  pull-local /home/linglong/work/linglong/pool/repo(源)
     // 将数据从临时仓库同步到目标仓库
-    // ret = Runner("ostree", {"--repo=" + destPath + "/repo", "pull-local", QString(QLatin1String(tmpPath)), ref}, 1000
+    // ret = Runner("ostree", {"--repo=" + destPath + "/repo", "pull-local",
+    // QString(QLatin1String(tmpPath)), ref}, 1000
     // * 60 * 60);
-    ret = startOstreeJob("ostree", ref, {"--repo=" + destPath + "/repo", "pull-local", tmpPath, ref}, 1000 * 60 * 60);
+    ret = startOstreeJob("ostree",
+                         ref,
+                         { "--repo=" + destPath + "/repo", "pull-local", tmpPath, ref },
+                         1000 * 60 * 60);
 
     // 删除下载进度的重定向文件
     QString filePath = "/tmp/.linglong/" + logName;
@@ -653,7 +743,9 @@ bool OstreeRepoHelper::repoPullbyCmd(const QString &destPath, const QString &rem
  *
  * @return bool: true:成功 false:失败
  */
-bool OstreeRepoHelper::repoDeleteDatabyRef(const QString &repoPath, const QString &remoteName, const QString &ref,
+bool OstreeRepoHelper::repoDeleteDatabyRef(const QString &repoPath,
+                                           const QString &remoteName,
+                                           const QString &ref,
                                            QString &err)
 {
     if (repoPath.isEmpty() || remoteName.isEmpty() || ref.isEmpty()) {
@@ -666,7 +758,12 @@ bool OstreeRepoHelper::repoDeleteDatabyRef(const QString &repoPath, const QStrin
     GCancellable *cancellable = NULL;
     GError *error = NULL;
 
-    if (!ostree_repo_set_ref_immediate(pLingLongDir->repo, NULL, refTmp.c_str(), NULL, cancellable, &error)) {
+    if (!ostree_repo_set_ref_immediate(pLingLongDir->repo,
+                                       NULL,
+                                       refTmp.c_str(),
+                                       NULL,
+                                       cancellable,
+                                       &error)) {
         qCritical() << "repoDeleteDatabyRef error:" << error->message;
         err = "repoDeleteDatabyRef error:" + QString(QLatin1String(error->message));
         return false;
@@ -677,8 +774,14 @@ bool OstreeRepoHelper::repoDeleteDatabyRef(const QString &repoPath, const QStrin
     gint objectsPruned;
     guint64 objsizeTotal;
     g_autofree char *formattedFreedSize = NULL;
-    if (!ostree_repo_prune(pLingLongDir->repo, OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY, 0, &objectsTotal, &objectsPruned,
-                           &objsizeTotal, cancellable, &error)) {
+    if (!ostree_repo_prune(pLingLongDir->repo,
+                           OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY,
+                           0,
+                           &objectsTotal,
+                           &objectsPruned,
+                           &objsizeTotal,
+                           cancellable,
+                           &error)) {
         qCritical() << "repoDeleteDatabyRef pruning repo failed:" << error->message;
         return false;
     }
@@ -692,14 +795,14 @@ bool OstreeRepoHelper::repoDeleteDatabyRef(const QString &repoPath, const QStrin
     }
 
     // const QString fullref = remoteName + ":" + ref;
-    // auto ret = Runner("ostree", {"--repo=" + repoPath + "/repo", "refs", "--delete", ref}, 1000 * 60 * 30);
-    // if (!ret) {
+    // auto ret = Runner("ostree", {"--repo=" + repoPath + "/repo", "refs", "--delete", ref}, 1000 *
+    // 60 * 30); if (!ret) {
     //     qInfo() << "repoDeleteDatabyRef delete ref error";
     //     err = "repoDeleteDatabyRef delete ref error";
     //     return false;
     // }
-    // ret = Runner("ostree", {"--repo=" + repoPath + "/repo", "prune", "--refs-only"}, 1000 * 60 * 30);
-    // if (!ret) {
+    // ret = Runner("ostree", {"--repo=" + repoPath + "/repo", "prune", "--refs-only"}, 1000 * 60 *
+    // 30); if (!ret) {
     //     qInfo() << "repoDeleteDatabyRef prune data error";
     //     err = "repoDeleteDatabyRef prune data error";
     //     return false;

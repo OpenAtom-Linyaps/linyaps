@@ -59,7 +59,8 @@ public:
         if (Major == ver.Major && Minor == ver.Minor && Revision > ver.Revision) {
             return true;
         }
-        if (Major == ver.Major && Minor == ver.Minor && Revision == ver.Revision && Build > ver.Build) {
+        if (Major == ver.Major && Minor == ver.Minor && Revision == ver.Revision
+            && Build > ver.Build) {
             return true;
         }
         return false;
@@ -71,10 +72,10 @@ public:
     QString toString()
     {
         QString result = QString("%1.%2.%3.%4")
-                             .arg(QString::number(Major))
-                             .arg(QString::number(Minor))
-                             .arg(QString::number(Revision))
-                             .arg(QString::number(Build));
+                                 .arg(QString::number(Major))
+                                 .arg(QString::number(Minor))
+                                 .arg(QString::number(Revision))
+                                 .arg(QString::number(Build));
         return result;
     }
 

@@ -81,14 +81,19 @@ int updateInstalledAppInfoDb()
     QString description = "create appinfodb version";
     QString insertSql = "";
     if (recordCount < 1) {
-        insertSql = QString("INSERT INTO appInfoDbVersion VALUES('%1','%2')").arg(infoDbVersion).arg(description);
+        insertSql = QString("INSERT INTO appInfoDbVersion VALUES('%1','%2')")
+                            .arg(infoDbVersion)
+                            .arg(description);
     } else {
         // fix to do update version
         QString currentVersion = sqlQuery.value(0).toString().trimmed();
         if (currentVersion < infoDbVersion) {
-            insertSql = QString("INSERT INTO appInfoDbVersion VALUES('%1','%2')").arg(infoDbVersion).arg(description);
+            insertSql = QString("INSERT INTO appInfoDbVersion VALUES('%1','%2')")
+                                .arg(infoDbVersion)
+                                .arg(description);
         }
-        qDebug() << "installedAppInfoDb currentVersion:" << currentVersion << ", dstVersion:" << infoDbVersion;
+        qDebug() << "installedAppInfoDb currentVersion:" << currentVersion
+                 << ", dstVersion:" << infoDbVersion;
     }
     if (!insertSql.isEmpty()) {
         sqlQuery = connection.execute(insertSql);
@@ -110,12 +115,16 @@ int updateInstalledAppInfoDb()
  *
  * @return int: 0:成功 其它:失败
  */
-int insertAppRecord(linglong::package::AppMetaInfo *package, const QString &installType, const QString &userName)
+int insertAppRecord(linglong::package::AppMetaInfo *package,
+                    const QString &installType,
+                    const QString &userName)
 {
     Connection connection;
-    QString insertSql =
-        "INSERT INTO installedAppInfo(appId,name,version,arch,kind,runtime,uabUrl,repoName,description,user,size,channel,module) "
-        "VALUES(:appId,:name,:version,:arch,:kind,:runtime,:uabUrl,:repoName,:description,:user,:size,:channel,:module)";
+    QString insertSql = "INSERT INTO "
+                        "installedAppInfo(appId,name,version,arch,kind,runtime,uabUrl,repoName,"
+                        "description,user,size,channel,module) "
+                        "VALUES(:appId,:name,:version,:arch,:kind,:runtime,:uabUrl,:repoName,:"
+                        "description,:user,:size,:channel,:module)";
     QVariantMap valueMap;
     valueMap.insert(":appId", package->appId);
     valueMap.insert(":name", package->name);
@@ -135,7 +144,8 @@ int insertAppRecord(linglong::package::AppMetaInfo *package, const QString &inst
         qCritical() << "execute insertSql error:" << sqlQuery.lastError().text();
         return STATUS_CODE(kFail);
     }
-    qDebug() << "insertAppRecord app:" << package->appId << ", version:" << package->version << " success";
+    qDebug() << "insertAppRecord app:" << package->appId << ", version:" << package->version
+             << " success";
     return STATUS_CODE(kSuccess);
 }
 
@@ -151,13 +161,19 @@ int insertAppRecord(linglong::package::AppMetaInfo *package, const QString &inst
  *
  * @return int: 0:成功 其它:失败
  */
-int deleteAppRecord(const QString &appId, const QString &appVer, const QString &appArch, const QString &channel,
-                    const QString &module, const QString &userName)
+int deleteAppRecord(const QString &appId,
+                    const QString &appVer,
+                    const QString &appArch,
+                    const QString &channel,
+                    const QString &module,
+                    const QString &userName)
 {
     // 若未指定版本，则查找最高版本
     QString dstVer = appVer;
     QString deleteSql =
-        QString("DELETE FROM installedAppInfo WHERE appId = '%1' AND version = '%2'").arg(appId).arg(dstVer);
+            QString("DELETE FROM installedAppInfo WHERE appId = '%1' AND version = '%2'")
+                    .arg(appId)
+                    .arg(dstVer);
     QString condition = "";
     if (!appArch.isEmpty()) {
         condition.append(QString(" AND arch like '%%1%'").arg(appArch));
@@ -183,7 +199,8 @@ int deleteAppRecord(const QString &appId, const QString &appVer, const QString &
         qCritical() << "execute deleteSql error:" << sqlQuery.lastError().text();
         return STATUS_CODE(kFail);
     }
-    qDebug() << "delete app:" << appId << ", version:" << dstVer << ", arch:" << appArch << " success";
+    qDebug() << "delete app:" << appId << ", version:" << dstVer << ", arch:" << appArch
+             << " success";
     return STATUS_CODE(kSuccess);
 }
 
@@ -217,8 +234,12 @@ bool isRuntime(const QString &appId)
  *
  * @return bool: true:已安装 false:未安装
  */
-bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QString &appArch, const QString &channel,
-                           const QString &module, const QString &userName)
+bool getAppInstalledStatus(const QString &appId,
+                           const QString &appVer,
+                           const QString &appArch,
+                           const QString &channel,
+                           const QString &module,
+                           const QString &userName)
 {
     QString selectSql = QString("SELECT * FROM installedAppInfo WHERE appId = '%1'").arg(appId);
     QString condition = "";
@@ -255,8 +276,9 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
     sqlQuery.last();
     int recordCount = sqlQuery.at() + 1;
     if (recordCount < 1) {
-        qDebug() << "getAppInstalledStatus app:" + appId + ",version:" + appVer + ",channel:" + channel
-                        + ",module:" + module + ",userName:" + userName + " not installed";
+        qDebug() << "getAppInstalledStatus app:" + appId + ",version:" + appVer
+                        + ",channel:" + channel + ",module:" + module + ",userName:" + userName
+                        + " not installed";
         return false;
     }
     return true;
@@ -273,12 +295,15 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
  *
  * @return bool: true:成功 false:失败
  */
-bool getAllVerAppInfo(const QString &appId, const QString &appVer, const QString &appArch, const QString &userName,
+bool getAllVerAppInfo(const QString &appId,
+                      const QString &appVer,
+                      const QString &appArch,
+                      const QString &userName,
                       linglong::package::AppMetaInfoList &pkgList)
 {
     if (!getAppInstalledStatus(appId, appVer, appArch, "", "", userName)) {
-        qCritical() << "getAllVerAppInfo app:" + appId + ",version:" + appVer + ",userName:" + userName
-                           + " not installed";
+        qCritical() << "getAllVerAppInfo app:" + appId + ",version:" + appVer
+                        + ",userName:" + userName + " not installed";
         return false;
     }
 
@@ -334,12 +359,18 @@ bool getAllVerAppInfo(const QString &appId, const QString &appVer, const QString
  *
  * @return bool: true:成功 false:失败
  */
-bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QString &appArch, const QString &channel,
-                         const QString &module, const QString &userName, linglong::package::AppMetaInfoList &pkgList)
+bool getInstalledAppInfo(const QString &appId,
+                         const QString &appVer,
+                         const QString &appArch,
+                         const QString &channel,
+                         const QString &module,
+                         const QString &userName,
+                         linglong::package::AppMetaInfoList &pkgList)
 {
     if (!getAppInstalledStatus(appId, appVer, appArch, channel, module, userName)) {
-        qCritical() << "getInstalledAppInfo app:" + appId + ",version:" + appVer + ",channel:" + channel
-                           + ",module:" + module + ",userName:" + userName + " not installed";
+        qCritical() << "getInstalledAppInfo app:" + appId + ",version:" + appVer
+                        + ",channel:" + channel + ",module:" + module + ",userName:" + userName
+                        + " not installed";
         return false;
     }
 
@@ -420,7 +451,9 @@ bool queryAllInstalledApp(const QString &userName, QString &result, QString &err
     if (userName.isEmpty()) {
         selectSql = QString("SELECT * FROM installedAppInfo order by appId,version");
     } else {
-        selectSql = QString("SELECT * FROM installedAppInfo WHERE user = '%1' order by appId,version").arg(userName);
+        selectSql =
+                QString("SELECT * FROM installedAppInfo WHERE user = '%1' order by appId,version")
+                        .arg(userName);
     }
 
     Connection connection;
@@ -459,7 +492,8 @@ bool queryAllInstalledApp(const QString &userName, QString &result, QString &err
  *
  * @return bool: true: 成功 false: 失败
  */
-bool getAppMetaInfoListByJson(const QString &jsonString, linglong::package::AppMetaInfoList &appList)
+bool getAppMetaInfoListByJson(const QString &jsonString,
+                              linglong::package::AppMetaInfoList &appList)
 {
     QJsonParseError parseJsonErr;
     QJsonDocument document = QJsonDocument::fromJson(jsonString.toUtf8(), &parseJsonErr);

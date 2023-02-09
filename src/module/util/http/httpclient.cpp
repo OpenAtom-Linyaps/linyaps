@@ -6,29 +6,29 @@
 
 #include "httpclient.h"
 
-#include <string.h>
-#include <sys/file.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include "builder/builder/builder_config.h"
+#include "module/util/file.h"
 
-#include <iostream>
-#include <sstream>
+#include <sys/file.h>
 
 #include <QDebug>
 #include <QEventLoop>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
-
 #include <QTimer>
 #include <QtNetwork/QNetworkAccessManager>
-#include <QtNetwork/QNetworkRequest>
 #include <QtNetwork/QNetworkReply>
+#include <QtNetwork/QNetworkRequest>
 
-#include "builder/builder/builder_config.h"
-#include "module/util/file.h"
+#include <iostream>
+#include <sstream>
+
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 namespace linglong {
 namespace util {
@@ -52,7 +52,7 @@ void HttpClient::initHttpParam(const char *url)
     /* set URL to get here */
     curl_easy_setopt(curlHandle, CURLOPT_URL, url);
 
-    curl_easy_setopt(curlHandle, CURLOPT_TIMEOUT, 3600); // 超时(单位S)
+    curl_easy_setopt(curlHandle, CURLOPT_TIMEOUT, 3600);        // 超时(单位S)
     curl_easy_setopt(curlHandle, CURLOPT_CONNECTTIMEOUT, 3600); // 超时(单位S)
 
     // curl_easy_setopt(curlHandle, CURLOPT_HEADER, 1); //下载数据包括HTTP头部
@@ -102,8 +102,11 @@ size_t writeData(void *content, size_t size, size_t nmemb, void *stream)
  *
  * @return bool: true:成功 false:失败
  */
-bool HttpClient::queryRemoteApp(const QString &repoName, const QString &pkgName, const QString &pkgVer,
-                                const QString &pkgArch, QString &outMsg)
+bool HttpClient::queryRemoteApp(const QString &repoName,
+                                const QString &pkgName,
+                                const QString &pkgVer,
+                                const QString &pkgArch,
+                                QString &outMsg)
 {
     QString configUrl = "";
     int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
@@ -139,7 +142,8 @@ bool HttpClient::queryRemoteApp(const QString &repoName, const QString &pkgName,
         } else {
             outMsg.append(QString(" err info:%1").arg(reply->errorString()));
             qCritical() << outMsg << reply->error();
-            qDebug() << "queryRemoteApp param:" << postUrl << repoName << pkgName << pkgVer << pkgArch;
+            qDebug() << "queryRemoteApp param:" << postUrl << repoName << pkgName << pkgVer
+                     << pkgArch;
             reply->abort();
         }
         reply->deleteLater();
@@ -163,8 +167,12 @@ bool HttpClient::queryRemoteApp(const QString &repoName, const QString &pkgName,
  *
  * @return bool: true:成功 false:失败
  */
-bool HttpClient::queryRemoteApp(const QString &repoName, const QString &repoUrl, const QString &pkgName, const QString &pkgVer,
-                                const QString &pkgArch, QString &outMsg)
+bool HttpClient::queryRemoteApp(const QString &repoName,
+                                const QString &repoUrl,
+                                const QString &pkgName,
+                                const QString &pkgVer,
+                                const QString &pkgArch,
+                                QString &outMsg)
 {
     QString postUrl = "";
     if (repoUrl.endsWith("/")) {
@@ -194,7 +202,8 @@ bool HttpClient::queryRemoteApp(const QString &repoName, const QString &repoUrl,
         } else {
             outMsg.append(QString(" err info:%1").arg(reply->errorString()));
             qCritical() << outMsg << reply->error();
-            qDebug() << "queryRemoteApp param:" << postUrl << repoName << pkgName << pkgVer << pkgArch;
+            qDebug() << "queryRemoteApp param:" << postUrl << repoName << pkgName << pkgVer
+                     << pkgArch;
             reply->abort();
         }
         reply->deleteLater();
@@ -215,7 +224,9 @@ bool HttpClient::queryRemoteApp(const QString &repoName, const QString &repoUrl,
  *
  * @return int: kSuccess:成功 kFail:失败
  */
-int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong, const QString &flags,
+int HttpClient::uploadFile(const QString &filePath,
+                           const QString &dnsOfLinglong,
+                           const QString &flags,
                            const QString &token)
 {
     std::string urlStr = QString(dnsOfLinglong + "apps/upload").toStdString();
@@ -240,9 +251,20 @@ int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong
 
     std::string filePathString = filePath.toStdString();
 
-    curl_formadd(&post, &last, CURLFORM_PTRNAME, "uploadSubPath", CURLFORM_PTRCONTENTS, flags.toStdString().c_str(),
+    curl_formadd(&post,
+                 &last,
+                 CURLFORM_PTRNAME,
+                 "uploadSubPath",
+                 CURLFORM_PTRCONTENTS,
+                 flags.toStdString().c_str(),
                  CURLFORM_END);
-    curl_formadd(&post, &last, CURLFORM_PTRNAME, "file", CURLFORM_FILE, filePathString.c_str(), CURLFORM_END);
+    curl_formadd(&post,
+                 &last,
+                 CURLFORM_PTRNAME,
+                 "file",
+                 CURLFORM_FILE,
+                 filePathString.c_str(),
+                 CURLFORM_END);
 
     curl_easy_setopt(curlHandle, CURLOPT_HTTPPOST, post);
     // 设置接收数据的处理函数和存放变量
@@ -260,7 +282,8 @@ int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong
     int resCode = 0;
     code = curl_easy_getinfo(curlHandle, CURLINFO_RESPONSE_CODE, &resCode);
     if (code != CURLE_OK || resCode != 200) {
-        qCritical() << "curl_easy_getinfo err:" << curl_easy_strerror(code) << ", resCode" << resCode;
+        qCritical() << "curl_easy_getinfo err:" << curl_easy_strerror(code) << ", resCode"
+                    << resCode;
         curl_easy_cleanup(curlHandle);
         curl_global_cleanup();
         return STATUS_CODE(kFail);
@@ -287,7 +310,9 @@ int HttpClient::uploadFile(const QString &filePath, const QString &dnsOfLinglong
  *
  * @return int: kSuccess:成功 kFail:失败
  */
-int HttpClient::pushServerBundleData(const QString &info, const QString &dnsOfLinglong, const QString &token)
+int HttpClient::pushServerBundleData(const QString &info,
+                                     const QString &dnsOfLinglong,
+                                     const QString &token)
 {
     std::string urlStr = QString(dnsOfLinglong + "apps").toStdString();
     const char *url = urlStr.c_str();
@@ -330,7 +355,8 @@ int HttpClient::pushServerBundleData(const QString &info, const QString &dnsOfLi
     int resCode = 0;
     code = curl_easy_getinfo(curlHandle, CURLINFO_RESPONSE_CODE, &resCode);
     if (code != CURLE_OK || resCode != 200) {
-        qCritical() << "curl_easy_getinfo err:" << curl_easy_strerror(code) << ", resCode" << resCode;
+        qCritical() << "curl_easy_getinfo err:" << curl_easy_strerror(code) << ", resCode"
+                    << resCode;
     }
     curl_slist_free_all(headers);
     curl_easy_cleanup(curlHandle);
@@ -365,8 +391,8 @@ QString HttpClient::getToken(const QString &dnsOfLinglong, QStringList userInfo)
     // --location
     curl_easy_setopt(curlHandle, CURLOPT_FOLLOWLOCATION, 1);
 
-    std::string sendString =
-        "{\"username\":\"" + username.toStdString() + "\",\"password\":\"" + password.toStdString() + "\"}";
+    std::string sendString = "{\"username\":\"" + username.toStdString() + "\",\"password\":\""
+            + password.toStdString() + "\"}";
 
     // 设置要POST的JSON数据
     curl_easy_setopt(curlHandle, CURLOPT_POSTFIELDS, sendString.c_str());
@@ -387,7 +413,8 @@ QString HttpClient::getToken(const QString &dnsOfLinglong, QStringList userInfo)
     long resCode = 0;
     code = curl_easy_getinfo(curlHandle, CURLINFO_RESPONSE_CODE, &resCode);
     if (code != CURLE_OK || resCode != 200) {
-        qCritical() << "curl_easy_getinfo err:" << curl_easy_strerror(code) << ", resCode" << resCode;
+        qCritical() << "curl_easy_getinfo err:" << curl_easy_strerror(code) << ", resCode"
+                    << resCode;
     }
     curl_slist_free_all(headers);
     curl_easy_cleanup(curlHandle);

@@ -6,12 +6,12 @@
 
 #include "sysinfo.h"
 
+#include <QDebug>
+#include <QSysInfo>
+
 #include <pwd.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#include <QDebug>
-#include <QSysInfo>
 
 namespace linglong {
 namespace util {

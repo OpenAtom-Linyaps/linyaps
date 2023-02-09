@@ -7,20 +7,20 @@
 #ifndef LINGLONG_SRC_PACKAGE_MANAGER_IMPL_JOB_MANAGER_H_
 #define LINGLONG_SRC_PACKAGE_MANAGER_IMPL_JOB_MANAGER_H_
 
+#include "module/runtime/container.h"
+#include "module/util/singleton.h"
+
 #include <QDBusArgument>
 #include <QDBusContext>
 #include <QList>
 #include <QObject>
 
-#include "module/runtime/container.h"
-#include "module/util/singleton.h"
-
 class Job;
 class JobManagerPrivate;
-class JobManager
-    : public QObject
-    , protected QDBusContext
-    , public linglong::util::Singleton<JobManager>
+
+class JobManager : public QObject,
+                   protected QDBusContext,
+                   public linglong::util::Singleton<JobManager>
 {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.JobManager")

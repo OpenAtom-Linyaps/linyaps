@@ -7,9 +7,9 @@
 #ifndef LINGLONG_SRC_MODULE_RUNTIME_OCI_H_
 #define LINGLONG_SRC_MODULE_RUNTIME_OCI_H_
 
-#include <mutex>
-
 #include "module/util/serialize/json.h"
+
+#include <mutex>
 
 class Root : public JsonSerialize
 {
@@ -138,6 +138,7 @@ class Annotations : public JsonSerialize
 Q_JSON_DECLARE_PTR_METATYPE(Annotations)
 
 #undef linux
+
 class Runtime : public JsonSerialize
 {
     Q_OBJECT

@@ -7,36 +7,35 @@
 #ifndef LINGLONG_SRC_MODULE_REPO_OSTREE_REPOHELPER_H_
 #define LINGLONG_SRC_MODULE_REPO_OSTREE_REPOHELPER_H_
 
-#include <gio/gio.h>
-#include <glib.h>
-#include <ostree-repo.h>
-
-#include <iostream>
-#include <map>
-#include <vector>
-#include <string>
-
-#include <QDebug>
-#include <QMap>
-#include <QString>
-#include <QVector>
-#include <QTemporaryDir>
-
 #include "module/util/singleton.h"
 #include "module/util/status_code.h"
 #include "repohelper.h"
 
+#include <gio/gio.h>
+#include <glib.h>
+#include <ostree-repo.h>
+
+#include <QDebug>
+#include <QMap>
+#include <QString>
+#include <QTemporaryDir>
+#include <QVector>
+
+#include <iostream>
+#include <map>
+#include <string>
+#include <vector>
+
 namespace linglong {
 
 // ostree 仓库对象信息
-struct LingLongDir {
+struct LingLongDir
+{
     QString basedir;
     OstreeRepo *repo;
 };
 
-class OstreeRepoHelper
-    : public RepoHelper
-    , public linglong::util::Singleton<OstreeRepoHelper>
+class OstreeRepoHelper : public RepoHelper, public linglong::util::Singleton<OstreeRepoHelper>
 {
 public:
     OstreeRepoHelper();
@@ -74,7 +73,9 @@ public:
      *
      * @return bool: true:查询成功 false:失败
      */
-    bool getRemoteRefs(const QString &repoPath, const QString &remoteName, QMap<QString, QString> &outRefs,
+    bool getRemoteRefs(const QString &repoPath,
+                       const QString &remoteName,
+                       QMap<QString, QString> &outRefs,
                        QString &err);
 
     /*
@@ -90,8 +91,13 @@ public:
      *
      * @return bool: true:成功 false:失败
      */
-    bool queryMatchRefs(const QString &repoPath, const QString &remoteName, const QString &pkgName,
-                        const QString &pkgVer, const QString &arch, QString &matchRef, QString &err) override;
+    bool queryMatchRefs(const QString &repoPath,
+                        const QString &remoteName,
+                        const QString &pkgName,
+                        const QString &pkgVer,
+                        const QString &arch,
+                        QString &matchRef,
+                        QString &err) override;
 
     /*
      * 软件包数据从远端仓库pull到本地仓库
@@ -103,7 +109,10 @@ public:
      *
      * @return bool: true:成功 false:失败
      */
-    bool repoPull(const QString &repoPath, const QString &remoteName, const QString &pkgName, QString &err) override
+    bool repoPull(const QString &repoPath,
+                  const QString &remoteName,
+                  const QString &pkgName,
+                  QString &err) override
     {
         return false;
     }
@@ -119,7 +128,10 @@ public:
      *
      * @return bool: true:成功 false:失败
      */
-    bool checkOutAppData(const QString &repoPath, const QString &remoteName, const QString &ref, const QString &dstPath,
+    bool checkOutAppData(const QString &repoPath,
+                         const QString &remoteName,
+                         const QString &ref,
+                         const QString &dstPath,
                          QString &err);
 
     /*
@@ -132,7 +144,10 @@ public:
      *
      * @return bool: true:成功 false:失败
      */
-    bool repoPullbyCmd(const QString &destPath, const QString &remoteName, const QString &ref, QString &err) override;
+    bool repoPullbyCmd(const QString &destPath,
+                       const QString &remoteName,
+                       const QString &ref,
+                       QString &err) override;
 
     /*
      * 获取下载任务对应的进程Id
@@ -178,7 +193,10 @@ public:
      *
      * @return bool: true:成功 false:失败
      */
-    bool repoDeleteDatabyRef(const QString &repoPath, const QString &remoteName, const QString &ref, QString &err);
+    bool repoDeleteDatabyRef(const QString &repoPath,
+                             const QString &remoteName,
+                             const QString &ref,
+                             QString &err);
 
 private:
     // multi-thread
@@ -201,8 +219,12 @@ private:
      *
      * @return bool: true:成功 false:失败
      */
-    bool fetchRemoteSummary(OstreeRepo *repo, const char *name, GBytes **outSummary, GBytes **outSummarySig,
-                            GCancellable *cancellable, GError **error);
+    bool fetchRemoteSummary(OstreeRepo *repo,
+                            const char *name,
+                            GBytes **outSummary,
+                            GBytes **outSummarySig,
+                            GCancellable *cancellable,
+                            GError **error);
 
     /*
      * 从ostree仓库描述文件Summary信息中获取仓库所有软件包索引refs
@@ -258,7 +280,10 @@ private:
      *
      * @return bool: true:成功 false:失败
      */
-    bool startOstreeJob(const QString &cmd, const QString &ref, const QStringList &argList, const int timeout);
+    bool startOstreeJob(const QString &cmd,
+                        const QString &ref,
+                        const QStringList &argList,
+                        const int timeout);
 
     /*
      * 在/tmp目录下创建一个临时repo子仓库
@@ -283,5 +308,6 @@ private:
     LingLongDir *pLingLongDir;
 };
 } // namespace linglong
+
 #define OSTREE_REPO_HELPER linglong::OstreeRepoHelper::instance()
 #endif

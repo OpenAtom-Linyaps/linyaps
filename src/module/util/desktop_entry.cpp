@@ -110,7 +110,9 @@ DesktopEntry::DesktopEntry(const QString &filePath) noexcept
 
 DesktopEntry::~DesktopEntry() = default;
 
-QString DesktopEntry::rawValue(const QString &key, const QString &section, const QString &defaultValue)
+QString DesktopEntry::rawValue(const QString &key,
+                               const QString &section,
+                               const QString &defaultValue)
 {
     Q_D(DesktopEntry);
     return d->dataMaps.value(section).value(key).toString();

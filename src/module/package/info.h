@@ -7,13 +7,13 @@
 #ifndef LINGLONG_SRC_MODULE_PACKAGE_INFO_H_
 #define LINGLONG_SRC_MODULE_PACKAGE_INFO_H_
 
-#include <QDBusArgument>
-#include <QList>
-#include <QObject>
-
 #include "module/runtime/oci.h"
 #include "module/util/serialize/json.h"
 #include "ref.h"
+
+#include <QDBusArgument>
+#include <QList>
+#include <QObject>
 
 namespace linglong {
 namespace package {
@@ -37,6 +37,7 @@ class User : public JsonSerialize
     Q_JSON_PROPERTY(QString, temp);
     Q_JSON_ITEM_MEMBER(QString, public_share, publicShare);
 };
+
 /*!
  * \brief The Info class
  * \details 文件系统挂载权限信息

@@ -6,13 +6,13 @@
 
 #include <gtest/gtest.h>
 
+#include "src/module/package/info.h"
+#include "src/module/package/package.h"
+#include "src/module/util/xdg.h"
+
 #include <QDebug>
 #include <QFile>
 #include <QJsonDocument>
-
-#include "src/module/package/package.h"
-#include "src/module/package/info.h"
-#include "src/module/util/xdg.h"
 
 TEST(PermissionTest, LoadJson)
 {
@@ -89,7 +89,7 @@ TEST(PermissionTest, TestPermission)
     // check app info
     EXPECT_EQ(r->appid, "cn.wps.wps-office");
     EXPECT_EQ(r->version, "11.1.0.10161");
-    EXPECT_EQ(r->arch, QStringList({"amd64"}));
+    EXPECT_EQ(r->arch, QStringList({ "amd64" }));
     EXPECT_EQ(r->kind, "");
     EXPECT_EQ(r->name, "wps-office");
     EXPECT_EQ(r->description, "");

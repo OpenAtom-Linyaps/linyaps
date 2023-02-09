@@ -6,12 +6,12 @@
 
 #include "file.h"
 
-#include <sys/stat.h>
-
 #include <QDir>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QStandardPaths>
+
+#include <sys/stat.h>
 
 namespace linglong {
 namespace util {
@@ -32,6 +32,7 @@ QString getUserFile(const QString &path)
     }
     return dirPath;
 }
+
 QString ensureUserDir(const QString &relativeDirPath)
 {
     QStringList dirPathComponents = {
@@ -45,7 +46,8 @@ QString ensureUserDir(const QString &relativeDirPath)
 
 QString ensureUserDir(const QStringList &relativeDirPathComponents)
 {
-    auto relativeFilepath = QDir::cleanPath(relativeDirPathComponents.join(QDir::separator().toLatin1()));
+    auto relativeFilepath =
+            QDir::cleanPath(relativeDirPathComponents.join(QDir::separator().toLatin1()));
     return ensureUserDir(relativeFilepath);
 }
 
@@ -161,7 +163,7 @@ quint64 sizeOfDir(const QString &srcPath)
         } else if (info.isDir()) {
             // 一个文件夹大小为4K
             size += 4 * 1024;
-            size += sizeOfDir(QStringList {srcPath, info.fileName()}.join("/"));
+            size += sizeOfDir(QStringList{ srcPath, info.fileName() }.join("/"));
         } else {
             size += info.size();
         }

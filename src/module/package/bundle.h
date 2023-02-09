@@ -7,47 +7,49 @@
 #ifndef LINGLONG_SRC_MODULE_PACKAGE_BUNDLE_H_
 #define LINGLONG_SRC_MODULE_PACKAGE_BUNDLE_H_
 
-#include <elf.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
-#include <cstdlib>
-#include <cstdio>
-#include <cstring>
-
-#include <iostream>
-
-#include <QDir>
-#include <QFile>
-#include <QFileInfo>
-#include <QString>
-
 #include "info.h"
 #include "module/util/file.h"
 #include "module/util/http/httpclient.h"
 #include "module/util/result.h"
 #include "module/util/status_code.h"
 
+#include <elf.h>
+
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QString>
+
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
+
+#include <sys/stat.h>
+#include <unistd.h>
+
 namespace linglong {
 namespace package {
 
 // __LITTLE_ENDIAN or __BIG_ENDIAN
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-#define ELFDATANATIVE ELFDATA2LSB
+#  define ELFDATANATIVE ELFDATA2LSB
 #elif __BYTE_ORDER == __BIG_ENDIAN
-#define ELFDATANATIVE ELFDATA2MSB
+#  define ELFDATANATIVE ELFDATA2MSB
 #else
-#error "Unknown machine endian"
+#  error "Unknown machine endian"
 #endif
 
 // 16 bit system binary  swap
 #define bswap16(value) ((((value)&0xff) << 8) | ((value) >> 8))
 // 32 bit system binary  swap
-#define bswap32(value) \
-    (((uint32_t)bswap16((uint16_t)((value)&0xffff)) << 16) | (uint32_t)bswap16((uint16_t)((value) >> 16)))
+#define bswap32(value)                                   \
+  (((uint32_t)bswap16((uint16_t)((value)&0xffff)) << 16) \
+   | (uint32_t)bswap16((uint16_t)((value) >> 16)))
 // 64 bit system binary  swap
-#define bswap64(value) \
-    (((uint64_t)bswap32((uint32_t)((value)&0xffffffff)) << 32) | (uint64_t)bswap32((uint32_t)((value) >> 32)))
+#define bswap64(value)                                       \
+  (((uint64_t)bswap32((uint32_t)((value)&0xffffffff)) << 32) \
+   | (uint64_t)bswap32((uint32_t)((value) >> 32)))
 
 // FIXME: there is some problem that in module/util/runner.h, replace later
 linglong::util::Error runner(const QString &program, const QStringList &args, int timeout = -1);
@@ -98,7 +100,9 @@ public:
      * @param force :  force to push
      * @return Result
      */
-    linglong::util::Error push(const QString &bundleFilePath, const QString &repoUrl, const QString &repoChannel,
+    linglong::util::Error push(const QString &bundleFilePath,
+                               const QString &repoUrl,
+                               const QString &repoChannel,
                                bool force);
 
 private:

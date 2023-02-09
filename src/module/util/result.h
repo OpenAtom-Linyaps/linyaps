@@ -7,7 +7,6 @@
 #ifndef LINGLONG_SRC_MODULE_UTIL_RESULT_H_
 #define LINGLONG_SRC_MODULE_UTIL_RESULT_H_
 
-
 #include "module/util/serialize/json.h"
 
 #include <tuple>
@@ -22,6 +21,7 @@ class Error
 {
 public:
     Error() = default;
+
     Error(const Error &err)
     {
         errorCode = err.errorCode;
@@ -29,13 +29,18 @@ public:
         msgMetaList = err.msgMetaList;
     }
 
-    Error(const char *file, int line, const char *func, const Error &base, int code = 0, const QString &msg = "")
+    Error(const char *file,
+          int line,
+          const char *func,
+          const Error &base,
+          int code = 0,
+          const QString &msg = "")
         : errorCode(code)
-        , msgMeta(MessageMeta {
-              .file = file,
-              .line = line,
-              .func = func,
-              .message = msg,
+        , msgMeta(MessageMeta{
+                  .file = file,
+                  .line = line,
+                  .func = func,
+                  .message = msg,
           })
         , msgMetaList(base.msgMetaList)
     {
@@ -44,11 +49,11 @@ public:
 
     Error(const char *file, int line, const char *func, int code = 0, const QString &msg = "")
         : errorCode(code)
-        , msgMeta(MessageMeta {
-              .file = file,
-              .line = line,
-              .func = func,
-              .message = msg,
+        , msgMeta(MessageMeta{
+                  .file = file,
+                  .line = line,
+                  .func = func,
+                  .message = msg,
           })
     {
         msgMetaList.push_back(msgMeta);
@@ -56,11 +61,11 @@ public:
 
     Error(const char *file, int line, const char *func, const QString &msg, const Error &base)
         : errorCode(base.code())
-        , msgMeta(MessageMeta {
-              .file = file,
-              .line = line,
-              .func = func,
-              .message = msg,
+        , msgMeta(MessageMeta{
+                  .file = file,
+                  .line = line,
+                  .func = func,
+                  .message = msg,
           })
         , msgMetaList(base.msgMetaList)
     {
@@ -97,7 +102,8 @@ public:
     friend QDebug operator<<(QDebug d, const linglong::util::Error &result);
 
 private:
-    struct MessageMeta {
+    struct MessageMeta
+    {
         const char *file;
         int line;
         const char *func;
@@ -106,14 +112,15 @@ private:
 
     int errorCode = 0;
     MessageMeta msgMeta;
-    QList<MessageMeta> msgMetaList {};
+    QList<MessageMeta> msgMetaList{};
 };
 
 inline QDebug operator<<(QDebug dbg, const Error &result)
 {
     dbg << "\n";
     for (const auto &meta : result.msgMetaList) {
-        dbg << QString(meta.file) + ":" + QString("%1").arg(meta.line) + ":" + QString(meta.func) << "\n";
+        dbg << QString(meta.file) + ":" + QString("%1").arg(meta.line) + ":" + QString(meta.func)
+            << "\n";
         dbg << meta.message << "\n";
     }
     return dbg;
@@ -126,5 +133,6 @@ inline QDebug operator<<(QDebug dbg, const Error &result)
 
 #define NoError() linglong::util::Error(__FILE__, __LINE__, __FUNCTION__)
 
-#define WrapError(base, ...) linglong::util::Error(__FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__, base)
+#define WrapError(base, ...) \
+  linglong::util::Error(__FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__, base)
 #endif

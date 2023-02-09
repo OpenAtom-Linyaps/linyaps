@@ -11,6 +11,7 @@
 #include <QThread>
 
 class JobPrivate;
+
 class Job : public QThread
 {
     Q_OBJECT

@@ -6,11 +6,11 @@
 
 #include "app_manager.h"
 
-#include <signal.h>
-#include <sys/types.h>
-
 #include "app_manager_p.h"
 #include "module/runtime/app.h"
+
+#include <signal.h>
+#include <sys/types.h>
 
 namespace linglong {
 namespace service {
@@ -28,9 +28,7 @@ AppManager::AppManager()
     runPool->setMaxThreadCount(RUN_POOL_MAX_THREAD);
 }
 
-AppManager::~AppManager()
-{
-}
+AppManager::~AppManager() { }
 
 /*
  * 执行软件包
@@ -111,8 +109,8 @@ Reply AppManager::Start(const RunParamOption &paramOption)
     if ("flatpak" != repoPoint) {
         // 判断是否已安装
         if (!linglong::util::getAppInstalledStatus(appId, version, arch, channel, appModule, "")) {
-            reply.message = appId + ", version:" + version + ", arch:" + arch + ", channel:" + channel
-                            + ", module:" + appModule + " not installed";
+            reply.message = appId + ", version:" + version + ", arch:" + arch
+                    + ", channel:" + channel + ", module:" + appModule + " not installed";
             qCritical() << reply.message;
             reply.code = STATUS_CODE(kPkgNotInstalled);
             return reply;
@@ -123,8 +121,9 @@ Reply AppManager::Start(const RunParamOption &paramOption)
             linglong::package::AppMetaInfoList pkgList;
             linglong::util::getAllVerAppInfo(appId, version, arch, "", pkgList);
             if (pkgList.size() < 2) {
-                reply.message = appId + ", version:" + version + ", arch:" + arch + ", channel:" + channel
-                                + ", module:" + appModule + ", no corresponding release package found";
+                reply.message = appId + ", version:" + version + ", arch:" + arch
+                        + ", channel:" + channel + ", module:" + appModule
+                        + ", no corresponding release package found";
                 qCritical() << reply.message;
                 reply.code = STATUS_CODE(kPkgNotInstalled);
                 return reply;
@@ -134,8 +133,10 @@ Reply AppManager::Start(const RunParamOption &paramOption)
 
     // 链接${LINGLONG_ROOT}/entries/share到~/.config/systemd/user下
     // FIXME:后续上了提权模块，放入安装处理。
-    const QString appUserServicePath = linglong::util::getLinglongRootPath() + "/entries/share/systemd/user";
-    const QString userSystemdServicePath = linglong::util::ensureUserDir({".config/systemd/user"});
+    const QString appUserServicePath =
+            linglong::util::getLinglongRootPath() + "/entries/share/systemd/user";
+    const QString userSystemdServicePath =
+            linglong::util::ensureUserDir({ ".config/systemd/user" });
     if (linglong::util::dirExists(appUserServicePath)) {
         linglong::util::linkDirFiles(appUserServicePath, userSystemdServicePath);
     }
@@ -258,11 +259,13 @@ Reply AppManager::RunCommand(const QString &exe, const QStringList args)
 
     process.setArguments(args);
 
-    QProcess::connect(&process, &QProcess::readyReadStandardOutput,
-                      [&]() { std::cout << process.readAllStandardOutput().toStdString().c_str(); });
+    QProcess::connect(&process, &QProcess::readyReadStandardOutput, [&]() {
+        std::cout << process.readAllStandardOutput().toStdString().c_str();
+    });
 
-    QProcess::connect(&process, &QProcess::readyReadStandardError,
-                      [&]() { std::cout << process.readAllStandardError().toStdString().c_str(); });
+    QProcess::connect(&process, &QProcess::readyReadStandardError, [&]() {
+        std::cout << process.readAllStandardError().toStdString().c_str();
+    });
 
     process.start();
     process.waitForStarted(15 * 60 * 1000);

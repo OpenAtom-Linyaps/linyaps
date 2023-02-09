@@ -7,8 +7,8 @@
 #ifndef LINGLONG_SRC_MODULE_DBUS_IPC_DBUS_COMMON_H_
 #define LINGLONG_SRC_MODULE_DBUS_IPC_DBUS_COMMON_H_
 
-#include <QDBusError>
 #include <QDBusConnection>
+#include <QDBusError>
 #include <QVariantMap>
 
 typedef QList<QVariantMap> QVariantMapList;
@@ -26,7 +26,8 @@ inline QVariant toVariant(const QVariantMapList &vml)
 
 namespace linglong {
 
-inline bool registerServiceAndObject(QDBusConnection *dbus, const QString &serviceName,
+inline bool registerServiceAndObject(QDBusConnection *dbus,
+                                     const QString &serviceName,
                                      QMap<QString, QObject *> objects)
 {
     if (!serviceName.isEmpty()) {

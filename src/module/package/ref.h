@@ -28,7 +28,11 @@ public:
     {
     }
 
-    Ref(const QString &remote, const QString &appId, const QString &version, const QString &arch, const QString &module)
+    Ref(const QString &remote,
+        const QString &appId,
+        const QString &version,
+        const QString &arch,
+        const QString &module)
         : repo(remote)
         , appId(appId)
         , version(version)
@@ -37,8 +41,12 @@ public:
     {
     }
 
-    Ref(const QString &remote, const QString &channel, const QString &appId, const QString &version,
-        const QString &arch, const QString &module)
+    Ref(const QString &remote,
+        const QString &channel,
+        const QString &appId,
+        const QString &version,
+        const QString &arch,
+        const QString &module)
         : repo(remote)
         , channel(channel)
         , appId(appId)
@@ -90,7 +98,10 @@ public:
     }
 
     // FIXME: local().toString()?
-    Q_DECL_DEPRECATED QString toLocalRefString() const { return QString("%1/%2/%3").arg(appId, version, arch); }
+    Q_DECL_DEPRECATED QString toLocalRefString() const
+    {
+        return QString("%1/%2/%3").arg(appId, version, arch);
+    }
 
     Q_DECL_DEPRECATED QString toLocalFullRef() const
     {

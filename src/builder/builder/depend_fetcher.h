@@ -7,8 +7,9 @@
 #ifndef LINGLONG_SRC_BUILDER_BUILDER_DEPEND_FETCHER_H_
 #define LINGLONG_SRC_BUILDER_BUILDER_DEPEND_FETCHER_H_
 
-#include <QObject>
 #include "module/util/result.h"
+
+#include <QObject>
 
 namespace linglong {
 namespace builder {
@@ -16,6 +17,7 @@ namespace builder {
 class Project;
 class BuildDepend;
 class DependFetcherPrivate;
+
 class DependFetcher : public QObject
 {
     Q_OBJECT

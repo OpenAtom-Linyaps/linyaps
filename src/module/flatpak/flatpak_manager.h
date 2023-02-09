@@ -7,9 +7,9 @@
 #ifndef LINGLONG_SRC_MODULE_FLATPAK_FLATPAK_MANAGER_H_
 #define LINGLONG_SRC_MODULE_FLATPAK_FLATPAK_MANAGER_H_
 
-#include <QStringList>
-
 #include "module/util/singleton.h"
+
+#include <QStringList>
 
 namespace linglong {
 namespace flatpak {

@@ -6,9 +6,9 @@
 
 #include "package.h"
 
-#include <QMetaType>
-
 #include "info.h"
+
+#include <QMetaType>
 
 void linglong::package::registerAllMetaType()
 {

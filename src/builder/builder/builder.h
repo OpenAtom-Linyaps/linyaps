@@ -7,9 +7,9 @@
 #ifndef LINGLONG_SRC_BUILDER_BUILDER_BUILDER_H_
 #define LINGLONG_SRC_BUILDER_BUILDER_BUILDER_H_
 
-#include <QObject>
-
 #include "module/util/result.h"
+
+#include <QObject>
 
 namespace linglong {
 namespace builder {
@@ -25,7 +25,9 @@ public:
 
     virtual linglong::util::Error exportBundle(const QString &outputFilepath, bool useLocalDir) = 0;
 
-    virtual util::Error push(const QString &repoUrl, const QString &repoName, const QString &channel,
+    virtual util::Error push(const QString &repoUrl,
+                             const QString &repoName,
+                             const QString &channel,
                              bool pushWithDevel) = 0;
 
     virtual linglong::util::Error import() = 0;

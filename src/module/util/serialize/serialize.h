@@ -19,46 +19,46 @@
 
 #define Q_SERIALIZE_PARENT_KEY "7bdcaad1-2f27-4092-a5cf-4919ad4caf2b"
 
-#define Q_SERIALIZE_CONSTRUCTOR(TYPE) \
-public: \
-    explicit TYPE(QObject *parent = nullptr) \
-        : Serialize(parent) \
-    { \
-    }
+#define Q_SERIALIZE_CONSTRUCTOR(TYPE)      \
+  public:                                  \
+  explicit TYPE(QObject *parent = nullptr) \
+      : Serialize(parent)                  \
+  {                                        \
+  }
 
 #define Q_SERIALIZE_PROPERTY(TYPE, PROP) Q_SERIALIZE_ITEM_MEMBER(TYPE, PROP, PROP)
 
-#define Q_SERIALIZE_ITEM_MEMBER(TYPE, PROP, MEMBER_NAME) \
-public: \
-    Q_PROPERTY(TYPE PROP MEMBER MEMBER_NAME READ get##PROP WRITE set##PROP); \
-    TYPE get##PROP() const \
-    { \
-        return MEMBER_NAME; \
-    } \
-    inline void set##PROP(const TYPE &val) \
-    { \
-        MEMBER_NAME = val; \
-    } \
-\
-public: \
-    TYPE MEMBER_NAME = TYPE();
+#define Q_SERIALIZE_ITEM_MEMBER(TYPE, PROP, MEMBER_NAME)                   \
+  public:                                                                  \
+  Q_PROPERTY(TYPE PROP MEMBER MEMBER_NAME READ get##PROP WRITE set##PROP); \
+  TYPE get##PROP() const                                                   \
+  {                                                                        \
+    return MEMBER_NAME;                                                    \
+  }                                                                        \
+  inline void set##PROP(const TYPE &val)                                   \
+  {                                                                        \
+    MEMBER_NAME = val;                                                     \
+  }                                                                        \
+                                                                           \
+  public:                                                                  \
+  TYPE MEMBER_NAME = TYPE();
 
 #define Q_SERIALIZE_PTR_PROPERTY(TYPE, PROP) Q_SERIALIZE_ITEM_MEMBER_PTR(TYPE, PROP, PROP)
 
-#define Q_SERIALIZE_ITEM_MEMBER_PTR(TYPE, PROP, MEMBER_NAME) \
-public: \
-    Q_PROPERTY(TYPE *PROP MEMBER MEMBER_NAME READ get##PROP WRITE set##PROP); \
-    TYPE *get##PROP() const \
-    { \
-        return MEMBER_NAME; \
-    } \
-    inline void set##PROP(TYPE *val) \
-    { \
-        MEMBER_NAME = val; \
-    } \
-\
-public: \
-    TYPE *MEMBER_NAME = nullptr;
+#define Q_SERIALIZE_ITEM_MEMBER_PTR(TYPE, PROP, MEMBER_NAME)                \
+  public:                                                                   \
+  Q_PROPERTY(TYPE *PROP MEMBER MEMBER_NAME READ get##PROP WRITE set##PROP); \
+  TYPE *get##PROP() const                                                   \
+  {                                                                         \
+    return MEMBER_NAME;                                                     \
+  }                                                                         \
+  inline void set##PROP(TYPE *val)                                          \
+  {                                                                         \
+    MEMBER_NAME = val;                                                      \
+  }                                                                         \
+                                                                            \
+  public:                                                                   \
+  TYPE *MEMBER_NAME = nullptr;
 
 template<typename T>
 static T *fromVariant(const QVariant &v)
@@ -117,136 +117,140 @@ inline void qSerializeRegister()
 
 #define Q_SERIALIZE_DECLARE(TYPE) Q_SERIALIZE_DECLARE_LIST_MAP(TYPE)
 
-#define Q_SERIALIZE_DECLARE_LIST_MAP(TYPE) \
-    class TYPE##List : public QList<QPointer<TYPE>> \
-    { \
-    public: \
-        inline TYPE##List() = default; \
-        inline ~TYPE##List() \
-        { \
-            for (auto &c : *this) { \
-                if (c && c->parent() == nullptr) { \
-                    c->deleteLater(); \
-                } \
-            } \
-        } \
-        inline TYPE##List(const TYPE##List &list) \
-        { \
-            for (auto c : list) { \
-                /* transport owner */ \
-                c.data()->setParent(parent); \
-                this->push_back(c.data()); \
-            } \
-        } \
-        QObject *parent = nullptr; \
-        static void registerMetaType(); \
-        friend QDBusArgument &operator<<(QDBusArgument &argument, const TYPE##List &message); \
-        friend const QDBusArgument &operator>>(const QDBusArgument &argument, TYPE##List &message); \
-    }; \
-    typedef QMap<QString, QPointer<TYPE>> TYPE##StrMap; \
-    inline QDBusArgument &operator<<(QDBusArgument &argument, const TYPE##List &message) \
-    { \
-        argument.beginStructure(); \
-        argument.beginArray(qMetaTypeId<QByteArray>()); \
-        for (const auto &item : message) { \
-            argument << TYPE::dump<TYPE>(item.data()); \
-        } \
-        argument.endArray(); \
-        argument.endStructure(); \
-        return argument; \
-    } \
-\
-    inline const QDBusArgument &operator>>(const QDBusArgument &argument, TYPE##List &message) \
-    { \
-        message.clear(); \
-        argument.beginStructure(); \
-        argument.beginArray(); \
-        while (!argument.atEnd()) { \
-            QByteArray buf; \
-            argument >> buf; \
-            auto v = QJsonDocument::fromJson(buf).toVariant(); \
-            auto c = QPointer<TYPE>(fromVariant<TYPE>(v)); \
-            message.append(c); \
-        } \
-        argument.endArray(); \
-        argument.endStructure(); \
-        return argument; \
-    }
+#define Q_SERIALIZE_DECLARE_LIST_MAP(TYPE)                                                      \
+  class TYPE##List : public QList<QPointer<TYPE>>                                               \
+  {                                                                                             \
+public:                                                                                         \
+    inline TYPE##List() = default;                                                              \
+    inline ~TYPE##List()                                                                        \
+    {                                                                                           \
+      for (auto &c : *this) {                                                                   \
+        if (c && c->parent() == nullptr) {                                                      \
+          c->deleteLater();                                                                     \
+        }                                                                                       \
+      }                                                                                         \
+    }                                                                                           \
+    inline TYPE##List(const TYPE##List &list)                                                   \
+    {                                                                                           \
+      for (auto c : list) {                                                                     \
+        /* transport owner */                                                                   \
+        c.data()->setParent(parent);                                                            \
+        this->push_back(c.data());                                                              \
+      }                                                                                         \
+    }                                                                                           \
+    QObject *parent = nullptr;                                                                  \
+    static void registerMetaType();                                                             \
+    friend QDBusArgument &operator<<(QDBusArgument &argument, const TYPE##List &message);       \
+    friend const QDBusArgument &operator>>(const QDBusArgument &argument, TYPE##List &message); \
+  };                                                                                            \
+  typedef QMap<QString, QPointer<TYPE>> TYPE##StrMap;                                           \
+  inline QDBusArgument &operator<<(QDBusArgument &argument, const TYPE##List &message)          \
+  {                                                                                             \
+    argument.beginStructure();                                                                  \
+    argument.beginArray(qMetaTypeId<QByteArray>());                                             \
+    for (const auto &item : message) {                                                          \
+      argument << TYPE::dump<TYPE>(item.data());                                                \
+    }                                                                                           \
+    argument.endArray();                                                                        \
+    argument.endStructure();                                                                    \
+    return argument;                                                                            \
+  }                                                                                             \
+                                                                                                \
+  inline const QDBusArgument &operator>>(const QDBusArgument &argument, TYPE##List &message)    \
+  {                                                                                             \
+    message.clear();                                                                            \
+    argument.beginStructure();                                                                  \
+    argument.beginArray();                                                                      \
+    while (!argument.atEnd()) {                                                                 \
+      QByteArray buf;                                                                           \
+      argument >> buf;                                                                          \
+      auto v = QJsonDocument::fromJson(buf).toVariant();                                        \
+      auto c = QPointer<TYPE>(fromVariant<TYPE>(v));                                            \
+      message.append(c);                                                                        \
+    }                                                                                           \
+    argument.endArray();                                                                        \
+    argument.endStructure();                                                                    \
+    return argument;                                                                            \
+  }
 
-#define Q_SERIALIZE_REGISTER_TYPE(TYPE, TYPE_LIST, TYPE_STR_MAP) \
-    Q_DECLARE_METATYPE(TYPE *) \
-    Q_DECLARE_METATYPE(TYPE_LIST) \
-    Q_DECLARE_METATYPE(TYPE_STR_MAP) \
-    template<> \
-    inline TYPE *qvariant_cast(const QVariant &v) \
-    { \
-        return fromVariant<TYPE>(v); \
-    } \
-    inline void TYPE_LIST::registerMetaType() \
-    { \
-        qDBusRegisterMetaType<TYPE_LIST>(); \
-    } \
-    template<> \
-    inline void qSerializeRegister<TYPE>() \
-    { \
-        TYPE_LIST::registerMetaType(); \
-        qRegisterMetaType<TYPE *>(); \
-\
-        QMetaType::registerConverter<QVariantMap, TYPE *>( \
-            [](const QVariantMap &v) -> TYPE * { return fromVariant<TYPE>(v); }); \
-        QMetaType::registerConverter<TYPE *, QJsonValue>( \
-            [](TYPE *m) -> QJsonValue { return toVariant(m).toJsonValue(); }); \
-\
-        QMetaType::registerConverter<QVariantMap, TYPE_STR_MAP>([](QVariantMap variantMap) -> TYPE_STR_MAP { \
-            TYPE_STR_MAP vMap; \
-            auto parent = qvariant_cast<QObject *>(variantMap.take(Q_SERIALIZE_PARENT_KEY)); \
-\
-            for (const auto &key : variantMap.keys()) { \
-                auto v = variantMap[key].toMap(); \
-                v[Q_SERIALIZE_PARENT_KEY] = QVariant::fromValue(parent); \
-                vMap[key] = fromVariant<TYPE>(v); \
-            } \
-            return vMap; \
-        }); \
-        QMetaType::registerConverter<TYPE_STR_MAP, QJsonValue>([](TYPE_STR_MAP map) -> QJsonValue { \
-            QVariantMap variantList; \
-            for (auto key : map.keys()) { \
-                variantList[key] = toVariant(map[key].data()); \
-            } \
-            return QVariant::fromValue(variantList).toJsonValue(); \
-        }); \
-\
-        QMetaType::registerConverter<QVariantList, TYPE_LIST>([](QVariantList list) -> TYPE_LIST { \
-            TYPE_LIST vList; \
-            auto parent = qvariant_cast<QObject *>(list.value(0)); \
-            if (parent) { \
-                list.pop_front(); \
-            } \
-            for (const auto &v : list) { \
-                auto map = v.toMap(); \
-                map[Q_SERIALIZE_PARENT_KEY] = QVariant::fromValue(parent); \
-                vList.push_back(QPointer<TYPE>(fromVariant<TYPE>(map))); \
-            } \
-            return vList; \
-        }); \
-        QMetaType::registerConverter<TYPE_LIST, QJsonValue>([](const TYPE_LIST &valueList) -> QJsonValue { \
-            QVariantList list; \
-            for (auto v : valueList) { \
-                list.push_back(toVariant(v.data())); \
-            } \
-            return QVariant::fromValue(list).toJsonValue(); \
-        }); \
-    }
+#define Q_SERIALIZE_REGISTER_TYPE(TYPE, TYPE_LIST, TYPE_STR_MAP)                                \
+  Q_DECLARE_METATYPE(TYPE *)                                                                    \
+  Q_DECLARE_METATYPE(TYPE_LIST)                                                                 \
+  Q_DECLARE_METATYPE(TYPE_STR_MAP)                                                              \
+  template<>                                                                                    \
+  inline TYPE *qvariant_cast(const QVariant &v)                                                 \
+  {                                                                                             \
+    return fromVariant<TYPE>(v);                                                                \
+  }                                                                                             \
+  inline void TYPE_LIST::registerMetaType()                                                     \
+  {                                                                                             \
+    qDBusRegisterMetaType<TYPE_LIST>();                                                         \
+  }                                                                                             \
+  template<>                                                                                    \
+  inline void qSerializeRegister<TYPE>()                                                        \
+  {                                                                                             \
+    TYPE_LIST::registerMetaType();                                                              \
+    qRegisterMetaType<TYPE *>();                                                                \
+                                                                                                \
+    QMetaType::registerConverter<QVariantMap, TYPE *>([](const QVariantMap &v) -> TYPE * {      \
+return fromVariant<TYPE>(v);                                                                    \
+    });                                                                                         \
+    QMetaType::registerConverter<TYPE *, QJsonValue>([](TYPE *m) -> QJsonValue {                \
+return toVariant(m).toJsonValue();                                                              \
+    });                                                                                         \
+                                                                                                \
+    QMetaType::registerConverter<QVariantMap, TYPE_STR_MAP>(                                    \
+            [](QVariantMap variantMap) -> TYPE_STR_MAP {                                        \
+        TYPE_STR_MAP vMap;                                                                      \
+        auto parent = qvariant_cast<QObject *>(variantMap.take(Q_SERIALIZE_PARENT_KEY));        \
+                                                                                                \
+        for (const auto &key : variantMap.keys()) {                                             \
+          auto v = variantMap[key].toMap();                                                     \
+          v[Q_SERIALIZE_PARENT_KEY] = QVariant::fromValue(parent);                              \
+          vMap[key] = fromVariant<TYPE>(v);                                                     \
+        }                                                                                       \
+        return vMap;                                                                            \
+            });                                                                                 \
+    QMetaType::registerConverter<TYPE_STR_MAP, QJsonValue>([](TYPE_STR_MAP map) -> QJsonValue { \
+QVariantMap variantList;                                                                        \
+for (auto key : map.keys()) {                                                                   \
+  variantList[key] = toVariant(map[key].data());                                                \
+}                                                                                               \
+return QVariant::fromValue(variantList).toJsonValue();                                          \
+    });                                                                                         \
+                                                                                                \
+    QMetaType::registerConverter<QVariantList, TYPE_LIST>([](QVariantList list) -> TYPE_LIST {  \
+TYPE_LIST vList;                                                                                \
+auto parent = qvariant_cast<QObject *>(list.value(0));                                          \
+if (parent) {                                                                                   \
+  list.pop_front();                                                                             \
+}                                                                                               \
+for (const auto &v : list) {                                                                    \
+  auto map = v.toMap();                                                                         \
+  map[Q_SERIALIZE_PARENT_KEY] = QVariant::fromValue(parent);                                    \
+  vList.push_back(QPointer<TYPE>(fromVariant<TYPE>(map)));                                      \
+}                                                                                               \
+return vList;                                                                                   \
+    });                                                                                         \
+    QMetaType::registerConverter<TYPE_LIST, QJsonValue>(                                        \
+            [](const TYPE_LIST &valueList) -> QJsonValue {                                      \
+        QVariantList list;                                                                      \
+        for (auto v : valueList) {                                                              \
+          list.push_back(toVariant(v.data()));                                                  \
+        }                                                                                       \
+        return QVariant::fromValue(list).toJsonValue();                                         \
+            });                                                                                 \
+  }
 
 #define Q_SERIALIZE_DECLARE_METATYPE_NM(NM, TYPE) \
-    namespace NM { \
-    Q_SERIALIZE_DECLARE_LIST_MAP(TYPE) \
-    } \
-    Q_SERIALIZE_REGISTER_TYPE(NM::TYPE, NM::TYPE##List, NM::TYPE##StrMap)
+  namespace NM {                                  \
+  Q_SERIALIZE_DECLARE_LIST_MAP(TYPE)              \
+  }                                               \
+  Q_SERIALIZE_REGISTER_TYPE(NM::TYPE, NM::TYPE##List, NM::TYPE##StrMap)
 
 #define Q_SERIALIZE_DECLARE_METATYPE(TYPE) \
-    Q_SERIALIZE_DECLARE_LIST_MAP(TYPE) \
-    Q_SERIALIZE_REGISTER_TYPE(TYPE, TYPE##List, TYPE##StrMap)
+  Q_SERIALIZE_DECLARE_LIST_MAP(TYPE)       \
+  Q_SERIALIZE_REGISTER_TYPE(TYPE, TYPE##List, TYPE##StrMap)
 
 template<typename T>
 QVariant toVariant(const T *m)

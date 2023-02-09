@@ -5,6 +5,7 @@
  */
 
 #include "source_fetcher.h"
+
 #include "project.h"
 #include "source_fetcher_p.h"
 
@@ -23,16 +24,17 @@ linglong::util::Error SourceFetcher::extractFile(const QString &path, const QStr
 {
     QFileInfo fi(path);
 
-    QMap<QString, std::function<linglong::util::Error(const QString &path, const QString &dir)>> subcommandMap = {
-        {CompressedFileTarXz,
-         [](const QString &path, const QString &dir) -> linglong::util::Error {
-             auto ret = runner::Runner("tar", {"-C", dir, "-xvf", path}, -1);
-             if (!ret) {
-                 return NewError(-1, "extract " + path + "failed");
-             }
-             return NoError();
-         }},
-    };
+    QMap<QString, std::function<linglong::util::Error(const QString &path, const QString &dir)>>
+            subcommandMap = {
+                { CompressedFileTarXz,
+                  [](const QString &path, const QString &dir) -> linglong::util::Error {
+                      auto ret = runner::Runner("tar", { "-C", dir, "-xvf", path }, -1);
+                      if (!ret) {
+                          return NewError(-1, "extract " + path + "failed");
+                      }
+                      return NoError();
+                  } },
+            };
 
     auto suffix = fixSuffix(fi);
 
@@ -40,7 +42,8 @@ linglong::util::Error SourceFetcher::extractFile(const QString &path, const QStr
         auto subcommand = subcommandMap[suffix];
         return subcommand(path, dir);
     } else {
-        qCritical() << "unsupported suffix" << path << fi.completeSuffix() << fi.suffix() << fi.bundleName();
+        qCritical() << "unsupported suffix" << path << fi.completeSuffix() << fi.suffix()
+                    << fi.bundleName();
     }
     return NewError(-1, "unkonwn error");
 }
@@ -63,11 +66,11 @@ QString SourceFetcherPrivate::filename()
 QString SourceFetcherPrivate::sourceTargetPath() const
 {
     auto path =
-        QStringList {
-            BuilderConfig::instance()->targetSourcePath(),
-            //                source->commit,
-        }
-            .join("/");
+            QStringList{
+                BuilderConfig::instance()->targetSourcePath(),
+                //                source->commit,
+            }
+                    .join("/");
     util::ensureDir(path);
     return path;
 }
@@ -91,10 +94,13 @@ linglong::util::Error SourceFetcherPrivate::fetchArchiveFile()
 
     auto reply = util::networkMgr().get(request);
 
-    QObject::connect(reply, &QNetworkReply::metaDataChanged,
-                     [reply]() { qDebug() << reply->header(QNetworkRequest::ContentLengthHeader); });
+    QObject::connect(reply, &QNetworkReply::metaDataChanged, [reply]() {
+        qDebug() << reply->header(QNetworkRequest::ContentLengthHeader);
+    });
 
-    QObject::connect(reply, &QNetworkReply::readyRead, [this, reply]() { file->write(reply->readAll()); });
+    QObject::connect(reply, &QNetworkReply::readyRead, [this, reply]() {
+        file->write(reply->readAll());
+    });
 
     QEventLoop loop;
     QEventLoop::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
@@ -103,7 +109,8 @@ linglong::util::Error SourceFetcherPrivate::fetchArchiveFile()
     file->close();
 
     if (source->digest != util::fileHash(path, QCryptographicHash::Sha256)) {
-        qCritical() << QString("mismatched hash: %1").arg(util::fileHash(path, QCryptographicHash::Sha256));
+        qCritical() << QString("mismatched hash: %1")
+                               .arg(util::fileHash(path, QCryptographicHash::Sha256));
         return NewError(-1, "download failed");
     }
 
@@ -125,9 +132,9 @@ util::Error SourceFetcherPrivate::fetchGitRepo()
 
     if (!runner::Runner("git",
                         {
-                            "clone",
-                            source->url,
-                            sourceTargetPath(),
+                                "clone",
+                                source->url,
+                                sourceTargetPath(),
                         },
                         -1)) {
         qDebug() << NewError(-1, "git clone failed");
@@ -137,10 +144,10 @@ util::Error SourceFetcherPrivate::fetchGitRepo()
 
     if (!runner::Runner("git",
                         {
-                            "checkout",
-                            "-b",
-                            source->version,
-                            source->commit,
+                                "checkout",
+                                "-b",
+                                source->version,
+                                source->commit,
                         },
                         -1)) {
         qDebug() << NewError(-1, "git checkout failed");
@@ -148,9 +155,9 @@ util::Error SourceFetcherPrivate::fetchGitRepo()
 
     if (!runner::Runner("git",
                         {
-                            "reset",
-                            "--hard",
-                            source->commit,
+                                "reset",
+                                "--hard",
+                                source->commit,
                         },
                         -1)) {
         return NewError(-1, "git reset failed");
@@ -174,7 +181,9 @@ util::Error SourceFetcherPrivate::handleLocalPatch()
             continue;
         }
         qInfo() << QString("applying patch: %1").arg(localPatch);
-        if (!runner::Runner("patch", {"-p1", "-i", project->config().absoluteFilePath({localPatch})}, -1)) {
+        if (!runner::Runner("patch",
+                            { "-p1", "-i", project->config().absoluteFilePath({ localPatch }) },
+                            -1)) {
             return NewError(-1, "patch failed");
         }
     }
@@ -248,8 +257,6 @@ SourceFetcher::SourceFetcher(Source *s, Project *project)
     d->project = project;
 }
 
-SourceFetcher::~SourceFetcher()
-{
-}
+SourceFetcher::~SourceFetcher() { }
 } // namespace builder
 } // namespace linglong

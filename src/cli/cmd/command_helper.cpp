@@ -11,7 +11,7 @@ namespace cli {
 
 int CommandHelper::bringDownPermissionsTo(const struct stat &fileStat)
 {
-    __gid_t newGid[1] = {fileStat.st_gid};
+    __gid_t newGid[1] = { fileStat.st_gid };
 
     setgroups(1, newGid);
 
@@ -27,11 +27,11 @@ void CommandHelper::showContainer(const ContainerList &containerList, const QStr
 {
     QJsonArray jsonArray;
     for (auto const &container : containerList) {
-        jsonArray.push_back(QJsonObject {
-            {"app", package::Ref(container->packageName).appId},
-            {"id", container->id},
-            {"pid", container->pid},
-            {"path", container->workingDirectory},
+        jsonArray.push_back(QJsonObject{
+                { "app", package::Ref(container->packageName).appId },
+                { "id", container->id },
+                { "pid", container->pid },
+                { "path", container->workingDirectory },
         });
     }
 
@@ -41,11 +41,14 @@ void CommandHelper::showContainer(const ContainerList &containerList, const QStr
         qInfo("\033[1m\033[38;5;214m%-48s%-36s%-8s%-s\033[0m", "App", "ContainerID", "Pid", "Path");
         for (auto const &item : jsonArray) {
             QString path = item.toObject().value("path").toString();
-            qInfo().noquote() << QString("%1%2%3%4")
-                                     .arg(item.toObject().value("app").toString(), -48, QLatin1Char(' '))
-                                     .arg(item.toObject().value("id").toString(), -36, QLatin1Char(' '))
-                                     .arg(QString::number(item.toObject().value("pid").toInt()), -8, QLatin1Char(' '))
-                                     .arg(path, -path.length(), QLatin1Char(' '));
+            qInfo().noquote()
+                    << QString("%1%2%3%4")
+                               .arg(item.toObject().value("app").toString(), -48, QLatin1Char(' '))
+                               .arg(item.toObject().value("id").toString(), -36, QLatin1Char(' '))
+                               .arg(QString::number(item.toObject().value("pid").toInt()),
+                                    -8,
+                                    QLatin1Char(' '))
+                               .arg(path, -path.length(), QLatin1Char(' '));
         }
     }
 }
@@ -87,7 +90,8 @@ int CommandHelper::namespaceEnter(pid_t pid, const QStringList &args)
         auto currentNameSpace = (prefix + nameSpace).toStdString();
         int fd = open(currentNameSpace.c_str(), O_RDONLY);
         if (fd < 0) {
-            qCritical() << "open failed" << currentNameSpace.c_str() << fd << errno << strerror(errno);
+            qCritical() << "open failed" << currentNameSpace.c_str() << fd << errno
+                        << strerror(errno);
             continue;
         }
         qDebug() << "push" << fd << currentNameSpace.c_str();
@@ -143,8 +147,12 @@ int CommandHelper::namespaceEnter(pid_t pid, const QStringList &args)
         }
 
         std::vector<std::string> argVec(args.size());
-        std::transform(args.begin(), args.end(), argVec.begin(),
-                       [](const QString &str) -> std::string { return str.toStdString(); });
+        std::transform(args.begin(),
+                       args.end(),
+                       argVec.begin(),
+                       [](const QString &str) -> std::string {
+                           return str.toStdString();
+                       });
 
         return execArgs(argVec, envVec);
     }
@@ -167,18 +175,24 @@ QStringList CommandHelper::getUserEnv(const QStringList &envList)
     return userEnvList;
 }
 
-int CommandHelper::execArgs(const std::vector<std::string> &args, const std::vector<std::string> &envStrVector)
+int CommandHelper::execArgs(const std::vector<std::string> &args,
+                            const std::vector<std::string> &envStrVector)
 {
     std::vector<char *> argVec(args.size() + 1);
-    std::transform(args.begin(), args.end(), argVec.begin(),
-                   [](const std::string &str) -> char * { return const_cast<char *>(str.c_str()); });
+    std::transform(args.begin(), args.end(), argVec.begin(), [](const std::string &str) -> char * {
+        return const_cast<char *>(str.c_str());
+    });
     argVec.push_back(nullptr);
 
     auto command = argVec.data();
 
     std::vector<char *> envVec(envStrVector.size() + 1);
-    std::transform(envStrVector.begin(), envStrVector.end(), envVec.begin(),
-                   [](const std::string &str) -> char * { return const_cast<char *>(str.c_str()); });
+    std::transform(envStrVector.begin(),
+                   envStrVector.end(),
+                   envVec.begin(),
+                   [](const std::string &str) -> char * {
+                       return const_cast<char *>(str.c_str());
+                   });
     envVec.push_back(nullptr);
 
     auto env = envVec.data();

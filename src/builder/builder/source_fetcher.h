@@ -7,14 +7,13 @@
 #ifndef LINGLONG_SRC_BUILDER_SOURCE_FETCHER_H_
 #define LINGLONG_SRC_BUILDER_SOURCE_FETCHER_H_
 
-#include <QObject>
-#include <QFileInfo>
-#include <QUrl>
-
-#include "project.h"
 #include "builder_config.h"
-
 #include "module/util/result.h"
+#include "project.h"
+
+#include <QFileInfo>
+#include <QObject>
+#include <QUrl>
 
 namespace linglong {
 namespace builder {
@@ -22,6 +21,7 @@ namespace builder {
 class Source;
 class Project;
 class SourceFetcherPrivate;
+
 class SourceFetcher : public QObject
 {
     Q_OBJECT

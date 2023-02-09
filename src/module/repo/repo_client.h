@@ -7,15 +7,15 @@
 #ifndef LINGLONG_SRC_MODULE_REPO_REPO_CLIENT_H_
 #define LINGLONG_SRC_MODULE_REPO_REPO_CLIENT_H_
 
-#include <tuple>
-
-#include <QNetworkReply>
-#include <QNetworkRequest>
-
 #include "module/package/info.h"
 #include "module/package/package.h"
 #include "module/package/ref.h"
 #include "module/util/result.h"
+
+#include <QNetworkReply>
+#include <QNetworkRequest>
+
+#include <tuple>
 
 namespace linglong {
 namespace repo {

@@ -7,6 +7,8 @@
 #ifndef LINGLONG_SRC_MODULE_UTIL_SERIALIZE_YAML_H_
 #define LINGLONG_SRC_MODULE_UTIL_SERIALIZE_YAML_H_
 
+#include "module/util/serialize/json.h"
+
 #include <yaml-cpp/yaml.h>
 
 #include <QDebug>
@@ -14,13 +16,12 @@
 #include <QString>
 #include <QVariant>
 
-#include "module/util/serialize/json.h"
-
 namespace YAML {
 
 // QString
 template<>
-struct convert<QString> {
+struct convert<QString>
+{
     static Node encode(const QString &rhs) { return Node(rhs.toStdString()); }
 
     static bool decode(const Node &node, QString &rhs)
@@ -34,7 +35,8 @@ struct convert<QString> {
 
 // QVariant
 template<>
-struct convert<QVariant> {
+struct convert<QVariant>
+{
     static Node encode(const QVariant &rhs)
     {
         Node n;
@@ -92,7 +94,8 @@ struct convert<QVariant> {
 
 // QJsonValue
 template<>
-struct convert<QJsonValue> {
+struct convert<QJsonValue>
+{
     static Node encode(const QJsonValue &rhs) { return Node(rhs.toVariant()); }
 
     static bool decode(const Node &node, QJsonValue &rhs)

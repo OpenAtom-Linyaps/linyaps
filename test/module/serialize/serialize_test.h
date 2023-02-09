@@ -7,8 +7,8 @@
 #ifndef LINGLONG_TEST_MODULE_SERIALIZE_SERIALIZE_TEST_H_
 #define LINGLONG_TEST_MODULE_SERIALIZE_SERIALIZE_TEST_H_
 
-#include "module/util/serialize/serialize.h"
 #include "module/util/serialize/json.h"
+#include "module/util/serialize/serialize.h"
 
 namespace linglong {
 namespace repo {

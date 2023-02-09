@@ -7,13 +7,13 @@
 #ifndef LINGLONG_SRC_MODULE_UTIL_CONNECTION_H_
 #define LINGLONG_SRC_MODULE_UTIL_CONNECTION_H_
 
+#include "singleton.h"
+
 #include <QMutex>
 #include <QMutexLocker>
 #include <QQueue>
 #include <QString>
 #include <QtSql>
-
-#include "singleton.h"
 
 #define DATABASE_NAME "linglong.db"
 
@@ -30,7 +30,7 @@ public:
     QSqlQuery execute(const QString &sql, const QVariantMap &valueMap);
 
 private:
-    QSqlDatabase getConnection(); // 创建数据库连接
+    QSqlDatabase getConnection();                   // 创建数据库连接
     void closeConnection(QSqlDatabase &connection); // 关闭连接
 
 private:

@@ -6,14 +6,14 @@
 
 #include <gtest/gtest.h>
 
-#include <QtConcurrent/QtConcurrent>
-
 #include "src/module/util/file.h"
 #include "src/module/util/http/httpclient.h"
 
+#include <QtConcurrent/QtConcurrent>
+
 TEST(httpclient, test01)
 {
-    QStringList userInfo = {"linglong", "linglong"};
+    QStringList userInfo = { "linglong", "linglong" };
 
     QString configUrl = "";
     int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);

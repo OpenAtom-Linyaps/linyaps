@@ -18,6 +18,7 @@
 namespace linglong {
 namespace service {
 class PackageManager;
+
 class PackageManagerPrivate : public QObject
 {
     Q_OBJECT
@@ -52,8 +53,10 @@ private:
      * @return AppMetaInfo: 最新版本的runtime
      *
      */
-    linglong::package::AppMetaInfo *getLatestRuntime(const QString &appId, const QString &version,
-                                                     const linglong::package::AppMetaInfoList &appList);
+    linglong::package::AppMetaInfo *
+    getLatestRuntime(const QString &appId,
+                     const QString &version,
+                     const linglong::package::AppMetaInfoList &appList);
     /*
      * 从给定的软件包列表中查找最新版本的软件包
      *
@@ -86,7 +89,9 @@ private:
      *
      * @return bool: true:成功 false:失败
      */
-    bool loadAppInfo(const QString &jsonString, linglong::package::AppMetaInfoList &appList, QString &err);
+    bool loadAppInfo(const QString &jsonString,
+                     linglong::package::AppMetaInfoList &appList,
+                     QString &err);
 
     /*
      * 从服务器查询指定包名/版本/架构的软件包数据
@@ -99,7 +104,10 @@ private:
      *
      * @return bool: true:成功 false:失败
      */
-    bool getAppInfofromServer(const QString &pkgName, const QString &pkgVer, const QString &pkgArch, QString &appData,
+    bool getAppInfofromServer(const QString &pkgName,
+                              const QString &pkgVer,
+                              const QString &pkgArch,
+                              QString &appData,
                               QString &err);
     /*
      * 将在线包数据部分签出到指定目录
@@ -112,8 +120,13 @@ private:
      *
      * @return bool: true:成功 false:失败
      */
-    bool downloadAppData(const QString &pkgName, const QString &pkgVer, const QString &pkgArch, const QString &channel,
-                         const QString &module, const QString &dstPath, QString &err);
+    bool downloadAppData(const QString &pkgName,
+                         const QString &pkgVer,
+                         const QString &pkgArch,
+                         const QString &channel,
+                         const QString &module,
+                         const QString &dstPath,
+                         QString &err);
 
     /*
      * 安装应用runtime
@@ -135,7 +148,10 @@ private:
      *
      * @return bool: true:安装成功或已安装返回true false:安装失败
      */
-    bool checkAppRuntime(const QString &runtime, const QString &channel, const QString &module, QString &err);
+    bool checkAppRuntime(const QString &runtime,
+                         const QString &channel,
+                         const QString &module,
+                         QString &err);
 
     /*
      * 针对非deepin发行版检查应用base安装状态
@@ -147,7 +163,10 @@ private:
      *
      * @return bool: true:安装成功或已安装返回true false:安装失败
      */
-    bool checkAppBase(const QString &runtime, const QString &channel, const QString &module, QString &err);
+    bool checkAppBase(const QString &runtime,
+                      const QString &channel,
+                      const QString &module,
+                      QString &err);
 
     /*
      * 安装应用时更新包括desktop文件在内的配置文件

@@ -90,7 +90,8 @@ int queryLocalCache(const QString &key, QString &appData)
     QSqlQuery sqlQuery(dbConn);
     sqlQuery.prepare(selectSql);
     if (!sqlQuery.exec()) {
-        err = "queryLocalCache fail to exec sql:" + selectSql + ", error:" + sqlQuery.lastError().text();
+        err = "queryLocalCache fail to exec sql:" + selectSql
+                + ", error:" + sqlQuery.lastError().text();
         qCritical() << err;
         dbConn.close();
         return STATUS_CODE(kFail);
@@ -119,7 +120,8 @@ int queryLocalCache(const QString &key, QString &appData)
         QString deleteSql = QString("DELETE FROM appInfo WHERE key = '%1'").arg(key);
         sqlQuery.prepare(deleteSql);
         if (!sqlQuery.exec()) {
-            err = "queryLocalCache fail to exec sql:" + deleteSql + ", error:" + sqlQuery.lastError().text();
+            err = "queryLocalCache fail to exec sql:" + deleteSql
+                    + ", error:" + sqlQuery.lastError().text();
             qCritical() << err;
             dbConn.close();
             return STATUS_CODE(kFail);
@@ -155,7 +157,8 @@ int updateCache(const QString &key, const QString &appData)
     sqlQuery.bindValue(1, appData);
     sqlQuery.bindValue(2, currentTime);
     if (!sqlQuery.exec()) {
-        err = "updateCache fail to exec sql:" + insertSql + ", error:" + sqlQuery.lastError().text();
+        err = "updateCache fail to exec sql:" + insertSql
+                + ", error:" + sqlQuery.lastError().text();
         qCritical() << err;
         dbConn.close();
         return STATUS_CODE(kFail);

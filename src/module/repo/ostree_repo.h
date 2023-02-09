@@ -7,19 +7,18 @@
 #ifndef LINGLONG_SRC_MODULE_REPO_OSTREE_REPO_H_
 #define LINGLONG_SRC_MODULE_REPO_OSTREE_REPO_H_
 
-#include <QPointer>
-#include <QScopedPointer>
-
 #include "module/package/package.h"
 #include "module/repo/repo.h"
+
+#include <QPointer>
+#include <QScopedPointer>
 
 namespace linglong {
 namespace repo {
 
 class OSTreeRepoPrivate;
-class OSTreeRepo
-    : public QObject
-    , public Repo
+
+class OSTreeRepo : public QObject, public Repo
 {
     Q_OBJECT
 public:
@@ -29,10 +28,13 @@ public:
         BareUserOnly,
         Archive,
     };
+
     Q_ENUM(Mode);
 
     explicit OSTreeRepo(const QString &path);
-    explicit OSTreeRepo(const QString &localRepoPath, const QString &remoteEndpoint, const QString &remoteRepoName);
+    explicit OSTreeRepo(const QString &localRepoPath,
+                        const QString &remoteEndpoint,
+                        const QString &remoteRepoName);
 
     ~OSTreeRepo() override;
     linglong::util::Error init(const QString &repoMode);
@@ -63,13 +65,17 @@ public:
 
     linglong::util::Error pullAll(const package::Ref &ref, bool force);
 
-    linglong::util::Error checkout(const package::Ref &ref, const QString &subPath, const QString &target);
+    linglong::util::Error checkout(const package::Ref &ref,
+                                   const QString &subPath,
+                                   const QString &target);
 
     linglong::util::Error removeRef(const package::Ref &ref);
 
     linglong::util::Error remoteDelete(const QString &repoName);
 
-    linglong::util::Error checkoutAll(const package::Ref &ref, const QString &subPath, const QString &target);
+    linglong::util::Error checkoutAll(const package::Ref &ref,
+                                      const QString &subPath,
+                                      const QString &target);
 
     std::tuple<QString, util::Error> compressOstreeData(const package::Ref &ref);
 

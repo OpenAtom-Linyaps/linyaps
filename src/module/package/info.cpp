@@ -65,7 +65,7 @@ Ref parseId(const QString &id)
         qCritical() << "invalid id" << id;
     }
 
-    return Ref {remoteRepo, channel, appId, version, arch, module};
+    return Ref{ remoteRepo, channel, appId, version, arch, module };
 }
 
 Ref::Ref(const QString &id)

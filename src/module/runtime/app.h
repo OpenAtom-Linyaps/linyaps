@@ -70,6 +70,7 @@ namespace linglong {
 namespace runtime {
 
 class AppPrivate;
+
 class App : public JsonSerialize
 {
     Q_OBJECT;
@@ -84,7 +85,9 @@ public:
     explicit App(QObject *parent = nullptr);
     ~App() override;
 
-    static App *load(linglong::repo::Repo *repo, const linglong::package::Ref &ref, const QString &desktopExec,
+    static App *load(linglong::repo::Repo *repo,
+                     const linglong::package::Ref &ref,
+                     const QString &desktopExec,
                      bool useFlatpakRuntime);
 
     Container *container() const;

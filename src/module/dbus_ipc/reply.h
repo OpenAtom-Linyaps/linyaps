@@ -18,7 +18,7 @@ namespace service {
 class Reply
 {
 public:
-    int code; ///< 状态码
+    int code;        ///< 状态码
     QString message; ///< 状态码对应的消息
 };
 
@@ -29,6 +29,7 @@ inline QDBusArgument &operator<<(QDBusArgument &argument, const Reply &reply)
     argument.endStructure();
     return argument;
 }
+
 inline const QDBusArgument &operator>>(const QDBusArgument &argument, Reply &reply)
 {
     argument.beginStructure();
@@ -51,6 +52,7 @@ inline QDBusArgument &operator<<(QDBusArgument &argument, const QueryReply &repl
     argument.endStructure();
     return argument;
 }
+
 inline const QDBusArgument &operator>>(const QDBusArgument &argument, QueryReply &reply)
 {
     argument.beginStructure();

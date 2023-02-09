@@ -6,14 +6,14 @@
 
 #include <gtest/gtest.h>
 
+#include "src/module/runtime/app.h"
+#include "src/module/runtime/oci.h"
+#include "src/module/runtime/runtime.h"
+#include "src/module/util/serialize/yaml.h"
+
 #include <QDebug>
 #include <QFile>
 #include <QJsonDocument>
-
-#include "src/module/runtime/oci.h"
-#include "src/module/runtime/app.h"
-#include "src/module/runtime/runtime.h"
-#include "src/module/util/serialize/yaml.h"
 
 TEST(AppTest, StructTest)
 {

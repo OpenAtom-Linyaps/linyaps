@@ -6,34 +6,38 @@
 
 #include "builder_config.h"
 
-#include "module/util/serialize/yaml.h"
-#include "module/util/xdg.h"
 #include "module/util/file.h"
+#include "module/util/serialize/yaml.h"
 #include "module/util/sysinfo.h"
+#include "module/util/xdg.h"
 
 namespace linglong {
 namespace builder {
 
 QString BuilderConfig::repoPath() const
 {
-    return QStringList {util::userCacheDir().path(), "linglong-builder"}.join(QDir::separator());
+    return QStringList{ util::userCacheDir().path(), "linglong-builder" }.join(QDir::separator());
 }
 
 QString BuilderConfig::ostreePath() const
 {
-    return QStringList {util::userCacheDir().path(), "linglong-builder/repo"}.join("/");
+    return QStringList{ util::userCacheDir().path(), "linglong-builder/repo" }.join("/");
 }
 
 QString BuilderConfig::targetFetchCachePath() const
 {
-    auto target = QStringList {getProjectRoot(), ".linglong-target", getProjectName(), "fetch", "cache"}.join("/");
+    auto target =
+            QStringList{ getProjectRoot(), ".linglong-target", getProjectName(), "fetch", "cache" }
+                    .join("/");
     util::ensureDir(target);
     return target;
 }
 
 QString BuilderConfig::targetSourcePath() const
 {
-    auto target = QStringList {getProjectRoot(), ".linglong-target", getProjectName(), "source"}.join("/");
+    auto target =
+            QStringList{ getProjectRoot(), ".linglong-target", getProjectName(), "source" }.join(
+                    "/");
     util::ensureDir(target);
     return target;
 }
@@ -60,7 +64,7 @@ QString BuilderConfig::getProjectName() const
 
 QString BuilderConfig::layerPath(const QStringList &subPathList) const
 {
-    QStringList list {util::userCacheDir().path(), "linglong-builder/layers"};
+    QStringList list{ util::userCacheDir().path(), "linglong-builder/layers" };
     list.append(subPathList);
     return list.join(QDir::separator());
 }
@@ -78,7 +82,7 @@ QString BuilderConfig::getExec() const
 QString BuilderConfig::templatePath() const
 {
     for (auto dataPath : QStandardPaths::standardLocations(QStandardPaths::DataLocation)) {
-        QString templatePath = QStringList {dataPath, "template"}.join("/");
+        QString templatePath = QStringList{ dataPath, "template" }.join("/");
         if (util::dirExists(templatePath)) {
             return templatePath;
         }
@@ -92,11 +96,11 @@ QString configPath()
     QStringList configDirs = QStandardPaths::standardLocations(QStandardPaths::ConfigLocation);
     configDirs.push_front("/etc");
     configDirs.push_front("/usr/local/etc");
-    configDirs.push_front(QStringList{QDir::currentPath(), ".."}.join(QDir::separator()));
+    configDirs.push_front(QStringList{ QDir::currentPath(), ".." }.join(QDir::separator()));
     configDirs.push_front(QDir::currentPath());
 
     for (const auto &configDir : configDirs) {
-        QString configPath = QStringList {configDir, filename}.join(QDir::separator());
+        QString configPath = QStringList{ configDir, filename }.join(QDir::separator());
         if (QFile::exists(configPath)) {
             return configPath;
         }
@@ -109,14 +113,15 @@ BuilderConfig *BuilderConfig::instance()
 {
     if (!configPath().isEmpty()) {
         try {
-            static auto config = formYaml<BuilderConfig>(YAML::LoadFile(configPath().toStdString()));
+            static auto config =
+                    formYaml<BuilderConfig>(YAML::LoadFile(configPath().toStdString()));
             return config;
         } catch (std::exception &e) {
             qCritical() << e.what();
             qCritical().noquote() << QString("failed to parse builder.yaml");
         }
     }
-    
+
     static BuilderConfig *cfg = new BuilderConfig();
     return cfg;
 }

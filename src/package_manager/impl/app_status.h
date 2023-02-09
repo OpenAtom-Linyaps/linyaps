@@ -7,16 +7,16 @@
 #ifndef LINGLONG_SRC_PACKAGE_MANAGER_IMPL_APP_STATUS_H_
 #define LINGLONG_SRC_PACKAGE_MANAGER_IMPL_APP_STATUS_H_
 
+#include "module/package/package.h"
+#include "module/util/connection.h"
+#include "module/util/status_code.h"
+#include "module/util/version/version.h"
+
 #include <QDateTime>
 #include <QJsonArray>
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
-
-#include "module/util/status_code.h"
-#include "module/util/version/version.h"
-#include "module/util/connection.h"
-#include "module/package/package.h"
 
 namespace linglong {
 namespace util {
@@ -43,7 +43,9 @@ int updateInstalledAppInfoDb();
  *
  * @return int: 0:成功 其它:失败
  */
-int insertAppRecord(linglong::package::AppMetaInfo *package, const QString &installType, const QString &userName);
+int insertAppRecord(linglong::package::AppMetaInfo *package,
+                    const QString &installType,
+                    const QString &userName);
 
 /*
  * 删除软件包安装信息
@@ -57,8 +59,12 @@ int insertAppRecord(linglong::package::AppMetaInfo *package, const QString &inst
  *
  * @return int: 0:成功 其它:失败
  */
-int deleteAppRecord(const QString &appId, const QString &appVer, const QString &appArch, const QString &channel,
-                    const QString &module, const QString &userName);
+int deleteAppRecord(const QString &appId,
+                    const QString &appVer,
+                    const QString &appArch,
+                    const QString &channel,
+                    const QString &module,
+                    const QString &userName);
 
 /*
  * 判断软件包类型是否为runtime
@@ -81,8 +87,12 @@ bool isRuntime(const QString &appId);
  *
  * @return bool: true:已安装 false:未安装
  */
-bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QString &appArch, const QString &channel,
-                           const QString &module, const QString &userName);
+bool getAppInstalledStatus(const QString &appId,
+                           const QString &appVer,
+                           const QString &appArch,
+                           const QString &channel,
+                           const QString &module,
+                           const QString &userName);
 
 /*
  * 查询已安装软件包的所有版本信息
@@ -95,7 +105,10 @@ bool getAppInstalledStatus(const QString &appId, const QString &appVer, const QS
  *
  * @return bool: true:成功 false:失败
  */
-bool getAllVerAppInfo(const QString &appId, const QString &appVer, const QString &appArch, const QString &userName,
+bool getAllVerAppInfo(const QString &appId,
+                      const QString &appVer,
+                      const QString &appArch,
+                      const QString &userName,
                       linglong::package::AppMetaInfoList &pkgList);
 
 /*
@@ -111,8 +124,13 @@ bool getAllVerAppInfo(const QString &appId, const QString &appVer, const QString
  *
  * @return bool: true:已安装 false:未安装
  */
-bool getInstalledAppInfo(const QString &appId, const QString &appVer, const QString &appArch, const QString &channel,
-                         const QString &module, const QString &userName, linglong::package::AppMetaInfoList &pkgList);
+bool getInstalledAppInfo(const QString &appId,
+                         const QString &appVer,
+                         const QString &appArch,
+                         const QString &channel,
+                         const QString &module,
+                         const QString &userName,
+                         linglong::package::AppMetaInfoList &pkgList);
 
 /*
  * 查询所有已安装软件包信息
@@ -133,7 +151,8 @@ bool queryAllInstalledApp(const QString &userName, QString &result, QString &err
  *
  * @return bool: true: 成功 false: 失败
  */
-bool getAppMetaInfoListByJson(const QString &jsonString, linglong::package::AppMetaInfoList &appList);
+bool getAppMetaInfoListByJson(const QString &jsonString,
+                              linglong::package::AppMetaInfoList &appList);
 } // namespace util
 } // namespace linglong
 #endif

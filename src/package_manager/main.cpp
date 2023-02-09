@@ -4,13 +4,13 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include <QCoreApplication>
-
 #include "jobmanageradaptor.h"
 #include "module/dbus_ipc/register_meta_type.h"
-#include "module/util/log/log_handler.h"
 #include "module/repo/repo.h"
+#include "module/util/log/log_handler.h"
 #include "packagemanageradaptor.h"
+
+#include <QCoreApplication>
 
 int main(int argc, char *argv[])
 {

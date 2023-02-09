@@ -5,6 +5,7 @@
  */
 
 #include "package_manager_flatpak_impl.h"
+
 #include "module/util/runner.h"
 
 namespace linglong {
@@ -67,7 +68,8 @@ QueryReply PackageManagerFlatpakImpl::Query(const QueryParamOption &paramOption)
     proc.waitForFinished(1000 * 60 * 5);
     QString ret = proc.readAllStandardOutput();
     const auto retCode = proc.exitCode();
-    qInfo() << "flatpak query " << appId << ", exitStatus:" << proc.exitStatus() << ", retCode:" << retCode;
+    qInfo() << "flatpak query " << appId << ", exitStatus:" << proc.exitStatus()
+            << ", retCode:" << retCode;
     QJsonArray appList;
     appItem["description"] = ret;
     appList.append(appItem);

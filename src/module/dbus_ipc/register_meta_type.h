@@ -7,8 +7,8 @@
 #ifndef LINGLONG_SRC_MODULE_DBUS_IPC_REGISTER_META_TYPE_H_
 #define LINGLONG_SRC_MODULE_DBUS_IPC_REGISTER_META_TYPE_H_
 
-#include "module/dbus_ipc/reply.h"
 #include "module/dbus_ipc/param_option.h"
+#include "module/dbus_ipc/reply.h"
 #include "module/package/package.h"
 #include "module/util/serialize/json.h"
 

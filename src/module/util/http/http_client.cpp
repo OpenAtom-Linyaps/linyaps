@@ -18,8 +18,11 @@ QNetworkAccessManager &networkMgr()
     return manager;
 }
 
-QNetworkReply *HttpRestClient::doRequest(const QByteArray &verb, QNetworkRequest &request, QIODevice *data,
-                                         QHttpMultiPart *multiPart, const QByteArray &bytes)
+QNetworkReply *HttpRestClient::doRequest(const QByteArray &verb,
+                                         QNetworkRequest &request,
+                                         QIODevice *data,
+                                         QHttpMultiPart *multiPart,
+                                         const QByteArray &bytes)
 {
     QEventLoop loop;
     request.setHeader(QNetworkRequest::UserAgentHeader, userAgent);
@@ -65,8 +68,8 @@ QNetworkReply *HttpRestClient::get(QNetworkRequest &request)
 
 HttpRestClient::HttpRestClient()
 {
-    // User-Agent: Mozilla/<version> (<system-information>) <platform> (<platform-details>) <extensions>
-    // User-Agent: <product> / <product-version> <comment>
+    // User-Agent: Mozilla/<version> (<system-information>) <platform> (<platform-details>)
+    // <extensions> User-Agent: <product> / <product-version> <comment>
     userAgent = "linglong/1.0.0";
 }
 

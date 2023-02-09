@@ -13,8 +13,8 @@
 linglong::util::Error Container::create(const QString &ref)
 {
     auto containerID = linglong::util::genUuid();
-    auto containerWorkDirectory =
-        linglong::util::userRuntimeDir().absoluteFilePath(QString("linglong/%1").arg(containerID));
+    auto containerWorkDirectory = linglong::util::userRuntimeDir().absoluteFilePath(
+            QString("linglong/%1").arg(containerID));
 
     id = containerID;
     workingDirectory = containerWorkDirectory;

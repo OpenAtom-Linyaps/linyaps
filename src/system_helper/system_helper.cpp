@@ -18,7 +18,9 @@ namespace helper {
  * @param ref not use now
  * @param options not use now
  */
-void SystemHelper::RebuildInstallPortal(const QString &installPath, const QString &ref, const QVariantMap &options)
+void SystemHelper::RebuildInstallPortal(const QString &installPath,
+                                        const QString &ref,
+                                        const QVariantMap &options)
 {
     qDebug() << "call PostInstall" << installPath << ref << options;
     const auto err = rebuildPrivilegeInstallPortal(installPath, ref, options);
@@ -28,12 +30,15 @@ void SystemHelper::RebuildInstallPortal(const QString &installPath, const QStrin
 }
 
 /*!
- * WARN: call RuinInstallPortal before remove files from installPath. it will remove portal link to host,
+ * WARN: call RuinInstallPortal before remove files from installPath. it will remove portal link to
+ * host,
  * @param installPath
  * @param ref
  * @param options
  */
-void SystemHelper::RuinInstallPortal(const QString &installPath, const QString &ref, const QVariantMap &options)
+void SystemHelper::RuinInstallPortal(const QString &installPath,
+                                     const QString &ref,
+                                     const QVariantMap &options)
 {
     const auto err = ruinPrivilegeInstallPortal(installPath, ref, options);
     if (!err.success()) {

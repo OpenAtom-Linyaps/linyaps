@@ -7,8 +7,8 @@
 #ifndef LINGLONG_SRC_MODULE_UTIL_RUNNER_H_
 #define LINGLONG_SRC_MODULE_UTIL_RUNNER_H_
 
-
 #include <QProcess>
+
 #include <tuple>
 
 namespace linglong {
@@ -19,11 +19,13 @@ namespace runner {
  * @param program 执行的应用程序
  * @param args 参数
  * @param timeout 30000
- * @param stdout 命令输出内容 
+ * @param stdout 命令输出内容
  * @return
  */
-inline bool Runner(const QString program = "ostree", const QStringList args = {}, const int timeout = 30000,
-            QByteArray *stdout = nullptr)
+inline bool Runner(const QString program = "ostree",
+                   const QStringList args = {},
+                   const int timeout = 30000,
+                   QByteArray *stdout = nullptr)
 {
     QProcess runner;
     qDebug() << program << args;
@@ -62,27 +64,29 @@ inline bool Runner(const QString program = "ostree", const QStringList args = {}
  * @return
  */
 template<typename T = QString, typename Y = QStringList, typename P = int>
-std::tuple<bool, QStringList> RunnerRet(const T program = "ostree", const Y args = "", const P timeout = 30000)
+std::tuple<bool, QStringList> RunnerRet(const T program = "ostree",
+                                        const Y args = "",
+                                        const P timeout = 30000)
 {
     QProcess runner;
     qDebug() << program << args;
     runner.start(program, args);
     if (!runner.waitForStarted()) {
         qInfo() << program << " init failed!";
-        return {false, QStringList()};
+        return { false, QStringList() };
     }
     if (!runner.waitForFinished(timeout)) {
         qInfo() << program << " run finish failed!";
-        return {false, QStringList()};
+        return { false, QStringList() };
     }
     auto ret_code = runner.exitStatus();
     if (ret_code != 0) {
         qInfo() << "run failed: " << ret_code;
-        return {false, QStringList()};
+        return { false, QStringList() };
     }
     QString outputTxt = runner.readAllStandardOutput();
     // auto list = outputTxt.split("\n");
-    return {true, outputTxt.split("\n")};
+    return { true, outputTxt.split("\n") };
 };
 
 } // namespace runner

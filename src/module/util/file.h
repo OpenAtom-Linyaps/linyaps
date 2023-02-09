@@ -7,10 +7,7 @@
 #ifndef LINGLONG_SRC_MODULE_UTIL_FILE_H_
 #define LINGLONG_SRC_MODULE_UTIL_FILE_H_
 
-#include <stdlib.h>
-#include <unistd.h>
-
-#include <iostream>
+#include "status_code.h"
 
 #include <QCryptographicHash>
 #include <QDebug>
@@ -23,7 +20,10 @@
 #include <QSysInfo>
 #include <QTemporaryFile>
 
-#include "status_code.h"
+#include <iostream>
+
+#include <stdlib.h>
+#include <unistd.h>
 
 namespace linglong {
 namespace util {
@@ -209,7 +209,8 @@ QStringList inline listDirFolders(const QString &path, const bool subdir = false
 {
     QStringList parent;
 
-    QDirIterator dirs(path, QDir::Dirs | QDir::NoSymLinks | QDir::NoDotAndDotDot,
+    QDirIterator dirs(path,
+                      QDir::Dirs | QDir::NoSymLinks | QDir::NoDotAndDotDot,
                       subdir ? (QDirIterator::IteratorFlag)0x2 : (QDirIterator::IteratorFlag)0x0);
 
     while (dirs.hasNext()) {
@@ -290,9 +291,9 @@ void inline linkDirFiles(const QString &src, const QString &dst)
             continue;
         }
         // 计算src下文件相对于dst目录的路径，做软链接
-        //linkFile(info.absoluteFilePath(), QDir(dst).absolutePath() + "/" + info.fileName());
-        linkFile(QDir(dst).relativeFilePath(info.absoluteFilePath()), QDir(dst).absolutePath() + "/" + info.fileName());
-
+        // linkFile(info.absoluteFilePath(), QDir(dst).absolutePath() + "/" + info.fileName());
+        linkFile(QDir(dst).relativeFilePath(info.absoluteFilePath()),
+                 QDir(dst).absolutePath() + "/" + info.fileName());
     }
 }
 
@@ -370,7 +371,8 @@ QString inline getLinglongRootPath()
  */
 void inline copyConfig()
 {
-    if (!fileExists(getLinglongRootPath() + "/config.json") && fileExists("/usr/share/linglong/config.json")) {
+    if (!fileExists(getLinglongRootPath() + "/config.json")
+        && fileExists("/usr/share/linglong/config.json")) {
         QFile configFile("/usr/share/linglong/config.json");
         configFile.copy(getLinglongRootPath() + "/config.json");
     }

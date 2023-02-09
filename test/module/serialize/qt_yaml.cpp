@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include <gtest/gtest.h>
-
 #include "qt_yaml.h"
+
+#include <gtest/gtest.h>
 
 TEST(Serialize, YAML_NS)
 {

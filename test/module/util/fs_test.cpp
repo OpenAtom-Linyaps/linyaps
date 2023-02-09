@@ -6,10 +6,10 @@
 
 #include <gtest/gtest.h>
 
+#include "src/module/util/file.h"
+
 #include <QDebug>
 #include <QDir>
-
-#include "src/module/util/file.h"
 
 TEST(Moduel_Util, FS)
 {
@@ -18,11 +18,12 @@ TEST(Moduel_Util, FS)
     linglong::util::getLocalConfig("test", value);
     linglong::util::createProxySocket("session-bus-proxy-XXXXXX");
 
-    auto hostAppHome = linglong::util::ensureUserDir({".linglong", "org.deepin.calculator", "home"});
+    auto hostAppHome =
+            linglong::util::ensureUserDir({ ".linglong", "org.deepin.calculator", "home" });
     linglong::util::getUserFile(".config");
 
     auto userRuntimeDir = QString("/run/user/%1").arg(getuid());
-    linglong::util::jonsPath({userRuntimeDir, "bus"});
+    linglong::util::jonsPath({ userRuntimeDir, "bus" });
     EXPECT_EQ(empty.exists(), true);
 }
 

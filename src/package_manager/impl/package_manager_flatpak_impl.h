@@ -7,8 +7,6 @@
 #ifndef LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_FLATPAK_H_
 #define LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_FLATPAK_H_
 
-#include <QJsonArray>
-
 #include "module/dbus_ipc/param_option.h"
 #include "module/dbus_ipc/reply.h"
 #include "module/package/package.h"
@@ -16,19 +14,24 @@
 #include "module/util/status_code.h"
 #include "package_manager_interface.h"
 
+#include <QJsonArray>
+
 namespace linglong {
 namespace service {
-class PackageManagerFlatpakImpl
-    : public PackageManagerInterface
-    , public linglong::util::Singleton<PackageManagerFlatpakImpl>
+class PackageManagerFlatpakImpl : public PackageManagerInterface,
+                                  public linglong::util::Singleton<PackageManagerFlatpakImpl>
 {
 public:
     ~PackageManagerFlatpakImpl() override = default;
+
     Reply Download(const DownloadParamOption &downloadParamOption) override { return Reply(); }
+
     Reply Install(const InstallParamOption &installParamOption) override;
     Reply Uninstall(const UninstallParamOption &paramOption) override;
     QueryReply Query(const QueryParamOption &paramOption) override;
+
     Reply Update(const ParamOption &paramOption) override { return Reply(); }
+
     inline Reply Exec(const ExecParamOption &paramOption) override
     {
         Reply reply;

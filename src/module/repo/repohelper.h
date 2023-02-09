@@ -31,8 +31,13 @@ public:
      *
      * @return bool: true:成功 false:失败
      */
-    virtual bool queryMatchRefs(const QString &repoPath, const QString &remoteName, const QString &pkgName,
-                                const QString &pkgVer, const QString &arch, QString &matchRef, QString &err) = 0;
+    virtual bool queryMatchRefs(const QString &repoPath,
+                                const QString &remoteName,
+                                const QString &pkgName,
+                                const QString &pkgVer,
+                                const QString &arch,
+                                QString &matchRef,
+                                QString &err) = 0;
 
     /*
      * 软件包数据从远端仓库pull到本地仓库
@@ -44,7 +49,10 @@ public:
      *
      * @return bool: true:成功 false:失败
      */
-    virtual bool repoPull(const QString &repoPath, const QString &remoteName, const QString &pkgName, QString &err) = 0;
+    virtual bool repoPull(const QString &repoPath,
+                          const QString &remoteName,
+                          const QString &pkgName,
+                          QString &err) = 0;
 
     /*
      * 通过ostree命令将软件包数据从远端仓库pull到本地
@@ -56,7 +64,9 @@ public:
      *
      * @return bool: true:成功 false:失败
      */
-    virtual bool repoPullbyCmd(const QString &destPath, const QString &remoteName, const QString &ref,
+    virtual bool repoPullbyCmd(const QString &destPath,
+                               const QString &remoteName,
+                               const QString &ref,
                                QString &err) = 0;
 };
 } // namespace linglong

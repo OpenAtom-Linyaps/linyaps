@@ -8,16 +8,14 @@
 #define LINGLONG_SRC_BUILDER_BUILDER_LINGLONG_BUILDER_H_
 
 #include "builder.h"
-#include "project.h"
 #include "module/package/bundle.h"
 #include "module/util/status_code.h"
+#include "project.h"
 
 namespace linglong {
 namespace builder {
 
-class LinglongBuilder
-    : public QObject
-    , public Builder
+class LinglongBuilder : public QObject, public Builder
 {
     Q_OBJECT
 public:
@@ -29,7 +27,9 @@ public:
 
     linglong::util::Error exportBundle(const QString &outputFilepath, bool useLocalDir) override;
 
-    linglong::util::Error push(const QString &repoUrl, const QString &repoName, const QString &channel,
+    linglong::util::Error push(const QString &repoUrl,
+                               const QString &repoName,
+                               const QString &channel,
                                bool pushWithDevel) override;
 
     linglong::util::Error import() override;

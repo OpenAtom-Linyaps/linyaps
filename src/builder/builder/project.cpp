@@ -6,28 +6,27 @@
 
 #include "project.h"
 
-#include <QDebug>
-
-#include "module/util/xdg.h"
-#include "module/util/uuid.h"
-#include "module/util/file.h"
-#include "module/util/sysinfo.h"
-#include "module/util/serialize/yaml.h"
-#include "module/package/ref.h"
-
 #include "builder_config.h"
+#include "module/package/ref.h"
+#include "module/util/file.h"
+#include "module/util/serialize/yaml.h"
+#include "module/util/sysinfo.h"
+#include "module/util/uuid.h"
+#include "module/util/xdg.h"
+
+#include <QDebug>
 
 namespace linglong {
 namespace builder {
 
-const char * const DependTypeRuntime = "runtime";
+const char *const DependTypeRuntime = "runtime";
 
-const char * const BuildScriptPath = "/entry.sh";
-const char * const BuildCacheDirectoryName = "linglong-builder";
+const char *const BuildScriptPath = "/entry.sh";
+const char *const BuildCacheDirectoryName = "linglong-builder";
 
-const char * const PackageKindApp = "app";
-const char * const PackageKindLib = "lib";
-const char * const PackageKindRuntime = "runtime";
+const char *const PackageKindApp = "app";
+const char *const PackageKindLib = "lib";
+const char *const PackageKindRuntime = "runtime";
 
 class ProjectPrivate
 {
@@ -40,11 +39,19 @@ public:
 
     static QString buildArch() { return util::hostArch(); }
 
-    package::Ref ref() const { return package::Ref("", q_ptr->package->id, q_ptr->package->version, buildArch()); }
+    package::Ref ref() const
+    {
+        return package::Ref("", q_ptr->package->id, q_ptr->package->version, buildArch());
+    }
 
     package::Ref fullRef(const QString &channel, const QString &module) const
     {
-        return package::Ref("", channel, q_ptr->package->id, q_ptr->package->version, buildArch(), module);
+        return package::Ref("",
+                            channel,
+                            q_ptr->package->id,
+                            q_ptr->package->version,
+                            buildArch(),
+                            module);
     }
 
     package::Ref refWithModule(const QString &module) const
@@ -109,7 +116,8 @@ public:
         }
 
         auto templatePath =
-            QStringList {BuilderConfig::instance()->templatePath(), templateName}.join(QDir::separator());
+                QStringList{ BuilderConfig::instance()->templatePath(), templateName }.join(
+                        QDir::separator());
 
         QScopedPointer<Template> temp;
         YAML::Node tempNode;
@@ -117,7 +125,7 @@ public:
         if (QFileInfo::exists(templatePath)) {
             tempNode = YAML::LoadFile(templatePath.toStdString());
         } else {
-            QFile templateFile(QStringList {":", templateName}.join(QDir::separator()));
+            QFile templateFile(QStringList{ ":", templateName }.join(QDir::separator()));
 
             if (templateFile.open(QFile::ReadOnly | QFile::Text)) {
                 QTextStream ts(&templateFile);
@@ -143,23 +151,27 @@ public:
 
         command += "#local variable\n";
         for (int i = q_ptr->variables->metaObject()->propertyOffset();
-             i < q_ptr->variables->metaObject()->propertyCount(); ++i) {
+             i < q_ptr->variables->metaObject()->propertyCount();
+             ++i) {
             auto propertyName = q_ptr->variables->metaObject()->property(i).name();
             if (q_ptr->variables->property(propertyName).toString().isNull()) {
-                command +=
-                    QString("%1=\"%2\"\n").arg(propertyName).arg(temp->variables->property(propertyName).toString());
+                command += QString("%1=\"%2\"\n")
+                                   .arg(propertyName)
+                                   .arg(temp->variables->property(propertyName).toString());
             } else {
-                command +=
-                    QString("%1=\"%2\"\n").arg(propertyName).arg(q_ptr->variables->property(propertyName).toString());
+                command += QString("%1=\"%2\"\n")
+                                   .arg(propertyName)
+                                   .arg(q_ptr->variables->property(propertyName).toString());
             }
         }
 
         command += "#build commands\n";
-        command +=
-            q_ptr->build->manual->configure.isNull() ? temp->build->manual->configure : q_ptr->build->manual->configure;
-        command += q_ptr->build->manual->build.isNull() ? temp->build->manual->build : q_ptr->build->manual->build;
-        command +=
-            q_ptr->build->manual->install.isNull() ? temp->build->manual->install : q_ptr->build->manual->install;
+        command += q_ptr->build->manual->configure.isNull() ? temp->build->manual->configure
+                                                            : q_ptr->build->manual->configure;
+        command += q_ptr->build->manual->build.isNull() ? temp->build->manual->build
+                                                        : q_ptr->build->manual->build;
+        command += q_ptr->build->manual->install.isNull() ? temp->build->manual->install
+                                                          : q_ptr->build->manual->install;
 
         command += "\n";
         // strip script
@@ -189,7 +201,7 @@ void Project::onPostSerialize()
 void Project::generateBuildScript()
 {
     // TODO: how to define an build task
-    auto cacheDirectory = config().cacheAbsoluteFilePath({"tmp"});
+    auto cacheDirectory = config().cacheAbsoluteFilePath({ "tmp" });
     util::ensureDir(cacheDirectory);
     auto scriptPath = cacheDirectory + BuildScriptPath;
     dd_ptr->generateBuildScript(scriptPath);
@@ -260,7 +272,7 @@ QString Project::Config::rootPath() const
 
 QString Project::Config::absoluteFilePath(const QStringList &filenames) const
 {
-    auto targetList = QStringList {rootPath()};
+    auto targetList = QStringList{ rootPath() };
     targetList.append(filenames);
     auto target = targetList.join("/");
 
@@ -269,7 +281,7 @@ QString Project::Config::absoluteFilePath(const QStringList &filenames) const
 
 QString Project::Config::cacheAbsoluteFilePath(const QStringList &filenames) const
 {
-    auto targetList = QStringList {rootPath(), ".linglong-target", project->package->id};
+    auto targetList = QStringList{ rootPath(), ".linglong-target", project->package->id };
     targetList.append(filenames);
     auto target = targetList.join("/");
     return target;
@@ -277,17 +289,17 @@ QString Project::Config::cacheAbsoluteFilePath(const QStringList &filenames) con
 
 QString Project::Config::cacheRuntimePath(const QString &subPath) const
 {
-    return cacheAbsoluteFilePath({"runtime", subPath});
+    return cacheAbsoluteFilePath({ "runtime", subPath });
 }
 
 QString Project::Config::cacheInstallPath(const QString &subPath) const
 {
     if (PackageKindRuntime == project->package->kind) {
-        return cacheAbsoluteFilePath({"runtime-install", subPath});
+        return cacheAbsoluteFilePath({ "runtime-install", subPath });
     } else if (PackageKindLib == project->package->kind) {
-        return cacheAbsoluteFilePath({"runtime-install", subPath});
+        return cacheAbsoluteFilePath({ "runtime-install", subPath });
     } else if (PackageKindApp == project->package->kind) {
-        return cacheAbsoluteFilePath({"runtime-install", subPath});
+        return cacheAbsoluteFilePath({ "runtime-install", subPath });
     };
     return QString();
 }
@@ -295,11 +307,11 @@ QString Project::Config::cacheInstallPath(const QString &subPath) const
 QString Project::Config::cacheInstallPath(const QString &moduleDir, const QString &subPath) const
 {
     if (PackageKindRuntime == project->package->kind) {
-        return cacheAbsoluteFilePath({moduleDir, subPath});
+        return cacheAbsoluteFilePath({ moduleDir, subPath });
     } else if (PackageKindLib == project->package->kind) {
-        return cacheAbsoluteFilePath({moduleDir, subPath});
+        return cacheAbsoluteFilePath({ moduleDir, subPath });
     } else if (PackageKindApp == project->package->kind) {
-        return cacheAbsoluteFilePath({moduleDir, subPath});
+        return cacheAbsoluteFilePath({ moduleDir, subPath });
     };
     return QString();
 }
@@ -312,12 +324,15 @@ QString Project::Config::targetArch() const
 QString Project::Config::targetInstallPath(const QString &sub) const
 {
     if (PackageKindRuntime == project->package->kind) {
-        return (sub.isEmpty() ? QString("/runtime") : QStringList {"/runtime", sub}.join("/"));
+        return (sub.isEmpty() ? QString("/runtime") : QStringList{ "/runtime", sub }.join("/"));
     } else if (PackageKindLib == project->package->kind) {
-        return (sub.isEmpty() ? QString("/runtime") : QStringList {"/runtime", sub}.join("/"));
+        return (sub.isEmpty() ? QString("/runtime") : QStringList{ "/runtime", sub }.join("/"));
     } else if (PackageKindApp == project->package->kind) {
-        return (sub.isEmpty() ? QString(QString("/opt/apps/%1/files").arg(project->ref().appId))
-                              : QStringList {QString("/opt/apps/%1/files").arg(project->ref().appId), sub}.join("/"));
+        return (sub.isEmpty()
+                        ? QString(QString("/opt/apps/%1/files").arg(project->ref().appId))
+                        : QStringList{ QString("/opt/apps/%1/files").arg(project->ref().appId),
+                                       sub }
+                                  .join("/"));
     };
     return QString();
 }

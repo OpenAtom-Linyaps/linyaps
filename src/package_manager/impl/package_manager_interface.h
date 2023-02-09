@@ -7,13 +7,13 @@
 #ifndef LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_INTERFACE_H_
 #define LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_INTERFACE_H_
 
-#include <QString>
-#include <QStringList>
-
-#include "module/dbus_ipc/reply.h"
 #include "module/dbus_ipc/param_option.h"
+#include "module/dbus_ipc/reply.h"
 #include "module/package/ref.h"
 #include "module/util/result.h"
+
+#include <QString>
+#include <QStringList>
 
 namespace linglong {
 namespace service {

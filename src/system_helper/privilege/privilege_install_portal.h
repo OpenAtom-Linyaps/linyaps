@@ -7,12 +7,12 @@
 #ifndef LINGLONG_SRC_SYSTEM_HELPER_PRIVILEGE_PRIVILEGE_INSTALL_PORTAL_H_
 #define LINGLONG_SRC_SYSTEM_HELPER_PRIVILEGE_PRIVILEGE_INSTALL_PORTAL_H_
 
+#include "module/util/result.h"
+#include "module/util/serialize/json.h"
+#include "module/util/serialize/serialize.h"
+
 #include <QString>
 #include <QVariantMap>
-
-#include "module/util/result.h"
-#include "module/util/serialize/serialize.h"
-#include "module/util/serialize/json.h"
 
 namespace linglong {
 namespace system {
@@ -38,16 +38,22 @@ public:
 };
 Q_SERIALIZE_DECLARE_LIST_MAP(PortalRule)
 
-util::Error rebuildPrivilegeInstallPortal(const QString &repoRoot, const QString &ref, const QVariantMap &options);
-util::Error ruinPrivilegeInstallPortal(const QString &repoRoot, const QString &ref, const QVariantMap &options);
+util::Error rebuildPrivilegeInstallPortal(const QString &repoRoot,
+                                          const QString &ref,
+                                          const QVariantMap &options);
+util::Error ruinPrivilegeInstallPortal(const QString &repoRoot,
+                                       const QString &ref,
+                                       const QVariantMap &options);
 
 } // namespace helper
 } // namespace system
 } // namespace linglong
 
-Q_SERIALIZE_REGISTER_TYPE(linglong::system::helper::FilePortalRule, linglong::system::helper::FilePortalRuleList,
+Q_SERIALIZE_REGISTER_TYPE(linglong::system::helper::FilePortalRule,
+                          linglong::system::helper::FilePortalRuleList,
                           linglong::system::helper::FilePortalRuleStrMap)
-Q_SERIALIZE_REGISTER_TYPE(linglong::system::helper::PortalRule, linglong::system::helper::PortalRuleList,
+Q_SERIALIZE_REGISTER_TYPE(linglong::system::helper::PortalRule,
+                          linglong::system::helper::PortalRuleList,
                           linglong::system::helper::PortalRuleStrMap)
 
 #endif // LINGLONG_SRC_SYSTEM_HELPER_PRIVILEGE_PRIVILEGE_INSTALL_PORTAL_H_

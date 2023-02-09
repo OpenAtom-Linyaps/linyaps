@@ -5,6 +5,7 @@
  */
 
 #include "bundle.h"
+
 #include "bundle_p.h"
 
 #include <curl/curl.h>
@@ -19,11 +20,13 @@ linglong::util::Error runner(const QString &program, const QStringList &args, in
 
     process.setArguments(args);
 
-    QProcess::connect(&process, &QProcess::readyReadStandardOutput,
-                      [&]() { std::cout << process.readAllStandardOutput().toStdString().c_str(); });
+    QProcess::connect(&process, &QProcess::readyReadStandardOutput, [&]() {
+        std::cout << process.readAllStandardOutput().toStdString().c_str();
+    });
 
-    QProcess::connect(&process, &QProcess::readyReadStandardError,
-                      [&]() { std::cout << process.readAllStandardError().toStdString().c_str(); });
+    QProcess::connect(&process, &QProcess::readyReadStandardError, [&]() {
+        std::cout << process.readAllStandardError().toStdString().c_str();
+    });
 
     process.start();
     process.waitForStarted(timeout);
@@ -37,14 +40,13 @@ Bundle::Bundle(QObject *parent)
 {
 }
 
-Bundle::~Bundle()
-{
-}
+Bundle::~Bundle() { }
 
 linglong::util::Error Bundle::load(const QString &path)
 {
     return NoError();
 }
+
 linglong::util::Error Bundle::save(const QString &path)
 {
     return NoError();
@@ -60,7 +62,9 @@ linglong::util::Error Bundle::make(const QString &dataPath, const QString &outpu
     return NewError();
 }
 
-linglong::util::Error Bundle::push(const QString &bundleFilePath, const QString &repoUrl, const QString &repoChannel,
+linglong::util::Error Bundle::push(const QString &bundleFilePath,
+                                   const QString &repoUrl,
+                                   const QString &repoChannel,
                                    bool force)
 {
     Q_D(Bundle);
@@ -88,7 +92,8 @@ linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString
 
     // 判断数据目录是否存在
     if (!util::dirExists(this->bundleDataPath)) {
-        return NewError() << STATUS_CODE(kDataDirNotExists) << this->bundleDataPath + " don't exists!";
+        return NewError() << STATUS_CODE(kDataDirNotExists)
+                          << this->bundleDataPath + " don't exists!";
     }
     // 判断info.json是否存在
     if (!util::fileExists(this->bundleDataPath + QString(configJson))) {
@@ -97,26 +102,29 @@ linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString
     }
 
     // 转换info.json为Info对象
-    QScopedPointer<package::Info> info(util::loadJson<package::Info>(this->bundleDataPath + QString(configJson)));
+    QScopedPointer<package::Info> info(
+            util::loadJson<package::Info>(this->bundleDataPath + QString(configJson)));
 
     // 获取编译机器架构
     this->buildArch = QSysInfo::buildCpuArchitecture();
 
     // 判断架构是否支持
     if (!info->arch.contains(this->buildArch)) {
-        return NewError() << info->appid + QString(" : ") + this->buildArch + QString(" don't support!");
+        return NewError() << info->appid + QString(" : ") + this->buildArch
+                + QString(" don't support!");
     }
 
     // 赋值bundleFilePath
     if (outputFilePath.isEmpty()) {
-        this->bundleFilePath =
-            bundleFileDirPath + "/" + info->appid + "_" + info->version + "_" + this->buildArch + ".uab";
+        this->bundleFilePath = bundleFileDirPath + "/" + info->appid + "_" + info->version + "_"
+                + this->buildArch + ".uab";
     } else {
         this->bundleFilePath = outputFilePath;
     }
 
     // 赋值squashfsFilePath
-    QString erofsName = (QStringList {info->appid, info->version, this->buildArch}.join("_")) + QString(".erofs");
+    QString erofsName = (QStringList{ info->appid, info->version, this->buildArch }.join("_"))
+            + QString(".erofs");
     this->erofsFilePath = bundleFileDirPath + "/" + erofsName;
 
     // 清理erofs文件
@@ -130,15 +138,21 @@ linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString
     }
 
     // 制作squashfs文件
-    auto resultMkfs = runner("mkfs.erofs", {"-zlz4hc,9", this->erofsFilePath, this->bundleDataPath}, 15 * 60 * 1000);
+    auto resultMkfs = runner("mkfs.erofs",
+                             { "-zlz4hc,9", this->erofsFilePath, this->bundleDataPath },
+                             15 * 60 * 1000);
     if (!resultMkfs.success()) {
         return NewError(resultMkfs) << "call mkfs.erofs failed";
     }
 
     // 生产bundle文件
-    auto resultObjcopy = runner("objcopy", {"--add-section", QStringList {".bundle=", this->erofsFilePath}.join(""),
-                                            "--set-section-flags", ".bundle=noload,readonly", this->linglongLoader,
-                                            this->bundleFilePath});
+    auto resultObjcopy = runner("objcopy",
+                                { "--add-section",
+                                  QStringList{ ".bundle=", this->erofsFilePath }.join(""),
+                                  "--set-section-flags",
+                                  ".bundle=noload,readonly",
+                                  this->linglongLoader,
+                                  this->bundleFilePath });
     if (!resultObjcopy.success()) {
         return NewError(resultObjcopy) << "call objcopy failed";
     }
@@ -150,13 +164,15 @@ linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString
 
     // 设置执行权限
     QFile(this->bundleFilePath)
-        .setPermissions(QFileDevice::ExeOwner | QFileDevice::WriteOwner | QFileDevice::ReadOwner);
+            .setPermissions(QFileDevice::ExeOwner | QFileDevice::WriteOwner
+                            | QFileDevice::ReadOwner);
 
     return NewError();
 }
 
 // read elf64
-auto BundlePrivate::readElf64(FILE *fd, Elf64_Ehdr &ehdr) -> decltype(ehdr.e_shoff + (ehdr.e_shentsize * ehdr.e_shnum))
+auto BundlePrivate::readElf64(FILE *fd, Elf64_Ehdr &ehdr)
+        -> decltype(ehdr.e_shoff + (ehdr.e_shentsize * ehdr.e_shnum))
 {
     Elf64_Ehdr ehdr64;
     off_t ret = -1;
@@ -203,8 +219,10 @@ auto BundlePrivate::getElfSize(const QString elfFilePath) -> decltype(-1)
     return size;
 }
 
-linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const QString &repoUrl,
-                                          const QString &repoChannel, bool force)
+linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
+                                          const QString &repoUrl,
+                                          const QString &repoChannel,
+                                          bool force)
 {
     auto userInfo = util::getUserInfo();
 
@@ -234,7 +252,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
         return NewError() << STATUS_CODE(kBundleFileNotExists) << bundleFilePath + " don't exists!";
     }
     // 创建临时目录
-    this->tmpWorkDir = util::ensureUserDir({".linglong", QFileInfo(bundleFilePath).fileName()});
+    this->tmpWorkDir = util::ensureUserDir({ ".linglong", QFileInfo(bundleFilePath).fileName() });
     if (util::dirExists(this->tmpWorkDir)) {
         util::removeDir(this->tmpWorkDir);
     }
@@ -263,7 +281,8 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
     if (util::dirExists(this->bundleDataPath)) {
         util::removeDir(this->bundleDataPath);
     }
-    auto resultUnsquashfs = runner("unsquashfs", {"-dest", this->bundleDataPath, "-f", this->erofsFilePath});
+    auto resultUnsquashfs =
+            runner("unsquashfs", { "-dest", this->bundleDataPath, "-f", this->erofsFilePath });
 
     if (!resultUnsquashfs.success()) {
         if (util::dirExists(this->tmpWorkDir)) {
@@ -273,13 +292,16 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
     }
 
     // 转换info.json为Info对象
-    QScopedPointer<package::Info> runtimeInfo(
-        util::loadJson<package::Info>(QStringList {this->bundleDataPath, "runtime", configJson}.join("/")));
-    QScopedPointer<package::Info> develInfo(
-        util::loadJson<package::Info>(QStringList {this->bundleDataPath, "devel", configJson}.join("/")));
+    QScopedPointer<package::Info> runtimeInfo(util::loadJson<package::Info>(
+            QStringList{ this->bundleDataPath, "runtime", configJson }.join("/")));
+    QScopedPointer<package::Info> develInfo(util::loadJson<package::Info>(
+            QStringList{ this->bundleDataPath, "devel", configJson }.join("/")));
 
     // 建立临时仓库
-    auto resultMakeRepo = runner("ostree", {"--repo=" + this->tmpWorkDir + "/repo", "init", "--mode=archive"}, 3000);
+    auto resultMakeRepo =
+            runner("ostree",
+                   { "--repo=" + this->tmpWorkDir + "/repo", "init", "--mode=archive" },
+                   3000);
     if (!resultMakeRepo.success()) {
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
@@ -290,22 +312,30 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
     // 推送数据到临时仓库
     // TODO: remove later
     QStringList arguments;
-    arguments << QString("--repo=") + this->tmpWorkDir + "/repo" << QString("commit") << QString("-s")
-              << QString("update ") + runtimeInfo->version << QString("--canonical-permissions") << QString("-m")
+    arguments << QString("--repo=") + this->tmpWorkDir + "/repo" << QString("commit")
+              << QString("-s") << QString("update ") + runtimeInfo->version
+              << QString("--canonical-permissions") << QString("-m")
               << QString("Name: ") + runtimeInfo->appid << QString("-b")
-              << (QStringList {repoChannel, runtimeInfo->appid, runtimeInfo->version, runtimeInfo->arch[0],
-                               runtimeInfo->module}
-                      .join(QDir::separator()))
+              << (QStringList{ repoChannel,
+                               runtimeInfo->appid,
+                               runtimeInfo->version,
+                               runtimeInfo->arch[0],
+                               runtimeInfo->module }
+                          .join(QDir::separator()))
               << QString("--tree=dir=") + this->bundleDataPath + "/runtime";
 
     QStringList commitArgs;
-    commitArgs
-        << QString("--repo=") + this->tmpWorkDir + "/repo" << QString("commit") << QString("-s")
-        << QString("update ") + develInfo->version << QString("--canonical-permissions") << QString("-m")
-        << QString("Name: ") + develInfo->appid << QString("-b")
-        << (QStringList {repoChannel, develInfo->appid, develInfo->version, develInfo->arch[0], develInfo->module}.join(
-               QDir::separator()))
-        << QString("--tree=dir=") + this->bundleDataPath + "/devel";
+    commitArgs << QString("--repo=") + this->tmpWorkDir + "/repo" << QString("commit")
+               << QString("-s") << QString("update ") + develInfo->version
+               << QString("--canonical-permissions") << QString("-m")
+               << QString("Name: ") + develInfo->appid << QString("-b")
+               << (QStringList{ repoChannel,
+                                develInfo->appid,
+                                develInfo->version,
+                                develInfo->arch[0],
+                                develInfo->module }
+                           .join(QDir::separator()))
+               << QString("--tree=dir=") + this->bundleDataPath + "/devel";
 
     auto resultCommit = runner("ostree", arguments);
     resultCommit = runner("ostree", commitArgs);
@@ -329,7 +359,8 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath, const Q
     }
 
     // 上传repo.tar文件
-    auto retUploadRepo = HTTPCLIENT->uploadFile(this->tmpWorkDir + "/repo.tar", configUrl, "ostree", token);
+    auto retUploadRepo =
+            HTTPCLIENT->uploadFile(this->tmpWorkDir + "/repo.tar", configUrl, "ostree", token);
     if (STATUS_CODE(kSuccess) != retUploadRepo) {
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);

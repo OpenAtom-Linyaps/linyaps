@@ -10,7 +10,9 @@
 
 TEST(Moduel_Util, Result)
 {
-    auto funcLevel_1 = []() -> linglong::util::Error { return NewError() << -1 << "this is level 1 error"; };
+    auto funcLevel_1 = []() -> linglong::util::Error {
+        return NewError() << -1 << "this is level 1 error";
+    };
 
     auto funcLevel_2 = [=]() -> linglong::util::Error {
         auto r = funcLevel_1();

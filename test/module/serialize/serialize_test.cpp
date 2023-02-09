@@ -4,13 +4,13 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include <gtest/gtest.h>
-
 #include "serialize_test.h"
 
-#include <mutex>
+#include <gtest/gtest.h>
 
 #include <QDebug>
+
+#include <mutex>
 
 void serializeRegister()
 {
@@ -26,7 +26,7 @@ TEST(Serialize, Base)
     serializeRegister();
 
     linglong::repo::UploadTaskRequest req;
-    req.objects = QStringList {"test1", "test2"};
+    req.objects = QStringList{ "test1", "test2" };
     req.refs["refs1"] = QPointer<linglong::repo::Pair>(new linglong::repo::Pair);
     req.refs["refs1"]->first = "f1";
     req.refs["refs1"]->second = "s1";
@@ -44,7 +44,7 @@ TEST(Serialize, Base)
 )MLS";
 
     QScopedPointer<linglong::repo::UploadTaskRequest> newReq(
-        linglong::util::loadJsonBytes<linglong::repo::UploadTaskRequest>(reqJsonBytes));
+            linglong::util::loadJsonBytes<linglong::repo::UploadTaskRequest>(reqJsonBytes));
 
     EXPECT_EQ(newReq->objects.length(), 1);
     EXPECT_EQ(newReq->refs.keys().length(), 1);
@@ -72,7 +72,7 @@ TEST(Serialize, List)
 )MLS";
 
         QScopedPointer<linglong::repo::UploadTaskRequest> newReq(
-            linglong::util::loadJsonBytes<linglong::repo::UploadTaskRequest>(reqJsonBytes));
+                linglong::util::loadJsonBytes<linglong::repo::UploadTaskRequest>(reqJsonBytes));
 
         EXPECT_EQ(newReq->refList.length(), 2);
         return newReq->refList;
@@ -90,14 +90,19 @@ TEST(Serialize, Destructor)
     {
     public:
         Child() { qCritical() << "child constructor" << this; }
+
         Child(const Child &c) { qCritical() << "child copy constructor" << this << "from" << &c; }
+
         ~Child() { qCritical() << "child destructor" << this; }
     };
+
     class Parent
     {
     public:
         Parent() { qCritical() << "parent constructor" << this; }
+
         ~Parent() { qCritical() << "parent destructor" << this; }
+
         Child child;
     };
 

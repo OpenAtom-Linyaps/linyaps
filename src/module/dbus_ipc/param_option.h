@@ -19,10 +19,10 @@ namespace service {
 class ParamOption
 {
 public:
-    QString appId; ///< 应用appId
-    QString version; ///< 应用版本
-    QString arch; ///< 应用架构
-    QString channel; ///< 应用渠道
+    QString appId;     ///< 应用appId
+    QString version;   ///< 应用版本
+    QString arch;      ///< 应用架构
+    QString channel;   ///< 应用渠道
     QString appModule; ///< 版本类型
 };
 
@@ -39,7 +39,7 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, ParamOptio
 {
     argument.beginStructure();
     argument >> paramOption.appId >> paramOption.version >> paramOption.arch >> paramOption.channel
-        >> paramOption.appModule;
+            >> paramOption.appModule;
     argument.endStructure();
     return argument;
 }
@@ -53,7 +53,8 @@ public:
     QString savePath; ///< 下载文件保存路径
 };
 
-inline QDBusArgument &operator<<(QDBusArgument &argument, const DownloadParamOption &downloadParamOption)
+inline QDBusArgument &operator<<(QDBusArgument &argument,
+                                 const DownloadParamOption &downloadParamOption)
 {
     argument.beginStructure();
     argument << downloadParamOption.appId << downloadParamOption.version << downloadParamOption.arch
@@ -62,11 +63,12 @@ inline QDBusArgument &operator<<(QDBusArgument &argument, const DownloadParamOpt
     return argument;
 }
 
-inline const QDBusArgument &operator>>(const QDBusArgument &argument, DownloadParamOption &downloadParamOption)
+inline const QDBusArgument &operator>>(const QDBusArgument &argument,
+                                       DownloadParamOption &downloadParamOption)
 {
     argument.beginStructure();
     argument >> downloadParamOption.appId >> downloadParamOption.version >> downloadParamOption.arch
-        >> downloadParamOption.savePath;
+            >> downloadParamOption.savePath;
     argument.endStructure();
     return argument;
 }
@@ -80,20 +82,24 @@ public:
     QString repoPoint; ///< 是否安装非玲珑格式应用
 };
 
-inline QDBusArgument &operator<<(QDBusArgument &argument, const InstallParamOption &installParamOption)
+inline QDBusArgument &operator<<(QDBusArgument &argument,
+                                 const InstallParamOption &installParamOption)
 {
     argument.beginStructure();
     argument << installParamOption.appId << installParamOption.version << installParamOption.arch
-             << installParamOption.channel << installParamOption.appModule << installParamOption.repoPoint;
+             << installParamOption.channel << installParamOption.appModule
+             << installParamOption.repoPoint;
     argument.endStructure();
     return argument;
 }
 
-inline const QDBusArgument &operator>>(const QDBusArgument &argument, InstallParamOption &installParamOption)
+inline const QDBusArgument &operator>>(const QDBusArgument &argument,
+                                       InstallParamOption &installParamOption)
 {
     argument.beginStructure();
     argument >> installParamOption.appId >> installParamOption.version >> installParamOption.arch
-        >> installParamOption.channel >> installParamOption.appModule >> installParamOption.repoPoint;
+            >> installParamOption.channel >> installParamOption.appModule
+            >> installParamOption.repoPoint;
     argument.endStructure();
     return argument;
 }
@@ -105,7 +111,7 @@ class QueryParamOption : public ParamOption
 {
 public:
     bool force = false; ///< 是否强制从服务端查询
-    QString repoPoint; ///< 是否安装非玲珑格式应用
+    QString repoPoint;  ///< 是否安装非玲珑格式应用
 };
 
 inline QDBusArgument &operator<<(QDBusArgument &argument, const QueryParamOption &paramOption)
@@ -121,7 +127,7 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, QueryParam
 {
     argument.beginStructure();
     argument >> paramOption.appId >> paramOption.version >> paramOption.arch >> paramOption.channel
-        >> paramOption.appModule >> paramOption.force >> paramOption.repoPoint;
+            >> paramOption.appModule >> paramOption.force >> paramOption.repoPoint;
     argument.endStructure();
     return argument;
 }
@@ -132,25 +138,28 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, QueryParam
 class UninstallParamOption : public ParamOption
 {
 public:
-    QString repoPoint; ///< 是否卸载非玲珑格式应用
+    QString repoPoint;          ///< 是否卸载非玲珑格式应用
     bool delAllVersion = false; ///< 是否卸载所有版本应用
-    bool delAppData = false; ///< 卸载时是否删除应用数据
+    bool delAppData = false;    ///< 卸载时是否删除应用数据
 };
 
 inline QDBusArgument &operator<<(QDBusArgument &argument, const UninstallParamOption &paramOption)
 {
     argument.beginStructure();
     argument << paramOption.appId << paramOption.version << paramOption.arch << paramOption.channel
-             << paramOption.appModule << paramOption.repoPoint << paramOption.delAllVersion << paramOption.delAppData;
+             << paramOption.appModule << paramOption.repoPoint << paramOption.delAllVersion
+             << paramOption.delAppData;
     argument.endStructure();
     return argument;
 }
 
-inline const QDBusArgument &operator>>(const QDBusArgument &argument, UninstallParamOption &paramOption)
+inline const QDBusArgument &operator>>(const QDBusArgument &argument,
+                                       UninstallParamOption &paramOption)
 {
     argument.beginStructure();
     argument >> paramOption.appId >> paramOption.version >> paramOption.arch >> paramOption.channel
-        >> paramOption.appModule >> paramOption.repoPoint >> paramOption.delAllVersion >> paramOption.delAppData;
+            >> paramOption.appModule >> paramOption.repoPoint >> paramOption.delAllVersion
+            >> paramOption.delAppData;
     argument.endStructure();
     return argument;
 }
@@ -161,23 +170,23 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, UninstallP
 class RunParamOption : public ParamOption
 {
 public:
-    QString exec; ///< 运行命令,如：/bin/bash
-    QString repoPoint; ///< 非玲珑格式应用
-    bool noDbusProxy = false; ///< 是否不使用dbus代理
+    QString exec;                ///< 运行命令,如：/bin/bash
+    QString repoPoint;           ///< 非玲珑格式应用
+    bool noDbusProxy = false;    ///< 是否不使用dbus代理
     QString busType = "session"; ///< dbus总线类型，默认session总线
-    QString filterName; ///< DBus过滤名称
-    QString filterPath; ///< DBus过滤路径
-    QString filterInterface; ///< DBus过滤接口
-    QString appEnv; ///< 应用环境变量
+    QString filterName;          ///< DBus过滤名称
+    QString filterPath;          ///< DBus过滤路径
+    QString filterInterface;     ///< DBus过滤接口
+    QString appEnv;              ///< 应用环境变量
 };
 
 inline QDBusArgument &operator<<(QDBusArgument &argument, const RunParamOption &paramOption)
 {
     argument.beginStructure();
     argument << paramOption.appId << paramOption.version << paramOption.arch << paramOption.channel
-             << paramOption.appModule << paramOption.exec << paramOption.repoPoint << paramOption.noDbusProxy
-             << paramOption.busType << paramOption.filterName << paramOption.filterPath << paramOption.filterInterface
-             << paramOption.appEnv;
+             << paramOption.appModule << paramOption.exec << paramOption.repoPoint
+             << paramOption.noDbusProxy << paramOption.busType << paramOption.filterName
+             << paramOption.filterPath << paramOption.filterInterface << paramOption.appEnv;
     argument.endStructure();
     return argument;
 }
@@ -186,9 +195,9 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, RunParamOp
 {
     argument.beginStructure();
     argument >> paramOption.appId >> paramOption.version >> paramOption.arch >> paramOption.channel
-        >> paramOption.appModule >> paramOption.exec >> paramOption.repoPoint >> paramOption.noDbusProxy
-        >> paramOption.busType >> paramOption.filterName >> paramOption.filterPath >> paramOption.filterInterface
-        >> paramOption.appEnv;
+            >> paramOption.appModule >> paramOption.exec >> paramOption.repoPoint
+            >> paramOption.noDbusProxy >> paramOption.busType >> paramOption.filterName
+            >> paramOption.filterPath >> paramOption.filterInterface >> paramOption.appEnv;
     argument.endStructure();
     return argument;
 }
@@ -200,9 +209,9 @@ class ExecParamOption
 {
 public:
     QString containerID; ///< 需要执行命令的容器的ID
-    QString cmd; ///< 需要执行的命令
-    QString env; ///< 该命令需要的额外环境变量
-    QString cwd; ///< 该命令执行时的工作目录（容器中）
+    QString cmd;         ///< 需要执行的命令
+    QString env;         ///< 该命令需要的额外环境变量
+    QString cwd;         ///< 该命令执行时的工作目录（容器中）
 };
 
 inline QDBusArgument &operator<<(QDBusArgument &argument, const ExecParamOption &paramOption)

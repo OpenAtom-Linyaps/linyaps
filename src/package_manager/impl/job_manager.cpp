@@ -4,14 +4,14 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "module/repo/ostree_repohelper.h"
 #include "job_manager.h"
+
+#include "job.h"
+#include "module/repo/ostree_repohelper.h"
 
 #include <QDBusConnection>
 #include <QTimer>
 #include <QUuid>
-
-#include "job.h"
 
 class JobManagerPrivate
 {
@@ -54,7 +54,7 @@ void JobManager::Start(const QString &jobId)
     }
     qInfo() << "restart job:" << jobId << ", process:" << processId;
     QProcess process;
-    QStringList argStrList = {"-CONT", QString::number(processId)};
+    QStringList argStrList = { "-CONT", QString::number(processId) };
     process.start("kill", argStrList);
     if (!process.waitForStarted()) {
         qCritical() << "kill -CONT failed!";
@@ -89,7 +89,7 @@ void JobManager::Stop(const QString &jobId)
     }
     qInfo() << "pause job:" << jobId << ", process:" << processId;
     QProcess process;
-    QStringList argStrList = {"-STOP", QString::number(processId)};
+    QStringList argStrList = { "-STOP", QString::number(processId) };
     process.start("kill", argStrList);
     if (!process.waitForStarted()) {
         qCritical() << "kill -STOP failed!";
@@ -125,7 +125,7 @@ void JobManager::Cancel(const QString &jobId)
 
     qInfo() << "cancel job:" << jobId << ", process:" << processId;
     QProcess process;
-    QStringList argStrList = {"-9", QString::number(processId)};
+    QStringList argStrList = { "-9", QString::number(processId) };
     process.start("kill", argStrList);
     if (!process.waitForStarted()) {
         qCritical() << "kill failed!";

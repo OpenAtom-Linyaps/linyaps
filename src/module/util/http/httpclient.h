@@ -7,12 +7,12 @@
 #ifndef LINGLONG_SRC_MODULE_UTIL_HTTPCLIENT_H_
 #define LINGLONG_SRC_MODULE_UTIL_HTTPCLIENT_H_
 
+#include "module/util/singleton.h"
+#include "module/util/status_code.h"
+
 #include <curl/curl.h>
 
 #include <QString>
-
-#include "module/util/singleton.h"
-#include "module/util/status_code.h"
 
 namespace linglong {
 namespace util {
@@ -28,9 +28,11 @@ namespace util {
  *
  * @return int: CURLE_OK(0)
  */
-typedef int (*DOWNLOADCALLBACK)(void *client, double dltotal, double dlnow, double ultotal, double ulnow);
+typedef int (*DOWNLOADCALLBACK)(
+        void *client, double dltotal, double dlnow, double ultotal, double ulnow);
 
-typedef struct _downloadRet {
+typedef struct _downloadRet
+{
     long resCode;
     long fileSize;
     long contentSize;
@@ -108,7 +110,10 @@ public:
      *
      * @return bool: true:成功 false:失败
      */
-    bool queryRemoteApp(const QString &repoName, const QString &pkgName, const QString &pkgVer, const QString &pkgArch,
+    bool queryRemoteApp(const QString &repoName,
+                        const QString &pkgName,
+                        const QString &pkgVer,
+                        const QString &pkgArch,
                         QString &outMsg);
 
     /*
@@ -123,8 +128,12 @@ public:
      *
      * @return bool: true:成功 false:失败
      */
-    bool queryRemoteApp(const QString &repoName, const QString &repoUrl, const QString &pkgName, const QString &pkgVer,
-                        const QString &pkgArch, QString &outMsg);
+    bool queryRemoteApp(const QString &repoName,
+                        const QString &repoUrl,
+                        const QString &pkgName,
+                        const QString &pkgVer,
+                        const QString &pkgArch,
+                        QString &outMsg);
 
     /*
      * 上传文件
@@ -135,7 +144,10 @@ public:
      *
      * @return int: kSuccess:成功 kFail:失败
      */
-    int uploadFile(const QString &filePath, const QString &dnsOfLinglong, const QString &flags, const QString &token);
+    int uploadFile(const QString &filePath,
+                   const QString &dnsOfLinglong,
+                   const QString &flags,
+                   const QString &token);
 
     /*
      * 上传bundle信息
@@ -145,7 +157,9 @@ public:
      *
      * @return int: kSuccess:成功 kFail:失败
      */
-    int pushServerBundleData(const QString &info, const QString &dnsOfLinglong, const QString &token);
+    int pushServerBundleData(const QString &info,
+                             const QString &dnsOfLinglong,
+                             const QString &token);
 
     /*
      * 获取服务器token

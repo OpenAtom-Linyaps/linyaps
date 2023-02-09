@@ -31,8 +31,11 @@ public:
     QString userAgent;
 
 private:
-    QNetworkReply *doRequest(const QByteArray &verb, QNetworkRequest &request, QIODevice *data,
-                             QHttpMultiPart *multiPart, const QByteArray &bytes);
+    QNetworkReply *doRequest(const QByteArray &verb,
+                             QNetworkRequest &request,
+                             QIODevice *data,
+                             QHttpMultiPart *multiPart,
+                             const QByteArray &bytes);
 };
 
 } // namespace util

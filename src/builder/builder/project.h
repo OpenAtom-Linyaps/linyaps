@@ -7,23 +7,23 @@
 #ifndef LINGLONG_SRC_BUILDER_BUILDER_PROJECT_H_
 #define LINGLONG_SRC_BUILDER_BUILDER_PROJECT_H_
 
+#include "module/package/package.h"
+#include "module/package/ref.h"
+#include "module/util/serialize/json.h"
+
 #include <QObject>
 #include <QScopedPointer>
-
-#include "module/util/serialize/json.h"
-#include "module/package/ref.h"
-#include "module/package/package.h"
 
 namespace linglong {
 namespace builder {
 
-extern const char * const DependTypeRuntime;
+extern const char *const DependTypeRuntime;
 
-extern const char * const BuildScriptPath;
+extern const char *const BuildScriptPath;
 
-extern const char * const PackageKindApp;
-extern const char * const PackageKindLib;
-extern const char * const PackageKindRuntime;
+extern const char *const PackageKindApp;
+extern const char *const PackageKindLib;
+extern const char *const PackageKindRuntime;
 
 class Variables : public JsonSerialize
 {
@@ -140,6 +140,7 @@ namespace linglong {
 namespace builder {
 
 class ProjectPrivate;
+
 class Project : public JsonSerialize
 {
     Q_OBJECT;

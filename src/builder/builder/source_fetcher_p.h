@@ -7,13 +7,12 @@
 #ifndef LINGLONG_SRC_BUILDER_BUILDER_SOURCE_FETCHER_P_H_
 #define LINGLONG_SRC_BUILDER_BUILDER_SOURCE_FETCHER_P_H_
 
+#include "module/util/file.h"
+#include "module/util/http/http_client.h"
+#include "module/util/runner.h"
 #include "source_fetcher.h"
 
 #include <QEventLoop>
-
-#include "module/util/http/http_client.h"
-#include "module/util/runner.h"
-#include "module/util/file.h"
 
 namespace linglong {
 namespace builder {

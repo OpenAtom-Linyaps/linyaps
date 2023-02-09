@@ -7,6 +7,16 @@
 #ifndef LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_H_
 #define LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_H_
 
+#include "module/dbus_ipc/package_manager_param.h"
+#include "module/dbus_ipc/param_option.h"
+#include "module/dbus_ipc/register_meta_type.h"
+#include "module/dbus_ipc/reply.h"
+#include "module/package/package.h"
+#include "module/runtime/container.h"
+#include "module/util/singleton.h"
+#include "module/util/status_code.h"
+#include "package_manager_flatpak_impl.h"
+
 #include <QDBusArgument>
 #include <QDBusContext>
 #include <QFuture>
@@ -15,16 +25,6 @@
 #include <QScopedPointer>
 #include <QThreadPool>
 #include <QtConcurrent/QtConcurrent>
-
-#include "module/dbus_ipc/package_manager_param.h"
-#include "module/dbus_ipc/param_option.h"
-#include "module/dbus_ipc/register_meta_type.h"
-#include "module/dbus_ipc/reply.h"
-#include "module/package/package.h"
-#include "module/util/singleton.h"
-#include "module/util/status_code.h"
-#include "module/runtime/container.h"
-#include "package_manager_flatpak_impl.h"
 
 namespace linglong {
 namespace service {
@@ -35,10 +35,9 @@ class PackageManagerPrivate;
  * @details PackageManager is a singleton class, and it is used to manage the package
  *          information.
  */
-class PackageManager
-    : public QObject
-    , protected QDBusContext
-    , public linglong::util::Singleton<PackageManager>
+class PackageManager : public QObject,
+                       protected QDBusContext,
+                       public linglong::util::Singleton<PackageManager>
 {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.PackageManager")

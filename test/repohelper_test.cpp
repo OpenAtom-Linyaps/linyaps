@@ -13,7 +13,7 @@ TEST(RepoHelperT06, repoPullbyCmd)
 {
     const QString repoPath = linglong::util::getLinglongRootPath();
     QString err = "";
-    QVector<QString> repoList = {"repo"};
+    QVector<QString> repoList = { "repo" };
 
     QString matchRef = "org.deepin.calculator/1.0.0/x86_64";
 

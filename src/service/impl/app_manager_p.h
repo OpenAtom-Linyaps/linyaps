@@ -16,6 +16,7 @@
 namespace linglong {
 namespace service {
 class AppManager;
+
 class AppManagerPrivate : public QObject
 {
     Q_OBJECT

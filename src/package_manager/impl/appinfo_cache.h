@@ -7,13 +7,13 @@
 #ifndef LINGLONG_SRC_PACKAGE_MANAGER_IMPL_APPINFO_CACHE_H_
 #define LINGLONG_SRC_PACKAGE_MANAGER_IMPL_APPINFO_CACHE_H_
 
+#include "module/package/package.h"
+#include "module/util/status_code.h"
+
 #include <QDateTime>
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
-
-#include "module/package/package.h"
-#include "module/util/status_code.h"
 
 namespace linglong {
 namespace util {

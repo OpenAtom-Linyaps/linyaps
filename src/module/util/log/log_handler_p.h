@@ -7,10 +7,8 @@
 #ifndef LINGLONG_SRC_MODULE_UTIL_LOG_LOG_HANDLER_P_H_
 #define LINGLONG_SRC_MODULE_UTIL_LOG_LOG_HANDLER_P_H_
 
-#include <iostream>
-
-#include <QDebug>
 #include <QDateTime>
+#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -19,11 +17,14 @@
 #include <QTextStream>
 #include <QTimer>
 
+#include <iostream>
+
 namespace linglong {
 namespace util {
 const int g_logLimitSize = 10; // 日志文件大小限制，单位 MB
 
 class LogHandler;
+
 class LogHandlerPrivate : public QObject
 {
     Q_OBJECT
@@ -32,23 +33,25 @@ public:
     ~LogHandlerPrivate();
 
 private:
-    // 打开日志文件 log.txt，如果日志文件不是当天创建的，则使用创建日期把其重命名为 yyyy-MM-dd.log，并重新创建一个
-    // log.txt
+    // 打开日志文件 log.txt，如果日志文件不是当天创建的，则使用创建日期把其重命名为
+    // yyyy-MM-dd.log，并重新创建一个 log.txt
     void openAndBackupLogFile();
     void checkLogFiles(); // 检测当前日志文件大小
     void autoDeleteLog(); // 自动删除30天前的日志
 
     // 消息处理函数
-    static void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg);
+    static void messageHandler(QtMsgType type,
+                               const QMessageLogContext &context,
+                               const QString &msg);
 
 public:
     LogHandler *const q_ptr;
     Q_DECLARE_PUBLIC(LogHandler);
 
 private:
-    QDir logDir; // 日志文件夹
-    QTimer renameLogFileTimer; // 重命名日志文件使用的定时器
-    QTimer flushLogFileTimer; // 刷新输出到日志文件的定时器
+    QDir logDir;                      // 日志文件夹
+    QTimer renameLogFileTimer;        // 重命名日志文件使用的定时器
+    QTimer flushLogFileTimer;         // 刷新输出到日志文件的定时器
     QDateTime logFileCreatedDateTime; // 日志文件创建的时间
 
     static QFile *logFile; // 日志文件

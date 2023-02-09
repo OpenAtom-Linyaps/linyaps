@@ -7,16 +7,15 @@
 #ifndef LINGLONG_SRC_MODULE_UTIL_LOG_LOG_HANDLER_H_
 #define LINGLONG_SRC_MODULE_UTIL_LOG_LOG_HANDLER_H_
 
-#include <QObject>
-
 #include "module/util/singleton.h"
+
+#include <QObject>
 
 namespace linglong {
 namespace util {
 class LogHandlerPrivate;
-class LogHandler
-    : public QObject
-    , public linglong::util::Singleton<LogHandler>
+
+class LogHandler : public QObject, public linglong::util::Singleton<LogHandler>
 {
     Q_OBJECT
     friend class linglong::util::Singleton<LogHandler>;
@@ -24,7 +23,7 @@ class LogHandler
 public:
     explicit LogHandler(QObject *parent = nullptr);
     ~LogHandler() override;
-    void installMessageHandler(); // 给Qt安装消息处理函数
+    void installMessageHandler();   // 给Qt安装消息处理函数
     void uninstallMessageHandler(); // 取消安装消息处理函数并释放资源
 
 private:

@@ -7,6 +7,7 @@
 #ifndef LINGLONG_SRC_MODULE_UTIL_RUNNER_H_
 #define LINGLONG_SRC_MODULE_UTIL_RUNNER_H_
 
+#include <QDebug>
 #include <QProcess>
 
 #include <tuple>

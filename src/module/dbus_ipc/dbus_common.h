@@ -9,6 +9,7 @@
 
 #include <QDBusConnection>
 #include <QDBusError>
+#include <QDebug>
 #include <QVariantMap>
 
 typedef QList<QVariantMap> QVariantMapList;

@@ -3,6 +3,11 @@ Upstream-Name: linglong
 Upstream-Contact:  UnionTech Software Technology Co., Ltd. <>
 Source: https://github.com/linuxdeepin/linglong
 
+# configuration files
+Files: misc/*
+Copyright: None
+License: CC0-1.0
+
 # ci
 Files: .github/* .gitlab-ci.yml src/builder/resource/*.yaml test/data/demo/*.yaml test/data/demo/*.yml src/service/resource/*.yaml
 Copyright: None

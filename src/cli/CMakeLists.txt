@@ -107,13 +107,6 @@ target_include_directories(ll-cli PRIVATE ${OSTREE1_INCLUDE_DIRS})
 
 install(TARGETS ll-cli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install(FILES misc/bash_completion/ll-cli
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/bash-completion/completions
-)
-install(FILES misc/bash_completion/llpkg
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/bash-completion/completions
-)
-
 install(FILES ${CMAKE_SOURCE_DIR}/scripts/linglong.sh
         DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/profile.d
 )

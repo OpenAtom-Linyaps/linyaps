@@ -23,9 +23,17 @@ install(FILES ${BUILDER_TEMPLATE_FILES}
 
 # dbus
 
-set(DBUS_CONFIG_FILE dbus/org.deepin.linglong.PackageManager.conf)
+set(DBUS_CONFIG_FILE
+    # cmake-format: sortable
+    dbus/org.deepin.linglong.PackageManager.conf
+    dbus/org.deepin.linglong.SystemHelper.conf
+)
 
-set(DBUS_SYSTEM_SERVICE_FILE dbus/org.deepin.linglong.PackageManager.service)
+set(DBUS_SYSTEM_SERVICE_FILE
+    # cmake-format: sortable
+    dbus/org.deepin.linglong.PackageManager.service
+    dbus/org.deepin.linglong.SystemHelper.service
+)
 
 # dbus will not load files in /usr/local/share/dbus-1/system.d. So we have to
 # make sure the .conf file(s) installed to /usr/share
@@ -63,7 +71,11 @@ install(FILES ${LINGLONG_PERMISSION_FILES}
 
 # systemd
 
-set(SYSTEMD_SERVICE_FILE systemd/org.deepin.linglong.PackageManager.service)
+set(SYSTEMD_SERVICE_FILE
+    # cmake-format: sortable
+    systemd/org.deepin.linglong.PackageManager.service
+    systemd/org.deepin.linglong.SystemHelper.service
+)
 
 install(FILES ${SYSTEMD_SERVICE_FILE}
         DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system/

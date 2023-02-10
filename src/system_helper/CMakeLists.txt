@@ -35,15 +35,16 @@ add_executable(ll-system-helper ${LL_SYSTEM_HELPER_SOURCES})
 
 target_link_libraries(ll-system-helper PRIVATE ${LINK_LIBS})
 
-install(TARGETS ll-system-helper RUNTIME DESTINATION bin)
+install(TARGETS ll-system-helper RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 install(FILES misc/org.deepin.linglong.SystemHelper.conf
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/dbus-1/system.d
+        DESTINATION /usr/share/dbus-1/system.d
 )
 
 install(FILES misc/org.deepin.linglong.SystemHelper.service
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/dbus-1/system-services
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/dbus-1/system-services
 )
+
 install(FILES misc/systemd/org.deepin.linglong.SystemHelper.service
-        DESTINATION /lib/systemd/system
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system/
 )

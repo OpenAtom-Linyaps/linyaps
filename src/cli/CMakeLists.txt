@@ -105,23 +105,24 @@ add_executable(ll-cli ${LL_CLI_SOURCES})
 target_link_libraries(ll-cli PRIVATE ${LINK_LIBS} ${CLI_NO_DBUS})
 target_include_directories(ll-cli PRIVATE ${OSTREE1_INCLUDE_DIRS})
 
-install(TARGETS ll-cli RUNTIME DESTINATION bin)
+install(TARGETS ll-cli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 install(FILES misc/bash_completion/ll-cli
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/bash-completion/completions
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/bash-completion/completions
 )
 install(FILES misc/bash_completion/llpkg
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/bash-completion/completions
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/bash-completion/completions
 )
 
 install(FILES ${CMAKE_SOURCE_DIR}/scripts/linglong.sh
-        DESTINATION /etc/profile.d
+        DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/profile.d
 )
 install(
   FILES ${CMAKE_SOURCE_DIR}/scripts/linglong.sh
-  DESTINATION /etc/X11/Xsession.d/
+  DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/X11/Xsession.d/
   RENAME 21linglong
 )
+
 install(PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/61-linglong
-        DESTINATION /usr/lib/systemd/user-environment-generators/
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/user-environment-generators/
 )

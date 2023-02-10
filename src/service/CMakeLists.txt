@@ -73,28 +73,3 @@ target_link_libraries(ll-service PRIVATE ${LINK_LIBS})
 
 install(TARGETS ll-service RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install(FILES misc/config.json DESTINATION ${CMAKE_INSTALL_DATADIR}/linglong/)
-
-install(FILES misc/xdg/org.deepin.linglong.service.desktop
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
-)
-
-install(FILES misc/xdg/org.deepin.linglong.service.desktop
-        DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/xdg/autostart
-)
-
-set(PERMISSION
-    misc/linglong/hostdir.json
-    misc/linglong/calendar.json
-    misc/linglong/camera.json
-    misc/linglong/mic.json
-    misc/linglong/screenshot.json
-    misc/linglong/userdir.json
-)
-install(FILES ${PERMISSION}
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/permission/policy/linglong
-)
-
-install(FILES misc/xdg/deepin-linglong.xml
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/mime/packages
-)

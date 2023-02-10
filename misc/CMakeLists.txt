@@ -25,22 +25,40 @@ install(FILES ${BUILDER_TEMPLATE_FILES}
 
 set(DBUS_CONFIG_FILE dbus/org.deepin.linglong.PackageManager.conf)
 
-set(DBUS_SERVICE_FILE dbus/org.deepin.linglong.PackageManager.service)
+set(DBUS_SYSTEM_SERVICE_FILE dbus/org.deepin.linglong.PackageManager.service)
 
 # dbus will not load files in /usr/local/share/dbus-1/system.d. So we have to
 # make sure the .conf file(s) installed to /usr/share
 install(FILES ${DBUS_CONFIG_FILE} DESTINATION /usr/share/dbus-1/system.d)
 
-install(FILES ${DBUS_SERVICE_FILE}
+install(FILES ${DBUS_SYSTEM_SERVICE_FILE}
         DESTINATION ${CMAKE_INSTALL_DATADIR}/dbus-1/system-services
 )
 
 # linglong
 
-set(LINGLONG_CONFIG_FILES linglong/builder.yaml)
+set(LINGLONG_CONFIG_FILES linglong/builder.yaml linglong/config.json)
 
-install(FILES ${LINGLONG_CONFIG_FILES}
+install(FILES linglong/builder.yaml
         DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/linglong
+)
+
+install(FILES linglong/config.json
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/linglong
+)
+
+set(LINGLONG_PERMISSION_FILES
+    # cmake-format: sortable
+    linglong/permission/calendar.json
+    linglong/permission/camera.json
+    linglong/permission/hostdir.json
+    linglong/permission/mic.json
+    linglong/permission/screenshot.json
+    linglong/permission/userdir.json
+)
+
+install(FILES ${LINGLONG_PERMISSION_FILES}
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/permission/policy/linglong
 )
 
 # systemd
@@ -60,3 +78,17 @@ pkg_get_variable(
 )
 
 install(FILES sysuser/linglong.conf DESTINATION ${SYSUSERSDIR})
+
+# xdg
+
+install(FILES xdg/mime/deepin-linglong.xml
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/mime/packages
+)
+
+install(FILES xdg/desktop/org.deepin.linglong.service.desktop
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
+)
+
+install(FILES xdg/desktop/org.deepin.linglong.service.desktop
+        DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/xdg/autostart
+)

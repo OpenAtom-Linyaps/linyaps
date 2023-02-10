@@ -34,7 +34,7 @@ Copyright: UnionTech Software Technology Co., Ltd.
 License: LGPL-3.0-or-later
 
 # qrc
-Files: plugins/*.qrc frame/*.qrc tests/*.qrc src/builder/resource/resource.qrc src/service/resource/resource.qrc src/builder/resource/org.deepin.demo/files/src/demo.pro
+Files: plugins/*.qrc frame/*.qrc tests/*.qrc src/builder/resource.qrc src/service/resource/resource.qrc src/builder/resource/org.deepin.demo/files/src/demo.pro
 Copyright: None
 License: CC0-1.0
 

@@ -35,20 +35,7 @@ set(LL_BUILDER_SOURCES
     builder/project.h
     builder/source_fetcher.cpp
     builder/source_fetcher.h
-    resource/resource.qrc
-)
-
-set(RESOURCES
-    # cmake-format: sortable
-    resource/autotools.yaml
-    resource/cmake.yaml
-    resource/default.yaml
-    resource/qmake.yaml
-    resource/example.yaml
-)
-
-set(SYS_CONFIG_FILE # cmake-format: sortable
-                resource/builder.yaml
+    resource.qrc
 )
 
 find_package(CURL REQUIRED)
@@ -77,5 +64,3 @@ target_link_libraries(
 )
 
 install(TARGETS ll-builder RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(FILES ${RESOURCES} DESTINATION ${CMAKE_INSTALL_DATADIR}/deepin/ll-builder/template)
-install(FILES ${SYS_CONFIG_FILE} DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/linglong)

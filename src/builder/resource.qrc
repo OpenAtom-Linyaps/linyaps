@@ -1,0 +1,12 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="strip.sh">../../misc/builder-template/strip.sh</file>
+        <file alias="autotools.yaml">../../misc/builder-template/autotools.yaml</file>
+        <file alias="cmake.yaml">../../misc/builder-template/cmake.yaml</file>
+        <file alias="default.yaml">../../misc/builder-template/default.yaml</file>
+        <file alias="qmake.yaml">../../misc/builder-template/qmake.yaml</file>
+        <file alias="example.yaml">../../misc/builder-template/example.yaml</file>
+        <file alias="config.json">../service/resource/config.json</file>
+        <file alias="app.yaml">../service/resource/app.yaml</file>
+    </qresource>
+</RCC>

@@ -6,7 +6,7 @@ install(FILES ${BASH_COMPLETIONS}
         DESTINATION ${CMAKE_INSTALL_DATADIR}/bash-completion/completions
 )
 
-# builder
+# builder-template
 
 set(BUILDER_TEMPLATE_FILES
     # cmake-format: sortable
@@ -17,13 +17,8 @@ set(BUILDER_TEMPLATE_FILES
     builder-template/qmake.yaml
 )
 
-set(BUILDER_CONFIG_FILE builder.yaml)
-
 install(FILES ${BUILDER_TEMPLATE_FILES}
         DESTINATION ${CMAKE_INSTALL_DATADIR}/deepin/ll-builder/template
-)
-install(FILES ${BUILDER_CONFIG_FILE}
-        DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/linglong
 )
 
 # dbus
@@ -38,6 +33,14 @@ install(FILES ${DBUS_CONFIG_FILE} DESTINATION /usr/share/dbus-1/system.d)
 
 install(FILES ${DBUS_SERVICE_FILE}
         DESTINATION ${CMAKE_INSTALL_DATADIR}/dbus-1/system-services
+)
+
+# linglong
+
+set(LINGLONG_CONFIG_FILES linglong/builder.yaml)
+
+install(FILES ${LINGLONG_CONFIG_FILES}
+        DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/linglong
 )
 
 # systemd

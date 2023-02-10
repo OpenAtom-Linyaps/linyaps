@@ -26,6 +26,28 @@ install(FILES ${BUILDER_CONFIG_FILE}
         DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/linglong
 )
 
+# dbus
+
+set(DBUS_CONFIG_FILE dbus/org.deepin.linglong.PackageManager.conf)
+
+set(DBUS_SERVICE_FILE dbus/org.deepin.linglong.PackageManager.service)
+
+# dbus will not load files in /usr/local/share/dbus-1/system.d. So we have to
+# make sure the .conf file(s) installed to /usr/share
+install(FILES ${DBUS_CONFIG_FILE} DESTINATION /usr/share/dbus-1/system.d)
+
+install(FILES ${DBUS_SERVICE_FILE}
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/dbus-1/system-services
+)
+
+# systemd
+
+set(SYSTEMD_SERVICE_FILE systemd/org.deepin.linglong.PackageManager.service)
+
+install(FILES ${SYSTEMD_SERVICE_FILE}
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system/
+)
+
 # sysuser
 
 pkg_get_variable(

@@ -99,15 +99,3 @@ target_include_directories(ll-package-manager PRIVATE ${OSTREE1_INCLUDE_DIRS})
 target_link_libraries(ll-package-manager PRIVATE ${LINK_LIBS})
 
 install(TARGETS ll-package-manager RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-
-install(FILES misc/org.deepin.linglong.PackageManager.conf
-        DESTINATION /usr/share/dbus-1/system.d
-)
-
-install(FILES misc/systemd/org.deepin.linglong.PackageManager.service
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system/
-)
-
-install(FILES misc/org.deepin.linglong.PackageManager.service
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/dbus-1/system-services
-)

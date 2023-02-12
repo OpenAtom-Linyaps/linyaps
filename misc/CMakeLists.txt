@@ -73,8 +73,8 @@ install(FILES ${LINGLONG_PERMISSION_FILES}
 
 set(SYSTEMD_SERVICE_FILE
     # cmake-format: sortable
-    systemd/org.deepin.linglong.PackageManager.service
-    systemd/org.deepin.linglong.SystemHelper.service
+    systemd/service/org.deepin.linglong.PackageManager.service
+    systemd/service/org.deepin.linglong.SystemHelper.service
 )
 
 install(FILES ${SYSTEMD_SERVICE_FILE}

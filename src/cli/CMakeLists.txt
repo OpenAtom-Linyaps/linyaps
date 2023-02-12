@@ -106,12 +106,3 @@ target_link_libraries(ll-cli PRIVATE ${LINK_LIBS} ${CLI_NO_DBUS})
 target_include_directories(ll-cli PRIVATE ${OSTREE1_INCLUDE_DIRS})
 
 install(TARGETS ll-cli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-
-install(FILES ${CMAKE_SOURCE_DIR}/scripts/linglong.sh
-        DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/profile.d
-)
-install(
-  FILES ${CMAKE_SOURCE_DIR}/scripts/linglong.sh
-  DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/X11/Xsession.d/
-  RENAME 21linglong
-)

@@ -69,6 +69,17 @@ install(FILES ${LINGLONG_PERMISSION_FILES}
         DESTINATION ${CMAKE_INSTALL_DATADIR}/permission/policy/linglong
 )
 
+# profile
+
+install(FILES profile/linglong.sh
+        DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/profile.d
+)
+install(
+  FILES profile/linglong.sh
+  DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/X11/Xsession.d/
+  RENAME 21linglong
+)
+
 # systemd
 
 set(SYSTEMD_SERVICE_FILE

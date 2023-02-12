@@ -81,6 +81,11 @@ install(FILES ${SYSTEMD_SERVICE_FILE}
         DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system/
 )
 
+install(
+  PROGRAMS systemd/user-environment-generators/61-linglong
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/user-environment-generators/
+)
+
 # sysuser
 
 pkg_get_variable(

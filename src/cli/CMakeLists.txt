@@ -115,7 +115,3 @@ install(
   DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/X11/Xsession.d/
   RENAME 21linglong
 )
-
-install(PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/61-linglong
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/user-environment-generators/
-)

@@ -69,6 +69,14 @@ install(FILES ${LINGLONG_PERMISSION_FILES}
         DESTINATION ${CMAKE_INSTALL_DATADIR}/permission/policy/linglong
 )
 
+# scripts
+
+set(LINGLONG_SCRIPTS scripts/create-linglong-dirs)
+
+install(PROGRAMS ${LINGLONG_SCRIPTS}
+        DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/linglong/
+)
+
 # systemd
 
 set(SYSTEMD_SERVICE_FILE

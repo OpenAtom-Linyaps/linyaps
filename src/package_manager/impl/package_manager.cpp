@@ -1226,22 +1226,6 @@ Reply PackageManagerPrivate::Update(const ParamOption &paramOption)
         return reply;
     }
 
-    // 判断是否已安装最新版本软件
-    if (linglong::util::getAppInstalledStatus(appId,
-                                              serverApp->version,
-                                              arch,
-                                              channel,
-                                              appModule,
-                                              "")) {
-        reply.message = appId + ", latest version:" + serverApp->version + " already installed";
-        qCritical() << reply.message;
-        // bug 149881
-        reply.code = STATUS_CODE(kErrorPkgUpdateSuccess);
-
-        appState.insert(appId + "/" + version + "/" + arch, reply);
-        return reply;
-    }
-
     InstallParamOption installParamOption;
     installParamOption.appId = appId;
     installParamOption.version = serverApp->version;

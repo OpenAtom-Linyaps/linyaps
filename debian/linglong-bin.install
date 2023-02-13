@@ -1,5 +1,6 @@
 usr/bin/ll-service
 usr/bin/ll-cli
+usr/bin/llpkg
 usr/bin/ll-package-manager
 usr/bin/ll-system-helper
 usr/share/applications/org.deepin.linglong.service.desktop

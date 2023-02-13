@@ -91,16 +91,12 @@ private:
             }
         });
 
-        QProcess::connect(&ostree, &QProcess::readyReadStandardError, [&]() {
-            qDebug() << QString::fromLocal8Bit(ostree.readAllStandardError());
-        });
-
         qDebug() << "start" << ostree.arguments().join(" ");
         ostree.start();
         ostree.waitForFinished(-1);
         qDebug() << ostree.exitStatus() << "with exit code:" << ostree.exitCode();
 
-        return NewError(ostree.exitCode(), ostree.errorString());
+        return NewError(ostree.exitCode(), QString::fromLocal8Bit(ostree.readAllStandardError()));
     }
 
     static QByteArray glibBytesToQByteArray(GBytes *bytes)
@@ -766,7 +762,7 @@ linglong::util::Error OSTreeRepo::pullAll(const package::Ref &ref, bool force)
 
     auto ret = d->ostreeRun({ "pull", QStringList{ ref.toString(), "runtime" }.join("/") });
     if (!ret.success()) {
-        return NewError(ret);
+        return ret;
     }
 
     ret = d->ostreeRun({ "pull", QStringList{ ref.toString(), "devel" }.join("/") });
@@ -913,7 +909,7 @@ package::Ref OSTreeRepo::remoteLatestRef(const package::Ref &ref)
 {
     Q_D(OSTreeRepo);
 
-    QString latestVer = "latest";
+    QString latestVer = "unknown";
     QString ret;
 
     if (!HTTPCLIENT->queryRemoteApp(d->remoteRepoName,

@@ -69,17 +69,6 @@ install(FILES ${LINGLONG_PERMISSION_FILES}
         DESTINATION ${CMAKE_INSTALL_DATADIR}/permission/policy/linglong
 )
 
-# profile
-
-install(FILES profile/linglong.sh
-        DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/profile.d
-)
-install(
-  FILES profile/linglong.sh
-  DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/X11/Xsession.d/
-  RENAME 21linglong
-)
-
 # systemd
 
 set(SYSTEMD_SERVICE_FILE
@@ -95,6 +84,11 @@ install(FILES ${SYSTEMD_SERVICE_FILE}
 install(
   PROGRAMS systemd/user-environment-generators/61-linglong
   DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/user-environment-generators/
+)
+
+install(
+  PROGRAMS systemd/system-environment-generators/61-linglong
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system-environment-generators/
 )
 
 # sysuser

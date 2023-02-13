@@ -4,11 +4,10 @@ usr/bin/ll-package-manager
 usr/bin/ll-system-helper
 usr/share/applications/org.deepin.linglong.service.desktop
 etc/xdg/autostart/org.deepin.linglong.service.desktop
-etc/profile.d/linglong.sh
-etc/X11/Xsession.d/21linglong
 usr/share/linglong/config.json
 usr/share/bash-completion/completions/ll-cli
 usr/share/bash-completion/completions/llpkg
+usr/lib/systemd/system-environment-generators/61-linglong
 usr/lib/systemd/user-environment-generators/61-linglong
 usr/share/permission/policy/linglong/*.json
 usr/share/dbus-1/system.d/org.deepin.linglong.PackageManager.conf

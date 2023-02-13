@@ -27,11 +27,6 @@ configure)
                 echo "Directory is already exists."
         fi
 
-        #copy config.json to LINGLONG_ROOT
-        if [ ! -f ${LINGLONG_ROOT}/config.json ]; then
-                cp /usr/share/linglong/config.json ${LINGLONG_ROOT}/config.json
-        fi
-
         useruid=400
         usergid=400
         if [ $(grep -cw "deepin-linglong" /etc/passwd) -gt '0' ]; then

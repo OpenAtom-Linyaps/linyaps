@@ -366,18 +366,6 @@ QString inline getLinglongRootPath()
     return QString();
 }
 
-/*!
- * 拷贝config.json到安装目录
- */
-void inline copyConfig()
-{
-    if (!fileExists(getLinglongRootPath() + "/config.json")
-        && fileExists("/usr/share/linglong/config.json")) {
-        QFile configFile("/usr/share/linglong/config.json");
-        configFile.copy(getLinglongRootPath() + "/config.json");
-    }
-}
-
 } // namespace util
 } // namespace linglong
 #endif

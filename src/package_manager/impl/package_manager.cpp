@@ -45,8 +45,6 @@ PackageManagerPrivate::PackageManagerPrivate(PackageManager *parent)
                             }())
     , q_ptr(parent)
 {
-    // 如果没有config.json拷贝一份到${LINGLONG_ROOT}
-    linglong::util::copyConfig();
     linglong::util::getLocalConfig("repoName", remoteRepoName);
 }
 

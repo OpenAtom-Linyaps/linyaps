@@ -17,10 +17,6 @@ configure)
                 fi
         fi
 
-        if [ -d /var/log/linglong ]; then
-                chmod o+w /var/log/linglong
-        fi
-
 	sed -i '/.*store-llrepo.deepin.com.*/ c \url=https://store-llrepo.deepin.com/repos/repo' ${LINGLONG_ROOT}/repo/config
         ;;
 abort-upgrade | abort-remove | abort-deconfigure) ;;

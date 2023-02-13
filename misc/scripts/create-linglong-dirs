@@ -11,4 +11,8 @@ fi
 LINGLONG_ROOT=${LINGLONG_ROOT:-/var/lib/linglong}
 
 mkdir -p ${LINGLONG_ROOT}
+mkdir -p /var/log/linglong
+
 chown linglong:linglong ${LINGLONG_ROOT}
+chown linglong:linglong /var/log/linglong
+chmod o+w /var/log/linglong # FIXME: remove this later.

@@ -32,11 +32,6 @@ configure)
                 cp /usr/share/linglong/config.json ${LINGLONG_ROOT}/config.json
         fi
 
-        #daemon-reload for /usr/lib/systemd/user-environment-generators/61-linglong
-        if [ -f /usr/lib/systemd/user-environment-generators/61-linglong ]; then
-                systemctl daemon-reload
-        fi
-
         useruid=400
         usergid=400
         if [ $(grep -cw "deepin-linglong" /etc/passwd) -gt '0' ]; then

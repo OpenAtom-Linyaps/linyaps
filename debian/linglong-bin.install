@@ -7,6 +7,7 @@ etc/xdg/autostart/org.deepin.linglong.service.desktop
 usr/share/linglong/config.json
 usr/share/bash-completion/completions/ll-cli
 usr/share/bash-completion/completions/llpkg
+usr/libexec/linglong/create-linglong-dirs
 usr/lib/systemd/system-environment-generators/61-linglong
 usr/lib/systemd/user-environment-generators/61-linglong
 usr/share/permission/policy/linglong/*.json

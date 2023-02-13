@@ -7,10 +7,4 @@ DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
 	dh $@ --buildsystem=cmake --parallel
 
 override_dh_auto_configure:
-	dh_auto_configure -- \
-  	-DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=/usr \
-    -DAPP_VERSION=$(DEB_VERSION_UPSTREAM) \
-    -DVERSION=$(DEB_VERSION_UPSTREAM) \
-    LIB_INSTALL_DIR=/usr/lib/$(DEB_HOST_MULTIARCH) \
-    DH_AUTO_ARGS
+	dh_auto_configure -- -DVERSION=$(DEB_VERSION_UPSTREAM) ${DH_AUTO_ARGS}

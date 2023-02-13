@@ -1,5 +1,5 @@
 [D-BUS Service]
 Name=org.deepin.linglong.PackageManager
 Exec=/usr/bin/ll-package-manager
-User=deepin-linglong
+User=linglong
 SystemdService=org.deepin.linglong.PackageManager.service

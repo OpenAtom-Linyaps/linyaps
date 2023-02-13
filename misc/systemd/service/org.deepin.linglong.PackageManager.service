@@ -3,8 +3,8 @@ Description=Linglong dbus service
 
 [Service]
 Type=dbus
-User=deepin-linglong
-Group=users
+User=linglong
+Group=linglong
 BusName=org.deepin.linglong.PackageManager
 ExecStartPre=-+/usr/libexec/linglong/create-linglong-dirs
 ExecStartPre=-+/usr/lib/linglong/create-linglong-dirs

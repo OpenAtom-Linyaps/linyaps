@@ -9,6 +9,9 @@
 #include "module/util/file.h"
 #include "module/util/runner.h"
 #include "module/util/version/version.h"
+#include "ostree-repo.h"
+
+#include <sys/stat.h>
 
 const int MAX_ERRINFO_BUFSIZE = 512;
 
@@ -54,47 +57,78 @@ OstreeRepoHelper::~OstreeRepoHelper()
  *
  * @return bool: true:成功 false:失败
  */
-bool OstreeRepoHelper::ensureRepoEnv(const QString &repoPath, QString &err)
+bool OstreeRepoHelper::ensureRepoEnv(const QString &repoDir, QString &err)
 {
-    const std::string repoPathTmp = repoPath.toStdString();
-    GCancellable *cancellable = NULL;
-    GError *error = NULL;
-    char info[MAX_ERRINFO_BUFSIZE] = { '\0' };
-    if (repoPathTmp.empty()) {
-        snprintf(info, MAX_ERRINFO_BUFSIZE, "%s, function:%s param err", __FILE__, __func__);
-        err = info;
+    if (pLingLongDir->repo) {
+        // FIXME(black_desk): this is ridicules
+        return true;
+    }
+
+    if (repoDir.isEmpty()) {
+        err = "empty repo path";
         return false;
     }
-    OstreeRepo *repo;
-    g_autoptr(GFile) repodir = NULL;
-    std::string tmpPath = "";
-    // 适配目标路径末尾的‘/’，本地仓库目录名为repo
-    if (repoPathTmp.at(repoPathTmp.size() - 1) == '/') {
-        tmpPath = repoPathTmp + "repo";
-    } else {
-        tmpPath = repoPathTmp + "/repo";
+
+    QString repoPath = repoDir + "/repo";
+    qInfo() << "looking repo at:" << repoPath;
+
+    if (!util::ensureDir(repoPath)) {
+        qCritical() << "Failed to make dir" << repoPath;
+        return false;
     }
-    qInfo() << "ensureRepoEnv repo path:" << QString::fromStdString(tmpPath);
-    if (!pLingLongDir->repo) {
-        repodir = g_file_new_for_path(tmpPath.c_str());
-        repo = ostree_repo_new(repodir);
-        // 校验创建的仓库是否ok
-        if (!ostree_repo_open(repo, cancellable, &error)) {
-            qInfo() << "ostree_repo_open error:" << error->message;
-            snprintf(info,
-                     MAX_ERRINFO_BUFSIZE,
-                     "%s, function:%s ostree_repo_open:%s error:%s",
-                     __FILE__,
-                     __func__,
-                     repoPathTmp.c_str(),
-                     error->message);
-            err = QString(QLatin1String(info));
-            g_object_unref(repodir);
-            return false;
-        }
-        // set dir path info
-        setDirInfo(repoPath, repo);
+
+    g_autoptr(GFile) repodir = g_file_new_for_path(repoPath.toStdString().c_str());
+    OstreeRepo *repo = ostree_repo_new(repodir);
+    GError *error = NULL;
+
+    if (ostree_repo_open(repo, NULL, &error)) {
+        setDirInfo(repoDir, repo);
+        return true;
     }
+
+    qWarning() << QString("ostree_repo_open error: %1, code: %2, maybe repo not exist")
+                          .arg(QLatin1String(error->message))
+                          .arg(error->code);
+
+    error = NULL;
+    if (!ostree_repo_create(repo, OSTREE_REPO_MODE_BARE_USER_ONLY, NULL, &error)) {
+        err = "ostree_repo_create error:" + QLatin1String(error->message);
+        g_object_unref(repodir);
+        return false;
+    }
+
+    QString url;
+    util::getLocalConfig("appDbUrl", url);
+
+    QString repoName = "repo";
+    util::getLocalConfig("repoName", repoName);
+    url += "/repos/" + repoName;
+
+    g_autoptr(GVariantBuilder) configBuilder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
+    g_variant_builder_add(configBuilder, "{sv}", "gpg-verify", g_variant_new_boolean(false));
+    g_autoptr(GVariant) config = g_variant_builder_end(configBuilder);
+
+    error = NULL;
+    if (!ostree_repo_remote_add(repo, "repo", url.toStdString().c_str(), config, NULL, &error)) {
+        err = QString("Failed to add remote repo, message: %1").arg(error->message);
+        return false;
+    }
+
+    g_autoptr(GKeyFile) configKeyFile = ostree_repo_get_config(repo);
+    if (!configKeyFile) {
+        err = QString("Failed to get config of repo");
+        return false;
+    }
+
+    g_key_file_set_string(configKeyFile, "core", "min-free-space-size", "600MB");
+
+    error = NULL;
+    if (!ostree_repo_write_config(repo, configKeyFile, &error)) {
+        err = QString("Failed to write config, message: %1").arg(error->message);
+        return false;
+    }
+
+    setDirInfo(repoDir, repo);
     return true;
 }
 

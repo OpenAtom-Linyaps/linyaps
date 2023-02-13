@@ -8,6 +8,7 @@
 
 #include "module/package/info.h"
 #include "module/package/ref.h"
+#include "module/repo/ostree_repohelper.h"
 #include "module/util/config/config.h"
 #include "module/util/http/http_client.h"
 #include "module/util/http/httpclient.h"
@@ -61,6 +62,10 @@ private:
         , remoteRepoName(std::move(remoteRepoName))
         , q_ptr(parent)
     {
+        QString repoCreateErr;
+        // FIXME(black_desk): Just a quick hack to make sure openRepo called after the repo is
+        // created. So I am not to check error here.
+        OSTREE_REPO_HELPER->ensureRepoEnv(localRepoRootPath, repoCreateErr);
         // FIXME: should be repo
         if (QDir(repoRootPath).exists("/repo/repo")) {
             ostreePath = repoRootPath + "/repo/repo";

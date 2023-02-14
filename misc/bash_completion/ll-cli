@@ -64,3 +64,4 @@ _ll_cli()
 }
 
 complete -F _ll_cli ll-cli
+complete -F _ll_cli llpkg

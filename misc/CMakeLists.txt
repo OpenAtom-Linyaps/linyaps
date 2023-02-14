@@ -88,10 +88,19 @@ install(PROGRAMS ${LINGLONG_SCRIPTS}
 
 # systemd
 
+configure_file(
+  systemd/service/org.deepin.linglong.PackageManager.service.in
+  systemd/service/org.deepin.linglong.PackageManager.service
+)
+configure_file(
+  systemd/service/org.deepin.linglong.SystemHelper.service.in
+  systemd/service/org.deepin.linglong.SystemHelper.service
+)
+
 set(SYSTEMD_SERVICE_FILE
     # cmake-format: sortable
-    systemd/service/org.deepin.linglong.PackageManager.service
-    systemd/service/org.deepin.linglong.SystemHelper.service
+    ${CMAKE_CURRENT_BINARY_DIR}/systemd/service/org.deepin.linglong.PackageManager.service
+    ${CMAKE_CURRENT_BINARY_DIR}/systemd/service/org.deepin.linglong.SystemHelper.service
 )
 
 install(FILES ${SYSTEMD_SERVICE_FILE}

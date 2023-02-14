@@ -1,0 +1,14 @@
+/*
+ * SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: LGPL-3.0-or-later
+ */
+
+#ifndef LINGLONG_SRC_CONFIGURE_H_
+#define LINGLONG_SRC_CONFIGURE_H_
+
+namespace linglong {
+#define DATADIR "@CMAKE_INSTALL_FULL_DATADIR@"
+} // namespace linglong
+
+#endif

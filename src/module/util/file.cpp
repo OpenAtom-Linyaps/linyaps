@@ -6,6 +6,8 @@
 
 #include "file.h"
 
+#include "configure.h"
+
 #include <QCoreApplication>
 #include <QDir>
 #include <QJsonDocument>
@@ -19,21 +21,6 @@ namespace util {
 
 // 存储软件包信息服务器配置文件
 const QString serverConfigPath = getLinglongRootPath() + "/config.json";
-
-// FIXME: This should be configured at install time. Function below just a quick hack.
-QString getInstallPrefix()
-{
-    if (QCoreApplication::applicationFilePath().startsWith("/usr/local")) {
-        return "/usr/local";
-    }
-
-    return "/usr";
-}
-
-const QString defaultServerConfigPath()
-{
-    return getInstallPrefix() + "/share/linglong/config.json";
-}
 
 QString jonsPath(const QStringList &component)
 {
@@ -102,7 +89,7 @@ QString createProxySocket(const QString &pattern)
  */
 int getLocalConfig(const QString &key, QString &value)
 {
-    QString configPath = defaultServerConfigPath();
+    QString configPath = DATADIR "/linglong/config.json";
     if (linglong::util::fileExists(serverConfigPath)) {
         configPath = serverConfigPath;
     }

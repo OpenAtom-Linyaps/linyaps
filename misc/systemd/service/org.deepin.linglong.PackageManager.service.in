@@ -6,9 +6,8 @@ Type=dbus
 User=linglong
 Group=linglong
 BusName=org.deepin.linglong.PackageManager
-ExecStartPre=-+/usr/libexec/linglong/create-linglong-dirs
-ExecStartPre=-+/usr/lib/linglong/create-linglong-dirs
-ExecStart=/usr/bin/ll-package-manager
+ExecStartPre=+@CMAKE_INSTALL_FULL_LIBEXECDIR@/linglong/create-linglong-dirs
+ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/ll-package-manager
 Restart=on-failure
 RestartSec=10
 

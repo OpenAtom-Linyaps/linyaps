@@ -6,7 +6,7 @@ Type=dbus
 User=root
 Group=root
 BusName=org.deepin.linglong.SystemHelper
-ExecStart=/usr/bin/ll-system-helper
+ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/ll-system-helper
 Restart=on-failure
 RestartSec=10
 

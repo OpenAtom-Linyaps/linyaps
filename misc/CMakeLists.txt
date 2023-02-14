@@ -133,10 +133,19 @@ install(FILES xdg/mime/deepin-linglong.xml
         DESTINATION ${CMAKE_INSTALL_DATADIR}/mime/packages
 )
 
-install(FILES xdg/desktop/org.deepin.linglong.service.desktop
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
+configure_file(
+  xdg/desktop/org.deepin.linglong.service.desktop.in
+  xdg/desktop/org.deepin.linglong.service.desktop
 )
 
-install(FILES xdg/desktop/org.deepin.linglong.service.desktop
-        DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/xdg/autostart
+install(
+  FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/xdg/desktop/org.deepin.linglong.service.desktop
+  DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
+)
+
+install(
+  FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/xdg/desktop/org.deepin.linglong.service.desktop
+  DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/xdg/autostart
 )

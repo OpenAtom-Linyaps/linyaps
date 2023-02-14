@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
 Name=Linglong Service
-Exec=/usr/bin/ll-service
+Exec=@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_BINDIR@/ll-service
 NoDisplay=true
 Terminal=false

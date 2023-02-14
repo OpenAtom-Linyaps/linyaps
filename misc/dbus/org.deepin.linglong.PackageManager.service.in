@@ -1,5 +1,5 @@
 [D-BUS Service]
 Name=org.deepin.linglong.PackageManager
-Exec=/usr/bin/ll-package-manager
+Exec=@CMAKE_INSTALL_FULL_BINDIR@/ll-package-manager
 User=linglong
 SystemdService=org.deepin.linglong.PackageManager.service

@@ -31,7 +31,7 @@ const QString regex = "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:\\.(0|[1
  *
  * @return bool：true:合法 false: 不合法
  */
-bool isRegular(const QString &version)
+inline bool isRegular(const QString &version)
 {
     QRegularExpression regexExp(regex);
     QRegularExpressionMatch matched = regexExp.match(version);
@@ -46,7 +46,7 @@ bool isRegular(const QString &version)
  *
  * @return QStringList：{1,2,3,4, "", ""}
  */
-QStringList matchGroup(const QString &version)
+inline QStringList matchGroup(const QString &version)
 {
     QStringList matchVersion = { "-1", "-1", "-1", "-1", "", "" };
     QRegularExpression regexExp(regex);
@@ -67,7 +67,7 @@ QStringList matchGroup(const QString &version)
  *
  * @return int：大于返回1；相等返回0;小于返回-1;
  */
-int compareVersion(const QString &first, const QString &second)
+inline int compareVersion(const QString &first, const QString &second)
 {
     auto firstGroup = matchGroup(first);
     auto secondGroup = matchGroup(second);
@@ -101,7 +101,7 @@ int compareVersion(const QString &first, const QString &second)
  *
  * @return QString：最大版本号
  */
-QString latestVersion(const QStringList &refStrList)
+inline QString latestVersion(const QStringList &refStrList)
 {
     QString latestVer = "latest";
     for (auto refStr : refStrList) {

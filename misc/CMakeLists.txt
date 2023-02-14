@@ -29,10 +29,19 @@ set(DBUS_CONFIG_FILE
     dbus/org.deepin.linglong.SystemHelper.conf
 )
 
+configure_file(
+  dbus/org.deepin.linglong.PackageManager.service.in
+  dbus/org.deepin.linglong.PackageManager.service
+)
+configure_file(
+  dbus/org.deepin.linglong.SystemHelper.service.in
+  dbus/org.deepin.linglong.SystemHelper.service
+)
+
 set(DBUS_SYSTEM_SERVICE_FILE
     # cmake-format: sortable
-    dbus/org.deepin.linglong.PackageManager.service
-    dbus/org.deepin.linglong.SystemHelper.service
+    ${CMAKE_CURRENT_BINARY_DIR}/dbus/org.deepin.linglong.PackageManager.service
+    ${CMAKE_CURRENT_BINARY_DIR}/dbus/org.deepin.linglong.SystemHelper.service
 )
 
 # dbus will not load files in /usr/local/share/dbus-1/system.d. So we have to

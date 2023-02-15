@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=org.deepin.linglong.AppManager
+Exec=@CMAKE_INSTALL_FULL_BINDIR@/ll-service
+SystemdService=org.deepin.linglong.AppManager.service

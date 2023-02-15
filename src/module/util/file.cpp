@@ -70,8 +70,7 @@ QString ensureUserDir(const QStringList &relativeDirPathComponents)
 bool ensureDir(const QString &path)
 {
     QDir dir(path);
-    dir.mkpath(".");
-    return true;
+    return dir.mkpath(".");
 }
 
 QString createProxySocket(const QString &pattern)

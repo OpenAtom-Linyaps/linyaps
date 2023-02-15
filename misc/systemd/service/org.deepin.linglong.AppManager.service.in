@@ -1,0 +1,9 @@
+[Unit]
+Description=Linglong AppManager service
+
+[Service]
+Type=dbus
+BusName=org.deepin.linglong.AppManager
+ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/ll-service
+Restart=on-failure
+RestartSec=10

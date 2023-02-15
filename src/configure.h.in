@@ -9,6 +9,10 @@
 
 namespace linglong {
 #define DATADIR "@CMAKE_INSTALL_FULL_DATADIR@"
+#define SYSCONFDIR "@CMAKE_INSTALL_FULL_SYSCONFDIR@"
+#define LINGLONG_ROOT "@LINGLONG_ROOT@"
+#define LINGLONG_USERNAME "@LINGLONG_USERNAME@"
+#define LINGLONG_LOG_DIR "@LINGLONG_LOG_DIR@"
 } // namespace linglong
 
 #endif

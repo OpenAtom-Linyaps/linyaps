@@ -3,8 +3,8 @@ Description=Linglong dbus service
 
 [Service]
 Type=dbus
-User=deepin-linglong
-Group=deepin-linglong
+User=@LINGLONG_USERNAME@
+Group=@LINGLONG_USERNAME@
 BusName=org.deepin.linglong.PackageManager
 ExecStartPre=+@CMAKE_INSTALL_FULL_LIBEXECDIR@/linglong/create-linglong-dirs
 ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/ll-package-manager

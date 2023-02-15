@@ -10,8 +10,8 @@
     <allow own="org.deepin.linglong.SystemHelper"/>
   </policy>
 
-  <!-- Only allow deepin-linglong to invoke methods on the interfaces -->
-  <policy user="deepin-linglong">
+  <!-- Only allow @LINGLONG_USERNAME@ to invoke methods on the interfaces -->
+  <policy user="@LINGLONG_USERNAME@">
     <allow send_destination="org.deepin.linglong.SystemHelper"/>
   </policy>
 

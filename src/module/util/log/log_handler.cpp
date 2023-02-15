@@ -6,6 +6,7 @@
 
 #include "log_handler.h"
 
+#include "configure.h"
 #include "log_handler_p.h"
 #include "module/util/sysinfo.h"
 
@@ -20,7 +21,7 @@ linglong::util::LogHandlerPrivate::LogHandlerPrivate(LogHandler *parent)
     : q_ptr(parent)
 {
     QString userName = linglong::util::getUserName();
-    logDir.setPath(QString("/var/log/linglong/" + userName + "/")
+    logDir.setPath(QString(LINGLONG_LOG_DIR + userName + "/")
                    + QCoreApplication::applicationName());
     QString logPath =
             logDir.absoluteFilePath(QCoreApplication::applicationName() + ".log"); // 获取日志的路径

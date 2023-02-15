@@ -7,6 +7,7 @@
 #ifndef LINGLONG_SRC_MODULE_UTIL_FILE_H_
 #define LINGLONG_SRC_MODULE_UTIL_FILE_H_
 
+#include "configure.h"
 #include "status_code.h"
 
 #include <QCryptographicHash>
@@ -348,7 +349,7 @@ bool inline isDeepinSysProduct()
  */
 QString inline getLinglongRootPath()
 {
-    return QString("/var/lib/linglong");
+    return QString(LINGLONG_ROOT);
 }
 
 } // namespace util

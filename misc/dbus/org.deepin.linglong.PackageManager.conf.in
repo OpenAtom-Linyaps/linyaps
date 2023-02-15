@@ -5,8 +5,8 @@
  "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
 <busconfig>
 
-  <!-- Only deepin-longlong can own the service -->
-  <policy user="deepin-linglong">
+  <!-- Only @LINGLONG_USERNAME@ can own the service -->
+  <policy user="@LINGLONG_USERNAME@">
     <allow own="org.deepin.linglong.PackageManager"/>
   </policy>
 

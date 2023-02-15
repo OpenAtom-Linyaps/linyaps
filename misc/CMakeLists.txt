@@ -23,23 +23,35 @@ install(FILES ${BUILDER_TEMPLATE_FILES}
 
 # dbus
 
+configure_file(
+  dbus/org.deepin.linglong.PackageManager.conf.in
+  dbus/org.deepin.linglong.PackageManager.conf
+)
+configure_file(
+  dbus/org.deepin.linglong.SystemHelper.conf.in
+  dbus/org.deepin.linglong.SystemHelper.conf
+)
+
 set(DBUS_CONFIG_FILE
     # cmake-format: sortable
-    dbus/org.deepin.linglong.PackageManager.conf
-    dbus/org.deepin.linglong.SystemHelper.conf
+    ${CMAKE_CURRENT_BINARY_DIR}/dbus/org.deepin.linglong.PackageManager.conf
+    ${CMAKE_CURRENT_BINARY_DIR}/dbus/org.deepin.linglong.SystemHelper.conf
 )
 
 configure_file(
   dbus/org.deepin.linglong.PackageManager.service.in
   dbus/org.deepin.linglong.PackageManager.service
+  @ONLY
 )
 configure_file(
   dbus/org.deepin.linglong.SystemHelper.service.in
   dbus/org.deepin.linglong.SystemHelper.service
+  @ONLY
 )
 configure_file(
   dbus/org.deepin.linglong.AppManager.service.in
   dbus/org.deepin.linglong.AppManager.service
+  @ONLY
 )
 
 set(DBUS_SYSTEM_SERVICE_FILE
@@ -92,7 +104,13 @@ install(FILES ${LINGLONG_PERMISSION_FILES}
 
 # scripts
 
-set(LINGLONG_SCRIPTS scripts/create-linglong-dirs)
+configure_file(
+  scripts/create-linglong-dirs.in
+  scripts/create-linglong-dirs
+  @ONLY
+)
+
+set(LINGLONG_SCRIPTS ${CMAKE_CURRENT_BINARY_DIR}/scripts/create-linglong-dirs)
 
 install(PROGRAMS ${LINGLONG_SCRIPTS}
         DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/linglong/
@@ -103,14 +121,17 @@ install(PROGRAMS ${LINGLONG_SCRIPTS}
 configure_file(
   systemd/service/org.deepin.linglong.AppManager.service.in
   systemd/service/org.deepin.linglong.AppManager.service
+  @ONLY
 )
 configure_file(
   systemd/service/org.deepin.linglong.PackageManager.service.in
   systemd/service/org.deepin.linglong.PackageManager.service
+  @ONLY
 )
 configure_file(
   systemd/service/org.deepin.linglong.SystemHelper.service.in
   systemd/service/org.deepin.linglong.SystemHelper.service
+  @ONLY
 )
 
 set(SYSTEMD_SYSTEM_SERVICE_FILE
@@ -131,13 +152,30 @@ install(FILES ${SYSTEMD_USER_SERVICE_FILE}
         DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/user/
 )
 
-install(
-  PROGRAMS systemd/user-environment-generators/61-linglong
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/user-environment-generators/
+configure_file(
+  systemd/user-environment-generators/61-linglong.in
+  systemd/user-environment-generators/61-linglong
+  @ONLY
+)
+configure_file(
+  systemd/system-environment-generators/61-linglong.in
+  systemd/system-environment-generators/61-linglong
+  @ONLY
+)
+
+set(SYSTEMD_USER_ENV_GEN
+    ${CMAKE_CURRENT_BINARY_DIR}/systemd/user-environment-generators/61-linglong
+)
+set(SYSTEMD_SYSTEM_ENV_GEN
+    ${CMAKE_CURRENT_BINARY_DIR}/systemd/system-environment-generators/61-linglong
 )
 
 install(
-  PROGRAMS systemd/system-environment-generators/61-linglong
+  PROGRAMS ${SYSTEMD_USER_ENV_GEN}
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/user-environment-generators/
+)
+install(
+  PROGRAMS ${SYSTEMD_SYSTEM_ENV_GEN}
   DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system-environment-generators/
 )
 
@@ -149,7 +187,15 @@ pkg_get_variable(
   sysusersdir
 )
 
-install(FILES sysuser/linglong.conf DESTINATION ${SYSUSERSDIR})
+configure_file(
+  sysuser/linglong.conf.in
+  sysuser/linglong.conf
+  @ONLY
+)
+
+set(SYSUSER_CONF_FILE ${CMAKE_CURRENT_BINARY_DIR}/sysuser/linglong.conf)
+
+install(FILES ${SYSUSER_CONF_FILE} DESTINATION ${SYSUSERSDIR})
 
 # xdg
 

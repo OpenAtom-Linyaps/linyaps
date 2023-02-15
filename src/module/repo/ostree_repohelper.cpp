@@ -602,7 +602,7 @@ bool OstreeRepoHelper::startOstreeJob(const QString &cmd,
     if ("script" == cmd) {
         qint64 shPid = getChildPid(processId);
         qint64 ostreePid = getChildPid(shPid);
-        jobMap.insert(ref, ostreePid);
+        jobMap.insert(ref, ostreePid); // FIXME(black_desk): ??? where is the lock???
     }
     if (!process.waitForFinished(timeout)) {
         qCritical() << "run " + cmd + " finish failed!";

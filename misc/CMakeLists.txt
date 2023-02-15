@@ -37,11 +37,19 @@ configure_file(
   dbus/org.deepin.linglong.SystemHelper.service.in
   dbus/org.deepin.linglong.SystemHelper.service
 )
+configure_file(
+  dbus/org.deepin.linglong.AppManager.service.in
+  dbus/org.deepin.linglong.AppManager.service
+)
 
 set(DBUS_SYSTEM_SERVICE_FILE
     # cmake-format: sortable
     ${CMAKE_CURRENT_BINARY_DIR}/dbus/org.deepin.linglong.PackageManager.service
     ${CMAKE_CURRENT_BINARY_DIR}/dbus/org.deepin.linglong.SystemHelper.service
+)
+
+set(DBUS_SESSION_SERVICE_FILE
+    ${CMAKE_CURRENT_BINARY_DIR}/dbus/org.deepin.linglong.AppManager.service
 )
 
 # dbus will not load files in /usr/local/share/dbus-1/system.d. So we have to
@@ -50,6 +58,10 @@ install(FILES ${DBUS_CONFIG_FILE} DESTINATION /usr/share/dbus-1/system.d)
 
 install(FILES ${DBUS_SYSTEM_SERVICE_FILE}
         DESTINATION ${CMAKE_INSTALL_DATADIR}/dbus-1/system-services
+)
+
+install(FILES ${DBUS_SESSION_SERVICE_FILE}
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/dbus-1/services
 )
 
 # linglong
@@ -89,6 +101,10 @@ install(PROGRAMS ${LINGLONG_SCRIPTS}
 # systemd
 
 configure_file(
+  systemd/service/org.deepin.linglong.AppManager.service.in
+  systemd/service/org.deepin.linglong.AppManager.service
+)
+configure_file(
   systemd/service/org.deepin.linglong.PackageManager.service.in
   systemd/service/org.deepin.linglong.PackageManager.service
 )
@@ -97,14 +113,22 @@ configure_file(
   systemd/service/org.deepin.linglong.SystemHelper.service
 )
 
-set(SYSTEMD_SERVICE_FILE
+set(SYSTEMD_SYSTEM_SERVICE_FILE
     # cmake-format: sortable
     ${CMAKE_CURRENT_BINARY_DIR}/systemd/service/org.deepin.linglong.PackageManager.service
     ${CMAKE_CURRENT_BINARY_DIR}/systemd/service/org.deepin.linglong.SystemHelper.service
 )
 
-install(FILES ${SYSTEMD_SERVICE_FILE}
+install(FILES ${SYSTEMD_SYSTEM_SERVICE_FILE}
         DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system/
+)
+
+set(SYSTEMD_USER_SERVICE_FILE
+    ${CMAKE_CURRENT_BINARY_DIR}/systemd/service/org.deepin.linglong.AppManager.service
+)
+
+install(FILES ${SYSTEMD_USER_SERVICE_FILE}
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/user/
 )
 
 install(
@@ -131,21 +155,4 @@ install(FILES sysuser/linglong.conf DESTINATION ${SYSUSERSDIR})
 
 install(FILES xdg/mime/deepin-linglong.xml
         DESTINATION ${CMAKE_INSTALL_DATADIR}/mime/packages
-)
-
-configure_file(
-  xdg/desktop/org.deepin.linglong.service.desktop.in
-  xdg/desktop/org.deepin.linglong.service.desktop
-)
-
-install(
-  FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/xdg/desktop/org.deepin.linglong.service.desktop
-  DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
-)
-
-install(
-  FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/xdg/desktop/org.deepin.linglong.service.desktop
-  DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/xdg/autostart
 )

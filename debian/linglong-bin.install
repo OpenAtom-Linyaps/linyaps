@@ -3,8 +3,6 @@ usr/bin/ll-cli
 usr/bin/llpkg
 usr/bin/ll-package-manager
 usr/bin/ll-system-helper
-usr/share/applications/org.deepin.linglong.service.desktop
-etc/xdg/autostart/org.deepin.linglong.service.desktop
 usr/share/linglong/config.json
 usr/share/bash-completion/completions/ll-cli
 usr/libexec/linglong/create-linglong-dirs
@@ -15,7 +13,9 @@ usr/share/dbus-1/system.d/org.deepin.linglong.PackageManager.conf
 usr/share/dbus-1/system-services/org.deepin.linglong.PackageManager.service
 usr/share/dbus-1/system.d/org.deepin.linglong.SystemHelper.conf
 usr/share/dbus-1/system-services/org.deepin.linglong.SystemHelper.service
+usr/share/dbus-1/services/org.deepin.linglong.AppManager.service
 usr/lib/systemd/system/org.deepin.linglong.PackageManager.service
+usr/lib/systemd/user/org.deepin.linglong.AppManager.service
 usr/lib/systemd/system/org.deepin.linglong.SystemHelper.service
 usr/lib/sysusers.d/linglong.conf
 usr/share/mime/packages/deepin-linglong.xml

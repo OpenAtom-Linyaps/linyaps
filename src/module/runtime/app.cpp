@@ -1271,7 +1271,7 @@ int App::start()
         // child process
         (void)close(d->sockets[1]);
         auto socket = std::to_string(d->sockets[0]);
-        char const *const args[] = { "/usr/bin/ll-box", socket.c_str(), NULL };
+        char const *const args[] = { "ll-box", socket.c_str(), NULL };
         int ret = execvp(args[0], (char **)args);
         exit(ret);
     } else {

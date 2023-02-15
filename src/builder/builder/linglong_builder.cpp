@@ -382,7 +382,7 @@ int startContainer(Container *c, Runtime *r)
         // child process
         (void)close(sockets[1]);
         auto socket = std::to_string(sockets[0]);
-        char const *const args[] = { "/usr/bin/ll-box", socket.c_str(), NULL };
+        char const *const args[] = { "ll-box", socket.c_str(), NULL };
         int ret = execvp(args[0], (char **)args);
         exit(ret);
     } else {

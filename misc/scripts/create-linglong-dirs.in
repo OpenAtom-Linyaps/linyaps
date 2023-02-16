@@ -12,10 +12,24 @@ LINGLONG_ROOT="@LINGLONG_ROOT@"
 LINGLONG_LOG_DIR="@LINGLONG_LOG_DIR@"
 LINGLONG_USERNAME="@LINGLONG_USERNAME@"
 
+function create_linglong_root(){
+    if [[ -d "$LINGLONG_ROOT" ]]; then
+        return
+    fi
 
-mkdir -p "$LINGLONG_ROOT"
-mkdir -p "$LINGLONG_LOG_DIR"
+    mkdir -p "$LINGLONG_ROOT"
+    chown "$LINGLONG_USERNAME:$LINGLONG_USERNAME" "$LINGLONG_ROOT"
+}
 
-chown "$LINGLONG_USERNAME:$LINGLONG_USERNAME" "$LINGLONG_ROOT"
-chown "$LINGLONG_USERNAME:$LINGLONG_USERNAME" "$LINGLONG_LOG_DIR"
-chmod o+w "$LINGLONG_LOG_DIR" # FIXME: remove this later.
+function create_linglong_log_dir(){
+    if [[ -d "$LINGLONG_LOG_DIR" ]]; then
+        return
+    fi
+
+    mkdir -p "$LINGLONG_LOG_DIR"
+    chown "$LINGLONG_USERNAME:$LINGLONG_USERNAME" "$LINGLONG_LOG_DIR"
+    chmod o+w "$LINGLONG_LOG_DIR" # FIXME: remove this later.
+}
+
+create_linglong_root
+create_linglong_log_dir

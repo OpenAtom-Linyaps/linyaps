@@ -6,21 +6,6 @@ install(FILES ${BASH_COMPLETIONS}
         DESTINATION ${CMAKE_INSTALL_DATADIR}/bash-completion/completions
 )
 
-# builder-template
-
-set(BUILDER_TEMPLATE_FILES
-    # cmake-format: sortable
-    builder-template/autotools.yaml
-    builder-template/cmake.yaml
-    builder-template/default.yaml
-    builder-template/example.yaml
-    builder-template/qmake.yaml
-)
-
-install(FILES ${BUILDER_TEMPLATE_FILES}
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/deepin/ll-builder/template
-)
-
 # dbus
 
 configure_file(
@@ -78,13 +63,9 @@ install(FILES ${DBUS_SESSION_SERVICE_FILE}
 
 # linglong
 
-set(LINGLONG_CONFIG_FILES linglong/builder.yaml linglong/config.json)
+set(LINGLONG_CONFIG_FILES linglong/config.json)
 
-install(FILES linglong/builder.yaml
-        DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/linglong
-)
-
-install(FILES linglong/config.json
+install(FILES ${LINGLONG_CONFIG_FILES}
         DESTINATION ${CMAKE_INSTALL_DATADIR}/linglong
 )
 
@@ -100,6 +81,25 @@ set(LINGLONG_PERMISSION_FILES
 
 install(FILES ${LINGLONG_PERMISSION_FILES}
         DESTINATION ${CMAKE_INSTALL_DATADIR}/permission/policy/linglong
+)
+
+set(LINGLONG_BUILDER_CONFIG_FILES linglong/builder/config.yaml)
+
+install(FILES ${LINGLONG_BUILDER_CONFIG_FILES}
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/linglong/builder
+)
+
+set(BUILDER_TEMPLATE_FILES
+    # cmake-format: sortable
+    linglong/builder/templates/autotools.yaml
+    linglong/builder/templates/cmake.yaml
+    linglong/builder/templates/default.yaml
+    linglong/builder/templates/example.yaml
+    linglong/builder/templates/qmake.yaml
+)
+
+install(FILES ${BUILDER_TEMPLATE_FILES}
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/linglong/builder/templates
 )
 
 # scripts

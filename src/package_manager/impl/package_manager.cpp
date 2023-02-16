@@ -1307,12 +1307,6 @@ Reply PackageManager::ModifyRepo(const QString &name, const QString &url)
         return reply;
     }
 
-    if (!linglong::util::fileExists(serverCfg)) {
-        reply.message = serverCfg + " no exist";
-        reply.code = STATUS_CODE(kErrorModifyRepoFailed);
-        return reply;
-    }
-
     QString dstUrl = "";
     if (url.endsWith("/")) {
         dstUrl = url + "repos/" + name;

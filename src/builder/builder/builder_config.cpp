@@ -12,6 +12,8 @@
 #include "module/util/sysinfo.h"
 #include "module/util/xdg.h"
 
+#include <mutex>
+
 namespace linglong {
 namespace builder {
 
@@ -139,25 +141,37 @@ static QString getConfigPath()
         }
     }
 
-    return QString();
+    return ":/config.yaml";
 }
 
 BuilderConfig *BuilderConfig::instance()
 {
-    if (!getConfigPath().isEmpty()) {
-        try {
-            static auto config =
-                    formYaml<BuilderConfig>(YAML::LoadFile(getConfigPath().toStdString()));
-            return config;
-        } catch (std::exception &e) {
-            qCritical() << e.what();
-            qCritical().noquote() << QString("failed to parse config.yaml");
+    static BuilderConfig *cfg;
+    static std::once_flag flag;
+
+    std::call_once(flag, []() {
+        const auto configPath = getConfigPath();
+        QFile configFile(configPath);
+        if (!configFile.open(QIODevice::ReadOnly)) {
+            qCritical().noquote() << QString("Failed to open config file [%1]")
+                                             .arg(configPath.startsWith(":") ? "builtin"
+                                                                             : configPath);
+            cfg = new BuilderConfig();
+            return;
         }
-    }
 
-    qCritical() << "No valid builder configure found, using the builtin default config";
+        try {
+            cfg = formYaml<BuilderConfig>(YAML::Load(configFile.readAll().data()));
+        } catch (std::exception &e) {
+            qCritical().noquote() << QString("Failed to parse config [%1]: %2")
+                                             .arg(configPath.startsWith(":") ? "builtin"
+                                                                             : configPath)
+                                             .arg(e.what());
+            cfg = new BuilderConfig();
+            return;
+        }
+    });
 
-    static BuilderConfig *cfg = new BuilderConfig();
     return cfg;
 }
 

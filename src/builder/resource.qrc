@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
+        <file alias="config.yaml">../../misc/linglong/builder/config.yaml</file>
         <file alias="strip.sh">../../misc/linglong/builder/templates/strip.sh</file>
         <file alias="autotools.yaml">../../misc/linglong/builder/templates/autotools.yaml</file>
         <file alias="cmake.yaml">../../misc/linglong/builder/templates/cmake.yaml</file>

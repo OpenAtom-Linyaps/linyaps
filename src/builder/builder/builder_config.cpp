@@ -6,6 +6,7 @@
 
 #include "builder_config.h"
 
+#include "configure.h"
 #include "module/util/file.h"
 #include "module/util/serialize/yaml.h"
 #include "module/util/sysinfo.h"
@@ -81,8 +82,9 @@ QString BuilderConfig::getExec() const
 
 QString BuilderConfig::templatePath() const
 {
-    for (auto dataPath : QStandardPaths::standardLocations(QStandardPaths::DataLocation)) {
-        QString templatePath = QStringList{ dataPath, "template" }.join("/");
+    for (auto dataPath : QStandardPaths::standardLocations(QStandardPaths::GenericDataLocation)) {
+        QString templatePath =
+                QStringList{ dataPath, "linglong", "builder", "templates" }.join(QDir::separator());
         if (util::dirExists(templatePath)) {
             return templatePath;
         }
@@ -90,17 +92,48 @@ QString BuilderConfig::templatePath() const
     return QString();
 }
 
-QString configPath()
+static QStringList projectConfigPaths()
 {
-    const QString filename = "linglong/builder.yaml";
-    QStringList configDirs = QStandardPaths::standardLocations(QStandardPaths::ConfigLocation);
-    configDirs.push_front("/etc");
-    configDirs.push_front("/usr/local/etc");
-    configDirs.push_front(QStringList{ QDir::currentPath(), ".." }.join(QDir::separator()));
-    configDirs.push_front(QDir::currentPath());
+    QStringList result{};
 
-    for (const auto &configDir : configDirs) {
-        QString configPath = QStringList{ configDir, filename }.join(QDir::separator());
+    auto pwd = QDir::current();
+
+    do {
+        auto configPath = QStringList{ pwd.absolutePath(), ".ll-builder", "config.yaml" }.join(
+                QDir::separator());
+        result << std::move(configPath);
+    } while (pwd.cdUp());
+
+    return result;
+}
+
+static QStringList nonProjectConfigPaths()
+{
+    QStringList result{};
+
+    auto configLocations = QStandardPaths::standardLocations(QStandardPaths::GenericDataLocation);
+    configLocations.append(SYSCONFDIR);
+
+    for (const auto &configLocation : configLocations) {
+        result << QStringList{ configLocation, "linglong", "builder", "config.yaml" }.join(
+                QDir::separator());
+    }
+
+    result << QStringList{ DATADIR, "linglong", "builder", "config.yaml" }.join(QDir::separator());
+
+    return result;
+}
+
+static QString getConfigPath()
+{
+    QStringList configPaths = {};
+
+    configPaths << projectConfigPaths();
+    configPaths << nonProjectConfigPaths();
+
+    qDebug() << "Searching ll-builder config in:" << configPaths;
+
+    for (const auto &configPath : configPaths) {
         if (QFile::exists(configPath)) {
             return configPath;
         }
@@ -111,16 +144,18 @@ QString configPath()
 
 BuilderConfig *BuilderConfig::instance()
 {
-    if (!configPath().isEmpty()) {
+    if (!getConfigPath().isEmpty()) {
         try {
             static auto config =
-                    formYaml<BuilderConfig>(YAML::LoadFile(configPath().toStdString()));
+                    formYaml<BuilderConfig>(YAML::LoadFile(getConfigPath().toStdString()));
             return config;
         } catch (std::exception &e) {
             qCritical() << e.what();
-            qCritical().noquote() << QString("failed to parse builder.yaml");
+            qCritical().noquote() << QString("failed to parse config.yaml");
         }
     }
+
+    qCritical() << "No valid builder configure found, using the builtin default config";
 
     static BuilderConfig *cfg = new BuilderConfig();
     return cfg;

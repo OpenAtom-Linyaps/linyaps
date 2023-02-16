@@ -1,3 +1,3 @@
 usr/bin/ll-builder
-usr/share/deepin/ll-builder/template/*.yaml
-etc/linglong/builder.yaml
+usr/share/linglong/builder/config.yaml
+usr/share/linglong/builder/templates/*.yaml

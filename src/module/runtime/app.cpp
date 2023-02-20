@@ -649,6 +649,7 @@ public:
         auto hostHome = util::getUserFile("");
         mountMap.push_back(qMakePair(hostHome, hostHome));
 
+        // FIXME(black_desk): this should not be supported in linglong, remove it later.
         // 挂载/persistent/home/$username or /data/home/$username
         auto linglongRootPath = linglong::util::getLinglongRootPath();
         if ("/persistent/linglong" == linglongRootPath) {

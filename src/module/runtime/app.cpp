@@ -257,9 +257,7 @@ public:
 
         // 转化特殊变量
         // 获取环境变量LINGLONG_ROOT
-        auto linglongRootPath = envMap.contains(QString("LINGLONG_ROOT"))
-                ? envMap[QString("LINGLONG_ROOT")]
-                : QString("/persistent/linglong");
+        auto linglongRootPath = util::getLinglongRootPath();
         QMap<QString, QString> variables = {
             { "APP_ROOT_PATH", appRootPath },
             { "RUNTIME_ROOT_PATH", runtimeRootPath },

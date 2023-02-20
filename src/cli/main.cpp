@@ -6,7 +6,6 @@
 
 #include "app_manager.h"
 #include "cmd/command_helper.h"
-#include "module/dbus_ipc/package_manager_param.h"
 #include "module/dbus_ipc/register_meta_type.h"
 #include "module/package/package.h"
 #include "module/runtime/runtime.h"

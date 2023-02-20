@@ -6,8 +6,8 @@
 mkdir -v build
 cd build
 cmake ..
-make -j
-sudo make install
+cmake --build .
+sudo cmake --install .
 ```
 
 ## Build For Developers
@@ -15,8 +15,8 @@ sudo make install
 mkdir -v build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_DEBUG_SANIT=address ..
-make -j
-sudo make install
+cmake --build .
+sudo cmake --install .
 ```
 DCMAKE_DEBUG_SANIT = 'address' open asan for debug builds
 DCMAKE_DEBUG_SANIT = 'thread' open tasn for debug builds

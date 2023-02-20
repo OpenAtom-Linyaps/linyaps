@@ -462,8 +462,10 @@ bool PackageManagerPrivate::checkAppBase(const QString &runtime,
         return false;
     }
 
-    auto runtimeInfo = appList.at(0);
-    auto baseRef = runtimeInfo->runtime;
+    linglong::package::AppMetaInfo *latestRuntimeInfo =
+            getLatestRuntime(runtimeId, runtimeVer, appList);
+
+    auto baseRef = latestRuntimeInfo->runtime;
     QStringList baseList = baseRef.split('/');
     if (baseList.size() < 3) {
         err = "app base:" + baseRef + " base format err";

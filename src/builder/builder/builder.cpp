@@ -18,4 +18,5 @@ void linglong::builder::registerAllMetaType()
     qJsonRegister<linglong::builder::Source>();
     qJsonRegister<linglong::builder::Build>();
     qJsonRegister<linglong::builder::BuildManual>();
+    qJsonRegister<linglong::builder::Enviroment>();
 }

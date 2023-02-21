@@ -4,6 +4,9 @@ variables:
   extra_args: |
   destdir: |
   jobs: -j${JOBS}
+  c_flags: |
+  cxx_flags: |
+  ld_flags: |  
 
 build:
   kind: manual
@@ -11,3 +14,11 @@ build:
     configure: |
     build: |
     install: |
+
+enviroment:
+  CFLAGS: |
+    -isystem/runtime/include -g -O2 -fstack-protector-strong -Wformat -Werror=format-security ${c_flags}
+  CXXFLAGS: |
+    -isystem/runtime/include -g -O2 -fstack-protector-strong -Wformat -Werror=format-security ${c_flags}
+  LDFLAGS: |
+    -Wl,-z,relro ${ld_flags}

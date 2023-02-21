@@ -6,6 +6,9 @@ variables:
   extra_args: |
   dest_dir: |
   jobs: -j${JOBS}
+  c_flags: |
+  cxx_flags: |
+  ld_flags: |  
 
 build:
   kind: qmake
@@ -16,3 +19,11 @@ build:
       make ${jobs}
     install: |
       make ${jobs} DESTDIR=${dest_dir} install
+
+enviroment:
+  CFLAGS: |
+    -isystem/runtime/include -g -O2 -fstack-protector-strong -Wformat -Werror=format-security ${c_flags}
+  CXXFLAGS: |
+    -isystem/runtime/include -g -O2 -fstack-protector-strong -Wformat -Werror=format-security ${c_flags}
+  LDFLAGS: |
+    -Wl,-z,relro ${ld_flags}

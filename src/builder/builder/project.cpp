@@ -144,6 +144,11 @@ public:
             q_ptr->variables = variable;
         }
 
+        if (q_ptr->enviroment == nullptr) {
+            auto enviroment = new Enviroment();
+            q_ptr->enviroment = enviroment;
+        }
+
         if (q_ptr->build->manual == nullptr) {
             auto buildManual = new BuildManual();
             q_ptr->build->manual = buildManual;
@@ -162,6 +167,22 @@ public:
                 command += QString("%1=\"%2\"\n")
                                    .arg(propertyName)
                                    .arg(q_ptr->variables->property(propertyName).toString());
+            }
+        }
+        // set build enviroment variables
+        command += "#enviroment variables\n";
+        for (int i = q_ptr->enviroment->metaObject()->propertyOffset();
+             i < q_ptr->enviroment->metaObject()->propertyCount();
+             ++i) {
+            auto propertyName = q_ptr->enviroment->metaObject()->property(i).name();
+            if (q_ptr->enviroment->property(propertyName).toString().isNull()) {
+                command += QString("export %1=\"%2\"\n")
+                                   .arg(propertyName)
+                                   .arg(temp->enviroment->property(propertyName).toString());
+            } else {
+                command += QString("export %1=\"%2\"\n")
+                                   .arg(propertyName)
+                                   .arg(q_ptr->enviroment->property(propertyName).toString());
             }
         }
 

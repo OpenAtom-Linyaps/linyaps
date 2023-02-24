@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="app-conf-generator.sh">../../misc/scripts/app-conf-generator.sh</file>
+    </qresource>
+</RCC>

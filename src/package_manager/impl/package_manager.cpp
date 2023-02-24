@@ -596,14 +596,26 @@ void PackageManagerPrivate::addAppConfig(const QString &appId,
         }
     }
 
-    const QString savePath = kAppInstallPath + appId + "/" + version + "/" + arch;
-    // 链接应用配置文件到系统配置目录
-    if (linglong::util::dirExists(savePath + "/outputs/share")) {
-        const QString appEntriesDirPath = savePath + "/outputs/share";
-        linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstalltions);
-    } else {
-        const QString appEntriesDirPath = savePath + "/entries";
-        linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstalltions);
+    const QString installPath =
+            QStringList{ kAppInstallPath, appId, version, arch }.join(QDir::separator());
+    const QString appEntriesPath = QStringList{ installPath, "entries" }.join(QDir::separator());
+    // modify app configuration files， such as *.desktop, *.service, *.conf, save
+
+    QFile shellScript(":/app-conf-generator.sh");
+    QTemporaryFile *tempFile = QTemporaryFile::createNativeFile(shellScript);
+
+    QProcess confGenerator;
+    QStringList args = { tempFile->fileName(), appId, appEntriesPath };
+    confGenerator.start("bash", args);
+    confGenerator.waitForFinished();
+
+    qDebug() << confGenerator.readAllStandardOutput();
+
+    tempFile->remove();
+
+    // link ${APP_INSTALL_PATH}/entries/share to ${LINGLONG_ROOT}/entries/share
+    if(linglong::util::dirExists(appEntriesPath)) {
+        linglong::util::linkDirFiles(appEntriesPath, sysLinglongInstalltions);
     }
 }
 

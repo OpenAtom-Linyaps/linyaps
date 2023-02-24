@@ -77,62 +77,9 @@ linglong::util::Error commitBuildOutput(Project *project, AnnotationsOverlayfsRo
     // FIXME: must wait fuse mount filesystem
     QThread::sleep(1);
 
-    auto entriesPath = project->config().cacheInstallPath("entries");
-
-    auto modifyConfigFile = [](const QString &srcPath,
-                               const QString &targetPath,
-                               const QString &fileType,
-                               const QString &appId) -> util::Error {
-        QDir configDir(srcPath);
-        auto configFileInfoList = configDir.entryInfoList({ fileType }, QDir::Files);
-
-        linglong::util::ensureDir(targetPath);
-
-        for (auto const &fileInfo : configFileInfoList) {
-            util::DesktopEntry desktopEntry(fileInfo.filePath());
-
-            // set all section
-            auto configSections = desktopEntry.sections();
-            for (auto section : configSections) {
-                auto exec = desktopEntry.rawValue("Exec", section);
-                exec = QString("ll-cli run %1 --exec '%2'").arg(appId, exec);
-                desktopEntry.set(section, "Exec", exec);
-
-                // The section TryExec affects starting from the launcher, set it to null.
-                auto tryExec = desktopEntry.rawValue("TryExec", section);
-
-                if (!tryExec.isEmpty()) {
-                    desktopEntry.set(section, "TryExec", "");
-                }
-                auto ret = desktopEntry.save(
-                        QStringList{ targetPath, fileInfo.fileName() }.join(QDir::separator()));
-                if (!ret.success()) {
-                    return WrapError(ret, "save config failed");
-                }
-            }
-        }
-        return NoError();
-    };
-
-    auto appId = project->package->id;
-    // modify desktop file
-    auto desktopFilePath = QStringList{ output, "share/applications" }.join(QDir::separator());
-    auto desktopFileSavePath = QStringList{ entriesPath, "applications" }.join(QDir::separator());
-    auto modifyRet = modifyConfigFile(desktopFilePath, desktopFileSavePath, "*.desktop", appId);
-    if (!modifyRet.success()) {
-        kill(fuseOverlayfsPid, SIGTERM);
-        return modifyRet;
-    }
-
-    // modify context-menus file
-    auto contextFilePath =
-            QStringList{ output, "share/applications/context-menus" }.join(QDir::separator());
-    auto contextFileSavePath = contextFilePath;
-    modifyRet = modifyConfigFile(contextFilePath, contextFileSavePath, "*.conf", appId);
-    if (!modifyRet.success()) {
-        kill(fuseOverlayfsPid, SIGTERM);
-        return modifyRet;
-    }
+    // copy files/share to entries/share
+    util::copyDir(project->config().cacheInstallPath("files/share"),
+                  project->config().cacheInstallPath("entries/share"));
 
     auto moveDir = [](const QStringList targetList,
                       const QString &srcPath,
@@ -149,13 +96,6 @@ linglong::util::Error commitBuildOutput(Project *project, AnnotationsOverlayfsRo
 
         return NoError();
     };
-
-    // link files/share to entries/share/
-    linglong::util::linkDirFiles(project->config().cacheInstallPath("files/share"), entriesPath);
-    // link files/lib/systemd to entries/systemd
-    linglong::util::linkDirFiles(
-            project->config().cacheInstallPath("files/lib/systemd/user"),
-            QStringList{ entriesPath, "systemd/user" }.join(QDir::separator()));
 
     // Move runtime-install/files/debug to devel-install/files/debug
     linglong::util::ensureDir(project->config().cacheInstallPath("devel-install", "files"));

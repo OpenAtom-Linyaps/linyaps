@@ -53,6 +53,7 @@ set(LL_SYSTEM_SERVICE_SOURCES
     impl/package_manager.cpp
     impl/package_manager_flatpak_impl.cpp
     main.cpp
+    resource.qrc
 )
 
 qt5_add_dbus_adaptor(

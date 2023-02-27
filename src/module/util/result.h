@@ -133,6 +133,6 @@ inline QDebug operator<<(QDebug dbg, const Error &result)
 
 #define NoError() linglong::util::Error(__FILE__, __LINE__, __FUNCTION__)
 
-#define WrapError(base, ...) \
-  linglong::util::Error(__FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__, base)
+#define WrapError(base, msg) \
+  linglong::util::Error(__FILE__, __LINE__, __FUNCTION__, msg, base)
 #endif

@@ -67,7 +67,7 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
 
         ret = ostree.pullAll(dependRef, true);
         if (!ret.success()) {
-            return NewError(ret, -1, "pull " + dependRef.toString() + " failed");
+            return WrapError(ret, "pull " + dependRef.toString() + " failed");
         }
     }
 
@@ -78,9 +78,8 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
     ret = ostree.checkoutAll(dependRef, subPath, targetPath);
 
     if (!ret.success()) {
-        return NewError(ret,
-                        -1,
-                        QString("ostree checkout %1 failed").arg(dependRef.toLocalRefString()));
+        return WrapError(ret,
+                         QString("ostree checkout %1 failed").arg(dependRef.toLocalRefString()));
     }
     // for app,lib. if the dependType match runtime, should be submitted together.
     if (dd_ptr->dependType == DependTypeRuntime) {

@@ -757,20 +757,38 @@ linglong::util::Error OSTreeRepo::pull(const package::Ref &ref, bool force)
 {
     Q_D(OSTreeRepo);
 
-    // Fixme: remote name maybe not repo and there should support multiple remote
-    return WrapError(d->ostreeRun({ "pull", d->remoteRepoName, "--mirror", ref.toString() }), "");
+    // FIXME(black_desk): When a error raised from libcurl, libostree will treat
+    // it like a fail, but not a temporary error, which make the default retry
+    // (5 times) useless. So we now have to retry some times to overcome this
+    // problem.
+    // As we have try the current base will fail so many times during
+    // transferring. So we decide to retry 30 times.
+    int retry = 30;
+    util::Error err;
+    while (retry--) {
+        qDebug() << "remaining retries" << retry;
+        err = WrapError(d->ostreeRun({ "pull", ref.toString() }), "");
+        if (err.success()) {
+            break;
+        }
+    }
+    return err;
 }
 
 linglong::util::Error OSTreeRepo::pullAll(const package::Ref &ref, bool force)
 {
     Q_D(OSTreeRepo);
 
-    auto ret = d->ostreeRun({ "pull", QStringList{ ref.toString(), "runtime" }.join("/") });
+    // FIXME(black-desk): pullAll should not belong to this class.
+
+    auto ret =
+            WrapError(pull(package::Ref(QStringList{ ref.toString(), "runtime" }.join("/")), false),
+                      "");
     if (!ret.success()) {
         return ret;
     }
 
-    ret = d->ostreeRun({ "pull", QStringList{ ref.toString(), "devel" }.join("/") });
+    ret = pull(package::Ref(QStringList{ ref.toString(), "devel" }.join("/")), false);
 
     // Fixme: some old package have no devel, ignore error for now.
     return NoError();

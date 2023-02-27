@@ -758,7 +758,7 @@ linglong::util::Error OSTreeRepo::pull(const package::Ref &ref, bool force)
     Q_D(OSTreeRepo);
 
     // Fixme: remote name maybe not repo and there should support multiple remote
-    return WrapError(d->ostreeRun({ "pull", d->remoteRepoName, "--mirror", ref.toString() }));
+    return WrapError(d->ostreeRun({ "pull", d->remoteRepoName, "--mirror", ref.toString() }), "");
 }
 
 linglong::util::Error OSTreeRepo::pullAll(const package::Ref &ref, bool force)
@@ -772,28 +772,29 @@ linglong::util::Error OSTreeRepo::pullAll(const package::Ref &ref, bool force)
 
     ret = d->ostreeRun({ "pull", QStringList{ ref.toString(), "devel" }.join("/") });
 
-    return WrapError(ret);
+    // Fixme: some old package have no devel, ignore error for now.
+    return NoError();
 }
 
 linglong::util::Error OSTreeRepo::init(const QString &mode)
 {
     Q_D(OSTreeRepo);
 
-    return WrapError(d->ostreeRun({ "init", QString("--mode=%1").arg(mode) }));
+    return WrapError(d->ostreeRun({ "init", QString("--mode=%1").arg(mode) }), "");
 }
 
 linglong::util::Error OSTreeRepo::remoteAdd(const QString &repoName, const QString &repoUrl)
 {
     Q_D(OSTreeRepo);
 
-    return WrapError(d->ostreeRun({ "remote", "add", "--no-gpg-verify", repoName, repoUrl }));
+    return WrapError(d->ostreeRun({ "remote", "add", "--no-gpg-verify", repoName, repoUrl }), "");
 }
 
 linglong::util::Error OSTreeRepo::remoteDelete(const QString &repoName)
 {
     Q_D(OSTreeRepo);
 
-    return WrapError(d->ostreeRun({ "remote", "delete", repoName }));
+    return WrapError(d->ostreeRun({ "remote", "delete", repoName }), "");
 }
 
 OSTreeRepo::OSTreeRepo(const QString &path)
@@ -817,7 +818,7 @@ linglong::util::Error OSTreeRepo::checkout(const package::Ref &ref,
         args.push_back("--subpath=" + subPath);
     }
     args.append({ ref.toString(), target });
-    return WrapError(dd_ptr->ostreeRun(args));
+    return WrapError(dd_ptr->ostreeRun(args), "");
 }
 
 linglong::util::Error OSTreeRepo::checkoutAll(const package::Ref &ref,
@@ -843,12 +844,13 @@ linglong::util::Error OSTreeRepo::checkoutAll(const package::Ref &ref,
     auto ret = d->ostreeRun(runtimeArgs);
 
     if (!ret.success()) {
-        return ret;
+        return WrapError(ret, "");
     }
 
     ret = d->ostreeRun(develArgs);
 
-    return WrapError(ret);
+    // Fixme: some old package have no devel, ignore error for now.
+    return NoError();
 }
 
 QString OSTreeRepo::rootOfLayer(const package::Ref &ref)
@@ -987,7 +989,7 @@ linglong::util::Error OSTreeRepo::removeRef(const package::Ref &ref)
     }
 
     args = QStringList{ "prune" };
-    return WrapError(dd_ptr->ostreeRun(args));
+    return WrapError(dd_ptr->ostreeRun(args), "");
 }
 
 std::tuple<linglong::util::Error, QStringList> OSTreeRepo::remoteList()

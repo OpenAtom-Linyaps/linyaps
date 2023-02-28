@@ -1,19 +1,3 @@
-find_package(CURL REQUIRED)
-find_package(PkgConfig REQUIRED)
-# QT sqlite 支持
-find_package(
-  Qt5
-  COMPONENTS Concurrent
-             Sql
-             WebSockets
-  REQUIRED
-)
-pkg_search_module(
-  OSTREE1
-  REQUIRED
-  ostree-1
-)
-
 set(LL_SYSTEM_SERVICE_SOURCES
     # cmake-format: sortable
     ../module/dbus_ipc/param_option.h
@@ -88,6 +72,8 @@ set(LINK_LIBS
     ${LINK_LIBS}
     CURL::libcurl
     ${OSTREE1_LDFLAGS}
+    yaml-cpp
+    Qt5::DBus
     Qt5::Sql
     Qt5::WebSockets
 )

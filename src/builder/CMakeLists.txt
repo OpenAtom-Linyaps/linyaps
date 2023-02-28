@@ -38,10 +38,6 @@ set(LL_BUILDER_SOURCES
     resource.qrc
 )
 
-find_package(CURL REQUIRED)
-# find_package(Qt5WebSockets REQUIRED)
-find_package(Qt5 REQUIRED COMPONENTS Core WebSockets)
-
 aux_source_directory(. LL_BUILDER_SOURCES)
 aux_source_directory(builder LL_BUILDER_SOURCES)
 
@@ -57,9 +53,11 @@ target_include_directories(
 target_link_libraries(
   ll-builder
   PRIVATE ${LINK_LIBS}
+          yaml-cpp
           CURL::libcurl
           ${GLIB_LDFLAGS}
           ${OSTREE1_LDFLAGS}
+          Qt5::DBus
           Qt5::WebSockets
 )
 

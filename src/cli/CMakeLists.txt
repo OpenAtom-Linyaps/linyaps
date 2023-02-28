@@ -16,6 +16,7 @@ set(LL_CLI_SOURCES
     ../module/runtime/container.cpp
     ../module/runtime/container.h
     ../module/runtime/oci.h
+    ../module/util/command_helper.cpp
     ../module/util/config/config.h
     ../module/util/connection.cpp
     ../module/util/desktop_entry.cpp
@@ -37,7 +38,6 @@ set(LL_CLI_SOURCES
     ../package_manager/impl/package_manager_flatpak_impl.cpp
     ../service/impl/app_manager.cpp
     ../service/resource/resource.qrc
-    cmd/command_helper.cpp
     main.cpp
 )
 

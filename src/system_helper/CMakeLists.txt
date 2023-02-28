@@ -25,14 +25,15 @@ qt5_add_dbus_adaptor(
   linglong::system::helper::SystemHelper
 )
 
-set(LINK_LIBS
-    yaml-cpp
-    Qt5::Core
-    Qt5::DBus
-)
+set(LINK_LIBS)
 
 add_executable(ll-system-helper ${LL_SYSTEM_HELPER_SOURCES})
 
-target_link_libraries(ll-system-helper PRIVATE ${LINK_LIBS})
+target_link_libraries(
+  ll-system-helper
+  PRIVATE yaml-cpp
+          Qt5::Core
+          Qt5::DBus
+)
 
 install(TARGETS ll-system-helper RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

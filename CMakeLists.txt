@@ -49,13 +49,15 @@ find_package(CURL REQUIRED)
 find_package(PkgConfig REQUIRED)
 
 pkg_search_module(
-  GLIB2
+  glib2
   REQUIRED
+  IMPORTED_TARGET
   glib-2.0
 )
 pkg_search_module(
-  OSTREE1
+  ostree1
   REQUIRED
+  IMPORTED_TARGET
   ostree-1
 )
 

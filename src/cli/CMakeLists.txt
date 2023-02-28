@@ -84,20 +84,17 @@ qt5_add_dbus_adaptor(
   Job
 )
 
-# add for cli no dbus
-set(CLI_NO_DBUS
-    CURL::libcurl
-    ${OSTREE1_LDFLAGS}
-    yaml-cpp
-    Qt5::DBus
-    Qt5::Sql
-    Qt5::WebSockets
-)
-
 add_executable(ll-cli ${LL_CLI_SOURCES})
-# add for cli no dbus support
-target_link_libraries(ll-cli PRIVATE ${LINK_LIBS} ${CLI_NO_DBUS})
-target_include_directories(ll-cli PRIVATE ${OSTREE1_INCLUDE_DIRS})
+
+target_link_libraries(
+  ll-cli
+  PRIVATE CURL::libcurl
+          PkgConfig::ostree1
+          yaml-cpp
+          Qt5::DBus
+          Qt5::Sql
+          Qt5::WebSockets
+)
 
 install(TARGETS ll-cli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 

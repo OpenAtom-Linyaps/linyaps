@@ -68,20 +68,16 @@ qt5_add_dbus_interface(
 
 message(STATUS "current CPU ARCH is: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 
-set(LINK_LIBS
-    ${LINK_LIBS}
-    CURL::libcurl
-    ${OSTREE1_LDFLAGS}
-    yaml-cpp
-    Qt5::DBus
-    Qt5::Sql
-    Qt5::WebSockets
-)
-
 add_executable(ll-package-manager ${LL_SYSTEM_SERVICE_SOURCES})
 
-target_include_directories(ll-package-manager PRIVATE ${OSTREE1_INCLUDE_DIRS})
-
-target_link_libraries(ll-package-manager PRIVATE ${LINK_LIBS})
+target_link_libraries(
+  ll-package-manager
+  PRIVATE CURL::libcurl
+          PkgConfig::ostree1
+          yaml-cpp
+          Qt5::DBus
+          Qt5::Sql
+          Qt5::WebSockets
+)
 
 install(TARGETS ll-package-manager RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

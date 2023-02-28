@@ -7,12 +7,12 @@
 #include "linglong_builder.h"
 
 #include "builder_config.h"
-#include "cli/cmd/command_helper.h"
 #include "depend_fetcher.h"
 #include "module/repo/ostree_repo.h"
 #include "module/runtime/app.h"
 #include "module/runtime/container.h"
 #include "module/runtime/oci.h"
+#include "module/util/command_helper.h"
 #include "module/util/desktop_entry.h"
 #include "module/util/env.h"
 #include "module/util/runner.h"

@@ -1,6 +1,5 @@
 set(LL_BUILDER_SOURCES
     # cmake-format: sortable
-    ../cli/cmd/command_helper.cpp
     ../module/flatpak/flatpak_manager.cpp
     ../module/package/bundle.cpp
     ../module/package/info.cpp
@@ -15,6 +14,7 @@ set(LL_BUILDER_SOURCES
     ../module/runtime/app_config.h
     ../module/runtime/container.cpp
     ../module/runtime/oci.h
+    ../module/util/command_helper.cpp
     ../module/util/config/config.h
     ../module/util/desktop_entry.cpp
     ../module/util/file.cpp

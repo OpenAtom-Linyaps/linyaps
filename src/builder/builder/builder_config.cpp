@@ -9,7 +9,6 @@
 #include "configure.h"
 #include "module/util/file.h"
 #include "module/util/serialize/yaml.h"
-#include "module/util/sysinfo.h"
 #include "module/util/xdg.h"
 
 #include <mutex>

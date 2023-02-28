@@ -5,10 +5,10 @@
  */
 
 #include "app_manager.h"
-#include "cmd/command_helper.h"
 #include "module/dbus_ipc/register_meta_type.h"
 #include "module/package/package.h"
 #include "module/runtime/runtime.h"
+#include "module/util/command_helper.h"
 #include "module/util/env.h"
 #include "module/util/log/log_handler.h"
 #include "module/util/sysinfo.h"
@@ -21,6 +21,8 @@
 #include <QCommandLineOption>
 #include <QCommandLineParser>
 #include <QCoreApplication>
+
+#include <csignal>
 
 static qint64 systemHelperPid = -1;
 

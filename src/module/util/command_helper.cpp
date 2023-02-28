@@ -6,8 +6,14 @@
 
 #include "command_helper.h"
 
+#include <QDebug>
+#include <QJsonArray>
+
+#include <grp.h>
+#include <sys/wait.h>
+
 namespace linglong {
-namespace cli {
+namespace util {
 
 int CommandHelper::bringDownPermissionsTo(const struct stat &fileStat)
 {
@@ -220,5 +226,5 @@ QList<pid_t> CommandHelper::childrenOf(pid_t p)
     return pidList;
 }
 
-} // namespace cli
+} // namespace util
 } // namespace linglong

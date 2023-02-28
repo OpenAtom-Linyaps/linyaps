@@ -15,6 +15,12 @@ set(LINGLONG_ROOT
     CACHE STRING "the location where linglong releated program puts their data"
 )
 
+include_directories(${linglong_SOURCE_DIR}/src)
+# NOTE(black_desk): for dbus adaptor remove later.
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+
+# qt
+
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -22,11 +28,38 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-include(GNUInstallDirs)
+add_definitions("-DQT_MESSAGELOGCONTEXT")
+add_definitions("-DQT_NO_KEYWORDS")
 
-include_directories(${linglong_SOURCE_DIR}/src)
-# NOTE(black_desk): for dbus adaptor remove later.
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
+find_package(
+  Qt5
+  COMPONENTS Core
+             Concurrent
+             DBus
+             Network
+             WebSockets
+             Sql
+  REQUIRED
+)
+
+# other dependencies
+
+find_package(yaml-cpp REQUIRED)
+find_package(CURL REQUIRED)
+find_package(PkgConfig REQUIRED)
+
+pkg_search_module(
+  GLIB2
+  REQUIRED
+  glib-2.0
+)
+pkg_search_module(
+  OSTREE1
+  REQUIRED
+  ostree-1
+)
+
+include(GNUInstallDirs)
 
 add_subdirectory(src)
 add_subdirectory(test)

@@ -26,15 +26,6 @@ set(LL_BUILDER_SOURCES
     ../module/util/sysinfo.cpp
     ../module/util/uuid.cpp
     ../module/util/xdg.cpp
-    builder/builder.cpp
-    builder/builder_config.cpp
-    builder/builder_config.h
-    builder/depend_fetcher.cpp
-    builder/depend_fetcher.h
-    builder/project.cpp
-    builder/project.h
-    builder/source_fetcher.cpp
-    builder/source_fetcher.h
     resource.qrc
 )
 

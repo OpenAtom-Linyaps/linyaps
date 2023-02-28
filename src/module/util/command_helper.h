@@ -4,29 +4,14 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_SRC_CLI_CMD_COMMAND_HELPER_H_
-#define LINGLONG_SRC_CLI_CMD_COMMAND_HELPER_H_
+#ifndef LINGLONG_SRC_MODULE_UTIL_COMMAND_HELPER_H_
+#define LINGLONG_SRC_MODULE_UTIL_COMMAND_HELPER_H_
 
 #include "module/runtime/container.h"
 #include "module/util/singleton.h"
 
-#include <QDebug>
-#include <QFile>
-#include <QJsonArray>
-#include <QStringList>
-#include <QtGlobal>
-
-#include <vector>
-
-#include <fcntl.h>
-#include <grp.h>
-#include <stdlib.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
-#include <unistd.h>
-
 namespace linglong {
-namespace cli {
+namespace util {
 
 class CommandHelper : public QObject, public linglong::util::Singleton<CommandHelper>
 {
@@ -47,9 +32,9 @@ private:
     QList<pid_t> childrenOf(pid_t p);
 };
 
-} // namespace cli
+} // namespace util
 } // namespace linglong
 
-#define COMMAND_HELPER linglong::cli::CommandHelper::instance()
+#define COMMAND_HELPER linglong::util::CommandHelper::instance()
 
 #endif

@@ -888,7 +888,7 @@ package::Ref OSTreeRepo::localLatestRef(const package::Ref &ref)
 
     QString latestVer = "latest";
 
-    QString args = QString("ostree refs repo --repo=%1 | grep %2 | grep %3")
+    QString args = QString("ostree refs --repo=%1 | grep %2 | grep %3")
                            .arg(d->ostreePath)
                            .arg(ref.appId)
                            .arg(util::hostArch() + "/" + "runtime");

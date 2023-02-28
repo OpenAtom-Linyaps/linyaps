@@ -5,25 +5,25 @@
  */
 
 #ifndef LINGLONG_SRC_CLI_CMD_COMMAND_HELPER_H_
-#  define LINGLONG_SRC_CLI_CMD_COMMAND_HELPER_H_
+#define LINGLONG_SRC_CLI_CMD_COMMAND_HELPER_H_
 
-#  include "module/runtime/container.h"
-#  include "module/util/singleton.h"
+#include "module/runtime/container.h"
+#include "module/util/singleton.h"
 
-#  include <QDebug>
-#  include <QFile>
-#  include <QJsonArray>
-#  include <QStringList>
-#  include <QtGlobal>
+#include <QDebug>
+#include <QFile>
+#include <QJsonArray>
+#include <QStringList>
+#include <QtGlobal>
 
-#  include <vector>
+#include <vector>
 
-#  include <fcntl.h>
-#  include <grp.h>
-#  include <stdlib.h>
-#  include <sys/stat.h>
-#  include <sys/wait.h>
-#  include <unistd.h>
+#include <fcntl.h>
+#include <grp.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 namespace linglong {
 namespace cli {
@@ -49,6 +49,7 @@ private:
 
 } // namespace cli
 } // namespace linglong
-#endif
 
 #define COMMAND_HELPER linglong::cli::CommandHelper::instance()
+
+#endif

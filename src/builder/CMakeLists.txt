@@ -52,11 +52,10 @@ target_include_directories(
 
 target_link_libraries(
   ll-builder
-  PRIVATE ${LINK_LIBS}
+  PRIVATE PkgConfig::glib2
+          PkgConfig::ostree1
           yaml-cpp
           CURL::libcurl
-          ${GLIB_LDFLAGS}
-          ${OSTREE1_LDFLAGS}
           Qt5::DBus
           Qt5::WebSockets
 )

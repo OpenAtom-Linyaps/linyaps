@@ -43,20 +43,16 @@ qt5_add_dbus_adaptor(
 
 message(STATUS "current CPU ARCH is: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 
-set(LINK_LIBS
-    ${LINK_LIBS}
-    CURL::libcurl
-    ${OSTREE1_LDFLAGS}
-    yaml-cpp
-    Qt5::DBus
-    Qt5::Sql
-    Qt5::WebSockets
-)
-
 add_executable(ll-service ${LL_SERVICE_SOURCES})
 
-target_include_directories(ll-service PRIVATE ${OSTREE1_INCLUDE_DIRS})
-
-target_link_libraries(ll-service PRIVATE ${LINK_LIBS})
+target_link_libraries(
+  ll-service
+  PRIVATE CURL::libcurl
+          PkgConfig::ostree1
+          yaml-cpp
+          Qt5::DBus
+          Qt5::Sql
+          Qt5::WebSockets
+)
 
 install(TARGETS ll-service RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

@@ -7,8 +7,8 @@
 // todo: 该头文件必须放在QDBus前，否则会报错
 #include "package_manager.h"
 
-#include "app_status.h"
-#include "appinfo_cache.h"
+#include "module/util/app_status.h"
+#include "module/util/appinfo_cache.h"
 #include "module/dbus_ipc/dbus_system_helper_common.h"
 #include "module/repo/ostree_repohelper.h"
 #include "module/util/http/httpclient.h"

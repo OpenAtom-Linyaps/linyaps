@@ -74,8 +74,8 @@ set(LL_TEST_SOURCES
     ../src/module/util/sysinfo.cpp
     ../src/module/util/uuid.cpp
     ../src/module/util/xdg.cpp
-    ../src/package_manager/impl/app_status.cpp
-    ../src/package_manager/impl/appinfo_cache.cpp
+    ../src/module/util/app_status.cpp
+    ../src/module/util/appinfo_cache.cpp
     manager_test.cpp
     module/config/config_test.cpp
     module/package/package_info_test.cpp

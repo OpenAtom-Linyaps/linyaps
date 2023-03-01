@@ -7,11 +7,13 @@
 #ifndef LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_P_H_
 #define LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_P_H_
 
-#include "app_status.h"
+#include "dbus_ipc/param_option.h"
+#include "dbus_ipc/reply.h"
 #include "dbus_system_helper.h"
 #include "module/dbus_ipc/package_manager_param.h"
 #include "module/repo/ostree_repo.h"
 #include "module/repo/repo_client.h"
+#include "module/util/app_status.h"
 #include "module/util/http/httpclient.h"
 #include "module/util/sysinfo.h"
 

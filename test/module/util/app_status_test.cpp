@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include "package_manager/impl/app_status.h"
+#include "src/module/util/app_status.h"
 #include "src/module/util/sysinfo.h"
 
 #include <QDebug>

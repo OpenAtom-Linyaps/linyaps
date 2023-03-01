@@ -8,12 +8,12 @@
 
 #include "app_manager.h"
 #include "package_manager.h"
-#include "package_manager/impl/app_status.h"
 #include "src/module/dbus_ipc/param_option.h"
 #include "src/module/dbus_ipc/register_meta_type.h"
 #include "src/module/dbus_ipc/reply.h"
 #include "src/module/flatpak/flatpak_manager.h"
 #include "src/module/package/package.h"
+#include "src/module/util/app_status.h"
 
 #include <QDebug>
 

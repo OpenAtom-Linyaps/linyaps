@@ -6,7 +6,6 @@
 
 #include "builder_config.h"
 
-#include "configure.h"
 #include "module/util/file.h"
 #include "module/util/serialize/yaml.h"
 #include "module/util/xdg.h"

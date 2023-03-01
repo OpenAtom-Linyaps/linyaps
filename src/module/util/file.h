@@ -7,7 +7,7 @@
 #ifndef LINGLONG_SRC_MODULE_UTIL_FILE_H_
 #define LINGLONG_SRC_MODULE_UTIL_FILE_H_
 
-#include "configure.h"
+#include "module/util/configure.h"
 #include "status_code.h"
 
 #include <QCryptographicHash>

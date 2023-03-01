@@ -8,6 +8,8 @@ file(
   *.qrc
 )
 
+configure_file(util/configure.h.in util/configure.h)
+
 qt5_add_dbus_adaptor(
   LINGLONG_LIB_SOURCES
   dbus_ipc/org.deepin.linglong.PackageManager.xml

@@ -1,33 +1,4 @@
-set(LL_BUILDER_SOURCES
-    # cmake-format: sortable
-    ../module/flatpak/flatpak_manager.cpp
-    ../module/package/bundle.cpp
-    ../module/package/info.cpp
-    ../module/package/package.cpp
-    ../module/repo/ostree_repo.cpp
-    ../module/repo/ostree_repo.h
-    ../module/repo/ostree_repohelper.cpp
-    ../module/repo/repo.cpp
-    ../module/repo/repo_client.cpp
-    ../module/repo/repo_client.h
-    ../module/runtime/app.cpp
-    ../module/runtime/app_config.h
-    ../module/runtime/container.cpp
-    ../module/runtime/oci.h
-    ../module/util/command_helper.cpp
-    ../module/util/config/config.h
-    ../module/util/desktop_entry.cpp
-    ../module/util/file.cpp
-    ../module/util/http/http_client.cpp
-    ../module/util/http/http_client.h
-    ../module/util/http/httpclient.cpp
-    ../module/util/log/log_handler.cpp
-    ../module/util/serialize/json.h
-    ../module/util/sysinfo.cpp
-    ../module/util/uuid.cpp
-    ../module/util/xdg.cpp
-    resource.qrc
-)
+set(LL_BUILDER_SOURCES resource.qrc)
 
 aux_source_directory(. LL_BUILDER_SOURCES)
 aux_source_directory(builder LL_BUILDER_SOURCES)
@@ -41,14 +12,6 @@ target_include_directories(
           ${OSTREE1_INCLUDE_DIRS}
 )
 
-target_link_libraries(
-  ll-builder
-  PRIVATE PkgConfig::glib2
-          PkgConfig::ostree1
-          yaml-cpp
-          CURL::libcurl
-          Qt5::DBus
-          Qt5::WebSockets
-)
+target_link_libraries(ll-builder PRIVATE linglong_lib)
 
 install(TARGETS ll-builder RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

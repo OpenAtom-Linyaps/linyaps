@@ -6,9 +6,6 @@
 
 #include <gtest/gtest.h>
 
-#include "src/module/runtime/container.h"
-#include "src/module/runtime/oci.h"
-
 #include <QFile>
 #include <QJsonDocument>
 #include <QtDBus>

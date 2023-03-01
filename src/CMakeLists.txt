@@ -5,9 +5,9 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_subdirectory(module)
 
-add_subdirectory(service)
-
 add_subdirectory(package_manager)
+
+add_subdirectory(service)
 
 add_subdirectory(system_helper)
 

@@ -8,6 +8,8 @@
 
 #include <gtest/gtest.h>
 
+#include "module/util/serialize/yaml.h"
+
 TEST(Serialize, YAML_NS)
 {
     qJsonRegister<linglong::test::MountRule>();

@@ -15,8 +15,10 @@ set(LINGLONG_ROOT
     CACHE STRING "the location where linglong releated program puts their data"
 )
 
+# for private header
 include_directories(${linglong_SOURCE_DIR}/src)
 include_directories(${linglong_BINARY_DIR}/src)
+
 # NOTE(black_desk): for dbus adaptor remove later.
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -65,5 +67,8 @@ pkg_search_module(
 include(GNUInstallDirs)
 
 add_subdirectory(src)
-add_subdirectory(test)
 add_subdirectory(misc)
+
+# enable_testing()
+# FIXME(black_desk): disable test for now, enable it later.
+add_subdirectory(test)

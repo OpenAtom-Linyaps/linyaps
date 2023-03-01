@@ -13,10 +13,10 @@
 namespace linglong {
 namespace repo {
 
-class Pair : public JsonSerialize
+class TestPair : public JsonSerialize
 {
     Q_OBJECT;
-    Q_SERIALIZE_CONSTRUCTOR(Pair);
+    Q_SERIALIZE_CONSTRUCTOR(TestPair);
 
 public:
     Q_SERIALIZE_PROPERTY(QString, first);
@@ -26,24 +26,24 @@ public:
 } // namespace repo
 } // namespace linglong
 
-Q_SERIALIZE_DECLARE_METATYPE_NM(linglong::repo, Pair)
+Q_SERIALIZE_DECLARE_METATYPE_NM(linglong::repo, TestPair)
 
 namespace linglong {
 namespace repo {
 
-class UploadTaskRequest : public JsonSerialize
+class TestUploadTaskRequest : public JsonSerialize
 {
     Q_OBJECT;
-    Q_SERIALIZE_CONSTRUCTOR(UploadTaskRequest)
+    Q_SERIALIZE_CONSTRUCTOR(TestUploadTaskRequest)
 
     Q_SERIALIZE_PROPERTY(int, code);
     Q_SERIALIZE_PROPERTY(QStringList, objects);
-    Q_SERIALIZE_PROPERTY(linglong::repo::PairList, refList);
-    Q_SERIALIZE_PROPERTY(linglong::repo::PairStrMap, refs);
+    Q_SERIALIZE_PROPERTY(linglong::repo::TestPairList, refList);
+    Q_SERIALIZE_PROPERTY(linglong::repo::TestPairStrMap, refs);
 };
 
 } // namespace repo
 } // namespace linglong
 
-Q_SERIALIZE_DECLARE_METATYPE_NM(linglong::repo, UploadTaskRequest)
+Q_SERIALIZE_DECLARE_METATYPE_NM(linglong::repo, TestUploadTaskRequest)
 #endif

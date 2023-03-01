@@ -6,7 +6,7 @@
 
 #include "log_handler.h"
 
-#include "configure.h"
+#include "module/util/configure.h"
 #include "log_handler_p.h"
 #include "module/util/sysinfo.h"
 

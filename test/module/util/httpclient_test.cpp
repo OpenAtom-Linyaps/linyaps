@@ -6,8 +6,8 @@
 
 #include <gtest/gtest.h>
 
-#include "src/module/util/file.h"
-#include "src/module/util/http/httpclient.h"
+#include "module/util/file.h"
+#include "module/util/http/httpclient.h"
 
 #include <QtConcurrent/QtConcurrent>
 

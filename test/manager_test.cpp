@@ -7,13 +7,13 @@
 #include <gtest/gtest.h>
 
 #include "app_manager.h"
+#include "module/dbus_ipc/param_option.h"
+#include "module/dbus_ipc/register_meta_type.h"
+#include "module/dbus_ipc/reply.h"
+#include "module/flatpak/flatpak_manager.h"
+#include "module/package/package.h"
+#include "module/util/app_status.h"
 #include "package_manager.h"
-#include "src/module/dbus_ipc/param_option.h"
-#include "src/module/dbus_ipc/register_meta_type.h"
-#include "src/module/dbus_ipc/reply.h"
-#include "src/module/flatpak/flatpak_manager.h"
-#include "src/module/package/package.h"
-#include "src/module/util/app_status.h"
 
 #include <QDebug>
 

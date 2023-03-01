@@ -6,8 +6,8 @@
 
 #include <gtest/gtest.h>
 
-#include "src/module/repo/ostree_repohelper.h"
-#include "src/module/util/file.h"
+#include "module/repo/ostree_repohelper.h"
+#include "module/util/file.h"
 
 TEST(RepoHelperT06, repoPullbyCmd)
 {

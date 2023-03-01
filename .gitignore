@@ -1,12 +1,1 @@
-.idea/
 /build
-/cmake-build-debug
-out/
-.vscode/
-**_book
-**node_modules
-
-**html/
-**latex/
-Doxyfile*
-**api_doc.pdf

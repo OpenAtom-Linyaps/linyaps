@@ -16,6 +16,7 @@ set(LINGLONG_ROOT
 )
 
 include_directories(${linglong_SOURCE_DIR}/src)
+include_directories(${linglong_BINARY_DIR}/src)
 # NOTE(black_desk): for dbus adaptor remove later.
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 

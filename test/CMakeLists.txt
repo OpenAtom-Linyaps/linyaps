@@ -7,10 +7,6 @@ add_definitions("-DQT_NO_KEYWORDS")
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-# FIXME: This should not be here. But let leave it till we refactory test.
-configure_file(../src/configure.h.in configure.h)
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
-
 find_package(GTest REQUIRED)
 find_package(
   Qt5 REQUIRED

@@ -18,15 +18,6 @@ set(LL_SYSTEM_HELPER_SOURCES
     system_helper.h
 )
 
-qt5_add_dbus_adaptor(
-  LL_SYSTEM_HELPER_SOURCES
-  ../module/dbus_ipc/org.deepin.linglong.SystemHelper.xml
-  system_helper.h
-  linglong::system::helper::SystemHelper
-)
-
-set(LINK_LIBS)
-
 add_executable(ll-system-helper ${LL_SYSTEM_HELPER_SOURCES})
 
 target_link_libraries(
@@ -34,6 +25,7 @@ target_link_libraries(
   PRIVATE yaml-cpp
           Qt5::Core
           Qt5::DBus
+          LLDBusIPC
 )
 
 install(TARGETS ll-system-helper RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

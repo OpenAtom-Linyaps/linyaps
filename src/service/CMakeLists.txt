@@ -34,15 +34,6 @@ set(LL_SERVICE_SOURCES
     resource/resource.qrc
 )
 
-qt5_add_dbus_adaptor(
-  LL_SERVICE_SOURCES
-  ../module/dbus_ipc/org.deepin.linglong.AppManager.xml
-  impl/app_manager.h
-  linglong::service::AppManager
-)
-
-message(STATUS "current CPU ARCH is: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
-
 add_executable(ll-service ${LL_SERVICE_SOURCES})
 
 target_link_libraries(
@@ -53,6 +44,7 @@ target_link_libraries(
           Qt5::DBus
           Qt5::Sql
           Qt5::WebSockets
+          LLDBusIPC
 )
 
 install(TARGETS ll-service RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

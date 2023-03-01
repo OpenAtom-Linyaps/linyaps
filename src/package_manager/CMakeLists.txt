@@ -39,35 +39,6 @@ set(LL_SYSTEM_SERVICE_SOURCES
     main.cpp
 )
 
-qt5_add_dbus_adaptor(
-  LL_SYSTEM_SERVICE_SOURCES
-  ../module/dbus_ipc/org.deepin.linglong.PackageManager.xml
-  impl/package_manager.h
-  linglong::service::PackageManager
-)
-
-qt5_add_dbus_adaptor(
-  LL_SYSTEM_SERVICE_SOURCES
-  ../module/dbus_ipc/org.deepin.linglong.JobManager.xml
-  impl/job_manager.h
-  JobManager
-)
-
-qt5_add_dbus_adaptor(
-  LL_SYSTEM_SERVICE_SOURCES
-  ../module/dbus_ipc/org.deepin.linglong.Job.xml
-  impl/job.h
-  Job
-)
-
-qt5_add_dbus_interface(
-  LL_SYSTEM_SERVICE_SOURCES
-  ../module/dbus_ipc/org.deepin.linglong.SystemHelper.xml
-  dbus_system_helper
-)
-
-message(STATUS "current CPU ARCH is: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
-
 add_executable(ll-package-manager ${LL_SYSTEM_SERVICE_SOURCES})
 
 target_link_libraries(
@@ -78,6 +49,7 @@ target_link_libraries(
           Qt5::DBus
           Qt5::Sql
           Qt5::WebSockets
+          LLDBusIPC
 )
 
 install(TARGETS ll-package-manager RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

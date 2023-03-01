@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include "src/module/package/info.h"
+#include "module/package/ref.h"
 
 TEST(Moduel_Package, Ref)
 {

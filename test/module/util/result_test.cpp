@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include "src/module/util/result.h"
+#include "module/util/result.h"
 
 TEST(Moduel_Util, Result)
 {

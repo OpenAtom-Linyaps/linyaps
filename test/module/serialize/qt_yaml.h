@@ -7,8 +7,7 @@
 #ifndef LINGLONG_TEST_MODULE_SERIALIZE_QT_YAML_H_
 #define LINGLONG_TEST_MODULE_SERIALIZE_QT_YAML_H_
 
-#include "src/module/runtime/oci.h"
-#include "src/module/util/serialize/yaml.h"
+#include "module/runtime/oci.h"
 
 namespace linglong {
 namespace test {

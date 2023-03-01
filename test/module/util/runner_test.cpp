@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include "src/module/util/runner.h"
+#include "module/util/runner.h"
 
 #include <QDebug>
 #include <QDir>

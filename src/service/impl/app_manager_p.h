@@ -10,8 +10,8 @@
 #include "module/repo/ostree_repo.h"
 #include "module/repo/repo.h"
 #include "module/runtime/app.h"
+#include "module/util/app_status.h"
 #include "module/util/sysinfo.h"
-#include "package_manager/impl/app_status.h"
 
 namespace linglong {
 namespace service {

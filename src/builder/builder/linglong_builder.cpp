@@ -635,6 +635,9 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
         }
     }
 
+    // FIXME(black_desk): these code should not be written in here. We should
+    // use code in runtime/app.cpp
+
     QFile jsonFile(":/config.json");
     jsonFile.open(QIODevice::ReadOnly);
     auto json = QJsonDocument::fromJson(jsonFile.readAll());

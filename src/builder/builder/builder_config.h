@@ -47,6 +47,9 @@ public:
     void setExec(const QString &exec);
     QString getExec() const;
 
+    void setOffline(const bool &exec);
+    bool getOffline() const;
+
     // TODO: remove later
     QString targetFetchCachePath() const;
 
@@ -59,6 +62,7 @@ private:
     QString projectRoot;
     QString projectName;
     QString exec;
+    bool offline;
 };
 
 } // namespace builder

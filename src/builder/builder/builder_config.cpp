@@ -82,6 +82,16 @@ QString BuilderConfig::getExec() const
     return exec;
 }
 
+void BuilderConfig::setOffline(const bool &offlineParam)
+{
+    offline = offlineParam;
+}
+
+bool BuilderConfig::getOffline() const
+{
+    return offline;
+}
+
 QString BuilderConfig::templatePath() const
 {
     for (auto dataPath : QStandardPaths::standardLocations(QStandardPaths::GenericDataLocation)) {

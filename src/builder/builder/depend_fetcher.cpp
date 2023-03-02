@@ -59,15 +59,23 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
                                  dd_ptr->ref.version,
                                  dd_ptr->ref.arch,
                                  "");
-        dependRef = ostree.remoteLatestRef(dependRef);
+        if (BuilderConfig::instance()->getOffline()) {
+            dependRef = ostree.localLatestRef(dependRef);
 
-        qInfo() << QString("fetching dependency: %1 %2")
-                           .arg(dependRef.appId)
-                           .arg(dependRef.version);
+            qInfo() << QString("offline dependency: %1 %2")
+                            .arg(dependRef.appId)
+                            .arg(dependRef.version);
+        } else {
+            dependRef = ostree.remoteLatestRef(dependRef);
 
-        ret = ostree.pullAll(dependRef, true);
-        if (!ret.success()) {
-            return WrapError(ret, "pull " + dependRef.toString() + " failed");
+            qInfo() << QString("fetching dependency: %1 %2")
+                            .arg(dependRef.appId)
+                            .arg(dependRef.version);
+
+            ret = ostree.pullAll(dependRef, true);
+            if (!ret.success()) {
+                return WrapError(ret, "pull " + dependRef.toString() + " failed");
+            }
         }
     }
 

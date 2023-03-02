@@ -101,10 +101,12 @@ int main(int argc, char **argv)
               auto srcVersion =
                       QCommandLineOption("sversion", "set source version", "source version");
               auto srcCommit = QCommandLineOption("commit", "set commit refs", "source commit");
+              auto buildOffline = QCommandLineOption("offline", "only use local repo", "");
               parser.addOption(execVerbose);
               parser.addOption(pkgVersion);
               parser.addOption(srcVersion);
               parser.addOption(srcCommit);
+              parser.addOption(buildOffline);
 
               parser.addPositionalArgument("build", "build project", "build");
 
@@ -113,6 +115,8 @@ int main(int argc, char **argv)
               if (parser.isSet(execVerbose)) {
                   linglong::builder::BuilderConfig::instance()->setExec(parser.value(execVerbose));
               }
+              linglong::builder::BuilderConfig::instance()->setOffline(parser.isSet(buildOffline));
+              
               // config linglong.yaml before build if necessary
               if (parser.isSet(pkgVersion) || parser.isSet(srcVersion) || parser.isSet(srcCommit)) {
                   auto projectConfigPath =

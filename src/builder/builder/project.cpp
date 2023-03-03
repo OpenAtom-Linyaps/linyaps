@@ -22,7 +22,7 @@ namespace builder {
 const char *const DependTypeRuntime = "runtime";
 
 const char *const BuildScriptPath = "/entry.sh";
-const char *const BuildCacheDirectoryName = "linglong-builder";
+// const char *const BuildCacheDirectoryName = "linglong-builder";
 
 const char *const PackageKindApp = "app";
 const char *const PackageKindLib = "lib";

@@ -2,7 +2,6 @@ find_package(GTest REQUIRED)
 include(GoogleTest)
 
 add_executable(ll-test)
-
 file(
   GLOB_RECURSE
   LL_TEST_SOURCES
@@ -11,8 +10,6 @@ file(
   *.cpp
   *.h
 )
-
-aux_source_directory(. LL_TEST_SOURCES)
 target_sources(ll-test PRIVATE ${LL_TEST_SOURCES})
 target_link_libraries(ll-test PRIVATE GTest::Main linglong_lib)
 

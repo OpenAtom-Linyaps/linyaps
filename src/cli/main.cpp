@@ -58,8 +58,10 @@ static int getUnicodeNum(const QString &name)
  *
  * @param sig 中断信号
  */
-static void doIntOperate(int sig)
+static void doIntOperate(int /*sig*/)
 {
+    // FIXME(black_desk): should use sig
+
     // 显示光标
     std::cout << "\033[?25h" << std::endl;
     // Fix to 调用jobManager中止下载安装操作

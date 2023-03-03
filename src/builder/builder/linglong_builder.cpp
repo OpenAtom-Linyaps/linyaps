@@ -754,7 +754,8 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
     return NoError();
 }
 
-linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePath, bool useLocalDir)
+linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePath,
+                                                    bool /*useLocalDir*/)
 {
     // checkout data from local ostree
     auto projectConfigPath =

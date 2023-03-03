@@ -109,11 +109,12 @@ public:
      *
      * @return bool: true:成功 false:失败
      */
-    bool repoPull(const QString &repoPath,
-                  const QString &remoteName,
-                  const QString &pkgName,
-                  QString &err) override
+    bool repoPull(const QString & /*repoPath*/,
+                  const QString &/*remoteName*/,
+                  const QString &/*pkgName*/,
+                  QString &/*err*/) override
     {
+        // TODO(black_desk): implement
         return false;
     }
 

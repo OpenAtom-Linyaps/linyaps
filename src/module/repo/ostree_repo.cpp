@@ -617,24 +617,24 @@ linglong::util::Error OSTreeRepo::renameBranch(const package::Ref &oldRef,
     return ret;
 }
 
-linglong::util::Error OSTreeRepo::import(const package::Bundle &bundle)
+linglong::util::Error OSTreeRepo::import(const package::Bundle & /*bundle*/)
 {
-    return NoError();
+    return NoError() << -1 << "Not Implemented";
 }
 
-linglong::util::Error OSTreeRepo::exportBundle(package::Bundle &bundle)
+linglong::util::Error OSTreeRepo::exportBundle(package::Bundle & /*bundle*/)
 {
-    return NoError();
+    return NoError() << -1 << "Not Implemented";
 }
 
-std::tuple<linglong::util::Error, QList<package::Ref>> OSTreeRepo::list(const QString &filter)
+std::tuple<linglong::util::Error, QList<package::Ref>> OSTreeRepo::list(const QString & /*filter*/)
 {
-    return { NoError(), {} };
+    return { NoError() << -1 << "Not Implemented", {} };
 }
 
-std::tuple<linglong::util::Error, QList<package::Ref>> OSTreeRepo::query(const QString &filter)
+std::tuple<linglong::util::Error, QList<package::Ref>> OSTreeRepo::query(const QString & /*filter*/)
 {
-    return { NoError(), {} };
+    return { NoError() << -1 << "Not Implemented", {} };
 }
 
 linglong::util::Error OSTreeRepo::push(const package::Ref &ref)
@@ -688,7 +688,7 @@ linglong::util::Error OSTreeRepo::push(const package::Ref &ref)
     return WrapError(d->cleanUploadTask(ref, filePath), "call cleanUploadTask failed");
 }
 
-linglong::util::Error OSTreeRepo::push(const package::Ref &ref, bool force)
+linglong::util::Error OSTreeRepo::push(const package::Ref &ref, bool /*force*/)
 {
     Q_D(OSTreeRepo);
 
@@ -748,13 +748,14 @@ linglong::util::Error OSTreeRepo::push(const package::Ref &ref, bool force)
     return WrapError(d->cleanUploadTask(d->remoteRepoName, taskID), "call cleanUploadTask failed");
 }
 
-linglong::util::Error OSTreeRepo::push(const package::Bundle &bundle, bool force)
+linglong::util::Error OSTreeRepo::push(const package::Bundle & /*bundle*/, bool /*force*/)
 {
-    return NoError();
+    return NoError() << -1 << "Not Implemented";
 }
 
-linglong::util::Error OSTreeRepo::pull(const package::Ref &ref, bool force)
+linglong::util::Error OSTreeRepo::pull(const package::Ref &ref, bool /*force*/)
 {
+    // FIXME(black_desk): should implement force
     Q_D(OSTreeRepo);
 
     // FIXME(black_desk): When a error raised from libcurl, libostree will treat
@@ -775,9 +776,9 @@ linglong::util::Error OSTreeRepo::pull(const package::Ref &ref, bool force)
     return err;
 }
 
-linglong::util::Error OSTreeRepo::pullAll(const package::Ref &ref, bool force)
+linglong::util::Error OSTreeRepo::pullAll(const package::Ref &ref, bool /*force*/)
 {
-    Q_D(OSTreeRepo);
+    // Q_D(OSTreeRepo);
 
     // FIXME(black-desk): pullAll should not belong to this class.
 

@@ -7,10 +7,10 @@
 // todo: 该头文件必须放在QDBus前，否则会报错
 #include "package_manager.h"
 
-#include "module/util/app_status.h"
-#include "module/util/appinfo_cache.h"
 #include "module/dbus_ipc/dbus_system_helper_common.h"
 #include "module/repo/ostree_repohelper.h"
+#include "module/util/app_status.h"
+#include "module/util/appinfo_cache.h"
 #include "module/util/http/httpclient.h"
 #include "module/util/runner.h"
 #include "module/util/sysinfo.h"
@@ -341,7 +341,7 @@ bool PackageManagerPrivate::installRuntime(linglong::package::AppMetaInfo *appIn
         userName = "deepin-linglong";
     }
     appInfo->kind = "runtime";
-    linglong::util::insertAppRecord(appInfo, "user", userName);
+    linglong::util::insertAppRecord(appInfo, userName);
 
     return true;
 }
@@ -831,7 +831,7 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
     appInfo->channel = channel;
     appInfo->module = appModule;
 
-    linglong::util::insertAppRecord(appInfo, "user", userName);
+    linglong::util::insertAppRecord(appInfo, userName);
 
     // process portal after install
     {

@@ -102,13 +102,13 @@ public:
         auto appRef = package::Ref(q->package->ref);
         QString appRootPath = repo->rootOfLayer(appRef);
 
-        stageRootfs(runtimeRef.appId, fixRuntimePath, appRef.appId, appRootPath);
+        stageRootfs(fixRuntimePath, appRef.appId, appRootPath);
 
         stageSystem();
         stageUser(appRef.appId);
         stageMount();
         stageHost();
-        fixMount(runtimeRef.appId, fixRuntimePath, appRef.appId, appRootPath);
+        fixMount(fixRuntimePath, appRef.appId);
 
         auto envFilepath = container->workingDirectory + QString("/env");
         QFile envFile(envFilepath);
@@ -228,10 +228,7 @@ public:
         return 0;
     }
 
-    int stageRootfs(const QString &runtimeId,
-                    QString runtimeRootPath,
-                    const QString &appId,
-                    QString appRootPath) const
+    int stageRootfs(QString runtimeRootPath, const QString &appId, QString appRootPath) const
     {
         // 使用linglong runtime标志
         bool useThinRuntime = true;
@@ -911,10 +908,7 @@ public:
         return 0;
     }
 
-    int fixMount(const QString &runtimeId,
-                 QString runtimeRootPath,
-                 const QString &appId,
-                 QString appRootPath)
+    int fixMount(QString runtimeRootPath, const QString &appId)
     {
         // 360浏览器需要/apps-data/private/com.360.browser-stable目录可写
         // todo:后续360整改

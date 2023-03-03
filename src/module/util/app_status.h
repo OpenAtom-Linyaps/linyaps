@@ -44,7 +44,6 @@ int updateInstalledAppInfoDb();
  * @return int: 0:成功 其它:失败
  */
 int insertAppRecord(linglong::package::AppMetaInfo *package,
-                    const QString &installType,
                     const QString &userName);
 
 /*

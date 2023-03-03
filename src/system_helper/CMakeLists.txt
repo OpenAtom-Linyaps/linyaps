@@ -36,4 +36,3 @@ add_executable(ll-system-helper ${LL_SYSTEM_HELPER_SOURCES})
 target_link_libraries(ll-system-helper PRIVATE ${LINK_LIBS})
 
 install(TARGETS ll-system-helper RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-

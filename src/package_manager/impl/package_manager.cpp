@@ -1293,6 +1293,13 @@ Reply PackageManager::ModifyRepo(const QString &name, const QString &url)
 {
     Reply reply;
     Q_D(PackageManager);
+
+    bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(d->kLocalRepoPath, reply.message);
+    if (!ret) {
+        reply.code = STATUS_CODE(kFail);
+        return reply;
+    }
+
     QUrl cfgUrl(url);
     if (name.trimmed().isEmpty()
         || (cfgUrl.scheme().toLower() != "http" && cfgUrl.scheme().toLower() != "https")
@@ -1333,7 +1340,7 @@ Reply PackageManager::ModifyRepo(const QString &name, const QString &url)
     // https://repo-dev.linglong.space/repo/ ostree
     // config文件中节名有""，QSettings会自动转义，不用QSettings直接修改ostree config文件
     auto keyUrl = QString("remote \"%1\".url").arg(name);
-    auto ret = linglong::runner::Runner(
+    ret = linglong::runner::Runner(
             "ostree",
             { "config", "--repo=" + d->kLocalRepoPath + "/repo", "set", keyUrl, dstUrl },
             1000 * 60 * 5);

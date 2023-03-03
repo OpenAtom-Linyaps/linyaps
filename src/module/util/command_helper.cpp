@@ -19,13 +19,21 @@ int CommandHelper::bringDownPermissionsTo(const struct stat &fileStat)
 {
     __gid_t newGid[1] = { fileStat.st_gid };
 
-    setgroups(1, newGid);
-
-    setgid(fileStat.st_gid);
-    setegid(fileStat.st_gid);
-
-    setuid(fileStat.st_uid);
-    seteuid(fileStat.st_uid);
+    if (setgroups(1, newGid)) {
+        return errno;
+    }
+    if (setgid(fileStat.st_gid)) {
+        return errno;
+    }
+    if (setegid(fileStat.st_gid)) {
+        return errno;
+    }
+    if (setuid(fileStat.st_uid)) {
+        return errno;
+    }
+    if (seteuid(fileStat.st_uid)) {
+        return errno;
+    }
     return 0;
 }
 

@@ -16,7 +16,7 @@ class Job : public QThread
 {
     Q_OBJECT
 public:
-    Job(std::function<void()> f, QObject *parent);
+    Job(std::function<void()> f);
     ~Job() override;
 
 public Q_SLOTS:

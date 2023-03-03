@@ -32,7 +32,7 @@ QString JobManager::CreateJob(std::function<void()> f)
 {
     auto jobId = QUuid::createUuid().toString(QUuid::Id128);
     auto jobPath = "/org/deepin/linglong/Job/List/" + jobId;
-    auto jr = new Job(f, this);
+    auto jr = new Job(f);
     jr->start();
 
     return jobId;

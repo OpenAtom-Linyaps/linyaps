@@ -36,7 +36,8 @@ linglong::util::Error runner(const QString &program, const QStringList &args, in
 }
 
 Bundle::Bundle(QObject *parent)
-    : dd_ptr(new BundlePrivate(this))
+    : QObject(parent)
+    , dd_ptr(new BundlePrivate())
 {
 }
 

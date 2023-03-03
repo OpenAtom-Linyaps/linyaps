@@ -15,7 +15,6 @@ namespace package {
 class BundlePrivate
 {
 public:
-    // Bundle *q_ptr = nullptr;
     QString bundleFilePath;
     QString erofsFilePath;
     QString bundleDataPath;
@@ -24,11 +23,6 @@ public:
     QString buildArch;
     const QString linglongLoader = "/usr/libexec/linglong-loader";
     const QString configJson = "/info.json";
-
-    explicit BundlePrivate(Bundle *parent)
-    //    : q_ptr(parent)
-    {
-    }
 
     linglong::util::Error make(const QString &dataPath, const QString &outputFilePath);
 

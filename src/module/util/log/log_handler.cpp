@@ -234,7 +234,8 @@ void linglong::util::LogHandlerPrivate::messageHandler(QtMsgType type,
 }
 
 linglong::util::LogHandler::LogHandler(QObject *parent)
-    : dd_ptr(new LogHandlerPrivate(this))
+    : QObject(parent)
+    , dd_ptr(new LogHandlerPrivate(this))
 {
 }
 

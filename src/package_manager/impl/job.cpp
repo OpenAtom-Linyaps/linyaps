@@ -19,7 +19,7 @@ public:
     int progress;
 };
 
-Job::Job(std::function<void()> f, QObject *parent)
+Job::Job(std::function<void()> f)
     : func(f)
     , dd_ptr(new JobPrivate(this))
 {

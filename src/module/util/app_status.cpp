@@ -458,6 +458,7 @@ bool queryAllInstalledApp(const QString &userName, QString &result, QString &err
     QSqlQuery sqlQuery = connection.execute(selectSql);
     if (QSqlError::NoError != sqlQuery.lastError().type()) {
         qCritical() << "execute selectSql error:" << sqlQuery.lastError().text();
+        err = "SQL error check log for detail";
         return false;
     }
     QJsonArray appList;

@@ -14,10 +14,6 @@ QString hostArch()
     return QSysInfo::buildCpuArchitecture();
 }
 
-/*!
- * deepin/channel:appId/version/arch -> appId/version -> appId
- * \param ref string
- */
 Ref parseId(const QString &id)
 {
     QStringList slice = id.split(":");

@@ -27,6 +27,8 @@
 #include <QProcess>
 #include <QStandardPaths>
 
+#include <mutex>
+
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -34,8 +36,22 @@
 #define LL_VAL(str) #str
 #define LL_TOSTRING(str) LL_VAL(str)
 
+static void initQResource()
+{
+    Q_INIT_RESOURCE(app_configs);
+}
+
 namespace linglong {
 namespace runtime {
+
+namespace PrivateAppInit {
+int init()
+{
+    static std::once_flag flag;
+    std::call_once(flag, initQResource);
+    return 0;
+}
+} // namespace PrivateInit
 
 enum RunArch {
     UNKNOWN,

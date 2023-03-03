@@ -1,7 +1,12 @@
-set(LL_BUILDER_SOURCES resource.qrc)
-
-aux_source_directory(. LL_BUILDER_SOURCES)
-aux_source_directory(builder LL_BUILDER_SOURCES)
+file(
+  GLOB_RECURSE
+  LL_BUILDER_SOURCES
+  FOLLOW_SYMLINKS
+  CONFIGURE_DEPENDS
+  *.cpp
+  *.h
+  *.qrc
+)
 
 add_executable(ll-builder ${LL_BUILDER_SOURCES})
 

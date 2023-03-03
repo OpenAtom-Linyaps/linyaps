@@ -5,6 +5,7 @@ file(
   CONFIGURE_DEPENDS
   *.cpp
   *.h
+  *.qrc
 )
 
 qt5_add_dbus_adaptor(
@@ -70,9 +71,7 @@ qt5_add_dbus_interface(
   package_manager
 )
 
-add_library(linglong_lib)
-target_sources(linglong_lib PRIVATE ${LINGLONG_LIB_SOURCES})
-
+add_library(linglong_lib ${LINGLONG_LIB_SOURCES})
 target_include_directories(
   linglong_lib PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}
 )

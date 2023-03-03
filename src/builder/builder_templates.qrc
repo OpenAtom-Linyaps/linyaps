@@ -7,7 +7,5 @@
         <file alias="default.yaml">../../misc/linglong/builder/templates/default.yaml</file>
         <file alias="qmake.yaml">../../misc/linglong/builder/templates/qmake.yaml</file>
         <file alias="example.yaml">../../misc/linglong/builder/templates/example.yaml</file>
-        <file alias="config.json">../service/resource/config.json</file>
-        <file alias="app.yaml">../service/resource/app.yaml</file>
     </qresource>
 </RCC>

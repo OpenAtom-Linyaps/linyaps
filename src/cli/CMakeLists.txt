@@ -6,7 +6,6 @@ set(LL_CLI_SOURCES
     ../package_manager/impl/package_manager.cpp
     ../package_manager/impl/package_manager_flatpak_impl.cpp
     ../service/impl/app_manager.cpp
-    ../service/resource/resource.qrc
     main.cpp
 )
 

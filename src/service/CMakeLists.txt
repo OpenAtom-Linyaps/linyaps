@@ -4,7 +4,6 @@ set(LL_SERVICE_SOURCES
     ../package_manager/impl/appinfo_cache.cpp
     impl/app_manager.cpp
     main.cpp
-    resource/resource.qrc
 )
 
 add_executable(ll-service ${LL_SERVICE_SOURCES})

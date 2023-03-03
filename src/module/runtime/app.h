@@ -104,6 +104,11 @@ private:
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), App)
 };
 
+namespace PrivateAppInit {
+int init();
+static int _ = init();
+} // namespace PrivateInit
+
 } // namespace runtime
 } // namespace linglong
 

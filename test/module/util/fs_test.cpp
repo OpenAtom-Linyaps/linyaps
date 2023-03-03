@@ -52,7 +52,6 @@ TEST(mod_util_fs, mod_util_fs)
     EXPECT_EQ(r3.size(), 1);
 
     if (delete_dir && linglong::util::dirExists(parent_path)) {
-        delete_dir = false;
         linglong::util::removeDir(QString("/tmp/deepin-linglong"));
     }
 }

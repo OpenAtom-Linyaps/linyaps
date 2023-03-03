@@ -399,7 +399,13 @@ int main(int argc, char **argv)
               execOption.cmd = cmd;
               execOption.containerID = containerId;
 
-              const auto envs = parser.value(envArg).split(",", QString::SkipEmptyParts);
+              const auto envs = parser.value(envArg).split(",",
+#ifdef QT_DEPRECATED_VERSION_5_15
+                                                           Qt::SkipEmptyParts
+#else
+                                                           QString::SkipEmptyParts
+#endif
+              );
               QStringList envList = envs;
               execOption.env = envList.join(",");
 

@@ -22,13 +22,6 @@ class Error
 public:
     Error() = default;
 
-    Error(const Error &err)
-    {
-        errorCode = err.errorCode;
-        msgMeta = err.msgMeta;
-        msgMetaList = err.msgMetaList;
-    }
-
     Error(const char *file,
           int line,
           const char *func,

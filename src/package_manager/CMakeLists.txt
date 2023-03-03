@@ -26,9 +26,9 @@ set(LL_SYSTEM_SERVICE_SOURCES
     ../module/util/http/httpclient.cpp
     ../module/util/log/log_handler.cpp
     ../module/util/serialize/json.h
-    ../module/util/version/semver.h
     ../module/util/sysinfo.cpp
     ../module/util/uuid.cpp
+    ../module/util/version/semver.h
     ../module/util/xdg.cpp
     impl/app_status.cpp
     impl/appinfo_cache.cpp

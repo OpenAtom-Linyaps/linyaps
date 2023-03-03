@@ -48,6 +48,11 @@ TEST(Moduel_Util, convertSpecialCharacters)
 
 TEST(Module_Util, Xdg01)
 {
+    // FIXME(black_desk): disable below test as xdg dir location might different
+    // cross DE and effected by user settings.
+
+    return;
+
     auto r1 = linglong::util::getXdgDir("Desktop");
     qInfo() << r1;
     EXPECT_EQ(r1.first, true);
@@ -112,6 +117,11 @@ TEST(Module_Util, Xdg01)
 
 TEST(Module_Util, Xdg02)
 {
+    // FIXME(black_desk): disable below test as xdg dir location might different
+    // cross DE and effected by user settings.
+
+    return;
+
     QString r1 = "XDG_DESKTOP_DIR";
     auto r1XdgPath = linglong::util::getPathInXdgUserConfig(r1);
     qInfo() << r1XdgPath;

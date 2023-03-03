@@ -281,7 +281,13 @@ Reply PackageManagerPrivate::GetDownloadStatus(const ParamOption &paramOption, i
         QFile progressFile(filePath);
         if (progressFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
             QStringList ret = QString(progressFile.readAll())
-                                      .split(QRegExp("[\r\n]"), QString::SkipEmptyParts);
+                                      .split(QRegExp("[\r\n]"),
+#ifdef QT_DEPRECATED_VERSION_5_15
+                                             Qt::SkipEmptyParts
+#else
+                                             QString::SkipEmptyParts
+#endif
+                                      );
             if (ret.size() > 1) {
                 QStringList processList = ret.at(1).trimmed().split("\u001B8");
                 reply.message = processList.at(processList.size() - 1).trimmed();

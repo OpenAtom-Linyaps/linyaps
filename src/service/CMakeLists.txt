@@ -1,6 +1,5 @@
 add_library(lib_ll-service)
 aux_source_directory(impl LIB_LL_SERVICE_SOURCES)
-message(STATUS "LIB_LL_SERVICE_SOURCES: ${LIB_LL_SERVICE_SOURCES}")
 target_sources(lib_ll-service PRIVATE ${LIB_LL_SERVICE_SOURCES})
 target_link_libraries(lib_ll-service PUBLIC linglong_lib lib_ll-package-manager)
 

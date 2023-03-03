@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.13.4) # for UOS 105x
 
-project(linglong)
+project(
+  linglong
+  VERSION 1.3.5
+  DESCRIPTION "a container based package manager for deepin"
+  HOMEPAGE_URL "https://github.com/linuxdeepin/linglong"
+  LANGUAGES CXX
+)
 
 set(LINGLONG_USERNAME
     "deepin-linglong"
@@ -19,9 +25,6 @@ set(LINGLONG_ROOT
 include_directories(${linglong_SOURCE_DIR}/src)
 include_directories(${linglong_BINARY_DIR}/src)
 
-# NOTE(black_desk): for dbus adaptor remove later.
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
-
 # qt
 
 set(CMAKE_CXX_STANDARD 11)
@@ -32,6 +35,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 add_definitions("-DQT_MESSAGELOGCONTEXT")
+# NOTE(black_desk): qt keywords conflict with glib
 add_definitions("-DQT_NO_KEYWORDS")
 
 find_package(
@@ -69,5 +73,8 @@ include(GNUInstallDirs)
 add_subdirectory(src)
 add_subdirectory(misc)
 
-enable_testing()
-add_subdirectory(test)
+include(CTest)
+if(BUILD_TESTING)
+  enable_testing()
+  add_subdirectory(test)
+endif()

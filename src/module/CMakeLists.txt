@@ -10,6 +10,8 @@ file(
 
 configure_file(util/configure.h.in util/configure.h)
 
+# dbus adaptor
+
 qt5_add_dbus_adaptor(
   LINGLONG_LIB_SOURCES
   dbus_ipc/org.deepin.linglong.PackageManager.xml
@@ -44,6 +46,8 @@ qt5_add_dbus_adaptor(
   system_helper/system_helper.h
   linglong::system::helper::SystemHelper
 )
+
+# dbus interface
 
 qt5_add_dbus_interface(
   LINGLONG_LIB_SOURCES

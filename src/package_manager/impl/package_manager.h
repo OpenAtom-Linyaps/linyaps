@@ -15,7 +15,6 @@
 #include "module/runtime/container.h"
 #include "module/util/singleton.h"
 #include "module/util/status_code.h"
-#include "package_manager_flatpak_impl.h"
 
 #include <QDBusArgument>
 #include <QDBusContext>

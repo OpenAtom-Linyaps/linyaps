@@ -1052,10 +1052,7 @@ linglong::util::Error LinglongBuilder::run()
         // 获取环境变量
         QStringList userEnvList = COMMAND_HELPER->getUserEnv(linglong::util::envList);
 
-        auto app = runtime::App::load(&repo,
-                                      project->ref(),
-                                      BuilderConfig::instance()->getExec(),
-                                      false);
+        auto app = runtime::App::load(&repo, project->ref(), BuilderConfig::instance()->getExec());
         if (nullptr == app) {
             return NewError(-1, "load App::load failed");
         }

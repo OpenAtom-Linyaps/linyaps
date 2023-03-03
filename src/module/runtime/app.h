@@ -87,8 +87,7 @@ public:
 
     static App *load(linglong::repo::Repo *repo,
                      const linglong::package::Ref &ref,
-                     const QString &desktopExec,
-                     bool useFlatpakRuntime);
+                     const QString &desktopExec);
 
     Container *container() const;
 
@@ -107,7 +106,7 @@ private:
 namespace PrivateAppInit {
 int init();
 static int _ = init();
-} // namespace PrivateInit
+} // namespace PrivateAppInit
 
 } // namespace runtime
 } // namespace linglong

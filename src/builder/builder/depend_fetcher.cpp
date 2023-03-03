@@ -59,6 +59,13 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
                                  dd_ptr->ref.version,
                                  dd_ptr->ref.arch,
                                  "");
+
+        // FIXME(black_desk):
+        // 1. We should not use ostree repo in ll-builder, we should use the
+        //    repo interface;
+        // 2. Offline should not only be an option of builder, but also a work
+        //    mode argument passed to repo, which prevent all network request.
+        // 3. For now we just leave these code here, we will refactor them later.
         if (BuilderConfig::instance()->getOffline()) {
             dependRef = ostree.localLatestRef(dependRef);
 

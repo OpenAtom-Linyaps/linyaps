@@ -9,7 +9,7 @@ Copyright: None
 License: CC0-1.0
 
 # ci
-Files: .github/* .gitlab-ci.yml src/builder/resource/*.yaml test/data/demo/*.yaml test/data/demo/*.yml src/service/resource/*.yaml
+Files: .github/* .gitlab-ci.yml src/builder/resource/*.yaml test/data/demo/*.yaml test/data/demo/*.yml src/module/runtime/resource/*.yaml
 Copyright: None
 License: CC0-1.0
 
@@ -34,7 +34,7 @@ Copyright: UnionTech Software Technology Co., Ltd.
 License: LGPL-3.0-or-later
 
 # qrc
-Files: plugins/*.qrc frame/*.qrc tests/*.qrc src/builder/resource.qrc src/service/resource/resource.qrc src/builder/resource/org.deepin.demo/files/src/demo.pro
+Files: plugins/*.qrc frame/*.qrc tests/*.qrc src/builder/builder_templates.qrc src/module/runtime/resource/app_configs.qrc src/builder/resource/org.deepin.demo/files/src/demo.pro
 Copyright: None
 License: CC0-1.0
 
@@ -44,7 +44,7 @@ Copyright: None
 License: CC0-1.0
 
 # xml toml json policy yaml
-Files: gschema/*.xml plugins/*.xml frame/*.xml .clog.toml plugins/*.json configs/*.json .packit.yaml .tx/config src/service/misc/linglong/*.json src/service/misc/*.json test/data/demo/*.json src/service/resource/*.json src/builder/resource/org.deepin.demo/files/src/mainwindow.ui src/builder/resource/org.deepin.demo/files/resource/*.json
+Files: gschema/*.xml plugins/*.xml frame/*.xml .clog.toml plugins/*.json configs/*.json .packit.yaml .tx/config src/service/misc/linglong/*.json src/service/misc/*.json test/data/demo/*.json src/module/runtime/resource/*.json src/builder/resource/org.deepin.demo/files/src/mainwindow.ui src/builder/resource/org.deepin.demo/files/resource/*.json
 Copyright: None
 License: CC0-1.0
 

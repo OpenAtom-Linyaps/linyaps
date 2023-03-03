@@ -10,8 +10,12 @@
 
 TEST(Moduel_Package, Ref)
 {
-    linglong::package::Ref ref("deepin/channel:app/1.0/la");
+    linglong::package::Ref ref("deepin:channel/appId/version/arch/module");
 
-    EXPECT_EQ(ref.repo, "deepin");
-    EXPECT_EQ(ref.appId, "app");
+    EXPECT_EQ(ref.repo.toStdString(), "deepin");
+    EXPECT_EQ(ref.channel.toStdString(), "channel");
+    EXPECT_EQ(ref.appId.toStdString(), "appId");
+    EXPECT_EQ(ref.version.toStdString(), "version");
+    EXPECT_EQ(ref.arch.toStdString(), "arch");
+    EXPECT_EQ(ref.module.toStdString(), "module");
 }

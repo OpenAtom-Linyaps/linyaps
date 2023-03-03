@@ -839,6 +839,7 @@ public:
 
                 // illegal mount rules
                 if (mount->source.isEmpty() || mount->destination.isEmpty()) {
+                    m->deleteLater();
                     continue;
                 }
                 // fix default type

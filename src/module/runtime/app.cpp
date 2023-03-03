@@ -7,7 +7,6 @@
 #include "app.h"
 
 #include "module/dbus_ipc/package_manager_param.h"
-#include "module/flatpak/flatpak_manager.h"
 #include "module/package/info.h"
 #include "module/repo/repo.h"
 #include "module/util/desktop_entry.h"
@@ -51,7 +50,7 @@ int init()
     std::call_once(flag, initQResource);
     return 0;
 }
-} // namespace PrivateInit
+} // namespace PrivateAppInit
 
 enum RunArch {
     UNKNOWN,
@@ -133,10 +132,6 @@ public:
         QDir applicationsDir(
                 QStringList{ appRootPath, "entries", "applications" }.join(QDir::separator()));
         auto desktopFilenameList = applicationsDir.entryList({ "*.desktop" }, QDir::Files);
-        if (useFlatpakRuntime) {
-            desktopFilenameList =
-                    flatpak::FlatpakManager::instance()->getAppDesktopFileList(appRef.appId);
-        }
         if (desktopFilenameList.length() <= 0) {
             return -1;
         }
@@ -377,9 +372,6 @@ public:
                 mountMap.push_back({ basicsEtcRootPath, "/etc" });
             }
         } else {
-            if (useFlatpakRuntime) {
-                runtimeRootPath = flatpak::FlatpakManager::instance()->getRuntimePath(appId);
-            }
             // FIXME(iceyer): if runtime is empty, use the last
             if (runtimeRootPath.isEmpty()) {
                 qCritical() << "mount runtime failed" << runtimeRootPath;
@@ -412,12 +404,7 @@ public:
 
         // 读写挂载/opt,有的应用需要读写自身携带的资源文件。eg:云看盘
         QString appMountPath = "";
-        if (useFlatpakRuntime) {
-            appRootPath = flatpak::FlatpakManager::instance()->getAppPath(appId);
-            appMountPath = "/app";
-        } else {
-            appMountPath = "/opt/apps/" + appId;
-        }
+        appMountPath = "/opt/apps/" + appId;
         QPointer<Mount> m(new Mount(r));
         m->type = "bind";
         m->options = QStringList{ "rw", "rbind" };
@@ -1057,8 +1044,7 @@ public:
                               const QString &appId,
                               const QString &appVersion,
                               const QString &channel,
-                              const QString &module,
-                              bool isFlatpakApp = false)
+                              const QString &module)
     {
         util::ensureUserDir({ ".linglong", appId });
 
@@ -1073,7 +1059,7 @@ public:
 
         auto appInfo = appInstallRoot + "/info.json";
         // 判断是否存在
-        if (!isFlatpakApp && !linglong::util::fileExists(appInfo)) {
+        if (!linglong::util::fileExists(appInfo)) {
             qCritical() << appInfo << " not exist";
             return QString();
         }
@@ -1204,17 +1190,10 @@ App::App(QObject *parent)
 {
 }
 
-App *App::load(linglong::repo::Repo *repo,
-               const package::Ref &ref,
-               const QString &desktopExec,
-               bool useFlatpakRuntime)
+App *App::load(linglong::repo::Repo *repo, const package::Ref &ref, const QString &desktopExec)
 {
-    QString configPath = AppPrivate::loadConfig(repo,
-                                                ref.appId,
-                                                ref.version,
-                                                ref.channel,
-                                                ref.module,
-                                                useFlatpakRuntime);
+    QString configPath =
+            AppPrivate::loadConfig(repo, ref.appId, ref.version, ref.channel, ref.module);
     if (!linglong::util::fileExists(configPath)) {
         return nullptr;
     }
@@ -1233,7 +1212,6 @@ App *App::load(linglong::repo::Repo *repo,
 
         qDebug() << app << app->runtime << app->package << app->version;
         // TODO: maybe set as an arg of init is better
-        app->dd_ptr->useFlatpakRuntime = useFlatpakRuntime;
         app->dd_ptr->desktopExec = desktopExec;
         app->dd_ptr->repo = repo;
         app->dd_ptr->init();

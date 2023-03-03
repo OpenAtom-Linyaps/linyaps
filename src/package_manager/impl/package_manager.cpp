@@ -1422,9 +1422,6 @@ Reply PackageManager::Install(const InstallParamOption &installParamOption)
         return reply;
     }
 
-    if ("flatpak" == installParamOption.repoPoint) {
-        return PACKAGEMANAGER_FLATPAK_IMPL->Install(installParamOption);
-    }
     QFuture<void> future = QtConcurrent::run(pool.data(), [=]() {
         d->Install(installParamOption);
     });
@@ -1445,9 +1442,6 @@ Reply PackageManager::Uninstall(const UninstallParamOption &paramOption)
         return reply;
     }
 
-    if ("flatpak" == paramOption.repoPoint) {
-        return PACKAGEMANAGER_FLATPAK_IMPL->Uninstall(paramOption);
-    }
     // QFuture<void> future = QtConcurrent::run(pool.data(), [=]() { d->Uninstall(paramOption); });
     return d->Uninstall(paramOption);
 }
@@ -1475,9 +1469,7 @@ Reply PackageManager::Update(const ParamOption &paramOption)
 QueryReply PackageManager::Query(const QueryParamOption &paramOption)
 {
     Q_D(PackageManager);
-    if ("flatpak" == paramOption.repoPoint) {
-        return PACKAGEMANAGER_FLATPAK_IMPL->Query(paramOption);
-    }
+
     QueryReply reply;
     QString appId = paramOption.appId.trimmed();
     if (appId.isEmpty()) {

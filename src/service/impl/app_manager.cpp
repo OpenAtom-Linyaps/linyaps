@@ -99,35 +99,33 @@ Reply AppManager::Start(const RunParamOption &paramOption)
 
     QString channel = paramOption.channel.trimmed();
     QString appModule = paramOption.appModule.trimmed();
-    QString repoPoint = paramOption.repoPoint;
     if (channel.isEmpty()) {
         channel = "linglong";
     }
     if (appModule.isEmpty()) {
         appModule = "runtime";
     }
-    if ("flatpak" != repoPoint) {
-        // 判断是否已安装
-        if (!linglong::util::getAppInstalledStatus(appId, version, arch, channel, appModule, "")) {
+
+    // 判断是否已安装
+    if (!linglong::util::getAppInstalledStatus(appId, version, arch, channel, appModule, "")) {
+        reply.message = appId + ", version:" + version + ", arch:" + arch + ", channel:" + channel
+                + ", module:" + appModule + " not installed";
+        qCritical() << reply.message;
+        reply.code = STATUS_CODE(kPkgNotInstalled);
+        return reply;
+    }
+
+    // 直接运行debug版本时，校验release包是否安装
+    if ("devel" == appModule) {
+        linglong::package::AppMetaInfoList pkgList;
+        linglong::util::getAllVerAppInfo(appId, version, arch, "", pkgList);
+        if (pkgList.size() < 2) {
             reply.message = appId + ", version:" + version + ", arch:" + arch
-                    + ", channel:" + channel + ", module:" + appModule + " not installed";
+                    + ", channel:" + channel + ", module:" + appModule
+                    + ", no corresponding release package found";
             qCritical() << reply.message;
             reply.code = STATUS_CODE(kPkgNotInstalled);
             return reply;
-        }
-
-        // 直接运行debug版本时，校验release包是否安装
-        if ("devel" == appModule) {
-            linglong::package::AppMetaInfoList pkgList;
-            linglong::util::getAllVerAppInfo(appId, version, arch, "", pkgList);
-            if (pkgList.size() < 2) {
-                reply.message = appId + ", version:" + version + ", arch:" + arch
-                        + ", channel:" + channel + ", module:" + appModule
-                        + ", no corresponding release package found";
-                qCritical() << reply.message;
-                reply.code = STATUS_CODE(kPkgNotInstalled);
-                return reply;
-            }
         }
     }
 
@@ -145,7 +143,6 @@ Reply AppManager::Start(const RunParamOption &paramOption)
         // 判断是否存在
         linglong::package::Ref ref("", channel, appId, version, arch, appModule);
 
-        bool isFlatpakApp = "flatpak" == repoPoint;
         // 判断是否是正在运行应用
         auto latestAppRef = d->repo.latestOfRef(appId, version);
         for (const auto &app : d->apps) {
@@ -155,7 +152,7 @@ Reply AppManager::Start(const RunParamOption &paramOption)
             }
         }
 
-        auto app = linglong::runtime::App::load(&d->repo, ref, desktopExec, isFlatpakApp);
+        auto app = linglong::runtime::App::load(&d->repo, ref, desktopExec);
         if (nullptr == app) {
             // FIXME: set job status to failed
             qCritical() << "load app failed " << app;

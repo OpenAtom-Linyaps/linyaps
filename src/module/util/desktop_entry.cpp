@@ -115,7 +115,22 @@ QString DesktopEntry::rawValue(const QString &key,
                                const QString &defaultValue)
 {
     Q_D(DesktopEntry);
-    return d->dataMaps.value(section).value(key).toString();
+
+    auto sectionIter = d->dataMaps.find(section);
+    if (sectionIter == d->dataMaps.end()) {
+        return defaultValue;
+    }
+
+    auto valueIter = sectionIter.value().find(key);
+    if (valueIter == sectionIter->end()) {
+        return defaultValue;
+    }
+
+    if (!valueIter->canConvert<QString>()) {
+        return defaultValue;
+    }
+
+    return valueIter->toString();
 }
 
 QStringList DesktopEntry::sections()

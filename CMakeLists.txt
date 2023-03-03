@@ -69,6 +69,5 @@ include(GNUInstallDirs)
 add_subdirectory(src)
 add_subdirectory(misc)
 
-# enable_testing()
-# FIXME(black_desk): disable test for now, enable it later.
+enable_testing()
 add_subdirectory(test)

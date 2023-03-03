@@ -185,7 +185,7 @@ void linglong::util::LogHandlerPrivate::autoDeleteLog()
 
 // 消息处理函数
 void linglong::util::LogHandlerPrivate::messageHandler(QtMsgType type,
-                                                       const QMessageLogContext &context,
+                                                       const QMessageLogContext & /*context*/,
                                                        const QString &msg)
 {
     QMutexLocker locker(&LogHandlerPrivate::logMutex);

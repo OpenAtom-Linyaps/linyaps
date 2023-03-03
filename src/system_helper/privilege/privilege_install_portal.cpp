@@ -113,7 +113,7 @@ static void ruinFileRule(const QString &installPath, const QString &ref, const F
 
 util::Error rebuildPrivilegeInstallPortal(const QString &installPath,
                                           const QString &ref,
-                                          const QVariantMap &options)
+                                          const QVariantMap & /*options*/)
 {
     YAML::Node doc = YAML::Load(PrivilegePortalRule);
     QScopedPointer<PortalRule> privilegePortalRule(formYaml<PortalRule>(doc));

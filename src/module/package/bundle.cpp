@@ -42,14 +42,14 @@ Bundle::Bundle(QObject *parent)
 
 Bundle::~Bundle() { }
 
-linglong::util::Error Bundle::load(const QString &path)
+linglong::util::Error Bundle::load(const QString & /*path*/)
 {
-    return NoError();
+    return NoError() << -1 << "Not implemented";
 }
 
-linglong::util::Error Bundle::save(const QString &path)
+linglong::util::Error Bundle::save(const QString & /*path*/)
 {
-    return NoError();
+    return NoError() << -1 << "Not implemented";
 }
 
 linglong::util::Error Bundle::make(const QString &dataPath, const QString &outputFilePath)
@@ -222,7 +222,7 @@ auto BundlePrivate::getElfSize(const QString elfFilePath) -> decltype(-1)
 linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
                                           const QString &repoUrl,
                                           const QString &repoChannel,
-                                          bool force)
+                                          bool /*force*/)
 {
     auto userInfo = util::getUserInfo();
 

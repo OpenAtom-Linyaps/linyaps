@@ -98,7 +98,7 @@ struct convert<QJsonValue>
 {
     static Node encode(const QJsonValue &rhs) { return Node(rhs.toVariant()); }
 
-    static bool decode(const Node &node, QJsonValue &rhs)
+    static bool decode(const Node & /*node*/, QJsonValue & /*rhs*/)
     {
         Q_ASSERT(false);
         return false;

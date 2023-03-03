@@ -228,7 +228,7 @@ QStringList inline listDirFolders(const QString &path, const bool subdir = false
  * @param override 默认覆盖
  * @return
  */
-bool inline linkFile(const QString &src, const QString &dest, const bool override = true)
+bool inline linkFile(const QString &src, const QString &dest, const bool /*override*/ = true)
 {
     // QFile::link(const QString &fileName, const QString &linkName)
     QFile::link(src, dest);

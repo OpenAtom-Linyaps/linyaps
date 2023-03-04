@@ -7,10 +7,9 @@
 #ifndef LINGLONG_SRC_MODULE_RUNTIME_APP_H_
 #define LINGLONG_SRC_MODULE_RUNTIME_APP_H_
 
-#include "app_config.h"
 #include "container.h"
+#include "module/package/package.h"
 #include "module/package/ref.h"
-#include "oci.h"
 
 namespace linglong {
 namespace repo {

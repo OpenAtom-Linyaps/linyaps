@@ -8,10 +8,7 @@
 #define LINGLONG_SRC_SERVICE_IMPL_APP_MANAGER_P_H_
 
 #include "module/repo/ostree_repo.h"
-#include "module/repo/repo.h"
 #include "module/runtime/app.h"
-#include "module/util/app_status.h"
-#include "module/util/sysinfo.h"
 
 namespace linglong {
 namespace service {

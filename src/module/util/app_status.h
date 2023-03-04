@@ -8,9 +8,6 @@
 #define LINGLONG_SRC_PACKAGE_MANAGER_IMPL_APP_STATUS_H_
 
 #include "module/package/package.h"
-#include "module/util/connection.h"
-#include "module/util/status_code.h"
-#include "module/util/version/version.h"
 
 #include <QDateTime>
 #include <QJsonArray>
@@ -43,8 +40,7 @@ int updateInstalledAppInfoDb();
  *
  * @return int: 0:成功 其它:失败
  */
-int insertAppRecord(linglong::package::AppMetaInfo *package,
-                    const QString &userName);
+int insertAppRecord(linglong::package::AppMetaInfo *package, const QString &userName);
 
 /*
  * 删除软件包安装信息

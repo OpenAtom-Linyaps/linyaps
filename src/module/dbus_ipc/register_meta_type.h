@@ -10,7 +10,6 @@
 #include "module/dbus_ipc/param_option.h"
 #include "module/dbus_ipc/reply.h"
 #include "module/package/package.h"
-#include "module/util/serialize/json.h"
 
 namespace linglong {
 namespace service {

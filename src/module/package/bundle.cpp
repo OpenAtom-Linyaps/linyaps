@@ -7,8 +7,13 @@
 #include "bundle.h"
 
 #include "bundle_p.h"
+#include "module/package/info.h"
+#include "module/util/file.h"
+#include "module/util/http/httpclient.h"
+#include "module/util/status_code.h"
 
 #include <curl/curl.h>
+#include <qprocess.h>
 
 namespace linglong {
 namespace package {

@@ -10,6 +10,7 @@
 #include "module/repo/ostree_repohelper.h"
 
 #include <QDBusConnection>
+#include <QProcess>
 #include <QTimer>
 #include <QUuid>
 

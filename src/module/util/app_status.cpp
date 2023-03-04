@@ -6,6 +6,11 @@
 
 #include "app_status.h"
 
+#include "module/util/connection.h"
+#include "module/util/file.h"
+#include "module/util/status_code.h"
+#include "module/util/version/version.h"
+
 #include <QMutexLocker>
 #include <QThread>
 

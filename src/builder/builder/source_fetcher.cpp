@@ -6,8 +6,14 @@
 
 #include "source_fetcher.h"
 
+#include "builder_config.h"
+#include "module/util/file.h"
+#include "module/util/http/http_client.h"
+#include "module/util/runner.h"
 #include "project.h"
 #include "source_fetcher_p.h"
+
+#include <QNetworkRequest>
 
 namespace linglong {
 namespace builder {

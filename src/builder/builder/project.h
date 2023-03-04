@@ -7,7 +7,6 @@
 #ifndef LINGLONG_SRC_BUILDER_BUILDER_PROJECT_H_
 #define LINGLONG_SRC_BUILDER_BUILDER_PROJECT_H_
 
-#include "module/package/package.h"
 #include "module/package/ref.h"
 #include "module/util/serialize/json.h"
 

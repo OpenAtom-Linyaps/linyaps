@@ -6,10 +6,7 @@
 
 #include "repo.h"
 
-#include "module/package/info.h"
-#include "module/util/sysinfo.h"
 #include "ostree_repo.h"
-#include "repo_client.h"
 
 #include <QDir>
 #include <QString>

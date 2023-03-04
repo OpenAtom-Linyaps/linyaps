@@ -11,6 +11,10 @@
 
 namespace linglong {
 namespace util {
+
+// FIXME(black_desk):
+// Should not define var in header. Should we use macro here?
+
 const QString kKeyVersion = "version";
 const QString kKeyRepoPoint = "repo-point";
 const QString kKeyNoCache = "force";

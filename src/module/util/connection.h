@@ -7,8 +7,6 @@
 #ifndef LINGLONG_SRC_MODULE_UTIL_CONNECTION_H_
 #define LINGLONG_SRC_MODULE_UTIL_CONNECTION_H_
 
-#include "singleton.h"
-
 #include <QMutex>
 #include <QMutexLocker>
 #include <QQueue>

@@ -7,11 +7,7 @@
 #ifndef LINGLONG_SRC_MODULE_PACKAGE_BUNDLE_H_
 #define LINGLONG_SRC_MODULE_PACKAGE_BUNDLE_H_
 
-#include "info.h"
-#include "module/util/file.h"
-#include "module/util/http/httpclient.h"
 #include "module/util/result.h"
-#include "module/util/status_code.h"
 
 #include <elf.h>
 

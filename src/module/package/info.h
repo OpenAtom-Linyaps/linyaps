@@ -9,7 +9,6 @@
 
 #include "module/runtime/oci.h"
 #include "module/util/serialize/json.h"
-#include "ref.h"
 
 #include <QDBusArgument>
 #include <QList>

@@ -8,7 +8,6 @@
 #define LINGLONG_SRC_BUILDER_BUILDER_BUILDER_CONFIG_H_
 
 #include "module/util/serialize/json.h"
-#include "module/util/singleton.h"
 
 #include <QStandardPaths>
 #include <QString>

@@ -7,7 +7,6 @@
 #ifndef LINGLONG_SRC_MODULE_REPO_REPO_CLIENT_H_
 #define LINGLONG_SRC_MODULE_REPO_REPO_CLIENT_H_
 
-#include "module/package/info.h"
 #include "module/package/package.h"
 #include "module/package/ref.h"
 #include "module/util/result.h"

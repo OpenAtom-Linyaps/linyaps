@@ -4,7 +4,10 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "info.h"
+#include "module/package/ref.h"
+
+#include <QDebug>
+#include <QStringList>
 
 namespace linglong {
 namespace package {

@@ -4,17 +4,18 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "app_manager.h"
+#include "module/app_manager.h"
 #include "module/dbus_ipc/register_meta_type.h"
 #include "module/package/package.h"
+#include "module/package_manager.h"
 #include "module/runtime/runtime.h"
 #include "module/util/app_status.h"
 #include "module/util/command_helper.h"
 #include "module/util/env.h"
 #include "module/util/log/log_handler.h"
+#include "module/util/status_code.h"
 #include "module/util/sysinfo.h"
 #include "module/util/xdg.h"
-#include "package_manager.h"
 #include "package_manager/impl/package_manager.h"
 #include "service/impl/app_manager.h"
 
@@ -23,6 +24,7 @@
 #include <QCoreApplication>
 
 #include <csignal>
+#include <iostream>
 
 static qint64 systemHelperPid = -1;
 

@@ -9,6 +9,9 @@
 
 namespace linglong {
 
+// FIXME(black_desk):
+// Should not define var in header. Should we use macro here?
+
 const char *SystemHelperDBusName = "org.deepin.linglong.SystemHelper";
 const char *SystemHelperDBusPath = "/org/deepin/linglong/SystemHelper";
 const char *SystemHelperDBusInterface = "/org/deepin/linglong/SystemHelper";

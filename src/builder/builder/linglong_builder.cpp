@@ -8,6 +8,8 @@
 
 #include "builder_config.h"
 #include "depend_fetcher.h"
+#include "module/package/bundle.h"
+#include "module/package/info.h"
 #include "module/repo/ostree_repo.h"
 #include "module/runtime/app.h"
 #include "module/runtime/container.h"
@@ -15,11 +17,10 @@
 #include "module/util/command_helper.h"
 #include "module/util/desktop_entry.h"
 #include "module/util/env.h"
+#include "module/util/file.h"
 #include "module/util/runner.h"
 #include "module/util/serialize/yaml.h"
 #include "module/util/sysinfo.h"
-#include "module/util/uuid.h"
-#include "module/util/xdg.h"
 #include "source_fetcher.h"
 
 #include <linux/prctl.h>
@@ -34,6 +35,7 @@
 #include <csignal>
 #include <fstream>
 
+#include <sys/socket.h>
 #include <sys/wait.h>
 
 namespace linglong {

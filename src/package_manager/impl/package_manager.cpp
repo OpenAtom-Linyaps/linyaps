@@ -11,10 +11,13 @@
 #include "module/repo/ostree_repohelper.h"
 #include "module/util/app_status.h"
 #include "module/util/appinfo_cache.h"
+#include "module/util/file.h"
 #include "module/util/http/httpclient.h"
 #include "module/util/runner.h"
+#include "module/util/status_code.h"
 #include "module/util/sysinfo.h"
 #include "module/util/version/semver.h"
+#include "module/util/version/version.h"
 #include "package_manager_p.h"
 
 #include <QDBusConnectionInterface>

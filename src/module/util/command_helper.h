@@ -8,7 +8,11 @@
 #define LINGLONG_SRC_MODULE_UTIL_COMMAND_HELPER_H_
 
 #include "module/runtime/container.h"
-#include "module/util/singleton.h"
+#include "singleton.h"
+
+#include <QObject>
+
+#include <sys/stat.h>
 
 namespace linglong {
 namespace util {

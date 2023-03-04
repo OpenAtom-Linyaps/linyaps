@@ -78,9 +78,6 @@ qt5_add_dbus_interface(
 )
 
 add_library(linglong_lib ${LINGLONG_LIB_SOURCES})
-target_include_directories(
-  linglong_lib PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}
-)
 target_link_libraries(
   linglong_lib
   PUBLIC Qt5::DBus

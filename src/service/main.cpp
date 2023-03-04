@@ -4,9 +4,8 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "appmanageradaptor.h"
+#include "module/appmanageradaptor.h"
 #include "module/dbus_ipc/register_meta_type.h"
-#include "module/runtime/app.h"
 #include "module/runtime/runtime.h"
 #include "module/util/log/log_handler.h"
 

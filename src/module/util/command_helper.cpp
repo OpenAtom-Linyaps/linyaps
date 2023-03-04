@@ -6,9 +6,12 @@
 
 #include "command_helper.h"
 
+#include "module/package/ref.h"
+
 #include <QDebug>
 #include <QJsonArray>
 
+#include <fcntl.h>
 #include <grp.h>
 #include <sys/wait.h>
 

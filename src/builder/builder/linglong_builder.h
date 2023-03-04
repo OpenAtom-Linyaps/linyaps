@@ -8,8 +8,6 @@
 #define LINGLONG_SRC_BUILDER_BUILDER_LINGLONG_BUILDER_H_
 
 #include "builder.h"
-#include "module/package/bundle.h"
-#include "module/util/status_code.h"
 #include "project.h"
 
 namespace linglong {

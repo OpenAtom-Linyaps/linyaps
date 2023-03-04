@@ -7,7 +7,7 @@
 #ifndef LINGLONG_SRC_MODULE_UTIL_SERIALIZE_YAML_H_
 #define LINGLONG_SRC_MODULE_UTIL_SERIALIZE_YAML_H_
 
-#include "module/util/serialize/json.h"
+#include "module/util/serialize/serialize.h"
 
 #include <yaml-cpp/yaml.h>
 

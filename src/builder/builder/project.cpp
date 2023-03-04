@@ -11,8 +11,6 @@
 #include "module/util/file.h"
 #include "module/util/serialize/yaml.h"
 #include "module/util/sysinfo.h"
-#include "module/util/uuid.h"
-#include "module/util/xdg.h"
 
 #include <QDebug>
 

@@ -6,6 +6,9 @@
 
 #include "appinfo_cache.h"
 
+#include "module/util/file.h"
+#include "module/util/status_code.h"
+
 // app 缓存有效期 秒为单位
 const int kCacheValidTime = 10 * 60;
 

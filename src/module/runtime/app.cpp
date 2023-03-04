@@ -9,12 +9,12 @@
 #include "module/dbus_ipc/package_manager_param.h"
 #include "module/package/info.h"
 #include "module/repo/repo.h"
+#include "module/runtime/app_config.h"
 #include "module/util/desktop_entry.h"
 #include "module/util/env.h"
 #include "module/util/file.h"
 #include "module/util/serialize/json.h"
 #include "module/util/serialize/yaml.h"
-#include "module/util/uuid.h"
 #include "module/util/version/version.h"
 #include "module/util/xdg.h"
 

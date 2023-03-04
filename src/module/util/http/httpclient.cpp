@@ -7,6 +7,7 @@
 #include "httpclient.h"
 
 #include "module/util/file.h"
+#include "module/util/status_code.h"
 
 #include <sys/file.h>
 
@@ -20,10 +21,10 @@
 #include <QtNetwork/QNetworkReply>
 #include <QtNetwork/QNetworkRequest>
 
+#include <cstring>
 #include <iostream>
 #include <sstream>
 
-#include <string.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>

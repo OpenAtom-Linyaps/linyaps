@@ -7,7 +7,9 @@
 #ifndef LINGLONG_SRC_MODULE_UTIL_RESULT_H_
 #define LINGLONG_SRC_MODULE_UTIL_RESULT_H_
 
-#include "module/util/serialize/json.h"
+#include <QString>
+#include <QJsonObject>
+#include <QJsonDocument>
 
 #include <tuple>
 
@@ -126,6 +128,5 @@ inline QDebug operator<<(QDebug dbg, const Error &result)
 
 #define NoError() linglong::util::Error(__FILE__, __LINE__, __FUNCTION__)
 
-#define WrapError(base, msg) \
-  linglong::util::Error(__FILE__, __LINE__, __FUNCTION__, msg, base)
+#define WrapError(base, msg) linglong::util::Error(__FILE__, __LINE__, __FUNCTION__, msg, base)
 #endif

@@ -7,7 +7,6 @@
 #ifndef LINGLONG_SRC_BUILDER_SOURCE_FETCHER_H_
 #define LINGLONG_SRC_BUILDER_SOURCE_FETCHER_H_
 
-#include "builder_config.h"
 #include "module/util/result.h"
 #include "project.h"
 

@@ -8,7 +8,6 @@
 #define LINGLONG_SRC_MODULE_REPO_OSTREE_REPOHELPER_H_
 
 #include "module/util/singleton.h"
-#include "module/util/status_code.h"
 #include "repohelper.h"
 
 #include <gio/gio.h>

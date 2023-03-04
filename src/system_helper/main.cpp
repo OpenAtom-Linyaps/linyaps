@@ -6,10 +6,10 @@
 
 #include "module/dbus_ipc/dbus_common.h"
 #include "module/dbus_ipc/dbus_system_helper_common.h"
+#include "module/systemhelperadaptor.h"
 #include "module/util/log/log_handler.h"
 #include "privilege/privilege_install_portal.h"
 #include "system_helper.h"
-#include "systemhelperadaptor.h"
 
 #include <QCoreApplication>
 #include <QDBusConnection>

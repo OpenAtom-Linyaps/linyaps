@@ -8,7 +8,6 @@
 #define LINGLONG_SRC_MODULE_UTIL_HTTPCLIENT_H_
 
 #include "module/util/singleton.h"
-#include "module/util/status_code.h"
 
 #include <curl/curl.h>
 

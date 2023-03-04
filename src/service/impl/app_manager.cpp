@@ -8,6 +8,10 @@
 
 #include "app_manager_p.h"
 #include "module/runtime/app.h"
+#include "module/util/app_status.h"
+#include "module/util/file.h"
+#include "module/util/status_code.h"
+#include "module/util/sysinfo.h"
 
 #include <signal.h>
 #include <sys/types.h>

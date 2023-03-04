@@ -7,6 +7,7 @@
 #include "file.h"
 
 #include "module/util/configure.h"
+#include "status_code.h"
 
 #include <QCoreApplication>
 #include <QDir>

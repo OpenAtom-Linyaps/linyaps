@@ -35,7 +35,7 @@ std::tuple<util::Error, package::AppMetaInfoList> RepoClient::QueryApps(const pa
     auto reply = hc.post(request, data);
     data = reply->readAll();
     auto resp = util::loadJsonBytes<linglong::repo::Response>(data);
-    return { NoError(), (resp->data) };
+    return { Success(), (resp->data) };
 }
 
 } // namespace repo

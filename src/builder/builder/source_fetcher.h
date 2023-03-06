@@ -7,7 +7,7 @@
 #ifndef LINGLONG_SRC_BUILDER_SOURCE_FETCHER_H_
 #define LINGLONG_SRC_BUILDER_SOURCE_FETCHER_H_
 
-#include "module/util/result.h"
+#include "module/util/error.h"
 #include "project.h"
 
 #include <QFileInfo>

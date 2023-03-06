@@ -9,7 +9,7 @@
 
 #include "module/package/package.h"
 #include "module/package/ref.h"
-#include "module/util/result.h"
+#include "module/util/error.h"
 
 #include <QNetworkReply>
 #include <QNetworkRequest>

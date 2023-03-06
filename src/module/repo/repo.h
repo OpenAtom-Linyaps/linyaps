@@ -7,7 +7,7 @@
 #ifndef LINGLONG_SRC_MODULE_REPO_REPO_H_
 #define LINGLONG_SRC_MODULE_REPO_REPO_H_
 
-#include "module/util/result.h"
+#include "module/util/error.h"
 
 #include <QString>
 

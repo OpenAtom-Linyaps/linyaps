@@ -9,94 +9,84 @@
 namespace linglong {
 namespace util {
 
-Error::Error(const char *file,
-             int line,
-             const char *func,
-             const Error &base,
-             int code,
-             const QString &msg)
-    : errorCode(code)
-    , msgMeta(MessageMeta{
-              .file = file,
-              .line = line,
-              .func = func,
-              .message = msg,
-      })
-    , msgMetaList(base.msgMetaList)
+class ErrorPrivate
 {
-    msgMetaList.push_back(msgMeta);
-}
+public:
+    ErrorPrivate() = default;
+
+    ErrorPrivate(const char *file,
+                 int line,
+                 const char *func,
+                 const QString &message,
+                 const Error &reason = Success())
+        : context(new QMessageLogContext(file, line, func, "linglong"))
+        , message(message)
+        , reason(reason)
+    {
+    }
+
+    const QSharedPointer<const QMessageLogContext> context;
+    const QString message = "";
+    const QSharedPointer<const ErrorPrivate> reason;
+};
 
 Error::Error(const char *file, int line, const char *func, int code, const QString &msg)
-    : errorCode(code)
-    , msgMeta(MessageMeta{
-              .file = file,
-              .line = line,
-              .func = func,
-              .message = msg,
-      })
+    : QSharedPointer<ErrorPrivate>(new ErrorPrivate(file, line, func, msg))
+    , m_code(code)
 {
-    msgMetaList.push_back(msgMeta);
 }
 
-Error::Error(const char *file, int line, const char *func, const QString &msg, const Error &base)
-    : errorCode(base.code())
-    , msgMeta(MessageMeta{
-              .file = file,
-              .line = line,
-              .func = func,
-              .message = msg,
-      })
-    , msgMetaList(base.msgMetaList)
+Error::Error(const char *file, int line, const char *func, const Error &reason, const QString &msg)
+    : QSharedPointer<ErrorPrivate>(new ErrorPrivate(file, line, func, msg, reason))
+    , m_code(reason.code())
 {
-    msgMetaList.push_back(msgMeta);
-};
+}
 
 bool Error::success() const
 {
-    return 0 == errorCode;
+    return this->data() == nullptr || this->m_code == 0;
 }
 
 int Error::code() const
 {
-    return errorCode;
+    return this->m_code;
 }
 
 QString Error::message() const
 {
-    return msgMeta.message;
-}
-
-Error &Error::operator<<(const QString &msg)
-{
-    msgMeta.message = msg;
-    msgMetaList.push_back(msgMeta);
-    return *this;
-}
-
-Error &Error::operator<<(int code)
-{
-    errorCode = code;
-    return *this;
+    return this->data()->message;
 }
 
 QString Error::toJson() const
 {
     QJsonObject obj;
-    obj["code"] = errorCode;
-    obj["message"] = msgMeta.message;
+    obj["code"] = this->m_code;
+    obj["message"] = this->data()->message;
     return QJsonDocument(obj).toJson(QJsonDocument::Compact);
 }
 
-QDebug operator<<(QDebug dbg, const Error &result)
+QDebug operator<<(QDebug debug, const Error &error)
 {
-    dbg << "\n";
-    for (const auto &meta : result.msgMetaList) {
-        dbg << QString(meta.file) + ":" + QString("%1").arg(meta.line) + ":" + QString(meta.func)
-            << "\n";
-        dbg << meta.message << "\n";
+    bool first = true;
+    const ErrorPrivate *err = error.data();
+    while (err != nullptr) {
+        debug.noquote() << QString("%1 occurs in function")
+                                   .arg(first ? QString("Error (code=%1)").arg(error.m_code)
+                                              : "\nCaused by error")
+                        << Qt::endl
+                        << (err->context->function ? err->context->function
+                                                   : "MISSING function name")
+                        << Qt::endl
+                        << QString("at %1:%2")
+                                   .arg(err->context->file ? err->context->file
+                                                           : "MISSING file name")
+                                   .arg(err->context->line)
+                        << Qt::endl
+                        << "message:" << err->message;
+        err = err->reason.data();
+        first = false;
     }
-    return dbg;
+    return debug;
 }
 
 } // namespace util

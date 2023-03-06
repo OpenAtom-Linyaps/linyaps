@@ -7,6 +7,7 @@
 #include "source_fetcher.h"
 
 #include "builder_config.h"
+#include "module/util/error.h"
 #include "module/util/file.h"
 #include "module/util/http/http_client.h"
 #include "module/util/runner.h"
@@ -36,9 +37,9 @@ linglong::util::Error SourceFetcher::extractFile(const QString &path, const QStr
                   [](const QString &path, const QString &dir) -> linglong::util::Error {
                       auto ret = runner::Runner("tar", { "-C", dir, "-xvf", path }, -1);
                       if (!ret) {
-                          return NewError(-1, "extract " + path + "failed");
+                          return NewError(-1, QString("extract %1 failed").arg(path));
                       }
-                      return NoError();
+                      return Success();
                   } },
             };
 
@@ -169,7 +170,7 @@ util::Error SourceFetcherPrivate::fetchGitRepo()
         return NewError(-1, "git reset failed");
     }
 
-    return NoError();
+    return Success();
 };
 
 util::Error SourceFetcherPrivate::handleLocalPatch()
@@ -178,7 +179,7 @@ util::Error SourceFetcherPrivate::handleLocalPatch()
     qInfo() << QString("finding local patch");
     if (source->patch.isEmpty()) {
         qInfo() << QString("nothing to patch");
-        return NoError();
+        return Success();
     }
 
     for (auto localPatch : source->patch) {
@@ -194,7 +195,7 @@ util::Error SourceFetcherPrivate::handleLocalPatch()
         }
     }
 
-    return NoError();
+    return Success();
 }
 
 util::Error SourceFetcherPrivate::handleLocalSource()
@@ -202,14 +203,14 @@ util::Error SourceFetcherPrivate::handleLocalSource()
     Q_Q(SourceFetcher);
 
     q->setSourceRoot(BuilderConfig::instance()->getProjectRoot());
-    return NoError();
+    return Success();
 }
 
 util::Error SourceFetcher::patch()
 {
     Q_D(SourceFetcher);
 
-    util::Error ret(NoError());
+    util::Error ret;
 
     QDir::setCurrent(sourceRoot());
 
@@ -225,20 +226,20 @@ linglong::util::Error SourceFetcher::fetch()
 {
     Q_D(SourceFetcher);
 
-    util::Error ret(NoError());
+    QSharedPointer<util::Error> ret;
 
     if (d->source->kind == "git") {
-        ret = d->fetchGitRepo();
+        ret.reset(new util::Error(d->fetchGitRepo()));
     } else if (d->source->kind == "archive") {
-        ret = d->fetchArchiveFile();
+        ret.reset(new util::Error(d->fetchArchiveFile()));
     } else if (d->source->kind == "local") {
-        ret = d->handleLocalSource();
+        ret.reset(new util::Error(d->handleLocalSource()));
     } else {
         return NewError(-1, "unknown source kind");
     }
 
-    if (!ret.success()) {
-        return ret;
+    if (!ret->success()) {
+        return *ret;
     }
 
     return patch();

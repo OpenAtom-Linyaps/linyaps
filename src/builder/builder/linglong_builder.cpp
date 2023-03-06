@@ -17,6 +17,7 @@
 #include "module/util/command_helper.h"
 #include "module/util/desktop_entry.h"
 #include "module/util/env.h"
+#include "module/util/error.h"
 #include "module/util/file.h"
 #include "module/util/runner.h"
 #include "module/util/serialize/yaml.h"
@@ -116,7 +117,7 @@ linglong::util::Error commitBuildOutput(Project *project, AnnotationsOverlayfsRo
                 }
             }
         }
-        return NoError();
+        return Success();
     };
 
     auto appId = project->package->id;
@@ -152,7 +153,7 @@ linglong::util::Error commitBuildOutput(Project *project, AnnotationsOverlayfsRo
             }
         }
 
-        return NoError();
+        return Success();
     };
 
     // link files/share to entries/share/
@@ -219,13 +220,13 @@ linglong::util::Error commitBuildOutput(Project *project, AnnotationsOverlayfsRo
             return NewError(sourceConfigFile.error(), sourceConfigFile.errorString());
         }
 
-        return NoError();
+        return Success();
     };
 
     auto ret = createInfo(project);
     if (!ret.success()) {
         kill(fuseOverlayfsPid, SIGTERM);
-        return NewError(ret, -1, "createInfo failed");
+        return WrapError(ret, "createInfo failed");
     }
 
     repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath());
@@ -286,12 +287,12 @@ linglong::util::Error LinglongBuilder::config(const QString &userName, const QSt
     }
     infoFile.close();
 
-    return NoError();
+    return Success();
 }
 
 linglong::util::Error LinglongBuilder::initRepo()
 {
-    auto ret = NoError();
+    auto ret = Success();
 
     const QString defaultRepoName = BuilderConfig::instance()->remoteRepoName;
     const QString configUrl = BuilderConfig::instance()->remoteRepoEndpoint;
@@ -325,7 +326,7 @@ linglong::util::Error LinglongBuilder::initRepo()
         }
     }
 
-    return NoError();
+    return Success();
 }
 
 // FIXME: should merge with runtime
@@ -435,7 +436,7 @@ linglong::util::Error LinglongBuilder::create(const QString &projectName)
         QFile::copy(":/example.yaml", configFilePath);
     }
 
-    return NoError();
+    return Success();
 }
 
 linglong::util::Error LinglongBuilder::track()
@@ -475,12 +476,12 @@ linglong::util::Error LinglongBuilder::track()
         }
     }
 
-    return NoError();
+    return Success();
 }
 
 linglong::util::Error LinglongBuilder::build()
 {
-    linglong::util::Error ret(NoError());
+    linglong::util::Error ret;
 
     ret = initRepo();
     if (!ret.success()) {
@@ -555,12 +556,12 @@ linglong::util::Error LinglongBuilder::build()
         return NewError(-1, "failed to parse linglong.yaml");
     }
 
-    return NoError();
+    return Success();
 }
 
 linglong::util::Error LinglongBuilder::buildFlow(Project *project)
 {
-    linglong::util::Error ret(NoError());
+    linglong::util::Error ret;
 
     linglong::builder::BuilderConfig::instance()->setProjectName(project->package->id);
 
@@ -602,7 +603,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
         DependFetcher df(runtimeDepend, project);
         ret = df.fetch("", project->config().cacheRuntimePath(""));
         if (!ret.success()) {
-            return NewError(ret, -1, "fetch runtime failed");
+            return WrapError(ret, "fetch runtime failed");
         }
 
         if (!project->base) {
@@ -628,7 +629,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
     hostBasePath = BuilderConfig::instance()->layerPath({ baseRef.toLocalRefString(), "" });
     ret = baseFetcher.fetch("", hostBasePath);
     if (!ret.success()) {
-        return NewError(ret, -1, "fetch runtime failed");
+        return WrapError(ret, "fetch runtime failed");
     }
 
     // depends fetch
@@ -636,7 +637,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
         DependFetcher df(*depend, project);
         ret = df.fetch("files", project->config().cacheRuntimePath("files"));
         if (!ret.success()) {
-            return NewError(ret, -1, "fetch dependency failed");
+            return WrapError(ret, "fetch dependency failed");
         }
     }
 
@@ -756,7 +757,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
     if (!ret.success()) {
         return NewError(-1, "commitBuildOutput failed");
     }
-    return NoError();
+    return Success();
 }
 
 linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePath,
@@ -856,7 +857,7 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
                         -1,
                         QString("failed to copy %1 to  %2 ").arg(filePath).arg(exportFilePath));
             }
-            return NewError();
+            return Success();
         };
 
         QFile extraFileList(extraFileListPath);
@@ -891,7 +892,7 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
         return NewError(-1, "make bundle failed");
     }
 
-    return NoError();
+    return Success();
 }
 
 util::Error LinglongBuilder::push(const QString &repoUrl,
@@ -899,7 +900,7 @@ util::Error LinglongBuilder::push(const QString &repoUrl,
                                   const QString &channel,
                                   bool pushWithDevel)
 {
-    auto ret = NoError();
+    auto ret = Success();
     auto projectConfigPath =
             QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
 
@@ -961,7 +962,6 @@ util::Error LinglongBuilder::push(const QString &repoUrl,
     }
 
     return ret;
-    // return util::Error(NoError());
 }
 
 util::Error LinglongBuilder::import()
@@ -1004,7 +1004,7 @@ util::Error LinglongBuilder::import()
         return NewError(-1, "failed to parse linglong.yaml");
     }
 
-    return NoError();
+    return Success();
 }
 
 linglong::util::Error LinglongBuilder::run()
@@ -1012,7 +1012,7 @@ linglong::util::Error LinglongBuilder::run()
     repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath(),
                           BuilderConfig::instance()->remoteRepoEndpoint,
                           BuilderConfig::instance()->remoteRepoName);
-    linglong::util::Error ret(NoError());
+    linglong::util::Error ret;
 
     auto projectConfigPath =
             QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");

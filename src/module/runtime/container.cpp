@@ -6,6 +6,7 @@
 
 #include "container.h"
 
+#include "module/util/error.h"
 #include "module/util/file.h"
 #include "module/util/uuid.h"
 #include "module/util/xdg.h"
@@ -22,5 +23,5 @@ linglong::util::Error Container::create(const QString &ref)
 
     packageName = ref;
 
-    return NoError();
+    return Success();
 }

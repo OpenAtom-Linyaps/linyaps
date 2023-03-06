@@ -9,13 +9,14 @@
 #include "module/package/info.h"
 #include "module/package/ref.h"
 #include "module/repo/ostree_repohelper.h"
+#include "module/util/error.h"
+#include "module/util/file.h"
 #include "module/util/http/http_client.h"
 #include "module/util/http/httpclient.h"
 #include "module/util/runner.h"
 #include "module/util/sysinfo.h"
 #include "module/util/version/semver.h"
 #include "module/util/version/version.h"
-#include "module/util/file.h"
 
 #include <gio/gio.h>
 #include <glib.h>
@@ -194,7 +195,7 @@ private:
 
         zlibBytes = glibInputStreamToBytes(zlibStream);
 
-        return { NoError(), glibBytesToQByteArray(zlibBytes) };
+        return { Success(), glibBytesToQByteArray(zlibBytes) };
     }
 
     static OstreeRepo *openRepo(const QString &path)
@@ -272,7 +273,7 @@ private:
                         OstreeRepoObject{ .objectName = objName, .rev = rev, .path = path });
             }
         }
-        return { objects, NoError() };
+        return { objects, Success() };
     }
 
     std::tuple<QString, util::Error> resolveRev(const QString &ref)
@@ -286,7 +287,7 @@ private:
                      WrapError(NewError(gErr->code, gErr->message),
                                "ostree_repo_resolve_rev failed: " + ref) };
         }
-        return { QString::fromLatin1(commitID), NoError() };
+        return { QString::fromLatin1(commitID), Success() };
     }
 
     // TODO: support multi refs?
@@ -342,7 +343,7 @@ private:
             qCritical() << "ostree_repo_pull_with_options failed"
                         << QString::fromStdString(std::string(gErr->message));
         }
-        return NoError();
+        return Success();
     }
 
     InfoResponse *getRepoInfo(const QString &repoName)
@@ -375,7 +376,7 @@ private:
             return { QString(), NewError(-1, info->msg) };
         }
 
-        return { info->data->id, NoError() };
+        return { info->data->id, Success() };
     }
 
     std::tuple<QString, util::Error> newUploadTask(const QString &repoName, UploadTaskRequest *req)
@@ -395,12 +396,12 @@ private:
             return { QString(), NewError(-1, info->msg) };
         }
 
-        return { info->data->id, NoError() };
+        return { info->data->id, Success() };
     }
 
     util::Error doUploadTask(const QString &taskID, const QString &filePath)
     {
-        util::Error err(NoError());
+        util::Error err;
         QByteArray fileData;
 
         QUrl uploadUrl(QString("%1/api/v1/upload-tasks/%2/tar").arg(remoteEndpoint, taskID));
@@ -433,14 +434,14 @@ private:
 
         QScopedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
 
-        return NoError();
+        return Success();
     }
 
     util::Error doUploadTask(const QString &repoName,
                              const QString &taskID,
                              const QList<OstreeRepoObject> &objects)
     {
-        util::Error err(NoError());
+        util::Error err;
         QByteArray fileData;
 
         QUrl url(QString("%1/api/v1/blob/%2/upload/%3").arg(remoteEndpoint, repoName, taskID));
@@ -495,7 +496,7 @@ private:
             return NewError(-1, info->msg);
         }
 
-        return NoError();
+        return Success();
     }
 
     util::Error cleanUploadTask(const QString &repoName, const QString &taskID)
@@ -504,7 +505,7 @@ private:
         QNetworkRequest request(url);
         // FIXME: check error
         httpClient.del(request);
-        return NoError();
+        return Success();
     }
 
     util::Error cleanUploadTask(const package::Ref &ref, const QString &filePath)
@@ -518,7 +519,7 @@ private:
         file.remove();
 
         qDebug() << "clean Upload Task";
-        return NoError();
+        return Success();
     }
 
     util::Error getUploadStatus(const QString &taskID)
@@ -548,7 +549,7 @@ private:
             QThread::sleep(1);
         }
 
-        return NoError();
+        return Success();
     }
 
     util::Error getToken()
@@ -574,7 +575,7 @@ private:
 
         remoteToken = result->data->token;
 
-        return NoError();
+        return Success();
     }
 
     QString repoRootPath;
@@ -619,22 +620,22 @@ linglong::util::Error OSTreeRepo::renameBranch(const package::Ref &oldRef,
 
 linglong::util::Error OSTreeRepo::import(const package::Bundle & /*bundle*/)
 {
-    return NoError() << -1 << "Not Implemented";
+    return NewError(-1, "Not Implemented");
 }
 
 linglong::util::Error OSTreeRepo::exportBundle(package::Bundle & /*bundle*/)
 {
-    return NoError() << -1 << "Not Implemented";
+    return NewError(-1, "Not Implemented");
 }
 
 std::tuple<linglong::util::Error, QList<package::Ref>> OSTreeRepo::list(const QString & /*filter*/)
 {
-    return { NoError() << -1 << "Not Implemented", {} };
+    return { NewError(-1, "Not Implemented"), {} };
 }
 
 std::tuple<linglong::util::Error, QList<package::Ref>> OSTreeRepo::query(const QString & /*filter*/)
 {
-    return { NoError() << -1 << "Not Implemented", {} };
+    return { NewError(-1, "Not Implemented"), {} };
 }
 
 linglong::util::Error OSTreeRepo::push(const package::Ref &ref)
@@ -646,7 +647,7 @@ linglong::util::Error OSTreeRepo::push(const package::Ref &ref)
         return WrapError(ret, "get token failed");
     }
 
-    util::Error err(NoError());
+    util::Error err;
     UploadRequest uploadReq;
 
     uploadReq.repoName = d->remoteRepoName;
@@ -697,7 +698,7 @@ linglong::util::Error OSTreeRepo::push(const package::Ref &ref, bool /*force*/)
         return WrapError(ret, "get token failed");
     }
 
-    util::Error err(NoError());
+    util::Error err;
     QList<OstreeRepoObject> objects;
     UploadTaskRequest uploadTaskReq;
 
@@ -750,7 +751,7 @@ linglong::util::Error OSTreeRepo::push(const package::Ref &ref, bool /*force*/)
 
 linglong::util::Error OSTreeRepo::push(const package::Bundle & /*bundle*/, bool /*force*/)
 {
-    return NoError() << -1 << "Not Implemented";
+    return NewError(-1, "Not Implemented");
 }
 
 linglong::util::Error OSTreeRepo::pull(const package::Ref &ref, bool /*force*/)
@@ -782,9 +783,7 @@ linglong::util::Error OSTreeRepo::pullAll(const package::Ref &ref, bool /*force*
 
     // FIXME(black-desk): pullAll should not belong to this class.
 
-    auto ret =
-            WrapError(pull(package::Ref(QStringList{ ref.toString(), "runtime" }.join("/")), false),
-                      "");
+    auto ret = pull(package::Ref(QStringList{ ref.toString(), "runtime" }.join("/")), false);
     if (!ret.success()) {
         return ret;
     }
@@ -792,28 +791,28 @@ linglong::util::Error OSTreeRepo::pullAll(const package::Ref &ref, bool /*force*
     ret = pull(package::Ref(QStringList{ ref.toString(), "devel" }.join("/")), false);
 
     // Fixme: some old package have no devel, ignore error for now.
-    return NoError();
+    return Success();
 }
 
 linglong::util::Error OSTreeRepo::init(const QString &mode)
 {
     Q_D(OSTreeRepo);
 
-    return WrapError(d->ostreeRun({ "init", QString("--mode=%1").arg(mode) }), "");
+    return d->ostreeRun({ "init", QString("--mode=%1").arg(mode) });
 }
 
 linglong::util::Error OSTreeRepo::remoteAdd(const QString &repoName, const QString &repoUrl)
 {
     Q_D(OSTreeRepo);
 
-    return WrapError(d->ostreeRun({ "remote", "add", "--no-gpg-verify", repoName, repoUrl }), "");
+    return d->ostreeRun({ "remote", "add", "--no-gpg-verify", repoName, repoUrl });
 }
 
 linglong::util::Error OSTreeRepo::remoteDelete(const QString &repoName)
 {
     Q_D(OSTreeRepo);
 
-    return WrapError(d->ostreeRun({ "remote", "delete", repoName }), "");
+    return d->ostreeRun({ "remote", "delete", repoName });
 }
 
 OSTreeRepo::OSTreeRepo(const QString &path)
@@ -837,7 +836,7 @@ linglong::util::Error OSTreeRepo::checkout(const package::Ref &ref,
         args.push_back("--subpath=" + subPath);
     }
     args.append({ ref.toString(), target });
-    return WrapError(dd_ptr->ostreeRun(args), "");
+    return dd_ptr->ostreeRun(args);
 }
 
 linglong::util::Error OSTreeRepo::checkoutAll(const package::Ref &ref,
@@ -869,7 +868,7 @@ linglong::util::Error OSTreeRepo::checkoutAll(const package::Ref &ref,
     ret = d->ostreeRun(develArgs);
 
     // Fixme: some old package have no devel, ignore error for now.
-    return NoError();
+    return Success();
 }
 
 QString OSTreeRepo::rootOfLayer(const package::Ref &ref)
@@ -1029,7 +1028,7 @@ std::tuple<linglong::util::Error, QStringList> OSTreeRepo::remoteList()
         }
     }
 
-    return { NoError(), remoteList };
+    return { Success(), remoteList };
 }
 
 std::tuple<QString, util::Error> OSTreeRepo::compressOstreeData(const package::Ref &ref)
@@ -1074,7 +1073,7 @@ std::tuple<QString, util::Error> OSTreeRepo::compressOstreeData(const package::R
     tar.waitForFinished(-1);
     qDebug() << tar.exitStatus() << "with exit code:" << tar.exitCode();
 
-    return { filePath, NoError() };
+    return { filePath, Success() };
 }
 
 OSTreeRepo::~OSTreeRepo() = default;

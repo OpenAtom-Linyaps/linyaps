@@ -37,7 +37,7 @@ linglong::util::Error runner(const QString &program, const QStringList &args, in
     process.waitForStarted(timeout);
     process.waitForFinished(timeout);
 
-    return NewError() << process.exitCode() << process.errorString();
+    return NewError(process.exitCode(), process.errorString());
 }
 
 Bundle::Bundle(QObject *parent)
@@ -50,12 +50,12 @@ Bundle::~Bundle() { }
 
 linglong::util::Error Bundle::load(const QString & /*path*/)
 {
-    return NoError() << -1 << "Not implemented";
+    return NewError(-1, "Not implemented");
 }
 
 linglong::util::Error Bundle::save(const QString & /*path*/)
 {
-    return NoError() << -1 << "Not implemented";
+    return NewError(-1, "Not implemented");
 }
 
 linglong::util::Error Bundle::make(const QString &dataPath, const QString &outputFilePath)
@@ -63,9 +63,9 @@ linglong::util::Error Bundle::make(const QString &dataPath, const QString &outpu
     Q_D(Bundle);
     auto ret = d->make(dataPath, outputFilePath);
     if (!ret.success()) {
-        return NewError(ret);
+        return WrapError(ret, "make");
     }
-    return NewError();
+    return Success();
 }
 
 linglong::util::Error Bundle::push(const QString &bundleFilePath,
@@ -76,9 +76,9 @@ linglong::util::Error Bundle::push(const QString &bundleFilePath,
     Q_D(Bundle);
     auto ret = d->push(bundleFilePath, repoUrl, repoChannel, force);
     if (!ret.success()) {
-        return NewError(ret, -1);
+        return ret;
     }
-    return NoError();
+    return Success();
 }
 
 linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString &outputFilePath)
@@ -98,13 +98,12 @@ linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString
 
     // 判断数据目录是否存在
     if (!util::dirExists(this->bundleDataPath)) {
-        return NewError() << STATUS_CODE(kDataDirNotExists)
-                          << this->bundleDataPath + " don't exists!";
+        return NewError(STATUS_CODE(kDataDirNotExists), this->bundleDataPath + " don't exists!");
     }
     // 判断info.json是否存在
     if (!util::fileExists(this->bundleDataPath + QString(configJson))) {
-        return NewError() << STATUS_CODE(kUapJsonFileNotExists)
-                          << this->bundleDataPath + QString("/info.json don't exists!!!");
+        return NewError(STATUS_CODE(kUapJsonFileNotExists),
+                        this->bundleDataPath + QString("/info.json don't exists!!!"));
     }
 
     // 转换info.json为Info对象
@@ -116,8 +115,7 @@ linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString
 
     // 判断架构是否支持
     if (!info->arch.contains(this->buildArch)) {
-        return NewError() << info->appid + QString(" : ") + this->buildArch
-                + QString(" don't support!");
+        return NewError(-1, QString("%1:%2 don't support!").arg(info->appid).arg(this->buildArch));
     }
 
     // 赋值bundleFilePath
@@ -148,7 +146,7 @@ linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString
                              { "-zlz4hc,9", this->erofsFilePath, this->bundleDataPath },
                              15 * 60 * 1000);
     if (!resultMkfs.success()) {
-        return NewError(resultMkfs) << "call mkfs.erofs failed";
+        return WrapError(resultMkfs, "call mkfs.erofs failed");
     }
 
     // 生产bundle文件
@@ -160,7 +158,7 @@ linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString
                                   this->linglongLoader,
                                   this->bundleFilePath });
     if (!resultObjcopy.success()) {
-        return NewError(resultObjcopy) << "call objcopy failed";
+        return WrapError(resultObjcopy, "call objcopy failed");
     }
 
     // 清理squashfs文件
@@ -173,7 +171,7 @@ linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString
             .setPermissions(QFileDevice::ExeOwner | QFileDevice::WriteOwner
                             | QFileDevice::ReadOwner);
 
-    return NewError();
+    return Success();
 }
 
 // read elf64
@@ -241,7 +239,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
             if (util::dirExists(this->tmpWorkDir)) {
                 util::removeDir(this->tmpWorkDir);
             }
-            return NewError() << "call getLocalConfig api failed";
+            return NewError(-1, "call getLocalConfig api failed");
         }
     }
     configUrl = configUrl.endsWith("/") ? configUrl : (configUrl + "/");
@@ -249,13 +247,13 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
 
     if (token.isEmpty()) {
         qCritical() << "get token failed!";
-        return NewError() << -1 << "get token failed!";
+        return NewError(-1, "get token failed!");
     }
 
     qInfo() << "start upload ...";
     // 判断uab文件是否存在
     if (!util::fileExists(bundleFilePath)) {
-        return NewError() << STATUS_CODE(kBundleFileNotExists) << bundleFilePath + " don't exists!";
+        return NewError(STATUS_CODE(kBundleFileNotExists), bundleFilePath + " don't exists!");
     }
     // 创建临时目录
     this->tmpWorkDir = util::ensureUserDir({ ".linglong", QFileInfo(bundleFilePath).fileName() });
@@ -294,7 +292,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
         }
-        return NewError(resultUnsquashfs) << "call unsquashfs failed";
+        return WrapError(resultUnsquashfs, "call unsquashfs failed");
     }
 
     // 转换info.json为Info对象
@@ -312,7 +310,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
         }
-        return NewError(resultMakeRepo) << "call ostree init failed";
+        return WrapError(resultMakeRepo, "call ostree init failed");
     }
 
     // 推送数据到临时仓库
@@ -349,7 +347,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
         }
-        return NewError(resultCommit) << "call ostree commit failed";
+        return WrapError(resultCommit, "call ostree commit failed");
     }
 
     // 压缩仓库为repo.tar
@@ -361,7 +359,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
         }
-        return NewError(resultTar) << "call tar cvf failed";
+        return WrapError(resultTar, "call tar cvf failed");
     }
 
     // 上传repo.tar文件
@@ -372,7 +370,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
             util::removeDir(this->tmpWorkDir);
         }
         std::cout << "upload repo.tar failed, please check and try again!" << std::endl;
-        return NewError() << "upload repo.tar failed";
+        return NewError(-1, "upload repo.tar failed");
     }
 
     // 上传bundle文件
@@ -382,7 +380,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
             util::removeDir(this->tmpWorkDir);
         }
         std::cout << "Upload bundle failed, please check and try again!" << std::endl;
-        return NewError() << "upload bundle failed";
+        return NewError(-1, "upload bundle failed");
     }
 
     // 上传bundle信息到服务器
@@ -419,14 +417,14 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
             util::removeDir(this->tmpWorkDir);
         }
         std::cout << "upload bundle info failed, please check and try again!" << std::endl;
-        return NewError() << "upload bundle info failed";
+        return NewError(-1, "upload bundle info failed");
     }
 
     if (util::dirExists(this->tmpWorkDir)) {
         util::removeDir(this->tmpWorkDir);
     }
     std::cout << "Upload success" << std::endl;
-    return NewError();
+    return Success();
 }
 
 } // namespace package

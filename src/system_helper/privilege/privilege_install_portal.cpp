@@ -130,7 +130,7 @@ util::Error rebuildPrivilegeInstallPortal(const QString &installPath,
         rebuildFileRule(installPath, ref, rule);
     }
 
-    return NoError();
+    return Success();
 }
 
 util::Error ruinPrivilegeInstallPortal(const QString &installPath,
@@ -155,7 +155,7 @@ util::Error ruinPrivilegeInstallPortal(const QString &installPath,
         ruinFileRule(installPath, ref, rule);
     }
 
-    return NoError();
+    return Success();
 }
 
 } // namespace helper

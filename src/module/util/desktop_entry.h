@@ -7,7 +7,7 @@
 #ifndef LINGLONG_SRC_MODULE_UTIL_DESKTOP_ENTRY_H_
 #define LINGLONG_SRC_MODULE_UTIL_DESKTOP_ENTRY_H_
 
-#include "result.h"
+#include "module/util/error.h"
 
 #include <QScopedPointer>
 #include <QString>

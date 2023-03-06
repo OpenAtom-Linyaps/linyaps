@@ -21,21 +21,17 @@ namespace util {
 /*!
  * Error is a stack trace error handler when function return
  */
-class Error
+
+class ErrorPrivate;
+
+class Error : private QSharedPointer<ErrorPrivate>
 {
 public:
     Error() = default;
 
-    Error(const char *file,
-          int line,
-          const char *func,
-          const Error &base,
-          int code,
-          const QString &msg);
+    Error(const char *file, int line, const char *func, int code, const QString &msg);
 
-    Error(const char *file, int line, const char *func, int code = 0, const QString &msg = "");
-
-    Error(const char *file, int line, const char *func, const QString &msg, const Error &base);
+    Error(const char *file, int line, const char *func, const Error &reason, const QString &msg);
 
     bool success() const;
 
@@ -43,26 +39,13 @@ public:
 
     QString message() const;
 
-    Error &operator<<(const QString &msg);
-
-    Error &operator<<(int code);
-
     QString toJson() const;
 
-    friend QDebug operator<<(QDebug d, const linglong::util::Error &result);
+    friend QDebug operator<<(QDebug debug, const linglong::util::Error &result);
+    friend class ErrorPrivate;
 
 private:
-    struct MessageMeta
-    {
-        const char *file;
-        int line;
-        const char *func;
-        QString message;
-    };
-
-    int errorCode = 0;
-    MessageMeta msgMeta;
-    QList<MessageMeta> msgMetaList{};
+    int m_code;
 };
 
 QDebug operator<<(QDebug dbg, const Error &result);
@@ -70,10 +53,12 @@ QDebug operator<<(QDebug dbg, const Error &result);
 } // namespace util
 } // namespace linglong
 
-#define NewError(...) linglong::util::Error(__FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__)
+#define NewError(code, message) \
+  linglong::util::Error(QT_MESSAGELOG_FILE, QT_MESSAGELOG_LINE, QT_MESSAGELOG_FUNC, code, message)
 
-#define NoError() linglong::util::Error(__FILE__, __LINE__, __FUNCTION__)
+#define WrapError(reason, message) \
+  linglong::util::Error(QT_MESSAGELOG_FILE, QT_MESSAGELOG_LINE, QT_MESSAGELOG_FUNC, reason, message)
 
-#define WrapError(base, msg) linglong::util::Error(__FILE__, __LINE__, __FUNCTION__, msg, base)
+#define Success() linglong::util::Error()
 
 #endif

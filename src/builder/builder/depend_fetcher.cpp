@@ -43,7 +43,7 @@ DependFetcher::~DependFetcher() = default;
 
 linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString &targetPath)
 {
-    auto ret = NoError();
+    auto ret = Success();
 
     repo::OSTreeRepo ostree(BuilderConfig::instance()->repoPath(),
                             BuilderConfig::instance()->remoteRepoEndpoint,

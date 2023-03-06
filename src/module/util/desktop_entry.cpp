@@ -176,7 +176,7 @@ linglong::util::Error DesktopEntry::save(const QString &filepath)
     }
 
     file.close();
-    return NoError();
+    return Success();
 }
 
 void DesktopEntry::set(const QString &section, const QString &key, const QString &defaultValue)

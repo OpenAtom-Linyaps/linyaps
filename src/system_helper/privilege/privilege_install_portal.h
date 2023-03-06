@@ -7,7 +7,7 @@
 #ifndef LINGLONG_SRC_SYSTEM_HELPER_PRIVILEGE_PRIVILEGE_INSTALL_PORTAL_H_
 #define LINGLONG_SRC_SYSTEM_HELPER_PRIVILEGE_PRIVILEGE_INSTALL_PORTAL_H_
 
-#include "module/util/result.h"
+#include "module/util/error.h"
 #include "module/util/serialize/json.h"
 #include "module/util/serialize/serialize.h"
 

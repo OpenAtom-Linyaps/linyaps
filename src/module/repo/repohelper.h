@@ -19,21 +19,6 @@ public:
     virtual ~RepoHelper() { }
 
     /*
-     * 软件包数据从远端仓库pull到本地仓库
-     *
-     * @param repoPath: 远端仓库对应的本地仓库路径
-     * @param remoteName: 远端仓库名称
-     * @param pkgName: 软件包包名
-     * @param err: 错误信息
-     *
-     * @return bool: true:成功 false:失败
-     */
-    virtual bool repoPull(const QString &repoPath,
-                          const QString &remoteName,
-                          const QString &pkgName,
-                          QString &err) = 0;
-
-    /*
      * 通过ostree命令将软件包数据从远端仓库pull到本地
      *
      * @param destPath: 仓库路径

@@ -78,27 +78,6 @@ public:
                        QString &err);
 
     /*
-     * 查询软件包在仓库中对应的索引信息ref，版本号为空查询最新版本，非空查询指定版本
-     *
-     * @param repoPath: 远端仓库对应的本地仓库路径
-     * @param remoteName: 远端仓库名称
-     * @param pkgName: 软件包包名
-     * @param pkgVer: 软件包对应的版本号
-     * @param arch: 软件包对应的架构名
-     * @param matchRef: 软件包对应的索引信息ref
-     * @param err: 错误信息
-     *
-     * @return bool: true:成功 false:失败
-     */
-    bool queryMatchRefs(const QString &repoPath,
-                        const QString &remoteName,
-                        const QString &pkgName,
-                        const QString &pkgVer,
-                        const QString &arch,
-                        QString &matchRef,
-                        QString &err) override;
-
-    /*
      * 软件包数据从远端仓库pull到本地仓库
      *
      * @param repoPath: 远端仓库对应的本地仓库路径

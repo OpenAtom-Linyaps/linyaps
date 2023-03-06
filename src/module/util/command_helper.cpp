@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <grp.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 namespace linglong {
 namespace util {

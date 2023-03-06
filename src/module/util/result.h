@@ -7,9 +7,11 @@
 #ifndef LINGLONG_SRC_MODULE_UTIL_RESULT_H_
 #define LINGLONG_SRC_MODULE_UTIL_RESULT_H_
 
-#include <QString>
-#include <QJsonObject>
+#include <QDebug>
 #include <QJsonDocument>
+#include <QJsonObject>
+#include <QList>
+#include <QString>
 
 #include <tuple>
 

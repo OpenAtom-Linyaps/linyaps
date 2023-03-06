@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-// todo: 该头文件必须放在QDBus前，否则会报错
 #include "package_manager.h"
 
 #include "module/dbus_ipc/dbus_system_helper_common.h"

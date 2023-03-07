@@ -6,6 +6,9 @@
 
 #include "error.h"
 
+#include <QJsonDocument>
+#include <QJsonObject>
+
 namespace linglong {
 namespace util {
 

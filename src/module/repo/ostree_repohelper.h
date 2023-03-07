@@ -8,7 +8,6 @@
 #define LINGLONG_SRC_MODULE_REPO_OSTREE_REPOHELPER_H_
 
 #include "module/util/singleton.h"
-#include "repohelper.h"
 
 #include <gio/gio.h>
 #include <glib.h>
@@ -34,7 +33,7 @@ struct LingLongDir
     OstreeRepo *repo;
 };
 
-class OstreeRepoHelper : public RepoHelper, public linglong::util::Singleton<OstreeRepoHelper>
+class OstreeRepoHelper : public linglong::util::Singleton<OstreeRepoHelper>
 {
 public:
     OstreeRepoHelper();
@@ -107,7 +106,7 @@ public:
     bool repoPullbyCmd(const QString &destPath,
                        const QString &remoteName,
                        const QString &ref,
-                       QString &err) override;
+                       QString &err);
 
     /*
      * 获取下载任务对应的进程Id

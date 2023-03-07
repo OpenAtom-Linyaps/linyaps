@@ -7,13 +7,11 @@
 #ifndef LINGLONG_SRC_MODULE_UTIL_ERROR_H_
 #define LINGLONG_SRC_MODULE_UTIL_ERROR_H_
 
-#include <QDebug>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QList>
-#include <QString>
+#include <QMessageLogContext>
+#include <QSharedPointer>
 
-#include <tuple>
+class QString;
+class QDebug;
 
 namespace linglong {
 namespace util {
@@ -29,9 +27,10 @@ class Error : private QSharedPointer<ErrorPrivate>
 public:
     Error() = default;
 
-    Error(const char *file, int line, const char *func, int code, const QString &msg);
+    explicit Error(const char *file, int line, const char *func, int code, const QString &msg);
 
-    Error(const char *file, int line, const char *func, const Error &reason, const QString &msg);
+    explicit Error(
+            const char *file, int line, const char *func, const Error &reason, const QString &msg);
 
     bool success() const;
 

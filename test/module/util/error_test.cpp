@@ -8,6 +8,8 @@
 
 #include "module/util/error.h"
 
+#include <QDebug>
+
 TEST(Moduel_Util, Error)
 {
     linglong::util::Error err;

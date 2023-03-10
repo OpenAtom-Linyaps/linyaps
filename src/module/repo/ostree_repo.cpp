@@ -954,8 +954,10 @@ package::Ref OSTreeRepo::remoteLatestRef(const package::Ref &ref)
             fromVariantList<linglong::package::InfoList>(retObject.value(QStringLiteral("data")));
 
     for (auto info : infoList) {
-        latestVer = linglong::util::compareVersion(latestVer, info->version) > 0 ? latestVer
-                                                                                 : info->version;
+        Q_ASSERT(info != nullptr);
+        if (linglong::util::compareVersion(latestVer, info->version) < 0) {
+            latestVer = info->version;
+        }
     }
 
     return package::Ref(ref.repo, ref.channel, ref.appId, latestVer, ref.arch, ref.module);

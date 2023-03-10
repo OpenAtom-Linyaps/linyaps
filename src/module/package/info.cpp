@@ -53,10 +53,13 @@ Ref parseId(const QString &id)
         break;
     case 4:
         module = slice.value(3);
+        [[fallthrough]];
     case 3:
         arch = slice.value(2);
+        [[fallthrough]];
     case 2:
         version = slice.value(1);
+        [[fallthrough]];
     case 1:
         appId = slice.value(0);
         break;

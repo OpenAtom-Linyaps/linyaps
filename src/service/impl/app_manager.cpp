@@ -53,7 +53,7 @@ Reply AppManager::Start(const RunParamOption &paramOption)
         reply.code = STATUS_CODE(kUserInputParamErr);
         reply.message = "appId input err";
         qCritical() << reply.message;
-        return reply;
+        return std::move(reply);
     }
 
     QString arch = paramOption.arch.trimmed();
@@ -116,7 +116,7 @@ Reply AppManager::Start(const RunParamOption &paramOption)
                 + ", module:" + appModule + " not installed";
         qCritical() << reply.message;
         reply.code = STATUS_CODE(kPkgNotInstalled);
-        return reply;
+        return std::move(reply);
     }
 
     // 直接运行debug版本时，校验release包是否安装
@@ -129,7 +129,7 @@ Reply AppManager::Start(const RunParamOption &paramOption)
                     + ", no corresponding release package found";
             qCritical() << reply.message;
             reply.code = STATUS_CODE(kPkgNotInstalled);
-            return reply;
+            return std::move(reply);
         }
     }
 
@@ -170,7 +170,7 @@ Reply AppManager::Start(const RunParamOption &paramOption)
         app->deleteLater();
     });
     // future.waitForFinished();
-    return reply;
+    return std::move(reply);
 }
 
 Reply AppManager::Exec(const ExecParamOption &paramOption)

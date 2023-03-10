@@ -152,6 +152,9 @@ public:
             q_ptr->build->manual = buildManual;
         }
 
+        Q_ASSERT(temp->variables != nullptr);
+        Q_ASSERT(temp->enviroment != nullptr);
+
         command += "#local variable\n";
         for (int i = q_ptr->variables->metaObject()->propertyOffset();
              i < q_ptr->variables->metaObject()->propertyCount();

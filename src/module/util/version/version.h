@@ -25,12 +25,16 @@ public:
         default:
         case 4:
             Build = verList.at(3).toInt();
+            [[fallthrough]];
         case 3:
             Revision = verList.at(2).toInt();
+            [[fallthrough]];
         case 2:
             Minor = verList.at(1).toInt();
+            [[fallthrough]];
         case 1:
             Major = verList.at(0).toInt();
+            [[fallthrough]];
         case 0:
             break;
         }

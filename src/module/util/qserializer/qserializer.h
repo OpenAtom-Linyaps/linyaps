@@ -9,6 +9,7 @@
 
 // copy from https://github.com/black-desk/qserializer d93f15d
 
+#include <QDBusMetaType>
 #include <QDebug>
 #include <QMap>
 #include <QMetaObject>

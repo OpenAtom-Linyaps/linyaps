@@ -156,7 +156,8 @@ class UploadTaskRequest : public JsonSerialize
 
     Q_JSON_PROPERTY(int, code);
     Q_JSON_PROPERTY(QStringList, objects);
-    Q_JSON_PROPERTY(linglong::repo::RevPairStrMap, refs);
+    Q_PROPERTY(QMap<QString, QSharedPointer<linglong::repo::RevPair>> refs MEMBER refs);
+    QMap<QString, QSharedPointer<linglong::repo::RevPair>> refs;
 };
 
 class UploadRequest : public JsonSerialize

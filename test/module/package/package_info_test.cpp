@@ -20,8 +20,6 @@ TEST(PermissionTest, LoadJson)
 
     EXPECT_NE(userTypeList.size(), 0);
 
-    linglong::package::registerAllMetaType();
-
     QFile jsonFile("../../test/data/demo/info.json");
     jsonFile.open(QIODevice::ReadOnly);
 
@@ -39,7 +37,7 @@ TEST(PermissionTest, LoadJson)
     auto userStaticMount = info->permissions->filesystem->user;
     EXPECT_NE(userStaticMount, nullptr);
 
-    auto userVariant = toVariant<linglong::package::User>(userStaticMount);
+    auto userVariant = QVariant::fromValue(userStaticMount);
 
     auto userStaticMap = userVariant.toMap();
 
@@ -70,8 +68,6 @@ TEST(PermissionTest, LoadJson)
 
 TEST(PermissionTest, TestPermission)
 {
-    linglong::package::registerAllMetaType();
-
     // load json file
     QFile jsonFile("../../test/data/demo/info.json");
     jsonFile.open(QIODevice::ReadOnly);

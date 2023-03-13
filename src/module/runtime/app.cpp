@@ -13,13 +13,14 @@
 #include "module/util/desktop_entry.h"
 #include "module/util/env.h"
 #include "module/util/file.h"
-#include "module/util/serialize/json.h"
-#include "module/util/serialize/yaml.h"
+#include "module/util/qserializer/json.h"
+#include "module/util/qserializer/yaml.h"
 #include "module/util/version/version.h"
 #include "module/util/xdg.h"
 
 #include <linux/prctl.h>
 #include <sys/prctl.h>
+#include <yaml-cpp/yaml.h>
 
 #include <QDir>
 #include <QFile>
@@ -42,6 +43,11 @@ static void initQResource()
 
 namespace linglong {
 namespace runtime {
+
+QSERIALIZER_IMPL(App);
+QSERIALIZER_IMPL(AppPermission);
+QSERIALIZER_IMPL(Layer);
+QSERIALIZER_IMPL(MountYaml);
 
 namespace PrivateAppInit {
 int init()
@@ -75,10 +81,10 @@ public:
         }
         auto json = QJsonDocument::fromJson(jsonFile.readAll());
         jsonFile.close();
-        r = fromVariant<Runtime>(json.toVariant());
+        r = json.toVariant().value<QSharedPointer<Runtime>>();
         r->setParent(q_ptr);
 
-        container = new Container(q_ptr);
+        container.reset(new Container(q_ptr));
         container->create(q_ptr->package->ref);
 
         return true;
@@ -120,7 +126,7 @@ public:
         }
         envFile.close();
 
-        QPointer<Mount> m(new Mount);
+        QSharedPointer<Mount> m(new Mount);
         m->type = "bind";
         m->options = QStringList{ "rbind" };
         m->source = envFilepath;
@@ -212,7 +218,7 @@ public:
         };
 
         for (const auto &pair : mountMap) {
-            QPointer<Mount> m(new Mount(r));
+            QSharedPointer<Mount> m(new Mount);
             m->type = "bind";
             m->options = QStringList{ "rbind" };
             m->source = pair.first;
@@ -248,15 +254,15 @@ public:
             useThinRuntime = false;
         }
 
-        r->annotations = new Annotations(r);
+        r->annotations.reset(new Annotations);
         r->annotations->containerRootPath = container->workingDirectory;
 
         // 通过info.json文件判断是否要overlay mount
         auto appInfoFile = appRootPath + "/info.json";
 
-        QScopedPointer<package::Info> info;
+        QSharedPointer<package::Info> info;
         if (util::fileExists(appInfoFile)) {
-            info.reset(util::loadJson<package::Info>(appInfoFile));
+            info = util::loadJson<package::Info>(appInfoFile);
             if (info->overlayfs && info->overlayfs->mounts.size() > 0) {
                 fuseMount = true;
                 specialCase = true;
@@ -289,9 +295,9 @@ public:
         // basics etc
         QString basicsEtcRootPath = "";
         if (!linglong::util::isDeepinSysProduct() && useThinRuntime) {
-            QScopedPointer<package::Info> runtimeInfo;
+            QSharedPointer<package::Info> runtimeInfo;
             if (util::fileExists(runtimeInfoFile)) {
-                runtimeInfo.reset(util::loadJson<package::Info>(runtimeInfoFile));
+                runtimeInfo = util::loadJson<package::Info>(runtimeInfoFile);
                 if (!runtimeInfo->runtime.isEmpty()) {
                     basicsUsrRootPath =
                             linglongRootPath + "/layers/" + runtimeInfo->runtime + "/files/usr";
@@ -311,7 +317,7 @@ public:
         }
 
         if (fuseMount) {
-            r->annotations->overlayfs = new AnnotationsOverlayfsRootfs(r->annotations);
+            r->annotations->overlayfs.reset(new AnnotationsOverlayfsRootfs);
             r->annotations->overlayfs->lowerParent =
                     QStringList{ container->workingDirectory, ".overlayfs", "lower_parent" }.join(
                             "/");
@@ -320,10 +326,10 @@ public:
             r->annotations->overlayfs->workdir =
                     QStringList{ container->workingDirectory, ".overlayfs", "workdir" }.join("/");
         } else {
-            r->annotations->native = new AnnotationsNativeRootfs(r->annotations);
+            r->annotations->native.reset(new AnnotationsNativeRootfs);
         }
 
-        r->annotations->dbusProxyInfo = new DBusProxy(r->annotations);
+        r->annotations->dbusProxyInfo.reset(new DBusProxy());
 
         QList<QPair<QString, QString>> mountMap;
 
@@ -382,7 +388,7 @@ public:
         }
 
         for (const auto &pair : mountMap) {
-            QPointer<Mount> m(new Mount(r));
+            QSharedPointer<Mount> m(new Mount);
             m->type = "bind";
             m->options = QStringList{ "ro", "rbind" };
             m->source = pair.first;
@@ -405,7 +411,7 @@ public:
         // 读写挂载/opt,有的应用需要读写自身携带的资源文件。eg:云看盘
         QString appMountPath = "";
         appMountPath = "/opt/apps/" + appId;
-        QPointer<Mount> m(new Mount(r));
+        QSharedPointer<Mount> m(new Mount);
         m->type = "bind";
         m->options = QStringList{ "rw", "rbind" };
         m->source = appRootPath;
@@ -515,7 +521,7 @@ public:
         }
 
         for (const auto &pair : roMountMap) {
-            QPointer<Mount> m(new Mount(r));
+            QSharedPointer<Mount> m(new Mount);
             m->type = "bind";
             m->options = QStringList{ "ro", "rbind" };
             m->source = pair.first;
@@ -529,7 +535,7 @@ public:
         };
 
         for (const auto &pair : mountMap) {
-            QPointer<Mount> m(new Mount(r));
+            QSharedPointer<Mount> m(new Mount);
             m->type = "bind";
             m->options = QStringList{ "rbind" };
             m->source = pair.first;
@@ -590,7 +596,7 @@ public:
                                          QString("/run/dbus/system_bus_socket")));
         }
         for (const auto &pair : mountMap) {
-            QPointer<Mount> m(new Mount(r));
+            QSharedPointer<Mount> m(new Mount);
             m->type = "bind";
             m->options = QStringList{};
 
@@ -610,7 +616,7 @@ public:
         // bind user data
         auto userRuntimeDir = QString("/run/user/%1").arg(getuid());
         {
-            QPointer<Mount> m(new Mount(r));
+            QSharedPointer<Mount> m(new Mount);
             m->type = "tmpfs";
             m->options = QStringList{ "nodev", "nosuid", "mode=700" };
             m->source = "tmpfs";
@@ -697,7 +703,7 @@ public:
                                      appConfigPath + "/user-dirs.dirs"));
 
         for (const auto &pair : mountMap) {
-            QPointer<Mount> m(new Mount(r));
+            QSharedPointer<Mount> m(new Mount);
             m->type = "bind";
             m->options = QStringList{ "rbind" };
 
@@ -739,7 +745,7 @@ public:
         roMountMap.push_back(qMakePair(xauthority, xauthority));
 
         for (const auto &pair : roMountMap) {
-            QPointer<Mount> m(new Mount(r));
+            QSharedPointer<Mount> m(new Mount);
             m->type = "bind";
             m->options = QStringList{ "ro", "rbind" };
             m->source = pair.first;
@@ -804,7 +810,7 @@ public:
         };
         for (auto const &uidMap : uidMaps) {
             Q_ASSERT(uidMap.size() == 3);
-            QPointer<IdMap> idMap(new IdMap(r->linux));
+            QSharedPointer<IdMap> idMap(new IdMap);
             idMap->hostId = uidMap.value(0);
             idMap->containerId = uidMap.value(1);
             idMap->size = uidMap.value(2);
@@ -816,7 +822,7 @@ public:
         };
         for (auto const &gidMap : gidMaps) {
             Q_ASSERT(gidMap.size() == 3);
-            QPointer<IdMap> idMap(new IdMap(r->linux));
+            QSharedPointer<IdMap> idMap(new IdMap);
             idMap->hostId = gidMap.value(0);
             idMap->containerId = gidMap.value(1);
             idMap->size = gidMap.value(2);
@@ -835,7 +841,7 @@ public:
         if (q->permissions && !q->permissions->mounts.isEmpty()) {
             // static mount
             for (const auto &mount : q->permissions->mounts) {
-                QPointer<Mount> m(new Mount(r));
+                QSharedPointer<Mount> m(new Mount);
 
                 // illegal mount rules
                 if (mount->source.isEmpty() || mount->destination.isEmpty()) {
@@ -887,7 +893,7 @@ public:
                 return -1;
             }
         }
-        QPointer<Mount> m(new Mount(r));
+        QSharedPointer<Mount> m(new Mount);
         m->type = "bind";
         m->source = tmp.absolutePath();
         m->destination = tmpPath;
@@ -906,7 +912,7 @@ public:
             // FIXME: 需要一个所有用户都有可读可写权限的目录
             QString appDataPath = util::getUserFile(".linglong/" + appId + "/share/appdata");
             linglong::util::ensureDir(appDataPath);
-            QPointer<Mount> m(new Mount(r));
+            QSharedPointer<Mount> m(new Mount);
             m->type = "bind";
             m->options = QStringList{ "rw", "rbind" };
             m->source = appDataPath;
@@ -917,7 +923,7 @@ public:
         // 挂载U盘目录
         auto uDiskDir = QStringList{ "/media", "/mnt" };
         for (auto dir : uDiskDir) {
-            QPointer<Mount> m(new Mount(r));
+            QSharedPointer<Mount> m(new Mount);
             m->type = "bind";
             m->options = QStringList{ "rw", "rbind" };
             m->source = dir;
@@ -928,7 +934,7 @@ public:
         // 挂载runtime的xdg-open和xdg-email到沙箱/usr/bin下
         auto xdgFileDirList = QStringList{ "xdg-open", "xdg-email" };
         for (auto dir : xdgFileDirList) {
-            QPointer<Mount> m(new Mount(r));
+            QSharedPointer<Mount> m(new Mount);
             m->type = "bind";
             m->options = QStringList{ "rbind" };
             m->source = runtimeRootPath + "/bin/" + dir;
@@ -939,7 +945,7 @@ public:
         // 存在 gschemas.compiled,需要挂载进沙箱
         if (linglong::util::fileExists(sysLinglongInstalltions
                                        + "/glib-2.0/schemas/gschemas.compiled")) {
-            QPointer<Mount> m(new Mount(r));
+            QSharedPointer<Mount> m(new Mount);
             m->type = "bind";
             m->options = QStringList{ "rbind" };
             m->source = sysLinglongInstalltions + "/glib-2.0/schemas/gschemas.compiled";
@@ -951,7 +957,7 @@ public:
         {
             auto deepinKWinTmpSharePath = "/tmp/screen-recorder";
             util::ensureDir(deepinKWinTmpSharePath);
-            QPointer<Mount> m(new Mount(r));
+            QSharedPointer<Mount> m(new Mount);
             m->type = "bind";
             m->options = QStringList{ "rbind" };
             m->source = deepinKWinTmpSharePath;
@@ -963,7 +969,7 @@ public:
         {
             auto deepinEmailTmpSharePath = "/tmp/deepin-mail-web";
             util::ensureDir(deepinEmailTmpSharePath);
-            QPointer<Mount> m(new Mount(r));
+            QSharedPointer<Mount> m(new Mount);
             m->type = "bind";
             m->options = QStringList{ "rbind" };
             m->source = deepinEmailTmpSharePath;
@@ -973,7 +979,7 @@ public:
 
         // Fixme: temporarily mount linglong root path into the container, remove later
         if (QString("org.deepin.manual") == appId) {
-            QPointer<Mount> m(new Mount(r));
+            QSharedPointer<Mount> m(new Mount);
             m->type = "bind";
             m->options = QStringList{ "ro", "rbind" };
             m->source = util::getLinglongRootPath();
@@ -986,7 +992,7 @@ public:
         if (QString("org.deepin.browser") == appId) {
             auto downloaderPath =
                     util::getLinglongRootPath() + "/" + "layers/org.deepin.downloader";
-            QPointer<Mount> m(new Mount(r));
+            QSharedPointer<Mount> m(new Mount);
             m->type = "bind";
             m->options = QStringList{ "ro", "rbind" };
             m->source = downloaderPath;
@@ -1003,11 +1009,11 @@ public:
             }
             auto json = QJsonDocument::fromJson(jsonFile.readAll());
             jsonFile.close();
-            appConfig = fromVariant<linglong::runtime::AppConfig>(json.toVariant());
+            appConfig = json.toVariant().value<QSharedPointer<linglong::runtime::AppConfig>>();
             appConfig->setParent(q_ptr);
             for (const auto &appOfId : appConfig->appMountDevList) {
                 if (appOfId == appId) {
-                    QPointer<Mount> m(new Mount(r));
+                    QSharedPointer<Mount> m(new Mount);
                     m->type = "bind";
                     m->options = QStringList{ "rbind" };
                     m->source = "/dev";
@@ -1066,7 +1072,7 @@ public:
         }
 
         // create a yaml config from json
-        QScopedPointer<package::Info> info(util::loadJson<package::Info>(appInfo));
+        QSharedPointer<package::Info> info(util::loadJson<package::Info>(appInfo));
 
         if (info->runtime.isEmpty()) {
             // FIXME: return error is not exist
@@ -1098,7 +1104,7 @@ public:
         // permission load
         QMap<QString, QString> permissionMountsMap;
 
-        const package::User *permissionUserMounts = nullptr;
+        QSharedPointer<package::User> permissionUserMounts;
 
         // old info.json load permission failed
         permissionUserMounts = info->permissions && info->permissions->filesystem
@@ -1107,8 +1113,7 @@ public:
                 : nullptr;
 
         if (permissionUserMounts != nullptr) {
-            auto permVariant = toVariant<linglong::package::User>(permissionUserMounts);
-            auto loadPermissionMap = permVariant.toMap();
+            auto loadPermissionMap = QVariant(permissionUserMounts).toMap();
             if (!loadPermissionMap.empty()) {
                 QStringList userTypeList = linglong::util::getXdgUserDir();
                 for (const auto &it : loadPermissionMap.keys()) {
@@ -1172,10 +1177,10 @@ public:
     ParamStringMap envMap;
     ParamStringMap runParamMap;
 
-    Container *container = nullptr;
-    Runtime *r = nullptr;
+    QSharedPointer<Container> container = nullptr;
+    QSharedPointer<Runtime> r = nullptr;
     App *q_ptr = nullptr;
-    linglong::runtime::AppConfig *appConfig = nullptr;
+    QSharedPointer<AppConfig> appConfig = nullptr;
 
     repo::Repo *repo;
     int sockets[2]; // save file describers of sockets used to communicate with ll-box
@@ -1191,7 +1196,9 @@ App::App(QObject *parent)
 {
 }
 
-App *App::load(linglong::repo::Repo *repo, const package::Ref &ref, const QString &desktopExec)
+QSharedPointer<App> App::load(linglong::repo::Repo *repo,
+                              const package::Ref &ref,
+                              const QString &desktopExec)
 {
     QString configPath =
             AppPrivate::loadConfig(repo, ref.appId, ref.version, ref.channel, ref.module);
@@ -1204,12 +1211,12 @@ App *App::load(linglong::repo::Repo *repo, const package::Ref &ref, const QStrin
 
     qDebug() << "load conf yaml from" << configPath;
 
-    App *app = nullptr;
+    QSharedPointer<App> app = nullptr;
     try {
         auto data = QString::fromLocal8Bit(appConfig.readAll());
         qDebug() << data;
         YAML::Node doc = YAML::Load(data.toStdString());
-        app = formYaml<App>(doc);
+        app = QVariant::fromValue(doc).value<QSharedPointer<App>>();
 
         qDebug() << app << app->runtime << app->package << app->version;
         // TODO: maybe set as an arg of init is better
@@ -1237,8 +1244,9 @@ int App::start()
     pidFile.close();
 
     qDebug() << "start container at" << d->r->root->path;
-    auto json = QJsonDocument::fromVariant(toVariant<Runtime>(d->r)).toJson();
-    auto data = json.toStdString();
+
+    // FIXME(black_desk): handle error
+    auto data = (std::get<0>(util::toJSON<QSharedPointer<Runtime>>(d->r))).toStdString();
 
     if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, d->sockets) != 0) {
         return EXIT_FAILURE;
@@ -1285,12 +1293,12 @@ void App::exec(QString cmd, QString env, QString cwd)
     if (!env.isEmpty() && !env.isNull()) {
         envList = envList + env.split(",");
     }
-    Process p(nullptr);
+    QSharedPointer<Process> p(new Process);
     if (cwd.isEmpty() || cwd.isNull()) {
         cwd = d->r->process->cwd;
     }
-    p.setcwd(cwd);
-    p.setenv(envList);
+    p->cwd = cwd;
+    p->env = envList;
     auto appCmd = util::splitExec(cmd);
     if (cmd.isEmpty() || cmd.isNull()) {
         // find desktop file
@@ -1323,8 +1331,9 @@ void App::exec(QString cmd, QString env, QString cwd)
     if (appCmd.isEmpty()) {
         return;
     }
-    p.setargs(appCmd);
-    auto data = dump(&p).toStdString();
+    p->args = appCmd;
+    // FIXME(black_desk): handle error
+    auto data = std::get<0>(util::toJSON(p)).toStdString();
 
     // FIXME: retry on temporary fail
     // FIXME: add lock
@@ -1337,7 +1346,7 @@ void App::exec(QString cmd, QString env, QString cwd)
     write(d->sockets[1], "\0", 1);
 }
 
-Container *App::container() const
+QSharedPointer<const Container> App::container() const
 {
     Q_D(const App);
     return d->container;

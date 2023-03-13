@@ -7,7 +7,7 @@
 #ifndef LINGLONG_SRC_MODULE_PACKAGE_PACKAGE_H_
 #define LINGLONG_SRC_MODULE_PACKAGE_PACKAGE_H_
 
-#include "module/util/serialize/json.h"
+#include "module/util/qserializer/deprecated.h"
 #include "ref.h"
 
 #include <QDBusArgument>
@@ -66,11 +66,6 @@ public:
 
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::package, AppMetaInfo)
 
-typedef StringMap ParamStringMap;
+typedef QMap<QString, QString> ParamStringMap;
 
-namespace linglong {
-namespace package {
-void registerAllMetaType();
-} // namespace package
-} // namespace linglong
 #endif

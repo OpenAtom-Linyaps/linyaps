@@ -7,14 +7,12 @@
 #ifndef LINGLONG_SRC_MODULE_RUNTIME_OCI_H_
 #define LINGLONG_SRC_MODULE_RUNTIME_OCI_H_
 
-#include "module/util/serialize/json.h"
-
-#include <mutex>
+#include "module/util/qserializer/deprecated.h"
 
 class Root : public JsonSerialize
 {
     Q_OBJECT;
-    Q_JSON_CONSTRUCTOR(Root)
+
 public:
     Q_JSON_PROPERTY(QString, path);
     Q_JSON_PROPERTY(bool, readonly);
@@ -43,9 +41,9 @@ class Linux : public JsonSerialize
 {
     Q_OBJECT;
     Q_JSON_CONSTRUCTOR(Linux)
-    Q_JSON_PROPERTY(NamespaceList, namespaces);
-    Q_JSON_PROPERTY(IdMapList, uidMappings);
-    Q_JSON_PROPERTY(IdMapList, gidMappings);
+    Q_JSON_PROPERTY(QList<QSharedPointer<Namespace>>, namespaces);
+    Q_JSON_PROPERTY(QList<QSharedPointer<IdMap>>, uidMappings);
+    Q_JSON_PROPERTY(QList<QSharedPointer<IdMap>>, gidMappings);
 };
 Q_JSON_DECLARE_PTR_METATYPE(Linux)
 
@@ -61,20 +59,18 @@ Q_JSON_DECLARE_PTR_METATYPE(Process)
 
 class Mount : public JsonSerialize
 {
-    Q_OBJECT
+    Q_OBJECT;
     Q_JSON_CONSTRUCTOR(Mount)
     Q_JSON_PROPERTY(QString, destination);
     Q_JSON_PROPERTY(QString, type);
     Q_JSON_PROPERTY(QString, source);
     Q_JSON_PROPERTY(QStringList, options);
-
-private:
 };
 Q_JSON_DECLARE_PTR_METATYPE(Mount)
 
 class Hook : public JsonSerialize
 {
-    Q_OBJECT
+    Q_OBJECT;
     Q_JSON_CONSTRUCTOR(Hook)
     Q_JSON_PROPERTY(QString, path);
     Q_JSON_PROPERTY(QStringList, args);
@@ -86,9 +82,9 @@ class Hooks : public JsonSerialize
 {
     Q_OBJECT
     Q_JSON_CONSTRUCTOR(Hooks)
-    Q_JSON_PROPERTY(HookList, prestart);
-    Q_JSON_PROPERTY(HookList, poststart);
-    Q_JSON_PROPERTY(HookList, poststop);
+    Q_JSON_PROPERTY(QList<QSharedPointer<Hook>>, prestart);
+    Q_JSON_PROPERTY(QList<QSharedPointer<Hook>>, poststart);
+    Q_JSON_PROPERTY(QList<QSharedPointer<Hook>>, poststop);
 };
 Q_JSON_DECLARE_PTR_METATYPE(Hooks)
 
@@ -99,7 +95,7 @@ class AnnotationsOverlayfsRootfs : public JsonSerialize
     Q_JSON_PROPERTY(QString, lowerParent);
     Q_JSON_PROPERTY(QString, upper);
     Q_JSON_PROPERTY(QString, workdir);
-    Q_JSON_PROPERTY(MountList, mounts);
+    Q_JSON_PROPERTY(QList<QSharedPointer<Mount>>, mounts);
 };
 Q_JSON_DECLARE_PTR_METATYPE(AnnotationsOverlayfsRootfs)
 
@@ -107,7 +103,7 @@ class AnnotationsNativeRootfs : public JsonSerialize
 {
     Q_OBJECT;
     Q_JSON_CONSTRUCTOR(AnnotationsNativeRootfs)
-    Q_JSON_PROPERTY(MountList, mounts);
+    Q_JSON_PROPERTY(QList<QSharedPointer<Mount>>, mounts);
 };
 Q_JSON_DECLARE_PTR_METATYPE(AnnotationsNativeRootfs)
 
@@ -138,7 +134,6 @@ class Annotations : public JsonSerialize
 Q_JSON_DECLARE_PTR_METATYPE(Annotations)
 
 #undef linux
-
 class Runtime : public JsonSerialize
 {
     Q_OBJECT
@@ -147,35 +142,12 @@ class Runtime : public JsonSerialize
     Q_JSON_PTR_PROPERTY(Root, root);
     Q_JSON_PTR_PROPERTY(Process, process);
     Q_JSON_PROPERTY(QString, hostname);
-    Q_JSON_PROPERTY(MountList, mounts);
+    Q_JSON_PROPERTY(QList<QSharedPointer<Mount>>, mounts);
     Q_JSON_PTR_PROPERTY(Linux, linux);
     Q_JSON_PTR_PROPERTY(Hooks, hooks);
     Q_JSON_PTR_PROPERTY(Annotations, annotations);
 };
-Q_JSON_DECLARE_PTR_METATYPE(Runtime)
 
-namespace linglong {
-namespace runtime {
+Q_JSON_DECLARE_PTR_METATYPE(Runtime);
 
-inline void registerAllOciMetaType()
-{
-    static std::once_flag flag;
-    std::call_once(flag, []() {
-        qJsonRegister<Root>();
-        qJsonRegister<Linux>();
-        qJsonRegister<Mount>();
-        qJsonRegister<Namespace>();
-        qJsonRegister<Hook>();
-        qJsonRegister<Runtime>();
-        qJsonRegister<Process>();
-        qJsonRegister<IdMap>();
-        qJsonRegister<DBusProxy>();
-        qJsonRegister<Annotations>();
-        qJsonRegister<AnnotationsOverlayfsRootfs>();
-        qJsonRegister<AnnotationsNativeRootfs>();
-    });
-}
-
-} // namespace runtime
-} // namespace linglong
 #endif

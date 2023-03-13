@@ -51,10 +51,10 @@ private:
      * @return AppMetaInfo: 最新版本的runtime
      *
      */
-    linglong::package::AppMetaInfo *
+    QSharedPointer<linglong::package::AppMetaInfo>
     getLatestRuntime(const QString &appId,
                      const QString &version,
-                     const linglong::package::AppMetaInfoList &appList);
+                     const QList<QSharedPointer<linglong::package::AppMetaInfo>> &appList);
     /*
      * 从给定的软件包列表中查找最新版本的软件包
      *
@@ -64,8 +64,9 @@ private:
      * @return AppMetaInfo: 最新版本的软件包
      *
      */
-    linglong::package::AppMetaInfo *getLatestApp(const QString &appId,
-                                                 const linglong::package::AppMetaInfoList &appList);
+    QSharedPointer<linglong::package::AppMetaInfo>
+    getLatestApp(const QString &appId,
+                 const QList<QSharedPointer<linglong::package::AppMetaInfo>> &appList);
 
     /*
      * 从json字符串中提取软件包对应的JsonArray数据
@@ -88,7 +89,7 @@ private:
      * @return bool: true:成功 false:失败
      */
     bool loadAppInfo(const QString &jsonString,
-                     linglong::package::AppMetaInfoList &appList,
+                     QList<QSharedPointer<linglong::package::AppMetaInfo>> &appList,
                      QString &err);
 
     /*
@@ -134,7 +135,7 @@ private:
      *
      * @return bool: true:成功 false:失败
      */
-    bool installRuntime(linglong::package::AppMetaInfo *appInfo, QString &err);
+    bool installRuntime(QSharedPointer<linglong::package::AppMetaInfo> appInfo, QString &err);
 
     /*
      * 检查应用runtime安装状态

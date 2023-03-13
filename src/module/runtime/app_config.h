@@ -7,7 +7,7 @@
 #ifndef LINGLONG_SRC_MODULE_RUNTIME_APP_CONFIG_H_
 #define LINGLONG_SRC_MODULE_RUNTIME_APP_CONFIG_H_
 
-#include "module/util/serialize/json.h"
+#include "module/util/qserializer/deprecated.h"
 
 namespace linglong {
 namespace runtime {

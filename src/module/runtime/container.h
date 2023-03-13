@@ -8,7 +8,7 @@
 #define LINGLONG_SRC_MODULE_RUNTIME_CONTAINER_H_
 
 #include "module/util/error.h"
-#include "module/util/serialize/json.h"
+#include "module/util/qserializer/deprecated.h"
 
 #include <QDBusArgument>
 #include <QList>

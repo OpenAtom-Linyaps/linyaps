@@ -18,22 +18,22 @@ namespace builder {
 class DependFetcherPrivate
 {
 public:
-    explicit DependFetcherPrivate(const BuildDepend &bd, Project *parent)
-        : ref(fuzzyRef(&bd))
+    explicit DependFetcherPrivate(QSharedPointer<const BuildDepend> bd, Project *parent)
+        : ref(fuzzyRef(bd))
         , project(parent)
-        , buildDepend(&bd)
-        , dependType(bd.type)
+        , buildDepend(bd)
+        , dependType(bd->type)
     {
     }
 
     // TODO: dependType should be removed, buildDepend include it
     package::Ref ref;
     Project *project;
-    const BuildDepend *buildDepend;
+    QSharedPointer<const BuildDepend> buildDepend;
     QString dependType;
 };
 
-DependFetcher::DependFetcher(const BuildDepend &bd, Project *parent)
+DependFetcher::DependFetcher(QSharedPointer<const BuildDepend> bd, Project *parent)
     : QObject(parent)
     , dd_ptr(new DependFetcherPrivate(bd, parent))
 {
@@ -43,8 +43,6 @@ DependFetcher::~DependFetcher() = default;
 
 linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString &targetPath)
 {
-    auto ret = Success();
-
     repo::OSTreeRepo ostree(BuilderConfig::instance()->repoPath(),
                             BuilderConfig::instance()->remoteRepoEndpoint,
                             BuilderConfig::instance()->remoteRepoName);
@@ -70,18 +68,17 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
             dependRef = ostree.localLatestRef(dependRef);
 
             qInfo() << QString("offline dependency: %1 %2")
-                            .arg(dependRef.appId)
-                            .arg(dependRef.version);
+                               .arg(dependRef.appId)
+                               .arg(dependRef.version);
         } else {
             dependRef = ostree.remoteLatestRef(dependRef);
 
             qInfo() << QString("fetching dependency: %1 %2")
-                            .arg(dependRef.appId)
-                            .arg(dependRef.version);
-
-            ret = ostree.pullAll(dependRef, true);
-            if (!ret.success()) {
-                return WrapError(ret, "pull " + dependRef.toString() + " failed");
+                               .arg(dependRef.appId)
+                               .arg(dependRef.version);
+            auto err = ostree.pullAll(dependRef, true);
+            if (err) {
+                return WrapError(err, "pull " + dependRef.toString() + " failed");
             }
         }
     }
@@ -90,25 +87,33 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
     targetParentDir.cdUp();
     targetParentDir.mkpath(".");
 
-    ret = ostree.checkoutAll(dependRef, subPath, targetPath);
+    {
+        auto err = ostree.checkoutAll(dependRef, subPath, targetPath);
 
-    if (!ret.success()) {
-        return WrapError(ret,
-                         QString("ostree checkout %1 failed").arg(dependRef.toLocalRefString()));
+        if (err) {
+            return WrapError(
+                    err,
+                    QString("ostree checkout %1 failed").arg(dependRef.toLocalRefString()));
+        }
     }
+
     // for app,lib. if the dependType match runtime, should be submitted together.
     if (dd_ptr->dependType == DependTypeRuntime) {
         auto targetInstallPath = dd_ptr->project->config().cacheAbsoluteFilePath(
                 { "overlayfs", "up", dd_ptr->project->config().targetInstallPath("") });
-
-        ret = ostree.checkoutAll(dependRef, subPath, targetInstallPath);
+        {
+            auto err = ostree.checkoutAll(dependRef, subPath, targetInstallPath);
+            if (err) {
+                return WrapError(err,
+                                 QString("ostree checkout %1 with subpath '%2' to %3")
+                                         .arg(dependRef.toLocalRefString())
+                                         .arg(subPath)
+                                         .arg(targetPath));
+            }
+        }
     }
 
-    return WrapError(ret,
-                     QString("ostree checkout %1 with subpath '%2' to %3")
-                             .arg(dependRef.toLocalRefString())
-                             .arg(subPath)
-                             .arg(targetPath));
+    return {};
 }
 
 } // namespace builder

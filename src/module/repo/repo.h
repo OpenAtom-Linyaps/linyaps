@@ -46,8 +46,6 @@ public:
     virtual package::Ref latestOfRef(const QString &appId, const QString &appVersion) = 0;
 };
 
-void registerAllMetaType();
-
 } // namespace repo
 } // namespace linglong
 

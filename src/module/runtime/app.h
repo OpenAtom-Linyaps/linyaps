@@ -57,7 +57,7 @@ class AppPermission : public JsonSerialize
 {
     Q_OBJECT
     Q_JSON_CONSTRUCTOR(AppPermission)
-    Q_JSON_PROPERTY(linglong::runtime::MountYamlList, mounts);
+    Q_JSON_PROPERTY(QList<QSharedPointer<linglong::runtime::MountYaml>>, mounts);
 };
 
 } // namespace runtime
@@ -84,11 +84,11 @@ public:
     explicit App(QObject *parent = nullptr);
     ~App() override;
 
-    static App *load(linglong::repo::Repo *repo,
-                     const linglong::package::Ref &ref,
-                     const QString &desktopExec);
+    static QSharedPointer<App> load(linglong::repo::Repo *repo,
+                                    const linglong::package::Ref &ref,
+                                    const QString &desktopExec);
 
-    Container *container() const;
+    QSharedPointer<const Container> container() const;
 
     int start();
     void exec(QString cmd, QString env, QString cwd);

@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "module/dbus_ipc/register_meta_type.h"
 #include "module/jobmanageradaptor.h"
 #include "module/packagemanageradaptor.h"
 #include "module/repo/repo.h"
@@ -18,10 +17,6 @@ int main(int argc, char *argv[])
     QCoreApplication::setOrganizationName("deepin");
     // 安装消息处理函数
     LOG_HANDLER->installMessageHandler();
-
-    linglong::package::registerAllMetaType();
-    linglong::service::registerAllMetaType();
-    linglong::repo::registerAllMetaType();
 
     QDBusConnection dbus = QDBusConnection::systemBus();
     if (!dbus.registerService("org.deepin.linglong.PackageManager")) {

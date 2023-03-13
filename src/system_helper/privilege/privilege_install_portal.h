@@ -8,8 +8,7 @@
 #define LINGLONG_SRC_SYSTEM_HELPER_PRIVILEGE_PRIVILEGE_INSTALL_PORTAL_H_
 
 #include "module/util/error.h"
-#include "module/util/serialize/json.h"
-#include "module/util/serialize/serialize.h"
+#include "module/util/qserializer/deprecated.h"
 
 #include <QString>
 #include <QVariantMap>
@@ -34,7 +33,8 @@ class PortalRule : public Serialize
     Q_SERIALIZE_CONSTRUCTOR(PortalRule)
 public:
     Q_SERIALIZE_PROPERTY(QStringList, whiteList)
-    Q_SERIALIZE_PROPERTY(linglong::system::helper::FilePortalRuleList, fileRuleList)
+    Q_SERIALIZE_PROPERTY(QList<QSharedPointer<linglong::system::helper::FilePortalRule>>,
+                         fileRuleList)
 };
 Q_SERIALIZE_DECLARE_LIST_MAP(PortalRule)
 
@@ -48,12 +48,4 @@ util::Error ruinPrivilegeInstallPortal(const QString &repoRoot,
 } // namespace helper
 } // namespace system
 } // namespace linglong
-
-Q_SERIALIZE_REGISTER_TYPE(linglong::system::helper::FilePortalRule,
-                          linglong::system::helper::FilePortalRuleList,
-                          linglong::system::helper::FilePortalRuleStrMap)
-Q_SERIALIZE_REGISTER_TYPE(linglong::system::helper::PortalRule,
-                          linglong::system::helper::PortalRuleList,
-                          linglong::system::helper::PortalRuleStrMap)
-
 #endif // LINGLONG_SRC_SYSTEM_HELPER_PRIVILEGE_PRIVILEGE_INSTALL_PORTAL_H_

@@ -1,3 +1,27 @@
+linglong (1.3.6-1) unstable; urgency=medium
+
+  1.3.x versions will be maintained to be work on deepin/uos v20 based
+  distribution, while the 1.4.x and later versions will be aggressively
+  refactored.
+
+  All bug fix commits will be backport to 1.3.x until the refactored versions
+  ready.
+
+  * fix: ll-cli update with the wrong version
+  * fix: optimize the prompt of builder
+  * fix: void qt keywords as gio using signals
+  * fix: add missing includes
+  * fix(builder): read config from /usr/local/etc
+  * fix(builder): add config files of builder to qrc
+  * feat: track the latest submission
+  * fix: some application data files should be shared
+  * feat: support for build with different repositories
+  * fix: shortcuts created by some apps have no icons
+  * chore: update remote repository
+  * fix: failed to run org.deepin.manual
+
+ -- chenlinxuan <chenlinxuan@uniontech.com>  Mon, 03 Mar 2023 09:46:23 +0800
+
 linglong (1.3.5.1-1) unstable; urgency=medium
 
   * when launching the application for the second time, use the

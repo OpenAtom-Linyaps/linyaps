@@ -23,7 +23,7 @@ class CommandHelper : public QObject, public linglong::util::Singleton<CommandHe
     friend class linglong::util::Singleton<CommandHelper>;
 
 public:
-    void showContainer(const ContainerList &list, const QString &format);
+    void showContainer(const QList<QSharedPointer<Container>> &list, const QString &format);
     int namespaceEnter(pid_t pid, const QStringList &args);
     QStringList getUserEnv(const QStringList &envList);
 

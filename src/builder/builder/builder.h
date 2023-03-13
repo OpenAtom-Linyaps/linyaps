@@ -37,8 +37,6 @@ public:
     virtual linglong::util::Error run() = 0;
 };
 
-void registerAllMetaType();
-
 } // namespace builder
 } // namespace linglong
 

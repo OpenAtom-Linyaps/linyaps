@@ -9,13 +9,24 @@
 #include "builder_config.h"
 #include "module/package/ref.h"
 #include "module/util/file.h"
-#include "module/util/serialize/yaml.h"
+#include "module/util/qserializer/yaml.h"
 #include "module/util/sysinfo.h"
 
 #include <QDebug>
 
 namespace linglong {
 namespace builder {
+
+QSERIALIZER_IMPL(Variables);
+QSERIALIZER_IMPL(Enviroment);
+QSERIALIZER_IMPL(Package);
+QSERIALIZER_IMPL(BuilderRuntime);
+QSERIALIZER_IMPL(Source);
+QSERIALIZER_IMPL(BuildManual);
+QSERIALIZER_IMPL(Build);
+QSERIALIZER_IMPL(BuildDepend);
+QSERIALIZER_IMPL(Project);
+QSERIALIZER_IMPL(Template);
 
 const char *const DependTypeRuntime = "runtime";
 
@@ -117,7 +128,7 @@ public:
                 QStringList{ BuilderConfig::instance()->templatePath(), templateName }.join(
                         QDir::separator());
 
-        QScopedPointer<Template> temp;
+        QSharedPointer<Template> temp;
         YAML::Node tempNode;
 
         if (QFileInfo::exists(templatePath)) {
@@ -135,21 +146,18 @@ public:
             templateFile.close();
         }
 
-        temp.reset(formYaml<Template>(tempNode));
+        temp = QVariant::fromValue(tempNode).value<QSharedPointer<Template>>();
 
         if (q_ptr->variables == nullptr) {
-            auto variable = new Variables();
-            q_ptr->variables = variable;
+            q_ptr->variables.reset(new Variables());
         }
 
         if (q_ptr->enviroment == nullptr) {
-            auto enviroment = new Enviroment();
-            q_ptr->enviroment = enviroment;
+            q_ptr->enviroment.reset(new Enviroment());
         }
 
         if (q_ptr->build->manual == nullptr) {
-            auto buildManual = new BuildManual();
-            q_ptr->build->manual = buildManual;
+            q_ptr->build->manual.reset(new BuildManual());
         }
 
         Q_ASSERT(temp->variables != nullptr);
@@ -214,11 +222,6 @@ public:
     Project::Config cfg;
     Project *q_ptr = nullptr;
 };
-
-void Project::onPostSerialize()
-{
-    dd_ptr.reset(new ProjectPrivate(this));
-}
 
 void Project::generateBuildScript()
 {

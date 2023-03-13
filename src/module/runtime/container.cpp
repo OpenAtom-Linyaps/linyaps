@@ -11,6 +11,8 @@
 #include "module/util/uuid.h"
 #include "module/util/xdg.h"
 
+QSERIALIZER_IMPL(Container);
+
 linglong::util::Error Container::create(const QString &ref)
 {
     auto containerID = linglong::util::genUuid();

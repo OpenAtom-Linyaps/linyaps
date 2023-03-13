@@ -10,6 +10,7 @@
 
 #include <QDebug>
 #include <QJsonArray>
+#include <QJsonObject>
 
 #include <fcntl.h>
 #include <grp.h>
@@ -41,7 +42,8 @@ int CommandHelper::bringDownPermissionsTo(const struct stat &fileStat)
     return 0;
 }
 
-void CommandHelper::showContainer(const ContainerList &containerList, const QString &format)
+void CommandHelper::showContainer(const QList<QSharedPointer<Container>> &containerList,
+                                  const QString &format)
 {
     QJsonArray jsonArray;
     for (auto const &container : containerList) {
@@ -94,13 +96,9 @@ int CommandHelper::namespaceEnter(pid_t pid, const QStringList &args)
     }
 
     QStringList nameSpaceList = {
-        "mnt",
-        "ipc",
-        "uts",
-        "pid",
+        "mnt", "ipc", "uts", "pid", "net",
+        // "user",
         // TODO: is hard to set user namespace, need carefully fork and unshare
-        //        "user",
-        "net",
     };
 
     QList<int> fds;

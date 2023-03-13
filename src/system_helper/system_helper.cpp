@@ -24,7 +24,7 @@ void SystemHelper::RebuildInstallPortal(const QString &installPath,
 {
     qDebug() << "call PostInstall" << installPath << ref << options;
     const auto err = rebuildPrivilegeInstallPortal(installPath, ref, options);
-    if (!err.success()) {
+    if (err) {
         sendErrorReply(static_cast<QDBusError::ErrorType>(err.code()), err.message());
     }
 }
@@ -41,7 +41,7 @@ void SystemHelper::RuinInstallPortal(const QString &installPath,
                                      const QVariantMap &options)
 {
     const auto err = ruinPrivilegeInstallPortal(installPath, ref, options);
-    if (!err.success()) {
+    if (err) {
         sendErrorReply(static_cast<QDBusError::ErrorType>(err.code()), err.message());
     }
 }

@@ -13,6 +13,7 @@
 #include "module/util/file.h"
 #include "module/util/http/http_client.h"
 #include "module/util/http/httpclient.h"
+#include "module/util/qserializer/json.h"
 #include "module/util/runner.h"
 #include "module/util/sysinfo.h"
 #include "module/util/version/semver.h"
@@ -32,6 +33,16 @@
 
 namespace linglong {
 namespace repo {
+
+QSERIALIZER_IMPL(InfoResponse);
+QSERIALIZER_IMPL(RevPair);
+QSERIALIZER_IMPL(UploadResponseData);
+QSERIALIZER_IMPL(AuthResponseData);
+
+QSERIALIZER_IMPL(UploadTaskRequest);
+QSERIALIZER_IMPL(UploadRequest);
+QSERIALIZER_IMPL(UploadTaskResponse);
+QSERIALIZER_IMPL(AuthResponse);
 
 struct OstreeRepoObject
 {
@@ -346,7 +357,7 @@ private:
         return Success();
     }
 
-    InfoResponse *getRepoInfo(const QString &repoName)
+    QSharedPointer<InfoResponse> getRepoInfo(const QString &repoName)
     {
         QUrl url(QString("%1/%2/%3").arg(remoteEndpoint, "api/v1/repos", repoName));
 
@@ -355,22 +366,24 @@ private:
         auto reply = httpClient.get(request);
         auto data = reply->readAll();
         qDebug() << "url" << url << "repo info" << data;
-        auto info = util::loadJsonBytes<InfoResponse>(data);
-        return info;
+        {
+            auto [info, err] = util::fromJSON<QSharedPointer<InfoResponse>>(data);
+            return info;
+        }
     }
 
-    std::tuple<QString, util::Error> newUploadTask(UploadRequest *req)
+    std::tuple<QString, util::Error> newUploadTask(QSharedPointer<UploadRequest> req)
     {
         QUrl url(QString("%1/api/v1/upload-tasks").arg(remoteEndpoint));
         QNetworkRequest request(url);
         qDebug() << "upload url" << url;
-        auto data = QJsonDocument(toVariant(req).toJsonObject()).toJson();
+        auto data = std::get<0>(util::toJSON(req));
 
         request.setRawHeader(QByteArray("X-Token"), remoteToken.toLocal8Bit());
         auto reply = httpClient.post(request, data);
         data = reply->readAll();
 
-        QScopedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
+        auto info(util::loadJsonBytes<UploadTaskResponse>(data));
         qDebug() << "new upload task" << data;
         if (info->code != 200) {
             return { QString(), NewError(-1, info->msg) };
@@ -379,18 +392,19 @@ private:
         return { info->data->id, Success() };
     }
 
-    std::tuple<QString, util::Error> newUploadTask(const QString &repoName, UploadTaskRequest *req)
+    std::tuple<QString, util::Error> newUploadTask(const QString &repoName,
+                                                   QSharedPointer<UploadTaskRequest> req)
     {
         QUrl url(QString("%1/api/v1/blob/%2/upload").arg(remoteEndpoint, repoName));
         QNetworkRequest request(url);
 
-        auto data = QJsonDocument(toVariant(req).toJsonObject()).toJson();
+        auto data = std::get<0>(util::toJSON(req));
 
         request.setRawHeader(QByteArray("X-Token"), remoteToken.toLocal8Bit());
         auto reply = httpClient.post(request, data);
         data = reply->readAll();
 
-        QScopedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
+        QSharedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
         qDebug() << "new upload task" << data;
         if (info->code != 200) {
             return { QString(), NewError(-1, info->msg) };
@@ -432,7 +446,7 @@ private:
 
         qDebug() << "doUpload" << data;
 
-        QScopedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
+        QSharedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
 
         return Success();
     }
@@ -491,7 +505,7 @@ private:
 
         qDebug() << "doUpload" << data;
 
-        QScopedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
+        QSharedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
         if (200 != info->code) {
             return NewError(-1, info->msg);
         }
@@ -614,7 +628,7 @@ linglong::util::Error OSTreeRepo::renameBranch(const package::Ref &oldRef,
                               newRef.toOSTreeRefLocalString(),
                               "--canonical-permissions",
                               "--tree=ref=" + oldRef.toLocalFullRef() });
-    qInfo() << ret.success();
+    qInfo() << ret;
     return ret;
 }
 
@@ -643,47 +657,54 @@ linglong::util::Error OSTreeRepo::push(const package::Ref &ref)
     Q_D(OSTreeRepo);
 
     auto ret = d->getToken();
-    if (!ret.success()) {
+    if (ret) {
         return WrapError(ret, "get token failed");
     }
 
-    util::Error err;
-    UploadRequest uploadReq;
+    QSharedPointer<UploadRequest> uploadReq(new UploadRequest);
 
-    uploadReq.repoName = d->remoteRepoName;
-    uploadReq.ref = ref.toOSTreeRefLocalString();
+    uploadReq->repoName = d->remoteRepoName;
+    uploadReq->ref = ref.toOSTreeRefLocalString();
 
     // FIXME: no need,use /v1/meta/:id
-    QScopedPointer<InfoResponse> repoInfo(d->getRepoInfo(d->remoteRepoName));
+    QSharedPointer<InfoResponse> repoInfo(d->getRepoInfo(d->remoteRepoName));
     if (repoInfo->code != 200) {
         return NewError(-1, repoInfo->msg);
     }
 
     // send files
     QString taskID;
-    std::tie(taskID, err) = d->newUploadTask(&uploadReq);
-    if (!err.success()) {
-        return WrapError(err, "call newUploadTask failed");
+    {
+        auto [result, err] = d->newUploadTask(uploadReq);
+        if (err) {
+            return WrapError(err, "call newUploadTask failed");
+        }
+        taskID = std::move(result);
     }
 
     // compress form data
     QString filePath;
-    std::tie(filePath, err) = compressOstreeData(ref);
-    if (!err.success()) {
-        return WrapError(err, "compress ostree data failed");
+    {
+        auto [result, err] = compressOstreeData(ref);
+        if (err) {
+            return WrapError(err, "compress ostree data failed");
+        }
+        filePath = std::move(result);
     }
 
-    auto uploadStatus = d->doUploadTask(taskID, filePath);
-    if (!uploadStatus.success()) {
-        // d->cleanUploadTask(d->remoteRepoName, taskID);
-        return WrapError(uploadStatus, "call doUploadTask failed");
+    {
+        auto err = d->doUploadTask(taskID, filePath);
+        if (err) {
+            return WrapError(err, "call doUploadTask failed");
+        }
     }
 
-    auto getUploadStatus = d->getUploadStatus(taskID);
-
-    if (!getUploadStatus.success()) {
-        d->cleanUploadTask(ref, filePath);
-        return getUploadStatus;
+    {
+        auto err = d->getUploadStatus(taskID);
+        if (err) {
+            d->cleanUploadTask(ref, filePath);
+            return err;
+        }
     }
 
     return WrapError(d->cleanUploadTask(ref, filePath), "call cleanUploadTask failed");
@@ -693,57 +714,69 @@ linglong::util::Error OSTreeRepo::push(const package::Ref &ref, bool /*force*/)
 {
     Q_D(OSTreeRepo);
 
-    auto ret = d->getToken();
-    if (!ret.success()) {
-        return WrapError(ret, "get token failed");
+    {
+        auto err = d->getToken();
+        if (err) {
+            return WrapError(err, "get token failed");
+        }
     }
 
-    util::Error err;
-    QList<OstreeRepoObject> objects;
-    UploadTaskRequest uploadTaskReq;
+    QSharedPointer<UploadTaskRequest> uploadTaskReq(new UploadTaskRequest);
 
     // FIXME: no need,use /v1/meta/:id
-    QScopedPointer<InfoResponse> repoInfo(d->getRepoInfo(d->remoteRepoName));
+    QSharedPointer<InfoResponse> repoInfo(d->getRepoInfo(d->remoteRepoName));
     if (repoInfo->code != 200) {
         return NewError(-1, repoInfo->msg);
     }
 
     QString commitID;
-    std::tie(commitID, err) = d->resolveRev(ref.toOSTreeRefLocalString());
-    if (!err.success()) {
-        return WrapError(err, "push failed:" + ref.toOSTreeRefLocalString());
+    {
+        auto [result, err] = d->resolveRev(ref.toOSTreeRefLocalString());
+        if (err) {
+            return WrapError(err, "push failed:" + ref.toOSTreeRefLocalString());
+        }
+        commitID = result;
     }
     qDebug() << "push commit" << commitID << ref.toOSTreeRefLocalString();
 
-    auto revPair = new RevPair(&uploadTaskReq);
+    auto revPair = QSharedPointer<RevPair>(new RevPair);
 
     // upload msg, should specific channel in ref
-    uploadTaskReq.refs[ref.toOSTreeRefLocalString()] = revPair;
+    uploadTaskReq->refs[ref.toOSTreeRefLocalString()] = revPair;
     revPair->client = commitID;
     // FIXME: get server version to compare
     revPair->server = "";
 
-    // find files to commit
-    std::tie(objects, err) = d->findObjectsOfCommits({ commitID });
-    if (!err.success()) {
-        return WrapError(err, "call findObjectsOfCommits failed");
+    QList<OstreeRepoObject> objects;
+    {
+        // find files to commit
+        auto [result, err] = d->findObjectsOfCommits({ commitID });
+        if (err) {
+            return WrapError(err, "call findObjectsOfCommits failed");
+        }
+        objects = result;
     }
 
     for (auto const &obj : objects) {
-        uploadTaskReq.objects.push_back(obj.objectName);
+        uploadTaskReq->objects.push_back(obj.objectName);
     }
 
     // send files
     QString taskID;
-    std::tie(taskID, err) = d->newUploadTask(d->remoteRepoName, &uploadTaskReq);
-    if (!err.success()) {
-        return WrapError(err, "call newUploadTask failed");
+    {
+        auto [result, err] = d->newUploadTask(d->remoteRepoName, uploadTaskReq);
+        if (err) {
+            return WrapError(err, "call newUploadTask failed");
+        }
+        taskID = result;
     }
 
-    auto uploadStatus = d->doUploadTask(d->remoteRepoName, taskID, objects);
-    if (!uploadStatus.success()) {
-        d->cleanUploadTask(d->remoteRepoName, taskID);
-        return WrapError(uploadStatus, "call newUploadTask failed");
+    {
+        auto err = d->doUploadTask(d->remoteRepoName, taskID, objects);
+        if (err) {
+            d->cleanUploadTask(d->remoteRepoName, taskID);
+            return WrapError(err, "call newUploadTask failed");
+        }
     }
 
     return WrapError(d->cleanUploadTask(d->remoteRepoName, taskID), "call cleanUploadTask failed");
@@ -770,7 +803,7 @@ linglong::util::Error OSTreeRepo::pull(const package::Ref &ref, bool /*force*/)
     while (retry--) {
         qDebug() << "remaining retries" << retry;
         err = WrapError(d->ostreeRun({ "pull", ref.toString() }), "");
-        if (err.success()) {
+        if (err) {
             break;
         }
     }
@@ -783,14 +816,14 @@ linglong::util::Error OSTreeRepo::pullAll(const package::Ref &ref, bool /*force*
 
     // FIXME(black-desk): pullAll should not belong to this class.
 
-    auto ret = pull(package::Ref(QStringList{ ref.toString(), "runtime" }.join("/")), false);
-    if (!ret.success()) {
-        return ret;
+    auto err = pull(package::Ref(QStringList{ ref.toString(), "runtime" }.join("/")), false);
+    if (err) {
+        return err;
     }
 
-    ret = pull(package::Ref(QStringList{ ref.toString(), "devel" }.join("/")), false);
+    // FIXME: some old package have no devel, ignore error for now.
+    auto _ = pull(package::Ref(QStringList{ ref.toString(), "devel" }.join("/")), false);
 
-    // Fixme: some old package have no devel, ignore error for now.
     return Success();
 }
 
@@ -859,13 +892,13 @@ linglong::util::Error OSTreeRepo::checkoutAll(const package::Ref &ref,
         develArgs.push_back("--subpath=" + subPath);
     }
 
-    auto ret = d->ostreeRun(runtimeArgs);
+    auto err = d->ostreeRun(runtimeArgs);
 
-    if (!ret.success()) {
-        return WrapError(ret, "");
+    if (err) {
+        return WrapError(err, "");
     }
 
-    ret = d->ostreeRun(develArgs);
+    err = d->ostreeRun(develArgs);
 
     // Fixme: some old package have no devel, ignore error for now.
     return Success();
@@ -947,10 +980,9 @@ package::Ref OSTreeRepo::remoteLatestRef(const package::Ref &ref)
         return package::Ref(ref.repo, ref.channel, ref.appId, latestVer, ref.arch, ref.module);
     }
 
-    auto retObject = QJsonDocument::fromJson(ret.toUtf8()).object();
-
-    auto infoList =
-            fromVariantList<linglong::package::InfoList>(retObject.value(QStringLiteral("data")));
+    // FIXME(black_desk): handle error
+    auto infoList = std::get<0>(
+            util::fromJSON<QList<QSharedPointer<linglong::package::Info>>>(ret.toUtf8()));
 
     for (auto info : infoList) {
         Q_ASSERT(info != nullptr);
@@ -1003,9 +1035,9 @@ package::Ref OSTreeRepo::latestOfRef(const QString &appId, const QString &appVer
 linglong::util::Error OSTreeRepo::removeRef(const package::Ref &ref)
 {
     QStringList args = { "refs", "--delete", ref.toString() };
-    auto ret = dd_ptr->ostreeRun(args);
-    if (!ret.success()) {
-        return WrapError(ret, "delete refs failed");
+    auto err = dd_ptr->ostreeRun(args);
+    if (err) {
+        return WrapError(err, "delete refs failed");
     }
 
     args = QStringList{ "prune" };
@@ -1017,9 +1049,9 @@ std::tuple<linglong::util::Error, QStringList> OSTreeRepo::remoteList()
     QStringList remoteList;
     QStringList args = { "remote", "list" };
     QByteArray output;
-    auto ret = dd_ptr->ostreeRun(args, &output);
-    if (!ret.success()) {
-        return { WrapError(ret, "remote list failed"), QStringList{} };
+    auto err = dd_ptr->ostreeRun(args, &output);
+    if (err) {
+        return { WrapError(err, "remote list failed"), QStringList{} };
     }
 
     for (const auto &item : QString::fromLocal8Bit(output).trimmed().split('\n')) {
@@ -1039,9 +1071,9 @@ std::tuple<QString, util::Error> OSTreeRepo::compressOstreeData(const package::R
             QDir::separator());
     util::ensureDir(savePath);
 
-    auto ret =
+    auto err =
             checkout(package::Ref("", ref.appId, ref.version, ref.arch, ref.module), "", savePath);
-    if (!ret.success()) {
+    if (err) {
         return { QString(),
                  NewError(-1, QString("checkout %1 to %2 failed").arg(ref.appId).arg(savePath)) };
     }

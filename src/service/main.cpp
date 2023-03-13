@@ -5,8 +5,6 @@
  */
 
 #include "module/appmanageradaptor.h"
-#include "module/dbus_ipc/register_meta_type.h"
-#include "module/runtime/runtime.h"
 #include "module/util/log/log_handler.h"
 
 #include <QCoreApplication>
@@ -18,10 +16,6 @@ int main(int argc, char *argv[])
 
     // 安装消息处理函数
     LOG_HANDLER->installMessageHandler();
-
-    linglong::runtime::registerAllMetaType();
-    linglong::package::registerAllMetaType();
-    linglong::service::registerAllMetaType();
 
     QDBusConnection dbus = QDBusConnection::sessionBus();
     if (!dbus.registerService("org.deepin.linglong.AppManager")) {

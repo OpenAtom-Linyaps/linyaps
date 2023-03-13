@@ -22,7 +22,7 @@ public:
     ~AppManagerPrivate() override = default;
 
 private:
-    QMap<QString, QPointer<linglong::runtime::App>> apps;
+    QMap<QString, QSharedPointer<linglong::runtime::App>> apps;
     linglong::repo::OSTreeRepo repo;
 
 public:

@@ -10,6 +10,7 @@
 #include "module/package/info.h"
 #include "module/util/file.h"
 #include "module/util/http/httpclient.h"
+#include "module/util/qserializer/json.h"
 #include "module/util/status_code.h"
 
 #include <curl/curl.h>
@@ -61,9 +62,9 @@ linglong::util::Error Bundle::save(const QString & /*path*/)
 linglong::util::Error Bundle::make(const QString &dataPath, const QString &outputFilePath)
 {
     Q_D(Bundle);
-    auto ret = d->make(dataPath, outputFilePath);
-    if (!ret.success()) {
-        return WrapError(ret, "make");
+    auto err = d->make(dataPath, outputFilePath);
+    if (err) {
+        return WrapError(err, "make");
     }
     return Success();
 }
@@ -74,9 +75,9 @@ linglong::util::Error Bundle::push(const QString &bundleFilePath,
                                    bool force)
 {
     Q_D(Bundle);
-    auto ret = d->push(bundleFilePath, repoUrl, repoChannel, force);
-    if (!ret.success()) {
-        return ret;
+    auto err = d->push(bundleFilePath, repoUrl, repoChannel, force);
+    if (err) {
+        return err;
     }
     return Success();
 }
@@ -107,8 +108,17 @@ linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString
     }
 
     // 转换info.json为Info对象
-    QScopedPointer<package::Info> info(
-            util::loadJson<package::Info>(this->bundleDataPath + QString(configJson)));
+    auto info = QSharedPointer<package::Info>();
+
+    {
+        auto [result, err] = util::fromJSON<QSharedPointer<package::Info>>(this->bundleDataPath
+                                                                           + QString(configJson));
+        if (err) {
+            return WrapError(err, "fromJSON");
+        }
+
+        info = result;
+    }
 
     // 获取编译机器架构
     this->buildArch = QSysInfo::buildCpuArchitecture();
@@ -141,24 +151,27 @@ linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString
         QFile::remove(this->bundleFilePath);
     }
 
-    // 制作squashfs文件
-    auto resultMkfs = runner("mkfs.erofs",
-                             { "-zlz4hc,9", this->erofsFilePath, this->bundleDataPath },
-                             15 * 60 * 1000);
-    if (!resultMkfs.success()) {
-        return WrapError(resultMkfs, "call mkfs.erofs failed");
+    {
+        // 制作squashfs文件
+        auto err = runner("mkfs.erofs",
+                          { "-zlz4hc,9", this->erofsFilePath, this->bundleDataPath },
+                          15 * 60 * 1000);
+        if (err) {
+            return WrapError(err, "call mkfs.erofs failed");
+        }
     }
-
-    // 生产bundle文件
-    auto resultObjcopy = runner("objcopy",
-                                { "--add-section",
-                                  QStringList{ ".bundle=", this->erofsFilePath }.join(""),
-                                  "--set-section-flags",
-                                  ".bundle=noload,readonly",
-                                  this->linglongLoader,
-                                  this->bundleFilePath });
-    if (!resultObjcopy.success()) {
-        return WrapError(resultObjcopy, "call objcopy failed");
+    {
+        // 生产bundle文件
+        auto err = runner("objcopy",
+                          { "--add-section",
+                            QStringList{ ".bundle=", this->erofsFilePath }.join(""),
+                            "--set-section-flags",
+                            ".bundle=noload,readonly",
+                            this->linglongLoader,
+                            this->bundleFilePath });
+        if (err) {
+            return WrapError(err, "call objcopy failed");
+        }
     }
 
     // 清理squashfs文件
@@ -230,7 +243,6 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
 {
     auto userInfo = util::getUserInfo();
 
-    // 从配置文件获取服务器域名url
     QString configUrl = repoUrl;
     if (configUrl.isEmpty()) {
         int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
@@ -285,32 +297,43 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
     if (util::dirExists(this->bundleDataPath)) {
         util::removeDir(this->bundleDataPath);
     }
-    auto resultUnsquashfs =
-            runner("unsquashfs", { "-dest", this->bundleDataPath, "-f", this->erofsFilePath });
 
-    if (!resultUnsquashfs.success()) {
-        if (util::dirExists(this->tmpWorkDir)) {
-            util::removeDir(this->tmpWorkDir);
+    {
+        auto err =
+                runner("unsquashfs", { "-dest", this->bundleDataPath, "-f", this->erofsFilePath });
+
+        if (err) {
+            if (util::dirExists(this->tmpWorkDir)) {
+                util::removeDir(this->tmpWorkDir);
+            }
+            return WrapError(err, "call unsquashfs failed");
         }
-        return WrapError(resultUnsquashfs, "call unsquashfs failed");
     }
 
     // 转换info.json为Info对象
-    QScopedPointer<package::Info> runtimeInfo(util::loadJson<package::Info>(
-            QStringList{ this->bundleDataPath, "runtime", configJson }.join("/")));
-    QScopedPointer<package::Info> develInfo(util::loadJson<package::Info>(
-            QStringList{ this->bundleDataPath, "devel", configJson }.join("/")));
+    auto [result, err] = util::fromJSON<QSharedPointer<package::Info>>(
+            QStringList{ this->bundleDataPath, "runtime", configJson }.join("/"));
+    if (err) {
+        return WrapError(err, "fromJSON");
+    }
+    auto runtimeInfo = result;
+
+    std::tie(result, err) = util::fromJSON<QSharedPointer<package::Info>>(
+            QStringList{ this->bundleDataPath, "devel", configJson }.join("/"));
+    if (err) {
+        return WrapError(err, "fromJSON");
+    }
+    auto develInfo = result;
 
     // 建立临时仓库
-    auto resultMakeRepo =
-            runner("ostree",
-                   { "--repo=" + this->tmpWorkDir + "/repo", "init", "--mode=archive" },
-                   3000);
-    if (!resultMakeRepo.success()) {
+    err = runner("ostree",
+                 { "--repo=" + this->tmpWorkDir + "/repo", "init", "--mode=archive" },
+                 3000);
+    if (err) {
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
         }
-        return WrapError(resultMakeRepo, "call ostree init failed");
+        return WrapError(err, "call ostree init failed");
     }
 
     // 推送数据到临时仓库
@@ -341,25 +364,29 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
                            .join(QDir::separator()))
                << QString("--tree=dir=") + this->bundleDataPath + "/devel";
 
-    auto resultCommit = runner("ostree", arguments);
-    resultCommit = runner("ostree", commitArgs);
-    if (!resultCommit.success()) {
-        if (util::dirExists(this->tmpWorkDir)) {
-            util::removeDir(this->tmpWorkDir);
+    {
+        auto err = runner("ostree", arguments);
+        err = runner("ostree", commitArgs);
+        if (err) {
+            if (util::dirExists(this->tmpWorkDir)) {
+                util::removeDir(this->tmpWorkDir);
+            }
+            return WrapError(err, "call ostree commit failed");
         }
-        return WrapError(resultCommit, "call ostree commit failed");
     }
 
     // 压缩仓库为repo.tar
     arguments.clear();
     arguments << "-cvpf" << this->tmpWorkDir + "/repo.tar"
               << "-C" + this->tmpWorkDir << "repo";
-    auto resultTar = runner("pwd", arguments);
-    if (!resultTar.success()) {
-        if (util::dirExists(this->tmpWorkDir)) {
-            util::removeDir(this->tmpWorkDir);
+    {
+        auto err = runner("pwd", arguments);
+        if (err) {
+            if (util::dirExists(this->tmpWorkDir)) {
+                util::removeDir(this->tmpWorkDir);
+            }
+            return WrapError(err, "call tar cvf failed");
         }
-        return WrapError(resultTar, "call tar cvf failed");
     }
 
     // 上传repo.tar文件
@@ -384,8 +411,10 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
     }
 
     // 上传bundle信息到服务器
-    auto runtimeJson = QJsonDocument::fromJson(package::Info::dump(runtimeInfo.data()));
-    auto develJson = QJsonDocument::fromJson(package::Info::dump(develInfo.data()));
+    auto runtimeJson =
+            QJsonDocument::fromJson(std::get<0>(util::toJSON(runtimeInfo))); // FIXME: handle error
+    auto develJson =
+            QJsonDocument::fromJson(std::get<0>(util::toJSON(develInfo))); // FIXME: handle error
 
     auto runtimeJsonObject = runtimeJson.object();
     auto develJsonObject = develJson.object();

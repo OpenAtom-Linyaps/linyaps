@@ -10,9 +10,8 @@
 #include "builder/project.h"
 #include "module/package/package.h"
 #include "module/repo/repo.h"
-#include "module/runtime/runtime.h"
 #include "module/util/log/log_handler.h"
-#include "module/util/serialize/yaml.h"
+#include "module/util/qserializer/yaml.h"
 
 #include <QCommandLineOption>
 #include <QCommandLineParser>
@@ -22,14 +21,6 @@
 
 #include <fstream>
 
-static void qJsonRegisterAll()
-{
-    linglong::builder::registerAllMetaType();
-    linglong::package::registerAllMetaType();
-    linglong::runtime::registerAllMetaType();
-    linglong::repo::registerAllMetaType();
-}
-
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
@@ -37,8 +28,6 @@ int main(int argc, char **argv)
 
     // 安装消息处理函数
     LOG_HANDLER->installMessageHandler();
-
-    qJsonRegisterAll();
 
     linglong::builder::BuilderConfig::instance()->setProjectRoot(QDir::currentPath());
 
@@ -82,13 +71,13 @@ int main(int argc, char **argv)
                   parser.showHelp(-1);
               }
 
-              auto result = builder->create(projectName);
+              auto err = builder->create(projectName);
 
-              if (!result.success()) {
-                  qDebug() << result;
+              if (err) {
+                  qDebug() << err;
               }
 
-              return result.code();
+              return err.code();
           } },
         { "build",
           [&](QCommandLineParser &parser) -> int {
@@ -115,7 +104,7 @@ int main(int argc, char **argv)
                   linglong::builder::BuilderConfig::instance()->setExec(parser.value(execVerbose));
               }
               linglong::builder::BuilderConfig::instance()->setOffline(parser.isSet(buildOffline));
-              
+
               // config linglong.yaml before build if necessary
               if (parser.isSet(pkgVersion) || parser.isSet(srcVersion) || parser.isSet(srcCommit)) {
                   auto projectConfigPath =
@@ -130,9 +119,9 @@ int main(int argc, char **argv)
                       return -1;
                   }
 
-                  QScopedPointer<linglong::builder::Project> project(
-                          formYaml<linglong::builder::Project>(
-                                  YAML::LoadFile(projectConfigPath.toStdString())));
+                  QSharedPointer<linglong::builder::Project> project(
+                          QVariant::fromValue(YAML::LoadFile(projectConfigPath.toStdString()))
+                                  .value<QSharedPointer<linglong::builder::Project>>());
 
                   auto node = YAML::LoadFile(projectConfigPath.toStdString());
 
@@ -153,12 +142,12 @@ int main(int argc, char **argv)
                   std::ofstream fout(projectConfigPath.toStdString());
                   fout << node;
               }
-              auto result = builder->build();
-              if (!result.success()) {
-                  qCritical() << result;
+              auto err = builder->build();
+              if (err) {
+                  qCritical() << err;
               }
 
-              return result.code();
+              return err.code();
           } },
         { "run",
           [&](QCommandLineParser &parser) -> int {
@@ -175,12 +164,12 @@ int main(int argc, char **argv)
                   linglong::builder::BuilderConfig::instance()->setExec(parser.value(execVerbose));
               }
 
-              auto result = builder->run();
-              if (!result.success()) {
-                  qCritical() << result;
+              auto err = builder->run();
+              if (err) {
+                  qCritical() << err;
               }
 
-              return result.code();
+              return err.code();
           } },
         { "export",
           [&](QCommandLineParser &parser) -> int {
@@ -204,11 +193,11 @@ int main(int argc, char **argv)
                   useLocalDir = true;
               }
 
-              auto result = builder->exportBundle(outputFilepath, useLocalDir);
-              if (!result.success()) {
-                  qCritical() << result;
+              auto err = builder->exportBundle(outputFilepath, useLocalDir);
+              if (err) {
+                  qCritical() << err;
               }
-              return result.code();
+              return err.code();
           } },
         { "config",
           [&](QCommandLineParser &parser) -> int {
@@ -223,12 +212,12 @@ int main(int argc, char **argv)
               parser.process(app);
               auto userName = parser.value(optUserName);
               auto userPassword = parser.value(optUserPassword);
-              auto result = builder->config(userName, userPassword);
-              if (!result.success()) {
-                  qCritical() << result;
+              auto err = builder->config(userName, userPassword);
+              if (err) {
+                  qCritical() << err;
               }
 
-              return result.code();
+              return err.code();
           } },
         { "import",
           [&](QCommandLineParser &parser) -> int {
@@ -238,12 +227,12 @@ int main(int argc, char **argv)
 
               parser.process(app);
 
-              auto result = builder->import();
-              if (!result.success()) {
-                  qCritical() << result;
+              auto err = builder->import();
+              if (err) {
+                  qCritical() << err;
               }
 
-              return result.code();
+              return err.code();
           } },
         { "track",
           [&](QCommandLineParser &parser) -> int {
@@ -255,12 +244,12 @@ int main(int argc, char **argv)
 
               parser.process(app);
 
-              auto result = builder->track();
-              if (!result.success()) {
-                  qCritical() << result;
+              auto err = builder->track();
+              if (err) {
+                  qCritical() << err;
               }
 
-              return result.code();
+              return err.code();
           } },
         { "push",
           [&](QCommandLineParser &parser) -> int {
@@ -285,13 +274,13 @@ int main(int argc, char **argv)
 
               bool pushWithDevel = parser.isSet(optNoDevel) ? false : true;
 
-              auto result = builder->push(repoUrl, repoName, repoChannel, pushWithDevel);
+              auto err = builder->push(repoUrl, repoName, repoChannel, pushWithDevel);
 
-              if (!result.success()) {
-                  qCritical() << result;
+              if (err) {
+                  qCritical() << err;
               }
 
-              return result.code();
+              return err.code();
           } },
     };
 

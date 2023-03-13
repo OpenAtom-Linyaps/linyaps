@@ -45,9 +45,9 @@ Error::Error(const char *file, int line, const char *func, const Error &reason, 
 {
 }
 
-bool Error::success() const
+Error::operator bool() const
 {
-    return this->data() == nullptr || this->m_code == 0;
+    return this->data() != nullptr && this->m_code != 0;
 }
 
 int Error::code() const
@@ -72,6 +72,9 @@ QDebug operator<<(QDebug debug, const Error &error)
 {
     bool first = true;
     const ErrorPrivate *err = error.data();
+    if (err == nullptr) {
+        debug << "success";
+    }
     while (err != nullptr) {
         debug.noquote() << QString("%1 occurs in function")
                                    .arg(first ? QString("Error (code=%1)").arg(error.m_code)

@@ -8,7 +8,6 @@
 #define LINGLONG_SRC_MODULE_PACKAGE_INFO_H_
 
 #include "module/runtime/oci.h"
-#include "module/util/serialize/json.h"
 
 #include <QDBusArgument>
 #include <QList>
@@ -24,7 +23,7 @@ namespace package {
  */
 class User : public JsonSerialize
 {
-    Q_OBJECT
+    Q_OBJECT;
     Q_JSON_CONSTRUCTOR(User)
     Q_JSON_PROPERTY(QString, desktop);
     Q_JSON_PROPERTY(QString, documents);
@@ -45,7 +44,7 @@ class Filesystem : public JsonSerialize
 {
     Q_OBJECT
     Q_JSON_CONSTRUCTOR(Filesystem)
-    Q_JSON_PTR_PROPERTY(User, user);
+    Q_JSON_PROPERTY(QSharedPointer<User>, user);
 };
 
 /*!
@@ -72,7 +71,7 @@ class OverlayfsRootfs : public JsonSerialize
 {
     Q_OBJECT;
     Q_JSON_CONSTRUCTOR(OverlayfsRootfs)
-    Q_JSON_PROPERTY(MountList, mounts);
+    Q_JSON_PROPERTY(QList<QSharedPointer<Mount>>, mounts);
 };
 
 /*!

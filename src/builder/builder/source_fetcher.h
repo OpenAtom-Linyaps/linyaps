@@ -25,7 +25,7 @@ class SourceFetcher : public QObject
 {
     Q_OBJECT
 public:
-    explicit SourceFetcher(Source *s, Project *project);
+    explicit SourceFetcher(QSharedPointer<Source> s, Project *project);
     ~SourceFetcher() override;
 
     QString sourceRoot() const;

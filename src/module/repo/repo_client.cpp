@@ -9,12 +9,17 @@
 #include "module/package/package.h"
 #include "module/util/config/config.h"
 #include "module/util/http/http_client.h"
-#include "module/util/serialize/json.h"
+#include "module/util/qserializer/deprecated.h"
+
+#include <QJsonObject>
 
 namespace linglong {
 namespace repo {
 
-std::tuple<util::Error, package::AppMetaInfoList> RepoClient::QueryApps(const package::Ref &ref)
+QSERIALIZER_IMPL(Response);
+
+std::tuple<util::Error, QList<QSharedPointer<package::AppMetaInfo>>>
+RepoClient::QueryApps(const package::Ref &ref)
 {
     // TODO: query cache Here
     QUrl url(ConfigInstance().repoUrl);

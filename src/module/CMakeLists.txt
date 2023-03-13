@@ -57,7 +57,7 @@ qt5_add_dbus_interface(
 
 set_source_files_properties(
   dbus_ipc/org.deepin.linglong.AppManager.xml
-  PROPERTIES INCLUDE module/dbus_ipc/register_meta_type.h
+  PROPERTIES INCLUDE module/dbus_ipc/workround.h
 )
 
 qt5_add_dbus_interface(
@@ -68,7 +68,7 @@ qt5_add_dbus_interface(
 
 set_source_files_properties(
   dbus_ipc/org.deepin.linglong.PackageManager.xml
-  PROPERTIES INCLUDE module/dbus_ipc/register_meta_type.h
+  PROPERTIES INCLUDE module/dbus_ipc/workround.h
 )
 
 qt5_add_dbus_interface(

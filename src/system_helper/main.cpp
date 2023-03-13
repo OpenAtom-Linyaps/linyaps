@@ -22,9 +22,6 @@ int main(int argc, char *argv[])
 
     LOG_HANDLER->installMessageHandler();
 
-    qJsonRegister<linglong::system::helper::FilePortalRule>();
-    qJsonRegister<linglong::system::helper::PortalRule>();
-
     SystemHelper systemHelper;
     SystemHelperAdaptor systemHelperAdaptor(&systemHelper);
 

@@ -13,14 +13,14 @@
 TEST(Moduel_Util, Error)
 {
     linglong::util::Error err;
-    EXPECT_EQ(err.success(), true);
+    EXPECT_EQ((bool)err, true);
 
     auto funcLevel_1 = []() -> linglong::util::Error {
         return NewError(-1, "this is level 1 error");
     };
 
     err = funcLevel_1();
-    EXPECT_EQ(err.success(), false);
+    EXPECT_EQ((bool)err, false);
 
     auto funcLevel_2 = [=]() -> linglong::util::Error {
         auto r = funcLevel_1();
@@ -29,7 +29,7 @@ TEST(Moduel_Util, Error)
 
     err = funcLevel_2();
 
-    EXPECT_EQ(err.success(), false);
+    EXPECT_EQ((bool)err, false);
     EXPECT_EQ(err.code(), -1);
 
     qCritical() << err;

@@ -16,6 +16,8 @@
 #include <QVariantList>
 #include <QVariantMap>
 
+#include <type_traits>
+
 namespace linglong {
 namespace util {
 
@@ -23,7 +25,53 @@ std::tuple<QVariantMap, Error> mapFromJSON(const QByteArray &bytes);
 std::tuple<QVariantList, Error> listFromJSON(const QByteArray &bytes);
 
 template<typename T>
-std::tuple<T, Error> fromJSON(const QString &filePath)
+struct isQList : public std::false_type
+{
+};
+
+template<typename T>
+struct isQList<QList<T>> : public std::true_type
+{
+};
+
+template<typename T>
+typename std::enable_if<isQList<T>::value, std::tuple<T, Error>>::type
+fromJSON(const QByteArray &bytes)
+{
+    auto [result, err] = mapFromJSON(bytes);
+    if (err) {
+        return { {}, WrapError(err, "") };
+    }
+    QVariant v = result;
+    if (!v.canConvert<T>()) {
+        return { {},
+                 NewError(-1,
+                          QString("Failed to convert QVariantMap to %1.")
+                                  .arg(QString(QMetaType::fromType<T>().name()))) };
+    }
+    return { v.value<T>(), {} };
+}
+
+template<typename T>
+typename std::enable_if<!isQList<T>::value, std::tuple<T, Error>>::type
+fromJSON(const QByteArray &bytes)
+{
+    auto [result, err] = listFromJSON(bytes);
+    if (err) {
+        return { {}, WrapError(err, "") };
+    }
+    QVariant v = result;
+    if (!v.canConvert<T>()) {
+        return { {},
+                 NewError(-1,
+                          QString("Failed to convert QVariantMap to %1.")
+                                  .arg(QString(QMetaType::fromType<T>().name()))) };
+    }
+    return { v.value<T>(), {} };
+}
+
+template<typename T>
+static auto fromJSON(const QString &filePath) -> std::tuple<T, Error>
 {
     QFile file(filePath);
     file.open(QIODevice::ReadOnly);
@@ -32,58 +80,22 @@ std::tuple<T, Error> fromJSON(const QString &filePath)
 }
 
 template<typename T>
-std::tuple<T, Error> fromJSON(const QByteArray &bytes)
-{
-    auto result = mapFromJSON(bytes);
-    auto err = std::get<1>(result);
-    if (!err.success()) {
-        return { {}, WrapError(err, "") };
-    }
-    QVariant v = std::get<0>(result);
-    if (!v.canConvert<T>()) {
-        return { {},
-                 NewError(-1,
-                          QString("Failed to convert QVariantMap to %1.")
-                                  .arg(QMetaType::fromType<T>().name())) };
-    }
-    return { v.value<T>(), {} };
-}
-
-template<typename T>
-std::tuple<QList<T>, Error> fromJSON(const QByteArray &bytes)
-{
-    auto result = listFromJSON(bytes);
-    auto err = std::get<1>(result);
-    if (!err.success()) {
-        return { {}, WrapError(err, "") };
-    }
-    QVariant v = std::get<0>(result);
-    if (!v.canConvert<T>()) {
-        return { {},
-                 NewError(-1,
-                          QString("Failed to convert QVariantMap to %1.")
-                                  .arg(QMetaType::fromType<T>().name())) };
-    }
-    return { v.value<T>(), {} };
-}
-
-template<typename T>
 std::tuple<QByteArray, Error> toJSON(const T &x)
 {
-    QVariant v = x;
-    if (!v.canConvert<QVariantMap>()) {
+    auto v = QVariant::fromValue<T>(x);
+    if (!v.template canConvert<QVariantMap>()) {
         return { {},
                  NewError(-1,
                           QString("Failed to convert %1 to QVariantMap.")
-                                  .arg(QMetaType::fromType<T>().name())) };
+                                  .arg(QString(QMetaType::fromType<T>().name()))) };
     }
 
     v = v.toMap();
-    if (!v.canConvert<QJsonObject>()) {
+    if (!v.template canConvert<QJsonObject>()) {
         return { {}, NewError(-1, "Failed to convert QVariantMap to QJsonObject.") };
     }
 
-    return { QJsonDocument(v.value<QJsonObject>()).toJson(), {} };
+    return { QJsonDocument(v.template value<QJsonObject>()).toJson(), {} };
 }
 
 template<typename T>
@@ -94,7 +106,7 @@ std::tuple<QByteArray, Error> toJSON(const QList<T> &x)
         return { {},
                  NewError(-1,
                           QString("Failed to convert %1 to QVariantList.")
-                                  .arg(QMetaType::fromType<T>().name())) };
+                                  .arg(QString(QMetaType::fromType<T>().name()))) };
     }
 
     v = v.toList();

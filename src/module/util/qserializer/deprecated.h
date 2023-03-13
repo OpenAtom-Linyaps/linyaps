@@ -33,11 +33,11 @@ typedef QObject Serialize;
   Q_PROPERTY(type prop MEMBER memberName);              \
   type memberName;
 
-#define Q_JSON_DECLARE_PTR_METATYPE(type) Q_DECLARE_SERIALIZER(type);
-#define Q_SERIALIZE_DECLARE_LIST_MAP(type) Q_DECLARE_SERIALIZER(type);
+#define Q_JSON_DECLARE_PTR_METATYPE(type) QSERIALIZER_DECLARE(type);
+#define Q_SERIALIZE_DECLARE_LIST_MAP(type) QSERIALIZER_DECLARE(type);
 #define Q_JSON_DECLARE_PTR_METATYPE_NM(ns, type) \
   namespace ns {                                 \
-  Q_DECLARE_SERIALIZER_INIT(type);               \
+  QSERIALIZER_DECLARE(type);                     \
   }
 
 namespace linglong {

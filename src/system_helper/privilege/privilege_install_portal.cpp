@@ -9,7 +9,7 @@
 #include "module/dbus_ipc/package_manager_param.h"
 #include "module/package/ref.h"
 #include "module/util/file.h"
-#include "module/util/serialize/yaml.h"
+#include "module/util/qserializer/yaml.h"
 
 #include <QDBusError>
 #include <QDir>
@@ -18,6 +18,9 @@
 namespace linglong {
 namespace system {
 namespace helper {
+
+QSERIALIZER_IMPL(FilePortalRule);
+QSERIALIZER_IMPL(PortalRule);
 
 const char *PrivilegePortalRule = R"MLS00(
 whiteList:
@@ -57,7 +60,7 @@ static bool hasPrivilege(const QString &ref, const QStringList &whiteList)
 
 static void rebuildFileRule(const QString &installPath,
                             const QString &ref,
-                            const FilePortalRule *rule)
+                            QSharedPointer<const FilePortalRule> rule)
 {
     QDir sourceDir(installPath);
 
@@ -87,7 +90,9 @@ static void rebuildFileRule(const QString &installPath,
     }
 }
 
-static void ruinFileRule(const QString &installPath, const QString &ref, const FilePortalRule *rule)
+static void ruinFileRule(const QString &installPath,
+                         const QString &ref,
+                         QSharedPointer<const FilePortalRule> rule)
 {
     QDir sourceDir(installPath);
 
@@ -116,7 +121,8 @@ util::Error rebuildPrivilegeInstallPortal(const QString &installPath,
                                           const QVariantMap & /*options*/)
 {
     YAML::Node doc = YAML::Load(PrivilegePortalRule);
-    QScopedPointer<PortalRule> privilegePortalRule(formYaml<PortalRule>(doc));
+    auto privilegePortalRule =
+            QVariant::fromValue<YAML::Node>(doc).value<QSharedPointer<PortalRule>>();
 
     if (!hasPrivilege(ref, privilegePortalRule->whiteList)) {
         return NewError(QDBusError::AccessDenied, "No Privilege Package");
@@ -138,7 +144,9 @@ util::Error ruinPrivilegeInstallPortal(const QString &installPath,
                                        const QVariantMap &options)
 {
     YAML::Node doc = YAML::Load(PrivilegePortalRule);
-    QScopedPointer<PortalRule> privilegePortalRule(formYaml<PortalRule>(doc));
+    auto privilegePortalRule =
+            QVariant::fromValue<YAML::Node>(doc).value<QSharedPointer<PortalRule>>();
+
     if (options.contains(linglong::util::kKeyDelData)) {
         const auto appLinglongPath = options[linglong::util::kKeyDelData].toString();
         linglong::util::removeDir(appLinglongPath);

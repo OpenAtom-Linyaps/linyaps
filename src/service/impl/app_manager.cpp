@@ -121,7 +121,7 @@ Reply AppManager::Start(const RunParamOption &paramOption)
 
     // 直接运行debug版本时，校验release包是否安装
     if ("devel" == appModule) {
-        linglong::package::AppMetaInfoList pkgList;
+        QList<QSharedPointer<linglong::package::AppMetaInfo>> pkgList;
         linglong::util::getAllVerAppInfo(appId, version, arch, "", pkgList);
         if (pkgList.size() < 2) {
             reply.message = appId + ", version:" + version + ", arch:" + arch
@@ -164,10 +164,9 @@ Reply AppManager::Start(const RunParamOption &paramOption)
         }
         app->saveUserEnvList(userEnvList);
         app->setAppParamMap(paramMap);
-        auto it = d->apps.insert(app->container()->id, QPointer<linglong::runtime::App>(app));
+        auto it = d->apps.insert(app->container()->id, app);
         app->start();
         d->apps.erase(it);
-        app->deleteLater();
     });
     // future.waitForFinished();
     return std::move(reply);
@@ -229,12 +228,12 @@ QueryReply AppManager::ListContainer()
     QJsonArray jsonArray;
 
     for (const auto &app : d->apps) {
-        auto container = QPointer<Container>(new Container);
+        auto container = QSharedPointer<Container>(new Container);
         container->id = app->container()->id;
         container->pid = app->container()->pid;
         container->packageName = app->container()->packageName;
         container->workingDirectory = app->container()->workingDirectory;
-        jsonArray.push_back(container->toJson(container.data()));
+        jsonArray.push_back(QVariant::fromValue(container).toJsonValue());
     }
 
     QueryReply reply;

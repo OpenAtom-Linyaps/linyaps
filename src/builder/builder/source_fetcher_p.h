@@ -17,7 +17,7 @@ namespace builder {
 class SourceFetcherPrivate
 {
 public:
-    explicit SourceFetcherPrivate(Source *src, SourceFetcher *parent);
+    explicit SourceFetcherPrivate(QSharedPointer<Source> src, SourceFetcher *parent);
     ~SourceFetcherPrivate() = default;
 
     QString filename();
@@ -34,7 +34,7 @@ public:
     util::Error handleLocalPatch();
 
     Project *project;
-    Source *source;
+    QSharedPointer<Source> source;
     QScopedPointer<QFile> file;
 
     SourceFetcher *const q_ptr;

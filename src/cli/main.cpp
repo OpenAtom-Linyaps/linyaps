@@ -5,14 +5,13 @@
  */
 
 #include "module/app_manager.h"
-#include "module/dbus_ipc/register_meta_type.h"
 #include "module/package/package.h"
 #include "module/package_manager.h"
-#include "module/runtime/runtime.h"
 #include "module/util/app_status.h"
 #include "module/util/command_helper.h"
 #include "module/util/env.h"
 #include "module/util/log/log_handler.h"
+#include "module/util/qserializer/json.h"
 #include "module/util/status_code.h"
 #include "module/util/sysinfo.h"
 #include "module/util/xdg.h"
@@ -27,13 +26,6 @@
 #include <iostream>
 
 static qint64 systemHelperPid = -1;
-
-static void qJsonRegisterAll()
-{
-    linglong::package::registerAllMetaType();
-    linglong::runtime::registerAllMetaType();
-    linglong::service::registerAllMetaType();
-}
 
 /**
  * @brief 统计字符串中中文字符的个数
@@ -83,7 +75,7 @@ static void handleOnExit(int, void *)
  * @param appMetaInfoList 软件包元信息列表
  *
  */
-static void printAppInfo(linglong::package::AppMetaInfoList appMetaInfoList)
+static void printAppInfo(QList<QSharedPointer<linglong::package::AppMetaInfo>> appMetaInfoList)
 {
     if (appMetaInfoList.size() > 0) {
         qInfo("\033[1m\033[38;5;214m%-32s%-32s%-16s%-12s%-16s%-12s%-s\033[0m",
@@ -171,9 +163,6 @@ int main(int argc, char **argv)
 
     // 安装消息处理函数
     LOG_HANDLER->installMessageHandler();
-
-    // 注册QT对象类型
-    qJsonRegisterAll();
 
     QCommandLineParser parser;
     parser.addHelpOption();
@@ -446,12 +435,12 @@ int main(int argc, char **argv)
               const auto outputFormat = parser.value(optOutputFormat);
               const auto replyString = appManager.ListContainer().value().result;
 
-              ContainerList containerList;
+              QList<QSharedPointer<Container>> containerList;
               const auto doc = QJsonDocument::fromJson(replyString.toUtf8(), nullptr);
               if (doc.isArray()) {
                   for (const auto container : doc.array()) {
                       const auto str = QString(QJsonDocument(container.toObject()).toJson());
-                      QPointer<Container> con(linglong::util::loadJsonString<Container>(str));
+                      QSharedPointer<Container> con(linglong::util::loadJsonString<Container>(str));
                       containerList.push_back(con);
                   }
               }
@@ -689,9 +678,9 @@ int main(int argc, char **argv)
                           << "message:" << reply.message << ", errcode:" << reply.code;
                   return -1;
               }
-              const auto appMetaInfoList =
-                      linglong::util::arrayFromJson<linglong::package::AppMetaInfoList>(
-                              reply.result);
+              auto appMetaInfoList = std::get<0>(
+                      linglong::util::fromJSON<
+                              QList<QSharedPointer<linglong::package::AppMetaInfo>>>(reply.result));
               printAppInfo(appMetaInfoList);
               return 0;
           } },
@@ -790,7 +779,7 @@ int main(int argc, char **argv)
 
               linglong::service::QueryParamOption paramOption;
               paramOption.appId = optPara;
-              linglong::package::AppMetaInfoList appMetaInfoList;
+              QList<QSharedPointer<linglong::package::AppMetaInfo>> appMetaInfoList;
               linglong::service::QueryReply reply;
               if (parser.isSet(optNoDbus)) {
                   reply = PACKAGE_MANAGER->Query(paramOption);

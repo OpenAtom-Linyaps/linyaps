@@ -22,7 +22,7 @@ class DependFetcher : public QObject
 {
     Q_OBJECT
 public:
-    explicit DependFetcher(const BuildDepend &bd, Project *parent);
+    explicit DependFetcher(QSharedPointer<const BuildDepend> bd, Project *parent);
     ~DependFetcher() override;
 
     linglong::util::Error fetch(const QString &subPath, const QString &targetPath);

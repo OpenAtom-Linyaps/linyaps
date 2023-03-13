@@ -113,9 +113,10 @@ bool PackageManagerPrivate::getAppJsonArray(const QString &jsonString,
  *
  * @return bool: true:成功 false:失败
  */
-bool PackageManagerPrivate::loadAppInfo(const QString &jsonString,
-                                        linglong::package::AppMetaInfoList &appList,
-                                        QString &err)
+bool PackageManagerPrivate::loadAppInfo(
+        const QString &jsonString,
+        QList<QSharedPointer<linglong::package::AppMetaInfo>> &appList,
+        QString &err)
 {
     QJsonValue arrayValue;
     auto ret = getAppJsonArray(jsonString, arrayValue, err);
@@ -130,7 +131,7 @@ bool PackageManagerPrivate::loadAppInfo(const QString &jsonString,
         QJsonObject dataObj = arr.at(i).toObject();
         const QString appString = QString(QJsonDocument(dataObj).toJson(QJsonDocument::Compact));
         // qInfo().noquote() << appString;
-        QPointer<package::AppMetaInfo> appItem(
+        QSharedPointer<package::AppMetaInfo> appItem(
                 util::loadJsonString<package::AppMetaInfo>(appString));
         appList.push_back(appItem);
     }
@@ -250,7 +251,7 @@ Reply PackageManagerPrivate::GetDownloadStatus(const ParamOption &paramOption, i
             return reply;
         }
 
-        linglong::package::AppMetaInfoList appList;
+        QList<QSharedPointer<linglong::package::AppMetaInfo>> appList;
         ret = loadAppInfo(appData, appList, reply.message);
         if (!ret || appList.size() < 1) {
             reply.message =
@@ -261,7 +262,7 @@ Reply PackageManagerPrivate::GetDownloadStatus(const ParamOption &paramOption, i
         }
 
         // 查找最高版本
-        linglong::package::AppMetaInfo *appInfo = getLatestApp(appId, appList);
+        QSharedPointer<linglong::package::AppMetaInfo> appInfo = getLatestApp(appId, appList);
         latestVersion = appInfo->version;
     }
 
@@ -324,7 +325,8 @@ Reply PackageManagerPrivate::GetDownloadStatus(const ParamOption &paramOption, i
  *
  * @return bool: true:成功 false:失败
  */
-bool PackageManagerPrivate::installRuntime(linglong::package::AppMetaInfo *appInfo, QString &err)
+bool PackageManagerPrivate::installRuntime(QSharedPointer<linglong::package::AppMetaInfo> appInfo,
+                                           QString &err)
 {
     QString savePath =
             kAppInstallPath + appInfo->appId + "/" + appInfo->version + "/" + appInfo->arch;
@@ -401,7 +403,7 @@ bool PackageManagerPrivate::checkAppRuntime(const QString &runtime,
     if (!ret) {
         return false;
     }
-    linglong::package::AppMetaInfoList appList;
+    QList<QSharedPointer<linglong::package::AppMetaInfo>> appList;
     ret = loadAppInfo(appData, appList, err);
     if (!ret || appList.size() < 1) {
         err = runtime + " not found in repo";
@@ -409,7 +411,8 @@ bool PackageManagerPrivate::checkAppRuntime(const QString &runtime,
         return false;
     }
     // 查找最高版本，多版本场景安装应用appId要求完全匹配
-    linglong::package::AppMetaInfo *appInfo = getLatestRuntime(runtimeId, runtimeVer, appList);
+    QSharedPointer<linglong::package::AppMetaInfo> appInfo =
+            getLatestRuntime(runtimeId, runtimeVer, appList);
     // fix 当前服务端不支持按channel查询，返回的结果是默认channel，需要刷新channel/module
     appInfo->channel = channel;
     appInfo->module = module;
@@ -456,7 +459,7 @@ bool PackageManagerPrivate::checkAppBase(const QString &runtime,
         return false;
     }
 
-    linglong::package::AppMetaInfoList appList;
+    QList<QSharedPointer<linglong::package::AppMetaInfo>> appList;
     QString appData = "";
 
     bool ret = getAppInfofromServer(runtimeId, runtimeVer, runtimeArch, appData, err);
@@ -470,7 +473,7 @@ bool PackageManagerPrivate::checkAppBase(const QString &runtime,
         return false;
     }
 
-    linglong::package::AppMetaInfo *latestRuntimeInfo =
+    QSharedPointer<linglong::package::AppMetaInfo> latestRuntimeInfo =
             getLatestRuntime(runtimeId, runtimeVer, appList);
 
     auto baseRef = latestRuntimeInfo->runtime;
@@ -485,7 +488,7 @@ bool PackageManagerPrivate::checkAppBase(const QString &runtime,
 
     bool retbase = true;
 
-    linglong::package::AppMetaInfoList baseRuntimeList;
+    QList<QSharedPointer<linglong::package::AppMetaInfo>> baseRuntimeList;
     QString baseData = "";
 
     ret = getAppInfofromServer(baseId, baseVer, baseArch, baseData, err);
@@ -518,12 +521,12 @@ bool PackageManagerPrivate::checkAppBase(const QString &runtime,
  * @return AppMetaInfo: 最新版本的runtime
  *
  */
-linglong::package::AppMetaInfo *
-PackageManagerPrivate::getLatestRuntime(const QString &appId,
-                                        const QString &version,
-                                        const linglong::package::AppMetaInfoList &appList)
+QSharedPointer<linglong::package::AppMetaInfo> PackageManagerPrivate::getLatestRuntime(
+        const QString &appId,
+        const QString &version,
+        const QList<QSharedPointer<linglong::package::AppMetaInfo>> &appList)
 {
-    linglong::package::AppMetaInfo *latestApp = appList.at(0).data();
+    QSharedPointer<linglong::package::AppMetaInfo> latestApp = appList.at(0);
     if (appList.size() == 1) {
         return latestApp;
     }
@@ -535,7 +538,7 @@ PackageManagerPrivate::getLatestRuntime(const QString &appId,
         if (appId == item->appId && iterVersion.isBigThan(dstVersion)
             && item->version.startsWith(version)) {
             curVersion = item->version;
-            latestApp = item.data();
+            latestApp = item;
         }
     }
     return latestApp;
@@ -550,10 +553,10 @@ PackageManagerPrivate::getLatestRuntime(const QString &appId,
  * @return AppMetaInfo: 最新版本的软件包
  *
  */
-linglong::package::AppMetaInfo *PackageManagerPrivate::getLatestApp(
-        const QString &appId, const linglong::package::AppMetaInfoList &appList)
+QSharedPointer<linglong::package::AppMetaInfo> PackageManagerPrivate::getLatestApp(
+        const QString &appId, const QList<QSharedPointer<linglong::package::AppMetaInfo>> &appList)
 {
-    linglong::package::AppMetaInfo *latestApp = appList.at(0).data();
+    QSharedPointer<linglong::package::AppMetaInfo> latestApp = appList.at(0);
     if (appList.size() == 1) {
         return latestApp;
     }
@@ -564,7 +567,7 @@ linglong::package::AppMetaInfo *PackageManagerPrivate::getLatestApp(
         linglong::util::AppVersion iterVersion(item->version);
         if (appId == item->appId && iterVersion.isBigThan(dstVersion)) {
             curVersion = item->version;
-            latestApp = item.data();
+            latestApp = item;
         }
     }
     return latestApp;
@@ -583,7 +586,7 @@ void PackageManagerPrivate::addAppConfig(const QString &appId,
 {
     // 是否为多版本
     if (linglong::util::getAppInstalledStatus(appId, "", arch, "", "", "")) {
-        linglong::package::AppMetaInfoList pkgList;
+        QList<QSharedPointer<linglong::package::AppMetaInfo>> pkgList;
         // 查找当前已安装软件包的最高版本
         linglong::util::getInstalledAppInfo(appId, "", arch, "", "", "", pkgList);
         auto it = pkgList.at(0);
@@ -628,7 +631,7 @@ void PackageManagerPrivate::delAppConfig(const QString &appId,
 {
     // 是否为多版本
     if (linglong::util::getAppInstalledStatus(appId, "", arch, "", "", "")) {
-        linglong::package::AppMetaInfoList pkgList;
+        QList<QSharedPointer<linglong::package::AppMetaInfo>> pkgList;
         // 查找当前已安装软件包的最高版本
         linglong::util::getInstalledAppInfo(appId, "", arch, "", "", "", pkgList);
         auto it = pkgList.at(0);
@@ -722,7 +725,7 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
         return reply;
     }
 
-    linglong::package::AppMetaInfoList appList;
+    QList<QSharedPointer<linglong::package::AppMetaInfo>> appList;
     ret = loadAppInfo(appData, appList, reply.message);
     if (!ret || appList.size() < 1) {
         reply.message = "app:" + appId + ", version:" + version + " not found in repo";
@@ -739,7 +742,7 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
     }
 
     // 查找最高版本，多版本场景安装应用appId要求完全匹配
-    linglong::package::AppMetaInfo *appInfo = getLatestApp(appId, appList);
+    QSharedPointer<linglong::package::AppMetaInfo> appInfo = getLatestApp(appId, appList);
     // 不支持模糊安装
     if (appId != appInfo->appId) {
         reply.message = "app:" + appId + ", version:" + version + " not found in repo";
@@ -766,7 +769,7 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
     // 当本地已安装且未指定版本安装时，本地版本比服务器最高版本高，则不允许安装
     if (linglong::util::getAppInstalledStatus(appInfo->appId, "", "", channel, appModule, "")
         && version.isEmpty()) {
-        linglong::package::AppMetaInfoList pkgList;
+        QList<QSharedPointer<linglong::package::AppMetaInfo>> pkgList;
         // 根据已安装文件查询已经安装软件包信息
         linglong::util::getInstalledAppInfo(appId, "", arch, channel, appModule, "", pkgList);
 
@@ -908,7 +911,7 @@ QueryReply PackageManagerPrivate::Query(const QueryParamOption &paramOption)
         return reply;
     }
 
-    linglong::package::AppMetaInfoList pkgList;
+    QList<QSharedPointer<linglong::package::AppMetaInfo>> pkgList;
     QString arch = linglong::util::hostArch();
 
     QString appData = "";
@@ -990,7 +993,7 @@ Reply PackageManagerPrivate::Uninstall(const UninstallParamOption &paramOption)
         return reply;
     }
 
-    linglong::package::AppMetaInfoList pkgList;
+    QList<QSharedPointer<linglong::package::AppMetaInfo>> pkgList;
     if (paramOption.delAllVersion) {
         linglong::util::getAllVerAppInfo(appId, "", arch, "", pkgList);
     } else {
@@ -1211,7 +1214,7 @@ Reply PackageManagerPrivate::Update(const ParamOption &paramOption)
     }
 
     // 检查是否存在版本更新
-    linglong::package::AppMetaInfoList pkgList;
+    QList<QSharedPointer<linglong::package::AppMetaInfo>> pkgList;
     // 根据已安装文件查询已经安装软件包信息
     linglong::util::getInstalledAppInfo(appId, version, arch, channel, appModule, "", pkgList);
     if (pkgList.size() != 1) {
@@ -1236,7 +1239,7 @@ Reply PackageManagerPrivate::Update(const ParamOption &paramOption)
         return reply;
     }
 
-    linglong::package::AppMetaInfoList serverPkgList;
+    QList<QSharedPointer<linglong::package::AppMetaInfo>> serverPkgList;
     ret = loadAppInfo(appData, serverPkgList, reply.message);
     if (!ret || serverPkgList.size() < 1) {
         reply.message = "load app:" + appId + " info err";

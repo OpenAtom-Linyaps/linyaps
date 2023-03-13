@@ -8,8 +8,7 @@ namespace test {
 namespace QSerializerPrivateNamespaceTestObject {
 int init()
 {
-    static std::once_flag __flag;
-    std::call_once(__flag, []() {
+    static int _ = []() -> int {
         QSerializer<TestObject>::registerConverters();
         QMetaType::registerConverter<QMap<QString, QString>, QVariantMap>(
                 [](const QMap<QString, QString> &from) -> QVariantMap {
@@ -27,8 +26,9 @@ int init()
                     }
                     return map;
                 });
-    });
-    return 0;
+        return 0;
+    }();
+    return _;
 }
 }; // namespace QSerializerPrivateNamespaceTestObject
 

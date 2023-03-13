@@ -8,7 +8,7 @@
 #define LINGLONG_SRC_BUILDER_BUILDER_PROJECT_H_
 
 #include "module/package/ref.h"
-#include "module/util/serialize/json.h"
+#include "module/util/qserializer/deprecated.h"
 
 #include <QObject>
 #include <QScopedPointer>
@@ -161,7 +161,7 @@ public:
     Q_JSON_PTR_PROPERTY(BuilderRuntime, runtime);
     Q_JSON_PTR_PROPERTY(BuilderRuntime, base);
     // WARNING: the default meta id is expanded form here, so keep it as full of namespace.
-    Q_JSON_PROPERTY(linglong::builder::BuildDependList, depends);
+    Q_JSON_PROPERTY(QList<QSharedPointer<linglong::builder::BuildDepend>>, depends);
     Q_JSON_PTR_PROPERTY(Source, source);
     Q_JSON_PTR_PROPERTY(Build, build);
     Q_JSON_PTR_PROPERTY(Enviroment, enviroment);
@@ -209,8 +209,6 @@ public:
 
     const Config &config() const;
 
-    void onPostSerialize() override;
-
     void generateBuildScript();
 
 private:
@@ -218,7 +216,7 @@ private:
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), Project)
 };
 
-package::Ref fuzzyRef(const JsonSerialize *obj);
+package::Ref fuzzyRef(QSharedPointer<const JsonSerialize> obj);
 
 } // namespace builder
 } // namespace linglong

@@ -55,7 +55,7 @@ linglong::util::Error SourceFetcher::extractFile(const QString &path, const QStr
     return NewError(-1, "unkonwn error");
 }
 
-SourceFetcherPrivate::SourceFetcherPrivate(Source *src, SourceFetcher *parent)
+SourceFetcherPrivate::SourceFetcherPrivate(QSharedPointer<Source> src, SourceFetcher *parent)
     : project(nullptr)
     , source(src)
     , file(nullptr)
@@ -226,20 +226,20 @@ linglong::util::Error SourceFetcher::fetch()
 {
     Q_D(SourceFetcher);
 
-    QSharedPointer<util::Error> ret;
+    util::Error err;
 
     if (d->source->kind == "git") {
-        ret.reset(new util::Error(d->fetchGitRepo()));
+        err = d->fetchGitRepo();
     } else if (d->source->kind == "archive") {
-        ret.reset(new util::Error(d->fetchArchiveFile()));
+        err = d->fetchArchiveFile();
     } else if (d->source->kind == "local") {
-        ret.reset(new util::Error(d->handleLocalSource()));
+        err = d->handleLocalSource();
     } else {
         return NewError(-1, "unknown source kind");
     }
 
-    if (!ret->success()) {
-        return *ret;
+    if (err) {
+        return err;
     }
 
     return patch();
@@ -255,7 +255,7 @@ void SourceFetcher::setSourceRoot(const QString &path)
     srcRoot = path;
 }
 
-SourceFetcher::SourceFetcher(Source *s, Project *project)
+SourceFetcher::SourceFetcher(QSharedPointer<Source> s, Project *project)
     : dd_ptr(new SourceFetcherPrivate(s, this))
     , CompressedFileTarXz("tar.xz")
 {

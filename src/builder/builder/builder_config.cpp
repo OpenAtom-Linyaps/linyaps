@@ -7,7 +7,7 @@
 #include "builder_config.h"
 
 #include "module/util/file.h"
-#include "module/util/serialize/yaml.h"
+#include "module/util/qserializer/yaml.h"
 #include "module/util/xdg.h"
 
 #include <mutex>
@@ -154,7 +154,7 @@ static QString getConfigPath()
 
 BuilderConfig *BuilderConfig::instance()
 {
-    static BuilderConfig *cfg;
+    static QSharedPointer<BuilderConfig> cfg;
     static std::once_flag flag;
 
     std::call_once(flag, []() {
@@ -164,23 +164,24 @@ BuilderConfig *BuilderConfig::instance()
             qCritical().noquote() << QString("Failed to open config file [%1]")
                                              .arg(configPath.startsWith(":") ? "builtin"
                                                                              : configPath);
-            cfg = new BuilderConfig();
+            cfg.reset(new BuilderConfig());
             return;
         }
 
         try {
-            cfg = formYaml<BuilderConfig>(YAML::Load(configFile.readAll().data()));
+            auto doc = YAML::Load(configFile.readAll().data());
+            cfg = QVariant::fromValue(doc).value<QSharedPointer<BuilderConfig>>();
         } catch (std::exception &e) {
             qCritical().noquote() << QString("Failed to parse config [%1]: %2")
                                              .arg(configPath.startsWith(":") ? "builtin"
                                                                              : configPath)
                                              .arg(e.what());
-            cfg = new BuilderConfig();
+            cfg.reset(new BuilderConfig());
             return;
         }
     });
 
-    return cfg;
+    return cfg.data();
 }
 
 } // namespace builder

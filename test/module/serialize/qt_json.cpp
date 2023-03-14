@@ -23,6 +23,7 @@ TEST(Serialize, QtJsonOCI)
     QVariant variant = json.toVariant();
     auto r = variant.value<Runtime *>();
 
+    Q_ASSERT(r->root != nullptr);
     EXPECT_EQ(r->root->parent(), r);
     EXPECT_EQ(r->mounts.at(1)->parent(), r);
     EXPECT_EQ(r->ociVersion, "1.0.1");

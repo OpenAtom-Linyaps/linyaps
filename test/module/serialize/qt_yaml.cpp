@@ -21,6 +21,7 @@ TEST(Serialize, YAML_NS)
 
     auto app = formYaml<linglong::test::App>(doc);
 
+    Q_ASSERT(app->permissions != nullptr);
     EXPECT_EQ(app->permissions->mounts.value(0)->type, "test_type");
 }
 
@@ -37,6 +38,7 @@ TEST(Serialize, YAML)
 
     auto app = formYaml<TestApp>(doc);
 
+    Q_ASSERT(app->root != nullptr);
     EXPECT_EQ(app->root->parent(), app);
     EXPECT_EQ(app->namespaces.value(0)->parent(), app);
     EXPECT_EQ(app->version, "1.12");

@@ -35,6 +35,7 @@ TEST(PermissionTest, LoadJson)
 
     EXPECT_NE(info, nullptr);
 
+    Q_ASSERT(info->permissions != nullptr);
     auto userStaticMount = info->permissions->filesystem->user;
     EXPECT_NE(userStaticMount, nullptr);
 
@@ -102,6 +103,7 @@ TEST(PermissionTest, TestPermission)
     EXPECT_NE(permission, nullptr);
 
     // check permission
+    Q_ASSERT(permission != nullptr);
     EXPECT_EQ(permission->autostart, true);
     EXPECT_EQ(permission->notification, true);
     EXPECT_EQ(permission->trayicon, true);

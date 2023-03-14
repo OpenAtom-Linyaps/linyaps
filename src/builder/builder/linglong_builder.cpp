@@ -106,6 +106,9 @@ linglong::util::Error commitBuildOutput(Project *project, AnnotationsOverlayfsRo
                 if (!tryExec.isEmpty()) {
                     desktopEntry.set(section, "TryExec", "");
                 }
+
+                desktopEntry.set(section, "X-linglong", appId);
+
                 auto ret = desktopEntry.save(
                         QStringList{ targetPath, fileInfo.fileName() }.join(QDir::separator()));
                 if (!ret.success()) {

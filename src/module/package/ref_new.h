@@ -8,7 +8,6 @@
 #define LINGLONG_SRC_MODULE_PACKAGE_REF_REFACTOR_H_
 
 #include <QString>
-#include <QRegularExpression>
 
 namespace linglong {
 namespace package {
@@ -16,12 +15,8 @@ namespace refact {
 
 namespace defaults {
 extern const QString arch;
-extern const QString repo;
-extern const QString channel;
 extern const QString module;
 } // namespace defaults
-
-#define LINGLONG_FRAGMENT_REGEXP "^[\\w\\d][-._\\w\\d]*$"
 
 // ${packageID}/${version}[/${arch}[/${module}]]
 class Ref
@@ -40,6 +35,9 @@ public:
     QString version;
     QString arch;
     QString module;
+
+protected:
+    static const char *const verifyRegexp;
 };
 
 } // namespace refact

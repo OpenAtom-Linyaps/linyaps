@@ -5,14 +5,21 @@
  */
 
 #include "module/package/remote_ref.h"
+
 #include "ref_new.h"
 
+#include <QRegularExpression>
 #include <QString>
 #include <QStringList>
 
 namespace linglong {
 namespace package {
 namespace refact {
+
+namespace defaults {
+const QString repo = "repo";
+const QString channel = "stablee";
+} // namespace defaults
 
 RemoteRef::RemoteRef(const QString &str)
     : Ref([&]() -> QString {
@@ -33,12 +40,23 @@ RemoteRef::RemoteRef(const QString &str)
 
     auto slice = components[0].split("/");
 
+    if (slice.length() >= 3)
+        return;
+
     switch (slice.length()) {
     case 2:
         channel = slice.value(1);
         [[fallthrough]];
     case 1:
         repo = slice.value(0);
+    }
+
+    if (repo.isEmpty()) {
+        repo = defaults::repo;
+    }
+
+    if (channel.isEmpty()) {
+        channel = defaults::channel;
     }
 }
 
@@ -66,19 +84,15 @@ QString RemoteRef::toString() const
     return QString("%1/%2:%3/%4/%5/%6").arg(repo, channel, packageID, version, arch, module);
 }
 
-QString RemoteRef::toOStreeString() const
-{
-    return QString("%1:%2/%3/%4/%5/%6").arg(repo, channel, packageID, version, arch, module);
-}
-
 bool RemoteRef::isVaild() const
 {
-    QRegularExpression regexExp(LINGLONG_FRAGMENT_REGEXP);
+    return this->Ref::isVaild() && [&]() -> bool {
+        QRegularExpression regexExp(verifyRegexp);
 
-    auto repoMatched = regexExp.match(this->repo);
-    auto channelMatched = regexExp.match(this->repo);
-
-    return this->Ref::isVaild() && repoMatched.hasMatch() && channelMatched.hasMatch();
+        auto repoMatched = regexExp.match(this->repo);
+        auto channelMatched = regexExp.match(this->repo);
+        return repoMatched.hasMatch() && channelMatched.hasMatch();
+    }();
 }
 
 } // namespace refact

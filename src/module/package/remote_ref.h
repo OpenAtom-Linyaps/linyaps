@@ -14,6 +14,11 @@ namespace linglong {
 namespace package {
 namespace refact {
 
+namespace defaults {
+extern const QString repo;
+extern const QString channel;
+} // namespace defaults
+
 // ${repo}/${channel}:${packageID}/${version}[/${arch}[/${module}]]
 class RemoteRef : public Ref
 {
@@ -31,13 +36,13 @@ public:
                        const QString &repo = defaults::repo,
                        const QString &channel = defaults::channel);
 
-    QString toOStreeString() const;
     QString toString() const;
     bool isVaild() const;
 
     QString repo;
     QString channel;
 };
+
 } // namespace refact
 } // namespace package
 } // namespace linglong

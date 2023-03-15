@@ -13,6 +13,7 @@
 namespace linglong {
 namespace package {
 namespace refact {
+
 namespace defaults {
 const QString arch = "x86_64"; // FIXME: should be generated
 const QString module = "runtime";
@@ -62,7 +63,6 @@ Ref::Ref(const QString &packageID,
 
 bool Ref::isVaild() const
 {
-    // Fixme: this regex maybe too simple.
     QRegularExpression regexExp(verifyRegexp);
     QStringRef list[] = { &this->packageID, &this->version, &this->arch, &this->module };
 

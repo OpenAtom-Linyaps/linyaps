@@ -6,7 +6,6 @@
 
 #include "module/jobmanageradaptor.h"
 #include "module/packagemanageradaptor.h"
-#include "module/repo/repo.h"
 #include "module/util/log/log_handler.h"
 
 #include <QCoreApplication>

@@ -10,7 +10,6 @@
 #include "builder/project.h"
 #include "module/package/package.h"
 #include "module/repo/repo.h"
-#include "module/util/log/log_handler.h"
 #include "module/util/qserializer/yaml.h"
 
 #include <QCommandLineOption>
@@ -25,9 +24,6 @@ int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
     QCoreApplication::setOrganizationName("deepin");
-
-    // 安装消息处理函数
-    LOG_HANDLER->installMessageHandler();
 
     linglong::builder::BuilderConfig::instance()->setProjectRoot(QDir::currentPath());
 

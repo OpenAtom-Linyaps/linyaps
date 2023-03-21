@@ -7,7 +7,6 @@
 #include "module/dbus_ipc/dbus_common.h"
 #include "module/dbus_ipc/dbus_system_helper_common.h"
 #include "module/systemhelperadaptor.h"
-#include "module/util/log/log_handler.h"
 #include "privilege/privilege_install_portal.h"
 #include "system_helper.h"
 
@@ -19,8 +18,6 @@ int main(int argc, char *argv[])
 {
     using namespace linglong::system::helper;
     QCoreApplication app(argc, argv);
-
-    LOG_HANDLER->installMessageHandler();
 
     SystemHelper systemHelper;
     SystemHelperAdaptor systemHelperAdaptor(&systemHelper);

@@ -10,7 +10,6 @@
 #include "module/util/app_status.h"
 #include "module/util/command_helper.h"
 #include "module/util/env.h"
-#include "module/util/log/log_handler.h"
 #include "module/util/qserializer/json.h"
 #include "module/util/status_code.h"
 #include "module/util/sysinfo.h"
@@ -160,9 +159,6 @@ int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
     QCoreApplication::setOrganizationName("deepin");
-
-    // 安装消息处理函数
-    LOG_HANDLER->installMessageHandler();
 
     QCommandLineParser parser;
     parser.addHelpOption();

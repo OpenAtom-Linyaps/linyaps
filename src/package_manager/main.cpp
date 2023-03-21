@@ -6,7 +6,6 @@
 
 #include "module/jobmanageradaptor.h"
 #include "module/packagemanageradaptor.h"
-#include "module/util/log/log_handler.h"
 
 #include <QCoreApplication>
 
@@ -14,8 +13,6 @@ int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
     QCoreApplication::setOrganizationName("deepin");
-    // 安装消息处理函数
-    LOG_HANDLER->installMessageHandler();
 
     QDBusConnection dbus = QDBusConnection::systemBus();
     if (!dbus.registerService("org.deepin.linglong.PackageManager")) {

@@ -29,7 +29,7 @@ TEST(PermissionTest, LoadJson)
 
     EXPECT_NE(variant, "");
 
-    auto info = variant.value<linglong::package::Info *>();
+    auto info = variant.value<QSharedPointer<linglong::package::Info>>();
 
     EXPECT_NE(info, nullptr);
 
@@ -79,7 +79,7 @@ TEST(PermissionTest, TestPermission)
     EXPECT_NE(variant, "");
 
     // convert json to info
-    auto r = variant.value<linglong::package::Info *>();
+    auto r = variant.value<QSharedPointer<linglong::package::Info>>();
 
     EXPECT_NE(r, nullptr);
 

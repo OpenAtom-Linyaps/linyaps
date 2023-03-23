@@ -9,7 +9,7 @@ Copyright: None
 License: CC0-1.0
 
 # ci
-Files: .github/* .gitlab-ci.yml src/builder/resource/*.yaml test/data/demo/*.yaml test/data/demo/*.yml src/module/runtime/resource/*.yaml
+Files: .github/* .gitlab-ci.yml src/builder/resource/*.yaml test/data/demo/*.yaml test/data/demo/*.yml src/module/runtime/resource/*.yaml .obs/workflows.yml
 Copyright: None
 License: CC0-1.0
 

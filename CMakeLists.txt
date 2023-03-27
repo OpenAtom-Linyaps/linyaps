@@ -14,11 +14,11 @@ set(LINGLONG_USERNAME
 )
 set(LINGLONG_LOG_DIR
     "/var/log/linglong"
-    CACHE STRING "the location where linglong releated program write their log"
+    CACHE STRING "the location where linglong related program write their log"
 )
 set(LINGLONG_ROOT
     "/var/lib/linglong"
-    CACHE STRING "the location where linglong releated program puts their data"
+    CACHE STRING "the location where linglong related program puts their data"
 )
 
 # for private header

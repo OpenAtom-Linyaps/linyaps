@@ -1,4 +1,4 @@
-# This is the clang-format style used by qt releated deepin projects.
+# This is the clang-format style used by qt related deepin projects.
 #
 # This file is modified from https://github.com/qt/qt5/blob/5b22f8ec2e4fbb58e362b709ee82f2dbd8afdfd3/_clang-format
 # based on the rules from https://github.com/linuxdeepin/deepin-styleguide,

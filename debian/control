@@ -7,7 +7,6 @@ Build-Depends:
  debhelper (>= 11),
  libarchive-dev,
  libcurl4-gnutls-dev,
- libgdk-pixbuf2.0-dev,
  libglib2.0-dev,
  libgtest-dev,
  libostree-dev,

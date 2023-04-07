@@ -11,6 +11,7 @@ sudo cmake --install .
 ```
 
 ## Build For Developers
+
 ```bash
 mkdir -v build
 cd build
@@ -18,6 +19,7 @@ cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_DEBUG_SANIT=address ..
 cmake --build .
 sudo cmake --install .
 ```
+
 DCMAKE_DEBUG_SANIT = 'address' open asan for debug builds
 DCMAKE_DEBUG_SANIT = 'thread' open tasn for debug builds
 
@@ -44,14 +46,14 @@ bc000426d8884c7fbe804996f24144ce 21751 @ /run/user/1000/linglong/bc000426d8884c7
 
 ## Coverage Test
 
-add --coverage in CMakeLists.txt
+Add --coverage in CMakeLists.txt
 
 ```bash
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
 ```
 
-use gcov、lcov to generate convert html report, make shure at the top level of the project.
+Use gcov, lcov to generate convert HTML report, make sure at the top level of the project.
 
 ```bash
 ./scripts/code_coverage.sh

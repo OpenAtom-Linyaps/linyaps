@@ -10,17 +10,17 @@
 
 #include <QDebug>
 
-TEST(Moduel_Util, Error)
+TEST(Module_Util, Error)
 {
     linglong::util::Error err;
-    EXPECT_EQ((bool)err, true);
+    EXPECT_EQ(static_cast<bool>(err), false);
 
     auto funcLevel_1 = []() -> linglong::util::Error {
         return NewError(-1, "this is level 1 error");
     };
 
     err = funcLevel_1();
-    EXPECT_EQ((bool)err, false);
+    EXPECT_EQ(static_cast<bool>(err), true);
 
     auto funcLevel_2 = [=]() -> linglong::util::Error {
         auto r = funcLevel_1();
@@ -29,7 +29,7 @@ TEST(Moduel_Util, Error)
 
     err = funcLevel_2();
 
-    EXPECT_EQ((bool)err, false);
+    EXPECT_EQ(static_cast<bool>(err), true);
     EXPECT_EQ(err.code(), -1);
 
     qCritical() << err;

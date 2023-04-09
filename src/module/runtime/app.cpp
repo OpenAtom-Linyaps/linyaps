@@ -76,7 +76,7 @@ public:
     {
         QFile jsonFile(":/config.json");
         if (!jsonFile.open(QIODevice::ReadOnly)) {
-            qFatal("buildin oci configuration file missing, check qrc");
+            qFatal("builtin oci configuration file missing, check qrc");
             return false;
         }
         auto json = QJsonDocument::fromJson(jsonFile.readAll());

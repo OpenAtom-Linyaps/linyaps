@@ -12,7 +12,34 @@
 
 #include <tuple>
 
+#include "module/util/error.h"
+
 namespace linglong {
+namespace util {
+
+inline Error Exec(const QString &program, const QStringList &args, int timeout = -1)
+{
+    QProcess process;
+    process.setProgram(program);
+    process.setArguments(args);
+
+    QProcess::connect(&process, &QProcess::readyReadStandardOutput, [&]() {
+        qDebug() << process.readAllStandardOutput();
+    });
+
+    QProcess::connect(&process, &QProcess::readyReadStandardError, [&]() {
+        qWarning() << process.readAllStandardOutput();
+    });
+
+    process.start();
+    process.waitForStarted(timeout);
+    process.waitForFinished(timeout);
+
+    return NewError(process.exitCode(), process.errorString());
+}
+
+} // namespace util
+
 namespace runner {
 
 /*!

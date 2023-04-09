@@ -11,7 +11,7 @@
 #include <QDebug>
 #include <QDir>
 
-TEST(Moduel_Util, uuid)
+TEST(Module_Util, uuid)
 {
     auto uuid = linglong::util::genUuid();
     EXPECT_EQ(uuid.size() > 0, true);

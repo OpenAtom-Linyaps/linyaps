@@ -11,7 +11,7 @@
 #include <QDebug>
 #include <QDir>
 
-TEST(Moduel_Util, FS)
+TEST(Module_Util, FS)
 {
     QDir empty("");
     QString value;
@@ -27,7 +27,7 @@ TEST(Moduel_Util, FS)
     EXPECT_EQ(empty.exists(), true);
 }
 
-TEST(mod_util_fs, mod_util_fs)
+TEST(Module_Util, FS_Layers)
 {
     // listDirFolders
     bool delete_dir = false;

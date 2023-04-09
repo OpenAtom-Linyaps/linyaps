@@ -8,7 +8,7 @@
 
 #include "module/package/ref.h"
 
-TEST(Moduel_Package, Ref)
+TEST(Module_Package, Ref)
 {
     linglong::package::Ref ref("deepin:channel/appId/version/arch/module");
 

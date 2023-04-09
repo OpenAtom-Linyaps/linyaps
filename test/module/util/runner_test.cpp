@@ -11,7 +11,7 @@
 #include <QDebug>
 #include <QDir>
 
-TEST(Moduel_Util, runner)
+TEST(Module_Util, runner)
 {
     auto ret = linglong::runner::Runner(
             "ostree1",

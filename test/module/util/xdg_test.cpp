@@ -12,7 +12,7 @@
 #include <QDir>
 #include <QStandardPaths>
 
-TEST(Moduel_Util, Tool)
+TEST(Module_Util, Tool)
 {
     QString env = "${HOME}/Desktop:${HOME}/Desktop";
     QRegExp exp("(\\$\\{.*\\})");
@@ -28,7 +28,7 @@ TEST(Moduel_Util, Tool)
     EXPECT_EQ(envs.first.contains("${HOME}"), false);
 }
 
-TEST(Moduel_Util, convertSpecialCharacters)
+TEST(Module_Util, convertSpecialCharacters)
 {
     QStringList args1 = { "/home/qwe/Video/test test/test.mp4" };
     QStringList args2 = { "/home/qwe/Video/test/测试 音乐.mp4" };

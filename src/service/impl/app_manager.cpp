@@ -7,6 +7,8 @@
 #include "app_manager.h"
 
 #include "app_manager_p.h"
+#include "module/repo/ostree_repo.h"
+#include "module/repo/vfs_repo.h"
 #include "module/runtime/app.h"
 #include "module/util/app_status.h"
 #include "module/util/file.h"
@@ -20,9 +22,14 @@ namespace linglong {
 namespace service {
 
 AppManagerPrivate::AppManagerPrivate(AppManager *parent)
-    : repo(util::getLinglongRootPath())
-    , q_ptr(parent)
+    : q_ptr(parent)
 {
+    // TODO: use config file to set repo backend
+    if (qEnvironmentVariable("LINGLONG_REPO_BACKEND") == "vfs") {
+        repo = new repo::VfsRepo(util::getLinglongRootPath());
+    } else {
+        repo = new repo::OSTreeRepo(util::getLinglongRootPath());
+    }
 }
 
 AppManager::AppManager()
@@ -32,7 +39,7 @@ AppManager::AppManager()
     runPool->setMaxThreadCount(RUN_POOL_MAX_THREAD);
 }
 
-AppManager::~AppManager() { }
+AppManager::~AppManager() = default;
 
 /*
  * 执行软件包
@@ -148,7 +155,7 @@ Reply AppManager::Start(const RunParamOption &paramOption)
         linglong::package::Ref ref("", channel, appId, version, arch, appModule);
 
         // 判断是否是正在运行应用
-        auto latestAppRef = d->repo.latestOfRef(appId, version);
+        auto latestAppRef = d->repo->latestOfRef(appId, version);
         for (const auto &app : d->apps) {
             if (latestAppRef.toString() == app->container()->packageName) {
                 app->exec(desktopExec, "", "");
@@ -156,7 +163,7 @@ Reply AppManager::Start(const RunParamOption &paramOption)
             }
         }
 
-        auto app = linglong::runtime::App::load(&d->repo, ref, desktopExec);
+        auto app = linglong::runtime::App::load(d->repo, ref, desktopExec);
         if (nullptr == app) {
             // FIXME: set job status to failed
             qCritical() << "load app failed " << app;

@@ -7,7 +7,7 @@
 #ifndef LINGLONG_SRC_SERVICE_IMPL_APP_MANAGER_P_H_
 #define LINGLONG_SRC_SERVICE_IMPL_APP_MANAGER_P_H_
 
-#include "module/repo/ostree_repo.h"
+#include "module/repo/repo.h"
 #include "module/runtime/app.h"
 
 namespace linglong {
@@ -22,8 +22,8 @@ public:
     ~AppManagerPrivate() override = default;
 
 private:
-    QMap<QString, QSharedPointer<linglong::runtime::App>> apps;
-    linglong::repo::OSTreeRepo repo;
+    QMap<QString, QSharedPointer<linglong::runtime::App>> apps = {};
+    linglong::repo::Repo *repo = nullptr;
 
 public:
     AppManager *const q_ptr;

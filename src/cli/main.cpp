@@ -160,6 +160,8 @@ int main(int argc, char **argv)
     QCoreApplication app(argc, argv);
     QCoreApplication::setOrganizationName("deepin");
 
+    registerDBusParam();
+
     QCommandLineParser parser;
     parser.addHelpOption();
     QStringList subCommandList = { "run",       "ps",     "exec",  "kill", "install",

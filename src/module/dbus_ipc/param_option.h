@@ -231,4 +231,5 @@ Q_DECLARE_METATYPE(linglong::service::QueryParamOption)
 Q_DECLARE_METATYPE(linglong::service::UninstallParamOption)
 Q_DECLARE_METATYPE(linglong::service::RunParamOption)
 Q_DECLARE_METATYPE(linglong::service::ExecParamOption)
+
 #endif

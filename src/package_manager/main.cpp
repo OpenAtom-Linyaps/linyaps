@@ -7,12 +7,16 @@
 #include "module/jobmanageradaptor.h"
 #include "module/packagemanageradaptor.h"
 
+#include "module/dbus_ipc/workaround.h"
+
 #include <QCoreApplication>
 
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
     QCoreApplication::setOrganizationName("deepin");
+
+    registerDBusParam();
 
     QDBusConnection dbus = QDBusConnection::systemBus();
     if (!dbus.registerService("org.deepin.linglong.PackageManager")) {

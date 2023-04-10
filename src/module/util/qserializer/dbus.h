@@ -41,24 +41,24 @@ const QDBusArgument &move_out(const QDBusArgument &args, T &x)
 
 } // namespace qserializer
 
-#define QSERIALIZER_DECLARE_DBUS(T)                                                   \
-  [[maybe_unused]] inline const QDBusArgument &operator<<(QDBusArgument &args,        \
-                                                          const QSharedPointer<T> &x) \
-  {                                                                                   \
-    return qserializer::move_in<QSharedPointer<T>>(args, x);                          \
-  }                                                                                   \
-  [[maybe_unused]] inline const QDBusArgument &operator>>(const QDBusArgument &args,  \
-                                                          QSharedPointer<T> &x)       \
-  {                                                                                   \
-    return qserializer::move_out<QSharedPointer<T>>(args, x);                         \
-  }                                                                                   \
-  QSERIALIZER_DECLARE(T)
+#define QSERIALIZER_DECLARE_DBUS(T)                                                     \
+    [[maybe_unused]] inline const QDBusArgument &operator<<(QDBusArgument &args,        \
+                                                            const QSharedPointer<T> &x) \
+    {                                                                                   \
+        return qserializer::move_in<QSharedPointer<T>>(args, x);                        \
+    }                                                                                   \
+    [[maybe_unused]] inline const QDBusArgument &operator>>(const QDBusArgument &args,  \
+                                                            QSharedPointer<T> &x)       \
+    {                                                                                   \
+        return qserializer::move_out<QSharedPointer<T>>(args, x);                       \
+    }                                                                                   \
+    QSERIALIZER_DECLARE(T)
 
-#define QSERIALIZER_IMPL_DBUS(T, ...)                      \
-  QSERIALIZER_IMPL(T, {                                    \
-qDBusRegisterMetaType<QSharedPointer<T>>();                \
-qDBusRegisterMetaType<QList<QSharedPointer<T>>>();         \
-qDBusRegisterMetaType<QMap<QString, QSharedPointer<T>>>(); \
-  } __VA_OPT__(, ) __VA_ARGS__)
+#define QSERIALIZER_IMPL_DBUS(T, ...)                              \
+    QSERIALIZER_IMPL(T, {                                          \
+        qDBusRegisterMetaType<QSharedPointer<T>>();                \
+        qDBusRegisterMetaType<QList<QSharedPointer<T>>>();         \
+        qDBusRegisterMetaType<QMap<QString, QSharedPointer<T>>>(); \
+    } __VA_OPT__(, ) __VA_ARGS__)
 
 #endif

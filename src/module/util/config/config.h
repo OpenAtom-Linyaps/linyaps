@@ -9,26 +9,42 @@
 
 // yaml/json format config
 
+#include "module/repo/repo.h"
 #include "module/util/file.h"
 #include "module/util/qserializer/deprecated.h"
+#include "module/util/qserializer/json.h"
 
 namespace linglong {
+namespace config {
 
-class Config : public JsonSerialize
+class Repo : public Serialize
 {
     Q_OBJECT;
-    Q_JSON_CONSTRUCTOR(Config)
-    Q_JSON_PROPERTY(QString, repoUrl);
-
-    inline static QString path() { return util::getLinglongRootPath() + "/config.json"; }
+    Q_SERIALIZE_CONSTRUCTOR(Repo)
+public:
+    Q_SERIALIZE_PROPERTY(QString, endpoint);
 };
 
-inline Config &ConfigInstance()
+class Config : public Serialize
 {
-    static QSharedPointer<Config> config(util::loadJson<Config>(Config::path()));
-    return *config;
-}
+    Q_OBJECT;
 
+public:
+    Q_PROPERTY(QMap<QString, QSharedPointer<linglong::config::Repo>> repos MEMBER repos);
+    QMap<QString, QSharedPointer<linglong::config::Repo>> repos;
+
+public:
+    explicit Config(QObject *parent = nullptr);
+    //    virtual void onPostSerialize() override;
+    //    void save();
+};
+
+} // namespace config
 } // namespace linglong
+
+linglong::config::Config &ConfigInstance();
+
+Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::config, Repo)
+Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::config, Config)
 
 #endif // LINGLONG_SRC_MODULE_UTIL_CONFIG_CONFIG_H_

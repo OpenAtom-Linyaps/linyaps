@@ -22,7 +22,7 @@ std::tuple<util::Error, QList<QSharedPointer<package::AppMetaInfo>>>
 RepoClient::QueryApps(const package::Ref &ref)
 {
     // TODO: query cache Here
-    QUrl url(ConfigInstance().repoUrl);
+    QUrl url(ConfigInstance().repos[package::kDefaultRepo]->endpoint);
     url.setPath(url.path() + "apps/fuzzysearchapp");
 
     qDebug() << "query" << url;

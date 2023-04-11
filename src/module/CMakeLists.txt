@@ -47,12 +47,25 @@ qt5_add_dbus_adaptor(
   linglong::system::helper::SystemHelper
 )
 
+qt5_add_dbus_adaptor(
+  LINGLONG_LIB_SOURCES
+  dbus_ipc/org.deepin.linglong.FilesystemHelper.xml
+  system_helper/filesystem_helper.h
+  linglong::system::helper::FilesystemHelper
+)
+
 # dbus interface
 
 qt5_add_dbus_interface(
   LINGLONG_LIB_SOURCES
   dbus_ipc/org.deepin.linglong.SystemHelper.xml
   dbus_system_helper
+)
+
+qt5_add_dbus_interface(
+  LINGLONG_LIB_SOURCES
+  dbus_ipc/org.deepin.linglong.FilesystemHelper.xml
+  dbus_filesystem_helper
 )
 
 set_source_files_properties(

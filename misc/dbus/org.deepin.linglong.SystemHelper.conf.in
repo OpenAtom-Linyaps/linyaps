@@ -10,6 +10,15 @@
     <allow own="org.deepin.linglong.SystemHelper"/>
   </policy>
 
+  <policy context="default">
+    <allow send_destination="org.deepin.linglong.SystemHelper"/>
+    <allow receive_sender="org.deepin.linglong.SystemHelper"/>
+
+    <!-- TODO: change SystemHelper interface to PackageManagerHelper -->
+    <deny send_destination="org.deepin.linglong.SystemHelper"
+      send_interface="org.deepin.linglong.SystemHelper"/>
+  </policy>
+
   <!-- Only allow @LINGLONG_USERNAME@ to invoke methods on the interfaces -->
   <policy user="@LINGLONG_USERNAME@">
     <allow send_destination="org.deepin.linglong.SystemHelper"/>

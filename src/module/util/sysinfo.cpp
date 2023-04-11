@@ -27,22 +27,29 @@ QString hostArch()
     return arch;
 }
 
-/*
- * 查询当前登陆用户名
- *
- * @return QString: 当前登陆用户名
+/*!
+ * query username with pid
+ * @param uid
+ * @return
+ */
+QString getUserName(uid_t uid)
+{
+    struct passwd *user = getpwuid(uid);
+    if (user) {
+        return QString::fromUtf8(user->pw_name);
+    }
+    qCritical() << "getUserName err";
+    return "";
+}
+
+/*!
+ * query current username
+ * @return
  */
 QString getUserName()
 {
-    uid_t uid = geteuid();
-    struct passwd *user = getpwuid(uid);
-    QString userName = "";
-    if (user && user->pw_name) {
-        userName = QString(QLatin1String(user->pw_name));
-    } else {
-        qCritical() << "getUserName err";
-    }
-    return userName;
+    return getUserName(geteuid());
 }
+
 } // namespace util
 } // namespace linglong

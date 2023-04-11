@@ -35,7 +35,7 @@ PackageManagerPrivate::PackageManagerPrivate(PackageManager *parent)
     : sysLinglongInstalltions(linglong::util::getLinglongRootPath() + "/entries/share")
     , kAppInstallPath(linglong::util::getLinglongRootPath() + "/layers/")
     , kLocalRepoPath(linglong::util::getLinglongRootPath())
-    , systemHelperInterface(linglong::SystemHelperDBusName,
+    , systemHelperInterface(linglong::SystemHelperDBusServiceName,
                             linglong::SystemHelperDBusPath,
                             []() -> QDBusConnection {
                                 auto address = QString(getenv("LINGLONG_SYSTEM_HELPER_ADDRESS"));

@@ -1281,7 +1281,8 @@ util::Error App::start()
         // FIXME: need keep interactive shell
         auto pid = waitpid(boxPid, nullptr, 0);
         close(d->sockets[1]);
-        // FIXME: to do 删除代理socket临时文件
+        // FIXME: 删除代理socket临时文件
+        // FIXME: 清理资源，包括挂载的VFS等
         qDebug() << "child" << pid << "finish";
     }
 

@@ -7,8 +7,13 @@
 #ifndef LINGLONG_SRC_MODULE_DBUS_IPC_DBUS_COMMON_H_
 #define LINGLONG_SRC_MODULE_DBUS_IPC_DBUS_COMMON_H_
 
+#include "module/util/sysinfo.h"
+
 #include <QDBusConnection>
+#include <QDBusConnectionInterface>
+#include <QDBusContext>
 #include <QDBusError>
+#include <QDBusReply>
 #include <QDebug>
 #include <QVariantMap>
 
@@ -46,6 +51,47 @@ inline bool registerServiceAndObject(QDBusConnection *dbus,
     }
 
     return true;
+}
+
+inline QString getDBusCallerUsername(QDBusContext &ctx)
+{
+    QDBusReply<uint> dbusReply = ctx.connection().interface()->serviceUid(ctx.message().service());
+    if (dbusReply.isValid()) {
+        return util::getUserName(dbusReply.value());
+    }
+    // FIXME: must reject request
+    qCritical() << "can not find caller uid";
+    return "";
+}
+
+inline uid_t getDBusCallerUid(QDBusContext &ctx)
+{
+    if (!ctx.connection().interface()) {
+        qCritical() << "can not get peer uid";
+        return -1;
+    }
+
+    QDBusReply<uint> dbusReply = ctx.connection().interface()->serviceUid(ctx.message().service());
+    if (!dbusReply.isValid()) {
+        qCritical() << "can not find caller uid";
+        return -1;
+    }
+    return dbusReply.value();
+}
+
+inline pid_t getDBusCallerPid(QDBusContext &ctx)
+{
+    if (!ctx.connection().interface()) {
+        qCritical() << "can not get peer uid";
+        return -1;
+    }
+
+    QDBusReply<uint> dbusReply = ctx.connection().interface()->servicePid(ctx.message().service());
+    if (!dbusReply.isValid()) {
+        qCritical() << "can not find caller uid";
+        return -1;
+    }
+    return dbusReply.value();
 }
 
 } // namespace linglong

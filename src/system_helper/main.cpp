@@ -4,8 +4,10 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
+#include "filesystem_helper.h"
 #include "module/dbus_ipc/dbus_common.h"
 #include "module/dbus_ipc/dbus_system_helper_common.h"
+#include "module/filesystemhelperadaptor.h"
 #include "module/systemhelperadaptor.h"
 #include "privilege/privilege_install_portal.h"
 #include "system_helper.h"
@@ -21,6 +23,9 @@ int main(int argc, char *argv[])
 
     SystemHelper systemHelper;
     SystemHelperAdaptor systemHelperAdaptor(&systemHelper);
+
+    FilesystemHelper filesystemHelper;
+    FilesystemHelperAdaptor filesystemHelperAdaptor(&filesystemHelper);
 
     QCommandLineParser parser;
     QCommandLineOption optBus("bus", "service bus address", "bus");
@@ -54,12 +59,14 @@ int main(int argc, char *argv[])
         QDBusConnection bus = QDBusConnection::systemBus();
         if (!linglong::registerServiceAndObject(
                     &bus,
-                    linglong::SystemHelperDBusName,
+                    linglong::SystemHelperDBusServiceName,
                     {
                             { linglong::SystemHelperDBusPath, &systemHelper },
+                            { linglong::FilesystemHelperDBusPath, &filesystemHelper },
                     })) {
             return -1;
         }
+        qDebug() << "register" << linglong::SystemHelperDBusServiceName;
     }
 
     return app.exec();

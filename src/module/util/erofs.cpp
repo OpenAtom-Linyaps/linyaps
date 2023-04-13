@@ -6,15 +6,36 @@
 
 #include "erofs.h"
 
+#include "module/dbus_gen_filesystem_helper_interface.h"
+#include "module/dbus_ipc/dbus_system_helper_common.h"
 #include "runner.h"
 
 namespace linglong {
 namespace erofs {
 
-// TODO: use erofs-utils for now, change to erofs loop mount with kernel version > 5.19
 util::Error mount(const QString &src, const QString &mountPoint)
 {
-    return util::Exec("erofsfuse", { src, mountPoint });
+    // TODO: check by config, not env
+    if (qEnvironmentVariable("LINGLONG_REPO_VFS_EROFS_BACKEND") == "fuse") {
+        return util::Exec("erofsfuse", { src, mountPoint });
+    }
+
+    OrgDeepinLinglongFilesystemHelperInterface ifc(SystemHelperDBusServiceName,
+                                                   FilesystemHelperDBusPath,
+                                                   QDBusConnection::systemBus());
+
+    QVariantMap option = {};
+    if (qEnvironmentVariable("LINGLONG_REPO_VFS_EROFS_BACKEND") == "fscache") {
+        // TODO(Iceyer): design the format of fscache, or use nydusd
+        option = {
+            { "fsid", "" },
+            { "device", "" },
+        };
+    }
+
+    auto reply = ifc.Mount(src, mountPoint, "erofs", {});
+    // FIXME: add dbus error convert
+    return NewError(reply.error().type(), reply.error().message());
 }
 
 util::Error mkfs(const QString &srcDir, const QString &destImagePath)

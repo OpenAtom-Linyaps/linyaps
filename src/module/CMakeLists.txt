@@ -65,7 +65,7 @@ qt5_add_dbus_interface(
 qt5_add_dbus_interface(
   LINGLONG_LIB_SOURCES
   dbus_ipc/org.deepin.linglong.FilesystemHelper.xml
-  dbus_filesystem_helper
+  dbus_gen_filesystem_helper_interface
 )
 
 set_source_files_properties(

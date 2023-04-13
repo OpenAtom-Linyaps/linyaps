@@ -47,10 +47,8 @@ static QSharedPointer<linglong::config::Config> loadConfig()
         cfg = QSharedPointer<linglong::config::Config>(new Config);
     }
 
-    qCritical() << cfg;
-    qCritical() << cfg->repos.keys();
-    qCritical() << cfg->repos[package::kDefaultRepo]->endpoint;
     Q_ASSERT(cfg);
+
     if (!cfg->repos.contains(package::kDefaultRepo)) {
         cfg->repos.insert(package::kDefaultRepo,
                           QSharedPointer<config::Repo>(new Repo(cfg.data())));

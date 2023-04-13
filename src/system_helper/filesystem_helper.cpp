@@ -7,6 +7,7 @@
 #include "filesystem_helper.h"
 
 #include "module/dbus_ipc/dbus_common.h"
+#include "module/util/file.h"
 #include "module/util/runner.h"
 #include "privilege/privilege_install_portal.h"
 
@@ -17,6 +18,27 @@
 namespace linglong {
 namespace system {
 namespace helper {
+
+static inline std::tuple<util::Error, QString> layerMountPoint(uid_t uid, const QString &layerID)
+{
+    auto parentDirPath = QString("/run/user/%1/linglong/").arg(uid);
+
+    QDir dir(parentDirPath);
+    dir.cd(layerID);
+    auto mountPoint = dir.canonicalPath();
+
+    // only allow umount in parentDirPath
+    if (!mountPoint.startsWith(parentDirPath)) {
+        return { NewError(-1, "Unsafe layerID to mount"), "" };
+    }
+
+    return { Success(), mountPoint };
+}
+
+static bool supportFscache()
+{
+    return util::fileExists("/dev/cachefiles");
+}
 
 bool isWritable(const char *path, const char *procPath)
 {
@@ -38,12 +60,12 @@ bool isWritable(const char *path, const char *procPath)
 }
 
 /*!
- * mount file to sub path of "/run/user/{uid}/linglong"
- * @param mountPoint
+ * mount file to sub path of "/run/user/{uid}/linglong/{layerID}"
+ * @param layerID
  * @param options
  */
 void FilesystemHelper::Mount(const QString &source,
-                             const QString &mountPoint,
+                             const QString &layerID,
                              const QString &fsType,
                              const QVariantMap &options)
 {
@@ -52,40 +74,63 @@ void FilesystemHelper::Mount(const QString &source,
         return;
     }
 
+    auto uid = getDBusCallerUid(*this);
+    // !!! DO NOT create mount point because now is root
+    auto [err, mountPoint] = layerMountPoint(uid, layerID);
+    if (err) {
+        sendErrorReply(QDBusError::InvalidArgs, err.message());
+        return;
+    }
+
     auto pid = getDBusCallerPid(*this);
-    // FIXME: check if mountpoint is mount readonly
+    // FIXME: check if mount point is mount readonly
     if (!isWritable(mountPoint.toStdString().c_str(),
                     QString("/proc/%1").arg(pid).toStdString().c_str())) {
         sendErrorReply(QDBusError::AccessDenied, "No write permission with mount point");
         return;
     }
 
-    auto err = util::Exec("mount", { "-t", fsType, "-o", "loop", source, mountPoint });
+    if ((qEnvironmentVariable("LINGLONG_REPO_VFS_EROFS_BACKEND") == "fscache")
+        && supportFscache()) {
+        // mount -t erofs none -o fsid=${fsid} -o device=${blob} ${mountPoint}
+        err = util::Exec("mount",
+                         { "-t",
+                           fsType,
+                           "-o",
+                           "loop",
+                           "-o",
+                           QString("fsid=%1").arg(options.value("fsid").toString()),
+                           "-o",
+                           QString("device=%1").arg(options.value("device").toString()),
+                           "none",
+                           mountPoint });
+    } else {
+        // mount -t erofs none -o loop ${source} ${mountPoint}
+        err = util::Exec("mount", { "-t", fsType, "-o", "loop", source, mountPoint });
+    }
     if (err) {
         sendErrorReply(static_cast<QDBusError::ErrorType>(err.code()), err.message());
     }
 }
 
 /*!
- * umount mountpoint in "/run/user/{uid}/linglong"
- * @param mountPoint
+ * umount mount point in "/run/user/{uid}/linglong/{layerID}"
+ * @param layerID
  * @param options
  */
-void FilesystemHelper::Umount(const QString &mountPoint, const QVariantMap &options)
+void FilesystemHelper::Umount(const QString &layerID, const QVariantMap &options)
 {
     auto uid = getDBusCallerUid(*this);
-    auto mountPointDir = QDir(mountPoint);
-    auto allowMountPointPathPrefix = QString("/run/user/%1/linglong/").arg(uid);
-
-    // only allow umount in "/run/user/{uid}/linglong"
-    if (!mountPointDir.canonicalPath().startsWith(allowMountPointPathPrefix)) {
-        sendErrorReply(QDBusError::AccessDenied, "No allow umount mountpoint not belong linglong");
+    auto [err, mountPoint] = layerMountPoint(uid, layerID);
+    if (err) {
+        sendErrorReply(QDBusError::InvalidArgs, err.message());
         return;
     }
 
-    auto err = util::Exec("umount", { mountPoint });
+    // no need to check mountPoint exist
+    err = util::Exec("umount", { mountPoint });
     if (err) {
-        sendErrorReply(static_cast<QDBusError::ErrorType>(err.code()), err.message());
+        sendErrorReply(QDBusError::Failed, err.message());
     }
 }
 

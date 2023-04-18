@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "module/appmanageradaptor.h"
+#include "module/dbus_gen_app_manager_adaptor.h"
 #include "module/dbus_ipc/workaround.h"
 
 #include <QCoreApplication>

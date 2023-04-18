@@ -11,8 +11,8 @@ namespace linglong {
 
 inline const char *SystemHelperDBusServiceName = "org.deepin.linglong.SystemHelper";
 
-inline const char *SystemHelperDBusPath = "/org/deepin/linglong/SystemHelper";
-inline const char *SystemHelperDBusInterface = "org.deepin.linglong.SystemHelper";
+inline const char *PackageManagerHelperDBusPath = "/org/deepin/linglong/PackageManagerHelper";
+inline const char *PackageManagerHelperDBusInterface = "org.deepin.linglong.PackageManagerHelper";
 
 inline const char *FilesystemHelperDBusPath = "/org/deepin/linglong/FilesystemHelper";
 inline const char *FilesystemHelperDBusInterface = "org.deepin.linglong.FilesystemHelper";

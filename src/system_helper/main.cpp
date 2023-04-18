@@ -5,12 +5,12 @@
  */
 
 #include "filesystem_helper.h"
+#include "module/dbus_gen_filesystem_helper_adaptor.h"
+#include "module/dbus_gen_package_manager_helper_adaptor.h"
 #include "module/dbus_ipc/dbus_common.h"
 #include "module/dbus_ipc/dbus_system_helper_common.h"
-#include "module/filesystemhelperadaptor.h"
-#include "module/systemhelperadaptor.h"
+#include "package_manager_helper.h"
 #include "privilege/privilege_install_portal.h"
-#include "system_helper.h"
 
 #include <QCoreApplication>
 #include <QDBusConnection>
@@ -21,8 +21,8 @@ int main(int argc, char *argv[])
     using namespace linglong::system::helper;
     QCoreApplication app(argc, argv);
 
-    SystemHelper systemHelper;
-    SystemHelperAdaptor systemHelperAdaptor(&systemHelper);
+    PackageManagerHelper packageManagerHelper;
+    PackageManagerHelperAdaptor packageManagerHelperAdaptor(&packageManagerHelper);
 
     FilesystemHelper filesystemHelper;
     FilesystemHelperAdaptor filesystemHelperAdaptor(&filesystemHelper);
@@ -42,26 +42,27 @@ int main(int argc, char *argv[])
             qCritical() << "dbusServer is not connected" << dbusServer->lastError();
             return -1;
         }
-        QObject::connect(dbusServer.data(),
-                         &QDBusServer::newConnection,
-                         [&systemHelper](const QDBusConnection &conn) {
-                             // FIXME: work round to keep conn alive, but we finally need to free
-                             // clientConn.
-                             const auto clientConn = new QDBusConnection(conn);
-                             linglong::registerServiceAndObject(
-                                     clientConn,
-                                     "",
-                                     {
-                                             { linglong::SystemHelperDBusPath, &systemHelper },
-                                     });
-                         });
+        QObject::connect(
+                dbusServer.data(),
+                &QDBusServer::newConnection,
+                [&packageManagerHelper](const QDBusConnection &conn) {
+                    // FIXME: work round to keep conn alive, but we finally need to free
+                    // clientConn.
+                    const auto clientConn = new QDBusConnection(conn);
+                    linglong::registerServiceAndObject(
+                            clientConn,
+                            "",
+                            {
+                                    { linglong::PackageManagerHelperDBusPath, &packageManagerHelper },
+                            });
+                });
     } else {
         QDBusConnection bus = QDBusConnection::systemBus();
         if (!linglong::registerServiceAndObject(
                     &bus,
                     linglong::SystemHelperDBusServiceName,
                     {
-                            { linglong::SystemHelperDBusPath, &systemHelper },
+                            { linglong::PackageManagerHelperDBusPath, &packageManagerHelper },
                             { linglong::FilesystemHelperDBusPath, &filesystemHelper },
                     })) {
             return -1;

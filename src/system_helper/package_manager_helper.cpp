@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "system_helper.h"
+#include "package_manager_helper.h"
 
 #include "privilege/privilege_install_portal.h"
 
@@ -18,7 +18,7 @@ namespace helper {
  * @param ref not use now
  * @param options not use now
  */
-void SystemHelper::RebuildInstallPortal(const QString &installPath,
+void PackageManagerHelper::RebuildInstallPortal(const QString &installPath,
                                         const QString &ref,
                                         const QVariantMap &options)
 {
@@ -36,7 +36,7 @@ void SystemHelper::RebuildInstallPortal(const QString &installPath,
  * @param ref
  * @param options
  */
-void SystemHelper::RuinInstallPortal(const QString &installPath,
+void PackageManagerHelper::RuinInstallPortal(const QString &installPath,
                                      const QString &ref,
                                      const QVariantMap &options)
 {

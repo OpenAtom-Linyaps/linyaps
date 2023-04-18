@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "module/app_manager.h"
+#include "module/dbus_gen_app_manager_interface.h"
 #include "module/package/package.h"
-#include "module/package_manager.h"
+#include "module/dbus_gen_package_manager_interface.h"
 #include "module/util/app_status.h"
 #include "module/util/command_helper.h"
 #include "module/util/env.h"

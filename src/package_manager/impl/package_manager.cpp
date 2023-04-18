@@ -35,8 +35,8 @@ PackageManagerPrivate::PackageManagerPrivate(PackageManager *parent)
     : sysLinglongInstalltions(linglong::util::getLinglongRootPath() + "/entries/share")
     , kAppInstallPath(linglong::util::getLinglongRootPath() + "/layers/")
     , kLocalRepoPath(linglong::util::getLinglongRootPath())
-    , systemHelperInterface(linglong::SystemHelperDBusServiceName,
-                            linglong::SystemHelperDBusPath,
+    , packageManagerHelperInterface(linglong::SystemHelperDBusServiceName,
+                            linglong::PackageManagerHelperDBusPath,
                             []() -> QDBusConnection {
                                 auto address = QString(getenv("LINGLONG_SYSTEM_HELPER_ADDRESS"));
                                 if (address.length()) {
@@ -876,10 +876,10 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
     // process portal after install
     {
         auto installPath = savePath;
-        qDebug() << "call systemHelperInterface.RebuildInstallPortal" << installPath,
+        qDebug() << "call packageManagerHelperInterface.RebuildInstallPortal" << installPath,
                 ref.toLocalFullRef();
         QDBusReply<void> helperRet =
-                systemHelperInterface.RebuildInstallPortal(installPath, ref.toString(), {});
+                packageManagerHelperInterface.RebuildInstallPortal(installPath, ref.toString(), {});
         if (!helperRet.isValid()) {
             qWarning() << "process post install portal failed:" << helperRet.error();
         }
@@ -1124,9 +1124,10 @@ Reply PackageManagerPrivate::Uninstall(const UninstallParamOption &paramOption)
                 }
             }
             auto packageRootPath = installPath + "/" + arch;
-            qDebug() << "call systemHelperInterface.RuinInstallPortal" << packageRootPath
+            qDebug() << "call packageManagerHelperInterface.RuinInstallPortal" << packageRootPath
                      << ref.toLocalFullRef() << paramOption.delAppData;
-            QDBusReply<void> helperRet = systemHelperInterface.RuinInstallPortal(packageRootPath,
+            QDBusReply<void> helperRet =
+                    packageManagerHelperInterface.RuinInstallPortal(packageRootPath,
                                                                                  ref.toString(),
                                                                                  variantMap);
             if (!helperRet.isValid()) {

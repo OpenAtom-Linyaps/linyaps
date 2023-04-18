@@ -10,7 +10,7 @@
 #include "module/dbus_ipc/package_manager_param.h"
 #include "module/dbus_ipc/param_option.h"
 #include "module/dbus_ipc/reply.h"
-#include "module/dbus_system_helper.h"
+#include "module/dbus_gen_package_manager_helper_interface.h"
 #include "module/package/package.h"
 
 namespace linglong {
@@ -205,7 +205,7 @@ private:
 
     bool noDBusMode = false;
 
-    OrgDeepinLinglongSystemHelperInterface systemHelperInterface;
+    OrgDeepinLinglongPackageManagerHelperInterface packageManagerHelperInterface;
 
 public:
     PackageManager *const q_ptr;

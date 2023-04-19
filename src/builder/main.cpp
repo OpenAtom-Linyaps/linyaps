@@ -96,7 +96,7 @@ int main(int argc, char **argv)
 
               auto execVerbose = QCommandLineOption("exec", "run exec than build script", "exec");
               auto pkgVersion =
-                      QCommandLineOption("pversion", "set pacakge version", "pacakge version");
+                      QCommandLineOption("pversion", "set package version", "package version");
               auto srcVersion =
                       QCommandLineOption("sversion", "set source version", "source version");
               auto srcCommit = QCommandLineOption("commit", "set commit refs", "source commit");

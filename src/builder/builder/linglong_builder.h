@@ -9,6 +9,7 @@
 
 #include "builder.h"
 #include "project.h"
+#include "module/util/serialize/yaml.h"
 
 namespace linglong {
 namespace builder {
@@ -39,6 +40,12 @@ public:
     linglong::util::Error initRepo();
 
     linglong::util::Error buildFlow(Project *project);
+
+    linglong::util::Error parseProjectFile(YAML::Node &node);
+
+private:
+    QScopedPointer<Project> project;
+
 };
 
 // TODO: remove later

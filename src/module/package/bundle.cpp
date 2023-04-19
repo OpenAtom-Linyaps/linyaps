@@ -9,13 +9,9 @@
 #include "bundle_p.h"
 #include "module/package/info.h"
 #include "module/util/file.h"
-#include "module/util/http/httpclient.h"
 #include "module/util/qserializer/json.h"
 #include "module/util/runner.h"
 #include "module/util/status_code.h"
-
-#include <curl/curl.h>
-#include <qprocess.h>
 
 namespace linglong {
 namespace package {
@@ -222,8 +218,6 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
 {
     return NewError(-1, "Not implemented");
 
-    auto userInfo = util::getUserInfo();
-
     QString configUrl = repoUrl;
     if (configUrl.isEmpty()) {
         int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
@@ -237,6 +231,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
     }
     configUrl = configUrl.endsWith("/") ? configUrl : (configUrl + "/");
     // FIXME: use new client
+    // auto userInfo = util::getUserInfo();
     // auto token = HTTPCLIENT->getToken(configUrl, userInfo);
     QString token;
     if (token.isEmpty()) {
@@ -396,49 +391,51 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
     //    }
 
     // 上传bundle信息到服务器
-    auto runtimeJson =
-            QJsonDocument::fromJson(std::get<0>(util::toJSON(runtimeInfo))); // FIXME: handle error
-    auto develJson =
-            QJsonDocument::fromJson(std::get<0>(util::toJSON(develInfo)));   // FIXME: handle error
-
-    auto runtimeJsonObject = runtimeJson.object();
-    auto develJsonObject = develJson.object();
-
-    const QString runtimeAppId = runtimeJsonObject.value("appid").toString();
-    const QString develAppId = develJsonObject.value("appid").toString();
-
-    runtimeJsonObject.remove("appid");
-    develJsonObject.remove("appid");
-
-    runtimeJsonObject.insert("appId", runtimeAppId);
-    develJsonObject.insert("appId", develAppId);
-
-    runtimeJsonObject.insert("channel", repoChannel);
-    develJsonObject.insert("channel", repoChannel);
-
-    runtimeJsonObject["arch"] = runtimeInfo->arch[0];
-    develJsonObject["arch"] = develInfo->arch[0];
-
-    QJsonDocument runtimeDoc;
-    QJsonDocument develDoc;
-    runtimeDoc.setObject(runtimeJsonObject);
-    develDoc.setObject(develJsonObject);
-
-    auto runtimeRet = HTTPCLIENT->pushServerBundleData(runtimeDoc.toJson(), configUrl, token);
-    auto develRet = HTTPCLIENT->pushServerBundleData(develDoc.toJson(), configUrl, token);
-    if (STATUS_CODE(kSuccess) != runtimeRet || STATUS_CODE(kSuccess) != develRet) {
-        if (util::dirExists(this->tmpWorkDir)) {
-            util::removeDir(this->tmpWorkDir);
-        }
-        std::cout << "upload bundle info failed, please check and try again!" << std::endl;
-        return NewError(-1, "upload bundle info failed");
-    }
-
-    if (util::dirExists(this->tmpWorkDir)) {
-        util::removeDir(this->tmpWorkDir);
-    }
-    std::cout << "Upload success" << std::endl;
-    return Success();
+    //    auto runtimeJson =
+    //            QJsonDocument::fromJson(std::get<0>(util::toJSON(runtimeInfo))); // FIXME: handle
+    //            error
+    //    auto develJson =
+    //            QJsonDocument::fromJson(std::get<0>(util::toJSON(develInfo)));   // FIXME: handle
+    //            error
+    //
+    //    auto runtimeJsonObject = runtimeJson.object();
+    //    auto develJsonObject = develJson.object();
+    //
+    //    const QString runtimeAppId = runtimeJsonObject.value("appid").toString();
+    //    const QString develAppId = develJsonObject.value("appid").toString();
+    //
+    //    runtimeJsonObject.remove("appid");
+    //    develJsonObject.remove("appid");
+    //
+    //    runtimeJsonObject.insert("appId", runtimeAppId);
+    //    develJsonObject.insert("appId", develAppId);
+    //
+    //    runtimeJsonObject.insert("channel", repoChannel);
+    //    develJsonObject.insert("channel", repoChannel);
+    //
+    //    runtimeJsonObject["arch"] = runtimeInfo->arch[0];
+    //    develJsonObject["arch"] = develInfo->arch[0];
+    //
+    //    QJsonDocument runtimeDoc;
+    //    QJsonDocument develDoc;
+    //    runtimeDoc.setObject(runtimeJsonObject);
+    //    develDoc.setObject(develJsonObject);
+    //    send data to configUrl + "/apps";
+    //    auto runtimeRet = HTTPCLIENT->pushServerBundleData(runtimeDoc.toJson(), configUrl, token);
+    //    auto develRet = HTTPCLIENT->pushServerBundleData(develDoc.toJson(), configUrl, token);
+    //    if (STATUS_CODE(kSuccess) != runtimeRet || STATUS_CODE(kSuccess) != develRet) {
+    //        if (util::dirExists(this->tmpWorkDir)) {
+    //            util::removeDir(this->tmpWorkDir);
+    //        }
+    //        std::cout << "upload bundle info failed, please check and try again!" << std::endl;
+    //        return NewError(-1, "upload bundle info failed");
+    //    }
+    //
+    //    if (util::dirExists(this->tmpWorkDir)) {
+    //        util::removeDir(this->tmpWorkDir);
+    //    }
+    //    std::cout << "Upload success" << std::endl;
+    //    return Success();
 }
 
 } // namespace package

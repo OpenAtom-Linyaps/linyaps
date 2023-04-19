@@ -28,8 +28,6 @@
 namespace linglong {
 namespace util {
 
-QStringList getUserInfo();
-
 QString jonsPath(const QStringList &component);
 
 QString getUserFile(const QString &path);

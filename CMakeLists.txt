@@ -52,7 +52,6 @@ find_package(
 # other dependencies
 
 find_package(yaml-cpp REQUIRED)
-find_package(CURL REQUIRED)
 find_package(PkgConfig REQUIRED)
 
 pkg_search_module(

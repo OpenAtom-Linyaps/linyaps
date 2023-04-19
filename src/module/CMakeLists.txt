@@ -105,5 +105,4 @@ target_link_libraries(
          PkgConfig::glib2
          PkgConfig::ostree1
          yaml-cpp
-         CURL::libcurl
 )

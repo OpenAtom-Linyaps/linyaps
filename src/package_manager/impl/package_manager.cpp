@@ -11,8 +11,8 @@
 #include "module/repo/repo_client.h"
 #include "module/util/app_status.h"
 #include "module/util/appinfo_cache.h"
+#include "module/util/config/config.h"
 #include "module/util/file.h"
-#include "module/util/http/httpclient.h"
 #include "module/util/qserializer/json.h"
 #include "module/util/runner.h"
 #include "module/util/status_code.h"
@@ -21,7 +21,6 @@
 #include "module/util/version/version.h"
 #include "package_manager_p.h"
 
-#include <QDBusConnectionInterface>
 #include <QDBusInterface>
 #include <QDBusReply>
 #include <QDebug>
@@ -29,7 +28,6 @@
 #include <QSettings>
 
 #include <pwd.h>
-#include <sys/types.h>
 
 namespace linglong {
 namespace service {
@@ -47,6 +45,7 @@ PackageManagerPrivate::PackageManagerPrivate(PackageManager *parent)
                   }
                   return QDBusConnection::systemBus();
               }())
+    , repoClient(ConfigInstance().repos[package::kDefaultRepo]->endpoint)
     , q_ptr(parent)
 {
     linglong::util::getLocalConfig("repoName", remoteRepoName);
@@ -1142,8 +1141,8 @@ Reply PackageManagerPrivate::Uninstall(const UninstallParamOption &paramOption)
                      << ref.toLocalFullRef() << paramOption.delAppData;
             QDBusReply<void> helperRet =
                     packageManagerHelperInterface.RuinInstallPortal(packageRootPath,
-                                                                                 ref.toString(),
-                                                                                 variantMap);
+                                                                    ref.toString(),
+                                                                    variantMap);
             if (!helperRet.isValid()) {
                 qWarning() << "process pre uninstall portal failed:" << helperRet.error();
             }

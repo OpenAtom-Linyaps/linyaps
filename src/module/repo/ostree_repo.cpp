@@ -12,12 +12,12 @@
 #include "module/util/error.h"
 #include "module/util/file.h"
 #include "module/util/http/http_client.h"
-#include "module/util/http/httpclient.h"
 #include "module/util/qserializer/json.h"
 #include "module/util/runner.h"
 #include "module/util/sysinfo.h"
 #include "module/util/version/semver.h"
 #include "module/util/version/version.h"
+#include "repo_client.h"
 
 #include <gio/gio.h>
 #include <glib.h>
@@ -37,12 +37,10 @@ namespace repo {
 QSERIALIZER_IMPL(InfoResponse);
 QSERIALIZER_IMPL(RevPair);
 QSERIALIZER_IMPL(UploadResponseData);
-QSERIALIZER_IMPL(AuthResponseData);
 
 QSERIALIZER_IMPL(UploadTaskRequest);
 QSERIALIZER_IMPL(UploadRequest);
 QSERIALIZER_IMPL(UploadTaskResponse);
-QSERIALIZER_IMPL(AuthResponse);
 
 struct OstreeRepoObject
 {
@@ -72,6 +70,7 @@ private:
         : repoRootPath(std::move(localRepoRootPath))
         , remoteEndpoint(std::move(remoteEndpoint))
         , remoteRepoName(std::move(remoteRepoName))
+        , repoClient(remoteEndpoint)
         , q_ptr(parent)
     {
         QString repoCreateErr;
@@ -566,31 +565,7 @@ private:
         return Success();
     }
 
-    util::Error getToken()
-    {
-        QUrl url(QString("%1/%2").arg(remoteEndpoint, "api/v1/sign-in"));
-        QNetworkRequest request(url);
-        auto userInfo = util::getUserInfo();
-        QString userJsonData = QString("{\"username\": \"%1\", \"password\": \"%2\"}")
-                                       .arg(userInfo.first())
-                                       .arg(userInfo.last());
-
-        auto reply = httpClient.post(request, userJsonData.toLocal8Bit());
-        auto data = reply->readAll();
-        auto result = util::loadJsonBytes<AuthResponse>(data);
-
-        qDebug() << "get token reply" << data;
-        // Fixme: use status macro
-        if (200 != result->code) {
-            auto err = result->msg.isEmpty() ? QString("%1 is unreachable").arg(url.toString())
-                                             : result->msg;
-            return NewError(-1, err);
-        }
-
-        remoteToken = result->data->token;
-
-        return Success();
-    }
+    util::Error getToken() { }
 
     QString repoRootPath;
     QString remoteEndpoint;
@@ -602,6 +577,8 @@ private:
     QString ostreePath;
 
     util::HttpRestClient httpClient;
+
+    repo::RepoClient repoClient;
 
     OSTreeRepo *q_ptr;
     Q_DECLARE_PUBLIC(OSTreeRepo);
@@ -966,23 +943,15 @@ package::Ref OSTreeRepo::remoteLatestRef(const package::Ref &ref)
     Q_D(OSTreeRepo);
 
     QString latestVer = "unknown";
-    QString ret;
-
-    if (!HTTPCLIENT->queryRemoteApp(d->remoteRepoName,
-                                    d->remoteEndpoint,
-                                    ref.appId,
-                                    ref.version,
-                                    util::hostArch(),
-                                    ret)) {
-        qCritical() << "query remote app failed";
+    package::Ref queryRef(d->remoteRepoName, ref.appId, ref.version, ref.arch);
+    auto [err, infoList] = d->repoClient.QueryApps(queryRef);
+    if (err) {
+        qCritical() << "query remote app failed" << ref.toSpecString() << queryRef.toSpecString();
+        // FIXME: why latest version?
         return package::Ref(ref.repo, ref.channel, ref.appId, latestVer, ref.arch, ref.module);
     }
 
-    // FIXME(black_desk): handle error
-    auto infoList = std::get<0>(
-            util::fromJSON<QList<QSharedPointer<linglong::package::Info>>>(ret.toUtf8()));
-
-    for (auto info : infoList) {
+    for (const auto &info : infoList) {
         Q_ASSERT(info != nullptr);
         if (linglong::util::compareVersion(latestVer, info->version) < 0) {
             latestVer = info->version;

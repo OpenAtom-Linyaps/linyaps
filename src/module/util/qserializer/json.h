@@ -75,7 +75,7 @@ static auto fromJSON(const QString &filePath) -> std::tuple<T, Error>
 }
 
 template<typename T>
-std::tuple<QByteArray, Error> toJSON(const T &x)
+typename std::enable_if<!isQList<T>::value, std::tuple<QByteArray, Error>>::type toJSON(const T &x)
 {
     auto v = QVariant::fromValue<T>(x);
     qDebug() << v;
@@ -99,10 +99,10 @@ std::tuple<QByteArray, Error> toJSON(const T &x)
 }
 
 template<typename T>
-std::tuple<QByteArray, Error> toJSON(const QList<T> &x)
+typename std::enable_if<isQList<T>::value, std::tuple<QByteArray, Error>>::type toJSON(const T &x)
 {
-    QVariant v = x;
-    if (!v.canConvert<QVariantList>()) {
+    auto v = QVariant::fromValue<T>(x);
+    if (!v.template canConvert<QVariantList>()) {
         return { {},
                  NewError(-1,
                           QString("Failed to convert %1 to QVariantList.")
@@ -110,11 +110,8 @@ std::tuple<QByteArray, Error> toJSON(const QList<T> &x)
     }
 
     v = v.toList();
-    if (!v.canConvert<QJsonArray>()) {
-        return { {}, NewError(-1, "Failed to convert QVariantList to QJsonArray.") };
-    }
 
-    return { QJsonDocument(v.value<QJsonArray>()).toJson(), {} };
+    return {QJsonDocument::fromVariant(v).toJson(), {}};
 }
 
 } // namespace util

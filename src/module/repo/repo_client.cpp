@@ -23,15 +23,15 @@ RepoClient::QueryApps(const package::Ref &ref)
 {
     // TODO: query cache Here
     QUrl url(ConfigInstance().repos[package::kDefaultRepo]->endpoint);
-    url.setPath(url.path() + "apps/fuzzysearchapp");
-
-    qDebug() << "query" << url;
+    // FIXME: normalize the path
+    url.setPath(url.path() + "/api/v0/apps/fuzzysearchapp");
     QNetworkRequest request(url);
 
     QJsonObject obj;
     obj["AppId"] = ref.appId;
     obj["version"] = ref.version;
     obj["arch"] = ref.arch;
+    obj["repoName"] = ref.repo;
 
     QJsonDocument doc(obj);
     QByteArray data = doc.toJson();
@@ -39,7 +39,8 @@ RepoClient::QueryApps(const package::Ref &ref)
     util::HttpRestClient hc;
     auto reply = hc.post(request, data);
     data = reply->readAll();
-    auto resp = util::loadJsonBytes<linglong::repo::Response>(data);
+    auto resp = util::loadJsonBytes<repo::Response>(data);
+
     return { Success(), (resp->data) };
 }
 

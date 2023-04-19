@@ -8,10 +8,12 @@
 
 #include "module/dbus_ipc/dbus_system_helper_common.h"
 #include "module/repo/ostree_repohelper.h"
+#include "module/repo/repo_client.h"
 #include "module/util/app_status.h"
 #include "module/util/appinfo_cache.h"
 #include "module/util/file.h"
 #include "module/util/http/httpclient.h"
+#include "module/util/qserializer/json.h"
 #include "module/util/runner.h"
 #include "module/util/status_code.h"
 #include "module/util/sysinfo.h"
@@ -32,19 +34,19 @@
 namespace linglong {
 namespace service {
 PackageManagerPrivate::PackageManagerPrivate(PackageManager *parent)
-    : sysLinglongInstalltions(linglong::util::getLinglongRootPath() + "/entries/share")
+    : sysLinglongInstallation(linglong::util::getLinglongRootPath() + "/entries/share")
     , kAppInstallPath(linglong::util::getLinglongRootPath() + "/layers/")
     , kLocalRepoPath(linglong::util::getLinglongRootPath())
-    , packageManagerHelperInterface(linglong::SystemHelperDBusServiceName,
-                            linglong::PackageManagerHelperDBusPath,
-                            []() -> QDBusConnection {
-                                auto address = QString(getenv("LINGLONG_SYSTEM_HELPER_ADDRESS"));
-                                if (address.length()) {
-                                    return QDBusConnection::connectToPeer(address,
-                                                                          "ll-package-manager");
-                                }
-                                return QDBusConnection::systemBus();
-                            }())
+    , packageManagerHelperInterface(
+              linglong::SystemHelperDBusServiceName,
+              linglong::PackageManagerHelperDBusPath,
+              []() -> QDBusConnection {
+                  auto address = QString(getenv("LINGLONG_SYSTEM_HELPER_ADDRESS"));
+                  if (address.length()) {
+                      return QDBusConnection::connectToPeer(address, "ll-package-manager");
+                  }
+                  return QDBusConnection::systemBus();
+              }())
     , q_ptr(parent)
 {
     linglong::util::getLocalConfig("repoName", remoteRepoName);
@@ -149,19 +151,30 @@ bool PackageManagerPrivate::loadAppInfo(
  *
  * @return bool: true:成功 false:失败
  */
-bool PackageManagerPrivate::getAppInfofromServer(const QString &pkgName,
+bool PackageManagerPrivate::getAppInfoFromServer(const QString &pkgName,
                                                  const QString &pkgVer,
                                                  const QString &pkgArch,
                                                  QString &appData,
-                                                 QString &err)
+                                                 QString &errString)
 {
-    bool ret = HTTPCLIENT->queryRemoteApp(remoteRepoName, pkgName, pkgVer, pkgArch, appData);
-    if (!ret) {
-        err = "getAppInfofromServer err, " + appData + " ,please check the network";
-        qCritical().noquote() << "receive from server:" << appData;
+    // build refs
+    package::Ref ref(remoteRepoName, pkgName, pkgVer, pkgArch);
+
+    auto [err, infos] = repoClient.QueryApps(ref);
+
+    if (err) {
+        errString = "getAppInfoFromServer err, " + appData + " ,please check the network";
+        qCritical() << "receive from server:" << appData;
         return false;
     }
 
+    // FIXME: update all caller getAppInfoFromServer
+    QSharedPointer<repo::Response> resp(new repo::Response);
+    resp->code = 200;
+    resp->data = infos;
+
+    auto [data, err1] = util::toJSON(resp);
+    appData = QString::fromLocal8Bit(data);
     return true;
 }
 
@@ -245,7 +258,7 @@ Reply PackageManagerPrivate::GetDownloadStatus(const ParamOption &paramOption, i
         }
         QString appData = "";
         // 安装不查缓存
-        auto ret = getAppInfofromServer(appId, "", arch, appData, reply.message);
+        auto ret = getAppInfoFromServer(appId, "", arch, appData, reply.message);
         if (!ret) {
             reply.code = STATUS_CODE(kPkgInstallFailed);
             return reply;
@@ -399,7 +412,7 @@ bool PackageManagerPrivate::checkAppRuntime(const QString &runtime,
         version = runtimeVer;
     }
     QString appData = "";
-    bool ret = getAppInfofromServer(runtimeId, version, runtimeArch, appData, err);
+    bool ret = getAppInfoFromServer(runtimeId, version, runtimeArch, appData, err);
     if (!ret) {
         return false;
     }
@@ -462,7 +475,7 @@ bool PackageManagerPrivate::checkAppBase(const QString &runtime,
     QList<QSharedPointer<linglong::package::AppMetaInfo>> appList;
     QString appData = "";
 
-    bool ret = getAppInfofromServer(runtimeId, runtimeVer, runtimeArch, appData, err);
+    bool ret = getAppInfoFromServer(runtimeId, runtimeVer, runtimeArch, appData, err);
     if (!ret) {
         return false;
     }
@@ -491,7 +504,7 @@ bool PackageManagerPrivate::checkAppBase(const QString &runtime,
     QList<QSharedPointer<linglong::package::AppMetaInfo>> baseRuntimeList;
     QString baseData = "";
 
-    ret = getAppInfofromServer(baseId, baseVer, baseArch, baseData, err);
+    ret = getAppInfoFromServer(baseId, baseVer, baseArch, baseData, err);
     if (!ret) {
         return false;
     }
@@ -600,10 +613,10 @@ void PackageManagerPrivate::addAppConfig(const QString &appId,
         // 删掉安装配置链接文件
         if (linglong::util::dirExists(installPath + "/" + arch + "/outputs/share")) {
             const QString appEntriesDirPath = installPath + "/" + arch + "/outputs/share";
-            linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
+            linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstallation);
         } else {
             const QString appEntriesDirPath = installPath + "/" + arch + "/entries";
-            linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
+            linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstallation);
         }
     }
 
@@ -611,10 +624,10 @@ void PackageManagerPrivate::addAppConfig(const QString &appId,
     // 链接应用配置文件到系统配置目录
     if (linglong::util::dirExists(savePath + "/outputs/share")) {
         const QString appEntriesDirPath = savePath + "/outputs/share";
-        linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstalltions);
+        linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstallation);
     } else {
         const QString appEntriesDirPath = savePath + "/entries";
-        linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstalltions);
+        linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstallation);
     }
 }
 
@@ -646,20 +659,20 @@ void PackageManagerPrivate::delAppConfig(const QString &appId,
         // 删掉安装配置链接文件
         if (linglong::util::dirExists(installPath + "/" + arch + "/outputs/share")) {
             const QString appEntriesDirPath = installPath + "/" + arch + "/outputs/share";
-            linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
+            linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstallation);
         } else {
             const QString appEntriesDirPath = installPath + "/" + arch + "/entries";
-            linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
+            linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstallation);
         }
 
         const QString savePath = kAppInstallPath + appId + "/" + it->version + "/" + arch;
         // 链接应用配置文件到系统配置目录
         if (linglong::util::dirExists(savePath + "/outputs/share")) {
             const QString appEntriesDirPath = savePath + "/outputs/share";
-            linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstalltions);
+            linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstallation);
         } else {
             const QString appEntriesDirPath = savePath + "/entries";
-            linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstalltions);
+            linglong::util::linkDirFiles(appEntriesDirPath, sysLinglongInstallation);
         }
         return;
     }
@@ -668,10 +681,10 @@ void PackageManagerPrivate::delAppConfig(const QString &appId,
     // 删掉安装配置链接文件
     if (linglong::util::dirExists(installPath + "/" + arch + "/outputs/share")) {
         const QString appEntriesDirPath = installPath + "/" + arch + "/outputs/share";
-        linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
+        linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstallation);
     } else {
         const QString appEntriesDirPath = installPath + "/" + arch + "/entries";
-        linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstalltions);
+        linglong::util::removeDstDirLinkFiles(appEntriesDirPath, sysLinglongInstallation);
     }
 }
 
@@ -720,7 +733,7 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
 
     QString appData = "";
     // 安装不查缓存
-    auto ret = getAppInfofromServer(appId, version, arch, appData, reply.message);
+    auto ret = getAppInfoFromServer(appId, version, arch, appData, reply.message);
     if (!ret) {
         reply.code = STATUS_CODE(kPkgInstallFailed);
         appState.insert(appId + "/" + version + "/" + arch, reply);
@@ -836,31 +849,31 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
 
     // 更新desktop database
     auto err = util::Exec("update-desktop-database",
-                          { sysLinglongInstalltions + "/applications/" },
+                          { sysLinglongInstallation + "/applications/" },
                           1000 * 60 * 1);
     if (err) {
-        qWarning() << "warning: update desktop database of " + sysLinglongInstalltions
+        qWarning() << "warning: update desktop database of " + sysLinglongInstallation
                         + "/applications/ failed!";
     }
 
     // 更新mime type database
-    if (linglong::util::dirExists(sysLinglongInstalltions + "/mime/packages")) {
+    if (linglong::util::dirExists(sysLinglongInstallation + "/mime/packages")) {
         err = util::Exec("update-mime-database",
-                         { sysLinglongInstalltions + "/mime/" },
+                         { sysLinglongInstallation + "/mime/" },
                          1000 * 60 * 1);
         if (err) {
-            qWarning() << "warning: update mime type database of " + sysLinglongInstalltions
+            qWarning() << "warning: update mime type database of " + sysLinglongInstallation
                             + "/mime/ failed!";
         }
     }
 
     // 更新 glib-2.0/schemas
-    if (linglong::util::dirExists(sysLinglongInstalltions + "/glib-2.0/schemas")) {
+    if (linglong::util::dirExists(sysLinglongInstallation + "/glib-2.0/schemas")) {
         err = util::Exec("glib-compile-schemas",
-                         { sysLinglongInstalltions + "/glib-2.0/schemas" },
+                         { sysLinglongInstallation + "/glib-2.0/schemas" },
                          1000 * 60 * 1);
         if (err) {
-            qWarning() << "warning: update schemas of " + sysLinglongInstalltions
+            qWarning() << "warning: update schemas of " + sysLinglongInstallation
                             + "/glib-2.0/schemas failed!";
         }
     }
@@ -927,7 +940,7 @@ QueryReply PackageManagerPrivate::Query(const QueryParamOption &paramOption)
     bool fromServer = false;
     // 缓存查不到从服务器查
     if (status != STATUS_CODE(kSuccess)) {
-        ret = getAppInfofromServer(appId, "", arch, appData, reply.message);
+        ret = getAppInfoFromServer(appId, "", arch, appData, reply.message);
         if (!ret) {
             reply.code = STATUS_CODE(kErrorPkgQueryFailed);
             qCritical() << reply.message;
@@ -952,6 +965,7 @@ QueryReply PackageManagerPrivate::Query(const QueryParamOption &paramOption)
     reply.code = STATUS_CODE(kErrorPkgQuerySuccess);
     reply.message = "query " + appId + " success";
     reply.result = QString(document.toJson());
+    qDebug().noquote() << appData;
     return reply;
 }
 
@@ -1072,31 +1086,31 @@ Reply PackageManagerPrivate::Uninstall(const UninstallParamOption &paramOption)
         delAppConfig(appId, it->version, arch);
         // 更新desktop database
         auto err = util::Exec("update-desktop-database",
-                              { sysLinglongInstalltions + "/applications/" },
+                              { sysLinglongInstallation + "/applications/" },
                               1000 * 60 * 1);
         if (err) {
-            qWarning() << "warning: update desktop database of " + sysLinglongInstalltions
+            qWarning() << "warning: update desktop database of " + sysLinglongInstallation
                             + "/applications/ failed!";
         }
 
         // 更新mime type database
-        if (linglong::util::dirExists(sysLinglongInstalltions + "/mime/packages")) {
+        if (linglong::util::dirExists(sysLinglongInstallation + "/mime/packages")) {
             err = util::Exec("update-mime-database",
-                             { sysLinglongInstalltions + "/mime/" },
+                             { sysLinglongInstallation + "/mime/" },
                              1000 * 60 * 1);
             if (!err) {
-                qWarning() << "warning: update mime type database of " + sysLinglongInstalltions
+                qWarning() << "warning: update mime type database of " + sysLinglongInstallation
                                 + "/mime/ failed!";
             }
         }
 
         // 更新 glib-2.0/schemas
-        if (linglong::util::dirExists(sysLinglongInstalltions + "/glib-2.0/schemas")) {
+        if (linglong::util::dirExists(sysLinglongInstallation + "/glib-2.0/schemas")) {
             err = util::Exec("glib-compile-schemas",
-                             { sysLinglongInstalltions + "/glib-2.0/schemas" },
+                             { sysLinglongInstallation + "/glib-2.0/schemas" },
                              1000 * 60 * 1);
             if (err) {
-                qWarning() << "warning: update schemas of " + sysLinglongInstalltions
+                qWarning() << "warning: update schemas of " + sysLinglongInstallation
                                 + "/glib-2.0/schemas failed!";
             }
         }
@@ -1236,7 +1250,7 @@ Reply PackageManagerPrivate::Update(const ParamOption &paramOption)
     auto installedApp = pkgList.at(0);
     QString currentVersion = installedApp->version;
     QString appData = QString();
-    auto ret = getAppInfofromServer(appId, "", arch, appData, reply.message);
+    auto ret = getAppInfoFromServer(appId, "", arch, appData, reply.message);
     if (!ret) {
         reply.message = "query server app:" + appId + " info err";
         qCritical() << reply.message;

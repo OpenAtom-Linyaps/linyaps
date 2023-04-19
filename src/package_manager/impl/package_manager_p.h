@@ -7,11 +7,13 @@
 #ifndef LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_P_H_
 #define LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_P_H_
 
+#include "module/dbus_gen_package_manager_helper_interface.h"
 #include "module/dbus_ipc/package_manager_param.h"
 #include "module/dbus_ipc/param_option.h"
 #include "module/dbus_ipc/reply.h"
-#include "module/dbus_gen_package_manager_helper_interface.h"
 #include "module/package/package.h"
+#include "module/repo/repo.h"
+#include "module/repo/repo_client.h"
 
 namespace linglong {
 namespace service {
@@ -103,11 +105,11 @@ private:
      *
      * @return bool: true:成功 false:失败
      */
-    bool getAppInfofromServer(const QString &pkgName,
+    bool getAppInfoFromServer(const QString &pkgName,
                               const QString &pkgVer,
                               const QString &pkgArch,
                               QString &appData,
-                              QString &err);
+                              QString &errString);
     /*
      * 将在线包数据部分签出到指定目录
      *
@@ -195,10 +197,12 @@ private:
     QString getUserName(uid_t uid);
 
 private:
-    const QString sysLinglongInstalltions;
+    const QString sysLinglongInstallation;
     const QString kAppInstallPath;
     const QString kLocalRepoPath;
     QString remoteRepoName = "repo";
+
+    repo::RepoClient repoClient;
 
     // 记录子线程安装及更新状态 供查询进度信息使用
     QMap<QString, Reply> appState;

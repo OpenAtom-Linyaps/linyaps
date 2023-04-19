@@ -23,9 +23,8 @@ class Response : public JsonSerialize
 {
     Q_OBJECT;
     Q_JSON_CONSTRUCTOR(Response)
+public:
     Q_JSON_PROPERTY(int, code);
-    Q_JSON_PROPERTY(QString, msg);
-
     Q_JSON_PROPERTY(QList<QSharedPointer<linglong::package::AppMetaInfo>>, data);
 };
 
@@ -33,7 +32,6 @@ class RepoClient
 {
 public:
     //    RepoClient(const QString& repoPath);
-
     std::tuple<util::Error, QList<QSharedPointer<package::AppMetaInfo>>>
     QueryApps(const package::Ref &ref);
 

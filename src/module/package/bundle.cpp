@@ -220,6 +220,8 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
                                           const QString &repoChannel,
                                           bool /*force*/)
 {
+    return NewError(-1, "Not implemented");
+
     auto userInfo = util::getUserInfo();
 
     QString configUrl = repoUrl;
@@ -234,8 +236,9 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
         }
     }
     configUrl = configUrl.endsWith("/") ? configUrl : (configUrl + "/");
-    auto token = HTTPCLIENT->getToken(configUrl, userInfo);
-
+    // FIXME: use new client
+    // auto token = HTTPCLIENT->getToken(configUrl, userInfo);
+    QString token;
     if (token.isEmpty()) {
         qCritical() << "get token failed!";
         return NewError(-1, "get token failed!");
@@ -368,26 +371,29 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
         }
     }
 
+    // FIXME: need remove this function?
     // 上传repo.tar文件
-    auto retUploadRepo =
-            HTTPCLIENT->uploadFile(this->tmpWorkDir + "/repo.tar", configUrl, "ostree", token);
-    if (STATUS_CODE(kSuccess) != retUploadRepo) {
-        if (util::dirExists(this->tmpWorkDir)) {
-            util::removeDir(this->tmpWorkDir);
-        }
-        std::cout << "upload repo.tar failed, please check and try again!" << std::endl;
-        return NewError(-1, "upload repo.tar failed");
-    }
+    //    auto retUploadRepo =
+    //            HTTPCLIENT->uploadFile(this->tmpWorkDir + "/repo.tar", configUrl, "ostree",
+    //            token);
+    //    if (STATUS_CODE(kSuccess) != retUploadRepo) {
+    //        if (util::dirExists(this->tmpWorkDir)) {
+    //            util::removeDir(this->tmpWorkDir);
+    //        }
+    //        std::cout << "upload repo.tar failed, please check and try again!" << std::endl;
+    //        return NewError(-1, "upload repo.tar failed");
+    //    }
 
+    // FIXME: need remove this function?
     // 上传bundle文件
-    auto retUploadBundle = HTTPCLIENT->uploadFile(this->bundleFilePath, configUrl, "bundle", token);
-    if (STATUS_CODE(kSuccess) != retUploadBundle) {
-        if (util::dirExists(this->tmpWorkDir)) {
-            util::removeDir(this->tmpWorkDir);
-        }
-        std::cout << "Upload bundle failed, please check and try again!" << std::endl;
-        return NewError(-1, "upload bundle failed");
-    }
+    //    auto retUploadBundle = HTTPCLIENT->uploadFile(this->bundleFilePath, configUrl, "bundle",
+    //    token); if (STATUS_CODE(kSuccess) != retUploadBundle) {
+    //        if (util::dirExists(this->tmpWorkDir)) {
+    //            util::removeDir(this->tmpWorkDir);
+    //        }
+    //        std::cout << "Upload bundle failed, please check and try again!" << std::endl;
+    //        return NewError(-1, "upload bundle failed");
+    //    }
 
     // 上传bundle信息到服务器
     auto runtimeJson =

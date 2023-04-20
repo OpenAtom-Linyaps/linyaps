@@ -743,7 +743,7 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
         return reply;
     }
 
-    // 判断对应版本的应用是否已安装
+    // 判断指定版本是否已安装
     if (linglong::util::getAppInstalledStatus(appInfo->appId,
                                               appInfo->version,
                                               "",
@@ -755,6 +755,25 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
         qCritical() << reply.message;
         appState.insert(appId + "/" + version + "/" + arch, reply);
         return reply;
+    }
+
+    // 当本地已安装且未指定版本安装时，本地版本比服务器最高版本高，则不允许安装
+    if (linglong::util::getAppInstalledStatus(appInfo->appId, "", "", channel, appModule, "")
+        && version.isEmpty()) {
+        linglong::package::AppMetaInfoList pkgList;
+        // 根据已安装文件查询已经安装软件包信息
+        linglong::util::getInstalledAppInfo(appId, "", arch, channel, appModule, "", pkgList);
+
+        auto installedApp = pkgList.at(0);
+
+        if (linglong::util::compareVersion(installedApp->version, appInfo->version) >= 0) {
+            reply.code = STATUS_CODE(kPkgAlreadyInstalled);
+            reply.message =
+                    appInfo->appId + ", version: " + installedApp->version + " already installed";
+            qCritical() << reply.message;
+            appState.insert(appId + "/" + version + "/" + arch, reply);
+            return reply;
+        }
     }
 
     // 检查软件包依赖的runtime安装状态

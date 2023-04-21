@@ -1,3 +1,10 @@
+linglong (1.3.8-1) unstable; urgency=medium
+
+  This release include an important backport:
+  * fix: install app with default verison is wrong 
+
+ -- chenhuixing <chenhuixing@uniontech.com>  Fri, 21 Apr 2023 13:57:25 +0800
+
 linglong (1.3.7-1) unstable; urgency=medium
 
   This release include some important backports:

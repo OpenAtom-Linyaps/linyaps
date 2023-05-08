@@ -18,6 +18,16 @@
 #include <QSharedPointer>
 
 template<typename T>
+struct isQList : public std::false_type
+{
+};
+
+template<typename T>
+struct isQList<QList<T>> : public std::true_type
+{
+};
+
+template<typename T>
 class QSerializer
 {
 public:

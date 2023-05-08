@@ -135,9 +135,10 @@ std::tuple<QVariantMap, Error> mapFromYAML(const QByteArray &bytes)
         auto map = node.as<QVariantMap>();
         return { map, {} };
     } catch (const std::exception &e) {
-        return { {}, NewError(-1, e.what()) };
+        return std::make_tuple<QVariantMap, Error>({}, NewError(-1, e.what()));
     }
 }
+
 
 std::tuple<QVariantList, Error> listFromYAML(const QByteArray &bytes)
 {
@@ -146,7 +147,7 @@ std::tuple<QVariantList, Error> listFromYAML(const QByteArray &bytes)
         auto list = node.as<QVariantList>();
         return { list, {} };
     } catch (const std::exception &e) {
-        return { {}, NewError(-1, e.what()) };
+        return std::make_tuple<QVariantList, Error>({}, NewError(-1, e.what()));
     }
 }
 

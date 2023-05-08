@@ -6,6 +6,7 @@
 
 #include "ostree_repohelper.h"
 
+#include "module/util/erofs.h"
 #include "module/util/file.h"
 #include "module/util/runner.h"
 #include "module/util/version/version.h"
@@ -434,12 +435,27 @@ bool OstreeRepoHelper::checkOutAppData(const QString &repoPath,
             "ostree",
             { "--repo=" + repoPath + "/repo", "checkout", "-U", "--union", ref, dstPath },
             1000 * 60 * 60 * 24);
+
     if (err) {
         strErr = "checkOutAppData " + ref + " err";
         qCritical() << "checkOutAppData err, repoPath:" << repoPath << ", remoteName:" << remoteName
                     << ", dstPath:" << dstPath << ", ref:" << ref;
         return false;
     }
+
+    // FIXME(Iceyer): now we create erofs image here because no oci/linglong blobs backend
+    // implemented, it must do by vfs repo
+    QString hash(QCryptographicHash::hash(dstPath.toLocal8Bit(), QCryptographicHash::Md5).toHex());
+    auto destImagePath =
+            QStringList{ util::getLinglongRootPath(), "vfs", "blobs" }.join(QDir::separator());
+    util::ensureDir(destImagePath);
+    destImagePath = QStringList{ destImagePath, hash }.join(QDir::separator());
+    qDebug() << "erofs mkfs" << dstPath << destImagePath;
+    err = erofs::mkfs(dstPath, destImagePath);
+    if (err) {
+        qCritical() << err;
+    }
+
     return true;
 }
 

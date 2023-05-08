@@ -6,6 +6,13 @@
 
 #include "vfs_repo.h"
 
+#include "module/util/erofs.h"
+#include "module/util/file.h"
+#include "module/util/runner.h"
+#include "module/util/sysinfo.h"
+#include "module/util/version/version.h"
+#include "module/util/xdg.h"
+
 #include <utility>
 
 #include "module/util/runner.h"
@@ -98,20 +105,68 @@ util::Error VfsRepo::pull(const package::Ref &ref, bool force)
 QString VfsRepo::rootOfLayer(const package::Ref &ref)
 {
     Q_D(VfsRepo);
-    auto mountPoint =
-            QStringList{ d->repoRootPath, "layers", ref.appId, ref.version, ref.arch }.join(
-                    QDir::separator());
-    auto source =
-            QStringList{ d->repoRootPath, "blobs", ref.toSpecString() }.join(QDir::separator());
 
-    VfsRepoPrivate::mount(source, mountPoint);
+    auto mountPoint = QStringList{ util::userRuntimeDir().canonicalPath(),
+                                   "linglong",
+                                   "vfs",
+                                   "layers",
+                                   ref.appId,
+                                   ref.version,
+                                   ref.arch }
+                              .join(QDir::separator());
+    util::ensureDir(mountPoint);
+
+    // TODO: parse form meta data
+    auto sourcePath =
+            QStringList{ util::getLinglongRootPath(), "layers", ref.appId, ref.version, ref.arch }
+                    .join(QDir::separator());
+    QString hash(
+            QCryptographicHash::hash(sourcePath.toLocal8Bit(), QCryptographicHash::Md5).toHex());
+    auto source = QStringList{ d->repoRootPath, "blobs", hash }.join(QDir::separator());
+
+    qDebug() << "erofs::mount" << source << mountPoint;
+    // FIXME: must umount after app exit
+    erofs::mount(source, mountPoint);
 
     return mountPoint;
 }
 
 package::Ref VfsRepo::latestOfRef(const QString &appId, const QString &appVersion)
 {
-    return package::Ref(QString());
+    // TODO: parse form meta data
+    auto latestVersionOf = [](const QString &appId) {
+        auto localRepoRoot = util::getLinglongRootPath() + "/layers" + "/" + appId;
+
+        QDir appRoot(localRepoRoot);
+
+        // found latest
+        if (appRoot.exists("latest")) {
+            return appRoot.absoluteFilePath("latest");
+        }
+
+        appRoot.setSorting(QDir::Name | QDir::Reversed);
+        auto verDirs = appRoot.entryList(QDir::NoDotAndDotDot | QDir::Dirs);
+        auto available = verDirs.value(0);
+        for (auto item : verDirs) {
+            linglong::util::AppVersion versionIter(item);
+            linglong::util::AppVersion dstVersion(available);
+            if (versionIter.isValid() && versionIter.isBigThan(dstVersion)) {
+                available = item;
+            }
+        }
+        qDebug() << "available version" << available << appRoot << verDirs;
+        return available;
+    };
+
+    // 未指定版本使用最新版本，指定版本下使用指定版本
+    QString version;
+    if (!appVersion.isEmpty()) {
+        version = appVersion;
+    } else {
+        version = latestVersionOf(appId);
+    }
+    auto ref = appId + "/" + version + "/" + util::hostArch();
+    return package::Ref(ref);
 }
 
 } // namespace repo

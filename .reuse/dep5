@@ -39,7 +39,7 @@ Copyright: None
 License: CC0-1.0
 
 # Project file
-Files: src/module/CMakeLists.txt src/CMakeLists.txt src/builder/CMakeLists.txt src/cli/CMakeLists.txt src/package_manager/CMakeLists.txt src/service/CMakeLists.txt src/system_helper/CMakeLists.txt tests/CMakeLists.txt .gitignore tests/cmake/modules/FindGMock.cmake src/CMakeLists.txt src/builder/CMakeLists.txt CMakeLists.txt test/CMakeLists.txt
+Files: src/module/CMakeLists.txt src/CMakeLists.txt src/builder/CMakeLists.txt src/cli/CMakeLists.txt src/package_manager/CMakeLists.txt src/service/CMakeLists.txt src/system_helper/CMakeLists.txt tests/CMakeLists.txt .gitignore tests/cmake/modules/FindGMock.cmake src/CMakeLists.txt src/builder/CMakeLists.txt CMakeLists.txt test/CMakeLists.txt tools/CMakeLists.txt tools/prototype/virtual_base/CMakeLists.txt
 Copyright: None
 License: CC0-1.0
 

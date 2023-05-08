@@ -175,7 +175,10 @@ Reply AppManager::Start(const RunParamOption &paramOption)
         app->saveUserEnvList(userEnvList);
         app->setAppParamMap(paramMap);
         auto it = d->apps.insert(app->container()->id, app);
-        app->start();
+        auto err = app->start();
+        if (err) {
+            qCritical() << "start app failed" << err;
+        }
         d->apps.erase(it);
     });
     // future.waitForFinished();

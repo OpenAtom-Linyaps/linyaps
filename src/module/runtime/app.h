@@ -90,7 +90,8 @@ public:
 
     QSharedPointer<const Container> container() const;
 
-    int start();
+    util::Error start();
+
     void exec(QString cmd, QString env, QString cwd);
 
     void saveUserEnvList(const QStringList &userEnvList);

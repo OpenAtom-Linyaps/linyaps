@@ -1061,7 +1061,7 @@ public:
         // create yaml form info
         // auto appRoot = LocalRepo::get()->rootOfLatest();
         auto latestAppRef = repo->latestOfRef(appId, appVersion);
-        qDebug() << "loadConfig ref:" << latestAppRef.toLocalRefString();
+        qDebug() << "loadConfig ref:" << latestAppRef.toSpecString();
         auto appInstallRoot = repo->rootOfLayer(latestAppRef);
 
         auto appInfo = appInstallRoot + "/info.json";
@@ -1179,14 +1179,14 @@ public:
 
     QSharedPointer<Container> container = nullptr;
     QSharedPointer<Runtime> r = nullptr;
-    App *q_ptr = nullptr;
     QSharedPointer<AppConfig> appConfig = nullptr;
 
-    repo::Repo *repo;
+    repo::Repo *repo = nullptr;
     int sockets[2]; // save file describers of sockets used to communicate with ll-box
 
     const QString sysLinglongInstalltions = util::getLinglongRootPath() + "/entries/share";
 
+    App *q_ptr = nullptr;
     Q_DECLARE_PUBLIC(App);
 };
 
@@ -1209,27 +1209,23 @@ QSharedPointer<App> App::load(linglong::repo::Repo *repo,
     QFile appConfig(configPath);
     appConfig.open(QIODevice::ReadOnly);
 
-    qDebug() << "load conf yaml from" << configPath;
+    qDebug() << "load app config yaml from" << configPath;
 
-    QSharedPointer<App> app = nullptr;
-    try {
-        auto data = QString::fromLocal8Bit(appConfig.readAll());
-        qDebug() << data;
-        YAML::Node doc = YAML::Load(data.toStdString());
-        app = QVariant::fromValue(doc).value<QSharedPointer<App>>();
-
-        qDebug() << app << app->runtime << app->package << app->version;
-        // TODO: maybe set as an arg of init is better
-        app->dd_ptr->desktopExec = desktopExec;
-        app->dd_ptr->repo = repo;
-        app->dd_ptr->init();
-    } catch (...) {
+    auto [app, err] = util::fromYAML<QSharedPointer<App>>(appConfig.readAll());
+    if (err) {
         qCritical() << "FIXME: load config failed, use default app config";
     }
+
+    qDebug() << "app config" << app << app->runtime << app->package << app->version;
+    // TODO: maybe set as an arg of init is better
+    app->dd_ptr->desktopExec = desktopExec;
+    app->dd_ptr->repo = repo;
+    app->dd_ptr->init();
+
     return app;
 }
 
-int App::start()
+util::Error App::start()
 {
     Q_D(App);
 
@@ -1245,44 +1241,51 @@ int App::start()
 
     qDebug() << "start container at" << d->r->root->path;
 
-    // FIXME(black_desk): handle error
-    auto data = (std::get<0>(util::toJSON<QSharedPointer<Runtime>>(d->r))).toStdString();
+    auto [bytes, err] = util::toJSON<QSharedPointer<Runtime>>(d->r);
+    if (err) {
+        return WrapError(err, "toJSON failed");
+    }
+
+    auto data = bytes.toStdString();
 
     if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, d->sockets) != 0) {
-        return EXIT_FAILURE;
+        return WrapError(NewError(errno, strerror(errno)), "call socketpair failed");
     }
 
     pid_t parent = getpid();
 
     pid_t boxPid = fork();
     if (boxPid < 0) {
-        return -1;
+        return WrapError(NewError(errno, strerror(errno)), "fork failed");
     }
 
     if (0 == boxPid) {
+        // child process
+        qDebug() << "start ll-box in child process";
         prctl(PR_SET_PDEATHSIG, SIGKILL);
         if (getppid() != parent) {
             raise(SIGKILL);
         }
-        // child process
         (void)close(d->sockets[1]);
         auto socket = std::to_string(d->sockets[0]);
-        char const *const args[] = { "ll-box", socket.c_str(), NULL };
-        int ret = execvp(args[0], (char **)args);
+        char const *const args[] = { "ll-box", socket.c_str(), nullptr };
+        auto ret = execvp(args[0], (char **)args);
         exit(ret);
     } else {
+        qDebug() << "wait child" << boxPid << "in parent";
         close(d->sockets[0]);
         // FIXME: handle error
         (void)write(d->sockets[1], data.c_str(), data.size());
-        (void)write(d->sockets[1], "\0", 1); // each data write into sockets should ended with '\0'
+        (void)write(d->sockets[1], "\0", 1); // each data write into sockets should end with '\0'
         d->container->pid = boxPid;
-        // FIXME(interactive bash): if need keep interactive shell
-        waitpid(boxPid, nullptr, 0);
+        // FIXME: need keep interactive shell
+        auto pid = waitpid(boxPid, nullptr, 0);
         close(d->sockets[1]);
-        // FIXME to do 删除代理socket临时文件
+        // FIXME: to do 删除代理socket临时文件
+        qDebug() << "child" << pid << "finish";
     }
 
-    return EXIT_SUCCESS;
+    return Success();
 }
 
 void App::exec(QString cmd, QString env, QString cwd)

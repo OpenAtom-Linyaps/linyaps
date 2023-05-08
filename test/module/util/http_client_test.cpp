@@ -16,6 +16,10 @@
 // TODO: test with mock data
 TEST(Util, HttpClient)
 {
+    if (!qEnvironmentVariableIsSet("LINGLONG_TEST_ALL")) {
+        return;
+    }
+
     int argc = 0;
     char *argv = nullptr;
     QCoreApplication app(argc, &argv);

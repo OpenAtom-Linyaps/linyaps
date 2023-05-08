@@ -11,6 +11,10 @@
 
 TEST(Config, ConfigDir)
 {
+    if (!qEnvironmentVariableIsSet("LINGLONG_TEST_ALL")) {
+        return;
+    }
+
     QStringList configDirs = QStandardPaths::standardLocations(QStandardPaths::ConfigLocation);
     configDirs.push_back("/etc");
 

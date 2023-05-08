@@ -706,6 +706,8 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
 
     package::Ref ref("", channel, appId, version, arch, appModule);
 
+    qDebug() << "install" << ref.toSpecString();
+
     // 异常后重新安装需要清除上次状态
     appState.remove(appId + "/" + version + "/" + arch);
 
@@ -786,6 +788,7 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
     }
 
     // 检查软件包依赖的runtime安装状态
+    qDebug() << "checkAppRuntime" << ref.toSpecString();
     ret = checkAppRuntime(appInfo->runtime, channel, appModule, reply.message);
     if (!ret) {
         qCritical() << reply.message;
@@ -795,6 +798,7 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
     }
 
     // 检查软件包依赖的base安装状态
+    qDebug() << "checkAppBase" << ref.toSpecString();
     if (!linglong::util::isDeepinSysProduct()) {
         ret = checkAppBase(appInfo->runtime, channel, appModule, reply.message);
         if (!ret) {
@@ -811,6 +815,7 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
     if ("devel" == appModule) {
         savePath.append("/" + appModule);
     }
+    qDebug() << "downloadAppData" << ref.toSpecString();
     ret = downloadAppData(appInfo->appId,
                           appInfo->version,
                           appInfo->arch,

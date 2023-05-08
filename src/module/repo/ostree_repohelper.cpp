@@ -553,6 +553,7 @@ QString OstreeRepoHelper::createTmpRepo(const QString &parentRepo)
                           { "--repo=" + tmpPath + "/repoTmp", "init", "--mode=bare-user-only" },
                           1000 * 60 * 5);
     if (err) {
+        qCritical() << "init repoTmp failed" << err;
         return QString();
     }
 
@@ -568,6 +569,7 @@ QString OstreeRepoHelper::createTmpRepo(const QString &parentRepo)
                        tmpPath + "/repoTmp" },
                      1000 * 60 * 5);
     if (err) {
+        qCritical() << "config set min-free-space-size failed" << err;
         return QString();
     }
 
@@ -583,6 +585,7 @@ QString OstreeRepoHelper::createTmpRepo(const QString &parentRepo)
                        tmpPath + "/repoTmp" },
                      1000 * 60 * 5);
     if (err) {
+        qCritical() << "config set parent failed" << err;
         return QString();
     }
 

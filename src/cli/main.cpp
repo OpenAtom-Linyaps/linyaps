@@ -324,9 +324,11 @@ int main(int argc, char **argv)
                               << "message:" << reply.message << ", errcode:" << reply.code;
                       return -1;
                   }
+                  qDebug() << "exit with in sandbox";
                   return 0;
               }
 
+              qDebug() << "send param" << paramOption.appId << "to service";
               QDBusPendingReply<linglong::service::Reply> dbusReply = appManager.Start(paramOption);
               dbusReply.waitForFinished();
               reply = dbusReply.value();
@@ -674,9 +676,15 @@ int main(int argc, char **argv)
                           << "message:" << reply.message << ", errcode:" << reply.code;
                   return -1;
               }
-              auto appMetaInfoList = std::get<0>(
-                      linglong::util::fromJSON<
-                              QList<QSharedPointer<linglong::package::AppMetaInfo>>>(reply.result));
+
+              auto [appMetaInfoList, err] = linglong::util::fromJSON<
+                      QList<QSharedPointer<linglong::package::AppMetaInfo>>>(
+                      reply.result.toLocal8Bit());
+              if (err) {
+                  qCritical() << "parse json reply failed:" << err;
+                  return -1;
+              }
+
               printAppInfo(appMetaInfoList);
               return 0;
           } },

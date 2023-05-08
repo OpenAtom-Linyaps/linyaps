@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: LGPL-3.0-or-later
+ */
+
 #ifndef LINGLONG_SRC_MODULE_UTIL_QSERIALIZER_DBUS_H
 #define LINGLONG_SRC_MODULE_UTIL_QSERIALIZER_DBUS_H
 

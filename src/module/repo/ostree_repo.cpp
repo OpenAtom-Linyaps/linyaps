@@ -5,6 +5,7 @@
  */
 
 #include "ostree_repo.h"
+#include "ostree_repo_p.h"
 
 #include "module/package/info.h"
 #include "module/package/ref.h"
@@ -32,565 +33,523 @@
 namespace linglong {
 namespace repo {
 
-struct OstreeRepoObject
+OSTreeRepoPrivate::OSTreeRepoPrivate(QString localRepoRootPath,
+                                     QString remoteEndpoint,
+                                     QString remoteRepoName,
+                                     OSTreeRepo *parent)
+    : repoRootPath(std::move(localRepoRootPath))
+    , remoteEndpoint(std::move(remoteEndpoint))
+    , remoteRepoName(std::move(remoteRepoName))
+    , q_ptr(parent)
 {
-    QString objectName;
-    QString rev;
-    QString path;
-};
+    QString repoCreateErr;
+    // FIXME(black_desk): Just a quick hack to make sure openRepo called after the repo is
+    // created. So I am not to check error here.
+    OSTREE_REPO_HELPER->ensureRepoEnv(localRepoRootPath, repoCreateErr);
+    // FIXME: should be repo
+    if (QDir(repoRootPath).exists("/repo/repo")) {
+        ostreePath = repoRootPath + "/repo/repo";
+    } else {
+        ostreePath = repoRootPath + "/repo";
+    }
+    qDebug() << "ostree repo path is" << ostreePath;
 
-typedef QMap<QString, OstreeRepoObject> RepoObjectMap;
+    repoPtr = openRepo(ostreePath);
+}
 
-class OSTreeRepoPrivate
+linglong::util::Error OSTreeRepoPrivate::ostreeRun(const QStringList &args,
+                                                   QByteArray *stdout = nullptr)
 {
-public:
-    ~OSTreeRepoPrivate()
-    {
-        if (repoPtr) {
-            g_object_unref(repoPtr);
-            repoPtr = nullptr;
-        }
-    };
+    QProcess ostree;
+    ostree.setProgram("ostree");
 
-private:
-    OSTreeRepoPrivate(QString localRepoRootPath,
-                      QString remoteEndpoint,
-                      QString remoteRepoName,
-                      OSTreeRepo *parent)
-        : repoRootPath(std::move(localRepoRootPath))
-        , remoteEndpoint(std::move(remoteEndpoint))
-        , remoteRepoName(std::move(remoteRepoName))
-        , q_ptr(parent)
-    {
-        QString repoCreateErr;
-        // FIXME(black_desk): Just a quick hack to make sure openRepo called after the repo is
-        // created. So I am not to check error here.
-        OSTREE_REPO_HELPER->ensureRepoEnv(localRepoRootPath, repoCreateErr);
-        // FIXME: should be repo
-        if (QDir(repoRootPath).exists("/repo/repo")) {
-            ostreePath = repoRootPath + "/repo/repo";
+    QStringList ostreeArgs = { "-v", "--repo=" + ostreePath };
+    ostreeArgs.append(args);
+    ostree.setArguments(ostreeArgs);
+
+    QProcess::connect(&ostree, &QProcess::readyReadStandardOutput, [&]() {
+        // ostree.readAllStandardOutput() can only be read once.
+        if (stdout) {
+            *stdout += ostree.readAllStandardOutput();
+            qDebug() << QString::fromLocal8Bit(*stdout);
         } else {
-            ostreePath = repoRootPath + "/repo";
+            qDebug() << QString::fromLocal8Bit(ostree.readAllStandardOutput());
         }
-        qDebug() << "ostree repo path is" << ostreePath;
+    });
 
-        repoPtr = openRepo(ostreePath);
+    qDebug() << "start" << ostree.arguments().join(" ");
+    ostree.start();
+    ostree.waitForFinished(-1);
+    qDebug() << ostree.exitStatus() << "with exit code:" << ostree.exitCode();
+
+    return NewError(ostree.exitCode(), QString::fromLocal8Bit(ostree.readAllStandardError()));
+}
+
+QByteArray OSTreeRepoPrivate::glibBytesToQByteArray(GBytes *bytes)
+{
+    const void *data;
+    gsize length;
+    data = g_bytes_get_data(bytes, &length);
+    return { reinterpret_cast<const char *>(data), static_cast<int>(length) };
+}
+
+GBytes *OSTreeRepoPrivate::glibInputStreamToBytes(GInputStream *inputStream)
+{
+    g_autoptr(GOutputStream) outStream = nullptr;
+    g_autoptr(GError) gErr = nullptr;
+
+    if (inputStream == nullptr)
+        return g_bytes_new(nullptr, 0);
+
+    outStream = g_memory_output_stream_new(nullptr, 0, g_realloc, g_free);
+    g_output_stream_splice(outStream,
+                           inputStream,
+                           G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+                           nullptr,
+                           &gErr);
+    g_assert_no_error(gErr);
+
+    return g_memory_output_stream_steal_as_bytes(G_MEMORY_OUTPUT_STREAM(outStream));
+}
+
+// FIXME: use tmp path for big file.
+// FIXME: free the glib pointer.
+std::tuple<linglong::util::Error, QByteArray> OSTreeRepoPrivate::compressFile(const QString &filepath)
+{
+    g_autoptr(GError) gErr = nullptr;
+    g_autoptr(GBytes) inputBytes = nullptr;
+    g_autoptr(GInputStream) memInput = nullptr;
+    g_autoptr(GInputStream) zlibStream = nullptr;
+    g_autoptr(GBytes) zlibBytes = nullptr;
+    g_autoptr(GFile) file = nullptr;
+    g_autoptr(GFileInfo) info = nullptr;
+    g_autoptr(GVariant) xattrs = nullptr;
+
+    file = g_file_new_for_path(filepath.toStdString().c_str());
+    if (file == nullptr) {
+        return { NewError(errno, "open file failed: " + filepath), QByteArray() };
     }
 
-    linglong::util::Error ostreeRun(const QStringList &args, QByteArray *stdout = nullptr)
-    {
-        QProcess ostree;
-        ostree.setProgram("ostree");
+    info = g_file_query_info(file,
+                             G_FILE_ATTRIBUTE_UNIX_MODE,
+                             G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                             nullptr,
+                             nullptr);
+    guint32 mode = g_file_info_get_attribute_uint32(info, G_FILE_ATTRIBUTE_UNIX_MODE);
 
-        QStringList ostreeArgs = { "-v", "--repo=" + ostreePath };
-        ostreeArgs.append(args);
-        ostree.setArguments(ostreeArgs);
-
-        QProcess::connect(&ostree, &QProcess::readyReadStandardOutput, [&]() {
-            // ostree.readAllStandardOutput() can only be read once.
-            if (stdout) {
-                *stdout += ostree.readAllStandardOutput();
-                qDebug() << QString::fromLocal8Bit(*stdout);
-            } else {
-                qDebug() << QString::fromLocal8Bit(ostree.readAllStandardOutput());
-            }
-        });
-
-        qDebug() << "start" << ostree.arguments().join(" ");
-        ostree.start();
-        ostree.waitForFinished(-1);
-        qDebug() << ostree.exitStatus() << "with exit code:" << ostree.exitCode();
-
-        return NewError(ostree.exitCode(), QString::fromLocal8Bit(ostree.readAllStandardError()));
-    }
-
-    static QByteArray glibBytesToQByteArray(GBytes *bytes)
-    {
-        const void *data;
-        gsize length;
-        data = g_bytes_get_data(bytes, &length);
-        return { reinterpret_cast<const char *>(data), static_cast<int>(length) };
-    }
-
-    static GBytes *glibInputStreamToBytes(GInputStream *inputStream)
-    {
-        g_autoptr(GOutputStream) outStream = nullptr;
-        g_autoptr(GError) gErr = nullptr;
-
-        if (inputStream == nullptr)
-            return g_bytes_new(nullptr, 0);
-
-        outStream = g_memory_output_stream_new(nullptr, 0, g_realloc, g_free);
-        g_output_stream_splice(outStream,
-                               inputStream,
-                               G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
-                               nullptr,
-                               &gErr);
-        g_assert_no_error(gErr);
-
-        return g_memory_output_stream_steal_as_bytes(G_MEMORY_OUTPUT_STREAM(outStream));
-    }
-
-    // FIXME: use tmp path for big file.
-    // FIXME: free the glib pointer.
-    static std::tuple<util::Error, QByteArray> compressFile(const QString &filepath)
-    {
-        g_autoptr(GError) gErr = nullptr;
-        g_autoptr(GBytes) inputBytes = nullptr;
-        g_autoptr(GInputStream) memInput = nullptr;
-        g_autoptr(GInputStream) zlibStream = nullptr;
-        g_autoptr(GBytes) zlibBytes = nullptr;
-        g_autoptr(GFile) file = nullptr;
-        g_autoptr(GFileInfo) info = nullptr;
-        g_autoptr(GVariant) xattrs = nullptr;
-
-        file = g_file_new_for_path(filepath.toStdString().c_str());
-        if (file == nullptr) {
-            return { NewError(errno, "open file failed: " + filepath), QByteArray() };
-        }
-
+    info = g_file_query_info(file,
+                             G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK,
+                             G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                             nullptr,
+                             nullptr);
+    if (g_file_info_get_is_symlink(info)) {
         info = g_file_query_info(file,
-                                 G_FILE_ATTRIBUTE_UNIX_MODE,
+                                 G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET,
                                  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                  nullptr,
                                  nullptr);
-        guint32 mode = g_file_info_get_attribute_uint32(info, G_FILE_ATTRIBUTE_UNIX_MODE);
-
+        g_file_info_set_file_type(info, G_FILE_TYPE_SYMBOLIC_LINK);
+        g_file_info_set_size(info, 0);
+    } else {
         info = g_file_query_info(file,
-                                 G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK,
+                                 G_FILE_ATTRIBUTE_STANDARD_SIZE,
                                  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                  nullptr,
                                  nullptr);
-        if (g_file_info_get_is_symlink(info)) {
-            info = g_file_query_info(file,
-                                     G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET,
-                                     G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                     nullptr,
-                                     nullptr);
-            g_file_info_set_file_type(info, G_FILE_TYPE_SYMBOLIC_LINK);
-            g_file_info_set_size(info, 0);
-        } else {
-            info = g_file_query_info(file,
-                                     G_FILE_ATTRIBUTE_STANDARD_SIZE,
-                                     G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                     nullptr,
-                                     nullptr);
-            qDebug() << "fize size:" << g_file_info_get_size(info);
+        qDebug() << "fize size:" << g_file_info_get_size(info);
 
-            // Q_ASSERT(g_file_info_get_size(info) > 0);
-            g_file_info_set_size(info, g_file_info_get_size(info));
-            inputBytes = g_file_load_bytes(file, nullptr, nullptr, nullptr);
-        }
-        // TODO: set uid/gid with G_FILE_ATTRIBUTE_UNIX_UID/G_FILE_ATTRIBUTE_UNIX_GID
-        g_file_info_set_attribute_uint32(info, G_FILE_ATTRIBUTE_UNIX_MODE, mode);
+        // Q_ASSERT(g_file_info_get_size(info) > 0);
+        g_file_info_set_size(info, g_file_info_get_size(info));
+        inputBytes = g_file_load_bytes(file, nullptr, nullptr, nullptr);
+    }
+    // TODO: set uid/gid with G_FILE_ATTRIBUTE_UNIX_UID/G_FILE_ATTRIBUTE_UNIX_GID
+    g_file_info_set_attribute_uint32(info, G_FILE_ATTRIBUTE_UNIX_MODE, mode);
 
-        if (inputBytes) {
-            memInput = g_memory_input_stream_new_from_bytes(inputBytes);
-        }
-
-        xattrs = g_variant_ref_sink(g_variant_new_array(G_VARIANT_TYPE("(ayay)"), nullptr, 0));
-
-        ostree_raw_file_to_archive_z2_stream(memInput, info, xattrs, &zlibStream, nullptr, &gErr);
-
-        zlibBytes = glibInputStreamToBytes(zlibStream);
-
-        return { NoError(), glibBytesToQByteArray(zlibBytes) };
+    if (inputBytes) {
+        memInput = g_memory_input_stream_new_from_bytes(inputBytes);
     }
 
-    static OstreeRepo *openRepo(const QString &path)
-    {
-        GError *gErr = nullptr;
-        std::string repoPathStr = path.toStdString();
+    xattrs = g_variant_ref_sink(g_variant_new_array(G_VARIANT_TYPE("(ayay)"), nullptr, 0));
 
-        auto repoPath = g_file_new_for_path(repoPathStr.c_str());
-        auto repo = ostree_repo_new(repoPath);
-        if (!ostree_repo_open(repo, nullptr, &gErr)) {
-            qCritical() << "open repo" << path << "failed"
-                        << QString::fromStdString(std::string(gErr->message));
-        }
-        g_object_unref(repoPath);
+    ostree_raw_file_to_archive_z2_stream(memInput, info, xattrs, &zlibStream, nullptr, &gErr);
 
-        Q_ASSERT(nullptr != repo);
-        return repo;
+    zlibBytes = glibInputStreamToBytes(zlibStream);
+
+    return { NoError(), glibBytesToQByteArray(zlibBytes) };
+}
+
+OstreeRepo *OSTreeRepoPrivate::openRepo(const QString &path)
+{
+    GError *gErr = nullptr;
+    std::string repoPathStr = path.toStdString();
+
+    auto repoPath = g_file_new_for_path(repoPathStr.c_str());
+    auto repo = ostree_repo_new(repoPath);
+    if (!ostree_repo_open(repo, nullptr, &gErr)) {
+        qCritical() << "open repo" << path << "failed"
+                    << QString::fromStdString(std::string(gErr->message));
+    }
+    g_object_unref(repoPath);
+
+    Q_ASSERT(nullptr != repo);
+    return repo;
+}
+
+QString OSTreeRepoPrivate::getObjectPath(const QString &objName)
+{
+    return QDir::cleanPath(QStringList{ ostreePath,
+                                        "objects",
+                                        objName.left(2),
+                                        objName.right(objName.length() - 2) }
+                                   .join(QDir::separator()));
+}
+
+// FIXME: return {Error, QStringList}
+QStringList OSTreeRepoPrivate::traverseCommit(const QString &rev, int maxDepth)
+{
+    GHashTable *hashTable = nullptr;
+    GError *gErr = nullptr;
+    QStringList objects;
+
+    std::string str = rev.toStdString();
+
+    if (!ostree_repo_traverse_commit(repoPtr, str.c_str(), maxDepth, &hashTable, nullptr, &gErr)) {
+        qCritical() << "ostree_repo_traverse_commit failed"
+                    << "rev" << rev << QString::fromStdString(std::string(gErr->message));
+        return {};
     }
 
-    QString getObjectPath(const QString &objName)
-    {
-        return QDir::cleanPath(QStringList{ ostreePath,
-                                            "objects",
-                                            objName.left(2),
-                                            objName.right(objName.length() - 2) }
-                                       .join(QDir::separator()));
+    GHashTableIter iter;
+    g_hash_table_iter_init(&iter, hashTable);
+
+    GVariant *object;
+    for (; g_hash_table_iter_next(&iter, reinterpret_cast<gpointer *>(&object), nullptr);) {
+        char *checksum;
+        OstreeObjectType objectType;
+
+        // TODO: check error
+        g_variant_get(object, "(su)", &checksum, &objectType);
+        QString objectName(ostree_object_to_string(checksum, objectType));
+        objects.push_back(objectName);
     }
 
-    // FIXME: return {Error, QStringList}
-    QStringList traverseCommit(const QString &rev, int maxDepth)
-    {
-        GHashTable *hashTable = nullptr;
-        GError *gErr = nullptr;
-        QStringList objects;
+    return objects;
+}
 
-        std::string str = rev.toStdString();
-
-        if (!ostree_repo_traverse_commit(repoPtr,
-                                         str.c_str(),
-                                         maxDepth,
-                                         &hashTable,
-                                         nullptr,
-                                         &gErr)) {
-            qCritical() << "ostree_repo_traverse_commit failed"
-                        << "rev" << rev << QString::fromStdString(std::string(gErr->message));
-            return {};
+std::tuple<QList<OstreeRepoObject>, linglong::util::Error> OSTreeRepoPrivate::findObjectsOfCommits(const QStringList &revs)
+{
+    QList<OstreeRepoObject> objects;
+    for (const auto &rev : revs) {
+        // FIXME: check error
+        auto revObjects = traverseCommit(rev, 0);
+        for (const auto &objName : revObjects) {
+            auto path = getObjectPath(objName);
+            objects.push_back(OstreeRepoObject{ .objectName = objName, .rev = rev, .path = path });
         }
+    }
+    return { objects, NoError() };
+}
 
-        GHashTableIter iter;
-        g_hash_table_iter_init(&iter, hashTable);
+std::tuple<QString, linglong::util::Error> OSTreeRepoPrivate::resolveRev(const QString &ref)
+{
+    GError *gErr = nullptr;
+    char *commitID = nullptr;
+    std::string refStr = ref.toStdString();
+    // FIXME: should free commitID?
+    if (!ostree_repo_resolve_rev(repoPtr, refStr.c_str(), false, &commitID, &gErr)) {
+        return { "",
+                 WrapError(NewError(gErr->code, gErr->message),
+                           "ostree_repo_resolve_rev failed: " + ref) };
+    }
+    return { QString::fromLatin1(commitID), NoError() };
+}
 
-        GVariant *object;
-        for (; g_hash_table_iter_next(&iter, reinterpret_cast<gpointer *>(&object), nullptr);) {
-            char *checksum;
-            OstreeObjectType objectType;
+// TODO: support multi refs?
+linglong::util::Error OSTreeRepoPrivate::pull(const QString &ref)
+{
+    GError *gErr = nullptr;
+    // OstreeAsyncProgress *progress;
+    // GCancellable *cancellable;
+    auto repoNameStr = remoteRepoName.toStdString();
+    auto refStr = ref.toStdString();
+    auto refsSize = 1;
+    const char *refs[refsSize + 1];
+    for (decltype(refsSize) i = 0; i < refsSize; i++) {
+        refs[i] = refStr.c_str();
+    }
+    refs[refsSize] = nullptr;
 
-            // TODO: check error
-            g_variant_get(object, "(su)", &checksum, &objectType);
-            QString objectName(ostree_object_to_string(checksum, objectType));
-            objects.push_back(objectName);
-        }
+    GVariantBuilder builder;
+    g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
 
-        return objects;
+    // g_variant_builder_add(&builder, "{s@v}",
+    // "override-url",g_variant_new_string(remote_name_or_baseurl));
+
+    g_variant_builder_add(&builder,
+                          "{s@v}",
+                          "gpg-verify",
+                          g_variant_new_variant(g_variant_new_boolean(false)));
+    g_variant_builder_add(&builder,
+                          "{s@v}",
+                          "gpg-verify-summary",
+                          g_variant_new_variant(g_variant_new_boolean(false)));
+
+    auto flags = OSTREE_REPO_PULL_FLAGS_NONE;
+    g_variant_builder_add(&builder,
+                          "{s@v}",
+                          "flags",
+                          g_variant_new_variant(g_variant_new_int32(flags)));
+
+    g_variant_builder_add(&builder,
+                          "{s@v}",
+                          "refs",
+                          g_variant_new_variant(g_variant_new_strv((const char *const *)refs, -1)));
+
+    auto options = g_variant_ref_sink(g_variant_builder_end(&builder));
+
+    if (!ostree_repo_pull_with_options(repoPtr,
+                                       repoNameStr.c_str(),
+                                       options,
+                                       nullptr,
+                                       nullptr,
+                                       &gErr)) {
+        qCritical() << "ostree_repo_pull_with_options failed"
+                    << QString::fromStdString(std::string(gErr->message));
+    }
+    return NoError();
+}
+
+InfoResponse *OSTreeRepoPrivate::getRepoInfo(const QString &repoName)
+{
+    QUrl url(QString("%1/%2/%3").arg(remoteEndpoint, "api/v1/repos", repoName));
+
+    QNetworkRequest request(url);
+
+    auto reply = httpClient.get(request);
+    auto data = reply->readAll();
+    qDebug() << "url" << url << "repo info" << data;
+    auto info = util::loadJsonBytes<InfoResponse>(data);
+    return info;
+}
+
+std::tuple<QString, linglong::util::Error> OSTreeRepoPrivate::newUploadTask(UploadRequest *req)
+{
+    QUrl url(QString("%1/api/v1/upload-tasks").arg(remoteEndpoint));
+    QNetworkRequest request(url);
+    qDebug() << "upload url" << url;
+    auto data = QJsonDocument(toVariant(req).toJsonObject()).toJson();
+
+    request.setRawHeader(QByteArray("X-Token"), remoteToken.toLocal8Bit());
+    auto reply = httpClient.post(request, data);
+    data = reply->readAll();
+
+    QScopedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
+    qDebug() << "new upload task" << data;
+    if (info->code != 200) {
+        return { QString(), NewError(-1, info->msg) };
     }
 
-    std::tuple<QList<OstreeRepoObject>, util::Error> findObjectsOfCommits(const QStringList &revs)
-    {
-        QList<OstreeRepoObject> objects;
-        for (const auto &rev : revs) {
-            // FIXME: check error
-            auto revObjects = traverseCommit(rev, 0);
-            for (const auto &objName : revObjects) {
-                auto path = getObjectPath(objName);
-                objects.push_back(
-                        OstreeRepoObject{ .objectName = objName, .rev = rev, .path = path });
-            }
-        }
-        return { objects, NoError() };
+    return { info->data->id, NoError() };
+}
+
+std::tuple<QString, linglong::util::Error> OSTreeRepoPrivate::newUploadTask(const QString &repoName, UploadTaskRequest *req)
+{
+    QUrl url(QString("%1/api/v1/blob/%2/upload").arg(remoteEndpoint, repoName));
+    QNetworkRequest request(url);
+
+    auto data = QJsonDocument(toVariant(req).toJsonObject()).toJson();
+
+    request.setRawHeader(QByteArray("X-Token"), remoteToken.toLocal8Bit());
+    auto reply = httpClient.post(request, data);
+    data = reply->readAll();
+
+    QScopedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
+    qDebug() << "new upload task" << data;
+    if (info->code != 200) {
+        return { QString(), NewError(-1, info->msg) };
     }
 
-    std::tuple<QString, util::Error> resolveRev(const QString &ref)
-    {
-        GError *gErr = nullptr;
-        char *commitID = nullptr;
-        std::string refStr = ref.toStdString();
-        // FIXME: should free commitID?
-        if (!ostree_repo_resolve_rev(repoPtr, refStr.c_str(), false, &commitID, &gErr)) {
-            return { "",
-                     WrapError(NewError(gErr->code, gErr->message),
-                               "ostree_repo_resolve_rev failed: " + ref) };
-        }
-        return { QString::fromLatin1(commitID), NoError() };
-    }
+    return { info->data->id, NoError() };
+}
 
-    // TODO: support multi refs?
-    util::Error pull(const QString &ref)
-    {
-        GError *gErr = nullptr;
-        // OstreeAsyncProgress *progress;
-        // GCancellable *cancellable;
-        auto repoNameStr = remoteRepoName.toStdString();
-        auto refStr = ref.toStdString();
-        auto refsSize = 1;
-        const char *refs[refsSize + 1];
-        for (decltype(refsSize) i = 0; i < refsSize; i++) {
-            refs[i] = refStr.c_str();
-        }
-        refs[refsSize] = nullptr;
+linglong::util::Error OSTreeRepoPrivate::doUploadTask(const QString &taskID, const QString &filePath)
+{
+    util::Error err(NoError());
+    QByteArray fileData;
 
-        GVariantBuilder builder;
-        g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
+    QUrl uploadUrl(QString("%1/api/v1/upload-tasks/%2/tar").arg(remoteEndpoint, taskID));
+    QNetworkRequest request(uploadUrl);
+    request.setRawHeader(QByteArray("X-Token"), remoteToken.toLocal8Bit());
 
-        // g_variant_builder_add(&builder, "{s@v}",
-        // "override-url",g_variant_new_string(remote_name_or_baseurl));
+    QScopedPointer<QHttpMultiPart> multiPart(new QHttpMultiPart(QHttpMultiPart::FormDataType));
 
-        g_variant_builder_add(&builder,
-                              "{s@v}",
-                              "gpg-verify",
-                              g_variant_new_variant(g_variant_new_boolean(false)));
-        g_variant_builder_add(&builder,
-                              "{s@v}",
-                              "gpg-verify-summary",
-                              g_variant_new_variant(g_variant_new_boolean(false)));
+    // FIXME: add link support
+    QList<QHttpPart> partList;
+    partList.reserve(filePath.size());
 
-        auto flags = OSTREE_REPO_PULL_FLAGS_NONE;
-        g_variant_builder_add(&builder,
-                              "{s@v}",
-                              "flags",
-                              g_variant_new_variant(g_variant_new_int32(flags)));
+    partList.push_back(QHttpPart());
+    auto filePart = partList.last();
 
-        g_variant_builder_add(
-                &builder,
-                "{s@v}",
-                "refs",
-                g_variant_new_variant(g_variant_new_strv((const char *const *)refs, -1)));
+    auto *file = new QFile(filePath, multiPart.data());
+    file->open(QIODevice::ReadOnly);
+    filePart.setHeader(
+            QNetworkRequest::ContentDispositionHeader,
+            QVariant(QString(R"(form-data; name="%1"; filename="%2")").arg("file", filePath)));
+    filePart.setBodyDevice(file);
 
-        auto options = g_variant_ref_sink(g_variant_builder_end(&builder));
+    multiPart->append(filePart);
+    qDebug() << "send " << filePath;
 
-        if (!ostree_repo_pull_with_options(repoPtr,
-                                           repoNameStr.c_str(),
-                                           options,
-                                           nullptr,
-                                           nullptr,
-                                           &gErr)) {
-            qCritical() << "ostree_repo_pull_with_options failed"
-                        << QString::fromStdString(std::string(gErr->message));
-        }
-        return NoError();
-    }
+    auto reply = httpClient.put(request, multiPart.data());
+    auto data = reply->readAll();
 
-    InfoResponse *getRepoInfo(const QString &repoName)
-    {
-        QUrl url(QString("%1/%2/%3").arg(remoteEndpoint, "api/v1/repos", repoName));
+    qDebug() << "doUpload" << data;
 
-        QNetworkRequest request(url);
+    QScopedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
 
-        auto reply = httpClient.get(request);
-        auto data = reply->readAll();
-        qDebug() << "url" << url << "repo info" << data;
-        auto info = util::loadJsonBytes<InfoResponse>(data);
-        return info;
-    }
+    return NoError();
+}
 
-    std::tuple<QString, util::Error> newUploadTask(UploadRequest *req)
-    {
-        QUrl url(QString("%1/api/v1/upload-tasks").arg(remoteEndpoint));
-        QNetworkRequest request(url);
-        qDebug() << "upload url" << url;
-        auto data = QJsonDocument(toVariant(req).toJsonObject()).toJson();
+linglong::util::Error OSTreeRepoPrivate::doUploadTask(const QString &repoName,
+                         const QString &taskID,
+                         const QList<OstreeRepoObject> &objects)
+{
+    util::Error err(NoError());
+    QByteArray fileData;
 
-        request.setRawHeader(QByteArray("X-Token"), remoteToken.toLocal8Bit());
-        auto reply = httpClient.post(request, data);
-        data = reply->readAll();
+    QUrl url(QString("%1/api/v1/blob/%2/upload/%3").arg(remoteEndpoint, repoName, taskID));
+    QNetworkRequest request(url);
+    request.setRawHeader(QByteArray("X-Token"), remoteToken.toLocal8Bit());
 
-        QScopedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
-        qDebug() << "new upload task" << data;
-        if (info->code != 200) {
-            return { QString(), NewError(-1, info->msg) };
-        }
+    QScopedPointer<QHttpMultiPart> multiPart(new QHttpMultiPart(QHttpMultiPart::FormDataType));
 
-        return { info->data->id, NoError() };
-    }
+    // FIXME: add link support
+    QList<QHttpPart> partList;
+    partList.reserve(objects.size());
 
-    std::tuple<QString, util::Error> newUploadTask(const QString &repoName, UploadTaskRequest *req)
-    {
-        QUrl url(QString("%1/api/v1/blob/%2/upload").arg(remoteEndpoint, repoName));
-        QNetworkRequest request(url);
-
-        auto data = QJsonDocument(toVariant(req).toJsonObject()).toJson();
-
-        request.setRawHeader(QByteArray("X-Token"), remoteToken.toLocal8Bit());
-        auto reply = httpClient.post(request, data);
-        data = reply->readAll();
-
-        QScopedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
-        qDebug() << "new upload task" << data;
-        if (info->code != 200) {
-            return { QString(), NewError(-1, info->msg) };
-        }
-
-        return { info->data->id, NoError() };
-    }
-
-    util::Error doUploadTask(const QString &taskID, const QString &filePath)
-    {
-        util::Error err(NoError());
-        QByteArray fileData;
-
-        QUrl uploadUrl(QString("%1/api/v1/upload-tasks/%2/tar").arg(remoteEndpoint, taskID));
-        QNetworkRequest request(uploadUrl);
-        request.setRawHeader(QByteArray("X-Token"), remoteToken.toLocal8Bit());
-
-        QScopedPointer<QHttpMultiPart> multiPart(new QHttpMultiPart(QHttpMultiPart::FormDataType));
-
-        // FIXME: add link support
-        QList<QHttpPart> partList;
-        partList.reserve(filePath.size());
-
+    for (const auto &obj : objects) {
         partList.push_back(QHttpPart());
         auto filePart = partList.last();
 
-        auto *file = new QFile(filePath, multiPart.data());
-        file->open(QIODevice::ReadOnly);
-        filePart.setHeader(
-                QNetworkRequest::ContentDispositionHeader,
-                QVariant(QString(R"(form-data; name="%1"; filename="%2")").arg("file", filePath)));
-        filePart.setBodyDevice(file);
-
-        multiPart->append(filePart);
-        qDebug() << "send " << filePath;
-
-        auto reply = httpClient.put(request, multiPart.data());
-        auto data = reply->readAll();
-
-        qDebug() << "doUpload" << data;
-
-        QScopedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
-
-        return NoError();
-    }
-
-    util::Error doUploadTask(const QString &repoName,
-                             const QString &taskID,
-                             const QList<OstreeRepoObject> &objects)
-    {
-        util::Error err(NoError());
-        QByteArray fileData;
-
-        QUrl url(QString("%1/api/v1/blob/%2/upload/%3").arg(remoteEndpoint, repoName, taskID));
-        QNetworkRequest request(url);
-        request.setRawHeader(QByteArray("X-Token"), remoteToken.toLocal8Bit());
-
-        QScopedPointer<QHttpMultiPart> multiPart(new QHttpMultiPart(QHttpMultiPart::FormDataType));
-
-        // FIXME: add link support
-        QList<QHttpPart> partList;
-        partList.reserve(objects.size());
-
-        for (const auto &obj : objects) {
-            partList.push_back(QHttpPart());
-            auto filePart = partList.last();
-
-            QFileInfo fi(obj.path);
-            if (fi.isSymLink() && false) {
+        QFileInfo fi(obj.path);
+        if (fi.isSymLink() && false) {
+            filePart.setHeader(QNetworkRequest::ContentDispositionHeader,
+                               QVariant(QString("form-data; name=\"%1\"; filename=\"%2\"")
+                                                .arg("link", obj.objectName)));
+            filePart.setBody(QString("%1:%2").arg(obj.objectName, obj.path).toUtf8());
+        } else {
+            QString objectName = obj.objectName;
+            if (fi.fileName().endsWith(".file")) {
+                objectName += "z";
+                std::tie(err, fileData) = compressFile(obj.path);
                 filePart.setHeader(QNetworkRequest::ContentDispositionHeader,
-                                   QVariant(QString("form-data; name=\"%1\"; filename=\"%2\"")
-                                                    .arg("link", obj.objectName)));
-                filePart.setBody(QString("%1:%2").arg(obj.objectName, obj.path).toUtf8());
+                                   QVariant(QString(R"(form-data; name="%1"; filename="%2")")
+                                                    .arg("file", objectName)));
+                filePart.setBody(fileData);
             } else {
-                QString objectName = obj.objectName;
-                if (fi.fileName().endsWith(".file")) {
-                    objectName += "z";
-                    std::tie(err, fileData) = compressFile(obj.path);
-                    filePart.setHeader(QNetworkRequest::ContentDispositionHeader,
-                                       QVariant(QString(R"(form-data; name="%1"; filename="%2")")
-                                                        .arg("file", objectName)));
-                    filePart.setBody(fileData);
-                } else {
-                    auto *file = new QFile(obj.path, multiPart.data());
-                    file->open(QIODevice::ReadOnly);
-                    filePart.setHeader(QNetworkRequest::ContentDispositionHeader,
-                                       QVariant(QString(R"(form-data; name="%1"; filename="%2")")
-                                                        .arg("file", obj.objectName)));
-                    filePart.setBodyDevice(file);
-                }
+                auto *file = new QFile(obj.path, multiPart.data());
+                file->open(QIODevice::ReadOnly);
+                filePart.setHeader(QNetworkRequest::ContentDispositionHeader,
+                                   QVariant(QString(R"(form-data; name="%1"; filename="%2")")
+                                                    .arg("file", obj.objectName)));
+                filePart.setBodyDevice(file);
             }
-            multiPart->append(filePart);
-            qDebug() << fi.isSymLink() << "send " << obj.objectName << obj.path;
         }
+        multiPart->append(filePart);
+        qDebug() << fi.isSymLink() << "send " << obj.objectName << obj.path;
+    }
 
-        auto reply = httpClient.put(request, multiPart.data());
+    auto reply = httpClient.put(request, multiPart.data());
+    auto data = reply->readAll();
+
+    qDebug() << "doUpload" << data;
+
+    QScopedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
+    if (200 != info->code) {
+        return NewError(-1, info->msg);
+    }
+
+    return NoError();
+}
+
+linglong::util::Error OSTreeRepoPrivate::cleanUploadTask(const QString &repoName, const QString &taskID)
+{
+    QUrl url(QString("%1/api/v1/blob/%2/upload/%3").arg(remoteEndpoint, repoName, taskID));
+    QNetworkRequest request(url);
+    // FIXME: check error
+    httpClient.del(request);
+    return NoError();
+}
+
+linglong::util::Error OSTreeRepoPrivate::cleanUploadTask(const package::Ref &ref, const QString &filePath)
+{
+    const auto savePath = QStringList{ util::getUserFile(".linglong/builder"), ref.appId }.join(
+            QDir::separator());
+
+    util::removeDir(savePath);
+
+    QFile file(filePath);
+    file.remove();
+
+    qDebug() << "clean Upload Task";
+    return NoError();
+}
+
+linglong::util::Error OSTreeRepoPrivate::getUploadStatus(const QString &taskID)
+{
+    QUrl url(QString("%1/%2/%3/status").arg(remoteEndpoint, "api/v1/upload-tasks", taskID));
+    QNetworkRequest request(url);
+
+    while (1) {
+        auto reply = httpClient.get(request);
         auto data = reply->readAll();
 
-        qDebug() << "doUpload" << data;
+        qDebug() << "url" << url << "repo info" << data;
 
-        QScopedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
+        auto info = util::loadJsonBytes<UploadTaskResponse>(data);
+
         if (200 != info->code) {
-            return NewError(-1, info->msg);
+            return NewError(-1, "get upload status faild, remote server is unreachable");
         }
 
-        return NoError();
-    }
-
-    util::Error cleanUploadTask(const QString &repoName, const QString &taskID)
-    {
-        QUrl url(QString("%1/api/v1/blob/%2/upload/%3").arg(remoteEndpoint, repoName, taskID));
-        QNetworkRequest request(url);
-        // FIXME: check error
-        httpClient.del(request);
-        return NoError();
-    }
-
-    util::Error cleanUploadTask(const package::Ref &ref, const QString &filePath)
-    {
-        const auto savePath = QStringList{ util::getUserFile(".linglong/builder"), ref.appId }.join(
-                QDir::separator());
-
-        util::removeDir(savePath);
-
-        QFile file(filePath);
-        file.remove();
-
-        qDebug() << "clean Upload Task";
-        return NoError();
-    }
-
-    util::Error getUploadStatus(const QString &taskID)
-    {
-        QUrl url(QString("%1/%2/%3/status").arg(remoteEndpoint, "api/v1/upload-tasks", taskID));
-        QNetworkRequest request(url);
-
-        while (1) {
-            auto reply = httpClient.get(request);
-            auto data = reply->readAll();
-
-            qDebug() << "url" << url << "repo info" << data;
-
-            auto info = util::loadJsonBytes<UploadTaskResponse>(data);
-
-            if (200 != info->code) {
-                return NewError(-1, "get upload status faild, remote server is unreachable");
-            }
-
-            if ("complete" == info->data->status) {
-                break;
-            } else if ("failed" == info->data->status) {
-                return NewError(-1, info->data->status);
-            }
-
-            qInfo().noquote() << info->data->status;
-            QThread::sleep(1);
+        if ("complete" == info->data->status) {
+            break;
+        } else if ("failed" == info->data->status) {
+            return NewError(-1, info->data->status);
         }
 
-        return NoError();
+        qInfo().noquote() << info->data->status;
+        QThread::sleep(1);
     }
 
-    util::Error getToken()
-    {
-        QUrl url(QString("%1/%2").arg(remoteEndpoint, "api/v1/sign-in"));
-        QNetworkRequest request(url);
-        auto userInfo = util::getUserInfo();
-        QString userJsonData = QString("{\"username\": \"%1\", \"password\": \"%2\"}")
-                                       .arg(userInfo.first())
-                                       .arg(userInfo.last());
+    return NoError();
+}
 
-        auto reply = httpClient.post(request, userJsonData.toLocal8Bit());
-        auto data = reply->readAll();
-        auto result = util::loadJsonBytes<AuthResponse>(data);
+linglong::util::Error OSTreeRepoPrivate::getToken()
+{
+    QUrl url(QString("%1/%2").arg(remoteEndpoint, "api/v1/sign-in"));
+    QNetworkRequest request(url);
+    auto userInfo = util::getUserInfo();
+    QString userJsonData = QString("{\"username\": \"%1\", \"password\": \"%2\"}")
+                                   .arg(userInfo.first())
+                                   .arg(userInfo.last());
 
-        qDebug() << "get token reply" << data;
-        // Fixme: use status macro
-        if (200 != result->code) {
-            auto err = result->msg.isEmpty() ? QString("%1 is unreachable").arg(url.toString())
-                                             : result->msg;
-            return NewError(-1, err);
-        }
+    auto reply = httpClient.post(request, userJsonData.toLocal8Bit());
+    auto data = reply->readAll();
+    auto result = util::loadJsonBytes<AuthResponse>(data);
 
-        remoteToken = result->data->token;
-
-        return NoError();
+    qDebug() << "get token reply" << data;
+    // Fixme: use status macro
+    if (200 != result->code) {
+        auto err = result->msg.isEmpty() ? QString("%1 is unreachable").arg(url.toString())
+                                         : result->msg;
+        return NewError(-1, err);
     }
 
-    QString repoRootPath;
-    QString remoteEndpoint;
-    QString remoteRepoName;
+    remoteToken = result->data->token;
 
-    QString remoteToken;
-
-    OstreeRepo *repoPtr = nullptr;
-    QString ostreePath;
-
-    util::HttpRestClient httpClient;
-
-    OSTreeRepo *q_ptr;
-    Q_DECLARE_PUBLIC(OSTreeRepo);
-};
+    return NoError();
+}
 
 linglong::util::Error OSTreeRepo::importDirectory(const package::Ref &ref, const QString &path)
 {

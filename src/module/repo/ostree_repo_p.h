@@ -58,6 +58,10 @@ private:
 
     static std::tuple<util::Error, QByteArray> compressFile(const QString &filepath);
 
+    static char *_formatted_time_remaining_from_seconds(guint64 seconds_remaining);
+
+    static void progress_changed(OstreeAsyncProgress *progress, gpointer user_data);
+
     linglong::util::Error ostreeRun(const QStringList &args, QByteArray *stdout);
 
     QString getObjectPath(const QString &objName);

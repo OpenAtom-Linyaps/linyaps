@@ -7,6 +7,8 @@
 #ifndef LINGLONG_SRC_MODULE_UTIL_RUNNER_H_
 #define LINGLONG_SRC_MODULE_UTIL_RUNNER_H_
 
+#include "module/util/error.h"
+
 #include <QDebug>
 #include <QProcess>
 
@@ -17,14 +19,28 @@
 namespace linglong {
 namespace util {
 
-inline Error Exec(const QString &program, const QStringList &args, int timeout = -1)
+/*!
+ *
+ * @param program
+ * @param args
+ * @param timeout: msecs
+ * @return
+ */
+inline Error Exec(const QString &program,
+                  const QStringList &args,
+                  int timeout = -1,
+                  QSharedPointer<QByteArray> standardOutput = nullptr)
 {
     QProcess process;
     process.setProgram(program);
     process.setArguments(args);
 
     QProcess::connect(&process, &QProcess::readyReadStandardOutput, [&]() {
-        qDebug() << process.readAllStandardOutput();
+        if (standardOutput) {
+            standardOutput->append(process.readAllStandardOutput());
+        } else {
+            qDebug() << process.readAllStandardOutput();
+        }
     });
 
     QProcess::connect(&process, &QProcess::readyReadStandardError, [&]() {
@@ -39,84 +55,5 @@ inline Error Exec(const QString &program, const QStringList &args, int timeout =
 }
 
 } // namespace util
-
-namespace runner {
-
-/*!
- * Runner 带返回值的命令调用
- * @param program 执行的应用程序
- * @param args 参数
- * @param timeout 30000
- * @param stdout 命令输出内容
- * @return
- */
-inline bool Runner(const QString program = "ostree",
-                   const QStringList args = {},
-                   const int timeout = 30000,
-                   QByteArray *stdout = nullptr)
-{
-    QProcess runner;
-    qDebug() << program << args;
-    runner.start(program, args);
-    if (!runner.waitForStarted()) {
-        qCritical() << program << " init failed!";
-        return false;
-    }
-    if (!runner.waitForFinished(timeout)) {
-        qCritical() << program << " run finish failed!";
-        return false;
-    }
-    //    auto retStatus = runner.exitStatus();
-    auto retCode = runner.exitCode();
-    if (retCode != 0) {
-        qCritical() << program << " run failed, retCode:" << retCode << ", args:" << program << args
-                    << ", info msg:" << QString::fromLocal8Bit(runner.readAllStandardOutput())
-                    << ", err msg:" << QString::fromLocal8Bit(runner.readAllStandardError());
-        return false;
-    } else {
-        if (stdout) {
-            *stdout += runner.readAllStandardOutput();
-        }
-    }
-    return true;
-};
-
-/*!
- * RunnerRet 带返回值的命令调用
- * @tparam T
- * @tparam Y
- * @tparam P
- * @param program
- * @param args
- * @param timeout
- * @return
- */
-template<typename T = QString, typename Y = QStringList, typename P = int>
-std::tuple<bool, QStringList> RunnerRet(const T program = "ostree",
-                                        const Y args = "",
-                                        const P timeout = 30000)
-{
-    QProcess runner;
-    qDebug() << program << args;
-    runner.start(program, args);
-    if (!runner.waitForStarted()) {
-        qInfo() << program << " init failed!";
-        return { false, QStringList() };
-    }
-    if (!runner.waitForFinished(timeout)) {
-        qInfo() << program << " run finish failed!";
-        return { false, QStringList() };
-    }
-    auto ret_code = runner.exitStatus();
-    if (ret_code != 0) {
-        qInfo() << "run failed: " << ret_code;
-        return { false, QStringList() };
-    }
-    QString outputTxt = runner.readAllStandardOutput();
-    // auto list = outputTxt.split("\n");
-    return { true, outputTxt.split("\n") };
-};
-
-} // namespace runner
 } // namespace linglong
 #endif

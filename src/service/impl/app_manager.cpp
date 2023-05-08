@@ -12,6 +12,7 @@
 #include "module/runtime/app.h"
 #include "module/util/app_status.h"
 #include "module/util/file.h"
+#include "module/util/runner.h"
 #include "module/util/status_code.h"
 #include "module/util/sysinfo.h"
 
@@ -261,25 +262,11 @@ QueryReply AppManager::ListContainer()
 Reply AppManager::RunCommand(const QString &exe, const QStringList args)
 {
     Reply reply;
-    QProcess process;
-    process.setProgram(exe);
 
-    process.setArguments(args);
+    auto err = util::Exec(exe, args, 15 * 60 * 1000);
 
-    QProcess::connect(&process, &QProcess::readyReadStandardOutput, [&]() {
-        std::cout << process.readAllStandardOutput().toStdString().c_str();
-    });
-
-    QProcess::connect(&process, &QProcess::readyReadStandardError, [&]() {
-        std::cout << process.readAllStandardError().toStdString().c_str();
-    });
-
-    process.start();
-    process.waitForStarted(15 * 60 * 1000);
-    process.waitForFinished(15 * 60 * 1000);
-
-    reply.code = process.exitCode();
-    reply.message = process.errorString();
+    reply.code = err.code();
+    reply.message = err.message();
 
     return reply;
 }

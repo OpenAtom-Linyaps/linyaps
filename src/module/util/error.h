@@ -34,6 +34,8 @@ public:
 
     explicit operator bool() const;
 
+    inline bool operator!() const { return !this->operator bool(); }
+
     int code() const;
 
     QString message() const;
@@ -53,10 +55,14 @@ QDebug operator<<(QDebug dbg, const Error &result);
 } // namespace linglong
 
 #define NewError(code, message) \
-  linglong::util::Error(QT_MESSAGELOG_FILE, QT_MESSAGELOG_LINE, QT_MESSAGELOG_FUNC, code, message)
+    linglong::util::Error(QT_MESSAGELOG_FILE, QT_MESSAGELOG_LINE, QT_MESSAGELOG_FUNC, code, message)
 
-#define WrapError(reason, message) \
-  linglong::util::Error(QT_MESSAGELOG_FILE, QT_MESSAGELOG_LINE, QT_MESSAGELOG_FUNC, reason, message)
+#define WrapError(reason, message)            \
+    linglong::util::Error(QT_MESSAGELOG_FILE, \
+                          QT_MESSAGELOG_LINE, \
+                          QT_MESSAGELOG_FUNC, \
+                          reason,             \
+                          message)
 
 #define Success() linglong::util::Error()
 

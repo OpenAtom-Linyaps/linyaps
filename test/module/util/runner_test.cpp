@@ -13,14 +13,13 @@
 
 TEST(Module_Util, runner)
 {
-    auto ret = linglong::runner::Runner(
-            "ostree1",
-            { "--repo=/tmp/linglongtest", "init", "--mode=bare-user-only" },
-            3000);
-    EXPECT_EQ(ret, false);
+    auto err = linglong::util::Exec("ostree1",
+                                    { "--repo=/tmp/linglongtest", "init", "--mode=bare-user-only" },
+                                    3000);
+    EXPECT_EQ(static_cast<bool>(err), true);
 
-    ret = linglong::runner::Runner("ostree",
-                                   { "--repo=/tmp/linglongtest", "init", "--mode=bare-user-only1" },
-                                   3000);
-    EXPECT_EQ(ret, false);
+    err = linglong::util::Exec("ostree",
+                               { "--repo=/tmp/linglongtest", "init", "--mode=bare-user-only1" },
+                               3000);
+    EXPECT_EQ(static_cast<bool>(err), true);
 }

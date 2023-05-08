@@ -35,11 +35,8 @@ linglong::util::Error SourceFetcher::extractFile(const QString &path, const QStr
             subcommandMap = {
                 { CompressedFileTarXz,
                   [](const QString &path, const QString &dir) -> linglong::util::Error {
-                      auto ret = runner::Runner("tar", { "-C", dir, "-xvf", path }, -1);
-                      if (!ret) {
-                          return NewError(-1, QString("extract %1 failed").arg(path));
-                      }
-                      return Success();
+                      return WrapError(util::Exec("tar", { "-C", dir, "-xvf", path }),
+                                       QString("extract %1 failed").arg(path));
                   } },
             };
 
@@ -137,41 +134,38 @@ util::Error SourceFetcherPrivate::fetchGitRepo()
         return NewError(-1, QString("change to %1 failed").arg(sourceTargetPath()));
     }
 
-    if (!runner::Runner("git",
-                        {
-                                "clone",
-                                source->url,
-                                sourceTargetPath(),
-                        },
-                        -1)) {
-        qDebug() << NewError(-1, "git clone failed");
+    auto err = util::Exec("git",
+                          {
+                                  "clone",
+                                  source->url,
+                                  sourceTargetPath(),
+                          });
+    if (err) {
+        qDebug() << WrapError(err, "git clone failed");
     }
 
     QDir::setCurrent(sourceTargetPath());
 
-    if (!runner::Runner("git",
-                        {
-                                "checkout",
-                                "-b",
-                                source->version,
-                                source->commit,
-                        },
-                        -1)) {
-        qDebug() << NewError(-1, "git checkout failed");
+    err = util::Exec("git",
+                     {
+                             "checkout",
+                             "-b",
+                             source->version,
+                             source->commit,
+                     });
+    if (err) {
+        qDebug() << WrapError(err, "git checkout failed");
     }
 
-    if (!runner::Runner("git",
-                        {
-                                "reset",
-                                "--hard",
-                                source->commit,
-                        },
-                        -1)) {
-        return NewError(-1, "git reset failed");
-    }
+    err = util::Exec("git",
+                     {
+                             "reset",
+                             "--hard",
+                             source->commit,
+                     });
 
-    return Success();
-};
+    return WrapError(err, "git reset failed");
+}
 
 util::Error SourceFetcherPrivate::handleLocalPatch()
 {
@@ -188,10 +182,10 @@ util::Error SourceFetcherPrivate::handleLocalPatch()
             continue;
         }
         qInfo() << QString("applying patch: %1").arg(localPatch);
-        if (!runner::Runner("patch",
-                            { "-p1", "-i", project->config().absoluteFilePath({ localPatch }) },
-                            -1)) {
-            return NewError(-1, "patch failed");
+        if (auto err = util::Exec(
+                    "patch",
+                    { "-p1", "-i", project->config().absoluteFilePath({ localPatch }) })) {
+            return NewError(err, "patch failed");
         }
     }
 

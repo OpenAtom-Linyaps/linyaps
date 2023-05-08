@@ -50,7 +50,7 @@ OstreeRepoHelper::~OstreeRepoHelper()
 }
 
 /*
- * 创建本地repo仓库,当目标路径不存在时，自动新建路径
+ * 创建本地 repo 仓库，当目标路径不存在时，自动新建路径
  *
  * @param repoPath: 本地仓库路径
  * @param err: 错误信息
@@ -133,7 +133,7 @@ bool OstreeRepoHelper::ensureRepoEnv(const QString &repoDir, QString &err)
 }
 
 /*
- * 查询ostree远端仓库列表
+ * 查询 ostree 远端仓库列表
  *
  * @param repoPath: 远端仓库对应的本地仓库路径
  * @param vec: 远端仓库列表
@@ -188,13 +188,13 @@ bool OstreeRepoHelper::getRemoteRepoList(const QString &repoPath,
 }
 
 /*
- * 查询远端ostree仓库描述文件Summary信息
+ * 查询远端 ostree 仓库描述文件 Summary 信息
  *
- * @param repo: 远端仓库对应的本地仓库OstreeRepo对象
+ * @param repo: 远端仓库对应的本地仓库 OstreeRepo 对象
  * @param name: 远端仓库名称
- * @param outSummary: 远端仓库的Summary信息
- * @param outSummarySig: 远端仓库的Summary签名信息
- * @param cancellable: GCancellable对象
+ * @param outSummary: 远端仓库的 Summary 信息
+ * @param outSummarySig: 远端仓库的 Summary 签名信息
+ * @param cancellable: GCancellable 对象
  * @param error: 错误信息
  *
  * @return bool: true:成功 false:失败
@@ -238,9 +238,9 @@ bool OstreeRepoHelper::fetchRemoteSummary(OstreeRepo *repo,
 }
 
 /*
- * 从summary中的refMap中获取仓库所有软件包索引refs
+ * 从 summary 中的 refMap 中获取仓库所有软件包索引 refs
  *
- * @param ref_map: summary信息中解析出的ref map信息
+ * @param ref_map: summary 信息中解析出的 ref map 信息
  * @param outRefs: 仓库软件包索引信息
  */
 void OstreeRepoHelper::getPkgRefsFromRefsMap(GVariant *ref_map,
@@ -279,9 +279,9 @@ void OstreeRepoHelper::getPkgRefsFromRefsMap(GVariant *ref_map,
 }
 
 /*
- * 从ostree仓库描述文件Summary信息中获取仓库所有软件包索引refs
+ * 从 ostree 仓库描述文件 Summary 信息中获取仓库所有软件包索引 refs
  *
- * @param summary: 远端仓库Summary信息
+ * @param summary: 远端仓库 Summary 信息
  * @param outRefs: 远端仓库软件包索引信息
  */
 void OstreeRepoHelper::getPkgRefsBySummary(GVariant *summary,
@@ -298,11 +298,11 @@ void OstreeRepoHelper::getPkgRefsBySummary(GVariant *summary,
 }
 
 /*
- * 查询远端仓库所有软件包索引信息refs
+ * 查询远端仓库所有软件包索引信息 refs
  *
  * @param repoPath: 远端仓库对应的本地仓库路径
  * @param remoteName: 远端仓库名称
- * @param outRefs: 远端仓库软件包索引信息(key:refs, value:commit)
+ * @param outRefs: 远端仓库软件包索引信息 (key:refs, value:commit)
  * @param err: 错误信息
  *
  * @return bool: true:成功 false:失败
@@ -357,7 +357,7 @@ bool OstreeRepoHelper::getRemoteRefs(const QString &repoPath,
     }
     GVariant *summary = g_variant_ref_sink(
             g_variant_new_from_bytes(OSTREE_SUMMARY_GVARIANT_FORMAT, summaryBytes, FALSE));
-    // std::map转QMap
+    // std::map 转 QMap
     std::map<std::string, std::string> outRet;
     getPkgRefsBySummary(summary, outRet);
     for (auto iter = outRet.begin(); iter != outRet.end(); ++iter) {
@@ -390,9 +390,9 @@ void OstreeRepoHelper::splitStr(std::string str,
 }
 
 /*
- * 解析仓库软件包索引ref信息
+ * 解析仓库软件包索引 ref 信息
  *
- * @param fullRef: 目标软件包索引ref信息
+ * @param fullRef: 目标软件包索引 ref 信息
  * @param result: 解析结果
  *
  * @return bool: true:成功 false:失败
@@ -425,17 +425,17 @@ bool OstreeRepoHelper::checkOutAppData(const QString &repoPath,
                                        const QString &remoteName,
                                        const QString &ref,
                                        const QString &dstPath,
-                                       QString &err)
+                                       QString &strErr)
 {
     // ostree --repo=repo checkout -U --union org.deepin.calculator/x86_64/1.2.2
     // /persistent/linglong/layers/XXX
     linglong::util::createDir(dstPath);
-    auto ret = linglong::runner::Runner(
+    auto err = util::Exec(
             "ostree",
             { "--repo=" + repoPath + "/repo", "checkout", "-U", "--union", ref, dstPath },
             1000 * 60 * 60 * 24);
-    if (!ret) {
-        err = "checkOutAppData " + ref + " err";
+    if (err) {
+        strErr = "checkOutAppData " + ref + " err";
         qCritical() << "checkOutAppData err, repoPath:" << repoPath << ", remoteName:" << remoteName
                     << ", dstPath:" << dstPath << ", ref:" << ref;
         return false;
@@ -444,11 +444,11 @@ bool OstreeRepoHelper::checkOutAppData(const QString &repoPath,
 }
 
 /*
- * 通过父进程id查找子进程id
+ * 通过父进程 id 查找子进程 id
  *
- * @param qint64: 父进程id
+ * @param qint64: 父进程 id
  *
- * @return qint64: 子进程id
+ * @return qint64: 子进程 id
  */
 qint64 OstreeRepoHelper::getChildPid(qint64 pid)
 {
@@ -481,10 +481,10 @@ qint64 OstreeRepoHelper::getChildPid(qint64 pid)
 }
 
 /*
- * 启动一个ostree 命令相关的任务
+ * 启动一个 ostree 命令相关的任务
  *
  * @param cmd: 需要运行的命令
- * @param ref: ostree软件包对应的ref
+ * @param ref: ostree 软件包对应的 ref
  * @param argList: 参数列表
  * @param timeout: 任务超时时间
  *
@@ -503,7 +503,7 @@ bool OstreeRepoHelper::startOstreeJob(const QString &cmd,
     }
 
     qint64 processId = process.processId();
-    // 通过script pid 查找对应的ostree pid
+    // 通过 script pid 查找对应的 ostree pid
     if ("script" == cmd) {
         qint64 shPid = getChildPid(processId);
         qint64 ostreePid = getChildPid(shPid);
@@ -529,11 +529,11 @@ bool OstreeRepoHelper::startOstreeJob(const QString &cmd,
 }
 
 /*
- * 在玲珑应用安装目录创建一个临时repo子仓库
+ * 在玲珑应用安装目录创建一个临时 repo 子仓库
  *
- * @param parentRepo: 父repo仓库路径
+ * @param parentRepo: 父 repo 仓库路径
  *
- * @return QString: 临时repo路径
+ * @return QString: 临时 repo 路径
  */
 QString OstreeRepoHelper::createTmpRepo(const QString &parentRepo)
 {
@@ -549,41 +549,40 @@ QString OstreeRepoHelper::createTmpRepo(const QString &parentRepo)
         return QString();
     }
     dir.setAutoRemove(false);
-    auto ret = linglong::runner::Runner(
-            "ostree",
-            { "--repo=" + tmpPath + "/repoTmp", "init", "--mode=bare-user-only" },
-            1000 * 60 * 5);
-    if (!ret) {
+    auto err = util::Exec("ostree",
+                          { "--repo=" + tmpPath + "/repoTmp", "init", "--mode=bare-user-only" },
+                          1000 * 60 * 5);
+    if (err) {
         return QString();
     }
 
     // 设置最小空间要求
-    ret = linglong::runner::Runner("ostree",
-                                   { "config",
-                                     "set",
-                                     "--group",
-                                     "core",
-                                     "min-free-space-size",
-                                     "600MB",
-                                     "--repo",
-                                     tmpPath + "/repoTmp" },
-                                   1000 * 60 * 5);
-    if (!ret) {
+    err = util::Exec("ostree",
+                     { "config",
+                       "set",
+                       "--group",
+                       "core",
+                       "min-free-space-size",
+                       "600MB",
+                       "--repo",
+                       tmpPath + "/repoTmp" },
+                     1000 * 60 * 5);
+    if (err) {
         return QString();
     }
 
     // 添加父仓库路径
-    ret = linglong::runner::Runner("ostree",
-                                   { "config",
-                                     "set",
-                                     "--group",
-                                     "core",
-                                     "parent",
-                                     parentRepo,
-                                     "--repo",
-                                     tmpPath + "/repoTmp" },
-                                   1000 * 60 * 5);
-    if (!ret) {
+    err = util::Exec("ostree",
+                     { "config",
+                       "set",
+                       "--group",
+                       "core",
+                       "parent",
+                       parentRepo,
+                       "--repo",
+                       tmpPath + "/repoTmp" },
+                     1000 * 60 * 5);
+    if (err) {
         return QString();
     }
 
@@ -593,11 +592,11 @@ QString OstreeRepoHelper::createTmpRepo(const QString &parentRepo)
 }
 
 /*
- * 通过ostree命令将软件包数据从远端仓库pull到本地
+ * 通过 ostree 命令将软件包数据从远端仓库 pull 到本地
  *
  * @param destPath: 仓库路径
  * @param remoteName: 远端仓库名称
- * @param ref: 软件包对应的仓库索引ref
+ * @param ref: 软件包对应的仓库索引 ref
  * @param err: 错误信息
  *
  * @return bool: true:成功 false:失败
@@ -615,7 +614,7 @@ bool OstreeRepoHelper::repoPullbyCmd(const QString &destPath,
         return false;
     }
 
-    // 将数据pull到临时仓库
+    // 将数据 pull 到临时仓库
     // ostree --repo=/var/tmp/linglong-cache-I80JB1/repoTmp pull --mirror
     // repo:app/org.deepin.calculator/x86_64/1.2.2
     const QString fullref = remoteName + ":" + ref;
@@ -673,11 +672,11 @@ bool OstreeRepoHelper::repoPullbyCmd(const QString &destPath,
 }
 
 /*
- * 删除本地repo仓库中软件包对应的ref分支信息及数据
+ * 删除本地 repo 仓库中软件包对应的 ref 分支信息及数据
  *
  * @param repoPath: 仓库路径
  * @param remoteName: 远端仓库名称
- * @param ref: 软件包对应的仓库索引ref
+ * @param ref: 软件包对应的仓库索引 ref
  * @param err: 错误信息
  *
  * @return bool: true:成功 false:失败

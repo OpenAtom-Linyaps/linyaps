@@ -47,9 +47,6 @@ namespace package {
   (((uint64_t)bswap32((uint32_t)((value)&0xffffffff)) << 32) \
    | (uint64_t)bswap32((uint32_t)((value) >> 32)))
 
-// FIXME: there is some problem that in module/util/runner.h, replace later
-linglong::util::Error runner(const QString &program, const QStringList &args, int timeout = -1);
-
 class BundlePrivate;
 
 /*

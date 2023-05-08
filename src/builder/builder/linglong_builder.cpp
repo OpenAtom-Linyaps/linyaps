@@ -360,8 +360,6 @@ int startContainer(QSharedPointer<Container> c, QSharedPointer<Runtime> r)
     r->root->path = c->workingDirectory + "/root";
     util::ensureDir(r->root->path);
 
-    QProcess process;
-
     // write pid file
     QFile pidFile(c->workingDirectory + QString("/%1.pid").arg(getpid()));
     pidFile.open(QIODevice::WriteOnly);
@@ -454,16 +452,13 @@ linglong::util::Error LinglongBuilder::track()
                            .value<QSharedPointer<Project>>();
 
     if ("git" == project->source->kind) {
-        QByteArray gitOutput;
+        auto gitOutput = QSharedPointer<QByteArray>::create();
         QString latestCommit;
         // default git ref is HEAD
         auto gitRef = project->source->version.isEmpty() ? "HEAD" : project->source->version;
-        auto ret = runner::Runner("git",
-                                  { "ls-remote", project->source->url, gitRef },
-                                  -1,
-                                  &gitOutput);
-        if (ret) {
-            latestCommit = QString::fromLocal8Bit(gitOutput).trimmed().split("\t").first();
+        auto err = util::Exec("git", { "ls-remote", project->source->url, gitRef }, -1, gitOutput);
+        if (!err) {
+            latestCommit = QString::fromLocal8Bit(*gitOutput).trimmed().split("\t").first();
             qDebug() << latestCommit;
 
             if (project->source->commit == latestCommit) {

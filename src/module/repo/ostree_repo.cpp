@@ -914,13 +914,11 @@ bool OSTreeRepo::isRefExists(const package::Ref &ref)
 {
     Q_D(OSTreeRepo);
     auto runtimeRef = ref.toString() + '/' + "runtime";
-    auto ret = runner::Runner(
+    auto err = util::Exec(
             "sh",
             { "-c",
-              QString("ostree refs --repo=%1 | grep -Fx %2").arg(d->ostreePath).arg(runtimeRef) },
-            -1);
-
-    return ret;
+              QString("ostree refs --repo=%1 | grep -Fx %2").arg(d->ostreePath).arg(runtimeRef) });
+    return !static_cast<bool>(err);
 }
 
 QString OSTreeRepo::remoteShowUrl(const QString &repoName)
@@ -947,17 +945,17 @@ package::Ref OSTreeRepo::localLatestRef(const package::Ref &ref)
     QString latestVer = "latest";
 
     QString args = QString("ostree refs --repo=%1 | grep %2 | grep %3")
-                           .arg(d->ostreePath)
-                           .arg(ref.appId)
-                           .arg(util::hostArch() + "/" + "runtime");
+                           .arg(d->ostreePath, ref.appId, util::hostArch() + "/" + "runtime");
 
-    auto result = runner::RunnerRet("sh", { "-c", args }, -1);
+    QSharedPointer<QByteArray> output;
+    auto err = util::Exec("sh", { "-c", args }, -1, output);
 
-    if (std::get<0>(result)) {
+    if (!err) {
+        auto outputText = QString::fromLocal8Bit(*output);
+        auto lines = outputText.split('\n');
         // last line of result is null, remove it
-        std::get<1>(result).removeLast();
-
-        latestVer = linglong::util::latestVersion(std::get<1>(result));
+        lines.removeLast();
+        latestVer = linglong::util::latestVersion(lines);
     }
 
     return package::Ref("", ref.channel, ref.appId, latestVer, ref.arch, ref.module);
@@ -1088,22 +1086,9 @@ std::tuple<QString, util::Error> OSTreeRepo::compressOstreeData(const package::R
 
     args << "-zcf" << filePath << ".";
 
-    QProcess tar;
-    tar.setProgram("tar");
-    tar.setArguments(args);
-
-    QProcess::connect(&tar, &QProcess::readyReadStandardOutput, [&]() {
-        std::cout << tar.readAllStandardOutput().toStdString().c_str();
-    });
-
-    QProcess::connect(&tar, &QProcess::readyReadStandardError, [&]() {
-        std::cout << tar.readAllStandardError().toStdString().c_str();
-    });
-
-    qDebug() << "start" << tar.arguments().join(" ");
-    tar.start();
-    tar.waitForFinished(-1);
-    qDebug() << tar.exitStatus() << "with exit code:" << tar.exitCode();
+    // TODO: handle error of tar
+    err = util::Exec("tar", args);
+    qDebug() << "tar with exit code:" << err.code() << err.message();
 
     return { filePath, Success() };
 }

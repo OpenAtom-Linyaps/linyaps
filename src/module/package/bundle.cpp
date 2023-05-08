@@ -11,6 +11,7 @@
 #include "module/util/file.h"
 #include "module/util/http/httpclient.h"
 #include "module/util/qserializer/json.h"
+#include "module/util/runner.h"
 #include "module/util/status_code.h"
 
 #include <curl/curl.h>
@@ -18,28 +19,6 @@
 
 namespace linglong {
 namespace package {
-
-linglong::util::Error runner(const QString &program, const QStringList &args, int timeout)
-{
-    QProcess process;
-    process.setProgram(program);
-
-    process.setArguments(args);
-
-    QProcess::connect(&process, &QProcess::readyReadStandardOutput, [&]() {
-        std::cout << process.readAllStandardOutput().toStdString().c_str();
-    });
-
-    QProcess::connect(&process, &QProcess::readyReadStandardError, [&]() {
-        std::cout << process.readAllStandardError().toStdString().c_str();
-    });
-
-    process.start();
-    process.waitForStarted(timeout);
-    process.waitForFinished(timeout);
-
-    return NewError(process.exitCode(), process.errorString());
-}
 
 Bundle::Bundle(QObject *parent)
     : QObject(parent)
@@ -153,22 +132,22 @@ linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString
 
     {
         // 制作squashfs文件
-        auto err = runner("mkfs.erofs",
-                          { "-zlz4hc,9", this->erofsFilePath, this->bundleDataPath },
-                          15 * 60 * 1000);
+        auto err = util::Exec("mkfs.erofs",
+                              { "-zlz4hc,9", this->erofsFilePath, this->bundleDataPath },
+                              15 * 60 * 1000);
         if (err) {
             return WrapError(err, "call mkfs.erofs failed");
         }
     }
     {
         // 生产bundle文件
-        auto err = runner("objcopy",
-                          { "--add-section",
-                            QStringList{ ".bundle=", this->erofsFilePath }.join(""),
-                            "--set-section-flags",
-                            ".bundle=noload,readonly",
-                            this->linglongLoader,
-                            this->bundleFilePath });
+        auto err = util::Exec("objcopy",
+                              { "--add-section",
+                                QStringList{ ".bundle=", this->erofsFilePath }.join(""),
+                                "--set-section-flags",
+                                ".bundle=noload,readonly",
+                                this->linglongLoader,
+                                this->bundleFilePath });
         if (err) {
             return WrapError(err, "call objcopy failed");
         }
@@ -299,8 +278,8 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
     }
 
     {
-        auto err =
-                runner("unsquashfs", { "-dest", this->bundleDataPath, "-f", this->erofsFilePath });
+        auto err = util::Exec("unsquashfs",
+                              { "-dest", this->bundleDataPath, "-f", this->erofsFilePath });
 
         if (err) {
             if (util::dirExists(this->tmpWorkDir)) {
@@ -326,9 +305,9 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
     auto develInfo = result;
 
     // 建立临时仓库
-    err = runner("ostree",
-                 { "--repo=" + this->tmpWorkDir + "/repo", "init", "--mode=archive" },
-                 3000);
+    err = util::Exec("ostree",
+                     { "--repo=" + this->tmpWorkDir + "/repo", "init", "--mode=archive" },
+                     3000);
     if (err) {
         if (util::dirExists(this->tmpWorkDir)) {
             util::removeDir(this->tmpWorkDir);
@@ -365,8 +344,8 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
                << QString("--tree=dir=") + this->bundleDataPath + "/devel";
 
     {
-        auto err = runner("ostree", arguments);
-        err = runner("ostree", commitArgs);
+        auto err = util::Exec("ostree", arguments);
+        err = util::Exec("ostree", commitArgs);
         if (err) {
             if (util::dirExists(this->tmpWorkDir)) {
                 util::removeDir(this->tmpWorkDir);
@@ -380,7 +359,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
     arguments << "-cvpf" << this->tmpWorkDir + "/repo.tar"
               << "-C" + this->tmpWorkDir << "repo";
     {
-        auto err = runner("pwd", arguments);
+        auto err = util::Exec("pwd", arguments);
         if (err) {
             if (util::dirExists(this->tmpWorkDir)) {
                 util::removeDir(this->tmpWorkDir);
@@ -414,7 +393,7 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
     auto runtimeJson =
             QJsonDocument::fromJson(std::get<0>(util::toJSON(runtimeInfo))); // FIXME: handle error
     auto develJson =
-            QJsonDocument::fromJson(std::get<0>(util::toJSON(develInfo))); // FIXME: handle error
+            QJsonDocument::fromJson(std::get<0>(util::toJSON(develInfo)));   // FIXME: handle error
 
     auto runtimeJsonObject = runtimeJson.object();
     auto develJsonObject = develJson.object();

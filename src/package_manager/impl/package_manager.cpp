@@ -830,20 +830,20 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
     addAppConfig(appInfo->appId, appInfo->version, appInfo->arch);
 
     // 更新desktop database
-    auto retRunner = linglong::runner::Runner("update-desktop-database",
-                                              { sysLinglongInstalltions + "/applications/" },
-                                              1000 * 60 * 1);
-    if (!retRunner) {
+    auto err = util::Exec("update-desktop-database",
+                          { sysLinglongInstalltions + "/applications/" },
+                          1000 * 60 * 1);
+    if (err) {
         qWarning() << "warning: update desktop database of " + sysLinglongInstalltions
                         + "/applications/ failed!";
     }
 
     // 更新mime type database
     if (linglong::util::dirExists(sysLinglongInstalltions + "/mime/packages")) {
-        auto retUpdateMime = linglong::runner::Runner("update-mime-database",
-                                                      { sysLinglongInstalltions + "/mime/" },
-                                                      1000 * 60 * 1);
-        if (!retUpdateMime) {
+        err = util::Exec("update-mime-database",
+                         { sysLinglongInstalltions + "/mime/" },
+                         1000 * 60 * 1);
+        if (err) {
             qWarning() << "warning: update mime type database of " + sysLinglongInstalltions
                             + "/mime/ failed!";
         }
@@ -851,11 +851,10 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
 
     // 更新 glib-2.0/schemas
     if (linglong::util::dirExists(sysLinglongInstalltions + "/glib-2.0/schemas")) {
-        auto retUpdateSchemas =
-                linglong::runner::Runner("glib-compile-schemas",
-                                         { sysLinglongInstalltions + "/glib-2.0/schemas" },
-                                         1000 * 60 * 1);
-        if (!retUpdateSchemas) {
+        err = util::Exec("glib-compile-schemas",
+                         { sysLinglongInstalltions + "/glib-2.0/schemas" },
+                         1000 * 60 * 1);
+        if (err) {
             qWarning() << "warning: update schemas of " + sysLinglongInstalltions
                             + "/glib-2.0/schemas failed!";
         }
@@ -1019,20 +1018,20 @@ Reply PackageManagerPrivate::Uninstall(const UninstallParamOption &paramOption)
             continue;
         }
 
-        QString err = "";
+        QString strErr = "";
         // 更新本地repo仓库
-        bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(kLocalRepoPath, err);
+        bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(kLocalRepoPath, strErr);
         if (!ret) {
-            qCritical() << err;
+            qCritical() << strErr;
             reply.code = STATUS_CODE(kPkgUninstallFailed);
             reply.message = "uninstall local repo not exist";
             return reply;
         }
         // 应从安装数据库获取应用所属仓库信息 to do fix
         QVector<QString> qrepoList;
-        ret = OSTREE_REPO_HELPER->getRemoteRepoList(kLocalRepoPath, qrepoList, err);
+        ret = OSTREE_REPO_HELPER->getRemoteRepoList(kLocalRepoPath, qrepoList, strErr);
         if (!ret) {
-            qCritical() << err;
+            qCritical() << strErr;
             reply.code = STATUS_CODE(kPkgUninstallFailed);
             reply.message = "uninstall remote repo not exist";
             return reply;
@@ -1047,9 +1046,12 @@ Reply PackageManagerPrivate::Uninstall(const UninstallParamOption &paramOption)
                                    .arg(appModule);
 
         qInfo() << "Uninstall app ref:" << matchRef;
-        ret = OSTREE_REPO_HELPER->repoDeleteDatabyRef(kLocalRepoPath, qrepoList[0], matchRef, err);
+        ret = OSTREE_REPO_HELPER->repoDeleteDatabyRef(kLocalRepoPath,
+                                                      qrepoList[0],
+                                                      matchRef,
+                                                      strErr);
         if (!ret) {
-            qCritical() << err;
+            qCritical() << strErr;
             reply.code = STATUS_CODE(kPkgUninstallFailed);
             reply.message = "uninstall " + appId + ", version:" + it->version + " failed";
             return reply;
@@ -1064,20 +1066,20 @@ Reply PackageManagerPrivate::Uninstall(const UninstallParamOption &paramOption)
 
         delAppConfig(appId, it->version, arch);
         // 更新desktop database
-        auto retRunner = linglong::runner::Runner("update-desktop-database",
-                                                  { sysLinglongInstalltions + "/applications/" },
-                                                  1000 * 60 * 1);
-        if (!retRunner) {
+        auto err = util::Exec("update-desktop-database",
+                              { sysLinglongInstalltions + "/applications/" },
+                              1000 * 60 * 1);
+        if (err) {
             qWarning() << "warning: update desktop database of " + sysLinglongInstalltions
                             + "/applications/ failed!";
         }
 
         // 更新mime type database
         if (linglong::util::dirExists(sysLinglongInstalltions + "/mime/packages")) {
-            auto retUpdateMime = linglong::runner::Runner("update-mime-database",
-                                                          { sysLinglongInstalltions + "/mime/" },
-                                                          1000 * 60 * 1);
-            if (!retUpdateMime) {
+            err = util::Exec("update-mime-database",
+                             { sysLinglongInstalltions + "/mime/" },
+                             1000 * 60 * 1);
+            if (!err) {
                 qWarning() << "warning: update mime type database of " + sysLinglongInstalltions
                                 + "/mime/ failed!";
             }
@@ -1085,11 +1087,10 @@ Reply PackageManagerPrivate::Uninstall(const UninstallParamOption &paramOption)
 
         // 更新 glib-2.0/schemas
         if (linglong::util::dirExists(sysLinglongInstalltions + "/glib-2.0/schemas")) {
-            auto retUpdateSchemas =
-                    linglong::runner::Runner("glib-compile-schemas",
-                                             { sysLinglongInstalltions + "/glib-2.0/schemas" },
-                                             1000 * 60 * 1);
-            if (!retUpdateSchemas) {
+            err = util::Exec("glib-compile-schemas",
+                             { sysLinglongInstalltions + "/glib-2.0/schemas" },
+                             1000 * 60 * 1);
+            if (err) {
                 qWarning() << "warning: update schemas of " + sysLinglongInstalltions
                                 + "/glib-2.0/schemas failed!";
             }
@@ -1401,15 +1402,16 @@ Reply PackageManager::ModifyRepo(const QString &name, const QString &url)
     // https://repo-dev.linglong.space/repo/ ostree
     // config文件中节名有""，QSettings会自动转义，不用QSettings直接修改ostree config文件
     auto keyUrl = QString("remote \"%1\".url").arg(name);
-    ret = linglong::runner::Runner(
-            "ostree",
-            { "config", "--repo=" + d->kLocalRepoPath + "/repo", "set", keyUrl, dstUrl },
-            1000 * 60 * 5);
+    auto err =
+            util::Exec("ostree",
+                       { "config", "--repo=" + d->kLocalRepoPath + "/repo", "set", keyUrl, dstUrl },
+                       1000 * 60 * 5);
     auto keyGpg = QString("remote \"%1\".gpg-verify").arg(name);
-    ret |= linglong::runner::Runner(
-            "ostree",
-            { "config", "--repo=" + d->kLocalRepoPath + "/repo", "set", keyGpg, "false" },
-            1000 * 60 * 5);
+    ret |= static_cast<bool>(err);
+    err = util::Exec("ostree",
+                     { "config", "--repo=" + d->kLocalRepoPath + "/repo", "set", keyGpg, "false" },
+                     1000 * 60 * 5);
+    ret |= static_cast<bool>(err);
     if (!ret) {
         reply.message = "modify repo config failed";
         qWarning() << reply.message;

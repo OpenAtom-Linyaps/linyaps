@@ -51,7 +51,7 @@ class BundlePrivate;
 
 /*
  * Bundle
- * Create Bundle format file, An Bundle contains loader, and it's squashfs.
+ * Create Bundle format file, An Bundle contains loader, and it's erofs or other filesystem support fuse.
  *
  */
 class Bundle : public QObject

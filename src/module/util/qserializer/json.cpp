@@ -16,13 +16,15 @@ std::tuple<QVariantMap, Error> mapFromJSON(const QByteArray &bytes)
     QJsonParseError jsonErr;
     auto doc = QJsonDocument::fromJson(bytes, &jsonErr);
     if (jsonErr.error) {
-        return { {}, NewError(jsonErr.error, jsonErr.errorString()) };
+        return std::make_tuple<QVariantMap, Error>({},
+                                                   NewError(jsonErr.error, jsonErr.errorString()));
     }
     if (!doc.isObject()) {
-        return { {},
-                 NewError(-1,
-                          QString("Failed to create QVariantMap from JSON: JSON document is not an "
-                                  "object")) };
+        return std::make_tuple<QVariantMap, Error>(
+                {},
+                NewError(-1,
+                         QString("Failed to create QVariantMap from JSON: JSON document is not an "
+                                 "object")));
     }
 
     return { doc.object().toVariantMap(), {} };
@@ -33,14 +35,15 @@ std::tuple<QVariantList, Error> listFromJSON(const QByteArray &bytes)
     QJsonParseError jsonErr;
     auto doc = QJsonDocument::fromJson(bytes, &jsonErr);
     if (jsonErr.error) {
-        return { {}, NewError(jsonErr.error, jsonErr.errorString()) };
+        return std::make_tuple<QVariantList, Error>({},
+                                                    NewError(jsonErr.error, jsonErr.errorString()));
     }
     if (!doc.isArray()) {
-        return { {},
-                 NewError(
-                         -1,
+        return std::make_tuple<QVariantList, Error>(
+                {},
+                NewError(-1,
                          QString("Failed to create QVariantList from JSON: JSON document is not an "
-                                 "object")) };
+                                 "object")));
     }
 
     return { doc.array().toVariantList(), {} };

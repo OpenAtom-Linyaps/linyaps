@@ -53,6 +53,8 @@ Reply AppManager::Start(const RunParamOption &paramOption)
 {
     Q_D(AppManager);
 
+    qDebug() << "start" << paramOption.appId;
+
     QueryReply reply;
     reply.code = 0;
     reply.message = "Start " + paramOption.appId + " success!";

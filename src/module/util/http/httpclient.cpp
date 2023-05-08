@@ -111,6 +111,7 @@ bool HttpClient::queryRemoteApp(const QString &repoName,
     QString configUrl = "";
     int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
     if (STATUS_CODE(kSuccess) != statusCode) {
+        qCritical() << "load appDbUrl config failed";
         return false;
     }
 

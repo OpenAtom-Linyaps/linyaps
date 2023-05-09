@@ -589,7 +589,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
         util::printTitle("Processing Source");
         auto ret = sf.fetch();
         if (!ret.success()) {
-            return NewError(-1, "fetch source failed");
+            return WrapError(ret, "fetch source failed");
         }
     }
     // initialize some directories
@@ -625,7 +625,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
         DependFetcher df(runtimeDepend, project);
         ret = df.fetch("", project->config().cacheRuntimePath(""));
         if (!ret.success()) {
-            return NewError(ret, -1, "fetch runtime failed");
+            return WrapError(ret, "fetch runtime failed");
         }
 
         if (!project->base) {
@@ -651,7 +651,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
     hostBasePath = BuilderConfig::instance()->layerPath({ baseRef.toLocalRefString(), "" });
     ret = baseFetcher.fetch("", hostBasePath);
     if (!ret.success()) {
-        return NewError(ret, -1, "fetch runtime failed");
+        return WrapError(ret, "fetch base failed");
     }
 
     // depends fetch
@@ -659,7 +659,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
         DependFetcher df(*depend, project);
         ret = df.fetch("files", project->config().cacheRuntimePath("files"));
         if (!ret.success()) {
-            return NewError(ret, -1, "fetch dependency failed");
+            return WrapError(ret, "fetch dependency failed");
         }
     }
 
@@ -779,7 +779,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
     util::printTitle("Commit Content");
     ret = commitBuildOutput(project, r->annotations->overlayfs);
     if (!ret.success()) {
-        return NewError(-1, "commitBuildOutput failed");
+        return WrapError(ret, "commitBuildOutput failed");
     }
     return NoError();
 }
@@ -979,7 +979,7 @@ util::Error LinglongBuilder::import()
 {
     auto ret = initRepo();
     if (!ret.success()) {
-        return NewError(-1, "load local repo failed");
+        return WrapError(ret, "load local repo failed");
     }
 
     YAML::Node node;
@@ -1000,7 +1000,7 @@ util::Error LinglongBuilder::import()
     ret = repo.importDirectory(refWithRuntime, BuilderConfig::instance()->getProjectRoot());
 
     if (!ret.success()) {
-        return NewError(-1, "import package failed");
+        return WrapError(ret, "import package failed");
     }
 
     qInfo().noquote() << QString("import %1 success").arg(refWithRuntime.toOSTreeRefLocalString());
@@ -1027,7 +1027,7 @@ linglong::util::Error LinglongBuilder::run()
     linglong::util::ensureDir(targetPath);
     ret = repo.checkoutAll(project->ref(), "", targetPath);
     if (!ret.success()) {
-        return NewError(-1, "checkout app files failed");
+        return WrapError(ret, "checkout app files failed");
     }
 
     // checkout runtime
@@ -1044,7 +1044,7 @@ linglong::util::Error LinglongBuilder::run()
     auto latestRuntimeRef = repo.remoteLatestRef(remoteRuntimeRef);
     ret = repo.checkoutAll(latestRuntimeRef, "", targetPath);
     if (!ret.success()) {
-        return NewError(-1, "checkout runtime files failed");
+        return WrapError(ret, "checkout runtime files failed");
     }
 
     // 获取环境变量

@@ -5,33 +5,23 @@
  */
 
 #include "depend_fetcher.h"
+#include "depend_fetcher_p.h"
 
 #include "builder_config.h"
 #include "module/repo/ostree_repo.h"
-#include "project.h"
 
 #include <QDir>
 
 namespace linglong {
 namespace builder {
 
-class DependFetcherPrivate
+DependFetcherPrivate::DependFetcherPrivate(const BuildDepend &bd, Project *parent)
+    : ref(fuzzyRef(&bd))
+    , project(parent)
+    , buildDepend(&bd)
+    , dependType(bd.type)
 {
-public:
-    explicit DependFetcherPrivate(const BuildDepend &bd, Project *parent)
-        : ref(fuzzyRef(&bd))
-        , project(parent)
-        , buildDepend(&bd)
-        , dependType(bd.type)
-    {
-    }
-
-    // TODO: dependType should be removed, buildDepend include it
-    package::Ref ref;
-    Project *project;
-    const BuildDepend *buildDepend;
-    QString dependType;
-};
+}
 
 DependFetcher::DependFetcher(const BuildDepend &bd, Project *parent)
     : QObject(parent)

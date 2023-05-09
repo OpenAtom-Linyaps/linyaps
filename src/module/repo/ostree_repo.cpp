@@ -909,26 +909,11 @@ linglong::util::Error OSTreeRepo::push(const package::Bundle & /*bundle*/, bool 
 
 linglong::util::Error OSTreeRepo::pull(const package::Ref &ref, bool /*force*/)
 {
-    // FIXME(black_desk): should implement force
     Q_D(OSTreeRepo);
 
-    // FIXME(black_desk): When a error raised from libcurl, libostree will treat
-    // it like a fail, but not a temporary error, which make the default retry
-    // (5 times) useless. So we now have to retry some times to overcome this
-    // problem.
-    // As we have try the current base will fail so many times during
-    // transferring. So we decide to retry 30 times.
-    int retry = 30;
-    util::Error err;
-    while (retry--) {
-        qDebug() << "remaining retries" << retry;
-        err = WrapError(d->ostreeRun({ "pull", ref.toString() }), "");
-        if (err.success()) {
-            break;
-        }
-    }
-    return err;
+    return WrapError(d->pull(ref.toOSTreeRefLocalString()), "call pull failed");
 }
+
 
 linglong::util::Error OSTreeRepo::pullAll(const package::Ref &ref, bool /*force*/)
 {

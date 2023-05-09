@@ -21,6 +21,7 @@
 #include "module/util/runner.h"
 #include "module/util/serialize/yaml.h"
 #include "module/util/sysinfo.h"
+#include "module/util/consoletext.h"
 #include "source_fetcher.h"
 
 #include <linux/prctl.h>
@@ -508,6 +509,18 @@ linglong::util::Error LinglongBuilder::build()
         return NewError(-1, "parse linglong.yaml failed");
     }
 
+    util::printTitle("Project Info");
+    util::printText(QString("Packge Name: %1").arg(project->package->name));
+    util::printText(QString("Version: %1").arg(project->package->version));
+    util::printText(QString("Packge Type: %1").arg(project->package->kind));
+    util::printText(QString("Build Arch: %1").arg(project->config().targetArch()));
+    util::printText(QString("Source: %1").arg(project->source->url));
+    util::printText(QString("Source Version: %1").arg(project->source->version));
+
+    util::printTitle("Current Repo");
+    util::printText(QString("Name: %1").arg(BuilderConfig::instance()->remoteRepoName));
+    util::printText(QString("Url: %1").arg(BuilderConfig::instance()->remoteRepoEndpoint));
+
     // convert dependencies which with 'source' and 'build' tag to a project type
     // TODO: building dependencies should be concurrency
     for (auto const &depend : project->depends) {
@@ -537,26 +550,27 @@ linglong::util::Error LinglongBuilder::build()
             subProject->generateBuildScript();
             subProject->setConfigFilePath(project->configFilePath());
 
-            qInfo() << QString("building target: %1").arg(subProject->package->id);
+            util::printTitle("Build Target");
+            util::printText(project->package->id);
 
             ret = buildFlow(subProject.get());
             if (!ret.success()) {
                 return ret;
             }
-
-            qInfo() << QString("build %1 success").arg(project->package->id);
         }
     }
 
     project->generateBuildScript();
 
-    qInfo() << QString("building target: %1").arg(project->package->id);
+    util::printTitle("Build Target");
+    util::printText(project->package->id);
 
     ret = buildFlow(project.get());
     if (!ret.success()) {
         return ret;
     }
 
+    util::printTitle("Build Finished");
     return NoError();
 }
 
@@ -572,7 +586,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
 
     SourceFetcher sf(project->source, project);
     if (project->source) {
-        qInfo() << QString("fetching source code from: %1").arg(project->source->url);
+        util::printTitle("Processing Source");
         auto ret = sf.fetch();
         if (!ret.success()) {
             return NewError(-1, "fetch source failed");
@@ -589,6 +603,13 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
             { "overlayfs", "up", project->config().targetInstallPath("") }));
 
     package::Ref baseRef("");
+
+    util::printTitle("Processing Dependency");
+    util::printText(QString("%1%2%3%4")
+                            .arg("Package", -20)
+                            .arg("Version", -15)
+                            .arg("Module", -15)
+                            .arg("Status"));
 
     QString hostBasePath;
     if (project->base) {
@@ -750,10 +771,12 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
         r->hooks->prestart.push_back(hook);
     }
 
+    util::printTitle("Start Build");
     if (startContainer(container, r)) {
         return NewError(-1, "build task failed in container");
     }
 
+    util::printTitle("Commit Content");
     ret = commitBuildOutput(project, r->annotations->overlayfs);
     if (!ret.success()) {
         return NewError(-1, "commitBuildOutput failed");

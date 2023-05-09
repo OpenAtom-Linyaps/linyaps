@@ -10,6 +10,7 @@
 #include "module/util/file.h"
 #include "module/util/http/http_client.h"
 #include "module/util/runner.h"
+#include "module/util/consoletext.h"
 #include "project.h"
 #include "source_fetcher_p.h"
 
@@ -175,9 +176,9 @@ util::Error SourceFetcherPrivate::fetchGitRepo()
 util::Error SourceFetcherPrivate::handleLocalPatch()
 {
     // apply local patch
-    qInfo() << QString("finding local patch");
+    util::printReplacedText("Finding local patch ...");
     if (source->patch.isEmpty()) {
-        qInfo() << QString("nothing to patch");
+        util::printReplacedText("Nothing to patch\n");
         return NoError();
     }
 
@@ -186,12 +187,13 @@ util::Error SourceFetcherPrivate::handleLocalPatch()
             qWarning() << QString("this patch is empty, check it");
             continue;
         }
-        qInfo() << QString("applying patch: %1").arg(localPatch);
+        util::printReplacedText(QString("Applying %1 ...").arg(localPatch));
         if (!runner::Runner("patch",
                             { "-p1", "-i", project->config().absoluteFilePath({ localPatch }) },
                             -1)) {
             return NewError(-1, "patch failed");
         }
+        util::printReplacedText(QString("Applying %1 done\n").arg(localPatch));
     }
 
     return NoError();

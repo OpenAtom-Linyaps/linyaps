@@ -15,8 +15,9 @@
 namespace linglong {
 namespace builder {
 
-class DependFetcherPrivate
+class DependFetcherPrivate : public QObject
 {
+    Q_OBJECT
 public:
     explicit DependFetcherPrivate(const BuildDepend &bd, Project *parent);
 
@@ -24,6 +25,8 @@ public:
 
     linglong::util::Error fetch(const QString &subPath, const QString &targetPath);
     linglong::util::Error pullAndCheckout(const QString &subPath, const QString &targetPath);
+
+    void printProgress(const uint &progress, const QString &speed);
     // TODO: dependType should be removed, buildDepend include it
     package::Ref ref;
     Project *project;

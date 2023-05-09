@@ -22,6 +22,8 @@ public:
 
     ~DependFetcherPrivate() = default;
 
+    linglong::util::Error fetch(const QString &subPath, const QString &targetPath);
+    linglong::util::Error pullAndCheckout(const QString &subPath, const QString &targetPath);
     // TODO: dependType should be removed, buildDepend include it
     package::Ref ref;
     Project *project;

@@ -23,10 +23,11 @@ public:
 
     HttpRestClient();
 
+    QNetworkReply *head(QNetworkRequest &request);
     QNetworkReply *get(QNetworkRequest &request);
-    //    QNetworkReply *post(const QNetworkRequest &request, QIODevice *data);
+    //    QNetworkReply *post(const QNetworkRequest &request, QIODevice *device);
     QNetworkReply *post(QNetworkRequest &request, const QByteArray &data);
-    QNetworkReply *put(QNetworkRequest &request, QIODevice *data);
+    QNetworkReply *put(QNetworkRequest &request, QIODevice *device);
     QNetworkReply *put(QNetworkRequest &request, const QByteArray &data);
     QNetworkReply *put(QNetworkRequest &request, QHttpMultiPart *multiPart);
     QNetworkReply *del(QNetworkRequest &request);
@@ -43,8 +44,9 @@ private:
 
 #define NewNetworkError(reply)                   \
     NewError(static_cast<int>(reply->error()),   \
-             QString("%1 url %2 failed with %3") \
+             QString("%1 %2 with %3 failed, %4") \
                      .arg(reply->operation())    \
+                     .arg(reply->error())        \
                      .arg(reply->request().url().toString(), QString(reply->readAll())))
 
 #define WarpNetworkError(reply) (reply->error() ? NewNetworkError(reply) : Success())

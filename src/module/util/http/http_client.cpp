@@ -20,7 +20,7 @@ QNetworkAccessManager &networkMgr()
 
 QNetworkReply *HttpRestClient::doRequest(const QByteArray &verb,
                                          QNetworkRequest &request,
-                                         QIODevice *data,
+                                         QIODevice *device,
                                          QHttpMultiPart *multiPart,
                                          const QByteArray &bytes)
 {
@@ -33,15 +33,21 @@ QNetworkReply *HttpRestClient::doRequest(const QByteArray &verb,
 
     QNetworkReply *reply = nullptr;
 
-    if (data != nullptr) {
-        reply = networkMgr().sendCustomRequest(request, verb, data);
-    } else if (multiPart != nullptr) {
-        reply = networkMgr().sendCustomRequest(request, verb, multiPart);
+    // NOTE: sendCustomRequest could send HEAD request
+    if (verb == "HEAD") {
+        reply = networkMgr().head(request);
     } else {
-        reply = networkMgr().sendCustomRequest(request, verb, bytes);
+        if (device != nullptr) {
+            reply = networkMgr().sendCustomRequest(request, verb, device);
+        } else if (multiPart != nullptr) {
+            reply = networkMgr().sendCustomRequest(request, verb, multiPart);
+        } else {
+            reply = networkMgr().sendCustomRequest(request, verb, bytes);
+        }
     }
 
     QEventLoop::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+
     loop.exec();
     return reply;
 }
@@ -78,9 +84,14 @@ QNetworkReply *HttpRestClient::put(QNetworkRequest &request, QHttpMultiPart *mul
     return doRequest("PUT", request, nullptr, multiPart, "");
 }
 
-QNetworkReply *HttpRestClient::put(QNetworkRequest &request, QIODevice *data)
+QNetworkReply *HttpRestClient::put(QNetworkRequest &request, QIODevice *device)
 {
-    return doRequest("PUT", request, data, nullptr, "");
+    return doRequest("PUT", request, device, nullptr, "");
+}
+
+QNetworkReply *HttpRestClient::head(QNetworkRequest &request)
+{
+    return doRequest("HEAD", request, nullptr, nullptr, "");
 }
 
 } // namespace util

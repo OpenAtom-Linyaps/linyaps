@@ -27,8 +27,8 @@ QNetworkReply *HttpRestClient::doRequest(const QByteArray &verb,
     QEventLoop loop;
     request.setHeader(QNetworkRequest::UserAgentHeader, userAgent);
 
-    if (multiPart == nullptr) {
-        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    if (multiPart == nullptr && !request.header(QNetworkRequest::ContentTypeHeader).isValid()) {
+        request.setHeader(QNetworkRequest::ContentTypeHeader, kContentTypeJson);
     }
 
     QNetworkReply *reply = nullptr;
@@ -76,6 +76,11 @@ HttpRestClient::HttpRestClient()
 QNetworkReply *HttpRestClient::put(QNetworkRequest &request, QHttpMultiPart *multiPart)
 {
     return doRequest("PUT", request, nullptr, multiPart, "");
+}
+
+QNetworkReply *HttpRestClient::put(QNetworkRequest &request, QIODevice *data)
+{
+    return doRequest("PUT", request, data, nullptr, "");
 }
 
 } // namespace util

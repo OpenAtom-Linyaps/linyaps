@@ -140,29 +140,34 @@ quint64 sizeOfDir(const QString &srcPath)
     return size;
 }
 
+QString fileHash(QIODevice &device, QCryptographicHash::Algorithm method)
+{
+    qint64 fileSize = device.size();
+    const qint64 bufferSize = 2 * 1024 * 1024;
+
+    char buffer[bufferSize];
+    int bytesRead;
+    int readSize = qMin(fileSize, bufferSize);
+
+    QCryptographicHash hash(method);
+
+    while (readSize > 0 && (bytesRead = device.read(buffer, readSize)) > 0) {
+        fileSize -= bytesRead;
+        hash.addData(buffer, bytesRead);
+        readSize = qMin(fileSize, bufferSize);
+    }
+
+    return QString(hash.result().toHex());
+}
+
 QString fileHash(const QString &path, QCryptographicHash::Algorithm method)
 {
     QFile sourceFile(path);
-    qint64 fileSize = sourceFile.size();
-    const qint64 bufferSize = 2 * 1024 * 1024;
-
     if (sourceFile.open(QIODevice::ReadOnly)) {
-        char buffer[bufferSize];
-        int bytesRead;
-        int readSize = qMin(fileSize, bufferSize);
-
-        QCryptographicHash hash(method);
-
-        while (readSize > 0 && (bytesRead = sourceFile.read(buffer, readSize)) > 0) {
-            fileSize -= bytesRead;
-            hash.addData(buffer, bytesRead);
-            readSize = qMin(fileSize, bufferSize);
-        }
-
+        auto hash = fileHash(sourceFile, method);
         sourceFile.close();
-        return QString(hash.result().toHex());
+        return hash;
     }
-
     return QString();
 }
 

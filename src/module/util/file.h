@@ -37,6 +37,14 @@ QString ensureUserDir(const QStringList &relativeDirPathComponents);
 bool ensureDir(const QString &path);
 
 /*!
+ * support calc hash for memory file like QBuffer
+ * @param device
+ * @param method
+ * @return
+ */
+QString fileHash(QIODevice &device, QCryptographicHash::Algorithm method);
+
+/*!
  * 计算文件hash
  *
  * @param: path: 文件路径

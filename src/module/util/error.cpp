@@ -9,6 +9,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
+#include <iostream>
+
 namespace linglong {
 namespace util {
 
@@ -93,6 +95,37 @@ QDebug operator<<(QDebug debug, const Error &error)
         first = false;
     }
     return debug;
+}
+
+/*!
+ * Support gtest print pretty assert fail output
+ * @param obj
+ * @param os
+ */
+void PrintTo(const linglong::util::Error &obj, ::std::ostream *os)
+{
+    bool first = true;
+    const linglong::util::ErrorPrivate *err = obj.data();
+    if (err == nullptr) {
+        *os << std::string("success");
+    }
+    while (err != nullptr) {
+        *os << QString("%1 occurs in function")
+                        .arg(first ? QString("Error (code=%1)").arg(obj.code())
+                                   : "\nCaused by error")
+                        .toStdString()
+            << std::endl
+            << (err->context->function ? err->context->function : "MISSING function name")
+            << std::endl
+            << QString(" at %1:%2")
+                        .arg(err->context->file ? err->context->file : "MISSING file name")
+                        .arg(err->context->line)
+                        .toStdString()
+            << std::endl
+            << "message: " << err->message.toStdString();
+        err = err->reason.data();
+        first = false;
+    }
 }
 
 } // namespace util

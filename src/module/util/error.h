@@ -32,6 +32,8 @@ public:
     explicit Error(
             const char *file, int line, const char *func, const Error &reason, const QString &msg);
 
+    inline bool operator==(const Error &other) const { return m_code == other.m_code; }
+
     explicit operator bool() const;
 
     inline bool operator!() const { return !this->operator bool(); }
@@ -43,6 +45,7 @@ public:
     QString toJson() const;
 
     friend QDebug operator<<(QDebug debug, const linglong::util::Error &result);
+    friend void PrintTo(const linglong::util::Error &obj, ::std::ostream *os);
     friend class ErrorPrivate;
 
 private:
@@ -50,6 +53,7 @@ private:
 };
 
 QDebug operator<<(QDebug dbg, const Error &result);
+void PrintTo(const linglong::util::Error &obj, ::std::ostream *os);
 
 } // namespace util
 } // namespace linglong

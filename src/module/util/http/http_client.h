@@ -18,12 +18,15 @@ QNetworkAccessManager &networkMgr();
 class HttpRestClient
 {
 public:
+    inline static const char *kContentTypeJson = "application/json";
+    inline static const char *kContentTypeBinaryStream = "application/octet-stream";
+
     HttpRestClient();
 
     QNetworkReply *get(QNetworkRequest &request);
     //    QNetworkReply *post(const QNetworkRequest &request, QIODevice *data);
     QNetworkReply *post(QNetworkRequest &request, const QByteArray &data);
-    //    QNetworkReply *put(const QNetworkRequest &request, QIODevice *data);
+    QNetworkReply *put(QNetworkRequest &request, QIODevice *data);
     QNetworkReply *put(QNetworkRequest &request, const QByteArray &data);
     QNetworkReply *put(QNetworkRequest &request, QHttpMultiPart *multiPart);
     QNetworkReply *del(QNetworkRequest &request);
@@ -37,6 +40,14 @@ private:
                              QHttpMultiPart *multiPart,
                              const QByteArray &bytes);
 };
+
+#define NewNetworkError(reply)                   \
+    NewError(static_cast<int>(reply->error()),   \
+             QString("%1 url %2 failed with %3") \
+                     .arg(reply->operation())    \
+                     .arg(reply->request().url().toString(), QString(reply->readAll())))
+
+#define WarpNetworkError(reply) (reply->error() ? NewNetworkError(reply) : Success())
 
 } // namespace util
 } // namespace linglong

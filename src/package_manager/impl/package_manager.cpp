@@ -1316,6 +1316,31 @@ PackageManager::PackageManager()
 
 PackageManager::~PackageManager() { }
 
+QueryReply PackageManager::getRepoInfo()
+{
+    QueryReply reply;
+    Q_D(PackageManager);
+    auto serverCfg = d->kLocalRepoPath + "/config.json";
+
+    QFile file(serverCfg);
+    if (!file.open(QIODevice::ReadOnly)) {
+        reply.message = serverCfg + " no exist";
+        reply.code = STATUS_CODE(kFail);
+        return reply;
+    }
+    
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    QJsonObject infoObj = doc.object();
+
+    reply.code = STATUS_CODE(kSuccess);
+    reply.message = infoObj["repoName"].toString();
+    reply.result = infoObj["appDbUrl"].toString();
+
+    file.close();
+
+    return reply;
+}
+
 Reply PackageManager::ModifyRepo(const QString &name, const QString &url)
 {
     Reply reply;

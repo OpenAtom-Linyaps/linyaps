@@ -39,5 +39,9 @@
             <arg type="(is)" direction="out"/>
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
         </method>
+        <method name="getRepoInfo">
+            <arg type="(iss)" direction="out"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::QueryReply"/>
+        </method>
     </interface>
 </node>

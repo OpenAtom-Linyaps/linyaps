@@ -809,35 +809,61 @@ int main(int argc, char **argv)
           [&](QCommandLineParser &parser) -> int {
               parser.clearPositionalArguments();
               parser.addPositionalArgument("repo", "config remote repo", "repo");
-              parser.addPositionalArgument("modify", "modify the url of repo", "modify");
-              parser.addPositionalArgument("url", "the url of repo", "");
-              const auto optRepoName =
-                      QCommandLineOption("name", "the name of remote repo", "repo name", "repo");
-              parser.addOption(optRepoName);
-              parser.process(app);
-              args = parser.positionalArguments();
-              const auto subCmd = args.value(1).trimmed();
-              const auto url = args.value(2).trimmed();
-              const auto name = parser.value(optRepoName);
-              if (url.isEmpty() || "modify" != subCmd || args.size() != 3) {
+              
+              const QStringList subCommands = {"modify", "list"};
+              parser.addPositionalArgument("subcommand", subCommands.join("\n"), "[subcommand]");
+
+              QStringList args = parser.positionalArguments();
+              if (args.size() < 2) {
                   parser.showHelp(-1);
                   return -1;
               }
-              linglong::service::Reply reply;
-              if (!parser.isSet(optNoDbus)) {
-                  QDBusPendingReply<linglong::service::Reply> dbusReply =
-                          sysPackageManager.ModifyRepo(name, url);
-                  dbusReply.waitForFinished();
-                  reply = dbusReply.value();
+              if (args.at(1) == "modify") {
+                  parser.clearPositionalArguments();
+                  parser.addPositionalArgument("repo", "repo configuration", "repo");
+                  parser.addPositionalArgument("modify", "modify opretion of repo", "modify");
+                  parser.addPositionalArgument("url", "the url of repo", "[url]");
+
+                  const auto optName = QCommandLineOption("name", "the name of repo", "repo name", "repo");
+                  parser.addOption(optName);
+                  parser.process(app);
+
+                  QStringList args = parser.positionalArguments();
+                  if (args.size() < 3) {
+                      parser.showHelp(-1);
+                      return -1;
+                  }
+                  const auto name = parser.value(optName);
+                  const auto url = args.last();
+                  linglong::service::Reply reply;
+                  if (!parser.isSet(optNoDbus)) {
+                      QDBusPendingReply<linglong::service::Reply> dbusReply =
+                              sysPackageManager.ModifyRepo(name, url);
+                      dbusReply.waitForFinished();
+                      reply = dbusReply.value();
+                  } else {
+                      reply = PACKAGE_MANAGER->ModifyRepo(name, url);
+                  }
+                  if (reply.code != STATUS_CODE(kErrorModifyRepoSuccess)) {
+                      qCritical().noquote()
+                              << "message:" << reply.message << ", errcode:" << reply.code;
+                      return -1;
+                  }
+                  qInfo().noquote() << reply.message;
+              } else if (args.at(1) == "list") {
+                  linglong::service::QueryReply reply;
+                  QDBusPendingReply<linglong::service::QueryReply> dbusReply =
+                              sysPackageManager.getRepoInfo();
+                      dbusReply.waitForFinished();
+                      reply = dbusReply.value();
+                  
+                  qInfo().noquote() << QString("%1%2").arg("Name", -10).arg("Url");
+                  qInfo().noquote() << QString("%1%2").arg(reply.message, -10).arg(reply.result);
               } else {
-                  reply = PACKAGE_MANAGER->ModifyRepo(name, url);
-              }
-              if (reply.code != STATUS_CODE(kErrorModifyRepoSuccess)) {
-                  qCritical().noquote()
-                          << "message:" << reply.message << ", errcode:" << reply.code;
+                  qCritical() << "Invalid subcommand:" << args.at(1);
+                  parser.showHelp(-1);
                   return -1;
               }
-              qInfo().noquote() << reply.message;
               return 0;
           } },
     };

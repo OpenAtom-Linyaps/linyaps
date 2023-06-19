@@ -41,6 +41,16 @@ class PackageManager : public QObject,
 
 public Q_SLOTS:
 
+     /**
+     * @brief 查询仓库信息
+     *
+     * @return Reply dbus方法调用应答 \n
+     *          code:状态码 \n
+     *          message:仓库名
+     *          result:仓库url
+     */
+    QueryReply getRepoInfo();
+
     /**
      * @brief 修改仓库url
      *

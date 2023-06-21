@@ -14,8 +14,7 @@
 #include "module/util/qserializer/deprecated.h"
 #include "module/util/qserializer/json.h"
 
-namespace linglong {
-namespace config {
+namespace linglong::config {
 
 class Repo : public Serialize
 {
@@ -23,28 +22,35 @@ class Repo : public Serialize
     Q_SERIALIZE_CONSTRUCTOR(Repo)
 public:
     Q_SERIALIZE_PROPERTY(QString, endpoint);
+    Q_SERIALIZE_PROPERTY(QString, repoName);
 };
 
 class Config : public Serialize
 {
     Q_OBJECT;
+    Q_SERIALIZE_CONSTRUCTOR(Config)
 
 public:
     Q_PROPERTY(QMap<QString, QSharedPointer<linglong::config::Repo>> repos MEMBER repos);
-    QMap<QString, QSharedPointer<linglong::config::Repo>> repos;
+    QMap<QString, QSharedPointer<config::Repo>> repos;
 
 public:
-    explicit Config(QObject *parent = nullptr);
-    //    virtual void onPostSerialize() override;
-    //    void save();
+    void save();
+
+private:
+    friend QSharedPointer<config::Config> loadConfig();
+    QString path;
+
+    // TODO: it so strange that a global config could not serialize self
+    QWeakPointer<Config> self;
 };
 
-} // namespace config
+QSERIALIZER_DECLARE(Repo)
+QSERIALIZER_DECLARE(Config)
+
 } // namespace linglong
 
 linglong::config::Config &ConfigInstance();
 
-Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::config, Repo)
-Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::config, Config)
 
 #endif // LINGLONG_SRC_MODULE_UTIL_CONFIG_CONFIG_H_

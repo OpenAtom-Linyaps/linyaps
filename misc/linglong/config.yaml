@@ -1,0 +1,4 @@
+repos:
+  deepin:
+    endpoint: https://mirror-repo-linglong.deepin.com
+    repoName: repo

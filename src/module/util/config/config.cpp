@@ -10,69 +10,66 @@
 #include "module/util/file.h"
 #include "module/util/qserializer/yaml.h"
 
-#include <fstream>
-#include <mutex>
+namespace linglong::config {
 
-namespace linglong {
-namespace config {
-
-QSERIALIZER_IMPL(Repo);
-QSERIALIZER_IMPL(Config);
+QSERIALIZER_IMPL(Repo)
+QSERIALIZER_IMPL(Config)
 
 static const char *const kConfigFileName = "config.yaml";
-// TODO: check more path for different distribution
-static const char *const kDefaultConfigFilePath = DATADIR "/linglong/config.yaml";
 
-static QString filePath()
+QSharedPointer<config::Config> loadConfig()
 {
-    return util::getLinglongRootPath() + "/" + kConfigFileName;
-}
-
-static QSharedPointer<linglong::config::Config> loadConfig()
-{
-    auto configFilePath = filePath();
-    if (!util::fileExists(configFilePath) && util::fileExists(kDefaultConfigFilePath)) {
-        configFilePath = kDefaultConfigFilePath;
-    }
-
-    QSharedPointer<linglong::config::Config> cfg;
+    auto configFilePath = util::findLinglongConfigPath(kConfigFileName, false);
+    qDebug() << "load" << configFilePath;
+    QSharedPointer<config::Config> config;
     try {
-        cfg = std::get<0>(
-                linglong::util::fromYAML<QSharedPointer<linglong::config::Config>>(filePath()));
+        config = std::get<0>(
+                linglong::util::fromYAML<QSharedPointer<config::Config>>(configFilePath));
     } catch (...) {
-        qInfo() << "Failed to load config, cfg:" << cfg;
+        qWarning() << "Failed to load config, cfg:" << config;
     }
 
-    if (!cfg) {
-        cfg = QSharedPointer<linglong::config::Config>(new Config);
+    if (!config) {
+        qWarning() << "load config failed";
+        config = QSharedPointer<config::Config>(new Config());
     }
 
-    Q_ASSERT(cfg);
+    Q_ASSERT(config);
 
-    if (!cfg->repos.contains(package::kDefaultRepo)) {
-        cfg->repos.insert(package::kDefaultRepo,
-                          QSharedPointer<config::Repo>(new Repo(cfg.data())));
-    };
+    if (!config->repos.contains(package::kDefaultRepo)) {
+        qWarning() << "load config for" << package::kDefaultRepo << "failed";
+        config->repos.insert(package::kDefaultRepo,
+                             QSharedPointer<config::Repo>(new Repo(config.data())));
+    }
 
-    Q_ASSERT(cfg->repos.contains(package::kDefaultRepo));
+    Q_ASSERT(config->repos.contains(package::kDefaultRepo));
 
-    return cfg;
+    config->self = config;
+    config->path = util::findLinglongConfigPath(kConfigFileName, true);
+    return config;
 }
 
-Config::Config(QObject *parent)
-    : Serialize(parent)
+/*!
+ * save to a writable path, like /var/lib/linglong
+ */
+void Config::save()
 {
+    auto [data, err] = util::toYAML(this->self.toStrongRef());
+    if (err) {
+        qCritical() << "convert to yaml failed with" << err;
+        return;
+    }
+
+    QFile configFile(this->path);
+    configFile.open(QIODevice::WriteOnly);
+    if (configFile.error()) {
+        qCritical() << "save to" << this->path << "failed:" << configFile.errorString();
+        return;
+    }
+    configFile.write(data);
+    configFile.close();
 }
 
-// void Config::save()
-//{
-//     auto node = toYaml<Config>(this);
-//     std::ofstream configPathOut(filePath().toStdString());
-//     configPathOut << node;
-//     configPathOut.close();
-// }
-
-} // namespace config
 } // namespace linglong
 
 linglong::config::Config &ConfigInstance()

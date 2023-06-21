@@ -6,6 +6,8 @@
 
 #include "ostree_repohelper.h"
 
+#include "module/package/ref.h"
+#include "module/util/config/config.h"
 #include "module/util/erofs.h"
 #include "module/util/file.h"
 #include "module/util/runner.h"
@@ -98,11 +100,9 @@ bool OstreeRepoHelper::ensureRepoEnv(const QString &repoDir, QString &err)
         return false;
     }
 
-    QString url;
-    util::getLocalConfig("appDbUrl", url);
+    QString url = ConfigInstance().repos[package::kDefaultRepo]->endpoint;
+    QString repoName = ConfigInstance().repos[package::kDefaultRepo]->repoName;
 
-    QString repoName = "repo";
-    util::getLocalConfig("repoName", repoName);
     url += "/repos/" + repoName;
 
     g_autoptr(GVariantBuilder) configBuilder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));

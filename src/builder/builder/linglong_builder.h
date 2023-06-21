@@ -53,6 +53,9 @@ public:
     Q_JSON_PROPERTY(int, wstatus);
     Q_JSON_PROPERTY(QString, information);
 };
+
+QSERIALIZER_DECLARE(message)
+
 } // namespace builder
 } // namespace linglong
 

@@ -67,9 +67,9 @@ private:
                       QString remoteEndpoint,
                       QString remoteRepoName,
                       OSTreeRepo *parent)
-        : repoRootPath(std::move(localRepoRootPath))
-        , remoteEndpoint(std::move(remoteEndpoint))
-        , remoteRepoName(std::move(remoteRepoName))
+        : repoRootPath(localRepoRootPath)
+        , remoteEndpoint(remoteEndpoint)
+        , remoteRepoName(remoteRepoName)
         , repoClient(remoteEndpoint)
         , q_ptr(parent)
     {
@@ -780,7 +780,7 @@ linglong::util::Error OSTreeRepo::pull(const package::Ref &ref, bool /*force*/)
     while (retry--) {
         qDebug() << "remaining retries" << retry;
         err = WrapError(d->ostreeRun({ "pull", ref.toString() }), "");
-        if (err) {
+        if (!err) {
             break;
         }
     }

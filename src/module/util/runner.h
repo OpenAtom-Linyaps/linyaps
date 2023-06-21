@@ -39,12 +39,12 @@ inline Error Exec(const QString &program,
         if (standardOutput) {
             standardOutput->append(process.readAllStandardOutput());
         } else {
-            qDebug() << process.readAllStandardOutput();
+            qDebug() << QString::fromLocal8Bit(process.readAllStandardOutput());
         }
     });
 
     QProcess::connect(&process, &QProcess::readyReadStandardError, [&]() {
-        qWarning() << process.readAllStandardOutput();
+        qWarning() << QString::fromLocal8Bit(process.readAllStandardError());
     });
 
     process.start();

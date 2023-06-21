@@ -26,8 +26,8 @@ class BuilderConfig : public Serialize
 public:
     static BuilderConfig *instance();
 
-    Q_JSON_PROPERTY(QString, remoteRepoEndpoint);
-    Q_JSON_PROPERTY(QString, remoteRepoName);
+    Q_SERIALIZE_PROPERTY(QString, remoteRepoEndpoint);
+    Q_SERIALIZE_PROPERTY(QString, remoteRepoName);
 
     QString repoPath() const;
 
@@ -63,6 +63,8 @@ private:
     QString exec;
     bool offline;
 };
+
+QSERIALIZER_DECLARE(BuilderConfig)
 
 } // namespace builder
 } // namespace linglong

@@ -105,7 +105,7 @@ public:
             command += QString("TRIPLET=\"%1\"\n").arg("sw_64-linux-gnu");
         };
 
-        // genarate local config, from *.yaml.
+        // generate local config, from *.yaml.
         if (q_ptr->build != nullptr) {
             if (q_ptr->build->kind == "manual") {
                 templateName = "default.yaml";
@@ -128,25 +128,18 @@ public:
                 QStringList{ BuilderConfig::instance()->templatePath(), templateName }.join(
                         QDir::separator());
 
+        util::Error err;
         QSharedPointer<Template> temp;
-        YAML::Node tempNode;
 
         if (QFileInfo::exists(templatePath)) {
-            tempNode = YAML::LoadFile(templatePath.toStdString());
+            std::tie(temp, err) = util::fromYAML<QSharedPointer<Template>>(templatePath);
         } else {
             QFile templateFile(QStringList{ ":", templateName }.join(QDir::separator()));
-
             if (templateFile.open(QFile::ReadOnly | QFile::Text)) {
-                QTextStream ts(&templateFile);
-                QString fileContent = ts.readAll();
-
-                tempNode = YAML::Load(fileContent.toStdString());
+                std::tie(temp, err) =
+                        util::fromYAML<QSharedPointer<Template>>(templateFile.readAll());
             }
-
-            templateFile.close();
         }
-
-        temp = QVariant::fromValue(tempNode).value<QSharedPointer<Template>>();
 
         if (q_ptr->variables == nullptr) {
             q_ptr->variables.reset(new Variables());
@@ -245,6 +238,7 @@ QString Project::buildScriptPath() const
 
 Project::Project(QObject *parent)
     : JsonSerialize(parent)
+    , dd_ptr(new ProjectPrivate(this))
 {
 }
 

@@ -15,6 +15,8 @@
 namespace linglong {
 namespace builder {
 
+QSERIALIZER_IMPL(BuilderConfig)
+
 QString BuilderConfig::repoPath() const
 {
     return QStringList{ util::userCacheDir().path(), "linglong-builder" }.join(QDir::separator());
@@ -156,26 +158,15 @@ BuilderConfig *BuilderConfig::instance()
 {
     static QSharedPointer<BuilderConfig> cfg;
     static std::once_flag flag;
-
     std::call_once(flag, []() {
+        util::Error err;
         const auto configPath = getConfigPath();
-        QFile configFile(configPath);
-        if (!configFile.open(QIODevice::ReadOnly)) {
-            qCritical().noquote() << QString("Failed to open config file [%1]")
-                                             .arg(configPath.startsWith(":") ? "builtin"
-                                                                             : configPath);
-            cfg.reset(new BuilderConfig());
-            return;
-        }
-
+        qDebug() << "load config from" << configPath;
         try {
-            auto doc = YAML::Load(configFile.readAll().data());
-            cfg = QVariant::fromValue(doc).value<QSharedPointer<BuilderConfig>>();
+            std::tie(cfg, err) = util::fromYAML<QSharedPointer<BuilderConfig>>(configPath);
         } catch (std::exception &e) {
-            qCritical().noquote() << QString("Failed to parse config [%1]: %2")
-                                             .arg(configPath.startsWith(":") ? "builtin"
-                                                                             : configPath)
-                                             .arg(e.what());
+            qCritical().noquote()
+                    << QString("Failed to parse config [%1]: %2").arg(configPath, e.what());
             cfg.reset(new BuilderConfig());
             return;
         }

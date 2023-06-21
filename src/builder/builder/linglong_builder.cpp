@@ -31,6 +31,7 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QScopeGuard>
 #include <QTemporaryFile>
 #include <QThread>
 #include <QUrl>
@@ -43,6 +44,8 @@
 
 namespace linglong {
 namespace builder {
+
+QSERIALIZER_IMPL(message)
 
 linglong::util::Error commitBuildOutput(Project *project,
                                         QSharedPointer<AnnotationsOverlayfsRootfs> overlayfs)
@@ -76,9 +79,15 @@ linglong::util::Error commitBuildOutput(Project *project,
             output,
     });
 
+    qDebug() << "run" << fuseOverlayfs.program() << fuseOverlayfs.arguments().join(" ");
+
     qint64 fuseOverlayfsPid = -1;
     fuseOverlayfs.startDetached(&fuseOverlayfsPid);
     fuseOverlayfs.waitForStarted(-1);
+
+    auto _ = qScopeGuard([=] {
+          kill(static_cast<pid_t>(fuseOverlayfsPid), SIGTERM);
+    });
 
     // FIXME: must wait fuse mount filesystem
     QThread::sleep(1);
@@ -129,7 +138,6 @@ linglong::util::Error commitBuildOutput(Project *project,
     auto desktopFileSavePath = QStringList{ entriesPath, "applications" }.join(QDir::separator());
     auto err = modifyConfigFile(desktopFilePath, desktopFileSavePath, "*.desktop", appId);
     if (err) {
-        kill(fuseOverlayfsPid, SIGTERM);
         return err;
     }
 
@@ -139,7 +147,6 @@ linglong::util::Error commitBuildOutput(Project *project,
     auto contextFileSavePath = contextFilePath;
     err = modifyConfigFile(contextFilePath, contextFileSavePath, "*.conf", appId);
     if (err) {
-        kill(fuseOverlayfsPid, SIGTERM);
         return err;
     }
 
@@ -172,13 +179,11 @@ linglong::util::Error commitBuildOutput(Project *project,
                   project->config().cacheInstallPath("files"),
                   project->config().cacheInstallPath("devel-install", "files"));
     if (err) {
-        kill(fuseOverlayfsPid, SIGTERM);
-
         return err;
     }
 
     auto createInfo = [](Project *project) -> linglong::util::Error {
-        QSharedPointer<package::Info> info;
+        QSharedPointer<package::Info> info(new package::Info);
 
         info->kind = project->package->kind;
         info->version = project->package->version;
@@ -227,7 +232,6 @@ linglong::util::Error commitBuildOutput(Project *project,
 
     err = createInfo(project);
     if (err) {
-        kill(fuseOverlayfsPid, SIGTERM);
         return WrapError(err, "createInfo failed");
     }
 
@@ -237,16 +241,12 @@ linglong::util::Error commitBuildOutput(Project *project,
                                project->config().cacheInstallPath(""));
 
     if (err) {
-        kill(fuseOverlayfsPid, SIGTERM);
         qCritical() << QString("commit %1 filed").arg(project->refWithModule("runtime").toString());
         return err;
     }
 
     err = repo.importDirectory(project->refWithModule("devel"),
                                project->config().cacheInstallPath("devel-install", ""));
-
-    //        fuseOverlayfs.kill();
-    kill(fuseOverlayfsPid, SIGTERM);
 
     return err;
 };
@@ -491,8 +491,7 @@ linglong::util::Error LinglongBuilder::build()
     }
 
     try {
-        auto project = QVariant::fromValue(YAML::LoadFile(projectConfigPath.toStdString()))
-                               .value<QSharedPointer<Project>>();
+        auto [project, err] = util::fromYAML<QSharedPointer<Project>>(projectConfigPath);
 
         // convert dependencies which with 'source' and 'build' tag to a project type
         // TODO: building dependencies should be concurrency

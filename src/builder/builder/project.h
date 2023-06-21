@@ -147,7 +147,7 @@ namespace builder {
 
 class ProjectPrivate;
 
-class Project : public JsonSerialize
+class Project : public Serialize
 {
     Q_OBJECT;
 
@@ -225,18 +225,20 @@ namespace linglong {
 namespace builder {
 
 // build template
-class Template : public JsonSerialize
+class Template : public Serialize
 {
     Q_OBJECT;
-
+    Q_SERIALIZE_CONSTRUCTOR(Template)
 public:
     Q_JSON_PTR_PROPERTY(Variables, variables);
     Q_JSON_PTR_PROPERTY(Build, build);
     Q_JSON_PTR_PROPERTY(Enviroment, enviroment);
 };
+
+QSERIALIZER_DECLARE(Template)
+QSERIALIZER_DECLARE(Project)
+
 } // namespace builder
 } // namespace linglong
-
-Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::builder, Project)
 
 #endif // LINGLONG_SRC_BUILDER_BUILDER_PROJECT_H_

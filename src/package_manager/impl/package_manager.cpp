@@ -46,9 +46,9 @@ PackageManagerPrivate::PackageManagerPrivate(PackageManager *parent)
                   return QDBusConnection::systemBus();
               }())
     , repoClient(ConfigInstance().repos[package::kDefaultRepo]->endpoint)
+    , remoteRepoName(ConfigInstance().repos[package::kDefaultRepo]->repoName)
     , q_ptr(parent)
 {
-    linglong::util::getLocalConfig("repoName", remoteRepoName);
 }
 
 /*
@@ -1375,81 +1375,60 @@ Reply PackageManager::ModifyRepo(const QString &name, const QString &url)
     Reply reply;
     Q_D(PackageManager);
 
+    QUrl endpointUrl(url);
+    if (name.trimmed().isEmpty()
+        || (endpointUrl.scheme().toLower() != "http" && endpointUrl.scheme().toLower() != "https")
+        || !endpointUrl.isValid()) {
+        reply.message = "url format error";
+        qWarning() << reply.message;
+        reply.code = STATUS_CODE(kUserInputParamErr);
+        return reply;
+    }
+
+    // update config yaml
+    if (!ConfigInstance().repos.contains(name)) {
+        reply.message = name + " not exist";
+        qWarning() << reply.message;
+        reply.code = STATUS_CODE(kUserInputParamErr);
+        return reply;
+    }
+
+    ConfigInstance().repos[name]->endpoint = url;
+    ConfigInstance().save();
+
     bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(d->kLocalRepoPath, reply.message);
     if (!ret) {
         reply.code = STATUS_CODE(kFail);
         return reply;
     }
 
-    QUrl cfgUrl(url);
-    if (name.trimmed().isEmpty()
-        || (cfgUrl.scheme().toLower() != "http" && cfgUrl.scheme().toLower() != "https")
-        || !cfgUrl.isValid()) {
-        reply.message = "url format error";
-        reply.code = STATUS_CODE(kUserInputParamErr);
-        return reply;
-    }
-    auto ostreeCfg = d->kLocalRepoPath + "/repo/config";
-    auto serverCfg = d->kLocalRepoPath + "/config.json";
-    if (!linglong::util::fileExists(ostreeCfg)) {
-        reply.message = ostreeCfg + " no exist";
-        reply.code = STATUS_CODE(kErrorModifyRepoFailed);
-        return reply;
-    }
-
-    QString dstUrl = "";
-    if (url.endsWith("/")) {
-        dstUrl = url + "repos/" + name;
-    } else {
-        dstUrl = url + "/repos/" + name;
-    }
-
-    // ostree 没有删除的命令 更换仓库需要先删除之前的老仓库配置,当前使用的仓库名需要从文件中读取
-    QString currentRepoName = "repo";
-    linglong::util::getLocalConfig("repoName", currentRepoName);
-    QString sectionName = QString("remote \"%1\"").arg(currentRepoName);
-
-    QSettings *repoCfg = new QSettings(ostreeCfg, QSettings::IniFormat);
-    repoCfg->beginGroup(sectionName);
-    QString oldUrl = repoCfg->value("url").toString();
-    repoCfg->remove("");
-    repoCfg->endGroup();
-    delete repoCfg;
-    qDebug() << "modify repo delete" << currentRepoName << oldUrl;
-
-    // ostree config --repo=/persistent/linglong/repo set "remote \"repo\".url"
-    // https://repo-dev.linglong.space/repo/ ostree
-    // config文件中节名有""，QSettings会自动转义，不用QSettings直接修改ostree config文件
-    auto keyUrl = QString("remote \"%1\".url").arg(name);
-    auto err =
-            util::Exec("ostree",
-                       { "config", "--repo=" + d->kLocalRepoPath + "/repo", "set", keyUrl, dstUrl },
-                       1000 * 60 * 5);
-    auto keyGpg = QString("remote \"%1\".gpg-verify").arg(name);
-    ret |= static_cast<bool>(err);
-    err = util::Exec("ostree",
-                     { "config", "--repo=" + d->kLocalRepoPath + "/repo", "set", keyGpg, "false" },
-                     1000 * 60 * 5);
-    ret |= static_cast<bool>(err);
-    if (!ret) {
-        reply.message = "modify repo config failed";
+    auto ostreeConfigPath = d->kLocalRepoPath + "/repo/config";
+    if (!linglong::util::fileExists(ostreeConfigPath)) {
+        reply.message = ostreeConfigPath + " no exist";
         qWarning() << reply.message;
         reply.code = STATUS_CODE(kErrorModifyRepoFailed);
         return reply;
     }
 
-    d->remoteRepoName = name;
-    QJsonObject obj;
-    obj["repoName"] = name;
-    obj["appDbUrl"] = url;
-    QJsonDocument doc(obj);
-    QFile jsonFile(serverCfg);
-    jsonFile.open(QIODevice::WriteOnly | QIODevice::Text);
-    QTextStream wirteStream(&jsonFile);
-    wirteStream.setCodec("UTF-8");
-    wirteStream << doc.toJson();
-    jsonFile.close();
-    qDebug() << QString("modify repo name:%1 url:%2 success").arg(name).arg(url);
+    // FIXME: only support repo now
+    QString ostreeRepoName = "repo";
+    QString ostreeUrl = endpointUrl.toString() + "/repos/" + ostreeRepoName;
+
+    // ostree --repo=/var/lib/linglong/repo \
+    //   config set --group='remote "repo"' url  https://repo-dev.linglong.space/repo/
+    auto args = QStringList{
+        QString("--repo=%1").arg(d->kLocalRepoPath + "/repo"), "config", "set",
+        QString("--group=remote \"%1\"").arg(ostreeRepoName),  "url",    ostreeUrl,
+    };
+    auto err = util::Exec("ostree", args);
+    if (err) {
+        reply.message = "modify repo config failed";
+        qWarning().noquote() << reply.message << args.join(" ");
+        reply.code = STATUS_CODE(kErrorModifyRepoFailed);
+        return reply;
+    }
+
+    qDebug() << QString("modify repo name:%1 url:%2 success").arg(name, url);
     reply.code = STATUS_CODE(kErrorModifyRepoSuccess);
     reply.message = "modify repo url success";
     return reply;

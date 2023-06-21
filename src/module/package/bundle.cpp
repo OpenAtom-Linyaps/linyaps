@@ -220,14 +220,14 @@ linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
 
     QString configUrl = repoUrl;
     if (configUrl.isEmpty()) {
-        int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
-
-        if (STATUS_CODE(kSuccess) != statusCode) {
-            if (util::dirExists(this->tmpWorkDir)) {
-                util::removeDir(this->tmpWorkDir);
-            }
-            return NewError(-1, "call getLocalConfig api failed");
-        }
+        //        int statusCode = linglong::util::getLocalConfig("appDbUrl", configUrl);
+        //
+        //        if (STATUS_CODE(kSuccess) != statusCode) {
+        //            if (util::dirExists(this->tmpWorkDir)) {
+        //                util::removeDir(this->tmpWorkDir);
+        //            }
+        //            return NewError(-1, "call getLocalConfig api failed");
+        //        }
     }
     configUrl = configUrl.endsWith("/") ? configUrl : (configUrl + "/");
     // FIXME: use new client

@@ -20,9 +20,6 @@
 namespace linglong {
 namespace util {
 
-// 存储软件包信息服务器配置文件
-const QString serverConfigPath = getLinglongRootPath() + "/config.json";
-
 QString jonsPath(const QStringList &component)
 {
     return QDir::toNativeSeparators(component.join(QDir::separator()));
@@ -78,39 +75,6 @@ QString createProxySocket(const QString &pattern)
     }
     tmpFile.close();
     return tmpFile.fileName();
-}
-
-/*
- * 从配置文件获取服务器配置参数
- *
- * @param key: 参数名称
- * @param value: 查询结果
- *
- * @return int: 0:成功 其它:失败
- */
-int getLocalConfig(const QString &key, QString &value)
-{
-    QString configPath = DATADIR "/linglong/config.json";
-    if (linglong::util::fileExists(serverConfigPath)) {
-        configPath = serverConfigPath;
-    }
-    QFile dbFile(configPath);
-    dbFile.open(QIODevice::ReadOnly);
-    QString qValue = dbFile.readAll();
-    dbFile.close();
-    QJsonParseError parseJsonErr;
-    QJsonDocument document = QJsonDocument::fromJson(qValue.toUtf8(), &parseJsonErr);
-    if (QJsonParseError::NoError != parseJsonErr.error) {
-        qCritical() << "parse linglong config file err";
-        return STATUS_CODE(kFail);
-    }
-    QJsonObject dataObject = document.object();
-    if (!dataObject.contains(key)) {
-        qWarning() << "key:" << key << " not found in config";
-        return STATUS_CODE(kFail);
-    }
-    value = dataObject[key].toString();
-    return STATUS_CODE(kSuccess);
 }
 
 quint64 sizeOfDir(const QString &srcPath)
@@ -169,6 +133,27 @@ QString fileHash(const QString &path, QCryptographicHash::Algorithm method)
         return hash;
     }
     return QString();
+}
+
+QString findLinglongConfigPath(const QString &subpath, bool writeable)
+{
+    auto configDirs = QMap<QString, bool>{
+        { getLinglongRootPath(), true }, // /var/lib/linglong as distribution, should be writeable by linglong user
+        { LINGLONG_DATA_DIR, false },    // /usr/share/linglong as default
+    };
+
+    QMapIterator<QString, bool> iter(configDirs);
+    while (iter.hasNext()) {
+        iter.next();
+        QDir dir(iter.key());
+        if (writeable != iter.value()) {
+            continue;
+        }
+        if (writeable || dir.exists(subpath)) {
+            return dir.absoluteFilePath(subpath);
+        }
+    }
+    return "";
 }
 
 } // namespace util

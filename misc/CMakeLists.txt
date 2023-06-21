@@ -63,7 +63,7 @@ install(FILES ${DBUS_SESSION_SERVICE_FILE}
 
 # linglong
 
-set(LINGLONG_CONFIG_FILES linglong/config.json)
+set(LINGLONG_CONFIG_FILES linglong/config.yaml)
 
 install(FILES ${LINGLONG_CONFIG_FILES}
         DESTINATION ${CMAKE_INSTALL_DATADIR}/linglong

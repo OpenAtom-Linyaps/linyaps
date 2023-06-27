@@ -1,3 +1,4 @@
 {
-    "appDbUrl": "https://repo.linglong.space"
+    "appDbUrl": "https://mirror-repo-linglong.deepin.com",
+    "repoName": "repo"
 }

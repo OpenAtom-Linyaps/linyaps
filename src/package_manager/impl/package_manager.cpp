@@ -730,6 +730,12 @@ Reply PackageManagerPrivate::Install(const InstallParamOption &installParamOptio
         reply.code = STATUS_CODE(kPkgInstallFailed);
         appState.insert(appId + "/" + version + "/" + arch, reply);
         return reply;
+    } else if (appList.first()->kind != "app") {
+        reply.message = "This package is not an application, it should not be maually installed";
+        qCritical() << reply.message;
+        reply.code = STATUS_CODE(kPkgInstallFailed);
+        appState.insert(appId + "/" + version + "/" + arch, reply);
+        return reply;
     }
 
     // 查找最高版本，多版本场景安装应用appId要求完全匹配

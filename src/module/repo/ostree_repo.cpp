@@ -931,7 +931,7 @@ package::Ref OSTreeRepo::localLatestRef(const package::Ref &ref)
     return package::Ref("", ref.channel, ref.appId, latestVer, ref.arch, ref.module);
 }
 
-package::Ref OSTreeRepo::remoteLatestRef(const package::Ref &ref)
+std::tuple<linglong::util::Error, package::Ref> OSTreeRepo::remoteLatestRef(const package::Ref &ref)
 {
     Q_D(OSTreeRepo);
 
@@ -944,8 +944,8 @@ package::Ref OSTreeRepo::remoteLatestRef(const package::Ref &ref)
                                     ref.version,
                                     util::hostArch(),
                                     ret)) {
-        qCritical() << "query remote app failed";
-        return package::Ref(ref.repo, ref.channel, ref.appId, latestVer, ref.arch, ref.module);
+        return { NewError(-1, "query package failed, check your network or remote address"),
+                 ref };
     }
 
     auto retObject = QJsonDocument::fromJson(ret.toUtf8()).object();
@@ -960,7 +960,12 @@ package::Ref OSTreeRepo::remoteLatestRef(const package::Ref &ref)
         }
     }
 
-    return package::Ref(ref.repo, ref.channel, ref.appId, latestVer, ref.arch, ref.module);
+    if (latestVer == "unknown")
+        return { NewError(-1, QString("%1 is not exist in the remote repository").arg(ref.toLocalRefString())),
+                 ref };
+
+    return { NoError(),
+             package::Ref(ref.repo, ref.channel, ref.appId, latestVer, ref.arch, ref.module) };
 }
 
 package::Ref OSTreeRepo::latestOfRef(const QString &appId, const QString &appVersion)

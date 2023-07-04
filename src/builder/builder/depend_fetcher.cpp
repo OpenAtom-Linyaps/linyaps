@@ -73,11 +73,15 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
                             .arg(dependRef.appId)
                             .arg(dependRef.version);
         } else {
-            dependRef = ostree.remoteLatestRef(dependRef);
+            auto result = ostree.remoteLatestRef(dependRef);
+            dependRef = std::get<1>(result);
+
+            if (!std::get<0>(result).success())
+                return WrapError(std::get<0>(result), "call remoteLatestRef failed");
 
             qInfo() << QString("fetching dependency: %1 %2")
-                            .arg(dependRef.appId)
-                            .arg(dependRef.version);
+                               .arg(dependRef.appId)
+                               .arg(dependRef.version);
 
             ret = ostree.pullAll(dependRef, true);
             if (!ret.success()) {

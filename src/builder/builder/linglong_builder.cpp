@@ -1048,8 +1048,8 @@ linglong::util::Error LinglongBuilder::run()
                                              project->runtimeRef().arch,
                                              "");
 
-        auto latestRuntimeRef = repo.remoteLatestRef(remoteRuntimeRef);
-        ret = repo.checkoutAll(latestRuntimeRef, "", targetPath);
+        auto result = repo.remoteLatestRef(remoteRuntimeRef);
+        ret = repo.checkoutAll(std::get<1>(result), "", targetPath);
         if (!ret.success()) {
             return NewError(-1, "checkout runtime files failed");
         }

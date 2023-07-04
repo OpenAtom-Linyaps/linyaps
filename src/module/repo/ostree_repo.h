@@ -9,6 +9,7 @@
 
 #include "module/package/package.h"
 #include "module/repo/repo.h"
+#include "repo.h"
 
 #include <QPointer>
 #include <QScopedPointer>
@@ -87,7 +88,7 @@ public:
 
     package::Ref localLatestRef(const package::Ref &ref);
 
-    package::Ref remoteLatestRef(const package::Ref &ref);
+    std::tuple<util::Error, package::Ref> remoteLatestRef(const package::Ref &ref);
 
     package::Ref latestOfRef(const QString &appId, const QString &appVersion) override;
 

@@ -12,7 +12,7 @@ find ${PREFIX} -type f '(' -perm -111 -o -name '*.so*' -o -name '*.cmxs' \
 
 for binary in `cat binaries`;do
 #skip stripped binary
-if [ "`file $binary|grep "not stripped"`" == "" ]; then
+if [ "`file $binary|grep "ELF"|grep "not stripped"`" == "" ]; then
   continue
 fi
 

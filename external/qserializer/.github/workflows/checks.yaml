@@ -1,0 +1,9 @@
+name: Checks
+
+on: [pull_request]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: black-desk/checks@v1

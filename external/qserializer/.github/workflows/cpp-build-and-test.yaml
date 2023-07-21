@@ -1,0 +1,39 @@
+name: Build and test cpp library
+
+on: [pull_request]
+
+jobs:
+  build-cpp:
+    strategy:
+      matrix:
+        compiler:
+          - g++
+          - clang++
+        qt-version:
+          - '5'
+          - '6'
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}-${{ matrix.compiler }}-qt${{ matrix.qt-version }}
+    - name: Build with ${{ matrix.compiler }} and qt${{ matrix.qt-version }}
+      run: |
+        sudo apt update &&
+        sudo apt-get install -y clang clang-tidy ninja-build &&
+        sudo apt-get install -y libgtest-dev qtbase5-dev qt6-base-dev &&
+        export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH" &&
+        rm build -rf &&
+        cmake -B build -DCMAKE_GENERATOR="Ninja Multi-Config" \
+              -DCMAKE_CXX_STANDARD="17" \
+              -DCMAKE_CXX_FLAGS="-Wall -Wextra -Werror" \
+              -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} \
+              -DCMAKE_CXX_CLANG_TIDY=clang-tidy \
+              -DQSERIALIZER_QT_VERSION_MAJOR=${{ matrix.qt-version }} &&
+        cmake --build build --config Debug &&
+        cmake --build build -t test --config Debug &&
+        cmake --build build --config Release &&
+        cmake --build build -t test --config Release &&
+        cmake --build build --config RelWithDebInfo &&
+        cmake --build build -t test --config RelWithDebInfo

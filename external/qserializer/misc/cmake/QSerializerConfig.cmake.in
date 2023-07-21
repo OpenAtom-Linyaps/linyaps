@@ -1,0 +1,7 @@
+@PACKAGE_INIT@
+
+list(APPEND CMAKE_MODULE_PATH "@PACKAGE_cmakeModulesDir@")
+
+include(${CMAKE_CURRENT_LIST_DIR}/QSerializerCore.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/QSerializerDBus.cmake)
+

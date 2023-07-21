@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13.4) # for UOS 105x
+cmake_minimum_required(VERSION 3.21)
 
 project(
   linglong
@@ -20,6 +20,12 @@ set(LINGLONG_ROOT
     "/var/lib/linglong"
     CACHE STRING "the location where linglong related program puts their data"
 )
+
+# build external projects
+set(CMAKE_POLICY_DEFAULT_CMP0126 NEW)
+
+set(QSERIALIZER_QT_VERSION_MAJOR "5")
+add_subdirectory(external/qserializer)
 
 # for private header
 include_directories(${linglong_SOURCE_DIR}/src)

@@ -14,7 +14,7 @@
 #include "module/util/status_code.h"
 #include "module/util/sysinfo.h"
 #include "module/util/xdg.h"
-#include "package_manager/impl/package_manager.h"
+#include "package_manager/package_manager.h"
 #include "service/impl/app_manager.h"
 
 #include <QCommandLineOption>

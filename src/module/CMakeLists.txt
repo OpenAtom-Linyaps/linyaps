@@ -15,7 +15,7 @@ configure_file(util/configure.h.in util/configure.h)
 qt5_add_dbus_adaptor(
   LINGLONG_LIB_SOURCES
   dbus_ipc/org.deepin.linglong.PackageManager.xml
-  package_manager/impl/package_manager.h
+  package_manager/package_manager.h
   linglong::service::PackageManager
   dbus_gen_package_manager_adaptor
 )
@@ -23,7 +23,7 @@ qt5_add_dbus_adaptor(
 qt5_add_dbus_adaptor(
   LINGLONG_LIB_SOURCES
   dbus_ipc/org.deepin.linglong.JobManager.xml
-  package_manager/impl/job_manager.h
+  package_manager/job_manager.h
   JobManager
   dbus_gen_jop_manager_adaptor
 )
@@ -31,7 +31,7 @@ qt5_add_dbus_adaptor(
 qt5_add_dbus_adaptor(
   LINGLONG_LIB_SOURCES
   dbus_ipc/org.deepin.linglong.Job.xml
-  package_manager/impl/job.h
+  package_manager/job.h
   Job
   dbus_gen_jop_adaptor
 )

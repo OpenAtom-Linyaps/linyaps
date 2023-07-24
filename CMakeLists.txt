@@ -40,7 +40,6 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-add_definitions("-DQT_MESSAGELOGCONTEXT")
 # NOTE(black_desk): qt keywords conflict with glib
 add_definitions("-DQT_NO_KEYWORDS")
 

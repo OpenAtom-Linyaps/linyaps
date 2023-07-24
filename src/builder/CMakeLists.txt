@@ -1,22 +1,23 @@
-file(
-  GLOB_RECURSE
-  LL_BUILDER_SOURCES
-  FOLLOW_SYMLINKS
-  CONFIGURE_DEPENDS
-  *.cpp
-  *.h
-  *.qrc
+add_library(
+  builder
+  builder.h
+  builder_config.cpp
+  builder_config.h
+  builder_templates.qrc
+  depend_fetcher.cpp
+  depend_fetcher.h
+  linglong_builder.cpp
+  linglong_builder.h
+  project.cpp
+  project.h
+  source_fetcher.cpp
+  source_fetcher.h
+  source_fetcher_p.h
 )
 
-add_executable(ll-builder ${LL_BUILDER_SOURCES})
-
-target_include_directories(
-  ll-builder
-  PRIVATE ../
-          ${GLIB_INCLUDE_DIRS}
-          ${OSTREE1_INCLUDE_DIRS}
+target_link_libraries(
+  builder
+  PUBLIC linglong_lib
+         PkgConfig::glib2
+         PkgConfig::ostree1
 )
-
-target_link_libraries(ll-builder PRIVATE linglong_lib)
-
-install(TARGETS ll-builder RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

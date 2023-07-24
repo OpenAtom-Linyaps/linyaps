@@ -17,7 +17,7 @@ target_link_libraries(
   ll-cli
   PRIVATE linglong_lib
           package-manager
-          lib_ll-service
+          service
 )
 install(TARGETS ll-cli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 # https://stackoverflow.com/a/42697475 and https://stackoverflow.com/a/74888297
@@ -31,3 +31,7 @@ install(
 add_executable(ll-package-manager ./ll-package-manager.main.cpp)
 target_link_libraries(ll-package-manager PRIVATE package-manager)
 install(TARGETS ll-package-manager RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+add_executable(ll-service ./ll-service.main.cpp)
+target_link_libraries(ll-service PRIVATE service)
+install(TARGETS ll-service RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

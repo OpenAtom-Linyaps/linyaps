@@ -39,7 +39,7 @@ qt5_add_dbus_adaptor(
 qt5_add_dbus_adaptor(
   LINGLONG_LIB_SOURCES
   dbus_ipc/org.deepin.linglong.AppManager.xml
-  service/impl/app_manager.h
+  service/app_manager.h
   linglong::service::AppManager
   dbus_gen_app_manager_adaptor
 )

@@ -4,13 +4,13 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "filesystem_helper.h"
 #include "module/dbus_gen_filesystem_helper_adaptor.h"
 #include "module/dbus_gen_package_manager_helper_adaptor.h"
 #include "module/dbus_ipc/dbus_common.h"
 #include "module/dbus_ipc/dbus_system_helper_common.h"
-#include "package_manager_helper.h"
-#include "privilege/privilege_install_portal.h"
+#include "system_helper/filesystem_helper.h"
+#include "system_helper/package_manager_helper.h"
+#include "system_helper/privilege/privilege_install_portal.h"
 
 #include <QCoreApplication>
 #include <QDBusConnection>
@@ -42,20 +42,20 @@ int main(int argc, char *argv[])
             qCritical() << "dbusServer is not connected" << dbusServer->lastError();
             return -1;
         }
-        QObject::connect(
-                dbusServer.data(),
-                &QDBusServer::newConnection,
-                [&packageManagerHelper](const QDBusConnection &conn) {
-                    // FIXME: work round to keep conn alive, but we finally need to free
-                    // clientConn.
-                    const auto clientConn = new QDBusConnection(conn);
-                    linglong::registerServiceAndObject(
-                            clientConn,
-                            "",
-                            {
-                                    { linglong::PackageManagerHelperDBusPath, &packageManagerHelper },
-                            });
-                });
+        QObject::connect(dbusServer.data(),
+                         &QDBusServer::newConnection,
+                         [&packageManagerHelper](const QDBusConnection &conn) {
+                             // FIXME: work round to keep conn alive, but we finally need to free
+                             // clientConn.
+                             const auto clientConn = new QDBusConnection(conn);
+                             linglong::registerServiceAndObject(
+                                     clientConn,
+                                     "",
+                                     {
+                                             { linglong::PackageManagerHelperDBusPath,
+                                               &packageManagerHelper },
+                                     });
+                         });
     } else {
         QDBusConnection bus = QDBusConnection::systemBus();
         if (!linglong::registerServiceAndObject(

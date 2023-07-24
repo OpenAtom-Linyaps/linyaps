@@ -7,8 +7,14 @@ file(
   *.h
 )
 
-add_executable(ll-system-helper)
-target_sources(ll-system-helper PRIVATE ${LL_SYSTEM_HELPER_SOURCES})
-target_link_libraries(ll-system-helper PRIVATE linglong_lib)
-
-install(TARGETS ll-system-helper RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+add_library(
+  linglong_lib_system_helper
+  filesystem_helper.cpp
+  filesystem_helper.h
+  package_manager_helper.cpp
+  package_manager_helper.h
+  privilege/privilege_install_portal.cpp
+  privilege/privilege_install_portal.h
+)
+add_library(linglong::system_helper ALIAS linglong_lib_system_helper)
+target_link_libraries(linglong_lib_system_helper PUBLIC linglong_lib)

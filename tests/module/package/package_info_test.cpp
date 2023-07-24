@@ -20,7 +20,7 @@ TEST(PermissionTest, LoadJson)
 
     EXPECT_NE(userTypeList.size(), 0);
 
-    QFile jsonFile("../../test/data/demo/info.json");
+    QFile jsonFile("data/demo/info.json");
     jsonFile.open(QIODevice::ReadOnly);
 
     auto json = QJsonDocument::fromJson(jsonFile.readAll());
@@ -69,7 +69,7 @@ TEST(PermissionTest, LoadJson)
 TEST(PermissionTest, TestPermission)
 {
     // load json file
-    QFile jsonFile("../../test/data/demo/info.json");
+    QFile jsonFile("data/demo/info.json");
     jsonFile.open(QIODevice::ReadOnly);
 
     auto json = QJsonDocument::fromJson(jsonFile.readAll());

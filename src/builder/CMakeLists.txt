@@ -1,5 +1,5 @@
 add_library(
-  builder
+  linglong_lib_builder
   builder.h
   builder_config.cpp
   builder_config.h
@@ -14,9 +14,14 @@ add_library(
   source_fetcher.h
   source_fetcher_p.h
 )
+add_library(
+  linglong::builder
+  ALIAS
+  linglong_lib_builder
+)
 
 target_link_libraries(
-  builder
+  linglong_lib_builder
   PUBLIC linglong_lib
          PkgConfig::glib2
          PkgConfig::ostree1

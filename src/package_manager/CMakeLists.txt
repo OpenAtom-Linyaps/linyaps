@@ -1,5 +1,5 @@
 add_library(
-  package-manager
+  linglong_lib_package_manager
   job.cpp
   job.h
   job_manager.cpp
@@ -8,4 +8,9 @@ add_library(
   package_manager.h
   package_manager_p.h
 )
-target_link_libraries(package-manager PUBLIC linglong_lib)
+add_library(
+  linglong::package_manager
+  ALIAS
+  linglong_lib_package_manager
+)
+target_link_libraries(linglong_lib_package_manager PUBLIC linglong_lib)

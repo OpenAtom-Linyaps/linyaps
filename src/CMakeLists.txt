@@ -8,6 +8,24 @@ add_subdirectory(system_helper)
 
 add_subdirectory(builder)
 
+add_library(linglong_utils_serialize utils/serialize/yaml.cpp)
+target_sources(
+  linglong_utils_serialize
+  PUBLIC FILE_SET
+         private_headers
+         TYPE
+         HEADERS
+         BASE_DIRS
+         .
+         FILES
+         utils/serialize/yaml.h
+         utils/serialize/json.h
+)
+target_link_libraries(linglong_utils_serialize PUBLIC QSerializer::Core)
+
+add_library(linglong_utils INTERFACE)
+target_link_libraries(linglong_utils INTERFACE linglong_utils_serialize)
+
 add_executable(ll-builder ll-builder.main.cpp)
 target_link_libraries(ll-builder PRIVATE linglong::builder)
 install(TARGETS ll-builder RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

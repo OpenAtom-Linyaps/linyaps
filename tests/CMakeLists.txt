@@ -21,6 +21,10 @@ add_executable(
   ./module/util/runner_test.cpp
   ./module/util/uuid_test.cpp
   ./module/util/xdg_test.cpp
+  ./utils/serialize/json.cpp
+  ./utils/serialize/TestStruct.cpp
+  ./utils/serialize/TestStruct.h
+  ./utils/serialize/yaml.cpp
 )
 
 target_link_libraries(

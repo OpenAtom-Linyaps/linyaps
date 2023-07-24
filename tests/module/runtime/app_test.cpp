@@ -18,9 +18,9 @@ TEST(AppTest, StructTest)
 
     // load data from yaml file
     auto app = std::get<0>(linglong::util::fromYAML<QSharedPointer<linglong::runtime::App>>(
-            QString("../../test/data/demo/app-test.yaml")));
+            QString("data/demo/app-test.yaml")));
 
-    EXPECT_NE(app, nullptr);
+    ASSERT_NE(app, nullptr);
 
     // check base info
     EXPECT_EQ(app->version, "1.0");

@@ -35,3 +35,7 @@ install(TARGETS ll-package-manager RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 add_executable(ll-service ./ll-service.main.cpp)
 target_link_libraries(ll-service PRIVATE linglong::service)
 install(TARGETS ll-service RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+add_executable(ll-system-helper ./ll-system-helper.main.cpp)
+target_link_libraries(ll-system-helper PRIVATE linglong::system_helper)
+install(TARGETS ll-system-helper RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

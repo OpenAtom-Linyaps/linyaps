@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "module/dbus_gen_filesystem_helper_adaptor.h"
-#include "module/dbus_gen_package_manager_helper_adaptor.h"
+#include "dbusgen/FilesystemHelperAdaptor.h"
+#include "dbusgen/PackageManagerHelperAdaptor.h"
 #include "module/dbus_ipc/dbus_common.h"
 #include "module/dbus_ipc/dbus_system_helper_common.h"
 #include "system_helper/filesystem_helper.h"

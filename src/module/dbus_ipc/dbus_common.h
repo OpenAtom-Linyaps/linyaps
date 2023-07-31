@@ -17,19 +17,6 @@
 #include <QDebug>
 #include <QVariantMap>
 
-typedef QList<QVariantMap> QVariantMapList;
-
-Q_DECLARE_METATYPE(QVariantMapList);
-
-inline QVariant toVariant(const QVariantMapList &vml)
-{
-    QVariantList vl;
-    for (auto const &pkg : vml) {
-        vl.push_back(pkg);
-    }
-    return vl;
-}
-
 namespace linglong {
 
 inline bool registerServiceAndObject(QDBusConnection *dbus,

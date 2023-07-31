@@ -4,9 +4,8 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "module/dbus_gen_jop_manager_adaptor.h"
-#include "module/dbus_gen_package_manager_adaptor.h"
-
+#include "dbusgen/JobManagerAdaptor.h"
+#include "dbusgen/PackageManagerAdaptor.h"
 #include "module/dbus_ipc/workaround.h"
 
 #include <QCoreApplication>

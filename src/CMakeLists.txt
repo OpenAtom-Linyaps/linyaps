@@ -1,3 +1,5 @@
+add_subdirectory(dbusgen)
+
 add_subdirectory(module)
 
 add_subdirectory(package_manager)

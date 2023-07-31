@@ -10,56 +10,6 @@ file(
 
 configure_file(util/configure.h.in util/configure.h)
 
-# dbus adaptor
-
-qt5_add_dbus_adaptor(
-  LINGLONG_LIB_SOURCES
-  dbus_ipc/org.deepin.linglong.PackageManager.xml
-  package_manager/package_manager.h
-  linglong::service::PackageManager
-  dbus_gen_package_manager_adaptor
-)
-
-qt5_add_dbus_adaptor(
-  LINGLONG_LIB_SOURCES
-  dbus_ipc/org.deepin.linglong.JobManager.xml
-  package_manager/job_manager.h
-  JobManager
-  dbus_gen_jop_manager_adaptor
-)
-
-qt5_add_dbus_adaptor(
-  LINGLONG_LIB_SOURCES
-  dbus_ipc/org.deepin.linglong.Job.xml
-  package_manager/job.h
-  Job
-  dbus_gen_jop_adaptor
-)
-
-qt5_add_dbus_adaptor(
-  LINGLONG_LIB_SOURCES
-  dbus_ipc/org.deepin.linglong.AppManager.xml
-  service/app_manager.h
-  linglong::service::AppManager
-  dbus_gen_app_manager_adaptor
-)
-
-qt5_add_dbus_adaptor(
-  LINGLONG_LIB_SOURCES
-  dbus_ipc/org.deepin.linglong.PackageManagerHelper.xml
-  system_helper/package_manager_helper.h
-  linglong::system::helper::PackageManagerHelper
-  dbus_gen_package_manager_helper_adaptor
-)
-
-qt5_add_dbus_adaptor(
-  LINGLONG_LIB_SOURCES
-  dbus_ipc/org.deepin.linglong.FilesystemHelper.xml
-  system_helper/filesystem_helper.h
-  linglong::system::helper::FilesystemHelper
-  dbus_gen_filesystem_helper_adaptor
-)
-
 # dbus interface
 
 qt5_add_dbus_interface(
@@ -105,4 +55,10 @@ target_link_libraries(
          PkgConfig::glib2
          PkgConfig::ostree1
          yaml-cpp
+         linglong_PackageManager_adaptor
+         linglong_JobManager_adaptor
+         linglong_Job_adaptor
+         linglong_AppManager_adaptor
+         linglong_PackageManagerHelper_adaptor
+         linglong_FilesystemHelper_adaptor
 )

@@ -71,3 +71,58 @@ linglong_add_dbus_adaptor(
   linglong::system::helper::FilesystemHelper
   FilesystemHelperAdaptor
 )
+
+function(
+  linglong_add_dbus_interface
+  target_name
+  xml
+  filename
+)
+  set(INTERFACE_SOURCES)
+  qt5_add_dbus_interface(
+    INTERFACE_SOURCES
+    ${xml}
+    ${filename}
+  )
+  add_library(${target_name} OBJECT)
+  target_sources(${target_name} PRIVATE ${INTERFACE_SOURCES})
+  target_link_libraries(${target_name} PUBLIC Qt::DBus)
+  if(ARGN)
+    target_link_libraries(${target_name} PRIVATE ${ARGN})
+  endif()
+  target_include_directories(${target_name} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+endfunction()
+
+linglong_add_dbus_interface(
+  linglong_PackageManagerHelper_interface
+  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManagerHelper.xml
+  PackageManagerHelperInterface
+)
+
+linglong_add_dbus_interface(
+  linglong_FilesystemHelper_interface
+  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.FilesystemHelper.xml
+  FilesystemHelperInterface
+)
+
+set_source_files_properties(
+  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.AppManager.xml
+  PROPERTIES INCLUDE module/dbus_ipc/workaround.h
+)
+
+linglong_add_dbus_interface(
+  linglong_AppManager_interface
+  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.AppManager.xml
+  AppManagerInterface
+)
+
+set_source_files_properties(
+  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManager.xml
+  PROPERTIES INCLUDE module/dbus_ipc/workaround.h
+)
+
+linglong_add_dbus_interface(
+  linglong_PackageManager_interface
+  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManager.xml
+  PackageManagerInterface
+)

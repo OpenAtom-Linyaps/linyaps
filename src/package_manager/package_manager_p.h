@@ -7,7 +7,7 @@
 #ifndef LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_P_H_
 #define LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_P_H_
 
-#include "module/dbus_gen_package_manager_helper_interface.h"
+#include "dbusgen/PackageManagerHelperInterface.h"
 #include "module/dbus_ipc/package_manager_param.h"
 #include "module/dbus_ipc/param_option.h"
 #include "module/dbus_ipc/reply.h"

@@ -6,7 +6,7 @@
 
 #include "erofs.h"
 
-#include "module/dbus_gen_filesystem_helper_interface.h"
+#include "dbusgen/FilesystemHelperInterface.h"
 #include "module/dbus_ipc/dbus_system_helper_common.h"
 #include "runner.h"
 

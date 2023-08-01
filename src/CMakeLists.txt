@@ -1,3 +1,5 @@
+add_subdirectory(api)
+
 add_subdirectory(dbusgen)
 
 add_subdirectory(module)

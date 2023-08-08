@@ -1,7 +1,8 @@
 #ifndef LINGLONG_TEST_UTILS_SERIALIZE_TESTSTRUCT_H
 #define LINGLONG_TEST_UTILS_SERIALIZE_TESTSTRUCT_H
 
-#include <QSerializer/QSerializer.h>
+#include <qserializer/core.h>
+
 #include <QString>
 
 class TestStruct

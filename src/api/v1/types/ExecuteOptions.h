@@ -1,7 +1,8 @@
 #ifndef LINGLONG_SRC_API_V1_TYPES_EXECUTEOPTIONS_H_
 #define LINGLONG_SRC_API_V1_TYPES_EXECUTEOPTIONS_H_
 
-#include <QSerializer/QSerializerDBus.h>
+#include <qserializer/dbus.h>
+
 #include <QString>
 
 namespace linglong::api::v1::types {

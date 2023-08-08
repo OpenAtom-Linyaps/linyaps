@@ -4,7 +4,7 @@
   <interface name='io.github.black_desk.TestDBusServer'>
     <method name='ping'>
       <annotation name='org.qtproject.QtDBus.QtTypeName.Out0'
-        value='QMap&lt;QString,QSharedPointer&lt;Response&gt;&gt;' />
+        value='QMap&lt;QString,QSharedPointer&lt;qserializer::examples::dbus_message::Response&gt;&gt;' />
       <arg name='result' type='a{sa{sv}}' direction='out' />
     </method>
   </interface>

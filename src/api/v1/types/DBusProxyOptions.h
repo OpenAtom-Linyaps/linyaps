@@ -1,7 +1,7 @@
 #ifndef LINGLONG_SRC_API_V1_TYPES_DBUSPROXYOPTIONS_H_
 #define LINGLONG_SRC_API_V1_TYPES_DBUSPROXYOPTIONS_H_
 
-#include <QSerializer/QSerializerDBus.h>
+#include <qserializer/dbus.h>
 
 namespace linglong::api::v1::types {
 
@@ -19,7 +19,6 @@ public:
     Q_PROPERTY(QSharedPointer<DBusProxySessionBusOptions> sessionBus MEMBER sessionBus);
     QSharedPointer<DBusProxySessionBusOptions> sessionBus;
 };
-
 
 class DBusProxySessionBusOptions
 {

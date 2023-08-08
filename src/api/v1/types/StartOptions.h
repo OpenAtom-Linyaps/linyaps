@@ -4,7 +4,7 @@
 #include "api/v1/types/CommonOptions.h"
 #include "api/v1/types/DBusProxyOptions.h"
 
-#include <QSerializer/QSerializerDBus.h>
+#include <qserializer/dbus.h>
 #include <QString>
 
 namespace linglong::api::v1::types {

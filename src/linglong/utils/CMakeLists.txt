@@ -1,0 +1,4 @@
+add_subdirectory(serialize)
+
+add_library(linglong_utils INTERFACE)
+target_link_libraries(linglong_utils INTERFACE linglong_utils_serialize)

@@ -1,8 +1,8 @@
-#ifndef LINGLONG_SRC_API_V1_TYPES_STARTOPTIONS_H_
-#define LINGLONG_SRC_API_V1_TYPES_STARTOPTIONS_H_
+#ifndef LINGLONG_API_V1_TYPES_STARTOPTIONS_H_
+#define LINGLONG_API_V1_TYPES_STARTOPTIONS_H_
 
-#include "api/v1/types/CommonOptions.h"
-#include "api/v1/types/DBusProxyOptions.h"
+#include "linglong/api/v1/types/CommonOptions.h"
+#include "linglong/api/v1/types/DBusProxyOptions.h"
 
 #include <qserializer/dbus.h>
 #include <QString>

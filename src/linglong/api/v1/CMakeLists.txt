@@ -1,0 +1,4 @@
+add_subdirectory(types)
+
+add_library(linglong_api_v1 INTERFACE)
+target_link_libraries(linglong_api_v1 INTERFACE linglong_api_v1_types)

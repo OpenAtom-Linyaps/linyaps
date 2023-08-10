@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "utils/serialize/yaml.h"
+#include "linglong/utils/serialize/yaml.h"
 
 #include <gtest/gtest.h>
 

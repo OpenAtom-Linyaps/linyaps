@@ -5,23 +5,24 @@ add_library(
   package_manager.cpp
 )
 
-target_sources(
+linglong_private_library_add_headers(
   linglong_packagemanager
-  PUBLIC FILE_SET
-         HEADERS
-         BASE_DIRS
-         ${LINGLONG_FILESET_BASEDIRS}
-         FILES
-         job.h
-         job_manager.h
-         package_manager.h
-         package_manager_p.h
+  job.h
+  job_manager.h
+  package_manager.h
+  package_manager_p.h
 )
 
 target_link_libraries(
   linglong_packagemanager
-  PUBLIC linglong_lib
+  PUBLIC linglong_runtime
+         linglong_util
+         linglong_repo
+         linglong_dbusipc
+         linglong_package
          linglong_PackageManager_adaptor
          linglong_JobManager_adaptor
          linglong_Job_adaptor
+         linglong_PackageManagerHelper_adaptor
+         linglong_PackageManagerHelper_interface
 )

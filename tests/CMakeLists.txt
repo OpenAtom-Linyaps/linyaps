@@ -27,11 +27,6 @@ add_executable(
   ./utils/serialize/yaml.cpp
 )
 
-target_link_libraries(
-  ll-test
-  PRIVATE GTest::Main
-          linglong_lib
-          linglong_utils
-)
+target_link_libraries(ll-test PRIVATE GTest::Main linglong)
 
 gtest_discover_tests(ll-test WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})

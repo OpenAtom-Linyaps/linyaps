@@ -7,7 +7,7 @@
 #ifndef LINGLONG_SRC_BUILDER_BUILDER_BUILDER_CONFIG_H_
 #define LINGLONG_SRC_BUILDER_BUILDER_BUILDER_CONFIG_H_
 
-#include "module/util/qserializer/deprecated.h"
+#include "linglong/util/qserializer/deprecated.h"
 
 #include <QStandardPaths>
 #include <QString>

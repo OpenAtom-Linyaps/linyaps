@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include "module/util/xdg.h"
+#include "linglong/util/xdg.h"
 
 #include <QDebug>
 #include <QDir>

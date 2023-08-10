@@ -6,8 +6,8 @@
 
 #include <gtest/gtest.h>
 
-#include "module/runtime/app.h"
-#include "module/util/qserializer/yaml.h"
+#include "linglong/runtime/app.h"
+#include "linglong/util/qserializer/yaml.h"
 
 #include <QDebug>
 #include <QFile>

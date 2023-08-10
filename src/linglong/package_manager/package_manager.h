@@ -7,10 +7,10 @@
 #ifndef LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_H_
 #define LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_H_
 
-#include "module/dbus_ipc/package_manager_param.h"
-#include "module/dbus_ipc/param_option.h"
-#include "module/dbus_ipc/reply.h"
-#include "module/util/singleton.h"
+#include "linglong/dbus_ipc/package_manager_param.h"
+#include "linglong/dbus_ipc/param_option.h"
+#include "linglong/dbus_ipc/reply.h"
+#include "linglong/util/singleton.h"
 
 #include <QDBusArgument>
 #include <QDBusContext>

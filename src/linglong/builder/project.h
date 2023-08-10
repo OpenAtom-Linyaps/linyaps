@@ -7,8 +7,8 @@
 #ifndef LINGLONG_SRC_BUILDER_BUILDER_PROJECT_H_
 #define LINGLONG_SRC_BUILDER_BUILDER_PROJECT_H_
 
-#include "module/package/ref.h"
-#include "module/util/qserializer/deprecated.h"
+#include "linglong/package/ref.h"
+#include "linglong/util/qserializer/deprecated.h"
 
 #include <QObject>
 #include <QScopedPointer>

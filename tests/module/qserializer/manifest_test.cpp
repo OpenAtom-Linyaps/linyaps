@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include "module/util/oci/distribution_client.h"
+#include "linglong/util/oci/distribution_client.h"
 #include "object.h"
 
 #include <qdbusargument.h>

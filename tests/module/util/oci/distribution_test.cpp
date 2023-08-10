@@ -6,10 +6,10 @@
 
 #include <gtest/gtest.h>
 
-#include "module/util/oci/distribution_client.h"
-#include "module/util/qserializer/json.h"
-#include "module/util/sysinfo.h"
-#include "module/util/test/tool.h"
+#include "linglong/util/oci/distribution_client.h"
+#include "linglong/util/qserializer/json.h"
+#include "linglong/util/sysinfo.h"
+#include "linglong/util/test/tool.h"
 
 using namespace linglong;
 

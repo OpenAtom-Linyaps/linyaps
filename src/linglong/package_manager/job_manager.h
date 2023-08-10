@@ -7,8 +7,8 @@
 #ifndef LINGLONG_SRC_PACKAGE_MANAGER_IMPL_JOB_MANAGER_H_
 #define LINGLONG_SRC_PACKAGE_MANAGER_IMPL_JOB_MANAGER_H_
 
-#include "module/runtime/container.h"
-#include "module/util/singleton.h"
+#include "linglong/runtime/container.h"
+#include "linglong/util/singleton.h"
 
 #include <QDBusArgument>
 #include <QDBusContext>

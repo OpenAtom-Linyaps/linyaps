@@ -1,7 +1,7 @@
 #ifndef LINGLONG_UTILS_SERIALIZE_JSON_H
 #define LINGLONG_UTILS_SERIALIZE_JSON_H
 
-#include "module/util/error.h"
+#include "linglong/util/error.h"
 
 #include <QJsonArray>
 #include <QJsonDocument>

@@ -7,14 +7,14 @@
 #include "app_manager.h"
 
 #include "app_manager_p.h"
-#include "module/repo/ostree_repo.h"
-#include "module/repo/vfs_repo.h"
-#include "module/runtime/app.h"
-#include "module/util/app_status.h"
-#include "module/util/file.h"
-#include "module/util/runner.h"
-#include "module/util/status_code.h"
-#include "module/util/sysinfo.h"
+#include "linglong/repo/ostree_repo.h"
+#include "linglong/repo/vfs_repo.h"
+#include "linglong/runtime/app.h"
+#include "linglong/util/app_status.h"
+#include "linglong/util/file.h"
+#include "linglong/util/runner.h"
+#include "linglong/util/status_code.h"
+#include "linglong/util/sysinfo.h"
 
 #include <signal.h>
 #include <sys/types.h>

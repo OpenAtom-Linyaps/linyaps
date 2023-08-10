@@ -107,7 +107,7 @@ linglong_add_dbus_interface(
 
 set_source_files_properties(
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.AppManager.xml
-  PROPERTIES INCLUDE module/dbus_ipc/workaround.h
+  PROPERTIES INCLUDE linglong/dbus_ipc/workaround.h
 )
 
 linglong_add_dbus_interface(
@@ -118,7 +118,7 @@ linglong_add_dbus_interface(
 
 set_source_files_properties(
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManager.xml
-  PROPERTIES INCLUDE module/dbus_ipc/workaround.h
+  PROPERTIES INCLUDE linglong/dbus_ipc/workaround.h
 )
 
 linglong_add_dbus_interface(

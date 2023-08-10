@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include "module/util/http/http_client.h"
+#include "linglong/util/http/http_client.h"
 
 #include <QtConcurrent/QtConcurrent>
 

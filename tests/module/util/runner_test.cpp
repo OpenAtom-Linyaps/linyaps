@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include "module/util/runner.h"
+#include "linglong/util/runner.h"
 
 #include <QDebug>
 #include <QDir>

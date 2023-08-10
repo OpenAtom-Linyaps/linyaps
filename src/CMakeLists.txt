@@ -29,7 +29,3 @@ target_link_libraries(linglong_utils_serialize PUBLIC QSerializer::Core)
 
 add_library(linglong_utils INTERFACE)
 target_link_libraries(linglong_utils INTERFACE linglong_utils_serialize)
-
-add_executable(ll-system-helper ./ll-system-helper.main.cpp)
-target_link_libraries(ll-system-helper PRIVATE linglong::system_helper)
-install(TARGETS ll-system-helper RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

@@ -7,7 +7,7 @@
 #include "job_manager.h"
 
 #include "job.h"
-#include "module/repo/ostree_repohelper.h"
+#include "linglong/repo/ostree_repohelper.h"
 
 #include <QDBusConnection>
 #include <QProcess>

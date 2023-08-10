@@ -7,7 +7,7 @@
 #ifndef LINGLONG_BUILDER_BUILDER_BUILDER_H_
 #define LINGLONG_BUILDER_BUILDER_BUILDER_H_
 
-#include "module/util/error.h"
+#include "linglong/util/error.h"
 
 #include <QObject>
 

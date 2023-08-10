@@ -1,0 +1,3 @@
+add_library(linglong_util_test tool.cpp)
+linglong_private_library_add_headers(linglong_util_test tool.h)
+target_link_libraries(linglong_util_test PUBLIC Qt::Concurrent)

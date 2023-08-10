@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include "module/util/uuid.h"
+#include "linglong/util/uuid.h"
 
 #include <QDebug>
 #include <QDir>

@@ -7,8 +7,8 @@
 #ifndef LINGLONG_SRC_SERVICE_IMPL_APP_MANAGER_P_H_
 #define LINGLONG_SRC_SERVICE_IMPL_APP_MANAGER_P_H_
 
-#include "module/repo/repo.h"
-#include "module/runtime/app.h"
+#include "linglong/repo/repo.h"
+#include "linglong/runtime/app.h"
 
 namespace linglong {
 namespace service {

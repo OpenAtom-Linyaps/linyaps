@@ -6,9 +6,9 @@
 
 #include <gtest/gtest.h>
 
-#include "module/package/info.h"
-#include "module/package/package.h"
-#include "module/util/xdg.h"
+#include "linglong/package/info.h"
+#include "linglong/package/package.h"
+#include "linglong/util/xdg.h"
 
 #include <QDebug>
 #include <QFile>

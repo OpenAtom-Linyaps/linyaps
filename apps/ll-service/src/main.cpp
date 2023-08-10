@@ -5,7 +5,7 @@
  */
 
 #include "dbusgen/AppManagerAdaptor.h"
-#include "module/dbus_ipc/workaround.h"
+#include "linglong/dbus_ipc/workaround.h"
 
 #include <QCoreApplication>
 

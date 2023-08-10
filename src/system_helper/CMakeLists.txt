@@ -23,7 +23,7 @@ add_library(
 )
 target_link_libraries(
   linglong_lib_system_helper
-  PUBLIC linglong_lib
+  PUBLIC linglong
          linglong_PackageManagerHelper_adaptor
          linglong_FilesystemHelper_adaptor
 )

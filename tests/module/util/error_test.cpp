@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include "module/util/error.h"
+#include "linglong/util/error.h"
 
 #include <QDebug>
 

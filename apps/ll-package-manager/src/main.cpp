@@ -6,7 +6,7 @@
 
 #include "dbusgen/JobManagerAdaptor.h"
 #include "dbusgen/PackageManagerAdaptor.h"
-#include "module/dbus_ipc/workaround.h"
+#include "linglong/dbus_ipc/workaround.h"
 
 #include <QCoreApplication>
 

@@ -7,7 +7,7 @@
 #include "linglong/builder/depend_fetcher.h"
 
 #include "builder_config.h"
-#include "module/repo/ostree_repo.h"
+#include "linglong/repo/ostree_repo.h"
 #include "project.h"
 
 #include <QDir>

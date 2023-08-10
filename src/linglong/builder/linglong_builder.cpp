@@ -8,21 +8,21 @@
 
 #include "builder_config.h"
 #include "depend_fetcher.h"
-#include "module/package/bundle.h"
-#include "module/package/info.h"
-#include "module/repo/ostree_repo.h"
-#include "module/runtime/app.h"
-#include "module/runtime/container.h"
-#include "module/runtime/oci.h"
-#include "module/util/command_helper.h"
-#include "module/util/desktop_entry.h"
-#include "module/util/env.h"
-#include "module/util/error.h"
-#include "module/util/file.h"
-#include "module/util/qserializer/json.h"
-#include "module/util/qserializer/yaml.h"
-#include "module/util/runner.h"
-#include "module/util/sysinfo.h"
+#include "linglong/package/bundle.h"
+#include "linglong/package/info.h"
+#include "linglong/repo/ostree_repo.h"
+#include "linglong/runtime/app.h"
+#include "linglong/runtime/container.h"
+#include "linglong/runtime/oci.h"
+#include "linglong/util/command_helper.h"
+#include "linglong/util/desktop_entry.h"
+#include "linglong/util/env.h"
+#include "linglong/util/error.h"
+#include "linglong/util/file.h"
+#include "linglong/util/qserializer/json.h"
+#include "linglong/util/qserializer/yaml.h"
+#include "linglong/util/runner.h"
+#include "linglong/util/sysinfo.h"
 #include "source_fetcher.h"
 
 #include <linux/prctl.h>
@@ -86,7 +86,7 @@ linglong::util::Error commitBuildOutput(Project *project,
     fuseOverlayfs.waitForStarted(-1);
 
     auto _ = qScopeGuard([=] {
-          kill(static_cast<pid_t>(fuseOverlayfsPid), SIGTERM);
+        kill(static_cast<pid_t>(fuseOverlayfsPid), SIGTERM);
     });
 
     // FIXME: must wait fuse mount filesystem

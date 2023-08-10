@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include "module/util/qserializer/yaml.h"
+#include "linglong/util/qserializer/yaml.h"
 #include "object.h"
 
 #include <qdbusargument.h>

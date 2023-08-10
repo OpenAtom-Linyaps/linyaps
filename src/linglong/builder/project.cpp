@@ -7,10 +7,10 @@
 #include "project.h"
 
 #include "builder_config.h"
-#include "module/package/ref.h"
-#include "module/util/file.h"
-#include "module/util/qserializer/yaml.h"
-#include "module/util/sysinfo.h"
+#include "linglong/package/ref.h"
+#include "linglong/util/file.h"
+#include "linglong/util/qserializer/yaml.h"
+#include "linglong/util/sysinfo.h"
 
 #include <QDebug>
 

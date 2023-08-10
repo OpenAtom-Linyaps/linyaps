@@ -6,9 +6,9 @@
 
 #include "linglong/builder/builder_config.h"
 
-#include "module/util/file.h"
-#include "module/util/qserializer/yaml.h"
-#include "module/util/xdg.h"
+#include "linglong/util/file.h"
+#include "linglong/util/qserializer/yaml.h"
+#include "linglong/util/xdg.h"
 
 #include <mutex>
 

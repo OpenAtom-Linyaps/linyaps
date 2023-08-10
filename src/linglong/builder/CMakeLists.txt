@@ -8,25 +8,21 @@ add_library(
   source_fetcher.cpp
 )
 
-target_sources(
+linglong_private_library_add_headers(
   linglong_builder
-  PUBLIC FILE_SET
-         HEADERS
-         BASE_DIRS
-         ${LINGLONG_FILESET_BASEDIRS}
-         FILES
-         builder_config.h
-         builder.h
-         project.h
-         depend_fetcher.h
-         linglong_builder.h
-         source_fetcher.h
-         source_fetcher_p.h
+  builder_config.h
+  builder.h
+  project.h
+  depend_fetcher.h
+  linglong_builder.h
+  source_fetcher.h
+  source_fetcher_p.h
 )
 
 target_link_libraries(
   linglong_builder
-  PUBLIC linglong_lib
+  PUBLIC Qt::Core
          PkgConfig::glib2
          PkgConfig::ostree1
+         linglong_util
 )

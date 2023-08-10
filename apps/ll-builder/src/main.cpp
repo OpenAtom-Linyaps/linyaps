@@ -8,9 +8,9 @@
 #include "linglong/builder/builder_config.h"
 #include "linglong/builder/linglong_builder.h"
 #include "linglong/builder/project.h"
-#include "module/package/package.h"
-#include "module/repo/repo.h"
-#include "module/util/qserializer/yaml.h"
+#include "linglong/package/package.h"
+#include "linglong/repo/repo.h"
+#include "linglong/util/qserializer/yaml.h"
 
 #include <QCommandLineOption>
 #include <QCommandLineParser>

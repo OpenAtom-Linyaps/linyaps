@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_SRC_BUILDER_BUILDER_BUILDER_H_
-#define LINGLONG_SRC_BUILDER_BUILDER_BUILDER_H_
+#ifndef LINGLONG_BUILDER_BUILDER_BUILDER_H_
+#define LINGLONG_BUILDER_BUILDER_BUILDER_H_
 
 #include "module/util/error.h"
 

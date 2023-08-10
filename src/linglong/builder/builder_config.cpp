@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "builder_config.h"
+#include "linglong/builder/builder_config.h"
 
 #include "module/util/file.h"
 #include "module/util/qserializer/yaml.h"

@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "depend_fetcher.h"
+#include "linglong/builder/depend_fetcher.h"
 
 #include "builder_config.h"
 #include "module/repo/ostree_repo.h"

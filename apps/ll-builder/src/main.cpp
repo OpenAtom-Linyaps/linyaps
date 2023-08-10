@@ -4,10 +4,10 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "builder/builder.h"
-#include "builder/builder_config.h"
-#include "builder/linglong_builder.h"
-#include "builder/project.h"
+#include "linglong/builder/builder.h"
+#include "linglong/builder/builder_config.h"
+#include "linglong/builder/linglong_builder.h"
+#include "linglong/builder/project.h"
 #include "module/package/package.h"
 #include "module/repo/repo.h"
 #include "module/util/qserializer/yaml.h"

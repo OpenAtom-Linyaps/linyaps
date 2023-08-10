@@ -1,4 +1,8 @@
-add_subdirectory(api)
+set(LINGLONG_FILESET_BASEDIRS ${PROJECT_SOURCE_DIR}/src
+                              ${PROJECT_BINARY_DIR}/src
+)
+
+add_subdirectory(linglong)
 
 add_subdirectory(dbusgen)
 
@@ -11,21 +15,3 @@ add_subdirectory(service)
 add_subdirectory(system_helper)
 
 add_subdirectory(builder)
-
-add_library(linglong_utils_serialize utils/serialize/yaml.cpp)
-target_sources(
-  linglong_utils_serialize
-  PUBLIC FILE_SET
-         private_headers
-         TYPE
-         HEADERS
-         BASE_DIRS
-         .
-         FILES
-         utils/serialize/yaml.h
-         utils/serialize/json.h
-)
-target_link_libraries(linglong_utils_serialize PUBLIC QSerializer::Core)
-
-add_library(linglong_utils INTERFACE)
-target_link_libraries(linglong_utils INTERFACE linglong_utils_serialize)

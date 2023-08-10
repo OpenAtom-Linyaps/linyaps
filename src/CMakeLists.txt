@@ -30,10 +30,6 @@ target_link_libraries(linglong_utils_serialize PUBLIC QSerializer::Core)
 add_library(linglong_utils INTERFACE)
 target_link_libraries(linglong_utils INTERFACE linglong_utils_serialize)
 
-add_executable(ll-package-manager ./ll-package-manager.main.cpp)
-target_link_libraries(ll-package-manager PRIVATE linglong::package_manager)
-install(TARGETS ll-package-manager RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-
 add_executable(ll-service ./ll-service.main.cpp)
 target_link_libraries(ll-service PRIVATE linglong::service)
 install(TARGETS ll-service RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

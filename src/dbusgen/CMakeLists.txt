@@ -27,7 +27,7 @@ endfunction()
 linglong_add_dbus_adaptor(
   linglong_PackageManager_adaptor
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManager.xml
-  package_manager/package_manager.h
+  linglong/package_manager/package_manager.h
   linglong::service::PackageManager
   PackageManagerAdaptor
 )
@@ -35,7 +35,7 @@ linglong_add_dbus_adaptor(
 linglong_add_dbus_adaptor(
   linglong_JobManager_adaptor
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.JobManager.xml
-  package_manager/job_manager.h
+  linglong/package_manager/job_manager.h
   JobManager
   JobManagerAdaptor
 )
@@ -43,7 +43,7 @@ linglong_add_dbus_adaptor(
 linglong_add_dbus_adaptor(
   linglong_Job_adaptor
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.Job.xml
-  package_manager/job.h
+  linglong/package_manager/job.h
   Job
   JobAdaptor
 )

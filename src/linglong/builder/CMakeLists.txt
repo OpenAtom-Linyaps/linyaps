@@ -11,8 +11,6 @@ add_library(
 target_sources(
   linglong_builder
   PUBLIC FILE_SET
-         public_headers
-         TYPE
          HEADERS
          BASE_DIRS
          ${LINGLONG_FILESET_BASEDIRS}

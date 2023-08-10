@@ -13,6 +13,6 @@ target_sources(linglong_lib_service PRIVATE ${LIB_LL_SERVICE_SOURCES})
 target_link_libraries(
   linglong_lib_service
   PUBLIC linglong_lib
-         linglong::package_manager
+         linglong_packagemanager
          linglong_AppManager_adaptor
 )

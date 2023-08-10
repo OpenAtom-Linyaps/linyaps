@@ -6,8 +6,6 @@ add_subdirectory(dbusgen)
 
 add_subdirectory(module)
 
-add_subdirectory(package_manager)
-
 add_subdirectory(service)
 
 add_subdirectory(system_helper)

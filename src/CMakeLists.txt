@@ -6,8 +6,6 @@ add_subdirectory(dbusgen)
 
 add_subdirectory(module)
 
-add_subdirectory(service)
-
 add_subdirectory(system_helper)
 
 add_subdirectory(linglong)

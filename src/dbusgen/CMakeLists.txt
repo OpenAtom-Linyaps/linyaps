@@ -51,7 +51,7 @@ linglong_add_dbus_adaptor(
 linglong_add_dbus_adaptor(
   linglong_AppManager_adaptor
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.AppManager.xml
-  service/app_manager.h
+  linglong/service/app_manager.h
   linglong::service::AppManager
   AppManagerAdaptor
 )

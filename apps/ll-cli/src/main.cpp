@@ -15,7 +15,7 @@
 #include "module/util/sysinfo.h"
 #include "module/util/xdg.h"
 #include "linglong/package_manager/package_manager.h"
-#include "service/app_manager.h"
+#include "linglong/service/app_manager.h"
 
 #include <QCommandLineOption>
 #include <QCommandLineParser>

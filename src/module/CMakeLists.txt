@@ -19,12 +19,6 @@ target_link_libraries(
          PkgConfig::glib2
          PkgConfig::ostree1
          yaml-cpp
-         linglong_PackageManager_adaptor
-         linglong_JobManager_adaptor
-         linglong_Job_adaptor
-         linglong_AppManager_adaptor
-         linglong_PackageManagerHelper_adaptor
-         linglong_FilesystemHelper_adaptor
          linglong_PackageManager_interface
          linglong_AppManager_interface
          linglong_PackageManagerHelper_interface

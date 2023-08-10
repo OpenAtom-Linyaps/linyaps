@@ -16,5 +16,14 @@ add_library(
   privilege/privilege_install_portal.cpp
   privilege/privilege_install_portal.h
 )
-add_library(linglong::system_helper ALIAS linglong_lib_system_helper)
-target_link_libraries(linglong_lib_system_helper PUBLIC linglong_lib)
+add_library(
+  linglong::system_helper
+  ALIAS
+  linglong_lib_system_helper
+)
+target_link_libraries(
+  linglong_lib_system_helper
+  PUBLIC linglong_lib
+         linglong_PackageManagerHelper_adaptor
+         linglong_FilesystemHelper_adaptor
+)

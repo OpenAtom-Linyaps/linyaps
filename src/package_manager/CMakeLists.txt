@@ -13,4 +13,10 @@ add_library(
   ALIAS
   linglong_lib_package_manager
 )
-target_link_libraries(linglong_lib_package_manager PUBLIC linglong_lib)
+target_link_libraries(
+  linglong_lib_package_manager
+  PUBLIC linglong_lib
+         linglong_PackageManager_adaptor
+         linglong_JobManager_adaptor
+         linglong_Job_adaptor
+)

@@ -81,6 +81,5 @@ add_subdirectory(tools)
 
 include(CTest)
 if(BUILD_TESTING)
-  enable_testing()
   add_subdirectory(tests)
 endif()

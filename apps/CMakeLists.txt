@@ -1,5 +1,6 @@
 add_subdirectory(ll-builder)
 add_subdirectory(ll-cli)
-add_subdirectory(llpkg)
 add_subdirectory(ll-package-manager)
 add_subdirectory(ll-service)
+add_subdirectory(ll-system-helper)
+add_subdirectory(llpkg)

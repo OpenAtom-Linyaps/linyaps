@@ -3,8 +3,6 @@ add_library(linglong_utils_serialize yaml.cpp)
 target_sources(
   linglong_utils_serialize
   PUBLIC FILE_SET
-         public_headers
-         TYPE
          HEADERS
          BASE_DIRS
          ${LINGLONG_FILESET_BASEDIRS}

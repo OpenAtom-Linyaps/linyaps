@@ -10,8 +10,6 @@ add_library(
 target_sources(
   linglong_api_v1_types
   PUBLIC FILE_SET
-         public_headers
-         TYPE
          HEADERS
          BASE_DIRS
          ${LINGLONG_FILESET_BASEDIRS}

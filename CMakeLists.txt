@@ -75,6 +75,7 @@ pkg_search_module(
 include(GNUInstallDirs)
 
 add_subdirectory(src)
+add_subdirectory(apps)
 add_subdirectory(misc)
 add_subdirectory(tools)
 

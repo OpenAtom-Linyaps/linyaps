@@ -30,22 +30,6 @@ target_link_libraries(linglong_utils_serialize PUBLIC QSerializer::Core)
 add_library(linglong_utils INTERFACE)
 target_link_libraries(linglong_utils INTERFACE linglong_utils_serialize)
 
-add_executable(ll-cli ll-cli.main.cpp)
-target_link_libraries(
-  ll-cli
-  PRIVATE linglong_lib
-          linglong::package_manager
-          linglong::service
-)
-install(TARGETS ll-cli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-# https://stackoverflow.com/a/42697475 and https://stackoverflow.com/a/74888297
-install(
-  CODE "execute_process(
-      COMMAND ${CMAKE_COMMAND} -E create_symlink ll-cli llpkg
-      WORKING_DIRECTORY \$ENV{DESTDIR}/${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}
-    )"
-)
-
 add_executable(ll-package-manager ./ll-package-manager.main.cpp)
 target_link_libraries(ll-package-manager PRIVATE linglong::package_manager)
 install(TARGETS ll-package-manager RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

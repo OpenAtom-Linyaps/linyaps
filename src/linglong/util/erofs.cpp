@@ -20,7 +20,7 @@ util::Error mount(const QString &src, const QString &mountPoint)
         return util::Exec("erofsfuse", { src, mountPoint });
     }
 
-    OrgDeepinLinglongFilesystemHelperInterface ifc(SystemHelperDBusServiceName,
+    OrgDeepinLinglongFilesystemHelper1Interface ifc(SystemHelperDBusServiceName,
                                                    FilesystemHelperDBusPath,
                                                    QDBusConnection::systemBus());
 

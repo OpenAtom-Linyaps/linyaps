@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    AppManagerAdaptor pma(APP_MANAGER);
+    AppManager1Adaptor pma(APP_MANAGER);
 
     // TODO(se): 需要进行错误处理
     dbus.registerObject("/org/deepin/linglong/AppManager", APP_MANAGER);

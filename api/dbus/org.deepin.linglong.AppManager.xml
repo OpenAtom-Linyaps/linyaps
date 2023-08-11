@@ -1,36 +1,40 @@
-<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
-        "https://specifications.freedesktop.org/dbus/introspect-latest.dtd">
+<?xml version="1.0"?>
+<!--
+SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+SPDX-License-Identifier: LGPL-3.0-or-later
+-->
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "https://specifications.freedesktop.org/dbus/introspect-latest.dtd">
 <node>
-    <interface name="org.deepin.linglong.AppManager">
-        <method name="Status">
-            <arg name="Status" type="s" direction="out"/>
-        </method>
-        <method name="Start">
-            <arg name="paramOption" type="(sssssssbsssss)" direction="in"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::RunParamOption"/>
-            <arg type="(is)" direction="out"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
-        </method>
-        <method name="Exec">
-            <arg name="paramOption" type="(ssss)" direction="in"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::ExecParamOption"/>
-            <arg type="(is)" direction="out"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
-        </method>
-        <method name="Stop">
-            <arg name="ContainerID" type="s" direction="in"/>
-            <arg type="(is)" direction="out"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
-        </method>
-        <method name="ListContainer">
-            <arg name="ContainerList" type="(iss)" direction="out"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::QueryReply"/>
-        </method>
-        <method name="RunCommand">
-            <arg name="exe" type="s" direction="in"/>
-            <arg name="args" type="as" direction="in"/>
-            <arg type="(is)" direction="out"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
-        </method>
-    </interface>
+  <interface name="org.deepin.linglong.AppManager">
+    <method name="Status">
+      <arg direction="out" name="Status" type="s"/>
+    </method>
+    <method name="Start">
+      <arg direction="in" name="paramOption" type="(sssssssbsssss)"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::RunParamOption"/>
+      <arg direction="out" type="(is)"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
+    </method>
+    <method name="Exec">
+      <arg direction="in" name="paramOption" type="(ssss)"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::ExecParamOption"/>
+      <arg direction="out" type="(is)"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
+    </method>
+    <method name="Stop">
+      <arg direction="in" name="ContainerID" type="s"/>
+      <arg direction="out" type="(is)"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
+    </method>
+    <method name="ListContainer">
+      <arg direction="out" name="ContainerList" type="(iss)"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::QueryReply"/>
+    </method>
+    <method name="RunCommand">
+      <arg direction="in" name="exe" type="s"/>
+      <arg direction="in" name="args" type="as"/>
+      <arg direction="out" type="(is)"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
+    </method>
+  </interface>
 </node>

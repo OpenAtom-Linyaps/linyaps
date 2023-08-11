@@ -1,12 +1,17 @@
-<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
-        "https://specifications.freedesktop.org/dbus/introspect-latest.dtd">
+<?xml version="1.0"?>
+<!--
+SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+SPDX-License-Identifier: LGPL-3.0-or-later
+-->
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "https://specifications.freedesktop.org/dbus/introspect-latest.dtd">
 <node>
-    <interface name="org.deepin.linglong.Job">
-        <method name="Status">
-            <arg name="Status" type="s" direction="out"/>
-        </method>
-        <signal name="Finish">
-            <arg name="Status" type="s" direction="in"/>
-        </signal>
-    </interface>
+  <interface name="org.deepin.linglong.Job">
+    <method name="Status">
+      <arg name="Status" type="s" direction="out"/>
+    </method>
+    <signal name="Finish">
+      <arg name="Status" type="s" direction="in"/>
+    </signal>
+  </interface>
 </node>
+

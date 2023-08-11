@@ -17,3 +17,8 @@ Copyright: Chen Linxuan <me@black-desk.cn>
 Files: misc/linglong/permission/*.json
 License: CC0-1.0
 Copyright: None
+
+# Documents
+Files: docs/* README.md README.zh_CN.md INSTALL.md
+License: CC-BY-4.0
+Copyright: UnionTech Software Technology Co., Ltd.

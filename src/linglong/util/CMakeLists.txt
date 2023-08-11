@@ -59,7 +59,7 @@ target_link_libraries(
          linglong_util_qserializer
          linglong_util_test
          linglong_util_version
-         linglong_FilesystemHelper_interface
+         linglong_api
          Qt::Core
          Qt::Sql
 )

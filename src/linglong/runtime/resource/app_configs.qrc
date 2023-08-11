@@ -1,7 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+SPDX-License-Identifier: LGPL-3.0-or-later
+-->
 <RCC>
-    <qresource prefix="/">
-        <file>config.json</file>
-        <file>app.yaml</file>
-        <file>app_config.json</file>
-    </qresource>
+  <qresource prefix="/">
+    <file>config.json</file>
+    <file>app.yaml</file>
+    <file>app_config.json</file>
+  </qresource>
 </RCC>

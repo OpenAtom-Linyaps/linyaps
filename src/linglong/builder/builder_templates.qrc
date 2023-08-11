@@ -1,11 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+SPDX-License-Identifier: LGPL-3.0-or-later
+-->
 <RCC>
-    <qresource prefix="/">
-        <file alias="config.yaml">../../../misc/linglong/builder/config.yaml</file>
-        <file alias="strip.sh">../../../misc/linglong/builder/templates/strip.sh</file>
-        <file alias="autotools.yaml">../../../misc/linglong/builder/templates/autotools.yaml</file>
-        <file alias="cmake.yaml">../../../misc/linglong/builder/templates/cmake.yaml</file>
-        <file alias="default.yaml">../../../misc/linglong/builder/templates/default.yaml</file>
-        <file alias="qmake.yaml">../../../misc/linglong/builder/templates/qmake.yaml</file>
-        <file alias="example.yaml">../../../misc/linglong/builder/templates/example.yaml</file>
-    </qresource>
+  <qresource prefix="/">
+    <file alias="config.yaml">../../../misc/linglong/builder/config.yaml</file>
+    <file alias="strip.sh">../../../misc/linglong/builder/templates/strip.sh</file>
+    <file alias="autotools.yaml">../../../misc/linglong/builder/templates/autotools.yaml</file>
+    <file alias="cmake.yaml">../../../misc/linglong/builder/templates/cmake.yaml</file>
+    <file alias="default.yaml">../../../misc/linglong/builder/templates/default.yaml</file>
+    <file alias="qmake.yaml">../../../misc/linglong/builder/templates/qmake.yaml</file>
+    <file alias="example.yaml">../../../misc/linglong/builder/templates/example.yaml</file>
+  </qresource>
 </RCC>

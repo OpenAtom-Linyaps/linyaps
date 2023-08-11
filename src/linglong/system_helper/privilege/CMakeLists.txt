@@ -1,0 +1,7 @@
+add_library(linglong_systemhelper_privilege privilege_install_portal.cpp)
+linglong_private_library_add_headers(
+  linglong_systemhelper_privilege privilege_install_portal.h
+)
+target_link_libraries(
+  linglong_systemhelper_privilege PUBLIC linglong_util linglong_package
+)

@@ -8,9 +8,9 @@
 #include "dbusgen/PackageManagerHelperAdaptor.h"
 #include "linglong/dbus_ipc/dbus_common.h"
 #include "linglong/dbus_ipc/dbus_system_helper_common.h"
-#include "system_helper/filesystem_helper.h"
-#include "system_helper/package_manager_helper.h"
-#include "system_helper/privilege/privilege_install_portal.h"
+#include "linglong/system_helper/filesystem_helper.h"
+#include "linglong/system_helper/package_manager_helper.h"
+#include "linglong/system_helper/privilege/privilege_install_portal.h"
 
 #include <QCoreApplication>
 #include <QDBusConnection>

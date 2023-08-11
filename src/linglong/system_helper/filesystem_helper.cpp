@@ -7,9 +7,9 @@
 #include "filesystem_helper.h"
 
 #include "linglong/dbus_ipc/dbus_common.h"
+#include "linglong/system_helper/privilege/privilege_install_portal.h"
 #include "linglong/util/file.h"
 #include "linglong/util/runner.h"
-#include "privilege/privilege_install_portal.h"
 
 #include <QDir>
 

@@ -59,7 +59,7 @@ linglong_add_dbus_adaptor(
 linglong_add_dbus_adaptor(
   linglong_PackageManagerHelper_adaptor
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManagerHelper.xml
-  system_helper/package_manager_helper.h
+  linglong/system_helper/package_manager_helper.h
   linglong::system::helper::PackageManagerHelper
   PackageManagerHelperAdaptor
 )
@@ -67,7 +67,7 @@ linglong_add_dbus_adaptor(
 linglong_add_dbus_adaptor(
   linglong_FilesystemHelper_adaptor
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.FilesystemHelper.xml
-  system_helper/filesystem_helper.h
+  linglong/system_helper/filesystem_helper.h
   linglong::system::helper::FilesystemHelper
   FilesystemHelperAdaptor
 )

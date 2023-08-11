@@ -27,3 +27,8 @@ Copyright: UnionTech Software Technology Co., Ltd.
 Files: debian/*
 License: CC0-1.0
 Copyright: None
+
+# Some json files contains in qrc file
+Files: src/linglong/runtime/resource/*json
+License: LGPL-3.0-only
+Copyright: UnionTech Software Technology Co., Ltd.

@@ -12,3 +12,8 @@ Copyright: None
 Files: external/qserializer/*
 License: LGPL-3.0-only
 Copyright: Chen Linxuan <me@black-desk.cn>
+
+# some deepin permission related json configuration files
+Files: misc/linglong/permission/*.json
+License: CC0-1.0
+Copyright: None

@@ -2,6 +2,10 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
+# workaround for private header
+include_directories(${linglong_SOURCE_DIR}/src)
+include_directories(${linglong_BINARY_DIR}/src)
+
 function(
   linglong_add_dbus_adaptor
   target_name

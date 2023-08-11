@@ -31,10 +31,6 @@ set(CMAKE_POLICY_DEFAULT_CMP0126 NEW)
 set(QSERIALIZER_QT_VERSION_MAJOR "5")
 add_subdirectory(external/qserializer)
 
-# for private header
-include_directories(${linglong_SOURCE_DIR}/src)
-include_directories(${linglong_BINARY_DIR}/src)
-
 # qt
 
 set(CMAKE_CXX_STANDARD 17)

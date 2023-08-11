@@ -8,7 +8,7 @@ project (
         LANGUAGES
                 CXX
         VERSION
-                0.1.0
+                0.1.1
 )
 
 include (${PROJECT_SOURCE_DIR}/misc/cmake/GetSemverFromGit.cmake)

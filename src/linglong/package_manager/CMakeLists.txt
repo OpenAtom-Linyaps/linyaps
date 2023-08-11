@@ -27,6 +27,4 @@ target_link_libraries(
          linglong_PackageManager_adaptor
          linglong_JobManager_adaptor
          linglong_Job_adaptor
-         linglong_PackageManagerHelper_adaptor
-         linglong_PackageManagerHelper_interface
 )

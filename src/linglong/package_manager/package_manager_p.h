@@ -7,7 +7,7 @@
 #ifndef LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_P_H_
 #define LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_P_H_
 
-#include "dbusgen/PackageManagerHelperInterface.h"
+#include "linglong/api/v1/dbus/interfaces/package_manager_helper.h"
 #include "linglong/dbus_ipc/package_manager_param.h"
 #include "linglong/dbus_ipc/param_option.h"
 #include "linglong/dbus_ipc/reply.h"
@@ -209,7 +209,7 @@ private:
 
     bool noDBusMode = false;
 
-    OrgDeepinLinglongPackageManagerHelper1Interface packageManagerHelperInterface;
+    api::v1::dbus::interfaces::PackageManagerHelper packageManagerHelperInterface;
 
 public:
     PackageManager *const q_ptr;

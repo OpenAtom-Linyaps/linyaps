@@ -17,5 +17,3 @@ endfunction()
 add_subdirectory(dbusgen)
 
 add_subdirectory(linglong)
-
-add_subdirectory(system_helper)

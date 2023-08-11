@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "package_manager_helper.h"
+#include "linglong/system_helper/package_manager_helper.h"
 
-#include "privilege/privilege_install_portal.h"
+#include "linglong/system_helper/privilege/privilege_install_portal.h"
 
 namespace linglong {
 namespace system {
@@ -19,8 +19,8 @@ namespace helper {
  * @param options not use now
  */
 void PackageManagerHelper::RebuildInstallPortal(const QString &installPath,
-                                        const QString &ref,
-                                        const QVariantMap &options)
+                                                const QString &ref,
+                                                const QVariantMap &options)
 {
     qDebug() << "call PostInstall" << installPath << ref << options;
     const auto err = rebuildPrivilegeInstallPortal(installPath, ref, options);
@@ -37,8 +37,8 @@ void PackageManagerHelper::RebuildInstallPortal(const QString &installPath,
  * @param options
  */
 void PackageManagerHelper::RuinInstallPortal(const QString &installPath,
-                                     const QString &ref,
-                                     const QVariantMap &options)
+                                             const QString &ref,
+                                             const QVariantMap &options)
 {
     const auto err = ruinPrivilegeInstallPortal(installPath, ref, options);
     if (err) {

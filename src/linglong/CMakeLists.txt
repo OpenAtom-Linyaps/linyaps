@@ -10,6 +10,7 @@ add_subdirectory(util)
 add_subdirectory(builder)
 add_subdirectory(package_manager)
 add_subdirectory(service)
+add_subdirectory(system_helper)
 
 add_library(linglong INTERFACE)
 target_link_libraries(
@@ -24,4 +25,5 @@ target_link_libraries(
             linglong_repo
             linglong_runtime
             linglong_util
+            linglong_systemhelper
 )

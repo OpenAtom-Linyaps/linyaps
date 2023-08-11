@@ -1,4 +1,11 @@
+#!/bin/bash
+
+# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
 #binary strip script
+
 if [ ! -f $(command -v eu-strip) ]; then
   echo "can not found  eu-strip"
   exit 1;

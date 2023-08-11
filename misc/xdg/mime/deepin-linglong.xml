@@ -1,9 +1,13 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+SPDX-License-Identifier: LGPL-3.0-or-later
+-->
 <mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
-        <mime-type type="application/x-deepin.linglong-package">
-                <comment>deepin linglong package</comment>
-                <generic-icon name="deepin-linglong-uab"/>
-                <glob pattern="*.uab"/>
-                <glob pattern="*.UAB"/>
-        </mime-type>
+  <mime-type type="application/x-deepin.linglong-package">
+    <comment>deepin linglong package</comment>
+    <generic-icon name="deepin-linglong-uab"/>
+    <glob pattern="*.uab"/>
+    <glob pattern="*.UAB"/>
+  </mime-type>
 </mime-info>

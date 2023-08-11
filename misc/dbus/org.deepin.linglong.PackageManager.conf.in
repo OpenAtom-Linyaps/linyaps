@@ -1,18 +1,17 @@
-<?xml version="1.0" encoding="UTF-8"?> <!-- -*- XML -*- -->
-
-<!DOCTYPE busconfig PUBLIC
- "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN"
- "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+SPDX-License-Identifier: LGPL-3.0-or-later
+-->
+<!-- -*- XML -*- -->
+<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
 <busconfig>
-
   <!-- Only @LINGLONG_USERNAME@ can own the service -->
   <policy user="@LINGLONG_USERNAME@">
     <allow own="org.deepin.linglong.PackageManager"/>
   </policy>
-
   <!-- Allow anyone to invoke methods on the interfaces -->
   <policy context="default">
     <allow send_destination="org.deepin.linglong.PackageManager"/>
   </policy>
-
 </busconfig>

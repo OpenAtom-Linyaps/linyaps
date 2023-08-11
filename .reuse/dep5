@@ -2,3 +2,8 @@ Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: linglong
 Upstream-Contact:  UnionTech Software Technology Co., Ltd. <>
 Source: https://github.com/linuxdeepin/linglong
+
+# CI config files
+Files: .github/* .obs/*
+License: CC0-1.0
+Copyright: None

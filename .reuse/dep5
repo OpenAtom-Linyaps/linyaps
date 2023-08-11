@@ -22,3 +22,8 @@ Copyright: None
 Files: docs/* README.md README.zh_CN.md INSTALL.md
 License: CC-BY-4.0
 Copyright: UnionTech Software Technology Co., Ltd.
+
+# debian packaging configurations
+Files: debian/*
+License: CC0-1.0
+Copyright: None

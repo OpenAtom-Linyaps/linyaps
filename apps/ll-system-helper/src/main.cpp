@@ -22,10 +22,10 @@ int main(int argc, char *argv[])
     QCoreApplication app(argc, argv);
 
     PackageManagerHelper packageManagerHelper;
-    PackageManagerHelperAdaptor packageManagerHelperAdaptor(&packageManagerHelper);
+    PackageManagerHelper1Adaptor packageManagerHelperAdaptor(&packageManagerHelper);
 
     FilesystemHelper filesystemHelper;
-    FilesystemHelperAdaptor filesystemHelperAdaptor(&filesystemHelper);
+    FilesystemHelper1Adaptor filesystemHelperAdaptor(&filesystemHelper);
 
     QCommandLineParser parser;
     QCommandLineOption optBus("bus", "service bus address", "bus");

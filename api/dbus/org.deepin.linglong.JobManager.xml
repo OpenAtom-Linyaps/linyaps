@@ -5,7 +5,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "https://specifications.freedesktop.org/dbus/introspect-latest.dtd">
 <node>
-  <interface name="org.deepin.linglong.JobManager">
+  <interface name="org.deepin.linglong.JobManager1">
     <method name="List">
       <arg name="JobIdList" type="as" direction="out"/>
     </method>
@@ -20,4 +20,3 @@ SPDX-License-Identifier: LGPL-3.0-or-later
     </method>
   </interface>
 </node>
-

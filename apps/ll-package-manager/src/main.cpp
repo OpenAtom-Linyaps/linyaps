@@ -23,8 +23,8 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    PackageManagerAdaptor packageManagerAdaptor(PACKAGE_MANAGER);
-    JobManagerAdaptor jma(JobManager::instance());
+    PackageManager1Adaptor packageManagerAdaptor(PACKAGE_MANAGER);
+    JobManager1Adaptor jma(JobManager::instance());
 
     dbus.registerObject("/org/deepin/linglong/PackageManager", PACKAGE_MANAGER);
     dbus.registerObject("/org/deepin/linglong/JobManager", JobManager::instance());

@@ -209,7 +209,7 @@ private:
 
     bool noDBusMode = false;
 
-    OrgDeepinLinglongPackageManagerHelperInterface packageManagerHelperInterface;
+    OrgDeepinLinglongPackageManagerHelper1Interface packageManagerHelperInterface;
 
 public:
     PackageManager *const q_ptr;

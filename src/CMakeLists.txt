@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
 set(LINGLONG_FILESET_BASEDIRS ${PROJECT_SOURCE_DIR}/src
                               ${PROJECT_BINARY_DIR}/src
 )

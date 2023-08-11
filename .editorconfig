@@ -1,8 +1,17 @@
-[*.{cpp,h,hh,cc,hpp,cxx}]
-
+[*]
 indent_style = space
-indent_size = 4
-tab_width = 8
 charset = utf-8
 end_of_line = lf
 insert_final_newline = true
+
+[*.{cpp,h,hh,cc,hpp,cxx,json}]
+indent_size = 4
+tab_width = 4
+
+[*.{xml,yaml,qrc}]
+indent_size = 2
+tab_width = 2
+
+[misc/dbus/*.conf.in]
+indent_size = 2
+tab_width = 2

@@ -5,7 +5,7 @@
  */
 
 #include "dbusgen/JobManagerAdaptor.h"
-#include "dbusgen/PackageManagerAdaptor.h"
+#include "linglong/adaptors/package_manager/package_manager1.h"
 #include "linglong/dbus_ipc/workaround.h"
 
 #include <QCoreApplication>
@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    PackageManager1Adaptor packageManagerAdaptor(PACKAGE_MANAGER);
+    linglong::adaptors::package_manger::PackageManager1 packageManagerAdaptor(PACKAGE_MANAGER);
     JobManager1Adaptor jma(JobManager::instance());
 
     dbus.registerObject("/org/deepin/linglong/PackageManager", PACKAGE_MANAGER);

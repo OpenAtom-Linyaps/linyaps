@@ -25,9 +25,9 @@ linglong_add_library(
   adaptors
   SUBDIRS
   app_manager
+  package_manager
   # filesystem_helper
   # job
   # job_manager
-  # package_manager
   # package_manager_helper
 )

@@ -57,11 +57,11 @@ linglong_add_dbus_interface(
 )
 
 set_source_files_properties(
-  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManager.xml
+  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManager1.xml
   PROPERTIES INCLUDE linglong/dbus_ipc/workaround.h
 )
 
 linglong_add_dbus_interface(
-  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManager.xml
-  gen_org_deepin_linglong_packagemanager
+  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManager1.xml
+  gen_org_deepin_linglong_packagemanager1
 )

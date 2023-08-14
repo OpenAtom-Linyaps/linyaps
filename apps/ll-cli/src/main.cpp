@@ -5,7 +5,7 @@
  */
 
 #include "linglong/api/v1/dbus/app_manager1.h"
-#include "linglong/api/v1/dbus/package_manager.h"
+#include "linglong/api/v1/dbus/package_manager1.h"
 #include "linglong/package/package.h"
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/service/app_manager.h"
@@ -120,7 +120,7 @@ static void printAppInfo(QList<QSharedPointer<linglong::package::AppMetaInfo>> a
  * @param packageManager ll-service dbus服务
  *
  */
-static void checkAndStartService(OrgDeepinLinglongAppManager1Interface &appManager)
+static void checkAndStartService(linglong::api::v1::dbus::AppManager1 &appManager)
 {
     const auto kStatusActive = "active";
     QDBusReply<QString> status = appManager.Status();
@@ -180,9 +180,9 @@ int main(int argc, char **argv)
     QStringList args = parser.positionalArguments();
     QString command = args.isEmpty() ? QString() : args.first();
 
-    OrgDeepinLinglongAppManager1Interface appManager("org.deepin.linglong.AppManager",
-                                                     "/org/deepin/linglong/AppManager",
-                                                     QDBusConnection::sessionBus());
+    linglong::api::v1::dbus::AppManager1 appManager("org.deepin.linglong.AppManager",
+                                                    "/org/deepin/linglong/AppManager",
+                                                    QDBusConnection::sessionBus());
 
     OrgDeepinLinglongPackageManager1Interface sysPackageManager(
             "org.deepin.linglong.PackageManager",

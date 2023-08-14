@@ -68,6 +68,4 @@ function(linglong_add_library target)
   endif()
 endfunction()
 
-add_subdirectory(dbusgen)
-
 add_subdirectory(linglong)

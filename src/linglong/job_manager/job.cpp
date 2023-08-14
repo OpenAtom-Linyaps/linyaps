@@ -6,6 +6,8 @@
 
 #include "linglong/job_manager/job.h"
 
+namespace linglong::job_manager {
+
 class JobPrivate
 {
 public:
@@ -44,3 +46,5 @@ void Job::run()
 }
 
 Job::~Job() = default;
+
+}; // namespace linglong::job_manager

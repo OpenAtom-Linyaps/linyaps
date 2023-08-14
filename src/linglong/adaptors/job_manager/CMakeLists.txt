@@ -18,7 +18,7 @@ linglong_add_dbus_adaptor(
   linglong_adaptors_jobmanager
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.Job1.xml
   linglong/job_manager/job.h
-  Job # FIXME: should be linglong::job_manager::Job
+  linglong::job_manager::Job
   gen_org_deepin_linglong_job1
   OrgDeepinLinglongJob1Adaptor
 )
@@ -27,7 +27,7 @@ linglong_add_dbus_adaptor(
   linglong_adaptors_jobmanager
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.JobManager1.xml
   linglong/job_manager/job_manager.h
-  JobManager # FIXME: should be linglong::job_manager::JobManager
+  linglong::job_manager::JobManager
   gen_org_deepin_linglong_jobmanager1
   OrgDeepinLinglongJobmanager1Adaptor
 )

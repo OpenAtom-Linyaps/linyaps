@@ -3,7 +3,4 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
 add_executable(ll-cli main.cpp)
-target_link_libraries(
-  ll-cli
-  PRIVATE linglong
-)
+target_link_libraries(ll-cli PRIVATE linglong)

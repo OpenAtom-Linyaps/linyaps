@@ -1,0 +1,14 @@
+linglong_add_library(
+  jobmanager
+  SOURCES
+  job.cpp
+  job_manager.cpp
+  HEADERS
+  job.h
+  job_manager.h
+  DEPENDENCIES
+  Qt::Core
+  linglong_repo
+  linglong_JobManager_adaptor
+  linglong_Job_adaptor
+)

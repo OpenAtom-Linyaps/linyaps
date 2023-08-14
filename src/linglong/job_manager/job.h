@@ -10,6 +10,8 @@
 #include <QScopedPointer>
 #include <QThread>
 
+namespace linglong::job_manager {
+
 class JobPrivate;
 
 class Job : public QThread
@@ -34,4 +36,6 @@ private:
     QScopedPointer<JobPrivate> dd_ptr;
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), Job)
 };
+
+} // namespace linglong::job_manager
 #endif

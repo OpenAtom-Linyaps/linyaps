@@ -14,6 +14,8 @@
 #include <QTimer>
 #include <QUuid>
 
+namespace linglong::job_manager {
+
 class JobManagerPrivate
 {
 public:
@@ -150,3 +152,5 @@ QStringList JobManager::List()
 {
     return OSTREE_REPO_HELPER->getOstreeJobList();
 }
+
+} // namespace linglong::job_manager

@@ -24,10 +24,11 @@ int main(int argc, char *argv[])
     }
 
     linglong::adaptors::package_manger::PackageManager1 packageManagerAdaptor(PACKAGE_MANAGER);
-    linglong::adaptors::job_manger::JobManager1 jma(JobManager::instance());
+    linglong::adaptors::job_manger::JobManager1 jma(linglong::job_manager::JobManager::instance());
 
     dbus.registerObject("/org/deepin/linglong/PackageManager", PACKAGE_MANAGER);
-    dbus.registerObject("/org/deepin/linglong/JobManager", JobManager::instance());
+    dbus.registerObject("/org/deepin/linglong/JobManager",
+                        linglong::job_manager::JobManager::instance());
 
     return QCoreApplication::exec();
 }

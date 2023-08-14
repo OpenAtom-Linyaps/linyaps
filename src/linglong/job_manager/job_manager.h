@@ -15,6 +15,8 @@
 #include <QList>
 #include <QObject>
 
+namespace linglong::job_manager {
+
 class Job;
 class JobManagerPrivate;
 
@@ -44,4 +46,6 @@ private:
     QScopedPointer<JobManagerPrivate> dd_ptr;
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), JobManager)
 };
+
+} // namespace linglong::job_manaager
 #endif

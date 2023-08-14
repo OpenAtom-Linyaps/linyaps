@@ -33,22 +33,6 @@ function(
 endfunction()
 
 linglong_add_dbus_adaptor(
-  linglong_JobManager_adaptor
-  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.JobManager.xml
-  linglong/job_manager/job_manager.h
-  JobManager
-  JobManagerAdaptor
-)
-
-linglong_add_dbus_adaptor(
-  linglong_Job_adaptor
-  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.Job.xml
-  linglong/job_manager/job.h
-  Job
-  JobAdaptor
-)
-
-linglong_add_dbus_adaptor(
   linglong_PackageManagerHelper_adaptor
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManagerHelper.xml
   linglong/system_helper/package_manager_helper.h

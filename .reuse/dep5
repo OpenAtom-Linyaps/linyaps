@@ -32,3 +32,8 @@ Copyright: None
 Files: src/linglong/runtime/resource/*json
 License: LGPL-3.0-only
 Copyright: UnionTech Software Technology Co., Ltd.
+
+# Test data
+Files: tests/data/* tests/utils/serialize/data.json tests/utils/serialize/data.yaml
+License: CC0-1.0
+Copyright: None

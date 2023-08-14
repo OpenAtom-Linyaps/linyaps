@@ -1,11 +1,11 @@
 linglong_add_library(
   dbus
   SOURCES
-  app_manager.cpp
+  app_manager1.cpp
   filesystem_helper.cpp
   package_manager_helper.cpp
   HEADERS
-  app_manager.h
+  app_manager1.h
   filesystem_helper.h
   package_manager_helper.h
   DEPENDENCIES
@@ -47,13 +47,13 @@ linglong_add_dbus_interface(
 )
 
 set_source_files_properties(
-  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.AppManager.xml
+  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.AppManager1.xml
   PROPERTIES INCLUDE linglong/dbus_ipc/workaround.h
 )
 
 linglong_add_dbus_interface(
-  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.AppManager.xml
-  gen_org_deepin_linglong_appmanager
+  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.AppManager1.xml
+  gen_org_deepin_linglong_appmanager1
 )
 
 set_source_files_properties(

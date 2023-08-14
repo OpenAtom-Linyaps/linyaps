@@ -17,4 +17,5 @@ linglong_add_library(
   package_manager
   service
   system_helper
+  adaptors
 )

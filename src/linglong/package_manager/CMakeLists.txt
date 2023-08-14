@@ -15,5 +15,4 @@ linglong_add_library(
   linglong_jobmanager
   linglong_dbusipc
   linglong_package
-  linglong_PackageManager_adaptor
 )

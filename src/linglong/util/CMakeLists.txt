@@ -2,17 +2,11 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-add_subdirectory(config)
-add_subdirectory(http)
-add_subdirectory(oci)
-add_subdirectory(qserializer)
-add_subdirectory(test)
-add_subdirectory(version)
-
 configure_file(configure.h.in configure.h)
 
-add_library(
-  linglong_util
+linglong_add_library(
+  util
+  SOURCES
   app_status.cpp
   appinfo_cache.cpp
   command_helper.cpp
@@ -29,10 +23,7 @@ add_library(
   sysinfo.cpp
   uuid.cpp
   xdg.cpp
-)
-
-linglong_private_library_add_headers(
-  linglong_util
+  HEADERS
   app_status.h
   appinfo_cache.h
   command_helper.h
@@ -49,17 +40,15 @@ linglong_private_library_add_headers(
   sysinfo.h
   uuid.h
   xdg.h
-)
-
-target_link_libraries(
-  linglong_util
-  PUBLIC linglong_util_config
-         linglong_util_http
-         linglong_util_oci
-         linglong_util_qserializer
-         linglong_util_test
-         linglong_util_version
-         linglong_api
-         Qt::Core
-         Qt::Sql
+  SUBDIRS
+  config
+  http
+  oci
+  qserializer
+  test
+  version
+  DEPENDENCIES
+  linglong_api
+  Qt::Core
+  Qt::Sql
 )

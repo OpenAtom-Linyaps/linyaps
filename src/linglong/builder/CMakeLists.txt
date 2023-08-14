@@ -2,18 +2,16 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-add_library(
-  linglong_builder
+linglong_add_library(
+  builder
+  SOURCES
   builder_config.cpp
   builder_templates.qrc
   depend_fetcher.cpp
   linglong_builder.cpp
   project.cpp
   source_fetcher.cpp
-)
-
-linglong_private_library_add_headers(
-  linglong_builder
+  HEADERS
   builder_config.h
   builder.h
   project.h
@@ -21,12 +19,9 @@ linglong_private_library_add_headers(
   linglong_builder.h
   source_fetcher.h
   source_fetcher_p.h
-)
-
-target_link_libraries(
-  linglong_builder
-  PUBLIC Qt::Core
-         PkgConfig::glib2
-         PkgConfig::ostree1
-         linglong_util
+  DEPENDENCIES
+  Qt::Core
+  PkgConfig::glib2
+  PkgConfig::ostree1
+  linglong_util
 )

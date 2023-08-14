@@ -2,21 +2,21 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-add_library(
-  linglong_util_qserializer
+linglong_add_library(
+  qserializer
+  SOURCES
   dbus.cpp
   deprecated.cpp
   json.cpp
   qserializer.cpp
   yaml.cpp
-)
-linglong_private_library_add_headers(
-  linglong_util_qserializer
+  HEADERS
   dbus.h
   deprecated.h
   json.h
   qserializer.h
   yaml.h
+  DEPENDENCIES
+  Qt::DBus
+  yaml-cpp
 )
-
-target_link_libraries(linglong_util_qserializer PUBLIC Qt::DBus yaml-cpp)

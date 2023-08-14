@@ -2,11 +2,14 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-add_library(linglong_util_version semver.cpp version.cpp)
-linglong_private_library_add_headers(
-  linglong_util_version
+linglong_add_library(
+  version
+  SOURCES
+  semver.cpp
+  version.cpp
+  HEADERS
   semver.h
   version.h
+  DEPENDENCIES
+  Qt::Core
 )
-
-target_link_libraries(linglong_util_version PUBLIC Qt::Core)

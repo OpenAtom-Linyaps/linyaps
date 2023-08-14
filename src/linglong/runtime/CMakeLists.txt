@@ -17,6 +17,6 @@ linglong_add_library(
   oci.h
   DEPENDENCIES
   Qt::Core
-  linglong_util_qserializer
+  linglong_util
   linglong_package
 )

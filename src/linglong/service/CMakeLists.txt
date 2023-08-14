@@ -12,5 +12,5 @@ linglong_add_library(
   DEPENDENCIES
   linglong_dbusipc
   linglong_repo
-  linglong_AppManager_adaptor
+  linglong_runtime
 )

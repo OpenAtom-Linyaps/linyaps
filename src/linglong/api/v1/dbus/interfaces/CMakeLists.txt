@@ -1,26 +1,24 @@
-add_library(
-  linglong_api_v1_dbus_interfaces
-  ./app_manager.cpp
-  ./filesystem_helper.cpp
-  ./package_manager_helper.cpp
+linglong_add_library(
+  interfaces
+  SOURCES
+  app_manager.cpp
+  filesystem_helper.cpp
+  package_manager_helper.cpp
+  HEADERS
+  app_manager.h
+  filesystem_helper.h
+  package_manager_helper.h
+  DEPENDENCIES
+  linglong_dbusipc
+  linglong_api_v1_types
 )
 
-linglong_private_library_add_headers(
-  linglong_api_v1_dbus_interfaces
-  ./app_manager.h
-  ./filesystem_helper.h
-  ./package_manager_helper.h
-)
-
-target_link_libraries(
-  linglong_api_v1_dbus_interfaces PUBLIC linglong_dbusipc linglong_api_v1_types
-)
 target_include_directories(
-  linglong_api_v1_dbus_interfaces PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  ${LINGLONG_LIB_PREFIX}interfaces PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 function(
-  linglong_api_v1_dbus_interfaces_FN_add_interface
+  linglong_add_dbus_interface
   xml
   basename
 )
@@ -35,15 +33,15 @@ function(
     ${xml}
     ${basename}
   )
-  target_sources(linglong_api_v1_dbus_interfaces PRIVATE ${INTERFACE_SOURCES})
+  target_sources(${LINGLONG_LIB_PREFIX}interfaces PRIVATE ${INTERFACE_SOURCES})
 endfunction()
 
-linglong_api_v1_dbus_interfaces_fn_add_interface(
+linglong_add_dbus_interface(
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManagerHelper.xml
   gen_org_deepin_linglong_packagemanagerhelper
 )
 
-linglong_api_v1_dbus_interfaces_fn_add_interface(
+linglong_add_dbus_interface(
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.FilesystemHelper.xml
   gen_org_deepin_linglong_filesystemhelper
 )
@@ -53,7 +51,7 @@ set_source_files_properties(
   PROPERTIES INCLUDE linglong/dbus_ipc/workaround.h
 )
 
-linglong_api_v1_dbus_interfaces_fn_add_interface(
+linglong_add_dbus_interface(
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.AppManager.xml
   gen_org_deepin_linglong_appmanager
 )
@@ -63,7 +61,7 @@ set_source_files_properties(
   PROPERTIES INCLUDE linglong/dbus_ipc/workaround.h
 )
 
-linglong_api_v1_dbus_interfaces_fn_add_interface(
+linglong_add_dbus_interface(
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManager.xml
   gen_org_deepin_linglong_packagemanager
 )

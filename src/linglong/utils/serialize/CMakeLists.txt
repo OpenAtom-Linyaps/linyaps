@@ -2,17 +2,13 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-add_library(linglong_utils_serialize yaml.cpp)
-
-target_sources(
-  linglong_utils_serialize
-  PUBLIC FILE_SET
-         HEADERS
-         BASE_DIRS
-         ${LINGLONG_FILESET_BASEDIRS}
-         FILES
-         json.h
-         yaml.h
+linglong_add_library(
+  serialize
+  SOURCES
+  yaml.cpp
+  HEADERS
+  json.h
+  yaml.h
+  DEPENDENCIES
+  QSerializer::Core
 )
-
-target_link_libraries(linglong_utils_serialize PUBLIC QSerializer::Core)

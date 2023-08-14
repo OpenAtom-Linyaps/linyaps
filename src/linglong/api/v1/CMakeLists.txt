@@ -2,10 +2,9 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-add_subdirectory(types)
-add_subdirectory(dbus)
-
-add_library(linglong_api_v1 INTERFACE)
-target_link_libraries(
-  linglong_api_v1 INTERFACE linglong_api_v1_types linglong_api_v1_dbus
+linglong_add_library(
+  v1
+  SUBDIRS
+  types
+  dbus
 )

@@ -9,6 +9,5 @@ linglong_add_library(
   DEPENDENCIES
   Qt::Core
   linglong_repo
-  linglong_JobManager_adaptor
-  linglong_Job_adaptor
+  linglong_adaptors_jobmanager
 )

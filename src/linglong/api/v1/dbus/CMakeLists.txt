@@ -2,12 +2,12 @@ linglong_add_library(
   dbus
   SOURCES
   app_manager1.cpp
-  filesystem_helper.cpp
-  package_manager_helper.cpp
+  filesystem_helper1.cpp
+  package_manager_helper1.cpp
   HEADERS
   app_manager1.h
-  filesystem_helper.h
-  package_manager_helper.h
+  filesystem_helper1.h
+  package_manager_helper1.h
   DEPENDENCIES
   linglong_dbusipc
   linglong_api_v1_types
@@ -37,13 +37,13 @@ function(
 endfunction()
 
 linglong_add_dbus_interface(
-  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManagerHelper.xml
-  gen_org_deepin_linglong_packagemanagerhelper
+  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManagerHelper1.xml
+  gen_org_deepin_linglong_packagemanagerhelper1
 )
 
 linglong_add_dbus_interface(
-  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.FilesystemHelper.xml
-  gen_org_deepin_linglong_filesystemhelper
+  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.FilesystemHelper1.xml
+  gen_org_deepin_linglong_filesystemhelper1
 )
 
 set_source_files_properties(

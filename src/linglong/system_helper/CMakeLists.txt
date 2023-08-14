@@ -15,6 +15,4 @@ linglong_add_library(
   DEPENDENCIES
   linglong_dbusipc
   linglong_systemhelper_privilege
-  linglong_PackageManagerHelper_adaptor
-  linglong_FilesystemHelper_adaptor
 )

@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "dbusgen/FilesystemHelperAdaptor.h"
-#include "dbusgen/PackageManagerHelperAdaptor.h"
+#include "linglong/adaptors/system_helper/filesystem_helper1.h"
+#include "linglong/adaptors/system_helper/package_manager_helper1.h"
 #include "linglong/dbus_ipc/dbus_common.h"
 #include "linglong/dbus_ipc/dbus_system_helper_common.h"
 #include "linglong/system_helper/filesystem_helper.h"
@@ -21,11 +21,12 @@ int main(int argc, char *argv[])
     using namespace linglong::system::helper;
     QCoreApplication app(argc, argv);
 
-    PackageManagerHelper packageManagerHelper;
-    PackageManagerHelper1Adaptor packageManagerHelperAdaptor(&packageManagerHelper);
+    linglong::system::helper::PackageManagerHelper packageManagerHelper;
+    linglong::adaptors::system_helper::PackageManagerHelper1 packageManagerHelperAdaptor(
+            &packageManagerHelper);
 
-    FilesystemHelper filesystemHelper;
-    FilesystemHelper1Adaptor filesystemHelperAdaptor(&filesystemHelper);
+    linglong::system::helper::FilesystemHelper filesystemHelper;
+    linglong::adaptors::system_helper::FilesystemHelper1 filesystemHelperAdaptor(&filesystemHelper);
 
     QCommandLineParser parser;
     QCommandLineOption optBus("bus", "service bus address", "bus");

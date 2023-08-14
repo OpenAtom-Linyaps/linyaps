@@ -27,6 +27,6 @@ linglong_add_library(
   app_manager
   package_manager
   job_manager
-  # filesystem_helper
+  system_helper
   # package_manager_helper
 )

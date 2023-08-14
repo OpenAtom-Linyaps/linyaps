@@ -10,6 +10,7 @@ linglong_add_library(
   dbus_ipc
   package
   repo
+  job_manager
   runtime
   util
   builder

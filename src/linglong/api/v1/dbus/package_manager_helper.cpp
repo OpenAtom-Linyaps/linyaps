@@ -4,4 +4,4 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "linglong/api/v1/dbus/interfaces/filesystem_helper.h"
+#include "linglong/api/v1/dbus/package_manager_helper.h"

@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "job_manager.h"
+#include "linglong/job_manager/job_manager.h"
 
-#include "job.h"
+#include "linglong/job_manager/job.h"
 #include "linglong/repo/ostree_repohelper.h"
 
 #include <QDBusConnection>

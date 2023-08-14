@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "job.h"
+#include "linglong/job_manager/job.h"
 
 class JobPrivate
 {

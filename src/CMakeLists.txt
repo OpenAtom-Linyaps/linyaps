@@ -7,6 +7,12 @@ set(LINGLONG_FILESET_BASEDIRS ${PROJECT_SOURCE_DIR}/src
 )
 
 function(linglong_add_library target)
+  string(
+    REPLACE "_"
+            ""
+            target
+            ${target}
+  )
   set(LINGLONG_LIB_NAME ${LINGLONG_LIB_PREFIX}${target})
   set(LINGLONG_LIB_PREFIX ${LINGLONG_LIB_NAME}_)
 
@@ -40,7 +46,12 @@ function(linglong_add_library target)
 
   foreach(LINGLONG_ADD_LIBRARY_SUBDIR ${LINGLONG_ADD_LIBRARY_PARSED_SUBDIRS})
     add_subdirectory(${LINGLONG_ADD_LIBRARY_SUBDIR})
-    string(REPLACE "_" "" LINGLONG_ADD_LIBRARY_SUBDIR ${LINGLONG_ADD_LIBRARY_SUBDIR})
+    string(
+      REPLACE "_"
+              ""
+              LINGLONG_ADD_LIBRARY_SUBDIR
+              ${LINGLONG_ADD_LIBRARY_SUBDIR}
+    )
     target_link_libraries(
       ${LINGLONG_LIB_NAME}
       ${LINGLONG_ADD_LIBRARY_SUBDIR_LINKTYPE}

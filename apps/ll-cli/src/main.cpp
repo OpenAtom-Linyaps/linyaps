@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "linglong/api/v1/dbus/interfaces/app_manager.h"
-#include "linglong/api/v1/dbus/interfaces/package_manager.h"
+#include "linglong/api/v1/dbus/app_manager.h"
+#include "linglong/api/v1/dbus/package_manager.h"
 #include "linglong/package/package.h"
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/service/app_manager.h"

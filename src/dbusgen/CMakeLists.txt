@@ -43,7 +43,7 @@ linglong_add_dbus_adaptor(
 linglong_add_dbus_adaptor(
   linglong_JobManager_adaptor
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.JobManager.xml
-  linglong/package_manager/job_manager.h
+  linglong/job_manager/job_manager.h
   JobManager
   JobManagerAdaptor
 )
@@ -51,7 +51,7 @@ linglong_add_dbus_adaptor(
 linglong_add_dbus_adaptor(
   linglong_Job_adaptor
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.Job.xml
-  linglong/package_manager/job.h
+  linglong/job_manager/job.h
   Job
   JobAdaptor
 )

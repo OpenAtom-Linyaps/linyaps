@@ -3,7 +3,7 @@ usr/bin/ll-cli
 usr/bin/llpkg
 usr/bin/ll-package-manager
 usr/bin/ll-system-helper
-usr/share/linglong/config.json
+usr/share/linglong/config.yaml
 usr/share/bash-completion/completions/ll-cli
 usr/libexec/linglong/create-linglong-dirs
 usr/lib/systemd/system-environment-generators/61-linglong

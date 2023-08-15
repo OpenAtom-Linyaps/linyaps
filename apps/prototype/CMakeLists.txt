@@ -2,4 +2,4 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-add_subdirectory(prototype/virtual_base)
+add_subdirectory(virtual-base)

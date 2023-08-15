@@ -114,7 +114,15 @@ configure_file(
   @ONLY
 )
 
-set(LINGLONG_SCRIPTS ${CMAKE_CURRENT_BINARY_DIR}/scripts/create-linglong-dirs)
+configure_file(
+  scripts/upgrade-all.in
+  scripts/upgrade-all
+  @ONLY
+)
+
+set(LINGLONG_SCRIPTS ${CMAKE_CURRENT_BINARY_DIR}/scripts/create-linglong-dirs
+                     ${CMAKE_CURRENT_BINARY_DIR}/scripts/upgrade-all
+)
 
 install(PROGRAMS ${LINGLONG_SCRIPTS}
         DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/linglong/
@@ -137,22 +145,29 @@ configure_file(
   systemd/service/org.deepin.linglong.SystemHelper.service
   @ONLY
 )
-
-set(SYSTEMD_SYSTEM_SERVICE_FILE
-    # cmake-format: sortable
-    ${CMAKE_CURRENT_BINARY_DIR}/systemd/service/org.deepin.linglong.PackageManager.service
-    ${CMAKE_CURRENT_BINARY_DIR}/systemd/service/org.deepin.linglong.SystemHelper.service
+configure_file(
+  systemd/service/linglong-upgrade.service.in
+  systemd/service/linglong-upgrade.service
+  @ONLY
 )
 
-install(FILES ${SYSTEMD_SYSTEM_SERVICE_FILE}
+set(SYSTEMD_SYSTEM_FILE
+    # cmake-format: sortable
+    ${CMAKE_CURRENT_BINARY_DIR}/systemd/system/org.deepin.linglong.PackageManager.service
+    ${CMAKE_CURRENT_BINARY_DIR}/systemd/system/org.deepin.linglong.SystemHelper.service
+)
+
+install(FILES ${SYSTEMD_SYSTEM_FILE}
         DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system/
 )
 
-set(SYSTEMD_USER_SERVICE_FILE
-    ${CMAKE_CURRENT_BINARY_DIR}/systemd/service/org.deepin.linglong.AppManager.service
+set(SYSTEMD_USER_FILE
+    ${CMAKE_CURRENT_BINARY_DIR}/systemd/user/org.deepin.linglong.AppManager.service
+    ${CMAKE_CURRENT_BINARY_DIR}/systemd/user/linglong-upgrade.service
+    systemd/user/linglong-upgrade.timer
 )
 
-install(FILES ${SYSTEMD_USER_SERVICE_FILE}
+install(FILES ${SYSTEMD_USER_FILE}
         DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/user/
 )
 

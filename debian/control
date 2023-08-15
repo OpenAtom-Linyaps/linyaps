@@ -19,15 +19,29 @@ Homepage: http://www.deepin.org
 
 Package: linglong-bin
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ostree, linglong-dbus-proxy,
- linglong-box, libqt5sql5-sqlite (>= 5.11.3), desktop-file-utils, shared-mime-info,
- fuse-overlayfs, libglib2.0-bin
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ ostree,
+ linglong-box,
+ libqt5sql5-sqlite (>= 5.11.3),
+ desktop-file-utils,
+ shared-mime-info,
+ fuse-overlayfs,
+ libglib2.0-bin
+Recommends:
+ linglong-dbus-proxy
 Description: Linglong package manager.
  Linglong package management command line tool.
 
 Package: linglong-builder
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, linglong-loader, linglong-bin,
- linglong-box, erofs-utils
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ linglong-loader,
+ linglong-bin,
+ linglong-box,
+ erofs-utils
 Description: Linglong application building tools.
  ll-builder is a tool that makes it easy to build applications and dependencies.

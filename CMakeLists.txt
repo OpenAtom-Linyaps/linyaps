@@ -64,6 +64,7 @@ include_directories(${linglong_SOURCE_DIR}/src)
 
 add_subdirectory(src)
 add_subdirectory(test)
+add_subdirectory(misc)
 
 message(STATUS "output " ${PROJECT_BINARY_DIR})
 message(STATUS "source " ${PROJECT_SOURCE_DIR})

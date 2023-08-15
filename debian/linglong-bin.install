@@ -18,3 +18,7 @@ usr/share/dbus-1/system-services/org.deepin.linglong.SystemHelper.service
 lib/systemd/system/org.deepin.linglong.PackageManager.service
 lib/systemd/system/org.deepin.linglong.SystemHelper.service
 usr/share/mime/packages/deepin-linglong.xml
+
+usr/libexec/linglong/upgrade-all
+usr/lib/systemd/user/linglong-upgrade.service
+usr/lib/systemd/user/linglong-upgrade.timer

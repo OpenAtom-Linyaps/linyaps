@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+[Unit]
+Description=Upgrade linglong applications.
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=@CMAKE_INSTALL_FULL_LIBEXECDIR@/linglong/upgrade-all
+
+[Install]
+WantedBy=default.target

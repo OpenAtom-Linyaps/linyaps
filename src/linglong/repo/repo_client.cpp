@@ -8,6 +8,7 @@
 
 #include "linglong/package/package.h"
 #include "linglong/util/config/config.h"
+#include "linglong/util/file.h"
 #include "linglong/util/http/http_client.h"
 #include "linglong/util/qserializer/deprecated.h"
 

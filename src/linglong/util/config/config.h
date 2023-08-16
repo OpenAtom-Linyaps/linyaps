@@ -9,10 +9,7 @@
 
 // yaml/json format config
 
-#include "linglong/repo/repo.h"
-#include "linglong/util/file.h"
 #include "linglong/util/qserializer/deprecated.h"
-#include "linglong/util/qserializer/json.h"
 
 namespace linglong::config {
 

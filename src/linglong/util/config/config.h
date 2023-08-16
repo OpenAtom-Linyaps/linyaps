@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_SRC_MODULE_UTIL_CONFIG_CONFIG_H_
-#define LINGLONG_SRC_MODULE_UTIL_CONFIG_CONFIG_H_
+#ifndef LINGLONG_UTIL_CONFIG_CONFIG_H_
+#define LINGLONG_UTIL_CONFIG_CONFIG_H_
 
 // yaml/json format config
 

@@ -9,23 +9,15 @@
 
 // yaml/json format config
 
+#include "linglong/util/config/repo.h"
 #include "linglong/util/qserializer/deprecated.h"
 
 namespace linglong::util::config {
 
-class Repo : public Serialize
-{
-    Q_OBJECT;
-    Q_SERIALIZE_CONSTRUCTOR(Repo)
-public:
-    Q_SERIALIZE_PROPERTY(QString, endpoint);
-    Q_SERIALIZE_PROPERTY(QString, repoName);
-};
-
 class Config : public Serialize
 {
     Q_OBJECT;
-    Q_SERIALIZE_CONSTRUCTOR(Config)
+    Q_SERIALIZE_CONSTRUCTOR(Config);
 
 public:
     Q_PROPERTY(QMap<QString, QSharedPointer<linglong::util::config::Repo>> repos MEMBER repos);
@@ -42,8 +34,7 @@ private:
     QWeakPointer<Config> self;
 };
 
-QSERIALIZER_DECLARE(Repo)
-QSERIALIZER_DECLARE(Config)
+QSERIALIZER_DECLARE(Config);
 
 Config &ConfigInstance();
 

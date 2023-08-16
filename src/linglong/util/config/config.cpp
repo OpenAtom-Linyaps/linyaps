@@ -12,7 +12,6 @@
 
 namespace linglong::util::config {
 
-QSERIALIZER_IMPL(Repo)
 QSERIALIZER_IMPL(Config)
 
 static const char *const kConfigFileName = "config.yaml";

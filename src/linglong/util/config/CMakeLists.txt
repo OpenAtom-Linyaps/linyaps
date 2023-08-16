@@ -6,8 +6,10 @@ linglong_add_library(
   config
   SOURCES
   config.cpp
+  repo.cpp
   HEADERS
   config.h
+  repo.h
   DEPENDENCIES
   Qt::Core
   linglong_util_qserializer

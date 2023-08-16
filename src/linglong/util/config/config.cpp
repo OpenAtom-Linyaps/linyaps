@@ -17,29 +17,27 @@ QSERIALIZER_IMPL(Config)
 
 static const char *const kConfigFileName = "config.yaml";
 
-QSharedPointer<config::Config> loadConfig()
+QSharedPointer<Config> loadConfig()
 {
     auto configFilePath = util::findLinglongConfigPath(kConfigFileName, false);
     qDebug() << "load" << configFilePath;
-    QSharedPointer<config::Config> config;
+    QSharedPointer<Config> config;
     try {
-        config = std::get<0>(
-                linglong::util::fromYAML<QSharedPointer<config::Config>>(configFilePath));
+        config = std::get<0>(linglong::util::fromYAML<QSharedPointer<Config>>(configFilePath));
     } catch (...) {
         qWarning() << "Failed to load config, cfg:" << config;
     }
 
     if (!config) {
         qWarning() << "load config failed";
-        config = QSharedPointer<config::Config>(new Config());
+        config = QSharedPointer<Config>(new Config());
     }
 
     Q_ASSERT(config);
 
     if (!config->repos.contains(package::kDefaultRepo)) {
         qWarning() << "load config for" << package::kDefaultRepo << "failed";
-        config->repos.insert(package::kDefaultRepo,
-                             QSharedPointer<config::Repo>(new Repo(config.data())));
+        config->repos.insert(package::kDefaultRepo, QSharedPointer<Repo>(new Repo(config.data())));
     }
 
     Q_ASSERT(config->repos.contains(package::kDefaultRepo));

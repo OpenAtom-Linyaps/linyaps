@@ -29,13 +29,13 @@ class Config : public Serialize
 
 public:
     Q_PROPERTY(QMap<QString, QSharedPointer<linglong::config::Repo>> repos MEMBER repos);
-    QMap<QString, QSharedPointer<config::Repo>> repos;
+    QMap<QString, QSharedPointer<Repo>> repos;
 
 public:
     void save();
 
 private:
-    friend QSharedPointer<config::Config> loadConfig();
+    friend QSharedPointer<Config> loadConfig();
     QString path;
 
     // TODO: it so strange that a global config could not serialize self

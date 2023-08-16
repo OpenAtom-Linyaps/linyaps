@@ -11,7 +11,7 @@
 
 #include "linglong/util/qserializer/deprecated.h"
 
-namespace linglong::config {
+namespace linglong::util::config {
 
 class Repo : public Serialize
 {
@@ -28,7 +28,7 @@ class Config : public Serialize
     Q_SERIALIZE_CONSTRUCTOR(Config)
 
 public:
-    Q_PROPERTY(QMap<QString, QSharedPointer<linglong::config::Repo>> repos MEMBER repos);
+    Q_PROPERTY(QMap<QString, QSharedPointer<linglong::util::config::Repo>> repos MEMBER repos);
     QMap<QString, QSharedPointer<Repo>> repos;
 
 public:
@@ -47,6 +47,6 @@ QSERIALIZER_DECLARE(Config)
 
 Config &ConfigInstance();
 
-} // namespace linglong::config
+} // namespace linglong::util::config
 
 #endif // LINGLONG_SRC_MODULE_UTIL_CONFIG_CONFIG_H_

@@ -10,7 +10,7 @@
 #include "linglong/util/file.h"
 #include "linglong/util/qserializer/yaml.h"
 
-namespace linglong::config {
+namespace linglong::util::config {
 
 QSERIALIZER_IMPL(Repo)
 QSERIALIZER_IMPL(Config)
@@ -19,11 +19,11 @@ static const char *const kConfigFileName = "config.yaml";
 
 QSharedPointer<Config> loadConfig()
 {
-    auto configFilePath = util::findLinglongConfigPath(kConfigFileName, false);
+    auto configFilePath = findLinglongConfigPath(kConfigFileName, false);
     qDebug() << "load" << configFilePath;
     QSharedPointer<Config> config;
     try {
-        config = std::get<0>(linglong::util::fromYAML<QSharedPointer<Config>>(configFilePath));
+        config = std::get<0>(fromYAML<QSharedPointer<Config>>(configFilePath));
     } catch (...) {
         qWarning() << "Failed to load config, cfg:" << config;
     }
@@ -43,7 +43,7 @@ QSharedPointer<Config> loadConfig()
     Q_ASSERT(config->repos.contains(package::kDefaultRepo));
 
     config->self = config;
-    config->path = util::findLinglongConfigPath(kConfigFileName, true);
+    config->path = findLinglongConfigPath(kConfigFileName, true);
     return config;
 }
 
@@ -52,7 +52,7 @@ QSharedPointer<Config> loadConfig()
  */
 void Config::save()
 {
-    auto [data, err] = util::toYAML(this->self.toStrongRef());
+    auto [data, err] = toYAML(this->self.toStrongRef());
     if (err) {
         qCritical() << "convert to yaml failed with" << err;
         return;
@@ -74,4 +74,4 @@ Config &ConfigInstance()
     return *config;
 }
 
-} // namespace linglong::config
+} // namespace linglong::util::config

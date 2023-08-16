@@ -100,8 +100,8 @@ bool OstreeRepoHelper::ensureRepoEnv(const QString &repoDir, QString &err)
         return false;
     }
 
-    QString url = ConfigInstance().repos[package::kDefaultRepo]->endpoint;
-    QString repoName = ConfigInstance().repos[package::kDefaultRepo]->repoName;
+    QString url = util::config::ConfigInstance().repos[package::kDefaultRepo]->endpoint;
+    QString repoName = util::config::ConfigInstance().repos[package::kDefaultRepo]->repoName;
 
     url += "/repos/" + repoName;
 

@@ -45,8 +45,8 @@ PackageManagerPrivate::PackageManagerPrivate(PackageManager *parent)
                   }
                   return QDBusConnection::systemBus();
               }())
-    , repoClient(ConfigInstance().repos[package::kDefaultRepo]->endpoint)
-    , remoteRepoName(ConfigInstance().repos[package::kDefaultRepo]->repoName)
+    , repoClient(util::config::ConfigInstance().repos[package::kDefaultRepo]->endpoint)
+    , remoteRepoName(util::config::ConfigInstance().repos[package::kDefaultRepo]->repoName)
     , q_ptr(parent)
 {
 }
@@ -1357,7 +1357,7 @@ QueryReply PackageManager::getRepoInfo()
         reply.code = STATUS_CODE(kFail);
         return reply;
     }
-    
+
     QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
     QJsonObject infoObj = doc.object();
 
@@ -1386,15 +1386,15 @@ Reply PackageManager::ModifyRepo(const QString &name, const QString &url)
     }
 
     // update config yaml
-    if (!ConfigInstance().repos.contains(name)) {
+    if (!util::config::ConfigInstance().repos.contains(name)) {
         reply.message = name + " not exist";
         qWarning() << reply.message;
         reply.code = STATUS_CODE(kUserInputParamErr);
         return reply;
     }
 
-    ConfigInstance().repos[name]->endpoint = url;
-    ConfigInstance().save();
+    util::config::ConfigInstance().repos[name]->endpoint = url;
+    util::config::ConfigInstance().save();
 
     bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(d->kLocalRepoPath, reply.message);
     if (!ret) {

@@ -1,6 +1,16 @@
 # SPDX-FileCopyrightText: None
-#
 # SPDX-License-Identifier: CC0-1.0
 
 /*build*
-.idea/
+/.idea/
+/debian/.debhelper
+/debian/debhelper-build-stamp
+/debian/files
+/debian/linglong-*
+/debian/linglong-bin.debhelper.log
+/debian/linglong-bin.substvars
+/debian/linglong-builder
+/debian/linglong-builder.debhelper.log
+/debian/linglong-builder.substvars
+/debian/tmp/usr
+/obj-x86_64-linux-gnu

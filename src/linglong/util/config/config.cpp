@@ -70,10 +70,10 @@ void Config::save()
     configFile.close();
 }
 
-} // namespace linglong
-
-linglong::config::Config &ConfigInstance()
+Config &ConfigInstance()
 {
-    static QSharedPointer<linglong::config::Config> config(linglong::config::loadConfig());
+    static QSharedPointer<Config> config(loadConfig());
     return *config;
 }
+
+} // namespace linglong::config

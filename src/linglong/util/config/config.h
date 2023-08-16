@@ -48,9 +48,8 @@ private:
 QSERIALIZER_DECLARE(Repo)
 QSERIALIZER_DECLARE(Config)
 
-} // namespace linglong
+Config &ConfigInstance();
 
-linglong::config::Config &ConfigInstance();
-
+} // namespace linglong::config
 
 #endif // LINGLONG_SRC_MODULE_UTIL_CONFIG_CONFIG_H_

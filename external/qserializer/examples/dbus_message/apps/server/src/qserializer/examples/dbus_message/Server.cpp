@@ -20,7 +20,7 @@ Server::Server(QObject *parent)
 
 Server::~Server() = default;
 
-QMap<QString, QSharedPointer<Response>> Server::ping()
+QMap<QString, QSharedPointer<const Response>> Server::ping()
 {
         auto resp = QSharedPointer<Response>(new Response);
         resp->msg = "message";

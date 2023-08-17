@@ -22,7 +22,7 @@ class Server : public QObject {
         Server(QObject *parent = nullptr);
         virtual ~Server();
     public slots:
-        QMap<QString, QSharedPointer<Response>> ping();
+        QMap<QString, QSharedPointer<const Response>> ping();
 };
 
 }

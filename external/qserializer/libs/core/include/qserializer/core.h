@@ -6,9 +6,11 @@
 
 #if QT_VERSION <= QT_VERSION_CHECK(6, 2, 0)
 #define QSERIALIZER_DECLARE_SHAREDPOINTER_METATYPE(x) \
-        Q_DECLARE_METATYPE(QSharedPointer<x>);
+        Q_DECLARE_METATYPE(QSharedPointer<x>);        \
+        Q_DECLARE_METATYPE(QSharedPointer<const x>);
 #else
-#define QSERIALIZER_DECLARE_SHAREDPOINTER_METATYPE(x)
+#define QSERIALIZER_DECLARE_SHAREDPOINTER_METATYPE(x) \
+        Q_DECLARE_METATYPE(QSharedPointer<const x>);
 #endif
 
 // NOTE:
@@ -19,20 +21,21 @@
         QSERIALIZER_DECLARE_SHAREDPOINTER_METATYPE(T); \
         namespace qserializer::detail::init::T         \
         {                                              \
-        char init();                                   \
+        char init() noexcept;                          \
         static char _ = init();                        \
         };
 
-#define QSERIALIZER_IMPL(T, ...)                                \
-        namespace qserializer::detail::init::T                  \
-        {                                                       \
-        char init()                                             \
-        {                                                       \
-                static char _ = []() -> char {                  \
-                        QSerializer<::T>::registerConverters(); \
-                        __VA_ARGS__;                            \
-                        return 0;                               \
-                }();                                            \
-                return _;                                       \
-        }                                                       \
+#define QSERIALIZER_IMPL(T, ...)                                      \
+        namespace qserializer::detail::init::T                        \
+        {                                                             \
+        char init() noexcept                                          \
+        {                                                             \
+                static char _ = []() -> char {                        \
+                        QSerializer<::T>::registerConverters();       \
+                        QSerializer<const ::T>::registerConverters(); \
+                        __VA_ARGS__;                                  \
+                        return 0;                                     \
+                }();                                                  \
+                return _;                                             \
+        }                                                             \
         }

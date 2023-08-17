@@ -26,8 +26,8 @@ class Book : public Base {
         // NOTE:
         // Qt5 can not found convertor
         // if type referenced in Q_PROPERTY is not global.
-        Q_PROPERTY(QList<QSharedPointer<qserializer::test_types::Page> > pages
-                           MEMBER m_pages);
+        Q_PROPERTY(QList<QSharedPointer<const qserializer::test_types::Page> >
+                           pages MEMBER m_pages);
         Q_PROPERTY(QMap<QString, QSharedPointer<qserializer::test_types::Page> >
                            dict MEMBER m_dict);
         Q_PROPERTY(QStringList list MEMBER m_list1);
@@ -37,7 +37,7 @@ class Book : public Base {
 
     public:
         QString m_title;
-        QList<QSharedPointer<Page> > m_pages;
+        QList<QSharedPointer<const Page> > m_pages;
         QMap<QString, QSharedPointer<Page> > m_dict;
         QStringList m_list1;
         // NOTE:

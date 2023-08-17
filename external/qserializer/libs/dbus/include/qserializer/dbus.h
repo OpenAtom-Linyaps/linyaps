@@ -10,11 +10,23 @@
                 return qserializer::detail::dbus::move_in<QSharedPointer<T>>(  \
                         args, x);                                              \
         }                                                                      \
+        [[maybe_unused]] inline const QDBusArgument &operator<<(               \
+                QDBusArgument &args, const QSharedPointer<const T> &x)         \
+        {                                                                      \
+                return qserializer::detail::dbus::move_in<                     \
+                        QSharedPointer<const T>>(args, x);                     \
+        }                                                                      \
         [[maybe_unused]] inline const QDBusArgument &operator>>(               \
                 const QDBusArgument &args, QSharedPointer<T> &x)               \
         {                                                                      \
                 return qserializer::detail::dbus::move_out<QSharedPointer<T>>( \
                         args, x);                                              \
+        }                                                                      \
+        [[maybe_unused]] inline const QDBusArgument &operator>>(               \
+                const QDBusArgument &args, QSharedPointer<const T> &x)         \
+        {                                                                      \
+                return qserializer::detail::dbus::move_out<                    \
+                        QSharedPointer<const T>>(args, x);                     \
         }
 
 // NOTE:
@@ -27,6 +39,10 @@
 #define QSERIALIZER_IMPL_DBUS(T, ...)                                        \
         QSERIALIZER_IMPL(T, {                                                \
                 qDBusRegisterMetaType<QSharedPointer<::T>>();                \
+                qDBusRegisterMetaType<QSharedPointer<const ::T>>();          \
                 qDBusRegisterMetaType<QList<QSharedPointer<::T>>>();         \
+                qDBusRegisterMetaType<QList<QSharedPointer<const ::T>>>();   \
                 qDBusRegisterMetaType<QMap<QString, QSharedPointer<::T>>>(); \
+                qDBusRegisterMetaType<                                       \
+                        QMap<QString, QSharedPointer<const ::T>>>();         \
         } __VA_OPT__(, ) __VA_ARGS__)

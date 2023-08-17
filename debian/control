@@ -39,9 +39,10 @@ Architecture: any
 Depends:
  ${shlibs:Depends},
  ${misc:Depends},
- linglong-loader,
  linglong-bin,
  linglong-box,
  erofs-utils
+Recommends:
+ linglong-loader
 Description: Linglong application building tools.
  ll-builder is a tool that makes it easy to build applications and dependencies.

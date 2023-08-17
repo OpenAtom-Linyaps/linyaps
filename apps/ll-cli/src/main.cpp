@@ -819,7 +819,7 @@ int main(int argc, char **argv)
                   parser.addPositionalArgument("modify", "modify opretion of repo", "modify");
                   parser.addPositionalArgument("url", "the url of repo", "[url]");
 
-                  const auto optName = QCommandLineOption("name", "the name of repo", "repo name", "repo");
+                  const auto optName = QCommandLineOption("name", "the name of repo", "repo name", "deepin");
                   parser.addOption(optName);
                   parser.process(app);
 

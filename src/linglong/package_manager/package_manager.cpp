@@ -1348,24 +1348,13 @@ PackageManager::~PackageManager() { }
 QueryReply PackageManager::getRepoInfo()
 {
     QueryReply reply;
-    Q_D(PackageManager);
-    auto serverCfg = d->kLocalRepoPath + "/config.json";
+    const auto &config = util::config::ConfigInstance();
 
-    QFile file(serverCfg);
-    if (!file.open(QIODevice::ReadOnly)) {
-        reply.message = serverCfg + " no exist";
-        reply.code = STATUS_CODE(kFail);
-        return reply;
-    }
-
-    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-    QJsonObject infoObj = doc.object();
-
+    // FIXME(black_desk):
+    // This is a workaround, we may have multiple repositories.
     reply.code = STATUS_CODE(kSuccess);
-    reply.message = infoObj["repoName"].toString();
-    reply.result = infoObj["appDbUrl"].toString();
-
-    file.close();
+    reply.message = config.repos.firstKey();
+    reply.result = config.repos.first()->endpoint;
 
     return reply;
 }

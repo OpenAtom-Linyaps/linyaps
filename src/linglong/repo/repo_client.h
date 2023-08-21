@@ -51,6 +51,14 @@ class RepoClient
 public:
     explicit RepoClient(const QString &endpoint);
 
+    // FIXME(black_desk):
+    // This method is just a workaround used to
+    // update RepoClient::endpoint
+    // when endpoint get updated
+    // by PackageManager::RepoModify.
+    // It's not thread-safe.
+    void setEndpoint(const QString &endpoint);
+
     std::tuple<util::Error, QList<QSharedPointer<package::AppMetaInfo>>>
     QueryApps(const package::Ref &ref);
 

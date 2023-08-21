@@ -105,5 +105,10 @@ RepoClient::RepoClient(const QString &endpoint)
 {
 }
 
+void RepoClient::setEndpoint(const QString &endpoint)
+{
+    this->endpoint = endpoint;
+}
+
 } // namespace repo
 } // namespace linglong

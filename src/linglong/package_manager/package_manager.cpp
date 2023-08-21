@@ -35,6 +35,11 @@ PackageManagerPrivate::PackageManagerPrivate(PackageManager *parent)
     : sysLinglongInstallation(linglong::util::getLinglongRootPath() + "/entries/share")
     , kAppInstallPath(linglong::util::getLinglongRootPath() + "/layers/")
     , kLocalRepoPath(linglong::util::getLinglongRootPath())
+    , remoteRepoName(util::config::ConfigInstance().repos[package::kDefaultRepo]->repoName)
+    // FIXME(black_desk):
+    // When endpoint get updated by `ModifyRepo`,
+    // the endpoint used by repoClient is not updated.
+    , repoClient(util::config::ConfigInstance().repos[package::kDefaultRepo]->endpoint)
     , packageManagerHelperInterface(
               linglong::SystemHelperDBusServiceName,
               linglong::PackageManagerHelperDBusPath,
@@ -45,8 +50,6 @@ PackageManagerPrivate::PackageManagerPrivate(PackageManager *parent)
                   }
                   return QDBusConnection::systemBus();
               }())
-    , repoClient(util::config::ConfigInstance().repos[package::kDefaultRepo]->endpoint)
-    , remoteRepoName(util::config::ConfigInstance().repos[package::kDefaultRepo]->repoName)
     , q_ptr(parent)
 {
 }
@@ -1384,6 +1387,9 @@ Reply PackageManager::ModifyRepo(const QString &name, const QString &url)
 
     util::config::ConfigInstance().repos[name]->endpoint = url;
     util::config::ConfigInstance().save();
+
+    // FIXME: check setEndpoint comment.
+    d->repoClient.setEndpoint(url);
 
     bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(d->kLocalRepoPath, reply.message);
     if (!ret) {

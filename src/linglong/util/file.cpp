@@ -137,22 +137,20 @@ QString fileHash(const QString &path, QCryptographicHash::Algorithm method)
 
 QString findLinglongConfigPath(const QString &subpath, bool writeable)
 {
-    auto configDirs = QMap<QString, bool>{
-        { getLinglongRootPath(), true }, // /var/lib/linglong as distribution, should be writeable by linglong user
-        { LINGLONG_DATA_DIR, false },    // /usr/share/linglong as default
-    };
+    auto writeablePath = QDir(getLinglongRootPath()).absoluteFilePath(subpath);
+    auto paths = QList{ writeablePath, QDir(LINGLONG_DATA_DIR).absoluteFilePath(subpath) };
 
-    QMapIterator<QString, bool> iter(configDirs);
-    while (iter.hasNext()) {
-        iter.next();
-        QDir dir(iter.key());
-        if (writeable != iter.value()) {
+    if (writeable) {
+        return writeablePath;
+    }
+
+    for (const auto &path : paths) {
+        if (!QFile(path).exists()) {
             continue;
         }
-        if (writeable || dir.exists(subpath)) {
-            return dir.absoluteFilePath(subpath);
-        }
+        return path;
     }
+
     return "";
 }
 

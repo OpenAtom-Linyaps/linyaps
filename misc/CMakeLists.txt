@@ -131,23 +131,23 @@ install(PROGRAMS ${LINGLONG_SCRIPTS}
 # systemd
 
 configure_file(
-  systemd/service/org.deepin.linglong.AppManager.service.in
-  systemd/service/org.deepin.linglong.AppManager.service
+  systemd/user/org.deepin.linglong.AppManager.service.in
+  systemd/user/org.deepin.linglong.AppManager.service
   @ONLY
 )
 configure_file(
-  systemd/service/org.deepin.linglong.PackageManager.service.in
-  systemd/service/org.deepin.linglong.PackageManager.service
+  systemd/system/org.deepin.linglong.PackageManager.service.in
+  systemd/system/org.deepin.linglong.PackageManager.service
   @ONLY
 )
 configure_file(
-  systemd/service/org.deepin.linglong.SystemHelper.service.in
-  systemd/service/org.deepin.linglong.SystemHelper.service
+  systemd/system/org.deepin.linglong.SystemHelper.service.in
+  systemd/system/org.deepin.linglong.SystemHelper.service
   @ONLY
 )
 configure_file(
-  systemd/service/linglong-upgrade.service.in
-  systemd/service/linglong-upgrade.service
+  systemd/user/linglong-upgrade.service.in
+  systemd/user/linglong-upgrade.service
   @ONLY
 )
 

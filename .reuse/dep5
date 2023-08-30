@@ -4,7 +4,7 @@ Upstream-Contact:  UnionTech Software Technology Co., Ltd. <>
 Source: https://github.com/linuxdeepin/linglong
 
 # ci
-Files: .github/* .gitlab-ci.yml src/builder/resource/*.yaml test/data/demo/*.yaml test/data/demo/*.yml src/service/resource/*.yaml
+Files: .obs/* .github/* .gitlab-ci.yml src/builder/resource/*.yaml test/data/demo/*.yaml test/data/demo/*.yml src/service/resource/*.yaml
 Copyright: None
 License: CC0-1.0
 

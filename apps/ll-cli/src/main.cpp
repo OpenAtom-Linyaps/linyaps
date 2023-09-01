@@ -209,9 +209,7 @@ int main(int argc, char **argv)
             }
         }
         setenv("LINGLONG_SYSTEM_HELPER_ADDRESS", systemHelperAddress.toStdString().c_str(), true);
-    }
-
-    if (!parser.isSet(optNoDbus)) {
+    } else {
         checkAndStartService(appManager);
     }
 

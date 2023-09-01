@@ -220,12 +220,9 @@ int main(int argc, char **argv)
               parser.addPositionalArgument("run", "run application", "run");
               parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
 
-              const auto optExec = QCommandLineOption("exec", "run exec", "/bin/bash");
-              parser.addOption(optExec);
-
+              const auto optExec = QCommandLineOption("exec", "run exec", "/bin/bash"); 
               const auto optNoProxy =
                       QCommandLineOption("no-proxy", "whether to use dbus proxy in box", "");
-
               const auto optNameFilter =
                       QCommandLineOption("filter-name",
                                          "dbus name filter to use",
@@ -241,23 +238,19 @@ int main(int argc, char **argv)
                                          "dbus interface filter to use",
                                          "--filter-interface=org.deepin.linglong.AppManager",
                                          "");
-
               // 增加channel/module
               const auto optChannel = QCommandLineOption("channel",
                                                          "the channel of app",
                                                          "--channel=linglong",
                                                          "linglong");
-              parser.addOption(optChannel);
               const auto optModule = QCommandLineOption("module",
                                                         "the module of app",
                                                         "--module=runtime",
                                                         "runtime");
-              parser.addOption(optModule);
 
-              parser.addOption(optNoProxy);
-              parser.addOption(optNameFilter);
-              parser.addOption(optPathFilter);
-              parser.addOption(optInterfaceFilter);
+              parser.addOptions({ 
+                  optExec, optNoProxy, optNameFilter, optPathFilter, optInterfaceFilter, optChannel, optModule 
+              });
               parser.process(app);
               args = parser.positionalArguments();
               const auto appId = args.value(1);
@@ -355,8 +348,7 @@ int main(int argc, char **argv)
                                                      "location to exec the new command",
                                                      "pwd",
                                                      qgetenv("HOME"));
-              parser.addOption(envArg);
-              parser.addOption(pwdArg);
+              parser.addOptions({ envArg, pwdArg });
               parser.process(app);
 
               const auto containerId = parser.positionalArguments().value(1);
@@ -426,7 +418,7 @@ int main(int argc, char **argv)
 
               const auto optOutputFormat =
                       QCommandLineOption("output-format", "json/console", "console");
-              parser.addOption(optOutputFormat);
+              parser.addOptions({ optOutputFormat });
 
               parser.process(app);
 
@@ -482,12 +474,11 @@ int main(int argc, char **argv)
                                                          "the channel of app",
                                                          "--channel=linglong",
                                                          "linglong");
-              parser.addOption(optChannel);
               const auto optModule = QCommandLineOption("module",
                                                         "the module of app",
                                                         "--module=runtime",
                                                         "runtime");
-              parser.addOption(optModule);
+              parser.addOptions({ optChannel, optModule });
 
               parser.process(app);
 
@@ -575,12 +566,11 @@ int main(int argc, char **argv)
                                                          "the channel of app",
                                                          "--channel=linglong",
                                                          "linglong");
-              parser.addOption(optChannel);
               const auto optModule = QCommandLineOption("module",
                                                         "the module of app",
                                                         "--module=runtime",
                                                         "runtime");
-              parser.addOption(optModule);
+              parser.addOptions({ optChannel, optModule });
 
               parser.process(app);
               linglong::service::ParamOption paramOption;
@@ -649,7 +639,7 @@ int main(int argc, char **argv)
               parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
               const auto optNoCache =
                       QCommandLineOption("force", "query from server directly, not from cache", "");
-              parser.addOption(optNoCache);
+              parser.addOptions({ optNoCache });
               parser.process(app);
 
               args = parser.positionalArguments();
@@ -696,19 +686,15 @@ int main(int argc, char **argv)
               const auto optAllVer =
                       QCommandLineOption("all-version", "uninstall all version application", "");
               const auto optDelData = QCommandLineOption("delete-data", "delete app data", "");
-              parser.addOption(optAllVer);
-              parser.addOption(optDelData);
-
               const auto optChannel = QCommandLineOption("channel",
                                                          "the channel of app",
                                                          "--channel=linglong",
                                                          "linglong");
-              parser.addOption(optChannel);
               const auto optModule = QCommandLineOption("module",
                                                         "the module of app",
                                                         "--module=runtime",
                                                         "runtime");
-              parser.addOption(optModule);
+              parser.addOptions({ optAllVer, optDelData, optChannel, optModule });
 
               parser.process(app);
 
@@ -767,7 +753,7 @@ int main(int argc, char **argv)
                                                       "installed");
               parser.clearPositionalArguments();
               parser.addPositionalArgument("list", "show installed application", "list");
-              parser.addOption(optType);
+              parser.addOptions({ optType });
               parser.process(app);
               const auto optPara = parser.value(optType);
               if ("installed" != optPara) {
@@ -818,7 +804,7 @@ int main(int argc, char **argv)
                   parser.addPositionalArgument("url", "the url of repo", "[url]");
 
                   const auto optName = QCommandLineOption("name", "the name of repo", "repo name", "deepin");
-                  parser.addOption(optName);
+                  parser.addOptions({ optName });
                   parser.process(app);
 
                   QStringList args = parser.positionalArguments();

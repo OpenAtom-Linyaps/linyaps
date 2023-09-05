@@ -248,9 +248,13 @@ int main(int argc, char **argv)
                                                         "--module=runtime",
                                                         "runtime");
 
-              parser.addOptions({
-                  optExec, optNoProxy, optNameFilter, optPathFilter, optInterfaceFilter, optChannel, optModule
-              });
+              parser.addOptions({ optExec,
+                                  optNoProxy,
+                                  optNameFilter,
+                                  optPathFilter,
+                                  optInterfaceFilter,
+                                  optChannel,
+                                  optModule });
               parser.process(app);
               args = parser.positionalArguments();
               const auto appId = args.value(1);
@@ -788,8 +792,8 @@ int main(int argc, char **argv)
           [&](QCommandLineParser &parser) -> int {
               parser.clearPositionalArguments();
               parser.addPositionalArgument("repo", "config remote repo", "repo");
-              
-              const QStringList subCommands = {"modify", "list"};
+
+              const QStringList subCommands = { "modify", "list" };
               parser.addPositionalArgument("subcommand", subCommands.join("\n"), "[subcommand]");
 
               QStringList args = parser.positionalArguments();
@@ -803,7 +807,8 @@ int main(int argc, char **argv)
                   parser.addPositionalArgument("modify", "modify opretion of repo", "modify");
                   parser.addPositionalArgument("url", "the url of repo", "[url]");
 
-                  const auto optName = QCommandLineOption("name", "the name of repo", "repo name", "deepin");
+                  const auto optName =
+                          QCommandLineOption("name", "the name of repo", "repo name", "deepin");
                   parser.addOptions({ optName });
                   parser.process(app);
 
@@ -832,10 +837,10 @@ int main(int argc, char **argv)
               } else if (args.at(1) == "list") {
                   linglong::service::QueryReply reply;
                   QDBusPendingReply<linglong::service::QueryReply> dbusReply =
-                              sysPackageManager.getRepoInfo();
-                      dbusReply.waitForFinished();
-                      reply = dbusReply.value();
-                  
+                          sysPackageManager.getRepoInfo();
+                  dbusReply.waitForFinished();
+                  reply = dbusReply.value();
+
                   qInfo().noquote() << QString("%1%2").arg("Name", -10).arg("Url");
                   qInfo().noquote() << QString("%1%2").arg(reply.message, -10).arg(reply.result);
               } else {

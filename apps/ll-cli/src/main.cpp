@@ -220,7 +220,7 @@ int main(int argc, char **argv)
               parser.addPositionalArgument("run", "run application", "run");
               parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
 
-              const auto optExec = QCommandLineOption("exec", "run exec", "/bin/bash"); 
+              const auto optExec = QCommandLineOption("exec", "run exec", "/bin/bash");
               const auto optNoProxy =
                       QCommandLineOption("no-proxy", "whether to use dbus proxy in box", "");
               const auto optNameFilter =
@@ -248,8 +248,8 @@ int main(int argc, char **argv)
                                                         "--module=runtime",
                                                         "runtime");
 
-              parser.addOptions({ 
-                  optExec, optNoProxy, optNameFilter, optPathFilter, optInterfaceFilter, optChannel, optModule 
+              parser.addOptions({
+                  optExec, optNoProxy, optNameFilter, optPathFilter, optInterfaceFilter, optChannel, optModule
               });
               parser.process(app);
               args = parser.positionalArguments();

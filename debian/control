@@ -3,7 +3,7 @@ Section: admin
 Priority: optional
 Maintainer: Deepin Packages Builder <packages@deepin.com>
 Build-Depends:
- debhelper (>= 11),
+ debhelper,
  cmake,
  libyaml-cpp-dev,
  libgtest-dev,

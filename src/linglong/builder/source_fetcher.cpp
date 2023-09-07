@@ -95,6 +95,8 @@ linglong::util::Error SourceFetcherPrivate::fetchArchiveFile()
 
     QNetworkRequest request;
     request.setUrl(url);
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    request.setHeader(QNetworkRequest::UserAgentHeader, "Wget/1.21.4");
 
     auto reply = util::networkMgr().get(request);
 

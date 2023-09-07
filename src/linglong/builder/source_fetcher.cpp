@@ -21,8 +21,14 @@ namespace builder {
 
 QString SourceFetcher::fixSuffix(const QFileInfo &fi)
 {
-    if (fi.completeSuffix().endsWith(CompressedFileTarXz)) {
-        return CompressedFileTarXz;
+    for (const char *suffix : { CompressedFileTarXz,
+                                CompressedFileTarBz2,
+                                CompressedFileTarGz,
+                                CompressedFileTgz,
+                                CompressedFileTar }) {
+        if (fi.completeSuffix().endsWith(suffix)) {
+            return CompressedFileTar;
+        }
     }
     return fi.suffix();
 }
@@ -33,11 +39,16 @@ linglong::util::Error SourceFetcher::extractFile(const QString &path, const QStr
 
     QMap<QString, std::function<linglong::util::Error(const QString &path, const QString &dir)>>
             subcommandMap = {
-                { CompressedFileTarXz,
+                { CompressedFileTar,
                   [](const QString &path, const QString &dir) -> linglong::util::Error {
                       return WrapError(util::Exec("tar", { "-C", dir, "-xvf", path }),
                                        QString("extract %1 failed").arg(path));
                   } },
+                { CompressedFileZip,
+                  [](const QString &path, const QString &dir) -> linglong::util::Error {
+                      return WrapError(util::Exec("unzip", { "-d", dir, path }),
+                                       QString("extract %1 failed").arg(path));
+                  } }
             };
 
     auto suffix = fixSuffix(fi);
@@ -89,35 +100,48 @@ linglong::util::Error SourceFetcherPrivate::fetchArchiveFile()
     auto path = BuilderConfig::instance()->targetFetchCachePath() + "/" + filename();
 
     file.reset(new QFile(path));
-    if (!file->open(QIODevice::WriteOnly)) {
-        return NewError(-1, file->errorString());
+    // if file exists, check digest
+    if (file->exists()) {
+        if (source->digest == util::fileHash(path, QCryptographicHash::Sha256)) {
+            qInfo() << QString("file %1 exists, skip download").arg(path);
+        } else {
+            qInfo() << QString("file %1 exists, but hash mismatched, redownload").arg(path);
+            file->remove();
+        }
     }
 
-    QNetworkRequest request;
-    request.setUrl(url);
-    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
-    request.setHeader(QNetworkRequest::UserAgentHeader, "Wget/1.21.4");
+    if (!file->exists()) {
+        if (!file->open(QIODevice::WriteOnly)) {
+            return NewError(-1, file->errorString());
+        }
 
-    auto reply = util::networkMgr().get(request);
+        QNetworkRequest request;
+        request.setUrl(url);
+        request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                             QNetworkRequest::NoLessSafeRedirectPolicy);
+        request.setHeader(QNetworkRequest::UserAgentHeader, "Wget/1.21.4");
 
-    QObject::connect(reply, &QNetworkReply::metaDataChanged, [reply]() {
-        qDebug() << reply->header(QNetworkRequest::ContentLengthHeader);
-    });
+        auto reply = util::networkMgr().get(request);
 
-    QObject::connect(reply, &QNetworkReply::readyRead, [this, reply]() {
-        file->write(reply->readAll());
-    });
+        QObject::connect(reply, &QNetworkReply::metaDataChanged, [reply]() {
+            qDebug() << reply->header(QNetworkRequest::ContentLengthHeader);
+        });
 
-    QEventLoop loop;
-    QEventLoop::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    loop.exec();
-    // 将缓存写入文件
-    file->close();
+        QObject::connect(reply, &QNetworkReply::readyRead, [this, reply]() {
+            file->write(reply->readAll());
+        });
 
-    if (source->digest != util::fileHash(path, QCryptographicHash::Sha256)) {
-        qCritical() << QString("mismatched hash: %1")
-                               .arg(util::fileHash(path, QCryptographicHash::Sha256));
-        return NewError(-1, "download failed");
+        QEventLoop loop;
+        QEventLoop::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+        loop.exec();
+        // 将缓存写入文件
+        file->close();
+
+        if (source->digest != util::fileHash(path, QCryptographicHash::Sha256)) {
+            qCritical() << QString("mismatched hash: %1")
+                                   .arg(util::fileHash(path, QCryptographicHash::Sha256));
+            return NewError(-1, "download failed");
+        }
     }
 
     return q->extractFile(path, sourceTargetPath());
@@ -254,6 +278,11 @@ void SourceFetcher::setSourceRoot(const QString &path)
 SourceFetcher::SourceFetcher(QSharedPointer<Source> s, Project *project)
     : dd_ptr(new SourceFetcherPrivate(s, this))
     , CompressedFileTarXz("tar.xz")
+    , CompressedFileTarBz2("tar.bz2")
+    , CompressedFileTarGz("tar.gz")
+    , CompressedFileTgz("tgz")
+    , CompressedFileTar("tar")
+    , CompressedFileZip("zip")
 {
     Q_D(SourceFetcher);
 

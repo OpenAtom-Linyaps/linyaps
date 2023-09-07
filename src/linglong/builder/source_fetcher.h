@@ -45,6 +45,11 @@ private:
     QScopedPointer<SourceFetcherPrivate> dd_ptr;
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), SourceFetcher)
     const char *CompressedFileTarXz;
+    const char *CompressedFileTarGz;
+    const char *CompressedFileTarBz2;
+    const char *CompressedFileTgz;
+    const char *CompressedFileTar;
+    const char *CompressedFileZip;
 };
 
 } // namespace builder

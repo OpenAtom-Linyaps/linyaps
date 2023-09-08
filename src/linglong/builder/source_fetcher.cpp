@@ -39,18 +39,28 @@ linglong::util::Error SourceFetcherPrivate::extractFile(const QString &path, con
     Q_Q(SourceFetcher);
     QFileInfo fi(path);
 
+    auto tarxz = [](const QString &path, const QString &dir) -> linglong::util::Error {
+        return WrapError(util::Exec("tar", { "-C", dir, "-xvf", path }),
+                         QString("extract %1 failed").arg(path));
+    };
+    auto targz = [](const QString &path, const QString &dir) -> linglong::util::Error {
+        return WrapError(util::Exec("tar", { "-C", dir, "-zxvf", path }),
+                         QString("extract %1 failed").arg(path));
+    };
+    auto tarbz2 = [](const QString &path, const QString &dir) -> linglong::util::Error {
+        return WrapError(util::Exec("tar", { "-C", dir, "-jxvf", path }),
+                         QString("extract %1 failed").arg(path));
+    };
+    auto zip = [](const QString &path, const QString &dir) -> linglong::util::Error {
+        return WrapError(util::Exec("unzip", { "-d", dir, path }),
+                         QString("extract %1 failed").arg(path));
+    };
+
     QMap<QString, std::function<linglong::util::Error(const QString &path, const QString &dir)>>
             subcommandMap = {
-                { q->CompressedFileTar,
-                  [](const QString &path, const QString &dir) -> linglong::util::Error {
-                      return WrapError(util::Exec("tar", { "-C", dir, "-xvf", path }),
-                                       QString("extract %1 failed").arg(path));
-                  } },
-                { q->CompressedFileZip,
-                  [](const QString &path, const QString &dir) -> linglong::util::Error {
-                      return WrapError(util::Exec("unzip", { "-d", dir, path }),
-                                       QString("extract %1 failed").arg(path));
-                  } }
+                { q->CompressedFileTarXz, tarxz },   { q->CompressedFileTarGz, targz },
+                { q->CompressedFileTarBz2, tarbz2 }, { q->CompressedFileZip, zip },
+                { q->CompressedFileTgz, targz },     { q->CompressedFileTar, tarxz },
             };
 
     auto suffix = fixSuffix(fi);
@@ -63,7 +73,7 @@ linglong::util::Error SourceFetcherPrivate::extractFile(const QString &path, con
                     << fi.bundleName();
     }
     return NewError(-1, "unkonwn error");
-}
+} // namespace builder
 
 SourceFetcherPrivate::SourceFetcherPrivate(QSharedPointer<Source> src, SourceFetcher *parent)
     : project(nullptr)

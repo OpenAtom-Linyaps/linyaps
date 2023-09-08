@@ -15,6 +15,11 @@
 namespace linglong {
 namespace builder {
 
+namespace PrivateBuilderConfigInit {
+int init();
+static int _ = init();
+} // namespace PrivateBuilderConfigInit
+
 /*!
  * Builder is the global config of the builder system
  */

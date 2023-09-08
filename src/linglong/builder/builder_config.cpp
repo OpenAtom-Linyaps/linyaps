@@ -12,8 +12,22 @@
 
 #include <mutex>
 
+static void initQResource()
+{
+    Q_INIT_RESOURCE(builder_templates);
+}
+
 namespace linglong {
 namespace builder {
+namespace PrivateBuilderConfigInit {
+
+int init()
+{
+    static std::once_flag flag;
+    std::call_once(flag, initQResource);
+    return 0;
+}
+} // namespace PrivateBuilderConfigInit
 
 QSERIALIZER_IMPL(BuilderConfig)
 

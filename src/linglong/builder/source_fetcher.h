@@ -40,12 +40,12 @@ private:
     QString srcRoot;
     QScopedPointer<SourceFetcherPrivate> dd_ptr;
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), SourceFetcher)
-    const char *CompressedFileTarXz;
-    const char *CompressedFileTarGz;
-    const char *CompressedFileTarBz2;
-    const char *CompressedFileTgz;
-    const char *CompressedFileTar;
-    const char *CompressedFileZip;
+    static constexpr auto CompressedFileTarXz = "tar.xz";
+    static constexpr auto CompressedFileTarGz = "tar.gz";
+    static constexpr auto CompressedFileTarBz2 = "tar.bz2";
+    static constexpr auto CompressedFileTgz = "tgz";
+    static constexpr auto CompressedFileTar = "tar";
+    static constexpr auto CompressedFileZip = "zip";
 };
 
 } // namespace builder

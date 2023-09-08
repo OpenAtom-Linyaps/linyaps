@@ -283,12 +283,6 @@ void SourceFetcher::setSourceRoot(const QString &path)
 
 SourceFetcher::SourceFetcher(QSharedPointer<Source> s, Project *project)
     : dd_ptr(new SourceFetcherPrivate(s, this))
-    , CompressedFileTarXz("tar.xz")
-    , CompressedFileTarBz2("tar.bz2")
-    , CompressedFileTarGz("tar.gz")
-    , CompressedFileTgz("tgz")
-    , CompressedFileTar("tar")
-    , CompressedFileZip("zip")
 {
     Q_D(SourceFetcher);
 

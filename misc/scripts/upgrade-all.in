@@ -4,4 +4,4 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-ll-cli list | tail -n +2 | awk '{print  $1}' | xargs -I \{\} ll-cli update \{\}
+ll-cli list | tail -n +2 | awk '{print  $1}' | xargs -I \{\} sh -c "ll-cli update \{\} || true"

@@ -30,7 +30,7 @@ int main(int argc, char **argv)
     QCommandLineParser parser;
 
     auto optVerbose = QCommandLineOption({ "v", "verbose" }, "show detail log", "");
-    parser.addOption(optVerbose);
+    parser.addOptions({ optVerbose });
     parser.addHelpOption();
 
     QStringList subCommandList = { "create", "build", "run", "export", "push" };
@@ -86,11 +86,7 @@ int main(int argc, char **argv)
                       QCommandLineOption("sversion", "set source version", "source version");
               auto srcCommit = QCommandLineOption("commit", "set commit refs", "source commit");
               auto buildOffline = QCommandLineOption("offline", "only use local repo", "");
-              parser.addOption(execVerbose);
-              parser.addOption(pkgVersion);
-              parser.addOption(srcVersion);
-              parser.addOption(srcCommit);
-              parser.addOption(buildOffline);
+              parser.addOptions({ execVerbose, pkgVersion, srcVersion, srcCommit, buildOffline });
 
               parser.addPositionalArgument("build", "build project", "build");
 
@@ -150,7 +146,7 @@ int main(int argc, char **argv)
               parser.clearPositionalArguments();
 
               auto execVerbose = QCommandLineOption("exec", "run exec than build script", "exec");
-              parser.addOption(execVerbose);
+              parser.addOptions({ execVerbose });
 
               parser.addPositionalArgument("run", "run project", "build");
 
@@ -179,7 +175,7 @@ int main(int argc, char **argv)
 
               auto localParam = QCommandLineOption("local", "make bundle with local directory", "");
 
-              parser.addOption(localParam);
+              parser.addOptions({ localParam });
               parser.process(app);
 
               auto outputFilepath = parser.positionalArguments().value(1);
@@ -202,8 +198,7 @@ int main(int argc, char **argv)
               parser.addPositionalArgument("config", "config user info", "config");
               auto optUserName = QCommandLineOption("name", "user name", "--name");
               auto optUserPassword = QCommandLineOption("password", "user password", "--password");
-              parser.addOption(optUserName);
-              parser.addOption(optUserPassword);
+              parser.addOptions({ optUserName, optUserPassword });
 
               parser.process(app);
               auto userName = parser.value(optUserName);
@@ -257,10 +252,7 @@ int main(int argc, char **argv)
               auto optRepoChannel =
                       QCommandLineOption("channel", "remote repo channel", "--channel", "linglong");
               auto optNoDevel = QCommandLineOption("no-devel", "push without devel", "");
-              parser.addOption(optRepoUrl);
-              parser.addOption(optRepoName);
-              parser.addOption(optRepoChannel);
-              parser.addOption(optNoDevel);
+              parser.addOptions({ optRepoUrl, optRepoName, optRepoChannel, optNoDevel });
 
               parser.process(app);
 

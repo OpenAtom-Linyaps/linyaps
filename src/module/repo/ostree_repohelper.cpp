@@ -9,6 +9,7 @@
 #include "module/util/file.h"
 #include "module/util/runner.h"
 #include "module/util/version/version.h"
+#include "module/util/config/config.h"
 
 const int MAX_ERRINFO_BUFSIZE = 512;
 
@@ -75,26 +76,77 @@ bool OstreeRepoHelper::ensureRepoEnv(const QString &repoPath, QString &err)
         tmpPath = repoPathTmp + "/repo";
     }
     qInfo() << "ensureRepoEnv repo path:" << QString::fromStdString(tmpPath);
-    if (!pLingLongDir->repo) {
-        repodir = g_file_new_for_path(tmpPath.c_str());
-        repo = ostree_repo_new(repodir);
-        // 校验创建的仓库是否ok
-        if (!ostree_repo_open(repo, cancellable, &error)) {
-            qInfo() << "ostree_repo_open error:" << error->message;
-            snprintf(info,
-                     MAX_ERRINFO_BUFSIZE,
-                     "%s, function:%s ostree_repo_open:%s error:%s",
-                     __FILE__,
-                     __func__,
-                     repoPathTmp.c_str(),
-                     error->message);
-            err = QString(QLatin1String(info));
-            g_object_unref(repodir);
+
+    repodir = g_file_new_for_path(tmpPath.c_str());
+    repo = ostree_repo_new(repodir);
+    if (ostree_repo_open(repo, NULL, &error)) {
+        setDirInfo(repoPath, repo);
+
+        // FIXME:
+        // Quick fix here, we have to make sure repo has config "http2=false".
+        // For reason, check NOTE below.
+
+        g_autoptr(GKeyFile) configKeyFile = ostree_repo_get_config(repo);
+        if (!configKeyFile) {
+            err = QString("Failed to get config of repo");
             return false;
         }
-        // set dir path info
-        setDirInfo(repoPath, repo);
+
+        g_key_file_set_string(configKeyFile, "remote \"repo\"", "http2", "false");
+
+        error = NULL;
+        if (!ostree_repo_write_config(repo, configKeyFile, &error)) {
+            err = QString("Failed to write config, message: %1").arg(error->message);
+            return false;
+        }
+
+        return true;
     }
+
+    qWarning() << QString("ostree_repo_open error: %1, code: %2, maybe repo not exist")
+                          .arg(QLatin1String(error->message))
+                          .arg(error->code);
+    error = NULL;
+    if (!ostree_repo_create(repo, OSTREE_REPO_MODE_BARE_USER_ONLY, NULL, &error)) {
+        err = "ostree_repo_create error:" + QLatin1String(error->message);
+        g_object_unref(repodir);
+        return false;
+    }
+
+    QString url = linglong::ConfigInstance().repoUrl;
+    if (url.endsWith("/")) {
+        url += "repos/repo";
+    } else {
+        url += "/repos/repo";
+    }
+
+    g_autoptr(GVariantBuilder) configBuilder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
+    g_variant_builder_add(configBuilder, "{sv}", "gpg-verify", g_variant_new_boolean(false));
+
+    // NOTE:
+    // libcurl 8.2.1 has a http2 bug https://github.com/curl/curl/issues/11859
+    // We disable http2 for now.
+    g_variant_builder_add(configBuilder, "{sv}", "http2", g_variant_new_boolean(false));
+    g_autoptr(GVariant) config = g_variant_builder_end(configBuilder);
+
+    error = NULL;
+    if (!ostree_repo_remote_add(repo, "repo", url.toStdString().c_str(), config, NULL, &error)) {
+        err = QString("Failed to add remote repo, message: %1").arg(error->message);
+        return false;
+    }
+    g_autoptr(GKeyFile) configKeyFile = ostree_repo_get_config(repo);
+    if (!configKeyFile) {
+        err = QString("Failed to get config of repo");
+        return false;
+    }
+    g_key_file_set_string(configKeyFile, "core", "min-free-space-size", "600MB");
+    error = NULL;
+    if (!ostree_repo_write_config(repo, configKeyFile, &error)) {
+        err = QString("Failed to write config, message: %1").arg(error->message);
+        return false;
+    }
+
+    setDirInfo(repoPath, repo);
     return true;
 }
 

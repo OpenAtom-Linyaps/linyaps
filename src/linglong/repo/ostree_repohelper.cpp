@@ -86,6 +86,25 @@ bool OstreeRepoHelper::ensureRepoEnv(const QString &repoDir, QString &err)
 
     if (ostree_repo_open(repo, NULL, &error)) {
         setDirInfo(repoDir, repo);
+
+        // FIXME:
+        // Quick fix here, we have to make sure repo has config "http2=false".
+        // For reason, check NOTE below.
+
+        g_autoptr(GKeyFile) configKeyFile = ostree_repo_get_config(repo);
+        if (!configKeyFile) {
+            err = QString("Failed to get config of repo");
+            return false;
+        }
+
+        g_key_file_set_string(configKeyFile, "remote \"repo\"", "http2", "false");
+
+        error = NULL;
+        if (!ostree_repo_write_config(repo, configKeyFile, &error)) {
+            err = QString("Failed to write config, message: %1").arg(error->message);
+            return false;
+        }
+
         return true;
     }
 
@@ -107,6 +126,11 @@ bool OstreeRepoHelper::ensureRepoEnv(const QString &repoDir, QString &err)
 
     g_autoptr(GVariantBuilder) configBuilder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
     g_variant_builder_add(configBuilder, "{sv}", "gpg-verify", g_variant_new_boolean(false));
+
+    // NOTE:
+    // libcurl 8.2.1 has a http2 bug https://github.com/curl/curl/issues/11859
+    // We disable http2 for now.
+    g_variant_builder_add(configBuilder, "{sv}", "http2", g_variant_new_boolean(false));
     g_autoptr(GVariant) config = g_variant_builder_end(configBuilder);
 
     error = NULL;

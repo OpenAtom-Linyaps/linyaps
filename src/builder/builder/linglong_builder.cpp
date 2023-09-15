@@ -322,7 +322,8 @@ linglong::util::Error LinglongBuilder::initRepo()
             return NewError(-1, "add ostree remote failed");
         }
     }
-
+    
+    repo.configSet("http2", "false");
     return NoError();
 }
 

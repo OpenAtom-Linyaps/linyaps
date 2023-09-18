@@ -25,10 +25,9 @@ DCMAKE_DEBUG_SANIT = 'thread' open tasn for debug builds
 
 ## Run
 
-```bash
-# install repo
-> curl https://sh.linglong.dev | sh
+You need to install [ll-box](https://github.com/linuxdeepin/linglong-box) too.
 
+```bash
 # install an app, just in deepin
 > ll-cli install com.163.music
 

@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(
   linglong
-  VERSION 1.3.5
+  VERSION 1.4.0
   DESCRIPTION "a container based package manager for deepin"
   HOMEPAGE_URL "https://github.com/linuxdeepin/linglong"
   LANGUAGES CXX

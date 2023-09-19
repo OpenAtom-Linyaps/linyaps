@@ -16,10 +16,6 @@ set(LINGLONG_USERNAME
     "deepin-linglong"
     CACHE STRING "the username for linglong package manager"
 )
-set(LINGLONG_LOG_DIR
-    "/var/log/linglong"
-    CACHE STRING "the location where linglong related program write their log"
-)
 set(LINGLONG_ROOT
     "/var/lib/linglong"
     CACHE STRING "the location where linglong related program puts their data"

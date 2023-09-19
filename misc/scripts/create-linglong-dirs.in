@@ -7,13 +7,14 @@
 # This script should be called by systemd in the ExecStartPre field of
 # org.deepin.linglong.PackageManager.service to create LINGLONG_ROOT dir.
 
+set -e
+
 if [[ $(id -u) -ne 0 ]]; then
     echo "This script must be run as root."
     exit 255
 fi
 
 LINGLONG_ROOT="@LINGLONG_ROOT@"
-LINGLONG_LOG_DIR="@LINGLONG_LOG_DIR@"
 LINGLONG_USERNAME="@LINGLONG_USERNAME@"
 
 function create_linglong_root(){
@@ -25,15 +26,4 @@ function create_linglong_root(){
     chown "$LINGLONG_USERNAME:$LINGLONG_USERNAME" "$LINGLONG_ROOT"
 }
 
-function create_linglong_log_dir(){
-    if [[ -d "$LINGLONG_LOG_DIR" ]]; then
-        return
-    fi
-
-    mkdir -p "$LINGLONG_LOG_DIR"
-    chown "$LINGLONG_USERNAME:$LINGLONG_USERNAME" "$LINGLONG_LOG_DIR"
-    chmod o+w "$LINGLONG_LOG_DIR" # FIXME: remove this later.
-}
-
 create_linglong_root
-create_linglong_log_dir

@@ -38,6 +38,7 @@ set(CMAKE_AUTOUIC ON)
 
 # NOTE(black_desk): qt keywords conflict with glib
 add_definitions("-DQT_NO_KEYWORDS")
+add_definitions("-DQT_MESSAGELOGCONTEXT")
 
 find_package(
   Qt5
@@ -66,6 +67,12 @@ pkg_search_module(
   REQUIRED
   IMPORTED_TARGET
   ostree-1
+)
+pkg_search_module(
+  systemd
+  REQUIRED
+  IMPORTED_TARGET
+  systemd
 )
 
 include(GNUInstallDirs)

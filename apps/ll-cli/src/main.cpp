@@ -16,6 +16,7 @@
 #include "linglong/util/status_code.h"
 #include "linglong/util/sysinfo.h"
 #include "linglong/util/xdg.h"
+#include "linglong/utils/global/initialize.h"
 
 #include <QCommandLineOption>
 #include <QCommandLineParser>
@@ -158,7 +159,10 @@ static void startDaemon(QString program, QStringList args = {}, qint64 *pid = nu
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
-    QCoreApplication::setOrganizationName("deepin");
+
+    using namespace linglong::utils::global;
+
+    applicationInitializte();
 
     registerDBusParam();
 

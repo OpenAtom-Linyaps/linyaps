@@ -11,6 +11,7 @@
 #include "linglong/package/package.h"
 #include "linglong/repo/repo.h"
 #include "linglong/util/qserializer/yaml.h"
+#include "linglong/utils/global/initialize.h"
 
 #include <QCommandLineOption>
 #include <QCommandLineParser>
@@ -23,7 +24,10 @@
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
-    QCoreApplication::setOrganizationName("deepin");
+
+    using namespace linglong::utils::global;
+
+    applicationInitializte();
 
     linglong::builder::BuilderConfig::instance()->setProjectRoot(QDir::currentPath());
 

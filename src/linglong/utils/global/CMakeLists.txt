@@ -3,8 +3,12 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
 linglong_add_library(
-  utils
-  SUBDIRS
-  serialize
   global
+  SOURCES
+  initialize.cpp
+  HEADERS
+  initialize.h
+  DEPENDENCIES
+  Qt::Core
+  systemd
 )

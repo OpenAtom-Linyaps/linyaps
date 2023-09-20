@@ -11,6 +11,7 @@
 #include "linglong/system_helper/filesystem_helper.h"
 #include "linglong/system_helper/package_manager_helper.h"
 #include "linglong/system_helper/privilege/privilege_install_portal.h"
+#include "linglong/utils/global/initialize.h"
 
 #include <QCoreApplication>
 #include <QDBusConnection>
@@ -18,8 +19,14 @@
 
 int main(int argc, char *argv[])
 {
-    using namespace linglong::system::helper;
+
     QCoreApplication app(argc, argv);
+
+    using namespace linglong::utils::global;
+
+    applicationInitializte();
+
+    using namespace linglong::system::helper;
 
     linglong::system::helper::PackageManagerHelper packageManagerHelper;
     linglong::adaptors::system_helper::PackageManagerHelper1 packageManagerHelperAdaptor(

@@ -748,6 +748,14 @@ linglong::util::Error OSTreeRepo::push(const package::Bundle &bundle, bool force
     return NoError();
 }
 
+linglong::util::Error OSTreeRepo::configSet(const QString key, const QString value)
+{
+    Q_D(OSTreeRepo);
+
+    QString fullKey = QString("remote \"%1\".%2").arg(d->remoteRepoName).arg(key);
+    return WrapError(d->ostreeRun({ "config", "set", fullKey, value}));
+}
+
 linglong::util::Error OSTreeRepo::pull(const package::Ref &ref, bool force)
 {
     Q_D(OSTreeRepo);

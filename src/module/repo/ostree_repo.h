@@ -17,7 +17,6 @@ namespace linglong {
 namespace repo {
 
 class OSTreeRepoPrivate;
-
 class OSTreeRepo : public QObject, public Repo
 {
     Q_OBJECT
@@ -58,6 +57,8 @@ public:
     linglong::util::Error push(const package::Ref &ref, bool force) override;
 
     linglong::util::Error push(const package::Ref &ref) override;
+
+    linglong::util::Error configSet(const QString key, const QString value);
 
     linglong::util::Error push(const package::Bundle &bundle, bool force) override;
 

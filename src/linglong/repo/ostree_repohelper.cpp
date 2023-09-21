@@ -82,9 +82,9 @@ bool OstreeRepoHelper::ensureRepoEnv(const QString &repoDir, QString &err)
 
     g_autoptr(GFile) repodir = g_file_new_for_path(repoPath.toStdString().c_str());
     OstreeRepo *repo = ostree_repo_new(repodir);
-    GError *error = NULL;
+    GError *error = nullptr;
 
-    if (ostree_repo_open(repo, NULL, &error)) {
+    if (ostree_repo_open(repo, nullptr, &error)) {
         setDirInfo(repoDir, repo);
 
         // FIXME:
@@ -99,7 +99,7 @@ bool OstreeRepoHelper::ensureRepoEnv(const QString &repoDir, QString &err)
 
         g_key_file_set_string(configKeyFile, "remote \"repo\"", "http2", "false");
 
-        error = NULL;
+        error = nullptr;
         if (!ostree_repo_write_config(repo, configKeyFile, &error)) {
             err = QString("Failed to write config, message: %1").arg(error->message);
             return false;
@@ -112,8 +112,8 @@ bool OstreeRepoHelper::ensureRepoEnv(const QString &repoDir, QString &err)
                           .arg(QLatin1String(error->message))
                           .arg(error->code);
 
-    error = NULL;
-    if (!ostree_repo_create(repo, OSTREE_REPO_MODE_BARE_USER_ONLY, NULL, &error)) {
+    error = nullptr;
+    if (!ostree_repo_create(repo, OSTREE_REPO_MODE_BARE_USER_ONLY, nullptr, &error)) {
         err = "ostree_repo_create error:" + QLatin1String(error->message);
         g_object_unref(repodir);
         return false;
@@ -133,8 +133,8 @@ bool OstreeRepoHelper::ensureRepoEnv(const QString &repoDir, QString &err)
     g_variant_builder_add(configBuilder, "{sv}", "http2", g_variant_new_boolean(false));
     g_autoptr(GVariant) config = g_variant_builder_end(configBuilder);
 
-    error = NULL;
-    if (!ostree_repo_remote_add(repo, "repo", url.toStdString().c_str(), config, NULL, &error)) {
+    error = nullptr;
+    if (!ostree_repo_remote_add(repo, "repo", url.toStdString().c_str(), config, nullptr, &error)) {
         err = QString("Failed to add remote repo, message: %1").arg(error->message);
         return false;
     }
@@ -147,7 +147,7 @@ bool OstreeRepoHelper::ensureRepoEnv(const QString &repoDir, QString &err)
 
     g_key_file_set_string(configKeyFile, "core", "min-free-space-size", "600MB");
 
-    error = NULL;
+    error = nullptr;
     if (!ostree_repo_write_config(repo, configKeyFile, &error)) {
         err = QString("Failed to write config, message: %1").arg(error->message);
         return false;
@@ -188,13 +188,13 @@ bool OstreeRepoHelper::getRemoteRepoList(const QString &repoPath,
         err = QString(QLatin1String(info));
         return false;
     }
-    g_auto(GStrv) res = NULL;
+    g_auto(GStrv) res = nullptr;
     if (pLingLongDir->repo) {
-        res = ostree_repo_remote_list(pLingLongDir->repo, NULL);
+        res = ostree_repo_remote_list(pLingLongDir->repo, nullptr);
     }
 
-    if (res != NULL) {
-        for (int i = 0; res[i] != NULL; i++) {
+    if (res != nullptr) {
+        for (int i = 0; res[i] != nullptr; i++) {
             // vec.push_back(res[i]);
             vec.append(QLatin1String(res[i]));
         }
@@ -231,9 +231,9 @@ bool OstreeRepoHelper::fetchRemoteSummary(OstreeRepo *repo,
                                           GCancellable *cancellable,
                                           GError **error)
 {
-    g_autofree char *url = NULL;
-    g_autoptr(GBytes) summary = NULL;
-    g_autoptr(GBytes) summarySig = NULL;
+    g_autofree char *url = nullptr;
+    g_autoptr(GBytes) summary = nullptr;
+    g_autoptr(GBytes) summarySig = nullptr;
 
     if (!ostree_repo_remote_get_url(repo, name, &url, error)) {
         // fprintf(stdout, "fetchRemoteSummary ostree_repo_remote_get_url error:%s\n",
@@ -251,7 +251,7 @@ bool OstreeRepoHelper::fetchRemoteSummary(OstreeRepo *repo,
         return false;
     }
 
-    if (summary == NULL) {
+    if (summary == nullptr) {
         // fprintf(stdout, "fetch summary error");
         qInfo() << "fetch summary error";
         return false;
@@ -274,25 +274,25 @@ void OstreeRepoHelper::getPkgRefsFromRefsMap(GVariant *ref_map,
     GVariant *value;
     GVariantIter ref_iter;
     g_variant_iter_init(&ref_iter, ref_map);
-    while ((value = g_variant_iter_next_value(&ref_iter)) != NULL) {
+    while ((value = g_variant_iter_next_value(&ref_iter)) != nullptr) {
         /* helper for being able to auto-free the value */
         g_autoptr(GVariant) child = value;
-        const char *ref_name = NULL;
+        const char *ref_name = nullptr;
         g_variant_get_child(child, 0, "&s", &ref_name);
-        if (ref_name == NULL)
+        if (ref_name == nullptr)
             continue;
-        g_autofree char *ref = NULL;
-        ostree_parse_refspec(ref_name, NULL, &ref, NULL);
-        if (ref == NULL)
+        g_autofree char *ref = nullptr;
+        ostree_parse_refspec(ref_name, nullptr, &ref, nullptr);
+        if (ref == nullptr)
             continue;
         // gboolean is_app = g_str_has_prefix(ref, "app/");
 
-        g_autoptr(GVariant) csum_v = NULL;
+        g_autoptr(GVariant) csum_v = nullptr;
         char tmp_checksum[65];
         const guchar *csum_bytes;
-        g_variant_get_child(child, 1, "(t@aya{sv})", NULL, &csum_v, NULL);
-        csum_bytes = ostree_checksum_bytes_peek_validate(csum_v, NULL);
-        if (csum_bytes == NULL)
+        g_variant_get_child(child, 1, "(t@aya{sv})", nullptr, &csum_v, nullptr);
+        csum_bytes = ostree_checksum_bytes_peek_validate(csum_v, nullptr);
+        if (csum_bytes == nullptr)
             continue;
         ostree_checksum_inplace_from_bytes(csum_bytes, tmp_checksum);
         // char *newRef = g_new0(char, 1);
@@ -313,7 +313,7 @@ void OstreeRepoHelper::getPkgRefsBySummary(GVariant *summary,
                                            std::map<std::string, std::string> &outRefs)
 {
     // g_autoptr(GHashTable) ret_all_refs = NULL;
-    g_autoptr(GVariant) ref_map = NULL;
+    g_autoptr(GVariant) ref_map = nullptr;
     // g_autoptr(GVariant) metadata = NULL;
 
     // ret_all_refs = g_hash_table_new(linglong_collection_ref_hash, linglong_collection_ref_equal);
@@ -356,10 +356,10 @@ bool OstreeRepoHelper::getRemoteRefs(const QString &repoPath,
         return false;
     }
     const std::string remoteNameTmp = remoteName.toStdString();
-    g_autoptr(GBytes) summaryBytes = NULL;
-    g_autoptr(GBytes) summarySigBytes = NULL;
-    GCancellable *cancellable = NULL;
-    GError *error = NULL;
+    g_autoptr(GBytes) summaryBytes = nullptr;
+    g_autoptr(GBytes) summarySigBytes = nullptr;
+    GCancellable *cancellable = nullptr;
+    GError *error = nullptr;
     bool ret = fetchRemoteSummary(pLingLongDir->repo,
                                   remoteNameTmp.c_str(),
                                   &summaryBytes,
@@ -367,7 +367,7 @@ bool OstreeRepoHelper::getRemoteRefs(const QString &repoPath,
                                   cancellable,
                                   &error);
     if (!ret) {
-        if (err != NULL) {
+        if (err != nullptr) {
             snprintf(info,
                      MAX_ERRINFO_BUFSIZE,
                      "%s, function:%s err:%s",
@@ -736,13 +736,13 @@ bool OstreeRepoHelper::repoDeleteDatabyRef(const QString &repoPath,
     }
 
     const std::string refTmp = ref.toStdString();
-    GCancellable *cancellable = NULL;
-    GError *error = NULL;
+    GCancellable *cancellable = nullptr;
+    GError *error = nullptr;
 
     if (!ostree_repo_set_ref_immediate(pLingLongDir->repo,
-                                       NULL,
+                                       nullptr,
                                        refTmp.c_str(),
-                                       NULL,
+                                       nullptr,
                                        cancellable,
                                        &error)) {
         qCritical() << "repoDeleteDatabyRef error:" << error->message;

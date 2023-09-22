@@ -71,10 +71,18 @@ RepoClient::QueryApps(const package::Ref &ref)
 
     util::HttpRestClient hc;
     auto reply = hc.post(request, data);
+    if (reply->error()) {
+        return { NewError(-1, reply->errorString()), {} };
+    }
     data = reply->readAll();
+    qDebug() << "QueryApps: get response from server:" << QString(data);
     auto resp = util::loadJsonBytes<repo::Response>(data);
 
-    return { Success(), (resp->data) };
+    if (!resp) {
+        return { NewError(-1, "Failed to load application list from response."), {} };
+    }
+
+    return { Success(), resp->data };
 }
 
 std::tuple<util::Error, QString> RepoClient::Auth(const package::Ref &ref)

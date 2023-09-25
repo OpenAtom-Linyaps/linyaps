@@ -40,6 +40,8 @@ set(CMAKE_AUTOUIC ON)
 add_definitions("-DQT_NO_KEYWORDS")
 add_definitions("-DQT_MESSAGELOGCONTEXT")
 
+find_package(tl-expected REQUIRED)
+
 find_package(
   Qt5
   COMPONENTS Core

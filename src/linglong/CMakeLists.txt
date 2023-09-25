@@ -18,4 +18,6 @@ linglong_add_library(
   service
   system_helper
   adaptors
+  DEPENDENCIES
+  tl::expected
 )

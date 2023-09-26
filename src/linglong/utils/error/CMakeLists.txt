@@ -3,9 +3,11 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
 linglong_add_library(
-  utils
-  SUBDIRS
   error
-  serialize
-  global
+  SOURCES
+  error.cpp
+  HEADERS
+  error.h
+  DEPENDENCIES
+  Qt::Core
 )

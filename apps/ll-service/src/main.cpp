@@ -29,28 +29,37 @@ auto main(int argc, char *argv[]) -> int
     auto registerDBusObjectResult =
             linglong::utils::dbus::registerDBusObject<linglong::service::AppManager>(
                     conn,
+                    // FIXME: use cmake option
                     "/org/deepin/linglong/AppManager",
                     APP_MANAGER);
     auto _ = linglong::utils::finally::finally([&conn] {
-        linglong::utils::dbus::unregisterDBusObject(conn, "/org/deepin/linglong/AppManager");
+        linglong::utils::dbus::unregisterDBusObject(conn,
+                                                    // FIXME: use cmake option
+                                                    "/org/deepin/linglong/AppManager");
     });
-    if (!registerDBusObjectResult) {
-        qCritical().noquote() << registerDBusObjectResult.error()->message();
+    if (!registerDBusObjectResult.has_value()) {
+        qCritical().noquote() << "Launching failed:" << Qt::endl
+                              << registerDBusObjectResult.error()->message();
         return -1;
     }
 
     auto registerDBusServiceResult =
-            linglong::utils::dbus::registerDBusService(conn, "org.deepin.linglong.AppManager");
+            linglong::utils::dbus::registerDBusService(conn,
+                                                       // FIXME: use cmake option
+                                                       "org.deepin.linglong.AppManager");
     auto __ = linglong::utils::finally::finally([&conn] {
         auto unregisterDBusServiceResult =
                 linglong::utils::dbus::unregisterDBusService(conn,
+                                                             // FIXME: use cmake option
                                                              "org.deepin.linglong.AppManager");
-        if (!unregisterDBusServiceResult) {
-            qWarning().noquote() << unregisterDBusServiceResult.error()->message();
+        if (!unregisterDBusServiceResult.has_value()) {
+            qWarning().noquote() << "During exiting:" << Qt::endl
+                                 << unregisterDBusServiceResult.error()->message();
         }
     });
-    if (!registerDBusServiceResult) {
-        qCritical().noquote() << registerDBusServiceResult.error()->message();
+    if (!registerDBusServiceResult.has_value()) {
+        qCritical().noquote() << "Launching failed:" << Qt::endl
+                              << registerDBusServiceResult.error()->message();
         return -1;
     }
 

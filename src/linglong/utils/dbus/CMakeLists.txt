@@ -5,8 +5,10 @@
 linglong_add_library(
   dbus
   SOURCES
+  log.cpp
   register.cpp
   HEADERS
+  log.h
   register.h
   DEPENDENCIES
   Qt::DBus

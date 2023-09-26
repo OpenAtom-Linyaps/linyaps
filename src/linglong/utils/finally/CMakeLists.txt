@@ -3,10 +3,9 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
 linglong_add_library(
-  utils
-  SUBDIRS
-  error
   finally
-  serialize
-  global
+  SOURCES
+  finally.cpp
+  HEADERS
+  finally.h
 )

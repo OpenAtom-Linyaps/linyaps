@@ -19,3 +19,7 @@ tab_width = 2
 [misc/dbus/*.conf.in]
 indent_size = 2
 tab_width = 2
+
+[CMakeLists.txt]
+indent_size = 2
+tab_width = 2

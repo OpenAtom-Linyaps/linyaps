@@ -17,6 +17,11 @@ auto main(int argc, char *argv[]) -> int
     QCoreApplication app(argc, argv);
 
     using namespace linglong::utils::global;
+    using linglong::utils::dbus::registerDBusObject;
+    using linglong::utils::dbus::registerDBusService;
+    using linglong::utils::dbus::unregisterDBusObject;
+    using linglong::utils::dbus::unregisterDBusService;
+    using linglong::utils::finally::finally;
 
     applicationInitializte();
 
@@ -26,40 +31,33 @@ auto main(int argc, char *argv[]) -> int
 
     linglong::adaptors::app_manger::AppManager1 pma(APP_MANAGER);
 
-    auto registerDBusObjectResult =
-            linglong::utils::dbus::registerDBusObject<linglong::service::AppManager>(
-                    conn,
-                    // FIXME: use cmake option
-                    "/org/deepin/linglong/AppManager",
-                    APP_MANAGER);
-    auto _ = linglong::utils::finally::finally([&conn] {
-        linglong::utils::dbus::unregisterDBusObject(conn,
-                                                    // FIXME: use cmake option
-                                                    "/org/deepin/linglong/AppManager");
+    auto result = registerDBusObject(conn,
+                                     // FIXME: use cmake option
+                                     "/org/deepin/linglong/AppManager",
+                                     APP_MANAGER);
+    auto _ = finally([&conn] {
+        unregisterDBusObject(conn,
+                             // FIXME: use cmake option
+                             "/org/deepin/linglong/AppManager");
     });
-    if (!registerDBusObjectResult.has_value()) {
-        qCritical().noquote() << "Launching failed:" << Qt::endl
-                              << registerDBusObjectResult.error()->message();
+    if (!result.has_value()) {
+        qCritical().noquote() << "Launching failed:" << Qt::endl << result.error()->message();
         return -1;
     }
 
-    auto registerDBusServiceResult =
-            linglong::utils::dbus::registerDBusService(conn,
-                                                       // FIXME: use cmake option
-                                                       "org.deepin.linglong.AppManager");
-    auto __ = linglong::utils::finally::finally([&conn] {
-        auto unregisterDBusServiceResult =
-                linglong::utils::dbus::unregisterDBusService(conn,
-                                                             // FIXME: use cmake option
-                                                             "org.deepin.linglong.AppManager");
-        if (!unregisterDBusServiceResult.has_value()) {
-            qWarning().noquote() << "During exiting:" << Qt::endl
-                                 << unregisterDBusServiceResult.error()->message();
+    result = registerDBusService(conn,
+                                 // FIXME: use cmake option
+                                 "org.deepin.linglong.AppManager");
+    auto __ = finally([&conn] {
+        auto result = unregisterDBusService(conn,
+                                            // FIXME: use cmake option
+                                            "org.deepin.linglong.AppManager");
+        if (!result.has_value()) {
+            qWarning().noquote() << "During exiting:" << Qt::endl << result.error()->message();
         }
     });
-    if (!registerDBusServiceResult.has_value()) {
-        qCritical().noquote() << "Launching failed:" << Qt::endl
-                              << registerDBusServiceResult.error()->message();
+    if (!result.has_value()) {
+        qCritical().noquote() << "Launching failed:" << Qt::endl << result.error()->message();
         return -1;
     }
 

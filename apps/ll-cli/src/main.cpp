@@ -318,8 +318,9 @@ int main(int argc, char **argv)
               // ll-cli 进沙箱环境
               linglong::service::Reply reply;
               if ("/bin/bash" == parser.value(optExec) || "bash" == parser.value(optExec)) {
-                  reply = APP_MANAGER->Start(paramOption);
-                  APP_MANAGER->runPool->waitForDone(-1);
+                  linglong::service::AppManager appManager;
+                  reply = appManager.Start(paramOption);
+                  appManager.runPool->waitForDone(-1);
                   if (0 != reply.code) {
                       qCritical().noquote()
                               << "message:" << reply.message << ", errcode:" << reply.code;

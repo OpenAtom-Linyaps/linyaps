@@ -6,7 +6,6 @@
 
 #include "app_manager.h"
 
-#include "app_manager_p.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/repo/vfs_repo.h"
 #include "linglong/runtime/app.h"
@@ -16,43 +15,26 @@
 #include "linglong/util/status_code.h"
 #include "linglong/util/sysinfo.h"
 
-#include <signal.h>
+#include <csignal>
+
 #include <sys/types.h>
 
-namespace linglong {
-namespace service {
-
-AppManagerPrivate::AppManagerPrivate(AppManager *parent)
-    : q_ptr(parent)
-{
-    // TODO: use config file to set repo backend
-    if (qEnvironmentVariable("LINGLONG_REPO_BACKEND") == "vfs") {
-        repo = new repo::VfsRepo(util::getLinglongRootPath());
-    } else {
-        repo = new repo::OSTreeRepo(util::getLinglongRootPath());
-    }
-}
+namespace linglong::service {
 
 AppManager::AppManager()
     : runPool(new QThreadPool)
-    , dd_ptr(new AppManagerPrivate(this))
 {
+    // TODO: use config file to set repo backend
+    if (qEnvironmentVariable("LINGLONG_REPO_BACKEND") == "vfs") {
+        repo = std::make_unique<repo::VfsRepo>(util::getLinglongRootPath());
+    } else {
+        repo = std::make_unique<repo::OSTreeRepo>(util::getLinglongRootPath());
+    }
     runPool->setMaxThreadCount(RUN_POOL_MAX_THREAD);
 }
 
-AppManager::~AppManager() = default;
-
-/*
- * 执行软件包
- *
- * @param paramOption 启动命令参数
- *
- * @return Reply: 运行结果信息
- */
-Reply AppManager::Start(const RunParamOption &paramOption)
+auto AppManager::Start(const RunParamOption &paramOption) -> Reply
 {
-    Q_D(AppManager);
-
     qDebug() << "start" << paramOption.appId;
 
     QueryReply reply;
@@ -153,20 +135,21 @@ Reply AppManager::Start(const RunParamOption &paramOption)
         linglong::util::linkDirFiles(appUserServicePath, userSystemdServicePath);
     }
 
+    // FIXME: report error here.
     QFuture<void> future = QtConcurrent::run(runPool.data(), [=]() {
         // 判断是否存在
         linglong::package::Ref ref("", channel, appId, version, arch, appModule);
 
         // 判断是否是正在运行应用
-        auto latestAppRef = d->repo->latestOfRef(appId, version);
-        for (const auto &app : d->apps) {
+        auto latestAppRef = repo->latestOfRef(appId, version);
+        for (const auto &app : apps) {
             if (latestAppRef.toString() == app->container()->packageName) {
                 app->exec(desktopExec, "", "");
                 return;
             }
         }
 
-        auto app = linglong::runtime::App::load(d->repo, ref, desktopExec);
+        auto app = linglong::runtime::App::load(repo.get(), ref, desktopExec);
         if (nullptr == app) {
             // FIXME: set job status to failed
             qCritical() << "load app failed " << app;
@@ -174,12 +157,12 @@ Reply AppManager::Start(const RunParamOption &paramOption)
         }
         app->saveUserEnvList(userEnvList);
         app->setAppParamMap(paramMap);
-        auto it = d->apps.insert(app->container()->id, app);
+        auto it = apps.insert(app->container()->id, app);
         auto err = app->start();
         if (err) {
             qCritical() << "start app failed" << err;
         }
-        d->apps.erase(it);
+        apps.erase(it);
     });
     // future.waitForFinished();
     return std::move(reply);
@@ -187,12 +170,11 @@ Reply AppManager::Start(const RunParamOption &paramOption)
 
 Reply AppManager::Exec(const ExecParamOption &paramOption)
 {
-    Q_D(AppManager);
     Reply reply;
     reply.code = STATUS_CODE(kFail);
     reply.message = "No such container " + paramOption.containerID;
     auto const &containerID = paramOption.containerID;
-    for (auto it : d->apps) {
+    for (auto it : apps) {
         if (it->container()->id == containerID) {
             it->exec(paramOption.cmd, paramOption.env, paramOption.cwd);
             reply.code = STATUS_CODE(kSuccess);
@@ -203,19 +185,11 @@ Reply AppManager::Exec(const ExecParamOption &paramOption)
     return reply;
 }
 
-/*
- * 停止应用
- *
- * @param containerId: 应用启动对应的容器Id
- *
- * @return Reply 执行结果信息
- */
 Reply AppManager::Stop(const QString &containerId)
 {
-    Q_D(AppManager);
     Reply reply;
-    auto it = d->apps.find(containerId);
-    if (it == d->apps.end()) {
+    auto it = apps.find(containerId);
+    if (it == apps.end()) {
         reply.code = STATUS_CODE(kUserInputParamErr);
         reply.message = "containerId:" + containerId + " not exist";
         qCritical() << reply.message;
@@ -237,10 +211,9 @@ Reply AppManager::Stop(const QString &containerId)
 
 QueryReply AppManager::ListContainer()
 {
-    Q_D(AppManager);
     QJsonArray jsonArray;
 
-    for (const auto &app : d->apps) {
+    for (const auto &app : apps) {
         auto container = QSharedPointer<Container>(new Container);
         container->id = app->container()->id;
         container->pid = app->container()->pid;
@@ -260,5 +233,4 @@ QString AppManager::Status()
 {
     return "active";
 }
-} // namespace service
-} // namespace linglong
+} // namespace linglong::service

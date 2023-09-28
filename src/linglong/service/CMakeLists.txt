@@ -8,7 +8,6 @@ linglong_add_library(
   app_manager.cpp
   HEADERS
   app_manager.h
-  app_manager_p.h
   DEPENDENCIES
   linglong_dbusipc
   linglong_repo

@@ -28,13 +28,13 @@ auto main(int argc, char *argv[]) -> int
     registerDBusParam();
 
     auto conn = QDBusConnection::sessionBus();
-
-    linglong::adaptors::app_manger::AppManager1 pma(APP_MANAGER);
+    linglong::service::AppManager appManager;
+    linglong::adaptors::app_manger::AppManager1 appManagerAdaport(&appManager);
 
     auto result = registerDBusObject(conn,
                                      // FIXME: use cmake option
                                      "/org/deepin/linglong/AppManager",
-                                     APP_MANAGER);
+                                     &appManager);
     auto _ = finally([&conn] {
         unregisterDBusObject(conn,
                              // FIXME: use cmake option

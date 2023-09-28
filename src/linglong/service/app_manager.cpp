@@ -256,26 +256,6 @@ QueryReply AppManager::ListContainer()
     return reply;
 }
 
-/**
- * @brief 执行终端命令
- *
- * @param exe 命令
- * @param args 参数
- *
- * @return Reply 执行结果信息
- */
-Reply AppManager::RunCommand(const QString &exe, const QStringList args)
-{
-    Reply reply;
-
-    auto err = util::Exec(exe, args, 15 * 60 * 1000);
-
-    reply.code = err.code();
-    reply.message = err.message();
-
-    return reply;
-}
-
 QString AppManager::Status()
 {
     return "active";

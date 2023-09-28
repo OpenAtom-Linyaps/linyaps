@@ -558,9 +558,10 @@ int main(int argc, char **argv)
                       qInfo().noquote() << "message:" << reply.message;
                   }
               } else {
-                  PACKAGE_MANAGER->setNoDBusMode(true);
-                  reply = PACKAGE_MANAGER->Install(installParamOption);
-                  PACKAGE_MANAGER->pool->waitForDone(-1);
+                  linglong::service::PackageManager packageManager;
+                  packageManager.setNoDBusMode(true);
+                  reply = packageManager.Install(installParamOption);
+                  packageManager.pool->waitForDone(-1);
                   qInfo().noquote() << "install " << installParamOption.appId << " done";
               }
               return 0;
@@ -731,8 +732,9 @@ int main(int argc, char **argv)
               qInfo().noquote() << "uninstall" << appInfo << ", please wait a few minutes...";
               paramOption.delAllVersion = parser.isSet(optAllVer);
               if (parser.isSet(optNoDbus)) {
-                  PACKAGE_MANAGER->setNoDBusMode(true);
-                  reply = PACKAGE_MANAGER->Uninstall(paramOption);
+                  linglong::service::PackageManager packageManager;
+                  packageManager.setNoDBusMode(true);
+                  reply = packageManager.Uninstall(paramOption);
                   if (reply.code != STATUS_CODE(kPkgUninstallSuccess)) {
                       qInfo().noquote()
                               << "message: " << reply.message << ", errcode:" << reply.code;
@@ -781,7 +783,8 @@ int main(int argc, char **argv)
               QList<QSharedPointer<linglong::package::AppMetaInfo>> appMetaInfoList;
               linglong::service::QueryReply reply;
               if (parser.isSet(optNoDbus)) {
-                  reply = PACKAGE_MANAGER->Query(paramOption);
+                  linglong::service::PackageManager packageManager;
+                  reply = packageManager.Query(paramOption);
               } else {
                   QDBusPendingReply<linglong::service::QueryReply> dbusReply =
                           sysPackageManager.Query(paramOption);
@@ -831,7 +834,8 @@ int main(int argc, char **argv)
                       dbusReply.waitForFinished();
                       reply = dbusReply.value();
                   } else {
-                      reply = PACKAGE_MANAGER->ModifyRepo(name, url);
+                      linglong::service::PackageManager packageManager;
+                      reply = packageManager.ModifyRepo(name, url);
                   }
                   if (reply.code != STATUS_CODE(kErrorModifyRepoSuccess)) {
                       qCritical().noquote()

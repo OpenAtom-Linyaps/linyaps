@@ -8,7 +8,6 @@ linglong_add_library(
   package_manager.cpp
   HEADERS
   package_manager.h
-  package_manager_p.h
   DEPENDENCIES
   linglong_runtime
   linglong_util

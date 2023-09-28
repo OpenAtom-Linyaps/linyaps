@@ -10,10 +10,11 @@
 #include "linglong/utils/dbus/register.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/global/initialize.h"
+#include "linglong/package_manager/package_manager.h"
 
 #include <QCoreApplication>
 
-int main(int argc, char *argv[])
+auto main(int argc, char *argv[]) -> int
 {
     QCoreApplication app(argc, argv);
 
@@ -29,9 +30,9 @@ int main(int argc, char *argv[])
     registerDBusParam();
 
     QDBusConnection conn = QDBusConnection::systemBus();
-
-    linglong::adaptors::package_manger::PackageManager1 packageManagerAdaptor(PACKAGE_MANAGER);
-    auto result = registerDBusObject(conn, "/org/deepin/linglong/PackageManager", PACKAGE_MANAGER);
+    linglong::service::PackageManager packageManager;
+    linglong::adaptors::package_manger::PackageManager1 packageManagerAdaptor(&packageManager);
+    auto result = registerDBusObject(conn, "/org/deepin/linglong/PackageManager", &packageManager);
     auto _ = finally([&conn] {
         unregisterDBusObject(conn,
                              // FIXME: use cmake option

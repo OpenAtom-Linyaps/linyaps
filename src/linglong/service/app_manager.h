@@ -10,8 +10,10 @@
 #include "linglong/dbus_ipc/package_manager_param.h"
 #include "linglong/dbus_ipc/param_option.h"
 #include "linglong/dbus_ipc/reply.h"
+#include "linglong/package/bundle.h"
+#include "linglong/package/ref.h"
+#include "linglong/repo/repo.h"
 #include "linglong/runtime/app.h"
-#include "linglong/util/singleton.h"
 
 #include <QDBusArgument>
 #include <QDBusContext>

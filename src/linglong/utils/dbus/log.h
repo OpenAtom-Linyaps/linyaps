@@ -9,6 +9,6 @@
 
 #include "QLoggingCategory"
 
-Q_DECLARE_LOGGING_CATEGORY(linglong_utils_dbus);
+Q_DECLARE_LOGGING_CATEGORY(linglong_utils_dbus); // NOLINT
 
 #endif

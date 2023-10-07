@@ -6,4 +6,4 @@
 
 #include "linglong/utils/dbus/log.h"
 
-Q_LOGGING_CATEGORY(linglong_utils_dbus, "linglong::utils::dbus")
+Q_LOGGING_CATEGORY(linglong_utils_dbus, "linglong::utils::dbus") // NOLINT

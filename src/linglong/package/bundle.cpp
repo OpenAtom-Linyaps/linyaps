@@ -6,7 +6,6 @@
 
 #include "bundle.h"
 
-#include "bundle_p.h"
 #include "linglong/package/info.h"
 #include "linglong/util/file.h"
 #include "linglong/util/qserializer/json.h"
@@ -18,7 +17,6 @@ namespace package {
 
 Bundle::Bundle(QObject *parent)
     : QObject(parent)
-    , dd_ptr(new BundlePrivate())
 {
 }
 
@@ -35,29 +33,6 @@ linglong::util::Error Bundle::save(const QString & /*path*/)
 }
 
 linglong::util::Error Bundle::make(const QString &dataPath, const QString &outputFilePath)
-{
-    Q_D(Bundle);
-    auto err = d->make(dataPath, outputFilePath);
-    if (err) {
-        return WrapError(err, "make");
-    }
-    return Success();
-}
-
-linglong::util::Error Bundle::push(const QString &bundleFilePath,
-                                   const QString &repoUrl,
-                                   const QString &repoChannel,
-                                   bool force)
-{
-    Q_D(Bundle);
-    auto err = d->push(bundleFilePath, repoUrl, repoChannel, force);
-    if (err) {
-        return err;
-    }
-    return Success();
-}
-
-linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString &outputFilePath)
 {
     // 获取存储文件父目录路径
     QString bundleFileDirPath;
@@ -163,7 +138,7 @@ linglong::util::Error BundlePrivate::make(const QString &dataPath, const QString
 }
 
 // read elf64
-auto BundlePrivate::readElf64(FILE *fd, Elf64_Ehdr &ehdr)
+auto Bundle::readElf64(FILE *fd, Elf64_Ehdr &ehdr)
         -> decltype(ehdr.e_shoff + (ehdr.e_shentsize * ehdr.e_shnum))
 {
     Elf64_Ehdr ehdr64;
@@ -183,7 +158,7 @@ auto BundlePrivate::readElf64(FILE *fd, Elf64_Ehdr &ehdr)
 }
 
 // get elf offset size
-auto BundlePrivate::getElfSize(const QString elfFilePath) -> decltype(-1)
+auto Bundle::getElfSize(const QString elfFilePath) -> decltype(-1)
 {
     FILE *fd = nullptr;
     off_t size = -1;
@@ -211,7 +186,7 @@ auto BundlePrivate::getElfSize(const QString elfFilePath) -> decltype(-1)
     return size;
 }
 
-linglong::util::Error BundlePrivate::push(const QString &bundleFilePath,
+linglong::util::Error Bundle::push(const QString &bundleFilePath,
                                           const QString &repoUrl,
                                           const QString &repoChannel,
                                           bool /*force*/)

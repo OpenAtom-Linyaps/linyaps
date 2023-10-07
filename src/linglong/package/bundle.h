@@ -39,19 +39,20 @@ namespace package {
 // 16 bit system binary  swap
 #define bswap16(value) ((((value)&0xff) << 8) | ((value) >> 8))
 // 32 bit system binary  swap
-#define bswap32(value)                                   \
-  (((uint32_t)bswap16((uint16_t)((value)&0xffff)) << 16) \
-   | (uint32_t)bswap16((uint16_t)((value) >> 16)))
+#define bswap32(value)                                     \
+    (((uint32_t)bswap16((uint16_t)((value)&0xffff)) << 16) \
+     | (uint32_t)bswap16((uint16_t)((value) >> 16)))
 // 64 bit system binary  swap
-#define bswap64(value)                                       \
-  (((uint64_t)bswap32((uint32_t)((value)&0xffffffff)) << 32) \
-   | (uint64_t)bswap32((uint32_t)((value) >> 32)))
+#define bswap64(value)                                         \
+    (((uint64_t)bswap32((uint32_t)((value)&0xffffffff)) << 32) \
+     | (uint64_t)bswap32((uint32_t)((value) >> 32)))
 
 class BundlePrivate;
 
 /*
  * Bundle
- * Create Bundle format file, An Bundle contains loader, and it's erofs or other filesystem support fuse.
+ * Create Bundle format file, An Bundle contains loader, and it's erofs or other filesystem support
+ * fuse.
  *
  */
 class Bundle : public QObject
@@ -99,8 +100,45 @@ public:
                                bool force);
 
 private:
-    QScopedPointer<BundlePrivate> dd_ptr;
-    Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), Bundle)
+    QString bundleFilePath;
+    QString erofsFilePath;
+    QString bundleDataPath;
+    int offsetValue;
+    QString tmpWorkDir;
+    QString buildArch;
+    const QString linglongLoader = "/usr/libexec/linglong-loader";
+    const QString configJson = "/info.json";
+
+    template<typename P>
+    inline uint16_t file16ToCpu(uint16_t val, const P &ehdr)
+    {
+        if (ehdr.e_ident[EI_DATA] != ELFDATANATIVE)
+            val = bswap16(val);
+        return val;
+    }
+
+    template<typename P>
+    uint32_t file32ToCpu(uint32_t val, const P &ehdr)
+    {
+        if (ehdr.e_ident[EI_DATA] != ELFDATANATIVE)
+            val = bswap32(val);
+        return val;
+    }
+
+    template<typename P>
+    uint64_t file64ToCpu(uint64_t val, const P &ehdr)
+    {
+        if (ehdr.e_ident[EI_DATA] != ELFDATANATIVE)
+            val = bswap64(val);
+        return val;
+    }
+
+    // read elf64
+    auto readElf64(FILE *fd, Elf64_Ehdr &ehdr)
+            -> decltype(ehdr.e_shoff + (ehdr.e_shentsize * ehdr.e_shnum));
+
+    // get elf offset size
+    auto getElfSize(const QString elfFilePath) -> decltype(-1);
 };
 
 } // namespace package

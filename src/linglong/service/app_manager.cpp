@@ -229,8 +229,4 @@ QueryReply AppManager::ListContainer()
     return reply;
 }
 
-QString AppManager::Status()
-{
-    return "active";
-}
 } // namespace linglong::service

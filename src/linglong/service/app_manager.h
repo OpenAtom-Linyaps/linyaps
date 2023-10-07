@@ -49,13 +49,6 @@ public:
 public Q_SLOTS:
 
     /**
-     * @brief 查询包管理服务状态
-     *
-     * @return "active"
-     */
-    auto Status() -> QString;
-
-    /**
      * @brief 运行应用
      *
      * @param paramOption 启动命令参数

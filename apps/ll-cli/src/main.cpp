@@ -115,37 +115,6 @@ static void printAppInfo(QList<QSharedPointer<linglong::package::AppMetaInfo>> a
     }
 }
 
-/**
- * @brief 检测ll-service dbus服务是否已经启动，未启动则启动
- *
- * @param packageManager ll-service dbus服务
- *
- */
-static void checkAndStartService(linglong::api::v1::dbus::AppManager1 &appManager)
-{
-    const auto kStatusActive = "active";
-    QDBusReply<QString> status = appManager.Status();
-    // FIXME: should use more precision to check status
-    if (kStatusActive != status.value()) {
-        QProcess process;
-        process.setProgram("ll-service");
-        process.setStandardOutputFile("/dev/null");
-        process.setStandardErrorFile("/dev/null");
-        process.setArguments({});
-        process.startDetached();
-
-        for (int i = 0; i < 10; ++i) {
-            status = appManager.Status();
-            if (kStatusActive == status.value()) {
-                return;
-            }
-            QThread::sleep(1);
-        }
-
-        qCritical() << "start ll-service failed";
-    }
-}
-
 static void startDaemon(QString program, QStringList args = {}, qint64 *pid = nullptr)
 {
     QProcess process;
@@ -213,8 +182,6 @@ int main(int argc, char **argv)
             }
         }
         setenv("LINGLONG_SYSTEM_HELPER_ADDRESS", systemHelperAddress.toStdString().c_str(), true);
-    } else {
-        checkAndStartService(appManager);
     }
 
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {

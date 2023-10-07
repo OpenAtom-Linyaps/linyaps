@@ -15,8 +15,9 @@
 
 namespace linglong::utils::dbus {
 
-[[nodiscard]] auto registerDBusObject(QDBusConnection conn, const QString &path, QObject *obj)
-        -> tl::expected<void, error::Error>
+[[nodiscard]] inline auto registerDBusObject(QDBusConnection conn,
+                                             const QString &path,
+                                             QObject *obj) -> tl::expected<void, error::Error>
 {
     if (conn.registerObject(path, obj)) {
         qCDebug(linglong_utils_dbus) << "register object to dbus on" << path;

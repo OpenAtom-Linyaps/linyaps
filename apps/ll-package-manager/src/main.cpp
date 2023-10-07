@@ -7,10 +7,10 @@
 #include "linglong/adaptors/job_manager/job_manager1.h"
 #include "linglong/adaptors/package_manager/package_manager1.h"
 #include "linglong/dbus_ipc/workaround.h"
+#include "linglong/package_manager/package_manager.h"
 #include "linglong/utils/dbus/register.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/global/initialize.h"
-#include "linglong/package_manager/package_manager.h"
 
 #include <QCoreApplication>
 

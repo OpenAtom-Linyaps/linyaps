@@ -2,6 +2,11 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-add_subdirectory(src)
-
-install(TARGETS ll-system-helper RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+pfl_add_executable(
+  SOURCES
+  ./src/main.cpp
+  OUTPUT_NAME
+  ll-system-helper
+  LINK_LIBRARIES
+  PUBLIC
+  linglong)

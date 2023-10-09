@@ -15,7 +15,7 @@
 
 TEST(TestUtilsSerialize, YAMLBasics)
 {
-    auto dataFile = QFile("utils/serialize/data.yaml");
+    auto dataFile = QFile("src/utils/serialize/data.yaml");
     dataFile.open(QIODevice::ReadOnly);
     ASSERT_EQ(dataFile.isOpen(), true) << "test data not found";
 

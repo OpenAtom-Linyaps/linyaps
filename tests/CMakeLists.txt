@@ -2,35 +2,46 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-find_package(GTest REQUIRED)
+CPMFindPackage(
+  NAME googletest
+  GITHUB_REPOSITORY google/googletest
+  GIT_TAG v1.14.0
+  VERSION 1.12.1
+  OPTIONS "INSTALL_GTEST OFF" "gtest_force_shared_crt"
+  FIND_PACKAGE_ARGUMENTS "NAMES GTest"
+  GIT_SHALLOW ON
+  EXCLUDE_FROM_ALL ON)
+
+pfl_add_executable(
+  INTERNAL
+  SOURCES
+  ./src/module/config/config_test.cpp
+  ./src/module/package/package_info_test.cpp
+  ./src/module/package/ref_test.cpp
+  ./src/module/qserializer/manifest_test.cpp
+  ./src/module/qserializer/object.cpp
+  ./src/module/qserializer/object.h
+  ./src/module/qserializer/test.cpp
+  ./src/module/runtime/app_test.cpp
+  ./src/module/util/error_test.cpp
+  ./src/module/util/fs_test.cpp
+  ./src/module/util/http_client_test.cpp
+  ./src/module/util/oci/distribution_test.cpp
+  ./src/module/util/runner_test.cpp
+  ./src/module/util/uuid_test.cpp
+  ./src/module/util/xdg_test.cpp
+  ./src/utils/serialize/json.cpp
+  ./src/utils/serialize/TestStruct.cpp
+  ./src/utils/serialize/TestStruct.h
+  ./src/utils/serialize/yaml.cpp
+  COMPILE_FEATURES
+  PUBLIC
+  cxx_std_17
+  LINK_LIBRARIES
+  PUBLIC
+  GTest::gtest
+  GTest::gtest_main
+  linglong)
+
 include(GoogleTest)
-
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
-
-add_executable(
-  ll-test
-  ./module/config/config_test.cpp
-  ./module/package/package_info_test.cpp
-  ./module/package/ref_test.cpp
-  ./module/qserializer/manifest_test.cpp
-  ./module/qserializer/object.cpp
-  ./module/qserializer/object.h
-  ./module/qserializer/test.cpp
-  ./module/runtime/app_test.cpp
-  ./module/util/error_test.cpp
-  ./module/util/fs_test.cpp
-  ./module/util/http_client_test.cpp
-  ./module/util/oci/distribution_test.cpp
-  ./module/util/runner_test.cpp
-  ./module/util/uuid_test.cpp
-  ./module/util/xdg_test.cpp
-  ./utils/serialize/json.cpp
-  ./utils/serialize/TestStruct.cpp
-  ./utils/serialize/TestStruct.h
-  ./utils/serialize/yaml.cpp
-)
-
-target_link_libraries(ll-test PRIVATE GTest::Main linglong)
-
-gtest_discover_tests(ll-test WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
+gtest_discover_tests(linglong__tests WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})

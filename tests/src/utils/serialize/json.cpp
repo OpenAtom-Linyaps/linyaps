@@ -15,7 +15,7 @@
 
 TEST(TestUtilsSerialize, JSONBasics)
 {
-    auto dataFile = QFile("utils/serialize/data.json");
+    auto dataFile = QFile("src/utils/serialize/data.json");
     dataFile.open(QIODevice::ReadOnly);
     ASSERT_EQ(dataFile.isOpen(), true) << "test data not found";
 

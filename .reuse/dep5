@@ -13,6 +13,10 @@ Files: external/qserializer/*
 License: LGPL-3.0-only
 Copyright: Chen Linxuan <me@black-desk.cn>
 
+Files: cmake/CPM.cmake
+License: MIT
+Copyright: 2019-2022 Lars Melchior and contributors
+
 # some deepin permission related json configuration files
 Files: misc/linglong/permission/*.json
 License: CC0-1.0
@@ -34,6 +38,6 @@ License: LGPL-3.0-only
 Copyright: UnionTech Software Technology Co., Ltd.
 
 # Test data
-Files: tests/data/* tests/utils/serialize/data.json tests/utils/serialize/data.yaml
+Files: tests/data/* tests/src/utils/serialize/data.json tests/src/utils/serialize/data.yaml
 License: CC0-1.0
 Copyright: None

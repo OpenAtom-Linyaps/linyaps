@@ -649,69 +649,85 @@ bool OstreeRepoHelper::repoPullbyCmd(const QString &destPath,
                                      const QString &ref,
                                      QString &err)
 {
-    // 创建临时仓库
-    QString tmpPath = createTmpRepo(destPath + "/repo");
-    if (tmpPath.isEmpty()) {
-        err = "create tmp repo err";
-        qCritical() << err;
-        return false;
+    char * refs_remote = const_cast<char *>(ref.toStdString().c_str());
+    GError *error = NULL;
+    if (!ostree_repo_pull(pLingLongDir->repo,
+                            remoteName.toStdString().c_str(),
+                            &refs_remote,
+                            OSTREE_REPO_PULL_FLAGS_NONE,
+                            NULL,
+                            NULL,
+                            &error))
+    {
+            qCritical() << "repoPullbyCmd error:" << error->message;
+            err = "repoPullbyCmd error:" + QString(QLatin1String(error->message));
+            return false;
     }
+    return true;
 
-    // 将数据 pull 到临时仓库
-    // ostree --repo=/var/tmp/linglong-cache-I80JB1/repoTmp pull --mirror
-    // repo:app/org.deepin.calculator/x86_64/1.2.2
-    const QString fullref = remoteName + ":" + ref;
-    // auto ret = Runner("ostree", {"--repo=" + QString(QLatin1String(tmpPath)), "pull", "--mirror",
-    // fullref}, 1000 * 60
-    // * 60 * 24);
-    // auto ret = startOstreeJob(ref, {"--repo=" + tmpPath, "pull", "--mirror", fullref},
+    // // 创建临时仓库
+    // QString tmpPath = createTmpRepo(destPath + "/repo");
+    // if (tmpPath.isEmpty()) {
+    //     err = "create tmp repo err";
+    //     qCritical() << err;
+    //     return false;
+    // }
+
+    // // 将数据 pull 到临时仓库
+    // // ostree --repo=/var/tmp/linglong-cache-I80JB1/repoTmp pull --mirror
+    // // repo:app/org.deepin.calculator/x86_64/1.2.2
+    // const QString fullref = remoteName + ":" + ref;
+    // // auto ret = Runner("ostree", {"--repo=" + QString(QLatin1String(tmpPath)), "pull", "--mirror",
+    // // fullref}, 1000 * 60
+    // // * 60 * 24);
+    // // auto ret = startOstreeJob(ref, {"--repo=" + tmpPath, "pull", "--mirror", fullref},
+    // //                           1000 * 60 * 60 * 24);
+    // // script -q -f ostree.log -c "ostree --repo=/deepin/linglong/repo/repo pull --mirror
+    // // repo:com.qq.weixin.work.deepin/4.0.0.6007/x86_64"
+    // QString logPath = QString("/tmp/.linglong");
+    // linglong::util::createDir(logPath);
+
+    // // add for ll-test
+    // QFile file(logPath);
+    // QFile::Permissions permissions = file.permissions();
+    // permissions |= QFile::WriteOther;
+    // file.setPermissions(permissions);
+
+    // QString logName = ref.split("/").join("-");
+    // QString ostreeCmd = "ostree --repo=" + tmpPath + " pull --mirror " + fullref;
+    // auto ret = startOstreeJob("script",
+    //                           ref,
+    //                           { "-q", "-f", logPath + "/" + logName, "-c", ostreeCmd },
     //                           1000 * 60 * 60 * 24);
-    // script -q -f ostree.log -c "ostree --repo=/deepin/linglong/repo/repo pull --mirror
-    // repo:com.qq.weixin.work.deepin/4.0.0.6007/x86_64"
-    QString logPath = QString("/tmp/.linglong");
-    linglong::util::createDir(logPath);
+    // if (!ret) {
+    //     err = "repoPullbyCmd pull error";
+    //     qCritical() << err;
+    //     return false;
+    // }
+    // qInfo() << "repoPullbyCmd pull success";
+    // // ostree --repo=test-repo(目标)  pull-local /home/linglong/work/linglong/pool/repo(源)
+    // // 将数据从临时仓库同步到目标仓库
+    // // ret = Runner("ostree", {"--repo=" + destPath + "/repo", "pull-local",
+    // // QString(QLatin1String(tmpPath)), ref}, 1000
+    // // * 60 * 60);
+    // ret = startOstreeJob("ostree",
+    //                      ref,
+    //                      { "--repo=" + destPath + "/repo", "pull-local", tmpPath, ref },
+    //                      1000 * 60 * 60);
 
-    // add for ll-test
-    QFile file(logPath);
-    QFile::Permissions permissions = file.permissions();
-    permissions |= QFile::WriteOther;
-    file.setPermissions(permissions);
+    // // 删除下载进度的重定向文件
+    // QString filePath = "/tmp/.linglong/" + logName;
+    // QFile(filePath).remove();
 
-    QString logName = ref.split("/").join("-");
-    QString ostreeCmd = "ostree --repo=" + tmpPath + " pull --mirror " + fullref;
-    auto ret = startOstreeJob("script",
-                              ref,
-                              { "-q", "-f", logPath + "/" + logName, "-c", ostreeCmd },
-                              1000 * 60 * 60 * 24);
-    if (!ret) {
-        err = "repoPullbyCmd pull error";
-        qCritical() << err;
-        return false;
-    }
-    qInfo() << "repoPullbyCmd pull success";
-    // ostree --repo=test-repo(目标)  pull-local /home/linglong/work/linglong/pool/repo(源)
-    // 将数据从临时仓库同步到目标仓库
-    // ret = Runner("ostree", {"--repo=" + destPath + "/repo", "pull-local",
-    // QString(QLatin1String(tmpPath)), ref}, 1000
-    // * 60 * 60);
-    ret = startOstreeJob("ostree",
-                         ref,
-                         { "--repo=" + destPath + "/repo", "pull-local", tmpPath, ref },
-                         1000 * 60 * 60);
-
-    // 删除下载进度的重定向文件
-    QString filePath = "/tmp/.linglong/" + logName;
-    QFile(filePath).remove();
-
-    // 删除临时仓库
-    QString tmpRepoDir = tmpPath.left(tmpPath.length() - QString("/repoTmp").length());
-    qInfo() << "delete tmp repo path:" << tmpRepoDir;
-    linglong::util::removeDir(tmpRepoDir);
-    if (!ret) {
-        err = "repoPullbyCmd pull-local error";
-        qCritical() << err;
-    }
-    return ret;
+    // // 删除临时仓库
+    // QString tmpRepoDir = tmpPath.left(tmpPath.length() - QString("/repoTmp").length());
+    // qInfo() << "delete tmp repo path:" << tmpRepoDir;
+    // linglong::util::removeDir(tmpRepoDir);
+    // if (!ret) {
+    //     err = "repoPullbyCmd pull-local error";
+    //     qCritical() << err;
+    // }
+    // return ret;
 }
 
 /*

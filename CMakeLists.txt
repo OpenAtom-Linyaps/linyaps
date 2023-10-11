@@ -77,7 +77,8 @@ pkg_search_module(ostree1 REQUIRED IMPORTED_TARGET ostree-1)
 pkg_search_module(systemd REQUIRED IMPORTED_TARGET libsystemd)
 
 set(QSERIALIZER_QT_VERSION_MAJOR "5")
-pfl_init(ENABLE_TESTING ${LINGLONG_ENABLE_TESTING} EXTERNALS qserializer)
+pfl_init(ENABLE_TESTING ${LINGLONG_ENABLE_TESTING} EXTERNALS qserializer
+         INSTALL ON)
 
 if(LINGLONG_ENABLE_TESTING)
   enable_testing()

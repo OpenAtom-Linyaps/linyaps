@@ -2,4 +2,6 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
+include(GNUInstallDirs)
+
 install(PROGRAMS llpkg DESTINATION ${CMAKE_INSTALL_BINDIR})

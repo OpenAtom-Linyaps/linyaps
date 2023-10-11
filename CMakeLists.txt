@@ -74,6 +74,16 @@ if(NOT TARGET yaml-cpp::yaml-cpp)
   add_library(yaml-cpp::yaml-cpp ALIAS yaml-cpp)
 endif()
 
+CPMFindPackage(
+  NAME ocppi
+  VERSION 0.1.8
+  GITHUB_REPOSITORY black-desk/ocppi
+  GIT_TAG v0.1.8
+  GIT_SHALLOW ON
+  OPTIONS "OCPPI_ENABLE_TESTING OFF" "OCPPI_BUILD_EXAMPLES OFF"
+  FIND_PACKAGE_ARGUMENTS "NAMES ocppi COMPONENTS common runtime"
+  EXCLUDE_FROM_ALL ON)
+
 find_package(PkgConfig REQUIRED)
 
 pkg_search_module(glib2 REQUIRED IMPORTED_TARGET glib-2.0)
@@ -282,6 +292,7 @@ pfl_add_library(
   Qt::Network
   Qt::Sql
   Qt::WebSockets
+  ocppi::runtime
   tl::expected
   tl::expected
   yaml-cpp::yaml-cpp)

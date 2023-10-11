@@ -272,19 +272,19 @@ pfl_add_library(
   cxx_std_17
   LINK_LIBRARIES
   PUBLIC
-  tl::expected
-  Qt::Core
-  Qt::Concurrent
-  Qt::DBus
-  Qt::Network
-  Qt::WebSockets
-  Qt::Sql
-  yaml-cpp::yaml-cpp
-  tl::expected
-  QSerializer::DBus
   PkgConfig::glib2
   PkgConfig::ostree1
-  PkgConfig::systemd)
+  PkgConfig::systemd
+  QSerializer::DBus
+  Qt::Concurrent
+  Qt::Core
+  Qt::DBus
+  Qt::Network
+  Qt::Sql
+  Qt::WebSockets
+  tl::expected
+  tl::expected
+  yaml-cpp::yaml-cpp)
 
 function(
   linglong_add_dbus_adaptor

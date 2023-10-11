@@ -70,6 +70,10 @@ CPMFindPackage(
   GIT_SHALLOW ON
   EXCLUDE_FROM_ALL ON)
 
+if(NOT TARGET yaml-cpp::yaml-cpp)
+  add_library(yaml-cpp::yaml-cpp ALIAS yaml-cpp)
+endif()
+
 find_package(PkgConfig REQUIRED)
 
 pkg_search_module(glib2 REQUIRED IMPORTED_TARGET glib-2.0)
@@ -275,7 +279,7 @@ pfl_add_library(
   Qt::Network
   Qt::WebSockets
   Qt::Sql
-  yaml-cpp
+  yaml-cpp::yaml-cpp
   tl::expected
   QSerializer::DBus
   PkgConfig::glib2

@@ -148,6 +148,7 @@ pfl_add_library(
   ./src/linglong/builder/source_fetcher.cpp
   ./src/linglong/builder/source_fetcher.h
   ./src/linglong/builder/source_fetcher_p.h
+  ./src/linglong/builder/to_json.cpp
   ./src/linglong/dbus_ipc/dbus_common.cpp
   ./src/linglong/dbus_ipc/dbus_common.h
   ./src/linglong/dbus_ipc/dbus_system_helper_common.cpp
@@ -185,6 +186,7 @@ pfl_add_library(
   ./src/linglong/repo/vfs_repo.cpp
   ./src/linglong/repo/vfs_repo.h
   ./src/linglong/runtime/app.cpp
+  ./src/linglong/runtime/to_json.cpp
   ./src/linglong/runtime/resource/app_configs.qrc
   ./src/linglong/runtime/app.h
   ./src/linglong/runtime/app_config.cpp

@@ -4,7 +4,7 @@ Upstream-Contact:  UnionTech Software Technology Co., Ltd. <>
 Source: https://github.com/linuxdeepin/linglong
 
 # CI config files
-Files: .github/* .obs/*
+Files: .github/* .obs/* OWNERS
 License: CC0-1.0
 Copyright: None
 

@@ -143,7 +143,7 @@ auto AppManager::Start(const RunParamOption &paramOption) -> Reply
         // 判断是否是正在运行应用
         auto latestAppRef = repo->latestOfRef(appId, version);
         for (const auto &app : apps) {
-            if (latestAppRef.toString() == app->container()->packageName) {
+            if (latestAppRef.toString() == app->container->packageName) {
                 app->exec(desktopExec, "", "");
                 return;
             }
@@ -157,7 +157,7 @@ auto AppManager::Start(const RunParamOption &paramOption) -> Reply
         }
         app->saveUserEnvList(userEnvList);
         app->setAppParamMap(paramMap);
-        auto it = apps.insert(app->container()->id, app);
+        auto it = apps.insert(app->container->id, app);
         auto err = app->start();
         if (err) {
             qCritical() << "start app failed" << err;
@@ -175,7 +175,7 @@ Reply AppManager::Exec(const ExecParamOption &paramOption)
     reply.message = "No such container " + paramOption.containerID;
     auto const &containerID = paramOption.containerID;
     for (auto it : apps) {
-        if (it->container()->id == containerID) {
+        if (it->container->id == containerID) {
             it->exec(paramOption.cmd, paramOption.env, paramOption.cwd);
             reply.code = STATUS_CODE(kSuccess);
             reply.message = "Exec successed";
@@ -196,14 +196,14 @@ Reply AppManager::Stop(const QString &containerId)
         return reply;
     }
     auto app = it->data();
-    pid_t pid = app->container()->pid;
+    pid_t pid = app->container->pid;
     int ret = kill(pid, SIGKILL);
     if (ret != 0) {
         reply.message = "kill container failed, containerId:" + containerId;
         reply.code = STATUS_CODE(kErrorPkgKillFailed);
     } else {
         reply.code = STATUS_CODE(kErrorPkgKillSuccess);
-        reply.message = "kill app:" + app->container()->packageName + " success";
+        reply.message = "kill app:" + app->container->packageName + " success";
     }
     qInfo() << "kill containerId:" << containerId << ",ret:" << ret;
     return reply;
@@ -215,10 +215,10 @@ QueryReply AppManager::ListContainer()
 
     for (const auto &app : apps) {
         auto container = QSharedPointer<Container>(new Container);
-        container->id = app->container()->id;
-        container->pid = app->container()->pid;
-        container->packageName = app->container()->packageName;
-        container->workingDirectory = app->container()->workingDirectory;
+        container->id = app->container->id;
+        container->pid = app->container->pid;
+        container->packageName = app->container->packageName;
+        container->workingDirectory = app->container->workingDirectory;
         jsonArray.push_back(QVariant::fromValue(container).toJsonValue());
     }
 

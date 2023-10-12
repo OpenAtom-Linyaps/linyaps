@@ -9,7 +9,10 @@
 
 #include "linglong/package/package.h"
 #include "linglong/package/ref.h"
+#include "linglong/runtime/app_config.h"
 #include "linglong/runtime/container.h"
+#include "linglong/runtime/oci.h"
+#include "linglong/util/file.h"
 
 namespace linglong::repo {
 class Repo;
@@ -59,8 +62,6 @@ Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::runtime, AppPermission)
 
 namespace linglong::runtime {
 
-class AppPrivate;
-
 class App : public JsonSerialize
 {
     Q_OBJECT;
@@ -75,13 +76,11 @@ public:
     explicit App(QObject *parent = nullptr);
     ~App() override;
 
-    static QSharedPointer<App> load(linglong::repo::Repo *repo,
+    static auto load(linglong::repo::Repo *repo,
                                     const linglong::package::Ref &ref,
-                                    const QString &desktopExec);
+                                    const QString &desktopExec) -> QSharedPointer<App>;
 
-    QSharedPointer<const Container> container() const;
-
-    util::Error start();
+    auto start() -> util::Error;
 
     void exec(QString cmd, QString env, QString cwd);
 
@@ -89,13 +88,56 @@ public:
 
     void setAppParamMap(const ParamStringMap &paramMap);
 
+    QSharedPointer<Container> container = nullptr;
 private:
-    QScopedPointer<AppPrivate> dd_ptr;
-    Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), App)
+    auto init() -> bool;
+
+    auto prepare() -> int;
+
+    [[nodiscard]] auto stageSystem() const -> int;
+
+    [[nodiscard]] auto stageRootfs(QString runtimeRootPath, const QString &appId, QString appRootPath) const -> int;
+
+    [[nodiscard]] auto stageHost() const -> int;
+
+    void stateDBusProxyArgs(bool enable, const QString &appId, const QString &proxyPath);
+
+    // Fix to do 当前仅处理session bus
+    auto stageDBusProxy(const QString &socketPath, bool useDBusProxy = false) -> int;
+
+    [[nodiscard]] auto stageUser(const QString &appId) const -> int;
+
+    auto stageMount() -> int;
+
+    auto mountTmp() -> int;
+
+    auto fixMount(QString runtimeRootPath, const QString &appId) -> int;
+
+    static auto getMathedRuntime(const QString &runtimeId, const QString &runtimeVersion) -> QString;
+
+    // FIXME: none static
+    static auto loadConfig(linglong::repo::Repo *repo,
+                              const QString &appId,
+                              const QString &appVersion,
+                              const QString &channel,
+                              const QString &module) -> QString;
+
+    bool useFlatpakRuntime = false;
+    QString desktopExec = nullptr;
+    ParamStringMap envMap;
+    ParamStringMap runParamMap;
+
+    QSharedPointer<Runtime> r = nullptr;
+    QSharedPointer<AppConfig> appConfig = nullptr;
+
+    repo::Repo *repo = nullptr;
+    int sockets[2]; // save file describers of sockets used to communicate with ll-box
+
+    const QString sysLinglongInstalltions = util::getLinglongRootPath() + "/entries/share";
 };
 
 namespace PrivateAppInit {
-int init();
+auto init() -> int;
 static int _ = init();
 } // namespace PrivateAppInit
 

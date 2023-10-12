@@ -7,18 +7,15 @@
 #ifndef LINGLONG_SRC_MODULE_RUNTIME_APP_H_
 #define LINGLONG_SRC_MODULE_RUNTIME_APP_H_
 
-#include "linglong/runtime/container.h"
 #include "linglong/package/package.h"
 #include "linglong/package/ref.h"
+#include "linglong/runtime/container.h"
 
-namespace linglong {
-namespace repo {
+namespace linglong::repo {
 class Repo;
-}
-} // namespace linglong
+} // namespace linglong::repo
 
-namespace linglong {
-namespace runtime {
+namespace linglong::runtime {
 
 class Layer : public JsonSerialize
 {
@@ -26,13 +23,11 @@ class Layer : public JsonSerialize
     Q_JSON_CONSTRUCTOR(Layer)
     Q_JSON_PROPERTY(QString, ref);
 };
-} // namespace runtime
-} // namespace linglong
+} // namespace linglong::runtime
 
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::runtime, Layer)
 
-namespace linglong {
-namespace runtime {
+namespace linglong::runtime {
 
 class MountYaml : public JsonSerialize
 {
@@ -43,13 +38,11 @@ class MountYaml : public JsonSerialize
     Q_JSON_PROPERTY(QString, source);
     Q_JSON_PROPERTY(QString, destination);
 };
-} // namespace runtime
-} // namespace linglong
+} // namespace linglong::runtime
 
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::runtime, MountYaml)
 
-namespace linglong {
-namespace runtime {
+namespace linglong::runtime {
 /*!
  * Permission: base for run, you can use full run or let it empty
  */
@@ -60,13 +53,11 @@ class AppPermission : public JsonSerialize
     Q_JSON_PROPERTY(QList<QSharedPointer<linglong::runtime::MountYaml>>, mounts);
 };
 
-} // namespace runtime
-} // namespace linglong
+} // namespace linglong::runtime
 
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::runtime, AppPermission)
 
-namespace linglong {
-namespace runtime {
+namespace linglong::runtime {
 
 class AppPrivate;
 
@@ -108,8 +99,7 @@ int init();
 static int _ = init();
 } // namespace PrivateAppInit
 
-} // namespace runtime
-} // namespace linglong
+} // namespace linglong::runtime
 
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::runtime, App)
 #endif

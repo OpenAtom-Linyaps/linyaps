@@ -8,7 +8,12 @@
 #define LINGLONG_SRC_BUILDER_BUILDER_LINGLONG_BUILDER_H_
 
 #include "builder.h"
+#include "ocppi/runtime/config/types/Config.hpp"
+#include "ocppi/runtime/config/types/Mount.hpp"
 #include "project.h"
+#include "linglong/runtime/container.h"
+
+#include <nlohmann/json.hpp>
 
 namespace linglong {
 namespace builder {
@@ -39,6 +44,12 @@ public:
     linglong::util::Error initRepo();
 
     linglong::util::Error buildFlow(Project *project);
+
+private:
+    static int startContainer(QSharedPointer<Container> c,
+                              ocppi::runtime::config::types::Config &r);
+    static auto toJSON(const ocppi::runtime::config::types::Mount &) -> nlohmann::json;
+    static auto toJSON(const ocppi::runtime::config::types::Config &) -> nlohmann::json;
 };
 
 // TODO: remove later

@@ -16,7 +16,9 @@
 #include "linglong/util/qserializer/yaml.h"
 #include "linglong/util/version/version.h"
 #include "linglong/util/xdg.h"
+#include "linglong/utils/std_helper/qdebug_helper.h"
 #include "linglong/utils/xdg/desktop_entry.h"
+#include "ocppi/runtime/config/ConfigLoader.hpp"
 
 #include <linux/prctl.h>
 #include <sys/prctl.h>
@@ -28,6 +30,7 @@
 #include <QStandardPaths>
 
 #include <mutex>
+#include <sstream>
 
 #include <sys/socket.h>
 #include <sys/wait.h>
@@ -65,14 +68,30 @@ enum RunArch {
 
 auto App::init() -> bool
 {
-    QFile jsonFile(":/config.json");
-    if (!jsonFile.open(QIODevice::ReadOnly)) {
-        qFatal("builtin oci configuration file missing, check qrc");
-        return false;
+    QFile builtinOCIConfigTemplateJSONFile(":/config.json");
+    if (!builtinOCIConfigTemplateJSONFile.open(QIODevice::ReadOnly)) {
+        // NOTE(black_desk): Go check qrc if this occurs.
+        qFatal("builtin OCI configuration template file missing.");
     }
-    auto json = QJsonDocument::fromJson(jsonFile.readAll());
-    jsonFile.close();
-    r = json.toVariant().value<QSharedPointer<Runtime>>();
+
+    auto bytes = builtinOCIConfigTemplateJSONFile.readAll();
+    std::stringstream tmpStream;
+    tmpStream << bytes.toStdString();
+
+    ocppi::runtime::config::ConfigLoader loader;
+    auto config = loader.load(tmpStream);
+    if (!config.has_value()) {
+        qCritical() << "builtin OCI configuration template is invalid.";
+        try {
+            std::rethrow_exception(config.error());
+        } catch (const std::exception &e) {
+            qFatal("%s", e.what());
+        } catch (...) {
+            qFatal("Unknown error");
+        }
+    }
+
+    r = std::move(config.value());
 
     container.reset(new Container(this));
     container->create(package->ref);
@@ -80,7 +99,7 @@ auto App::init() -> bool
     return true;
 }
 
-auto App::prepare() -> int
+int App::prepare()
 {
     // FIXME: get info from module/package
     auto runtimeRef = package::Ref(runtime->ref);
@@ -108,18 +127,18 @@ auto App::prepare() -> int
     if (!envFile.open(QIODevice::WriteOnly)) {
         qCritical() << "create env failed" << envFile.error();
     }
-    for (const auto &env : r->process->env) {
-        envFile.write(env.toLocal8Bit());
+    for (const auto &env : *r.process->env) {
+        envFile.write(env.c_str());
         envFile.write("\n");
     }
     envFile.close();
 
-    QSharedPointer<Mount> m(new Mount);
-    m->type = "bind";
-    m->options = QStringList{ "rbind" };
-    m->source = envFilepath;
-    m->destination = "/run/app/env";
-    r->mounts.push_back(m);
+    ocppi::runtime::config::types::Mount m;
+    m.type = "bind";
+    m.options = { "rbind" };
+    m.source = envFilepath.toStdString();
+    m.destination = "/run/app/env";
+    r.mounts->push_back(m);
 
     // TODO: move to class package
     // find desktop file
@@ -164,36 +183,27 @@ auto App::prepare() -> int
         }
     }
 
-    if (r->process->args.isEmpty() && !desktopExec.isEmpty()) {
-        r->process->args = util::splitExec(desktopExec);
-    } else if (r->process->args.isEmpty()) {
-        r->process->args = execArgs;
-    }
-    // ll-cli run appId 获取的是原生desktop exec ,有的包含%F等参数，需要去掉
-    // FIXME(liujianqiang):后续整改，参考下面链接
-    // https://github.com/linuxdeepin/go-lib/blob/28a4ee3e8dbe6d6316d3b0053ee4bda1a7f63f98/appinfo/desktopappinfo/desktopappinfo.go
-    // https://github.com/linuxdeepin/go-lib/commit/bd52a27688413e1273f8b516ef55dc472d7978fd
-    auto indexNum = r->process->args.indexOf(QRegExp("^%\\w$"));
-    if (indexNum != -1) {
-        r->process->args.removeAt(indexNum);
+    // FIXME(black_desk): ignore field codes here. This might cause bugs that:
+    // - application has wrong icon to dispaly -> implement %i
+    // - application has wrong translated name -> implement %c
+    // - application doesn't know where its desktop entry placed -> implement %k
+    for (auto index = execArgs.indexOf(QRegExp("^%\\w$")); index != -1;
+         index = execArgs.indexOf(QRegExp("^%\\w$"))) {
+        execArgs.removeAt(index);
     }
 
-    // desktop文件修改或者添加环境变量支持
-    tmpArgs = parsedExec;
-    auto indexOfEnv = tmpArgs.indexOf(QRegExp("^env$"));
-    if (indexOfEnv != -1) {
-        auto env = tmpArgs[indexOfEnv + 1];
-        auto sepPos = env.indexOf("=");
-        auto indexResult = r->process->env.indexOf(QRegExp("^" + env.left(sepPos + 1) + ".*"));
-        if (indexResult != -1) {
-            r->process->env.removeAt(indexResult);
-            r->process->env.push_back(env);
-        } else {
-            r->process->env.push_back(env);
+    if (r.process->args->empty()) {
+        if (!desktopExec.isEmpty()) {
+            execArgs = util::splitExec(desktopExec);
         }
+        auto args = std::vector<std::string>{};
+        for (const auto &arg : execArgs) {
+            args.push_back(arg.toStdString());
+        }
+        r.process->args = args;
     }
 
-    qDebug() << "exec" << r->process->args;
+    qDebug() << "exec" << *r.process->args;
 
     bool noDbusProxy = runParamMap.contains(linglong::util::kKeyNoProxy);
     if (!linglong::util::fileExists("/usr/bin/ll-dbus-proxy")) {
@@ -213,7 +223,7 @@ auto App::prepare() -> int
     return 0;
 }
 
-auto App::stageSystem() const -> int
+auto App::stageSystem() -> int
 {
     QList<QPair<QString, QString>> mountMap;
     mountMap = {
@@ -222,19 +232,18 @@ auto App::stageSystem() const -> int
     };
 
     for (const auto &pair : mountMap) {
-        QSharedPointer<Mount> m(new Mount);
-        m->type = "bind";
-        m->options = QStringList{ "rbind" };
-        m->source = pair.first;
-        m->destination = pair.second;
-        r->mounts.push_back(m);
-        qDebug() << "mount stageSystem" << m->source << m->destination;
+        ocppi::runtime::config::types::Mount m;
+        m.type = "bind";
+        m.options = { "rbind" };
+        m.source = pair.first.toStdString();
+        m.destination = pair.second.toStdString();
+        qDebug() << "mount stageSystem" << m.source->c_str() << m.destination.c_str();
+        r.mounts->push_back(std::move(m));
     }
     return 0;
 }
 
-auto App::stageRootfs(QString runtimeRootPath, const QString &appId, QString appRootPath) const
-  -> int
+auto App::stageRootfs(QString runtimeRootPath, const QString &appId, QString appRootPath) -> int
 {
     // overlay 挂载标志
     bool fuseMount = false;
@@ -252,8 +261,9 @@ auto App::stageRootfs(QString runtimeRootPath, const QString &appId, QString app
         fuseMount = true;
     }
 
-    r->annotations.reset(new Annotations);
-    r->annotations->containerRootPath = container->workingDirectory;
+    r.annotations = {
+        { "containerRootPath", container->workingDirectory.toStdString() },
+    };
 
     // 通过info.json文件判断是否要overlay mount
     auto appInfoFile = appRootPath + "/info.json";
@@ -314,18 +324,28 @@ auto App::stageRootfs(QString runtimeRootPath, const QString &appId, QString app
     }
 
     if (fuseMount) {
-        r->annotations->overlayfs.reset(new AnnotationsOverlayfsRootfs);
-        r->annotations->overlayfs->lowerParent =
-          QStringList{ container->workingDirectory, ".overlayfs", "lower_parent" }.join("/");
-        r->annotations->overlayfs->upper =
-          QStringList{ container->workingDirectory, ".overlayfs", "upper" }.join("/");
-        r->annotations->overlayfs->workdir =
-          QStringList{ container->workingDirectory, ".overlayfs", "workdir" }.join("/");
+        r.annotations->insert({
+          "overlayfs",
+          {
+            { "lowerParent",
+              QStringList{ container->workingDirectory, ".overlayfs", "lower_parent" }
+                .join("/")
+                .toStdString() },
+            { "upper",
+              QStringList{ container->workingDirectory, ".overlayfs", "upper" }
+                .join("/")
+                .toStdString() },
+            { "workdir",
+              QStringList{ container->workingDirectory, ".overlayfs", "workdir" }
+                .join("/")
+                .toStdString() },
+          },
+        });
     } else {
-        r->annotations->native.reset(new AnnotationsNativeRootfs);
+        r.annotations->insert({ "native", {} });
     }
 
-    r->annotations->dbusProxyInfo.reset(new DBusProxy());
+    r.annotations->insert({ "dbusProxyInfo", {} });
 
     QList<QPair<QString, QString>> mountMap;
 
@@ -373,46 +393,47 @@ auto App::stageRootfs(QString runtimeRootPath, const QString &appId, QString app
     }
 
     for (const auto &pair : mountMap) {
-        QSharedPointer<Mount> m(new Mount);
-        m->type = "bind";
-        m->options = QStringList{ "ro", "rbind" };
-        m->source = pair.first;
-        m->destination = pair.second;
+        nlohmann::json m;
+        m["type"] = "bind";
+        m["options"] = nlohmann::json::array_t{ "ro", "rbind" };
+        m["source"] = pair.first.toStdString();
+        m["destination"] = pair.second.toStdString();
 
         if (fuseMount) {
             // overlay mount 顺序是反向的
             if (wineMount) {
                 // wine应用先保持不变（会导致wine应用运行失败），后续整改
-                r->annotations->overlayfs->mounts.push_back(m);
+                (*r.annotations)["overlayfs"]["mounts"].push_back(m);
             } else {
                 // ll-box overlay失效，待修复后改为push_front（gnome应用运行失效）
-                r->annotations->overlayfs->mounts.push_back(m);
+                (*r.annotations)["overlayfs"]["mounts"].push_back(m);
             }
         } else {
-            r->annotations->native->mounts.push_back(m);
+            (*r.annotations)["native"]["mounts"].push_back(m);
         }
     }
 
     // 读写挂载/opt,有的应用需要读写自身携带的资源文件。eg:云看盘
     QString appMountPath = "";
     appMountPath = "/opt/apps/" + appId;
-    QSharedPointer<Mount> m(new Mount);
-    m->type = "bind";
-    m->options = QStringList{ "rw", "rbind" };
-    m->source = appRootPath;
-    m->destination = appMountPath;
+
+    nlohmann::json m;
+    m["type"] = "bind";
+    m["options"] = nlohmann::json::array_t{ "rw", "rbind" };
+    m["source"] = appRootPath.toStdString();
+    m["destination"] = appMountPath.toStdString();
 
     if (fuseMount) {
         // overlay mount 顺序是反向的
         if (wineMount) {
             // wine应用先保持不变（会导致wine应用运行失败），后续整改
-            r->annotations->overlayfs->mounts.push_back(m);
+            (*r.annotations)["overlayfs"]["mounts"].push_back(m);
         } else {
             // ll-box overlay失效，待修复后改为push_front（gnome应用运行失效）
-            r->annotations->overlayfs->mounts.push_back(m);
+            (*r.annotations)["overlayfs"]["mounts"].push_back(m);
         }
     } else {
-        r->annotations->native->mounts.push_back(m);
+        (*r.annotations)["native"]["mounts"].push_back(m);
     }
 
     // TODO(iceyer): let application do this or add to doc
@@ -429,6 +450,10 @@ auto App::stageRootfs(QString runtimeRootPath, const QString &appId, QString app
     } else {
         runArch = UNKNOWN;
     }
+
+    r.process->env = r.process->env.value_or(std::vector<std::string>{});
+    auto &env = r.process->env.value();
+
     switch (runArch) {
     case ARM64:
         fixLdLibraryPath = QStringList{
@@ -436,16 +461,18 @@ auto App::stageRootfs(QString runtimeRootPath, const QString &appId, QString app
             "/runtime/lib",   "/runtime/lib/aarch64-linux-gnu",
             "/usr/lib",       "/usr/lib/aarch64-linux-gnu",
         };
-        r->process->env.push_back("QT_PLUGIN_PATH=/opt/apps/" + appId
-                                  + "/files/plugins:/runtime/lib/aarch64-linux-gnu/qt5/"
-                                    "plugins:/usr/lib/aarch64-linux-gnu/qt5/plugins");
-        r->process->env.push_back(
-          "QT_QPA_PLATFORM_PLUGIN_PATH=/opt/apps/" + appId
-          + "/files/plugins/platforms:/runtime/lib/aarch64-linux-gnu/qt5/plugins/"
-            "platforms:/usr/lib/aarch64-linux-gnu/qt5/plugins/platforms");
+        env.push_back(("QT_PLUGIN_PATH=/opt/apps/" + appId
+                       + "/files/plugins:/runtime/lib/aarch64-linux-gnu/qt5/"
+                         "plugins:/usr/lib/aarch64-linux-gnu/qt5/plugins")
+                        .toStdString());
+        env.push_back(("QT_QPA_PLATFORM_PLUGIN_PATH=/opt/apps/" + appId
+                       + "/files/plugins/platforms:/runtime/lib/aarch64-linux-gnu/qt5/plugins/"
+                         "platforms:/usr/lib/aarch64-linux-gnu/qt5/plugins/platforms")
+                        .toStdString());
         if (!fuseMount) {
-            r->process->env.push_back("GST_PLUGIN_PATH=/opt/apps/" + appId
-                                      + "/files/lib/aarch64-linux-gnu/gstreamer-1.0");
+            env.push_back(
+              ("GST_PLUGIN_PATH=/opt/apps/" + appId + "/files/lib/aarch64-linux-gnu/gstreamer-1.0")
+                .toStdString());
         }
         break;
     case X86_64:
@@ -458,16 +485,18 @@ auto App::stageRootfs(QString runtimeRootPath, const QString &appId, QString app
             "/usr/lib",
             "/usr/lib/x86_64-linux-gnu",
         };
-        r->process->env.push_back("QT_PLUGIN_PATH=/opt/apps/" + appId
-                                  + "/files/plugins:/runtime/lib/x86_64-linux-gnu/qt5/plugins:/"
-                                    "usr/lib/x86_64-linux-gnu/qt5/plugins");
-        r->process->env.push_back(
-          "QT_QPA_PLATFORM_PLUGIN_PATH=/opt/apps/" + appId
-          + "/files/plugins/platforms:/runtime/lib/x86_64-linux-gnu/qt5/plugins/"
-            "platforms:/usr/lib/x86_64-linux-gnu/qt5/plugins/platforms");
+        env.push_back(("QT_PLUGIN_PATH=/opt/apps/" + appId
+                       + "/files/plugins:/runtime/lib/x86_64-linux-gnu/qt5/plugins:/"
+                         "usr/lib/x86_64-linux-gnu/qt5/plugins")
+                        .toStdString());
+        env.push_back(("QT_QPA_PLATFORM_PLUGIN_PATH=/opt/apps/" + appId
+                       + "/files/plugins/platforms:/runtime/lib/x86_64-linux-gnu/qt5/plugins/"
+                         "platforms:/usr/lib/x86_64-linux-gnu/qt5/plugins/platforms")
+                        .toStdString());
         if (!fuseMount) {
-            r->process->env.push_back("GST_PLUGIN_PATH=/opt/apps/" + appId
-                                      + "/files/lib/x86_64-linux-gnu/gstreamer-1.0");
+            env.push_back(
+              ("GST_PLUGIN_PATH=/opt/apps/" + appId + "/files/lib/x86_64-linux-gnu/gstreamer-1.0")
+                .toStdString());
         }
         break;
     default:
@@ -475,11 +504,11 @@ auto App::stageRootfs(QString runtimeRootPath, const QString &appId, QString app
         return -1;
     }
 
-    r->process->env.push_back("LD_LIBRARY_PATH=" + fixLdLibraryPath.join(":"));
+    env.push_back(("LD_LIBRARY_PATH=" + fixLdLibraryPath.join(":")).toStdString());
     return 0;
 }
 
-auto App::stageHost() const -> int
+auto App::stageHost() -> int
 {
     QList<QPair<QString, QString>> roMountMap = {
         { "/etc/resolv.conf", "/run/host/network/etc/resolv.conf" },
@@ -503,13 +532,13 @@ auto App::stageHost() const -> int
     }
 
     for (const auto &pair : roMountMap) {
-        QSharedPointer<Mount> m(new Mount);
-        m->type = "bind";
-        m->options = QStringList{ "ro", "rbind" };
-        m->source = pair.first;
-        m->destination = pair.second;
-        r->mounts.push_back(m);
-        qDebug() << "mount app" << m->source << m->destination;
+        ocppi::runtime::config::types::Mount m;
+        m.type = "bind";
+        m.options = std::vector<std::string>{ "ro", "rbind" };
+        m.source = pair.first.toStdString();
+        m.destination = pair.second.toStdString();
+        r.mounts->push_back(m);
+        qDebug() << "mount app" << m.source->c_str() << m.destination.c_str();
     }
 
     QList<QPair<QString, QString>> mountMap = {
@@ -517,13 +546,13 @@ auto App::stageHost() const -> int
     };
 
     for (const auto &pair : mountMap) {
-        QSharedPointer<Mount> m(new Mount);
-        m->type = "bind";
-        m->options = QStringList{ "rbind" };
-        m->source = pair.first;
-        m->destination = pair.second;
-        r->mounts.push_back(m);
-        qDebug() << "mount app" << m->source << m->destination;
+        ocppi::runtime::config::types::Mount m;
+        m.type = "bind";
+        m.options = { "rbind" };
+        m.source = pair.first.toStdString();
+        m.destination = pair.second.toStdString();
+        r.mounts->push_back(m);
+        qDebug() << "mount app" << m.source->c_str() << m.destination.c_str();
     }
 
     return 0;
@@ -531,33 +560,31 @@ auto App::stageHost() const -> int
 
 void App::stateDBusProxyArgs(bool enable, const QString &appId, const QString &proxyPath)
 {
-    r->annotations->dbusProxyInfo->appId = appId;
-    r->annotations->dbusProxyInfo->enable = enable;
+    auto &anno = *r.annotations;
+    anno["dbusProxyInfo"]["appId"] = appId.toStdString();
+    anno["dbusProxyInfo"]["enable"] = enable;
     if (!enable) {
         return;
     }
-    r->annotations->dbusProxyInfo->busType = runParamMap[linglong::util::kKeyBusType];
-    r->annotations->dbusProxyInfo->proxyPath = proxyPath;
+    anno["dbusProxyInfo"]["busType"] = runParamMap[linglong::util::kKeyBusType].toStdString();
+    anno["dbusProxyInfo"]["proxyPath"] = proxyPath.toStdString();
     // FIX to do load filter from yaml
     // FIX to do 加载用户配置参数（权限管限器上）
     // 添加cli command运行参数
     if (runParamMap.contains(linglong::util::kKeyFilterName)) {
         QString name = runParamMap[linglong::util::kKeyFilterName];
-        if (!r->annotations->dbusProxyInfo->name.contains(name)) {
-            r->annotations->dbusProxyInfo->name.push_back(name);
-        }
+        auto &names = anno["dbusProxyInfo"]["name"] = nlohmann::json::array_t{};
+        names.push_back(name.toStdString());
     }
     if (runParamMap.contains(linglong::util::kKeyFilterPath)) {
         QString path = runParamMap[linglong::util::kKeyFilterPath];
-        if (!r->annotations->dbusProxyInfo->path.contains(path)) {
-            r->annotations->dbusProxyInfo->path.push_back(path);
-        }
+        auto &paths = anno["dbusProxyInfo"]["path"] = nlohmann::json::array_t{};
+        paths.push_back(path.toStdString());
     }
     if (runParamMap.contains(linglong::util::kKeyFilterIface)) {
         QString interface = runParamMap[linglong::util::kKeyFilterIface];
-        if (!r->annotations->dbusProxyInfo->interface.contains(interface)) {
-            r->annotations->dbusProxyInfo->interface.push_back(interface);
-        }
+        auto &interfaces = anno["dbusProxyInfo"]["interface"] = nlohmann::json::array_t{};
+        interfaces.push_back(interface.toStdString());
     }
 }
 
@@ -578,33 +605,32 @@ auto App::stageDBusProxy(const QString &socketPath, bool useDBusProxy) -> int
                                      QString("/run/dbus/system_bus_socket")));
     }
     for (const auto &pair : mountMap) {
-        QSharedPointer<Mount> m(new Mount);
-        m->type = "bind";
-        m->options = QStringList{};
+        ocppi::runtime::config::types::Mount m;
 
-        m->source = pair.first;
-        m->destination = pair.second;
-        r->mounts.push_back(m);
-        qDebug() << "mount app" << m->source << m->destination;
+        m.type = "bind";
+        m.source = pair.first.toStdString();
+        m.destination = pair.second.toStdString();
+        r.mounts->push_back(m);
+        qDebug() << "mount app" << m.source->c_str() << m.destination.c_str();
     }
 
     return 0;
 }
 
-auto App::stageUser(const QString &appId) const -> int
+auto App::stageUser(const QString &appId) -> int
 {
     QList<QPair<QString, QString>> mountMap;
 
     // bind user data
     auto userRuntimeDir = QString("/run/user/%1").arg(getuid());
     {
-        QSharedPointer<Mount> m(new Mount);
-        m->type = "tmpfs";
-        m->options = QStringList{ "nodev", "nosuid", "mode=700" };
-        m->source = "tmpfs";
-        m->destination = userRuntimeDir;
-        r->mounts.push_back(m);
-        qDebug() << "mount app" << m->source << m->destination;
+        ocppi::runtime::config::types::Mount m;
+        m.type = "tmpfs";
+        m.options = { "nodev", "nosuid", "mode=700" };
+        m.source = "tmpfs";
+        m.destination = userRuntimeDir.toStdString();
+        r.mounts->push_back(m);
+        qDebug() << "mount app" << m.source->c_str() << m.destination.c_str();
     }
 
     // bind /run/usr/$(uid)/pulse
@@ -683,14 +709,14 @@ auto App::stageUser(const QString &appId) const -> int
       qMakePair(util::getUserFile(".config/user-dirs.dirs"), appConfigPath + "/user-dirs.dirs"));
 
     for (const auto &pair : mountMap) {
-        QSharedPointer<Mount> m(new Mount);
-        m->type = "bind";
-        m->options = QStringList{ "rbind" };
+        ocppi::runtime::config::types::Mount m;
+        m.type = "bind";
+        m.options = { "rbind" };
 
-        m->source = pair.first;
-        m->destination = pair.second;
-        r->mounts.push_back(m);
-        qDebug() << "mount app" << m->source << m->destination;
+        m.source = pair.first.toStdString();
+        m.destination = pair.second.toStdString();
+        r.mounts->push_back(m);
+        qDebug() << "mount app" << m.source->c_str() << m.destination.c_str();
     }
 
     QList<QPair<QString, QString>> roMountMap;
@@ -725,82 +751,92 @@ auto App::stageUser(const QString &appId) const -> int
     roMountMap.push_back(qMakePair(xauthority, xauthority));
 
     for (const auto &pair : roMountMap) {
-        QSharedPointer<Mount> m(new Mount);
-        m->type = "bind";
-        m->options = QStringList{ "ro", "rbind" };
-        m->source = pair.first;
-        m->destination = pair.second;
-        r->mounts.push_back(m);
-        qDebug() << "mount app" << m->source << m->destination;
+        ocppi::runtime::config::types::Mount m;
+        m.type = "bind";
+        m.options = { "ro", "rbind" };
+        m.source = pair.first.toStdString();
+        m.destination = pair.second.toStdString();
+        r.mounts->push_back(m);
+        qDebug() << "mount app" << m.source->c_str() << m.destination.c_str();
     }
 
     // 处理环境变量
     for (auto key : envMap.keys()) {
         if (linglong::util::envList.contains(key)) {
-            r->process->env.push_back(key + "=" + envMap[key]);
+            r.process->env->push_back((key + "=" + envMap[key]).toStdString());
         }
     }
     auto appRef = package::Ref(package->ref);
     auto appBinaryPath = QStringList{ "/opt/apps", appRef.appId, "files/bin" }.join("/");
 
     // 特殊处理env PATH
+    r.process->env = r.process->env.value_or(std::vector<std::string>{});
+    auto &env = r.process->env.value();
+    auto newEnv = std::remove_reference_t<decltype(env)>{};
+
+    for (auto &envEntry : env) {
+        if (!(envEntry.rfind("PATH=", 0) == 0)) {
+            newEnv.push_back(envEntry);
+        }
+    }
+
+    env = std::move(newEnv);
+
     if (envMap.contains("PATH")) {
-        r->process->env.removeAt(r->process->env.indexOf(QRegExp("^PATH=.*"), 0));
-        r->process->env.push_back("PATH=" + appBinaryPath + ":" + "/runtime/bin" + ":"
-                                  + envMap["PATH"]);
+        env.push_back(
+          ("PATH=" + appBinaryPath + ":" + "/runtime/bin" + ":" + envMap["PATH"]).toStdString());
     } else {
-        r->process->env.push_back("PATH=" + appBinaryPath + ":" + "/runtime/bin" + ":"
-                                  + getenv("PATH"));
+        env.push_back(
+          ("PATH=" + appBinaryPath + ":" + "/runtime/bin" + ":" + getenv("PATH")).toStdString());
     }
 
     // 特殊处理env HOME
     if (!envMap.contains("HOME")) {
-        r->process->env.push_back("HOME=" + util::getUserFile(""));
+        env.push_back(("HOME=" + util::getUserFile("")).toStdString());
     }
 
-    r->process->env.push_back("XDG_RUNTIME_DIR=" + userRuntimeDir);
-    r->process->env.push_back("DBUS_SESSION_BUS_ADDRESS=unix:path="
-                              + util::jonsPath({ userRuntimeDir, "bus" }));
+    env.push_back("XDG_RUNTIME_DIR=" + userRuntimeDir.toStdString());
+    env.push_back("DBUS_SESSION_BUS_ADDRESS=unix:path="
+                  + util::jonsPath({ userRuntimeDir, "bus" }).toStdString());
 
     auto appSharePath = QStringList{ "/opt/apps", appRef.appId, "files/share" }.join("/");
     auto xdgDataDirs = QStringList{ appSharePath, "/runtime/share" };
     xdgDataDirs.append(qEnvironmentVariable("XDG_DATA_DIRS", "/usr/local/share:/usr/share"));
-    r->process->env.push_back("XDG_DATA_DIRS=" + xdgDataDirs.join(":"));
+    env.push_back("XDG_DATA_DIRS=" + xdgDataDirs.join(":").toStdString());
 
     // add env XDG_CONFIG_HOME XDG_CACHE_HOME
     // set env XDG_CONFIG_HOME=$(HOME)/.linglong/$(appId)/config
-    r->process->env.push_back("XDG_CONFIG_HOME=" + appConfigPath);
+    env.push_back("XDG_CONFIG_HOME=" + appConfigPath.toStdString());
     // set env XDG_CACHE_HOME=$(HOME)/.linglong/$(appId)/cache
-    r->process->env.push_back("XDG_CACHE_HOME=" + appCachePath);
+    env.push_back("XDG_CACHE_HOME=" + appCachePath.toStdString());
 
     // set env XDG_DATA_HOME=$(HOME)/.linglong/$(appId)/share
-    r->process->env.push_back("XDG_DATA_HOME=" + appLocalDataPath);
+    env.push_back("XDG_DATA_HOME=" + appLocalDataPath.toStdString());
 
-    qDebug() << r->process->env;
-    r->process->cwd = util::getUserFile("");
+    qDebug() << env;
+    r.process->cwd = util::getUserFile("").toStdString();
 
-    QList<QList<quint64>> uidMaps = {
+    QList<QList<int64_t>> uidMaps = {
         { getuid(), 0, 1 },
     };
     for (auto const &uidMap : uidMaps) {
         Q_ASSERT(uidMap.size() == 3);
-        QSharedPointer<IdMap> idMap(new IdMap);
-        idMap->hostId = uidMap.value(0);
-        idMap->containerId = uidMap.value(1);
-        idMap->size = uidMap.value(2);
-        r->linux->uidMappings.push_back(idMap);
+        ocppi::runtime::config::types::IdMapping idMapping{};
+        idMapping.hostID = uidMap.value(0);
+        idMapping.containerID = uidMap.value(1);
+        idMapping.size = uidMap.value(2);
+        r.linux_->uidMappings->push_back(idMapping);
     }
 
-    QList<QList<quint64>> gidMaps = {
+    QList<QList<int64_t>> gidMaps = {
         { getgid(), 0, 1 },
     };
     for (auto const &gidMap : gidMaps) {
-        Q_ASSERT(gidMap.size() == 3);
-        QSharedPointer<IdMap> idMap(new IdMap);
-        idMap->hostId = gidMap.value(0);
-        idMap->containerId = gidMap.value(1);
-        idMap->size = gidMap.value(2);
-        r->linux->gidMappings.push_back(idMap);
+        ocppi::runtime::config::types::IdMapping idMapping{};
+        idMapping.hostID = gidMap.value(0);
+        idMapping.containerID = gidMap.value(1);
+        idMapping.size = gidMap.value(2);
+        r.linux_->gidMappings->push_back(idMapping);
     }
 
     return 0;
@@ -813,32 +849,34 @@ auto App::stageMount() -> int
     if (permissions && !permissions->mounts.isEmpty()) {
         // static mount
         for (const auto &mount : permissions->mounts) {
-            QSharedPointer<Mount> m(new Mount);
+            ocppi::runtime::config::types::Mount m;
 
             // illegal mount rules
             if (mount->source.isEmpty() || mount->destination.isEmpty()) {
-                m->deleteLater();
                 continue;
             }
             // fix default type
             if (mount->type.isEmpty()) {
-                m->type = "bind";
+                m.type = "bind";
             } else {
-                m->type = mount->type;
+                m.type = mount->type.toStdString();
             }
 
             // fix default options
             if (mount->options.isEmpty()) {
-                m->options = QStringList({ "ro", "rbind" });
+                m.options = { "ro", "rbind" };
             } else {
-                m->options = mount->options.split(",");
+                m.options = {};
+                for (auto &opt : mount->options.split(",")) {
+                    m.options->push_back(opt.toStdString());
+                }
             }
 
-            m->source = mount->source;
-            m->destination = mount->destination;
-            r->mounts.push_back(m);
+            m.source = mount->source.toStdString();
+            m.destination = mount->destination.toStdString();
+            r.mounts->push_back(m);
 
-            if (m->destination == "/tmp") {
+            if (m.destination == "/tmp") {
                 hasMountTmp = true;
             }
 
@@ -865,12 +903,12 @@ auto App::mountTmp() -> int
             return -1;
         }
     }
-    QSharedPointer<Mount> m(new Mount);
-    m->type = "bind";
-    m->source = tmp.absolutePath();
-    m->destination = tmpPath;
-    m->options = QStringList({ "rbind" });
-    r->mounts.push_back(m);
+    ocppi::runtime::config::types::Mount m;
+    m.type = "bind";
+    m.source = tmp.absolutePath().toStdString();
+    m.destination = tmpPath.toStdString();
+    m.options = { "rbind" };
+    r.mounts->push_back(m);
     return 0;
 }
 
@@ -884,91 +922,92 @@ auto App::fixMount(QString runtimeRootPath, const QString &appId) -> int
         // FIXME: 需要一个所有用户都有可读可写权限的目录
         QString appDataPath = util::getUserFile(".linglong/" + appId + "/share/appdata");
         linglong::util::ensureDir(appDataPath);
-        QSharedPointer<Mount> m(new Mount);
-        m->type = "bind";
-        m->options = QStringList{ "rw", "rbind" };
-        m->source = appDataPath;
-        m->destination = "/apps-data/private/com.360.browser-stable";
-        r->mounts.push_back(m);
+        ocppi::runtime::config::types::Mount m;
+        m.type = "bind";
+        m.options = { "rw", "rbind" };
+        m.source = appDataPath.toStdString();
+        m.destination = "/apps-data/private/com.360.browser-stable";
+        r.mounts->push_back(m);
     }
 
     // 挂载U盘目录
     auto uDiskDir = QStringList{ "/media", "/mnt" };
     for (auto dir : uDiskDir) {
-        QSharedPointer<Mount> m(new Mount);
-        m->type = "bind";
-        m->options = QStringList{ "rw", "rbind" };
-        m->source = dir;
-        m->destination = dir;
-        r->mounts.push_back(m);
+        ocppi::runtime::config::types::Mount m;
+        m.type = "bind";
+        m.options = { "rw", "rbind" };
+        m.source = dir.toStdString();
+        m.destination = dir.toStdString();
+        r.mounts->push_back(m);
     }
 
     // 挂载runtime的xdg-open和xdg-email到沙箱/usr/bin下
     auto xdgFileDirList = QStringList{ "xdg-open", "xdg-email" };
     for (auto dir : xdgFileDirList) {
-        QSharedPointer<Mount> m(new Mount);
-        m->type = "bind";
-        m->options = QStringList{ "rbind" };
-        m->source = runtimeRootPath + "/bin/" + dir;
-        m->destination = "/usr/bin/" + dir;
-        r->mounts.push_back(m);
+        ocppi::runtime::config::types::Mount m;
+        m.type = "bind";
+        m.options = { "rbind" };
+        m.source = (runtimeRootPath + "/bin/" + dir).toStdString();
+        m.destination = "/usr/bin/" + dir.toStdString();
+        r.mounts->push_back(m);
     }
 
     // 存在 gschemas.compiled,需要挂载进沙箱
     if (linglong::util::fileExists(sysLinglongInstalltions
                                    + "/glib-2.0/schemas/gschemas.compiled")) {
-        QSharedPointer<Mount> m(new Mount);
-        m->type = "bind";
-        m->options = QStringList{ "rbind" };
-        m->source = sysLinglongInstalltions + "/glib-2.0/schemas/gschemas.compiled";
-        m->destination = sysLinglongInstalltions + "/glib-2.0/schemas/gschemas.compiled";
-        r->mounts.push_back(m);
+        ocppi::runtime::config::types::Mount m;
+        m.type = "bind";
+        m.options = { "rbind" };
+        m.source = sysLinglongInstalltions.toStdString() + "/glib-2.0/schemas/gschemas.compiled";
+        m.destination =
+          sysLinglongInstalltions.toStdString() + "/glib-2.0/schemas/gschemas.compiled";
+        r.mounts->push_back(m);
     }
 
     // deepin-kwin share data with /tmp/screen-recorder
     {
         auto deepinKWinTmpSharePath = "/tmp/screen-recorder";
         util::ensureDir(deepinKWinTmpSharePath);
-        QSharedPointer<Mount> m(new Mount);
-        m->type = "bind";
-        m->options = QStringList{ "rbind" };
-        m->source = deepinKWinTmpSharePath;
-        m->destination = deepinKWinTmpSharePath;
-        r->mounts.push_back(m);
+        ocppi::runtime::config::types::Mount m;
+        m.type = "bind";
+        m.options = { "rbind" };
+        m.source = deepinKWinTmpSharePath;
+        m.destination = deepinKWinTmpSharePath;
+        r.mounts->push_back(m);
     }
 
     // deepin-mail need save data with /tmp/deepin-mail-web
     {
         auto deepinEmailTmpSharePath = "/tmp/deepin-mail-web";
         util::ensureDir(deepinEmailTmpSharePath);
-        QSharedPointer<Mount> m(new Mount);
-        m->type = "bind";
-        m->options = QStringList{ "rbind" };
-        m->source = deepinEmailTmpSharePath;
-        m->destination = deepinEmailTmpSharePath;
-        r->mounts.push_back(m);
+        ocppi::runtime::config::types::Mount m;
+        m.type = "bind";
+        m.options = { "rbind" };
+        m.source = deepinEmailTmpSharePath;
+        m.destination = deepinEmailTmpSharePath;
+        r.mounts->push_back(m);
     }
 
     // Fixme: temporarily mount linglong root path into the container, remove later
     if (QString("org.deepin.manual") == appId) {
-        QSharedPointer<Mount> m(new Mount);
-        m->type = "bind";
-        m->options = QStringList{ "ro", "rbind" };
-        m->source = util::getLinglongRootPath();
-        m->destination = util::getLinglongRootPath();
-        r->mounts.push_back(m);
+        ocppi::runtime::config::types::Mount m;
+        m.type = "bind";
+        m.options = { "ro", "rbind" };
+        m.source = util::getLinglongRootPath().toStdString();
+        m.destination = util::getLinglongRootPath().toStdString();
+        r.mounts->push_back(m);
     }
 
     // Fixme: temporarily mount linglong root path into the container, remove later
     // depends commit 248b39c8930deacea8f4e89b7ffedeee48fd8e0f
     if (QString("org.deepin.browser") == appId) {
         auto downloaderPath = util::getLinglongRootPath() + "/" + "layers/org.deepin.downloader";
-        QSharedPointer<Mount> m(new Mount);
-        m->type = "bind";
-        m->options = QStringList{ "ro", "rbind" };
-        m->source = downloaderPath;
-        m->destination = downloaderPath;
-        r->mounts.push_back(m);
+        ocppi::runtime::config::types::Mount m;
+        m.type = "bind";
+        m.options = { "ro", "rbind" };
+        m.source = downloaderPath.toStdString();
+        m.destination = downloaderPath.toStdString();
+        r.mounts->push_back(m);
     }
 
     // mount /dev for app
@@ -984,12 +1023,12 @@ auto App::fixMount(QString runtimeRootPath, const QString &appId) -> int
         appConfig->setParent(this);
         for (const auto &appOfId : appConfig->appMountDevList) {
             if (appOfId == appId) {
-                QSharedPointer<Mount> m(new Mount);
-                m->type = "bind";
-                m->options = QStringList{ "rbind" };
-                m->source = "/dev";
-                m->destination = "/dev";
-                r->mounts.push_back(m);
+                ocppi::runtime::config::types::Mount m;
+                m.type = "bind";
+                m.options = { "rbind" };
+                m.source = "/dev";
+                m.destination = "/dev";
+                r.mounts->push_back(m);
                 break;
             }
         }
@@ -1176,8 +1215,8 @@ auto App::load(linglong::repo::Repo *repo, const package::Ref &ref, const QStrin
 
 auto App::start() -> util::Error
 {
-    r->root->path = container->workingDirectory + "/root";
-    util::ensureDir(r->root->path);
+    r.root->path = container->workingDirectory.toStdString() + "/root";
+    util::ensureDir(r.root->path.c_str());
 
     prepare();
 
@@ -1186,14 +1225,11 @@ auto App::start() -> util::Error
     pidFile.open(QIODevice::WriteOnly);
     pidFile.close();
 
-    qDebug() << "start container at" << r->root->path;
+    qDebug() << "start container at" << r.root->path.c_str();
 
-    auto [bytes, err] = util::toJSON<QSharedPointer<Runtime>>(r);
-    if (err) {
-        return WrapError(err, "toJSON failed");
-    }
+    auto runtimeConfigJSON = toJSON(r);
 
-    auto data = bytes.toStdString();
+    auto data = runtimeConfigJSON.dump();
 
     if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, sockets) != 0) {
         return WrapError(NewError(errno, strerror(errno)), "call socketpair failed");
@@ -1238,16 +1274,22 @@ auto App::start() -> util::Error
 
 void App::exec(QString cmd, QString env, QString cwd)
 {
-    QStringList envList = r->process->env;
+    ocppi::runtime::config::types::Process p;
+    p.env = r.process->env;
+
     if (!env.isEmpty() && !env.isNull()) {
-        envList = envList + env.split(",");
+        for (const auto &env : env.split(",")) {
+            p.env = p.env.value_or(std::vector<std::string>());
+            p.env->push_back(env.toStdString());
+        }
     }
-    QSharedPointer<Process> p(new Process);
+
     if (cwd.isEmpty() || cwd.isNull()) {
-        cwd = r->process->cwd;
+        cwd = r.process->cwd.c_str();
     }
-    p->cwd = cwd;
-    p->env = envList;
+
+    p.cwd = cwd.toStdString();
+
     auto appCmd = util::splitExec(cmd);
     if (cmd.isEmpty() || cmd.isNull()) {
         // find desktop file
@@ -1298,9 +1340,17 @@ void App::exec(QString cmd, QString env, QString cwd)
     if (appCmd.isEmpty()) {
         return;
     }
-    p->args = appCmd;
-    // FIXME(black_desk): handle error
-    auto data = std::get<0>(util::toJSON(p)).toStdString();
+
+    auto args = std::vector<std::string>{};
+    for (const auto &arg : appCmd) {
+        args.push_back(arg.toStdString());
+    }
+
+    qDebug() << "exec" << *r.process->args;
+
+    p.args = args;
+    auto processJSON = toJSON(p);
+    auto data = processJSON.dump();
 
     // FIXME: retry on temporary fail
     // FIXME: add lock

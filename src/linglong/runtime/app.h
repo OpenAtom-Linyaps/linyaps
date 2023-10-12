@@ -13,6 +13,7 @@
 #include "linglong/runtime/container.h"
 #include "linglong/runtime/oci.h"
 #include "linglong/util/file.h"
+#include "ocppi/runtime/config/types/Config.hpp"
 
 namespace linglong::repo {
 class Repo;
@@ -95,20 +96,20 @@ private:
 
     auto prepare() -> int;
 
-    [[nodiscard]] auto stageSystem() const -> int;
+    [[nodiscard]] auto stageSystem() -> int;
 
     [[nodiscard]] auto stageRootfs(QString runtimeRootPath,
                                    const QString &appId,
-                                   QString appRootPath) const -> int;
+                                   QString appRootPath) -> int;
 
-    [[nodiscard]] auto stageHost() const -> int;
+    [[nodiscard]] auto stageHost() -> int;
 
     void stateDBusProxyArgs(bool enable, const QString &appId, const QString &proxyPath);
 
     // Fix to do 当前仅处理session bus
     auto stageDBusProxy(const QString &socketPath, bool useDBusProxy = false) -> int;
 
-    [[nodiscard]] auto stageUser(const QString &appId) const -> int;
+    [[nodiscard]] auto stageUser(const QString &appId) -> int;
 
     auto stageMount() -> int;
 
@@ -126,11 +127,14 @@ private:
                            const QString &channel,
                            const QString &module) -> QString;
 
+    static auto toJSON(const ocppi::runtime::config::types::Config &) -> nlohmann::json;
+    static auto toJSON(const ocppi::runtime::config::types::Process &) -> nlohmann::json;
+
     QString desktopExec = nullptr;
     ParamStringMap envMap;
     ParamStringMap runParamMap;
 
-    QSharedPointer<Runtime> r = nullptr;
+    ocppi::runtime::config::types::Config r;
     QSharedPointer<AppConfig> appConfig = nullptr;
 
     repo::Repo *repo = nullptr;

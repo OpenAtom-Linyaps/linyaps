@@ -22,7 +22,11 @@
 #include "linglong/util/qserializer/yaml.h"
 #include "linglong/util/runner.h"
 #include "linglong/util/sysinfo.h"
+#include "linglong/utils/std_helper/qdebug_helper.h"
 #include "linglong/utils/xdg/desktop_entry.h"
+#include "ocppi/runtime/config/ConfigLoader.hpp"
+#include "ocppi/runtime/config/types/Hook.hpp"
+#include "ocppi/runtime/config/types/Hooks.hpp"
 #include "source_fetcher.h"
 
 #include <linux/prctl.h>
@@ -38,23 +42,23 @@
 
 #include <csignal>
 #include <fstream>
+#include <optional>
 
 #include <sys/socket.h>
 #include <sys/wait.h>
 
-namespace linglong {
-namespace builder {
+namespace linglong::builder {
 
 QSERIALIZER_IMPL(message)
 
-linglong::util::Error commitBuildOutput(Project *project,
-                                        QSharedPointer<AnnotationsOverlayfsRootfs> overlayfs)
+linglong::util::Error commitBuildOutput(Project *project, const nlohmann::json &overlayfs)
 {
     auto output = project->config().cacheInstallPath("files");
     linglong::util::ensureDir(output);
 
-    auto upperDir =
-      QStringList{ overlayfs->upper, project->config().targetInstallPath("") }.join("/");
+    auto upperDir = QStringList{ QString::fromStdString(overlayfs["upper"]),
+                                 project->config().targetInstallPath("") }
+                      .join("/");
     linglong::util::ensureDir(upperDir);
 
     auto lowerDir = project->config().cacheAbsoluteFilePath({ "overlayfs", "lower" });
@@ -73,7 +77,7 @@ linglong::util::Error commitBuildOutput(Project *project,
       "-o",
       "upperdir=" + upperDir,
       "-o",
-      "workdir=" + overlayfs->workdir,
+      QString::fromStdString("workdir=" + std::string(overlayfs["workingDirectory"])),
       "-o",
       "lowerdir=" + lowerDir,
       output,
@@ -336,44 +340,47 @@ linglong::util::Error LinglongBuilder::initRepo()
 }
 
 // FIXME: should merge with runtime
-int startContainer(QSharedPointer<Container> c, QSharedPointer<Runtime> r)
+int LinglongBuilder::startContainer(QSharedPointer<Container> c, ocppi::runtime::config::types::Config &r)
 {
+
 #define LL_VAL(str) #str
 #define LL_TOSTRING(str) LL_VAL(str)
 
-    QList<QList<quint64>> uidMaps = {
+    QList<QList<int64_t>> uidMaps = {
         { getuid(), 0, 1 },
     };
     for (auto const &uidMap : uidMaps) {
-        QSharedPointer<IdMap> idMap(new IdMap);
-        idMap->hostId = uidMap.value(0);
-        idMap->containerId = uidMap.value(1);
-        idMap->size = uidMap.value(2);
-        r->linux->uidMappings.push_back(idMap);
+        ocppi::runtime::config::types::IdMapping idMap;
+        idMap.hostID = uidMap.value(0);
+        idMap.containerID = uidMap.value(1);
+        idMap.size = uidMap.value(2);
+        r.linux_->uidMappings->push_back(idMap);
     }
 
     QList<QList<quint64>> gidMaps = {
         { getgid(), 0, 1 },
     };
     for (auto const &gidMap : gidMaps) {
-        QSharedPointer<IdMap> idMap(new IdMap);
-        idMap->hostId = gidMap.value(0);
-        idMap->containerId = gidMap.value(1);
-        idMap->size = gidMap.value(2);
-        r->linux->gidMappings.push_back(idMap);
+        ocppi::runtime::config::types::IdMapping idMap;
+        idMap.hostID = gidMap.value(0);
+        idMap.containerID = gidMap.value(1);
+        idMap.size = gidMap.value(2);
+        r.linux_->gidMappings->push_back(idMap);
     }
 
-    r->root->path = c->workingDirectory + "/root";
-    util::ensureDir(r->root->path);
+    r.root->path = c->workingDirectory.toStdString() + "/root";
+    util::ensureDir(r.root->path.c_str());
 
     // write pid file
     QFile pidFile(c->workingDirectory + QString("/%1.pid").arg(getpid()));
     pidFile.open(QIODevice::WriteOnly);
     pidFile.close();
 
-    qDebug() << "start container at" << r->root->path;
-    // FIXME(black_desk): handle error
-    auto data = std::get<0>(util::toJSON(r)).toStdString();
+    qDebug() << "start container at" << r.root->path;
+
+    auto runtimeConfigJSON = toJSON(r);
+
+    auto data = runtimeConfigJSON.dump();
 
     int sockets[2]; // save file describers of sockets used to communicate with ll-box
 
@@ -643,11 +650,29 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
 
     // FIXME(black_desk): these code should not be written in here. We should
     // use code in runtime/app.cpp
-    QSharedPointer<Runtime> r;
-    {
-        auto [result, err] = util::fromJSON<QSharedPointer<Runtime>>(QString(":/config.json"));
-        // FIXME(black_desk): handle error
-        r = result;
+    //
+
+    QFile builtinOCIConfigTemplateJSONFile(":/config.json");
+    if (!builtinOCIConfigTemplateJSONFile.open(QIODevice::ReadOnly)) {
+        // NOTE(black_desk): Go check qrc if this occurs.
+        qFatal("builtin OCI configuration template file missing.");
+    }
+
+    auto bytes = builtinOCIConfigTemplateJSONFile.readAll();
+    std::stringstream tmpStream;
+    tmpStream << bytes.toStdString();
+
+    ocppi::runtime::config::ConfigLoader loader;
+    auto r = loader.load(tmpStream);
+    if (!r.has_value()) {
+        qCritical() << "builtin OCI configuration template is invalid.";
+        try {
+            std::rethrow_exception(r.error());
+        } catch (const std::exception &e) {
+            qFatal("%s", e.what());
+        } catch (...) {
+            qFatal("Unknown error");
+        }
     }
 
     auto container = QSharedPointer<Container>(new Container);
@@ -656,37 +681,36 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
         return WrapError(err, "create container failed");
     }
 
-    if (!r->annotations) {
-        r->annotations.reset(new Annotations);
-    }
+    r->annotations = r->annotations.value_or(std::map<std::string, nlohmann::json>{});
+    auto &anno = *r->annotations;
 
-    if (!r->annotations->overlayfs) {
-        r->annotations->overlayfs.reset(new AnnotationsOverlayfsRootfs);
+    anno["overlayfs"]["lowerParent"] =
+      project->config().cacheAbsoluteFilePath({ "overlayfs", "lp" }).toStdString();
 
-        r->annotations->overlayfs->lowerParent =
-          project->config().cacheAbsoluteFilePath({ "overlayfs", "lp" });
-        r->annotations->overlayfs->workdir =
-          project->config().cacheAbsoluteFilePath({ "overlayfs", "wk" });
-        r->annotations->overlayfs->upper =
-          project->config().cacheAbsoluteFilePath({ "overlayfs", "up" });
-    }
+    anno["overlayfs"]["upper"] =
+      project->config().cacheAbsoluteFilePath({ "overlayfs", "up" }).toStdString();
+
+    anno["overlayfs"]["workdir"] =
+      project->config().cacheAbsoluteFilePath({ "overlayfs", "wk" }).toStdString();
 
     // mount tmpfs to /tmp in container
-    QSharedPointer<Mount> m(new Mount);
-    m->type = "tmpfs";
-    m->options = QStringList{ "nosuid", "strictatime", "mode=777" };
-    m->source = "tmp";
-    m->destination = "/tmp";
-    r->mounts.push_back(m);
+    ocppi::runtime::config::types::Mount m;
+    m.type = "tmpfs";
+    m.options = { "nosuid", "strictatime", "mode=777" };
+    m.source = "tmp";
+    m.destination = "/tmp";
+    r->mounts->push_back(m);
+
+    auto &mounts = anno["overlayfs"]["mounts"] = nlohmann::json::array_t{};
 
     // get runtime, and parse base from runtime
     for (const auto &rpath : QStringList{ "/usr", "/etc", "/var" }) {
-        QSharedPointer<Mount> m(new Mount);
-        m->type = "bind";
-        m->options = QStringList{ "ro", "rbind" };
-        m->source = QStringList{ hostBasePath, "files", rpath }.join("/");
-        m->destination = rpath;
-        r->annotations->overlayfs->mounts.push_back(m);
+        ocppi::runtime::config::types::Mount m;
+        m.type = "bind";
+        m.options = { "ro", "rbind" };
+        m.source = QStringList{ hostBasePath, "files", rpath }.join("/").toStdString();
+        m.destination = rpath.toStdString();
+        mounts.push_back(toJSON(m));
     }
 
     // mount project build result path
@@ -701,14 +725,15 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
     }
 
     for (const auto &pair : overlaysMountMap) {
-        QSharedPointer<Mount> m(new Mount);
-        m->type = "bind";
-        m->options = QStringList{ "ro" };
-        m->source = pair.first;
-        m->destination = pair.second;
-        r->annotations->overlayfs->mounts.push_back(m);
+        ocppi::runtime::config::types::Mount m;
+        m.type = "bind";
+        m.options = { "ro" };
+        m.source = pair.first.toStdString();
+        m.destination = pair.second.toStdString();
+        mounts.push_back(toJSON(m));
     }
-    r->annotations->containerRootPath = container->workingDirectory;
+
+    anno["containerRootPath"] = container->workingDirectory.toStdString();
 
     auto containerSourcePath = "/source";
 
@@ -718,41 +743,37 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
     };
 
     for (const auto &pair : mountMap) {
-        QSharedPointer<Mount> m(new Mount);
-        m->type = "bind";
-        m->source = pair.first;
-        m->destination = pair.second;
-        r->mounts.push_back(m);
+        ocppi::runtime::config::types::Mount m;
+        m.type = "bind";
+        m.source = pair.first.toStdString();
+        m.destination = pair.second.toStdString();
+        r->mounts->push_back(m);
     }
 
-    r->process->args = QStringList{ "/bin/bash", "-e", BuildScriptPath };
+    r->process->args = { "/bin/bash", "-e", BuildScriptPath };
     r->process->cwd = containerSourcePath;
-    r->process->env.push_back("PATH=/runtime/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/"
-                              "usr/games:/sbin:/usr/sbin");
-    r->process->env.push_back("PREFIX=" + project->config().targetInstallPath(""));
+    r->process->env->push_back("PATH=/runtime/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/"
+                               "usr/games:/sbin:/usr/sbin");
+    r->process->env->push_back(("PREFIX=" + project->config().targetInstallPath("")).toStdString());
 
     if (project->config().targetArch() == "x86_64") {
-        r->process->env.push_back("PKG_CONFIG_PATH=/runtime/lib/x86_64-linux-gnu/pkgconfig");
-        r->process->env.push_back("LIBRARY_PATH=/runtime/lib:/runtime/lib/x86_64-linux-gnu");
-        r->process->env.push_back("LD_LIBRARY_PATH=/runtime/lib:/runtime/lib/x86_64-linux-gnu");
+        r->process->env->push_back("PKG_CONFIG_PATH=/runtime/lib/x86_64-linux-gnu/pkgconfig");
+        r->process->env->push_back("LIBRARY_PATH=/runtime/lib:/runtime/lib/x86_64-linux-gnu");
+        r->process->env->push_back("LD_LIBRARY_PATH=/runtime/lib:/runtime/lib/x86_64-linux-gnu");
     } else if (project->config().targetArch() == "arm64") {
-        r->process->env.push_back("PKG_CONFIG_PATH=/runtime/lib/aarch64-linux-gnu/pkgconfig");
-        r->process->env.push_back("LIBRARY_PATH=/runtime/lib:/runtime/lib/aarch64-linux-gnu");
-        r->process->env.push_back("LD_LIBRARY_PATH=/runtime/lib:/runtime/lib/aarch64-linux-gnu");
+        r->process->env->push_back("PKG_CONFIG_PATH=/runtime/lib/aarch64-linux-gnu/pkgconfig");
+        r->process->env->push_back("LIBRARY_PATH=/runtime/lib:/runtime/lib/aarch64-linux-gnu");
+        r->process->env->push_back("LD_LIBRARY_PATH=/runtime/lib:/runtime/lib/aarch64-linux-gnu");
     }
 
-    if (!r->hooks) {
-        r->hooks.reset(new Hooks);
-        QSharedPointer<Hook> hook(new Hook);
-        hook->path = "/usr/sbin/ldconfig";
-        r->hooks->prestart.push_back(hook);
-    }
+    r->hooks = r->hooks.value_or(ocppi::runtime::config::types::Hooks{});
+    r->hooks->prestart = { { std::nullopt, std::nullopt, "/usr/sbin/ldconfig", std::nullopt } };
 
-    if (startContainer(container, r)) {
+    if (startContainer(container, *r)) {
         return NewError(-1, "build task failed in container");
     }
 
-    err = commitBuildOutput(project, r->annotations->overlayfs);
+    err = commitBuildOutput(project, anno["overlayfs"]);
     if (err) {
         return WrapError(err, "commitBuildOutput failed");
     }
@@ -1064,5 +1085,4 @@ linglong::util::Error LinglongBuilder::run()
     return Success();
 }
 
-} // namespace builder
-} // namespace linglong
+} // namespace linglong::builder

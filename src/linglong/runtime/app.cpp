@@ -236,8 +236,6 @@ auto App::stageSystem() const -> int
 auto App::stageRootfs(QString runtimeRootPath, const QString &appId, QString appRootPath) const
         -> int
 {
-    // 使用linglong runtime标志
-    bool useThinRuntime = true;
     // overlay 挂载标志
     bool fuseMount = false;
     // wine 应用挂载标志
@@ -293,7 +291,7 @@ auto App::stageRootfs(QString runtimeRootPath, const QString &appId, QString app
     QString basicsUsrRootPath = "";
     // basics etc
     QString basicsEtcRootPath = "";
-    if (!linglong::util::isDeepinSysProduct() && useThinRuntime) {
+    if (!linglong::util::isDeepinSysProduct()) {
         QSharedPointer<package::Info> runtimeInfo;
         if (util::fileExists(runtimeInfoFile)) {
             runtimeInfo = util::loadJson<package::Info>(runtimeInfoFile);
@@ -331,58 +329,47 @@ auto App::stageRootfs(QString runtimeRootPath, const QString &appId, QString app
 
     QList<QPair<QString, QString>> mountMap;
 
-    if (useThinRuntime) {
-        mountMap = {
-            { "/usr", "/usr" },
-            { "/etc", "/etc" },
-            { runtimeRootPath, "/runtime" },
-            { "/usr/share/locale/", "/usr/share/locale/" },
-        };
+    mountMap = {
+        { "/usr", "/usr" },
+        { "/etc", "/etc" },
+        { runtimeRootPath, "/runtime" },
+        { "/usr/share/locale/", "/usr/share/locale/" },
+    };
 
-        qDebug() << "stageRootfs runtimeRootPath:" << runtimeRootPath
-                 << "appRootPath:" << appRootPath;
-        // appRootPath/devel/files/debug /usr/lib/debug/opt/apps/appid/files 挂载调试符号
-        if ("devel" == debugRef.module) {
-            mountMap.push_back({ appRootPath + "/devel/files/debug",
-                                 "/usr/lib/debug/opt/apps/" + debugRef.appId + "/files" });
-            // runtime 只用挂载devel/files/debug 目录
-            mountMap.push_back(
-                    { runtimeRootPath.left(runtimeRootPath.length() - QString("/files").length())
-                              + "/devel/files/debug",
-                      "/usr/lib/debug/runtime" });
-        }
+    qDebug() << "stageRootfs runtimeRootPath:" << runtimeRootPath << "appRootPath:" << appRootPath;
+    // appRootPath/devel/files/debug /usr/lib/debug/opt/apps/appid/files 挂载调试符号
+    if ("devel" == debugRef.module) {
+        mountMap.push_back({ appRootPath + "/devel/files/debug",
+                             "/usr/lib/debug/opt/apps/" + debugRef.appId + "/files" });
+        // runtime 只用挂载devel/files/debug 目录
+        mountMap.push_back(
+                { runtimeRootPath.left(runtimeRootPath.length() - QString("/files").length())
+                          + "/devel/files/debug",
+                  "/usr/lib/debug/runtime" });
+    }
 
-        // FIXME(iceyer): extract for wine, remove later
-        if (fuseMount && wineMount) {
-            // NOTE: the override should be behind host /usr
-            mountMap.push_back({ runtimeRootPath + "/bin", "/usr/bin" });
-            mountMap.push_back({ runtimeRootPath + "/include", "/usr/include" });
-            mountMap.push_back({ runtimeRootPath + "/lib", "/usr/lib" });
-            mountMap.push_back({ runtimeRootPath + "/sbin", "/usr/sbin" });
-            mountMap.push_back({ runtimeRootPath + "/share", "/usr/share" });
-            mountMap.push_back({ runtimeRootPath + "/opt/deepinwine", "/opt/deepinwine" });
-            mountMap.push_back(
-                    { runtimeRootPath + "/opt/deepin-wine6-stable", "/opt/deepin-wine6-stable" });
+    // FIXME(iceyer): extract for wine, remove later
+    if (fuseMount && wineMount) {
+        // NOTE: the override should be behind host /usr
+        mountMap.push_back({ runtimeRootPath + "/bin", "/usr/bin" });
+        mountMap.push_back({ runtimeRootPath + "/include", "/usr/include" });
+        mountMap.push_back({ runtimeRootPath + "/lib", "/usr/lib" });
+        mountMap.push_back({ runtimeRootPath + "/sbin", "/usr/sbin" });
+        mountMap.push_back({ runtimeRootPath + "/share", "/usr/share" });
+        mountMap.push_back({ runtimeRootPath + "/opt/deepinwine", "/opt/deepinwine" });
+        mountMap.push_back(
+                { runtimeRootPath + "/opt/deepin-wine6-stable", "/opt/deepin-wine6-stable" });
+    }
+    // overlay mount 通过info.json
+    if (fuseMount && specialCase) {
+        for (auto mount : info->overlayfs->mounts) {
+            mountMap.push_back({ getPath(mount->source), getPath(mount->destination) });
         }
-        // overlay mount 通过info.json
-        if (fuseMount && specialCase) {
-            for (auto mount : info->overlayfs->mounts) {
-                mountMap.push_back({ getPath(mount->source), getPath(mount->destination) });
-            }
-        }
-        // overlay mount basics
-        if (fuseMount && otherSysMount) {
-            mountMap.push_back({ basicsUsrRootPath, "/usr" });
-            mountMap.push_back({ basicsEtcRootPath, "/etc" });
-        }
-    } else {
-        // FIXME(iceyer): if runtime is empty, use the last
-        if (runtimeRootPath.isEmpty()) {
-            qCritical() << "mount runtime failed" << runtimeRootPath;
-            return -1;
-        }
-
-        mountMap.push_back({ runtimeRootPath, "/usr" });
+    }
+    // overlay mount basics
+    if (fuseMount && otherSysMount) {
+        mountMap.push_back({ basicsUsrRootPath, "/usr" });
+        mountMap.push_back({ basicsEtcRootPath, "/etc" });
     }
 
     for (const auto &pair : mountMap) {

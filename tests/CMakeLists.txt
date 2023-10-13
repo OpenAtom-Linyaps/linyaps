@@ -34,6 +34,7 @@ pfl_add_executable(
   ./src/utils/serialize/TestStruct.cpp
   ./src/utils/serialize/TestStruct.h
   ./src/utils/serialize/yaml.cpp
+  ./src/utils/xdg/desktop_entry_test.cpp
   COMPILE_FEATURES
   PUBLIC
   cxx_std_17

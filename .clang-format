@@ -56,7 +56,7 @@ BraceWrapping:
 ConstructorInitializerIndentWidth: 4
 
 # Indent width for line continuations.
-ContinuationIndentWidth: 8
+ContinuationIndentWidth: 2
 
 # No indentation for namespaces.
 NamespaceIndentation: None

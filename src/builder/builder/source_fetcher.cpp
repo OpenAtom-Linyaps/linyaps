@@ -133,6 +133,7 @@ util::Error SourceFetcherPrivate::fetchGitRepo()
     if (!runner::Runner("git",
                         {
                                 "clone",
+                                "--recurse-submodules",
                                 source->url,
                                 sourceTargetPath(),
                         },

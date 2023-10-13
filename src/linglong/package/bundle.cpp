@@ -61,8 +61,8 @@ linglong::util::Error Bundle::make(const QString &dataPath, const QString &outpu
     auto info = QSharedPointer<package::Info>();
 
     {
-        auto [result, err] = util::fromJSON<QSharedPointer<package::Info>>(this->bundleDataPath
-                                                                           + QString(configJson));
+        auto [result, err] =
+          util::fromJSON<QSharedPointer<package::Info>>(this->bundleDataPath + QString(configJson));
         if (err) {
             return WrapError(err, "fromJSON");
         }
@@ -81,14 +81,14 @@ linglong::util::Error Bundle::make(const QString &dataPath, const QString &outpu
     // 赋值bundleFilePath
     if (outputFilePath.isEmpty()) {
         this->bundleFilePath = bundleFileDirPath + "/" + info->appid + "_" + info->version + "_"
-                + this->buildArch + ".uab";
+          + this->buildArch + ".uab";
     } else {
         this->bundleFilePath = outputFilePath;
     }
 
     // 赋值squashfsFilePath
-    QString erofsName = (QStringList{ info->appid, info->version, this->buildArch }.join("_"))
-            + QString(".erofs");
+    QString erofsName =
+      (QStringList{ info->appid, info->version, this->buildArch }.join("_")) + QString(".erofs");
     this->erofsFilePath = bundleFileDirPath + "/" + erofsName;
 
     // 清理erofs文件
@@ -131,15 +131,14 @@ linglong::util::Error Bundle::make(const QString &dataPath, const QString &outpu
 
     // 设置执行权限
     QFile(this->bundleFilePath)
-            .setPermissions(QFileDevice::ExeOwner | QFileDevice::WriteOwner
-                            | QFileDevice::ReadOwner);
+      .setPermissions(QFileDevice::ExeOwner | QFileDevice::WriteOwner | QFileDevice::ReadOwner);
 
     return Success();
 }
 
 // read elf64
 auto Bundle::readElf64(FILE *fd, Elf64_Ehdr &ehdr)
-        -> decltype(ehdr.e_shoff + (ehdr.e_shentsize * ehdr.e_shnum))
+  -> decltype(ehdr.e_shoff + (ehdr.e_shentsize * ehdr.e_shnum))
 {
     Elf64_Ehdr ehdr64;
     off_t ret = -1;
@@ -187,9 +186,9 @@ auto Bundle::getElfSize(const QString elfFilePath) -> decltype(-1)
 }
 
 linglong::util::Error Bundle::push(const QString &bundleFilePath,
-                                          const QString &repoUrl,
-                                          const QString &repoChannel,
-                                          bool /*force*/)
+                                   const QString &repoUrl,
+                                   const QString &repoChannel,
+                                   bool /*force*/)
 {
     return NewError(-1, "Not implemented");
 
@@ -251,8 +250,8 @@ linglong::util::Error Bundle::push(const QString &bundleFilePath,
     }
 
     {
-        auto err = util::Exec("unsquashfs",
-                              { "-dest", this->bundleDataPath, "-f", this->erofsFilePath });
+        auto err =
+          util::Exec("unsquashfs", { "-dest", this->bundleDataPath, "-f", this->erofsFilePath });
 
         if (err) {
             if (util::dirExists(this->tmpWorkDir)) {
@@ -264,14 +263,14 @@ linglong::util::Error Bundle::push(const QString &bundleFilePath,
 
     // 转换info.json为Info对象
     auto [result, err] = util::fromJSON<QSharedPointer<package::Info>>(
-            QStringList{ this->bundleDataPath, "runtime", configJson }.join("/"));
+      QStringList{ this->bundleDataPath, "runtime", configJson }.join("/"));
     if (err) {
         return WrapError(err, "fromJSON");
     }
     auto runtimeInfo = result;
 
     std::tie(result, err) = util::fromJSON<QSharedPointer<package::Info>>(
-            QStringList{ this->bundleDataPath, "devel", configJson }.join("/"));
+      QStringList{ this->bundleDataPath, "devel", configJson }.join("/"));
     if (err) {
         return WrapError(err, "fromJSON");
     }
@@ -300,7 +299,7 @@ linglong::util::Error Bundle::push(const QString &bundleFilePath,
                                runtimeInfo->version,
                                runtimeInfo->arch[0],
                                runtimeInfo->module }
-                          .join(QDir::separator()))
+                    .join(QDir::separator()))
               << QString("--tree=dir=") + this->bundleDataPath + "/runtime";
 
     QStringList commitArgs;
@@ -313,7 +312,7 @@ linglong::util::Error Bundle::push(const QString &bundleFilePath,
                                 develInfo->version,
                                 develInfo->arch[0],
                                 develInfo->module }
-                           .join(QDir::separator()))
+                     .join(QDir::separator()))
                << QString("--tree=dir=") + this->bundleDataPath + "/devel";
 
     {

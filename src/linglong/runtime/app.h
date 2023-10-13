@@ -77,8 +77,8 @@ public:
     ~App() override;
 
     static auto load(linglong::repo::Repo *repo,
-                                    const linglong::package::Ref &ref,
-                                    const QString &desktopExec) -> QSharedPointer<App>;
+                     const linglong::package::Ref &ref,
+                     const QString &desktopExec) -> QSharedPointer<App>;
 
     auto start() -> util::Error;
 
@@ -89,6 +89,7 @@ public:
     void setAppParamMap(const ParamStringMap &paramMap);
 
     QSharedPointer<Container> container = nullptr;
+
 private:
     auto init() -> bool;
 
@@ -96,7 +97,9 @@ private:
 
     [[nodiscard]] auto stageSystem() const -> int;
 
-    [[nodiscard]] auto stageRootfs(QString runtimeRootPath, const QString &appId, QString appRootPath) const -> int;
+    [[nodiscard]] auto stageRootfs(QString runtimeRootPath,
+                                   const QString &appId,
+                                   QString appRootPath) const -> int;
 
     [[nodiscard]] auto stageHost() const -> int;
 
@@ -113,14 +116,15 @@ private:
 
     auto fixMount(QString runtimeRootPath, const QString &appId) -> int;
 
-    static auto getMathedRuntime(const QString &runtimeId, const QString &runtimeVersion) -> QString;
+    static auto getMathedRuntime(const QString &runtimeId, const QString &runtimeVersion)
+      -> QString;
 
     // FIXME: none static
     static auto loadConfig(linglong::repo::Repo *repo,
-                              const QString &appId,
-                              const QString &appVersion,
-                              const QString &channel,
-                              const QString &module) -> QString;
+                           const QString &appId,
+                           const QString &appVersion,
+                           const QString &channel,
+                           const QString &module) -> QString;
 
     QString desktopExec = nullptr;
     ParamStringMap envMap;

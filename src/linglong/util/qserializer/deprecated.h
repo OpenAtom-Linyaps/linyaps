@@ -18,27 +18,27 @@ class QObject;
 typedef QObject JsonSerialize;
 typedef QObject Serialize;
 #define Q_JSON_CONSTRUCTOR Q_SERIALIZE_CONSTRUCTOR
-#define Q_SERIALIZE_CONSTRUCTOR(type)      \
-  public:                                  \
-  explicit type(QObject *parent = nullptr) \
-      : Serialize(parent)                  \
-  {                                        \
-  }
+#define Q_SERIALIZE_CONSTRUCTOR(type)        \
+public:                                      \
+    explicit type(QObject *parent = nullptr) \
+        : Serialize(parent)                  \
+    {                                        \
+    }
 #define Q_JSON_PROPERTY Q_SERIALIZE_PROPERTY
 #define Q_JSON_PTR_PROPERTY(type, prop) Q_SERIALIZE_PROPERTY(QSharedPointer<type>, prop)
 #define Q_SERIALIZE_PROPERTY(type, prop) Q_SERIALIZE_ITEM_MEMBER(type, prop, prop)
 #define Q_JSON_ITEM_MEMBER Q_SERIALIZE_ITEM_MEMBER
 #define Q_SERIALIZE_ITEM_MEMBER(type, prop, memberName) \
-  public:                                               \
-  Q_PROPERTY(type prop MEMBER memberName);              \
-  type memberName;
+public:                                                 \
+    Q_PROPERTY(type prop MEMBER memberName);            \
+    type memberName;
 
 #define Q_JSON_DECLARE_PTR_METATYPE(type) QSERIALIZER_DECLARE(type);
 #define Q_SERIALIZE_DECLARE_LIST_MAP(type) QSERIALIZER_DECLARE(type);
 #define Q_JSON_DECLARE_PTR_METATYPE_NM(ns, type) \
-  namespace ns {                                 \
-  QSERIALIZER_DECLARE(type);                     \
-  }
+    namespace ns {                               \
+    QSERIALIZER_DECLARE(type);                   \
+    }
 
 namespace linglong {
 namespace util {

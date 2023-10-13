@@ -39,7 +39,7 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, ParamOptio
 {
     argument.beginStructure();
     argument >> paramOption.appId >> paramOption.version >> paramOption.arch >> paramOption.channel
-            >> paramOption.appModule;
+      >> paramOption.appModule;
     argument.endStructure();
     return argument;
 }
@@ -68,7 +68,7 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument,
 {
     argument.beginStructure();
     argument >> downloadParamOption.appId >> downloadParamOption.version >> downloadParamOption.arch
-            >> downloadParamOption.savePath;
+      >> downloadParamOption.savePath;
     argument.endStructure();
     return argument;
 }
@@ -95,7 +95,7 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument,
 {
     argument.beginStructure();
     argument >> installParamOption.appId >> installParamOption.version >> installParamOption.arch
-            >> installParamOption.channel >> installParamOption.appModule;
+      >> installParamOption.channel >> installParamOption.appModule;
     argument.endStructure();
     return argument;
 }
@@ -122,7 +122,7 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, QueryParam
 {
     argument.beginStructure();
     argument >> paramOption.appId >> paramOption.version >> paramOption.arch >> paramOption.channel
-            >> paramOption.appModule >> paramOption.force;
+      >> paramOption.appModule >> paramOption.force;
     argument.endStructure();
     return argument;
 }
@@ -151,7 +151,7 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument,
 {
     argument.beginStructure();
     argument >> paramOption.appId >> paramOption.version >> paramOption.arch >> paramOption.channel
-            >> paramOption.appModule >> paramOption.delAllVersion >> paramOption.delAppData;
+      >> paramOption.appModule >> paramOption.delAllVersion >> paramOption.delAppData;
     argument.endStructure();
     return argument;
 }
@@ -186,9 +186,9 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument, RunParamOp
 {
     argument.beginStructure();
     argument >> paramOption.appId >> paramOption.version >> paramOption.arch >> paramOption.channel
-            >> paramOption.appModule >> paramOption.exec >> paramOption.noDbusProxy
-            >> paramOption.busType >> paramOption.filterName >> paramOption.filterPath
-            >> paramOption.filterInterface >> paramOption.appEnv;
+      >> paramOption.appModule >> paramOption.exec >> paramOption.noDbusProxy >> paramOption.busType
+      >> paramOption.filterName >> paramOption.filterPath >> paramOption.filterInterface
+      >> paramOption.appEnv;
     argument.endStructure();
     return argument;
 }

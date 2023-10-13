@@ -111,15 +111,15 @@ QString VfsRepo::rootOfLayer(const package::Ref &ref)
                                    ref.appId,
                                    ref.version,
                                    ref.arch }
-                              .join(QDir::separator());
+                        .join(QDir::separator());
     util::ensureDir(mountPoint);
 
     // TODO: parse form meta data
     auto sourcePath =
-            QStringList{ util::getLinglongRootPath(), "layers", ref.appId, ref.version, ref.arch }
-                    .join(QDir::separator());
+      QStringList{ util::getLinglongRootPath(), "layers", ref.appId, ref.version, ref.arch }.join(
+        QDir::separator());
     QString hash(
-            QCryptographicHash::hash(sourcePath.toLocal8Bit(), QCryptographicHash::Md5).toHex());
+      QCryptographicHash::hash(sourcePath.toLocal8Bit(), QCryptographicHash::Md5).toHex());
     auto source = QStringList{ d->repoRootPath, "blobs", hash }.join(QDir::separator());
 
     qDebug() << "erofs::mount" << source << mountPoint;

@@ -102,13 +102,13 @@ static void printAppInfo(QList<QSharedPointer<linglong::package::AppMetaInfo>> a
             int count = getUnicodeNum(name);
             int length = simpleDescription.length() < 56 ? simpleDescription.length() : 56;
             qInfo().noquote() << QString("%1%2%3%4%5%6%7")
-                                         .arg(appId, -32, QLatin1Char(' '))
-                                         .arg(name, count - 32, QLatin1Char(' '))
-                                         .arg(it->version.trimmed(), -16, QLatin1Char(' '))
-                                         .arg(it->arch.trimmed(), -12, QLatin1Char(' '))
-                                         .arg(it->channel.trimmed(), -16, QLatin1Char(' '))
-                                         .arg(it->module.trimmed(), -12, QLatin1Char(' '))
-                                         .arg(simpleDescription, -length, QLatin1Char(' '));
+                                   .arg(appId, -32, QLatin1Char(' '))
+                                   .arg(name, count - 32, QLatin1Char(' '))
+                                   .arg(it->version.trimmed(), -16, QLatin1Char(' '))
+                                   .arg(it->arch.trimmed(), -12, QLatin1Char(' '))
+                                   .arg(it->channel.trimmed(), -16, QLatin1Char(' '))
+                                   .arg(it->module.trimmed(), -12, QLatin1Char(' '))
+                                   .arg(simpleDescription, -length, QLatin1Char(' '));
         }
     } else {
         qInfo().noquote() << "app not found in repo";
@@ -143,9 +143,8 @@ int main(int argc, char **argv)
     parser.addPositionalArgument("subcommand",
                                  subCommandList.join("\n"),
                                  "subcommand [sub-option]");
-    auto optNoDbus = QCommandLineOption("nodbus",
-                                        "execute cmd directly, not via dbus(only for root user)",
-                                        "");
+    auto optNoDbus =
+      QCommandLineOption("nodbus", "execute cmd directly, not via dbus(only for root user)", "");
     optNoDbus.setFlags(QCommandLineOption::HiddenFromHelp);
     parser.addOptions({ optNoDbus });
     parser.parse(QCoreApplication::arguments());
@@ -158,9 +157,9 @@ int main(int argc, char **argv)
                                                     QDBusConnection::sessionBus());
 
     OrgDeepinLinglongPackageManager1Interface sysPackageManager(
-            "org.deepin.linglong.PackageManager",
-            "/org/deepin/linglong/PackageManager",
-            QDBusConnection::systemBus());
+      "org.deepin.linglong.PackageManager",
+      "/org/deepin/linglong/PackageManager",
+      QDBusConnection::systemBus());
 
     auto systemHelperDBusConnection = QDBusConnection::systemBus();
     const auto systemHelperAddress = QString("unix:path=/run/linglong_system_helper_socket");
@@ -170,12 +169,12 @@ int main(int argc, char **argv)
         // NOTE: isConnected will NOT RETRY
         // NOTE: name cannot be duplicate
         systemHelperDBusConnection =
-                QDBusConnection::connectToPeer(systemHelperAddress, "ll-system-helper-1");
+          QDBusConnection::connectToPeer(systemHelperAddress, "ll-system-helper-1");
         if (!systemHelperDBusConnection.isConnected()) {
             startDaemon("ll-system-helper", { "--bus=" + systemHelperAddress }, &systemHelperPid);
             QThread::sleep(1);
             systemHelperDBusConnection =
-                    QDBusConnection::connectToPeer(systemHelperAddress, "ll-system-helper");
+              QDBusConnection::connectToPeer(systemHelperAddress, "ll-system-helper");
             if (!systemHelperDBusConnection.isConnected()) {
                 qCritical() << "failed to start ll-system-helper";
                 exit(-1);
@@ -193,31 +192,29 @@ int main(int argc, char **argv)
 
               const auto optExec = QCommandLineOption("exec", "run exec", "/bin/bash");
               const auto optNoProxy =
-                      QCommandLineOption("no-proxy", "whether to use dbus proxy in box", "");
+                QCommandLineOption("no-proxy", "whether to use dbus proxy in box", "");
               const auto optNameFilter =
-                      QCommandLineOption("filter-name",
-                                         "dbus name filter to use",
-                                         "--filter-name=org.deepin.linglong.AppManager",
-                                         "");
+                QCommandLineOption("filter-name",
+                                   "dbus name filter to use",
+                                   "--filter-name=org.deepin.linglong.AppManager",
+                                   "");
               const auto optPathFilter =
-                      QCommandLineOption("filter-path",
-                                         "dbus path filter to use",
-                                         "--filter-path=/org/deepin/linglong/AppManager",
-                                         "");
+                QCommandLineOption("filter-path",
+                                   "dbus path filter to use",
+                                   "--filter-path=/org/deepin/linglong/AppManager",
+                                   "");
               const auto optInterfaceFilter =
-                      QCommandLineOption("filter-interface",
-                                         "dbus interface filter to use",
-                                         "--filter-interface=org.deepin.linglong.AppManager",
-                                         "");
+                QCommandLineOption("filter-interface",
+                                   "dbus interface filter to use",
+                                   "--filter-interface=org.deepin.linglong.AppManager",
+                                   "");
               // 增加channel/module
               const auto optChannel = QCommandLineOption("channel",
                                                          "the channel of app",
                                                          "--channel=linglong",
                                                          "linglong");
-              const auto optModule = QCommandLineOption("module",
-                                                        "the module of app",
-                                                        "--module=runtime",
-                                                        "runtime");
+              const auto optModule =
+                QCommandLineOption("module", "the module of app", "--module=runtime", "runtime");
 
               parser.addOptions({ optExec,
                                   optNoProxy,
@@ -290,7 +287,7 @@ int main(int argc, char **argv)
                   appManager.runPool->waitForDone(-1);
                   if (0 != reply.code) {
                       qCritical().noquote()
-                              << "message:" << reply.message << ", errcode:" << reply.code;
+                        << "message:" << reply.message << ", errcode:" << reply.code;
                       return -1;
                   }
                   qDebug() << "exit with in sandbox";
@@ -303,7 +300,7 @@ int main(int argc, char **argv)
               reply = dbusReply.value();
               if (reply.code != 0) {
                   qCritical().noquote()
-                          << "message:" << reply.message << ", errcode:" << reply.code;
+                    << "message:" << reply.message << ", errcode:" << reply.code;
                   return -1;
               }
               return 0;
@@ -357,7 +354,7 @@ int main(int argc, char **argv)
               const auto reply = dbusReply.value();
               if (reply.code != STATUS_CODE(kSuccess)) {
                   qCritical().noquote()
-                          << "message:" << reply.message << ", errcode:" << reply.code;
+                    << "message:" << reply.message << ", errcode:" << reply.code;
                   return -1;
               }
               return 0;
@@ -393,7 +390,7 @@ int main(int argc, char **argv)
               parser.addPositionalArgument("ps", "show running applications", "ps");
 
               const auto optOutputFormat =
-                      QCommandLineOption("output-format", "json/console", "console");
+                QCommandLineOption("output-format", "json/console", "console");
               parser.addOptions({ optOutputFormat });
 
               parser.process(app);
@@ -433,7 +430,7 @@ int main(int argc, char **argv)
               linglong::service::Reply reply = dbusReply.value();
               if (reply.code != STATUS_CODE(kErrorPkgKillSuccess)) {
                   qCritical().noquote()
-                          << "message:" << reply.message << ", errcode:" << reply.code;
+                    << "message:" << reply.message << ", errcode:" << reply.code;
                   return -1;
               }
 
@@ -450,10 +447,8 @@ int main(int argc, char **argv)
                                                          "the channel of app",
                                                          "--channel=linglong",
                                                          "linglong");
-              const auto optModule = QCommandLineOption("module",
-                                                        "the module of app",
-                                                        "--module=runtime",
-                                                        "runtime");
+              const auto optModule =
+                QCommandLineOption("module", "the module of app", "--module=runtime", "runtime");
               parser.addOptions({ optChannel, optModule });
 
               parser.process(app);
@@ -488,7 +483,7 @@ int main(int argc, char **argv)
               qInfo().noquote() << "install" << args.at(1) << ", please wait a few minutes...";
               if (!parser.isSet(optNoDbus)) {
                   QDBusPendingReply<linglong::service::Reply> dbusReply =
-                          sysPackageManager.Install(installParamOption);
+                    sysPackageManager.Install(installParamOption);
                   dbusReply.waitForFinished();
                   reply = dbusReply.value();
                   QThread::sleep(1);
@@ -519,7 +514,7 @@ int main(int argc, char **argv)
                           reply.code = -1;
                       }
                       qCritical().noquote()
-                              << "message:" << reply.message << ", errcode:" << reply.code;
+                        << "message:" << reply.message << ", errcode:" << reply.code;
                       return -1;
                   } else {
                       qInfo().noquote() << "message:" << reply.message;
@@ -543,10 +538,8 @@ int main(int argc, char **argv)
                                                          "the channel of app",
                                                          "--channel=linglong",
                                                          "linglong");
-              const auto optModule = QCommandLineOption("module",
-                                                        "the module of app",
-                                                        "--module=runtime",
-                                                        "runtime");
+              const auto optModule =
+                QCommandLineOption("module", "the module of app", "--module=runtime", "runtime");
               parser.addOptions({ optChannel, optModule });
 
               parser.process(app);
@@ -573,7 +566,7 @@ int main(int argc, char **argv)
               qInfo().noquote() << "update" << paramOption.appId
                                 << ", please wait a few minutes...";
               QDBusPendingReply<linglong::service::Reply> dbusReply =
-                      sysPackageManager.Update(paramOption);
+                sysPackageManager.Update(paramOption);
               dbusReply.waitForFinished();
               linglong::service::Reply reply;
               reply = dbusReply.value();
@@ -603,7 +596,7 @@ int main(int argc, char **argv)
               }
               if (reply.code != STATUS_CODE(kErrorPkgUpdateSuccess)) {
                   qCritical().noquote()
-                          << "message:" << reply.message << ", errcode:" << reply.code;
+                    << "message:" << reply.message << ", errcode:" << reply.code;
                   return -1;
               }
               qInfo().noquote() << "message:" << reply.message;
@@ -615,7 +608,7 @@ int main(int argc, char **argv)
               parser.addPositionalArgument("query", "query app info", "query");
               parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
               const auto optNoCache =
-                      QCommandLineOption("force", "query from server directly, not from cache", "");
+                QCommandLineOption("force", "query from server directly, not from cache", "");
               parser.addOptions({ optNoCache });
               parser.process(app);
 
@@ -635,18 +628,18 @@ int main(int argc, char **argv)
               paramOption.appId = args.value(1);
               sysPackageManager.setTimeout(1000 * 60 * 60 * 24);
               QDBusPendingReply<linglong::service::QueryReply> dbusReply =
-                      sysPackageManager.Query(paramOption);
+                sysPackageManager.Query(paramOption);
               dbusReply.waitForFinished();
               linglong::service::QueryReply reply = dbusReply.value();
               if (reply.code != STATUS_CODE(kErrorPkgQuerySuccess)) {
                   qCritical().noquote()
-                          << "message:" << reply.message << ", errcode:" << reply.code;
+                    << "message:" << reply.message << ", errcode:" << reply.code;
                   return -1;
               }
 
-              auto [appMetaInfoList, err] = linglong::util::fromJSON<
-                      QList<QSharedPointer<linglong::package::AppMetaInfo>>>(
-                      reply.result.toLocal8Bit());
+              auto [appMetaInfoList, err] =
+                linglong::util::fromJSON<QList<QSharedPointer<linglong::package::AppMetaInfo>>>(
+                  reply.result.toLocal8Bit());
               if (err) {
                   qCritical() << "parse json reply failed:" << err;
                   return -1;
@@ -661,16 +654,14 @@ int main(int argc, char **argv)
               parser.addPositionalArgument("uninstall", "uninstall an application", "uninstall");
               parser.addPositionalArgument("appId", "application id", "com.deepin.demo");
               const auto optAllVer =
-                      QCommandLineOption("all-version", "uninstall all version application", "");
+                QCommandLineOption("all-version", "uninstall all version application", "");
               const auto optDelData = QCommandLineOption("delete-data", "delete app data", "");
               const auto optChannel = QCommandLineOption("channel",
                                                          "the channel of app",
                                                          "--channel=linglong",
                                                          "linglong");
-              const auto optModule = QCommandLineOption("module",
-                                                        "the module of app",
-                                                        "--module=runtime",
-                                                        "runtime");
+              const auto optModule =
+                QCommandLineOption("module", "the module of app", "--module=runtime", "runtime");
               parser.addOptions({ optAllVer, optDelData, optChannel, optModule });
 
               parser.process(app);
@@ -704,7 +695,7 @@ int main(int argc, char **argv)
                   reply = packageManager.Uninstall(paramOption);
                   if (reply.code != STATUS_CODE(kPkgUninstallSuccess)) {
                       qInfo().noquote()
-                              << "message: " << reply.message << ", errcode:" << reply.code;
+                        << "message: " << reply.message << ", errcode:" << reply.code;
                       return -1;
                   } else {
                       qInfo().noquote() << "uninstall " << appInfo << " success";
@@ -717,7 +708,7 @@ int main(int argc, char **argv)
 
               if (reply.code != STATUS_CODE(kPkgUninstallSuccess)) {
                   qCritical().noquote()
-                          << "message:" << reply.message << ", errcode:" << reply.code;
+                    << "message:" << reply.message << ", errcode:" << reply.code;
                   return -1;
               }
               qInfo().noquote() << "message:" << reply.message;
@@ -725,10 +716,8 @@ int main(int argc, char **argv)
           } },
         { "list", // 查询已安装玲珑包
           [&](QCommandLineParser &parser) -> int {
-              const auto optType = QCommandLineOption("type",
-                                                      "query installed app",
-                                                      "--type=installed",
-                                                      "installed");
+              const auto optType =
+                QCommandLineOption("type", "query installed app", "--type=installed", "installed");
               parser.clearPositionalArguments();
               parser.addPositionalArgument("list", "show installed application", "list");
               parser.addOptions({ optType });
@@ -754,7 +743,7 @@ int main(int argc, char **argv)
                   reply = packageManager.Query(paramOption);
               } else {
                   QDBusPendingReply<linglong::service::QueryReply> dbusReply =
-                          sysPackageManager.Query(paramOption);
+                    sysPackageManager.Query(paramOption);
                   // 默认超时时间为25s
                   dbusReply.waitForFinished();
                   reply = dbusReply.value();
@@ -783,7 +772,7 @@ int main(int argc, char **argv)
                   parser.addPositionalArgument("url", "the url of repo", "[url]");
 
                   const auto optName =
-                          QCommandLineOption("name", "the name of repo", "repo name", "deepin");
+                    QCommandLineOption("name", "the name of repo", "repo name", "deepin");
                   parser.addOptions({ optName });
                   parser.process(app);
 
@@ -797,7 +786,7 @@ int main(int argc, char **argv)
                   linglong::service::Reply reply;
                   if (!parser.isSet(optNoDbus)) {
                       QDBusPendingReply<linglong::service::Reply> dbusReply =
-                              sysPackageManager.ModifyRepo(name, url);
+                        sysPackageManager.ModifyRepo(name, url);
                       dbusReply.waitForFinished();
                       reply = dbusReply.value();
                   } else {
@@ -806,14 +795,14 @@ int main(int argc, char **argv)
                   }
                   if (reply.code != STATUS_CODE(kErrorModifyRepoSuccess)) {
                       qCritical().noquote()
-                              << "message:" << reply.message << ", errcode:" << reply.code;
+                        << "message:" << reply.message << ", errcode:" << reply.code;
                       return -1;
                   }
                   qInfo().noquote() << reply.message;
               } else if (args.at(1) == "list") {
                   linglong::service::QueryReply reply;
                   QDBusPendingReply<linglong::service::QueryReply> dbusReply =
-                          sysPackageManager.getRepoInfo();
+                    sysPackageManager.getRepoInfo();
                   dbusReply.waitForFinished();
                   reply = dbusReply.value();
 

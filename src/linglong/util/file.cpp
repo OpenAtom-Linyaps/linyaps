@@ -48,7 +48,7 @@ QString ensureUserDir(const QString &relativeDirPath)
 QString ensureUserDir(const QStringList &relativeDirPathComponents)
 {
     auto relativeFilepath =
-            QDir::cleanPath(relativeDirPathComponents.join(QDir::separator().toLatin1()));
+      QDir::cleanPath(relativeDirPathComponents.join(QDir::separator().toLatin1()));
     return ensureUserDir(relativeFilepath);
 }
 

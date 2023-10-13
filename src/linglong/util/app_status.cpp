@@ -87,15 +87,15 @@ int updateInstalledAppInfoDb()
     QString insertSql = "";
     if (recordCount < 1) {
         insertSql = QString("INSERT INTO appInfoDbVersion VALUES('%1','%2')")
-                            .arg(infoDbVersion)
-                            .arg(description);
+                      .arg(infoDbVersion)
+                      .arg(description);
     } else {
         // fix to do update version
         QString currentVersion = sqlQuery.value(0).toString().trimmed();
         if (currentVersion < infoDbVersion) {
             insertSql = QString("INSERT INTO appInfoDbVersion VALUES('%1','%2')")
-                                .arg(infoDbVersion)
-                                .arg(description);
+                          .arg(infoDbVersion)
+                          .arg(description);
         }
         qDebug() << "installedAppInfoDb currentVersion:" << currentVersion
                  << ", dstVersion:" << infoDbVersion;
@@ -174,9 +174,9 @@ int deleteAppRecord(const QString &appId,
     // 若未指定版本，则查找最高版本
     QString dstVer = appVer;
     QString deleteSql =
-            QString("DELETE FROM installedAppInfo WHERE appId = '%1' AND version = '%2'")
-                    .arg(appId)
-                    .arg(dstVer);
+      QString("DELETE FROM installedAppInfo WHERE appId = '%1' AND version = '%2'")
+        .arg(appId)
+        .arg(dstVer);
     QString condition = "";
     if (!appArch.isEmpty()) {
         condition.append(QString(" AND arch like '%%1%'").arg(appArch));
@@ -279,9 +279,8 @@ bool getAppInstalledStatus(const QString &appId,
     sqlQuery.last();
     int recordCount = sqlQuery.at() + 1;
     if (recordCount < 1) {
-        qDebug() << "getAppInstalledStatus app:" + appId + ",version:" + appVer
-                        + ",channel:" + channel + ",module:" + module + ",userName:" + userName
-                        + " not installed";
+        qDebug() << "getAppInstalledStatus app:" + appId + ",version:" + appVer + ",channel:"
+            + channel + ",module:" + module + ",userName:" + userName + " not installed";
         return false;
     }
     return true;
@@ -306,7 +305,7 @@ bool getAllVerAppInfo(const QString &appId,
 {
     if (!getAppInstalledStatus(appId, appVer, appArch, "", "", userName)) {
         qCritical() << "getAllVerAppInfo app:" + appId + ",version:" + appVer
-                        + ",userName:" + userName + " not installed";
+            + ",userName:" + userName + " not installed";
         return false;
     }
 
@@ -335,7 +334,7 @@ bool getAllVerAppInfo(const QString &appId,
     sqlQuery.first();
     do {
         auto info =
-                QSharedPointer<linglong::package::AppMetaInfo>(new linglong::package::AppMetaInfo);
+          QSharedPointer<linglong::package::AppMetaInfo>(new linglong::package::AppMetaInfo);
         info->appId = sqlQuery.value(1).toString().trimmed();
         info->name = sqlQuery.value(2).toString().trimmed();
         info->arch = sqlQuery.value(4).toString().trimmed();
@@ -372,9 +371,8 @@ bool getInstalledAppInfo(const QString &appId,
                          QList<QSharedPointer<linglong::package::AppMetaInfo>> &pkgList)
 {
     if (!getAppInstalledStatus(appId, appVer, appArch, channel, module, userName)) {
-        qCritical() << "getInstalledAppInfo app:" + appId + ",version:" + appVer
-                        + ",channel:" + channel + ",module:" + module + ",userName:" + userName
-                        + " not installed";
+        qCritical() << "getInstalledAppInfo app:" + appId + ",version:" + appVer + ",channel:"
+            + channel + ",module:" + module + ",userName:" + userName + " not installed";
         return false;
     }
 
@@ -413,7 +411,7 @@ bool getInstalledAppInfo(const QString &appId,
     int recordCount = sqlQuery.at() + 1;
     if (recordCount > 0) {
         auto info =
-                QSharedPointer<linglong::package::AppMetaInfo>(new linglong::package::AppMetaInfo);
+          QSharedPointer<linglong::package::AppMetaInfo>(new linglong::package::AppMetaInfo);
         info->appId = sqlQuery.value(1).toString().trimmed();
         info->name = sqlQuery.value(2).toString().trimmed();
         info->arch = sqlQuery.value(4).toString().trimmed();
@@ -457,8 +455,8 @@ bool queryAllInstalledApp(const QString &userName, QString &result, QString &err
         selectSql = QString("SELECT * FROM installedAppInfo order by appId,version");
     } else {
         selectSql =
-                QString("SELECT * FROM installedAppInfo WHERE user = '%1' order by appId,version")
-                        .arg(userName);
+          QString("SELECT * FROM installedAppInfo WHERE user = '%1' order by appId,version")
+            .arg(userName);
     }
 
     Connection connection;

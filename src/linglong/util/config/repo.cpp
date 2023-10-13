@@ -6,7 +6,6 @@
 
 #include "linglong/util/config/repo.h"
 
-
 namespace linglong::util::config {
 
 QSERIALIZER_IMPL(Repo);

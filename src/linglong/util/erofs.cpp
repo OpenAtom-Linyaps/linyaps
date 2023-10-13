@@ -21,8 +21,8 @@ util::Error mount(const QString &src, const QString &mountPoint)
     }
 
     api::v1::dbus::PackageManagerHelper1 ifc(SystemHelperDBusServiceName,
-                                                        FilesystemHelperDBusPath,
-                                                        QDBusConnection::systemBus());
+                                             FilesystemHelperDBusPath,
+                                             QDBusConnection::systemBus());
 
     QVariantMap option = {};
     if (qEnvironmentVariable("LINGLONG_REPO_VFS_EROFS_BACKEND") == "fscache") {

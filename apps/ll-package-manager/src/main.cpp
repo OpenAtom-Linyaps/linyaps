@@ -44,7 +44,7 @@ auto main(int argc, char *argv[]) -> int
     }
 
     linglong::adaptors::job_manger::JobManager1 jobMangerAdaptor(
-            linglong::job_manager::JobManager::instance());
+      linglong::job_manager::JobManager::instance());
     result = registerDBusObject(conn,
                                 // FIXME: use cmake option
                                 "/org/deepin/linglong/JobManager",

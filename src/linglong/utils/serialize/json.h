@@ -41,14 +41,14 @@ std::tuple<QByteArray, util::Error> serialize(const T &x)
     QVariant v = QVariant::fromValue(x);
     if (v.canConvert<QVariantList>()) {
         return std::make_tuple<QByteArray, util::Error>(
-                QJsonDocument::fromVariant(v.toList()).toJson(),
-                {});
+          QJsonDocument::fromVariant(v.toList()).toJson(),
+          {});
     }
 
     if (v.canConvert<QVariantMap>()) {
         return std::make_tuple<QByteArray, util::Error>(
-                QJsonDocument::fromVariant(v.toMap()).toJson(),
-                {});
+          QJsonDocument::fromVariant(v.toMap()).toJson(),
+          {});
     }
 
     return std::make_tuple<QByteArray, util::Error>({}, NewError(-1, QString("convert failed")));

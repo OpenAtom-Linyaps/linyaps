@@ -142,7 +142,7 @@ private:
     auto getLatestRuntime(const QString &appId,
                           const QString &version,
                           const QList<QSharedPointer<linglong::package::AppMetaInfo>> &appList)
-            -> QSharedPointer<linglong::package::AppMetaInfo>;
+      -> QSharedPointer<linglong::package::AppMetaInfo>;
     /*
      * 从给定的软件包列表中查找最新版本的软件包
      *
@@ -154,7 +154,7 @@ private:
      */
     auto getLatestApp(const QString &appId,
                       const QList<QSharedPointer<linglong::package::AppMetaInfo>> &appList)
-            -> QSharedPointer<linglong::package::AppMetaInfo>;
+      -> QSharedPointer<linglong::package::AppMetaInfo>;
 
     /*
      * 从json字符串中提取软件包对应的JsonArray数据
@@ -224,7 +224,7 @@ private:
      * @return bool: true:成功 false:失败
      */
     auto installRuntime(QSharedPointer<linglong::package::AppMetaInfo> appInfo, QString &err)
-            -> bool;
+      -> bool;
 
     /*
      * 检查应用runtime安装状态

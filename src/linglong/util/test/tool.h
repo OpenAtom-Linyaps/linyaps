@@ -26,4 +26,3 @@ void runQApplication(const std::function<void(void)> &operation)
 };
 
 } // namespace linglong::test
-

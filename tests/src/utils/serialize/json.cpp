@@ -23,9 +23,9 @@ TEST(TestUtilsSerialize, JSONBasics)
     ASSERT_NE(data.size(), 0) << "failed to read test data";
 
     auto [testStruct1, fromErr] =
-            linglong::utils::serialize::json::deserialize<QSharedPointer<TestStruct>>(data);
+      linglong::utils::serialize::json::deserialize<QSharedPointer<TestStruct>>(data);
     ASSERT_EQ(bool(fromErr), false)
-            << "failed to deserialize from test data" << fromErr.message().toStdString();
+      << "failed to deserialize from test data" << fromErr.message().toStdString();
     ASSERT_NE(testStruct1, nullptr) << "should not get nullptr when there is no error";
 
     auto checkContent = [](QSharedPointer<TestStruct> testStruct) {
@@ -51,9 +51,9 @@ TEST(TestUtilsSerialize, JSONBasics)
     ASSERT_NE(jsonData.size(), 0) << "should always get some bytes";
 
     auto [testStruct2, fromErr2] =
-            linglong::utils::serialize::json::deserialize<QSharedPointer<TestStruct>>(data);
-    ASSERT_EQ(bool(fromErr2), false) << "failed to deserialize from test data" << toErr.code()
-                                     << fromErr2.message().toStdString();
+      linglong::utils::serialize::json::deserialize<QSharedPointer<TestStruct>>(data);
+    ASSERT_EQ(bool(fromErr2), false)
+      << "failed to deserialize from test data" << toErr.code() << fromErr2.message().toStdString();
     ASSERT_NE(testStruct2, nullptr) << "should not get nullptr when there is no error";
 
     checkContent(testStruct2);

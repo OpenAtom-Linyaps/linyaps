@@ -26,25 +26,16 @@ TEST(Module_Util_Oci, Distribution)
     test::runQApplication([&]() {
         util::Error err = Success();
         oci::OciDistributionClient ociClient(
-                qEnvironmentVariable("LINGLONG_TEST_DISTRIBUTION_ENDPOINT",
-                                     "http://127.0.0.1:5000"));
+          qEnvironmentVariable("LINGLONG_TEST_DISTRIBUTION_ENDPOINT", "http://127.0.0.1:5000"));
 
-        auto ref = package::Ref("",
-                                "main",
-                                "org.deepin.music",
-                                "7.0.2.67",
-                                util::hostArch(),
-                                "binary");
-        auto runtimeRef = package::Ref("",
-                                       "main",
-                                       "org.deepin.runtime",
-                                       "23.0.0.8",
-                                       util::hostArch(),
-                                       "binary");
+        auto ref =
+          package::Ref("", "main", "org.deepin.music", "7.0.2.67", util::hostArch(), "binary");
+        auto runtimeRef =
+          package::Ref("", "main", "org.deepin.runtime", "23.0.0.8", util::hostArch(), "binary");
 
         QSharedPointer<oci::OciDistributionClientManifestLayer> layer;
         QSharedPointer<oci::OciDistributionClientManifest> manifest(
-                new oci::OciDistributionClientManifest);
+          new oci::OciDistributionClientManifest);
 
         QFile appBlob(testDataDir + "/org.deepin.music_7.0.2.67_x86_64_binary.erofs");
         appBlob.open(QIODevice::ReadOnly);

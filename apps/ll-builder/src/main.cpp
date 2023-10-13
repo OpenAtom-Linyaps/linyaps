@@ -85,9 +85,9 @@ int main(int argc, char **argv)
 
               auto execVerbose = QCommandLineOption("exec", "run exec than build script", "exec");
               auto pkgVersion =
-                      QCommandLineOption("pversion", "set package version", "package version");
+                QCommandLineOption("pversion", "set package version", "package version");
               auto srcVersion =
-                      QCommandLineOption("sversion", "set source version", "source version");
+                QCommandLineOption("sversion", "set source version", "source version");
               auto srcCommit = QCommandLineOption("commit", "set commit refs", "source commit");
               auto buildOffline = QCommandLineOption("offline", "only use local repo", "");
               parser.addOptions({ execVerbose, pkgVersion, srcVersion, srcCommit, buildOffline });
@@ -104,11 +104,9 @@ int main(int argc, char **argv)
               // config linglong.yaml before build if necessary
               if (parser.isSet(pkgVersion) || parser.isSet(srcVersion) || parser.isSet(srcCommit)) {
                   auto projectConfigPath =
-                          QStringList{
-                              linglong::builder::BuilderConfig::instance()->getProjectRoot(),
-                              "linglong.yaml"
-                          }
-                                  .join("/");
+                    QStringList{ linglong::builder::BuilderConfig::instance()->getProjectRoot(),
+                                 "linglong.yaml" }
+                      .join("/");
 
                   if (!QFileInfo::exists(projectConfigPath)) {
                       qCritical() << "ll-builder should running in project root";
@@ -116,23 +114,23 @@ int main(int argc, char **argv)
                   }
 
                   QSharedPointer<linglong::builder::Project> project(
-                          QVariant::fromValue(YAML::LoadFile(projectConfigPath.toStdString()))
-                                  .value<QSharedPointer<linglong::builder::Project>>());
+                    QVariant::fromValue(YAML::LoadFile(projectConfigPath.toStdString()))
+                      .value<QSharedPointer<linglong::builder::Project>>());
 
                   auto node = YAML::LoadFile(projectConfigPath.toStdString());
 
                   node["package"]["version"] = parser.value(pkgVersion).isEmpty()
-                          ? project->package->version.toStdString()
-                          : parser.value(pkgVersion).toStdString();
+                    ? project->package->version.toStdString()
+                    : parser.value(pkgVersion).toStdString();
 
                   if (project->package->kind != linglong::builder::PackageKindRuntime) {
                       node["source"]["version"] = parser.value(srcVersion).isEmpty()
-                              ? project->source->version.toStdString()
-                              : parser.value(srcVersion).toStdString();
+                        ? project->source->version.toStdString()
+                        : parser.value(srcVersion).toStdString();
 
                       node["source"]["commit"] = parser.value(srcCommit).isEmpty()
-                              ? project->source->commit.toStdString()
-                              : parser.value(srcCommit).toStdString();
+                        ? project->source->commit.toStdString()
+                        : parser.value(srcCommit).toStdString();
                   }
                   // fixme: use qt file stream
                   std::ofstream fout(projectConfigPath.toStdString());
@@ -173,9 +171,9 @@ int main(int argc, char **argv)
 
               parser.addPositionalArgument("export", "export build result to uab bundle", "export");
               parser.addPositionalArgument(
-                      "filename",
-                      "bundle file name , if filename is empty,export default format bundle",
-                      "[filename]");
+                "filename",
+                "bundle file name , if filename is empty,export default format bundle",
+                "[filename]");
 
               auto localParam = QCommandLineOption("local", "make bundle with local directory", "");
 
@@ -254,7 +252,7 @@ int main(int argc, char **argv)
               auto optRepoUrl = QCommandLineOption("repo-url", "remote repo url", "--repo-url");
               auto optRepoName = QCommandLineOption("repo-name", "remote repo name", "--repo-name");
               auto optRepoChannel =
-                      QCommandLineOption("channel", "remote repo channel", "--channel", "linglong");
+                QCommandLineOption("channel", "remote repo channel", "--channel", "linglong");
               auto optNoDevel = QCommandLineOption("no-devel", "push without devel", "");
               parser.addOptions({ optRepoUrl, optRepoName, optRepoChannel, optNoDevel });
 

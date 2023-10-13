@@ -30,7 +30,7 @@ public:
     explicit Error(const char *file, int line, const char *func, int code, const QString &msg);
 
     explicit Error(
-            const char *file, int line, const char *func, const Error &reason, const QString &msg);
+      const char *file, int line, const char *func, const Error &reason, const QString &msg);
 
     inline bool operator==(const Error &other) const { return m_code == other.m_code; }
 

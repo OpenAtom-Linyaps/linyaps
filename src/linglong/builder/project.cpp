@@ -125,8 +125,8 @@ public:
         }
 
         auto templatePath =
-                QStringList{ BuilderConfig::instance()->templatePath(), templateName }.join(
-                        QDir::separator());
+          QStringList{ BuilderConfig::instance()->templatePath(), templateName }.join(
+            QDir::separator());
 
         util::Error err;
         QSharedPointer<Template> temp;
@@ -137,7 +137,7 @@ public:
             QFile templateFile(QStringList{ ":", templateName }.join(QDir::separator()));
             if (templateFile.open(QFile::ReadOnly | QFile::Text)) {
                 std::tie(temp, err) =
-                        util::fromYAML<QSharedPointer<Template>>(templateFile.readAll());
+                  util::fromYAML<QSharedPointer<Template>>(templateFile.readAll());
             }
         }
 
@@ -163,12 +163,12 @@ public:
             auto propertyName = q_ptr->variables->metaObject()->property(i).name();
             if (q_ptr->variables->property(propertyName).toString().isNull()) {
                 command += QString("%1=\"%2\"\n")
-                                   .arg(propertyName)
-                                   .arg(temp->variables->property(propertyName).toString());
+                             .arg(propertyName)
+                             .arg(temp->variables->property(propertyName).toString());
             } else {
                 command += QString("%1=\"%2\"\n")
-                                   .arg(propertyName)
-                                   .arg(q_ptr->variables->property(propertyName).toString());
+                             .arg(propertyName)
+                             .arg(q_ptr->variables->property(propertyName).toString());
             }
         }
         // set build enviroment variables
@@ -179,12 +179,12 @@ public:
             auto propertyName = q_ptr->enviroment->metaObject()->property(i).name();
             if (q_ptr->enviroment->property(propertyName).toString().isNull()) {
                 command += QString("export %1=\"%2\"\n")
-                                   .arg(propertyName)
-                                   .arg(temp->enviroment->property(propertyName).toString());
+                             .arg(propertyName)
+                             .arg(temp->enviroment->property(propertyName).toString());
             } else {
                 command += QString("export %1=\"%2\"\n")
-                                   .arg(propertyName)
-                                   .arg(q_ptr->enviroment->property(propertyName).toString());
+                             .arg(propertyName)
+                             .arg(q_ptr->enviroment->property(propertyName).toString());
             }
         }
 
@@ -347,11 +347,11 @@ QString Project::Config::targetInstallPath(const QString &sub) const
     } else if (PackageKindLib == project->package->kind) {
         return (sub.isEmpty() ? QString("/runtime") : QStringList{ "/runtime", sub }.join("/"));
     } else if (PackageKindApp == project->package->kind) {
-        return (sub.isEmpty()
-                        ? QString(QString("/opt/apps/%1/files").arg(project->ref().appId))
-                        : QStringList{ QString("/opt/apps/%1/files").arg(project->ref().appId),
-                                       sub }
-                                  .join("/"));
+        return (
+          sub.isEmpty()
+            ? QString(QString("/opt/apps/%1/files").arg(project->ref().appId))
+            : QStringList{ QString("/opt/apps/%1/files").arg(project->ref().appId), sub }.join(
+              "/"));
     };
     return QString();
 }

@@ -36,7 +36,7 @@ QSqlDatabase Connection::getConnection()
 {
     QSqlDatabase connection;
     QString connectionName =
-            QStringLiteral("connection_%1").arg(qintptr(QThread::currentThreadId()), 0, 16);
+      QStringLiteral("connection_%1").arg(qintptr(QThread::currentThreadId()), 0, 16);
     // 连接已经创建过了，复用它，而不是重新创建
     if (QSqlDatabase::contains(connectionName)) {
         connection = QSqlDatabase::database(connectionName);

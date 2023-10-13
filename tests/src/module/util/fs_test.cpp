@@ -17,7 +17,7 @@ TEST(Module_Util, FS)
     linglong::util::createProxySocket("session-bus-proxy-XXXXXX");
 
     auto hostAppHome =
-            linglong::util::ensureUserDir({ ".linglong", "org.deepin.calculator", "home" });
+      linglong::util::ensureUserDir({ ".linglong", "org.deepin.calculator", "home" });
     linglong::util::getUserFile(".config");
 
     auto userRuntimeDir = QString("/run/user/%1").arg(getuid());

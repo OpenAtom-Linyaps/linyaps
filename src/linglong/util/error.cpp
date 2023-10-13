@@ -79,16 +79,15 @@ QDebug operator<<(QDebug debug, const Error &error)
     }
     while (err != nullptr) {
         debug.noquote() << QString("%1 occurs in function")
-                                   .arg(first ? QString("Error (code=%1)").arg(error.m_code)
-                                              : "\nCaused by error")
+                             .arg(first ? QString("Error (code=%1)").arg(error.m_code)
+                                        : "\nCaused by error")
                         << Qt::endl
                         << (err->context->function ? err->context->function
                                                    : "MISSING function name")
                         << Qt::endl
                         << QString("at %1:%2")
-                                   .arg(err->context->file ? err->context->file
-                                                           : "MISSING file name")
-                                   .arg(err->context->line)
+                             .arg(err->context->file ? err->context->file : "MISSING file name")
+                             .arg(err->context->line)
                         << Qt::endl
                         << "message:" << err->message;
         err = err->reason.data();
@@ -111,16 +110,15 @@ void PrintTo(const linglong::util::Error &obj, ::std::ostream *os)
     }
     while (err != nullptr) {
         *os << QString("%1 occurs in function")
-                        .arg(first ? QString("Error (code=%1)").arg(obj.code())
-                                   : "\nCaused by error")
-                        .toStdString()
+                 .arg(first ? QString("Error (code=%1)").arg(obj.code()) : "\nCaused by error")
+                 .toStdString()
             << std::endl
             << (err->context->function ? err->context->function : "MISSING function name")
             << std::endl
             << QString(" at %1:%2")
-                        .arg(err->context->file ? err->context->file : "MISSING file name")
-                        .arg(err->context->line)
-                        .toStdString()
+                 .arg(err->context->file ? err->context->file : "MISSING file name")
+                 .arg(err->context->line)
+                 .toStdString()
             << std::endl
             << "message: " << err->message.toStdString();
         err = err->reason.data();

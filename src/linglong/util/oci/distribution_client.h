@@ -16,7 +16,7 @@
 namespace linglong::oci {
 
 inline const char *kMediaTypeManifestList =
-        "application/vnd.docker.distribution.manifest.list.v2+json";
+  "application/vnd.docker.distribution.manifest.list.v2+json";
 inline const char *kMediaTypeManifest = "application/vnd.docker.distribution.manifest.v2+json";
 inline const char *kMediaTypeImageConfigV1 = "application/vnd.linglong.container.image.v1+json";
 // erofs image type for linglong

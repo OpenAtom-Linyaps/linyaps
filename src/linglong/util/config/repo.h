@@ -15,6 +15,7 @@ class Repo : public Serialize
 {
     Q_OBJECT;
     Q_SERIALIZE_CONSTRUCTOR(Repo);
+
 public:
     Q_SERIALIZE_PROPERTY(QString, endpoint);
     Q_SERIALIZE_PROPERTY(QString, repoName);

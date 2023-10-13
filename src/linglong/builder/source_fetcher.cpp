@@ -57,11 +57,11 @@ linglong::util::Error SourceFetcherPrivate::extractFile(const QString &path, con
     };
 
     QMap<QString, std::function<linglong::util::Error(const QString &path, const QString &dir)>>
-            subcommandMap = {
-                { q->CompressedFileTarXz, tarxz },   { q->CompressedFileTarGz, targz },
-                { q->CompressedFileTarBz2, tarbz2 }, { q->CompressedFileZip, zip },
-                { q->CompressedFileTgz, targz },     { q->CompressedFileTar, tarxz },
-            };
+      subcommandMap = {
+          { q->CompressedFileTarXz, tarxz },   { q->CompressedFileTarGz, targz },
+          { q->CompressedFileTarBz2, tarbz2 }, { q->CompressedFileZip, zip },
+          { q->CompressedFileTgz, targz },     { q->CompressedFileTar, tarxz },
+      };
 
     auto suffix = fixSuffix(fi);
 
@@ -93,11 +93,11 @@ QString SourceFetcherPrivate::filename()
 QString SourceFetcherPrivate::sourceTargetPath() const
 {
     auto path =
-            QStringList{
-                BuilderConfig::instance()->targetSourcePath(),
-                //                source->commit,
-            }
-                    .join("/");
+      QStringList{
+          BuilderConfig::instance()->targetSourcePath(),
+          //                source->commit,
+      }
+        .join("/");
     util::ensureDir(path);
     return path;
 }
@@ -150,8 +150,8 @@ std::tuple<QString, linglong::util::Error> SourceFetcherPrivate::fetchArchiveFil
     file->close();
 
     if (source->digest != util::fileHash(path, QCryptographicHash::Sha256)) {
-        qCritical() << QString("mismatched hash: %1")
-                               .arg(util::fileHash(path, QCryptographicHash::Sha256));
+        qCritical()
+          << QString("mismatched hash: %1").arg(util::fileHash(path, QCryptographicHash::Sha256));
         return { "", NewError(-1, "download failed") };
     }
 
@@ -173,9 +173,9 @@ util::Error SourceFetcherPrivate::fetchGitRepo()
 
     auto err = util::Exec("git",
                           {
-                                  "clone",
-                                  source->url,
-                                  sourceTargetPath(),
+                            "clone",
+                            source->url,
+                            sourceTargetPath(),
                           });
     if (err) {
         qDebug() << WrapError(err, "git clone failed");
@@ -185,10 +185,10 @@ util::Error SourceFetcherPrivate::fetchGitRepo()
 
     err = util::Exec("git",
                      {
-                             "checkout",
-                             "-b",
-                             source->version,
-                             source->commit,
+                       "checkout",
+                       "-b",
+                       source->version,
+                       source->commit,
                      });
     if (err) {
         qDebug() << WrapError(err, "git checkout failed");
@@ -196,9 +196,9 @@ util::Error SourceFetcherPrivate::fetchGitRepo()
 
     err = util::Exec("git",
                      {
-                             "reset",
-                             "--hard",
-                             source->commit,
+                       "reset",
+                       "--hard",
+                       source->commit,
                      });
 
     return WrapError(err, "git reset failed");
@@ -219,9 +219,9 @@ util::Error SourceFetcherPrivate::handleLocalPatch()
             continue;
         }
         qInfo() << QString("applying patch: %1").arg(localPatch);
-        if (auto err = util::Exec(
-                    "patch",
-                    { "-p1", "-i", project->config().absoluteFilePath({ localPatch }) })) {
+        if (auto err =
+              util::Exec("patch",
+                         { "-p1", "-i", project->config().absoluteFilePath({ localPatch }) })) {
             return NewError(err, "patch failed");
         }
     }

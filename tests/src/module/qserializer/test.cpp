@@ -28,7 +28,7 @@ TEST(QSerializer, Base)
                         "key3": "v3"
                 }
         })")
-                              .toUtf8();
+                        .toUtf8();
 
     QJsonParseError err;
     QJsonDocument doc = QJsonDocument::fromJson(sourceJson, &err);
@@ -80,7 +80,7 @@ TEST(QSerializer, Base)
             "key3": "v3"
         }
     })")
-                                .toUtf8();
+                          .toUtf8();
     doc = QJsonDocument::fromJson(expectedJson, &err);
     ASSERT_EQ(err.error, QJsonParseError::NoError);
 

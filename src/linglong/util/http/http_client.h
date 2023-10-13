@@ -45,9 +45,9 @@ private:
 #define NewNetworkError(reply)                   \
     NewError(static_cast<int>(reply->error()),   \
              QString("%1 %2 with %3 failed, %4") \
-                     .arg(reply->operation())    \
-                     .arg(reply->error())        \
-                     .arg(reply->request().url().toString(), QString(reply->readAll())))
+               .arg(reply->operation())          \
+               .arg(reply->error())              \
+               .arg(reply->request().url().toString(), QString(reply->readAll())))
 
 #define WarpNetworkError(reply) (reply->error() ? NewNetworkError(reply) : Success())
 

@@ -67,15 +67,13 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
         if (BuilderConfig::instance()->getOffline()) {
             dependRef = ostree.localLatestRef(dependRef);
 
-            qInfo() << QString("offline dependency: %1 %2")
-                               .arg(dependRef.appId)
-                               .arg(dependRef.version);
+            qInfo()
+              << QString("offline dependency: %1 %2").arg(dependRef.appId).arg(dependRef.version);
         } else {
             dependRef = ostree.remoteLatestRef(dependRef);
 
-            qInfo() << QString("fetching dependency: %1 %2")
-                               .arg(dependRef.appId)
-                               .arg(dependRef.version);
+            qInfo()
+              << QString("fetching dependency: %1 %2").arg(dependRef.appId).arg(dependRef.version);
             auto err = ostree.pullAll(dependRef, true);
             if (err) {
                 return WrapError(err, "pull " + dependRef.toString() + " failed");
@@ -92,23 +90,23 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
 
         if (err) {
             return WrapError(
-                    err,
-                    QString("ostree checkout %1 failed").arg(dependRef.toLocalRefString()));
+              err,
+              QString("ostree checkout %1 failed").arg(dependRef.toLocalRefString()));
         }
     }
 
     // for app,lib. if the dependType match runtime, should be submitted together.
     if (dd_ptr->dependType == DependTypeRuntime) {
         auto targetInstallPath = dd_ptr->project->config().cacheAbsoluteFilePath(
-                { "overlayfs", "up", dd_ptr->project->config().targetInstallPath("") });
+          { "overlayfs", "up", dd_ptr->project->config().targetInstallPath("") });
         {
             auto err = ostree.checkoutAll(dependRef, subPath, targetInstallPath);
             if (err) {
                 return WrapError(err,
                                  QString("ostree checkout %1 with subpath '%2' to %3")
-                                         .arg(dependRef.toLocalRefString())
-                                         .arg(subPath)
-                                         .arg(targetPath));
+                                   .arg(dependRef.toLocalRefString())
+                                   .arg(subPath)
+                                   .arg(targetPath));
             }
         }
     }

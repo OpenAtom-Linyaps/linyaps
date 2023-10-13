@@ -171,7 +171,6 @@ class UploadTaskResponse : public Serialize
     Q_JSON_PTR_PROPERTY(linglong::repo::UploadResponseData, data);
 };
 
-
 } // namespace repo
 } // namespace linglong
 

@@ -216,7 +216,7 @@ QPair<bool, QString> getXdgDir(QString name)
     } else if (name.toLower() == "public_share") {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 4, 0)
         auto publicSharePath =
-                QStandardPaths::writableLocation(QStandardPaths::PublicShareLocation);
+          QStandardPaths::writableLocation(QStandardPaths::PublicShareLocation);
         return { checkPathIsExists(publicSharePath), publicSharePath };
 #else
         // read user-dirs.dirs XDG_PUBLICSHARE_DIR
@@ -247,7 +247,7 @@ QList<QString> getXdgUserDir()
 QString getPathInXdgUserConfig(const QString &key)
 {
     auto userDirPath =
-            QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/user-dirs.dirs";
+      QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/user-dirs.dirs";
 
     // check user-dirs.dirs file
     QFile userDirFile(userDirPath);

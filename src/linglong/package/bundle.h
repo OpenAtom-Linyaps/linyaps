@@ -135,7 +135,7 @@ private:
 
     // read elf64
     auto readElf64(FILE *fd, Elf64_Ehdr &ehdr)
-            -> decltype(ehdr.e_shoff + (ehdr.e_shentsize * ehdr.e_shnum));
+      -> decltype(ehdr.e_shoff + (ehdr.e_shentsize * ehdr.e_shnum));
 
     // get elf offset size
     auto getElfSize(const QString elfFilePath) -> decltype(-1);

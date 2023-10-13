@@ -227,11 +227,9 @@ private:
 
     QString getObjectPath(const QString &objName)
     {
-        return QDir::cleanPath(QStringList{ ostreePath,
-                                            "objects",
-                                            objName.left(2),
-                                            objName.right(objName.length() - 2) }
-                                       .join(QDir::separator()));
+        return QDir::cleanPath(
+          QStringList{ ostreePath, "objects", objName.left(2), objName.right(objName.length() - 2) }
+            .join(QDir::separator()));
     }
 
     // FIXME: return {Error, QStringList}
@@ -280,7 +278,7 @@ private:
             for (const auto &objName : revObjects) {
                 auto path = getObjectPath(objName);
                 objects.push_back(
-                        OstreeRepoObject{ .objectName = objName, .rev = rev, .path = path });
+                  OstreeRepoObject{ .objectName = objName, .rev = rev, .path = path });
             }
         }
         return { objects, Success() };
@@ -337,10 +335,10 @@ private:
                               g_variant_new_variant(g_variant_new_int32(flags)));
 
         g_variant_builder_add(
-                &builder,
-                "{s@v}",
-                "refs",
-                g_variant_new_variant(g_variant_new_strv((const char *const *)refs, -1)));
+          &builder,
+          "{s@v}",
+          "refs",
+          g_variant_new_variant(g_variant_new_strv((const char *const *)refs, -1)));
 
         auto options = g_variant_ref_sink(g_variant_builder_end(&builder));
 
@@ -433,8 +431,8 @@ private:
         auto *file = new QFile(filePath, multiPart.data());
         file->open(QIODevice::ReadOnly);
         filePart.setHeader(
-                QNetworkRequest::ContentDispositionHeader,
-                QVariant(QString(R"(form-data; name="%1"; filename="%2")").arg("file", filePath)));
+          QNetworkRequest::ContentDispositionHeader,
+          QVariant(QString(R"(form-data; name="%1"; filename="%2")").arg("file", filePath)));
         filePart.setBodyDevice(file);
 
         multiPart->append(filePart);
@@ -475,23 +473,24 @@ private:
             if (fi.isSymLink() && false) {
                 filePart.setHeader(QNetworkRequest::ContentDispositionHeader,
                                    QVariant(QString("form-data; name=\"%1\"; filename=\"%2\"")
-                                                    .arg("link", obj.objectName)));
+                                              .arg("link", obj.objectName)));
                 filePart.setBody(QString("%1:%2").arg(obj.objectName, obj.path).toUtf8());
             } else {
                 QString objectName = obj.objectName;
                 if (fi.fileName().endsWith(".file")) {
                     objectName += "z";
                     std::tie(err, fileData) = compressFile(obj.path);
-                    filePart.setHeader(QNetworkRequest::ContentDispositionHeader,
-                                       QVariant(QString(R"(form-data; name="%1"; filename="%2")")
-                                                        .arg("file", objectName)));
+                    filePart.setHeader(
+                      QNetworkRequest::ContentDispositionHeader,
+                      QVariant(
+                        QString(R"(form-data; name="%1"; filename="%2")").arg("file", objectName)));
                     filePart.setBody(fileData);
                 } else {
                     auto *file = new QFile(obj.path, multiPart.data());
                     file->open(QIODevice::ReadOnly);
                     filePart.setHeader(QNetworkRequest::ContentDispositionHeader,
                                        QVariant(QString(R"(form-data; name="%1"; filename="%2")")
-                                                        .arg("file", obj.objectName)));
+                                                  .arg("file", obj.objectName)));
                     filePart.setBodyDevice(file);
                 }
             }
@@ -523,8 +522,8 @@ private:
 
     util::Error cleanUploadTask(const package::Ref &ref, const QString &filePath)
     {
-        const auto savePath = QStringList{ util::getUserFile(".linglong/builder"), ref.appId }.join(
-                QDir::separator());
+        const auto savePath =
+          QStringList{ util::getUserFile(".linglong/builder"), ref.appId }.join(QDir::separator());
 
         util::removeDir(savePath);
 
@@ -589,7 +588,7 @@ linglong::util::Error OSTreeRepo::importDirectory(const package::Ref &ref, const
     Q_D(OSTreeRepo);
 
     auto ret = d->ostreeRun(
-            { "commit", "-b", ref.toString(), "--canonical-permissions", "--tree=dir=" + path });
+      { "commit", "-b", ref.toString(), "--canonical-permissions", "--tree=dir=" + path });
 
     return ret;
 }
@@ -884,7 +883,7 @@ linglong::util::Error OSTreeRepo::checkoutAll(const package::Ref &ref,
 QString OSTreeRepo::rootOfLayer(const package::Ref &ref)
 {
     return QStringList{ dd_ptr->repoRootPath, "layers", ref.appId, ref.version, ref.arch }.join(
-            QDir::separator());
+      QDir::separator());
 }
 
 bool OSTreeRepo::isRefExists(const package::Ref &ref)
@@ -892,9 +891,8 @@ bool OSTreeRepo::isRefExists(const package::Ref &ref)
     Q_D(OSTreeRepo);
     auto runtimeRef = ref.toString() + '/' + "runtime";
     auto err = util::Exec(
-            "sh",
-            { "-c",
-              QString("ostree refs --repo=%1 | grep -Fx %2").arg(d->ostreePath).arg(runtimeRef) });
+      "sh",
+      { "-c", QString("ostree refs --repo=%1 | grep -Fx %2").arg(d->ostreePath).arg(runtimeRef) });
     return !static_cast<bool>(err);
 }
 
@@ -922,7 +920,7 @@ package::Ref OSTreeRepo::localLatestRef(const package::Ref &ref)
     QString latestVer = "latest";
 
     QString args = QString("ostree refs --repo=%1 | grep %2 | grep %3")
-                           .arg(d->ostreePath, ref.appId, util::hostArch() + "/" + "runtime");
+                     .arg(d->ostreePath, ref.appId, util::hostArch() + "/" + "runtime");
 
     QSharedPointer<QByteArray> output;
     auto err = util::Exec("sh", { "-c", args }, -1, output);
@@ -1034,12 +1032,12 @@ std::tuple<QString, util::Error> OSTreeRepo::compressOstreeData(const package::R
 {
     // check out ostree data
     // Fixme: use /tmp
-    const auto savePath = QStringList{ util::getUserFile(".linglong/builder"), ref.appId }.join(
-            QDir::separator());
+    const auto savePath =
+      QStringList{ util::getUserFile(".linglong/builder"), ref.appId }.join(QDir::separator());
     util::ensureDir(savePath);
 
     auto err =
-            checkout(package::Ref("", ref.appId, ref.version, ref.arch, ref.module), "", savePath);
+      checkout(package::Ref("", ref.appId, ref.version, ref.arch, ref.module), "", savePath);
     if (err) {
         return { QString(),
                  NewError(-1, QString("checkout %1 to %2 failed").arg(ref.appId).arg(savePath)) };
@@ -1049,7 +1047,7 @@ std::tuple<QString, util::Error> OSTreeRepo::compressOstreeData(const package::R
     QStringList args;
     const QString fileName = QString("%1.tgz").arg(ref.appId);
     const QString filePath =
-            QStringList{ util::getUserFile(".linglong/builder"), fileName }.join(QDir::separator());
+      QStringList{ util::getUserFile(".linglong/builder"), fileName }.join(QDir::separator());
 
     QDir::setCurrent(savePath);
 

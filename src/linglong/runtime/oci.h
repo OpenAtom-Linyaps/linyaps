@@ -134,6 +134,7 @@ class Annotations : public JsonSerialize
 Q_JSON_DECLARE_PTR_METATYPE(Annotations)
 
 #undef linux
+
 class Runtime : public JsonSerialize
 {
     Q_OBJECT

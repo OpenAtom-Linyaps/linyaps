@@ -105,7 +105,7 @@ auto AppManager::Start(const RunParamOption &paramOption) -> Reply
     // 判断是否已安装
     if (!linglong::util::getAppInstalledStatus(appId, version, arch, channel, appModule, "")) {
         reply.message = appId + ", version:" + version + ", arch:" + arch + ", channel:" + channel
-                + ", module:" + appModule + " not installed";
+          + ", module:" + appModule + " not installed";
         qCritical() << reply.message;
         reply.code = STATUS_CODE(kPkgNotInstalled);
         return std::move(reply);
@@ -116,9 +116,8 @@ auto AppManager::Start(const RunParamOption &paramOption) -> Reply
         QList<QSharedPointer<linglong::package::AppMetaInfo>> pkgList;
         linglong::util::getAllVerAppInfo(appId, version, arch, "", pkgList);
         if (pkgList.size() < 2) {
-            reply.message = appId + ", version:" + version + ", arch:" + arch
-                    + ", channel:" + channel + ", module:" + appModule
-                    + ", no corresponding release package found";
+            reply.message = appId + ", version:" + version + ", arch:" + arch + ", channel:"
+              + channel + ", module:" + appModule + ", no corresponding release package found";
             qCritical() << reply.message;
             reply.code = STATUS_CODE(kPkgNotInstalled);
             return std::move(reply);
@@ -128,9 +127,9 @@ auto AppManager::Start(const RunParamOption &paramOption) -> Reply
     // 链接${LINGLONG_ROOT}/entries/share到~/.config/systemd/user下
     // FIXME:后续上了提权模块，放入安装处理。
     const QString appUserServicePath =
-            linglong::util::getLinglongRootPath() + "/entries/share/systemd/user";
+      linglong::util::getLinglongRootPath() + "/entries/share/systemd/user";
     const QString userSystemdServicePath =
-            linglong::util::ensureUserDir({ ".config/systemd/user" });
+      linglong::util::ensureUserDir({ ".config/systemd/user" });
     if (linglong::util::dirExists(appUserServicePath)) {
         linglong::util::linkDirFiles(appUserServicePath, userSystemdServicePath);
     }

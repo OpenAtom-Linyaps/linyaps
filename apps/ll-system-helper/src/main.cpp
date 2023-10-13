@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
 
     linglong::system::helper::PackageManagerHelper packageManagerHelper;
     linglong::adaptors::system_helper::PackageManagerHelper1 packageManagerHelperAdaptor(
-            &packageManagerHelper);
+      &packageManagerHelper);
 
     linglong::system::helper::FilesystemHelper filesystemHelper;
     linglong::adaptors::system_helper::FilesystemHelper1 filesystemHelperAdaptor(&filesystemHelper);
@@ -57,22 +57,21 @@ int main(int argc, char *argv[])
                              // clientConn.
                              const auto clientConn = new QDBusConnection(conn);
                              linglong::registerServiceAndObject(
-                                     clientConn,
-                                     "",
-                                     {
-                                             { linglong::PackageManagerHelperDBusPath,
-                                               &packageManagerHelper },
-                                     });
+                               clientConn,
+                               "",
+                               {
+                                 { linglong::PackageManagerHelperDBusPath, &packageManagerHelper },
+                               });
                          });
     } else {
         QDBusConnection bus = QDBusConnection::systemBus();
         if (!linglong::registerServiceAndObject(
-                    &bus,
-                    linglong::SystemHelperDBusServiceName,
-                    {
-                            { linglong::PackageManagerHelperDBusPath, &packageManagerHelper },
-                            { linglong::FilesystemHelperDBusPath, &filesystemHelper },
-                    })) {
+              &bus,
+              linglong::SystemHelperDBusServiceName,
+              {
+                { linglong::PackageManagerHelperDBusPath, &packageManagerHelper },
+                { linglong::FilesystemHelperDBusPath, &filesystemHelper },
+              })) {
             return -1;
         }
         qDebug() << "register" << linglong::SystemHelperDBusServiceName;

@@ -43,11 +43,11 @@ public:
         QString msg;
         for (const error *err = this; err != nullptr; err = err->cause.get()) {
             msg += QString("%1:%2\nin %3\n\t[code = %4]\n\t%5\n")
-                           .arg(err->context.file)
-                           .arg(err->context.line)
-                           .arg(err->context.function)
-                           .arg(err->_code)
-                           .arg(err->msg);
+                     .arg(err->context.file)
+                     .arg(err->context.line)
+                     .arg(err->context.function)
+                     .arg(err->_code)
+                     .arg(err->msg);
         }
         return msg;
     }
@@ -84,7 +84,7 @@ doEWrap(const char *file, int line, const char *function, const QString &msg, Er
 }
 
 inline auto doErr(const char *file, int line, const char *function, int code, const QString &msg)
-        -> Error
+  -> Error
 {
     return std::make_unique<error>(file, line, function, "default", code, msg, nullptr);
 }

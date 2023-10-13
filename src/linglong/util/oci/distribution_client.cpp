@@ -64,7 +64,7 @@ QString digestFile(QIODevice &device)
 QString digestContent(const QByteArray &data)
 {
     return QString("sha256:%1")
-            .arg(QString(QCryptographicHash::hash(data, QCryptographicHash::Sha256).toHex()));
+      .arg(QString(QCryptographicHash::hash(data, QCryptographicHash::Sha256).toHex()));
 }
 
 /*!
@@ -194,10 +194,10 @@ std::tuple<bool, util::Error> blobExist(const QString &endpoint,
  * @return
  */
 std::tuple<QSharedPointer<OciDistributionClientManifestLayer>, util::Error> monolithicUpload(
-        const QString &endpoint, const QString &name, const QString &uploadUrl, QIODevice &device)
+  const QString &endpoint, const QString &name, const QString &uploadUrl, QIODevice &device)
 {
     QSharedPointer<OciDistributionClientManifestLayer> layer(
-            new OciDistributionClientManifestLayer);
+      new OciDistributionClientManifestLayer);
     layer->mediaType = kMediaTypeBlobErofs;
     layer->digest = digestFile(device);
     layer->size = device.size();
@@ -269,10 +269,10 @@ util::Error OciDistributionClient::pull(const package::Ref &ref)
     auto [name, reference] = toOciNameReference(ref);
 
     auto [manifestList, err] =
-            pullManifest<OciDistributionClientManifestList>(endpoint,
-                                                            name,
-                                                            reference,
-                                                            kMediaTypeManifestList);
+      pullManifest<OciDistributionClientManifestList>(endpoint,
+                                                      name,
+                                                      reference,
+                                                      kMediaTypeManifestList);
     if (err) {
         return WrapError(err, "pull manifest list failed");
     }
@@ -287,7 +287,7 @@ util::Error OciDistributionClient::pull(const package::Ref &ref)
 
     QSharedPointer<OciDistributionClientManifest> manifest;
     std::tie(manifest, err) =
-            pullManifest<OciDistributionClientManifest>(endpoint, name, digest, kMediaTypeManifest);
+      pullManifest<OciDistributionClientManifest>(endpoint, name, digest, kMediaTypeManifest);
     if (err) {
         return WrapError(err, "pull arch manifest failed");
     }
@@ -317,7 +317,7 @@ OciDistributionClient::pushBlob(const package::Ref &ref, QIODevice &device)
 }
 
 util::Error OciDistributionClient::putManifest(
-        const package::Ref &ref, QSharedPointer<OciDistributionClientManifest> manifest)
+  const package::Ref &ref, QSharedPointer<OciDistributionClientManifest> manifest)
 {
 
     auto [name, reference] = toOciNameReference(ref);
@@ -328,16 +328,16 @@ util::Error OciDistributionClient::putManifest(
     manifest->mediaType = kMediaTypeManifest;
 
     auto [digest, size, err] =
-            oci::putManifest(endpoint, name, reference, kMediaTypeManifest, manifest);
+      oci::putManifest(endpoint, name, reference, kMediaTypeManifest, manifest);
 
     QSharedPointer<OciDistributionClientManifestItemPlatform> platform(
-            new OciDistributionClientManifestItemPlatform);
+      new OciDistributionClientManifestItemPlatform);
     platform->architecture = toOciArchitecture(util::hostArch());
     // only support linux os now
     platform->os = "linux";
 
     QSharedPointer<OciDistributionClientManifestListItem> item(
-            new OciDistributionClientManifestListItem);
+      new OciDistributionClientManifestListItem);
 
     item->mediaType = kMediaTypeManifest;
     item->digest = digest;
@@ -346,13 +346,13 @@ util::Error OciDistributionClient::putManifest(
 
     // FIXME: update all arch manifest list?
     QSharedPointer<OciDistributionClientManifestList> manifestList(
-            new OciDistributionClientManifestList);
+      new OciDistributionClientManifestList);
     manifestList->mediaType = kMediaTypeManifestList;
     manifestList->schemaVersion = kSupportManifestVersion;
     manifestList->manifests.push_back(item);
 
     return std::get<2>(
-            oci::putManifest(endpoint, name, reference, kMediaTypeManifestList, manifestList));
+      oci::putManifest(endpoint, name, reference, kMediaTypeManifestList, manifestList));
 }
 
 } // namespace linglong::oci

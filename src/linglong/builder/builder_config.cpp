@@ -44,8 +44,8 @@ QString BuilderConfig::ostreePath() const
 QString BuilderConfig::targetFetchCachePath() const
 {
     auto target =
-            QStringList{ getProjectRoot(), ".linglong-target", getProjectName(), "fetch", "cache" }
-                    .join("/");
+      QStringList{ getProjectRoot(), ".linglong-target", getProjectName(), "fetch", "cache" }.join(
+        "/");
     util::ensureDir(target);
     return target;
 }
@@ -53,8 +53,7 @@ QString BuilderConfig::targetFetchCachePath() const
 QString BuilderConfig::targetSourcePath() const
 {
     auto target =
-            QStringList{ getProjectRoot(), ".linglong-target", getProjectName(), "source" }.join(
-                    "/");
+      QStringList{ getProjectRoot(), ".linglong-target", getProjectName(), "source" }.join("/");
     util::ensureDir(target);
     return target;
 }
@@ -110,7 +109,7 @@ QString BuilderConfig::templatePath() const
 {
     for (auto dataPath : QStandardPaths::standardLocations(QStandardPaths::GenericDataLocation)) {
         QString templatePath =
-                QStringList{ dataPath, "linglong", "builder", "templates" }.join(QDir::separator());
+          QStringList{ dataPath, "linglong", "builder", "templates" }.join(QDir::separator());
         if (util::dirExists(templatePath)) {
             return templatePath;
         }
@@ -125,8 +124,8 @@ static QStringList projectConfigPaths()
     auto pwd = QDir::current();
 
     do {
-        auto configPath = QStringList{ pwd.absolutePath(), ".ll-builder", "config.yaml" }.join(
-                QDir::separator());
+        auto configPath =
+          QStringList{ pwd.absolutePath(), ".ll-builder", "config.yaml" }.join(QDir::separator());
         result << std::move(configPath);
     } while (pwd.cdUp());
 
@@ -142,7 +141,7 @@ static QStringList nonProjectConfigPaths()
 
     for (const auto &configLocation : configLocations) {
         result << QStringList{ configLocation, "linglong", "builder", "config.yaml" }.join(
-                QDir::separator());
+          QDir::separator());
     }
 
     result << QStringList{ DATADIR, "linglong", "builder", "config.yaml" }.join(QDir::separator());
@@ -180,7 +179,7 @@ BuilderConfig *BuilderConfig::instance()
             std::tie(cfg, err) = util::fromYAML<QSharedPointer<BuilderConfig>>(configPath);
         } catch (std::exception &e) {
             qCritical().noquote()
-                    << QString("Failed to parse config [%1]: %2").arg(configPath, e.what());
+              << QString("Failed to parse config [%1]: %2").arg(configPath, e.what());
             cfg.reset(new BuilderConfig());
             return;
         }

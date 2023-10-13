@@ -33,10 +33,10 @@ fromYAML(const QByteArray &bytes)
     QVariant v = result;
     if (!v.canConvert<T>()) {
         return std::make_tuple<T, Error>(
-                {},
-                NewError(-1,
-                         QString("Failed to convert QVariantMap to %1.")
-                                 .arg(QString(QMetaType::fromType<T>().name()))));
+          {},
+          NewError(-1,
+                   QString("Failed to convert QVariantMap to %1.")
+                     .arg(QString(QMetaType::fromType<T>().name()))));
     }
     return { v.value<T>(), {} };
 }
@@ -64,7 +64,7 @@ fromYAML(const QByteArray &bytes)
         return { {},
                  NewError(-1,
                           QString("Failed to convert QVariantMap to %1.")
-                                  .arg(QString(QMetaType::fromType<T>().name()))) };
+                            .arg(QString(QMetaType::fromType<T>().name()))) };
     }
     return { v.value<T>(), {} };
 }
@@ -75,24 +75,24 @@ std::tuple<QByteArray, Error> toYAML(const T &x)
     auto v = QVariant::fromValue<T>(x);
     if (!v.template canConvert<QVariantMap>()) {
         return std::make_tuple<QByteArray, Error>(
-                {},
-                NewError(-1,
-                         QString("Failed to convert %1 to QVariantMap.")
-                                 .arg(QString(QMetaType::fromType<T>().name()))));
+          {},
+          NewError(-1,
+                   QString("Failed to convert %1 to QVariantMap.")
+                     .arg(QString(QMetaType::fromType<T>().name()))));
     }
 
     v = v.toMap();
     if (!v.template canConvert<YAML::Node>()) {
         return std::make_tuple<QByteArray, Error>(
-                {},
-                NewError(-1, "Failed to convert QVariantMap to YAML::Node."));
+          {},
+          NewError(-1, "Failed to convert QVariantMap to YAML::Node."));
     }
 
     auto node = v.template value<YAML::Node>();
     if (!node.IsMap()) {
         return std::make_tuple<QByteArray, Error>(
-                {},
-                NewError(-1, "Failed to convert QVariantList to YAML::Node as a map."));
+          {},
+          NewError(-1, "Failed to convert QVariantList to YAML::Node as a map."));
     }
 
     YAML::Emitter emitter;
@@ -108,7 +108,7 @@ std::tuple<QByteArray, Error> toYAML(const QList<T> &x)
         return { {},
                  NewError(-1,
                           QString("Failed to convert %1 to QVariantList.")
-                                  .arg(QString(QMetaType::fromType<T>().name()))) };
+                            .arg(QString(QMetaType::fromType<T>().name()))) };
     }
 
     v = v.toList();

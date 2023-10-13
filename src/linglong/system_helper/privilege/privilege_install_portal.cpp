@@ -122,7 +122,7 @@ util::Error rebuildPrivilegeInstallPortal(const QString &installPath,
 {
     YAML::Node doc = YAML::Load(PrivilegePortalRule);
     auto privilegePortalRule =
-            QVariant::fromValue<YAML::Node>(doc).value<QSharedPointer<PortalRule>>();
+      QVariant::fromValue<YAML::Node>(doc).value<QSharedPointer<PortalRule>>();
 
     if (!hasPrivilege(ref, privilegePortalRule->whiteList)) {
         return NewError(QDBusError::AccessDenied, "No Privilege Package");
@@ -145,7 +145,7 @@ util::Error ruinPrivilegeInstallPortal(const QString &installPath,
 {
     YAML::Node doc = YAML::Load(PrivilegePortalRule);
     auto privilegePortalRule =
-            QVariant::fromValue<YAML::Node>(doc).value<QSharedPointer<PortalRule>>();
+      QVariant::fromValue<YAML::Node>(doc).value<QSharedPointer<PortalRule>>();
 
     if (options.contains(linglong::util::kKeyDelData)) {
         const auto appLinglongPath = options[linglong::util::kKeyDelData].toString();

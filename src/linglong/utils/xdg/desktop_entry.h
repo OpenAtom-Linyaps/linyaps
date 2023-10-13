@@ -90,11 +90,11 @@ public:
 
     template<typename Value>
     auto getValue(const QString &key, const SectionName &section = MainSection) const
-            -> error::Result<Value> = delete;
+      -> error::Result<Value> = delete;
 
     template<>
     [[nodiscard]] auto getValue(const QString &key, const SectionName &section) const
-            -> error::Result<QString>
+      -> error::Result<QString>
     {
         GError *gErr = nullptr;
         auto _ = linglong::utils::finally::finally([&gErr]() {

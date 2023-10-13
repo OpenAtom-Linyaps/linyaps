@@ -35,7 +35,7 @@ inline void unregisterDBusObject(QDBusConnection conn, const QString &path)
 }
 
 [[nodiscard]] inline auto registerDBusService(QDBusConnection conn, const QString &serviceName)
-        -> error::Result<void>
+  -> error::Result<void>
 {
     if (conn.registerService(serviceName)) {
         qCDebug(linglong_utils_dbus) << "register dbus name" << serviceName;
@@ -46,7 +46,7 @@ inline void unregisterDBusObject(QDBusConnection conn, const QString &path)
     // FIXME: use real ERROR CODE defined in API.
     if (conn.lastError().isValid()) {
         err = Err(-1, QString("%1: %2").arg(conn.lastError().name(), conn.lastError().message()))
-                      .value();
+                .value();
     } else {
         err = Err(-1, "service name existed.").value();
     }
@@ -55,7 +55,7 @@ inline void unregisterDBusObject(QDBusConnection conn, const QString &path)
 }
 
 [[nodiscard]] inline auto unregisterDBusService(QDBusConnection conn, const QString &serviceName)
-        -> tl::expected<void, error::Error>
+  -> tl::expected<void, error::Error>
 {
     if (conn.unregisterService(serviceName)) {
         qCDebug(linglong_utils_dbus) << "unregister dbus name" << serviceName;
@@ -66,7 +66,7 @@ inline void unregisterDBusObject(QDBusConnection conn, const QString &path)
     error::Error err;
     if (conn.lastError().isValid()) {
         err = Err(-1, QString("%1: %2").arg(conn.lastError().name(), conn.lastError().message()))
-                      .value();
+                .value();
     } else {
         err = Err(-1, "unknown").value();
     }

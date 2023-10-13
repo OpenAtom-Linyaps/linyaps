@@ -54,7 +54,7 @@ linglong::util::Error commitBuildOutput(Project *project,
     linglong::util::ensureDir(output);
 
     auto upperDir =
-            QStringList{ overlayfs->upper, project->config().targetInstallPath("") }.join("/");
+      QStringList{ overlayfs->upper, project->config().targetInstallPath("") }.join("/");
     linglong::util::ensureDir(upperDir);
 
     auto lowerDir = project->config().cacheAbsoluteFilePath({ "overlayfs", "lower" });
@@ -67,16 +67,16 @@ linglong::util::Error commitBuildOutput(Project *project,
     QProcess fuseOverlayfs;
     fuseOverlayfs.setProgram("fuse-overlayfs");
     fuseOverlayfs.setArguments({
-            "-f",
-            "-o",
-            "auto_unmount",
-            "-o",
-            "upperdir=" + upperDir,
-            "-o",
-            "workdir=" + overlayfs->workdir,
-            "-o",
-            "lowerdir=" + lowerDir,
-            output,
+      "-f",
+      "-o",
+      "auto_unmount",
+      "-o",
+      "upperdir=" + upperDir,
+      "-o",
+      "workdir=" + overlayfs->workdir,
+      "-o",
+      "lowerdir=" + lowerDir,
+      output,
     });
 
     qDebug() << "run" << fuseOverlayfs.program() << fuseOverlayfs.arguments().join(" ");
@@ -129,7 +129,7 @@ linglong::util::Error commitBuildOutput(Project *project,
                 desktopEntry->setValue<QString>("X-linglong", appId);
 
                 auto result = desktopEntry->saveToFile(
-                        QStringList{ targetPath, fileInfo.fileName() }.join(QDir::separator()));
+                  QStringList{ targetPath, fileInfo.fileName() }.join(QDir::separator()));
                 if (!result.has_value()) {
                     return NewError(result.error()->code(), result.error()->message());
                 }
@@ -149,7 +149,7 @@ linglong::util::Error commitBuildOutput(Project *project,
 
     // modify context-menus file
     auto contextFilePath =
-            QStringList{ output, "share/applications/context-menus" }.join(QDir::separator());
+      QStringList{ output, "share/applications/context-menus" }.join(QDir::separator());
     auto contextFileSavePath = contextFilePath;
     err = modifyConfigFile(contextFilePath, contextFileSavePath, "*.conf", appId);
     if (err) {
@@ -176,8 +176,8 @@ linglong::util::Error commitBuildOutput(Project *project,
     linglong::util::linkDirFiles(project->config().cacheInstallPath("files/share"), entriesPath);
     // link files/lib/systemd to entries/systemd
     linglong::util::linkDirFiles(
-            project->config().cacheInstallPath("files/lib/systemd/user"),
-            QStringList{ entriesPath, "systemd/user" }.join(QDir::separator()));
+      project->config().cacheInstallPath("files/lib/systemd/user"),
+      QStringList{ entriesPath, "systemd/user" }.join(QDir::separator()));
 
     // Move runtime-install/files/debug to devel-install/files/debug
     linglong::util::ensureDir(project->config().cacheInstallPath("devel-install", "files"));
@@ -284,7 +284,7 @@ package::Ref fuzzyRef(QSharedPointer<const JsonSerialize> obj)
 linglong::util::Error LinglongBuilder::config(const QString &userName, const QString &password)
 {
     auto userJsonData =
-            QString("{\"username\": \"%1\",\n \"password\": \"%2\"}").arg(userName).arg(password);
+      QString("{\"username\": \"%1\",\n \"password\": \"%2\"}").arg(userName).arg(password);
 
     QFile infoFile(util::getUserFile(".linglong/.user.json"));
     if (!infoFile.open(QIODevice::WriteOnly)) {
@@ -426,8 +426,8 @@ linglong::util::Error LinglongBuilder::create(const QString &projectName)
     auto projectPath = QStringList{ QDir::currentPath(), projectName }.join(QDir::separator());
     auto configFilePath = QStringList{ projectPath, "linglong.yaml" }.join(QDir::separator());
     auto templeteFilePath =
-            QStringList{ BuilderConfig::instance()->templatePath(), "example.yaml" }.join(
-                    QDir::separator());
+      QStringList{ BuilderConfig::instance()->templatePath(), "example.yaml" }.join(
+        QDir::separator());
 
     auto ret = QDir().mkpath(projectPath);
     if (!ret) {
@@ -446,8 +446,8 @@ linglong::util::Error LinglongBuilder::create(const QString &projectName)
 linglong::util::Error LinglongBuilder::track()
 {
     auto projectConfigPath =
-            QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join(
-                    QDir::separator());
+      QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join(
+        QDir::separator());
 
     if (!QFileInfo::exists(projectConfigPath)) {
         qCritical() << "ll-builder should run in the root directory of the linglong project";
@@ -455,7 +455,7 @@ linglong::util::Error LinglongBuilder::track()
     }
 
     auto project = QVariant::fromValue(YAML::LoadFile(projectConfigPath.toStdString()))
-                           .value<QSharedPointer<Project>>();
+                     .value<QSharedPointer<Project>>();
 
     if ("git" == project->source->kind) {
         auto gitOutput = QSharedPointer<QByteArray>::create();
@@ -489,7 +489,7 @@ linglong::util::Error LinglongBuilder::build()
     }
 
     auto projectConfigPath =
-            QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
+      QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
 
     if (!QFileInfo::exists(projectConfigPath)) {
         qCritical() << "ll-builder should run in the root directory of the linglong project";
@@ -584,7 +584,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
     util::ensureDir(project->config().cacheInstallPath(""));
     util::ensureDir(project->config().cacheInstallPath("devel-install", ""));
     util::ensureDir(project->config().cacheAbsoluteFilePath(
-            { "overlayfs", "up", project->config().targetInstallPath("") }));
+      { "overlayfs", "up", project->config().targetInstallPath("") }));
 
     package::Ref baseRef("");
 
@@ -612,7 +612,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
             }
             // FIXME(black_desk): handle error
             auto info =
-                    std::get<0>(util::fromJSON<QSharedPointer<package::Info>>(infoFile.readAll()));
+              std::get<0>(util::fromJSON<QSharedPointer<package::Info>>(infoFile.readAll()));
 
             package::Ref runtimeBaseRef(info->base);
 
@@ -664,11 +664,11 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
         r->annotations->overlayfs.reset(new AnnotationsOverlayfsRootfs);
 
         r->annotations->overlayfs->lowerParent =
-                project->config().cacheAbsoluteFilePath({ "overlayfs", "lp" });
+          project->config().cacheAbsoluteFilePath({ "overlayfs", "lp" });
         r->annotations->overlayfs->workdir =
-                project->config().cacheAbsoluteFilePath({ "overlayfs", "wk" });
+          project->config().cacheAbsoluteFilePath({ "overlayfs", "wk" });
         r->annotations->overlayfs->upper =
-                project->config().cacheAbsoluteFilePath({ "overlayfs", "up" });
+          project->config().cacheAbsoluteFilePath({ "overlayfs", "up" });
     }
 
     // mount tmpfs to /tmp in container
@@ -764,19 +764,18 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
 {
     // checkout data from local ostree
     auto projectConfigPath =
-            QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
+      QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
     if (!QFileInfo::exists(projectConfigPath)) {
         qCritical() << "ll-builder should run in the root directory of the linglong project";
         return NewError(-1, "linglong.yaml not found");
     }
 
     auto project = QVariant::fromValue(YAML::LoadFile(projectConfigPath.toStdString()))
-                           .value<QSharedPointer<Project>>();
+                     .value<QSharedPointer<Project>>();
     project->setConfigFilePath(projectConfigPath);
 
     const auto exportPath =
-            QStringList{ BuilderConfig::instance()->getProjectRoot(), project->package->id }.join(
-                    "/");
+      QStringList{ BuilderConfig::instance()->getProjectRoot(), project->package->id }.join("/");
 
     util::ensureDir(exportPath);
 
@@ -792,7 +791,7 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
     QFile::copy("/usr/libexec/ll-box-static", QStringList{ exportPath, "ll-box" }.join("/"));
 
     auto loaderFilePath =
-            QStringList{ BuilderConfig::instance()->getProjectRoot(), "loader" }.join("/");
+      QStringList{ BuilderConfig::instance()->getProjectRoot(), "loader" }.join("/");
     if (util::fileExists(loaderFilePath)) {
         QFile::copy(loaderFilePath, QStringList{ exportPath, "loader" }.join("/"));
     } else {
@@ -803,7 +802,7 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
 
     if (!project->base) {
         auto info = std::get<0>(util::fromJSON<QSharedPointer<package::Info>>(
-                project->config().cacheRuntimePath("info.json")));
+          project->config().cacheRuntimePath("info.json")));
 
         package::Ref runtimeBaseRef(info->base);
 
@@ -812,7 +811,7 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
     }
 
     const auto extraFileListPath =
-            QStringList{ BuilderConfig::instance()->getProjectRoot(), "extra_files.txt" }.join("/");
+      QStringList{ BuilderConfig::instance()->getProjectRoot(), "extra_files.txt" }.join("/");
     if (util::fileExists(extraFileListPath)) {
         auto copyExtraFile = [baseRef, exportPath, &project](const QString &path) -> util::Error {
             QString containerFilePath;
@@ -821,13 +820,12 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
 
             if (path.startsWith("/runtime")) {
                 filePath = project->config().cacheRuntimePath(
-                        QStringList{ "files", path.right(path.length() - sizeof("/runtime")) }.join(
-                                "/"));
+                  QStringList{ "files", path.right(path.length() - sizeof("/runtime")) }.join("/"));
 
                 exportFilePath = QStringList{ exportPath, "lib", path }.join("/");
             } else {
                 filePath = BuilderConfig::instance()->layerPath(
-                        { baseRef.toLocalRefString(), "files", path });
+                  { baseRef.toLocalRefString(), "files", path });
                 exportFilePath = QStringList{ exportPath, "lib", path }.join("/");
             }
 
@@ -849,8 +847,8 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
             p.waitForFinished(1000 * 60 * 60); // one hour
             if (p.exitCode() != 0) {
                 return NewError(
-                        -1,
-                        QString("failed to copy %1 to  %2 ").arg(filePath).arg(exportFilePath));
+                  -1,
+                  QString("failed to copy %1 to  %2 ").arg(filePath).arg(exportFilePath));
             }
             return Success();
         };
@@ -897,7 +895,7 @@ util::Error LinglongBuilder::push(const QString &repoUrl,
 {
     auto ret = Success();
     auto projectConfigPath =
-            QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
+      QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
 
     if (!QFileInfo::exists(projectConfigPath)) {
         qCritical() << "ll-builder should run in the root directory of the linglong project";
@@ -906,13 +904,13 @@ util::Error LinglongBuilder::push(const QString &repoUrl,
 
     try {
         auto project = QVariant::fromValue(YAML::LoadFile(projectConfigPath.toStdString()))
-                               .value<QSharedPointer<Project>>();
+                         .value<QSharedPointer<Project>>();
 
         // set remote repo url
         auto remoteRepoEndpoint =
-                repoUrl.isEmpty() ? BuilderConfig::instance()->remoteRepoEndpoint : repoUrl;
+          repoUrl.isEmpty() ? BuilderConfig::instance()->remoteRepoEndpoint : repoUrl;
         auto remoteRepoName =
-                repoName.isEmpty() ? BuilderConfig::instance()->remoteRepoName : repoName;
+          repoName.isEmpty() ? BuilderConfig::instance()->remoteRepoName : repoName;
         repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath(),
                               remoteRepoEndpoint,
                               remoteRepoName);
@@ -967,7 +965,7 @@ util::Error LinglongBuilder::import()
     }
 
     auto projectConfigPath =
-            QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
+      QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
 
     if (!QFileInfo::exists(projectConfigPath)) {
         qCritical() << "ll-builder should run in the root directory of the linglong project";
@@ -976,7 +974,7 @@ util::Error LinglongBuilder::import()
 
     try {
         auto project = QVariant::fromValue(YAML::LoadFile(projectConfigPath.toStdString()))
-                               .value<QSharedPointer<Project>>();
+                         .value<QSharedPointer<Project>>();
 
         repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath());
 
@@ -993,7 +991,7 @@ util::Error LinglongBuilder::import()
         }
 
         qInfo().noquote()
-                << QString("import %1 success").arg(refWithRuntime.toOSTreeRefLocalString());
+          << QString("import %1 success").arg(refWithRuntime.toOSTreeRefLocalString());
     } catch (std::exception &e) {
         qCritical() << e.what();
         return NewError(-1, "failed to parse linglong.yaml");
@@ -1009,7 +1007,7 @@ linglong::util::Error LinglongBuilder::run()
                           BuilderConfig::instance()->remoteRepoName);
 
     auto projectConfigPath =
-            QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
+      QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
 
     if (!QFileInfo::exists(projectConfigPath)) {
         qCritical() << "ll-builder should run in the root directory of the linglong project";
@@ -1018,12 +1016,12 @@ linglong::util::Error LinglongBuilder::run()
 
     try {
         auto project = QVariant::fromValue(YAML::LoadFile(projectConfigPath.toStdString()))
-                               .value<QSharedPointer<Project>>();
+                         .value<QSharedPointer<Project>>();
         project->setConfigFilePath(projectConfigPath);
 
         // checkout app
         auto targetPath =
-                BuilderConfig::instance()->layerPath({ project->ref().toLocalRefString() });
+          BuilderConfig::instance()->layerPath({ project->ref().toLocalRefString() });
         linglong::util::ensureDir(targetPath);
         auto err = repo.checkoutAll(project->ref(), "", targetPath);
         if (err) {
@@ -1032,7 +1030,7 @@ linglong::util::Error LinglongBuilder::run()
 
         // checkout runtime
         targetPath =
-                BuilderConfig::instance()->layerPath({ project->runtimeRef().toLocalRefString() });
+          BuilderConfig::instance()->layerPath({ project->runtimeRef().toLocalRefString() });
         linglong::util::ensureDir(targetPath);
 
         auto remoteRuntimeRef = package::Ref(BuilderConfig::instance()->remoteRepoName,

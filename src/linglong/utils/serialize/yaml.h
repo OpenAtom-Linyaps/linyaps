@@ -176,16 +176,16 @@ std::tuple<T, util::Error> deserialize(const QByteArray &data)
             return std::make_tuple<T, util::Error>(v.value<T>(), {});
 
         return std::make_tuple<T, util::Error>(
-                {},
-                NewError(-1, QString("deserialize value from YAML: convert failed")));
+          {},
+          NewError(-1, QString("deserialize value from YAML: convert failed")));
     } catch (const std::exception &e) {
         return std::make_tuple<T, util::Error>(
-                {},
-                NewError(-1, QString("deserialize value from YAML: ") + e.what()));
+          {},
+          NewError(-1, QString("deserialize value from YAML: ") + e.what()));
     } catch (...) {
         return std::make_tuple<T, util::Error>(
-                {},
-                NewError(-1, QString("deserialize value from YAML failed")));
+          {},
+          NewError(-1, QString("deserialize value from YAML failed")));
     }
 }
 
@@ -204,8 +204,8 @@ std::tuple<QByteArray, util::Error> serialize(const T &x)
 
         if (!v.canConvert<YAML::Node>()) {
             return std::make_tuple<QByteArray, util::Error>(
-                    {},
-                    NewError(-1, "serialize value to YAML: convert failed"));
+              {},
+              NewError(-1, "serialize value to YAML: convert failed"));
         }
 
         node = v.value<YAML::Node>();
@@ -213,14 +213,14 @@ std::tuple<QByteArray, util::Error> serialize(const T &x)
         if (helper::isQList<T>::value) {
             if (!node.IsSequence()) {
                 return std::make_tuple<QByteArray, util::Error>(
-                        {},
-                        NewError(-1, "serialize value to YAML: node is not a sequence"));
+                  {},
+                  NewError(-1, "serialize value to YAML: node is not a sequence"));
             }
         } else {
             if (!node.IsMap()) {
                 return std::make_tuple<QByteArray, util::Error>(
-                        {},
-                        NewError(-1, "serialize value to YAML: node is not a map"));
+                  {},
+                  NewError(-1, "serialize value to YAML: node is not a map"));
             }
         }
 
@@ -230,12 +230,12 @@ std::tuple<QByteArray, util::Error> serialize(const T &x)
 
     } catch (const std::exception &e) {
         return std::make_tuple<QByteArray, util::Error>(
-                {},
-                NewError(-1, QString("serialize value to YAML: ") + e.what()));
+          {},
+          NewError(-1, QString("serialize value to YAML: ") + e.what()));
     } catch (...) {
         return std::make_tuple<QByteArray, util::Error>(
-                {},
-                NewError(-1, QString("serialize value to YAML failed")));
+          {},
+          NewError(-1, QString("serialize value to YAML failed")));
     }
 }
 

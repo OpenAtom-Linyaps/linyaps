@@ -56,15 +56,15 @@ void QSerializer<T>::registerConverters()
     QMetaType::registerConverter<QVariantMap, P>(QVariantMapToP);
 
     QMetaType::registerConverter<QList<P>, QVariantList>(PListToQVariantList);
-    QMetaType::registerConverter<QVariantList, QList<P> >(QVariantListToPList);
+    QMetaType::registerConverter<QVariantList, QList<P>>(QVariantListToPList);
 
     QMetaType::registerConverter<QMap<QString, P>, QVariantMap>(PStrMapToQVariantMap);
-    QMetaType::registerConverter<QVariantMap, QMap<QString, P> >(QVariantMapToPStrMap);
+    QMetaType::registerConverter<QVariantMap, QMap<QString, P>>(QVariantMapToPStrMap);
 }
 
 template<typename T>
 const QMetaObject *const QSerializer<T>::qObjectMetaObject =
-        QMetaType::fromType<QObject *>().metaObject();
+  QMetaType::fromType<QObject *>().metaObject();
 
 template<typename T>
 const QMetaObject *const QSerializer<T>::metaObject = QMetaType::fromType<T *>().metaObject();
@@ -114,7 +114,7 @@ QSharedPointer<T> QSerializer<T>::QVariantMapToP(const QVariantMap &map)
         if (!metaProp.write(ret.data(), it.value())) {
             Q_ASSERT(false);
             qWarning().noquote()
-                    << QString("Failed to write \"%1\", maybe missing converter").arg(metaPropName);
+              << QString("Failed to write \"%1\", maybe missing converter").arg(metaPropName);
         }
     }
     return ret;
@@ -131,7 +131,7 @@ QVariantList QSerializer<T>::PListToQVariantList(QList<P> list)
 }
 
 template<typename T>
-QList<QSharedPointer<T> > QSerializer<T>::QVariantListToPList(QVariantList list)
+QList<QSharedPointer<T>> QSerializer<T>::QVariantListToPList(QVariantList list)
 {
     auto ret = QList<P>{};
     for (auto const &item : list) {
@@ -151,7 +151,7 @@ QVariantMap QSerializer<T>::PStrMapToQVariantMap(QMap<QString, P> map)
 }
 
 template<typename T>
-QMap<QString, QSharedPointer<T> > QSerializer<T>::QVariantMapToPStrMap(QVariantMap map)
+QMap<QString, QSharedPointer<T>> QSerializer<T>::QVariantMapToPStrMap(QVariantMap map)
 {
     auto ret = QMap<QString, P>{};
     for (auto it = map.begin(); it != map.end(); it++) {
@@ -160,25 +160,25 @@ QMap<QString, QSharedPointer<T> > QSerializer<T>::QVariantMapToPStrMap(QVariantM
     return ret;
 }
 
-#define QSERIALIZER_DECLARE(T)             \
-  namespace QSerializerPrivateNamespace##T \
-  {                                        \
-    char init();                           \
-    static char _ = init();                \
-  };
+#define QSERIALIZER_DECLARE(T)               \
+    namespace QSerializerPrivateNamespace##T \
+    {                                        \
+        char init();                         \
+        static char _ = init();              \
+    };
 
-#define QSERIALIZER_IMPL(T, ...)           \
-  namespace QSerializerPrivateNamespace##T \
-  {                                        \
-    char init()                            \
-    {                                      \
-      static char _ = []() -> char {       \
-QSerializer<T>::registerConverters();      \
-__VA_ARGS__;                               \
-return 0;                                  \
-      }();                                 \
-      return _;                            \
-    }                                      \
-  }
+#define QSERIALIZER_IMPL(T, ...)                      \
+    namespace QSerializerPrivateNamespace##T          \
+    {                                                 \
+        char init()                                   \
+        {                                             \
+            static char _ = []() -> char {            \
+                QSerializer<T>::registerConverters(); \
+                __VA_ARGS__;                          \
+                return 0;                             \
+            }();                                      \
+            return _;                                 \
+        }                                             \
+    }
 
 #endif

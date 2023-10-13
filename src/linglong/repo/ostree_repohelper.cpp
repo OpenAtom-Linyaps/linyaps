@@ -109,8 +109,8 @@ bool OstreeRepoHelper::ensureRepoEnv(const QString &repoDir, QString &err)
     }
 
     qWarning() << QString("ostree_repo_open error: %1, code: %2, maybe repo not exist")
-                          .arg(QLatin1String(error->message))
-                          .arg(error->code);
+                    .arg(QLatin1String(error->message))
+                    .arg(error->code);
 
     error = nullptr;
     if (!ostree_repo_create(repo, OSTREE_REPO_MODE_BARE_USER_ONLY, nullptr, &error)) {
@@ -381,7 +381,7 @@ bool OstreeRepoHelper::getRemoteRefs(const QString &repoPath,
         return false;
     }
     GVariant *summary = g_variant_ref_sink(
-            g_variant_new_from_bytes(OSTREE_SUMMARY_GVARIANT_FORMAT, summaryBytes, FALSE));
+      g_variant_new_from_bytes(OSTREE_SUMMARY_GVARIANT_FORMAT, summaryBytes, FALSE));
     // std::map 转 QMap
     std::map<std::string, std::string> outRet;
     getPkgRefsBySummary(summary, outRet);
@@ -455,10 +455,10 @@ bool OstreeRepoHelper::checkOutAppData(const QString &repoPath,
     // ostree --repo=repo checkout -U --union org.deepin.calculator/x86_64/1.2.2
     // /persistent/linglong/layers/XXX
     linglong::util::createDir(dstPath);
-    auto err = util::Exec(
-            "ostree",
-            { "--repo=" + repoPath + "/repo", "checkout", "-U", "--union", ref, dstPath },
-            1000 * 60 * 60 * 24);
+    auto err =
+      util::Exec("ostree",
+                 { "--repo=" + repoPath + "/repo", "checkout", "-U", "--union", ref, dstPath },
+                 1000 * 60 * 60 * 24);
 
     if (err) {
         strErr = "checkOutAppData " + ref + " err";
@@ -471,7 +471,7 @@ bool OstreeRepoHelper::checkOutAppData(const QString &repoPath,
     // implemented, it must do by vfs repo
     QString hash(QCryptographicHash::hash(dstPath.toLocal8Bit(), QCryptographicHash::Md5).toHex());
     auto destImagePath =
-            QStringList{ util::getLinglongRootPath(), "vfs", "blobs" }.join(QDir::separator());
+      QStringList{ util::getLinglongRootPath(), "vfs", "blobs" }.join(QDir::separator());
     util::ensureDir(destImagePath);
     destImagePath = QStringList{ destImagePath, hash }.join(QDir::separator());
     qDebug() << "erofs mkfs" << dstPath << destImagePath;
@@ -614,16 +614,10 @@ QString OstreeRepoHelper::createTmpRepo(const QString &parentRepo)
     }
 
     // 添加父仓库路径
-    err = util::Exec("ostree",
-                     { "config",
-                       "set",
-                       "--group",
-                       "core",
-                       "parent",
-                       parentRepo,
-                       "--repo",
-                       tmpPath + "/repoTmp" },
-                     1000 * 60 * 5);
+    err = util::Exec(
+      "ostree",
+      { "config", "set", "--group", "core", "parent", parentRepo, "--repo", tmpPath + "/repoTmp" },
+      1000 * 60 * 5);
     if (err) {
         qCritical() << "config set parent failed" << err;
         return QString();

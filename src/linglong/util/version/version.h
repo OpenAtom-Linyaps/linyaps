@@ -76,10 +76,10 @@ public:
     QString toString()
     {
         QString result = QString("%1.%2.%3.%4")
-                                 .arg(QString::number(Major))
-                                 .arg(QString::number(Minor))
-                                 .arg(QString::number(Revision))
-                                 .arg(QString::number(Build));
+                           .arg(QString::number(Major))
+                           .arg(QString::number(Minor))
+                           .arg(QString::number(Revision))
+                           .arg(QString::number(Build));
         return result;
     }
 

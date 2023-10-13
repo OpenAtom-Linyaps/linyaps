@@ -48,10 +48,10 @@ void CommandHelper::showContainer(const QList<QSharedPointer<Container>> &contai
     QJsonArray jsonArray;
     for (auto const &container : containerList) {
         jsonArray.push_back(QJsonObject{
-                { "app", package::Ref(container->packageName).appId },
-                { "id", container->id },
-                { "pid", container->pid },
-                { "path", container->workingDirectory },
+          { "app", package::Ref(container->packageName).appId },
+          { "id", container->id },
+          { "pid", container->pid },
+          { "path", container->workingDirectory },
         });
     }
 
@@ -62,13 +62,11 @@ void CommandHelper::showContainer(const QList<QSharedPointer<Container>> &contai
         for (auto const &item : jsonArray) {
             QString path = item.toObject().value("path").toString();
             qInfo().noquote()
-                    << QString("%1%2%3%4")
-                               .arg(item.toObject().value("app").toString(), -48, QLatin1Char(' '))
-                               .arg(item.toObject().value("id").toString(), -36, QLatin1Char(' '))
-                               .arg(QString::number(item.toObject().value("pid").toInt()),
-                                    -8,
-                                    QLatin1Char(' '))
-                               .arg(path, -path.length(), QLatin1Char(' '));
+              << QString("%1%2%3%4")
+                   .arg(item.toObject().value("app").toString(), -48, QLatin1Char(' '))
+                   .arg(item.toObject().value("id").toString(), -36, QLatin1Char(' '))
+                   .arg(QString::number(item.toObject().value("pid").toInt()), -8, QLatin1Char(' '))
+                   .arg(path, -path.length(), QLatin1Char(' '));
         }
     }
 }

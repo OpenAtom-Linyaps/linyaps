@@ -122,7 +122,6 @@ private:
                               const QString &channel,
                               const QString &module) -> QString;
 
-    bool useFlatpakRuntime = false;
     QString desktopExec = nullptr;
     ParamStringMap envMap;
     ParamStringMap runParamMap;

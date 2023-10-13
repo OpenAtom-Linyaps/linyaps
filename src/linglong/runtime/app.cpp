@@ -254,11 +254,6 @@ auto App::stageRootfs(QString runtimeRootPath, const QString &appId, QString app
         fuseMount = true;
     }
 
-    if (useFlatpakRuntime) {
-        fuseMount = false;
-        useThinRuntime = false;
-    }
-
     r->annotations.reset(new Annotations);
     r->annotations->containerRootPath = container->workingDirectory;
 
@@ -435,9 +430,6 @@ auto App::stageRootfs(QString runtimeRootPath, const QString &appId, QString app
 
     // TODO(iceyer): let application do this or add to doc
     auto appLdLibraryPath = QStringList{ "/opt/apps", appId, "files/lib" }.join("/");
-    if (useFlatpakRuntime) {
-        appLdLibraryPath = "/app/lib";
-    }
 
     // todo: 代码冗余，后续整改，配置文件？
     QStringList fixLdLibraryPath;
@@ -763,9 +755,6 @@ auto App::stageUser(const QString &appId) const -> int
     }
     auto appRef = package::Ref(package->ref);
     auto appBinaryPath = QStringList{ "/opt/apps", appRef.appId, "files/bin" }.join("/");
-    if (useFlatpakRuntime) {
-        appBinaryPath = "/app/bin";
-    }
 
     // 特殊处理env PATH
     if (envMap.contains("PATH")) {
@@ -787,9 +776,6 @@ auto App::stageUser(const QString &appId) const -> int
                               + util::jonsPath({ userRuntimeDir, "bus" }));
 
     auto appSharePath = QStringList{ "/opt/apps", appRef.appId, "files/share" }.join("/");
-    if (useFlatpakRuntime) {
-        appSharePath = "/app/share";
-    }
     auto xdgDataDirs = QStringList{ appSharePath, "/runtime/share" };
     xdgDataDirs.append(qEnvironmentVariable("XDG_DATA_DIRS", "/usr/local/share:/usr/share"));
     r->process->env.push_back("XDG_DATA_DIRS=" + xdgDataDirs.join(":"));

@@ -12,6 +12,7 @@
 #include "QMessageLogContext"
 #include "QString"
 #include "QStringBuilder"
+#include "tl/expected.hpp"
 
 #include <memory>
 #include <utility>
@@ -82,29 +83,32 @@ doEWrap(const char *file, int line, const char *function, const QString &msg, Er
                                    std::move(cause));
 }
 
-inline auto
-doErr(const char *file, int line, const char *function, const int &code, const QString &msg)
+inline auto doErr(const char *file, int line, const char *function, int code, const QString &msg)
         -> Error
 {
     return std::make_unique<error>(file, line, function, "default", code, msg, nullptr);
 }
+
 } // namespace
+
+template<typename Value>
+using Result = tl::expected<Value, Error>;
 
 } // namespace linglong::utils::error
 
-#define EWrap(message, cause)                             \
-    ::linglong::utils::error::doEWrap(QT_MESSAGELOG_FILE, \
-                                      QT_MESSAGELOG_LINE, \
-                                      QT_MESSAGELOG_FUNC, \
-                                      message,            \
-                                      std::move(cause))
+#define EWrap(message, cause) /*NOLINT*/                                 \
+    tl::unexpected(::linglong::utils::error::doEWrap(QT_MESSAGELOG_FILE, \
+                                                     QT_MESSAGELOG_LINE, \
+                                                     QT_MESSAGELOG_FUNC, \
+                                                     message,            \
+                                                     std::move(cause)))
 
-#define Err(code, message)                              \
-    ::linglong::utils::error::doErr(QT_MESSAGELOG_FILE, \
-                                    QT_MESSAGELOG_LINE, \
-                                    QT_MESSAGELOG_FUNC, \
-                                    code,               \
-                                    message)
+#define Err(code, message) /*NOLINT*/                                  \
+    tl::unexpected(::linglong::utils::error::doErr(QT_MESSAGELOG_FILE, \
+                                                   QT_MESSAGELOG_LINE, \
+                                                   QT_MESSAGELOG_FUNC, \
+                                                   code,               \
+                                                   message))
 
 #define Ok \
     {      \

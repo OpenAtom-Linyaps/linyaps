@@ -25,7 +25,7 @@ namespace linglong::utils::dbus {
     }
 
     // FIXME: use real ERROR CODE defined in API.
-    return tl::unexpected(Err(-1, "register dbus object: object existed."));
+    return Err(-1, "register dbus object: object existed.");
 }
 
 inline void unregisterDBusObject(QDBusConnection conn, const QString &path)
@@ -35,7 +35,7 @@ inline void unregisterDBusObject(QDBusConnection conn, const QString &path)
 }
 
 [[nodiscard]] inline auto registerDBusService(QDBusConnection conn, const QString &serviceName)
-        -> tl::expected<void, error::Error>
+        -> error::Result<void>
 {
     if (conn.registerService(serviceName)) {
         qCDebug(linglong_utils_dbus) << "register dbus name" << serviceName;
@@ -45,12 +45,13 @@ inline void unregisterDBusObject(QDBusConnection conn, const QString &path)
     error::Error err;
     // FIXME: use real ERROR CODE defined in API.
     if (conn.lastError().isValid()) {
-        err = Err(-1, QString("%1: %2").arg(conn.lastError().name(), conn.lastError().message()));
+        err = Err(-1, QString("%1: %2").arg(conn.lastError().name(), conn.lastError().message()))
+                      .value();
     } else {
-        err = Err(-1, "service name existed.");
+        err = Err(-1, "service name existed.").value();
     }
 
-    return tl::unexpected(EWrap("register dbus service:", err));
+    return EWrap("register dbus service:", err);
 }
 
 [[nodiscard]] inline auto unregisterDBusService(QDBusConnection conn, const QString &serviceName)
@@ -64,12 +65,13 @@ inline void unregisterDBusObject(QDBusConnection conn, const QString &path)
     // FIXME: use real ERROR CODE defined in API.
     error::Error err;
     if (conn.lastError().isValid()) {
-        err = Err(-1, QString("%1: %2").arg(conn.lastError().name(), conn.lastError().message()));
+        err = Err(-1, QString("%1: %2").arg(conn.lastError().name(), conn.lastError().message()))
+                      .value();
     } else {
-        err = Err(-1, "unknown");
+        err = Err(-1, "unknown").value();
     }
 
-    return tl::unexpected(EWrap("unregister dbus service:", err));
+    return EWrap("unregister dbus service:", err);
 }
 
 } // namespace linglong::utils::dbus

@@ -260,6 +260,8 @@ pfl_add_library(
   ./src/linglong/utils/serialize/json.h
   ./src/linglong/utils/serialize/yaml.cpp
   ./src/linglong/utils/serialize/yaml.h
+  ./src/linglong/utils/xdg/desktop_entry.h
+  ./src/linglong/utils/xdg/desktop_entry.cpp
   APPS
   ll-builder
   ll-cli

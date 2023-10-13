@@ -15,7 +15,6 @@
 #include "linglong/runtime/container.h"
 #include "linglong/runtime/oci.h"
 #include "linglong/util/command_helper.h"
-#include "linglong/util/desktop_entry.h"
 #include "linglong/util/env.h"
 #include "linglong/util/error.h"
 #include "linglong/util/file.h"
@@ -23,6 +22,7 @@
 #include "linglong/util/qserializer/yaml.h"
 #include "linglong/util/runner.h"
 #include "linglong/util/sysinfo.h"
+#include "linglong/utils/xdg/desktop_entry.h"
 #include "source_fetcher.h"
 
 #include <linux/prctl.h>
@@ -104,28 +104,34 @@ linglong::util::Error commitBuildOutput(Project *project,
         linglong::util::ensureDir(targetPath);
 
         for (auto const &fileInfo : configFileInfoList) {
-            util::DesktopEntry desktopEntry(fileInfo.filePath());
+            auto desktopEntry = utils::xdg::DesktopEntry::New(fileInfo.filePath());
+            if (!desktopEntry.has_value()) {
+                return NewError(desktopEntry.error()->code(), "file to config not exists");
+            }
 
             // set all section
-            auto configSections = desktopEntry.sections();
+            auto configSections = desktopEntry->groups();
             for (auto section : configSections) {
-                auto exec = desktopEntry.rawValue("Exec", section);
-                exec = QString("ll-cli run %1 --exec %2").arg(appId, exec);
-                desktopEntry.set(section, "Exec", exec);
-
-                // The section TryExec affects starting from the launcher, set it to null.
-                auto tryExec = desktopEntry.rawValue("TryExec", section);
-
-                if (!tryExec.isEmpty()) {
-                    desktopEntry.set(section, "TryExec", "");
+                auto exec = desktopEntry->getValue<QString>("Exec", section);
+                if (exec.has_value()) {
+                    // TODO(black_desk): update to new CLI
+                    exec = QString("ll-cli run %1 --exec %2").arg(appId, *exec);
+                    desktopEntry->setValue("Exec", *exec, section);
                 }
 
-                desktopEntry.set(section, "X-linglong", appId);
+                // The section TryExec affects starting from the launcher, set it to null.
+                auto tryExec = desktopEntry->getValue<QString>("TryExec", section);
 
-                auto err = desktopEntry.save(
+                if (tryExec.has_value()) {
+                    desktopEntry->setValue<QString>("TryExec", BINDIR "/ll-cli");
+                }
+
+                desktopEntry->setValue<QString>("X-linglong", appId);
+
+                auto result = desktopEntry->saveToFile(
                         QStringList{ targetPath, fileInfo.fileName() }.join(QDir::separator()));
-                if (err) {
-                    return WrapError(err, "save config failed");
+                if (!result.has_value()) {
+                    return NewError(result.error()->code(), result.error()->message());
                 }
             }
         }

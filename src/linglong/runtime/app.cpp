@@ -10,13 +10,13 @@
 #include "linglong/package/info.h"
 #include "linglong/repo/repo.h"
 #include "linglong/runtime/app_config.h"
-#include "linglong/util/desktop_entry.h"
 #include "linglong/util/env.h"
 #include "linglong/util/file.h"
 #include "linglong/util/qserializer/json.h"
 #include "linglong/util/qserializer/yaml.h"
 #include "linglong/util/version/version.h"
 #include "linglong/util/xdg.h"
+#include "linglong/utils/xdg/desktop_entry.h"
 
 #include <linux/prctl.h>
 #include <sys/prctl.h>
@@ -130,15 +130,34 @@ auto App::prepare() -> int
         return -1;
     }
 
-    util::DesktopEntry desktopEntry(applicationsDir.absoluteFilePath(desktopFilenameList.value(0)));
+    const auto &desktopEntry = utils::xdg::DesktopEntry::New(
+            applicationsDir.absoluteFilePath(desktopFilenameList.value(0)));
+    if (!desktopEntry.has_value()) {
+        // FIXME(black_desk): return error instead of logging here.
+        qCritical() << "DesktopEntry file path:"
+                    << applicationsDir.absoluteFilePath(desktopFilenameList.value(0));
+        qCritical().noquote() << desktopEntry.error()->code() << desktopEntry.error()->message();
+        return -1;
+    }
 
+    const auto &exec = desktopEntry->getValue<QString>("Exec");
+    if (!exec.has_value()) {
+        // FIXME(black_desk): return error instead of logging here.
+        qCritical() << "Broken desktop file without Exec in main section.";
+        qCritical().noquote() << exec.error()->code() << exec.error()->message();
+        return -1;
+    }
+
+    const auto &parsedExec = util::parseExec(*exec);
+
+    // FIXME(black_desk): remove this logic after upgarding old packages.
     // 当执行ll-cli run appid时，从entries目录获取执行参数，同时兼容旧的outputs打包模式。
     QStringList tmpArgs;
     QStringList execArgs;
     if (util::dirExists(QStringList{ appRootPath, "outputs", "share" }.join(QDir::separator()))) {
-        execArgs = util::parseExec(desktopEntry.rawValue("Exec"));
+        execArgs = parsedExec;
     } else {
-        tmpArgs = util::parseExec(desktopEntry.rawValue("Exec"));
+        tmpArgs = parsedExec;
         // 移除 ll-cli run  appid --exec 参数
         for (auto i = tmpArgs.indexOf(QRegExp("^--exec$")) + 1; i < tmpArgs.length(); ++i) {
             execArgs << tmpArgs[i];
@@ -160,7 +179,7 @@ auto App::prepare() -> int
     }
 
     // desktop文件修改或者添加环境变量支持
-    tmpArgs = util::parseExec(desktopEntry.rawValue("Exec"));
+    tmpArgs = parsedExec;
     auto indexOfEnv = tmpArgs.indexOf(QRegExp("^env$"));
     if (indexOfEnv != -1) {
         auto env = tmpArgs[indexOfEnv + 1];
@@ -1269,11 +1288,29 @@ void App::exec(QString cmd, QString env, QString cwd)
             return;
         }
 
-        util::DesktopEntry desktopEntry(
+        const auto &desktopEntry = utils::xdg::DesktopEntry::New(
                 applicationsDir.absoluteFilePath(desktopFilenameList.value(0)));
+        if (!desktopEntry.has_value()) {
+            // FIXME(black_desk): return error instead of logging here.
+            qCritical() << "DesktopEntry file path:"
+                        << applicationsDir.absoluteFilePath(desktopFilenameList.value(0));
+            qCritical().noquote() << desktopEntry.error()->code()
+                                  << desktopEntry.error()->message();
+            return;
+        }
+
+        const auto &exec = desktopEntry->getValue<QString>("Exec");
+        if (!exec.has_value()) {
+            // FIXME(black_desk): return error instead of logging here.
+            qCritical() << "Broken desktop file without Exec in main section.";
+            qCritical().noquote() << exec.error()->code() << exec.error()->message();
+            return;
+        }
+
+        const auto &parsedExec = util::parseExec(*exec);
 
         // 当执行ll-cli run appid时，从entries目录获取执行参数
-        auto execArgs = util::parseExec(desktopEntry.rawValue("Exec"));
+        auto execArgs = parsedExec;
 
         // 移除 ll-cli run xxx --exec参数
         auto execIndex = execArgs.indexOf("--exec");

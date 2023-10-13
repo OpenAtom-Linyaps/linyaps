@@ -204,8 +204,6 @@ pfl_add_library(
   ./src/linglong/util/configure.cpp
   ./src/linglong/util/connection.cpp
   ./src/linglong/util/connection.h
-  ./src/linglong/util/desktop_entry.cpp
-  ./src/linglong/util/desktop_entry.h
   ./src/linglong/util/env.cpp
   ./src/linglong/util/env.h
   ./src/linglong/util/erofs.cpp

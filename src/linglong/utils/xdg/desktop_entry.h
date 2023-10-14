@@ -74,48 +74,11 @@ private:
     // methods
 public:
     template<typename Value>
-    void setValue(const QString &key,
-                  const Value &value,
-                  const SectionName &section = MainSection) = delete;
-
-    template<>
-    void setValue(const QString &key, const QString &value, const SectionName &section)
-    {
-        g_key_file_set_string(this->gKeyFile.get(),
-                              section.toLocal8Bit().constData(),
-                              key.toLocal8Bit().constData(),
-                              value.toLocal8Bit().constData());
-        return;
-    }
+    void setValue(const QString &key, const Value &value, const SectionName &section = MainSection);
 
     template<typename Value>
     auto getValue(const QString &key, const SectionName &section = MainSection) const
-      -> error::Result<Value> = delete;
-
-    template<>
-    [[nodiscard]] auto getValue(const QString &key, const SectionName &section) const
-      -> error::Result<QString>
-    {
-        GError *gErr = nullptr;
-        auto _ = linglong::utils::finally::finally([&gErr]() {
-            if (gErr != nullptr)
-                g_error_free(gErr);
-        });
-
-        auto value = g_key_file_get_string(this->gKeyFile.get(),
-                                           section.toLocal8Bit().constData(),
-                                           key.toLocal8Bit().constData(),
-                                           &gErr);
-        auto _1 = finally::finally([&value]() {
-            g_free(value);
-        });
-
-        if (gErr) {
-            return Err(gErr->code, gErr->message);
-        }
-
-        return value;
-    }
+      -> error::Result<Value>;
 
     auto groups() -> QStringList
     {
@@ -151,6 +114,44 @@ public:
         return Ok;
     }
 };
+
+template<>
+inline void DesktopEntry::setValue(const QString &key,
+                                   const QString &value,
+                                   const SectionName &section)
+{
+    g_key_file_set_string(this->gKeyFile.get(),
+                          section.toLocal8Bit().constData(),
+                          key.toLocal8Bit().constData(),
+                          value.toLocal8Bit().constData());
+    return;
+}
+
+template<>
+[[nodiscard]] inline auto DesktopEntry::getValue(const QString &key,
+                                                 const SectionName &section) const
+  -> error::Result<QString>
+{
+    GError *gErr = nullptr;
+    auto _ = linglong::utils::finally::finally([&gErr]() {
+        if (gErr != nullptr)
+            g_error_free(gErr);
+    });
+
+    auto value = g_key_file_get_string(this->gKeyFile.get(),
+                                       section.toLocal8Bit().constData(),
+                                       key.toLocal8Bit().constData(),
+                                       &gErr);
+    auto _1 = finally::finally([&value]() {
+        g_free(value);
+    });
+
+    if (gErr) {
+        return Err(gErr->code, gErr->message);
+    }
+
+    return value;
+}
 
 } // namespace linglong::utils::xdg
 

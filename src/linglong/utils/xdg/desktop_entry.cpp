@@ -10,4 +10,4 @@ namespace linglong::utils::xdg {
 
 const DesktopEntry::SectionName DesktopEntry::MainSection = "Desktop Entry";
 
-}
+} // namespace linglong::utils::xdg

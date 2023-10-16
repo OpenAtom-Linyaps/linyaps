@@ -47,6 +47,14 @@ include(./cmake/PFL.cmake)
 # All dependencies can be added with CPM should be added with CPM.
 
 CPMFindPackage(
+  NAME docopt
+  VERSION 0.6.1
+  GITHUB_REPOSITORY docopt/docopt.cpp
+  GIT_TAG v0.6.3
+  GIT_SHALLOW ON
+  EXCLUDE_FROM_ALL ON)
+
+CPMFindPackage(
   NAME expected
   VERSION 1.0.0
   GITHUB_REPOSITORY TartanLlama/expected

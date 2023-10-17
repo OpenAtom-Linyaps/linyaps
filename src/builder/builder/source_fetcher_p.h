@@ -28,7 +28,11 @@ public:
     // TODO: use share cache for all project
     QString sourceTargetPath() const;
 
-    linglong::util::Error fetchArchiveFile();
+    std::tuple<QString, linglong::util::Error> fetchArchiveFile();
+
+    QString fixSuffix(const QFileInfo &fi);
+
+    linglong::util::Error extractFile(const QString &path, const QString &dir);
 
     util::Error fetchGitRepo();
 

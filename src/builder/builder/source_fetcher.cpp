@@ -12,32 +12,63 @@
 namespace linglong {
 namespace builder {
 
-QString SourceFetcher::fixSuffix(const QFileInfo &fi)
+QString SourceFetcherPrivate::fixSuffix(const QFileInfo &fi)
 {
-    if (fi.completeSuffix().endsWith(CompressedFileTarXz)) {
-        return CompressedFileTarXz;
+    Q_Q(SourceFetcher);
+    for (const char *suffix : { q->CompressedFileTarXz,
+                                q->CompressedFileTarBz2,
+                                q->CompressedFileTarGz,
+                                q->CompressedFileTgz,
+                                q->CompressedFileTar }) {
+        if (fi.completeSuffix().endsWith(suffix)) {
+            return q->CompressedFileTar;
+        }
     }
     return fi.suffix();
 }
 
-linglong::util::Error SourceFetcher::extractFile(const QString &path, const QString &dir)
+linglong::util::Error SourceFetcherPrivate::extractFile(const QString &path, const QString &dir)
 {
+    Q_Q(SourceFetcher);
     QFileInfo fi(path);
+
+    auto tarxz = [](const QString &path, const QString &dir) -> linglong::util::Error {
+        auto ret = runner::Runner("tar", { "-C", dir, "-xvf", path });
+        if (!ret) {
+            return NewError(-1, "extract " + path + "failed");
+        }
+        return NoError();
+    };
+    auto targz = [](const QString &path, const QString &dir) -> linglong::util::Error {
+        auto ret = runner::Runner("tar", { "-C", dir, "-zxvf", path });
+        if (!ret) {
+            return NewError(-1, "extract " + path + "failed");
+        }
+        return NoError();
+    };
+    auto tarbz2 = [](const QString &path, const QString &dir) -> linglong::util::Error {
+        auto ret = runner::Runner("tar", { "-C", dir, "-jxvf", path });
+        if (!ret) {
+            return NewError(-1, "extract " + path + "failed");
+        }
+        return NoError();
+    };
+    auto zip = [](const QString &path, const QString &dir) -> linglong::util::Error {
+        auto ret = runner::Runner("unzip", { "-d", dir, path });
+        if (!ret) {
+            return NewError(-1, "extract " + path + "failed");
+        }
+        return NoError();
+    };
 
     QMap<QString, std::function<linglong::util::Error(const QString &path, const QString &dir)>>
             subcommandMap = {
-                { CompressedFileTarXz,
-                  [](const QString &path, const QString &dir) -> linglong::util::Error {
-                      auto ret = runner::Runner("tar", { "-C", dir, "-xvf", path }, -1);
-                      if (!ret) {
-                          return NewError(-1, "extract " + path + "failed");
-                      }
-                      return NoError();
-                  } },
+                { q->CompressedFileTarXz, tarxz },   { q->CompressedFileTarGz, targz },
+                { q->CompressedFileTarBz2, tarbz2 }, { q->CompressedFileZip, zip },
+                { q->CompressedFileTgz, targz },     { q->CompressedFileTar, tarxz },
             };
 
     auto suffix = fixSuffix(fi);
-
     if (subcommandMap.contains(suffix)) {
         auto subcommand = subcommandMap[suffix];
         return subcommand(path, dir);
@@ -75,22 +106,34 @@ QString SourceFetcherPrivate::sourceTargetPath() const
     return path;
 }
 
-linglong::util::Error SourceFetcherPrivate::fetchArchiveFile()
+std::tuple<QString, linglong::util::Error> SourceFetcherPrivate::fetchArchiveFile()
 {
     Q_Q(SourceFetcher);
 
     q->setSourceRoot(sourceTargetPath());
-
     QUrl url(source->url);
     auto path = BuilderConfig::instance()->targetFetchCachePath() + "/" + filename();
-
     file.reset(new QFile(path));
+    // if file exists, check digest
+    if (file->exists()) {
+        if (source->digest == util::fileHash(path, QCryptographicHash::Sha256)) {
+            qInfo() << QString("file %1 exists, skip download").arg(path);
+            return { path, NoError() };
+        }
+
+        qInfo() << QString("file %1 exists, but hash mismatched, redownload").arg(path);
+        file->remove();
+    }
+
     if (!file->open(QIODevice::WriteOnly)) {
-        return NewError(-1, file->errorString());
+        return { "", NewError(-1, file->errorString()) };
     }
 
     QNetworkRequest request;
     request.setUrl(url);
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                         QNetworkRequest::NoLessSafeRedirectPolicy);
+    request.setHeader(QNetworkRequest::UserAgentHeader, "Wget/1.21.4");
 
     auto reply = util::networkMgr().get(request);
 
@@ -111,10 +154,10 @@ linglong::util::Error SourceFetcherPrivate::fetchArchiveFile()
     if (source->digest != util::fileHash(path, QCryptographicHash::Sha256)) {
         qCritical() << QString("mismatched hash: %1")
                                .arg(util::fileHash(path, QCryptographicHash::Sha256));
-        return NewError(-1, "download failed");
+        return { "", NewError(-1, "download failed") };
     }
 
-    return q->extractFile(path, sourceTargetPath());
+    return { path, NoError() };
 }
 
 // TODO: DO NOT clone all repo, see here for more:
@@ -225,7 +268,12 @@ linglong::util::Error SourceFetcher::fetch()
     if (d->source->kind == "git") {
         ret = d->fetchGitRepo();
     } else if (d->source->kind == "archive") {
-        ret = d->fetchArchiveFile();
+        QString s;
+        std::tie(s, ret) = d->fetchArchiveFile();
+        if (!ret.success()) {
+            return ret;
+        }
+        ret = d->extractFile(s, d->sourceTargetPath());
     } else if (d->source->kind == "local") {
         ret = d->handleLocalSource();
     } else {
@@ -251,7 +299,6 @@ void SourceFetcher::setSourceRoot(const QString &path)
 
 SourceFetcher::SourceFetcher(Source *s, Project *project)
     : dd_ptr(new SourceFetcherPrivate(s, this))
-    , CompressedFileTarXz("tar.xz")
 {
     Q_D(SourceFetcher);
 

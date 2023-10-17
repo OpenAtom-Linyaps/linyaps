@@ -174,6 +174,7 @@ util::Error SourceFetcherPrivate::fetchGitRepo()
     auto err = util::Exec("git",
                           {
                             "clone",
+                            "--recurse-submodules",
                             source->url,
                             sourceTargetPath(),
                           });

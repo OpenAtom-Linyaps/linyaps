@@ -251,15 +251,6 @@ static int subcommandExec(std::map<std::string, docopt::value> &args)
         execOption.cmd.push_back(QString::fromStdString(arg));
     }
 
-    // const auto envs = parser.value(envArg).split(",",
-    // #ifdef QT_DEPRECATED_VERSION_5_15
-    //                                                            Qt::SkipEmptyParts
-    // #else
-    //                                                            QString::SkipEmptyParts
-    // #endif
-    //     );
-    //     QStringList envList = envs;
-    //     execOption.env = envList.join(",");
     linglong::api::v1::dbus::AppManager1 appManager("org.deepin.linglong.AppManager",
                                                     "/org/deepin/linglong/AppManager",
                                                     QDBusConnection::sessionBus());

@@ -8,6 +8,7 @@
 #define LINGLONG_SRC_MODULE_DBUS_IPC_PARAM_OPTION_H_
 
 #include <QDBusArgument>
+#include <QMap>
 
 namespace linglong {
 namespace service {
@@ -162,13 +163,13 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument,
 class RunParamOption : public ParamOption
 {
 public:
-    QString exec;                ///< 运行命令,如：/bin/bash
+    QStringList exec;            ///< 运行命令,如：/bin/bash
     bool noDbusProxy = false;    ///< 是否不使用dbus代理
     QString busType = "session"; ///< dbus总线类型，默认session总线
     QString filterName;          ///< DBus过滤名称
     QString filterPath;          ///< DBus过滤路径
     QString filterInterface;     ///< DBus过滤接口
-    QString appEnv;              ///< 应用环境变量
+    QStringList appEnv;          ///< 应用环境变量
 };
 
 inline QDBusArgument &operator<<(QDBusArgument &argument, const RunParamOption &paramOption)
@@ -200,8 +201,8 @@ class ExecParamOption
 {
 public:
     QString containerID; ///< 需要执行命令的容器的ID
-    QString cmd;         ///< 需要执行的命令
-    QString env;         ///< 该命令需要的额外环境变量
+    QStringList cmd;     ///< 需要执行的命令
+    QStringList env;     ///< 该命令需要的额外环境变量
     QString cwd;         ///< 该命令执行时的工作目录（容器中）
 };
 

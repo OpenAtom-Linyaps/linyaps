@@ -85,12 +85,12 @@ QString BuilderConfig::layerPath(const QStringList &subPathList) const
     return list.join(QDir::separator());
 }
 
-void BuilderConfig::setExec(const QString &execParam)
+void BuilderConfig::setExec(const QStringList &execParam)
 {
     exec = execParam;
 }
 
-QString BuilderConfig::getExec() const
+QStringList BuilderConfig::getExec() const
 {
     return exec;
 }

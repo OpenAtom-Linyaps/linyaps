@@ -81,7 +81,12 @@ public:
         }
 
         if (!BuilderConfig::instance()->getExec().isEmpty()) {
-            command += BuilderConfig::instance()->getExec().toLocal8Bit() + "\n";
+            auto exec = BuilderConfig::instance()->getExec();
+            for (const auto &arg : exec) {
+                command += '\'' + arg + '\'' + ' ';
+            }
+            command = command.trimmed();
+            command += "\n";
             scriptFile.write(command.toLocal8Bit());
             scriptFile.close();
             return 0;

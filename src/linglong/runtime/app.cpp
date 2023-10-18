@@ -1189,7 +1189,7 @@ App::App(QObject *parent)
 {
 }
 
-auto App::load(linglong::repo::Repo *repo, const package::Ref &ref, const QString &desktopExec)
+auto App::load(linglong::repo::Repo *repo, const package::Ref &ref, const QStringList &desktopExec)
   -> QSharedPointer<App>
 {
     QString configPath = loadConfig(repo, ref.appId, ref.version, ref.channel, ref.module);
@@ -1275,7 +1275,7 @@ auto App::start() -> util::Error
     return Success();
 }
 
-void App::exec(QString cmd, QString env, QString cwd)
+void App::exec(const QStringList &cmd, const QStringList &env, QString cwd)
 {
     ocppi::runtime::config::types::Process p;
     p.env = r.process->env;

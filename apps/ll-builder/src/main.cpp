@@ -11,6 +11,7 @@
 #include "linglong/package/package.h"
 #include "linglong/repo/repo.h"
 #include "linglong/util/qserializer/yaml.h"
+#include "linglong/util/xdg.h"
 #include "linglong/utils/global/initialize.h"
 
 #include <QCommandLineOption>
@@ -97,8 +98,10 @@ int main(int argc, char **argv)
               parser.process(app);
 
               if (parser.isSet(execVerbose)) {
-                  linglong::builder::BuilderConfig::instance()->setExec(parser.value(execVerbose));
+                  auto exec = linglong::util::splitExec(parser.value(execVerbose));
+                  linglong::builder::BuilderConfig::instance()->setExec(exec);
               }
+
               linglong::builder::BuilderConfig::instance()->setOffline(parser.isSet(buildOffline));
 
               // config linglong.yaml before build if necessary
@@ -155,7 +158,8 @@ int main(int argc, char **argv)
               parser.process(app);
 
               if (parser.isSet(execVerbose)) {
-                  linglong::builder::BuilderConfig::instance()->setExec(parser.value(execVerbose));
+                  auto exec = linglong::util::splitExec(parser.value(execVerbose));
+                  linglong::builder::BuilderConfig::instance()->setExec(exec);
               }
 
               auto err = builder->run();

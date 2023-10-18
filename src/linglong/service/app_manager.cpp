@@ -83,12 +83,11 @@ auto AppManager::Start(const RunParamOption &paramOption) -> Reply
     // 获取user env list
     QStringList userEnvList;
     if (!paramOption.appEnv.isEmpty()) {
-        userEnvList = paramOption.appEnv.split(",");
+        userEnvList = paramOption.appEnv;
     }
 
     // 获取exec参数
-    QString desktopExec;
-    desktopExec.clear();
+    QStringList desktopExec;
     if (!paramOption.exec.isEmpty()) {
         desktopExec = paramOption.exec;
     }
@@ -143,7 +142,7 @@ auto AppManager::Start(const RunParamOption &paramOption) -> Reply
         auto latestAppRef = repo->latestOfRef(appId, version);
         for (const auto &app : apps) {
             if (latestAppRef.toString() == app->container->packageName) {
-                app->exec(desktopExec, "", "");
+                app->exec(desktopExec, {}, "");
                 return;
             }
         }

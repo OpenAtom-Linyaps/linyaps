@@ -79,11 +79,11 @@ public:
 
     static auto load(linglong::repo::Repo *repo,
                      const linglong::package::Ref &ref,
-                     const QString &desktopExec) -> QSharedPointer<App>;
+                     const QStringList &desktopExec) -> QSharedPointer<App>;
 
     auto start() -> util::Error;
 
-    void exec(QString cmd, QString env, QString cwd);
+    void exec(const QStringList &cmd, const QStringList &env, QString cwd);
 
     void saveUserEnvList(const QStringList &userEnvList);
 

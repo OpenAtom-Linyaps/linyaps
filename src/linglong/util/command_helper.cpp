@@ -8,6 +8,8 @@
 
 #include "linglong/package/ref.h"
 
+#include <qprocess.h>
+
 #include <QDebug>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -174,19 +176,17 @@ int CommandHelper::namespaceEnter(pid_t pid, const QStringList &args)
     return waitpid(-1, nullptr, 0);
 }
 
-QStringList CommandHelper::getUserEnv(const QStringList &envList)
+QStringList CommandHelper::getUserEnv(const QStringList &filters)
 {
-    QStringList userEnvList;
-    auto bypassEnv = [&](const char *constEnv) {
-        if (qEnvironmentVariableIsSet(constEnv)) {
-            userEnvList.append(QString(constEnv) + "=" + QString(getenv(constEnv)));
+    auto sysEnv = QProcessEnvironment::systemEnvironment();
+    auto ret = QProcessEnvironment();
+    for (const auto &filter : filters) {
+        auto v = sysEnv.value(filter, "");
+        if (!v.isEmpty()) {
+            ret.insert(filter, v);
         }
-    };
-
-    for (auto &env : envList) {
-        bypassEnv(env.toStdString().c_str());
     }
-    return userEnvList;
+    return ret.toStringList();
 }
 
 int CommandHelper::execArgs(const std::vector<std::string> &args,

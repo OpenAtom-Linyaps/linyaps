@@ -48,8 +48,8 @@ public:
     void setProjectName(const QString &name);
     QString getProjectName() const;
 
-    void setExec(const QString &exec);
-    QString getExec() const;
+    void setExec(const QStringList &exec);
+    QStringList getExec() const;
 
     void setOffline(const bool &exec);
     bool getOffline() const;
@@ -65,7 +65,7 @@ public:
 private:
     QString projectRoot;
     QString projectName;
-    QString exec;
+    QStringList exec;
     bool offline;
 };
 

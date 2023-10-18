@@ -189,29 +189,30 @@ static int subcommandRun(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    auto exec = QString::fromStdString(args["exec"].asString());
-    linglong::package::Ref ref(appId);
     linglong::service::RunParamOption paramOption;
-    // appId format: org.deepin.calculator/1.2.6 in multi-version
-    QMap<QString, QString> paramMap;
+
+    // FIXME(black_desk): It seems that paramOption should directly take a ref.
+    linglong::package::Ref ref(appId);
     paramOption.appId = ref.appId;
     paramOption.version = ref.version;
 
-    if (!exec.isEmpty()) {
-        paramOption.exec = exec;
+    auto command = args["COMMAND"].asStringList();
+    for (const auto &arg : command) {
+        paramOption.exec.push_back(QString::fromStdString(arg));
     }
+
     // 获取用户环境变量
     QStringList envList = COMMAND_HELPER->getUserEnv(linglong::util::envList);
     if (!envList.isEmpty()) {
-        paramOption.appEnv = envList.join(",");
+        paramOption.appEnv = envList;
     }
 
     // 判断是否设置了no-proxy参数
     paramOption.noDbusProxy = args["--no-dbus-proxy"].asBool();
-    if (!args["--no-dbus-proxy"]) {
-        // FIX to do only deal with session bus
-        // const QString dbusProxyConfigPath = args["--dbus-proxy-cfg"];
-        // TODO: parse dbus filter info from config path
+
+    auto dbusProxyCfg = args["--dbus-proxy-cfg"].asString();
+    if (!dbusProxyCfg.empty()) {
+        // TODO(linxin): parse dbus filter info from config path
         // paramOption.busType = "session";
         // paramOption.filterName = parser.value(optNameFilter);
         // paramOption.filterPath = parser.value(optPathFilter);
@@ -220,14 +221,13 @@ static int subcommandRun(std::map<std::string, docopt::value> &args)
 
     // TODO: ll-cli 进沙箱环境
 
-    linglong::api::v1::dbus::AppManager1 appManager("org.deepin.linglong.AppManager",
-                                                    "/org/deepin/linglong/AppManager",
-                                                    QDBusConnection::sessionBus());
-    linglong::service::Reply reply;
+    auto appManager = linglong::api::v1::dbus::AppManager1("org.deepin.linglong.AppManager",
+                                                           "/org/deepin/linglong/AppManager",
+                                                           QDBusConnection::sessionBus());
     qDebug() << "send param" << paramOption.appId << "to service";
-    QDBusPendingReply<linglong::service::Reply> dbusReply = appManager.Start(paramOption);
+    auto dbusReply = appManager.Start(paramOption);
     dbusReply.waitForFinished();
-    reply = dbusReply.value();
+    auto reply = dbusReply.value();
     if (reply.code != 0) {
         qCritical().noquote() << "message:" << reply.message << ", errcode:" << reply.code;
         return -1;
@@ -243,14 +243,13 @@ static int subcommandExec(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    const auto cmd = QString::fromStdString(args["COMMAND"].asString());
-    if (cmd.isEmpty()) {
-        return -1;
-    }
-
     linglong::service::ExecParamOption execOption;
-    execOption.cmd = cmd;
     execOption.containerID = containerId;
+
+    auto &command = args["COMMAND"].asStringList();
+    for (const auto &arg : command) {
+        execOption.cmd.push_back(QString::fromStdString(arg));
+    }
 
     // const auto envs = parser.value(envArg).split(",",
     // #ifdef QT_DEPRECATED_VERSION_5_15

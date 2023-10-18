@@ -595,7 +595,10 @@ static int subcommandRepo(std::map<std::string, docopt::value> &args)
             return -1;
         }
         qInfo().noquote() << reply.message;
-    } else if (args["list"].asBool()) {
+        return 0;
+    }
+
+    if (args["list"].asBool()) {
         linglong::service::QueryReply reply;
         QDBusPendingReply<linglong::service::QueryReply> dbusReply =
           sysPackageManager.getRepoInfo();
@@ -604,11 +607,11 @@ static int subcommandRepo(std::map<std::string, docopt::value> &args)
 
         qInfo().noquote() << QString("%1%2").arg("Name", -10).arg("Url");
         qInfo().noquote() << QString("%1%2").arg(reply.message, -10).arg(reply.result);
-    } else {
-        qCritical() << "Invalid subcommand";
-        return -1;
+        return 0;
     }
-    return 0;
+
+    qCritical() << "This should never happen.";
+    return -1;
 }
 
 int main(int argc, char **argv)

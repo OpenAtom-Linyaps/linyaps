@@ -301,7 +301,9 @@ auto PackageManager::checkAppBase(const QString &runtime,
         return false;
     }
     const QString baseId = baseList.at(0);
-    const QString baseVer = baseList.at(1);
+    // FIXME(black_desk): this value comes from baseList will be "latest", which is not handled by
+    // remote server correctly for now. So I just remove it here.
+    const QString baseVer = "";
     const QString baseArch = baseList.at(2);
 
     bool retbase = true;

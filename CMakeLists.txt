@@ -88,6 +88,8 @@ if(LINGLONG_ENABLE_TESTING)
   enable_testing()
 endif()
 
+include(GNUInstallDirs)
+
 pfl_add_library(
   INTERNAL
   VERSION

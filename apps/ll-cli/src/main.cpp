@@ -18,16 +18,24 @@
 #include "linglong/util/sysinfo.h"
 #include "linglong/util/xdg.h"
 #include "linglong/utils/global/initialize.h"
+#include "linglong/package/ref.h"
+#include "linglong/runtime/dbus_proxy.h"
+#include "linglong/utils/error/error.h"
 
 #include <docopt.h>
+#include <qt5/QtCore/qjsondocument.h>
+#include <qt5/QtCore/qjsonobject.h>
 
 #include <QCommandLineOption>
 #include <QCommandLineParser>
 #include <QCoreApplication>
 
 #include <csignal>
+#include <cstddef>
 #include <fstream>
 #include <iostream>
+
+using namespace linglong::utils::error;
 
 static qint64 systemHelperPid = -1;
 
@@ -181,9 +189,39 @@ static void startDaemon(QString program, QStringList args = {}, qint64 *pid = nu
     process.startDetached(pid);
 }
 
-// Run an application.
-static int subcommandRun(std::map<std::string, docopt::value> &args)
+static auto parseDataFromProxyCfgFile(const QString &dbusProxyCfgPath) -> Result<DBusProxyConfig>
 {
+    auto dataFile = QFile(dbusProxyCfgPath);
+    dataFile.open(QIODevice::ReadOnly);
+    if (dataFile.isOpen()) {
+        return EWrap("proxy config data not found", nullptr);
+    }
+
+    auto data = dataFile.readAll();
+    if (data.size() == 0){
+        return EWrap("failed to read config data", nullptr);
+    }
+
+    QJsonParseError jsonError;
+    auto doc = QJsonDocument::fromJson(data, &jsonError);
+    if (jsonError.error) {
+        return Err(-1, jsonError.errorString());
+    }
+    DBusProxyConfig config;
+    if (!doc.isNull()) {
+        QJsonObject jsonObject = doc.object();
+        config.enable = jsonObject.value("enable").toBool();
+        config.busType = jsonObject.value("busType").toString();
+        config.appId  = jsonObject.value("appId").toString();
+        config.proxyPath = jsonObject.value("proxyPath").toString();
+        config.name = QStringList { jsonObject.value("name").toString() };
+        config.path = QStringList { jsonObject.value("path").toString() };
+        config.interface = QStringList { jsonObject.value("interface").toString() };
+    }
+    return config;
+}
+
+static int subcommandRun(std::map<std::string, docopt::value> &args) {
     const auto appId = QString::fromStdString(args["APP"].asString());
     if (appId.isEmpty()) {
         return -1;
@@ -212,11 +250,16 @@ static int subcommandRun(std::map<std::string, docopt::value> &args)
 
     auto dbusProxyCfg = args["--dbus-proxy-cfg"].asString();
     if (!dbusProxyCfg.empty()) {
+        auto data = parseDataFromProxyCfgFile(QString::fromStdString(dbusProxyCfg));
+        if (!data.has_value()){
+            qCritical() << "get empty data from cfg file";
+            return -1;
+        }
         // TODO(linxin): parse dbus filter info from config path
-        // paramOption.busType = "session";
-        // paramOption.filterName = parser.value(optNameFilter);
-        // paramOption.filterPath = parser.value(optPathFilter);
-        // paramOption.filterInterface = parser.value(optInterfaceFilter);
+        paramOption.busType = "session";
+        paramOption.filterName = data->name[0];
+        paramOption.filterPath = data->path[0];
+        paramOption.filterInterface = data->interface[0];
     }
 
     // TODO: ll-cli 进沙箱环境

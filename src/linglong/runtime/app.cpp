@@ -194,7 +194,7 @@ int App::prepare()
 
     if (r.process->args->empty()) {
         if (!desktopExec.isEmpty()) {
-            execArgs = util::splitExec(desktopExec);
+            execArgs = desktopExec;
         }
         auto args = std::vector<std::string>{};
         for (const auto &arg : execArgs) {
@@ -1280,8 +1280,8 @@ void App::exec(const QStringList &cmd, const QStringList &env, QString cwd)
     ocppi::runtime::config::types::Process p;
     p.env = r.process->env;
 
-    if (!env.isEmpty() && !env.isNull()) {
-        for (const auto &env : env.split(",")) {
+    if (!env.isEmpty()) {
+        for (const auto &env : env) {
             p.env = p.env.value_or(std::vector<std::string>());
             p.env->push_back(env.toStdString());
         }
@@ -1293,8 +1293,7 @@ void App::exec(const QStringList &cmd, const QStringList &env, QString cwd)
 
     p.cwd = cwd.toStdString();
 
-    auto appCmd = util::splitExec(cmd);
-    if (cmd.isEmpty() || cmd.isNull()) {
+    if (cmd.isEmpty()) {
         // find desktop file
         auto appRef = package::Ref(package->ref);
         QString appRootPath = repo->rootOfLayer(appRef);
@@ -1337,15 +1336,15 @@ void App::exec(const QStringList &cmd, const QStringList &env, QString cwd)
         }
         // 移除类似%u/%F类型参数
         execArgs.removeAt(execArgs.indexOf(QRegExp("^%\\w$")));
-        appCmd = execArgs;
+        const_cast<QStringList &>(cmd) = execArgs;
     }
 
-    if (appCmd.isEmpty()) {
+    if (cmd.isEmpty()) {
         return;
     }
 
     auto args = std::vector<std::string>{};
-    for (const auto &arg : appCmd) {
+    for (const auto &arg : cmd) {
         args.push_back(arg.toStdString());
     }
 

@@ -282,6 +282,10 @@ pfl_add_library(
   ./src/linglong/utils/serialize/yaml.h
   ./src/linglong/utils/xdg/desktop_entry.h
   ./src/linglong/utils/xdg/desktop_entry.cpp
+  ./src/linglong/cli/cli.h
+  ./src/linglong/cli/cli.cpp
+  ./src/linglong/printer/printer.h
+  ./src/linglong/printer/printer.cpp
   APPS
   ll-builder
   ll-cli
@@ -307,7 +311,8 @@ pfl_add_library(
   ocppi::runtime
   tl::expected
   tl::expected
-  yaml-cpp::yaml-cpp)
+  yaml-cpp::yaml-cpp
+  docopt)
 
 function(
   linglong_add_dbus_adaptor

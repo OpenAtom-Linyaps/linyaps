@@ -130,7 +130,7 @@ private:
     static auto toJSON(const ocppi::runtime::config::types::Config &) -> nlohmann::json;
     static auto toJSON(const ocppi::runtime::config::types::Process &) -> nlohmann::json;
 
-    QString desktopExec = nullptr;
+    QStringList desktopExec;
     ParamStringMap envMap;
     ParamStringMap runParamMap;
 

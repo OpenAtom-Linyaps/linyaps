@@ -1,14 +1,7 @@
 #include "cli.h"
-#include "linglong/utils/error/error.h"
 
 using namespace linglong::utils::error;
-
-Cli::Cli(std::map<std::string, docopt::value> &args, std::unique_ptr<Printer> printer): 
-m_args(args),
-p(std::move(printer))
-{
-
-};
+using namespace linglong::cli;
 
 /**
  * @brief 处理安装中断请求
@@ -34,7 +27,7 @@ static auto parseDataFromProxyCfgFile(const QString &dbusProxyCfgPath) -> Result
     }
 
     auto data = dataFile.readAll();
-    if (data.size() == 0){
+    if (data.size() == 0) {
         return EWrap("failed to read config data", nullptr);
     }
 
@@ -48,13 +41,28 @@ static auto parseDataFromProxyCfgFile(const QString &dbusProxyCfgPath) -> Result
         QJsonObject jsonObject = doc.object();
         config.enable = jsonObject.value("enable").toBool();
         config.busType = jsonObject.value("busType").toString();
-        config.appId  = jsonObject.value("appId").toString();
+        config.appId = jsonObject.value("appId").toString();
         config.proxyPath = jsonObject.value("proxyPath").toString();
-        config.name = QStringList { jsonObject.value("name").toString() };
-        config.path = QStringList { jsonObject.value("path").toString() };
-        config.interface = QStringList { jsonObject.value("interface").toString() };
+        config.name = QStringList{ jsonObject.value("name").toString() };
+        config.path = QStringList{ jsonObject.value("path").toString() };
+        config.interface = QStringList{ jsonObject.value("interface").toString() };
     }
     return config;
+}
+
+Cli::Cli(std::map<std::string, docopt::value> &args,
+         std::shared_ptr<Printer> printer,
+         std::shared_ptr<Factory<linglong::api::v1::dbus::AppManager1>> appfn,
+         std::shared_ptr<Factory<OrgDeepinLinglongPackageManager1Interface>> pkgfn,
+         std::shared_ptr<Factory<linglong::util::CommandHelper>> cmdhelperfn,
+         std::shared_ptr<Factory<linglong::service::PackageManager>> pkgmngfn)
+    : m_args(args)
+    , p(printer)
+    , appfn(appfn)
+    , pkgfn(pkgfn)
+    , cmdhelperfn(cmdhelperfn)
+    , pkgmngfn(pkgmngfn)
+{
 }
 
 int Cli::run()
@@ -73,40 +81,40 @@ int Cli::run()
     paramOption.version = ref.version;
 
     auto command = m_args["COMMAND"].asStringList();
-    for (const auto &arg : command) {
-        paramOption.exec.push_back(QString::fromStdString(arg));
+    if (!command.empty()) {
+        for (const auto &arg : command) {
+            paramOption.exec.push_back(QString::fromStdString(arg));
+        }
     }
 
     // 获取用户环境变量
-    QStringList envList = COMMAND_HELPER->getUserEnv(linglong::util::envList);
+    QStringList envList = this->cmdhelperfn->builder()->getUserEnv(linglong::util::envList);
     if (!envList.isEmpty()) {
         paramOption.appEnv = envList;
     }
-
     // 判断是否设置了no-proxy参数
     paramOption.noDbusProxy = m_args["--no-dbus-proxy"].asBool();
 
-    auto dbusProxyCfg = m_args["--dbus-proxy-cfg"].asString();
-    if (!dbusProxyCfg.empty()) {
-        auto data = parseDataFromProxyCfgFile(QString::fromStdString(dbusProxyCfg));
-        if (!data.has_value()){
-            p->printError(-1, "get empty data from cfg file");
-            return -1;
+    if (m_args["--dbus-proxy-cfg"].isString()) {
+        auto dbusProxyCfg = QString::fromStdString(m_args["--dbus-proxy-cfg"].asString());
+        if (!dbusProxyCfg.isEmpty()) {
+            auto data = parseDataFromProxyCfgFile(dbusProxyCfg);
+            if (!data.has_value()) {
+                p->printError(-2, "get empty data from cfg file");
+                return -1;
+            }
+            // TODO(linxin): parse dbus filter info from config path
+            paramOption.busType = "session";
+            paramOption.filterName = data->name[0];
+            paramOption.filterPath = data->path[0];
+            paramOption.filterInterface = data->interface[0];
         }
-        // TODO(linxin): parse dbus filter info from config path
-        paramOption.busType = "session";
-        paramOption.filterName = data->name[0];
-        paramOption.filterPath = data->path[0];
-        paramOption.filterInterface = data->interface[0];
     }
 
     // TODO: ll-cli 进沙箱环境
-
-    auto appManager = linglong::api::v1::dbus::AppManager1("org.deepin.linglong.AppManager",
-                                                           "/org/deepin/linglong/AppManager",
-                                                           QDBusConnection::sessionBus());
+    auto appManagerObj = appfn->builder();
     qDebug() << "send param" << paramOption.appId << "to service";
-    auto dbusReply = appManager.Start(paramOption);
+    auto dbusReply = appManagerObj->Start(paramOption);
     dbusReply.waitForFinished();
     auto reply = dbusReply.value();
     if (reply.code != 0) {
@@ -116,9 +124,17 @@ int Cli::run()
     return 0;
 }
 
-int Cli::exec() 
+int Cli::exec()
 {
-    const auto containerId = QString::fromStdString(m_args["PAGODA"].asString());
+    QString containerId;
+    if (m_args["PAGODA"].isString()) {
+        containerId = QString::fromStdString(m_args["PAGODA"].asString());
+    }
+
+    if (m_args["APP"].isString()) {
+        containerId = QString::fromStdString(m_args["APP"].asString());
+    }
+
     if (containerId.isEmpty()) {
         p->printError(-1, "failed to get container id");
         return -1;
@@ -127,15 +143,15 @@ int Cli::exec()
     linglong::service::ExecParamOption execOption;
     execOption.containerID = containerId;
 
-    auto &command = m_args["COMMAND"].asStringList();
-    for (const auto &arg : command) {
-        execOption.cmd.push_back(QString::fromStdString(arg));
+    if (m_args["COMMAND"].isStringList()) {
+        auto &command = m_args["COMMAND"].asStringList();
+        for (const auto &arg : command) {
+            execOption.cmd.push_back(QString::fromStdString(arg));
+        }
     }
 
-    linglong::api::v1::dbus::AppManager1 appManager("org.deepin.linglong.AppManager",
-                                                    "/org/deepin/linglong/AppManager",
-                                                    QDBusConnection::sessionBus());
-    const auto dbusReply = appManager.Exec(execOption);
+    auto appManagerObj = this->appfn->builder();
+    const auto dbusReply = appManagerObj->Exec(execOption);
     const auto reply = dbusReply.value();
     if (reply.code != STATUS_CODE(kSuccess)) {
         p->printError(reply.code, reply.message);
@@ -146,21 +162,32 @@ int Cli::exec()
 
 int Cli::enter()
 {
-    const auto containerId = QString::fromStdString(m_args["PAGODA"].asString());
+    QString containerId;
+    if (m_args["PAGODA"].isString()) {
+        containerId = QString::fromStdString(m_args["PAGODA"].asString());
+    }
+
+    if (m_args["APP"].isString()) {
+        containerId = QString::fromStdString(m_args["APP"].asString());
+    }
+
     if (containerId.isEmpty()) {
         p->printError(-1, "failed to get container id");
         return -1;
     }
 
-    const auto cmd = QString::fromStdString(m_args["COMMAND"].asString());
-    if (cmd.isEmpty()) {
-        p->printError(-1, "failed to get command list");
-        return -1;
+    QString cmd;
+    if (m_args["COMMAND"].isString()) {
+        cmd = QString::fromStdString(m_args["COMMAND"].asString());
+        if (cmd.isEmpty()) {
+            p->printError(-1, "failed to get command list");
+            return -1;
+        }
     }
 
     const auto pid = containerId.toInt();
-    
-    int reply = COMMAND_HELPER->namespaceEnter(pid, QStringList{ cmd });
+
+    int reply = this->cmdhelperfn->builder()->namespaceEnter(pid, QStringList{ cmd });
     if (reply == -1) {
         p->printError(-1, "failed to enter namespace");
         return -1;
@@ -168,13 +195,11 @@ int Cli::enter()
     return 0;
 }
 
-int  Cli::ps()
+int Cli::ps()
 {
-    linglong::api::v1::dbus::AppManager1 appManager("org.deepin.linglong.AppManager",
-                                                    "/org/deepin/linglong/AppManager",
-                                                    QDBusConnection::sessionBus());
+    auto appManagerObj = this->appfn->builder();
     const auto outputFormat = m_args["--json"].asBool() ? "json" : "nojson";
-    const auto replyString = appManager.ListContainer().value().result;
+    const auto replyString = appManagerObj->ListContainer().value().result;
 
     QList<QSharedPointer<Container>> containerList;
     const auto doc = QJsonDocument::fromJson(replyString.toUtf8(), nullptr);
@@ -185,24 +210,31 @@ int  Cli::ps()
             containerList.push_back(con);
         }
     }
-    COMMAND_HELPER->showContainer(containerList, outputFormat);
+    this->cmdhelperfn->builder()->showContainer(containerList, outputFormat);
     return 0;
 }
 
 int Cli::kill()
 {
-    const auto containerId = QString::fromStdString(m_args["PAGODA"].asString());
+    QString containerId;
+    if (m_args["PAGODA"].isString()) {
+        containerId = QString::fromStdString(m_args["PAGODA"].asString());
+    }
+
+    if (m_args["APP"].isString()) {
+        containerId = QString::fromStdString(m_args["APP"].asString());
+    }
+
     if (containerId.isEmpty()) {
         p->printError(-1, "failed to get container id");
         return -1;
     }
     // TODO: show kill result
-    linglong::api::v1::dbus::AppManager1 appManager("org.deepin.linglong.AppManager",
-                                                    "/org/deepin/linglong/AppManager",
-                                                    QDBusConnection::sessionBus());
-    QDBusPendingReply<linglong::service::Reply> dbusReply = appManager.Stop(containerId);
+    auto appManagerObj = this->appfn->builder();
+    QDBusPendingReply<linglong::service::Reply> dbusReply = appManagerObj->Stop(containerId);
     dbusReply.waitForFinished();
     linglong::service::Reply reply = dbusReply.value();
+    qDebug() << reply.message;
     if (reply.code != STATUS_CODE(kErrorPkgKillSuccess)) {
         p->printError(reply.code, reply.message);
         return -1;
@@ -214,150 +246,153 @@ int Cli::kill()
 
 int Cli::install()
 {
-    OrgDeepinLinglongPackageManager1Interface sysPackageManager(
-      "org.deepin.linglong.PackageManager",
-      "/org/deepin/linglong/PackageManager",
-      QDBusConnection::systemBus());
-
+    auto systemPkgObj = this->pkgfn->builder();
     // 收到中断信号后恢复操作
     signal(SIGINT, doIntOperate);
     // 设置 24 h超时
-    sysPackageManager.setTimeout(1000 * 60 * 60 * 24);
+    systemPkgObj->setTimeout(1000 * 60 * 60 * 24);
     // appId format: org.deepin.calculator/1.2.6 in multi-version
     linglong::service::InstallParamOption installParamOption;
-    const auto appId = QString::fromStdString(m_args["APP"].asString());
-    linglong::package::Ref ref(appId);
-    // 增加 channel/module
-    installParamOption.channel = ref.channel;
-    installParamOption.appModule = ref.module;
-    installParamOption.appId = ref.appId;
-    installParamOption.version = ref.version;
-    installParamOption.arch = ref.arch;
+    auto tiers = m_args["TIER"].asStringList();
+    if (tiers.empty()) {
+        p->printError(-1, "failed to get app id");
+        return -1;
+    }
+    for (auto &tier : tiers) {
+        linglong::package::Ref ref(QString::fromStdString(tier));
+        // 增加 channel/module
+        installParamOption.channel = ref.channel;
+        installParamOption.appModule = ref.module;
+        installParamOption.appId = ref.appId;
+        installParamOption.version = ref.version;
+        installParamOption.arch = ref.arch;
 
-    linglong::service::Reply reply;
-    qInfo().noquote() << "install" << ref.appId << ", please wait a few minutes...";
-    if (!m_args["--no-dbus"].asBool()) {
-        QDBusPendingReply<linglong::service::Reply> dbusReply =
-        sysPackageManager.Install(installParamOption);
-        dbusReply.waitForFinished();
-        reply = dbusReply.value();
-        QThread::sleep(1);
-        // 查询一次进度
-        dbusReply = sysPackageManager.GetDownloadStatus(installParamOption, 0);
-        dbusReply.waitForFinished();
-        reply = dbusReply.value();
-        bool disProgress = false;
-        // 隐藏光标
-        std::cout << "\033[?25l";
-        while (reply.code == STATUS_CODE(kPkgInstalling)) {
-            std::cout << "\r\33[K" << reply.message.toStdString();
-            std::cout.flush();
-            QThread::sleep(1);
-            dbusReply = sysPackageManager.GetDownloadStatus(installParamOption, 0);
+        linglong::service::Reply reply;
+        qInfo().noquote() << "install" << ref.appId << ", please wait a few minutes...";
+        if (!m_args["--no-dbus"].asBool()) {
+            QDBusPendingReply<linglong::service::Reply> dbusReply =
+              systemPkgObj->Install(installParamOption);
             dbusReply.waitForFinished();
             reply = dbusReply.value();
-            disProgress = true;
-        }
-        // 显示光标
-        std::cout << "\033[?25h";
-        if (disProgress) {
-            std::cout << std::endl;
-        }
-        if (reply.code != STATUS_CODE(kPkgInstallSuccess)) {
-            if (reply.message.isEmpty()) {
-                reply.message = "unknown err";
-                reply.code = -1;
+            qDebug() << reply.message;
+            QThread::sleep(1);
+            // 查询一次进度
+            dbusReply = systemPkgObj->GetDownloadStatus(installParamOption, 0);
+            dbusReply.waitForFinished();
+            reply = dbusReply.value();
+            bool disProgress = false;
+            // 隐藏光标
+            std::cout << "\033[?25l";
+            while (reply.code == STATUS_CODE(kPkgInstalling)) {
+                std::cout << "\r\33[K" << reply.message.toStdString();
+                std::cout.flush();
+                QThread::sleep(1);
+                dbusReply = systemPkgObj->GetDownloadStatus(installParamOption, 0);
+                dbusReply.waitForFinished();
+                reply = dbusReply.value();
+                disProgress = true;
             }
-            p->printError(reply.code, reply.message);
-            return -1;
+            // 显示光标
+            std::cout << "\033[?25h";
+            if (disProgress) {
+                std::cout << std::endl;
+            }
+            if (reply.code != STATUS_CODE(kPkgInstallSuccess)) {
+                if (reply.message.isEmpty()) {
+                    reply.message = "unknown err";
+                    reply.code = -1;
+                }
+                p->printError(reply.code, reply.message);
+                return -1;
+            } else {
+                qInfo().noquote() << "message:" << reply.message;
+            }
         } else {
-            qInfo().noquote() << "message:" << reply.message;
+            auto pkgMngObj = this->pkgmngfn->builder();
+            pkgMngObj->setNoDBusMode(true);
+            reply = pkgMngObj->Install(installParamOption);
+            pkgMngObj->pool->waitForDone(-1);
+            qInfo().noquote() << "install " << installParamOption.appId << " done";
         }
-    } else {
-        linglong::service::PackageManager packageManager;
-        packageManager.setNoDBusMode(true);
-        reply = packageManager.Install(installParamOption);
-        packageManager.pool->waitForDone(-1);
-        qInfo().noquote() << "install " << installParamOption.appId << " done";
     }
     return 0;
 }
 
 int Cli::upgrade()
 {
-    OrgDeepinLinglongPackageManager1Interface sysPackageManager(
-      "org.deepin.linglong.PackageManager",
-      "/org/deepin/linglong/PackageManager",
-      QDBusConnection::systemBus());
+    auto systemPkgObj = this->pkgfn->builder();
     linglong::service::ParamOption paramOption;
-    const auto appId = QString::fromStdString(m_args["APP"].asString());
-    if (appId.isEmpty()) {
+    auto tiers = m_args["TIER"].asStringList();
+
+    if (tiers.empty()) {
         p->printError(-1, "failed to get app id");
         return -1;
     }
-    linglong::package::Ref ref(appId);
-    paramOption.arch = linglong::util::hostArch();
-    paramOption.version = ref.version;
-    paramOption.appId = ref.appId;
-    // 增加 channel/module
-    paramOption.channel = ref.channel;
-    paramOption.appModule = ref.module;
-    sysPackageManager.setTimeout(1000 * 60 * 60 * 24);
-    qInfo().noquote() << "update" << paramOption.appId << ", please wait a few minutes...";
-    QDBusPendingReply<linglong::service::Reply> dbusReply = sysPackageManager.Update(paramOption);
-    dbusReply.waitForFinished();
-    linglong::service::Reply reply;
-    reply = dbusReply.value();
-    if (reply.code == STATUS_CODE(kPkgUpdating)) {
-        signal(SIGINT, doIntOperate);
-        QThread::sleep(1);
-        dbusReply = sysPackageManager.GetDownloadStatus(paramOption, 1);
+
+    for (auto &tier : tiers) {
+        linglong::package::Ref ref(QString::fromStdString(tier));
+        paramOption.arch = linglong::util::hostArch();
+        paramOption.version = ref.version;
+        paramOption.appId = ref.appId;
+        // 增加 channel/module
+        paramOption.channel = ref.channel;
+        paramOption.appModule = ref.module;
+        systemPkgObj->setTimeout(1000 * 60 * 60 * 24);
+        qInfo().noquote() << "upgrade" << paramOption.appId << ", please wait a few minutes...";
+        QDBusPendingReply<linglong::service::Reply> dbusReply = systemPkgObj->Update(paramOption);
         dbusReply.waitForFinished();
+        linglong::service::Reply reply;
         reply = dbusReply.value();
-        bool disProgress = false;
-        // 隐藏光标
-        std::cout << "\033[?25l";
-        while (reply.code == STATUS_CODE(kPkgUpdating)) {
-            std::cout << "\r\33[K" << reply.message.toStdString();
-            std::cout.flush();
+        if (reply.code == STATUS_CODE(kPkgUpdating)) {
+            signal(SIGINT, doIntOperate);
             QThread::sleep(1);
-            dbusReply = sysPackageManager.GetDownloadStatus(paramOption, 1);
+            dbusReply = systemPkgObj->GetDownloadStatus(paramOption, 1);
             dbusReply.waitForFinished();
             reply = dbusReply.value();
-            disProgress = true;
+            bool disProgress = false;
+            // 隐藏光标
+            std::cout << "\033[?25l";
+            while (reply.code == STATUS_CODE(kPkgUpdating)) {
+                std::cout << "\r\33[K" << reply.message.toStdString();
+                std::cout.flush();
+                QThread::sleep(1);
+                dbusReply = systemPkgObj->GetDownloadStatus(paramOption, 1);
+                dbusReply.waitForFinished();
+                reply = dbusReply.value();
+                disProgress = true;
+            }
+            // 显示光标
+            std::cout << "\033[?25h";
+            if (disProgress) {
+                std::cout << std::endl;
+            }
         }
-        // 显示光标
-        std::cout << "\033[?25h";
-        if (disProgress) {
-            std::cout << std::endl;
+        if (reply.code != STATUS_CODE(kErrorPkgUpdateSuccess)) {
+            p->printError(-1, reply.message);
+            return -1;
         }
+        qInfo().noquote() << "message:" << reply.message;
     }
-    if (reply.code != STATUS_CODE(kErrorPkgUpdateSuccess)) {
-        p->printError(reply.code, reply.message);
-        return -1;
-    }
-    qInfo().noquote() << "message:" << reply.message;
+
     return 0;
 }
 
 int Cli::search()
 {
-    OrgDeepinLinglongPackageManager1Interface sysPackageManager(
-      "org.deepin.linglong.PackageManager",
-      "/org/deepin/linglong/PackageManager",
-      QDBusConnection::systemBus());
-
+    auto systemPkgObj = this->pkgfn->builder();
     linglong::service::QueryParamOption paramOption;
-    const auto appId = QString::fromStdString(m_args["APP"].asString());
+    QString appId;
+    if (m_args["TEXT"].isString()) {
+        appId = QString::fromStdString(m_args["TEXT"].asString());
+    }
     if (appId.isEmpty()) {
         p->printError(-1, "faied to get app id");
         return -1;
     }
     paramOption.force = true;
     paramOption.appId = appId;
-    sysPackageManager.setTimeout(1000 * 60 * 60 * 24);
-    QDBusPendingReply<linglong::service::QueryReply> dbusReply =
-      sysPackageManager.Query(paramOption);
+    systemPkgObj->setTimeout(1000 * 60 * 60 * 24);
+    QDBusPendingReply<linglong::service::QueryReply> dbusReply = systemPkgObj->Query(paramOption);
     dbusReply.waitForFinished();
     linglong::service::QueryReply reply = dbusReply.value();
     if (reply.code != STATUS_CODE(kErrorPkgQuerySuccess)) {
@@ -373,75 +408,77 @@ int Cli::search()
         return -1;
     }
 
-    // printAppInfo(appMetaInfoList);
     p->printResult(appMetaInfoList);
     return -1;
 }
 
 int Cli::uninstall()
 {
-    OrgDeepinLinglongPackageManager1Interface sysPackageManager(
-        "org.deepin.linglong.PackageManager",
-        "/org/deepin/linglong/PackageManager",
-        QDBusConnection::systemBus());
+    auto systemPkgObj = this->pkgfn->builder();
 
-    sysPackageManager.setTimeout(1000 * 60 * 60 * 24);
+    systemPkgObj->setTimeout(1000 * 60 * 60 * 24);
     QDBusPendingReply<linglong::service::Reply> dbusReply;
     linglong::service::UninstallParamOption paramOption;
     // appId format: org.deepin.calculator/1.2.6 in multi-version
     // QStringList appInfoList = appInfo.split("/");
-    const QString appId = QString::fromStdString(m_args["APP"].asString());
-    linglong::package::Ref ref(appId);
-    paramOption.version = ref.version;
-    paramOption.appId = appId;
-    paramOption.channel = ref.channel;
-    paramOption.appModule = ref.module;
-    paramOption.delAppData = m_args["--prune"].asBool();
-    linglong::service::Reply reply;
-    qInfo().noquote() << "uninstall" << paramOption.appId << ", please wait a few minutes...";
-    paramOption.delAllVersion = m_args["--all"].asBool();
-    if (m_args["--no-dbus"].asBool()) {
-        linglong::service::PackageManager packageManager;
-        packageManager.setNoDBusMode(true);
-        reply = packageManager.Uninstall(paramOption);
+
+    auto tiers = m_args["TIER"].asStringList();
+
+    for (auto &tier : tiers) {
+        linglong::package::Ref ref(QString::fromStdString(tier));
+        paramOption.version = ref.version;
+        paramOption.appId = ref.appId;
+        paramOption.channel = ref.channel;
+        paramOption.appModule = ref.module;
+        paramOption.delAppData = m_args["--prune"].asBool();
+        linglong::service::Reply reply;
+        qInfo().noquote() << "uninstall" << paramOption.appId << ", please wait a few minutes...";
+        paramOption.delAllVersion = m_args["--all"].asBool();
+        if (m_args["--no-dbus"].asBool()) {
+            auto pkgMngObj = this->pkgmngfn->builder();
+            pkgMngObj->setNoDBusMode(true);
+            reply = pkgMngObj->Uninstall(paramOption);
+            if (reply.code != STATUS_CODE(kPkgUninstallSuccess)) {
+                p->printError(reply.code, reply.message);
+                return -1;
+            } else {
+                qInfo().noquote() << "uninstall " << paramOption.appId << " success";
+            }
+            return 0;
+        }
+        dbusReply = systemPkgObj->Uninstall(paramOption);
+        dbusReply.waitForFinished();
+        reply = dbusReply.value();
+
         if (reply.code != STATUS_CODE(kPkgUninstallSuccess)) {
             p->printError(reply.code, reply.message);
             return -1;
-        } else {
-            qInfo().noquote() << "uninstall " << paramOption.appId << " success";
         }
-        return 0;
+        qInfo().noquote() << "message:" << reply.message;
     }
-    dbusReply = sysPackageManager.Uninstall(paramOption);
-    dbusReply.waitForFinished();
-    reply = dbusReply.value();
 
-    if (reply.code != STATUS_CODE(kPkgUninstallSuccess)) {
-        p->printError(reply.code, reply.message);
-        return -1;
-    }
-    qInfo().noquote() << "message:" << reply.message;
     return 0;
 }
 
-int Cli::list() 
+int Cli::list()
 {
-    OrgDeepinLinglongPackageManager1Interface sysPackageManager(
-      "org.deepin.linglong.PackageManager",
-      "/org/deepin/linglong/PackageManager",
-      QDBusConnection::systemBus());
+    auto systemPkgObj = this->pkgfn->builder();
 
     linglong::service::QueryParamOption paramOption;
-    linglong::package::Ref ref(QString::fromStdString(m_args["APP"].asString()));
+    QString appId;
+    if (m_args["APP"].isString()) {
+        appId = QString::fromStdString(m_args["APP"].asString());
+    }
+    linglong::package::Ref ref(appId);
     paramOption.appId = ref.appId;
     QList<QSharedPointer<linglong::package::AppMetaInfo>> appMetaInfoList;
     linglong::service::QueryReply reply;
     if (m_args["--no-dbus"].asBool()) {
-        linglong::service::PackageManager packageManager;
-        reply = packageManager.Query(paramOption);
+        auto pkgMngObj = this->pkgmngfn->builder();
+        reply = pkgMngObj->Query(paramOption);
     } else {
         QDBusPendingReply<linglong::service::QueryReply> dbusReply =
-          sysPackageManager.Query(paramOption);
+          systemPkgObj->Query(paramOption);
         // 默认超时时间为25s
         dbusReply.waitForFinished();
         reply = dbusReply.value();
@@ -452,25 +489,28 @@ int Cli::list()
     return 0;
 }
 
-int  Cli::repo()
+int Cli::repo()
 {
-    OrgDeepinLinglongPackageManager1Interface sysPackageManager(
-      "org.deepin.linglong.PackageManager",
-      "/org/deepin/linglong/PackageManager",
-      QDBusConnection::systemBus());
+    auto systemPkgObj = this->pkgfn->builder();
 
     if (m_args["modify"].asBool()) {
-        const auto name = QString::fromStdString(m_args["--name"].asString());
-        const auto url = QString::fromStdString(m_args["URL"].asString());
+        QString name;
+        QString url;
+        if (m_args["--name"].isString()) {
+            name = QString::fromStdString(m_args["--name"].asString());
+        }
+        if (m_args["URL"].isString()) {
+            name = QString::fromStdString(m_args["URL"].asString());
+        }
         linglong::service::Reply reply;
         if (!m_args["-no-dbus-proxy"].asBool()) {
             QDBusPendingReply<linglong::service::Reply> dbusReply =
-              sysPackageManager.ModifyRepo(name, url);
+              systemPkgObj->ModifyRepo(name, url);
             dbusReply.waitForFinished();
             reply = dbusReply.value();
         } else {
-            linglong::service::PackageManager packageManager;
-            reply = packageManager.ModifyRepo(name, url);
+            auto pkgMngObj = this->pkgmngfn->builder();
+            reply = pkgMngObj->ModifyRepo(name, url);
         }
         if (reply.code != STATUS_CODE(kErrorModifyRepoSuccess)) {
             p->printError(reply.code, reply.message);
@@ -481,8 +521,7 @@ int  Cli::repo()
     }
 
     linglong::service::QueryReply reply;
-    QDBusPendingReply<linglong::service::QueryReply> dbusReply =
-    sysPackageManager.getRepoInfo();
+    QDBusPendingReply<linglong::service::QueryReply> dbusReply = systemPkgObj->getRepoInfo();
     dbusReply.waitForFinished();
     reply = dbusReply.value();
 

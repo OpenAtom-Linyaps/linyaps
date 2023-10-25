@@ -37,6 +37,8 @@ class PackageManager : public QObject, protected QDBusContext
 public:
     PackageManager();
 
+    virtual ~PackageManager() = default;
+
     PackageManager(const PackageManager &) = delete;
     PackageManager(PackageManager &&) = delete;
     auto operator=(const PackageManager &) -> PackageManager & = delete;
@@ -63,7 +65,7 @@ public Q_SLOTS:
      *          code:状态码 \n
      *          message:信息
      */
-    auto ModifyRepo(const QString &name, const QString &url) -> Reply;
+    virtual auto ModifyRepo(const QString &name, const QString &url) -> Reply;
 
     /**
      * @brief 查询软件包下载安装状态
@@ -86,7 +88,7 @@ public Q_SLOTS:
      *          code:状态码 \n
      *          message:信息
      */
-    auto Install(const InstallParamOption &installParamOption) -> Reply;
+    virtual auto Install(const InstallParamOption &installParamOption) -> Reply;
 
     /**
      * @brief 卸载软件包
@@ -95,7 +97,7 @@ public Q_SLOTS:
      *
      * @return Reply 同Install
      */
-    auto Uninstall(const UninstallParamOption &paramOption) -> Reply;
+    virtual auto Uninstall(const UninstallParamOption &paramOption) -> Reply;
 
     /**
      * @brief 更新软件包
@@ -116,7 +118,7 @@ public Q_SLOTS:
      *         message 状态信息 \n
      *         result 查询结果
      */
-    auto Query(const QueryParamOption &paramOption) -> QueryReply;
+    virtual auto Query(const QueryParamOption &paramOption) -> QueryReply;
 
 public:
     // FIXME: ??? why this public?
@@ -127,7 +129,7 @@ public:
      *
      * @param enable true:nodbus false:dbus
      */
-    void setNoDBusMode(bool enable);
+    virtual void setNoDBusMode(bool enable);
 
 private:
     /*

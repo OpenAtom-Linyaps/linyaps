@@ -108,6 +108,8 @@ endif()
 
 include(GNUInstallDirs)
 
+add_subdirectory(tools/qdbusxml2cpp)
+
 pfl_add_library(
   INTERNAL
   VERSION
@@ -286,6 +288,8 @@ pfl_add_library(
   ./src/linglong/cli/cli.cpp
   ./src/linglong/printer/printer.h
   ./src/linglong/printer/printer.cpp
+  ./src/linglong/utils/global/factory.h
+  ./src/linglong/utils/global/factory.cpp
   APPS
   ll-builder
   ll-cli
@@ -323,6 +327,8 @@ function(
   basename
   classname)
   set(DBUS_ADAPTOR_SOURCE)
+
+  set(Qt5DBus_QDBUSXML2CPP_EXECUTABLE qdbusxml2cpp)
   qt5_add_dbus_adaptor(DBUS_ADAPTOR_SOURCE ${xml} ${includes} ${parent_class}
                        ${basename} ${classname})
   # FIXME(black_desk): `qt5_add_dbus_adaptor` will use basename as include and
@@ -406,6 +412,7 @@ function(linglong_add_dbus_interface target xml basename) # include
   endif()
 
   set(INTERFACE_SOURCES)
+  set(Qt5DBus_QDBUSXML2CPP_EXECUTABLE qdbusxml2cpp)
   qt5_add_dbus_interface(INTERFACE_SOURCES ${xml} ${basename})
   target_sources(${target} PRIVATE ${INTERFACE_SOURCES})
 endfunction()

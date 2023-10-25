@@ -35,6 +35,13 @@ pfl_add_executable(
   ./src/utils/serialize/TestStruct.h
   ./src/utils/serialize/yaml.cpp
   ./src/utils/xdg/desktop_entry_test.cpp
+  ./src/module/cli/cli_test.cpp
+  ./src/module/cli/fake_app_manager.h
+  ./src/module/cli/fake_command_helper.h
+  ./src/module/cli/fake_package_manager.h
+  ./src/module/cli/fake_printer.h
+  ./src/module/cli/fake_system_package.h
+  ./src/module/cli/dbus_reply.h
   COMPILE_FEATURES
   PUBLIC
   cxx_std_17
@@ -42,7 +49,9 @@ pfl_add_executable(
   PUBLIC
   GTest::gtest
   GTest::gtest_main
-  linglong)
+  linglong
+  Qt::DBusPrivate
+  )
 
 include(GoogleTest)
 gtest_discover_tests(linglong__tests WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})

@@ -825,6 +825,7 @@ auto App::stageUser(const QString &appId) -> int
         idMapping.hostID = uidMap.value(0);
         idMapping.containerID = uidMap.value(1);
         idMapping.size = uidMap.value(2);
+        r.linux_->uidMappings = r.linux_->uidMappings.value_or( std::vector<ocppi::runtime::config::types::IdMapping>{});
         r.linux_->uidMappings->push_back(idMapping);
     }
 
@@ -836,6 +837,7 @@ auto App::stageUser(const QString &appId) -> int
         idMapping.hostID = gidMap.value(0);
         idMapping.containerID = gidMap.value(1);
         idMapping.size = gidMap.value(2);
+        r.linux_->gidMappings = r.linux_->gidMappings.value_or( std::vector<ocppi::runtime::config::types::IdMapping>{});
         r.linux_->gidMappings->push_back(idMapping);
     }
 

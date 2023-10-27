@@ -560,12 +560,13 @@ auto App::stageHost() -> int
 
 void App::stateDBusProxyArgs(bool enable, const QString &appId, const QString &proxyPath)
 {
-    auto &anno = *r.annotations;
-    anno["dbusProxyInfo"]["appId"] = appId.toStdString();
-    anno["dbusProxyInfo"]["enable"] = enable;
     if (!enable) {
         return;
     }
+
+    auto &anno = *r.annotations;
+    anno["dbusProxyInfo"]["enable"] = enable;
+    anno["dbusProxyInfo"]["appId"] = appId.toStdString();
     anno["dbusProxyInfo"]["busType"] = runParamMap[linglong::util::kKeyBusType].toStdString();
     anno["dbusProxyInfo"]["proxyPath"] = proxyPath.toStdString();
     // FIX to do load filter from yaml

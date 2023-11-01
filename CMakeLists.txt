@@ -209,6 +209,8 @@ pfl_add_library(
   ./src/linglong/repo/repo_client.h
   ./src/linglong/repo/vfs_repo.cpp
   ./src/linglong/repo/vfs_repo.h
+  ./src/linglong/repo/repo_command.h
+  ./src/linglong/repo/repo_command.cpp
   ./src/linglong/runtime/app.cpp
   ./src/linglong/runtime/to_json.cpp
   ./src/linglong/runtime/resource/app_configs.qrc

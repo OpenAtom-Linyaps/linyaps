@@ -7,7 +7,7 @@
 #include "linglong/job_manager/job_manager.h"
 
 #include "linglong/job_manager/job.h"
-#include "linglong/repo/ostree_repohelper.h"
+#include "linglong/repo/ostree_repo.h"
 
 #include <QDBusConnection>
 #include <QProcess>
@@ -15,6 +15,12 @@
 #include <QUuid>
 
 namespace linglong::job_manager {
+
+JobManager::JobManager(linglong::repo::OSTreeRepo &ostreeRepo, QObject *parent)
+    : QObject(parent)
+    , ostreeRepo(ostreeRepo)
+{
+}
 
 QString JobManager::CreateJob(std::function<void()> f)
 {
@@ -35,7 +41,7 @@ void JobManager::Start(const QString &jobId)
         return;
     }
 
-    int processId = OSTREE_REPO_HELPER->getOstreeJobId(jobId);
+    int processId = ostreeRepo.getOstreeJobId(jobId);
     if (processId == -1) {
         qWarning() << jobId << " not exist";
         return;
@@ -70,7 +76,7 @@ void JobManager::Stop(const QString &jobId)
         return;
     }
 
-    int processId = OSTREE_REPO_HELPER->getOstreeJobId(jobId);
+    int processId = ostreeRepo.getOstreeJobId(jobId);
     if (processId == -1) {
         qWarning() << jobId << " not exist";
         return;
@@ -105,7 +111,7 @@ void JobManager::Cancel(const QString &jobId)
         return;
     }
 
-    int processId = OSTREE_REPO_HELPER->getOstreeJobId(jobId);
+    int processId = ostreeRepo.getOstreeJobId(jobId);
     if (processId == -1) {
         qWarning() << jobId << " not exist";
         return;
@@ -135,7 +141,7 @@ void JobManager::Cancel(const QString &jobId)
 
 QStringList JobManager::List()
 {
-    return OSTREE_REPO_HELPER->getOstreeJobList();
+    return ostreeRepo.getOstreeJobList();
 }
 
 } // namespace linglong::job_manager

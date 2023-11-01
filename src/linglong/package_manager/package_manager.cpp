@@ -107,9 +107,9 @@ auto PackageManager::getAppInfoFromServer(const QString &pkgName,
     // build refs
     package::Ref ref(remoteRepoName, pkgName, pkgVer, pkgArch);
 
-    auto [err, infos] = repoClient.QueryApps(ref);
+    auto result = repoClient.QueryApps(ref);
 
-    if (err) {
+    if (!result.has_value()) {
         errString = "getAppInfoFromServer err, " + appData + " ,please check the network";
         qCritical() << "receive from server:" << appData;
         return false;
@@ -118,9 +118,9 @@ auto PackageManager::getAppInfoFromServer(const QString &pkgName,
     // FIXME: update all caller getAppInfoFromServer
     QSharedPointer<repo::Response> resp(new repo::Response);
     resp->code = 200;
-    resp->data = infos;
+    resp->data = *result;
 
-    auto [data, err1] = util::toJSON(resp);
+    auto [data, err1] = linglong::util::toJSON(resp);
     appData = QString::fromLocal8Bit(data);
     return true;
 }
@@ -133,7 +133,7 @@ auto PackageManager::downloadAppData(const QString &pkgName,
                                      const QString &dstPath,
                                      QString &err) -> bool
 {
-    bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(kLocalRepoPath, err);
+    bool ret = repoMan.ensureRepoEnv(kLocalRepoPath, err);
     if (!ret) {
         qCritical() << err;
         return false;
@@ -145,15 +145,14 @@ auto PackageManager::downloadAppData(const QString &pkgName,
     qInfo() << "downloadAppData ref:" << matchRef;
 
     // ret = repo.repoPull(repoPath, qrepoList[0], pkgName, err);
-    ret = OSTREE_REPO_HELPER->repoPullbyCmd(kLocalRepoPath, remoteRepoName, matchRef, err);
+    ret = repoMan.repoPullbyCmd(kLocalRepoPath, remoteRepoName, matchRef, err);
     if (!ret) {
         qCritical() << err;
         return false;
     }
     // checkout 目录
     // const QString dstPath = repoPath + "/AppData";
-    ret =
-      OSTREE_REPO_HELPER->checkOutAppData(kLocalRepoPath, remoteRepoName, matchRef, dstPath, err);
+    ret = repoMan.checkOutAppData(kLocalRepoPath, remoteRepoName, matchRef, dstPath, err);
     if (!ret) {
         qCritical() << err;
         return false;
@@ -472,7 +471,9 @@ auto PackageManager::getUserName(uid_t uid) -> QString
     return {};
 }
 
-PackageManager::PackageManager(api::dbus::v1::PackageManagerHelper &helper, QObject *parent)
+PackageManager::PackageManager(api::dbus::v1::PackageManagerHelper &helper,
+                               linglong::repo::Repo &repoMan,
+                               QObject *parent)
     : QObject(parent)
     , pool(new QThreadPool)
     , sysLinglongInstallation(linglong::util::getLinglongRootPath() + "/entries/share")
@@ -483,6 +484,7 @@ PackageManager::PackageManager(api::dbus::v1::PackageManagerHelper &helper, QObj
     // When endpoint get updated by `ModifyRepo`,
     // the endpoint used by repoClient is not updated.
     , repoClient(util::config::ConfigInstance().repos[package::kDefaultRepo]->endpoint)
+    , repoMan(repoMan)
     , packageManagerHelper(helper)
 {
     // 检查安装数据库信息
@@ -535,7 +537,7 @@ auto PackageManager::ModifyRepo(const QString &name, const QString &url) -> Repl
     // FIXME: check setEndpoint comment.
     repoClient.setEndpoint(url);
 
-    bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(kLocalRepoPath, reply.message);
+    bool ret = repoMan.ensureRepoEnv(kLocalRepoPath, reply.message);
     if (!ret) {
         reply.code = STATUS_CODE(kFail);
         return reply;
@@ -984,7 +986,7 @@ auto PackageManager::Uninstall(const UninstallParamOption &paramOption) -> Reply
 
         QString strErr = "";
         // 更新本地repo仓库
-        bool ret = OSTREE_REPO_HELPER->ensureRepoEnv(kLocalRepoPath, strErr);
+        bool ret = repoMan.ensureRepoEnv(kLocalRepoPath, strErr);
         if (!ret) {
             qCritical() << strErr;
             reply.code = STATUS_CODE(kPkgUninstallFailed);
@@ -993,7 +995,7 @@ auto PackageManager::Uninstall(const UninstallParamOption &paramOption) -> Reply
         }
         // 应从安装数据库获取应用所属仓库信息 to do fix
         QVector<QString> qrepoList;
-        ret = OSTREE_REPO_HELPER->getRemoteRepoList(kLocalRepoPath, qrepoList, strErr);
+        ret = repoMan.getRemoteRepoList(kLocalRepoPath, qrepoList, strErr);
         if (!ret) {
             qCritical() << strErr;
             reply.code = STATUS_CODE(kPkgUninstallFailed);
@@ -1010,8 +1012,7 @@ auto PackageManager::Uninstall(const UninstallParamOption &paramOption) -> Reply
                              .arg(appModule);
 
         qInfo() << "Uninstall app ref:" << matchRef;
-        ret =
-          OSTREE_REPO_HELPER->repoDeleteDatabyRef(kLocalRepoPath, qrepoList[0], matchRef, strErr);
+        ret = this->repoMan.repoDeleteDatabyRef(kLocalRepoPath, qrepoList[0], matchRef, strErr);
         if (!ret) {
             qCritical() << strErr;
             reply.code = STATUS_CODE(kPkgUninstallFailed);

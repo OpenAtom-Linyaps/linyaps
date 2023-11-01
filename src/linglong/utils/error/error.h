@@ -81,4 +81,4 @@ using Result = tl::expected<Value, Error>;
     {               \
     }
 
-#endif
+#endif // LINGLONG_UTILS_ERROR_H_

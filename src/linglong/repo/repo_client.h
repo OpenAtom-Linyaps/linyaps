@@ -7,9 +7,9 @@
 #ifndef LINGLONG_SRC_MODULE_REPO_REPO_CLIENT_H_
 #define LINGLONG_SRC_MODULE_REPO_REPO_CLIENT_H_
 
-#include "linglong/package/package.h"
 #include "linglong/package/ref.h"
-#include "linglong/util/error.h"
+#include "linglong/repo/repo.h"
+#include "linglong/utils/error/error.h"
 
 #include <QNetworkReply>
 #include <QNetworkRequest>
@@ -59,10 +59,10 @@ public:
     // It's not thread-safe.
     void setEndpoint(const QString &endpoint);
 
-    std::tuple<util::Error, QList<QSharedPointer<package::AppMetaInfo>>>
+    linglong::utils::error::Result<QList<QSharedPointer<package::AppMetaInfo>>>
     QueryApps(const package::Ref &ref);
 
-    std::tuple<util::Error, QString> Auth(const package::Ref &ref);
+    linglong::utils::error::Result<QString> Auth(const package::Ref &ref);
 
 private:
     QString endpoint;

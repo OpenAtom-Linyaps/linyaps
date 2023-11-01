@@ -7,11 +7,13 @@
 #include "vfs_repo.h"
 
 #include "linglong/util/erofs.h"
+#include "linglong/util/error.h"
 #include "linglong/util/file.h"
 #include "linglong/util/runner.h"
 #include "linglong/util/sysinfo.h"
 #include "linglong/util/version/version.h"
 #include "linglong/util/xdg.h"
+#include "linglong/utils/error/error.h"
 
 #include <utility>
 
@@ -48,49 +50,50 @@ VfsRepo::VfsRepo(const QString &path)
 {
 }
 
-VfsRepo::~VfsRepo() = default;
+VfsRepo::~VfsRepo(){};
 
-util::Error VfsRepo::importDirectory(const package::Ref &ref, const QString &path)
+linglong::utils::error::Result<void> VfsRepo::importDirectory(const package::Ref &ref,
+                                                              const QString &path)
 {
     return {};
 }
 
-util::Error VfsRepo::import(const package::Bundle &bundle)
+linglong::utils::error::Result<void> VfsRepo::import(const package::Bundle &bundle)
 {
     return {};
 }
 
-util::Error VfsRepo::exportBundle(package::Bundle &bundle)
+linglong::utils::error::Result<void> VfsRepo::exportBundle(package::Bundle &bundle)
 {
     return {};
 }
 
-std::tuple<util::Error, QList<package::Ref>> VfsRepo::list(const QString &filter)
+linglong::utils::error::Result<QList<package::Ref>> VfsRepo::list(const QString &filter)
 {
-    return { NewError(-1, "Not Implemented"), {} };
+    return LINGLONG_ERR(-1, "Not Implemented");
 }
 
-std::tuple<util::Error, QList<package::Ref>> VfsRepo::query(const QString &filter)
+linglong::utils::error::Result<QList<package::Ref>> VfsRepo::query(const QString &filter)
 {
-    return {};
+    return LINGLONG_ERR(-1, "Not Implemented");
 }
 
-util::Error VfsRepo::push(const package::Ref &ref, bool force)
-{
-    return {};
-}
-
-util::Error VfsRepo::push(const package::Ref &ref)
+linglong::utils::error::Result<void> VfsRepo::push(const package::Ref &ref, bool force)
 {
     return {};
 }
 
-util::Error VfsRepo::push(const package::Bundle &bundle, bool force)
+linglong::utils::error::Result<void> VfsRepo::push(const package::Ref &ref)
 {
     return {};
 }
 
-util::Error VfsRepo::pull(const package::Ref &ref, bool force)
+linglong::utils::error::Result<void> VfsRepo::push(const package::Bundle &bundle, bool force)
+{
+    return {};
+}
+
+linglong::utils::error::Result<void> VfsRepo::pull(const package::Ref &ref, bool force)
 {
     return {};
 }
@@ -120,7 +123,7 @@ QString VfsRepo::rootOfLayer(const package::Ref &ref)
         QDir::separator());
     QString hash(
       QCryptographicHash::hash(sourcePath.toLocal8Bit(), QCryptographicHash::Md5).toHex());
-    auto source = QStringList{ d->repoRootPath, "blobs", hash }.join(QDir::separator());
+    auto source = QStringList{ dd_ptr->repoRootPath, "blobs", hash }.join(QDir::separator());
 
     qDebug() << "erofs::mount" << source << mountPoint;
     // FIXME: must umount after app exit
@@ -155,7 +158,6 @@ package::Ref VfsRepo::latestOfRef(const QString &appId, const QString &appVersio
         qDebug() << "available version" << available << appRoot << verDirs;
         return available;
     };
-
     // 未指定版本使用最新版本，指定版本下使用指定版本
     QString version;
     if (!appVersion.isEmpty()) {

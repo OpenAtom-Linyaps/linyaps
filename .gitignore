@@ -14,3 +14,4 @@
 /debian/linglong-builder.substvars
 /debian/tmp/usr
 /obj-x86_64-linux-gnu
+/.vscode/

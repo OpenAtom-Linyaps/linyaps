@@ -12,6 +12,7 @@
 #include "linglong/dbus_ipc/param_option.h"
 #include "linglong/dbus_ipc/reply.h"
 #include "linglong/package/package.h"
+#include "linglong/repo/repo.h"
 #include "linglong/repo/repo_client.h"
 
 #include <QDBusArgument>
@@ -35,10 +36,11 @@ class PackageManager : public QObject, protected QDBusContext
     Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.PackageManager")
 
 public:
-    PackageManager(api::dbus::v1::PackageManagerHelper &helper, QObject *parent);
+    PackageManager(api::dbus::v1::PackageManagerHelper &helper,
+                   linglong::repo::Repo &,
+                   QObject *parent);
 
     ~PackageManager() override = default;
-
     PackageManager(const PackageManager &) = delete;
     PackageManager(PackageManager &&) = delete;
     auto operator=(const PackageManager &) -> PackageManager & = delete;
@@ -292,7 +294,7 @@ private:
     QString remoteRepoName = "repo";
 
     repo::RepoClient repoClient;
-
+    linglong::repo::Repo &repoMan;
     // 记录子线程安装及更新状态 供查询进度信息使用
     QMap<QString, Reply> appState;
 

@@ -26,27 +26,28 @@ public:
 
     ~VfsRepo() override;
 
-    virtual util::Error importDirectory(const package::Ref &ref, const QString &path);
+    linglong::utils::error::Result<void> importDirectory(const package::Ref &ref,
+                                                         const QString &path) override;
 
-    virtual util::Error import(const package::Bundle &bundle);
+    linglong::utils::error::Result<void> import(const package::Bundle &bundle) override;
 
-    virtual util::Error exportBundle(package::Bundle &bundle);
+    linglong::utils::error::Result<void> exportBundle(package::Bundle &bundle) override;
 
-    virtual std::tuple<util::Error, QList<package::Ref>> list(const QString &filter);
+    linglong::utils::error::Result<QList<package::Ref>> list(const QString &filter) override;
 
-    virtual std::tuple<util::Error, QList<package::Ref>> query(const QString &filter);
+    linglong::utils::error::Result<QList<package::Ref>> query(const QString &filter) override;
 
-    virtual util::Error push(const package::Ref &ref, bool force);
+    linglong::utils::error::Result<void> push(const package::Ref &ref, bool force) override;
 
-    virtual util::Error push(const package::Ref &ref);
+    linglong::utils::error::Result<void> push(const package::Ref &ref) override;
 
-    virtual util::Error push(const package::Bundle &bundle, bool force);
+    linglong::utils::error::Result<void> push(const package::Bundle &bundle, bool force) override;
 
-    virtual util::Error pull(const package::Ref &ref, bool force);
+    linglong::utils::error::Result<void> pull(const package::Ref &ref, bool force) override;
 
-    virtual QString rootOfLayer(const package::Ref &ref);
+    QString rootOfLayer(const package::Ref &ref) override;
 
-    virtual package::Ref latestOfRef(const QString &appId, const QString &appVersion);
+    package::Ref latestOfRef(const QString &appId, const QString &appVersion) override;
 
 private:
     QScopedPointer<VfsRepoPrivate> dd_ptr;

@@ -8,6 +8,7 @@
 
 #include "builder_config.h"
 #include "linglong/repo/ostree_repo.h"
+#include "linglong/util/error.h"
 #include "project.h"
 
 #include <QDir>
@@ -75,8 +76,9 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
             qInfo()
               << QString("fetching dependency: %1 %2").arg(dependRef.appId).arg(dependRef.version);
             auto err = ostree.pullAll(dependRef, true);
-            if (err) {
-                return WrapError(err, "pull " + dependRef.toString() + " failed");
+            if (!err.has_value()) {
+                return WrapError(NewError(err.error().code(), err.error().message()),
+                                 "pull " + dependRef.toString() + " failed");
             }
         }
     }
@@ -88,9 +90,9 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
     {
         auto err = ostree.checkoutAll(dependRef, subPath, targetPath);
 
-        if (err) {
+        if (!err.has_value()) {
             return WrapError(
-              err,
+              NewError(err.error().code(), err.error().message()),
               QString("ostree checkout %1 failed").arg(dependRef.toLocalRefString()));
         }
     }
@@ -101,8 +103,8 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
           { "overlayfs", "up", dd_ptr->project->config().targetInstallPath("") });
         {
             auto err = ostree.checkoutAll(dependRef, subPath, targetInstallPath);
-            if (err) {
-                return WrapError(err,
+            if (!err.has_value()) {
+                return WrapError(NewError(err.error().code(), err.error().message()),
                                  QString("ostree checkout %1 with subpath '%2' to %3")
                                    .arg(dependRef.toLocalRefString())
                                    .arg(subPath)

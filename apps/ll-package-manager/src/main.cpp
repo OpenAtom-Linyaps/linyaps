@@ -7,8 +7,10 @@
 #include "linglong/adaptors/job_manager/job_manager1.h"
 #include "linglong/adaptors/package_manager/package_manager1.h"
 #include "linglong/api/dbus/v1/package_manager_helper.h"
+#include "linglong/builder/builder_config.h"
 #include "linglong/dbus_ipc/workaround.h"
 #include "linglong/package_manager/package_manager.h"
+#include "linglong/repo/ostree_repo.h"
 #include "linglong/util/configure.h"
 #include "linglong/utils/dbus/register.h"
 #include "linglong/utils/global/initialize.h"
@@ -17,6 +19,7 @@
 
 using namespace linglong::utils::global;
 using namespace linglong::utils::dbus;
+using namespace linglong::builder;
 
 namespace {
 void withDBusDaemon()
@@ -27,8 +30,12 @@ void withDBusDaemon()
                                                         QDBusConnection::systemBus(),
                                                         QCoreApplication::instance());
 
-    auto packageManager =
-      new linglong::service::PackageManager(*pkgManHelper, QCoreApplication::instance());
+    linglong::repo::OSTreeRepo ostreeRepo(BuilderConfig::instance()->repoPath(),
+                                          BuilderConfig::instance()->remoteRepoEndpoint,
+                                          BuilderConfig::instance()->remoteRepoName);
+    auto packageManager = new linglong::service::PackageManager(*pkgManHelper,
+                                                                ostreeRepo,
+                                                                QCoreApplication::instance());
     auto packageManagerAdaptor =
       new linglong::adaptors::package_manger::PackageManager1(packageManager);
 
@@ -43,7 +50,7 @@ void withDBusDaemon()
         unregisterDBusObject(conn, "/org/deepin/linglong/PackageManager");
     });
 
-    auto jobMan = new linglong::job_manager::JobManager(QCoreApplication::instance());
+    auto jobMan = new linglong::job_manager::JobManager(ostreeRepo, QCoreApplication::instance());
     auto jobManAdaptor = new linglong::adaptors::job_manger::JobManager1(jobMan);
     result = registerDBusObject(conn, "/org/deepin/linglong/JobManager", jobMan);
     if (!result.has_value()) {
@@ -86,12 +93,16 @@ void withoutDBusDaemon()
                                                         pkgManHelperConn,
                                                         QCoreApplication::instance());
 
-    auto packageManager =
-      new linglong::service::PackageManager(*pkgManHelper, QCoreApplication::instance());
+    linglong::repo::OSTreeRepo ostreeRepo(BuilderConfig::instance()->repoPath(),
+                                          BuilderConfig::instance()->remoteRepoEndpoint,
+                                          BuilderConfig::instance()->remoteRepoName);
+    auto packageManager = new linglong::service::PackageManager(*pkgManHelper,
+                                                                ostreeRepo,
+                                                                QCoreApplication::instance());
     auto packageManagerAdaptor =
       new linglong::adaptors::package_manger::PackageManager1(packageManager);
 
-    auto jobMan = new linglong::job_manager::JobManager(QCoreApplication::instance());
+    auto jobMan = new linglong::job_manager::JobManager(ostreeRepo, QCoreApplication::instance());
     auto jobManAdaptor = new linglong::adaptors::job_manger::JobManager1(jobMan);
 
     QDir::root().mkpath("/run/linglong");
@@ -132,8 +143,6 @@ void withoutDBusDaemon()
               unregisterDBusObject(conn, "/org/deepin/linglong/JobManager");
           });
       });
-
-    qInfo() << "-";
 }
 
 } // namespace

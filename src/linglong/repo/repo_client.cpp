@@ -8,11 +8,15 @@
 
 #include "linglong/package/package.h"
 #include "linglong/util/config/config.h"
+#include "linglong/util/error.h"
 #include "linglong/util/file.h"
 #include "linglong/util/http/http_client.h"
 #include "linglong/util/qserializer/deprecated.h"
+#include "linglong/utils/error/error.h"
 
 #include <QJsonObject>
+
+#include <tuple>
 
 namespace linglong {
 namespace repo {
@@ -51,7 +55,7 @@ QJsonObject getUserInfo()
     return infoObj;
 }
 
-std::tuple<util::Error, QList<QSharedPointer<package::AppMetaInfo>>>
+linglong::utils::error::Result<QList<QSharedPointer<package::AppMetaInfo>>>
 RepoClient::QueryApps(const package::Ref &ref)
 {
     // TODO: query cache Here
@@ -72,20 +76,19 @@ RepoClient::QueryApps(const package::Ref &ref)
     util::HttpRestClient hc;
     auto reply = hc.post(request, data);
     if (reply->error()) {
-        return { NewError(-1, reply->errorString()), {} };
+        return LINGLONG_ERR(-1, reply->errorString());
     }
     data = reply->readAll();
     qDebug() << "QueryApps: get response from server:" << QString(data);
     auto resp = util::loadJsonBytes<repo::Response>(data);
 
     if (!resp) {
-        return { NewError(-1, "Failed to load application list from response."), {} };
+        return LINGLONG_ERR(-1, "Failed to load application list from response.");
     }
-
-    return { Success(), resp->data };
+    return resp->data;
 }
 
-std::tuple<util::Error, QString> RepoClient::Auth(const package::Ref &ref)
+linglong::utils::error::Result<QString> RepoClient::Auth(const package::Ref &ref)
 {
     //    QUrl url(QString("%1/%2").arg(endpoint, "api/v1/sign-in"));
     QUrl url(QString("%1/%2").arg(endpoint, "auth"));
@@ -101,11 +104,11 @@ std::tuple<util::Error, QString> RepoClient::Auth(const package::Ref &ref)
 
     // TODO: use status macro for code 200
     if (200 != result->code) {
-        return { NewError(-1, QString("getToken failed %1 %2").arg(result->code).arg(result->msg)),
-                 "" };
+        return LINGLONG_ERR(-1,
+                            QString("getToken failed %1 %2").arg(result->code).arg(result->msg));
     }
 
-    return { Success(), result->data->token };
+    return result->data->token;
 }
 
 RepoClient::RepoClient(const QString &endpoint)

@@ -245,18 +245,17 @@ linglong::util::Error commitBuildOutput(Project *project, const nlohmann::json &
 
     repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath());
 
-    err = repo.importDirectory(project->refWithModule("runtime"),
-                               project->config().cacheInstallPath(""));
+    auto ret = repo.importDirectory(project->refWithModule("runtime"),
+                                    project->config().cacheInstallPath(""));
 
-    if (err) {
+    if (!ret.has_value()) {
         qCritical() << QString("commit %1 filed").arg(project->refWithModule("runtime").toString());
         return err;
     }
 
-    err = repo.importDirectory(project->refWithModule("devel"),
+    ret = repo.importDirectory(project->refWithModule("devel"),
                                project->config().cacheInstallPath("devel-install", ""));
-
-    return err;
+    return NewError(ret.error().code(), ret.error().message());
 };
 
 package::Ref fuzzyRef(QSharedPointer<const JsonSerialize> obj)
@@ -314,8 +313,9 @@ linglong::util::Error LinglongBuilder::initRepo()
         util::ensureDir(BuilderConfig::instance()->ostreePath());
 
         auto err = repo.init("bare-user-only");
-        if (err) {
-            return WrapError(err, "init ostree repo failed");
+        if (!err.has_value()) {
+            return WrapError(NewError(err.error().code(), err.error().message()),
+                             "init ostree repo failed");
         }
     }
 
@@ -323,14 +323,16 @@ linglong::util::Error LinglongBuilder::initRepo()
     auto currentRemoteUrl = repo.remoteShowUrl(defaultRepoName);
     if (currentRemoteUrl.isEmpty()) {
         auto err = repo.remoteAdd(defaultRepoName, repoUrl);
-        if (err) {
-            return WrapError(err, "add ostree remote failed");
+        if (!err.has_value()) {
+            return WrapError(NewError(err.error().code(), err.error().message()),
+                             "add ostree remote failed");
         }
     } else if (currentRemoteUrl != repoUrl) {
         repo.remoteDelete(defaultRepoName);
         auto err = repo.remoteAdd(defaultRepoName, repoUrl);
-        if (err) {
-            return WrapError(err, "add ostree remote failed");
+        if (!err.has_value()) {
+            return WrapError(NewError(err.error().code(), err.error().message()),
+                             "add ostree remote failed");
         }
     }
 
@@ -804,8 +806,9 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
     err = repo.checkout(project->refWithModule("devel"),
                         "",
                         QStringList{ exportPath, "devel" }.join("/"));
-    if (err) {
-        return WrapError(err, "checkout files failed, you need build first");
+    if (!err.has_value()) {
+        return WrapError(NewError(err.error().code(), err.error().message()),
+                         "checkout files failed, you need build first");
     }
 
     QFile::copy("/usr/libexec/ll-box-static", QStringList{ exportPath, "ll-box" }.join("/"));
@@ -900,9 +903,9 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
     // make bundle package
     linglong::package::Bundle uabBundle;
 
-    err = uabBundle.make(exportPath, outputFilePath);
-    if (err) {
-        return WrapError(err, "make bundle failed");
+    auto ret = uabBundle.make(exportPath, outputFilePath);
+    if (ret) {
+        return WrapError(ret, "make bundle failed");
     }
 
     return Success();
@@ -953,9 +956,9 @@ util::Error LinglongBuilder::push(const QString &repoUrl,
         // ret = repo.push(refWithRuntime, false);
         auto err = repo.push(refWithRuntime);
 
-        if (err) {
+        if (!err.has_value()) {
             qInfo().noquote() << QString("push %1 failed").arg(project->package->id);
-            return err;
+            return NewError(err.error().code(), err.error().message());
         } else {
             qInfo().noquote() << QString("push %1 success").arg(project->package->id);
         }
@@ -1004,9 +1007,10 @@ util::Error LinglongBuilder::import()
                                            util::hostArch(),
                                            "runtime");
 
-        err = repo.importDirectory(refWithRuntime, BuilderConfig::instance()->getProjectRoot());
+        auto err =
+          repo.importDirectory(refWithRuntime, BuilderConfig::instance()->getProjectRoot());
 
-        if (err) {
+        if (!err.has_value()) {
             return NewError(-1, "import package failed");
         }
 

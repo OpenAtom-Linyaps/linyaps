@@ -7,6 +7,7 @@
 #ifndef LINGLONG_SRC_PACKAGE_MANAGER_IMPL_JOB_MANAGER_H_
 #define LINGLONG_SRC_PACKAGE_MANAGER_IMPL_JOB_MANAGER_H_
 
+#include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container.h"
 #include "linglong/util/singleton.h"
 
@@ -26,14 +27,17 @@ class JobManager : public QObject, protected QDBusContext
     Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.JobManager")
 
 public:
-    using QObject::QObject;
     QString CreateJob(std::function<void()> f);
+    JobManager(linglong::repo::OSTreeRepo &ostreeRepo, QObject *parent = nullptr);
 
 public Q_SLOTS:
     QStringList List();
     void Start(const QString &jobId);
     void Stop(const QString &jobId);
     void Cancel(const QString &jobId);
+
+private:
+    linglong::repo::OSTreeRepo &ostreeRepo;
 };
 
 } // namespace linglong::job_manager

@@ -9,7 +9,7 @@ Copyright: None
 License: CC0-1.0
 
 # Packaging configuration
-Files: rpm/* debian/* archlinux/* src/cli/misc/bash_completion/ll-cli src/cli/misc/bash_completion/llpkg src/service/misc/xdg/* src/package_manager/misc/* src/system_helper/misc/*
+Files: rpm/* debian/* archlinux/* src/cli/misc/bash_completion/ll-cli src/cli/misc/bash_completion/llpkg src/service/misc/xdg/* src/package_manager/misc/* src/system_helper/misc/* misc/dbus/* misc/systemd/service/* misc/systemd/user/*
 Copyright: None
 License: CC0-1.0
 

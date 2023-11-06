@@ -1,14 +1,77 @@
-#include "cli.h"
+/*
+ * SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: LGPL-3.0-or-later
+ */
+
+#include "linglong/cli/cli.h"
+
+#include "linglong/utils/command/env.h"
+
+#include <grp.h>
+#include <sys/wait.h>
 
 using namespace linglong::utils::error;
 using namespace linglong::cli;
 
+const char Cli::USAGE[] =
+  R"(linglong CLI
+
+A CLI program to run application and manage linglong pagoda and tiers.
+Usage:
+        ll-cli [--json] --version
+        ll-cli [--json] run APP [--no-dbus-proxy] [--dbus-proxy-cfg=PATH] [--] [COMMAND...]
+        ll-cli [--json] ps
+        ll-cli [--json] exec (APP | PAGODA) [--working-directory=PATH] [--] COMMAND...
+        ll-cli [--json] enter (APP | PAGODA) [--working-directory=PATH] [--] [COMMAND...]
+        ll-cli [--json] kill (APP | PAGODA)
+        ll-cli [--json] [--no-dbus] install TIER...
+        ll-cli [--json] uninstall TIER... [--all] [--prune]
+        ll-cli [--json] upgrade TIER...
+        ll-cli [--json] search [--type=TYPE] TEXT
+        ll-cli [--json] [--no-dbus] list [--type=TYPE]
+        ll-cli [--json] repo [modify [--name=REPO] URL]
+
+    Arguments:
+        APP     Specify the application.
+        PAGODA  Specify the pagodas (container).
+        TIER    Specify the tier (container layer).
+        URL     Specify the new repo URL.
+        TEXT    The text used to search tiers.
+
+    Options:
+        -h --help                 Show this screen.
+        --version                 Show version.
+        --json                    Use json to output command result.
+        --no-dbus                 Use peer to peer DBus, this is used only in case that DBus daemon is not available.
+        --no-dbus-proxy           Do not enable linglong-dbus-proxy.
+        --dbus-proxy-cfg=PATH     Path of config of linglong-dbus-proxy.
+        --working-directory=PATH  Specify working directory.
+        --type=TYPE               Filter result with tiers type. One of "lib", "app" or "dev". [default: app]
+        --state=STATE             Filter result with the tiers install state. Should be "local" or "remote". [default: local]
+        --prune                   Remove application data if the tier is an application and all version of that application has benn removed.
+
+    Subcommands:
+        run        Run an application.
+        ps         List all pagodas.
+        exec       Execute command in a pagoda.
+        enter      Enter a pagoda.
+        kill       Stop applications and remove the pagoda.
+        install    Install tier(s).
+        uninstall  Uninstall tier(s).
+        upgrade    Upgrade tier(s).
+        search     Search for tiers.
+        list       List known tiers.
+        repo       Disply or modify infomation of the repository currently using.
+)";
+
+namespace {
 /**
  * @brief 处理安装中断请求
  *
  * @param sig 中断信号
  */
-static void doIntOperate(int /*sig*/)
+void doIntOperate(int /*sig*/)
 {
     // FIXME(black_desk): should use sig
 
@@ -18,17 +81,17 @@ static void doIntOperate(int /*sig*/)
     exit(0);
 }
 
-static auto parseDataFromProxyCfgFile(const QString &dbusProxyCfgPath) -> Result<DBusProxyConfig>
+auto parseDataFromProxyCfgFile(const QString &dbusProxyCfgPath) -> Result<DBusProxyConfig>
 {
     auto dataFile = QFile(dbusProxyCfgPath);
     dataFile.open(QIODevice::ReadOnly);
     if (dataFile.isOpen()) {
-        return EWrap("proxy config data not found", nullptr);
+        return Err(-1, "proxy config data not found");
     }
 
     auto data = dataFile.readAll();
     if (data.size() == 0) {
-        return EWrap("failed to read config data", nullptr);
+        return Err(-1, "failed to read config data");
     }
 
     QJsonParseError jsonError;
@@ -50,26 +113,193 @@ static auto parseDataFromProxyCfgFile(const QString &dbusProxyCfgPath) -> Result
     return config;
 }
 
-Cli::Cli(std::map<std::string, docopt::value> &args,
-         std::shared_ptr<Printer> printer,
-         std::shared_ptr<Factory<linglong::api::v1::dbus::AppManager1>> appfn,
-         std::shared_ptr<Factory<OrgDeepinLinglongPackageManager1Interface>> pkgfn,
-         std::shared_ptr<Factory<linglong::util::CommandHelper>> cmdhelperfn,
-         std::shared_ptr<Factory<linglong::service::PackageManager>> pkgmngfn)
-    : m_args(args)
-    , p(printer)
-    , appfn(appfn)
-    , pkgfn(pkgfn)
-    , cmdhelperfn(cmdhelperfn)
-    , pkgmngfn(pkgmngfn)
+QList<pid_t> childrenOf(pid_t p)
+{
+    auto childrenPath = QString("/proc/%1/task/%1/children").arg(p);
+    QFile child(childrenPath);
+    if (!child.open(QIODevice::ReadOnly)) {
+        return {};
+    }
+
+    auto data = child.readAll();
+    auto slice = QString::fromLatin1(data).split(" ");
+    QList<pid_t> pidList;
+    for (auto const &str : slice) {
+        if (str.isEmpty()) {
+            continue;
+        }
+        pidList.push_back(str.toInt());
+    }
+    return pidList;
+}
+
+int bringDownPermissionsTo(const struct stat &fileStat)
+{
+    __gid_t newGid[1] = { fileStat.st_gid };
+
+    if (setgroups(1, newGid)) {
+        return errno;
+    }
+    if (setgid(fileStat.st_gid) != 0) {
+        return errno;
+    }
+    if (setegid(fileStat.st_gid) != 0) {
+        return errno;
+    }
+    if (setuid(fileStat.st_uid) != 0) {
+        return errno;
+    }
+    if (seteuid(fileStat.st_uid) != 0) {
+        return errno;
+    }
+    return 0;
+}
+
+int execArgs(const std::vector<std::string> &args, const std::vector<std::string> &envStrVector)
+{
+    std::vector<char *> argVec(args.size() + 1);
+    std::transform(args.begin(), args.end(), argVec.begin(), [](const std::string &str) -> char * {
+        return const_cast<char *>(str.c_str());
+    });
+    argVec.push_back(nullptr);
+
+    auto command = argVec.data();
+
+    std::vector<char *> envVec(envStrVector.size() + 1);
+    std::transform(envStrVector.begin(),
+                   envStrVector.end(),
+                   envVec.begin(),
+                   [](const std::string &str) -> char * {
+                       return const_cast<char *>(str.c_str());
+                   });
+    envVec.push_back(nullptr);
+
+    auto env = envVec.data();
+
+    return execve(command[0], &command[0], &env[0]);
+}
+
+int namespaceEnter(pid_t pid, const QStringList &args)
+{
+    int ret;
+    struct stat fileStat = {};
+
+    auto children = childrenOf(pid);
+    if (children.isEmpty()) {
+        qDebug() << "get children of pid failed" << errno << strerror(errno);
+        return -1;
+    }
+
+    pid = childrenOf(pid).value(0);
+    auto prefix = QString("/proc/%1/ns/").arg(pid);
+    auto root = QString("/proc/%1/root").arg(pid);
+    auto proc = QString("/proc/%1").arg(pid);
+
+    ret = lstat(proc.toStdString().c_str(), &fileStat);
+    if (ret < 0) {
+        qDebug() << "lstat failed" << root << ret << errno << strerror(errno);
+        return -1;
+    }
+
+    QStringList nameSpaceList = {
+        "mnt", "ipc", "uts", "pid", "net",
+        // "user",
+        // TODO: is hard to set user namespace, need carefully fork and unshare
+    };
+
+    QList<int> fds;
+    for (auto const &nameSpace : nameSpaceList) {
+        auto currentNameSpace = (prefix + nameSpace).toStdString();
+        int fd = open(currentNameSpace.c_str(), O_RDONLY);
+        if (fd < 0) {
+            qCritical() << "open failed" << currentNameSpace.c_str() << fd << errno
+                        << strerror(errno);
+            continue;
+        }
+        qDebug() << "push" << fd << currentNameSpace.c_str();
+        fds.push_back(fd);
+    }
+
+    int rootFd = open(root.toStdString().c_str(), O_RDONLY);
+
+    ret = unshare(CLONE_NEWNS);
+    if (ret < 0) {
+        qCritical() << "unshare failed" << ret << errno << strerror(errno);
+    }
+
+    for (auto fd : fds) {
+        ret = setns(fd, 0);
+        if (ret < 0) {
+            qCritical() << "setns failed" << fd << ret << errno << strerror(errno);
+        }
+        close(fd);
+    }
+
+    ret = fchdir(rootFd);
+    if (ret < 0) {
+        qCritical() << "chdir failed" << root << ret << errno << strerror(errno);
+        return -1;
+    }
+
+    ret = chroot(".");
+    if (ret < 0) {
+        qCritical() << "chroot failed" << root << ret << errno << strerror(errno);
+        return -1;
+    }
+
+    bringDownPermissionsTo(fileStat);
+
+    int child = fork();
+    if (child < 0) {
+        qCritical() << "fork failed" << child << errno << strerror(errno);
+        return -1;
+    }
+
+    if (0 == child) {
+        QFile envFile("/run/app/env");
+        if (!envFile.open(QIODevice::ReadOnly)) {
+            qCritical() << "open failed" << envFile.fileName() << errno << strerror(errno);
+        }
+
+        std::vector<std::string> envVec;
+        for (const auto &env : envFile.readAll().split('\n')) {
+            if (!env.isEmpty()) {
+                envVec.push_back(env.toStdString());
+            }
+        }
+
+        std::vector<std::string> argVec(args.size());
+        std::transform(args.begin(),
+                       args.end(),
+                       argVec.begin(),
+                       [](const QString &str) -> std::string {
+                           return str.toStdString();
+                       });
+
+        return execArgs(argVec, envVec);
+    }
+
+    return waitpid(-1, nullptr, 0);
+}
+
+} // namespace
+
+Cli::Cli(Printer &printer,
+         linglong::api::dbus::v1::AppManager &appMan,
+         linglong::api::dbus::v1::PackageManager &pkgMan,
+         linglong::service::PackageManager &pkgManImpl)
+    : printer(printer)
+    , appMan(appMan)
+    , pkgMan(pkgMan)
+    , pkgManImpl(pkgManImpl)
 {
 }
 
-int Cli::run()
+int Cli::run(std::map<std::string, docopt::value> &args)
 {
-    const auto appId = QString::fromStdString(m_args["APP"].asString());
+    const auto appId = QString::fromStdString(args["APP"].asString());
     if (appId.isEmpty()) {
-        p->printError(-1, "app id is empty");
+        this->printer.print(Err(-1, "app id is empty").value());
         return -1;
     }
 
@@ -80,7 +310,7 @@ int Cli::run()
     paramOption.appId = ref.appId;
     paramOption.version = ref.version;
 
-    auto command = m_args["COMMAND"].asStringList();
+    auto command = args["COMMAND"].asStringList();
     if (!command.empty()) {
         for (const auto &arg : command) {
             paramOption.exec.push_back(QString::fromStdString(arg));
@@ -88,19 +318,19 @@ int Cli::run()
     }
 
     // 获取用户环境变量
-    QStringList envList = this->cmdhelperfn->builder()->getUserEnv(linglong::util::envList);
+    QStringList envList = utils::command::getUserEnv(utils::command::envList);
     if (!envList.isEmpty()) {
         paramOption.appEnv = envList;
     }
     // 判断是否设置了no-proxy参数
-    paramOption.noDbusProxy = m_args["--no-dbus-proxy"].asBool();
+    paramOption.noDbusProxy = args["--no-dbus-proxy"].asBool();
 
-    if (m_args["--dbus-proxy-cfg"].isString()) {
-        auto dbusProxyCfg = QString::fromStdString(m_args["--dbus-proxy-cfg"].asString());
+    if (args["--dbus-proxy-cfg"].isString()) {
+        auto dbusProxyCfg = QString::fromStdString(args["--dbus-proxy-cfg"].asString());
         if (!dbusProxyCfg.isEmpty()) {
             auto data = parseDataFromProxyCfgFile(dbusProxyCfg);
             if (!data.has_value()) {
-                p->printError(-2, "get empty data from cfg file");
+                printer.print(Err(-2, "get empty data from cfg file").value());
                 return -1;
             }
             // TODO(linxin): parse dbus filter info from config path
@@ -112,94 +342,90 @@ int Cli::run()
     }
 
     // TODO: ll-cli 进沙箱环境
-    auto appManagerObj = appfn->builder();
     qDebug() << "send param" << paramOption.appId << "to service";
-    auto dbusReply = appManagerObj->Start(paramOption);
+    auto dbusReply = this->appMan.Start(paramOption);
     dbusReply.waitForFinished();
     auto reply = dbusReply.value();
     if (reply.code != 0) {
-        p->printError(reply.code, reply.message);
+        this->printer.print(Err(reply.code, reply.message).value());
         return -1;
     }
     return 0;
 }
 
-int Cli::exec()
+int Cli::exec(std::map<std::string, docopt::value> &args)
 {
     QString containerId;
-    if (m_args["PAGODA"].isString()) {
-        containerId = QString::fromStdString(m_args["PAGODA"].asString());
+    if (args["PAGODA"].isString()) {
+        containerId = QString::fromStdString(args["PAGODA"].asString());
     }
 
-    if (m_args["APP"].isString()) {
-        containerId = QString::fromStdString(m_args["APP"].asString());
+    if (args["APP"].isString()) {
+        containerId = QString::fromStdString(args["APP"].asString());
     }
 
     if (containerId.isEmpty()) {
-        p->printError(-1, "failed to get container id");
+        this->printer.print(Err(-1, "failed to get container id").value());
         return -1;
     }
 
     linglong::service::ExecParamOption execOption;
     execOption.containerID = containerId;
 
-    if (m_args["COMMAND"].isStringList()) {
-        auto &command = m_args["COMMAND"].asStringList();
+    if (args["COMMAND"].isStringList()) {
+        const auto &command = args["COMMAND"].asStringList();
         for (const auto &arg : command) {
             execOption.cmd.push_back(QString::fromStdString(arg));
         }
     }
 
-    auto appManagerObj = this->appfn->builder();
-    const auto dbusReply = appManagerObj->Exec(execOption);
+    const auto dbusReply = this->appMan.Exec(execOption);
     const auto reply = dbusReply.value();
     if (reply.code != STATUS_CODE(kSuccess)) {
-        p->printError(reply.code, reply.message);
+        this->printer.print(Err(reply.code, reply.message).value());
         return -1;
     }
     return 0;
 }
 
-int Cli::enter()
+int Cli::enter(std::map<std::string, docopt::value> &args)
 {
     QString containerId;
-    if (m_args["PAGODA"].isString()) {
-        containerId = QString::fromStdString(m_args["PAGODA"].asString());
+    if (args["PAGODA"].isString()) {
+        containerId = QString::fromStdString(args["PAGODA"].asString());
     }
 
-    if (m_args["APP"].isString()) {
-        containerId = QString::fromStdString(m_args["APP"].asString());
+    if (args["APP"].isString()) {
+        containerId = QString::fromStdString(args["APP"].asString());
     }
 
     if (containerId.isEmpty()) {
-        p->printError(-1, "failed to get container id");
+        this->printer.print(Err(-1, "failed to get container id").value());
         return -1;
     }
 
     QString cmd;
-    if (m_args["COMMAND"].isString()) {
-        cmd = QString::fromStdString(m_args["COMMAND"].asString());
+    if (args["COMMAND"].isString()) {
+        cmd = QString::fromStdString(args["COMMAND"].asString());
         if (cmd.isEmpty()) {
-            p->printError(-1, "failed to get command list");
+            this->printer.print(Err(-1, "failed to get command list").value());
             return -1;
         }
     }
 
     const auto pid = containerId.toInt();
 
-    int reply = this->cmdhelperfn->builder()->namespaceEnter(pid, QStringList{ cmd });
+    int reply = namespaceEnter(pid, QStringList{ cmd });
     if (reply == -1) {
-        p->printError(-1, "failed to enter namespace");
+        this->printer.print(Err(-1, "failed to enter namespace").value());
         return -1;
     }
     return 0;
 }
 
-int Cli::ps()
+int Cli::ps(std::map<std::string, docopt::value> &args)
 {
-    auto appManagerObj = this->appfn->builder();
-    const auto outputFormat = m_args["--json"].asBool() ? "json" : "nojson";
-    const auto replyString = appManagerObj->ListContainer().value().result;
+    const auto replyString = this->appMan.ListContainer().value().result;
 
     QList<QSharedPointer<Container>> containerList;
     const auto doc = QJsonDocument::fromJson(replyString.toUtf8(), nullptr);
@@ -210,33 +436,32 @@ int Cli::ps()
             containerList.push_back(con);
         }
     }
-    this->cmdhelperfn->builder()->showContainer(containerList, outputFormat);
+    this->printer.print(containerList);
     return 0;
 }
 
-int Cli::kill()
+int Cli::kill(std::map<std::string, docopt::value> &args)
 {
     QString containerId;
-    if (m_args["PAGODA"].isString()) {
-        containerId = QString::fromStdString(m_args["PAGODA"].asString());
+    if (args["PAGODA"].isString()) {
+        containerId = QString::fromStdString(args["PAGODA"].asString());
     }
 
-    if (m_args["APP"].isString()) {
-        containerId = QString::fromStdString(m_args["APP"].asString());
+    if (args["APP"].isString()) {
+        containerId = QString::fromStdString(args["APP"].asString());
     }
 
     if (containerId.isEmpty()) {
-        p->printError(-1, "failed to get container id");
+        this->printer.print(Err(-1, "failed to get container id").value());
         return -1;
     }
     // TODO: show kill result
-    auto appManagerObj = this->appfn->builder();
-    QDBusPendingReply<linglong::service::Reply> dbusReply = appManagerObj->Stop(containerId);
+    QDBusPendingReply<linglong::service::Reply> dbusReply = this->appMan.Stop(containerId);
     dbusReply.waitForFinished();
     linglong::service::Reply reply = dbusReply.value();
     qDebug() << reply.message;
     if (reply.code != STATUS_CODE(kErrorPkgKillSuccess)) {
-        p->printError(reply.code, reply.message);
+        this->printer.print(Err(reply.code, reply.message).value());
         return -1;
     }
 
@@ -244,18 +469,17 @@ int Cli::kill()
     return 0;
 }
 
-int Cli::install()
+int Cli::install(std::map<std::string, docopt::value> &args)
 {
-    auto systemPkgObj = this->pkgfn->builder();
     // 收到中断信号后恢复操作
     signal(SIGINT, doIntOperate);
     // 设置 24 h超时
-    systemPkgObj->setTimeout(1000 * 60 * 60 * 24);
+    this->pkgMan.setTimeout(1000 * 60 * 60 * 24);
     // appId format: org.deepin.calculator/1.2.6 in multi-version
     linglong::service::InstallParamOption installParamOption;
-    auto tiers = m_args["TIER"].asStringList();
+    auto tiers = args["TIER"].asStringList();
     if (tiers.empty()) {
-        p->printError(-1, "failed to get app id");
+        this->printer.print(Err(-1, "failed to get app id").value());
         return -1;
     }
     for (auto &tier : tiers) {
@@ -269,63 +493,62 @@ int Cli::install()
 
         linglong::service::Reply reply;
         qInfo().noquote() << "install" << ref.appId << ", please wait a few minutes...";
-        if (!m_args["--no-dbus"].asBool()) {
-            QDBusPendingReply<linglong::service::Reply> dbusReply =
-              systemPkgObj->Install(installParamOption);
-            dbusReply.waitForFinished();
-            reply = dbusReply.value();
-            qDebug() << reply.message;
-            QThread::sleep(1);
-            // 查询一次进度
-            dbusReply = systemPkgObj->GetDownloadStatus(installParamOption, 0);
-            dbusReply.waitForFinished();
-            reply = dbusReply.value();
-            bool disProgress = false;
-            // 隐藏光标
-            std::cout << "\033[?25l";
-            while (reply.code == STATUS_CODE(kPkgInstalling)) {
-                std::cout << "\r\33[K" << reply.message.toStdString();
-                std::cout.flush();
-                QThread::sleep(1);
-                dbusReply = systemPkgObj->GetDownloadStatus(installParamOption, 0);
-                dbusReply.waitForFinished();
-                reply = dbusReply.value();
-                disProgress = true;
-            }
-            // 显示光标
-            std::cout << "\033[?25h";
-            if (disProgress) {
-                std::cout << std::endl;
-            }
-            if (reply.code != STATUS_CODE(kPkgInstallSuccess)) {
-                if (reply.message.isEmpty()) {
-                    reply.message = "unknown err";
-                    reply.code = -1;
-                }
-                p->printError(reply.code, reply.message);
-                return -1;
-            } else {
-                qInfo().noquote() << "message:" << reply.message;
-            }
-        } else {
-            auto pkgMngObj = this->pkgmngfn->builder();
-            pkgMngObj->setNoDBusMode(true);
-            reply = pkgMngObj->Install(installParamOption);
-            pkgMngObj->pool->waitForDone(-1);
+        if (args["--no-dbus"].asBool()) {
+            this->pkgManImpl.setNoDBusMode(true);
+            reply = pkgManImpl.Install(installParamOption);
+            pkgManImpl.pool->waitForDone(-1);
             qInfo().noquote() << "install " << installParamOption.appId << " done";
+            continue;
         }
+
+        QDBusPendingReply<linglong::service::Reply> dbusReply =
+          this->pkgMan.Install(installParamOption);
+        dbusReply.waitForFinished();
+        reply = dbusReply.value();
+        qDebug() << reply.message;
+        QThread::sleep(1);
+        // 查询一次进度
+        dbusReply = this->pkgMan.GetDownloadStatus(installParamOption, 0);
+        dbusReply.waitForFinished();
+        reply = dbusReply.value();
+        bool disProgress = false;
+        // 隐藏光标
+        std::cout << "\033[?25l";
+        while (reply.code == STATUS_CODE(kPkgInstalling)) {
+            std::cout << "\r\33[K" << reply.message.toStdString();
+            std::cout.flush();
+            QThread::sleep(1);
+            dbusReply = this->pkgMan.GetDownloadStatus(installParamOption, 0);
+            dbusReply.waitForFinished();
+            reply = dbusReply.value();
+            disProgress = true;
+        }
+        // 显示光标
+        std::cout << "\033[?25h";
+        if (disProgress) {
+            std::cout << std::endl;
+        }
+        if (reply.code != STATUS_CODE(kPkgInstallSuccess)) {
+            if (reply.message.isEmpty()) {
+                reply.message = "unknown err";
+                reply.code = -1;
+            }
+            this->printer.print(Err(reply.code, reply.message).value());
+            return -1;
+        }
+
+        qInfo().noquote() << "message:" << reply.message;
     }
     return 0;
 }
 
-int Cli::upgrade()
+int Cli::upgrade(std::map<std::string, docopt::value> &args)
 {
-    auto systemPkgObj = this->pkgfn->builder();
     linglong::service::ParamOption paramOption;
-    auto tiers = m_args["TIER"].asStringList();
+    auto tiers = args["TIER"].asStringList();
 
     if (tiers.empty()) {
-        p->printError(-1, "failed to get app id");
+        this->printer.print(Err(-1, "failed to get app id").value());
         return -1;
     }
 
@@ -337,16 +560,16 @@ int Cli::upgrade()
         // 增加 channel/module
         paramOption.channel = ref.channel;
         paramOption.appModule = ref.module;
-        systemPkgObj->setTimeout(1000 * 60 * 60 * 24);
+        pkgMan.setTimeout(1000 * 60 * 60 * 24);
         qInfo().noquote() << "upgrade" << paramOption.appId << ", please wait a few minutes...";
-        QDBusPendingReply<linglong::service::Reply> dbusReply = systemPkgObj->Update(paramOption);
+        QDBusPendingReply<linglong::service::Reply> dbusReply = pkgMan.Update(paramOption);
         dbusReply.waitForFinished();
         linglong::service::Reply reply;
         reply = dbusReply.value();
         if (reply.code == STATUS_CODE(kPkgUpdating)) {
             signal(SIGINT, doIntOperate);
             QThread::sleep(1);
-            dbusReply = systemPkgObj->GetDownloadStatus(paramOption, 1);
+            dbusReply = pkgMan.GetDownloadStatus(paramOption, 1);
             dbusReply.waitForFinished();
             reply = dbusReply.value();
             bool disProgress = false;
@@ -356,7 +579,7 @@ int Cli::upgrade()
                 std::cout << "\r\33[K" << reply.message.toStdString();
                 std::cout.flush();
                 QThread::sleep(1);
-                dbusReply = systemPkgObj->GetDownloadStatus(paramOption, 1);
+                dbusReply = pkgMan.GetDownloadStatus(paramOption, 1);
                 dbusReply.waitForFinished();
                 reply = dbusReply.value();
                 disProgress = true;
@@ -368,7 +591,7 @@ int Cli::upgrade()
             }
         }
         if (reply.code != STATUS_CODE(kErrorPkgUpdateSuccess)) {
-            p->printError(-1, reply.message);
+            this->printer.print(Err(-1, reply.message).value());
             return -1;
         }
         qInfo().noquote() << "message:" << reply.message;
@@ -377,26 +600,25 @@ int Cli::upgrade()
     return 0;
 }
 
-int Cli::search()
+int Cli::search(std::map<std::string, docopt::value> &args)
 {
-    auto systemPkgObj = this->pkgfn->builder();
     linglong::service::QueryParamOption paramOption;
     QString appId;
-    if (m_args["TEXT"].isString()) {
-        appId = QString::fromStdString(m_args["TEXT"].asString());
+    if (args["TEXT"].isString()) {
+        appId = QString::fromStdString(args["TEXT"].asString());
     }
     if (appId.isEmpty()) {
-        p->printError(-1, "faied to get app id");
+        this->printer.print(Err(-1, "faied to get app id").value());
         return -1;
     }
     paramOption.force = true;
     paramOption.appId = appId;
-    systemPkgObj->setTimeout(1000 * 60 * 60 * 24);
-    QDBusPendingReply<linglong::service::QueryReply> dbusReply = systemPkgObj->Query(paramOption);
+    this->pkgMan.setTimeout(1000 * 60 * 60 * 24);
+    QDBusPendingReply<linglong::service::QueryReply> dbusReply = this->pkgMan.Query(paramOption);
     dbusReply.waitForFinished();
     linglong::service::QueryReply reply = dbusReply.value();
     if (reply.code != STATUS_CODE(kErrorPkgQuerySuccess)) {
-        p->printError(reply.code, reply.message);
+        this->printer.print(Err(reply.code, reply.message).value());
         return -1;
     }
 
@@ -404,25 +626,21 @@ int Cli::search()
       linglong::util::fromJSON<QList<QSharedPointer<linglong::package::AppMetaInfo>>>(
         reply.result.toLocal8Bit());
     if (err) {
-        p->printError(-1, "failed to parse json reply");
+        this->printer.print(Err(-1, "failed to parse json reply").value());
         return -1;
     }
 
-    p->printResult(appMetaInfoList);
-    return -1;
+    this->printer.print(appMetaInfoList);
+    return 0;
 }
 
-int Cli::uninstall()
+int Cli::uninstall(std::map<std::string, docopt::value> &args)
 {
-    auto systemPkgObj = this->pkgfn->builder();
-
-    systemPkgObj->setTimeout(1000 * 60 * 60 * 24);
+    this->pkgMan.setTimeout(1000 * 60 * 60 * 24);
     QDBusPendingReply<linglong::service::Reply> dbusReply;
     linglong::service::UninstallParamOption paramOption;
-    // appId format: org.deepin.calculator/1.2.6 in multi-version
-    // QStringList appInfoList = appInfo.split("/");
 
-    auto tiers = m_args["TIER"].asStringList();
+    auto tiers = args["TIER"].asStringList();
 
     for (auto &tier : tiers) {
         linglong::package::Ref ref(QString::fromStdString(tier));
@@ -430,28 +648,26 @@ int Cli::uninstall()
         paramOption.appId = ref.appId;
         paramOption.channel = ref.channel;
         paramOption.appModule = ref.module;
-        paramOption.delAppData = m_args["--prune"].asBool();
+        paramOption.delAppData = args["--prune"].asBool();
         linglong::service::Reply reply;
         qInfo().noquote() << "uninstall" << paramOption.appId << ", please wait a few minutes...";
-        paramOption.delAllVersion = m_args["--all"].asBool();
-        if (m_args["--no-dbus"].asBool()) {
-            auto pkgMngObj = this->pkgmngfn->builder();
-            pkgMngObj->setNoDBusMode(true);
-            reply = pkgMngObj->Uninstall(paramOption);
+        paramOption.delAllVersion = args["--all"].asBool();
+        if (args["--no-dbus"].asBool()) {
+            this->pkgManImpl.setNoDBusMode(true);
+            reply = this->pkgManImpl.Uninstall(paramOption);
             if (reply.code != STATUS_CODE(kPkgUninstallSuccess)) {
-                p->printError(reply.code, reply.message);
+                this->printer.print(Err(reply.code, reply.message).value());
                 return -1;
-            } else {
-                qInfo().noquote() << "uninstall " << paramOption.appId << " success";
             }
+            qInfo().noquote() << "uninstall " << paramOption.appId << " success";
             return 0;
         }
-        dbusReply = systemPkgObj->Uninstall(paramOption);
+        dbusReply = this->pkgMan.Uninstall(paramOption);
         dbusReply.waitForFinished();
         reply = dbusReply.value();
 
         if (reply.code != STATUS_CODE(kPkgUninstallSuccess)) {
-            p->printError(reply.code, reply.message);
+            this->printer.print(Err(reply.code, reply.message).value());
             return -1;
         }
         qInfo().noquote() << "message:" << reply.message;
@@ -460,60 +676,53 @@ int Cli::uninstall()
     return 0;
 }
 
-int Cli::list()
+int Cli::list(std::map<std::string, docopt::value> &args)
 {
-    auto systemPkgObj = this->pkgfn->builder();
-
     linglong::service::QueryParamOption paramOption;
     QString appId;
-    if (m_args["APP"].isString()) {
-        appId = QString::fromStdString(m_args["APP"].asString());
+    if (args["APP"].isString()) {
+        appId = QString::fromStdString(args["APP"].asString());
     }
     linglong::package::Ref ref(appId);
     paramOption.appId = ref.appId;
     QList<QSharedPointer<linglong::package::AppMetaInfo>> appMetaInfoList;
     linglong::service::QueryReply reply;
-    if (m_args["--no-dbus"].asBool()) {
-        auto pkgMngObj = this->pkgmngfn->builder();
-        reply = pkgMngObj->Query(paramOption);
+    if (args["--no-dbus"].asBool()) {
+        reply = this->pkgManImpl.Query(paramOption);
     } else {
         QDBusPendingReply<linglong::service::QueryReply> dbusReply =
-          systemPkgObj->Query(paramOption);
+          this->pkgMan.Query(paramOption);
         // 默认超时时间为25s
         dbusReply.waitForFinished();
         reply = dbusReply.value();
     }
     linglong::util::getAppMetaInfoListByJson(reply.result, appMetaInfoList);
-    // printAppInfo(appMetaInfoList);
-    p->printResult(appMetaInfoList);
+    this->printer.print(appMetaInfoList);
     return 0;
 }
 
-int Cli::repo()
+int Cli::repo(std::map<std::string, docopt::value> &args)
 {
-    auto systemPkgObj = this->pkgfn->builder();
-
-    if (m_args["modify"].asBool()) {
+    if (args["modify"].asBool()) {
         QString name;
         QString url;
-        if (m_args["--name"].isString()) {
-            name = QString::fromStdString(m_args["--name"].asString());
+        if (args["--name"].isString()) {
+            name = QString::fromStdString(args["--name"].asString());
         }
-        if (m_args["URL"].isString()) {
-            name = QString::fromStdString(m_args["URL"].asString());
+        if (args["URL"].isString()) {
+            name = QString::fromStdString(args["URL"].asString());
         }
         linglong::service::Reply reply;
-        if (!m_args["-no-dbus-proxy"].asBool()) {
+        if (!args["-no-dbus-proxy"].asBool()) {
             QDBusPendingReply<linglong::service::Reply> dbusReply =
-              systemPkgObj->ModifyRepo(name, url);
+              this->pkgMan.ModifyRepo(name, url);
             dbusReply.waitForFinished();
             reply = dbusReply.value();
         } else {
-            auto pkgMngObj = this->pkgmngfn->builder();
-            reply = pkgMngObj->ModifyRepo(name, url);
+            reply = this->pkgManImpl.ModifyRepo(name, url);
         }
         if (reply.code != STATUS_CODE(kErrorModifyRepoSuccess)) {
-            p->printError(reply.code, reply.message);
+            this->printer.print(Err(reply.code, reply.message).value());
             return -1;
         }
         qInfo().noquote() << reply.message;
@@ -521,7 +730,7 @@ int Cli::repo()
     }
 
     linglong::service::QueryReply reply;
-    QDBusPendingReply<linglong::service::QueryReply> dbusReply = systemPkgObj->getRepoInfo();
+    QDBusPendingReply<linglong::service::QueryReply> dbusReply = this->pkgMan.getRepoInfo();
     dbusReply.waitForFinished();
     reply = dbusReply.value();
 

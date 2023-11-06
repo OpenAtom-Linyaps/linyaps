@@ -7,108 +7,88 @@
 #ifndef LINGLONG_UTILS_ERROR_H_
 #define LINGLONG_UTILS_ERROR_H_
 
-#include "QJsonDocument"
-#include "QJsonObject"
-#include "QMessageLogContext"
-#include "QString"
-#include "QStringBuilder"
-#include "tl/expected.hpp"
+#include "linglong/utils/error/details/error_impl.h"
+
+#include <tl/expected.hpp>
+
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QMessageLogContext>
+#include <QString>
+#include <QStringBuilder>
 
 #include <memory>
 #include <utility>
 
 namespace linglong::utils::error {
-namespace {
-class error
+
+class Error
 {
 public:
-    error(const char *file,
-          int line,
-          const char *function,
-          const char *category,
-          const int &code,
-          QString msg,
-          std::unique_ptr<error> cause = nullptr)
-        : context(file, line, function, category)
-        , _code(code)
-        , msg(std::move(msg))
-        , cause(std::move(cause))
+    Error() = default;
+
+    Error(const Error &) = delete;
+    Error(Error &&) = default;
+    Error &operator=(const Error &) = delete;
+    Error &operator=(Error &&) = default;
+
+    [[nodiscard]] auto code() const { return pImpl->code(); };
+
+    [[nodiscard]] auto message() const { return pImpl->message(); }
+
+    [[nodiscard]] auto toJSON() const { return pImpl->toJSON(); }
+
+    static auto
+    Wrap(const char *file, int line, const char *function, const QString &msg, Error cause) -> Error
     {
+        return Error(std::make_unique<details::ErrorImpl>(file,
+                                                          line,
+                                                          function,
+                                                          "default",
+                                                          cause.code(),
+                                                          msg,
+                                                          std::move(cause.pImpl)));
     }
 
-    [[nodiscard]] auto code() const -> int { return _code; };
-
-    [[nodiscard]] auto message() const -> QString
+    static auto Err(const char *file, int line, const char *function, int code, const QString &msg)
+      -> Error
     {
-        QString msg;
-        for (const error *err = this; err != nullptr; err = err->cause.get()) {
-            msg += QString("%1:%2\nin %3\n\t[code = %4]\n\t%5\n")
-                     .arg(err->context.file)
-                     .arg(err->context.line)
-                     .arg(err->context.function)
-                     .arg(err->_code)
-                     .arg(err->msg);
-        }
-        return msg;
+        return Error(std::make_unique<details::ErrorImpl>(file,
+                                                          line,
+                                                          function,
+                                                          "default",
+                                                          code,
+                                                          msg,
+                                                          nullptr));
     }
-
-    [[nodiscard]] auto toJSON() const -> QJsonDocument
-    {
-        QJsonObject obj;
-        obj["code"] = this->_code;
-        obj["message"] = this->message();
-        return QJsonDocument(obj);
-    };
 
 private:
-    QMessageLogContext context;
-    int _code;
-    QString msg;
-    std::unique_ptr<error> cause;
+    explicit Error(std::unique_ptr<details::ErrorImpl> pImpl)
+        : pImpl(std::move(pImpl))
+    {
+    }
+
+    std::unique_ptr<details::ErrorImpl> pImpl;
 };
-} // namespace
-
-using Error = std::unique_ptr<error>;
-
-namespace {
-inline auto
-doEWrap(const char *file, int line, const char *function, const QString &msg, Error cause) -> Error
-{
-    return std::make_unique<error>(file,
-                                   line,
-                                   function,
-                                   "default",
-                                   cause->code(),
-                                   msg,
-                                   std::move(cause));
-}
-
-inline auto doErr(const char *file, int line, const char *function, int code, const QString &msg)
-  -> Error
-{
-    return std::make_unique<error>(file, line, function, "default", code, msg, nullptr);
-}
-
-} // namespace
 
 template<typename Value>
 using Result = tl::expected<Value, Error>;
 
 } // namespace linglong::utils::error
 
-#define EWrap(message, cause) /*NOLINT*/                                 \
-    tl::unexpected(::linglong::utils::error::doEWrap(QT_MESSAGELOG_FILE, \
-                                                     QT_MESSAGELOG_LINE, \
-                                                     QT_MESSAGELOG_FUNC, \
-                                                     message,            \
-                                                     std::move(cause)))
+#define EWrap(message, cause) /*NOLINT*/                                     \
+    tl::unexpected(::linglong::utils::error::Error::Wrap(QT_MESSAGELOG_FILE, \
+                                                         QT_MESSAGELOG_LINE, \
+                                                         QT_MESSAGELOG_FUNC, \
+                                                         message,            \
+                                                         std::move(cause)))
 
-#define Err(code, message) /*NOLINT*/                                  \
-    tl::unexpected(::linglong::utils::error::doErr(QT_MESSAGELOG_FILE, \
-                                                   QT_MESSAGELOG_LINE, \
-                                                   QT_MESSAGELOG_FUNC, \
-                                                   code,               \
-                                                   message))
+#define Err(code, message) /*NOLINT*/                                       \
+    tl::unexpected(::linglong::utils::error::Error::Err(QT_MESSAGELOG_FILE, \
+                                                        QT_MESSAGELOG_LINE, \
+                                                        QT_MESSAGELOG_FUNC, \
+                                                        code,               \
+                                                        message))
 
 #define Ok \
     {      \

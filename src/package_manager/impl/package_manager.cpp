@@ -464,7 +464,7 @@ bool PackageManagerPrivate::checkAppBase(const QString &runtime,
         return false;
     }
 
-    auto runtimeInfo = appList.at(0);
+    auto runtimeInfo = appList.last();
     auto baseRef = runtimeInfo->runtime;
     QStringList baseList = baseRef.split('/');
     if (baseList.size() < 3) {

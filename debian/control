@@ -15,6 +15,7 @@ Build-Depends: cmake,
                pkg-config,
                qt5-qmake,
                qtbase5-dev,
+               qtbase5-private-dev,
                systemd,
                libdocopt-dev
 Standards-Version: 4.1.3

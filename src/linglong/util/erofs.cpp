@@ -6,7 +6,7 @@
 
 #include "erofs.h"
 
-#include "linglong/api/v1/dbus/filesystem_helper1.h"
+#include "linglong/api/dbus/v1/filesystem_helper.h"
 #include "linglong/dbus_ipc/dbus_system_helper_common.h"
 #include "runner.h"
 
@@ -20,9 +20,9 @@ util::Error mount(const QString &src, const QString &mountPoint)
         return util::Exec("erofsfuse", { src, mountPoint });
     }
 
-    api::v1::dbus::PackageManagerHelper1 ifc(SystemHelperDBusServiceName,
-                                             FilesystemHelperDBusPath,
-                                             QDBusConnection::systemBus());
+    api::dbus::v1::PackageManagerHelper ifc(SystemHelperDBusServiceName,
+                                            FilesystemHelperDBusPath,
+                                            QDBusConnection::systemBus());
 
     QVariantMap option = {};
     if (qEnvironmentVariable("LINGLONG_REPO_VFS_EROFS_BACKEND") == "fscache") {

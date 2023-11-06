@@ -41,7 +41,7 @@ auto main(int argc, char *argv[]) -> int
                              "/org/deepin/linglong/AppManager");
     });
     if (!result.has_value()) {
-        qCritical().noquote() << "Launching failed:" << Qt::endl << result.error()->message();
+        qCritical().noquote() << "Launching failed:" << Qt::endl << result.error().message();
         return -1;
     }
 
@@ -53,11 +53,11 @@ auto main(int argc, char *argv[]) -> int
                                             // FIXME: use cmake option
                                             "org.deepin.linglong.AppManager");
         if (!result.has_value()) {
-            qWarning().noquote() << "During exiting:" << Qt::endl << result.error()->message();
+            qWarning().noquote() << "During exiting:" << Qt::endl << result.error().message();
         }
     });
     if (!result.has_value()) {
-        qCritical().noquote() << "Launching failed:" << Qt::endl << result.error()->message();
+        qCritical().noquote() << "Launching failed:" << Qt::endl << result.error().message();
         return -1;
     }
 

@@ -10,12 +10,12 @@
 #include "linglong/package/info.h"
 #include "linglong/repo/repo.h"
 #include "linglong/runtime/app_config.h"
-#include "linglong/util/env.h"
 #include "linglong/util/file.h"
 #include "linglong/util/qserializer/json.h"
 #include "linglong/util/qserializer/yaml.h"
 #include "linglong/util/version/version.h"
 #include "linglong/util/xdg.h"
+#include "linglong/utils/command/env.h"
 #include "linglong/utils/std_helper/qdebug_helper.h"
 #include "linglong/utils/xdg/desktop_entry.h"
 #include "ocppi/runtime/config/ConfigLoader.hpp"
@@ -155,7 +155,7 @@ int App::prepare()
         // FIXME(black_desk): return error instead of logging here.
         qCritical() << "DesktopEntry file path:"
                     << applicationsDir.absoluteFilePath(desktopFilenameList.value(0));
-        qCritical().noquote() << desktopEntry.error()->code() << desktopEntry.error()->message();
+        qCritical().noquote() << desktopEntry.error().code() << desktopEntry.error().message();
         return -1;
     }
 
@@ -163,7 +163,7 @@ int App::prepare()
     if (!exec.has_value()) {
         // FIXME(black_desk): return error instead of logging here.
         qCritical() << "Broken desktop file without Exec in main section.";
-        qCritical().noquote() << exec.error()->code() << exec.error()->message();
+        qCritical().noquote() << exec.error().code() << exec.error().message();
         return -1;
     }
 
@@ -763,7 +763,7 @@ auto App::stageUser(const QString &appId) -> int
 
     // 处理环境变量
     for (auto key : envMap.keys()) {
-        if (linglong::util::envList.contains(key)) {
+        if (utils::command::envList.contains(key)) {
             r.process->env->push_back((key + "=" + envMap[key]).toStdString());
         }
     }
@@ -826,7 +826,8 @@ auto App::stageUser(const QString &appId) -> int
         idMapping.hostID = uidMap.value(0);
         idMapping.containerID = uidMap.value(1);
         idMapping.size = uidMap.value(2);
-        r.linux_->uidMappings = r.linux_->uidMappings.value_or( std::vector<ocppi::runtime::config::types::IdMapping>{});
+        r.linux_->uidMappings =
+          r.linux_->uidMappings.value_or(std::vector<ocppi::runtime::config::types::IdMapping>{});
         r.linux_->uidMappings->push_back(idMapping);
     }
 
@@ -838,7 +839,8 @@ auto App::stageUser(const QString &appId) -> int
         idMapping.hostID = gidMap.value(0);
         idMapping.containerID = gidMap.value(1);
         idMapping.size = gidMap.value(2);
-        r.linux_->gidMappings = r.linux_->gidMappings.value_or( std::vector<ocppi::runtime::config::types::IdMapping>{});
+        r.linux_->gidMappings =
+          r.linux_->gidMappings.value_or(std::vector<ocppi::runtime::config::types::IdMapping>{});
         r.linux_->gidMappings->push_back(idMapping);
     }
 
@@ -1311,8 +1313,7 @@ void App::exec(const QStringList &cmd, const QStringList &env, QString cwd)
             // FIXME(black_desk): return error instead of logging here.
             qCritical() << "DesktopEntry file path:"
                         << applicationsDir.absoluteFilePath(desktopFilenameList.value(0));
-            qCritical().noquote() << desktopEntry.error()->code()
-                                  << desktopEntry.error()->message();
+            qCritical().noquote() << desktopEntry.error().code() << desktopEntry.error().message();
             return;
         }
 
@@ -1320,7 +1321,7 @@ void App::exec(const QStringList &cmd, const QStringList &env, QString cwd)
         if (!exec.has_value()) {
             // FIXME(black_desk): return error instead of logging here.
             qCritical() << "Broken desktop file without Exec in main section.";
-            qCritical().noquote() << exec.error()->code() << exec.error()->message();
+            qCritical().noquote() << exec.error().code() << exec.error().message();
             return;
         }
 

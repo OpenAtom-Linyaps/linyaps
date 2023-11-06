@@ -7,7 +7,7 @@
 #ifndef LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_H_
 #define LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_H_
 
-#include "linglong/api/v1/dbus/package_manager_helper1.h"
+#include "linglong/api/dbus/v1/package_manager_helper.h"
 #include "linglong/dbus_ipc/package_manager_param.h"
 #include "linglong/dbus_ipc/param_option.h"
 #include "linglong/dbus_ipc/reply.h"
@@ -37,7 +37,7 @@ class PackageManager : public QObject, protected QDBusContext
 public:
     PackageManager();
 
-    virtual ~PackageManager() = default;
+    ~PackageManager() override = default;
 
     PackageManager(const PackageManager &) = delete;
     PackageManager(PackageManager &&) = delete;
@@ -298,7 +298,7 @@ private:
 
     bool noDBusMode = false;
 
-    api::v1::dbus::PackageManagerHelper1 packageManagerHelperInterface;
+    api::dbus::v1::PackageManagerHelper packageManagerHelperInterface;
 };
 
 } // namespace linglong::service

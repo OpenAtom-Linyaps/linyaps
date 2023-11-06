@@ -129,24 +129,24 @@ pfl_add_library(
   ./src/linglong/adaptors/system_helper/filesystem_helper1.h
   ./src/linglong/adaptors/system_helper/package_manager_helper1.cpp
   ./src/linglong/adaptors/system_helper/package_manager_helper1.h
-  ./src/linglong/api/v1/dbus/app_manager1.cpp
-  ./src/linglong/api/v1/dbus/app_manager1.h
-  ./src/linglong/api/v1/dbus/filesystem_helper1.cpp
-  ./src/linglong/api/v1/dbus/filesystem_helper1.h
-  ./src/linglong/api/v1/dbus/package_manager1.cpp
-  ./src/linglong/api/v1/dbus/package_manager1.h
-  ./src/linglong/api/v1/dbus/package_manager_helper1.cpp
-  ./src/linglong/api/v1/dbus/package_manager_helper1.h
-  ./src/linglong/api/v1/types/CommonOptions.cpp
-  ./src/linglong/api/v1/types/CommonOptions.h
-  ./src/linglong/api/v1/types/CommonReply.cpp
-  ./src/linglong/api/v1/types/CommonReply.h
-  ./src/linglong/api/v1/types/DBusProxyOptions.cpp
-  ./src/linglong/api/v1/types/DBusProxyOptions.h
-  ./src/linglong/api/v1/types/ExecuteOptions.cpp
-  ./src/linglong/api/v1/types/ExecuteOptions.h
-  ./src/linglong/api/v1/types/StartOptions.cpp
-  ./src/linglong/api/v1/types/StartOptions.h
+  ./src/linglong/api/dbus/v1/app_manager.cpp
+  ./src/linglong/api/dbus/v1/app_manager.h
+  ./src/linglong/api/dbus/v1/filesystem_helper.cpp
+  ./src/linglong/api/dbus/v1/filesystem_helper.h
+  ./src/linglong/api/dbus/v1/package_manager.cpp
+  ./src/linglong/api/dbus/v1/package_manager.h
+  ./src/linglong/api/dbus/v1/package_manager_helper.cpp
+  ./src/linglong/api/dbus/v1/package_manager_helper.h
+  ./src/linglong/api/types/v1/CommonOptions.cpp
+  ./src/linglong/api/types/v1/CommonOptions.h
+  ./src/linglong/api/types/v1/CommonReply.cpp
+  ./src/linglong/api/types/v1/CommonReply.h
+  ./src/linglong/api/types/v1/DBusProxyOptions.cpp
+  ./src/linglong/api/types/v1/DBusProxyOptions.h
+  ./src/linglong/api/types/v1/ExecuteOptions.cpp
+  ./src/linglong/api/types/v1/ExecuteOptions.h
+  ./src/linglong/api/types/v1/StartOptions.cpp
+  ./src/linglong/api/types/v1/StartOptions.h
   ./src/linglong/builder/builder_templates.qrc
   ./src/linglong/builder/builder.h
   ./src/linglong/builder/builder_config.cpp
@@ -219,8 +219,6 @@ pfl_add_library(
   ./src/linglong/util/app_status.h
   ./src/linglong/util/appinfo_cache.cpp
   ./src/linglong/util/appinfo_cache.h
-  ./src/linglong/util/command_helper.cpp
-  ./src/linglong/util/command_helper.h
   ./src/linglong/util/config/config.cpp
   ./src/linglong/util/config/config.h
   ./src/linglong/util/config/repo.cpp
@@ -228,8 +226,6 @@ pfl_add_library(
   ./src/linglong/util/configure.cpp
   ./src/linglong/util/connection.cpp
   ./src/linglong/util/connection.h
-  ./src/linglong/util/env.cpp
-  ./src/linglong/util/env.h
   ./src/linglong/util/erofs.cpp
   ./src/linglong/util/erofs.h
   ./src/linglong/util/error.cpp
@@ -268,6 +264,14 @@ pfl_add_library(
   ./src/linglong/util/version/version.h
   ./src/linglong/util/xdg.cpp
   ./src/linglong/util/xdg.h
+  ./src/linglong/cli/cli.cpp
+  ./src/linglong/cli/cli.h
+  ./src/linglong/cli/printer.cpp
+  ./src/linglong/cli/printer.h
+  ./src/linglong/cli/json_printer.cpp
+  ./src/linglong/cli/json_printer.h
+  ./src/linglong/utils/command/env.cpp
+  ./src/linglong/utils/command/env.h
   ./src/linglong/utils/dbus/log.cpp
   ./src/linglong/utils/dbus/log.h
   ./src/linglong/utils/dbus/register.cpp
@@ -282,14 +286,8 @@ pfl_add_library(
   ./src/linglong/utils/serialize/json.h
   ./src/linglong/utils/serialize/yaml.cpp
   ./src/linglong/utils/serialize/yaml.h
-  ./src/linglong/utils/xdg/desktop_entry.h
   ./src/linglong/utils/xdg/desktop_entry.cpp
-  ./src/linglong/cli/cli.h
-  ./src/linglong/cli/cli.cpp
-  ./src/linglong/printer/printer.h
-  ./src/linglong/printer/printer.cpp
-  ./src/linglong/utils/global/factory.h
-  ./src/linglong/utils/global/factory.cpp
+  ./src/linglong/utils/xdg/desktop_entry.h
   APPS
   ll-builder
   ll-cli
@@ -420,23 +418,23 @@ endfunction()
 linglong_add_dbus_interface(
   linglong
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManagerHelper1.xml
-  src/linglong/api/v1/dbus/gen_org_deepin_linglong_packagemanagerhelper1)
+  src/linglong/api/dbus/v1/gen_org_deepin_linglong_packagemanagerhelper1)
 
 linglong_add_dbus_interface(
   linglong
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.FilesystemHelper1.xml
-  src/linglong/api/v1/dbus/gen_org_deepin_linglong_filesystemhelper1
+  src/linglong/api/dbus/v1/gen_org_deepin_linglong_filesystemhelper1
   linglong/dbus_ipc/workaround.h)
 
 linglong_add_dbus_interface(
   linglong ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.AppManager1.xml
-  src/linglong/api/v1/dbus/gen_org_deepin_linglong_appmanager1
+  src/linglong/api/dbus/v1/gen_org_deepin_linglong_appmanager1
   linglong/dbus_ipc/workaround.h)
 
 linglong_add_dbus_interface(
   linglong
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManager1.xml
-  src/linglong/api/v1/dbus/gen_org_deepin_linglong_packagemanager1
+  src/linglong/api/dbus/v1/gen_org_deepin_linglong_packagemanager1
   linglong/dbus_ipc/workaround.h)
 
 add_subdirectory(misc)

@@ -13,15 +13,13 @@
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/app.h"
 #include "linglong/runtime/container.h"
-#include "linglong/runtime/oci.h"
-#include "linglong/util/command_helper.h"
-#include "linglong/util/env.h"
 #include "linglong/util/error.h"
 #include "linglong/util/file.h"
 #include "linglong/util/qserializer/json.h"
 #include "linglong/util/qserializer/yaml.h"
 #include "linglong/util/runner.h"
 #include "linglong/util/sysinfo.h"
+#include "linglong/utils/command/env.h"
 #include "linglong/utils/std_helper/qdebug_helper.h"
 #include "linglong/utils/xdg/desktop_entry.h"
 #include "ocppi/runtime/config/ConfigLoader.hpp"
@@ -110,7 +108,7 @@ linglong::util::Error commitBuildOutput(Project *project, const nlohmann::json &
         for (auto const &fileInfo : configFileInfoList) {
             auto desktopEntry = utils::xdg::DesktopEntry::New(fileInfo.filePath());
             if (!desktopEntry.has_value()) {
-                return NewError(desktopEntry.error()->code(), "file to config not exists");
+                return NewError(desktopEntry.error().code(), "file to config not exists");
             }
 
             // set all section
@@ -135,7 +133,7 @@ linglong::util::Error commitBuildOutput(Project *project, const nlohmann::json &
                 auto result = desktopEntry->saveToFile(
                   QStringList{ targetPath, fileInfo.fileName() }.join(QDir::separator()));
                 if (!result.has_value()) {
-                    return NewError(result.error()->code(), result.error()->message());
+                    return NewError(result.error().code(), result.error().message());
                 }
             }
         }
@@ -340,7 +338,8 @@ linglong::util::Error LinglongBuilder::initRepo()
 }
 
 // FIXME: should merge with runtime
-int LinglongBuilder::startContainer(QSharedPointer<Container> c, ocppi::runtime::config::types::Config &r)
+int LinglongBuilder::startContainer(QSharedPointer<Container> c,
+                                    ocppi::runtime::config::types::Config &r)
 {
 
 #define LL_VAL(str) #str
@@ -1068,7 +1067,7 @@ linglong::util::Error LinglongBuilder::run()
         }
 
         // 获取环境变量
-        QStringList userEnvList = COMMAND_HELPER->getUserEnv(linglong::util::envList);
+        QStringList userEnvList = utils::command::getUserEnv(utils::command::envList);
 
         auto app = runtime::App::load(&repo, project->ref(), BuilderConfig::instance()->getExec());
         if (nullptr == app) {

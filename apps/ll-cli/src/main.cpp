@@ -4,11 +4,10 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
+#include "linglong/api/dbus/v1/app_manager.h"
 #include "linglong/cli/cli.h"
+#include "linglong/cli/json_printer.h"
 #include "linglong/package_manager/package_manager.h"
-#include "linglong/printer/printer.h"
-#include "linglong/util/command_helper.h"
-#include "linglong/utils/error/error.h"
 
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -52,10 +51,11 @@ int main(int argc, char **argv)
 
     registerDBusParam();
 
-    DocOptMap args = docopt::docopt(USAGE,
-                                    { argv + 1, argv + argc },
-                                    true,                  // show help if requested
-                                    "linglong CLI 1.4.0"); // version string
+    std::map<std::string, docopt::value> args =
+      docopt::docopt(Cli::USAGE,
+                     { argv + 1, argv + argc },
+                     true,                  // show help if requested
+                     "linglong CLI 1.4.0"); // version string
 
     auto systemHelperDBusConnection = QDBusConnection::systemBus();
     const auto systemHelperAddress = QString("unix:path=/run/linglong_system_helper_socket");
@@ -79,87 +79,44 @@ int main(int argc, char **argv)
         setenv("LINGLONG_SYSTEM_HELPER_ADDRESS", systemHelperAddress.toStdString().c_str(), true);
     }
 
-    std::unique_ptr<Printer> p;
+    std::unique_ptr<Printer> printer;
     if (args["--json"].asBool()) {
-        p = std::make_unique<PrinterJson>();
+        printer = std::make_unique<JSONPrinter>();
     } else {
-        p = std::make_unique<PrinterNormal>();
+        printer = std::make_unique<Printer>();
     }
 
-    auto appfn = std::make_shared<Factory<linglong::api::v1::dbus::AppManager1>>([]() {
-        return std::make_shared<linglong::api::v1::dbus::AppManager1>(
-          "org.deepin.linglong.AppManager",
-          "/org/deepin/linglong/AppManager",
-          QDBusConnection::sessionBus());
-    });
+    auto appMan =
+      std::make_unique<linglong::api::dbus::v1::AppManager>("org.deepin.linglong.AppManager",
+                                                            "/org/deepin/linglong/AppManager",
+                                                            QDBusConnection::sessionBus());
+    auto pkgMan = std::make_unique<linglong::api::dbus::v1::PackageManager>(
+      "org.deepin.linglong.PackageManager",
+      "/org/deepin/linglong/PackageManager",
+      QDBusConnection::systemBus());
 
-    auto pkgfn = std::make_shared<Factory<linglong::api::v1::dbus::PackageManager1>>([]() {
-        return std::make_shared<linglong::api::v1::dbus::PackageManager1>(
-          "org.deepin.linglong.PackageManager",
-          "/org/deepin/linglong/PackageManager",
-          QDBusConnection::systemBus());
-    });
+    auto pkgManImpl = std::make_unique<linglong::service::PackageManager>();
 
-    auto cmdhelperfn = std::make_shared<Factory<linglong::util::CommandHelper>>([]() {
-        return std::make_shared<linglong::util::CommandHelper>();
-    });
+    auto cli = std::make_unique<Cli>(*printer, *appMan, *pkgMan, *pkgManImpl);
 
-    auto pkgmngfn = std::make_shared<Factory<linglong::service::PackageManager>>([]() {
-        return std::make_shared<linglong::service::PackageManager>();
-    });
-
-    Cli cli(args, std::move(p), appfn, pkgfn, cmdhelperfn, pkgmngfn);
-
-    QMap<QString, std::function<int()>> subcommandMap = {
-        { "run",
-          [&cli]() {
-              return cli.run();
-          } },
-        { "exec",
-          [&cli]() {
-              return cli.exec();
-          } },
-        { "enter",
-          [&cli]() {
-              return cli.enter();
-          } },
-        { "ps",
-          [&cli]() {
-              return cli.ps();
-          } },
-        { "kill",
-          [&cli]() {
-              return cli.kill();
-          } },
-        { "install",
-          [&cli]() {
-              return cli.install();
-          } },
-        { "upgrade",
-          [&cli]() {
-              return cli.upgrade();
-          } },
-        { "search",
-          [&cli]() {
-              return cli.search();
-          } },
-        { "uninstall",
-          [&cli]() {
-              return cli.uninstall();
-          } },
-        { "list",
-          [&cli]() {
-              return cli.list();
-          } },
-        { "repo",
-          [&cli]() {
-              return cli.repo();
-          } },
-    };
+    QMap<QString, std::function<int(Cli *, std::map<std::string, docopt::value> &)>>
+      subcommandMap = {
+          { "run", &Cli::run },
+          { "exec", &Cli::exec },
+          { "enter", &Cli::enter },
+          { "ps", &Cli::ps },
+          { "kill", &Cli::kill },
+          { "install", &Cli::install },
+          { "upgrade", &Cli::upgrade },
+          { "search", &Cli::search },
+          { "uninstall", &Cli::uninstall },
+          { "list", &Cli::list },
+          { "repo", &Cli::repo },
+      };
 
     for (const auto &subcommand : subcommandMap.keys()) {
         if (args[subcommand.toStdString()].asBool() == true) {
-            return subcommandMap[subcommand]();
+            return subcommandMap[subcommand](cli.get(), args);
         }
     }
 }

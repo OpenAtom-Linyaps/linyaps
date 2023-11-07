@@ -713,9 +713,8 @@ int Cli::repo(std::map<std::string, docopt::value> &args)
             name = QString::fromStdString(args["URL"].asString());
         }
         linglong::service::Reply reply;
-        if (!args["-no-dbus-proxy"].asBool()) {
-            QDBusPendingReply<linglong::service::Reply> dbusReply =
-              this->pkgMan.ModifyRepo(name, url);
+        if (!args["--no-dbus"].asBool()) {
+            auto dbusReply = this->pkgMan.ModifyRepo(name, url);
             dbusReply.waitForFinished();
             reply = dbusReply.value();
         } else {
@@ -729,10 +728,9 @@ int Cli::repo(std::map<std::string, docopt::value> &args)
         return 0;
     }
 
-    linglong::service::QueryReply reply;
-    QDBusPendingReply<linglong::service::QueryReply> dbusReply = this->pkgMan.getRepoInfo();
+    auto dbusReply = this->pkgMan.getRepoInfo();
     dbusReply.waitForFinished();
-    reply = dbusReply.value();
+    auto reply = dbusReply.value();
 
     qInfo().noquote() << QString("%1%2").arg("Name", -10).arg("Url");
     qInfo().noquote() << QString("%1%2").arg(reply.message, -10).arg(reply.result);

@@ -18,7 +18,7 @@ namespace linglong {
 namespace builder {
 
 QSERIALIZER_IMPL(Variables);
-QSERIALIZER_IMPL(Enviroment);
+QSERIALIZER_IMPL(Environment);
 QSERIALIZER_IMPL(Package);
 QSERIALIZER_IMPL(BuilderRuntime);
 QSERIALIZER_IMPL(Source);
@@ -150,8 +150,8 @@ public:
             q_ptr->variables.reset(new Variables());
         }
 
-        if (q_ptr->enviroment == nullptr) {
-            q_ptr->enviroment.reset(new Enviroment());
+        if (q_ptr->environment == nullptr) {
+            q_ptr->environment.reset(new Environment());
         }
 
         if (q_ptr->build->manual == nullptr) {
@@ -159,7 +159,7 @@ public:
         }
 
         Q_ASSERT(temp->variables != nullptr);
-        Q_ASSERT(temp->enviroment != nullptr);
+        Q_ASSERT(temp->environment != nullptr);
 
         command += "#local variable\n";
         for (int i = q_ptr->variables->metaObject()->propertyOffset();
@@ -176,20 +176,20 @@ public:
                              .arg(q_ptr->variables->property(propertyName).toString());
             }
         }
-        // set build enviroment variables
-        command += "#enviroment variables\n";
-        for (int i = q_ptr->enviroment->metaObject()->propertyOffset();
-             i < q_ptr->enviroment->metaObject()->propertyCount();
+        // set build environment variables
+        command += "#environment variables\n";
+        for (int i = q_ptr->environment->metaObject()->propertyOffset();
+             i < q_ptr->environment->metaObject()->propertyCount();
              ++i) {
-            auto propertyName = q_ptr->enviroment->metaObject()->property(i).name();
-            if (q_ptr->enviroment->property(propertyName).toString().isNull()) {
+            auto propertyName = q_ptr->environment->metaObject()->property(i).name();
+            if (q_ptr->environment->property(propertyName).toString().isNull()) {
                 command += QString("export %1=\"%2\"\n")
                              .arg(propertyName)
-                             .arg(temp->enviroment->property(propertyName).toString());
+                             .arg(temp->environment->property(propertyName).toString());
             } else {
                 command += QString("export %1=\"%2\"\n")
                              .arg(propertyName)
-                             .arg(q_ptr->enviroment->property(propertyName).toString());
+                             .arg(q_ptr->environment->property(propertyName).toString());
             }
         }
 

@@ -51,14 +51,6 @@ public:
         return msg;
     }
 
-    [[nodiscard]] auto toJSON() const -> QJsonDocument
-    {
-        QJsonObject obj;
-        obj["code"] = this->_code;
-        obj["message"] = this->message();
-        return QJsonDocument(obj);
-    };
-
 private:
     QMessageLogContext context;
     int _code;

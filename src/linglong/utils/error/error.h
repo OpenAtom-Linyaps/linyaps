@@ -36,8 +36,6 @@ public:
 
     [[nodiscard]] auto message() const { return pImpl->message(); }
 
-    [[nodiscard]] auto toJSON() const { return pImpl->toJSON(); }
-
     static auto
     Wrap(const char *file, int line, const char *function, const QString &msg, Error cause) -> Error
     {

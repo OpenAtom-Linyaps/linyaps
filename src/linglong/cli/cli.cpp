@@ -12,7 +12,8 @@
 #include <sys/wait.h>
 
 using namespace linglong::utils::error;
-using namespace linglong::cli;
+
+namespace linglong::cli {
 
 const char Cli::USAGE[] =
   R"(linglong CLI
@@ -465,7 +466,7 @@ int Cli::kill(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    qInfo().noquote() << reply.message;
+    this->printer.print(reply);
     return 0;
 }
 
@@ -537,7 +538,7 @@ int Cli::install(std::map<std::string, docopt::value> &args)
             return -1;
         }
 
-        qInfo().noquote() << "message:" << reply.message;
+        this->printer.print(reply);
     }
     return 0;
 }
@@ -594,7 +595,7 @@ int Cli::upgrade(std::map<std::string, docopt::value> &args)
             this->printer.print(Err(-1, reply.message).value());
             return -1;
         }
-        qInfo().noquote() << "message:" << reply.message;
+        this->printer.print(reply);
     }
 
     return 0;
@@ -670,7 +671,7 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
             this->printer.print(Err(reply.code, reply.message).value());
             return -1;
         }
-        qInfo().noquote() << "message:" << reply.message;
+        this->printer.print(reply);
     }
 
     return 0;
@@ -724,7 +725,7 @@ int Cli::repo(std::map<std::string, docopt::value> &args)
             this->printer.print(Err(reply.code, reply.message).value());
             return -1;
         }
-        qInfo().noquote() << reply.message;
+        this->printer.print(reply);
         return 0;
     }
 
@@ -732,7 +733,8 @@ int Cli::repo(std::map<std::string, docopt::value> &args)
     dbusReply.waitForFinished();
     auto reply = dbusReply.value();
 
-    qInfo().noquote() << QString("%1%2").arg("Name", -10).arg("Url");
-    qInfo().noquote() << QString("%1%2").arg(reply.message, -10).arg(reply.result);
+    this->printer.print(reply);
     return 0;
 }
+
+} // namespace linglong::cli

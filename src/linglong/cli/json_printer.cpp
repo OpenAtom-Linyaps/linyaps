@@ -6,6 +6,8 @@
 
 #include "linglong/cli/json_printer.h"
 
+#include "linglong/dbus_ipc/reply.h"
+
 #include <QJsonArray>
 
 #include <iostream>
@@ -39,9 +41,7 @@ void JSONPrinter::print(const QList<QSharedPointer<linglong::package::AppMetaInf
         obj["module"] = it->module.trimmed();
     }
 
-    for (auto obj : QJsonDocument(obj).toJson()) {
-        std::cout << obj << std::endl;
-    }
+    std::cout << QString::fromUtf8(QJsonDocument(obj).toJson()).toStdString() << std::endl;
 }
 
 void JSONPrinter::print(const QList<QSharedPointer<Container>> &list)
@@ -55,8 +55,30 @@ void JSONPrinter::print(const QList<QSharedPointer<Container>> &list)
           { "path", container->workingDirectory },
         });
     }
-    for (auto obj : QJsonDocument(jsonArray).toJson()) {
-        std::cout << obj << std::endl;
-    }
+
+    std::cout << QString::fromUtf8(QJsonDocument(jsonArray).toJson()).toStdString() << std::endl;
 }
+
+void JSONPrinter::print(const linglong::service::Reply &reply)
+{
+    QJsonArray jsonArray;
+    jsonArray.push_back(QJsonObject{
+      { "code", reply.code },
+      { "message", reply.message },
+    });
+
+    std::cout << QString::fromUtf8(QJsonDocument(jsonArray).toJson()).toStdString() << std::endl;
+}
+
+void JSONPrinter::print(const linglong::service::QueryReply &reply)
+{
+    QJsonArray jsonArray;
+    jsonArray.push_back(QJsonObject{
+      { "Name", reply.message },
+      { "Url", reply.result },
+    });
+
+    std::cout << QString::fromUtf8(QJsonDocument(jsonArray).toJson()).toStdString() << std::endl;
+}
+
 } // namespace linglong::cli

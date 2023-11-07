@@ -8,6 +8,7 @@
 #define LINGLONG_CLI_JSON_PRINTER_H_
 
 #include "linglong/cli/printer.h"
+#include "linglong/dbus_ipc/reply.h"
 
 namespace linglong::cli {
 
@@ -17,6 +18,8 @@ public:
     void print(const utils::error::Error &err) override;
     void print(const QList<QSharedPointer<linglong::package::AppMetaInfo>> &list) override;
     void print(const QList<QSharedPointer<Container>> &list) override;
+    void print(const linglong::service::Reply &reply) override;
+    void print(const linglong::service::QueryReply &reply) override;
 };
 
 } // namespace linglong::cli

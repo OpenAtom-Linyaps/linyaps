@@ -7,6 +7,7 @@
 #ifndef LINGLONG_SRC_CLI_PRINTER_H_
 #define LINGLONG_SRC_CLI_PRINTER_H_
 
+#include "linglong/dbus_ipc/reply.h"
 #include "linglong/package/package.h"
 #include "linglong/runtime/container.h"
 #include "linglong/utils/error/error.h"
@@ -31,6 +32,8 @@ public:
     virtual void print(const utils::error::Error &);
     virtual void print(const QList<QSharedPointer<linglong::package::AppMetaInfo>> &);
     virtual void print(const QList<QSharedPointer<Container>> &);
+    virtual void print(const linglong::service::Reply &);
+    virtual void print(const linglong::service::QueryReply &);
 };
 
 } // namespace linglong::cli

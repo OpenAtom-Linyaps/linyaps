@@ -6,6 +6,8 @@
 
 #include "linglong/cli/printer.h"
 
+#include "linglong/dbus_ipc/reply.h"
+
 #include <QJsonArray>
 
 #include <iomanip>
@@ -85,13 +87,12 @@ void Printer::print(const QList<QSharedPointer<linglong::package::AppMetaInfo>> 
         //                        .arg(it->channel.trimmed(), -16, QLatin1Char(' '))
         //                        .arg(it->module.trimmed(), -12, QLatin1Char(' '))
         //                        .arg(simpleDescription, -length, QLatin1Char(' '));
-        std::cout << std::setw(32) << appId.toLocal8Bit().data() << std::setw(32)
-                  << name.toLocal8Bit().data() << std::setw(16)
-                  << it->version.trimmed().toLocal8Bit().data() << std::setw(12)
-                  << it->arch.trimmed().toLocal8Bit().data() << std::setw(16)
-                  << it->channel.trimmed().toLocal8Bit().data() << std::setw(12)
-                  << it->module.trimmed().toLocal8Bit().data() << std::setw(length)
-                  << simpleDescription.toLocal8Bit().data() << std::endl;
+        std::cout << std::setw(32) << appId.toStdString() << std::setw(32) << name.toStdString()
+                  << std::setw(16) << it->version.trimmed().toStdString() << std::setw(12)
+                  << it->arch.trimmed().toStdString() << std::setw(16)
+                  << it->channel.trimmed().toStdString() << std::setw(12)
+                  << it->module.trimmed().toStdString() << std::setw(length)
+                  << simpleDescription.toStdString() << std::endl;
     }
 }
 
@@ -114,13 +115,25 @@ void Printer::print(const QList<QSharedPointer<Container>> &list)
         //                        .arg(container->workingDirectory,
         //                             -container->workingDirectory.length(),
         //                             QLatin1Char(' '));
-        std::cout << std::setw(48)
-                  << package::Ref(container->packageName).appId.toLocal8Bit().data()
-                  << std::setw(36) << container->id.toLocal8Bit().data() << std::setw(8)
-                  << QString::number(container->pid).toLocal8Bit().data()
+        std::cout << std::setw(48) << package::Ref(container->packageName).appId.toStdString()
+                  << std::setw(36) << container->id.toStdString() << std::setw(8)
+                  << QString::number(container->pid).toStdString()
                   << std::setw(container->workingDirectory.length())
-                  << container->workingDirectory.toLocal8Bit().data() << std::endl;
+                  << container->workingDirectory.toStdString() << std::endl;
     }
+}
+
+void Printer::print(const linglong::service::Reply &reply)
+{
+    std::cout << "code: " << reply.code << std::endl;
+    std::cout << "message " << reply.message.toStdString() << std::endl;
+}
+
+void Printer::print(const linglong::service::QueryReply &reply)
+{
+    std::cout << "Name: " << std::setw(10) << "Url" << std::endl;
+    std::cout << reply.message.toStdString() << std::setw(10) << reply.result.toStdString()
+              << std::endl;
 }
 
 } // namespace linglong::cli

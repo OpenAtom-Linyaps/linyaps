@@ -41,10 +41,10 @@ public:
     Q_JSON_PROPERTY(QString, ld_flags);
 };
 
-class Enviroment : public JsonSerialize
+class Environment : public JsonSerialize
 {
     Q_OBJECT;
-    Q_JSON_CONSTRUCTOR(Enviroment)
+    Q_JSON_CONSTRUCTOR(Environment)
 public:
     Q_JSON_PROPERTY(QString, CFLAGS);
     Q_JSON_PROPERTY(QString, CXXFLAGS);
@@ -140,7 +140,7 @@ Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::builder, BuilderRuntime)
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::builder, Source)
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::builder, Build)
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::builder, BuildManual)
-Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::builder, Enviroment)
+Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::builder, Environment)
 
 namespace linglong {
 namespace builder {
@@ -164,7 +164,7 @@ public:
     Q_JSON_PROPERTY(QList<QSharedPointer<linglong::builder::BuildDepend>>, depends);
     Q_JSON_PTR_PROPERTY(Source, source);
     Q_JSON_PTR_PROPERTY(Build, build);
-    Q_JSON_PTR_PROPERTY(Enviroment, enviroment);
+    Q_JSON_PTR_PROPERTY(Environment, environment);
 
 public:
     package::Ref ref() const;
@@ -232,7 +232,7 @@ class Template : public Serialize
 public:
     Q_JSON_PTR_PROPERTY(Variables, variables);
     Q_JSON_PTR_PROPERTY(Build, build);
-    Q_JSON_PTR_PROPERTY(Enviroment, enviroment);
+    Q_JSON_PTR_PROPERTY(Environment, environment);
 };
 
 QSERIALIZER_DECLARE(Template)

@@ -24,7 +24,7 @@ build:
     install: |
       env DESTDIR=${dest_dir} cmake --build ${build_dir} --target install
 
-enviroment:
+environment:
   CFLAGS: |
     -isystem/runtime/include -g -O2 -fstack-protector-strong -Wformat -Werror=format-security ${c_flags}
   CXXFLAGS: |

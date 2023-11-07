@@ -1,3 +1,12 @@
+/*
+ * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: LGPL-3.0-or-later
+ */
+
+#ifndef LINGLONG_RUNTIME_DBUS_PROXY_H_
+#define LINGLONG_RUNTIME_DBUS_PROXY_H_
+
 #include <QString>
 #include <QStringList>
 
@@ -12,3 +21,5 @@ public:
     QStringList path;
     QStringList interface;
 };
+
+#endif

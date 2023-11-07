@@ -205,6 +205,8 @@ pfl_add_library(
   ./src/linglong/runtime/app_config.h
   ./src/linglong/runtime/container.cpp
   ./src/linglong/runtime/container.h
+  ./src/linglong/runtime/dbus_proxy.h
+  ./src/linglong/runtime/dbus_proxy.cpp
   ./src/linglong/runtime/oci.cpp
   ./src/linglong/runtime/oci.h
   ./src/linglong/service/app_manager.cpp

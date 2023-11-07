@@ -41,3 +41,8 @@ Copyright: UnionTech Software Technology Co., Ltd.
 Files: tests/data/* tests/src/utils/serialize/data.json tests/src/utils/serialize/data.yaml
 License: CC0-1.0
 Copyright: None
+
+# qdbusxml2cpp
+Files: tools/qdbusxml2cpp/qdbusxml2cpp.cpp
+License: GPL-3.0-only
+Copyright: 2020 The Qt Company Ltd.

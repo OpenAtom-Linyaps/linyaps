@@ -1,13 +1,7 @@
-set(TARGET_NAME qdbusxml2cpp)
-set(BIN_NAME ${TARGET_NAME})
+# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
 
-add_executable(${BIN_NAME}
-  qdbusxml2cpp.cpp
-)
+add_executable(qdbusxml2cpp qdbusxml2cpp.cpp)
 
-target_link_libraries(
-  ${BIN_NAME} PRIVATE
-  Qt::DBus
-  Qt::Core
-  Qt::DBusPrivate
-)
+target_link_libraries(qdbusxml2cpp PRIVATE Qt::DBus Qt::Core Qt::DBusPrivate)

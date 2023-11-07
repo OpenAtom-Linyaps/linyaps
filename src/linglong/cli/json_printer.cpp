@@ -8,6 +8,8 @@
 
 #include <QJsonArray>
 
+#include <iostream>
+
 namespace linglong::cli {
 
 void JSONPrinter::print(const utils::error::Error &err)
@@ -36,7 +38,10 @@ void JSONPrinter::print(const QList<QSharedPointer<linglong::package::AppMetaInf
         obj["channel"] = it->channel.trimmed();
         obj["module"] = it->module.trimmed();
     }
-    qInfo().noquote() << QJsonDocument(obj);
+
+    for (auto obj : QJsonDocument(obj).toJson()) {
+        std::cout << obj << std::endl;
+    }
 }
 
 void JSONPrinter::print(const QList<QSharedPointer<Container>> &list)
@@ -50,7 +55,8 @@ void JSONPrinter::print(const QList<QSharedPointer<Container>> &list)
           { "path", container->workingDirectory },
         });
     }
-
-    qInfo().noquote() << QJsonDocument(jsonArray).toJson();
+    for (auto obj : QJsonDocument(jsonArray).toJson()) {
+        std::cout << obj << std::endl;
+    }
 }
 } // namespace linglong::cli

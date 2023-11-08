@@ -8,6 +8,7 @@
 #include "linglong/cli/cli.h"
 #include "linglong/cli/json_printer.h"
 #include "linglong/package_manager/package_manager.h"
+#include "linglong/util/configure.h"
 
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -58,8 +59,8 @@ int main(int argc, char **argv)
     std::map<std::string, docopt::value> args =
       docopt::docopt(Cli::USAGE,
                      { argv + 1, argv + argc },
-                     true,                  // show help if requested
-                     "linglong CLI 1.4.0"); // version string
+                     true,                              // show help if requested
+                     "linglong CLI " LINGLONG_VERSION); // version string
 
     auto systemHelperDBusConnection = QDBusConnection::systemBus();
     const auto systemHelperAddress = QString("unix:path=/run/linglong_system_helper_socket");

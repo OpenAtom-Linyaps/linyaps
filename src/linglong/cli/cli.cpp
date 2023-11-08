@@ -19,51 +19,52 @@ const char Cli::USAGE[] =
   R"(linglong CLI
 
 A CLI program to run application and manage linglong pagoda and tiers.
+
 Usage:
-        ll-cli [--json] --version
-        ll-cli [--json] run APP [--no-dbus-proxy] [--dbus-proxy-cfg=PATH] [--] [COMMAND...]
-        ll-cli [--json] ps
-        ll-cli [--json] exec (APP | PAGODA) [--working-directory=PATH] [--] COMMAND...
-        ll-cli [--json] enter (APP | PAGODA) [--working-directory=PATH] [--] [COMMAND...]
-        ll-cli [--json] kill (APP | PAGODA)
-        ll-cli [--json] [--no-dbus] install TIER...
-        ll-cli [--json] uninstall TIER... [--all] [--prune]
-        ll-cli [--json] upgrade TIER...
-        ll-cli [--json] search [--type=TYPE] TEXT
-        ll-cli [--json] [--no-dbus] list [--type=TYPE]
-        ll-cli [--json] repo [modify [--name=REPO] URL]
+    ll-cli [--json] --version
+    ll-cli [--json] run APP [--no-dbus-proxy] [--dbus-proxy-cfg=PATH] [--] [COMMAND...]
+    ll-cli [--json] ps
+    ll-cli [--json] exec (APP | PAGODA) [--working-directory=PATH] [--] COMMAND...
+    ll-cli [--json] enter (APP | PAGODA) [--working-directory=PATH] [--] [COMMAND...]
+    ll-cli [--json] kill (APP | PAGODA)
+    ll-cli [--json] [--no-dbus] install TIER...
+    ll-cli [--json] uninstall TIER... [--all] [--prune]
+    ll-cli [--json] upgrade TIER...
+    ll-cli [--json] search [--type=TYPE] TEXT
+    ll-cli [--json] [--no-dbus] list [--type=TYPE]
+    ll-cli [--json] repo [modify [--name=REPO] URL]
 
-    Arguments:
-        APP     Specify the application.
-        PAGODA  Specify the pagodas (container).
-        TIER    Specify the tier (container layer).
-        URL     Specify the new repo URL.
-        TEXT    The text used to search tiers.
+Arguments:
+    APP     Specify the application.
+    PAGODA  Specify the pagodas (container).
+    TIER    Specify the tier (container layer).
+    URL     Specify the new repo URL.
+    TEXT    The text used to search tiers.
 
-    Options:
-        -h --help                 Show this screen.
-        --version                 Show version.
-        --json                    Use json to output command result.
-        --no-dbus                 Use peer to peer DBus, this is used only in case that DBus daemon is not available.
-        --no-dbus-proxy           Do not enable linglong-dbus-proxy.
-        --dbus-proxy-cfg=PATH     Path of config of linglong-dbus-proxy.
-        --working-directory=PATH  Specify working directory.
-        --type=TYPE               Filter result with tiers type. One of "lib", "app" or "dev". [default: app]
-        --state=STATE             Filter result with the tiers install state. Should be "local" or "remote". [default: local]
-        --prune                   Remove application data if the tier is an application and all version of that application has benn removed.
+Options:
+    -h --help                 Show this screen.
+    --version                 Show version.
+    --json                    Use json to output command result.
+    --no-dbus                 Use peer to peer DBus, this is used only in case that DBus daemon is not available.
+    --no-dbus-proxy           Do not enable linglong-dbus-proxy.
+    --dbus-proxy-cfg=PATH     Path of config of linglong-dbus-proxy.
+    --working-directory=PATH  Specify working directory.
+    --type=TYPE               Filter result with tiers type. One of "lib", "app" or "dev". [default: app]
+    --state=STATE             Filter result with the tiers install state. Should be "local" or "remote". [default: local]
+    --prune                   Remove application data if the tier is an application and all version of that application has benn removed.
 
-    Subcommands:
-        run        Run an application.
-        ps         List all pagodas.
-        exec       Execute command in a pagoda.
-        enter      Enter a pagoda.
-        kill       Stop applications and remove the pagoda.
-        install    Install tier(s).
-        uninstall  Uninstall tier(s).
-        upgrade    Upgrade tier(s).
-        search     Search for tiers.
-        list       List known tiers.
-        repo       Disply or modify infomation of the repository currently using.
+Subcommands:
+    run        Run an application.
+    ps         List all pagodas.
+    exec       Execute command in a pagoda.
+    enter      Enter a pagoda.
+    kill       Stop applications and remove the pagoda.
+    install    Install tier(s).
+    uninstall  Uninstall tier(s).
+    upgrade    Upgrade tier(s).
+    search     Search for tiers.
+    list       List known tiers.
+    repo       Disply or modify infomation of the repository currently using.
 )";
 
 namespace {

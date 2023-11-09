@@ -29,11 +29,11 @@ public:
     Printer &operator=(const Printer &) = delete;
     Printer &operator=(Printer &&) = delete;
     virtual ~Printer() = default;
-    virtual void print(const utils::error::Error &);
-    virtual void print(const QList<QSharedPointer<linglong::package::AppMetaInfo>> &);
-    virtual void print(const QList<QSharedPointer<Container>> &);
-    virtual void print(const linglong::service::Reply &);
-    virtual void print(const linglong::service::QueryReply &);
+    virtual void printErr(const utils::error::Error &);
+    virtual void printAppMetaInfos(const QList<QSharedPointer<linglong::package::AppMetaInfo>> &);
+    virtual void printContainers(const QList<QSharedPointer<Container>> &);
+    virtual void printReply(const linglong::service::Reply &);
+    virtual void printQueryReply(const linglong::service::QueryReply &);
 };
 
 } // namespace linglong::cli

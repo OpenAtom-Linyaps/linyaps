@@ -21,12 +21,12 @@ class MockPrinter : public Printer
 {
 
 public:
-    MOCK_METHOD(void, print, (const utils::error::Error &), (override));
+    MOCK_METHOD(void, printErr, (const utils::error::Error &), (override));
     MOCK_METHOD(void,
-                print,
+                printAppMetaInfos,
                 (const QList<QSharedPointer<linglong::package::AppMetaInfo>> &),
                 (override));
-    MOCK_METHOD(void, print, (const QList<QSharedPointer<Container>> &));
+    MOCK_METHOD(void, printContainers, (const QList<QSharedPointer<Container>> &));
 };
 
 } // namespace linglong::cli::test

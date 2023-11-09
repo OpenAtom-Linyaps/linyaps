@@ -127,7 +127,7 @@ TEST_F(CLITest, Ps)
     EXPECT_CALL(*appMan, ListContainer)
       .Times(1)
       .WillOnce(Return(createReply(service::QueryReply{ { 0, "" }, {} })));
-    EXPECT_CALL(*printer, print(QList<QSharedPointer<Container>>{}));
+    EXPECT_CALL(*printer, printContainers);
 
     auto ret = cli->ps(args);
 
@@ -178,12 +178,12 @@ TEST_F(CLITest, Search)
     EXPECT_CALL(*pkgMan, Query)
       .Times(1)
       .WillOnce(Return(
-        createReply(service::QueryReply{ { STATUS_CODE(kErrorPkgQuerySuccess), "" }, "[]" })));
-    EXPECT_CALL(*printer, print(QList<QSharedPointer<package::AppMetaInfo>>{})).Times(1);
+        createReply(service::QueryReply{ { STATUS_CODE(kErrorPkgQuerySuccess), "" }, R"([])" })));
+    EXPECT_CALL(*printer, printErr).Times(1);
 
     auto ret = cli->search(args);
 
-    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(ret, -1);
 }
 
 TEST_F(CLITest, Uninstall)
@@ -205,7 +205,7 @@ TEST_F(CLITest, List)
       .Times(1)
       .WillOnce(Return(
         createReply(service::QueryReply{ { STATUS_CODE(kErrorPkgQuerySuccess), "" }, "[]" })));
-    EXPECT_CALL(*printer, print(QList<QSharedPointer<package::AppMetaInfo>>{})).Times(1);
+    EXPECT_CALL(*printer, printAppMetaInfos).Times(1);
 
     auto ret = cli->list(args);
 

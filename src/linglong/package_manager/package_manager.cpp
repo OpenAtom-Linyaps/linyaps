@@ -1291,19 +1291,13 @@ auto PackageManager::Query(const QueryParamOption &paramOption) -> QueryReply
 {
     QueryReply reply;
     QString appId = paramOption.appId.trimmed();
-    if (appId.isEmpty()) {
-        reply.code = STATUS_CODE(kUserInputParamErr);
-        reply.message = "appId input err";
-        qCritical() << reply.message;
-        return reply;
-    }
 
     bool ret = false;
-    if ("installed" == appId) {
+    if (appId.isEmpty()) {
         ret = linglong::util::queryAllInstalledApp("", reply.result, reply.message);
         if (ret) {
             reply.code = STATUS_CODE(kErrorPkgQuerySuccess);
-            reply.message = "query " + appId + " success";
+            reply.message = "query install success";
         } else {
             reply.code = STATUS_CODE(kErrorPkgQueryFailed);
         }

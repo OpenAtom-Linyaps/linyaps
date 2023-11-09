@@ -14,7 +14,7 @@
 
 namespace linglong::cli {
 
-void JSONPrinter::print(const utils::error::Error &err)
+void JSONPrinter::printErr(const utils::error::Error &err)
 {
     QJsonObject obj;
     obj["code"] = err.code();
@@ -22,7 +22,7 @@ void JSONPrinter::print(const utils::error::Error &err)
     std::cout << QString::fromUtf8(QJsonDocument(obj).toJson()).toStdString();
 }
 
-void JSONPrinter::print(const QList<QSharedPointer<linglong::package::AppMetaInfo>> &list)
+void JSONPrinter::printAppMetaInfos(const QList<QSharedPointer<linglong::package::AppMetaInfo>> &list)
 {
     QJsonArray array;
     for (const auto &it : list) {
@@ -45,7 +45,7 @@ void JSONPrinter::print(const QList<QSharedPointer<linglong::package::AppMetaInf
     std::cout << QString::fromUtf8(QJsonDocument(array).toJson()).toStdString() << std::endl;
 }
 
-void JSONPrinter::print(const QList<QSharedPointer<Container>> &list)
+void JSONPrinter::printContainers(const QList<QSharedPointer<Container>> &list)
 {
     QJsonArray jsonArray;
     for (auto const &container : list) {
@@ -60,7 +60,7 @@ void JSONPrinter::print(const QList<QSharedPointer<Container>> &list)
     std::cout << QString::fromUtf8(QJsonDocument(jsonArray).toJson()).toStdString() << std::endl;
 }
 
-void JSONPrinter::print(const linglong::service::Reply &reply)
+void JSONPrinter::printReply(const linglong::service::Reply &reply)
 {
     QJsonArray jsonArray;
     jsonArray.push_back(QJsonObject{
@@ -71,7 +71,7 @@ void JSONPrinter::print(const linglong::service::Reply &reply)
     std::cout << QString::fromUtf8(QJsonDocument(jsonArray).toJson()).toStdString() << std::endl;
 }
 
-void JSONPrinter::print(const linglong::service::QueryReply &reply)
+void JSONPrinter::printQueryReply(const linglong::service::QueryReply &reply)
 {
     QJsonArray jsonArray;
     jsonArray.push_back(QJsonObject{

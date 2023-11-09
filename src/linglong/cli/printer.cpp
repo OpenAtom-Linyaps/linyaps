@@ -38,7 +38,7 @@ int getUnicodeNum(const QString &name)
 
 void Printer::print(const utils::error::Error &err)
 {
-    qCritical().noquote() << "code:" << err.code() << "message:" << err.message();
+    std::cout << "Error: " << err.message().toStdString() << std::endl;
 }
 
 void Printer::print(const QList<QSharedPointer<linglong::package::AppMetaInfo>> &list)
@@ -126,7 +126,7 @@ void Printer::print(const QList<QSharedPointer<Container>> &list)
 void Printer::print(const linglong::service::Reply &reply)
 {
     std::cout << "code: " << reply.code << std::endl;
-    std::cout << "message " << reply.message.toStdString() << std::endl;
+    std::cout << "message:" << std::endl << reply.message.toStdString() << std::endl;
 }
 
 void Printer::print(const linglong::service::QueryReply &reply)

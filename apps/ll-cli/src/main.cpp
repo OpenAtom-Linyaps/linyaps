@@ -22,16 +22,18 @@ using namespace linglong::utils::error;
 using namespace linglong::package;
 using namespace linglong::cli;
 
-static qint64 systemHelperPid = -1;
+namespace {
 
-static void handleOnExit(int, void *)
+qint64 systemHelperPid = -1;
+
+void handleOnExit(int, void *)
 {
     if (systemHelperPid != -1) {
         kill(systemHelperPid, SIGTERM);
     }
 }
 
-static void startDaemon(QString program, QStringList args = {}, qint64 *pid = nullptr)
+void startDaemon(QString program, QStringList args = {}, qint64 *pid = nullptr)
 {
     QProcess process;
     process.setProgram(program);
@@ -40,6 +42,8 @@ static void startDaemon(QString program, QStringList args = {}, qint64 *pid = nu
     process.setArguments(args);
     process.startDetached(pid);
 }
+
+} // namespace
 
 int main(int argc, char **argv)
 {

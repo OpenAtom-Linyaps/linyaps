@@ -23,12 +23,11 @@ class ErrorImpl
 public:
     ErrorImpl(const char *file,
               int line,
-              const char *function,
               const char *category,
               const int &code,
               QString msg,
               std::unique_ptr<ErrorImpl> cause = nullptr)
-        : context(file, line, function, category)
+        : context(file, line, "unknown", category)
         , _code(code)
         , msg(std::move(msg))
         , cause(std::move(cause))
@@ -41,12 +40,10 @@ public:
     {
         QString msg;
         for (const ErrorImpl *err = this; err != nullptr; err = err->cause.get()) {
-            msg += QString("%1:%2\nin %3\n\t[code = %4]\n\t%5\n")
-                     .arg(err->context.file)
-                     .arg(err->context.line)
-                     .arg(err->context.function)
-                     .arg(err->_code)
-                     .arg(err->msg);
+            if (!msg.isEmpty()) {
+                msg += "\n";
+            }
+            msg += QString("%1:%2 %4").arg(err->context.file).arg(err->context.line).arg(err->msg);
         }
         return msg;
     }

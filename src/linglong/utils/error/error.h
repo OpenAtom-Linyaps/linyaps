@@ -36,28 +36,20 @@ public:
 
     [[nodiscard]] auto message() const { return pImpl->message(); }
 
-    static auto
-    Wrap(const char *file, int line, const char *function, const QString &msg, Error cause) -> Error
+    static auto Wrap(const char *file, int line, const QString &msg, Error cause) -> Error
     {
         return Error(std::make_unique<details::ErrorImpl>(file,
                                                           line,
-                                                          function,
                                                           "default",
                                                           cause.code(),
                                                           msg,
                                                           std::move(cause.pImpl)));
     }
 
-    static auto Err(const char *file, int line, const char *function, int code, const QString &msg)
-      -> Error
+    static auto Err(const char *file, int line, int code, const QString &msg) -> Error
     {
-        return Error(std::make_unique<details::ErrorImpl>(file,
-                                                          line,
-                                                          function,
-                                                          "default",
-                                                          code,
-                                                          msg,
-                                                          nullptr));
+        return Error(
+          std::make_unique<details::ErrorImpl>(file, line, "default", code, msg, nullptr));
     }
 
 private:
@@ -77,16 +69,12 @@ using Result = tl::expected<Value, Error>;
 #define EWrap(message, cause) /*NOLINT*/                                     \
     tl::unexpected(::linglong::utils::error::Error::Wrap(QT_MESSAGELOG_FILE, \
                                                          QT_MESSAGELOG_LINE, \
-                                                         QT_MESSAGELOG_FUNC, \
                                                          message,            \
                                                          std::move(cause)))
 
-#define Err(code, message) /*NOLINT*/                                       \
-    tl::unexpected(::linglong::utils::error::Error::Err(QT_MESSAGELOG_FILE, \
-                                                        QT_MESSAGELOG_LINE, \
-                                                        QT_MESSAGELOG_FUNC, \
-                                                        code,               \
-                                                        message))
+#define Err(code, message) /*NOLINT*/ \
+    tl::unexpected(                   \
+      ::linglong::utils::error::Error::Err(QT_MESSAGELOG_FILE, QT_MESSAGELOG_LINE, code, message))
 
 #define Ok \
     {      \

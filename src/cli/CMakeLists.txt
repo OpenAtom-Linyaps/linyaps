@@ -114,14 +114,6 @@ install(FILES misc/bash_completion/llpkg
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/bash-completion/completions
 )
 
-install(FILES ${CMAKE_SOURCE_DIR}/scripts/linglong.sh
-        DESTINATION /etc/profile.d
-)
-install(
-  FILES ${CMAKE_SOURCE_DIR}/scripts/linglong.sh
-  DESTINATION /etc/X11/Xsession.d/
-  RENAME 21linglong
-)
 install(PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/61-linglong
         DESTINATION /usr/lib/systemd/user-environment-generators/
 )

@@ -47,8 +47,7 @@ public:
     ~Cli() = default;
     Cli(Printer &printer,
         linglong::api::dbus::v1::AppManager &appMan,
-        linglong::api::dbus::v1::PackageManager &pkgMan,
-        linglong::service::PackageManager &pkgManImpl);
+        linglong::api::dbus::v1::PackageManager &pkgMan);
 
     static const char USAGE[];
 
@@ -56,7 +55,6 @@ private:
     Printer &printer;
     linglong::api::dbus::v1::AppManager &appMan;
     linglong::api::dbus::v1::PackageManager &pkgMan;
-    linglong::service::PackageManager &pkgManImpl;
 
 public:
     int run(std::map<std::string, docopt::value> &args);

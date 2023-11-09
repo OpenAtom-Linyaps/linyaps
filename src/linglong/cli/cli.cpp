@@ -288,12 +288,10 @@ int namespaceEnter(pid_t pid, const QStringList &args)
 
 Cli::Cli(Printer &printer,
          linglong::api::dbus::v1::AppManager &appMan,
-         linglong::api::dbus::v1::PackageManager &pkgMan,
-         linglong::service::PackageManager &pkgManImpl)
+         linglong::api::dbus::v1::PackageManager &pkgMan)
     : printer(printer)
     , appMan(appMan)
     , pkgMan(pkgMan)
-    , pkgManImpl(pkgManImpl)
 {
 }
 
@@ -496,7 +494,9 @@ int Cli::install(std::map<std::string, docopt::value> &args)
         linglong::service::Reply reply;
         qInfo().noquote() << "install" << ref.appId << ", please wait a few minutes...";
         if (args["--no-dbus"].asBool()) {
-            this->pkgManImpl.setNoDBusMode(true);
+            // FIXME(black_desk): This should refact to use p2p mode this->pkgMan.
+            linglong::service::PackageManager pkgManImpl;
+            pkgManImpl.setNoDBusMode(true);
             reply = pkgManImpl.Install(installParamOption);
             pkgManImpl.pool->waitForDone(-1);
             qInfo().noquote() << "install " << installParamOption.appId << " done";
@@ -655,8 +655,10 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
         qInfo().noquote() << "uninstall" << paramOption.appId << ", please wait a few minutes...";
         paramOption.delAllVersion = args["--all"].asBool();
         if (args["--no-dbus"].asBool()) {
-            this->pkgManImpl.setNoDBusMode(true);
-            reply = this->pkgManImpl.Uninstall(paramOption);
+            // FIXME(black_desk): This should refact to use p2p mode this->pkgMan.
+            linglong::service::PackageManager pkgManImpl;
+            pkgManImpl.setNoDBusMode(true);
+            reply = pkgManImpl.Uninstall(paramOption);
             if (reply.code != STATUS_CODE(kPkgUninstallSuccess)) {
                 this->printer.print(Err(reply.code, reply.message).value());
                 return -1;
@@ -690,7 +692,10 @@ int Cli::list(std::map<std::string, docopt::value> &args)
     QList<QSharedPointer<linglong::package::AppMetaInfo>> appMetaInfoList;
     linglong::service::QueryReply reply;
     if (args["--no-dbus"].asBool()) {
-        reply = this->pkgManImpl.Query(paramOption);
+        // FIXME(black_desk): This should refact to use p2p mode this->pkgMan.
+        linglong::service::PackageManager pkgManImpl;
+        pkgManImpl.setNoDBusMode(true);
+        reply = pkgManImpl.Query(paramOption);
     } else {
         QDBusPendingReply<linglong::service::QueryReply> dbusReply =
           this->pkgMan.Query(paramOption);
@@ -720,7 +725,10 @@ int Cli::repo(std::map<std::string, docopt::value> &args)
             dbusReply.waitForFinished();
             reply = dbusReply.value();
         } else {
-            reply = this->pkgManImpl.ModifyRepo(name, url);
+            // FIXME(black_desk): This should refact to use p2p mode this->pkgMan.
+            linglong::service::PackageManager pkgManImpl;
+            pkgManImpl.setNoDBusMode(true);
+            reply = pkgManImpl.ModifyRepo(name, url);
         }
         if (reply.code != STATUS_CODE(kErrorModifyRepoSuccess)) {
             this->printer.print(Err(reply.code, reply.message).value());

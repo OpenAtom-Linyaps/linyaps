@@ -61,7 +61,6 @@ protected:
     std::unique_ptr<StrictMock<api::dbus::v1::test::MockAppManager>> appMan;
     std::unique_ptr<StrictMock<api::dbus::v1::test::MockPackageManager>> pkgMan;
     std::unique_ptr<StrictMock<MockPrinter>> printer;
-    std::unique_ptr<StrictMock<service::test::MockPackageManager>> pkgManImpl;
     std::unique_ptr<Cli> cli;
 
     static void SetUpTestSuite() { registerDBusParam(); }
@@ -77,9 +76,8 @@ protected:
           "org.deepin.linglong.AppManager",
           "/org/deepin/linglong/AppManager",
           QDBusConnection::sessionBus());
-        pkgManImpl = std::make_unique<StrictMock<service::test::MockPackageManager>>();
 
-        cli = std::make_unique<Cli>(*printer, *appMan, *pkgMan, *pkgManImpl);
+        cli = std::make_unique<Cli>(*printer, *appMan, *pkgMan);
     }
 
     void TearDown() override

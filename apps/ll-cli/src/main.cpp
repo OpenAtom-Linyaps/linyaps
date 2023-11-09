@@ -100,9 +100,7 @@ int main(int argc, char **argv)
       "/org/deepin/linglong/PackageManager",
       QDBusConnection::systemBus());
 
-    auto pkgManImpl = std::make_unique<linglong::service::PackageManager>();
-
-    auto cli = std::make_unique<Cli>(*printer, *appMan, *pkgMan, *pkgManImpl);
+    auto cli = std::make_unique<Cli>(*printer, *appMan, *pkgMan);
 
     QMap<QString, std::function<int(Cli *, std::map<std::string, docopt::value> &)>>
       subcommandMap = {

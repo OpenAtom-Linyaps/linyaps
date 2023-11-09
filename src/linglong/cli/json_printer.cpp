@@ -19,13 +19,14 @@ void JSONPrinter::print(const utils::error::Error &err)
     QJsonObject obj;
     obj["code"] = err.code();
     obj["message"] = err.message();
-    qCritical().noquote() << QJsonDocument(obj);
+    std::cout << QString::fromUtf8(QJsonDocument(obj).toJson()).toStdString();
 }
 
 void JSONPrinter::print(const QList<QSharedPointer<linglong::package::AppMetaInfo>> &list)
 {
-    QJsonObject obj;
+    QJsonArray array;
     for (const auto &it : list) {
+        QJsonObject obj;
         obj["appId"] = it->appId.trimmed();
         obj["name"] = it->name.trimmed();
         obj["version"] = it->version.trimmed();
@@ -39,9 +40,9 @@ void JSONPrinter::print(const QList<QSharedPointer<linglong::package::AppMetaInf
         obj["size"] = it->size.trimmed();
         obj["channel"] = it->channel.trimmed();
         obj["module"] = it->module.trimmed();
+        array.push_back(obj);
     }
-
-    std::cout << QString::fromUtf8(QJsonDocument(obj).toJson()).toStdString() << std::endl;
+    std::cout << QString::fromUtf8(QJsonDocument(array).toJson()).toStdString() << std::endl;
 }
 
 void JSONPrinter::print(const QList<QSharedPointer<Container>> &list)
@@ -74,8 +75,8 @@ void JSONPrinter::print(const linglong::service::QueryReply &reply)
 {
     QJsonArray jsonArray;
     jsonArray.push_back(QJsonObject{
-      { "Name", reply.message },
-      { "Url", reply.result },
+      { "name", reply.message },
+      { "url", reply.result },
     });
 
     std::cout << QString::fromUtf8(QJsonDocument(jsonArray).toJson()).toStdString() << std::endl;

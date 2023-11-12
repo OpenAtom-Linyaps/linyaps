@@ -19,6 +19,8 @@ class PackageManagerHelper : public QObject, protected QDBusContext
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.PackageManagerHelper")
 public:
+    using QObject::QObject;
+
     void RebuildInstallPortal(const QString &installPath,
                               const QString &ref,
                               const QVariantMap &options);

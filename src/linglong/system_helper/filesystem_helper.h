@@ -19,6 +19,8 @@ class FilesystemHelper : public QObject, protected QDBusContext
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.FilesystemHelper")
 public:
+    using QObject::QObject;
+
     void Mount(const QString &source,
                const QString &mountPoint,
                const QString &fsType,

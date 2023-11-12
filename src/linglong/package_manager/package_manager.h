@@ -35,7 +35,7 @@ class PackageManager : public QObject, protected QDBusContext
     Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.PackageManager")
 
 public:
-    PackageManager();
+    PackageManager(api::dbus::v1::PackageManagerHelper &helper, QObject *parent);
 
     ~PackageManager() override = default;
 
@@ -298,7 +298,7 @@ private:
 
     bool noDBusMode = false;
 
-    api::dbus::v1::PackageManagerHelper packageManagerHelperInterface;
+    api::dbus::v1::PackageManagerHelper &packageManagerHelper;
 };
 
 } // namespace linglong::service

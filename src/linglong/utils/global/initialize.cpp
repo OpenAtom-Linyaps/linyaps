@@ -9,21 +9,48 @@
 #include <systemd/sd-journal.h>
 
 #include <QCoreApplication>
+#include <QDebug>
+#include <csignal>
 
 #include <fcntl.h>
 #include <unistd.h>
 
 namespace linglong::utils::global {
 
-static auto shouldLogToStderr() -> bool
+namespace {
+void catchUnixSignals(std::initializer_list<int> quitSignals)
+{
+    auto handler = [](int sig) -> void {
+        qInfo().noquote() << QString("Quit the application by signal(%1).").arg(sig);
+        QCoreApplication::quit();
+    };
+
+    sigset_t blocking_mask;
+    sigemptyset(&blocking_mask);
+    for (auto sig : quitSignals)
+        sigaddset(&blocking_mask, sig);
+
+    struct sigaction sa
+    {
+    };
+
+    sa.sa_handler = handler;
+    sa.sa_mask = blocking_mask;
+    sa.sa_flags = 0;
+
+    for (auto sig : quitSignals)
+        sigaction(sig, &sa, nullptr);
+}
+
+auto shouldLogToStderr() -> bool
 {
     static bool forceStderrLogging = qEnvironmentVariableIntValue("QT_FORCE_STDERR_LOGGING");
     return forceStderrLogging || isatty(STDERR_FILENO);
 }
 
-static void linglong_message_handler(QtMsgType type,
-                                     const QMessageLogContext &context,
-                                     const QString &message)
+void linglong_message_handler(QtMsgType type,
+                              const QMessageLogContext &context,
+                              const QString &message)
 {
     QString formattedMessage = qFormatLogMessage(type, context, message);
 
@@ -72,11 +99,13 @@ static void linglong_message_handler(QtMsgType type,
 
     return; // Prevent further output to stderr
 }
+} // namespace
 
 void applicationInitializte()
 {
     QCoreApplication::setOrganizationName("deepin");
     qInstallMessageHandler(linglong_message_handler);
+    catchUnixSignals({ SIGTERM, SIGQUIT, SIGINT, SIGHUP });
     return;
 }
 

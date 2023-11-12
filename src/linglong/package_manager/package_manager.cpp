@@ -472,8 +472,9 @@ auto PackageManager::getUserName(uid_t uid) -> QString
     return {};
 }
 
-PackageManager::PackageManager()
-    : pool(new QThreadPool)
+PackageManager::PackageManager(api::dbus::v1::PackageManagerHelper &helper, QObject *parent)
+    : QObject(parent)
+    , pool(new QThreadPool)
     , sysLinglongInstallation(linglong::util::getLinglongRootPath() + "/entries/share")
     , kAppInstallPath(linglong::util::getLinglongRootPath() + "/layers/")
     , kLocalRepoPath(linglong::util::getLinglongRootPath())
@@ -482,16 +483,7 @@ PackageManager::PackageManager()
     // When endpoint get updated by `ModifyRepo`,
     // the endpoint used by repoClient is not updated.
     , repoClient(util::config::ConfigInstance().repos[package::kDefaultRepo]->endpoint)
-    , packageManagerHelperInterface(
-        linglong::SystemHelperDBusServiceName,
-        linglong::PackageManagerHelperDBusPath,
-        []() -> QDBusConnection {
-            auto address = QString(getenv("LINGLONG_SYSTEM_HELPER_ADDRESS"));
-            if (address.length()) {
-                return QDBusConnection::connectToPeer(address, "ll-package-manager");
-            }
-            return QDBusConnection::systemBus();
-        }())
+    , packageManagerHelper(helper)
 {
     // 检查安装数据库信息
     linglong::util::checkInstalledAppDb();
@@ -900,7 +892,7 @@ auto PackageManager::Install(const InstallParamOption &installParamOption) -> Re
             qDebug() << "call packageManagerHelperInterface.RebuildInstallPortal" << installPath,
               ref.toLocalFullRef();
             QDBusReply<void> helperRet =
-              packageManagerHelperInterface.RebuildInstallPortal(installPath, ref.toString(), {});
+              packageManagerHelper.RebuildInstallPortal(installPath, ref.toString(), {});
             if (!helperRet.isValid()) {
                 qWarning() << "process post install portal failed:" << helperRet.error();
             }
@@ -1092,9 +1084,7 @@ auto PackageManager::Uninstall(const UninstallParamOption &paramOption) -> Reply
             qDebug() << "call packageManagerHelperInterface.RuinInstallPortal" << packageRootPath
                      << ref.toLocalFullRef() << paramOption.delAppData;
             QDBusReply<void> helperRet =
-              packageManagerHelperInterface.RuinInstallPortal(packageRootPath,
-                                                              ref.toString(),
-                                                              variantMap);
+              packageManagerHelper.RuinInstallPortal(packageRootPath, ref.toString(), variantMap);
             if (!helperRet.isValid()) {
                 qWarning() << "process pre uninstall portal failed:" << helperRet.error();
             }

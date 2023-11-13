@@ -135,21 +135,25 @@ int main(int argc, char *argv[])
 
     applicationInitializte();
 
-    Q_ASSERT(QMetaObject::invokeMethod(QCoreApplication::instance(), []() {
-        QCommandLineParser parser;
-        QCommandLineOption optBus("bus", "service bus address", "bus");
-        optBus.setFlags(QCommandLineOption::HiddenFromHelp);
+    auto ret = QMetaObject::invokeMethod(
+      QCoreApplication::instance(),
+      []() {
+          QCommandLineParser parser;
+          QCommandLineOption optBus("bus", "service bus address", "bus");
+          optBus.setFlags(QCommandLineOption::HiddenFromHelp);
 
-        parser.addOptions({ optBus });
-        parser.parse(QCoreApplication::arguments());
+          parser.addOptions({ optBus });
+          parser.parse(QCoreApplication::arguments());
 
-        if (parser.isSet(optBus)) {
-            withoutDBusDaemon();
-            return;
-        }
+          if (parser.isSet(optBus)) {
+              withoutDBusDaemon();
+              return;
+          }
 
-        withDBusDaemon();
-    }));
+          withDBusDaemon();
+      },
+      Qt::QueuedConnection);
+    Q_ASSERT(ret);
 
     return QCoreApplication::exec();
 }

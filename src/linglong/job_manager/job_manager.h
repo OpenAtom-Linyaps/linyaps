@@ -28,17 +28,12 @@ class JobManager : public QObject, protected QDBusContext
 public:
     using QObject::QObject;
     QString CreateJob(std::function<void()> f);
-    ~JobManager() override;
 
 public Q_SLOTS:
     QStringList List();
     void Start(const QString &jobId);
     void Stop(const QString &jobId);
     void Cancel(const QString &jobId);
-
-private:
-    JobManagerPrivate* dd_ptr;
-    Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), JobManager)
 };
 
 } // namespace linglong::job_manager

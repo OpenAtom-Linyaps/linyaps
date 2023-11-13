@@ -36,6 +36,9 @@ pfl_add_executable(
   ./src/utils/serialize/yaml.cpp
   ./src/linglong/api/dbus/v1/mock_app_manager.h
   ./src/linglong/cli/cli_test.cpp
+  ./src/linglong/package/version_test.cpp
+  ./src/linglong/package/version_range_test.cpp
+  ./src/linglong/package/reference_test.cpp
   ./src/linglong/cli/dbus_reply.h
   ./src/linglong/utils/xdg/desktop_entry_test.cpp
   COMPILE_FEATURES

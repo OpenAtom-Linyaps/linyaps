@@ -58,7 +58,7 @@ CPMFindPackage(
   NAME expected
   VERSION 1.0.0
   GITHUB_REPOSITORY TartanLlama/expected
-  GIT_TAG v1.0.0
+  GIT_TAG v1.1.0
   GIT_SHALLOW ON
   OPTIONS "EXPECTED_BUILD_TESTS OFF"
   FIND_PACKAGE_ARGUMENTS "NAMES tl-expected"
@@ -181,8 +181,20 @@ pfl_add_library(
   ./src/linglong/package/bundle.h
   ./src/linglong/package/info.cpp
   ./src/linglong/package/info.h
-  ./src/linglong/package/package.cpp
   ./src/linglong/package/package.h
+  ./src/linglong/package/package.cpp
+  ./src/linglong/package/architecture.h
+  ./src/linglong/package/architecture.cpp
+  ./src/linglong/package/reference.h
+  ./src/linglong/package/reference.cpp
+  ./src/linglong/package/fuzz_reference.h
+  ./src/linglong/package/fuzz_reference.cpp
+  ./src/linglong/package/module.h
+  ./src/linglong/package/module.cpp
+  ./src/linglong/package/version.h
+  ./src/linglong/package/version.cpp
+  ./src/linglong/package/version_range.h
+  ./src/linglong/package/version_range.cpp
   ./src/linglong/package/ref.cpp
   ./src/linglong/package/ref.h
   ./src/linglong/package_manager/package_manager.cpp
@@ -313,7 +325,6 @@ pfl_add_library(
   Qt::Sql
   Qt::WebSockets
   ocppi::runtime
-  tl::expected
   tl::expected
   yaml-cpp::yaml-cpp
   docopt)

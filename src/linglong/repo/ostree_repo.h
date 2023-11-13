@@ -31,10 +31,11 @@ public:
 
     Q_ENUM(Mode);
 
-    explicit OSTreeRepo(const QString &path);
+    explicit OSTreeRepo(const QString &path, QObject *parent = nullptr);
     explicit OSTreeRepo(const QString &localRepoPath,
                         const QString &remoteEndpoint,
-                        const QString &remoteRepoName);
+                        const QString &remoteRepoName,
+                        QObject *parent = nullptr);
 
     ~OSTreeRepo() override;
     linglong::util::Error init(const QString &repoMode);

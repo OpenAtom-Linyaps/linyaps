@@ -824,15 +824,18 @@ linglong::util::Error OSTreeRepo::remoteDelete(const QString &repoName)
     return d->ostreeRun({ "remote", "delete", repoName });
 }
 
-OSTreeRepo::OSTreeRepo(const QString &path)
-    : dd_ptr(new OSTreeRepoPrivate(path, "", "", this))
+OSTreeRepo::OSTreeRepo(const QString &path, QObject *parent)
+    : QObject(parent)
+    , dd_ptr(new OSTreeRepoPrivate(path, "", "", this))
 {
 }
 
 OSTreeRepo::OSTreeRepo(const QString &localRepoPath,
                        const QString &remoteEndpoint,
-                       const QString &remoteRepoName)
-    : dd_ptr(new OSTreeRepoPrivate(localRepoPath, remoteEndpoint, remoteRepoName, this))
+                       const QString &remoteRepoName,
+                       QObject *parent)
+    : QObject(parent)
+    , dd_ptr(new OSTreeRepoPrivate(localRepoPath, remoteEndpoint, remoteRepoName, this))
 {
 }
 

@@ -23,6 +23,13 @@ namespace repo {
 class Repo
 {
 public:
+    Repo() = default;
+    Repo(const Repo &) = delete;
+    Repo(Repo &&) = delete;
+    Repo &operator=(const Repo &) = delete;
+    Repo &operator=(Repo &&) = delete;
+    virtual ~Repo() = default;
+
     virtual linglong::util::Error importDirectory(const package::Ref &ref, const QString &path) = 0;
 
     virtual linglong::util::Error import(const package::Bundle &bundle) = 0;

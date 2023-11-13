@@ -70,6 +70,8 @@ void withDBusDaemon()
         return;
     }
 
+    qInfo() << "--";
+
     return;
 }
 
@@ -130,6 +132,8 @@ void withoutDBusDaemon()
               unregisterDBusObject(conn, "/org/deepin/linglong/JobManager");
           });
       });
+
+    qInfo() << "-";
 }
 
 } // namespace
@@ -140,30 +144,34 @@ auto main(int argc, char *argv[]) -> int
 
     applicationInitializte();
 
-    Q_ASSERT(QMetaObject::invokeMethod(QCoreApplication::instance(), []() {
-        registerDBusParam();
+    auto ret = QMetaObject::invokeMethod(
+      QCoreApplication::instance(),
+      []() {
+          registerDBusParam();
 
-        QString user = qgetenv("USER");
-        if (user != LINGLONG_USERNAME) {
-            QCoreApplication::exit(-1);
-            return;
-        }
+          QString user = qgetenv("USER");
+          if (user != LINGLONG_USERNAME) {
+              QCoreApplication::exit(-1);
+              return;
+          }
 
-        QCommandLineParser parser;
-        QCommandLineOption optBus("no-dbus", "service without dbus-daemon");
-        optBus.setFlags(QCommandLineOption::HiddenFromHelp);
+          QCommandLineParser parser;
+          QCommandLineOption optBus("no-dbus", "service without dbus-daemon");
+          optBus.setFlags(QCommandLineOption::HiddenFromHelp);
 
-        parser.addOptions({ optBus });
-        parser.parse(QCoreApplication::arguments());
+          parser.addOptions({ optBus });
+          parser.parse(QCoreApplication::arguments());
 
-        if (!parser.isSet(optBus)) {
-            withDBusDaemon();
-            return;
-        }
+          if (!parser.isSet(optBus)) {
+              withDBusDaemon();
+              return;
+          }
 
-        withoutDBusDaemon();
-        return;
-    }));
+          withoutDBusDaemon();
+          return;
+      },
+      Qt::QueuedConnection);
+    Q_ASSERT(ret);
 
     return QCoreApplication::exec();
 } // namespace

@@ -20,17 +20,15 @@ namespace linglong::job_manager {
 class Job;
 class JobManagerPrivate;
 
-class JobManager : public QObject,
-                   protected QDBusContext,
-                   public linglong::util::Singleton<JobManager>
+class JobManager : public QObject, protected QDBusContext
 {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.JobManager")
 
-    friend class linglong::util::Singleton<JobManager>;
-
 public:
+    using QObject::QObject;
     QString CreateJob(std::function<void()> f);
+    ~JobManager() override;
 
 public Q_SLOTS:
     QStringList List();
@@ -38,12 +36,8 @@ public Q_SLOTS:
     void Stop(const QString &jobId);
     void Cancel(const QString &jobId);
 
-protected:
-    JobManager();
-    ~JobManager() override;
-
 private:
-    QScopedPointer<JobManagerPrivate> dd_ptr;
+    JobManagerPrivate* dd_ptr;
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), JobManager)
 };
 

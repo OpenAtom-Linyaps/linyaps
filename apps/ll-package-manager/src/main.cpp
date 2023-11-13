@@ -43,11 +43,9 @@ void withDBusDaemon()
         unregisterDBusObject(conn, "/org/deepin/linglong/PackageManager");
     });
 
-    linglong::adaptors::job_manger::JobManager1 jobMangerAdaptor(
-      linglong::job_manager::JobManager::instance());
-    result = registerDBusObject(conn,
-                                "/org/deepin/linglong/JobManager",
-                                linglong::job_manager::JobManager::instance());
+    auto jobMan = new linglong::job_manager::JobManager(QCoreApplication::instance());
+    auto jobManAdaptor = new linglong::adaptors::job_manger::JobManager1(jobMan);
+    result = registerDBusObject(conn, "/org/deepin/linglong/JobManager", jobMan);
     if (!result.has_value()) {
         qCritical().noquote() << "Launching failed:" << Qt::endl << result.error().message();
         QCoreApplication::exit(-1);
@@ -78,7 +76,8 @@ void withDBusDaemon()
 void withoutDBusDaemon()
 {
     auto pkgManHelperConn =
-      QDBusConnection::connectToPeer("unix:path=/run/linglong/system-helper.socket", "ll-system-helper");
+      QDBusConnection::connectToPeer("unix:path=/run/linglong/system-helper.socket",
+                                     "ll-system-helper");
     auto pkgManHelper =
       new linglong::api::dbus::v1::PackageManagerHelper("",
                                                         "/org/deepin/linglong/PackageManagerHelper",
@@ -89,6 +88,9 @@ void withoutDBusDaemon()
       new linglong::service::PackageManager(*pkgManHelper, QCoreApplication::instance());
     auto packageManagerAdaptor =
       new linglong::adaptors::package_manger::PackageManager1(packageManager);
+
+    auto jobMan = new linglong::job_manager::JobManager(QCoreApplication::instance());
+    auto jobManAdaptor = new linglong::adaptors::job_manger::JobManager1(jobMan);
 
     QDir::root().mkpath("/run/linglong");
     auto server =
@@ -105,27 +107,29 @@ void withoutDBusDaemon()
         qCritical() << "failed to remove /run/linglong/package-manager.socket.";
     });
 
-    QObject::connect(server, &QDBusServer::newConnection, [packageManager](QDBusConnection conn) {
-        auto res = registerDBusObject(conn, "/org/deepin/linglong/PackageManager", packageManager);
-        if (!res.has_value()) {
-            qCritical() << res.error().code() << res.error().message();
-            return;
-        }
-        QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn]() {
-            unregisterDBusObject(conn, "/org/deepin/linglong/PackageManager");
-        });
+    QObject::connect(
+      server,
+      &QDBusServer::newConnection,
+      [packageManager, jobMan](QDBusConnection conn) {
+          auto res =
+            registerDBusObject(conn, "/org/deepin/linglong/PackageManager", packageManager);
+          if (!res.has_value()) {
+              qCritical() << res.error().code() << res.error().message();
+              return;
+          }
+          QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn]() {
+              unregisterDBusObject(conn, "/org/deepin/linglong/PackageManager");
+          });
 
-        res = registerDBusObject(conn,
-                                 "/org/deepin/linglong/JobManager",
-                                 linglong::job_manager::JobManager::instance());
-        if (!res.has_value()) {
-            qCritical() << res.error().code() << res.error().message();
-            return;
-        }
-        QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn]() {
-            unregisterDBusObject(conn, "/org/deepin/linglong/JobManager");
-        });
-    });
+          res = registerDBusObject(conn, "/org/deepin/linglong/JobManager", jobMan);
+          if (!res.has_value()) {
+              qCritical() << res.error().code() << res.error().message();
+              return;
+          }
+          QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn]() {
+              unregisterDBusObject(conn, "/org/deepin/linglong/JobManager");
+          });
+      });
 }
 
 } // namespace

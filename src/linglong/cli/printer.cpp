@@ -43,12 +43,11 @@ void Printer::printErr(const utils::error::Error &err)
 
 void Printer::printAppMetaInfos(const QList<QSharedPointer<linglong::package::AppMetaInfo>> &list)
 {
-    const std::string color("\033[38;5;214m");
-
-    std::cout << std::setw(32) << qUtf8Printable("appId") << std::setw(32) << qUtf8Printable("name")
-              << std::setw(16) << qUtf8Printable("version") << std::setw(12)
-              << qUtf8Printable("arch") << std::setw(16) << qUtf8Printable("channel")
-              << std::setw(12) << qUtf8Printable("module") << qUtf8Printable("description") << color
+    std::cout << "\033[38;5;214m" << std::left << std::setw(32) << qUtf8Printable("appId")
+              << std::setw(32) << qUtf8Printable("name") << std::setw(16)
+              << qUtf8Printable("version") << std::setw(12) << qUtf8Printable("arch")
+              << std::setw(16) << qUtf8Printable("channel") << std::setw(12)
+              << qUtf8Printable("module") << qUtf8Printable("description") << "\033[0m"
               << std::endl;
 
     for (const auto &it : list.toVector()) {
@@ -77,11 +76,9 @@ void Printer::printAppMetaInfos(const QList<QSharedPointer<linglong::package::Ap
 
 void Printer::printContainers(const QList<QSharedPointer<Container>> &list)
 {
-    const std::string color("\033[38;5;214m");
-
-    std::cout << std::setw(48) << qUtf8Printable("App") << std::setw(36)
-              << qUtf8Printable("ContainerID") << std::setw(8) << qUtf8Printable("Pid")
-              << qUtf8Printable("Path") << color << std::endl;
+    std::cout << "\033[38;5;214m" << std::left << std::setw(48) << qUtf8Printable("App")
+              << std::setw(36) << qUtf8Printable("ContainerID") << std::setw(8)
+              << qUtf8Printable("Pid") << qUtf8Printable("Path") << "\033[0m" << std::endl;
 
     for (auto const &container : list) {
         std::cout << std::setw(48) << package::Ref(container->packageName).appId.toStdString()

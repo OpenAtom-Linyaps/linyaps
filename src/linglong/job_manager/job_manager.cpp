@@ -16,17 +16,6 @@
 
 namespace linglong::job_manager {
 
-class JobManagerPrivate
-{
-public:
-    explicit JobManagerPrivate(JobManager *parent)
-        : q_ptr(parent)
-    {
-    }
-
-    JobManager *q_ptr = nullptr;
-};
-
 QString JobManager::CreateJob(std::function<void()> f)
 {
     auto jobId = QUuid::createUuid().toString(QUuid::Id128);
@@ -36,11 +25,6 @@ QString JobManager::CreateJob(std::function<void()> f)
 
     return jobId;
 }
-
-JobManager::~JobManager()
-{
-    delete dd_ptr;
-};
 
 // dbus-send --system --type=method_call --print-reply --dest=org.deepin.linglong.PackageManager
 // /org/deepin/linglong/JobManager org.deepin.linglong.JobManager.Start string:"org.deepin.demo"

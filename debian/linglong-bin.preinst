@@ -1,10 +1,17 @@
 #!/bin/bash
 
+oldProfile="/etc/profile.d/linglong.sh"
+oldX11Config="/etc/X11/Xsession.d/21linglong"
+
 case "$1" in
 install | upgrade)
     if [ "x$2" != "x" ]; then
         killall ll-service >/dev/null 2<&1
         killall ll-package-manager >/dev/null 2<&1
+    fi
+    # 这两个旧文件主要用于设置玲珑环境变量，优先级较高，而且与systemd generator功能重复，不再需要
+    if [[ -f "$oldProfile" && -f "$oldX11Config" ]]; then
+        rm $oldProfile $oldX11Config
     fi
     ;;
 

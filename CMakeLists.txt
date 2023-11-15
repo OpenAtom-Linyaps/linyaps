@@ -340,7 +340,7 @@ pfl_add_library(
   Qt::Network
   Qt::Sql
   Qt::WebSockets
-  Qt::Gui # QtLinglongAPI depend
+  QtLinglongRepoClientAPI
   ocppi::runtime
   tl::expected
   yaml-cpp::yaml-cpp

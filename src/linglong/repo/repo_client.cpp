@@ -14,12 +14,15 @@
 #include "linglong/util/qserializer/deprecated.h"
 #include "linglong/utils/error/error.h"
 
+#include <QEventLoop>
 #include <QJsonObject>
 
 #include <tuple>
 
 namespace linglong {
 namespace repo {
+
+using namespace api::client;
 
 QSERIALIZER_IMPL(Response);
 QSERIALIZER_IMPL(AuthResponseData);
@@ -58,34 +61,42 @@ QJsonObject getUserInfo()
 linglong::utils::error::Result<QList<QSharedPointer<package::AppMetaInfo>>>
 RepoClient::QueryApps(const package::Ref &ref)
 {
-    // TODO: query cache Here
-    QUrl url(endpoint);
-    // FIXME: normalize the path
-    url.setPath(url.path() + "/api/v0/apps/fuzzysearchapp");
-    QNetworkRequest request(url);
+    auto client = this->Client();
+    client->deleteLater();
+    Request_FuzzySearchReq req;
+    req.setAppId(ref.appId);
+    req.setVersion(ref.version);
+    req.setArch(ref.arch);
+    req.setRepoName(ref.repo);
 
-    QJsonObject obj;
-    obj["AppId"] = ref.appId;
-    obj["version"] = ref.version;
-    obj["arch"] = ref.arch;
-    obj["repoName"] = ref.repo;
+    linglong::utils::error::Result<QList<QSharedPointer<package::AppMetaInfo>>> ret =
+      LINGLONG_ERR(-1, "unknown error");
 
-    QJsonDocument doc(obj);
-    QByteArray data = doc.toJson();
-
-    util::HttpRestClient hc;
-    auto reply = hc.post(request, data);
-    if (reply->error()) {
-        return LINGLONG_ERR(-1, reply->errorString());
-    }
-    data = reply->readAll();
-    qDebug() << "QueryApps: get response from server:" << QString(data);
-    auto resp = util::loadJsonBytes<repo::Response>(data);
-
-    if (!resp) {
-        return LINGLONG_ERR(-1, "Failed to load application list from response.");
-    }
-    return resp->data;
+    QEventLoop loop;
+    QEventLoop::connect(client,
+                        &ClientApi::fuzzySearchAppSignal,
+                        [&loop, &ret](FuzzySearchApp_200_response resp) {
+                            loop.exit();
+                            if (resp.getCode() != 200) {
+                                ret = LINGLONG_ERR(resp.getCode(), resp.getMsg());
+                                return;
+                            }
+                            QJsonObject obj = resp.asJsonObject();
+                            QJsonDocument doc(obj);
+                            auto bytes = doc.toJson();
+                            auto respJson = util::loadJsonBytes<repo::Response>(bytes);
+                            ret = respJson->data;
+                            return;
+                        });
+    QEventLoop::connect(client,
+                        &ClientApi::fuzzySearchAppSignalEFull,
+                        [&loop, &ret](auto, auto error_type, const QString &error_str) {
+                            loop.exit();
+                            ret = LINGLONG_ERR(error_type, error_str);
+                        });
+    client->fuzzySearchApp(req);
+    loop.exec();
+    return ret;
 }
 
 linglong::utils::error::Result<QString> RepoClient::Auth(const package::Ref &ref)
@@ -109,6 +120,15 @@ linglong::utils::error::Result<QString> RepoClient::Auth(const package::Ref &ref
     }
 
     return result->data->token;
+}
+
+ClientApi *RepoClient::Client()
+{
+    auto api = new ClientApi();
+    auto manager = new QNetworkAccessManager(api);
+    api->setNetworkAccessManager(manager);
+    api->setNewServerForAllOperations(this->endpoint);
+    return api;
 }
 
 RepoClient::RepoClient(const QString &endpoint)

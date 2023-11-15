@@ -36,13 +36,20 @@ add_definitions("-DQT_NO_KEYWORDS")
 # NOTE(black_desk): Enable Qt logging with context.
 add_definitions("-DQT_MESSAGELOGCONTEXT")
 
+find_package(QT NAMES Qt5)
+
 find_package(
   Qt5
-  COMPONENTS Core Concurrent DBus Network WebSockets Sql
+  COMPONENTS Core
+             Concurrent
+             DBus
+             Network
+             WebSockets
+             Sql
+             Gui
   REQUIRED)
 
 include(./cmake/CPM.cmake)
-include(./cmake/PFL.cmake)
 
 # All dependencies can be added with CPM should be added with CPM.
 
@@ -86,7 +93,7 @@ CPMFindPackage(
   NAME ocppi
   VERSION 0.1.8
   GITHUB_REPOSITORY black-desk/ocppi
-  GIT_TAG v0.1.8
+  GIT_TAG v0.1.9
   GIT_SHALLOW ON
   OPTIONS "OCPPI_ENABLE_TESTING OFF" "OCPPI_BUILD_EXAMPLES OFF"
   FIND_PACKAGE_ARGUMENTS "NAMES ocppi COMPONENTS common runtime"
@@ -98,9 +105,18 @@ pkg_search_module(glib2 REQUIRED IMPORTED_TARGET glib-2.0)
 pkg_search_module(ostree1 REQUIRED IMPORTED_TARGET ostree-1)
 pkg_search_module(systemd REQUIRED IMPORTED_TARGET libsystemd)
 
+include(./cmake/PFL.cmake)
+
 set(QSERIALIZER_QT_VERSION_MAJOR "5")
-pfl_init(ENABLE_TESTING ${LINGLONG_ENABLE_TESTING} EXTERNALS qserializer ytj
-         INSTALL ON)
+pfl_init(
+  ENABLE_TESTING
+  ${LINGLONG_ENABLE_TESTING}
+  EXTERNALS
+  qserializer
+  ytj
+  http/client
+  INSTALL
+  ON)
 
 if(LINGLONG_ENABLE_TESTING)
   enable_testing()
@@ -324,6 +340,7 @@ pfl_add_library(
   Qt::Network
   Qt::Sql
   Qt::WebSockets
+  Qt::Gui # QtLinglongAPI depend
   ocppi::runtime
   tl::expected
   yaml-cpp::yaml-cpp

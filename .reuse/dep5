@@ -20,6 +20,11 @@ Files: external/ytj/*
 License: LGPL-3.0-only
 Copyright: Chen Linxuan <me@black-desk.cn>
 
+# openapi generator code
+Files: openapitools.json external/http/* 
+License: CC0-1.0
+Copyright: None
+
 # json schemas
 Files: api/builder/*.json
 License: CC0-1.0

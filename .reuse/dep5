@@ -20,8 +20,23 @@ Files: external/ytj/*
 License: LGPL-3.0-only
 Copyright: Chen Linxuan <me@black-desk.cn>
 
+# openapi generator code
+Files: external/http/*
+License: CC0-1.0
+Copyright: None
+
+# openapi template and patch
+Files: tools/openapi-cpp-qt-client tools/no-cmake.patch tools/no-qt-keywords.patch
+License: CC0-1.0
+Copyright: None
+
+# openapi
+Files: api/http/client_swagger.json
+License: CC0-1.0
+Copyright: None
+
 # json schemas
-Files: api/builder/*.json
+Files: api/JSON Schema/*.json
 License: CC0-1.0
 Copyright: None
 

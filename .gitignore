@@ -2,7 +2,14 @@
 # SPDX-License-Identifier: CC0-1.0
 
 /*build*
+
 /.idea/
+/.vscode/
+
+/tools/node_modules
+/tools/package-lock.json
+/tools/package.json
+
 /debian/.debhelper
 /debian/debhelper-build-stamp
 /debian/files
@@ -14,4 +21,3 @@
 /debian/linglong-builder.substvars
 /debian/tmp/usr
 /obj-x86_64-linux-gnu
-/.vscode/

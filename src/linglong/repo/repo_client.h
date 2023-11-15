@@ -11,6 +11,8 @@
 #include "linglong/repo/repo.h"
 #include "linglong/utils/error/error.h"
 
+#include "ClientApi.h"
+
 #include <QNetworkReply>
 #include <QNetworkRequest>
 
@@ -46,7 +48,7 @@ class AuthResponse : public Serialize
     Q_JSON_PROPERTY(QString, msg);
 };
 
-class RepoClient
+class RepoClient : public QObject
 {
 public:
     explicit RepoClient(const QString &endpoint);
@@ -63,6 +65,8 @@ public:
     QueryApps(const package::Ref &ref);
 
     linglong::utils::error::Result<QString> Auth(const package::Ref &ref);
+
+    linglong::api::client::ClientApi *Client();
 
 private:
     QString endpoint;

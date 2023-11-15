@@ -55,3 +55,5 @@ pfl_add_executable(
 include(GoogleTest)
 gtest_discover_tests(linglong__tests
                      WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
+
+add_subdirectory(src/qt)

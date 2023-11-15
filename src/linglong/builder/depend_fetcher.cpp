@@ -66,7 +66,7 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
         //    mode argument passed to repo, which prevent all network request.
         // 3. For now we just leave these code here, we will refactor them later.
         if (BuilderConfig::instance()->getOffline()) {
-            dependRef = ostree.localLatestRef(dependRef);
+            dependRef = *ostree.localLatestRef(dependRef);
 
             qInfo()
               << QString("offline dependency: %1 %2").arg(dependRef.appId).arg(dependRef.version);
@@ -75,9 +75,9 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
 
             qInfo()
               << QString("fetching dependency: %1 %2").arg(dependRef.appId).arg(dependRef.version);
-            auto err = ostree.pullAll(dependRef, true);
-            if (!err.has_value()) {
-                return WrapError(NewError(err.error().code(), err.error().message()),
+            auto ret = ostree.pullAll(dependRef, true);
+            if (!ret.has_value()) {
+                return WrapError(NewError(ret.error().code(), ret.error().message()),
                                  "pull " + dependRef.toString() + " failed");
             }
         }
@@ -88,11 +88,11 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
     targetParentDir.mkpath(".");
 
     {
-        auto err = ostree.checkoutAll(dependRef, subPath, targetPath);
+        auto ret = ostree.checkoutAll(dependRef, subPath, targetPath);
 
-        if (!err.has_value()) {
+        if (!ret.has_value()) {
             return WrapError(
-              NewError(err.error().code(), err.error().message()),
+              NewError(ret.error().code(), ret.error().message()),
               QString("ostree checkout %1 failed").arg(dependRef.toLocalRefString()));
         }
     }
@@ -102,9 +102,9 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
         auto targetInstallPath = dd_ptr->project->config().cacheAbsoluteFilePath(
           { "overlayfs", "up", dd_ptr->project->config().targetInstallPath("") });
         {
-            auto err = ostree.checkoutAll(dependRef, subPath, targetInstallPath);
-            if (!err.has_value()) {
-                return WrapError(NewError(err.error().code(), err.error().message()),
+            auto ret = ostree.checkoutAll(dependRef, subPath, targetInstallPath);
+            if (!ret.has_value()) {
+                return WrapError(NewError(ret.error().code(), ret.error().message()),
                                  QString("ostree checkout %1 with subpath '%2' to %3")
                                    .arg(dependRef.toLocalRefString())
                                    .arg(subPath)

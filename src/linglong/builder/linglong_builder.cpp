@@ -20,6 +20,7 @@
 #include "linglong/util/runner.h"
 #include "linglong/util/sysinfo.h"
 #include "linglong/utils/command/env.h"
+#include "linglong/utils/error/error.h"
 #include "linglong/utils/std_helper/qdebug_helper.h"
 #include "linglong/utils/xdg/desktop_entry.h"
 #include "ocppi/runtime/config/ConfigLoader.hpp"
@@ -255,7 +256,9 @@ linglong::util::Error commitBuildOutput(Project *project, const nlohmann::json &
 
     ret = repo.importDirectory(project->refWithModule("devel"),
                                project->config().cacheInstallPath("devel-install", ""));
-    return NewError(ret.error().code(), ret.error().message());
+    if (!ret.has_value())
+        return NewError(ret.error().code(), ret.error().message());
+    return Success();
 };
 
 package::Ref fuzzyRef(QSharedPointer<const JsonSerialize> obj)
@@ -312,26 +315,26 @@ linglong::util::Error LinglongBuilder::initRepo()
     if (!QDir(BuilderConfig::instance()->ostreePath()).exists()) {
         util::ensureDir(BuilderConfig::instance()->ostreePath());
 
-        auto err = repo.init("bare-user-only");
-        if (!err.has_value()) {
-            return WrapError(NewError(err.error().code(), err.error().message()),
+        auto ret = repo.init("bare-user-only");
+        if (!ret.has_value()) {
+            return WrapError(NewError(ret.error().code(), ret.error().message()),
                              "init ostree repo failed");
         }
     }
 
     // async builder.yaml to ostree config
     auto currentRemoteUrl = repo.remoteShowUrl(defaultRepoName);
-    if (currentRemoteUrl.isEmpty()) {
-        auto err = repo.remoteAdd(defaultRepoName, repoUrl);
-        if (!err.has_value()) {
-            return WrapError(NewError(err.error().code(), err.error().message()),
+    if (!currentRemoteUrl.has_value()) {
+        auto ret = repo.remoteAdd(defaultRepoName, repoUrl);
+        if (!ret.has_value()) {
+            return WrapError(NewError(ret.error().code(), ret.error().message()),
                              "add ostree remote failed");
         }
-    } else if (currentRemoteUrl != repoUrl) {
+    } else if (*currentRemoteUrl != repoUrl) {
         repo.remoteDelete(defaultRepoName);
-        auto err = repo.remoteAdd(defaultRepoName, repoUrl);
-        if (!err.has_value()) {
-            return WrapError(NewError(err.error().code(), err.error().message()),
+        auto ret = repo.remoteAdd(defaultRepoName, repoUrl);
+        if (!ret.has_value()) {
+            return WrapError(NewError(ret.error().code(), ret.error().message()),
                              "add ostree remote failed");
         }
     }
@@ -802,13 +805,17 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
     util::ensureDir(exportPath);
 
     repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath());
-    auto err = repo.checkout(project->refWithModule("runtime"), "", exportPath);
-    err = repo.checkout(project->refWithModule("devel"),
+    auto ret = repo.checkout(project->refWithModule("runtime"), "", exportPath);
+    if (!ret.has_value()) {
+        return WrapError(NewError(ret.error().code(), ret.error().message()),
+                         "checkout files with runtime failed, you need build first");
+    }
+    ret = repo.checkout(project->refWithModule("devel"),
                         "",
                         QStringList{ exportPath, "devel" }.join("/"));
-    if (!err.has_value()) {
-        return WrapError(NewError(err.error().code(), err.error().message()),
-                         "checkout files failed, you need build first");
+    if (!ret.has_value()) {
+        return WrapError(NewError(ret.error().code(), ret.error().message()),
+                         "checkout files with devel failed, you need build first");
     }
 
     QFile::copy("/usr/libexec/ll-box-static", QStringList{ exportPath, "ll-box" }.join("/"));
@@ -903,9 +910,9 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
     // make bundle package
     linglong::package::Bundle uabBundle;
 
-    auto ret = uabBundle.make(exportPath, outputFilePath);
-    if (ret) {
-        return WrapError(ret, "make bundle failed");
+    auto err = uabBundle.make(exportPath, outputFilePath);
+    if (err) {
+        return WrapError(err, "make bundle failed");
     }
 
     return Success();
@@ -954,19 +961,19 @@ util::Error LinglongBuilder::push(const QString &repoUrl,
 
         // push ostree data by ref
         // ret = repo.push(refWithRuntime, false);
-        auto err = repo.push(refWithRuntime);
+        auto ret = repo.push(refWithRuntime);
 
-        if (!err.has_value()) {
+        if (!ret.has_value()) {
             qInfo().noquote() << QString("push %1 failed").arg(project->package->id);
-            return NewError(err.error().code(), err.error().message());
+            return NewError(ret.error().code(), ret.error().message());
         } else {
             qInfo().noquote() << QString("push %1 success").arg(project->package->id);
         }
 
         if (pushWithDevel) {
-            err = repo.push(package::Ref(refWithDevel));
+            auto ret = repo.push(package::Ref(refWithDevel));
 
-            if (err) {
+            if (!ret.has_value()) {
                 qInfo().noquote() << QString("push %1 failed").arg(project->package->id);
             } else {
                 qInfo().noquote() << QString("push %1 success").arg(project->package->id);
@@ -1007,10 +1014,10 @@ util::Error LinglongBuilder::import()
                                            util::hostArch(),
                                            "runtime");
 
-        auto err =
+        auto ret =
           repo.importDirectory(refWithRuntime, BuilderConfig::instance()->getProjectRoot());
 
-        if (!err.has_value()) {
+        if (!ret.has_value()) {
             return NewError(-1, "import package failed");
         }
 
@@ -1047,8 +1054,8 @@ linglong::util::Error LinglongBuilder::run()
         auto targetPath =
           BuilderConfig::instance()->layerPath({ project->ref().toLocalRefString() });
         linglong::util::ensureDir(targetPath);
-        auto err = repo.checkoutAll(project->ref(), "", targetPath);
-        if (err) {
+        auto ret = repo.checkoutAll(project->ref(), "", targetPath);
+        if (!ret.has_value()) {
             return NewError(-1, "checkout app files failed");
         }
 
@@ -1065,8 +1072,8 @@ linglong::util::Error LinglongBuilder::run()
                                              "");
 
         auto latestRuntimeRef = repo.remoteLatestRef(remoteRuntimeRef);
-        err = repo.checkoutAll(latestRuntimeRef, "", targetPath);
-        if (err) {
+        ret = repo.checkoutAll(latestRuntimeRef, "", targetPath);
+        if (!ret.has_value()) {
             return NewError(-1, "checkout runtime files failed");
         }
 

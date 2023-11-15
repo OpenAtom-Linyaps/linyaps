@@ -15,6 +15,7 @@
 #include "linglong/util/xdg.h"
 #include "linglong/utils/error/error.h"
 
+#include <cstddef>
 #include <utility>
 
 namespace linglong {
@@ -58,26 +59,6 @@ linglong::utils::error::Result<void> VfsRepo::importDirectory(const package::Ref
     return {};
 }
 
-linglong::utils::error::Result<void> VfsRepo::import(const package::Bundle &bundle)
-{
-    return {};
-}
-
-linglong::utils::error::Result<void> VfsRepo::exportBundle(package::Bundle &bundle)
-{
-    return {};
-}
-
-linglong::utils::error::Result<QList<package::Ref>> VfsRepo::list(const QString &filter)
-{
-    return LINGLONG_ERR(-1, "Not Implemented");
-}
-
-linglong::utils::error::Result<QList<package::Ref>> VfsRepo::query(const QString &filter)
-{
-    return LINGLONG_ERR(-1, "Not Implemented");
-}
-
 linglong::utils::error::Result<void> VfsRepo::push(const package::Ref &ref, bool force)
 {
     return {};
@@ -88,12 +69,12 @@ linglong::utils::error::Result<void> VfsRepo::push(const package::Ref &ref)
     return {};
 }
 
-linglong::utils::error::Result<void> VfsRepo::push(const package::Bundle &bundle, bool force)
+linglong::utils::error::Result<void> VfsRepo::pull(package::Ref &ref, bool force)
 {
     return {};
 }
 
-linglong::utils::error::Result<void> VfsRepo::pull(const package::Ref &ref, bool force)
+linglong::utils::error::Result<void> VfsRepo::pull(const QString &ref)
 {
     return {};
 }
@@ -167,6 +148,92 @@ package::Ref VfsRepo::latestOfRef(const QString &appId, const QString &appVersio
     }
     auto ref = appId + "/" + version + "/" + util::hostArch();
     return package::Ref(ref);
+}
+
+linglong::utils::error::Result<void> VfsRepo::remoteAdd(const QString &repoName,
+                                                        const QString &repoUrl)
+{
+    return {};
+}
+
+linglong::utils::error::Result<void> VfsRepo::pullAll(const package::Ref &ref, bool force)
+{
+    return {};
+}
+
+linglong::utils::error::Result<void> VfsRepo::checkout(const package::Ref &ref,
+                                                       const QString &subPath,
+                                                       const QString &target)
+{
+    return {};
+}
+
+linglong::utils::error::Result<void> VfsRepo::remoteDelete(const QString &repoName)
+{
+    return {};
+}
+
+linglong::utils::error::Result<void> VfsRepo::checkoutAll(const package::Ref &ref,
+                                                          const QString &subPath,
+                                                          const QString &target)
+{
+    return {};
+}
+
+linglong::utils::error::Result<QString> VfsRepo::remoteShowUrl(const QString &repoName)
+{
+    return {};
+}
+
+linglong::utils::error::Result<package::Ref> VfsRepo::localLatestRef(const package::Ref &ref)
+{
+    return package::Ref("", "", "", "");
+}
+
+package::Ref VfsRepo::remoteLatestRef(const package::Ref &ref)
+{
+    return package::Ref("", "", "", "");
+}
+
+linglong::utils::error::Result<void> VfsRepo::getRemoteRepoList(const QString &repoPath,
+                                                                QVector<QString> &vec)
+{
+    return {};
+}
+
+bool VfsRepo::getRemoteRefs(const QString &repoPath,
+                            const QString &remoteName,
+                            QMap<QString, QString> &outRefs,
+                            QString &err)
+{
+    return false;
+}
+
+linglong::utils::error::Result<void> VfsRepo::checkOutAppData(const QString &repoPath,
+                                                              const QString &remoteName,
+                                                              const QString &ref,
+                                                              const QString &dstPath)
+{
+    return {};
+}
+
+linglong::utils::error::Result<void> VfsRepo::repoPullbyCmd(const QString &destPath,
+                                                            const QString &remoteName,
+                                                            const QString &ref)
+{
+    return {};
+}
+
+linglong::utils::error::Result<void> VfsRepo::repoDeleteDatabyRef(const QString &repoPath,
+                                                                  const QString &remoteName,
+                                                                  const QString &ref)
+{
+    return {};
+}
+
+linglong::utils::error::Result<void> VfsRepo::ensureRepoEnv(const QString &repoDir)
+{
+    return {};
 }
 
 } // namespace repo

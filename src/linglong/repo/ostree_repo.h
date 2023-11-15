@@ -10,7 +10,7 @@
 #include "linglong/package/package.h"
 #include "linglong/repo/repo.h"
 #include "linglong/repo/repo_client.h"
-#include "linglong/repo/repo_command.h"
+#include "linglong/repo/repo_common.h"
 #include "linglong/util/config/config.h"
 #include "linglong/util/erofs.h"
 #include "linglong/util/file.h"
@@ -18,7 +18,7 @@
 #include "linglong/util/qserializer/json.h"
 #include "linglong/utils/error/error.h"
 
-#include <ostree-repo.h>
+#include <ostree.h>
 
 #include <QHttpPart>
 #include <QPointer>
@@ -107,11 +107,6 @@ Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::repo, UploadTaskResponse)
 namespace linglong {
 namespace repo {
 // ostree 仓库对象信息
-struct LingLongDir
-{
-    QString basedir;
-    OstreeRepo *repo;
-};
 
 struct OstreeRepoObject
 {
@@ -130,44 +125,28 @@ public:
                         const QString &remoteRepoName);
 
     ~OSTreeRepo() override;
-    linglong::utils::error::Result<void> init(const QString &repoMode) override;
+    linglong::utils::error::Result<void> init(const QString &repoMode);
 
     linglong::utils::error::Result<void> remoteAdd(const QString &repoName,
                                                    const QString &repoUrl) override;
 
-    linglong::utils::error::Result<QStringList> remoteList() override;
-
     linglong::utils::error::Result<void> importDirectory(const package::Ref &ref,
                                                          const QString &path) override;
-
-    linglong::utils::error::Result<void> renameBranch(const package::Ref &oldRef,
-                                                      const package::Ref &newRef) override;
-
-    linglong::utils::error::Result<void> import(const package::Bundle &bundle) override;
-
-    linglong::utils::error::Result<void> exportBundle(package::Bundle &bundle) override;
-
-    linglong::utils::error::Result<QList<linglong::package::Ref>>
-    list(const QString &filter) override;
-
-    linglong::utils::error::Result<QList<linglong::package::Ref>>
-    query(const QString &filter) override;
 
     linglong::utils::error::Result<void> push(const package::Ref &ref, bool force) override;
 
     linglong::utils::error::Result<void> push(const package::Ref &ref) override;
 
-    linglong::utils::error::Result<void> push(const package::Bundle &bundle, bool force) override;
+    linglong::utils::error::Result<void> pull(package::Ref &ref, bool force) override;
 
-    linglong::utils::error::Result<void> pull(const package::Ref &ref, bool force) override;
+    // TODO: support multi refs?
+    linglong::utils::error::Result<void> pull(const QString &ref) override;
 
     linglong::utils::error::Result<void> pullAll(const package::Ref &ref, bool force) override;
 
     linglong::utils::error::Result<void> checkout(const package::Ref &ref,
                                                   const QString &subPath,
                                                   const QString &target) override;
-
-    linglong::utils::error::Result<void> removeRef(const package::Ref &ref) override;
 
     linglong::utils::error::Result<void> remoteDelete(const QString &repoName) override;
 
@@ -179,11 +158,9 @@ public:
 
     QString rootOfLayer(const package::Ref &ref) override;
 
-    bool isRefExists(const package::Ref &ref) override;
+    linglong::utils::error::Result<QString> remoteShowUrl(const QString &repoName) override;
 
-    QString remoteShowUrl(const QString &repoName) override;
-
-    package::Ref localLatestRef(const package::Ref &ref) override;
+    linglong::utils::error::Result<package::Ref> localLatestRef(const package::Ref &ref) override;
 
     package::Ref remoteLatestRef(const package::Ref &ref) override;
 
@@ -198,7 +175,8 @@ public:
      *
      * @return bool: true:查询成功 false:失败
      */
-    bool getRemoteRepoList(const QString &repoPath, QVector<QString> &vec, QString &err) override;
+    linglong::utils::error::Result<void> getRemoteRepoList(const QString &repoPath,
+                                                           QVector<QString> &vec) override;
 
     /*
      * 查询远端仓库所有软件包索引信息refs
@@ -226,11 +204,10 @@ public:
      *
      * @return bool: true:成功 false:失败
      */
-    bool checkOutAppData(const QString &repoPath,
-                         const QString &remoteName,
-                         const QString &ref,
-                         const QString &dstPath,
-                         QString &err) override;
+    linglong::utils::error::Result<void> checkOutAppData(const QString &repoPath,
+                                                         const QString &remoteName,
+                                                         const QString &ref,
+                                                         const QString &dstPath) override;
 
     /*
      * 通过ostree命令将软件包数据从远端仓库pull到本地
@@ -242,10 +219,9 @@ public:
      *
      * @return bool: true:成功 false:失败
      */
-    bool repoPullbyCmd(const QString &destPath,
-                       const QString &remoteName,
-                       const QString &ref,
-                       QString &err) override;
+    linglong::utils::error::Result<void> repoPullbyCmd(const QString &destPath,
+                                                       const QString &remoteName,
+                                                       const QString &ref) override;
 
     /*
      * 删除本地repo仓库中软件包对应的ref分支信息及数据
@@ -257,12 +233,11 @@ public:
      *
      * @return bool: true:成功 false:失败
      */
-    bool repoDeleteDatabyRef(const QString &repoPath,
-                             const QString &remoteName,
-                             const QString &ref,
-                             QString &err) override;
+    linglong::utils::error::Result<void> repoDeleteDatabyRef(const QString &repoPath,
+                                                             const QString &remoteName,
+                                                             const QString &ref) override;
 
-    bool ensureRepoEnv(const QString &repoDir, QString &err) override;
+    linglong::utils::error::Result<void> ensureRepoEnv(const QString &repoDir) override;
 
     /*
      * 获取下载任务对应的进程Id
@@ -366,7 +341,7 @@ private:
      *
      * @return QString: 临时repo路径
      */
-    QString createTmpRepo(const QString &parentRepo);
+    linglong::utils::error::Result<QString> createTmpRepo(const QString &parentRepo);
 
     /*
      * 保存本地仓库信息
@@ -377,8 +352,8 @@ private:
      */
     void setDirInfo(const QString &basedir, OstreeRepo *repo)
     {
-        pLingLongDir->basedir = basedir;
-        pLingLongDir->repo = repo;
+        repoRootPath = basedir;
+        repoPtr = repo;
     }
 
     linglong::utils::error::Result<void> ostreeRun(const QStringList &args,
@@ -505,17 +480,15 @@ private:
 
     static OstreeRepo *openRepo(const QString &path)
     {
-        GError *gErr = nullptr;
+        g_autoptr(GError) gErr = nullptr;
         std::string repoPathStr = path.toStdString();
 
-        auto repoPath = g_file_new_for_path(repoPathStr.c_str());
-        auto repo = ostree_repo_new(repoPath);
+        g_autoptr(GFile) repoPath = g_file_new_for_path(repoPathStr.c_str());
+        g_autoptr(OstreeRepo) repo = ostree_repo_new(repoPath);
         if (!ostree_repo_open(repo, nullptr, &gErr)) {
             qCritical() << "open repo" << path << "failed"
                         << QString::fromStdString(std::string(gErr->message));
         }
-        g_object_unref(repoPath);
-
         Q_ASSERT(nullptr != repo);
         return repo;
     }
@@ -530,8 +503,8 @@ private:
     // FIXME: return {Error, QStringList}
     QStringList traverseCommit(const QString &rev, int maxDepth)
     {
-        GHashTable *hashTable = nullptr;
-        GError *gErr = nullptr;
+        g_autoptr(GHashTable) hashTable = nullptr;
+        g_autoptr(GError) gErr = nullptr;
         QStringList objects;
 
         std::string str = rev.toStdString();
@@ -550,9 +523,9 @@ private:
         GHashTableIter iter;
         g_hash_table_iter_init(&iter, hashTable);
 
-        GVariant *object;
+        g_autoptr(GVariant) object;
         for (; g_hash_table_iter_next(&iter, reinterpret_cast<gpointer *>(&object), nullptr);) {
-            char *checksum;
+            g_autofree char *checksum;
             OstreeObjectType objectType;
 
             // TODO: check error
@@ -582,8 +555,8 @@ private:
 
     linglong::utils::error::Result<QString> resolveRev(const QString &ref)
     {
-        GError *gErr = nullptr;
-        char *commitID = nullptr;
+        g_autoptr(GError) gErr = nullptr;
+        g_autofree char *commitID = nullptr;
         std::string refStr = ref.toStdString();
         // FIXME: should free commitID?
         if (!ostree_repo_resolve_rev(repoPtr, refStr.c_str(), false, &commitID, &gErr)) {
@@ -591,62 +564,6 @@ private:
                                   LINGLONG_ERR(gErr->code, gErr->message).value());
         }
         return QString::fromLatin1(commitID);
-    }
-
-    // TODO: support multi refs?
-    linglong::utils::error::Result<void> pull(const QString &ref)
-    {
-        GError *gErr = nullptr;
-        // OstreeAsyncProgress *progress;
-        // GCancellable *cancellable;
-        auto repoNameStr = remoteRepoName.toStdString();
-        auto refStr = ref.toStdString();
-        auto refsSize = 1;
-        const char *refs[refsSize + 1];
-        for (decltype(refsSize) i = 0; i < refsSize; i++) {
-            refs[i] = refStr.c_str();
-        }
-        refs[refsSize] = nullptr;
-
-        GVariantBuilder builder;
-        g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
-
-        // g_variant_builder_add(&builder, "{s@v}",
-        // "override-url",g_variant_new_string(remote_name_or_baseurl));
-
-        g_variant_builder_add(&builder,
-                              "{s@v}",
-                              "gpg-verify",
-                              g_variant_new_variant(g_variant_new_boolean(false)));
-        g_variant_builder_add(&builder,
-                              "{s@v}",
-                              "gpg-verify-summary",
-                              g_variant_new_variant(g_variant_new_boolean(false)));
-
-        auto flags = OSTREE_REPO_PULL_FLAGS_NONE;
-        g_variant_builder_add(&builder,
-                              "{s@v}",
-                              "flags",
-                              g_variant_new_variant(g_variant_new_int32(flags)));
-
-        g_variant_builder_add(
-          &builder,
-          "{s@v}",
-          "refs",
-          g_variant_new_variant(g_variant_new_strv((const char *const *)refs, -1)));
-
-        auto options = g_variant_ref_sink(g_variant_builder_end(&builder));
-
-        if (!ostree_repo_pull_with_options(repoPtr,
-                                           repoNameStr.c_str(),
-                                           options,
-                                           nullptr,
-                                           nullptr,
-                                           &gErr)) {
-            qCritical() << "ostree_repo_pull_with_options failed"
-                        << QString::fromStdString(std::string(gErr->message));
-        }
-        return LINGLONG_OK;
     }
 
     QSharedPointer<InfoResponse> getRepoInfo(const QString &repoName)
@@ -879,7 +796,6 @@ private:
     repo::RepoClient repoClient;
 
     // ostree 仓库对象信息
-    LingLongDir *pLingLongDir;
 
     QMap<QString, int> jobMap;
 };

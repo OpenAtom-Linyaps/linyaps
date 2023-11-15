@@ -201,16 +201,14 @@ pfl_add_library(
   ./src/linglong/package_manager/package_manager.h
   ./src/linglong/repo/ostree_repo.cpp
   ./src/linglong/repo/ostree_repo.h
-  ./src/linglong/repo/ostree_repohelper.cpp
-  ./src/linglong/repo/ostree_repohelper.h
   ./src/linglong/repo/repo.cpp
   ./src/linglong/repo/repo.h
   ./src/linglong/repo/repo_client.cpp
   ./src/linglong/repo/repo_client.h
   ./src/linglong/repo/vfs_repo.cpp
   ./src/linglong/repo/vfs_repo.h
-  ./src/linglong/repo/repo_command.h
-  ./src/linglong/repo/repo_command.cpp
+  ./src/linglong/repo/repo_common.h
+  ./src/linglong/repo/repo_common.cpp
   ./src/linglong/runtime/app.cpp
   ./src/linglong/runtime/to_json.cpp
   ./src/linglong/runtime/resource/app_configs.qrc

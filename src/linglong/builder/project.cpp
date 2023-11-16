@@ -37,189 +37,10 @@ const char *const PackageKindApp = "app";
 const char *const PackageKindLib = "lib";
 const char *const PackageKindRuntime = "runtime";
 
-class ProjectPrivate
+package::Ref Project::ref() const
 {
-public:
-    explicit ProjectPrivate(Project *parent)
-        : cfg(BuilderConfig::instance()->getProjectRoot(), parent)
-        , q_ptr(parent)
-    {
-    }
-
-    static QString buildArch() { return util::hostArch(); }
-
-    package::Ref ref() const
-    {
-        return package::Ref("", q_ptr->package->id, q_ptr->package->version, buildArch());
-    }
-
-    package::Ref fullRef(const QString &channel, const QString &module) const
-    {
-        return package::Ref("",
-                            channel,
-                            q_ptr->package->id,
-                            q_ptr->package->version,
-                            buildArch(),
-                            module);
-    }
-
-    package::Ref refWithModule(const QString &module) const
-    {
-        return package::Ref("", q_ptr->package->id, q_ptr->package->version, buildArch(), module);
-    }
-
-    int generateBuildScript(const QString &path) const
-    {
-        QFile scriptFile(path);
-        // Warning: using QString maybe out of range
-        QString command;
-        QString templateName = "default.yaml";
-
-        if (!scriptFile.open(QIODevice::WriteOnly)) {
-            qCritical() << "failed to open" << path << scriptFile.error();
-            return -1;
-        }
-
-        if (!BuilderConfig::instance()->getExec().isEmpty()) {
-            auto exec = BuilderConfig::instance()->getExec();
-            for (const auto &arg : exec) {
-                command += '\'' + arg + '\'' + ' ';
-            }
-            command = command.trimmed();
-            command += "\n";
-            scriptFile.write(command.toLocal8Bit());
-            scriptFile.close();
-            return 0;
-        }
-        // TODO: genarate global config, load from builder config file.
-        command += "#global variable\n";
-        command += QString("JOBS=%1\n").arg("6");
-        command += QString("VERSION=%1\n").arg(q_ptr->package->version);
-
-        if (q_ptr->config().targetArch() == "x86_64") {
-            command += QString("ARCH=\"%1\"\n").arg("x86_64");
-            command += QString("TRIPLET=\"%1\"\n").arg("x86_64-linux-gnu");
-        } else if (q_ptr->config().targetArch() == "arm64") {
-            command += QString("ARCH=\"%1\"\n").arg("arm64");
-            command += QString("TRIPLET=\"%1\"\n").arg("aarch64-linux-gnu");
-        } else if (q_ptr->config().targetArch() == "mips64el") {
-            command += QString("ARCH=\"%1\"\n").arg("mips64el");
-            command += QString("TRIPLET=\"%1\"\n").arg("mips64el-linux-gnuabi64");
-        } else if (q_ptr->config().targetArch() == "sw_64") {
-            command += QString("ARCH=\"%1\"\n").arg("sw_64");
-            command += QString("TRIPLET=\"%1\"\n").arg("sw_64-linux-gnu");
-        };
-
-        // generate local config, from *.yaml.
-        if (q_ptr->build != nullptr) {
-            if (q_ptr->build->kind == "manual") {
-                templateName = "default.yaml";
-            } else if (q_ptr->build->kind == "qmake") {
-                templateName = "qmake.yaml";
-            } else if (q_ptr->build->kind == "cmake") {
-                templateName = "cmake.yaml";
-            } else if (q_ptr->build->kind == "autotools") {
-                templateName = "autotools.yaml";
-            } else {
-                qWarning().noquote() << QString("unknown build type: %1").arg(q_ptr->build->kind);
-                return -1;
-            }
-        } else {
-            qWarning().noquote() << "build rule not found, check your linglong.yaml";
-            return -1;
-        }
-
-        auto templatePath =
-          QStringList{ BuilderConfig::instance()->templatePath(), templateName }.join(
-            QDir::separator());
-
-        util::Error err;
-        QSharedPointer<Template> temp;
-
-        if (QFileInfo::exists(templatePath)) {
-            std::tie(temp, err) = util::fromYAML<QSharedPointer<Template>>(templatePath);
-        } else {
-            QFile templateFile(QStringList{ ":", templateName }.join(QDir::separator()));
-            if (templateFile.open(QFile::ReadOnly | QFile::Text)) {
-                std::tie(temp, err) =
-                  util::fromYAML<QSharedPointer<Template>>(templateFile.readAll());
-            }
-        }
-
-        if (q_ptr->variables == nullptr) {
-            q_ptr->variables.reset(new Variables());
-        }
-
-        if (q_ptr->environment == nullptr) {
-            q_ptr->environment.reset(new Environment());
-        }
-
-        if (q_ptr->build->manual == nullptr) {
-            q_ptr->build->manual.reset(new BuildManual());
-        }
-
-        Q_ASSERT(temp->variables != nullptr);
-        Q_ASSERT(temp->environment != nullptr);
-
-        command += "#local variable\n";
-        for (int i = q_ptr->variables->metaObject()->propertyOffset();
-             i < q_ptr->variables->metaObject()->propertyCount();
-             ++i) {
-            auto propertyName = q_ptr->variables->metaObject()->property(i).name();
-            if (q_ptr->variables->property(propertyName).toString().isNull()) {
-                command += QString("%1=\"%2\"\n")
-                             .arg(propertyName)
-                             .arg(temp->variables->property(propertyName).toString());
-            } else {
-                command += QString("%1=\"%2\"\n")
-                             .arg(propertyName)
-                             .arg(q_ptr->variables->property(propertyName).toString());
-            }
-        }
-        // set build environment variables
-        command += "#environment variables\n";
-        for (int i = q_ptr->environment->metaObject()->propertyOffset();
-             i < q_ptr->environment->metaObject()->propertyCount();
-             ++i) {
-            auto propertyName = q_ptr->environment->metaObject()->property(i).name();
-            if (q_ptr->environment->property(propertyName).toString().isNull()) {
-                command += QString("export %1=\"%2\"\n")
-                             .arg(propertyName)
-                             .arg(temp->environment->property(propertyName).toString());
-            } else {
-                command += QString("export %1=\"%2\"\n")
-                             .arg(propertyName)
-                             .arg(q_ptr->environment->property(propertyName).toString());
-            }
-        }
-
-        command += "#build commands\n";
-        command += q_ptr->build->manual->configure.isNull() ? temp->build->manual->configure
-                                                            : q_ptr->build->manual->configure;
-        command += q_ptr->build->manual->build.isNull() ? temp->build->manual->build
-                                                        : q_ptr->build->manual->build;
-        command += q_ptr->build->manual->install.isNull() ? temp->build->manual->install
-                                                          : q_ptr->build->manual->install;
-
-        command += "\n";
-        // strip script
-        QFile stripScript(":/strip.sh");
-        stripScript.open(QIODevice::ReadOnly);
-
-        command += QString::fromLocal8Bit(stripScript.readAll());
-
-        scriptFile.write(command.toLocal8Bit());
-        stripScript.close();
-        scriptFile.close();
-
-        return 0;
-    }
-
-    QString configFilePath; //! yaml path
-    QString scriptPath;
-    Project::Config cfg;
-    Project *q_ptr = nullptr;
-};
+    return package::Ref("", package->id, package->version, buildArch());
+}
 
 void Project::generateBuildScript()
 {
@@ -227,8 +48,8 @@ void Project::generateBuildScript()
     auto cacheDirectory = config().cacheAbsoluteFilePath({ "tmp" });
     util::ensureDir(cacheDirectory);
     auto scriptPath = cacheDirectory + BuildScriptPath;
-    dd_ptr->generateBuildScript(scriptPath);
-    dd_ptr->scriptPath = scriptPath;
+    generateBuildScript(scriptPath);
+    this->scriptPath = scriptPath;
 
     // get source.version form package.version
     if (source && source->version.isEmpty()) {
@@ -236,35 +57,169 @@ void Project::generateBuildScript()
     }
 }
 
-QString Project::buildScriptPath() const
+int Project::generateBuildScript(const QString &path)
 {
-    return dd_ptr->scriptPath;
+    QFile scriptFile(path);
+    // Warning: using QString maybe out of range
+    QString command;
+    QString templateName = "default.yaml";
+
+    if (!scriptFile.open(QIODevice::WriteOnly)) {
+        qCritical() << "failed to open" << path << scriptFile.error();
+        return -1;
+    }
+
+    if (!BuilderConfig::instance()->getExec().isEmpty()) {
+        auto exec = BuilderConfig::instance()->getExec();
+        for (const auto &arg : exec) {
+            command += '\'' + arg + '\'' + ' ';
+        }
+        command = command.trimmed();
+        command += "\n";
+        scriptFile.write(command.toLocal8Bit());
+        scriptFile.close();
+        return 0;
+    }
+    // TODO: genarate global config, load from builder config file.
+    command += "#global variable\n";
+    command += QString("JOBS=%1\n").arg("6");
+    command += QString("VERSION=%1\n").arg(package->version);
+
+    if (config().targetArch() == "x86_64") {
+        command += QString("ARCH=\"%1\"\n").arg("x86_64");
+        command += QString("TRIPLET=\"%1\"\n").arg("x86_64-linux-gnu");
+    } else if (config().targetArch() == "arm64") {
+        command += QString("ARCH=\"%1\"\n").arg("arm64");
+        command += QString("TRIPLET=\"%1\"\n").arg("aarch64-linux-gnu");
+    } else if (config().targetArch() == "mips64el") {
+        command += QString("ARCH=\"%1\"\n").arg("mips64el");
+        command += QString("TRIPLET=\"%1\"\n").arg("mips64el-linux-gnuabi64");
+    } else if (config().targetArch() == "sw_64") {
+        command += QString("ARCH=\"%1\"\n").arg("sw_64");
+        command += QString("TRIPLET=\"%1\"\n").arg("sw_64-linux-gnu");
+    };
+
+    // generate local config, from *.yaml.
+    if (build != nullptr) {
+        if (build->kind == "manual") {
+            templateName = "default.yaml";
+        } else if (build->kind == "qmake") {
+            templateName = "qmake.yaml";
+        } else if (build->kind == "cmake") {
+            templateName = "cmake.yaml";
+        } else if (build->kind == "autotools") {
+            templateName = "autotools.yaml";
+        } else {
+            qWarning().noquote() << QString("unknown build type: %1").arg(build->kind);
+            return -1;
+        }
+    } else {
+        qWarning().noquote() << "build rule not found, check your linglong.yaml";
+        return -1;
+    }
+
+    auto templatePath = QStringList{ BuilderConfig::instance()->templatePath(), templateName }.join(
+      QDir::separator());
+
+    util::Error err;
+    QSharedPointer<Template> temp;
+
+    if (QFileInfo::exists(templatePath)) {
+        std::tie(temp, err) = util::fromYAML<QSharedPointer<Template>>(templatePath);
+    } else {
+        QFile templateFile(QStringList{ ":", templateName }.join(QDir::separator()));
+        if (templateFile.open(QFile::ReadOnly | QFile::Text)) {
+            std::tie(temp, err) = util::fromYAML<QSharedPointer<Template>>(templateFile.readAll());
+        }
+    }
+
+    if (variables == nullptr) {
+        variables.reset(new Variables());
+    }
+
+    if (environment == nullptr) {
+        environment.reset(new Environment());
+    }
+
+    if (build->manual == nullptr) {
+        build->manual.reset(new BuildManual());
+    }
+
+    Q_ASSERT(temp->variables != nullptr);
+    Q_ASSERT(temp->environment != nullptr);
+
+    command += "#local variable\n";
+    for (int i = variables->metaObject()->propertyOffset();
+         i < variables->metaObject()->propertyCount();
+         ++i) {
+        auto propertyName = variables->metaObject()->property(i).name();
+        if (variables->property(propertyName).toString().isNull()) {
+            command += QString("%1=\"%2\"\n")
+                         .arg(propertyName)
+                         .arg(temp->variables->property(propertyName).toString());
+        } else {
+            command += QString("%1=\"%2\"\n")
+                         .arg(propertyName)
+                         .arg(variables->property(propertyName).toString());
+        }
+    }
+    // set build environment variables
+    command += "#environment variables\n";
+    for (int i = environment->metaObject()->propertyOffset();
+         i < environment->metaObject()->propertyCount();
+         ++i) {
+        auto propertyName = environment->metaObject()->property(i).name();
+        if (environment->property(propertyName).toString().isNull()) {
+            command += QString("export %1=\"%2\"\n")
+                         .arg(propertyName)
+                         .arg(temp->environment->property(propertyName).toString());
+        } else {
+            command += QString("export %1=\"%2\"\n")
+                         .arg(propertyName)
+                         .arg(environment->property(propertyName).toString());
+        }
+    }
+
+    command += "#build commands\n";
+    command +=
+      build->manual->configure.isNull() ? temp->build->manual->configure : build->manual->configure;
+    command += build->manual->build.isNull() ? temp->build->manual->build : build->manual->build;
+    command +=
+      build->manual->install.isNull() ? temp->build->manual->install : build->manual->install;
+
+    command += "\n";
+    // strip script
+    QFile stripScript(":/strip.sh");
+    stripScript.open(QIODevice::ReadOnly);
+
+    command += QString::fromLocal8Bit(stripScript.readAll());
+
+    scriptFile.write(command.toLocal8Bit());
+    stripScript.close();
+    scriptFile.close();
+
+    return 0;
 }
 
 Project::Project(QObject *parent)
     : JsonSerialize(parent)
-    , dd_ptr(new ProjectPrivate(this))
+    , cfg(BuilderConfig::instance()->getProjectRoot(), this)
 {
-}
-
-package::Ref Project::ref() const
-{
-    return dd_ptr->ref();
 }
 
 package::Ref Project::fullRef(const QString &channel, const QString &module) const
 {
-    return dd_ptr->fullRef(channel, module);
+    return package::Ref("", channel, package->id, package->version, buildArch(), module);
 }
 
 package::Ref Project::refWithModule(const QString &module) const
 {
-    return dd_ptr->refWithModule(module);
+    return package::Ref("", package->id, package->version, buildArch(), module);
 }
 
 const Project::Config &Project::config() const
 {
-    return dd_ptr->cfg;
+    return cfg;
 }
 
 package::Ref Project::runtimeRef() const
@@ -275,16 +230,6 @@ package::Ref Project::runtimeRef() const
 package::Ref Project::baseRef() const
 {
     return fuzzyRef(base);
-}
-
-QString Project::configFilePath() const
-{
-    return dd_ptr->configFilePath;
-}
-
-void Project::setConfigFilePath(const QString &configFilePath)
-{
-    dd_ptr->configFilePath = configFilePath;
 }
 
 Project::~Project() = default;

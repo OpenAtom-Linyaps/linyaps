@@ -9,6 +9,7 @@
 
 #include "linglong/package/ref.h"
 #include "linglong/util/qserializer/deprecated.h"
+#include "linglong/util/sysinfo.h"
 
 #include <QObject>
 #include <QScopedPointer>
@@ -145,8 +146,6 @@ Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::builder, Environment)
 namespace linglong {
 namespace builder {
 
-class ProjectPrivate;
-
 class Project : public Serialize
 {
     Q_OBJECT;
@@ -173,10 +172,12 @@ public:
     package::Ref runtimeRef() const;
     package::Ref baseRef() const;
 
-    QString configFilePath() const;
-    void setConfigFilePath(const QString &configFilePath);
+    QString configFilePath; //! yaml path
 
-    QString buildScriptPath() const;
+    QString buildScriptPath() const { return this->scriptPath; }
+
+private:
+    QString scriptPath;
 
 public:
     class Config
@@ -212,8 +213,11 @@ public:
     void generateBuildScript();
 
 private:
-    QScopedPointer<ProjectPrivate> dd_ptr;
-    Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), Project)
+    Project::Config cfg;
+
+    static QString buildArch() { return util::hostArch(); }
+
+    int generateBuildScript(const QString &path);
 };
 
 package::Ref fuzzyRef(QSharedPointer<const JsonSerialize> obj);

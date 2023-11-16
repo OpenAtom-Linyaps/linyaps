@@ -230,7 +230,7 @@ linglong::util::Error commitBuildOutput(Project *project, const nlohmann::json &
         }
         develInfoFile.close();
 
-        QFile sourceConfigFile(project->configFilePath());
+        QFile sourceConfigFile(project->configFilePath);
         if (!sourceConfigFile.copy(project->config().cacheInstallPath("linglong.yaml"))) {
             return NewError(sourceConfigFile.error(), sourceConfigFile.errorString());
         }
@@ -532,7 +532,7 @@ linglong::util::Error LinglongBuilder::build()
                 subProject->build = depend->build;
 
                 subProject->generateBuildScript();
-                subProject->setConfigFilePath(projectConfigPath);
+                subProject->configFilePath = projectConfigPath;
 
                 qInfo() << QString("building target: %1").arg(subProject->package->id);
 
@@ -546,7 +546,7 @@ linglong::util::Error LinglongBuilder::build()
         }
 
         project->generateBuildScript();
-        project->setConfigFilePath(projectConfigPath);
+        project->configFilePath = projectConfigPath;
 
         qInfo() << QString("building target: %1").arg(project->package->id);
 
@@ -792,7 +792,7 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
 
     auto project = QVariant::fromValue(YAML::LoadFile(projectConfigPath.toStdString()))
                      .value<QSharedPointer<Project>>();
-    project->setConfigFilePath(projectConfigPath);
+    project->configFilePath = projectConfigPath;
 
     const auto exportPath =
       QStringList{ BuilderConfig::instance()->getProjectRoot(), project->package->id }.join("/");
@@ -1037,7 +1037,7 @@ linglong::util::Error LinglongBuilder::run()
     try {
         auto project = QVariant::fromValue(YAML::LoadFile(projectConfigPath.toStdString()))
                          .value<QSharedPointer<Project>>();
-        project->setConfigFilePath(projectConfigPath);
+        project->configFilePath = projectConfigPath;
 
         // checkout app
         auto targetPath =

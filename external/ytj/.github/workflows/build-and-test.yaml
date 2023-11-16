@@ -1,0 +1,23 @@
+name: "build and test"
+
+on: [pull_request]
+
+jobs:
+  build-and-test:
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - run: |
+          export CPM_DOWNLOAD_ALL="ON" &&
+          export CFLAGS="$CFLAGS -Wall" &&
+          export CFLAGS="$CFLAGS -Wextra" &&
+          export CFLAGS="$CFLAGS -Wpedantic" &&
+          export CFLAGS="$CFLAGS -Wno-extra-semi -Wno-unused-command-line-argument -Wno-gnu-zero-variadic-macro-arguments" &&
+          export CFLAGS="$CFLAGS -fsanitize=address,undefined" &&
+          export CXXFLAGS="$CFLAGS" &&
+          cmake -B build &&
+          cmake --build build &&
+          cmake --build build -t test

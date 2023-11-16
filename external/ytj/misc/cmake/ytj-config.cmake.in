@@ -1,0 +1,10 @@
+@PACKAGE_INIT@
+
+list(APPEND CMAKE_MODULE_PATH "@PACKAGE_cmakeModulesDir@")
+
+include(CMakeFindDependencyMacro)
+
+find_dependency(nlohmann_json 3.11.2)
+find_dependency(yaml-cpp 0.8.0)
+
+include(${CMAKE_CURRENT_LIST_DIR}/ytj.cmake)

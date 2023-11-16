@@ -528,6 +528,7 @@ public:
 
         QList<QPair<QString, QString>> mountMap = {
             { "/tmp/.X11-unix", "/tmp/.X11-unix" }, // FIXME: only mount one DISPLAY
+	    { getenv("XAUTHORITY"), getenv("XAUTHORITY") },
         };
 
         for (const auto &pair : mountMap) {
@@ -735,9 +736,6 @@ public:
         // https://gitlabwh.uniontech.com/wuhan/v23/linglong/linglong/-/issues/72
         auto dconfPath = util::ensureUserDir({ ".config", "dconf" });
         roMountMap.push_back(qMakePair(dconfPath, appConfigPath + "/dconf"));
-
-        QString xauthority = getenv("XAUTHORITY");
-        roMountMap.push_back(qMakePair(xauthority, xauthority));
 
         for (const auto &pair : roMountMap) {
             QPointer<Mount> m(new Mount(r));

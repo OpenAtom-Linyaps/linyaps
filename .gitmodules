@@ -1,0 +1,3 @@
+[submodule "tools/quicktype"]
+	path = tools/quicktype
+	url = https://github.com/black-desk/quicktype.git

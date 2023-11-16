@@ -1,0 +1,22 @@
+name: "Auto prerelease"
+
+on:
+  push:
+    tags:
+      - "v*-*"
+
+jobs:
+  prerelease:
+    runs-on: "ubuntu-latest"
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -B build
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: true
+          files: |
+            ./build/include/ytj/ytj.hpp

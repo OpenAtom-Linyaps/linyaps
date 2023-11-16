@@ -1,0 +1,110 @@
+#pragma once
+
+/*
+ * SPDX-FileCopyrightText: 2023 Chen Linxuan <me@black-desk.cn>
+ *
+ * SPDX-License-Identifier: LGPL-3.0-or-later
+ */
+
+#include <nlohmann/json.hpp>
+#include <yaml-cpp/yaml.h>
+
+namespace ytj
+{
+
+constexpr std::string_view version = "@PROJECT_VERSION@";
+
+namespace detail
+{
+
+inline nlohmann::json scalar_to_json(const YAML::Node &yaml)
+{
+        assert(yaml.IsScalar());
+        int interger = 0;
+        double real = 0;
+        bool boolean = false;
+        std::string string;
+
+        // NOTE: check links below:
+        // https://github.com/jbeder/yaml-cpp/issues/261#issuecomment-223191708
+        // https://github.com/mircodezorzi/tojson/blob/0b3ad0a0ac68e8d805588922e04ac7d1e4ea0463/tojson.hpp#L75
+
+        if (yaml.Tag() == "!") {
+                return yaml.as<std::string>();
+        }
+
+        if (YAML::convert<int>::decode(yaml, interger)) {
+                return interger;
+        }
+        if (YAML::convert<double>::decode(yaml, real)) {
+                return real;
+        }
+        if (YAML::convert<bool>::decode(yaml, boolean)) {
+                return boolean;
+        }
+        if (YAML::convert<std::string>::decode(yaml, string)) {
+                return string;
+        }
+
+        return nullptr;
+}
+
+}
+
+inline nlohmann::json to_json(const YAML::Node &yaml)
+{
+        if (yaml.IsScalar()) {
+                return detail::scalar_to_json(yaml);
+        }
+
+        if (yaml.IsMap()) {
+                auto object = "{}"_json;
+                for (const auto &entry : yaml) {
+                        object[detail::scalar_to_json(entry.first)] =
+                                to_json(entry.second);
+                }
+                return object;
+        }
+
+        if (yaml.IsSequence()) {
+                auto array = "[]"_json;
+                for (const auto &entry : yaml) {
+                        array.push_back(to_json(entry));
+                }
+                return array;
+        }
+
+        return nullptr;
+}
+
+inline YAML::Node to_yaml(const nlohmann::json &json)
+{
+        if (json.is_null()) {
+                return YAML::Node();
+        }
+
+        if (json.is_string() || json.is_boolean() || json.is_number()) {
+                return YAML::Load(json.dump());
+        }
+
+        if (json.is_object()) {
+                YAML::Node object;
+                for (auto it = json.begin(); it != json.end(); it++) {
+                        object[it.key()] = to_yaml(it.value());
+                }
+                return object;
+        }
+
+        if (json.is_array()) {
+                YAML::Node array;
+                for (const auto &item : json) {
+                        array.push_back(to_yaml(item));
+                }
+                return array;
+        }
+
+        assert(false);
+        return YAML::Node();
+}
+
+}

@@ -1,0 +1,1 @@
+./.format/.cmake-format.py

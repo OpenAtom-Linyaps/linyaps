@@ -167,7 +167,6 @@ public:
 
 public:
     package::Ref ref() const;
-    package::Ref fullRef(const QString &channel, const QString &module) const;
     package::Ref refWithModule(const QString &module) const;
     package::Ref runtimeRef() const;
     package::Ref baseRef() const;

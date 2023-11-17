@@ -207,11 +207,6 @@ Project::Project(QObject *parent)
 {
 }
 
-package::Ref Project::fullRef(const QString &channel, const QString &module) const
-{
-    return package::Ref("", channel, package->id, package->version, buildArch(), module);
-}
-
 package::Ref Project::refWithModule(const QString &module) const
 {
     return package::Ref("", package->id, package->version, buildArch(), module);

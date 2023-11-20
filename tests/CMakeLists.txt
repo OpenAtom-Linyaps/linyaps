@@ -41,6 +41,7 @@ pfl_add_executable(
   ./src/linglong/package/reference_test.cpp
   ./src/linglong/cli/dbus_reply.h
   ./src/linglong/utils/xdg/desktop_entry_test.cpp
+  ./src/linglong/utils/error/result_test.cpp
   COMPILE_FEATURES
   PUBLIC
   cxx_std_17

@@ -27,8 +27,15 @@
 namespace linglong {
 namespace builder {
 namespace project {
+/**
+* Linglong project build file.
+*/
+
 using nlohmann::json;
 
+/**
+* Linglong project build file.
+*/
 struct Project {
 std::optional<Base> base;
 Build build;

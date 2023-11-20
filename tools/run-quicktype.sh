@@ -107,16 +107,15 @@ generate() {
 include="src/"
 
 generate \
-        "$repoRoot/api/builder/project.schema.json" \
+        "$repoRoot/api/JSON Schema/project.json" \
         Project \
         "linglong::builder::project" \
         "$include" \
         "linglong/builder/project"
 
 generate \
-        "$repoRoot/api/builder/config.schema.json" \
+        "$repoRoot/api/JSON Schema/ll-builder-config.json" \
         Config \
         "linglong::builder::config" \
         "$include" \
         "linglong/builder/config"
-

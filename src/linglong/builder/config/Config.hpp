@@ -19,8 +19,15 @@
 namespace linglong {
 namespace builder {
 namespace config {
+/**
+* Configuration file for ll-builder.
+*/
+
 using nlohmann::json;
 
+/**
+* Configuration file for ll-builder.
+*/
 struct Config {
 std::string remoteRepoEndpoint;
 std::string remoteRepoName;

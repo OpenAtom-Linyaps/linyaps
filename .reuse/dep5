@@ -9,9 +9,26 @@ License: CC0-1.0
 Copyright: None
 
 # external
+
+# qserializer
 Files: external/qserializer/*
 License: LGPL-3.0-only
 Copyright: Chen Linxuan <me@black-desk.cn>
+
+# ytj
+Files: external/ytj/*
+License: LGPL-3.0-only
+Copyright: Chen Linxuan <me@black-desk.cn>
+
+# json schemas
+Files: api/builder/*.json
+License: CC0-1.0
+Copyright: None
+
+# generated code
+Files: src/linglong/builder/project/* src/linglong/builder/config/*
+License: CC0-1.0
+Copyright: None
 
 Files: cmake/CPM.cmake
 License: MIT
@@ -23,7 +40,7 @@ License: CC0-1.0
 Copyright: None
 
 # Documents
-Files: docs/* *README.md README.zh_CN.md INSTALL.md
+Files: docs/* *README.md *README.zh_CN.md *INSTALL.md
 License: CC-BY-4.0
 Copyright: UnionTech Software Technology Co., Ltd.
 

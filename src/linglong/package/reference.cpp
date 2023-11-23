@@ -14,8 +14,8 @@ utils::error::Result<Reference> Reference::parse(const QString &raw) noexcept
 try {
     return Reference(raw);
 } catch (const std::exception &e) {
-    auto err = Err(-1, e.what()).value();
-    return EWrap("invalid reference", err);
+    auto err = LINGLONG_ERR(-1, e.what()).value();
+    return LINGLONG_EWRAP("invalid reference", err);
 }
 
 Reference::Reference(const QString &raw)

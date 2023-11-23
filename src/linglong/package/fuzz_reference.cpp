@@ -14,8 +14,8 @@ utils::error::Result<FuzzReference> FuzzReference::parse(const QString &raw) noe
 try {
     return FuzzReference(raw);
 } catch (const std::exception &e) {
-    auto err = Err(-1, e.what()).value();
-    return EWrap("invalid fuzz reference", err);
+    auto err = LINGLONG_ERR(-1, e.what()).value();
+    return LINGLONG_EWRAP("invalid fuzz reference", err);
 }
 
 FuzzReference::FuzzReference(const QStringList &components)

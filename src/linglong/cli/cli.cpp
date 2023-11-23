@@ -88,18 +88,18 @@ auto parseDataFromProxyCfgFile(const QString &dbusProxyCfgPath) -> Result<DBusPr
     auto dataFile = QFile(dbusProxyCfgPath);
     dataFile.open(QIODevice::ReadOnly);
     if (dataFile.isOpen()) {
-        return Err(-1, "proxy config data not found");
+        return LINGLONG_ERR(-1, "proxy config data not found");
     }
 
     auto data = dataFile.readAll();
     if (data.size() == 0) {
-        return Err(-1, "failed to read config data");
+        return LINGLONG_ERR(-1, "failed to read config data");
     }
 
     QJsonParseError jsonError;
     auto doc = QJsonDocument::fromJson(data, &jsonError);
     if (jsonError.error) {
-        return Err(-1, jsonError.errorString());
+        return LINGLONG_ERR(-1, jsonError.errorString());
     }
     DBusProxyConfig config;
     if (!doc.isNull()) {
@@ -299,7 +299,7 @@ int Cli::run(std::map<std::string, docopt::value> &args)
 {
     const auto appId = QString::fromStdString(args["APP"].asString());
     if (appId.isEmpty()) {
-        this->printer.printErr(Err(-1, "Application ID is required.").value());
+        this->printer.printErr(LINGLONG_ERR(-1, "Application ID is required.").value());
         return -1;
     }
 
@@ -330,7 +330,7 @@ int Cli::run(std::map<std::string, docopt::value> &args)
         if (!dbusProxyCfg.isEmpty()) {
             auto data = parseDataFromProxyCfgFile(dbusProxyCfg);
             if (!data.has_value()) {
-                printer.printErr(Err(-2, "get empty data from cfg file").value());
+                printer.printErr(LINGLONG_ERR(-2, "get empty data from cfg file").value());
                 return -1;
             }
             // TODO(linxin): parse dbus filter info from config path
@@ -347,7 +347,7 @@ int Cli::run(std::map<std::string, docopt::value> &args)
     dbusReply.waitForFinished();
     auto reply = dbusReply.value();
     if (reply.code != 0) {
-        this->printer.printErr(Err(reply.code, reply.message).value());
+        this->printer.printErr(LINGLONG_ERR(reply.code, reply.message).value());
         return -1;
     }
     return 0;
@@ -365,7 +365,7 @@ int Cli::exec(std::map<std::string, docopt::value> &args)
     }
 
     if (containerId.isEmpty()) {
-        this->printer.printErr(Err(-1, "failed to get container id").value());
+        this->printer.printErr(LINGLONG_ERR(-1, "failed to get container id").value());
         return -1;
     }
 
@@ -382,7 +382,7 @@ int Cli::exec(std::map<std::string, docopt::value> &args)
     const auto dbusReply = this->appMan.Exec(execOption);
     const auto reply = dbusReply.value();
     if (reply.code != STATUS_CODE(kSuccess)) {
-        this->printer.printErr(Err(reply.code, reply.message).value());
+        this->printer.printErr(LINGLONG_ERR(reply.code, reply.message).value());
         return -1;
     }
     return 0;
@@ -400,7 +400,7 @@ int Cli::enter(std::map<std::string, docopt::value> &args)
     }
 
     if (containerId.isEmpty()) {
-        this->printer.printErr(Err(-1, "failed to get container id").value());
+        this->printer.printErr(LINGLONG_ERR(-1, "failed to get container id").value());
         return -1;
     }
 
@@ -408,7 +408,7 @@ int Cli::enter(std::map<std::string, docopt::value> &args)
     if (args["COMMAND"].isString()) {
         cmd = QString::fromStdString(args["COMMAND"].asString());
         if (cmd.isEmpty()) {
-            this->printer.printErr(Err(-1, "failed to get command list").value());
+            this->printer.printErr(LINGLONG_ERR(-1, "failed to get command list").value());
             return -1;
         }
     }
@@ -417,7 +417,7 @@ int Cli::enter(std::map<std::string, docopt::value> &args)
 
     int reply = namespaceEnter(pid, QStringList{ cmd });
     if (reply == -1) {
-        this->printer.printErr(Err(-1, "failed to enter namespace").value());
+        this->printer.printErr(LINGLONG_ERR(-1, "failed to enter namespace").value());
         return -1;
     }
     return 0;
@@ -452,7 +452,7 @@ int Cli::kill(std::map<std::string, docopt::value> &args)
     }
 
     if (containerId.isEmpty()) {
-        this->printer.printErr(Err(-1, "failed to get container id").value());
+        this->printer.printErr(LINGLONG_ERR(-1, "failed to get container id").value());
         return -1;
     }
     // TODO: show kill result
@@ -461,7 +461,7 @@ int Cli::kill(std::map<std::string, docopt::value> &args)
     linglong::service::Reply reply = dbusReply.value();
     qDebug() << reply.message;
     if (reply.code != STATUS_CODE(kErrorPkgKillSuccess)) {
-        this->printer.printErr(Err(reply.code, reply.message).value());
+        this->printer.printErr(LINGLONG_ERR(reply.code, reply.message).value());
         return -1;
     }
 
@@ -479,7 +479,7 @@ int Cli::install(std::map<std::string, docopt::value> &args)
     linglong::service::InstallParamOption installParamOption;
     auto tiers = args["TIER"].asStringList();
     if (tiers.empty()) {
-        this->printer.printErr(Err(-1, "failed to get app id").value());
+        this->printer.printErr(LINGLONG_ERR(-1, "failed to get app id").value());
         return -1;
     }
     for (auto &tier : tiers) {
@@ -526,7 +526,7 @@ int Cli::install(std::map<std::string, docopt::value> &args)
                 reply.message = "unknown err";
                 reply.code = -1;
             }
-            this->printer.printErr(Err(reply.code, reply.message).value());
+            this->printer.printErr(LINGLONG_ERR(reply.code, reply.message).value());
             return -1;
         }
 
@@ -541,7 +541,7 @@ int Cli::upgrade(std::map<std::string, docopt::value> &args)
     auto tiers = args["TIER"].asStringList();
 
     if (tiers.empty()) {
-        this->printer.printErr(Err(-1, "failed to get app id").value());
+        this->printer.printErr(LINGLONG_ERR(-1, "failed to get app id").value());
         return -1;
     }
 
@@ -584,7 +584,7 @@ int Cli::upgrade(std::map<std::string, docopt::value> &args)
             }
         }
         if (reply.code != STATUS_CODE(kErrorPkgUpdateSuccess)) {
-            this->printer.printErr(Err(-1, reply.message).value());
+            this->printer.printErr(LINGLONG_ERR(-1, reply.message).value());
             return -1;
         }
         this->printer.printReply(reply);
@@ -601,7 +601,7 @@ int Cli::search(std::map<std::string, docopt::value> &args)
         appId = QString::fromStdString(args["TEXT"].asString());
     }
     if (appId.isEmpty()) {
-        this->printer.printErr(Err(-1, "faied to get app id").value());
+        this->printer.printErr(LINGLONG_ERR(-1, "faied to get app id").value());
         return -1;
     }
     paramOption.force = true;
@@ -611,7 +611,7 @@ int Cli::search(std::map<std::string, docopt::value> &args)
     dbusReply.waitForFinished();
     linglong::service::QueryReply reply = dbusReply.value();
     if (reply.code != STATUS_CODE(kErrorPkgQuerySuccess)) {
-        this->printer.printErr(Err(reply.code, reply.message).value());
+        this->printer.printErr(LINGLONG_ERR(reply.code, reply.message).value());
         return -1;
     }
 
@@ -619,12 +619,12 @@ int Cli::search(std::map<std::string, docopt::value> &args)
       linglong::util::fromJSON<QList<QSharedPointer<linglong::package::AppMetaInfo>>>(
         reply.result.toLocal8Bit());
     if (err) {
-        this->printer.printErr(Err(-1, "failed to parse json reply").value());
+        this->printer.printErr(LINGLONG_ERR(-1, "failed to parse json reply").value());
         return -1;
     }
 
     if (appMetaInfoList.empty()) {
-        this->printer.printErr(Err(-1, "app not found in repo").value());
+        this->printer.printErr(LINGLONG_ERR(-1, "app not found in repo").value());
         return -1;
     }
 
@@ -655,7 +655,7 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
         reply = dbusReply.value();
 
         if (reply.code != STATUS_CODE(kPkgUninstallSuccess)) {
-            this->printer.printErr(Err(reply.code, reply.message).value());
+            this->printer.printErr(LINGLONG_ERR(reply.code, reply.message).value());
             return -1;
         }
         this->printer.printReply(reply);
@@ -702,7 +702,7 @@ int Cli::repo(std::map<std::string, docopt::value> &args)
     dbusReply.waitForFinished();
     reply = dbusReply.value();
     if (reply.code != STATUS_CODE(kErrorModifyRepoSuccess)) {
-        this->printer.printErr(Err(reply.code, reply.message).value());
+        this->printer.printErr(LINGLONG_ERR(reply.code, reply.message).value());
         return -1;
     }
     this->printer.printReply(reply);

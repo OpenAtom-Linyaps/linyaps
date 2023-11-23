@@ -18,6 +18,7 @@
 #include <QStringBuilder>
 
 #include <memory>
+#include <tuple>
 #include <utility>
 
 namespace linglong::utils::error {
@@ -66,18 +67,18 @@ using Result = tl::expected<Value, Error>;
 
 } // namespace linglong::utils::error
 
-#define EWrap(message, cause) /*NOLINT*/                                     \
+#define LINGLONG_EWRAP(message, cause) /*NOLINT*/                            \
     tl::unexpected(::linglong::utils::error::Error::Wrap(QT_MESSAGELOG_FILE, \
                                                          QT_MESSAGELOG_LINE, \
                                                          message,            \
                                                          std::move(cause)))
 
-#define Err(code, message) /*NOLINT*/ \
-    tl::unexpected(                   \
+#define LINGLONG_ERR(code, message) /*NOLINT*/ \
+    tl::unexpected(                            \
       ::linglong::utils::error::Error::Err(QT_MESSAGELOG_FILE, QT_MESSAGELOG_LINE, code, message))
 
-#define Ok \
-    {      \
+#define LINGLONG_OK \
+    {               \
     }
 
 #endif

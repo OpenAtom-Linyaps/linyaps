@@ -22,7 +22,7 @@
 #include <QObject>
 #include <QScopedPointer>
 #include <QThreadPool>
-#include <QtConcurrent/QtConcurrent>
+#include <QtConcurrent>
 
 namespace linglong {
 namespace service {

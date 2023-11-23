@@ -13,7 +13,7 @@ using namespace linglong::utils::error;
 TEST(Error, New)
 {
     auto res = []() -> Result<void> {
-        return Err(-1, "message");
+        return LINGLONG_ERR(-1, "message");
     }();
 
     ASSERT_EQ(res.has_value(), false);
@@ -24,14 +24,14 @@ TEST(Error, Wrap)
 {
     auto res = []() -> Result<void> {
         auto fn = []() -> Result<void> {
-            return Err(-1, "message1");
+            return LINGLONG_ERR(-1, "message1");
         };
 
         auto res = fn();
         if (!res.has_value()) {
-            return EWrap("message2", res.error());
+            return LINGLONG_EWRAP("message2", res.error());
         }
-        return Ok;
+        return LINGLONG_OK;
     }();
 
     ASSERT_EQ(res.has_value(), false);

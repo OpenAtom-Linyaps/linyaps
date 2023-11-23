@@ -34,7 +34,7 @@ public:
     {
         auto desktopEntryFile = QFile(filePath);
         if (!desktopEntryFile.exists()) {
-            return Err(ENOENT, "no such desktop entry file");
+            return LINGLONG_ERR(ENOENT, "no such desktop entry file");
         }
 
         GError *gErr = nullptr;
@@ -48,7 +48,7 @@ public:
                                        filePath.toLocal8Bit().constData(),
                                        G_KEY_FILE_KEEP_TRANSLATIONS,
                                        &gErr)) {
-            return Err(gErr->code, gErr->message);
+            return LINGLONG_ERR(gErr->code, gErr->message);
         }
 
         return entry;
@@ -108,10 +108,10 @@ public:
         if (!g_key_file_save_to_file(this->gKeyFile.get(),
                                      filepath.toLocal8Bit().constData(),
                                      &gErr)) {
-            return Err(gErr->code, gErr->message);
+            return LINGLONG_ERR(gErr->code, gErr->message);
         }
 
-        return Ok;
+        return LINGLONG_OK;
     }
 };
 
@@ -147,7 +147,7 @@ template<>
     });
 
     if (gErr) {
-        return Err(gErr->code, gErr->message);
+        return LINGLONG_ERR(gErr->code, gErr->message);
     }
 
     return value;

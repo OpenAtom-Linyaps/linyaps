@@ -29,7 +29,7 @@ utils::error::Result<Module> Module::parse(const QString &raw) noexcept
 try {
     return Module(raw);
 } catch (const std::exception &e) {
-    return Err(-1, e.what());
+    return LINGLONG_ERR(-1, e.what());
 }
 
 Module::Module(const QString &raw)

@@ -21,11 +21,11 @@ namespace linglong::utils::dbus {
 {
     if (conn.registerObject(path, obj)) {
         qCDebug(linglong_utils_dbus) << "register object to dbus on" << path;
-        return Ok;
+        return LINGLONG_OK;
     }
 
     // FIXME: use real ERROR CODE defined in API.
-    return Err(-1, "register dbus object: object existed.");
+    return LINGLONG_ERR(-1, "register dbus object: object existed.");
 }
 
 inline void unregisterDBusObject(QDBusConnection conn, const QString &path)
@@ -39,19 +39,21 @@ inline void unregisterDBusObject(QDBusConnection conn, const QString &path)
 {
     if (conn.registerService(serviceName)) {
         qCDebug(linglong_utils_dbus) << "register dbus name" << serviceName;
-        return Ok;
+        return LINGLONG_OK;
     }
 
     error::Error err;
     // FIXME: use real ERROR CODE defined in API.
     if (conn.lastError().isValid()) {
-        err = Err(-1, QString("%1: %2").arg(conn.lastError().name(), conn.lastError().message()))
-                .value();
+        err =
+          LINGLONG_ERR(-1,
+                       QString("%1: %2").arg(conn.lastError().name(), conn.lastError().message()))
+            .value();
     } else {
-        err = Err(-1, "service name existed.").value();
+        err = LINGLONG_ERR(-1, "service name existed.").value();
     }
 
-    return EWrap("register dbus service:", err);
+    return LINGLONG_EWRAP("register dbus service:", err);
 }
 
 [[nodiscard]] inline auto unregisterDBusService(QDBusConnection conn, const QString &serviceName)
@@ -59,19 +61,21 @@ inline void unregisterDBusObject(QDBusConnection conn, const QString &path)
 {
     if (conn.unregisterService(serviceName)) {
         qCDebug(linglong_utils_dbus) << "unregister dbus name" << serviceName;
-        return Ok;
+        return LINGLONG_OK;
     }
 
     // FIXME: use real ERROR CODE defined in API.
     error::Error err;
     if (conn.lastError().isValid()) {
-        err = Err(-1, QString("%1: %2").arg(conn.lastError().name(), conn.lastError().message()))
-                .value();
+        err =
+          LINGLONG_ERR(-1,
+                       QString("%1: %2").arg(conn.lastError().name(), conn.lastError().message()))
+            .value();
     } else {
-        err = Err(-1, "unknown").value();
+        err = LINGLONG_ERR(-1, "unknown").value();
     }
 
-    return EWrap("unregister dbus service:", err);
+    return LINGLONG_EWRAP("unregister dbus service:", err);
 }
 
 } // namespace linglong::utils::dbus

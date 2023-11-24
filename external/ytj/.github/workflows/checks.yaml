@@ -4,6 +4,7 @@ on: [pull_request]
 
 jobs:
   checks:
+    name: Run black-desk/checks
     permissions:
       checks: write
       contents: read
@@ -11,3 +12,48 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: black-desk/checks@master
+  build-and-test:
+    name: Build and tests
+    runs-on: "ubuntu-latest"
+    strategy:
+      matrix:
+        type: [Debug, Release, RelWithDebInfo]
+        cxx: [g++, clang++]
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ matrix.cxx }}-${{ matrix.type }}
+      - name: Cache CPM.cmake Source
+        uses: actions/cache@v3
+        with:
+          path: .cache/cpm/source
+          key: ${{ runner.os }}-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
+      - name: Build project with cmake
+        run: |
+          mkdir -p .cache/cpm/source &&
+          export CXX="${{ matrix.cxx }}" &&
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH" &&
+          export CPM_DOWNLOAD_ALL="ON" &&
+          export CPM_SOURCE_CACHE="$PWD/.cache/cpm/source" &&
+          export CFLAGS="$CFLAGS -Wall" &&
+          export CFLAGS="$CFLAGS -Wextra" &&
+          export CFLAGS="$CFLAGS -Wpedantic" &&
+          export CFLAGS="$CFLAGS -Wno-extra-semi -Wno-unused-command-line-argument -Wno-gnu-zero-variadic-macro-arguments" &&
+          export CFLAGS="$CFLAGS -fsanitize=address,undefined" &&
+          export CXXFLAGS="$CFLAGS" &&
+          cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.type }}&&
+          cmake --build build -j
+      - name: Run tests
+        run: |
+          cmake --build build -t test -j
+  pass:
+    name: Pass
+    needs: [checks, build-and-test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Placeholder
+        run: true

@@ -21,15 +21,10 @@ gitsemver(PROJECT_VERSION)
 
 include(./cmake/CPM.cmake)
 
-# use CPMFindPackage and find_package to get dependencies here.
-
 CPMFindPackage(
   NAME nlohmann_json
   VERSION 3.11.2
-  GITHUB_REPOSITORY nlohmann/json
-  GIT_TAG v3.11.2
-  GIT_SHALLOW ON
-  GIT_PROGRESS ON
+  URL "https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz"
   EXCLUDE_FROM_ALL ON
   OPTIONS "JSON_Install ON")
 

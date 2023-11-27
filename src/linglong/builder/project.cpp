@@ -80,7 +80,7 @@ int Project::generateBuildScript(const QString &path)
         scriptFile.close();
         return 0;
     }
-    // TODO: genarate global config, load from builder config file.
+    // TODO: generate global config, load from builder config file.
     command += "#global variable\n";
     command += QString("JOBS=%1\n").arg("6");
     command += QString("VERSION=%1\n").arg(package->version);

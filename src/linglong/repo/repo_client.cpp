@@ -25,8 +25,6 @@ namespace repo {
 using namespace api::client;
 
 QSERIALIZER_IMPL(Response);
-QSERIALIZER_IMPL(AuthResponseData);
-QSERIALIZER_IMPL(AuthResponse);
 
 QJsonObject getUserInfo()
 {
@@ -97,29 +95,6 @@ RepoClient::QueryApps(const package::Ref &ref)
     client->fuzzySearchApp(req);
     loop.exec();
     return ret;
-}
-
-linglong::utils::error::Result<QString> RepoClient::Auth(const package::Ref &ref)
-{
-    //    QUrl url(QString("%1/%2").arg(endpoint, "api/v1/sign-in"));
-    QUrl url(QString("%1/%2").arg(endpoint, "auth"));
-
-    QNetworkRequest request(url);
-
-    auto userInfo = getUserInfo();
-
-    util::HttpRestClient hc;
-    auto reply = hc.post(request, QJsonDocument(userInfo).toJson());
-    auto data = reply->readAll();
-    auto result = util::loadJsonBytes<AuthResponse>(data);
-
-    // TODO: use status macro for code 200
-    if (200 != result->code) {
-        return LINGLONG_ERR(-1,
-                            QString("getToken failed %1 %2").arg(result->code).arg(result->msg));
-    }
-
-    return result->data->token;
 }
 
 ClientApi *RepoClient::Client()

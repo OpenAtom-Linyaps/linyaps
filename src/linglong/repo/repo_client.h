@@ -7,11 +7,10 @@
 #ifndef LINGLONG_SRC_MODULE_REPO_REPO_CLIENT_H_
 #define LINGLONG_SRC_MODULE_REPO_REPO_CLIENT_H_
 
+#include "ClientApi.h"
 #include "linglong/package/ref.h"
 #include "linglong/repo/repo.h"
 #include "linglong/utils/error/error.h"
-
-#include "ClientApi.h"
 
 #include <QNetworkReply>
 #include <QNetworkRequest>
@@ -33,12 +32,11 @@ public:
 class RepoClient : public QObject
 {
 public:
-    explicit RepoClient(const QString &endpoint);
+    explicit RepoClient(api::client::ClientApi &api, QObject *parent = nullptr);
 
     // FIXME(black_desk):
     // This method is just a workaround used to
-    // update RepoClient::endpoint
-    // when endpoint get updated
+    // update endpoint when endpoint get updated
     // by PackageManager::RepoModify.
     // It's not thread-safe.
     void setEndpoint(const QString &endpoint);
@@ -46,10 +44,8 @@ public:
     linglong::utils::error::Result<QList<QSharedPointer<package::AppMetaInfo>>>
     QueryApps(const package::Ref &ref);
 
-    linglong::api::client::ClientApi *Client();
-
 private:
-    QString endpoint;
+    api::client::ClientApi &client;
 };
 
 } // namespace repo

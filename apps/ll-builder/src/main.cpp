@@ -53,8 +53,20 @@ int main(int argc, char **argv)
     QStringList args = parser.positionalArguments();
     QString command = args.isEmpty() ? QString() : args.first();
 
-    linglong::builder::LinglongBuilder _llb;
-    linglong::builder::Builder *builder = &_llb;
+    QNetworkAccessManager networkAccessManager;
+
+    linglong::api::client::ClientApi api;
+    api.setNetworkAccessManager(&networkAccessManager);
+    api.setNewServerForAllOperations(
+      linglong::builder::BuilderConfig::instance()->remoteRepoEndpoint);
+
+    linglong::repo::OSTreeRepo ostree(
+      linglong::builder::BuilderConfig::instance()->repoPath(),
+      linglong::builder::BuilderConfig::instance()->remoteRepoEndpoint,
+      linglong::builder::BuilderConfig::instance()->remoteRepoName,
+      api);
+
+    linglong::builder::LinglongBuilder builder(ostree);
 
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
         { "create",
@@ -72,7 +84,7 @@ int main(int argc, char **argv)
                   parser.showHelp(-1);
               }
 
-              auto err = builder->create(projectName);
+              auto err = builder.create(projectName);
 
               if (err) {
                   qDebug() << err;
@@ -139,7 +151,7 @@ int main(int argc, char **argv)
                   std::ofstream fout(projectConfigPath.toStdString());
                   fout << node;
               }
-              auto err = builder->build();
+              auto err = builder.build();
               if (err) {
                   qCritical() << err;
               }
@@ -162,7 +174,7 @@ int main(int argc, char **argv)
                   linglong::builder::BuilderConfig::instance()->setExec(exec);
               }
 
-              auto err = builder->run();
+              auto err = builder.run();
               if (err) {
                   qCritical() << err;
               }
@@ -191,7 +203,7 @@ int main(int argc, char **argv)
                   useLocalDir = true;
               }
 
-              auto err = builder->exportBundle(outputFilepath, useLocalDir);
+              auto err = builder.exportBundle(outputFilepath, useLocalDir);
               if (err) {
                   qCritical() << err;
               }
@@ -209,7 +221,7 @@ int main(int argc, char **argv)
               parser.process(app);
               auto userName = parser.value(optUserName);
               auto userPassword = parser.value(optUserPassword);
-              auto err = builder->config(userName, userPassword);
+              auto err = builder.config(userName, userPassword);
               if (err) {
                   qCritical() << err;
               }
@@ -224,7 +236,7 @@ int main(int argc, char **argv)
 
               parser.process(app);
 
-              auto err = builder->import();
+              auto err = builder.import();
               if (err) {
                   qCritical() << err;
               }
@@ -241,7 +253,7 @@ int main(int argc, char **argv)
 
               parser.process(app);
 
-              auto err = builder->track();
+              auto err = builder.track();
               if (err) {
                   qCritical() << err;
               }
@@ -268,7 +280,7 @@ int main(int argc, char **argv)
 
               bool pushWithDevel = parser.isSet(optNoDevel) ? false : true;
 
-              auto err = builder->push(repoUrl, repoName, repoChannel, pushWithDevel);
+              auto err = builder.push(repoUrl, repoName, repoChannel, pushWithDevel);
 
               if (err) {
                   qCritical() << err;

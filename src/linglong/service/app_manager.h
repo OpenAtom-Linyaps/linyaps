@@ -39,7 +39,7 @@ class AppManager : public QObject, protected QDBusContext
     Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.AppManager")
 
 public:
-    AppManager();
+    AppManager(repo::Repo& repo);
     AppManager(const AppManager &) = delete;
     AppManager(AppManager &&) = delete;
     auto operator=(const AppManager &) -> AppManager & = delete;
@@ -92,7 +92,7 @@ public:
 
 private:
     QMap<QString, QSharedPointer<linglong::runtime::App>> apps = {};
-    std::unique_ptr<linglong::repo::Repo> repo;
+    linglong::repo::Repo& repo;
 };
 
 } // namespace service

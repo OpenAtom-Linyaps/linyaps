@@ -119,10 +119,10 @@ class OSTreeRepo : public QObject, public Repo
 {
     Q_OBJECT
 public:
-    explicit OSTreeRepo(const QString &path);
     explicit OSTreeRepo(const QString &localRepoPath,
                         const QString &remoteEndpoint,
-                        const QString &remoteRepoName);
+                        const QString &remoteRepoName,
+                        api::client::ClientApi &client);
 
     ~OSTreeRepo() override;
     linglong::utils::error::Result<void> init(const QString &repoMode);

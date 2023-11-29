@@ -4,13 +4,16 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
+#include "ClientApi.h"
 #include "linglong/adaptors/app_manager/app_manager1.h"
 #include "linglong/dbus_ipc/workaround.h"
+#include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/dbus/register.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/global/initialize.h"
 
 #include <QCoreApplication>
+#include <QNetworkAccessManager>
 
 auto main(int argc, char *argv[]) -> int
 {
@@ -28,7 +31,13 @@ auto main(int argc, char *argv[]) -> int
     registerDBusParam();
 
     auto conn = QDBusConnection::sessionBus();
-    linglong::service::AppManager appManager;
+
+    linglong::api::client::ClientApi api;
+    // api.setNewServerForAllOperations()
+
+    linglong::repo::OSTreeRepo ostree(linglong::util::getLinglongRootPath(), "", "", api);
+
+    linglong::service::AppManager appManager(ostree);
     linglong::adaptors::app_manger::AppManager1 appManagerAdaport(&appManager);
 
     auto result = registerDBusObject(conn,

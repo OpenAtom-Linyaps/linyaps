@@ -50,7 +50,13 @@ namespace linglong::builder {
 
 QSERIALIZER_IMPL(message)
 
-linglong::util::Error commitBuildOutput(Project *project, const nlohmann::json &overlayfs)
+LinglongBuilder::LinglongBuilder(repo::OSTreeRepo &ostree)
+    : repo(ostree)
+{
+}
+
+linglong::util::Error LinglongBuilder::commitBuildOutput(Project *project,
+                                                         const nlohmann::json &overlayfs)
 {
     auto output = project->config().cacheInstallPath("files");
     linglong::util::ensureDir(output);
@@ -244,8 +250,6 @@ linglong::util::Error commitBuildOutput(Project *project, const nlohmann::json &
         return WrapError(err, "createInfo failed");
     }
 
-    repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath());
-
     auto ret = repo.importDirectory(project->refWithModule("runtime"),
                                     project->config().cacheInstallPath(""));
 
@@ -310,7 +314,6 @@ linglong::util::Error LinglongBuilder::initRepo()
     QString repoUrl = configUrl.endsWith("/") ? configUrl + "repos/" + defaultRepoName
                                               : configUrl + "/repos/" + defaultRepoName;
 
-    repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath(), repoUrl, defaultRepoName);
     // if local ostree is not exist, create and init it
     if (!QDir(BuilderConfig::instance()->ostreePath()).exists()) {
         util::ensureDir(BuilderConfig::instance()->ostreePath());
@@ -610,7 +613,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
         QSharedPointer<BuildDepend> runtimeDepend(new BuildDepend);
         runtimeDepend->id = runtimeRef.appId;
         runtimeDepend->version = runtimeRef.version;
-        DependFetcher df(runtimeDepend, project);
+        DependFetcher df(runtimeDepend, repo, project);
         err = df.fetch("", project->config().cacheRuntimePath(""));
         if (err) {
             return WrapError(err, "fetch runtime failed");
@@ -635,7 +638,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
     QSharedPointer<BuildDepend> baseDepend(new BuildDepend);
     baseDepend->id = baseRef.appId;
     baseDepend->version = baseRef.version;
-    DependFetcher baseFetcher(baseDepend, project);
+    DependFetcher baseFetcher(baseDepend, repo, project);
     // TODO: the base filesystem hierarchy is just an debian now. we should change it
     hostBasePath = BuilderConfig::instance()->layerPath({ baseRef.toLocalRefString(), "" });
     err = baseFetcher.fetch("", hostBasePath);
@@ -645,7 +648,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
 
     // depends fetch
     for (auto const &depend : project->depends) {
-        DependFetcher df(depend, project);
+        DependFetcher df(depend, repo, project);
         err = df.fetch("files", project->config().cacheRuntimePath("files"));
         if (err) {
             return WrapError(err, "fetch dependency failed");
@@ -804,7 +807,6 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
 
     util::ensureDir(exportPath);
 
-    repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath());
     auto ret = repo.checkout(project->refWithModule("runtime"), "", exportPath);
     if (!ret.has_value()) {
         return WrapError(NewError(ret.error().code(), ret.error().message()),
@@ -941,9 +943,6 @@ util::Error LinglongBuilder::push(const QString &repoUrl,
           repoUrl.isEmpty() ? BuilderConfig::instance()->remoteRepoEndpoint : repoUrl;
         auto remoteRepoName =
           repoName.isEmpty() ? BuilderConfig::instance()->remoteRepoName : repoName;
-        repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath(),
-                              remoteRepoEndpoint,
-                              remoteRepoName);
 
         // Fixme: should be buildArch.
         auto refWithRuntime = package::Ref("",
@@ -1006,8 +1005,6 @@ util::Error LinglongBuilder::import()
         auto project = QVariant::fromValue(YAML::LoadFile(projectConfigPath.toStdString()))
                          .value<QSharedPointer<Project>>();
 
-        repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath());
-
         auto refWithRuntime = package::Ref("",
                                            project->package->id,
                                            project->package->version,
@@ -1033,10 +1030,6 @@ util::Error LinglongBuilder::import()
 
 linglong::util::Error LinglongBuilder::run()
 {
-    repo::OSTreeRepo repo(BuilderConfig::instance()->repoPath(),
-                          BuilderConfig::instance()->remoteRepoEndpoint,
-                          BuilderConfig::instance()->remoteRepoName);
-
     auto projectConfigPath =
       QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
 

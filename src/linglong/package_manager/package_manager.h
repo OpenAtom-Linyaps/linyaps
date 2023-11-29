@@ -38,6 +38,7 @@ class PackageManager : public QObject, protected QDBusContext
 public:
     PackageManager(api::dbus::v1::PackageManagerHelper &helper,
                    linglong::repo::Repo &,
+                   linglong::repo::RepoClient& client,
                    QObject *parent);
 
     ~PackageManager() override = default;
@@ -293,7 +294,7 @@ private:
     QString kLocalRepoPath;
     QString remoteRepoName = "repo";
 
-    repo::RepoClient repoClient;
+    repo::RepoClient& repoClient;
     linglong::repo::Repo &repoMan;
     // 记录子线程安装及更新状态 供查询进度信息使用
     QMap<QString, Reply> appState;

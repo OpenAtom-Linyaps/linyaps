@@ -59,8 +59,6 @@ QJsonObject getUserInfo()
 linglong::utils::error::Result<QList<QSharedPointer<package::AppMetaInfo>>>
 RepoClient::QueryApps(const package::Ref &ref)
 {
-    auto client = this->Client();
-    client->deleteLater();
     Request_FuzzySearchReq req;
     req.setAppId(ref.appId);
     req.setVersion(ref.version);
@@ -71,7 +69,7 @@ RepoClient::QueryApps(const package::Ref &ref)
       LINGLONG_ERR(-1, "unknown error");
 
     QEventLoop loop;
-    QEventLoop::connect(client,
+    QEventLoop::connect(&client,
                         &ClientApi::fuzzySearchAppSignal,
                         [&loop, &ret](FuzzySearchApp_200_response resp) {
                             loop.exit();
@@ -86,34 +84,27 @@ RepoClient::QueryApps(const package::Ref &ref)
                             ret = respJson->data;
                             return;
                         });
-    QEventLoop::connect(client,
+    QEventLoop::connect(&client,
                         &ClientApi::fuzzySearchAppSignalEFull,
                         [&loop, &ret](auto, auto error_type, const QString &error_str) {
                             loop.exit();
                             ret = LINGLONG_ERR(error_type, error_str);
                         });
-    client->fuzzySearchApp(req);
+    client.fuzzySearchApp(req);
     loop.exec();
     return ret;
 }
 
-ClientApi *RepoClient::Client()
-{
-    auto api = new ClientApi();
-    auto manager = new QNetworkAccessManager(api);
-    api->setNetworkAccessManager(manager);
-    api->setNewServerForAllOperations(this->endpoint);
-    return api;
-}
-
-RepoClient::RepoClient(const QString &endpoint)
-    : endpoint(endpoint)
+RepoClient::RepoClient(api::client::ClientApi &client, QObject *parent)
+    : QObject(parent)
+    , client(client)
 {
 }
 
 void RepoClient::setEndpoint(const QString &endpoint)
 {
-    this->endpoint = endpoint;
+    //FIXME: We should remove old server.
+    this->client.setNewServerForAllOperations(endpoint);
 }
 
 } // namespace repo

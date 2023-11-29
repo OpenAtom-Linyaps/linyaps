@@ -8,10 +8,11 @@
 #define LINGLONG_SRC_BUILDER_BUILDER_LINGLONG_BUILDER_H_
 
 #include "builder.h"
+#include "linglong/repo/ostree_repo.h"
+#include "linglong/runtime/container.h"
 #include "ocppi/runtime/config/types/Config.hpp"
 #include "ocppi/runtime/config/types/Mount.hpp"
 #include "project.h"
-#include "linglong/runtime/container.h"
 
 #include <nlohmann/json.hpp>
 
@@ -22,6 +23,7 @@ class LinglongBuilder : public QObject, public Builder
 {
     Q_OBJECT
 public:
+    explicit LinglongBuilder(repo::OSTreeRepo &ostree);
     linglong::util::Error config(const QString &userName, const QString &password) override;
 
     linglong::util::Error create(const QString &projectName) override;
@@ -46,6 +48,9 @@ public:
     linglong::util::Error buildFlow(Project *project);
 
 private:
+    repo::OSTreeRepo &repo;
+    linglong::util::Error commitBuildOutput(Project *project, const nlohmann::json &overlayfs);
+
     static int startContainer(QSharedPointer<Container> c,
                               ocppi::runtime::config::types::Config &r);
     static auto toJSON(const ocppi::runtime::config::types::Mount &) -> nlohmann::json;

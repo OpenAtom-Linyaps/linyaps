@@ -472,6 +472,7 @@ auto PackageManager::getUserName(uid_t uid) -> QString
 
 PackageManager::PackageManager(api::dbus::v1::PackageManagerHelper &helper,
                                linglong::repo::Repo &repoMan,
+                               linglong::repo::RepoClient &client,
                                QObject *parent)
     : QObject(parent)
     , pool(new QThreadPool)
@@ -482,7 +483,7 @@ PackageManager::PackageManager(api::dbus::v1::PackageManagerHelper &helper,
     // FIXME(black_desk):
     // When endpoint get updated by `ModifyRepo`,
     // the endpoint used by repoClient is not updated.
-    , repoClient(util::config::ConfigInstance().repos[package::kDefaultRepo]->endpoint)
+    , repoClient(client)
     , repoMan(repoMan)
     , packageManagerHelper(helper)
 {

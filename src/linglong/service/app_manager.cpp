@@ -21,15 +21,10 @@
 
 namespace linglong::service {
 
-AppManager::AppManager()
+AppManager::AppManager(repo::Repo &repo)
     : runPool(new QThreadPool)
+    , repo(repo)
 {
-    // TODO: use config file to set repo backend
-    if (qEnvironmentVariable("LINGLONG_REPO_BACKEND") == "vfs") {
-        repo = std::make_unique<repo::VfsRepo>(util::getLinglongRootPath());
-    } else {
-        repo = std::make_unique<repo::OSTreeRepo>(util::getLinglongRootPath());
-    }
     runPool->setMaxThreadCount(RUN_POOL_MAX_THREAD);
 }
 
@@ -139,7 +134,7 @@ auto AppManager::Start(const RunParamOption &paramOption) -> Reply
         linglong::package::Ref ref("", channel, appId, version, arch, appModule);
 
         // 判断是否是正在运行应用
-        auto latestAppRef = repo->latestOfRef(appId, version);
+        auto latestAppRef = repo.latestOfRef(appId, version);
         for (const auto &app : apps) {
             if (latestAppRef.toString() == app->container->packageName) {
                 app->exec(desktopExec, {}, "");
@@ -147,7 +142,7 @@ auto AppManager::Start(const RunParamOption &paramOption) -> Reply
             }
         }
 
-        auto app = linglong::runtime::App::load(repo.get(), ref, desktopExec);
+        auto app = linglong::runtime::App::load(&repo, ref, desktopExec);
         if (nullptr == app) {
             // FIXME: set job status to failed
             qCritical() << "load app failed " << app;

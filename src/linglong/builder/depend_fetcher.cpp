@@ -34,8 +34,11 @@ public:
     QString dependType;
 };
 
-DependFetcher::DependFetcher(QSharedPointer<const BuildDepend> bd, Project *parent)
+DependFetcher::DependFetcher(QSharedPointer<const BuildDepend> bd,
+                             repo::OSTreeRepo &repo,
+                             Project *parent)
     : QObject(parent)
+    , ostree(repo)
     , dd_ptr(new DependFetcherPrivate(bd, parent))
 {
 }
@@ -44,10 +47,6 @@ DependFetcher::~DependFetcher() = default;
 
 linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString &targetPath)
 {
-    repo::OSTreeRepo ostree(BuilderConfig::instance()->repoPath(),
-                            BuilderConfig::instance()->remoteRepoEndpoint,
-                            BuilderConfig::instance()->remoteRepoName);
-
     // depends with source > depends from remote > depends from local
     auto dependRef = package::Ref("", dd_ptr->ref.appId, dd_ptr->ref.version, dd_ptr->ref.arch);
 
@@ -60,11 +59,9 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
                                  "");
 
         // FIXME(black_desk):
-        // 1. We should not use ostree repo in ll-builder, we should use the
-        //    repo interface;
-        // 2. Offline should not only be an option of builder, but also a work
+        // 1. Offline should not only be an option of builder, but also a work
         //    mode argument passed to repo, which prevent all network request.
-        // 3. For now we just leave these code here, we will refactor them later.
+        // 2. For now we just leave these code here, we will refactor them later.
         if (BuilderConfig::instance()->getOffline()) {
             dependRef = *ostree.localLatestRef(dependRef);
 

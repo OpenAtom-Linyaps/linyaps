@@ -46,18 +46,14 @@ QSERIALIZER_IMPL(UploadTaskResponse);
 
 typedef QMap<QString, OstreeRepoObject> RepoObjectMap;
 
-OSTreeRepo::OSTreeRepo(const QString &path)
-    : OSTreeRepo(path, "", "")
-{
-}
-
 OSTreeRepo::OSTreeRepo(const QString &localRepoPath,
                        const QString &remoteEndpoint,
-                       const QString &remoteRepoName)
+                       const QString &remoteRepoName,
+                       api::client::ClientApi &client)
     : repoRootPath(localRepoPath)
     , remoteEndpoint(remoteEndpoint)
     , remoteRepoName(remoteRepoName)
-    , repoClient(remoteEndpoint)
+    , repoClient(client)
 {
     // FIXME(black_desk): Just a quick hack to make sure openRepo called after the repo is
     // created. So I am not to check error here.

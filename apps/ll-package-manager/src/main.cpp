@@ -29,12 +29,24 @@ void withDBusDaemon()
                                                         "/org/deepin/linglong/PackageManagerHelper",
                                                         QDBusConnection::systemBus(),
                                                         QCoreApplication::instance());
+    auto api = new linglong::api::client::ClientApi;
+    api->setTimeOut(5000);
+    api->setNewServerForAllOperations(linglong::util::config::ConfigInstance().repos[0]->endpoint);
+    api->setParent(QCoreApplication::instance());
 
-    linglong::repo::OSTreeRepo ostreeRepo(BuilderConfig::instance()->repoPath(),
-                                          BuilderConfig::instance()->remoteRepoEndpoint,
-                                          BuilderConfig::instance()->remoteRepoName);
+    auto ostreeRepo =
+      new linglong::repo::OSTreeRepo(linglong::util::getLinglongRootPath(),
+                                     linglong::util::config::ConfigInstance().repos[0]->endpoint,
+                                     linglong::util::config::ConfigInstance().repos[0]->repoName,
+                                     *api);
+    ostreeRepo->setParent(QCoreApplication::instance());
+
+    auto client = new linglong::repo::RepoClient(*api);
+    client->setParent(QCoreApplication::instance());
+
     auto packageManager = new linglong::service::PackageManager(*pkgManHelper,
-                                                                ostreeRepo,
+                                                                *ostreeRepo,
+                                                                *client,
                                                                 QCoreApplication::instance());
     auto packageManagerAdaptor =
       new linglong::adaptors::package_manger::PackageManager1(packageManager);
@@ -50,7 +62,7 @@ void withDBusDaemon()
         unregisterDBusObject(conn, "/org/deepin/linglong/PackageManager");
     });
 
-    auto jobMan = new linglong::job_manager::JobManager(ostreeRepo, QCoreApplication::instance());
+    auto jobMan = new linglong::job_manager::JobManager(*ostreeRepo, QCoreApplication::instance());
     auto jobManAdaptor = new linglong::adaptors::job_manger::JobManager1(jobMan);
     result = registerDBusObject(conn, "/org/deepin/linglong/JobManager", jobMan);
     if (!result.has_value()) {
@@ -93,16 +105,28 @@ void withoutDBusDaemon()
                                                         pkgManHelperConn,
                                                         QCoreApplication::instance());
 
-    linglong::repo::OSTreeRepo ostreeRepo(BuilderConfig::instance()->repoPath(),
-                                          BuilderConfig::instance()->remoteRepoEndpoint,
-                                          BuilderConfig::instance()->remoteRepoName);
+    auto api = new linglong::api::client::ClientApi;
+    api->setParent(QCoreApplication::instance());
+    api->setNewServerForAllOperations(linglong::util::config::ConfigInstance().repos[0]->endpoint);
+
+    auto ostreeRepo =
+      new linglong::repo::OSTreeRepo(linglong::util::getLinglongRootPath(),
+                                     linglong::util::config::ConfigInstance().repos[0]->endpoint,
+                                     linglong::util::config::ConfigInstance().repos[0]->repoName,
+                                     *api);
+    ostreeRepo->setParent(QCoreApplication::instance());
+
+    auto client = new linglong::repo::RepoClient(*api);
+    client->setParent(QCoreApplication::instance());
+
     auto packageManager = new linglong::service::PackageManager(*pkgManHelper,
-                                                                ostreeRepo,
+                                                                *ostreeRepo,
+                                                                *client,
                                                                 QCoreApplication::instance());
     auto packageManagerAdaptor =
       new linglong::adaptors::package_manger::PackageManager1(packageManager);
 
-    auto jobMan = new linglong::job_manager::JobManager(ostreeRepo, QCoreApplication::instance());
+    auto jobMan = new linglong::job_manager::JobManager(*ostreeRepo, QCoreApplication::instance());
     auto jobManAdaptor = new linglong::adaptors::job_manger::JobManager1(jobMan);
 
     QDir::root().mkpath("/run/linglong");

@@ -7,19 +7,27 @@
 #define LINGLONG_TESTS_QT_UTILS_MOCK_NETWORK_H_
 
 #include <QBuffer>
+#include <QEventLoop>
+#include <QJsonArray>
 #include <QJsonDocument>
+#include <QJsonObject>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QObject>
 #include <QTimer>
 
-class BlobReply : public QNetworkReply
+class MockReply : public QNetworkReply
 {
     Q_OBJECT
     QBuffer *body;
 
 public:
-    BlobReply(int code, QByteArray data, QString type = "application/json; charset=utf-8");
+    MockReply();
+
+    void JSON(int code, QJsonArray doc);
+    void JSON(int code, QJsonObject doc);
+    void JSON(int code, QJsonDocument doc);
+    void Bytes(int code, QByteArray data);
 
     void abort();
 
@@ -30,13 +38,12 @@ protected:
 class MockQNetworkAccessManager : public QNetworkAccessManager
 {
     Q_OBJECT
-    int http_code;
-    QJsonDocument http_body;
 
-public:
-    void setStatus(int code);
-
-    void setBody(QJsonDocument doc);
+Q_SIGNALS:
+    void onCreateRequest(MockReply *reply,
+                         Operation operation,
+                         const QNetworkRequest &req,
+                         QIODevice *outgoingData);
 
 protected:
     QNetworkReply *createRequest(Operation op,

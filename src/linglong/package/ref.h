@@ -56,6 +56,11 @@ public:
     {
     }
 
+    QString toLocalString() const
+    {
+        return QString("%1/%2/%3/%4").arg(channel, appId, version, arch);
+    }
+
     /*!
      * toOSTreeRefString return
      * {repo}:/{channel}/{id}/{version}/{arch}/{module}

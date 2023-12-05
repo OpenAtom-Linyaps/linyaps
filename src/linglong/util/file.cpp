@@ -137,6 +137,7 @@ QString fileHash(const QString &path, QCryptographicHash::Algorithm method)
 
 QString findLinglongConfigPath(const QString &subpath, bool writeable)
 {
+
     auto writeablePath = QDir(getLinglongRootPath()).absoluteFilePath(subpath);
     auto paths = QList{ writeablePath, QDir(LINGLONG_DATA_DIR).absoluteFilePath(subpath) };
 

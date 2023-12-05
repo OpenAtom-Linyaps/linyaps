@@ -1012,7 +1012,7 @@ auto PackageManager::Uninstall(const UninstallParamOption &paramOption) -> Reply
                              .arg(appModule);
 
         qInfo() << "Uninstall app ref:" << matchRef;
-        ret = this->repoMan.repoDeleteDatabyRef(kLocalRepoPath, qrepoList[0], matchRef);
+        ret = this->repoMan.repoDeleteDatabyRef(kLocalRepoPath, matchRef);
         if (!ret.has_value()) {
             qCritical() << ret.error().message();
             reply.code = STATUS_CODE(kPkgUninstallFailed);

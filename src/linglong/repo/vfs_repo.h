@@ -72,7 +72,6 @@ public:
                                                        const QString &remoteName,
                                                        const QString &ref) override;
     linglong::utils::error::Result<void> repoDeleteDatabyRef(const QString &repoPath,
-                                                             const QString &remoteName,
                                                              const QString &ref) override;
 
     linglong::utils::error::Result<void> ensureRepoEnv(const QString &repoDir) override;

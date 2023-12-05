@@ -225,7 +225,6 @@ linglong::utils::error::Result<void> VfsRepo::repoPullbyCmd(const QString &destP
 }
 
 linglong::utils::error::Result<void> VfsRepo::repoDeleteDatabyRef(const QString &repoPath,
-                                                                  const QString &remoteName,
                                                                   const QString &ref)
 {
     return {};

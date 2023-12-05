@@ -125,6 +125,7 @@ public:
                         api::client::ClientApi &client);
 
     ~OSTreeRepo() override;
+    linglong::utils::error::Result<void> listRemoteRefs();
     linglong::utils::error::Result<void> init(const QString &repoMode);
 
     linglong::utils::error::Result<void> remoteAdd(const QString &repoName,
@@ -234,7 +235,6 @@ public:
      * @return bool: true:成功 false:失败
      */
     linglong::utils::error::Result<void> repoDeleteDatabyRef(const QString &repoPath,
-                                                             const QString &remoteName,
                                                              const QString &ref) override;
 
     linglong::utils::error::Result<void> ensureRepoEnv(const QString &repoDir) override;

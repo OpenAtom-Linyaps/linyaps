@@ -56,6 +56,7 @@ OSTreeRepo::OSTreeRepo(const QString &localRepoPath,
     , remoteEndpoint(remoteEndpoint)
     , remoteRepoName(remoteRepoName)
     , repoClient(client)
+    , apiClient(client)
 {
     ostreePath = repoRootPath + "/repo";
     qDebug() << "ostree repo path is" << ostreePath;
@@ -149,9 +150,9 @@ linglong::utils::error::Result<void> OSTreeRepo::push(const package::Ref &ref)
     uploadReq->ref = ref.toOSTreeRefLocalString();
 
     // FIXME: no need,use /v1/meta/:id
-    QSharedPointer<InfoResponse> repoInfo(getRepoInfo(remoteRepoName));
-    if (repoInfo->code != 200) {
-        return LINGLONG_ERR(-1, repoInfo->msg);
+    auto repoInfo = getRepoInfo(remoteRepoName);
+    if (!repoInfo.has_value()) {
+        return LINGLONG_EWRAP("get repo info", repoInfo.error());
     }
 
     QString taskID;
@@ -189,10 +190,14 @@ linglong::utils::error::Result<void> OSTreeRepo::push(const package::Ref &ref)
             return ret;
         }
     }
-
-    return LINGLONG_EWRAP("call cleanUploadTask failed", cleanUploadTask(ref, filePath).error());
+    ret = cleanUploadTask(ref, filePath);
+    if (!ret.has_value()) {
+        return LINGLONG_EWRAP("call cleanUploadTask failed", ret.error());
+    }
+    return LINGLONG_OK;
 }
 
+// TODO(wurongjie) 弃用的方法
 linglong::utils::error::Result<void> OSTreeRepo::push(const package::Ref &ref, bool /*force*/)
 {
     {
@@ -205,9 +210,9 @@ linglong::utils::error::Result<void> OSTreeRepo::push(const package::Ref &ref, b
     QSharedPointer<UploadTaskRequest> uploadTaskReq(new UploadTaskRequest);
 
     // FIXME: no need,use /v1/meta/:id
-    QSharedPointer<InfoResponse> repoInfo(getRepoInfo(remoteRepoName));
-    if (repoInfo->code != 200) {
-        return LINGLONG_ERR(-1, repoInfo->msg);
+    auto repoInfo = getRepoInfo(remoteRepoName);
+    if (!repoInfo.has_value()) {
+        return LINGLONG_EWRAP("get repo info", repoInfo.error());
     }
 
     QString commitID;

@@ -5,6 +5,7 @@
 
 /.idea/
 /.vscode/
+/.cache/
 
 /tools/node_modules
 /tools/package-lock.json

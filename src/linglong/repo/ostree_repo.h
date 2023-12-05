@@ -500,44 +500,85 @@ private:
         return QString::fromLatin1(commitID);
     }
 
-    QSharedPointer<InfoResponse> getRepoInfo(const QString &repoName)
+    linglong::utils::error::Result<QSharedPointer<InfoResponse>>
+    getRepoInfo(const QString &repoName)
     {
-        QUrl url(QString("%1/%2/%3").arg(remoteEndpoint, "api/v1/repos", repoName));
+        linglong::utils::error::Result<QSharedPointer<InfoResponse>> ret;
 
-        QNetworkRequest request(url);
-
-        auto reply = httpClient.get(request);
-        auto data = reply->readAll();
-        qDebug() << "url" << url << "repo info" << data;
-        {
-            auto [info, err] = util::fromJSON<QSharedPointer<InfoResponse>>(data);
-            return info;
-        }
+        QEventLoop loop;
+        QEventLoop::connect(
+          &apiClient,
+          &api::client::ClientApi::getRepoSignal,
+          &loop,
+          [&loop, &ret](api::client::GetRepo_200_response resp) {
+              loop.exit();
+              if (resp.getCode() != 200) {
+                  ret = LINGLONG_ERR(resp.getCode(), resp.getMsg());
+                  return;
+              }
+              QJsonObject obj = resp.asJsonObject();
+              QJsonDocument doc(obj);
+              auto bytes = doc.toJson();
+              // TODO(wurongjie)
+              // InfoResponse的结构和实际服务器返回的并不一致，但方法的返回值没有被用到，所以目前还没有问题
+              auto respJson = util::loadJsonBytes<InfoResponse>(bytes);
+              ret = respJson;
+          },
+          loop.thread() == apiClient.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
+        QEventLoop::connect(
+          &apiClient,
+          &api::client::ClientApi::getRepoSignalEFull,
+          &loop,
+          [&loop, &ret](auto, auto error_type, const QString &error_str) {
+              loop.exit();
+              ret = LINGLONG_ERR(error_type, error_str);
+          },
+          loop.thread() == apiClient.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
+        apiClient.getRepo(repoName);
+        loop.exec();
+        return ret;
     }
 
     linglong::utils::error::Result<QString> newUploadTask(QSharedPointer<UploadRequest> req)
     {
-        QUrl url(QString("%1/api/v1/upload-tasks").arg(remoteEndpoint));
-        QNetworkRequest request(url);
-        qDebug() << "upload url" << url;
-        auto data = std::get<0>(util::toJSON(req));
+        linglong::utils::error::Result<QString> ret;
 
-        request.setRawHeader(QByteArray("X-Token"), remoteToken.toLocal8Bit());
-        auto reply = httpClient.post(request, data);
-        data = reply->readAll();
-
-        auto info(util::loadJsonBytes<UploadTaskResponse>(data));
-        qDebug() << "new upload task" << data;
-        if (info->code != 200) {
-            return LINGLONG_ERR(-1, info->msg);
-        }
-
-        return info->data->id;
+        QEventLoop loop;
+        QEventLoop::connect(
+          &apiClient,
+          &api::client::ClientApi::newUploadTaskIDSignal,
+          &loop,
+          [&loop, &ret](api::client::NewUploadTaskID_200_response resp) {
+              loop.exit();
+              if (resp.getCode() != 200) {
+                  ret = LINGLONG_ERR(resp.getCode(), resp.getMsg());
+                  return;
+              }
+              ret = resp.getData().getId();
+          },
+          loop.thread() == apiClient.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
+        QEventLoop::connect(
+          &apiClient,
+          &api::client::ClientApi::newUploadTaskIDSignalEFull,
+          &loop,
+          [&loop, &ret](auto, auto error_type, const QString &error_str) {
+              loop.exit();
+              ret = LINGLONG_ERR(error_type, error_str);
+          },
+          loop.thread() == apiClient.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
+        api::client::Schema_NewUploadTaskReq taskReq;
+        taskReq.setRef(req->ref);
+        taskReq.setRepoName(req->repoName);
+        apiClient.newUploadTaskID(remoteToken, taskReq);
+        loop.exec();
+        return ret;
     }
 
+    // TODO(wurongjie) 弃用的方法
     linglong::utils::error::Result<QString> newUploadTask(const QString &repoName,
                                                           QSharedPointer<UploadTaskRequest> req)
     {
+        // TODO(wurongjie) 服务端没有这个接口
         QUrl url(QString("%1/api/v1/blob/%2/upload").arg(remoteEndpoint, repoName));
         QNetworkRequest request(url);
 
@@ -558,42 +599,38 @@ private:
     linglong::utils::error::Result<void> doUploadTask(const QString &taskID,
                                                       const QString &filePath)
     {
-        linglong::utils::error::Result<void> err;
-        QByteArray fileData;
-
-        QUrl uploadUrl(QString("%1/api/v1/upload-tasks/%2/tar").arg(remoteEndpoint, taskID));
-        QNetworkRequest request(uploadUrl);
-        request.setRawHeader(QByteArray("X-Token"), remoteToken.toLocal8Bit());
-
-        QScopedPointer<QHttpMultiPart> multiPart(new QHttpMultiPart(QHttpMultiPart::FormDataType));
-
-        // FIXME: add link support
-        QList<QHttpPart> partList;
-        partList.reserve(filePath.size());
-
-        partList.push_back(QHttpPart());
-        auto filePart = partList.last();
-
-        auto *file = new QFile(filePath, multiPart.data());
-        file->open(QIODevice::ReadOnly);
-        filePart.setHeader(
-          QNetworkRequest::ContentDispositionHeader,
-          QVariant(QString(R"(form-data; name="%1"; filename="%2")").arg("file", filePath)));
-        filePart.setBodyDevice(file);
-
-        multiPart->append(filePart);
-        qDebug() << "send " << filePath;
-
-        auto reply = httpClient.put(request, multiPart.data());
-        auto data = reply->readAll();
-
-        qDebug() << "doUpload" << data;
-
-        QSharedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
-
-        return LINGLONG_OK;
+        linglong::utils::error::Result<void> ret = LINGLONG_OK;
+        QEventLoop loop;
+        QEventLoop::connect(
+          &apiClient,
+          &api::client::ClientApi::uploadTaskFileSignal,
+          &loop,
+          [&loop, &ret](api::client::UploadTaskFile_200_response resp) {
+              loop.exit();
+              if (resp.getCode() != 200) {
+                  ret = LINGLONG_ERR(resp.getCode(), resp.getMsg());
+                  return;
+              }
+          },
+          loop.thread() == apiClient.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
+        QEventLoop::connect(
+          &apiClient,
+          &api::client::ClientApi::uploadTaskFileSignalEFull,
+          &loop,
+          [&loop, &ret](auto, auto error_type, const QString &error_str) {
+              loop.exit();
+              ret = LINGLONG_ERR(error_type, error_str);
+          },
+          loop.thread() == apiClient.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
+        api::client::HttpFileElement file;
+        file.setFileName(filePath);
+        file.setRequestFileName(filePath);
+        apiClient.uploadTaskFile(remoteToken, taskID, file);
+        loop.exec();
+        return ret;
     }
 
+    // TODO(wurongjie) 弃用的方法
     linglong::utils::error::Result<void> doUploadTask(const QString &repoName,
                                                       const QString &taskID,
                                                       const QList<OstreeRepoObject> &objects)
@@ -601,6 +638,7 @@ private:
         linglong::utils::error::Result<void> err;
         QByteArray fileData;
 
+        // TODO(wurongjie) 服务端没有这个接口
         QUrl url(QString("%1/api/v1/blob/%2/upload/%3").arg(remoteEndpoint, repoName, taskID));
         QNetworkRequest request(url);
         request.setRawHeader(QByteArray("X-Token"), remoteToken.toLocal8Bit());
@@ -657,6 +695,7 @@ private:
         return LINGLONG_OK;
     }
 
+    // TODO(wurongjie) 弃用的方法
     linglong::utils::error::Result<void> cleanUploadTask(const QString &repoName,
                                                          const QString &taskID)
     {
@@ -684,28 +723,47 @@ private:
 
     linglong::utils::error::Result<void> getUploadStatus(const QString &taskID)
     {
-        QUrl url(QString("%1/%2/%3/status").arg(remoteEndpoint, "api/v1/upload-tasks", taskID));
-        QNetworkRequest request(url);
-
         while (1) {
-            auto reply = httpClient.get(request);
-            auto data = reply->readAll();
+            linglong::utils::error::Result<QString> ret = LINGLONG_OK;
+            qDebug() << "OK have value" << ret.has_value();
+            QEventLoop loop;
+            QEventLoop::connect(
+              &apiClient,
+              &api::client::ClientApi::uploadTaskInfoSignal,
+              &loop,
+              [&loop, &ret](api::client::UploadTaskInfo_200_response resp) {
+                  loop.exit();
+                  if (resp.getCode() != 200) {
+                      ret = LINGLONG_ERR(resp.getCode(), resp.getMsg());
+                      return;
+                  }
+                  ret = resp.getData().getStatus();
+              },
+              loop.thread() == apiClient.thread() ? Qt::AutoConnection
+                                                  : Qt::BlockingQueuedConnection);
 
-            qDebug() << "url" << url << "repo info" << data;
-
-            auto info = util::loadJsonBytes<UploadTaskResponse>(data);
-
-            if (200 != info->code) {
-                return LINGLONG_ERR(-1, "get upload status faild, remote server is unreachable");
+            QEventLoop::connect(
+              &apiClient,
+              &api::client::ClientApi::uploadTaskInfoSignalEFull,
+              &loop,
+              [&loop, &ret](auto, auto error_type, const QString &error_str) {
+                  loop.exit();
+                  ret = LINGLONG_ERR(error_type, error_str);
+              },
+              loop.thread() == apiClient.thread() ? Qt::AutoConnection
+                                                  : Qt::BlockingQueuedConnection);
+            apiClient.uploadTaskInfo(remoteToken, taskID);
+            loop.exec();
+            if (!ret.has_value()) {
+                return LINGLONG_EWRAP("get upload taks info", ret.error());
             }
-
-            if ("complete" == info->data->status) {
+            auto status = *ret;
+            if (status == "complete") {
                 break;
-            } else if ("failed" == info->data->status) {
-                return LINGLONG_ERR(-1, info->data->status);
+            } else if (status == "failed") {
+                return LINGLONG_ERR(-1, "task status failed");
             }
-
-            qInfo().noquote() << info->data->status;
+            qInfo().noquote() << status;
             QThread::sleep(1);
         }
 
@@ -737,7 +795,7 @@ private:
     util::HttpRestClient httpClient;
 
     repo::RepoClient repoClient;
-
+    api::client::ClientApi &apiClient;
     // ostree 仓库对象信息
 
     QMap<QString, int> jobMap;

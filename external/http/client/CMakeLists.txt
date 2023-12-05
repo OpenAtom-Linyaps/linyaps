@@ -10,8 +10,17 @@ include(CMakePackageConfigHelpers)
 add_library(${PROJECT_NAME}
   Api_JSONResult.h
   FuzzySearchApp_200_response.h
+  GetRepo_200_response.h
+  NewUploadTaskID_200_response.h
   Request_FuzzySearchReq.h
   Request_RegisterStruct.h
+  Response_NewUploadTaskResp.h
+  Response_UploadTaskResp.h
+  Response_UploadTaskStatusInfo.h
+  Schema_NewUploadTaskReq.h
+  Schema_RepoInfo.h
+  UploadTaskFile_200_response.h
+  UploadTaskInfo_200_response.h
   ClientApi.h
   Helpers.h
   HttpRequest.h
@@ -23,8 +32,17 @@ add_library(${PROJECT_NAME}
   Oauth.h
   Api_JSONResult.cpp
   FuzzySearchApp_200_response.cpp
+  GetRepo_200_response.cpp
+  NewUploadTaskID_200_response.cpp
   Request_FuzzySearchReq.cpp
   Request_RegisterStruct.cpp
+  Response_NewUploadTaskResp.cpp
+  Response_UploadTaskResp.cpp
+  Response_UploadTaskStatusInfo.cpp
+  Schema_NewUploadTaskReq.cpp
+  Schema_RepoInfo.cpp
+  UploadTaskFile_200_response.cpp
+  UploadTaskInfo_200_response.cpp
   ClientApi.cpp
   Helpers.cpp
   HttpRequest.cpp

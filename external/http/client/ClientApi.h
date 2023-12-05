@@ -19,7 +19,13 @@
 #include "Oauth.h"
 
 #include "FuzzySearchApp_200_response.h"
+#include "GetRepo_200_response.h"
+#include "HttpFileElement.h"
+#include "NewUploadTaskID_200_response.h"
 #include "Request_FuzzySearchReq.h"
+#include "Schema_NewUploadTaskReq.h"
+#include "UploadTaskFile_200_response.h"
+#include "UploadTaskInfo_200_response.h"
 #include <QString>
 
 #include <QObject>
@@ -65,6 +71,30 @@ public:
     */
     void fuzzySearchApp(const Request_FuzzySearchReq &data);
 
+    /**
+    * @param[in]  repo QString [required]
+    */
+    void getRepo(const QString &repo);
+
+    /**
+    * @param[in]  x_token QString [required]
+    * @param[in]  req Schema_NewUploadTaskReq [required]
+    */
+    void newUploadTaskID(const QString &x_token, const Schema_NewUploadTaskReq &req);
+
+    /**
+    * @param[in]  x_token QString [required]
+    * @param[in]  task_id QString [required]
+    * @param[in]  file HttpFileElement [required]
+    */
+    void uploadTaskFile(const QString &x_token, const QString &task_id, const HttpFileElement &file);
+
+    /**
+    * @param[in]  x_token QString [required]
+    * @param[in]  task_id QString [required]
+    */
+    void uploadTaskInfo(const QString &x_token, const QString &task_id);
+
 
 private:
     QMap<QString,int> _serverIndices;
@@ -89,16 +119,36 @@ private:
     int _OauthMethod = 0;
 
     void fuzzySearchAppCallback(HttpRequestWorker *worker);
+    void getRepoCallback(HttpRequestWorker *worker);
+    void newUploadTaskIDCallback(HttpRequestWorker *worker);
+    void uploadTaskFileCallback(HttpRequestWorker *worker);
+    void uploadTaskInfoCallback(HttpRequestWorker *worker);
 
 Q_SIGNALS:
 
     void fuzzySearchAppSignal(FuzzySearchApp_200_response summary);
+    void getRepoSignal(GetRepo_200_response summary);
+    void newUploadTaskIDSignal(NewUploadTaskID_200_response summary);
+    void uploadTaskFileSignal(UploadTaskFile_200_response summary);
+    void uploadTaskInfoSignal(UploadTaskInfo_200_response summary);
 
     void fuzzySearchAppSignalFull(HttpRequestWorker *worker, FuzzySearchApp_200_response summary);
+    void getRepoSignalFull(HttpRequestWorker *worker, GetRepo_200_response summary);
+    void newUploadTaskIDSignalFull(HttpRequestWorker *worker, NewUploadTaskID_200_response summary);
+    void uploadTaskFileSignalFull(HttpRequestWorker *worker, UploadTaskFile_200_response summary);
+    void uploadTaskInfoSignalFull(HttpRequestWorker *worker, UploadTaskInfo_200_response summary);
 
     void fuzzySearchAppSignalE(FuzzySearchApp_200_response summary, QNetworkReply::NetworkError error_type, QString error_str);
+    void getRepoSignalE(GetRepo_200_response summary, QNetworkReply::NetworkError error_type, QString error_str);
+    void newUploadTaskIDSignalE(NewUploadTaskID_200_response summary, QNetworkReply::NetworkError error_type, QString error_str);
+    void uploadTaskFileSignalE(UploadTaskFile_200_response summary, QNetworkReply::NetworkError error_type, QString error_str);
+    void uploadTaskInfoSignalE(UploadTaskInfo_200_response summary, QNetworkReply::NetworkError error_type, QString error_str);
 
     void fuzzySearchAppSignalEFull(HttpRequestWorker *worker, QNetworkReply::NetworkError error_type, QString error_str);
+    void getRepoSignalEFull(HttpRequestWorker *worker, QNetworkReply::NetworkError error_type, QString error_str);
+    void newUploadTaskIDSignalEFull(HttpRequestWorker *worker, QNetworkReply::NetworkError error_type, QString error_str);
+    void uploadTaskFileSignalEFull(HttpRequestWorker *worker, QNetworkReply::NetworkError error_type, QString error_str);
+    void uploadTaskInfoSignalEFull(HttpRequestWorker *worker, QNetworkReply::NetworkError error_type, QString error_str);
 
     void abortRequestsSignal();
     void allPendingRequestsCompleted();

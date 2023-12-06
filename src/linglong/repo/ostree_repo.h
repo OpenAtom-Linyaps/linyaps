@@ -237,7 +237,7 @@ public:
     linglong::utils::error::Result<void> repoDeleteDatabyRef(const QString &repoPath,
                                                              const QString &ref) override;
 
-    linglong::utils::error::Result<void> ensureRepoEnv(const QString &repoDir) override;
+    linglong::utils::error::Result<void> initCreateRepoIfNotExists();
 
     /*
      * 获取下载任务对应的进程Id

@@ -81,8 +81,6 @@ public:
                                                                const QString &ref) = 0;
     virtual linglong::utils::error::Result<void> repoDeleteDatabyRef(const QString &repoPath,
                                                                      const QString &ref) = 0;
-
-    virtual linglong::utils::error::Result<void> ensureRepoEnv(const QString &repoDir) = 0;
 };
 
 } // namespace repo

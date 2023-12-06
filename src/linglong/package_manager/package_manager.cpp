@@ -132,19 +132,13 @@ auto PackageManager::downloadAppData(const QString &pkgName,
                                      const QString &dstPath,
                                      QString &err) -> bool
 {
-    auto ret = repoMan.ensureRepoEnv(kLocalRepoPath);
-    if (!ret.has_value()) {
-        qCritical() << err;
-        return false;
-    }
-
     // new format --> linglong/org.deepin.downloader/5.3.69/x86_64/devel
     QString matchRef =
       QString("%1/%2/%3/%4/%5").arg(channel).arg(pkgName).arg(pkgVer).arg(pkgArch).arg(module);
     qInfo() << "downloadAppData ref:" << matchRef;
 
     // ret = repo.repoPull(repoPath, qrepoList[0], pkgName, err);
-    ret = repoMan.repoPullbyCmd(kLocalRepoPath, remoteRepoName, matchRef);
+    auto ret = repoMan.repoPullbyCmd(kLocalRepoPath, remoteRepoName, matchRef);
     if (!ret.has_value()) {
         qCritical() << ret.error().message();
         return false;
@@ -536,12 +530,6 @@ auto PackageManager::ModifyRepo(const QString &name, const QString &url) -> Repl
 
     // FIXME: check setEndpoint comment.
     repoClient.setEndpoint(url);
-
-    auto ret = repoMan.ensureRepoEnv(kLocalRepoPath);
-    if (!ret.has_value()) {
-        reply.code = STATUS_CODE(kFail);
-        return reply;
-    }
 
     auto ostreeConfigPath = kLocalRepoPath + "/repo/config";
     if (!linglong::util::fileExists(ostreeConfigPath)) {
@@ -985,17 +973,9 @@ auto PackageManager::Uninstall(const UninstallParamOption &paramOption) -> Reply
         }
 
         QString strErr = "";
-        // 更新本地repo仓库
-        auto ret = repoMan.ensureRepoEnv(kLocalRepoPath);
-        if (!ret.has_value()) {
-            qCritical() << strErr;
-            reply.code = STATUS_CODE(kPkgUninstallFailed);
-            reply.message = "uninstall local repo not exist";
-            return reply;
-        }
         // 应从安装数据库获取应用所属仓库信息 to do fix
         QVector<QString> qrepoList;
-        ret = repoMan.getRemoteRepoList(kLocalRepoPath, qrepoList);
+        auto ret = repoMan.getRemoteRepoList(kLocalRepoPath, qrepoList);
         if (!ret.has_value()) {
             qCritical() << strErr;
             reply.code = STATUS_CODE(kPkgUninstallFailed);

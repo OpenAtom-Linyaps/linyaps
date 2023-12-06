@@ -230,10 +230,5 @@ linglong::utils::error::Result<void> VfsRepo::repoDeleteDatabyRef(const QString 
     return {};
 }
 
-linglong::utils::error::Result<void> VfsRepo::ensureRepoEnv(const QString &repoDir)
-{
-    return {};
-}
-
 } // namespace repo
 } // namespace linglong

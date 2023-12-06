@@ -74,8 +74,6 @@ public:
     linglong::utils::error::Result<void> repoDeleteDatabyRef(const QString &repoPath,
                                                              const QString &ref) override;
 
-    linglong::utils::error::Result<void> ensureRepoEnv(const QString &repoDir) override;
-
 private:
     QScopedPointer<VfsRepoPrivate> dd_ptr;
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), VfsRepo)

@@ -59,16 +59,10 @@ OSTreeRepo::OSTreeRepo(const QString &localRepoPath,
 {
     // FIXME(black_desk): Just a quick hack to make sure openRepo called after the repo is
     // created. So I am not to check error here.
-    ensureRepoEnv(localRepoPath);
-    // FIXME: should be repo
-    if (QDir(repoRootPath).exists("/repo/repo")) {
-        ostreePath = repoRootPath + "/repo/repo";
-    } else {
-        ostreePath = repoRootPath + "/repo";
-    }
+    initCreateRepoIfNotExists();
+    ostreePath = repoRootPath + "/repo";
     qDebug() << "ostree repo path is" << ostreePath;
-
-    // repoPtr = openRepo(ostreePath);
+    repoPtr = openRepo(ostreePath);
 }
 
 linglong::utils::error::Result<void> OSTreeRepo::importDirectory(const package::Ref &ref,
@@ -1388,62 +1382,38 @@ linglong::utils::error::Result<QString> OSTreeRepo::createTmpRepo(const QString 
     return tmpPath;
 }
 
-linglong::utils::error::Result<void> OSTreeRepo::ensureRepoEnv(const QString &repoDir)
+// NOTE(black_desk):
+// This function is used to called in OSTreeRepo's constructor,
+// to make sure the ostree-based linglong repository we using exists.
+// FIXME(black_desk):
+// This function might failed as the caller might not have right permission to create that directory
+// or modify files in this directory.
+// This should be fixed by split Repo into read-only Repo and modifiable Repo, and void using
+// modifiable Repo in ll-service.
+linglong::utils::error::Result<void> OSTreeRepo::initCreateRepoIfNotExists()
 {
-    if (repoPtr) {
-        // FIXME(black_desk): this is ridicules
-        return LINGLONG_OK;
-    }
+    Q_ASSERT(!repoPtr);
+    Q_ASSERT(!repoRootPath.isEmpty());
 
-    if (repoDir.isEmpty()) {
-        return LINGLONG_ERR(-1, "empty repo path");
-    }
-
-    QString repoPath = repoDir + "/repo";
-    qInfo() << "looking repo at:" << repoPath;
-
-    if (!util::ensureDir(repoPath)) {
-        return LINGLONG_ERR(-1, "Failed to make dir: " + repoPath);
+    QString repoPath = QDir::currentPath() + "/" + repoRootPath + "/repo";
+    if (!QDir(repoPath).mkpath(".")) {
+        return LINGLONG_ERR(-1, "failed create directory " + repoPath);
     }
 
     g_autoptr(GFile) repodir = g_file_new_for_path(repoPath.toStdString().c_str());
-    OstreeRepo *repo = ostree_repo_new(repodir);
-    if (!repo) {
-        qWarning() << "ostree repo new failed";
-    }
+    g_autoptr(OstreeRepo) repo = ostree_repo_new(repodir);
+    Q_ASSERT(repo);
+
     GError *gErr = nullptr;
 
-    if (ostree_repo_open(repo, nullptr, &gErr)) {
-        setDirInfo(repoDir, repo);
-
-        // FIXME:
-        // Quick fix here, we have to make sure repo has config "http2=false".
-        // For reason, check NOTE below.
-
-        auto *configKeyFile = ostree_repo_get_config(repo);
-        if (configKeyFile == nullptr) {
-            return LINGLONG_ERR(-1, QString("Failed to get config of repo"));
-        }
-
-        g_key_file_set_string(configKeyFile, "remote \"repo\"", "http2", "false");
+    if (!ostree_repo_open(repo, nullptr, &gErr)) {
+        qDebug() << "ostree_repo_open failed:" << gErr->message << "[ code" << gErr->code << "]";
+        qInfo() << "Creating linglong ostree repo at" << repoPath;
 
         gErr = nullptr;
-        if (!ostree_repo_write_config(repo, configKeyFile, &gErr)) {
-            return LINGLONG_ERR(-1,
-                                QString("Failed to write config, message: %1").arg(gErr->message));
+        if (!ostree_repo_create(repo, OSTREE_REPO_MODE_BARE_USER_ONLY, nullptr, &gErr)) {
+            return LINGLONG_ERR(-1, "ostree_repo_create error:" + QLatin1String(gErr->message));
         }
-
-        return LINGLONG_OK;
-    }
-
-    qWarning() << QString("ostree_repo_open error: %1, code: %2, maybe repo not exist")
-                    .arg(QLatin1String(gErr->message))
-                    .arg(gErr->code);
-
-    gErr = nullptr;
-    if (!ostree_repo_create(repo, OSTREE_REPO_MODE_BARE_USER_ONLY, nullptr, &gErr)) {
-        g_object_unref(repodir);
-        return LINGLONG_ERR(-1, "ostree_repo_create error:" + QLatin1String(gErr->message));
     }
 
     QString url = util::config::ConfigInstance().repos[package::kDefaultRepo]->endpoint;
@@ -1452,7 +1422,7 @@ linglong::utils::error::Result<void> OSTreeRepo::ensureRepoEnv(const QString &re
     url += "/repos/" + repoName;
 
     g_autoptr(GVariantBuilder) configBuilder = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
-    g_variant_builder_add(configBuilder, "{sv}", "gpg-verify", g_variant_new_boolean(false));
+    g_variant_builder_add(configBuilder, "{sv}", "", g_variant_new_boolean(false));
 
     // NOTE:
     // libcurl 8.2.1 has a http2 bug https://github.com/curl/curl/issues/11859
@@ -1461,7 +1431,7 @@ linglong::utils::error::Result<void> OSTreeRepo::ensureRepoEnv(const QString &re
     g_autoptr(GVariant) config = g_variant_builder_end(configBuilder);
 
     gErr = nullptr;
-    if (!ostree_repo_remote_add(repo, "repo", url.toStdString().c_str(), config, nullptr, &gErr)) {
+    if (!ostree_repo_remote_add(repo, "repo", url.toStdString().c_str(), nullptr, nullptr, &gErr)) {
         return LINGLONG_ERR(-1,
                             QString("Failed to add remote repo, message:%1").arg(gErr->message));
     }
@@ -1472,13 +1442,16 @@ linglong::utils::error::Result<void> OSTreeRepo::ensureRepoEnv(const QString &re
     }
 
     g_key_file_set_string(configKeyFile, "core", "min-free-space-size", "600MB");
+    g_key_file_set_string(configKeyFile, "remote \"repo\"", "http2", "false");
+    g_key_file_set_string(configKeyFile, "remote \"repo\"", "gpg-verify", "false");
 
     gErr = nullptr;
     if (!ostree_repo_write_config(repo, configKeyFile, &gErr)) {
         return LINGLONG_ERR(-1, QString("Failed to write config, message:%1").arg(gErr->message));
     }
 
-    setDirInfo(repoDir, repo);
+    this->repoPtr = g_steal_pointer(&repo);
+
     return LINGLONG_OK;
 }
 

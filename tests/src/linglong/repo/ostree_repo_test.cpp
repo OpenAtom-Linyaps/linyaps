@@ -70,12 +70,12 @@ protected:
         commitDir = "commit";
         commitFile = "test_file.txt";
         testCommitPath = QStringList{ "commit", "test_file.txt" }.join(QDir::separator());
-        repoPath = "repo-test";
+        repoPath = "repo";
         std::cout << repoPath.toStdString().c_str() << std::endl;
         ostreeRepo = std::make_unique<linglong::repo::OSTreeRepo>(repoPath, "", "", api);
     }
 
-    void TearDown() override { }
+    void TearDown() override { QDir(repoPath).removeRecursively(); }
 };
 
 class RemoteRepoTest : public ::testing::Test
@@ -100,7 +100,7 @@ protected:
         ostreeRepo->remoteAdd(remoteRepoName, "https://store-llrepo.deepin.com/repos/repo");
     }
 
-    void TearDown() override { }
+    void TearDown() override { QDir(localRepoPath).removeRecursively(); }
 };
 
 TEST_F(RepoTest, remoteAdd)

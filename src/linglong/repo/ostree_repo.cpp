@@ -357,7 +357,7 @@ linglong::utils::error::Result<void> OSTreeRepo::checkout(const package::Ref &re
     }
     auto rev = resolveRev(ref.toOSTreeRefLocalString());
     if (!rev.has_value()) {
-        return LINGLONG_ERR(rev.error().code(), rev.error().message());
+        return LINGLONG_EWRAP("", rev.error());
     }
 
     ostree_repo_checkout_at(repoPtr.get(),

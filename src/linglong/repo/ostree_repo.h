@@ -126,10 +126,6 @@ public:
 
     ~OSTreeRepo() override;
     linglong::utils::error::Result<void> listRemoteRefs();
-    linglong::utils::error::Result<void> init(const QString &repoMode);
-
-    linglong::utils::error::Result<void> remoteAdd(const QString &repoName,
-                                                   const QString &repoUrl) override;
 
     linglong::utils::error::Result<void> importDirectory(const package::Ref &ref,
                                                          const QString &path) override;
@@ -140,16 +136,11 @@ public:
 
     linglong::utils::error::Result<void> pull(package::Ref &ref, bool force) override;
 
-    // TODO: support multi refs?
-    linglong::utils::error::Result<void> pull(const QString &ref) override;
-
     linglong::utils::error::Result<void> pullAll(const package::Ref &ref, bool force) override;
 
     linglong::utils::error::Result<void> checkout(const package::Ref &ref,
                                                   const QString &subPath,
                                                   const QString &target) override;
-
-    linglong::utils::error::Result<void> remoteDelete(const QString &repoName) override;
 
     linglong::utils::error::Result<void> checkoutAll(const package::Ref &ref,
                                                      const QString &subPath,
@@ -318,21 +309,6 @@ private:
      * @return bool: true:成功 false:失败
      */
     bool resolveRef(const std::string &fullRef, std::vector<std::string> &result);
-
-    /*
-     * 启动一个ostree 命令任务
-     *
-     * @param cmd: 需要运行的命令
-     * @param ref: ostree软件包对应的ref
-     * @param argList: 参数列表
-     * @param timeout: 任务超时时间
-     *
-     * @return bool: true:成功 false:失败
-     */
-    bool startOstreeJob(const QString &cmd,
-                        const QString &ref,
-                        const QStringList &argList,
-                        const int timeout);
 
     /*
      * 在/tmp目录下创建一个临时repo子仓库

@@ -34,20 +34,15 @@ public:
     linglong::utils::error::Result<void> push(const package::Ref &ref) override;
 
     linglong::utils::error::Result<void> pull(package::Ref &ref, bool force) override;
-    linglong::utils::error::Result<void> pull(const QString &ref) override;
     QString rootOfLayer(const package::Ref &ref) override;
 
     package::Ref latestOfRef(const QString &appId, const QString &appVersion) override;
-
-    linglong::utils::error::Result<void> remoteAdd(const QString &repoName,
-                                                   const QString &repoUrl) override;
 
     linglong::utils::error::Result<void> pullAll(const package::Ref &ref, bool force) override;
     linglong::utils::error::Result<void> checkout(const package::Ref &ref,
                                                   const QString &subPath,
                                                   const QString &target) override;
 
-    linglong::utils::error::Result<void> remoteDelete(const QString &repoName) override;
     linglong::utils::error::Result<void> checkoutAll(const package::Ref &ref,
                                                      const QString &subPath,
                                                      const QString &target) override;

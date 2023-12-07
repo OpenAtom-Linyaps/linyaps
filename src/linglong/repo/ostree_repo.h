@@ -319,19 +319,6 @@ private:
      */
     linglong::utils::error::Result<QString> createTmpRepo(const QString &parentRepo);
 
-    /*
-     * 保存本地仓库信息
-     *
-     * @param basedir: 临时仓库路径
-     * @param repo: 错误信息
-     *
-     */
-    void setDirInfo(const QString &basedir, OstreeRepo *repo)
-    {
-        repoRootPath = basedir;
-        repoPtr = repo;
-    }
-
     linglong::utils::error::Result<void> ostreeRun(const QStringList &args,
                                                    QByteArray *stdout = nullptr)
     {
@@ -454,20 +441,7 @@ private:
         return glibBytesToQByteArray(zlibBytes);
     }
 
-    static OstreeRepo *openRepo(const QString &path)
-    {
-        g_autoptr(GError) gErr = nullptr;
-        std::string repoPathStr = path.toStdString();
-
-        g_autoptr(GFile) repoPath = g_file_new_for_path(repoPathStr.c_str());
-        g_autoptr(OstreeRepo) repo = ostree_repo_new(repoPath);
-        if (!ostree_repo_open(repo, nullptr, &gErr)) {
-            qCritical() << "open repo" << path << "failed"
-                        << QString::fromStdString(std::string(gErr->message));
-        }
-        Q_ASSERT(nullptr != repo);
-        return repo;
-    }
+    static OstreeRepo *openRepo(const QString &path) { }
 
     QString getObjectPath(const QString &objName)
     {
@@ -485,7 +459,7 @@ private:
 
         std::string str = rev.toStdString();
 
-        if (!ostree_repo_traverse_commit(repoPtr,
+        if (!ostree_repo_traverse_commit(repoPtr.get(),
                                          str.c_str(),
                                          maxDepth,
                                          &hashTable,
@@ -535,7 +509,7 @@ private:
         g_autofree char *commitID = nullptr;
         std::string refStr = ref.toStdString();
         // FIXME: should free commitID?
-        if (!ostree_repo_resolve_rev(repoPtr, refStr.c_str(), false, &commitID, &gErr)) {
+        if (!ostree_repo_resolve_rev(repoPtr.get(), refStr.c_str(), false, &commitID, &gErr)) {
             return LINGLONG_EWRAP("ostree_repo_resolve_rev failed: " + ref,
                                   LINGLONG_ERR(gErr->code, gErr->message).value());
         }
@@ -764,7 +738,16 @@ private:
 
     QString remoteToken;
 
-    OstreeRepo *repoPtr = nullptr;
+    struct OstreeRepoDeleter
+    {
+        static void operator()(OstreeRepo *repo)
+        {
+            qDebug() << "delete OstreeRepo" << repo;
+            g_clear_object(&repo);
+        }
+    };
+
+    std::unique_ptr<OstreeRepo, OstreeRepoDeleter> repoPtr = nullptr;
     QString ostreePath;
 
     util::HttpRestClient httpClient;

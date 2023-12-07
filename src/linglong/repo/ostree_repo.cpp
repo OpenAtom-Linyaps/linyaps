@@ -57,31 +57,39 @@ OSTreeRepo::OSTreeRepo(const QString &localRepoPath,
     , remoteRepoName(remoteRepoName)
     , repoClient(client)
 {
-    // FIXME(black_desk): Just a quick hack to make sure openRepo called after the repo is
-    // created.
-    auto ret = initCreateRepoIfNotExists();
-    if (!ret.has_value()) {
-        qDebug().noquote() << "Failed to create ostree based linglong repo:"
-                           << ret.error().message();
-    }
-
     ostreePath = repoRootPath + "/repo";
     qDebug() << "ostree repo path is" << ostreePath;
-    repoPtr = openRepo(ostreePath);
+
+    // FIXME(black_desk): Just a quick hack to make sure openRepo called after the repo is
+    // created. This function might failed as the caller might not have right permission to
+    // create that directory or modify files in this directory. This should be fixed by split
+    // Repo into read-only Repo and modifiable Repo, and void using modifiable Repo in
+    // ll-service.
+    auto ret = initCreateRepoIfNotExists();
+    if (ret.has_value()) {
+        return;
+    }
+
+    qDebug().noquote() << "Failed to create ostree based linglong repo." << Qt::endl
+                       << ret.error().message();
+
+    g_autoptr(GError) gErr = nullptr;
+
+    g_autoptr(GFile) repoPath = g_file_new_for_path(ostreePath.toLocal8Bit());
+    g_autoptr(OstreeRepo) repo = ostree_repo_new(repoPath);
+    if (!ostree_repo_open(repo, nullptr, &gErr)) {
+        qCritical().noquote() << "open repo" << ostreePath << "failed"
+                              << QString::fromStdString(std::string(gErr->message));
+    }
+    Q_ASSERT(repo);
+    repoPtr.reset(g_steal_pointer(&repo));
 }
 
 linglong::utils::error::Result<void> OSTreeRepo::importDirectory(const package::Ref &ref,
                                                                  const QString &path)
 {
-    // auto ret = ostreeRun({ "commit",
-    //                        "-b",
-    //                        ref.toOSTreeRefLocalString(),
-    //                        "--canonical-permissions",
-    //                        "--tree=dir=" + path });
-    // GHashTable *hashTable = nullptr;
-
     g_autoptr(GError) gErr = nullptr;
-    if (!ostree_repo_prepare_transaction(repoPtr, NULL, NULL, &gErr))
+    if (!ostree_repo_prepare_transaction(repoPtr.get(), NULL, NULL, &gErr))
         return LINGLONG_ERR(gErr->code, gErr->message);
 
     g_autoptr(OstreeMutableTree) mtree = ostree_mutable_tree_new();
@@ -94,15 +102,20 @@ linglong::utils::error::Result<void> OSTreeRepo::importDirectory(const package::
                                       nullptr);
 
     g_autoptr(GFile) gfile = g_file_new_for_path(path.toStdString().c_str());
-    if (!ostree_repo_write_directory_to_mtree(repoPtr, gfile, mtree, modifier, nullptr, &gErr))
+    if (!ostree_repo_write_directory_to_mtree(repoPtr.get(),
+                                              gfile,
+                                              mtree,
+                                              modifier,
+                                              nullptr,
+                                              &gErr))
         return LINGLONG_ERR(gErr->code, gErr->message);
 
     g_autoptr(OstreeRepoFile) repo_file = nullptr;
-    if (!ostree_repo_write_mtree(repoPtr, mtree, (GFile **)&repo_file, nullptr, &gErr))
+    if (!ostree_repo_write_mtree(repoPtr.get(), mtree, (GFile **)&repo_file, nullptr, &gErr))
         return LINGLONG_ERR(gErr->code, gErr->message);
 
     g_autofree char *out_commit = nullptr;
-    if (!ostree_repo_write_commit(repoPtr,
+    if (!ostree_repo_write_commit(repoPtr.get(),
                                   nullptr,
                                   nullptr,
                                   nullptr,
@@ -113,11 +126,11 @@ linglong::utils::error::Result<void> OSTreeRepo::importDirectory(const package::
                                   &gErr)) {
         return LINGLONG_ERR(gErr->code, gErr->message);
     }
-    ostree_repo_transaction_set_ref(repoPtr,
+    ostree_repo_transaction_set_ref(repoPtr.get(),
                                     NULL,
                                     ref.toOSTreeRefLocalString().toStdString().c_str(),
                                     out_commit);
-    ostree_repo_commit_transaction(repoPtr, NULL, NULL, &gErr);
+    ostree_repo_commit_transaction(repoPtr.get(), NULL, NULL, &gErr);
     if (gErr) {
         return LINGLONG_ERR(gErr->code, gErr->message);
     }
@@ -266,19 +279,13 @@ linglong::utils::error::Result<void> OSTreeRepo::pull(package::Ref &ref, bool /*
     // transferring. So we decide to retry 30 times.
     int retry = 30;
     g_autoptr(GError) gErr = nullptr;
-    auto remoteName = remoteRepoName.toStdString();
-    auto str = ref.toLocalRefString().toStdString();
-    char *refs = (char *)str.c_str();
-    char *refs_to_fetch[2] = { refs, nullptr };
+    auto str = ref.toLocalRefString().toLocal8Bit();
+    char *refs_to_fetch[2] = { str.data(), nullptr };
     while (retry--) {
         qDebug() << "remaining retries" << retry;
-        // err = LINGLONG_EWRAP("", ostreeRun({ "pull", ref.toOSTreeRefLocalString() }).error());
-        // if (!err) {
-        //     break;
-        // }
-        gErr = nullptr;
-        ostree_repo_pull(repoPtr,
-                         remoteName.c_str(),
+        g_clear_error(&gErr);
+        ostree_repo_pull(repoPtr.get(),
+                         remoteRepoName.toLocal8Bit(),
                          refs_to_fetch,
                          OSTREE_REPO_PULL_FLAGS_NONE,
                          NULL,
@@ -298,7 +305,11 @@ linglong::utils::error::Result<void> OSTreeRepo::listRemoteRefs()
 {
     g_autoptr(GHashTable) refs = NULL;
     g_autoptr(GError) gErr = NULL;
-    ostree_repo_remote_list_refs(repoPtr, remoteRepoName.toStdString().c_str(), &refs, NULL, &gErr);
+    ostree_repo_remote_list_refs(repoPtr.get(),
+                                 remoteRepoName.toLocal8Bit(),
+                                 &refs,
+                                 NULL,
+                                 &gErr);
     if (gErr) {
         qWarning() << gErr->code << gErr->message;
         return LINGLONG_OK;
@@ -349,7 +360,7 @@ linglong::utils::error::Result<void> OSTreeRepo::checkout(const package::Ref &re
         return LINGLONG_ERR(rev.error().code(), rev.error().message());
     }
 
-    ostree_repo_checkout_at(repoPtr,
+    ostree_repo_checkout_at(repoPtr.get(),
                             &checkout_options,
                             AT_FDCWD,
                             target.toStdString().c_str(),
@@ -409,7 +420,7 @@ linglong::utils::error::Result<void> OSTreeRepo::checkoutAll(const package::Ref 
     if (!runtimeRev.has_value()) {
         return LINGLONG_ERR(runtimeRev.error().code(), runtimeRev.error().message());
     }
-    ostree_repo_checkout_at(repoPtr,
+    ostree_repo_checkout_at(repoPtr.get(),
                             &checkout_options,
                             AT_FDCWD,
                             target.toStdString().c_str(),
@@ -425,7 +436,7 @@ linglong::utils::error::Result<void> OSTreeRepo::checkoutAll(const package::Ref 
         qWarning() << "failed to resolve ref with devel";
         return LINGLONG_OK;
     }
-    ostree_repo_checkout_at(repoPtr,
+    ostree_repo_checkout_at(repoPtr.get(),
                             &checkout_options,
                             AT_FDCWD,
                             target.toStdString().c_str(),
@@ -447,19 +458,9 @@ QString OSTreeRepo::rootOfLayer(const package::Ref &ref)
 
 linglong::utils::error::Result<QString> OSTreeRepo::remoteShowUrl(const QString &repoName)
 {
-
-    // QByteArray ostreeOutput;
-    // QString repoUrl;
-    // auto ret = ostreeRun({ "remote", "show-url", repoName }, &ostreeOutput);
-
-    // for (const auto &item : QString::fromLocal8Bit(ostreeOutput).trimmed().split('\n')) {
-    //     if (!item.trimmed().isEmpty()) {
-    //         repoUrl = item;
-    //     }
-    // }
-    char *out_url = nullptr;
+    g_autofree char *out_url = nullptr;
     g_autoptr(GError) gErr = NULL;
-    ostree_repo_remote_get_url(repoPtr, repoName.toStdString().c_str(), &out_url, &gErr);
+    ostree_repo_remote_get_url(repoPtr.get(), repoName.toLocal8Bit(), &out_url, &gErr);
     if (gErr) {
         return LINGLONG_ERR(gErr->code, gErr->message);
     }
@@ -632,7 +633,7 @@ linglong::utils::error::Result<void> OSTreeRepo::getRemoteRepoList(const QString
     }
     g_auto(GStrv) res = nullptr;
     if (repoPtr) {
-        res = ostree_repo_remote_list(repoPtr, nullptr);
+        res = ostree_repo_remote_list(repoPtr.get(), nullptr);
     }
 
     if (res != nullptr) {
@@ -692,7 +693,7 @@ bool OSTreeRepo::getRemoteRefs(const QString &repoPath,
     g_autoptr(GBytes) summarySigBytes = nullptr;
     g_autoptr(GCancellable) cancellable = nullptr;
     g_autoptr(GError) error = nullptr;
-    bool ret = fetchRemoteSummary(repoPtr,
+    bool ret = fetchRemoteSummary(repoPtr.get(),
                                   remoteNameTmp.c_str(),
                                   &summaryBytes,
                                   &summarySigBytes,
@@ -780,7 +781,7 @@ linglong::utils::error::Result<void> OSTreeRepo::checkOutAppData(const QString &
     }
 
     linglong::util::createDir(dstPath);
-    ostree_repo_checkout_at(repoPtr,
+    ostree_repo_checkout_at(repoPtr.get(),
                             &checkout_options,
                             AT_FDCWD,
                             dstPath.toStdString().c_str(),
@@ -930,7 +931,10 @@ linglong::utils::error::Result<void> OSTreeRepo::repoDeleteDatabyRef(const QStri
         return LINGLONG_ERR(rev.error().code(), rev.error().message());
     }
 
-    if (!ostree_repo_prune_static_deltas(repoPtr, (*rev).toStdString().c_str(), nullptr, &gErr)) {
+    if (!ostree_repo_prune_static_deltas(repoPtr.get(),
+                                         (*rev).toStdString().c_str(),
+                                         nullptr,
+                                         &gErr)) {
         return LINGLONG_ERR(gErr->code, gErr->message);
     }
 
@@ -1144,11 +1148,8 @@ linglong::utils::error::Result<QString> OSTreeRepo::createTmpRepo(const QString 
     }
     dir.setAutoRemove(false);
     tmpPath += "/repoTmp";
-    // auto err = util::Exec("ostree",
-    //                       { "--repo=" + tmpPath + "/repoTmp", "init", "--mode=bare-user-only"
-    //                       }, 1000 * 60 * 5);
-    g_autoptr(OstreeRepo) tmpRepo =
-      ostree_repo_new(g_file_new_for_path(tmpPath.toStdString().c_str()));
+    g_autoptr(GFile) file = g_file_new_for_path(tmpPath.toLocal8Bit());
+    g_autoptr(OstreeRepo) tmpRepo = ostree_repo_new(file);
     g_autoptr(GError) gErr = nullptr;
     ostree_repo_create(tmpRepo, OSTREE_REPO_MODE_BARE_USER_ONLY, NULL, &gErr);
     if (gErr) {
@@ -1157,7 +1158,7 @@ linglong::utils::error::Result<QString> OSTreeRepo::createTmpRepo(const QString 
     // if (!ostree_repo_open(tmpRepo, nullptr, &gErr))
     //     return LINGLONG_ERR(gErr->code, gErr->message);
 
-    GKeyFile *config = ostree_repo_copy_config(tmpRepo);
+    g_autoptr(GKeyFile) config = ostree_repo_copy_config(tmpRepo);
     if (config == nullptr) {
         return LINGLONG_ERR(-1, "failed to get repo config");
     }
@@ -1194,14 +1195,10 @@ linglong::utils::error::Result<QString> OSTreeRepo::createTmpRepo(const QString 
 // NOTE(black_desk):
 // This function is used to called in OSTreeRepo's constructor,
 // to make sure the ostree-based linglong repository we using exists.
-// FIXME(black_desk):
-// This function might failed as the caller might not have right permission to create that directory
-// or modify files in this directory.
-// This should be fixed by split Repo into read-only Repo and modifiable Repo, and void using
-// modifiable Repo in ll-service.
 linglong::utils::error::Result<void> OSTreeRepo::initCreateRepoIfNotExists()
 {
     Q_ASSERT(!repoPtr);
+
     Q_ASSERT(!repoRootPath.isEmpty());
 
     QString repoPath = repoRootPath + "/repo";
@@ -1209,17 +1206,17 @@ linglong::utils::error::Result<void> OSTreeRepo::initCreateRepoIfNotExists()
         return LINGLONG_ERR(-1, "failed create directory " + repoPath);
     }
 
-    g_autoptr(GFile) repodir = g_file_new_for_path(repoPath.toStdString().c_str());
+    g_autoptr(GFile) repodir = g_file_new_for_path(repoPath.toLocal8Bit());
     g_autoptr(OstreeRepo) repo = ostree_repo_new(repodir);
-    Q_ASSERT(repo);
-
-    GError *gErr = nullptr;
+    g_autoptr(GError) gErr = nullptr;
 
     if (!ostree_repo_open(repo, nullptr, &gErr)) {
         qDebug() << "ostree_repo_open failed:" << gErr->message << "[ code" << gErr->code << "]";
-        qInfo() << "Creating linglong ostree repo at" << repoPath;
-        gErr = nullptr;
+        g_clear_error(&gErr);
+        g_clear_object(&repo);
+        repo = ostree_repo_new(repodir);
 
+        qInfo() << "Creating linglong ostree repo at" << repoPath;
         if (!ostree_repo_create(repo, OSTREE_REPO_MODE_BARE_USER_ONLY, nullptr, &gErr)) {
             return LINGLONG_ERR(-1, "ostree_repo_create error:" + QLatin1String(gErr->message));
         }
@@ -1229,7 +1226,7 @@ linglong::utils::error::Result<void> OSTreeRepo::initCreateRepoIfNotExists()
 
     url += "/repos/" + this->remoteRepoName;
 
-    gErr = nullptr;
+    g_clear_error(&gErr);
     if (!ostree_repo_remote_change(repo,
                                    nullptr,
                                    OSTREE_REPO_REMOTE_CHANGE_REPLACE,
@@ -1239,10 +1236,11 @@ linglong::utils::error::Result<void> OSTreeRepo::initCreateRepoIfNotExists()
                                    nullptr,
                                    &gErr)) {
         return LINGLONG_ERR(-1,
-                            QString("Failed to add remote repo, message: %1").arg(gErr->message));
+                            QString("Failed to add remote repo [%1 %2], message: %3")
+                              .arg(this->remoteRepoName, this->remoteEndpoint, gErr->message));
     }
 
-    g_autoptr(GKeyFile) configKeyFile = ostree_repo_get_config(repo);
+    GKeyFile *configKeyFile = ostree_repo_get_config(repo);
     if (!configKeyFile) {
         return LINGLONG_ERR(-1, QString("Failed to get config of repo"));
     }
@@ -1260,23 +1258,19 @@ linglong::utils::error::Result<void> OSTreeRepo::initCreateRepoIfNotExists()
                           "gpg-verify",
                           "false");
 
-    gErr = nullptr;
+    g_clear_error(&gErr);
     if (!ostree_repo_write_config(repo, configKeyFile, &gErr)) {
         return LINGLONG_ERR(-1, QString("Failed to write config, message:%1").arg(gErr->message));
     }
 
-    this->repoPtr = g_steal_pointer(&repo);
+    qDebug() << "new OstreeRepo" << repo;
+
+    this->repoPtr.reset(g_steal_pointer(&repo));
 
     return LINGLONG_OK;
 }
 
-OSTreeRepo::~OSTreeRepo()
-{
-    if (repoPtr) {
-        g_object_unref(repoPtr);
-        repoPtr = nullptr;
-    }
-}
+OSTreeRepo::~OSTreeRepo() = default;
 
 } // namespace repo
 } // namespace linglong

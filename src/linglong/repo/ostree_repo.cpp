@@ -1358,8 +1358,8 @@ linglong::utils::error::Result<void> OSTreeRepo::ensureRepoEnv(const QString &re
         return LINGLONG_ERR(-1, "ostree_repo_create error:" + QLatin1String(gErr->message));
     }
 
-    QString url = util::config::ConfigInstance().repos[package::kDefaultRepo]->endpoint;
-    QString repoName = util::config::ConfigInstance().repos[package::kDefaultRepo]->repoName;
+    QString url = remoteEndpoint;
+    QString repoName = remoteRepoName;
 
     url += "/repos/" + repoName;
 

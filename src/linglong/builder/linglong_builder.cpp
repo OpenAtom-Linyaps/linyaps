@@ -306,45 +306,6 @@ linglong::util::Error LinglongBuilder::config(const QString &userName, const QSt
     return Success();
 }
 
-linglong::util::Error LinglongBuilder::initRepo()
-{
-    const QString defaultRepoName = BuilderConfig::instance()->remoteRepoName;
-    const QString configUrl = BuilderConfig::instance()->remoteRepoEndpoint;
-
-    QString repoUrl = configUrl.endsWith("/") ? configUrl + "repos/" + defaultRepoName
-                                              : configUrl + "/repos/" + defaultRepoName;
-
-    // if local ostree is not exist, create and init it
-    if (!QDir(BuilderConfig::instance()->ostreePath()).exists()) {
-        util::ensureDir(BuilderConfig::instance()->ostreePath());
-
-        auto ret = repo.init("bare-user-only");
-        if (!ret.has_value()) {
-            return WrapError(NewError(ret.error().code(), ret.error().message()),
-                             "init ostree repo failed");
-        }
-    }
-
-    // async builder.yaml to ostree config
-    auto currentRemoteUrl = repo.remoteShowUrl(defaultRepoName);
-    if (!currentRemoteUrl.has_value()) {
-        auto ret = repo.remoteAdd(defaultRepoName, repoUrl);
-        if (!ret.has_value()) {
-            return WrapError(NewError(ret.error().code(), ret.error().message()),
-                             "add ostree remote failed");
-        }
-    } else if (*currentRemoteUrl != repoUrl) {
-        repo.remoteDelete(defaultRepoName);
-        auto ret = repo.remoteAdd(defaultRepoName, repoUrl);
-        if (!ret.has_value()) {
-            return WrapError(NewError(ret.error().code(), ret.error().message()),
-                             "add ostree remote failed");
-        }
-    }
-
-    return Success();
-}
-
 // FIXME: should merge with runtime
 int LinglongBuilder::startContainer(QSharedPointer<Container> c,
                                     ocppi::runtime::config::types::Config &r)
@@ -497,11 +458,6 @@ linglong::util::Error LinglongBuilder::track()
 
 linglong::util::Error LinglongBuilder::build()
 {
-    auto err = initRepo();
-    if (err) {
-        return WrapError(err, "load local repo failed");
-    }
-
     auto projectConfigPath =
       QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
 
@@ -988,11 +944,6 @@ util::Error LinglongBuilder::push(const QString &repoUrl,
 
 util::Error LinglongBuilder::import()
 {
-    auto err = initRepo();
-    if (err) {
-        return WrapError(err, "load local repo failed");
-    }
-
     auto projectConfigPath =
       QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
 

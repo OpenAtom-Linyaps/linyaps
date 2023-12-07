@@ -15,6 +15,7 @@ CPMFindPackage(
 pfl_add_executable(
   INTERNAL
   SOURCES
+  ./src/main.cpp
   ./src/module/config/config_test.cpp
   ./src/module/package/package_info_test.cpp
   ./src/module/package/ref_test.cpp
@@ -49,7 +50,6 @@ pfl_add_executable(
   LINK_LIBRARIES
   PUBLIC
   GTest::gmock
-  GTest::gmock_main
   linglong
   Qt::DBusPrivate)
 

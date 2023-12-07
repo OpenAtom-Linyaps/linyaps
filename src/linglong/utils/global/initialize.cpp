@@ -10,6 +10,7 @@
 
 #include <QCoreApplication>
 #include <QDebug>
+
 #include <csignal>
 
 #include <fcntl.h>
@@ -60,7 +61,11 @@ void linglong_message_handler(QtMsgType type,
         if (formattedMessage.isNull())
             return;
 
-        fprintf(stderr, "%s\n", formattedMessage.toLocal8Bit().constData());
+        fprintf(stderr,
+                "%s:%d %s\n",
+                context.file,
+                context.line,
+                formattedMessage.toLocal8Bit().constData());
         fflush(stderr);
     }
 
@@ -104,9 +109,13 @@ void linglong_message_handler(QtMsgType type,
 void applicationInitializte()
 {
     QCoreApplication::setOrganizationName("deepin");
-    qInstallMessageHandler(linglong_message_handler);
+    installMessageHandler();
     catchUnixSignals({ SIGTERM, SIGQUIT, SIGINT, SIGHUP });
-    return;
+}
+
+void installMessageHandler()
+{
+    qInstallMessageHandler(linglong_message_handler);
 }
 
 } // namespace linglong::utils::global

@@ -64,6 +64,8 @@ protected:
     QString commitDir;
     QString commitFile;
     QString testCommitPath;
+    QString remoteEndpoint;
+    QString remoteRepoName;
 
     void SetUp() override
     {
@@ -71,35 +73,25 @@ protected:
         commitFile = "test_file.txt";
         testCommitPath = QStringList{ "commit", "test_file.txt" }.join(QDir::separator());
         repoPath = "repo";
-        ostreeRepo = std::make_unique<linglong::repo::OSTreeRepo>(repoPath, "", "", api);
-    }
-
-    void TearDown() override { QDir(repoPath).removeRecursively(); }
-};
-
-class RemoteRepoTest : public ::testing::Test
-{
-protected:
-    api::client::ClientApi api;
-    std::unique_ptr<linglong::repo::OSTreeRepo> ostreeRepo;
-    QString localRepoPath;
-    QString remoteEndpoint;
-    QString remoteRepoName;
-    package::Ref testRef = package::Ref("aom");
-
-    void SetUp() override
-    {
-        localRepoPath = "repo";
         remoteEndpoint = "https://store-llrepo.deepin.com/repos/";
         remoteRepoName = "repo";
-        ostreeRepo = std::make_unique<linglong::repo::OSTreeRepo>(localRepoPath,
+        ostreeRepo = std::make_unique<linglong::repo::OSTreeRepo>(repoPath,
                                                                   remoteEndpoint,
                                                                   remoteRepoName,
                                                                   api);
     }
 
-    void TearDown() override { QDir(localRepoPath).removeRecursively(); }
+    void TearDown() override
+    {
+        ostreeRepo.reset(nullptr);
+        QDir(repoPath).removeRecursively();
+    }
 };
+
+TEST_F(RepoTest, initialize)
+{
+    EXPECT_TRUE(true);
+}
 
 TEST_F(RepoTest, importDirectory)
 {
@@ -206,7 +198,7 @@ TEST_F(RepoTest, repoDeleteDatabyRef)
     EXPECT_EQ(ret.has_value(), true);
 }
 
-TEST_F(RemoteRepoTest, repoPullbyCmd)
+TEST_F(RepoTest, repoPullbyCmd)
 {
     auto ok = qputenv("LINGLONG_ROOT", QDir::currentPath().toLocal8Bit());
     EXPECT_EQ(ok, true);
@@ -220,12 +212,12 @@ TEST_F(RemoteRepoTest, repoPullbyCmd)
     EXPECT_EQ(ret.has_value(), true);
 }
 
-TEST_F(RemoteRepoTest, push)
+TEST_F(RepoTest, push)
 {
     GTEST_SKIP();
 }
 
-TEST_F(RemoteRepoTest, pull)
+TEST_F(RepoTest, pull)
 {
     int index = QDir::currentPath().lastIndexOf('/');
     auto path =
@@ -241,11 +233,11 @@ TEST_F(RemoteRepoTest, pull)
     EXPECT_EQ(ret.has_value(), true);
     auto result =
       executeTestScript("test_pull",
-                        QStringList{ localRepoPath, remoteRepoName, ref.toLocalRefString() });
+                        QStringList{ repoPath, remoteRepoName, ref.toLocalRefString() });
     EXPECT_EQ(result, 0);
 }
 
-TEST_F(RemoteRepoTest, remoteShowUrl)
+TEST_F(RepoTest, remoteShowUrl)
 {
     auto ret = ostreeRepo->remoteShowUrl(remoteRepoName);
     if (!ret.has_value()) {
@@ -264,17 +256,17 @@ TEST_F(RepoTest, latestOfRef)
     GTEST_SKIP();
 }
 
-TEST_F(RemoteRepoTest, remoteLatestRef)
+TEST_F(RepoTest, remoteLatestRef)
 {
     GTEST_SKIP();
 }
 
-TEST_F(RemoteRepoTest, getRemoteRepoList)
+TEST_F(RepoTest, getRemoteRepoList)
 {
     GTEST_SKIP();
 }
 
-TEST_F(RemoteRepoTest, getRemoteRefs)
+TEST_F(RepoTest, getRemoteRefs)
 {
     GTEST_SKIP();
 }

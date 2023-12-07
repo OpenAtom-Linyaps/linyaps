@@ -74,11 +74,6 @@ linglong::utils::error::Result<void> VfsRepo::pull(package::Ref &ref, bool force
     return {};
 }
 
-linglong::utils::error::Result<void> VfsRepo::pull(const QString &ref)
-{
-    return {};
-}
-
 /*!
  * prepare the path before request for layer
  * @param ref
@@ -150,12 +145,6 @@ package::Ref VfsRepo::latestOfRef(const QString &appId, const QString &appVersio
     return package::Ref(ref);
 }
 
-linglong::utils::error::Result<void> VfsRepo::remoteAdd(const QString &repoName,
-                                                        const QString &repoUrl)
-{
-    return {};
-}
-
 linglong::utils::error::Result<void> VfsRepo::pullAll(const package::Ref &ref, bool force)
 {
     return {};
@@ -164,11 +153,6 @@ linglong::utils::error::Result<void> VfsRepo::pullAll(const package::Ref &ref, b
 linglong::utils::error::Result<void> VfsRepo::checkout(const package::Ref &ref,
                                                        const QString &subPath,
                                                        const QString &target)
-{
-    return {};
-}
-
-linglong::utils::error::Result<void> VfsRepo::remoteDelete(const QString &repoName)
 {
     return {};
 }

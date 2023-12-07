@@ -71,7 +71,6 @@ protected:
         commitFile = "test_file.txt";
         testCommitPath = QStringList{ "commit", "test_file.txt" }.join(QDir::separator());
         repoPath = "repo";
-        std::cout << repoPath.toStdString().c_str() << std::endl;
         ostreeRepo = std::make_unique<linglong::repo::OSTreeRepo>(repoPath, "", "", api);
     }
 
@@ -91,34 +90,19 @@ protected:
     void SetUp() override
     {
         localRepoPath = "repo";
-        remoteEndpoint = "https://mirror-repo-linglong.deepin.com";
-        remoteRepoName = "remote-repo";
+        remoteEndpoint = "https://store-llrepo.deepin.com/repos/";
+        remoteRepoName = "repo";
         ostreeRepo = std::make_unique<linglong::repo::OSTreeRepo>(localRepoPath,
                                                                   remoteEndpoint,
                                                                   remoteRepoName,
                                                                   api);
-        ostreeRepo->remoteAdd(remoteRepoName, "https://store-llrepo.deepin.com/repos/repo");
     }
 
     void TearDown() override { QDir(localRepoPath).removeRecursively(); }
 };
 
-TEST_F(RepoTest, remoteAdd)
-{
-    QString remoteUrl = "https://ostree.test";
-    auto ret = ostreeRepo->remoteAdd(repoPath, remoteUrl);
-    if (!ret.has_value()) {
-        std::cerr << ret.error().message().toStdString();
-    }
-    EXPECT_EQ(ret.has_value(), true);
-    auto result =
-      executeTestScript("test_remoteadd", QStringList{ repoPath + "/" + "repo", repoPath });
-    EXPECT_EQ(result, 0);
-}
-
 TEST_F(RepoTest, importDirectory)
 {
-    ostreeRepo->init(repoPath);
     util::ensureDir("commit_test");
     util::ensureDir(QStringList{ "commit_test", "commit" }.join(QDir::separator()));
     QFile file("commit_test/commit/test_file.txt");
@@ -150,15 +134,6 @@ TEST_F(RepoTest, checkout)
     EXPECT_EQ(result, 0);
     QFile file(filePath);
     file.remove();
-}
-
-TEST_F(RepoTest, remoteDelete)
-{
-    auto ret = ostreeRepo->remoteDelete(repoPath);
-    if (!ret.has_value()) {
-        std::cerr << ret.error().message().toStdString();
-    }
-    EXPECT_EQ(ret.has_value(), true);
 }
 
 TEST_F(RepoTest, checkoutAll)

@@ -33,9 +33,6 @@ public:
     Repo &operator=(Repo &&) = delete;
     virtual ~Repo() = default;
 
-    virtual linglong::utils::error::Result<void> remoteAdd(const QString &repoName,
-                                                           const QString &repoUrl) = 0;
-
     virtual linglong::utils::error::Result<void> importDirectory(const package::Ref &ref,
                                                                  const QString &path) = 0;
 
@@ -44,13 +41,11 @@ public:
     virtual linglong::utils::error::Result<void> push(const package::Ref &ref) = 0;
 
     virtual linglong::utils::error::Result<void> pull(package::Ref &ref, bool force) = 0;
-    virtual linglong::utils::error::Result<void> pull(const QString &ref) = 0;
     virtual linglong::utils::error::Result<void> pullAll(const package::Ref &ref, bool force) = 0;
     virtual linglong::utils::error::Result<void> checkout(const package::Ref &ref,
                                                           const QString &subPath,
                                                           const QString &target) = 0;
 
-    virtual linglong::utils::error::Result<void> remoteDelete(const QString &repoName) = 0;
     virtual linglong::utils::error::Result<void> checkoutAll(const package::Ref &ref,
                                                              const QString &subPath,
                                                              const QString &target) = 0;

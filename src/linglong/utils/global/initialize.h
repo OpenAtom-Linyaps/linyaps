@@ -10,7 +10,8 @@
 namespace linglong::utils::global {
 
 void applicationInitializte();
+void installMessageHandler();
 
-}
+} // namespace linglong::utils::global
 
 #endif

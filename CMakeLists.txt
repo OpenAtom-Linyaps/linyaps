@@ -119,7 +119,7 @@ pfl_init(
   ON)
 
 if(LINGLONG_ENABLE_TESTING)
-  enable_testing()
+  include(CTest)
 endif()
 
 include(GNUInstallDirs)

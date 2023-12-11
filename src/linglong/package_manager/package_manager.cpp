@@ -133,21 +133,20 @@ auto PackageManager::downloadAppData(const QString &pkgName,
                                      QString &err) -> bool
 {
     // new format --> linglong/org.deepin.downloader/5.3.69/x86_64/devel
-    QString matchRef =
-      QString("%1/%2/%3/%4/%5").arg(channel).arg(pkgName).arg(pkgVer).arg(pkgArch).arg(module);
-    qInfo() << "downloadAppData ref:" << matchRef;
+    package::Ref matchRef(remoteRepoName, channel, pkgName, pkgVer, pkgArch, module);
+    qInfo() << "downloadAppData ref:" << matchRef.toSpecString();
 
     // ret = repo.repoPull(repoPath, qrepoList[0], pkgName, err);
-    auto ret = repoMan.repoPullbyCmd(kLocalRepoPath, remoteRepoName, matchRef);
+    auto ret =
+      repoMan.repoPullbyCmd(kLocalRepoPath, remoteRepoName, matchRef.toOSTreeRefLocalString());
     if (!ret.has_value()) {
-        qCritical() << ret.error().message();
+        qCritical() << ret.error();
         return false;
     }
-    // checkout 目录
-    // const QString dstPath = repoPath + "/AppData";
-    ret = repoMan.checkOutAppData(kLocalRepoPath, remoteRepoName, matchRef, dstPath);
+
+    ret = repoMan.checkoutAll(matchRef, "", dstPath);
     if (!ret.has_value()) {
-        qCritical() << ret.error().message();
+        qCritical() << ret.error();
         return false;
     }
     qInfo() << "downloadAppData success, path:" << dstPath;

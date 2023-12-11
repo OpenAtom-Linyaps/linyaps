@@ -193,14 +193,6 @@ bool VfsRepo::getRemoteRefs(const QString &repoPath,
     return false;
 }
 
-linglong::utils::error::Result<void> VfsRepo::checkOutAppData(const QString &repoPath,
-                                                              const QString &remoteName,
-                                                              const QString &ref,
-                                                              const QString &dstPath)
-{
-    return {};
-}
-
 linglong::utils::error::Result<void> VfsRepo::repoPullbyCmd(const QString &destPath,
                                                             const QString &remoteName,
                                                             const QString &ref)

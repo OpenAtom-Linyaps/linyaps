@@ -59,10 +59,6 @@ public:
                        const QString &remoteName,
                        QMap<QString, QString> &outRefs,
                        QString &err) override;
-    linglong::utils::error::Result<void> checkOutAppData(const QString &repoPath,
-                                                         const QString &remoteName,
-                                                         const QString &ref,
-                                                         const QString &dstPath) override;
     linglong::utils::error::Result<void> repoPullbyCmd(const QString &destPath,
                                                        const QString &remoteName,
                                                        const QString &ref) override;

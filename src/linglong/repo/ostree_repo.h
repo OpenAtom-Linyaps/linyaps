@@ -186,22 +186,6 @@ public:
                        QString &err) override;
 
     /*
-     * 将软件包数据从本地仓库签出到指定目录
-     *
-     * @param repoPath: 远端仓库对应的本地仓库路径
-     * @param remoteName: 远端仓库名称
-     * @param ref: 软件包对应的仓库索引
-     * @param dstPath: 签出数据保存目录
-     * @param err: 错误信息
-     *
-     * @return bool: true:成功 false:失败
-     */
-    linglong::utils::error::Result<void> checkOutAppData(const QString &repoPath,
-                                                         const QString &remoteName,
-                                                         const QString &ref,
-                                                         const QString &dstPath) override;
-
-    /*
      * 通过ostree命令将软件包数据从远端仓库pull到本地
      *
      * @param destPath: 仓库路径

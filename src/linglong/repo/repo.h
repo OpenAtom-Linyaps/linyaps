@@ -67,10 +67,6 @@ public:
                                const QString &remoteName,
                                QMap<QString, QString> &outRefs,
                                QString &err) = 0;
-    virtual linglong::utils::error::Result<void> checkOutAppData(const QString &repoPath,
-                                                                 const QString &remoteName,
-                                                                 const QString &ref,
-                                                                 const QString &dstPath) = 0;
     virtual linglong::utils::error::Result<void> repoPullbyCmd(const QString &destPath,
                                                                const QString &remoteName,
                                                                const QString &ref) = 0;

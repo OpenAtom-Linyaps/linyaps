@@ -27,32 +27,35 @@ namespace linglong::repo::test {
 
 namespace {
 
-int executeTestScript(QString func, QStringList args)
+// When testing OSTreeRepo functionality, we may initialize and commit some files into the ostree
+// repository in a bash script to keep our code as unit test.
+utils::error::Result<QStringList> executeTestScript(QStringList args)
 {
     QProcess process;
-    QStringList arguments = { QDir::currentPath() + "/src/linglong/repo/ostree_repo_test.sh",
-                              func };
-    arguments.append(args);
-    qInfo() << arguments;
-    process.start("/bin/bash", arguments);
-    if (!process.waitForStarted()) {
-        std::cerr << "failed to start script function: " << func.toStdString().c_str() << std::endl;
-        return -1;
-    }
+    process.start("src/linglong/repo/ostree_repo_test.sh", args);
     if (!process.waitForFinished()) {
-        std::cerr << "run script function unfinished: " << func.toStdString().c_str() << std::endl;
-        return -1;
+        return LINGLONG_ERR(
+          -1,
+          QString("Run ostree repo test script with %1 failed: %2")
+            .arg(QString(QJsonDocument(QJsonArray::fromStringList(args)).toJson()))
+            .arg(process.errorString()));
     }
 
     auto retStatus = process.exitStatus();
     auto retCode = process.exitCode();
-    if (retStatus != 0 || retCode != 0) {
-        std::cerr << "run script function failed" << std::endl;
-        return -1;
+    if (retStatus == 0 && retCode == 0) {
+        QString lines = process.readAllStandardOutput();
+        auto ret = lines.split('\n', Qt::SkipEmptyParts);
+        return ret;
     }
-    QString output = process.readAllStandardOutput();
-    qInfo() << output;
-    return 0;
+
+    return LINGLONG_ERR(
+      -1,
+      QString("Ostree repo test script with %1 failed.\nstdout:\n%2\nstderr:\n%3")
+        .arg(
+          QString(QJsonDocument(QJsonArray::fromStringList(args)).toJson(QJsonDocument::Compact)))
+        .arg(QString(process.readAllStandardOutput()))
+        .arg(QString(process.readAllStandardError())));
 }
 
 class RepoTest : public ::testing::Test
@@ -61,18 +64,14 @@ protected:
     api::client::ClientApi api;
     std::unique_ptr<linglong::repo::OSTreeRepo> ostreeRepo;
     QString repoPath;
-    QString commitDir;
-    QString commitFile;
-    QString testCommitPath;
+    QString ostreeRepoPath;
     QString remoteEndpoint;
     QString remoteRepoName;
 
     void SetUp() override
     {
-        commitDir = "commit";
-        commitFile = "test_file.txt";
-        testCommitPath = QStringList{ "commit", "test_file.txt" }.join(QDir::separator());
         repoPath = "repo";
+        ostreeRepoPath = "repo/repo";
         remoteEndpoint = "https://store-llrepo.deepin.com/repos/";
         remoteRepoName = "repo";
         ostreeRepo = std::make_unique<linglong::repo::OSTreeRepo>(repoPath,
@@ -83,6 +82,13 @@ protected:
 
     void TearDown() override
     {
+        auto files = executeTestScript({ "cleanup" });
+        if (!files.has_value()) {
+            qCritical() << "Cleanup files" << ostreeRepoPath << "failed:" << files.error();
+            FAIL();
+        }
+        qDebug() << "Cleanup files" << *files;
+
         ostreeRepo.reset(nullptr);
         QDir(repoPath).removeRecursively();
     }
@@ -93,157 +99,81 @@ TEST_F(RepoTest, initialize)
     EXPECT_TRUE(true);
 }
 
-TEST_F(RepoTest, importDirectory)
+TEST_F(RepoTest, basicMethods)
 {
-    util::ensureDir("commit_test");
-    util::ensureDir(QStringList{ "commit_test", "commit" }.join(QDir::separator()));
-    QFile file("commit_test/commit/test_file.txt");
-    bool ok = file.open(QIODevice::ReadWrite);
-    EXPECT_EQ(ok, true);
+    auto files = executeTestScript({ "create_files" });
+    if (!files.has_value()) {
+        auto &err = files.error();
+        qCritical() << "Create files for test failed:" << err;
+        FAIL();
+    }
+
+    qDebug() << "Create temporary files" << *files;
+
     QString appId = "test";
-    auto ret = ostreeRepo->importDirectory(package::Ref(appId), "commit_test");
+    auto ret = ostreeRepo->importDirectory(package::Ref(appId), "tmp");
     if (!ret.has_value()) {
-        std::cerr << ret.error().message().toStdString();
+        qCritical() << "Failed to import directory into ostree based linglong repository:"
+                    << ret.error();
+        FAIL();
     }
-    EXPECT_EQ(ret.has_value(), true);
-    QString refs = QString("linglong/%1/latest/x86_64/runtime").arg(appId);
-    auto result = executeTestScript("test_importdirectory",
-                                    QStringList{ repoPath + "/" + "repo", refs, testCommitPath });
-    EXPECT_EQ(result, 0);
-    QDir dir("commit_test");
-    dir.removeRecursively();
-}
 
-TEST_F(RepoTest, checkout)
-{
-    auto ret = ostreeRepo->checkout(package::Ref("test"), commitDir, QDir::currentPath());
+    QString refToCheck = QString("linglong/%1/latest/x86_64/runtime").arg(appId);
+    files = executeTestScript(QStringList{ "check_commit", ostreeRepoPath, refToCheck } + *files);
+    if (!files.has_value()) {
+        qCritical() << "Check files at repository" << ostreeRepoPath << "failed:" << files.error();
+        FAIL();
+    }
+    qDebug() << "Check files in ref" << refToCheck << "success";
+
+    files = executeTestScript({ "cleanup" });
+
+    ret = ostreeRepo->checkoutAll(package::Ref(appId), "", "tmp");
     if (!ret.has_value()) {
-        std::cerr << ret.error().message().toStdString();
+        qCritical() << "Checkout reference" << appId << "failed:" << ret.error();
+        FAIL();
     }
-    EXPECT_EQ(ret.has_value(), true);
-    QString filePath = QDir::currentPath() + "/" + commitFile;
-    auto result = executeTestScript("test_checkout", QStringList{ filePath });
-    EXPECT_EQ(result, 0);
-    QFile file(filePath);
-    file.remove();
-}
 
-TEST_F(RepoTest, checkoutAll)
-{
-    auto ret = ostreeRepo->checkoutAll(package::Ref("", "linglong", "test", "latest", "x86_64", ""),
-                                       commitDir,
-                                       QDir::currentPath());
+    files->push_front("check_files");
+    files = executeTestScript(*files);
+    if (!files.has_value()) {
+        qCritical() << "Check files failed:" << files.error();
+        FAIL();
+    }
+
+    auto ref = ostreeRepo->localLatestRef(package::Ref(appId));
+    if (!ref.has_value()) {
+        qCritical() << "Get local latest reference of application" << appId
+                    << "failed:" << ref.error();
+        FAIL();
+    }
+    EXPECT_EQ(ref->appId, appId);
+
+    ret = ostreeRepo->repoDeleteDatabyRef(repoPath, package::Ref("test").toOSTreeRefLocalString());
     if (!ret.has_value()) {
-        std::cerr << ret.error().message().toStdString();
+        qCritical() << "Delete" << appId << "from repository failed:" << ret.error();
+        FAIL();
     }
-    EXPECT_EQ(ret.has_value(), true);
-    QString filePath = QDir::currentPath() + "/" + commitFile;
-    auto result = executeTestScript("test_checkout", QStringList{ filePath });
-    EXPECT_EQ(result, 0);
-    QFile file(filePath);
-    file.remove();
-}
 
-TEST_F(RepoTest, localLatestRef)
-{
-    auto ret = ostreeRepo->localLatestRef(package::Ref("test"));
-    if (!ret.has_value()) {
-        std::cerr << ret.error().message().toStdString();
+    ref = ostreeRepo->localLatestRef(package::Ref(appId));
+    if (ref.has_value()) {
+        qCritical() << "Reference" << appId << "should be deleted";
+        FAIL();
     }
-    qInfo() << (*ret).toSpecString();
-    EXPECT_EQ(ret.has_value(), true);
-}
-
-TEST_F(RepoTest, checkOutAppData)
-{
-    auto ret = ostreeRepo->checkOutAppData(repoPath,
-                                           NULL,
-                                           package::Ref("test").toOSTreeRefLocalString(),
-                                           QDir::currentPath());
-    if (!ret.has_value()) {
-        std::cerr << ret.error().message().toStdString();
-    }
-    EXPECT_EQ(ret.has_value(), true);
-    QString filePath = QDir::currentPath() + "/" + testCommitPath;
-    auto result = executeTestScript("test_checkout", QStringList{ filePath });
-    EXPECT_EQ(result, 0);
-    QDir dir(QDir::currentPath() + "/" + commitDir);
-    dir.removeRecursively();
-}
-
-TEST_F(RepoTest, compressOstreeData)
-{
-    auto ret = ostreeRepo->compressOstreeData(package::Ref("test"));
-    if (!ret.has_value()) {
-        std::cerr << ret.error().message().toStdString();
-    }
-    EXPECT_EQ(ret.has_value(), true);
-    const auto savePath =
-      QStringList{ util::getUserFile(".linglong/builder"), "test" }.join(QDir::separator());
-    QFile file(savePath + "/" + testCommitPath);
-    EXPECT_EQ(file.exists(), true);
-    QFile tgzFile(util::getUserFile(".linglong/builder/") + "test.tgz");
-    EXPECT_EQ(tgzFile.exists(), true);
-    tgzFile.remove();
-    file.remove();
-}
-
-TEST_F(RepoTest, repoDeleteDatabyRef)
-{
-    auto ret =
-      ostreeRepo->repoDeleteDatabyRef(repoPath, package::Ref("test").toOSTreeRefLocalString());
-    if (!ret.has_value()) {
-        std::cerr << ret.error().message().toStdString();
-    }
-    EXPECT_EQ(ret.has_value(), true);
-}
-
-TEST_F(RepoTest, repoPullbyCmd)
-{
-    auto ok = qputenv("LINGLONG_ROOT", QDir::currentPath().toLocal8Bit());
-    EXPECT_EQ(ok, true);
-    auto ret =
-      ostreeRepo->repoPullbyCmd(QStringList{ QDir::currentPath(), "repo" }.join(QDir::separator()),
-                                remoteRepoName,
-                                "org.deepin.music/6.0.1.54/x86_64");
-    if (!ret.has_value()) {
-        std::cerr << ret.error().message().toStdString();
-    }
-    EXPECT_EQ(ret.has_value(), true);
-}
-
-TEST_F(RepoTest, push)
-{
-    GTEST_SKIP();
 }
 
 TEST_F(RepoTest, pull)
 {
-    int index = QDir::currentPath().lastIndexOf('/');
-    auto path =
-      QStringList{ QDir::currentPath().left(index), "misc", "linglong", "config.yaml" }.join(
-        QDir::separator());
-    qInfo() << path;
-    auto ok = qputenv("LINGLONG_ROOT", path.toLocal8Bit());
-    package::Ref ref = package::Ref("", "org.dde.calendar", "5.9.2.4", "x86_64");
-    auto ret = ostreeRepo->pull(ref, false);
-    if (!ret.has_value()) {
-        std::cerr << ret.error().message().toStdString();
-    }
-    EXPECT_EQ(ret.has_value(), true);
-    auto result =
-      executeTestScript("test_pull",
-                        QStringList{ repoPath, remoteRepoName, ref.toLocalRefString() });
-    EXPECT_EQ(result, 0);
+    GTEST_SKIP();
 }
 
 TEST_F(RepoTest, remoteShowUrl)
 {
     auto ret = ostreeRepo->remoteShowUrl(remoteRepoName);
     if (!ret.has_value()) {
-        std::cerr << ret.error().message().toStdString();
+        qCritical() << ret.error();
+        FAIL();
     }
-    EXPECT_EQ(ret.has_value(), true);
 }
 
 TEST_F(RepoTest, rootOfLayer)

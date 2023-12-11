@@ -1,38 +1,36 @@
-#!/bin/bash 
+#!/bin/bash
 
-set -e 
+set -e
+set -x
 
-# 仓库已经创建 
-workDir=`pwd`
-testRef=linglong/test_0/latest/x86_64/runtime
-
-create_commit() {
-    commit_dir=$workDir/commit_test_0
-    mkdir $commit_dir
-    commit_file="commit"
-    touch ${commit_dir}/${commit_file}
-    output=`ostree commit --repo=$workDir/repo-test/repo -b $testRef $commit_dir`
+create_files() {
+        mkdir -p tmp
+        files=(tmp/test_file.txt)
+        for file in "${files[@]}"; do
+                touch "$file"
+        done
+        find tmp -type f | sed 's/^tmp\///g'
 }
 
-test_importdirectory() {
-    # $1 repo path
-    # $2 refs
-    # $3 commit file name 
-
-    ostree --repo=$1 ls $2 $3
+cleanup() {
+        rm -rf tmp
 }
 
-test_checkout() {
-    ls "$1"
+check_commit() {
+        repo=$1
+        shift
+        ref=$1
+        shift
+        file=$1
+        shift
+
+        ostree --repo="$repo" ls "$ref" "$file" --nul-filenames-only | strings
 }
 
-test_remoteadd() {
-    ostree remote show-url --repo=$1 $2
+check_files() {
+        for file in "$@"; do
+                test -f ."$file"
+        done
 }
-
-test_pull() {
-    ls $1/repo/refs/remotes/$2/$3
-}
-
 
 "$@"

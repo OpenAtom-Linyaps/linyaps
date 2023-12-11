@@ -81,4 +81,11 @@ using Result = tl::expected<Value, Error>;
     {               \
     }
 
+inline QDebug operator<<(QDebug debug, const linglong::utils::error::Error &err)
+{
+    debug.noquote().nospace() << "[code " << err.code() << " ] message:" << Qt::endl
+                              << "\t" << err.message().replace("\n", "\n\t");
+    return debug;
+}
+
 #endif // LINGLONG_UTILS_ERROR_H_

@@ -18,8 +18,3 @@ target_link_libraries(repo_client_test PRIVATE
     Qt5::Widgets
     linglong
 )
-install(TARGETS repo_client_test
-    RUNTIME DESTINATION "${INSTALL_EXAMPLEDIR}"
-    BUNDLE DESTINATION "${INSTALL_EXAMPLEDIR}"
-    LIBRARY DESTINATION "${INSTALL_EXAMPLEDIR}"
-)

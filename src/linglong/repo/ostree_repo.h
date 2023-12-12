@@ -10,11 +10,9 @@
 #include "linglong/package/package.h"
 #include "linglong/repo/repo.h"
 #include "linglong/repo/repo_client.h"
-#include "linglong/repo/repo_common.h"
 #include "linglong/util/config/config.h"
 #include "linglong/util/erofs.h"
 #include "linglong/util/file.h"
-#include "linglong/util/http/http_client.h"
 #include "linglong/util/qserializer/json.h"
 #include "linglong/utils/error/error.h"
 
@@ -27,16 +25,6 @@
 
 namespace linglong {
 namespace repo {
-
-class InfoResponse : public JsonSerialize
-{
-    Q_OBJECT;
-    Q_JSON_CONSTRUCTOR(InfoResponse)
-
-    Q_JSON_PROPERTY(int, code);
-    Q_JSON_PROPERTY(QString, msg);
-    Q_JSON_PROPERTY(ParamStringMap, revs);
-};
 
 class RevPair : public JsonSerialize
 {
@@ -60,7 +48,6 @@ class UploadResponseData : public Serialize
 } // namespace repo
 } // namespace linglong
 
-Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::repo, InfoResponse)
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::repo, RevPair)
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::repo, UploadResponseData)
 
@@ -129,8 +116,6 @@ public:
 
     linglong::utils::error::Result<void> importDirectory(const package::Ref &ref,
                                                          const QString &path) override;
-
-    linglong::utils::error::Result<void> push(const package::Ref &ref, bool force) override;
 
     linglong::utils::error::Result<void> push(const package::Ref &ref) override;
 
@@ -500,10 +485,10 @@ private:
         return QString::fromLatin1(commitID);
     }
 
-    linglong::utils::error::Result<QSharedPointer<InfoResponse>>
+    linglong::utils::error::Result<QSharedPointer<api::client::GetRepo_200_response>>
     getRepoInfo(const QString &repoName)
     {
-        linglong::utils::error::Result<QSharedPointer<InfoResponse>> ret;
+        linglong::utils::error::Result<QSharedPointer<api::client::GetRepo_200_response>> ret;
 
         QEventLoop loop;
         QEventLoop::connect(
@@ -516,13 +501,8 @@ private:
                   ret = LINGLONG_ERR(resp.getCode(), resp.getMsg());
                   return;
               }
-              QJsonObject obj = resp.asJsonObject();
-              QJsonDocument doc(obj);
-              auto bytes = doc.toJson();
-              // TODO(wurongjie)
-              // InfoResponse的结构和实际服务器返回的并不一致，但方法的返回值没有被用到，所以目前还没有问题
-              auto respJson = util::loadJsonBytes<InfoResponse>(bytes);
-              ret = respJson;
+              auto respPointer = new api::client::GetRepo_200_response(resp);
+              ret = QSharedPointer<api::client::GetRepo_200_response>(respPointer);
           },
           loop.thread() == apiClient.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
         QEventLoop::connect(
@@ -574,28 +554,6 @@ private:
         return ret;
     }
 
-    // TODO(wurongjie) 弃用的方法
-    linglong::utils::error::Result<QString> newUploadTask(const QString &repoName,
-                                                          QSharedPointer<UploadTaskRequest> req)
-    {
-        // TODO(wurongjie) 服务端没有这个接口
-        QUrl url(QString("%1/api/v1/blob/%2/upload").arg(remoteEndpoint, repoName));
-        QNetworkRequest request(url);
-
-        auto data = std::get<0>(util::toJSON(req));
-
-        request.setRawHeader(QByteArray("X-Token"), remoteToken.toLocal8Bit());
-        auto reply = httpClient.post(request, data);
-        data = reply->readAll();
-
-        QSharedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
-        qDebug() << "new upload task" << data;
-        if (info->code != 200) {
-            return LINGLONG_ERR(-1, info->msg);
-        }
-        return info->data->id;
-    }
-
     linglong::utils::error::Result<void> doUploadTask(const QString &taskID,
                                                       const QString &filePath)
     {
@@ -628,82 +586,6 @@ private:
         apiClient.uploadTaskFile(remoteToken, taskID, file);
         loop.exec();
         return ret;
-    }
-
-    // TODO(wurongjie) 弃用的方法
-    linglong::utils::error::Result<void> doUploadTask(const QString &repoName,
-                                                      const QString &taskID,
-                                                      const QList<OstreeRepoObject> &objects)
-    {
-        linglong::utils::error::Result<void> err;
-        QByteArray fileData;
-
-        // TODO(wurongjie) 服务端没有这个接口
-        QUrl url(QString("%1/api/v1/blob/%2/upload/%3").arg(remoteEndpoint, repoName, taskID));
-        QNetworkRequest request(url);
-        request.setRawHeader(QByteArray("X-Token"), remoteToken.toLocal8Bit());
-
-        QScopedPointer<QHttpMultiPart> multiPart(new QHttpMultiPart(QHttpMultiPart::FormDataType));
-
-        // FIXME: add link support
-        QList<QHttpPart> partList;
-        partList.reserve(objects.size());
-
-        for (const auto &obj : objects) {
-            partList.push_back(QHttpPart());
-            auto filePart = partList.last();
-
-            QFileInfo fi(obj.path);
-            if (fi.isSymLink() && false) {
-                filePart.setHeader(QNetworkRequest::ContentDispositionHeader,
-                                   QVariant(QString("form-data; name=\"%1\"; filename=\"%2\"")
-                                              .arg("link", obj.objectName)));
-                filePart.setBody(QString("%1:%2").arg(obj.objectName, obj.path).toUtf8());
-            } else {
-                QString objectName = obj.objectName;
-                if (fi.fileName().endsWith(".file")) {
-                    objectName += "z";
-                    auto result = compressFile(obj.path);
-                    filePart.setHeader(
-                      QNetworkRequest::ContentDispositionHeader,
-                      QVariant(
-                        QString(R"(form-data; name="%1"; filename="%2")").arg("file", objectName)));
-                    filePart.setBody(*result);
-                } else {
-                    auto *file = new QFile(obj.path, multiPart.data());
-                    file->open(QIODevice::ReadOnly);
-                    filePart.setHeader(QNetworkRequest::ContentDispositionHeader,
-                                       QVariant(QString(R"(form-data; name="%1"; filename="%2")")
-                                                  .arg("file", obj.objectName)));
-                    filePart.setBodyDevice(file);
-                }
-            }
-            multiPart->append(filePart);
-            qDebug() << fi.isSymLink() << "send " << obj.objectName << obj.path;
-        }
-
-        auto reply = httpClient.put(request, multiPart.data());
-        auto data = reply->readAll();
-
-        qDebug() << "doUpload" << data;
-
-        QSharedPointer<UploadTaskResponse> info(util::loadJsonBytes<UploadTaskResponse>(data));
-        if (200 != info->code) {
-            return LINGLONG_ERR(-1, info->msg);
-        }
-
-        return LINGLONG_OK;
-    }
-
-    // TODO(wurongjie) 弃用的方法
-    linglong::utils::error::Result<void> cleanUploadTask(const QString &repoName,
-                                                         const QString &taskID)
-    {
-        QUrl url(QString("%1/api/v1/blob/%2/upload/%3").arg(remoteEndpoint, repoName, taskID));
-        QNetworkRequest request(url);
-        // FIXME: check error
-        httpClient.del(request);
-        return LINGLONG_OK;
     }
 
     linglong::utils::error::Result<void> cleanUploadTask(const package::Ref &ref,
@@ -791,8 +673,6 @@ private:
 
     std::unique_ptr<OstreeRepo, OstreeRepoDeleter> repoPtr = nullptr;
     QString ostreePath;
-
-    util::HttpRestClient httpClient;
 
     repo::RepoClient repoClient;
     api::client::ClientApi &apiClient;

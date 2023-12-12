@@ -7,7 +7,6 @@
 #include "app_manager.h"
 
 #include "linglong/repo/ostree_repo.h"
-#include "linglong/repo/vfs_repo.h"
 #include "linglong/runtime/app.h"
 #include "linglong/util/app_status.h"
 #include "linglong/util/file.h"

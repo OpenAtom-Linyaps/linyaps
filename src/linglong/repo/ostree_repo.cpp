@@ -38,7 +38,6 @@ namespace {
 const int MAX_ERRINFO_BUFSIZE = 512;
 }
 
-QSERIALIZER_IMPL(InfoResponse);
 QSERIALIZER_IMPL(RevPair);
 QSERIALIZER_IMPL(UploadResponseData);
 
@@ -195,81 +194,6 @@ linglong::utils::error::Result<void> OSTreeRepo::push(const package::Ref &ref)
         return LINGLONG_EWRAP("call cleanUploadTask failed", ret.error());
     }
     return LINGLONG_OK;
-}
-
-// TODO(wurongjie) 弃用的方法
-linglong::utils::error::Result<void> OSTreeRepo::push(const package::Ref &ref, bool /*force*/)
-{
-    {
-        auto ret = getToken();
-        if (!ret.has_value()) {
-            return LINGLONG_EWRAP("get token failed", ret.error());
-        }
-    }
-
-    QSharedPointer<UploadTaskRequest> uploadTaskReq(new UploadTaskRequest);
-
-    // FIXME: no need,use /v1/meta/:id
-    auto repoInfo = getRepoInfo(remoteRepoName);
-    if (!repoInfo.has_value()) {
-        return LINGLONG_EWRAP("get repo info", repoInfo.error());
-    }
-
-    QString commitID;
-    {
-        auto ret = resolveRev(ref.toOSTreeRefLocalString());
-        if (!ret.has_value()) {
-            return LINGLONG_EWRAP("push failed:" + ref.toOSTreeRefLocalString(), ret.error());
-        }
-        if (ret.has_value()) {
-            commitID = *ret;
-        }
-    }
-    qDebug() << "push commit" << commitID << ref.toOSTreeRefLocalString();
-
-    auto revPair = QSharedPointer<RevPair>(new RevPair);
-
-    // upload msg, should specific channel in ref
-    uploadTaskReq->refs[ref.toOSTreeRefLocalString()] = revPair;
-    revPair->client = commitID;
-    // FIXME: get server version to compare
-    revPair->server = "";
-
-    QList<OstreeRepoObject> objects;
-    {
-        // find files to commit
-        auto ret = findObjectsOfCommits({ commitID });
-        if (!ret.has_value()) {
-            return LINGLONG_EWRAP("call findObjectsOfCommits failed", ret.error());
-        }
-
-        objects = *ret;
-    }
-
-    for (auto const &obj : objects) {
-        uploadTaskReq->objects.push_back(obj.objectName);
-    }
-
-    // send files
-    QString taskID;
-    {
-        auto ret = newUploadTask(remoteRepoName, uploadTaskReq);
-        if (!ret.has_value()) {
-            return LINGLONG_EWRAP("call newUploadTask failed", ret.error());
-        }
-        taskID = *ret;
-    }
-
-    {
-        auto ret = doUploadTask(remoteRepoName, taskID, objects);
-        if (!ret.has_value()) {
-            cleanUploadTask(remoteRepoName, taskID);
-            return LINGLONG_EWRAP("call newUploadTask failed", ret.error());
-        }
-    }
-
-    return LINGLONG_EWRAP("call cleanUploadTask failed",
-                          cleanUploadTask(remoteRepoName, taskID).error());
 }
 
 linglong::utils::error::Result<void> OSTreeRepo::pull(package::Ref &ref, bool /*force*/)
@@ -939,27 +863,6 @@ void OSTreeRepo::getPkgRefsBySummary(GVariant *summary, std::map<std::string, st
     ref_map = g_variant_get_child_value(summary, 0);
     // metadata = g_variant_get_child_value(summary, 1);
     getPkgRefsFromRefsMap(ref_map, outRefs);
-}
-
-/*
- * 解析仓库软件包索引 ref 信息
- *
- * @param fullRef: 目标软件包索引 ref 信息
- * @param result: 解析结果
- *
- * @return bool: true:成功 false:失败
- */
-bool OSTreeRepo::resolveRef(const std::string &fullRef, std::vector<std::string> &result)
-{
-    // vector<string> result;
-    splitStr(fullRef, "/", result);
-    // new ref format org.deepin.calculator/1.2.2/x86_64
-    if (result.size() != 3) {
-        qCritical() << "resolveRef Wrong number of components err";
-        return false;
-    }
-
-    return true;
 }
 
 /*

@@ -36,8 +36,6 @@ public:
     virtual linglong::utils::error::Result<void> importDirectory(const package::Ref &ref,
                                                                  const QString &path) = 0;
 
-    virtual linglong::utils::error::Result<void> push(const package::Ref &ref, bool force) = 0;
-
     virtual linglong::utils::error::Result<void> push(const package::Ref &ref) = 0;
 
     virtual linglong::utils::error::Result<void> pull(package::Ref &ref, bool force) = 0;

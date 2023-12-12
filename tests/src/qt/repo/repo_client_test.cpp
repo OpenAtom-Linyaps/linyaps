@@ -8,7 +8,8 @@
 #include "linglong/repo/repo_client.h"
 
 #include <QTest>
-using namespace ::linglong;
+
+using namespace linglong;
 using namespace linglong::api::client;
 
 class TestRepoClient : public QObject

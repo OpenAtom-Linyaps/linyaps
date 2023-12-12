@@ -10,7 +10,6 @@
 #include "linglong/util/config/config.h"
 #include "linglong/util/error.h"
 #include "linglong/util/file.h"
-#include "linglong/util/http/http_client.h"
 #include "linglong/util/qserializer/deprecated.h"
 #include "linglong/utils/error/error.h"
 
@@ -25,36 +24,6 @@ namespace repo {
 using namespace api::client;
 
 QSERIALIZER_IMPL(Response);
-
-QJsonObject getUserInfo()
-{
-    auto filePath = util::getUserFile(".linglong/.user.json");
-    QJsonObject infoObj;
-
-    QFile file(filePath);
-    if (file.exists()) {
-        file.open(QIODevice::ReadOnly);
-
-        QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-        infoObj = doc.object();
-
-        file.close();
-    } else {
-        QTextStream qin(stdin, QIODevice::ReadOnly);
-        QString name;
-        QString password;
-
-        // FIXME: DO NOT log to console, should use tui output
-        qInfo() << "please enter ldap account: ";
-        qin >> name;
-        qInfo() << "please enter password: ";
-        qin >> password;
-        infoObj["username"] = name;
-        infoObj["password"] = password;
-    }
-
-    return infoObj;
-}
 
 linglong::utils::error::Result<QList<QSharedPointer<package::AppMetaInfo>>>
 RepoClient::QueryApps(const package::Ref &ref)

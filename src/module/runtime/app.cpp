@@ -887,7 +887,9 @@ public:
         }
         QPointer<Mount> m(new Mount(r));
         m->type = "bind";
-        m->source = tmp.absolutePath();
+        // m->source = tmp.absolutePath();
+        // quickfix: mount host /tmp into container
+        m->source = tmpPath;
         m->destination = tmpPath;
         m->options = QStringList({ "rbind" });
         r->mounts.push_back(m);

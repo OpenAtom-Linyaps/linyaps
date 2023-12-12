@@ -724,7 +724,7 @@ private:
 
     struct OstreeRepoDeleter
     {
-        static void operator()(OstreeRepo *repo)
+        void operator()(OstreeRepo *repo)
         {
             qDebug() << "delete OstreeRepo" << repo;
             g_clear_object(&repo);

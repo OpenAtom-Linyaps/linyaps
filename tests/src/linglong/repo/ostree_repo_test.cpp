@@ -13,11 +13,10 @@
 #include "linglong/utils/serialize/yaml.h"
 #include "utils/serialize/TestStruct.h"
 
-#include <qdir.h>
-#include <qprocess.h>
-#include <qstandardpaths.h>
-
 #include <QDir>
+#include <QProcess>
+#include <QStandardPaths>
+#include <QTemporaryDir>
 
 #include <cstddef>
 #include <iostream>
@@ -68,10 +67,13 @@ protected:
     QString remoteEndpoint;
     QString remoteRepoName;
 
+    std::unique_ptr<QTemporaryDir> dir;
+
     void SetUp() override
     {
-        repoPath = "repo";
-        ostreeRepoPath = "repo/repo";
+        dir = std::make_unique<QTemporaryDir>("repo");
+        repoPath = dir->path();
+        ostreeRepoPath = repoPath + "/repo";
         remoteEndpoint = "https://store-llrepo.deepin.com/repos/";
         remoteRepoName = "repo";
         ostreeRepo = std::make_unique<linglong::repo::OSTreeRepo>(repoPath,
@@ -82,15 +84,8 @@ protected:
 
     void TearDown() override
     {
-        auto files = executeTestScript({ "cleanup" });
-        if (!files.has_value()) {
-            qCritical() << "Cleanup files" << ostreeRepoPath << "failed:" << files.error();
-            FAIL();
-        }
-        qDebug() << "Cleanup files" << *files;
-
         ostreeRepo.reset(nullptr);
-        QDir(repoPath).removeRecursively();
+        dir.reset();
     }
 };
 
@@ -101,7 +96,7 @@ TEST_F(RepoTest, initialize)
 
 TEST_F(RepoTest, basicMethods)
 {
-    auto files = executeTestScript({ "create_files" });
+    auto files = executeTestScript({ "create_files", dir->path() + "/tmp" });
     if (!files.has_value()) {
         auto &err = files.error();
         qCritical() << "Create files for test failed:" << err;
@@ -111,7 +106,7 @@ TEST_F(RepoTest, basicMethods)
     qDebug() << "Create temporary files" << *files;
 
     QString appId = "test";
-    auto ret = ostreeRepo->importDirectory(package::Ref(appId), "tmp");
+    auto ret = ostreeRepo->importDirectory(package::Ref(appId), dir->path() + "/tmp");
     if (!ret.has_value()) {
         qCritical() << "Failed to import directory into ostree based linglong repository:"
                     << ret.error();
@@ -126,9 +121,9 @@ TEST_F(RepoTest, basicMethods)
     }
     qDebug() << "Check files in ref" << refToCheck << "success";
 
-    files = executeTestScript({ "cleanup" });
+    QDir(dir->path() + "/tmp").removeRecursively();
 
-    ret = ostreeRepo->checkoutAll(package::Ref(appId), "", "tmp");
+    ret = ostreeRepo->checkoutAll(package::Ref(appId), "", dir->path() + "/tmp");
     if (!ret.has_value()) {
         qCritical() << "Checkout reference" << appId << "failed:" << ret.error();
         FAIL();

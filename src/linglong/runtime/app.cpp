@@ -910,7 +910,9 @@ auto App::mountTmp() -> int
     }
     ocppi::runtime::config::types::Mount m;
     m.type = "bind";
-    m.source = tmp.absolutePath().toStdString();
+    // m.source = tmp.absolutePath().toStdString();
+    // quickfix: mount host /tmp into container
+    m.source = tmpPath.toStdString();
     m.destination = tmpPath.toStdString();
     m.options = { "rbind" };
     r.mounts->push_back(m);

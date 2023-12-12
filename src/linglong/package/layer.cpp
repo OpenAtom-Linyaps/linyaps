@@ -31,7 +31,7 @@ linglong::utils::error::Result<void> Layer::makeLayer(const QString &layerPath)
     }
 
     // write size of LayerInfo
-    QFile layerInfoFile();
+    QFile layerInfoFile{};
     if (!layerInfoFile.open(QIODevice::WriteOnly)) {
         return LINGLONG_ERR(-1, "failed to open the json of layerInfo");
     }
@@ -84,7 +84,8 @@ linglong::utils::error::Result<LayerInfo> Layer::readLayerInfo(const QString &la
     return layerInfo;
 }
 
-linglong::utils::error::Result<void> Layer::exportLayerData(const QString &layerPath, const QString &destPath)
+linglong::utils::error::Result<void> Layer::exportLayerData(const QString &layerPath,
+                                                            const QString &destPath)
 {
     auto layerInfo = readLayerInfo(layerPath);
 
@@ -103,12 +104,12 @@ linglong::utils::error::Result<void> Layer::exportLayerData(const QString &layer
 linglong::utils::error::Result<void> Layer::generateLayerInfo()
 {
     auto [info, err] = util::fromJSON<QSharedPointer<Info>>(layerDir.getInfoPath());
-       if (err) {
+    if (err) {
         return LINGLONG_ERR(err.code(), "failed to parse info.json");
     }
-   
+
     QFile compressedFile(tmpCompressedFile);
-    
+
     LayerInfo layerInfo;
     layerInfo.pkgInfo = info;
     layerInfo.version = layerInfoVerison;
@@ -128,7 +129,7 @@ linglong::utils::error::Result<void> Layer::compressData()
     if (!ret.has_value()) {
         LINGLONG_EWRAP("failed to compress the data file of layer", ret.error());
     }
-    
+
     return LINGLONG_OK;
 }
 

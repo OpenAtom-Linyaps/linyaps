@@ -205,6 +205,8 @@ pfl_add_library(
   ./src/linglong/package/reference.cpp
   ./src/linglong/package/fuzz_reference.h
   ./src/linglong/package/fuzz_reference.cpp
+  ./src/linglong/package/layer.h
+  ./src/linglong/package/layer.cpp
   ./src/linglong/package/module.h
   ./src/linglong/package/module.cpp
   ./src/linglong/package/version.h

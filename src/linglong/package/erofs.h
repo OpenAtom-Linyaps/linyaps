@@ -7,8 +7,9 @@
 #ifndef LINGLONG_PACKAGE_EROFS_H_
 #define LINGLONG_PACKAGE_EROFS_H_
 
-#include "linglong/util/error.h"
-#include "linglong/util/info.h"
+#include "linglong/package/compressor.h"
+#include "linglong/package/info.h"
+#include "linglong/utils/error/error.h"
 
 namespace linglong::package {
 

@@ -7,7 +7,7 @@
 #ifndef LINGLONG_PACKAGE_COMPRESSOR_H_
 #define LINGLONG_PACKAGE_COMPRESSOR_H_
 
-#include "linglong/util/error.h"
+#include "linglong/utils/error/error.h"
 
 #include <QString>
 

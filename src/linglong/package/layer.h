@@ -7,39 +7,16 @@
 #ifndef LINGLONG_PACKAGE_LAYER_H_
 #define LINGLONG_PACKAGE_LAYER_H_
 
-#include "linglong/util/error.h"
-#include "linglong/util/info.h"
+#include "linglong/package/info.h"
 #include "linglong/util/qserializer/deprecated.h"
+#include "linglong/utils/error/error.h"
 
+#include <QDir>
 #include <QString>
 
+#include <optional>
+
 namespace linglong::package {
-
-// layer [LayerInfoSize|LayerInfo|data]
-class LayerDir;
-class LayerInfo;
-
-class Layer
-{
-public:
-    explicit Layer(const LayerDir &dir);
-    ~Layer();
-
-    linglong::utils::error::Result<void> makeLayer(const QString &layerPath);
-
-    linglong::utils::error::Result<LayerInfo> getLayerInfo(const QString &layerPath);
-
-    linglong::utils::error::Result<QString> exportLayerData(const QString &layerPath,
-                                                            const QString &destPath);
-
-private:
-    linglong::utils::error::Result<void> generateLayerInfo();
-
-    linglong::utils::error::Result<void> compressData();
-    size_t layerInfoOffset;
-    QString layerWorkDir;
-    LayerDir layerDir;
-};
 
 class LayerInfo : public JsonSerialize
 {
@@ -52,18 +29,33 @@ public:
     Q_JSON_PTR_PROPERTY(linglong::package::Info, pkgInfo);
 };
 
-class LayerDir
+class LayerFile : public QFile
 {
 public:
-    explicit LayerDir(const QString &targetPath);
-
-    const QString getInfoPath() { return infoPath; }
-
-    const QString getDataPath() { return dataPath; }
-
+    using QFile::QFile;
+    utils::error::Result<LayerInfo> layerFileInfo() const;
+    QFile release();
 private:
-    QString infoPath;
-    QString dataPath;
+    bool cleanup = true;
+};
+
+class LayerDir : public QDir
+{
+public:
+    using QDir::QDir;
+    utils::error::Result<Info> info() const;
+    QDir release();
+};
+
+class LayerPackager : public QObject
+{
+public:
+    utils::error::Result<LayerFile> pack(const LayerDir &dir, const QString &destination) const;
+    utils::error::Result<LayerDir> unpack(const LayerFile &file, const QString &destination) const;
+};
+
+class ErofsLayerPackager : public LayerPackager
+{
 };
 
 } // namespace linglong::package

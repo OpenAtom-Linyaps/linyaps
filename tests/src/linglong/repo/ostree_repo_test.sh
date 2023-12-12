@@ -8,16 +8,15 @@ set -e
 set -x
 
 create_files() {
-        mkdir -p tmp
-        files=(tmp/test_file.txt)
+        tmpdir=$1
+        shift
+
+        mkdir -p "$tmpdir"
+        files=("$tmpdir"/test_file.txt)
         for file in "${files[@]}"; do
                 touch "$file"
         done
-        find tmp -type f | sed 's/^tmp\///g'
-}
-
-cleanup() {
-        rm -rf tmp
+        find "$tmpdir" -type f
 }
 
 check_commit() {

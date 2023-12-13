@@ -31,14 +31,15 @@ void withDBusDaemon()
                                                         QCoreApplication::instance());
     auto api = new linglong::api::client::ClientApi;
     api->setTimeOut(5000);
-    api->setNewServerForAllOperations(linglong::util::config::ConfigInstance().repos[0]->endpoint);
+    api->setNewServerForAllOperations(
+      linglong::util::config::ConfigInstance().repos[linglong::package::kDefaultRepo]->endpoint);
     api->setParent(QCoreApplication::instance());
 
-    auto ostreeRepo =
-      new linglong::repo::OSTreeRepo(linglong::util::getLinglongRootPath(),
-                                     linglong::util::config::ConfigInstance().repos[0]->endpoint,
-                                     linglong::util::config::ConfigInstance().repos[0]->repoName,
-                                     *api);
+    auto ostreeRepo = new linglong::repo::OSTreeRepo(
+      linglong::util::getLinglongRootPath(),
+      linglong::util::config::ConfigInstance().repos[linglong::package::kDefaultRepo]->endpoint,
+      linglong::util::config::ConfigInstance().repos[linglong::package::kDefaultRepo]->repoName,
+      *api);
     ostreeRepo->setParent(QCoreApplication::instance());
 
     auto client = new linglong::repo::RepoClient(*api);
@@ -105,13 +106,14 @@ void withoutDBusDaemon()
 
     auto api = new linglong::api::client::ClientApi;
     api->setParent(QCoreApplication::instance());
-    api->setNewServerForAllOperations(linglong::util::config::ConfigInstance().repos[0]->endpoint);
+    api->setNewServerForAllOperations(
+      linglong::util::config::ConfigInstance().repos[linglong::package::kDefaultRepo]->endpoint);
 
-    auto ostreeRepo =
-      new linglong::repo::OSTreeRepo(linglong::util::getLinglongRootPath(),
-                                     linglong::util::config::ConfigInstance().repos[0]->endpoint,
-                                     linglong::util::config::ConfigInstance().repos[0]->repoName,
-                                     *api);
+    auto ostreeRepo = new linglong::repo::OSTreeRepo(
+      linglong::util::getLinglongRootPath(),
+      linglong::util::config::ConfigInstance().repos[linglong::package::kDefaultRepo]->endpoint,
+      linglong::util::config::ConfigInstance().repos[linglong::package::kDefaultRepo]->repoName,
+      *api);
     ostreeRepo->setParent(QCoreApplication::instance());
 
     auto client = new linglong::repo::RepoClient(*api);

@@ -58,7 +58,7 @@ void withDBusDaemon()
         QCoreApplication::exit(-1);
         return;
     }
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [&conn] {
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn] {
         unregisterDBusObject(conn, "/org/deepin/linglong/PackageManager");
     });
 
@@ -70,12 +70,12 @@ void withDBusDaemon()
         QCoreApplication::exit(-1);
         return;
     }
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [&conn] {
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn] {
         unregisterDBusObject(conn, "/org/deepin/linglong/JobManager");
     });
 
     result = registerDBusService(conn, "org.deepin.linglong.PackageManager");
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [&conn] {
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn] {
         auto result = unregisterDBusService(conn,
                                             // FIXME: use cmake option
                                             "org.deepin.linglong.PackageManager");
@@ -88,8 +88,6 @@ void withDBusDaemon()
         QCoreApplication::exit(-1);
         return;
     }
-
-    qInfo() << "--";
 
     return;
 }
@@ -123,11 +121,10 @@ void withoutDBusDaemon()
                                                                 *ostreeRepo,
                                                                 *client,
                                                                 QCoreApplication::instance());
-    auto packageManagerAdaptor =
-      new linglong::adaptors::package_manger::PackageManager1(packageManager);
+    new linglong::adaptors::package_manger::PackageManager1(packageManager);
 
     auto jobMan = new linglong::job_manager::JobManager(*ostreeRepo, QCoreApplication::instance());
-    auto jobManAdaptor = new linglong::adaptors::job_manger::JobManager1(jobMan);
+    new linglong::adaptors::job_manger::JobManager1(jobMan);
 
     QDir::root().mkpath("/run/linglong");
     auto server =

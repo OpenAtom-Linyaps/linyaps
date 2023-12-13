@@ -44,7 +44,7 @@ auto main(int argc, char *argv[]) -> int
                                      // FIXME: use cmake option
                                      "/org/deepin/linglong/AppManager",
                                      &appManager);
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [&conn] {
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn] {
         unregisterDBusObject(conn,
                              // FIXME: use cmake option
                              "/org/deepin/linglong/AppManager");
@@ -57,7 +57,7 @@ auto main(int argc, char *argv[]) -> int
     result = registerDBusService(conn,
                                  // FIXME: use cmake option
                                  "org.deepin.linglong.AppManager");
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [&conn] {
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn] {
         auto result = unregisterDBusService(conn,
                                             // FIXME: use cmake option
                                             "org.deepin.linglong.AppManager");

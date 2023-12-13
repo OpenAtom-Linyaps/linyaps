@@ -148,7 +148,6 @@ std::tuple<QString, linglong::util::Error> SourceFetcherPrivate::fetchArchiveFil
     loop.exec();
     // 将缓存写入文件
     file->close();
-
     if (source->digest != util::fileHash(path, QCryptographicHash::Sha256)) {
         qCritical()
           << QString("mismatched hash: %1").arg(util::fileHash(path, QCryptographicHash::Sha256));
@@ -271,6 +270,15 @@ linglong::util::Error SourceFetcher::fetch()
         err = d->extractFile(s, d->sourceTargetPath());
     } else if (d->source->kind == "local") {
         err = d->handleLocalSource();
+    } else if (d->source->kind == "file") {
+        QString s;
+        std::tie(s, err) = d->fetchArchiveFile();
+        if (err) {
+            return err;
+        }
+
+        QFile::copy(BuilderConfig::instance()->targetFetchCachePath() + "/" + d->filename(),
+                    BuilderConfig::instance()->targetSourcePath() + "/" + d->filename());
     } else {
         return NewError(-1, "unknown source kind");
     }

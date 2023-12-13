@@ -30,8 +30,6 @@
 #include <cstddef>
 #include <utility>
 
-#include <fcntl.h>
-
 namespace linglong {
 namespace repo {
 
@@ -305,7 +303,6 @@ linglong::utils::error::Result<void> OSTreeRepo::listRemoteRefs()
 linglong::utils::error::Result<void> OSTreeRepo::pullAll(const package::Ref &ref, bool /*force*/)
 {
     // FIXME(black-desk): pullAll should not belong to this class.
-
     auto refs = package::Ref(
       QStringList{ ref.channel, ref.appId, ref.version, ref.arch, "runtime" }.join("/"));
     auto ret = pull(refs, false);
@@ -338,6 +335,7 @@ linglong::utils::error::Result<void> OSTreeRepo::checkout(const package::Ref &re
     if (!subPath.isEmpty()) {
         checkout_options.subpath = subPath.toStdString().c_str();
     }
+    qInfo() << "print ref string for checkout:" << ref.toOSTreeRefLocalString();
     auto rev = resolveRev(ref.toOSTreeRefLocalString());
     if (!rev.has_value()) {
         return LINGLONG_EWRAP(rev.error());
@@ -348,7 +346,6 @@ linglong::utils::error::Result<void> OSTreeRepo::checkout(const package::Ref &re
         auto err = LINGLONG_ERR(-1, QString("failed to mkdir %1").arg(target));
         return LINGLONG_EWRAP(err.value());
     }
-
     ostree_repo_checkout_at(repoPtr.get(),
                             &checkout_options,
                             AT_FDCWD,

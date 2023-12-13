@@ -27,9 +27,11 @@
 #include "ocppi/runtime/config/ConfigLoader.hpp"
 #include "ocppi/runtime/config/types/Hook.hpp"
 #include "ocppi/runtime/config/types/Hooks.hpp"
+#include "project.h"
 #include "source_fetcher.h"
 
 #include <linux/prctl.h>
+#include <ocppi/runtime/config/types/IdMapping.hpp>
 #include <sys/prctl.h>
 #include <yaml-cpp/yaml.h>
 
@@ -237,7 +239,6 @@ linglong::util::Error LinglongBuilder::commitBuildOutput(Project *project,
             return NewError(develInfoFile.error(), develInfoFile.errorString());
         }
         develInfoFile.close();
-
         QFile sourceConfigFile(project->configFilePath);
         if (!sourceConfigFile.copy(project->config().cacheInstallPath("linglong.yaml"))) {
             return NewError(sourceConfigFile.error(), sourceConfigFile.errorString());
@@ -344,7 +345,6 @@ int LinglongBuilder::startContainer(QSharedPointer<Container> c,
 
     r.root->path = c->workingDirectory.toStdString() + "/root";
     util::ensureDir(r.root->path.c_str());
-
     // write pid file
     QFile pidFile(c->workingDirectory + QString("/%1.pid").arg(getpid()));
     pidFile.open(QIODevice::WriteOnly);
@@ -400,6 +400,27 @@ int LinglongBuilder::startContainer(QSharedPointer<Container> c,
     auto result = util::loadJsonString<message>(msg);
 
     return result->wstatus;
+}
+
+linglong::util::Error LinglongBuilder::generate(const QString &projectName)
+{
+    auto projectPath = QStringList{ QDir::currentPath(), projectName }.join(QDir::separator());
+    auto configFilePath = QStringList{ projectPath, "linglong.yaml" }.join(QDir::separator());
+    auto templeteFilePath =
+      QStringList{ BuilderConfig::instance()->templatePath(), "appimage.yaml" }.join(
+        QDir::separator());
+
+    auto ret = QDir().mkpath(projectPath);
+    if (!ret) {
+        return NewError(-1, "project already exists");
+    }
+    if (QFileInfo::exists(templeteFilePath)) {
+        QFile::copy(templeteFilePath, configFilePath);
+    } else {
+        QFile::copy(":/appimage.yaml", configFilePath);
+    }
+
+    return Success();
 }
 
 linglong::util::Error LinglongBuilder::create(const QString &projectName)
@@ -512,6 +533,7 @@ linglong::util::Error LinglongBuilder::build()
 
                 err = buildFlow(subProject.get());
                 if (err) {
+                    qWarning() << "failed to build: " << err.message();
                     return err;
                 }
 
@@ -609,7 +631,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
     hostBasePath = BuilderConfig::instance()->layerPath({ baseRef.toLocalRefString(), "" });
     err = baseFetcher.fetch("", hostBasePath);
     if (err) {
-        return WrapError(err, "fetch runtime failed");
+        return WrapError(err, "fetch base failed");
     }
 
     // depends fetch

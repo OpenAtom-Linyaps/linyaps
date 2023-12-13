@@ -38,7 +38,7 @@ int main(int argc, char **argv)
     parser.addOptions({ optVerbose });
     parser.addHelpOption();
 
-    QStringList subCommandList = { "create", "build", "run", "export", "push" };
+    QStringList subCommandList = { "create", "build", "run", "export", "push", "generate" };
 
     parser.addPositionalArgument("subcommand",
                                  subCommandList.join("\n"),
@@ -75,6 +75,31 @@ int main(int argc, char **argv)
     linglong::builder::LinglongBuilder builder(ostree);
 
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
+        { "generate",
+          [&](QCommandLineParser &parser) -> int {
+              parser.clearPositionalArguments();
+              parser.addPositionalArgument("generate",
+                                           "generate yaml config for building with AppImage file",
+                                           "generate");
+              parser.addPositionalArgument("id", "package id", "id");
+
+              parser.process(app);
+
+              auto args = parser.positionalArguments();
+              auto projectName = args.value(1);
+
+              if (projectName.isEmpty()) {
+                  parser.showHelp(-1);
+              }
+
+              auto err = builder.generate(projectName);
+
+              if (err) {
+                  qDebug() << err;
+              }
+
+              return err.code();
+          } },
         { "create",
           [&](QCommandLineParser &parser) -> int {
               parser.clearPositionalArguments();

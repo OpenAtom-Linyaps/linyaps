@@ -84,6 +84,7 @@ int Project::generateBuildScript(const QString &path)
     command += "#global variable\n";
     command += QString("JOBS=%1\n").arg("6");
     command += QString("VERSION=%1\n").arg(package->version);
+    command += QString("APPID=%1\n").arg(package->id);
 
     if (config().targetArch() == "x86_64") {
         command += QString("ARCH=\"%1\"\n").arg("x86_64");
@@ -109,6 +110,8 @@ int Project::generateBuildScript(const QString &path)
             templateName = "cmake.yaml";
         } else if (build->kind == "autotools") {
             templateName = "autotools.yaml";
+        } else if (build->kind == "makeimage") {
+            templateName = "makeimage.yaml";
         } else {
             qWarning().noquote() << QString("unknown build type: %1").arg(build->kind);
             return -1;
@@ -123,7 +126,6 @@ int Project::generateBuildScript(const QString &path)
 
     util::Error err;
     QSharedPointer<Template> temp;
-
     if (QFileInfo::exists(templatePath)) {
         std::tie(temp, err) = util::fromYAML<QSharedPointer<Template>>(templatePath);
     } else {

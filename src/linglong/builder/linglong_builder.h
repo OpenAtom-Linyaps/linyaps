@@ -49,6 +49,8 @@ public:
 
     linglong::util::Error buildFlow(Project *project);
 
+    linglong::util::Error generate(const QString &projectName) override;
+
 private:
     repo::OSTreeRepo &repo;
     linglong::util::Error commitBuildOutput(Project *project, const nlohmann::json &overlayfs);

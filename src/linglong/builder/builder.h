@@ -39,6 +39,8 @@ public:
     virtual linglong::util::Error track() = 0;
 
     virtual linglong::util::Error run() = 0;
+
+    virtual linglong::util::Error generate(const QString &projectName) = 0;
 };
 
 } // namespace builder

@@ -69,7 +69,6 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
               << QString("offline dependency: %1 %2").arg(dependRef.appId).arg(dependRef.version);
         } else {
             dependRef = ostree.remoteLatestRef(dependRef);
-
             qInfo()
               << QString("fetching dependency: %1 %2").arg(dependRef.appId).arg(dependRef.version);
             auto ret = ostree.pullAll(dependRef, true);
@@ -83,7 +82,6 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
     QDir targetParentDir(targetPath);
     targetParentDir.cdUp();
     targetParentDir.mkpath(".");
-
     {
         auto ret = ostree.checkoutAll(dependRef, subPath, targetPath);
 

@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+
+package:
+  id: org.deepin.demo
+  name: deepin-demo
+  version: 0.0.1
+  kind: app
+  description: |
+    simple qt demo.
+
+runtime:
+  id: org.deepin.Runtime
+  version: 23.0.0
+
+source:
+  kind: file
+  url: "PUT YOUR URL HERE"
+  digest: "PUT YOUR SHA256 CHECKSUM HERE"
+
+build:
+  kind: makeimage

@@ -12,5 +12,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
     <file alias="default.yaml">../../../misc/linglong/builder/templates/default.yaml</file>
     <file alias="qmake.yaml">../../../misc/linglong/builder/templates/qmake.yaml</file>
     <file alias="example.yaml">../../../misc/linglong/builder/templates/example.yaml</file>
+    <file alias="appimage.yaml">../../../misc/linglong/builder/templates/appimage.yaml</file>
+    <file alias="makeimage.yaml">../../../misc/linglong/builder/templates/makeimage.yaml</file>
   </qresource>
 </RCC>

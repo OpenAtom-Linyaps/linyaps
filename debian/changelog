@@ -1,3 +1,11 @@
+linglong (1.3.18-1) unstable; urgency=medium
+
+  This release include some backports:
+  * fix: some app failed to use gsettings
+  * some app failed to share data by /tmp
+
+ -- chenhuixing <chenhuixing@uniontech.com>  Thu, 14 Dec 2023 18:03:47 +0800
+
 linglong (1.3.17-1) unstable; urgency=medium
 
   * fix: some app run failed in other linux distro 

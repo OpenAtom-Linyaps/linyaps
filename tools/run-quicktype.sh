@@ -119,3 +119,10 @@ generate \
         "linglong::builder::config" \
         "$include" \
         "linglong/builder/config"
+
+generate \
+        "$repoRoot/api/JSON Schema/LayerInfo.json" \
+        LayerInfo \
+        "linglong::package::layer" \
+        "$include" \
+        "linglong/package/layer"

@@ -14,21 +14,26 @@
 
 namespace linglong::package {
 
-// layer file [LayerInfoSize | LayerInfo | compressedData]
+// layer file [magic number 40bytes | LayerInfoSize 4bytes | LayerInfo | compressedData]
+// fill magicNumber with 0 to 40bytes
+const QByteArray magicNumber = QByteArray("<<< deepin linglong layer archive >>>").leftJustified(40, 0);
+
 class LayerFile : public QFile
 {
 public:
-    using QFile::QFile;
     ~LayerFile();
-    utils::error::Result<layer::LayerInfo> layerFileInfo();
+    utils::error::Result<layer::LayerInfo> layerFileInfo() noexcept;
 
-    utils::error::Result<quint32> layerOffset();
+    utils::error::Result<quint32> layerOffset() noexcept;
 
-    utils::error::Result<void> saveTo(const QString &destination);
+    utils::error::Result<void> saveTo(const QString &destination) noexcept;
 
-    void setCleanStatus(bool status);
+    void setCleanStatus(bool status) noexcept;
+
+    static utils::error::Result<QSharedPointer<LayerFile>> openLayer(const QString &path) noexcept;
 
 private:
+    explicit LayerFile(const QString &path);
     utils::error::Result<quint32> layerInfoSize();
 
     bool cleanup = false;

@@ -41,7 +41,7 @@ License: CC0-1.0
 Copyright: None
 
 # generated code
-Files: src/linglong/builder/project/* src/linglong/builder/config/* src/linglong/package/layer/*
+Files: src/linglong/builder/project/* src/linglong/builder/config/* src/linglong/package/layer/* src/linglong/repo/config/*
 License: CC0-1.0
 Copyright: None
 

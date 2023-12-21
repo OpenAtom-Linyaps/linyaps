@@ -126,3 +126,10 @@ generate \
         "linglong::package::layer" \
         "$include" \
         "linglong/package/layer"
+
+generate \
+        "$repoRoot/api/JSON Schema/repo-config-v1.json" \
+        ConfigV1 \
+        "linglong::repo::config" \
+        "$include" \
+        "linglong/repo/config"

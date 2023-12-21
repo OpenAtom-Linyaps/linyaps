@@ -13,6 +13,18 @@ namespace linglong::package {
 
 using nlohmann::json;
 
+LayerFile::LayerFile(const QString &path)
+    : QFile(path)
+{
+    if (!this->open(QIODevice::ReadOnly)) {
+        throw std::runtime_error("open layer failed");
+    }
+
+    if (this->read(magicNumber.size()) != magicNumber) {
+        throw std::runtime_error("invalid magic number, this is not a layer");
+    }
+}
+
 LayerFile::~LayerFile()
 {
     if (this->cleanup) {
@@ -20,12 +32,22 @@ LayerFile::~LayerFile()
     }
 }
 
-void LayerFile::setCleanStatus(bool status)
+utils::error::Result<QSharedPointer<LayerFile>> LayerFile::openLayer(const QString &path) noexcept
+{
+    try {
+        QSharedPointer<LayerFile> layerFile(new LayerFile(path));
+        return layerFile;
+    } catch (const std::exception &e) {
+        return LINGLONG_ERR(-1, e.what());
+    }
+}
+
+void LayerFile::setCleanStatus(bool status) noexcept
 {
     this->cleanup = status;
 }
 
-utils::error::Result<layer::LayerInfo> LayerFile::layerFileInfo()
+utils::error::Result<layer::LayerInfo> LayerFile::layerFileInfo() noexcept
 {
     auto ret = layerInfoSize();
     if (!ret.has_value()) {
@@ -44,11 +66,8 @@ utils::error::Result<layer::LayerInfo> LayerFile::layerFileInfo()
 
 utils::error::Result<quint32> LayerFile::layerInfoSize()
 {
-    if (!this->isOpen() && !this->open(QIODevice::ReadOnly)) {
-        return LINGLONG_ERR(-1, "failed to open layer file");
-    }
-    // read from offset 0 everytime
-    this->seek(0);
+    // read from position magicNumber.size() everytime
+    this->seek(magicNumber.size());
 
     quint32 layerInfoSize;
     this->read(reinterpret_cast<char *>(&layerInfoSize), sizeof(quint32));
@@ -56,17 +75,17 @@ utils::error::Result<quint32> LayerFile::layerInfoSize()
     return layerInfoSize;
 }
 
-utils::error::Result<quint32> LayerFile::layerOffset()
+utils::error::Result<quint32> LayerFile::layerOffset() noexcept
 {
     auto size = layerInfoSize();
     if (!size.has_value()) {
         return LINGLONG_EWRAP("get LayerInfo size failed", size.error());
     }
 
-    return *size + sizeof(quint32);
+    return magicNumber.size() + *size + sizeof(quint32);
 }
 
-utils::error::Result<void> LayerFile::saveTo(const QString &destination)
+utils::error::Result<void> LayerFile::saveTo(const QString &destination) noexcept
 {
     if (!this->copy(destination)) {
         return LINGLONG_ERR(-1, QString("failed to save layer file to %1").arg(destination));

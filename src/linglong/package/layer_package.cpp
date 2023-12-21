@@ -57,12 +57,14 @@ utils::error::Result<QSharedPointer<LayerFile>> LayerPackager::pack(const LayerD
     if (!layerInfoData.has_value()) {
         return LINGLONG_EWRAP("failed to convert LayerInfo to Json data", layerInfoData.error());
     }
-    // write data, [LayerInfoSize | LayerInfo | compressed data ]
+    // write data, [magic number |LayerInfoSize | LayerInfo | compressed data ]
     // open temprary layer file
     QFile layer(layerFilePath);
     if (!layer.open(QIODevice::WriteOnly | QIODevice::Append)) {
         return LINGLONG_ERR(-1, "failed to open temporary file of layer");
     }
+    // write magic number, in 40 bytes
+    layer.write(magicNumber);
 
     // write size of LayerInfo, in 4 bytes
     QDataStream out(&layer);
@@ -109,9 +111,8 @@ utils::error::Result<QSharedPointer<LayerFile>> LayerPackager::pack(const LayerD
     layer.close();
     compressedFile.close();
 
-    QSharedPointer<LayerFile> layerFile(new LayerFile(layerFilePath));
-
-    return layerFile;
+    // it seems no error here, so i didn't check it
+    return LayerFile::openLayer(layerFilePath);
 }
 
 utils::error::Result<QSharedPointer<LayerDir>> LayerPackager::unpack(LayerFile &file,

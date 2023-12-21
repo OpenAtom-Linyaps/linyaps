@@ -23,6 +23,8 @@ public:
 
     virtual linglong::util::Error build() = 0;
 
+    virtual linglong::util::Error exportLayer(const QString &destination) = 0;
+
     virtual linglong::util::Error exportBundle(const QString &outputFilepath, bool useLocalDir) = 0;
 
     virtual util::Error push(const QString &repoUrl,

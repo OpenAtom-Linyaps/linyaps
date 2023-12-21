@@ -10,6 +10,7 @@
 #include "depend_fetcher.h"
 #include "linglong/package/bundle.h"
 #include "linglong/package/info.h"
+#include "linglong/package/layer_packager.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/app.h"
 #include "linglong/runtime/container.h"
@@ -740,6 +741,76 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
     if (err) {
         return WrapError(err, "commitBuildOutput failed");
     }
+    return Success();
+}
+
+linglong::util::Error LinglongBuilder::exportLayer(const QString &destination)
+{
+    QDir destDir(destination);
+
+    if (!destDir.exists()) {
+        return NewError(-1, QString("the directory '%1' is not exist").arg(destDir.dirName()));
+    }
+
+    auto projectConfigPath =
+      QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
+    if (!QFileInfo::exists(projectConfigPath)) {
+        qCritical() << "ll-builder should run in the root directory of the linglong project";
+        return NewError(-1, "linglong.yaml not found");
+    }
+
+    auto [project, err] = util::fromYAML<QSharedPointer<Project>>(projectConfigPath);
+
+    project->configFilePath = projectConfigPath;
+
+    const auto runtimePath = QStringList{ destination, ".linglong-runtime" }.join("/");
+    const auto develPath = QStringList{ destination, ".linglong-devel" }.join("/");
+
+    util::ensureDir(runtimePath);
+    util::ensureDir(develPath);
+
+    auto runtimeRef = project->refWithModule("runtime");
+    auto develRef = project->refWithModule("devel");
+    auto ret = repo.checkout(runtimeRef, "", runtimePath);
+    if (!ret.has_value()) {
+        qDebug() << ret.error().code() << ret.error().message();
+        return WrapError(NewError(ret.error().code(), ret.error().message()),
+                         "checkout files with runtime failed, you need build first");
+    }
+    ret = repo.checkout(develRef, "", develPath);
+    if (!ret.has_value()) {
+        return WrapError(NewError(ret.error().code(), ret.error().message()),
+                         "checkout files with devel failed, you need build first");
+    }
+    package::LayerDir runtimeDir(runtimePath);
+    package::LayerDir develDir(develPath);
+
+    // appid_version_arch_module.layer
+    const auto runtimeLayerPath = QString("%1/%2_%3_%4_%5.layer")
+                                    .arg(destDir.absolutePath())
+                                    .arg(runtimeRef.appId)
+                                    .arg(runtimeRef.version)
+                                    .arg(runtimeRef.arch)
+                                    .arg(runtimeRef.module);
+
+    const auto develLayerPath = QString("%1/%2_%3_%4_%5.layer")
+                                  .arg(destDir.absolutePath())
+                                  .arg(develRef.appId)
+                                  .arg(develRef.version)
+                                  .arg(develRef.arch)
+                                  .arg(develRef.module);
+    package::LayerPackager pkg;
+    auto runtimeLayer = pkg.pack(runtimeDir, runtimeLayerPath);
+    if (!runtimeLayer.has_value()) {
+        return WrapError(NewError(runtimeLayer.error().code(), runtimeLayer.error().message()),
+                         "pack runtime layer failed");
+    }
+    auto develLayer = pkg.pack(develDir, develLayerPath);
+    if (!develLayer.has_value()) {
+        return WrapError(NewError(develLayer.error().code(), develLayer.error().message()),
+                         "pack devel layer failed");
+    }
+
     return Success();
 }
 

@@ -1013,6 +1013,38 @@ util::Error LinglongBuilder::push(const QString &repoUrl,
     return ret;
 }
 
+util::Error LinglongBuilder::importLayer(const QString &path)
+{
+    const auto layerFile = package::LayerFile::openLayer(path);
+    if (!layerFile.has_value()) {
+        return WrapError(NewError(layerFile.error().code(), layerFile.error().message()),
+                         "failed to open layer file");
+    }
+
+    const auto workDir = QStringList{ BuilderConfig::instance()->repoPath(),
+                                      QUuid::createUuid().toString(QUuid::Id128) }
+                           .join(QDir::separator());
+    util::ensureDir(workDir);
+
+    package::LayerPackager pkg;
+    const auto layerDir = pkg.unpack(*(*layerFile), workDir);
+    if (!layerDir.has_value()) {
+        return WrapError(NewError(layerDir.error().code(), layerDir.error().message()),
+                         "failed to unpack layer file");
+    }
+
+    const auto pkgInfo = *((*layerDir)->info());
+    const auto ref =
+      package::Ref("", "main", pkgInfo->appid, pkgInfo->version, pkgInfo->arch.first(), pkgInfo->module);
+    auto ret = repo.importDirectory(ref, (*layerDir)->absolutePath());
+    if (!ret.has_value()) {
+        return WrapError(NewError(ret.error().code(), ret.error().message()),
+                         "failed to unpack layer file");
+    }
+
+    return Success();
+}
+
 util::Error LinglongBuilder::import()
 {
     auto projectConfigPath =

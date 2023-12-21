@@ -254,19 +254,43 @@ int main(int argc, char **argv)
 
               return err.code();
           } },
+        // { "import",
+        //   [&](QCommandLineParser &parser) -> int {
+        //       parser.clearPositionalArguments();
+
+        //       parser.addPositionalArgument("import", "import package data to local repo",
+        //       "import");
+
+        //       parser.process(app);
+
+        //       auto err = builder.import();
+        //       if (err) {
+        //           qCritical() << err;
+        //       }
+
+        //       return err.code();
+        //   } },
         { "import",
           [&](QCommandLineParser &parser) -> int {
               parser.clearPositionalArguments();
 
-              parser.addPositionalArgument("import", "import package data to local repo", "import");
+              parser.addPositionalArgument("import", "import layer to local repo", "import");
+
+              parser.addPositionalArgument("path", "layer file path", "[path]");
 
               parser.process(app);
 
-              auto err = builder.import();
+              auto path = parser.positionalArguments().value(1);
+
+              if (path.isEmpty()) {
+                  qCritical() << "the layer path should be specified.";
+                  parser.showHelp(-1);
+              }
+
+              auto err = builder.importLayer(path);
               if (err) {
                   qCritical() << err;
               }
-
               return err.code();
           } },
         { "track",

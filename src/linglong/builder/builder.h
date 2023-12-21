@@ -34,6 +34,8 @@ public:
 
     virtual linglong::util::Error import() = 0;
 
+    virtual linglong::util::Error importLayer(const QString &path) = 0;
+
     virtual linglong::util::Error track() = 0;
 
     virtual linglong::util::Error run() = 0;

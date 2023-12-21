@@ -41,6 +41,8 @@ public:
 
     linglong::util::Error import() override;
 
+    linglong::util::Error importLayer(const QString &path) override;
+
     linglong::util::Error run() override;
 
     linglong::util::Error track() override;

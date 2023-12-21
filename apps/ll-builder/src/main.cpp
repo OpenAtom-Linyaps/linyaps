@@ -182,29 +182,54 @@ int main(int argc, char **argv)
 
               return err.code();
           } },
+        // { "export",
+        //   [&](QCommandLineParser &parser) -> int {
+        //       parser.clearPositionalArguments();
+
+        //       parser.addPositionalArgument("export", "export build result to uab bundle",
+        //       "export"); parser.addPositionalArgument(
+        //         "filename",
+        //         "bundle file name , if filename is empty,export default format bundle",
+        //         "[filename]");
+
+        //       auto localParam = QCommandLineOption("local", "make bundle with local directory",
+        //       "");
+
+        //       parser.addOptions({ localParam });
+        //       parser.process(app);
+
+        //       auto outputFilepath = parser.positionalArguments().value(1);
+        //       bool useLocalDir = false;
+
+        //       if (parser.isSet(localParam)) {
+        //           useLocalDir = true;
+        //       }
+
+        //       auto err = builder.exportBundle(outputFilepath, useLocalDir);
+        //       if (err) {
+        //           qCritical() << err;
+        //       }
+        //       return err.code();
+        //   } },
         { "export",
           [&](QCommandLineParser &parser) -> int {
               parser.clearPositionalArguments();
 
-              parser.addPositionalArgument("export", "export build result to uab bundle", "export");
+              parser.addPositionalArgument("export", "export build result to layer", "export");
               parser.addPositionalArgument(
-                "filename",
-                "bundle file name , if filename is empty,export default format bundle",
-                "[filename]");
+                "path",
+                "layer file path, if the path is empty, export layer to the current directory",
+                "[path]");
 
-              auto localParam = QCommandLineOption("local", "make bundle with local directory", "");
-
-              parser.addOptions({ localParam });
               parser.process(app);
 
-              auto outputFilepath = parser.positionalArguments().value(1);
-              bool useLocalDir = false;
+              auto path = parser.positionalArguments().value(1);
 
-              if (parser.isSet(localParam)) {
-                  useLocalDir = true;
+              if (path.isEmpty()) {
+                  path = linglong::builder::BuilderConfig::instance()->getProjectRoot();
               }
 
-              auto err = builder.exportBundle(outputFilepath, useLocalDir);
+              auto err = builder.exportLayer(path);
               if (err) {
                   qCritical() << err;
               }

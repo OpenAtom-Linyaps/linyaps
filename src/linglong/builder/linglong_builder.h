@@ -30,6 +30,8 @@ public:
 
     linglong::util::Error build() override;
 
+    linglong::util::Error exportLayer(const QString &destination) override;
+
     linglong::util::Error exportBundle(const QString &outputFilepath, bool useLocalDir) override;
 
     linglong::util::Error push(const QString &repoUrl,

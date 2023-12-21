@@ -231,6 +231,11 @@ pfl_add_library(
   ./src/linglong/package/version_range.h
   ./src/linglong/package_manager/package_manager.cpp
   ./src/linglong/package_manager/package_manager.h
+  ./src/linglong/repo/config.cpp
+  ./src/linglong/repo/config.h
+  ./src/linglong/repo/config/ConfigV1.hpp
+  ./src/linglong/repo/config/Generators.hpp
+  ./src/linglong/repo/config/helper.hpp
   ./src/linglong/repo/ostree_repo.cpp
   ./src/linglong/repo/ostree_repo.h
   ./src/linglong/repo/repo.cpp
@@ -351,10 +356,11 @@ pfl_add_library(
   Qt::Sql
   Qt::WebSockets
   QtLinglongRepoClientAPI
+  docopt
   ocppi::runtime
   tl::expected
   yaml-cpp::yaml-cpp
-  docopt)
+  ytj)
 
 function(
   linglong_add_dbus_adaptor

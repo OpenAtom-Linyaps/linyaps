@@ -77,6 +77,10 @@ using Result = tl::expected<Value, Error>;
     tl::unexpected(                            \
       ::linglong::utils::error::Error::Err(QT_MESSAGELOG_FILE, QT_MESSAGELOG_LINE, code, message))
 
+#define LINGLONG_GERR(gErr) /*NOLINT*/ \
+    tl::unexpected(                            \
+      ::linglong::utils::error::Error::Err(QT_MESSAGELOG_FILE, QT_MESSAGELOG_LINE, gErr->code, gErr->message))
+
 #define LINGLONG_OK \
     {               \
     }

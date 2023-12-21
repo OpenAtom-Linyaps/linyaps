@@ -26,14 +26,13 @@ LayerPackager::~LayerPackager()
     util::removeDir(this->workDir);
 }
 
-utils::error::Result<QSharedPointer<LayerFile>> LayerPackager::pack(const LayerDir &dir,
-                                                                   const QString &destnation) const
+utils::error::Result<QSharedPointer<LayerFile>>
+LayerPackager::pack(const LayerDir &dir, const QString &layerFilePath) const
 {
     // compress data with erofs
     const auto compressedFilePath =
       QStringList{ this->workDir, "tmp.erofs" }.join(QDir::separator());
-    const auto layerFilePath = QStringList{ destnation, "tmp.layer" }.join(QDir::separator());
-    ;
+
     auto ret = util::Exec("mkfs.erofs",
                           { "-zlz4hc,9", compressedFilePath, dir.absolutePath() },
                           15 * 60 * 1000);

@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "linglong/package/layer_package.h"
+#include "linglong/package/layer_packager.h"
 
 #include "linglong/package/layer_info.h"
 #include "linglong/util/file.h"

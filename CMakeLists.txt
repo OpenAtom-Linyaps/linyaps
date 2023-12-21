@@ -163,10 +163,10 @@ pfl_add_library(
   ./src/linglong/api/types/v1/ExecuteOptions.h
   ./src/linglong/api/types/v1/StartOptions.cpp
   ./src/linglong/api/types/v1/StartOptions.h
-  ./src/linglong/builder/builder_templates.qrc
   ./src/linglong/builder/builder.h
   ./src/linglong/builder/builder_config.cpp
   ./src/linglong/builder/builder_config.h
+  ./src/linglong/builder/builder_templates.qrc
   ./src/linglong/builder/depend_fetcher.cpp
   ./src/linglong/builder/depend_fetcher.h
   ./src/linglong/builder/linglong_builder.cpp
@@ -177,6 +177,12 @@ pfl_add_library(
   ./src/linglong/builder/source_fetcher.h
   ./src/linglong/builder/source_fetcher_p.h
   ./src/linglong/builder/to_json.cpp
+  ./src/linglong/cli/cli.cpp
+  ./src/linglong/cli/cli.h
+  ./src/linglong/cli/json_printer.cpp
+  ./src/linglong/cli/json_printer.h
+  ./src/linglong/cli/printer.cpp
+  ./src/linglong/cli/printer.h
   ./src/linglong/dbus_ipc/dbus_common.cpp
   ./src/linglong/dbus_ipc/dbus_common.h
   ./src/linglong/dbus_ipc/dbus_system_helper_common.cpp
@@ -193,60 +199,60 @@ pfl_add_library(
   ./src/linglong/job_manager/job.h
   ./src/linglong/job_manager/job_manager.cpp
   ./src/linglong/job_manager/job_manager.h
+  ./src/linglong/package/architecture.cpp
+  ./src/linglong/package/architecture.h
   ./src/linglong/package/bundle.cpp
   ./src/linglong/package/bundle.h
+  ./src/linglong/package/fuzz_reference.cpp
+  ./src/linglong/package/fuzz_reference.h
   ./src/linglong/package/info.cpp
   ./src/linglong/package/info.h
-  ./src/linglong/package/package.h
-  ./src/linglong/package/package.cpp
-  ./src/linglong/package/architecture.h
-  ./src/linglong/package/architecture.cpp
-  ./src/linglong/package/reference.h
-  ./src/linglong/package/reference.cpp
-  ./src/linglong/package/fuzz_reference.h
-  ./src/linglong/package/fuzz_reference.cpp
-  ./src/linglong/package/module.h
+  ./src/linglong/package/layer/Generators.hpp
+  ./src/linglong/package/layer/LayerInfo.hpp
+  ./src/linglong/package/layer_dir.cpp
+  ./src/linglong/package/layer_dir.h
+  ./src/linglong/package/layer_file.cpp
+  ./src/linglong/package/layer_file.h
+  ./src/linglong/package/layer_info.cpp
+  ./src/linglong/package/layer_info.h
+  ./src/linglong/package/layer_packager.cpp
+  ./src/linglong/package/layer_packager.h
   ./src/linglong/package/module.cpp
-  ./src/linglong/package/version.h
-  ./src/linglong/package/version.cpp
-  ./src/linglong/package/version_range.h
-  ./src/linglong/package/version_range.cpp
+  ./src/linglong/package/module.h
+  ./src/linglong/package/package.cpp
+  ./src/linglong/package/package.h
   ./src/linglong/package/ref.cpp
   ./src/linglong/package/ref.h
+  ./src/linglong/package/reference.cpp
+  ./src/linglong/package/reference.h
+  ./src/linglong/package/version.cpp
+  ./src/linglong/package/version.h
+  ./src/linglong/package/version_range.cpp
+  ./src/linglong/package/version_range.h
   ./src/linglong/package_manager/package_manager.cpp
   ./src/linglong/package_manager/package_manager.h
-  ./src/linglong/package/layer/LayerInfo.hpp
-  ./src/linglong/package/layer/Generators.hpp
-  ./src/linglong/package/layer_dir.h
-  ./src/linglong/package/layer_dir.cpp
-  ./src/linglong/package/layer_file.h
-  ./src/linglong/package/layer_file.cpp
-  ./src/linglong/package/layer_info.h
-  ./src/linglong/package/layer_info.cpp
-  ./src/linglong/package/layer_packager.h
-  ./src/linglong/package/layer_packager.cpp
   ./src/linglong/repo/ostree_repo.cpp
   ./src/linglong/repo/ostree_repo.h
   ./src/linglong/repo/repo.cpp
   ./src/linglong/repo/repo.h
   ./src/linglong/repo/repo_client.cpp
   ./src/linglong/repo/repo_client.h
+  ./src/linglong/repo/repo_common.cpp
+  ./src/linglong/repo/repo_common.h
   ./src/linglong/repo/vfs_repo.cpp
   ./src/linglong/repo/vfs_repo.h
-  ./src/linglong/repo/repo_common.h
-  ./src/linglong/repo/repo_common.cpp
   ./src/linglong/runtime/app.cpp
-  ./src/linglong/runtime/to_json.cpp
-  ./src/linglong/runtime/resource/app_configs.qrc
   ./src/linglong/runtime/app.h
   ./src/linglong/runtime/app_config.cpp
   ./src/linglong/runtime/app_config.h
   ./src/linglong/runtime/container.cpp
   ./src/linglong/runtime/container.h
-  ./src/linglong/runtime/dbus_proxy.h
   ./src/linglong/runtime/dbus_proxy.cpp
+  ./src/linglong/runtime/dbus_proxy.h
   ./src/linglong/runtime/oci.cpp
   ./src/linglong/runtime/oci.h
+  ./src/linglong/runtime/resource/app_configs.qrc
+  ./src/linglong/runtime/to_json.cpp
   ./src/linglong/service/app_manager.cpp
   ./src/linglong/service/app_manager.h
   ./src/linglong/system_helper/filesystem_helper.cpp
@@ -304,12 +310,6 @@ pfl_add_library(
   ./src/linglong/util/version/version.h
   ./src/linglong/util/xdg.cpp
   ./src/linglong/util/xdg.h
-  ./src/linglong/cli/cli.cpp
-  ./src/linglong/cli/cli.h
-  ./src/linglong/cli/printer.cpp
-  ./src/linglong/cli/printer.h
-  ./src/linglong/cli/json_printer.cpp
-  ./src/linglong/cli/json_printer.h
   ./src/linglong/utils/command/env.cpp
   ./src/linglong/utils/command/env.h
   ./src/linglong/utils/dbus/log.cpp

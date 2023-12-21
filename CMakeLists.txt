@@ -223,8 +223,8 @@ pfl_add_library(
   ./src/linglong/package/layer_file.cpp
   ./src/linglong/package/layer_info.h
   ./src/linglong/package/layer_info.cpp
-  ./src/linglong/package/layer_package.h
-  ./src/linglong/package/layer_package.cpp
+  ./src/linglong/package/layer_packager.h
+  ./src/linglong/package/layer_packager.cpp
   ./src/linglong/repo/ostree_repo.cpp
   ./src/linglong/repo/ostree_repo.h
   ./src/linglong/repo/repo.cpp

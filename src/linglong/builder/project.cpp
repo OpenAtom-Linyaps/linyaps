@@ -209,7 +209,7 @@ Project::Project(QObject *parent)
 
 package::Ref Project::refWithModule(const QString &module) const
 {
-    return package::Ref("", package->id, package->version, buildArch(), module);
+    return package::Ref("", "main", package->id, package->version, buildArch(), module);
 }
 
 const Project::Config &Project::config() const

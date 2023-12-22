@@ -9,6 +9,7 @@
 
 #include "linglong/dbus_ipc/reply.h"
 #include "linglong/package/package.h"
+#include "linglong/package/info.h"
 #include "linglong/runtime/container.h"
 #include "linglong/utils/error/error.h"
 
@@ -34,6 +35,7 @@ public:
     virtual void printContainers(const QList<QSharedPointer<Container>> &);
     virtual void printReply(const linglong::service::Reply &);
     virtual void printQueryReply(const linglong::service::QueryReply &);
+    virtual void printLayerInfo(const QSharedPointer<linglong::package::Info> &);
 };
 
 } // namespace linglong::cli

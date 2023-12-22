@@ -82,4 +82,23 @@ void JSONPrinter::printQueryReply(const linglong::service::QueryReply &reply)
     std::cout << QString::fromUtf8(QJsonDocument(jsonArray).toJson()).toStdString() << std::endl;
 }
 
+void JSONPrinter::printLayerInfo(const QSharedPointer<linglong::package::Info> &info)
+{
+    QJsonArray jsonArray;
+    // some info are not printed, such as base
+    jsonArray.push_back(QJsonObject{
+      { "appid", info->appid },
+      { "kind", info->kind },
+      { "name", info->name },
+      { "version", info->version },
+      { "arch", info->arch.first() },
+      { "module", info->module },
+      { "runtime", info->runtime },
+      { "size", QString::number(info->size) },
+      { "description", info->description },
+    });
+
+    std::cout << QString::fromUtf8(QJsonDocument(jsonArray).toJson()).toStdString() << std::endl;
+}
+
 } // namespace linglong::cli

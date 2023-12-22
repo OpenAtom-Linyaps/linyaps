@@ -8,6 +8,7 @@
 
 #include "linglong/dbus_ipc/dbus_system_helper_common.h"
 #include "linglong/repo/repo_client.h"
+#include "linglong/package/layer_packager.h"
 #include "linglong/util/app_status.h"
 #include "linglong/util/appinfo_cache.h"
 #include "linglong/util/config/config.h"
@@ -666,6 +667,149 @@ auto PackageManager::GetDownloadStatus(const ParamOption &paramOption, int type)
         }
         return appState[key];
     }
+    return reply;
+}
+
+auto PackageManager::InstallLayer(const InstallParamOption &installParamOption) -> Reply
+{
+    Reply reply;
+    const QString defaultChannel = "main";
+    const QString layerPath = installParamOption.layerPath;
+    const QString layerName = installParamOption.layerName;
+    const QString tmpLayer =
+      QStringList{ util::getLinglongRootPath(), layerName }.join(QDir::separator());
+
+    // ll-package-manager has no permission access the file, we need to copy it
+    bool status = QFile::copy(layerPath, tmpLayer);
+    qDebug() << "copy file" << layerPath << "to" << tmpLayer;
+    if (!status) {
+        reply.code = STATUS_CODE(kUserInputParamErr);
+        reply.message = "failed to create temprary layer file";
+        return reply;
+    }
+
+    const auto layerFile = package::LayerFile::openLayer(tmpLayer);
+    if (!layerFile.has_value()) {
+        reply.code = STATUS_CODE(kUserInputParamErr);
+        reply.message = layerFile.error().message();
+        return reply;
+    }
+    (*layerFile)->setCleanStatus(true);
+    // unpack layer
+    const auto workDir =
+      QStringList{ util::getLinglongRootPath(), QUuid::createUuid().toString(QUuid::Id128) }.join(
+        QDir::separator());
+    util::ensureDir(workDir);
+
+    package::LayerPackager pkg;
+    const auto layerDir = pkg.unpack(*(*layerFile), workDir);
+    if (!layerDir.has_value()) {
+        reply.code = STATUS_CODE(kUserInputParamErr);
+        reply.message = "unpack layer failed. " + layerDir.error().message();
+        return reply;
+    }
+
+    const auto pkgInfo = *((*layerDir)->info());
+    const auto ref = package::Ref("",
+                                  defaultChannel,
+                                  pkgInfo->appid,
+                                  pkgInfo->version,
+                                  pkgInfo->arch.first(),
+                                  pkgInfo->module);
+
+    // import layer data
+    auto ret = repoMan.importDirectory(ref, (*layerDir)->absolutePath());
+    if (!ret.has_value()) {
+        reply.code = STATUS_CODE(kUserInputParamErr);
+        reply.message = "import layer data failed. " + ret.error().message();
+        return reply;
+    }
+    // checkout data
+    QString savePath =
+      QStringList{ kAppInstallPath, pkgInfo->appid, pkgInfo->version, pkgInfo->arch.first() }.join(
+        QDir::separator());
+    if ("devel" == pkgInfo->module) {
+        savePath.append("/" + pkgInfo->module);
+    }
+
+    util::ensureDir(savePath);
+    ret = repoMan.checkout(ref, "", savePath);
+    if (!ret.has_value()) {
+        reply.code = STATUS_CODE(kUserInputParamErr);
+        reply.message = "checkout layer data failed. " + layerDir.error().message();
+        return reply;
+    }
+
+    // 链接应用配置文件到系统配置目录
+    addAppConfig(pkgInfo->appid, pkgInfo->version, pkgInfo->arch.first());
+
+    // update desktop database
+    auto err = util::Exec("update-desktop-database",
+                          { sysLinglongInstallation + "/applications/" },
+                          1000 * 60 * 1);
+    if (err) {
+        qWarning() << "warning: update desktop database of " + sysLinglongInstallation
+            + "/applications/ failed!";
+    }
+
+    // update mime type database
+    if (linglong::util::dirExists(sysLinglongInstallation + "/mime/packages")) {
+        err =
+          util::Exec("update-mime-database", { sysLinglongInstallation + "/mime/" }, 1000 * 60 * 1);
+        if (err) {
+            qWarning() << "warning: update mime type database of " + sysLinglongInstallation
+                + "/mime/ failed!";
+        }
+    }
+
+    // update glib-2.0/schemas
+    if (linglong::util::dirExists(sysLinglongInstallation + "/glib-2.0/schemas")) {
+        err = util::Exec("glib-compile-schemas",
+                         { sysLinglongInstallation + "/glib-2.0/schemas" },
+                         1000 * 60 * 1);
+        if (err) {
+            qWarning() << "warning: update schemas of " + sysLinglongInstallation
+                + "/glib-2.0/schemas failed!";
+        }
+    }
+
+    // convert package::Info to pacakge::AppMetaInfo. should be removed
+    QSharedPointer<package::AppMetaInfo> appInfo(new package::AppMetaInfo());
+
+    appInfo->appId = pkgInfo->appid;
+    appInfo->name = pkgInfo->name;
+    appInfo->kind = pkgInfo->kind;
+    appInfo->version = pkgInfo->version;
+    appInfo->arch = pkgInfo->arch.first();
+    appInfo->runtime = pkgInfo->runtime;
+    // package::Info should include channel
+    appInfo->channel = defaultChannel;
+    appInfo->module = pkgInfo->module;
+    appInfo->uabUrl = "";
+    appInfo->repoName = "";
+    appInfo->user = linglong::util::getUserName();
+    appInfo->size = pkgInfo->size;
+    appInfo->description = pkgInfo->description;
+
+    // update local database
+    linglong::util::insertAppRecord(appInfo, linglong::util::getUserName());
+
+    // process portal after install
+    {
+        auto installPath = savePath;
+        qDebug() << "call packageManagerHelperInterface.RebuildInstallPortal" << installPath,
+          ref.toLocalFullRef();
+        QDBusReply<void> helperRet =
+          packageManagerHelper.RebuildInstallPortal(installPath, ref.toString(), {});
+        if (!helperRet.isValid()) {
+            qWarning() << "process post install portal failed:" << helperRet.error();
+        }
+    }
+
+    reply.code = STATUS_CODE(kPkgInstallSuccess);
+    reply.message = "install " + appInfo->appId + ", version:" + appInfo->version + " success";
+    qInfo() << reply.message;
+
     return reply;
 }
 

@@ -94,6 +94,17 @@ public Q_SLOTS:
     virtual auto Install(const InstallParamOption &installParamOption) -> Reply;
 
     /**
+     * @brief 安装layer文件
+     *
+     * @param installParamOption 安装参数
+     *
+     * @return Reply dbus方法调用应答 \n
+     *          code:状态码 \n
+     *          message:信息
+     */
+    virtual auto InstallLayer(const InstallParamOption &installParamOption) -> Reply;
+
+    /**
      * @brief 卸载软件包
      *
      * @param paramOption 卸载参数

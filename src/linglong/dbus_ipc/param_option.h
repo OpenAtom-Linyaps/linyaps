@@ -79,6 +79,9 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument,
  */
 class InstallParamOption : public ParamOption
 {
+public:
+    QString layerPath; // layer file path
+    QString layerName; // layer file name
 };
 
 inline QDBusArgument &operator<<(QDBusArgument &argument,
@@ -86,7 +89,8 @@ inline QDBusArgument &operator<<(QDBusArgument &argument,
 {
     argument.beginStructure();
     argument << installParamOption.appId << installParamOption.version << installParamOption.arch
-             << installParamOption.channel << installParamOption.appModule;
+             << installParamOption.channel << installParamOption.appModule
+             << installParamOption.layerPath << installParamOption.layerName;
     argument.endStructure();
     return argument;
 }
@@ -96,7 +100,8 @@ inline const QDBusArgument &operator>>(const QDBusArgument &argument,
 {
     argument.beginStructure();
     argument >> installParamOption.appId >> installParamOption.version >> installParamOption.arch
-      >> installParamOption.channel >> installParamOption.appModule;
+      >> installParamOption.channel >> installParamOption.appModule >> installParamOption.layerPath
+      >> installParamOption.layerName;
     argument.endStructure();
     return argument;
 }

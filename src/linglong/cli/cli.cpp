@@ -490,6 +490,25 @@ int Cli::install(std::map<std::string, docopt::value> &args)
         return -1;
     }
     for (auto &tier : tiers) {
+        linglong::service::Reply reply;
+        // if specify a layer instead of an appID
+        const auto layerFile = package::LayerFile::openLayer(QString::fromStdString(tier));
+        if (layerFile.has_value()) {
+            (*layerFile)->setCleanStatus(false);
+
+            QFileInfo fileInfo(*(*layerFile));
+            installParamOption.layerPath = fileInfo.absoluteFilePath();
+            installParamOption.layerName = fileInfo.fileName();
+
+            QDBusPendingReply<linglong::service::Reply> dbusReply =
+              this->pkgMan.InstallLayer(installParamOption);
+            dbusReply.waitForFinished();
+            reply = dbusReply.value();
+            this->printer.printReply(reply);
+            continue;
+        }
+
+        // if specify an appID
         linglong::package::Ref ref(QString::fromStdString(tier));
         // 增加 channel/module
         installParamOption.channel = ref.channel;
@@ -498,7 +517,6 @@ int Cli::install(std::map<std::string, docopt::value> &args)
         installParamOption.version = ref.version;
         installParamOption.arch = ref.arch;
 
-        linglong::service::Reply reply;
         qInfo().noquote() << "install" << ref.appId << ", please wait a few minutes...";
 
         QDBusPendingReply<linglong::service::Reply> dbusReply =

@@ -67,19 +67,32 @@ using Result = tl::expected<Value, Error>;
 
 } // namespace linglong::utils::error
 
-#define LINGLONG_EWRAP(message, cause) /*NOLINT*/                            \
+#define LINGLONG_TRACE_MESSAGE(message) auto linglong_trace_message = message;
+
+#define LINGLONG_EWRAP_1(cause) /*NOLINT*/                                       \
+    tl::unexpected(::linglong::utils::error::Error::Wrap(QT_MESSAGELOG_FILE,     \
+                                                         QT_MESSAGELOG_LINE,     \
+                                                         linglong_trace_message, \
+                                                         std::move(cause)))
+
+#define LINGLONG_EWRAP_2(message, cause) /*NOLINT*/                          \
     tl::unexpected(::linglong::utils::error::Error::Wrap(QT_MESSAGELOG_FILE, \
                                                          QT_MESSAGELOG_LINE, \
                                                          message,            \
                                                          std::move(cause)))
+#define LINGLONG_EWRAP_GETMACRO(_1, _2, NAME, ...) NAME
+#define LINGLONG_EWRAP(...) \
+    LINGLONG_EWRAP_GETMACRO(__VA_ARGS__, LINGLONG_EWRAP_2, LINGLONG_EWRAP_1, ...)(__VA_ARGS__)
 
 #define LINGLONG_ERR(code, message) /*NOLINT*/ \
     tl::unexpected(                            \
       ::linglong::utils::error::Error::Err(QT_MESSAGELOG_FILE, QT_MESSAGELOG_LINE, code, message))
 
-#define LINGLONG_GERR(gErr) /*NOLINT*/ \
-    tl::unexpected(                            \
-      ::linglong::utils::error::Error::Err(QT_MESSAGELOG_FILE, QT_MESSAGELOG_LINE, gErr->code, gErr->message))
+#define LINGLONG_GERR(gErr) /*NOLINT*/                                      \
+    tl::unexpected(::linglong::utils::error::Error::Err(QT_MESSAGELOG_FILE, \
+                                                        QT_MESSAGELOG_LINE, \
+                                                        gErr->code,         \
+                                                        gErr->message))
 
 #define LINGLONG_OK \
     {               \

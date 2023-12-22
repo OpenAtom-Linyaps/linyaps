@@ -11,71 +11,86 @@
 namespace linglong::package {
 
 utils::error::Result<FuzzReference> FuzzReference::parse(const QString &raw) noexcept
+{
+    LINGLONG_TRACE_MESSAGE("parse fuzz reference string");
+
+    static QRegularExpression regexp(
+      R"(^(?:(?<channel>[^:]*):)?(?<id>[^\/]*)(?:\/(?<version>[^\/]*)(?:\/(?<architecture>[^\/]*))?)?$)");
+
+    auto matches = regexp.match(raw);
+    if (not(matches.isValid() and matches.hasMatch())) {
+        auto err = LINGLONG_ERR(-1, "regexp mismatched.");
+        return LINGLONG_EWRAP(err.value());
+    }
+
+    std::optional<QString> channel;
+    channel = matches.captured("channel");
+    if (channel->isEmpty() || channel == "unknown") {
+        channel = std::nullopt;
+    }
+
+    auto id = matches.captured("id");
+
+    std::optional<Version> version;
+    auto versionStr = matches.captured("version");
+    if ((!versionStr.isEmpty()) && versionStr != "unknown") {
+        auto tmpVersion = Version::parse(versionStr);
+        if (!tmpVersion.has_value()) {
+            return LINGLONG_EWRAP(tmpVersion.error());
+        }
+        version = *tmpVersion;
+    }
+
+    std::optional<Architecture> architecture;
+    auto architectureStr = matches.captured("architecture");
+    if ((!architectureStr.isEmpty()) && architectureStr != "unknown") {
+        auto tmpArchitecture = Architecture::parse(architectureStr);
+        if (!tmpArchitecture.has_value()) {
+            return LINGLONG_EWRAP(tmpArchitecture.error());
+        }
+        architecture = *tmpArchitecture;
+    }
+
+    return create(channel, id, version, architecture);
+}
+
+utils::error::Result<FuzzReference>
+FuzzReference::create(const std::optional<QString> &channel,
+                      const QString &id,
+                      const std::optional<Version> &version,
+                      const std::optional<Architecture> &arch) noexcept
 try {
-    return FuzzReference(raw);
+    return FuzzReference(channel, id, version, arch);
 } catch (const std::exception &e) {
     auto err = LINGLONG_ERR(-1, e.what()).value();
     return LINGLONG_EWRAP("invalid fuzz reference", err);
 }
 
-FuzzReference::FuzzReference(const QStringList &components)
-    : id([&components]() {
-        const auto &ret = components[0];
-        if (ret.isEmpty()) {
-            throw std::runtime_error("empty id");
-        }
-        return ret;
-    }())
-    , version([&components]() -> std::optional<Version> {
-        if (components.size() <= 1 || components[1] == "unknown") {
-            return std::nullopt;
-        }
-        return Version::parse(components[1]).value();
-    }())
-    , arch([&components]() -> std::optional<Architecture> {
-        if (components.size() <= 2 || components[2] == "unknown") {
-            return std::nullopt;
-        }
-        return Architecture::parse(components[2]).value();
-    }())
-    , module([&components]() -> std::optional<Module> {
-        if (components.size() <= 3 || components[3] == "unknown") {
-            return std::nullopt;
-        }
-        return Module::parse(components[3]).value();
-    }())
-    , channel([&components]() -> std::optional<QString> {
-        if (components.size() <= 4 || components[4] == "unknown") {
-            return std::nullopt;
-        }
-        return components[4];
-    }())
+FuzzReference::FuzzReference(const std::optional<QString> &channel,
+                             const QString &id,
+                             const std::optional<Version> &version,
+                             const std::optional<Architecture> &architecture)
+    : channel(channel)
+    , id(id)
+    , version(version)
+    , arch(architecture)
 {
-}
+    if (channel.has_value() && channel->isEmpty()) {
+        throw std::runtime_error("empty channel");
+    }
 
-FuzzReference::FuzzReference(const QString &raw)
-    : FuzzReference(raw.split('/'))
-{
+    if (id.isEmpty()) {
+        throw std::runtime_error("empty id");
+    }
 }
 
 QString FuzzReference::toString() const noexcept
 {
-    return QStringList{
-        this->id,
-        [this]() {
-            return this->version.has_value() ? this->version->toString() : "unknown";
-        }(),
-        [this]() {
-            return this->arch.has_value() ? this->arch->toString() : "unknown";
-        }(),
-        [this]() {
-            return this->module.has_value() ? this->module->toString() : "unknown";
-        }(),
-        [this]() {
-            return this->channel.value_or("unknown");
-        }(),
-    }
-      .join("/");
+    return QString("%1:%2/%3/%4")
+      .arg(this->channel.value_or("unknown"),
+           this->id,
+           this->version.has_value() ? this->version->toString() : "unknown",
+           this->arch.has_value() ? this->arch->toString() : "unknown");
 }
 
 } // namespace linglong::package

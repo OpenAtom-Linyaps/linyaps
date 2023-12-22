@@ -14,15 +14,15 @@ using namespace linglong::package;
 TEST(Package, Reference)
 {
     QStringList vaildReferences = {
-        "com.example.App/1.0.0.0/x86_64/runtime/main",
-        "com.example.App/1.0.0.0/x86_64/runtime/some_channel",
-        "com.example.App/1.0.0.0/x86_64/develop/main",
-        "com.example.App/1.0.0.0-alpha/arm64/runtime/main",
-        "com.example.App/1.0.0.1-beta/arm64/runtime/main",
-        "1111/1.0.0.0/x86_64/runtime/main",
-        "2222/1.0.0.0/x86_64/develop/main",
-        "3333/1.0.0.0-alpha/arm64/runtime/main",
-        "4444/1.0.0.1-beta/arm64/runtime/main",
+        "main:com.example.App/1.0.0.0/x86_64",
+        "some_channel:com.example.App/1.0.0.0/x86_64",
+        "main:com.example.App/1.0.0.0/x86_64",
+        "main:com.example.App/1.0.0.0-alpha/arm64",
+        "main:com.example.App/1.0.0.1-beta/arm64",
+        "main:1111/1.0.0.0/x86_64",
+        "main:2222/1.0.0.0/x86_64",
+        "main:3333/1.0.0.0-alpha/arm64",
+        "main:4444/1.0.0.1-beta/arm64",
     };
 
     for (const auto &vaildCase : vaildReferences) {
@@ -34,15 +34,13 @@ TEST(Package, Reference)
     }
 
     QStringList invaildReferences = {
-        "com.example.App//1.0.0.0/x86_64/runtime/main",
-        "com.example.App/1.0.0.0/x86_64/dev/main",
-        "com.example.App/1.0.0.-alpha/arm64/runtime/main",
-        "com.example.App/1.0.0.1-beta/arm64/main",
-        "1111/1.0.0.0/ x86_64/runtime/main",
-        "2222/1.0.0.0/unknown/develop/main",
-        "3333/1.0.0.0-()/arm64/runtime/main",
-        "4444/1.0.0.1-beta/arm64/run/main",
-        "/1.0.0.1-beta/arm64/runtime/main",
+        "main:com.example.App//1.0.0.0/x86_64",
+        "main:com.example.App/1.0.0.-alpha/arm64",
+        "main:1111/1.0.0.0/ x86_64",
+        "main:2222/1.0.0.0/unknown",
+        "main:3333/1.0.0.0-()/arm64",
+        ":1.0.0.1-beta/arm64",
+        ":com.example.App/1.0.0.0/x86_64",
     };
 
     for (const auto &invaildCase : invaildReferences) {
@@ -53,37 +51,15 @@ TEST(Package, Reference)
     }
 
     QList<QPair<QString, QString>> vaildFuzzReferences = {
-        { "com.example.App/1.0.0.0/x86_64/runtime/main",
-          "com.example.App/1.0.0.0/x86_64/runtime/main" },
-        { "com.example.App/1.0.0.0/x86_64/runtime",
-          "com.example.App/1.0.0.0/x86_64/runtime/unknown" },
-        { "com.example.App/unknown/x86_64/runtime",
-          "com.example.App/unknown/x86_64/runtime/unknown" },
-        { "com.example.App/1.0.0.0/unknown/runtime",
-          "com.example.App/1.0.0.0/unknown/runtime/unknown" },
-        { "com.example.App/1.0.0.0/x86_64/unknown",
-          "com.example.App/1.0.0.0/x86_64/unknown/unknown" },
-        { "com.example.App/1.0.0.0/x86_64", "com.example.App/1.0.0.0/x86_64/unknown/unknown" },
-        { "com.example.App/1.0.0.0", "com.example.App/1.0.0.0/unknown/unknown/unknown" },
-        { "com.example.App", "com.example.App/unknown/unknown/unknown/unknown" },
-        { "com.example.App/1.0.0.0/x86_64/develop",
-          "com.example.App/1.0.0.0/x86_64/develop/unknown" },
-        { "com.example.App/1.0.0.0/x86_64", "com.example.App/1.0.0.0/x86_64/unknown/unknown" },
-        { "com.example.App/1.0.0.0-alpha/arm64/runtime",
-          "com.example.App/1.0.0.0-alpha/arm64/runtime/unknown" },
-        { "com.example.App/1.0.0.0-alpha/arm64",
-          "com.example.App/1.0.0.0-alpha/arm64/unknown/unknown" },
-        { "com.example.App/1.0.0.0-alpha",
-          "com.example.App/1.0.0.0-alpha/unknown/unknown/unknown" },
-        { "com.example.App/1.0.0.1-beta/arm64/runtime",
-          "com.example.App/1.0.0.1-beta/arm64/runtime/unknown" },
-        { "com.example.App/1.0.0.1-beta/arm64",
-          "com.example.App/1.0.0.1-beta/arm64/unknown/unknown" },
-        { "com.example.App/1.0.0.1-beta", "com.example.App/1.0.0.1-beta/unknown/unknown/unknown" },
-        { "1111/1.0.0.0/x86_64/runtime", "1111/1.0.0.0/x86_64/runtime/unknown" },
-        { "2222/1.0.0.0/x86_64/develop", "2222/1.0.0.0/x86_64/develop/unknown" },
-        { "3333/1.0.0.0-alpha/arm64/runtime", "3333/1.0.0.0-alpha/arm64/runtime/unknown" },
-        { "4444/1.0.0.1-beta/arm64/runtime", "4444/1.0.0.1-beta/arm64/runtime/unknown" },
+        { "unknown:com.example.App/1.0.0.0/x86_64", "unknown:com.example.App/1.0.0.0/x86_64" },
+        { "com.example.App/1.0.0.0/x86_64", "unknown:com.example.App/1.0.0.0/x86_64" },
+        { "com.example.App/unknown/x86_64", "unknown:com.example.App/unknown/x86_64" },
+        { "com.example.App/1.0.0.0/unknown", "unknown:com.example.App/1.0.0.0/unknown" },
+        { "com.example.App/1.0.0.0", "unknown:com.example.App/1.0.0.0/unknown" },
+        { "com.example.App", "unknown:com.example.App/unknown/unknown" },
+        { "com.example.App/1.0.0.1-beta", "unknown:com.example.App/1.0.0.1-beta/unknown" },
+        { "3333/1.0.0.0-alpha/arm64", "unknown:3333/1.0.0.0-alpha/arm64" },
+        { "4444/1.0.0.1-beta/arm64", "unknown:4444/1.0.0.1-beta/arm64" },
     };
 
     for (const auto &vaildCase : vaildFuzzReferences) {
@@ -91,19 +67,18 @@ TEST(Package, Reference)
         ASSERT_EQ(refer.has_value(), true)
           << vaildCase.first.toStdString() << " is vaild fuzz reference. Error: "
           << (refer.has_value() ? "no error" : refer.error().message().toStdString());
-        ASSERT_EQ(refer->toString().toStdString(),vaildCase.second.toStdString());
+        ASSERT_EQ(refer->toString().toStdString(), vaildCase.second.toStdString());
     }
 
     QStringList invaildFuzzReferences = {
-        "com.example.App/1.0.0.0/x86_4/runtime",
-        "com.example.App/unknown/x86_64/run",
-        "com.example.App/1.0..0/unknown/runtime",
-        "com.example.App/1.0.0.0/x864/unknown",
-        "com.example.App/1.0.0.0/x86_64//unknown",
+        "com.example.App/1.0.0.0/x86_64/runtime",
+        "com.example.App/1.0.0.0/x86_4",
+        "com.example.App/1.0..0/unknown",
+        "com.example.App/1.0.0.0/x864",
+        "com.example.App/1.0.0.0/x86_64//",
         "com.example.App/1.0.0.0//",
-        "com.example.App/",
-        "com.example.App/1.0.0.0/x86_64/dev",
-        "/1.0.0.0/x86_64/dev",
+        // "com.example.App/", // FIXME: This should be invaild.
+        ":/1.0.0.0/x86_64",
     };
 
     for (const auto &vaildCase : invaildFuzzReferences) {

@@ -18,21 +18,28 @@
 namespace linglong::package {
 
 // This class is a fuzz reference to a tier, use to search a tier.
-struct FuzzReference final
+class FuzzReference final
 {
+public:
     static utils::error::Result<FuzzReference> parse(const QString &raw) noexcept;
-    explicit FuzzReference(const QString &raw);
+    static utils::error::Result<FuzzReference>
+    create(const std::optional<QString> &channel,
+           const QString &id,
+           const std::optional<Version> &version,
+           const std::optional<Architecture> &arch) noexcept;
 
+    std::optional<QString> channel;
     QString id;
     std::optional<Version> version;
     std::optional<Architecture> arch;
-    std::optional<Module> module;
-    std::optional<QString> channel;
 
     QString toString() const noexcept;
 
 private:
-    explicit FuzzReference(const QStringList &components);
+    explicit FuzzReference(const std::optional<QString> &channel,
+                           const QString &id,
+                           const std::optional<Version> &version,
+                           const std::optional<Architecture> &arch);
 };
 
 } // namespace linglong::package

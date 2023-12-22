@@ -70,7 +70,7 @@ Subcommands:
     upgrade    Upgrade tier(s).
     search     Search for tiers.
     list       List known tiers.
-    repo       Disply or modify infomation of the repository currently using.
+    repo       Display or modify infomation of the repository currently using.
     info       Display the information of layer
 )";
 

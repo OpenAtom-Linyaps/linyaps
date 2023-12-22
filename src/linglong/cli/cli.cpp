@@ -7,9 +7,13 @@
 #include "linglong/cli/cli.h"
 
 #include "linglong/utils/command/env.h"
+#include "linglong/package/layer_file.h"
+#include "linglong/package/info.h"
+#include "linglong/util/qserializer/json.h"
 
 #include <grp.h>
 #include <sys/wait.h>
+#include <nlohmann/json.hpp>
 
 using namespace linglong::utils::error;
 
@@ -33,6 +37,7 @@ Usage:
     ll-cli [--json] search [--type=TYPE] TEXT
     ll-cli [--json] [--no-dbus] list [--type=TYPE]
     ll-cli [--json] repo [modify [--name=REPO] URL]
+    ll-cli [--json] info LAYER
 
 Arguments:
     APP     Specify the application.
@@ -40,6 +45,7 @@ Arguments:
     TIER    Specify the tier (container layer).
     URL     Specify the new repo URL.
     TEXT    The text used to search tiers.
+    LAYER   Specify the layer path
 
 Options:
     -h --help                 Show this screen.
@@ -65,6 +71,7 @@ Subcommands:
     search     Search for tiers.
     list       List known tiers.
     repo       Disply or modify infomation of the repository currently using.
+    info       Display the information of layer
 )";
 
 namespace {
@@ -706,6 +713,46 @@ int Cli::repo(std::map<std::string, docopt::value> &args)
         return -1;
     }
     this->printer.printReply(reply);
+    return 0;
+}
+
+int Cli::info(std::map<std::string, docopt::value> &args)
+{
+    QString layerPath;
+    if (args["LAYER"].isString()) {
+        layerPath = QString::fromStdString(args["LAYER"].asString());
+    }
+
+    if (layerPath.isEmpty()) {
+        this->printer.printErr(LINGLONG_ERR(-1, "failed to get layer path").value());
+        return -1;
+    }
+
+    const auto layerFile = package::LayerFile::openLayer(layerPath);
+
+    if (!layerFile.has_value()) {
+        this->printer.printErr(layerFile.error());
+        return -1;
+    }
+
+    (*layerFile)->setCleanStatus(false);
+
+    const auto layerInfo = (*layerFile)->layerFileInfo();
+    if (!layerInfo.has_value()) {
+        this->printer.printErr(layerInfo.error());
+        return -1;
+    }
+
+    const auto rawData = QByteArray::fromStdString(nlohmann::json((*layerInfo).info).dump());
+    auto [pkgInfo, err] = util::fromJSON<QSharedPointer<package::Info>>(rawData);
+
+    if (err) {
+        this->printer.printErr(
+          LINGLONG_ERR(err.code(), "failed to parse package::Info. " + err.message()).value());
+        return -1;
+    }
+
+    this->printer.printLayerInfo(pkgInfo);
     return 0;
 }
 

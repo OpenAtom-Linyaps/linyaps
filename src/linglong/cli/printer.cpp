@@ -103,4 +103,18 @@ void Printer::printQueryReply(const linglong::service::QueryReply &reply)
     std::cout << reply.result.toStdString() << std::endl;
 }
 
+void Printer::printLayerInfo(const QSharedPointer<linglong::package::Info> &info)
+{
+    // some info are not printed, such as base
+    std::cout << "AppID: " << info->appid.toStdString() << std::endl;
+    std::cout << "Name: " << info->name.toStdString() << std::endl;
+    std::cout << "Kind: " << info->kind.toStdString() << std::endl;
+    std::cout << "Version: " << info->version.toStdString() << std::endl;
+    std::cout << "Arch: " << info->arch.first().toStdString() << std::endl;
+    std::cout << "Module: " << info->module.toStdString() << std::endl;
+    std::cout << "Runtime: " << info->runtime.toStdString() << std::endl;
+    std::cout << "Size: " << info->size << " bytes" << std::endl;
+    std::cout << "Description: " << info->description.toStdString() << std::endl;
+}
+
 } // namespace linglong::cli

@@ -124,6 +124,7 @@ int main(int argc, char **argv)
                 { "uninstall", &Cli::uninstall },
                 { "list", &Cli::list },
                 { "repo", &Cli::repo },
+                { "info", &Cli::info }
             };
 
           for (const auto &subcommand : subcommandMap.keys()) {

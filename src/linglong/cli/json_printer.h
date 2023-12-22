@@ -20,6 +20,7 @@ public:
     void printContainers(const QList<QSharedPointer<Container>> &list) override;
     void printReply(const linglong::service::Reply &reply) override;
     void printQueryReply(const linglong::service::QueryReply &reply) override;
+    void printLayerInfo(const QSharedPointer<linglong::package::Info> &info) override;
 };
 
 } // namespace linglong::cli

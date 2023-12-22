@@ -16,21 +16,27 @@
 namespace linglong::package {
 
 // This class is a reference to a tier, use as a tier ID.
-struct Reference final
+class Reference final
 {
+public:
     static utils::error::Result<Reference> parse(const QString &raw) noexcept;
-    explicit Reference(const QString &raw);
+    static utils::error::Result<Reference> create(const QString &channel,
+                                                  const QString &id,
+                                                  const Version &version,
+                                                  const Architecture &architecture) noexcept;
 
+    QString channel;
     QString id;
     Version version;
     Architecture arch;
-    Module module;
-    QString channel;
 
     QString toString() const noexcept;
 
 private:
-    explicit Reference(const QStringList &components);
+    Reference(const QString &channel,
+              const QString &id,
+              const Version &version,
+              const Architecture &architecture);
 };
 
 } // namespace linglong::package

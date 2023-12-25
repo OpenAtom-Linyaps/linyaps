@@ -6,14 +6,15 @@
 
 #include "linglong/cli/cli.h"
 
-#include "linglong/utils/command/env.h"
-#include "linglong/package/layer_file.h"
 #include "linglong/package/info.h"
+#include "linglong/package/layer_file.h"
 #include "linglong/util/qserializer/json.h"
+#include "linglong/utils/command/env.h"
+
+#include <nlohmann/json.hpp>
 
 #include <grp.h>
 #include <sys/wait.h>
-#include <nlohmann/json.hpp>
 
 using namespace linglong::utils::error;
 
@@ -514,7 +515,9 @@ int Cli::install(std::map<std::string, docopt::value> &args)
         installParamOption.channel = ref.channel;
         installParamOption.appModule = ref.module;
         installParamOption.appId = ref.appId;
-        installParamOption.version = ref.version;
+        if (ref.version != "latest") {
+            installParamOption.version = ref.version;
+        }
         installParamOption.arch = ref.arch;
 
         qInfo().noquote() << "install" << ref.appId << ", please wait a few minutes...";

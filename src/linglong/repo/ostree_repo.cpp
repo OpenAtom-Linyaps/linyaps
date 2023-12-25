@@ -690,7 +690,7 @@ linglong::utils::error::Result<void> OSTreeRepo::repoPullbyCmd(const QString &de
     if (ostree_repo_open(tmpRepo, NULL, &gErr)) {
         ostree_repo_remote_add(tmpRepo,
                                remoteName.toStdString().c_str(),
-                               (remoteEndpoint + "/repos/repo").toStdString().c_str(),
+                               (remoteEndpoint + "/repos/" + remoteName).toStdString().c_str(),
                                options,
                                NULL,
                                &gErr);

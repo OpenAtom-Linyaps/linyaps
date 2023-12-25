@@ -38,8 +38,28 @@ try {
     return LINGLONG_ERR(-1, QString("load config from %1: exception: %2").arg(file).arg(e.what()));
 }
 
+Result<ConfigV1> loadConfig(const QStringList &files) noexcept
+{
+    for (const auto &file : files) {
+        auto config = loadConfig(file);
+        if (!config.has_value()) {
+            qInfo() << "Failed to load config from" << file << ":" << config.error();
+            continue;
+        }
+
+        qDebug() << "Load config from" << file;
+        return config;
+    }
+
+    return LINGLONG_ERR(-1, "failed to load config file from file list");
+}
+
 Result<void> saveConfig(const ConfigV1 &cfg, const QString &path) noexcept
 try {
+    if (cfg.repos.find(cfg.defaultRepo) == cfg.repos.end()) {
+        return LINGLONG_ERR(-1, QString("default repo not found in repos"));
+    }
+
     auto ofs = std::ofstream(path.toLocal8Bit());
     if (!ofs.is_open()) {
         return LINGLONG_ERR(-1, QString("open file at path %1 failed").arg(path));

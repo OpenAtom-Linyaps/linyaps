@@ -107,11 +107,14 @@ class OSTreeRepo : public QObject, public Repo
     Q_OBJECT
 public:
     explicit OSTreeRepo(const QString &localRepoPath,
-                        const QString &remoteEndpoint,
-                        const QString &remoteRepoName,
+                        const config::ConfigV1 &cfg,
                         api::client::ClientApi &client);
 
     ~OSTreeRepo() override;
+
+    config::ConfigV1 getConfig() const noexcept override;
+    linglong::utils::error::Result<void> setConfig(const config::ConfigV1 &cfg) noexcept override;
+
     linglong::utils::error::Result<void> listRemoteRefs();
 
     linglong::utils::error::Result<void> importDirectory(const package::Ref &ref,
@@ -656,6 +659,7 @@ private:
     // multi-thread
     linglong::utils::error::Result<void> getToken() { return LINGLONG_OK; };
 
+    config::ConfigV1 cfg;
     QString repoRootPath;
     QString remoteEndpoint;
     QString remoteRepoName;

@@ -8,6 +8,7 @@
 #define LINGLONG_SRC_MODULE_REPO_REPO_H_
 
 #include "linglong/package/package.h"
+#include "linglong/repo/config/ConfigV1.hpp"
 #include "linglong/utils/error/error.h"
 
 #include <qt5/QtCore/qobjectdefs.h>
@@ -70,6 +71,10 @@ public:
                                                                const QString &ref) = 0;
     virtual linglong::utils::error::Result<void> repoDeleteDatabyRef(const QString &repoPath,
                                                                      const QString &ref) = 0;
+
+    virtual config::ConfigV1 getConfig() const noexcept = 0;
+    virtual linglong::utils::error::Result<void>
+    setConfig(const config::ConfigV1 &cfg) noexcept = 0;
 };
 
 } // namespace repo

@@ -15,7 +15,8 @@
 namespace linglong::repo {
 
 utils::error::Result<config::ConfigV1> loadConfig(const QString &file) noexcept;
-utils::error::Result<void> saveConfig(const config::ConfigV1 &cfg) noexcept;
+utils::error::Result<config::ConfigV1> loadConfig(const QStringList &files) noexcept;
+utils::error::Result<void> saveConfig(const config::ConfigV1 &cfg, const QString &path) noexcept;
 
 inline bool operator==(const config::ConfigV1 &cfg1, const config::ConfigV1 &cfg2) noexcept
 {

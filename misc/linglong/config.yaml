@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
+version: 1
+defaultRepo: repo
 repos:
-  deepin:
-    endpoint: https://mirror-repo-linglong.deepin.com
-    repoName: repo
+  repo: https://mirror-repo-linglong.deepin.com

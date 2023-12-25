@@ -76,10 +76,11 @@ protected:
         ostreeRepoPath = repoPath + "/repo";
         remoteEndpoint = "https://store-llrepo.deepin.com/repos/";
         remoteRepoName = "repo";
-        ostreeRepo = std::make_unique<linglong::repo::OSTreeRepo>(repoPath,
-                                                                  remoteEndpoint,
-                                                                  remoteRepoName,
-                                                                  api);
+        auto config =
+          config::ConfigV1{ remoteRepoName.toStdString(),
+                            { { remoteRepoName.toStdString(), remoteEndpoint.toStdString() } },
+                            1 };
+        ostreeRepo = std::make_unique<linglong::repo::OSTreeRepo>(repoPath, config, api);
     }
 
     void TearDown() override

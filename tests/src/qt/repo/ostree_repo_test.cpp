@@ -83,8 +83,10 @@ void TestOSTreeRepo::push()
     api.setNewServerForAllOperations(endpoint);
     api.setNetworkAccessManager(&http);
 
+    auto config = config::ConfigV1{ "repo", { { "repo", endpoint.toStdString() } }, 1 };
+
     // TODO(wurongjie) 不加 new 程序会挂掉
-    auto repo = new OSTreeRepo("./testdata/ostree_repo_test", endpoint, "repo", api);
+    auto repo = new OSTreeRepo("./testdata/ostree_repo_test", config, api);
     auto ref = package::Ref("test");
 
     // 创建一个临时目录

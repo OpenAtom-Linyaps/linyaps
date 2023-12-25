@@ -10,6 +10,7 @@
 #include "linglong/builder/builder_config.h"
 #include "linglong/dbus_ipc/workaround.h"
 #include "linglong/package_manager/package_manager.h"
+#include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/util/configure.h"
 #include "linglong/utils/dbus/register.h"
@@ -29,17 +30,23 @@ void withDBusDaemon()
                                                         "/org/deepin/linglong/PackageManagerHelper",
                                                         QDBusConnection::systemBus(),
                                                         QCoreApplication::instance());
+
+    auto config = linglong::repo::loadConfig(
+      { linglong::util::getLinglongRootPath() + "/config.yaml", LINGLONG_DATA_DIR "/config.yaml" });
+    if (!config.has_value()) {
+        qCritical() << config.error();
+        QCoreApplication::exit(-1);
+        return;
+    }
+
     auto api = new linglong::api::client::ClientApi;
     api->setTimeOut(5000);
     api->setNewServerForAllOperations(
-      linglong::util::config::ConfigInstance().repos[linglong::package::kDefaultRepo]->endpoint);
+      QString::fromStdString(config->repos.at(config->defaultRepo)));
     api->setParent(QCoreApplication::instance());
 
-    auto ostreeRepo = new linglong::repo::OSTreeRepo(
-      linglong::util::getLinglongRootPath(),
-      linglong::util::config::ConfigInstance().repos[linglong::package::kDefaultRepo]->endpoint,
-      linglong::util::config::ConfigInstance().repos[linglong::package::kDefaultRepo]->repoName,
-      *api);
+    auto ostreeRepo =
+      new linglong::repo::OSTreeRepo(linglong::util::getLinglongRootPath(), *config, *api);
     ostreeRepo->setParent(QCoreApplication::instance());
 
     auto client = new linglong::repo::RepoClient(*api);
@@ -104,16 +111,21 @@ void withoutDBusDaemon()
                                                         pkgManHelperConn,
                                                         QCoreApplication::instance());
 
+    auto config = linglong::repo::loadConfig(
+      { linglong::util::getLinglongRootPath() + "/config.yaml", LINGLONG_DATA_DIR "/config.yaml" });
+    if (!config.has_value()) {
+        qCritical() << config.error();
+        QCoreApplication::exit(-1);
+        return;
+    }
+
     auto api = new linglong::api::client::ClientApi;
     api->setParent(QCoreApplication::instance());
     api->setNewServerForAllOperations(
-      linglong::util::config::ConfigInstance().repos[linglong::package::kDefaultRepo]->endpoint);
+      QString::fromStdString(config->repos.at(config->defaultRepo)));
 
-    auto ostreeRepo = new linglong::repo::OSTreeRepo(
-      linglong::util::getLinglongRootPath(),
-      linglong::util::config::ConfigInstance().repos[linglong::package::kDefaultRepo]->endpoint,
-      linglong::util::config::ConfigInstance().repos[linglong::package::kDefaultRepo]->repoName,
-      *api);
+    auto ostreeRepo =
+      new linglong::repo::OSTreeRepo(linglong::util::getLinglongRootPath(), *config, *api);
     ostreeRepo->setParent(QCoreApplication::instance());
 
     auto client = new linglong::repo::RepoClient(*api);

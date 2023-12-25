@@ -7,8 +7,8 @@
 #include "package_manager.h"
 
 #include "linglong/dbus_ipc/dbus_system_helper_common.h"
-#include "linglong/repo/repo_client.h"
 #include "linglong/package/layer_packager.h"
+#include "linglong/repo/repo_client.h"
 #include "linglong/util/app_status.h"
 #include "linglong/util/appinfo_cache.h"
 #include "linglong/util/config/config.h"
@@ -473,7 +473,7 @@ PackageManager::PackageManager(api::dbus::v1::PackageManagerHelper &helper,
     , sysLinglongInstallation(linglong::util::getLinglongRootPath() + "/entries/share")
     , kAppInstallPath(linglong::util::getLinglongRootPath() + "/layers/")
     , kLocalRepoPath(linglong::util::getLinglongRootPath())
-    , remoteRepoName(util::config::ConfigInstance().repos[package::kDefaultRepo]->repoName)
+    , remoteRepoName(QString::fromStdString(repoMan.getConfig().defaultRepo))
     // FIXME(black_desk):
     // When endpoint get updated by `ModifyRepo`,
     // the endpoint used by repoClient is not updated.
@@ -492,13 +492,13 @@ PackageManager::PackageManager(api::dbus::v1::PackageManagerHelper &helper,
 auto PackageManager::getRepoInfo() -> QueryReply
 {
     QueryReply reply;
-    const auto &config = util::config::ConfigInstance();
+    const auto &config = repoMan.getConfig();
 
     // FIXME(black_desk):
     // This is a workaround, we may have multiple repositories.
     reply.code = STATUS_CODE(kSuccess);
-    reply.message = config.repos.firstKey();
-    reply.result = config.repos.first()->endpoint;
+    reply.message = QString::fromStdString(config.defaultRepo);
+    reply.result = QString::fromStdString(config.repos.at(config.defaultRepo));
 
     return reply;
 }
@@ -517,45 +517,20 @@ auto PackageManager::ModifyRepo(const QString &name, const QString &url) -> Repl
         return reply;
     }
 
-    // update config yaml
-    if (!util::config::ConfigInstance().repos.contains(name)) {
-        reply.message = name + " not exist";
-        qWarning() << reply.message;
-        reply.code = STATUS_CODE(kUserInputParamErr);
+    auto cfg = this->repoMan.getConfig();
+
+    cfg.defaultRepo = name.toStdString();
+    cfg.repos[cfg.defaultRepo] = url.toStdString();
+
+    auto res = this->repoMan.setConfig(cfg);
+    if (!res.has_value()) {
+        qCritical() << res.error();
+        reply.message = "internal error";
+        reply.code = -1;
         return reply;
     }
 
-    util::config::ConfigInstance().repos[name]->endpoint = url;
-    util::config::ConfigInstance().save();
-
-    // FIXME: check setEndpoint comment.
-    repoClient.setEndpoint(url);
-
-    auto ostreeConfigPath = kLocalRepoPath + "/repo/config";
-    if (!linglong::util::fileExists(ostreeConfigPath)) {
-        reply.message = ostreeConfigPath + " no exist";
-        qWarning() << reply.message;
-        reply.code = STATUS_CODE(kErrorModifyRepoFailed);
-        return reply;
-    }
-
-    // FIXME: only support repo now
-    QString ostreeRepoName = "repo";
-    QString ostreeUrl = endpointUrl.toString() + "/repos/" + ostreeRepoName;
-
-    // ostree --repo=/var/lib/linglong/repo \
-    //   config set --group='remote "repo"' url  https://repo-dev.linglong.space/repo/
-    auto args = QStringList{
-        QString("--repo=%1").arg(kLocalRepoPath + "/repo"),   "config", "set",
-        QString("--group=remote \"%1\"").arg(ostreeRepoName), "url",    ostreeUrl,
-    };
-    auto err = util::Exec("ostree", args);
-    if (err) {
-        reply.message = "modify repo config failed";
-        qWarning().noquote() << reply.message << args.join(" ");
-        reply.code = STATUS_CODE(kErrorModifyRepoFailed);
-        return reply;
-    }
+    this->remoteRepoName = name;
 
     qDebug() << QString("modify repo name:%1 url:%2 success").arg(name, url);
     reply.code = STATUS_CODE(kErrorModifyRepoSuccess);

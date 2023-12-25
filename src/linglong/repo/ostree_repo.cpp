@@ -8,6 +8,7 @@
 
 #include "linglong/package/info.h"
 #include "linglong/package/ref.h"
+#include "linglong/repo/config.h"
 #include "linglong/repo/repo.h"
 #include "linglong/util/error.h"
 #include "linglong/util/runner.h"
@@ -48,12 +49,12 @@ QSERIALIZER_IMPL(UploadTaskResponse);
 typedef QMap<QString, OstreeRepoObject> RepoObjectMap;
 
 OSTreeRepo::OSTreeRepo(const QString &localRepoPath,
-                       const QString &remoteEndpoint,
-                       const QString &remoteRepoName,
+                       const config::ConfigV1 &cfg,
                        api::client::ClientApi &client)
-    : repoRootPath(QDir(localRepoPath).absolutePath())
-    , remoteEndpoint(remoteEndpoint)
-    , remoteRepoName(remoteRepoName)
+    : cfg(cfg)
+    , repoRootPath(QDir(localRepoPath).absolutePath())
+    , remoteEndpoint(QString::fromStdString(cfg.repos.at(cfg.defaultRepo)))
+    , remoteRepoName(QString::fromStdString(cfg.defaultRepo))
     , repoClient(client)
     , apiClient(client)
 {
@@ -83,6 +84,62 @@ OSTreeRepo::OSTreeRepo(const QString &localRepoPath,
     }
     Q_ASSERT(repo);
     repoPtr.reset(g_steal_pointer(&repo));
+}
+
+config::ConfigV1 OSTreeRepo::getConfig() const noexcept
+{
+    return cfg;
+}
+
+linglong::utils::error::Result<void> OSTreeRepo::setConfig(const config::ConfigV1 &cfg) noexcept
+{
+    LINGLONG_TRACE_MESSAGE("update config");
+
+    if (cfg == this->cfg) {
+        return LINGLONG_OK;
+    }
+
+    auto res = saveConfig(cfg, this->repoRootPath + "/config.yaml");
+    if (!res.has_value()) {
+        return LINGLONG_EWRAP(res.error());
+    }
+
+    g_autoptr(GKeyFile) cfgGKeyFile = ostree_repo_copy_config(this->repoPtr.get());
+    g_key_file_set_string(cfgGKeyFile, "core", "min-free-space-size", "600MB");
+    // NOTE:
+    // libcurl 8.2.1 has a http2 bug https://github.com/curl/curl/issues/11859
+    // We disable http2 for now.
+    g_key_file_set_string(
+      cfgGKeyFile,
+      QString("remote \"%1\"").arg(QString::fromStdString(cfg.defaultRepo)).toLocal8Bit(),
+      "http2",
+      "false");
+    g_key_file_set_string(
+      cfgGKeyFile,
+      QString("remote \"%1\"").arg(QString::fromStdString(cfg.defaultRepo)).toLocal8Bit(),
+      "gpg-verify",
+      "false");
+    g_key_file_set_string(
+      cfgGKeyFile,
+      QString("remote \"%1\"").arg(QString::fromStdString(cfg.defaultRepo)).toLocal8Bit(),
+      "url",
+      cfg.repos.at(cfg.defaultRepo).c_str());
+
+    g_autoptr(GError) gErr = nullptr;
+    if (!ostree_repo_write_config(this->repoPtr.get(), cfgGKeyFile, &gErr)) {
+        auto err = LINGLONG_GERR(gErr);
+        return LINGLONG_EWRAP(err.value());
+    }
+
+    this->repoClient.setEndpoint(QString::fromStdString(cfg.repos.at(cfg.defaultRepo)));
+    this->apiClient.setNewServerForAllOperations(
+      QString::fromStdString(cfg.repos.at(cfg.defaultRepo)));
+
+    this->cfg = cfg;
+    this->remoteRepoName = QString::fromStdString(cfg.defaultRepo);
+    this->remoteEndpoint = QString::fromStdString(cfg.repos.at(this->remoteRepoName.toStdString()));
+
+    return LINGLONG_OK;
 }
 
 linglong::utils::error::Result<void> OSTreeRepo::importDirectory(const package::Ref &ref,

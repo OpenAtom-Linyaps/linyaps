@@ -61,11 +61,16 @@ int main(int argc, char **argv)
     api.setNewServerForAllOperations(
       linglong::builder::BuilderConfig::instance()->remoteRepoEndpoint);
 
-    linglong::repo::OSTreeRepo ostree(
-      linglong::builder::BuilderConfig::instance()->repoPath(),
-      linglong::builder::BuilderConfig::instance()->remoteRepoEndpoint,
-      linglong::builder::BuilderConfig::instance()->remoteRepoName,
-      api);
+    auto config = linglong::repo::config::ConfigV1{
+        linglong::builder::BuilderConfig::instance()->remoteRepoName.toStdString(),
+        { { linglong::builder::BuilderConfig::instance()->remoteRepoName.toStdString(),
+            linglong::builder::BuilderConfig::instance()->remoteRepoEndpoint.toStdString() } },
+        1
+    };
+
+    linglong::repo::OSTreeRepo ostree(linglong::builder::BuilderConfig::instance()->repoPath(),
+                                      config,
+                                      api);
 
     linglong::builder::LinglongBuilder builder(ostree);
 

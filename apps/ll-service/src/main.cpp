@@ -7,6 +7,7 @@
 #include "ClientApi.h"
 #include "linglong/adaptors/app_manager/app_manager1.h"
 #include "linglong/dbus_ipc/workaround.h"
+#include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/dbus/register.h"
 #include "linglong/utils/finally/finally.h"
@@ -35,7 +36,14 @@ auto main(int argc, char *argv[]) -> int
     linglong::api::client::ClientApi api;
     // api.setNewServerForAllOperations()
 
-    linglong::repo::OSTreeRepo ostree(linglong::util::getLinglongRootPath(), "", "", api);
+    auto config = linglong::repo::loadConfig(
+      { linglong::util::getLinglongRootPath() + "/config.yaml", LINGLONG_DATA_DIR "/config.yaml" });
+    if (!config.has_value()) {
+        qCritical() << config.error();
+        return -1;
+    }
+
+    linglong::repo::OSTreeRepo ostree(linglong::util::getLinglongRootPath(), *config, api);
 
     linglong::service::AppManager appManager(ostree);
     linglong::adaptors::app_manger::AppManager1 appManagerAdaport(&appManager);

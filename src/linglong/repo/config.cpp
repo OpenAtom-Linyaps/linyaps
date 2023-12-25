@@ -35,7 +35,7 @@ try {
 
     return config;
 } catch (const std::exception &e) {
-    return LINGLONG_ERR(-1, QString("exception: %1").arg(e.what()));
+    return LINGLONG_ERR(-1, QString("load config from %1: exception: %2").arg(file).arg(e.what()));
 }
 
 Result<void> saveConfig(const ConfigV1 &cfg, const QString &path) noexcept
@@ -50,7 +50,7 @@ try {
 
     return LINGLONG_OK;
 } catch (const std::exception &e) {
-    return LINGLONG_ERR(-1, QString("exception: %1").arg(e.what()));
+    return LINGLONG_ERR(-1, QString("save config to %1: exception: %1").arg(path).arg(e.what()));
 }
 
 } // namespace linglong::repo

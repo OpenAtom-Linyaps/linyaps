@@ -16,7 +16,7 @@ namespace linglong::package {
 
 LayerPackager::LayerPackager(const QString &workDir)
     : workDir(
-      QStringList{ workDir, QUuid::createUuid().toString(QUuid::Id128) }.join(QDir::separator()))
+      QStringList{ workDir, QUuid::createUuid().toString(QUuid::Id128) }.join("-"))
 {
     util::ensureDir(this->workDir);
 }

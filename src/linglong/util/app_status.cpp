@@ -253,7 +253,7 @@ bool getAppInstalledStatus(const QString &appId,
     if (!isRuntime(appId) && !userName.isEmpty()) {
         condition.append(QString(" AND user = '%1'").arg(userName));
     }
-    if (!appVer.isEmpty()) {
+    if (!appVer.isEmpty() && appVer != "latest") {
         condition.append(QString(" AND version = '%1'").arg(appVer));
     }
     if (!appArch.isEmpty()) {

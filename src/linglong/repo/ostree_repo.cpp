@@ -496,7 +496,7 @@ package::Ref OSTreeRepo::latestOfRef(const QString &appId, const QString &appVer
 
     // 未指定版本使用最新版本，指定版本下使用指定版本
     QString version;
-    if (!appVersion.isEmpty()) {
+    if ((!appVersion.isEmpty()) && (appVersion != "latest")) {
         version = appVersion;
     } else {
         version = latestVersionOf(appId);

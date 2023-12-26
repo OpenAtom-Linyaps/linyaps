@@ -1023,12 +1023,17 @@ linglong::utils::error::Result<void> OSTreeRepo::initCreateRepoIfNotExists()
     url += "/repos/" + this->remoteRepoName;
 
     g_clear_error(&gErr);
+    g_autoptr(GVariant) options = NULL;
+    GVariantBuilder builder;
+    g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
+    g_variant_builder_add(&builder, "{sv}", "gpg-verify", g_variant_new_boolean(false));
+    options = g_variant_ref_sink(g_variant_builder_end(&builder));
     if (!ostree_repo_remote_change(repo,
                                    nullptr,
                                    OSTREE_REPO_REMOTE_CHANGE_REPLACE,
                                    this->remoteRepoName.toLocal8Bit(),
                                    url.toLocal8Bit(),
-                                   nullptr,
+                                   options,
                                    nullptr,
                                    &gErr)) {
         return LINGLONG_ERR(-1,

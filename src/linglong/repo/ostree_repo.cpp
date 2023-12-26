@@ -263,28 +263,23 @@ linglong::utils::error::Result<void> OSTreeRepo::pull(package::Ref &ref, bool /*
     // problem.
     // As we have try the current base will fail so many times during
     // transferring. So we decide to retry 30 times.
-    int retry = 30;
     g_autoptr(GError) gErr = nullptr;
     auto str = ref.toLocalRefString().toLocal8Bit();
     char *refs_to_fetch[2] = { str.data(), nullptr };
-    while (retry--) {
-        qDebug() << "remaining retries" << retry;
-        g_clear_error(&gErr);
-        ostree_repo_pull(repoPtr.get(),
-                         remoteRepoName.toLocal8Bit(),
-                         refs_to_fetch,
-                         OSTREE_REPO_PULL_FLAGS_NONE,
-                         NULL,
-                         NULL,
-                         &gErr);
-        if (!gErr) {
-            return LINGLONG_OK;
-        }
+    ostree_repo_pull(repoPtr.get(),
+                     remoteRepoName.toLocal8Bit(),
+                     refs_to_fetch,
+                     OSTREE_REPO_PULL_FLAGS_NONE,
+                     NULL,
+                     NULL,
+                     &gErr);
+    if (gErr) {
         qWarning() << gErr->code << gErr->message;
+        return LINGLONG_ERR(
+          -1,
+          QString("pull branch %1 from repo %2 failed!").arg(ref.toLocalString(), remoteRepoName));
     }
-    return LINGLONG_ERR(
-      -1,
-      QString("pull branch %1 from repo %2 failed!").arg(ref.toLocalString(), remoteRepoName));
+    return LINGLONG_OK;
 }
 
 linglong::utils::error::Result<void> OSTreeRepo::listRemoteRefs()

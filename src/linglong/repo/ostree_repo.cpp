@@ -368,13 +368,13 @@ linglong::utils::error::Result<void> OSTreeRepo::checkoutAll(const package::Ref 
 {
     package::Ref reference = ref;
     reference.module = "runtime";
-    auto ret = checkout(ref, subPath, target);
+    auto ret = checkout(reference, subPath, target);
     if (!ret.has_value()) {
         return LINGLONG_EWRAP("checkout all modules", ret.error());
     }
 
     reference.module = "devel";
-    ret = checkout(ref, subPath, target);
+    ret = checkout(reference, subPath, target);
     if (!ret.has_value()) {
         qWarning() << "failed to checkout modules for devel:" << ret.error().message();
     }

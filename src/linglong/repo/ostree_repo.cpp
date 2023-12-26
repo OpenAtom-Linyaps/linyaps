@@ -264,7 +264,7 @@ linglong::utils::error::Result<void> OSTreeRepo::pull(package::Ref &ref, bool /*
     // As we have try the current base will fail so many times during
     // transferring. So we decide to retry 30 times.
     g_autoptr(GError) gErr = nullptr;
-    auto str = ref.toLocalRefString().toLocal8Bit();
+    auto str = ref.toOSTreeRefLocalString().toLocal8Bit();
     char *refs_to_fetch[2] = { str.data(), nullptr };
     ostree_repo_pull(repoPtr.get(),
                      remoteRepoName.toLocal8Bit(),
@@ -305,14 +305,16 @@ linglong::utils::error::Result<void> OSTreeRepo::pullAll(const package::Ref &ref
 {
     // FIXME(black-desk): pullAll should not belong to this class.
 
-    auto refs = package::Ref(QStringList{ ref.toOSTreeRefLocalString(), "runtime" }.join("/"));
+    auto refs = package::Ref(
+      QStringList{ ref.channel, ref.appId, ref.version, ref.arch, "runtime" }.join("/"));
     auto ret = pull(refs, false);
     if (!ret.has_value()) {
         return LINGLONG_ERR(ret.error().code(), ret.error().message());
     }
 
     // FIXME: some old package have no devel, ignore error for now.
-    refs = package::Ref(QStringList{ ref.toOSTreeRefLocalString(), "devel" }.join("/"));
+    refs =
+      package::Ref(QStringList{ ref.channel, ref.appId, ref.version, ref.arch, "devel" }.join("/"));
     ret = pull(refs, false);
     if (!ret.has_value()) {
         return LINGLONG_ERR(ret.error().code(), ret.error().message());

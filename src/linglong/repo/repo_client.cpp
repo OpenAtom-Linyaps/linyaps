@@ -7,7 +7,6 @@
 #include "repo_client.h"
 
 #include "linglong/package/package.h"
-#include "linglong/util/config/config.h"
 #include "linglong/util/error.h"
 #include "linglong/util/file.h"
 #include "linglong/util/qserializer/deprecated.h"

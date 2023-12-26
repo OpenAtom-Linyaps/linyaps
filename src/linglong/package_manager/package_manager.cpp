@@ -11,7 +11,6 @@
 #include "linglong/repo/repo_client.h"
 #include "linglong/util/app_status.h"
 #include "linglong/util/appinfo_cache.h"
-#include "linglong/util/config/config.h"
 #include "linglong/util/file.h"
 #include "linglong/util/qserializer/json.h"
 #include "linglong/util/runner.h"

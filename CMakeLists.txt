@@ -266,10 +266,6 @@ pfl_add_library(
   ./src/linglong/util/app_status.h
   ./src/linglong/util/appinfo_cache.cpp
   ./src/linglong/util/appinfo_cache.h
-  ./src/linglong/util/config/config.cpp
-  ./src/linglong/util/config/config.h
-  ./src/linglong/util/config/repo.cpp
-  ./src/linglong/util/config/repo.h
   ./src/linglong/util/configure.cpp
   ./src/linglong/util/connection.cpp
   ./src/linglong/util/connection.h

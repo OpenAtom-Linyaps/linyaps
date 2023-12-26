@@ -10,7 +10,6 @@
 #include "linglong/package/package.h"
 #include "linglong/repo/repo.h"
 #include "linglong/repo/repo_client.h"
-#include "linglong/util/config/config.h"
 #include "linglong/util/erofs.h"
 #include "linglong/util/file.h"
 #include "linglong/util/qserializer/json.h"

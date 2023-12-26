@@ -330,6 +330,9 @@ linglong::utils::error::Result<void> OSTreeRepo::checkout(const package::Ref &re
                                                           const QString &subPath,
                                                           const QString &target)
 {
+    LINGLONG_TRACE_MESSAGE(
+      QString("checkout %1 to %2").arg(ref.toOSTreeRefLocalString()).arg(target));
+
     g_autoptr(GError) gErr = NULL;
     OstreeRepoCheckoutAtOptions checkout_options = {};
     checkout_options.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES;
@@ -339,7 +342,13 @@ linglong::utils::error::Result<void> OSTreeRepo::checkout(const package::Ref &re
     }
     auto rev = resolveRev(ref.toOSTreeRefLocalString());
     if (!rev.has_value()) {
-        return LINGLONG_EWRAP("", rev.error());
+        return LINGLONG_EWRAP(rev.error());
+    }
+
+    // FIXME: at least the "layers" directory should be ensured when OSTreeRepo is constructed.
+    if (!util::ensureDir(target)) {
+        auto err = LINGLONG_ERR(-1, QString("failed to mkdir %1").arg(target));
+        return LINGLONG_EWRAP(err.value());
     }
 
     ostree_repo_checkout_at(repoPtr.get(),
@@ -350,16 +359,10 @@ linglong::utils::error::Result<void> OSTreeRepo::checkout(const package::Ref &re
                             NULL,
                             &gErr);
     if (gErr) {
-        return LINGLONG_ERR(gErr->code, gErr->message);
+        auto err = LINGLONG_ERR(gErr->code, gErr->message);
+        return LINGLONG_EWRAP(err.value());
     }
     return LINGLONG_OK;
-
-    // QStringList args = { "checkout", "--union", "--force-copy" };
-    // if (!subPath.isEmpty()) {
-    //     args.push_back("--subpath=" + subPath);
-    // }
-    // args.append({ ref.toOSTreeRefLocalString(), target });
-    // return ostreeRun(args);
 }
 
 linglong::utils::error::Result<void> OSTreeRepo::checkoutAll(const package::Ref &ref,

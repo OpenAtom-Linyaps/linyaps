@@ -323,6 +323,8 @@ int LinglongBuilder::startContainer(QSharedPointer<Container> c,
         idMap.hostID = uidMap.value(0);
         idMap.containerID = uidMap.value(1);
         idMap.size = uidMap.value(2);
+        r.linux_->uidMappings =
+          r.linux_->uidMappings.value_or(std::vector<ocppi::runtime::config::types::IdMapping>());
         r.linux_->uidMappings->push_back(idMap);
     }
 
@@ -334,6 +336,8 @@ int LinglongBuilder::startContainer(QSharedPointer<Container> c,
         idMap.hostID = gidMap.value(0);
         idMap.containerID = gidMap.value(1);
         idMap.size = gidMap.value(2);
+        r.linux_->gidMappings =
+          r.linux_->gidMappings.value_or(std::vector<ocppi::runtime::config::types::IdMapping>());
         r.linux_->gidMappings->push_back(idMap);
     }
 
@@ -1034,8 +1038,12 @@ util::Error LinglongBuilder::importLayer(const QString &path)
     }
 
     const auto pkgInfo = *((*layerDir)->info());
-    const auto ref =
-      package::Ref("", "main", pkgInfo->appid, pkgInfo->version, pkgInfo->arch.first(), pkgInfo->module);
+    const auto ref = package::Ref("",
+                                  "main",
+                                  pkgInfo->appid,
+                                  pkgInfo->version,
+                                  pkgInfo->arch.first(),
+                                  pkgInfo->module);
     auto ret = repo.importDirectory(ref, (*layerDir)->absolutePath());
     if (!ret.has_value()) {
         return WrapError(NewError(ret.error().code(), ret.error().message()),

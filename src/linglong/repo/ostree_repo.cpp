@@ -317,7 +317,7 @@ linglong::utils::error::Result<void> OSTreeRepo::pullAll(const package::Ref &ref
       package::Ref(QStringList{ ref.channel, ref.appId, ref.version, ref.arch, "devel" }.join("/"));
     ret = pull(refs, false);
     if (!ret.has_value()) {
-        return LINGLONG_ERR(ret.error().code(), ret.error().message());
+        qWarning() << ret.error().message()
     }
 
     return LINGLONG_OK;
@@ -376,7 +376,7 @@ linglong::utils::error::Result<void> OSTreeRepo::checkoutAll(const package::Ref 
     reference.module = "devel";
     ret = checkout(ref, subPath, target);
     if (!ret.has_value()) {
-        return LINGLONG_EWRAP("checkout all modules", ret.error());
+        qWarning() << "failed to checkout modules for devel:" << ret.error().message();
     }
 
     return LINGLONG_OK;

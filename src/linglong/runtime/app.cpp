@@ -569,22 +569,26 @@ void App::stateDBusProxyArgs(bool enable, const QString &appId, const QString &p
     anno["dbusProxyInfo"]["appID"] = appId.toStdString();
     anno["dbusProxyInfo"]["busType"] = runParamMap[linglong::util::kKeyBusType].toStdString();
     anno["dbusProxyInfo"]["proxyPath"] = proxyPath.toStdString();
+
+    // FIXME: ll-box expected that these arrays existed. Remove later.
+    // https://github.com/linuxdeepin/linglong-box/blob/212a734812473fe8b7a969c5f75b41b5d3f2303b/src/util/oci_runtime.h#L505-L507
+    auto &names = anno["dbusProxyInfo"]["name"] = nlohmann::json::array_t{};
+    auto &paths = anno["dbusProxyInfo"]["path"] = nlohmann::json::array_t{};
+    auto &interfaces = anno["dbusProxyInfo"]["interface"] = nlohmann::json::array_t{};
+
     // FIX to do load filter from yaml
     // FIX to do 加载用户配置参数（权限管限器上）
     // 添加cli command运行参数
     if (runParamMap.contains(linglong::util::kKeyFilterName)) {
         QString name = runParamMap[linglong::util::kKeyFilterName];
-        auto &names = anno["dbusProxyInfo"]["name"] = nlohmann::json::array_t{};
         names.push_back(name.toStdString());
     }
     if (runParamMap.contains(linglong::util::kKeyFilterPath)) {
         QString path = runParamMap[linglong::util::kKeyFilterPath];
-        auto &paths = anno["dbusProxyInfo"]["path"] = nlohmann::json::array_t{};
         paths.push_back(path.toStdString());
     }
     if (runParamMap.contains(linglong::util::kKeyFilterIface)) {
         QString interface = runParamMap[linglong::util::kKeyFilterIface];
-        auto &interfaces = anno["dbusProxyInfo"]["interface"] = nlohmann::json::array_t{};
         interfaces.push_back(interface.toStdString());
     }
 }

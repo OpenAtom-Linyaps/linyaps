@@ -317,7 +317,7 @@ linglong::utils::error::Result<void> OSTreeRepo::pullAll(const package::Ref &ref
       package::Ref(QStringList{ ref.channel, ref.appId, ref.version, ref.arch, "devel" }.join("/"));
     ret = pull(refs, false);
     if (!ret.has_value()) {
-        qWarning() << ret.error().message()
+        qWarning() << ret.error().message();
     }
 
     return LINGLONG_OK;

@@ -13,7 +13,12 @@ SPDX-License-Identifier: LGPL-3.0-or-later
       <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::ParamOption"/>
       <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
     </method>
-      <method name="InstallLayer">
+    <method name="InstallLayerFD">
+      <arg name="fileDescriptor" type="h" direction="in"/>
+      <arg name="reply" type="(is)" direction="out"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
+    </method>
+    <method name="InstallLayer">
       <arg name="installParamOption" type="(ss)" direction="in"/>
       <arg name="reply" type="(is)" direction="out"/>
       <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::InstallParamOption"/>

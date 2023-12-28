@@ -38,7 +38,7 @@ class PackageManager : public QObject, protected QDBusContext
 public:
     PackageManager(api::dbus::v1::PackageManagerHelper &helper,
                    linglong::repo::Repo &,
-                   linglong::repo::RepoClient& client,
+                   linglong::repo::RepoClient &client,
                    QObject *parent);
 
     ~PackageManager() override = default;
@@ -103,6 +103,17 @@ public Q_SLOTS:
      *          message:信息
      */
     virtual auto InstallLayer(const InstallParamOption &installParamOption) -> Reply;
+
+    /**
+     * @brief 安装layer文件
+     *
+     * @param fileDescriptor layer文件描述符
+     *
+     * @return Reply dbus方法调用应答 \n
+     *          code:状态码 \n
+     *          message:信息
+     */
+    virtual auto InstallLayerFD(const QDBusUnixFileDescriptor &fileDescriptor) -> Reply;
 
     /**
      * @brief 卸载软件包
@@ -305,7 +316,7 @@ private:
     QString kLocalRepoPath;
     QString remoteRepoName = "repo";
 
-    repo::RepoClient& repoClient;
+    repo::RepoClient &repoClient;
     linglong::repo::Repo &repoMan;
     // 记录子线程安装及更新状态 供查询进度信息使用
     QMap<QString, Reply> appState;

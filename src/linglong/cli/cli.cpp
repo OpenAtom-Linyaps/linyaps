@@ -510,9 +510,10 @@ int Cli::install(std::map<std::string, docopt::value> &args)
             QFileInfo fileInfo(*(*layerFile));
             installParamOption.layerPath = fileInfo.absoluteFilePath();
             installParamOption.layerName = fileInfo.fileName();
-
+            layerFile->data()->seek(0);
+            QDBusUnixFileDescriptor dbusFileDescriptor(layerFile->data()->handle());
             QDBusPendingReply<linglong::service::Reply> dbusReply =
-              this->pkgMan.InstallLayer(installParamOption);
+              this->pkgMan.InstallLayerFD(dbusFileDescriptor);
             dbusReply.waitForFinished();
             reply = dbusReply.value();
             this->printer.printReply(reply);

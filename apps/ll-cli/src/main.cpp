@@ -8,6 +8,7 @@
 #include "linglong/cli/cli.h"
 #include "linglong/cli/json_printer.h"
 #include "linglong/util/configure.h"
+#include "linglong/utils/finally/finally.h"
 
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -18,6 +19,8 @@
 #include <iostream>
 #include <memory>
 #include <ostream>
+
+#include <wordexp.h>
 
 using namespace linglong::utils::error;
 using namespace linglong::package;
@@ -39,6 +42,53 @@ void startProcess(QString program, QStringList args = {})
     });
 }
 
+std::vector<std::string> transformOldExec(int argc, char **argv) noexcept
+{
+    std::vector<std::string> res{ argv + 1, argv + argc };
+    if (std::find(res.begin(), res.end(), "run") == res.end()) {
+        return res;
+    }
+
+    auto exec = std::find(res.begin(), res.end(), "--exec");
+
+    if (exec == res.end()) {
+        return res;
+    }
+
+    if ((exec + 1) == res.end() || (exec + 2) != res.end()) {
+        qCritical() << "unexpected --exec location, transform old exec arguments failed.";
+        return res;
+    }
+
+    wordexp_t words;
+    auto _ = linglong::utils::finally::finally([&]() {
+        wordfree(&words);
+    });
+
+    auto ret = wordexp((exec + 1)->c_str(), &words, 0);
+    if (ret) {
+        qCritical() << "wordexp on" << (exec + 1)->c_str() << "failed with" << ret
+                    << "transform old exec arguments failed.";
+        return res;
+    }
+
+    res.erase(exec, res.end());
+    res.push_back("--");
+
+    for (size_t i = 0; i < words.we_wordc; i++) {
+        res.push_back(words.we_wordv[i]);
+    }
+
+    QStringList list{};
+
+    for (const auto &arg : res) {
+        list.push_back(QString::fromStdString(arg));
+    }
+
+    qDebug() << "using new args" << list;
+    return res;
+}
+
 } // namespace
 
 using namespace linglong::utils::global;
@@ -52,11 +102,13 @@ int main(int argc, char **argv)
     auto ret = QMetaObject::invokeMethod(
       QCoreApplication::instance(),
       [&argc, &argv]() {
+          auto raw_args = transformOldExec(argc, argv);
+
           registerDBusParam();
 
           std::map<std::string, docopt::value> args =
             docopt::docopt(Cli::USAGE,
-                           { argv + 1, argv + argc },
+                           raw_args,
                            true,                              // show help if requested
                            "linglong CLI " LINGLONG_VERSION); // version string
 
@@ -112,20 +164,18 @@ int main(int argc, char **argv)
           auto cli = std::make_unique<Cli>(*printer, *appMan, *pkgMan);
 
           QMap<QString, std::function<int(Cli *, std::map<std::string, docopt::value> &)>>
-            subcommandMap = {
-                { "run", &Cli::run },
-                { "exec", &Cli::exec },
-                { "enter", &Cli::enter },
-                { "ps", &Cli::ps },
-                { "kill", &Cli::kill },
-                { "install", &Cli::install },
-                { "upgrade", &Cli::upgrade },
-                { "search", &Cli::search },
-                { "uninstall", &Cli::uninstall },
-                { "list", &Cli::list },
-                { "repo", &Cli::repo },
-                { "info", &Cli::info }
-            };
+            subcommandMap = { { "run", &Cli::run },
+                              { "exec", &Cli::exec },
+                              { "enter", &Cli::enter },
+                              { "ps", &Cli::ps },
+                              { "kill", &Cli::kill },
+                              { "install", &Cli::install },
+                              { "upgrade", &Cli::upgrade },
+                              { "search", &Cli::search },
+                              { "uninstall", &Cli::uninstall },
+                              { "list", &Cli::list },
+                              { "repo", &Cli::repo },
+                              { "info", &Cli::info } };
 
           for (const auto &subcommand : subcommandMap.keys()) {
               if (args[subcommand.toStdString()].asBool() == true) {

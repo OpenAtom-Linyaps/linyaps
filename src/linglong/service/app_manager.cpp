@@ -213,7 +213,7 @@ QueryReply AppManager::ListContainer()
         container->pid = app->container->pid;
         container->packageName = app->container->packageName;
         container->workingDirectory = app->container->workingDirectory;
-        jsonArray.push_back(QVariant::fromValue(container).toJsonValue());
+        jsonArray.push_back(QJsonObject::fromVariantMap(QVariant::fromValue(container).toMap()));
     }
 
     QueryReply reply;

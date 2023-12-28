@@ -15,13 +15,14 @@
 
 inline void registerDBusParam()
 {
+    qDBusRegisterMetaType<linglong::service::ExecParamOption>();
+    qDBusRegisterMetaType<linglong::service::InstallParamOption>();
+    qDBusRegisterMetaType<linglong::service::ParamOption>();
     qDBusRegisterMetaType<linglong::service::QueryParamOption>();
     qDBusRegisterMetaType<linglong::service::QueryReply>();
-    qDBusRegisterMetaType<linglong::service::InstallParamOption>();
-    qDBusRegisterMetaType<linglong::service::UninstallParamOption>();
     qDBusRegisterMetaType<linglong::service::Reply>();
     qDBusRegisterMetaType<linglong::service::RunParamOption>();
-    qDBusRegisterMetaType<linglong::service::ParamOption>();
+    qDBusRegisterMetaType<linglong::service::UninstallParamOption>();
 }
 
 #endif

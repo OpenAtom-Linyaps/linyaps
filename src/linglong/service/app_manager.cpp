@@ -89,7 +89,7 @@ auto AppManager::Start(const RunParamOption &paramOption) -> Reply
     QString channel = paramOption.channel.trimmed();
     QString appModule = paramOption.appModule.trimmed();
     if (channel.isEmpty()) {
-        channel = "linglong";
+        channel = "main";
     }
     if (appModule.isEmpty()) {
         appModule = "runtime";

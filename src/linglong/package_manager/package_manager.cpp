@@ -816,7 +816,7 @@ auto PackageManager::Install(const InstallParamOption &installParamOption) -> Re
         }
 
         if (channel.isEmpty()) {
-            channel = "linglong";
+            channel = "main";
         }
         if (appModule.isEmpty()) {
             appModule = "runtime";
@@ -1045,7 +1045,7 @@ auto PackageManager::Uninstall(const UninstallParamOption &paramOption) -> Reply
     QString channel = paramOption.channel.trimmed();
     QString appModule = paramOption.appModule.trimmed();
     if (channel.isEmpty()) {
-        channel = "linglong";
+        channel = "main";
     }
     if (appModule.isEmpty()) {
         appModule = "runtime";
@@ -1263,7 +1263,7 @@ auto PackageManager::Update(const ParamOption &paramOption) -> Reply
         QString channel = paramOption.channel.trimmed();
         QString appModule = paramOption.appModule.trimmed();
         if (channel.isEmpty()) {
-            channel = "linglong";
+            channel = "main";
         }
         if (appModule.isEmpty()) {
             appModule = "runtime";

@@ -40,7 +40,7 @@ Ref parseId(const QString &id)
     QString version = "latest";
     QString arch = hostArch();
 
-    QString channel = "linglong";
+    QString channel = "main";
     QString module = "runtime";
 
     switch (slice.length()) {

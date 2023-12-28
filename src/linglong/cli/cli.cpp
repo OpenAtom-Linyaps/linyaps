@@ -398,6 +398,12 @@ int Cli::exec(std::map<std::string, docopt::value> &args)
 
 int Cli::enter(std::map<std::string, docopt::value> &args)
 {
+    this->printer.printErr(
+      LINGLONG_ERR(-1, "Command `enter` has not been implemented yet.").value());
+    return -1;
+
+    // TODO
+
     QString containerId;
     if (args["PAGODA"].isString()) {
         containerId = QString::fromStdString(args["PAGODA"].asString());

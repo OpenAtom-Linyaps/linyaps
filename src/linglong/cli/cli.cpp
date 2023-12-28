@@ -587,7 +587,9 @@ int Cli::upgrade(std::map<std::string, docopt::value> &args)
     for (auto &tier : tiers) {
         linglong::package::Ref ref(QString::fromStdString(tier));
         paramOption.arch = linglong::util::hostArch();
-        paramOption.version = ref.version;
+        if (!ref.version.isEmpty() && ref.version != "latest") {
+            paramOption.version = ref.version;
+        }
         paramOption.appId = ref.appId;
         // 增加 channel/module
         paramOption.channel = ref.channel;

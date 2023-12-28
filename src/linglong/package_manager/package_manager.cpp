@@ -7,6 +7,8 @@
 #include "package_manager.h"
 
 #include "linglong/dbus_ipc/dbus_system_helper_common.h"
+#include "linglong/dbus_ipc/param_option.h"
+#include "linglong/package/layer_file.h"
 #include "linglong/package/layer_packager.h"
 #include "linglong/repo/repo_client.h"
 #include "linglong/util/app_status.h"
@@ -21,6 +23,7 @@
 
 #include <QDBusInterface>
 #include <QDBusReply>
+#include <QDBusUnixFileDescriptor>
 #include <QDebug>
 #include <QJsonArray>
 #include <QSettings>
@@ -648,21 +651,7 @@ auto PackageManager::InstallLayer(const InstallParamOption &installParamOption) 
 {
     Reply reply;
     const QString defaultChannel = "main";
-    const QString layerPath = installParamOption.layerPath;
-    const QString layerName = installParamOption.layerName;
-    const QString tmpLayer =
-      QStringList{ util::getLinglongRootPath(), layerName }.join(QDir::separator());
-
-    // ll-package-manager has no permission access the file, we need to copy it
-    bool status = QFile::copy(layerPath, tmpLayer);
-    qDebug() << "copy file" << layerPath << "to" << tmpLayer;
-    if (!status) {
-        reply.code = STATUS_CODE(kUserInputParamErr);
-        reply.message = "failed to create temprary layer file";
-        return reply;
-    }
-
-    const auto layerFile = package::LayerFile::openLayer(tmpLayer);
+    const auto layerFile = package::LayerFile::openLayer(installParamOption.layerPath);
     if (!layerFile.has_value()) {
         reply.code = STATUS_CODE(kUserInputParamErr);
         reply.message = layerFile.error().message();
@@ -783,8 +772,16 @@ auto PackageManager::InstallLayer(const InstallParamOption &installParamOption) 
     reply.code = STATUS_CODE(kPkgInstallSuccess);
     reply.message = "install " + appInfo->appId + ", version:" + appInfo->version + " success";
     qInfo() << reply.message;
-
     return reply;
+}
+
+// 通过传递的文件描述符安装layer，可以避免PM无文件访问权限的问题
+auto PackageManager::InstallLayerFD(const QDBusUnixFileDescriptor &fileDescriptor) -> Reply
+{
+    auto pid = QCoreApplication::applicationPid();
+    InstallParamOption opt;
+    opt.layerPath = QString("/proc/%1/fd/%2").arg(pid).arg(fileDescriptor.fileDescriptor());
+    return InstallLayer(opt);
 }
 
 auto PackageManager::Install(const InstallParamOption &installParamOption) -> Reply

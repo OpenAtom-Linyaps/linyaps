@@ -167,7 +167,9 @@ Reply AppManager::Exec(const ExecParamOption &paramOption)
     reply.message = "No such container " + paramOption.containerID;
     auto const &containerID = paramOption.containerID;
     for (auto it : apps) {
-        if (it->container->id == containerID) {
+        if (it->container->id == containerID
+            // FIXME: use new reference
+            || package::Ref(it->container->packageName).appId == containerID) {
             it->exec(paramOption.cmd, paramOption.env, paramOption.cwd);
             reply.code = STATUS_CODE(kSuccess);
             reply.message = "Exec successed";

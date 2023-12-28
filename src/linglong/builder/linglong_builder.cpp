@@ -259,7 +259,7 @@ linglong::util::Error LinglongBuilder::commitBuildOutput(Project *project,
         return err;
     }
 
-    auto refDevel = project->refWithModule("runtime");
+    auto refDevel = project->refWithModule("devel");
     refDevel.channel = "main";
     ret = repo.importDirectory(refDevel, project->config().cacheInstallPath("devel-install", ""));
     if (!ret.has_value())

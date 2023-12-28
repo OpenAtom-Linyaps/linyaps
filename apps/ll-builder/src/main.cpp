@@ -134,9 +134,13 @@ int main(int argc, char **argv)
                       return -1;
                   }
 
-                  QSharedPointer<linglong::builder::Project> project(
-                    QVariant::fromValue(YAML::LoadFile(projectConfigPath.toStdString()))
-                      .value<QSharedPointer<linglong::builder::Project>>());
+                  auto [project, err] =
+                    linglong::util::fromYAML<QSharedPointer<linglong::builder::Project>>(
+                      projectConfigPath);
+                  if (err) {
+                      qCritical() << "load linglong yaml" << err.code() << err.message();
+                      return -1;
+                  }
 
                   auto node = YAML::LoadFile(projectConfigPath.toStdString());
 

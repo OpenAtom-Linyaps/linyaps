@@ -435,8 +435,10 @@ linglong::util::Error LinglongBuilder::track()
         return NewError(-1, "linglong.yaml not found");
     }
 
-    auto project = QVariant::fromValue(YAML::LoadFile(projectConfigPath.toStdString()))
-                     .value<QSharedPointer<Project>>();
+    auto [project, err] = util::fromYAML<QSharedPointer<Project>>(projectConfigPath);
+    if (err) {
+        return WrapError(err, "cannot load project yaml");
+    }
 
     if ("git" == project->source->kind) {
         auto gitOutput = QSharedPointer<QByteArray>::create();
@@ -474,7 +476,9 @@ linglong::util::Error LinglongBuilder::build()
 
     try {
         auto [project, err] = util::fromYAML<QSharedPointer<Project>>(projectConfigPath);
-
+        if (err) {
+            return WrapError(err, "cannot load project yaml");
+        }
         // convert dependencies which with 'source' and 'build' tag to a project type
         // TODO: building dependencies should be concurrency
         for (auto const &depend : project->depends) {
@@ -765,7 +769,9 @@ linglong::util::Error LinglongBuilder::exportLayer(const QString &destination)
     }
 
     auto [project, err] = util::fromYAML<QSharedPointer<Project>>(projectConfigPath);
-
+    if (err) {
+        return WrapError(err, "cannot load project yaml");
+    }
     project->configFilePath = projectConfigPath;
 
     const auto runtimePath = QStringList{ destination, ".linglong-runtime" }.join("/");
@@ -829,9 +835,10 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
         qCritical() << "ll-builder should run in the root directory of the linglong project";
         return NewError(-1, "linglong.yaml not found");
     }
-
-    auto project = QVariant::fromValue(YAML::LoadFile(projectConfigPath.toStdString()))
-                     .value<QSharedPointer<Project>>();
+    auto [project, err] = util::fromYAML<QSharedPointer<Project>>(projectConfigPath);
+    if (err) {
+        return WrapError(err, "cannot load project yaml");
+    }
     project->configFilePath = projectConfigPath;
 
     const auto exportPath =
@@ -944,7 +951,7 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
     // make bundle package
     linglong::package::Bundle uabBundle;
 
-    auto err = uabBundle.make(exportPath, outputFilePath);
+    err = uabBundle.make(exportPath, outputFilePath);
     if (err) {
         return WrapError(err, "make bundle failed");
     }
@@ -967,9 +974,10 @@ util::Error LinglongBuilder::push(const QString &repoUrl,
     }
 
     try {
-        auto project = QVariant::fromValue(YAML::LoadFile(projectConfigPath.toStdString()))
-                         .value<QSharedPointer<Project>>();
-
+        auto [project, err] = util::fromYAML<QSharedPointer<Project>>(projectConfigPath);
+        if (err) {
+            return WrapError(err, "cannot load project yaml");
+        }
         // set remote repo url
         auto remoteRepoEndpoint =
           repoUrl.isEmpty() ? BuilderConfig::instance()->remoteRepoEndpoint : repoUrl;
@@ -1065,8 +1073,10 @@ util::Error LinglongBuilder::import()
     }
 
     try {
-        auto project = QVariant::fromValue(YAML::LoadFile(projectConfigPath.toStdString()))
-                         .value<QSharedPointer<Project>>();
+        auto [project, err] = util::fromYAML<QSharedPointer<Project>>(projectConfigPath);
+        if (err) {
+            return WrapError(err, "cannot load project yaml");
+        }
 
         auto refWithRuntime = package::Ref("",
                                            project->package->id,
@@ -1102,8 +1112,10 @@ linglong::util::Error LinglongBuilder::run()
     }
 
     try {
-        auto project = QVariant::fromValue(YAML::LoadFile(projectConfigPath.toStdString()))
-                         .value<QSharedPointer<Project>>();
+        auto [project, err] = util::fromYAML<QSharedPointer<Project>>(projectConfigPath);
+        if (err) {
+            return WrapError(err, "cannot load project yaml");
+        }
         project->configFilePath = projectConfigPath;
 
         // checkout app

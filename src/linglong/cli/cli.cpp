@@ -443,12 +443,16 @@ int Cli::ps(std::map<std::string, docopt::value> &args)
 
     QList<QSharedPointer<Container>> containerList;
     const auto doc = QJsonDocument::fromJson(replyString.toUtf8(), nullptr);
-    if (doc.isArray()) {
-        for (const auto container : doc.array()) {
-            const auto str = QString(QJsonDocument(container.toObject()).toJson());
-            QSharedPointer<Container> con(linglong::util::loadJsonString<Container>(str));
-            containerList.push_back(con);
-        }
+    if (!doc.isArray()) {
+        this->printer.printErr(
+          LINGLONG_ERR(-1, "container list get from server is not a list").value());
+        return -1;
+    }
+
+    for (const auto container : doc.array()) {
+        const auto str = QString(QJsonDocument(container.toObject()).toJson());
+        QSharedPointer<Container> con(linglong::util::loadJsonString<Container>(str));
+        containerList.push_back(con);
     }
     this->printer.printContainers(containerList);
     return 0;

@@ -126,7 +126,7 @@ TEST_F(CLITest, Ps)
     auto args = parseCommand("ll-cli ps");
     EXPECT_CALL(*appMan, ListContainer)
       .Times(1)
-      .WillOnce(Return(createReply(service::QueryReply{ { 0, "" }, {} })));
+      .WillOnce(Return(createReply(service::QueryReply{ { 0, "" }, "[]" })));
     EXPECT_CALL(*printer, printContainers);
 
     auto ret = cli->ps(args);

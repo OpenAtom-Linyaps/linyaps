@@ -250,17 +250,18 @@ linglong::util::Error LinglongBuilder::commitBuildOutput(Project *project,
     if (err) {
         return WrapError(err, "createInfo failed");
     }
-
-    auto ret = repo.importDirectory(project->refWithModule("runtime"),
-                                    project->config().cacheInstallPath(""));
+    auto refRuntime = project->refWithModule("runtime");
+    refRuntime.channel = "main";
+    auto ret = repo.importDirectory(refRuntime, project->config().cacheInstallPath(""));
 
     if (!ret.has_value()) {
         qCritical() << QString("commit %1 filed").arg(project->refWithModule("runtime").toString());
         return err;
     }
 
-    ret = repo.importDirectory(project->refWithModule("devel"),
-                               project->config().cacheInstallPath("devel-install", ""));
+    auto refDevel = project->refWithModule("runtime");
+    refDevel.channel = "main";
+    ret = repo.importDirectory(refDevel, project->config().cacheInstallPath("devel-install", ""));
     if (!ret.has_value())
         return NewError(ret.error().code(), ret.error().message());
     return Success();

@@ -670,7 +670,9 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
 
     for (auto &tier : tiers) {
         linglong::package::Ref ref(QString::fromStdString(tier));
-        paramOption.version = ref.version;
+        if (!ref.version.isEmpty() && ref.version != "latest") {
+            paramOption.version = ref.version;
+        }
         paramOption.appId = ref.appId;
         paramOption.channel = ref.channel;
         paramOption.appModule = ref.module;

@@ -88,13 +88,19 @@ auto AppManager::Start(const RunParamOption &paramOption) -> Reply
 
     QString channel = paramOption.channel.trimmed();
     QString appModule = paramOption.appModule.trimmed();
-    if (channel.isEmpty()) {
-        channel = "linglong";
-    }
     if (appModule.isEmpty()) {
         appModule = "runtime";
     }
-
+    // 玲珑早期版本的默认channel是 linglong，后来改成 main，需要进行兼容
+    // TODO(wurongjie) 在版本迭代后，可以删除对旧 channel 的支持
+    if (channel.isEmpty()) {
+        for (auto defaultChannel : QStringList{ "main", "linglong" }) {
+            if (util::getAppInstalledStatus(appId, version, arch, defaultChannel, appModule, "")) {
+                channel = defaultChannel;
+                break;
+            }
+        }
+    }
     // 判断是否已安装
     if (!linglong::util::getAppInstalledStatus(appId, version, arch, channel, appModule, "")) {
         reply.message = appId + ", version:" + version + ", arch:" + arch + ", channel:" + channel

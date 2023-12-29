@@ -327,7 +327,7 @@ int main(int argc, char **argv)
               auto optRepoUrl = QCommandLineOption("repo-url", "remote repo url", "--repo-url");
               auto optRepoName = QCommandLineOption("repo-name", "remote repo name", "--repo-name");
               auto optRepoChannel =
-                QCommandLineOption("channel", "remote repo channel", "--channel", "linglong");
+                QCommandLineOption("channel", "remote repo channel", "--channel", "main");
               auto optNoDevel = QCommandLineOption("no-devel", "push without devel", "");
               parser.addOptions({ optRepoUrl, optRepoName, optRepoChannel, optNoDevel });
 

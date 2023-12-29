@@ -1122,7 +1122,9 @@ linglong::util::Error LinglongBuilder::run()
         auto targetPath =
           BuilderConfig::instance()->layerPath({ project->ref().toLocalRefString() });
         linglong::util::ensureDir(targetPath);
-        auto ret = repo.checkoutAll(project->ref(), "", targetPath);
+        auto ref = project->ref();
+        ref.channel = "main";
+        auto ret = repo.checkoutAll(ref, "", targetPath);
         if (!ret.has_value()) {
             return NewError(-1, "checkout app files failed");
         }

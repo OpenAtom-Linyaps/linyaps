@@ -100,6 +100,47 @@
                 }
             }
         },
+        "/api/v1/sign-in": {
+            "post": {
+                "tags": [
+                    "Client",
+                    "Auth"
+                ],
+                "summary": "登陆帐号",
+                "operationId": "SignIn",
+                "parameters": [
+                    {
+                        "description": "auth json数据",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.Auth"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/response.SignIn"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/upload-tasks": {
             "post": {
                 "description": "generate a new upload task id",
@@ -144,6 +185,53 @@
                                     }
                                 }
                             ]
+                        }
+                    }
+                },
+                "X-Role": [
+                    "admin",
+                    "owner",
+                    "maintainer",
+                    "developer"
+                ]
+            }
+        },
+        "/api/v1/upload-tasks/{task_id}/layer": {
+            "put": {
+                "tags": [
+                    "Client",
+                    "UploadTask"
+                ],
+                "summary": "upload layer file to upload task",
+                "operationId": "UploadTaskLayerFile",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "31a165ba1be6dec616b1f8f3207b4273",
+                        "name": "X-Token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "task id",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "文件路径",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.UploadTaskLayerFileResp"
                         }
                     }
                 },
@@ -238,19 +326,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.JSONResult"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/response.UploadTaskResp"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/api.UploadTaskFileResp"
                         }
                     }
                 },
@@ -276,6 +352,53 @@
                 },
                 "trace_id": {
                     "type": "string"
+                }
+            }
+        },
+        "api.UploadTaskFileResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/response.UploadTaskResp"
+                },
+                "msg": {
+                    "type": "string"
+                },
+                "trace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.UploadTaskLayerFileResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/response.UploadTaskResp"
+                },
+                "msg": {
+                    "type": "string"
+                },
+                "trace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "request.Auth": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string",
+                    "example": "ut12345678"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "ut12345678"
                 }
             }
         },
@@ -341,6 +464,14 @@
             "type": "object",
             "properties": {
                 "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.SignIn": {
+            "type": "object",
+            "properties": {
+                "token": {
                     "type": "string"
                 }
             }

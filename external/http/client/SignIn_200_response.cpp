@@ -10,7 +10,7 @@
  * Do not edit the class manually.
  */
 
-#include "UploadTaskFile_200_response.h"
+#include "SignIn_200_response.h"
 
 #include <QDebug>
 #include <QJsonArray>
@@ -23,18 +23,18 @@ namespace linglong {
 namespace api {
 namespace client {
 
-UploadTaskFile_200_response::UploadTaskFile_200_response(QString json) {
+SignIn_200_response::SignIn_200_response(QString json) {
     this->initializeModel();
     this->fromJson(json);
 }
 
-UploadTaskFile_200_response::UploadTaskFile_200_response() {
+SignIn_200_response::SignIn_200_response() {
     this->initializeModel();
 }
 
-UploadTaskFile_200_response::~UploadTaskFile_200_response() {}
+SignIn_200_response::~SignIn_200_response() {}
 
-void UploadTaskFile_200_response::initializeModel() {
+void SignIn_200_response::initializeModel() {
 
     m_code_isSet = false;
     m_code_isValid = false;
@@ -49,14 +49,14 @@ void UploadTaskFile_200_response::initializeModel() {
     m_trace_id_isValid = false;
 }
 
-void UploadTaskFile_200_response::fromJson(QString jsonString) {
+void SignIn_200_response::fromJson(QString jsonString) {
     QByteArray array(jsonString.toStdString().c_str());
     QJsonDocument doc = QJsonDocument::fromJson(array);
     QJsonObject jsonObject = doc.object();
     this->fromJsonObject(jsonObject);
 }
 
-void UploadTaskFile_200_response::fromJsonObject(QJsonObject json) {
+void SignIn_200_response::fromJsonObject(QJsonObject json) {
 
     m_code_isValid = ::linglong::api::client::fromJsonValue(m_code, json[QString("code")]);
     m_code_isSet = !json[QString("code")].isNull() && m_code_isValid;
@@ -71,14 +71,14 @@ void UploadTaskFile_200_response::fromJsonObject(QJsonObject json) {
     m_trace_id_isSet = !json[QString("trace_id")].isNull() && m_trace_id_isValid;
 }
 
-QString UploadTaskFile_200_response::asJson() const {
+QString SignIn_200_response::asJson() const {
     QJsonObject obj = this->asJsonObject();
     QJsonDocument doc(obj);
     QByteArray bytes = doc.toJson();
     return QString(bytes);
 }
 
-QJsonObject UploadTaskFile_200_response::asJsonObject() const {
+QJsonObject SignIn_200_response::asJsonObject() const {
     QJsonObject obj;
     if (m_code_isSet) {
         obj.insert(QString("code"), ::linglong::api::client::toJsonValue(m_code));
@@ -95,71 +95,71 @@ QJsonObject UploadTaskFile_200_response::asJsonObject() const {
     return obj;
 }
 
-qint32 UploadTaskFile_200_response::getCode() const {
+qint32 SignIn_200_response::getCode() const {
     return m_code;
 }
-void UploadTaskFile_200_response::setCode(const qint32 &code) {
+void SignIn_200_response::setCode(const qint32 &code) {
     m_code = code;
     m_code_isSet = true;
 }
 
-bool UploadTaskFile_200_response::is_code_Set() const{
+bool SignIn_200_response::is_code_Set() const{
     return m_code_isSet;
 }
 
-bool UploadTaskFile_200_response::is_code_Valid() const{
+bool SignIn_200_response::is_code_Valid() const{
     return m_code_isValid;
 }
 
-Response_UploadTaskResp UploadTaskFile_200_response::getData() const {
+Response_SignIn SignIn_200_response::getData() const {
     return m_data;
 }
-void UploadTaskFile_200_response::setData(const Response_UploadTaskResp &data) {
+void SignIn_200_response::setData(const Response_SignIn &data) {
     m_data = data;
     m_data_isSet = true;
 }
 
-bool UploadTaskFile_200_response::is_data_Set() const{
+bool SignIn_200_response::is_data_Set() const{
     return m_data_isSet;
 }
 
-bool UploadTaskFile_200_response::is_data_Valid() const{
+bool SignIn_200_response::is_data_Valid() const{
     return m_data_isValid;
 }
 
-QString UploadTaskFile_200_response::getMsg() const {
+QString SignIn_200_response::getMsg() const {
     return m_msg;
 }
-void UploadTaskFile_200_response::setMsg(const QString &msg) {
+void SignIn_200_response::setMsg(const QString &msg) {
     m_msg = msg;
     m_msg_isSet = true;
 }
 
-bool UploadTaskFile_200_response::is_msg_Set() const{
+bool SignIn_200_response::is_msg_Set() const{
     return m_msg_isSet;
 }
 
-bool UploadTaskFile_200_response::is_msg_Valid() const{
+bool SignIn_200_response::is_msg_Valid() const{
     return m_msg_isValid;
 }
 
-QString UploadTaskFile_200_response::getTraceId() const {
+QString SignIn_200_response::getTraceId() const {
     return m_trace_id;
 }
-void UploadTaskFile_200_response::setTraceId(const QString &trace_id) {
+void SignIn_200_response::setTraceId(const QString &trace_id) {
     m_trace_id = trace_id;
     m_trace_id_isSet = true;
 }
 
-bool UploadTaskFile_200_response::is_trace_id_Set() const{
+bool SignIn_200_response::is_trace_id_Set() const{
     return m_trace_id_isSet;
 }
 
-bool UploadTaskFile_200_response::is_trace_id_Valid() const{
+bool SignIn_200_response::is_trace_id_Valid() const{
     return m_trace_id_isValid;
 }
 
-bool UploadTaskFile_200_response::isSet() const {
+bool SignIn_200_response::isSet() const {
     bool isObjectUpdated = false;
     do {
         if (m_code_isSet) {
@@ -185,7 +185,7 @@ bool UploadTaskFile_200_response::isSet() const {
     return isObjectUpdated;
 }
 
-bool UploadTaskFile_200_response::isValid() const {
+bool SignIn_200_response::isValid() const {
     // only required properties are required for the object to be considered valid
     return true;
 }

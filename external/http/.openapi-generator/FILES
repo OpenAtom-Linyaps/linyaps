@@ -2,6 +2,10 @@
 README.md
 client/Api_JSONResult.cpp
 client/Api_JSONResult.h
+client/Api_UploadTaskFileResp.cpp
+client/Api_UploadTaskFileResp.h
+client/Api_UploadTaskLayerFileResp.cpp
+client/Api_UploadTaskLayerFileResp.h
 client/CMakeLists.txt
 client/ClientApi.cpp
 client/ClientApi.h
@@ -22,12 +26,16 @@ client/NewUploadTaskID_200_response.h
 client/Oauth.cpp
 client/Oauth.h
 client/Object.h
+client/Request_Auth.cpp
+client/Request_Auth.h
 client/Request_FuzzySearchReq.cpp
 client/Request_FuzzySearchReq.h
 client/Request_RegisterStruct.cpp
 client/Request_RegisterStruct.h
 client/Response_NewUploadTaskResp.cpp
 client/Response_NewUploadTaskResp.h
+client/Response_SignIn.cpp
+client/Response_SignIn.h
 client/Response_UploadTaskResp.cpp
 client/Response_UploadTaskResp.h
 client/Response_UploadTaskStatusInfo.cpp
@@ -38,7 +46,7 @@ client/Schema_RepoInfo.cpp
 client/Schema_RepoInfo.h
 client/ServerConfiguration.h
 client/ServerVariable.h
-client/UploadTaskFile_200_response.cpp
-client/UploadTaskFile_200_response.h
+client/SignIn_200_response.cpp
+client/SignIn_200_response.h
 client/UploadTaskInfo_200_response.cpp
 client/UploadTaskInfo_200_response.h

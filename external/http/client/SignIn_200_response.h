@@ -11,17 +11,17 @@
  */
 
 /*
- * UploadTaskFile_200_response.h
+ * SignIn_200_response.h
  *
  * 
  */
 
-#ifndef UploadTaskFile_200_response_H
-#define UploadTaskFile_200_response_H
+#ifndef SignIn_200_response_H
+#define SignIn_200_response_H
 
 #include <QJsonObject>
 
-#include "Response_UploadTaskResp.h"
+#include "Response_SignIn.h"
 #include <QString>
 
 #include "Enum.h"
@@ -30,13 +30,13 @@
 namespace linglong {
 namespace api {
 namespace client {
-class Response_UploadTaskResp;
+class Response_SignIn;
 
-class UploadTaskFile_200_response : public Object {
+class SignIn_200_response : public Object {
 public:
-    UploadTaskFile_200_response();
-    UploadTaskFile_200_response(QString json);
-    ~UploadTaskFile_200_response() override;
+    SignIn_200_response();
+    SignIn_200_response(QString json);
+    ~SignIn_200_response() override;
 
     QString asJson() const override;
     QJsonObject asJsonObject() const override;
@@ -48,8 +48,8 @@ public:
     bool is_code_Set() const;
     bool is_code_Valid() const;
 
-    Response_UploadTaskResp getData() const;
-    void setData(const Response_UploadTaskResp &data);
+    Response_SignIn getData() const;
+    void setData(const Response_SignIn &data);
     bool is_data_Set() const;
     bool is_data_Valid() const;
 
@@ -73,7 +73,7 @@ private:
     bool m_code_isSet;
     bool m_code_isValid;
 
-    Response_UploadTaskResp m_data;
+    Response_SignIn m_data;
     bool m_data_isSet;
     bool m_data_isValid;
 
@@ -90,6 +90,6 @@ private:
 } // namespace api
 } // namespace client
 
-Q_DECLARE_METATYPE(linglong::api::client::UploadTaskFile_200_response)
+Q_DECLARE_METATYPE(linglong::api::client::SignIn_200_response)
 
-#endif // UploadTaskFile_200_response_H
+#endif // SignIn_200_response_H

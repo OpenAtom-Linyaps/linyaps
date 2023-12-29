@@ -44,10 +44,14 @@ void ClientApi::initializeServerConfigs() {
     _serverIndices.insert("getRepo", 0);
     _serverConfigs.insert("newUploadTaskID", defaultConf);
     _serverIndices.insert("newUploadTaskID", 0);
+    _serverConfigs.insert("signIn", defaultConf);
+    _serverIndices.insert("signIn", 0);
     _serverConfigs.insert("uploadTaskFile", defaultConf);
     _serverIndices.insert("uploadTaskFile", 0);
     _serverConfigs.insert("uploadTaskInfo", defaultConf);
     _serverIndices.insert("uploadTaskInfo", 0);
+    _serverConfigs.insert("uploadTaskLayerFile", defaultConf);
+    _serverIndices.insert("uploadTaskLayerFile", 0);
 }
 
 /**
@@ -400,6 +404,60 @@ void ClientApi::newUploadTaskIDCallback(HttpRequestWorker *worker) {
     }
 }
 
+void ClientApi::signIn(const Request_Auth &data) {
+    QString fullPath = QString(_serverConfigs["signIn"][_serverIndices.value("signIn")].URL()+"/api/v1/sign-in");
+    
+    HttpRequestWorker *worker = new HttpRequestWorker(this, _manager);
+    worker->setTimeOut(_timeOut);
+    worker->setWorkingDirectory(_workingDirectory);
+    HttpRequestInput input(fullPath, "POST");
+
+    {
+
+        
+        QByteArray output = data.asJson().toUtf8();
+        input.request_body.append(output);
+    }
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+    for (auto keyValueIt = _defaultHeaders.keyValueBegin(); keyValueIt != _defaultHeaders.keyValueEnd(); keyValueIt++) {
+        input.headers.insert(keyValueIt->first, keyValueIt->second);
+    }
+#else
+    for (auto key : _defaultHeaders.keys()) {
+        input.headers.insert(key, _defaultHeaders[key]);
+    }
+#endif
+
+    connect(worker, &HttpRequestWorker::on_execution_finished, this, &ClientApi::signInCallback);
+    connect(this, &ClientApi::abortRequestsSignal, worker, &QObject::deleteLater);
+    connect(worker, &QObject::destroyed, this, [this]() {
+        if (findChildren<HttpRequestWorker*>().count() == 0) {
+            Q_EMIT allPendingRequestsCompleted();
+        }
+    });
+
+    worker->execute(&input);
+}
+
+void ClientApi::signInCallback(HttpRequestWorker *worker) {
+    QString error_str = worker->error_str;
+    QNetworkReply::NetworkError error_type = worker->error_type;
+
+    if (worker->error_type != QNetworkReply::NoError) {
+        error_str = QString("%1, %2").arg(worker->error_str, QString(worker->response));
+    }
+    SignIn_200_response output(QString(worker->response));
+    worker->deleteLater();
+
+    if (worker->error_type == QNetworkReply::NoError) {
+        Q_EMIT signInSignal(output);
+        Q_EMIT signInSignalFull(worker, output);
+    } else {
+        Q_EMIT signInSignalE(output, error_type, error_str);
+        Q_EMIT signInSignalEFull(worker, error_type, error_str);
+    }
+}
+
 void ClientApi::uploadTaskFile(const QString &x_token, const QString &task_id, const HttpFileElement &file) {
     QString fullPath = QString(_serverConfigs["uploadTaskFile"][_serverIndices.value("uploadTaskFile")].URL()+"/api/v1/upload-tasks/{task_id}/tar");
     
@@ -461,7 +519,7 @@ void ClientApi::uploadTaskFileCallback(HttpRequestWorker *worker) {
     if (worker->error_type != QNetworkReply::NoError) {
         error_str = QString("%1, %2").arg(worker->error_str, QString(worker->response));
     }
-    UploadTaskFile_200_response output(QString(worker->response));
+    Api_UploadTaskFileResp output(QString(worker->response));
     worker->deleteLater();
 
     if (worker->error_type == QNetworkReply::NoError) {
@@ -539,6 +597,79 @@ void ClientApi::uploadTaskInfoCallback(HttpRequestWorker *worker) {
     } else {
         Q_EMIT uploadTaskInfoSignalE(output, error_type, error_str);
         Q_EMIT uploadTaskInfoSignalEFull(worker, error_type, error_str);
+    }
+}
+
+void ClientApi::uploadTaskLayerFile(const QString &x_token, const QString &task_id, const HttpFileElement &file) {
+    QString fullPath = QString(_serverConfigs["uploadTaskLayerFile"][_serverIndices.value("uploadTaskLayerFile")].URL()+"/api/v1/upload-tasks/{task_id}/layer");
+    
+    
+    {
+        QString task_idPathParam("{");
+        task_idPathParam.append("task_id").append("}");
+        QString pathPrefix, pathSuffix, pathDelimiter;
+        QString pathStyle = "";
+        if (pathStyle == "")
+            pathStyle = "simple";
+        pathPrefix = getParamStylePrefix(pathStyle);
+        pathSuffix = getParamStyleSuffix(pathStyle);
+        pathDelimiter = getParamStyleDelimiter(pathStyle, "task_id", false);
+        QString paramString = (pathStyle == "matrix") ? pathPrefix+"task_id"+pathSuffix : pathPrefix;
+        fullPath.replace(task_idPathParam, paramString+QUrl::toPercentEncoding(::linglong::api::client::toStringValue(task_id)));
+    }
+    HttpRequestWorker *worker = new HttpRequestWorker(this, _manager);
+    worker->setTimeOut(_timeOut);
+    worker->setWorkingDirectory(_workingDirectory);
+    HttpRequestInput input(fullPath, "PUT");
+
+    
+    {
+        input.add_file("file", file.local_filename, file.request_filename, file.mime_type);
+    }
+
+    
+    {
+        if (!::linglong::api::client::toStringValue(x_token).isEmpty()) {
+            input.headers.insert("X-Token", ::linglong::api::client::toStringValue(x_token));
+        }
+        }
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+    for (auto keyValueIt = _defaultHeaders.keyValueBegin(); keyValueIt != _defaultHeaders.keyValueEnd(); keyValueIt++) {
+        input.headers.insert(keyValueIt->first, keyValueIt->second);
+    }
+#else
+    for (auto key : _defaultHeaders.keys()) {
+        input.headers.insert(key, _defaultHeaders[key]);
+    }
+#endif
+
+    connect(worker, &HttpRequestWorker::on_execution_finished, this, &ClientApi::uploadTaskLayerFileCallback);
+    connect(this, &ClientApi::abortRequestsSignal, worker, &QObject::deleteLater);
+    connect(worker, &QObject::destroyed, this, [this]() {
+        if (findChildren<HttpRequestWorker*>().count() == 0) {
+            Q_EMIT allPendingRequestsCompleted();
+        }
+    });
+
+    worker->execute(&input);
+}
+
+void ClientApi::uploadTaskLayerFileCallback(HttpRequestWorker *worker) {
+    QString error_str = worker->error_str;
+    QNetworkReply::NetworkError error_type = worker->error_type;
+
+    if (worker->error_type != QNetworkReply::NoError) {
+        error_str = QString("%1, %2").arg(worker->error_str, QString(worker->response));
+    }
+    Api_UploadTaskLayerFileResp output(QString(worker->response));
+    worker->deleteLater();
+
+    if (worker->error_type == QNetworkReply::NoError) {
+        Q_EMIT uploadTaskLayerFileSignal(output);
+        Q_EMIT uploadTaskLayerFileSignalFull(worker, output);
+    } else {
+        Q_EMIT uploadTaskLayerFileSignalE(output, error_type, error_str);
+        Q_EMIT uploadTaskLayerFileSignalEFull(worker, error_type, error_str);
     }
 }
 

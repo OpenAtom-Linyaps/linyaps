@@ -40,6 +40,19 @@ void TestOSTreeRepo::push()
                     rep->JSON(200, resp.asJsonObject());
                     return;
                 }
+                // 用户登陆
+                if (url.endsWith("/api/v1/sign-in")) {
+                    SignIn_200_response resp;
+                    Response_SignIn data;
+                    data.setToken("token");
+                    resp.setData(data);
+                    resp.setCode(200);
+                    rep->JSON(200, resp.asJsonObject());
+                    return;
+                }
+                if (!req.hasRawHeader(QByteArray("X-Token"))) {
+                    rep->JSON(401, QJsonDocument());
+                }
                 auto taskID = QString("test_task_id");
                 // 创建上传任务
                 if (url.endsWith("/api/v1/upload-tasks")) {
@@ -53,7 +66,7 @@ void TestOSTreeRepo::push()
                 }
                 // 上传tar包
                 if (url.endsWith(QString("/api/v1/upload-tasks/%1/tar").arg(taskID))) {
-                    UploadTaskFile_200_response resp;
+                    Api_UploadTaskFileResp resp;
                     Response_UploadTaskResp data;
                     data.setWatchId(0);
                     resp.setData(data);

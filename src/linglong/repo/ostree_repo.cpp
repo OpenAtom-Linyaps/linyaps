@@ -200,6 +200,7 @@ linglong::utils::error::Result<void> OSTreeRepo::push(const package::Ref &ref)
     if (!ret.has_value()) {
         return LINGLONG_ERR(-1, "get token failed");
     }
+    remoteToken = *ret;
     QSharedPointer<UploadRequest> uploadReq(new UploadRequest);
 
     uploadReq->repoName = remoteRepoName;
@@ -246,8 +247,8 @@ linglong::utils::error::Result<void> OSTreeRepo::push(const package::Ref &ref)
             return ret;
         }
     }
-    ret = cleanUploadTask(ref, filePath);
-    if (!ret.has_value()) {
+    auto cleanRet = cleanUploadTask(ref, filePath);
+    if (!cleanRet.has_value()) {
         return LINGLONG_EWRAP("call cleanUploadTask failed", ret.error());
     }
     return LINGLONG_OK;

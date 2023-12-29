@@ -19,6 +19,7 @@
 
 #include <QHttpPart>
 #include <QPointer>
+#include <QProcess>
 #include <QScopedPointer>
 #include <QThread>
 
@@ -521,6 +522,45 @@ private:
         return ret;
     }
 
+    linglong::utils::error::Result<QString> getToken()
+    {
+        linglong::utils::error::Result<QString> ret;
+
+        QEventLoop loop;
+        QEventLoop::connect(
+          &apiClient,
+          &api::client::ClientApi::signInSignal,
+          &loop,
+          [&loop, &ret](api::client::SignIn_200_response resp) {
+              loop.exit();
+              if (resp.getCode() != 200) {
+                  ret = LINGLONG_ERR(resp.getCode(), resp.getMsg());
+                  return;
+              }
+              ret = resp.getData().getToken();
+          },
+          loop.thread() == apiClient.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
+        QEventLoop::connect(
+          &apiClient,
+          &api::client::ClientApi::signInSignalEFull,
+          &loop,
+          [&loop, &ret](auto, auto error_type, const QString &error_str) {
+              loop.exit();
+              ret = LINGLONG_ERR(error_type, error_str);
+          },
+          loop.thread() == apiClient.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
+
+        // get username and password from environment
+        auto env = QProcessEnvironment::systemEnvironment();
+        api::client::Request_Auth auth;
+        auth.setUsername(env.value("LINGLONG_USERNAME"));
+        auth.setPassword(env.value("LINGLONG_PASSWORD"));
+        qDebug() << auth.asJson();
+        apiClient.signIn(auth);
+        loop.exec();
+        return ret;
+    }
+
     linglong::utils::error::Result<QString> newUploadTask(QSharedPointer<UploadRequest> req)
     {
         linglong::utils::error::Result<QString> ret;
@@ -565,7 +605,7 @@ private:
           &apiClient,
           &api::client::ClientApi::uploadTaskFileSignal,
           &loop,
-          [&loop, &ret](api::client::UploadTaskFile_200_response resp) {
+          [&loop, &ret](api::client::Api_UploadTaskFileResp resp) {
               loop.exit();
               if (resp.getCode() != 200) {
                   ret = LINGLONG_ERR(resp.getCode(), resp.getMsg());
@@ -655,9 +695,6 @@ private:
     }
 
 private:
-    // multi-thread
-    linglong::utils::error::Result<void> getToken() { return LINGLONG_OK; };
-
     config::ConfigV1 cfg;
     QString repoRootPath;
     QString remoteEndpoint;

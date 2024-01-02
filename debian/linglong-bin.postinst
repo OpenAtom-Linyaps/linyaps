@@ -1,0 +1,54 @@
+# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+# Handle upgrade from 1.3.x
+# Move system level linglong repository from old location to /var/lib/linglong
+upgrade_from_1_3_x() {
+        version=$(shift)
+
+        if dpkg --compare-versions "$version" ge "1.4.0"; then
+                return
+        fi
+
+        if [ -d /var/lib/linglong ]; then
+                echo "'/var/lib/linglong' directory exists."
+                echo "Finish upgrading from 1.3.x without touch anything."
+                return
+        fi
+
+        if [ ! -d /persistent/linglong ]; then
+                echo "Old linglong repository not found."
+                echo "Finish upgrading from 1.3.x without touch anything."
+                return
+        fi
+
+        echo "Moving old deepin v23 linglong repository to new location..."
+        mv /persistent/linglong /var/lib/linglong
+        echo "Done"
+
+        # This is good enough,
+        # as linglong has only one repository publicly right now.
+        echo "Removing old configuration file..."
+        rm /var/lib/linglong/config.json -f
+        echo "Done"
+        return
+}
+
+case "$1" in
+configure)
+        upgrade_from_1_3_x "$2"
+        ;;
+abort-upgrade | abort-remove | abort-deconfigure) ;;
+*)
+        echo "postinst called with unknown argument '$1'" >&2
+        exit 0
+        ;;
+
+esac
+
+#DEBHELPER#
+
+exit 0
+
+# vi: ft=sh

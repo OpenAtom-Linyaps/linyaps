@@ -14,11 +14,11 @@
 /debian/.debhelper
 /debian/debhelper-build-stamp
 /debian/files
-/debian/linglong-*
-/debian/linglong-bin.debhelper.log
+/debian/linglong-bin/
+/debian/linglong-builder/
+/debian/*debhelper*
 /debian/linglong-bin.substvars
 /debian/linglong-builder
-/debian/linglong-builder.debhelper.log
 /debian/linglong-builder.substvars
 /debian/tmp/usr
 /obj-x86_64-linux-gnu

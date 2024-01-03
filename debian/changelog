@@ -1,8 +1,8 @@
-linglong (1.4.0-1) UNRELEASED; urgency=low
+linglong (1.4.0-1) unstable; urgency=low
 
-  * PLACEHOLDER
+  * First release after some refactory.
 
- -- chenlinxuan <chenlinxuan@uniontech.com>  Wed, 16 Aug 2023 17:25:04 +0800
+ -- Chen Linxuan <me@black-desk.cn>  Wed, 03 Jan 2024 15:56:48 +0800
 
 linglong (1.3.5.1-1) unstable; urgency=medium
 

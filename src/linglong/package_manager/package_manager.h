@@ -92,6 +92,7 @@ public Q_SLOTS:
      *          message:信息
      */
     virtual auto Install(const InstallParamOption &installParamOption) -> Reply;
+    virtual auto InstallSync(const InstallParamOption &installParamOption) -> Reply;
 
     /**
      * @brief 安装layer文件

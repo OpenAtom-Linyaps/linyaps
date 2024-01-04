@@ -59,7 +59,7 @@ void withDBusDaemon()
 
     res = registerDBusService(bus, linglong::SystemHelperDBusServiceName);
     if (!res.has_value()) {
-        qCritical() << res.error().code() << res.error().message();
+        qCritical() << res.error();
         QCoreApplication::exit(-1);
         return;
     }
@@ -83,19 +83,18 @@ void withoutDBusDaemon()
     auto filesystemHelperAdaptor =
       new linglong::adaptors::system_helper::FilesystemHelper1(filesystemHelper);
 
-    QDir::root().mkpath("/run/linglong");
     auto qDBusServer =
-      new QDBusServer("unix:path=/run/linglong/system-helper.socket", QCoreApplication::instance());
+      new QDBusServer("unix:path=/tmp/linglong-system-helper.socket", QCoreApplication::instance());
     if (!qDBusServer->isConnected()) {
         qCritical() << "dbusServer is not connected:" << qDBusServer->lastError();
         QCoreApplication::exit(-1);
         return;
     }
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, []() {
-        if (QDir::root().remove("/run/linglong/system-helper.socket")) {
+        if (QDir::root().remove("/tmp/linglong-system-helper.socket")) {
             return;
         }
-        qCritical() << "failed to remove /run/linglong/system-helper.socket.";
+        qCritical() << "failed to remove /tmp/linglong-system-helper.socket.";
     });
 
     QObject::connect(
@@ -139,7 +138,7 @@ int main(int argc, char *argv[])
       QCoreApplication::instance(),
       []() {
           QCommandLineParser parser;
-          QCommandLineOption optBus("bus", "service bus address", "bus");
+          QCommandLineOption optBus("no-dbus", "run without dbus daemon", "no-dbus");
           optBus.setFlags(QCommandLineOption::HiddenFromHelp);
 
           parser.addOptions({ optBus });

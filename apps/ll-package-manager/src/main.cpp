@@ -103,7 +103,7 @@ void withDBusDaemon()
 void withoutDBusDaemon()
 {
     auto pkgManHelperConn =
-      QDBusConnection::connectToPeer("unix:path=/run/linglong/system-helper.socket",
+      QDBusConnection::connectToPeer("unix:path=/tmp/linglong-system-helper.socket",
                                      "ll-system-helper");
     auto pkgManHelper =
       new linglong::api::dbus::v1::PackageManagerHelper("",
@@ -140,19 +140,18 @@ void withoutDBusDaemon()
     auto jobMan = new linglong::job_manager::JobManager(*ostreeRepo, QCoreApplication::instance());
     new linglong::adaptors::job_manger::JobManager1(jobMan);
 
-    QDir::root().mkpath("/run/linglong");
-    auto server =
-      new QDBusServer("/run/linglong/package-manager.socket", QCoreApplication::instance());
+    auto server = new QDBusServer("unix:path=/tmp/linglong-package-manager.socket",
+                                  QCoreApplication::instance());
     if (!server->isConnected()) {
         qCritical() << "listen on socket:" << server->lastError();
         QCoreApplication::exit(-1);
         return;
     }
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, []() {
-        if (QDir::root().remove("/run/linglong/package-manager.socket")) {
+        if (QDir::root().remove("/tmp/linglong-package-manager.socket")) {
             return;
         }
-        qCritical() << "failed to remove /run/linglong/package-manager.socket.";
+        qCritical() << "failed to remove /tmp/linglong-package-manager.socket.";
     });
 
     QObject::connect(

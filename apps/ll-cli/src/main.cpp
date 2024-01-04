@@ -37,7 +37,7 @@ void startProcess(QString program, QStringList args = {})
     qint64 pid = 0;
     process.startDetached(&pid);
 
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [&pid]() {
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [pid]() {
         kill(pid, SIGTERM);
     });
 }

@@ -5,7 +5,8 @@
 # Handle upgrade from 1.3.x
 # Move system level linglong repository from old location to /var/lib/linglong
 upgrade_from_1_3_x() {
-        version=$(shift)
+        version=$1
+        shift
 
         if dpkg --compare-versions "$version" ge "1.4.0"; then
                 return

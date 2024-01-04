@@ -62,7 +62,8 @@ std::vector<std::string> transformOldExec(int argc, char **argv) noexcept
     }
 
     if ((exec + 1) == res.end() || (exec + 2) != res.end()) {
-        qCritical() << "unexpected --exec location, transform old exec arguments failed.";
+        *exec = "--";
+        qDebug() << "replace `--exec` with `--`";
         return res;
     }
 

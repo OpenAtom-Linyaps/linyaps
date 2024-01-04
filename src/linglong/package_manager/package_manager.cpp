@@ -310,7 +310,7 @@ auto PackageManager::checkAppBase(const QString &runtime,
         return false;
     }
     ret = loadAppInfo(baseData, baseRuntimeList, err);
-    if (!ret || appList.size() < 1) {
+    if (!ret || baseRuntimeList.size() < 1) {
         err = baseRef + " not found in repo";
         qCritical() << err;
         return false;

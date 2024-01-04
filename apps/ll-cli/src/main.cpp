@@ -31,13 +31,19 @@ namespace {
 void startProcess(QString program, QStringList args = {})
 {
     QProcess process;
+    auto envs = process.environment();
+    envs.push_back("QT_FORCE_STDERR_LOGGING=1");
+    process.setEnvironment(envs);
     process.setProgram(program);
     process.setArguments(args);
 
     qint64 pid = 0;
     process.startDetached(&pid);
 
+    qDebug() << "Start" << program << args << "as" << pid;
+
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [pid]() {
+        qDebug() << "Kill" << pid;
         kill(pid, SIGTERM);
     });
 }
@@ -133,17 +139,22 @@ int main(int argc, char **argv)
 
               qInfo() << "some subcommands will failed in --no-dbus mode.";
 
-              const auto pkgManAddress = QString("unix:path=/run/linglong/package-manager.socket");
+              const auto pkgManAddress = QString("unix:path=/tmp/linglong-package-manager.socket");
 
               startProcess("ll-system-helper", { "--no-dbus" });
               QThread::sleep(1);
               startProcess("sudo",
-                           { "--user", LINGLONG_USERNAME, "ll-package-manager", "--no-dbus" });
+                           { "--user",
+                             LINGLONG_USERNAME,
+                             "--preserve-env=QT_FORCE_STDERR_LOGGING",
+                             "ll-package-manager",
+                             "--no-dbus" });
               QThread::sleep(1);
 
               pkgManConn = QDBusConnection::connectToPeer(pkgManAddress, "ll-package-manager");
               if (!pkgManConn.isConnected()) {
-                  qCritical() << "failed to start ll-package-manager";
+                  qCritical() << "Failed to connect to ll-package-manager:"
+                              << pkgManConn.lastError();
                   QCoreApplication::exit(-1);
                   return;
               }

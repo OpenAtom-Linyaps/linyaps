@@ -62,7 +62,8 @@ void linglong_message_handler(QtMsgType type,
             return;
 
         fprintf(stderr,
-                "%s:%d %s\n",
+                "(%d) %s:%d %s\n",
+                getpid(),
                 context.file,
                 context.line,
                 formattedMessage.toLocal8Bit().constData());

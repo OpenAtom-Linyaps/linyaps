@@ -42,8 +42,11 @@ auto main(int argc, char *argv[]) -> int
         qCritical() << config.error();
         return -1;
     }
-
-    linglong::repo::OSTreeRepo ostree(linglong::util::getLinglongRootPath(), *config, api);
+    linglong::util::Connection dbConnection;
+    linglong::repo::OSTreeRepo ostree(linglong::util::getLinglongRootPath(),
+                                      *config,
+                                      api,
+                                      dbConnection);
 
     linglong::service::AppManager appManager(ostree);
     linglong::adaptors::app_manger::AppManager1 appManagerAdaport(&appManager);

@@ -80,7 +80,9 @@ protected:
           config::ConfigV1{ remoteRepoName.toStdString(),
                             { { remoteRepoName.toStdString(), remoteEndpoint.toStdString() } },
                             1 };
-        ostreeRepo = std::make_unique<linglong::repo::OSTreeRepo>(repoPath, config, api);
+        linglong::util::Connection dbConnection;
+        ostreeRepo =
+          std::make_unique<linglong::repo::OSTreeRepo>(repoPath, config, api, dbConnection);
     }
 
     void TearDown() override

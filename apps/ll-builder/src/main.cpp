@@ -10,6 +10,7 @@
 #include "linglong/builder/project.h"
 #include "linglong/package/package.h"
 #include "linglong/repo/repo.h"
+#include "linglong/util/connection.h"
 #include "linglong/util/qserializer/yaml.h"
 #include "linglong/util/xdg.h"
 #include "linglong/utils/global/initialize.h"
@@ -17,6 +18,7 @@
 #include <QCommandLineOption>
 #include <QCommandLineParser>
 #include <QCoreApplication>
+#include <QDir>
 #include <QMap>
 #include <QRegExp>
 
@@ -67,10 +69,9 @@ int main(int argc, char **argv)
             linglong::builder::BuilderConfig::instance()->remoteRepoEndpoint.toStdString() } },
         1
     };
-
-    linglong::repo::OSTreeRepo ostree(linglong::builder::BuilderConfig::instance()->repoPath(),
-                                      config,
-                                      api);
+    auto repoPath = linglong::builder::BuilderConfig::instance()->repoPath();
+    linglong::util::Connection dbConnection(QDir(repoPath).filePath("repo.sqlite"));
+    linglong::repo::OSTreeRepo ostree(repoPath, config, api, dbConnection);
 
     linglong::builder::LinglongBuilder builder(ostree);
 

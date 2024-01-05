@@ -7,10 +7,15 @@
 #include "ostree_repo.h"
 
 #include "linglong/package/info.h"
+#include "linglong/package/layer/LayerInfo.hpp"
+#include "linglong/package/package.h"
 #include "linglong/package/ref.h"
 #include "linglong/repo/config.h"
 #include "linglong/repo/repo.h"
+#include "linglong/repo/repo_local_db.h"
+#include "linglong/util/connection.h"
 #include "linglong/util/error.h"
+#include "linglong/util/qserializer/json.h"
 #include "linglong/util/runner.h"
 #include "linglong/util/sysinfo.h"
 #include "linglong/util/version/semver.h"
@@ -22,6 +27,7 @@
 #include <glib.h>
 #include <ostree-repo.h>
 #include <qdir.h>
+#include <qtemporarydir.h>
 
 #include <QDir>
 #include <QProcess>
@@ -48,13 +54,15 @@ typedef QMap<QString, OstreeRepoObject> RepoObjectMap;
 
 OSTreeRepo::OSTreeRepo(const QString &localRepoPath,
                        const config::ConfigV1 &cfg,
-                       api::client::ClientApi &client)
+                       api::client::ClientApi &client,
+                       util::Connection &dbConnection)
     : cfg(cfg)
     , repoRootPath(QDir(localRepoPath).absolutePath())
     , remoteEndpoint(QString::fromStdString(cfg.repos.at(cfg.defaultRepo)))
     , remoteRepoName(QString::fromStdString(cfg.defaultRepo))
     , repoClient(client)
     , apiClient(client)
+    , localDB(dbConnection)
 {
     ostreePath = repoRootPath + "/repo";
     qDebug() << "ostree repo path is" << ostreePath;
@@ -188,6 +196,40 @@ linglong::utils::error::Result<void> OSTreeRepo::importDirectory(const package::
     ostree_repo_commit_transaction(repoPtr.get(), NULL, NULL, &gErr);
     if (gErr) {
         return LINGLONG_ERR(gErr->code, gErr->message);
+    }
+    QTemporaryDir dir;
+    if (!dir.isValid()) {
+        return LINGLONG_ERR(-1, "cannot create temporary dir");
+    }
+    auto ret = checkout(ref, "info.json", dir.path());
+    if (!ret.has_value()) {
+        return LINGLONG_EWRAP("checkout app info", ret.error());
+    }
+    auto [info, err] =
+      util::fromJSON<QSharedPointer<linglong::package::Info>>(dir.filePath("info.json"));
+    if (err) {
+        return LINGLONG_ERR(err.code(), err.message());
+    }
+    package::AppMetaInfo appInfo;
+    appInfo.appId = info->appid;
+    appInfo.name = info->name;
+    appInfo.kind = info->kind;
+    appInfo.version = info->version;
+    appInfo.arch = info->arch.first();
+    appInfo.runtime = info->runtime;
+    appInfo.channel = ref.channel;
+    appInfo.module = info->module;
+    appInfo.uabUrl = "";
+    appInfo.repoName = "";
+    appInfo.size = info->size;
+    appInfo.description = info->description;
+    ret = localDB.deleteAppRecord(appInfo, linglong::util::getUserName());
+    if (!ret.has_value()) {
+        return LINGLONG_EWRAP("delete old app record", ret.error());
+    }
+    ret = localDB.insertAppRecord(appInfo, linglong::util::getUserName());
+    if (!ret.has_value()) {
+        return LINGLONG_EWRAP("insert app record", ret.error());
     }
     return LINGLONG_OK;
 }

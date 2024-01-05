@@ -10,6 +10,8 @@
 #include "linglong/package/package.h"
 #include "linglong/repo/repo.h"
 #include "linglong/repo/repo_client.h"
+#include "linglong/repo/repo_local_db.h"
+#include "linglong/util/connection.h"
 #include "linglong/util/erofs.h"
 #include "linglong/util/file.h"
 #include "linglong/util/qserializer/json.h"
@@ -108,7 +110,8 @@ class OSTreeRepo : public QObject, public Repo
 public:
     explicit OSTreeRepo(const QString &localRepoPath,
                         const config::ConfigV1 &cfg,
-                        api::client::ClientApi &client);
+                        api::client::ClientApi &client,
+                        util::Connection &dbConnection);
 
     ~OSTreeRepo() override;
 
@@ -714,6 +717,7 @@ private:
     std::unique_ptr<OstreeRepo, OstreeRepoDeleter> repoPtr = nullptr;
     QString ostreePath;
 
+    repo::LocalDB localDB;
     repo::RepoClient repoClient;
     api::client::ClientApi &apiClient;
     // ostree 仓库对象信息

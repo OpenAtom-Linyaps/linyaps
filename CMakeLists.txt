@@ -242,6 +242,8 @@ pfl_add_library(
   ./src/linglong/repo/repo.h
   ./src/linglong/repo/repo_client.cpp
   ./src/linglong/repo/repo_client.h
+  ./src/linglong/repo/repo_local_db.cpp
+  ./src/linglong/repo/repo_local_db.h
   ./src/linglong/runtime/app.cpp
   ./src/linglong/runtime/app.h
   ./src/linglong/runtime/app_config.cpp

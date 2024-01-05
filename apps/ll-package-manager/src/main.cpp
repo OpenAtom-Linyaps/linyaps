@@ -13,6 +13,7 @@
 #include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/util/configure.h"
+#include "linglong/util/connection.h"
 #include "linglong/utils/dbus/register.h"
 #include "linglong/utils/global/initialize.h"
 
@@ -45,8 +46,11 @@ void withDBusDaemon()
       QString::fromStdString(config->repos.at(config->defaultRepo)));
     api->setParent(QCoreApplication::instance());
 
-    auto ostreeRepo =
-      new linglong::repo::OSTreeRepo(linglong::util::getLinglongRootPath(), *config, *api);
+    linglong::util::Connection dbConnection;
+    auto ostreeRepo = new linglong::repo::OSTreeRepo(linglong::util::getLinglongRootPath(),
+                                                     *config,
+                                                     *api,
+                                                     dbConnection);
     ostreeRepo->setParent(QCoreApplication::instance());
 
     auto client = new linglong::repo::RepoClient(*api);
@@ -123,9 +127,11 @@ void withoutDBusDaemon()
     api->setParent(QCoreApplication::instance());
     api->setNewServerForAllOperations(
       QString::fromStdString(config->repos.at(config->defaultRepo)));
-
-    auto ostreeRepo =
-      new linglong::repo::OSTreeRepo(linglong::util::getLinglongRootPath(), *config, *api);
+    linglong::util::Connection dbConnection;
+    auto ostreeRepo = new linglong::repo::OSTreeRepo(linglong::util::getLinglongRootPath(),
+                                                     *config,
+                                                     *api,
+                                                     dbConnection);
     ostreeRepo->setParent(QCoreApplication::instance());
 
     auto client = new linglong::repo::RepoClient(*api);

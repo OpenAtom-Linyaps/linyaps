@@ -5,10 +5,13 @@
  */
 
 #include "../util/mock-network.h"
+#include "linglong/package/info.h"
 #include "linglong/repo/ostree_repo.h"
+#include "linglong/util/qserializer/json.h"
 
 #include <qdir.h>
 #include <qjsondocument.h>
+#include <qtemporarydir.h>
 
 #include <QTest>
 
@@ -99,15 +102,24 @@ void TestOSTreeRepo::push()
     auto config = config::ConfigV1{ "repo", { { "repo", endpoint.toStdString() } }, 1 };
 
     // TODO(wurongjie) 不加 new 程序会挂掉
-    auto repo = new OSTreeRepo("./testdata/ostree_repo_test", config, api);
+    linglong::util::Connection dbConnection("./testdata/ostree_repo_test.sqlite");
+    auto repo = new OSTreeRepo("./testdata/ostree_repo_test", config, api, dbConnection);
     auto ref = package::Ref("test");
 
     // 创建一个临时目录
-    QDir d("./testdata/package");
-    d.mkpath("./");
-    QFile f(d.filePath("info"));
+    QTemporaryDir d;
+    QFile f(d.filePath("info.json"));
+    QSharedPointer<package::Info> info(new package::Info);
+    info->appid = "org.deepin.test";
+    info->arch = QStringList{ "x86" };
+    info->version = "1.0.0";
+    info->module = "runtime";
+    auto [data, err] = util::toJSON(info);
+    if (err) {
+        QVERIFY2(false, qPrintable("generate app info err " + err.message()));
+    }
     QVERIFY2(f.open(QIODevice::WriteOnly | QIODevice::Text), "failed to open file");
-    QVERIFY2(f.write("this is test file"), "failded to write file");
+    QVERIFY2(f.write(data), "failded to write file");
     f.close();
 
     // 将目录做为包导入到ostree

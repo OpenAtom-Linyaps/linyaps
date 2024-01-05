@@ -10,6 +10,8 @@
 #include "builder.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container.h"
+#include "linglong/util/error.h"
+#include "linglong/utils/error/error.h"
 #include "ocppi/runtime/config/types/Config.hpp"
 #include "ocppi/runtime/config/types/Mount.hpp"
 #include "project.h"
@@ -53,7 +55,8 @@ public:
 
 private:
     repo::OSTreeRepo &repo;
-    linglong::util::Error commitBuildOutput(Project *project, const nlohmann::json &overlayfs);
+    linglong::utils::error::Result<void> commitBuildOutput(Project *project,
+                                                           const nlohmann::json &overlayfs);
 
     static int startContainer(QSharedPointer<Container> c,
                               ocppi::runtime::config::types::Config &r);

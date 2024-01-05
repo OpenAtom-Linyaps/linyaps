@@ -7,6 +7,7 @@
 #include "connection.h"
 
 #include "linglong/util/file.h"
+#include "linglong/utils/error/error.h"
 
 #define DATABASE_TYPE "QSQLITE"
 #define TEST_STATE_SQL "SELECT 1"
@@ -20,6 +21,15 @@ namespace util {
 Connection::Connection(QObject *parent)
     : QObject(parent)
     , databaseName(getLinglongRootPath() + "/" + QString(DATABASE_NAME))
+    , databaseType(DATABASE_TYPE)
+    , testStateSql(TEST_STATE_SQL)
+{
+    qCDebug(database) << "open databaseName" << databaseName;
+}
+
+Connection::Connection(const QString &databasePath, QObject *parent)
+    : QObject(parent)
+    , databaseName(databasePath)
     , databaseType(DATABASE_TYPE)
     , testStateSql(TEST_STATE_SQL)
 {
@@ -75,6 +85,8 @@ QSqlQuery Connection::execute(const QString &sql)
 
     connection = getConnection();
     QSqlQuery query(sql, connection);
+    QString lastQuery = query.lastQuery();
+    qCDebug(database) << "Last Query: " << lastQuery;
     if (QSqlError::NoError != query.lastError().type()) {
         qCritical() << "execute sql error:" << query.lastError().text();
     }
@@ -95,8 +107,44 @@ QSqlQuery Connection::execute(const QString &sql, const QVariantMap &valueMap)
         query.bindValue(key, valueMap.value(key).toString());
     }
     query.exec();
+    QString lastQuery = query.lastQuery();
+    qCDebug(database) << "Last Query: " << lastQuery;
     if (QSqlError::NoError != query.lastError().type()) {
         qCritical() << "execute pre sql error:" << query.lastError().text();
+    }
+    return query;
+}
+
+// 执行不带参数的sql
+linglong::utils::error::Result<QSqlQuery> Connection::exec(const QString &sql)
+{
+    QMutexLocker locker(&mutex); // 加锁，加锁不成功则阻塞
+
+    QSqlQuery query(sql, getConnection());
+    QString lastQuery = query.lastQuery();
+    qCDebug(database) << "Last Query: " << lastQuery;
+    if (QSqlError::NoError != query.lastError().type()) {
+        return LINGLONG_ERR(query.lastError().type(), query.lastError().text());
+    }
+    return query;
+}
+
+// 执行带参数的sql
+linglong::utils::error::Result<QSqlQuery> Connection::exec(const QString &sql,
+                                                           const QVariantMap &valueMap)
+{
+    QMutexLocker locker(&mutex); // 加锁，加锁不成功则阻塞
+
+    QSqlQuery query(getConnection());
+    query.prepare(sql);
+    for (const auto &key : valueMap.keys()) {
+        query.bindValue(key, valueMap.value(key));
+    }
+    query.exec();
+    QString lastQuery = query.lastQuery();
+    qCDebug(database) << "Last Query: " << lastQuery;
+    if (QSqlError::NoError != query.lastError().type()) {
+        return LINGLONG_ERR(query.lastError().type(), query.lastError().text());
     }
     return query;
 }

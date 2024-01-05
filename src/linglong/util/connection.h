@@ -7,6 +7,8 @@
 #ifndef LINGLONG_SRC_MODULE_UTIL_CONNECTION_H_
 #define LINGLONG_SRC_MODULE_UTIL_CONNECTION_H_
 
+#include "linglong/utils/error/error.h"
+
 #include <QMutex>
 #include <QMutexLocker>
 #include <QQueue>
@@ -23,9 +25,13 @@ class Connection : public QObject
 
 public:
     explicit Connection(QObject *parent = nullptr);
+    explicit Connection(const QString &databasePath, QObject *parent = nullptr);
     ~Connection();
     QSqlQuery execute(const QString &sql); // 执行sql语句
     QSqlQuery execute(const QString &sql, const QVariantMap &valueMap);
+    // 重写execute，支持返回错误
+    linglong::utils::error::Result<QSqlQuery> exec(const QString &sql);
+    linglong::utils::error::Result<QSqlQuery> exec(const QString &sql, const QVariantMap &valueMap);
 
 private:
     QSqlDatabase getConnection();                   // 创建数据库连接

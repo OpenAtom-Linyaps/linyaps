@@ -58,7 +58,7 @@ Options:
     --working-directory=PATH  Specify working directory.
     --type=TYPE               Filter result with tiers type. One of "lib", "app" or "dev". [default: app]
     --state=STATE             Filter result with the tiers install state. Should be "local" or "remote". [default: local]
-    --prune                   Remove application data if the tier is an application and all version of that application has benn removed.
+    --prune                   Remove application data if the tier is an application and all version of that application has been removed.
 
 Subcommands:
     run        Run an application.
@@ -71,7 +71,7 @@ Subcommands:
     upgrade    Upgrade tier(s).
     search     Search for tiers.
     list       List known tiers.
-    repo       Display or modify infomation of the repository currently using.
+    repo       Display or modify information of the repository currently using.
     info       Display the information of layer
 )";
 

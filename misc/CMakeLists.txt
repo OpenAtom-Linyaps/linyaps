@@ -79,8 +79,7 @@ set(BUILDER_TEMPLATE_FILES
     linglong/builder/templates/default.yaml
     linglong/builder/templates/example.yaml
     linglong/builder/templates/qmake.yaml
-    linglong/builder/templates/appimage.yaml
-    linglong/builder/templates/makeimage.yaml)
+    linglong/builder/templates/appimage.yaml)
 
 install(FILES ${BUILDER_TEMPLATE_FILES}
         DESTINATION ${CMAKE_INSTALL_DATADIR}/linglong/builder/templates)

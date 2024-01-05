@@ -110,8 +110,6 @@ int Project::generateBuildScript(const QString &path)
             templateName = "cmake.yaml";
         } else if (build->kind == "autotools") {
             templateName = "autotools.yaml";
-        } else if (build->kind == "makeimage") {
-            templateName = "makeimage.yaml";
         } else {
             qWarning().noquote() << QString("unknown build type: %1").arg(build->kind);
             return -1;

@@ -58,8 +58,8 @@ LinglongBuilder::LinglongBuilder(repo::OSTreeRepo &ostree)
 {
 }
 
-linglong::util::Error LinglongBuilder::commitBuildOutput(Project *project,
-                                                         const nlohmann::json &overlayfs)
+linglong::utils::error::Result<void>
+LinglongBuilder::commitBuildOutput(Project *project, const nlohmann::json &overlayfs)
 {
     auto output = project->config().cacheInstallPath("files");
     linglong::util::ensureDir(output);
@@ -156,7 +156,7 @@ linglong::util::Error LinglongBuilder::commitBuildOutput(Project *project,
     auto desktopFileSavePath = QStringList{ entriesPath, "applications" }.join(QDir::separator());
     auto err = modifyConfigFile(desktopFilePath, desktopFileSavePath, "*.desktop", appId);
     if (err) {
-        return err;
+        return LINGLONG_ERR(err.code(), err.message());
     }
 
     // modify context-menus file
@@ -165,7 +165,7 @@ linglong::util::Error LinglongBuilder::commitBuildOutput(Project *project,
     auto contextFileSavePath = contextFilePath;
     err = modifyConfigFile(contextFilePath, contextFileSavePath, "*.conf", appId);
     if (err) {
-        return err;
+        return LINGLONG_ERR(err.code(), err.message());
     }
 
     auto moveDir = [](const QStringList targetList,
@@ -197,7 +197,7 @@ linglong::util::Error LinglongBuilder::commitBuildOutput(Project *project,
                   project->config().cacheInstallPath("files"),
                   project->config().cacheInstallPath("devel-install", "files"));
     if (err) {
-        return err;
+        return LINGLONG_ERR(err.code(), err.message());
     }
 
     auto createInfo = [](Project *project) -> linglong::util::Error {
@@ -249,23 +249,22 @@ linglong::util::Error LinglongBuilder::commitBuildOutput(Project *project,
 
     err = createInfo(project);
     if (err) {
-        return WrapError(err, "createInfo failed");
+        return LINGLONG_ERR(err.code(), err.message());
     }
     auto refRuntime = project->refWithModule("runtime");
     refRuntime.channel = "main";
     auto ret = repo.importDirectory(refRuntime, project->config().cacheInstallPath(""));
 
     if (!ret.has_value()) {
-        qCritical() << QString("commit %1 filed").arg(project->refWithModule("runtime").toString());
-        return err;
+        return LINGLONG_EWRAP("commit runtime filed", ret.error());
     }
 
     auto refDevel = project->refWithModule("devel");
     refDevel.channel = "main";
     ret = repo.importDirectory(refDevel, project->config().cacheInstallPath("devel-install", ""));
     if (!ret.has_value())
-        return NewError(ret.error().code(), ret.error().message());
-    return Success();
+        return LINGLONG_EWRAP("commit devel filed", ret.error());
+    return LINGLONG_OK;
 };
 
 package::Ref fuzzyRef(QSharedPointer<const JsonSerialize> obj)
@@ -768,9 +767,9 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
         return NewError(-1, "build task failed in container");
     }
 
-    err = commitBuildOutput(project, anno["overlayfs"]);
-    if (err) {
-        return WrapError(err, "commitBuildOutput failed");
+    auto ret = commitBuildOutput(project, anno["overlayfs"]);
+    if (!ret.has_value()) {
+        return NewError(ret.error().code(), ret.error().message());
     }
     return Success();
 }

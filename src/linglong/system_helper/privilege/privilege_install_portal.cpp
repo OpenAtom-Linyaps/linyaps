@@ -106,7 +106,7 @@ static void ruinFileRule(const QString &installPath,
         if (QDir::match(rule->source, relativeFilePath)) {
             const auto targetFilePath = rule->target + QDir::separator() + iter.fileName();
             qDebug() << "remove link file" << iter.filePath() << targetFilePath;
-            const auto checkSource = QFile::symLinkTarget(targetFilePath);
+            const auto checkSource = QFileInfo(QFileInfo(targetFilePath).symLinkTarget()).canonicalPath();
             if (checkSource != iter.filePath()) {
                 qWarning() << "ignore file not link to source version";
             } else {

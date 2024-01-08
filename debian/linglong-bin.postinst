@@ -28,6 +28,7 @@ upgrade_from_1_3_x() {
 
         echo "Moving old deepin v23 linglong repository to new location..."
         mv /persistent/linglong /var/lib/linglong
+        ln -s /var/lib/linglong /persistent/linglong # Quick fix for old files exported in old location.
         echo "Done"
 
         # This is good enough,

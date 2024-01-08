@@ -1124,9 +1124,11 @@ linglong::utils::error::Result<QString> OSTreeRepo::localLatestVersion(const QSt
     if (ret->length() == 0) {
         return LINGLONG_ERR(404, "not found app");
     }
-    std::sort(ret->begin(), ret->end(), [](auto &obj1, auto &obj2) {
-        return util::compareVersion(obj1->version, obj2->version);
-    });
+    if (ret->length() > 1) {
+        std::sort(ret->begin(), ret->end(), [](auto &obj1, auto &obj2) {
+            return util::compareVersion(obj1->version, obj2->version);
+        });
+    }
     return ret->at(0)->version;
 }
 

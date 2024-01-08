@@ -56,10 +56,19 @@ linglong::utils::error::Result<void> AppManager::Run(const RunParamOption &param
             if (ret.has_value()) {
                 channel = defaultChannel;
                 break;
+            } else if (ret.error().code() != 404) {
+                return LINGLONG_EWRAP("select default channel err", ret.error());
             }
         }
         if (channel.isEmpty()) {
-            channel = "main";
+            return LINGLONG_ERR(
+              -1,
+              QString("Application %1/%2/$latest/%3/%4 cannot be found from the database, "
+                      "maybe you should install it first or pass more parameter")
+                .arg("main")
+                .arg(appID)
+                .arg(arch)
+                .arg(module));
         }
     }
     // 默认选择最新的版本
@@ -72,6 +81,7 @@ linglong::utils::error::Result<void> AppManager::Run(const RunParamOption &param
     }
     // 加载应用
     linglong::package::Ref ref("", channel, appID, version, arch, module);
+    qDebug() << "app load ref:" << ref.toSpecString() << "exec" << exec;
     auto app = linglong::runtime::App::load(&repo, ref, exec);
     if (app == nullptr) {
         return LINGLONG_ERR(-1, "load app failed");

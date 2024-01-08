@@ -10,6 +10,7 @@
 #include "linglong/builder/project.h"
 #include "linglong/package/package.h"
 #include "linglong/repo/repo.h"
+#include "linglong/service/app_manager.h"
 #include "linglong/util/connection.h"
 #include "linglong/util/qserializer/yaml.h"
 #include "linglong/util/xdg.h"
@@ -73,7 +74,8 @@ int main(int argc, char **argv)
     linglong::util::Connection dbConnection(QDir(repoPath).filePath("repo.sqlite"));
     linglong::repo::OSTreeRepo ostree(repoPath, config, api, dbConnection);
 
-    linglong::builder::LinglongBuilder builder(ostree);
+    linglong::service::AppManager appManager(ostree);
+    linglong::builder::LinglongBuilder builder(ostree, appManager);
 
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
         { "generate",

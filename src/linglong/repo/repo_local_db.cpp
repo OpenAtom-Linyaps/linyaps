@@ -136,19 +136,20 @@ LocalDB::queryAppRecord(const QString &userName,
         return LINGLONG_EWRAP("deleteAppRecord", ret.error());
     }
     QList<QSharedPointer<package::AppMetaInfo>> pkgList;
-    ret->first();
-    do {
-        auto info = QSharedPointer<package::AppMetaInfo>(new package::AppMetaInfo);
-        info->appId = ret->value(1).toString().trimmed();
-        info->name = ret->value(2).toString().trimmed();
-        info->arch = ret->value(3).toString().trimmed();
-        info->description = ret->value(4).toString().trimmed();
-        info->user = ret->value(5).toString().trimmed();
-        info->version = ret->value(6).toString().trimmed();
-        info->channel = ret->value(7).toString().trimmed();
-        info->module = ret->value(8).toString().trimmed();
-        pkgList.push_back(info);
-    } while (ret->next());
+    if (ret->first()) {
+        do {
+            auto info = QSharedPointer<package::AppMetaInfo>(new package::AppMetaInfo);
+            info->appId = ret->value(1).toString().trimmed();
+            info->name = ret->value(2).toString().trimmed();
+            info->arch = ret->value(3).toString().trimmed();
+            info->description = ret->value(4).toString().trimmed();
+            info->user = ret->value(5).toString().trimmed();
+            info->version = ret->value(6).toString().trimmed();
+            info->channel = ret->value(7).toString().trimmed();
+            info->module = ret->value(8).toString().trimmed();
+            pkgList.push_back(info);
+        } while (ret->next());
+    }
     return pkgList;
 }
 

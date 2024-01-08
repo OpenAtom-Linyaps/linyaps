@@ -1111,6 +1111,25 @@ linglong::utils::error::Result<void> OSTreeRepo::initCreateRepoIfNotExists()
     return LINGLONG_OK;
 }
 
+// 获取本地仓库最新版本号,如果没找到任何应用，返回code 404
+linglong::utils::error::Result<QString> OSTreeRepo::localLatestVersion(const QString &appID,
+                                                                       const QString &arch,
+                                                                       const QString &channel,
+                                                                       const QString &module)
+{
+    auto ret = localDB.queryAppRecord(util::getUserName(), appID, arch, channel, module, "");
+    if (!ret.has_value()) {
+        return LINGLONG_EWRAP("query app record", ret.error());
+    }
+    if (ret->length() == 0) {
+        return LINGLONG_ERR(404, "not found app");
+    }
+    std::sort(ret->begin(), ret->end(), [](auto &obj1, auto &obj2) {
+        return util::compareVersion(obj1->version, obj2->version);
+    });
+    return ret->at(0)->version;
+}
+
 OSTreeRepo::~OSTreeRepo() = default;
 
 } // namespace repo

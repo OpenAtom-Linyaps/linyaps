@@ -29,6 +29,13 @@ public:
 
     utils::error::Result<void> deleteAppRecord(const package::AppMetaInfo &package,
                                                const QString &userName);
+    linglong::utils::error::Result<QList<QSharedPointer<package::AppMetaInfo>>>
+    queryAppRecord(const QString &userName,
+                   const QString &appID,
+                   const QString &arch,
+                   const QString &channel,
+                   const QString &module,
+                   const QString &version);
 
 private:
     util::Connection &dbConnection;

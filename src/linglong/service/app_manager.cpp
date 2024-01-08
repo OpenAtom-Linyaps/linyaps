@@ -9,10 +9,12 @@
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/app.h"
 #include "linglong/util/app_status.h"
+#include "linglong/util/connection.h"
 #include "linglong/util/file.h"
 #include "linglong/util/runner.h"
 #include "linglong/util/status_code.h"
 #include "linglong/util/sysinfo.h"
+#include "linglong/utils/error/error.h"
 
 #include <csignal>
 
@@ -25,6 +27,67 @@ AppManager::AppManager(repo::Repo &repo)
     , repo(repo)
 {
     runPool->setMaxThreadCount(RUN_POOL_MAX_THREAD);
+}
+
+linglong::utils::error::Result<void> AppManager::Run(const RunParamOption &paramOption)
+{
+    qDebug() << "run" << paramOption.appId;
+
+    QString appID = paramOption.appId;
+    QString arch = paramOption.arch;
+    QString version = paramOption.version;
+    QString channel = paramOption.channel;
+    QString module = paramOption.appModule;
+    QStringList exec = paramOption.exec;
+    QStringList env = paramOption.appEnv;
+    // 默认使用主机架构
+    if (arch.isEmpty()) {
+        arch = linglong::util::hostArch();
+    }
+    // 默认运行应用的runtime，而不是devel
+    if (module.isEmpty()) {
+        module = "runtime";
+    }
+    // 玲珑早期版本的默认channel是 linglong，后来改成 main，需要进行兼容
+    // TODO(wurongjie) 在版本迭代后，可以删除对旧 channel 的支持
+    if (channel.isEmpty()) {
+        for (auto defaultChannel : QStringList{ "main", "linglong" }) {
+            auto ret = repo.localLatestVersion(appID, arch, defaultChannel, module);
+            if (ret.has_value()) {
+                channel = defaultChannel;
+                break;
+            }
+        }
+        if (channel.isEmpty()) {
+            channel = "main";
+        }
+    }
+    // 默认选择最新的版本
+    if (version.isEmpty()) {
+        auto ret = repo.localLatestVersion(appID, arch, channel, module);
+        if (!ret.has_value()) {
+            return LINGLONG_EWRAP("get local latest version", ret.error());
+        }
+        version = *ret;
+    }
+    // 加载应用
+    linglong::package::Ref ref("", channel, appID, version, arch, module);
+    auto app = linglong::runtime::App::load(&repo, ref, exec);
+    if (app == nullptr) {
+        return LINGLONG_ERR(-1, "load app failed");
+    }
+    // 设置环境变量
+    app->saveUserEnvList(env);
+    // 设置应用参数
+    ParamStringMap paramMap;
+    paramMap.insert(linglong::util::kKeyNoProxy, "");
+    app->setAppParamMap(paramMap);
+    // 启动应用
+    auto err = app->start();
+    if (err) {
+        return LINGLONG_ERR(err.code(), err.message());
+    }
+    return LINGLONG_OK;
 }
 
 auto AppManager::Start(const RunParamOption &paramOption) -> Reply

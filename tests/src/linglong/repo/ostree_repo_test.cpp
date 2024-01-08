@@ -80,7 +80,7 @@ protected:
           config::ConfigV1{ remoteRepoName.toStdString(),
                             { { remoteRepoName.toStdString(), remoteEndpoint.toStdString() } },
                             1 };
-        linglong::util::Connection dbConnection;
+        linglong::util::Connection dbConnection(dir->filePath("repo.sqlite"));
         ostreeRepo =
           std::make_unique<linglong::repo::OSTreeRepo>(repoPath, config, api, dbConnection);
     }

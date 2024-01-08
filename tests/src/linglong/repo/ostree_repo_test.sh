@@ -16,6 +16,12 @@ create_files() {
         for file in "${files[@]}"; do
                 touch "$file"
         done
+        echo '{
+  "appid": "org.deepin.test",
+  "arch": ["x86"],
+  "version": "1.0.0",
+  "module": "runtime"
+}' > "$tmpdir"/info.json
         find "$tmpdir" -type f
 }
 

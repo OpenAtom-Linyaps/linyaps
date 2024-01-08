@@ -60,6 +60,11 @@ public:
 
     virtual package::Ref latestOfRef(const QString &appId, const QString &appVersion) = 0;
 
+    virtual linglong::utils::error::Result<QString> localLatestVersion(const QString &appId,
+                                                                       const QString &arch,
+                                                                       const QString &channel,
+                                                                       const QString &module) = 0;
+
     virtual linglong::utils::error::Result<void> getRemoteRepoList(const QString &repoPath,
                                                                    QVector<QString> &vec) = 0;
     virtual bool getRemoteRefs(const QString &repoPath,

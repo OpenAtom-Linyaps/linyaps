@@ -14,6 +14,8 @@
 #include "linglong/package/ref.h"
 #include "linglong/repo/repo.h"
 #include "linglong/runtime/app.h"
+#include "linglong/util/error.h"
+#include "linglong/utils/error/error.h"
 
 #include <QDBusArgument>
 #include <QDBusContext>
@@ -39,7 +41,7 @@ class AppManager : public QObject, protected QDBusContext
     Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.AppManager")
 
 public:
-    AppManager(repo::Repo& repo);
+    explicit AppManager(repo::Repo &repo);
     AppManager(const AppManager &) = delete;
     AppManager(AppManager &&) = delete;
     auto operator=(const AppManager &) -> AppManager & = delete;
@@ -56,6 +58,8 @@ public Q_SLOTS:
      * @return Reply 同Install
      */
     auto Start(const RunParamOption &paramOption) -> Reply;
+
+    linglong::utils::error::Result<void> Run(const RunParamOption &paramOption);
 
     /**
      * @brief 运行命令
@@ -92,7 +96,7 @@ public:
 
 private:
     QMap<QString, QSharedPointer<linglong::runtime::App>> apps = {};
-    linglong::repo::Repo& repo;
+    linglong::repo::Repo &repo;
 };
 
 } // namespace service

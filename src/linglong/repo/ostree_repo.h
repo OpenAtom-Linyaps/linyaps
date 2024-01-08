@@ -149,6 +149,11 @@ public:
 
     package::Ref latestOfRef(const QString &appId, const QString &appVersion) override;
 
+    // 获取本地仓库中应用最新版本
+    linglong::utils::error::Result<QString> localLatestVersion(const QString &appId,
+                                                               const QString &arch,
+                                                               const QString &channel,
+                                                               const QString &module) override;
     /*
      * 查询ostree远端仓库列表
      *

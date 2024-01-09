@@ -7,6 +7,7 @@
 #include "source_fetcher.h"
 
 #include "builder_config.h"
+#include "linglong/cli/printer.h"
 #include "linglong/util/error.h"
 #include "linglong/util/file.h"
 #include "linglong/util/http/http_client.h"
@@ -115,11 +116,12 @@ std::tuple<QString, linglong::util::Error> SourceFetcherPrivate::fetchArchiveFil
     // if file exists, check digest
     if (file->exists()) {
         if (source->digest == util::fileHash(path, QCryptographicHash::Sha256)) {
-            qInfo() << QString("file %1 exists, skip download").arg(path);
+            q->printer.printMessage(QString("file %1 exists, skip download").arg(path));
             return { path, Success() };
         }
 
-        qInfo() << QString("file %1 exists, but hash mismatched, redownload").arg(path);
+        q->printer.printMessage(
+          QString("file %1 exists, but hash mismatched, redownload").arg(path));
         file->remove();
     }
 
@@ -169,47 +171,73 @@ util::Error SourceFetcherPrivate::fetchGitRepo()
     if (!QDir::setCurrent(sourceTargetPath())) {
         return NewError(-1, QString("change to %1 failed").arg(sourceTargetPath()));
     }
-
+    
+    QSharedPointer<QByteArray> output = QSharedPointer<QByteArray>::create();
+    q->printer.printMessage(QString("git clone --recurse-submodules %1 %2").arg(source->url).arg(sourceTargetPath()));
     auto err = util::Exec("git",
                           {
                             "clone",
                             "--recurse-submodules",
                             source->url,
                             sourceTargetPath(),
-                          });
+                          },
+                          -1,
+                          output);
+    if (!output->isEmpty()) {
+        q->printer.printMessage(QString(output->constData()));
+    }
+
     if (err) {
-        qDebug() << WrapError(err, "git clone failed");
+        q->printer.printMessage("git clone failed. " + err.message());
+        output->clear();
     }
 
     QDir::setCurrent(sourceTargetPath());
 
+    q->printer.printMessage(QString("git checkout -b %1 %2").arg(source->version).arg(source->commit));
     err = util::Exec("git",
                      {
                        "checkout",
                        "-b",
                        source->version,
                        source->commit,
-                     });
-    if (err) {
-        qDebug() << WrapError(err, "git checkout failed");
+                     },
+                     -1,
+                     output);
+                
+    if (!output->isEmpty()) {
+        q->printer.printMessage(QString(output->constData()));
     }
 
+    if (err) {
+        q->printer.printMessage("git checkout failed. " + err.message());
+        output->clear();
+    }
+
+    q->printer.printMessage(QString("git reset --hard %1").arg(source->commit));
     err = util::Exec("git",
                      {
                        "reset",
                        "--hard",
                        source->commit,
-                     });
+                     },
+                     -1,
+                     output);
+
+    if (!output->isEmpty()) {
+        q->printer.printMessage(QString(output->constData()));
+    }
 
     return WrapError(err, "git reset failed");
 }
 
 util::Error SourceFetcherPrivate::handleLocalPatch()
 {
+    Q_Q(SourceFetcher);
     // apply local patch
-    qInfo() << QString("finding local patch");
+    q->printer.printMessage("finding local patch");
     if (source->patch.isEmpty()) {
-        qInfo() << QString("nothing to patch");
+        q->printer.printMessage("nothing to patch");
         return Success();
     }
 
@@ -218,7 +246,7 @@ util::Error SourceFetcherPrivate::handleLocalPatch()
             qWarning() << QString("this patch is empty, check it");
             continue;
         }
-        qInfo() << QString("applying patch: %1").arg(localPatch);
+        q->printer.printMessage(QString("applying patch: %1").arg(localPatch));
         if (auto err =
               util::Exec("patch",
                          { "-p1", "-i", project->config().absoluteFilePath({ localPatch }) })) {
@@ -300,8 +328,9 @@ void SourceFetcher::setSourceRoot(const QString &path)
     srcRoot = path;
 }
 
-SourceFetcher::SourceFetcher(QSharedPointer<Source> s, Project *project)
+SourceFetcher::SourceFetcher(QSharedPointer<Source> s, cli::Printer &p, Project *project)
     : dd_ptr(new SourceFetcherPrivate(s, this))
+    , printer(p)
 {
     Q_D(SourceFetcher);
 

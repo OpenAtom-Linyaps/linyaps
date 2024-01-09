@@ -126,10 +126,6 @@ public:
     Q_JSON_PROPERTY(QString, id);
     Q_JSON_PROPERTY(QString, version);
     Q_JSON_PROPERTY(QString, type);
-
-    Q_JSON_PTR_PROPERTY(Variables, variables);
-    Q_JSON_PTR_PROPERTY(Source, source);
-    Q_JSON_PTR_PROPERTY(Build, build);
 };
 } // namespace builder
 } // namespace linglong

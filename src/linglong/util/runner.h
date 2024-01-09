@@ -37,12 +37,12 @@ inline Error Exec(const QString &program,
         if (standardOutput) {
             standardOutput->append(process.readAllStandardOutput());
         } else {
-            qDebug() << QString::fromLocal8Bit(process.readAllStandardOutput());
+            qDebug() << QString::fromLocal8Bit(process.readAllStandardOutput()).trimmed();
         }
     });
 
     QProcess::connect(&process, &QProcess::readyReadStandardError, [&]() {
-        qWarning() << QString::fromLocal8Bit(process.readAllStandardError());
+        qDebug() << QString::fromLocal8Bit(process.readAllStandardError()).trimmed();
     });
 
     process.start();

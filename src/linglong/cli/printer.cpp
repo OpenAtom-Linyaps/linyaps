@@ -117,4 +117,20 @@ void Printer::printLayerInfo(const QSharedPointer<linglong::package::Info> &info
     std::cout << "Description: " << info->description.toStdString() << std::endl;
 }
 
+void Printer::printMessage(const QString &text, const int num)
+{
+    QByteArray blank;
+    blank.fill(' ', num);
+
+    std::cout << blank.toStdString() << text.toStdString() << std::endl;
+}
+
+void Printer::printReplacedText(const QString &text, const int num)
+{
+    QByteArray blank;
+    blank.fill(' ', num);
+
+    std::cout << "\33[2K\r" << blank.toStdString() << text.toStdString() << std::flush;
+}
+
 } // namespace linglong::cli

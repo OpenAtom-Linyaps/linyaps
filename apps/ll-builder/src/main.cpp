@@ -24,6 +24,13 @@
 
 int main(int argc, char **argv)
 {
+    qputenv("QT_LOGGING_RULES", "*=false");
+    for (int i = 1; i < argc; ++i) {
+        if (qstrcmp(argv[i], "-v") == 0) {
+            qputenv("QT_LOGGING_RULES", "*=true");
+            break;
+        }
+    }
     QCoreApplication app(argc, argv);
 
     using namespace linglong::utils::global;
@@ -45,10 +52,6 @@ int main(int argc, char **argv)
                                  "subcommand [sub-option]");
 
     parser.parse(QCoreApplication::arguments());
-
-    if (parser.isSet(optVerbose)) {
-        qputenv("QT_LOGGING_RULES", "*=true");
-    }
 
     QStringList args = parser.positionalArguments();
     QString command = args.isEmpty() ? QString() : args.first();

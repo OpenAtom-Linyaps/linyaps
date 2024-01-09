@@ -9,6 +9,7 @@
 
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/util/error.h"
+#include "linglong/cli/printer.h"
 
 #include <QObject>
 
@@ -23,7 +24,10 @@ class DependFetcher : public QObject
 {
     Q_OBJECT
 public:
-    explicit DependFetcher(QSharedPointer<const BuildDepend> bd, repo::OSTreeRepo &repo, Project *parent);
+    explicit DependFetcher(QSharedPointer<const BuildDepend> bd,
+                           repo::OSTreeRepo &repo,
+                           cli::Printer &p,
+                           Project *parent);
     ~DependFetcher() override;
 
     linglong::util::Error fetch(const QString &subPath, const QString &targetPath);
@@ -31,6 +35,7 @@ public:
 private:
     // FIXME: We should not use ostree repo in ll-builder, we should use the repo interface
     repo::OSTreeRepo &ostree;
+    cli::Printer &printer;
     QScopedPointer<DependFetcherPrivate> dd_ptr;
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), DependFetcher)
 };

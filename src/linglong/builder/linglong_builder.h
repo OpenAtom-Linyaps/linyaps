@@ -9,6 +9,7 @@
 
 #include "builder.h"
 #include "linglong/repo/ostree_repo.h"
+#include "linglong/cli/printer.h"
 #include "linglong/runtime/container.h"
 #include "linglong/util/error.h"
 #include "linglong/utils/error/error.h"
@@ -25,7 +26,7 @@ class LinglongBuilder : public QObject, public Builder
 {
     Q_OBJECT
 public:
-    explicit LinglongBuilder(repo::OSTreeRepo &ostree);
+    explicit LinglongBuilder(repo::OSTreeRepo &ostree, cli::Printer &p);
     linglong::util::Error config(const QString &userName, const QString &password) override;
 
     linglong::util::Error create(const QString &projectName) override;
@@ -49,12 +50,11 @@ public:
 
     linglong::util::Error track() override;
 
-    linglong::util::Error buildFlow(Project *project);
-
     linglong::util::Error generate(const QString &projectName) override;
 
 private:
     repo::OSTreeRepo &repo;
+    cli::Printer &printer;
     linglong::utils::error::Result<void> commitBuildOutput(Project *project,
                                                            const nlohmann::json &overlayfs);
 

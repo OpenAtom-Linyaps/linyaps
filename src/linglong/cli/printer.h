@@ -36,6 +36,9 @@ public:
     virtual void printReply(const linglong::service::Reply &);
     virtual void printQueryReply(const linglong::service::QueryReply &);
     virtual void printLayerInfo(const QSharedPointer<linglong::package::Info> &);
+
+    virtual void printMessage(const QString &, const int num = -1);
+    virtual void printReplacedText(const QString &, const int num = -1);
 };
 
 } // namespace linglong::cli

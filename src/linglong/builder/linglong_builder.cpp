@@ -53,8 +53,9 @@ namespace linglong::builder {
 
 QSERIALIZER_IMPL(message)
 
-LinglongBuilder::LinglongBuilder(repo::OSTreeRepo &ostree)
+LinglongBuilder::LinglongBuilder(repo::OSTreeRepo &ostree, cli::Printer &p)
     : repo(ostree)
+    , printer(p)
 {
 }
 
@@ -256,6 +257,8 @@ LinglongBuilder::commitBuildOutput(Project *project, const nlohmann::json &overl
     auto ret = repo.importDirectory(refRuntime, project->config().cacheInstallPath(""));
 
     if (!ret.has_value()) {
+        printer.printMessage(
+          QString("commit %1 filed").arg(project->refWithModule("runtime").toString()));
         return LINGLONG_EWRAP("commit runtime filed", ret.error());
     }
 
@@ -451,7 +454,7 @@ linglong::util::Error LinglongBuilder::track()
         QDir::separator());
 
     if (!QFileInfo::exists(projectConfigPath)) {
-        qCritical() << "ll-builder should run in the root directory of the linglong project";
+        printer.printMessage("ll-builder should run in the root directory of the linglong project");
         return NewError(-1, "linglong.yaml not found");
     }
 
@@ -471,12 +474,12 @@ linglong::util::Error LinglongBuilder::track()
             qDebug() << latestCommit;
 
             if (project->source->commit == latestCommit) {
-                qInfo() << "current commit is the latest, nothing to update";
+                printer.printMessage("current commit is the latest, nothing to update");
             } else {
                 std::ofstream fout(projectConfigPath.toStdString());
                 auto result = util::toYAML(project);
                 fout << std::get<0>(result).toStdString();
-                qInfo() << "update commit to:" << latestCommit;
+                printer.printMessage("update commit to:" + latestCommit);
             }
         }
     }
@@ -486,82 +489,21 @@ linglong::util::Error LinglongBuilder::track()
 
 linglong::util::Error LinglongBuilder::build()
 {
+    linglong::util::Error err;
     auto projectConfigPath =
       QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
 
     if (!QFileInfo::exists(projectConfigPath)) {
-        qCritical() << "ll-builder should run in the root directory of the linglong project";
+        printer.printMessage("ll-builder should run in the root directory of the linglong project");
         return NewError(-1, "linglong.yaml not found");
     }
-
-    try {
-        auto [project, err] = util::fromYAML<QSharedPointer<Project>>(projectConfigPath);
-        if (err) {
-            return WrapError(err, "cannot load project yaml");
-        }
-        // convert dependencies which with 'source' and 'build' tag to a project type
-        // TODO: building dependencies should be concurrency
-        for (auto const &depend : project->depends) {
-            if (depend->source && depend->build) {
-                YAML::Node node;
-
-                node["package"]["kind"] = "lib";
-                node["package"]["id"] = depend->id.toStdString();
-                node["package"]["version"] = depend->version.toStdString();
-
-                if (project->runtime) {
-                    node["runtime"]["id"] = project->runtime->id.toStdString();
-                    node["runtime"]["version"] = project->runtime->version.toStdString();
-                }
-
-                if (project->base) {
-                    node["base"]["id"] = project->base->id.toStdString();
-                    node["base"]["version"] = project->base->version.toStdString();
-                }
-
-                auto subProject = QVariant::fromValue(node).value<QSharedPointer<Project>>();
-
-                subProject->variables = depend->variables;
-                subProject->source = depend->source;
-                subProject->build = depend->build;
-
-                subProject->generateBuildScript();
-                subProject->configFilePath = projectConfigPath;
-
-                qInfo() << QString("building target: %1").arg(subProject->package->id);
-
-                err = buildFlow(subProject.get());
-                if (err) {
-                    qWarning() << "failed to build: " << err.message();
-                    return err;
-                }
-
-                qInfo() << QString("build %1 success").arg(project->package->id);
-            }
-        }
-
-        project->generateBuildScript();
-        project->configFilePath = projectConfigPath;
-
-        qInfo() << QString("building target: %1").arg(project->package->id);
-
-        err = buildFlow(project.get());
-        if (err) {
-            return err;
-        }
-
-        qInfo() << QString("build %1 success").arg(project->package->id);
-    } catch (std::exception &e) {
-        qCritical() << e.what();
-        return NewError(-1, "failed to parse linglong.yaml");
+    auto [project, ret] = util::fromYAML<QSharedPointer<Project>>(projectConfigPath);
+    if (ret) {
+        return WrapError(ret, "cannot load project yaml");
     }
 
-    return Success();
-}
-
-linglong::util::Error LinglongBuilder::buildFlow(Project *project)
-{
-    linglong::util::Error err;
+    project->generateBuildScript();
+    project->configFilePath = projectConfigPath;
 
     linglong::builder::BuilderConfig::instance()->setProjectName(project->package->id);
 
@@ -569,9 +511,9 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
         return NewError(-1, "unknown package kind");
     }
 
-    SourceFetcher sf(project->source, project);
+    SourceFetcher sf(project->source, printer, project.get());
     if (project->source) {
-        qInfo() << QString("fetching source code from: %1").arg(project->source->url);
+        printer.printMessage(QString("fetching source code from: %1").arg(project->source->url));
         auto err = sf.fetch();
         if (err) {
             return NewError(-1, "fetch source failed");
@@ -600,7 +542,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
         QSharedPointer<BuildDepend> runtimeDepend(new BuildDepend);
         runtimeDepend->id = runtimeRef.appId;
         runtimeDepend->version = runtimeRef.version;
-        DependFetcher df(runtimeDepend, repo, project);
+        DependFetcher df(runtimeDepend, repo, printer, project.get());
         err = df.fetch("", project->config().cacheRuntimePath(""));
         if (err) {
             return WrapError(err, "fetch runtime failed");
@@ -625,7 +567,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
     QSharedPointer<BuildDepend> baseDepend(new BuildDepend);
     baseDepend->id = baseRef.appId;
     baseDepend->version = baseRef.version;
-    DependFetcher baseFetcher(baseDepend, repo, project);
+    DependFetcher baseFetcher(baseDepend, repo, printer, project.get());
     // TODO: the base filesystem hierarchy is just an debian now. we should change it
     hostBasePath = BuilderConfig::instance()->layerPath({ baseRef.toLocalRefString(), "" });
     err = baseFetcher.fetch("", hostBasePath);
@@ -635,7 +577,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
 
     // depends fetch
     for (auto const &depend : project->depends) {
-        DependFetcher df(depend, repo, project);
+        DependFetcher df(depend, repo, printer, project.get());
         err = df.fetch("files", project->config().cacheRuntimePath("files"));
         if (err) {
             return WrapError(err, "fetch dependency failed");
@@ -659,7 +601,7 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
     ocppi::runtime::config::ConfigLoader loader;
     auto r = loader.load(tmpStream);
     if (!r.has_value()) {
-        qCritical() << "builtin OCI configuration template is invalid.";
+        printer.printMessage("builtin OCI configuration template is invalid.");
         try {
             std::rethrow_exception(r.error());
         } catch (const std::exception &e) {
@@ -767,10 +709,12 @@ linglong::util::Error LinglongBuilder::buildFlow(Project *project)
         return NewError(-1, "build task failed in container");
     }
 
-    auto ret = commitBuildOutput(project, anno["overlayfs"]);
-    if (!ret.has_value()) {
-        return NewError(ret.error().code(), ret.error().message());
+    auto result = commitBuildOutput(project.get(), anno["overlayfs"]);
+    if (!result.has_value()) {
+        return NewError(result.error().code(), result.error().message());
     }
+
+    printer.printMessage(QString("build %1 success").arg(project->package->id));
     return Success();
 }
 
@@ -785,7 +729,7 @@ linglong::util::Error LinglongBuilder::exportLayer(const QString &destination)
     auto projectConfigPath =
       QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
     if (!QFileInfo::exists(projectConfigPath)) {
-        qCritical() << "ll-builder should run in the root directory of the linglong project";
+        printer.printMessage("ll-builder should run in the root directory of the linglong project");
         return NewError(-1, "linglong.yaml not found");
     }
 
@@ -853,7 +797,7 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
     auto projectConfigPath =
       QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
     if (!QFileInfo::exists(projectConfigPath)) {
-        qCritical() << "ll-builder should run in the root directory of the linglong project";
+        printer.printMessage("ll-builder should run in the root directory of the linglong project");
         return NewError(-1, "linglong.yaml not found");
     }
     auto [project, err] = util::fromYAML<QSharedPointer<Project>>(projectConfigPath);
@@ -887,7 +831,7 @@ linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePat
     if (util::fileExists(loaderFilePath)) {
         QFile::copy(loaderFilePath, QStringList{ exportPath, "loader" }.join("/"));
     } else {
-        qCritical() << "ll-builder need loader to build a runnable uab";
+        printer.printMessage("ll-builder need loader to build a runnable uab");
     }
 
     package::Ref baseRef("");
@@ -990,7 +934,7 @@ util::Error LinglongBuilder::push(const QString &repoUrl,
       QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
 
     if (!QFileInfo::exists(projectConfigPath)) {
-        qCritical() << "ll-builder should run in the root directory of the linglong project";
+        printer.printMessage("ll-builder should run in the root directory of the linglong project");
         return NewError(-1, "linglong.yaml not found");
     }
 
@@ -1024,24 +968,23 @@ util::Error LinglongBuilder::push(const QString &repoUrl,
         auto ret = repo.push(refWithRuntime);
 
         if (!ret.has_value()) {
-            qInfo().noquote() << QString("push %1 failed").arg(project->package->id);
+            printer.printMessage(QString("push %1 failed").arg(project->package->id));
             return NewError(ret.error().code(), ret.error().message());
         } else {
-            qInfo().noquote() << QString("push %1 success").arg(project->package->id);
+            printer.printMessage(QString("push %1 success").arg(project->package->id));
         }
 
         if (pushWithDevel) {
             auto ret = repo.push(package::Ref(refWithDevel));
 
             if (!ret.has_value()) {
-                qInfo().noquote() << QString("push %1 failed").arg(project->package->id);
+                printer.printMessage(QString("push %1 failed").arg(project->package->id));
             } else {
-                qInfo().noquote() << QString("push %1 success").arg(project->package->id);
+                printer.printMessage(QString("push %1 success").arg(project->package->id));
             }
         }
     } catch (std::exception &e) {
-        qCritical() << e.what();
-        return NewError(-1, "failed to parse linglong.yaml");
+        return NewError(-1, "failed to parse linglong.yaml. " + QString(e.what()));
     }
 
     return ret;
@@ -1089,7 +1032,7 @@ util::Error LinglongBuilder::import()
       QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
 
     if (!QFileInfo::exists(projectConfigPath)) {
-        qCritical() << "ll-builder should run in the root directory of the linglong project";
+        printer.printMessage("ll-builder should run in the root directory of the linglong project");
         return NewError(-1, "linglong.yaml not found");
     }
 
@@ -1112,11 +1055,10 @@ util::Error LinglongBuilder::import()
             return NewError(-1, "import package failed");
         }
 
-        qInfo().noquote()
-          << QString("import %1 success").arg(refWithRuntime.toOSTreeRefLocalString());
+        printer.printMessage(
+          QString("import %1 success").arg(refWithRuntime.toOSTreeRefLocalString()));
     } catch (std::exception &e) {
-        qCritical() << e.what();
-        return NewError(-1, "failed to parse linglong.yaml");
+        return NewError(-1, "failed to parse linglong.yaml. " + QString(e.what()));
     }
 
     return Success();
@@ -1128,7 +1070,7 @@ linglong::util::Error LinglongBuilder::run()
       QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
 
     if (!QFileInfo::exists(projectConfigPath)) {
-        qCritical() << "ll-builder should run in the root directory of the linglong project";
+        printer.printMessage("ll-builder should run in the root directory of the linglong project");
         return NewError(-1, "linglong.yaml not found");
     }
 
@@ -1179,8 +1121,7 @@ linglong::util::Error LinglongBuilder::run()
         app->saveUserEnvList(userEnvList);
         app->start();
     } catch (std::exception &e) {
-        qCritical() << e.what();
-        return NewError(-1, "failed to parse linglong.yaml");
+        return NewError(-1, "failed to parse linglong.yaml. " + QString(e.what()));
     }
 
     return Success();

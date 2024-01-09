@@ -8,6 +8,7 @@
 #define LINGLONG_SRC_BUILDER_SOURCE_FETCHER_H_
 
 #include "linglong/util/error.h"
+#include "linglong/cli/printer.h"
 #include "project.h"
 
 #include <QFileInfo>
@@ -25,7 +26,7 @@ class SourceFetcher : public QObject
 {
     Q_OBJECT
 public:
-    explicit SourceFetcher(QSharedPointer<Source> s, Project *project);
+    explicit SourceFetcher(QSharedPointer<Source> s, cli::Printer &p, Project *project);
     ~SourceFetcher() override;
 
     QString sourceRoot() const;
@@ -38,6 +39,7 @@ public:
 
 private:
     QString srcRoot;
+    cli::Printer &printer;
     QScopedPointer<SourceFetcherPrivate> dd_ptr;
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), SourceFetcher)
     static constexpr auto CompressedFileTarXz = "tar.xz";

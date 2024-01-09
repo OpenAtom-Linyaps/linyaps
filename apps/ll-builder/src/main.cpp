@@ -8,10 +8,12 @@
 #include "linglong/builder/builder_config.h"
 #include "linglong/builder/linglong_builder.h"
 #include "linglong/builder/project.h"
+#include "linglong/cli/printer.h"
 #include "linglong/package/package.h"
 #include "linglong/repo/repo.h"
 #include "linglong/util/qserializer/yaml.h"
 #include "linglong/util/xdg.h"
+#include "linglong/utils/error/error.h"
 #include "linglong/utils/global/initialize.h"
 
 #include <QCommandLineOption>
@@ -74,8 +76,8 @@ int main(int argc, char **argv)
     linglong::repo::OSTreeRepo ostree(linglong::builder::BuilderConfig::instance()->repoPath(),
                                       config,
                                       api);
-
-    linglong::builder::LinglongBuilder builder(ostree);
+    linglong::cli::Printer printer;
+    linglong::builder::LinglongBuilder builder(ostree, printer);
 
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
         { "generate",
@@ -98,7 +100,7 @@ int main(int argc, char **argv)
               auto err = builder.generate(projectName);
 
               if (err) {
-                  qDebug() << err;
+                  printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
               }
 
               return err.code();
@@ -121,7 +123,7 @@ int main(int argc, char **argv)
               auto err = builder.create(projectName);
 
               if (err) {
-                  qDebug() << err;
+                  printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
               }
 
               return err.code();
@@ -158,7 +160,7 @@ int main(int argc, char **argv)
                       .join("/");
 
                   if (!QFileInfo::exists(projectConfigPath)) {
-                      qCritical() << "ll-builder should running in project root";
+                      printer.printMessage("ll-builder should running in project root");
                       return -1;
                   }
 
@@ -166,7 +168,7 @@ int main(int argc, char **argv)
                     linglong::util::fromYAML<QSharedPointer<linglong::builder::Project>>(
                       projectConfigPath);
                   if (err) {
-                      qCritical() << "load linglong yaml" << err.code() << err.message();
+                      printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
                       return -1;
                   }
 
@@ -191,7 +193,7 @@ int main(int argc, char **argv)
               }
               auto err = builder.build();
               if (err) {
-                  qCritical() << err;
+                  printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
               }
 
               return err.code();
@@ -214,7 +216,7 @@ int main(int argc, char **argv)
 
               auto err = builder.run();
               if (err) {
-                  qCritical() << err;
+                  printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
               }
 
               return err.code();
@@ -268,7 +270,7 @@ int main(int argc, char **argv)
 
               auto err = builder.exportLayer(path);
               if (err) {
-                  qCritical() << err;
+                  printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
               }
               return err.code();
           } },
@@ -286,7 +288,7 @@ int main(int argc, char **argv)
               auto userPassword = parser.value(optUserPassword);
               auto err = builder.config(userName, userPassword);
               if (err) {
-                  qCritical() << err;
+                  printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
               }
 
               return err.code();
@@ -320,13 +322,13 @@ int main(int argc, char **argv)
               auto path = parser.positionalArguments().value(1);
 
               if (path.isEmpty()) {
-                  qCritical() << "the layer path should be specified.";
+                  printer.printMessage("the layer path should be specified.");
                   parser.showHelp(-1);
               }
 
               auto err = builder.importLayer(path);
               if (err) {
-                  qCritical() << err;
+                  printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
               }
               return err.code();
           } },
@@ -342,7 +344,7 @@ int main(int argc, char **argv)
 
               auto err = builder.track();
               if (err) {
-                  qCritical() << err;
+                  printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
               }
 
               return err.code();
@@ -370,7 +372,7 @@ int main(int argc, char **argv)
               auto err = builder.push(repoUrl, repoName, repoChannel, pushWithDevel);
 
               if (err) {
-                  qCritical() << err;
+                  printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
               }
 
               return err.code();

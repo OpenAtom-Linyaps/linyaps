@@ -462,7 +462,8 @@ package::Ref OSTreeRepo::remoteLatestRef(const package::Ref &ref)
     return package::Ref(ref.repo, ref.channel, ref.appId, latestVer, ref.arch, ref.module);
 }
 
-package::Ref OSTreeRepo::latestOfRef(const QString &appId, const QString &appVersion)
+linglong::utils::error::Result<package::Ref> OSTreeRepo::latestOfRef(const QString &appId,
+                                                                     const QString &appVersion)
 {
     auto latestVersionOf = [this](const QString &appId) {
         auto localRepoRoot = QString(repoRootPath) + "/layers" + "/" + appId;

@@ -144,7 +144,8 @@ public:
 
     package::Ref remoteLatestRef(const package::Ref &ref) override;
 
-    package::Ref latestOfRef(const QString &appId, const QString &appVersion) override;
+    linglong::utils::error::Result<package::Ref> latestOfRef(const QString &appId,
+                                                             const QString &appVersion) override;
 
     /*
      * 查询ostree远端仓库列表

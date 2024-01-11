@@ -1081,8 +1081,12 @@ auto App::loadConfig(linglong::repo::Repo *repo,
     // create yaml form info
     // auto appRoot = LocalRepo::get()->rootOfLatest();
     auto latestAppRef = repo->latestOfRef(appId, appVersion);
-    qDebug() << "loadConfig ref:" << latestAppRef.toSpecString();
-    auto appInstallRoot = repo->rootOfLayer(latestAppRef);
+    if (!latestAppRef.has_value()) {
+        qCritical() << appId << " not exist";
+        return {};
+    }
+    qDebug() << "loadConfig ref:" << latestAppRef->toSpecString();
+    auto appInstallRoot = repo->rootOfLayer(*latestAppRef);
 
     auto appInfo = appInstallRoot + "/info.json";
     // 判断是否存在
@@ -1106,7 +1110,7 @@ auto App::loadConfig(linglong::repo::Repo *repo,
 
     package::Ref runtimeRef(info->runtime);
     QString appRef = QString("%1/").arg(channel)
-      + latestAppRef.toLocalRefString().append(QString("/%1").arg(module));
+      + latestAppRef->toLocalRefString().append(QString("/%1").arg(module));
     qDebug() << "loadConfig runtime" << info->runtime;
     // 获取最新版本runtime
     if (runtimeRef.version.split(".").size() != 4) {

@@ -141,7 +141,7 @@ auto AppManager::Start(const RunParamOption &paramOption) -> Reply
         // 判断是否是正在运行应用
         auto latestAppRef = repo.latestOfRef(appId, version);
         for (const auto &app : apps) {
-            if (latestAppRef.toString() == app->container->packageName) {
+            if (latestAppRef->toString() == app->container->packageName) {
                 app->exec(desktopExec, {}, "");
                 return;
             }

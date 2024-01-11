@@ -73,6 +73,8 @@ void withDBusDaemon()
 
 void withoutDBusDaemon()
 {
+    qInfo() << "Running linglong system helper without dbus daemon...";
+
     auto packageManagerHelper =
       new linglong::system::helper::PackageManagerHelper(QCoreApplication::instance());
     auto packageManagerHelperAdaptor =
@@ -94,7 +96,7 @@ void withoutDBusDaemon()
         if (QDir::root().remove("/tmp/linglong-system-helper.socket")) {
             return;
         }
-        qCritical() << "failed to remove /tmp/linglong-system-helper.socket.";
+        qCritical() << "Failed to remove /tmp/linglong-system-helper.socket.";
     });
 
     QObject::connect(

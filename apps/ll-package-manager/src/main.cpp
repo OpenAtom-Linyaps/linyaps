@@ -103,6 +103,8 @@ void withDBusDaemon()
 
 void withoutDBusDaemon()
 {
+    qInfo() << "Running linglong package manager without dbus daemon...";
+
     auto pkgManHelperConn =
       QDBusConnection::connectToPeer("unix:path=/tmp/linglong-system-helper.socket",
                                      "ll-system-helper");

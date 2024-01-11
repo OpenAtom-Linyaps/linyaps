@@ -8,6 +8,7 @@
 #include "linglong/adaptors/package_manager/package_manager1.h"
 #include "linglong/api/dbus/v1/package_manager_helper.h"
 #include "linglong/builder/builder_config.h"
+#include "linglong/dbus_ipc/dbus_system_helper_common.h"
 #include "linglong/dbus_ipc/workaround.h"
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/repo/config.h"
@@ -26,8 +27,8 @@ namespace {
 void withDBusDaemon()
 {
     auto pkgManHelper =
-      new linglong::api::dbus::v1::PackageManagerHelper("",
-                                                        "/org/deepin/linglong/PackageManagerHelper",
+      new linglong::api::dbus::v1::PackageManagerHelper(linglong::SystemHelperDBusServiceName,
+                                                        linglong::PackageManagerHelperDBusPath,
                                                         QDBusConnection::systemBus(),
                                                         QCoreApplication::instance());
 
@@ -113,7 +114,7 @@ void withoutDBusDaemon()
 
     auto pkgManHelper =
       new linglong::api::dbus::v1::PackageManagerHelper("",
-                                                        "/org/deepin/linglong/PackageManagerHelper",
+                                                        linglong::PackageManagerHelperDBusPath,
                                                         pkgManHelperConn,
                                                         QCoreApplication::instance());
 

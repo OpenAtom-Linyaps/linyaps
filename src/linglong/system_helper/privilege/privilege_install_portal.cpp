@@ -106,7 +106,8 @@ static void ruinFileRule(const QString &installPath,
         if (QDir::match(rule->source, relativeFilePath)) {
             const auto targetFilePath = rule->target + QDir::separator() + iter.fileName();
             qDebug() << "remove link file" << iter.filePath() << targetFilePath;
-            const auto checkSource = QFileInfo(QFileInfo(targetFilePath).symLinkTarget()).canonicalPath();
+            const auto checkSource =
+              QFileInfo(QFileInfo(targetFilePath).symLinkTarget()).canonicalPath();
             if (checkSource != iter.filePath()) {
                 qWarning() << "ignore file not link to source version";
             } else {
@@ -120,9 +121,11 @@ util::Error rebuildPrivilegeInstallPortal(const QString &installPath,
                                           const QString &ref,
                                           const QVariantMap & /*options*/)
 {
-    YAML::Node doc = YAML::Load(PrivilegePortalRule);
-    auto privilegePortalRule =
-      QVariant::fromValue<YAML::Node>(doc).value<QSharedPointer<PortalRule>>();
+    auto [privilegePortalRule, err] =
+      linglong::util::fromYAML<QSharedPointer<PortalRule>>(QByteArray(PrivilegePortalRule));
+    if (err) {
+        return NewError(-1, "Internal error");
+    }
 
     if (!hasPrivilege(ref, privilegePortalRule->whiteList)) {
         return NewError(QDBusError::AccessDenied, "No Privilege Package");
@@ -143,9 +146,11 @@ util::Error ruinPrivilegeInstallPortal(const QString &installPath,
                                        const QString &ref,
                                        const QVariantMap &options)
 {
-    YAML::Node doc = YAML::Load(PrivilegePortalRule);
-    auto privilegePortalRule =
-      QVariant::fromValue<YAML::Node>(doc).value<QSharedPointer<PortalRule>>();
+    auto [privilegePortalRule, err] =
+      linglong::util::fromYAML<QSharedPointer<PortalRule>>(QByteArray(PrivilegePortalRule));
+    if (err) {
+        return NewError(-1, "Internal error");
+    }
 
     if (options.contains(linglong::util::kKeyDelData)) {
         const auto appLinglongPath = options[linglong::util::kKeyDelData].toString();

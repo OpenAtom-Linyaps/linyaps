@@ -105,6 +105,12 @@ void withoutDBusDaemon()
     auto pkgManHelperConn =
       QDBusConnection::connectToPeer("unix:path=/tmp/linglong-system-helper.socket",
                                      "ll-system-helper");
+    if (!pkgManHelperConn.isConnected()) {
+        qCritical() << "Failed to connect to system helper:" << pkgManHelperConn.lastError();
+        QCoreApplication::exit(-1);
+        return;
+    }
+
     auto pkgManHelper =
       new linglong::api::dbus::v1::PackageManagerHelper("",
                                                         "/org/deepin/linglong/PackageManagerHelper",

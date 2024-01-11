@@ -53,9 +53,12 @@ namespace linglong::builder {
 
 QSERIALIZER_IMPL(message)
 
-LinglongBuilder::LinglongBuilder(repo::OSTreeRepo &ostree, cli::Printer &p)
+LinglongBuilder::LinglongBuilder(repo::OSTreeRepo &ostree,
+                                 cli::Printer &p,
+                                 service::AppManager &appManager)
     : repo(ostree)
     , printer(p)
+    , appManager(appManager)
 {
 }
 
@@ -1149,16 +1152,15 @@ linglong::util::Error LinglongBuilder::run()
             return NewError(-1, "checkout runtime files failed");
         }
 
-        // 获取环境变量
-        QStringList userEnvList = utils::command::getUserEnv(utils::command::envList);
-
-        auto app = runtime::App::load(&repo, project->ref(), BuilderConfig::instance()->getExec());
-        if (nullptr == app) {
-            return NewError(-1, "load App::load failed");
+        service::RunParamOption paramOption;
+        paramOption.appId = project->ref().appId;
+        paramOption.version = project->ref().version;
+        paramOption.appEnv = utils::command::getUserEnv(utils::command::envList);
+        paramOption.exec = BuilderConfig::instance()->getExec();
+        ret = appManager.Run(paramOption);
+        if (!ret.has_value()) {
+            return NewError(ret.error().code(), ret.error().message());
         }
-
-        app->saveUserEnvList(userEnvList);
-        app->start();
     } catch (std::exception &e) {
         return NewError(-1, "failed to parse linglong.yaml. " + QString(e.what()));
     }

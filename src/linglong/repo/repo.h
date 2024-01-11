@@ -34,6 +34,8 @@ public:
     Repo &operator=(Repo &&) = delete;
     virtual ~Repo() = default;
 
+    virtual linglong::utils::error::Result<QList<package::Ref>> listLocalRefs() = 0;
+
     virtual linglong::utils::error::Result<void> importDirectory(const package::Ref &ref,
                                                                  const QString &path) = 0;
 

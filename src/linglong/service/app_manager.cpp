@@ -13,6 +13,7 @@
 #include "linglong/util/runner.h"
 #include "linglong/util/status_code.h"
 #include "linglong/util/sysinfo.h"
+#include "linglong/utils/error/error.h"
 
 #include <csignal>
 
@@ -25,6 +26,80 @@ AppManager::AppManager(repo::Repo &repo)
     , repo(repo)
 {
     runPool->setMaxThreadCount(RUN_POOL_MAX_THREAD);
+}
+
+linglong::utils::error::Result<void> AppManager::Run(const RunParamOption &paramOption)
+{
+    qDebug() << "run" << paramOption.appId;
+
+    QString appID = paramOption.appId;
+    QString arch = paramOption.arch;
+    QString version = paramOption.version;
+    QString channel = paramOption.channel;
+    QString module = paramOption.appModule;
+    QStringList exec = paramOption.exec;
+    QStringList env = paramOption.appEnv;
+    // 默认使用当前架构
+    if (arch.isEmpty()) {
+        arch = linglong::util::hostArch();
+    }
+    // 默认运行应用的runtime而不是devel
+    if (module.isEmpty()) {
+        module = "runtime";
+    }
+    // 玲珑早期版本的默认channel是 linglong，后来改成 main，需要进行兼容
+    // TODO(wurongjie) 在版本迭代后，可以删除对旧 channel 的支持
+    if (channel.isEmpty()) {
+        auto refs = repo.listLocalRefs();
+        if (!refs.has_value()) {
+            return LINGLONG_EWRAP("get ref list: ", refs.error());
+        }
+        for (auto ref : *refs) {
+            if (ref.appId == appID && ref.arch == arch && ref.module == module) {
+                // 优先使用 main channel
+                if (ref.channel == "main") {
+                    channel = "main";
+                    break;
+                }
+                // 兼容旧的 linglong channel
+                if (ref.channel == "linglong") {
+                    channel = "linglong";
+                }
+            }
+        }
+        if (channel.isEmpty()) {
+            return LINGLONG_ERR(
+              -1,
+              QString("Application %1/%2/$latest/%3/%4 cannot be found from the database, "
+                      "maybe you should install it first or pass more parameter")
+                .arg("main")
+                .arg(appID)
+                .arg(arch)
+                .arg(module));
+        }
+    }
+    // 默认选择最新的版本
+    if (version.isEmpty()) {
+        version = repo.latestOfRef(appID, "").version;
+    }
+    // 加载应用
+    linglong::package::Ref ref("", channel, appID, version, arch, module);
+    auto app = linglong::runtime::App::load(&repo, ref, exec);
+    if (app == nullptr) {
+        return LINGLONG_ERR(-1, "load app failed");
+    }
+    // 设置环境变量
+    app->saveUserEnvList(env);
+    // 设置应用参数
+    ParamStringMap paramMap;
+    paramMap.insert(linglong::util::kKeyNoProxy, "");
+    app->setAppParamMap(paramMap);
+    // 启动应用
+    auto err = app->start();
+    if (err) {
+        return LINGLONG_ERR(err.code(), err.message());
+    }
+    return LINGLONG_OK;
 }
 
 auto AppManager::Start(const RunParamOption &paramOption) -> Reply

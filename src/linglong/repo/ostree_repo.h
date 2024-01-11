@@ -8,6 +8,7 @@
 #define LINGLONG_SRC_MODULE_REPO_OSTREE_REPO_H_
 
 #include "linglong/package/package.h"
+#include "linglong/package/ref.h"
 #include "linglong/repo/repo.h"
 #include "linglong/repo/repo_client.h"
 #include "linglong/util/erofs.h"
@@ -18,6 +19,7 @@
 #include <ostree.h>
 
 #include <QHttpPart>
+#include <QList>
 #include <QPointer>
 #include <QProcess>
 #include <QScopedPointer>
@@ -116,6 +118,7 @@ public:
     linglong::utils::error::Result<void> setConfig(const config::ConfigV1 &cfg) noexcept override;
 
     linglong::utils::error::Result<void> listRemoteRefs();
+    linglong::utils::error::Result<QList<package::Ref>> listLocalRefs() noexcept override;
 
     linglong::utils::error::Result<void> importDirectory(const package::Ref &ref,
                                                          const QString &path) override;

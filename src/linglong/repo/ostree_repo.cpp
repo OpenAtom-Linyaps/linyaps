@@ -495,6 +495,22 @@ linglong::utils::error::Result<void> OSTreeRepo::listRemoteRefs()
     return LINGLONG_OK;
 }
 
+linglong::utils::error::Result<QList<package::Ref>> OSTreeRepo::listLocalRefs() noexcept
+{
+    g_autoptr(GHashTable) table = NULL;
+    g_autoptr(GError) gErr = NULL;
+    ostree_repo_list_refs(repoPtr.get(), NULL, &table, NULL, &gErr);
+    if (gErr) {
+        return LINGLONG_GERR(gErr);
+    }
+    auto ordered_keys = g_hash_table_get_keys(table);
+    QList<package::Ref> result;
+    for (auto iter = ordered_keys; iter; iter = iter->next) {
+        result.append(package::Ref((const char *)iter->data));
+    }
+    return result;
+}
+
 linglong::utils::error::Result<void> OSTreeRepo::pullAll(const package::Ref &ref, bool /*force*/)
 {
     // FIXME(black-desk): pullAll should not belong to this class.

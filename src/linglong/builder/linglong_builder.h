@@ -8,9 +8,10 @@
 #define LINGLONG_SRC_BUILDER_BUILDER_LINGLONG_BUILDER_H_
 
 #include "builder.h"
-#include "linglong/repo/ostree_repo.h"
 #include "linglong/cli/printer.h"
+#include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container.h"
+#include "linglong/service/app_manager.h"
 #include "linglong/util/error.h"
 #include "linglong/utils/error/error.h"
 #include "ocppi/runtime/config/types/Config.hpp"
@@ -26,7 +27,9 @@ class LinglongBuilder : public QObject, public Builder
 {
     Q_OBJECT
 public:
-    explicit LinglongBuilder(repo::OSTreeRepo &ostree, cli::Printer &p);
+    explicit LinglongBuilder(repo::OSTreeRepo &ostree,
+                             cli::Printer &p,
+                             service::AppManager &appManager);
     linglong::util::Error config(const QString &userName, const QString &password) override;
 
     linglong::util::Error create(const QString &projectName) override;
@@ -58,6 +61,7 @@ public:
 private:
     repo::OSTreeRepo &repo;
     cli::Printer &printer;
+    service::AppManager &appManager;
     linglong::utils::error::Result<void> commitBuildOutput(Project *project,
                                                            const nlohmann::json &overlayfs);
 

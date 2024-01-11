@@ -11,6 +11,7 @@
 #include "linglong/cli/printer.h"
 #include "linglong/package/package.h"
 #include "linglong/repo/repo.h"
+#include "linglong/service/app_manager.h"
 #include "linglong/util/qserializer/yaml.h"
 #include "linglong/util/xdg.h"
 #include "linglong/utils/error/error.h"
@@ -77,7 +78,9 @@ int main(int argc, char **argv)
                                       config,
                                       api);
     linglong::cli::Printer printer;
-    linglong::builder::LinglongBuilder builder(ostree, printer);
+
+    linglong::service::AppManager appManager(ostree);
+    linglong::builder::LinglongBuilder builder(ostree, printer, appManager);
 
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
         { "generate",

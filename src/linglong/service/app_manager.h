@@ -39,7 +39,7 @@ class AppManager : public QObject, protected QDBusContext
     Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.AppManager")
 
 public:
-    AppManager(repo::Repo& repo);
+    AppManager(repo::Repo &repo);
     AppManager(const AppManager &) = delete;
     AppManager(AppManager &&) = delete;
     auto operator=(const AppManager &) -> AppManager & = delete;
@@ -47,6 +47,8 @@ public:
     ~AppManager() override = default;
 
 public Q_SLOTS:
+
+    linglong::utils::error::Result<void> Run(const RunParamOption &paramOption);
 
     /**
      * @brief 运行应用
@@ -92,7 +94,7 @@ public:
 
 private:
     QMap<QString, QSharedPointer<linglong::runtime::App>> apps = {};
-    linglong::repo::Repo& repo;
+    linglong::repo::Repo &repo;
 };
 
 } // namespace service

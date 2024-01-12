@@ -61,7 +61,7 @@ int main(int argc, char **argv)
     QNetworkAccessManager networkAccessManager;
 
     linglong::api::client::ClientApi api;
-    api.setTimeOut(5000);
+    api.setTimeOut(10 * 60 * 1000);
     api.setNetworkAccessManager(&networkAccessManager);
     api.setNewServerForAllOperations(
       linglong::builder::BuilderConfig::instance()->remoteRepoEndpoint);

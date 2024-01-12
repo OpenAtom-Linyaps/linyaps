@@ -196,7 +196,7 @@ linglong::utils::error::Result<void> OSTreeRepo::push(const package::Ref &ref)
 {
     auto ret = getToken();
     if (!ret.has_value()) {
-        return LINGLONG_ERR(-1, "get token failed");
+        return LINGLONG_EWRAP("get token failed", ret.error());
     }
     remoteToken = *ret;
     QSharedPointer<UploadRequest> uploadReq(new UploadRequest);

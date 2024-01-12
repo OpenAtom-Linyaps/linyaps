@@ -92,6 +92,18 @@ void withoutDBusDaemon()
         QCoreApplication::exit(-1);
         return;
     }
+
+    // NOTE(black_desk):
+    // We should allow anonymous auth while using --no-dbus mode,
+    // as that is user deepin-linglong who is
+    // connecting to this dbus server in p2p mode.
+    // That connection will be closed immediately in libdbus
+    // if we do not allow anonymous auth.
+    // I have no idea about what is going on in that library.
+    // It seems not to be a security issue,
+    // as you need to get root at first place to run linglong-system-helper.
+    qDBusServer->setAnonymousAuthenticationAllowed(true);
+
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, []() {
         if (QDir::root().remove("/tmp/linglong-system-helper.socket")) {
             return;

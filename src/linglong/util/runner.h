@@ -32,24 +32,25 @@ inline Error Exec(const QString &program,
     QProcess process;
     process.setProgram(program);
     process.setArguments(args);
+    QString standardError;
 
-    QProcess::connect(&process, &QProcess::readyReadStandardOutput, [&]() {
-        if (standardOutput) {
-            standardOutput->append(process.readAllStandardOutput());
-        } else {
-            qDebug() << QString::fromLocal8Bit(process.readAllStandardOutput()).trimmed();
-        }
-    });
+      QProcess::connect(&process, &QProcess::readyReadStandardOutput, [&]() {
+          if (standardOutput) {
+              standardOutput->append(process.readAllStandardOutput().trimmed());
+          } else {
+              qDebug() << QString::fromLocal8Bit(process.readAllStandardOutput()).trimmed();
+          }
+      });
 
     QProcess::connect(&process, &QProcess::readyReadStandardError, [&]() {
-        qDebug() << QString::fromLocal8Bit(process.readAllStandardError()).trimmed();
+        standardError.append(process.readAllStandardError().trimmed());
     });
 
     process.start();
     process.waitForStarted(timeout);
     process.waitForFinished(timeout);
 
-    return NewError(process.exitCode(), process.errorString());
+    return NewError(process.exitCode(), standardError);
 }
 
 } // namespace util

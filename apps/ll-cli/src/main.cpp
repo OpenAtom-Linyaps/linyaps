@@ -144,10 +144,12 @@ int main(int argc, char **argv)
 
               startProcess("ll-system-helper", { "--no-dbus" });
               QThread::sleep(1);
+
               startProcess("sudo",
                            { "--user",
                              LINGLONG_USERNAME,
                              "--preserve-env=QT_FORCE_STDERR_LOGGING",
+                             "--preserve-env=QDBUS_DEBUG",
                              "ll-package-manager",
                              "--no-dbus" });
               QThread::sleep(1);

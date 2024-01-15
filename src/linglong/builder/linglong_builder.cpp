@@ -790,6 +790,29 @@ linglong::util::Error LinglongBuilder::exportLayer(const QString &destination)
     return Success();
 }
 
+linglong::util::Error LinglongBuilder::extractLayer(const QString &layerPath,
+                                                    const QString &destination)
+{
+    qDebug() << layerPath << destination;
+    const auto layerFile = package::LayerFile::openLayer(layerPath);
+    if (!layerFile.has_value()) {
+        return WrapError(NewError(layerFile.error().code(), layerFile.error().message()),
+                         "failed to open layer file");
+    }
+
+    util::ensureDir(destination);
+
+    package::LayerPackager pkg;
+    const auto layerDir = pkg.unpack(*(*layerFile), destination);
+    if (!layerDir.has_value()) {
+        return WrapError(NewError(layerDir.error().code(), layerDir.error().message()),
+                         "failed to unpack layer file");
+    }
+
+    (*layerDir)->setCleanStatus(false);
+    return Success();
+}
+
 linglong::util::Error LinglongBuilder::exportBundle(const QString &outputFilePath,
                                                     bool /*useLocalDir*/)
 {

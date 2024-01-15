@@ -33,9 +33,12 @@ public:
     linglong::util::Error fetch(const QString &subPath, const QString &targetPath);
 
 private:
+    void printProgress(const uint &progress, const QString &speed);
+
     // FIXME: We should not use ostree repo in ll-builder, we should use the repo interface
     repo::OSTreeRepo &ostree;
     cli::Printer &printer;
+    package::Ref ref;
     QScopedPointer<DependFetcherPrivate> dd_ptr;
     Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), DependFetcher)
 };

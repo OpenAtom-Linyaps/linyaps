@@ -40,41 +40,52 @@ DependFetcher::DependFetcher(QSharedPointer<const BuildDepend> bd,
                              cli::Printer &p,
                              Project *parent)
     : QObject(parent)
+    , ref(fuzzyRef(bd))
     , ostree(repo)
     , printer(p)
     , dd_ptr(new DependFetcherPrivate(bd, parent))
 {
+    connect(&ostree, &repo::OSTreeRepo::progressChanged, this, &DependFetcher::printProgress);
 }
 
 DependFetcher::~DependFetcher() = default;
 
+void DependFetcher::printProgress(const uint &progress, const QString &speed)
+{
+    printer.printReplacedText(QString("%1%2%3%4 (%5\% %6/s)")
+                                    .arg(ref.appId, -20)
+                                    .arg(ref.version, -15)
+                                    .arg(ref.module, -15)
+                                    .arg("downloading")
+                                    .arg(progress)
+                                    .arg(speed));
+}
+
 linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString &targetPath)
 {
     // depends from remote > depends from local
-    auto dependRef = package::Ref(BuilderConfig::instance()->remoteRepoName,
-                                  "linglong",
-                                  dd_ptr->ref.appId,
-                                  dd_ptr->ref.version,
-                                  dd_ptr->ref.arch,
-                                  "");
+    ref.repo = BuilderConfig::instance()->remoteRepoName;
+    ref.channel = "linglong";
 
     // FIXME(black_desk):
     // 1. Offline should not only be an option of builder, but also a work
     //    mode argument passed to repo, which prevent all network request.
     // 2. For now we just leave these code here, we will refactor them later.
     if (BuilderConfig::instance()->getOffline()) {
-        dependRef = *ostree.localLatestRef(dependRef);
+        ref = *ostree.localLatestRef(ref);
 
-        printer.printMessage(
-          QString("offline dependency: %1 %2").arg(dependRef.appId).arg(dependRef.version));
+        printer.printMessage(QString("offline dependency: %1 %2").arg(ref.appId).arg(ref.version));
     } else {
-        dependRef = ostree.remoteLatestRef(dependRef);
-        printer.printMessage(
-          QString("fetching dependency: %1 %2").arg(dependRef.appId).arg(dependRef.version));
-        auto ret = ostree.pullAll(dependRef, true);
+        ref = ostree.remoteLatestRef(ref);
+        printer.printReplacedText(QString("%1%2%3%4")
+                                    .arg(ref.appId, -20)
+                                    .arg(ref.version, -15)
+                                    .arg(ref.module, -15)
+                                    .arg("..."));
+        auto ret = ostree.pullAll(ref, true);
         if (!ret.has_value()) {
             return WrapError(NewError(ret.error().code(), ret.error().message()),
-                             "pull " + dependRef.toString() + " failed");
+                             "pull " + ref.toString() + " failed");
         }
     }
 
@@ -82,23 +93,33 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
     targetParentDir.cdUp();
     targetParentDir.mkpath(".");
     {
-        auto ret = ostree.checkoutAll(dependRef, subPath, targetPath);
+        printer.printReplacedText(QString("%1%2%3%4")
+                                    .arg(ref.appId, -20)
+                                    .arg(ref.version, -15)
+                                    .arg(ref.module, -15)
+                                    .arg("checkout"));
+        auto ret = ostree.checkoutAll(ref, subPath, targetPath);
         if (!ret.has_value()) {
-            return WrapError(
-              NewError(ret.error().code(), ret.error().message()),
-              QString("ostree checkout %1 failed").arg(dependRef.toLocalRefString()));
+            return WrapError(NewError(ret.error().code(), ret.error().message()),
+                             QString("ostree checkout %1 failed").arg(ref.toLocalRefString()));
         }
+
+        printer.printReplacedText(QString("%1%2%3%4")
+                                    .arg(ref.appId, -20)
+                                    .arg(ref.version, -15)
+                                    .arg(ref.module, -15)
+                                    .arg("complete\n"));
     }
     // for app,lib. if the dependType match runtime, should be submitted together.
     if (dd_ptr->dependType == DependTypeRuntime) {
         auto targetInstallPath = dd_ptr->project->config().cacheAbsoluteFilePath(
           { "overlayfs", "up", dd_ptr->project->config().targetInstallPath("") });
         {
-            auto ret = ostree.checkoutAll(dependRef, subPath, targetInstallPath);
+            auto ret = ostree.checkoutAll(ref, subPath, targetInstallPath);
             if (!ret.has_value()) {
                 return WrapError(NewError(ret.error().code(), ret.error().message()),
                                  QString("ostree checkout %1 with subpath '%2' to %3")
-                                   .arg(dependRef.toLocalRefString())
+                                   .arg(ref.toLocalRefString())
                                    .arg(subPath)
                                    .arg(targetPath));
             }

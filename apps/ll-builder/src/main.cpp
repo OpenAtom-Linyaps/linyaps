@@ -274,6 +274,31 @@ int main(int argc, char **argv)
               }
               return err.code();
           } },
+        { "extract",
+          [&](QCommandLineParser &parser) -> int {
+              parser.clearPositionalArguments();
+
+              parser.addPositionalArgument("extract",
+                                           "extract the layer to a directory",
+                                           "extract");
+              parser.addPositionalArgument("layer", "layer file path", "[layer]");
+              parser.addPositionalArgument("destination", "destination directory", "[destination]");
+
+              parser.process(app);
+
+              const auto layerPath = parser.positionalArguments().value(1);
+              const auto destination = parser.positionalArguments().value(2);
+
+              if (layerPath.isEmpty() || destination.isEmpty()) {
+                  parser.showHelp(-1);
+              }
+
+              auto err = builder.extractLayer(layerPath, destination);
+              if (err) {
+                  printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
+              }
+              return err.code();
+          } },
         { "config",
           [&](QCommandLineParser &parser) -> int {
               parser.clearPositionalArguments();

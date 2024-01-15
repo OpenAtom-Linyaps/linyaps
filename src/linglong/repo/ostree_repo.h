@@ -694,6 +694,13 @@ private:
         return LINGLONG_OK;
     }
 
+    static char *_formatted_time_remaining_from_seconds(guint64 seconds_remaining);
+
+    static void progress_changed(OstreeAsyncProgress *progress, gpointer user_data);
+
+Q_SIGNALS:
+    void progressChanged(const uint &progress, const QString &speed);
+
 private:
     config::ConfigV1 cfg;
     QString repoRootPath;

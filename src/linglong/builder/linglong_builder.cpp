@@ -504,8 +504,19 @@ linglong::util::Error LinglongBuilder::build()
 
     project->generateBuildScript();
     project->configFilePath = projectConfigPath;
-
     linglong::builder::BuilderConfig::instance()->setProjectName(project->package->id);
+
+    printer.printMessage("[Build Target]");
+    printer.printMessage(project->package->id, 2);
+    printer.printMessage("[Project Info]");
+    printer.printMessage(QString("Packge Name: %1").arg(project->package->name), 2);
+    printer.printMessage(QString("Version: %1").arg(project->package->version), 2);
+    printer.printMessage(QString("Packge Type: %1").arg(project->package->kind), 2);
+    printer.printMessage(QString("Build Arch: %1").arg(project->config().targetArch()), 2);
+
+    printer.printMessage("[Current Repo]");
+    printer.printMessage(QString("Name: %1").arg(BuilderConfig::instance()->remoteRepoName), 2);
+    printer.printMessage(QString("Url: %1").arg(BuilderConfig::instance()->remoteRepoEndpoint), 2);
 
     if (!project->package || project->package->kind.isEmpty()) {
         return NewError(-1, "unknown package kind");
@@ -513,7 +524,7 @@ linglong::util::Error LinglongBuilder::build()
 
     SourceFetcher sf(project->source, printer, project.get());
     if (project->source) {
-        printer.printMessage(QString("fetching source code from: %1").arg(project->source->url));
+        printer.printMessage("[Processing Source]");
         auto err = sf.fetch();
         if (err) {
             return NewError(-1, "fetch source failed");
@@ -529,6 +540,10 @@ linglong::util::Error LinglongBuilder::build()
     util::ensureDir(project->config().cacheAbsoluteFilePath(
       { "overlayfs", "up", project->config().targetInstallPath("") }));
 
+    printer.printMessage("[Processing Dependency]");
+    printer.printMessage(
+      QString("%1%2%3%4").arg("Package", -20).arg("Version", -15).arg("Module", -15).arg("Status"),
+      2);
     package::Ref baseRef("");
 
     QString hostBasePath;
@@ -705,16 +720,17 @@ linglong::util::Error LinglongBuilder::build()
     r->hooks = r->hooks.value_or(ocppi::runtime::config::types::Hooks{});
     r->hooks->prestart = { { std::nullopt, std::nullopt, "/usr/sbin/ldconfig", std::nullopt } };
 
+    printer.printMessage("[Start Build]");
     if (startContainer(container, *r)) {
         return NewError(-1, "build task failed in container");
     }
-
+    printer.printMessage("[Commit Content]");
     auto result = commitBuildOutput(project.get(), anno["overlayfs"]);
     if (!result.has_value()) {
         return NewError(result.error().code(), result.error().message());
     }
 
-    printer.printMessage(QString("build %1 success").arg(project->package->id));
+    printer.printMessage(QString("Build %1 success").arg(project->package->id));
     return Success();
 }
 

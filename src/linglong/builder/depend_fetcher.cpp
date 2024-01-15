@@ -53,12 +53,13 @@ DependFetcher::~DependFetcher() = default;
 void DependFetcher::printProgress(const uint &progress, const QString &speed)
 {
     printer.printReplacedText(QString("%1%2%3%4 (%5\% %6/s)")
-                                    .arg(ref.appId, -20)
-                                    .arg(ref.version, -15)
-                                    .arg(ref.module, -15)
-                                    .arg("downloading")
-                                    .arg(progress)
-                                    .arg(speed));
+                                .arg(ref.appId, -20)
+                                .arg(ref.version, -15)
+                                .arg(ref.module, -15)
+                                .arg("downloading")
+                                .arg(progress)
+                                .arg(speed),
+                              2);
 }
 
 linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString &targetPath)
@@ -79,7 +80,8 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
                                         .arg(ref.appId, -20)
                                         .arg(ref.version, -15)
                                         .arg(ref.module, -15)
-                                        .arg("..."));
+                                        .arg("..."),
+                                      2);
             auto ret = ostree.pull(ref, true);
             if (!ret.has_value()) {
                 return WrapError(NewError(ret.error().code(), ret.error().message()),
@@ -95,7 +97,8 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
                                         .arg(ref.appId, -20)
                                         .arg(ref.version, -15)
                                         .arg(ref.module, -15)
-                                        .arg("checkout"));
+                                        .arg("checkout"),
+                                      2);
             auto ret = ostree.checkout(ref, subPath, targetPath);
             if (!ret.has_value()) {
                 return WrapError(NewError(ret.error().code(), ret.error().message()),
@@ -106,7 +109,8 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
                                         .arg(ref.appId, -20)
                                         .arg(ref.version, -15)
                                         .arg(ref.module, -15)
-                                        .arg("complete\n"));
+                                        .arg("complete\n"),
+                                      2);
         }
         // for app,lib. if the dependType match runtime, should be submitted together.
         if (dd_ptr->dependType == DependTypeRuntime) {

@@ -171,9 +171,11 @@ util::Error SourceFetcherPrivate::fetchGitRepo()
     if (!QDir::setCurrent(sourceTargetPath())) {
         return NewError(-1, QString("change to %1 failed").arg(sourceTargetPath()));
     }
-    
+
     QSharedPointer<QByteArray> output = QSharedPointer<QByteArray>::create();
-    q->printer.printMessage(QString("git clone --recurse-submodules %1 %2").arg(source->url).arg(sourceTargetPath()));
+    q->printer.printMessage(
+      QString("git clone --recurse-submodules %1 %2").arg(source->url).arg(sourceTargetPath()),
+      2);
     auto err = util::Exec("git",
                           {
                             "clone",
@@ -194,7 +196,9 @@ util::Error SourceFetcherPrivate::fetchGitRepo()
 
     QDir::setCurrent(sourceTargetPath());
 
-    q->printer.printMessage(QString("git checkout -b %1 %2").arg(source->version).arg(source->commit));
+    q->printer.printMessage(
+      QString("git checkout -b %1 %2").arg(source->version).arg(source->commit),
+      2);
     err = util::Exec("git",
                      {
                        "checkout",
@@ -204,17 +208,17 @@ util::Error SourceFetcherPrivate::fetchGitRepo()
                      },
                      -1,
                      output);
-                
+
     if (!output->isEmpty()) {
         q->printer.printMessage(QString(output->constData()));
     }
 
     if (err) {
-        q->printer.printMessage("git checkout failed. " + err.message());
+        q->printer.printMessage("git checkout failed. " + err.message(), 2);
         output->clear();
     }
 
-    q->printer.printMessage(QString("git reset --hard %1").arg(source->commit));
+    q->printer.printMessage(QString("git reset --hard %1").arg(source->commit), 2);
     err = util::Exec("git",
                      {
                        "reset",
@@ -225,7 +229,7 @@ util::Error SourceFetcherPrivate::fetchGitRepo()
                      output);
 
     if (!output->isEmpty()) {
-        q->printer.printMessage(QString(output->constData()));
+        q->printer.printMessage(QString(output->constData()), 2);
     }
 
     return WrapError(err, "git reset failed");
@@ -235,9 +239,9 @@ util::Error SourceFetcherPrivate::handleLocalPatch()
 {
     Q_Q(SourceFetcher);
     // apply local patch
-    q->printer.printMessage("finding local patch");
+    q->printer.printReplacedText("Finding local patch ...", 2);
     if (source->patch.isEmpty()) {
-        q->printer.printMessage("nothing to patch");
+        q->printer.printReplacedText("Nothing to patch\n", 2);
         return Success();
     }
 
@@ -246,12 +250,13 @@ util::Error SourceFetcherPrivate::handleLocalPatch()
             qWarning() << QString("this patch is empty, check it");
             continue;
         }
-        q->printer.printMessage(QString("applying patch: %1").arg(localPatch));
+        q->printer.printReplacedText(QString("Applying %1 ...").arg(localPatch), 2);
         if (auto err =
               util::Exec("patch",
                          { "-p1", "-i", project->config().absoluteFilePath({ localPatch }) })) {
             return NewError(err, "patch failed");
         }
+        q->printer.printReplacedText(QString("Applying %1 done\n").arg(localPatch), 2);
     }
 
     return Success();
@@ -288,8 +293,10 @@ linglong::util::Error SourceFetcher::fetch()
     util::Error err;
 
     if (d->source->kind == "git") {
+        printer.printMessage(QString("Source: %1").arg(d->source->url), 2);
         err = d->fetchGitRepo();
     } else if (d->source->kind == "archive") {
+        printer.printMessage(QString("Source: %1").arg(d->source->url), 2);
         QString s;
         std::tie(s, err) = d->fetchArchiveFile();
         if (err) {
@@ -298,7 +305,9 @@ linglong::util::Error SourceFetcher::fetch()
         err = d->extractFile(s, d->sourceTargetPath());
     } else if (d->source->kind == "local") {
         err = d->handleLocalSource();
+        printer.printMessage(QString("Source: %1").arg(sourceRoot()), 2);
     } else if (d->source->kind == "file") {
+        printer.printMessage(QString("Source: %1").arg(d->source->url), 2);
         QString s;
         std::tie(s, err) = d->fetchArchiveFile();
         if (err) {

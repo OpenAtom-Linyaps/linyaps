@@ -32,6 +32,7 @@ Depends: desktop-file-utils,
          linglong-box,
          ostree,
          shared-mime-info,
+         erofsfuse,
          ${misc:Depends},
          ${shlibs:Depends}
 Recommends: linglong-dbus-proxy
@@ -41,6 +42,7 @@ Description: Linglong package manager.
 Package: linglong-builder
 Architecture: any
 Depends: erofs-utils,
+         erofsfuse,
          linglong-bin,
          linglong-box,
          ${misc:Depends},

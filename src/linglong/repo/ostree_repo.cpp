@@ -527,9 +527,12 @@ linglong::utils::error::Result<void> OSTreeRepo::checkout(const package::Ref &re
     OstreeRepoCheckoutAtOptions checkout_options = {};
     checkout_options.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES;
     checkout_options.force_copy = TRUE;
+
+    auto subPathStr = subPath.toStdString();
     if (!subPath.isEmpty()) {
-        checkout_options.subpath = subPath.toStdString().c_str();
+        checkout_options.subpath = subPathStr.c_str();
     }
+
     qInfo() << "print ref string for checkout:" << ref.toOSTreeRefLocalString();
     auto rev = resolveRev(ref.toOSTreeRefLocalString());
     if (!rev.has_value()) {

@@ -1055,7 +1055,15 @@ auto PackageManager::Uninstall(const UninstallParamOption &paramOption) -> Reply
 
     // 判断是否已安装 不校验用户名
     QString userName = linglong::util::getUserName();
-    if (!linglong::util::getAppInstalledStatus(appId, version, arch, channel, appModule, "")) {
+    bool installed = false;
+
+    installed = linglong::util::getAppInstalledStatus(appId, version, arch, channel, appModule, "");
+    if (!installed && channel == "linglong") {
+        channel = "main";
+        installed =
+          linglong::util::getAppInstalledStatus(appId, version, arch, channel, appModule, "");
+    }
+    if (!installed) {
         reply.message = appId + ", version:" + version + ", arch:" + arch + ", channel:" + channel
           + ", module:" + appModule + " not installed";
         reply.code = STATUS_CODE(kPkgNotInstalled);

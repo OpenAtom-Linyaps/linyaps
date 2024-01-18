@@ -1,3 +1,11 @@
+linglong (1.4.3-1) unstable; urgency=medium
+
+  * Fix some ll-builder bugs.
+  * Bring `enter` back.
+  * Update postinst scrips to remove x11 session hook.
+
+ -- Chen Linxuan <me@black-desk.cn>  Thu, 18 Jan 2024 15:32:29 +0800
+
 linglong (1.4.1-1) unstable; urgency=medium
 
   * Enable dh_installsysuser;

@@ -8,17 +8,24 @@
 
 #include "linglong/dbus_ipc/package_manager_param.h"
 #include "linglong/package/info.h"
+#include "linglong/package/ref.h"
 #include "linglong/repo/repo.h"
 #include "linglong/runtime/app_config.h"
 #include "linglong/util/file.h"
 #include "linglong/util/qserializer/json.h"
 #include "linglong/util/qserializer/yaml.h"
+#include "linglong/util/uuid.h"
 #include "linglong/util/version/version.h"
 #include "linglong/util/xdg.h"
 #include "linglong/utils/command/env.h"
+#include "linglong/utils/error/error.h"
 #include "linglong/utils/std_helper/qdebug_helper.h"
 #include "linglong/utils/xdg/desktop_entry.h"
+#include "ocppi/runtime/ContainerID.hpp"
+#include "ocppi/runtime/RunOption.hpp"
 #include "ocppi/runtime/config/ConfigLoader.hpp"
+#include "ocppi/runtime/config/types/Process.hpp"
+#include "ocppi/runtime/config/types/User.hpp"
 
 #include <linux/prctl.h>
 #include <sys/prctl.h>
@@ -28,6 +35,7 @@
 #include <QFile>
 #include <QProcess>
 #include <QStandardPaths>
+#include <QTemporaryDir>
 
 #include <mutex>
 #include <sstream>
@@ -99,7 +107,7 @@ auto App::init() -> bool
     return true;
 }
 
-int App::prepare()
+utils::error::Result<void> App::prepare()
 {
     // FIXME: get info from module/package
     auto runtimeRef = package::Ref(runtime->ref);
@@ -114,7 +122,10 @@ int App::prepare()
     auto appRef = package::Ref(package->ref);
     QString appRootPath = repo->rootOfLayer(appRef);
 
-    stageRootfs(fixRuntimePath, appRef.appId, appRootPath);
+    auto ret = stageRootfs(fixRuntimePath, appRef.appId, appRootPath);
+    if (!ret.has_value()) {
+        return LINGLONG_EWRAP("stage rootfs", ret.error());
+    }
 
     stageSystem();
     stageUser(appRef.appId);
@@ -125,7 +136,7 @@ int App::prepare()
     auto envFilepath = container->workingDirectory + QString("/env");
     QFile envFile(envFilepath);
     if (!envFile.open(QIODevice::WriteOnly)) {
-        qCritical() << "create env failed" << envFile.error();
+        return LINGLONG_ERR(-1, "create env failed" + envFile.errorString());
     }
     for (const auto &env : *r.process->env) {
         envFile.write(env.c_str());
@@ -146,25 +157,19 @@ int App::prepare()
       QStringList{ appRootPath, "entries", "applications" }.join(QDir::separator()));
     auto desktopFilenameList = applicationsDir.entryList({ "*.desktop" }, QDir::Files);
     if (desktopFilenameList.length() <= 0) {
-        return -1;
+        return LINGLONG_ERR(-1, "desktop file not found in " + applicationsDir.path());
     }
 
-    const auto &desktopEntry =
+    auto desktopEntry =
       utils::xdg::DesktopEntry::New(applicationsDir.absoluteFilePath(desktopFilenameList.value(0)));
     if (!desktopEntry.has_value()) {
-        // FIXME(black_desk): return error instead of logging here.
-        qCritical() << "DesktopEntry file path:"
-                    << applicationsDir.absoluteFilePath(desktopFilenameList.value(0));
-        qCritical().noquote() << desktopEntry.error().code() << desktopEntry.error().message();
-        return -1;
+        return LINGLONG_EWRAP("DesktopEntry file path:" + desktopFilenameList.value(0),
+                              desktopEntry.error());
     }
 
-    const auto &exec = desktopEntry->getValue<QString>("Exec");
+    auto exec = desktopEntry->getValue<QString>("Exec");
     if (!exec.has_value()) {
-        // FIXME(black_desk): return error instead of logging here.
-        qCritical() << "Broken desktop file without Exec in main section.";
-        qCritical().noquote() << exec.error().code() << exec.error().message();
-        return -1;
+        return LINGLONG_EWRAP("Broken desktop file without Exec in main section.", exec.error());
     }
 
     const auto &parsedExec = util::parseExec(*exec);
@@ -196,14 +201,15 @@ int App::prepare()
         if (!desktopExec.isEmpty()) {
             execArgs = desktopExec;
         }
-        auto args = std::vector<std::string>{};
-        for (const auto &arg : execArgs) {
-            args.push_back(arg.toStdString());
-        }
+        // 使用sh作为pid 1的进程
+        // TODO(wurongjie) 应该有专门的init程序，暂时用 sh
+        auto args = std::vector<std::string>{
+            "sh",
+            "-c",
+            execArgs.join(" ").toStdString(),
+        };
         r.process->args = args;
     }
-
-    qDebug() << "exec" << *r.process->args;
 
     bool noDbusProxy = runParamMap.contains(linglong::util::kKeyNoProxy);
     if (!linglong::util::fileExists("/usr/bin/ll-dbus-proxy")) {
@@ -220,7 +226,7 @@ int App::prepare()
     stageDBusProxy(sessionSocketPath, !noDbusProxy);
     qInfo() << "createProxySocket path:" << sessionSocketPath << ", noDbusProxy:" << noDbusProxy;
     stateDBusProxyArgs(!noDbusProxy, appRef.appId, sessionSocketPath);
-    return 0;
+    return LINGLONG_OK;
 }
 
 auto App::stageSystem() -> int
@@ -243,40 +249,45 @@ auto App::stageSystem() -> int
     return 0;
 }
 
-auto App::stageRootfs(QString runtimeRootPath, const QString &appId, QString appRootPath) -> int
+utils::error::Result<void> App::stageRootfs(QString runtimeRootPath,
+                                            const QString &appId,
+                                            QString appRootPath)
 {
-    // overlay 挂载标志
-    bool fuseMount = false;
-    // wine 应用挂载标志
-    bool wineMount = false;
-    // 通过info.json中overlay挂载标志
-    bool specialCase = false;
-    // other sys overlay 挂载标志
-    bool otherSysMount = false;
-
-    // if use wine runtime, mount with fuse
-    // FIXME(iceyer): use info.json to decide use fuse or not
-    if (runtimeRootPath.contains("org.deepin.Wine")) {
-        wineMount = true;
-        fuseMount = true;
+    // TODO(wurongjie) 先去掉fuse相关功能
+    // wine应用暂不支持，devel 更改为全量包后不需要fuse，specialCase 感觉并不需要 fuse
+    {
+        // overlay 挂载标志
+        bool fuseMount = false;
+        // wine 应用挂载标志
+        bool wineMount = false;
+        // 通过info.json中overlay挂载标志
+        bool specialCase = false;
     }
-
-    r.annotations = {
-        { "containerRootPath", container->workingDirectory.toStdString() },
-    };
-
     // 通过info.json文件判断是否要overlay mount
     auto appInfoFile = appRootPath + "/info.json";
 
     QSharedPointer<package::Info> info;
     if (util::fileExists(appInfoFile)) {
         info = util::loadJson<package::Info>(appInfoFile);
-        if (info->overlayfs && info->overlayfs->mounts.size() > 0) {
-            fuseMount = true;
-            specialCase = true;
-        }
     }
-
+    // TODO(wurongjie) base体积太大了，应该替换成精简的rootfs
+    auto ret = repo->latestOfRef("org.deepin.base", "23");
+    if (!ret.has_value()) {
+        return LINGLONG_EWRAP("latest of ref", ret.error());
+    }
+    auto hostBasePath = repo->rootOfLayer(*ret);
+    // 挂载base目录
+    auto baseDirs =
+      QDir(hostBasePath + "/files").entryList(QDir::Dirs | QDir::NoSymLinks | QDir::NoDotAndDotDot);
+    for (auto entry : baseDirs) {
+        auto source = hostBasePath + "/files/" + entry;
+        ocppi::runtime::config::types::Mount m;
+        m.type = "bind";
+        m.source = source.toStdString();
+        m.destination = "/" + entry.toStdString();
+        m.options = { "rbind", "ro", "nosuid", "nodev" };
+        r.mounts->push_back(m);
+    };
     // 转化特殊变量
     // 获取环境变量LINGLONG_ROOT
     auto linglongRootPath = util::getLinglongRootPath();
@@ -297,144 +308,37 @@ auto App::stageRootfs(QString runtimeRootPath, const QString &appId, QString app
     auto runtimeRef = package::Ref(runtime->ref);
     QString runtimePath = repo->rootOfLayer(runtimeRef);
     auto runtimeInfoFile = runtimePath + "/info.json";
-    // basics usr
-    QString basicsUsrRootPath = "";
-    // basics etc
-    QString basicsEtcRootPath = "";
-    if (!linglong::util::isDeepinSysProduct()) {
-        QSharedPointer<package::Info> runtimeInfo;
-        if (util::fileExists(runtimeInfoFile)) {
-            runtimeInfo = util::loadJson<package::Info>(runtimeInfoFile);
-            if (!runtimeInfo->runtime.isEmpty()) {
-                basicsUsrRootPath =
-                  linglongRootPath + "/layers/" + runtimeInfo->runtime + "/files/usr";
-                basicsEtcRootPath =
-                  linglongRootPath + "/layers/" + runtimeInfo->runtime + "/files/etc";
-                fuseMount = true;
-                otherSysMount = true;
-            }
-        }
-    }
-
-    // 使用overlayfs挂载debug调试符号
-    auto debugRef = package::Ref(package->ref);
-    qDebug() << "stageRootfs debugRef " << package->ref;
-    if ("devel" == debugRef.module) {
-        fuseMount = true;
-    }
-
-    if (fuseMount) {
-        r.annotations->insert({
-          "overlayfs",
-          {
-            { "lowerParent",
-              QStringList{ container->workingDirectory, ".overlayfs", "lower_parent" }
-                .join("/")
-                .toStdString() },
-            { "upper",
-              QStringList{ container->workingDirectory, ".overlayfs", "upper" }
-                .join("/")
-                .toStdString() },
-            { "workdir",
-              QStringList{ container->workingDirectory, ".overlayfs", "workdir" }
-                .join("/")
-                .toStdString() },
-          },
-        });
-    } else {
-        r.annotations->insert({ "native", {} });
-    }
-
-    r.annotations->insert({ "dbusProxyInfo", {} });
 
     QList<QPair<QString, QString>> mountMap;
 
     mountMap = {
-        { "/usr", "/usr" },
-        { "/etc", "/etc" },
         { runtimeRootPath, "/runtime" },
-        { "/usr/share/locale/", "/usr/share/locale/" },
     };
 
-    qDebug() << "stageRootfs runtimeRootPath:" << runtimeRootPath << "appRootPath:" << appRootPath;
-    // appRootPath/devel/files/debug /usr/lib/debug/opt/apps/appid/files 挂载调试符号
-    if ("devel" == debugRef.module) {
-        mountMap.push_back({ appRootPath + "/devel/files/debug",
-                             "/usr/lib/debug/opt/apps/" + debugRef.appId + "/files" });
-        // runtime 只用挂载devel/files/debug 目录
-        mountMap.push_back(
-          { runtimeRootPath.left(runtimeRootPath.length() - QString("/files").length())
-              + "/devel/files/debug",
-            "/usr/lib/debug/runtime" });
-    }
-
-    // FIXME(iceyer): extract for wine, remove later
-    if (fuseMount && wineMount) {
-        // NOTE: the override should be behind host /usr
-        mountMap.push_back({ runtimeRootPath + "/bin", "/usr/bin" });
-        mountMap.push_back({ runtimeRootPath + "/include", "/usr/include" });
-        mountMap.push_back({ runtimeRootPath + "/lib", "/usr/lib" });
-        mountMap.push_back({ runtimeRootPath + "/sbin", "/usr/sbin" });
-        mountMap.push_back({ runtimeRootPath + "/share", "/usr/share" });
-        mountMap.push_back({ runtimeRootPath + "/opt/deepinwine", "/opt/deepinwine" });
-        mountMap.push_back(
-          { runtimeRootPath + "/opt/deepin-wine6-stable", "/opt/deepin-wine6-stable" });
-    }
-    // overlay mount 通过info.json
-    if (fuseMount && specialCase) {
-        for (auto mount : info->overlayfs->mounts) {
-            mountMap.push_back({ getPath(mount->source), getPath(mount->destination) });
-        }
-    }
-    // overlay mount basics
-    if (fuseMount && otherSysMount) {
-        mountMap.push_back({ basicsUsrRootPath, "/usr" });
-        mountMap.push_back({ basicsEtcRootPath, "/etc" });
-    }
+    qDebug() << "stageRootfs "
+             << "hostBasePath:" << hostBasePath << "runtimeRootPath:" << runtimeRootPath
+             << "appRootPath:" << appRootPath;
 
     for (const auto &pair : mountMap) {
-        nlohmann::json m;
-        m["type"] = "bind";
-        m["options"] = nlohmann::json::array_t{ "ro", "rbind" };
-        m["source"] = pair.first.toStdString();
-        m["destination"] = pair.second.toStdString();
-
-        if (fuseMount) {
-            // overlay mount 顺序是反向的
-            if (wineMount) {
-                // wine应用先保持不变（会导致wine应用运行失败），后续整改
-                (*r.annotations)["overlayfs"]["mounts"].push_back(m);
-            } else {
-                // ll-box overlay失效，待修复后改为push_front（gnome应用运行失效）
-                (*r.annotations)["overlayfs"]["mounts"].push_back(m);
-            }
-        } else {
-            (*r.annotations)["native"]["mounts"].push_back(m);
-        }
+        ocppi::runtime::config::types::Mount m;
+        m.type = "bind";
+        m.options = std::vector<std::string>{ "ro", "rbind" };
+        m.source = pair.first.toStdString();
+        m.destination = pair.second.toStdString();
+        r.mounts->push_back(m);
     }
+    // TODO(wurongjie) 应该想办法避免应用往全局安装目录写文件，
+    // 比如将应用checkout到用户家目录，但可能有硬链接的问题
 
     // 读写挂载/opt,有的应用需要读写自身携带的资源文件。eg:云看盘
     QString appMountPath = "";
     appMountPath = "/opt/apps/" + appId;
-
-    nlohmann::json m;
-    m["type"] = "bind";
-    m["options"] = nlohmann::json::array_t{ "rw", "rbind" };
-    m["source"] = appRootPath.toStdString();
-    m["destination"] = appMountPath.toStdString();
-
-    if (fuseMount) {
-        // overlay mount 顺序是反向的
-        if (wineMount) {
-            // wine应用先保持不变（会导致wine应用运行失败），后续整改
-            (*r.annotations)["overlayfs"]["mounts"].push_back(m);
-        } else {
-            // ll-box overlay失效，待修复后改为push_front（gnome应用运行失效）
-            (*r.annotations)["overlayfs"]["mounts"].push_back(m);
-        }
-    } else {
-        (*r.annotations)["native"]["mounts"].push_back(m);
-    }
+    ocppi::runtime::config::types::Mount m;
+    m.type = "bind";
+    m.options = std::vector<std::string>{ "rw", "rbind" };
+    m.source = appRootPath.toStdString();
+    m.destination = appMountPath.toStdString();
+    r.mounts->push_back(m);
 
     // TODO(iceyer): let application do this or add to doc
     auto appLdLibraryPath = QStringList{ "/opt/apps", appId, "files/lib" }.join("/");
@@ -469,11 +373,9 @@ auto App::stageRootfs(QString runtimeRootPath, const QString &appId, QString app
                        + "/files/plugins/platforms:/runtime/lib/aarch64-linux-gnu/qt5/plugins/"
                          "platforms:/usr/lib/aarch64-linux-gnu/qt5/plugins/platforms")
                         .toStdString());
-        if (!fuseMount) {
-            env.push_back(
-              ("GST_PLUGIN_PATH=/opt/apps/" + appId + "/files/lib/aarch64-linux-gnu/gstreamer-1.0")
-                .toStdString());
-        }
+        env.push_back(
+          ("GST_PLUGIN_PATH=/opt/apps/" + appId + "/files/lib/aarch64-linux-gnu/gstreamer-1.0")
+            .toStdString());
         break;
     case X86_64:
         fixLdLibraryPath = QStringList{
@@ -493,27 +395,24 @@ auto App::stageRootfs(QString runtimeRootPath, const QString &appId, QString app
                        + "/files/plugins/platforms:/runtime/lib/x86_64-linux-gnu/qt5/plugins/"
                          "platforms:/usr/lib/x86_64-linux-gnu/qt5/plugins/platforms")
                         .toStdString());
-        if (!fuseMount) {
-            env.push_back(
-              ("GST_PLUGIN_PATH=/opt/apps/" + appId + "/files/lib/x86_64-linux-gnu/gstreamer-1.0")
-                .toStdString());
-        }
+        env.push_back(
+          ("GST_PLUGIN_PATH=/opt/apps/" + appId + "/files/lib/x86_64-linux-gnu/gstreamer-1.0")
+            .toStdString());
         break;
     default:
         qInfo() << "no supported arch :" << appRef.arch;
-        return -1;
+        return LINGLONG_ERR(-1, "no supported arch :" + appRef.arch);
     }
 
     env.push_back(("LD_LIBRARY_PATH=" + fixLdLibraryPath.join(":")).toStdString());
-    return 0;
+    return LINGLONG_OK;
 }
 
 auto App::stageHost() -> int
 {
     QList<QPair<QString, QString>> roMountMap = {
         { "/etc/resolv.conf", "/run/host/network/etc/resolv.conf" },
-        { "/run/resolvconf", "/run/resolvconf" },
-        { "/usr/share/fonts", "/run/host/appearance/fonts" },
+        { "/etc/resolvconf", "/run/resolvconf" },
         { "/usr/lib/locale/", "/usr/lib/locale/" },
         { "/usr/share/themes", "/usr/share/themes" },
         { "/usr/share/icons", "/usr/share/icons" },
@@ -521,7 +420,8 @@ auto App::stageHost() -> int
         { "/etc/localtime", "/run/host/etc/localtime" },
         { "/etc/machine-id", "/run/host/etc/machine-id" },
         { "/etc/machine-id", "/etc/machine-id" },
-        { "/var", "/var" }, // FIXME: should we mount /var as "ro"?
+        { "/etc/ssl/certs", "/etc/ssl/certs" },
+        { "/usr/share/fonts", "/usr/share/fonts" },
         { "/var/cache/fontconfig", "/run/host/appearance/fonts-cache" },
     };
 
@@ -541,7 +441,10 @@ auto App::stageHost() -> int
         qDebug() << "mount app" << m.source->c_str() << m.destination.c_str();
     }
 
+    auto userRuntimeDir = QString("/run/user/%1/").arg(getuid());
     QList<QPair<QString, QString>> mountMap = {
+        { "/run/dbus", "/run/dbus" },
+        { userRuntimeDir + "bus", userRuntimeDir + "bus" },
         { "/tmp/.X11-unix", "/tmp/.X11-unix" }, // FIXME: only mount one DISPLAY
     };
 
@@ -558,67 +461,15 @@ auto App::stageHost() -> int
     return 0;
 }
 
+// dbus proxy问题比较多，暂时去除
 void App::stateDBusProxyArgs(bool enable, const QString &appId, const QString &proxyPath)
 {
-    if (!enable) {
-        return;
-    }
-
-    auto &anno = *r.annotations;
-    anno["dbusProxyInfo"]["enable"] = enable;
-    anno["dbusProxyInfo"]["appID"] = appId.toStdString();
-    anno["dbusProxyInfo"]["busType"] = runParamMap[linglong::util::kKeyBusType].toStdString();
-    anno["dbusProxyInfo"]["proxyPath"] = proxyPath.toStdString();
-
-    // FIXME: ll-box expected that these arrays existed. Remove later.
-    // https://github.com/linuxdeepin/linglong-box/blob/212a734812473fe8b7a969c5f75b41b5d3f2303b/src/util/oci_runtime.h#L505-L507
-    auto &names = anno["dbusProxyInfo"]["name"] = nlohmann::json::array_t{};
-    auto &paths = anno["dbusProxyInfo"]["path"] = nlohmann::json::array_t{};
-    auto &interfaces = anno["dbusProxyInfo"]["interface"] = nlohmann::json::array_t{};
-
-    // FIX to do load filter from yaml
-    // FIX to do 加载用户配置参数（权限管限器上）
-    // 添加cli command运行参数
-    if (runParamMap.contains(linglong::util::kKeyFilterName)) {
-        QString name = runParamMap[linglong::util::kKeyFilterName];
-        names.push_back(name.toStdString());
-    }
-    if (runParamMap.contains(linglong::util::kKeyFilterPath)) {
-        QString path = runParamMap[linglong::util::kKeyFilterPath];
-        paths.push_back(path.toStdString());
-    }
-    if (runParamMap.contains(linglong::util::kKeyFilterIface)) {
-        QString interface = runParamMap[linglong::util::kKeyFilterIface];
-        interfaces.push_back(interface.toStdString());
-    }
+    return;
 }
 
-// Fix to do 当前仅处理session bus
+// dbus proxy问题比较多，暂时去除
 auto App::stageDBusProxy(const QString &socketPath, bool useDBusProxy) -> int
 {
-    QList<QPair<QString, QString>> mountMap;
-    auto userRuntimeDir = QString("/run/user/%1/").arg(getuid());
-    if (useDBusProxy) {
-        // bind dbus-proxy-user, now use session bus
-        mountMap.push_back(qMakePair(socketPath, userRuntimeDir + "/bus"));
-        // fix to do, system bus in no-proxy mode
-        mountMap.push_back(qMakePair(QString("/run/dbus/system_bus_socket"),
-                                     QString("/run/dbus/system_bus_socket")));
-    } else {
-        mountMap.push_back(qMakePair(userRuntimeDir + "/bus", userRuntimeDir + "/bus"));
-        mountMap.push_back(qMakePair(QString("/run/dbus/system_bus_socket"),
-                                     QString("/run/dbus/system_bus_socket")));
-    }
-    for (const auto &pair : mountMap) {
-        ocppi::runtime::config::types::Mount m;
-
-        m.type = "bind";
-        m.source = pair.first.toStdString();
-        m.destination = pair.second.toStdString();
-        r.mounts->push_back(m);
-        qDebug() << "mount app" << m.source->c_str() << m.destination.c_str();
-    }
-
     return 0;
 }
 
@@ -806,7 +657,11 @@ auto App::stageUser(const QString &appId) -> int
 
     auto appSharePath = QStringList{ "/opt/apps", appRef.appId, "files/share" }.join("/");
     auto xdgDataDirs = QStringList{ appSharePath, "/runtime/share" };
-    xdgDataDirs.append(qEnvironmentVariable("XDG_DATA_DIRS", "/usr/local/share:/usr/share"));
+    auto sysxdgDataDirs = qEnvironmentVariable("XDG_DATA_DIRS", "/usr/local/share:/usr/share");
+    xdgDataDirs.append(sysxdgDataDirs);
+    if (!sysxdgDataDirs.contains(linglongRootPath)) {
+        xdgDataDirs.append(linglongRootPath + "/entries/share");
+    }
     env.push_back("XDG_DATA_DIRS=" + xdgDataDirs.join(":").toStdString());
 
     // add env XDG_CONFIG_HOME XDG_CACHE_HOME
@@ -819,10 +674,13 @@ auto App::stageUser(const QString &appId) -> int
     env.push_back("XDG_DATA_HOME=" + appLocalDataPath.toStdString());
 
     qDebug() << env;
+    r.process->terminal = true;
     r.process->cwd = util::getUserFile("").toStdString();
-
-    QList<QList<int64_t>> uidMaps = {
-        { getuid(), 0, 1 },
+    r.process->user = ocppi::runtime::config::types::User();
+    r.process->user->uid = getuid();
+    r.process->user->gid = getgid();
+    QList<QList<long>> uidMaps = {
+        { r.process->user->uid.value(), r.process->user->uid.value(), 1 },
     };
     for (auto const &uidMap : uidMaps) {
         Q_ASSERT(uidMap.size() == 3);
@@ -835,8 +693,8 @@ auto App::stageUser(const QString &appId) -> int
         r.linux_->uidMappings->push_back(idMapping);
     }
 
-    QList<QList<int64_t>> gidMaps = {
-        { getgid(), 0, 1 },
+    QList<QList<long>> gidMaps = {
+        { r.process->user->gid.value(), r.process->user->gid.value(), 1 },
     };
     for (auto const &gidMap : gidMaps) {
         ocppi::runtime::config::types::IdMapping idMapping{};
@@ -1048,25 +906,6 @@ auto App::fixMount(QString runtimeRootPath, const QString &appId) -> int
     return 0;
 }
 
-auto App::getMathedRuntime(const QString &runtimeId, const QString &runtimeVersion) -> QString
-{
-    auto localRepoRoot = util::getLinglongRootPath() + "/layers/" + runtimeId;
-    QDir appRoot(localRepoRoot);
-    appRoot.setSorting(QDir::Name | QDir::Reversed);
-    auto versionDirs = appRoot.entryList(QDir::NoDotAndDotDot | QDir::Dirs);
-    auto available = linglong::util::APP_MIN_VERSION;
-    for (const auto &item : versionDirs) {
-        linglong::util::AppVersion versionIter(item);
-        linglong::util::AppVersion dstVersion(available);
-        if (versionIter.isValid() && versionIter.isBigThan(dstVersion)
-            && item.startsWith(runtimeVersion)) {
-            available = item;
-        }
-    }
-    qDebug() << "getMathedRuntime info" << available << appRoot << versionDirs;
-    return available;
-}
-
 auto App::loadConfig(linglong::repo::Repo *repo,
                      const QString &appId,
                      const QString &appVersion,
@@ -1081,8 +920,12 @@ auto App::loadConfig(linglong::repo::Repo *repo,
     // create yaml form info
     // auto appRoot = LocalRepo::get()->rootOfLatest();
     auto latestAppRef = repo->latestOfRef(appId, appVersion);
-    qDebug() << "loadConfig ref:" << latestAppRef.toSpecString();
-    auto appInstallRoot = repo->rootOfLayer(latestAppRef);
+    if (!latestAppRef.has_value()) {
+        qCritical() << "No version of app found in layers" << appId << appVersion;
+        return {};
+    }
+    qDebug() << "loadConfig ref:" << latestAppRef->toSpecString();
+    auto appInstallRoot = repo->rootOfLayer(*latestAppRef);
 
     auto appInfo = appInstallRoot + "/info.json";
     // 判断是否存在
@@ -1106,12 +949,17 @@ auto App::loadConfig(linglong::repo::Repo *repo,
 
     package::Ref runtimeRef(info->runtime);
     QString appRef = QString("%1/").arg(channel)
-      + latestAppRef.toLocalRefString().append(QString("/%1").arg(module));
+      + latestAppRef->toLocalRefString().append(QString("/%1").arg(module));
     qDebug() << "loadConfig runtime" << info->runtime;
     // 获取最新版本runtime
     if (runtimeRef.version.split(".").size() != 4) {
-        runtimeRef.version = getMathedRuntime(runtimeRef.appId, runtimeRef.version);
+        auto ret = repo->latestOfRef(runtimeRef.appId, runtimeRef.version);
+        if (!ret.has_value()) {
+            qCritical() << "No version of runtime found in layers";
+        }
+        runtimeRef.version = ret->version;
     }
+    qDebug() << "runtimeRef" << runtimeRef.toLocalString();
     QString runtimeFullRef = QString("%1/").arg(channel)
       + runtimeRef.toLocalRefString().append(QString("/%1").arg(module));
     QMap<QString, QString> variables = {
@@ -1197,8 +1045,10 @@ App::App(QObject *parent)
 {
 }
 
-auto App::load(linglong::repo::Repo *repo, const package::Ref &ref, const QStringList &desktopExec)
-  -> QSharedPointer<App>
+auto App::load(linglong::repo::Repo *repo,
+               const package::Ref &ref,
+               const QStringList &desktopExec,
+               ocppi::cli::CLI *ociCli) -> QSharedPointer<App>
 {
     QString configPath = loadConfig(repo, ref.appId, ref.version, ref.channel, ref.module);
     if (!linglong::util::fileExists(configPath)) {
@@ -1219,17 +1069,39 @@ auto App::load(linglong::repo::Repo *repo, const package::Ref &ref, const QStrin
     // TODO: maybe set as an arg of init is better
     app->desktopExec = desktopExec;
     app->repo = repo;
+    app->ociCli = ociCli;
     app->init();
 
     return app;
 }
 
-auto App::start() -> util::Error
+linglong::utils::error::Result<QString> App::start()
 {
-    r.root->path = container->workingDirectory.toStdString() + "/root";
+    package::Ref ref(package->ref);
+
+    // 创建 /tmp/ll-cli-xxx/$appid 作为工作目录
+    QTemporaryDir tmpDir;
+    tmpDir.setAutoRemove(false);
+    QDir dir(tmpDir.path());
+    dir.mkpath(ref.appId);
+    dir.cd(ref.appId);
+
+    // 创建rootfs目录
+    dir.mkdir("rootfs");
+    // 在rootfs中创建一些软链接
+    for (auto lib : QStringList{ "lib", "lib32", "lib64", "libx32", "bin", "sbin" }) {
+        QFile::link("usr/" + lib, dir.filePath("rootfs/" + lib));
+    }
+    // 使用rootfs做为容器的跟目录
+    r.root->readonly = true;
+    r.root->path = dir.filePath("rootfs").toStdString();
+
     util::ensureDir(r.root->path.c_str());
 
-    prepare();
+    auto ret = prepare();
+    if (!ret.has_value()) {
+        return LINGLONG_EWRAP("prepare", ret.error());
+    }
 
     // write pid file
     QFile pidFile(container->workingDirectory + QString("/%1.pid").arg(getpid()));
@@ -1238,49 +1110,26 @@ auto App::start() -> util::Error
 
     qDebug() << "start container at" << r.root->path.c_str();
 
+    // 写容器配置文件
     auto runtimeConfigJSON = toJSON(r);
-
     auto data = runtimeConfigJSON.dump();
-
-    if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, sockets) != 0) {
-        return WrapError(NewError(errno, strerror(errno)), "call socketpair failed");
+    QFile f(dir.filePath("config.json"));
+    if (!f.open(QIODevice::WriteOnly)) {
+        return LINGLONG_ERR(-1, f.errorString());
     }
-
-    pid_t parent = getpid();
-
-    pid_t boxPid = fork();
-    if (boxPid < 0) {
-        return WrapError(NewError(errno, strerror(errno)), "fork failed");
+    if (!f.write(QByteArray::fromStdString(data))) {
+        return LINGLONG_ERR(-1, f.errorString());
+    };
+    f.close();
+    // 运行容器
+    auto qid = util::genUuid();
+    auto id = qid.toStdString();
+    auto path = std::filesystem::path(dir.path().toStdString());
+    auto runRet = ociCli->run(id.c_str(), path);
+    if (!runRet.has_value()) {
+        return LINGLONG_EWRAP("create container", LINGLONG_SERR(runRet.error()).value());
     }
-
-    if (0 == boxPid) {
-        // child process
-        qDebug() << "start ll-box in child process";
-        prctl(PR_SET_PDEATHSIG, SIGKILL);
-        if (getppid() != parent) {
-            raise(SIGKILL);
-        }
-        (void)close(sockets[1]);
-        auto socket = std::to_string(sockets[0]);
-        char const *const args[] = { "ll-box", socket.c_str(), nullptr };
-        auto ret = execvp(args[0], (char **)args);
-        exit(ret);
-    } else {
-        qDebug() << "wait child" << boxPid << "in parent";
-        close(sockets[0]);
-        // FIXME: handle error
-        (void)write(sockets[1], data.c_str(), data.size());
-        (void)write(sockets[1], "\0", 1); // each data write into sockets should end with '\0'
-        container->pid = boxPid;
-        // FIXME: need keep interactive shell
-        auto pid = waitpid(boxPid, nullptr, 0);
-        close(sockets[1]);
-        // FIXME: 删除代理socket临时文件
-        // FIXME: 清理资源，包括挂载的VFS等
-        qDebug() << "child" << pid << "finish";
-    }
-
-    return Success();
+    return qid;
 }
 
 void App::exec(const QStringList &cmd, const QStringList &env, QString cwd)

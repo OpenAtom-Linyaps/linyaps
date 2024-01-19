@@ -91,9 +91,9 @@ endif()
 
 CPMFindPackage(
   NAME ocppi
-  VERSION 0.1.8
-  GITHUB_REPOSITORY black-desk/ocppi
-  GIT_TAG v0.1.9
+  VERSION 0.2.0
+  GITHUB_REPOSITORY myml/ocppi
+  GIT_TAG cc0ed79e088918171da52a687ec4e189f5163313
   GIT_SHALLOW ON
   OPTIONS "OCPPI_ENABLE_TESTING OFF" "OCPPI_BUILD_EXAMPLES OFF"
   FIND_PACKAGE_ARGUMENTS "NAMES ocppi COMPONENTS common runtime"
@@ -349,7 +349,8 @@ pfl_add_library(
   Qt::WebSockets
   QtLinglongRepoClientAPI
   docopt
-  ocppi::runtime
+  ocppi::ocppi
+  spdlog::spdlog
   tl::expected
   yaml-cpp::yaml-cpp
   ytj)

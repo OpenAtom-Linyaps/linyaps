@@ -676,42 +676,46 @@ package::Ref OSTreeRepo::remoteLatestRef(const package::Ref &ref)
     return package::Ref(ref.repo, ref.channel, ref.appId, latestVer, ref.arch, ref.module);
 }
 
-package::Ref OSTreeRepo::latestOfRef(const QString &appId, const QString &appVersion)
+// 获取最新版本的ref, 版本号可以留空或传递latest
+// 如果传递版本号不为空，则会被当作主版本号，仅查找副版本号最新的ref
+utils::error::Result<package::Ref> OSTreeRepo::latestOfRef(const QString &appId,
+                                                           const QString &appVersion)
 {
-    auto latestVersionOf = [this](const QString &appId) {
-        auto localRepoRoot = QString(repoRootPath) + "/layers" + "/" + appId;
+    package::Ref ref(appId + "/" + appVersion + "/" + util::hostArch());
 
-        QDir appRoot(localRepoRoot);
-
-        // found latest
-        if (appRoot.exists("latest")) {
-            return appRoot.absoluteFilePath("latest");
-        }
-
-        // FIXME: found biggest version
-        appRoot.setSorting(QDir::Name | QDir::Reversed);
-        auto verDirs = appRoot.entryList(QDir::NoDotAndDotDot | QDir::Dirs);
-        auto available = verDirs.value(0);
-        for (auto item : verDirs) {
-            linglong::util::AppVersion versionIter(item);
-            linglong::util::AppVersion dstVersion(available);
-            if (versionIter.isValid() && versionIter.isBigThan(dstVersion)) {
-                available = item;
-            }
-        }
-        qDebug() << "available version" << available << appRoot << verDirs;
-        return available;
-    };
-
-    // 未指定版本使用最新版本，指定版本下使用指定版本
-    QString version;
-    if ((!appVersion.isEmpty()) && (appVersion != "latest")) {
-        version = appVersion;
-    } else {
-        version = latestVersionOf(appId);
+    QDir appRoot(repoRootPath + "/layers" + "/" + appId);
+    // TODO(wurongjie) 应该弃用latest
+    // found latest
+    if (appRoot.exists("latest")) {
+        ref.version = "latest";
+        return ref;
     }
-    auto ref = appId + "/" + version + "/" + util::hostArch();
-    return package::Ref(ref);
+    QString version;
+    if (!appVersion.isEmpty() && appVersion != "latest") {
+        version = appVersion;
+    }
+    QStringList verDirs;
+    for (auto dir : appRoot.entryList(QDir::NoDotAndDotDot | QDir::Dirs)) {
+        if (version.isEmpty()) {
+            verDirs.push_back(dir);
+        } else if (dir.startsWith((version))) {
+            verDirs.push_back(dir);
+        }
+    }
+    if (verDirs.empty()) {
+        return LINGLONG_ERR(-1, "no version of ref found");
+    }
+    version = verDirs.value(0);
+    for (auto item : verDirs) {
+        linglong::util::AppVersion versionIter(item);
+        linglong::util::AppVersion dstVersion(version);
+        if (versionIter.isValid() && versionIter.isBigThan(dstVersion)) {
+            version = item;
+        }
+    }
+    ref.version = version;
+    qDebug() << "available version" << version << appRoot << verDirs;
+    return ref;
 }
 
 utils::error::Result<QString> OSTreeRepo::compressOstreeData(const package::Ref &ref)

@@ -13,6 +13,9 @@
 #include "linglong/runtime/container.h"
 #include "linglong/runtime/oci.h"
 #include "linglong/util/file.h"
+#include "linglong/utils/error/error.h"
+#include "ocppi/cli/CLI.hpp"
+#include "ocppi/cli/crun/Crun.hpp"
 #include "ocppi/runtime/config/types/Config.hpp"
 
 namespace linglong::repo {
@@ -79,9 +82,10 @@ public:
 
     static auto load(linglong::repo::Repo *repo,
                      const linglong::package::Ref &ref,
-                     const QStringList &desktopExec) -> QSharedPointer<App>;
+                     const QStringList &desktopExec,
+                     ocppi::cli::CLI *ociCli) -> QSharedPointer<App>;
 
-    auto start() -> util::Error;
+    linglong::utils::error::Result<QString> start();
 
     void exec(const QStringList &cmd, const QStringList &env, QString cwd);
 
@@ -94,13 +98,13 @@ public:
 private:
     auto init() -> bool;
 
-    auto prepare() -> int;
+    auto prepare() -> utils::error::Result<void>;
 
     [[nodiscard]] auto stageSystem() -> int;
 
     [[nodiscard]] auto stageRootfs(QString runtimeRootPath,
                                    const QString &appId,
-                                   QString appRootPath) -> int;
+                                   QString appRootPath) -> utils::error::Result<void>;
 
     [[nodiscard]] auto stageHost() -> int;
 
@@ -138,6 +142,7 @@ private:
     QSharedPointer<AppConfig> appConfig = nullptr;
 
     repo::Repo *repo = nullptr;
+    ocppi::cli::CLI *ociCli = nullptr;
     int sockets[2]; // save file describers of sockets used to communicate with ll-box
 
     const QString sysLinglongInstalltions = util::getLinglongRootPath() + "/entries/share";

@@ -14,16 +14,19 @@
 #include "linglong/util/status_code.h"
 #include "linglong/util/sysinfo.h"
 #include "linglong/utils/error/error.h"
+#include "ocppi/runtime/ContainerID.hpp"
+#include "ocppi/runtime/ExecOption.hpp"
+#include "ocppi/runtime/Signal.hpp"
+#include "ocppi/types/ContainerListItem.hpp"
 
-#include <csignal>
-
-#include <sys/types.h>
+#include <QString>
 
 namespace linglong::service {
 
-AppManager::AppManager(repo::Repo &repo)
+AppManager::AppManager(repo::Repo &repo, ocppi::cli::CLI &ociCli)
     : runPool(new QThreadPool)
     , repo(repo)
+    , ociCli(ociCli)
 {
     runPool->setMaxThreadCount(RUN_POOL_MAX_THREAD);
 }
@@ -80,11 +83,15 @@ linglong::utils::error::Result<void> AppManager::Run(const RunParamOption &param
     }
     // 默认选择最新的版本
     if (version.isEmpty()) {
-        version = repo.latestOfRef(appID, "").version;
+        auto ret = repo.latestOfRef(appID, "");
+        if (!ret.has_value()) {
+            return LINGLONG_EWRAP("found app latest version", ret.error());
+        }
+        version = ret->version;
     }
     // 加载应用
     linglong::package::Ref ref("", channel, appID, version, arch, module);
-    auto app = linglong::runtime::App::load(&repo, ref, exec);
+    auto app = linglong::runtime::App::load(&repo, ref, exec, &ociCli);
     if (app == nullptr) {
         return LINGLONG_ERR(-1, "load app failed");
     }
@@ -95,209 +102,83 @@ linglong::utils::error::Result<void> AppManager::Run(const RunParamOption &param
     paramMap.insert(linglong::util::kKeyNoProxy, "");
     app->setAppParamMap(paramMap);
     // 启动应用
-    auto err = app->start();
-    if (err) {
-        return LINGLONG_ERR(err.code(), err.message());
+    auto ret = app->start();
+    if (!ret.has_value()) {
+        return LINGLONG_EWRAP("start app", ret.error());
     }
     return LINGLONG_OK;
 }
 
 auto AppManager::Start(const RunParamOption &paramOption) -> Reply
 {
-    qDebug() << "start" << paramOption.appId;
-
-    QueryReply reply;
-    reply.code = 0;
-    reply.message = "Start " + paramOption.appId + " success!";
-    QString appId = paramOption.appId.trimmed();
-    if (appId.isNull() || appId.isEmpty()) {
-        reply.code = STATUS_CODE(kUserInputParamErr);
-        reply.message = "appId input err";
-        qCritical() << reply.message;
-        return std::move(reply);
-    }
-
-    QString arch = paramOption.arch.trimmed();
-    if (arch.isNull() || arch.isEmpty()) {
-        arch = linglong::util::hostArch();
-    }
-
-    ParamStringMap paramMap;
-    // 获取版本信息
-    QString version = "";
-    if (!paramOption.version.isEmpty()) {
-        version = paramOption.version.trimmed();
-    }
-
-    if (paramOption.noDbusProxy) {
-        paramMap.insert(linglong::util::kKeyNoProxy, "");
-    }
-
-    if (!paramOption.noDbusProxy) {
-        // FIX to do only deal with session bus
-        paramMap.insert(linglong::util::kKeyBusType, paramOption.busType);
-        auto nameFilter = paramOption.filterName.trimmed();
-        if (!nameFilter.isEmpty()) {
-            paramMap.insert(linglong::util::kKeyFilterName, nameFilter);
-        }
-        auto pathFilter = paramOption.filterPath.trimmed();
-        if (!pathFilter.isEmpty()) {
-            paramMap.insert(linglong::util::kKeyFilterPath, pathFilter);
-        }
-        auto interfaceFilter = paramOption.filterInterface.trimmed();
-        if (!interfaceFilter.isEmpty()) {
-            paramMap.insert(linglong::util::kKeyFilterIface, interfaceFilter);
-        }
-    }
-    // 获取user env list
-    QStringList userEnvList;
-    if (!paramOption.appEnv.isEmpty()) {
-        userEnvList = paramOption.appEnv;
-    }
-
-    // 获取exec参数
-    QStringList desktopExec;
-    if (!paramOption.exec.isEmpty()) {
-        desktopExec = paramOption.exec;
-    }
-
-    QString channel = paramOption.channel.trimmed();
-    QString appModule = paramOption.appModule.trimmed();
-    if (appModule.isEmpty()) {
-        appModule = "runtime";
-    }
-    // 玲珑早期版本的默认channel是 linglong，后来改成 main，需要进行兼容
-    // TODO(wurongjie) 在版本迭代后，可以删除对旧 channel 的支持
-    if (channel.isEmpty()) {
-        for (auto defaultChannel : QStringList{ "main", "linglong" }) {
-            if (util::getAppInstalledStatus(appId, version, arch, defaultChannel, appModule, "")) {
-                channel = defaultChannel;
-                break;
-            }
-        }
-    }
-    // 判断是否已安装
-    if (!linglong::util::getAppInstalledStatus(appId, version, arch, channel, appModule, "")) {
-        reply.message = appId + ", version:" + version + ", arch:" + arch + ", channel:" + channel
-          + ", module:" + appModule + " not installed";
-        qCritical() << reply.message;
-        reply.code = STATUS_CODE(kPkgNotInstalled);
-        return std::move(reply);
-    }
-
-    // 直接运行debug版本时，校验release包是否安装
-    if ("devel" == appModule) {
-        QList<QSharedPointer<linglong::package::AppMetaInfo>> pkgList;
-        linglong::util::getAllVerAppInfo(appId, version, arch, "", pkgList);
-        if (pkgList.size() < 2) {
-            reply.message = appId + ", version:" + version + ", arch:" + arch + ", channel:"
-              + channel + ", module:" + appModule + ", no corresponding release package found";
-            qCritical() << reply.message;
-            reply.code = STATUS_CODE(kPkgNotInstalled);
-            return std::move(reply);
-        }
-    }
-
-    // 链接${LINGLONG_ROOT}/entries/share到~/.config/systemd/user下
-    // FIXME:后续上了提权模块，放入安装处理。
-    const QString appUserServicePath =
-      linglong::util::getLinglongRootPath() + "/entries/share/systemd/user";
-    const QString userSystemdServicePath =
-      linglong::util::ensureUserDir({ ".config/systemd/user" });
-    if (linglong::util::dirExists(appUserServicePath)) {
-        linglong::util::linkDirFiles(appUserServicePath, userSystemdServicePath);
-    }
-
-    // FIXME: report error here.
-    QFuture<void> future = QtConcurrent::run(runPool.data(), [=]() {
-        // 判断是否存在
-        linglong::package::Ref ref("", channel, appId, version, arch, appModule);
-
-        // 判断是否是正在运行应用
-        auto latestAppRef = repo.latestOfRef(appId, version);
-        for (const auto &app : apps) {
-            if (latestAppRef.toString() == app->container->packageName) {
-                app->exec(desktopExec, {}, "");
-                return;
-            }
-        }
-
-        auto app = linglong::runtime::App::load(&repo, ref, desktopExec);
-        if (nullptr == app) {
-            // FIXME: set job status to failed
-            qCritical() << "load app failed " << app;
-            return;
-        }
-        app->saveUserEnvList(userEnvList);
-        app->setAppParamMap(paramMap);
-        auto it = apps.insert(app->container->id, app);
-        auto err = app->start();
-        if (err) {
-            qCritical() << "start app failed" << err;
-        }
-        apps.erase(it);
-    });
-    // future.waitForFinished();
-    return std::move(reply);
+    Reply reply;
+    reply.code = -1;
+    reply.message = "start method is deprecated";
+    return reply;
 }
 
 Reply AppManager::Exec(const ExecParamOption &paramOption)
 {
     Reply reply;
-    reply.code = STATUS_CODE(kFail);
-    reply.message = "No such container " + paramOption.containerID;
     auto const &containerID = paramOption.containerID;
-    for (auto it : apps) {
-        if (it->container->id == containerID
-            // FIXME: use new reference
-            || package::Ref(it->container->packageName).appId == containerID) {
-            it->exec(paramOption.cmd, paramOption.env, paramOption.cwd);
-            reply.code = STATUS_CODE(kSuccess);
-            reply.message = "Exec successed";
-            return reply;
-        }
+
+    std::string executable = paramOption.cmd[0].toStdString();
+    std::vector<std::string> command;
+    for (auto cmd : paramOption.cmd.mid(1)) {
+        command.push_back(cmd.toStdString());
     }
+    ocppi::runtime::ExecOption opt;
+    opt.tty = true;
+    opt.uid = getuid();
+    opt.gid = getgid();
+    auto ret = ociCli.exec(containerID.toStdString().c_str(), executable, command, { opt });
+    if (!ret.has_value()) {
+        auto err = LINGLONG_SERR(ret.error());
+        reply.code = STATUS_CODE(kFail);
+        reply.message = "exec container failed: " + err.value().message();
+        return reply;
+    }
+    reply.code = STATUS_CODE(kSuccess);
     return reply;
 }
 
 Reply AppManager::Stop(const QString &containerId)
 {
     Reply reply;
-    auto it = apps.find(containerId);
-    if (it == apps.end()) {
-        reply.code = STATUS_CODE(kUserInputParamErr);
-        reply.message = "containerId:" + containerId + " not exist";
-        qCritical() << reply.message;
-        return reply;
-    }
-    auto app = it->data();
-    pid_t pid = app->container->pid;
-    int ret = kill(pid, SIGKILL);
-    if (ret != 0) {
+    auto id = containerId.toStdString();
+    auto ret = ociCli.kill(id.c_str(), "SIGTERM");
+    if (!ret.has_value()) {
         reply.message = "kill container failed, containerId:" + containerId;
         reply.code = STATUS_CODE(kErrorPkgKillFailed);
     } else {
         reply.code = STATUS_CODE(kErrorPkgKillSuccess);
-        reply.message = "kill app:" + app->container->packageName + " success";
+        reply.message = "kill container success, containerId:" + containerId;
     }
-    qInfo() << "kill containerId:" << containerId << ",ret:" << ret;
+    auto err = LINGLONG_SERR(ret.error());
+    qInfo() << "kill containerId:" << containerId << ", ret:" << err.value().message();
     return reply;
 }
 
 QueryReply AppManager::ListContainer()
 {
+    QueryReply reply;
+    auto ret = ociCli.list();
+    if (!ret.has_value()) {
+        auto err = LINGLONG_SERR(ret.error());
+        reply.code = err.value().code();
+        reply.message = err.value().message();
+        return reply;
+    }
     QJsonArray jsonArray;
-
-    for (const auto &app : apps) {
+    for (const auto &item : *ret) {
         auto container = QSharedPointer<Container>(new Container);
-        container->id = app->container->id;
-        container->pid = app->container->pid;
-        container->packageName = app->container->packageName;
-        container->workingDirectory = app->container->workingDirectory;
+        container->id = QString::fromStdString(item.id);
+        container->pid = item.pid;
+        container->workingDirectory = QString::fromStdString(item.bundle);
+        container->packageName = QDir(QString::fromStdString(item.bundle)).dirName();
         jsonArray.push_back(QJsonObject::fromVariantMap(QVariant::fromValue(container).toMap()));
     }
 
-    QueryReply reply;
     reply.code = STATUS_CODE(kSuccess);
     reply.message = "Success";
     reply.result = QLatin1String(QJsonDocument(jsonArray).toJson(QJsonDocument::Compact));

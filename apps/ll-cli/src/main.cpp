@@ -5,10 +5,17 @@
  */
 
 #include "linglong/api/dbus/v1/app_manager.h"
+#include "linglong/builder/builder.h"
 #include "linglong/cli/cli.h"
 #include "linglong/cli/json_printer.h"
+#include "linglong/repo/config.h"
+#include "linglong/repo/ostree_repo.h"
 #include "linglong/util/configure.h"
+#include "linglong/util/connection.h"
 #include "linglong/utils/finally/finally.h"
+#include "spdlog/logger.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
+#include "spdlog/sinks/systemd_sink.h"
 
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -125,12 +132,6 @@ int main(int argc, char **argv)
             "/org/deepin/linglong/PackageManager",
             pkgManConn);
 
-          auto appManConn = QDBusConnection::sessionBus();
-          auto appMan =
-            std::make_unique<linglong::api::dbus::v1::AppManager>("org.deepin.linglong.AppManager",
-                                                                  "/org/deepin/linglong/AppManager",
-                                                                  appManConn);
-
           if (args["--no-dbus"].asBool()) {
               if (getuid() != 0) {
                   qCritical() << "--no-dbus should only be used by root user.";
@@ -175,7 +176,35 @@ int main(int argc, char **argv)
               printer = std::make_unique<Printer>();
           }
 
-          auto cli = std::make_unique<Cli>(*printer, *appMan, *pkgMan);
+          linglong::api::client::ClientApi api;
+          auto config =
+            linglong::repo::loadConfig({ linglong::util::getLinglongRootPath() + "/config.yaml",
+                                         LINGLONG_DATA_DIR "/config.yaml" });
+          if (!config.has_value()) {
+              qCritical() << config.error();
+          }
+          linglong::repo::OSTreeRepo ostree(linglong::util::getLinglongRootPath(), *config, api);
+
+          std::unique_ptr<spdlog::logger> logger;
+          {
+              auto sinks = std::vector<std::shared_ptr<spdlog::sinks::sink>>(
+                { std::make_shared<spdlog::sinks::systemd_sink_mt>("ocppi") });
+              if (isatty(stderr->_fileno)) {
+                  sinks.push_back(std::make_shared<spdlog::sinks::stderr_color_sink_mt>());
+              }
+
+              logger = std::make_unique<spdlog::logger>("ocppi", sinks.begin(), sinks.end());
+
+              logger->set_level(spdlog::level::trace);
+          }
+          auto path = QStandardPaths::findExecutable("crun");
+          auto crun = ocppi::cli::crun::Crun::New(path.toStdString(), logger);
+          if (!crun.has_value()) {
+              std::rethrow_exception(crun.error());
+          }
+          linglong::service::AppManager appManager(ostree, *crun->get());
+
+          auto cli = std::make_unique<Cli>(*printer, appManager, *pkgMan);
 
           QMap<QString, std::function<int(Cli *, std::map<std::string, docopt::value> &)>>
             subcommandMap = { { "run", &Cli::run },

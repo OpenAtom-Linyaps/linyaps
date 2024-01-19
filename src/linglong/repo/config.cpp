@@ -43,7 +43,7 @@ Result<ConfigV1> loadConfig(const QStringList &files) noexcept
     for (const auto &file : files) {
         auto config = loadConfig(file);
         if (!config.has_value()) {
-            qInfo() << "Failed to load config from" << file << ":" << config.error();
+            qDebug() << "Failed to load config from" << file << ":" << config.error();
             continue;
         }
 

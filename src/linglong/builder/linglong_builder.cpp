@@ -20,11 +20,18 @@
 #include "linglong/util/qserializer/yaml.h"
 #include "linglong/util/runner.h"
 #include "linglong/util/sysinfo.h"
+#include "linglong/util/uuid.h"
 #include "linglong/utils/command/env.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/std_helper/qdebug_helper.h"
 #include "linglong/utils/xdg/desktop_entry.h"
+#include "nlohmann/json.hpp"
+#include "nlohmann/json_fwd.hpp"
+#include "ocppi/cli/CLI.hpp"
+#include "ocppi/runtime/ContainerID.hpp"
+#include "ocppi/runtime/RunOption.hpp"
 #include "ocppi/runtime/config/ConfigLoader.hpp"
+#include "ocppi/runtime/config/types/Generators.hpp"
 #include "ocppi/runtime/config/types/Hook.hpp"
 #include "ocppi/runtime/config/types/Hooks.hpp"
 #include "project.h"
@@ -55,41 +62,38 @@ QSERIALIZER_IMPL(message)
 
 LinglongBuilder::LinglongBuilder(repo::OSTreeRepo &ostree,
                                  cli::Printer &p,
+                                 ocppi::cli::CLI &cli,
                                  service::AppManager &appManager)
     : repo(ostree)
     , printer(p)
+    , ociCLI(cli)
     , appManager(appManager)
 {
 }
 
-linglong::utils::error::Result<void>
-LinglongBuilder::commitBuildOutput(Project *project, const nlohmann::json &overlayfs)
+linglong::utils::error::Result<void> LinglongBuilder::commitBuildOutput(Project *project,
+                                                                        const QString &upperdir,
+                                                                        const QString &workdir)
 {
     auto output = project->config().cacheInstallPath("files");
-    linglong::util::ensureDir(output);
-
-    auto upperDir = QStringList{ QString::fromStdString(overlayfs["upper"]),
-                                 project->config().targetInstallPath("") }
-                      .join("/");
-    linglong::util::ensureDir(upperDir);
-
     auto lowerDir = project->config().cacheAbsoluteFilePath({ "overlayfs", "lower" });
     // if combine runtime, lower is ${PROJECT_CACHE}/runtime/files
     if (PackageKindRuntime == project->package->kind) {
         lowerDir = project->config().cacheAbsoluteFilePath({ "runtime", "files" });
     }
-    linglong::util::ensureDir(lowerDir);
+
+    util::ensureDir(lowerDir);
+    util::ensureDir(upperdir);
+    util::ensureDir(workdir);
+    util::ensureDir(output);
 
     QProcess fuseOverlayfs;
     fuseOverlayfs.setProgram("fuse-overlayfs");
     fuseOverlayfs.setArguments({
-      "-f",
       "-o",
-      "auto_unmount",
+      "upperdir=" + upperdir,
       "-o",
-      "upperdir=" + upperDir,
-      "-o",
-      QString::fromStdString("workdir=" + std::string(overlayfs["workdir"])),
+      "workdir=" + workdir,
       "-o",
       "lowerdir=" + lowerDir,
       output,
@@ -97,16 +101,14 @@ LinglongBuilder::commitBuildOutput(Project *project, const nlohmann::json &overl
 
     qDebug() << "run" << fuseOverlayfs.program() << fuseOverlayfs.arguments().join(" ");
 
-    qint64 fuseOverlayfsPid = -1;
-    fuseOverlayfs.startDetached(&fuseOverlayfsPid);
-    fuseOverlayfs.waitForStarted(-1);
-
+    fuseOverlayfs.start();
+    if (!fuseOverlayfs.waitForFinished()) {
+        return LINGLONG_ERR(-1, "exec fuse-overlayfs failed!" + fuseOverlayfs.errorString());
+    }
     auto _ = qScopeGuard([=] {
-        kill(static_cast<pid_t>(fuseOverlayfsPid), SIGTERM);
+        qDebug() << "umount fuse overlayfs";
+        QProcess::execute("umount", { "--lazy", output });
     });
-
-    // FIXME: must wait fuse mount filesystem
-    QThread::sleep(1);
 
     auto entriesPath = project->config().cacheInstallPath("entries");
 
@@ -160,7 +162,7 @@ LinglongBuilder::commitBuildOutput(Project *project, const nlohmann::json &overl
     auto desktopFileSavePath = QStringList{ entriesPath, "applications" }.join(QDir::separator());
     auto err = modifyConfigFile(desktopFilePath, desktopFileSavePath, "*.desktop", appId);
     if (err) {
-        return LINGLONG_ERR(err.code(), err.message());
+        return LINGLONG_ERR(err.code(), "modify config file: " + err.message());
     }
 
     // modify context-menus file
@@ -169,7 +171,7 @@ LinglongBuilder::commitBuildOutput(Project *project, const nlohmann::json &overl
     auto contextFileSavePath = contextFilePath;
     err = modifyConfigFile(contextFilePath, contextFileSavePath, "*.conf", appId);
     if (err) {
-        return LINGLONG_ERR(err.code(), err.message());
+        return LINGLONG_ERR(err.code(), "modify desktop file: " + err.message());
     }
 
     auto moveDir = [](const QStringList targetList,
@@ -201,7 +203,7 @@ LinglongBuilder::commitBuildOutput(Project *project, const nlohmann::json &overl
                   project->config().cacheInstallPath("files"),
                   project->config().cacheInstallPath("devel-install", "files"));
     if (err) {
-        return LINGLONG_ERR(err.code(), err.message());
+        return LINGLONG_ERR(err.code(), "move debug file: " + err.message());
     }
 
     auto createInfo = [](Project *project) -> linglong::util::Error {
@@ -253,23 +255,24 @@ LinglongBuilder::commitBuildOutput(Project *project, const nlohmann::json &overl
 
     err = createInfo(project);
     if (err) {
-        return LINGLONG_ERR(err.code(), err.message());
+        return LINGLONG_ERR(err.code(), "create info " + err.message());
     }
     auto refRuntime = project->refWithModule("runtime");
     refRuntime.channel = "main";
+    qDebug() << "importDirectory " << project->config().cacheInstallPath("");
     auto ret = repo.importDirectory(refRuntime, project->config().cacheInstallPath(""));
 
     if (!ret.has_value()) {
-        printer.printMessage(
-          QString("commit %1 filed").arg(project->refWithModule("runtime").toString()));
-        return LINGLONG_EWRAP("commit runtime filed", ret.error());
+        return LINGLONG_EWRAP("import runtime", ret.error());
     }
 
     auto refDevel = project->refWithModule("devel");
     refDevel.channel = "main";
+    qDebug() << "importDirectory " << project->config().cacheInstallPath("devel-install", "");
     ret = repo.importDirectory(refDevel, project->config().cacheInstallPath("devel-install", ""));
-    if (!ret.has_value())
-        return LINGLONG_EWRAP("commit devel filed", ret.error());
+    if (!ret.has_value()) {
+        return LINGLONG_EWRAP("import devel", ret.error());
+    }
     return LINGLONG_OK;
 };
 
@@ -315,96 +318,42 @@ linglong::util::Error LinglongBuilder::config(const QString &userName, const QSt
 }
 
 // FIXME: should merge with runtime
-int LinglongBuilder::startContainer(QSharedPointer<Container> c,
-                                    ocppi::runtime::config::types::Config &r)
+linglong::utils::error::Result<int> LinglongBuilder::startContainer(
+  QString workdir, ocppi::cli::CLI &cli, ocppi::runtime::config::types::Config &r)
 {
+    QDir dir(workdir);
+    // 初始化rootfs目录
+    dir.mkdir("rootfs");
+    // 在rootfs目录创建一些软链接，会在容器中使用
+    for (auto link : QStringList{ "lib", "lib32", "lib64", "libx32", "bin", "sbin" }) {
+        QFile::link("usr/" + link, dir.filePath("rootfs/" + link));
+    }
+    // 使用rootfs做容器根目录
+    r.root->readonly = true;
+    r.root->path = dir.filePath("rootfs").toStdString();
 
-#define LL_VAL(str) #str
-#define LL_TOSTRING(str) LL_VAL(str)
-
-    QList<QList<int64_t>> uidMaps = {
-        { getuid(), 0, 1 },
+    // 写容器配置文件
+    auto data = toJSON(r).dump();
+    QFile f(dir.filePath("config.json"));
+    qDebug() << "container config file" << f.fileName();
+    if (!f.open(QIODevice::WriteOnly)) {
+        return LINGLONG_ERR(-1, f.errorString());
+    }
+    if (!f.write(QByteArray::fromStdString(data))) {
+        return LINGLONG_ERR(-1, f.errorString());
     };
-    for (auto const &uidMap : uidMaps) {
-        ocppi::runtime::config::types::IdMapping idMap;
-        idMap.hostID = uidMap.value(0);
-        idMap.containerID = uidMap.value(1);
-        idMap.size = uidMap.value(2);
-        r.linux_->uidMappings =
-          r.linux_->uidMappings.value_or(std::vector<ocppi::runtime::config::types::IdMapping>());
-        r.linux_->uidMappings->push_back(idMap);
+    f.close();
+
+    // 运行容器
+    auto id = util::genUuid().toStdString();
+    auto path = std::filesystem::path(dir.path().toStdString());
+    auto ret = cli.run(id.c_str(), path);
+    if (!ret.has_value()) {
+        auto err = LINGLONG_SERR(ret.error());
+        qDebug() << "run container failed" << err.value().message();
+        return err.value().code();
     }
-
-    QList<QList<quint64>> gidMaps = {
-        { getgid(), 0, 1 },
-    };
-    for (auto const &gidMap : gidMaps) {
-        ocppi::runtime::config::types::IdMapping idMap;
-        idMap.hostID = gidMap.value(0);
-        idMap.containerID = gidMap.value(1);
-        idMap.size = gidMap.value(2);
-        r.linux_->gidMappings =
-          r.linux_->gidMappings.value_or(std::vector<ocppi::runtime::config::types::IdMapping>());
-        r.linux_->gidMappings->push_back(idMap);
-    }
-
-    r.root->path = c->workingDirectory.toStdString() + "/root";
-    util::ensureDir(r.root->path.c_str());
-    // write pid file
-    QFile pidFile(c->workingDirectory + QString("/%1.pid").arg(getpid()));
-    pidFile.open(QIODevice::WriteOnly);
-    pidFile.close();
-
-    qDebug() << "start container at" << r.root->path;
-
-    auto runtimeConfigJSON = toJSON(r);
-
-    auto data = runtimeConfigJSON.dump();
-
-    int sockets[2]; // save file describers of sockets used to communicate with ll-box
-
-    if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, sockets) != 0) {
-        return EXIT_FAILURE;
-    }
-
-    prctl(PR_SET_PDEATHSIG, SIGKILL);
-
-    pid_t boxPid = fork();
-    if (boxPid < 0) {
-        return -1;
-    }
-
-    if (0 == boxPid) {
-        // child process
-        (void)close(sockets[1]);
-        auto socket = std::to_string(sockets[0]);
-        char const *const args[] = { "ll-box", socket.c_str(), NULL };
-        int ret = execvp(args[0], (char **)args);
-        exit(ret);
-    } else {
-        close(sockets[0]);
-        // FIXME: handle error
-        (void)write(sockets[1], data.c_str(), data.size());
-        (void)write(sockets[1], "\0", 1); // each data write into sockets should ended with '\0'
-
-        c->pid = boxPid;
-        waitpid(boxPid, nullptr, 0);
-    }
-    // return exit status from ll-box
-    QString msg;
-    const size_t bufSize = 1024;
-    char buf[bufSize] = {};
-    size_t ret = 0;
-
-    ret = read(sockets[1], buf, bufSize);
-    if (ret > 0) {
-        msg.append(buf);
-    }
-
-    // FIXME: DO NOT name a class as "message" if it not for an common usage.
-    auto result = util::loadJsonString<message>(msg);
-
-    return result->wstatus;
+    return 0;
 }
 
 linglong::util::Error LinglongBuilder::generate(const QString &projectName)
@@ -629,81 +578,114 @@ linglong::util::Error LinglongBuilder::build()
         }
     }
 
+    // 挂载base目录
+    auto baseDirs =
+      QDir(hostBasePath + "files").entryList(QDir::Dirs | QDir::NoSymLinks | QDir::NoDotAndDotDot);
+    for (auto entry : baseDirs) {
+        auto source = hostBasePath + "files/" + entry;
+        ocppi::runtime::config::types::Mount m;
+        m.type = "bind";
+        m.source = source.toStdString();
+        m.destination = "/" + entry.toStdString();
+        m.options = { "rbind", "ro", "nosuid", "nodev" };
+        r->mounts->push_back(m);
+    };
+
+    // 初始化 overlayfs 目录
+    QDir overlayDir(project->config().cacheAbsoluteFilePath({ "overlayfs" }));
+    // up 目录是 overlay 的 upperdir，依赖会在 depend fetcher 时 checkout 到里面
+    auto overlayUpDir = overlayDir.filePath("up/") + project->config().targetInstallPath("");
+    // wk 目录是 overlay 的 workdir，lowerdir 是 runtime 目录
+    auto overlayWorkDir = overlayDir.filePath("wk");
+    // point 目录是 overlay 的挂载目录
+    auto overlayPointDir = overlayDir.filePath("point");
+
+    QProcess fuseOverlayfs;
+    // lib 会安装到 /runtime 目录中, 所以使用 fuse-overlayfs 挂载可写的 /runtime
+    if (project->package->kind == PackageKindLib) {
+        // 由于历史原因，lib库的构建产物在存储时没有/runtime路径前缀
+        // 所以需要更改updir目录，来保持兼容
+        util::ensureDir(overlayUpDir);
+        util::ensureDir(overlayWorkDir);
+        util::ensureDir(overlayPointDir);
+
+        fuseOverlayfs.setProgram("fuse-overlayfs");
+        fuseOverlayfs.setArguments({
+          "-o",
+          "upperdir=" + overlayUpDir,
+          "-o",
+          "workdir=" + overlayUpDir,
+          "-o",
+          "lowerdir=" + project->config().cacheAbsoluteFilePath({ "runtime", "files" }),
+          overlayPointDir,
+        });
+        qDebug() << "run" << fuseOverlayfs.program() << fuseOverlayfs.arguments().join(" ");
+        fuseOverlayfs.start();
+        if (!fuseOverlayfs.waitForFinished()) {
+            return NewError(-1, "exec fuse-overlayfs failed!" + fuseOverlayfs.errorString());
+        }
+
+        // 使用容器hook取消挂载runtime
+        r->hooks = r->hooks.value_or(ocppi::runtime::config::types::Hooks{});
+        ocppi::runtime::config::types::Hook umountRuntimeHook;
+        umountRuntimeHook.args = { "umount", "--lazy", overlayPointDir.toStdString() };
+        umountRuntimeHook.path = "/usr/bin/umount";
+        r->hooks->poststop = { umountRuntimeHook };
+
+        ocppi::runtime::config::types::Mount m;
+        m.type = "bind";
+        m.source = overlayPointDir.toStdString();
+        m.destination = "/runtime";
+        m.options = { "rbind", "rw", "nosuid", "nodev" };
+        r->mounts->push_back(m);
+    } else {
+        // app 会安装到 /opt/apps/$appid/files ，所以挂载只读的/runtime
+        ocppi::runtime::config::types::Mount m;
+        m.type = "bind";
+        m.source = project->config().cacheAbsoluteFilePath({ "runtime", "files" }).toStdString();
+        m.destination = "/runtime";
+        m.options = { "rbind", "ro", "nosuid", "nodev" };
+        r->mounts->push_back(m);
+        // 挂载 overlayfs/up/opt/apps/$appid/files 到 /opt/apps/$appid/files 目录
+        // 在构建结束后，会从 overlayfs/up 获取构建产物
+        // 所以在不使用fuse时也挂载 overlayfs/up 作为安装目录
+        m.source = overlayUpDir.toStdString();
+        m.destination = "/opt/apps/" + project->ref().appId.toStdString() + "/files";
+        m.options = { "rbind", "rw", "nosuid", "nodev" };
+        r->mounts->push_back(m);
+    }
     auto container = QSharedPointer<Container>(new Container);
     err = container->create("");
     if (err) {
         return WrapError(err, "create container failed");
     }
-
-    r->annotations = r->annotations.value_or(std::map<std::string, nlohmann::json>{});
-    auto &anno = *r->annotations;
-
-    anno["overlayfs"]["lowerParent"] =
-      project->config().cacheAbsoluteFilePath({ "overlayfs", "lp" }).toStdString();
-
-    anno["overlayfs"]["upper"] =
-      project->config().cacheAbsoluteFilePath({ "overlayfs", "up" }).toStdString();
-
-    anno["overlayfs"]["workdir"] =
-      project->config().cacheAbsoluteFilePath({ "overlayfs", "wk" }).toStdString();
-
-    // mount tmpfs to /tmp in container
+    // 挂载tmp
     ocppi::runtime::config::types::Mount m;
     m.type = "tmpfs";
-    m.options = { "nosuid", "strictatime", "mode=777" };
     m.source = "tmp";
     m.destination = "/tmp";
+    m.options = { "nosuid", "strictatime", "mode=777" };
     r->mounts->push_back(m);
-
-    auto &mounts = anno["overlayfs"]["mounts"] = nlohmann::json::array_t{};
-
-    // get runtime, and parse base from runtime
-    for (const auto &rpath : QStringList{ "/usr", "/etc", "/var" }) {
-        ocppi::runtime::config::types::Mount m;
-        m.type = "bind";
-        m.options = { "ro", "rbind" };
-        m.source = QStringList{ hostBasePath, "files", rpath }.join("/").toStdString();
-        m.destination = rpath.toStdString();
-        mounts.push_back(toJSON(m));
-    }
-
-    // mount project build result path
-    // for runtime/lib, use overlayfs
-    // for app, mount to opt
-    auto hostInstallPath = project->config().cacheInstallPath("files");
-    linglong::util::ensureDir(hostInstallPath);
-    QList<QPair<QString, QString>> overlaysMountMap = {};
-
-    if (project->runtime || !project->depends.isEmpty()) {
-        overlaysMountMap.push_back({ project->config().cacheRuntimePath("files"), "/runtime" });
-    }
-
-    for (const auto &pair : overlaysMountMap) {
-        ocppi::runtime::config::types::Mount m;
-        m.type = "bind";
-        m.options = { "ro" };
-        m.source = pair.first.toStdString();
-        m.destination = pair.second.toStdString();
-        mounts.push_back(toJSON(m));
-    }
-
-    anno["containerRootPath"] = container->workingDirectory.toStdString();
-
+    // 挂载构建文件
     auto containerSourcePath = "/source";
-
     QList<QPair<QString, QString>> mountMap = {
+        // 源码目录
         { sf.sourceRoot(), containerSourcePath },
+        // 构建脚本
         { project->buildScriptPath(), BuildScriptPath },
     };
-
     for (const auto &pair : mountMap) {
         ocppi::runtime::config::types::Mount m;
         m.type = "bind";
         m.source = pair.first.toStdString();
         m.destination = pair.second.toStdString();
+        m.options = { "rbind", "nosuid", "nodev" };
         r->mounts->push_back(m);
     }
 
+    if (!BuilderConfig::instance()->getExec().empty()) {
+        r->process->terminal = true;
+    }
     r->process->args = { "/bin/bash", "-e", BuildScriptPath };
     r->process->cwd = containerSourcePath;
     r->process->env->push_back("PATH=/runtime/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/"
@@ -720,17 +702,48 @@ linglong::util::Error LinglongBuilder::build()
         r->process->env->push_back("LD_LIBRARY_PATH=/runtime/lib:/runtime/lib/aarch64-linux-gnu");
     }
 
-    r->hooks = r->hooks.value_or(ocppi::runtime::config::types::Hooks{});
-    r->hooks->prestart = { { std::nullopt, std::nullopt, "/usr/sbin/ldconfig", std::nullopt } };
-
-    printer.printMessage("[Start Build]");
-    if (startContainer(container, *r)) {
-        return NewError(-1, "build task failed in container");
+    QList<QList<int64_t>> uidMaps = {
+        { getuid(), getuid(), 1 },
+    };
+    for (auto const &uidMap : uidMaps) {
+        ocppi::runtime::config::types::IdMapping idMap;
+        idMap.hostID = uidMap.value(0);
+        idMap.containerID = uidMap.value(1);
+        idMap.size = uidMap.value(2);
+        r->linux_->uidMappings =
+          r->linux_->uidMappings.value_or(std::vector<ocppi::runtime::config::types::IdMapping>());
+        r->linux_->uidMappings->push_back(idMap);
     }
-    printer.printMessage("[Commit Content]");
-    auto result = commitBuildOutput(project.get(), anno["overlayfs"]);
-    if (!result.has_value()) {
-        return NewError(result.error().code(), result.error().message());
+
+    QList<QList<quint64>> gidMaps = {
+        { getgid(), getuid(), 1 },
+    };
+    for (auto const &gidMap : gidMaps) {
+        ocppi::runtime::config::types::IdMapping idMap;
+        idMap.hostID = gidMap.value(0);
+        idMap.containerID = gidMap.value(1);
+        idMap.size = gidMap.value(2);
+        r->linux_->gidMappings =
+          r->linux_->gidMappings.value_or(std::vector<ocppi::runtime::config::types::IdMapping>());
+        r->linux_->gidMappings->push_back(idMap);
+    }
+    r->process->user = ocppi::runtime::config::types::User();
+    r->process->user->uid = getuid();
+    r->process->user->gid = getgid();
+
+    QTemporaryDir tmpDir;
+    tmpDir.setAutoRemove(false);
+    auto startRet = startContainer(tmpDir.path(), ociCLI, *r);
+    if (!startRet.has_value()) {
+        return NewError(-1, "build task failed in container: " + startRet.error().message());
+    }
+    if (fuseOverlayfs.Running) {
+        fuseOverlayfs.close();
+    }
+    auto commitRet = commitBuildOutput(project.get(), overlayUpDir, overlayWorkDir);
+    if (!commitRet.has_value()) {
+        return NewError(commitRet.error().code(),
+                        "commit build output: " + commitRet.error().message());
     }
 
     printer.printMessage(QString("Build %1 success").arg(project->package->id));

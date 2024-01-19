@@ -53,6 +53,20 @@ public:
           std::make_unique<details::ErrorImpl>(file, line, "default", code, msg, nullptr));
     }
 
+    static auto Err(const char *file, int line, std::exception_ptr err) -> Error
+    {
+        QString what;
+        try {
+            std::rethrow_exception(err);
+        } catch (const std::exception &e) {
+            what = e.what();
+        } catch (...) {
+            what = "Unknown exception caught";
+        }
+        return Error(
+          std::make_unique<details::ErrorImpl>(file, line, "default", -1, what, nullptr));
+    }
+
 private:
     explicit Error(std::unique_ptr<details::ErrorImpl> pImpl)
         : pImpl(std::move(pImpl))
@@ -93,6 +107,10 @@ using Result = tl::expected<Value, Error>;
                                                         QT_MESSAGELOG_LINE, \
                                                         gErr->code,         \
                                                         gErr->message))
+
+#define LINGLONG_SERR(stdErr) /*NOLINT*/ \
+    tl::unexpected(                      \
+      ::linglong::utils::error::Error::Err(QT_MESSAGELOG_FILE, QT_MESSAGELOG_LINE, stdErr))
 
 #define LINGLONG_OK \
     {               \

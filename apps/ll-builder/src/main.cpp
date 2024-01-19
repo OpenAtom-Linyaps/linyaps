@@ -16,6 +16,9 @@
 #include "linglong/util/xdg.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/global/initialize.h"
+#include "spdlog/logger.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
+#include "spdlog/sinks/systemd_sink.h"
 
 #include <QCommandLineOption>
 #include <QCommandLineParser>
@@ -40,6 +43,23 @@ int main(int argc, char **argv)
 
     applicationInitializte();
 
+    std::unique_ptr<spdlog::logger> logger;
+    {
+        auto sinks = std::vector<std::shared_ptr<spdlog::sinks::sink>>(
+          { std::make_shared<spdlog::sinks::systemd_sink_mt>("ocppi") });
+        if (isatty(stderr->_fileno)) {
+            sinks.push_back(std::make_shared<spdlog::sinks::stderr_color_sink_mt>());
+        }
+
+        logger = std::make_unique<spdlog::logger>("ocppi", sinks.begin(), sinks.end());
+
+        logger->set_level(spdlog::level::trace);
+    }
+    auto path = QStandardPaths::findExecutable("crun");
+    auto crun = ocppi::cli::crun::Crun::New(path.toStdString(), logger);
+    if (!crun.has_value()) {
+        std::rethrow_exception(crun.error());
+    }
     linglong::builder::BuilderConfig::instance()->setProjectRoot(QDir::currentPath());
 
     QCommandLineParser parser;
@@ -78,9 +98,8 @@ int main(int argc, char **argv)
                                       config,
                                       api);
     linglong::cli::Printer printer;
-
-    linglong::service::AppManager appManager(ostree);
-    linglong::builder::LinglongBuilder builder(ostree, printer, appManager);
+    linglong::service::AppManager appManager(ostree, *crun->get());
+    linglong::builder::LinglongBuilder builder(ostree, printer, *crun->get(), appManager);
 
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
         { "generate",

@@ -14,6 +14,7 @@
 #include "linglong/service/app_manager.h"
 #include "linglong/util/error.h"
 #include "linglong/utils/error/error.h"
+#include "ocppi/cli/CLI.hpp"
 #include "ocppi/runtime/config/types/Config.hpp"
 #include "ocppi/runtime/config/types/Mount.hpp"
 #include "project.h"
@@ -29,6 +30,7 @@ class LinglongBuilder : public QObject, public Builder
 public:
     explicit LinglongBuilder(repo::OSTreeRepo &ostree,
                              cli::Printer &p,
+                             ocppi::cli::CLI &cli,
                              service::AppManager &appManager);
     linglong::util::Error config(const QString &userName, const QString &password) override;
 
@@ -61,12 +63,14 @@ public:
 private:
     repo::OSTreeRepo &repo;
     cli::Printer &printer;
+    ocppi::cli::CLI &ociCLI;
     service::AppManager &appManager;
     linglong::utils::error::Result<void> commitBuildOutput(Project *project,
-                                                           const nlohmann::json &overlayfs);
+                                                           const QString &upperdir,
+                                                           const QString &workdir);
 
-    static int startContainer(QSharedPointer<Container> c,
-                              ocppi::runtime::config::types::Config &r);
+    static linglong::utils::error::Result<int>
+    startContainer(QString workdir, ocppi::cli::CLI &cli, ocppi::runtime::config::types::Config &r);
     static auto toJSON(const ocppi::runtime::config::types::Mount &) -> nlohmann::json;
     static auto toJSON(const ocppi::runtime::config::types::Config &) -> nlohmann::json;
 };

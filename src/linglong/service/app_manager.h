@@ -14,6 +14,9 @@
 #include "linglong/package/ref.h"
 #include "linglong/repo/repo.h"
 #include "linglong/runtime/app.h"
+#include "linglong/util/error.h"
+#include "linglong/utils/error/error.h"
+#include "ocppi/cli/CLI.hpp"
 
 #include <QDBusArgument>
 #include <QDBusContext>
@@ -39,7 +42,7 @@ class AppManager : public QObject, protected QDBusContext
     Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.AppManager")
 
 public:
-    AppManager(repo::Repo &repo);
+    AppManager(repo::Repo &repo, ocppi::cli::CLI &ociCli);
     AppManager(const AppManager &) = delete;
     AppManager(AppManager &&) = delete;
     auto operator=(const AppManager &) -> AppManager & = delete;
@@ -93,8 +96,9 @@ public:
     QScopedPointer<QThreadPool> runPool; ///< 启动应用线程池
 
 private:
-    QMap<QString, QSharedPointer<linglong::runtime::App>> apps = {};
+    QMap<QString, QSharedPointer<linglong::runtime::App> > apps = {};
     linglong::repo::Repo &repo;
+    ocppi::cli::CLI &ociCli;
 };
 
 } // namespace service

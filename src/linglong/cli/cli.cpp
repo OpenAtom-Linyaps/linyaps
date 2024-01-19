@@ -10,6 +10,7 @@
 #include "linglong/package/layer_file.h"
 #include "linglong/util/qserializer/json.h"
 #include "linglong/utils/command/env.h"
+#include "linglong/utils/error/error.h"
 
 #include <nlohmann/json.hpp>
 
@@ -267,12 +268,30 @@ int namespaceEnter(pid_t pid, const QString &id)
 } // namespace
 
 Cli::Cli(Printer &printer,
-         linglong::api::dbus::v1::AppManager &appMan,
+         linglong::service::AppManager &appMan,
          linglong::api::dbus::v1::PackageManager &pkgMan)
     : printer(printer)
     , appMan(appMan)
     , pkgMan(pkgMan)
 {
+}
+
+// TODD(wurongjie) 自动将输入转为container id
+utils::error::Result<QString> Cli::getContainerID(std::map<std::string, docopt::value> &args)
+{
+    QString containerId;
+    if (args["PAGODA"].isString()) {
+        containerId = QString::fromStdString(args["PAGODA"].asString());
+    }
+
+    if (args["APP"].isString()) {
+        containerId = QString::fromStdString(args["APP"].asString());
+    }
+
+    if (containerId.isEmpty()) {
+        return LINGLONG_ERR(400, "canot get container id");
+    }
+    return containerId;
 }
 
 int Cli::run(std::map<std::string, docopt::value> &args)
@@ -320,14 +339,10 @@ int Cli::run(std::map<std::string, docopt::value> &args)
             paramOption.filterInterface = data->interface[0];
         }
     }
-
-    // TODO: ll-cli 进沙箱环境
     qDebug() << "send param" << paramOption.appId << "to service";
-    auto dbusReply = this->appMan.Start(paramOption);
-    dbusReply.waitForFinished();
-    auto reply = dbusReply.value();
-    if (reply.code != 0) {
-        this->printer.printErr(LINGLONG_ERR(reply.code, reply.message).value());
+    auto ret = this->appMan.Run(paramOption);
+    if (!ret.has_value()) {
+        this->printer.printErr(ret.error());
         return -1;
     }
     return 0;
@@ -335,30 +350,20 @@ int Cli::run(std::map<std::string, docopt::value> &args)
 
 int Cli::exec(std::map<std::string, docopt::value> &args)
 {
-    QString containerId;
-    containerId = QString::fromStdString(args["PAGODA"].asString());
-
-    if (containerId.isEmpty()) {
-        this->printer.printErr(LINGLONG_ERR(-1, "failed to get container id").value());
+    auto ret = getContainerID(args);
+    if (!ret.has_value()) {
+        this->printer.printErr(ret.error());
         return -1;
     }
-
-    linglong::service::ExecParamOption execOption;
-    execOption.containerID = containerId;
-
+    service::ExecParamOption opt;
+    opt.containerID = *ret;
     if (args["COMMAND"].isStringList()) {
         const auto &command = args["COMMAND"].asStringList();
         for (const auto &arg : command) {
-            execOption.cmd.push_back(QString::fromStdString(arg));
+            opt.cmd.push_back(QString::fromStdString(arg));
         }
     }
-
-    const auto dbusReply = this->appMan.Exec(execOption);
-    const auto reply = dbusReply.value();
-    if (reply.code != STATUS_CODE(kSuccess)) {
-        this->printer.printErr(LINGLONG_ERR(reply.code, reply.message).value());
-        return -1;
-    }
+    appMan.Exec(opt);
     return 0;
 }
 
@@ -381,7 +386,7 @@ int Cli::enter(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    auto result = this->appMan.ListContainer().value().result;
+    auto result = this->appMan.ListContainer().result;
 
     QList<QSharedPointer<Container>> containerList;
     const auto doc = QJsonDocument::fromJson(result.toUtf8(), nullptr);
@@ -425,7 +430,8 @@ int Cli::enter(std::map<std::string, docopt::value> &args)
 
 int Cli::ps(std::map<std::string, docopt::value> &args)
 {
-    const auto replyString = this->appMan.ListContainer().value().result;
+    auto ret = this->appMan.ListContainer();
+    const auto replyString = ret.result;
 
     QList<QSharedPointer<Container>> containerList;
     const auto doc = QJsonDocument::fromJson(replyString.toUtf8(), nullptr);
@@ -446,19 +452,14 @@ int Cli::ps(std::map<std::string, docopt::value> &args)
 
 int Cli::kill(std::map<std::string, docopt::value> &args)
 {
-    QString containerId;
+    auto ret = getContainerID(args);
 
-    containerId = QString::fromStdString(args["PAGODA"].asString());
-
-    if (containerId.isEmpty()) {
-        this->printer.printErr(LINGLONG_ERR(-1, "failed to get container id").value());
+    if (!ret.has_value()) {
+        this->printer.printErr(ret.error());
         return -1;
     }
-    // TODO: show kill result
-    QDBusPendingReply<linglong::service::Reply> dbusReply = this->appMan.Stop(containerId);
-    dbusReply.waitForFinished();
-    linglong::service::Reply reply = dbusReply.value();
-    qDebug() << reply.message;
+
+    auto reply = this->appMan.Stop(*ret);
     if (reply.code != STATUS_CODE(kErrorPkgKillSuccess)) {
         this->printer.printErr(LINGLONG_ERR(reply.code, reply.message).value());
         return -1;

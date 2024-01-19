@@ -32,13 +32,9 @@
     "mounts": [
         {
             "destination": "/sys",
-            "type": "sysfs",
-            "source": "sysfs",
-            "options": [
-                "nosuid",
-                "noexec",
-                "nodev"
-            ]
+            "type": "bind",
+            "source": "/sys",
+            "options": ["rbind", "nosuid", "noexec", "nodev"]
         },
         {
             "destination": "/proc",
@@ -49,12 +45,7 @@
             "destination": "/dev",
             "type": "tmpfs",
             "source": "tmpfs",
-            "options": [
-                "nosuid",
-                "strictatime",
-                "mode=0755",
-                "size=65536k"
-            ]
+            "options": ["nosuid", "strictatime", "mode=0755", "size=65536k"]
         },
         {
             "destination": "/dev/pts",
@@ -72,34 +63,19 @@
             "destination": "/dev/shm",
             "type": "tmpfs",
             "source": "shm",
-            "options": [
-                "nosuid",
-                "noexec",
-                "nodev",
-                "mode=1777"
-            ]
+            "options": ["nosuid", "noexec", "nodev", "mode=1777"]
         },
         {
             "destination": "/dev/mqueue",
-            "type": "mqueue",
-            "source": "mqueue",
-            "options": [
-                "nosuid",
-                "noexec",
-                "nodev"
-            ]
+            "type": "bind",
+            "source": "/dev/mqueue",
+            "options": ["rbind", "nosuid", "noexec", "nodev"]
         },
         {
             "destination": "/sys/fs/cgroup",
             "type": "cgroup",
             "source": "cgroup",
-            "options": [
-                "nosuid",
-                "noexec",
-                "nodev",
-                "relatime",
-                "ro"
-            ]
+            "options": ["nosuid", "noexec", "nodev", "relatime", "ro"]
         }
     ]
 }

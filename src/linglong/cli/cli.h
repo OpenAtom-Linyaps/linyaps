@@ -46,15 +46,17 @@ public:
     Cli &operator=(Cli &&) = delete;
     ~Cli() = default;
     Cli(Printer &printer,
-        linglong::api::dbus::v1::AppManager &appMan,
+        linglong::service::AppManager &appMan,
         linglong::api::dbus::v1::PackageManager &pkgMan);
 
     static const char USAGE[];
 
 private:
     Printer &printer;
-    linglong::api::dbus::v1::AppManager &appMan;
+    linglong::service::AppManager &appMan;
     linglong::api::dbus::v1::PackageManager &pkgMan;
+
+    utils::error::Result<QString> getContainerID(std::map<std::string, docopt::value> &args);
 
 public:
     int run(std::map<std::string, docopt::value> &args);

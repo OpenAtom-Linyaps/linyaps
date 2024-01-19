@@ -509,7 +509,9 @@ auto PackageManager::ModifyRepo(const QString &name, const QString &url) -> Repl
 {
     Reply reply;
 
-    QUrl endpointUrl(url);
+    // if url ends with '/', remove it
+    const auto formatUrl = url.endsWith('/') ? url.left(url.lastIndexOf('/')) : url;
+    QUrl endpointUrl(formatUrl);
     if (name.trimmed().isEmpty()
         || (endpointUrl.scheme().toLower() != "http" && endpointUrl.scheme().toLower() != "https")
         || !endpointUrl.isValid()) {
@@ -522,7 +524,7 @@ auto PackageManager::ModifyRepo(const QString &name, const QString &url) -> Repl
     auto cfg = this->repoMan.getConfig();
 
     cfg.defaultRepo = name.toStdString();
-    cfg.repos[cfg.defaultRepo] = url.toStdString();
+    cfg.repos[cfg.defaultRepo] = formatUrl.toStdString();
 
     auto res = this->repoMan.setConfig(cfg);
     if (!res.has_value()) {

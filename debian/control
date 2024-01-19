@@ -35,7 +35,7 @@ Depends: desktop-file-utils,
          erofsfuse,
          ${misc:Depends},
          ${shlibs:Depends}
-Recommends: linglong-dbus-proxy
+Conflicts: linglong-dbus-proxy
 Description: Linglong package manager.
  Linglong package management command line tool.
 

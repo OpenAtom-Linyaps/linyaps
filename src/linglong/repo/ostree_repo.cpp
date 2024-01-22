@@ -462,7 +462,7 @@ linglong::utils::error::Result<void> OSTreeRepo::pull(package::Ref &ref, bool /*
     ostree_repo_pull(repoPtr.get(),
                      remoteRepoName.toLocal8Bit(),
                      refs_to_fetch,
-                     OSTREE_REPO_PULL_FLAGS_NONE,
+                     OSTREE_REPO_PULL_FLAGS_MIRROR,
                      progress,
                      NULL,
                      &gErr);

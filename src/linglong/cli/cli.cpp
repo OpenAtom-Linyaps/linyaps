@@ -29,9 +29,9 @@ Usage:
     ll-cli [--json] --version
     ll-cli [--json] run APP [--no-dbus-proxy] [--dbus-proxy-cfg=PATH] [--] [COMMAND...]
     ll-cli [--json] ps
-    ll-cli [--json] exec (APP | PAGODA) [--working-directory=PATH] [--] COMMAND...
-    ll-cli [--json] enter (APP | PAGODA) [--working-directory=PATH] [--] [COMMAND...]
-    ll-cli [--json] kill (APP | PAGODA)
+    ll-cli [--json] exec PAGODA [--working-directory=PATH] [--] COMMAND...
+    ll-cli [--json] enter PAGODA [--working-directory=PATH] [--] [COMMAND...]
+    ll-cli [--json] kill PAGODA
     ll-cli [--json] [--no-dbus] install TIER...
     ll-cli [--json] uninstall TIER... [--all] [--prune]
     ll-cli [--json] upgrade TIER...
@@ -189,107 +189,79 @@ int execArgs(const std::vector<std::string> &args, const std::vector<std::string
     return execve(command[0], &command[0], &env[0]);
 }
 
-int namespaceEnter(pid_t pid, const QStringList &args)
+int getChildBoxPID(pid_t pid)
+{
+    auto children = childrenOf(pid);
+    if (children.isEmpty()) {
+        return 0;
+    }
+
+    for (const auto &child : children) {
+        auto exe = QFile(QString("/proc/%1/exe").arg(child)).symLinkTarget();
+        if (exe != "/usr/bin/ll-box") {
+            continue;
+        }
+        return child;
+    }
+
+    return 0;
+}
+
+int namespaceEnter(pid_t pid, const QString &id)
 {
     int ret;
     struct stat fileStat = {};
 
-    auto children = childrenOf(pid);
-    if (children.isEmpty()) {
-        qDebug() << "get children of pid failed" << errno << strerror(errno);
+    auto childBox = getChildBoxPID(pid);
+    if (childBox == 0) {
+        qDebug() << "no ll-box process found in child of" << pid;
+        return -1;
+    }
+    childBox = getChildBoxPID(childBox);
+    if (childBox == 0) {
+        qDebug() << "no ll-box process found in child of" << pid;
         return -1;
     }
 
-    pid = childrenOf(pid).value(0);
-    auto prefix = QString("/proc/%1/ns/").arg(pid);
-    auto root = QString("/proc/%1/root").arg(pid);
-    auto proc = QString("/proc/%1").arg(pid);
+    auto target = QString::number(childBox).toUtf8();
 
-    ret = lstat(proc.toStdString().c_str(), &fileStat);
-    if (ret < 0) {
-        qDebug() << "lstat failed" << root << ret << errno << strerror(errno);
-        return -1;
-    }
+    auto sysenv = QProcessEnvironment::systemEnvironment();
 
-    QStringList nameSpaceList = {
-        "mnt", "ipc", "uts", "pid", "net",
-        // "user",
-        // TODO: is hard to set user namespace, need carefully fork and unshare
-    };
-
-    QList<int> fds;
-    for (auto const &nameSpace : nameSpaceList) {
-        auto currentNameSpace = (prefix + nameSpace).toStdString();
-        int fd = open(currentNameSpace.c_str(), O_RDONLY);
-        if (fd < 0) {
-            qCritical() << "open failed" << currentNameSpace.c_str() << fd << errno
-                        << strerror(errno);
-            continue;
+    QFile envFile(QString("/run/user/%1/linglong/%2/env").arg(getuid()).arg(id));
+    envFile.open(QIODevice::ReadOnly);
+    if (envFile.isOpen()) {
+        QTextStream in(&envFile);
+        while (!in.atEnd()) {
+            QString line = in.readLine();
+            auto name = line.left(line.indexOf('='));
+            auto value = line.mid(line.indexOf('=') + 1);
+            sysenv.insert(name, value);
         }
-        qDebug() << "push" << fd << currentNameSpace.c_str();
-        fds.push_back(fd);
+        envFile.close();
+    } else {
+        qWarning() << "Failed to open env file, not init environment variables.";
     }
 
-    int rootFd = open(root.toStdString().c_str(), O_RDONLY);
+    auto nsenter = QProcess();
+    nsenter.setProcessEnvironment(sysenv);
+    nsenter.setInputChannelMode(QProcess::ForwardedInputChannel);
+    nsenter.setProcessChannelMode(QProcess::ForwardedChannels);
+    nsenter.setProgram("nsenter");
+    nsenter.setArguments({ "-t",
+                           target,
+                           "-U",
+                           "-m",
+                           "-p",
+                           "--preserve-credentials",
+                           "--",
+                           "env",
+                           R"(debian_chroot=LINGLONG)",
+                           "bash" });
 
-    ret = unshare(CLONE_NEWNS);
-    if (ret < 0) {
-        qCritical() << "unshare failed" << ret << errno << strerror(errno);
-    }
+    nsenter.start();
+    nsenter.waitForFinished(-1);
 
-    for (auto fd : fds) {
-        ret = setns(fd, 0);
-        if (ret < 0) {
-            qCritical() << "setns failed" << fd << ret << errno << strerror(errno);
-        }
-        close(fd);
-    }
-
-    ret = fchdir(rootFd);
-    if (ret < 0) {
-        qCritical() << "chdir failed" << root << ret << errno << strerror(errno);
-        return -1;
-    }
-
-    ret = chroot(".");
-    if (ret < 0) {
-        qCritical() << "chroot failed" << root << ret << errno << strerror(errno);
-        return -1;
-    }
-
-    bringDownPermissionsTo(fileStat);
-
-    int child = fork();
-    if (child < 0) {
-        qCritical() << "fork failed" << child << errno << strerror(errno);
-        return -1;
-    }
-
-    if (0 == child) {
-        QFile envFile("/run/app/env");
-        if (!envFile.open(QIODevice::ReadOnly)) {
-            qCritical() << "open failed" << envFile.fileName() << errno << strerror(errno);
-        }
-
-        std::vector<std::string> envVec;
-        for (const auto &env : envFile.readAll().split('\n')) {
-            if (!env.isEmpty()) {
-                envVec.push_back(env.toStdString());
-            }
-        }
-
-        std::vector<std::string> argVec(args.size());
-        std::transform(args.begin(),
-                       args.end(),
-                       argVec.begin(),
-                       [](const QString &str) -> std::string {
-                           return str.toStdString();
-                       });
-
-        return execArgs(argVec, envVec);
-    }
-
-    return waitpid(-1, nullptr, 0);
+    return nsenter.exitCode();
 }
 
 } // namespace
@@ -364,13 +336,7 @@ int Cli::run(std::map<std::string, docopt::value> &args)
 int Cli::exec(std::map<std::string, docopt::value> &args)
 {
     QString containerId;
-    if (args["PAGODA"].isString()) {
-        containerId = QString::fromStdString(args["PAGODA"].asString());
-    }
-
-    if (args["APP"].isString()) {
-        containerId = QString::fromStdString(args["APP"].asString());
-    }
+    containerId = QString::fromStdString(args["PAGODA"].asString());
 
     if (containerId.isEmpty()) {
         this->printer.printErr(LINGLONG_ERR(-1, "failed to get container id").value());
@@ -398,19 +364,16 @@ int Cli::exec(std::map<std::string, docopt::value> &args)
 
 int Cli::enter(std::map<std::string, docopt::value> &args)
 {
-    this->printer.printErr(
-      LINGLONG_ERR(-1, "Command `enter` has not been implemented yet.").value());
-    return -1;
-
-    // TODO
-
     QString containerId;
-    if (args["PAGODA"].isString()) {
-        containerId = QString::fromStdString(args["PAGODA"].asString());
+
+    containerId = QString::fromStdString(args["PAGODA"].asString());
+
+    if (args["--working-directory"].isBool() && args["--working-directory"].asBool()) {
+        qWarning() << "--working-directory is not supported yet";
     }
 
-    if (args["APP"].isString()) {
-        containerId = QString::fromStdString(args["APP"].asString());
+    if (args["COMMAND"].isStringList() && !args["COMMAND"].asStringList().empty()) {
+        qWarning() << "COMMAND is not supported yet";
     }
 
     if (containerId.isEmpty()) {
@@ -418,22 +381,45 @@ int Cli::enter(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    QString cmd;
-    if (args["COMMAND"].isString()) {
-        cmd = QString::fromStdString(args["COMMAND"].asString());
-        if (cmd.isEmpty()) {
-            this->printer.printErr(LINGLONG_ERR(-1, "failed to get command list").value());
-            return -1;
+    auto result = this->appMan.ListContainer().value().result;
+
+    QList<QSharedPointer<Container>> containerList;
+    const auto doc = QJsonDocument::fromJson(result.toUtf8(), nullptr);
+    if (!doc.isArray()) {
+        this->printer.printErr(
+          LINGLONG_ERR(-1, "container list get from server is not a list").value());
+        return -1;
+    }
+
+    pid_t pid = 0;
+    QString id = "";
+
+    for (const auto item : doc.array()) {
+        const auto str = QString(QJsonDocument(item.toObject()).toJson());
+        QSharedPointer<Container> container(linglong::util::loadJsonString<Container>(str));
+        if (container->id == containerId) {
+            pid = container->pid;
+            id = container->id;
+            break;
+        }
+        if (container->packageName.contains(containerId)) {
+            pid = container->pid;
+            id = container->id;
+            break;
         }
     }
 
-    const auto pid = containerId.toInt();
+    if (pid == 0) {
+        this->printer.printErr(LINGLONG_ERR(-1, "no such container").value());
+        return -1;
+    }
 
-    int reply = namespaceEnter(pid, QStringList{ cmd });
+    int reply = namespaceEnter(pid, id);
     if (reply == -1) {
         this->printer.printErr(LINGLONG_ERR(-1, "failed to enter namespace").value());
         return -1;
     }
+
     return 0;
 }
 
@@ -461,13 +447,8 @@ int Cli::ps(std::map<std::string, docopt::value> &args)
 int Cli::kill(std::map<std::string, docopt::value> &args)
 {
     QString containerId;
-    if (args["PAGODA"].isString()) {
-        containerId = QString::fromStdString(args["PAGODA"].asString());
-    }
 
-    if (args["APP"].isString()) {
-        containerId = QString::fromStdString(args["APP"].asString());
-    }
+    containerId = QString::fromStdString(args["PAGODA"].asString());
 
     if (containerId.isEmpty()) {
         this->printer.printErr(LINGLONG_ERR(-1, "failed to get container id").value());

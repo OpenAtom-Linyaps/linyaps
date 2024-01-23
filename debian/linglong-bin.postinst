@@ -14,6 +14,12 @@ upgrade_from_1_3_x() {
                 return
         fi
 
+        if [ -f /etc/X11/Xsession.d/21linglong ] &&
+                [ "$(sha256sum /etc/X11/Xsession.d/21linglong)" = \
+                        "5b82ac8e6b02cdae66294139e7db7cbe80af8cef6b0e2eddf8d509166afce544" ]; then
+                rm /etc/X11/Xsession.d/21linglong
+        fi
+
         if [ -d /var/lib/linglong ]; then
                 echo "'/var/lib/linglong' directory exists."
                 echo "Finish upgrading from 1.3.x without touch anything."

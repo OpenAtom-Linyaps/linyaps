@@ -1005,22 +1005,45 @@ util::Error LinglongBuilder::push(const QString &repoUrl,
           repoName.isEmpty() ? BuilderConfig::instance()->remoteRepoName : repoName;
 
         // Fixme: should be buildArch.
-        auto refWithRuntime = package::Ref("",
-                                           channel,
-                                           project->package->id,
-                                           project->package->version,
-                                           util::hostArch(),
-                                           "runtime");
-        auto refWithDevel = package::Ref("",
-                                         channel,
-                                         project->package->id,
-                                         project->package->version,
-                                         util::hostArch(),
-                                         "devel");
+        auto defaultRefWithRuntime = package::Ref("",
+                                                  "main",
+                                                  project->package->id,
+                                                  project->package->version,
+                                                  util::hostArch(),
+                                                  "runtime");
+        auto defaultRefWithDevel = package::Ref("",
+                                                "main",
+                                                project->package->id,
+                                                project->package->version,
+                                                util::hostArch(),
+                                                "devel");
+        auto newRefWithRuntime = package::Ref("",
+                                              channel,
+                                              project->package->id,
+                                              project->package->version,
+                                              util::hostArch(),
+                                              "runtime");
+        auto newRefWithDevel = package::Ref("",
+                                            channel,
+                                            project->package->id,
+                                            project->package->version,
+                                            util::hostArch(),
+                                            "devel");
+        auto ret = repo.importRef(defaultRefWithRuntime, newRefWithRuntime);
+        if (!ret.has_value()) {
+            qDebug() << "change channel failed. " << defaultRefWithRuntime.toOSTreeRefLocalString()
+                     << newRefWithRuntime.toOSTreeRefLocalString();
+            return NewError(ret.error().code(), ret.error().message());
+        }
 
+        ret = repo.importRef(defaultRefWithDevel, newRefWithDevel);
+        if (!ret.has_value()) {
+            qDebug() << "change channel failed. " << defaultRefWithDevel.toOSTreeRefLocalString()
+                     << newRefWithDevel.toOSTreeRefLocalString();
+            return NewError(ret.error().code(), ret.error().message());
+        }
         // push ostree data by ref
-        // ret = repo.push(refWithRuntime, false);
-        auto ret = repo.push(refWithRuntime);
+        ret = repo.push(newRefWithRuntime);
 
         if (!ret.has_value()) {
             printer.printMessage(QString("push %1 failed").arg(project->package->id));
@@ -1030,7 +1053,7 @@ util::Error LinglongBuilder::push(const QString &repoUrl,
         }
 
         if (pushWithDevel) {
-            auto ret = repo.push(package::Ref(refWithDevel));
+            auto ret = repo.push(package::Ref(newRefWithDevel));
 
             if (!ret.has_value()) {
                 printer.printMessage(QString("push %1 failed").arg(project->package->id));

@@ -28,6 +28,7 @@ linglong::utils::error::Result<QList<QSharedPointer<package::AppMetaInfo>>>
 RepoClient::QueryApps(const package::Ref &ref)
 {
     Request_FuzzySearchReq req;
+    req.setChannel(ref.channel);
     req.setAppId(ref.appId);
     req.setVersion(ref.version);
     req.setArch(ref.arch);

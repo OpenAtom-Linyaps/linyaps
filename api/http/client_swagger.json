@@ -405,6 +405,9 @@
         "request.FuzzySearchReq": {
             "type": "object",
             "properties": {
+                "channel": {
+                    "type": "string"
+                },
                 "appId": {
                     "type": "string"
                 },

@@ -36,6 +36,9 @@ Request_FuzzySearchReq::~Request_FuzzySearchReq() {}
 
 void Request_FuzzySearchReq::initializeModel() {
 
+    m_channel_isSet = false;
+    m_channel_isValid = false;
+
     m_app_id_isSet = false;
     m_app_id_isValid = false;
 
@@ -57,6 +60,9 @@ void Request_FuzzySearchReq::fromJson(QString jsonString) {
 }
 
 void Request_FuzzySearchReq::fromJsonObject(QJsonObject json) {
+
+    m_channel_isValid = ::linglong::api::client::fromJsonValue(m_channel, json[QString("channel")]);
+    m_channel_isSet = !json[QString("channel")].isNull() && m_channel_isValid;
 
     m_app_id_isValid = ::linglong::api::client::fromJsonValue(m_app_id, json[QString("appId")]);
     m_app_id_isSet = !json[QString("appId")].isNull() && m_app_id_isValid;
@@ -80,6 +86,9 @@ QString Request_FuzzySearchReq::asJson() const {
 
 QJsonObject Request_FuzzySearchReq::asJsonObject() const {
     QJsonObject obj;
+    if (m_channel_isSet) {
+        obj.insert(QString("channel"), ::linglong::api::client::toJsonValue(m_channel));
+    }
     if (m_app_id_isSet) {
         obj.insert(QString("appId"), ::linglong::api::client::toJsonValue(m_app_id));
     }
@@ -93,6 +102,22 @@ QJsonObject Request_FuzzySearchReq::asJsonObject() const {
         obj.insert(QString("version"), ::linglong::api::client::toJsonValue(m_version));
     }
     return obj;
+}
+
+QString Request_FuzzySearchReq::getChannel() const {
+    return m_channel;
+}
+void Request_FuzzySearchReq::setChannel(const QString &channel) {
+    m_channel = channel;
+    m_channel_isSet = true;
+}
+
+bool Request_FuzzySearchReq::is_channel_Set() const{
+    return m_channel_isSet;
+}
+
+bool Request_FuzzySearchReq::is_channel_Valid() const{
+    return m_channel_isValid;
 }
 
 QString Request_FuzzySearchReq::getAppId() const {
@@ -162,6 +187,11 @@ bool Request_FuzzySearchReq::is_version_Valid() const{
 bool Request_FuzzySearchReq::isSet() const {
     bool isObjectUpdated = false;
     do {
+        if (m_channel_isSet) {
+            isObjectUpdated = true;
+            break;
+        }
+
         if (m_app_id_isSet) {
             isObjectUpdated = true;
             break;

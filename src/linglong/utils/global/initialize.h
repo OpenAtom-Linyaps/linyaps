@@ -11,6 +11,7 @@ namespace linglong::utils::global {
 
 void applicationInitializte();
 void installMessageHandler();
+bool linglongInstalled();
 
 } // namespace linglong::utils::global
 

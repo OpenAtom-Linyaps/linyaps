@@ -92,7 +92,8 @@ configure_file(scripts/create-linglong-dirs.in scripts/create-linglong-dirs
 configure_file(scripts/upgrade-all.in scripts/upgrade-all @ONLY)
 
 set(LINGLONG_SCRIPTS ${CMAKE_CURRENT_BINARY_DIR}/scripts/create-linglong-dirs
-                     ${CMAKE_CURRENT_BINARY_DIR}/scripts/upgrade-all)
+                     ${CMAKE_CURRENT_BINARY_DIR}/scripts/upgrade-all
+                     scripts/fetch-git-repo)
 
 install(PROGRAMS ${LINGLONG_SCRIPTS}
         DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/linglong/)

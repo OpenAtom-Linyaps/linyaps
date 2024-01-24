@@ -166,7 +166,7 @@ pfl_add_library(
   ./src/linglong/builder/builder.h
   ./src/linglong/builder/builder_config.cpp
   ./src/linglong/builder/builder_config.h
-  ./src/linglong/builder/builder_templates.qrc
+  ./src/linglong/builder/builder_releases.qrc
   ./src/linglong/builder/depend_fetcher.cpp
   ./src/linglong/builder/depend_fetcher.h
   ./src/linglong/builder/linglong_builder.cpp

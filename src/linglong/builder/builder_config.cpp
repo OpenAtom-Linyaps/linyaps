@@ -14,7 +14,7 @@
 
 static void initQResource()
 {
-    Q_INIT_RESOURCE(builder_templates);
+    Q_INIT_RESOURCE(builder_releases);
 }
 
 namespace linglong {

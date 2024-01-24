@@ -1152,14 +1152,10 @@ linglong::util::Error LinglongBuilder::run()
           BuilderConfig::instance()->layerPath({ project->runtimeRef().toLocalRefString() });
         linglong::util::ensureDir(targetPath);
 
-        auto remoteRuntimeRef = package::Ref(BuilderConfig::instance()->remoteRepoName,
-                                             "linglong",
-                                             project->runtimeRef().appId,
-                                             project->runtimeRef().version,
-                                             project->runtimeRef().arch,
-                                             "");
-
-        auto latestRuntimeRef = repo.remoteLatestRef(remoteRuntimeRef);
+        auto latestRuntimeRef = repo.localLatestRef(project->runtimeRef());
+        if (!latestRuntimeRef.has_value()) {
+            return NewError(latestRuntimeRef.error().code(), latestRuntimeRef.error().message());
+        }
         ret = repo.checkoutAll(*latestRuntimeRef, "", targetPath);
         if (!ret.has_value()) {
             return NewError(-1, "checkout runtime files failed");

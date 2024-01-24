@@ -143,6 +143,30 @@ linglong::utils::error::Result<void> OSTreeRepo::setConfig(const config::ConfigV
 linglong::utils::error::Result<void> OSTreeRepo::importDirectory(const package::Ref &ref,
                                                                  const QString &path)
 {
+    auto ret = commit(DIR, ref, path, package::Ref(""));
+    if (!ret.has_value()) {
+        return LINGLONG_EWRAP("call commit in importDirectory failed.", ret.error());
+    }
+
+    return LINGLONG_OK;
+}
+
+linglong::utils::error::Result<void> OSTreeRepo::importRef(const package::Ref &oldRef,
+                                                           const package::Ref &newRef)
+{
+    auto ret = commit(REF, newRef, "", oldRef);
+    if (!ret.has_value()) {
+        return LINGLONG_EWRAP("call commit in importRef failed.", ret.error());
+    }
+
+    return LINGLONG_OK;
+}
+
+linglong::utils::error::Result<void> OSTreeRepo::commit(Tree treeType,
+                                                        const package::Ref &ref,
+                                                        const QString &path,
+                                                        const package::Ref &oldRef)
+{
     g_autoptr(GError) gErr = nullptr;
     if (!ostree_repo_prepare_transaction(repoPtr.get(), NULL, NULL, &gErr))
         return LINGLONG_ERR(gErr->code, gErr->message);
@@ -155,8 +179,24 @@ linglong::utils::error::Result<void> OSTreeRepo::importDirectory(const package::
                                       nullptr,
                                       nullptr,
                                       nullptr);
-
-    g_autoptr(GFile) gfile = g_file_new_for_path(path.toStdString().c_str());
+    g_autoptr(GFile) gfile = nullptr;
+    switch (treeType) {
+    case DIR:
+        gfile = g_file_new_for_path(path.toStdString().c_str());
+        break;
+    case REF:
+        if (!ostree_repo_read_commit(repoPtr.get(),
+                                     oldRef.toOSTreeRefLocalString().toStdString().c_str(),
+                                     &gfile,
+                                     NULL,
+                                     nullptr,
+                                     &gErr))
+            return LINGLONG_ERR(gErr->code, gErr->message);
+        break;
+    case TAR:
+        qWarning() << "not impelement now.";
+        break;
+    }
     if (!ostree_repo_write_directory_to_mtree(repoPtr.get(),
                                               gfile,
                                               mtree,
@@ -290,7 +330,7 @@ void OSTreeRepo::progress_changed(OstreeAsyncProgress *progress, gpointer user_d
     guint total_delta_part_fallbacks;
     guint new_progress = 0;
     gboolean last_was_metadata =
-            GPOINTER_TO_UINT(g_object_get_data(G_OBJECT(progress), "last-was-metadata"));
+      GPOINTER_TO_UINT(g_object_get_data(G_OBJECT(progress), "last-was-metadata"));
     char *formatted_bytes_sec = "0KB";
 
     g_autoptr(GString) buf = g_string_new("");
@@ -381,7 +421,7 @@ void OSTreeRepo::progress_changed(OstreeAsyncProgress *progress, gpointer user_d
         /* Are we doing deltas?  If so, we can be more accurate */
         if (total_delta_parts > 0) {
             guint64 fetched_delta_part_size =
-                    ostree_async_progress_get_uint64(progress, "fetched-delta-part-size");
+              ostree_async_progress_get_uint64(progress, "fetched-delta-part-size");
             g_autofree char *formatted_fetched = NULL;
             g_autofree char *formatted_total = NULL;
 
@@ -396,9 +436,9 @@ void OSTreeRepo::progress_changed(OstreeAsyncProgress *progress, gpointer user_d
                 guint64 est_time_remaining = 0;
                 if (total_delta_part_size > fetched_delta_part_size)
                     est_time_remaining =
-                            (total_delta_part_size - fetched_delta_part_size) / bytes_sec;
+                      (total_delta_part_size - fetched_delta_part_size) / bytes_sec;
                 g_autofree char *formatted_est_time_remaining =
-                        _formatted_time_remaining_from_seconds(est_time_remaining);
+                  _formatted_time_remaining_from_seconds(est_time_remaining);
                 /* No space between %s and remaining, since formatted_est_time_remaining has a
                  * trailing space */
                 g_string_append_printf(buf,

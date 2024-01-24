@@ -108,6 +108,11 @@ class OSTreeRepo : public QObject, public Repo
 {
     Q_OBJECT
 public:
+    enum Tree : quint32 {
+        DIR,
+        TAR,
+        REF,
+    };
     explicit OSTreeRepo(const QString &localRepoPath,
                         const config::ConfigV1 &cfg,
                         api::client::ClientApi &client);
@@ -120,8 +125,16 @@ public:
     linglong::utils::error::Result<void> listRemoteRefs();
     linglong::utils::error::Result<QList<package::Ref>> listLocalRefs() noexcept override;
 
+    linglong::utils::error::Result<void> importRef(const package::Ref &oldRef,
+                                                   const package::Ref &newRef);
+
     linglong::utils::error::Result<void> importDirectory(const package::Ref &ref,
                                                          const QString &path) override;
+
+    linglong::utils::error::Result<void> commit(const Tree treeType,
+                                                const package::Ref &ref,
+                                                const QString &path,
+                                                const package::Ref &oldRef);
 
     linglong::utils::error::Result<void> push(const package::Ref &ref) override;
 

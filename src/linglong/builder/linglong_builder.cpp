@@ -1160,7 +1160,7 @@ linglong::util::Error LinglongBuilder::run()
                                              "");
 
         auto latestRuntimeRef = repo.remoteLatestRef(remoteRuntimeRef);
-        ret = repo.checkoutAll(latestRuntimeRef, "", targetPath);
+        ret = repo.checkoutAll(*latestRuntimeRef, "", targetPath);
         if (!ret.has_value()) {
             return NewError(-1, "checkout runtime files failed");
         }

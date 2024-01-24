@@ -10,6 +10,7 @@
 #include "linglong/cli/printer.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/util/error.h"
+#include "linglong/utils/error/error.h"
 #include "project.h"
 
 #include <QDir>
@@ -64,30 +65,43 @@ void DependFetcher::printProgress(const uint &progress, const QString &speed)
 
 linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString &targetPath)
 {
-    auto pullAndCheckout = [&]() -> linglong::util::Error {
+    auto handleRef = [&] -> linglong::utils::error::Result<package::Ref> {
         // FIXME(black_desk):
         // 1. Offline should not only be an option of builder, but also a work
         //    mode argument passed to repo, which prevent all network request.
         // 2. For now we just leave these code here, we will refactor them later.
         if (BuilderConfig::instance()->getOffline()) {
-            ref = *ostree.localLatestRef(ref);
-
-            printer.printMessage(
-              QString("offline dependency: %1 %2").arg(ref.appId).arg(ref.version));
-        } else {
-            ref = ostree.remoteLatestRef(ref);
-            printer.printReplacedText(QString("%1%2%3%4")
-                                        .arg(ref.appId, -20)
-                                        .arg(ref.version, -15)
-                                        .arg(ref.module, -15)
-                                        .arg("..."),
-                                      2);
-            auto ret = ostree.pull(ref, true);
-            if (!ret.has_value()) {
-                return WrapError(NewError(ret.error().code(), ret.error().message()),
-                                 "pull " + ref.toString() + " failed");
-            }
+            qWarning() << "offline mode, skip pulling package from remote repo.";
+            return ostree.localLatestRef(ref);
         }
+
+        auto remoteRef = ostree.remoteLatestRef(ref);
+        if (!remoteRef.has_value()) {
+            qWarning() << "query info from remote repo failed, fallback to local repo."
+                       << ref.toOSTreeRefLocalString();
+            return ostree.localLatestRef(ref);
+        }
+
+        printer.printReplacedText(QString("%1%2%3%4")
+                                    .arg((*remoteRef).appId, -20)
+                                    .arg((*remoteRef).version, -15)
+                                    .arg((*remoteRef).module, -15)
+                                    .arg("..."),
+                                  2);
+        auto ret = ostree.pull(*remoteRef, true);
+        if (!ret.has_value()) {
+            return LINGLONG_EWRAP(QString("pull %1 failed.").arg((*remoteRef).toString()), ret.error());
+        }
+
+        return remoteRef;
+    };
+
+    auto pullAndCheckout = [&]() -> linglong::util::Error {
+        auto ret = handleRef();
+        if (!ret.has_value()) {
+            return NewError(ret.error().code(), ret.error().message());
+        }
+        ref = *ret;
 
         QDir targetParentDir(targetPath);
         targetParentDir.cdUp();
@@ -131,7 +145,7 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
     };
 
     // pull the package data which module is runtime
-    ref.channel = "linglong";
+    // ref.channel = "linglong";
     ref.module = "runtime";
     auto err = pullAndCheckout();
     if (err) {

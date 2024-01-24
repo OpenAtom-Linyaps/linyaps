@@ -145,7 +145,7 @@ public:
 
     linglong::utils::error::Result<package::Ref> localLatestRef(const package::Ref &ref) override;
 
-    package::Ref remoteLatestRef(const package::Ref &ref) override;
+    linglong::utils::error::Result<package::Ref> remoteLatestRef(const package::Ref &ref) override;
 
     utils::error::Result<package::Ref> latestOfRef(const QString &appId,
                                                    const QString &appVersion) override;

@@ -613,26 +613,42 @@ linglong::utils::error::Result<QString> OSTreeRepo::remoteShowUrl(const QString 
 
 linglong::utils::error::Result<package::Ref> OSTreeRepo::localLatestRef(const package::Ref &ref)
 {
-
+    QString defaultChannel = "main";
     QString latestVer = "latest";
-    QString args = QString("ostree refs --repo=%1 | grep %2 | grep %3")
-                     .arg(ostreePath, ref.appId, util::hostArch() + "/" + "runtime");
+    QString args = QString("ostree refs --repo=%1 | grep %2 | grep %3 | grep %4")
+                     .arg(ostreePath,
+                          defaultChannel + "/" + ref.appId,
+                          ref.version,
+                          ref.arch + "/" + ref.module);
     auto output = QSharedPointer<QByteArray>::create();
     auto err = util::Exec("sh", { "-c", args }, -1, output);
 
     if (!output || output->isEmpty()) {
-        return LINGLONG_ERR(-1, "output is empty");
+        qWarning() << "query local app with channel main failed, fallback to channel linglong";
+
+        defaultChannel = "linglong";
+        args = QString("ostree refs --repo=%1 | grep %2 | grep %3 | grep %4")
+                 .arg(ostreePath,
+                      defaultChannel + "/" + ref.appId,
+                      ref.version,
+                      ref.arch + "/" + ref.module);
+
+        err = util::Exec("sh", { "-c", args }, -1, output);
+        if (!output || output->isEmpty()) {
+            return LINGLONG_ERR(-1, QString("%1 is not exist in local repo").arg(ref.appId));
+        }
     }
 
     if (!err) {
         auto outputText = QString::fromLocal8Bit(*output);
         auto lines = outputText.split('\n');
         // last line of result is null, remove it
-        lines.removeLast();
+        qDebug() << "ostree refs output: " << lines;
+        // lines.removeLast();
         latestVer = linglong::util::latestVersion(lines);
     }
 
-    return package::Ref("", ref.channel, ref.appId, latestVer, ref.arch, ref.module);
+    return package::Ref("", defaultChannel, ref.appId, latestVer, ref.arch, ref.module);
     // void g_hash_table_iter_init(GHashTableIter * iter, GHashTable * hash_table);
     // gboolean g_hash_table_iter_next(GHashTableIter * iter, gpointer * key, gpointer * value);
 
@@ -654,26 +670,42 @@ linglong::utils::error::Result<package::Ref> OSTreeRepo::localLatestRef(const pa
     // }
 }
 
-package::Ref OSTreeRepo::remoteLatestRef(const package::Ref &ref)
+linglong::utils::error::Result<package::Ref> OSTreeRepo::remoteLatestRef(const package::Ref &ref)
 {
 
     QString latestVer = "unknown";
-    package::Ref queryRef(remoteRepoName, ref.appId, ref.version, ref.arch);
+    package::Ref queryRef(remoteRepoName, "main", ref.appId, ref.version, ref.arch, "");
     auto ret = repoClient.QueryApps(queryRef);
-    if (!ret.has_value()) {
-        qCritical() << "query remote app failed" << ref.toSpecString() << queryRef.toSpecString();
-        // FIXME: why latest version?
-        return package::Ref(ref.repo, ref.channel, ref.appId, latestVer, ref.arch, ref.module);
+
+    if (!ret.has_value() || (*ret).isEmpty()) {
+        qWarning() << "query remote app with channel main failed, fallback to channel linglong."
+                   << queryRef.toSpecString();
+
+        queryRef = package::Ref(remoteRepoName, "linglong", ref.appId, ref.version, ref.arch, "");
+        ret = repoClient.QueryApps(queryRef);
+        if (!ret.has_value()) {
+            qCritical() << "query remote app with channel linglong failed."
+                        << queryRef.toSpecString();
+            return LINGLONG_EWRAP(
+              QString("%1 is not exist in remote repo").arg(queryRef.toSpecString()),
+              ret.error());
+        }
     }
 
     for (const auto &info : *ret) {
+        qDebug() << "avilable resulets" << info->appId << info->channel << info->version;
         Q_ASSERT(info != nullptr);
         if (linglong::util::compareVersion(latestVer, info->version) < 0) {
             latestVer = info->version;
         }
     }
 
-    return package::Ref(ref.repo, ref.channel, ref.appId, latestVer, ref.arch, ref.module);
+    return package::Ref(remoteRepoName,
+                        queryRef.channel,
+                        ref.appId,
+                        latestVer,
+                        ref.arch,
+                        ref.module);
 }
 
 // 获取最新版本的ref, 版本号可以留空或传递latest

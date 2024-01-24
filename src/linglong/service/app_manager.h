@@ -51,7 +51,7 @@ public:
 
 public Q_SLOTS:
 
-    linglong::utils::error::Result<void> Run(const RunParamOption &paramOption);
+    virtual linglong::utils::error::Result<void> Run(const RunParamOption &paramOption);
 
     /**
      * @brief 运行应用
@@ -69,7 +69,7 @@ public Q_SLOTS:
      *
      * @return Reply 同 Install
      */
-    auto Exec(const ExecParamOption &paramOption) -> Reply;
+    virtual auto Exec(const ExecParamOption &paramOption) -> Reply;
 
     /**
      * @brief 退出应用
@@ -78,7 +78,7 @@ public Q_SLOTS:
      *
      * @return Reply 执行结果信息
      */
-    auto Stop(const QString &containerId) -> Reply;
+    virtual auto Stop(const QString &containerId) -> Reply;
 
     /**
      * @brief 查询正在运行的应用信息
@@ -89,7 +89,7 @@ public Q_SLOTS:
      *         packageName 应用名称 \n
      *         workingDirectory 应用运行目录
      */
-    auto ListContainer() -> QueryReply;
+    virtual auto ListContainer() -> QueryReply;
 
 public:
     // FIXME: ??? why this public?

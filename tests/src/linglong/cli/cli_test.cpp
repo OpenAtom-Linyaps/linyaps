@@ -13,12 +13,13 @@
 #include "linglong/cli/dbus_reply.h"
 //
 
-#include "linglong/api/dbus/v1/mock_app_manager.h"
 #include "linglong/api/dbus/v1/mock_package_manager.h"
 #include "linglong/cli/cli.h"
+#include "linglong/cli/mock_app_manager.h"
 #include "linglong/cli/mock_printer.h"
 #include "linglong/dbus_ipc/reply.h"
 #include "linglong/package_manager/mock_package_manager.h"
+#include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
 
 #include <docopt.h>
@@ -58,7 +59,7 @@ using ::testing::StrictMock;
 class CLITest : public ::testing::Test
 {
 protected:
-    std::unique_ptr<StrictMock<api::dbus::v1::test::MockAppManager>> appMan;
+    std::unique_ptr<StrictMock<MockAppManager>> appMan;
     std::unique_ptr<StrictMock<api::dbus::v1::test::MockPackageManager>> pkgMan;
     std::unique_ptr<StrictMock<MockPrinter>> printer;
     std::unique_ptr<Cli> cli;
@@ -68,17 +69,13 @@ protected:
     void SetUp() override
     {
         printer = std::make_unique<StrictMock<MockPrinter>>();
-        appMan = std::make_unique<StrictMock<api::dbus::v1::test::MockAppManager>>(
-          "org.deepin.linglong.AppManager",
-          "/org/deepin/linglong/AppManager",
-          QDBusConnection::sessionBus());
+        appMan = std::make_unique<StrictMock<MockAppManager>>();
         pkgMan = std::make_unique<StrictMock<api::dbus::v1::test::MockPackageManager>>(
           "org.deepin.linglong.AppManager",
           "/org/deepin/linglong/AppManager",
           QDBusConnection::sessionBus());
 
-        // TODO(wurongjie) 暂时禁用单元测试
-        // cli = std::make_unique<Cli>(*printer, *appMan, nullptr, *pkgMan);
+        cli = std::make_unique<Cli>(*printer, *appMan, *pkgMan);
     }
 
     void TearDown() override
@@ -94,7 +91,13 @@ using ::testing::Return;
 TEST_F(CLITest, Run)
 {
     auto args = parseCommand("ll-cli run com.163.music");
-    EXPECT_CALL(*appMan, Start).Times(1).WillOnce(Return(createReply(service::Reply{ 0, "" })));
+
+    EXPECT_CALL(*appMan, Run)
+      .Times(1)
+      .WillOnce([](const linglong::service::RunParamOption &paramOption)
+                  -> linglong::utils::error::Result<void> {
+          return LINGLONG_OK;
+      });
 
     auto ret = cli->run(args);
 
@@ -104,7 +107,7 @@ TEST_F(CLITest, Run)
 TEST_F(CLITest, Exec)
 {
     auto args = parseCommand("ll-cli exec com.163.music ls");
-    EXPECT_CALL(*appMan, Exec).Times(1).WillOnce(Return(createReply(service::Reply{ 0, "" })));
+    EXPECT_CALL(*appMan, Exec).Times(1).WillOnce(Return(service::Reply{ 0, "" }));
 
     auto ret = cli->exec(args);
 
@@ -127,7 +130,7 @@ TEST_F(CLITest, Ps)
     auto args = parseCommand("ll-cli ps");
     EXPECT_CALL(*appMan, ListContainer)
       .Times(1)
-      .WillOnce(Return(createReply(service::QueryReply{ { 0, "" }, "[]" })));
+      .WillOnce(Return(service::QueryReply{ { 0, "" }, "[]" }));
     EXPECT_CALL(*printer, printContainers);
 
     auto ret = cli->ps(args);
@@ -141,7 +144,7 @@ TEST_F(CLITest, Kill)
 
     EXPECT_CALL(*appMan, Stop)
       .Times(1)
-      .WillOnce(Return(createReply(service::Reply{ STATUS_CODE(kErrorPkgKillSuccess), "" })));
+      .WillOnce(Return(service::Reply{ STATUS_CODE(kErrorPkgKillSuccess), "" }));
 
     auto ret = cli->kill(args);
 

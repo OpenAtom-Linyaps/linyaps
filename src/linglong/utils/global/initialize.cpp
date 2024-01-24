@@ -6,6 +6,8 @@
 
 #include "linglong/utils/global/initialize.h"
 
+#include "linglong/util/configure.h"
+
 #include <systemd/sd-journal.h>
 
 #include <QCoreApplication>
@@ -117,6 +119,12 @@ void applicationInitializte()
 void installMessageHandler()
 {
     qInstallMessageHandler(linglong_message_handler);
+}
+
+// Return current binary file is installed on the system
+bool linglongInstalled()
+{
+    return QCoreApplication::applicationDirPath() == BINDIR;
 }
 
 } // namespace linglong::utils::global

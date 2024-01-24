@@ -12,10 +12,12 @@
 #include "linglong/util/file.h"
 #include "linglong/util/http/http_client.h"
 #include "linglong/util/runner.h"
+#include "linglong/utils/global/initialize.h"
 #include "project.h"
 #include "source_fetcher_p.h"
 
 #include <QNetworkRequest>
+#include <QTemporaryDir>
 
 namespace linglong {
 namespace builder {
@@ -159,80 +161,41 @@ std::tuple<QString, linglong::util::Error> SourceFetcherPrivate::fetchArchiveFil
     return { path, Success() };
 }
 
-// TODO: DO NOT clone all repo, see here for more:
-// https://stackoverflow.com/questions/3489173/how-to-clone-git-repository-with-specific-revision-changeset/3489576
 util::Error SourceFetcherPrivate::fetchGitRepo()
 {
     Q_Q(SourceFetcher);
 
     q->setSourceRoot(sourceTargetPath());
-    util::ensureDir(sourceTargetPath());
 
-    if (!QDir::setCurrent(sourceTargetPath())) {
-        return NewError(-1, QString("change to %1 failed").arg(sourceTargetPath()));
+    q->printer.printMessage(QString("Path: %1").arg(sourceTargetPath()), 2);
+
+    // 如果二进制安装在系统目录中，优先使用系统中安装的脚本文件（便于用户更改），否则使用二进制内嵌的脚本（便于开发调试）
+    auto scriptFile = QString(LINGLONG_LIBEXEC_DIR) + "/fetch-git-repo.sh";
+    auto useInstalledFile = utils::global::linglongInstalled() && QFile(scriptFile).exists();
+    QScopedPointer<QTemporaryDir> dir;
+    if (!useInstalledFile) {
+        qWarning() << "Dumping fetch-git-repo from qrc...";
+        dir.reset(new QTemporaryDir);
+        // 便于在执行失败时进行调试
+        dir->setAutoRemove(false);
+        scriptFile = dir->filePath("fetch-git-repo");
+        QFile::copy(":/scripts/fetch-git-repo", scriptFile);
     }
+    QStringList args = {
+        scriptFile, sourceTargetPath(), source->url, source->commit, source->version,
+    };
+    q->printer.printMessage(QString("Command: sh %1").arg(args.join(" ")), 2);
 
     QSharedPointer<QByteArray> output = QSharedPointer<QByteArray>::create();
-    q->printer.printMessage(
-      QString("git clone --recurse-submodules %1 %2").arg(source->url).arg(sourceTargetPath()),
-      2);
-    auto err = util::Exec("git",
-                          {
-                            "clone",
-                            "--recurse-submodules",
-                            source->url,
-                            sourceTargetPath(),
-                          },
-                          -1,
-                          output);
-    if (!output->isEmpty()) {
-        q->printer.printMessage(QString(output->constData()));
-    }
-
+    auto err = util::Exec("sh", args, -1, output);
     if (err) {
-        q->printer.printMessage("git clone failed. " + err.message());
-        output->clear();
+        q->printer.printMessage("download source failed." + err.message(), 2);
+        return NewError(-1, "download source failed." + err.message());
     }
-
-    QDir::setCurrent(sourceTargetPath());
-
-    q->printer.printMessage(
-      QString("git checkout -b %1 %2").arg(source->version).arg(source->commit),
-      2);
-    err = util::Exec("git",
-                     {
-                       "checkout",
-                       "-b",
-                       source->version,
-                       source->commit,
-                     },
-                     -1,
-                     output);
-
-    if (!output->isEmpty()) {
-        q->printer.printMessage(QString(output->constData()));
+    if (!dir.isNull()) {
+        dir->remove();
     }
-
-    if (err) {
-        q->printer.printMessage("git checkout failed. " + err.message(), 2);
-        output->clear();
-    }
-
-    q->printer.printMessage(QString("git reset --hard %1").arg(source->commit), 2);
-    err = util::Exec("git",
-                     {
-                       "reset",
-                       "--hard",
-                       source->commit,
-                     },
-                     -1,
-                     output);
-
-    if (!output->isEmpty()) {
-        q->printer.printMessage(QString(output->constData()), 2);
-    }
-
-    return WrapError(err, "git reset failed");
+    return Success();
 }
 
 util::Error SourceFetcherPrivate::handleLocalPatch()

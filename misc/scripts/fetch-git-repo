@@ -1,0 +1,31 @@
+#!/bin/sh
+
+# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+set -e
+workdir=$1
+url=$2
+commit=$3
+version=$4
+
+mkdir "$workdir" || true
+cd "$workdir"
+
+# init repo
+if [ -d ".git" ]; then
+    git remote set-url origin "$url"
+else
+    git init --initial-branch "$version"
+    git remote add origin "$url"
+fi
+
+# fetch commit
+git tag --delete "$version" || true
+git fetch origin "$commit:refs/tags/$version" --depth 1 -n
+git reset --hard "$version"
+
+# init submodule
+git submodule update --init --recursive --depth 1
+git submodule foreach git reset --hard HEAD

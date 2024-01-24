@@ -41,6 +41,11 @@ public:
     void fromJsonObject(QJsonObject json) override;
     void fromJson(QString jsonString) override;
 
+    QString getChannel() const;
+    void setChannel(const QString &channel);
+    bool is_channel_Set() const;
+    bool is_channel_Valid() const;
+
     QString getAppId() const;
     void setAppId(const QString &app_id);
     bool is_app_id_Set() const;
@@ -66,6 +71,10 @@ public:
 
 private:
     void initializeModel();
+
+    QString m_channel;
+    bool m_channel_isSet;
+    bool m_channel_isValid;
 
     QString m_app_id;
     bool m_app_id_isSet;

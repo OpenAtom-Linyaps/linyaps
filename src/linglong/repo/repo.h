@@ -56,7 +56,8 @@ public:
     virtual linglong::utils::error::Result<package::Ref>
     localLatestRef(const package::Ref &ref) = 0;
 
-    virtual package::Ref remoteLatestRef(const package::Ref &ref) = 0;
+    virtual linglong::utils::error::Result<package::Ref>
+    remoteLatestRef(const package::Ref &ref) = 0;
 
     virtual package::Ref latestOfRef(const QString &appId, const QString &appVersion) = 0;
 

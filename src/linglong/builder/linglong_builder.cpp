@@ -461,9 +461,9 @@ linglong::util::Error LinglongBuilder::build()
     printer.printMessage("[Build Target]");
     printer.printMessage(project->package->id, 2);
     printer.printMessage("[Project Info]");
-    printer.printMessage(QString("Packge Name: %1").arg(project->package->name), 2);
+    printer.printMessage(QString("Package Name: %1").arg(project->package->name), 2);
     printer.printMessage(QString("Version: %1").arg(project->package->version), 2);
-    printer.printMessage(QString("Packge Type: %1").arg(project->package->kind), 2);
+    printer.printMessage(QString("Package Type: %1").arg(project->package->kind), 2);
     printer.printMessage(QString("Build Arch: %1").arg(project->config().targetArch()), 2);
 
     printer.printMessage("[Current Repo]");

@@ -6,7 +6,7 @@ include(GNUInstallDirs)
 
 # bash-completion
 
-set(BASH_COMPLETIONS bash_completion/ll-cli)
+set(BASH_COMPLETIONS bash_completion/ll-cli bash_completion/ll-builder)
 
 install(FILES ${BASH_COMPLETIONS}
         DESTINATION ${CMAKE_INSTALL_DATADIR}/bash-completion/completions)

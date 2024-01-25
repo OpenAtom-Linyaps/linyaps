@@ -98,7 +98,7 @@ LayerPackager::pack(const LayerDir &dir, const QString &layerFilePath) const
             layer.close();
             compressedFile.close();
 
-            return LINGLONG_ERR(-1, "writing data to temprary layer file failed");
+            return LINGLONG_ERR(-1, "writing data to temporary layer file failed");
         }
 
         compressedFile.unmap(compressedData);

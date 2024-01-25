@@ -1,0 +1,36 @@
+#!/bin/env bash
+
+# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+# linglong builder completion
+
+__ll_builder_find_subcommand()
+{
+        for i in "${COMP_WORDS[@]}"
+        do
+                if ! [[ $i = -* ]] && ! [[ $i = ll-builder ]]
+                then
+                        echo "$i"
+                        return
+                fi
+        done
+        echo ""
+        return
+}
+
+_ll_builder()
+{
+        local wordlist
+
+        subcommand=$(__ll_builder_find_subcommand)
+        wordlist=$(ll-builder "$subcommand" --help | grep -Po '((?<= )-\w|(?<= )--[\w-]+)|(?<=subcommand  )\w+|^ +  \w+$' | tr '\n' ' ')
+
+        local cur=${COMP_WORDS[COMP_CWORD]};
+        COMPREPLY=( $(compgen -W "${wordlist}" -- "${cur}") )
+
+        return 0
+}
+
+complete -F _ll_builder ll-builder

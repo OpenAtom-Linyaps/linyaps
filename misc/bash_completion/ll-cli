@@ -6,63 +6,86 @@
 
 # linglong cli completion
 
-__ll_cli_find_subcommand()
-{
-        for i in "${COMP_WORDS[@]}"
-        do
-                if ! [[ $i = -* ]] && ! [[ $i = ll-cli ]]
-                then
-                        echo "$i"
-                        return
-                fi
-        done
-        echo ""
-        return
+__ll_cli_find_subcommand() {
+        lines=$(ll-cli --help | wc -l)
+        ll-cli --help | grep "Subcommands:" -A $lines | tail -n+2 | awk -F\  '{print $1}' | tr '\n' ' '
 }
 
-__ll_cli_get_container_list()
-{
-        ll-cli ps | tail -n+2 | awk '{print $2}' | tr '\n' ' '
+__ll_cli_get_container_list() {
+        ll-cli ps | tail -n+2 | awk '{print $1}' | tr '\n' ' '
 }
 
-__ll_cli_get_installed_list()
-{
+__ll_cli_get_installed_list() {
         ll-cli list | tail -n+2 | awk '{print $1}' | tr '\n' ' '
 }
 
-__ll_cli_get_app_list()
-{
-        ll-cli query . | tail -n+2 | awk '{print $1}' | tr '\n' ' '
+__ll_cli_get_app_list() {
+        ll-cli search . | tail -n+2 | awk '{print $1}' | tr '\n' ' '
 }
 
-_ll_cli()
-{
-        local subcommand
+_ll_cli() {
         local wordlist
 
-        subcommand=$(__ll_cli_find_subcommand)
-        wordlist=$(ll-cli "$subcommand" --help | grep -Po '((?<= )-\w|(?<= )--[\w-]+)|(?<=subcommand  )\w+|^ +  \w+$' | tr '\n' ' ')
+        common_option="--version --json --help -h"
+        if [[ "${#COMP_WORDS[@]}" == "2" ]]; then
+                wordlist=$(__ll_cli_find_subcommand)
+        fi
+        wordlist="$wordlist $common_option"
 
-        case "$subcommand" in
-                exec|kill)
-                        wordlist="$wordlist $(__ll_cli_get_container_list)"
+        case "${COMP_WORDS[1]}" in
+        run)
+                run_option="--no-dbus-proxy --dbus-proxy-cfg"
+                wordlist="$wordlist $run_option $(__ll_cli_get_installed_list)"
                 ;;
-                install)
-                        wordlist="$wordlist $(__ll_cli_get_app_list)"
+        ps)
+                wordlist=$wordlist
                 ;;
-                update|uninstall|run)
-                        wordlist="$wordlist $(__ll_cli_get_installed_list)"
+        exec)
+                exec_option="--working-directory"
+                wordlist="$wordlist $exec_option $(__ll_cli_get_container_list)"
                 ;;
-                repo)
-                        wordlist="$wordlist modify"
+        enter)
+                enter_option="--working-directory"
+                wordlist="$wordlist $enter_option $(__ll_cli_get_container_list)"
+                ;;
+        kill)
+                wordlist="$wordlist $(__ll_cli_get_container_list)"
+                ;;
+        install)
+                install_option="--no-dbus"
+                wordlist="$wordlist $install_option $(__ll_cli_get_app_list)"
+                ;;
+        uninstall)
+                uninstall_option="--all --prune"
+                wordlist="$wordlist $uninstall_option $(__ll_cli_get_installed_list)"
+                ;;
+        upgrade)
+                wordlist="$wordlist $(__ll_cli_get_installed_list)"
+                ;;
+        search)
+                search_option="--type"
+                wordlist="$wordlist $search_option $(__ll_cli_get_app_list)"
+                ;;
+        list)
+                list_option="--no-dbus --type"
+                wordlist="$wordlist $list_option"
+                ;;
+        repo)
+                subcommand="modify"
+                repo_option="--name"
+                if [[ "${COMP_WORDS[2]}" == "$subcommand" ]]; then
+                        wordlist="$wordlist $subcommand $repo_option"
+                fi
+                wordlist="$wordlist $repo_option"
+                ;;
+        info)
+                current_file_list=$(find . -maxdepth 1 -type f -name "*.layer" | tr '\n' ' ')
+                wordlist="$wordlist $current_file_list"
                 ;;
         esac
-        local pre=${COMP_WORDS[COMP_CWORD-1]};
-        if [ $pre = "modify" ];then
-             wordlist="-h --help"
-        fi
-        local cur=${COMP_WORDS[COMP_CWORD]};
-        COMPREPLY=( $(compgen -W "${wordlist}" -- "${cur}") )
+
+        local cur=${COMP_WORDS[COMP_CWORD]}
+        COMPREPLY=($(compgen -W "${wordlist}" -- "${cur}"))
 
         return 0
 }

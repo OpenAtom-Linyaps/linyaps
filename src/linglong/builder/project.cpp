@@ -154,15 +154,16 @@ int Project::generateBuildScript(const QString &path)
          ++i) {
         auto propertyName = variables->metaObject()->property(i).name();
         if (variables->property(propertyName).toString().isNull()) {
-            command += QString("%1=\"%2\"\n")
-                         .arg(propertyName)
-                         .arg(temp->variables->property(propertyName).toString());
+            auto var = temp->variables->property(propertyName).toString();
+            var.endsWith("\n") ? var.chop(1) : var.chop(0);
+            command += QString("%1=\"%2\"\n").arg(propertyName).arg(var);
         } else {
-            command += QString("%1=\"%2\"\n")
-                         .arg(propertyName)
-                         .arg(variables->property(propertyName).toString());
+            auto var = variables->property(propertyName).toString();
+            var.endsWith("\n") ? var.chop(1) : var.chop(0);
+            command += QString("%1=\"%2\"\n").arg(propertyName).arg(var);
         }
     }
+
     // set build environment variables
     command += "#environment variables\n";
     for (int i = environment->metaObject()->propertyOffset();
@@ -170,13 +171,15 @@ int Project::generateBuildScript(const QString &path)
          ++i) {
         auto propertyName = environment->metaObject()->property(i).name();
         if (environment->property(propertyName).toString().isNull()) {
-            command += QString("export %1=\"%2\"\n")
-                         .arg(propertyName)
-                         .arg(temp->environment->property(propertyName).toString());
+            auto var = temp->environment->property(propertyName).toString();
+            if (var.endsWith("\n"))
+                var.chop(1);
+            command += QString("export %1=\"%2\"\n").arg(propertyName).arg(var);
         } else {
-            command += QString("export %1=\"%2\"\n")
-                         .arg(propertyName)
-                         .arg(environment->property(propertyName).toString());
+            auto var = environment->property(propertyName).toString();
+            if (var.endsWith("\n"))
+                var.chop(1);
+            command += QString("export %1=\"%2\"\n").arg(propertyName).arg(var);
         }
     }
 

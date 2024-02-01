@@ -13,6 +13,7 @@ usr/lib/systemd/user/org.deepin.linglong.AppManager.service
 usr/lib/sysusers.d/linglong.conf
 usr/libexec/linglong/create-linglong-dirs
 usr/libexec/linglong/upgrade-all
+usr/libexec/linglong/fetch-git-repo
 usr/share/bash-completion/completions/ll-cli
 usr/share/dbus-1/services/org.deepin.linglong.AppManager.service
 usr/share/dbus-1/system-services/org.deepin.linglong.PackageManager.service

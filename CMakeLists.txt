@@ -133,8 +133,6 @@ pfl_add_library(
   INS
   ./src/linglong/util/configure.h.in
   SOURCES
-  ./src/linglong/adaptors/app_manager/app_manager1.cpp
-  ./src/linglong/adaptors/app_manager/app_manager1.h
   ./src/linglong/adaptors/job_manager/job1.cpp
   ./src/linglong/adaptors/job_manager/job1.h
   ./src/linglong/adaptors/job_manager/job_manager1.cpp
@@ -145,8 +143,6 @@ pfl_add_library(
   ./src/linglong/adaptors/system_helper/filesystem_helper1.h
   ./src/linglong/adaptors/system_helper/package_manager_helper1.cpp
   ./src/linglong/adaptors/system_helper/package_manager_helper1.h
-  ./src/linglong/api/dbus/v1/app_manager.cpp
-  ./src/linglong/api/dbus/v1/app_manager.h
   ./src/linglong/api/dbus/v1/filesystem_helper.cpp
   ./src/linglong/api/dbus/v1/filesystem_helper.h
   ./src/linglong/api/dbus/v1/package_manager.cpp
@@ -329,7 +325,6 @@ pfl_add_library(
   ll-builder
   ll-cli
   ll-package-manager
-  ll-service
   ll-system-helper
   llpkg
   COMPILE_FEATURES
@@ -373,14 +368,6 @@ function(
   target_include_directories(${target_name} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
   target_sources(${target_name} PRIVATE ${DBUS_ADAPTOR_SOURCE})
 endfunction()
-
-linglong_add_dbus_adaptor(
-  linglong
-  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.AppManager1.xml
-  linglong/service/app_manager.h
-  linglong::service::AppManager
-  src/linglong/adaptors/app_manager/gen_org_deepin_linglong_appmanager1
-  OrgDeepinLinglongAppmanager1Adaptor)
 
 linglong_add_dbus_adaptor(
   linglong
@@ -463,11 +450,6 @@ linglong_add_dbus_interface(
   linglong
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.FilesystemHelper1.xml
   src/linglong/api/dbus/v1/gen_org_deepin_linglong_filesystemhelper1
-  linglong/dbus_ipc/workaround.h)
-
-linglong_add_dbus_interface(
-  linglong ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.AppManager1.xml
-  src/linglong/api/dbus/v1/gen_org_deepin_linglong_appmanager1
   linglong/dbus_ipc/workaround.h)
 
 linglong_add_dbus_interface(

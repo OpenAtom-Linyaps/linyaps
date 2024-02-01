@@ -54,15 +54,6 @@ public Q_SLOTS:
     virtual linglong::utils::error::Result<void> Run(const RunParamOption &paramOption);
 
     /**
-     * @brief 运行应用
-     *
-     * @param paramOption 启动命令参数
-     *
-     * @return Reply 同Install
-     */
-    auto Start(const RunParamOption &paramOption) -> Reply;
-
-    /**
      * @brief 运行命令
      *
      * @param paramOption 启动命令参数

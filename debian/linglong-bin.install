@@ -1,6 +1,5 @@
 usr/bin/ll-cli
 usr/bin/ll-package-manager
-usr/bin/ll-service
 usr/bin/ll-system-helper
 usr/bin/llpkg
 usr/lib/systemd/system-environment-generators/61-linglong
@@ -9,13 +8,11 @@ usr/lib/systemd/system/org.deepin.linglong.SystemHelper.service
 usr/lib/systemd/user-environment-generators/61-linglong
 usr/lib/systemd/user/linglong-upgrade.service
 usr/lib/systemd/user/linglong-upgrade.timer
-usr/lib/systemd/user/org.deepin.linglong.AppManager.service
 usr/lib/sysusers.d/linglong.conf
 usr/libexec/linglong/create-linglong-dirs
 usr/libexec/linglong/upgrade-all
 usr/libexec/linglong/fetch-git-repo
 usr/share/bash-completion/completions/ll-cli
-usr/share/dbus-1/services/org.deepin.linglong.AppManager.service
 usr/share/dbus-1/system-services/org.deepin.linglong.PackageManager.service
 usr/share/dbus-1/system-services/org.deepin.linglong.SystemHelper.service
 usr/share/dbus-1/system.d/org.deepin.linglong.PackageManager.conf

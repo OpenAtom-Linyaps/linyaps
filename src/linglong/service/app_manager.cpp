@@ -109,14 +109,6 @@ linglong::utils::error::Result<void> AppManager::Run(const RunParamOption &param
     return LINGLONG_OK;
 }
 
-auto AppManager::Start(const RunParamOption &paramOption) -> Reply
-{
-    Reply reply;
-    reply.code = -1;
-    reply.message = "start method is deprecated";
-    return reply;
-}
-
 Reply AppManager::Exec(const ExecParamOption &paramOption)
 {
     Reply reply;

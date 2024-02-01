@@ -7,7 +7,6 @@
 #ifndef LINGLONG_CLI_CLI_H_
 #define LINGLONG_CLI_CLI_H_
 
-#include "linglong/api/dbus/v1/app_manager.h"
 #include "linglong/api/dbus/v1/package_manager.h"
 #include "linglong/cli/printer.h"
 #include "linglong/package/package.h"

@@ -27,16 +27,11 @@ configure_file(dbus/org.deepin.linglong.PackageManager.service.in
                dbus/org.deepin.linglong.PackageManager.service @ONLY)
 configure_file(dbus/org.deepin.linglong.SystemHelper.service.in
                dbus/org.deepin.linglong.SystemHelper.service @ONLY)
-configure_file(dbus/org.deepin.linglong.AppManager.service.in
-               dbus/org.deepin.linglong.AppManager.service @ONLY)
 
 set(DBUS_SYSTEM_SERVICE_FILE
     # cmake-format: sortable
     ${CMAKE_CURRENT_BINARY_DIR}/dbus/org.deepin.linglong.PackageManager.service
     ${CMAKE_CURRENT_BINARY_DIR}/dbus/org.deepin.linglong.SystemHelper.service)
-
-set(DBUS_SESSION_SERVICE_FILE
-    ${CMAKE_CURRENT_BINARY_DIR}/dbus/org.deepin.linglong.AppManager.service)
 
 # dbus will not load files in /usr/local/share/dbus-1/system.d. So we have to
 # make sure the .conf file(s) installed to /usr/share
@@ -44,9 +39,6 @@ install(FILES ${DBUS_CONFIG_FILE} DESTINATION /usr/share/dbus-1/system.d)
 
 install(FILES ${DBUS_SYSTEM_SERVICE_FILE}
         DESTINATION ${CMAKE_INSTALL_DATADIR}/dbus-1/system-services)
-
-install(FILES ${DBUS_SESSION_SERVICE_FILE}
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/dbus-1/services)
 
 # linglong
 
@@ -100,8 +92,6 @@ install(PROGRAMS ${LINGLONG_SCRIPTS}
 
 # systemd
 
-configure_file(systemd/user/org.deepin.linglong.AppManager.service.in
-               systemd/user/org.deepin.linglong.AppManager.service @ONLY)
 configure_file(systemd/system/org.deepin.linglong.PackageManager.service.in
                systemd/system/org.deepin.linglong.PackageManager.service @ONLY)
 configure_file(systemd/system/org.deepin.linglong.SystemHelper.service.in
@@ -119,7 +109,6 @@ install(FILES ${SYSTEMD_SYSTEM_FILE}
         DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system/)
 
 set(SYSTEMD_USER_FILE
-    ${CMAKE_CURRENT_BINARY_DIR}/systemd/user/org.deepin.linglong.AppManager.service
     ${CMAKE_CURRENT_BINARY_DIR}/systemd/user/linglong-upgrade.service
     systemd/user/linglong-upgrade.timer)
 

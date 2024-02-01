@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "linglong/api/dbus/v1/app_manager.h"
 #include "linglong/builder/builder.h"
 #include "linglong/cli/cli.h"
 #include "linglong/cli/json_printer.h"

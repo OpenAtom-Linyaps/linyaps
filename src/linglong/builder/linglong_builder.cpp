@@ -688,6 +688,30 @@ linglong::util::Error LinglongBuilder::build()
     }
     r->process->args = { "/bin/bash", "-e", BuildScriptPath };
     r->process->cwd = containerSourcePath;
+
+    // quickfix: we should ensure envrionment variables from config
+    QString httpsProxy = qgetenv("https_proxy");
+    QString httpProxy = qgetenv("http_proxy");
+    QString HTTPSProxy = qgetenv("HTTPS_PROXY");
+    QString HTTPProxy = qgetenv("HTTP_PROXY");
+    QString noProxy = qgetenv("no_proxy");
+    QString allProxy = qgetenv("all_proxy");
+    QString ftpProxy = qgetenv("ftp_proxy");
+    if (!httpsProxy.isEmpty())
+        r->process->env->push_back(QString("https_proxy=%1").arg(httpsProxy).toStdString());
+    if (!httpProxy.isEmpty())
+        r->process->env->push_back(QString("http_proxy=%1").arg(httpProxy).toStdString());
+    if (!HTTPSProxy.isEmpty())
+        r->process->env->push_back(QString("HTTPS_PROXY=%1").arg(HTTPSProxy).toStdString());
+    if (!HTTPProxy.isEmpty())
+        r->process->env->push_back(QString("HTTP_PROXT=%1").arg(HTTPProxy).toStdString());
+    if (!noProxy.isEmpty())
+        r->process->env->push_back(QString("no_proxy=%1").arg(noProxy).toStdString());
+    if (!allProxy.isEmpty())
+        r->process->env->push_back(QString("all_proxy=%1").arg(allProxy).toStdString());
+    if (!ftpProxy.isEmpty())
+        r->process->env->push_back(QString("ftp_proxy=%1").arg(ftpProxy).toStdString());
+
     r->process->env->push_back("PATH=/runtime/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/"
                                "usr/games:/sbin:/usr/sbin");
     r->process->env->push_back(("PREFIX=" + project->config().targetInstallPath("")).toStdString());

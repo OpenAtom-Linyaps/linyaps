@@ -71,12 +71,16 @@ _ll_cli() {
                 wordlist="$wordlist $list_option"
                 ;;
         repo)
-                subcommand="modify"
-                repo_option="--name"
-                if [[ "${COMP_WORDS[2]}" == "$subcommand" ]]; then
-                        wordlist="$wordlist $subcommand $repo_option"
+                subcommand="modify list"
+                repo_option=""
+                if [[ "${COMP_WORDS[2]}" == "modify" ]]; then
+                        subcommand=""
+                        repo_option="--name"
+                elif [[ "${COMP_WORDS[2]}" == "list" ]]; then
+                        subcommand=""
+                        repo_option=""
                 fi
-                wordlist="$wordlist $repo_option"
+                wordlist="$wordlist $subcommand $repo_option"
                 ;;
         info)
                 current_file_list=$(find . -maxdepth 1 -type f -name "*.layer" | tr '\n' ' ')

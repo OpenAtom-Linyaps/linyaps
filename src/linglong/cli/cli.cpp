@@ -38,7 +38,8 @@ Usage:
     ll-cli [--json] upgrade TIER...
     ll-cli [--json] search [--type=TYPE] TEXT
     ll-cli [--json] [--no-dbus] list [--type=TYPE]
-    ll-cli [--json] repo [modify [--name=REPO] URL]
+    ll-cli [--json] repo modify [--name=REPO] URL
+    ll-cli [--json] repo list
     ll-cli [--json] info LAYER
 
 Arguments:

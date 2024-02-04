@@ -285,7 +285,7 @@ QString Project::Config::cacheInstallPath(const QString &moduleDir, const QStrin
 
 QString Project::Config::targetArch() const
 {
-    return util::hostArch();
+    return BuilderConfig::instance()->getBuildArch();
 }
 
 QString Project::Config::targetInstallPath(const QString &sub) const

@@ -294,7 +294,7 @@ package::Ref fuzzyRef(QSharedPointer<const JsonSerialize> obj)
     if (!arch.isEmpty()) {
         ref.arch = arch;
     } else {
-        ref.arch = util::hostArch();
+        ref.arch = BuilderConfig::instance()->getBuildArch();
     }
 
     return ref;
@@ -1033,25 +1033,25 @@ util::Error LinglongBuilder::push(const QString &repoUrl,
                                                   "main",
                                                   project->package->id,
                                                   project->package->version,
-                                                  util::hostArch(),
+                                                  project->config().targetArch(),
                                                   "runtime");
         auto defaultRefWithDevel = package::Ref("",
                                                 "main",
                                                 project->package->id,
                                                 project->package->version,
-                                                util::hostArch(),
+                                                project->config().targetArch(),
                                                 "devel");
         auto newRefWithRuntime = package::Ref("",
                                               channel,
                                               project->package->id,
                                               project->package->version,
-                                              util::hostArch(),
+                                              project->config().targetArch(),
                                               "runtime");
         auto newRefWithDevel = package::Ref("",
                                             channel,
                                             project->package->id,
                                             project->package->version,
-                                            util::hostArch(),
+                                            project->config().targetArch(),
                                             "devel");
         auto ret = repo.importRef(defaultRefWithRuntime, newRefWithRuntime);
         if (!ret.has_value()) {
@@ -1147,7 +1147,7 @@ util::Error LinglongBuilder::import()
         auto refWithRuntime = package::Ref("",
                                            project->package->id,
                                            project->package->version,
-                                           util::hostArch(),
+                                           project->config().targetArch(),
                                            "runtime");
 
         auto ret =

@@ -10,10 +10,12 @@
 #include "linglong/builder/project.h"
 #include "linglong/cli/printer.h"
 #include "linglong/package/package.h"
+#include "linglong/package/architecture.h"
 #include "linglong/repo/repo.h"
 #include "linglong/service/app_manager.h"
 #include "linglong/util/qserializer/yaml.h"
 #include "linglong/util/xdg.h"
+#include "linglong/util/sysinfo.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/global/initialize.h"
 #include "spdlog/logger.h"
@@ -161,7 +163,9 @@ int main(int argc, char **argv)
                 QCommandLineOption("sversion", "set source version", "source version");
               auto srcCommit = QCommandLineOption("commit", "set commit refs", "source commit");
               auto buildOffline = QCommandLineOption("offline", "only use local repo", "");
-              parser.addOptions({ execVerbose, pkgVersion, srcVersion, srcCommit, buildOffline });
+              auto buildArch = QCommandLineOption("arch", "set the build arch", "arch");
+              parser.addOptions(
+                { execVerbose, pkgVersion, srcVersion, srcCommit, buildOffline, buildArch });
 
               parser.addPositionalArgument("build", "build project", "build");
 
@@ -173,6 +177,17 @@ int main(int argc, char **argv)
               }
 
               linglong::builder::BuilderConfig::instance()->setOffline(parser.isSet(buildOffline));
+
+              if (parser.isSet(buildArch)) {
+                  auto arch = linglong::package::Architecture::parse(parser.value(buildArch));
+                  if (!arch.has_value()) {
+                      printer.printErr(arch.error());
+                      return -1;
+                  }
+                  linglong::builder::BuilderConfig::instance()->setBuildArch((*arch).toString());
+              } else {
+                  linglong::builder::BuilderConfig::instance()->setBuildArch(linglong::util::hostArch());
+              }
 
               // config linglong.yaml before build if necessary
               if (parser.isSet(pkgVersion) || parser.isSet(srcVersion) || parser.isSet(srcCommit)) {

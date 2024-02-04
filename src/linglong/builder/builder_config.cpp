@@ -105,6 +105,16 @@ bool BuilderConfig::getOffline() const
     return offline;
 }
 
+void BuilderConfig::setBuildArch(const QString &arch)
+{
+    buildArch = arch;
+}
+
+QString BuilderConfig::getBuildArch() const
+{
+    return buildArch;
+}
+
 QString BuilderConfig::templatePath() const
 {
     for (auto dataPath : QStandardPaths::standardLocations(QStandardPaths::GenericDataLocation)) {

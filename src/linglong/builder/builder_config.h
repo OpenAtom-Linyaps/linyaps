@@ -54,6 +54,9 @@ public:
     void setOffline(const bool &exec);
     bool getOffline() const;
 
+    void setBuildArch(const QString &arch);
+    QString getBuildArch() const;
+
     // TODO: remove later
     QString targetFetchCachePath() const;
 
@@ -63,6 +66,7 @@ public:
     QString templatePath() const;
 
 private:
+    QString buildArch;
     QString projectRoot;
     QString projectName;
     QStringList exec;

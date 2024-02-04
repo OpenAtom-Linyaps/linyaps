@@ -9,7 +9,7 @@
 
 #include "linglong/package/ref.h"
 #include "linglong/util/qserializer/deprecated.h"
-#include "linglong/util/sysinfo.h"
+#include "linglong/builder/builder_config.h"
 
 #include <QObject>
 #include <QScopedPointer>
@@ -210,7 +210,7 @@ public:
 private:
     Project::Config cfg;
 
-    static QString buildArch() { return util::hostArch(); }
+    static QString buildArch() { return BuilderConfig::instance()->getBuildArch(); }
 
     int generateBuildScript(const QString &path);
 };

@@ -652,8 +652,13 @@ auto App::stageUser(const QString &appId) -> int
     }
 
     env.push_back("XDG_RUNTIME_DIR=" + userRuntimeDir.toStdString());
-    env.push_back("DBUS_SESSION_BUS_ADDRESS=unix:path="
+    if (geteuid() != 0) {
+        env.push_back("DBUS_SESSION_BUS_ADDRESS=unix:path="
                   + util::jonsPath({ userRuntimeDir, "bus" }).toStdString());
+    } else {
+        env.push_back("DBUS_SYSTEM_BUS_ADDRESS=unix:path="
+                  + util::jonsPath({ "/run/dbus/system_bus_socket" }).toStdString());
+    }
 
     auto appSharePath = QStringList{ "/opt/apps", appRef.appId, "files/share" }.join("/");
     auto xdgDataDirs = QStringList{ appSharePath, "/runtime/share" };

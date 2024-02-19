@@ -65,7 +65,7 @@ void DependFetcher::printProgress(const uint &progress, const QString &speed)
 
 linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString &targetPath)
 {
-    auto handleRef = [&] -> linglong::utils::error::Result<package::Ref> {
+    auto handleRef = [&]() -> linglong::utils::error::Result<package::Ref> {
         // FIXME(black_desk):
         // 1. Offline should not only be an option of builder, but also a work
         //    mode argument passed to repo, which prevent all network request.

@@ -550,6 +550,23 @@ int Cli::install(std::map<std::string, docopt::value> &args)
             return -1;
         }
 
+        // Call ReloadApplications() in AM for now. Remove later.
+        if (linglong::util::isDeepinSysProduct()) {
+            QDBusConnection conn = QDBusConnection::sessionBus();
+            if (!conn.isConnected()) {
+                qWarning() << "Failed to connect to the session bus";
+            }
+            QDBusMessage msg =
+              QDBusMessage::createMethodCall("org.desktopspec.ApplicationManager1",
+                                             "/org/desktopspec/ApplicationManager1",
+                                             "org.desktopspec.ApplicationManager1",
+                                             "ReloadApplications");
+            auto ret = conn.sessionBus().call(msg, QDBus::NoBlock);
+            if (ret.type() == QDBusMessage::ErrorMessage) {
+                qWarning() << "call reloadApplications failed:" << ret.errorMessage();
+            }
+        }
+
         this->printer.printReply(reply);
     }
     return 0;

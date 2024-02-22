@@ -18,8 +18,11 @@ pfl_add_executable(
   ./src/ytj/to_yaml.test.cpp
   LINK_LIBRARIES
   PUBLIC
-  ytj
+  ytj::ytj
   Catch2::Catch2WithMain)
 
 include(Catch)
-catch_discover_tests(ytj__tests)
+
+# NOTE: add_custom_command cannot use with ALIAS target. Check
+# https://gitlab.kitware.com/cmake/cmake/-/merge_requests/9201.
+catch_discover_tests(ytj__ytj__tests)

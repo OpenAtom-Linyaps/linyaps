@@ -17,7 +17,7 @@ target_link_libraries(repo_client_test PRIVATE
     Qt5::Gui
     Qt5::Test
     Qt5::Widgets
-    linglong
+    linglong::linglong
 )
 
 add_executable(ostree_repo_test repo/ostree_repo_test.cpp util/mock-network.h util/mock-network.cpp)
@@ -27,5 +27,5 @@ target_link_libraries(ostree_repo_test PRIVATE
     Qt5::Gui
     Qt5::Test
     Qt5::Widgets
-    linglong
+    linglong::linglong
 )

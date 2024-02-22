@@ -50,11 +50,12 @@ pfl_add_executable(
   LINK_LIBRARIES
   PUBLIC
   GTest::gmock
-  linglong
+  linglong::linglong
   Qt::DBusPrivate)
 
 include(GoogleTest)
-gtest_discover_tests(linglong__tests
+get_real_target_name(linglong_tests linglong::linglong::tests)
+message("${linglong_tests}")
+gtest_discover_tests(${linglong_tests}
                      WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
-
 add_subdirectory(src/qt)

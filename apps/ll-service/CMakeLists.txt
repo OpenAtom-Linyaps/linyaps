@@ -9,4 +9,4 @@ pfl_add_executable(
   ll-service
   LINK_LIBRARIES
   PUBLIC
-  linglong)
+  linglong::linglong)

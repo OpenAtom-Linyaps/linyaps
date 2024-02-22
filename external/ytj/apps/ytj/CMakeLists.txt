@@ -5,4 +5,4 @@ pfl_add_executable(
   ./src/main.cpp
   LINK_LIBRARIES
   PUBLIC
-  ytj)
+  ytj::ytj)

@@ -91,9 +91,9 @@ endif()
 
 CPMFindPackage(
   NAME ocppi
-  VERSION 0.1.8
+  VERSION 0.2.2
   GITHUB_REPOSITORY black-desk/ocppi
-  GIT_TAG v0.1.9
+  GIT_TAG v0.2.2
   GIT_SHALLOW ON
   OPTIONS "OCPPI_ENABLE_TESTING OFF" "OCPPI_BUILD_EXAMPLES OFF"
   FIND_PACKAGE_ARGUMENTS "NAMES ocppi COMPONENTS common runtime"
@@ -104,6 +104,16 @@ find_package(PkgConfig REQUIRED)
 pkg_search_module(glib2 REQUIRED IMPORTED_TARGET glib-2.0)
 pkg_search_module(ostree1 REQUIRED IMPORTED_TARGET ostree-1)
 pkg_search_module(systemd REQUIRED IMPORTED_TARGET libsystemd)
+
+function(get_real_target_name output target)
+  get_target_property("${output}" "${target}" ALIASED_TARGET)
+  if("${output}" STREQUAL "")
+    set("${output}" "${target}")
+  endif()
+  set("${output}"
+      ${${output}}
+      PARENT_SCOPE)
+endfunction()
 
 include(./cmake/PFL.cmake)
 
@@ -349,19 +359,21 @@ pfl_add_library(
   Qt::WebSockets
   QtLinglongRepoClientAPI
   docopt
-  ocppi::runtime
+  ocppi::ocppi
   tl::expected
   yaml-cpp::yaml-cpp
-  ytj)
+  ytj::ytj)
 
 function(
   linglong_add_dbus_adaptor
-  target_name
+  target
   xml
   includes
   parent_class
   basename
   classname)
+  get_real_target_name(target ${target})
+
   set(DBUS_ADAPTOR_SOURCE)
 
   set(Qt5DBus_QDBUSXML2CPP_EXECUTABLE qdbusxml2cpp)
@@ -369,12 +381,12 @@ function(
                        ${basename} ${classname})
   # FIXME(black_desk): `qt5_add_dbus_adaptor` will use basename as include and
   # this cannot be configured at all. This is just a workaround.
-  target_include_directories(${target_name} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-  target_sources(${target_name} PRIVATE ${DBUS_ADAPTOR_SOURCE})
+  target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+  target_sources(${target} PRIVATE ${DBUS_ADAPTOR_SOURCE})
 endfunction()
 
 linglong_add_dbus_adaptor(
-  linglong
+  linglong::linglong
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.AppManager1.xml
   linglong/service/app_manager.h
   linglong::service::AppManager
@@ -382,7 +394,7 @@ linglong_add_dbus_adaptor(
   OrgDeepinLinglongAppmanager1Adaptor)
 
 linglong_add_dbus_adaptor(
-  linglong
+  linglong::linglong
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.Job1.xml
   linglong/job_manager/job.h
   linglong::job_manager::Job
@@ -390,7 +402,7 @@ linglong_add_dbus_adaptor(
   OrgDeepinLinglongJob1Adaptor)
 
 linglong_add_dbus_adaptor(
-  linglong
+  linglong::linglong
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.JobManager1.xml
   linglong/job_manager/job_manager.h
   linglong::job_manager::JobManager
@@ -398,7 +410,7 @@ linglong_add_dbus_adaptor(
   OrgDeepinLinglongJobmanager1Adaptor)
 
 linglong_add_dbus_adaptor(
-  linglong
+  linglong::linglong
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.JobManager1.xml
   linglong/job_manager/job_manager.h
   linglong::job_manager::JobManager
@@ -406,7 +418,7 @@ linglong_add_dbus_adaptor(
   OrgDeepinLinglongJobmanager1Adaptor)
 
 linglong_add_dbus_adaptor(
-  linglong
+  linglong::linglong
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManager1.xml
   linglong/package_manager/package_manager.h
   linglong::service::PackageManager
@@ -414,7 +426,7 @@ linglong_add_dbus_adaptor(
   OrgDeepinLinglongPackagemanager1Adaptor)
 
 linglong_add_dbus_adaptor(
-  linglong
+  linglong::linglong
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManager1.xml
   linglong/package_manager/package_manager.h
   linglong::service::PackageManager
@@ -422,7 +434,7 @@ linglong_add_dbus_adaptor(
   OrgDeepinLinglongPackagemanager1Adaptor)
 
 linglong_add_dbus_adaptor(
-  linglong
+  linglong::linglong
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.FilesystemHelper1.xml
   linglong/system_helper/filesystem_helper.h
   linglong::system::helper::FilesystemHelper # FIXME: should be
@@ -431,7 +443,7 @@ linglong_add_dbus_adaptor(
   OrgDeepinLinglongFilesystemHelper1Adaptor)
 
 linglong_add_dbus_adaptor(
-  linglong
+  linglong::linglong
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManagerHelper1.xml
   linglong/system_helper/package_manager_helper.h
   linglong::system::helper::PackageManagerHelper # FIXME: should be
@@ -440,6 +452,8 @@ linglong_add_dbus_adaptor(
   OrgDeepinLinglongPackageManagerHelper1Adaptor)
 
 function(linglong_add_dbus_interface target xml basename) # include
+  get_real_target_name(target "${target}")
+
   set_source_files_properties(${xml} NO_NAMESPACE ON)
 
   set(include "${ARGV3}")
@@ -454,23 +468,24 @@ function(linglong_add_dbus_interface target xml basename) # include
 endfunction()
 
 linglong_add_dbus_interface(
-  linglong
+  linglong::linglong
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManagerHelper1.xml
   src/linglong/api/dbus/v1/gen_org_deepin_linglong_packagemanagerhelper1)
 
 linglong_add_dbus_interface(
-  linglong
+  linglong::linglong
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.FilesystemHelper1.xml
   src/linglong/api/dbus/v1/gen_org_deepin_linglong_filesystemhelper1
   linglong/dbus_ipc/workaround.h)
 
 linglong_add_dbus_interface(
-  linglong ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.AppManager1.xml
+  linglong::linglong
+  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.AppManager1.xml
   src/linglong/api/dbus/v1/gen_org_deepin_linglong_appmanager1
   linglong/dbus_ipc/workaround.h)
 
 linglong_add_dbus_interface(
-  linglong
+  linglong::linglong
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManager1.xml
   src/linglong/api/dbus/v1/gen_org_deepin_linglong_packagemanager1
   linglong/dbus_ipc/workaround.h)

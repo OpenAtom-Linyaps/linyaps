@@ -28,7 +28,7 @@ jobs:
         with:
           key: ${{ matrix.cxx }}-${{ matrix.type }}
       - name: Cache CPM.cmake Source
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: .cache/cpm/source
           key: ${{ runner.os }}-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}

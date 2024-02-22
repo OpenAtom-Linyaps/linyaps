@@ -218,7 +218,7 @@ TEST_F(CLITest, List)
 
 TEST_F(CLITest, repo)
 {
-    auto args = parseCommand("ll-cli repo xxx");
+    auto args = parseCommand("ll-cli repo list");
     EXPECT_CALL(*pkgMan, getRepoInfo)
       .Times(1)
       .WillOnce(

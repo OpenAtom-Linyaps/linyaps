@@ -99,6 +99,18 @@ CPMFindPackage(
   FIND_PACKAGE_ARGUMENTS "NAMES ocppi COMPONENTS common runtime"
   EXCLUDE_FROM_ALL ON)
 
+CPMFindPackage(
+  NAME spdlog
+  VERSION 1.10.0
+  GITHUB_REPOSITORY "gabime/spdlog"
+  GIT_TAG "v1.13.0"
+  GIT_SHALLOW ON
+  EXCLUDE_FROM_ALL ON
+  OPTIONS
+    "CMAKE_POSITION_INDEPENDENT_CODE ON" # NOTE:
+                                         # https://github.com/gabime/spdlog/issues/1190
+    "SPDLOG_FMT_EXTERNAL ON")
+
 find_package(PkgConfig REQUIRED)
 
 pkg_search_module(glib2 REQUIRED IMPORTED_TARGET glib-2.0)

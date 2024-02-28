@@ -185,8 +185,6 @@ int main(int argc, char **argv)
                       return -1;
                   }
                   linglong::builder::BuilderConfig::instance()->setBuildArch((*arch).toString());
-              } else {
-                  linglong::builder::BuilderConfig::instance()->setBuildArch(linglong::util::hostArch());
               }
 
               // config linglong.yaml before build if necessary

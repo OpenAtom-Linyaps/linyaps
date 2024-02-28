@@ -24,6 +24,7 @@ fi
 # fetch commit
 git tag --delete "$version" || true
 git fetch origin "$commit:refs/tags/$version" --depth 1 -n
+git add :/
 git reset --hard "$version"
 
 # init submodule

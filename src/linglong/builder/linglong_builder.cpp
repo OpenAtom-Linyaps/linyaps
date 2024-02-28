@@ -318,7 +318,7 @@ linglong::util::Error LinglongBuilder::config(const QString &userName, const QSt
 }
 
 // FIXME: should merge with runtime
-linglong::utils::error::Result<int> LinglongBuilder::startContainer(
+linglong::utils::error::Result<void> LinglongBuilder::startContainer(
   QString workdir, ocppi::cli::CLI &cli, ocppi::runtime::config::types::Config &r)
 {
     QDir dir(workdir);
@@ -341,7 +341,7 @@ linglong::utils::error::Result<int> LinglongBuilder::startContainer(
     }
     if (!f.write(QByteArray::fromStdString(data))) {
         return LINGLONG_ERR(-1, f.errorString());
-    };
+    }
     f.close();
 
     // 运行容器
@@ -351,9 +351,9 @@ linglong::utils::error::Result<int> LinglongBuilder::startContainer(
     if (!ret.has_value()) {
         auto err = LINGLONG_SERR(ret.error());
         qDebug() << "run container failed" << err.value().message();
-        return err.value().code();
+        return err;
     }
-    return 0;
+    return LINGLONG_OK;
 }
 
 linglong::util::Error LinglongBuilder::generate(const QString &projectName)

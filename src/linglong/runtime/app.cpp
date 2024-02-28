@@ -151,55 +151,56 @@ utils::error::Result<void> App::prepare()
     m.destination = "/run/app/env";
     r.mounts->push_back(m);
 
-    // TODO: move to class package
-    // find desktop file
-    QDir applicationsDir(
-      QStringList{ appRootPath, "entries", "applications" }.join(QDir::separator()));
-    auto desktopFilenameList = applicationsDir.entryList({ "*.desktop" }, QDir::Files);
-    if (desktopFilenameList.length() <= 0) {
-        return LINGLONG_ERR(-1, "desktop file not found in " + applicationsDir.path());
-    }
-
-    auto desktopEntry =
-      utils::xdg::DesktopEntry::New(applicationsDir.absoluteFilePath(desktopFilenameList.value(0)));
-    if (!desktopEntry.has_value()) {
-        return LINGLONG_EWRAP("DesktopEntry file path:" + desktopFilenameList.value(0),
-                              desktopEntry.error());
-    }
-
-    auto exec = desktopEntry->getValue<QString>("Exec");
-    if (!exec.has_value()) {
-        return LINGLONG_EWRAP("Broken desktop file without Exec in main section.", exec.error());
-    }
-
-    const auto &parsedExec = util::parseExec(*exec);
-
-    // FIXME(black_desk): remove this logic after upgarding old packages.
-    // 当执行ll-cli run appid时，从entries目录获取执行参数，同时兼容旧的outputs打包模式。
-    QStringList tmpArgs;
-    QStringList execArgs;
-    if (util::dirExists(QStringList{ appRootPath, "outputs", "share" }.join(QDir::separator()))) {
-        execArgs = parsedExec;
-    } else {
-        tmpArgs = parsedExec;
-        // 移除 ll-cli run  appid --exec 参数
-        for (auto i = tmpArgs.indexOf(QRegExp("^--exec$")) + 1; i < tmpArgs.length(); ++i) {
-            execArgs << tmpArgs[i];
-        }
-    }
-
-    // FIXME(black_desk): ignore field codes here. This might cause bugs that:
-    // - application has wrong icon to dispaly -> implement %i
-    // - application has wrong translated name -> implement %c
-    // - application doesn't know where its desktop entry placed -> implement %k
-    for (auto index = execArgs.indexOf(QRegExp("^%\\w$")); index != -1;
-         index = execArgs.indexOf(QRegExp("^%\\w$"))) {
-        execArgs.removeAt(index);
-    }
-
+    // 初始化容器的 process.args 参数
     if (r.process->args->empty()) {
-        if (!desktopExec.isEmpty()) {
-            execArgs = desktopExec;
+        auto execArgs = desktopExec;
+        // 如果命令行没有exec参数，从应用的desktop文件查找
+        if (execArgs.isEmpty()) {
+            // TODO: move to class package
+            // find desktop file
+            QDir applicationsDir(
+              QStringList{ appRootPath, "entries", "applications" }.join(QDir::separator()));
+            auto desktopFilenameList = applicationsDir.entryList({ "*.desktop" }, QDir::Files);
+            if (desktopFilenameList.length() <= 0) {
+                return LINGLONG_ERR(-1, "desktop file not found in " + applicationsDir.path());
+            }
+
+            auto desktopEntry = utils::xdg::DesktopEntry::New(
+              applicationsDir.absoluteFilePath(desktopFilenameList.value(0)));
+            if (!desktopEntry.has_value()) {
+                return LINGLONG_EWRAP("DesktopEntry file path:" + desktopFilenameList.value(0),
+                                      desktopEntry.error());
+            }
+
+            auto exec = desktopEntry->getValue<QString>("Exec");
+            if (!exec.has_value()) {
+                return LINGLONG_EWRAP("Broken desktop file without Exec in main section.",
+                                      exec.error());
+            }
+
+            const auto &parsedExec = util::parseExec(*exec);
+
+            // FIXME(black_desk): remove this logic after upgarding old packages.
+            // 当执行ll-cli run appid时，从entries目录获取执行参数，同时兼容旧的outputs打包模式。
+            if (util::dirExists(
+                  QStringList{ appRootPath, "outputs", "share" }.join(QDir::separator()))) {
+                execArgs = parsedExec;
+            } else {
+                auto tmpArgs = parsedExec;
+                // 移除 ll-cli run  appid --exec 参数
+                for (auto i = tmpArgs.indexOf(QRegExp("^--exec$")) + 1; i < tmpArgs.length(); ++i) {
+                    execArgs << tmpArgs[i];
+                }
+            }
+
+            // FIXME(black_desk): ignore field codes here. This might cause bugs that:
+            // - application has wrong icon to dispaly -> implement %i
+            // - application has wrong translated name -> implement %c
+            // - application doesn't know where its desktop entry placed -> implement %k
+            for (auto index = execArgs.indexOf(QRegExp("^%\\w$")); index != -1;
+                 index = execArgs.indexOf(QRegExp("^%\\w$"))) {
+                execArgs.removeAt(index);
+            }
         }
         // 使用sh作为pid 1的进程
         // TODO(wurongjie) 应该有专门的init程序，暂时用 sh

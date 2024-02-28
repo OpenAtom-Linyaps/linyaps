@@ -61,6 +61,10 @@ auto main(int argc, char *argv[]) -> int
         logger->set_level(spdlog::level::trace);
     }
     auto path = QStandardPaths::findExecutable("crun");
+    if (path.isEmpty()) {
+        qCritical() << "crun not found";
+        return -1;
+    }
     auto crun = ocppi::cli::crun::Crun::New(path.toStdString(), logger);
     if (!crun.has_value()) {
         std::rethrow_exception(crun.error());

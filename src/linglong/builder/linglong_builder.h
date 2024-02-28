@@ -69,7 +69,7 @@ private:
                                                            const QString &upperdir,
                                                            const QString &workdir);
 
-    static linglong::utils::error::Result<int>
+    static linglong::utils::error::Result<void>
     startContainer(QString workdir, ocppi::cli::CLI &cli, ocppi::runtime::config::types::Config &r);
     static auto toJSON(const ocppi::runtime::config::types::Mount &) -> nlohmann::json;
     static auto toJSON(const ocppi::runtime::config::types::Config &) -> nlohmann::json;

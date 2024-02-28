@@ -1193,19 +1193,21 @@ linglong::util::Error LinglongBuilder::run()
         if (!ret.has_value()) {
             return NewError(-1, "checkout app files failed");
         }
+        if (project->runtime) {
+            // checkout runtime
+            targetPath =
+              BuilderConfig::instance()->layerPath({ project->runtimeRef().toLocalRefString() });
+            linglong::util::ensureDir(targetPath);
 
-        // checkout runtime
-        targetPath =
-          BuilderConfig::instance()->layerPath({ project->runtimeRef().toLocalRefString() });
-        linglong::util::ensureDir(targetPath);
-
-        auto latestRuntimeRef = repo.localLatestRef(project->runtimeRef());
-        if (!latestRuntimeRef.has_value()) {
-            return NewError(latestRuntimeRef.error().code(), latestRuntimeRef.error().message());
-        }
-        ret = repo.checkoutAll(*latestRuntimeRef, "", targetPath);
-        if (!ret.has_value()) {
-            return NewError(-1, "checkout runtime files failed");
+            auto latestRuntimeRef = repo.localLatestRef(project->runtimeRef());
+            if (!latestRuntimeRef.has_value()) {
+                return NewError(latestRuntimeRef.error().code(),
+                                latestRuntimeRef.error().message());
+            }
+            ret = repo.checkoutAll(*latestRuntimeRef, "", targetPath);
+            if (!ret.has_value()) {
+                return NewError(-1, "checkout runtime files failed");
+            }
         }
 
         service::RunParamOption paramOption;

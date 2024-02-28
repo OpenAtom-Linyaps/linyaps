@@ -727,8 +727,13 @@ linglong::utils::error::Result<package::Ref> OSTreeRepo::remoteLatestRef(const p
             qCritical() << "query remote app with channel linglong failed."
                         << queryRef.toSpecString();
             return LINGLONG_EWRAP(
-              QString("%1 is not exist in remote repo").arg(queryRef.toSpecString()),
+              QString("query remote app with channel linglong failed").arg(queryRef.toSpecString()),
               ret.error());
+        }
+        if (ret->isEmpty()) {
+            return LINGLONG_ERR(
+              -1,
+              QString("%1 is not exist in remote repo").arg(queryRef.toSpecString()));
         }
     }
 

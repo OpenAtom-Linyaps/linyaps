@@ -11,8 +11,6 @@
 #include "linglong/repo/config/ConfigV1.hpp"
 #include "linglong/utils/error/error.h"
 
-#include <qt5/QtCore/qobjectdefs.h>
-
 #include <QString>
 
 namespace linglong {

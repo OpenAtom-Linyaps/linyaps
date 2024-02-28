@@ -16,12 +16,14 @@ Module::Module(Value value)
 QString Module::toString() const noexcept
 {
     switch (this->v) {
-    case UNKNOW:
-        return "unknown";
     case RUNTIME:
         return "runtime";
     case DEVELOP:
         return "develop";
+    case UNKNOW:
+        [[fallthrough]];
+    default:
+        return "unknown";
     }
 }
 

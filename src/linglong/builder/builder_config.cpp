@@ -8,6 +8,7 @@
 
 #include "linglong/util/file.h"
 #include "linglong/util/qserializer/yaml.h"
+#include "linglong/util/sysinfo.h"
 #include "linglong/util/xdg.h"
 
 #include <mutex>
@@ -112,6 +113,9 @@ void BuilderConfig::setBuildArch(const QString &arch)
 
 QString BuilderConfig::getBuildArch() const
 {
+    if (buildArch.isEmpty()) {
+        return linglong::util::hostArch();
+    }
     return buildArch;
 }
 

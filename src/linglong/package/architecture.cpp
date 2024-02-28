@@ -15,12 +15,14 @@ Architecture::Architecture(Value value)
 QString Architecture::toString() const noexcept
 {
     switch (this->v) {
-    case UNKNOW:
-        return "unknow";
     case X86_64:
         return "x86_64";
     case ARM64:
         return "arm64";
+    case UNKNOW:
+        [[fallthrough]];
+    default:
+        return "unknow";
     }
 }
 

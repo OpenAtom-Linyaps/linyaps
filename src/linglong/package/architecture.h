@@ -29,6 +29,8 @@ public:
 
     QString toString() const noexcept;
 
+    QString getTriplet() const noexcept;
+
     static utils::error::Result<Architecture> parse(const QString &raw) noexcept;
 
 private:

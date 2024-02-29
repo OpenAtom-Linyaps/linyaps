@@ -7,7 +7,7 @@
 #ifndef LINGLONG_SRC_MODULE_UTIL_OCI_DISTRIBUTION_CLIENT_H_
 #define LINGLONG_SRC_MODULE_UTIL_OCI_DISTRIBUTION_CLIENT_H_
 
-#include "linglong/package/package.h"
+#include "linglong/package/info.h"
 #include "linglong/package/ref.h"
 #include "linglong/util/error.h"
 

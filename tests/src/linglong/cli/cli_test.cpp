@@ -7,7 +7,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "linglong/package/package.h"
+#include "linglong/package/info.h"
 
 //
 #include "linglong/cli/dbus_reply.h"
@@ -209,7 +209,7 @@ TEST_F(CLITest, List)
       .Times(1)
       .WillOnce(Return(
         createReply(service::QueryReply{ { STATUS_CODE(kErrorPkgQuerySuccess), "" }, "[]" })));
-    EXPECT_CALL(*printer, printAppMetaInfos).Times(1);
+    EXPECT_CALL(*printer, printInfos).Times(1);
 
     auto ret = cli->list(args);
 

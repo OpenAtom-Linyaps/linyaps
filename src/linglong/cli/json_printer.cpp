@@ -22,7 +22,7 @@ void JSONPrinter::printErr(const utils::error::Error &err)
     std::cout << QString::fromUtf8(QJsonDocument(obj).toJson()).toStdString();
 }
 
-void JSONPrinter::printAppMetaInfos(const QList<QSharedPointer<linglong::package::AppMetaInfo>> &list)
+void JSONPrinter::printInfos(const QList<QSharedPointer<linglong::package::Info>> &list)
 {
     QJsonArray array;
     for (const auto &it : list) {
@@ -37,7 +37,7 @@ void JSONPrinter::printAppMetaInfos(const QList<QSharedPointer<linglong::package
         obj["repoName"] = it->repoName.trimmed();
         obj["description"] = it->description.trimmed();
         obj["user"] = it->user.trimmed();
-        obj["size"] = it->size.trimmed();
+        obj["size"] = QString::number(it->size);
         obj["channel"] = it->channel.trimmed();
         obj["module"] = it->module.trimmed();
         array.push_back(obj);
@@ -87,11 +87,11 @@ void JSONPrinter::printLayerInfo(const QSharedPointer<linglong::package::Info> &
     QJsonArray jsonArray;
     // some info are not printed, such as base
     jsonArray.push_back(QJsonObject{
-      { "appid", info->appid },
+      { "appid", info->appId },
       { "kind", info->kind },
       { "name", info->name },
       { "version", info->version },
-      { "arch", info->arch.first() },
+      { "arch", info->arch },
       { "module", info->module },
       { "runtime", info->runtime },
       { "size", QString::number(info->size) },

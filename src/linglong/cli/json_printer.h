@@ -16,7 +16,7 @@ class JSONPrinter : public Printer
 {
 public:
     void printErr(const utils::error::Error &err) override;
-    void printAppMetaInfos(const QList<QSharedPointer<linglong::package::AppMetaInfo>> &list) override;
+    void printInfos(const QList<QSharedPointer<linglong::package::Info>> &list) override;
     void printContainers(const QList<QSharedPointer<Container>> &list) override;
     void printReply(const linglong::service::Reply &reply) override;
     void printQueryReply(const linglong::service::QueryReply &reply) override;

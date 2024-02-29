@@ -657,7 +657,7 @@ int Cli::search(std::map<std::string, docopt::value> &args)
     }
 
     auto [appMetaInfoList, err] =
-      linglong::util::fromJSON<QList<QSharedPointer<linglong::package::AppMetaInfo>>>(
+      linglong::util::fromJSON<QList<QSharedPointer<linglong::package::Info>>>(
         reply.result.toLocal8Bit());
     if (err) {
         this->printer.printErr(LINGLONG_ERR(-1, "failed to parse json reply").value());
@@ -669,7 +669,7 @@ int Cli::search(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    this->printer.printAppMetaInfos(appMetaInfoList);
+    this->printer.printInfos(appMetaInfoList);
     return 0;
 }
 
@@ -710,14 +710,14 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
 int Cli::list(std::map<std::string, docopt::value> &args)
 {
     linglong::service::QueryParamOption paramOption;
-    QList<QSharedPointer<linglong::package::AppMetaInfo>> appMetaInfoList;
+    QList<QSharedPointer<linglong::package::Info>> appMetaInfoList;
     linglong::service::QueryReply reply;
     QDBusPendingReply<linglong::service::QueryReply> dbusReply = this->pkgMan.Query(paramOption);
     // 默认超时时间为25s
     dbusReply.waitForFinished();
     reply = dbusReply.value();
-    linglong::util::getAppMetaInfoListByJson(reply.result, appMetaInfoList);
-    this->printer.printAppMetaInfos(appMetaInfoList);
+    linglong::util::getInfoListByJson(reply.result, appMetaInfoList);
+    this->printer.printInfos(appMetaInfoList);
     return 0;
 }
 

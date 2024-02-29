@@ -51,7 +51,7 @@ TEST(Module_Util_Oci, Distribution)
         ASSERT_EQ(err, Success());
         manifest->layers.push_back(layer);
 
-        QSharedPointer<package::AppMetaInfo> config(new package::AppMetaInfo);
+        QSharedPointer<package::Info> config(new package::Info);
 
         QByteArray content;
         std::tie(content, err) = util::toJSON(config);

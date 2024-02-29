@@ -7,7 +7,6 @@
 #include <gtest/gtest.h>
 
 #include "linglong/package/info.h"
-#include "linglong/package/package.h"
 #include "linglong/util/xdg.h"
 
 #include <QDebug>
@@ -84,9 +83,9 @@ TEST(PermissionTest, TestPermission)
     EXPECT_NE(r, nullptr);
 
     // check app info
-    EXPECT_EQ(r->appid, "cn.wps.wps-office");
+    EXPECT_EQ(r->appId, "cn.wps.wps-office");
     EXPECT_EQ(r->version, "11.1.0.10161");
-    EXPECT_EQ(r->arch, QStringList({ "amd64" }));
+    EXPECT_EQ(r->arch, "amd64");
     EXPECT_EQ(r->kind, "");
     EXPECT_EQ(r->name, "wps-office");
     EXPECT_EQ(r->description, "");

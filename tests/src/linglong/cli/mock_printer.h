@@ -23,8 +23,8 @@ class MockPrinter : public Printer
 public:
     MOCK_METHOD(void, printErr, (const utils::error::Error &), (override));
     MOCK_METHOD(void,
-                printAppMetaInfos,
-                (const QList<QSharedPointer<linglong::package::AppMetaInfo>> &),
+                printInfos,
+                (const QList<QSharedPointer<linglong::package::Info>> &),
                 (override));
     MOCK_METHOD(void, printContainers, (const QList<QSharedPointer<Container>> &));
 };

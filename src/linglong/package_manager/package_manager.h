@@ -11,7 +11,7 @@
 #include "linglong/dbus_ipc/package_manager_param.h"
 #include "linglong/dbus_ipc/param_option.h"
 #include "linglong/dbus_ipc/reply.h"
-#include "linglong/package/package.h"
+#include "linglong/package/info.h"
 #include "linglong/repo/repo.h"
 #include "linglong/repo/repo_client.h"
 
@@ -164,25 +164,25 @@ private:
      * @param appId: 待匹配runtime的appId
      * @param appList: 待搜索的软件包列表信息
      *
-     * @return AppMetaInfo: 最新版本的runtime
+     * @return Info: 最新版本的runtime
      *
      */
     auto getLatestRuntime(const QString &appId,
                           const QString &version,
-                          const QList<QSharedPointer<linglong::package::AppMetaInfo>> &appList)
-      -> QSharedPointer<linglong::package::AppMetaInfo>;
+                          const QList<QSharedPointer<linglong::package::Info>> &appList)
+      -> QSharedPointer<linglong::package::Info>;
     /*
      * 从给定的软件包列表中查找最新版本的软件包
      *
      * @param appId: 待匹配应用的appId
      * @param appList: 待搜索的软件包列表信息
      *
-     * @return AppMetaInfo: 最新版本的软件包
+     * @return Info: 最新版本的软件包
      *
      */
     auto getLatestApp(const QString &appId,
-                      const QList<QSharedPointer<linglong::package::AppMetaInfo>> &appList)
-      -> QSharedPointer<linglong::package::AppMetaInfo>;
+                      const QList<QSharedPointer<linglong::package::Info>> &appList)
+      -> QSharedPointer<linglong::package::Info>;
 
     /*
      * 从json字符串中提取软件包对应的JsonArray数据
@@ -205,7 +205,7 @@ private:
      * @return bool: true:成功 false:失败
      */
     auto loadAppInfo(const QString &jsonString,
-                     QList<QSharedPointer<linglong::package::AppMetaInfo>> &appList,
+                     QList<QSharedPointer<linglong::package::Info>> &appList,
                      QString &err) -> bool;
 
     /*
@@ -251,8 +251,7 @@ private:
      *
      * @return bool: true:成功 false:失败
      */
-    auto installRuntime(QSharedPointer<linglong::package::AppMetaInfo> appInfo, QString &err)
-      -> bool;
+    auto installRuntime(QSharedPointer<linglong::package::Info> appInfo, QString &err) -> bool;
 
     /*
      * 检查应用runtime安装状态

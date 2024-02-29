@@ -213,10 +213,10 @@ linglong::utils::error::Result<void> LinglongBuilder::commitBuildOutput(Project 
 
         info->runtime = project->runtimeRef().toLocalRefString();
 
-        info->appid = project->package->id;
+        info->appId = project->package->id;
         info->name = project->package->name;
         info->description = project->package->description;
-        info->arch = QStringList{ project->config().targetArch() };
+        info->arch = project->config().targetArch();
 
         info->module = "runtime";
         info->size = linglong::util::sizeOfDir(project->config().cacheInstallPath(""));
@@ -1119,12 +1119,8 @@ util::Error LinglongBuilder::importLayer(const QString &path)
     }
 
     const auto pkgInfo = *((*layerDir)->info());
-    const auto ref = package::Ref("",
-                                  "main",
-                                  pkgInfo->appid,
-                                  pkgInfo->version,
-                                  pkgInfo->arch.first(),
-                                  pkgInfo->module);
+    const auto ref =
+      package::Ref("", "main", pkgInfo->appId, pkgInfo->version, pkgInfo->arch, pkgInfo->module);
     auto ret = repo.importDirectory(ref, (*layerDir)->absolutePath());
     if (!ret.has_value()) {
         return WrapError(NewError(ret.error().code(), ret.error().message()),

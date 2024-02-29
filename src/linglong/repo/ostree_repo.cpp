@@ -30,6 +30,8 @@
 #include <cstddef>
 #include <utility>
 
+#include <fcntl.h>
+
 namespace linglong {
 namespace repo {
 

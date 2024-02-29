@@ -7,7 +7,7 @@
 #ifndef LINGLONG_SRC_PACKAGE_MANAGER_IMPL_APP_STATUS_H_
 #define LINGLONG_SRC_PACKAGE_MANAGER_IMPL_APP_STATUS_H_
 
-#include "linglong/package/package.h"
+#include "linglong/package/info.h"
 
 #include <QDateTime>
 #include <QJsonArray>
@@ -40,8 +40,7 @@ int updateInstalledAppInfoDb();
  *
  * @return int: 0:成功 其它:失败
  */
-int insertAppRecord(QSharedPointer<linglong::package::AppMetaInfo> package,
-                    const QString &userName);
+int insertAppRecord(QSharedPointer<linglong::package::Info> package, const QString &userName);
 
 /*
  * 删除软件包安装信息
@@ -105,7 +104,7 @@ bool getAllVerAppInfo(const QString &appId,
                       const QString &appVer,
                       const QString &appArch,
                       const QString &userName,
-                      QList<QSharedPointer<linglong::package::AppMetaInfo>> &pkgList);
+                      QList<QSharedPointer<linglong::package::Info>> &pkgList);
 
 /*
  * 查询已安装软件包信息
@@ -126,7 +125,7 @@ bool getInstalledAppInfo(const QString &appId,
                          const QString &channel,
                          const QString &module,
                          const QString &userName,
-                         QList<QSharedPointer<linglong::package::AppMetaInfo>> &pkgList);
+                         QList<QSharedPointer<linglong::package::Info>> &pkgList);
 
 /*
  * 查询所有已安装软件包信息
@@ -147,8 +146,8 @@ bool queryAllInstalledApp(const QString &userName, QString &result, QString &err
  *
  * @return bool: true: 成功 false: 失败
  */
-bool getAppMetaInfoListByJson(const QString &jsonString,
-                              QList<QSharedPointer<linglong::package::AppMetaInfo>> &appList);
+bool getInfoListByJson(const QString &jsonString,
+                       QList<QSharedPointer<linglong::package::Info>> &appList);
 } // namespace util
 } // namespace linglong
 #endif

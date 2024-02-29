@@ -235,8 +235,6 @@ pfl_add_library(
   ./src/linglong/package/layer_packager.h
   ./src/linglong/package/module.cpp
   ./src/linglong/package/module.h
-  ./src/linglong/package/package.cpp
-  ./src/linglong/package/package.h
   ./src/linglong/package/ref.cpp
   ./src/linglong/package/ref.h
   ./src/linglong/package/reference.cpp

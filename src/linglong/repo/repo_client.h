@@ -26,7 +26,7 @@ class Response : public JsonSerialize
     Q_JSON_CONSTRUCTOR(Response)
 public:
     Q_JSON_PROPERTY(int, code);
-    Q_JSON_PROPERTY(QList<QSharedPointer<linglong::package::AppMetaInfo>>, data);
+    Q_JSON_PROPERTY(QList<QSharedPointer<linglong::package::Info>>, data);
 };
 
 class RepoClient : public QObject
@@ -41,7 +41,7 @@ public:
     // It's not thread-safe.
     void setEndpoint(const QString &endpoint);
 
-    linglong::utils::error::Result<QList<QSharedPointer<package::AppMetaInfo>>>
+    linglong::utils::error::Result<QList<QSharedPointer<package::Info>>>
     QueryApps(const package::Ref &ref);
 
 private:

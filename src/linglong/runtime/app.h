@@ -7,7 +7,7 @@
 #ifndef LINGLONG_SRC_MODULE_RUNTIME_APP_H_
 #define LINGLONG_SRC_MODULE_RUNTIME_APP_H_
 
-#include "linglong/package/package.h"
+#include "linglong/package/info.h"
 #include "linglong/package/ref.h"
 #include "linglong/runtime/app_config.h"
 #include "linglong/runtime/container.h"

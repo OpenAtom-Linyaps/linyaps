@@ -7,7 +7,7 @@
 #ifndef LINGLONG_SRC_MODULE_REPO_OSTREE_REPO_H_
 #define LINGLONG_SRC_MODULE_REPO_OSTREE_REPO_H_
 
-#include "linglong/package/package.h"
+#include "linglong/package/info.h"
 #include "linglong/package/ref.h"
 #include "linglong/repo/repo.h"
 #include "linglong/repo/repo_client.h"

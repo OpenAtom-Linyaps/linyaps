@@ -276,19 +276,53 @@ utils::error::Result<void> App::stageRootfs(QString runtimeRootPath,
     if (!ret.has_value()) {
         return LINGLONG_EWRAP("latest of ref", ret.error());
     }
+
+    // 初始化容器workdir目录
     auto hostBasePath = repo->rootOfLayer(*ret);
-    // 挂载base目录
-    auto baseDirs =
-      QDir(hostBasePath + "/files").entryList(QDir::Dirs | QDir::NoSymLinks | QDir::NoDotAndDotDot);
-    for (auto entry : baseDirs) {
-        auto source = hostBasePath + "/files/" + entry;
-        ocppi::runtime::config::types::Mount m;
-        m.type = "bind";
-        m.source = source.toStdString();
-        m.destination = "/" + entry.toStdString();
-        m.options = { "rbind", "ro", "nosuid", "nodev" };
-        r.mounts->push_back(m);
+    QTemporaryDir tmpDir;
+    tmpDir.setAutoRemove(false);
+    containerWorkdir = QDir(tmpDir.filePath(appId));
+    containerWorkdir.mkpath("rootfs");
+    containerWorkdir.mkdir("upper");
+    containerWorkdir.mkdir("work");
+    // 使用命令挂载overlayfs rootfs
+    QString program = "fuse-overlayfs";
+    QStringList arguments = {
+        "-o",
+        "upperdir=" + containerWorkdir.filePath("upper"),
+        "-o",
+        "workdir=" + containerWorkdir.filePath("work"),
+        "-o",
+        "lowerdir=" + QDir(hostBasePath).filePath("files"),
+        containerWorkdir.filePath("rootfs"),
     };
+    qDebug() << "run" << program << arguments.join(" ");
+    auto mountRootRet = utils::command::Exec(program, arguments);
+    if (!mountRootRet.has_value()) {
+        return LINGLONG_EWRAP("Failed to mount rootfs using overlayfs", mountRootRet.error());
+    }
+    // 使用容器hook写在 overlayer rootfs
+    // 由于crun不支持在mount中配置fuse，也无法在hooks中挂载 overlayer 为 rootfs
+    // 玲珑在启动容器前挂载 overlayfs，在容器 hooks 中卸载 overlayfs
+    // 尝试在 hooks.createRuntime 执行 fuse-overlayfs 不会在容器中生效
+    // 尝试在 hooks.createContainer 可以挂载到rootfs中的目录，但是不能挂载到 rootfs（会卡死）
+    ocppi::runtime::config::types::Hook umountRootfsHook;
+    umountRootfsHook.args = { "umount",
+                              "--lazy",
+                              containerWorkdir.filePath("rootfs").toStdString() };
+    umountRootfsHook.path = "/usr/bin/umount";
+    if (!r.hooks.has_value()) {
+        r.hooks = std::make_optional(ocppi::runtime::config::types::Hooks{});
+    }
+    if (r.hooks->poststop.has_value()) {
+        r.hooks->poststop->push_back(umountRootfsHook);
+    } else {
+        r.hooks->poststop = { umountRootfsHook };
+    }
+    // 使用rootfs做容器根目录
+    r.root->readonly = true;
+    r.root->path = containerWorkdir.filePath("rootfs").toStdString();
+
     // 转化特殊变量
     // 获取环境变量LINGLONG_ROOT
     auto linglongRootPath = util::getLinglongRootPath();
@@ -1080,23 +1114,6 @@ linglong::utils::error::Result<QString> App::start()
 {
     package::Ref ref(package->ref);
 
-    // 创建 /tmp/ll-cli-xxx/$appid 作为工作目录
-    QTemporaryDir tmpDir;
-    tmpDir.setAutoRemove(false);
-    QDir dir(tmpDir.path());
-    dir.mkpath(ref.appId);
-    dir.cd(ref.appId);
-
-    // 创建rootfs目录
-    dir.mkdir("rootfs");
-    // 在rootfs中创建一些软链接
-    for (auto lib : QStringList{ "lib", "lib32", "lib64", "libx32", "bin", "sbin" }) {
-        QFile::link("usr/" + lib, dir.filePath("rootfs/" + lib));
-    }
-    // 使用rootfs做为容器的跟目录
-    r.root->readonly = true;
-    r.root->path = dir.filePath("rootfs").toStdString();
-
     util::ensureDir(r.root->path.c_str());
 
     auto ret = prepare();
@@ -1114,7 +1131,7 @@ linglong::utils::error::Result<QString> App::start()
     // 写容器配置文件
     auto runtimeConfigJSON = toJSON(r);
     auto data = runtimeConfigJSON.dump();
-    QFile f(dir.filePath("config.json"));
+    QFile f(containerWorkdir.filePath("config.json"));
     if (!f.open(QIODevice::WriteOnly)) {
         return LINGLONG_ERR(-1, f.errorString());
     }
@@ -1125,9 +1142,11 @@ linglong::utils::error::Result<QString> App::start()
     // 运行容器
     auto qid = util::genUuid();
     auto id = qid.toStdString();
-    auto path = std::filesystem::path(dir.path().toStdString());
+    auto path = std::filesystem::path(containerWorkdir.path().toStdString());
     auto runRet = ociCli->run(id.c_str(), path);
     if (!runRet.has_value()) {
+        qDebug() << "umount rootfs";
+        utils::command::Exec("umount", { "--lazy", QString::fromStdString(r.root->path) });
         return LINGLONG_EWRAP("create container", LINGLONG_SERR(runRet.error()).value());
     }
     return qid;

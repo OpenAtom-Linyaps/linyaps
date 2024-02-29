@@ -316,22 +316,11 @@ linglong::util::Error LinglongBuilder::config(const QString &userName, const QSt
 
 // FIXME: should merge with runtime
 linglong::utils::error::Result<void> LinglongBuilder::startContainer(
-  QString workdir, ocppi::cli::CLI &cli, ocppi::runtime::config::types::Config &r)
+  QDir workdir, ocppi::cli::CLI &cli, ocppi::runtime::config::types::Config &r)
 {
-    QDir dir(workdir);
-    // 初始化rootfs目录
-    dir.mkdir("rootfs");
-    // 在rootfs目录创建一些软链接，会在容器中使用
-    for (auto link : QStringList{ "lib", "lib32", "lib64", "libx32", "bin", "sbin" }) {
-        QFile::link("usr/" + link, dir.filePath("rootfs/" + link));
-    }
-    // 使用rootfs做容器根目录
-    r.root->readonly = true;
-    r.root->path = dir.filePath("rootfs").toStdString();
-
     // 写容器配置文件
     auto data = toJSON(r).dump();
-    QFile f(dir.filePath("config.json"));
+    QFile f(workdir.filePath("config.json"));
     qDebug() << "container config file" << f.fileName();
     if (!f.open(QIODevice::WriteOnly)) {
         return LINGLONG_ERR(-1, f.errorString());
@@ -343,7 +332,7 @@ linglong::utils::error::Result<void> LinglongBuilder::startContainer(
 
     // 运行容器
     auto id = util::genUuid().toStdString();
-    auto path = std::filesystem::path(dir.path().toStdString());
+    auto path = std::filesystem::path(workdir.path().toStdString());
     auto ret = cli.run(id.c_str(), path);
     if (!ret.has_value()) {
         auto err = LINGLONG_SERR(ret.error());
@@ -575,19 +564,6 @@ linglong::util::Error LinglongBuilder::build()
         }
     }
 
-    // 挂载base目录
-    auto baseDirs =
-      QDir(hostBasePath + "files").entryList(QDir::Dirs | QDir::NoSymLinks | QDir::NoDotAndDotDot);
-    for (auto entry : baseDirs) {
-        auto source = hostBasePath + "files/" + entry;
-        ocppi::runtime::config::types::Mount m;
-        m.type = "bind";
-        m.source = source.toStdString();
-        m.destination = "/" + entry.toStdString();
-        m.options = { "rbind", "ro", "nosuid", "nodev" };
-        r->mounts->push_back(m);
-    };
-
     // 初始化 overlayfs 目录
     QDir overlayDir(project->config().cacheAbsoluteFilePath({ "overlayfs" }));
     // overlayLowerDir 底层目录里面存放项目使用的runtime和depends文件的混合
@@ -624,6 +600,7 @@ linglong::util::Error LinglongBuilder::build()
         util::ensureDir(overlayWorkDir);
         util::ensureDir(overlayPointDir);
 
+        //  使用命令挂载fuse-overlayfs runtime
         QString program = "fuse-overlayfs";
         QStringList arguments = {
             "-o",
@@ -644,12 +621,18 @@ linglong::util::Error LinglongBuilder::build()
                               .arg(ret.error().message()));
         }
 
-        // 使用容器hook取消挂载 fuse-overlayfs 的挂载
-        r->hooks = r->hooks.value_or(ocppi::runtime::config::types::Hooks{});
+        // 使用容器hooks卸载fuse-overlayfs runtime
         ocppi::runtime::config::types::Hook umountRuntimeHook;
         umountRuntimeHook.args = { "umount", "--lazy", overlayPointDir.toStdString() };
         umountRuntimeHook.path = "/usr/bin/umount";
-        r->hooks->poststop = { umountRuntimeHook };
+        if (!r->hooks.has_value()) {
+            r->hooks = std::make_optional(ocppi::runtime::config::types::Hooks{});
+        }
+        if (r->hooks->poststop.has_value()) {
+            r->hooks->poststop->push_back(umountRuntimeHook);
+        } else {
+            r->hooks->poststop = { umountRuntimeHook };
+        }
 
         ocppi::runtime::config::types::Mount m;
         m.type = "bind";
@@ -761,13 +744,54 @@ linglong::util::Error LinglongBuilder::build()
 
     QTemporaryDir tmpDir;
     tmpDir.setAutoRemove(false);
-    auto startRet = startContainer(tmpDir.path(), ociCLI, *r);
+    auto workdir = QDir(tmpDir.path());
+    // 初始化rootfs目录
+    workdir.mkdir("rootfs");
+    workdir.mkdir("upper");
+    workdir.mkdir("work");
+    // 使用命令挂载 overlayfs rootfs
+    QString program = "fuse-overlayfs";
+    QStringList arguments = {
+        "-o",
+        "upperdir=" + workdir.filePath("upper"),
+        "-o",
+        "workdir=" + workdir.filePath("work"),
+        "-o",
+        "lowerdir=" + QDir(hostBasePath).filePath("files"),
+        workdir.filePath("rootfs"),
+    };
+    qDebug() << "run" << program << arguments.join(" ") << r->hooks->poststop.has_value();
+    auto mountRootRet = utils::command::Exec(program, arguments);
+    if (!mountRootRet.has_value()) {
+        return NewError(-1,
+                        "Failed to mount rootfs using overlayfs" + mountRootRet.error().message());
+    }
+    // 使用容器hooks卸载overlayfs rootfs
+    ocppi::runtime::config::types::Hook umountRootfsHook;
+    umountRootfsHook.args = { "umount", "--lazy", workdir.filePath("rootfs").toStdString() };
+    umountRootfsHook.path = "/usr/bin/umount";
+    if (!r->hooks.has_value()) {
+        r->hooks = std::make_optional(ocppi::runtime::config::types::Hooks{});
+    }
+    if (r->hooks->poststop.has_value()) {
+        r->hooks->poststop->push_back(umountRootfsHook);
+    } else {
+        r->hooks->poststop = { umountRootfsHook };
+    }
+
+    // 使用rootfs做容器根目录
+    r->root->readonly = true;
+    r->root->path = workdir.filePath("rootfs").toStdString();
+
+    auto startRet = startContainer(workdir, ociCLI, *r);
     if (!startRet.has_value()) {
         // 为避免容器启动失败，hook脚本未执行，手动再执行一次 umount
         if (project->package->kind != PackageKindApp) {
-            qDebug() << "umount fuse overlayfs";
+            qDebug() << "umount runtime";
             utils::command::Exec("umount", { "--lazy", overlayPointDir });
         }
+        qDebug() << "umount rootfs";
+        utils::command::Exec("umount", { "--lazy", overlayPointDir });
         return NewError(-1, "build task failed in container: " + startRet.error().message());
     }
     auto commitRet = commitBuildOutput(project.get(), overlayUpperDir, overlayWorkDir);

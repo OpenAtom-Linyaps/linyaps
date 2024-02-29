@@ -59,4 +59,23 @@ QStringList getUserEnv(const QStringList &filters)
     return ret.toStringList();
 }
 
+// 执行系统命令，返回命令的标准输出
+linglong::utils::error::Result<QString> Exec(QString command, QStringList args)
+{
+    QProcess process;
+    process.setProgram(command);
+    process.setArguments(args);
+    process.start();
+    // 如果进程启动失败，函数返回错误信息
+    if (!process.waitForFinished(-1)) {
+        return LINGLONG_ERR(-1, process.errorString());
+    }
+    // 如果进程退出码非0，函数返回标准错误输出
+    if (process.exitCode()) {
+        return LINGLONG_ERR(process.exitCode(), process.readAllStandardError());
+    }
+    // 如果进程退出码为0,函数返回，标准输出
+    return process.readAllStandardOutput();
+}
+
 } // namespace linglong::utils::command

@@ -41,7 +41,7 @@ void Printer::printErr(const utils::error::Error &err)
     std::cout << "Error: " << err.message().toStdString() << std::endl;
 }
 
-void Printer::printAppMetaInfos(const QList<QSharedPointer<linglong::package::AppMetaInfo>> &list)
+void Printer::printInfos(const QList<QSharedPointer<linglong::package::Info>> &list)
 {
     std::cout << "\033[38;5;214m" << std::left << std::setw(32) << qUtf8Printable("appId")
               << std::setw(32) << qUtf8Printable("name") << std::setw(16)
@@ -106,11 +106,11 @@ void Printer::printQueryReply(const linglong::service::QueryReply &reply)
 void Printer::printLayerInfo(const QSharedPointer<linglong::package::Info> &info)
 {
     // some info are not printed, such as base
-    std::cout << "AppID: " << info->appid.toStdString() << std::endl;
+    std::cout << "AppID: " << info->appId.toStdString() << std::endl;
     std::cout << "Name: " << info->name.toStdString() << std::endl;
     std::cout << "Kind: " << info->kind.toStdString() << std::endl;
     std::cout << "Version: " << info->version.toStdString() << std::endl;
-    std::cout << "Arch: " << info->arch.first().toStdString() << std::endl;
+    std::cout << "Arch: " << info->arch.toStdString() << std::endl;
     std::cout << "Module: " << info->module.toStdString() << std::endl;
     std::cout << "Runtime: " << info->runtime.toStdString() << std::endl;
     std::cout << "Size: " << info->size << " bytes" << std::endl;

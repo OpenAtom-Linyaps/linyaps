@@ -75,12 +75,12 @@ linglong::util::Error Bundle::make(const QString &dataPath, const QString &outpu
 
     // 判断架构是否支持
     if (!info->arch.contains(this->buildArch)) {
-        return NewError(-1, QString("%1:%2 don't support!").arg(info->appid).arg(this->buildArch));
+        return NewError(-1, QString("%1:%2 don't support!").arg(info->appId).arg(this->buildArch));
     }
 
     // 赋值bundleFilePath
     if (outputFilePath.isEmpty()) {
-        this->bundleFilePath = bundleFileDirPath + "/" + info->appid + "_" + info->version + "_"
+        this->bundleFilePath = bundleFileDirPath + "/" + info->appId + "_" + info->version + "_"
           + this->buildArch + ".uab";
     } else {
         this->bundleFilePath = outputFilePath;
@@ -88,7 +88,7 @@ linglong::util::Error Bundle::make(const QString &dataPath, const QString &outpu
 
     // 赋值squashfsFilePath
     QString erofsName =
-      (QStringList{ info->appid, info->version, this->buildArch }.join("_")) + QString(".erofs");
+      (QStringList{ info->appId, info->version, this->buildArch }.join("_")) + QString(".erofs");
     this->erofsFilePath = bundleFileDirPath + "/" + erofsName;
 
     // 清理erofs文件
@@ -293,11 +293,11 @@ linglong::util::Error Bundle::push(const QString &bundleFilePath,
     arguments << QString("--repo=") + this->tmpWorkDir + "/repo" << QString("commit")
               << QString("-s") << QString("update ") + runtimeInfo->version
               << QString("--canonical-permissions") << QString("-m")
-              << QString("Name: ") + runtimeInfo->appid << QString("-b")
+              << QString("Name: ") + runtimeInfo->appId << QString("-b")
               << (QStringList{ repoChannel,
-                               runtimeInfo->appid,
+                               runtimeInfo->appId,
                                runtimeInfo->version,
-                               runtimeInfo->arch[0],
+                               runtimeInfo->arch,
                                runtimeInfo->module }
                     .join(QDir::separator()))
               << QString("--tree=dir=") + this->bundleDataPath + "/runtime";
@@ -306,11 +306,11 @@ linglong::util::Error Bundle::push(const QString &bundleFilePath,
     commitArgs << QString("--repo=") + this->tmpWorkDir + "/repo" << QString("commit")
                << QString("-s") << QString("update ") + develInfo->version
                << QString("--canonical-permissions") << QString("-m")
-               << QString("Name: ") + develInfo->appid << QString("-b")
+               << QString("Name: ") + develInfo->appId << QString("-b")
                << (QStringList{ repoChannel,
-                                develInfo->appid,
+                                develInfo->appId,
                                 develInfo->version,
-                                develInfo->arch[0],
+                                develInfo->arch,
                                 develInfo->module }
                      .join(QDir::separator()))
                << QString("--tree=dir=") + this->bundleDataPath + "/devel";

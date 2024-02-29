@@ -6,7 +6,7 @@
 
 #include "repo_client.h"
 
-#include "linglong/package/package.h"
+#include "linglong/package/info.h"
 #include "linglong/util/error.h"
 #include "linglong/util/file.h"
 #include "linglong/util/qserializer/deprecated.h"
@@ -24,7 +24,7 @@ using namespace api::client;
 
 QSERIALIZER_IMPL(Response);
 
-linglong::utils::error::Result<QList<QSharedPointer<package::AppMetaInfo>>>
+linglong::utils::error::Result<QList<QSharedPointer<package::Info>>>
 RepoClient::QueryApps(const package::Ref &ref)
 {
     LINGLONG_TRACE("query apps");
@@ -36,7 +36,7 @@ RepoClient::QueryApps(const package::Ref &ref)
     req.setArch(ref.arch);
     req.setRepoName(ref.repo);
 
-    linglong::utils::error::Result<QList<QSharedPointer<package::AppMetaInfo>>> ret =
+    linglong::utils::error::Result<QList<QSharedPointer<package::Info>>> ret =
       LINGLONG_ERR("unknown error");
 
     QEventLoop loop;

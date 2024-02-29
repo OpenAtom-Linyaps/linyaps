@@ -9,7 +9,7 @@
 
 #include "linglong/api/dbus/v1/package_manager.h"
 #include "linglong/cli/printer.h"
-#include "linglong/package/package.h"
+#include "linglong/package/info.h"
 #include "linglong/package/ref.h"
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/runtime/dbus_proxy.h"

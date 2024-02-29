@@ -120,7 +120,7 @@ int updateInstalledAppInfoDb()
  *
  * @return int: 0:成功 其它:失败
  */
-int insertAppRecord(QSharedPointer<linglong::package::AppMetaInfo> package, const QString &userName)
+int insertAppRecord(QSharedPointer<linglong::package::Info> package, const QString &userName)
 {
     Connection connection;
     QString insertSql = "INSERT INTO "
@@ -301,7 +301,7 @@ bool getAllVerAppInfo(const QString &appId,
                       const QString &appVer,
                       const QString &appArch,
                       const QString &userName,
-                      QList<QSharedPointer<linglong::package::AppMetaInfo>> &pkgList)
+                      QList<QSharedPointer<linglong::package::Info>> &pkgList)
 {
     if (!getAppInstalledStatus(appId, appVer, appArch, "", "", userName)) {
         qCritical() << "getAllVerAppInfo app:" + appId + ",version:" + appVer
@@ -333,8 +333,7 @@ bool getAllVerAppInfo(const QString &appId,
     }
     sqlQuery.first();
     do {
-        auto info =
-          QSharedPointer<linglong::package::AppMetaInfo>(new linglong::package::AppMetaInfo);
+        auto info = QSharedPointer<linglong::package::Info>(new linglong::package::Info);
         info->appId = sqlQuery.value(1).toString().trimmed();
         info->name = sqlQuery.value(2).toString().trimmed();
         info->arch = sqlQuery.value(4).toString().trimmed();
@@ -368,7 +367,7 @@ bool getInstalledAppInfo(const QString &appId,
                          const QString &channel,
                          const QString &module,
                          const QString &userName,
-                         QList<QSharedPointer<linglong::package::AppMetaInfo>> &pkgList)
+                         QList<QSharedPointer<linglong::package::Info>> &pkgList)
 {
     if (!getAppInstalledStatus(appId, appVer, appArch, channel, module, userName)) {
         qCritical() << "getInstalledAppInfo app:" + appId + ",version:" + appVer + ",channel:"
@@ -410,8 +409,7 @@ bool getInstalledAppInfo(const QString &appId,
     sqlQuery.last();
     int recordCount = sqlQuery.at() + 1;
     if (recordCount > 0) {
-        auto info =
-          QSharedPointer<linglong::package::AppMetaInfo>(new linglong::package::AppMetaInfo);
+        auto info = QSharedPointer<linglong::package::Info>(new linglong::package::Info);
         info->appId = sqlQuery.value(1).toString().trimmed();
         info->name = sqlQuery.value(2).toString().trimmed();
         info->arch = sqlQuery.value(4).toString().trimmed();
@@ -496,8 +494,8 @@ bool queryAllInstalledApp(const QString &userName, QString &result, QString &err
  *
  * @return bool: true: 成功 false: 失败
  */
-bool getAppMetaInfoListByJson(const QString &jsonString,
-                              QList<QSharedPointer<linglong::package::AppMetaInfo>> &appList)
+bool getInfoListByJson(const QString &jsonString,
+                       QList<QSharedPointer<linglong::package::Info>> &appList)
 {
     QJsonParseError parseJsonErr;
     QJsonDocument document = QJsonDocument::fromJson(jsonString.toUtf8(), &parseJsonErr);
@@ -508,8 +506,8 @@ bool getAppMetaInfoListByJson(const QString &jsonString,
     for (int i = 0; i < array.size(); ++i) {
         QJsonObject dataObj = array.at(i).toObject();
         const QString jsonItem = QString(QJsonDocument(dataObj).toJson(QJsonDocument::Compact));
-        auto appItem = linglong::util::loadJsonString<linglong::package::AppMetaInfo>(jsonItem);
-        appList.push_back(QSharedPointer<linglong::package::AppMetaInfo>(appItem));
+        auto appItem = linglong::util::loadJsonString<linglong::package::Info>(jsonItem);
+        appList.push_back(QSharedPointer<linglong::package::Info>(appItem));
     }
     return true;
 }

@@ -7,7 +7,7 @@
 #ifndef LINGLONG_SRC_MODULE_REPO_REPO_H_
 #define LINGLONG_SRC_MODULE_REPO_REPO_H_
 
-#include "linglong/package/package.h"
+#include "linglong/package/info.h"
 #include "linglong/repo/config/ConfigV1.hpp"
 #include "linglong/utils/error/error.h"
 

@@ -8,6 +8,7 @@
 #define LINGLONG_SRC_MODULE_PACKAGE_INFO_H_
 
 #include "linglong/runtime/oci.h"
+#include "ref.h"
 
 #include <QDBusArgument>
 #include <QList>
@@ -84,9 +85,9 @@ class Info : public JsonSerialize
     Q_JSON_CONSTRUCTOR(Info)
 
 public:
-    Q_JSON_PROPERTY(QString, appid);
+    Q_JSON_PROPERTY(QString, appId);
     Q_JSON_PROPERTY(QString, version);
-    Q_JSON_PROPERTY(QStringList, arch);
+    Q_JSON_PROPERTY(QString, arch);
     Q_JSON_PROPERTY(QString, kind);
     Q_JSON_PROPERTY(QString, name);
     Q_JSON_PROPERTY(QString, module);
@@ -102,6 +103,11 @@ public:
 
     // overlayfs mount
     Q_JSON_PTR_PROPERTY(OverlayfsRootfs, overlayfs);
+
+    Q_JSON_PROPERTY(QString, uabUrl);
+    Q_JSON_PROPERTY(QString, repoName);
+    Q_JSON_PROPERTY(QString, user);
+    Q_JSON_PROPERTY(QString, channel);
 };
 
 } // namespace package
@@ -112,5 +118,7 @@ Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::package, Permission)
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::package, Filesystem)
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::package, User)
 Q_JSON_DECLARE_PTR_METATYPE_NM(linglong::package, OverlayfsRootfs)
+
+typedef QMap<QString, QString> ParamStringMap;
 
 #endif /* LINGLONG_SRC_MODULE_PACKAGE_INFO_H_ */

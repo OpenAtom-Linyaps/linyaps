@@ -87,27 +87,24 @@ linglong::utils::error::Result<void> LinglongBuilder::commitBuildOutput(Project 
     util::ensureDir(workdir);
     util::ensureDir(output);
 
-    QProcess fuseOverlayfs;
-    fuseOverlayfs.setProgram("fuse-overlayfs");
-    fuseOverlayfs.setArguments({
-      "-o",
-      "upperdir=" + upperdir,
-      "-o",
-      "workdir=" + workdir,
-      "-o",
-      "lowerdir=" + lowerDir,
-      output,
-    });
-
-    qDebug() << "run" << fuseOverlayfs.program() << fuseOverlayfs.arguments().join(" ");
-
-    fuseOverlayfs.start();
-    if (!fuseOverlayfs.waitForFinished()) {
-        return LINGLONG_ERR(-1, "exec fuse-overlayfs failed!" + fuseOverlayfs.errorString());
+    QString program = "fuse-overlayfs";
+    QStringList arguments = {
+        "-o", "upperdir=" + upperdir, "-o",   "workdir=" + workdir,
+        "-o", "lowerdir=" + lowerDir, output,
+    };
+    qDebug() << "run" << program << arguments.join(" ");
+    auto execRet = utils::command::Exec(program, arguments);
+    if (!execRet.has_value()) {
+        return LINGLONG_EWRAP(QString("exec %1 %2 failed").arg(program).arg(arguments.join(" ")),
+                              execRet.error());
     }
+
     auto _ = qScopeGuard([=] {
         qDebug() << "umount fuse overlayfs";
-        QProcess::execute("umount", { "--lazy", output });
+        auto ret = utils::command::Exec("umount", { "--lazy", output });
+        if (!ret.has_value()) {
+            qWarning() << "Failed to umount" << ret.error();
+        }
     });
 
     auto entriesPath = project->config().cacheInstallPath("entries");
@@ -593,39 +590,61 @@ linglong::util::Error LinglongBuilder::build()
 
     // 初始化 overlayfs 目录
     QDir overlayDir(project->config().cacheAbsoluteFilePath({ "overlayfs" }));
-    // up 目录是 overlay 的 upperdir，依赖会在 depend fetcher 时 checkout 到里面
-    auto overlayUpDir = overlayDir.filePath("up/") + project->config().targetInstallPath("");
-    // wk 目录是 overlay 的 workdir，lowerdir 是 runtime 目录
+    // overlayLowerDir 底层目录里面存放项目使用的runtime和depends文件的混合
+    auto overlayLowerDir = project->config().cacheAbsoluteFilePath({ "runtime", "files" });
+    // overlayUpperDir 上层目录用于存储新增和变动的文件
+    // 项目的depends也会提前放到这个目录中，因为玲珑会将项目依赖和项目打包到一起
+    auto overlayUpperDir = overlayDir.filePath("up/") + project->config().targetInstallPath("");
+    // overlayWorkDir 是overlay的内部工作目录
     auto overlayWorkDir = overlayDir.filePath("wk");
-    // point 目录是 overlay 的挂载目录
+    // point 目录是 overlay 的挂载点，会映射到容器中
     auto overlayPointDir = overlayDir.filePath("point");
 
-    QProcess fuseOverlayfs;
-    // lib 会安装到 /runtime 目录中, 所以使用 fuse-overlayfs 挂载可写的 /runtime
-    if (project->package->kind == PackageKindLib) {
-        // 由于历史原因，lib库的构建产物在存储时没有/runtime路径前缀
-        // 所以需要更改updir目录，来保持兼容
-        util::ensureDir(overlayUpDir);
+    if (project->package->kind == PackageKindApp) {
+        // app 会安装到到 /opt/apps/$appid/files，不和 runtime 的内容混合
+        // 所以挂载只读的 /runtime
+        ocppi::runtime::config::types::Mount m;
+        m.type = "bind";
+        m.source = overlayLowerDir.toStdString();
+        m.destination = "/runtime";
+        m.options = { "rbind", "ro", "nosuid", "nodev" };
+        r->mounts->push_back(m);
+        // 挂载 overlayfs/up/opt/apps/$appid/files 到 /opt/apps/$appid/files 目录
+        // 在构建结束后，会从 overlayfs/up 获取构建产物
+        // 所以在不使用fuse时也挂载 overlayfs/up 作为安装目录
+        m.source = overlayUpperDir.toStdString();
+        m.destination = "/opt/apps/" + project->ref().appId.toStdString() + "/files";
+        m.options = { "rbind", "rw", "nosuid", "nodev" };
+        r->mounts->push_back(m);
+    } else {
+        // lib 会安装到 /runtime，和 runtime 的内容混合在一起,
+        // 所以使用 fuse-overlayfs 挂载可写的 /runtime
+        util::ensureDir(overlayLowerDir);
+        util::ensureDir(overlayUpperDir);
         util::ensureDir(overlayWorkDir);
         util::ensureDir(overlayPointDir);
 
-        fuseOverlayfs.setProgram("fuse-overlayfs");
-        fuseOverlayfs.setArguments({
-          "-o",
-          "upperdir=" + overlayUpDir,
-          "-o",
-          "workdir=" + overlayUpDir,
-          "-o",
-          "lowerdir=" + project->config().cacheAbsoluteFilePath({ "runtime", "files" }),
-          overlayPointDir,
-        });
-        qDebug() << "run" << fuseOverlayfs.program() << fuseOverlayfs.arguments().join(" ");
-        fuseOverlayfs.start();
-        if (!fuseOverlayfs.waitForFinished()) {
-            return NewError(-1, "exec fuse-overlayfs failed!" + fuseOverlayfs.errorString());
+        QString program = "fuse-overlayfs";
+        QStringList arguments = {
+            "-o",
+            "upperdir=" + overlayUpperDir,
+            "-o",
+            "workdir=" + overlayWorkDir,
+            "-o",
+            "lowerdir=" + overlayLowerDir,
+            overlayPointDir,
+        };
+        qDebug() << "run" << program << arguments.join(" ");
+        auto ret = utils::command::Exec(program, arguments);
+        if (!ret.has_value()) {
+            return NewError(ret.error().code(),
+                            QString("exec %1 %2 failed: %3")
+                              .arg(program)
+                              .arg(arguments.join(" "))
+                              .arg(ret.error().message()));
         }
 
-        // 使用容器hook取消挂载runtime
+        // 使用容器hook取消挂载 fuse-overlayfs 的挂载
         r->hooks = r->hooks.value_or(ocppi::runtime::config::types::Hooks{});
         ocppi::runtime::config::types::Hook umountRuntimeHook;
         umountRuntimeHook.args = { "umount", "--lazy", overlayPointDir.toStdString() };
@@ -636,21 +655,6 @@ linglong::util::Error LinglongBuilder::build()
         m.type = "bind";
         m.source = overlayPointDir.toStdString();
         m.destination = "/runtime";
-        m.options = { "rbind", "rw", "nosuid", "nodev" };
-        r->mounts->push_back(m);
-    } else {
-        // app 会安装到 /opt/apps/$appid/files ，所以挂载只读的/runtime
-        ocppi::runtime::config::types::Mount m;
-        m.type = "bind";
-        m.source = project->config().cacheAbsoluteFilePath({ "runtime", "files" }).toStdString();
-        m.destination = "/runtime";
-        m.options = { "rbind", "ro", "nosuid", "nodev" };
-        r->mounts->push_back(m);
-        // 挂载 overlayfs/up/opt/apps/$appid/files 到 /opt/apps/$appid/files 目录
-        // 在构建结束后，会从 overlayfs/up 获取构建产物
-        // 所以在不使用fuse时也挂载 overlayfs/up 作为安装目录
-        m.source = overlayUpDir.toStdString();
-        m.destination = "/opt/apps/" + project->ref().appId.toStdString() + "/files";
         m.options = { "rbind", "rw", "nosuid", "nodev" };
         r->mounts->push_back(m);
     }
@@ -759,12 +763,14 @@ linglong::util::Error LinglongBuilder::build()
     tmpDir.setAutoRemove(false);
     auto startRet = startContainer(tmpDir.path(), ociCLI, *r);
     if (!startRet.has_value()) {
+        // 为避免容器启动失败，hook脚本未执行，手动再执行一次 umount
+        if (project->package->kind != PackageKindApp) {
+            qDebug() << "umount fuse overlayfs";
+            utils::command::Exec("umount", { "--lazy", overlayPointDir });
+        }
         return NewError(-1, "build task failed in container: " + startRet.error().message());
     }
-    if (fuseOverlayfs.Running) {
-        fuseOverlayfs.close();
-    }
-    auto commitRet = commitBuildOutput(project.get(), overlayUpDir, overlayWorkDir);
+    auto commitRet = commitBuildOutput(project.get(), overlayUpperDir, overlayWorkDir);
     if (!commitRet.has_value()) {
         return NewError(commitRet.error().code(),
                         "commit build output: " + commitRet.error().message());

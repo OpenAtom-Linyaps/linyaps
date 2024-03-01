@@ -6,23 +6,44 @@
 
 #include "linglong/package/layer_packager.h"
 
-#include "linglong/package/layer_info.h"
-#include "linglong/util/file.h"
-#include "linglong/util/runner.h"
+#include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/utils/command/env.h"
 
 #include <QDataStream>
 
 namespace linglong::package {
 
-LayerPackager::LayerPackager(const QString &workDir)
-    : workDir(QStringList{ workDir, QUuid::createUuid().toString(QUuid::Id128) }.join("-"))
+LayerPackager::LayerPackager(const QDir &workDir)
+    : workDir(workDir.absoluteFilePath(QUuid::createUuid().toString(QUuid::Id128)))
 {
-    util::ensureDir(this->workDir);
+    if (this->workDir.mkpath(".")) {
+        return;
+    }
+
+    qCritical() << "mkpath" << this->workDir << "failed";
+    Q_ASSERT(false);
 }
 
 LayerPackager::~LayerPackager()
 {
-    util::removeDir(this->workDir);
+    for (const auto &info : this->workDir.entryInfoList()) {
+        if (!info.isDir()) {
+            continue;
+        }
+
+        auto ret = utils::command::Exec("umount", { info.absolutePath() });
+        if (!ret) {
+            qCritical() << ret.error();
+            Q_ASSERT(false);
+        }
+    }
+
+    if (this->workDir.removeRecursively()) {
+        return;
+    }
+
+    qCritical() << "remove" << this->workDir << "failed";
+    Q_ASSERT(false);
 }
 
 utils::error::Result<QSharedPointer<LayerFile>>
@@ -30,110 +51,86 @@ LayerPackager::pack(const LayerDir &dir, const QString &layerFilePath) const
 {
     LINGLONG_TRACE("pack layer");
 
-    // compress data with erofs
-    const auto compressedFilePath =
-      QStringList{ this->workDir, "tmp.erofs" }.join(QDir::separator());
-
-    auto ret = util::Exec("mkfs.erofs",
-                          { "-zlz4hc,9", compressedFilePath, dir.absolutePath() },
-                          15 * 60 * 1000);
-    if (ret) {
-        return LINGLONG_ERR("mkfs.erofs: " + ret.message(), ret.code());
-    }
-
-    // generate LayerInfo
-    layer::LayerInfo layerInfo;
-    layerInfo.version = layerInfoVerison;
-
-    auto rawData = dir.rawInfo();
-    if (!rawData) {
-        return LINGLONG_ERR(rawData);
-    }
-
-    // rawData is not checked format
-    layerInfo.info = nlohmann::json::parse(*rawData);
-
-    auto layerInfoData = toJson(layerInfo);
-    if (!layerInfoData) {
-        return LINGLONG_ERR(layerInfoData);
-    }
-    // write data, [magic number |LayerInfoSize | LayerInfo | compressed data ]
-    // open temprary layer file
     QFile layer(layerFilePath);
     if (!layer.open(QIODevice::WriteOnly | QIODevice::Append)) {
-        return LINGLONG_ERR("open temporary layer file", layer);
-    }
-    // write magic number, in 40 bytes
-    layer.write(magicNumber);
-
-    // write size of LayerInfo, in 4 bytes
-    QDataStream out(&layer);
-    quint32 layerInfoSize = (*layerInfoData).size();
-    out.writeRawData(reinterpret_cast<const char *>(&layerInfoSize), sizeof(quint32));
-
-    // write LayerInfo
-    layer.write(*layerInfoData);
-    QFile compressedFile(compressedFilePath);
-    if (!compressedFile.open(QIODevice::ReadOnly)) {
-        return LINGLONG_ERR("open compressed layer file", compressedFile);
+        return LINGLONG_ERR(layer);
     }
 
-    // write compressedFile
-    qint64 chunkSize = 2 * 1024 * 1024;
-    qint64 remainingSize = compressedFile.size();
-    qint64 compressedFileOffset = 0;
-
-    while (remainingSize > 0) {
-        qint64 sizeToRead = qMin(chunkSize, remainingSize);
-        uchar *compressedData = compressedFile.map(compressedFileOffset, sizeToRead);
-        if (!compressedData) {
-            return LINGLONG_ERR("mapping compressed file", compressedFile);
-        }
-
-        auto ret = layer.write(reinterpret_cast<char *>(compressedData), sizeToRead);
-        if (ret < 0) {
-            return LINGLONG_ERR("writing data to temporary layer file", layer);
-        }
-
-        remainingSize -= sizeToRead;
-        compressedFileOffset += sizeToRead;
+    if (layer.write(magicNumber) < 0) {
+        return LINGLONG_ERR(layer);
     }
 
-    // it seems no error here, so i didn't check it
-    return LayerFile::openLayer(layerFilePath);
+    auto info = dir.info();
+    if (!info) {
+        return LINGLONG_ERR(info);
+    }
+
+    auto json = nlohmann::json(*info);
+    auto data = QByteArray::fromStdString(json.dump());
+
+    QByteArray dataSizeBytes;
+
+    QDataStream dataSizeStream(&dataSizeBytes, QIODevice::WriteOnly);
+    dataSizeStream.setVersion(QDataStream::Qt_5_10);
+    dataSizeStream << quint32(data.size());
+
+    Q_ASSERT(dataSizeStream.status() == QDataStream::Status::Ok);
+
+    if (layer.write(dataSizeBytes) < 0) {
+        return LINGLONG_ERR(layer);
+    }
+
+    if (layer.write(data) < 0) {
+        return LINGLONG_ERR(layer);
+    }
+
+    layer.close();
+
+    // compress data with erofs
+    const auto compressedFilePath = this->workDir.absoluteFilePath("tmp.erofs");
+
+    auto ret =
+      utils::command::Exec("mkfs.erofs", { "-zlz4hc,9", compressedFilePath, dir.absolutePath() });
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    ret = utils::command::Exec(
+      "sh",
+      { "-c", QString("cat %1 >> %2").arg(compressedFilePath, layerFilePath) });
+    if (!ret) {
+        LINGLONG_ERR(ret);
+    }
+
+    auto result = LayerFile::New(layerFilePath);
+    Q_ASSERT(result.has_value());
+
+    return result;
 }
 
-utils::error::Result<QSharedPointer<LayerDir>> LayerPackager::unpack(LayerFile &file,
-                                                                     const QString &destnation)
+utils::error::Result<LayerDir> LayerPackager::unpack(LayerFile &file)
 {
     LINGLONG_TRACE("unpack layer file");
 
-    auto unpackDir = QStringList{ this->workDir, "unpack" }.join(QDir::separator());
-    util::ensureDir(unpackDir);
+    auto unpackDir = QDir(this->workDir.absoluteFilePath("unpack"));
+    unpackDir.mkpath(".");
 
     QFileInfo fileInfo(file);
 
-    auto offset = file.layerOffset();
+    auto offset = file.binaryDataOffset();
     if (!offset) {
         return LINGLONG_ERR(offset);
     }
-    auto ret =
-      util::Exec("erofsfuse",
-                 { QString("--offset=%1").arg(*offset), fileInfo.absoluteFilePath(), unpackDir });
-    if (ret) {
-        return LINGLONG_ERR("call erofsfuse failed: " + ret.message(), ret.code());
+
+    auto ret = utils::command::Exec("erofsfuse",
+                                    { QString("--offset=%1").arg(*offset),
+                                      fileInfo.absoluteFilePath(),
+                                      unpackDir.absolutePath() });
+    if (!ret) {
+        return LINGLONG_ERR(ret);
     }
 
-    util::copyDir(unpackDir, destnation);
-
-    ret = util::Exec("umount", { unpackDir });
-    if (ret) {
-        return LINGLONG_ERR("call umount failed: " + ret.message(), ret.code());
-    }
-
-    QSharedPointer<LayerDir> layerDir(new LayerDir(destnation));
-
-    return layerDir;
+    return unpackDir.absolutePath();
 }
 
 } // namespace linglong::package

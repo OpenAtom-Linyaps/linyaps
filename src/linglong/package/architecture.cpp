@@ -36,6 +36,7 @@ QString Architecture::getTriplet() const noexcept
     case ARM64:
         return "aarch64-linux-gnu";
     }
+    return "unknow";
 }
 
 utils::error::Result<Architecture> Architecture::parse(const QString &raw) noexcept

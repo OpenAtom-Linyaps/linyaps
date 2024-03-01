@@ -36,7 +36,7 @@ public:
     void updateTask(double currentPercentage,
                     double totalPercentage,
                     const QString &message = "") noexcept;
-    void updateStatus(Status newStatus, QString message = "") noexcept;
+    void updateStatus(Status newStatus, const QString &message = "") noexcept;
 
     [[nodiscard]] Status currentStatus() const noexcept { return m_status; }
 
@@ -65,7 +65,6 @@ private:
                                                  { installBase, 20 }, { installApplication, 20 },
                                                  { postInstall, 20 }, { Success, 10 },
                                                  { Failed, 10 } };
-
 };
 
 } // namespace linglong::service

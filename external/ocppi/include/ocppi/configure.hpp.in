@@ -1,0 +1,8 @@
+#pragma once
+
+namespace ocppi
+{
+
+constexpr auto version = "@OCPPI_SEMVER@";
+
+}

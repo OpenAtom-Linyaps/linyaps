@@ -6,48 +6,21 @@
 
 #include "linglong/package/layer_dir.h"
 
-#include "linglong/util/qserializer/json.h"
+#include "linglong/utils/serialize/json.h"
 
 namespace linglong::package {
 
-LayerDir::~LayerDir()
+utils::error::Result<api::types::v1::PackageInfo> LayerDir::info() const
 {
-    if (cleanup) {
-        this->removeRecursively();
-    }
-}
+    LINGLONG_TRACE("get layer info from " + this->absolutePath());
 
-void LayerDir::setCleanStatus(bool status)
-{
-    this->cleanup = status;
-}
-
-utils::error::Result<QSharedPointer<Info>> LayerDir::info() const
-{
-    LINGLONG_TRACE("get layer info form dir");
-
-    const auto infoPath = QStringList{ this->absolutePath(), "info.json" }.join(QDir::separator());
-    auto [info, err] = util::fromJSON<QSharedPointer<Info>>(infoPath);
-    if (err) {
-        return LINGLONG_ERR(err.message(), err.code());
+    auto info =
+      utils::serialize::LoadJSONFile<api::types::v1::PackageInfo>(this->filePath("info.json"));
+    if (!info) {
+        return LINGLONG_ERR(info);
     }
 
     return info;
-}
-
-utils::error::Result<QByteArray> LayerDir::rawInfo() const
-{
-    LINGLONG_TRACE("get raw layer info from dir");
-
-    const auto infoPath = QStringList{ this->absolutePath(), "info.json" }.join(QDir::separator());
-    QFile file(infoPath);
-    if (!file.open(QIODevice::ReadOnly)) {
-        return LINGLONG_ERR("open info.json from layer dir", file);
-    }
-
-    QByteArray rawData = file.readAll();
-
-    return rawData;
 }
 
 } // namespace linglong::package

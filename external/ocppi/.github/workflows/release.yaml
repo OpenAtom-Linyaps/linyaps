@@ -1,0 +1,20 @@
+name: "Auto release"
+
+on:
+  push:
+    tags:
+      - "v*"
+      - "!v*-*"
+
+jobs:
+  release:
+    runs-on: "ubuntu-latest"
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: false

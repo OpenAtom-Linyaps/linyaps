@@ -4,17 +4,16 @@ Priority: optional
 Maintainer: Deepin Packages Builder <packages@deepin.com>
 Build-Depends: cmake,
                debhelper,
-               libdocopt-dev,
-               libexpected-dev (>= 1.1.0),
+               libdocopt-dev (>= 0.6.2-2.1),
+               libexpected-dev (>= 1.0.0~dfsg-2~bpo10+1),
                libglib2.0-dev,
                libgmock-dev,
                libgtest-dev,
-               libocppi-dev (>= 0.2.2),
                libostree-dev,
                libqt5websockets5-dev,
                libsystemd-dev,
-               libyaml-cpp-dev,
-               ostree,
+               libyaml-cpp-dev (>= 0.6.2),
+               nlohmann-json3-dev (>= 3.5.0),
                pkg-config,
                qt5-qmake,
                qtbase5-dev,
@@ -25,14 +24,15 @@ Homepage: http://www.deepin.org
 
 Package: linglong-bin
 Architecture: any
-Depends: desktop-file-utils,
+Depends: crun,
+         desktop-file-utils,
+         erofsfuse,
          fuse-overlayfs,
          libglib2.0-bin,
          libqt5sql5-sqlite (>= 5.11.3),
          linglong-box,
          ostree,
          shared-mime-info,
-         erofsfuse,
          ${misc:Depends},
          ${shlibs:Depends}
 Replaces: linglong-dbus-proxy

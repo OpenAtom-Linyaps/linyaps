@@ -11,6 +11,8 @@
 
 #include <QString>
 
+#include <optional>
+
 namespace linglong::package {
 
 // This is a 4 number semver
@@ -23,9 +25,7 @@ public:
     qlonglong major = 0;
     qlonglong minor = 0;
     qlonglong patch = 0;
-    qlonglong tweak = 0;
-    QString preRelease = "";
-    QString build = "";
+    std::optional<qlonglong> tweak = 0;
 
     bool operator==(const Version &that) const noexcept;
     bool operator!=(const Version &that) const noexcept;

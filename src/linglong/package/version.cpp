@@ -105,7 +105,7 @@ Version::Version(const QString &raw)
 {
     // modified from https://regex101.com/r/vkijKf/1/
     static QRegularExpression regexExp(
-      R"(^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$)");
+      R"(^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d*))?$)");
 
     QRegularExpressionMatch matched = regexExp.match(raw);
 
@@ -126,19 +126,25 @@ Version::Version(const QString &raw)
     if (!ok) {
         throw std::runtime_error("patch too large");
     }
-    this->tweak = matched.captured(4).toLongLong(&ok);
-    if (!ok) {
-        throw std::runtime_error("tweak too large");
+    if (!matched.captured(4).isNull()) {
+        this->tweak = matched.captured(4).toLongLong(&ok);
+        if (!ok) {
+            throw std::runtime_error("tweak too large");
+        }
     }
-
-    this->preRelease = matched.captured(5);
-    this->build = matched.captured(6);
 }
 
 bool Version::operator==(const Version &that) const noexcept
 {
-    return std::tie(this->major, this->minor, this->patch, this->tweak, this->preRelease)
-      == std::tie(that.major, that.minor, that.patch, that.tweak, that.preRelease);
+    if ((bool(this->tweak) xor bool(that.tweak)) == 0) {
+        return false;
+    }
+
+    auto thistweak = this->tweak.value_or(0);
+    auto thattweak = that.tweak.value_or(0);
+
+    return std::tie(this->major, this->minor, this->patch, thistweak)
+      == std::tie(that.major, that.minor, that.patch, thattweak);
 }
 
 bool Version::operator!=(const Version &that) const noexcept
@@ -148,27 +154,22 @@ bool Version::operator!=(const Version &that) const noexcept
 
 bool Version::operator<(const Version &that) const noexcept
 {
-    auto thisAsNumber = std::tie(this->major, this->minor, this->patch, this->tweak);
-    auto thatAsNumber = std::tie(that.major, that.minor, that.patch, that.tweak);
+    auto thistweak = this->tweak.value_or(0);
+    auto thattweak = that.tweak.value_or(0);
 
-    if (thisAsNumber == thatAsNumber) {
-        return PreRelease(this->preRelease) < PreRelease(that.preRelease);
-    }
+    auto thisAsNumber = std::tie(this->major, this->minor, this->patch, thistweak);
+    auto thatAsNumber = std::tie(that.major, that.minor, that.patch, thattweak);
 
     return thisAsNumber < thatAsNumber;
 }
 
 bool Version::operator>(const Version &that) const noexcept
 {
-    auto thisAsNumber = std::tie(this->major, this->minor, this->patch, this->tweak);
-    auto thatAsNumber = std::tie(that.major, that.minor, that.patch, that.tweak);
+    auto thistweak = this->tweak.value_or(0);
+    auto thattweak = that.tweak.value_or(0);
 
-    if (thisAsNumber == thatAsNumber) {
-        auto thisPreRelease = PreRelease(this->preRelease);
-        auto thatPreRelease = PreRelease(that.preRelease);
-
-        return thisPreRelease > thatPreRelease;
-    }
+    auto thisAsNumber = std::tie(this->major, this->minor, this->patch, thistweak);
+    auto thatAsNumber = std::tie(that.major, that.minor, that.patch, thattweak);
 
     return thisAsNumber > thatAsNumber;
 }
@@ -185,12 +186,10 @@ bool Version::operator>=(const Version &that) const noexcept
 
 QString Version::toString() const noexcept
 {
-    return QString("%1.%2.%3.%4")
-             .arg(this->major)
-             .arg(this->minor)
-             .arg(this->patch)
-             .arg(this->tweak)
-      % (this->preRelease.isEmpty() ? QString("") : "-" % this->preRelease)
-      % (this->build.isEmpty() ? QString("") : "+" % this->build);
+    return QString("%1.%2.%3%4")
+      .arg(this->major)
+      .arg(this->minor)
+      .arg(this->patch)
+      .arg(this->tweak ? "." + QString::number(*this->tweak) : "");
 }
 } // namespace linglong::package

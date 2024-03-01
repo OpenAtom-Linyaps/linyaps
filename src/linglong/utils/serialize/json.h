@@ -7,52 +7,124 @@
 #ifndef LINGLONG_UTILS_SERIALIZE_JSON_H
 #define LINGLONG_UTILS_SERIALIZE_JSON_H
 
-#include "linglong/util/error.h"
+#include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/utils/error/error.h"
+#include "nlohmann/json.hpp"
 
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
-#include <QJsonObject>
-#include <QSharedPointer>
 
-#include <tuple>
+namespace linglong::utils::serialize {
 
-namespace linglong::utils::serialize::json {
+QJsonObject QJsonObjectfromVariantMap(const QVariantMap &vmap) noexcept;
+
 template<typename T>
-std::tuple<T, util::Error> deserialize(const QByteArray &data)
+QJsonDocument toQJsonDocument(const T &x) noexcept
 {
-    QJsonParseError jsonError;
-    auto doc = QJsonDocument::fromJson(data, &jsonError);
-    if (jsonError.error) {
-        return std::make_tuple<T, util::Error>({},
-                                               NewError(jsonError.error, jsonError.errorString()));
-    }
-
-    const auto v = doc.toVariant();
-    if (v.canConvert<T>()) {
-        return std::make_tuple<T, util::Error>(v.value<T>(), {});
-    }
-
-    return std::make_tuple<T, util::Error>({}, NewError(-1, QString("convert failed")));
+    nlohmann::json json = x;
+    QJsonDocument doc;
+    return QJsonDocument::fromJson(json.dump().data());
 }
 
 template<typename T>
-std::tuple<QByteArray, util::Error> serialize(const T &x)
+QVariantMap toQVariantMap(const T &x) noexcept
 {
-    QVariant v = QVariant::fromValue(x);
-    if (v.canConvert<QVariantList>()) {
-        return std::make_tuple<QByteArray, util::Error>(
-          QJsonDocument::fromVariant(v.toList()).toJson(),
-          {});
-    }
-
-    if (v.canConvert<QVariantMap>()) {
-        return std::make_tuple<QByteArray, util::Error>(
-          QJsonDocument::fromVariant(v.toMap()).toJson(),
-          {});
-    }
-
-    return std::make_tuple<QByteArray, util::Error>({}, NewError(-1, QString("convert failed")));
+    QJsonDocument doc = toQJsonDocument(x);
+    Q_ASSERT(doc.isObject());
+    return doc.object().toVariantMap();
 }
 
-} // namespace linglong::utils::serialize::json
+template<typename T, typename Source>
+error::Result<T> LoadJSON(const Source &content) noexcept
+{
+    LINGLONG_TRACE("load json");
+
+    try {
+        auto json = nlohmann::json::parse(content);
+        return json.template get<T>();
+    } catch (const std::exception &e) {
+        return LINGLONG_ERR(content, e);
+    }
+}
+
+template<typename T, typename Source>
+error::Result<T> LoadJSON(Source &content) noexcept
+{
+    LINGLONG_TRACE("load json");
+
+    try {
+        auto json = nlohmann::json::parse(content);
+        return json.template get<T>();
+    } catch (const std::exception &e) {
+        return LINGLONG_ERR(content, e);
+    }
+}
+
+template<typename T>
+error::Result<T> LoadJSONFile(QFile &file) noexcept
+{
+    LINGLONG_TRACE("load json from file" + QFileInfo(file).absoluteFilePath());
+
+    file.open(QFile::ReadOnly);
+    if (!file.isOpen()) {
+        return LINGLONG_ERR("open", file);
+    }
+
+    Q_ASSERT(file.error() == QFile::NoError);
+
+    auto content = file.readAll();
+    if (file.error() != QFile::NoError) {
+        return LINGLONG_ERR("read all", file);
+    }
+
+    return LoadJSON<T>(content);
+}
+
+template<typename T>
+error::Result<T> LoadJSONFile(const QString &filename) noexcept
+{
+    QFile file = filename;
+    return LoadJSONFile<T>(file);
+}
+
+template<typename T>
+error::Result<T> fromQJsonDocument(const QJsonDocument &doc) noexcept
+{
+    auto x = LoadJSON<T>(doc.toJson().constData());
+
+    if (!x) {
+        return x;
+    }
+    return x;
+}
+
+template<typename T>
+error::Result<T> fromQJsonObject(const QJsonObject &obj) noexcept
+{
+    return fromQJsonDocument<T>(QJsonDocument(obj));
+}
+
+template<typename T>
+error::Result<T> fromQJsonValue(const QJsonValue &v) noexcept
+{
+    if (v.isArray()) {
+        return fromQJsonDocument<T>(QJsonDocument(v.toArray()));
+    }
+    if (v.isObject()) {
+        return fromQJsonObject<T>(v.toObject());
+    }
+
+    Q_ASSERT("QJsonValue should be object or array.");
+    abort();
+}
+
+template<typename T>
+error::Result<T> fromQVariantMap(const QVariantMap &vmap)
+{
+    return fromQJsonObject<T>(QJsonObjectfromVariantMap(vmap));
+}
+
+} // namespace linglong::utils::serialize
+
 #endif

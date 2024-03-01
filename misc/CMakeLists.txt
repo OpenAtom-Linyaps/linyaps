@@ -4,147 +4,110 @@
 
 include(GNUInstallDirs)
 
+function(configure_files)
+  foreach(input ${ARGV})
+    configure_file(${input} ${input} @ONLY)
+  endforeach()
+endfunction()
+
+configure_files(
+  # find -regex '\.\/\(share\|lib\|libexec\)\/.*' -type f -printf '%P\n' | sort
+  libexec/linglong/create-linglong-dirs
+  libexec/linglong/fetch-dsc-repo
+  libexec/linglong/fetch-git-repo
+  libexec/linglong/upgrade-all
+  lib/linglong/container/config.d/10-basics.json
+  lib/linglong/container/config.d/20-devices
+  lib/linglong/container/config.d/25-host-rootfs.json
+  lib/linglong/container/config.d/25-host-statics.json
+  lib/linglong/container/config.d/30-host-ipc
+  lib/linglong/container/config.d/40-xdg-runtime-dir
+  lib/linglong/container/config.json
+  lib/linglong/container/README.md
+  lib/systemd/system-environment-generators/61-linglong
+  lib/systemd/system/org.deepin.linglong.PackageManager.service
+  lib/systemd/user-environment-generators/61-linglong
+  lib/systemd/user/linglong-upgrade.service
+  lib/systemd/user/linglong-upgrade.timer
+  lib/sysusers.d/linglong.conf
+  share/bash-completion/completions/ll-builder
+  share/bash-completion/completions/ll-cli
+  share/dbus-1/system.d/org.deepin.linglong.PackageManager.conf
+  share/dbus-1/system-services/org.deepin.linglong.PackageManager.service
+  share/linglong/builder/config-check.sh
+  share/linglong/builder/ldd-check.sh
+  share/linglong/builder/main-check.sh
+  share/linglong/builder/templates/appimage-local.yaml
+  share/linglong/builder/templates/appimage-url.yaml
+  share/linglong/builder/templates/example.yaml
+  share/linglong/config.yaml
+  share/mime/packages/deepin-linglong.xml)
+
 # bash-completion
+set(BASH_COMPLETIONS_DIR ${CMAKE_INSTALL_DATADIR}/bash-completion)
 
-set(BASH_COMPLETIONS bash_completion/ll-cli bash_completion/ll-builder)
-
-install(FILES ${BASH_COMPLETIONS}
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/bash-completion/completions)
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/share/bash-completion/completions
+        DESTINATION ${BASH_COMPLETIONS_DIR})
 
 # dbus
+set(DBUS_SYSTEM_BUS_DIR ${CMAKE_INSTALL_DATADIR}/dbus-1)
 
-configure_file(dbus/org.deepin.linglong.PackageManager.conf.in
-               dbus/org.deepin.linglong.PackageManager.conf)
-configure_file(dbus/org.deepin.linglong.SystemHelper.conf.in
-               dbus/org.deepin.linglong.SystemHelper.conf)
-
-set(DBUS_CONFIG_FILE
-    # cmake-format: sortable
-    ${CMAKE_CURRENT_BINARY_DIR}/dbus/org.deepin.linglong.PackageManager.conf
-    ${CMAKE_CURRENT_BINARY_DIR}/dbus/org.deepin.linglong.SystemHelper.conf)
-
-configure_file(dbus/org.deepin.linglong.PackageManager.service.in
-               dbus/org.deepin.linglong.PackageManager.service @ONLY)
-configure_file(dbus/org.deepin.linglong.SystemHelper.service.in
-               dbus/org.deepin.linglong.SystemHelper.service @ONLY)
-
-set(DBUS_SYSTEM_SERVICE_FILE
-    # cmake-format: sortable
-    ${CMAKE_CURRENT_BINARY_DIR}/dbus/org.deepin.linglong.PackageManager.service
-    ${CMAKE_CURRENT_BINARY_DIR}/dbus/org.deepin.linglong.SystemHelper.service)
-
-# dbus will not load files in /usr/local/share/dbus-1/system.d. So we have to
-# make sure the .conf file(s) installed to /usr/share
-install(FILES ${DBUS_CONFIG_FILE} DESTINATION /usr/share/dbus-1/system.d)
-
-install(FILES ${DBUS_SYSTEM_SERVICE_FILE}
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/dbus-1/system-services)
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/share/dbus-1/system.d
+        DESTINATION ${DBUS_SYSTEM_BUS_DIR})
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/share/dbus-1/system-services
+        DESTINATION ${DBUS_SYSTEM_BUS_DIR})
 
 # linglong
 
-set(LINGLONG_CONFIG_FILES linglong/config.yaml)
+install(
+  DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/linglong
+  USE_SOURCE_PERMISSIONS)
 
-install(FILES ${LINGLONG_CONFIG_FILES}
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/linglong)
+# linglong default configuration
+install(FILES ${CMAKE_CURRENT_LIST_DIR}/share/linglong/config.yaml
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/linglong)
 
-set(LINGLONG_PERMISSION_FILES
-    # cmake-format: sortable
-    linglong/permission/calendar.json
-    linglong/permission/camera.json
-    linglong/permission/hostdir.json
-    linglong/permission/mic.json
-    linglong/permission/screenshot.json
-    linglong/permission/userdir.json)
+# builder templates
+install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/share/linglong/builder/templates/
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/linglong/builder/templates)
 
-install(FILES ${LINGLONG_PERMISSION_FILES}
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/permission/policy/linglong)
+# libexec
 
-set(LINGLONG_BUILDER_CONFIG_FILES linglong/builder/config.yaml)
-
-install(FILES ${LINGLONG_BUILDER_CONFIG_FILES}
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/linglong/builder)
-
-set(BUILDER_TEMPLATE_FILES
-    # cmake-format: sortable
-    linglong/builder/templates/autotools.yaml
-    linglong/builder/templates/cmake.yaml
-    linglong/builder/templates/default.yaml
-    linglong/builder/templates/example.yaml
-    linglong/builder/templates/qmake.yaml
-    linglong/builder/templates/appimage.yaml)
-
-install(FILES ${BUILDER_TEMPLATE_FILES}
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/linglong/builder/templates)
-
-# scripts
-
-configure_file(scripts/create-linglong-dirs.in scripts/create-linglong-dirs
-               @ONLY)
-
-configure_file(scripts/upgrade-all.in scripts/upgrade-all @ONLY)
-
-set(LINGLONG_SCRIPTS ${CMAKE_CURRENT_BINARY_DIR}/scripts/create-linglong-dirs
-                     ${CMAKE_CURRENT_BINARY_DIR}/scripts/upgrade-all
-                     scripts/fetch-git-repo)
-
-install(PROGRAMS ${LINGLONG_SCRIPTS}
-        DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/linglong/)
+install(
+  DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/
+  DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/linglong
+  USE_SOURCE_PERMISSIONS)
 
 # systemd
 
-configure_file(systemd/system/org.deepin.linglong.PackageManager.service.in
-               systemd/system/org.deepin.linglong.PackageManager.service @ONLY)
-configure_file(systemd/system/org.deepin.linglong.SystemHelper.service.in
-               systemd/system/org.deepin.linglong.SystemHelper.service @ONLY)
-configure_file(systemd/user/linglong-upgrade.service.in
-               systemd/user/linglong-upgrade.service @ONLY)
+set(SYSTEMD_SYSTEM_UNIT_PATH ${CMAKE_INSTALL_PREFIX}/lib/systemd)
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/systemd/system
+        DESTINATION ${SYSTEMD_SYSTEM_UNIT_PATH})
 
-set(SYSTEMD_SYSTEM_FILE
-    # cmake-format: sortable
-    ${CMAKE_CURRENT_BINARY_DIR}/systemd/system/org.deepin.linglong.PackageManager.service
-    ${CMAKE_CURRENT_BINARY_DIR}/systemd/system/org.deepin.linglong.SystemHelper.service
-)
+set(SYSTEMD_USER_UNIT_PATH ${CMAKE_INSTALL_PREFIX}/lib/systemd)
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/systemd/user
+        DESTINATION ${SYSTEMD_USER_UNIT_PATH})
 
-install(FILES ${SYSTEMD_SYSTEM_FILE}
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system/)
-
-set(SYSTEMD_USER_FILE
-    ${CMAKE_CURRENT_BINARY_DIR}/systemd/user/linglong-upgrade.service
-    systemd/user/linglong-upgrade.timer)
-
-install(FILES ${SYSTEMD_USER_FILE}
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/user/)
-
-configure_file(systemd/user-environment-generators/61-linglong.in
-               systemd/user-environment-generators/61-linglong @ONLY)
-configure_file(systemd/system-environment-generators/61-linglong.in
-               systemd/system-environment-generators/61-linglong @ONLY)
-
-set(SYSTEMD_USER_ENV_GEN
-    ${CMAKE_CURRENT_BINARY_DIR}/systemd/user-environment-generators/61-linglong)
-set(SYSTEMD_SYSTEM_ENV_GEN
-    ${CMAKE_CURRENT_BINARY_DIR}/systemd/system-environment-generators/61-linglong
-)
-
+set(SYSTEMD_USER_GENERATOR_PATH
+    ${CMAKE_INSTALL_PREFIX}/lib/systemd/user-environment-generators)
 install(
-  PROGRAMS ${SYSTEMD_USER_ENV_GEN}
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/user-environment-generators/)
+  DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/systemd/user-environment-generators/
+  DESTINATION ${SYSTEMD_USER_GENERATOR_PATH})
+
+set(SYSTEMD_SYSTEM_GENERATOR_PATH
+    ${CMAKE_INSTALL_PREFIX}/lib/systemd/system-environment-generators)
 install(
-  PROGRAMS ${SYSTEMD_SYSTEM_ENV_GEN}
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system-environment-generators/
-)
+  DIRECTORY
+    ${CMAKE_CURRENT_BINARY_DIR}/lib/systemd/system-environment-generators/
+  DESTINATION ${SYSTEMD_SYSTEM_GENERATOR_PATH})
 
 # sysuser
 
-pkg_get_variable(SYSUSERSDIR systemd sysusersdir)
-
-configure_file(sysuser/linglong.conf.in sysuser/linglong.conf @ONLY)
-
-set(SYSUSER_CONF_FILE ${CMAKE_CURRENT_BINARY_DIR}/sysuser/linglong.conf)
-
-install(FILES ${SYSUSER_CONF_FILE} DESTINATION ${SYSUSERSDIR})
+set(SYSTEMD_SYSUSERSDIR ${CMAKE_INSTALL_PREFIX}/lib/sysusers.d)
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/sysusers.d/
+        DESTINATION ${SYSTEMD_SYSUSERSDIR})
 
 # xdg
-
-install(FILES xdg/mime/deepin-linglong.xml
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/mime/packages)
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/share/mime/packages
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/mime)

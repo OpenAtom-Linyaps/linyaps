@@ -4,16 +4,11 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "linglong/adaptors/job_manager/job_manager1.h"
 #include "linglong/adaptors/package_manager/package_manager1.h"
-#include "linglong/api/dbus/v1/package_manager_helper.h"
-#include "linglong/builder/builder_config.h"
-#include "linglong/dbus_ipc/dbus_system_helper_common.h"
-#include "linglong/dbus_ipc/workaround.h"
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
-#include "linglong/util/configure.h"
+#include "linglong/utils/configure.h"
 #include "linglong/utils/dbus/register.h"
 #include "linglong/utils/global/initialize.h"
 
@@ -21,19 +16,12 @@
 
 using namespace linglong::utils::global;
 using namespace linglong::utils::dbus;
-using namespace linglong::builder;
 
 namespace {
 void withDBusDaemon()
 {
-    auto pkgManHelper =
-      new linglong::api::dbus::v1::PackageManagerHelper(linglong::SystemHelperDBusServiceName,
-                                                        linglong::PackageManagerHelperDBusPath,
-                                                        QDBusConnection::systemBus(),
-                                                        QCoreApplication::instance());
-
     auto config = linglong::repo::loadConfig(
-      { linglong::util::getLinglongRootPath() + "/config.yaml", LINGLONG_DATA_DIR "/config.yaml" });
+      { LINGLONG_ROOT "/config.yaml", LINGLONG_DATA_DIR "/config.yaml" });
     if (!config.has_value()) {
         qCritical() << config.error();
         QCoreApplication::exit(-1);
@@ -46,19 +34,12 @@ void withDBusDaemon()
       QString::fromStdString(config->repos.at(config->defaultRepo)));
     api->setParent(QCoreApplication::instance());
 
-    auto ostreeRepo =
-      new linglong::repo::OSTreeRepo(linglong::util::getLinglongRootPath(), *config, *api);
+    auto ostreeRepo = new linglong::repo::OSTreeRepo(QDir(LINGLONG_ROOT), *config, *api);
     ostreeRepo->setParent(QCoreApplication::instance());
 
-    auto client = new linglong::repo::RepoClient(*api);
-    client->setParent(QCoreApplication::instance());
-
-    auto packageManager = new linglong::service::PackageManager(*pkgManHelper,
-                                                                *ostreeRepo,
-                                                                *client,
-                                                                QCoreApplication::instance());
-    auto packageManagerAdaptor =
-      new linglong::adaptors::package_manger::PackageManager1(packageManager);
+    auto packageManager =
+      new linglong::service::PackageManager(*ostreeRepo, QCoreApplication::instance());
+    new linglong::adaptors::package_manger::PackageManager1(packageManager);
 
     QDBusConnection conn = QDBusConnection::systemBus();
     auto result = registerDBusObject(conn, "/org/deepin/linglong/PackageManager", packageManager);
@@ -69,18 +50,6 @@ void withDBusDaemon()
     }
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn] {
         unregisterDBusObject(conn, "/org/deepin/linglong/PackageManager");
-    });
-
-    auto jobMan = new linglong::job_manager::JobManager(*ostreeRepo, QCoreApplication::instance());
-    auto jobManAdaptor = new linglong::adaptors::job_manger::JobManager1(jobMan);
-    result = registerDBusObject(conn, "/org/deepin/linglong/JobManager", jobMan);
-    if (!result.has_value()) {
-        qCritical().noquote() << "Launching failed:" << Qt::endl << result.error().message();
-        QCoreApplication::exit(-1);
-        return;
-    }
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn] {
-        unregisterDBusObject(conn, "/org/deepin/linglong/JobManager");
     });
 
     result = registerDBusService(conn, "org.deepin.linglong.PackageManager");
@@ -114,14 +83,8 @@ void withoutDBusDaemon()
         return;
     }
 
-    auto pkgManHelper =
-      new linglong::api::dbus::v1::PackageManagerHelper("",
-                                                        linglong::PackageManagerHelperDBusPath,
-                                                        pkgManHelperConn,
-                                                        QCoreApplication::instance());
-
     auto config = linglong::repo::loadConfig(
-      { linglong::util::getLinglongRootPath() + "/config.yaml", LINGLONG_DATA_DIR "/config.yaml" });
+      { LINGLONG_ROOT "/config.yaml", LINGLONG_DATA_DIR "/config.yaml" });
     if (!config.has_value()) {
         qCritical() << config.error();
         QCoreApplication::exit(-1);
@@ -133,21 +96,12 @@ void withoutDBusDaemon()
     api->setNewServerForAllOperations(
       QString::fromStdString(config->repos.at(config->defaultRepo)));
 
-    auto ostreeRepo =
-      new linglong::repo::OSTreeRepo(linglong::util::getLinglongRootPath(), *config, *api);
+    auto ostreeRepo = new linglong::repo::OSTreeRepo(QDir(LINGLONG_ROOT), *config, *api);
     ostreeRepo->setParent(QCoreApplication::instance());
 
-    auto client = new linglong::repo::RepoClient(*api);
-    client->setParent(QCoreApplication::instance());
-
-    auto packageManager = new linglong::service::PackageManager(*pkgManHelper,
-                                                                *ostreeRepo,
-                                                                *client,
-                                                                QCoreApplication::instance());
+    auto packageManager =
+      new linglong::service::PackageManager(*ostreeRepo, QCoreApplication::instance());
     new linglong::adaptors::package_manger::PackageManager1(packageManager);
-
-    auto jobMan = new linglong::job_manager::JobManager(*ostreeRepo, QCoreApplication::instance());
-    new linglong::adaptors::job_manger::JobManager1(jobMan);
 
     auto server = new QDBusServer("unix:path=/tmp/linglong-package-manager.socket",
                                   QCoreApplication::instance());
@@ -163,29 +117,16 @@ void withoutDBusDaemon()
         qCritical() << "failed to remove /tmp/linglong-package-manager.socket.";
     });
 
-    QObject::connect(
-      server,
-      &QDBusServer::newConnection,
-      [packageManager, jobMan](QDBusConnection conn) {
-          auto res =
-            registerDBusObject(conn, "/org/deepin/linglong/PackageManager", packageManager);
-          if (!res.has_value()) {
-              qCritical() << res.error().code() << res.error().message();
-              return;
-          }
-          QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn]() {
-              unregisterDBusObject(conn, "/org/deepin/linglong/PackageManager");
-          });
-
-          res = registerDBusObject(conn, "/org/deepin/linglong/JobManager", jobMan);
-          if (!res.has_value()) {
-              qCritical() << res.error().code() << res.error().message();
-              return;
-          }
-          QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn]() {
-              unregisterDBusObject(conn, "/org/deepin/linglong/JobManager");
-          });
-      });
+    QObject::connect(server, &QDBusServer::newConnection, [packageManager](QDBusConnection conn) {
+        auto res = registerDBusObject(conn, "/org/deepin/linglong/PackageManager", packageManager);
+        if (!res.has_value()) {
+            qCritical() << res.error().code() << res.error().message();
+            return;
+        }
+        QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn]() {
+            unregisterDBusObject(conn, "/org/deepin/linglong/PackageManager");
+        });
+    });
 }
 
 } // namespace
@@ -199,8 +140,6 @@ auto main(int argc, char *argv[]) -> int
     auto ret = QMetaObject::invokeMethod(
       QCoreApplication::instance(),
       []() {
-          registerDBusParam();
-
           QString user = qgetenv("USER");
           if (user != LINGLONG_USERNAME) {
               QCoreApplication::exit(-1);

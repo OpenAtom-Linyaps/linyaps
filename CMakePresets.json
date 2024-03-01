@@ -12,7 +12,7 @@
             "description": "Configure linglong for installing from source.",
             "binaryDir": "${sourceDir}/build-release",
             "cacheVariables": {
-                "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -O2",
+                "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -Wno-c++20-extensions -Wno-pessimizing-move -O2",
                 "CMAKE_COLOR_DIAGNOSTICS": true
             }
         },
@@ -22,8 +22,19 @@
             "description": "Configure linglong for development and debugging.",
             "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
-                "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -Og -g -fsanitize=address,undefined",
+                "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -Wno-c++20-extensions -Wno-pessimizing-move -Og -g -fsanitize=address,undefined",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+                "CMAKE_COLOR_DIAGNOSTICS": true
+            }
+        },
+        {
+            "name": "clang-tidy",
+            "displayName": "clang-tidy configuration",
+            "description": "Configure linglong for rnning clang-tidy.",
+            "binaryDir": "${sourceDir}/build-clang-tidy",
+            "cacheVariables": {
+                "CMAKE_CXX_CLANG_TIDY": "clang-tidy",
+                "CMAKE_CXX_COMPILER": "clang++",
                 "CMAKE_COLOR_DIAGNOSTICS": true
             }
         }
@@ -40,6 +51,12 @@
             "displayName": "Debug build",
             "description": "Build linglong for development and debugging.",
             "configurePreset": "debug"
+        },
+        {
+            "name": "clang-tidy",
+            "displayName": "Run clang-tidy",
+            "description": "Build linglong with clang-tidy",
+            "configurePreset": "clang-tidy"
         }
     ],
     "testPresets": [
@@ -101,6 +118,21 @@
                 {
                     "type": "test",
                     "name": "debug"
+                }
+            ]
+        },
+        {
+            "name": "clang-tidy",
+            "displayName": "Workflow runs clang-tidy",
+            "description": "Configure and build linglong with clang-tidy.",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "clang-tidy"
+                },
+                {
+                    "type": "build",
+                    "name": "clang-tidy"
                 }
             ]
         }

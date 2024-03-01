@@ -6,128 +6,127 @@
 
 #include "source_fetcher.h"
 
-#include "builder_config.h"
-#include "linglong/cli/printer.h"
-#include "linglong/util/error.h"
-#include "linglong/util/file.h"
-#include "linglong/util/http/http_client.h"
-#include "linglong/util/runner.h"
+#include "linglong/builder/file.h"
+#include "linglong/utils/command/env.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/global/initialize.h"
-#include "project.h"
-#include "source_fetcher_p.h"
 
+#include <qeventloop.h>
+#include <qnetworkaccessmanager.h>
+#include <qnetworkreply.h>
+
+#include <QCryptographicHash>
 #include <QNetworkRequest>
+#include <QStandardPaths>
 #include <QTemporaryDir>
 
-namespace linglong {
-namespace builder {
+#include <utility>
 
-QString SourceFetcherPrivate::fixSuffix(const QFileInfo &fi)
+namespace linglong::builder {
+namespace {
+static constexpr auto CompressedFileTarXz = "tar.xz";
+static constexpr auto CompressedFileTarGz = "tar.gz";
+static constexpr auto CompressedFileTarBz2 = "tar.bz2";
+static constexpr auto CompressedFileTgz = "tgz";
+static constexpr auto CompressedFileTar = "tar";
+static constexpr auto CompressedFileZip = "zip";
+
+auto fixSuffix(const QFileInfo &fi) -> QString
 {
-    Q_Q(SourceFetcher);
-    for (const char *suffix : { q->CompressedFileTarXz,
-                                q->CompressedFileTarBz2,
-                                q->CompressedFileTarGz,
-                                q->CompressedFileTgz,
-                                q->CompressedFileTar }) {
+    for (const char *suffix : { CompressedFileTarXz,
+                                CompressedFileTarBz2,
+                                CompressedFileTarGz,
+                                CompressedFileTgz,
+                                CompressedFileTar }) {
         if (fi.completeSuffix().endsWith(suffix)) {
-            return q->CompressedFileTar;
+            return CompressedFileTar;
         }
     }
     return fi.suffix();
 }
 
-linglong::util::Error SourceFetcherPrivate::extractFile(const QString &path, const QString &dir)
+auto extractFile(const QString &path, const QDir &dir) -> utils::error::Result<void>
 {
-    Q_Q(SourceFetcher);
+    LINGLONG_TRACE("extract file");
+
+    auto tarxz = [](const QString &path, const QDir &dir) -> utils::error::Result<QString> {
+        return utils::command::Exec("tar", { "-C", dir.absolutePath(), "-xvf", path });
+    };
+    auto targz = [](const QString &path, const QDir &dir) -> utils::error::Result<QString> {
+        return utils::command::Exec("tar", { "-C", dir.absolutePath(), "-zxvf", path });
+    };
+    auto tarbz2 = [](const QString &path, const QDir &dir) -> utils::error::Result<QString> {
+        return utils::command::Exec("tar", { "-C", dir.absolutePath(), "-jxvf", path });
+    };
+    auto zip = [](const QString &path, const QDir &dir) -> utils::error::Result<QString> {
+        return utils::command::Exec("unzip", { "-d", dir.absolutePath(), path });
+    };
+
     QFileInfo fi(path);
 
-    auto tarxz = [](const QString &path, const QString &dir) -> linglong::util::Error {
-        return WrapError(util::Exec("tar", { "-C", dir, "-xvf", path }),
-                         QString("extract %1 failed").arg(path));
-    };
-    auto targz = [](const QString &path, const QString &dir) -> linglong::util::Error {
-        return WrapError(util::Exec("tar", { "-C", dir, "-zxvf", path }),
-                         QString("extract %1 failed").arg(path));
-    };
-    auto tarbz2 = [](const QString &path, const QString &dir) -> linglong::util::Error {
-        return WrapError(util::Exec("tar", { "-C", dir, "-jxvf", path }),
-                         QString("extract %1 failed").arg(path));
-    };
-    auto zip = [](const QString &path, const QString &dir) -> linglong::util::Error {
-        return WrapError(util::Exec("unzip", { "-d", dir, path }),
-                         QString("extract %1 failed").arg(path));
-    };
-
-    QMap<QString, std::function<linglong::util::Error(const QString &path, const QString &dir)>>
+    QMap<QString,
+         std::function<utils::error::Result<QString>(const QString &path, const QDir &dir)>>
       subcommandMap = {
-          { q->CompressedFileTarXz, tarxz },   { q->CompressedFileTarGz, targz },
-          { q->CompressedFileTarBz2, tarbz2 }, { q->CompressedFileZip, zip },
-          { q->CompressedFileTgz, targz },     { q->CompressedFileTar, tarxz },
+          { CompressedFileTarXz, tarxz },   { CompressedFileTarGz, targz },
+          { CompressedFileTarBz2, tarbz2 }, { CompressedFileZip, zip },
+          { CompressedFileTgz, targz },     { CompressedFileTar, tarxz },
       };
 
     auto suffix = fixSuffix(fi);
 
-    if (subcommandMap.contains(suffix)) {
-        auto subcommand = subcommandMap[suffix];
-        return subcommand(path, dir);
-    } else {
-        qCritical() << "unsupported suffix" << path << fi.completeSuffix() << fi.suffix()
-                    << fi.bundleName();
-    }
-    return NewError(-1, "unkonwn error");
-} // namespace builder
-
-SourceFetcherPrivate::SourceFetcherPrivate(QSharedPointer<Source> src, SourceFetcher *parent)
-    : project(nullptr)
-    , source(src)
-    , file(nullptr)
-    , q_ptr(parent)
-{
-}
-
-QString SourceFetcherPrivate::filename()
-{
-    QUrl url(source->url);
-    return url.fileName();
-}
-
-// TODO: use share cache for all project
-QString SourceFetcherPrivate::sourceTargetPath() const
-{
-    auto path =
-      QStringList{
-          BuilderConfig::instance()->targetSourcePath(),
-          //                source->commit,
-      }
-        .join("/");
-    util::ensureDir(path);
-    return path;
-}
-
-std::tuple<QString, linglong::util::Error> SourceFetcherPrivate::fetchArchiveFile()
-{
-    Q_Q(SourceFetcher);
-
-    QUrl url(source->url);
-    auto path = BuilderConfig::instance()->targetFetchCachePath() + "/" + filename();
-
-    file.reset(new QFile(path));
-    // if file exists, check digest
-    if (file->exists()) {
-        if (source->digest == util::fileHash(path, QCryptographicHash::Sha256)) {
-            q->printer.printMessage(QString("file %1 exists, skip download").arg(path));
-            return { path, Success() };
-        }
-
-        q->printer.printMessage(
-          QString("file %1 exists, but hash mismatched, redownload").arg(path));
-        file->remove();
+    if (!subcommandMap.contains(suffix)) {
+        return LINGLONG_ERR("unsupported suffix " + path + " " + fi.completeSuffix() + " "
+                            + fi.suffix() + " " + fi.bundleName());
     }
 
-    if (!file->open(QIODevice::WriteOnly)) {
-        return { "", NewError(-1, file->errorString()) };
+    auto subcommand = subcommandMap[suffix];
+    auto output = subcommand(path, dir);
+    if (!output) {
+        return LINGLONG_ERR(output);
+    }
+
+    return LINGLONG_OK;
+}
+
+auto needDownload(const api::types::v1::BuilderProjectSource &source, QFile &file) noexcept -> bool
+{
+    if (!file.exists()) {
+        return true;
+    }
+
+    if (!source.digest) {
+        return true;
+    }
+
+    auto digest = util::fileHash(file, QCryptographicHash::Sha256).toStdString();
+    return digest != *source.digest;
+}
+
+auto fetchFile(const api::types::v1::BuilderProjectSource &source, QDir destination) noexcept
+  -> utils::error::Result<QString>
+{
+    LINGLONG_TRACE("fetch file");
+
+    if (!source.url) {
+        return LINGLONG_ERR("url missing");
+    }
+
+    if (!source.digest) {
+        return LINGLONG_ERR("digest missing");
+    }
+
+    QUrl url(source.url->c_str());
+
+    auto path = destination.absoluteFilePath(url.fileName());
+
+    QFile file = path;
+
+    if (needDownload(source, file)) {
+        file.remove();
+    }
+
+    if (!file.open(QIODevice::WriteOnly)) {
+        return LINGLONG_ERR(file);
     }
 
     QNetworkRequest request;
@@ -136,35 +135,40 @@ std::tuple<QString, linglong::util::Error> SourceFetcherPrivate::fetchArchiveFil
                          QNetworkRequest::NoLessSafeRedirectPolicy);
     request.setHeader(QNetworkRequest::UserAgentHeader, "Wget/1.21.4");
 
-    auto reply = util::networkMgr().get(request);
+    QNetworkAccessManager mgr;
+    auto reply = mgr.get(request);
 
     QObject::connect(reply, &QNetworkReply::metaDataChanged, [reply]() {
         qDebug() << reply->header(QNetworkRequest::ContentLengthHeader);
     });
 
-    QObject::connect(reply, &QNetworkReply::readyRead, [this, reply]() {
-        file->write(reply->readAll());
+    QObject::connect(reply, &QNetworkReply::readyRead, [reply, &file]() {
+        file.write(reply->readAll());
     });
 
     QEventLoop loop;
     QEventLoop::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
     loop.exec();
     // 将缓存写入文件
-    file->close();
-    if (source->digest != util::fileHash(path, QCryptographicHash::Sha256)) {
-        qCritical()
-          << QString("mismatched hash: %1").arg(util::fileHash(path, QCryptographicHash::Sha256));
-        return { "", NewError(-1, "download failed") };
+    file.close();
+
+    auto digest = util::fileHash(file, QCryptographicHash::Sha256).toStdString();
+    if (digest != *source.digest) {
+        return LINGLONG_ERR(
+          QString::fromStdString("digest mismatched: " + digest + " vs " + *source.digest));
     }
 
-    return { path, Success() };
+    return QFileInfo(file).absolutePath();
 }
 
-utils::error::Result<void> SourceFetcherPrivate::fetchGitRepo()
+auto fetchGitRepo(const api::types::v1::BuilderProjectSource &source, QDir destination)
+  -> utils::error::Result<void>
 {
-    Q_Q(SourceFetcher);
-    LINGLONG_TRACE("fetchGitRepo");
-    q->printer.printMessage(QString("Path: %1").arg(q->sourceRoot()), 2);
+    LINGLONG_TRACE("fetch git repo");
+
+    if (!source.url) {
+        return LINGLONG_ERR("URL is missing");
+    }
 
     // 如果二进制安装在系统目录中，优先使用系统中安装的脚本文件（便于用户更改），否则使用二进制内嵌的脚本（便于开发调试）
     auto scriptFile = QString(LINGLONG_LIBEXEC_DIR) + "/fetch-git-repo.sh";
@@ -178,28 +182,33 @@ utils::error::Result<void> SourceFetcherPrivate::fetchGitRepo()
         scriptFile = dir->filePath("fetch-git-repo");
         QFile::copy(":/scripts/fetch-git-repo", scriptFile);
     }
-    QStringList args = {
-        scriptFile, q->sourceRoot(), source->url, source->commit, source->version,
-    };
-    q->printer.printMessage(QString("Command: sh %1").arg(args.join(" ")), 2);
 
-    QSharedPointer<QByteArray> output = QSharedPointer<QByteArray>::create();
-    auto err = util::Exec("sh", args, -1, output);
-    if (err) {
-        q->printer.printMessage("download source failed." + err.message(), 2);
-        return LINGLONG_ERR("download source failed." + err.message());
+    auto output = utils::command::Exec(
+      "sh",
+      QStringList() << scriptFile
+                    << destination.absoluteFilePath(QUrl(source.url->c_str()).fileName())
+                    << QString::fromStdString(*source.url)
+                    << QString::fromStdString(source.commit.value_or(""))
+                    << QString::fromStdString(source.version.value_or("")));
+    if (!output) {
+        return LINGLONG_ERR(output);
     }
+
     if (!dir.isNull()) {
         dir->remove();
     }
+
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> SourceFetcherPrivate::fetchDscRepo()
+auto fetchDscRepo(const api::types::v1::BuilderProjectSource &source, QDir destination) noexcept
+  -> utils::error::Result<void>
 {
-    Q_Q(SourceFetcher);
-    LINGLONG_TRACE("fetch dsc repo");
-    q->printer.printMessage(QString("Path: %1").arg(q->sourceRoot()), 2);
+    LINGLONG_TRACE("fetch dsc");
+
+    if (!source.url) {
+        return LINGLONG_ERR("URL is missing");
+    }
 
     // 如果二进制安装在系统目录中，优先使用系统中安装的脚本文件（便于用户更改），否则使用二进制内嵌的脚本（便于开发调试）
     auto scriptFile = QString(LINGLONG_LIBEXEC_DIR) + "/fetch-dsc-repo";
@@ -213,147 +222,80 @@ utils::error::Result<void> SourceFetcherPrivate::fetchDscRepo()
         scriptFile = dir->filePath("fetch-dsc-repo");
         QFile::copy(":/scripts/fetch-dsc-repo", scriptFile);
     }
-    QStringList args = {
-        scriptFile,
-        q->sourceRoot(),
-        source->url,
-    };
-    q->printer.printMessage(QString("Command: sh %1").arg(args.join(" ")), 2);
-
-    QSharedPointer<QByteArray> output = QSharedPointer<QByteArray>::create();
-    auto err = util::Exec("sh", args, -1, output);
-    if (err) {
-        q->printer.printMessage("download source failed." + err.message(), 2);
-        return LINGLONG_ERR(err.message(), err.code());
+    auto output = utils::command::Exec("sh",
+                                       QStringList() << scriptFile << destination.absolutePath()
+                                                     << QString::fromStdString(*source.url));
+    if (!output) {
+        return LINGLONG_ERR(output);
     }
+
     if (!dir.isNull()) {
         dir->remove();
     }
     return LINGLONG_OK;
 }
 
-util::Error SourceFetcherPrivate::handleLocalPatch()
+} // namespace
+
+auto SourceFetcher::fetch(QDir destination) noexcept -> utils::error::Result<void>
 {
-    Q_Q(SourceFetcher);
-    // apply local patch
-    q->printer.printReplacedText("Finding local patch ...", 2);
-    if (source->patch.isEmpty()) {
-        q->printer.printReplacedText("Nothing to patch\n", 2);
-        return Success();
-    }
+    LINGLONG_TRACE("fetch source");
 
-    for (auto localPatch : source->patch) {
-        if (localPatch.isEmpty()) {
-            qWarning() << QString("this patch is empty, check it");
-            continue;
-        }
-        q->printer.printReplacedText(QString("Applying %1 ...").arg(localPatch), 2);
-        if (auto err =
-              util::Exec("patch",
-                         { "-p1", "-i", project->config().absoluteFilePath({ localPatch }) })) {
-            return NewError(err, "patch failed");
-        }
-        q->printer.printReplacedText(QString("Applying %1 done\n").arg(localPatch), 2);
-    }
-
-    return Success();
-}
-
-util::Error SourceFetcherPrivate::handleLocalSource()
-{
-    Q_Q(SourceFetcher);
-
-    q->setSourceRoot(BuilderConfig::instance()->getProjectRoot());
-    return Success();
-}
-
-util::Error SourceFetcher::patch()
-{
-    Q_D(SourceFetcher);
-
-    util::Error ret;
-
-    QDir::setCurrent(sourceRoot());
-
-    // TODO: remove later
-    // if (QDir("debian").exists()) {
-    //    WrapError(d->handleDebianPatch());
-    //}
-
-    return d->handleLocalPatch();
-}
-
-utils::error::Result<void> SourceFetcher::fetch()
-{
-    LINGLONG_TRACE("source fetch");
-    Q_D(SourceFetcher);
-    if (d->source->kind == "git") {
-        printer.printMessage(QString("Source: %1").arg(d->source->url), 2);
-        auto ret = d->fetchGitRepo();
-        if (!ret.has_value()) {
+    if (this->source.kind == "git") {
+        auto ret = fetchGitRepo(this->source, destination);
+        if (!ret) {
             return LINGLONG_ERR(ret);
         }
-    } else if (d->source->kind == "dsc") {
-        printer.printMessage(QString("Source: %1").arg(d->source->url), 2);
-        auto ret = d->fetchDscRepo();
+        return LINGLONG_OK;
+    }
+
+    if (this->source.kind == "dsc") {
+        auto ret = fetchDscRepo(this->source, destination);
         if (!ret) {
-            return ret;
+            return LINGLONG_ERR(ret);
         }
-    } else if (d->source->kind == "archive") {
-        printer.printMessage(QString("Source: %1").arg(d->source->url), 2);
-        QString s;
-        util::Error err;
-        std::tie(s, err) = d->fetchArchiveFile();
-        if (err) {
-            return LINGLONG_ERR(err.message());
-        }
-        err = d->extractFile(s, sourceRoot());
-    } else if (d->source->kind == "local") {
-        // deprecated
-    } else if (d->source->kind == "file") {
-        printer.printMessage(QString("Source: %1").arg(d->source->url), 2);
-        QString s;
-        util::Error err;
-        std::tie(s, err) = d->fetchArchiveFile();
-        if (err) {
-            return LINGLONG_ERR(err.message());
+        return LINGLONG_OK;
+    }
+
+    if (this->source.kind == "archive") {
+        auto cacheDir = QDir(QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation)
+                             + "/linglong/builder/archives");
+        if (this->cfg.cache) {
+            cacheDir.setPath(QString::fromStdString(*this->cfg.cache));
         }
 
-        QFile::copy(BuilderConfig::instance()->targetFetchCachePath() + "/" + d->filename(),
-                    BuilderConfig::instance()->targetSourcePath() + "/" + d->filename());
-    } else {
-        return LINGLONG_ERR("unknown source kind");
+        if (!cacheDir.mkpath(".")) {
+            return LINGLONG_ERR("create " + cacheDir.absolutePath() + ": failed");
+        }
+
+        auto archivePath = fetchFile(this->source, cacheDir);
+        if (!archivePath) {
+            return LINGLONG_ERR(archivePath);
+        }
+
+        auto ret = extractFile(*archivePath, destination);
+        if (!ret) {
+            return LINGLONG_ERR(ret);
+        }
+        return LINGLONG_OK;
     }
-    auto err = patch();
-    if (err) {
-        return LINGLONG_ERR(err.message());
+
+    if (source.kind == "file") {
+        auto path = fetchFile(this->source, destination);
+        if (!path) {
+            return LINGLONG_ERR(path);
+        }
+        return LINGLONG_OK;
     }
-    return LINGLONG_OK;
+
+    return LINGLONG_ERR("unknown source kind");
 }
 
-QString SourceFetcher::sourceRoot() const
+SourceFetcher::SourceFetcher(api::types::v1::BuilderProjectSource s,
+                             api::types::v1::BuilderConfig cfg)
+    : source(std::move(s))
+    , cfg(std::move(cfg))
 {
-    return srcRoot;
 }
 
-void SourceFetcher::setSourceRoot(const QString &path)
-{
-    srcRoot = path;
-}
-
-SourceFetcher::SourceFetcher(QSharedPointer<Source> s, cli::Printer &p, Project *project)
-    : dd_ptr(new SourceFetcherPrivate(s, this))
-    , printer(p)
-{
-    Q_D(SourceFetcher);
-
-    d->project = project;
-    if (d->source->kind == "git" && d->source->version.isEmpty()) {
-        d->source->version = project->package->version;
-    }
-    setSourceRoot(d->sourceTargetPath());
-}
-
-SourceFetcher::~SourceFetcher() { }
-} // namespace builder
-} // namespace linglong
+} // namespace linglong::builder

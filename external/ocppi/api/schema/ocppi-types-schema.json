@@ -1,0 +1,47 @@
+{
+        "description": "Extra types used by ocppi API.",
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "$defs": {
+                "ContainerListItem": {
+                        "description": "Container list item, compatible wity crun.",
+                        "type": "object",
+                        "properties": {
+                                "id": {
+                                        "type": "string"
+                                },
+                                "pid": {
+                                        "type": "integer"
+                                },
+                                "status": {
+                                        "type": "string"
+                                },
+                                "bundle": {
+                                        "type": "string"
+                                },
+                                "created": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                },
+                                "owner": {
+                                        "type": "string"
+                                }
+                        },
+                        "required": [
+                                "id",
+                                "pid",
+                                "status",
+                                "bundle",
+                                "created",
+                                "owner"
+                        ],
+                        "additionalProperties": false
+                }
+        },
+        "type": "object",
+        "properties": {
+                "ContainerListItem": {
+                        "$ref": "#/$defs/ContainerListItem"
+                }
+        },
+        "additionalProperties": false
+}

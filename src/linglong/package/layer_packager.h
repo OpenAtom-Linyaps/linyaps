@@ -7,8 +7,8 @@
 #ifndef LINGLONG_PACKAGE_LAYER_PACKAGER_H_
 #define LINGLONG_PACKAGE_LAYER_PACKAGER_H_
 
-#include "linglong/package/layer_file.h"
 #include "linglong/package/layer_dir.h"
+#include "linglong/package/layer_file.h"
 #include "linglong/utils/error/error.h"
 
 #include <QString>
@@ -18,13 +18,18 @@ namespace linglong::package {
 class LayerPackager : public QObject
 {
 public:
-    explicit LayerPackager(const QString &workDir = "/tmp/linglong-layer");
-    ~LayerPackager();
-    utils::error::Result<QSharedPointer<LayerFile>> pack(const LayerDir &dir, const QString &layerFilePath) const;
-    utils::error::Result<QSharedPointer<LayerDir>> unpack(LayerFile &file, const QString &destnation);
+    explicit LayerPackager(const QDir &workDir = QDir("/tmp/linglong-layer"));
+    LayerPackager(const LayerPackager &) = delete;
+    LayerPackager(LayerPackager &&) = delete;
+    LayerPackager &operator=(const LayerPackager &) = delete;
+    LayerPackager &operator=(LayerPackager &&) = delete;
+    ~LayerPackager() override;
+    utils::error::Result<QSharedPointer<LayerFile>> pack(const LayerDir &dir,
+                                                         const QString &layerFilePath) const;
+    utils::error::Result<LayerDir> unpack(LayerFile &file);
 
 private:
-    QString workDir;
+    QDir workDir;
 };
 
 } // namespace linglong::package

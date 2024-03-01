@@ -7,7 +7,7 @@
 #ifndef LINGLONG_PACKAGE_LAYER_DIR_H_
 #define LINGLONG_PACKAGE_LAYER_DIR_H_
 
-#include "linglong/package/info.h"
+#include "linglong/api/types/v1/PackageInfo.hpp"
 #include "linglong/utils/error/error.h"
 
 #include <QDir>
@@ -18,13 +18,8 @@ class LayerDir : public QDir
 {
 public:
     using QDir::QDir;
-    ~LayerDir();
-    utils::error::Result<QSharedPointer<Info>> info() const;
+    utils::error::Result<api::types::v1::PackageInfo> info() const;
     utils::error::Result<QByteArray> rawInfo() const;
-    void setCleanStatus(bool status);
-
-private:
-    bool cleanup = true;
 };
 
 } // namespace linglong::package

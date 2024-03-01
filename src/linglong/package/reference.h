@@ -7,8 +7,8 @@
 #ifndef LINGLONG_PACKAGE_REFERENCE_H_
 #define LINGLONG_PACKAGE_REFERENCE_H_
 
+#include "linglong/api/types/v1/PackageInfo.hpp"
 #include "linglong/package/architecture.h"
-#include "linglong/package/module.h"
 #include "linglong/package/version.h"
 
 #include <QString>
@@ -24,6 +24,8 @@ public:
                                                   const QString &id,
                                                   const Version &version,
                                                   const Architecture &architecture) noexcept;
+    static utils::error::Result<Reference>
+    fromPackageInfo(const api::types::v1::PackageInfo &info) noexcept;
 
     QString channel;
     QString id;

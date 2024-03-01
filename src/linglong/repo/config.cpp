@@ -6,18 +6,16 @@
 
 #include "linglong/repo/config.h"
 
-#include "linglong/repo/config/Generators.hpp"
+#include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/serialize/yaml.h"
 #include "ytj/ytj.hpp"
 
 #include <fstream>
 
 namespace linglong::repo {
-using namespace config;
 
-using namespace utils::error;
-
-Result<ConfigV1> loadConfig(const QString &file) noexcept
+utils::error::Result<api::types::v1::RepoConfig> loadConfig(const QString &file) noexcept
 {
     LINGLONG_TRACE(QString("load config from %1").arg(file));
 
@@ -27,12 +25,13 @@ Result<ConfigV1> loadConfig(const QString &file) noexcept
             return LINGLONG_ERR("open failed");
         }
 
-        auto config = ytj::to_json(YAML::Load(ifs)).get<ConfigV1>();
-        if (config.version != 1) {
-            return LINGLONG_ERR(QString("wrong configuration file version %1").arg(config.version));
+        auto config = utils::serialize::LoadYAML<api::types::v1::RepoConfig>(ifs);
+        if (config->version != 1) {
+            return LINGLONG_ERR(
+              QString("wrong configuration file version %1").arg(config->version));
         }
 
-        if (config.repos.find(config.defaultRepo) == config.repos.end()) {
+        if (config->repos.find(config->defaultRepo) == config->repos.end()) {
             return LINGLONG_ERR(QString("default repo not found in repos"));
         }
 
@@ -42,7 +41,7 @@ Result<ConfigV1> loadConfig(const QString &file) noexcept
     }
 }
 
-Result<ConfigV1> loadConfig(const QStringList &files) noexcept
+utils::error::Result<api::types::v1::RepoConfig> loadConfig(const QStringList &files) noexcept
 {
     LINGLONG_TRACE(QString("load config from %1").arg(files.join(" ")));
 
@@ -60,7 +59,8 @@ Result<ConfigV1> loadConfig(const QStringList &files) noexcept
     return LINGLONG_ERR("all failed");
 }
 
-Result<void> saveConfig(const ConfigV1 &cfg, const QString &path) noexcept
+utils::error::Result<void> saveConfig(const api::types::v1::RepoConfig &cfg,
+                                      const QString &path) noexcept
 {
     LINGLONG_TRACE(QString("save config to %1").arg(path));
 

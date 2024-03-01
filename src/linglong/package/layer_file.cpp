@@ -6,8 +6,10 @@
 
 #include "linglong/package/layer_file.h"
 
-#include "linglong/package/layer_info.h"
+#include "linglong/api/types/v1/LayerInfo.hpp"
+#include "linglong/utils/serialize/json.h"
 
+#include <QDataStream>
 #include <QFileInfo>
 
 namespace linglong::package {
@@ -33,7 +35,7 @@ LayerFile::~LayerFile()
     }
 }
 
-utils::error::Result<QSharedPointer<LayerFile>> LayerFile::openLayer(const QString &path) noexcept
+utils::error::Result<QSharedPointer<LayerFile>> LayerFile::New(const QString &path) noexcept
 
 try {
     QSharedPointer<LayerFile> layerFile(new LayerFile(path));
@@ -48,18 +50,18 @@ void LayerFile::setCleanStatus(bool status) noexcept
     this->cleanup = status;
 }
 
-utils::error::Result<layer::LayerInfo> LayerFile::layerFileInfo() noexcept
+utils::error::Result<api::types::v1::LayerInfo> LayerFile::metaInfo() noexcept
 {
     LINGLONG_TRACE("get layer file info");
 
-    auto ret = layerInfoSize();
+    auto ret = this->metaInfoLength();
     if (!ret) {
         return LINGLONG_ERR(ret);
     }
 
     auto rawData = this->read(qint64(*ret));
 
-    auto layerInfo = fromJson(rawData);
+    auto layerInfo = utils::serialize::LoadJSON<api::types::v1::LayerInfo>(rawData);
     if (!layerInfo) {
         return LINGLONG_ERR(layerInfo);
     }
@@ -67,24 +69,30 @@ utils::error::Result<layer::LayerInfo> LayerFile::layerFileInfo() noexcept
     return layerInfo;
 }
 
-utils::error::Result<quint32> LayerFile::layerInfoSize()
+utils::error::Result<quint32> LayerFile::metaInfoLength()
 {
-    LINGLONG_TRACE("get layer file info");
+    LINGLONG_TRACE("read meta info length");
 
-    // read from position magicNumber.size() everytime
-    this->seek(magicNumber.size());
+    QDataStream layerDataStream(this);
 
-    quint32 layerInfoSize = 0;
-    this->read(reinterpret_cast<char *>(&layerInfoSize), sizeof(quint32));
+    layerDataStream.startTransaction();
 
-    return layerInfoSize;
+    layerDataStream.skipRawData(magicNumber.size());
+    quint32 metaInfoLength = 0;
+    layerDataStream >> metaInfoLength;
+
+    if (!layerDataStream.commitTransaction()) {
+        return LINGLONG_ERR("unknown error.");
+    }
+
+    return metaInfoLength;
 }
 
-utils::error::Result<quint32> LayerFile::layerOffset() noexcept
+utils::error::Result<quint32> LayerFile::binaryDataOffset() noexcept
 {
-    LINGLONG_TRACE("get layer offset");
+    LINGLONG_TRACE("get binary data offset");
 
-    auto size = layerInfoSize();
+    auto size = this->metaInfoLength();
     if (!size) {
         return LINGLONG_ERR(size);
     }
@@ -95,8 +103,9 @@ utils::error::Result<quint32> LayerFile::layerOffset() noexcept
 utils::error::Result<void> LayerFile::saveTo(const QString &destination) noexcept
 {
     LINGLONG_TRACE(QString("save layer file to %1").arg(destination));
+
     if (!this->copy(destination)) {
-        return LINGLONG_ERR("copy failed: " + this->errorString(), this->error());
+        return LINGLONG_ERR(*this);
     }
 
     return LINGLONG_OK;

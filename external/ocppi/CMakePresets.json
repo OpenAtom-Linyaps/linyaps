@@ -1,0 +1,112 @@
+{
+        "version": 6,
+        "cmakeMinimumRequired": {
+                "major": 3,
+                "minor": 25,
+                "patch": 0
+        },
+        "configurePresets": [
+                {
+                        "name": "debug",
+                        "displayName": "Debug configuration",
+                        "description": "Configure ocppi for development and debugging.",
+                        "binaryDir": "${sourceDir}/build",
+                        "cacheVariables": {
+                                "CPM_DOWNLOAD_ALL": "ON",
+                                "OCPPI_WITH_SPDLOG": true,
+                                "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -Og -g -fsanitize=address,undefined",
+                                "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+                                "CMAKE_COLOR_DIAGNOSTICS": true
+                        }
+                },
+                {
+                        "name": "ci",
+                        "displayName": "CI configuration",
+                        "description": "Configure ocppi for CI.",
+                        "binaryDir": "${sourceDir}/build-ci",
+                        "cacheVariables": {
+                                "CMAKE_BUILD_TYPE": "Release"
+                        },
+                        "environment": {
+                                "CPM_LOCAL_PACKAGES_ONLY": "ON"
+                        }
+                },
+                {
+                        "name": "ci-with-spdlog",
+                        "inherits": "ci",
+                        "displayName": "CI configuration with spdlog",
+                        "description": "Configure ocppi with spdlog for CI.",
+                        "binaryDir": "${sourceDir}/build-ci-with-spdlog",
+                        "cacheVariables": {
+                                "OCPPI_WITH_SPDLOG": true
+                        }
+                }
+        ],
+        "buildPresets": [
+                {
+                        "name": "debug",
+                        "displayName": "Debug build",
+                        "description": "Build ocppi for development and debugging.",
+                        "configurePreset": "debug"
+                },
+                {
+                        "name": "ci",
+                        "displayName": "CI build",
+                        "description": "Build ocppi for CI.",
+                        "configurePreset": "ci"
+                },
+                {
+                        "name": "ci-with-spdlog",
+                        "displayName": "CI build with spdlog",
+                        "description": "Build ocppi for CI with spdlog.",
+                        "configurePreset": "ci-with-spdlog"
+                }
+        ],
+        "workflowPresets": [
+                {
+                        "name": "debug",
+                        "displayName": "Workflow for developers",
+                        "description": "Configure, build then test for developing and debuging ocppi.",
+                        "steps": [
+                                {
+                                        "type": "configure",
+                                        "name": "debug"
+                                },
+                                {
+                                        "type": "build",
+                                        "name": "debug"
+                                }
+                        ]
+                },
+                {
+                        "name": "ci",
+                        "displayName": "Workflow for CI",
+                        "description": "Configure, build then test ocppi for CI.",
+                        "steps": [
+                                {
+                                        "type": "configure",
+                                        "name": "ci"
+                                },
+                                {
+                                        "type": "build",
+                                        "name": "ci"
+                                }
+                        ]
+                },
+                {
+                        "name": "ci-with-spdlog",
+                        "displayName": "Workflow for CI with spdlog",
+                        "description": "Configure, build then test ocppi for CI with spdlog.",
+                        "steps": [
+                                {
+                                        "type": "configure",
+                                        "name": "ci-with-spdlog"
+                                },
+                                {
+                                        "type": "build",
+                                        "name": "ci-with-spdlog"
+                                }
+                        ]
+                }
+        ]
+}

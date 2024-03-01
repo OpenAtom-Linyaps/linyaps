@@ -1,0 +1,41 @@
+# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+package:
+  id: '{{{ID}}}'
+  name: '{{{NAME}}}'
+  version: '{{{VERSION}}}'
+  kind: app
+  description: |
+    {{{DESCRIPTION}}}
+
+sources:
+  - kind: file
+    url: '{{{URL}}}'
+    digest: '{{{DIGEST}}}'
+
+build: |
+  APPIMAGE=$(find . -regex '.*\.AppImage\|.*\appimage' -exec basename {} \;)
+  chmod +x ${APPIMAGE}
+  ./${APPIMAGE} --appimage-extract
+  BINNAME=${APPID}
+  APP_PREFIX=${BINNAME}
+  echo "#!/usr/bin/env bash" > ${BINNAME}
+  echo "unset LD_LIBRARY_PATH" >> ${BINNAME}
+  echo "cd ${PREFIX}/lib/${APP_PREFIX} && ./AppRun $@" >> ${BINNAME}
+  # only search for .desktop file in the squashfs-root directory
+  DESKTOP_FILE=$(find squashfs-root -maxdepth 1 -regex '.*\.desktop' -exec basename {} \;)
+  cp squashfs-root/${DESKTOP_FILE} .
+  sed -i "s@Exec=.*@Exec=/${PREFIX}/bin/${BINNAME}@" ${DESKTOP_FILE}
+
+  cd squashfs-root
+  if [ ! $PREFIX ]; then
+    PREFIX=opt/${APP_PREFIX}
+  fi
+  DESTDIR=${dest_dir}
+  find -type f -exec install -D "{}" "${DESTDIR}/${PREFIX}/lib/${APP_PREFIX}/{}" \;
+  find -type l -exec bash -c " ln -s \$(readlink {}) \"${DESTDIR}/${PREFIX}/lib/${APP_PREFIX}/{}\" " \;
+  cd ..
+  install -D ${BINNAME} ${DESTDIR}/${PREFIX}/bin/${BINNAME}
+  install -D ${DESKTOP_FILE} ${DESTDIR}/${PREFIX}/share/applications/${DESKTOP_FILE}

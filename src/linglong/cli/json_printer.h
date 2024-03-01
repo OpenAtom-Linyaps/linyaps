@@ -8,20 +8,19 @@
 #define LINGLONG_CLI_JSON_PRINTER_H_
 
 #include "linglong/cli/printer.h"
-#include "linglong/dbus_ipc/reply.h"
 
 namespace linglong::cli {
 
 class JSONPrinter : public Printer
 {
 public:
-    void printErr(const utils::error::Error &err) override;
-    void printAppMetaInfos(const QList<QSharedPointer<linglong::package::AppMetaInfo>> &list) override;
-    void printContainers(const QList<QSharedPointer<Container>> &list) override;
-    void printReply(const linglong::service::Reply &reply) override;
-    void printQueryReply(const linglong::service::QueryReply &reply) override;
-    void printLayerInfo(const QSharedPointer<linglong::package::Info> &info) override;
-    void printTaskStatus(const QString& percentage,const QString& message, int status) override;
+    void printErr(const utils::error::Error &) override;
+    void printPackages(const std::vector<api::types::v1::PackageInfo> &) override;
+    void printContainers(const std::vector<api::types::v1::CliContainer> &) override;
+    void printReply(const api::types::v1::CommonResult &) override;
+    void printRepoConfig(const api::types::v1::RepoConfig &) override;
+    void printLayerInfo(const api::types::v1::LayerInfo &) override;
+    void printTaskStatus(const QString &percentage, const QString &message, int status) override;
 };
 
 } // namespace linglong::cli

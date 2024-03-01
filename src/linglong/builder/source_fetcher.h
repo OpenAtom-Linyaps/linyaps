@@ -7,50 +7,29 @@
 #ifndef LINGLONG_SRC_BUILDER_SOURCE_FETCHER_H_
 #define LINGLONG_SRC_BUILDER_SOURCE_FETCHER_H_
 
-#include "linglong/cli/printer.h"
+#include "linglong/api/types/v1/BuilderConfig.hpp"
+#include "linglong/api/types/v1/BuilderProjectSource.hpp"
 #include "linglong/utils/error/error.h"
-#include "project.h"
 
 #include <QFileInfo>
 #include <QObject>
 #include <QUrl>
 
-namespace linglong {
-namespace builder {
+namespace linglong::builder {
 
-class Source;
-class Project;
-class SourceFetcherPrivate;
-
-class SourceFetcher : public QObject
+class SourceFetcher
 {
-    Q_OBJECT
 public:
-    explicit SourceFetcher(QSharedPointer<Source> s, cli::Printer &p, Project *project);
-    ~SourceFetcher() override;
+    explicit SourceFetcher(api::types::v1::BuilderProjectSource s,
+                           api::types::v1::BuilderConfig cfg);
 
-    QString sourceRoot() const;
-
-    void setSourceRoot(const QString &path);
-
-    linglong::utils::error::Result<void> fetch();
-
-    linglong::util::Error patch();
+    auto fetch(QDir destination) noexcept -> utils::error::Result<void>;
 
 private:
-    QString srcRoot;
-    cli::Printer &printer;
-    QScopedPointer<SourceFetcherPrivate> dd_ptr;
-    Q_DECLARE_PRIVATE_D(qGetPtrHelper(dd_ptr), SourceFetcher)
-    static constexpr auto CompressedFileTarXz = "tar.xz";
-    static constexpr auto CompressedFileTarGz = "tar.gz";
-    static constexpr auto CompressedFileTarBz2 = "tar.bz2";
-    static constexpr auto CompressedFileTgz = "tgz";
-    static constexpr auto CompressedFileTar = "tar";
-    static constexpr auto CompressedFileZip = "zip";
+    api::types::v1::BuilderProjectSource source;
+    api::types::v1::BuilderConfig cfg;
 };
 
-} // namespace builder
-} // namespace linglong
+} // namespace linglong::builder
 
 #endif // LINGLONG_SRC_BUILDER_SOURCE_FETCHER_H_

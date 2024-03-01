@@ -20,6 +20,11 @@ Files: external/ytj/*
 License: LGPL-3.0-only
 Copyright: Chen Linxuan <me@black-desk.cn>
 
+# ocppi
+Files: external/ocppi/*
+License: LGPL-3.0-only
+Copyright: Chen Linxuan <me@black-desk.cn>
+
 # openapi generator code
 Files: external/http/*
 License: CC0-1.0
@@ -40,8 +45,13 @@ Files: api/JSON Schema/*.json
 License: CC0-1.0
 Copyright: None
 
+# linglong container configurations and generator scripts
+Files: misc/lib/linglong/container/*
+License: CC0-1.0
+Copyright: None
+
 # generated code
-Files: src/linglong/builder/project/* src/linglong/builder/config/* src/linglong/package/layer/* src/linglong/repo/config/*
+Files: src/linglong/api/types/v1/*
 License: CC0-1.0
 Copyright: None
 
@@ -75,7 +85,7 @@ License: LGPL-3.0-only
 Copyright: UnionTech Software Technology Co., Ltd.
 
 # Test data
-Files: tests/data/* tests/src/utils/serialize/data.json tests/src/utils/serialize/data.yaml
+Files: tests/ll-tests/data/*
 License: CC0-1.0
 Copyright: None
 

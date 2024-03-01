@@ -47,6 +47,32 @@ utils::error::Result<Reference> Reference::parse(const QString &raw) noexcept
     return *reference;
 }
 
+utils::error::Result<Reference>
+Reference::fromPackageInfo(const api::types::v1::PackageInfo &info) noexcept
+{
+    LINGLONG_TRACE("parse reference from package info file");
+
+    auto version = package::Version::parse(QString::fromStdString(info.version));
+    if (!version) {
+        return LINGLONG_ERR(version);
+    }
+
+    auto architecture = package::Architecture::parse(QString::fromStdString(info.arch));
+    if (!architecture) {
+        return LINGLONG_ERR(architecture);
+    }
+
+    auto reference = package::Reference::create(QString::fromStdString(info.channel),
+                                                QString::fromStdString(info.appID),
+                                                *version,
+                                                *architecture);
+    if (!reference) {
+        return LINGLONG_ERR(reference);
+    }
+
+    return reference;
+}
+
 utils::error::Result<Reference> Reference::create(const QString &channel,
                                                   const QString &id,
                                                   const Version &version,

@@ -1,0 +1,346 @@
+# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+# SPDX-License-Identifier: LGPL-3.0-or-later
+#
+# NOTE:
+# This yaml file is converted to json schema by running
+# yq e '.properties = ( [
+#   .$defs | keys | .[] as $type | {
+#     "key" : $type,
+#     "value": {
+#       "$ref": "#/$defs/"+$type
+#     }
+#   } ] | from_entries
+# )' -o json
+# Check ../../tools/codegen.sh for details
+#
+# WARNING:
+# Please make sure every changes in this file is backward compatible.
+
+$schema: http://json-schema.org/draft-04/schema#
+description:
+  Types used as API of linglong
+  D-Bus service, configuration files and CLI output.
+  The top level type is a place holder to make quicktype work.
+$defs:
+  ApplicationConfiguration:
+    title: ApplicationConfiguration
+    type: object
+    required:
+      - version
+    properties:
+      version:
+        type: string
+      permissions:
+        title: ApplicationConfigurationPermissions
+        type: object
+        properties:
+          binds:
+            type: array
+            items:
+              type: object
+              title: ApplicationConfigurationPermissionsBind
+              required:
+                - source 
+                - destination
+              properties:
+                source:
+                  type: string
+                destination:
+                  type: string
+  OCIConfigurationPatch:
+    title: OCIConfigurationPatch
+    type: object
+    required:
+      - ociVersion
+      - patch
+    properties:
+      ociVersion:
+        type: string
+      patch:
+        type: array
+  CLIContainer:
+    title: CLIContainer
+    type: object
+    required:
+      - pid
+      - id
+      - package
+    properties:
+      pid:
+        type: integer
+      id:
+        type: string
+      package:
+        type: string
+  BuilderProject:
+    title: BuilderProject
+    description: Linglong project build file.
+    type: object
+    required:
+      - version
+      - package
+      - sources
+      - build
+      - base
+    properties:
+      version:
+        type: string
+      package:
+        title: BuilderProjectPackage
+        type: object
+        required:
+          - id
+          - kind
+          - name
+          - version
+          - description
+        properties:
+          id:
+            type: string
+          kind:
+            type: string
+          name:
+            type: string
+          version:
+            type: string
+          description:
+            type: string
+          architecture:
+            type: string
+          channel:
+            type: string
+      runtime:
+        type: string
+      base:
+        type: string
+      sources:
+        type: array 
+        items:
+          title: BuilderProjectSource
+          type: object
+          required:
+            - kind
+          properties:
+            kind:
+              type: string
+            url:
+              type: string
+            digest:
+              type: string
+            commit:
+              type: string
+            version:
+              type: string
+      build:
+        title: BuilderProjectBuildScript
+        type: string
+      strip:
+        title: BuilderProjectStripScript
+        type: string
+  BuilderConfig:
+    description: Configuration file for ll-builder.
+    type: object
+    required:
+      - version
+      - repo
+    properties:
+      version:
+        type: integer
+      offline:
+        type: boolean
+      skip_fetch:
+        type: boolean
+      skip_commit:
+        type: boolean
+      arch:
+        type: string
+      cache:
+        type: string
+      repo:
+        type: string
+  RepoConfig:
+    description: Configuration file for local linglong repository.
+    type: object
+    required:
+      - version
+      - defaultRepo
+      - repos
+    properties:
+      version:
+        type: integer
+      defaultRepo:
+        type: string
+      repos:
+        type: object
+        additionalProperties:
+          type: string
+  LayerInfo:
+    description: Meta infomation on the head of layer file.
+    type: object
+    required:
+      - version
+      - info
+    properties:
+      version:
+        type: string
+      info: true
+  PackageManager1Package:
+    title: PackageManager1Package
+    type: object
+    required:
+      - id
+    properties:
+      channel:
+        type: string
+      id:
+        type: string
+      version:
+        type: string
+      module:
+        type: string
+  PackageInfo:
+    title: PackageInfo
+    type: object
+    required:
+      - channel
+      - appId
+      - module
+      - arch
+      - version
+      - kind
+      - name
+      - size
+    # - base # FIXME: Should be required.
+    properties:
+      channel:
+        type: string
+      appId:
+        type: string
+      module:
+        type: string
+      arch:
+        type: string
+      version:
+        type: string
+      kind:
+        type: string
+      name:
+        type: string
+      size:
+        description:
+          Uncompressed package size in bytes
+        type: integer
+      runtime:
+        type: string
+      base:
+        type: string
+      permissions:
+        type: string
+      description:
+        type: string
+  CommonResult:
+    title: CommonResult
+    type: object
+    required:
+      - message
+      - code
+    properties:
+      message:
+        description: Human readable result message.
+        type: string
+      code:
+        description:
+          We do not use DBus error. We return an error code instead.
+          Non-zero code indicated errors occurs
+          and message should be displayed to user.
+        type: integer
+  PackageManager1InstallLayerFDResult:
+    $ref: '#/$defs/CommonResult'
+  PackageManager1InstallParameters:
+    type: object
+    required:
+      - package
+    properties:
+      package:
+        $ref: '#/$defs/PackageManager1Package'
+  PackageManager1InstallResult:
+    title: PackageManager1ResultWithTaskID 
+    allOf:
+      - $ref: '#/$defs/CommonResult'
+    properties:
+      taskID:
+        type: string
+  PackageManager1UninstallParameters:
+    type: object
+    required:
+      - package
+    properties:
+      package:
+        $ref: '#/$defs/PackageManager1Package'
+  PackageManager1UninstallResult:
+    $ref: '#/$defs/CommonResult'
+  PackageManager1UpdateParameters:
+    type: object
+    required:
+      - packages
+    properties:
+      packages:
+        type: array
+        items:
+          $ref: '#/$defs/PackageManager1Package'
+  PackageManager1UpdateResult:
+    title: PackageManager1UpdateResult
+    $ref: '#/$defs/PackageManager1InstallResult'
+  PackageManager1ModifyRepoParameters:
+    type: object
+    required:
+      - defaultRepo
+      - repos
+    properties:
+      defaultRepo:
+        type: string
+      repos:
+        type: object
+        additionalProperties:
+          type: string
+  PackageManager1ModifyRepoResult:
+    $ref: '#/$defs/CommonResult'
+  PackageManager1SearchParameters:
+    type: object
+    required:
+      - id
+    properties:
+      id:
+        type: string
+  PackageManager1SearchResult:
+    type: object
+    allOf:
+      - $ref: '#/$defs/CommonResult'
+    properties:
+      packages:
+        type: array
+        items:
+          $ref: '#/$defs/PackageInfo'
+  PackageManager1GetRepoInfoResult:
+    type: object
+    allOf:
+      - $ref: '#/$defs/CommonResult'
+    required:
+      - repoInfo
+    properties:
+      repoInfo:
+        title: PackageManager1GetRepoInfoResultRepoInfo
+        type: object
+        properties:
+          defaultRepo:
+            type: string
+          repos:
+            type: object
+            additionalProperties:
+              type: string
+        required:
+          - defaultRepo
+          - repos
+type: object
+properties:
+  # NOTE: "properties" is auto generated by referring all types is $defs

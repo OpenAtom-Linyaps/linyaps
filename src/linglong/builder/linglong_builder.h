@@ -7,112 +7,54 @@
 #ifndef LINGLONG_SRC_BUILDER_BUILDER_LINGLONG_BUILDER_H_
 #define LINGLONG_SRC_BUILDER_BUILDER_LINGLONG_BUILDER_H_
 
-#include "builder.h"
-#include "linglong/cli/printer.h"
+#include "linglong/api/types/v1/BuilderConfig.hpp"
+#include "linglong/api/types/v1/BuilderProject.hpp"
 #include "linglong/repo/ostree_repo.h"
-#include "linglong/service/app_manager.h"
-#include "linglong/util/error.h"
+#include "linglong/runtime/container_builder.h"
 #include "linglong/utils/error/error.h"
-#include "ocppi/cli/CLI.hpp"
-#include "ocppi/runtime/config/types/Config.hpp"
-#include "ocppi/runtime/config/types/Mount.hpp"
-#include "project.h"
 
-#include <nlohmann/json.hpp>
+namespace linglong::builder {
 
-namespace linglong {
-namespace builder {
-
-class LinglongBuilder : public QObject, public Builder
+class Builder
 {
-    Q_OBJECT
 public:
-    explicit LinglongBuilder(repo::OSTreeRepo &ostree,
-                             cli::Printer &p,
-                             ocppi::cli::CLI &cli,
-                             service::AppManager &appManager);
-    util::Error config(const QString &userName, const QString &password) override;
+    explicit Builder(const api::types::v1::BuilderProject &project,
+                     QDir workingDir,
+                     repo::OSTreeRepo &repo,
+                     runtime::ContainerBuilder &containerBuilder,
+                     const api::types::v1::BuilderConfig &cfg);
+    auto getConfig() const noexcept -> api::types::v1::BuilderConfig;
+    void setConfig(const api::types::v1::BuilderConfig &cfg) noexcept;
 
-    util::Error create(const QString &projectName) override;
+    auto create(const QString &projectName) -> utils::error::Result<void>;
 
-    utils::error::Result<void> build() override;
+    auto build(const QStringList &args = { "/source/entry.sh" }) noexcept
+      -> utils::error::Result<void>;
 
-    util::Error exportLayer(const QString &destination) override;
+    auto exportLayer(const QString &destination) -> utils::error::Result<void>;
 
-    util::Error extractLayer(const QString &layerPath, const QString &destination) override;
+    auto extractLayer(const QString &layerPath, const QString &destination)
+      -> utils::error::Result<void>;
 
-    util::Error exportBundle(const QString &outputFilepath, bool useLocalDir) override;
+    auto push(bool pushWithDevel = true, const QString &repoUrl = "", const QString &repoName = "")
+      -> utils::error::Result<void>;
 
-    util::Error push(const QString &repoUrl,
-                     const QString &repoName,
-                     const QString &channel,
-                     bool pushWithDevel) override;
+    auto import() -> utils::error::Result<void>;
 
-    util::Error import() override;
+    auto importLayer(const QString &path) -> utils::error::Result<void>;
 
-    util::Error importLayer(const QString &path) override;
+    auto run(const QStringList &args = { QString("bash") }) -> utils::error::Result<void>;
 
-    util::Error run() override;
-
-    util::Error track() override;
-
-    utils::error::Result<void> appimageConvert(const QStringList &templateArgs);
+    auto appimageConvert(const QStringList &templateArgs) -> utils::error::Result<void>;
 
 private:
     repo::OSTreeRepo &repo;
-    cli::Printer &printer;
-    ocppi::cli::CLI &ociCLI;
-    service::AppManager &appManager;
-
-    static auto toJSON(const ocppi::runtime::config::types::Mount &) -> nlohmann::json;
-    static auto toJSON(const ocppi::runtime::config::types::Config &) -> nlohmann::json;
-
-    linglong::utils::error::Result<QSharedPointer<Project>> buildStageProjectInit();
-    linglong::utils::error::Result<ocppi::runtime::config::types::Config> buildStageConfigInit();
-    linglong::utils::error::Result<void> buildStageClean(const Project &project);
-    linglong::utils::error::Result<QString> buildStageDepend(Project *project);
-    linglong::utils::error::Result<void> buildStageRuntime(ocppi::runtime::config::types::Config &r,
-                                                           const Project &project,
-                                                           const QString &overlayLowerDir,
-                                                           const QString &overlayUpperDir,
-                                                           const QString &overlayWorkDir,
-                                                           const QString &overlayMergeDir);
-    linglong::utils::error::Result<void> buildStageSource(ocppi::runtime::config::types::Config &r,
-                                                          Project *project);
-    linglong::utils::error::Result<void>
-    buildStageEnvrionment(ocppi::runtime::config::types::Config &r,
-                          const Project &project,
-                          const BuilderConfig &config);
-    linglong::utils::error::Result<void>
-    buildStageMountHelper(ocppi::runtime::config::types::Config &r);
-    linglong::utils::error::Result<void>
-    buildStageIDMapping(ocppi::runtime::config::types::Config &r);
-    linglong::utils::error::Result<void> buildStageRootfs(ocppi::runtime::config::types::Config &r,
-                                                          const QDir &workdir,
-                                                          const QString &hostBasePath);
-    linglong::utils::error::Result<void> buildStageRunContainer(
-      QDir workdir, ocppi::cli::CLI &cli, ocppi::runtime::config::types::Config &r);
-    linglong::utils::error::Result<void> buildStageCommitBuildOutput(Project *project,
-                                                                     const QString &upperdir,
-                                                                     const QString &workdir);
+    QDir workingDir;
+    api::types::v1::BuilderProject project;
+    runtime::ContainerBuilder &containerBuilder;
+    api::types::v1::BuilderConfig cfg;
 };
 
-// TODO: remove later
-class message : public JsonSerialize
-{
-    Q_OBJECT;
-    Q_JSON_CONSTRUCTOR(message)
-public:
-    Q_JSON_PROPERTY(QString, type);
-    Q_JSON_PROPERTY(int, pid);
-    Q_JSON_PROPERTY(QString, arg0);
-    Q_JSON_PROPERTY(int, wstatus);
-    Q_JSON_PROPERTY(QString, information);
-};
-
-QSERIALIZER_DECLARE(message)
-
-} // namespace builder
-} // namespace linglong
+} // namespace linglong::builder
 
 #endif // LINGLONG_SRC_BUILDER_BUILDER_LINGLONG_BUILDER_H_

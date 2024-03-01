@@ -4,27 +4,31 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_SRC_MODULE_RUNTIME_CONTAINER_H_
-#define LINGLONG_SRC_MODULE_RUNTIME_CONTAINER_H_
+#ifndef LINGLONG_RUNTIME_CONTAINER_H_
+#define LINGLONG_RUNTIME_CONTAINER_H_
 
-#include "linglong/util/error.h"
-#include "linglong/util/qserializer/deprecated.h"
+#include "linglong/utils/error/error.h"
+#include "ocppi/cli/CLI.hpp"
+#include "ocppi/runtime/config/types/Config.hpp"
+#include "ocppi/runtime/config/types/Process.hpp"
 
-#include <QDBusArgument>
-#include <QList>
-#include <QObject>
+namespace linglong::runtime {
 
-class Container : public JsonSerialize
+class Container
 {
-    Q_OBJECT
-    Q_JSON_CONSTRUCTOR(Container)
 public:
-    Q_JSON_ITEM_MEMBER(QString, ID, id)
-    Q_JSON_ITEM_MEMBER(qint64, PID, pid)
-    Q_JSON_ITEM_MEMBER(QString, PackageName, packageName)
-    Q_JSON_ITEM_MEMBER(QString, WorkingDirectory, workingDirectory)
+    Container(const ocppi::runtime::config::types::Config &cfg,
+              const QString &conatinerID,
+              ocppi::cli::CLI &cli);
 
-    linglong::util::Error create(const QString &ref);
+    utils::error::Result<void> run(const ocppi::runtime::config::types::Process &process) noexcept;
+
+private:
+    ocppi::runtime::config::types::Config cfg;
+    QUuid id;
+    ocppi::cli::CLI &cli;
 };
-Q_JSON_DECLARE_PTR_METATYPE(Container)
+
+}; // namespace linglong::runtime
+
 #endif

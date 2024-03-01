@@ -9,7 +9,7 @@
 
 #include "linglong/utils/error/error.h"
 
-#include <nlohmann/detail/conversions/to_chars.hpp>
+#include "nlohmann/json.hpp"
 
 #include <QString>
 
@@ -29,6 +29,9 @@ public:
 
     QString toString() const noexcept;
     QString getTriplet() const noexcept;
+
+    bool operator==(const Architecture &that) const noexcept { return this->v == that.v; }
+    bool operator!=(const Architecture &that) const noexcept { return this->v != that.v; }
 
     static utils::error::Result<Architecture> parse(const QString &raw) noexcept;
 

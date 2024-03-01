@@ -4,26 +4,69 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "container.h"
+#include "linglong/runtime/container.h"
 
-#include "linglong/util/error.h"
-#include "linglong/util/file.h"
-#include "linglong/util/uuid.h"
-#include "linglong/util/xdg.h"
+#include "linglong/utils/finally/finally.h"
+#include "ocppi/runtime/config/types/Generators.hpp"
 
-QSERIALIZER_IMPL(Container);
+#include <QDir>
+#include <QStandardPaths>
 
-linglong::util::Error Container::create(const QString &ref)
+#include <fstream>
+
+namespace linglong::runtime {
+
+Container::Container(const ocppi::runtime::config::types::Config &cfg,
+                     const QString &conatinerID,
+                     ocppi::cli::CLI &cli)
+    : cfg(cfg)
+    , id(conatinerID)
+    , cli(cli)
 {
-    auto containerID = linglong::util::genUuid();
-    auto containerWorkDirectory =
-      linglong::util::userRuntimeDir().absoluteFilePath(QString("linglong/%1").arg(containerID));
-
-    id = containerID;
-    workingDirectory = containerWorkDirectory;
-    linglong::util::ensureDir(workingDirectory);
-
-    packageName = ref;
-
-    return Success();
+    Q_ASSERT(!cfg.process.has_value());
 }
+
+utils::error::Result<void>
+Container::run(const ocppi::runtime::config::types::Process &process) noexcept
+{
+    LINGLONG_TRACE(QString("run container %1").arg(this->id.toString()));
+
+    QDir runtimeDir = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+    if (!runtimeDir.mkpath(QString("linglong/%1").arg(this->id.toString()))) {
+        return LINGLONG_ERR("make bundle directory");
+    }
+
+    auto _ = utils::finally::finally([&]() {
+        if (runtimeDir.removeRecursively()) {
+            return;
+        }
+
+        qCritical() << "failed to remove" << runtimeDir.absolutePath();
+    });
+
+    QDir bundle = runtimeDir.absoluteFilePath(QString("linglong/%1").arg(this->id.toString()));
+    Q_ASSERT(bundle.exists());
+
+    this->cfg.process = process;
+
+    nlohmann::json json = this->cfg;
+
+    std::ofstream ofs(bundle.absoluteFilePath("config.json").toStdString());
+    Q_ASSERT(ofs.is_open());
+    if (!ofs.is_open()) {
+        return LINGLONG_ERR("create config.json in bundle directory");
+    }
+
+    ofs << json.dump(4);
+
+    auto result = this->cli.run(ocppi::runtime::ContainerID(this->id.toString().toStdString()),
+                                std::filesystem::path(bundle.absolutePath().toStdString()));
+
+    if (!result) {
+        return LINGLONG_ERR(result);
+    }
+
+    return LINGLONG_OK;
+}
+
+} // namespace linglong::runtime

@@ -145,6 +145,9 @@ public:
                     const QString &msg,
                     GError const *const e) -> Error
     {
+        if (e == nullptr) {
+            return Err(file, line, trace_msg, msg + ": unknown glib error");
+        }
         return Err(file, line, trace_msg, msg + ": " + e->message, e->code);
     }
 
@@ -256,7 +259,7 @@ using Result = tl::expected<Value, Error>;
     tl::unexpected(::linglong::utils::error::Error::Err(QT_MESSAGELOG_FILE,     \
                                                         QT_MESSAGELOG_LINE,     \
                                                         linglong_trace_message, \
-                                                        std::move((_1))))
+                                                        std::move((_1)) /*NOLINT*/))
 
 // std::move is used for Result<Value>
 #define LINGLONG_ERR_2(_1, _2) /*NOLINT*/                                       \
@@ -264,7 +267,7 @@ using Result = tl::expected<Value, Error>;
                                                         QT_MESSAGELOG_LINE,     \
                                                         linglong_trace_message, \
                                                         (_1),                   \
-                                                        std::move((_2))))
+                                                        std::move((_2)) /*NOLINT*/))
 
 #define LINGLONG_ERR_3(_1, _2, _3) /*NOLINT*/                                   \
     tl::unexpected(::linglong::utils::error::Error::Err(QT_MESSAGELOG_FILE,     \
@@ -277,6 +280,8 @@ using Result = tl::expected<Value, Error>;
 #define LINGLONG_OK \
     {               \
     }
+
+#define LINGLONG_ERRV(...) /*NOLINT*/ LINGLONG_ERR(__VA_ARGS__).value()
 
 inline QDebug operator<<(QDebug debug, const linglong::utils::error::Error &err)
 {

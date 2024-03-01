@@ -6,7 +6,7 @@
 
 #include "linglong/utils/global/initialize.h"
 
-#include "linglong/util/configure.h"
+#include "linglong/utils/configure.h"
 
 #include <systemd/sd-journal.h>
 

@@ -24,9 +24,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: hendrikmuhs/ccache-action@v1.2
-        with:
-          key: ${{ matrix.cxx }}-${{ matrix.type }}
       - name: Cache CPM.cmake Source
         uses: actions/cache@v4
         with:
@@ -36,7 +33,6 @@ jobs:
         run: |
           mkdir -p .cache/cpm/source &&
           export CXX="${{ matrix.cxx }}" &&
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH" &&
           export CPM_DOWNLOAD_ALL="ON" &&
           export CPM_SOURCE_CACHE="$PWD/.cache/cpm/source" &&
           export CFLAGS="$CFLAGS -Wall" &&

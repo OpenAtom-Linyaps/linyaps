@@ -1,8 +1,0 @@
-#pragma once
-
-namespace qserializer
-{
-
-constexpr auto semver = "@QSERIALIZER_SEMVER@";
-
-}

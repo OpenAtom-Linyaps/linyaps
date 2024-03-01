@@ -1,4 +1,5 @@
 usr/bin/ll-builder
-usr/share/linglong/builder/config.yaml
-usr/share/linglong/builder/templates/*.yaml
+usr/libexec/linglong/fetch-dsc-repo
+usr/libexec/linglong/fetch-git-repo
 usr/share/bash-completion/completions/ll-builder
+usr/share/linglong/builder/templates/*.yaml

@@ -1,0 +1,24 @@
+{
+    "ociVersion": "1.0.1",
+    "hostname": "linglong",
+    "root": {
+        "path": ""
+    },
+    "linux": {
+        "namespaces": [
+            {
+                "type": "pid"
+            },
+            {
+                "type": "mount"
+            },
+            {
+                "type": "uts"
+            },
+            {
+                "type": "user"
+            }
+        ]
+    },
+    "mounts": []
+}

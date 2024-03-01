@@ -1,0 +1,3 @@
+#!/bin/bash
+
+exec @CMAKE_INSTALL_FULL_LIBEXECDIR@/linglong/20-devices "$@"

@@ -1,0 +1,18 @@
+{
+    "ociVersion": "1.0.1",
+    "patch": [
+        {
+            "op": "add",
+            "path": "/mounts/-",
+            "value": {
+                "destination": "/run/host/rootfs",
+                "type": "bind",
+                "source": "/",
+                "options": [
+                    "rbind",
+                    "ro"
+                ]
+            }
+        }
+    ]
+}

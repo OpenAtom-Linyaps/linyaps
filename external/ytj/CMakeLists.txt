@@ -2,18 +2,21 @@ cmake_minimum_required(VERSION 3.23 FATAL_ERROR)
 
 project(
   ytj
-  VERSION 0.1.0
+  VERSION 0.1.4
   DESCRIPTION
     "A header only cpp library and a command line tool to convert yaml to json."
   HOMEPAGE_URL "https://github.com/black-desk/ytj"
   LANGUAGES CXX)
 
-option(YTJ_BUILD_EXAMPLES "Build examples of ytj or not."
-       ${PROJECT_IS_TOP_LEVEL})
-
-option(YTJ_ENABLE_TESTING "Enable test of ytj or not." ${PROJECT_IS_TOP_LEVEL})
-
-option(YTJ_INSTALL "Enable install target or not." ${PROJECT_IS_TOP_LEVEL})
+function(get_real_target_name output target)
+  get_target_property("${output}" "${target}" ALIASED_TARGET)
+  if("${output}" STREQUAL "")
+    set("${output}" "${target}")
+  endif()
+  set("${output}"
+      ${${output}}
+      PARENT_SCOPE)
+endfunction()
 
 include(./cmake/GitSemver.cmake)
 
@@ -23,20 +26,21 @@ include(./cmake/CPM.cmake)
 
 CPMFindPackage(
   NAME nlohmann_json
-  VERSION 3.11.2
-  URL "https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz"
+  VERSION 3.5.0
+  URL "https://github.com/nlohmann/json/archive/refs/tags/v3.5.0.tar.gz"
   EXCLUDE_FROM_ALL ON
-  OPTIONS "JSON_Install ON")
+  OPTIONS "JSON_Install ON" # nlohmann_json is an INTERFACE dependency of ytj
+          "JSON_BuildTests OFF")
 
 CPMFindPackage(
   NAME yaml-cpp
-  VERSION 0.8.0
+  VERSION 0.6.2
   GITHUB_REPOSITORY jbeder/yaml-cpp
-  GIT_TAG 0.8.0
-  GIT_SHALLOW ON
+  GIT_TAG ab5f925 # NOTE: We need https://github.com/jbeder/yaml-cpp/pull/583
   GIT_PROGRESS ON
   EXCLUDE_FROM_ALL ON
-  OPTIONS "YAML_CPP_INSTALL ON")
+  OPTIONS "YAML_CPP_INSTALL ON" # yaml-cpp is an INTERFACE dependency of ytj
+          "YAML_CPP_BUILD_TESTS OFF")
 
 if(NOT TARGET yaml-cpp::yaml-cpp)
   add_library(yaml-cpp::yaml-cpp ALIAS yaml-cpp)
@@ -44,24 +48,22 @@ endif()
 
 include(./cmake/PFL.cmake)
 
-pfl_init(ENABLE_TESTING ${YTJ_ENABLE_TESTING} BUILD_EXAMPLES
-         ${YTJ_BUILD_EXAMPLES} INSTALL ${YTJ_INSTALL})
-
-if(YTJ_ENABLE_TESTING)
-  include(CTest)
-endif()
+pfl_init(AUTO)
 
 # build library ytj
 pfl_add_library(
+  OUTPUT_NAME
+  ytj
+  MERGED_HEADER_PLACEMENT
+  LIBRARY_TYPE
   HEADER_ONLY
-  VERSION
-  ${PROJECT_VERSION}
-  INS
-  ./include/ytj/ytj.hpp.in
   SOURCES
-  ./src/ytj/ytj.cpp
+  src/ytj/ytj.cpp
+  src/ytj/ytj.hpp.in
   APPS
   ytj
+  TESTS
+  ytj-test
   COMPILE_FEATURES
   INTERFACE
   cxx_std_17

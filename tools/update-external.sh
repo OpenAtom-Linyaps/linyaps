@@ -12,26 +12,24 @@ tmpdir=$(
 
 mkdir -p "$tmpdir"/external || exit 255
 
-zip_file="$tmpdir"/external/github-black-desk-qserializer-master.zip
-
-pushd external || exit 255
-
-wget https://codeload.github.com/black-desk/qserializer/zip/refs/heads/master \
-        -O "$zip_file" || exit 255
-
-rm -rf qserializer
-
-unzip "$zip_file" || exit 255
-
-mv qserializer-master qserializer || exit 255
-
-zip_file="$tmpdir"/external/github-black-desk-qserializer-master.zip
+zip_file="$tmpdir"/external/github-black-desk-ytj-master.zip
 
 wget https://codeload.github.com/black-desk/ytj/zip/refs/heads/master \
         -O "$zip_file" || exit 255
 
-rm -rf ytj
+rm -rf external/ytj
 
 unzip "$zip_file" || exit 255
 
-mv ytj-master ytj || exit 255
+mv ytj-master external/ytj || exit 255
+
+zip_file="$tmpdir"/external/github-black-desk-ocppi-master.zip
+
+wget https://codeload.github.com/black-desk/ocppi/zip/refs/heads/master \
+        -O "$zip_file" || exit 255
+
+rm -rf external/ocppi
+
+unzip "$zip_file" || exit 255
+
+mv ocppi-master external/ocppi || exit 255

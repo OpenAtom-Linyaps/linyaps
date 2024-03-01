@@ -1,0 +1,227 @@
+diff -ruN include.orig/ocppi/runtime/config/types/Config.hpp include/ocppi/runtime/config/types/Config.hpp
+--- include.orig/ocppi/runtime/config/types/Config.hpp	2024-02-04 15:32:58.725688802 +0800
++++ include/ocppi/runtime/config/types/Config.hpp	2024-02-04 15:33:05.217400316 +0800
+@@ -41,11 +41,11 @@
+ * Open Container Initiative Runtime Specification Container Configuration Schema
+ */
+ struct Config {
+-std::optional<std::map<std::string, nlohmann::json>> annotations;
++std::optional<std::map<std::string, std::string>> annotations;
+ std::optional<std::string> domainname;
+ std::optional<Hooks> hooks;
+ std::optional<std::string> hostname;
+-std::optional<Linux> linux;
++std::optional<Linux> linux_;
+ std::optional<std::vector<Mount>> mounts;
+ std::string ociVersion;
+ std::optional<Process> process;
+diff -ruN include.orig/ocppi/runtime/config/types/Generators.hpp include/ocppi/runtime/config/types/Generators.hpp
+--- include.orig/ocppi/runtime/config/types/Generators.hpp	2024-02-04 15:32:58.725688802 +0800
++++ include/ocppi/runtime/config/types/Generators.hpp	2024-02-04 15:33:05.605383182 +0800
+@@ -683,7 +683,7 @@
+ x.network = get_stack_optional<ResourcesNetwork>(j, "network");
+ x.pids = get_stack_optional<Pids>(j, "pids");
+ x.rdma = get_stack_optional<std::map<std::string, Rdma>>(j, "rdma");
+-x.unified = get_stack_optional<std::map<std::string, nlohmann::json>>(j, "unified");
++x.unified = get_stack_optional<std::map<std::string, std::string>>(j, "unified");
+ }
+
+ inline void to_json(json & j, const LinuxResources & x) {
+@@ -829,7 +829,7 @@
+ x.resources = get_stack_optional<LinuxResources>(j, "resources");
+ x.rootfsPropagation = get_stack_optional<RootfsPropagation>(j, "rootfsPropagation");
+ x.seccomp = get_stack_optional<Seccomp>(j, "seccomp");
+-x.sysctl = get_stack_optional<std::map<std::string, nlohmann::json>>(j, "sysctl");
++x.sysctl = get_stack_optional<std::map<std::string, std::string>>(j, "sysctl");
+ x.timeOffsets = get_stack_optional<TimeOffsets>(j, "timeOffsets");
+ x.uidMappings = get_stack_optional<std::vector<IdMapping>>(j, "uidMappings");
+ }
+@@ -1457,11 +1457,11 @@
+ }
+
+ inline void from_json(const json & j, Config& x) {
+-x.annotations = get_stack_optional<std::map<std::string, nlohmann::json>>(j, "annotations");
++x.annotations = get_stack_optional<std::map<std::string, std::string>>(j, "annotations");
+ x.domainname = get_stack_optional<std::string>(j, "domainname");
+ x.hooks = get_stack_optional<Hooks>(j, "hooks");
+ x.hostname = get_stack_optional<std::string>(j, "hostname");
+-x.linux = get_stack_optional<Linux>(j, "linux");
++x.linux_ = get_stack_optional<Linux>(j, "linux");
+ x.mounts = get_stack_optional<std::vector<Mount>>(j, "mounts");
+ x.ociVersion = j.at("ociVersion").get<std::string>();
+ x.process = get_stack_optional<Process>(j, "process");
+@@ -1486,8 +1486,8 @@
+ if (x.hostname) {
+ j["hostname"] = x.hostname;
+ }
+-if (x.linux) {
+-j["linux"] = x.linux;
++if (x.linux_) {
++j["linux"] = x.linux_;
+ }
+ if (x.mounts) {
+ j["mounts"] = x.mounts;
+diff -ruN include.orig/ocppi/runtime/config/types/Linux.hpp include/ocppi/runtime/config/types/Linux.hpp
+--- include.orig/ocppi/runtime/config/types/Linux.hpp	2024-02-04 15:32:58.725688802 +0800
++++ include/ocppi/runtime/config/types/Linux.hpp	2024-02-04 15:33:06.129360052 +0800
+@@ -62,7 +62,7 @@
+ std::optional<LinuxResources> resources;
+ std::optional<RootfsPropagation> rootfsPropagation;
+ std::optional<Seccomp> seccomp;
+-std::optional<std::map<std::string, nlohmann::json>> sysctl;
++std::optional<std::map<std::string, std::string>> sysctl;
+ std::optional<TimeOffsets> timeOffsets;
+ std::optional<std::vector<IdMapping>> uidMappings;
+ };
+diff -ruN include.orig/ocppi/runtime/config/types/LinuxResources.hpp include/ocppi/runtime/config/types/LinuxResources.hpp
+--- include.orig/ocppi/runtime/config/types/LinuxResources.hpp	2024-02-04 15:32:58.725688802 +0800
++++ include/ocppi/runtime/config/types/LinuxResources.hpp	2024-02-04 15:33:06.473344887 +0800
+@@ -41,7 +41,7 @@
+ std::optional<ResourcesNetwork> network;
+ std::optional<Pids> pids;
+ std::optional<std::map<std::string, Rdma>> rdma;
+-std::optional<std::map<std::string, nlohmann::json>> unified;
++std::optional<std::map<std::string, std::string>> unified;
+ };
+ }
+ }
+diff -ruN include.orig/ocppi/runtime/features/types/Features.hpp include/ocppi/runtime/features/types/Features.hpp
+--- include.orig/ocppi/runtime/features/types/Features.hpp	2024-02-04 15:32:58.725688802 +0800
++++ include/ocppi/runtime/features/types/Features.hpp	2024-02-04 15:33:07.629293977 +0800
+@@ -35,7 +35,7 @@
+ struct Features {
+ std::optional<std::map<std::string, nlohmann::json>> annotations;
+ std::optional<std::vector<std::string>> hooks;
+-std::optional<Linux> linux;
++std::optional<Linux> linux_;
+ std::optional<std::vector<std::string>> mountOptions;
+ std::string ociVersionMax;
+ std::string ociVersionMin;
+diff -ruN include.orig/ocppi/runtime/features/types/Generators.hpp include/ocppi/runtime/features/types/Generators.hpp
+--- include.orig/ocppi/runtime/features/types/Generators.hpp	2024-02-04 15:32:58.725688802 +0800
++++ include/ocppi/runtime/features/types/Generators.hpp	2024-02-04 15:33:07.633293801 +0800
+@@ -199,7 +199,7 @@
+ inline void from_json(const json & j, Features& x) {
+ x.annotations = get_stack_optional<std::map<std::string, nlohmann::json>>(j, "annotations");
+ x.hooks = get_stack_optional<std::vector<std::string>>(j, "hooks");
+-x.linux = get_stack_optional<Linux>(j, "linux");
++x.linux_ = get_stack_optional<Linux>(j, "linux");
+ x.mountOptions = get_stack_optional<std::vector<std::string>>(j, "mountOptions");
+ x.ociVersionMax = j.at("ociVersionMax").get<std::string>();
+ x.ociVersionMin = j.at("ociVersionMin").get<std::string>();
+@@ -213,8 +213,8 @@
+ if (x.hooks) {
+ j["hooks"] = x.hooks;
+ }
+-if (x.linux) {
+-j["linux"] = x.linux;
++if (x.linux_) {
++j["linux"] = x.linux_;
+ }
+ if (x.mountOptions) {
+ j["mountOptions"] = x.mountOptions;
+diff -ruN include.orig/ocppi/runtime/state/types/Generators.hpp include/ocppi/runtime/state/types/Generators.hpp
+--- include.orig/ocppi/runtime/state/types/Generators.hpp	2024-02-04 15:32:58.725688802 +0800
++++ include/ocppi/runtime/state/types/Generators.hpp	2024-02-04 15:33:08.329263199 +0800
+@@ -31,7 +31,7 @@
+ void to_json(json & j, const Status & x);
+
+ inline void from_json(const json & j, State& x) {
+-x.annotations = get_stack_optional<std::map<std::string, nlohmann::json>>(j, "annotations");
++x.annotations = get_stack_optional<std::map<std::string, std::string>>(j, "annotations");
+ x.bundle = j.at("bundle").get<std::string>();
+ x.id = j.at("id").get<std::string>();
+ x.ociVersion = j.at("ociVersion").get<std::string>();
+diff -ruN include.orig/ocppi/runtime/state/types/State.hpp include/ocppi/runtime/state/types/State.hpp
+--- include.orig/ocppi/runtime/state/types/State.hpp	2024-02-04 15:32:58.725688802 +0800
++++ include/ocppi/runtime/state/types/State.hpp	2024-02-04 15:33:08.385260739 +0800
+@@ -41,7 +41,7 @@
+ * Open Container Runtime State Schema
+ */
+ struct State {
+-std::optional<std::map<std::string, nlohmann::json>> annotations;
++std::optional<std::map<std::string, std::string>> annotations;
+ std::string bundle;
+ /**
+ * the container's ID
+diff -ruN include.orig/ocppi/types/Generators.hpp include/ocppi/types/Generators.hpp
+--- include.orig/ocppi/types/Generators.hpp	2024-02-04 15:32:58.725688802 +0800
++++ include/ocppi/types/Generators.hpp	2024-02-04 15:33:34.088156609 +0800
+@@ -17,7 +17,6 @@
+ #include <nlohmann/json.hpp>
+ #include "ocppi/types/helper.hpp"
+
+-#include "ocppi/types/Types.hpp"
+ #include "ocppi/types/ContainerListItem.hpp"
+
+ namespace ocppi {
+@@ -25,9 +24,6 @@
+ void from_json(const json & j, ContainerListItem & x);
+ void to_json(json & j, const ContainerListItem & x);
+
+-void from_json(const json & j, Types & x);
+-void to_json(json & j, const Types & x);
+-
+ inline void from_json(const json & j, ContainerListItem& x) {
+ x.bundle = j.at("bundle").get<std::string>();
+ x.created = j.at("created").get<std::string>();
+@@ -47,16 +43,6 @@
+ j["status"] = x.status;
+ }
+
+-inline void from_json(const json & j, Types& x) {
+-x.containerListItem = get_stack_optional<ContainerListItem>(j, "ContainerListItem");
+-}
+-
+-inline void to_json(json & j, const Types & x) {
+-j = json::object();
+-if (x.containerListItem) {
+-j["ContainerListItem"] = x.containerListItem;
+-}
+-}
+ }
+ }
+
+diff -ruN include.orig/ocppi/types/Types.hpp include/ocppi/types/Types.hpp
+--- include.orig/ocppi/types/Types.hpp	2024-02-04 15:32:58.725688802 +0800
++++ include/ocppi/types/Types.hpp	1970-01-01 08:00:00.000000000 +0800
+@@ -1,39 +0,0 @@
+-// Thish file is generated by /tools/codegen
+-// DO NOT EDIT IT.
+-
+-// clang-format off
+-
+-//  To parse this JSON data, first install
+-//
+-//      json.hpp  https://github.com/nlohmann/json
+-//
+-//  Then include this file, and then do
+-//
+-//     Types.hpp data = nlohmann::json::parse(jsonString);
+-
+-#pragma once
+-
+-#include <optional>
+-#include <nlohmann/json.hpp>
+-#include "ocppi/types/helper.hpp"
+-
+-#include "ocppi/types/ContainerListItem.hpp"
+-
+-namespace ocppi {
+-namespace types {
+-/**
+-* Extra types used by ocppi API.
+-*/
+-
+-using nlohmann::json;
+-
+-/**
+-* Extra types used by ocppi API.
+-*/
+-struct Types {
+-std::optional<ContainerListItem> containerListItem;
+-};
+-}
+-}
+-
+-// clang-format on

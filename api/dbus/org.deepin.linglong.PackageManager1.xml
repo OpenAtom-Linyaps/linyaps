@@ -6,59 +6,46 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "https://specifications.freedesktop.org/dbus/introspect-latest.dtd">
 <node>
   <interface name="org.deepin.linglong.PackageManager1">
-    <method name="InstallLayerFD">
-      <arg name="fileDescriptor" type="h" direction="in"/>
-      <arg name="reply" type="(is)" direction="out"/>
-      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
-    </method>
     <method name="InstallLayer">
-      <arg name="installParamOption" type="(ss)" direction="in"/>
-      <arg name="reply" type="(is)" direction="out"/>
-      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::InstallParamOption"/>
-      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
+      <arg direction="in" name="fd" type="h" />
+      <arg direction="out" name="result" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
     </method>
     <method name="Install">
-      <arg name="installParamOption" type="(ssssss)" direction="in"/>
-      <arg name="reply" type="(is)" direction="out"/>
-      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::InstallParamOption"/>
-      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
+      <arg direction="in" name="parameters" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap" />
+      <arg direction="out" name="result" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
     </method>
     <method name="Uninstall">
-      <arg name="paramOption" type="(ssssssbb)" direction="in"/>
-      <arg name="reply" type="(is)" direction="out"/>
-      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::UninstallParamOption"/>
-      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
+      <arg direction="in" name="parameters" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap" />
+      <arg direction="out" name="result" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
     </method>
     <method name="Update">
-      <arg name="paramOption" type="(sssss)" direction="in"/>
-      <arg name="reply" type="(is)" direction="out"/>
-      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::ParamOption"/>
-      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
+      <arg direction="in" name="parameters" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap" />
+      <arg direction="out" name="result" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
     </method>
-    <method name="Query">
-      <arg name="paramOption" type="(sssssbs)" direction="in"/>
-      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::QueryParamOption"/>
-      <arg type="(iss)" direction="out"/>
-      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::QueryReply"/>
-    </method>
-    <method name="ModifyRepo">
-      <arg name="name" type="s" direction="in"/>
-      <arg name="url" type="s" direction="in"/>
-      <arg type="(is)" direction="out"/>
-      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
-    </method>
-    <method name="getRepoInfo">
-      <arg type="(iss)" direction="out"/>
-      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::QueryReply"/>
+    <method name="Search">
+      <arg direction="in" name="parameters" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap" />
+      <arg direction="out" name="result" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
     </method>
     <method name="CancelTask">
-      <arg name="taskID" type="s" direction="in"/>
+      <arg name="taskID" type="s" direction="in" />
     </method>
     <signal name="TaskChanged">
-      <arg name="taskID" type="s"/>
-      <arg name="percentage" type="s"/>
-      <arg name="message" type="s"/>
-      <arg name="status" type="i"/>
+      <arg name="taskID" type="s" />
+      <arg name="percentage" type="s" />
+      <arg name="message" type="s" />
+      <arg name="status" type="i" />
     </signal>
+    <property name="Configuration" type="a{sv}" access="readwrite">
+      <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap" />
+    </property>
   </interface>
 </node>

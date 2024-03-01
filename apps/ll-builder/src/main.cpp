@@ -238,19 +238,26 @@ int main(int argc, char **argv)
               auto srcCommit = QCommandLineOption("commit", "set commit refs", "source commit");
               auto buildOffline = QCommandLineOption("offline", "only use local repo", "");
               auto buildArch = QCommandLineOption("arch", "set the build arch", "arch");
-              parser.addOptions(
-                { execVerbose, pkgVersion, srcVersion, srcCommit, buildOffline, buildArch });
+              auto buildEnv = QCommandLineOption("env", "set environment variables", "env");
+              parser.addOptions({ execVerbose,
+                                  pkgVersion,
+                                  srcVersion,
+                                  srcCommit,
+                                  buildOffline,
+                                  buildArch,
+                                  buildEnv });
 
               parser.addPositionalArgument("build", "build project", "build");
 
               parser.process(app);
 
+              auto buildConfig = linglong::builder::BuilderConfig::instance();
               if (parser.isSet(execVerbose)) {
                   auto exec = linglong::util::splitExec(parser.value(execVerbose));
-                  linglong::builder::BuilderConfig::instance()->setExec(exec);
+                  buildConfig->setExec(exec);
               }
 
-              linglong::builder::BuilderConfig::instance()->setOffline(parser.isSet(buildOffline));
+              buildConfig->setOffline(parser.isSet(buildOffline));
 
               if (parser.isSet(buildArch)) {
                   auto arch = linglong::package::Architecture::parse(parser.value(buildArch));
@@ -258,15 +265,16 @@ int main(int argc, char **argv)
                       printer.printErr(arch.error());
                       return -1;
                   }
-                  linglong::builder::BuilderConfig::instance()->setBuildArch((*arch).toString());
+                  buildConfig->setBuildArch((*arch).toString());
+              }
+              if (parser.isSet(buildEnv)) {
+                  buildConfig->setBuildEnv(parser.values(buildEnv));
               }
 
               // config linglong.yaml before build if necessary
               if (parser.isSet(pkgVersion) || parser.isSet(srcVersion) || parser.isSet(srcCommit)) {
                   auto projectConfigPath =
-                    QStringList{ linglong::builder::BuilderConfig::instance()->getProjectRoot(),
-                                 "linglong.yaml" }
-                      .join("/");
+                    QStringList{ buildConfig->getProjectRoot(), "linglong.yaml" }.join("/");
 
                   if (!QFileInfo::exists(projectConfigPath)) {
                       printer.printMessage("ll-builder should running in project root");

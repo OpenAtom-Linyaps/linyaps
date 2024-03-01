@@ -65,11 +65,15 @@ public:
 
     QString templatePath() const;
 
+    void setBuildEnv(const QStringList &env);
+    QStringList getBuildEnv() const;
+
 private:
     QString buildArch;
     QString projectRoot;
     QString projectName;
     QStringList exec;
+    QStringList buildEnv;
     bool offline;
 };
 

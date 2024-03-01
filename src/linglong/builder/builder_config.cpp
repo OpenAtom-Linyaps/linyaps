@@ -131,6 +131,16 @@ QString BuilderConfig::templatePath() const
     return QString();
 }
 
+void BuilderConfig::setBuildEnv(const QStringList &env)
+{
+    buildEnv = env;
+}
+
+QStringList BuilderConfig::getBuildEnv() const
+{
+    return buildEnv;
+}
+
 static QStringList projectConfigPaths()
 {
     QStringList result{};

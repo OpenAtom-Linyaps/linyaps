@@ -518,6 +518,44 @@ linglong::util::Error LinglongBuilder::track()
     return Success();
 }
 
+linglong::utils::error::Result<void>
+LinglongBuilder::buildStageEnvrionment(ocppi::runtime::config::types::Config &r,
+                                       const Project &project,
+                                       const BuilderConfig &buildConfig)
+{
+    // 兼容旧版本的自动使用当前proxy，后面考虑弃用这些
+    auto envList = QStringList{ "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "ALL_PROXY", "FTP_PROXY" };
+    for (auto key : envList) {
+        auto val = QProcessEnvironment::systemEnvironment().value(key);
+        if (val.isEmpty()) {
+            key = key.toLower();
+            val = QProcessEnvironment::systemEnvironment().value(key);
+        }
+        if (!val.isEmpty()) {
+            r.process->env->push_back(QString("%1=%2").arg(key).arg(val).toStdString());
+        }
+    }
+    // 一些默认的环境变量
+    r.process->env->push_back("PREFIX=" + project.config().targetInstallPath("").toStdString());
+    r.process->env->push_back(
+      "PATH=/runtime/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games:/sbin:/usr/sbin");
+
+    if (project.config().targetArch() == "x86_64") {
+        r.process->env->push_back("PKG_CONFIG_PATH=/runtime/lib/x86_64-linux-gnu/pkgconfig");
+        r.process->env->push_back("LIBRARY_PATH=/runtime/lib:/runtime/lib/x86_64-linux-gnu");
+        r.process->env->push_back("LD_LIBRARY_PATH=/runtime/lib:/runtime/lib/x86_64-linux-gnu");
+    } else if (project.config().targetArch() == "arm64") {
+        r.process->env->push_back("PKG_CONFIG_PATH=/runtime/lib/aarch64-linux-gnu/pkgconfig");
+        r.process->env->push_back("LIBRARY_PATH=/runtime/lib:/runtime/lib/aarch64-linux-gnu");
+        r.process->env->push_back("LD_LIBRARY_PATH=/runtime/lib:/runtime/lib/aarch64-linux-gnu");
+    }
+    // 通过命令行设置的环境变量
+    for (auto env : buildConfig.getBuildEnv()) {
+        r.process->env->push_back(env.toStdString());
+    }
+    return LINGLONG_OK;
+}
+
 linglong::util::Error LinglongBuilder::build()
 {
     linglong::util::Error err;
@@ -768,44 +806,15 @@ linglong::util::Error LinglongBuilder::build()
     }
     r->process->args = { "/bin/bash", "-e", BuildScriptPath };
     r->process->cwd = containerSourcePath;
-
-    // quickfix: we should ensure envrionment variables from config
-    QString httpsProxy = qgetenv("https_proxy");
-    QString httpProxy = qgetenv("http_proxy");
-    QString HTTPSProxy = qgetenv("HTTPS_PROXY");
-    QString HTTPProxy = qgetenv("HTTP_PROXY");
-    QString noProxy = qgetenv("no_proxy");
-    QString allProxy = qgetenv("all_proxy");
-    QString ftpProxy = qgetenv("ftp_proxy");
-    if (!httpsProxy.isEmpty())
-        r->process->env->push_back(QString("https_proxy=%1").arg(httpsProxy).toStdString());
-    if (!httpProxy.isEmpty())
-        r->process->env->push_back(QString("http_proxy=%1").arg(httpProxy).toStdString());
-    if (!HTTPSProxy.isEmpty())
-        r->process->env->push_back(QString("HTTPS_PROXY=%1").arg(HTTPSProxy).toStdString());
-    if (!HTTPProxy.isEmpty())
-        r->process->env->push_back(QString("HTTP_PROXT=%1").arg(HTTPProxy).toStdString());
-    if (!noProxy.isEmpty())
-        r->process->env->push_back(QString("no_proxy=%1").arg(noProxy).toStdString());
-    if (!allProxy.isEmpty())
-        r->process->env->push_back(QString("all_proxy=%1").arg(allProxy).toStdString());
-    if (!ftpProxy.isEmpty())
-        r->process->env->push_back(QString("ftp_proxy=%1").arg(ftpProxy).toStdString());
-
-    r->process->env->push_back("PATH=/runtime/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/"
-                               "usr/games:/sbin:/usr/sbin");
-    r->process->env->push_back(("PREFIX=" + project->config().targetInstallPath("")).toStdString());
-
-    if (project->config().targetArch() == "x86_64") {
-        r->process->env->push_back("PKG_CONFIG_PATH=/runtime/lib/x86_64-linux-gnu/pkgconfig");
-        r->process->env->push_back("LIBRARY_PATH=/runtime/lib:/runtime/lib/x86_64-linux-gnu");
-        r->process->env->push_back("LD_LIBRARY_PATH=/runtime/lib:/runtime/lib/x86_64-linux-gnu");
-    } else if (project->config().targetArch() == "arm64") {
-        r->process->env->push_back("PKG_CONFIG_PATH=/runtime/lib/aarch64-linux-gnu/pkgconfig");
-        r->process->env->push_back("LIBRARY_PATH=/runtime/lib:/runtime/lib/aarch64-linux-gnu");
-        r->process->env->push_back("LD_LIBRARY_PATH=/runtime/lib:/runtime/lib/aarch64-linux-gnu");
+    r->process->user = ocppi::runtime::config::types::User();
+    r->process->user->uid = getuid();
+    r->process->user->gid = getgid();
+    // 处理环境变量
+    auto stageEnvRet = buildStageEnvrionment(r.value(), *project, *BuilderConfig::instance());
+    if (!stageEnvRet.has_value()) {
+        return NewError(stageEnvRet.error().code(), stageEnvRet.error().message());
     }
-
+    // 映射uid
     QList<QList<int64_t>> uidMaps = {
         { getuid(), getuid(), 1 },
     };
@@ -814,11 +823,13 @@ linglong::util::Error LinglongBuilder::build()
         idMap.hostID = uidMap.value(0);
         idMap.containerID = uidMap.value(1);
         idMap.size = uidMap.value(2);
-        r->linux_->uidMappings =
-          r->linux_->uidMappings.value_or(std::vector<ocppi::runtime::config::types::IdMapping>());
-        r->linux_->uidMappings->push_back(idMap);
+        if (r->linux_->uidMappings.has_value()) {
+            r->linux_->uidMappings->push_back(idMap);
+        } else {
+            r->linux_->uidMappings = { idMap };
+        }
     }
-
+    // 映射gid
     QList<QList<quint64>> gidMaps = {
         { getgid(), getuid(), 1 },
     };
@@ -827,13 +838,12 @@ linglong::util::Error LinglongBuilder::build()
         idMap.hostID = gidMap.value(0);
         idMap.containerID = gidMap.value(1);
         idMap.size = gidMap.value(2);
-        r->linux_->gidMappings =
-          r->linux_->gidMappings.value_or(std::vector<ocppi::runtime::config::types::IdMapping>());
-        r->linux_->gidMappings->push_back(idMap);
+        if (r->linux_->gidMappings.has_value()) {
+            r->linux_->gidMappings->push_back(idMap);
+        } else {
+            r->linux_->gidMappings = { idMap };
+        }
     }
-    r->process->user = ocppi::runtime::config::types::User();
-    r->process->user->uid = getuid();
-    r->process->user->gid = getgid();
 
     QTemporaryDir tmpDir;
     tmpDir.setAutoRemove(false);

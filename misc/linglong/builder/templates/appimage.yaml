@@ -16,15 +16,13 @@ runtime:
   version: 23.0.0
 
 source:
-  kind: file
-  url: "PUT YOUR URL HERE"
-  digest: "PUT YOUR SHA256 CHECKSUM HERE"
+  kind: local
 
 build:
   kind: manual
   manual:
     configure: |
-      APPIMAGE=$(find -name *.AppImage -exec basename {} \;)
+      APPIMAGE=$(find . -regex '.*\.AppImage\|.*\appimage' -exec basename {} \;)
       chmod +x ${APPIMAGE}
       ./${APPIMAGE} --appimage-extract
       BINNAME=${APPID}
@@ -32,7 +30,8 @@ build:
       echo "#!/usr/bin/env bash" > ${BINNAME}
       echo "unset LD_LIBRARY_PATH" >> ${BINNAME}
       echo "cd ${PREFIX}/lib/${APP_PREFIX} && ./AppRun $@" >> ${BINNAME}
-      DESKTOP_FILE=$(find squashfs-root -name *.desktop -exec basename {} \;)
+      # only search for .desktop file in the squashfs-root directory
+      DESKTOP_FILE=$(find squashfs-root -maxdepth 1 -regex '.*\.desktop' -exec basename {} \;)
       cp squashfs-root/${DESKTOP_FILE} .
       sed -i "s@Exec=.*@Exec=/${PREFIX}/bin/${BINNAME}@" ${DESKTOP_FILE}
 

@@ -4,14 +4,11 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "linglong/builder/builder.h"
 #include "linglong/builder/builder_config.h"
 #include "linglong/builder/linglong_builder.h"
 #include "linglong/builder/project.h"
 #include "linglong/cli/printer.h"
-#include "linglong/package/package.h"
 #include "linglong/package/architecture.h"
-#include "linglong/repo/repo.h"
 #include "linglong/service/app_manager.h"
 #include "linglong/util/qserializer/yaml.h"
 #include "linglong/util/xdg.h"
@@ -74,7 +71,7 @@ int main(int argc, char **argv)
     parser.addOptions({ optVerbose });
     parser.addHelpOption();
 
-    QStringList subCommandList = { "create", "build", "run", "export", "push", "generate" };
+    QStringList subCommandList = { "create", "build", "run", "export", "push", "generate" , "convert"};
 
     parser.addPositionalArgument("subcommand",
                                  subCommandList.join("\n"),
@@ -108,24 +105,77 @@ int main(int argc, char **argv)
     linglong::builder::LinglongBuilder builder(ostree, printer, *crun->get(), appManager);
 
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
-        { "generate",
+        { "convert",
           [&](QCommandLineParser &parser) -> int {
               parser.clearPositionalArguments();
-              parser.addPositionalArgument("generate",
-                                           "generate yaml config for building with AppImage file",
-                                           "generate");
-              parser.addPositionalArgument("id", "package id", "id");
+              auto pkgFile = QCommandLineOption({ "f", "file" },
+                                                "app package file",
+                                                "*.deb,*.AppImage(*.appimage)");
+              auto pkgID =
+                QCommandLineOption({ "i", "id" }, "the unique name of the app", "app id");
+              auto pkgName =
+                QCommandLineOption({ "n", "name" }, "the description the app", "app description");
+              auto pkgVersion =
+                // -v is used for --verbose, so use -V replaced
+                QCommandLineOption({ "V", "version" }, "the version of the app", "app version");
+              auto pkgDescription = QCommandLineOption({ "d", "description" },
+                                                       "detailed description of the app",
+                                                       "app description");
+              auto scriptOpt =
+                QCommandLineOption({ "o", "output" },
+                                   "not required option, it will "
+                                   "generate linglong.yaml and script(convert.sh),you can modify "
+                                   "linglong.yaml,then enter the directory(app name) and execute "
+                                   "the script to generate the linglong .layer(.uab)");
+              parser.addOptions({ pkgFile, pkgID, pkgName, pkgVersion, pkgDescription, scriptOpt });
+              parser.addPositionalArgument(
+                "convert",
+                "convert app with (deb,AppImage(appimage)) format to linglong format, you can "
+                "generate convert config file by use -o option",
+                "convert");
 
               parser.process(app);
 
-              auto args = parser.positionalArguments();
-              auto projectName = args.value(1);
-
-              if (projectName.isEmpty()) {
+              // file option is required option
+              if (!(parser.isSet(pkgFile))) {
+                  printer.printMessage("package file option is required");
                   parser.showHelp(-1);
+                  return NewError(-1, "need specify package file option").code();
               }
 
-              auto err = builder.generate(projectName);
+              auto file = parser.value(pkgFile);
+              auto id = parser.value(pkgID);
+              auto name = parser.value(pkgName);
+              auto version = parser.value(pkgVersion);
+              auto description = parser.value(pkgDescription);
+              auto builded = !parser.isSet(scriptOpt);
+
+              QFileInfo fileInfo(file);
+              auto fileSuffix = fileInfo.suffix();
+              auto appImageFileType = fileSuffix == "AppImage" || fileSuffix == "appimage";
+              auto debFileType = fileSuffix == "deb";
+
+              if (!(appImageFileType || debFileType)) {
+                  printer.printMessage(QString("unsupported %1 file type to convert, please "
+                                               "specify (deb,AppImage(appimage)) file")
+                                         .arg(fileSuffix));
+                  parser.showHelp(-1);
+                  return NewError(-1, "unsupported file type").code();
+              }
+
+              linglong::util::Error err;
+
+              if (parser.isSet(pkgID) || parser.isSet(pkgName) || parser.isSet(pkgVersion)
+                  || parser.isSet(pkgDescription)) {
+                  if (appImageFileType) {
+                      err = builder.appimageConvert(
+                        std::tie(file, id, name, version, description, builded));
+                  } else if (debFileType) {
+                      // TODO: implement deb convert
+                  } else {
+                      printer.printErr(LINGLONG_ERR(-1, "unsupported type").value());
+                  }
+              }
 
               if (err) {
                   printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());

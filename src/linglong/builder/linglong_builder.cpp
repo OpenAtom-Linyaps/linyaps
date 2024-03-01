@@ -12,26 +12,20 @@
 #include "linglong/package/info.h"
 #include "linglong/package/layer_packager.h"
 #include "linglong/repo/ostree_repo.h"
-#include "linglong/runtime/app.h"
 #include "linglong/runtime/container.h"
 #include "linglong/util/error.h"
 #include "linglong/util/file.h"
 #include "linglong/util/qserializer/json.h"
 #include "linglong/util/qserializer/yaml.h"
 #include "linglong/util/runner.h"
-#include "linglong/util/sysinfo.h"
 #include "linglong/util/uuid.h"
 #include "linglong/utils/command/env.h"
 #include "linglong/utils/error/error.h"
-#include "linglong/utils/std_helper/qdebug_helper.h"
 #include "linglong/utils/xdg/desktop_entry.h"
-#include "nlohmann/json.hpp"
 #include "nlohmann/json_fwd.hpp"
 #include "ocppi/cli/CLI.hpp"
 #include "ocppi/runtime/ContainerID.hpp"
-#include "ocppi/runtime/RunOption.hpp"
 #include "ocppi/runtime/config/ConfigLoader.hpp"
-#include "ocppi/runtime/config/types/Generators.hpp"
 #include "ocppi/runtime/config/types/Hook.hpp"
 #include "ocppi/runtime/config/types/Hooks.hpp"
 #include "project.h"
@@ -48,8 +42,8 @@
 #include <QTemporaryFile>
 #include <QThread>
 #include <QUrl>
+#include <QProcess>
 
-#include <csignal>
 #include <fstream>
 #include <optional>
 
@@ -342,22 +336,114 @@ linglong::utils::error::Result<void> LinglongBuilder::startContainer(
     return LINGLONG_OK;
 }
 
-linglong::util::Error LinglongBuilder::generate(const QString &projectName)
+linglong::util::Error LinglongBuilder::appimageConvert(
+  const std::
+    tuple<const QString &, const QString &, const QString &, const QString &, const QString &, bool>
+      &templateArgs)
 {
-    auto projectPath = QStringList{ QDir::currentPath(), projectName }.join(QDir::separator());
+    const auto file = std::get<0>(templateArgs);
+    const auto id = std::get<1>(templateArgs);
+    const auto name = std::get<2>(templateArgs);
+    const auto version = std::get<3>(templateArgs);
+    const auto description = std::get<4>(templateArgs);
+    const auto toBuild = std::get<5>(templateArgs);
+
+    auto projectPath = QStringList{ QDir::currentPath(), name }.join(QDir::separator());
     auto configFilePath = QStringList{ projectPath, "linglong.yaml" }.join(QDir::separator());
-    auto templeteFilePath =
+    auto templateFilePath =
       QStringList{ BuilderConfig::instance()->templatePath(), "appimage.yaml" }.join(
         QDir::separator());
+
+    if (!QFileInfo::exists(templateFilePath)) {
+        printer.printMessage("ll-builder should run in the root directory of the linglong project");
+        return NewError(-1, "appimage.yaml not found");
+    }
 
     auto ret = QDir().mkpath(projectPath);
     if (!ret) {
         return NewError(-1, "project already exists");
     }
-    if (QFileInfo::exists(templeteFilePath)) {
-        QFile::copy(templeteFilePath, configFilePath);
+
+    QFileInfo fileInfo(file);
+    const auto &sourcefilePath = fileInfo.absoluteFilePath();
+    const auto &destinationFilePath = QDir(projectPath).filePath(fileInfo.fileName());
+
+    if (!QFileInfo::exists(sourcefilePath)) {
+        printer.printMessage("can not found appimage file");
+        return NewError(-1, "appimage file not found");
+    }
+
+    // copy appimage file to project path
+    QFile::copy(sourcefilePath, destinationFilePath);
+
+    if (QFileInfo::exists(templateFilePath)) {
+        QFile::copy(templateFilePath, configFilePath);
     } else {
         QFile::copy(":/appimage.yaml", configFilePath);
+    }
+
+    // config linglong.yaml before build if necessary
+    if (!QFileInfo::exists(configFilePath)) {
+        printer.printMessage("ll-builder should run in the root directory of the linglong project");
+        return NewError(-1, "linglong.yaml not found");
+    }
+
+    auto [project, err] =
+      linglong::util::fromYAML<QSharedPointer<linglong::builder::Project>>(configFilePath);
+    if (err) {
+        printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
+        return NewError(-1, "Internal error");
+    }
+
+    auto node = YAML::LoadFile(configFilePath.toStdString());
+
+    node["package"]["id"] = id.isEmpty() ? project->package->id.toStdString() : id.toStdString();
+    node["package"]["name"] =
+      name.isEmpty() ? project->package->name.toStdString() : name.toStdString();
+    node["package"]["version"] =
+      version.isEmpty() ? project->package->version.toStdString() : version.toStdString();
+    node["package"]["description"] = description.isEmpty()
+      ? project->package->description.toStdString()
+      : description.toStdString();
+
+    // fixme: use qt file stream
+    std::ofstream fout(configFilePath.toStdString());
+    fout << node;
+    fout.close();
+
+    // if user not specified -o option, export linglong .layer(.uab) directly, or generate
+    // linglong.yaml and convert.sh
+    if (toBuild) {
+        linglong::builder::BuilderConfig::instance()->setProjectRoot(projectPath);
+
+        err = build();
+        err = exportLayer(projectPath);
+
+        // delete the generated temporary file, only keep .layer(.uab) files
+        QProcess process;
+        process.setWorkingDirectory(projectPath);
+        process.execute("bash",
+                        QStringList()
+                          << "-c"
+                          << "find . -maxdepth 1 -not -regex '.*\\.\\|.*\\.layer\\|.*\\.uab' "
+                             "-exec basename {} -print0 \\;  | xargs rm -r");
+
+        if (err) {
+            printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
+            return err;
+        }
+    } else {
+        auto scriptFilePath = QStringList{ projectPath, "convert.sh" }.join(QDir::separator());
+
+        // copy convert.sh to project path
+        QFile::copy(":/convert.sh", scriptFilePath);
+        if (!QFileInfo::exists(scriptFilePath)) {
+            printer.printMessage("can not found convert script file");
+            return NewError(-1, "convert script file not found");
+        }
+
+        // set execution permissions to convert.sh
+        QFile(scriptFilePath).setPermissions(QFile::ReadOwner | QFile::ExeOwner);
     }
 
     return Success();
@@ -367,7 +453,7 @@ linglong::util::Error LinglongBuilder::create(const QString &projectName)
 {
     auto projectPath = QStringList{ QDir::currentPath(), projectName }.join(QDir::separator());
     auto configFilePath = QStringList{ projectPath, "linglong.yaml" }.join(QDir::separator());
-    auto templeteFilePath =
+    auto templateFilePath =
       QStringList{ BuilderConfig::instance()->templatePath(), "example.yaml" }.join(
         QDir::separator());
 
@@ -376,8 +462,8 @@ linglong::util::Error LinglongBuilder::create(const QString &projectName)
         return NewError(-1, "project already exists");
     }
 
-    if (QFileInfo::exists(templeteFilePath)) {
-        QFile::copy(templeteFilePath, configFilePath);
+    if (QFileInfo::exists(templateFilePath)) {
+        QFile::copy(templateFilePath, configFilePath);
     } else {
         QFile::copy(":/example.yaml", configFilePath);
     }

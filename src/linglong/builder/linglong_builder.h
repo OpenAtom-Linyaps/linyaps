@@ -10,7 +10,6 @@
 #include "builder.h"
 #include "linglong/cli/printer.h"
 #include "linglong/repo/ostree_repo.h"
-#include "linglong/runtime/container.h"
 #include "linglong/service/app_manager.h"
 #include "linglong/util/error.h"
 #include "linglong/utils/error/error.h"
@@ -58,7 +57,12 @@ public:
 
     linglong::util::Error track() override;
 
-    linglong::util::Error generate(const QString &projectName) override;
+    linglong::util::Error appimageConvert(const std::tuple<const QString &,
+                                                           const QString &,
+                                                           const QString &,
+                                                           const QString &,
+                                                           const QString &,
+                                                           bool> &templateArgs);
 
 private:
     repo::OSTreeRepo &repo;

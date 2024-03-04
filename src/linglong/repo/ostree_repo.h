@@ -113,6 +113,7 @@ public:
         TAR,
         REF,
     };
+
     explicit OSTreeRepo(const QString &localRepoPath,
                         const config::ConfigV1 &cfg,
                         api::client::ClientApi &client);
@@ -172,23 +173,7 @@ public:
      *
      * @return bool: true:查询成功 false:失败
      */
-    linglong::utils::error::Result<void> getRemoteRepoList(const QString &repoPath,
-                                                           QVector<QString> &vec) override;
-
-    /*
-     * 查询远端仓库所有软件包索引信息refs
-     *
-     * @param repoPath: 远端仓库对应的本地仓库路径
-     * @param remoteName: 远端仓库名称
-     * @param outRefs: 远端仓库软件包索引信息(key:refs, value:commit值)
-     * @param err: 错误信息
-     *
-     * @return bool: true:查询成功 false:失败
-     */
-    bool getRemoteRefs(const QString &repoPath,
-                       const QString &remoteName,
-                       QMap<QString, QString> &outRefs,
-                       QString &err) override;
+    linglong::utils::error::Result<void> getRemoteRepoList(QVector<QString> &vec) override;
 
     /*
      * 通过ostree命令将软件包数据从远端仓库pull到本地
@@ -308,130 +293,6 @@ private:
      */
     linglong::utils::error::Result<QString> createTmpRepo(const QString &parentRepo);
 
-    linglong::utils::error::Result<void> ostreeRun(const QStringList &args,
-                                                   QByteArray *stdout = nullptr)
-    {
-        QProcess ostree;
-        ostree.setProgram("ostree");
-
-        QStringList ostreeArgs = { "-v", "--repo=" + ostreePath };
-        ostreeArgs.append(args);
-        ostree.setArguments(ostreeArgs);
-
-        QProcess::connect(&ostree, &QProcess::readyReadStandardOutput, [&]() {
-            // ostree.readAllStandardOutput() can only be read once.
-            if (stdout) {
-                *stdout += ostree.readAllStandardOutput();
-                qDebug() << QString::fromLocal8Bit(*stdout);
-            } else {
-                qDebug() << QString::fromLocal8Bit(ostree.readAllStandardOutput());
-            }
-        });
-
-        qDebug() << "start" << ostree.arguments().join(" ");
-        ostree.start();
-        ostree.waitForFinished(-1);
-        qDebug() << ostree.exitStatus() << "with exit code:" << ostree.exitCode();
-
-        return LINGLONG_ERR(ostree.exitCode(),
-                            QString::fromLocal8Bit(ostree.readAllStandardError()));
-    }
-
-    static QByteArray glibBytesToQByteArray(GBytes *bytes)
-    {
-        const void *data;
-        gsize length;
-        data = g_bytes_get_data(bytes, &length);
-        return { reinterpret_cast<const char *>(data), static_cast<int>(length) };
-    }
-
-    static GBytes *glibInputStreamToBytes(GInputStream *inputStream)
-    {
-        g_autoptr(GOutputStream) outStream = nullptr;
-        g_autoptr(GError) gErr = nullptr;
-
-        if (inputStream == nullptr)
-            return g_bytes_new(nullptr, 0);
-
-        outStream = g_memory_output_stream_new(nullptr, 0, g_realloc, g_free);
-        g_output_stream_splice(outStream,
-                               inputStream,
-                               G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
-                               nullptr,
-                               &gErr);
-        g_assert_no_error(gErr);
-
-        return g_memory_output_stream_steal_as_bytes(G_MEMORY_OUTPUT_STREAM(outStream));
-    }
-
-    // FIXME: use tmp path for big file.
-    // FIXME: free the glib pointer.
-    static linglong::utils::error::Result<QByteArray> compressFile(const QString &filepath)
-    {
-        g_autoptr(GError) gErr = nullptr;
-        g_autoptr(GBytes) inputBytes = nullptr;
-        g_autoptr(GInputStream) memInput = nullptr;
-        g_autoptr(GInputStream) zlibStream = nullptr;
-        g_autoptr(GBytes) zlibBytes = nullptr;
-        g_autoptr(GFile) file = nullptr;
-        g_autoptr(GFileInfo) info = nullptr;
-        g_autoptr(GVariant) xattrs = nullptr;
-
-        file = g_file_new_for_path(filepath.toStdString().c_str());
-        if (file == nullptr) {
-            return { LINGLONG_EWRAP(QByteArray(),
-                                    LINGLONG_ERR(errno, "open file failed: " + filepath).value()) };
-        }
-
-        info = g_file_query_info(file,
-                                 G_FILE_ATTRIBUTE_UNIX_MODE,
-                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                 nullptr,
-                                 nullptr);
-        guint32 mode = g_file_info_get_attribute_uint32(info, G_FILE_ATTRIBUTE_UNIX_MODE);
-
-        info = g_file_query_info(file,
-                                 G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK,
-                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                 nullptr,
-                                 nullptr);
-        if (g_file_info_get_is_symlink(info)) {
-            info = g_file_query_info(file,
-                                     G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET,
-                                     G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                     nullptr,
-                                     nullptr);
-            g_file_info_set_file_type(info, G_FILE_TYPE_SYMBOLIC_LINK);
-            g_file_info_set_size(info, 0);
-        } else {
-            info = g_file_query_info(file,
-                                     G_FILE_ATTRIBUTE_STANDARD_SIZE,
-                                     G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                     nullptr,
-                                     nullptr);
-            qDebug() << "fize size:" << g_file_info_get_size(info);
-
-            // Q_ASSERT(g_file_info_get_size(info) > 0);
-            g_file_info_set_size(info, g_file_info_get_size(info));
-            inputBytes = g_file_load_bytes(file, nullptr, nullptr, nullptr);
-        }
-        // TODO: set uid/gid with G_FILE_ATTRIBUTE_UNIX_UID/G_FILE_ATTRIBUTE_UNIX_GID
-        g_file_info_set_attribute_uint32(info, G_FILE_ATTRIBUTE_UNIX_MODE, mode);
-
-        if (inputBytes) {
-            memInput = g_memory_input_stream_new_from_bytes(inputBytes);
-        }
-
-        xattrs = g_variant_ref_sink(g_variant_new_array(G_VARIANT_TYPE("(ayay)"), nullptr, 0));
-
-        ostree_raw_file_to_archive_z2_stream(memInput, info, xattrs, &zlibStream, nullptr, &gErr);
-
-        zlibBytes = glibInputStreamToBytes(zlibStream);
-        return glibBytesToQByteArray(zlibBytes);
-    }
-
-    static OstreeRepo *openRepo(const QString &path) { }
-
     QString getObjectPath(const QString &objName)
     {
         return QDir::cleanPath(
@@ -476,38 +337,25 @@ private:
         return objects;
     }
 
-    linglong::utils::error::Result<QList<OstreeRepoObject>>
-    findObjectsOfCommits(const QStringList &revs)
-    {
-        QList<OstreeRepoObject> objects;
-        for (const auto &rev : revs) {
-            // FIXME: check error
-            auto revObjects = traverseCommit(rev, 0);
-            for (const auto &objName : revObjects) {
-                auto path = getObjectPath(objName);
-                objects.push_back(
-                  OstreeRepoObject{ .objectName = objName, .rev = rev, .path = path });
-            }
-        }
-        return objects;
-    }
-
     linglong::utils::error::Result<QString> resolveRev(const QString &ref)
     {
+        LINGLONG_TRACE(QString("resolve refspec %1").arg(ref));
+
         g_autoptr(GError) gErr = nullptr;
         g_autofree char *commitID = nullptr;
-        std::string refStr = ref.toStdString();
-        // FIXME: should free commitID?
-        if (!ostree_repo_resolve_rev(repoPtr.get(), refStr.c_str(), false, &commitID, &gErr)) {
-            return LINGLONG_EWRAP("ostree_repo_resolve_rev failed: " + ref,
-                                  LINGLONG_ERR(gErr->code, gErr->message).value());
+
+        if (ostree_repo_resolve_rev(repoPtr.get(), ref.toUtf8(), 0, &commitID, &gErr) == 0) {
+            return LINGLONG_ERR("ostree_repo_resolve_rev", gErr);
         }
-        return QString::fromLatin1(commitID);
+
+        return QString::fromUtf8(commitID);
     }
 
     linglong::utils::error::Result<QSharedPointer<api::client::GetRepo_200_response>>
     getRepoInfo(const QString &repoName)
     {
+        LINGLONG_TRACE("get repo");
+
         linglong::utils::error::Result<QSharedPointer<api::client::GetRepo_200_response>> ret;
 
         QEventLoop loop;
@@ -515,32 +363,37 @@ private:
           &apiClient,
           &api::client::ClientApi::getRepoSignal,
           &loop,
-          [&loop, &ret](api::client::GetRepo_200_response resp) {
+          [&](const api::client::GetRepo_200_response &resp) {
               loop.exit();
-              if (resp.getCode() != 200) {
-                  ret = LINGLONG_ERR(resp.getCode(), resp.getMsg());
+              const qint32 HTTP_OK = 200;
+              if (resp.getCode() != HTTP_OK) {
+                  ret = LINGLONG_ERR(resp.getMsg(), resp.getCode());
                   return;
               }
-              auto respPointer = new api::client::GetRepo_200_response(resp);
-              ret = QSharedPointer<api::client::GetRepo_200_response>(respPointer);
+
+              ret = QSharedPointer<api::client::GetRepo_200_response>::create(resp);
           },
           loop.thread() == apiClient.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
+
         QEventLoop::connect(
           &apiClient,
           &api::client::ClientApi::getRepoSignalEFull,
           &loop,
-          [&loop, &ret](auto, auto error_type, const QString &error_str) {
+          [&](auto, auto error_type, const QString &error_str) {
               loop.exit();
-              ret = LINGLONG_ERR(error_type, error_str);
+              ret = LINGLONG_ERR(error_str, error_type);
           },
           loop.thread() == apiClient.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
         apiClient.getRepo(repoName);
         loop.exec();
+
         return ret;
     }
 
     linglong::utils::error::Result<QString> getToken()
     {
+        LINGLONG_TRACE("get token");
+
         linglong::utils::error::Result<QString> ret;
 
         QEventLoop loop;
@@ -548,10 +401,11 @@ private:
           &apiClient,
           &api::client::ClientApi::signInSignal,
           &loop,
-          [&loop, &ret](api::client::SignIn_200_response resp) {
+          [&](api::client::SignIn_200_response resp) {
               loop.exit();
-              if (resp.getCode() != 200) {
-                  ret = LINGLONG_ERR(resp.getCode(), resp.getMsg());
+              const qint32 HTTP_OK = 200;
+              if (resp.getCode() != HTTP_OK) {
+                  ret = LINGLONG_ERR(resp.getMsg(), resp.getCode());
                   return;
               }
               ret = resp.getData().getToken();
@@ -561,9 +415,9 @@ private:
           &apiClient,
           &api::client::ClientApi::signInSignalEFull,
           &loop,
-          [&loop, &ret](auto, auto error_type, const QString &error_str) {
+          [&](auto, auto error_type, const QString &error_str) {
               loop.exit();
-              ret = LINGLONG_ERR(error_type, error_str);
+              ret = LINGLONG_ERR(error_str, error_type);
           },
           loop.thread() == apiClient.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
 
@@ -580,6 +434,8 @@ private:
 
     linglong::utils::error::Result<QString> newUploadTask(QSharedPointer<UploadRequest> req)
     {
+        LINGLONG_TRACE("new upload task");
+
         linglong::utils::error::Result<QString> ret;
 
         QEventLoop loop;
@@ -587,10 +443,11 @@ private:
           &apiClient,
           &api::client::ClientApi::newUploadTaskIDSignal,
           &loop,
-          [&loop, &ret](api::client::NewUploadTaskID_200_response resp) {
+          [&](api::client::NewUploadTaskID_200_response resp) {
               loop.exit();
-              if (resp.getCode() != 200) {
-                  ret = LINGLONG_ERR(resp.getCode(), resp.getMsg());
+              const qint32 HTTP_OK = 200;
+              if (resp.getCode() != HTTP_OK) {
+                  ret = LINGLONG_ERR(resp.getMsg(), resp.getCode());
                   return;
               }
               ret = resp.getData().getId();
@@ -600,9 +457,9 @@ private:
           &apiClient,
           &api::client::ClientApi::newUploadTaskIDSignalEFull,
           &loop,
-          [&loop, &ret](auto, auto error_type, const QString &error_str) {
+          [&](auto, auto error_type, const QString &error_str) {
               loop.exit();
-              ret = LINGLONG_ERR(error_type, error_str);
+              ret = LINGLONG_ERR(error_str, error_type);
           },
           loop.thread() == apiClient.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
         api::client::Schema_NewUploadTaskReq taskReq;
@@ -616,29 +473,35 @@ private:
     linglong::utils::error::Result<void> doUploadTask(const QString &taskID,
                                                       const QString &filePath)
     {
-        linglong::utils::error::Result<void> ret = LINGLONG_OK;
+        LINGLONG_TRACE("do upload task");
+
+        linglong::utils::error::Result<void> ret;
+
         QEventLoop loop;
         QEventLoop::connect(
           &apiClient,
           &api::client::ClientApi::uploadTaskFileSignal,
           &loop,
-          [&loop, &ret](api::client::Api_UploadTaskFileResp resp) {
+          [&](const api::client::Api_UploadTaskFileResp &resp) {
               loop.exit();
-              if (resp.getCode() != 200) {
-                  ret = LINGLONG_ERR(resp.getCode(), resp.getMsg());
+              const qint32 HTTP_OK = 200;
+              if (resp.getCode() != HTTP_OK) {
+                  ret = LINGLONG_ERR(resp.getMsg(), resp.getCode());
                   return;
               }
           },
           loop.thread() == apiClient.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
+
         QEventLoop::connect(
           &apiClient,
           &api::client::ClientApi::uploadTaskFileSignalEFull,
           &loop,
-          [&loop, &ret](auto, auto error_type, const QString &error_str) {
+          [&](auto, auto error_type, const QString &error_str) {
               loop.exit();
-              ret = LINGLONG_ERR(error_type, error_str);
+              ret = LINGLONG_ERR(error_str, error_type);
           },
           loop.thread() == apiClient.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
+
         api::client::HttpFileElement file;
         file.setFileName(filePath);
         file.setRequestFileName(filePath);
@@ -647,24 +510,28 @@ private:
         return ret;
     }
 
-    linglong::utils::error::Result<void> cleanUploadTask(const package::Ref &ref,
-                                                         const QString &filePath)
+    static void cleanUploadTask(const package::Ref &ref, const QString &filePath)
     {
         const auto savePath =
           QStringList{ util::getUserFile(".linglong/builder"), ref.appId }.join(QDir::separator());
 
-        util::removeDir(savePath);
+        if (!util::removeDir(savePath)) {
+            Q_ASSERT(false);
+            qCritical() << "Failed to remove" << savePath;
+        }
 
         QFile file(filePath);
-        file.remove();
-
-        qDebug() << "clean Upload Task";
-        return LINGLONG_OK;
+        if (!file.remove()) {
+            Q_ASSERT(false);
+            qCritical() << "Failed to remove" << filePath;
+        }
     }
 
     linglong::utils::error::Result<void> getUploadStatus(const QString &taskID)
     {
-        while (1) {
+        LINGLONG_TRACE("get upload status");
+
+        while (true) {
             linglong::utils::error::Result<QString> ret = LINGLONG_OK;
             qDebug() << "OK have value" << ret.has_value();
             QEventLoop loop;
@@ -672,10 +539,11 @@ private:
               &apiClient,
               &api::client::ClientApi::uploadTaskInfoSignal,
               &loop,
-              [&loop, &ret](api::client::UploadTaskInfo_200_response resp) {
+              [&](const api::client::UploadTaskInfo_200_response &resp) {
                   loop.exit();
-                  if (resp.getCode() != 200) {
-                      ret = LINGLONG_ERR(resp.getCode(), resp.getMsg());
+                  const qint32 HTTP_OK = 200;
+                  if (resp.getCode() != HTTP_OK) {
+                      ret = LINGLONG_ERR(resp.getMsg(), resp.getCode());
                       return;
                   }
                   ret = resp.getData().getStatus();
@@ -687,23 +555,24 @@ private:
               &apiClient,
               &api::client::ClientApi::uploadTaskInfoSignalEFull,
               &loop,
-              [&loop, &ret](auto, auto error_type, const QString &error_str) {
+              [&](auto, auto error_type, const QString &error_str) {
                   loop.exit();
-                  ret = LINGLONG_ERR(error_type, error_str);
+                  ret = LINGLONG_ERR(error_str, error_type);
               },
               loop.thread() == apiClient.thread() ? Qt::AutoConnection
                                                   : Qt::BlockingQueuedConnection);
             apiClient.uploadTaskInfo(remoteToken, taskID);
             loop.exec();
-            if (!ret.has_value()) {
-                return LINGLONG_EWRAP("get upload taks info", ret.error());
+            if (!ret) {
+                return LINGLONG_ERR("get upload taks info", ret);
             }
             auto status = *ret;
             if (status == "complete") {
                 break;
             } else if (status == "failed") {
-                return LINGLONG_ERR(-1, "task status failed");
+                return LINGLONG_ERR("task status failed", -1);
             }
+
             qInfo().noquote() << status;
             QThread::sleep(1);
         }

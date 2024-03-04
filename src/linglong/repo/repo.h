@@ -62,12 +62,7 @@ public:
     virtual utils::error::Result<package::Ref> latestOfRef(const QString &appId,
                                                            const QString &appVersion) = 0;
 
-    virtual linglong::utils::error::Result<void> getRemoteRepoList(const QString &repoPath,
-                                                                   QVector<QString> &vec) = 0;
-    virtual bool getRemoteRefs(const QString &repoPath,
-                               const QString &remoteName,
-                               QMap<QString, QString> &outRefs,
-                               QString &err) = 0;
+    virtual linglong::utils::error::Result<void> getRemoteRepoList(QVector<QString> &vec) = 0;
     virtual linglong::utils::error::Result<void> repoPullbyCmd(const QString &destPath,
                                                                const QString &remoteName,
                                                                const QString &ref) = 0;

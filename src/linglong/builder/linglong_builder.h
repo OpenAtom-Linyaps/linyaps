@@ -31,33 +31,33 @@ public:
                              cli::Printer &p,
                              ocppi::cli::CLI &cli,
                              service::AppManager &appManager);
-    linglong::util::Error config(const QString &userName, const QString &password) override;
+    util::Error config(const QString &userName, const QString &password) override;
 
-    linglong::util::Error create(const QString &projectName) override;
+    util::Error create(const QString &projectName) override;
 
-    linglong::utils::error::Result<void> build() override;
+    utils::error::Result<void> build() override;
 
-    linglong::util::Error exportLayer(const QString &destination) override;
+    util::Error exportLayer(const QString &destination) override;
 
-    linglong::util::Error extractLayer(const QString &layerPath,
+    util::Error extractLayer(const QString &layerPath,
                                        const QString &destination) override;
 
-    linglong::util::Error exportBundle(const QString &outputFilepath, bool useLocalDir) override;
+    util::Error exportBundle(const QString &outputFilepath, bool useLocalDir) override;
 
-    linglong::util::Error push(const QString &repoUrl,
+    util::Error push(const QString &repoUrl,
                                const QString &repoName,
                                const QString &channel,
                                bool pushWithDevel) override;
 
-    linglong::util::Error import() override;
+    util::Error import() override;
 
-    linglong::util::Error importLayer(const QString &path) override;
+    util::Error importLayer(const QString &path) override;
 
-    linglong::util::Error run() override;
+    util::Error run() override;
 
-    linglong::util::Error track() override;
+    util::Error track() override;
 
-    linglong::util::Error appimageConvert(const QStringList &templateArgs);
+    utils::error::Result<void> appimageConvert(const QStringList &templateArgs);
 
 private:
     repo::OSTreeRepo &repo;

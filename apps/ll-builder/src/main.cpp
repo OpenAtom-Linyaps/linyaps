@@ -70,7 +70,7 @@ int main(int argc, char **argv)
     parser.addOptions({ optVerbose });
     parser.addHelpOption();
 
-    QStringList subCommandList = { "create", "build", "run", "export", "push", "convert"};
+    QStringList subCommandList = { "create", "build", "run", "export", "push", "convert" };
 
     parser.addPositionalArgument("subcommand",
                                  subCommandList.join("\n"),
@@ -180,31 +180,34 @@ int main(int argc, char **argv)
                   return -1;
               }
 
-              linglong::util::Error err;
-
               if (parser.isSet(pkgID) || parser.isSet(pkgName) || parser.isSet(pkgVersion)
                   || parser.isSet(pkgDescription) || parser.isSet(scriptOpt)) {
                   if (appImageFileType) {
-                      err = builder.appimageConvert(
+                      auto ret = builder.appimageConvert(
                         QStringList()
                         << parser.value(pkgFile) << parser.value(pkgUrl) << parser.value(pkgHash)
                         << parser.value(pkgID) << parser.value(pkgName) << parser.value(pkgVersion)
                         << parser.value(pkgDescription) << parser.value(scriptOpt));
-                  } else if (debFileType) {
-                      // TODO: implement deb convert
+                      if (!ret) {
+                          printer.printErr(ret.error());
+                          return ret.error().code();
+                      }
                   } else {
-                      printer.printErr(LINGLONG_ERR(-1, "unsupported type").value());
+                      // TODO: implement deb convert
+
+                      LINGLONG_TRACE("unsupported type");
+                      auto err = LINGLONG_ERR(fileSuffix).value();
+                      printer.printErr(err);
+                      return err.code();
                   }
               }
 
-              if (err) {
-                  printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
-              }
-
-              return err.code();
+              return 0;
           } },
         { "create",
           [&](QCommandLineParser &parser) -> int {
+              LINGLONG_TRACE("command create");
+
               parser.clearPositionalArguments();
               parser.addPositionalArgument("create", "create build template project", "create");
               parser.addPositionalArgument("name", "project name", "<org.deepin.demo>");
@@ -218,16 +221,19 @@ int main(int argc, char **argv)
                   parser.showHelp(-1);
               }
 
-              auto err = builder.create(projectName);
-
-              if (err) {
-                  printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
+              auto oldErr = builder.create(projectName);
+              if (oldErr) {
+                  auto err = LINGLONG_ERR(oldErr.message(), oldErr.code()).value();
+                  printer.printErr(err);
+                  return err.code();
               }
 
-              return err.code();
+              return 0;
           } },
         { "build",
           [&](QCommandLineParser &parser) -> int {
+              LINGLONG_TRACE("command build");
+
               parser.clearPositionalArguments();
 
               auto execVerbose = QCommandLineOption("exec", "run exec than build script", "exec");
@@ -281,12 +287,13 @@ int main(int argc, char **argv)
                       return -1;
                   }
 
-                  auto [project, err] =
+                  auto [project, oldErr] =
                     linglong::util::fromYAML<QSharedPointer<linglong::builder::Project>>(
                       projectConfigPath);
-                  if (err) {
-                      printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
-                      return -1;
+                  if (oldErr) {
+                      auto err = LINGLONG_ERR(oldErr.message(), oldErr.code()).value();
+                      printer.printErr(err);
+                      return err.code();
                   }
 
                   auto node = YAML::LoadFile(projectConfigPath.toStdString());
@@ -317,6 +324,8 @@ int main(int argc, char **argv)
           } },
         { "run",
           [&](QCommandLineParser &parser) -> int {
+              LINGLONG_TRACE("command run");
+
               parser.clearPositionalArguments();
 
               auto execVerbose = QCommandLineOption("exec", "run exec than build script", "exec");
@@ -331,12 +340,14 @@ int main(int argc, char **argv)
                   linglong::builder::BuilderConfig::instance()->setExec(exec);
               }
 
-              auto err = builder.run();
-              if (err) {
-                  printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
+              auto oldErr = builder.run();
+              if (oldErr) {
+                  auto err = LINGLONG_ERR(oldErr.message(), oldErr.code()).value();
+                  printer.printErr(err);
+                  return err.code();
               }
 
-              return err.code();
+              return 0;
           } },
         // { "export",
         //   [&](QCommandLineParser &parser) -> int {
@@ -369,6 +380,8 @@ int main(int argc, char **argv)
         //   } },
         { "export",
           [&](QCommandLineParser &parser) -> int {
+              LINGLONG_TRACE("command export");
+
               parser.clearPositionalArguments();
 
               parser.addPositionalArgument("export", "export build result to layer", "export");
@@ -385,14 +398,19 @@ int main(int argc, char **argv)
                   path = linglong::builder::BuilderConfig::instance()->getProjectRoot();
               }
 
-              auto err = builder.exportLayer(path);
-              if (err) {
-                  printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
+              auto oldErr = builder.exportLayer(path);
+              if (oldErr) {
+                  auto err = LINGLONG_ERR(oldErr.message(), oldErr.code()).value();
+                  printer.printErr(err);
+                  return err.code();
               }
-              return err.code();
+
+              return 0;
           } },
         { "extract",
           [&](QCommandLineParser &parser) -> int {
+              LINGLONG_TRACE("command extract");
+
               parser.clearPositionalArguments();
 
               parser.addPositionalArgument("extract",
@@ -410,14 +428,19 @@ int main(int argc, char **argv)
                   parser.showHelp(-1);
               }
 
-              auto err = builder.extractLayer(layerPath, destination);
-              if (err) {
-                  printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
+              auto oldErr = builder.extractLayer(layerPath, destination);
+              if (oldErr) {
+                  auto err = LINGLONG_ERR(oldErr.message(), oldErr.code()).value();
+                  printer.printErr(err);
+                  return err.code();
               }
-              return err.code();
+
+              return 0;
           } },
         { "config",
           [&](QCommandLineParser &parser) -> int {
+              LINGLONG_TRACE("command config");
+
               parser.clearPositionalArguments();
 
               parser.addPositionalArgument("config", "config user info", "config");
@@ -428,31 +451,19 @@ int main(int argc, char **argv)
               parser.process(app);
               auto userName = parser.value(optUserName);
               auto userPassword = parser.value(optUserPassword);
-              auto err = builder.config(userName, userPassword);
-              if (err) {
-                  printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
+              auto oldErr = builder.config(userName, userPassword);
+              if (oldErr) {
+                  auto err = LINGLONG_ERR(oldErr.message(), oldErr.code()).value();
+                  printer.printErr(err);
+                  return err.code();
               }
 
-              return err.code();
+              return 0;
           } },
-        // { "import",
-        //   [&](QCommandLineParser &parser) -> int {
-        //       parser.clearPositionalArguments();
-
-        //       parser.addPositionalArgument("import", "import package data to local repo",
-        //       "import");
-
-        //       parser.process(app);
-
-        //       auto err = builder.import();
-        //       if (err) {
-        //           qCritical() << err;
-        //       }
-
-        //       return err.code();
-        //   } },
         { "import",
           [&](QCommandLineParser &parser) -> int {
+              LINGLONG_TRACE("command import");
+
               parser.clearPositionalArguments();
 
               parser.addPositionalArgument("import", "import layer to local repo", "import");
@@ -468,14 +479,17 @@ int main(int argc, char **argv)
                   parser.showHelp(-1);
               }
 
-              auto err = builder.importLayer(path);
-              if (err) {
-                  printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
+              auto oldErr = builder.importLayer(path);
+              if (oldErr) {
+                  auto err = LINGLONG_ERR(oldErr.message(), oldErr.code()).value();
+                  printer.printErr(err);
+                  return err.code();
               }
-              return err.code();
+              return 0;
           } },
         { "track",
           [&](QCommandLineParser &parser) -> int {
+              LINGLONG_TRACE("command track");
               parser.clearPositionalArguments();
 
               parser.addPositionalArgument("track",
@@ -484,15 +498,18 @@ int main(int argc, char **argv)
 
               parser.process(app);
 
-              auto err = builder.track();
-              if (err) {
-                  printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
+              auto oldErr = builder.track();
+              if (oldErr) {
+                  auto err = LINGLONG_ERR(oldErr.message(), oldErr.code()).value();
+                  printer.printErr(err);
+                  return err.code();
               }
-
-              return err.code();
+              return 0;
           } },
         { "push",
           [&](QCommandLineParser &parser) -> int {
+              LINGLONG_TRACE("command push");
+
               parser.clearPositionalArguments();
               parser.addPositionalArgument("push", "push build result to repo", "push");
 
@@ -511,13 +528,13 @@ int main(int argc, char **argv)
 
               bool pushWithDevel = parser.isSet(optNoDevel) ? false : true;
 
-              auto err = builder.push(repoUrl, repoName, repoChannel, pushWithDevel);
-
-              if (err) {
-                  printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
+              auto oldErr = builder.push(repoUrl, repoName, repoChannel, pushWithDevel);
+              if (oldErr) {
+                  auto err = LINGLONG_ERR(oldErr.message(), oldErr.code()).value();
+                  printer.printErr(err);
+                  return err.code();
               }
-
-              return err.code();
+              return 0;
           } },
     };
 

@@ -109,6 +109,8 @@ auto App::init() -> bool
 
 utils::error::Result<void> App::prepare()
 {
+    LINGLONG_TRACE("prepare app");
+
     // FIXME: get info from module/package
     auto runtimeRef = package::Ref(runtime->ref);
     QString runtimeRootPath = repo->rootOfLayer(runtimeRef);
@@ -123,8 +125,8 @@ utils::error::Result<void> App::prepare()
     QString appRootPath = repo->rootOfLayer(appRef);
 
     auto ret = stageRootfs(fixRuntimePath, appRef.appId, appRootPath);
-    if (!ret.has_value()) {
-        return LINGLONG_EWRAP("stage rootfs", ret.error());
+    if (!ret) {
+        return LINGLONG_ERR(ret);
     }
 
     stageSystem();
@@ -136,7 +138,7 @@ utils::error::Result<void> App::prepare()
     auto envFilepath = container->workingDirectory + QString("/env");
     QFile envFile(envFilepath);
     if (!envFile.open(QIODevice::WriteOnly)) {
-        return LINGLONG_ERR(-1, "create env failed" + envFile.errorString());
+        return LINGLONG_ERR("create env failed" + envFile.errorString());
     }
     for (const auto &env : *r.process->env) {
         envFile.write(env.c_str());
@@ -162,20 +164,18 @@ utils::error::Result<void> App::prepare()
               QStringList{ appRootPath, "entries", "applications" }.join(QDir::separator()));
             auto desktopFilenameList = applicationsDir.entryList({ "*.desktop" }, QDir::Files);
             if (desktopFilenameList.length() <= 0) {
-                return LINGLONG_ERR(-1, "desktop file not found in " + applicationsDir.path());
+                return LINGLONG_ERR("desktop file not found in " + applicationsDir.path());
             }
 
             auto desktopEntry = utils::xdg::DesktopEntry::New(
               applicationsDir.absoluteFilePath(desktopFilenameList.value(0)));
-            if (!desktopEntry.has_value()) {
-                return LINGLONG_EWRAP("DesktopEntry file path:" + desktopFilenameList.value(0),
-                                      desktopEntry.error());
+            if (!desktopEntry) {
+                return LINGLONG_ERR(desktopEntry);
             }
 
             auto exec = desktopEntry->getValue<QString>("Exec");
-            if (!exec.has_value()) {
-                return LINGLONG_EWRAP("Broken desktop file without Exec in main section.",
-                                      exec.error());
+            if (!exec) {
+                return LINGLONG_ERR(exec);
             }
 
             const auto &parsedExec = util::parseExec(*exec);
@@ -254,6 +254,8 @@ utils::error::Result<void> App::stageRootfs(QString runtimeRootPath,
                                             const QString &appId,
                                             QString appRootPath)
 {
+    LINGLONG_TRACE("stage rootfs");
+
     // TODO(wurongjie) 先去掉fuse相关功能
     // wine应用暂不支持，devel 更改为全量包后不需要fuse，specialCase 感觉并不需要 fuse
     {
@@ -273,8 +275,8 @@ utils::error::Result<void> App::stageRootfs(QString runtimeRootPath,
     }
     // TODO(wurongjie) base体积太大了，应该替换成精简的rootfs
     auto ret = repo->latestOfRef("org.deepin.base", "23");
-    if (!ret.has_value()) {
-        return LINGLONG_EWRAP("latest of ref", ret.error());
+    if (!ret) {
+        return LINGLONG_ERR(ret);
     }
 
     // 初始化容器workdir目录
@@ -298,8 +300,8 @@ utils::error::Result<void> App::stageRootfs(QString runtimeRootPath,
     };
     qDebug() << "run" << program << arguments.join(" ");
     auto mountRootRet = utils::command::Exec(program, arguments);
-    if (!mountRootRet.has_value()) {
-        return LINGLONG_EWRAP("Failed to mount rootfs using overlayfs", mountRootRet.error());
+    if (!mountRootRet) {
+        return LINGLONG_ERR("mount rootfs by overlayfs", mountRootRet);
     }
     // 使用容器hook写在 overlayer rootfs
     // 由于crun不支持在mount中配置fuse，也无法在hooks中挂载 overlayer 为 rootfs
@@ -311,10 +313,10 @@ utils::error::Result<void> App::stageRootfs(QString runtimeRootPath,
                               "--lazy",
                               containerWorkdir.filePath("rootfs").toStdString() };
     umountRootfsHook.path = "/usr/bin/umount";
-    if (!r.hooks.has_value()) {
+    if (!r.hooks) {
         r.hooks = std::make_optional(ocppi::runtime::config::types::Hooks{});
     }
-    if (r.hooks->poststop.has_value()) {
+    if (r.hooks->poststop) {
         r.hooks->poststop->push_back(umountRootfsHook);
     } else {
         r.hooks->poststop = { umountRootfsHook };
@@ -333,7 +335,7 @@ utils::error::Result<void> App::stageRootfs(QString runtimeRootPath,
         { "LINGLONG_ROOT", linglongRootPath },
     };
     auto getPath = [&](QString &path) -> QString {
-        for (auto key : variables.keys()) {
+        for (const auto &key : variables.keys()) {
             path.replace(QString("$%1").arg(key).toLocal8Bit(), variables.value(key).toLocal8Bit());
         }
         return path;
@@ -435,8 +437,8 @@ utils::error::Result<void> App::stageRootfs(QString runtimeRootPath,
             .toStdString());
         break;
     default:
-        qInfo() << "no supported arch :" << appRef.arch;
-        return LINGLONG_ERR(-1, "no supported arch :" + appRef.arch);
+        // FIXME: add other architectures
+        return LINGLONG_ERR("no supported arch :" + appRef.arch);
     }
 
     env.push_back(("LD_LIBRARY_PATH=" + fixLdLibraryPath.join(":")).toStdString());
@@ -1112,13 +1114,15 @@ auto App::load(linglong::repo::Repo *repo,
 
 linglong::utils::error::Result<QString> App::start()
 {
+    LINGLONG_TRACE("start app");
+
     package::Ref ref(package->ref);
 
     util::ensureDir(r.root->path.c_str());
 
     auto ret = prepare();
-    if (!ret.has_value()) {
-        return LINGLONG_EWRAP("prepare", ret.error());
+    if (!ret) {
+        return LINGLONG_ERR(ret);
     }
 
     // write pid file
@@ -1133,21 +1137,20 @@ linglong::utils::error::Result<QString> App::start()
     auto data = runtimeConfigJSON.dump();
     QFile f(containerWorkdir.filePath("config.json"));
     if (!f.open(QIODevice::WriteOnly)) {
-        return LINGLONG_ERR(-1, f.errorString());
+        return LINGLONG_ERR(f.errorString(), f.error());
     }
     if (!f.write(QByteArray::fromStdString(data))) {
-        return LINGLONG_ERR(-1, f.errorString());
+        return LINGLONG_ERR(f.errorString(), f.error());
     };
     f.close();
     // 运行容器
     auto qid = util::genUuid();
-    auto id = qid.toStdString();
     auto path = std::filesystem::path(containerWorkdir.path().toStdString());
-    auto runRet = ociCli->run(id.c_str(), path);
-    if (!runRet.has_value()) {
+    auto runRet = ociCli->run(ocppi::runtime::ContainerID(qid.toUtf8()), path);
+    if (!runRet) {
         qDebug() << "umount rootfs";
         utils::command::Exec("umount", { "--lazy", QString::fromStdString(r.root->path) });
-        return LINGLONG_EWRAP("create container", LINGLONG_SERR(runRet.error()).value());
+        return LINGLONG_ERR(runRet.error());
     }
     return qid;
 }
@@ -1184,19 +1187,19 @@ void App::exec(const QStringList &cmd, const QStringList &env, QString cwd)
 
         const auto &desktopEntry = utils::xdg::DesktopEntry::New(
           applicationsDir.absoluteFilePath(desktopFilenameList.value(0)));
-        if (!desktopEntry.has_value()) {
+        if (!desktopEntry) {
             // FIXME(black_desk): return error instead of logging here.
             qCritical() << "DesktopEntry file path:"
                         << applicationsDir.absoluteFilePath(desktopFilenameList.value(0));
-            qCritical().noquote() << desktopEntry.error().code() << desktopEntry.error().message();
+            qCritical() << desktopEntry.error();
             return;
         }
 
         const auto &exec = desktopEntry->getValue<QString>("Exec");
-        if (!exec.has_value()) {
+        if (!exec) {
             // FIXME(black_desk): return error instead of logging here.
             qCritical() << "Broken desktop file without Exec in main section.";
-            qCritical().noquote() << exec.error().code() << exec.error().message();
+            qCritical() << exec.error();
             return;
         }
 

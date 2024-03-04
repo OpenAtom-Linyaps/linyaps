@@ -33,6 +33,8 @@ AppManager::AppManager(repo::Repo &repo, ocppi::cli::CLI &ociCli)
 
 linglong::utils::error::Result<void> AppManager::Run(const RunParamOption &paramOption)
 {
+    LINGLONG_TRACE(QString("run %1").arg(paramOption.appId));
+
     qDebug() << "run" << paramOption.appId;
 
     QString appID = paramOption.appId;
@@ -54,8 +56,8 @@ linglong::utils::error::Result<void> AppManager::Run(const RunParamOption &param
     // TODO(wurongjie) 在版本迭代后，可以删除对旧 channel 的支持
     if (channel.isEmpty()) {
         auto refs = repo.listLocalRefs();
-        if (!refs.has_value()) {
-            return LINGLONG_EWRAP("get ref list: ", refs.error());
+        if (!refs) {
+            return LINGLONG_ERR(refs);
         }
         for (auto ref : *refs) {
             if (ref.appId == appID && ref.arch == arch && ref.module == module) {
@@ -72,7 +74,6 @@ linglong::utils::error::Result<void> AppManager::Run(const RunParamOption &param
         }
         if (channel.isEmpty()) {
             return LINGLONG_ERR(
-              -1,
               QString("Application %1/%2/$latest/%3/%4 cannot be found from the database, "
                       "maybe you should install it first or pass more parameter")
                 .arg("main")
@@ -84,8 +85,8 @@ linglong::utils::error::Result<void> AppManager::Run(const RunParamOption &param
     // 默认选择最新的版本
     if (version.isEmpty()) {
         auto ret = repo.latestOfRef(appID, "");
-        if (!ret.has_value()) {
-            return LINGLONG_EWRAP("found app latest version", ret.error());
+        if (!ret) {
+            return LINGLONG_ERR(ret);
         }
         version = ret->version;
     }
@@ -93,7 +94,7 @@ linglong::utils::error::Result<void> AppManager::Run(const RunParamOption &param
     linglong::package::Ref ref("", channel, appID, version, arch, module);
     auto app = linglong::runtime::App::load(&repo, ref, exec, &ociCli);
     if (app == nullptr) {
-        return LINGLONG_ERR(-1, "load app failed");
+        return LINGLONG_ERR("load app failed");
     }
     // 设置环境变量
     app->saveUserEnvList(env);
@@ -103,29 +104,31 @@ linglong::utils::error::Result<void> AppManager::Run(const RunParamOption &param
     app->setAppParamMap(paramMap);
     // 启动应用
     auto ret = app->start();
-    if (!ret.has_value()) {
-        return LINGLONG_EWRAP("start app", ret.error());
+    if (!ret) {
+        return LINGLONG_ERR(ret);
     }
     return LINGLONG_OK;
 }
 
 Reply AppManager::Exec(const ExecParamOption &paramOption)
 {
+    LINGLONG_TRACE("exec");
+
     Reply reply;
     auto const &containerID = paramOption.containerID;
 
     std::string executable = paramOption.cmd[0].toStdString();
     std::vector<std::string> command;
-    for (auto cmd : paramOption.cmd.mid(1)) {
+    for (const auto &cmd : paramOption.cmd.mid(1)) {
         command.push_back(cmd.toStdString());
     }
     ocppi::runtime::ExecOption opt;
     opt.tty = true;
     opt.uid = getuid();
     opt.gid = getgid();
-    auto ret = ociCli.exec(containerID.toStdString().c_str(), executable, command, { opt });
-    if (!ret.has_value()) {
-        auto err = LINGLONG_SERR(ret.error());
+    auto ret = ociCli.exec(containerID.toStdString(), executable, command, { opt });
+    if (!ret) {
+        auto err = LINGLONG_ERR(ret.error());
         reply.code = STATUS_CODE(kFail);
         reply.message = "exec container failed: " + err.value().message();
         return reply;
@@ -136,9 +139,10 @@ Reply AppManager::Exec(const ExecParamOption &paramOption)
 
 Reply AppManager::Stop(const QString &containerId)
 {
+    LINGLONG_TRACE("stop");
+
     Reply reply;
-    auto id = containerId.toStdString();
-    auto ret = ociCli.kill(id.c_str(), "SIGTERM");
+    auto ret = ociCli.kill(containerId.toStdString(), "SIGTERM");
     if (!ret.has_value()) {
         reply.message = "kill container failed, containerId:" + containerId;
         reply.code = STATUS_CODE(kErrorPkgKillFailed);
@@ -146,17 +150,19 @@ Reply AppManager::Stop(const QString &containerId)
         reply.code = STATUS_CODE(kErrorPkgKillSuccess);
         reply.message = "kill container success, containerId:" + containerId;
     }
-    auto err = LINGLONG_SERR(ret.error());
+    auto err = LINGLONG_ERR(ret.error());
     qInfo() << "kill containerId:" << containerId << ", ret:" << err.value().message();
     return reply;
 }
 
 QueryReply AppManager::ListContainer()
 {
+    LINGLONG_TRACE("list");
+
     QueryReply reply;
     auto ret = ociCli.list();
-    if (!ret.has_value()) {
-        auto err = LINGLONG_SERR(ret.error());
+    if (!ret) {
+        auto err = LINGLONG_ERR(ret.error());
         reply.code = err.value().code();
         reply.message = err.value().message();
         return reply;

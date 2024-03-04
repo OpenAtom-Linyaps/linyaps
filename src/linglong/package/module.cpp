@@ -31,7 +31,8 @@ utils::error::Result<Module> Module::parse(const QString &raw) noexcept
 try {
     return Module(raw);
 } catch (const std::exception &e) {
-    return LINGLONG_ERR(-1, e.what());
+    LINGLONG_TRACE("parse module");
+    return LINGLONG_ERR(e);
 }
 
 Module::Module(const QString &raw)

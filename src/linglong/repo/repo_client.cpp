@@ -27,6 +27,8 @@ QSERIALIZER_IMPL(Response);
 linglong::utils::error::Result<QList<QSharedPointer<package::AppMetaInfo>>>
 RepoClient::QueryApps(const package::Ref &ref)
 {
+    LINGLONG_TRACE("query apps");
+
     Request_FuzzySearchReq req;
     req.setChannel(ref.channel);
     req.setAppId(ref.appId);
@@ -35,17 +37,17 @@ RepoClient::QueryApps(const package::Ref &ref)
     req.setRepoName(ref.repo);
 
     linglong::utils::error::Result<QList<QSharedPointer<package::AppMetaInfo>>> ret =
-      LINGLONG_ERR(-1, "unknown error");
+      LINGLONG_ERR("unknown error");
 
     QEventLoop loop;
     QEventLoop::connect(
       &client,
       &ClientApi::fuzzySearchAppSignal,
       &loop,
-      [&loop, &ret](FuzzySearchApp_200_response resp) {
+      [&](FuzzySearchApp_200_response resp) {
           loop.exit();
           if (resp.getCode() != 200) {
-              ret = LINGLONG_ERR(resp.getCode(), resp.getMsg());
+              ret = LINGLONG_ERR(resp.getMsg(), resp.getCode());
               return;
           }
           QJsonObject obj = resp.asJsonObject();
@@ -62,9 +64,9 @@ RepoClient::QueryApps(const package::Ref &ref)
       &client,
       &ClientApi::fuzzySearchAppSignalEFull,
       &loop,
-      [&loop, &ret](auto, auto error_type, const QString &error_str) {
+      [&](auto, auto error_type, const QString &error_str) {
           loop.exit();
-          ret = LINGLONG_ERR(error_type, error_str);
+          ret = LINGLONG_ERR(error_str, error_type);
       },
       loop.thread() == client.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
     client.fuzzySearchApp(req);

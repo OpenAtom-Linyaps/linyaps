@@ -17,12 +17,16 @@ namespace linglong {
 namespace util {
 
 /*!
+ * WARNING:
+ * DO NOT USE THIS CLASS IN NEW CODE
+ * Use linglong::utils::error::Result
+ *
  * Error is a stack trace error handler when function return
  */
 
 class ErrorPrivate;
 
-class Error : private QSharedPointer<ErrorPrivate>
+class Q_DECL_DEPRECATED Error : private QSharedPointer<ErrorPrivate>
 {
 public:
     Error() = default;

@@ -14,15 +14,14 @@ namespace linglong::package {
 
 utils::error::Result<Reference> Reference::parse(const QString &raw) noexcept
 {
-    LINGLONG_TRACE_MESSAGE("parse reference string");
+    LINGLONG_TRACE("parse reference string");
 
     static QRegularExpression referenceRegExp(
       R"((?<channel>[^:]+):(?<id>[^\/]+)\/(?<version>[^\/]+)\/(?<architecture>[^\/]+))");
 
     auto matches = referenceRegExp.match(raw);
     if (not(matches.isValid() and matches.hasMatch())) {
-        auto err = LINGLONG_ERR(-1, "regexp mismatched.").value();
-        return LINGLONG_EWRAP(err);
+        return LINGLONG_ERR("regexp mismatched.", -1);
     }
 
     auto channel = matches.captured("channel");
@@ -31,18 +30,18 @@ utils::error::Result<Reference> Reference::parse(const QString &raw) noexcept
     auto architectureStr = matches.captured("architecture");
 
     auto version = Version::parse(versionStr);
-    if (!version.has_value()) {
-        return LINGLONG_EWRAP(version.error());
+    if (!version) {
+        return LINGLONG_ERR(version);
     }
 
     auto arch = Architecture::parse(architectureStr);
-    if (!arch.has_value()) {
-        return LINGLONG_EWRAP(arch.error());
+    if (!arch) {
+        return LINGLONG_ERR(arch);
     }
 
     auto reference = create(channel, id, *version, *arch);
-    if (!reference.has_value()) {
-        return LINGLONG_EWRAP(reference.error());
+    if (!reference) {
+        return LINGLONG_ERR(reference);
     }
 
     return *reference;
@@ -55,8 +54,8 @@ utils::error::Result<Reference> Reference::create(const QString &channel,
 try {
     return Reference(channel, id, version, arch);
 } catch (const std::exception &e) {
-    auto err = LINGLONG_ERR(-1, e.what()).value();
-    return LINGLONG_EWRAP("invalid reference", err);
+    LINGLONG_TRACE("create reference");
+    return LINGLONG_ERR("invalid reference", e);
 }
 
 Reference::Reference(const QString &channel,

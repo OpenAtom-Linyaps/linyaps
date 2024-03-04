@@ -1102,7 +1102,7 @@ auto PackageManager::Uninstall(const UninstallParamOption &paramOption) -> Reply
         QString strErr = "";
         // 应从安装数据库获取应用所属仓库信息 to do fix
         QVector<QString> qrepoList;
-        auto ret = repoMan.getRemoteRepoList(kLocalRepoPath, qrepoList);
+        auto ret = repoMan.getRemoteRepoList(qrepoList);
         if (!ret.has_value()) {
             qCritical() << strErr;
             reply.code = STATUS_CODE(kPkgUninstallFailed);

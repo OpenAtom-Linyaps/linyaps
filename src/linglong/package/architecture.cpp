@@ -30,7 +30,8 @@ utils::error::Result<Architecture> Architecture::parse(const QString &raw) noexc
 try {
     return Architecture(raw);
 } catch (const std::exception &e) {
-    return LINGLONG_ERR(-1, e.what());
+    LINGLONG_TRACE("parse architecture");
+    return LINGLONG_ERR(e);
 }
 
 Architecture::Architecture(const QString &raw)

@@ -66,6 +66,7 @@ void DependFetcher::printProgress(const uint &progress, const QString &speed)
 linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString &targetPath)
 {
     auto handleRef = [&]() -> linglong::utils::error::Result<package::Ref> {
+        LINGLONG_TRACE("handleRef");
         // FIXME(black_desk):
         // 1. Offline should not only be an option of builder, but also a work
         //    mode argument passed to repo, which prevent all network request.
@@ -89,8 +90,8 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
                                     .arg("..."),
                                   2);
         auto ret = ostree.pull(*remoteRef, true);
-        if (!ret.has_value()) {
-            return LINGLONG_EWRAP(QString("pull %1 failed.").arg((*remoteRef).toString()), ret.error());
+        if (!ret) {
+            return LINGLONG_ERR(ret);
         }
 
         return remoteRef;

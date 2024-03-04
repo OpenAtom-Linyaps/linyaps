@@ -18,28 +18,25 @@ namespace linglong::package {
 using nlohmann::json;
 
 utils::error::Result<layer::LayerInfo> fromJson(const QByteArray &rawData)
-{
-    layer::LayerInfo layerInfo;
-    try {
-        layerInfo = json::parse(rawData).get<layer::LayerInfo>();
-    } catch (std::exception &e) {
-        return LINGLONG_ERR(-1, "failed to parse json value, invalid data");
-    }
 
+try {
+    layer::LayerInfo layerInfo;
+    layerInfo = json::parse(rawData).get<layer::LayerInfo>();
     return layerInfo;
+} catch (std::exception &e) {
+    LINGLONG_TRACE("parse layer info from json");
+    return LINGLONG_ERR("json::parse", e);
 }
 
 utils::error::Result<QByteArray> toJson(layer::LayerInfo &layerInfo)
-{
+try {
     QByteArray rawData;
     json jsonValue = layerInfo;
-    try {
-        rawData = QByteArray::fromStdString(jsonValue.dump());
-    } catch (std::exception &e) {
-        return LINGLONG_ERR(-1, "failed to dump json value, invalid data");
-    }
-
+    rawData = QByteArray::fromStdString(jsonValue.dump());
     return rawData;
+} catch (std::exception &e) {
+    LINGLONG_TRACE("dump layer info to json");
+    return LINGLONG_ERR("dump", e);
 }
 
 } // namespace linglong::package

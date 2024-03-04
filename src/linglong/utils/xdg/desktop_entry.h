@@ -32,23 +32,21 @@ public:
 
     static auto New(const QString &filePath) -> error::Result<DesktopEntry>
     {
+        LINGLONG_TRACE(QString("create DesktopEntry for %1").arg(filePath));
+
         auto desktopEntryFile = QFile(filePath);
         if (!desktopEntryFile.exists()) {
-            return LINGLONG_ERR(ENOENT, "no such desktop entry file");
+            return LINGLONG_ERR("no such desktop entry file");
         }
 
-        GError *gErr = nullptr;
-        auto _ = linglong::utils::finally::finally([&gErr]() {
-            if (gErr != nullptr)
-                g_error_free(gErr);
-        });
-
+        g_autoptr(GError) gErr = nullptr;
         DesktopEntry entry;
-        if (!g_key_file_load_from_file(entry.gKeyFile.get(),
-                                       filePath.toLocal8Bit().constData(),
-                                       G_KEY_FILE_KEEP_TRANSLATIONS,
-                                       &gErr)) {
-            return LINGLONG_ERR(gErr->code, gErr->message);
+        g_key_file_load_from_file(entry.gKeyFile.get(),
+                                  filePath.toLocal8Bit().constData(),
+                                  G_KEY_FILE_KEEP_TRANSLATIONS,
+                                  &gErr);
+        if (gErr != nullptr) {
+            return LINGLONG_ERR("g_key_file_load_from_file", gErr);
         }
 
         return entry;
@@ -63,7 +61,6 @@ private:
 public:
     using SectionName = QString;
 
-    // statics data members
 public:
     static const SectionName MainSection;
 
@@ -83,10 +80,7 @@ public:
     auto groups() -> QStringList
     {
         gsize length = 0;
-        auto groups = g_key_file_get_groups(this->gKeyFile.get(), &length);
-        auto _ = finally::finally([&groups]() {
-            g_strfreev(groups);
-        });
+        g_auto(GStrv) groups = g_key_file_get_groups(this->gKeyFile.get(), &length);
 
         QStringList result;
         for (gsize i = 0; i < length; i++) {
@@ -99,16 +93,13 @@ public:
 
     auto saveToFile(const QString &filepath) -> error::Result<void>
     {
-        GError *gErr = nullptr;
-        auto _ = linglong::utils::finally::finally([&gErr]() {
-            if (gErr != nullptr)
-                g_error_free(gErr);
-        });
+        LINGLONG_TRACE(QString("save to %1").arg(filepath));
 
-        if (!g_key_file_save_to_file(this->gKeyFile.get(),
-                                     filepath.toLocal8Bit().constData(),
-                                     &gErr)) {
-            return LINGLONG_ERR(gErr->code, gErr->message);
+        g_autoptr(GError) gErr = nullptr;
+
+        g_key_file_save_to_file(this->gKeyFile.get(), filepath.toLocal8Bit().constData(), &gErr);
+        if (gErr != nullptr) {
+            return LINGLONG_ERR("g_key_file_save_to_file", gErr);
         }
 
         return LINGLONG_OK;
@@ -124,7 +115,6 @@ inline void DesktopEntry::setValue(const QString &key,
                           section.toLocal8Bit().constData(),
                           key.toLocal8Bit().constData(),
                           value.toLocal8Bit().constData());
-    return;
 }
 
 template<>
@@ -132,22 +122,17 @@ template<>
                                                  const SectionName &section) const
   -> error::Result<QString>
 {
-    GError *gErr = nullptr;
-    auto _ = linglong::utils::finally::finally([&gErr]() {
-        if (gErr != nullptr)
-            g_error_free(gErr);
-    });
+    LINGLONG_TRACE(QString("get %1 from %2").arg(key, section));
 
-    auto value = g_key_file_get_string(this->gKeyFile.get(),
-                                       section.toLocal8Bit().constData(),
-                                       key.toLocal8Bit().constData(),
-                                       &gErr);
-    auto _1 = finally::finally([&value]() {
-        g_free(value);
-    });
+    g_autoptr(GError) gErr = nullptr;
 
-    if (gErr) {
-        return LINGLONG_ERR(gErr->code, gErr->message);
+    g_autofree gchar *value = g_key_file_get_string(this->gKeyFile.get(),
+                                                    section.toLocal8Bit().constData(),
+                                                    key.toLocal8Bit().constData(),
+                                                    &gErr);
+
+    if (gErr != nullptr) {
+        return LINGLONG_ERR("g_key_file_get_string", gErr);
     }
 
     return value;

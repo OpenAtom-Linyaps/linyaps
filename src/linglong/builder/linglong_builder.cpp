@@ -68,6 +68,8 @@ LinglongBuilder::LinglongBuilder(repo::OSTreeRepo &ostree,
 linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutput(
   Project *project, const QString &upperdir, const QString &workdir)
 {
+    LINGLONG_TRACE("commit build output");
+
     auto output = project->config().cacheInstallPath("files");
     auto lowerDir = project->config().cacheAbsoluteFilePath({ "overlayfs", "lower" });
     // if combine runtime, lower is ${PROJECT_CACHE}/runtime/files
@@ -87,16 +89,15 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
     };
     qDebug() << "run" << program << arguments.join(" ");
     auto execRet = utils::command::Exec(program, arguments);
-    if (!execRet.has_value()) {
-        return LINGLONG_EWRAP(QString("exec %1 %2 failed").arg(program).arg(arguments.join(" ")),
-                              execRet.error());
+    if (!execRet) {
+        return LINGLONG_ERR(execRet);
     }
 
     auto _ = qScopeGuard([=] {
         qDebug() << "umount fuse overlayfs";
         auto ret = utils::command::Exec("umount", { "--lazy", output });
-        if (!ret.has_value()) {
-            qWarning() << "Failed to umount" << ret.error();
+        if (!ret) {
+            qCritical() << "Failed to umount" << ret.error();
         }
     });
 
@@ -152,7 +153,7 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
     auto desktopFileSavePath = QStringList{ entriesPath, "applications" }.join(QDir::separator());
     auto err = modifyConfigFile(desktopFilePath, desktopFileSavePath, "*.desktop", appId);
     if (err) {
-        return LINGLONG_ERR(err.code(), "modify config file: " + err.message());
+        return LINGLONG_ERR("modify config file: " + err.message(), err.code());
     }
 
     // modify context-menus file
@@ -161,7 +162,7 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
     auto contextFileSavePath = contextFilePath;
     err = modifyConfigFile(contextFilePath, contextFileSavePath, "*.conf", appId);
     if (err) {
-        return LINGLONG_ERR(err.code(), "modify desktop file: " + err.message());
+        return LINGLONG_ERR("modify desktop file: " + err.message(), err.code());
     }
 
     auto moveDir = [](const QStringList targetList,
@@ -193,7 +194,7 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
                   project->config().cacheInstallPath("files"),
                   project->config().cacheInstallPath("devel-install", "files"));
     if (err) {
-        return LINGLONG_ERR(err.code(), "move debug file: " + err.message());
+        return LINGLONG_ERR("move debug file: " + err.message(), err.code());
     }
 
     auto createInfo = [](Project *project) -> linglong::util::Error {
@@ -245,15 +246,15 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
 
     err = createInfo(project);
     if (err) {
-        return LINGLONG_ERR(err.code(), "create info " + err.message());
+        return LINGLONG_ERR("create info " + err.message(), err.code());
     }
     auto refRuntime = project->refWithModule("runtime");
     refRuntime.channel = "main";
     qDebug() << "importDirectory " << project->config().cacheInstallPath("");
     auto ret = repo.importDirectory(refRuntime, project->config().cacheInstallPath(""));
 
-    if (!ret.has_value()) {
-        return LINGLONG_EWRAP("import runtime", ret.error());
+    if (!ret) {
+        return LINGLONG_ERR("import runtime", ret);
     }
 
     auto refDevel = project->refWithModule("devel");
@@ -261,7 +262,7 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
     qDebug() << "importDirectory " << project->config().cacheInstallPath("devel-install", "");
     ret = repo.importDirectory(refDevel, project->config().cacheInstallPath("devel-install", ""));
     if (!ret.has_value()) {
-        return LINGLONG_EWRAP("import devel", ret.error());
+        return LINGLONG_ERR("import devel", ret);
     }
     return LINGLONG_OK;
 };
@@ -311,15 +312,17 @@ linglong::util::Error LinglongBuilder::config(const QString &userName, const QSt
 linglong::utils::error::Result<void> LinglongBuilder::buildStageRunContainer(
   QDir workdir, ocppi::cli::CLI &cli, ocppi::runtime::config::types::Config &r)
 {
+    LINGLONG_TRACE("run container");
+
     // 写容器配置文件
     auto data = toJSON(r).dump();
     QFile f(workdir.filePath("config.json"));
     qDebug() << "container config file" << f.fileName();
     if (!f.open(QIODevice::WriteOnly)) {
-        return LINGLONG_ERR(-1, f.errorString());
+        return LINGLONG_ERR(f);
     }
     if (!f.write(QByteArray::fromStdString(data))) {
-        return LINGLONG_ERR(-1, f.errorString());
+        return LINGLONG_ERR(f);
     }
     f.close();
 
@@ -327,14 +330,16 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageRunContainer(
     auto id = util::genUuid().toStdString();
     auto path = std::filesystem::path(workdir.path().toStdString());
     auto ret = cli.run(id.c_str(), path);
-    if (!ret.has_value()) {
-        return LINGLONG_SERR(ret.error());
+    if (!ret) {
+        return LINGLONG_ERR(ret);
     }
     return LINGLONG_OK;
 }
 
-linglong::util::Error LinglongBuilder::appimageConvert(const QStringList &templateArgs)
+utils::error::Result<void> LinglongBuilder::appimageConvert(const QStringList &templateArgs)
 {
+    LINGLONG_TRACE("convert appimage");
+
     const auto file = templateArgs.at(0);
     const auto url = templateArgs.at(1);
     const auto hash = templateArgs.at(2);
@@ -351,13 +356,12 @@ linglong::util::Error LinglongBuilder::appimageConvert(const QStringList &templa
         QDir::separator());
 
     if (!QFileInfo::exists(templateFilePath)) {
-        printer.printMessage("ll-builder should run in the root directory of the linglong project");
-        return NewError(-1, "appimage.yaml not found");
+        return LINGLONG_ERR("linglong installation broken: template file appimage.yaml not found");
     }
 
     auto ret = QDir().mkpath(projectPath);
     if (!ret) {
-        return NewError(-1, "project already exists");
+        return LINGLONG_ERR(QString("project path %1 already exists").arg(projectPath));
     }
 
     // copy appimage file to project path
@@ -367,8 +371,7 @@ linglong::util::Error LinglongBuilder::appimageConvert(const QStringList &templa
         const auto &destinationFilePath = QDir(projectPath).filePath(fileInfo.fileName());
 
         if (!QFileInfo::exists(sourcefilePath)) {
-            printer.printMessage("can not found appimage file");
-            return NewError(-1, "appimage file not found");
+            return LINGLONG_ERR(QString("appimage file %1 not found").arg(sourcefilePath));
         }
 
         QFile::copy(sourcefilePath, destinationFilePath);
@@ -382,15 +385,14 @@ linglong::util::Error LinglongBuilder::appimageConvert(const QStringList &templa
 
     // config linglong.yaml before build if necessary
     if (!QFileInfo::exists(configFilePath)) {
-        printer.printMessage("ll-builder should run in the root directory of the linglong project");
-        return NewError(-1, "linglong.yaml not found");
+        return LINGLONG_ERR(
+          "linglong.yaml not found, ll-builder should run in the root directory of the project.");
     }
 
     auto [project, err] =
       linglong::util::fromYAML<QSharedPointer<linglong::builder::Project>>(configFilePath);
     if (err) {
-        printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
-        return NewError(-1, "Internal error");
+        return LINGLONG_ERR(err.message(), err.code());
     }
 
     auto node = YAML::LoadFile(configFilePath.toStdString());
@@ -421,42 +423,39 @@ linglong::util::Error LinglongBuilder::appimageConvert(const QStringList &templa
         linglong::builder::BuilderConfig::instance()->setProjectRoot(projectPath);
 
         auto buildRet = build();
-        if (!buildRet.has_value()) {
-            return NewError(buildRet.error().code(), buildRet.error().message());
+        if (!buildRet) {
+            return LINGLONG_ERR(buildRet);
         }
         err = exportLayer(projectPath);
 
         // delete the generated temporary file, only keep .layer(.uab) files
-        QProcess process;
-        process.setWorkingDirectory(projectPath);
-        process.execute("bash",
-                        QStringList()
-                          << "-c"
-                          << "find . -maxdepth 1 -not -regex '.*\\.\\|.*\\.layer\\|.*\\.uab' "
-                             "-exec basename {} -print0 \\;  | xargs rm -r");
-
-        if (err) {
-            printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
-            return err;
+        auto ret = utils::command::Exec(
+          "bash",
+          QStringList() << "-c"
+                        << "find . -maxdepth 1 -not -regex '.*\\.\\|.*\\.layer\\|.*\\.uab' "
+                           "-exec basename {} -print0 \\;  | xargs rm -r");
+        if (!ret) {
+            return LINGLONG_ERR(ret);
         }
     } else {
         auto scriptFilePath = QStringList{ projectPath, scriptName }.join(QDir::separator());
 
         // copy convert.sh to project path
-        QFile::copy(":/convert.sh", scriptFilePath);
-        if (!QFileInfo::exists(scriptFilePath)) {
-            printer.printMessage("can not found convert script file");
-            return NewError(-1, "convert script file not found");
+        if (!QFile::copy(":/convert.sh", scriptFilePath)) {
+            return LINGLONG_ERR("create convert.sh failed.");
         }
 
         // set execution permissions to convert.sh
-        QFile(scriptFilePath).setPermissions(QFile::ReadOwner | QFile::ExeOwner);
+        QFile scriptFile(scriptFilePath);
+        if (!scriptFile.setPermissions(QFile::ReadOwner | QFile::ExeOwner)) {
+            return LINGLONG_ERR("set convert.sh permission", scriptFile);
+        }
     }
 
-    return Success();
+    return LINGLONG_OK;
 }
 
-linglong::util::Error LinglongBuilder::create(const QString &projectName)
+util::Error LinglongBuilder::create(const QString &projectName)
 {
     auto projectPath = QStringList{ QDir::currentPath(), projectName }.join(QDir::separator());
     auto configFilePath = QStringList{ projectPath, "linglong.yaml" }.join(QDir::separator());
@@ -478,7 +477,7 @@ linglong::util::Error LinglongBuilder::create(const QString &projectName)
     return Success();
 }
 
-linglong::util::Error LinglongBuilder::track()
+util::Error LinglongBuilder::track()
 {
     auto projectConfigPath =
       QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join(
@@ -518,7 +517,7 @@ linglong::util::Error LinglongBuilder::track()
     return Success();
 }
 
-linglong::utils::error::Result<void> LinglongBuilder::buildStageClean(const Project &project)
+utils::error::Result<void> LinglongBuilder::buildStageClean(const Project &project)
 {
     // initialize some directories
     util::removeDir(project.config().cacheRuntimePath({}));
@@ -532,8 +531,9 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageClean(const Proj
     return LINGLONG_OK;
 }
 
-linglong::utils::error::Result<QString> LinglongBuilder::buildStageDepend(Project *project)
+utils::error::Result<QString> LinglongBuilder::buildStageDepend(Project *project)
 {
+    LINGLONG_TRACE("handle depends");
 
     printer.printMessage("[Processing Dependency]");
     printer.printMessage(
@@ -555,13 +555,13 @@ linglong::utils::error::Result<QString> LinglongBuilder::buildStageDepend(Projec
         DependFetcher df(runtimeDepend, repo, printer, project);
         auto err = df.fetch("", project->config().cacheRuntimePath(""));
         if (err) {
-            return LINGLONG_ERR(err.code(), err.message());
+            return LINGLONG_ERR(err.message(), err.code());
         }
 
         if (!project->base) {
             QFile infoFile(project->config().cacheRuntimePath("info.json"));
             if (!infoFile.open(QIODevice::ReadOnly)) {
-                return LINGLONG_ERR(infoFile.error(), infoFile.errorString());
+                return LINGLONG_ERR("open info.json", infoFile);
             }
             // FIXME(black_desk): handle error
             auto info =
@@ -582,7 +582,7 @@ linglong::utils::error::Result<QString> LinglongBuilder::buildStageDepend(Projec
     hostBasePath = BuilderConfig::instance()->layerPath({ baseRef.toLocalRefString(), "" });
     auto err = baseFetcher.fetch("", hostBasePath);
     if (err) {
-        return LINGLONG_ERR(err.code(), err.message());
+        return LINGLONG_ERR(err.message(), err.code());
     }
 
     // depends fetch
@@ -590,7 +590,7 @@ linglong::utils::error::Result<QString> LinglongBuilder::buildStageDepend(Projec
         DependFetcher df(depend, repo, printer, project);
         err = df.fetch("files", project->config().cacheRuntimePath("files"));
         if (err) {
-            return LINGLONG_ERR(err.code(), err.message());
+            return LINGLONG_ERR(err.message(), err.code());
         }
     }
     return hostBasePath;
@@ -599,6 +599,8 @@ linglong::utils::error::Result<QString> LinglongBuilder::buildStageDepend(Projec
 linglong::utils::error::Result<ocppi::runtime::config::types::Config>
 LinglongBuilder::buildStageConfigInit()
 {
+    LINGLONG_TRACE("init oci config");
+
     QFile builtinOCIConfigTemplateJSONFile(":/config.json");
     if (!builtinOCIConfigTemplateJSONFile.open(QIODevice::ReadOnly)) {
         // NOTE(black_desk): Go check qrc if this occurs.
@@ -611,11 +613,11 @@ LinglongBuilder::buildStageConfigInit()
 
     ocppi::runtime::config::ConfigLoader loader;
     auto r = loader.load(tmpStream);
-    if (!r.has_value()) {
+    if (!r) {
         printer.printMessage("builtin OCI configuration template is invalid.");
-        return LINGLONG_SERR(r.error());
+        return LINGLONG_ERR(r);
     }
-    return r.value();
+    return *r;
 }
 
 linglong::utils::error::Result<void>
@@ -626,6 +628,8 @@ LinglongBuilder::buildStageRuntime(ocppi::runtime::config::types::Config &r,
                                    const QString &overlayWorkDir,
                                    const QString &overlayMergeDir)
 {
+    LINGLONG_TRACE("handle runtime");
+
     util::ensureDir(overlayLowerDir);
     util::ensureDir(overlayUpperDir);
     util::ensureDir(overlayWorkDir);
@@ -663,8 +667,8 @@ LinglongBuilder::buildStageRuntime(ocppi::runtime::config::types::Config &r,
         };
         qDebug() << "run" << program << arguments.join(" ");
         auto ret = utils::command::Exec(program, arguments);
-        if (!ret.has_value()) {
-            return LINGLONG_EWRAP("mount runtime failed", ret.error());
+        if (!ret) {
+            return LINGLONG_ERR("mount runtime", ret);
         }
 
         // 使用容器hooks卸载fuse-overlayfs runtime
@@ -690,16 +694,17 @@ LinglongBuilder::buildStageRuntime(ocppi::runtime::config::types::Config &r,
     return LINGLONG_OK;
 }
 
-linglong::utils::error::Result<void>
+utils::error::Result<void>
 LinglongBuilder::buildStageSource(ocppi::runtime::config::types::Config &r, Project *project)
 {
+    LINGLONG_TRACE("process source");
 
     SourceFetcher sf(project->source, printer, project);
     if (project->source) {
         printer.printMessage("[Processing Source]");
         auto err = sf.fetch();
         if (err) {
-            return LINGLONG_ERR(-1, "fetch source failed");
+            return LINGLONG_ERR("fetch source failed");
         }
     }
     // 挂载tmp
@@ -737,7 +742,7 @@ LinglongBuilder::buildStageSource(ocppi::runtime::config::types::Config &r, Proj
     return LINGLONG_OK;
 }
 
-linglong::utils::error::Result<void>
+utils::error::Result<void>
 LinglongBuilder::buildStageEnvrionment(ocppi::runtime::config::types::Config &r,
                                        const Project &project,
                                        const BuilderConfig &buildConfig)
@@ -772,6 +777,7 @@ LinglongBuilder::buildStageEnvrionment(ocppi::runtime::config::types::Config &r,
     for (auto env : buildConfig.getBuildEnv()) {
         r.process->env->push_back(env.toStdString());
     }
+
     return LINGLONG_OK;
 }
 
@@ -814,6 +820,8 @@ LinglongBuilder::buildStageIDMapping(ocppi::runtime::config::types::Config &r)
 linglong::utils::error::Result<void> LinglongBuilder::buildStageRootfs(
   ocppi::runtime::config::types::Config &r, const QDir &workdir, const QString &hostBasePath)
 {
+    LINGLONG_TRACE("process rootfs");
+
     // 初始化rootfs目录
     workdir.mkdir("rootfs");
     workdir.mkdir("upper");
@@ -831,8 +839,8 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageRootfs(
     };
     qDebug() << "run" << program << arguments.join(" ") << r.hooks->poststop.has_value();
     auto mountRootRet = utils::command::Exec(program, arguments);
-    if (!mountRootRet.has_value()) {
-        return LINGLONG_EWRAP("exec fuse-overlayfs", mountRootRet.error());
+    if (!mountRootRet) {
+        return LINGLONG_ERR(mountRootRet);
     }
     // 使用容器hooks卸载overlayfs rootfs
     ocppi::runtime::config::types::Hook umountRootfsHook;
@@ -855,20 +863,22 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageRootfs(
 
 linglong::utils::error::Result<QSharedPointer<Project>> LinglongBuilder::buildStageProjectInit()
 {
+    LINGLONG_TRACE("init project");
+
     linglong::util::Error err;
     auto projectConfigPath =
       QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
 
     if (!QFileInfo::exists(projectConfigPath)) {
         printer.printMessage("ll-builder should run in the root directory of the linglong project");
-        return LINGLONG_ERR(-1, "linglong.yaml not found");
+        return LINGLONG_ERR("linglong.yaml not found");
     }
     auto [project, err2] = util::fromYAML<QSharedPointer<Project>>(projectConfigPath);
     if (err2) {
-        return LINGLONG_ERR(err2.code(), "cannot load project yaml");
+        return LINGLONG_ERR("load project yaml: " + err2.message(), err2.code());
     }
     if (!project->package || project->package->kind.isEmpty()) {
-        return LINGLONG_ERR(-1, "unknown package kind");
+        return LINGLONG_ERR("unknown package kind");
     }
 
     project->generateBuildScript();
@@ -881,13 +891,15 @@ linglong::utils::error::Result<QSharedPointer<Project>> LinglongBuilder::buildSt
 
 linglong::utils::error::Result<void> LinglongBuilder::build()
 {
+    LINGLONG_TRACE("build");
+
     auto projectRet = buildStageProjectInit();
-    if (!projectRet.has_value()) {
-        return LINGLONG_EWRAP("project init", projectRet.error());
+    if (!projectRet) {
+        return LINGLONG_ERR(projectRet);
     }
     auto configRet = buildStageConfigInit();
-    if (!configRet.has_value()) {
-        return LINGLONG_EWRAP("config init", configRet.error());
+    if (!configRet) {
+        return LINGLONG_ERR(configRet);
     }
     auto project = *projectRet;
     printer.printMessage("[Build Target]");
@@ -903,12 +915,12 @@ linglong::utils::error::Result<void> LinglongBuilder::build()
     printer.printMessage(QString("Url: %1").arg(BuilderConfig::instance()->remoteRepoEndpoint), 2);
 
     auto voidRet = buildStageClean(*project);
-    if (!voidRet.has_value()) {
-        return LINGLONG_EWRAP("clean build", voidRet.error());
+    if (!voidRet) {
+        return LINGLONG_ERR("clean build", voidRet);
     }
     auto basePathRet = buildStageDepend(project.get());
-    if (!basePathRet.has_value()) {
-        return LINGLONG_EWRAP("processing depend", basePathRet.error());
+    if (!basePathRet) {
+        return LINGLONG_ERR("processing depend", basePathRet);
     }
     auto hostBasePath = *basePathRet;
     auto containerConfig = *configRet;
@@ -931,34 +943,34 @@ linglong::utils::error::Result<void> LinglongBuilder::build()
                                 overlayUpperDir,
                                 overlayWorkDir,
                                 overlayPointDir);
-    if (!voidRet.has_value()) {
-        return LINGLONG_EWRAP("mount runtime", voidRet.error());
+    if (!voidRet) {
+        return LINGLONG_ERR(voidRet);
     }
     // 挂载源码并配置构建脚本
     voidRet = buildStageSource(containerConfig, project.get());
-    if (!voidRet.has_value()) {
-        return LINGLONG_EWRAP("mount source", voidRet.error());
+    if (!voidRet) {
+        return LINGLONG_ERR(voidRet);
     }
     // 配置环境变量
     voidRet = buildStageEnvrionment(containerConfig, *project, *BuilderConfig::instance());
     if (!voidRet.has_value()) {
-        return LINGLONG_EWRAP("config envrionment", voidRet.error());
+        return LINGLONG_ERR(voidRet);
     }
     // 配置uid和gid映射
     voidRet = buildStageIDMapping(containerConfig);
-    if (!voidRet.has_value()) {
-        return LINGLONG_EWRAP("id mapping", voidRet.error());
+    if (!voidRet) {
+        return LINGLONG_ERR(voidRet);
     }
     // 配置容器rootfs
     QTemporaryDir tmpDir;
     tmpDir.setAutoRemove(false);
     voidRet = buildStageRootfs(containerConfig, tmpDir.path(), hostBasePath);
-    if (!voidRet.has_value()) {
-        return LINGLONG_EWRAP("mount rootfs", voidRet.error());
+    if (!voidRet) {
+        return LINGLONG_ERR(voidRet);
     }
     // 运行容器
     voidRet = buildStageRunContainer(tmpDir.path(), ociCLI, containerConfig);
-    if (!voidRet.has_value()) {
+    if (!voidRet) {
         // 为避免容器启动失败，hook脚本未执行，手动再执行一次 umount
         if (project->package->kind != PackageKindApp) {
             qDebug() << "umount runtime";
@@ -967,12 +979,12 @@ linglong::utils::error::Result<void> LinglongBuilder::build()
         qDebug() << "umount rootfs";
         utils::command::Exec("umount",
                              { "--lazy", QString::fromStdString(containerConfig.root->path) });
-        return LINGLONG_EWRAP("run container", voidRet.error());
+        return LINGLONG_ERR(voidRet);
     }
     // 提交构建结果
     voidRet = buildStageCommitBuildOutput(project.get(), overlayUpperDir, overlayPointDir);
-    if (!voidRet.has_value()) {
-        return LINGLONG_EWRAP("commit build output", voidRet.error());
+    if (!voidRet) {
+        return LINGLONG_ERR(voidRet);
     }
 
     printer.printMessage(QString("Build %1 success").arg(project->package->id));

@@ -5,6 +5,7 @@
  */
 
 #include "linglong/package/layer_file.h"
+
 #include "linglong/package/layer_info.h"
 
 #include <QFileInfo>
@@ -33,13 +34,13 @@ LayerFile::~LayerFile()
 }
 
 utils::error::Result<QSharedPointer<LayerFile>> LayerFile::openLayer(const QString &path) noexcept
-{
-    try {
-        QSharedPointer<LayerFile> layerFile(new LayerFile(path));
-        return layerFile;
-    } catch (const std::exception &e) {
-        return LINGLONG_ERR(-1, e.what());
-    }
+
+try {
+    QSharedPointer<LayerFile> layerFile(new LayerFile(path));
+    return layerFile;
+} catch (const std::exception &e) {
+    LINGLONG_TRACE("open layer");
+    return LINGLONG_ERR(e);
 }
 
 void LayerFile::setCleanStatus(bool status) noexcept
@@ -49,27 +50,31 @@ void LayerFile::setCleanStatus(bool status) noexcept
 
 utils::error::Result<layer::LayerInfo> LayerFile::layerFileInfo() noexcept
 {
+    LINGLONG_TRACE("get layer file info");
+
     auto ret = layerInfoSize();
-    if (!ret.has_value()) {
-        return LINGLONG_EWRAP("failed to get layer file size ", ret.error());
+    if (!ret) {
+        return LINGLONG_ERR(ret);
     }
 
     auto rawData = this->read(qint64(*ret));
 
     auto layerInfo = fromJson(rawData);
-    if (!layerInfo.has_value()) {
-        return LINGLONG_EWRAP("failed to get layer info", layerInfo.error());
+    if (!layerInfo) {
+        return LINGLONG_ERR(layerInfo);
     }
-  
+
     return layerInfo;
 }
 
 utils::error::Result<quint32> LayerFile::layerInfoSize()
 {
+    LINGLONG_TRACE("get layer file info");
+
     // read from position magicNumber.size() everytime
     this->seek(magicNumber.size());
 
-    quint32 layerInfoSize;
+    quint32 layerInfoSize = 0;
     this->read(reinterpret_cast<char *>(&layerInfoSize), sizeof(quint32));
 
     return layerInfoSize;
@@ -77,9 +82,11 @@ utils::error::Result<quint32> LayerFile::layerInfoSize()
 
 utils::error::Result<quint32> LayerFile::layerOffset() noexcept
 {
+    LINGLONG_TRACE("get layer offset");
+
     auto size = layerInfoSize();
-    if (!size.has_value()) {
-        return LINGLONG_EWRAP("get LayerInfo size failed", size.error());
+    if (!size) {
+        return LINGLONG_ERR(size);
     }
 
     return magicNumber.size() + *size + sizeof(quint32);
@@ -87,10 +94,11 @@ utils::error::Result<quint32> LayerFile::layerOffset() noexcept
 
 utils::error::Result<void> LayerFile::saveTo(const QString &destination) noexcept
 {
+    LINGLONG_TRACE(QString("save layer file to %1").arg(destination));
     if (!this->copy(destination)) {
-        return LINGLONG_ERR(-1, QString("failed to save layer file to %1").arg(destination));
+        return LINGLONG_ERR("copy failed: " + this->errorString(), this->error());
     }
-    
+
     return LINGLONG_OK;
 }
 

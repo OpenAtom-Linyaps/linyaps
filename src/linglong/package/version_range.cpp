@@ -12,8 +12,8 @@ utils::error::Result<VersionRange> VersionRange::parse(const QString &raw) noexc
 try {
     return VersionRange(raw);
 } catch (const std::exception &e) {
-    auto err = LINGLONG_ERR(-1, e.what()).value();
-    return LINGLONG_EWRAP("invalid version range", err);
+    LINGLONG_TRACE("parse version range");
+    return LINGLONG_ERR(e);
 }
 
 VersionRange::VersionRange(const QString &raw)

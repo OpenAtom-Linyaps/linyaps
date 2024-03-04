@@ -12,15 +12,14 @@ namespace linglong::package {
 
 utils::error::Result<FuzzReference> FuzzReference::parse(const QString &raw) noexcept
 {
-    LINGLONG_TRACE_MESSAGE("parse fuzz reference string");
+    LINGLONG_TRACE("parse fuzz reference string");
 
     static QRegularExpression regexp(
       R"(^(?:(?<channel>[^:]*):)?(?<id>[^\/]*)(?:\/(?<version>[^\/]*)(?:\/(?<architecture>[^\/]*))?)?$)");
 
     auto matches = regexp.match(raw);
     if (not(matches.isValid() and matches.hasMatch())) {
-        auto err = LINGLONG_ERR(-1, "regexp mismatched.");
-        return LINGLONG_EWRAP(err.value());
+        return LINGLONG_ERR("regexp mismatched.");
     }
 
     std::optional<QString> channel;
@@ -29,14 +28,14 @@ utils::error::Result<FuzzReference> FuzzReference::parse(const QString &raw) noe
         channel = std::nullopt;
     }
 
-    auto id = matches.captured("id");
+    auto id = matches.captured("id"); // NOLINT
 
     std::optional<Version> version;
     auto versionStr = matches.captured("version");
     if ((!versionStr.isEmpty()) && versionStr != "unknown") {
         auto tmpVersion = Version::parse(versionStr);
-        if (!tmpVersion.has_value()) {
-            return LINGLONG_EWRAP(tmpVersion.error());
+        if (!tmpVersion) {
+            return LINGLONG_ERR(tmpVersion);
         }
         version = *tmpVersion;
     }
@@ -45,8 +44,8 @@ utils::error::Result<FuzzReference> FuzzReference::parse(const QString &raw) noe
     auto architectureStr = matches.captured("architecture");
     if ((!architectureStr.isEmpty()) && architectureStr != "unknown") {
         auto tmpArchitecture = Architecture::parse(architectureStr);
-        if (!tmpArchitecture.has_value()) {
-            return LINGLONG_EWRAP(tmpArchitecture.error());
+        if (!tmpArchitecture) {
+            return LINGLONG_ERR(tmpArchitecture);
         }
         architecture = *tmpArchitecture;
     }
@@ -56,14 +55,14 @@ utils::error::Result<FuzzReference> FuzzReference::parse(const QString &raw) noe
 
 utils::error::Result<FuzzReference>
 FuzzReference::create(const std::optional<QString> &channel,
-                      const QString &id,
+                      const QString &id, // NOLINT
                       const std::optional<Version> &version,
                       const std::optional<Architecture> &arch) noexcept
 try {
     return FuzzReference(channel, id, version, arch);
 } catch (const std::exception &e) {
-    auto err = LINGLONG_ERR(-1, e.what()).value();
-    return LINGLONG_EWRAP("invalid fuzz reference", err);
+    LINGLONG_TRACE("create fuzz reference");
+    return LINGLONG_ERR(e);
 }
 
 FuzzReference::FuzzReference(const std::optional<QString> &channel,

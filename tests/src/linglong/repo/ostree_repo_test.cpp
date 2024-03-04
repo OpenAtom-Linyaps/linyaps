@@ -30,11 +30,12 @@ namespace {
 // repository in a bash script to keep our code as unit test.
 utils::error::Result<QStringList> executeTestScript(QStringList args)
 {
+    LINGLONG_TRACE("execute test script");
+
     QProcess process;
     process.start("src/linglong/repo/ostree_repo_test.sh", args);
     if (!process.waitForFinished()) {
         return LINGLONG_ERR(
-          -1,
           QString("Run ostree repo test script with %1 failed: %2")
             .arg(QString(QJsonDocument(QJsonArray::fromStringList(args)).toJson()))
             .arg(process.errorString()));
@@ -49,7 +50,6 @@ utils::error::Result<QStringList> executeTestScript(QStringList args)
     }
 
     return LINGLONG_ERR(
-      -1,
       QString("Ostree repo test script with %1 failed.\nstdout:\n%2\nstderr:\n%3")
         .arg(
           QString(QJsonDocument(QJsonArray::fromStringList(args)).toJson(QJsonDocument::Compact)))
@@ -188,11 +188,6 @@ TEST_F(RepoTest, remoteLatestRef)
 }
 
 TEST_F(RepoTest, getRemoteRepoList)
-{
-    GTEST_SKIP();
-}
-
-TEST_F(RepoTest, getRemoteRefs)
 {
     GTEST_SKIP();
 }

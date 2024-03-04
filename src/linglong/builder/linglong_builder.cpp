@@ -336,17 +336,16 @@ linglong::utils::error::Result<void> LinglongBuilder::startContainer(
     return LINGLONG_OK;
 }
 
-linglong::util::Error LinglongBuilder::appimageConvert(
-  const std::
-    tuple<const QString &, const QString &, const QString &, const QString &, const QString &, bool>
-      &templateArgs)
+linglong::util::Error LinglongBuilder::appimageConvert(const QStringList &templateArgs)
 {
-    const auto file = std::get<0>(templateArgs);
-    const auto id = std::get<1>(templateArgs);
-    const auto name = std::get<2>(templateArgs);
-    const auto version = std::get<3>(templateArgs);
-    const auto description = std::get<4>(templateArgs);
-    const auto toBuild = std::get<5>(templateArgs);
+    const auto file = templateArgs.at(0);
+    const auto url = templateArgs.at(1);
+    const auto hash = templateArgs.at(2);
+    const auto id = templateArgs.at(3);
+    const auto name = templateArgs.at(4);
+    const auto version = templateArgs.at(5);
+    const auto description = templateArgs.at(6);
+    const auto scriptName = templateArgs.at(7);
 
     auto projectPath = QStringList{ QDir::currentPath(), name }.join(QDir::separator());
     auto configFilePath = QStringList{ projectPath, "linglong.yaml" }.join(QDir::separator());
@@ -364,17 +363,19 @@ linglong::util::Error LinglongBuilder::appimageConvert(
         return NewError(-1, "project already exists");
     }
 
-    QFileInfo fileInfo(file);
-    const auto &sourcefilePath = fileInfo.absoluteFilePath();
-    const auto &destinationFilePath = QDir(projectPath).filePath(fileInfo.fileName());
-
-    if (!QFileInfo::exists(sourcefilePath)) {
-        printer.printMessage("can not found appimage file");
-        return NewError(-1, "appimage file not found");
-    }
-
     // copy appimage file to project path
-    QFile::copy(sourcefilePath, destinationFilePath);
+    if (!file.isEmpty()) {
+        QFileInfo fileInfo(file);
+        const auto &sourcefilePath = fileInfo.absoluteFilePath();
+        const auto &destinationFilePath = QDir(projectPath).filePath(fileInfo.fileName());
+
+        if (!QFileInfo::exists(sourcefilePath)) {
+            printer.printMessage("can not found appimage file");
+            return NewError(-1, "appimage file not found");
+        }
+
+        QFile::copy(sourcefilePath, destinationFilePath);
+    }
 
     if (QFileInfo::exists(templateFilePath)) {
         QFile::copy(templateFilePath, configFilePath);
@@ -406,6 +407,12 @@ linglong::util::Error LinglongBuilder::appimageConvert(
       ? project->package->description.toStdString()
       : description.toStdString();
 
+    if (!(url.isEmpty() && hash.isEmpty())) {
+        node["source"]["kind"] = url.isEmpty() ? project->source->kind.toStdString() : "file";
+        node["source"]["url"] = url.isEmpty() ? "" : url.toStdString();
+        node["source"]["digest"] = url.isEmpty() ? "" : hash.toStdString();
+    }
+
     // fixme: use qt file stream
     std::ofstream fout(configFilePath.toStdString());
     fout << node;
@@ -413,7 +420,7 @@ linglong::util::Error LinglongBuilder::appimageConvert(
 
     // if user not specified -o option, export linglong .layer(.uab) directly, or generate
     // linglong.yaml and convert.sh
-    if (toBuild) {
+    if (scriptName.isEmpty()) {
         linglong::builder::BuilderConfig::instance()->setProjectRoot(projectPath);
 
         err = build();
@@ -433,7 +440,7 @@ linglong::util::Error LinglongBuilder::appimageConvert(
             return err;
         }
     } else {
-        auto scriptFilePath = QStringList{ projectPath, "convert.sh" }.join(QDir::separator());
+        auto scriptFilePath = QStringList{ projectPath, scriptName }.join(QDir::separator());
 
         // copy convert.sh to project path
         QFile::copy(":/convert.sh", scriptFilePath);

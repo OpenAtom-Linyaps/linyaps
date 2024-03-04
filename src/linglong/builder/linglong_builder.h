@@ -57,12 +57,7 @@ public:
 
     linglong::util::Error track() override;
 
-    linglong::util::Error appimageConvert(const std::tuple<const QString &,
-                                                           const QString &,
-                                                           const QString &,
-                                                           const QString &,
-                                                           const QString &,
-                                                           bool> &templateArgs);
+    linglong::util::Error appimageConvert(const QStringList &templateArgs);
 
 private:
     repo::OSTreeRepo &repo;

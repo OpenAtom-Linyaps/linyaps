@@ -44,7 +44,7 @@ int main(int argc, char **argv)
     parser.addOptions({ optVerbose });
     parser.addHelpOption();
 
-    QStringList subCommandList = { "create", "build", "run", "export", "push", "generate" , "convert"};
+    QStringList subCommandList = { "create", "build", "run", "export", "push", "convert"};
 
     parser.addPositionalArgument("subcommand",
                                  subCommandList.join("\n"),
@@ -80,9 +80,18 @@ int main(int argc, char **argv)
         { "convert",
           [&](QCommandLineParser &parser) -> int {
               parser.clearPositionalArguments();
-              auto pkgFile = QCommandLineOption({ "f", "file" },
-                                                "app package file",
-                                                "*.deb,*.AppImage(*.appimage)");
+              auto pkgFile =
+                QCommandLineOption({ "f", "file" },
+                                   "app package file, it not required option, you can ignore"
+                                   "this option when you set --url option and --hash option",
+                                   "*.deb,*.AppImage(*.appimage)");
+              auto pkgUrl = QCommandLineOption({ "u", "url" },
+                                               "pkg url, it not required option, you can ignore"
+                                               "this option when you set -f option",
+                                               "pkg url");
+              auto pkgHash = QCommandLineOption({ "hs", "hash" },
+                                                "pkg hash value, it must be used with --url option",
+                                                "pkg hash value");
               auto pkgID =
                 QCommandLineOption({ "i", "id" }, "the unique name of the app", "app id");
               auto pkgName =
@@ -96,10 +105,18 @@ int main(int argc, char **argv)
               auto scriptOpt =
                 QCommandLineOption({ "o", "output" },
                                    "not required option, it will "
-                                   "generate linglong.yaml and script(convert.sh),you can modify "
+                                   "generate linglong.yaml and script, you can modify "
                                    "linglong.yaml,then enter the directory(app name) and execute "
-                                   "the script to generate the linglong .layer(.uab)");
-              parser.addOptions({ pkgFile, pkgID, pkgName, pkgVersion, pkgDescription, scriptOpt });
+                                   "the script to generate the linglong .layer(.uab)",
+                                   "script name");
+              parser.addOptions({ pkgFile,
+                                  pkgUrl,
+                                  pkgHash,
+                                  pkgID,
+                                  pkgName,
+                                  pkgVersion,
+                                  pkgDescription,
+                                  scriptOpt });
               parser.addPositionalArgument(
                 "convert",
                 "convert app with (deb,AppImage(appimage)) format to linglong format, you can "
@@ -108,21 +125,22 @@ int main(int argc, char **argv)
 
               parser.process(app);
 
-              // file option is required option
-              if (!(parser.isSet(pkgFile))) {
-                  printer.printMessage("package file option is required");
+              // file option or url option is required option
+              if (!parser.isSet(pkgFile) && !parser.isSet(pkgUrl)) {
+                  printer.printMessage("file option or url option is required");
                   parser.showHelp(-1);
-                  return NewError(-1, "need specify package file option").code();
+                  return -1;
               }
 
-              auto file = parser.value(pkgFile);
-              auto id = parser.value(pkgID);
-              auto name = parser.value(pkgName);
-              auto version = parser.value(pkgVersion);
-              auto description = parser.value(pkgDescription);
-              auto builded = !parser.isSet(scriptOpt);
+              // hash option is required option when use url option
+              if (parser.isSet(pkgUrl) && !parser.isSet(pkgHash)) {
+                  printer.printMessage("hash option is required when use url option");
+                  parser.showHelp(-1);
+                  return -1;
+              }
 
-              QFileInfo fileInfo(file);
+              QFileInfo fileInfo(parser.isSet(pkgFile) ? parser.value(pkgFile)
+                                                       : parser.value(pkgUrl));
               auto fileSuffix = fileInfo.suffix();
               auto appImageFileType = fileSuffix == "AppImage" || fileSuffix == "appimage";
               auto debFileType = fileSuffix == "deb";
@@ -132,16 +150,19 @@ int main(int argc, char **argv)
                                                "specify (deb,AppImage(appimage)) file")
                                          .arg(fileSuffix));
                   parser.showHelp(-1);
-                  return NewError(-1, "unsupported file type").code();
+                  return -1;
               }
 
               linglong::util::Error err;
 
               if (parser.isSet(pkgID) || parser.isSet(pkgName) || parser.isSet(pkgVersion)
-                  || parser.isSet(pkgDescription)) {
+                  || parser.isSet(pkgDescription) || parser.isSet(scriptOpt)) {
                   if (appImageFileType) {
                       err = builder.appimageConvert(
-                        std::tie(file, id, name, version, description, builded));
+                        QStringList()
+                        << parser.value(pkgFile) << parser.value(pkgUrl) << parser.value(pkgHash)
+                        << parser.value(pkgID) << parser.value(pkgName) << parser.value(pkgVersion)
+                        << parser.value(pkgDescription) << parser.value(scriptOpt));
                   } else if (debFileType) {
                       // TODO: implement deb convert
                   } else {

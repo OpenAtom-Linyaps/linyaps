@@ -308,12 +308,12 @@ int main(int argc, char **argv)
                   std::ofstream fout(projectConfigPath.toStdString());
                   fout << node;
               }
-              auto err = builder.build();
-              if (err) {
-                  printer.printErr(LINGLONG_ERR(err.code(), err.message()).value());
+              auto ret = builder.build();
+              if (!ret.has_value()) {
+                  printer.printErr(ret.error());
+                  return ret.error().code();
               }
-
-              return err.code();
+              return 0;
           } },
         { "run",
           [&](QCommandLineParser &parser) -> int {

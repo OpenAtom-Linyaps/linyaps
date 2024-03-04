@@ -75,7 +75,7 @@ linglong::utils::error::Result<void> LinglongBuilder::commitBuildOutput(Project 
                                                                         const QString &upperdir,
                                                                         const QString &workdir)
 {
-    auto output = project->config().cacheInstallPath("files");
+    auto output = project->config().cacheDevelLayer("files");
     auto lowerDir = project->config().cacheAbsoluteFilePath({ "overlayfs", "lower" });
     // if combine runtime, lower is ${PROJECT_CACHE}/runtime/files
     if (PackageKindRuntime == project->package->kind) {
@@ -110,101 +110,113 @@ linglong::utils::error::Result<void> LinglongBuilder::commitBuildOutput(Project 
         QProcess::execute("umount", { "--lazy", output });
     });
 
-    auto entriesPath = project->config().cacheInstallPath("entries");
+    // split files which in devel layer to runtime layer
+    auto splitFile = [](Project *project) -> linglong::utils::error::Result<void> {
+        // get install file rule
+        QStringList installRules;
+        QStringList installedFiles;
 
-    auto modifyConfigFile = [](const QString &srcPath,
-                               const QString &targetPath,
-                               const QString &fileType,
-                               const QString &appId) -> util::Error {
-        QDir configDir(srcPath);
-        auto configFileInfoList = configDir.entryInfoList({ fileType }, QDir::Files);
-
-        linglong::util::ensureDir(targetPath);
-
-        for (auto const &fileInfo : configFileInfoList) {
-            auto desktopEntry = utils::xdg::DesktopEntry::New(fileInfo.filePath());
-            if (!desktopEntry.has_value()) {
-                return NewError(desktopEntry.error().code(), "file to config not exists");
+        // if ${PROJECT_ROOT}/${appid}.install is not exist, copy all files
+        const auto installRulePath = QStringList{ project->config().rootPath(),
+                                                  QString("%1.install").arg(project->package->id) }
+                                       .join(QDir::separator());
+        if (!QFileInfo(installRulePath).exists()) {
+            installRules << QStringList{ project->config().targetInstallPath(""), "*" }.join(
+              QDir::separator());
+        } else {
+            QFile configFile(installRulePath);
+            if (!configFile.open(QIODevice::ReadOnly)) {
+                return LINGLONG_ERR(configFile.error(),
+                                    configFile.errorString() + " " + configFile.fileName());
             }
+            installRules.append(QString(configFile.readAll()).split('\n'));
+            // remove empty or duplicate lines
+            installRules.removeAll("");
+            installRules.removeDuplicates();
+        }
 
-            // set all section
-            auto configSections = desktopEntry->groups();
-            for (auto section : configSections) {
-                auto exec = desktopEntry->getValue<QString>("Exec", section);
-                if (exec.has_value()) {
-                    // TODO(black_desk): update to new CLI
-                    exec = QString("ll-cli run %1 --exec %2").arg(appId, *exec);
-                    desktopEntry->setValue("Exec", *exec, section);
+        const QString src = project->config().cacheDevelLayer("files");
+        const QString dest = project->config().cacheRuntimeLayer("files");
+        const QString prefix = project->config().targetInstallPath("");
+        for (auto rule : installRules) {
+            // convert prefix in container to real path in host
+            // /opt/apps/${appid} to $PROJECT_ROOT/.../files
+
+            rule.replace(prefix, src);
+            util::ensureDir(dest);
+            // reverse files in src
+            QDirIterator it(src, QDirIterator::Subdirectories);
+            while (it.hasNext()) {
+                it.next();
+
+                qDebug() << QDir::match(rule, it.fileInfo().absoluteFilePath()) << rule << it.fileInfo().absoluteFilePath();
+                if (!QDir::match(rule, it.fileInfo().absoluteFilePath()))
+                    continue;
+
+                const QString dstPath = it.fileInfo().absoluteFilePath().replace(src, dest);
+                if (it.fileInfo().isDir()) {
+                    qDebug() << "matched dirs" << it.fileInfo().absoluteFilePath();
+                    QDir().mkpath(dstPath);
+                    continue;
                 }
+                if (it.fileInfo().isSymLink()) {
+                    qDebug() << "matched symlinks" << it.fileInfo().absoluteFilePath();
+                    char buf[PATH_MAX];
+                    auto size = readlink(it.fileInfo().filePath().toStdString().c_str(),
+                                         buf,
+                                         sizeof(buf) - 1);
+                    if (size == -1) {
+                        qCritical() << "readlink failed! " << it.fileInfo().filePath();
+                        continue;
+                    }
 
-                // The section TryExec affects starting from the launcher, set it to null.
-                auto tryExec = desktopEntry->getValue<QString>("TryExec", section);
+                    buf[size] = '\0';
+                    QFileInfo originFile(it.fileInfo().readLink());
+                    QString newLinkFile = dstPath;
 
-                if (tryExec.has_value()) {
-                    desktopEntry->setValue<QString>("TryExec", BINDIR "/ll-cli");
+                    if (QString(buf).startsWith("/")) {
+                        if (!QFile::link(it.fileInfo().readLink(), newLinkFile))
+                            return LINGLONG_ERR(-1, "link file failed, absolute path");
+                    } else {
+                        // caculator the relative path
+                        QDir linkFileDir(it.fileInfo().dir());
+                        QString relativePath = linkFileDir.relativeFilePath(originFile.path());
+                        auto newOriginFile = relativePath.endsWith("/")
+                          ? relativePath + originFile.fileName()
+                          : relativePath + "/" + originFile.fileName();
+                        qDebug() << "link" << newOriginFile << "to" << newLinkFile;
+                        if (!QFile::link(newOriginFile, newLinkFile))
+                            return LINGLONG_ERR(-1, "link file failed, relative path");
+                    }
+                    installedFiles.append(dstPath);
+                    continue;
                 }
-
-                desktopEntry->setValue<QString>("X-linglong", appId);
-
-                auto result = desktopEntry->saveToFile(
-                  QStringList{ targetPath, fileInfo.fileName() }.join(QDir::separator()));
-                if (!result.has_value()) {
-                    return NewError(result.error().code(), result.error().message());
+                if (it.fileInfo().isFile()) {
+                    qDebug() << "matched files" << it.fileInfo().absoluteFilePath();
+                    if (!QFile::copy(it.fileInfo().absoluteFilePath(), dstPath))
+                        return LINGLONG_ERR(-1, "copy file failed");
+                    installedFiles.append(dstPath);
                 }
             }
         }
-        return Success();
-    };
 
-    auto appId = project->package->id;
-    // modify desktop file
-    auto desktopFilePath = QStringList{ output, "share/applications" }.join(QDir::separator());
-    auto desktopFileSavePath = QStringList{ entriesPath, "applications" }.join(QDir::separator());
-    auto err = modifyConfigFile(desktopFilePath, desktopFileSavePath, "*.desktop", appId);
-    if (err) {
-        return LINGLONG_ERR(err.code(), "modify config file: " + err.message());
-    }
-
-    // modify context-menus file
-    auto contextFilePath =
-      QStringList{ output, "share/applications/context-menus" }.join(QDir::separator());
-    auto contextFileSavePath = contextFilePath;
-    err = modifyConfigFile(contextFilePath, contextFileSavePath, "*.conf", appId);
-    if (err) {
-        return LINGLONG_ERR(err.code(), "modify desktop file: " + err.message());
-    }
-
-    auto moveDir = [](const QStringList targetList,
-                      const QString &srcPath,
-                      const QString &destPath) -> linglong::util::Error {
-        for (auto target : targetList) {
-            auto srcDir = QStringList{ srcPath, target }.join(QDir::separator());
-            auto destDir = QStringList{ destPath, target }.join(QDir::separator());
-
-            if (util::dirExists(srcDir)) {
-                util::copyDir(srcDir, destDir);
-                util::removeDir(srcDir);
-            }
+        installedFiles.replaceInStrings(src, prefix);
+        // save all installed file path to ${appid}.install
+        const auto installRuleSavePath =
+          QStringList{ project->config().cacheDevelLayer(""),
+                       QString("%1.install").arg(project->package->id) }
+            .join(QDir::separator());
+        QFile configFile(installRuleSavePath);
+        if (!configFile.open(QIODevice::WriteOnly)) {
+            return LINGLONG_ERR(configFile.error(),
+                                configFile.errorString() + " " + configFile.fileName());
+        }
+        if (configFile.write(installedFiles.join('\n').toLocal8Bit()) < 0) {
+            return LINGLONG_ERR(configFile.error(), configFile.errorString());
         }
 
-        return Success();
+        return LINGLONG_OK;
     };
-
-    // link files/share to entries/share/
-    linglong::util::linkDirFiles(project->config().cacheInstallPath("files/share"), entriesPath);
-    // link files/lib/systemd to entries/systemd
-    linglong::util::linkDirFiles(
-      project->config().cacheInstallPath("files/lib/systemd/user"),
-      QStringList{ entriesPath, "systemd/user" }.join(QDir::separator()));
-
-    // Move runtime-install/files/debug to devel-install/files/debug
-    linglong::util::ensureDir(project->config().cacheInstallPath("devel-install", "files"));
-    err = moveDir({ "debug", "include", "mkspec ", "cmake", "pkgconfig" },
-                  project->config().cacheInstallPath("files"),
-                  project->config().cacheInstallPath("devel-install", "files"));
-    if (err) {
-        return LINGLONG_ERR(err.code(), "move debug file: " + err.message());
-    }
 
     auto createInfo = [](Project *project) -> linglong::util::Error {
         QSharedPointer<package::Info> info(new package::Info);
@@ -222,8 +234,8 @@ linglong::utils::error::Result<void> LinglongBuilder::commitBuildOutput(Project 
         info->arch = QStringList{ project->config().targetArch() };
 
         info->module = "runtime";
-        info->size = linglong::util::sizeOfDir(project->config().cacheInstallPath(""));
-        QFile infoFile(project->config().cacheInstallPath("info.json"));
+        info->size = linglong::util::sizeOfDir(project->config().cacheRuntimeLayer(""));
+        QFile infoFile(project->config().cacheRuntimeLayer("info.json"));
         if (!infoFile.open(QIODevice::WriteOnly)) {
             return NewError(infoFile.error(), infoFile.errorString() + " " + infoFile.fileName());
         }
@@ -235,8 +247,8 @@ linglong::utils::error::Result<void> LinglongBuilder::commitBuildOutput(Project 
         infoFile.close();
 
         info->module = "devel";
-        info->size = linglong::util::sizeOfDir(project->config().cacheInstallPath("devel-install"));
-        QFile develInfoFile(project->config().cacheInstallPath("devel-install", "info.json"));
+        info->size = linglong::util::sizeOfDir(project->config().cacheDevelLayer(""));
+        QFile develInfoFile(project->config().cacheDevelLayer("info.json"));
         if (!develInfoFile.open(QIODevice::WriteOnly)) {
             return NewError(develInfoFile.error(),
                             develInfoFile.errorString() + " " + develInfoFile.fileName());
@@ -246,21 +258,39 @@ linglong::utils::error::Result<void> LinglongBuilder::commitBuildOutput(Project 
         }
         develInfoFile.close();
         QFile sourceConfigFile(project->configFilePath);
-        if (!sourceConfigFile.copy(project->config().cacheInstallPath("linglong.yaml"))) {
+        if (!sourceConfigFile.copy(project->config().cacheRuntimeLayer("linglong.yaml"))) {
             return NewError(sourceConfigFile.error(), sourceConfigFile.errorString());
         }
 
         return Success();
     };
 
-    err = createInfo(project);
+    auto splitStatus = splitFile(project);
+    if (!splitStatus.has_value()) {
+        return LINGLONG_EWRAP("split file failed", splitStatus.error());
+    }
+
+    // link devel-install/files/share to devel-install/entries/share/
+    linglong::util::linkDirFiles(project->config().cacheDevelLayer("files/share"),
+                                 project->config().cacheDevelLayer("entries"));
+    // link devel-install/files/lib/systemd to devel-install/entries/systemd
+    linglong::util::linkDirFiles(project->config().cacheDevelLayer("files/lib/systemd/user"),
+                                 project->config().cacheDevelLayer("entries/systemd/user"));
+
+    linglong::util::linkDirFiles(project->config().cacheRuntimeLayer("files/share"),
+                                 project->config().cacheRuntimeLayer("entries"));
+    // link runtime-install/files/lib/systemd to runtime-install/entries/systemd
+    linglong::util::linkDirFiles(project->config().cacheRuntimeLayer("files/lib/systemd/user"),
+                                 project->config().cacheRuntimeLayer("entries/systemd/user"));
+
+    auto err = createInfo(project);
     if (err) {
         return LINGLONG_ERR(err.code(), "create info " + err.message());
     }
     auto refRuntime = project->refWithModule("runtime");
     refRuntime.channel = "main";
-    qDebug() << "importDirectory " << project->config().cacheInstallPath("");
-    auto ret = repo.importDirectory(refRuntime, project->config().cacheInstallPath(""));
+    qDebug() << "importDirectory " << project->config().cacheRuntimeLayer("");
+    auto ret = repo.importDirectory(refRuntime, project->config().cacheRuntimeLayer(""));
 
     if (!ret.has_value()) {
         return LINGLONG_EWRAP("import runtime", ret.error());
@@ -268,13 +298,13 @@ linglong::utils::error::Result<void> LinglongBuilder::commitBuildOutput(Project 
 
     auto refDevel = project->refWithModule("devel");
     refDevel.channel = "main";
-    qDebug() << "importDirectory " << project->config().cacheInstallPath("devel-install", "");
-    ret = repo.importDirectory(refDevel, project->config().cacheInstallPath("devel-install", ""));
+    qDebug() << "importDirectory " << project->config().cacheDevelLayer("");
+    ret = repo.importDirectory(refDevel, project->config().cacheDevelLayer(""));
     if (!ret.has_value()) {
         return LINGLONG_EWRAP("import devel", ret.error());
     }
     return LINGLONG_OK;
-};
+}
 
 package::Ref fuzzyRef(QSharedPointer<const JsonSerialize> obj)
 {
@@ -484,11 +514,11 @@ linglong::util::Error LinglongBuilder::build()
     }
     // initialize some directories
     util::removeDir(project->config().cacheRuntimePath({}));
-    util::removeDir(project->config().cacheInstallPath(""));
-    util::removeDir(project->config().cacheInstallPath("devel-install", ""));
+    util::removeDir(project->config().cacheRuntimeLayer(""));
+    util::removeDir(project->config().cacheDevelLayer(""));
     util::removeDir(project->config().cacheAbsoluteFilePath({ "overlayfs" }));
-    util::ensureDir(project->config().cacheInstallPath(""));
-    util::ensureDir(project->config().cacheInstallPath("devel-install", ""));
+    util::ensureDir(project->config().cacheRuntimeLayer(""));
+    util::ensureDir(project->config().cacheDevelLayer(""));
     util::ensureDir(project->config().cacheAbsoluteFilePath(
       { "overlayfs", "up", project->config().targetInstallPath("") }));
 

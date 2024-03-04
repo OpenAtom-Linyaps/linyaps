@@ -8,6 +8,7 @@
 
 #include "builder_config.h"
 #include "linglong/package/ref.h"
+#include "linglong/package/architecture.h"
 #include "linglong/util/file.h"
 #include "linglong/util/qserializer/yaml.h"
 #include "linglong/util/sysinfo.h"
@@ -259,7 +260,7 @@ QString Project::Config::cacheRuntimePath(const QString &subPath) const
     return cacheAbsoluteFilePath({ "runtime", subPath });
 }
 
-QString Project::Config::cacheInstallPath(const QString &subPath) const
+QString Project::Config::cacheRuntimeLayer(const QString &subPath) const
 {
     if (PackageKindRuntime == project->package->kind) {
         return cacheAbsoluteFilePath({ "runtime-install", subPath });
@@ -271,14 +272,14 @@ QString Project::Config::cacheInstallPath(const QString &subPath) const
     return QString();
 }
 
-QString Project::Config::cacheInstallPath(const QString &moduleDir, const QString &subPath) const
+QString Project::Config::cacheDevelLayer(const QString &subPath) const
 {
     if (PackageKindRuntime == project->package->kind) {
-        return cacheAbsoluteFilePath({ moduleDir, subPath });
+        return cacheAbsoluteFilePath({ "devel-install", subPath });
     } else if (PackageKindLib == project->package->kind) {
-        return cacheAbsoluteFilePath({ moduleDir, subPath });
+        return cacheAbsoluteFilePath({ "devel-install", subPath });
     } else if (PackageKindApp == project->package->kind) {
-        return cacheAbsoluteFilePath({ moduleDir, subPath });
+        return cacheAbsoluteFilePath({ "devel-install", subPath });
     };
     return QString();
 }
@@ -286,6 +287,12 @@ QString Project::Config::cacheInstallPath(const QString &moduleDir, const QStrin
 QString Project::Config::targetArch() const
 {
     return BuilderConfig::instance()->getBuildArch();
+}
+
+QString Project::Config::gnuTriplet() const
+{
+    package::Architecture arch(BuilderConfig::instance()->getBuildArch());
+    return arch.getTriplet();
 }
 
 QString Project::Config::targetInstallPath(const QString &sub) const

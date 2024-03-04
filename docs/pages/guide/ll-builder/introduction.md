@@ -37,4 +37,5 @@ Arguments:
                  run
                  export
                  push
+                 convert
 ```

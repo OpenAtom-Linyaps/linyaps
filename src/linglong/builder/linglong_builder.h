@@ -35,7 +35,7 @@ public:
 
     linglong::util::Error create(const QString &projectName) override;
 
-    linglong::util::Error build() override;
+    linglong::utils::error::Result<void> build() override;
 
     linglong::util::Error exportLayer(const QString &destination) override;
 
@@ -64,17 +64,36 @@ private:
     cli::Printer &printer;
     ocppi::cli::CLI &ociCLI;
     service::AppManager &appManager;
-    linglong::utils::error::Result<void> commitBuildOutput(Project *project,
-                                                           const QString &upperdir,
-                                                           const QString &workdir);
 
-    static linglong::utils::error::Result<void>
-    startContainer(QDir workdir, ocppi::cli::CLI &cli, ocppi::runtime::config::types::Config &r);
     static auto toJSON(const ocppi::runtime::config::types::Mount &) -> nlohmann::json;
     static auto toJSON(const ocppi::runtime::config::types::Config &) -> nlohmann::json;
 
-    linglong::utils::error::Result<void> buildStageEnvrionment(
-      ocppi::runtime::config::types::Config &, const Project &, const BuilderConfig &);
+    linglong::utils::error::Result<QSharedPointer<Project>> buildStageProjectInit();
+    linglong::utils::error::Result<ocppi::runtime::config::types::Config> buildStageConfigInit();
+    linglong::utils::error::Result<void> buildStageClean(const Project &project);
+    linglong::utils::error::Result<QString> buildStageDepend(Project *project);
+    linglong::utils::error::Result<void> buildStageRuntime(ocppi::runtime::config::types::Config &r,
+                                                           const Project &project,
+                                                           const QString &overlayLowerDir,
+                                                           const QString &overlayUpperDir,
+                                                           const QString &overlayWorkDir,
+                                                           const QString &overlayMergeDir);
+    linglong::utils::error::Result<void> buildStageSource(ocppi::runtime::config::types::Config &r,
+                                                          Project *project);
+    linglong::utils::error::Result<void>
+    buildStageEnvrionment(ocppi::runtime::config::types::Config &r,
+                          const Project &project,
+                          const BuilderConfig &config);
+    linglong::utils::error::Result<void>
+    buildStageIDMapping(ocppi::runtime::config::types::Config &r);
+    linglong::utils::error::Result<void> buildStageRootfs(ocppi::runtime::config::types::Config &r,
+                                                          const QDir &workdir,
+                                                          const QString &hostBasePath);
+    linglong::utils::error::Result<void> buildStageRunContainer(
+      QDir workdir, ocppi::cli::CLI &cli, ocppi::runtime::config::types::Config &r);
+    linglong::utils::error::Result<void> buildStageCommitBuildOutput(Project *project,
+                                                                     const QString &upperdir,
+                                                                     const QString &workdir);
 };
 
 // TODO: remove later

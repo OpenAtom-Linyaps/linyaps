@@ -8,6 +8,7 @@
 #define LINGLONG_BUILDER_BUILDER_BUILDER_H_
 
 #include "linglong/util/error.h"
+#include "linglong/utils/error/error.h"
 
 #include <QObject>
 
@@ -21,7 +22,7 @@ public:
 
     virtual linglong::util::Error create(const QString &projectName) = 0;
 
-    virtual linglong::util::Error build() = 0;
+    virtual linglong::utils::error::Result<void> build() = 0;
 
     virtual linglong::util::Error exportLayer(const QString &destination) = 0;
 

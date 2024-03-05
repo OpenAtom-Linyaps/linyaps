@@ -3,4 +3,4 @@
 
 [submodule "tools/quicktype"]
 	path = tools/quicktype
-	url = https://github.com/black-desk/quicktype.git
+	url = https://github.com/glideapps/quicktype.git

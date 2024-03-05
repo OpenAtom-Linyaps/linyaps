@@ -1,8 +1,12 @@
 # 玲珑
 
+[English](./README.md) / 中文
+
 玲珑是深度发行版本的默认应用容器工具。
 
-玲珑是玲珑塔的简称，既表示容器能对应用有管控作用，也表明了应用/运行时/系统像塔一样分层的思想。
+玲珑是玲珑塔的简称，
+既表示容器能对应用有管控作用，
+也表明了应用/运行时/系统像塔一样分层的思想。
 
 ## 获取帮助
 
@@ -17,8 +21,11 @@
 
 我们鼓励大家报告问题和贡献代码。
 
-- [Contribution guide for developers](https://github.com/linuxdeepin/developer-center/wiki/Contribution-Guidelines-for-Developers-en) (English)
-- [开发者代码贡献指南](https://github.com/linuxdeepin/developer-center/wiki/Contribution-Guidelines-for-Developers) (中文)
+- [开发者代码贡献指南][指南]
+
+[指南]: https://github.com/linuxdeepin/developer-center/wiki/Contribution-Guidelines-for-Developers
+
+[BUILD.zh_CN.md](./BUILD.zh_CN.md) 中记录了从源码构建玲珑的方法.
 
 ## 许可证
 

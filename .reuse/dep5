@@ -55,9 +55,14 @@ License: CC0-1.0
 Copyright: None
 
 # Documents
-Files: docs/* *README.md *README.zh_CN.md *INSTALL.md
+Files: docs/* *.md
 License: CC-BY-4.0
 Copyright: UnionTech Software Technology Co., Ltd.
+
+# CMakePresets
+Files: CMakePresets.json
+License: CC0-1.0
+Copyright: None
 
 # debian packaging configurations
 Files: debian/*

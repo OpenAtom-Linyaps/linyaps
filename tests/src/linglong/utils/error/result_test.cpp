@@ -19,6 +19,8 @@ TEST(Error, New)
 
     ASSERT_EQ(res.has_value(), false);
     ASSERT_EQ(res.error().code(), -1);
+    ASSERT_EQ(res.error().message().contains("LINGLONG_ERR"), true);
+    ASSERT_EQ(res.error().message().contains("message"), true);
 }
 
 TEST(Error, Wrap)
@@ -39,4 +41,26 @@ TEST(Error, Wrap)
     }();
 
     ASSERT_EQ(res.has_value(), false);
+    ASSERT_EQ(res.error().code(), -1);
+    ASSERT_EQ(res.error().message().contains("LINGLONG_ERR"), true);
+    ASSERT_EQ(res.error().message().contains("message1"), true);
+    ASSERT_EQ(res.error().message().contains("message2"), true);
+
+    res = []() -> Result<void> {
+        LINGLONG_TRACE("test LINGLONG_ERR");
+        return LINGLONG_ERR(std::runtime_error("runtime error"));
+    }();
+
+    ASSERT_EQ(res.has_value(), false);
+    ASSERT_EQ(res.error().code(), -1);
+    ASSERT_EQ(res.error().message().contains("runtime error"), true);
+
+    res = []() -> Result<void> {
+        LINGLONG_TRACE("test LINGLONG_ERR");
+        return LINGLONG_ERR("error");
+    }();
+
+    ASSERT_EQ(res.has_value(), false);
+    ASSERT_EQ(res.error().code(), -1);
+    ASSERT_EQ(res.error().message().contains("error"), true);
 }

@@ -10,23 +10,21 @@
             "name": "release",
             "displayName": "Default configuration",
             "description": "Configure linglong for installing from source.",
-            "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/build-release",
-            "environment": {
-                "CXXFLAGS": "-Wall -Wextra -Wpedantic -O2"
+            "cacheVariables": {
+                "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -O2",
+                "CMAKE_COLOR_DIAGNOSTICS": true
             }
         },
         {
             "name": "debug",
             "displayName": "Debug configuration",
             "description": "Configure linglong for development and debugging.",
-            "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
-                "CMAKE_EXPORT_COMPILE_COMMANDS": true
-            },
-            "environment": {
-                "CXXFLAGS": "-Wall -Wextra -Wpedantic -Og -g -fsanitize=address,undefined"
+                "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -Og -g -fsanitize=address,undefined",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+                "CMAKE_COLOR_DIAGNOSTICS": true
             }
         }
     ],
@@ -41,8 +39,7 @@
             "name": "debug",
             "displayName": "Debug build",
             "description": "Build linglong for development and debugging.",
-            "configurePreset": "debug",
-            "jobs": 0
+            "configurePreset": "debug"
         }
     ],
     "testPresets": [
@@ -61,8 +58,7 @@
             "description": "Test linglong for developing and debuging.",
             "configurePreset": "debug",
             "execution": {
-                "stopOnFailure": true,
-                "jobs": 0
+                "stopOnFailure": true
             },
             "output": {
                 "debug": true

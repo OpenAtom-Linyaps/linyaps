@@ -10,6 +10,8 @@ sudo cmake --install build-release
 如果你想开发或调试玲珑：
 
 ```bash
+export CMAKE_CXX_COMPILIER_LAUNCHER="$(command -v ccache)"
+
 # 配置，构建然后运行测试
 cmake --workflow --preset debug
 

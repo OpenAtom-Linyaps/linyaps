@@ -10,6 +10,14 @@ sudo cmake --install build-release
 For developing or debugging linglong:
 
 ```bash
+
+# Use ccache and ninja if available.
+# You might want add this to the rc file of your shell.
+export CMAKE_CXX_COMPILER_LAUNCHER=="$(command -v ccache 2>/dev/null)"
+if command -v ninja &>/dev/null; then
+        export CMAKE_GENERATOR="Ninja"
+fi
+
 # configure, build and test
 cmake --workflow --preset debug
 

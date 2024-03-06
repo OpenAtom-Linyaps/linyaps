@@ -121,10 +121,19 @@ utils::error::Result<void> App::prepare()
         fixRuntimePath = runtimeRootPath;
     }
 
+    // TODO(wurongjie) 应该从应用的info.json文件读取base
+    auto ref = repo->latestOfRef("org.deepin.base", "23");
+    if (!ref) {
+        return LINGLONG_ERR(ref);
+    }
+
+    // 初始化容器workdir目录
+    auto baseRootPath = repo->rootOfLayer(*ref);
+
     auto appRef = package::Ref(package->ref);
     QString appRootPath = repo->rootOfLayer(appRef);
 
-    auto ret = stageRootfs(fixRuntimePath, appRef.appId, appRootPath);
+    auto ret = stageRootfs(baseRootPath, fixRuntimePath, appRef.appId, appRootPath);
     if (!ret) {
         return LINGLONG_ERR(ret);
     }
@@ -250,22 +259,13 @@ auto App::stageSystem() -> int
     return 0;
 }
 
-utils::error::Result<void> App::stageRootfs(QString runtimeRootPath,
+utils::error::Result<void> App::stageRootfs(const QString &baseRootPath,
+                                            const QString &runtimeRootPath,
                                             const QString &appId,
-                                            QString appRootPath)
+                                            const QString &appRootPath)
 {
     LINGLONG_TRACE("stage rootfs");
 
-    // TODO(wurongjie) 先去掉fuse相关功能
-    // wine应用暂不支持，devel 更改为全量包后不需要fuse，specialCase 感觉并不需要 fuse
-    {
-        // overlay 挂载标志
-        bool fuseMount = false;
-        // wine 应用挂载标志
-        bool wineMount = false;
-        // 通过info.json中overlay挂载标志
-        bool specialCase = false;
-    }
     // 通过info.json文件判断是否要overlay mount
     auto appInfoFile = appRootPath + "/info.json";
 
@@ -273,14 +273,7 @@ utils::error::Result<void> App::stageRootfs(QString runtimeRootPath,
     if (util::fileExists(appInfoFile)) {
         info = util::loadJson<package::Info>(appInfoFile);
     }
-    // TODO(wurongjie) base体积太大了，应该替换成精简的rootfs
-    auto ret = repo->latestOfRef("org.deepin.base", "23");
-    if (!ret) {
-        return LINGLONG_ERR(ret);
-    }
 
-    // 初始化容器workdir目录
-    auto hostBasePath = repo->rootOfLayer(*ret);
     QTemporaryDir tmpDir;
     tmpDir.setAutoRemove(false);
     containerWorkdir = QDir(tmpDir.filePath(appId));
@@ -291,11 +284,17 @@ utils::error::Result<void> App::stageRootfs(QString runtimeRootPath,
     QString program = "fuse-overlayfs";
     QStringList arguments = {
         "-o",
+        "auto_unmount",
+        "-o",
+        QString("squash_to_uid").arg(getuid()),
+        "-o",
+        QString("squash_to_gid").arg(getgid()),
+        "-o",
         "upperdir=" + containerWorkdir.filePath("upper"),
         "-o",
         "workdir=" + containerWorkdir.filePath("work"),
         "-o",
-        "lowerdir=" + QDir(hostBasePath).filePath("files"),
+        "lowerdir=" + QDir(baseRootPath).filePath("files"),
         containerWorkdir.filePath("rootfs"),
     };
     qDebug() << "run" << program << arguments.join(" ");
@@ -353,7 +352,7 @@ utils::error::Result<void> App::stageRootfs(QString runtimeRootPath,
     };
 
     qDebug() << "stageRootfs "
-             << "hostBasePath:" << hostBasePath << "runtimeRootPath:" << runtimeRootPath
+             << "baseRootPath:" << baseRootPath << "runtimeRootPath:" << runtimeRootPath
              << "appRootPath:" << appRootPath;
 
     for (const auto &pair : mountMap) {

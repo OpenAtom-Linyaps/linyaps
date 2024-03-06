@@ -102,9 +102,10 @@ private:
 
     [[nodiscard]] auto stageSystem() -> int;
 
-    [[nodiscard]] auto stageRootfs(QString runtimeRootPath,
+    [[nodiscard]] auto stageRootfs(const QString &basePath,
+                                   const QString &runtimeRootPath,
                                    const QString &appId,
-                                   QString appRootPath) -> utils::error::Result<void>;
+                                   const QString &appRootPath) -> utils::error::Result<void>;
 
     [[nodiscard]] auto stageHost() -> int;
 

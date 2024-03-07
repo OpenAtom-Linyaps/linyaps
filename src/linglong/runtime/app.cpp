@@ -18,6 +18,7 @@
 #include "linglong/util/version/version.h"
 #include "linglong/util/xdg.h"
 #include "linglong/utils/command/env.h"
+#include "linglong/utils/command/ocppi-helper.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/std_helper/qdebug_helper.h"
 #include "linglong/utils/xdg/desktop_entry.h"
@@ -302,11 +303,14 @@ utils::error::Result<void> App::stageRootfs(const QString &baseRootPath,
     if (!mountRootRet) {
         return LINGLONG_ERR("mount rootfs by overlayfs", mountRootRet);
     }
-    // 使用容器hook写在 overlayer rootfs
     // 由于crun不支持在mount中配置fuse，也无法在hooks中挂载 overlayer 为 rootfs
     // 玲珑在启动容器前挂载 overlayfs，在容器 hooks 中卸载 overlayfs
     // 尝试在 hooks.createRuntime 执行 fuse-overlayfs 不会在容器中生效
     // 尝试在 hooks.createContainer 可以挂载到rootfs中的目录，但是不能挂载到 rootfs（会卡死）
+    // 这里在annotations中添加预挂载的注释，便于调试重现
+    auto comments = program + " " + arguments.join(" ");
+    utils::command::AddAnnotation(r, utils::command::AnnotationKey::MountRootfsComments, comments);
+    // 使用容器hook写在 overlayer rootfs
     ocppi::runtime::config::types::Hook umountRootfsHook;
     umountRootfsHook.args = { "umount",
                               "--lazy",
@@ -363,18 +367,14 @@ utils::error::Result<void> App::stageRootfs(const QString &baseRootPath,
         m.destination = pair.second.toStdString();
         r.mounts->push_back(m);
     }
+    // 为下面的应用目录挂载临时父目录，避免crun在rootfs中创建挂载点，污染rootfs
+    utils::command::AddMount(r, "tmpfs", "/opt/apps", { "nodev", "nosuid", "mode=700" }, "tmpfs");
     // TODO(wurongjie) 应该想办法避免应用往全局安装目录写文件，
     // 比如将应用checkout到用户家目录，但可能有硬链接的问题
 
     // 读写挂载/opt,有的应用需要读写自身携带的资源文件。eg:云看盘
-    QString appMountPath = "";
-    appMountPath = "/opt/apps/" + appId;
-    ocppi::runtime::config::types::Mount m;
-    m.type = "bind";
-    m.options = std::vector<std::string>{ "rw", "rbind" };
-    m.source = appRootPath.toStdString();
-    m.destination = appMountPath.toStdString();
-    r.mounts->push_back(m);
+    QString appMountPath = "/opt/apps/" + appId;
+    utils::command::AddMount(r, appRootPath, appMountPath, { "rw", "rbind" });
 
     // TODO(iceyer): let application do this or add to doc
     auto appLdLibraryPath = QStringList{ "/opt/apps", appId, "files/lib" }.join("/");

@@ -20,6 +20,7 @@
 #include "linglong/util/runner.h"
 #include "linglong/util/uuid.h"
 #include "linglong/utils/command/env.h"
+#include "linglong/utils/command/ocppi-helper.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/xdg/desktop_entry.h"
 #include "nlohmann/json_fwd.hpp"
@@ -670,7 +671,10 @@ LinglongBuilder::buildStageRuntime(ocppi::runtime::config::types::Config &r,
         if (!ret) {
             return LINGLONG_ERR("mount runtime", ret);
         }
-
+        // 在annotations中添加预挂载的注释，便于调试重现
+        utils::command::AddAnnotation(r,
+                                      utils::command::AnnotationKey::MountRuntimeComments,
+                                      program + " " + arguments.join(" "));
         // 使用容器hooks卸载fuse-overlayfs runtime
         ocppi::runtime::config::types::Hook umountRuntimeHook;
         umountRuntimeHook.args = { "umount", "--lazy", overlayMergeDir.toStdString() };
@@ -683,13 +687,8 @@ LinglongBuilder::buildStageRuntime(ocppi::runtime::config::types::Config &r,
         } else {
             r.hooks->poststop = { umountRuntimeHook };
         }
-
-        ocppi::runtime::config::types::Mount m;
-        m.type = "bind";
-        m.source = overlayMergeDir.toStdString();
-        m.destination = "/runtime";
-        m.options = { "rbind", "rw", "nosuid", "nodev" };
-        r.mounts->push_back(m);
+        QStringList opt = { "rbind", "rw", "nosuid", "nodev" };
+        utils::command::AddMount(r, overlayMergeDir, "/runtime", opt);
     }
     return LINGLONG_OK;
 }
@@ -842,6 +841,10 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageRootfs(
     if (!mountRootRet) {
         return LINGLONG_ERR(mountRootRet);
     }
+    //    在annotations中添加预挂载的注释，便于调试重现
+    utils::command::AddAnnotation(r,
+                                  utils::command::AnnotationKey::MountRootfsComments,
+                                  program + " " + arguments.join(" "));
     // 使用容器hooks卸载overlayfs rootfs
     ocppi::runtime::config::types::Hook umountRootfsHook;
     umountRootfsHook.args = { "umount", "--lazy", workdir.filePath("rootfs").toStdString() };

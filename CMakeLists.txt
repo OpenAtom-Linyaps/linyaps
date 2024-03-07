@@ -325,6 +325,8 @@ pfl_add_library(
   ./src/linglong/util/xdg.h
   ./src/linglong/utils/command/env.cpp
   ./src/linglong/utils/command/env.h
+  ./src/linglong/utils/command/ocppi-helper.cpp
+  ./src/linglong/utils/command/ocppi-helper.h
   ./src/linglong/utils/dbus/log.cpp
   ./src/linglong/utils/dbus/log.h
   ./src/linglong/utils/dbus/register.cpp

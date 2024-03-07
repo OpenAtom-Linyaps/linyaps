@@ -992,6 +992,7 @@ auto App::loadConfig(linglong::repo::Repo *repo,
         auto ret = repo->latestOfRef(runtimeRef.appId, runtimeRef.version);
         if (!ret.has_value()) {
             qCritical() << "No version of runtime found in layers";
+            return {};
         }
         runtimeRef.version = ret->version;
     }
@@ -1099,6 +1100,7 @@ auto App::load(linglong::repo::Repo *repo,
     auto [app, err] = util::fromYAML<QSharedPointer<App>>(appConfig.readAll());
     if (err) {
         qCritical() << "FIXME: load config failed, use default app config";
+        return {};
     }
 
     qDebug() << "app config" << app << app->runtime << app->package << app->version;

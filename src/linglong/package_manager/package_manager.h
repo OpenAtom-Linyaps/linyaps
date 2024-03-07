@@ -214,6 +214,7 @@ private:
      * @param pkgName: 软件包包名
      * @param pkgVer: 软件包版本号
      * @param pkgArch: 软件包对应的架构
+     * @param channel: 软件包对应的通道
      * @param appData: 查询结果
      * @param err: 错误信息
      *
@@ -222,6 +223,7 @@ private:
     auto getAppInfoFromServer(const QString &pkgName,
                               const QString &pkgVer,
                               const QString &pkgArch,
+                              const QString &channel,
                               QString &appData,
                               QString &errString) -> bool;
     /*

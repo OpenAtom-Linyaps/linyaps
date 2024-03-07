@@ -102,28 +102,41 @@ auto PackageManager::loadAppInfo(const QString &jsonString,
 auto PackageManager::getAppInfoFromServer(const QString &pkgName,
                                           const QString &pkgVer,
                                           const QString &pkgArch,
+                                          const QString &channel,
                                           QString &appData,
                                           QString &errString) -> bool
 {
+    auto fillResult = [&appData, &errString](const QList<QSharedPointer<package::Info>> &infos) {
+        QSharedPointer<repo::Response> resp(new repo::Response);
+        resp->code = 200;
+        resp->data = infos;
+
+        auto [data, err1] = linglong::util::toJSON(resp);
+        appData = QString::fromLocal8Bit(data);
+    };
+
     // build refs
-    package::Ref ref(remoteRepoName, pkgName, pkgVer, pkgArch);
+    QString fallbackChannel{ "linglong" };
+    package::Ref ref(remoteRepoName, channel, pkgName, pkgVer, pkgArch, "");
 
     auto ret = repoClient.QueryApps(ref);
+    if (ret) {
+        fillResult(std::move(ret).value());
+        return true;
+    }
 
-    if (!ret.has_value()) {
-        errString = "getAppInfoFromServer err, " + appData + " ,please check the network";
-        qCritical() << "receive from server:" << appData;
-        return false;
+    // try fallback channel
+    ref.channel = fallbackChannel;
+    ret = repoClient.QueryApps(ref);
+    if (ret) {
+        fillResult(std::move(ret).value());
+        return true;
     }
 
     // FIXME: update all caller getAppInfoFromServer
-    QSharedPointer<repo::Response> resp(new repo::Response);
-    resp->code = 200;
-    resp->data = *ret;
-
-    auto [data, err1] = linglong::util::toJSON(resp);
-    appData = QString::fromLocal8Bit(data);
-    return true;
+    errString = "getAppInfoFromServer err, " + appData + ret.error().message();
+    qCritical() << "receive from server:" << appData;
+    return false;
 }
 
 auto PackageManager::downloadAppData(const QString &pkgName,
@@ -220,7 +233,7 @@ auto PackageManager::checkAppRuntime(const QString &runtime,
         version = runtimeVer;
     }
     QString appData = "";
-    bool ret = getAppInfoFromServer(runtimeId, version, runtimeArch, appData, err);
+    bool ret = getAppInfoFromServer(runtimeId, version, runtimeArch, channel, appData, err);
     if (!ret) {
         return false;
     }
@@ -273,7 +286,7 @@ auto PackageManager::checkAppBase(const QString &runtime,
     QList<QSharedPointer<linglong::package::Info>> appList;
     QString appData = "";
 
-    bool ret = getAppInfoFromServer(runtimeId, runtimeVer, runtimeArch, appData, err);
+    bool ret = getAppInfoFromServer(runtimeId, runtimeVer, runtimeArch, channel, appData, err);
     if (!ret) {
         return false;
     }
@@ -287,30 +300,26 @@ auto PackageManager::checkAppBase(const QString &runtime,
     QSharedPointer<linglong::package::Info> latestRuntimeInfo =
       getLatestRuntime(runtimeId, runtimeVer, appList);
 
-    auto baseRef = latestRuntimeInfo->runtime;
-    QStringList baseList = baseRef.split('/');
-    if (baseList.size() < 3) {
-        err = "app base:" + baseRef + " base format err";
-        return false;
-    }
-    const QString baseId = baseList.at(0);
+    auto baseRef = package::Ref{ latestRuntimeInfo->runtime };
+    const QString baseId = baseRef.appId;
     // FIXME(black_desk): this value comes from baseList will be "latest", which is not handled by
     // remote server correctly for now. So I just remove it here.
     const QString baseVer = "";
-    const QString baseArch = baseList.at(2);
+    const QString baseArch = baseRef.arch;
+    auto baseChannel = baseRef.channel;
 
     bool retbase = true;
 
     QList<QSharedPointer<linglong::package::Info>> baseRuntimeList;
     QString baseData = "";
 
-    ret = getAppInfoFromServer(baseId, baseVer, baseArch, baseData, err);
+    ret = getAppInfoFromServer(baseId, baseVer, baseArch, baseChannel, baseData, err);
     if (!ret) {
         return false;
     }
     ret = loadAppInfo(baseData, baseRuntimeList, err);
     if (!ret || baseRuntimeList.size() < 1) {
-        err = baseRef + " not found in repo";
+        err = baseRef.toSpecString() + " not found in repo";
         qCritical() << err;
         return false;
     }
@@ -576,7 +585,7 @@ auto PackageManager::GetDownloadStatus(const ParamOption &paramOption, int type)
 
         QString appData = "";
         // 安装不查缓存
-        auto ret = getAppInfoFromServer(appId, "", arch, appData, reply.message);
+        auto ret = getAppInfoFromServer(appId, "", arch, channel, appData, reply.message);
         if (!ret) {
             reply.code = STATUS_CODE(kPkgInstallFailed);
             return reply;
@@ -786,7 +795,7 @@ Reply PackageManager::InstallSync(const InstallParamOption &installParamOption)
     }
 
     if (channel.isEmpty()) {
-        channel = "linglong";
+        channel = "main";
     }
     if (appModule.isEmpty()) {
         appModule = "runtime";
@@ -808,7 +817,7 @@ Reply PackageManager::InstallSync(const InstallParamOption &installParamOption)
 
     QString appData = "";
     // 安装不查缓存
-    auto ret = getAppInfoFromServer(appId, version, arch, appData, reply.message);
+    auto ret = getAppInfoFromServer(appId, version, arch, channel, appData, reply.message);
     if (!ret) {
         reply.code = STATUS_CODE(kPkgInstallFailed);
         appState.insert(appId + "/" + version + "/" + arch, reply);
@@ -1289,7 +1298,7 @@ auto PackageManager::Update(const ParamOption &paramOption) -> Reply
         auto installedApp = pkgList.at(0);
         QString currentVersion = installedApp->version;
         QString appData = QString();
-        auto ret = getAppInfoFromServer(appId, "", arch, appData, reply.message);
+        auto ret = getAppInfoFromServer(appId, "", arch, channel, appData, reply.message);
         if (!ret) {
             reply.message = "query server app:" + appId + " info err";
             qCritical() << reply.message;
@@ -1371,6 +1380,7 @@ auto PackageManager::Query(const QueryParamOption &paramOption) -> QueryReply
 {
     QueryReply reply;
     QString appId = paramOption.appId.trimmed();
+    auto channel = paramOption.channel.trimmed();
 
     bool ret = false;
     if (appId.isEmpty()) {
@@ -1396,7 +1406,7 @@ auto PackageManager::Query(const QueryParamOption &paramOption) -> QueryReply
     bool fromServer = false;
     // 缓存查不到从服务器查
     if (status != STATUS_CODE(kSuccess)) {
-        ret = getAppInfoFromServer(appId, "", arch, appData, reply.message);
+        ret = getAppInfoFromServer(appId, "", arch, channel, appData, reply.message);
         if (!ret) {
             reply.code = STATUS_CODE(kErrorPkgQueryFailed);
             qCritical() << reply.message;

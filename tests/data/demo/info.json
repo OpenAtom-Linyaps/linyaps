@@ -1,10 +1,8 @@
 {
-  "appid": "cn.wps.wps-office",
+  "appId": "cn.wps.wps-office",
   "name": "wps-office",
   "version": "11.1.0.10161",
-  "arch": [
-    "amd64"
-  ],
+  "arch": "amd64",
   "permissions": {
     "autostart": true,
     "notification": true,

@@ -15,8 +15,8 @@ runtime:
   id: org.deepin.Runtime
   version: 23.0.0
 
-source:
-  kind: local
+sources:
+  - kind: local
 
 build:
   kind: manual

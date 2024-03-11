@@ -52,8 +52,10 @@ void Project::generateBuildScript()
     this->scriptPath = scriptPath;
 
     // get source.version form package.version
-    if (source && source->version.isEmpty()) {
-        source->version = package->version;
+    for (auto source : sources) {
+        if (source && source->version.isEmpty()) {
+            source->version = package->version;
+        }
     }
 }
 

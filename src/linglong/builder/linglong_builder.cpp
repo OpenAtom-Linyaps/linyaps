@@ -408,9 +408,10 @@ utils::error::Result<void> LinglongBuilder::appimageConvert(const QStringList &t
       : description.toStdString();
 
     if (!(url.isEmpty() && hash.isEmpty())) {
-        node["source"]["kind"] = url.isEmpty() ? project->source->kind.toStdString() : "file";
-        node["source"]["url"] = url.isEmpty() ? "" : url.toStdString();
-        node["source"]["digest"] = url.isEmpty() ? "" : hash.toStdString();
+        node["sources"][0]["kind"] =
+          url.isEmpty() ? project->sources.first()->kind.toStdString() : "file";
+        node["sources"][0]["url"] = url.isEmpty() ? "" : url.toStdString();
+        node["sources"][0]["digest"] = url.isEmpty() ? "" : hash.toStdString();
     }
 
     // fixme: use qt file stream
@@ -494,23 +495,25 @@ util::Error LinglongBuilder::track()
         return WrapError(err, "cannot load project yaml");
     }
 
-    if ("git" == project->source->kind) {
-        auto gitOutput = QSharedPointer<QByteArray>::create();
-        QString latestCommit;
-        // default git ref is HEAD
-        auto gitRef = project->source->version.isEmpty() ? "HEAD" : project->source->version;
-        auto err = util::Exec("git", { "ls-remote", project->source->url, gitRef }, -1, gitOutput);
-        if (!err) {
-            latestCommit = QString::fromLocal8Bit(*gitOutput).trimmed().split("\t").first();
-            qDebug() << latestCommit;
+    for (const auto source : project->sources) {
+        if ("git" == source->kind) {
+            auto gitOutput = QSharedPointer<QByteArray>::create();
+            QString latestCommit;
+            // default git ref is HEAD
+            auto gitRef = source->version.isEmpty() ? "HEAD" : source->version;
+            auto err = util::Exec("git", { "ls-remote", source->url, gitRef }, -1, gitOutput);
+            if (!err) {
+                latestCommit = QString::fromLocal8Bit(*gitOutput).trimmed().split("\t").first();
+                qDebug() << latestCommit;
 
-            if (project->source->commit == latestCommit) {
-                printer.printMessage("current commit is the latest, nothing to update");
-            } else {
-                std::ofstream fout(projectConfigPath.toStdString());
-                auto result = util::toYAML(project);
-                fout << std::get<0>(result).toStdString();
-                printer.printMessage("update commit to:" + latestCommit);
+                if (source->commit == latestCommit) {
+                    printer.printMessage("current commit is the latest, nothing to update");
+                } else {
+                    std::ofstream fout(projectConfigPath.toStdString());
+                    auto result = util::toYAML(project);
+                    fout << std::get<0>(result).toStdString();
+                    printer.printMessage("update commit to:" + latestCommit);
+                }
             }
         }
     }
@@ -698,12 +701,15 @@ LinglongBuilder::buildStageSource(ocppi::runtime::config::types::Config &r, Proj
 {
     LINGLONG_TRACE("process source");
 
-    SourceFetcher sf(project->source, printer, project);
-    if (project->source) {
-        printer.printMessage("[Processing Source]");
-        auto err = sf.fetch();
-        if (err) {
-            return LINGLONG_ERR("fetch source failed");
+    printer.printMessage("[Processing Source]");
+    QSharedPointer<SourceFetcher> sf;
+    for (const auto source : project->sources) {
+        sf.reset(new SourceFetcher(source, printer, project));
+        if (source) {
+            auto err = sf->fetch();
+            if (err) {
+                return LINGLONG_ERR("fetch source failed");
+            }
         }
     }
     // 挂载tmp
@@ -717,7 +723,7 @@ LinglongBuilder::buildStageSource(ocppi::runtime::config::types::Config &r, Proj
     auto containerSourcePath = "/source";
     QList<QPair<QString, QString>> mountMap = {
         // 源码目录
-        { sf.sourceRoot(), containerSourcePath },
+        { sf->sourceRoot(), containerSourcePath },
         // 构建脚本
         { project->buildScriptPath(), BuildScriptPath },
     };

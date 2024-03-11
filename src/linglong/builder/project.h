@@ -157,7 +157,8 @@ public:
     Q_JSON_PTR_PROPERTY(BuilderRuntime, base);
     // WARNING: the default meta id is expanded form here, so keep it as full of namespace.
     Q_JSON_PROPERTY(QList<QSharedPointer<linglong::builder::BuildDepend>>, depends);
-    Q_JSON_PTR_PROPERTY(Source, source);
+    Q_JSON_PROPERTY(QList<QSharedPointer<linglong::builder::Source>>, sources);
+    // Q_JSON_PTR_PROPERTY(Source, source);
     Q_JSON_PTR_PROPERTY(Build, build);
     Q_JSON_PTR_PROPERTY(Environment, environment);
 

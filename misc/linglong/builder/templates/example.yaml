@@ -19,10 +19,10 @@ depends:
     version: 63.1.0
     type: runtime
 
-source:
-  kind: git
-  url: "https://github.com/linuxdeepin/linglong-builder-demo.git"
-  commit: a3b89c3aa34c1aff8d7f823f0f4a87d5da8d4dc0
+sources:
+  - kind: git
+    url: "https://github.com/linuxdeepin/linglong-builder-demo.git"
+    commit: a3b89c3aa34c1aff8d7f823f0f4a87d5da8d4dc0
 
 build:
   kind: qmake

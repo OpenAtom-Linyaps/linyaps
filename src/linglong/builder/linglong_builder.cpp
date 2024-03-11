@@ -27,6 +27,7 @@
 #include "ocppi/cli/CLI.hpp"
 #include "ocppi/runtime/ContainerID.hpp"
 #include "ocppi/runtime/config/ConfigLoader.hpp"
+#include "ocppi/runtime/config/types/Capabilities.hpp"
 #include "ocppi/runtime/config/types/Hook.hpp"
 #include "ocppi/runtime/config/types/Hooks.hpp"
 #include "project.h"
@@ -47,9 +48,13 @@
 
 #include <fstream>
 #include <optional>
+#include <string>
+#include <vector>
 
+#include <sched.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 namespace linglong::builder {
 
@@ -307,6 +312,21 @@ linglong::util::Error LinglongBuilder::config(const QString &userName, const QSt
     infoFile.close();
 
     return Success();
+}
+
+linglong::utils::error::Result<void> LinglongBuilder::writeFile(QString filename, QByteArray data)
+{
+    LINGLONG_TRACE("write file");
+    QFile f(filename);
+    qDebug() << "write file" << f.fileName();
+    if (!f.open(QIODevice::WriteOnly)) {
+        return LINGLONG_ERR(f);
+    }
+    if (!f.write(data)) {
+        return LINGLONG_ERR(f);
+    }
+    f.close();
+    return LINGLONG_OK;
 }
 
 // FIXME: should merge with runtime
@@ -738,6 +758,12 @@ LinglongBuilder::buildStageSource(ocppi::runtime::config::types::Config &r, Proj
     r.process->user = ocppi::runtime::config::types::User();
     r.process->user->uid = getuid();
     r.process->user->gid = getgid();
+    std::vector<std::string> v = { "CAP_CHOWN",   "CAP_DAC_OVERRIDE", "CAP_FOWNER",
+                                   "CAP_FSETID",  "CAP_KILL",         "CAP_NET_BIND_SERVICE",
+                                   "CAP_SETFCAP", "CAP_SETGID",       "CAP_SETPCAP",
+                                   "CAP_SETUID",  "CAP_SYS_CHROOT" };
+    r.process->capabilities =
+      ocppi::runtime::config::types::Capabilities{ .bounding = v, .effective = v, .permitted = v };
     return LINGLONG_OK;
 }
 
@@ -800,7 +826,7 @@ LinglongBuilder::buildStageIDMapping(ocppi::runtime::config::types::Config &r)
     }
     // 映射gid
     QList<QList<quint64>> gidMaps = {
-        { getgid(), getuid(), 1 },
+        { getgid(), getgid(), 1 },
     };
     for (auto const &gidMap : gidMaps) {
         ocppi::runtime::config::types::IdMapping idMap;
@@ -859,7 +885,7 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageRootfs(
     }
 
     // 使用rootfs做容器根目录
-    r.root->readonly = true;
+    r.root->readonly = false;
     r.root->path = workdir.filePath("rootfs").toStdString();
     return LINGLONG_OK;
 }
@@ -895,7 +921,11 @@ linglong::utils::error::Result<QSharedPointer<Project>> LinglongBuilder::buildSt
 linglong::utils::error::Result<void> LinglongBuilder::build()
 {
     LINGLONG_TRACE("build");
-
+    if (unshare(CLONE_NEWNS | CLONE_NEWUSER) == -1) {
+        perror("unshare");
+        exit(EXIT_FAILURE);
+    }
+    sleep(3);
     auto projectRet = buildStageProjectInit();
     if (!projectRet) {
         return LINGLONG_ERR(projectRet);

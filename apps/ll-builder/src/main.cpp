@@ -12,6 +12,7 @@
 #include "linglong/service/app_manager.h"
 #include "linglong/util/qserializer/yaml.h"
 #include "linglong/util/xdg.h"
+#include "linglong/utils/command/env.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/global/initialize.h"
 #include "spdlog/logger.h"
@@ -25,6 +26,8 @@
 #include <QRegExp>
 
 #include <fstream>
+
+#include <sys/wait.h>
 
 int main(int argc, char **argv)
 {
@@ -315,12 +318,33 @@ int main(int argc, char **argv)
                   std::ofstream fout(projectConfigPath.toStdString());
                   fout << node;
               }
-              auto ret = builder.build();
+
+              auto child_pid = fork();
+              if (child_pid == 0) {
+                  auto ret = builder.build();
+                  if (!ret.has_value()) {
+                      printer.printErr(ret.error());
+                      return ret.error().code();
+                  }
+                  return 0;
+              }
+              sleep(1);
+              QString pidStr = QString("%1").arg(child_pid);
+              auto ret = linglong::utils::command::Exec(
+                "newuidmap",
+                { pidStr, "0", "1000", "1", "1", "100000", "65536" });
               if (!ret.has_value()) {
                   printer.printErr(ret.error());
                   return ret.error().code();
               }
-              return 0;
+              ret = linglong::utils::command::Exec(
+                "newgidmap",
+                { pidStr, "0", "1000", "1", "1", "100000", "65536" });
+              if (!ret.has_value()) {
+                  printer.printErr(ret.error());
+                  return ret.error().code();
+              }
+              return waitpid(child_pid, NULL, 0);
           } },
         { "run",
           [&](QCommandLineParser &parser) -> int {

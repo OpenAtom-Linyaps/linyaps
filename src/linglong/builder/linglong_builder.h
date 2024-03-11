@@ -39,15 +39,14 @@ public:
 
     util::Error exportLayer(const QString &destination) override;
 
-    util::Error extractLayer(const QString &layerPath,
-                                       const QString &destination) override;
+    util::Error extractLayer(const QString &layerPath, const QString &destination) override;
 
     util::Error exportBundle(const QString &outputFilepath, bool useLocalDir) override;
 
     util::Error push(const QString &repoUrl,
-                               const QString &repoName,
-                               const QString &channel,
-                               bool pushWithDevel) override;
+                     const QString &repoName,
+                     const QString &channel,
+                     bool pushWithDevel) override;
 
     util::Error import() override;
 
@@ -94,6 +93,8 @@ private:
     linglong::utils::error::Result<void> buildStageCommitBuildOutput(Project *project,
                                                                      const QString &upperdir,
                                                                      const QString &workdir);
+
+    linglong::utils::error::Result<void> writeFile(QString filename, QByteArray data);
 };
 
 // TODO: remove later

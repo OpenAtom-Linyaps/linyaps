@@ -190,6 +190,30 @@ void inline copyDir(const QString &src, const QString &dst)
             copyDir(info.filePath(), dst + "/" + info.fileName());
             continue;
         }
+        if (info.isSymLink()) {
+            char buf[PATH_MAX];
+            auto size = readlink(info.filePath().toStdString().c_str(), buf, sizeof(buf) - 1);
+            if (size == -1) {
+                qWarning() << "readlink failed! " << info.filePath();
+                continue;
+            }
+            buf[size] = '\0';
+            QFileInfo originFile(info.readLink());
+            QString newLinkFile = dst + "/" + info.fileName();
+
+            if (QString(buf).startsWith("/")) {
+                QFile::link(info.readLink(), newLinkFile);
+            } else {
+                // caculator the relative path
+                QDir linkFileDir(info.dir());
+                QString relativePath = linkFileDir.relativeFilePath(originFile.path());
+                auto newOriginFile = relativePath.endsWith("/")
+                  ? relativePath + originFile.fileName()
+                  : relativePath + "/" + originFile.fileName();
+                QFile::link(newOriginFile, newLinkFile);
+            }
+            continue;
+        }
         // 拷贝文件
         QFile file(info.filePath());
         file.copy(dst + "/" + info.fileName());

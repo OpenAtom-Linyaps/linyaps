@@ -71,7 +71,7 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
 {
     LINGLONG_TRACE("commit build output");
 
-    auto output = project->config().cacheRuntimeLayer("files");
+    auto output = project->config().cacheDevelLayer("files");
     auto lowerDir = project->config().cacheAbsoluteFilePath({ "overlayfs", "lower" });
     // if combine runtime, lower is ${PROJECT_CACHE}/runtime/files
     if (PackageKindRuntime == project->package->kind) {
@@ -82,6 +82,7 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
     util::ensureDir(upperdir);
     util::ensureDir(workdir);
     util::ensureDir(output);
+    util::ensureDir(project->config().cacheRuntimeLayer("files"));
 
     QString program = "fuse-overlayfs";
     QStringList arguments = {
@@ -102,40 +103,127 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
         }
     });
 
-    auto entriesPath = project->config().cacheRuntimeLayer("entries");
-    auto appId = project->package->id;
+    // split files which in devel layer to runtime layer
+    auto splitFile = [](Project *project) -> linglong::utils::error::Result<void> {
+        LINGLONG_TRACE("split layers file");
+        // get install file rule
+        QStringList installRules;
+        QStringList installedFiles;
 
-    auto moveDir = [](const QStringList targetList,
-                      const QString &srcPath,
-                      const QString &destPath) -> linglong::util::Error {
-        for (auto target : targetList) {
-            auto srcDir = QStringList{ srcPath, target }.join(QDir::separator());
-            auto destDir = QStringList{ destPath, target }.join(QDir::separator());
+        // if ${PROJECT_ROOT}/${appid}.install is not exist, copy all files
+        const auto installRulePath = QStringList{ project->config().rootPath(),
+                                                  QString("%1.install").arg(project->package->id) }
+                                       .join(QDir::separator());
+        if (!QFileInfo(installRulePath).exists()) {
+            installRules << QStringList{ project->config().targetInstallPath(""), "*" }.join(
+              QDir::separator());
+        } else {
+            QFile configFile(installRulePath);
+            if (!configFile.open(QIODevice::ReadOnly)) {
+                return LINGLONG_ERR(configFile.errorString() + " " + configFile.fileName(),
+                                    configFile.error());
+            }
+            installRules.append(QString(configFile.readAll()).split('\n'));
+            // remove empty or duplicate lines
+            installRules.removeAll("");
+            installRules.removeDuplicates();
+        }
 
-            if (util::dirExists(srcDir)) {
-                util::copyDir(srcDir, destDir);
-                util::removeDir(srcDir);
+        const QString src = project->config().cacheDevelLayer("files");
+        const QString dest = project->config().cacheRuntimeLayer("files");
+        const QString prefix = project->config().targetInstallPath("");
+        for (auto rule : installRules) {
+            // convert prefix in container to real path in host
+            // /opt/apps/${appid} to $PROJECT_ROOT/.../files
+            rule.replace(prefix, src);
+            // reverse files in src
+            QDirIterator it(src,
+                            QDir::AllEntries | QDir::NoDotAndDotDot,
+                            QDirIterator::Subdirectories);
+            while (it.hasNext()) {
+                it.next();
+
+                QRegExp rx(rule, Qt::CaseInsensitive, QRegExp::Wildcard);
+                if (!rx.exactMatch(it.fileInfo().absoluteFilePath()))
+                    continue;
+
+                const QString dstPath = it.fileInfo().absoluteFilePath().replace(src, dest);
+                if (it.fileInfo().isDir()) {
+                    qDebug() << "matched dir" << it.fileInfo().absoluteFilePath();
+                    QDir().mkpath(dstPath);
+                    installedFiles.append(dstPath);
+                    continue;
+                }
+                if (it.fileInfo().isSymLink()) {
+                    qDebug() << "matched symlinks" << it.fileInfo().absoluteFilePath();
+                    char buf[PATH_MAX];
+                    auto size = readlink(it.fileInfo().filePath().toStdString().c_str(),
+                                         buf,
+                                         sizeof(buf) - 1);
+                    if (size == -1) {
+                        qCritical() << "readlink failed! " << it.fileInfo().filePath();
+                        continue;
+                    }
+
+                    buf[size] = '\0';
+                    QFileInfo originFile(it.fileInfo().readLink());
+                    QString newLinkFile = dstPath;
+
+                    if (QString(buf).startsWith("/")) {
+                        if (!QFile::link(it.fileInfo().readLink(), newLinkFile))
+                            return LINGLONG_ERR("link file failed, absolute path", -1);
+                    } else {
+                        // caculator the relative path
+                        QDir linkFileDir(it.fileInfo().dir());
+                        QString relativePath = linkFileDir.relativeFilePath(originFile.path());
+                        auto newOriginFile = relativePath.endsWith("/")
+                          ? relativePath + originFile.fileName()
+                          : relativePath + "/" + originFile.fileName();
+                        qDebug() << "link" << newOriginFile << "to" << newLinkFile;
+                        if (!QFile::link(newOriginFile, newLinkFile))
+                            return LINGLONG_ERR("link file failed, relative path", -1);
+                    }
+                    installedFiles.append(dstPath);
+                    continue;
+                }
+                if (it.fileInfo().isFile()) {
+                    qDebug() << "matched file" << it.fileInfo().absoluteFilePath();
+                    QDir().mkpath(it.fileInfo().path().replace(src, dest));
+                    QFile file(it.fileInfo().absoluteFilePath());
+                    if (!file.copy(dstPath))
+                        return LINGLONG_ERR("copy file failed: " + file.errorString(),
+                                            file.error());
+                    installedFiles.append(dstPath);
+                }
             }
         }
 
-        return Success();
+        installedFiles.replaceInStrings(dest, prefix);
+        // save all installed file path to ${appid}.install
+        const auto installRuleSavePath =
+          QStringList{ project->config().cacheDevelLayer(""),
+                       QString("%1.install").arg(project->package->id) }
+            .join(QDir::separator());
+        const auto installRuleDumpPath =
+          QStringList{ project->config().cacheRuntimeLayer(""),
+                       QString("%1.install").arg(project->package->id) }
+            .join(QDir::separator());
+        QFile configFile(installRuleSavePath);
+        if (!configFile.open(QIODevice::WriteOnly)) {
+            return LINGLONG_ERR(configFile.errorString() + " " + configFile.fileName(),
+                                configFile.error());
+        }
+        if (configFile.write(installedFiles.join('\n').toLocal8Bit()) < 0) {
+            return LINGLONG_ERR(configFile.errorString(), configFile.error());
+        }
+        configFile.close();
+
+        // dump ${appid}.install to runtime layer
+        if (!QFile::copy(installRuleSavePath, installRuleDumpPath))
+            return LINGLONG_ERR("dump install rule failed", -1);
+
+        return LINGLONG_OK;
     };
-
-    // link files/share to entries/share/
-    linglong::util::linkDirFiles(project->config().cacheRuntimeLayer("files/share"), entriesPath);
-    // link files/lib/systemd to entries/systemd
-    linglong::util::linkDirFiles(
-      project->config().cacheRuntimeLayer("files/lib/systemd/user"),
-      QStringList{ entriesPath, "systemd/user" }.join(QDir::separator()));
-
-    // Move runtime-install/files/debug to devel-install/files/debug
-    linglong::util::ensureDir(project->config().cacheDevelLayer("files"));
-    auto err = moveDir({ "debug", "include", "mkspec ", "cmake", "pkgconfig" },
-                  project->config().cacheRuntimeLayer("files"),
-                  project->config().cacheDevelLayer("files"));
-    if (err) {
-        return LINGLONG_ERR("move debug file: " + err.message(), err.code());
-    }
 
     auto createInfo = [](Project *project) -> linglong::util::Error {
         QSharedPointer<package::Info> info(new package::Info);
@@ -177,13 +265,32 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
         }
         develInfoFile.close();
         QFile sourceConfigFile(project->configFilePath);
-        if (!sourceConfigFile.copy(project->config().cacheRuntimeLayer("linglong.yaml"))) {
+        if (!sourceConfigFile.copy(project->config().cacheDevelLayer("linglong.yaml"))) {
             return NewError(sourceConfigFile.error(), sourceConfigFile.errorString());
         }
 
         return Success();
     };
 
+    auto splitStatus = splitFile(project);
+    if (!splitStatus.has_value()) {
+        return LINGLONG_ERR(splitStatus);
+    }
+
+    // link devel-install/files/share to devel-install/entries/share/
+    linglong::util::linkDirFiles(project->config().cacheDevelLayer("files/share"),
+                                 project->config().cacheDevelLayer("entries"));
+    // link devel-install/files/lib/systemd to devel-install/entries/systemd
+    linglong::util::linkDirFiles(project->config().cacheDevelLayer("files/lib/systemd/user"),
+                                 project->config().cacheDevelLayer("entries/systemd/user"));
+
+    linglong::util::linkDirFiles(project->config().cacheRuntimeLayer("files/share"),
+                                 project->config().cacheRuntimeLayer("entries"));
+    // link runtime-install/files/lib/systemd to runtime-install/entries/systemd
+    linglong::util::linkDirFiles(project->config().cacheRuntimeLayer("files/lib/systemd/user"),
+                                 project->config().cacheRuntimeLayer("entries/systemd/user"));
+
+    auto err = createInfo(project);
     err = createInfo(project);
     if (err) {
         return LINGLONG_ERR("create info " + err.message(), err.code());

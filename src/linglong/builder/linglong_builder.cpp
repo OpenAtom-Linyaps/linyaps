@@ -103,68 +103,7 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
     });
 
     auto entriesPath = project->config().cacheRuntimeLayer("entries");
-
-    auto modifyConfigFile = [](const QString &srcPath,
-                               const QString &targetPath,
-                               const QString &fileType,
-                               const QString &appId) -> util::Error {
-        QDir configDir(srcPath);
-        auto configFileInfoList = configDir.entryInfoList({ fileType }, QDir::Files);
-
-        linglong::util::ensureDir(targetPath);
-
-        for (auto const &fileInfo : configFileInfoList) {
-            auto desktopEntry = utils::xdg::DesktopEntry::New(fileInfo.filePath());
-            if (!desktopEntry.has_value()) {
-                return NewError(desktopEntry.error().code(), "file to config not exists");
-            }
-
-            // set all section
-            auto configSections = desktopEntry->groups();
-            for (auto section : configSections) {
-                auto exec = desktopEntry->getValue<QString>("Exec", section);
-                if (exec.has_value()) {
-                    // TODO(black_desk): update to new CLI
-                    exec = QString("ll-cli run %1 --exec %2").arg(appId, *exec);
-                    desktopEntry->setValue("Exec", *exec, section);
-                }
-
-                // The section TryExec affects starting from the launcher, set it to null.
-                auto tryExec = desktopEntry->getValue<QString>("TryExec", section);
-
-                if (tryExec.has_value()) {
-                    desktopEntry->setValue<QString>("TryExec", BINDIR "/ll-cli");
-                }
-
-                desktopEntry->setValue<QString>("X-linglong", appId);
-
-                auto result = desktopEntry->saveToFile(
-                  QStringList{ targetPath, fileInfo.fileName() }.join(QDir::separator()));
-                if (!result.has_value()) {
-                    return NewError(result.error().code(), result.error().message());
-                }
-            }
-        }
-        return Success();
-    };
-
     auto appId = project->package->id;
-    // modify desktop file
-    auto desktopFilePath = QStringList{ output, "share/applications" }.join(QDir::separator());
-    auto desktopFileSavePath = QStringList{ entriesPath, "applications" }.join(QDir::separator());
-    auto err = modifyConfigFile(desktopFilePath, desktopFileSavePath, "*.desktop", appId);
-    if (err) {
-        return LINGLONG_ERR("modify config file: " + err.message(), err.code());
-    }
-
-    // modify context-menus file
-    auto contextFilePath =
-      QStringList{ output, "share/applications/context-menus" }.join(QDir::separator());
-    auto contextFileSavePath = contextFilePath;
-    err = modifyConfigFile(contextFilePath, contextFileSavePath, "*.conf", appId);
-    if (err) {
-        return LINGLONG_ERR("modify desktop file: " + err.message(), err.code());
-    }
 
     auto moveDir = [](const QStringList targetList,
                       const QString &srcPath,
@@ -191,7 +130,7 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
 
     // Move runtime-install/files/debug to devel-install/files/debug
     linglong::util::ensureDir(project->config().cacheDevelLayer("files"));
-    err = moveDir({ "debug", "include", "mkspec ", "cmake", "pkgconfig" },
+    auto err = moveDir({ "debug", "include", "mkspec ", "cmake", "pkgconfig" },
                   project->config().cacheRuntimeLayer("files"),
                   project->config().cacheDevelLayer("files"));
     if (err) {

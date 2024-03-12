@@ -191,8 +191,8 @@ public:
         QString rootPath() const;
         QString cacheAbsoluteFilePath(const QStringList &filenames) const;
         QString cacheRuntimePath(const QString &subPath) const;
-        QString cacheInstallPath(const QString &subPath) const;
-        QString cacheInstallPath(const QString &moduleDir, const QString &subPath) const;
+        QString cacheRuntimeLayer(const QString &subPath) const;
+        QString cacheDevelLayer(const QString &subPath) const;
 
         QString targetArch() const;
 

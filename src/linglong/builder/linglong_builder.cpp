@@ -71,7 +71,7 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
 {
     LINGLONG_TRACE("commit build output");
 
-    auto output = project->config().cacheInstallPath("files");
+    auto output = project->config().cacheRuntimeLayer("files");
     auto lowerDir = project->config().cacheAbsoluteFilePath({ "overlayfs", "lower" });
     // if combine runtime, lower is ${PROJECT_CACHE}/runtime/files
     if (PackageKindRuntime == project->package->kind) {
@@ -102,7 +102,7 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
         }
     });
 
-    auto entriesPath = project->config().cacheInstallPath("entries");
+    auto entriesPath = project->config().cacheRuntimeLayer("entries");
 
     auto modifyConfigFile = [](const QString &srcPath,
                                const QString &targetPath,
@@ -183,17 +183,17 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
     };
 
     // link files/share to entries/share/
-    linglong::util::linkDirFiles(project->config().cacheInstallPath("files/share"), entriesPath);
+    linglong::util::linkDirFiles(project->config().cacheRuntimeLayer("files/share"), entriesPath);
     // link files/lib/systemd to entries/systemd
     linglong::util::linkDirFiles(
-      project->config().cacheInstallPath("files/lib/systemd/user"),
+      project->config().cacheRuntimeLayer("files/lib/systemd/user"),
       QStringList{ entriesPath, "systemd/user" }.join(QDir::separator()));
 
     // Move runtime-install/files/debug to devel-install/files/debug
-    linglong::util::ensureDir(project->config().cacheInstallPath("devel-install", "files"));
+    linglong::util::ensureDir(project->config().cacheDevelLayer("files"));
     err = moveDir({ "debug", "include", "mkspec ", "cmake", "pkgconfig" },
-                  project->config().cacheInstallPath("files"),
-                  project->config().cacheInstallPath("devel-install", "files"));
+                  project->config().cacheRuntimeLayer("files"),
+                  project->config().cacheDevelLayer("files"));
     if (err) {
         return LINGLONG_ERR("move debug file: " + err.message(), err.code());
     }
@@ -214,8 +214,8 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
         info->arch = QStringList{ project->config().targetArch() };
 
         info->module = "runtime";
-        info->size = linglong::util::sizeOfDir(project->config().cacheInstallPath(""));
-        QFile infoFile(project->config().cacheInstallPath("info.json"));
+        info->size = linglong::util::sizeOfDir(project->config().cacheRuntimeLayer(""));
+        QFile infoFile(project->config().cacheRuntimeLayer("info.json"));
         if (!infoFile.open(QIODevice::WriteOnly)) {
             return NewError(infoFile.error(), infoFile.errorString() + " " + infoFile.fileName());
         }
@@ -227,8 +227,8 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
         infoFile.close();
 
         info->module = "devel";
-        info->size = linglong::util::sizeOfDir(project->config().cacheInstallPath("devel-install"));
-        QFile develInfoFile(project->config().cacheInstallPath("devel-install", "info.json"));
+        info->size = linglong::util::sizeOfDir(project->config().cacheDevelLayer(""));
+        QFile develInfoFile(project->config().cacheDevelLayer("info.json"));
         if (!develInfoFile.open(QIODevice::WriteOnly)) {
             return NewError(develInfoFile.error(),
                             develInfoFile.errorString() + " " + develInfoFile.fileName());
@@ -238,7 +238,7 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
         }
         develInfoFile.close();
         QFile sourceConfigFile(project->configFilePath);
-        if (!sourceConfigFile.copy(project->config().cacheInstallPath("linglong.yaml"))) {
+        if (!sourceConfigFile.copy(project->config().cacheRuntimeLayer("linglong.yaml"))) {
             return NewError(sourceConfigFile.error(), sourceConfigFile.errorString());
         }
 
@@ -251,8 +251,8 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
     }
     auto refRuntime = project->refWithModule("runtime");
     refRuntime.channel = "main";
-    qDebug() << "importDirectory " << project->config().cacheInstallPath("");
-    auto ret = repo.importDirectory(refRuntime, project->config().cacheInstallPath(""));
+    qDebug() << "importDirectory " << project->config().cacheRuntimeLayer("");
+    auto ret = repo.importDirectory(refRuntime, project->config().cacheRuntimeLayer(""));
 
     if (!ret) {
         return LINGLONG_ERR("import runtime", ret);
@@ -260,8 +260,8 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
 
     auto refDevel = project->refWithModule("devel");
     refDevel.channel = "main";
-    qDebug() << "importDirectory " << project->config().cacheInstallPath("devel-install", "");
-    ret = repo.importDirectory(refDevel, project->config().cacheInstallPath("devel-install", ""));
+    qDebug() << "importDirectory " << project->config().cacheDevelLayer("");
+    ret = repo.importDirectory(refDevel, project->config().cacheDevelLayer(""));
     if (!ret.has_value()) {
         return LINGLONG_ERR("import devel", ret);
     }
@@ -525,11 +525,11 @@ utils::error::Result<void> LinglongBuilder::buildStageClean(const Project &proje
 {
     // initialize some directories
     util::removeDir(project.config().cacheRuntimePath({}));
-    util::removeDir(project.config().cacheInstallPath(""));
-    util::removeDir(project.config().cacheInstallPath("devel-install", ""));
+    util::removeDir(project.config().cacheRuntimeLayer(""));
+    util::removeDir(project.config().cacheDevelLayer(""));
     util::removeDir(project.config().cacheAbsoluteFilePath({ "overlayfs" }));
-    util::ensureDir(project.config().cacheInstallPath(""));
-    util::ensureDir(project.config().cacheInstallPath("devel-install", ""));
+    util::ensureDir(project.config().cacheRuntimeLayer(""));
+    util::ensureDir(project.config().cacheDevelLayer(""));
     util::ensureDir(project.config().cacheAbsoluteFilePath(
       { "overlayfs", "up", project.config().targetInstallPath("") }));
     return LINGLONG_OK;

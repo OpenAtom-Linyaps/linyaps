@@ -26,9 +26,22 @@ QString Architecture::toString() const noexcept
     }
 }
 
+QString Architecture::getTriplet() const noexcept
+{
+    switch (this->v) {
+    case UNKNOW:
+        return "unknow";
+    case X86_64:
+        return "x86_64-linux-gnu";
+    case ARM64:
+        return "aarch64-linux-gnu";
+    }
+}
+
 utils::error::Result<Architecture> Architecture::parse(const QString &raw) noexcept
 try {
     return Architecture(raw);
+
 } catch (const std::exception &e) {
     LINGLONG_TRACE("parse architecture");
     return LINGLONG_ERR(e);

@@ -829,6 +829,41 @@ LinglongBuilder::buildStageEnvrionment(ocppi::runtime::config::types::Config &r,
     return LINGLONG_OK;
 }
 
+// 挂载构建助手目录到容器，构建助手目录存放一些脚本和二进制，目的是简化构建过程
+linglong::utils::error::Result<void>
+LinglongBuilder::buildStageMountHelper(ocppi::runtime::config::types::Config &r)
+{
+    QStringList mountOption = { "ro", "rbind", "nosuid", "nodev" };
+    QStringList path;
+    // 挂载系统helper目录
+    // /usr/libexec/linglong/builder/helper 挂载到 /usr/libexec/linglong/builder/helper/system
+    auto helperPath = QDir(LINGLONG_LIBEXEC_DIR).filePath("builder/helper");
+    if (QDir(helperPath).exists()) {
+        path.push_back(helperPath);
+        auto mountPoint = QDir(helperPath).filePath("system");
+        utils::command::AddMount(r, helperPath, mountPoint, mountOption);
+    }
+    // 挂载用户helper目录
+    // $LINGLONG_BUILDER_HELPER_PATH 挂载到 /usr/libexec/linglong/builder/helper/user
+    auto helperUserPath =
+      QProcessEnvironment::systemEnvironment().value("LINGLONG_BUILDER_HELPER_PATH");
+    if (!helperUserPath.isEmpty()) {
+        auto mountPoint = QDir(helperPath).filePath("user");
+        path.push_front(mountPoint); // 用户的helper优先级更高
+        utils::command::AddMount(r, helperUserPath, mountPoint, mountOption);
+    }
+    // 将挂载点添加到PATH环境变量中
+    if (!path.empty()) {
+        for (auto &env : r.process.value().env.value()) {
+            if (QString::fromStdString(env).startsWith("PATH=")) {
+                env += ":" + path.join(":").toStdString();
+            }
+        }
+    }
+    return LINGLONG_OK;
+}
+
+// 映射用户身份
 linglong::utils::error::Result<void>
 LinglongBuilder::buildStageIDMapping(ocppi::runtime::config::types::Config &r)
 {
@@ -849,7 +884,7 @@ LinglongBuilder::buildStageIDMapping(ocppi::runtime::config::types::Config &r)
     }
     // 映射gid
     QList<QList<quint64>> gidMaps = {
-        { getgid(), getuid(), 1 },
+        { getgid(), getgid(), 1 },
     };
     for (auto const &gidMap : gidMaps) {
         ocppi::runtime::config::types::IdMapping idMap;
@@ -1010,6 +1045,10 @@ linglong::utils::error::Result<void> LinglongBuilder::build()
     }
     // 配置uid和gid映射
     voidRet = buildStageIDMapping(containerConfig);
+    if (!voidRet) {
+        return LINGLONG_ERR(voidRet);
+    }
+    voidRet = buildStageMountHelper(containerConfig);
     if (!voidRet) {
         return LINGLONG_ERR(voidRet);
     }

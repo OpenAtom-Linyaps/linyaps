@@ -285,47 +285,6 @@ int main(int argc, char **argv)
               if (parser.isSet(buildEnv)) {
                   buildConfig->setBuildEnv(parser.values(buildEnv));
               }
-
-              // config linglong.yaml before build if necessary
-              //   if (parser.isSet(pkgVersion) || parser.isSet(srcVersion) ||
-              //   parser.isSet(srcCommit)) {
-              //       auto projectConfigPath =
-              //         QStringList{ buildConfig->getProjectRoot(), "linglong.yaml" }.join("/");
-
-              //       if (!QFileInfo::exists(projectConfigPath)) {
-              //           printer.printMessage("ll-builder should running in project root");
-              //           return -1;
-              //       }
-
-              //       auto [project, oldErr] =
-              //         linglong::util::fromYAML<QSharedPointer<linglong::builder::Project>>(
-              //           projectConfigPath);
-              //       if (oldErr) {
-              //           auto err = LINGLONG_ERR(oldErr.message(), oldErr.code()).value();
-              //           printer.printErr(err);
-              //           return err.code();
-              //       }
-
-              //       auto node = YAML::LoadFile(projectConfigPath.toStdString());
-
-              //       node["package"]["version"] = parser.value(pkgVersion).isEmpty()
-              //         ? project->package->version.toStdString()
-              //         : parser.value(pkgVersion).toStdString();
-
-              //       if (project->package->kind != linglong::builder::PackageKindRuntime) {
-              //           node["source"]["version"] = parser.value(srcVersion).isEmpty()
-              //             ? project->source->version.toStdString()
-              //             : parser.value(srcVersion).toStdString();
-
-              //           node["source"]["commit"] = parser.value(srcCommit).isEmpty()
-              //             ? project->source->commit.toStdString()
-              //             : parser.value(srcCommit).toStdString();
-              //       }
-              //       // fixme: use qt file stream
-              //       std::ofstream fout(projectConfigPath.toStdString());
-              //       fout << node;
-              //   }
-
               auto ret = builder.build();
               if (!ret.has_value()) {
                   printer.printErr(ret.error());
@@ -360,53 +319,29 @@ int main(int argc, char **argv)
 
               return 0;
           } },
-        // { "export",
-        //   [&](QCommandLineParser &parser) -> int {
-        //       parser.clearPositionalArguments();
-
-        //       parser.addPositionalArgument("export", "export build result to uab bundle",
-        //       "export"); parser.addPositionalArgument(
-        //         "filename",
-        //         "bundle file name , if filename is empty,export default format bundle",
-        //         "[filename]");
-
-        //       auto localParam = QCommandLineOption("local", "make bundle with local directory",
-        //       "");
-
-        //       parser.addOptions({ localParam });
-        //       parser.process(app);
-
-        //       auto outputFilepath = parser.positionalArguments().value(1);
-        //       bool useLocalDir = false;
-
-        //       if (parser.isSet(localParam)) {
-        //           useLocalDir = true;
-        //       }
-
-        //       auto err = builder.exportBundle(outputFilepath, useLocalDir);
-        //       if (err) {
-        //           qCritical() << err;
-        //       }
-        //       return err.code();
-        //   } },
         { "export",
           [&](QCommandLineParser &parser) -> int {
               LINGLONG_TRACE("command export");
-
               parser.clearPositionalArguments();
-
-              parser.addPositionalArgument("export", "export build result to layer", "export");
-              parser.addPositionalArgument(
+              auto archCmd = QCommandLineOption("arch", "set the build arch", "arch");
+              auto pathCmd = QCommandLineOption(
                 "path",
                 "layer file path, if the path is empty, export layer to the current directory",
                 "[path]");
-
+              parser.addOptions({ archCmd, archCmd });
               parser.process(app);
 
-              auto path = parser.positionalArguments().value(1);
-
-              if (path.isEmpty()) {
-                  path = linglong::builder::BuilderConfig::instance()->getProjectRoot();
+              auto path = linglong::builder::BuilderConfig::instance()->getProjectRoot();
+              if (parser.isSet(pathCmd)) {
+                  path = parser.value(archCmd);
+              }
+              if (parser.isSet(archCmd)) {
+                  auto arch = linglong::package::Architecture::parse(parser.value(archCmd));
+                  if (!arch.has_value()) {
+                      printer.printErr(arch.error());
+                      return -1;
+                  }
+                  linglong::builder::BuilderConfig::instance()->setBuildArch((*arch).toString());
               }
 
               auto oldErr = builder.exportLayer(path);

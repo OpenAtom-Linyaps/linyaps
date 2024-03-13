@@ -71,6 +71,7 @@ class BuilderRuntime : public JsonSerialize
 public:
     Q_JSON_PROPERTY(QString, id);
     Q_JSON_PROPERTY(QString, version);
+    Q_JSON_PROPERTY(QString, arch);
     //    Q_JSON_PROPERTY(QString, locale);
 };
 
@@ -158,6 +159,8 @@ public:
     Q_JSON_PTR_PROPERTY(BuilderRuntime, base);
     // WARNING: the default meta id is expanded form here, so keep it as full of namespace.
     Q_JSON_PROPERTY(QList<QSharedPointer<linglong::builder::BuildDepend>>, depends);
+    // TODO(wurongjie) 对旧版本的单source做兼容，后续弃用
+    Q_JSON_PROPERTY([[deprecated]] QSharedPointer<linglong::builder::Source>, source);
     Q_JSON_PROPERTY(QList<QSharedPointer<linglong::builder::Source>>, sources);
     // Q_JSON_PTR_PROPERTY(Source, source);
     Q_JSON_PTR_PROPERTY(Build, build);

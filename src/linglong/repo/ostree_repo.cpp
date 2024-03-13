@@ -660,19 +660,19 @@ linglong::utils::error::Result<package::Ref> OSTreeRepo::remoteLatestRef(const p
     QString latestVer = "unknown";
     package::Ref queryRef(remoteRepoName, "main", ref.appId, ref.version, ref.arch, "");
     auto ret = repoClient.QueryApps(queryRef);
+    if (!ret.has_value()) {
+        return LINGLONG_ERR(ret.error().code(), "use channel main");
+    }
 
-    if (!ret.has_value() || (*ret).isEmpty()) {
-        qWarning() << "query remote app with channel main failed, fallback to channel linglong."
-                   << queryRef.toSpecString();
-
+    if (ret->isEmpty()) {
+        qWarning() << "fallback to channel linglong";
         queryRef = package::Ref(remoteRepoName, "linglong", ref.appId, ref.version, ref.arch, "");
         ret = repoClient.QueryApps(queryRef);
         if (!ret.has_value()) {
-            qCritical() << "query remote app with channel linglong failed."
-                        << queryRef.toSpecString();
-            return LINGLONG_EWRAP(
-              QString("%1 is not exist in remote repo").arg(queryRef.toSpecString()),
-              ret.error());
+            return LINGLONG_ERR(ret.error().code(), "use channel linglong");
+        }
+        if (ret->isEmpty()) {
+            return LINGLONG_ERR(-1, "not found");
         }
     }
 

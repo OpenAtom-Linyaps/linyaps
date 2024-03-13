@@ -145,14 +145,6 @@ linglong::util::Error DependFetcher::fetch(const QString &subPath, const QString
         return {};
     };
 
-    // pull the package data which module is runtime
-    // ref.channel = "linglong";
-    ref.module = "runtime";
-    auto err = pullAndCheckout();
-    if (err) {
-        return err;
-    }
-
     // pull the package data which module is devel
     ref.module = "devel";
     return pullAndCheckout();

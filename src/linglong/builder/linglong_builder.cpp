@@ -120,8 +120,7 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
         } else {
             QFile configFile(installRulePath);
             if (!configFile.open(QIODevice::ReadOnly)) {
-                return LINGLONG_ERR(configFile.errorString() + " " + configFile.fileName(),
-                                    configFile.error());
+                return LINGLONG_ERR("open file", configFile);
             }
             installRules.append(QString(configFile.readAll()).split('\n'));
             // remove empty or duplicate lines
@@ -191,8 +190,7 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
                     QDir().mkpath(it.fileInfo().path().replace(src, dest));
                     QFile file(it.fileInfo().absoluteFilePath());
                     if (!file.copy(dstPath))
-                        return LINGLONG_ERR("copy file failed: " + file.errorString(),
-                                            file.error());
+                        return LINGLONG_ERR("copy file", file);
                     installedFiles.append(dstPath);
                 }
             }
@@ -210,11 +208,10 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
             .join(QDir::separator());
         QFile configFile(installRuleSavePath);
         if (!configFile.open(QIODevice::WriteOnly)) {
-            return LINGLONG_ERR(configFile.errorString() + " " + configFile.fileName(),
-                                configFile.error());
+            return LINGLONG_ERR("open file", configFile);
         }
         if (configFile.write(installedFiles.join('\n').toLocal8Bit()) < 0) {
-            return LINGLONG_ERR(configFile.errorString(), configFile.error());
+            return LINGLONG_ERR("write file", configFile);
         }
         configFile.close();
 
@@ -225,51 +222,46 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
         return LINGLONG_OK;
     };
 
-    auto createInfo = [](Project *project) -> linglong::util::Error {
-        QSharedPointer<package::Info> info(new package::Info);
+    auto createInfo = [](Project *project, QString module) -> linglong::utils::error::Result<void> {
+        LINGLONG_TRACE("split layers file");
 
+        QSharedPointer<package::Info> info(new package::Info);
         info->kind = project->package->kind;
         info->version = project->package->version;
-
         info->base = project->baseRef().toLocalRefString();
-
         info->runtime = project->runtimeRef().toLocalRefString();
-
         info->appid = project->package->id;
         info->name = project->package->name;
         info->description = project->package->description;
         info->arch = QStringList{ project->config().targetArch() };
+        info->module = module;
 
-        info->module = "runtime";
-        info->size = linglong::util::sizeOfDir(project->config().cacheRuntimeLayer(""));
-        QFile infoFile(project->config().cacheRuntimeLayer("info.json"));
+        QString outputPath;
+        if (module == "runtime") {
+            outputPath = project->config().cacheRuntimeLayer("");
+        } else {
+            outputPath = project->config().cacheDevelLayer("");
+        }
+        info->size = linglong::util::sizeOfDir(outputPath);
+
+        QFile infoFile(QStringList{ outputPath, "info.json" }.join(QDir::separator()));
         if (!infoFile.open(QIODevice::WriteOnly)) {
-            return NewError(infoFile.error(), infoFile.errorString() + " " + infoFile.fileName());
+            return LINGLONG_ERR("open file", infoFile);
         }
 
         // FIXME(black_desk): handle error
         if (infoFile.write(std::get<0>(util::toJSON(info))) < 0) {
-            return NewError(infoFile.error(), infoFile.errorString());
+            return LINGLONG_ERR("write file", infoFile);
         }
         infoFile.close();
 
-        info->module = "devel";
-        info->size = linglong::util::sizeOfDir(project->config().cacheDevelLayer(""));
-        QFile develInfoFile(project->config().cacheDevelLayer("info.json"));
-        if (!develInfoFile.open(QIODevice::WriteOnly)) {
-            return NewError(develInfoFile.error(),
-                            develInfoFile.errorString() + " " + develInfoFile.fileName());
-        }
-        if (develInfoFile.write(std::get<0>(util::toJSON(info))) < 0) {
-            return NewError(develInfoFile.error(), develInfoFile.errorString());
-        }
-        develInfoFile.close();
         QFile sourceConfigFile(project->configFilePath);
-        if (!sourceConfigFile.copy(project->config().cacheDevelLayer("linglong.yaml"))) {
-            return NewError(sourceConfigFile.error(), sourceConfigFile.errorString());
+        if (!sourceConfigFile.copy(
+              QStringList{ outputPath, "linglong.yaml" }.join(QDir::separator()))) {
+            return LINGLONG_ERR("copy file", sourceConfigFile);
         }
 
-        return Success();
+        return LINGLONG_OK;
     };
 
     auto splitStatus = splitFile(project);
@@ -290,11 +282,16 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
     linglong::util::linkDirFiles(project->config().cacheRuntimeLayer("files/lib/systemd/user"),
                                  project->config().cacheRuntimeLayer("entries/systemd/user"));
 
-    auto err = createInfo(project);
-    err = createInfo(project);
-    if (err) {
-        return LINGLONG_ERR("create info " + err.message(), err.code());
+    auto err = createInfo(project, "runtime");
+    if (!err.has_value()) {
+        return LINGLONG_ERR(err);
     }
+
+    err = createInfo(project, "devel");
+    if (!err.has_value()) {
+        return LINGLONG_ERR(err);
+    }
+
     auto refRuntime = project->refWithModule("runtime");
     refRuntime.channel = "main";
     qDebug() << "importDirectory " << project->config().cacheRuntimeLayer("");

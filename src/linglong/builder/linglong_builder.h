@@ -39,15 +39,14 @@ public:
 
     util::Error exportLayer(const QString &destination) override;
 
-    util::Error extractLayer(const QString &layerPath,
-                                       const QString &destination) override;
+    util::Error extractLayer(const QString &layerPath, const QString &destination) override;
 
     util::Error exportBundle(const QString &outputFilepath, bool useLocalDir) override;
 
     util::Error push(const QString &repoUrl,
-                               const QString &repoName,
-                               const QString &channel,
-                               bool pushWithDevel) override;
+                     const QString &repoName,
+                     const QString &channel,
+                     bool pushWithDevel) override;
 
     util::Error import() override;
 
@@ -84,6 +83,8 @@ private:
     buildStageEnvrionment(ocppi::runtime::config::types::Config &r,
                           const Project &project,
                           const BuilderConfig &config);
+    linglong::utils::error::Result<void>
+    buildStageMountHelper(ocppi::runtime::config::types::Config &r);
     linglong::utils::error::Result<void>
     buildStageIDMapping(ocppi::runtime::config::types::Config &r);
     linglong::utils::error::Result<void> buildStageRootfs(ocppi::runtime::config::types::Config &r,

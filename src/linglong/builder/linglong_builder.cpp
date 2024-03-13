@@ -976,6 +976,15 @@ linglong::utils::error::Result<QSharedPointer<Project>> LinglongBuilder::buildSt
     if (!project->package || project->package->kind.isEmpty()) {
         return LINGLONG_ERR("unknown package kind");
     }
+    if (project->sources.empty()) {
+        // 兼容旧版本的source
+        if (project->source) {
+            qWarning() << "The 'source' field has been deprecated. Please use 'sources' instead.";
+            project->sources.push_back(project->source);
+        } else {
+            return LINGLONG_ERR("missing sources field");
+        }
+    }
 
     project->configFilePath = projectConfigPath;
 

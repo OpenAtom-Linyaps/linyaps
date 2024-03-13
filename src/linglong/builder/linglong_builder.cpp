@@ -142,7 +142,7 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
             while (it.hasNext()) {
                 it.next();
 
-                QRegExp rx(rule, Qt::CaseInsensitive, QRegExp::Wildcard);
+                QRegExp rx(rule, Qt::CaseSensitive, QRegExp::Wildcard);
                 if (!rx.exactMatch(it.fileInfo().absoluteFilePath()))
                     continue;
 
@@ -177,7 +177,7 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
                         QString relativePath = linkFileDir.relativeFilePath(originFile.path());
                         auto newOriginFile = relativePath.endsWith("/")
                           ? relativePath + originFile.fileName()
-                          : relativePath + "/" + originFile.fileName();
+                          : originFile.fileName();
                         qDebug() << "link" << newOriginFile << "to" << newLinkFile;
                         if (!QFile::link(newOriginFile, newLinkFile))
                             return LINGLONG_ERR("link file failed, relative path", -1);

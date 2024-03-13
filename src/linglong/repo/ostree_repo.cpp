@@ -707,15 +707,14 @@ linglong::utils::error::Result<package::Ref> OSTreeRepo::remoteLatestRef(const p
     QString latestVer = "unknown";
     package::Ref queryRef(remoteRepoName, "main", ref.appId, ref.version, ref.arch, "");
     auto ret = repoClient.QueryApps(queryRef);
-
-    if (!ret || (*ret).isEmpty()) {
-        ret = LINGLONG_ERR("use channel main", ret);
-        qWarning() << ret.error();
+    if (!ret.has_value()) {
+        return LINGLONG_ERR("use channel main", ret);
+    }
+    if (ret->isEmpty()) {
         qWarning() << "fallback to channel linglong";
-
         queryRef = package::Ref(remoteRepoName, "linglong", ref.appId, ref.version, ref.arch, "");
         ret = repoClient.QueryApps(queryRef);
-        if (!ret) {
+        if (!ret.has_value()) {
             return LINGLONG_ERR("use channel linglong", ret);
         }
         if (ret->isEmpty()) {

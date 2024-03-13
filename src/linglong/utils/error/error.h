@@ -73,7 +73,8 @@ public:
                                                           line,
                                                           "default",
                                                           qfile.error(),
-                                                          trace_msg + ": " + qfile.errorString(),
+                                                          trace_msg + ": " + qfile.fileName() + ": "
+                                                            + qfile.errorString(),
                                                           nullptr));
     }
 

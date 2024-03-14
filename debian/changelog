@@ -1,3 +1,15 @@
+linglong (1.4.4-1) unstable; urgency=medium
+
+  * fix: fetching dependency failed because of channel.
+  * feat: add bash completion for ll-builder.
+  * fix: update bash completion for ll-cli.
+  * fix: add 'll-cli repo list' to usage and completion.
+  * feat: Refactor appimage convert features.
+  * feat: appimage support url convert.
+  * fix: offline status is error when fetch base.
+
+ -- dengbo <dengbo@deepin.org>  Thu, 14 Mar 2024 14:54:49 +0800
+
 linglong (1.4.3-1) unstable; urgency=medium
 
   * Fix some ll-builder bugs.

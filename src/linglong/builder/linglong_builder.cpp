@@ -745,45 +745,73 @@ LinglongBuilder::buildStageSource(ocppi::runtime::config::types::Config &r, Proj
     LINGLONG_TRACE("process source");
 
     printer.printMessage("[Processing Source]");
-    QSharedPointer<SourceFetcher> sf;
-    for (const auto source : project->sources) {
-        sf.reset(new SourceFetcher(source, printer, project));
-        if (source) {
-            auto err = sf->fetch();
-            if (err) {
-                return LINGLONG_ERR("fetch source failed");
+    auto containerSourcesPath = QDir("/sources");
+    auto hostSourcesPath = QDir(BuilderConfig::instance()->targetSourcePath());
+    // 挂载/sources为tmpfs
+    utils::command::AddMount(r,
+                             "",
+                             containerSourcesPath.path(),
+                             { "nosuid", "strictatime" },
+                             "tmpfs");
+
+    for (const auto &source : project->sources) {
+        // 过滤path中可能包含的..，避免路径注入
+        source->path = QDir::cleanPath(source->path);
+        // local类型的source挂载点随机生成，也可以使用path参数手动指定
+        if (source->kind == "local") {
+            if (source->path.isEmpty()) {
+                source->path = "local_" + util::genUuid();
+            }
+            utils::command::AddMount(r,
+                                     BuilderConfig::instance()->getProjectRoot(),
+                                     containerSourcesPath.filePath(source->path),
+                                     { "rbind", "nosuid", "nodev" });
+            continue;
+        }
+        // 其他类型的source挂载点使用哈希值，也可以使用path参数手动指定
+        if (source->path.isEmpty()) {
+            if (source->digest.isEmpty()) {
+                source->path = "commit_" + source->commit;
+            } else {
+                source->path = "digest_" + source->digest;
             }
         }
+        // 避免digest或commit里面有路径注入
+        source->path = QDir::cleanPath(source->path);
+        // 为远程source创建目录
+        hostSourcesPath.mkpath(source->path);
+        // 拉去远程source
+        SourceFetcher sf(source, printer, project);
+        sf.setSourceRoot(hostSourcesPath.filePath(source->path));
+        auto err = sf.fetch();
+        if (err) {
+            return LINGLONG_ERR("fetch source failed");
+        }
+        // 添加挂载
+        utils::command::AddMount(r,
+                                 hostSourcesPath.filePath(source->path),
+                                 containerSourcesPath.filePath(source->path),
+                                 { "rbind", "nosuid", "nodev" });
     }
     // 挂载tmp
-    ocppi::runtime::config::types::Mount m;
-    m.type = "tmpfs";
-    m.source = "tmp";
-    m.destination = "/tmp";
-    m.options = { "nosuid", "strictatime", "mode=777" };
-    r.mounts->push_back(m);
+    utils::command::AddMount(r, "", "/tmp", { "nosuid", "strictatime", "mode=777" }, "tmpfs");
     // 挂载构建文件
-    auto containerSourcePath = "/source";
-    QList<QPair<QString, QString>> mountMap = {
-        // 源码目录
-        { sf->sourceRoot(), containerSourcePath },
-        // 构建脚本
-        { project->buildScriptPath(), BuildScriptPath },
-    };
-    for (const auto &pair : mountMap) {
-        ocppi::runtime::config::types::Mount m;
-        m.type = "bind";
-        m.source = pair.first.toStdString();
-        m.destination = pair.second.toStdString();
-        m.options = { "rbind", "nosuid", "nodev" };
-        r.mounts->push_back(m);
-    }
-
-    if (!BuilderConfig::instance()->getExec().empty()) {
+    project->generateBuildScript();
+    utils::command::AddMount(r,
+                             project->buildScriptPath(),
+                             BuildScriptPath,
+                             { "rbind", "nosuid", "nodev" });
+    // 如果手动指定exec，不再执行构建脚本
+    if (BuilderConfig::instance()->getExec().empty()) {
+        r.process->args = { "/bin/bash", "-e", BuildScriptPath };
+    } else {
         r.process->terminal = true;
+        for (auto exec : BuilderConfig::instance()->getExec()) {
+            r.process->args->push_back(exec.toStdString());
+        }
     }
-    r.process->args = { "/bin/bash", "-e", BuildScriptPath };
-    r.process->cwd = containerSourcePath;
+    r.process->cwd = containerSourcesPath.path().toStdString();
+    r.process->env->push_back("SOURCES=" + r.process->cwd);
     r.process->user = ocppi::runtime::config::types::User();
     r.process->user->uid = getuid();
     r.process->user->gid = getgid();
@@ -968,7 +996,6 @@ linglong::utils::error::Result<QSharedPointer<Project>> LinglongBuilder::buildSt
         return LINGLONG_ERR("unknown package kind");
     }
 
-    project->generateBuildScript();
     project->configFilePath = projectConfigPath;
 
     linglong::builder::BuilderConfig::instance()->setProjectName(project->package->id);

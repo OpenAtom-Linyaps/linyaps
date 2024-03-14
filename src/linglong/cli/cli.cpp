@@ -29,7 +29,7 @@ A CLI program to run application and manage linglong pagoda and tiers.
 
 Usage:
     ll-cli [--json] --version
-    ll-cli [--json] run APP [--no-dbus-proxy] [--dbus-proxy-cfg=PATH] [--] [COMMAND...]
+    ll-cli [--json] run APP [--no-dbus-proxy] [--dbus-proxy-cfg=PATH] ( [--file=FILE] | [--url=URL] ) [--] [COMMAND...]
     ll-cli [--json] ps
     ll-cli [--json] exec PAGODA [--working-directory=PATH] [--] COMMAND...
     ll-cli [--json] enter PAGODA [--working-directory=PATH] [--] [COMMAND...]
@@ -58,6 +58,8 @@ Options:
     --no-dbus                 Use peer to peer DBus, this is used only in case that DBus daemon is not available.
     --no-dbus-proxy           Do not enable linglong-dbus-proxy.
     --dbus-proxy-cfg=PATH     Path of config of linglong-dbus-proxy.
+    --file=FILE               you can refer to https://linglong.dev/guide/ll-cli/run.html to use this parameter.
+    --url=URL                 you can refer to https://linglong.dev/guide/ll-cli/run.html to use this parameter.
     --working-directory=PATH  Specify working directory.
     --type=TYPE               Filter result with tiers type. One of "lib", "app" or "dev". [default: app]
     --state=STATE             Filter result with the tiers install state. Should be "local" or "remote". [default: local]
@@ -340,9 +342,7 @@ int Cli::run(std::map<std::string, docopt::value> &args)
 
     auto command = args["COMMAND"].asStringList();
     if (!command.empty()) {
-        for (const auto &arg : command) {
-            paramOption.exec.push_back(QString::fromStdString(arg));
-        }
+        filePathMapping(args, command, paramOption.exec);
     }
 
     // 获取用户环境变量
@@ -862,6 +862,58 @@ int Cli::info(std::map<std::string, docopt::value> &args)
 
     this->printer.printLayerInfo(pkgInfo);
     return 0;
+}
+
+void Cli::filePathMapping(std::map<std::string, docopt::value> &args,
+                          const std::vector<std::string> &command,
+                           QStringList &execOption) const noexcept
+{
+    QString targetHostPath;
+
+    // if the --file or --url option is specified, need to map the file path to the linglong
+    // path(/run/host).
+    for (const auto &arg : command) {
+        if (arg.substr(0, 2) != "%%") {
+            execOption.push_back(QString::fromStdString(arg));
+            continue;
+        }
+
+        if (arg == "%%f") {
+            const auto file = QString::fromStdString(args["--file"].asString());
+
+            if (file.isEmpty()) {
+                continue;
+            }
+
+            targetHostPath = LINGLONG_HOST_PATH + file;
+            execOption.push_back(targetHostPath);
+            continue;
+        }
+
+        if (arg == "%%u") {
+            const auto url = QString::fromStdString(args["--url"].asString());
+
+            if (url.isEmpty()) {
+                continue;
+            }
+
+            const QString filePre = "file:///";
+
+            // if url is "file:///" format, need to map the file path to the linglong path, or
+            // deliver url directly.
+            if (url.startsWith(filePre)) {
+                const auto filePath = url.mid(filePre.length(), url.length() - filePre.length());
+                targetHostPath = filePre + LINGLONG_HOST_PATH + filePath;
+            } else {
+                targetHostPath = url;
+            }
+
+            execOption.push_back(targetHostPath);
+            continue;
+        }
+
+        qWarning() << "unkown command argument" << QString::fromStdString(arg);
+    }
 }
 
 } // namespace linglong::cli

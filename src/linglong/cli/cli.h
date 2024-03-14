@@ -61,6 +61,9 @@ private:
     bool taskDone{ false };
     service::InstallTask::Status lastStatus;
     utils::error::Result<QString> getContainerID(std::map<std::string, docopt::value> &args);
+    void filePathMapping(std::map<std::string, docopt::value> &args,
+                         const std::vector<std::string> &command,
+                         QStringList &execOption) const noexcept;
 
 public:
     int run(std::map<std::string, docopt::value> &args);

@@ -20,6 +20,9 @@ set(LINGLONG_ROOT
 set(LINGLONG_ENABLE_TESTING
     True
     CACHE BOOL "Enable test of linglong or not")
+set(LINGLONG_HOST_PATH
+    "/run/host"
+    CACHE STRING "The location where linglong host path mapping")
 
 # Find dependencies
 

@@ -71,17 +71,6 @@ int Project::generateBuildScript(const QString &path)
         return -1;
     }
 
-    if (!BuilderConfig::instance()->getExec().isEmpty()) {
-        auto exec = BuilderConfig::instance()->getExec();
-        for (const auto &arg : exec) {
-            command += '\'' + arg + '\'' + ' ';
-        }
-        command = command.trimmed();
-        command += "\n";
-        scriptFile.write(command.toLocal8Bit());
-        scriptFile.close();
-        return 0;
-    }
     // TODO: generate global config, load from builder config file.
     command += "#global variable\n";
     command += QString("JOBS=%1\n").arg("6");

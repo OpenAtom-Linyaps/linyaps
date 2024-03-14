@@ -7,9 +7,9 @@
 #ifndef LINGLONG_SRC_BUILDER_BUILDER_PROJECT_H_
 #define LINGLONG_SRC_BUILDER_BUILDER_PROJECT_H_
 
+#include "linglong/builder/builder_config.h"
 #include "linglong/package/ref.h"
 #include "linglong/util/qserializer/deprecated.h"
-#include "linglong/builder/builder_config.h"
 
 #include <QObject>
 #include <QScopedPointer>
@@ -91,6 +91,7 @@ public:
     Q_JSON_PROPERTY(QString, commit);
 
     Q_JSON_PROPERTY(QStringList, patch);
+    Q_JSON_PROPERTY(QString, name);
 };
 
 class BuildManual : public JsonSerialize

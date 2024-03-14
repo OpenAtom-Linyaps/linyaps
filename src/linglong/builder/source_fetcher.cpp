@@ -109,8 +109,6 @@ std::tuple<QString, linglong::util::Error> SourceFetcherPrivate::fetchArchiveFil
 {
     Q_Q(SourceFetcher);
 
-    q->setSourceRoot(sourceTargetPath());
-
     QUrl url(source->url);
     auto path = BuilderConfig::instance()->targetFetchCachePath() + "/" + filename();
 
@@ -165,9 +163,7 @@ util::Error SourceFetcherPrivate::fetchGitRepo()
 {
     Q_Q(SourceFetcher);
 
-    q->setSourceRoot(sourceTargetPath());
-
-    q->printer.printMessage(QString("Path: %1").arg(sourceTargetPath()), 2);
+    q->printer.printMessage(QString("Path: %1").arg(q->sourceRoot()), 2);
 
     // 如果二进制安装在系统目录中，优先使用系统中安装的脚本文件（便于用户更改），否则使用二进制内嵌的脚本（便于开发调试）
     auto scriptFile = QString(LINGLONG_LIBEXEC_DIR) + "/fetch-git-repo.sh";
@@ -182,7 +178,7 @@ util::Error SourceFetcherPrivate::fetchGitRepo()
         QFile::copy(":/scripts/fetch-git-repo", scriptFile);
     }
     QStringList args = {
-        scriptFile, sourceTargetPath(), source->url, source->commit, source->version,
+        scriptFile, q->sourceRoot(), source->url, source->commit, source->version,
     };
     q->printer.printMessage(QString("Command: sh %1").arg(args.join(" ")), 2);
 
@@ -265,7 +261,7 @@ linglong::util::Error SourceFetcher::fetch()
         if (err) {
             return err;
         }
-        err = d->extractFile(s, d->sourceTargetPath());
+        err = d->extractFile(s, sourceRoot());
     } else if (d->source->kind == "local") {
         err = d->handleLocalSource();
         printer.printMessage(QString("Source: %1").arg(sourceRoot()), 2);
@@ -307,6 +303,10 @@ SourceFetcher::SourceFetcher(QSharedPointer<Source> s, cli::Printer &p, Project 
     Q_D(SourceFetcher);
 
     d->project = project;
+    if (d->source->kind == "git" && d->source->version.isEmpty()) {
+        d->source->version = project->package->version;
+    }
+    setSourceRoot(d->sourceTargetPath());
 }
 
 SourceFetcher::~SourceFetcher() { }

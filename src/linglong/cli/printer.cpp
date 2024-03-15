@@ -7,6 +7,7 @@
 #include "linglong/cli/printer.h"
 
 #include "linglong/dbus_ipc/reply.h"
+#include "linglong/package_manager/task.h"
 
 #include <QJsonArray>
 
@@ -115,6 +116,15 @@ void Printer::printLayerInfo(const QSharedPointer<linglong::package::Info> &info
     std::cout << "Runtime: " << info->runtime.toStdString() << std::endl;
     std::cout << "Size: " << info->size << " bytes" << std::endl;
     std::cout << "Description: " << info->description.toStdString() << std::endl;
+}
+
+void Printer::printTaskStatus(const QString &percentage, const QString &message, int status)
+{
+    std::cout << "\r\33[K"
+              << "\033[?25l"
+              << percentage.toStdString() << "% " << message.toStdString()
+              << "\033[?25h";
+    std::cout.flush();
 }
 
 void Printer::printMessage(const QString &text, const int num)

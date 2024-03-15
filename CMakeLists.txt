@@ -247,6 +247,8 @@ pfl_add_library(
   ./src/linglong/package/version_range.h
   ./src/linglong/package_manager/package_manager.cpp
   ./src/linglong/package_manager/package_manager.h
+  ./src/linglong/package_manager/task.h
+  ./src/linglong/package_manager/task.cpp
   ./src/linglong/repo/config.cpp
   ./src/linglong/repo/config.h
   ./src/linglong/repo/config/ConfigV1.hpp

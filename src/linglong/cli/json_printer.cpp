@@ -5,7 +5,7 @@
  */
 
 #include "linglong/cli/json_printer.h"
-
+#include "linglong/package_manager/task.h"
 #include "linglong/dbus_ipc/reply.h"
 
 #include <QJsonArray>
@@ -99,6 +99,19 @@ void JSONPrinter::printLayerInfo(const QSharedPointer<linglong::package::Info> &
     });
 
     std::cout << QString::fromUtf8(QJsonDocument(jsonArray).toJson()).toStdString() << std::endl;
+}
+
+void JSONPrinter::printTaskStatus(const QString &percentage, const QString &message, int status)
+{
+  QJsonArray jsonArray;
+
+  jsonArray.push_back(QJsonObject{
+    {"percentage",percentage},
+    {"message",message},
+    {"state",QMetaEnum::fromType<service::InstallTask::Status>().valueToKey(status)},
+  });
+
+  std::cout << QString::fromUtf8(QJsonDocument(jsonArray).toJson()).toStdString() << std::endl;
 }
 
 } // namespace linglong::cli

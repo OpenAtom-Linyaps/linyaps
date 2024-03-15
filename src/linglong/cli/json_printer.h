@@ -21,6 +21,7 @@ public:
     void printReply(const linglong::service::Reply &reply) override;
     void printQueryReply(const linglong::service::QueryReply &reply) override;
     void printLayerInfo(const QSharedPointer<linglong::package::Info> &info) override;
+    void printTaskStatus(const QString& percentage,const QString& message, int status) override;
 };
 
 } // namespace linglong::cli

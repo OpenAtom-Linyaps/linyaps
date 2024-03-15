@@ -6,13 +6,6 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "https://specifications.freedesktop.org/dbus/introspect-latest.dtd">
 <node>
   <interface name="org.deepin.linglong.PackageManager1">
-    <method name="GetDownloadStatus">
-      <arg name="paramOption" type="(sssss)" direction="in"/>
-      <arg name="type" type="i" direction="in"/>
-      <arg name="reply" type="(is)" direction="out"/>
-      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="linglong::service::ParamOption"/>
-      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::Reply"/>
-    </method>
     <method name="InstallLayerFD">
       <arg name="fileDescriptor" type="h" direction="in"/>
       <arg name="reply" type="(is)" direction="out"/>
@@ -58,5 +51,14 @@ SPDX-License-Identifier: LGPL-3.0-or-later
       <arg type="(iss)" direction="out"/>
       <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="linglong::service::QueryReply"/>
     </method>
+    <method name="CancelTask">
+      <arg name="taskID" type="s" direction="in"/>
+    </method>
+    <signal name="TaskChanged">
+      <arg name="taskID" type="s"/>
+      <arg name="percentage" type="s"/>
+      <arg name="message" type="s"/>
+      <arg name="status" type="i"/>
+    </signal>
   </interface>
 </node>

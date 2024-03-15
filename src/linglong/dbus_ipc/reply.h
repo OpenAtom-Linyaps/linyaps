@@ -20,12 +20,13 @@ class Reply
 public:
     int code;        ///< 状态码
     QString message; ///< 状态码对应的消息
+    QString taskID;
 };
 
 inline QDBusArgument &operator<<(QDBusArgument &argument, const Reply &reply)
 {
     argument.beginStructure();
-    argument << reply.code << reply.message;
+    argument << reply.code << reply.message << reply.taskID;
     argument.endStructure();
     return argument;
 }
@@ -33,7 +34,7 @@ inline QDBusArgument &operator<<(QDBusArgument &argument, const Reply &reply)
 inline const QDBusArgument &operator>>(const QDBusArgument &argument, Reply &reply)
 {
     argument.beginStructure();
-    argument >> reply.code >> reply.message;
+    argument >> reply.code >> reply.message >> reply.taskID;
     argument.endStructure();
     return argument;
 }

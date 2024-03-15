@@ -12,6 +12,7 @@
 #include "linglong/package/package.h"
 #include "linglong/package/ref.h"
 #include "linglong/package_manager/package_manager.h"
+#include "linglong/package_manager/task.h"
 #include "linglong/runtime/dbus_proxy.h"
 #include "linglong/service/app_manager.h"
 #include "linglong/util/app_status.h"
@@ -36,8 +37,9 @@
 
 namespace linglong::cli {
 
-class Cli
+class Cli : public QObject
 {
+    Q_OBJECT
 public:
     Cli(const Cli &) = delete;
     Cli(Cli &&) = delete;
@@ -46,15 +48,18 @@ public:
     ~Cli() = default;
     Cli(Printer &printer,
         linglong::service::AppManager &appMan,
-        linglong::api::dbus::v1::PackageManager &pkgMan);
+        const std::shared_ptr<linglong::api::dbus::v1::PackageManager>& pkgMan,
+        QObject *parent = nullptr);
 
     static const char USAGE[];
 
 private:
     Printer &printer;
     linglong::service::AppManager &appMan;
-    linglong::api::dbus::v1::PackageManager &pkgMan;
-
+    std::shared_ptr<linglong::api::dbus::v1::PackageManager> pkgMan;
+    QString taskID;
+    bool taskDone{ false };
+    service::InstallTask::Status lastStatus;
     utils::error::Result<QString> getContainerID(std::map<std::string, docopt::value> &args);
 
 public:
@@ -70,6 +75,14 @@ public:
     int list(std::map<std::string, docopt::value> &args);
     int repo(std::map<std::string, docopt::value> &args);
     int info(std::map<std::string, docopt::value> &args);
+
+    void cancelCurrentTask();
+
+private Q_SLOTS:
+    void processDownloadStatus(const QString &recTaskID,
+                               const QString &percentage,
+                               const QString &message,
+                               int status);
 };
 
 } // namespace linglong::cli

@@ -46,6 +46,14 @@ QSERIALIZER_IMPL(UploadTaskResponse);
 
 typedef QMap<QString, OstreeRepoObject> RepoObjectMap;
 
+namespace _internal {
+struct ostreeUserData
+{
+    OSTreeRepo *repo{ nullptr };
+    service::InstallTask *taskContext{ nullptr };
+};
+}; // namespace _internal
+
 OSTreeRepo::OSTreeRepo(const QString &localRepoPath,
                        const config::ConfigV1 &cfg,
                        api::client::ClientApi &client)
@@ -322,6 +330,9 @@ char *OSTreeRepo::_formatted_time_remaining_from_seconds(guint64 seconds_remaini
 
 void OSTreeRepo::progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
 {
+
+    auto data = static_cast<_internal::ostreeUserData *>(user_data);
+
     g_autofree char *status = NULL;
     gboolean caught_error, scanning;
     guint outstanding_fetches;
@@ -378,8 +389,11 @@ void OSTreeRepo::progress_changed(OstreeAsyncProgress *progress, gpointer user_d
     if (*status != '\0') {
         new_progress = 100;
         g_string_append(buf, status);
+        Q_EMIT data->taskContext->updateTask(90, 100, "pull application done.");
     } else if (caught_error) {
-        g_string_append_printf(buf, "Caught error, waiting for outstanding tasks");
+        auto msg = "Caught error, waiting for outstanding tasks";
+        g_string_append_printf(buf, "%s", msg);
+        Q_EMIT data->taskContext->updateStatus(service::InstallTask::Failed, msg);
     } else if (outstanding_fetches) {
         guint64 bytes_transferred, start_time, total_delta_part_size;
         guint fetched, metadata_fetched, requested;
@@ -479,14 +493,17 @@ void OSTreeRepo::progress_changed(OstreeAsyncProgress *progress, gpointer user_d
                                    formatted_bytes_transferred);
             new_progress = fetched * 97 / requested;
         }
+
+        Q_EMIT data->taskContext->updateTask(fetched,
+                                             requested,
+                                             "pulling application.");
     } else if (outstanding_writes) {
         g_string_append_printf(buf, "Writing objects: %u", outstanding_writes);
     } else {
         g_string_append_printf(buf, "Scanning metadata: %u", n_scanned_metadata);
     }
 
-    OSTreeRepo *repo = static_cast<OSTreeRepo *>(user_data);
-    Q_EMIT repo->progressChanged(new_progress, QString("%1").arg(formatted_bytes_sec));
+    Q_EMIT data->repo->progressChanged(new_progress, QString("%1").arg(formatted_bytes_sec));
 }
 
 linglong::utils::error::Result<void> OSTreeRepo::pull(package::Ref &ref, bool /*force*/)
@@ -846,16 +863,20 @@ linglong::utils::error::Result<void> OSTreeRepo::getRemoteRepoList(QVector<QStri
  *
  * @return bool: true:成功 false:失败
  */
-linglong::utils::error::Result<void> OSTreeRepo::repoPullbyCmd(const QString &destPath,
-                                                               const QString &remoteName,
-                                                               const QString &ref)
+linglong::utils::error::Result<void>
+OSTreeRepo::repoPullbyCmd(const QString &destPath,
+                          const QString &remoteName,
+                          const QString &ref,
+                          std::shared_ptr<service::InstallTask> taskContext)
 {
     LINGLONG_TRACE("pull");
 
     // 创建临时仓库
     auto tmpPath = createTmpRepo(destPath + "/repo");
     if (!tmpPath) {
-        return LINGLONG_ERR(tmpPath);
+        auto err = LINGLONG_ERR(tmpPath);
+        taskContext->updateStatus(service::InstallTask::Failed, err.value().message());
+        return err;
     }
 
     g_autoptr(GError) gErr = nullptr;
@@ -872,39 +893,52 @@ linglong::utils::error::Result<void> OSTreeRepo::repoPullbyCmd(const QString &de
     g_variant_builder_add(&builder, "{sv}", "http2", g_variant_new_boolean(false));
     g_variant_builder_add(&builder, "{sv}", "gpg-verify", g_variant_new_boolean(false));
     options = g_variant_ref_sink(g_variant_builder_end(&builder));
-    ostree_repo_open(tmpRepo, NULL, &gErr);
+    auto cancellable = taskContext->cancellable();
+
+    ostree_repo_open(tmpRepo, cancellable, &gErr);
     if (gErr != nullptr) {
-        return LINGLONG_ERR("ostree_repo_open", gErr);
+        auto err = LINGLONG_ERR("ostree_repo_open", gErr);
+        taskContext->updateStatus(service::InstallTask::Failed, err.value().message());
+        return err;
     }
 
     ostree_repo_remote_add(tmpRepo,
                            remoteName.toStdString().c_str(),
                            (remoteEndpoint + "/repos/" + remoteName).toStdString().c_str(),
                            options,
-                           NULL,
+                           cancellable,
                            &gErr);
     if (gErr != nullptr) {
-        return LINGLONG_ERR("ostree_repo_remote_add", gErr);
+        auto err = LINGLONG_ERR("ostree_repo_remote_add", gErr);
+        taskContext->updateStatus(service::InstallTask::Failed, err.value().message());
+        return err;
     }
 
+    _internal::ostreeUserData data{ .repo = this, .taskContext = taskContext.get() };
+
+    auto progress = ostree_async_progress_new_and_connect(progress_changed, (void *)&data);
     ostree_repo_pull(tmpRepo,
                      remote.c_str(),
                      refs_to_fetch,
                      OSTREE_REPO_PULL_FLAGS_MIRROR,
-                     NULL,
-                     NULL,
+                     progress,
+                     cancellable,
                      &gErr);
+    ostree_async_progress_finish(progress);
     if (gErr != nullptr) {
-        return LINGLONG_ERR("ostree_repo_pull", gErr);
+        auto err = LINGLONG_ERR("ostree_repo_pull", gErr);
+        taskContext->updateStatus(service::InstallTask::Failed, err.value().message());
+        return err;
     }
-    qInfo() << "repoPullbyCmd pull success";
 
     auto path = destPath + "/repo";
     auto dest_repo_path = g_file_new_for_path(path.toStdString().c_str());
     g_autoptr(OstreeRepo) repoDest = ostree_repo_new(dest_repo_path);
-    ostree_repo_open(repoDest, NULL, &gErr);
+    ostree_repo_open(repoDest, cancellable, &gErr);
     if (gErr != nullptr) {
-        return LINGLONG_ERR("ostree_repo_open", gErr);
+        auto err = LINGLONG_ERR("ostree_repo_open", gErr);
+        taskContext->updateStatus(service::InstallTask::Failed, err.value().message());
+        return err;
     }
 
     g_autofree auto base_url = g_strconcat("file://", tmpPath->toStdString().c_str(), NULL);
@@ -931,9 +965,11 @@ linglong::utils::error::Result<void> OSTreeRepo::repoPullbyCmd(const QString &de
 
     options = g_variant_ref_sink(g_variant_builder_end(&builder));
 
-    ostree_repo_pull_with_options(repoDest, (char *)base_url, options, NULL, NULL, &gErr);
+    ostree_repo_pull_with_options(repoDest, (char *)base_url, options, NULL, cancellable, &gErr);
     if (gErr != nullptr) {
-        return LINGLONG_ERR("ostree_repo_pull_with_options", gErr);
+        auto err = LINGLONG_ERR("ostree_repo_open", gErr);
+        taskContext->updateStatus(service::InstallTask::Failed, err.value().message());
+        return err;
     }
 
     // 删除临时仓库

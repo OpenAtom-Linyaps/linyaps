@@ -185,9 +185,11 @@ public:
      *
      * @return bool: true:成功 false:失败
      */
-    linglong::utils::error::Result<void> repoPullbyCmd(const QString &destPath,
-                                                       const QString &remoteName,
-                                                       const QString &ref) override;
+    linglong::utils::error::Result<void>
+    repoPullbyCmd(const QString &destPath,
+                  const QString &remoteName,
+                  const QString &ref,
+                  std::shared_ptr<service::InstallTask> taskContext) override;
 
     /*
      * 删除本地repo仓库中软件包对应的ref分支信息及数据

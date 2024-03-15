@@ -8,6 +8,7 @@
 #define LINGLONG_SRC_MODULE_REPO_REPO_H_
 
 #include "linglong/package/package.h"
+#include "linglong/package_manager/task.h"
 #include "linglong/repo/config/ConfigV1.hpp"
 #include "linglong/utils/error/error.h"
 
@@ -63,9 +64,11 @@ public:
                                                            const QString &appVersion) = 0;
 
     virtual linglong::utils::error::Result<void> getRemoteRepoList(QVector<QString> &vec) = 0;
-    virtual linglong::utils::error::Result<void> repoPullbyCmd(const QString &destPath,
-                                                               const QString &remoteName,
-                                                               const QString &ref) = 0;
+    virtual linglong::utils::error::Result<void>
+    repoPullbyCmd(const QString &destPath,
+                  const QString &remoteName,
+                  const QString &ref,
+                  std::shared_ptr<service::InstallTask> taskContext) = 0;
     virtual linglong::utils::error::Result<void> repoDeleteDatabyRef(const QString &repoPath,
                                                                      const QString &ref) = 0;
 

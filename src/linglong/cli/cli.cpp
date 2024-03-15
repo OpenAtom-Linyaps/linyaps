@@ -15,6 +15,7 @@
 #include <nlohmann/json.hpp>
 
 #include <grp.h>
+#include <string.h>
 #include <sys/wait.h>
 
 using namespace linglong::utils::error;
@@ -78,21 +79,6 @@ Subcommands:
 )";
 
 namespace {
-/**
- * @brief 处理安装中断请求
- *
- * @param sig 中断信号
- */
-void doIntOperate(int /*sig*/)
-{
-    // FIXME(black_desk): should use sig
-
-    // 显示光标
-    std::cout << "\033[?25h" << std::endl;
-    // Fix to 调用jobManager中止下载安装操作
-    exit(0);
-}
-
 auto parseDataFromProxyCfgFile(const QString &dbusProxyCfgPath) -> Result<DBusProxyConfig>
 {
     LINGLONG_TRACE("parse D-Bus proxy config");
@@ -271,12 +257,50 @@ int namespaceEnter(pid_t pid, const QString &id)
 
 } // namespace
 
+void Cli::processDownloadStatus(const QString &recTaskID,
+                                const QString &percentage,
+                                const QString &message,
+                                int status)
+{
+    LINGLONG_TRACE("process download status changed.")
+
+    {
+        if (recTaskID == this->taskID) {
+            this->lastStatus = static_cast<service::InstallTask::Status>(status);
+            switch (status) {
+            case service::InstallTask::Canceled:
+            case service::InstallTask::Queued:
+            case service::InstallTask::preInstall:
+            case service::InstallTask::installBase:
+            case service::InstallTask::installRuntime:
+            case service::InstallTask::installApplication:
+                [[fallthrough]];
+            case service::InstallTask::postInstall: {
+                this->printer.printTaskStatus(percentage, message, status);
+            } break;
+            case service::InstallTask::Success: {
+                this->taskDone = true;
+                this->printer.printTaskStatus(percentage, message, status);
+                std::cout << std::endl;
+            } break;
+            case service::InstallTask::Failed: {
+                auto err = LINGLONG_ERR(message);
+                this->printer.printErr(err.value());
+                this->taskDone = true;
+            }
+            }
+        }
+    }
+}
+
 Cli::Cli(Printer &printer,
          linglong::service::AppManager &appMan,
-         linglong::api::dbus::v1::PackageManager &pkgMan)
+         const std::shared_ptr<linglong::api::dbus::v1::PackageManager> &pkgMan,
+         QObject *parent)
     : printer(printer)
     , appMan(appMan)
     , pkgMan(pkgMan)
+    , QObject(parent)
 {
 }
 
@@ -481,14 +505,20 @@ int Cli::kill(std::map<std::string, docopt::value> &args)
     return 0;
 }
 
+void Cli::cancelCurrentTask()
+{
+    if (!this->taskDone) {
+        this->pkgMan->CancelTask(this->taskID);
+        std::cout << "cancel downloading application." << std::endl;
+    }
+}
+
 int Cli::install(std::map<std::string, docopt::value> &args)
 {
     LINGLONG_TRACE("command install");
 
-    // 收到中断信号后恢复操作
-    signal(SIGINT, doIntOperate);
     // 设置 24 h超时
-    this->pkgMan.setTimeout(1000 * 60 * 60 * 24);
+    this->pkgMan->setTimeout(1000 * 60 * 60 * 24);
     // appId format: org.deepin.calculator/1.2.6 in multi-version
     linglong::service::InstallParamOption installParamOption;
     auto tiers = args["TIER"].asStringList();
@@ -511,7 +541,7 @@ int Cli::install(std::map<std::string, docopt::value> &args)
             layerFile->data()->seek(0);
             QDBusUnixFileDescriptor dbusFileDescriptor(layerFile->data()->handle());
             QDBusPendingReply<linglong::service::Reply> dbusReply =
-              this->pkgMan.InstallLayerFD(dbusFileDescriptor);
+              this->pkgMan->InstallLayerFD(dbusFileDescriptor);
             dbusReply.waitForFinished();
             reply = dbusReply.value();
             this->printer.printReply(reply);
@@ -531,46 +561,46 @@ int Cli::install(std::map<std::string, docopt::value> &args)
 
         qInfo().noquote() << "install" << ref.appId << ", please wait a few minutes...";
 
-        QDBusPendingReply<linglong::service::Reply> dbusReply =
-          this->pkgMan.Install(installParamOption);
-        dbusReply.waitForFinished();
-        reply = dbusReply.value();
-        qDebug() << reply.message;
-        QThread::sleep(1);
-        // 查询一次进度
-        dbusReply = this->pkgMan.GetDownloadStatus(installParamOption, 0);
-        dbusReply.waitForFinished();
-        reply = dbusReply.value();
-        bool disProgress = false;
-        // 隐藏光标
-        std::cout << "\033[?25l";
-        while (reply.code == STATUS_CODE(kPkgInstalling)) {
-            std::cout << "\r\33[K" << reply.message.toStdString();
-            std::cout.flush();
-            QThread::sleep(1);
-            dbusReply = this->pkgMan.GetDownloadStatus(installParamOption, 0);
-            dbusReply.waitForFinished();
-            reply = dbusReply.value();
-            disProgress = true;
+        auto conn = pkgMan->connection();
+        auto con = conn.connect(
+          pkgMan->service(),
+          pkgMan->path(),
+          pkgMan->interface(),
+          "TaskChanged",
+          this,
+          SLOT(processDownloadStatus(const QString &, const QString &, const QString &, int)));
+        if (!con) {
+            qCritical() << " failed to connect signal: TaskChanged. state may be incorrect.";
+            return -1;
         }
-        // 显示光标
-        std::cout << "\033[?25h";
-        if (disProgress) {
-            std::cout << std::endl;
-        }
-        if (reply.code != STATUS_CODE(kPkgInstallSuccess)) {
-            if (reply.message.isEmpty()) {
-                reply.message = "unknown err";
-                reply.code = -1;
-            }
 
+        QDBusPendingReply<linglong::service::Reply> dbusReply =
+          this->pkgMan->Install(installParamOption);
+        dbusReply.waitForFinished();
+        reply = dbusReply.value();
+
+        if (reply.code != STATUS_CODE(kPkgInstalling)) {
             auto err = LINGLONG_ERR(reply.message, reply.code).value();
             this->printer.printErr(err);
             return err.code();
         }
 
+        this->taskID = reply.taskID;
+        QEventLoop loop;
+        std::function<void()> statusChecker =
+          std::function{ [&loop, &statusChecker, this]() -> void {
+              if (this->taskDone) {
+                  loop.exit(0);
+              }
+              QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
+          } };
+
+        QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
+        loop.exec();
+
         // Call ReloadApplications() in AM for now. Remove later.
-        if (linglong::util::isDeepinSysProduct()) {
+        if (linglong::util::isDeepinSysProduct()
+            && this->lastStatus == service::InstallTask::Success) {
             QDBusConnection conn = QDBusConnection::sessionBus();
             if (!conn.isConnected()) {
                 qWarning() << "Failed to connect to the session bus";
@@ -585,8 +615,6 @@ int Cli::install(std::map<std::string, docopt::value> &args)
                 qWarning() << "call reloadApplications failed:" << ret.errorMessage();
             }
         }
-
-        this->printer.printReply(reply);
     }
     return 0;
 }
@@ -614,45 +642,54 @@ int Cli::upgrade(std::map<std::string, docopt::value> &args)
         // 增加 channel/module
         paramOption.channel = ref.channel;
         paramOption.appModule = ref.module;
-        pkgMan.setTimeout(1000 * 60 * 60 * 24);
+        pkgMan->setTimeout(1000 * 60 * 60 * 24);
         qInfo().noquote() << "upgrade" << paramOption.appId << ", please wait a few minutes...";
-        QDBusPendingReply<linglong::service::Reply> dbusReply = pkgMan.Update(paramOption);
+        QDBusPendingReply<linglong::service::Reply> dbusReply = pkgMan->Update(paramOption);
         dbusReply.waitForFinished();
         linglong::service::Reply reply;
         reply = dbusReply.value();
-        if (reply.code == STATUS_CODE(kPkgUpdating)) {
-            signal(SIGINT, doIntOperate);
-            QThread::sleep(1);
-            dbusReply = pkgMan.GetDownloadStatus(paramOption, 1);
-            dbusReply.waitForFinished();
-            reply = dbusReply.value();
-            bool disProgress = false;
-            // 隐藏光标
-            std::cout << "\033[?25l";
-            while (reply.code == STATUS_CODE(kPkgUpdating)) {
-                std::cout << "\r\33[K" << reply.message.toStdString();
-                std::cout.flush();
-                QThread::sleep(1);
-                dbusReply = pkgMan.GetDownloadStatus(paramOption, 1);
-                dbusReply.waitForFinished();
-                reply = dbusReply.value();
-                disProgress = true;
-            }
-            // 显示光标
-            std::cout << "\033[?25h";
-            if (disProgress) {
-                std::cout << std::endl;
-            }
-        }
-        if (reply.code != STATUS_CODE(kErrorPkgUpdateSuccess)) {
+
+        if (reply.code != STATUS_CODE(kPkgUpdating)) {
             auto err = LINGLONG_ERR(reply.message, reply.code).value();
-            this->printer.printErr(err);
+            printer.printErr(err);
             return err.code();
         }
-        this->printer.printReply(reply);
+
+        this->taskID = reply.taskID;
+        QEventLoop loop;
+        std::function<void()> statusChecker =
+          std::function{ [&loop, &statusChecker, this]() -> void {
+              if (this->taskDone) {
+                  loop.exit(0);
+              }
+              QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
+          } };
+
+        QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
+        loop.exec();
+
+        if (this->lastStatus != service::InstallTask::Success) {
+            break;
+        }
     }
 
-    return 0;
+    // Call ReloadApplications() in AM for now. Remove later.
+    if (linglong::util::isDeepinSysProduct() && this->lastStatus == service::InstallTask::Success) {
+        QDBusConnection conn = QDBusConnection::sessionBus();
+        if (!conn.isConnected()) {
+            qWarning() << "Failed to connect to the session bus";
+        }
+        QDBusMessage msg = QDBusMessage::createMethodCall("org.desktopspec.ApplicationManager1",
+                                                          "/org/desktopspec/ApplicationManager1",
+                                                          "org.desktopspec.ApplicationManager1",
+                                                          "ReloadApplications");
+        auto ret = conn.sessionBus().call(msg, QDBus::NoBlock);
+        if (ret.type() == QDBusMessage::ErrorMessage) {
+            qWarning() << "call reloadApplications failed:" << ret.errorMessage();
+        }
+    }
+
+    return this->lastStatus == service::InstallTask::Success ? 0 : -1;
 }
 
 int Cli::search(std::map<std::string, docopt::value> &args)
@@ -669,8 +706,8 @@ int Cli::search(std::map<std::string, docopt::value> &args)
 
     paramOption.force = true;
     paramOption.appId = appId;
-    this->pkgMan.setTimeout(1000 * 60 * 60 * 24);
-    QDBusPendingReply<linglong::service::QueryReply> dbusReply = this->pkgMan.Query(paramOption);
+    this->pkgMan->setTimeout(1000 * 60 * 60 * 24);
+    QDBusPendingReply<linglong::service::QueryReply> dbusReply = this->pkgMan->Query(paramOption);
     dbusReply.waitForFinished();
     linglong::service::QueryReply reply = dbusReply.value();
     if (reply.code != STATUS_CODE(kErrorPkgQuerySuccess)) {
@@ -702,7 +739,7 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
 {
     LINGLONG_TRACE("command uninstall");
 
-    this->pkgMan.setTimeout(1000 * 60 * 60 * 24);
+    this->pkgMan->setTimeout(1000 * 60 * 60 * 24);
     QDBusPendingReply<linglong::service::Reply> dbusReply;
     linglong::service::UninstallParamOption paramOption;
 
@@ -720,7 +757,7 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
         linglong::service::Reply reply;
         qInfo().noquote() << "uninstall" << paramOption.appId << ", please wait a few minutes...";
         paramOption.delAllVersion = args["--all"].asBool();
-        dbusReply = this->pkgMan.Uninstall(paramOption);
+        dbusReply = this->pkgMan->Uninstall(paramOption);
         dbusReply.waitForFinished();
         reply = dbusReply.value();
 
@@ -740,7 +777,7 @@ int Cli::list(std::map<std::string, docopt::value> &args)
     linglong::service::QueryParamOption paramOption;
     QList<QSharedPointer<linglong::package::AppMetaInfo>> appMetaInfoList;
     linglong::service::QueryReply reply;
-    QDBusPendingReply<linglong::service::QueryReply> dbusReply = this->pkgMan.Query(paramOption);
+    QDBusPendingReply<linglong::service::QueryReply> dbusReply = this->pkgMan->Query(paramOption);
     // 默认超时时间为25s
     dbusReply.waitForFinished();
     reply = dbusReply.value();
@@ -754,7 +791,7 @@ int Cli::repo(std::map<std::string, docopt::value> &args)
     LINGLONG_TRACE("command repo");
 
     if (!args["modify"].asBool()) {
-        auto dbusReply = this->pkgMan.getRepoInfo();
+        auto dbusReply = this->pkgMan->getRepoInfo();
         dbusReply.waitForFinished();
         auto reply = dbusReply.value();
 
@@ -771,7 +808,7 @@ int Cli::repo(std::map<std::string, docopt::value> &args)
         url = QString::fromStdString(args["URL"].asString());
     }
     linglong::service::Reply reply;
-    auto dbusReply = this->pkgMan.ModifyRepo(name, url);
+    auto dbusReply = this->pkgMan->ModifyRepo(name, url);
     dbusReply.waitForFinished();
     reply = dbusReply.value();
     if (reply.code != STATUS_CODE(kErrorModifyRepoSuccess)) {

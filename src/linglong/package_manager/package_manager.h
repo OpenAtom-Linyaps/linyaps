@@ -12,6 +12,7 @@
 #include "linglong/dbus_ipc/param_option.h"
 #include "linglong/dbus_ipc/reply.h"
 #include "linglong/package/package.h"
+#include "linglong/package_manager/task.h"
 #include "linglong/repo/repo.h"
 #include "linglong/repo/repo_client.h"
 
@@ -71,18 +72,6 @@ public Q_SLOTS:
     virtual auto ModifyRepo(const QString &name, const QString &url) -> Reply;
 
     /**
-     * @brief 查询软件包下载安装状态
-     *
-     * @param paramOption 查询参数
-     * @param type 查询类型 0:查询应用安装进度 1:查询应用更新进度
-     *
-     * @return Reply dbus方法调用应答 \n
-     *          code:状态码 \n
-     *          message:信息
-     */
-    auto GetDownloadStatus(const ParamOption &paramOption, int type) -> Reply;
-
-    /**
      * @brief 安装软件包
      *
      * @param installParamOption 安装参数
@@ -92,7 +81,7 @@ public Q_SLOTS:
      *          message:信息
      */
     virtual auto Install(const InstallParamOption &installParamOption) -> Reply;
-    virtual auto InstallSync(const InstallParamOption &installParamOption) -> Reply;
+    virtual bool InstallSync(const package::Ref& ref, const std::shared_ptr<InstallTask> &taskContext);
 
     /**
      * @brief 安装layer文件
@@ -133,6 +122,7 @@ public Q_SLOTS:
      * @return Reply 同Install
      */
     auto Update(const ParamOption &paramOption) -> Reply;
+    bool UpdateSync(const package::Ref& ref, const std::shared_ptr<InstallTask> &taskContext);
 
     /**
      * @brief 查询软件包信息
@@ -146,6 +136,8 @@ public Q_SLOTS:
      */
     virtual auto Query(const QueryParamOption &paramOption) -> QueryReply;
 
+    virtual void CancelTask(const QString &taskID);
+
 public:
     // FIXME: ??? why this public?
     QScopedPointer<QThreadPool> pool; ///< 下载、卸载、更新应用线程池
@@ -156,6 +148,9 @@ public:
      * @param enable true:nodbus false:dbus
      */
     virtual void setNoDBusMode(bool enable);
+
+Q_SIGNALS:
+    void TaskChanged(QString taskID, QString percentage, QString message, int status);
 
 private:
     /*
@@ -241,7 +236,7 @@ private:
                          const QString &channel,
                          const QString &module,
                          const QString &dstPath,
-                         QString &err) -> bool;
+                         std::shared_ptr<InstallTask> taskContext) -> bool;
 
     /*
      * 安装应用runtime
@@ -251,8 +246,8 @@ private:
      *
      * @return bool: true:成功 false:失败
      */
-    auto installRuntime(QSharedPointer<linglong::package::AppMetaInfo> appInfo, QString &err)
-      -> bool;
+    auto installRuntime(QSharedPointer<linglong::package::AppMetaInfo> appInfo,
+                        std::shared_ptr<InstallTask> taskContext) -> bool;
 
     /*
      * 检查应用runtime安装状态
@@ -267,7 +262,7 @@ private:
     auto checkAppRuntime(const QString &runtime,
                          const QString &channel,
                          const QString &module,
-                         QString &err) -> bool;
+                         std::shared_ptr<InstallTask> taskContext) -> bool;
 
     /*
      * 针对非deepin发行版检查应用base安装状态
@@ -282,7 +277,7 @@ private:
     auto checkAppBase(const QString &runtime,
                       const QString &channel,
                       const QString &module,
-                      QString &err) -> bool;
+                      std::shared_ptr<InstallTask> taskContext) -> bool;
 
     /*
      * 安装应用时更新包括desktop文件在内的配置文件
@@ -319,8 +314,7 @@ private:
 
     repo::RepoClient &repoClient;
     linglong::repo::Repo &repoMan;
-    // 记录子线程安装及更新状态 供查询进度信息使用
-    QMap<QString, Reply> appState;
+    std::map<QString, std::shared_ptr<InstallTask>> taskMap;
 
     bool noDBusMode = false;
 

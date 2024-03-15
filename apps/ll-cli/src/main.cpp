@@ -126,7 +126,7 @@ int main(int argc, char **argv)
                            "linglong CLI " LINGLONG_VERSION); // version string
 
           auto pkgManConn = QDBusConnection::systemBus();
-          auto pkgMan = std::make_unique<linglong::api::dbus::v1::PackageManager>(
+          auto pkgMan = std::make_shared<linglong::api::dbus::v1::PackageManager>(
             "org.deepin.linglong.PackageManager",
             "/org/deepin/linglong/PackageManager",
             pkgManConn);
@@ -162,7 +162,7 @@ int main(int argc, char **argv)
                   return;
               }
 
-              pkgMan = std::make_unique<linglong::api::dbus::v1::PackageManager>(
+              pkgMan = std::make_shared<linglong::api::dbus::v1::PackageManager>(
                 "",
                 "/org/deepin/linglong/PackageManager",
                 pkgManConn);
@@ -208,7 +208,7 @@ int main(int argc, char **argv)
           }
           linglong::service::AppManager appManager(ostree, *crun->get());
 
-          auto cli = std::make_unique<Cli>(*printer, appManager, *pkgMan);
+          auto cli = new Cli(*printer, appManager, pkgMan, QCoreApplication::instance());
 
           QMap<QString, std::function<int(Cli *, std::map<std::string, docopt::value> &)>>
             subcommandMap = { { "run", &Cli::run },
@@ -224,9 +224,18 @@ int main(int argc, char **argv)
                               { "repo", &Cli::repo },
                               { "info", &Cli::info } };
 
+          if (!QObject::connect(QCoreApplication::instance(),
+                                &QCoreApplication::aboutToQuit,
+                                cli,
+                                &Cli::cancelCurrentTask)) {
+              qCritical() << "failed to connect signal: aboutToQuit";
+              QCoreApplication::exit(-1);
+              return;
+          }
+
           for (const auto &subcommand : subcommandMap.keys()) {
               if (args[subcommand.toStdString()].asBool() == true) {
-                  QCoreApplication::exit(subcommandMap[subcommand](cli.get(), args));
+                  QCoreApplication::exit(subcommandMap[subcommand](cli, args));
                   return;
               }
           }

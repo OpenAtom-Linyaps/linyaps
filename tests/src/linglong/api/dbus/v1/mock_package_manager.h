@@ -19,10 +19,6 @@ class MockPackageManager : public PackageManager
 
 public:
     MOCK_METHOD(QDBusPendingReply<linglong::service::Reply>,
-                GetDownloadStatus,
-                (linglong::service::ParamOption paramOption, int type),
-                (override));
-    MOCK_METHOD(QDBusPendingReply<linglong::service::Reply>,
                 Install,
                 (linglong::service::InstallParamOption installParamOption),
                 (override));

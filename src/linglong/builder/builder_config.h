@@ -66,7 +66,7 @@ private:
     QString projectRoot;
     QString projectName;
     QStringList exec;
-    bool offline;
+    bool offline = false;
 };
 
 QSERIALIZER_DECLARE(BuilderConfig)

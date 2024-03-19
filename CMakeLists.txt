@@ -345,6 +345,8 @@ pfl_add_library(
   ./src/linglong/utils/serialize/yaml.h
   ./src/linglong/utils/xdg/desktop_entry.cpp
   ./src/linglong/utils/xdg/desktop_entry.h
+  ./src/linglong/utils/transaction.h
+  ./src/linglong/utils/transaction.cpp
   APPS
   ll-builder
   ll-cli

@@ -760,12 +760,14 @@ LinglongBuilder::buildStageSource(ocppi::runtime::config::types::Config &r, Proj
         sourceDir = QDir::cleanPath(sourceDir);
         // 为远程source创建目录
         hostSourcesPath.mkpath(sourceDir);
-        // 拉去远程source
-        SourceFetcher sf(source, printer, project);
-        sf.setSourceRoot(hostSourcesPath.filePath(sourceDir));
-        auto err = sf.fetch();
-        if (err) {
-            return LINGLONG_ERR("fetch source failed");
+        if (!BuilderConfig::instance()->skipSourceFetch) {
+            // 拉去远程source
+            SourceFetcher sf(source, printer, project);
+            sf.setSourceRoot(hostSourcesPath.filePath(sourceDir));
+            auto err = sf.fetch();
+            if (err) {
+                return LINGLONG_ERR("fetch source failed");
+            }
         }
     }
     // 挂载项目目录
@@ -1078,10 +1080,13 @@ linglong::utils::error::Result<void> LinglongBuilder::build()
                              { "--lazy", QString::fromStdString(containerConfig.root->path) });
         return LINGLONG_ERR(voidRet);
     }
-    // 提交构建结果
-    voidRet = buildStageCommitBuildOutput(project.get(), overlayUpperDir, overlayPointDir);
-    if (!voidRet) {
-        return LINGLONG_ERR(voidRet);
+
+    if (!BuilderConfig::instance()->skipCommitOutput) {
+        // 提交构建结果
+        voidRet = buildStageCommitBuildOutput(project.get(), overlayUpperDir, overlayPointDir);
+        if (!voidRet) {
+            return LINGLONG_ERR(voidRet);
+        }
     }
 
     printer.printMessage(QString("Build %1 success").arg(project->package->id));

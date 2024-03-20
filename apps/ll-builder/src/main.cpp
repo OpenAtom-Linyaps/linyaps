@@ -243,6 +243,11 @@ int main(int argc, char **argv)
                 QCommandLineOption("sversion", "set source version", "source version");
               auto srcCommit = QCommandLineOption("commit", "set commit refs", "source commit");
               auto buildOffline = QCommandLineOption("offline", "only use local repo", "");
+              auto buildSkipFetchSource =
+                QCommandLineOption("skip-fetch-source", "skip fetch source (build cache)", "");
+              auto buildSkipCommitOutput =
+                QCommandLineOption("skip-commit-output", "skip commit build output", "");
+
               auto buildArch = QCommandLineOption("arch", "set the build arch", "arch");
               auto buildEnv = QCommandLineOption("env", "set environment variables", "env");
               parser.addOptions({ execVerbose,
@@ -250,6 +255,8 @@ int main(int argc, char **argv)
                                   srcVersion,
                                   srcCommit,
                                   buildOffline,
+                                  buildSkipFetchSource,
+                                  buildSkipCommitOutput,
                                   buildArch,
                                   buildEnv });
 
@@ -264,6 +271,8 @@ int main(int argc, char **argv)
               }
 
               buildConfig->setOffline(parser.isSet(buildOffline));
+              buildConfig->skipSourceFetch = parser.isSet(buildSkipFetchSource);
+              buildConfig->skipCommitOutput = parser.isSet(buildSkipCommitOutput);
 
               if (parser.isSet(buildArch)) {
                   auto arch = linglong::package::Architecture::parse(parser.value(buildArch));
@@ -278,43 +287,45 @@ int main(int argc, char **argv)
               }
 
               // config linglong.yaml before build if necessary
-            //   if (parser.isSet(pkgVersion) || parser.isSet(srcVersion) || parser.isSet(srcCommit)) {
-            //       auto projectConfigPath =
-            //         QStringList{ buildConfig->getProjectRoot(), "linglong.yaml" }.join("/");
+              //   if (parser.isSet(pkgVersion) || parser.isSet(srcVersion) ||
+              //   parser.isSet(srcCommit)) {
+              //       auto projectConfigPath =
+              //         QStringList{ buildConfig->getProjectRoot(), "linglong.yaml" }.join("/");
 
-            //       if (!QFileInfo::exists(projectConfigPath)) {
-            //           printer.printMessage("ll-builder should running in project root");
-            //           return -1;
-            //       }
+              //       if (!QFileInfo::exists(projectConfigPath)) {
+              //           printer.printMessage("ll-builder should running in project root");
+              //           return -1;
+              //       }
 
-            //       auto [project, oldErr] =
-            //         linglong::util::fromYAML<QSharedPointer<linglong::builder::Project>>(
-            //           projectConfigPath);
-            //       if (oldErr) {
-            //           auto err = LINGLONG_ERR(oldErr.message(), oldErr.code()).value();
-            //           printer.printErr(err);
-            //           return err.code();
-            //       }
+              //       auto [project, oldErr] =
+              //         linglong::util::fromYAML<QSharedPointer<linglong::builder::Project>>(
+              //           projectConfigPath);
+              //       if (oldErr) {
+              //           auto err = LINGLONG_ERR(oldErr.message(), oldErr.code()).value();
+              //           printer.printErr(err);
+              //           return err.code();
+              //       }
 
-            //       auto node = YAML::LoadFile(projectConfigPath.toStdString());
+              //       auto node = YAML::LoadFile(projectConfigPath.toStdString());
 
-            //       node["package"]["version"] = parser.value(pkgVersion).isEmpty()
-            //         ? project->package->version.toStdString()
-            //         : parser.value(pkgVersion).toStdString();
+              //       node["package"]["version"] = parser.value(pkgVersion).isEmpty()
+              //         ? project->package->version.toStdString()
+              //         : parser.value(pkgVersion).toStdString();
 
-            //       if (project->package->kind != linglong::builder::PackageKindRuntime) {
-            //           node["source"]["version"] = parser.value(srcVersion).isEmpty()
-            //             ? project->source->version.toStdString()
-            //             : parser.value(srcVersion).toStdString();
+              //       if (project->package->kind != linglong::builder::PackageKindRuntime) {
+              //           node["source"]["version"] = parser.value(srcVersion).isEmpty()
+              //             ? project->source->version.toStdString()
+              //             : parser.value(srcVersion).toStdString();
 
-            //           node["source"]["commit"] = parser.value(srcCommit).isEmpty()
-            //             ? project->source->commit.toStdString()
-            //             : parser.value(srcCommit).toStdString();
-            //       }
-            //       // fixme: use qt file stream
-            //       std::ofstream fout(projectConfigPath.toStdString());
-            //       fout << node;
-            //   }
+              //           node["source"]["commit"] = parser.value(srcCommit).isEmpty()
+              //             ? project->source->commit.toStdString()
+              //             : parser.value(srcCommit).toStdString();
+              //       }
+              //       // fixme: use qt file stream
+              //       std::ofstream fout(projectConfigPath.toStdString());
+              //       fout << node;
+              //   }
+
               auto ret = builder.build();
               if (!ret.has_value()) {
                   printer.printErr(ret.error());

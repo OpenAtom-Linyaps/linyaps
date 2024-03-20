@@ -56,6 +56,8 @@ public:
 
     void setBuildArch(const QString &arch);
     QString getBuildArch() const;
+    void setSourceCacheEnable(const bool enable);
+    bool getSourceCacheEnable() const;
 
     // TODO: remove later
     QString targetFetchCachePath() const;
@@ -67,6 +69,9 @@ public:
 
     void setBuildEnv(const QStringList &env);
     QStringList getBuildEnv() const;
+
+    bool skipSourceFetch = false;
+    bool skipCommitOutput = false;
 
 private:
     QString buildArch;

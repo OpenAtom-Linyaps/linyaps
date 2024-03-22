@@ -761,12 +761,12 @@ LinglongBuilder::buildStageSource(ocppi::runtime::config::types::Config &r, Proj
         // 为远程source创建目录
         hostSourcesPath.mkpath(sourceDir);
         if (!BuilderConfig::instance()->skipSourceFetch) {
-            // 拉去远程source
+            // 拉取远程source
             SourceFetcher sf(source, printer, project);
             sf.setSourceRoot(hostSourcesPath.filePath(sourceDir));
-            auto err = sf.fetch();
-            if (err) {
-                return LINGLONG_ERR("fetch source failed");
+            auto ret = sf.fetch();
+            if (!ret.has_value()) {
+                return LINGLONG_ERR(ret);
             }
         }
     }

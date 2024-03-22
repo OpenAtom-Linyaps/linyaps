@@ -7,8 +7,8 @@
 #ifndef LINGLONG_SRC_BUILDER_SOURCE_FETCHER_H_
 #define LINGLONG_SRC_BUILDER_SOURCE_FETCHER_H_
 
-#include "linglong/util/error.h"
 #include "linglong/cli/printer.h"
+#include "linglong/utils/error/error.h"
 #include "project.h"
 
 #include <QFileInfo>
@@ -33,7 +33,7 @@ public:
 
     void setSourceRoot(const QString &path);
 
-    linglong::util::Error fetch();
+    linglong::utils::error::Result<void> fetch();
 
     linglong::util::Error patch();
 

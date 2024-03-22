@@ -16,6 +16,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
     <file alias="appimage.yaml">../../../misc/linglong/builder/templates/appimage.yaml</file>
     <!-- scripts -->
     <file alias="scripts/fetch-git-repo">../../../misc/scripts/fetch-git-repo</file>
+    <file alias="scripts/fetch-dsc-repo">../../../misc/scripts/fetch-dsc-repo</file>
     <file alias="convert.sh">../../../misc/linglong/builder/convert.sh</file>
   </qresource>
 </RCC>

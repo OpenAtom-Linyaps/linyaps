@@ -1,0 +1,18 @@
+#!/bin/sh
+
+# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+set -e
+set -x
+workdir=$1
+url=$2
+
+output=$(realpath "$workdir")
+rm -r "$output" || true
+name=$(basename "$url")
+cachedir="/tmp/fetch-dsc-repo/$name"
+mkdir -p "$cachedir" || true
+cd "$cachedir"
+dget -u -d "$url"
+dpkg-source -x --no-copy "$cachedir/$name" "$output"

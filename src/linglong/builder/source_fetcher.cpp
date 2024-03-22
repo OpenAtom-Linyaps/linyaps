@@ -12,6 +12,7 @@
 #include "linglong/util/file.h"
 #include "linglong/util/http/http_client.h"
 #include "linglong/util/runner.h"
+#include "linglong/utils/error/error.h"
 #include "linglong/utils/global/initialize.h"
 #include "project.h"
 #include "source_fetcher_p.h"
@@ -159,10 +160,10 @@ std::tuple<QString, linglong::util::Error> SourceFetcherPrivate::fetchArchiveFil
     return { path, Success() };
 }
 
-util::Error SourceFetcherPrivate::fetchGitRepo()
+utils::error::Result<void> SourceFetcherPrivate::fetchGitRepo()
 {
     Q_Q(SourceFetcher);
-
+    LINGLONG_TRACE("fetchGitRepo");
     q->printer.printMessage(QString("Path: %1").arg(q->sourceRoot()), 2);
 
     // 如果二进制安装在系统目录中，优先使用系统中安装的脚本文件（便于用户更改），否则使用二进制内嵌的脚本（便于开发调试）
@@ -186,12 +187,49 @@ util::Error SourceFetcherPrivate::fetchGitRepo()
     auto err = util::Exec("sh", args, -1, output);
     if (err) {
         q->printer.printMessage("download source failed." + err.message(), 2);
-        return NewError(-1, "download source failed." + err.message());
+        return LINGLONG_ERR("download source failed." + err.message());
     }
     if (!dir.isNull()) {
         dir->remove();
     }
-    return Success();
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> SourceFetcherPrivate::fetchDscRepo()
+{
+    Q_Q(SourceFetcher);
+    LINGLONG_TRACE("fetch dsc repo");
+    q->printer.printMessage(QString("Path: %1").arg(q->sourceRoot()), 2);
+
+    // 如果二进制安装在系统目录中，优先使用系统中安装的脚本文件（便于用户更改），否则使用二进制内嵌的脚本（便于开发调试）
+    auto scriptFile = QString(LINGLONG_LIBEXEC_DIR) + "/fetch-dsc-repo";
+    auto useInstalledFile = utils::global::linglongInstalled() && QFile(scriptFile).exists();
+    QScopedPointer<QTemporaryDir> dir;
+    if (!useInstalledFile) {
+        qWarning() << "Dumping fetch-dsc-repo from qrc...";
+        dir.reset(new QTemporaryDir);
+        // 便于在执行失败时进行调试
+        dir->setAutoRemove(false);
+        scriptFile = dir->filePath("fetch-dsc-repo");
+        QFile::copy(":/scripts/fetch-dsc-repo", scriptFile);
+    }
+    QStringList args = {
+        scriptFile,
+        q->sourceRoot(),
+        source->url,
+    };
+    q->printer.printMessage(QString("Command: sh %1").arg(args.join(" ")), 2);
+
+    QSharedPointer<QByteArray> output = QSharedPointer<QByteArray>::create();
+    auto err = util::Exec("sh", args, -1, output);
+    if (err) {
+        q->printer.printMessage("download source failed." + err.message(), 2);
+        return LINGLONG_ERR(err.message(), err.code());
+    }
+    if (!dir.isNull()) {
+        dir->remove();
+    }
+    return LINGLONG_OK;
 }
 
 util::Error SourceFetcherPrivate::handleLocalPatch()
@@ -245,45 +283,52 @@ util::Error SourceFetcher::patch()
     return d->handleLocalPatch();
 }
 
-linglong::util::Error SourceFetcher::fetch()
+utils::error::Result<void> SourceFetcher::fetch()
 {
+    LINGLONG_TRACE("source fetch");
     Q_D(SourceFetcher);
-
-    util::Error err;
-
     if (d->source->kind == "git") {
         printer.printMessage(QString("Source: %1").arg(d->source->url), 2);
-        err = d->fetchGitRepo();
+        auto ret = d->fetchGitRepo();
+        if (!ret.has_value()) {
+            return LINGLONG_ERR(ret);
+        }
+    } else if (d->source->kind == "dsc") {
+        printer.printMessage(QString("Source: %1").arg(d->source->url), 2);
+        auto ret = d->fetchDscRepo();
+        if (!ret) {
+            return ret;
+        }
     } else if (d->source->kind == "archive") {
         printer.printMessage(QString("Source: %1").arg(d->source->url), 2);
         QString s;
+        util::Error err;
         std::tie(s, err) = d->fetchArchiveFile();
         if (err) {
-            return err;
+            return LINGLONG_ERR(err.message());
         }
         err = d->extractFile(s, sourceRoot());
     } else if (d->source->kind == "local") {
-        err = d->handleLocalSource();
-        printer.printMessage(QString("Source: %1").arg(sourceRoot()), 2);
+        // deprecated
     } else if (d->source->kind == "file") {
         printer.printMessage(QString("Source: %1").arg(d->source->url), 2);
         QString s;
+        util::Error err;
         std::tie(s, err) = d->fetchArchiveFile();
         if (err) {
-            return err;
+            return LINGLONG_ERR(err.message());
         }
 
         QFile::copy(BuilderConfig::instance()->targetFetchCachePath() + "/" + d->filename(),
                     BuilderConfig::instance()->targetSourcePath() + "/" + d->filename());
     } else {
-        return NewError(-1, "unknown source kind");
+        return LINGLONG_ERR("unknown source kind");
     }
-
+    auto err = patch();
     if (err) {
-        return err;
+        return LINGLONG_ERR(err.message());
     }
-
-    return patch();
+    return LINGLONG_OK;
 }
 
 QString SourceFetcher::sourceRoot() const

@@ -7,6 +7,7 @@
 #ifndef LINGLONG_SRC_BUILDER_BUILDER_SOURCE_FETCHER_P_H_
 #define LINGLONG_SRC_BUILDER_BUILDER_SOURCE_FETCHER_P_H_
 
+#include "linglong/utils/error/error.h"
 #include "source_fetcher.h"
 
 #include <QEventLoop>
@@ -30,7 +31,8 @@ public:
     QString fixSuffix(const QFileInfo &fi);
     linglong::util::Error extractFile(const QString &path, const QString &dir);
 
-    util::Error fetchGitRepo();
+    utils::error::Result<void> fetchGitRepo();
+    utils::error::Result<void> fetchDscRepo();
 
     util::Error handleLocalSource();
 

@@ -34,8 +34,6 @@
 
 #include <linux/prctl.h>
 #include <ocppi/runtime/config/types/IdMapping.hpp>
-#include <qdir.h>
-#include <qurl.h>
 #include <sys/prctl.h>
 #include <yaml-cpp/yaml.h>
 
@@ -108,6 +106,10 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
     // split files which in devel layer to runtime layer
     auto splitFile = [](Project *project) -> linglong::utils::error::Result<void> {
         LINGLONG_TRACE("split layers file");
+
+        const QString src = project->config().cacheDevelLayer("files");
+        const QString dest = project->config().cacheRuntimeLayer("files");
+        const QString prefix = project->config().targetInstallPath("");
         // get install file rule
         QStringList installRules;
         QStringList installedFiles;
@@ -116,10 +118,7 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
         const auto installRulePath = QStringList{ project->config().rootPath(),
                                                   QString("%1.install").arg(project->package->id) }
                                        .join(QDir::separator());
-        if (!QFileInfo(installRulePath).exists()) {
-            installRules << QStringList{ project->config().targetInstallPath(""), "*" }.join(
-              QDir::separator());
-        } else {
+        if (QFileInfo(installRulePath).exists()) {
             QFile configFile(installRulePath);
             if (!configFile.open(QIODevice::ReadOnly)) {
                 return LINGLONG_ERR("open file", configFile);
@@ -128,72 +127,102 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
             // remove empty or duplicate lines
             installRules.removeAll("");
             installRules.removeDuplicates();
+        } else {
+            qDebug() << "generate install list";
+            QDirIterator it(src,
+                            QDir::AllEntries | QDir::NoDotAndDotDot,
+                            QDirIterator::Subdirectories);
+            while (it.hasNext()) {
+                it.next();
+                auto filepath = it.filePath();
+                // $PROJECT_ROOT/.../files to /opt/apps/${appid}
+                // $PROJECT_ROOT/ to /runtime/
+                filepath.replace(0, src.length(), prefix);
+                installRules.append(filepath);
+            }
         }
+        // 复制目录、文件和超链接
+        auto copyFile = [&](const int &process,
+                            const QFileInfo &info,
+                            const QString &dstPath) -> utils::error::Result<void> {
+            LINGLONG_TRACE("copy file");
+            if (info.isDir()) {
+                qDebug() << QString("process: %1%").arg(process) << "matched dir"
+                         << info.absoluteFilePath();
+                QDir().mkpath(dstPath);
+                installedFiles.append(dstPath);
+                return LINGLONG_OK;
+            }
+            if (info.isSymLink()) {
+                qDebug() << QString("process: %1%").arg(process) << "matched symlinks"
+                         << info.absoluteFilePath();
+                char buf[PATH_MAX];
+                // qt的readlin无法区分相对链接还是绝对链接，所以用c库的readlink
+                auto size = readlink(info.filePath().toStdString().c_str(), buf, sizeof(buf) - 1);
+                if (size == -1) {
+                    qCritical() << "readlink failed! " << info.filePath();
+                    return LINGLONG_ERR("readlink failed!");
+                }
+                buf[size] = '\0';
+                QString linkpath(buf);
+                qDebug() << "link" << linkpath << "to" << dstPath;
+                QFile file(linkpath);
+                if (!file.link(dstPath))
+                    return LINGLONG_ERR("link file failed, relative path", file);
+                return LINGLONG_OK;
+            }
+            // 链接也是文件，isFile要放到isSymLink后面
+            if (info.isFile()) {
+                qDebug() << QString("process: %1%").arg(process) << "matched file"
+                         << info.absoluteFilePath();
+                QDir().mkpath(info.path().replace(src, dest));
+                QFile file(info.absoluteFilePath());
+                if (!file.copy(dstPath))
+                    return LINGLONG_ERR("copy file", file);
+                installedFiles.append(dstPath);
+                return LINGLONG_OK;
+            }
+            return LINGLONG_ERR(QString("unknown file type %1").arg(info.path()));
+        };
 
-        const QString src = project->config().cacheDevelLayer("files");
-        const QString dest = project->config().cacheRuntimeLayer("files");
-        const QString prefix = project->config().targetInstallPath("");
+        auto ruleIndex = 0;
         for (auto rule : installRules) {
-            // convert prefix in container to real path in host
+            // 计算进度
+            ruleIndex++;
+            auto process = ruleIndex * 100 / installRules.length();
             // /opt/apps/${appid} to $PROJECT_ROOT/.../files
-            rule.replace(prefix, src);
+            // /runtime/ to $PROJECT_ROOT/
+            rule.replace(0, prefix.length(), src);
+            // 如果不以^符号开头，当作普通路径使用
+            if (!rule.startsWith("^")) {
+                QFileInfo info(rule);
+                // 链接指向的文件如果不存在，info.exists会返回false
+                // 所以要先判断文件是否是链接
+                if (info.isSymLink() || info.exists()) {
+                    const QString dstPath = info.absoluteFilePath().replace(src, dest);
+                    auto ret = copyFile(process, info, dstPath);
+                    if (!ret.has_value()) {
+                        return LINGLONG_ERR(ret);
+                    }
+                } else {
+                    qWarning() << "missing file" << rule;
+                }
+                continue;
+            }
+            // convert prefix in container to real path in host
+            QRegularExpression re(rule);
             // reverse files in src
             QDirIterator it(src,
                             QDir::AllEntries | QDir::NoDotAndDotDot,
                             QDirIterator::Subdirectories);
             while (it.hasNext()) {
                 it.next();
-
-                QRegExp rx(rule, Qt::CaseSensitive, QRegExp::Wildcard);
-                if (!rx.exactMatch(it.fileInfo().absoluteFilePath()))
-                    continue;
-
-                const QString dstPath = it.fileInfo().absoluteFilePath().replace(src, dest);
-                if (it.fileInfo().isDir()) {
-                    qDebug() << "matched dir" << it.fileInfo().absoluteFilePath();
-                    QDir().mkpath(dstPath);
-                    installedFiles.append(dstPath);
-                    continue;
-                }
-                if (it.fileInfo().isSymLink()) {
-                    qDebug() << "matched symlinks" << it.fileInfo().absoluteFilePath();
-                    char buf[PATH_MAX];
-                    auto size = readlink(it.fileInfo().filePath().toStdString().c_str(),
-                                         buf,
-                                         sizeof(buf) - 1);
-                    if (size == -1) {
-                        qCritical() << "readlink failed! " << it.fileInfo().filePath();
-                        continue;
+                if (re.match(it.fileInfo().absoluteFilePath()).hasMatch()) {
+                    const QString dstPath = it.fileInfo().absoluteFilePath().replace(src, dest);
+                    auto ret = copyFile(process, it.fileInfo(), dstPath);
+                    if (!ret.has_value()) {
+                        return LINGLONG_ERR(ret);
                     }
-
-                    buf[size] = '\0';
-                    QFileInfo originFile(it.fileInfo().readLink());
-                    QString newLinkFile = dstPath;
-
-                    if (QString(buf).startsWith("/")) {
-                        if (!QFile::link(it.fileInfo().readLink(), newLinkFile))
-                            return LINGLONG_ERR("link file failed, absolute path", -1);
-                    } else {
-                        // caculator the relative path
-                        QDir linkFileDir(it.fileInfo().dir());
-                        QString relativePath = linkFileDir.relativeFilePath(originFile.path());
-                        auto newOriginFile = relativePath.endsWith("/")
-                          ? relativePath + originFile.fileName()
-                          : originFile.fileName();
-                        qDebug() << "link" << newOriginFile << "to" << newLinkFile;
-                        if (!QFile::link(newOriginFile, newLinkFile))
-                            return LINGLONG_ERR("link file failed, relative path", -1);
-                    }
-                    installedFiles.append(dstPath);
-                    continue;
-                }
-                if (it.fileInfo().isFile()) {
-                    qDebug() << "matched file" << it.fileInfo().absoluteFilePath();
-                    QDir().mkpath(it.fileInfo().path().replace(src, dest));
-                    QFile file(it.fileInfo().absoluteFilePath());
-                    if (!file.copy(dstPath))
-                        return LINGLONG_ERR("copy file", file);
-                    installedFiles.append(dstPath);
                 }
             }
         }
@@ -212,7 +241,7 @@ linglong::utils::error::Result<void> LinglongBuilder::buildStageCommitBuildOutpu
         if (!configFile.open(QIODevice::WriteOnly)) {
             return LINGLONG_ERR("open file", configFile);
         }
-        if (configFile.write(installedFiles.join('\n').toLocal8Bit()) < 0) {
+        if (configFile.write(installedFiles.join('\n').toUtf8()) < 0) {
             return LINGLONG_ERR("write file", configFile);
         }
         configFile.close();
@@ -752,6 +781,9 @@ LinglongBuilder::buildStageSource(ocppi::runtime::config::types::Config &r, Proj
     QDir hostSourcesPath = projectRootPath.filePath("linglong/sources");
 
     for (const auto &source : project->sources) {
+        if (source->kind == "local") {
+            continue;
+        }
         auto sourceDir = source->name;
         // 其他类型的source挂载点使用哈希值，也可以使用path参数手动指定
         if (sourceDir.isEmpty()) {
@@ -981,8 +1013,6 @@ linglong::utils::error::Result<QSharedPointer<Project>> LinglongBuilder::buildSt
         if (project->source) {
             qWarning() << "The 'source' field has been deprecated. Please use 'sources' instead.";
             project->sources.push_back(project->source);
-        } else {
-            return LINGLONG_ERR("missing sources field");
         }
     }
 

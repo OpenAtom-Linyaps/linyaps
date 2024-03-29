@@ -72,7 +72,7 @@ class App : public JsonSerialize
     Q_JSON_PROPERTY(QString, version);
     Q_JSON_PTR_PROPERTY(Layer, package);
     Q_JSON_PTR_PROPERTY(Layer, runtime);
-
+    Q_JSON_PTR_PROPERTY(Layer, base);
     // TODO: should config base mount point
     Q_JSON_PTR_PROPERTY(linglong::runtime::AppPermission, permissions);
 

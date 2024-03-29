@@ -122,8 +122,8 @@ utils::error::Result<void> App::prepare()
         fixRuntimePath = runtimeRootPath;
     }
 
-    // TODO(wurongjie) 应该从应用的info.json文件读取base
-    auto ref = repo->latestOfRef("org.deepin.base", "23");
+    auto baseRef = package::Ref(base->ref);
+    auto ref = repo->latestOfRef(baseRef.appId, baseRef.version);
     if (!ref) {
         return LINGLONG_ERR(ref);
     }
@@ -846,16 +846,17 @@ auto App::fixMount(QString runtimeRootPath, const QString &appId) -> int
         r.mounts->push_back(m);
     }
 
+    // TODO(chenhuixing) 定制的xdg-open和xdg-email应该集成玲珑包里面
     // 挂载runtime的xdg-open和xdg-email到沙箱/usr/bin下
-    auto xdgFileDirList = QStringList{ "xdg-open", "xdg-email" };
-    for (auto dir : xdgFileDirList) {
-        ocppi::runtime::config::types::Mount m;
-        m.type = "bind";
-        m.options = { "rbind" };
-        m.source = (runtimeRootPath + "/bin/" + dir).toStdString();
-        m.destination = "/usr/bin/" + dir.toStdString();
-        r.mounts->push_back(m);
-    }
+    // auto xdgFileDirList = QStringList{ "xdg-open", "xdg-email" };
+    // for (auto dir : xdgFileDirList) {
+    //     ocppi::runtime::config::types::Mount m;
+    //     m.type = "bind";
+    //     m.options = { "rbind" };
+    //     m.source = (runtimeRootPath + "/bin/" + dir).toStdString();
+    //     m.destination = "/usr/bin/" + dir.toStdString();
+    //     r.mounts->push_back(m);
+    // }
 
     // 存在 gschemas.compiled,需要挂载进沙箱
     if (linglong::util::fileExists(sysLinglongInstalltions
@@ -984,8 +985,6 @@ auto App::loadConfig(linglong::repo::Repo *repo,
     }
 
     package::Ref runtimeRef(info->runtime);
-    QString appRef = QString("%1/").arg(channel)
-      + latestAppRef->toLocalRefString().append(QString("/%1").arg(module));
     qDebug() << "loadConfig runtime" << info->runtime;
     // 获取最新版本runtime
     if (runtimeRef.version.split(".").size() != 4) {
@@ -998,9 +997,27 @@ auto App::loadConfig(linglong::repo::Repo *repo,
     qDebug() << "runtimeRef" << runtimeRef.toLocalString();
     QString runtimeFullRef = QString("%1/").arg(channel)
       + runtimeRef.toLocalRefString().append(QString("/%1").arg(module));
+
+    package::Ref baseRef(info->base);
+    qDebug() << "loadConfig base" << info->base;
+    // 获取最新版本runtime
+    if (baseRef.version.split(".").size() != 4) {
+        auto ret = repo->latestOfRef(baseRef.appId, baseRef.version);
+        if (!ret.has_value()) {
+            qCritical() << "No version of runtime found in layers";
+        }
+        baseRef.version = ret->version;
+    }
+    qDebug() << "baseRef" << baseRef.toLocalString();
+    QString baseFullRef =
+      QString("%1/").arg(channel) + baseRef.toLocalRefString().append(QString("/%1").arg(module));
+
+    QString appRef = QString("%1/").arg(channel)
+      + latestAppRef->toLocalRefString().append(QString("/%1").arg(module));
     QMap<QString, QString> variables = {
         { "APP_REF", appRef },
         { "RUNTIME_REF", runtimeFullRef },
+        { "BASE_REF", baseFullRef },
     };
 
     // TODO: remove to util module as file_template.cpp

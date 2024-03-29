@@ -1494,20 +1494,21 @@ util::Error LinglongBuilder::import()
     return Success();
 }
 
-linglong::util::Error LinglongBuilder::run()
+linglong::utils::error::Result<void> LinglongBuilder::run()
 {
+    LINGLONG_TRACE("run");
     auto projectConfigPath =
       QStringList{ BuilderConfig::instance()->getProjectRoot(), "linglong.yaml" }.join("/");
 
     if (!QFileInfo::exists(projectConfigPath)) {
         printer.printMessage("ll-builder should run in the root directory of the linglong project");
-        return NewError(-1, "linglong.yaml not found");
+        return LINGLONG_ERR("linglong.yaml not found");
     }
 
     try {
         auto [project, err] = util::fromYAML<QSharedPointer<Project>>(projectConfigPath);
         if (err) {
-            return WrapError(err, "cannot load project yaml");
+            return LINGLONG_ERR(QString("cannot load project yaml: %1").arg(err.message()));
         }
         project->configFilePath = projectConfigPath;
 
@@ -1519,7 +1520,7 @@ linglong::util::Error LinglongBuilder::run()
         ref.channel = "main";
         auto ret = repo.checkoutAll(ref, "", targetPath);
         if (!ret.has_value()) {
-            return NewError(-1, "checkout app files failed");
+            return LINGLONG_ERR(ret);
         }
         if (project->runtime) {
             // checkout runtime
@@ -1529,12 +1530,11 @@ linglong::util::Error LinglongBuilder::run()
 
             auto latestRuntimeRef = repo.localLatestRef(project->runtimeRef());
             if (!latestRuntimeRef.has_value()) {
-                return NewError(latestRuntimeRef.error().code(),
-                                latestRuntimeRef.error().message());
+                return LINGLONG_ERR(latestRuntimeRef);
             }
             ret = repo.checkoutAll(*latestRuntimeRef, "", targetPath);
             if (!ret.has_value()) {
-                return NewError(-1, "checkout runtime files failed");
+                return LINGLONG_ERR(ret);
             }
         }
 
@@ -1545,13 +1545,13 @@ linglong::util::Error LinglongBuilder::run()
         paramOption.exec = BuilderConfig::instance()->getExec();
         ret = appManager.Run(paramOption);
         if (!ret.has_value()) {
-            return NewError(ret.error().code(), ret.error().message());
+            return LINGLONG_ERR(ret);
         }
     } catch (std::exception &e) {
-        return NewError(-1, "failed to parse linglong.yaml. " + QString(e.what()));
+        return LINGLONG_ERR(QString("failed to parse linglong.yaml: %1").arg(e.what()));
     }
 
-    return Success();
+    return LINGLONG_OK;
 }
 
 } // namespace linglong::builder

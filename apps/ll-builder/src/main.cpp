@@ -310,11 +310,10 @@ int main(int argc, char **argv)
                   linglong::builder::BuilderConfig::instance()->setExec(exec);
               }
 
-              auto oldErr = builder.run();
-              if (oldErr) {
-                  auto err = LINGLONG_ERR(oldErr.message(), oldErr.code()).value();
-                  printer.printErr(err);
-                  return err.code();
+              auto ret = builder.run();
+              if (!ret.has_value()) {
+                  printer.printErr(ret.error());
+                  return -1;
               }
 
               return 0;

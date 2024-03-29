@@ -42,7 +42,7 @@ public:
 
     virtual linglong::util::Error track() = 0;
 
-    virtual linglong::util::Error run() = 0;
+    virtual linglong::utils::error::Result<void> run() = 0;
 };
 
 } // namespace builder

@@ -52,7 +52,7 @@ public:
 
     util::Error importLayer(const QString &path) override;
 
-    util::Error run() override;
+    utils::error::Result<void> run() override;
 
     util::Error track() override;
 

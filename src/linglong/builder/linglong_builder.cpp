@@ -1102,6 +1102,29 @@ linglong::utils::error::Result<void> LinglongBuilder::build()
     return LINGLONG_OK;
 }
 
+linglong::utils::error::Result<void> LinglongBuilder::commit()
+{
+    LINGLONG_TRACE("commit");
+    auto projectRet = buildStageProjectInit();
+    if (!projectRet) {
+        return LINGLONG_ERR(projectRet);
+    }
+    auto project = *projectRet;
+
+    QDir overlayDir(project->config().cacheAbsoluteFilePath({ "overlayfs" }));
+    auto overlayUpperDir = overlayDir.filePath("up/") + project->config().targetInstallPath("");
+    // overlayWorkDir 是overlay的内部工作目录
+    auto overlayWorkDir = overlayDir.filePath("wk");
+    auto overlayPointDir = overlayDir.filePath("point");
+
+    // 提交构建结果
+    auto voidRet = buildStageCommitBuildOutput(project.get(), overlayUpperDir, overlayPointDir);
+    if (!voidRet) {
+        return LINGLONG_ERR(voidRet);
+    }
+    return LINGLONG_OK;
+}
+
 linglong::util::Error LinglongBuilder::exportLayer(const QString &destination)
 {
     QDir destDir(destination);

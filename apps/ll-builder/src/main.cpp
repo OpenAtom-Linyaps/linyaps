@@ -292,6 +292,11 @@ int main(int argc, char **argv)
               }
               return 0;
           } },
+        { "commit",
+          [&](QCommandLineParser &parser) -> int {
+              builder.commit();
+              return 0;
+          } },
         { "run",
           [&](QCommandLineParser &parser) -> int {
               LINGLONG_TRACE("command run");

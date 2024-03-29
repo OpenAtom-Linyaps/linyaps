@@ -37,6 +37,8 @@ public:
 
     utils::error::Result<void> build() override;
 
+    utils::error::Result<void> commit();
+
     util::Error exportLayer(const QString &destination) override;
 
     util::Error extractLayer(const QString &layerPath, const QString &destination) override;

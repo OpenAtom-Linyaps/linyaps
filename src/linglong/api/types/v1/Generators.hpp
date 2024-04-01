@@ -316,7 +316,7 @@ x.description = get_stack_optional<std::string>(j, "description");
 x.kind = j.at("kind").get<std::string>();
 x.packageInfoModule = j.at("module").get<std::string>();
 x.name = j.at("name").get<std::string>();
-x.permissions = get_stack_optional<std::string>(j, "permissions");
+x.permissions = get_stack_optional<ApplicationConfigurationPermissions>(j, "permissions");
 x.runtime = get_stack_optional<std::string>(j, "runtime");
 x.size = j.at("size").get<int64_t>();
 x.version = j.at("version").get<std::string>();
@@ -483,6 +483,7 @@ j["version"] = x.version;
 
 inline void from_json(const json & j, LinglongAPIV1& x) {
 x.applicationConfiguration = get_stack_optional<ApplicationConfiguration>(j, "ApplicationConfiguration");
+x.applicationConfigurationPermissions = get_stack_optional<ApplicationConfigurationPermissions>(j, "ApplicationConfigurationPermissions");
 x.builderConfig = get_stack_optional<BuilderConfig>(j, "BuilderConfig");
 x.builderProject = get_stack_optional<BuilderProject>(j, "BuilderProject");
 x.cliContainer = get_stack_optional<CliContainer>(j, "CLIContainer");
@@ -510,6 +511,9 @@ inline void to_json(json & j, const LinglongAPIV1 & x) {
 j = json::object();
 if (x.applicationConfiguration) {
 j["ApplicationConfiguration"] = x.applicationConfiguration;
+}
+if (x.applicationConfigurationPermissions) {
+j["ApplicationConfigurationPermissions"] = x.applicationConfigurationPermissions;
 }
 if (x.builderConfig) {
 j["BuilderConfig"] = x.builderConfig;

@@ -7,6 +7,7 @@
 #ifndef LINGLONG_UTILS_SERIALIZE_JSON_H
 #define LINGLONG_UTILS_SERIALIZE_JSON_H
 
+#include "linglong/api/types/v0/Generators.hpp"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/utils/error/error.h"
 #include "nlohmann/json.hpp"
@@ -45,6 +46,18 @@ error::Result<T> LoadJSON(const Source &content) noexcept
         return json.template get<T>();
     } catch (const std::exception &e) {
         return LINGLONG_ERR(content, e);
+    }
+}
+
+template<typename T>
+error::Result<T> LoadJSON(nlohmann::json &content) noexcept
+{
+    LINGLONG_TRACE("load json");
+
+    try {
+        return content.template get<T>();
+    } catch (const std::exception &e) {
+        return LINGLONG_ERR(QString::fromStdString(content.dump()), e);
     }
 }
 

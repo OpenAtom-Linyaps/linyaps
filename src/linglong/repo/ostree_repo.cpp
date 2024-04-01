@@ -459,7 +459,7 @@ utils::error::Result<OstreeRepo *> createOstreeRepo(const QDir &location,
 utils::error::Result<package::Reference> clearReferenceLocal(const package::FuzzyReference &fuzzy,
                                                              QDir layersDir) noexcept
 {
-    LINGLONG_TRACE(QString("clear fuzzy reference %1 locally").arg(fuzzy.toString()));
+    LINGLONG_TRACE("clear fuzzy reference locally");
 
     auto arch = package::Architecture::parse(QSysInfo::currentCpuArchitecture());
     if (fuzzy.arch) {
@@ -1148,7 +1148,7 @@ void OSTreeRepo::pull(std::shared_ptr<service::InstallTask> taskContext,
 utils::error::Result<package::Reference> OSTreeRepo::clearReference(
   const package::FuzzyReference &fuzzy, const clearReferenceOption &opts) const noexcept
 {
-    LINGLONG_TRACE("clear fuzzy reference");
+    LINGLONG_TRACE("clear fuzzy reference " + fuzzy.toString());
 
     utils::error::Result<package::Reference> reference = LINGLONG_ERR("reference not exists");
 

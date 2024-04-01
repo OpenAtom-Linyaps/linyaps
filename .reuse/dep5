@@ -51,7 +51,7 @@ License: CC0-1.0
 Copyright: None
 
 # generated code
-Files: src/linglong/api/types/v1/*
+Files: src/linglong/api/types/v*
 License: CC0-1.0
 Copyright: None
 

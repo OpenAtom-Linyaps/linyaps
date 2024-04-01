@@ -128,6 +128,12 @@ pfl_add_library(
   src/linglong/api/dbus/v1/package_manager.h
   src/linglong/api/types/helper.cpp
   src/linglong/api/types/helper.h
+  src/linglong/api/types/v0/ApplicationConfigurationPermissionsBind.hpp
+  src/linglong/api/types/v0/ApplicationConfigurationPermissions.hpp
+  src/linglong/api/types/v0/Generators.hpp
+  src/linglong/api/types/v0/helper.hpp
+  src/linglong/api/types/v0/LinglongAPIV0.hpp
+  src/linglong/api/types/v0/PackageInfo.hpp
   src/linglong/api/types/v1/ApplicationConfiguration.hpp
   src/linglong/api/types/v1/ApplicationConfigurationPermissionsBind.hpp
   src/linglong/api/types/v1/ApplicationConfigurationPermissions.hpp

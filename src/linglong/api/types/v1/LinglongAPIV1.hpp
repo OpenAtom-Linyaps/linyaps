@@ -18,6 +18,7 @@
 #include "linglong/api/types/v1/helper.hpp"
 
 #include "linglong/api/types/v1/ApplicationConfiguration.hpp"
+#include "linglong/api/types/v1/ApplicationConfigurationPermissions.hpp"
 #include "linglong/api/types/v1/BuilderConfig.hpp"
 #include "linglong/api/types/v1/BuilderProject.hpp"
 #include "linglong/api/types/v1/CliContainer.hpp"
@@ -41,18 +42,19 @@ namespace api {
 namespace types {
 namespace v1 {
 /**
-* Types used as API of linglong D-Bus service, configuration files and CLI output. The top
-* level type is a place holder to make quicktype work.
+* Types used as v1 API of linglong D-Bus service, configuration files and CLI output. The
+* top level type is a place holder to make quicktype work.
 */
 
 using nlohmann::json;
 
 /**
-* Types used as API of linglong D-Bus service, configuration files and CLI output. The top
-* level type is a place holder to make quicktype work.
+* Types used as v1 API of linglong D-Bus service, configuration files and CLI output. The
+* top level type is a place holder to make quicktype work.
 */
 struct LinglongAPIV1 {
 std::optional<ApplicationConfiguration> applicationConfiguration;
+std::optional<ApplicationConfigurationPermissions> applicationConfigurationPermissions;
 std::optional<BuilderConfig> builderConfig;
 std::optional<BuilderProject> builderProject;
 std::optional<CliContainer> cliContainer;

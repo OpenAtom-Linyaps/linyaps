@@ -15,21 +15,20 @@
 
 #include <optional>
 #include <nlohmann/json.hpp>
-#include "linglong/api/types/v1/helper.hpp"
+#include "linglong/api/types/v0/helper.hpp"
 
-#include "linglong/api/types/v1/ApplicationConfigurationPermissions.hpp"
+#include "linglong/api/types/v0/ApplicationConfigurationPermissions.hpp"
 
 namespace linglong {
 namespace api {
 namespace types {
-namespace v1 {
+namespace v0 {
 using nlohmann::json;
 
 struct PackageInfo {
-std::string appID;
-std::string arch;
+std::string appid;
+std::vector<std::string> arch;
 std::optional<std::string> base;
-std::string channel;
 std::optional<std::string> description;
 std::string kind;
 std::string packageInfoModule;

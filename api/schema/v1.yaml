@@ -17,7 +17,8 @@
 # Please make sure every changes in this file is backward compatible.
 
 $schema: http://json-schema.org/draft-04/schema#
-description: Types used as API of linglong
+description:
+  Types used as v1 API of linglong
   D-Bus service, configuration files and CLI output.
   The top level type is a place holder to make quicktype work.
 $defs:
@@ -30,22 +31,24 @@ $defs:
       version:
         type: string
       permissions:
-        title: ApplicationConfigurationPermissions
-        type: object
-        properties:
-          binds:
-            type: array
-            items:
-              type: object
-              title: ApplicationConfigurationPermissionsBind
-              required:
-                - source
-                - destination
-              properties:
-                source:
-                  type: string
-                destination:
-                  type: string
+        $ref: '#/$defs/ApplicationConfigurationPermissions'
+  ApplicationConfigurationPermissions:
+    title: ApplicationConfigurationPermissions
+    type: object
+    properties:
+      binds:
+        type: array
+        items:
+          type: object
+          title: ApplicationConfigurationPermissionsBind
+          required:
+            - source
+            - destination
+          properties:
+            source:
+              type: string
+            destination:
+              type: string
   OCIConfigurationPatch:
     title: OCIConfigurationPatch
     type: object
@@ -232,7 +235,7 @@ $defs:
       base:
         type: string
       permissions:
-        type: string
+        $ref: '#/$defs/ApplicationConfigurationPermissions'
       description:
         type: string
   CommonResult:

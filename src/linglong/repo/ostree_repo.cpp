@@ -394,7 +394,7 @@ utils::error::Result<void> updateOstreeRepoConfig(OstreeRepo *repo,
                                   nullptr,
                                   OSTREE_REPO_REMOTE_CHANGE_REPLACE,
                                   remoteName.toUtf8(),
-                                  url.toUtf8(),
+                                  (url + "/repos/" + remoteName).toUtf8(),
                                   options,
                                   nullptr,
                                   &gErr)
@@ -1050,8 +1050,7 @@ void OSTreeRepo::pull(std::shared_ptr<service::InstallTask> taskContext,
 
     auto repo = createOstreeRepo(tmpRepoDir.path(),
                                  QString::fromStdString(this->cfg.defaultRepo),
-                                 QString::fromStdString(this->cfg.repos[this->cfg.defaultRepo]
-                                                        + "/repos/" + this->cfg.defaultRepo),
+                                 QString::fromStdString(this->cfg.repos[this->cfg.defaultRepo]),
                                  this->ostreeRepoDir().absolutePath());
     if (!repo) {
         taskContext->updateStatus(service::InstallTask::Status::Failed,

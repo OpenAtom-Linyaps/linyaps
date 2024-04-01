@@ -615,12 +615,32 @@ utils::error::Result<package::Reference> clearReferenceRemote(const package::Fuz
         return LINGLONG_ERR("not found");
     }
 
-    auto ref = package::Reference::fromPackageInfo(pkgInfos->at(0));
-    if (!ref) {
-        return LINGLONG_ERR(ref);
+    std::optional<package::Reference> ref;
+
+    for (const auto &pkgInfo : *pkgInfos) {
+        auto currentRef = package::Reference::fromPackageInfo(pkgInfo);
+        if (!currentRef) {
+            qCritical() << currentRef.error();
+            continue;
+        }
+
+        if (!ref) {
+            ref = *currentRef;
+            continue;
+        }
+
+        if (ref->version >= currentRef->version) {
+            continue;
+        }
+
+        ref = *currentRef;
     }
 
-    return ref;
+    if (!ref) {
+        return LINGLONG_ERR("not found");
+    }
+
+    return *ref;
 }
 
 } // namespace
@@ -1042,7 +1062,9 @@ void OSTreeRepo::pull(std::shared_ptr<service::InstallTask> taskContext,
                       const package::Reference &reference,
                       bool devel) noexcept
 {
-    LINGLONG_TRACE("pull " + reference.toString() + (devel ? " devel" : ""));
+    const auto refString = ostreeSpecFromReference(reference, devel).toUtf8();
+
+    LINGLONG_TRACE("pull " + refString);
 
     utils::Transaction transaction;
 
@@ -1067,8 +1089,6 @@ void OSTreeRepo::pull(std::shared_ptr<service::InstallTask> taskContext,
     g_autoptr(GError) gErr = nullptr;
     g_autoptr(OstreeRepo) tmpRepo = *repo;
     auto *cancellable = taskContext->cancellable();
-
-    const auto refString = ostreeSpecFromReference(reference, devel).toUtf8();
 
     char *refs[] = { (char *)refString.data(), nullptr };
 

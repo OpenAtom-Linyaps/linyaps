@@ -226,7 +226,6 @@ pfl_add_library(
   APPS
   generators/20-devices
   generators/30-host-ipc
-  generators/40-xdg-runtime-dir
   ll-builder
   ll-cli
   ll-package-manager

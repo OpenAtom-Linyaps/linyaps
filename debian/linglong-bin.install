@@ -10,7 +10,6 @@ usr/lib/systemd/user/linglong-upgrade.timer
 usr/lib/sysusers.d/linglong.conf
 usr/libexec/linglong/20-devices
 usr/libexec/linglong/30-host-ipc
-usr/libexec/linglong/40-xdg-runtime-dir
 usr/libexec/linglong/create-linglong-dirs
 usr/libexec/linglong/upgrade-all
 usr/share/bash-completion/completions/ll-cli

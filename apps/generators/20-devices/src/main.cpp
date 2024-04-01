@@ -18,47 +18,47 @@ int main()
         content = nlohmann::json::parse(std::cin);
         ociVersion = content.at("ociVersion");
     } catch (std::exception &exp) {
-        std::cerr << exp.what();
+        std::cerr << exp.what() << std::endl;
         return -1;
     } catch (...) {
-        std::cerr << "unknown error occurred during parsing json.";
+        std::cerr << "unknown error occurred during parsing json." << std::endl;
         return -1;
     }
 
     if (ociVersion != "1.0.1") {
-        std::cerr << "OCI version mismatched.";
+        std::cerr << "OCI version mismatched." << std::endl;
         return -1;
     }
 
-    auto commonPatch = u8R"(
+    auto commonMounts = u8R"( [
         {
-           "mounts": [ {
-                "destination": "/run/udev",
-                "type": "bind",
-                "source": "/run/udev",
-                "options": [
-                        "rbind"
-                ]
-            },{
-                "destination": "/dev/dri",
-                "type": "bind",
-                "source": "/dev/dri",
-                "options": [
-                        "rbind"
-                ]
-            },{
-                "destination": "/dev/snd",
-                "type": "bind",
-                "source": "/dev/snd",
-                "options": [
-                        "rbind"
-                ]
-            } ]
+            "destination": "/run/udev",
+            "type": "bind",
+            "source": "/run/udev",
+            "options": [
+                    "rbind"
+            ]
+        },{
+            "destination": "/dev/dri",
+            "type": "bind",
+            "source": "/dev/dri",
+            "options": [
+                    "rbind"
+            ]
+        },{
+            "destination": "/dev/snd",
+            "type": "bind",
+            "source": "/dev/snd",
+            "options": [
+                    "rbind"
+            ]
         }
-    )"_json;
+    ])"_json;
 
-    nlohmann::json videoPatch;
-    videoPatch["mounts"] = nlohmann::json::array();
+    auto& mounts = content["mounts"];
+    mounts.insert(mounts.end(), commonMounts.begin(), commonMounts.end());
+
+    nlohmann::json videoMounts = nlohmann::json::array();
 
     // for Video Capture Interface:
     // https://www.kernel.org/doc/html/v4.19/media/uapi/v4l/dev-capture.html
@@ -78,12 +78,11 @@ int main()
         dev["destination"] = devPath;
         dev["source"] = devPath;
 
-        videoPatch["mounts"].emplace_back(std::move(dev));
+        videoMounts.emplace_back(std::move(dev));
     }
 
-    commonPatch.merge_patch(videoPatch);
-    content.merge_patch(commonPatch);
-    std::cout << std::setw(4) << content;
+    mounts.insert(mounts.end(), videoMounts.begin(), videoMounts.end());
+    std::cout << content.dump() << std::endl;
 
     return 0;
 }

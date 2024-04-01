@@ -65,16 +65,6 @@ inline bool operator==(const Object& left, const Object& right){
     return (left.asJsonObject() == right.asJsonObject());  
 }
 
-inline
-#if QT_VERSION < 0x060000
-uint
-#else
-size_t
-#endif
-qHash(const Object& obj, uint seed = 0) noexcept{
-    return qHash(obj.asJsonObject(), seed);
-}
-
 } // namespace linglong
 } // namespace api
 } // namespace client

@@ -60,9 +60,6 @@ uint
 #else
 size_t
 #endif
-qHash(const {{prefix}}Object& obj, uint seed = 0) noexcept{
-    return qHash(obj.asJsonObject(), seed);
-}
 
 {{#cppNamespaceDeclarations}}
 } // namespace {{this}}

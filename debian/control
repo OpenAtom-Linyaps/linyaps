@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Deepin Packages Builder <packages@deepin.com>
 Build-Depends: cmake,
                debhelper,
-               libdocopt-dev (>= 0.6.2-2.1),
+               libdocopt-dev (>= 0.6.2-2),
                libexpected-dev (>= 1.0.0~dfsg-2~bpo10+1),
                libglib2.0-dev,
                libgmock-dev,

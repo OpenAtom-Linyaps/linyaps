@@ -10,6 +10,7 @@
 #include "linglong/utils/command/env.h"
 
 #include <QDataStream>
+#include <QUuid>
 
 namespace linglong::package {
 

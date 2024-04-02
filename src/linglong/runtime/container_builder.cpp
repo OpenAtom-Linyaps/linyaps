@@ -15,6 +15,7 @@
 #include "ocppi/runtime/config/types/Mount.hpp"
 
 #include <qstandardpaths.h>
+#include <unistd.h>
 
 namespace linglong::runtime {
 

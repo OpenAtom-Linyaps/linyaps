@@ -7,6 +7,7 @@
 #include "linglong/package/fuzzy_reference.h"
 
 #include <QStringList>
+#include <QRegularExpression>
 
 namespace linglong::package {
 

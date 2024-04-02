@@ -6,6 +6,8 @@
 
 #include "linglong/package/version_range.h"
 
+#include <QRegularExpression>
+
 namespace linglong::package {
 
 utils::error::Result<VersionRange> VersionRange::parse(const QString &raw) noexcept

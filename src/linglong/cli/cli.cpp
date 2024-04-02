@@ -226,7 +226,8 @@ int Cli::run(std::map<std::string, docopt::value> &args)
                       binds->cend(),
                       [&applicationMounts](
                         const api::types::v1::ApplicationConfigurationPermissionsBind &bind) {
-                          applicationMounts.push_back({
+                          applicationMounts.push_back(
+			    ocppi::runtime::config::types::Mount {
                             .destination = bind.destination,
                             .options = { { "rbind" } },
                             .source = bind.source,

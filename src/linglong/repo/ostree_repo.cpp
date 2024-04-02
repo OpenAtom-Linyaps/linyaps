@@ -395,7 +395,19 @@ utils::error::Result<void> updateOstreeRepoConfig(OstreeRepo *repo,
     g_autoptr(GError) gErr = nullptr;
     if (ostree_repo_remote_change(repo,
                                   nullptr,
-                                  OSTREE_REPO_REMOTE_CHANGE_REPLACE,
+                                  OSTREE_REPO_REMOTE_CHANGE_DELETE_IF_EXISTS,
+                                  remoteName.toUtf8(),
+                                  nullptr,
+                                  nullptr,
+                                  nullptr,
+                                  &gErr)
+        == FALSE) {
+        return LINGLONG_ERR("ostree_repo_remote_change", gErr);
+    }
+    
+    if (ostree_repo_remote_change(repo,
+                                  nullptr,
+                                  OSTREE_REPO_REMOTE_CHANGE_ADD,
                                   remoteName.toUtf8(),
                                   (url + "/repos/" + remoteName).toUtf8(),
                                   options,
@@ -451,7 +463,8 @@ utils::error::Result<OstreeRepo *> createOstreeRepo(const QDir &location,
         return LINGLONG_ERR(result);
     }
 
-    return g_steal_pointer(&ostreeRepo);
+    //return g_steal_pointer(&ostreeRepo);
+    return static_cast<OstreeRepo*>(g_steal_pointer(&ostreeRepo));
 }
 
 utils::error::Result<package::Reference> clearReferenceLocal(const package::FuzzyReference &fuzzy,
@@ -687,7 +700,8 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
         ostreeRepo = ostree_repo_new(repoPath);
         Q_ASSERT(ostreeRepo != nullptr);
         if (ostree_repo_open(ostreeRepo, nullptr, &gErr) == TRUE) {
-            this->ostreeRepo.reset(g_steal_pointer(&ostreeRepo));
+            this->ostreeRepo.reset(static_cast<OstreeRepo*>(g_steal_pointer(&ostreeRepo)));
+            //this->ostreeRepo.reset(ostreeRepo);
             return;
         }
 

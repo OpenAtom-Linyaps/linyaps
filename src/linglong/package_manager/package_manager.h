@@ -39,7 +39,7 @@ public:
                         const package::Reference &newRef,
                         bool devel) noexcept;
 
-public Q_SLOTS: // NOLINT
+public Q_SLOT: // NOLINT
     virtual auto getConfiguration() const noexcept -> QVariantMap;
     virtual auto setConfiguration(const QVariantMap &parameters) noexcept -> QVariantMap;
     virtual auto Install(const QVariantMap &parameters) noexcept -> QVariantMap;

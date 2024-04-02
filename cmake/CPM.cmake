@@ -26,7 +26,7 @@
   SOFTWARE.
 ]]
 
-cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
 
 # Initialize logging prefix
 if(NOT CPM_INDENT)

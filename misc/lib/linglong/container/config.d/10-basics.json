@@ -102,6 +102,16 @@
                 ]
             }
         },
+	{
+          "op": "add",
+          "path": "/mounts/-",
+          "value": {
+            "destination": "/run",
+            "type": "tmpfs",
+            "source": "tmpfs",
+            "options": ["nosuid", "strictatime", "mode=0755", "size=65536k"]
+          }
+        },
         {
           "op": "add",
           "path": "/mounts/-",

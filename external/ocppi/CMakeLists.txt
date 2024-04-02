@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14..3.28.3)
+cmake_minimum_required(VERSION 3.13..3.28.3)
 
 project(
   ocppi
@@ -219,6 +219,7 @@ pfl_add_library(
   with-logger
   LINK_LIBRARIES
   ${OCPPI_LINK_LIBRARIES}
+  stdc++fs
   COMPILE_FEATURES
   PUBLIC
   cxx_std_17

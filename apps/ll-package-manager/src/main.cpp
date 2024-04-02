@@ -44,7 +44,7 @@ void withDBusDaemon()
     QDBusConnection conn = QDBusConnection::systemBus();
     auto result = registerDBusObject(conn, "/org/deepin/linglong/PackageManager", packageManager);
     if (!result.has_value()) {
-        qCritical().noquote() << "Launching failed:" << Qt::endl << result.error().message();
+        qCritical().noquote() << "Launching failed:" << ::endl << result.error().message();
         QCoreApplication::exit(-1);
         return;
     }
@@ -58,11 +58,11 @@ void withDBusDaemon()
                                             // FIXME: use cmake option
                                             "org.deepin.linglong.PackageManager");
         if (!result.has_value()) {
-            qWarning().noquote() << "During exiting:" << Qt::endl << result.error().message();
+            qWarning().noquote() << "During exiting:" << ::endl << result.error().message();
         }
     });
     if (!result.has_value()) {
-        qCritical().noquote() << "Launching failed:" << Qt::endl << result.error().message();
+        qCritical().noquote() << "Launching failed:" << ::endl << result.error().message();
         QCoreApplication::exit(-1);
         return;
     }

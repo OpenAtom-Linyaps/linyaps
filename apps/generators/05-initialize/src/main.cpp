@@ -43,7 +43,7 @@ int main()
           { { "destination", "/runtime" },
             { "options", nlohmann::json::array({ "rbind", "ro" }) },
             { "source",
-              std::filesystem::path(annotations["org.deepin.linglong.runtimeDir"]) / "files" },
+                std::filesystem::path("") / annotations["org.deepin.linglong.runtimeDir"] / "files" },
             { "type", "bind" } });
     }
 
@@ -61,7 +61,7 @@ int main()
                 / "files" },
             { "options", nlohmann::json::array({ "rbind", "rw" }) },
             { "source",
-              std::filesystem::path(annotations["org.deepin.linglong.appDir"]) / "files" },
+              std::filesystem::path("") / annotations["org.deepin.linglong.appDir"] / "files" },
             { "type", "bind" } });
     }
 

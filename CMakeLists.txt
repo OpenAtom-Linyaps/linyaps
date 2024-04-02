@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.13)
 
 project(
   linglong
@@ -91,6 +91,7 @@ CPMFindPackage(
 
 if(NOT TARGET yaml-cpp::yaml-cpp)
   # NOTE: v0.6.2 yaml-cpp doesn't export targets in namespace.
+  set_target_properties(yaml-cpp PROPERTIES IMPORTED_GLOBAL TRUE)
   add_library(yaml-cpp::yaml-cpp ALIAS yaml-cpp)
 endif()
 
@@ -245,11 +246,11 @@ pfl_add_library(
   PkgConfig::glib2
   PkgConfig::ostree1
   PkgConfig::systemd
-  Qt::Concurrent
-  Qt::Core
-  Qt::DBus
-  Qt::Network
-  Qt::WebSockets
+  Qt5::Concurrent
+  Qt5::Core
+  Qt5::DBus
+  Qt5::Network
+  Qt5::WebSockets
   QtLinglongRepoClientAPI
   docopt
   ocppi::ocppi

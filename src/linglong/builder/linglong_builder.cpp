@@ -28,7 +28,7 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QProcess>
-#include <QScopeGuard>
+//#include <QScopeGuard>
 #include <QTemporaryFile>
 #include <QThread>
 #include <QUrl>

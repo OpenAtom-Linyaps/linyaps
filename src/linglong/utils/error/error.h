@@ -18,6 +18,8 @@
 #include <QMessageLogContext>
 #include <QString>
 #include <QStringBuilder>
+#include <QDebug>
+#include <QtGlobal>
 
 #include <memory>
 #include <tuple>
@@ -285,7 +287,7 @@ using Result = tl::expected<Value, Error>;
 
 inline QDebug operator<<(QDebug debug, const linglong::utils::error::Error &err)
 {
-    debug.noquote().nospace() << "[code " << err.code() << " ] message:" << Qt::endl
+    debug.noquote().nospace() << "[code " << err.code() << " ] message:" << ::endl
                               << "\t" << err.message().replace("\n", "\n\t");
     return debug;
 }

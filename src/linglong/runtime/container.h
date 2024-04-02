@@ -12,6 +12,8 @@
 #include "ocppi/runtime/config/types/Config.hpp"
 #include "ocppi/runtime/config/types/Process.hpp"
 
+#include <QUuid>
+
 namespace linglong::runtime {
 
 class Container

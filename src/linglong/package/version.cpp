@@ -7,6 +7,7 @@
 #include "linglong/package/version.h"
 
 #include <QStringBuilder>
+#include <QRegularExpression>
 
 namespace linglong::package {
 namespace {
@@ -14,7 +15,7 @@ namespace {
 struct PreRelease
 {
     explicit PreRelease(const QString &raw)
-        : list(raw.split('.', Qt::SkipEmptyParts))
+        : list(raw.split('.', QString::SkipEmptyParts))
     {
     }
 

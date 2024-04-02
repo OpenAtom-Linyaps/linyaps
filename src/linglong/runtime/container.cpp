@@ -17,6 +17,7 @@
 #include <fstream>
 
 #include <sys/stat.h>
+#include <unistd.h>
 
 namespace linglong::runtime {
 

@@ -123,6 +123,7 @@ void applyExecutablePatch(ocppi::runtime::config::types::Config &cfg,
 
     QProcess generatorProcess;
     generatorProcess.setProgram(info.absoluteFilePath());
+    generatorProcess.start();
     generatorProcess.write(QByteArray::fromStdString(nlohmann::json(cfg).dump()));
 
     constexpr auto timeout = 200;

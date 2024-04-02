@@ -352,12 +352,13 @@ utils::error::Result<void> handleRepositoryUpdate(OstreeRepo *repo,
     path = path.right(path.length() - 1);
 
     Q_ASSERT(layerDir.exists() == false);
-    if (!layerDir.removeRecursively()) {
+    if (!layerDir.mkpath(".")) {
         Q_ASSERT(false);
     }
-
-    layerDir.cdUp();
-    if (!layerDir.mkpath(".")) {
+    if (!layerDir.cdUp()) {
+        Q_ASSERT(false);
+    }
+    if (!layerDir.removeRecursively()) {
         Q_ASSERT(false);
     }
 

@@ -25,7 +25,7 @@ public:
     qlonglong major = 0;
     qlonglong minor = 0;
     qlonglong patch = 0;
-    std::optional<qlonglong> tweak = 0;
+    std::optional<qlonglong> tweak = {};
 
     bool operator==(const Version &that) const noexcept;
     bool operator!=(const Version &that) const noexcept;

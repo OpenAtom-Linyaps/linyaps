@@ -43,6 +43,11 @@ int main()
     };
 
     for (const auto &[source, destination] : roMountMap) {
+        if (!std::filesystem::exists(source)) {
+            std::cerr << source << " not exists on host." << std::endl;
+            continue;
+        }
+
         mounts.push_back({
           { "type", "bind" },
           { "options", nlohmann::json::array({ "ro", "rbind" }) },

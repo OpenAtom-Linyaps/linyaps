@@ -334,6 +334,9 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         return LINGLONG_ERR("link systemd user service to files/share/systemd/user: failed");
     }
 
+    // Let base updated at runtime.
+    base->version.tweak = std::nullopt;
+
     auto info = api::types::v1::PackageInfo{
         .appid = this->project.package.id,
         .arch = { QSysInfo::currentCpuArchitecture().toStdString() },

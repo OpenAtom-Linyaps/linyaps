@@ -97,7 +97,7 @@ utils::error::Result<Version> Version::parse(const QString &raw) noexcept
 try {
     return Version(raw);
 } catch (const std::exception &e) {
-    LINGLONG_TRACE("parse version");
+    LINGLONG_TRACE("parse version " + raw);
     return LINGLONG_ERR(e);
 }
 

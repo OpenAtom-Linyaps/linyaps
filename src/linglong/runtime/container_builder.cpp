@@ -134,6 +134,7 @@ void applyExecutablePatch(ocppi::runtime::config::types::Config &cfg,
 
     if (generatorProcess.exitCode() != 0) {
         qCritical() << LINGLONG_ERRV("exit with error", generatorProcess.exitCode());
+        qCritical() << "with input:" << nlohmann::json(cfg).dump().c_str();
         Q_ASSERT(false);
         return;
     }

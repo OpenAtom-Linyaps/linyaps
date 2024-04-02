@@ -490,13 +490,15 @@ utils::error::Result<package::Reference> clearReferenceLocal(const package::Fuzz
 
         auto availableVersion = package::Version::parse(info.fileName());
         if (!availableVersion) {
-            qCritical() << "broken ostree based linglong repository detected";
+            qCritical() << "broken ostree based linglong repository detected"
+                        << info.absoluteFilePath() << availableVersion.error();
             Q_ASSERT(false);
             continue;
         }
 
         if (!availableVersion->tweak) {
-            qCritical() << "broken ostree based linglong repository detected";
+            qCritical() << "broken ostree based linglong repository detected"
+                        << info.absoluteFilePath() << "tweak missing.";
             Q_ASSERT(false);
             continue;
         }
@@ -1306,7 +1308,7 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
               json["arch"] = nlohmann::json::array({ json["arch"] });
               auto pkgInfo = utils::serialize::LoadJSON<api::types::v1::PackageInfo>(json);
               if (!pkgInfo) {
-                  qCritical() << "Ignored invalid record" << record.asJson();
+                  qCritical() << "Ignored invalid record" << record.asJson() << pkgInfo.error();
                   continue;
               }
 

@@ -63,7 +63,7 @@ QStringList getUserEnv(const QStringList &filters)
 linglong::utils::error::Result<QString> Exec(QString command, QStringList args)
 {
     LINGLONG_TRACE(QString("exec %1 %2").arg(command).arg(args.join(" ")));
-
+    qDebug() << "exec" << command << args;
     QProcess process;
     process.setProgram(command);
     process.setArguments(args);

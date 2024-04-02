@@ -99,6 +99,22 @@ QStringList nonProjectConfigPaths()
     return result;
 }
 
+void initDefaultBuildConfig()
+{
+    // ~/.cache
+    QDir cacheLocation = QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation);
+    // ~/.local/share
+    QDir configLocations = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    QString configFilePath = configLocations.filePath("linglong/builder/config.yaml");
+    if (QFile::exists(configFilePath)) {
+        return;
+    }
+    linglong::api::types::v1::BuilderConfig config;
+    config.version = 1;
+    config.repo = cacheLocation.filePath("linglong-builder").toStdString();
+    linglong::builder::saveConfig(config, configFilePath);
+}
+
 } // namespace
 
 int main(int argc, char **argv)
@@ -111,7 +127,8 @@ int main(int argc, char **argv)
         }
     }
     QCoreApplication app(argc, argv);
-
+    // 初始化 qt qrc
+    Q_INIT_RESOURCE(builder_releases);
     using namespace linglong::utils::global;
 
     applicationInitializte();
@@ -323,10 +340,10 @@ int main(int argc, char **argv)
     }
 
     QStringList configPaths = {};
-
+    // 初始化 build config
+    initDefaultBuildConfig();
     configPaths << projectConfigPaths();
     configPaths << nonProjectConfigPaths();
-    configPaths << ":/config.yaml";
 
     auto builderCfg = linglong::builder::loadConfig(configPaths);
     if (!builderCfg) {
@@ -447,12 +464,13 @@ int main(int argc, char **argv)
                   builder.setConfig(cfg);
               }
 
-              auto exec = QStringList{ "/source/entry.sh" };
+              linglong::utils::error::Result<void> ret;
               if (parser.isSet(execVerbose)) {
-                  exec = splitExec(parser.value(execVerbose));
+                  auto exec = splitExec(parser.value(execVerbose));
+                  ret = builder.build(exec);
+              } else {
+                  ret = builder.build();
               }
-
-              auto ret = builder.build(exec);
               if (!ret) {
                   qCritical() << ret.error();
                   return ret.error().code();

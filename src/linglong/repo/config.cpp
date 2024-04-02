@@ -17,7 +17,7 @@ namespace linglong::repo {
 
 utils::error::Result<api::types::v1::RepoConfig> loadConfig(const QString &file) noexcept
 {
-    LINGLONG_TRACE(QString("load config from %1").arg(file));
+    LINGLONG_TRACE(QString("load repo config from %1").arg(file));
 
     try {
         auto ifs = std::ifstream(file.toLocal8Bit());
@@ -43,16 +43,16 @@ utils::error::Result<api::types::v1::RepoConfig> loadConfig(const QString &file)
 
 utils::error::Result<api::types::v1::RepoConfig> loadConfig(const QStringList &files) noexcept
 {
-    LINGLONG_TRACE(QString("load config from %1").arg(files.join(" ")));
+    LINGLONG_TRACE(QString("load repo config from %1").arg(files.join(" ")));
 
     for (const auto &file : files) {
         auto config = loadConfig(file);
         if (!config.has_value()) {
-            qDebug() << "Failed to load config from" << file << ":" << config.error();
+            qDebug() << "Failed to load repo config from" << file << ":" << config.error();
             continue;
         }
 
-        qDebug() << "Load config from" << file;
+        qDebug() << "load repo config from" << file;
         return config;
     }
 

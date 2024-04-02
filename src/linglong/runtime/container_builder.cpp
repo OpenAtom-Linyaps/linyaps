@@ -9,12 +9,15 @@
 #include "linglong/api/types/v1/ApplicationConfiguration.hpp"
 #include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/global/initialize.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/serialize/yaml.h"
 #include "ocppi/runtime/config/types/Generators.hpp"
 #include "ocppi/runtime/config/types/Mount.hpp"
 
+#include <qglobal.h>
 #include <qstandardpaths.h>
+#include <qtemporarydir.h>
 
 namespace linglong::runtime {
 
@@ -134,18 +137,16 @@ void applyExecutablePatch(ocppi::runtime::config::types::Config &cfg,
         return;
     }
 
+    auto error = generatorProcess.readAllStandardError();
+    if (!error.isEmpty()) {
+        qWarning() << "generator" << info.absoluteFilePath() << "stderr:" << QString(error);
+    }
     if (generatorProcess.exitCode() != 0) {
         qCritical() << LINGLONG_ERRV("exit with error", generatorProcess.exitCode());
         qCritical() << "with input:" << nlohmann::json(cfg).dump().c_str();
         Q_ASSERT(false);
         return;
     }
-
-    auto error = generatorProcess.readAllStandardError();
-    if (!error.isEmpty()) {
-        qWarning() << "generator" << info.absoluteFilePath() << "stderr:" << QString(error);
-    }
-
     auto result = generatorProcess.readAllStandardOutput();
     auto modified = utils::serialize::LoadJSON<ocppi::runtime::config::types::Config>(result);
     if (!modified) {
@@ -187,9 +188,20 @@ auto getOCIConfig(const ContainerOptions &opts) noexcept
 {
     LINGLONG_TRACE("get origin OCI configuration file");
 
+    QTemporaryDir dir;
+    dir.setAutoRemove(false);
     QString containerConfigFilePath = qgetenv("LINGLONG_CONTAINER_CONFIG");
     if (containerConfigFilePath.isEmpty()) {
         containerConfigFilePath = LINGLONG_INSTALL_PREFIX "/lib/linglong/container/config.json";
+        if (!utils::global::linglongInstalled() || !QFile(containerConfigFilePath).exists()) {
+            containerConfigFilePath = dir.filePath("config.json");
+            qWarning() << "Initializing the container using the embed config.json. "
+                + containerConfigFilePath;
+            QFile qrcFile(":/container/config.json");
+            if (!qrcFile.copy(containerConfigFilePath)) {
+                return LINGLONG_ERR(qrcFile);
+            };
+        }
     }
 
     auto config = utils::serialize::LoadJSONFile<ocppi::runtime::config::types::Config>(

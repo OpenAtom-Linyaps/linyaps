@@ -5,6 +5,7 @@
 #include "nlohmann/json.hpp"
 
 #include <iostream>
+
 #include <unistd.h>
 
 int main()
@@ -27,15 +28,17 @@ int main()
         return -1;
     }
 
-    auto& gidMappings = content["linux"]["gidMappings"];
-    gidMappings["containerID"] = ::getgid();
-    gidMappings["hostID"] = ::getgid();
-    gidMappings["size"] = 1;
+    content["linux"]["uidMappings"] = nlohmann::json::array({ nlohmann::json::object({
+      { "containerID", ::getuid() },
+      { "hostID", ::getuid() },
+      { "size", 1 },
+    }) });
 
-    auto& uidMappings = content["linux"]["uidMappings"];
-    uidMappings["containerID"] = ::getuid();
-    uidMappings["hostID"] = ::getuid();
-    uidMappings["size"] = 1;
+    content["linux"]["gidMappings"] = nlohmann::json::array({ nlohmann::json::object({
+      { "containerID", ::getgid() },
+      { "hostID", ::getgid() },
+      { "size", 1 },
+    }) });
 
     std::cout << content.dump() << std::endl;
     return 0;

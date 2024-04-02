@@ -4,7 +4,7 @@
 
 pfl_add_executable(
   OUTPUT_NAME
-  25-user-home
+  30-user-home
   LIBEXEC
   linglong
   SOURCES

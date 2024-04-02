@@ -8,8 +8,12 @@ usr/lib/systemd/user-environment-generators/61-linglong
 usr/lib/systemd/user/linglong-upgrade.service
 usr/lib/systemd/user/linglong-upgrade.timer
 usr/lib/sysusers.d/linglong.conf
+usr/libexec/linglong/00-id-mapping
+usr/libexec/linglong/05-initialize
 usr/libexec/linglong/20-devices
-usr/libexec/linglong/30-host-ipc
+usr/libexec/linglong/30-user-home
+usr/libexec/linglong/40-host-ipc
+usr/libexec/linglong/90-legacy
 usr/libexec/linglong/create-linglong-dirs
 usr/libexec/linglong/upgrade-all
 usr/share/bash-completion/completions/ll-cli

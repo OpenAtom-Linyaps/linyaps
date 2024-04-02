@@ -156,6 +156,8 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     LINGLONG_TRACE(
       QString("build project %1").arg(this->workingDir.absoluteFilePath("linglong.yaml")));
 
+    this->workingDir.mkdir("linglong");
+
     if (this->project.sources) {
         auto result = fetchSources(*this->project.sources,
                                    this->workingDir.absoluteFilePath("linglong/sources"),
@@ -244,7 +246,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     });
 
     opts.mounts.push_back({
-      .destination = "/source",
+      .destination = "/project",
       .gidMappings = {},
       .options = { { "rbind", "rw" } },
       .source = this->workingDir.absolutePath().toStdString(),
@@ -252,7 +254,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
       .uidMappings = {},
     });
 
-    opts.masks.emplace_back("/source/linglong");
+    opts.masks.emplace_back("/project/linglong/output");
 
     auto container = this->containerBuilder.create(opts);
     if (!container) {
@@ -270,7 +272,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         .capabilities = {},
         .commandLine = {},
         .consoleSize = {},
-        .cwd = "/source",
+        .cwd = "/project",
         .env = {}, // FIXME: add environments later.
         .ioPriority = {},
         .noNewPrivileges = true,

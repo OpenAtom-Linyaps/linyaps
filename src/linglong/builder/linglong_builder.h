@@ -28,7 +28,7 @@ public:
 
     auto create(const QString &projectName) -> utils::error::Result<void>;
 
-    auto build(const QStringList &args = { "/source/entry.sh" }) noexcept
+    auto build(const QStringList &args = { "/project/linglong/entry.sh" }) noexcept
       -> utils::error::Result<void>;
 
     auto exportLayer(const QString &destination) -> utils::error::Result<void>;

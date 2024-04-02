@@ -230,8 +230,12 @@ pfl_add_library(
   src/linglong/utils/xdg/desktop_entry.cpp
   src/linglong/utils/xdg/desktop_entry.h
   APPS
+  generators/00-id-mapping
+  generators/05-initialize
   generators/20-devices
+  generators/25-user-home
   generators/30-host-ipc
+  generators/90-legacy
   ll-builder
   ll-cli
   ll-package-manager

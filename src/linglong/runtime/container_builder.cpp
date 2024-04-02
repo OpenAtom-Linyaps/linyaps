@@ -179,124 +179,6 @@ void applyPatches(ocppi::runtime::config::types::Config &cfg,
     }
 }
 
-void initializeMounts(ocppi::runtime::config::types::Config &config,
-                      const ContainerOptions &opts) noexcept
-{
-    Q_ASSERT(config.mounts.has_value());
-
-    auto &mounts = *config.mounts;
-
-    mounts.push_back({
-      .destination = "/",
-      .gidMappings = std::nullopt,
-      .options = { { "rbind", "ro" } },
-      .source = { opts.baseDir.absoluteFilePath("files").toStdString() },
-      .type = { "bind" },
-      .uidMappings = std::nullopt,
-    });
-
-    if (opts.runtimeDir) {
-        mounts.push_back({
-          .destination = "/runtime",
-          .gidMappings = std::nullopt,
-          .options = { { "rbind", "ro" } },
-          .source = opts.runtimeDir->absoluteFilePath("files").toStdString(),
-          .type = { "bind" },
-          .uidMappings = std::nullopt,
-        });
-    }
-
-    if (opts.appDir) {
-        mounts.push_back({
-          .destination = "/opt/apps/",
-          .gidMappings = std::nullopt,
-          .options = { { "nodev", "nosuid", "mode=700" } },
-          .source = { "tmpfs" },
-          .type = { "tmpfs" },
-          .uidMappings = std::nullopt,
-        });
-
-        mounts.push_back({
-          .destination = QString("/opt/apps/%1/files").arg(opts.appID).toStdString(),
-          .gidMappings = std::nullopt,
-          .options = { { "rbind", "ro" } },
-          .source = opts.appDir->absoluteFilePath("files").toStdString(),
-          .type = { "bind" },
-          .uidMappings = std::nullopt,
-        });
-    }
-
-    {
-        auto homeDir = QDir(QStandardPaths::writableLocation(QStandardPaths::HomeLocation));
-        Q_ASSERT(homeDir.exists());
-
-        auto pass = [&](const QString &dir) {
-            homeDir.mkpath(dir);
-            Q_ASSERT(homeDir.exists(dir));
-            mounts.push_back({
-              .destination = homeDir.absoluteFilePath(dir).toStdString(),
-              .gidMappings = std::nullopt,
-              .options = { { "rbind" } },
-              .source = homeDir.absoluteFilePath(dir).toStdString(),
-              .type = { "bind" },
-              .uidMappings = std::nullopt,
-            });
-        };
-
-        pass(".");
-
-        auto appDataDir = QDir(homeDir.absoluteFilePath(".linglong/" + opts.appID));
-        appDataDir.mkpath(".");
-        Q_ASSERT(appDataDir.exists());
-
-        auto shadow = [&](const QString &hostDir, const QString &appDir) {
-            homeDir.mkpath(hostDir);
-            Q_ASSERT(homeDir.exists(hostDir));
-            appDataDir.mkpath(appDir);
-            Q_ASSERT(appDataDir.exists(appDir));
-
-            mounts.push_back({
-              .destination = homeDir.absoluteFilePath(hostDir).toStdString(),
-              .gidMappings = std::nullopt,
-              .options = { { "rbind" } },
-              .source = appDataDir.absoluteFilePath(appDir).toStdString(),
-              .type = { "bind" },
-              .uidMappings = std::nullopt,
-            });
-        };
-
-        // FIXME(black_desk): use XDG_* environment variables.
-
-        // NOTE: ~/.local/share should be accessed by other applications.
-        // shadow(".local/share", "share");
-        shadow(".config", "config");
-        shadow(".cache", "cache");
-        shadow(".local/state", "state");
-
-        if (homeDir.exists(".config/user-dirs.dirs")) {
-            mounts.push_back({
-              .destination = homeDir.absoluteFilePath(".config/user-dirs.dirs").toStdString(),
-              .gidMappings = std::nullopt,
-              .options = { { "rbind" } },
-              .source = homeDir.absoluteFilePath(".config/user-dirs.dirs").toStdString(),
-              .type = { "bind" },
-              .uidMappings = std::nullopt,
-            });
-        }
-
-        if (homeDir.exists(".config/user-dirs.locale")) {
-            mounts.push_back({
-              .destination = homeDir.absoluteFilePath(".config/user-dirs.locale").toStdString(),
-              .gidMappings = std::nullopt,
-              .options = { { "rbind" } },
-              .source = homeDir.absoluteFilePath(".config/user-dirs.locale").toStdString(),
-              .type = { "bind" },
-              .uidMappings = std::nullopt,
-            });
-        }
-    }
-}
-
 auto getOCIConfig(const ContainerOptions &opts) noexcept
   -> utils::error::Result<ocppi::runtime::config::types::Config>
 {
@@ -314,24 +196,17 @@ auto getOCIConfig(const ContainerOptions &opts) noexcept
         return LINGLONG_ERR(config);
     }
 
-    config->linux_ = config->linux_.value_or(ocppi::runtime::config::types::Linux{});
-    config->linux_->uidMappings =
-      config->linux_->uidMappings.value_or(std::vector<ocppi::runtime::config::types::IdMapping>{});
-    config->linux_->uidMappings->push_back({
-      .containerID = getuid(),
-      .hostID = getuid(),
-      .size = 1,
-    });
+    auto annotations = config->annotations.value_or(std::map<std::string, std::string>{});
+    annotations.emplace("org.deepin.linglong.appId", opts.appID.toStdString());
+    annotations.emplace("org.deepin.linglong.baseDir", opts.baseDir.absolutePath().toStdString());
 
-    config->linux_->gidMappings =
-      config->linux_->gidMappings.value_or(std::vector<ocppi::runtime::config::types::IdMapping>{});
-    config->linux_->gidMappings->push_back({
-      .containerID = getgid(),
-      .hostID = getgid(),
-      .size = 1,
-    });
-
-    initializeMounts(*config, opts);
+    if (opts.runtimeDir) {
+        annotations.emplace("org.deepin.linglong.runtimeDir", opts.runtimeDir->absolutePath().toStdString());
+    }
+    if (opts.appDir) {
+        annotations.emplace("org.deepin.linglong.appDir", opts.appDir->absolutePath().toStdString());
+    }
+    config->annotations = std::move(annotations);
 
     QDir configDotDDir = QFileInfo(containerConfigFilePath).dir().filePath("../config.d");
     Q_ASSERT(configDotDDir.exists());

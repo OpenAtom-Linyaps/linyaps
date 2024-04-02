@@ -1,6 +1,12 @@
 {
     "ociVersion": "1.0.1",
     "hostname": "linglong",
+    "annotations": {
+        "org.deepin.linglong.appID": "",
+        "org.deepin.linglong.baseDir": "",
+        "org.deepin.linglong.runtimeDir": "",
+        "org.deepin.linglong.appDir": ""
+    },
     "root": {
         "path": ""
     },

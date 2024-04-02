@@ -55,34 +55,27 @@ int main()
         }
     ])"_json;
 
-    auto& mounts = content["mounts"];
+    auto &mounts = content["mounts"];
     mounts.insert(mounts.end(), commonMounts.begin(), commonMounts.end());
 
     nlohmann::json videoMounts = nlohmann::json::array();
-
-    // for Video Capture Interface:
-    // https://www.kernel.org/doc/html/v4.19/media/uapi/v4l/dev-capture.html
-    // assume using udev
-    for (std::size_t index = 0; index < 64; ++index) {
-        auto devPath = "/dev/video" + std::to_string(index);
-        if (!std::filesystem::exists(devPath)) {
-            break;
-        }
-
-        auto dev = u8R"(
+    for (const auto &entry : std::filesystem::directory_iterator{ "/dev" }) {
+        const auto& devPath = entry.path();
+        auto devName = devPath.filename().string();
+        if ((devName.rfind("video", 0) == 0) || (devName.rfind("nvidia", 0) == 0)) {
+            auto dev = u8R"(
             {
                 "type": "bind",
                 "options": [ "rbind" ]
-            }
-        )"_json;
-        dev["destination"] = devPath;
-        dev["source"] = devPath;
+            })"_json;
+            dev["destination"] = devPath.string();
+            dev["source"] = devPath.string();
 
-        videoMounts.emplace_back(std::move(dev));
+            videoMounts.emplace_back(std::move(dev));
+        }
     }
 
     mounts.insert(mounts.end(), videoMounts.begin(), videoMounts.end());
     std::cout << content.dump() << std::endl;
-
     return 0;
 }

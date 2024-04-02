@@ -16,11 +16,15 @@ configure_files(
   libexec/linglong/fetch-dsc-repo
   libexec/linglong/fetch-git-repo
   libexec/linglong/upgrade-all
+  lib/linglong/container/config.d/00-id-mapping
+  lib/linglong/container/config.d/05-initialize
   lib/linglong/container/config.d/10-basics.json
   lib/linglong/container/config.d/20-devices
   lib/linglong/container/config.d/25-host-rootfs.json
   lib/linglong/container/config.d/25-host-statics.json
+  lib/linglong/container/config.d/25-user-home
   lib/linglong/container/config.d/30-host-ipc
+  lib/linglong/container/config.d/90-legacy
   lib/linglong/container/config.json
   lib/linglong/container/README.md
   lib/systemd/system-environment-generators/61-linglong

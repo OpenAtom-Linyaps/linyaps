@@ -156,11 +156,13 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     LINGLONG_TRACE(
       QString("build project %1").arg(this->workingDir.absoluteFilePath("linglong.yaml")));
 
-    auto result = fetchSources(this->project.sources,
-                               this->workingDir.absoluteFilePath("linglong/sources"),
-                               this->cfg);
-    if (!result) {
-        return LINGLONG_ERR(result);
+    if (this->project.sources) {
+        auto result = fetchSources(*this->project.sources,
+                                   this->workingDir.absoluteFilePath("linglong/sources"),
+                                   this->cfg);
+        if (!result) {
+            return LINGLONG_ERR(result);
+        }
     }
 
     std::optional<package::Reference> runtime;
@@ -286,7 +288,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         } },
     };
 
-    result = (*container)->run(process);
+    auto result = (*container)->run(process);
     if (!result) {
         return LINGLONG_ERR(result);
     }

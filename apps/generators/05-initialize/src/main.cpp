@@ -27,11 +27,9 @@ int main()
     }
 
     nlohmann::json annotations;
-    std::string baseDir;
     std::string appID;
     try {
         annotations = content.at("annotations");
-        baseDir = annotations.at("org.deepin.linglong.baseDir");
         appID = annotations.at("org.deepin.linglong.appID");
     } catch (std::exception &exp) {
         std::cerr << exp.what() << std::endl;
@@ -39,11 +37,6 @@ int main()
     }
 
     auto &mounts = content["mounts"];
-
-    mounts.push_back({ { "destination", "/" },
-                       { "options", nlohmann::json::array({ "rbind", "ro" }) },
-                       { "source", std::filesystem::path(baseDir) / "files" },
-                       { "type", "bind" } });
 
     if (annotations.contains("org.deepin.linglong.runtimeDir")) {
         mounts.push_back(

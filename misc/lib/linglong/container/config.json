@@ -23,5 +23,17 @@
             }
         ]
     },
+    "hooks": {
+        "startContainer": [
+            {
+                "path": "/bin/bash",
+                "args": [
+                    "/bin/bash",
+                    "-c",
+                    "( /sbin/ldconfig || true ) && cat /etc/ld.so.cache~ > /etc/ld.so.cache"
+                ]
+            }
+        ]
+    },
     "mounts": []
 }

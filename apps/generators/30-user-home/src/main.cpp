@@ -52,6 +52,13 @@ int main()
         return -1;
     }
 
+    mounts.push_back({
+      { "destination", "/home" },
+      { "options", nlohmann::json::array({ "nodev", "nosuid", "mode=700" }) },
+      { "source", "tmpfs" },
+      { "type", "tmpfs" },
+    });
+
     auto PassthroughDir = [&mounts](const std::string &absolutePath, std::error_code &ec) {
         std::filesystem::create_directories(absolutePath, ec);
         if (ec) {

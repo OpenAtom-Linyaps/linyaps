@@ -6,6 +6,8 @@
 
 #include "linglong/runtime/container.h"
 
+#include "linglong/package/architecture.h"
+#include "linglong/package/layer_packager.h"
 #include "linglong/utils/finally/finally.h"
 #include "ocppi/runtime/config/types/Generators.hpp"
 
@@ -19,10 +21,12 @@
 namespace linglong::runtime {
 
 Container::Container(const ocppi::runtime::config::types::Config &cfg,
+                     const QString &appID,
                      const QString &conatinerID,
                      ocppi::cli::CLI &cli)
     : cfg(cfg)
     , id(conatinerID)
+    , appID(appID)
     , cli(cli)
 {
     Q_ASSERT(!cfg.process.has_value());
@@ -53,10 +57,71 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
         qWarning() << "`user` field is ignored.";
         Q_ASSERT(false);
     }
+    if (this->cfg.process->cwd.empty()) {
+        qWarning() << "run process in current directory.";
+        this->cfg.process->cwd = ("/run/host/rootfs" + QDir::currentPath()).toStdString();
+    }
     this->cfg.process->user = ocppi::runtime::config::types::User{
         .gid = getgid(),
         .uid = getuid(),
     };
+
+    if (isatty(fileno(stdin)) != 0) {
+        this->cfg.process->terminal = true;
+    }
+
+    auto arch = package::Architecture::parse(QSysInfo::currentCpuArchitecture());
+    if (!arch) {
+        return LINGLONG_ERR(arch);
+    }
+    {
+        std::ofstream ofs(
+          bundle.absoluteFilePath("zz_deepib-linglong-app.ld.so.conf").toStdString());
+        Q_ASSERT(ofs.is_open());
+        if (!ofs.is_open()) {
+            return LINGLONG_ERR("create ld config in bundle directory");
+        }
+
+        ofs << "/runtime/lib" << std::endl;
+        ofs << "/runtime/lib/" + arch->getTriplet().toStdString() << std::endl;
+        ofs << "/opt/apps/" + this->appID.toStdString() + "/files/lib" << std::endl;
+        ofs << "/opt/apps/" + this->appID.toStdString() + "/files/lib/"
+            + arch->getTriplet().toStdString()
+            << std::endl;
+    }
+    this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
+      .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
+      .options = { { "ro", "rbind" } },
+      .source = bundle.absoluteFilePath("zz_deepib-linglong-app.ld.so.conf").toStdString(),
+      .type = "bind",
+    });
+
+    {
+        std::ofstream ofs(bundle.absoluteFilePath("ld.so.cache").toStdString());
+        Q_ASSERT(ofs.is_open());
+        if (!ofs.is_open()) {
+            return LINGLONG_ERR("create ld config in bundle directory");
+        }
+    }
+    {
+        std::ofstream ofs(bundle.absoluteFilePath("ld.so.cache~").toStdString());
+        Q_ASSERT(ofs.is_open());
+        if (!ofs.is_open()) {
+            return LINGLONG_ERR("create ld config in bundle directory");
+        }
+    }
+    this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
+      .destination = "/etc/ld.so.cache",
+      .options = { { "rbind" } },
+      .source = bundle.absoluteFilePath("ld.so.cache").toStdString(),
+      .type = "bind",
+    });
+    this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
+      .destination = "/etc/ld.so.cache~",
+      .options = { { "rbind" } },
+      .source = bundle.absoluteFilePath("ld.so.cache~").toStdString(),
+      .type = "bind",
+    });
 
     nlohmann::json json = this->cfg;
 
@@ -69,7 +134,6 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
 
         ofs << json.dump();
     }
-
     auto result = this->cli.run(ocppi::runtime::ContainerID(this->id.toStdString()),
                                 std::filesystem::path(bundle.absolutePath().toStdString()));
 

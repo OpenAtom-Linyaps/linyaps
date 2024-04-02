@@ -18,6 +18,7 @@ class Container
 {
 public:
     Container(const ocppi::runtime::config::types::Config &cfg,
+              const QString &appID,
               const QString &conatinerID,
               ocppi::cli::CLI &cli);
 
@@ -26,6 +27,7 @@ public:
 private:
     ocppi::runtime::config::types::Config cfg;
     QString id;
+    QString appID;
     ocppi::cli::CLI &cli;
 };
 

@@ -28,18 +28,19 @@ int main()
 
     auto &mounts = content["mounts"];
     std::map<std::string, std::string> roMountMap{
-        { "/etc/resolv.conf", "/run/host/network/etc/resolv.conf" },
-        { "/etc/resolvconf", "/run/resolvconf" },
+        { "/etc/resolv.conf", "/run/host/etc/resolv.conf" },
+        { "/etc/resolvconf", "/run/host/etc/resolvconf" },
+        { "/etc/localtime", "/run/host/etc/localtime" },
+        { "/etc/machine-id", "/run/host/etc/machine-id" },
+        { "/etc/machine-id", "/etc/machine-id" },
+        { "/etc/ssl/certs", "/run/host/etc/ssl/certs" },
+        { "/etc/ssl/certs", "/etc/ssl/certs" },
+        { "/var/cache/fontconfig", "/run/host/appearance/fonts-cache" },
+        { "/usr/share/fonts", "/usr/share/fonts" },
         { "/usr/lib/locale/", "/usr/lib/locale/" },
         { "/usr/share/themes", "/usr/share/themes" },
         { "/usr/share/icons", "/usr/share/icons" },
         { "/usr/share/zoneinfo", "/usr/share/zoneinfo" },
-        { "/etc/localtime", "/run/host/etc/localtime" },
-        { "/etc/machine-id", "/run/host/etc/machine-id" },
-        { "/etc/machine-id", "/etc/machine-id" },
-        { "/etc/ssl/certs", "/etc/ssl/certs" },
-        { "/usr/share/fonts", "/usr/share/fonts" },
-        { "/var/cache/fontconfig", "/run/host/appearance/fonts-cache" },
     };
 
     for (const auto &[source, destination] : roMountMap) {

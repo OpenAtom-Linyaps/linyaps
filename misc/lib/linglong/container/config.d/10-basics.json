@@ -125,6 +125,19 @@
                     "rbind"
                 ]
             }
+        },
+        {
+            "op": "add",
+            "path": "/mounts/-",
+            "value": {
+                "destination": "/etc/passwd",
+                "type": "bind",
+                "source": "/etc/passwd",
+                "options": [
+                    "ro",
+                    "rbind"
+                ]
+            }
         }
     ]
 }

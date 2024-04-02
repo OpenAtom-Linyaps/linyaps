@@ -204,16 +204,15 @@ auto getOCIConfig(const ContainerOptions &opts) noexcept
     };
 
     auto annotations = config->annotations.value_or(std::map<std::string, std::string>{});
-    annotations.emplace("org.deepin.linglong.appID", opts.appID.toStdString());
-    annotations.emplace("org.deepin.linglong.baseDir", opts.baseDir.absolutePath().toStdString());
+    annotations["org.deepin.linglong.appID"] = opts.appID.toStdString();
+    annotations["org.deepin.linglong.baseDir"] = opts.baseDir.absolutePath().toStdString();
 
     if (opts.runtimeDir) {
-        annotations.emplace("org.deepin.linglong.runtimeDir",
-                            opts.runtimeDir->absolutePath().toStdString());
+        annotations["org.deepin.linglong.runtimeDir"] =
+          opts.runtimeDir->absolutePath().toStdString();
     }
     if (opts.appDir) {
-        annotations.emplace("org.deepin.linglong.appDir",
-                            opts.appDir->absolutePath().toStdString());
+        annotations["org.deepin.linglong.appDir"] = opts.appDir->absolutePath().toStdString();
     }
     config->annotations = std::move(annotations);
 
@@ -256,7 +255,7 @@ auto ContainerBuilder::create(const ContainerOptions &opts) noexcept
         return LINGLONG_ERR(config);
     }
 
-    return QSharedPointer<Container>::create(*config, opts.containerID, this->cli);
+    return QSharedPointer<Container>::create(*config, opts.appID, opts.containerID, this->cli);
 }
 
 } // namespace linglong::runtime

@@ -70,6 +70,13 @@ int main()
         content["mounts"].emplace_back(std::move(dbusMount));
     }();
 
+    mounts.push_back({
+      { "destination", "/run/user" },
+      { "options", nlohmann::json::array({ "nodev", "nosuid", "mode=700" }) },
+      { "source", "tmpfs" },
+      { "type", "tmpfs" },
+    });
+
     bool xdgRuntimeDirMounted = false;
 
     [mount, &mounts, &xdgRuntimeDirMounted]() {

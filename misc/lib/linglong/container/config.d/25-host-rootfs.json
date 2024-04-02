@@ -5,6 +5,20 @@
             "op": "add",
             "path": "/mounts/-",
             "value": {
+                "destination": "/run/host",
+                "type": "tmpfs",
+                "source": "tmpfs",
+                "options": [
+                    "nodev",
+                    "nosuid",
+                    "mode=700"
+                ]
+            }
+        },
+        {
+            "op": "add",
+            "path": "/mounts/-",
+            "value": {
                 "destination": "/run/host/rootfs",
                 "type": "bind",
                 "source": "/",

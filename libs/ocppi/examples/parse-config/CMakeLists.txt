@@ -1,0 +1,9 @@
+pfl_add_executable(
+  OUTPUT_NAME
+  parse-config
+  DISABLE_INSTALL
+  SOURCES
+  ./src/main.cpp
+  LINK_LIBRARIES
+  PUBLIC
+  linglong::ocppi)

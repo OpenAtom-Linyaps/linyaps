@@ -10,5 +10,9 @@ pfl_add_executable(
   SOURCES
   src/main.cpp
   LINK_LIBRARIES
-  PUBLIC
-  nlohmann_json::nlohmann_json)
+  PRIVATE
+  nlohmann_json::nlohmann_json
+  stdc++fs
+  COMPILE_FEATURES
+  PRIVATE
+  cxx_std_17)

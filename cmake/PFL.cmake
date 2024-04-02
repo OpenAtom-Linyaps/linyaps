@@ -9,9 +9,23 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 This project is design to build c++ project follows [the Pitchfork layout].
 
-You can just copy the [PFL.cmake] file into your awesome project.
+You can just copy the [PFL.cmake] file into your awesome project,
+then use like this:
 
-For futher information, check [examples] and comments.
+```cmake
+cmake_minimum_required(VERSION 3.11.4 FATAL_ERROR)
+
+project (
+  MyAwesomeProject
+  VERSION      0.1.0
+  HOMEPAGE_URL https://github.com/<your-username>/MyAwesomeProject
+  LANGUAGES    CXX
+               C
+)
+
+```
+
+For futher information, check [examples] and [documents].
 
 [PFL.cmake]: https://github.com/black-desk/PFL.cmake/releases/latest/download/PFL.cmake
 
@@ -19,11 +33,14 @@ For futher information, check [examples] and comments.
 
 [examples]: https://github.com/black-desk/PFL.cmake/tree/master/examples
 
+[documents]: https://github.com/black-desk/PFL.cmake/tree/master/docs
+
 ]]
 
 # NOTE: RHEL 8 use cmake 3.11.4
 cmake_minimum_required(VERSION 3.11.4 FATAL_ERROR)
 
+# Check whether PFL.cmake is added already
 get_property(
   PFL_INITIALIZED GLOBAL
   PROPERTY PFL_INITIALIZED
@@ -33,8 +50,6 @@ if(PFL_INITIALIZED)
 endif()
 
 set_property(GLOBAL PROPERTY PFL_INITIALIZED true)
-
-set(_PFL_VERSION "v0.4.1")
 
 set(_PFL_BUG_REPORT_MESSAGE
     [=[
@@ -67,6 +82,13 @@ function(_pfl_message MODE)
   message(${MODE} "${_PFL_MESSAGE_PREFIX}${MESSAGE}")
 endfunction()
 
+function(_pfl_debug)
+  if(CMAKE_VERSION VERSION_LESS 3.15)
+    return()
+  endif()
+  _pfl_message(DEBUG ${ARGV})
+endfunction()
+
 function(_pfl_info)
   _pfl_message(STATUS ${ARGV})
 endfunction()
@@ -79,30 +101,39 @@ function(_pfl_fatal)
   _pfl_message(FATAL_ERROR ${ARGV})
 endfunction()
 
+set(_PFL_VERSION "v0.5.1")
+
 _pfl_info("Version: ${_PFL_VERSION}")
 
-set(_PFL_PATH_COMPONENT_VALIDATOR "^(_.*|.*__.*|.*_)\$")
-function(_pfl_normalize_path_component OUT_NAME PATH_COMPONENT)
-  set(NORMALIZED_PATH_COMPONENT "${PATH_COMPONENT}")
-  if(NOT NORMALIZED_PATH_COMPONENT)
-    _pfl_bug()
+set(_PFL_COMPONENT_VALIDATOR "^(_.*|.*__.*|.*_|.*:.*)\$")
+macro(_pfl_check_component COMPONENT) # MESSAGES
+  if("${COMPONENT}" MATCHES "${_PFL_COMPONENT_VALIDATOR}")
+    _pfl_fatal(${ARGN})
   endif()
+endmacro()
 
-  string(REPLACE " " "_" NORMALIZED_PATH_COMPONENT
-                 "${NORMALIZED_PATH_COMPONENT}")
-  string(REPLACE "-" "_" NORMALIZED_PATH_COMPONENT
-                 "${NORMALIZED_PATH_COMPONENT}")
-  string(REPLACE ":" "_" NORMALIZED_PATH_COMPONENT
-                 "${NORMALIZED_PATH_COMPONENT}")
-
-  if(NORMALIZED_PATH_COMPONENT MATCHES "${_PFL_PATH_COMPONENT_VALIDATOR}")
-    return()
+macro(_pfl_project_is_top_level)
+  if(CMAKE_VERSION VERSION_LESS 3.21)
+    # https://www.scivision.dev/cmake-project-is-top-level/
+    get_property(
+      not_top
+      DIRECTORY
+      PROPERTY PARENT_DIRECTORY)
+    if(NOT not_top)
+      set(PROJECT_IS_TOP_LEVEL true)
+    else()
+      set(PROJECT_IS_TOP_LEVEL false)
+    endif()
   endif()
+endmacro()
 
-  set("${OUT_NAME}"
-      "${NORMALIZED_PATH_COMPONENT}"
-      PARENT_SCOPE)
-endfunction()
+macro(_pfl_parse_arguments)
+  foreach(PARAMETER IN LISTS FLAGS ONE_VALUE_KEYWORDS MULTI_VALUE_KEYWORDS)
+    unset(PFL_ARG_${PARAMETER})
+  endforeach()
+  cmake_parse_arguments(PFL_ARG "${FLAGS}" "${ONE_VALUE_KEYWORDS}"
+                        "${MULTI_VALUE_KEYWORDS}" ${ARGN})
+endmacro()
 
 function(_pfl_check_called_from_project_source_dir FUNCTION_NAME)
   if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${PROJECT_SOURCE_DIR}")
@@ -112,202 +143,135 @@ function(_pfl_check_called_from_project_source_dir FUNCTION_NAME)
   _pfl_fatal("${FUNCTION_NAME} must be called at \${PROJECT_SOURCE_DIR}")
 endfunction()
 
-function(_pfl_normalize_project_name OUT_NAME PROJECT_NAME)
-  _pfl_normalize_path_component(NORMALIZED_PROJECT_NAME "${PROJECT_NAME}")
-
-  if(NOT NORMALIZED_PROJECT_NAME)
-    _pfl_fatal("Unsupported project name \"${PROJECT_NAME}\" detected."
-               "Please rename your project.")
-  endif()
-
-  set("${OUT_NAME}"
-      "${NORMALIZED_PROJECT_NAME}"
-      PARENT_SCOPE)
+function(_pfl_check_project_name)
+  _pfl_check_component(
+    "${PROJECT_NAME}" "Unsupported project name \"${PROJECT_NAME}\" detected."
+    "Please rename your project.")
 endfunction()
 
-#[[
+macro(PFL_init) # NOTE: As we might call enable_testing() in `PFL_init`, it have
+                # to be a macro. Otherwise enable_testing() will not take
+                # effect.
+  set(FLAGS
+      # Do not automatically detected parameters from defined variables.
+      # NOTE:
+      # It's not recommended to disable auto detected.
+      NO_AUTO)
+  set(ONE_VALUE_KEYWORDS
+      # Make `PFL_add_library()` to default to `SHARED` libraries.
+      # [ default: ${PROJECT_IS_TOP_LEVEL} ]
+      BUILD_SHARED_LIBS # boolean
+      # Enable `install` target of this project.
+      # [ default: ${PROJECT_IS_TOP_LEVEL} ]
+      ENABLE_INSTALL # boolean
+      # Enable CTest and compile test executables.
+      # Check comments of `TESTS` parameters
+      # in PFL_add_library() and PFL_add_libraries() for details.
+      # [ default: ${PROJECT_IS_TOP_LEVEL} ]
+      ENABLE_TESTING # boolean
+      # Compile example executables.
+      # Check comments of `EXAMPLES` parameters
+      # in PFL_add_library() and PFL_add_libraries() for details.
+      # [ default: ${PROJECT_IS_TOP_LEVEL} ]
+      ENABLE_EXAMPLES # boolean
+      # Compile embed third party projects.
+      # Check comments of `EXTERNALS` parameters for details.
+      # [ default: ${PROJECT_IS_TOP_LEVEL} ]
+      ENABLE_EXTERNALS # boolean
+      # Compile applications.
+      # Check comments of `APPS` parameters
+      # in PFL_add_library() and PFL_add_libraries() for details.
+      # [ default: ${PROJECT_IS_TOP_LEVEL} ]
+      ENABLE_APPLICATIONS # boolean
+  )
+  set(MULTI_VALUE_KEYWORDS
+      # List of third party projects which current project depends on.
+      # Each string in this list indicate a external project in this syntax:
+      # "DIRECTORY PACKAGE"
+      # It means that the external project
+      # in ${CMAKE_CURRENT_SOURCE_DIR}/external/<DIRECTORY>
+      # should override find_package(<PACKAGE>),
+      # when `ENABLE_EXTERNALS` is true.
+      EXTERNALS)
+  _pfl_parse_arguments(${ARGN})
 
-# PFL_init
+  _pfl_project_is_top_level()
 
-You should call this function in your top level CMakeLists.txt to
-tell PFL.cmake some settings about your project.
-Some variables starts with `PFL_` will be set after this function is called.
-
-## Argument
-
-- *boolean* `BUILD_SHARED_LIBS`
-  Tell `PFL_add_library()` to default to `SHARED` libraries,
-  instead of `STATIC` libraries, when called with no explicit library type;
-- *boolean* `ENABLE_INSTALL`
-  Whether to enable `install` rules for this project;
-- *boolean* `ENABLE_TESTING`
-  Whether to call `add_subdirectory` on SUBMODULE/tests/*;
-- *boolean* `ENABLE_EXAMPLES`
-  Whether to call add_subdirectory on SUBMODULE/examples/*;
-- *boolean* `ENABLE_APPLICATIONS`
-  Whether to call add_subdirectory on SUBMODULE/apps/*;
-- *boolean* `ENABLE_EXTERNALS`
-  Whether to call add_subdirectory on /externals/*;
-- *list* `EXTERNALS`
-  The list of directories in /externals contain dependencies
-  which should be embed to this project.
-  PFL.cmake will call `add_subdirectory` on them by order
-  if `ENABLE_EXTERNALS` is `ON`.
-
-## Example
-
-```cmake
-# At the very beginning of your top level CMakeLists.txt.
-
-cmake_minimum_required(VERSION 3.11.4 FATAL_ERROR)
-
-project(xxx LANGUAGES CXX)
-
-if(CMAKE_VERSION VERSION_LESS 3.21)
-  # https://www.scivision.dev/cmake-project-is-top-level/
-  get_property(not_top DIRECTORY PROPERTY PARENT_DIRECTORY)
-  if(NOT not_top)
-    set(PROJECT_IS_TOP_LEVEL true)
-  endif()
-endif()
-
-# Define some default options for your project:
-
-option(xxx_BUILD_SHARED_LIBS "Default to build shared library of XXX" ${PROJECT_IS_TOP_LEVEL})
-option(xxx_ENABLE_INSTALL "Enable install target of XXX" ${PROJECT_IS_TOP_LEVEL})
-option(xxx_ENABLE_TESTING "Build and running test of XXX" ${PROJECT_IS_TOP_LEVEL})
-option(xxx_ENABLE_EXAMPLES "Build examples of XXX" ${PROJECT_IS_TOP_LEVEL})
-option(xxx_ENABLE_EXTERNALS "Enable external libraries of XXX" "${PROJECT_IS_TOP_LEVEL}")
-option(xxx_ENABLE_APPLICATIONS "Build applications of XXX" ${PROJECT_IS_TOP_LEVEL})
-
-if(${PROJECT_IS_TOP_LEVEL})
-  set(xxx_EXTERNALS_DEFAULT "A;B;C")
-endif()
-option(xxx_EXTERNALS "List of libraries will be embed into XXX" ${XXX_EXTERNALS_DEFAULT})
-
-include(./cmake/PFL.cmake)
-
-PFL_init(
-  BUILD_SHARED_LIBS "${xxx_BUILD_SHARED_LIBS}"
-  ENABLE_INSTALL "${xxx_ENABLE_INSTALL}"
-  ENABLE_TESTING "${xxx_ENABLE_TESTING}"
-  ENABLE_EXAMPLES "${xxx_ENABLE_EXAMPLES}"
-  ENABLE_EXTERNALS "${xxx_ENABLE_EXTERNALS}"
-  ENABLE_APPLICATIONS "${xxx_ENABE_APPLICATIONS}"
-  EXTERNALS "${xxx_EXTERNALS}"
-)
-
-# or just
-
-PFL_init(AUTO)
-
-```
-
-]]
-macro(PFL_init)
   _pfl_check_called_from_project_source_dir(PFL_init)
+  _pfl_check_project_name()
 
-  cmake_parse_arguments(
-    PFL_INIT
-    "AUTO"
-    "PROJECT_NAME;BUILD_SHARED_LIBS;ENABLE_INSTALL;ENABLE_TESTING;ENABLE_EXAMPLES;ENABLE_EXTERNALS;ENABLE_APPLICATIONS"
-    "EXTERNALS"
-    ${ARGN})
+  set(auto true)
+  if(PFL_ARG_NO_AUTO)
+    set(auto false)
+  endif()
 
-  if(PFL_INIT_AUTO)
-    if(PFL_INIT_PROJECT_NAME
-       OR PFL_INIT_BUILD_SHARED_LIBS
-       OR PFL_INIT_ENABLE_INSTALL
-       OR PFL_INIT_ENABLE_TESTING
-       OR PFL_INIT_ENABLE_EXAMPLES
-       OR PFL_INIT_ENABLE_EXTERNALS
-       OR PFL_INIT_ENABLE_APPLICATIONS
-       OR PFL_INIT_EXTERNALS)
-      _pfl_fatal("No other parameters should be passed"
-                 "if you are using PFL_init with AUTO.")
-    endif()
-
-    if(CMAKE_VERSION VERSION_LESS 3.21)
-      # https://www.scivision.dev/cmake-project-is-top-level/
-      get_property(
-        not_top
-        DIRECTORY
-        PROPERTY PARENT_DIRECTORY)
-      if(NOT not_top)
-        set(PROJECT_IS_TOP_LEVEL true)
+  if(auto)
+    macro(_pfl_init_produce_auto_argument NAME DEFAULT)
+      if(DEFINED ${PROJECT_NAME}_${NAME} AND DEFINED PLF_ARG_${NAME})
+        _pfl_fatal(
+          "You may either define ${PROJECT_NAME}_${NAME} before call PFL_INIT"
+          "or call PFL_INIT with argument ${NAME}.")
       endif()
-    endif()
 
-    _pfl_normalize_project_name(PFL_INIT_PROJECT_NAME "${PROJECT_NAME}")
+      if(NOT DEFINED ${PROJECT_NAME}_${NAME})
+        set("${PROJECT_NAME}_${NAME}" ${DEFAULT})
+      endif()
 
-    set(PFL_INIT_BUILD_SHARED_LIBS ${PROJECT_IS_TOP_LEVEL})
-    if(DEFINED ${PFL_INIT_PROJECT_NAME}_BUILD_SHARED_LIBS)
-      set(PFL_INIT_BUILD_SHARED_LIBS
-          ${${PFL_INIT_PROJECT_NAME}_BUILD_SHARED_LIBS})
-    endif()
+      if(DEFINED PFL_ARG_${NAME})
+        set("${PROJECT_NAME}_${NAME}" ${PFL_ARG_${NAME}})
+      endif()
+    endmacro()
 
-    set(PFL_INIT_ENABLE_INSTALL ${PROJECT_IS_TOP_LEVEL})
-    if(DEFINED ${PFL_INIT_PROJECT_NAME}_ENABLE_INSTALL)
-      set(PFL_INIT_ENABLE_INSTALL ${${PFL_INIT_PROJECT_NAME}_ENABLE_INSTALL})
-    endif()
-
-    set(PFL_INIT_ENABLE_TESTING ${PROJECT_IS_TOP_LEVEL})
-    if(DEFINED ${PFL_INIT_PROJECT_NAME}_ENABLE_TESTING)
-      set(PFL_INIT_ENABLE_TESTING ${${PFL_INIT_PROJECT_NAME}_ENABLE_TESTING})
-    endif()
-
-    set(PFL_INIT_ENABLE_EXAMPLES ${PROJECT_IS_TOP_LEVEL})
-    if(DEFINED ${PFL_INIT_PROJECT_NAME}_ENABLE_EXAMPLES)
-      set(PFL_INIT_ENABLE_EXAMPLES ${${PFL_INIT_PROJECT_NAME}_ENABLE_EXAMPLES})
-    endif()
-
-    set(PFL_INIT_ENABLE_EXTERNALS ${PROJECT_IS_TOP_LEVEL})
-    if(DEFINED ${PFL_INIT_PROJECT_NAME}_ENABLE_EXTERNALS)
-      set(PFL_INIT_ENABLE_EXTERNALS
-          ${${PFL_INIT_PROJECT_NAME}_ENABLE_EXTERNALS})
-    endif()
-
-    set(PFL_INIT_ENABLE_APPLICATIONS ${PROJECT_IS_TOP_LEVEL})
-    if(DEFINED ${PFL_INIT_PROJECT_NAME}_ENABLE_APPLICATIONS)
-      set(PFL_INIT_ENABLE_APPLICATIONS
-          ${${PFL_INIT_PROJECT_NAME}_ENABLE_APPLICATIONS})
-    endif()
-
-    set(PFL_INIT_EXTERNALS ${${PFL_INIT_PROJECT_NAME}_EXTERNALS})
+    foreach(ARG IN LISTS FLAGS ONE_VALUE_KEYWORDS MULTI_VALUE_KEYWORDS)
+      if(ARG STREQUAL NO_AUTO)
+        continue()
+      endif()
+      if(ARG STREQUAL EXTERNALS)
+        _pfl_init_produce_auto_argument(EXTERNALS "")
+        continue()
+      endif()
+      _pfl_init_produce_auto_argument(${ARG} ${PROJECT_IS_TOP_LEVEL})
+    endforeach()
   endif()
-
-  if(NOT PFL_INIT_PROJECT_NAME)
-    _pfl_normalize_project_name(PFL_INIT_PROJECT_NAME "${PROJECT_NAME}")
-  endif()
-
-  _pfl_normalize_project_name(NORMALIZED_PFL_INIT_PROJECT_NAME
-                              "${PFL_INIT_PROJECT_NAME}")
-  if(NOT NORMALIZED_PFL_INIT_PROJECT_NAME STREQUAL PFL_INIT_PROJECT_NAME)
-    _pfl_fatal(
-      "PROJECT_NAME of PFL_init (\"${PFL_INIT_PROJECT_NAME}\")"
-      "should be normalized to \"${NORMALIZED_PFL_INIT_PROJECT_NAME}\".")
-  endif()
-  set(PFL_PROJECT_NAME ${PFL_INIT_PROJECT_NAME})
 
   set(_PFL_PATH)
-  list(APPEND _PFL_PATH ${PFL_INIT_PROJECT_NAME})
-  set(_PFL_PATH ${_PFL_PATH})
+  list(APPEND _PFL_PATH ${PROJECT_NAME})
 
-  set(_PFL_BUILD_SHARED_LIBS ${PFL_INIT_BUILD_SHARED_LIBS})
-  set(_PFL_ENABLE_INSTALL ${PFL_INIT_ENABLE_INSTALL})
-  set(_PFL_ENABLE_TESTING ${PFL_INIT_ENABLE_TESTING})
-  set(_PFL_ENABLE_EXAMPLES ${PFL_INIT_ENABLE_EXAMPLES})
-  set(_PFL_ENABLE_EXTERNALS ${PFL_INIT_ENABLE_EXTERNALS})
-  set(_PFL_ENABLE_APPLICATIONS ${PFL_INIT_ENABLE_APPLICATIONS})
-
-  if(pfl_INIT_ENABLE_TESTING)
+  if(${PROJECT_NAME}_ENABLE_TESTING)
     enable_testing()
   endif()
 
-  if(PFL_INIT_ENABLE_EXTERNALS)
-    foreach(EXTERNAL ${PFL_INIT_EXTERNALS})
-      add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/external/${EXTERNAL}
-                       EXCLUDE_FROM_ALL)
+  macro(generate_find_for_external PACKAGE TARGET)
+    # message(FATAL_ERROR "${PACKAGE} ${TARGET}")
+    if(NOT EXISTS
+       ${CMAKE_CURRENT_SOURCE_DIR}/external/${PACKAGE}/CMakeLists.txt)
+      _pfl_fatal(
+        "${DIRECTORY} is not a external project:"
+        "${CMAKE_CURRENT_SOURCE_DIR}/external/${DIRECTORY}/CMakeLists.txt not found."
+      )
+    endif()
+
+    set(FIND_FILE
+        ${CMAKE_CURRENT_BINARY_DIR}/_pfl_external/Find${PACKAGE}.cmake)
+    file(
+      WRITE ${FIND_FILE}
+      "if(TARGET ${TARGET})\n" #
+      "  return()\n" #
+      "endif()\n" #
+      "add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/external/${PACKAGE})\n"
+      "set(${PACKAGE}_FOUND YES)")
+  endmacro()
+
+  if(${PROJECT_NAME}_ENABLE_EXTERNALS AND DEFINED ${PROJECT_NAME}_EXTERNALS)
+    list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_BINARY_DIR}/_pfl_external)
+    foreach(EXTERNAL ${${PROJECT_NAME}_EXTERNALS})
+      string(REPLACE " " ";" EXTERNAL "${EXTERNAL}")
+      list(GET EXTERNAL 0 PACKAGE_NAME)
+      _pfl_info(
+        "Using external project ${PACKAGE_NAME} at ${CMAKE_CURRENT_SOURCE_DIR}/external/${PACKAGE_NAME}"
+      )
+      generate_find_for_external(${EXTERNAL})
+      find_package(${PACKAGE_NAME} REQUIRED)
     endforeach()
   endif()
 endmacro()
@@ -324,7 +288,7 @@ else()
   set(Components @PFL_COMPONMENTS@)
 endif()
 
-@PFL_EXPORT_NAME_OF_COMPONMENTS@
+@PFL_EXPORT_FILE_NAME_OF_COMPONMENTS@
 
 # Check all required components are available before trying to load any
 foreach(Component ${Components})
@@ -332,7 +296,7 @@ foreach(Component ${Components})
     continue();
   endif()
 
-  if(EXISTS ${CMAKE_CURRENT_LIST_DIR}/${EXPORT_NAME_OF_${Component}}.cmake)
+  if(EXISTS ${CMAKE_CURRENT_LIST_DIR}/${EXPORT_FILE_NAME_OF_${Component}}.cmake)
     continue();
   endif()
 
@@ -344,100 +308,58 @@ foreach(Component ${Components})
 endforeach()
 
 foreach(Component ${Components})
-  include(${CMAKE_CURRENT_LIST_DIR}/${EXPORT_NAME_OF_${Component}}.cmake OPTIONAL)
+  include(${CMAKE_CURRENT_LIST_DIR}/${EXPORT_FILE_NAME_OF_${Component}}.cmake OPTIONAL)
 endforeach()
 ]=])
 
-#[[
-
-# PFL_add_libraries
-
-This function is used to add libraries in the `libs` directory
-for a large c++ project constructed with multiple module.
-
-It should only be called in `${PROJECT_SOURCE_DIR}`,
-`libs` in submodule root is not allowed.
-
-If `${CMAKE_CURRENT_SOURCE_DIR}/tests/CMakeLists.txt` exists
-and testing is enabled in your project,
-PFL.cmake will call add_subdirectory to build test of your libraries.
-
-## Argument
-
-- *list* `LIBS`
-  List of directories under `libs` that should be considered as submodule roots.
-- *list* `APPS`
-  Directories in `/apps` that contain source code of application.
-  If application targets is enabled in your project,
-  which can be done by set `ENABLE_APPLICATION` to true when call `PFL_init`,
-  PFL.cmake will call add_subdirectory on these directory in order.
-- *list* `EXAMPLES`
-  Directories in `/examples` that contain source code of examples.
-  If example targets is enabled in your project,
-  which can be done by set `ENABLE_EXAMPLE` to true when call `PFL_init`,
-  PFL.cmake will call add_subdirectory on these directory in order.
-- *list* `TESTS`
-  Directories in `/tests` that contain source code of tests.
-  If test targets is enabled in your project,
-  which can be done by set `ENABLE_TESTING` to true when call `PFL_init`,
-  PFL.cmake will call add_subdirectory on these directory in order.
-
-## Example
-
-```cmake
-# ...
-
-# After PFL_init called in your top level CMakeLists.txt
-
-PFL_add_libraries(LIBRARIES A B C)
-```
-This make PFL.cmake set `PFL_LIBRARIES` to `A;B;C`
-and call add_subdirectory on `${CMAKE_CURRENT_SOURCE_DIR}/libs/A`,
-`${CMAKE_CURRENT_SOURCE_DIR}/libs/B` and `${CMAKE_CURRENT_SOURCE_DIR}/libs/C`.
-
-If the install target of your project is enabled,
-which can be done by set `ENABLE_INSTALL` to true when call `PFL_init`,
-PFL.cmake will configure the cmake config file for your project
-then generate version file.
-
-You can override the default cmake config file by providing
-`${CMAKE_CURRENT_SOURCE_DIR}/misc/cmake/${PROJECT_NAME}Config.cmake.in`.
-
-]]
 function(PFL_add_libraries)
-  _pfl_check_called_from_project_source_dir(PFL_add_libraries)
 
-  cmake_parse_arguments(PFL_ADD_LIBRARIES "" "VERSION"
-                        "LIBS;EXAMPLES;APPS;TESTS" ${ARGN})
+  set(FLAGS)
+  set(ONE_VALUE_KEYWORDS)
+  set(MULTI_VALUE_KEYWORDS
+      # Directories under ${CMAKE_CURRENT_SOURCE_DIR}/libs,
+      # that should be treated as submodule or components of your project.
+      # These projects will be added one by one using add_subdirectory().
+      LIBS
+      # Same as EXAMPLES of PFL_add_library
+      EXAMPLES
+      # Same as APPS of PFL_add_library
+      APPS
+      # Same as TESTS of PFL_add_library
+      TESTS)
+  _pfl_check_called_from_project_source_dir(PFL_add_libraries)
+  _pfl_parse_arguments(${ARGN})
 
   _pfl_info("Adding libraries at ${CMAKE_CURRENT_SOURCE_DIR}")
 
-  if(NOT PFL_ADD_LIBRARIES_VERSION)
-    set(PFL_ADD_LIBRARIES_VERSION ${PROJECT_VERSION})
+  if(NOT DEFINED PFL_ARG_LIBS)
+    _pfl_fatal("LIBS is required.")
+  endif()
+
+  if(NOT PFL_ARG_LIBS)
+    _pfl_fatal("At least one LIBS is required.")
   endif()
 
   set_property(GLOBAL PROPERTY PFL_COMPONMENTS)
-  set_property(GLOBAL PROPERTY PFL_EXPORT_NAME_OF_COMPONMENTS)
-  foreach(LIB ${PFL_ADD_LIBRARIES_LIBS})
+  set_property(GLOBAL PROPERTY PFL_EXPORT_FILE_NAME_OF_COMPONMENTS)
+  foreach(LIB ${PFL_ARG_LIBS})
     add_subdirectory(libs/${LIB})
   endforeach()
 
-  _pfl_add_tests(${PFL_ADD_LIBRARIES_TESTS})
-  _pfl_add_examples(${PFL_ADD_LIBRARIES_EXAMPLES})
-  _pfl_add_apps(${PFL_ADD_LIBRARIES_APPS})
+  _pfl_add_executables()
 
-  if(NOT _PFL_ENABLE_INSTALL)
+  if(NOT ${PROJECT_NAME}_ENABLE_INSTALL)
     return()
   endif()
 
   include(GNUInstallDirs)
 
-  set(CONFIG_FILE misc/cmake/${PFL_PROJECT_NAME}Config.cmake)
+  set(CONFIG_FILE misc/cmake/${PROJECT_NAME}Config.cmake)
 
   set(CONFIG_FILE_IN ${CMAKE_CURRENT_SOURCE_DIR}/${CONFIG_FILE}.in)
   if(NOT EXISTS ${CONFIG_FILE_IN})
-    write_file(${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_FILE}.in
-               ${PFL_add_libraries_default_cmake_config})
+    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_FILE}.in
+         ${PFL_add_libraries_default_cmake_config})
     set(CONFIG_FILE_IN ${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_FILE}.in)
   endif()
 
@@ -446,117 +368,163 @@ function(PFL_add_libraries)
   set(cmakeModulesDir cmake)
 
   get_property(PFL_COMPONMENTS GLOBAL PROPERTY PFL_COMPONMENTS)
-  get_property(PFL_EXPORT_NAME_OF_COMPONMENTS GLOBAL
-               PROPERTY PFL_EXPORT_NAME_OF_COMPONMENTS)
+  get_property(PFL_EXPORT_FILE_NAME_OF_COMPONMENTS GLOBAL
+               PROPERTY PFL_EXPORT_FILE_NAME_OF_COMPONMENTS)
   configure_package_config_file(
     ${CONFIG_FILE_IN} ${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_FILE}
     PATH_VARS cmakeModulesDir
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PFL_PROJECT_NAME}
+    INSTALL_DESTINATION
+      ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}-${PROJECT_VERSION}
     NO_SET_AND_CHECK_MACRO NO_CHECK_REQUIRED_COMPONENTS_MACRO)
 
-  set(VERSION_FILE misc/cmake/${PFL_PROJECT_NAME}ConfigVersion.cmake)
+  set(VERSION_FILE misc/cmake/${PROJECT_NAME}ConfigVersion.cmake)
   write_basic_package_version_file(
     ${VERSION_FILE}
-    VERSION ${PFL_ADD_LIBRARIES_VERSION}
+    VERSION ${PROJECT_VERSION}
     COMPATIBILITY SameMajorVersion)
 
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_FILE}
-                ${CMAKE_CURRENT_BINARY_DIR}/${VERSION_FILE}
-          DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PFL_PROJECT_NAME})
+  install(
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_FILE}
+          ${CMAKE_CURRENT_BINARY_DIR}/${VERSION_FILE}
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}-${PROJECT_VERSION}
+  )
 endfunction()
 
 function(_pfl_add_tests)
-  if(NOT _PFL_ENABLE_TESTING)
-    return()
-  endif()
-
-  foreach(TEST ${ARGV})
-    include(CTest)
-    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/tests/${TEST})
+  foreach(TEST ${ARGN})
+    if(${PROJECT_NAME}_ENABLE_TESTING)
+      include(CTest)
+      add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/tests/${TEST})
+    else()
+      _pfl_info("Skip test: ${CMAKE_CURRENT_SOURCE_DIR}/tests/${TEST}")
+    endif()
   endforeach()
 endfunction()
 
 function(_pfl_add_examples)
-  if(NOT _PFL_ENABLE_EXAMPLES)
-    return()
-  endif()
-
   foreach(EXAMPLE ${ARGV})
-    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/examples/${EXAMPLE})
+    if(${PROJECT_NAME}_ENABLE_EXAMPLES)
+      add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/examples/${EXAMPLE})
+    else()
+      _pfl_info("Skip example: ${CMAKE_CURRENT_SOURCE_DIR}/examples/${EXAMPLE}")
+    endif()
   endforeach()
 endfunction()
 
 function(_pfl_add_apps)
-  if(NOT _PFL_ENABLE_APPLICATIONS)
-    return()
-  endif()
-
   foreach(APP ${ARGV})
-    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/apps/${APP})
+    if(${PROJECT_NAME}_ENABLE_APPLICATIONS)
+      add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/apps/${APP})
+    else()
+      _pfl_info("Skip app: ${CMAKE_CURRENT_SOURCE_DIR}/apps/${APP}")
+    endif()
   endforeach()
 endfunction()
 
-function(_pfl_get_current_target_name OUT_NAME)
-  if(CMAKE_CURRENT_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
-    set("${OUT_NAME}"
-        ${PFL_PROJECT_NAME}
-        PARENT_SCOPE)
-    return()
+macro(_pfl_current_compoent)
+  set(PFL_CURRENT_COMPOENT ${PROJECT_NAME})
+
+  if(NOT CMAKE_CURRENT_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    get_filename_component(PFL_CURRENT_COMPOENT ${CMAKE_CURRENT_SOURCE_DIR}
+                           NAME)
+    _pfl_check_component(
+      "${PFL_CURRENT_COMPOENT}"
+      "Unsupported directory name \"${PFL_CURRENT_COMPOENT}\" detected."
+      "Please rename your directory.")
+  endif()
+endmacro()
+
+function(_pfl_handle_sources PUBLIC_OUT PRIVATE_OUT MERGED_PLACEMENT) # SOURCES
+  set(SOURCES ${ARGN})
+
+  set(PUBLIC_SOURCES)
+  set(PRIVATE_SOURCES)
+
+  foreach(SOURCE ${SOURCES})
+    if(SOURCE MATCHES "^\./")
+      string(REGEX REPLACE "^\./" "" SOURCE ${SOURCE})
+    endif()
+
+    if(SOURCE MATCHES ".*\\.\\./.*")
+      _pfl_fatal("${SOURCE} is invalid:"
+                 "../ is not allowed when add source to target.")
+    endif()
+
+    set(FULL_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE})
+
+    if(SOURCE MATCHES "\.in$")
+      string(REGEX REPLACE "\.in$" "" OUT_FILE ${SOURCE})
+      configure_file("${SOURCE}" "${CMAKE_CURRENT_BINARY_DIR}/${OUT_FILE}"
+                     @ONLY)
+      set(SOURCE "${OUT_FILE}")
+      set(FULL_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/${OUT_FILE}")
+    endif()
+
+    set(PUBLIC_REGEXP "include/.*\$")
+    if(MERGED_PLACEMENT)
+      set(PUBLIC_REGEXP "src\/.*\.h(h|pp)?\$")
+    endif()
+
+    if(NOT EXISTS "${FULL_SOURCE}")
+      _pfl_fatal("source file do not found at ${FULL_SOURCE}")
+    endif()
+
+    if(SOURCE MATCHES "${PUBLIC_REGEXP}")
+      set(TARGET_LIST PUBLIC_SOURCES)
+    else()
+      set(TARGET_LIST PRIVATE_SOURCES)
+    endif()
+
+    list(APPEND ${TARGET_LIST} ${FULL_SOURCE})
+  endforeach()
+
+  set("${PUBLIC_OUT}"
+      ${PUBLIC_SOURCES}
+      PARENT_SCOPE)
+  set("${PRIVATE_OUT}"
+      ${PRIVATE_SOURCES}
+      PARENT_SCOPE)
+endfunction()
+
+macro(_pfl_add_target_common)
+  if(DEFINED PFL_ARG_LINK_LIBRARIES)
+    target_link_libraries(${TARGET} ${PFL_ARG_LINK_LIBRARIES})
   endif()
 
-  get_filename_component(NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
-  _pfl_normalize_path_component(NAME ${NAME})
-  set("${OUT_NAME}"
-      ${NAME}
-      PARENT_SCOPE)
-endfunction()
+  if(DEFINED PFL_ARG_COMPILE_FEATURES)
+    target_compile_features(${TARGET} ${PFL_ARG_COMPILE_FEATURES})
+  endif()
 
-function(_pfl_handle_sources HEADERS_OUT SOURCES_OUT MERGED_PLACEMENT)
-  set(SOURCES)
-  set(HEADERS)
+  if(DEFINED PFL_ARG_COMPILE_OPTIONS)
+    target_compile_options(${TARGET} ${PFL_ARG_COMPILE_OPTIONS})
+  endif()
 
-  foreach(SOURCE_FILE ${ARGN})
-    if(SOURCE_FILE MATCHES "^./")
-      string(REGEX REPLACE "^./" "" SOURCE_FILE ${SOURCE_FILE})
-    endif()
+  if(DEFINED PFL_ARG_DEPENDENCIES)
+    foreach(DEPENDENCY ${PFL_ARG_DEPENDENCIES})
+      if("${DEPENDENCY}" STREQUAL "PUBLIC" OR "${DEPENDENCY}" STREQUAL
+                                              "PRIVATE")
+        continue()
+      endif()
 
-    if(SOURCE_FILE MATCHES "\.in$")
-      string(REGEX REPLACE "\.in$" "" OUT_FILE ${SOURCE_FILE})
-      configure_file(${SOURCE_FILE} ${CMAKE_CURRENT_BINARY_DIR}/${OUT_FILE}
-                     @ONLY)
-      set(SOURCE_FILE ${OUT_FILE})
-    endif()
+      string(REPLACE " " ";" DEPENDENCY ${DEPENDENCY})
+      find_package(${DEPENDENCY})
+    endforeach()
+  endif()
+endmacro()
 
-    set(SOURCES_REGEXP "src\/.*\.(h(h|pp)?|c(c|pp|xx))\$")
-    set(HEADERS_REGEXP "include\/.*\.h(h|pp)?\$")
-    if(MERGED_PLACEMENT)
-      set(SOURCES_REGEXP "src\/.*\.c(c|pp|xx)\$")
-      set(HEADERS_REGEXP "src\/.*\.h(h|pp)?\$")
-    endif()
+macro(_pfl_add_executables)
+  if(DEFINED PFL_ARG_TESTS)
+    _pfl_add_tests(${PFL_ARG_TESTS})
+  endif()
 
-    if(SOURCE_FILE MATCHES "${HEADERS_REGEXP}")
-      set(TARGET_LIST HEADERS)
-    elseif(SOURCE_FILE MATCHES "${SOURCES_REGEXP}")
-      set(TARGET_LIST SOURCES)
-    else()
-      # FIXME: handle .inc
-      _pfl_fatal("Unrecognized file type ${SOURCE_FILE}")
-    endif()
+  if(DEFINED PFL_ARG_EXAMPLES)
+    _pfl_add_examples(${PFL_ARG_EXAMPLES})
+  endif()
 
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_FILE})
-      list(APPEND ${TARGET_LIST} ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_FILE})
-    else()
-      list(APPEND ${TARGET_LIST} ${CMAKE_CURRENT_BINARY_DIR}/${SOURCE_FILE})
-    endif()
-  endforeach()
-
-  set("${HEADERS_OUT}"
-      ${HEADERS}
-      PARENT_SCOPE)
-  set("${SOURCES_OUT}"
-      ${SOURCES}
-      PARENT_SCOPE)
-endfunction()
+  if(DEFINED PFL_ARG_APPS)
+    _pfl_add_apps(${PFL_ARG_APPS})
+  endif()
+endmacro()
 
 set(PFL_add_library_default_cmake_config
     [=[
@@ -566,191 +534,239 @@ list(APPEND CMAKE_MODULE_PATH "@PACKAGE_cmakeModulesDir@")
 
 include(CMakeFindDependencyMacro)
 
+
 @PFL_FIND_DEPENDENCIES@
 
-include(${CMAKE_CURRENT_LIST_DIR}/@PFL_TARGET_EXPORT_NAME@.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/@PFL_EXPORT_FILE_NAME@.cmake)
 ]=])
-#[[
 
-# PFL_add_library
-
-This function is used to add a library,
-target name of the library added is
-`${PROJECT_NAME}::` + current source directory name.
-This target will be an alias target.
-
-PFL.cmake will automatically generate a `*Config.cmake` file for your library.
-
-## Arguments
-
-- *option* `DISABLE_INSTALL`
-- *option* `MERGED_HEADER_PLACEMENT`
-  Use merged header placement. This make all header files under src public.
-- *string* `LIBRARY_TYPE`
-  `STATIC`, `SHARED` or `HEADER_ONLY`.
-  If no `LIBRARY_TYPE` is given the default is STATIC or SHARED
-  based on the value of the BUILD_SHARED_LIBS variable.
-  If not specified, cmake will automatically decide to build a static
-- *string* `OUTPUT_NAME`
-  The output file name of this library.
-- *string* `VERSION`
-  The version of this library.
-- *string* `SOVERSION`
-  The soversion of this library.
-  **NOT** available for `HEADER_ONLY` and `STATIC` library.
-- *list* `SOURCES`
-  List of source files, include .in, sources and headers.
-  We support add (possibly near-empty) cpp files
-  as sources of header only library to check if that header is self-contained.
-- *list* `TESTS`
-  Directories in `/tests` that contain source code of tests.
-  If test targets is enabled in your project,
-  which can be done by set `ENABLE_TESTING` to true when call `PFL_init`,
-  PFL.cmake will call add_subdirectory on these directory in order.
-- *list* `APPS`
-  Directories in `/apps` that contain source code of application.
-  If application targets is enabled in your project,
-  which can be done by set `ENABLE_APPLICATION` to true when call `PFL_init`,
-  PFL.cmake will call add_subdirectory on these directory in order.
-- *list* `EXAMPLES`
-  Directories in `/examples` that contain source code of examples.
-  If example targets is enabled in your project,
-  which can be done by set `ENABLE_EXAMPLE` to true when call `PFL_init`,
-  PFL.cmake will call add_subdirectory on these directory in order.
-- *list* `LINK_LIBRARIES`
-  Arguments passed to target_link_libraries.
-- *list* `COMPILE_FEATURES`
-  Arguments passed to target_compile_features.
-- *list* `FIND_DEPENDENCY_ARGUMENTS`
-  Arguments pass to `find_dependency()` in auto-generated `*Config.cmake` file.
-
-## Example
-
-Check [examples](https://github.com/black-desk/PFL.cmake/tree/master/examples)
-online.
-
-]]
 function(pfl_add_library)
-  cmake_parse_arguments(
-    PFL_ADD_LIBRARY
-    "DISABLE_INSTALL;MERGED_HEADER_PLACEMENT"
-    "LIBRARY_TYPE;OUTPUT_NAME;VERSION;SOVERSION"
-    "SOURCES;TESTS;APPS;EXAMPLES;LINK_LIBRARIES;COMPILE_FEATURES;FIND_DEPENDENCY_ARGUMENTS"
-    ${ARGN})
+  set(FLAGS
+      # Disable install target of this library.
+      # If install target of this library is enabled,
+      # PFL.cmake will export your library automatically as well.
+      # [ default: FALSE ]
+      # NOTE: It's recommend to set this to true for internal libraries.
+      DISABLE_INSTALL
+      # Use merged header placement.
+      # This make PFL.cmake treats all header files under src as public headers.
+      # [ default: FALSE ]
+      MERGED_HEADER_PLACEMENT)
+  set(ONE_VALUE_KEYWORDS
+      # Set the type of this library.
+      # Valid options are `STATIC`, `SHARED` or `HEADER_ONLY`.
+      # [ default: BUILD_SHARED_LIBS ? `SHARED` : `STATIC` ]
+      LIBRARY_TYPE # string
+      # The output file name of this library.
+      # [ default: All the PFL hierarchies joined with "__" ]
+      # NOTE: It's not recommend to use the default value.
+      OUTPUT_NAME # string
+      # The version of this library.
+      # [ default: ${PROJECT_VERSION} ]
+      VERSION # string
+      # The soversion of this library.
+      # [ defualt: ${VERSION} ]
+      # NOTE:
+      # 1. This option is not available for `HEADER_ONLY` and `STATIC` library.
+      # 2. CMake defaults to keep SOVERSION same as VERSION.
+      SOVERSION # string
+  )
+  set(MULTI_VALUE_KEYWORDS
+      # List of relative file paths from ${CMAKE_CURRENT_SOURCE_DIR},
+      # including input files (.in), sources (.c .cpp .cxx .cc)
+      # and headers (.h .hpp .hh).
+      # Files without extension treated as headers also.
+      # Input files will be configured with @ONLY mode of configure_file.
+      # And the output is added to library as sources as well.
+      # By default, files under ${CMAKE_CURRENT_SOURCE_DIR}/include is public,
+      # while all other files is private.
+      # If MERGED_HEADER_PLACEMENT is true,
+      # header files under ${CMAKE_CURRENT_SOURCE_DIR}/src is public as well.
+      # [ default: All files under ${CMAKE_CURRENT_SOURCE_DIR}/src
+      #            and ${CMAKE_CURRENT_SOURCE_DIR}/include
+      # ]
+      # NOTE:
+      # We support add (possibly near-empty) cpp files
+      # as sources for header only library.
+      # And PFL.cmake will build an internal static library that
+      # PRIVATE link to the header only library
+      # to check if all header file is self-contained.
+      SOURCES
+      # List of relative paths to
+      # directories in ${CMAKE_CURRENT_SOURCE_DIR}/tests
+      # which contains source code of tests.
+      # If test targets is enabled in your project,
+      # PFL.cmake will call add_subdirectory on these directory in order.
+      # These directories were expected to have a CMakeLists.txt,
+      # which call pfl_add_executable().
+      TESTS
+      # List of relative paths to
+      # directories in ${CMAKE_CURRENT_SOURCE_DIR}/apps
+      # which contain source code of executables.
+      # If application targets is enabled in your project,
+      # PFL.cmake will call add_subdirectory on these directory in order.
+      # These directories were expected to have a CMakeLists.txt,
+      # which call pfl_add_executable().
+      APPS
+      # List of relative paths to
+      # directories in ${CMAKE_CURRENT_SOURCE_DIR}/examples
+      # which contain source code of executables.
+      # If example targets is enabled in your project,
+      # PFL.cmake will call add_subdirectory on these directory in order.
+      # These directories were expected to have a CMakeLists.txt,
+      # which call pfl_add_executable().
+      EXAMPLES
+      # Arguments pass to find_package()
+      # to make sure your dependencies is founded.
+      # pfl_add_library (
+      #   ...
+      #   DEPENDENCIES
+      #     PUBLIC "aaa COMPONENTS xxx REQUIRED"
+      #     PRIVATE "bbb REQUIRED"
+      #   ...
+      # )
+      # PRIVATE while building and
+      # find_dependency() in auto-generated `*Config.cmake` file.
+      # NOTE:
+      # PFL.cmake is going to use these arguments to:
+      # 1. Call find_package for your before build your library.
+      # 2. Call find_dependency in the export file of your library,
+      #    if install targets of your library is enabled.
+      DEPENDENCIES
+      # Arguments passed to target_link_libraries().
+      LINK_LIBRARIES
+      # Arguments passed to target_compile_features().
+      COMPILE_FEATURES
+      # Arguments passed to target_compile_options().
+      COMPILE_OPTIONS)
+  _pfl_parse_arguments(${ARGN})
+  _pfl_current_compoent()
 
-  _pfl_get_current_target_name(TARGET_NAME)
   set(OLD_PFL_PATH ${_PFL_PATH})
-  list(APPEND _PFL_PATH ${TARGET_NAME})
-  _pfl_str_join(TARGET_FULL_NAME "__" ${_PFL_PATH})
-  _pfl_str_join(TARGET_FULL_ALIAS_NAME "::" ${_PFL_PATH})
-  _pfl_str_join(TARGET_FULL_PATH "/" ${_PFL_PATH})
+  list(APPEND _PFL_PATH ${PFL_CURRENT_COMPOENT})
+  _pfl_str_join(TARGET "__" ${_PFL_PATH})
+  _pfl_str_join(TARGET_ALIAS "::" ${_PFL_PATH})
 
-  if(NOT PFL_ADD_LIBRARY_OUTPUT_NAME)
-    set(PFL_ADD_LIBRARY_OUTPUT_NAME ${TARGET_FULL_NAME})
+  _pfl_info("Adding library ${TARGET_ALIAS} at ${CMAKE_CURRENT_SOURCE_DIR}")
 
-    if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${PROJECT_SOURCE_DIR}")
-      set(PFL_ADD_LIBRARY_OUTPUT_NAME ${TARGET_NAME})
-    endif()
-
-    _pfl_warn("OUTPUT_NAME of ${TARGET_FULL_ALIAS_NAME} not set,"
-              "using ${PFL_ADD_LIBRARY_OUTPUT_NAME}")
+  if(NOT DEFINED PFL_ARG_MERGED_HEADER_PLACEMENT)
+    set(PFL_ARG_MERGED_HEADER_PLACEMENT false)
   endif()
 
-  _pfl_info("Adding library ${TARGET_FULL_ALIAS_NAME}"
-            "at ${CMAKE_CURRENT_SOURCE_DIR}")
+  if((NOT DEFINED PFL_ARG_SOURCES) OR (NOT PFL_ARG_SOURCES))
+    _pfl_fatal("SOURCES is missing."
+               "Pure interface libraries is not supported now.")
+  endif()
 
-  _pfl_handle_sources(
-    HEADERS SOURCES ${PFL_ADD_LIBRARY_MERGED_HEADER_PLACEMENT}
-    ${PFL_ADD_LIBRARY_SOURCES})
+  _pfl_handle_sources(PUBLIC_SOURCES PRIVATE_SOURCES
+                      ${PFL_ARG_MERGED_HEADER_PLACEMENT} ${PFL_ARG_SOURCES})
 
-  if(NOT PFL_ADD_LIBRARY_LIBRARY_TYPE)
-    set(PPFL_ADD_LIBRARY_LIBRARY_TYPE "STATIC")
-    if(_PFL_BUILD_SHARED_LIBS)
-      set(PPFL_ADD_LIBRARY_LIBRARY_TYPE "SHARED")
+  if(NOT DEFINED PFL_ARG_LIBRARY_TYPE)
+    set(PFL_ARG_LIBRARY_TYPE "STATIC")
+    if(${PROJECT_NAME}_BUILD_SHARED_LIBS)
+      set(PFL_ARG_LIBRARY_TYPE "SHARED")
     endif()
   endif()
 
-  set(LIBRARY_TYPE ${PFL_ADD_LIBRARY_LIBRARY_TYPE})
-  set(PROPAGATE PUBLIC)
-  if("${PFL_ADD_LIBRARY_LIBRARY_TYPE}" STREQUAL "HEADER_ONLY")
+  set(LIBRARY_TYPE ${PFL_ARG_LIBRARY_TYPE})
+  set(PUBLIC_SOURCES_PROPAGATE PUBLIC)
+  if("${PFL_ARG_LIBRARY_TYPE}" STREQUAL "HEADER_ONLY")
     set(LIBRARY_TYPE INTERFACE)
-    set(PROPAGATE INTERFACE)
+    set(PUBLIC_SOURCES_PROPAGATE INTERFACE)
   endif()
 
-  add_library(${TARGET_FULL_NAME} ${LIBRARY_TYPE})
-  foreach(HEADER ${HEADERS})
-    target_sources(${TARGET_FULL_NAME} ${PROPAGATE}
-                                       $<BUILD_INTERFACE:${HEADER}>)
+  add_library(${TARGET} ${LIBRARY_TYPE})
+  if(NOT "${TARGET_ALIAS}" STREQUAL "${TARGET}")
+    add_library("${TARGET_ALIAS}" ALIAS "${TARGET}")
+  endif()
+
+  foreach(PUBLIC_SOURCE ${PUBLIC_SOURCES})
+    target_sources(${TARGET} ${PUBLIC_SOURCES_PROPAGATE}
+                             $<BUILD_INTERFACE:${PUBLIC_SOURCE}>)
   endforeach()
 
-  set(INCLUDE_PREFIX include)
-  if(PFL_ADD_LIBRARY_MERGED_HEADER_PLACEMENT)
-    set(INCLUDE_PREFIX src)
+  set(PUBLIC_INCLUDE_PREFIX include)
+  if(PFL_ARG_MERGED_HEADER_PLACEMENT)
+    set(PUBLIC_INCLUDE_PREFIX src)
   endif()
 
   target_include_directories(
-    ${TARGET_FULL_NAME}
-    ${PROPAGATE}
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${INCLUDE_PREFIX}>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/${INCLUDE_PREFIX}>)
+    ${TARGET}
+    ${PUBLIC_SOURCES_PROPAGATE}
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${PUBLIC_INCLUDE_PREFIX}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/${PUBLIC_INCLUDE_PREFIX}>)
 
-  set(LIBRARY_NAME ${TARGET_FULL_NAME})
-  if("${PFL_ADD_LIBRARY_LIBRARY_TYPE}" STREQUAL "HEADER_ONLY")
-    add_library(${TARGET_FULL_NAME}__BUILD STATIC)
-    target_link_libraries(${TARGET_FULL_NAME}__BUILD
-                          PRIVATE ${TARGET_FULL_NAME})
-    set(LIBRARY_NAME ${TARGET_FULL_NAME}__BUILD)
+  set(BUILD_LIBRARY_NAME ${TARGET})
+  if("${PFL_ARG_LIBRARY_TYPE}" STREQUAL "HEADER_ONLY")
+    set(BUILD_LIBRARY_NAME ${TARGET}__BUILD)
+    add_library(${BUILD_LIBRARY_NAME} STATIC)
+    target_link_libraries(${BUILD_LIBRARY_NAME} PRIVATE ${TARGET})
   endif()
 
-  target_sources(${LIBRARY_NAME} PRIVATE ${SOURCES})
+  target_sources(${BUILD_LIBRARY_NAME} PRIVATE ${PRIVATE_SOURCES})
 
   target_include_directories(
-    ${LIBRARY_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
-                            ${CMAKE_CURRENT_BINARY_DIR}/src)
+    ${BUILD_LIBRARY_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+                                  ${CMAKE_CURRENT_BINARY_DIR}/src)
 
-  if(NOT "${PFL_ADD_LIBRARY_SOVERSION}" STREQUAL "")
-    set_target_properties("${TARGET_FULL_NAME}"
-                          PROPERTIES SOVERSION ${PFL_ADD_LIBRARY_SOVERSION})
-  endif()
-  if(NOT "${PFL_ADD_LIBRARY_VERSION}" STREQUAL "")
-    set_target_properties("${TARGET_FULL_NAME}"
-                          PROPERTIES VERSION ${PFL_ADD_LIBRARY_VERSION})
-  endif()
+  if(DEFINED PFL_ARG_SOVERSION)
+    if("${PFL_ARG_LIBRARY_TYPE}" STREQUAL "HEADER_ONLY")
+      _pfl_fatal(
+        "SOVERSION is not available for HEADER_ONLY library ${TARGET_ALIAS}.")
+    endif()
 
-  set_target_properties("${TARGET_FULL_NAME}"
-                        PROPERTIES OUTPUT_NAME ${PFL_ADD_LIBRARY_OUTPUT_NAME})
-
-  if(NOT "${TARGET_FULL_ALIAS_NAME}" STREQUAL "${TARGET_FULL_NAME}")
-    add_library("${TARGET_FULL_ALIAS_NAME}" ALIAS "${TARGET_FULL_NAME}")
+    set_target_properties("${TARGET}" PROPERTIES SOVERSION ${PFL_ARG_SOVERSION})
   endif()
 
-  if(PFL_ADD_LIBRARY_LINK_LIBRARIES)
-    target_link_libraries(${TARGET_FULL_NAME} ${PFL_ADD_LIBRARY_LINK_LIBRARIES})
+  if(DEFINED PFL_ARG_VERSION)
+    if("${PFL_ARG_LIBRARY_TYPE}" STREQUAL "HEADER_ONLY")
+      _pfl_fatal(
+        "VERSION is not available for HEADER_ONLY library ${TARGET_ALIAS}.")
+    endif()
   endif()
 
-  if(PFL_ADD_LIBRARY_COMPILE_FEATURES)
-    target_compile_features(${TARGET_FULL_NAME}
-                            ${PFL_ADD_LIBRARY_COMPILE_FEATURES})
+  if(NOT DEFINED PFL_ARG_VERSION)
+    set(PFL_ARG_VERSION ${PROJECT_VERSION})
   endif()
 
-  _pfl_add_tests(${PFL_ADD_LIBRARY_TESTS})
-  _pfl_add_examples(${PFL_ADD_LIBRARY_EXAMPLES})
-  _pfl_add_apps(${PFL_ADD_LIBRARY_APPS})
+  if(NOT "${PFL_ARG_LIBRARY_TYPE}" STREQUAL "HEADER_ONLY")
+    set_target_properties("${TARGET}" PROPERTIES VERSION ${PFL_ARG_VERSION})
+  endif()
+
+  if(DEFINED PFL_ARG_OUTPUT_NAME AND "${PFL_ARG_LIBRARY_TYPE}" STREQUAL
+                                     "HEADER_ONLY")
+    _pfl_fatal("OUTPUT_NAME is not available"
+               "for HEADER_ONLY library ${TARGET_ALIAS}.")
+  endif()
+
+  if(NOT DEFINED PFL_ARG_OUTPUT_NAME)
+    set(PFL_ARG_OUTPUT_NAME "${TARGET}")
+    if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${PROJECT_SOURCE_DIR}")
+      set(PFL_ARG_OUTPUT_NAME ${PFL_CURRENT_COMPOENT})
+    endif()
+  endif()
+
+  if(NOT "${PFL_ARG_LIBRARY_TYPE}" STREQUAL "HEADER_ONLY")
+    _pfl_warn("OUTPUT_NAME of ${TARGET_ALIAS} not set,"
+              "using ${PFL_ARG_OUTPUT_NAME}")
+    set_target_properties("${TARGET}" PROPERTIES OUTPUT_NAME
+                                                 ${PFL_ARG_OUTPUT_NAME})
+  endif()
+
+  _pfl_add_target_common()
+  _pfl_add_executables()
 
   set(_PFL_PATH ${OLD_PFL_PATH})
 
-  if(PFL_ADD_LIBRARY_DISABLE_INSTALL OR NOT _PFL_ENABLE_INSTALL)
+  if(PFL_ARG_DISABLE_INSTALL OR NOT ${PROJECT_NAME}_ENABLE_INSTALL)
     return()
   endif()
 
   include(GNUInstallDirs)
+  set(PROJECT_PREFIX ${PROJECT_NAME}-${PROJECT_VERSION})
+  set(COMPONENT_INCLUDE_SUBDIR ${PROJECT_PREFIX}/${PFL_CURRENT_COMPOENT})
 
-  set(PROPAGATE PUBLIC)
-  if("${PFL_ADD_LIBRARY_LIBRARY_TYPE}" STREQUAL "HEADER_ONLY")
-    set(PROPAGATE INTERFACE)
-  endif()
-
-  foreach(FILE ${HEADERS})
+  foreach(FILE ${PUBLIC_SOURCES})
     if(FILE MATCHES "${CMAKE_CURRENT_SOURCE_DIR}/include/.*")
       file(RELATIVE_PATH RELATIVE_FILE ${CMAKE_CURRENT_SOURCE_DIR}/include
            ${FILE})
@@ -768,58 +784,58 @@ function(pfl_add_library)
     get_filename_component(DIR ${RELATIVE_FILE} DIRECTORY)
     install(
       FILES ${FILE}
-      DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/${TARGET_FULL_PATH}/${DIR})
+      DESTINATION
+        ${CMAKE_INSTALL_FULL_INCLUDEDIR}/${COMPONENT_INCLUDE_SUBDIR}/${DIR})
 
     target_sources(
-      "${TARGET_FULL_NAME}"
-      ${PROPAGATE}
-      $<INSTALL_INTERFACE:${CMAKE_INSTALL_FULL_INCLUDEDIR}/${TARGET_FULL_PATH}/${RELATIVE_FILE}>
+      "${TARGET}"
+      ${PUBLIC_SOURCES_PROPAGATE}
+      $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${COMPONENT_INCLUDE_SUBDIR}/${RELATIVE_FILE}>
     )
   endforeach()
 
   target_include_directories(
-    ${TARGET_FULL_NAME}
-    ${PROPAGATE}
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${TARGET_FULL_PATH}>)
+    ${TARGET}
+    ${PUBLIC_SOURCES_PROPAGATE}
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${COMPONENT_INCLUDE_SUBDIR}>
+  )
 
-  set(PFL_TARGET_EXPORT_NAME ${PFL_ADD_LIBRARY_OUTPUT_NAME})
+  set(PFL_EXPORT_FILE_NAME ${PFL_ARG_OUTPUT_NAME})
+
   get_property(PFL_COMPONMENTS GLOBAL PROPERTY PFL_COMPONMENTS)
-  list(APPEND PFL_COMPONMENTS ${TARGET_NAME})
+  list(APPEND PFL_COMPONMENTS ${PFL_CURRENT_COMPOENT})
   set_property(GLOBAL PROPERTY PFL_COMPONMENTS ${PFL_COMPONMENTS})
 
-  get_property(PFL_EXPORT_NAME_OF_COMPONMENTS GLOBAL
-               PROPERTY PFL_EXPORT_NAME_OF_COMPONMENTS)
-  set(PFL_EXPORT_NAME_OF_COMPONMENTS
-      "${PFL_EXPORT_NAME_OF_COMPONMENTS}\nset(EXPORT_NAME_OF_${TARGET_NAME} ${PFL_TARGET_EXPORT_NAME})"
+  get_property(PFL_EXPORT_FILE_NAME_OF_COMPONMENTS GLOBAL
+               PROPERTY PFL_EXPORT_FILE_NAME_OF_COMPONMENTS)
+  set(PFL_EXPORT_FILE_NAME_OF_COMPONMENTS
+      "${PFL_EXPORT_FILE_NAME_OF_COMPONMENTS}\nset(EXPORT_FILE_NAME_OF_${PFL_CURRENT_COMPOENT} ${PFL_EXPORT_FILE_NAME})"
   )
-  set_property(GLOBAL PROPERTY PFL_EXPORT_NAME_OF_COMPONMENTS
-                               ${PFL_EXPORT_NAME_OF_COMPONMENTS})
+  set_property(GLOBAL PROPERTY PFL_EXPORT_FILE_NAME_OF_COMPONMENTS
+                               ${PFL_EXPORT_FILE_NAME_OF_COMPONMENTS})
 
   install(
-    TARGETS "${TARGET_FULL_NAME}"
-    EXPORT "${PFL_TARGET_EXPORT_NAME}"
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    INCLUDES
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    TARGETS "${TARGET}"
+    EXPORT "${PFL_ARG_OUTPUT_NAME}"
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-  _pfl_str_join(TARGET_FULL_PATH_DIR "/" ${_PFL_PATH})
-  _pfl_str_join(TARGET_EXPORT_NAMESPACE "::" ${_PFL_PATH})
+  set_target_properties("${TARGET}" PROPERTIES EXPORT_NAME
+                                               ${PFL_CURRENT_COMPOENT})
 
-  set_target_properties("${TARGET_FULL_NAME}" PROPERTIES EXPORT_NAME
-                                                         ${TARGET_NAME})
+  set(INSTALL_CMAKE_DIR ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_PREFIX})
 
   install(
-    EXPORT "${PFL_TARGET_EXPORT_NAME}"
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${TARGET_FULL_PATH_DIR}
-    FILE "${PFL_TARGET_EXPORT_NAME}.cmake"
-    NAMESPACE ${TARGET_EXPORT_NAMESPACE}::)
+    EXPORT "${PFL_ARG_OUTPUT_NAME}"
+    DESTINATION ${INSTALL_CMAKE_DIR}
+    FILE "${PFL_EXPORT_FILE_NAME}.cmake"
+    NAMESPACE ${PROJECT_NAME}::)
 
-  set(CONFIG_FILE misc/cmake/${PFL_TARGET_EXPORT_NAME}Config.cmake)
+  set(CONFIG_FILE misc/cmake/${PFL_ARG_OUTPUT_NAME}Config.cmake)
 
   set(CONFIG_FILE_IN ${CMAKE_CURRENT_SOURCE_DIR}/${CONFIG_FILE}.in)
   if(NOT EXISTS ${CONFIG_FILE_IN})
-    write_file(${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_FILE}.in
-               ${PFL_add_library_default_cmake_config})
+    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_FILE}.in
+         ${PFL_add_library_default_cmake_config})
     set(CONFIG_FILE_IN ${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_FILE}.in)
   endif()
 
@@ -828,123 +844,121 @@ function(pfl_add_library)
   set(cmakeModulesDir cmake)
 
   set(PFL_FIND_DEPENDENCIES)
-  foreach(ARGUMENTS ${PFL_ADD_LIBRARY_FIND_DEPENDENCY_ARGUMENTS})
+  set(PROPAGATE PRIVATE)
+  foreach(DEPENDENCY ${PFL_ARG_DEPENDENCIES})
+    if("${DEPENDENCY}" STREQUAL "PUBLIC")
+      set(PROPAGATE PUBLIC)
+      continue()
+    elseif("${DEPENDENCY}" STREQUAL "PRIVATE")
+      set(PROPAGATE PRIVATE)
+      continue()
+    endif()
+
+    if("${PROPAGATE}" STREQUAL "PRIVATE")
+      _pfl_warn("Skip private dependency: ${DEPENDENCY}")
+      continue()
+    endif()
+
     set(PFL_FIND_DEPENDENCIES
-        "${PFL_FIND_DEPENDENCIES}find_dependency(${ARGUMENTS})\n")
+        "${PFL_FIND_DEPENDENCIES}find_dependency(${DEPENDENCY})\n")
   endforeach()
   configure_package_config_file(
     ${CONFIG_FILE_IN} ${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_FILE}
     PATH_VARS cmakeModulesDir
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${TARGET_FULL_PATH_DIR}
+    INSTALL_DESTINATION ${INSTALL_CMAKE_DIR}
     NO_SET_AND_CHECK_MACRO NO_CHECK_REQUIRED_COMPONENTS_MACRO)
 
-  set(VERSION_FILE misc/cmake/${PFL_TARGET_EXPORT_NAME}ConfigVersion.cmake)
+  set(VERSION_FILE misc/cmake/${PFL_ARG_OUTPUT_NAME}ConfigVersion.cmake)
   write_basic_package_version_file(
     ${VERSION_FILE}
-    VERSION ${PFL_ADD_LIBRARIES_VERSION}
+    VERSION ${PFL_ARG_VERSION}
     COMPATIBILITY SameMajorVersion)
 
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_FILE}
                 ${CMAKE_CURRENT_BINARY_DIR}/${VERSION_FILE}
-          DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${TARGET_FULL_PATH_DIR})
+          DESTINATION ${INSTALL_CMAKE_DIR})
 endfunction()
 
-#[[
-
-# PFL_add_excutable
-
-This function is used to add an executable.
-You should call this function
-if `${CMAKE_CURRENT_SOURCE_DIR}/src` contains the source code
-of your executable file.
-
-For examples you could use this function to add applications, examples and test.
-
-## Argument
-
-- *string* `LIBEXEC`
-  If this option is set,
-  executable will be installed to `${CMAKE_INSTALL_LIBEXECDIR}/${LIBEXEC}` dir.
-- *string* `OUTPUT_NAME`
-  The output file name of your executable.
-- *list* `LINK_LIBRARIES`
-  Arguments passed to target_link_libraries.
-- *list* `COMPILE_FEATURES`
-  Arguments passed to target_compile_features.
-- *list* `SOURCES`
-  List of source files, include .in, sources and headers.
-  We support add (possibly near-empty) cpp files
-  as sources of header only library to check if that header is self-contained.
-- *option* `DISABLE_INSTALL`
-
-## Example
-
-Check [examples](https://github.com/black-desk/PFL.cmake/tree/master/examples)
-online.
-
-]]
 function(PFL_add_executable)
-  cmake_parse_arguments(
-    PFL_ADD_EXECUTABLE "DISABLE_INSTALL" "LIBEXEC;OUTPUT_NAME"
-    "SOURCES;LINK_LIBRARIES;COMPILE_FEATURES" ${ARGN})
+  set(FLAGS #
+      # Disable install target of this executable.
+      # NOTE: It's recommend to set this for tests and examples.
+      DISABLE_INSTALL)
+  set(ONE_VALUE_KEYWORDS
+      # Install this executable in ${CMAKE_INSTALL_LIBEXECDIR}/${LIBEXEC},
+      # instand of ${CMAKE_INSTALL_BINDIR}.
+      LIBEXEC # string
+      # The output file name of this executable.
+      # [ default: All the PFL hierarchies joined with "__" ]
+      # NOTE: It's not recommend to use the default value.
+      OUTPUT_NAME # string
+  )
+  set(MULTI_VALUE_KEYWORDS
+      # List of relative file paths from ${CMAKE_CURRENT_SOURCE_DIR},
+      # including input files (.in), sources (.c .cpp .cxx .cc)
+      # and headers (.h .hpp .hh).
+      # Files without extension treated as headers also.
+      # Input files will be configured with @ONLY mode of configure_file.
+      # And the output is added to library as sources as well.
+      # [ default: All files under ${CMAKE_CURRENT_SOURCE_DIR}/src
+      #            and ${CMAKE_CURRENT_SOURCE_DIR}/include ]
+      SOURCES
+      # Arguments pass to find_package() before build your executable.
+      DEPENDENCIES
+      # Arguments passed to target_link_libraries().
+      LINK_LIBRARIES
+      # Arguments passed to target_compile_features().
+      COMPILE_FEATURES
+      # Arguments passed to target_compile_options().
+      COMPILE_OPTIONS)
+  _pfl_parse_arguments(${ARGN})
+  _pfl_current_compoent()
 
-  _pfl_get_current_target_name(TARGET_NAME)
   set(OLD_PFL_PATH ${_PFL_PATH})
-  list(APPEND _PFL_PATH ${TARGET_NAME})
-  _pfl_str_join(TARGET_FULL_NAME "__" ${_PFL_PATH})
-  _pfl_str_join(TARGET_FULL_ALIAS_NAME "::" ${_PFL_PATH})
+  list(APPEND _PFL_PATH ${PFL_CURRENT_COMPOENT})
 
-  if(NOT PFL_ADD_EXECUTABLE_OUTPUT_NAME)
-    set(PFL_ADD_EXECUTABLE_OUTPUT_NAME ${TARGET_NAME})
+  _pfl_str_join(TARGET "__" ${_PFL_PATH})
+  _pfl_str_join(TARGET_ALIAS "::" ${_PFL_PATH})
 
-    _pfl_warn("OUTPUT_NAME of ${TARGET_FULL_ALIAS_NAME} not set,"
-              "using ${PFL_ADD_EXECUTABLE_OUTPUT_NAME}")
+  if(NOT DEFINED PFL_ARG_OUTPUT_NAME)
+    set(PFL_ARG_OUTPUT_NAME ${PFL_CURRENT_COMPOENT})
+
+    _pfl_warn("OUTPUT_NAME of ${TARGET_ALIAS} not set,"
+              "using ${PFL_ARG_OUTPUT_NAME}")
   endif()
 
-  _pfl_info("Adding executable ${PFL_ADD_EXECUTABLE_OUTPUT_NAME}"
-            "as ${TARGET_FULL_ALIAS_NAME} at ${CMAKE_CURRENT_SOURCE_DIR}")
+  _pfl_info("Adding executable ${PFL_ARG_OUTPUT_NAME}"
+            "as ${TARGET_ALIAS} at ${CMAKE_CURRENT_SOURCE_DIR}")
 
-  _pfl_handle_sources(HEADERS SOURCES OFF ${PFL_ADD_EXECUTABLE_SOURCES})
+  add_executable(${TARGET})
+  target_sources(${TARGET} PRIVATE ${PFL_ARG_SOURCES})
 
-  add_executable(${TARGET_FULL_NAME})
-  target_sources(${TARGET_FULL_NAME} PRIVATE ${SOURCES})
-
-  if(NOT "${TARGET_FULL_ALIAS_NAME}" STREQUAL "${TARGET_FULL_NAME}")
-    add_executable("${TARGET_FULL_ALIAS_NAME}" ALIAS "${TARGET_FULL_NAME}")
+  if(NOT "${TARGET_ALIAS}" STREQUAL "${TARGET}")
+    add_executable("${TARGET_ALIAS}" ALIAS "${TARGET}")
   endif()
 
-  set_target_properties(
-    "${TARGET_FULL_NAME}" PROPERTIES OUTPUT_NAME
-                                     ${PFL_ADD_EXECUTABLE_OUTPUT_NAME})
+  set_target_properties("${TARGET}" PROPERTIES OUTPUT_NAME
+                                               ${PFL_ARG_OUTPUT_NAME})
 
   target_include_directories(
-    ${TARGET_FULL_NAME}
+    ${TARGET}
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
             ${CMAKE_CURRENT_BINARY_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src
             ${CMAKE_CURRENT_BINARY_DIR}/src)
 
-  if(PFL_ADD_EXECUTABLE_LINK_LIBRARIES)
-    target_link_libraries(${TARGET_FULL_NAME}
-                          ${PFL_ADD_EXECUTABLE_LINK_LIBRARIES})
-  endif()
+  _pfl_add_target_common()
 
-  if(PFL_ADD_EXECUTABLE_COMPILE_FEATURES)
-    target_compile_features(${TARGET_FULL_NAME}
-                            ${PFL_ADD_EXECUTABLE_COMPILE_FEATURES})
-  endif()
-
-  if(PFL_ADD_EXECUTABLE_DISABLE_INSTALL OR NOT _PFL_ENABLE_INSTALL)
+  if(PFL_ARG_DISABLE_INSTALL OR NOT ${PROJECT_NAME}_ENABLE_INSTALL)
     return()
   endif()
 
   include(GNUInstallDirs)
 
-  if(PFL_ADD_EXECUTABLE_LIBEXEC)
-    install(
-      TARGETS ${TARGET_FULL_NAME}
-      DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/${PFL_ADD_EXECUTABLE_LIBEXEC})
+  if(DEFINED PFL_ARG_LIBEXEC)
+    install(TARGETS ${TARGET}
+            DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/${PFL_ARG_LIBEXEC})
     return()
   endif()
 
-  install(TARGETS ${TARGET_FULL_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR})
+  install(TARGETS ${TARGET} DESTINATION ${CMAKE_INSTALL_BINDIR})
 endfunction()

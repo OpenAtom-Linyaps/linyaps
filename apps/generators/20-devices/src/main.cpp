@@ -6,12 +6,11 @@
 
 #include "nlohmann/json.hpp"
 
+#include <filesystem>
 #include <iostream>
 
 int main()
 {
-    using namespace nlohmann::literals;
-
     nlohmann::json content;
     std::string ociVersion;
     try {

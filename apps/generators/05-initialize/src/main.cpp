@@ -4,6 +4,7 @@
 
 #include "nlohmann/json.hpp"
 
+#include <filesystem>
 #include <iostream>
 
 int main()
@@ -38,16 +39,17 @@ int main()
 
     auto &mounts = content["mounts"];
 
-    if (annotations.contains("org.deepin.linglong.runtimeDir")) {
-        mounts.push_back(
-          { { "destination", "/runtime" },
-            { "options", nlohmann::json::array({ "rbind", "ro" }) },
-            { "source",
-              std::filesystem::path(annotations["org.deepin.linglong.runtimeDir"]) / "files" },
-            { "type", "bind" } });
+    if (annotations.find("org.deepin.linglong.runtimeDir") != annotations.end()) {
+        mounts.push_back({ { "destination", "/runtime" },
+                           { "options", nlohmann::json::array({ "rbind", "ro" }) },
+                           { "source",
+                             std::filesystem::path(
+                               annotations["org.deepin.linglong.runtimeDir"].get<std::string>())
+                               / "files" },
+                           { "type", "bind" } });
     }
 
-    if (annotations.contains("org.deepin.linglong.appDir")) {
+    if (annotations.find("org.deepin.linglong.appDir") != annotations.end()) {
         mounts.push_back({
           { "destination", "/opt/apps/" },
           { "options", nlohmann::json::array({ "nodev", "nosuid", "mode=700" }) },
@@ -61,7 +63,8 @@ int main()
                 / "files" },
             { "options", nlohmann::json::array({ "rbind", "rw" }) },
             { "source",
-              std::filesystem::path(annotations["org.deepin.linglong.appDir"]) / "files" },
+              std::filesystem::path(annotations["org.deepin.linglong.appDir"].get<std::string>())
+                / "files" },
             { "type", "bind" } });
     }
 

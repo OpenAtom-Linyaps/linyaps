@@ -12,7 +12,7 @@ namespace linglong::package {
 
 utils::error::Result<FuzzyReference> FuzzyReference::parse(const QString &raw) noexcept
 {
-    LINGLONG_TRACE("parse fuzz reference string");
+    LINGLONG_TRACE("parse fuzz reference string " + raw);
 
     static QRegularExpression regexp(
       R"(^(?:(?<channel>[^:]*):)?(?<id>[^\/]*)(?:\/(?<version>[^\/]*)(?:\/(?<architecture>[^\/]*))?)?$)");
@@ -55,9 +55,9 @@ utils::error::Result<FuzzyReference> FuzzyReference::parse(const QString &raw) n
 
 utils::error::Result<FuzzyReference>
 FuzzyReference::create(const std::optional<QString> &channel,
-                      const QString &id, // NOLINT
-                      const std::optional<Version> &version,
-                      const std::optional<Architecture> &arch) noexcept
+                       const QString &id, // NOLINT
+                       const std::optional<Version> &version,
+                       const std::optional<Architecture> &arch) noexcept
 try {
     return FuzzyReference(channel, id, version, arch);
 } catch (const std::exception &e) {
@@ -66,9 +66,9 @@ try {
 }
 
 FuzzyReference::FuzzyReference(const std::optional<QString> &channel,
-                             const QString &id,
-                             const std::optional<Version> &version,
-                             const std::optional<Architecture> &architecture)
+                               const QString &id,
+                               const std::optional<Version> &version,
+                               const std::optional<Architecture> &architecture)
     : channel(channel)
     , id(id)
     , version(version)

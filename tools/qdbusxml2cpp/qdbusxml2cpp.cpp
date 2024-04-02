@@ -50,6 +50,14 @@
 
 #define ANNOTATION_NO_WAIT      "org.freedesktop.DBus.Method.NoReply"
 
+// https://github.com/AD-Vega/qarv/issues/22#issuecomment-1012011346
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
+namespace Qt
+{
+    static auto endl = ::endl;
+}
+#endif
+
 static QString globalClassName;
 static QString parentClassName;
 static QString proxyFile;

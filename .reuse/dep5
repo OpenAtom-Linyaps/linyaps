@@ -10,18 +10,18 @@ Copyright: None
 
 # external
 
-# qserializer
-Files: external/qserializer/*
-License: LGPL-3.0-only
-Copyright: Chen Linxuan <me@black-desk.cn>
+# tl-expected
+Files: external/tl-expected/*
+License: CC0-1.0
+Copyright: None
+
+# docopt
+Files: external/docopt.cpp/*
+License: MIT
+Copyright: 2012 Vladimir Keleshev, <vladimir@keleshev.com>
 
 # ytj
 Files: external/ytj/*
-License: LGPL-3.0-only
-Copyright: Chen Linxuan <me@black-desk.cn>
-
-# ocppi
-Files: external/ocppi/*
 License: LGPL-3.0-only
 Copyright: Chen Linxuan <me@black-desk.cn>
 
@@ -51,7 +51,7 @@ License: CC0-1.0
 Copyright: None
 
 # generated code
-Files: src/linglong/api/types/v*
+Files: libs/linglong/src/linglong/api/types/v*
 License: CC0-1.0
 Copyright: None
 
@@ -85,7 +85,7 @@ License: LGPL-3.0-only
 Copyright: UnionTech Software Technology Co., Ltd.
 
 # Test data
-Files: tests/ll-tests/data/*
+Files: libs/linglong/tests/ll-tests/data/*
 License: CC0-1.0
 Copyright: None
 
@@ -93,3 +93,9 @@ Copyright: None
 Files: tools/qdbusxml2cpp/qdbusxml2cpp.cpp
 License: GPL-3.0-only
 Copyright: 2020 The Qt Company Ltd.
+
+# ocppi
+
+Files: libs/ocppi/*
+License: LGPL-3.0-only
+Copyright: UnionTech Software Technology Co., Ltd.

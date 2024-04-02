@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.2)
 
 project(QtLinglongRepoClientAPI)
 
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Network Gui)
+find_package(Qt5 REQUIRED COMPONENTS Core Network Gui)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
@@ -66,8 +66,8 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-        Qt${QT_VERSION_MAJOR}::Core
-        Qt${QT_VERSION_MAJOR}::Network
-        Qt${QT_VERSION_MAJOR}::Gui
+        Qt5::Core
+        Qt5::Network
+        Qt5::Gui
 
 )

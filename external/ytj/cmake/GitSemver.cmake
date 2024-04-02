@@ -16,7 +16,7 @@ function(gitsemver_message)
   message(STATUS "GitSemver: " ${ARGN})
 endfunction()
 
-message(STATUS "GitSemver: --==Version: v0.1.1==--")
+message(STATUS "GitSemver: --==Version: v0.1.3==--")
 
 # GitSemver will write the result to varname if it successfully get version
 # string from git repository.
@@ -38,14 +38,14 @@ function(GitSemver varname)
     return()
   endif()
   execute_process(
-    COMMAND ${GIT_EXECUTABLE} describe --tags --long --dirty
+    COMMAND ${GIT_EXECUTABLE} describe --tags --match v* --long --dirty
     COMMAND ${SED_EXECUTABLE} -e s/-\\\([[:digit:]]\\+\\\)-g/+\\1\\./
     COMMAND ${SED_EXECUTABLE} -e s/-dirty\$/\\.dirty/
     COMMAND ${SED_EXECUTABLE} -e s/+0\\.[^\\.]\\+\\.\\?/+/
     COMMAND ${SED_EXECUTABLE} -e s/^v//
     COMMAND ${SED_EXECUTABLE} -e s/+\$//
     OUTPUT_VARIABLE ${varname} RESULTS_VARIABLE rets
-    OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET COMMAND_ECHO STDOUT)
+    OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
 
   foreach(ret ${rets})
     if(NOT ret EQUAL 0)

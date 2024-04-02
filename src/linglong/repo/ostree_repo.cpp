@@ -483,7 +483,9 @@ utils::error::Result<package::Reference> clearReferenceLocal(const package::Fuzz
     utils::error::Result<package::Version> foundVersion =
       LINGLONG_ERR("compatible version not found");
 
-    for (const auto &info : versionDir.entryInfoList()) {
+    auto list = versionDir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
+
+    for (const auto &info : list) {
         if (!info.isDir()) {
             continue;
         }
@@ -502,6 +504,8 @@ utils::error::Result<package::Reference> clearReferenceLocal(const package::Fuzz
             Q_ASSERT(false);
             continue;
         }
+
+        qDebug() << "available version found:" << availableVersion->toString();
 
         if (!fuzzy.version) {
             foundVersion = *availableVersion;
@@ -1224,29 +1228,14 @@ OSTreeRepo::listLocal() const noexcept
         }
     };
 
-    for (const auto &channelDir : layersDir.entryInfoList()) {
-        if (!channelDir.isDir()) {
-            continue;
-        }
-
-        for (const auto &applicationInfo : QDir(channelDir.absoluteFilePath()).entryInfoList()) {
-            if (!applicationInfo.isDir()) {
-                continue;
-            }
-
-            for (const auto &versionInfo :
-                 QDir(applicationInfo.absoluteFilePath()).entryInfoList()) {
-                if (!versionInfo.isDir()) {
-                    continue;
-                }
-
+    for (const auto &channelDir : layersDir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+        for (const auto &applicationInfo :
+             QDir(channelDir.absoluteFilePath()).entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+            for (const auto &versionInfo : QDir(applicationInfo.absoluteFilePath())
+                                             .entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
                 for (const auto &architectureInfo :
-                     QDir(versionInfo.absoluteFilePath()).entryInfoList()) {
-
-                    if (!architectureInfo.isDir()) {
-                        continue;
-                    }
-
+                     QDir(versionInfo.absoluteFilePath())
+                       .entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
                     QDir architectureDir = architectureInfo.absoluteFilePath();
                     pushBackPkgInfos(architectureDir);
                 }

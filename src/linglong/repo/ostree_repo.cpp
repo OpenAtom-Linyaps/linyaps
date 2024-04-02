@@ -356,6 +356,11 @@ utils::error::Result<void> handleRepositoryUpdate(OstreeRepo *repo,
         Q_ASSERT(false);
     }
 
+    layerDir.cdUp();
+    if (!layerDir.mkpath(".")) {
+        Q_ASSERT(false);
+    }
+
     g_autoptr(GError) gErr = nullptr;
 
     g_autofree char *commit;

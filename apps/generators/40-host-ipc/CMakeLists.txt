@@ -4,7 +4,7 @@
 
 pfl_add_executable(
   OUTPUT_NAME
-  30-host-ipc
+  40-host-ipc
   LIBEXEC
   linglong
   SOURCES

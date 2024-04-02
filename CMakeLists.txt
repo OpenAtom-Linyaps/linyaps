@@ -233,8 +233,8 @@ pfl_add_library(
   generators/00-id-mapping
   generators/05-initialize
   generators/20-devices
-  generators/25-user-home
-  generators/30-host-ipc
+  generators/30-user-home
+  generators/40-host-ipc
   generators/90-legacy
   ll-builder
   ll-cli

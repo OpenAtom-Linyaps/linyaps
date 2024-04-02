@@ -26,9 +26,9 @@ namespace v1 {
 using nlohmann::json;
 
 struct PackageInfo {
-std::string appID;
-std::string arch;
-std::optional<std::string> base;
+std::string appid;
+std::vector<std::string> arch;
+std::string base;
 std::string channel;
 std::optional<std::string> description;
 std::string kind;

@@ -308,9 +308,9 @@ j["patch"] = x.patch;
 }
 
 inline void from_json(const json & j, PackageInfo& x) {
-x.appID = j.at("appId").get<std::string>();
-x.arch = j.at("arch").get<std::string>();
-x.base = get_stack_optional<std::string>(j, "base");
+x.appid = j.at("appid").get<std::string>();
+x.arch = j.at("arch").get<std::vector<std::string>>();
+x.base = j.at("base").get<std::string>();
 x.channel = j.at("channel").get<std::string>();
 x.description = get_stack_optional<std::string>(j, "description");
 x.kind = j.at("kind").get<std::string>();
@@ -324,11 +324,9 @@ x.version = j.at("version").get<std::string>();
 
 inline void to_json(json & j, const PackageInfo & x) {
 j = json::object();
-j["appId"] = x.appID;
+j["appid"] = x.appid;
 j["arch"] = x.arch;
-if (x.base) {
 j["base"] = x.base;
-}
 j["channel"] = x.channel;
 if (x.description) {
 j["description"] = x.description;

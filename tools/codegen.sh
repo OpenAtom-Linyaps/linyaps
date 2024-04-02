@@ -125,21 +125,3 @@ generate \
         "linglong::api::types::v1" \
         "src/" \
         "linglong/api/types/v1"
-
-"$YQ" e '.properties = ( [
-        .$defs | keys | .[] as $type | {
-                "key" : $type,
-                "value": {
-                        "$ref": "#/$defs/"+$type
-                }
-        } ] | from_entries
-)' "$repoRoot"/api/schema/v0.yaml -o json >"$repoRoot"/api/schema/v0.json
-
-rm -f "$repoRoot"/src/linglong/api/types/v0/*.hpp
-
-generate \
-        "$repoRoot/api/schema/v0.json" \
-        LinglongAPIV0 \
-        "linglong::api::types::v0" \
-        "src/" \
-        "linglong/api/types/v0"

@@ -567,8 +567,7 @@ utils::error::Result<package::Reference> clearReferenceRemote(const package::Fuz
 
     req.setRepoName(repoName);
 
-    utils::error::Result<std::vector<api::types::v1::PackageInfo>> pkgInfos =
-      LINGLONG_ERR("unknown error");
+    utils::error::Result<package::Reference> ref = LINGLONG_ERR("unknown error");
 
     QEventLoop loop;
     const qint32 HTTP_OK = 200;
@@ -578,14 +577,45 @@ utils::error::Result<package::Reference> clearReferenceRemote(const package::Fuz
       &loop,
       [&](api::client::FuzzySearchApp_200_response resp) {
           LINGLONG_TRACE("fuzzySearchAppSignal");
+
           loop.exit();
           if (resp.getCode() != HTTP_OK) {
-              pkgInfos = LINGLONG_ERR(resp.getMsg(), resp.getCode());
+              ref = LINGLONG_ERR(resp.getMsg(), resp.getCode());
               return;
           }
 
-          pkgInfos = utils::serialize::fromQJsonValue<std::vector<api::types::v1::PackageInfo>>(
-            api::client::toJsonValue(resp.getData()));
+          for (const auto &record : resp.getData()) {
+              auto version = package::Version::parse(record.getVersion());
+              if (!version) {
+                  qWarning() << "Ignore invalid package record" << record.asJson()
+                             << version.error();
+                  continue;
+              }
+
+              auto arch = package::Architecture::parse(record.getArch());
+              if (!arch) {
+                  qWarning() << "Ignore invalid package record" << record.asJson() << arch.error();
+                  continue;
+              }
+
+              auto currentRef =
+                package::Reference::create(record.getChannel(), record.getAppId(), *version, *arch);
+              if (!currentRef) {
+                  qWarning() << "Ignore invalid package record" << record.asJson()
+                             << currentRef.error();
+                  continue;
+              }
+              if (!ref) {
+                  ref = *currentRef;
+                  continue;
+              }
+
+              if (ref->version >= currentRef->version) {
+                  continue;
+              }
+
+              ref = *currentRef;
+          }
           return;
       },
       loop.thread() == api.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
@@ -597,41 +627,12 @@ utils::error::Result<package::Reference> clearReferenceRemote(const package::Fuz
       [&](auto, auto error_type, const QString &error_str) {
           LINGLONG_TRACE("fuzzySearchAppSignalEFull");
           loop.exit();
-          pkgInfos = LINGLONG_ERR(error_str, error_type);
+          ref = LINGLONG_ERR(error_str, error_type);
       },
       loop.thread() == api.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
 
     api.fuzzySearchApp(req);
     loop.exec();
-
-    if (!pkgInfos) {
-        return LINGLONG_ERR(pkgInfos);
-    }
-
-    if (pkgInfos->empty()) {
-        return LINGLONG_ERR("not found");
-    }
-
-    std::optional<package::Reference> ref;
-
-    for (const auto &pkgInfo : *pkgInfos) {
-        auto currentRef = package::Reference::fromPackageInfo(pkgInfo);
-        if (!currentRef) {
-            qCritical() << currentRef.error();
-            continue;
-        }
-
-        if (!ref) {
-            ref = *currentRef;
-            continue;
-        }
-
-        if (ref->version >= currentRef->version) {
-            continue;
-        }
-
-        ref = *currentRef;
-    }
 
     if (!ref) {
         return LINGLONG_ERR("not found");
@@ -1282,7 +1283,7 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
     }
 
     utils::error::Result<std::vector<api::types::v1::PackageInfo>> pkgInfos =
-      LINGLONG_ERR("unknown error");
+      std::vector<api::types::v1::PackageInfo>{};
 
     QEventLoop loop;
     const qint32 HTTP_OK = 200;
@@ -1297,8 +1298,20 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
               return;
           }
 
-          pkgInfos = utils::serialize::fromQJsonValue<std::vector<api::types::v1::PackageInfo>>(
-            api::client::toJsonValue(resp.getData()));
+          for (const auto &record : resp.getData()) {
+              auto json = nlohmann::json::parse(QJsonDocument(record.asJsonObject()).toJson());
+              json["appid"] = json["appId"];
+              json.erase("appId");
+              json["base"] = ""; // FIXME: This is werid.
+              json["arch"] = nlohmann::json::array({ json["arch"] });
+              auto pkgInfo = utils::serialize::LoadJSON<api::types::v1::PackageInfo>(json);
+              if (!pkgInfo) {
+                  qCritical() << "Ignored invalid record" << record.asJson();
+                  continue;
+              }
+
+              pkgInfos->emplace_back(*std::move(pkgInfo));
+          }
           return;
       },
       loop.thread() == this->apiClient.thread() ? Qt::AutoConnection

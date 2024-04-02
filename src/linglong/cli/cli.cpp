@@ -169,7 +169,6 @@ int Cli::run(std::map<std::string, docopt::value> &args)
     }
 
     std::optional<package::LayerDir> runtimeLayerDir;
-    std::optional<package::LayerDir> baseLayerDir;
 
     if (info->runtime) {
         auto runtimeFuzzyRef =
@@ -196,79 +195,27 @@ int Cli::run(std::map<std::string, docopt::value> &args)
         }
 
         runtimeLayerDir = *layerDir;
-
-        {
-            // FIXME(black_desk):
-            // Legacy application and runtime layer record base reference in the "runtime" property
-            // of packageInfo of runtime layer. So we have to check runtime packageInfo here. Remove
-            // it later.
-            auto runtimeInfo = runtimeLayerDir->info();
-            if (!runtimeInfo) {
-                this->printer.printErr(LINGLONG_ERRV(runtimeInfo));
-                return -1;
-            }
-
-            if (runtimeInfo->runtime) {
-                qWarning() << "Legacy runtime layer founded" << runtimeRef->toString();
-                qWarning() << "Getting base from \"runtime\" property of package info of"
-                           << runtimeRef->toString();
-
-                auto baseFuzzyRef =
-                  package::FuzzyReference::parse(QString::fromStdString(*runtimeInfo->runtime));
-                if (!baseFuzzyRef) {
-                    this->printer.printErr(baseFuzzyRef.error());
-                    return -1;
-                }
-
-                auto baseRef = this->repository.clearReference(*baseFuzzyRef,
-                                                               {
-                                                                 .forceRemote = false,
-                                                                 .fallbackToRemote = false,
-                                                               });
-                if (!baseRef) {
-                    this->printer.printErr(baseRef.error());
-                    return -1;
-                }
-
-                auto layerDir = this->repository.getLayerDir(*baseRef);
-                if (!layerDir) {
-                    this->printer.printErr(LINGLONG_ERRV(layerDir));
-                    return -1;
-                }
-
-                baseLayerDir = *layerDir;
-            }
-        }
-    }
-    if (info->base) {
-        auto baseFuzzyRef = package::FuzzyReference::parse(QString::fromStdString(*info->base));
-        if (!baseFuzzyRef) {
-            this->printer.printErr(baseFuzzyRef.error());
-            return -1;
-        }
-
-        auto baseRef = this->repository.clearReference(*baseFuzzyRef,
-                                                       {
-                                                         .forceRemote = false,
-                                                         .fallbackToRemote = false,
-                                                       });
-        if (!baseRef) {
-            this->printer.printErr(LINGLONG_ERRV(baseRef));
-            return -1;
-        }
-
-        auto layerDir = this->repository.getLayerDir(*baseRef);
-        if (!layerDir) {
-            this->printer.printErr(LINGLONG_ERRV(layerDir));
-            return -1;
-        }
-
-        baseLayerDir = *layerDir;
     }
 
+    auto baseFuzzyRef = package::FuzzyReference::parse(QString::fromStdString(info->base));
+    if (!baseFuzzyRef) {
+        this->printer.printErr(baseFuzzyRef.error());
+        return -1;
+    }
+
+    auto baseRef = this->repository.clearReference(*baseFuzzyRef,
+                                                   {
+                                                     .forceRemote = false,
+                                                     .fallbackToRemote = false,
+                                                   });
+    if (!baseRef) {
+        this->printer.printErr(LINGLONG_ERRV(baseRef));
+        return -1;
+    }
+
+    auto baseLayerDir = this->repository.getLayerDir(*baseRef);
     if (!baseLayerDir) {
-        qCritical() << "linglong bug detected.";
-        Q_ASSERT(false);
+        this->printer.printErr(LINGLONG_ERRV(baseLayerDir));
         return -1;
     }
 

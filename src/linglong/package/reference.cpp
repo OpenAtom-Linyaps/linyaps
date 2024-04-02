@@ -60,13 +60,13 @@ Reference::fromPackageInfo(const api::types::v1::PackageInfo &info) noexcept
         return LINGLONG_ERR("version .tweak is required");
     }
 
-    auto architecture = package::Architecture::parse(QString::fromStdString(info.arch));
+    auto architecture = package::Architecture::parse(QString::fromStdString(info.arch[0]));
     if (!architecture) {
         return LINGLONG_ERR(architecture);
     }
 
     auto reference = package::Reference::create(QString::fromStdString(info.channel),
-                                                QString::fromStdString(info.appID),
+                                                QString::fromStdString(info.appid),
                                                 *version,
                                                 *architecture);
     if (!reference) {

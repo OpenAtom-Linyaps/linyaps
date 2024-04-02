@@ -335,8 +335,8 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     }
 
     auto info = api::types::v1::PackageInfo{
-        .appID = this->project.package.id,
-        .arch = QSysInfo::currentCpuArchitecture().toStdString(),
+        .appid = this->project.package.id,
+        .arch = { QSysInfo::currentCpuArchitecture().toStdString() },
         .base = base->toString().toStdString(),
         .channel = ref->channel.toStdString(),
         .description = this->project.package.description,

@@ -7,7 +7,6 @@
 #ifndef LINGLONG_UTILS_SERIALIZE_JSON_H
 #define LINGLONG_UTILS_SERIALIZE_JSON_H
 
-#include "linglong/api/types/v0/Generators.hpp"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/utils/error/error.h"
 #include "nlohmann/json.hpp"

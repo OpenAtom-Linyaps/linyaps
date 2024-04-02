@@ -204,23 +204,25 @@ $defs:
     type: object
     required:
       - channel
-      - appId
+      - appid
       - module
       - arch
       - version
       - kind
       - name
       - size
-    # - base # FIXME: Should be required.
+      - base
     properties:
       channel:
         type: string
-      appId:
+      appid:
         type: string
       module:
         type: string
       arch:
-        type: string
+        type: array
+        items:
+          type: string
       version:
         type: string
       kind:

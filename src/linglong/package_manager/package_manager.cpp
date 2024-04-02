@@ -263,84 +263,28 @@ void PackageManager::Install(const std::shared_ptr<InstallTask> &taskContext,
                 Q_ASSERT(false);
             }
         });
-
-        { // FIXME(black_desk):
-          // Legacy application and runtime layer record base reference in the "runtime" property of
-          // packageInfo of runtime layer. So we have to check runtime packageInfo here.
-          // Remove it later.
-            auto runtimeDir = this->repo.getLayerDir(*runtime, devel);
-            if (!runtimeDir) {
-                taskContext->updateStatus(InstallTask::Failed, LINGLONG_ERRV(runtimeDir).message());
-                Q_ASSERT(false);
-                return;
-            }
-
-            auto runtimeInfo = runtimeDir->info();
-            if (!runtimeInfo) {
-                taskContext->updateStatus(InstallTask::Failed,
-                                          LINGLONG_ERRV(runtimeInfo).message());
-                Q_ASSERT(false);
-                return;
-            }
-
-            if (runtimeInfo->runtime) {
-                qWarning() << "Legacy runtime layer founded" << runtime->toString();
-                qWarning() << "Getting base from \"runtime\" property of runtime"
-                           << runtime->toString();
-
-                auto fuzzyBase =
-                  package::FuzzyReference::parse(QString::fromStdString(*runtimeInfo->runtime));
-                if (!fuzzyBase) {
-                    taskContext->updateStatus(InstallTask::Failed,
-                                              LINGLONG_ERRV(fuzzyBase).message());
-                    return;
-                }
-
-                auto base = this->repo.clearReference(*fuzzyBase,
-                                                      {
-                                                        .forceRemote = true // NOLINT
-                                                      });
-                if (!base) {
-                    taskContext->updateStatus(InstallTask::Failed, LINGLONG_ERRV(base).message());
-                    return;
-                }
-
-                taskContext->updateStatus(InstallTask::installBase,
-                                          "Installing base " + base->toString());
-                this->repo.pull(taskContext, *base, devel);
-                if (taskContext->currentStatus() == InstallTask::Failed
-                    || taskContext->currentStatus() == InstallTask::Canceled) {
-                    return;
-                }
-            }
-        }
     }
 
-    // FIXME(black_desk):
-    // info->base should not be optional, move code in this if block later.
-    // if info->base doesn't have value, we should have pulled base layer above.
-    if (info->base) {
-        auto fuzzyBase = package::FuzzyReference::parse(QString::fromStdString(*info->base));
-        if (!fuzzyBase) {
-            taskContext->updateStatus(InstallTask::Failed, LINGLONG_ERRV(info).message());
-            return;
-        }
+    auto fuzzyBase = package::FuzzyReference::parse(QString::fromStdString(info->base));
+    if (!fuzzyBase) {
+        taskContext->updateStatus(InstallTask::Failed, LINGLONG_ERRV(info).message());
+        return;
+    }
 
-        auto base = this->repo.clearReference(*fuzzyBase,
-                                              {
-                                                .forceRemote = true // NOLINT
-                                              });
-        if (!base) {
-            taskContext->updateStatus(InstallTask::Failed, LINGLONG_ERRV(base).message());
-            return;
-        }
+    auto base = this->repo.clearReference(*fuzzyBase,
+                                          {
+                                            .forceRemote = true // NOLINT
+                                          });
+    if (!base) {
+        taskContext->updateStatus(InstallTask::Failed, LINGLONG_ERRV(base).message());
+        return;
+    }
 
-        taskContext->updateStatus(InstallTask::installBase, "Installing base " + base->toString());
-        this->repo.pull(taskContext, *base, devel);
-        if (taskContext->currentStatus() == InstallTask::Failed
-            || taskContext->currentStatus() == InstallTask::Canceled) {
-            return;
-        }
+    taskContext->updateStatus(InstallTask::installBase, "Installing base " + base->toString());
+    this->repo.pull(taskContext, *base, devel);
+    if (taskContext->currentStatus() == InstallTask::Failed
+        || taskContext->currentStatus() == InstallTask::Canceled) {
+        return;
     }
 
     bool shouldExport = true;
@@ -358,7 +302,7 @@ void PackageManager::Install(const std::shared_ptr<InstallTask> &taskContext,
         std::vector<package::Reference> refs;
 
         for (const auto &localInfo : *pkgInfos) {
-            if (QString::fromStdString(localInfo.appID) != ref.id) {
+            if (QString::fromStdString(localInfo.appid) != ref.id) {
                 continue;
             }
 

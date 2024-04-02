@@ -16,7 +16,7 @@ int main()
         content = nlohmann::json::parse(std::cin);
         ociVersion = content.at("ociVersion");
     } catch (std::exception &exp) {
-        std::cerr << exp.what();
+        std::cerr << exp.what() << std::endl;
         return -1;
     } catch (...) {
         std::cerr << "Unknown error occurred during parsing json." << std::endl;

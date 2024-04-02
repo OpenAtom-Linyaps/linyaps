@@ -14,15 +14,15 @@ int main()
         content = nlohmann::json::parse(std::cin);
         ociVersion = content.at("ociVersion");
     } catch (std::exception &exp) {
-        std::cerr << exp.what();
+        std::cerr << exp.what() << std::endl;
         return -1;
     } catch (...) {
-        std::cerr << "unknown error occurred during parsing json.";
+        std::cerr << "unknown error occurred during parsing json." << std::endl;
         return -1;
     }
 
     if (ociVersion != "1.0.1") {
-        std::cerr << "OCI version mismatched.";
+        std::cerr << "OCI version mismatched." << std::endl;
         return -1;
     }
 

@@ -14,6 +14,8 @@
 
 #include <fstream>
 
+#include <sys/stat.h>
+
 namespace linglong::runtime {
 
 Container::Container(const ocppi::runtime::config::types::Config &cfg,
@@ -47,6 +49,14 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
     });
 
     this->cfg.process = process;
+    if (process.user) {
+        qWarning() << "`user` field is ignored.";
+        Q_ASSERT(false);
+    }
+    this->cfg.process->user = ocppi::runtime::config::types::User{
+        .gid = getgid(),
+        .uid = getuid(),
+    };
 
     nlohmann::json json = this->cfg;
 

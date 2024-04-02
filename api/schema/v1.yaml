@@ -17,8 +17,7 @@
 # Please make sure every changes in this file is backward compatible.
 
 $schema: http://json-schema.org/draft-04/schema#
-description:
-  Types used as API of linglong
+description: Types used as API of linglong
   D-Bus service, configuration files and CLI output.
   The top level type is a place holder to make quicktype work.
 $defs:
@@ -40,7 +39,7 @@ $defs:
               type: object
               title: ApplicationConfigurationPermissionsBind
               required:
-                - source 
+                - source
                 - destination
               properties:
                 source:
@@ -79,7 +78,6 @@ $defs:
     required:
       - version
       - package
-      - sources
       - build
       - base
     properties:
@@ -114,7 +112,7 @@ $defs:
       base:
         type: string
       sources:
-        type: array 
+        type: array
         items:
           title: BuilderProjectSource
           type: object
@@ -227,8 +225,7 @@ $defs:
       name:
         type: string
       size:
-        description:
-          Uncompressed package size in bytes
+        description: Uncompressed package size in bytes
         type: integer
       runtime:
         type: string
@@ -249,24 +246,23 @@ $defs:
         description: Human readable result message.
         type: string
       code:
-        description:
-          We do not use DBus error. We return an error code instead.
+        description: We do not use DBus error. We return an error code instead.
           Non-zero code indicated errors occurs
           and message should be displayed to user.
         type: integer
   PackageManager1InstallLayerFDResult:
-    $ref: '#/$defs/CommonResult'
+    $ref: "#/$defs/CommonResult"
   PackageManager1InstallParameters:
     type: object
     required:
       - package
     properties:
       package:
-        $ref: '#/$defs/PackageManager1Package'
+        $ref: "#/$defs/PackageManager1Package"
   PackageManager1InstallResult:
-    title: PackageManager1ResultWithTaskID 
+    title: PackageManager1ResultWithTaskID
     allOf:
-      - $ref: '#/$defs/CommonResult'
+      - $ref: "#/$defs/CommonResult"
     properties:
       taskID:
         type: string
@@ -276,9 +272,9 @@ $defs:
       - package
     properties:
       package:
-        $ref: '#/$defs/PackageManager1Package'
+        $ref: "#/$defs/PackageManager1Package"
   PackageManager1UninstallResult:
-    $ref: '#/$defs/CommonResult'
+    $ref: "#/$defs/CommonResult"
   PackageManager1UpdateParameters:
     type: object
     required:
@@ -287,10 +283,10 @@ $defs:
       packages:
         type: array
         items:
-          $ref: '#/$defs/PackageManager1Package'
+          $ref: "#/$defs/PackageManager1Package"
   PackageManager1UpdateResult:
     title: PackageManager1UpdateResult
-    $ref: '#/$defs/PackageManager1InstallResult'
+    $ref: "#/$defs/PackageManager1InstallResult"
   PackageManager1ModifyRepoParameters:
     type: object
     required:
@@ -304,7 +300,7 @@ $defs:
         additionalProperties:
           type: string
   PackageManager1ModifyRepoResult:
-    $ref: '#/$defs/CommonResult'
+    $ref: "#/$defs/CommonResult"
   PackageManager1SearchParameters:
     type: object
     required:
@@ -315,16 +311,16 @@ $defs:
   PackageManager1SearchResult:
     type: object
     allOf:
-      - $ref: '#/$defs/CommonResult'
+      - $ref: "#/$defs/CommonResult"
     properties:
       packages:
         type: array
         items:
-          $ref: '#/$defs/PackageInfo'
+          $ref: "#/$defs/PackageInfo"
   PackageManager1GetRepoInfoResult:
     type: object
     allOf:
-      - $ref: '#/$defs/CommonResult'
+      - $ref: "#/$defs/CommonResult"
     required:
       - repoInfo
     properties:

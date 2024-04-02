@@ -38,7 +38,7 @@ std::string base;
 std::string build;
 BuilderProjectPackage package;
 std::optional<std::string> runtime;
-std::vector<BuilderProjectSource> sources;
+std::optional<std::vector<BuilderProjectSource>> sources;
 std::optional<std::string> strip;
 std::string version;
 };

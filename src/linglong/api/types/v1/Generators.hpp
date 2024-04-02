@@ -239,7 +239,7 @@ x.base = j.at("base").get<std::string>();
 x.build = j.at("build").get<std::string>();
 x.package = j.at("package").get<BuilderProjectPackage>();
 x.runtime = get_stack_optional<std::string>(j, "runtime");
-x.sources = j.at("sources").get<std::vector<BuilderProjectSource>>();
+x.sources = get_stack_optional<std::vector<BuilderProjectSource>>(j, "sources");
 x.strip = get_stack_optional<std::string>(j, "strip");
 x.version = j.at("version").get<std::string>();
 }
@@ -252,7 +252,9 @@ j["package"] = x.package;
 if (x.runtime) {
 j["runtime"] = x.runtime;
 }
+if (x.sources) {
 j["sources"] = x.sources;
+}
 if (x.strip) {
 j["strip"] = x.strip;
 }

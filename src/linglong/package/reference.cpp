@@ -50,11 +50,14 @@ utils::error::Result<Reference> Reference::parse(const QString &raw) noexcept
 utils::error::Result<Reference>
 Reference::fromPackageInfo(const api::types::v1::PackageInfo &info) noexcept
 {
-    LINGLONG_TRACE("parse reference from package info file");
+    LINGLONG_TRACE("parse reference from package info");
 
     auto version = package::Version::parse(QString::fromStdString(info.version));
     if (!version) {
         return LINGLONG_ERR(version);
+    }
+    if (!version->tweak) {
+        return LINGLONG_ERR("version .tweak is required");
     }
 
     auto architecture = package::Architecture::parse(QString::fromStdString(info.arch));

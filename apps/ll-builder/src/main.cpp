@@ -453,7 +453,7 @@ int main(int argc, char **argv)
               }
 
               auto ret = builder.build(exec);
-              if (ret) {
+              if (!ret) {
                   qCritical() << ret.error();
                   return ret.error().code();
               }

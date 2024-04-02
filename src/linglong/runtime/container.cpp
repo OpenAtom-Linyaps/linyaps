@@ -29,10 +29,10 @@ Container::Container(const ocppi::runtime::config::types::Config &cfg,
 utils::error::Result<void>
 Container::run(const ocppi::runtime::config::types::Process &process) noexcept
 {
-    LINGLONG_TRACE(QString("run container %1").arg(this->id.toString()));
+    LINGLONG_TRACE(QString("run container %1").arg(this->id));
 
     QDir runtimeDir = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
-    QDir bundle = runtimeDir.absoluteFilePath(QString("linglong/%1").arg(this->id.toString()));
+    QDir bundle = runtimeDir.absoluteFilePath(QString("linglong/%1").arg(this->id));
     Q_ASSERT(bundle.exists());
     if (!bundle.mkpath(".")) {
         return LINGLONG_ERR("make bundle directory");
@@ -60,7 +60,7 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
         ofs << json.dump();
     }
 
-    auto result = this->cli.run(ocppi::runtime::ContainerID(this->id.toString().toStdString()),
+    auto result = this->cli.run(ocppi::runtime::ContainerID(this->id.toStdString()),
                                 std::filesystem::path(bundle.absolutePath().toStdString()));
 
     if (!result) {

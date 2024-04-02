@@ -25,7 +25,7 @@ public:
 
 private:
     ocppi::runtime::config::types::Config cfg;
-    QUuid id;
+    QString id;
     ocppi::cli::CLI &cli;
 };
 

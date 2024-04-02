@@ -136,7 +136,7 @@ Version::Version(const QString &raw)
 
 bool Version::operator==(const Version &that) const noexcept
 {
-    if ((bool(this->tweak) xor bool(that.tweak)) == 0) {
+    if (this->tweak.has_value() != that.tweak.has_value()) {
         return false;
     }
 

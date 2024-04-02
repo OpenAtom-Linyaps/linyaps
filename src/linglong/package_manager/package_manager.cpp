@@ -314,6 +314,7 @@ void PackageManager::Install(const std::shared_ptr<InstallTask> &taskContext,
             }
 
             if (localRef->version > ref.version) {
+                qInfo() << localRef->toString() << "exists, we should not export" << ref.toString();
                 shouldExport = false;
                 return;
             }

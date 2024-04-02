@@ -1042,13 +1042,13 @@ utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref, boo
 {
     LINGLONG_TRACE("remove " + ref.toString());
 
-    auto ok = this->getLayerQDir(ref, devel).removeRecursively();
-    Q_ASSERT(ok);
-    qCritical() << "Failed to remove layer directory of" << ref.toString() << "devel:" << devel;
+    if (!this->getLayerQDir(ref, devel).removeRecursively()) {
+        qCritical() << "Failed to remove layer directory of" << ref.toString() << "devel:" << devel;
+        Q_ASSERT(false);
+    }
 
     auto refspec = ostreeSpecFromReference(ref, devel).toUtf8();
     const auto *data = refspec.constData();
-    qCritical() << "XXXXXXXXXXX" << data;
 
     auto result = removeOstreeRef(this->ostreeRepo.get(), data);
     if (!result) {
@@ -1206,27 +1206,21 @@ OSTreeRepo::listLocal() const noexcept
 
     auto pushBackPkgInfos = [&pkgInfos](QDir &dir) noexcept {
         QFile runtimePkgInfoFile = dir.absoluteFilePath("runtime/info.json");
-        if (runtimePkgInfoFile.isReadable()) {
+        if (runtimePkgInfoFile.exists()) {
             auto pkgInfo =
               utils::serialize::LoadJSONFile<api::types::v1::PackageInfo>(runtimePkgInfoFile);
-            if (!pkgInfo) {
-                qCritical() << "broken ostree based linglong repository detected";
-                Q_ASSERT(false);
+            if (pkgInfo) {
+                pkgInfos.emplace_back(std::move(*pkgInfo));
             }
-
-            pkgInfos.emplace_back(std::move(*pkgInfo));
         }
 
-        QFile devPkgInfo = dir.absoluteFilePath("develop/info.json");
-        if (runtimePkgInfoFile.isReadable()) {
+        QFile devPkgInfoFile = dir.absoluteFilePath("develop/info.json");
+        if (devPkgInfoFile.exists()) {
             auto pkgInfo =
-              utils::serialize::LoadJSONFile<api::types::v1::PackageInfo>(runtimePkgInfoFile);
+              utils::serialize::LoadJSONFile<api::types::v1::PackageInfo>(devPkgInfoFile);
             if (!pkgInfo) {
-                qCritical() << "broken ostree based linglong repository detected";
-                Q_ASSERT(false);
+                pkgInfos.emplace_back(std::move(*pkgInfo));
             }
-
-            pkgInfos.emplace_back(std::move(*pkgInfo));
         }
     };
 

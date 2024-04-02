@@ -187,13 +187,13 @@ auto getOCIConfig(const ContainerOptions &opts) noexcept
 
     QString containerConfigFilePath = qgetenv("LINGLONG_CONTAINER_CONFIG");
     if (containerConfigFilePath.isEmpty()) {
-        containerConfigFilePath = LINGLONG_INSTALL_PREFIX "/lib/linglong/config.json";
+        containerConfigFilePath = LINGLONG_INSTALL_PREFIX "/lib/linglong/container/config.json";
     }
 
     auto config = utils::serialize::LoadJSONFile<ocppi::runtime::config::types::Config>(
       containerConfigFilePath);
     if (!config) {
-        Q_ASSUME(false);
+        Q_ASSERT(false);
         return LINGLONG_ERR(config);
     }
 
@@ -209,10 +209,10 @@ auto getOCIConfig(const ContainerOptions &opts) noexcept
     }
     config->annotations = std::move(annotations);
 
-    QDir configDotDDir = QFileInfo(containerConfigFilePath).dir().filePath("../config.d");
+    QDir configDotDDir = QFileInfo(containerConfigFilePath).dir().filePath("config.d");
     Q_ASSERT(configDotDDir.exists());
 
-    applyPatches(*config, configDotDDir.entryInfoList());
+    applyPatches(*config, configDotDDir.entryInfoList(QDir::Files));
 
     auto appPatches = getPatchesForApplication(opts.appID);
 

@@ -11,6 +11,7 @@
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
+#include "linglong/package_manager/task.h"
 #include "linglong/repo/config.h"
 #include "linglong/utils/command/env.h"
 #include "linglong/utils/error/error.h"
@@ -243,8 +244,10 @@ void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
 
 QString ostreeSpecFromReference(const package::Reference &ref, bool devel = false) noexcept
 {
+
+    // TODO(wurongjie) 在推送develop版的base和runtime后,应该将devel改为develop
     if (devel) {
-        return QString("%1/%2/%3/%4/develop")
+        return QString("%1/%2/%3/%4/devel")
           .arg(ref.channel, ref.id, ref.version.toString(), ref.arch.toString());
     }
 
@@ -369,7 +372,7 @@ utils::error::Result<void> handleRepositoryUpdate(OstreeRepo *repo,
 
     if (ostree_repo_checkout_at(repo, nullptr, root, path.toUtf8().constData(), commit, NULL, &gErr)
         == FALSE) {
-        return LINGLONG_ERR("ostree_repo_checkout_at", gErr);
+        return LINGLONG_ERR(QString("ostree_repo_checkout_at %1").arg(path), gErr);
     }
 
     return LINGLONG_OK;
@@ -670,8 +673,14 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
     : cfg(cfg)
     , apiClient(client)
 {
+    if (!path.exists()) {
+        path.mkpath(".");
+    }
     if (!QFileInfo(path.absolutePath()).isReadable()) {
-        qFatal("read linglong repository: permission denied");
+        auto msg = QString("read linglong repository(%1): permission denied ")
+                     .arg(path.path())
+                     .toStdString();
+        qFatal("%s", msg.c_str());
     }
 
     g_autoptr(GError) gErr = nullptr;
@@ -811,6 +820,7 @@ utils::error::Result<void> OSTreeRepo::importLayerDir(const package::LayerDir &d
     });
 
     if (isDevel) {
+        transaction.commit();
         return LINGLONG_OK;
     }
 
@@ -1168,6 +1178,7 @@ void OSTreeRepo::pull(std::shared_ptr<service::InstallTask> taskContext,
     }
 
     transaction.commit();
+    taskContext->updateStatus(service::InstallTask::Success);
 }
 
 utils::error::Result<package::Reference> OSTreeRepo::clearReference(
@@ -1445,7 +1456,7 @@ auto OSTreeRepo::getLayerDir(const package::Reference &ref, bool devel) const no
     LINGLONG_TRACE("get dir of " + ref.toString());
     auto dir = this->getLayerQDir(ref, devel);
     if (!dir.exists()) {
-        return LINGLONG_ERR("not exist.");
+        return LINGLONG_ERR(dir.path() + " not exist.");
     }
 
     return dir.absolutePath();

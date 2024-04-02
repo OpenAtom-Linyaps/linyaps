@@ -8,7 +8,7 @@
     "configurePresets": [
         {
             "name": "release",
-            "displayName": "Default configuration",
+            "displayName": "Release configuration",
             "description": "Configure linglong for installing from source.",
             "binaryDir": "${sourceDir}/build-release",
             "cacheVariables": {
@@ -42,7 +42,7 @@
     "buildPresets": [
         {
             "name": "release",
-            "displayName": "Default build",
+            "displayName": "Release build",
             "description": "Build linglong for installing from source.",
             "configurePreset": "release"
         },
@@ -50,7 +50,8 @@
             "name": "debug",
             "displayName": "Debug build",
             "description": "Build linglong for development and debugging.",
-            "configurePreset": "debug"
+            "configurePreset": "debug",
+            "jobs": 8
         },
         {
             "name": "clang-tidy",
@@ -62,7 +63,7 @@
     "testPresets": [
         {
             "name": "release",
-            "displayName": "Default test",
+            "displayName": "Release test",
             "description": "Test linglong for installing from source.",
             "configurePreset": "release",
             "execution": {
@@ -85,7 +86,7 @@
     "workflowPresets": [
         {
             "name": "release",
-            "displayName": "Default workflow",
+            "displayName": "Release workflow",
             "description": "Configure, build then test for installing linglong from source.",
             "steps": [
                 {

@@ -6,12 +6,12 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 <RCC>
   <qresource prefix="/">
     <!-- template -->
-    <file alias="config.yaml">../../../misc/linglong/builder/config.yaml</file>
     <file alias="example.yaml">../../../misc/linglong/builder/templates/example.yaml</file>
     <file alias="appimage-url.yaml">../../../misc/linglong/builder/templates/appimage-url.yaml</file>
     <file alias="appimage-local.yaml">../../../misc/linglong/builder/templates/appimage-local.yaml</file>
     <!-- scripts -->
-    <file alias="scripts/fetch-git-repo">../../../misc/scripts/fetch-git-repo</file>
-    <file alias="scripts/fetch-dsc-repo">../../../misc/scripts/fetch-dsc-repo</file>
+    <file alias="scripts/fetch-git-repo">../../../misc/libexec/linglong/fetch-git-repo</file>
+    <file alias="scripts/fetch-dsc-repo">../../../misc/libexec/linglong/fetch-dsc-repo</file>
+    <file alias="container/config.json">../../../misc/lib/linglong/container/config.json</file>
   </qresource>
 </RCC>

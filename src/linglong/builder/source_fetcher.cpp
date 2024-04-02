@@ -180,7 +180,9 @@ auto fetchGitRepo(const api::types::v1::BuilderProjectSource &source, QDir desti
         // 便于在执行失败时进行调试
         dir->setAutoRemove(false);
         scriptFile = dir->filePath("fetch-git-repo");
-        QFile::copy(":/scripts/fetch-git-repo", scriptFile);
+        if (!QFile::copy(":/scripts/fetch-git-repo", scriptFile)) {
+            return LINGLONG_ERR("copy fetch-git-repo field");
+        }
     }
 
     auto output = utils::command::Exec(
@@ -189,7 +191,7 @@ auto fetchGitRepo(const api::types::v1::BuilderProjectSource &source, QDir desti
                     << destination.absoluteFilePath(QUrl(source.url->c_str()).fileName())
                     << QString::fromStdString(*source.url)
                     << QString::fromStdString(source.commit.value_or(""))
-                    << QString::fromStdString(source.version.value_or("")));
+                    << QString::fromStdString(source.version.value_or(source.commit.value_or(""))));
     if (!output) {
         return LINGLONG_ERR(output);
     }

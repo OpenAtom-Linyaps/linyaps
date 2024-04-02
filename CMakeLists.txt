@@ -257,6 +257,8 @@ pfl_add_library(
   yaml-cpp::yaml-cpp
   ytj::ytj)
 
+target_sources(linglong__linglong PRIVATE src/linglong/builder/builder_releases.qrc)
+
 add_subdirectory(tools/qdbusxml2cpp)
 
 function(

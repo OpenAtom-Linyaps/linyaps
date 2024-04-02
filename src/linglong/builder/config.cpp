@@ -8,6 +8,7 @@
 
 #include "linglong/api/types/v1/BuilderConfig.hpp"
 #include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/utils/error/error.h"
 #include "linglong/utils/serialize/yaml.h"
 
 #include <fstream>
@@ -17,15 +18,19 @@ namespace linglong::builder {
 
 auto loadConfig(const QString &file) noexcept -> utils::error::Result<api::types::v1::BuilderConfig>
 {
-    LINGLONG_TRACE(QString("load config from %1").arg(file));
+    LINGLONG_TRACE(QString("load build config from %1").arg(file));
 
     try {
-        auto ifs = std::ifstream(file.toLocal8Bit());
-        if (!ifs.is_open()) {
-            return LINGLONG_ERR("open failed");
+        QFile f(file);
+        qDebug() << "read build config file" << file;
+        if (!f.open(QIODevice::ReadOnly)) {
+            return LINGLONG_ERR("read build config file", f);
         }
-
-        auto config = utils::serialize::LoadYAML<api::types::v1::BuilderConfig>(ifs);
+        auto data = f.readAll().toStdString();
+        auto config = utils::serialize::LoadYAML<api::types::v1::BuilderConfig>(data);
+        if (!config) {
+            return LINGLONG_ERR("parse build config", config);
+        }
         if (config->version != 1) {
             return LINGLONG_ERR(
               QString("wrong configuration file version %1").arg(config->version));
@@ -40,16 +45,16 @@ auto loadConfig(const QString &file) noexcept -> utils::error::Result<api::types
 auto loadConfig(const QStringList &files) noexcept
   -> utils::error::Result<api::types::v1::BuilderConfig>
 {
-    LINGLONG_TRACE(QString("load config from %1").arg(files.join(" ")));
+    LINGLONG_TRACE(QString("load build config from %1").arg(files.join(" ")));
 
     for (const auto &file : files) {
         auto config = loadConfig(file);
         if (!config.has_value()) {
-            qDebug() << "Failed to load config from" << file << ":" << config.error();
+            qDebug() << "Failed to load build config from" << file << ":" << config.error();
             continue;
         }
 
-        qDebug() << "Load config from" << file;
+        qDebug() << "Load build config from" << file;
         return config;
     }
 

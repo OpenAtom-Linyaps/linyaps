@@ -43,13 +43,13 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
     if (!bundle.mkpath(".")) {
         return LINGLONG_ERR("make bundle directory");
     }
-
     auto _ = utils::finally::finally([&]() {
-        if (bundle.removeRecursively()) {
-            return;
+        if (qgetenv("LINGLONG_DEBUG").isEmpty()) {
+            if (bundle.removeRecursively()) {
+                return;
+            }
+            qCritical() << "failed to remove" << runtimeDir.absolutePath();
         }
-
-        qCritical() << "failed to remove" << runtimeDir.absolutePath();
     });
 
     this->cfg.process = process;
@@ -133,12 +133,14 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
         }
 
         ofs << json.dump();
+        ofs.close();
     }
+    qDebug() << "run container in " << bundle.path();
     auto result = this->cli.run(ocppi::runtime::ContainerID(this->id.toStdString()),
                                 std::filesystem::path(bundle.absolutePath().toStdString()));
 
     if (!result) {
-        return LINGLONG_ERR(result);
+        return LINGLONG_ERR("cli run", result);
     }
 
     return LINGLONG_OK;

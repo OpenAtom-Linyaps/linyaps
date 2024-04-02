@@ -10,7 +10,7 @@ url=$2
 commit=$3
 version=$4
 
-mkdir "$workdir" || true
+mkdir -p "$workdir" || true
 cd "$workdir"
 
 # init repo

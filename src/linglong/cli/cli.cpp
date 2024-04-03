@@ -245,7 +245,17 @@ int Cli::run(std::map<std::string, docopt::value> &args)
     if (!envList.isEmpty()) {
         p.env = p.env.value_or(std::vector<std::string>{});
     }
+
+    const auto &envPathPre = QStringLiteral("PATH=");
+
     for (const auto &env : envList) {
+        if (env.startsWith(envPathPre)) {
+            const auto path = envPathPre + QString("/opt/apps/%1/files/bin:").arg(ref->id)
+              + env.mid(env.indexOf("=") + 1);
+            p.env->push_back(path.toStdString());
+            continue;
+        }
+
         p.env->push_back(env.toStdString());
     }
 

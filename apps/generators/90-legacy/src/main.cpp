@@ -57,6 +57,61 @@ int main()
         });
     };
 
+    {
+        // FIXME: com.360.browser-stable
+        // 需要一个所有用户都有可读可写权限的目录(/apps-data/private/com.360.browser-stable)
+        nlohmann::json annotations;
+        std::string appID;
+        try {
+            annotations = content.at("annotations");
+            appID = annotations.at("org.deepin.linglong.appID");
+        } catch (std::exception &exp) {
+            std::cerr << exp.what() << std::endl;
+            return -1;
+        }
+
+        if ("com.360.browser-stable" == appID) {
+            auto *home = ::getenv("HOME");
+            if (home == nullptr) {
+                std::cerr << "Couldn't get HOME." << std::endl;
+                return -1;
+            }
+
+            auto homeDir = std::filesystem::path(home);
+            if (!std::filesystem::exists(homeDir)) {
+                std::cerr << "Home " << homeDir << "doesn't exists." << std::endl;
+                return -1;
+            }
+
+            std::error_code ec;
+            std::string app360DataSourcePath = homeDir / ".linglong" / appID / "share" / "appdata";
+
+            auto appDataDir = std::filesystem::path(app360DataSourcePath);
+            std::filesystem::create_directories(appDataDir, ec);
+            if (ec) {
+                std::cerr << "Check appDataDir failed:" << ec.message() << std::endl;
+                return -1;
+            }
+
+            std::string app360DataPath = "/apps-data";
+            std::string app360DataDesPath = app360DataPath + "/private/com.360.browser-stable";
+
+            mounts.push_back({
+              { "destination", app360DataPath },
+              { "options", nlohmann::json::array({ "nodev", "nosuid", "mode=777" }) },
+              { "source", "tmpfs" },
+              { "type", "tmpfs" },
+            });
+
+            mounts.push_back({
+              { "destination", app360DataDesPath },
+              { "options", nlohmann::json::array({ "rw", "rbind" }) },
+              { "source", app360DataSourcePath },
+              { "type", "bind" },
+            });
+        }
+    }
+
     std::cout << content.dump() << std::endl;
     return 0;
 }

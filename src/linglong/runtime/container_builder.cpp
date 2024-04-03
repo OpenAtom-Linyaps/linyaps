@@ -125,6 +125,7 @@ void applyExecutablePatch(ocppi::runtime::config::types::Config &cfg,
     generatorProcess.setProgram(info.absoluteFilePath());
     generatorProcess.start();
     generatorProcess.write(QByteArray::fromStdString(nlohmann::json(cfg).dump()));
+    generatorProcess.closeWriteChannel();
 
     constexpr auto timeout = 200;
     if (!generatorProcess.waitForFinished(timeout)) {

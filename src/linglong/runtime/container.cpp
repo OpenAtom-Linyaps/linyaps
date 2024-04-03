@@ -39,7 +39,7 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
 
     QDir runtimeDir = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
     QDir bundle = runtimeDir.absoluteFilePath(QString("linglong/%1").arg(this->id));
-    Q_ASSERT(bundle.exists());
+    Q_ASSERT(!bundle.exists());
     if (!bundle.mkpath(".")) {
         return LINGLONG_ERR("make bundle directory");
     }

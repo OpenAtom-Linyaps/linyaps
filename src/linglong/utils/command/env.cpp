@@ -23,6 +23,7 @@ const QStringList envList = {
     "XDG_CURRENT_DESKTOP",
     "XIM",
     "XDG_SESSION_TYPE",
+    "XDG_RUNTIME_DIR",
     "CLUTTER_IM_MODULE",
     "QT4_IM_MODULE",
     "GTK_IM_MODULE",

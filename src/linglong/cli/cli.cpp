@@ -252,10 +252,17 @@ int Cli::run(std::map<std::string, docopt::value> &args)
     ocppi::runtime::config::types::Process p;
 
     auto command = args["COMMAND"].asStringList();
-    if (!command.empty()) {
-        p.args = p.args.value_or(std::vector<std::string>{});
-        filePathMapping(args, command, *p.args);
+    if (command.empty()) {
+        command = info->command;
     }
+
+    if (command.empty()) {
+        qWarning() << "invalid command found in package" << QString::fromStdString(info->appid);
+        command = { "bash" };
+    }
+
+    p.args = std::vector<std::string>{};
+    filePathMapping(args, command, *p.args);
 
     QStringList envList = utils::command::getUserEnv(utils::command::envList);
     if (!envList.isEmpty()) {

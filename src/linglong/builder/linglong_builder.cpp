@@ -337,11 +337,16 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     // Let base updated at runtime.
     base->version.tweak = std::nullopt;
 
+    if (project.command.empty()) {
+        return LINGLONG_ERR("command field is required, please specify!");
+    }
+
     auto info = api::types::v1::PackageInfo{
         .appid = this->project.package.id,
         .arch = { QSysInfo::currentCpuArchitecture().toStdString() },
         .base = base->toString().toStdString(),
         .channel = ref->channel.toStdString(),
+        .command = project.command,
         .description = this->project.package.description,
         .kind = this->project.package.kind,
         .packageInfoModule = "runtime",

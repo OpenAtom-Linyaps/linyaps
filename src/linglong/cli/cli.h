@@ -49,7 +49,7 @@ public:
 private:
     Printer &printer;
     ocppi::cli::CLI &ociCLI;
-    runtime::ContainerBuilder &containerBuidler;
+    runtime::ContainerBuilder &containerBuilder;
     repo::OSTreeRepo &repository;
     api::dbus::v1::PackageManager &pkgMan;
     QString taskID;

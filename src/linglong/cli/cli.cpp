@@ -127,7 +127,7 @@ Cli::Cli(Printer &printer,
     : QObject(parent)
     , printer(printer)
     , ociCLI(ociCLI)
-    , containerBuidler(containerBuilder)
+    , containerBuilder(containerBuilder)
     , repository(repo)
     , pkgMan(pkgMan)
 {
@@ -219,14 +219,30 @@ int Cli::run(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    auto container = this->containerBuidler.create({
+    std::vector<ocppi::runtime::config::types::Mount> applicationMounts{};
+    if (info->permissions && info->permissions->binds) {
+        const auto &binds = info->permissions->binds;
+        std::for_each(binds->cbegin(),
+                      binds->cend(),
+                      [&applicationMounts](
+                        const api::types::v1::ApplicationConfigurationPermissionsBind &bind) {
+                          applicationMounts.push_back({
+                            .destination = bind.destination,
+                            .options = { { "rbind" } },
+                            .source = bind.source,
+                            .type = "bind",
+                          });
+                      });
+    }
+
+    auto container = this->containerBuilder.create({
       .appID = ref->id,
       .containerID = (ref->toString() + "-" + QUuid::createUuid().toString()).toUtf8().toBase64(),
       .runtimeDir = runtimeLayerDir,
       .baseDir = *baseLayerDir,
       .appDir = *layerDir,
       .patches = {},
-      .mounts = {},
+      .mounts = std::move(applicationMounts),
     });
     if (!container) {
         this->printer.printErr(container.error());

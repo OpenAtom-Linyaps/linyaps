@@ -30,7 +30,7 @@ std::string appid;
 std::vector<std::string> arch;
 std::string base;
 std::string channel;
-std::vector<std::string> command;
+std::optional<std::vector<std::string>> command;
 std::optional<std::string> description;
 std::string kind;
 std::string packageInfoModule;

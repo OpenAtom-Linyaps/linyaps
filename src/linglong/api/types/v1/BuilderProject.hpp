@@ -36,7 +36,7 @@ using nlohmann::json;
 struct BuilderProject {
 std::string base;
 std::string build;
-std::vector<std::string> command;
+std::optional<std::vector<std::string>> command;
 BuilderProjectPackage package;
 std::optional<std::string> runtime;
 std::optional<std::vector<BuilderProjectSource>> sources;

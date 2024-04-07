@@ -237,7 +237,7 @@ j["version"] = x.version;
 inline void from_json(const json & j, BuilderProject& x) {
 x.base = j.at("base").get<std::string>();
 x.build = j.at("build").get<std::string>();
-x.command = j.at("command").get<std::vector<std::string>>();
+x.command = get_stack_optional<std::vector<std::string>>(j, "command");
 x.package = j.at("package").get<BuilderProjectPackage>();
 x.runtime = get_stack_optional<std::string>(j, "runtime");
 x.sources = get_stack_optional<std::vector<BuilderProjectSource>>(j, "sources");
@@ -249,7 +249,9 @@ inline void to_json(json & j, const BuilderProject & x) {
 j = json::object();
 j["base"] = x.base;
 j["build"] = x.build;
+if (x.command) {
 j["command"] = x.command;
+}
 j["package"] = x.package;
 if (x.runtime) {
 j["runtime"] = x.runtime;
@@ -314,7 +316,7 @@ x.appid = j.at("appid").get<std::string>();
 x.arch = j.at("arch").get<std::vector<std::string>>();
 x.base = j.at("base").get<std::string>();
 x.channel = j.at("channel").get<std::string>();
-x.command = j.at("command").get<std::vector<std::string>>();
+x.command = get_stack_optional<std::vector<std::string>>(j, "command");
 x.description = get_stack_optional<std::string>(j, "description");
 x.kind = j.at("kind").get<std::string>();
 x.packageInfoModule = j.at("module").get<std::string>();
@@ -331,7 +333,9 @@ j["appid"] = x.appid;
 j["arch"] = x.arch;
 j["base"] = x.base;
 j["channel"] = x.channel;
+if (x.command) {
 j["command"] = x.command;
+}
 if (x.description) {
 j["description"] = x.description;
 }

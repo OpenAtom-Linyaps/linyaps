@@ -253,7 +253,7 @@ int Cli::run(std::map<std::string, docopt::value> &args)
 
     auto command = args["COMMAND"].asStringList();
     if (command.empty()) {
-        command = info->command;
+        command = info->command.value_or(std::vector<std::string>{});
     }
 
     if (command.empty()) {

@@ -83,7 +83,6 @@ $defs:
       - package
       - build
       - base
-      - command
     properties:
       version:
         type: string
@@ -217,7 +216,6 @@ $defs:
       - name
       - size
       - base
-      - command
     properties:
       channel:
         type: string

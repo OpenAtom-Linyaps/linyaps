@@ -1206,7 +1206,7 @@ OSTreeRepo::listLocal() const noexcept
     std::vector<api::types::v1::PackageInfo> pkgInfos;
 
     QDir layersDir = this->repoDir.absoluteFilePath("layers");
-    Q_ASSERT(!layersDir.exists());
+    Q_ASSERT(layersDir.exists());
 
     auto pushBackPkgInfos = [&pkgInfos](QDir &dir) noexcept {
         QFile runtimePkgInfoFile = dir.absoluteFilePath("runtime/info.json");

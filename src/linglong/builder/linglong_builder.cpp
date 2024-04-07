@@ -337,7 +337,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     // Let base updated at runtime.
     base->version.tweak = std::nullopt;
 
-    if (project.command.empty()) {
+    if (project.command.value_or(std::vector<std::string>{}).empty()) {
         return LINGLONG_ERR("command field is required, please specify!");
     }
 

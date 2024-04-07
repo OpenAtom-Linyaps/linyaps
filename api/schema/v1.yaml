@@ -83,6 +83,7 @@ $defs:
       - package
       - build
       - base
+      - command
     properties:
       version:
         type: string
@@ -135,6 +136,10 @@ $defs:
       build:
         title: BuilderProjectBuildScript
         type: string
+      command:
+        type: array
+        items:
+          type: string
       strip:
         title: BuilderProjectStripScript
         type: string
@@ -212,6 +217,7 @@ $defs:
       - name
       - size
       - base
+      - command
     properties:
       channel:
         type: string
@@ -236,6 +242,10 @@ $defs:
         type: string
       base:
         type: string
+      command:
+        type: array
+        items:
+          type: string
       permissions:
         $ref: '#/$defs/ApplicationConfigurationPermissions'
       description:

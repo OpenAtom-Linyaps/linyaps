@@ -2,5 +2,6 @@ usr/bin/ll-builder
 usr/libexec/linglong/fetch-dsc-repo
 usr/libexec/linglong/fetch-git-repo
 usr/libexec/linglong/app-conf-generator
+usr/libexec/linglong/builder/helper/*
 usr/share/bash-completion/completions/ll-builder
 usr/share/linglong/builder/templates/*.yaml

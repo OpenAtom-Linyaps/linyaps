@@ -17,6 +17,9 @@ configure_files(
   libexec/linglong/fetch-dsc-repo
   libexec/linglong/fetch-git-repo
   libexec/linglong/upgrade-all
+  libexec/linglong/builder/helper/config-check.sh
+  libexec/linglong/builder/helper/ldd-check.sh
+  libexec/linglong/builder/helper/main-check.sh
   lib/linglong/container/config.d/00-id-mapping
   lib/linglong/container/config.d/05-initialize
   lib/linglong/container/config.d/10-basics.json

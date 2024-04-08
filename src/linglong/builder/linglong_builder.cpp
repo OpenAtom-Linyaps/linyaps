@@ -16,6 +16,7 @@
 #include "linglong/utils/command/ocppi-helper.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/xdg/desktop_entry.h"
+#include "linglong/utils/global/initialize.h"
 #include "nlohmann/json_fwd.hpp"
 #include "ocppi/cli/CLI.hpp"
 #include "ocppi/runtime/ContainerID.hpp"
@@ -454,6 +455,26 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         return LINGLONG_ERR("make path " + runtimeOutput.absolutePath() + ": failed.");
     }
     qDebug() << "create runtime output success";
+
+    // generate application's configure file
+    auto scriptFile = QString(LINGLONG_LIBEXEC_DIR) + "/app-conf-generator";
+    auto useInstalledFile = utils::global::linglongInstalled() && QFile(scriptFile).exists();
+    QScopedPointer<QTemporaryDir> dir;
+    if (!useInstalledFile) {
+        qWarning() << "Dumping app-conf-generator from qrc...";
+        dir.reset(new QTemporaryDir);
+        // 便于在执行失败时进行调试
+        dir->setAutoRemove(false);
+        scriptFile = dir->filePath("app-conf-generator");
+        QFile::copy(":/scripts/app-conf-generator", scriptFile);
+    }
+    auto output = utils::command::Exec(
+      "bash",
+      QStringList() << scriptFile << QString::fromStdString(this->project.package.id)
+                    << developOutput.absolutePath());
+    if (!output) {
+        return LINGLONG_ERR(output);
+    }
 
     auto ret =
       splitDevelop(developOutput.absolutePath(), runtimeOutput.absolutePath(), installPrefix);

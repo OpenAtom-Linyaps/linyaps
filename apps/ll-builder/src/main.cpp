@@ -105,6 +105,10 @@ void initDefaultBuildConfig()
     QDir cacheLocation = QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation);
     // ~/.local/share
     QDir configLocations = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    if (!QDir().mkpath(configLocations.filePath("linglong/builder"))) {
+        qWarning() << "init BuildConfig directory failed."
+                   << configLocations.filePath("linglong/builder");
+    }
     QString configFilePath = configLocations.filePath("linglong/builder/config.yaml");
     if (QFile::exists(configFilePath)) {
         return;

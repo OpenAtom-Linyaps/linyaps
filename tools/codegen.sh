@@ -106,6 +106,7 @@ generate() {
         } >>"$filename"
 }
 
+# yq should use which written in go instead of python. https://github.com/mikefarah/yq
 YQ=${YQ:=$(command -v yq)}
 
 "$YQ" e '.properties = ( [

@@ -110,6 +110,8 @@ $defs:
             type: string
           channel:
             type: string
+      permissions:
+        $ref: '#/$defs/ApplicationConfigurationPermissions'
       runtime:
         type: string
       base:

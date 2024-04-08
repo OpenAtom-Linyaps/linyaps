@@ -522,7 +522,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         .kind = this->project.package.kind,
         .packageInfoModule = "runtime",
         .name = this->project.package.name,
-        .permissions = {},
+        .permissions = this->project.permissions,
         .runtime = {},
         .size = 0,
         .version = this->project.package.version,

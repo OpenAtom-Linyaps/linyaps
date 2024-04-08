@@ -18,6 +18,7 @@
 #include "linglong/api/types/v1/helper.hpp"
 
 #include "linglong/api/types/v1/BuilderProjectPackage.hpp"
+#include "linglong/api/types/v1/ApplicationConfigurationPermissions.hpp"
 #include "linglong/api/types/v1/BuilderProjectSource.hpp"
 
 namespace linglong {
@@ -38,6 +39,7 @@ std::string base;
 std::string build;
 std::optional<std::vector<std::string>> command;
 BuilderProjectPackage package;
+std::optional<ApplicationConfigurationPermissions> permissions;
 std::optional<std::string> runtime;
 std::optional<std::vector<BuilderProjectSource>> sources;
 std::optional<std::string> strip;

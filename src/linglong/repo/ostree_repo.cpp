@@ -710,8 +710,7 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
 
     auto result = createOstreeRepo(this->ostreeRepoDir().absolutePath(),
                                    QString::fromStdString(this->cfg.defaultRepo),
-                                   QString::fromStdString(this->cfg.repos[this->cfg.defaultRepo]
-                                                          + "/repos/" + this->cfg.defaultRepo));
+                                   QString::fromStdString(this->cfg.repos[this->cfg.defaultRepo]));
     if (!result) {
         qCritical() << LINGLONG_ERRV(result);
         qFatal("abort");

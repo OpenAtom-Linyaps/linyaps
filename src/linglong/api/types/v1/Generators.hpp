@@ -213,6 +213,7 @@ inline void from_json(const json & j, BuilderProjectSource& x) {
 x.commit = get_stack_optional<std::string>(j, "commit");
 x.digest = get_stack_optional<std::string>(j, "digest");
 x.kind = j.at("kind").get<std::string>();
+x.name = get_stack_optional<std::string>(j, "name");
 x.url = get_stack_optional<std::string>(j, "url");
 x.version = get_stack_optional<std::string>(j, "version");
 }
@@ -226,6 +227,9 @@ if (x.digest) {
 j["digest"] = x.digest;
 }
 j["kind"] = x.kind;
+if (x.name) {
+j["name"] = x.name;
+}
 if (x.url) {
 j["url"] = x.url;
 }

@@ -247,7 +247,7 @@ QString ostreeSpecFromReference(const package::Reference &ref, bool devel = fals
 
     // TODO(wurongjie) 在推送develop版的base和runtime后,应该将devel改为develop
     if (devel) {
-        return QString("%1/%2/%3/%4/devel")
+        return QString("%1/%2/%3/%4/develop")
           .arg(ref.channel, ref.id, ref.version.toString(), ref.arch.toString());
     }
 
@@ -644,7 +644,7 @@ utils::error::Result<package::Reference> clearReferenceRemote(const package::Fuz
     loop.exec();
 
     if (!ref) {
-        return LINGLONG_ERR("not found");
+        return LINGLONG_ERR("not found", ref);
     }
 
     return *ref;
@@ -888,13 +888,13 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
         return LINGLONG_ERR(token);
     }
 
-    auto taskID = [&ref, this, &token]() -> utils::error::Result<QString> {
+    auto taskID = [&ref, &devel, this, &token]() -> utils::error::Result<QString> {
         LINGLONG_TRACE("new upload task request");
 
         utils::error::Result<QString> result;
 
         api::client::Schema_NewUploadTaskReq uploadReq;
-        uploadReq.setRef(ref.toString());
+        uploadReq.setRef(ostreeSpecFromReference(ref, devel));
         uploadReq.setRepoName(QString::fromStdString(this->cfg.defaultRepo));
 
         QEventLoop loop;
@@ -939,10 +939,12 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
 
     const QString tarFileName = QString("%1.tgz").arg(ref.id);
     const QString tarFilePath = QDir::cleanPath(tmpDir.filePath(tarFileName));
-
-    auto tarStdout = utils::command::Exec(
-      "tar",
-      QStringList() << "-zcf" << tarFilePath << this->getLayerQDir(ref, devel).absolutePath());
+    QStringList args = { "-zcf",
+                         tarFilePath,
+                         "-C",
+                         this->getLayerQDir(ref, devel).absolutePath(),
+                         "." };
+    auto tarStdout = utils::command::Exec("tar", args);
     if (!tarStdout) {
         return LINGLONG_ERR(tarStdout);
     }
@@ -987,7 +989,7 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
         return LINGLONG_ERR(uploadTaskResult);
     }
 
-    auto uploadResult = [&taskID, &token, this]() -> utils::error::Result<void> {
+    auto uploadResult = [&taskID, &token, &ref, &devel, this]() -> utils::error::Result<void> {
         LINGLONG_TRACE("get upload status");
 
         utils::error::Result<bool> isFinished;
@@ -1005,6 +1007,8 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
                       isFinished = LINGLONG_ERR(resp.getMsg(), resp.getCode());
                       return;
                   }
+                  qDebug() << "pushing" << ref.toString() << (devel ? "develop" : "runtime")
+                           << " status: " << resp.getData().getStatus();
                   if (resp.getData().getStatus() == "complete") {
                       isFinished = true;
                       return;

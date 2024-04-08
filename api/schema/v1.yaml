@@ -134,6 +134,8 @@ $defs:
               type: string
             version:
               type: string
+            name:
+              type: string
       build:
         title: BuilderProjectBuildScript
         type: string

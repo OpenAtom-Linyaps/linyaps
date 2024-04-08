@@ -239,6 +239,7 @@ x.base = j.at("base").get<std::string>();
 x.build = j.at("build").get<std::string>();
 x.command = get_stack_optional<std::vector<std::string>>(j, "command");
 x.package = j.at("package").get<BuilderProjectPackage>();
+x.permissions = get_stack_optional<ApplicationConfigurationPermissions>(j, "permissions");
 x.runtime = get_stack_optional<std::string>(j, "runtime");
 x.sources = get_stack_optional<std::vector<BuilderProjectSource>>(j, "sources");
 x.strip = get_stack_optional<std::string>(j, "strip");
@@ -253,6 +254,9 @@ if (x.command) {
 j["command"] = x.command;
 }
 j["package"] = x.package;
+if (x.permissions) {
+j["permissions"] = x.permissions;
+}
 if (x.runtime) {
 j["runtime"] = x.runtime;
 }

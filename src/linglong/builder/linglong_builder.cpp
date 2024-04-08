@@ -83,8 +83,15 @@ fetchSources(const std::vector<api::types::v1::BuilderProjectSource> &sources,
     LINGLONG_TRACE("fetch sources to " + destination.absolutePath());
 
     for (const auto &source : sources) {
+        QString name;
+        if (source.name.has_value()) {
+            name = QString::fromStdString(*source.name);
+        } else if (source.url.has_value()) {
+            QUrl url(source.url->c_str());
+            name = QFileInfo(url.fileName()).baseName();
+        }
         SourceFetcher sf(source, cfg);
-        auto result = sf.fetch(destination);
+        auto result = sf.fetch(QDir(destination).filePath(name));
         if (!result) {
             return LINGLONG_ERR(result);
         }
@@ -297,7 +304,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
 
     this->workingDir.mkdir("linglong");
 
-    if (this->project.sources) {
+    if (this->project.sources && !cfg.skipFetch) {
         auto result = fetchSources(*this->project.sources,
                                    this->workingDir.absoluteFilePath("linglong/sources"),
                                    this->cfg);
@@ -366,12 +373,14 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         .containerID = ("linglong-builder-" + ref->toString() + QUuid::createUuid().toString())
                          .toUtf8()
                          .toBase64(),
-        .runtimeDir = runtimeLayerDir,
         .baseDir = *baseLayerDir,
         .appDir = {},
         .patches = {},
         .mounts = {},
     };
+    if (runtimeLayerDir.isEmpty()) {
+        opts.runtimeDir = runtimeLayerDir;
+    }
     // 构建安装路径
     QString installPrefix = "/runtime";
     if (this->project.package.kind != "runtime") {
@@ -449,7 +458,9 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         return LINGLONG_ERR(result);
     }
     qDebug() << "run container success";
-
+    if (cfg.skipCommit) {
+        return LINGLONG_OK;
+    }
     QDir runtimeOutput = this->workingDir.absoluteFilePath("linglong/output/runtime/files");
     if (!runtimeOutput.mkpath(".")) {
         return LINGLONG_ERR("make path " + runtimeOutput.absolutePath() + ": failed.");
@@ -503,14 +514,13 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
                          developOutput.absoluteFilePath("files/share/systemd/user"))) {
             return LINGLONG_ERR("link systemd user service to files/share/systemd/user: failed");
         }
+        if (project.command.value_or(std::vector<std::string>{}).empty()) {
+            return LINGLONG_ERR("command field is required, please specify!");
+        }
     }
 
     // Let base updated at runtime.
     base->version.tweak = std::nullopt;
-
-    if (project.command.value_or(std::vector<std::string>{}).empty()) {
-        return LINGLONG_ERR("command field is required, please specify!");
-    }
 
     auto info = api::types::v1::PackageInfo{
         .appid = this->project.package.id,
@@ -692,17 +702,15 @@ linglong::utils::error::Result<void> Builder::push(bool pushWithDevel,
         return LINGLONG_ERR(result);
     }
 
+    if (pushWithDevel) {
+        result = repo.push(*ref, true);
+
+        if (!result) {
+            return LINGLONG_ERR(result);
+        }
+    }
+
     result = repo.push(*ref);
-    if (!result) {
-        return LINGLONG_ERR(result);
-    }
-
-    if (!pushWithDevel) {
-        return LINGLONG_OK;
-    }
-
-    result = repo.push(*ref, true);
-
     if (!result) {
         return LINGLONG_ERR(result);
     }

@@ -7,7 +7,7 @@ set -e
 set -x
 workdir=$1
 url=$2
-
+mkdir -p "$workdir"
 output=$(realpath "$workdir")
 rm -r "$output" || true
 name=$(basename "$url")

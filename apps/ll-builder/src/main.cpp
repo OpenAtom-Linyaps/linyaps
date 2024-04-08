@@ -467,7 +467,16 @@ int main(int argc, char **argv)
                   cfg.arch = arch->toString().toStdString();
                   builder.setConfig(cfg);
               }
-
+              if (parser.isSet(buildSkipFetchSource)) {
+                  auto cfg = builder.getConfig();
+                  cfg.skipFetch = true;
+                  builder.setConfig(cfg);
+              }
+              if (parser.isSet(buildSkipCommitOutput)) {
+                  auto cfg = builder.getConfig();
+                  cfg.skipCommit = true;
+                  builder.setConfig(cfg);
+              }
               linglong::utils::error::Result<void> ret;
               if (parser.isSet(execVerbose)) {
                   auto exec = splitExec(parser.value(execVerbose));

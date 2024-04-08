@@ -27,6 +27,7 @@ struct BuilderProjectSource {
 std::optional<std::string> commit;
 std::optional<std::string> digest;
 std::string kind;
+std::optional<std::string> name;
 std::optional<std::string> url;
 std::optional<std::string> version;
 };

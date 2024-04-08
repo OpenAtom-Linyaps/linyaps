@@ -46,6 +46,7 @@ Depends: erofs-utils,
          erofsfuse,
          linglong-bin,
          linglong-box,
+         sed,
          ${misc:Depends},
          ${shlibs:Depends}
 Recommends: linglong-loader

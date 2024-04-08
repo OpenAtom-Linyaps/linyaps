@@ -13,6 +13,7 @@ endfunction()
 configure_files(
   # find -regex '\.\/\(share\|lib\|libexec\)\/.*' -type f -printf '%P\n' | sort
   libexec/linglong/create-linglong-dirs
+  libexec/linglong/app-conf-generator
   libexec/linglong/fetch-dsc-repo
   libexec/linglong/fetch-git-repo
   libexec/linglong/upgrade-all

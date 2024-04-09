@@ -52,14 +52,14 @@ public:
     utils::error::Result<void> importLayerDir(const package::LayerDir &dir) noexcept;
 
     utils::error::Result<package::LayerDir> getLayerDir(const package::Reference &ref,
-                                                        bool devel = false) const noexcept;
+                                                        bool develop = false) const noexcept;
 
     utils::error::Result<void> push(const package::Reference &reference,
-                                    bool devel = false) const noexcept;
+                                    bool develop = false) const noexcept;
 
     void pull(std::shared_ptr<service::InstallTask> taskContext,
               const package::Reference &reference,
-              bool devel = false) noexcept;
+              bool develop = false) noexcept;
 
     utils::error::Result<package::Reference> clearReference(
       const package::FuzzyReference &fuzz, const clearReferenceOption &opts) const noexcept;
@@ -68,7 +68,7 @@ public:
     utils::error::Result<std::vector<api::types::v1::PackageInfo>>
     listRemote(const package::FuzzyReference &fuzzyRef) const noexcept;
 
-    utils::error::Result<void> remove(const package::Reference &ref, bool devel = false) noexcept;
+    utils::error::Result<void> remove(const package::Reference &ref, bool develop = false) noexcept;
 
     void removeDanglingXDGIntergation() noexcept;
     void exportReference(const package::Reference &ref) noexcept;
@@ -89,7 +89,7 @@ private:
     std::unique_ptr<OstreeRepo, OstreeRepoDeleter> ostreeRepo = nullptr;
     QDir repoDir;
     QDir ostreeRepoDir() const noexcept;
-    QDir getLayerQDir(const package::Reference &ref, bool devel = false) const noexcept;
+    QDir getLayerQDir(const package::Reference &ref, bool develop = false) const noexcept;
 
     api::client::ClientApi &apiClient;
 };

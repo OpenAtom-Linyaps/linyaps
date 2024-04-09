@@ -138,10 +138,10 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
                                          {
                                            .fallbackToRemote = false // NOLINT
                                          });
-    auto devel = paras->package.packageManager1PackageModule.value_or("runtime") == "devel";
+    auto develop = paras->package.packageManager1PackageModule.value_or("runtime") == "develop";
 
     if (ref) {
-        auto layerDir = this->repo.getLayerDir(*ref, devel);
+        auto layerDir = this->repo.getLayerDir(*ref, develop);
         if (layerDir) {
             return toDBusReply(-1, ref->toString() + " is already installed");
         }
@@ -167,12 +167,12 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
 
     QMetaObject::invokeMethod(
       QCoreApplication::instance(),
-      [this, reference, taskPtr, devel] {
+      [this, reference, taskPtr, develop] {
           auto _ = utils::finally::finally([this, reference]() {
               this->taskMap.erase(reference.toString());
           });
 
-          this->Install(taskPtr, reference, devel);
+          this->Install(taskPtr, reference, develop);
       },
       Qt::QueuedConnection);
 
@@ -188,7 +188,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
 
 void PackageManager::Install(const std::shared_ptr<InstallTask> &taskContext,
                              const package::Reference &ref,
-                             bool devel) noexcept
+                             bool develop) noexcept
 {
     LINGLONG_TRACE("install " + ref.toString());
 
@@ -206,13 +206,13 @@ void PackageManager::Install(const std::shared_ptr<InstallTask> &taskContext,
 
     utils::Transaction t;
 
-    this->repo.pull(taskContext, ref, devel);
+    this->repo.pull(taskContext, ref, develop);
     if (taskContext->currentStatus() == InstallTask::Failed
         || taskContext->currentStatus() == InstallTask::Canceled) {
         return;
     }
-    t.addRollBack([this, &ref, devel]() noexcept {
-        auto result = this->repo.remove(ref, devel);
+    t.addRollBack([this, &ref, develop]() noexcept {
+        auto result = this->repo.remove(ref, develop);
         if (!result) {
             qCritical() << result.error();
             Q_ASSERT(false);
@@ -249,15 +249,15 @@ void PackageManager::Install(const std::shared_ptr<InstallTask> &taskContext,
 
         taskContext->updateStatus(InstallTask::installRuntime,
                                   "Installing runtime " + runtime->toString());
-        this->repo.pull(taskContext, *runtime, devel);
+        this->repo.pull(taskContext, *runtime, develop);
         if (taskContext->currentStatus() == InstallTask::Failed
             || taskContext->currentStatus() == InstallTask::Canceled) {
             return;
         }
 
         auto runtimeRef = *runtime;
-        t.addRollBack([this, runtimeRef, devel]() noexcept {
-            auto result = this->repo.remove(runtimeRef, devel);
+        t.addRollBack([this, runtimeRef, develop]() noexcept {
+            auto result = this->repo.remove(runtimeRef, develop);
             if (!result) {
                 qCritical() << result.error();
                 Q_ASSERT(false);
@@ -281,7 +281,7 @@ void PackageManager::Install(const std::shared_ptr<InstallTask> &taskContext,
     }
 
     taskContext->updateStatus(InstallTask::installBase, "Installing base " + base->toString());
-    this->repo.pull(taskContext, *base, devel);
+    this->repo.pull(taskContext, *base, develop);
     if (taskContext->currentStatus() == InstallTask::Failed
         || taskContext->currentStatus() == InstallTask::Canceled) {
         return;
@@ -357,9 +357,9 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
         return toDBusReply(-1, fuzzyRef->toString() + " not installed.");
     }
 
-    auto devel = paras->package.packageManager1PackageModule.value_or("runtime") == "devel";
+    auto develop = paras->package.packageManager1PackageModule.value_or("runtime") == "develop";
 
-    auto result = this->repo.remove(*ref, devel);
+    auto result = this->repo.remove(*ref, develop);
     if (!result) {
         return toDBusReply(result);
     }
@@ -415,15 +415,15 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
     auto reference = *ref;
     auto newReference = *newRef;
 
-    auto devel = paras->package.packageManager1PackageModule.value_or("runtime") == "devel";
+    auto develop = paras->package.packageManager1PackageModule.value_or("runtime") == "develop";
 
     QMetaObject::invokeMethod(
       QCoreApplication::instance(),
-      [this, reference, newReference, taskPtr, devel] {
+      [this, reference, newReference, taskPtr, develop] {
           auto _ = utils::finally::finally([this, reference]() {
               this->taskMap.erase(reference.toString());
           });
-          this->Update(taskPtr, reference, newReference, devel);
+          this->Update(taskPtr, reference, newReference, develop);
       },
       Qt::QueuedConnection);
 
@@ -441,26 +441,26 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
 void PackageManager::Update(const std::shared_ptr<InstallTask> &taskContext,
                             const package::Reference &ref,
                             const package::Reference &newRef,
-                            bool devel) noexcept
+                            bool develop) noexcept
 {
     LINGLONG_TRACE("update " + ref.toString());
 
     utils::Transaction t;
 
-    this->Install(taskContext, newRef, devel);
+    this->Install(taskContext, newRef, develop);
     if (taskContext->currentStatus() == InstallTask::Failed
         || taskContext->currentStatus() == InstallTask::Canceled) {
         return;
     }
-    t.addRollBack([this, &newRef, &devel]() noexcept {
-        auto result = this->repo.remove(newRef, devel);
+    t.addRollBack([this, &newRef, &develop]() noexcept {
+        auto result = this->repo.remove(newRef, develop);
         if (!result) {
             qCritical() << result.error();
         }
         this->repo.unexportReference(newRef);
     });
 
-    auto result = this->repo.remove(ref, devel);
+    auto result = this->repo.remove(ref, develop);
     if (!result) {
         taskContext->updateStatus(InstallTask::Failed, result.error().message());
         return;

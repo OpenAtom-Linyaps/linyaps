@@ -33,11 +33,11 @@ public:
     auto operator=(PackageManager &&) -> PackageManager & = delete;
     virtual void Install(const std::shared_ptr<InstallTask> &taskContext,
                          const package::Reference &ref,
-                         bool devel) noexcept;
+                         bool develop) noexcept;
     virtual void Update(const std::shared_ptr<InstallTask> &taskContext,
                         const package::Reference &ref,
                         const package::Reference &newRef,
-                        bool devel) noexcept;
+                        bool develop) noexcept;
 
 public Q_SLOTS: // NOLINT
     virtual auto getConfiguration() const noexcept -> QVariantMap;

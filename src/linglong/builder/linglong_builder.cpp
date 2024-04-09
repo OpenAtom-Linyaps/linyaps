@@ -340,7 +340,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     qDebug() << "pull base success";
 
     QFile entry = this->workingDir.absoluteFilePath("linglong/entry.sh");
-    if(!entry.remove()){
+    if(entry.exists() && !entry.remove()){
         return LINGLONG_ERR(entry);
     }
 

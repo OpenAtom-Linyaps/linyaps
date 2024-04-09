@@ -15,8 +15,8 @@
 #include "linglong/utils/command/env.h"
 #include "linglong/utils/command/ocppi-helper.h"
 #include "linglong/utils/error/error.h"
-#include "linglong/utils/xdg/desktop_entry.h"
 #include "linglong/utils/global/initialize.h"
+#include "linglong/utils/xdg/desktop_entry.h"
 #include "nlohmann/json_fwd.hpp"
 #include "ocppi/cli/CLI.hpp"
 #include "ocppi/runtime/ContainerID.hpp"
@@ -378,7 +378,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         .patches = {},
         .mounts = {},
     };
-    if (runtimeLayerDir.isEmpty()) {
+    if (!runtimeLayerDir.isEmpty()) {
         opts.runtimeDir = runtimeLayerDir;
     }
     // 构建安装路径
@@ -445,13 +445,11 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         .terminal = true,
     };
 
-    // TODO(wurongie) 需要补全其他架构或自动获取TRIPLET
-    auto arch = QSysInfo::currentCpuArchitecture();
-    if (arch == "x86_64") {
-        process.env->push_back({ "TRIPLET=x86_64-linux-gnu" });
-    } else if (arch == "arm64") {
-        process.env->push_back({ "TRIPLET=aarch64-linux-gnu" });
+    auto arch = package::Architecture::parse(QSysInfo::currentCpuArchitecture());
+    if (!arch) {
+        return LINGLONG_ERR(arch);
     }
+    process.env->push_back({ QString("TRIPLET=%1").arg(arch->getTriplet()).toStdString() });
 
     auto result = (*container)->run(process);
     if (!result) {

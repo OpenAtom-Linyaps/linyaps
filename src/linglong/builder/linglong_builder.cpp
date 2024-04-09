@@ -340,8 +340,11 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     qDebug() << "pull base success";
 
     QFile entry = this->workingDir.absoluteFilePath("linglong/entry.sh");
-    entry.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
-    if (!entry.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+    if(!entry.remove()){
+        return LINGLONG_ERR(entry);
+    }
+
+    if (!entry.open(QIODevice::WriteOnly)) {
         return LINGLONG_ERR(entry);
     }
     // FIXME: check bytes writed.
@@ -351,6 +354,11 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     entry.close();
     if (entry.error() != QFile::NoError) {
         return LINGLONG_ERR(entry);
+    }
+
+    if (!entry.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner
+                              | QFileDevice::ExeOwner)) {
+        return LINGLONG_ERR("set file permission error:", entry);
     }
     qDebug() << "generated entry.sh success";
 
@@ -432,7 +440,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         .commandLine = {},
         .consoleSize = {},
         .cwd = "/project",
-        .env = { { "PREFIX=" + installPrefix.toStdString(), 
+        .env = { { "PREFIX=" + installPrefix.toStdString(),
                  "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/runtime/bin"
                  },
         }, // FIXME: add environments later.

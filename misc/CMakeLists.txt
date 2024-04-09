@@ -47,7 +47,8 @@ configure_files(
   share/linglong/builder/templates/appimage-local.yaml
   share/linglong/builder/templates/appimage-url.yaml
   share/linglong/builder/templates/example.yaml
-  share/mime/packages/deepin-linglong.xml)
+  share/mime/packages/deepin-linglong.xml
+  script/linglong.sh)
 
 # bash-completion
 set(BASH_COMPLETIONS_DIR ${CMAKE_INSTALL_DATADIR}/bash-completion)
@@ -117,3 +118,14 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/sysusers.d/
 # xdg
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/share/mime/packages
         DESTINATION ${CMAKE_INSTALL_DATADIR}/mime)
+
+# set linglong XDG_DATA_DIRS environtment
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/script/linglong.sh
+        DESTINATION /etc/profile.d
+)
+
+install(
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/script/linglong.sh
+  DESTINATION /etc/X11/Xsession.d/
+  RENAME 21linglong
+)

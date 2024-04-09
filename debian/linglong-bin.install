@@ -21,3 +21,5 @@ usr/share/dbus-1/system-services/org.deepin.linglong.PackageManager.service
 usr/share/dbus-1/system.d/org.deepin.linglong.PackageManager.conf
 usr/share/linglong/config.yaml
 usr/share/mime/packages/deepin-linglong.xml
+etc/profile.d/linglong.sh
+etc/X11/Xsession.d/21linglong

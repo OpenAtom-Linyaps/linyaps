@@ -19,6 +19,8 @@ QString Architecture::toString() const noexcept
         return "x86_64";
     case ARM64:
         return "arm64";
+    case LOONGARCH64:
+        return "loongarch64";
     case UNKNOW:
         [[fallthrough]];
     default:
@@ -35,6 +37,8 @@ QString Architecture::getTriplet() const noexcept
         return "x86_64-linux-gnu";
     case ARM64:
         return "aarch64-linux-gnu";
+    case LOONGARCH64:
+        return "loongarch64-linux-gnu";
     }
     return "unknow";
 }
@@ -56,6 +60,10 @@ Architecture::Architecture(const QString &raw)
 
         if (raw == "arm64") {
             return ARM64;
+        }
+
+        if (raw == "loongarch64") {
+            return LOONGARCH64;
         }
 
         throw std::runtime_error("unknow architecture");

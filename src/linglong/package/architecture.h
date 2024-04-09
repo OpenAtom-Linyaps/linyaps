@@ -8,7 +8,6 @@
 #define LINGLONG_PACKAGE_ARCHITECTURE_H_
 
 #include "linglong/utils/error/error.h"
-
 #include "nlohmann/json.hpp"
 
 #include <QString>
@@ -22,6 +21,7 @@ public:
         UNKNOW,
         X86_64,
         ARM64,
+        LOONGARCH64,
     };
 
     explicit Architecture(Value value = UNKNOW);
@@ -31,6 +31,7 @@ public:
     QString getTriplet() const noexcept;
 
     bool operator==(const Architecture &that) const noexcept { return this->v == that.v; }
+
     bool operator!=(const Architecture &that) const noexcept { return this->v != that.v; }
 
     static utils::error::Result<Architecture> parse(const QString &raw) noexcept;

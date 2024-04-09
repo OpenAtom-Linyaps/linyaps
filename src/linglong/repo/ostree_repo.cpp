@@ -818,13 +818,9 @@ utils::error::Result<void> OSTreeRepo::importLayerDir(const package::LayerDir &d
         }
     });
 
-    if (isDevel) {
-        transaction.commit();
-        return LINGLONG_OK;
-    }
-
-    result =
-      handleRepositoryUpdate(this->ostreeRepo.get(), this->getLayerQDir(*reference), refspec);
+    result = handleRepositoryUpdate(this->ostreeRepo.get(),
+                                    this->getLayerQDir(*reference, isDevel),
+                                    refspec);
     if (!result) {
         return LINGLONG_ERR(result);
     }

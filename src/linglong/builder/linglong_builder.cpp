@@ -492,24 +492,24 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     }
     if (this->project.package.kind != "runtime") {
         // FIXME: not just simply link, we should modify something.
-        if (!QFile::link("../files/share", runtimeOutput.absoluteFilePath("../entries"))) {
+        if (!QFile::link("files/share", runtimeOutput.absoluteFilePath("../entries"))) {
             return LINGLONG_ERR("link entries to files share: failed");
         }
-        if (!runtimeOutput.mkpath("files/share/systemd")) {
+        if (!runtimeOutput.mkpath("share/systemd")) {
             return LINGLONG_ERR("mkpath files/share/systemd/user: failed");
         }
         if (!QFile::link("../../lib/systemd/user",
-                         runtimeOutput.absoluteFilePath("files/share/systemd/user"))) {
+                         runtimeOutput.absoluteFilePath("share/systemd/user"))) {
             return LINGLONG_ERR("link systemd user service to files/share/systemd/user: failed");
         }
-        if (!QFile::link("../files/share", developOutput.absoluteFilePath("../entries"))) {
+        if (!QFile::link("files/share", developOutput.absoluteFilePath("../entries"))) {
             return LINGLONG_ERR("link entries to files share: failed");
         }
-        if (!developOutput.mkpath("files/share/systemd")) {
+        if (!developOutput.mkpath("share/systemd")) {
             return LINGLONG_ERR("mkpath files/share/systemd/user: failed");
         }
         if (!QFile::link("../../lib/systemd/user",
-                         developOutput.absoluteFilePath("files/share/systemd/user"))) {
+                         developOutput.absoluteFilePath("share/systemd/user"))) {
             return LINGLONG_ERR("link systemd user service to files/share/systemd/user: failed");
         }
         if (project.command.value_or(std::vector<std::string>{}).empty()) {

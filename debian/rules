@@ -1,6 +1,18 @@
 #!/usr/bin/make -f
+
+OS=$(shell awk '/DISTRIB_ID=/' /etc/*-release | sed 's/DISTRIB_ID=//' | tr '[:upper:]' '[:lower:]')
+ARCH=$(shell dpkg-architecture -qDEB_HOST_ARCH | cut -c1-3)
+VERSION=$(shell awk '/DISTRIB_RELEASE=/' /etc/*-release | sed 's/DISTRIB_RELEASE=//' | sed 's/[.]0/./')
+
 %:
 	dh $@ --buildsystem=cmake
+
+ifeq ($(OS) $(VERSION) $(ARCH), uos 20 amd)
+override_dh_auto_install:
+	dh_auto_install
+# linglong.conf will be installed to the first package in control file
+	dh_install debian/sysctl.d/linglong.conf /etc/sysctl.d
+endif
 
 override_dh_auto_configure:
 	dh_auto_configure -- -DCPM_LOCAL_PACKAGES_ONLY=ON ${DH_AUTO_ARGS}

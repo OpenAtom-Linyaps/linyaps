@@ -101,7 +101,8 @@ fetchSources(const std::vector<api::types::v1::BuilderProjectSource> &sources,
 }
 
 utils::error::Result<package::Reference> pullDependency(QString fuzzyRefStr,
-                                                        repo::OSTreeRepo &repo) noexcept
+                                                        repo::OSTreeRepo &repo,
+                                                        bool develop) noexcept
 {
     LINGLONG_TRACE("pull " + fuzzyRefStr);
 
@@ -115,7 +116,7 @@ utils::error::Result<package::Reference> pullDependency(QString fuzzyRefStr,
         return LINGLONG_ERR(ref);
     }
     // 如果依赖已存在，则直接使用
-    auto baseLayerDir = repo.getLayerDir(*ref, true);
+    auto baseLayerDir = repo.getLayerDir(*ref, develop);
     if (baseLayerDir) {
         return *ref;
     }
@@ -127,7 +128,7 @@ utils::error::Result<package::Reference> pullDependency(QString fuzzyRefStr,
           qInfo().noquote() << QString("%1%%").arg(percentage) << message;
       };
     QObject::connect(taskPtr.get(), &service::InstallTask::TaskChanged, taskChanged);
-    repo.pull(taskPtr, *ref, true);
+    repo.pull(taskPtr, *ref, develop);
     if (taskPtr->currentStatus() != service::InstallTask::Status::Success) {
         return LINGLONG_ERR("pull " + ref->toString() + " failed");
     }
@@ -316,20 +317,21 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     std::optional<package::Reference> runtime;
     package::LayerDir runtimeLayerDir;
     if (this->project.runtime) {
-        auto ref = pullDependency(QString::fromStdString(*this->project.runtime), this->repo);
+        auto ref =
+          pullDependency(QString::fromStdString(*this->project.runtime), this->repo, false);
         if (!ref) {
             return LINGLONG_ERR("pull runtime", ref);
         }
         qDebug() << "pull runtime success";
         runtime = *ref;
-        auto ret = this->repo.getLayerDir(*runtime, true);
+        auto ret = this->repo.getLayerDir(*runtime, false);
         if (!ret.has_value()) {
             return LINGLONG_ERR("get runtime layer dir", ret);
         }
         runtimeLayerDir = *ret;
     }
 
-    auto base = pullDependency(QString::fromStdString(this->project.base), this->repo);
+    auto base = pullDependency(QString::fromStdString(this->project.base), this->repo, true);
     if (!base) {
         return LINGLONG_ERR("pull base", base);
     }
@@ -340,7 +342,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     qDebug() << "pull base success";
 
     QFile entry = this->workingDir.absoluteFilePath("linglong/entry.sh");
-    if(entry.exists() && !entry.remove()){
+    if (entry.exists() && !entry.remove()) {
         return LINGLONG_ERR(entry);
     }
 
@@ -759,14 +761,15 @@ utils::error::Result<void> Builder::run(const QStringList &args)
 {
     LINGLONG_TRACE("run application");
 
-    auto ref = currentReference(this->project);
-    if (!ref) {
-        return LINGLONG_ERR(ref);
+    auto curRef = currentReference(this->project);
+    if (!curRef) {
+        return LINGLONG_ERR(curRef);
     }
 
     auto options = runtime::ContainerOptions{
-        .appID = ref->id,
-        .containerID = (ref->toString() + "-" + QUuid::createUuid().toString()).toUtf8().toBase64(),
+        .appID = curRef->id,
+        .containerID =
+          (curRef->toString() + "-" + QUuid::createUuid().toString()).toUtf8().toBase64(),
         .runtimeDir = {},
         .baseDir = {},
         .appDir = {},
@@ -774,43 +777,44 @@ utils::error::Result<void> Builder::run(const QStringList &args)
         .mounts = {},
     };
 
-    ref = pullDependency(QString::fromStdString(this->project.base), this->repo);
-    if (!ref) {
-        return LINGLONG_ERR(ref);
+    auto baseRef = pullDependency(QString::fromStdString(this->project.base), this->repo, true);
+    if (!baseRef) {
+        return LINGLONG_ERR(baseRef);
     }
-    auto dir = this->repo.getLayerDir(*ref);
-    if (!dir) {
-        return LINGLONG_ERR(dir);
+    auto baseDir = this->repo.getLayerDir(*baseRef, true);
+    if (!baseDir) {
+        return LINGLONG_ERR(baseDir);
     }
-    options.baseDir = QDir(dir->absoluteFilePath("files"));
+    options.baseDir = QDir(baseDir->absolutePath());
 
     if (this->project.runtime) {
-        ref = pullDependency(QString::fromStdString(*this->project.runtime), this->repo);
+        auto ref =
+          pullDependency(QString::fromStdString(*this->project.runtime), this->repo, false);
         if (!ref) {
             return LINGLONG_ERR(ref);
         }
-        dir = this->repo.getLayerDir(*ref);
+        auto dir = this->repo.getLayerDir(*ref, false);
         if (!dir) {
             return LINGLONG_ERR(dir);
         }
-        options.runtimeDir = QDir(dir->absoluteFilePath("files"));
+        options.runtimeDir = QDir(dir->absolutePath());
     }
 
-    dir = this->repo.getLayerDir(*ref);
-    if (!dir) {
-        return LINGLONG_ERR(dir);
+    auto curDir = this->repo.getLayerDir(*curRef);
+    if (!curDir) {
+        return LINGLONG_ERR(curDir);
     }
 
     if (this->project.package.kind == "runtime") {
-        options.runtimeDir = QDir(dir->absoluteFilePath("files"));
+        options.runtimeDir = QDir(curDir->absolutePath());
     }
 
     if (this->project.package.kind == "base") {
-        options.baseDir = QDir(dir->absoluteFilePath("files"));
+        options.baseDir = QDir(curDir->absolutePath());
     }
 
     if (this->project.package.kind == "app") {
-        options.appDir = QDir(dir->absoluteFilePath("files"));
+        options.appDir = QDir(curDir->absolutePath());
     }
 
     auto container = this->containerBuilder.create(options);
@@ -820,9 +824,24 @@ utils::error::Result<void> Builder::run(const QStringList &args)
 
     ocppi::runtime::config::types::Process p;
 
-    p.args = std::vector<std::string>{};
-    for (const auto &arg : args) {
-        p.args->push_back(arg.toStdString());
+    if (!args.isEmpty()) {
+        p.args = std::vector<std::string>{};
+        for (const auto &arg : args) {
+            p.args->push_back(arg.toStdString());
+        }
+    } else {
+        p.args = this->project.command;
+        if (!p.args) {
+            p.args = std::vector<std::string>{ "bash" };
+        }
+    }
+
+    QStringList envList = utils::command::getUserEnv(utils::command::envList);
+    if (!envList.isEmpty()) {
+        p.env = p.env.value_or(std::vector<std::string>{});
+    }
+    for (const auto &env : envList) {
+        p.env->push_back(env.toStdString());
     }
 
     auto result = container->data()->run(p);

@@ -29,6 +29,7 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QHash>
 #include <QProcess>
 #include <QScopeGuard>
 #include <QTemporaryFile>
@@ -37,6 +38,8 @@
 
 #include <fstream>
 #include <optional>
+#include <string>
+#include <vector>
 
 #include <sys/socket.h>
 #include <sys/wait.h>
@@ -161,6 +164,7 @@ void Builder::setConfig(const api::types::v1::BuilderConfig &cfg) noexcept
     this->cfg = cfg;
 }
 
+// 拆分develop和runtime的文件
 utils::error::Result<void> Builder::splitDevelop(QDir developOutput,
                                                  QDir runtimeOutput,
                                                  QString prefix)
@@ -310,7 +314,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     }
 
     std::optional<package::Reference> runtime;
-    package::LayerDir runtimeLayerDir;
+    QString runtimeLayerDir;
     if (this->project.runtime) {
         auto ref =
           pullDependency(QString::fromStdString(*this->project.runtime), this->repo, false);
@@ -323,7 +327,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         if (!ret.has_value()) {
             return LINGLONG_ERR("get runtime layer dir", ret);
         }
-        runtimeLayerDir = *ret;
+        runtimeLayerDir = ret->absolutePath();
     }
 
     auto base = pullDependency(QString::fromStdString(this->project.base), this->repo, true);
@@ -425,9 +429,20 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     }
     qDebug() << "create container success";
 
-    auto arguments = std::vector<std::string>{};
-    for (const auto &arg : args) {
-        arguments.push_back(arg.toStdString());
+    QStringList shArgs;
+    for (auto arg : args) {
+        shArgs.push_back(QString("'%1'").arg(arg.replace("'", "'\\''")));
+    }
+    auto arguments = std::vector<std::string>{
+        "/bin/bash",
+        "-l",
+        "-c",
+        shArgs.join(" ").toStdString(),
+    };
+
+    auto arch = package::Architecture::parse(QSysInfo::currentCpuArchitecture());
+    if (!arch) {
+        return LINGLONG_ERR(arch);
     }
 
     auto process = ocppi::runtime::config::types::Process{
@@ -437,10 +452,12 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         .commandLine = {},
         .consoleSize = {},
         .cwd = "/project",
-        .env = { { "PREFIX=" + installPrefix.toStdString(),
-                 "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/runtime/bin"
-                 },
-        }, // FIXME: add environments later.
+        .env = { {
+          "PREFIX=" + installPrefix.toStdString(),
+          "TRIPLET=" + arch->getTriplet().toStdString(),
+          "APP_ID=" + this->project.package.id,
+          "APP_VERSION=" + this->project.package.version,
+        } },
         .ioPriority = {},
         .noNewPrivileges = true,
         .oomScoreAdj = {},
@@ -449,13 +466,6 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         .selinuxLabel = {},
         .terminal = true,
     };
-
-    auto arch = package::Architecture::parse(QSysInfo::currentCpuArchitecture());
-    if (!arch) {
-        return LINGLONG_ERR(arch);
-    }
-    process.env->push_back({ QString("TRIPLET=%1").arg(arch->getTriplet()).toStdString() });
-
     auto result = (*container)->run(process);
     if (!result) {
         return LINGLONG_ERR(result);

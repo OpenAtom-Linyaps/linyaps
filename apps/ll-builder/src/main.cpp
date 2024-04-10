@@ -454,6 +454,10 @@ int main(int argc, char **argv)
                                   buildArch });
 
               parser.addPositionalArgument("build", "build project", "build");
+              parser.setApplicationDescription("linglong build command tools\n"
+                                               "Examples:\n"
+                                               "ll-builder build -v\n"
+                                               "ll-builder build -v -- bash -c \"echo hello\"");
 
               parser.process(app);
 
@@ -477,9 +481,13 @@ int main(int argc, char **argv)
                   cfg.skipCommit = true;
                   builder.setConfig(cfg);
               }
+              auto allArgs = QCoreApplication::arguments();
               linglong::utils::error::Result<void> ret;
               if (parser.isSet(execVerbose)) {
                   auto exec = splitExec(parser.value(execVerbose));
+                  ret = builder.build(exec);
+              } else if (allArgs.indexOf("--") > 0) {
+                  auto exec = allArgs.mid(allArgs.indexOf("--") + 1);
                   ret = builder.build(exec);
               } else {
                   ret = builder.build();

@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "linglong/utils/error/error.h"
+
 #include <gio/gio.h>
 
 #include <QMap>
@@ -37,8 +39,11 @@ public:
                     double totalPercentage,
                     const QString &message = "") noexcept;
     void updateStatus(Status newStatus, const QString &message = "") noexcept;
+    void updateStatus(Status newStatus, linglong::utils::error::Result<void>) noexcept;
 
     [[nodiscard]] Status currentStatus() const noexcept { return m_status; }
+
+    [[nodiscard]] utils::error::Result<void> *currentError() const noexcept { return m_err.data(); }
 
     [[nodiscard]] QString taskID() const noexcept
     {
@@ -56,6 +61,7 @@ Q_SIGNALS:
 private:
     QString formatPercentage(double increase = 0) const noexcept;
     Status m_status{ Queued };
+    QSharedPointer<utils::error::Result<void>> m_err;
     double m_statePercentage{ 0 };
     QUuid m_taskID;
     GCancellable *m_cancelFlag{ nullptr };

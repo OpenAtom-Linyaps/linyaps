@@ -499,9 +499,16 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         return LINGLONG_ERR(ret);
     }
     if (this->project.package.kind != "runtime") {
-        // FIXME: not just simply link, we should modify something.
-        if (!QFile::link("files/share", runtimeOutput.absoluteFilePath("../entries"))) {
-            return LINGLONG_ERR("link entries to files share: failed");
+        QDir runtimeEntries = this->workingDir.absoluteFilePath("linglong/output/runtime/entries");
+        QDir developEntries = this->workingDir.absoluteFilePath("linglong/output/develop/entries");
+        if (!runtimeEntries.mkpath(".")) {
+            return LINGLONG_ERR("make path " + runtimeEntries.absolutePath() + ": failed.");
+        }
+        if (!developEntries.mkpath(".")) {
+            return LINGLONG_ERR("make path " + developEntries.absolutePath() + ": failed.");
+        }
+        if (!QFile::link("../files/share", runtimeEntries.absoluteFilePath("share"))) {
+            return LINGLONG_ERR("link entries share to files share: failed");
         }
         if (!runtimeOutput.mkpath("share/systemd")) {
             return LINGLONG_ERR("mkpath files/share/systemd/user: failed");
@@ -510,8 +517,8 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
                          runtimeOutput.absoluteFilePath("share/systemd/user"))) {
             return LINGLONG_ERR("link systemd user service to files/share/systemd/user: failed");
         }
-        if (!QFile::link("files/share", developOutput.absoluteFilePath("../entries"))) {
-            return LINGLONG_ERR("link entries to files share: failed");
+        if (!QFile::link("../files/share", developEntries.absoluteFilePath("share"))) {
+            return LINGLONG_ERR("link entries share to files share: failed");
         }
         if (!developOutput.mkpath("share/systemd")) {
             return LINGLONG_ERR("mkpath files/share/systemd/user: failed");

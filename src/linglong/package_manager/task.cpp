@@ -4,6 +4,8 @@
 
 #include "task.h"
 
+#include "linglong/utils/error/error.h"
+
 #include <QDebug>
 #include <QUuid>
 
@@ -45,6 +47,21 @@ void InstallTask::updateStatus(Status newStatus, const QString &message) noexcep
 
     m_status = newStatus;
     Q_EMIT TaskChanged(taskID(), formatPercentage(), message, m_status, {});
+}
+
+void InstallTask::updateStatus(Status newStatus, linglong::utils::error::Result<void> err) noexcept
+{
+    qInfo() << "update task" << m_taskID << "status to" << newStatus << err.error().message();
+
+    if (newStatus == Success || newStatus == Failed || newStatus == Canceled) {
+        m_statePercentage = 100;
+    } else {
+        m_statePercentage += partsMap[m_status];
+    }
+
+    m_status = newStatus;
+    m_err.reset(&err);
+    Q_EMIT TaskChanged(taskID(), formatPercentage(), err.error().message(), m_status, {});
 }
 
 QString InstallTask::formatPercentage(double increase) const noexcept

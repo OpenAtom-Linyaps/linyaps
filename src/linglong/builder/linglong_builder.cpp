@@ -128,7 +128,7 @@ utils::error::Result<package::Reference> pullDependency(QString fuzzyRefStr,
     QObject::connect(taskPtr.get(), &service::InstallTask::TaskChanged, taskChanged);
     repo.pull(taskPtr, *ref, develop);
     if (taskPtr->currentStatus() != service::InstallTask::Status::Success) {
-        return LINGLONG_ERR("pull " + ref->toString() + " failed");
+        return LINGLONG_ERR("pull " + ref->toString() + " failed", *taskPtr->currentError());
     }
 
     return *ref;

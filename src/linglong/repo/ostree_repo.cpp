@@ -1056,7 +1056,8 @@ utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref, boo
     LINGLONG_TRACE("remove " + ref.toString());
 
     if (!this->getLayerQDir(ref, develop).removeRecursively()) {
-        qCritical() << "Failed to remove layer directory of" << ref.toString() << "develop:" << develop;
+        qCritical() << "Failed to remove layer directory of" << ref.toString()
+                    << "develop:" << develop;
         Q_ASSERT(false);
     }
 
@@ -1081,11 +1082,11 @@ void OSTreeRepo::pull(std::shared_ptr<service::InstallTask> taskContext,
 
     utils::Transaction transaction;
 
-    QTemporaryDir tmpRepoDir;
+    QTemporaryDir tmpRepoDir(ostreeRepoDir().path() + "_tmp");
 
     if (!tmpRepoDir.isValid()) {
         taskContext->updateStatus(service::InstallTask::Status::Failed,
-                                  LINGLONG_ERRV("invalid QTemporaryDir").message());
+                                  LINGLONG_ERR("invalid QTemporaryDir"));
         return;
     }
 
@@ -1094,13 +1095,23 @@ void OSTreeRepo::pull(std::shared_ptr<service::InstallTask> taskContext,
                                  QString::fromStdString(this->cfg.repos[this->cfg.defaultRepo]),
                                  this->ostreeRepoDir().absolutePath());
     if (!repo) {
-        taskContext->updateStatus(service::InstallTask::Status::Failed,
-                                  LINGLONG_ERRV(repo).message());
+        taskContext->updateStatus(service::InstallTask::Status::Failed, LINGLONG_ERR(repo));
         return;
     }
+    g_clear_object(&(*repo));
 
     g_autoptr(GError) gErr = nullptr;
-    g_autoptr(OstreeRepo) tmpRepo = *repo;
+    auto repoPath = g_file_new_for_path("/tmp/abcccc");
+    auto tmpRepo = ostree_repo_new(repoPath);
+    auto _ = utils::finally::finally([&]() {
+        g_clear_object(&tmpRepo);
+    });
+    Q_ASSERT(tmpRepo != nullptr);
+    if (ostree_repo_open(tmpRepo, nullptr, &gErr) != TRUE) {
+        taskContext->updateStatus(service::InstallTask::Status::Failed,
+                                  LINGLONG_ERR("ostree_repo_open", gErr));
+        return;
+    }
     auto *cancellable = taskContext->cancellable();
 
     char *refs[] = { (char *)refString.data(), nullptr };
@@ -1109,9 +1120,6 @@ void OSTreeRepo::pull(std::shared_ptr<service::InstallTask> taskContext,
     auto *progress = ostree_async_progress_new_and_connect(progress_changed, (void *)&data);
     Q_ASSERT(progress != nullptr);
 
-    auto _ = utils::finally::finally([=]() {
-        ostree_async_progress_finish(progress);
-    });
     if (ostree_repo_pull(tmpRepo,
                          this->cfg.defaultRepo.c_str(),
                          refs,
@@ -1121,7 +1129,7 @@ void OSTreeRepo::pull(std::shared_ptr<service::InstallTask> taskContext,
                          &gErr)
         == FALSE) {
         taskContext->updateStatus(service::InstallTask::Failed,
-                                  LINGLONG_ERRV("ostree_repo_pull", gErr).message());
+                                  LINGLONG_ERR("ostree_repo_pull", gErr));
         return;
     }
 
@@ -1156,7 +1164,7 @@ void OSTreeRepo::pull(std::shared_ptr<service::InstallTask> taskContext,
                                       &gErr)
         == FALSE) {
         taskContext->updateStatus(service::InstallTask::Failed,
-                                  LINGLONG_ERRV("ostree_repo_pull_with_options", gErr).message());
+                                  LINGLONG_ERR("ostree_repo_pull_with_options", gErr));
         return;
     };
 
@@ -1172,7 +1180,7 @@ void OSTreeRepo::pull(std::shared_ptr<service::InstallTask> taskContext,
                                          this->getLayerQDir(reference, develop),
                                          refString);
     if (!result) {
-        taskContext->updateStatus(service::InstallTask::Failed, LINGLONG_ERRV(result).message());
+        taskContext->updateStatus(service::InstallTask::Failed, LINGLONG_ERR(result));
         return;
     }
 

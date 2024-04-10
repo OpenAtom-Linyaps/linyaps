@@ -1404,7 +1404,7 @@ void OSTreeRepo::unexportReference(const package::Reference &ref) noexcept
 
 void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
 {
-    auto entriesDir = QDir(this->repoDir.absoluteFilePath("entries"));
+    auto entriesDir = QDir(this->repoDir.absoluteFilePath("entries/share"));
     if (!entriesDir.exists()) {
         // entries directory should exists.
         Q_ASSERT(false);
@@ -1412,7 +1412,7 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
     }
 
     auto layerDir = this->getLayerQDir(ref);
-    auto layerEntriesDir = QDir(layerDir.absoluteFilePath("entries"));
+    auto layerEntriesDir = QDir(layerDir.absoluteFilePath("entries/share"));
     if (!layerEntriesDir.exists()) {
         Q_ASSERT(false);
         qCritical() << QString("Failed to export %1:").arg(ref.toString()) << layerEntriesDir
@@ -1421,9 +1421,10 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
     }
 
     QDirIterator it(layerEntriesDir.absolutePath(),
-                    QDir::NoDot | QDir::NoDotDot | QDir::System,
+                    QDir::AllEntries | QDir::NoDotAndDotDot | QDir::System,
                     QDirIterator::Subdirectories);
     while (it.hasNext()) {
+        it.next();
         const auto info = it.fileInfo();
         if (info.isDir()) {
             continue;
@@ -1437,15 +1438,14 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
             Q_ASSERT(false);
         }
 
-        const auto from = parentDirForLinkPath + "/" + it.fileName();
-        const auto to = it.filePath();
+        QDir parentDir(entriesDir.absoluteFilePath(parentDirForLinkPath));
+        const auto from = entriesDir.absoluteFilePath(parentDirForLinkPath) + "/" + it.fileName();
+        const auto to = parentDir.relativeFilePath(info.absoluteFilePath());
 
         if (!QFile::link(to, from)) {
             qCritical() << "Failed to create link" << to << "->" << from;
             Q_ASSERT(false);
         }
-
-        it.next();
     }
 }
 

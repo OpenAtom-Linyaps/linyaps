@@ -210,8 +210,8 @@ int main()
             return;
         }
 
-        xauthPatch["destination"] = xauthFileEnv;
-        xauthPatch["source"] = xauthFileEnv;
+        xauthPatch["destination"] = xauthFile;
+        xauthPatch["source"] = xauthFile;
 
         mounts.emplace_back(std::move(xauthPatch));
         return;

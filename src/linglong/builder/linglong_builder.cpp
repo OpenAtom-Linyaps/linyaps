@@ -116,6 +116,8 @@ utils::error::Result<package::Reference> pullDependency(QString fuzzyRefStr,
 
     auto taskID = QUuid::createUuid();
     auto taskPtr = std::make_shared<service::InstallTask>(taskID);
+    taskPtr->updateStatus(service::InstallTask::Success);
+
     auto taskChanged =
       [](QString taskID, QString percentage, QString message, service::InstallTask::Status status) {
           qInfo().noquote() << QString("%1%%").arg(percentage) << message;

@@ -1177,7 +1177,6 @@ void OSTreeRepo::pull(std::shared_ptr<service::InstallTask> taskContext,
     }
 
     transaction.commit();
-    taskContext->updateStatus(service::InstallTask::Success);
 }
 
 utils::error::Result<package::Reference> OSTreeRepo::clearReference(

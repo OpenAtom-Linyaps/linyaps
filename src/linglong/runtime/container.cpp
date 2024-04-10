@@ -9,6 +9,7 @@
 #include "linglong/package/architecture.h"
 #include "linglong/package/layer_packager.h"
 #include "linglong/utils/finally/finally.h"
+#include "ocppi/runtime/RunOption.hpp"
 #include "ocppi/runtime/config/types/Generators.hpp"
 
 #include <QDir>
@@ -136,8 +137,11 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
         ofs.close();
     }
     qDebug() << "run container in " << bundle.path();
+    ocppi::runtime::RunOption opt;
+    opt.GlobalOption::extra.push_back({ "--cgroup-manager=disabled" });
     auto result = this->cli.run(ocppi::runtime::ContainerID(this->id.toStdString()),
-                                std::filesystem::path(bundle.absolutePath().toStdString()));
+                                std::filesystem::path(bundle.absolutePath().toStdString()),
+                                opt);
 
     if (!result) {
         return LINGLONG_ERR("cli run", result);

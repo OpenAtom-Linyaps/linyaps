@@ -83,15 +83,8 @@ fetchSources(const std::vector<api::types::v1::BuilderProjectSource> &sources,
     LINGLONG_TRACE("fetch sources to " + destination.absolutePath());
 
     for (const auto &source : sources) {
-        QString name;
-        if (source.name.has_value()) {
-            name = QString::fromStdString(*source.name);
-        } else if (source.url.has_value()) {
-            QUrl url(source.url->c_str());
-            name = QFileInfo(url.fileName()).baseName();
-        }
         SourceFetcher sf(source, cfg);
-        auto result = sf.fetch(QDir(destination).filePath(name));
+        auto result = sf.fetch(QDir(destination));
         if (!result) {
             return LINGLONG_ERR(result);
         }

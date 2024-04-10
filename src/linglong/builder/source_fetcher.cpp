@@ -12,10 +12,12 @@
 #include "linglong/utils/global/initialize.h"
 
 #include <qeventloop.h>
+#include <qloggingcategory.h>
 #include <qnetworkaccessmanager.h>
 #include <qnetworkreply.h>
 
 #include <QCryptographicHash>
+#include <QDir>
 #include <QNetworkRequest>
 #include <QStandardPaths>
 #include <QTemporaryDir>
@@ -30,6 +32,21 @@ static constexpr auto CompressedFileTarBz2 = "tar.bz2";
 static constexpr auto CompressedFileTgz = "tgz";
 static constexpr auto CompressedFileTar = "tar";
 static constexpr auto CompressedFileZip = "zip";
+
+// 如果source有name字段使用name字段，否则使用url的filename
+QString getSourceName(const api::types::v1::BuilderProjectSource &source)
+{
+    if (source.name.has_value()) {
+        return QString::fromStdString(*source.name);
+    }
+    if (source.url.has_value()) {
+        QUrl url(source.url->c_str());
+        return url.fileName();
+    }
+    qCritical() << "missing name and url field";
+    Q_ASSERT(false);
+    return "unknown";
+}
 
 auto fixSuffix(const QFileInfo &fi) -> QString
 {
@@ -152,13 +169,16 @@ auto fetchFile(const api::types::v1::BuilderProjectSource &source, QDir destinat
     // 将缓存写入文件
     file.close();
 
+    // 需要重新打开文件，用于计算哈希值
+    if (!file.open(QIODevice::ReadOnly)) {
+        return LINGLONG_ERR(file);
+    }
     auto digest = util::fileHash(file, QCryptographicHash::Sha256).toStdString();
     if (digest != *source.digest) {
         return LINGLONG_ERR(
           QString::fromStdString("digest mismatched: " + digest + " vs " + *source.digest));
     }
-
-    return QFileInfo(file).absolutePath();
+    return file.fileName();
 }
 
 auto fetchGitRepo(const api::types::v1::BuilderProjectSource &source, QDir destination)
@@ -187,11 +207,13 @@ auto fetchGitRepo(const api::types::v1::BuilderProjectSource &source, QDir desti
 
     auto output = utils::command::Exec(
       "sh",
-      QStringList() << scriptFile
-                    << destination.absoluteFilePath(QUrl(source.url->c_str()).fileName())
-                    << QString::fromStdString(*source.url)
-                    << QString::fromStdString(source.commit.value_or(""))
-                    << QString::fromStdString(source.version.value_or(source.commit.value_or(""))));
+      {
+        scriptFile,
+        destination.absoluteFilePath(getSourceName(source)),
+        QString::fromStdString(*source.url),
+        QString::fromStdString(source.commit.value_or("")),
+        QString::fromStdString(source.version.value_or(source.commit.value_or(""))),
+      });
     if (!output) {
         return LINGLONG_ERR(output);
     }
@@ -211,6 +233,9 @@ auto fetchDscRepo(const api::types::v1::BuilderProjectSource &source, QDir desti
     if (!source.url) {
         return LINGLONG_ERR("URL is missing");
     }
+    if (!source.digest) {
+        return LINGLONG_ERR("digest missing");
+    }
 
     // 如果二进制安装在系统目录中，优先使用系统中安装的脚本文件（便于用户更改），否则使用二进制内嵌的脚本（便于开发调试）
     auto scriptFile = QString(LINGLONG_LIBEXEC_DIR) + "/fetch-dsc-repo";
@@ -225,8 +250,12 @@ auto fetchDscRepo(const api::types::v1::BuilderProjectSource &source, QDir desti
         QFile::copy(":/scripts/fetch-dsc-repo", scriptFile);
     }
     auto output = utils::command::Exec("sh",
-                                       QStringList() << scriptFile << destination.absolutePath()
-                                                     << QString::fromStdString(*source.url));
+                                       {
+                                         scriptFile,
+                                         destination.absoluteFilePath(getSourceName(source)),
+                                         QString::fromStdString(*source.url),
+                                         QString::fromStdString(*source.digest),
+                                       });
     if (!output) {
         return LINGLONG_ERR(output);
     }
@@ -260,22 +289,15 @@ auto SourceFetcher::fetch(QDir destination) noexcept -> utils::error::Result<voi
     }
 
     if (this->source.kind == "archive") {
-        auto cacheDir = QDir(QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation)
-                             + "/linglong/builder/archives");
-        if (this->cfg.cache) {
-            cacheDir.setPath(QString::fromStdString(*this->cfg.cache));
-        }
-
-        if (!cacheDir.mkpath(".")) {
-            return LINGLONG_ERR("create " + cacheDir.absolutePath() + ": failed");
-        }
-
-        auto archivePath = fetchFile(this->source, cacheDir);
+        QTemporaryDir cacheDir(destination.path());
+        auto archivePath = fetchFile(this->source, QDir(cacheDir.path()));
         if (!archivePath) {
             return LINGLONG_ERR(archivePath);
         }
-
-        auto ret = extractFile(*archivePath, destination);
+        // 解压归档文件到sources目录
+        auto name = builder::getSourceName(source);
+        QDir(destination.absoluteFilePath(name)).mkpath(".");
+        auto ret = extractFile(*archivePath, destination.absoluteFilePath(name));
         if (!ret) {
             return LINGLONG_ERR(ret);
         }
@@ -283,10 +305,14 @@ auto SourceFetcher::fetch(QDir destination) noexcept -> utils::error::Result<voi
     }
 
     if (source.kind == "file") {
-        auto path = fetchFile(this->source, destination);
+        QTemporaryDir cacheDir(destination.path());
+        auto path = fetchFile(this->source, QDir(cacheDir.path()));
         if (!path) {
             return LINGLONG_ERR(path);
         }
+        // 将文件从临时目录移动到sources目录，并更改文件名
+        auto name = builder::getSourceName(source);
+        QFile::rename(*path, destination.absoluteFilePath(name));
         return LINGLONG_OK;
     }
 

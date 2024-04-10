@@ -7,6 +7,8 @@ set -e
 set -x
 workdir=$1
 url=$2
+digest=$3
+
 mkdir -p "$workdir"
 output=$(realpath "$workdir")
 rm -r "$output" || true
@@ -15,4 +17,11 @@ cachedir="/tmp/fetch-dsc-repo/$name"
 mkdir -p "$cachedir" || true
 cd "$cachedir"
 dget -u -d "$url"
+
+actual_hash=$(sha256sum "$cachedir/$name" | awk '{print $1}')
+if [ "X$actual_hash" != "X$digest" ]; then
+    echo "digest mismatched: $actual_hash vs $digest" 
+    exit 1;
+fi
+
 dpkg-source -x --no-copy "$cachedir/$name" "$output"

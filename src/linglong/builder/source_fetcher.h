@@ -26,6 +26,7 @@ public:
     auto fetch(QDir destination) noexcept -> utils::error::Result<void>;
 
 private:
+    QString getSourceName();
     api::types::v1::BuilderProjectSource source;
     api::types::v1::BuilderConfig cfg;
 };

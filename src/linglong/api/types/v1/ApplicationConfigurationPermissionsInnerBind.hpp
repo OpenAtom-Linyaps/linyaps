@@ -9,7 +9,7 @@
 //
 //  Then include this file, and then do
 //
-//     ApplicationConfigurationPermissions.hpp data = nlohmann::json::parse(jsonString);
+//     ApplicationConfigurationPermissionsInnerBind.hpp data = nlohmann::json::parse(jsonString);
 
 #pragma once
 
@@ -17,18 +17,15 @@
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
-#include "linglong/api/types/v1/ApplicationConfigurationPermissionsBind.hpp"
-#include "linglong/api/types/v1/ApplicationConfigurationPermissionsInnerBind.hpp"
-
 namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
 using nlohmann::json;
 
-struct ApplicationConfigurationPermissions {
-std::optional<std::vector<ApplicationConfigurationPermissionsBind>> binds;
-std::optional<std::vector<ApplicationConfigurationPermissionsInnerBind>> innerBinds;
+struct ApplicationConfigurationPermissionsInnerBind {
+std::string destination;
+std::string source;
 };
 }
 }

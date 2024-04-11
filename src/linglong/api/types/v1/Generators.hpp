@@ -40,6 +40,7 @@
 #include "linglong/api/types/v1/BuilderConfig.hpp"
 #include "linglong/api/types/v1/ApplicationConfiguration.hpp"
 #include "linglong/api/types/v1/ApplicationConfigurationPermissions.hpp"
+#include "linglong/api/types/v1/ApplicationConfigurationPermissionsInnerBind.hpp"
 #include "linglong/api/types/v1/ApplicationConfigurationPermissionsBind.hpp"
 
 namespace linglong {
@@ -48,6 +49,9 @@ namespace types {
 namespace v1 {
 void from_json(const json & j, ApplicationConfigurationPermissionsBind & x);
 void to_json(json & j, const ApplicationConfigurationPermissionsBind & x);
+
+void from_json(const json & j, ApplicationConfigurationPermissionsInnerBind & x);
+void to_json(json & j, const ApplicationConfigurationPermissionsInnerBind & x);
 
 void from_json(const json & j, ApplicationConfigurationPermissions & x);
 void to_json(json & j, const ApplicationConfigurationPermissions & x);
@@ -129,14 +133,29 @@ j["destination"] = x.destination;
 j["source"] = x.source;
 }
 
+inline void from_json(const json & j, ApplicationConfigurationPermissionsInnerBind& x) {
+x.destination = j.at("destination").get<std::string>();
+x.source = j.at("source").get<std::string>();
+}
+
+inline void to_json(json & j, const ApplicationConfigurationPermissionsInnerBind & x) {
+j = json::object();
+j["destination"] = x.destination;
+j["source"] = x.source;
+}
+
 inline void from_json(const json & j, ApplicationConfigurationPermissions& x) {
 x.binds = get_stack_optional<std::vector<ApplicationConfigurationPermissionsBind>>(j, "binds");
+x.innerBinds = get_stack_optional<std::vector<ApplicationConfigurationPermissionsInnerBind>>(j, "innerBinds");
 }
 
 inline void to_json(json & j, const ApplicationConfigurationPermissions & x) {
 j = json::object();
 if (x.binds) {
 j["binds"] = x.binds;
+}
+if (x.innerBinds) {
+j["innerBinds"] = x.innerBinds;
 }
 }
 

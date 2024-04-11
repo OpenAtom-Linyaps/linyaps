@@ -49,6 +49,19 @@ $defs:
               type: string
             destination:
               type: string
+      innerBinds:
+        type: array
+        items:
+          type: object
+          title: ApplicationConfigurationPermissionsInnerBind
+          required:
+            - source
+            - destination
+          properties:
+            source:
+              type: string
+            destination:
+              type: string
   OCIConfigurationPatch:
     title: OCIConfigurationPatch
     type: object
@@ -111,7 +124,7 @@ $defs:
           channel:
             type: string
       permissions:
-        $ref: '#/$defs/ApplicationConfigurationPermissions'
+        $ref: "#/$defs/ApplicationConfigurationPermissions"
       runtime:
         type: string
       base:
@@ -251,7 +264,7 @@ $defs:
         items:
           type: string
       permissions:
-        $ref: '#/$defs/ApplicationConfigurationPermissions'
+        $ref: "#/$defs/ApplicationConfigurationPermissions"
       description:
         type: string
   CommonResult:

@@ -220,19 +220,39 @@ int Cli::run(std::map<std::string, docopt::value> &args)
     }
 
     std::vector<ocppi::runtime::config::types::Mount> applicationMounts{};
-    if (info->permissions && info->permissions->binds) {
-        const auto &binds = info->permissions->binds;
-        std::for_each(binds->cbegin(),
-                      binds->cend(),
-                      [&applicationMounts](
-                        const api::types::v1::ApplicationConfigurationPermissionsBind &bind) {
-                          applicationMounts.push_back({
-                            .destination = bind.destination,
-                            .options = { { "rbind" } },
-                            .source = bind.source,
-                            .type = "bind",
-                          });
-                      });
+    auto bindMount =
+      [&applicationMounts](const api::types::v1::ApplicationConfigurationPermissionsBind &bind) {
+          applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+            .destination = bind.destination,
+            .options = { { "rbind" } },
+            .source = bind.source,
+            .type = "bind",
+          });
+      };
+    auto bindInnerMount =
+      [&applicationMounts](
+        const api::types::v1::ApplicationConfigurationPermissionsInnerBind &bind) {
+          applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+            .destination = bind.destination,
+            .options = { { "rbind" } },
+            .source = "rootfs" + bind.source,
+            .type = "bind",
+          });
+      };
+
+    if (info->permissions) {
+        auto &perm = info->permissions;
+        if (perm->binds) {
+            const auto &binds = perm->binds;
+            std::for_each(binds->cbegin(), binds->cend(), bindMount);
+        }
+
+        if (perm->innerBinds) {
+            const auto &innerBinds = perm->innerBinds;
+            const auto &hostSourceDir =
+              std::filesystem::path{ layerDir->absolutePath().toStdString() };
+            std::for_each(innerBinds->cbegin(), innerBinds->cend(), bindInnerMount);
+        }
     }
 
     auto container = this->containerBuilder.create({

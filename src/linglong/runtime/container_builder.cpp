@@ -19,6 +19,8 @@
 #include <qstandardpaths.h>
 #include <qtemporarydir.h>
 
+#include <unordered_set>
+
 namespace linglong::runtime {
 
 namespace {
@@ -247,6 +249,130 @@ auto getOCIConfig(const ContainerOptions &opts) noexcept
     return config;
 }
 
+auto fixMount(ocppi::runtime::config::types::Config config) noexcept
+  -> utils::error::Result<ocppi::runtime::config::types::Config>
+{
+
+    if (!config.mounts || !config.root) {
+        return config;
+    }
+
+    auto originalRoot = QDir{ QString::fromStdString(config.root.value().path) };
+    config.root = { { .path = "rootfs", .readonly = false } };
+
+    auto &mounts = config.mounts.value();
+    auto commonParent = [](const QString &path1, const QString &path2) {
+        QString ret = path2;
+        while (!path1.startsWith(ret)) {
+            ret.chop(1);
+        }
+        if (ret.isEmpty()) {
+            return ret;
+        }
+        while (!ret.endsWith('/')) {
+            ret.chop(1);
+        }
+        return QDir::cleanPath(ret);
+    };
+
+    QStringList tmpfsPath;
+    for (const auto &mount : mounts) {
+        if (mount.destination.empty() || mount.destination.at(0) != '/') {
+            continue;
+        }
+
+        auto hostSource = QDir::cleanPath(
+          originalRoot.filePath(QString::fromStdString(mount.destination.substr(1))));
+        if (QFileInfo::exists(hostSource)) {
+            continue;
+        }
+
+        auto elem = hostSource.split(QDir::separator());
+        while (!elem.isEmpty() && !QFile::exists(elem.join(QDir::separator()))) {
+            elem.removeLast();
+        }
+
+        if (elem.isEmpty()) {
+            qWarning() << "invalid host source:" << hostSource;
+            continue;
+        }
+
+        bool newTmp{ true };
+        auto existsPath = elem.join(QDir::separator());
+        auto originalRootPath = QDir::cleanPath(originalRoot.absolutePath());
+        if (existsPath <= originalRootPath) {
+            continue;
+        }
+
+        for (auto it = tmpfsPath.cbegin(); it != tmpfsPath.cend(); ++it) {
+            if (existsPath == *it) {
+                newTmp = false;
+                continue;
+            }
+
+            if (auto common = commonParent(existsPath, *it); common > originalRootPath) {
+                newTmp = false;
+                tmpfsPath.replace(it - tmpfsPath.cbegin(), common);
+                break;
+            }
+        }
+
+        if (newTmp) {
+            tmpfsPath.push_back(existsPath);
+        }
+    }
+
+    using MountType = std::remove_reference_t<decltype(mounts)>::value_type;
+    auto rootBinds = originalRoot.entryInfoList(QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot);
+    auto pos = mounts.begin();
+    for (const auto &bind : rootBinds) {
+        pos = mounts.insert(pos,
+                            MountType{ .destination = "/" + bind.fileName().toStdString(),
+                                       .options = { { "rbind", "ro" } },
+                                       .source = bind.absoluteFilePath().toStdString(),
+                                       .type = "bind" });
+        ++pos;
+    }
+
+    for (const auto &tmpfs : tmpfsPath) {
+        pos = mounts.insert(
+          pos,
+          MountType{ .destination = tmpfs.mid(originalRoot.absolutePath().size()).toStdString(),
+                     .options = { { "nodev", "nosuid", "mode=755" } },
+                     .source = "tmpfs",
+                     .type = "tmpfs" });
+        ++pos;
+
+        auto dir = QDir{ tmpfs };
+        for (const auto &rootDest :
+             dir.entryInfoList(QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot)) {
+
+            auto rootDestPath = rootDest.absoluteFilePath();
+            pos = mounts.insert(
+              pos,
+              MountType{ .destination =
+                           rootDestPath.mid(originalRoot.absolutePath().size()).toStdString(),
+                         .options = { { "rbind", "ro" } },
+                         .source = rootDestPath.toStdString(),
+                         .type = "bind" });
+            ++pos;
+        }
+    }
+
+    // remove extra mount points
+    std::unordered_set<std::string> dups;
+    for (auto it = mounts.crbegin(); it != mounts.crend(); ++it) {
+        if (dups.find(it->destination) != dups.end()) {
+            mounts.erase(std::next(it).base());
+            continue;
+        }
+
+        dups.insert(it->destination);
+    }
+
+    return config;
+};
+
 } // namespace
 
 ContainerBuilder::ContainerBuilder(ocppi::cli::CLI &cli)
@@ -259,9 +385,13 @@ auto ContainerBuilder::create(const ContainerOptions &opts) noexcept
 {
     LINGLONG_TRACE("create container");
 
-    auto config = getOCIConfig(opts);
+    auto originalConfig = getOCIConfig(opts);
+    if (!originalConfig) {
+        return LINGLONG_ERR(originalConfig);
+    }
+
+    auto config = fixMount(*originalConfig);
     if (!config) {
-        Q_ASSERT(false);
         return LINGLONG_ERR(config);
     }
 

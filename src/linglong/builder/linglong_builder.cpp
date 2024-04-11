@@ -195,7 +195,9 @@ utils::error::Result<void> Builder::splitDevelop(QDir developOutput,
         installRules.removeDuplicates();
     } else {
         qDebug() << "generate install list from " << src;
-        QDirIterator it(src, QDir::AllEntries | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+        QDirIterator it(src,
+                        QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden,
+                        QDirIterator::Subdirectories);
         while (it.hasNext()) {
             it.next();
             auto filepath = it.filePath();
@@ -773,6 +775,16 @@ utils::error::Result<void> Builder::run(const QStringList &args)
         return LINGLONG_ERR(curRef);
     }
 
+    auto curDir = this->repo.getLayerDir(*curRef);
+    if (!curDir) {
+        return LINGLONG_ERR(curDir);
+    }
+
+    auto info = curDir->info();
+    if (!info) {
+        return LINGLONG_ERR(info);
+    }
+
     auto options = runtime::ContainerOptions{
         .appID = curRef->id,
         .containerID =
@@ -812,11 +824,6 @@ utils::error::Result<void> Builder::run(const QStringList &args)
         options.runtimeDir = QDir(dir->absolutePath());
     }
 
-    auto curDir = this->repo.getLayerDir(*curRef);
-    if (!curDir) {
-        return LINGLONG_ERR(curDir);
-    }
-
     if (this->project.package.kind == "runtime") {
         options.runtimeDir = QDir(curDir->absolutePath());
     }
@@ -828,6 +835,44 @@ utils::error::Result<void> Builder::run(const QStringList &args)
     if (this->project.package.kind == "app") {
         options.appDir = QDir(curDir->absolutePath());
     }
+
+    std::vector<ocppi::runtime::config::types::Mount> applicationMounts{};
+    auto bindMount =
+      [&applicationMounts](const api::types::v1::ApplicationConfigurationPermissionsBind &bind) {
+          applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+            .destination = bind.destination,
+            .options = { { "rbind" } },
+            .source = bind.source,
+            .type = "bind",
+          });
+      };
+    auto bindInnerMount =
+      [&applicationMounts](
+        const api::types::v1::ApplicationConfigurationPermissionsInnerBind &bind) {
+          applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+            .destination = bind.destination,
+            .options = { { "rbind" } },
+            .source = "rootfs" + bind.source,
+            .type = "bind",
+          });
+      };
+
+    if (info->permissions) {
+        auto &perm = info->permissions;
+        if (perm->binds) {
+            const auto &binds = perm->binds;
+            std::for_each(binds->cbegin(), binds->cend(), bindMount);
+        }
+
+        if (perm->innerBinds) {
+            const auto &innerBinds = perm->innerBinds;
+            const auto &hostSourceDir =
+              std::filesystem::path{ curDir->absolutePath().toStdString() };
+            std::for_each(innerBinds->cbegin(), innerBinds->cend(), bindInnerMount);
+        }
+    }
+
+    options.mounts = std::move(applicationMounts);
 
     auto container = this->containerBuilder.create(options);
     if (!container) {

@@ -440,22 +440,14 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     }
     qDebug() << "create container success";
 
-    QStringList shArgs;
-    for (auto arg : args) {
-        shArgs.push_back(QString("'%1'").arg(arg.replace("'", "'\\''")));
+    auto arguments = std::vector<std::string>{};
+    for (const auto &arg : args) {
+        arguments.push_back(arg.toStdString());
     }
-    auto arguments = std::vector<std::string>{
-        "/bin/bash",
-        "--login",
-        "-c",
-        shArgs.join(" ").toStdString(),
-    };
-
     auto arch = package::Architecture::parse(QSysInfo::currentCpuArchitecture());
     if (!arch) {
         return LINGLONG_ERR(arch);
     }
-
     auto process = ocppi::runtime::config::types::Process{
         .apparmorProfile = {},
         .args = arguments,

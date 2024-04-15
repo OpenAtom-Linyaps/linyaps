@@ -70,6 +70,22 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
     if (isatty(fileno(stdin)) != 0) {
         this->cfg.process->terminal = true;
     }
+    // 在原始args前面添加bash --login -c，这样可以使用/etc/profile配置的环境变量
+    if (process.args.has_value()) {
+        QStringList bashArgs;
+        // 为避免原始args包含空格，每个arg都使用单引号包裹，并对arg内部的单引号进行转义替换
+        for (auto arg : *process.args) {
+            bashArgs.push_back(
+              QString("'%1'").arg(QString::fromStdString(arg).replace("'", "'\\''")));
+        }
+        auto arguments = std::vector<std::string>{
+            "/bin/bash",
+            "--login",
+            "-c",
+            bashArgs.join(" ").toStdString(),
+        };
+        this->cfg.process->args = arguments;
+    }
 
     auto arch = package::Architecture::parse(QSysInfo::currentCpuArchitecture());
     if (!arch) {
@@ -138,6 +154,7 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
     }
     qDebug() << "run container in " << bundle.path();
     ocppi::runtime::RunOption opt;
+    // 禁用crun自己创建cgroup，便于AM识别和管理玲珑应用
     opt.GlobalOption::extra.push_back({ "--cgroup-manager=disabled" });
     auto result = this->cli.run(ocppi::runtime::ContainerID(this->id.toStdString()),
                                 std::filesystem::path(bundle.absolutePath().toStdString()),

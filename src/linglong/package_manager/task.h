@@ -57,6 +57,8 @@ public:
 Q_SIGNALS:
     void
     TaskChanged(QString taskID, QString percentage, QString message, Status status, QPrivateSignal);
+    void
+    PartChanged(QString taskID, QString percentage, QString message, Status status, QPrivateSignal);
 
 private:
     QString formatPercentage(double increase = 0) const noexcept;

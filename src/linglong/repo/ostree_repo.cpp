@@ -130,7 +130,6 @@ void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
     if (*status != '\0') {
         new_progress = 100;
         g_string_append(buf, status);
-        Q_EMIT data->taskContext->updateTask(90, 100, "pull application done.");
     } else if (caught_error) {
         auto msg = "Caught error, waiting for outstanding tasks";
         g_string_append_printf(buf, "%s", msg);
@@ -234,7 +233,7 @@ void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
             new_progress = fetched * 97 / requested;
         }
 
-        Q_EMIT data->taskContext->updateTask(fetched, requested, "pulling application.");
+        Q_EMIT data->taskContext->updateTask(fetched, requested, "pulling.");
     } else if (outstanding_writes) {
         g_string_append_printf(buf, "Writing objects: %u", outstanding_writes);
     } else {

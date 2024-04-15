@@ -437,9 +437,14 @@ int main(int argc, char **argv)
               auto srcVersion =
                 QCommandLineOption("sversion", "set source version", "source version");
               auto srcCommit = QCommandLineOption("commit", "set commit refs", "source commit");
-              auto buildOffline = QCommandLineOption("offline", "only use local repo", "");
+              auto buildOffline = QCommandLineOption(
+                "offline",
+                "only use local files. This implies --skip-fetch-source and --skip-pull-depend",
+                "");
               auto buildSkipFetchSource =
-                QCommandLineOption("skip-fetch-source", "skip fetch source (build cache)", "");
+                QCommandLineOption("skip-fetch-source", "skip fetch sources", "");
+              auto buildSkipPullDepend =
+                QCommandLineOption("skip-pull-depend", "skip pull dependency", "");
               auto buildSkipCommitOutput =
                 QCommandLineOption("skip-commit-output", "skip commit build output", "");
               auto buildArch = QCommandLineOption("arch", "set the build arch", "arch");
@@ -450,6 +455,7 @@ int main(int argc, char **argv)
                                   srcCommit,
                                   buildOffline,
                                   buildSkipFetchSource,
+                                  buildSkipPullDepend,
                                   buildSkipCommitOutput,
                                   buildArch });
 
@@ -473,12 +479,24 @@ int main(int argc, char **argv)
               }
               if (parser.isSet(buildSkipFetchSource)) {
                   auto cfg = builder.getConfig();
-                  cfg.skipFetch = true;
+                  cfg.skipFetchSource = true;
+                  builder.setConfig(cfg);
+              }
+              if (parser.isSet(buildSkipPullDepend)) {
+                  auto cfg = builder.getConfig();
+                  cfg.skipPullDepend = true;
                   builder.setConfig(cfg);
               }
               if (parser.isSet(buildSkipCommitOutput)) {
                   auto cfg = builder.getConfig();
-                  cfg.skipCommit = true;
+                  cfg.skipCommitOutput = true;
+                  builder.setConfig(cfg);
+              }
+              if (parser.isSet(buildOffline)) {
+                  auto cfg = builder.getConfig();
+                  cfg.skipFetchSource = true;
+                  cfg.skipPullDepend = true;
+                  cfg.offline = true;
                   builder.setConfig(cfg);
               }
               auto allArgs = QCoreApplication::arguments();

@@ -157,9 +157,11 @@ $defs:
         type: integer
       offline:
         type: boolean
-      skip_fetch:
+      skip_fetch_source:
         type: boolean
-      skip_commit:
+      skip_pull_depend:
+        type: boolean
+      skip_commit_output:
         type: boolean
       arch:
         type: string

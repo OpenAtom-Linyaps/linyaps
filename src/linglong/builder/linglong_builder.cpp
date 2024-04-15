@@ -96,9 +96,8 @@ fetchSources(const std::vector<api::types::v1::BuilderProjectSource> &sources,
     return LINGLONG_OK;
 }
 
-utils::error::Result<package::Reference> pullDependency(QString fuzzyRefStr,
-                                                        repo::OSTreeRepo &repo,
-                                                        bool develop) noexcept
+utils::error::Result<package::Reference>
+pullDependency(QString fuzzyRefStr, repo::OSTreeRepo &repo, bool develop, bool onlyLocal) noexcept
 {
     LINGLONG_TRACE("pull " + fuzzyRefStr);
 
@@ -106,7 +105,14 @@ utils::error::Result<package::Reference> pullDependency(QString fuzzyRefStr,
     if (!fuzzyRef) {
         return LINGLONG_ERR(fuzzyRef);
     }
-
+    if (onlyLocal) {
+        auto ref =
+          repo.clearReference(*fuzzyRef, { .forceRemote = false, .fallbackToRemote = false });
+        if (!ref) {
+            return LINGLONG_ERR(ref);
+        }
+        return *ref;
+    }
     auto ref = repo.clearReference(*fuzzyRef, { .forceRemote = true, .fallbackToRemote = false });
     if (!ref) {
         return LINGLONG_ERR(ref);
@@ -304,7 +310,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
 
     this->workingDir.mkdir("linglong");
 
-    if (this->project.sources && !cfg.skipFetch) {
+    if (this->project.sources && !cfg.skipFetchSource) {
         auto result = fetchSources(*this->project.sources,
                                    this->workingDir.absoluteFilePath("linglong/sources"),
                                    this->cfg);
@@ -316,21 +322,26 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     std::optional<package::Reference> runtime;
     QString runtimeLayerDir;
     if (this->project.runtime) {
-        auto ref =
-          pullDependency(QString::fromStdString(*this->project.runtime), this->repo, false);
+        auto ref = pullDependency(QString::fromStdString(*this->project.runtime),
+                                  this->repo,
+                                  true,
+                                  cfg.skipPullDepend.has_value() && *cfg.skipPullDepend);
         if (!ref) {
             return LINGLONG_ERR("pull runtime", ref);
         }
-        qDebug() << "pull runtime success";
         runtime = *ref;
         auto ret = this->repo.getLayerDir(*runtime, false);
         if (!ret.has_value()) {
             return LINGLONG_ERR("get runtime layer dir", ret);
         }
         runtimeLayerDir = ret->absolutePath();
+        qDebug() << "pull runtime success" << runtime->toString();
     }
 
-    auto base = pullDependency(QString::fromStdString(this->project.base), this->repo, true);
+    auto base = pullDependency(QString::fromStdString(this->project.base),
+                               this->repo,
+                               true,
+                               cfg.skipPullDepend.has_value() && *cfg.skipPullDepend);
     if (!base) {
         return LINGLONG_ERR("pull base", base);
     }
@@ -338,7 +349,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     if (!baseLayerDir) {
         return LINGLONG_ERR(baseLayerDir);
     }
-    qDebug() << "pull base success";
+    qDebug() << "pull base success" << base->toString();
 
     QFile entry = this->workingDir.absoluteFilePath("linglong/entry.sh");
     if (entry.exists() && !entry.remove()) {
@@ -471,7 +482,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         return LINGLONG_ERR(result);
     }
     qDebug() << "run container success";
-    if (cfg.skipCommit) {
+    if (cfg.skipCommitOutput) {
         return LINGLONG_OK;
     }
     QDir runtimeOutput = this->workingDir.absoluteFilePath("linglong/output/runtime/files");
@@ -782,7 +793,10 @@ utils::error::Result<void> Builder::run(const QStringList &args)
         .mounts = {},
     };
 
-    auto baseRef = pullDependency(QString::fromStdString(this->project.base), this->repo, true);
+    auto baseRef = pullDependency(QString::fromStdString(this->project.base),
+                                  this->repo,
+                                  false,
+                                  cfg.skipPullDepend.has_value() && *cfg.skipPullDepend);
     if (!baseRef) {
         return LINGLONG_ERR(baseRef);
     }
@@ -793,8 +807,10 @@ utils::error::Result<void> Builder::run(const QStringList &args)
     options.baseDir = QDir(baseDir->absolutePath());
 
     if (this->project.runtime) {
-        auto ref =
-          pullDependency(QString::fromStdString(*this->project.runtime), this->repo, false);
+        auto ref = pullDependency(QString::fromStdString(*this->project.runtime),
+                                  this->repo,
+                                  false,
+                                  cfg.skipPullDepend.has_value() && *cfg.skipPullDepend);
         if (!ref) {
             return LINGLONG_ERR(ref);
         }

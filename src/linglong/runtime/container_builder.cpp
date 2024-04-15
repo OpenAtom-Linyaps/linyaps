@@ -193,14 +193,11 @@ auto getOCIConfig(const ContainerOptions &opts) noexcept
     QString containerConfigFilePath = qgetenv("LINGLONG_CONTAINER_CONFIG");
     if (containerConfigFilePath.isEmpty()) {
         containerConfigFilePath = LINGLONG_INSTALL_PREFIX "/lib/linglong/container/config.json";
-        if (!utils::global::linglongInstalled() || !QFile(containerConfigFilePath).exists()) {
-            containerConfigFilePath = dir.filePath("config.json");
-            qWarning() << "Initializing the container using the embed config.json. "
-                + containerConfigFilePath;
-            QFile qrcFile(":/container/config.json");
-            if (!qrcFile.copy(containerConfigFilePath)) {
-                return LINGLONG_ERR(qrcFile);
-            };
+        if (!QFile(containerConfigFilePath).exists()) {
+            return LINGLONG_ERR(
+              QString("The container configuration file doesn't exist: %1\n"
+                      "You can specify a custom location using the LINGLONG_CONTAINER_CONFIG")
+                .arg(containerConfigFilePath));
         }
     }
 

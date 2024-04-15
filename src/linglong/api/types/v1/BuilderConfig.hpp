@@ -35,8 +35,9 @@ std::optional<std::string> arch;
 std::optional<std::string> cache;
 std::optional<bool> offline;
 std::string repo;
-std::optional<bool> skipCommit;
-std::optional<bool> skipFetch;
+std::optional<bool> skipCommitOutput;
+std::optional<bool> skipFetchSource;
+std::optional<bool> skipPullDepend;
 int64_t version;
 };
 }

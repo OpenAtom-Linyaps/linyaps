@@ -125,15 +125,14 @@ pullDependency(QString fuzzyRefStr, repo::OSTreeRepo &repo, bool develop, bool o
 
     auto taskID = QUuid::createUuid();
     auto taskPtr = std::make_shared<service::InstallTask>(taskID);
-    taskPtr->updateStatus(service::InstallTask::Success);
 
-    auto taskChanged =
+    auto partChanged =
       [](QString taskID, QString percentage, QString message, service::InstallTask::Status status) {
-          qInfo().noquote() << QString("%1%%").arg(percentage) << message;
+          qInfo().noquote() << percentage << message;
       };
-    QObject::connect(taskPtr.get(), &service::InstallTask::TaskChanged, taskChanged);
+    QObject::connect(taskPtr.get(), &service::InstallTask::PartChanged, partChanged);
     repo.pull(taskPtr, *ref, develop);
-    if (taskPtr->currentStatus() != service::InstallTask::Status::Success) {
+    if (taskPtr->currentStatus() == service::InstallTask::Status::Failed) {
         return LINGLONG_ERR("pull " + ref->toString() + " failed", *taskPtr->currentError());
     }
 

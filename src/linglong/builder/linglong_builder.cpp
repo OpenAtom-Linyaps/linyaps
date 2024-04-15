@@ -435,7 +435,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     }
     auto arguments = std::vector<std::string>{
         "/bin/bash",
-        "-l",
+        "--login",
         "-c",
         shArgs.join(" ").toStdString(),
     };

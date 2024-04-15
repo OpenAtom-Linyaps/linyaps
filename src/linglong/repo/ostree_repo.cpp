@@ -1081,27 +1081,28 @@ void OSTreeRepo::pull(std::shared_ptr<service::InstallTask> taskContext,
     LINGLONG_TRACE("pull " + refString);
 
     utils::Transaction transaction;
+    QTemporaryDir tmpRepoDir;
+    // 初始化临时仓库
+    {
+        if (!tmpRepoDir.isValid()) {
+            taskContext->updateStatus(service::InstallTask::Status::Failed,
+                                      LINGLONG_ERR("invalid QTemporaryDir"));
+            return;
+        }
 
-    QTemporaryDir tmpRepoDir(ostreeRepoDir().path() + "_tmp");
-
-    if (!tmpRepoDir.isValid()) {
-        taskContext->updateStatus(service::InstallTask::Status::Failed,
-                                  LINGLONG_ERR("invalid QTemporaryDir"));
-        return;
+        auto repo = createOstreeRepo(tmpRepoDir.path(),
+                                     QString::fromStdString(this->cfg.defaultRepo),
+                                     QString::fromStdString(this->cfg.repos[this->cfg.defaultRepo]),
+                                     this->ostreeRepoDir().absolutePath());
+        if (!repo) {
+            taskContext->updateStatus(service::InstallTask::Status::Failed, LINGLONG_ERR(repo));
+            return;
+        }
+        g_clear_object(&(*repo));
     }
-
-    auto repo = createOstreeRepo(tmpRepoDir.path(),
-                                 QString::fromStdString(this->cfg.defaultRepo),
-                                 QString::fromStdString(this->cfg.repos[this->cfg.defaultRepo]),
-                                 this->ostreeRepoDir().absolutePath());
-    if (!repo) {
-        taskContext->updateStatus(service::InstallTask::Status::Failed, LINGLONG_ERR(repo));
-        return;
-    }
-    g_clear_object(&(*repo));
-
+    // 因为更改了仓库配置，所以不使用初始化的值而是重新打开仓库
     g_autoptr(GError) gErr = nullptr;
-    auto repoPath = g_file_new_for_path("/tmp/abcccc");
+    auto repoPath = g_file_new_for_path(tmpRepoDir.path().toStdString().c_str());
     auto tmpRepo = ostree_repo_new(repoPath);
     auto _ = utils::finally::finally([&]() {
         g_clear_object(&tmpRepo);

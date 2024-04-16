@@ -20,6 +20,7 @@ ExecReplace()
     do
         if [ "$fileType" == "*.desktop" ]; then
             sed -i "/\[Desktop Entry\]/a X-linglong=${appId}" ${path}
+            sed -i "/TryExec=*/c TryExec=ll-cli" ${path}
         fi
         execContent=$(grep "^Exec=" ${path})
         IFS=$'\n'

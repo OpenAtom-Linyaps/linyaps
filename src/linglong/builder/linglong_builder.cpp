@@ -558,7 +558,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         .name = this->project.package.name,
         .permissions = this->project.permissions,
         .runtime = {},
-        .size = 0,
+        .size = util::sizeOfDir(runtimeOutput.absoluteFilePath("..")),
         .version = this->project.package.version,
     };
 
@@ -579,6 +579,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     infoFile.close();
 
     info.packageInfoModule = "develop";
+    info.size = util::sizeOfDir(developOutput.absoluteFilePath(".."));
 
     infoFile.setFileName(developOutput.absoluteFilePath("../info.json"));
     if (!infoFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {

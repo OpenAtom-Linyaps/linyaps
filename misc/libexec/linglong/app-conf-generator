@@ -19,7 +19,7 @@ ExecReplace()
     for path in `ls ${filePath}/${fileType}`
     do
         if [ "$fileType" == "*.desktop" ]; then
-            sed -i "/\[Desktop Entry\]/a X-linglong=${appid}" ${path}
+            sed -i "/\[Desktop Entry\]/a X-linglong=${appId}" ${path}
         fi
         execContent=$(grep "^Exec=" ${path})
         IFS=$'\n'

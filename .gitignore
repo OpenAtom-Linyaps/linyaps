@@ -12,15 +12,16 @@
 /tools/package-lock.json
 /tools/package.json
 
-/debian/.debhelper
+/debian/*debhelper*
 /debian/debhelper-build-stamp
 /debian/files
-/debian/linglong-bin/
-/debian/linglong-builder/
-/debian/*debhelper*
 /debian/linglong-bin.substvars
+/debian/linglong-bin/
+/debian/linglong-box.substvars
+/debian/linglong-box/
 /debian/linglong-builder
 /debian/linglong-builder.substvars
-/debian/tmp/usr
+/debian/linglong-builder/
 /debian/tmp/
+/debian/tmp/usr
 /obj-x86_64-linux-gnu

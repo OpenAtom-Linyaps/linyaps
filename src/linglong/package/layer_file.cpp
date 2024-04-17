@@ -76,7 +76,7 @@ utils::error::Result<quint32> LayerFile::metaInfoLength()
     QDataStream layerDataStream(this);
 
     layerDataStream.startTransaction();
-
+    layerDataStream.setByteOrder(QDataStream::LittleEndian);
     layerDataStream.skipRawData(magicNumber.size());
     quint32 metaInfoLength = 0;
     layerDataStream >> metaInfoLength;

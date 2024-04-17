@@ -126,10 +126,9 @@ pullDependency(QString fuzzyRefStr, repo::OSTreeRepo &repo, bool develop, bool o
     auto taskID = QUuid::createUuid();
     auto taskPtr = std::make_shared<service::InstallTask>(taskID);
 
-    auto partChanged =
-      [](QString taskID, QString percentage, QString message, service::InstallTask::Status status) {
-          qInfo().noquote() << percentage << message;
-      };
+    auto partChanged = [&ref](QString, QString percentage, QString, service::InstallTask::Status) {
+        qInfo().noquote() << "pulling" << ref->toString() << percentage;
+    };
     QObject::connect(taskPtr.get(), &service::InstallTask::PartChanged, partChanged);
     repo.pull(taskPtr, *ref, develop);
     if (taskPtr->currentStatus() == service::InstallTask::Status::Failed) {
@@ -331,7 +330,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
             return LINGLONG_ERR("pull runtime", ref);
         }
         runtime = *ref;
-        auto ret = this->repo.getLayerDir(*runtime, false);
+        auto ret = this->repo.getLayerDir(*runtime, true);
         if (!ret.has_value()) {
             return LINGLONG_ERR("get runtime layer dir", ret);
         }
@@ -558,7 +557,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         .name = this->project.package.name,
         .permissions = this->project.permissions,
         .runtime = {},
-        .size = util::sizeOfDir(runtimeOutput.absoluteFilePath("..")),
+        .size = static_cast<int64_t>(util::sizeOfDir(runtimeOutput.absoluteFilePath(".."))),
         .version = this->project.package.version,
     };
 

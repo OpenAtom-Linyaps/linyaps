@@ -31,7 +31,7 @@ void InstallTask::updateTask(double currentPercentage,
         return;
     }
     auto increase = (currentPercentage / totalPercentage) * partsMap[Success];
-    auto partPercentage = QString("%1/%2(%3)")
+    auto partPercentage = QString("%1/%2(%3%)")
                             .arg(currentPercentage)
                             .arg(totalPercentage)
                             .arg(formatPercentage(currentPercentage / totalPercentage * 100));

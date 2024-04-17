@@ -402,10 +402,12 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
         return toDBusReply(newRef);
     }
 
-    if (newRef->version < ref->version) {
-        return toDBusReply(-1,
-                           "remote version " + newRef->version.toString()
-                             + " older then local version " + ref->version.toString());
+    if (newRef->version <= ref->version) {
+        return toDBusReply(
+          -1,
+          QString("remote version is %1, the latest version %2 is already installed")
+            .arg(newRef->version.toString())
+            .arg(ref->version.toString()));
     }
 
     auto taskID = QUuid::createUuid();

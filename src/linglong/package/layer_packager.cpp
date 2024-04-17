@@ -10,6 +10,7 @@
 #include "linglong/utils/command/env.h"
 
 #include <QDataStream>
+#include <QSysInfo>
 
 namespace linglong::package {
 
@@ -72,6 +73,7 @@ LayerPackager::pack(const LayerDir &dir, const QString &layerFilePath) const
 
     QDataStream dataSizeStream(&dataSizeBytes, QIODevice::WriteOnly);
     dataSizeStream.setVersion(QDataStream::Qt_5_10);
+    dataSizeStream.setByteOrder(QDataStream::LittleEndian);
     dataSizeStream << quint32(data.size());
 
     Q_ASSERT(dataSizeStream.status() == QDataStream::Status::Ok);

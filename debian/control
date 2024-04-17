@@ -11,6 +11,7 @@ Build-Depends: cmake,
                libgtest-dev,
                libostree-dev,
                libqt5websockets5-dev,
+               libseccomp-dev,
                libsystemd-dev,
                libyaml-cpp-dev (>= 0.6.2),
                nlohmann-json3-dev (>= 3.5.0),
@@ -21,6 +22,12 @@ Build-Depends: cmake,
                systemd
 Standards-Version: 4.1.3
 Homepage: http://www.deepin.org
+
+Package: linglong-box
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: Deepin sandbox with OCI standard.
+ Deepin sandbox...
 
 Package: linglong-bin
 Architecture: any

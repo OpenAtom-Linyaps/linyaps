@@ -1342,9 +1342,9 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
 
 void OSTreeRepo::removeDanglingXDGIntergation() noexcept
 {
-    QDir entriesDir = this->repoDir.absoluteFilePath("entries");
+    QDir entriesDir = this->repoDir.absoluteFilePath("entries/share");
     QDirIterator it(entriesDir.absolutePath(),
-                    QDir::NoDot | QDir::NoDotDot | QDir::System,
+                    QDir::AllEntries | QDir::NoDot | QDir::NoDotDot | QDir::System,
                     QDirIterator::Subdirectories);
     while (it.hasNext()) {
         it.next();
@@ -1355,7 +1355,7 @@ void OSTreeRepo::removeDanglingXDGIntergation() noexcept
 
         if (!info.isSymLink()) {
             // NOTE: Everything in entries is directory or symbol link.
-            qWarning() << "Invalid entries dir detected.";
+            qWarning() << "Invalid entries dir detected." << info.absoluteFilePath();
             Q_ASSERT(false);
             continue;
         }
@@ -1374,16 +1374,19 @@ void OSTreeRepo::removeDanglingXDGIntergation() noexcept
 void OSTreeRepo::unexportReference(const package::Reference &ref) noexcept
 {
     auto layerQDir = this->getLayerQDir(ref);
+    // if uninstall package, call removeDanglingXDGIntergation()
     if (!layerQDir.exists()) {
-        // NOTE(black_desk): It should be handled in OSTreeRepo::clearDanglingXDGIntergation.
+        removeDanglingXDGIntergation();
         return;
     }
 
-    QDir entriesDir = this->repoDir.absoluteFilePath("entries");
+    // if upgrade package
+    QDir entriesDir = this->repoDir.absoluteFilePath("entries/share");
     QDirIterator it(entriesDir.absolutePath(),
-                    QDir::NoDot | QDir::NoDotDot | QDir::System,
+                    QDir::AllEntries | QDir::NoDot | QDir::NoDotDot | QDir::System,
                     QDirIterator::Subdirectories);
     while (it.hasNext()) {
+        it.next();
         const auto info = it.fileInfo();
         if (info.isDir()) {
             continue;
@@ -1391,7 +1394,7 @@ void OSTreeRepo::unexportReference(const package::Reference &ref) noexcept
 
         if (!info.isSymLink()) {
             // NOTE: Everything in entries is directory or symbol link.
-            qWarning() << "Invalid entries dir detected.";
+            qWarning() << "Invalid entries dir detected." << info.absoluteFilePath();
             Q_ASSERT(false);
             continue;
         }
@@ -1404,8 +1407,6 @@ void OSTreeRepo::unexportReference(const package::Reference &ref) noexcept
             qCritical() << "Failed to remove" << it.filePath();
             Q_ASSERT(false);
         }
-
-        it.next();
     }
 }
 

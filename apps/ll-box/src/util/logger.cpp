@@ -53,7 +53,7 @@ static Logger::Level initLogLevel()
 {
     openlog("ll-box", LOG_PID, LOG_USER);
     auto env = getenv("LINGLONG_LOG_LEVEL");
-    return getLogLevelFromStr(env ? env : "");
+    return getLogLevelFromStr(env ? env : "Error");
 }
 
 Logger::Level Logger::LOGLEVEL = initLogLevel();

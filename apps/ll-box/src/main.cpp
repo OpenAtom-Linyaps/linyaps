@@ -21,7 +21,6 @@
 namespace {
 
 constexpr auto cgroup_manager_option = 1111;
-constexpr auto bundle_option = 2222;
 constexpr auto config_option = 3333;
 
 std::optional<std::string> command;
@@ -37,6 +36,7 @@ int parse_opt(int key, char *arg, struct argp_state *state)
 {
     switch (key) {
     case cgroup_manager_option:
+
         if (command) {
             argp_failure(state, 1, 0, "global option must be specified before the command");
             return -1;
@@ -49,35 +49,18 @@ int parse_opt(int key, char *arg, struct argp_state *state)
         argp_failure(state, 1, 0, "invalid cgroup manager", arg);
         return -1;
 
-    case bundle_option:
-        if (!command) {
-            argp_failure(state, 1, 0, "subcommand option must be specified after the command");
-            return -1;
-        }
-
-        if (command != "run") {
-            argp_failure(state, 1, 0, "unknown option for command %s: bundle", command->c_str());
-            return -1;
-        }
+    case 'b':
 
         bundle = arg;
         return 0;
 
     case config_option:
-        if (!command) {
-            argp_failure(state, 1, 0, "subcommand option must be specified after the command");
-            return -1;
-        }
-
-        if (command != "run") {
-            argp_failure(state, 1, 0, "unknown option for command %s: config", command->c_str());
-            return -1;
-        }
 
         config = arg;
         return 0;
 
     case ARGP_KEY_ARG:
+
         if (!command) {
             command = arg;
             return 0;
@@ -126,6 +109,7 @@ int parse_opt(int key, char *arg, struct argp_state *state)
         return -1;
 
     case ARGP_KEY_END:
+
         if (!command) {
             argp_failure(state, 1, 0, "command is required");
             return -1;
@@ -214,7 +198,7 @@ int main(int argc, char **argv)
         },
         {
           .name = "bundle",
-          .key = bundle_option,
+          .key = 'b',
           .arg = "DIR",
           .flags = 0,
           .doc = "Path to the root of the bundle dir (default \".\")",

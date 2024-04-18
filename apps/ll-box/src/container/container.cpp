@@ -36,69 +36,8 @@
 
 namespace linglong {
 
-static const std::string llDbusProxyBin = "/usr/bin/ll-dbus-proxy";
-
-// start dbus proxy
-static int StartDbusProxy(const Runtime &runtime)
-{
-    if (!(runtime.annotations.has_value() && runtime.annotations->dbus_proxy_info.has_value()
-          && runtime.annotations->dbus_proxy_info->enable)) {
-        logInf() << "dbus proxy disabled";
-        return -1;
-    }
-
-    const auto &info = runtime.annotations->dbus_proxy_info;
-
-    std::string socket_path = info->proxy_path;
-
-    pid_t proxy_pid = fork();
-    if (proxy_pid < 0) {
-        logErr() << "fork to start dbus proxy failed:", util::errnoString();
-        return -1;
-    }
-
-    if (0 == proxy_pid) {
-        // FIXME: parent may dead before this return.
-        prctl(PR_SET_PDEATHSIG, SIGKILL);
-        std::string bus_type = info->bus_type;
-        std::string app_id = info->app_id;
-        std::vector<std::string> name_fliter = info->name;
-        std::vector<std::string> path_fliter = info->path;
-        std::vector<std::string> interface_fliter = info->interface;
-        std::string name_fliter_string = linglong::util::str_vec_join(name_fliter, ',');
-        std::string path_fliter_string = linglong::util::str_vec_join(path_fliter, ',');
-        std::string interface_fliter_string = linglong::util::str_vec_join(interface_fliter, ',');
-        char const *const args[] = { llDbusProxyBin.c_str(),
-                                     app_id.c_str(),
-                                     bus_type.c_str(),
-                                     socket_path.c_str(),
-                                     name_fliter_string.c_str(),
-                                     path_fliter_string.c_str(),
-                                     interface_fliter_string.c_str(),
-                                     NULL };
-        int ret = execvp(args[0], (char **)args);
-        logErr() << "start dbus proxy failed, ret=" << ret;
-        exit(ret);
-    } else {
-        // FIXME: this call make 10ms lag at least
-        if (util::fs::path(socket_path).wait_until_exsit() != 0) {
-            logErr() << util::format("timeout! socketPath [\"%s\"] not exsit", socket_path.c_str());
-            return -1;
-        }
-    }
-    return 0;
-}
-
-int DropToNormalUser(int uid, int gid)
-{
-    setuid(uid);
-    seteuid(uid);
-    setgid(gid);
-    setegid(gid);
-    return 0;
-}
-
-static int ConfigUserNamespace(const linglong::Linux &linux, int initPid)
+namespace {
+int ConfigUserNamespace(const linglong::Linux &linux, int initPid)
 {
     std::string pid = "self";
     if (initPid > 0) {
@@ -130,6 +69,7 @@ static int ConfigUserNamespace(const linglong::Linux &linux, int initPid)
     logDbg() << "new uid:" << getuid() << "gid:" << getgid();
     return 0;
 }
+} // namespace
 
 // FIXME(iceyer): not work now
 static int ConfigCgroupV2(const std::string &cgroupsPath,
@@ -758,8 +698,6 @@ int Container::Start()
     }
 
     flags |= CLONE_NEWUSER;
-
-    StartDbusProxy(contanerPrivate.runtime);
 
     int entryPid = util::PlatformClone(EntryProc, flags, (void *)dd_ptr.get());
     if (entryPid < 0) {

@@ -178,9 +178,9 @@ static int ConfigCgroupV2(const std::string &cgroupsPath,
         const auto memSwapMax = res.memory.swap - memMax;
         const auto memLow = res.memory.reservation;
         writeConfig({
-                { subCgroupPath("memory.max"), util::format("%d", memMax) },
-                { subCgroupPath("memory.swap.max"), util::format("%d", memSwapMax) },
-                { subCgroupPath("memory.low"), util::format("%d", memLow) },
+          { subCgroupPath("memory.max"), util::format("%d", memMax) },
+          { subCgroupPath("memory.swap.max"), util::format("%d", memSwapMax) },
+          { subCgroupPath("memory.low"), util::format("%d", memLow) },
         });
     }
 
@@ -191,13 +191,13 @@ static int ConfigCgroupV2(const std::string &cgroupsPath,
     const auto cpuWeight = (1 + ((res.cpu.shares - 2) * 9999) / 262142);
 
     writeConfig({
-            { subCgroupPath("cpu.max"), util::format("%d %d", cpuMax, cpuPeriod) },
-            { subCgroupPath("cpu.weight"), util::format("%d", cpuWeight) },
+      { subCgroupPath("cpu.max"), util::format("%d %d", cpuMax, cpuPeriod) },
+      { subCgroupPath("cpu.weight"), util::format("%d", cpuWeight) },
     });
 
     // config pid
     writeConfig({
-            { subCgroupPath("cgroup.procs"), util::format("%d", initPid) },
+      { subCgroupPath("cgroup.procs"), util::format("%d", initPid) },
     });
 
     logDbg() << "move" << initPid << "to new cgroups";
@@ -234,13 +234,13 @@ static bool parse_wstatus(const int &wstatus, std::string &info)
 struct ContainerPrivate
 {
 public:
-    ContainerPrivate(Runtime r, std::unique_ptr<util::MessageReader> reader, Container * /*parent*/)
+    ContainerPrivate(Runtime r, Container * /*parent*/)
         : hostRoot(r.root.path)
         , runtime(std::move(r))
         , nativeMounter(new HostMount)
         , overlayfsMounter(new HostMount)
         , fuseproxyMounter(new HostMount)
-        , reader(std::move(reader))
+
     {
     }
 
@@ -261,8 +261,6 @@ public:
     std::unique_ptr<HostMount> fuseproxyMounter;
 
     HostMount *containerMounter = nullptr;
-
-    std::unique_ptr<util::MessageReader> reader;
 
     std::map<int, std::string> pidMap;
 
@@ -373,8 +371,6 @@ public:
 
         auto epfd = epoll_create(1);
         epoll_ctl_add(epfd, sfd);
-        if (reader.get() != nullptr)
-            epoll_ctl_add(epfd, reader->fd);
 
         for (;;) {
             struct epoll_event events[10];
@@ -403,8 +399,6 @@ public:
                                 }
                                 auto it = pidMap.find(child);
                                 if (it != pidMap.end()) {
-                                    if (reader.get() != nullptr)
-                                        reader->writeChildExit(child, it->second, wstatus, info);
                                     pidMap.erase(it);
                                 }
                             } else if (child < 0) {
@@ -425,13 +419,6 @@ public:
                     } else {
                         logWan() << util::format("Read unexpected signal [%d]\n", fdsi.ssi_signo);
                     }
-                } else if (reader.get() != nullptr && event.data.fd == reader->fd) {
-                    auto json = reader->read();
-                    if (json.empty()) {
-                        break;
-                    }
-                    auto process = json.get<Process>();
-                    forkAndExecProcess(process, true);
                 } else {
                     logWan() << "Unknown fd";
                 }
@@ -578,7 +565,7 @@ public:
             util::str_vec mounts = {};
             for (auto const &mount : overlayfs.mounts) {
                 auto mountItem =
-                        util::format("%s:%s\n", mount.source.c_str(), mount.destination.c_str());
+                  util::format("%s:%s\n", mount.source.c_str(), mount.destination.c_str());
                 mounts.push_back(mountItem);
             }
 
@@ -608,8 +595,8 @@ public:
             }
         } else {
             return PrepareNativeRootfs(runtime.annotations->native.has_value()
-                                               ? runtime.annotations->native.value()
-                                               : AnnotationsNativeRootfs());
+                                         ? runtime.annotations->native.value()
+                                         : AnnotationsNativeRootfs());
         }
 
         return -1;
@@ -787,14 +774,13 @@ int EntryProc(void *arg)
 
     // FIXME(interactive bash): if need keep interactive shell
 
-    containerPrivate.reader.reset();
     signal(SIGTERM, sigtermHandler);
     util::WaitAllUntil(noPrivilegePid);
     return -1;
 }
 
-Container::Container(const Runtime &r, std::unique_ptr<util::MessageReader> reader)
-    : dd_ptr(new ContainerPrivate(r, std::move(reader), this))
+Container::Container(const Runtime &r)
+    : dd_ptr(new ContainerPrivate(r, this))
 {
 }
 
@@ -841,8 +827,6 @@ int Container::Start(const Option &option)
         logErr() << "clone failed" << util::RetErrString(entryPid);
         return -1;
     }
-
-    contanerPrivate.reader.reset();
 
     // FIXME: maybe we need c.opt.child_need_wait?
 

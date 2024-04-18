@@ -21,42 +21,20 @@ extern linglong::Runtime loadBundle(int argc, char **argv);
 
 int main(int argc, char **argv)
 {
-    // TODO(iceyer): move loader to ll-loader?
-    bool is_load_bundle = (argc == 4);
-
     linglong::Option option;
-    // TODO(iceyer): default in rootless
-    if (geteuid() != 0) {
-        option.rootless = true;
-    }
+
+    option.rootless = true;
 
     try {
         linglong::Runtime runtime;
         nlohmann::json json;
-        std::unique_ptr<linglong::util::MessageReader> reader = nullptr;
 
-        if (is_load_bundle) {
-            runtime = loadBundle(argc, argv);
-        } else {
-            int socket = atoi(argv[1]);
-            if (socket <= 0) {
-                socket = open(argv[1], O_RDONLY | O_CLOEXEC);
-            }
+        auto config = std::ifstream(argv[1]);
 
-            reader.reset(new linglong::util::MessageReader(socket));
-
-            json = reader->read();
-        }
-
-        if (linglong::util::fs::exists("/tmp/ll-debug")) {
-            std::ofstream origin(linglong::util::format("/tmp/ll-debug/%d.json", getpid()));
-            origin << json.dump(4);
-            origin.close();
-        }
-
+        json = nlohmann::json::parse(config);
         runtime = json.get<linglong::Runtime>();
 
-        linglong::Container container(runtime, std::move(reader));
+        linglong::Container container(runtime);
         return container.Start(option);
     } catch (const std::exception &e) {
         logErr() << "failed: " << e.what();

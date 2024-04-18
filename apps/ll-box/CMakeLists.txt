@@ -8,6 +8,8 @@ pfl_add_executable(
   SOURCES
   src/container/container.cpp
   src/container/container.h
+  src/container/helper.h
+  src/container/helper.cpp
   src/container/mount/filesystem_driver.cpp
   src/container/mount/filesystem_driver.h
   src/container/mount/host_mount.cpp

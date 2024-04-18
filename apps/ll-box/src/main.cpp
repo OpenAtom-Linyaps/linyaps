@@ -28,7 +28,7 @@ std::optional<std::string> command;
 std::optional<std::string> container;
 std::optional<std::string> signal;
 
-std::string bundle = ".";
+std::string bundle = std::filesystem::current_path();
 std::string config = "config.json";
 
 std::optional<std::vector<std::string>> commands;
@@ -175,8 +175,8 @@ try {
     auto json = nlohmann::json::parse(configFile);
     auto runtime = json.get<linglong::Runtime>();
 
-    linglong::Container container(runtime);
-    return container.Start();
+    linglong::Container c(bundle, *container, runtime);
+    return c.Start();
 } catch (const std::exception &e) {
     logErr() << "run failed:" << e.what();
     return -1;

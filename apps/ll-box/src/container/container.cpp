@@ -6,6 +6,7 @@
 
 #include "container.h"
 
+#include "container/helper.h"
 #include "container/mount/filesystem_driver.h"
 #include "container/mount/host_mount.h"
 #include "container/seccomp.h"
@@ -663,8 +664,10 @@ int EntryProc(void *arg)
     return -1;
 }
 
-Container::Container(const Runtime &r)
-    : dd_ptr(new ContainerPrivate(r, this))
+Container::Container(const std::string &bundle, const std::string &id, const Runtime &r)
+    : bundle(bundle)
+    , id(id)
+    , dd_ptr(new ContainerPrivate(r, this))
 {
 }
 
@@ -712,8 +715,16 @@ int Container::Start()
     // FIXME: parent may dead before this return.
     prctl(PR_SET_PDEATHSIG, SIGKILL);
 
+    writeContainerJson(this->bundle, this->id, entryPid);
+
     // FIXME(interactive bash): if need keep interactive shell
     util::WaitAllUntil(entryPid);
+
+    auto dir =
+      std::filesystem::path("/run") / "user" / std::to_string(getuid()) / "linglong" / "box";
+    if (!std::filesystem::remove(dir / (this->id + ".json"))) {
+        logErr() << "remove" << dir / (this->id + ".json") << "failed";
+    }
 
     return 0;
 }

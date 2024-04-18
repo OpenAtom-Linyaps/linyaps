@@ -84,14 +84,28 @@ auto doCommand(const std::string &bin,
         if constexpr (std::is_void_v<Result>) {
                 auto ret = runProcess(bin, args);
                 if (ret != 0) {
-                        throw CommandFailedError(ret, bin);
+                        throw CommandFailedError(
+                                ret,
+                                std::accumulate(args.begin(), args.end(), bin,
+                                                [](const std::string &a,
+                                                   const std::string &b)
+                                                        -> std::string {
+                                                        return a + " " + b;
+                                                }));
                 }
                 return;
         } else {
                 std::string output;
                 auto ret = runProcess(bin, args, output);
                 if (ret != 0) {
-                        throw CommandFailedError(ret, bin);
+                        throw CommandFailedError(
+                                ret,
+                                std::accumulate(args.begin(), args.end(), bin,
+                                                [](const std::string &a,
+                                                   const std::string &b)
+                                                        -> std::string {
+                                                        return a + " " + b;
+                                                }));
                 }
 
                 auto json_result = nlohmann::json::parse(output);

@@ -403,120 +403,44 @@ public:
         int ret = -1;
         chdir(hostRoot.c_str());
 
-        if (runtime.annotations->overlayfs.has_value()) {
-            int flag = MS_MOVE;
-            ret = mount(".", "/", nullptr, flag, nullptr);
-            if (0 != ret) {
-                logErr() << "mount / failed" << util::RetErrString(ret);
-                return -1;
-            }
-
-            ret = chroot(".");
-            if (0 != ret) {
-                logErr() << "chroot . failed" << util::RetErrString(ret);
-                return -1;
-            }
-        } else {
-            int flag = MS_BIND | MS_REC;
-            ret = mount(".", ".", "bind", flag, nullptr);
-            if (0 != ret) {
-                logErr() << "mount / failed" << util::RetErrString(ret);
-                return -1;
-            }
-
-            auto llHostFilename = "ll-host";
-
-            auto llHostPath = hostRoot + "/" + llHostFilename;
-
-            mkdir(llHostPath.c_str(), 0755);
-
-            ret = syscall(SYS_pivot_root, hostRoot.c_str(), llHostPath.c_str());
-            if (0 != ret) {
-                logErr() << "SYS_pivot_root failed" << hostRoot << util::errnoString() << errno
-                         << ret;
-                return -1;
-            }
-
-            chdir("/");
-            ret = chroot(".");
-            if (0 != ret) {
-                logErr() << "chroot failed" << hostRoot << util::errnoString() << errno;
-                return -1;
-            }
-
-            chdir("/");
-            umount2(llHostFilename, MNT_DETACH);
+        int flag = MS_BIND | MS_REC;
+        ret = mount(".", ".", "bind", flag, nullptr);
+        if (0 != ret) {
+            logErr() << "mount / failed" << util::RetErrString(ret);
+            return -1;
         }
+
+        auto llHostFilename = "ll-host";
+
+        auto llHostPath = hostRoot + "/" + llHostFilename;
+
+        mkdir(llHostPath.c_str(), 0755);
+
+        ret = syscall(SYS_pivot_root, hostRoot.c_str(), llHostPath.c_str());
+        if (0 != ret) {
+            logErr() << "SYS_pivot_root failed" << hostRoot << util::errnoString() << errno << ret;
+            return -1;
+        }
+
+        chdir("/");
+        ret = chroot(".");
+        if (0 != ret) {
+            logErr() << "chroot failed" << hostRoot << util::errnoString() << errno;
+            return -1;
+        }
+
+        chdir("/");
+        umount2(llHostFilename, MNT_DETACH);
 
         return 0;
     }
 
     int PrepareRootfs()
     {
-        auto PrepareOverlayfsRootfs = [&](const AnnotationsOverlayfs &overlayfs) -> int {
-            nativeMounter->Setup(new NativeFilesystemDriver(overlayfs.lower_parent));
+        nativeMounter->Setup(new NativeFilesystemDriver(runtime.root.path));
 
-            util::str_vec lowerDirs = {};
-            int prefixIndex = 0;
-            for (auto mount : overlayfs.mounts) {
-                auto prefix = util::fs::path(util::format("/%d", prefixIndex));
-                mount.destination = (prefix / mount.destination).string();
-                if (0 == nativeMounter->MountNode(mount)) {
-                    lowerDirs.push_back((util::fs::path(overlayfs.lower_parent) / prefix).string());
-                }
-                ++prefixIndex;
-            }
-
-            overlayfsMounter->Setup(new OverlayfsFuseFilesystemDriver(lowerDirs,
-                                                                      overlayfs.upper,
-                                                                      overlayfs.workdir,
-                                                                      hostRoot));
-
-            containerMounter = overlayfsMounter.get();
-            return -1;
-        };
-
-        auto PrepareFuseProxyRootfs = [&](const AnnotationsOverlayfs &overlayfs) -> int {
-            nativeMounter->Setup(new NativeFilesystemDriver(overlayfs.lower_parent));
-
-            util::str_vec mounts = {};
-            for (auto const &mount : overlayfs.mounts) {
-                auto mountItem =
-                  util::format("%s:%s\n", mount.source.c_str(), mount.destination.c_str());
-                mounts.push_back(mountItem);
-            }
-
-            fuseproxyMounter->Setup(new FuseProxyFilesystemDriver(mounts, hostRoot));
-
-            containerMounter = fuseproxyMounter.get();
-            return -1;
-        };
-
-        auto PrepareNativeRootfs = [&](const AnnotationsNativeRootfs &native) -> int {
-            nativeMounter->Setup(new NativeFilesystemDriver(runtime.root.path));
-
-            for (const auto &mount : native.mounts) {
-                nativeMounter->MountNode(mount);
-            }
-
-            containerMounter = nativeMounter.get();
-            return -1;
-        };
-
-        if (runtime.annotations.has_value() && runtime.annotations->overlayfs.has_value()) {
-            auto env = getenv("LL_BOX_FS_BACKEND");
-            if (env && std::string(env) == "fuse-proxy") {
-                return PrepareFuseProxyRootfs(runtime.annotations->overlayfs.value());
-            } else {
-                return PrepareOverlayfsRootfs(runtime.annotations->overlayfs.value());
-            }
-        } else {
-            return PrepareNativeRootfs(runtime.annotations->native.has_value()
-                                         ? runtime.annotations->native.value()
-                                         : AnnotationsNativeRootfs());
-        }
-
-        return -1;
+        containerMounter = nativeMounter.get();
+        return 0;
     }
 
     int MountContainerPath()
@@ -615,15 +539,6 @@ int EntryProc(void *arg)
     int ret = mount(nullptr, "/", nullptr, flags, nullptr);
     if (0 != ret) {
         logErr() << "mount / failed" << util::RetErrString(ret);
-        return -1;
-    }
-
-    std::string container_root = containerPrivate.runtime.annotations->container_root_path;
-    flags = MS_NODEV | MS_NOSUID;
-    ret = mount("tmpfs", container_root.c_str(), "tmpfs", flags, nullptr);
-    if (0 != ret) {
-        logErr() << util::format("mount container root (%s) failed:", container_root.c_str())
-                 << util::RetErrString(ret);
         return -1;
     }
 

@@ -457,102 +457,6 @@ inline void to_json(nlohmann::json &j, const Hooks &o)
     j["prestart"] = o.prestart;
 }
 
-struct AnnotationsOverlayfs
-{
-    std::string lower_parent;
-    std::string upper;
-    std::string workdir;
-    std::vector<Mount> mounts;
-};
-
-LLJS_FROM_OBJ(AnnotationsOverlayfs)
-{
-    LLJS_FROM_VARNAME(lowerParent, lower_parent);
-    LLJS_FROM(upper);
-    LLJS_FROM(workdir);
-    LLJS_FROM(mounts);
-}
-
-LLJS_TO_OBJ(AnnotationsOverlayfs)
-{
-    LLJS_TO_VARNAME(lowerParent, lower_parent);
-    LLJS_TO(upper);
-    LLJS_TO(workdir);
-    LLJS_TO(mounts);
-}
-
-struct AnnotationsNativeRootfs
-{
-    std::vector<Mount> mounts;
-};
-
-LLJS_FROM_OBJ(AnnotationsNativeRootfs)
-{
-    LLJS_FROM(mounts);
-}
-
-LLJS_TO_OBJ(AnnotationsNativeRootfs)
-{
-    LLJS_TO(mounts);
-}
-
-struct DbusProxyInfo
-{
-    bool enable;
-    std::string bus_type;
-    std::string app_id;
-    std::string proxy_path;
-    std::vector<std::string> name;
-    std::vector<std::string> path;
-    std::vector<std::string> interface;
-};
-
-LLJS_FROM_OBJ(DbusProxyInfo)
-{
-    LLJS_FROM(enable);
-    LLJS_FROM_VARNAME(busType, bus_type);
-    LLJS_FROM_VARNAME(appID, app_id);
-    LLJS_FROM_VARNAME(proxyPath, proxy_path);
-    LLJS_FROM(name);
-    LLJS_FROM(path);
-    LLJS_FROM(interface);
-}
-
-LLJS_TO_OBJ(DbusProxyInfo)
-{
-    LLJS_TO(enable);
-    LLJS_TO_VARNAME(busType, bus_type);
-    LLJS_TO_VARNAME(appID, app_id);
-    LLJS_TO_VARNAME(proxyPath, proxy_path);
-    LLJS_TO(name);
-    LLJS_TO(path);
-    LLJS_TO(interface);
-}
-
-struct Annotations
-{
-    std::string container_root_path;
-    std::optional<AnnotationsOverlayfs> overlayfs;
-    std::optional<AnnotationsNativeRootfs> native;
-    std::optional<DbusProxyInfo> dbus_proxy_info;
-};
-
-LLJS_FROM_OBJ(Annotations)
-{
-    LLJS_FROM_VARNAME(containerRootPath, container_root_path);
-    LLJS_FROM_OPT(overlayfs);
-    LLJS_FROM_OPT(native);
-    LLJS_FROM_OPT_VARNAME(dbusProxyInfo, dbus_proxy_info);
-}
-
-LLJS_TO_OBJ(Annotations)
-{
-    LLJS_TO_VARNAME(containerRootPath, container_root_path);
-    LLJS_TO(overlayfs);
-    LLJS_TO(native);
-    LLJS_TO_VARNAME(dbusProxyInfo, dbus_proxy_info);
-}
-
 struct Runtime
 {
     std::string version;
@@ -562,7 +466,6 @@ struct Runtime
     Linux linux;
     std::optional<std::vector<Mount>> mounts;
     std::optional<Hooks> hooks;
-    std::optional<Annotations> annotations;
 };
 
 inline void from_json(const nlohmann::json &j, Runtime &o)
@@ -575,7 +478,6 @@ inline void from_json(const nlohmann::json &j, Runtime &o)
     // maybe optional
     LLJS_FROM(root);
     o.hooks = optional<decltype(o.hooks)::value_type>(j, "hooks");
-    LLJS_FROM_OPT(annotations);
 }
 
 inline void to_json(nlohmann::json &j, const Runtime &o)
@@ -587,7 +489,6 @@ inline void to_json(nlohmann::json &j, const Runtime &o)
     j["linux"] = o.linux;
     j["root"] = o.root;
     j["hooks"] = o.hooks;
-    LLJS_TO(annotations);
 }
 
 inline static Runtime fromFile(const std::string &filepath)

@@ -100,7 +100,7 @@ auto PackageManager::setConfiguration(const QVariantMap &parameters) noexcept ->
 auto PackageManager::InstallLayer(const QDBusUnixFileDescriptor &fd) noexcept -> QVariantMap
 {
     const auto layerFile =
-      package::LayerFile::New(QString("/proc/self/fd/%1").arg(fd.fileDescriptor()));
+      package::LayerFile::New(QString("/proc/%1/fd/%2").arg(getpid()).arg(fd.fileDescriptor()));
     if (!layerFile) {
         return toDBusReply(layerFile);
     }

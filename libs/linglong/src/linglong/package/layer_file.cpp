@@ -73,19 +73,21 @@ utils::error::Result<quint32> LayerFile::metaInfoLength()
 {
     LINGLONG_TRACE("read meta info length");
 
+    if (metaInfoLengthValue > 0) {
+        return metaInfoLengthValue;
+    }
+
     QDataStream layerDataStream(this);
 
     layerDataStream.startTransaction();
     layerDataStream.setByteOrder(QDataStream::LittleEndian);
-    layerDataStream.skipRawData(magicNumber.size());
-    quint32 metaInfoLength = 0;
-    layerDataStream >> metaInfoLength;
+    layerDataStream >> metaInfoLengthValue;
 
     if (!layerDataStream.commitTransaction()) {
         return LINGLONG_ERR("unknown error.");
     }
 
-    return metaInfoLength;
+    return metaInfoLengthValue;
 }
 
 utils::error::Result<quint32> LayerFile::binaryDataOffset() noexcept

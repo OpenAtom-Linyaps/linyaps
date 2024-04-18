@@ -20,6 +20,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include <QFileInfo>
+
 #include <iostream>
 
 using namespace linglong::utils::error;
@@ -430,9 +432,11 @@ int Cli::install(std::map<std::string, docopt::value> &args)
     LINGLONG_TRACE("command install");
 
     auto tier = args["TIER"].asString();
-    auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(tier));
 
-    if (!fuzzyRef) {
+    QFileInfo file(QString::fromStdString(tier));
+
+    // 如果检测是layer文件，则直接安装
+    if (file.isFile() && file.suffix() == "layer") {
         const auto layerFile = package::LayerFile::New(QString::fromStdString(tier));
         if (!layerFile) {
             qCritical() << layerFile.error();
@@ -475,6 +479,7 @@ int Cli::install(std::map<std::string, docopt::value> &args)
     }
 
     api::types::v1::PackageManager1InstallParameters params;
+    auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(tier));
     params.package.id = fuzzyRef->id.toStdString();
     if (fuzzyRef->channel) {
         params.package.channel = fuzzyRef->channel->toStdString();

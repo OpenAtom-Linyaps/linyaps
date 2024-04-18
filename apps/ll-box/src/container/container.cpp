@@ -377,16 +377,12 @@ public:
                 logErr() << "failed to chdir to" << process.cwd.c_str();
             }
 
-            // for PATH
             for (const auto &env : process.env) {
-                auto kv = util::str_spilt(env, "=");
-                if (kv.size() == 2)
-                    setenv(kv.at(0).c_str(), kv.at(1).c_str(), 1);
-                else if (kv.size() == 1) {
-                    setenv(kv.at(0).c_str(), "", 1);
-                } else {
-                    logWan() << "Unknown env:" << env;
+                if (env.rfind("PATH=", 0) != 0) {
+                    continue;
                 }
+
+                setenv("PATH", env.c_str() + strlen("PATH="), 1);
             }
 
             logInf() << "start exec process";

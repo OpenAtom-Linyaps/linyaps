@@ -174,14 +174,18 @@ static bool parse_wstatus(const int &wstatus, std::string &info)
 struct ContainerPrivate
 {
 public:
-    ContainerPrivate(Runtime r, Container * /*parent*/)
-        : hostRoot(r.root.path)
-        , runtime(std::move(r))
+    ContainerPrivate(Runtime r, const std::string &bundle, Container * /*parent*/)
+        : runtime(std::move(r))
         , nativeMounter(new HostMount)
         , overlayfsMounter(new HostMount)
         , fuseproxyMounter(new HostMount)
 
     {
+        if (r.root.path.front() != '/') {
+            this->hostRoot = bundle + "/" + r.root.path;
+        } else {
+            this->hostRoot = r.root.path;
+        }
     }
 
     std::string hostRoot;
@@ -437,7 +441,7 @@ public:
 
     int PrepareRootfs()
     {
-        nativeMounter->Setup(new NativeFilesystemDriver(runtime.root.path));
+        nativeMounter->Setup(new NativeFilesystemDriver(this->hostRoot));
 
         containerMounter = nativeMounter.get();
         return 0;
@@ -582,7 +586,7 @@ int EntryProc(void *arg)
 Container::Container(const std::string &bundle, const std::string &id, const Runtime &r)
     : bundle(bundle)
     , id(id)
-    , dd_ptr(new ContainerPrivate(r, this))
+    , dd_ptr(new ContainerPrivate(r, bundle, this))
 {
 }
 

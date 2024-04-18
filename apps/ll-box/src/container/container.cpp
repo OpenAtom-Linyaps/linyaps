@@ -6,7 +6,6 @@
 
 #include "container.h"
 
-#include "container/container_option.h"
 #include "container/mount/filesystem_driver.h"
 #include "container/mount/host_mount.h"
 #include "container/seccomp.h"
@@ -251,8 +250,6 @@ public:
     //    bool use_delay_new_user_ns = false;
     bool useNewCgroupNs = false;
 
-    Option option;
-
     uid_t hostUid = -1;
     gid_t hostGid = -1;
 
@@ -281,14 +278,6 @@ public:
     int PrepareLinks() const
     {
         chdir("/");
-
-        if (option.linkLfs) {
-            symlink("/usr/bin", "/bin");
-            symlink("/usr/lib", "/lib");
-            symlink("/usr/lib32", "/lib32");
-            symlink("/usr/lib64", "/lib64");
-            symlink("/usr/libx32", "/libx32");
-        }
 
         // default link
         symlink("/proc/kcore", "/dev/core");
@@ -319,29 +308,16 @@ public:
         };
 
         // TODO(iceyer): not work now
-        if (!option.rootless) {
-            for (auto const &dev : list) {
-                auto path = hostRoot + dev.path;
-                int ret = mknod(path.c_str(), dev.mode, dev.dev);
-                if (0 != ret) {
-                    logErr() << "mknod" << path << dev.mode << dev.dev << "failed with"
-                             << util::RetErrString(ret);
-                }
-                chmod(path.c_str(), dev.mode | 0xFFFF);
-                chown(path.c_str(), 0, 0);
-            }
-        } else {
-            for (auto const &dev : list) {
-                Mount mount;
-                mount.destination = dev.path;
-                mount.type = "bind";
-                mount.data = std::vector<std::string>{};
-                mount.flags = MS_BIND;
-                mount.fsType = Mount::Bind;
-                mount.source = dev.path;
+        for (auto const &dev : list) {
+            Mount mount;
+            mount.destination = dev.path;
+            mount.type = "bind";
+            mount.data = std::vector<std::string>{};
+            mount.flags = MS_BIND;
+            mount.fsType = Mount::Bind;
+            mount.source = dev.path;
 
-                this->containerMounter->MountNode(mount);
-            }
+            this->containerMounter->MountNode(mount);
         }
 
         // FIXME(iceyer): /dev/console is set up if terminal is enabled in the config by bind
@@ -486,7 +462,7 @@ public:
         int ret = -1;
         chdir(hostRoot.c_str());
 
-        if (option.rootless && runtime.annotations->overlayfs.has_value()) {
+        if (runtime.annotations->overlayfs.has_value()) {
             int flag = MS_MOVE;
             ret = mount(".", "/", nullptr, flag, nullptr);
             if (0 != ret) {
@@ -640,24 +616,22 @@ int NonePrivilegeProc(void *arg)
 {
     auto &containerPrivate = *reinterpret_cast<ContainerPrivate *>(arg);
 
-    if (containerPrivate.option.rootless) {
-        // TODO(iceyer): use option
+    // TODO(iceyer): use option
 
-        Linux linux;
-        IDMap idMap;
+    Linux linux;
+    IDMap idMap;
 
-        idMap.containerID = containerPrivate.hostUid;
-        idMap.hostID = 0;
-        idMap.size = 1;
-        linux.uidMappings.push_back(idMap);
+    idMap.containerID = containerPrivate.hostUid;
+    idMap.hostID = 0;
+    idMap.size = 1;
+    linux.uidMappings.push_back(idMap);
 
-        idMap.containerID = containerPrivate.hostGid;
-        idMap.hostID = 0;
-        idMap.size = 1;
-        linux.gidMappings.push_back(idMap);
+    idMap.containerID = containerPrivate.hostGid;
+    idMap.hostID = 0;
+    idMap.size = 1;
+    linux.gidMappings.push_back(idMap);
 
-        ConfigUserNamespace(linux, 0);
-    }
+    ConfigUserNamespace(linux, 0);
 
     auto ret = mount("proc", "/proc", "proc", 0, nullptr);
     if (0 != ret) {
@@ -670,13 +644,6 @@ int NonePrivilegeProc(void *arg)
         for (auto const &preStart : *containerPrivate.runtime.hooks->prestart) {
             HookExec(preStart);
         }
-    }
-
-    if (!containerPrivate.option.rootless) {
-        seteuid(0);
-        // todo: check return value
-        ConfigSeccomp(containerPrivate.runtime.linux.seccomp);
-        ContainerPrivate::DropPermissions();
     }
 
     containerPrivate.forkAndExecProcess(containerPrivate.runtime.process);
@@ -694,9 +661,7 @@ int EntryProc(void *arg)
 {
     auto &containerPrivate = *reinterpret_cast<ContainerPrivate *>(arg);
 
-    if (containerPrivate.option.rootless) {
-        ConfigUserNamespace(containerPrivate.runtime.linux, 0);
-    }
+    ConfigUserNamespace(containerPrivate.runtime.linux, 0);
 
     // FIXME: change HOSTNAME will broken XAUTH
     auto new_hostname = containerPrivate.runtime.hostname;
@@ -738,27 +703,6 @@ int EntryProc(void *arg)
 
     containerPrivate.PrepareLinks();
 
-    if (!containerPrivate.option.rootless) {
-        auto unshareFlags = 0;
-        // TODO(iceyer): no need user namespace in setuid
-        //        if (c.use_delay_new_user_ns) {
-        //            unshare_flags |= CLONE_NEWUSER;
-        //        }
-        if (containerPrivate.useNewCgroupNs) {
-            unshareFlags |= CLONE_NEWCGROUP;
-        }
-        if (unshareFlags) {
-            ret = unshare(unshareFlags);
-            if (0 != ret) {
-                logErr() << "unshare failed" << unshareFlags << util::RetErrString(ret);
-            }
-        }
-        //        if (c.use_delay_new_user_ns) {
-        //            s.vrijgeven();
-        //            s.passeren();
-        //        }
-    }
-
     int nonePrivilegeProcFlag = SIGCHLD | CLONE_NEWUSER | CLONE_NEWPID | CLONE_NEWNS;
 
     int noPrivilegePid = util::PlatformClone(NonePrivilegeProc, nonePrivilegeProcFlag, arg);
@@ -784,15 +728,12 @@ Container::Container(const Runtime &r)
 {
 }
 
-int Container::Start(const Option &option)
+int Container::Start()
 {
     auto &contanerPrivate = *reinterpret_cast<ContainerPrivate *>(dd_ptr.get());
-    contanerPrivate.option = option;
 
-    if (option.rootless) {
-        contanerPrivate.hostUid = geteuid();
-        contanerPrivate.hostGid = getegid();
-    }
+    contanerPrivate.hostUid = geteuid();
+    contanerPrivate.hostGid = getegid();
 
     int flags = SIGCHLD | CLONE_NEWNS;
 
@@ -816,9 +757,7 @@ int Container::Start(const Option &option)
         }
     }
 
-    if (option.rootless) {
-        flags |= CLONE_NEWUSER;
-    }
+    flags |= CLONE_NEWUSER;
 
     StartDbusProxy(contanerPrivate.runtime);
 

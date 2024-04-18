@@ -28,15 +28,14 @@ LayerPackager::LayerPackager(const QDir &workDir)
 
 LayerPackager::~LayerPackager()
 {
-    for (const auto &info : this->workDir.entryInfoList()) {
+    for (const auto &info : this->workDir.entryInfoList(QDir::AllDirs | QDir::NoDotAndDotDot)) {
         if (!info.isDir()) {
             continue;
         }
 
-        auto ret = utils::command::Exec("umount", { info.absolutePath() });
+        auto ret = utils::command::Exec("umount", { info.absoluteFilePath() });
         if (!ret) {
             qCritical() << ret.error();
-            Q_ASSERT(false);
         }
     }
 

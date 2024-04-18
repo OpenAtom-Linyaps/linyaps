@@ -14,7 +14,6 @@
 
 namespace linglong {
 
-struct Option;
 struct ContainerPrivate;
 
 class Container
@@ -24,7 +23,7 @@ public:
 
     ~Container();
 
-    int Start(const Option &opt);
+    int Start();
 
 private:
     std::unique_ptr<ContainerPrivate> dd_ptr;

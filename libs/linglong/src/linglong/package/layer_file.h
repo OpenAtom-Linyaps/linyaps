@@ -49,6 +49,7 @@ private:
     utils::error::Result<quint32> metaInfoLength();
 
     bool cleanup = false;
+    quint32 metaInfoLengthValue = 0;
 };
 
 } // namespace linglong::package

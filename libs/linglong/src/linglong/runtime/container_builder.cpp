@@ -253,6 +253,8 @@ auto fixMount(ocppi::runtime::config::types::Config config) noexcept
   -> utils::error::Result<ocppi::runtime::config::types::Config>
 {
 
+    LINGLONG_TRACE("fix mount points.")
+
     if (!config.mounts || !config.root) {
         return config;
     }
@@ -326,11 +328,15 @@ auto fixMount(ocppi::runtime::config::types::Config config) noexcept
     auto rootBinds = originalRoot.entryInfoList(QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot);
     auto pos = mounts.begin();
     for (const auto &bind : rootBinds) {
-        pos = mounts.insert(pos,
-                            MountType{ .destination = "/" + bind.fileName().toStdString(),
-                                       .options = { { "rbind", "ro" } },
-                                       .source = bind.absoluteFilePath().toStdString(),
-                                       .type = "bind" });
+        auto destination = "/" + bind.fileName();
+        auto mountPoint = MountType{ .destination = destination.toStdString(),
+                                     .options = { { "rbind", "ro" } },
+                                     .source = bind.absoluteFilePath().toStdString(),
+                                     .type = "bind" };
+        if (bind.isSymLink()) {
+            mountPoint.options->emplace_back("copy-symlink");
+        }
+        pos = mounts.insert(pos, std::move(mountPoint));
         ++pos;
     }
 
@@ -346,15 +352,16 @@ auto fixMount(ocppi::runtime::config::types::Config config) noexcept
         auto dir = QDir{ tmpfs };
         for (const auto &rootDest :
              dir.entryInfoList(QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot)) {
-
             auto rootDestPath = rootDest.absoluteFilePath();
-            pos = mounts.insert(
-              pos,
-              MountType{ .destination =
-                           rootDestPath.mid(originalRoot.absolutePath().size()).toStdString(),
-                         .options = { { "rbind", "ro" } },
-                         .source = rootDestPath.toStdString(),
-                         .type = "bind" });
+            auto destination = rootDestPath.mid(originalRoot.absolutePath().size());
+            auto mountPoint = MountType{ .destination = destination.toStdString(),
+                                         .options = { { "rbind", "ro" } },
+                                         .source = rootDestPath.toStdString(),
+                                         .type = "bind" };
+            if (rootDest.isSymLink()) {
+                mountPoint.options->emplace_back("copy-symlink");
+            }
+            pos = mounts.insert(pos, std::move(mountPoint));
             ++pos;
         }
     }

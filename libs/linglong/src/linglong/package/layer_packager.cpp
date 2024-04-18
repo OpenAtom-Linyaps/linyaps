@@ -7,6 +7,7 @@
 #include "linglong/package/layer_packager.h"
 
 #include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/api/types/v1/LayerInfo.hpp"
 #include "linglong/utils/command/env.h"
 
 #include <QDataStream>
@@ -61,13 +62,19 @@ LayerPackager::pack(const LayerDir &dir, const QString &layerFilePath) const
         return LINGLONG_ERR(layer);
     }
 
+    // generate LayerInfo
+    api::types::v1::LayerInfo layerInfo;
+    // layer info version not used yet, so give fixed value
+    // keep it for later function expansion
+    layerInfo.version = "1";
+
     auto info = dir.info();
     if (!info) {
         return LINGLONG_ERR(info);
     }
 
-    auto json = nlohmann::json(*info);
-    auto data = QByteArray::fromStdString(json.dump());
+    layerInfo.info = nlohmann::json(*info);
+    auto data = QByteArray::fromStdString(nlohmann::json(layerInfo).dump());
 
     QByteArray dataSizeBytes;
 

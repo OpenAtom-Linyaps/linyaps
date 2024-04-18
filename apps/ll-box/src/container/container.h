@@ -20,7 +20,7 @@ struct ContainerPrivate;
 class Container
 {
 public:
-    explicit Container(const Runtime &r, std::unique_ptr<util::MessageReader> reader);
+    explicit Container(const Runtime &r);
 
     ~Container();
 

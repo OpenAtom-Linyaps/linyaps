@@ -43,6 +43,10 @@ public:
 
     ~Logger()
     {
+        if (level < LOGLEVEL) {
+            return;
+        }
+
         std::string prefix;
         auto pid_ns = GetPidnsPid();
         int syslogLevel = LOG_DEBUG;
@@ -64,9 +68,7 @@ public:
             break;
         }
         syslog(syslogLevel, "%s|%s:%d %s", pid_ns.c_str(), function, line, ss.str().c_str());
-        if (level < LOGLEVEL) {
-            return;
-        }
+
         switch (level) {
         case Debug:
             prefix = "[DBG |";

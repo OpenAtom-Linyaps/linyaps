@@ -20,6 +20,9 @@ set(LINGLONG_ROOT
 set(LINGLONG_HOST_PATH
     "/run/host"
     CACHE STRING "The location where linglong host path mapping")
+set(LINGLONG_DEFAULT_OCI_RUNTIME
+    "crun"
+    CACHE STRING "The oci runtime which linglong use by default")
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(PFL)

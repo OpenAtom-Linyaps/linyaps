@@ -137,14 +137,20 @@ int main(int argc, char **argv)
 
     applicationInitializte();
 
-    auto path = QStandardPaths::findExecutable("crun");
+    auto ociRuntimeCLI = qgetenv("LINGLONG_OCI_RUNTIME");
+    if (ociRuntimeCLI.isEmpty()) {
+        ociRuntimeCLI = LINGLONG_DEFAULT_OCI_RUNTIME;
+    }
+
+    auto path = QStandardPaths::findExecutable(ociRuntimeCLI);
     if (path.isEmpty()) {
-        qCritical() << "crun not found";
+        qCritical() << ociRuntimeCLI << "not found";
         return -1;
     }
-    auto crun = ocppi::cli::crun::Crun::New(path.toStdString());
-    if (!crun.has_value()) {
-        std::rethrow_exception(crun.error());
+
+    auto ociRuntime = ocppi::cli::crun::Crun::New(path.toStdString());
+    if (!ociRuntime.has_value()) {
+        std::rethrow_exception(ociRuntime.error());
     }
 
     QCommandLineParser parser;
@@ -380,7 +386,7 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    auto containerBuidler = new linglong::runtime::ContainerBuilder(**crun);
+    auto containerBuidler = new linglong::runtime::ContainerBuilder(**ociRuntime);
     containerBuidler->setParent(QCoreApplication::instance());
 
     linglong::builder::Builder builder(*project,

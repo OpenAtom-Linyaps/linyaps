@@ -196,20 +196,25 @@ int main(int argc, char **argv)
           auto *repo = new linglong::repo::OSTreeRepo(QDir(LINGLONG_ROOT), *config, api);
           repo->setParent(QCoreApplication::instance());
 
-          auto path = QStandardPaths::findExecutable("crun");
+          auto ociRuntimeCLI = qgetenv("LINGLONG_OCI_RUNTIME");
+          if (ociRuntimeCLI.isEmpty()) {
+              ociRuntimeCLI = LINGLONG_DEFAULT_OCI_RUNTIME;
+          }
+
+          auto path = QStandardPaths::findExecutable(ociRuntimeCLI);
           if (path.isEmpty()) {
-              qCritical() << "crun not found";
+              qCritical() << ociRuntimeCLI << "not found";
               QCoreApplication::exit(-1);
               return;
           }
-          auto crun = ocppi::cli::crun::Crun::New(path.toStdString());
-          if (!crun) {
-              std::rethrow_exception(crun.error());
+          auto ociRuntime = ocppi::cli::crun::Crun::New(path.toStdString());
+          if (!ociRuntime) {
+              std::rethrow_exception(ociRuntime.error());
           }
-          auto containerBuidler = new linglong::runtime::ContainerBuilder(**crun);
+          auto containerBuidler = new linglong::runtime::ContainerBuilder(**ociRuntime);
           containerBuidler->setParent(QCoreApplication::instance());
           auto cli = new linglong::cli::Cli(*printer,
-                                            **crun,
+                                            **ociRuntime,
                                             *containerBuidler,
                                             *pkgMan,
                                             *repo,

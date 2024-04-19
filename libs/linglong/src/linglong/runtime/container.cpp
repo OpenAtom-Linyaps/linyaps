@@ -63,9 +63,10 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
         Q_ASSERT(false);
     }
     if (this->cfg.process->cwd.empty()) {
-        qWarning() << "run process in current directory.";
+        qDebug() << "cwd of process is empty, run process in current directory.";
         this->cfg.process->cwd = ("/run/host/rootfs" + QDir::currentPath()).toStdString();
     }
+
     this->cfg.process->user = ocppi::runtime::config::types::User{
         .gid = getgid(),
         .uid = getuid(),

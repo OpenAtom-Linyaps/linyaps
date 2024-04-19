@@ -123,13 +123,6 @@ void initDefaultBuildConfig()
 
 int main(int argc, char **argv)
 {
-    qputenv("QT_LOGGING_RULES", "*=false");
-    for (int i = 1; i < argc; ++i) {
-        if (qstrcmp(argv[i], "-v") == 0) {
-            qputenv("QT_LOGGING_RULES", "*=true");
-            break;
-        }
-    }
     QCoreApplication app(argc, argv);
     // 初始化 qt qrc
     Q_INIT_RESOURCE(builder_releases);
@@ -155,7 +148,9 @@ int main(int argc, char **argv)
 
     QCommandLineParser parser;
 
-    auto optVerbose = QCommandLineOption({ "v", "verbose" }, "show detail log", "");
+    auto optVerbose = QCommandLineOption({ "v", "verbose" },
+                                         "show detail log (deprecated, use QT_LOGGING_RULES)",
+                                         "");
     parser.addOptions({ optVerbose });
     parser.addHelpOption();
 

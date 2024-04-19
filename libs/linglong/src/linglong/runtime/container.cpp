@@ -92,6 +92,20 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
         this->cfg.process->args = arguments;
     }
 
+    const auto* appIDEnvStr = "LINGLONG_APPID=";
+    auto env = this->cfg.process->env.value_or(std::vector<std::string>{});
+    auto appIDEnv = std::find_if(env.cbegin(), env.cend(), [&appIDEnvStr](const std::string &str) {
+        return str.rfind(appIDEnvStr, 0) == 0;
+    });
+
+    if (appIDEnv != env.cend()) {
+        qWarning() << "LINGLONG_APPID already has been set to"
+                   << QString::fromStdString(appIDEnv->substr(::strlen(appIDEnvStr) - 1));
+    } else {
+        env.emplace_back(QString{ "LINGLONG_APPID=%1" }.arg(this->appID).toStdString());
+        this->cfg.process->env = std::move(env);
+    }
+
     auto arch = package::Architecture::parse(QSysInfo::currentCpuArchitecture());
     if (!arch) {
         return LINGLONG_ERR(arch);

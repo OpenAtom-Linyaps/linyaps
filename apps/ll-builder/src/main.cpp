@@ -86,7 +86,7 @@ QStringList nonProjectConfigPaths()
 {
     QStringList result{};
 
-    auto configLocations = QStandardPaths::standardLocations(QStandardPaths::GenericDataLocation);
+    auto configLocations = QStandardPaths::standardLocations(QStandardPaths::GenericConfigLocation);
     configLocations.append(SYSCONFDIR);
 
     for (const auto &configLocation : configLocations) {
@@ -103,8 +103,8 @@ void initDefaultBuildConfig()
 {
     // ~/.cache
     QDir cacheLocation = QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation);
-    // ~/.local/share
-    QDir configLocations = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    // ~/.config/
+    QDir configLocations = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
     if (!QDir().mkpath(configLocations.filePath("linglong/builder"))) {
         qWarning() << "init BuildConfig directory failed."
                    << configLocations.filePath("linglong/builder");

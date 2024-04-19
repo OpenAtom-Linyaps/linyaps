@@ -457,8 +457,8 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         .env = { {
           "PREFIX=" + installPrefix.toStdString(),
           "TRIPLET=" + arch->getTriplet().toStdString(),
-          "APP_ID=" + this->project.package.id,
-          "APP_VERSION=" + this->project.package.version,
+          "LINGLONG_APP_ID=" + this->project.package.id,
+          "LINGLONG_APP_VERSION=" + this->project.package.version,
         } },
         .ioPriority = {},
         .noNewPrivileges = true,
@@ -899,6 +899,8 @@ utils::error::Result<void> Builder::run(const QStringList &args)
     for (const auto &env : envList) {
         p.env->push_back(env.toStdString());
     }
+    p.env->push_back("LINGLONG_APP_ID=" + this->project.package.id);
+    p.env->push_back("LINGLONG_APP_VERSION=" + this->project.package.version);
 
     auto result = container->data()->run(p);
     if (!result) {

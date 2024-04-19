@@ -293,6 +293,8 @@ int Cli::run(std::map<std::string, docopt::value> &args)
     for (const auto &env : envList) {
         p.env->push_back(env.toStdString());
     }
+    p.env->push_back("LINGLONG_APP_ID=" + ref->id.toStdString());
+    p.env->push_back("LINGLONG_APP_VERSION=" + ref->version.toString().toStdString());
 
     auto result = (*container)->run(p);
     if (!result) {

@@ -140,15 +140,18 @@ void applyExecutablePatch(ocppi::runtime::config::types::Config &cfg,
     }
 
     auto error = generatorProcess.readAllStandardError();
-    if (!error.isEmpty()) {
-        qWarning() << "generator" << info.absoluteFilePath() << "stderr:" << QString(error);
-    }
     if (generatorProcess.exitCode() != 0) {
-        qCritical() << LINGLONG_ERRV("exit with error", generatorProcess.exitCode());
-        qCritical() << "with input:" << nlohmann::json(cfg).dump().c_str();
+        qCritical() << "generator" << info.absoluteFilePath() << "return"
+                    << generatorProcess.exitCode() << Qt::endl
+                    << "input:" << nlohmann::json(cfg).dump().c_str() << Qt::endl
+                    << "stderr:" << error;
         Q_ASSERT(false);
         return;
     }
+    if (not error.isEmpty()) {
+        qDebug() << "generator" << info.absoluteFilePath() << "stderr:" << error;
+    }
+
     auto result = generatorProcess.readAllStandardOutput();
     auto modified = utils::serialize::LoadJSON<ocppi::runtime::config::types::Config>(result);
     if (!modified) {

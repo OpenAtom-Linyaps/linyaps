@@ -8,6 +8,7 @@
 
 #include "linglong/utils/configure.h"
 
+#include <qloggingcategory.h>
 #include <systemd/sd-journal.h>
 
 #include <QCoreApplication>
@@ -112,6 +113,8 @@ void linglong_message_handler(QtMsgType type,
 void applicationInitializte()
 {
     QCoreApplication::setOrganizationName("deepin");
+    QLoggingCategory::setFilterRules("*.debug=false\n"
+                                     "*.info=false");
     installMessageHandler();
     catchUnixSignals({ SIGTERM, SIGQUIT, SIGINT, SIGHUP });
 }

@@ -17,7 +17,7 @@
 namespace linglong::package {
 
 LayerPackager::LayerPackager(const QDir &workDir)
-    : workDir(workDir.absoluteFilePath(QUuid::createUuid().toString(QUuid::Id128)))
+    : workDir(workDir)
 {
     if (this->workDir.mkpath(".")) {
         return;

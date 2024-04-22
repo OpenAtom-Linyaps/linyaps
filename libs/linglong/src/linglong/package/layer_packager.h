@@ -18,7 +18,8 @@ namespace linglong::package {
 class LayerPackager : public QObject
 {
 public:
-    explicit LayerPackager(const QDir &workDir = QDir("/tmp/linglong-layer"));
+    explicit LayerPackager(const QDir &workDir = QDir(
+                             "/tmp/linglong-layer-" + QUuid::createUuid().toString(QUuid::Id128)));
     LayerPackager(const LayerPackager &) = delete;
     LayerPackager(LayerPackager &&) = delete;
     LayerPackager &operator=(const LayerPackager &) = delete;

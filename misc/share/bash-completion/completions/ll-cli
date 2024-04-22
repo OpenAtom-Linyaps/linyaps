@@ -76,7 +76,7 @@ _ll_cli() {
                 if [[ "${COMP_WORDS[2]}" == "modify" ]]; then
                         subcommand=""
                         repo_option="--name"
-                elif [[ "${COMP_WORDS[2]}" == "list" ]]; then
+                elif [[ "${COMP_WORDS[2]}" == "show" ]]; then
                         subcommand=""
                         repo_option=""
                 fi

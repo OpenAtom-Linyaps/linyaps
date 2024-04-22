@@ -45,7 +45,7 @@ Usage:
     ll-cli [--json] search [--type=TYPE] TEXT
     ll-cli [--json] [--no-dbus] list [--type=TYPE]
     ll-cli [--json] repo modify [--name=REPO] URL
-    ll-cli [--json] repo list
+    ll-cli [--json] repo show
     ll-cli [--json] info LAYER
 
 Arguments:

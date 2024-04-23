@@ -58,8 +58,6 @@ public:
         auto host_dest_full_path = driver_->HostPath(dest_full_path);
         auto root = driver_->HostPath(util::fs::path("/"));
 
-        logDbg() << "host_dest_full_path" << host_dest_full_path;
-
         switch (source_stat.st_mode & S_IFMT) {
         case S_IFCHR: {
             driver_->CreateDestinationPath(dest_parent_path);

@@ -180,6 +180,7 @@ x.repo = j.at("repo").get<std::string>();
 x.skipCommitOutput = get_stack_optional<bool>(j, "skip_commit_output");
 x.skipFetchSource = get_stack_optional<bool>(j, "skip_fetch_source");
 x.skipPullDepend = get_stack_optional<bool>(j, "skip_pull_depend");
+x.skipRunContainer = get_stack_optional<bool>(j, "skip_run_container");
 x.version = j.at("version").get<int64_t>();
 }
 
@@ -203,6 +204,9 @@ j["skip_fetch_source"] = x.skipFetchSource;
 }
 if (x.skipPullDepend) {
 j["skip_pull_depend"] = x.skipPullDepend;
+}
+if (x.skipRunContainer) {
+j["skip_run_container"] = x.skipRunContainer;
 }
 j["version"] = x.version;
 }

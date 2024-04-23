@@ -38,6 +38,7 @@ std::string repo;
 std::optional<bool> skipCommitOutput;
 std::optional<bool> skipFetchSource;
 std::optional<bool> skipPullDepend;
+std::optional<bool> skipRunContainer;
 int64_t version;
 };
 }

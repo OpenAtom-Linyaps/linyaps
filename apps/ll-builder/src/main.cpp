@@ -440,6 +440,10 @@ int main(int argc, char **argv)
                 QCommandLineOption("skip-fetch-source", "skip fetch sources", "");
               auto buildSkipPullDepend =
                 QCommandLineOption("skip-pull-depend", "skip pull dependency", "");
+              auto buildSkipRunContainer =
+                QCommandLineOption("skip-run-container",
+                                   "skip run container. This implies skip-commit-output",
+                                   "");
               auto buildSkipCommitOutput =
                 QCommandLineOption("skip-commit-output", "skip commit build output", "");
               auto buildArch = QCommandLineOption("arch", "set the build arch", "arch");
@@ -448,6 +452,7 @@ int main(int argc, char **argv)
                                   buildOffline,
                                   buildSkipFetchSource,
                                   buildSkipPullDepend,
+                                  buildSkipRunContainer,
                                   buildSkipCommitOutput,
                                   buildArch });
 
@@ -490,6 +495,12 @@ int main(int argc, char **argv)
               if (parser.isSet(buildSkipPullDepend)) {
                   auto cfg = builder.getConfig();
                   cfg.skipPullDepend = true;
+                  builder.setConfig(cfg);
+              }
+              if (parser.isSet(buildSkipRunContainer)) {
+                  auto cfg = builder.getConfig();
+                  cfg.skipRunContainer = true;
+                  cfg.skipCommitOutput = true;
                   builder.setConfig(cfg);
               }
               if (parser.isSet(buildSkipCommitOutput)) {

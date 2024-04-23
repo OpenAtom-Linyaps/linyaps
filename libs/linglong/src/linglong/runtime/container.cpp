@@ -49,12 +49,18 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
         return LINGLONG_ERR("make rootfs directory");
     }
     auto _ = utils::finally::finally([&]() {
-        if (qgetenv("LINGLONG_DEBUG").isEmpty()) {
-            if (bundle.removeRecursively()) {
+        if (!qgetenv("LINGLONG_DEBUG").isEmpty()) {
+            runtimeDir.mkpath("linglong/debug");
+            auto archive = runtimeDir.absoluteFilePath(QString("linglong/debug/%1").arg(this->id));
+            if (QDir().rename(bundle.absolutePath(), archive)) {
                 return;
             }
-            qCritical() << "failed to remove" << runtimeDir.absolutePath();
+            qCritical() << "failed to archive" << bundle.absolutePath() << "to" << archive;
         }
+        if (bundle.removeRecursively()) {
+            return;
+        }
+        qCritical() << "failed to remove" << runtimeDir.absolutePath();
     });
 
     this->cfg.process = process;
@@ -92,7 +98,7 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
         this->cfg.process->args = arguments;
     }
 
-    const auto* appIDEnvStr = "LINGLONG_APPID=";
+    const auto *appIDEnvStr = "LINGLONG_APPID=";
     auto env = this->cfg.process->env.value_or(std::vector<std::string>{});
     auto appIDEnv = std::find_if(env.cbegin(), env.cend(), [&appIDEnvStr](const std::string &str) {
         return str.rfind(appIDEnvStr, 0) == 0;

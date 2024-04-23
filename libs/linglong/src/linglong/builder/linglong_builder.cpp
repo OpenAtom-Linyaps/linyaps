@@ -194,7 +194,7 @@ utils::error::Result<void> Builder::splitDevelop(QDir developOutput,
     } else {
         qDebug() << "generate install list from " << src;
         QDirIterator it(src,
-                        QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden,
+                        QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System,
                         QDirIterator::Subdirectories);
         while (it.hasNext()) {
             it.next();
@@ -275,7 +275,9 @@ utils::error::Result<void> Builder::splitDevelop(QDir developOutput,
         // convert prefix in container to real path in host
         QRegularExpression re(rule);
         // reverse files in src
-        QDirIterator it(src, QDir::AllEntries | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+        QDirIterator it(src,
+                        QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System,
+                        QDirIterator::Subdirectories);
         while (it.hasNext()) {
             it.next();
             if (re.match(it.fileInfo().absoluteFilePath()).hasMatch()) {

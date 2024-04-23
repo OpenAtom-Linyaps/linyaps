@@ -5,12 +5,14 @@
  */
 
 #include "container/container.h"
+#include "container/helper.h"
 #include "util/logger.h"
 #include "util/message_reader.h"
 #include "util/oci_runtime.h"
 
 #include <argp.h>
 
+#include <csignal>
 #include <iostream>
 
 #include <fcntl.h>
@@ -46,7 +48,7 @@ int parse_opt(int key, char *arg, struct argp_state *state)
             return 0;
         }
 
-        argp_failure(state, 1, 0, "invalid cgroup manager", arg);
+        argp_failure(state, 1, 0, "invalid cgroup manager %s", arg);
         return -1;
 
     case 'b':
@@ -57,6 +59,9 @@ int parse_opt(int key, char *arg, struct argp_state *state)
     case config_option:
 
         config = arg;
+        return 0;
+
+    case 'f':
         return 0;
 
     case ARGP_KEY_ARG:
@@ -138,8 +143,9 @@ int parse_opt(int key, char *arg, struct argp_state *state)
 
 int list() noexcept
 {
-    logErr() << "Not implemented yet";
-    return -1;
+    auto containers = linglong::readAllContainerJson();
+    std::cout << containers.dump() << std::endl;
+    return 0;
 }
 
 int exec() noexcept
@@ -163,6 +169,25 @@ try {
     return c.Start();
 } catch (const std::exception &e) {
     logErr() << "run failed:" << e.what();
+    return -1;
+}
+
+int kill() noexcept
+{
+    auto containers = linglong::readAllContainerJson();
+    auto id = container.value();
+    for (auto container : containers) {
+        if (container["id"] != id) {
+            continue;
+        }
+
+        auto pid = container["pid"].get<pid_t>();
+
+        // FIXME: parse signal
+        return ::kill(pid, SIGTERM);
+
+    }
+
     return -1;
 }
 
@@ -212,19 +237,35 @@ int main(int argc, char **argv)
           .doc = "Override the configuration file to use. The default value is config.json",
           .group = 2,
         },
+        {
+          .name = nullptr,
+          .key = 0,
+          .arg = nullptr,
+          .flags = 0,
+          .doc = "List options",
+          .group = 3,
+        },
+        {
+          .name = "format",
+          .key = 'f',
+          .arg = "FORMAT",
+          .flags = 0,
+          .doc = "Output format (default \"json\")",
+          .group = 3,
+        },
         { nullptr },
     };
 
     argp argp = {
         .options = options,
         .parser = parse_opt,
-        .args_doc = R"(list
+        .args_doc = R"(list -f json
 run <CONTAINER>
 exec <CONTAINER> <CMD>
 kill <CONTAINER> <SIGNAL>)",
     };
 
-    if (argp_parse(&argp, argc, argv, 0, nullptr, nullptr) != 0) {
+    if (argp_parse(&argp, argc, argv, ARGP_NO_EXIT, nullptr, nullptr) != 0) {
         return -1;
     }
 
@@ -238,6 +279,10 @@ kill <CONTAINER> <SIGNAL>)",
 
     if (command == "exec") {
         return exec();
+    }
+
+    if (command == "kill") {
+        return kill();
     }
 
     return -1;

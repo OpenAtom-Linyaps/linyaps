@@ -35,4 +35,27 @@ void writeContainerJson(const std::string &bundle, const std::string &id, pid_t 
         assert(false);
     }
 }
+
+nlohmann::json readAllContainerJson() noexcept
+{
+    nlohmann::json result = nlohmann::json::array();
+
+    auto dir =
+      std::filesystem::path("/run") / "user" / std::to_string(getuid()) / "linglong" / "box";
+    for (auto entry : std::filesystem::directory_iterator{ dir }) {
+        std::ifstream containerInfo = entry.path();
+        if (!containerInfo.is_open()) {
+            continue;
+        }
+
+        try {
+            nlohmann::json j = nlohmann::json::parse(containerInfo);
+            result.push_back(j);
+        } catch (const std::exception &e) {
+            logErr() << "parse" << entry.path() << "failed" << e.what();
+        }
+    }
+
+    return result;
+}
 } // namespace linglong

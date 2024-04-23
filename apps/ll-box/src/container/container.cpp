@@ -487,12 +487,12 @@ int NonePrivilegeProc(void *arg)
     IDMap idMap;
 
     idMap.containerID = containerPrivate.hostUid;
-    idMap.hostID = 0;
+    idMap.hostID = containerPrivate.hostUid;
     idMap.size = 1;
     linux.uidMappings.push_back(idMap);
 
     idMap.containerID = containerPrivate.hostGid;
-    idMap.hostID = 0;
+    idMap.hostID = containerPrivate.hostGid;
     idMap.size = 1;
     linux.gidMappings.push_back(idMap);
 

@@ -181,10 +181,10 @@ public:
         , fuseproxyMounter(new HostMount)
 
     {
-        if (r.root.path.front() != '/') {
-            this->hostRoot = bundle + "/" + r.root.path;
+        if (this->runtime.root.path.front() != '/') {
+            this->hostRoot = bundle + "/" + this->runtime.root.path;
         } else {
-            this->hostRoot = r.root.path;
+            this->hostRoot = this->runtime.root.path;
         }
     }
 

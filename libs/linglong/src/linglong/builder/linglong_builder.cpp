@@ -132,7 +132,8 @@ pullDependency(QString fuzzyRefStr, repo::OSTreeRepo &repo, bool develop, bool o
     QObject::connect(taskPtr.get(), &service::InstallTask::PartChanged, partChanged);
     repo.pull(taskPtr, *ref, develop);
     if (taskPtr->currentStatus() == service::InstallTask::Status::Failed) {
-        return LINGLONG_ERR("pull " + ref->toString() + " failed", *taskPtr->currentError());
+        return LINGLONG_ERR("pull " + ref->toString() + " failed",
+                            std::move(taskPtr->currentError()));
     }
 
     return *ref;
@@ -352,6 +353,10 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         return LINGLONG_ERR(baseLayerDir);
     }
     qDebug() << "pull base success" << base->toString();
+
+    if (cfg.skipRunContainer) {
+        return LINGLONG_OK;
+    }
 
     QFile entry = this->workingDir.absoluteFilePath("linglong/entry.sh");
     if (entry.exists() && !entry.remove()) {

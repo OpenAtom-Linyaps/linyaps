@@ -194,6 +194,29 @@ public:
                                                           std::move(cause.error().pImpl)));
     }
 
+    static auto
+    Err(const char *file, int line, const QString &trace_msg, const QString &msg, Error &&cause)
+      -> Error
+    {
+        return Error(std::make_unique<details::ErrorImpl>(file,
+                                                          line,
+                                                          "default",
+                                                          cause.code(),
+                                                          trace_msg + ": " + msg,
+                                                          std::move(cause.pImpl)));
+    }
+
+    static auto Err(const char *file, int line, const QString &trace_msg, Error &&cause) -> Error
+    {
+
+        return Error(std::make_unique<details::ErrorImpl>(file,
+                                                          line,
+                                                          "default",
+                                                          cause.code(),
+                                                          trace_msg,
+                                                          std::move(cause.pImpl)));
+    }
+
     template<typename Value>
     static auto Err(const char *file,
                     int line,

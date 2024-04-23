@@ -17,8 +17,7 @@
 # Please make sure every changes in this file is backward compatible.
 
 $schema: http://json-schema.org/draft-04/schema#
-description:
-  Types used as v1 API of linglong
+description: Types used as v1 API of linglong
   D-Bus service, configuration files and CLI output.
   The top level type is a place holder to make quicktype work.
 $defs:
@@ -31,7 +30,7 @@ $defs:
       version:
         type: string
       permissions:
-        $ref: '#/$defs/ApplicationConfigurationPermissions'
+        $ref: "#/$defs/ApplicationConfigurationPermissions"
   ApplicationConfigurationPermissions:
     title: ApplicationConfigurationPermissions
     type: object
@@ -173,6 +172,8 @@ $defs:
       skip_fetch_source:
         type: boolean
       skip_pull_depend:
+        type: boolean
+      skip_run_container:
         type: boolean
       skip_commit_output:
         type: boolean

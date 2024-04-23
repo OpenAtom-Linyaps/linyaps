@@ -1,3 +1,9 @@
+linglong (1.5.0-1) unstable; urgency=medium
+
+  * release after some refactor.
+
+ -- dengbo <dengbo@deepin.org>  Tue, 23 Apr 2024 15:48:14 +0800
+
 linglong (1.4.3-1) unstable; urgency=medium
 
   * Fix some ll-builder bugs.

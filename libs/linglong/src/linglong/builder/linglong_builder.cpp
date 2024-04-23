@@ -804,7 +804,7 @@ utils::error::Result<void> Builder::run(const QStringList &args)
     if (!baseRef) {
         return LINGLONG_ERR(baseRef);
     }
-    auto baseDir = this->repo.getLayerDir(*baseRef, true);
+    auto baseDir = this->repo.getLayerDir(*baseRef, false);
     if (!baseDir) {
         return LINGLONG_ERR(baseDir);
     }

@@ -441,6 +441,7 @@ struct Hooks
     std::optional<std::vector<Hook>> prestart;
     std::optional<std::vector<Hook>> poststart;
     std::optional<std::vector<Hook>> poststop;
+    std::optional<std::vector<Hook>> startContainer;
 };
 
 inline void from_json(const nlohmann::json &j, Hooks &o)
@@ -448,6 +449,7 @@ inline void from_json(const nlohmann::json &j, Hooks &o)
     LLJS_FROM_OPT(prestart);
     LLJS_FROM_OPT(poststart);
     LLJS_FROM_OPT(poststop);
+    LLJS_FROM_OPT(startContainer);
 }
 
 inline void to_json(nlohmann::json &j, const Hooks &o)
@@ -455,6 +457,7 @@ inline void to_json(nlohmann::json &j, const Hooks &o)
     j["poststop"] = o.poststop;
     j["poststart"] = o.poststart;
     j["prestart"] = o.prestart;
+    j["startContainer"] = o.startContainer;
 }
 
 struct Runtime

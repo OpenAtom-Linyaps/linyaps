@@ -504,10 +504,14 @@ int NonePrivilegeProc(void *arg)
         return -1;
     }
 
-    if (containerPrivate.runtime.hooks.has_value()
-        && containerPrivate.runtime.hooks->prestart.has_value()) {
-        for (auto const &preStart : *containerPrivate.runtime.hooks->prestart) {
+    if (containerPrivate.runtime.hooks.has_value()) {
+        for (auto const &preStart :
+             containerPrivate.runtime.hooks->prestart.value_or(std::vector<Hook>{})) {
             HookExec(preStart);
+        }
+        for (auto const &startContainer :
+             containerPrivate.runtime.hooks->startContainer.value_or(std::vector<Hook>{})) {
+            HookExec(startContainer);
         }
     }
 

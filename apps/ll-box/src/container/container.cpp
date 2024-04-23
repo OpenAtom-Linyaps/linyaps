@@ -467,7 +467,7 @@ int HookExec(const Hook &hook)
         util::str_vec argStrVec;
         argStrVec.push_back(hook.path);
 
-        std::copy(hook.args->begin(), hook.args->end(), std::back_inserter(argStrVec));
+        std::copy(hook.args->begin() + 1, hook.args->end(), std::back_inserter(argStrVec));
 
         util::Exec(argStrVec, hook.env.value_or(std::vector<std::string>{}));
 

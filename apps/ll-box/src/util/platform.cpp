@@ -62,9 +62,8 @@ int Exec(const util::str_vec &args, std::optional<std::vector<std::string>> env_
 
     logDbg() << "execve" << targetArgv[0] << " in pid:" << getpid();
 
-    int ret = execvpe(targetArgv[0],
-                      const_cast<char **>(targetArgv),
-                      const_cast<char **>(targetEnvv));
+    int ret =
+      execvpe(targetArgv[0], const_cast<char **>(targetArgv), const_cast<char **>(targetEnvv));
 
     delete[] targetEnvv;
 
@@ -88,7 +87,7 @@ static bool parse_wstatus(const int &wstatus, std::string &info)
 }
 
 // call waitpid with pid until waitpid return value equals to target or all child exited
-static void DoWait(const int pid, int target = 0)
+static int DoWait(const int pid, int target = 0)
 {
     logDbg() << util::format("DoWait called with pid=%d, target=%d", pid, target);
     int wstatus;
@@ -105,16 +104,16 @@ static void DoWait(const int pid, int target = 0)
             if (child == target || child == pid) {
                 // this will never happen when target <= 0
                 logDbg() << "wait done";
-                return;
+                return normal ? 0 : -1;
             }
         } else if (child < 0) {
             if (errno == ECHILD) {
                 logDbg() << format("no child to wait");
-                return;
+                return -1;
             } else {
                 auto string = errnoString();
                 logErr() << format("waitpid failed, %s", string.c_str());
-                return;
+                return -1;
             }
         }
     }
@@ -123,21 +122,21 @@ static void DoWait(const int pid, int target = 0)
 }
 
 // wait all child
-void WaitAll()
+int WaitAll()
 {
-    DoWait(-1);
+    return DoWait(-1);
 }
 
 // wait pid to exit
-void Wait(const int pid)
+int Wait(const int pid)
 {
-    DoWait(pid);
+    return DoWait(pid);
 }
 
 // wait all child until pid exit
-void WaitAllUntil(const int pid)
+int WaitAllUntil(const int pid)
 {
-    DoWait(-1, pid);
+    return DoWait(-1, pid);
 }
 
 } // namespace util

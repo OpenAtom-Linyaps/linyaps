@@ -21,6 +21,7 @@ pfl_add_library(
   src/linglong/api/types/v1/ApplicationConfiguration.hpp
   src/linglong/api/types/v1/ApplicationConfigurationPermissionsBind.hpp
   src/linglong/api/types/v1/ApplicationConfigurationPermissions.hpp
+  src/linglong/api/types/v1/ApplicationConfigurationPermissionsInnerBind.hpp
   src/linglong/api/types/v1/BuilderConfig.hpp
   src/linglong/api/types/v1/BuilderProject.hpp
   src/linglong/api/types/v1/BuilderProjectPackage.hpp

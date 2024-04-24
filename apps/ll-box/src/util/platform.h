@@ -19,9 +19,9 @@ int PlatformClone(int (*callback)(void *), int flags, void *arg, ...);
 
 int Exec(const util::str_vec &args, std::optional<std::vector<std::string>> env_list);
 
-void Wait(const int pid);
-void WaitAll();
-void WaitAllUntil(const int pid);
+int Wait(const int pid);
+int WaitAll();
+int WaitAllUntil(const int pid);
 
 } // namespace util
 

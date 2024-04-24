@@ -517,8 +517,7 @@ int NonePrivilegeProc(void *arg)
 
     containerPrivate.forkAndExecProcess(containerPrivate.runtime.process);
 
-    containerPrivate.waitChildAndExec();
-    return 0;
+    return util::WaitAllUntil(containerPrivate.pidMap.begin()->first);
 }
 
 void sigtermHandler(int)
@@ -579,8 +578,7 @@ int EntryProc(void *arg)
     // FIXME(interactive bash): if need keep interactive shell
 
     signal(SIGTERM, sigtermHandler);
-    util::WaitAllUntil(noPrivilegePid);
-    return -1;
+    return util::WaitAllUntil(noPrivilegePid);
 }
 
 Container::Container(const std::string &bundle, const std::string &id, const Runtime &r)
@@ -637,7 +635,7 @@ int Container::Start()
     writeContainerJson(this->bundle, this->id, entryPid);
 
     // FIXME(interactive bash): if need keep interactive shell
-    util::WaitAllUntil(entryPid);
+    auto ret = util::WaitAllUntil(entryPid);
 
     auto dir =
       std::filesystem::path("/run") / "user" / std::to_string(getuid()) / "linglong" / "box";
@@ -645,7 +643,7 @@ int Container::Start()
         logErr() << "remove" << dir / (this->id + ".json") << "failed";
     }
 
-    return 0;
+    return ret;
 }
 
 Container::~Container() = default;

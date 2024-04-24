@@ -12,7 +12,6 @@
 
 #include <QDataStream>
 #include <QSysInfo>
-#include <QUuid>
 
 namespace linglong::package {
 

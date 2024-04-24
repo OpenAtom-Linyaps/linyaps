@@ -12,6 +12,7 @@
 #include "linglong/utils/error/error.h"
 
 #include <QString>
+#include <QUuid>
 
 namespace linglong::package {
 

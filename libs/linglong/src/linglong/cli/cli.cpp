@@ -43,7 +43,7 @@ Usage:
     ll-cli [--json] uninstall TIER [--all] [--prune]
     ll-cli [--json] upgrade TIER
     ll-cli [--json] search [--type=TYPE] TEXT
-    ll-cli [--json] [--no-dbus] list [--type=TYPE]
+    ll-cli [--json] [--no-dbus] list [--type=TYPE] [--app=APP]
     ll-cli [--json] repo modify [--name=REPO] URL
     ll-cli [--json] repo show
     ll-cli [--json] info LAYER
@@ -69,6 +69,7 @@ Options:
     --type=TYPE               Filter result with tiers type. One of "lib", "app" or "dev". [default: app]
     --state=STATE             Filter result with the tiers install state. Should be "local" or "remote". [default: local]
     --prune                   Remove application data if the tier is an application and all version of that application has been removed.
+    --app=APP                 show tier of specify app.
 
 Subcommands:
     run        Run an application.
@@ -80,7 +81,7 @@ Subcommands:
     uninstall  Uninstall tier(s).
     upgrade    Upgrade tier(s).
     search     Search for tiers.
-    list       List known tiers.
+    list       List known tier(s).
     repo       Display or modify information of the repository currently using.
     info       Display the information of layer
 )";
@@ -702,12 +703,35 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
     return 0;
 }
 
-int Cli::list(std::map<std::string, docopt::value> & /*args*/)
+int Cli::list(std::map<std::string, docopt::value> &args)
 {
+    QString app;
+
+    if (args["--app"].isString()) {
+        app = QString::fromStdString(args["--app"].asString());
+    }
+
     auto pkgs = this->repository.listLocal();
     if (!pkgs) {
         this->printer.printErr(pkgs.error());
         return -1;
+    }
+
+    if (!app.isEmpty()) {
+        auto it = std::find_if((*pkgs).begin(),
+                               (*pkgs).end(),
+                               [app](const api::types::v1::PackageInfo &info) {
+                                   return info.appid == app.toStdString();
+                               });
+
+        if (it == (*pkgs).end()) {
+            qWarning() << "can not find installed app, please install it" << app;
+            return -1;
+        }
+
+        this->printer.printPackage(*it);
+
+        return 0;
     }
 
     this->printer.printPackages(*pkgs);

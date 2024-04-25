@@ -31,25 +31,7 @@ void Printer::printPackages(const std::vector<api::types::v1::PackageInfo> &list
               << std::endl;
 
     for (const auto &info : list) {
-        auto simpleDescription = QString::fromStdString(info.description.value_or("")).trimmed();
-        if (simpleDescription.length() > 56) {
-            simpleDescription = simpleDescription.left(53) + "...";
-        }
-
-        auto appId = QString::fromStdString(info.appid).trimmed();
-
-        auto name = QString::fromStdString(info.name).trimmed();
-        if (name.length() > 32) {
-            name = name.left(29) + "...";
-        }
-        if (appId.length() > 32) {
-            name.push_front(" ");
-        }
-        int length = simpleDescription.length() < 56 ? simpleDescription.length() : 56;
-        std::cout << std::setw(32) << appId.toStdString() << std::setw(32) << name.toStdString()
-                  << std::setw(16) << info.version << std::setw(12) << info.arch[0] << std::setw(16)
-                  << info.channel << std::setw(12) << info.packageInfoModule << std::setw(length)
-                  << simpleDescription.toStdString() << std::endl;
+        this->printPackageInfo(info);
     }
 }
 
@@ -92,5 +74,40 @@ void Printer::printTaskStatus(const QString &percentage, const QString &message,
               << "\033[?25l" << percentage.toStdString() << "% " << message.toStdString()
               << "\033[?25h";
     std::cout.flush();
+}
+
+void Printer::printPackageInfo(const api::types::v1::PackageInfo &info)
+{
+    auto simpleDescription = QString::fromStdString(info.description.value_or("")).trimmed();
+    if (simpleDescription.length() > 56) {
+        simpleDescription = simpleDescription.left(53) + "...";
+    }
+
+    auto appId = QString::fromStdString(info.appid).trimmed();
+
+    auto name = QString::fromStdString(info.name).trimmed();
+    if (name.length() > 32) {
+        name = name.left(29) + "...";
+    }
+    if (appId.length() > 32) {
+        name.push_front(" ");
+    }
+    int length = simpleDescription.length() < 56 ? simpleDescription.length() : 56;
+    std::cout << std::setw(32) << appId.toStdString() << std::setw(32) << name.toStdString()
+              << std::setw(16) << info.version << std::setw(12) << info.arch[0] << std::setw(16)
+              << info.channel << std::setw(12) << info.packageInfoModule << std::setw(length)
+              << simpleDescription.toStdString() << std::endl;
+}
+
+void Printer::printPackage(const api::types::v1::PackageInfo &info)
+{
+    std::cout << "\033[38;5;214m" << std::left << std::setw(32) << qUtf8Printable("appId")
+              << std::setw(32) << qUtf8Printable("name") << std::setw(16)
+              << qUtf8Printable("version") << std::setw(12) << qUtf8Printable("arch")
+              << std::setw(16) << qUtf8Printable("channel") << std::setw(12)
+              << qUtf8Printable("module") << qUtf8Printable("description") << "\033[0m"
+              << std::endl;
+
+    printPackage(info);
 }
 } // namespace linglong::cli

@@ -21,6 +21,7 @@ const QStringList envList = {
     "DESKTOP_SESSION",
     "DEEPIN_WINE_SCALE",
     "XDG_CURRENT_DESKTOP",
+    "XDG_DATA_HOME",
     "XIM",
     "XDG_SESSION_TYPE",
     "XDG_RUNTIME_DIR",

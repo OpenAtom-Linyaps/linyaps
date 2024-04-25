@@ -35,12 +35,16 @@ public:
     virtual ~Printer() = default;
 
     virtual void printErr(const utils::error::Error &);
+    virtual void printPackage(const api::types::v1::PackageInfo &);
     virtual void printPackages(const std::vector<api::types::v1::PackageInfo> &);
     virtual void printContainers(const std::vector<api::types::v1::CliContainer> &);
     virtual void printReply(const api::types::v1::CommonResult &);
     virtual void printRepoConfig(const api::types::v1::RepoConfig &);
     virtual void printLayerInfo(const api::types::v1::LayerInfo &);
     virtual void printTaskStatus(const QString &percentage, const QString &message, int status);
+
+private:
+    void printPackageInfo(const api::types::v1::PackageInfo &);
 };
 
 } // namespace linglong::cli

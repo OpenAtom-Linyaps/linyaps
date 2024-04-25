@@ -416,15 +416,16 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
       .type = "bind",
       .uidMappings = {},
     });
-    opts.mounts.push_back({
-      .destination = "/usr/libexec/linglong/builder/helper",
-      .gidMappings = {},
-      .options = { { "rbind", "ro" } },
-      .source = "/usr/libexec/linglong/builder/helper",
-      .type = "bind",
-      .uidMappings = {},
-    });
-
+    if (QDir("/usr/libexec/linglong/builder/helper").exists()) {
+        opts.mounts.push_back({
+          .destination = "/usr/libexec/linglong/builder/helper",
+          .gidMappings = {},
+          .options = { { "rbind", "ro" } },
+          .source = "/usr/libexec/linglong/builder/helper",
+          .type = "bind",
+          .uidMappings = {},
+        });
+    }
     opts.mounts.push_back({
       .destination = "/project",
       .gidMappings = {},
@@ -460,8 +461,6 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         .env = { {
           "PREFIX=" + installPrefix.toStdString(),
           "TRIPLET=" + arch->getTriplet().toStdString(),
-          "APP_ID=" + this->project.package.id,
-          "APP_VERSION=" + this->project.package.version,
         } },
         .ioPriority = {},
         .noNewPrivileges = true,

@@ -32,6 +32,7 @@ configure_files(
   lib/linglong/container/config.json
   lib/linglong/container/README.md
   lib/systemd/system-environment-generators/61-linglong
+  lib/systemd/system-preset/91-linglong.preset
   lib/systemd/system/org.deepin.linglong.PackageManager.service
   lib/systemd/user-environment-generators/61-linglong
   lib/systemd/user/linglong-upgrade.service
@@ -87,6 +88,9 @@ install(
   USE_SOURCE_PERMISSIONS)
 
 # systemd
+set(SYSTEMD_SYSTEM_PRESET_PATH ${CMAKE_INSTALL_PREFIX}/lib/systemd/system-preset)
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/systemd/system-preset/
+        DESTINATION ${SYSTEMD_SYSTEM_PRESET_PATH})
 
 set(SYSTEMD_SYSTEM_UNIT_PATH ${CMAKE_INSTALL_PREFIX}/lib/systemd)
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/systemd/system

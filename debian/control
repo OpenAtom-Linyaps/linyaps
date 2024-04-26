@@ -43,11 +43,12 @@ Package: linglong-builder
 Architecture: any
 Depends: erofs-utils,
          erofsfuse,
+         git,
          linglong-bin,
          linglong-box,
          ${misc:Depends},
          ${shlibs:Depends}
-Recommends: linglong-loader
+Recommends: devscripts, linglong-loader
 Description: Linglong application building tools.
  ll-builder is a tool that makes it easy to build applications and dependencies.
 

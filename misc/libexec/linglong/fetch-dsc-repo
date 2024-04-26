@@ -16,11 +16,18 @@ name=$(basename "$url")
 cachedir="/tmp/fetch-dsc-repo/$name"
 mkdir -p "$cachedir" || true
 cd "$cachedir"
+
+if ! [ -f /usr/bin/dget ]
+then
+    echo "dget not found, please install devscripts first"
+    exit 1;
+fi
+
 dget -u -d "$url"
 
 actual_hash=$(sha256sum "$cachedir/$name" | awk '{print $1}')
 if [ "X$actual_hash" != "X$digest" ]; then
-    echo "digest mismatched: $actual_hash vs $digest" 
+    echo "digest mismatched: $actual_hash vs $digest"
     exit 1;
 fi
 

@@ -7,6 +7,7 @@
 #include "linglong/cli/printer.h"
 
 #include "linglong/package_manager/task.h"
+#include "linglong/api/types/v1/Generators.hpp"
 
 #include <QJsonArray>
 
@@ -101,13 +102,6 @@ void Printer::printPackageInfo(const api::types::v1::PackageInfo &info)
 
 void Printer::printPackage(const api::types::v1::PackageInfo &info)
 {
-    std::cout << "\033[38;5;214m" << std::left << std::setw(32) << qUtf8Printable("appId")
-              << std::setw(32) << qUtf8Printable("name") << std::setw(16)
-              << qUtf8Printable("version") << std::setw(12) << qUtf8Printable("arch")
-              << std::setw(16) << qUtf8Printable("channel") << std::setw(12)
-              << qUtf8Printable("module") << qUtf8Printable("description") << "\033[0m"
-              << std::endl;
-
-    printPackage(info);
+    std::cout << nlohmann::json(info).dump(4)<<std::endl;
 }
 } // namespace linglong::cli

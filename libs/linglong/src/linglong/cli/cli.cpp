@@ -44,10 +44,10 @@ Usage:
     ll-cli [--json] uninstall TIER [--all] [--prune]
     ll-cli [--json] upgrade TIER
     ll-cli [--json] search [--type=TYPE] TEXT
-    ll-cli [--json] [--no-dbus] list [--type=TYPE] [--app=APP]
+    ll-cli [--json] [--no-dbus] list [--type=TYPE]
     ll-cli [--json] repo modify [--name=REPO] URL
     ll-cli [--json] repo show
-    ll-cli [--json] info LAYER
+    ll-cli [--json] info TIER
 
 Arguments:
     APP     Specify the application.
@@ -55,7 +55,6 @@ Arguments:
     TIER    Specify the tier (container layer).
     URL     Specify the new repo URL.
     TEXT    The text used to search tiers.
-    LAYER   Specify the layer path
 
 Options:
     -h --help                 Show this screen.
@@ -70,7 +69,6 @@ Options:
     --type=TYPE               Filter result with tiers type. One of "lib", "app" or "dev". [default: app]
     --state=STATE             Filter result with the tiers install state. Should be "local" or "remote". [default: local]
     --prune                   Remove application data if the tier is an application and all version of that application has been removed.
-    --app=APP                 show tier of specify app.
 
 Subcommands:
     run        Run an application.
@@ -82,7 +80,7 @@ Subcommands:
     uninstall  Uninstall tier(s).
     upgrade    Upgrade tier(s).
     search     Search for tiers.
-    list       List known tier(s).
+    list       List known tiers.
     repo       Display or modify information of the repository currently using.
     info       Display the information of layer
 )";
@@ -706,33 +704,10 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
 
 int Cli::list(std::map<std::string, docopt::value> &args)
 {
-    QString app;
-
-    if (args["--app"].isString()) {
-        app = QString::fromStdString(args["--app"].asString());
-    }
-
     auto pkgs = this->repository.listLocal();
     if (!pkgs) {
         this->printer.printErr(pkgs.error());
         return -1;
-    }
-
-    if (!app.isEmpty()) {
-        auto it = std::find_if((*pkgs).begin(),
-                               (*pkgs).end(),
-                               [app](const api::types::v1::PackageInfo &info) {
-                                   return info.appid == app.toStdString();
-                               });
-
-        if (it == (*pkgs).end()) {
-            qWarning() << "can not find installed app, please install it" << app;
-            return -1;
-        }
-
-        this->printer.printPackage(*it);
-
-        return 0;
     }
 
     this->printer.printPackages(*pkgs);
@@ -777,18 +752,46 @@ int Cli::info(std::map<std::string, docopt::value> &args)
 {
     LINGLONG_TRACE("command info");
 
-    QString layerPath;
-    if (args["LAYER"].isString()) {
-        layerPath = QString::fromStdString(args["LAYER"].asString());
+    QString tier;
+    if (args["TIER"].isString()) {
+        tier = QString::fromStdString(args["TIER"].asString());
     }
 
-    if (layerPath.isEmpty()) {
+    if (tier.isEmpty()) {
         auto err = LINGLONG_ERR("failed to get layer path").value();
         this->printer.printErr(err);
         return err.code();
     }
 
-    const auto layerFile = package::LayerFile::New(layerPath);
+    QFileInfo file(tier);
+    auto isLayerFile = file.isFile() && file.suffix() == "layer";
+
+    // 如果是app，显示app tier信息
+    if (!isLayerFile) {
+        auto pkgs = this->repository.listLocal();
+        if (!pkgs) {
+            this->printer.printErr(pkgs.error());
+            return -1;
+        }
+
+        auto it = std::find_if((*pkgs).begin(),
+                               (*pkgs).end(),
+                               [tier](const api::types::v1::PackageInfo &info) {
+                                   return info.appid == tier.toStdString();
+                               });
+
+        if (it == (*pkgs).end()) {
+            qWarning() << "can not find installed app, please install it" << tier;
+            return -1;
+        }
+
+        this->printer.printPackage(*it);
+
+        return 0;
+    }
+
+    // 如果是layer文件，显示layer文件 tier信息
+    const auto layerFile = package::LayerFile::New(tier);
 
     if (!layerFile) {
         this->printer.printErr(layerFile.error());

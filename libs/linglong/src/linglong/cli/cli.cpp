@@ -22,6 +22,7 @@
 
 #include <QFileInfo>
 
+#include <filesystem>
 #include <iostream>
 
 using namespace linglong::utils::error;

@@ -35,6 +35,7 @@
 #include <QThread>
 #include <QUrl>
 
+#include <filesystem>
 #include <fstream>
 #include <optional>
 #include <string>

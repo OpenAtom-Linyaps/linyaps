@@ -24,6 +24,7 @@
 #include <sys/sysmacros.h>
 
 #include <cerrno>
+#include <filesystem>
 #include <map>
 #include <utility>
 

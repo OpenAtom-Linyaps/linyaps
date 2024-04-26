@@ -13,6 +13,7 @@
 #include <argp.h>
 
 #include <csignal>
+#include <filesystem>
 #include <iostream>
 
 #include <fcntl.h>
@@ -185,7 +186,6 @@ int kill() noexcept
 
         // FIXME: parse signal
         return ::kill(pid, SIGTERM);
-
     }
 
     return -1;

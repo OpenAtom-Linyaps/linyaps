@@ -15,6 +15,7 @@
 #include <QDir>
 #include <QStandardPaths>
 
+#include <filesystem>
 #include <fstream>
 
 #include <sys/stat.h>

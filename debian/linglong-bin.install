@@ -5,7 +5,7 @@ usr/bin/ll-package-manager
 usr/bin/llpkg
 usr/lib/linglong/*
 usr/lib/systemd/system-environment-generators/61-linglong
-usr/lib/systemd/system/org.deepin.linglong.PackageManager.service
+usr/lib/systemd/system/org.deepin.linglong.PackageManager.service lib/systemd/system/
 usr/lib/systemd/user-environment-generators/61-linglong
 usr/lib/systemd/user/linglong-upgrade.service
 usr/lib/systemd/user/linglong-upgrade.timer

@@ -768,24 +768,34 @@ int Cli::info(std::map<std::string, docopt::value> &args)
 
     // 如果是app，显示app tier信息
     if (!isLayerFile) {
-        auto pkgs = this->repository.listLocal();
-        if (!pkgs) {
-            this->printer.printErr(pkgs.error());
+        auto fuzzyRef = package::FuzzyReference::parse(tier);
+        if (!fuzzyRef) {
+            this->printer.printErr(fuzzyRef.error());
             return -1;
         }
 
-        auto it = std::find_if((*pkgs).begin(),
-                               (*pkgs).end(),
-                               [tier](const api::types::v1::PackageInfo &info) {
-                                   return info.appid == tier.toStdString();
-                               });
-
-        if (it == (*pkgs).end()) {
-            qWarning() << "can not find installed app, please install it" << tier;
+        auto ref =
+          this->repository.clearReference(*fuzzyRef,
+                                          { .forceRemote = false, .fallbackToRemote = false });
+        if (!ref) {
+            qDebug() << ref.error();
+            this->printer.printErr(LINGLONG_ERRV("Can not find such application."));
             return -1;
         }
 
-        this->printer.printPackage(*it);
+        auto layer = this->repository.getLayerDir(*ref);
+        if (!layer) {
+            this->printer.printErr(layer.error());
+            return -1;
+        }
+
+        auto info = layer->info();
+        if (!info) {
+            this->printer.printErr(info.error());
+            return -1;
+        }
+
+        this->printer.printPackage(*info);
 
         return 0;
     }

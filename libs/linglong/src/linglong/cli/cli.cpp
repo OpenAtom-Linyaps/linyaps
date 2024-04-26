@@ -851,9 +851,9 @@ void Cli::filePathMapping(std::map<std::string, docopt::value> &args,
                 continue;
             }
 
-            const QString filePre = "file:///";
+            const QString filePre = "file://";
 
-            // if url is "file:///" format, need to map the file path to the linglong path, or
+            // if url is "file://" format, need to map the file path to the linglong path, or
             // deliver url directly.
             if (url.startsWith(filePre)) {
                 const auto filePath = url.mid(filePre.length(), url.length() - filePre.length());

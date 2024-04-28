@@ -154,7 +154,7 @@ int main(int argc, char **argv)
     parser.addOptions({ optVerbose });
     parser.addHelpOption();
 
-    QStringList subCommandList = { "create", "build", "run", "export", "push", "convert" };
+    QStringList subCommandList = { "create", "build", "run", "export", "push", "convert", "import", "extract" };
 
     parser.addPositionalArgument("subcommand",
                                  subCommandList.join("\n"),
@@ -431,12 +431,7 @@ int main(int argc, char **argv)
 
               parser.clearPositionalArguments();
 
-              auto execVerbose = QCommandLineOption("exec", "run exec than build script", "exec");
-              auto pkgVersion =
-                QCommandLineOption("pversion", "set package version", "package version");
-              auto srcVersion =
-                QCommandLineOption("sversion", "set source version", "source version");
-              auto srcCommit = QCommandLineOption("commit", "set commit refs", "source commit");
+              auto execVerbose = QCommandLineOption("exec", "run exec than build script", "command");
               auto buildOffline = QCommandLineOption(
                 "offline",
                 "only use local files. This implies --skip-fetch-source and --skip-pull-depend",
@@ -450,9 +445,6 @@ int main(int argc, char **argv)
               auto buildArch = QCommandLineOption("arch", "set the build arch", "arch");
 
               parser.addOptions({ execVerbose,
-                                  pkgVersion,
-                                  srcVersion,
-                                  srcCommit,
                                   buildOffline,
                                   buildSkipFetchSource,
                                   buildSkipPullDepend,
@@ -535,7 +527,7 @@ int main(int argc, char **argv)
 
               parser.clearPositionalArguments();
 
-              auto execVerbose = QCommandLineOption("exec", "run exec than build script", "exec");
+              auto execVerbose = QCommandLineOption("exec", "run exec than build script", "command");
               parser.addOptions({ execVerbose });
 
               parser.addPositionalArgument("run", "run project", "build");

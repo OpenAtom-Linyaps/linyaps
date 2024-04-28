@@ -232,7 +232,8 @@ int main(int argc, char **argv)
                               { "uninstall", &Cli::uninstall },
                               { "list", &Cli::list },
                               { "repo", &Cli::repo },
-                              { "info", &Cli::info } };
+                              { "info", &Cli::info },
+                              { "content", &Cli::content } };
 
           if (!QObject::connect(QCoreApplication::instance(),
                                 &QCoreApplication::aboutToQuit,

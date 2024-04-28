@@ -72,6 +72,7 @@ public:
     int list(std::map<std::string, docopt::value> &args);
     int repo(std::map<std::string, docopt::value> &args);
     int info(std::map<std::string, docopt::value> &args);
+    int content(std::map<std::string, docopt::value> &args);
 
     void cancelCurrentTask();
 

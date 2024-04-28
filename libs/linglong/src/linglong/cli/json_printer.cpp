@@ -55,6 +55,13 @@ void JSONPrinter::printLayerInfo(const api::types::v1::LayerInfo &info)
     std::cout << nlohmann::json(info).dump() << std::endl;
 }
 
+void JSONPrinter::printContent(const QStringList &filePaths)
+{
+    QJsonObject obj{ { "content", QJsonArray::fromStringList(filePaths) } };
+
+    std::cout << QString::fromUtf8(QJsonDocument(obj).toJson()).toStdString() << std::endl;
+}
+
 void JSONPrinter::printTaskStatus(const QString &percentage, const QString &message, int status)
 {
     QJsonArray jsonArray;

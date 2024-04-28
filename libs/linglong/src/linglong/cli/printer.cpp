@@ -69,6 +69,13 @@ void Printer::printLayerInfo(const api::types::v1::LayerInfo &info)
     std::cout << info.info.dump(4) << std::endl;
 }
 
+void Printer::printContent(const QStringList &filePaths)
+{
+    for (const auto &path : filePaths) {
+        std::cout << path.toStdString() << std::endl;
+    }
+}
+
 void Printer::printTaskStatus(const QString &percentage, const QString &message, int /*status*/)
 {
     std::cout << "\r\33[K"

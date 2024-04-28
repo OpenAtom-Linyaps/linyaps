@@ -48,6 +48,7 @@ Usage:
     ll-cli [--json] repo modify [--name=REPO] URL
     ll-cli [--json] repo show
     ll-cli [--json] info TIER
+    ll-cli [--json] content APP
 
 Arguments:
     APP     Specify the application.
@@ -83,6 +84,7 @@ Subcommands:
     list       List known tiers.
     repo       Display or modify information of the repository currently using.
     info       Display the information of layer
+    content    Display the exported files of application
 )";
 
 void Cli::processDownloadStatus(const QString &recTaskID,
@@ -794,7 +796,6 @@ int Cli::info(std::map<std::string, docopt::value> &args)
             this->printer.printErr(info.error());
             return -1;
         }
-
         this->printer.printPackage(*info);
 
         return 0;
@@ -815,6 +816,63 @@ int Cli::info(std::map<std::string, docopt::value> &args)
     }
 
     this->printer.printLayerInfo(*layerInfo);
+    return 0;
+}
+
+int Cli::content(std::map<std::string, docopt::value> &args)
+{
+    LINGLONG_TRACE("command content");
+
+    QString tier;
+    QStringList contents {};
+    if (args["APP"].isString()) {
+        tier = QString::fromStdString(args["APP"].asString());
+    }
+
+    auto fuzzyRef = package::FuzzyReference::parse(tier);
+    if (!fuzzyRef) {
+        this->printer.printErr(fuzzyRef.error());
+        return -1;
+    }
+
+    auto ref = this->repository.clearReference(*fuzzyRef,
+                                               { .forceRemote = false, .fallbackToRemote = false });
+    if (!ref) {
+        qDebug() << ref.error();
+        this->printer.printErr(LINGLONG_ERRV("Can not find such application."));
+        return -1;
+    }
+
+    auto layer = this->repository.getLayerDir(*ref);
+    if (!layer) {
+        this->printer.printErr(layer.error());
+        return -1;
+    }
+
+    QDir entriesDir(layer->absoluteFilePath("entries/share"));
+    if (!entriesDir.exists()) {
+        this->printer.printErr(LINGLONG_ERR("no entries found").value());
+        return -1;
+    }
+    QDirIterator it(entriesDir.absolutePath(),
+                    QDir::AllEntries | QDir::NoDot | QDir::NoDotDot | QDir::System,
+                    QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        it.next();
+        contents.append(it.fileInfo().absoluteFilePath());
+    }
+    // replace $LINGLONG_ROOT/layers/appid/verison/arch/module/entries to ${LINGLONG_ROOT}/entires
+    contents.replaceInStrings(entriesDir.absolutePath(), QString(LINGLONG_ROOT) + "/entries/share");
+
+    // only show the contents which are exported 
+    for(int pos = 0; pos < contents.size(); ++pos) {
+        QFileInfo info(contents.at(pos));
+        if(!info.exists()) {
+            contents.removeAt(pos);
+        }
+    }
+
+    this->printer.printContent(contents);
     return 0;
 }
 

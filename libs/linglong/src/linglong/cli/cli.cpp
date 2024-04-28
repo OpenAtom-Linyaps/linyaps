@@ -43,7 +43,7 @@ Usage:
     ll-cli [--json] [--no-dbus] install TIER
     ll-cli [--json] uninstall TIER [--all] [--prune]
     ll-cli [--json] upgrade TIER
-    ll-cli [--json] search [--type=TYPE] TEXT
+    ll-cli [--json] search [--type=TYPE] [--dev] TEXT
     ll-cli [--json] [--no-dbus] list [--type=TYPE]
     ll-cli [--json] repo modify [--name=REPO] URL
     ll-cli [--json] repo show
@@ -67,9 +67,10 @@ Options:
     --file=FILE               you can refer to https://linglong.dev/guide/ll-cli/run.html to use this parameter.
     --url=URL                 you can refer to https://linglong.dev/guide/ll-cli/run.html to use this parameter.
     --working-directory=PATH  Specify working directory.
-    --type=TYPE               Filter result with tiers type. One of "lib", "app" or "dev". [default: app]
+    --type=TYPE               Filter result with tiers type. One of "runtime", "app" or "all". [default: app]
     --state=STATE             Filter result with the tiers install state. Should be "local" or "remote". [default: local]
     --prune                   Remove application data if the tier is an application and all version of that application has been removed.
+    --dev                     include develop tiers in result.
 
 Subcommands:
     run        Run an application.
@@ -625,6 +626,17 @@ int Cli::search(std::map<std::string, docopt::value> &args)
 {
     LINGLONG_TRACE("command search");
 
+    QString type;
+    bool isShowDev = false;
+
+    if (args["--type"].isString()) {
+        type = QString::fromStdString(args["--type"].asString());
+    }
+
+    if (args["--dev"].isBool()) {
+        isShowDev = args["--dev"].asBool();
+    }
+
     auto text = args["TEXT"].asString();
     auto params = api::types::v1::PackageManager1SearchParameters{
         .id = text,
@@ -649,7 +661,25 @@ int Cli::search(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    this->printer.printPackages(*result->packages);
+    std::vector<api::types::v1::PackageInfo> pkgs;
+
+    if (isShowDev) {
+        pkgs = *result->packages;
+    } else {
+        for (const auto &info : *result->packages) {
+            if (info.packageInfoModule == "develop") {
+                continue;
+            }
+
+            pkgs.push_back(info);
+        }
+    }
+
+    if (!type.isEmpty()) {
+        filterPackageInfosFromType(pkgs, type);
+    }
+
+    this->printer.printPackages(pkgs);
     return 0;
 }
 
@@ -706,10 +736,20 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
 
 int Cli::list(std::map<std::string, docopt::value> &args)
 {
+    QString type;
+
+    if (args["--type"].isString()) {
+        type = QString::fromStdString(args["--type"].asString());
+    }
+
     auto pkgs = this->repository.listLocal();
     if (!pkgs) {
         this->printer.printErr(pkgs.error());
         return -1;
+    }
+
+    if (!type.isEmpty()) {
+        filterPackageInfosFromType(*pkgs, type);
     }
 
     this->printer.printPackages(*pkgs);
@@ -824,7 +864,7 @@ int Cli::content(std::map<std::string, docopt::value> &args)
     LINGLONG_TRACE("command content");
 
     QString tier;
-    QStringList contents {};
+    QStringList contents{};
     if (args["APP"].isString()) {
         tier = QString::fromStdString(args["APP"].asString());
     }
@@ -864,10 +904,10 @@ int Cli::content(std::map<std::string, docopt::value> &args)
     // replace $LINGLONG_ROOT/layers/appid/verison/arch/module/entries to ${LINGLONG_ROOT}/entires
     contents.replaceInStrings(entriesDir.absolutePath(), QString(LINGLONG_ROOT) + "/entries/share");
 
-    // only show the contents which are exported 
-    for(int pos = 0; pos < contents.size(); ++pos) {
+    // only show the contents which are exported
+    for (int pos = 0; pos < contents.size(); ++pos) {
         QFileInfo info(contents.at(pos));
-        if(!info.exists()) {
+        if (!info.exists()) {
             contents.removeAt(pos);
         }
     }
@@ -927,6 +967,27 @@ void Cli::filePathMapping(std::map<std::string, docopt::value> &args,
 
         qWarning() << "unkown command argument" << QString::fromStdString(arg);
     }
+}
+
+void Cli::filterPackageInfosFromType(std::vector<api::types::v1::PackageInfo> &list,
+                                     const QString &type)
+{
+    // if type is all, do nothing, return tier of all packages.
+    if (type == "all") {
+        return;
+    }
+
+    std::vector<api::types::v1::PackageInfo> temp;
+
+    // if type is runtime or app, return tier of specific type.
+    for (const auto &info : list) {
+        if (info.kind == type.toStdString()) {
+            temp.push_back(info);
+        }
+    }
+
+    list.clear();
+    std::move(temp.begin(), temp.end(), std::back_inserter(list));
 }
 
 } // namespace linglong::cli

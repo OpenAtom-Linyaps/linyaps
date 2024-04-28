@@ -4,12 +4,12 @@ Release:        1
 Summary:        Linglong Package FrameWork 
 License:        LGPLv3
 URL:            https://github.com/linuxdeepin/%{name}
-Source0:        %{url}/archive/refs/tags/%{version}.tar.gz
+Source0:        %{url}/archive/%{version}/linglong-%{version}.tar.gz
 
 BuildRequires:  cmake gcc-c++ 
 BuildRequires:  qt5-qtbase-devel qt5-qtwebsockets-devel qt5-qtbase-private-devel 
-BuildRequires:  glib2-devel nlohmann-json-devel ostree-devel pkgconfig(yaml-cpp)
-BuildRequires:  pkgconfig(systemd) pkgconfig(gtest) pkgconfig(libseccomp) 
+BuildRequires:  glib2-devel nlohmann-json-devel ostree-devel yaml-cpp-devel
+BuildRequires:  systemd-devel gtest-devel libseccomp-devel
 Requires:       linglong-bin = %{version}-%{release}
 
 %description

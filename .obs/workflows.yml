@@ -30,6 +30,22 @@ test_build:
             architectures:
               - x86_64
               - aarch64
+
+          - name: anolisOS
+            paths:
+              - target_project: deepin:CI
+                target_repository: AnolisOS_8.8_repo
+            architectures:
+              - x86_64
+              - aarch64
+
+          - name: openEuler
+            paths:
+              - target_project: deepin:CI
+                target_repository: openEuler_23.09_repo
+            architectures:
+              - x86_64
+              - aarch64
   filters:
     event: pull_request
 

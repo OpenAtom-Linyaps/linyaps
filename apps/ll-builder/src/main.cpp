@@ -373,22 +373,8 @@ int main(int argc, char **argv)
 
     linglong::repo::OSTreeRepo repo(QString::fromStdString(builderCfg->repo), *repoCfg, api);
 
-    auto project =
-      linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(
-        QDir().absoluteFilePath("linglong.yaml"));
-    if (!project) {
-        qCritical() << project.error();
-        return -1;
-    }
-
     auto containerBuidler = new linglong::runtime::ContainerBuilder(**ociRuntime);
     containerBuidler->setParent(QCoreApplication::instance());
-
-    linglong::builder::Builder builder(*project,
-                                       QDir::current(),
-                                       repo,
-                                       *containerBuidler,
-                                       *builderCfg);
 
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
         { "convert",
@@ -401,6 +387,19 @@ int main(int argc, char **argv)
                   return 0;
               }
 
+              auto project =
+                linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(
+                  QDir().absoluteFilePath("linglong.yaml"));
+              if (!project) {
+                  qCritical() << project.error();
+                  return -1;
+              }
+
+              linglong::builder::Builder builder(*project,
+                                                 QDir::current(),
+                                                 repo,
+                                                 *containerBuidler,
+                                                 *builderCfg);
               auto result = builder.build({ "/source/linglong/entry.sh" });
               if (!result) {
                   qCritical() << result.error();
@@ -467,6 +466,19 @@ int main(int argc, char **argv)
                                                "ll-builder build -v -- bash -c \"echo hello\"");
 
               parser.process(app);
+              auto project =
+                linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(
+                  QDir().absoluteFilePath("linglong.yaml"));
+              if (!project) {
+                  qCritical() << project.error();
+                  return -1;
+              }
+
+              linglong::builder::Builder builder(*project,
+                                                 QDir::current(),
+                                                 repo,
+                                                 *containerBuidler,
+                                                 *builderCfg);
 
               if (parser.isSet(buildArch)) {
                   auto arch = linglong::package::Architecture::parse(parser.value(buildArch));
@@ -530,6 +542,19 @@ int main(int argc, char **argv)
 
               parser.process(app);
 
+              auto project =
+                linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(
+                  QDir().absoluteFilePath("linglong.yaml"));
+              if (!project) {
+                  qCritical() << project.error();
+                  return -1;
+              }
+
+              linglong::builder::Builder builder(*project,
+                                                 QDir::current(),
+                                                 repo,
+                                                 *containerBuidler,
+                                                 *builderCfg);
               QStringList exec;
               if (parser.isSet(execVerbose)) {
                   exec = splitExec(parser.value(execVerbose));
@@ -549,6 +574,19 @@ int main(int argc, char **argv)
               parser.clearPositionalArguments();
               parser.process(app);
 
+              auto project =
+                linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(
+                  QDir().absoluteFilePath("linglong.yaml"));
+              if (!project) {
+                  qCritical() << project.error();
+                  return -1;
+              }
+
+              linglong::builder::Builder builder(*project,
+                                                 QDir::current(),
+                                                 repo,
+                                                 *containerBuidler,
+                                                 *builderCfg);
               auto result = builder.exportLayer(QDir().absolutePath());
               if (!result) {
                   qCritical() << result.error();
@@ -578,6 +616,19 @@ int main(int argc, char **argv)
                   parser.showHelp(-1);
               }
 
+              auto project =
+                linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(
+                  QDir().absoluteFilePath("linglong.yaml"));
+              if (!project) {
+                  qCritical() << project.error();
+                  return -1;
+              }
+
+              linglong::builder::Builder builder(*project,
+                                                 QDir::current(),
+                                                 repo,
+                                                 *containerBuidler,
+                                                 *builderCfg);
               auto result = builder.extractLayer(layerPath, destination);
               if (!result) {
                   qCritical() << result.error();
@@ -605,6 +656,19 @@ int main(int argc, char **argv)
                   parser.showHelp(-1);
               }
 
+              auto project =
+                linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(
+                  QDir().absoluteFilePath("linglong.yaml"));
+              if (!project) {
+                  qCritical() << project.error();
+                  return -1;
+              }
+
+              linglong::builder::Builder builder(*project,
+                                                 QDir::current(),
+                                                 repo,
+                                                 *containerBuidler,
+                                                 *builderCfg);
               auto result = builder.importLayer(path);
               if (!result) {
                   qCritical() << result.error();
@@ -633,7 +697,19 @@ int main(int argc, char **argv)
               auto repoChannel = parser.value(optRepoChannel);
 
               bool pushWithDevel = parser.isSet(optNoDevel) ? false : true;
+              auto project =
+                linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(
+                  QDir().absoluteFilePath("linglong.yaml"));
+              if (!project) {
+                  qCritical() << project.error();
+                  return -1;
+              }
 
+              linglong::builder::Builder builder(*project,
+                                                 QDir::current(),
+                                                 repo,
+                                                 *containerBuidler,
+                                                 *builderCfg);
               auto result = builder.push(pushWithDevel, repoUrl, repoName);
               if (!result) {
                   qCritical() << result.error();

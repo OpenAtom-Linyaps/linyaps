@@ -48,6 +48,9 @@ upgrade_from_1_3_x() {
 case "$1" in
 configure)
         upgrade_from_1_3_x "$2"
+        if [ -f /etc/sysctl.d/linglong.conf ];then
+                sysctl -p /etc/sysctl.d/linglong.conf
+        fi
         ;;
 abort-upgrade | abort-remove | abort-deconfigure) ;;
 *)

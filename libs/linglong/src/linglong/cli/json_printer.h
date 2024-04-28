@@ -22,6 +22,7 @@ public:
     void printRepoConfig(const api::types::v1::RepoConfig &) override;
     void printLayerInfo(const api::types::v1::LayerInfo &) override;
     void printTaskStatus(const QString &percentage, const QString &message, int status) override;
+    void printContent(const QStringList &desktopPaths) override;
 };
 
 } // namespace linglong::cli

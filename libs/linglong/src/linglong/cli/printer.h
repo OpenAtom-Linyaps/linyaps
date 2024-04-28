@@ -42,6 +42,7 @@ public:
     virtual void printRepoConfig(const api::types::v1::RepoConfig &);
     virtual void printLayerInfo(const api::types::v1::LayerInfo &);
     virtual void printTaskStatus(const QString &percentage, const QString &message, int status);
+    virtual void printContent(const QStringList &filePaths);
 
 private:
     void printPackageInfo(const api::types::v1::PackageInfo &);

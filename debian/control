@@ -25,11 +25,10 @@ Homepage: http://www.deepin.org
 
 Package: linglong-bin
 Architecture: any
-Depends: crun,
-         desktop-file-utils,
+Depends: desktop-file-utils,
          erofsfuse,
          libglib2.0-bin,
-         linglong-box,
+         linglong-box | crun,
          ostree,
          shared-mime-info,
          ${misc:Depends},
@@ -45,7 +44,7 @@ Depends: erofs-utils,
          erofsfuse,
          git,
          linglong-bin,
-         linglong-box,
+         linglong-box | crun,
          ${misc:Depends},
          ${shlibs:Depends}
 Recommends: devscripts, linglong-loader

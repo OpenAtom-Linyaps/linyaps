@@ -4,62 +4,6 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-# Handle upgrade from 1.3.x
-# Move system level linglong repository from old location to /var/lib/linglong
-upgrade_from_1_3_x() {
-        version=$1
-        shift
-
-        if dpkg --compare-versions "$version" ge "1.4.0"; then
-                return
-        fi
-
-        if [ -f /etc/X11/Xsession.d/21linglong ] &&
-                [ "$(sha256sum /etc/X11/Xsession.d/21linglong)" = \
-                        "5b82ac8e6b02cdae66294139e7db7cbe80af8cef6b0e2eddf8d509166afce544" ]; then
-                rm /etc/X11/Xsession.d/21linglong
-        fi
-
-        if [ -d /var/lib/linglong ]; then
-                echo "'/var/lib/linglong' directory exists."
-                echo "Finish upgrading from 1.3.x without touch anything."
-                return
-        fi
-
-        if [ ! -d /persistent/linglong ]; then
-                echo "Old linglong repository not found."
-                echo "Finish upgrading from 1.3.x without touch anything."
-                return
-        fi
-
-        echo "Moving old deepin v23 linglong repository to new location..."
-        mv /persistent/linglong /var/lib/linglong
-        ln -s /var/lib/linglong /persistent/linglong # Quick fix for old files exported in old location.
-        echo "Done"
-
-        # This is good enough,
-        # as linglong has only one repository publicly right now.
-        echo "Removing old configuration file..."
-        rm /var/lib/linglong/config.json -f
-        echo "Done"
-        return
-}
-
-case "$1" in
-configure)
-        upgrade_from_1_3_x "$2"
-        if [ -f /etc/sysctl.d/linglong.conf ];then
-                sysctl -p /etc/sysctl.d/linglong.conf
-        fi
-        ;;
-abort-upgrade | abort-remove | abort-deconfigure) ;;
-*)
-        echo "postinst called with unknown argument '$1'" >&2
-        exit 0
-        ;;
-
-esac
-
 # This systemd config is automatically generated from dh_installsysusers/13.11.4.
 # When the dh-compat < 13, some of them will not be generated.
 # So we just make this hard code.
@@ -131,6 +75,32 @@ if [ "$1" = "configure" ] || [ "$1" = "abort-upgrade" ] || [ "$1" = "abort-decon
         fi
 fi
 # End automatically added section
+
+case "$1" in
+configure)
+        version=$2
+        shift
+        # enable kernel.unprivileged_userns_clone
+        if [ -f /etc/sysctl.d/linglong.conf ];then
+                sysctl -p /etc/sysctl.d/linglong.conf
+        fi
+        if [ -f /tmp/linglong-upgrade.list ] && dpkg --compare-versions "$version" lt "1.5.0" ; then
+                echo "Reinstall old package, this may take a long time..."
+                for p in $(cat /tmp/linglong-upgrade.list)
+                do
+                    echo "Installing $p..."
+                    ll-cli install $p || true
+                done
+                mv /tmp/linglong-upgrade.list /tmp/linglong-upgrade.list-done
+        fi
+        ;;
+abort-upgrade | abort-remove | abort-deconfigure) ;;
+*)
+        echo "postinst called with unknown argument '$1'" >&2
+        exit 0
+        ;;
+
+esac
 
 exit 0
 

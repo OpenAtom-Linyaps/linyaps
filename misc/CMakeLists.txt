@@ -133,3 +133,9 @@ install(
   DESTINATION /etc/X11/Xsession.d/
   RENAME 21linglong
 )
+
+install(
+        FILES ${CMAKE_SOURCE_DIR}/api/schema/v1.json
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/linglong/api/
+        RENAME api.json
+)

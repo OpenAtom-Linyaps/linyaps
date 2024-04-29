@@ -1,0 +1,679 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Types used as v1 API of linglong D-Bus service, configuration files and CLI output. The top level type is a place holder to make quicktype work.",
+  "$defs": {
+    "ApplicationConfiguration": {
+      "title": "ApplicationConfiguration",
+      "description": "application configuration",
+      "type": "object",
+      "required": [
+        "version"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "version of configuration file"
+        },
+        "permissions": {
+          "$ref": "#/$defs/ApplicationConfigurationPermissions"
+        }
+      }
+    },
+    "ApplicationConfigurationPermissions": {
+      "title": "ApplicationConfigurationPermissions",
+      "description": "application configuration permissions",
+      "type": "object",
+      "properties": {
+        "binds": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "title": "ApplicationConfigurationPermissionsBind",
+            "description": "items of container",
+            "required": [
+              "source",
+              "destination"
+            ],
+            "properties": {
+              "source": {
+                "type": "string",
+                "description": "source file of host"
+              },
+              "destination": {
+                "type": "string",
+                "description": "mount source file to the container"
+              }
+            }
+          }
+        },
+        "innerBinds": {
+          "type": "array",
+          "description": "inner binds of container",
+          "items": {
+            "type": "object",
+            "title": "ApplicationConfigurationPermissionsInnerBind",
+            "description": "items of inner binds of container",
+            "required": [
+              "source",
+              "destination"
+            ],
+            "properties": {
+              "source": {
+                "type": "string",
+                "description": "source file of container"
+              },
+              "destination": {
+                "type": "string",
+                "description": "mount source file to the another position of container"
+              }
+            }
+          }
+        }
+      }
+    },
+    "OCIConfigurationPatch": {
+      "title": "OCIConfigurationPatch",
+      "description": "oci configuration patch",
+      "type": "object",
+      "required": [
+        "ociVersion",
+        "patch"
+      ],
+      "properties": {
+        "ociVersion": {
+          "type": "string",
+          "description": "version of oci configuration patch"
+        },
+        "patch": {
+          "type": "array",
+          "description": "oci configuration patch"
+        }
+      }
+    },
+    "CLIContainer": {
+      "title": "CLIContainer",
+      "description": "this is the output result of ll-cli ps --json",
+      "type": "object",
+      "required": [
+        "pid",
+        "id",
+        "package"
+      ],
+      "properties": {
+        "pid": {
+          "type": "integer",
+          "description": "pid of container"
+        },
+        "id": {
+          "type": "string",
+          "description": "id of container"
+        },
+        "package": {
+          "type": "string",
+          "description": "package of container"
+        }
+      }
+    },
+    "BuilderProject": {
+      "title": "BuilderProject",
+      "description": "Linglong project build file.",
+      "type": "object",
+      "required": [
+        "version",
+        "package",
+        "build",
+        "base"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "version of build file"
+        },
+        "package": {
+          "title": "BuilderProjectPackage",
+          "description": "package of build file",
+          "type": "object",
+          "required": [
+            "id",
+            "kind",
+            "name",
+            "version",
+            "description"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "id of package"
+            },
+            "kind": {
+              "type": "string",
+              "description": "kind of package"
+            },
+            "name": {
+              "type": "string",
+              "description": "name of package"
+            },
+            "version": {
+              "type": "string",
+              "description": "version of package"
+            },
+            "description": {
+              "type": "string",
+              "description": "description of package"
+            },
+            "architecture": {
+              "type": "string",
+              "description": "architecture of package"
+            },
+            "channel": {
+              "type": "string",
+              "description": "channel of package"
+            }
+          }
+        },
+        "permissions": {
+          "$ref": "#/$defs/ApplicationConfigurationPermissions"
+        },
+        "runtime": {
+          "type": "string",
+          "description": "used runtime of package"
+        },
+        "base": {
+          "type": "string",
+          "description": "used base of package"
+        },
+        "sources": {
+          "type": "array",
+          "description": "sources of package",
+          "items": {
+            "title": "BuilderProjectSource",
+            "description": "items of sources of builder project",
+            "type": "object",
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "description": "kind of source"
+              },
+              "url": {
+                "type": "string",
+                "description": "url of source"
+              },
+              "digest": {
+                "type": "string",
+                "description": "digest of source"
+              },
+              "commit": {
+                "type": "string",
+                "description": "commit of source"
+              },
+              "version": {
+                "type": "string",
+                "description": "version of source"
+              },
+              "name": {
+                "type": "string",
+                "description": "name of source"
+              }
+            }
+          }
+        },
+        "build": {
+          "title": "BuilderProjectBuildScript",
+          "description": "build script of builder project",
+          "type": "string"
+        },
+        "command": {
+          "type": "array",
+          "description": "command of builder project",
+          "items": {
+            "type": "string"
+          }
+        },
+        "strip": {
+          "title": "BuilderProjectStripScript",
+          "description": "strip script of builder project",
+          "type": "string"
+        }
+      }
+    },
+    "BuilderConfig": {
+      "description": "Configuration file for ll-builder.",
+      "type": "object",
+      "required": [
+        "version",
+        "repo"
+      ],
+      "properties": {
+        "version": {
+          "type": "integer",
+          "description": "version of builder config"
+        },
+        "offline": {
+          "type": "boolean",
+          "description": "use offline mode when build"
+        },
+        "skip_fetch_source": {
+          "type": "boolean",
+          "description": "skip fetch source when build"
+        },
+        "skip_pull_depend": {
+          "type": "boolean",
+          "description": "skip pull depend when build"
+        },
+        "skip_run_container": {
+          "type": "boolean",
+          "description": "skip run container when build"
+        },
+        "skip_commit_output": {
+          "type": "boolean",
+          "description": "skip commit output when build"
+        },
+        "arch": {
+          "type": "string",
+          "description": "arch of builder config"
+        },
+        "cache": {
+          "type": "string",
+          "description": "cache of builder config"
+        },
+        "repo": {
+          "type": "string",
+          "description": "repo of builder config"
+        }
+      }
+    },
+    "RepoConfig": {
+      "description": "Configuration file for local linglong repository.",
+      "type": "object",
+      "required": [
+        "version",
+        "defaultRepo",
+        "repos"
+      ],
+      "properties": {
+        "version": {
+          "type": "integer",
+          "description": "version of repo config"
+        },
+        "defaultRepo": {
+          "type": "string",
+          "description": "default repo of repo config"
+        },
+        "repos": {
+          "type": "object",
+          "description": "repos of repo config",
+          "additionalProperties": {
+            "type": "string",
+            "description": "additional properties of repos"
+          }
+        }
+      }
+    },
+    "LayerInfo": {
+      "description": "Meta information on the head of layer file.",
+      "type": "object",
+      "required": [
+        "version",
+        "info"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "version of layer info"
+        },
+        "info": true
+      }
+    },
+    "PackageManager1Package": {
+      "title": "PackageManager1Package",
+      "description": "package manager of linglong",
+      "type": "object",
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "channel": {
+          "type": "string",
+          "description": "channel of package manager"
+        },
+        "id": {
+          "type": "string",
+          "description": "id of package manager"
+        },
+        "version": {
+          "type": "string",
+          "description": "version of package manager"
+        },
+        "module": {
+          "type": "string",
+          "description": "module of package manager"
+        }
+      }
+    },
+    "PackageInfo": {
+      "title": "PackageInfo",
+      "description": "this is the each item output of ll-cli list --json",
+      "type": "object",
+      "required": [
+        "channel",
+        "appid",
+        "module",
+        "arch",
+        "version",
+        "kind",
+        "name",
+        "size",
+        "base"
+      ],
+      "properties": {
+        "channel": {
+          "type": "string",
+          "description": "channel of package info"
+        },
+        "appid": {
+          "type": "string",
+          "description": "appid of package info"
+        },
+        "module": {
+          "type": "string",
+          "description": "module of package info"
+        },
+        "arch": {
+          "type": "array",
+          "description": "arch of package info",
+          "items": {
+            "type": "string"
+          }
+        },
+        "version": {
+          "type": "string",
+          "description": "version of package info"
+        },
+        "kind": {
+          "type": "string",
+          "description": "kind of package info"
+        },
+        "name": {
+          "type": "string",
+          "description": "name of package info"
+        },
+        "size": {
+          "description": "Uncompressed package size in bytes",
+          "type": "integer"
+        },
+        "runtime": {
+          "type": "string",
+          "description": "runtime of package info"
+        },
+        "base": {
+          "type": "string",
+          "description": "base of package info"
+        },
+        "command": {
+          "type": "array",
+          "description": "command of package info",
+          "items": {
+            "type": "string"
+          }
+        },
+        "permissions": {
+          "$ref": "#/$defs/ApplicationConfigurationPermissions"
+        },
+        "description": {
+          "type": "string",
+          "description": "description of package info"
+        }
+      }
+    },
+    "CommonResult": {
+      "title": "CommonResult",
+      "description": "this is common error result of ll-cli command --json",
+      "type": "object",
+      "required": [
+        "message",
+        "code"
+      ],
+      "properties": {
+        "message": {
+          "description": "Human readable result message.",
+          "type": "string"
+        },
+        "code": {
+          "description": "We do not use DBus error. We return an error code instead. Non-zero code indicated errors occurs and message should be displayed to user.",
+          "type": "integer"
+        }
+      }
+    },
+    "PackageManager1InstallLayerFDResult": {
+      "$ref": "#/$defs/CommonResult"
+    },
+    "PackageManager1InstallParameters": {
+      "type": "object",
+      "description": "package manager install parameters",
+      "required": [
+        "package"
+      ],
+      "properties": {
+        "package": {
+          "$ref": "#/$defs/PackageManager1Package"
+        }
+      }
+    },
+    "PackageManager1InstallResult": {
+      "title": "PackageManager1ResultWithTaskID",
+      "description": "package manager install result",
+      "allOf": [
+        {
+          "$ref": "#/$defs/CommonResult"
+        }
+      ],
+      "properties": {
+        "taskID": {
+          "type": "string",
+          "description": "task id of package manager install"
+        }
+      }
+    },
+    "PackageManager1UninstallParameters": {
+      "type": "object",
+      "description": "package manager uninstall parameters",
+      "required": [
+        "package"
+      ],
+      "properties": {
+        "package": {
+          "$ref": "#/$defs/PackageManager1Package"
+        }
+      }
+    },
+    "PackageManager1UninstallResult": {
+      "$ref": "#/$defs/CommonResult"
+    },
+    "PackageManager1UpdateParameters": {
+      "type": "object",
+      "description": "package manager update result",
+      "required": [
+        "packages"
+      ],
+      "properties": {
+        "packages": {
+          "type": "array",
+          "description": "packages of package manager update",
+          "items": {
+            "$ref": "#/$defs/PackageManager1Package"
+          }
+        }
+      }
+    },
+    "PackageManager1UpdateResult": {
+      "title": "PackageManager1UpdateResult",
+      "description": "package manager update result",
+      "$ref": "#/$defs/PackageManager1InstallResult"
+    },
+    "PackageManager1ModifyRepoParameters": {
+      "type": "object",
+      "required": [
+        "defaultRepo",
+        "repos"
+      ],
+      "properties": {
+        "defaultRepo": {
+          "type": "string",
+          "description": "default repo of package manager modify repo parameters"
+        },
+        "repos": {
+          "type": "object",
+          "description": "repos of of package manager modify repo",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "PackageManager1ModifyRepoResult": {
+      "$ref": "#/$defs/CommonResult"
+    },
+    "PackageManager1SearchParameters": {
+      "type": "object",
+      "description": "package manager search parameters",
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "id of package manager search"
+        }
+      }
+    },
+    "PackageManager1SearchResult": {
+      "type": "object",
+      "description": "result of package manager search",
+      "allOf": [
+        {
+          "$ref": "#/$defs/CommonResult"
+        }
+      ],
+      "properties": {
+        "packages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PackageInfo"
+          }
+        }
+      }
+    },
+    "PackageManager1GetRepoInfoResult": {
+      "type": "object",
+      "description": "result of package manager get repo info",
+      "allOf": [
+        {
+          "$ref": "#/$defs/CommonResult"
+        }
+      ],
+      "required": [
+        "repoInfo"
+      ],
+      "properties": {
+        "repoInfo": {
+          "title": "PackageManager1GetRepoInfoResultRepoInfo",
+          "description": "result of package manager get repo info",
+          "type": "object",
+          "properties": {
+            "defaultRepo": {
+              "type": "string",
+              "description": "default repo of package manager get repo info"
+            },
+            "repos": {
+              "type": "object",
+              "description": "repos of package manager get repo info",
+              "additionalProperties": {
+                "type": "string",
+                "description": "additional properties of package manager get repo info"
+              }
+            }
+          },
+          "required": [
+            "defaultRepo",
+            "repos"
+          ]
+        }
+      }
+    }
+  },
+  "type": "object",
+  "properties": {
+    "ApplicationConfiguration": {
+      "$ref": "#/$defs/ApplicationConfiguration"
+    },
+    "ApplicationConfigurationPermissions": {
+      "$ref": "#/$defs/ApplicationConfigurationPermissions"
+    },
+    "OCIConfigurationPatch": {
+      "$ref": "#/$defs/OCIConfigurationPatch"
+    },
+    "CLIContainer": {
+      "$ref": "#/$defs/CLIContainer"
+    },
+    "BuilderProject": {
+      "$ref": "#/$defs/BuilderProject"
+    },
+    "BuilderConfig": {
+      "$ref": "#/$defs/BuilderConfig"
+    },
+    "RepoConfig": {
+      "$ref": "#/$defs/RepoConfig"
+    },
+    "LayerInfo": {
+      "$ref": "#/$defs/LayerInfo"
+    },
+    "PackageManager1Package": {
+      "$ref": "#/$defs/PackageManager1Package"
+    },
+    "PackageInfo": {
+      "$ref": "#/$defs/PackageInfo"
+    },
+    "CommonResult": {
+      "$ref": "#/$defs/CommonResult"
+    },
+    "PackageManager1InstallLayerFDResult": {
+      "$ref": "#/$defs/PackageManager1InstallLayerFDResult"
+    },
+    "PackageManager1InstallParameters": {
+      "$ref": "#/$defs/PackageManager1InstallParameters"
+    },
+    "PackageManager1InstallResult": {
+      "$ref": "#/$defs/PackageManager1InstallResult"
+    },
+    "PackageManager1UninstallParameters": {
+      "$ref": "#/$defs/PackageManager1UninstallParameters"
+    },
+    "PackageManager1UninstallResult": {
+      "$ref": "#/$defs/PackageManager1UninstallResult"
+    },
+    "PackageManager1UpdateParameters": {
+      "$ref": "#/$defs/PackageManager1UpdateParameters"
+    },
+    "PackageManager1UpdateResult": {
+      "$ref": "#/$defs/PackageManager1UpdateResult"
+    },
+    "PackageManager1ModifyRepoParameters": {
+      "$ref": "#/$defs/PackageManager1ModifyRepoParameters"
+    },
+    "PackageManager1ModifyRepoResult": {
+      "$ref": "#/$defs/PackageManager1ModifyRepoResult"
+    },
+    "PackageManager1SearchParameters": {
+      "$ref": "#/$defs/PackageManager1SearchParameters"
+    },
+    "PackageManager1SearchResult": {
+      "$ref": "#/$defs/PackageManager1SearchResult"
+    },
+    "PackageManager1GetRepoInfoResult": {
+      "$ref": "#/$defs/PackageManager1GetRepoInfoResult"
+    }
+  }
+}

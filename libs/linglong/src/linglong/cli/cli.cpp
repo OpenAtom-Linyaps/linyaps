@@ -58,9 +58,9 @@ Arguments:
     TEXT    The text used to search tiers.
 
 Options:
-    -h --help                 Show this screen.
+    -h --help                 Show help information of ll-cli.
     --version                 Show version.
-    --json                    Use json to output command result.
+    --json                    Use json to output command result, you can get the description of the output refer to linglong api documentation(/usr/share/linglong/api/api.json).
     --no-dbus                 Use peer to peer DBus, this is used only in case that DBus daemon is not available.
     --no-dbus-proxy           Do not enable linglong-dbus-proxy.
     --dbus-proxy-cfg=PATH     Path of config of linglong-dbus-proxy.

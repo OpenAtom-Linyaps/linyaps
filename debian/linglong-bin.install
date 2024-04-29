@@ -23,3 +23,4 @@ usr/share/dbus-1/system-services/org.deepin.linglong.PackageManager.service
 usr/share/dbus-1/system.d/org.deepin.linglong.PackageManager.conf
 usr/share/linglong/config.yaml
 usr/share/mime/packages/deepin-linglong.xml
+usr/share/linglong/api/api.json

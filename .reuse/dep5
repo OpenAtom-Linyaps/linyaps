@@ -104,3 +104,8 @@ Copyright: 2020 The Qt Company Ltd.
 Files: libs/ocppi/*
 License: LGPL-3.0-only
 Copyright: UnionTech Software Technology Co., Ltd.
+
+# json schemas
+Files: api/schema/*.json
+License: CC0-1.0
+Copyright: None

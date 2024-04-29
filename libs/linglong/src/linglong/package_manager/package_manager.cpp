@@ -230,61 +230,65 @@ void PackageManager::Install(const std::shared_ptr<InstallTask> &taskContext,
         taskContext->updateStatus(InstallTask::Failed, LINGLONG_ERRV(info).message());
         return;
     }
+    // for 'kind: app', check runtime and foundation
+    if (info->kind == "app") {
+        if (info->runtime) {
+            auto fuzzyRuntime =
+              package::FuzzyReference::parse(QString::fromStdString(*info->runtime));
+            if (!fuzzyRuntime) {
+                taskContext->updateStatus(InstallTask::Failed,
+                                          LINGLONG_ERRV(fuzzyRuntime).message());
+                return;
+            }
 
-    if (info->runtime) {
-        auto fuzzyRuntime = package::FuzzyReference::parse(QString::fromStdString(*info->runtime));
-        if (!fuzzyRuntime) {
-            taskContext->updateStatus(InstallTask::Failed, LINGLONG_ERRV(fuzzyRuntime).message());
+            auto runtime = this->repo.clearReference(*fuzzyRuntime,
+                                                     {
+                                                       .forceRemote = true // NOLINT
+                                                     });
+            if (!runtime) {
+                taskContext->updateStatus(InstallTask::Failed, runtime.error().message());
+                return;
+            }
+
+            taskContext->updateStatus(InstallTask::installRuntime,
+                                      "Installing runtime " + runtime->toString());
+            this->repo.pull(taskContext, *runtime, develop);
+            if (taskContext->currentStatus() == InstallTask::Failed
+                || taskContext->currentStatus() == InstallTask::Canceled) {
+                return;
+            }
+
+            auto runtimeRef = *runtime;
+            t.addRollBack([this, runtimeRef, develop]() noexcept {
+                auto result = this->repo.remove(runtimeRef, develop);
+                if (!result) {
+                    qCritical() << result.error();
+                    Q_ASSERT(false);
+                }
+            });
+        }
+
+        auto fuzzyBase = package::FuzzyReference::parse(QString::fromStdString(info->base));
+        if (!fuzzyBase) {
+            taskContext->updateStatus(InstallTask::Failed, LINGLONG_ERRV(info).message());
             return;
         }
 
-        auto runtime = this->repo.clearReference(*fuzzyRuntime,
-                                                 {
-                                                   .forceRemote = true // NOLINT
-                                                 });
-        if (!runtime) {
-            taskContext->updateStatus(InstallTask::Failed, runtime.error().message());
+        auto base = this->repo.clearReference(*fuzzyBase,
+                                              {
+                                                .forceRemote = true // NOLINT
+                                              });
+        if (!base) {
+            taskContext->updateStatus(InstallTask::Failed, LINGLONG_ERRV(base).message());
             return;
         }
 
-        taskContext->updateStatus(InstallTask::installRuntime,
-                                  "Installing runtime " + runtime->toString());
-        this->repo.pull(taskContext, *runtime, develop);
+        taskContext->updateStatus(InstallTask::installBase, "Installing base " + base->toString());
+        this->repo.pull(taskContext, *base, develop);
         if (taskContext->currentStatus() == InstallTask::Failed
             || taskContext->currentStatus() == InstallTask::Canceled) {
             return;
         }
-
-        auto runtimeRef = *runtime;
-        t.addRollBack([this, runtimeRef, develop]() noexcept {
-            auto result = this->repo.remove(runtimeRef, develop);
-            if (!result) {
-                qCritical() << result.error();
-                Q_ASSERT(false);
-            }
-        });
-    }
-
-    auto fuzzyBase = package::FuzzyReference::parse(QString::fromStdString(info->base));
-    if (!fuzzyBase) {
-        taskContext->updateStatus(InstallTask::Failed, LINGLONG_ERRV(info).message());
-        return;
-    }
-
-    auto base = this->repo.clearReference(*fuzzyBase,
-                                          {
-                                            .forceRemote = true // NOLINT
-                                          });
-    if (!base) {
-        taskContext->updateStatus(InstallTask::Failed, LINGLONG_ERRV(base).message());
-        return;
-    }
-
-    taskContext->updateStatus(InstallTask::installBase, "Installing base " + base->toString());
-    this->repo.pull(taskContext, *base, develop);
-    if (taskContext->currentStatus() == InstallTask::Failed
-        || taskContext->currentStatus() == InstallTask::Canceled) {
-        return;
     }
 
     bool shouldExport = true;

@@ -35,5 +35,12 @@
             }
         ]
     },
-    "mounts": []
+    "mounts": [],
+    "process": {
+        "env": [],
+        "cwd": "/",
+        "args": [
+            "bash"
+        ]
+    }
 }

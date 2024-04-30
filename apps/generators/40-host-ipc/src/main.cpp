@@ -8,8 +8,10 @@
 
 #include <filesystem>
 #include <iostream>
-#include <optional>
+#include <string>
 
+#include <pwd.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 int main()
@@ -51,13 +53,12 @@ int main()
     })"_json;
 
     [dbusMount = mount, &content]() mutable {
-        const auto *systemBus = u8"/run/dbus/system_bus_socket";
         auto *systemBusEnv = getenv("DBUS_SYSTEM_BUS_ADDRESS"); // NOLINT
-        if (systemBusEnv != nullptr && std::strcmp(systemBus, systemBusEnv) != 0) {
-            std::cerr << "Non default DBUS_SYSTEM_BUS_ADDRESS $DBUS_SYSTEM_BUS_ADDRESS is not "
-                         "supported now."
-                      << std::endl;
-            return;
+
+        // https://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-types:~:text=the%20default%20locations.-,System%20message%20bus,-A%20computer%20may
+        std::string systemBus{ u8"/var/run/dbus/system_bus_socket" };
+        if (systemBusEnv != nullptr && std::filesystem::exists(systemBusEnv)) {
+            systemBus = systemBusEnv;
         }
 
         if (!std::filesystem::exists(systemBus)) {
@@ -65,9 +66,11 @@ int main()
             return;
         }
 
-        dbusMount["destination"] = systemBus;
+        dbusMount["destination"] = "/run/dbus/system_bus_socket";
         dbusMount["source"] = systemBus;
         content["mounts"].emplace_back(std::move(dbusMount));
+        content["process"]["env"].emplace_back(
+          "DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket");
     }();
 
     mounts.push_back({
@@ -79,48 +82,69 @@ int main()
 
     bool xdgRuntimeDirMounted = false;
 
-    [mount, &mounts, &xdgRuntimeDirMounted]() {
+    [mount, &mounts, &xdgRuntimeDirMounted, &content]() {
         auto *XDGRuntimeDirEnv = getenv("XDG_RUNTIME_DIR"); // NOLINT
-
         if (XDGRuntimeDirEnv == nullptr) {
             return;
         }
 
-        auto uid = getuid();
-        auto XDGRuntimeDir = "/run/user/" + std::to_string(uid);
-        if (std::strcmp(XDGRuntimeDir.c_str(), XDGRuntimeDirEnv) != 0) {
-            std::cerr << "Non default XDG_RUNTIME_DIR is not supported now." << std::endl;
+        auto hostXDGRuntimeDir = std::filesystem::path{ XDGRuntimeDirEnv };
+        auto status = std::filesystem::status(hostXDGRuntimeDir);
+        using perm = std::filesystem::perms;
+        if (status.permissions() != perm::owner_all) {
+            std::cerr << "The Unix permission of " << hostXDGRuntimeDir << "must be 0700."
+                      << std::endl;
             return;
         }
 
+        struct stat64 buf
+        {
+        };
+        if (::stat64(hostXDGRuntimeDir.string().c_str(), &buf) != 0) {
+            std::cerr << "Failed to get state of " << hostXDGRuntimeDir << ": " << ::strerror(errno)
+                      << std::endl;
+            return;
+        }
+
+        if (buf.st_uid != ::getuid()) {
+            std::cerr << hostXDGRuntimeDir << " doesn't belong to current user.";
+            return;
+        }
+
+        auto cognitiveXDGRuntimeDir =
+          std::filesystem::path{ "/run/user" } / std::to_string(::getuid());
+
         // tmpfs
         mounts.push_back(nlohmann::json::object({
-          { "destination", XDGRuntimeDir },
+          { "destination", cognitiveXDGRuntimeDir },
           { "source", "tmpfs" },
           { "type", "tmpfs" },
           { "options", nlohmann::json::array({ "nodev", "nosuid", "mode=700" }) },
         }));
 
+        content["process"]["env"].emplace_back(std::string{ "XDG_RUNTIME_DIR=" }
+                                               + cognitiveXDGRuntimeDir.string());
+
         xdgRuntimeDirMounted = true;
 
         auto pulseMount = mount;
-        pulseMount["destination"] = XDGRuntimeDir + "/pulse";
-        pulseMount["source"] = XDGRuntimeDir + "/pulse";
+        pulseMount["destination"] = cognitiveXDGRuntimeDir / "pulse";
+        pulseMount["source"] = hostXDGRuntimeDir / "pulse";
         mounts.push_back(std::move(pulseMount));
 
         auto gvfsMount = mount;
-        gvfsMount["destination"] = XDGRuntimeDir + "/gvfs";
-        gvfsMount["source"] = XDGRuntimeDir + "/gvfs";
+        gvfsMount["destination"] = cognitiveXDGRuntimeDir / "gvfs";
+        gvfsMount["source"] = hostXDGRuntimeDir / "gvfs";
         mounts.push_back(std::move(gvfsMount));
 
-        [&XDGRuntimeDir, &mounts]() {
+        [&hostXDGRuntimeDir, &cognitiveXDGRuntimeDir, &mounts]() {
             auto *waylandDisplayEnv = getenv("WAYLAND_DISPLAY"); // NOLINT
             if (waylandDisplayEnv == nullptr) {
                 std::cerr << "Couldn't get WAYLAND_DISPLAY." << std::endl;
                 return;
             }
 
-            auto socketPath = std::filesystem::path(XDGRuntimeDir) / waylandDisplayEnv;
+            auto socketPath = std::filesystem::path(hostXDGRuntimeDir) / waylandDisplayEnv;
             if (!std::filesystem::exists(socketPath)) {
                 std::cerr << "Wayland display socket not found at " << socketPath << "."
                           << std::endl;
@@ -129,12 +153,12 @@ int main()
             mounts.emplace_back(nlohmann::json::object({
               { "type", "bind" },
               { "options", nlohmann::json::array({ "rbind" }) },
-              { "destination", socketPath.string() },
+              { "destination", cognitiveXDGRuntimeDir / waylandDisplayEnv },
               { "source", socketPath.string() },
             }));
         }();
 
-        [&XDGRuntimeDir, &mounts]() {
+        [&cognitiveXDGRuntimeDir, &mounts, &content]() {
             auto *sessionBusEnv = getenv("DBUS_SESSION_BUS_ADDRESS"); // NOLINT
             if (sessionBusEnv == nullptr) {
                 std::cerr << "Couldn't get DBUS_SESSION_BUS_ADDRESS" << std::endl;
@@ -154,22 +178,21 @@ int main()
                 return;
             }
 
-            if (socketPath.string().rfind(XDGRuntimeDir) != 0U) {
-                std::cerr << "D-Bus session bus socket not in XDG_RUNTIME_DIR is not supported."
-                          << std::endl;
-                return;
-            }
-
+            auto hostSessionBus = socketPath.string();
+            auto cognitiveSessionBus = cognitiveXDGRuntimeDir / "bus";
             mounts.emplace_back(nlohmann::json::object({
               { "type", "bind" },
               { "options", nlohmann::json::array({ "rbind" }) },
-              { "destination", socketPath.string() },
-              { "source", socketPath.string() },
+              { "destination", cognitiveSessionBus },
+              { "source", hostSessionBus },
             }));
+
+            content["process"]["env"].emplace_back(std::string{ "DBUS_SESSION_BUS_ADDRESS=" }
+                                                   + "unix:path=" + cognitiveSessionBus.string());
         }();
 
-        [XDGRuntimeDir, &mounts]() {
-            auto dconfPath = std::filesystem::path(XDGRuntimeDir) / "dconf";
+        [&hostXDGRuntimeDir, &cognitiveXDGRuntimeDir, &mounts]() {
+            auto dconfPath = std::filesystem::path(hostXDGRuntimeDir) / "dconf";
             if (!std::filesystem::exists(dconfPath)) {
                 std::cerr << "dconf directory not found at " << dconfPath << "." << std::endl;
                 return;
@@ -177,43 +200,52 @@ int main()
             mounts.emplace_back(nlohmann::json::object({
               { "type", "bind" },
               { "options", nlohmann::json::array({ "rbind" }) },
-              { "destination", dconfPath.string() },
+              { "destination", cognitiveXDGRuntimeDir / "dconf" },
               { "source", dconfPath.string() },
             }));
         }();
     }();
 
-    [xauthPatch = mount, &mounts, xdgRuntimeDirMounted]() mutable {
-        auto *homeEnv = getenv("HOME"); // NOLINT
+    [xauthPatch = mount, &mounts, xdgRuntimeDirMounted, &content]() mutable {
+        auto *homeEnv = ::getenv("HOME"); // NOLINT
         if (homeEnv == nullptr) {
             std::cerr << "Couldn't get HOME from env." << std::endl;
             return;
         }
 
-        auto xauthFile = std::string{ homeEnv } + "/.Xauthority";
-
-        auto *xauthFileEnv = getenv("XAUTHORITY"); // NOLINT
-        if (xauthFileEnv != nullptr) {
-            xauthFile = xauthFileEnv;
+        auto *userInfo = ::getpwuid(::getuid());
+        if (userInfo == nullptr || userInfo->pw_name == nullptr) {
+            std::cerr << "Couldn't get current user's info:" << ::strerror(errno) << std::endl;
+            return;
         }
 
-        if (xauthFile.rfind(homeEnv, 0) != 0U
+        auto *userName = userInfo->pw_name;
+        auto hostXauthFile = std::string{ homeEnv } + "/.Xauthority";
+        auto cognitiveXauthFile = std::string{ "/home/" } + userName + "/.Xauthority";
+
+        auto *xauthFileEnv = getenv("XAUTHORITY"); // NOLINT
+        if (xauthFileEnv != nullptr && std::filesystem::exists(xauthFileEnv)) {
+            hostXauthFile = xauthFileEnv;
+        }
+
+        if (hostXauthFile.rfind(homeEnv, 0) != 0U
             && ((!xdgRuntimeDirMounted)
-                || xauthFile.rfind("/run/user/" + std::to_string(getuid()), 0) != 0U)) {
-            std::cerr << "XAUTHORITY equals to " << xauthFile << " is not supported now."
+                || hostXauthFile.rfind("/run/user/" + std::to_string(::getuid()), 0) != 0U)) {
+            std::cerr << "XAUTHORITY equals to " << hostXauthFile << " is not supported now."
                       << std::endl;
             return;
         }
 
-        if (!std::filesystem::exists(xauthFile)) {
-            std::cerr << "XAUTHORITY file not found at " << xauthFile << "." << std::endl;
+        if (!std::filesystem::exists(hostXauthFile)) {
+            std::cerr << "XAUTHORITY file not found at " << hostXauthFile << "." << std::endl;
             return;
         }
 
-        xauthPatch["destination"] = xauthFile;
-        xauthPatch["source"] = xauthFile;
+        xauthPatch["destination"] = cognitiveXauthFile;
+        xauthPatch["source"] = hostXauthFile;
 
         mounts.emplace_back(std::move(xauthPatch));
+        content["process"]["env"].emplace_back("XAUTHORITY=" + cognitiveXauthFile);
         return;
     }();
 

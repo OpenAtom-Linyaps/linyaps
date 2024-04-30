@@ -7,6 +7,9 @@
 #include <filesystem>
 #include <iostream>
 
+#include <pwd.h>
+#include <unistd.h>
+
 int main()
 {
     nlohmann::json content;
@@ -40,16 +43,25 @@ int main()
     }
 
     auto &mounts = content["mounts"];
+    auto &env = content["process"]["env"];
 
-    auto *home = ::getenv("HOME");
-    if (home == nullptr) {
-        std::cerr << "Couldn't get HOME." << std::endl;
+    auto *homeEnv = ::getenv("HOME");
+    if (homeEnv == nullptr) {
+        std::cerr << "Couldn't get HOME from env." << std::endl;
         return -1;
     }
 
-    auto homeDir = std::filesystem::path(home);
-    if (!std::filesystem::exists(homeDir)) {
-        std::cerr << "Home " << homeDir << "doesn't exists." << std::endl;
+    auto *userInfo = ::getpwuid(::getuid());
+    if (userInfo == nullptr || userInfo->pw_name == nullptr) {
+        std::cerr << "Couldn't get current user's info:" << ::strerror(errno) << std::endl;
+        return -1;
+    }
+
+    auto *userName = userInfo->pw_name;
+    auto hostHomeDir = std::filesystem::path(homeEnv);
+    auto cognitiveHomeDir = std::filesystem::path{ "/home" } / userName;
+    if (!std::filesystem::exists(hostHomeDir)) {
+        std::cerr << "Home " << hostHomeDir << "doesn't exists." << std::endl;
         return -1;
     }
 
@@ -60,43 +72,15 @@ int main()
       { "type", "tmpfs" },
     });
 
-    auto PassthroughDir = [&mounts](const std::string &absolutePath, std::error_code &ec) {
-        std::filesystem::create_directories(absolutePath, ec);
-        if (ec) {
-            return;
-        }
-
-        mounts.push_back({
-          { "destination", absolutePath },
-          { "options", nlohmann::json::array({ "rbind" }) },
-          { "source", absolutePath },
-          { "type", "bind" },
+    auto envExist = [&env](const std::string &key) {
+        auto prefix = key + "=";
+        auto it = std::find_if(env.cbegin(), env.cend(), [&prefix](const std::string &item) {
+            return (item.rfind(prefix, 0) == 0);
         });
-
-        ec.clear();
+        return it != env.cend();
     };
 
-    std::error_code ec;
-    PassthroughDir(homeDir.c_str(), ec);
-    if (ec) {
-        std::cerr << "Mount home failed:" << ec.message() << std::endl;
-        return -1;
-    }
-
-    PassthroughDir(homeDir / ".deepinwine", ec);
-    if (ec) {
-        std::cerr << "Mount .deepinwine failed:" << ec.message() << std::endl;
-        return -1;
-    }
-
-    auto appDataDir = std::filesystem::path(homeDir / ".linglong" / appID);
-    std::filesystem::create_directories(appDataDir, ec);
-    if (ec) {
-        std::cerr << "Check appDataDir failed:" << ec.message() << std::endl;
-        return -1;
-    }
-
-    auto shadowDir =
+    auto mountDir =
       [&mounts](const std::string &hostDir, const std::string &destDir, std::error_code &ec) {
           std::filesystem::create_directories(hostDir, ec);
           if (ec) {
@@ -118,86 +102,131 @@ int main()
           ec.clear();
       };
 
+    std::error_code ec;
+    mountDir(hostHomeDir, cognitiveHomeDir, ec);
+    if (ec) {
+        std::cerr << "Mount home failed:" << ec.message() << std::endl;
+        return -1;
+    }
+    if (envExist("HOME")) {
+        std::cerr << "HOME already exist." << std::endl;
+        return -1;
+    }
+    env.emplace_back("HOME=" + cognitiveHomeDir.string());
+
+    mountDir(hostHomeDir / ".deepinwine", cognitiveHomeDir / ".deepinwine", ec);
+    if (ec) {
+        std::cerr << "Mount .deepinwine failed:" << ec.message() << std::endl;
+        return -1;
+    }
+
+    auto hostAppDataDir = std::filesystem::path(hostHomeDir / ".linglong" / appID);
+    std::filesystem::create_directories(hostAppDataDir, ec);
+    if (ec) {
+        std::cerr << "Check appDataDir failed:" << ec.message() << std::endl;
+        return -1;
+    }
+
     // process XDG_* environment variables.
 
     // Data files should access by other application.
     auto *ptr = ::getenv("XDG_DATA_HOME");
     auto XDGDataHome = ptr == nullptr ? "" : std::string{ ptr };
     if (XDGDataHome.empty()) {
-        XDGDataHome = homeDir / ".local/share";
+        XDGDataHome = hostHomeDir / ".local/share";
     }
-    PassthroughDir(XDGDataHome, ec);
+
+    auto cognitiveXDGDataHome = (cognitiveHomeDir / ".local/share").string();
+    mountDir(XDGDataHome, cognitiveXDGDataHome, ec);
     if (ec) {
         std::cerr << "Failed to passthrough " << XDGDataHome << ec.message() << std::endl;
         return -1;
     }
-
-    ptr = ::getenv("XDG_CONFIG_HOME");
-    auto XDGConfigHome = ptr == nullptr ? "" : std::string{ ptr };
-    if (XDGConfigHome.empty()) {
-        XDGConfigHome = homeDir / ".config";
-    }
-
-    auto appConfigDir = appDataDir / "config";
-    shadowDir(XDGConfigHome, appConfigDir, ec);
-    if (ec) {
-        std::cerr << "Failed to shadow " << XDGConfigHome << ec.message() << std::endl;
+    if (envExist("XDG_DATA_HOME")) {
+        std::cerr << "XDG_DATA_HOME already exist." << std::endl;
         return -1;
     }
+    env.emplace_back("XDG_DATA_HOME=" + cognitiveXDGDataHome);
 
-    ptr = ::getenv("XDG_CACHE_HOME");
-    auto XDGCacheHome = ptr == nullptr ? "" : std::string{ ptr };
-    if (XDGCacheHome.empty()) {
-        XDGCacheHome = homeDir / ".cache";
-    }
-    shadowDir(XDGCacheHome, appDataDir / "cache", ec);
+    auto hostAppConfigHome = hostAppDataDir / "config";
+    auto cognitiveAppConfigHome = cognitiveHomeDir / ".config";
+    mountDir(hostAppConfigHome, cognitiveAppConfigHome, ec);
     if (ec) {
-        std::cerr << "Failed to shadow " << XDGCacheHome << ec.message() << std::endl;
+        std::cerr << "Failed to mount " << hostAppConfigHome << " to " << cognitiveAppConfigHome
+                  << ec.message() << std::endl;
         return -1;
     }
-
-    ptr = ::getenv("XDG_STATE_HOME");
-    auto XDGStateHome = ptr == nullptr ? "" : std::string{ ptr };
-    ;
-    if (XDGStateHome.empty()) {
-        XDGStateHome = homeDir / ".local/state";
-    }
-    shadowDir(XDGStateHome, appDataDir / "state", ec);
-    if (ec) {
-        std::cerr << "Failed to shadow " << XDGStateHome << ec.message() << std::endl;
+    if (envExist("XDG_CONFIG_HOME")) {
+        std::cerr << "XDG_CONFIG_HOME already exist." << std::endl;
         return -1;
     }
+    env.emplace_back("XDG_CONFIG_HOME=" + cognitiveAppConfigHome.string());
+
+    auto hostAppCacheHome = hostAppDataDir / "cache";
+    auto cognitiveAppCacheHome = cognitiveHomeDir / ".cache";
+    mountDir(hostAppCacheHome, cognitiveAppCacheHome, ec);
+    if (ec) {
+        std::cerr << "Failed to mount " << hostAppCacheHome << " to " << cognitiveAppCacheHome
+                  << ec.message() << std::endl;
+        return -1;
+    }
+    if (envExist("XDG_CACHE_HOME")) {
+        std::cerr << "XDG_CACHE_HOME already exist." << std::endl;
+        return -1;
+    }
+    env.emplace_back("XDG_CACHE_HOME=" + cognitiveAppCacheHome.string());
+
+    auto hostAppStateHome = hostAppDataDir / "state";
+    auto cognitiveAppStateHome = cognitiveHomeDir / ".local" / "state";
+    mountDir(hostAppStateHome, cognitiveAppStateHome, ec);
+    if (ec) {
+        std::cerr << "Failed to mount " << hostAppStateHome << " to " << cognitiveAppStateHome
+                  << ec.message() << std::endl;
+        return -1;
+    }
+    if (envExist("XDG_STATE_HOME")) {
+        std::cerr << "XDG_STATE_HOME already exist." << std::endl;
+        return -1;
+    }
+    env.emplace_back("XDG_STATE_HOME=" + cognitiveAppStateHome.string());
 
     // systemd user path
-    auto systemdUserDir = XDGConfigHome + "/systemd/user";
-    shadowDir(systemdUserDir, appDataDir / "config/systemd/user", ec);
+    auto hostSystemdUserDir = hostAppConfigHome / "systemd/user";
+    auto cognitiveSystemdUserDir = cognitiveAppConfigHome / "systemd/user";
+    mountDir(hostSystemdUserDir, cognitiveSystemdUserDir, ec);
     if (ec) {
-        std::cerr << "Failed to shadow " << systemdUserDir << ec.message() << std::endl;
+        std::cerr << "Failed to mount " << hostSystemdUserDir << " to " << cognitiveSystemdUserDir
+                  << ec.message() << std::endl;
         return -1;
     }
 
-    auto dconfPath = XDGConfigHome + "/dconf";
-    shadowDir(dconfPath, appDataDir / "config/dconf", ec);
+    auto hostAppDconfPath = hostAppConfigHome / "dconf";
+    auto cognitiveAppDconfPath = cognitiveAppConfigHome / "dconf";
+    mountDir(hostAppDconfPath, cognitiveAppDconfPath, ec);
     if (ec) {
-        std::cerr << "Failed to shadow " << dconfPath << ec.message() << std::endl;
+        std::cerr << "Failed to mount " << hostAppDconfPath << " to " << cognitiveAppDconfPath
+                  << ec.message() << std::endl;
         return -1;
     }
 
     // for dde application theme
-    auto ddeApiPath = XDGCacheHome + "/deepin/dde-api";
-    PassthroughDir(ddeApiPath, ec);
-    if (ec) {
-        std::cerr << "Failed to passthrough " << ddeApiPath << ec.message() << std::endl;
-        return -1;
+    ptr = ::getenv("XDG_CACHE_HOME");
+    auto hostXDGCacheHome = ptr == nullptr ? "" : std::string{ ptr };
+    if (hostXDGCacheHome.empty()) {
+        hostXDGCacheHome = hostHomeDir / ".cache";
     }
-    shadowDir(ddeApiPath, appConfigDir / "deepin/dde-api", ec);
+
+    auto hostDDEApiPath = std::filesystem::path{ hostXDGCacheHome } / "deepin/dde-api";
+    auto cognitiveDDEApiPath = cognitiveAppCacheHome / "deepin/dde-api";
+    mountDir(hostDDEApiPath, cognitiveDDEApiPath, ec);
     if (ec) {
-        std::cerr << "Failed to shadow " << ddeApiPath << ec.message() << std::endl;
+        std::cerr << "Failed to mount " << hostDDEApiPath << " to " << cognitiveDDEApiPath
+                  << ec.message() << std::endl;
         return -1;
     }
 
     // for xdg-user-dirs
-    if (auto userDirs = homeDir / ".config/user-dirs.dirs"; std::filesystem::exists(userDirs)) {
+    if (auto userDirs = hostHomeDir / ".config/user-dirs.dirs"; std::filesystem::exists(userDirs)) {
         mounts.push_back({
           { "destination", userDirs },
           { "options", nlohmann::json::array({ "rbind" }) },
@@ -206,7 +235,7 @@ int main()
         });
     }
 
-    if (auto userLocale = homeDir / ".config/user-dirs.locale";
+    if (auto userLocale = hostHomeDir / ".config/user-dirs.locale";
         std::filesystem::exists(userLocale)) {
         mounts.push_back({
           { "destination", userLocale },

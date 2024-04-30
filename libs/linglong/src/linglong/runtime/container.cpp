@@ -64,11 +64,34 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
         qCritical() << "failed to remove" << runtimeDir.absolutePath();
     });
 
+    if (!this->cfg.process) {
+        // NOTE: process should be set in /usr/lib/linglong/container/config.json,
+        // and configuration generator must not delete it.
+        // So it's a bug if process no has_value at this time.
+        Q_ASSERT(false);
+        return LINGLONG_ERR("process is not set");
+    }
+
+    if (!this->cfg.process->env.has_value()) {
+        // NOTE: same as above.
+        Q_ASSERT(false);
+        return LINGLONG_ERR("process.env is not set");
+    }
+
+    auto originEnvs = this->cfg.process->env.value();
     this->cfg.process = process;
-    if (process.user) {
+
+    if (this->cfg.process->user) {
         qWarning() << "`user` field is ignored.";
         Q_ASSERT(false);
     }
+
+    if (!this->cfg.process->env) {
+        qWarning() << "`env` field is not exists.";
+        Q_ASSERT(false);
+        this->cfg.process->env = std::vector<std::string>{};
+    }
+
     if (this->cfg.process->cwd.empty()) {
         qDebug() << "cwd of process is empty, run process in current directory.";
         this->cfg.process->cwd = ("/run/host/rootfs" + QDir::currentPath()).toStdString();
@@ -86,7 +109,7 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
     if (process.args.has_value()) {
         QStringList bashArgs;
         // 为避免原始args包含空格，每个arg都使用单引号包裹，并对arg内部的单引号进行转义替换
-        for (auto arg : *process.args) {
+        for (const auto &arg : *process.args) {
             bashArgs.push_back(
               QString("'%1'").arg(QString::fromStdString(arg).replace("'", "'\\''")));
         }
@@ -99,8 +122,27 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
         this->cfg.process->args = arguments;
     }
 
+    for (const auto &env : *this->cfg.process->env) {
+        auto key = env.substr(0, env.find_first_of('='));
+        auto it =
+          std::find_if(originEnvs.cbegin(), originEnvs.cend(), [&key](const std::string &env) {
+              return env.rfind(key, 0) == 0;
+          });
+
+        if (it != originEnvs.cend()) {
+            qWarning() << "duplicate environment has been detected: ["
+                       << "original:" << QString::fromStdString(*it)
+                       << "user:" << QString::fromStdString(env) << "], choose original.";
+            continue;
+        }
+
+        originEnvs.emplace_back(env);
+    }
+
+    this->cfg.process->env = originEnvs;
+
     const auto *appIDEnvStr = "LINGLONG_APPID=";
-    auto env = this->cfg.process->env.value_or(std::vector<std::string>{});
+    auto env = this->cfg.process->env.value();
     auto appIDEnv = std::find_if(env.cbegin(), env.cend(), [&appIDEnvStr](const std::string &str) {
         return str.rfind(appIDEnvStr, 0) == 0;
     });

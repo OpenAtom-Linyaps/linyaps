@@ -95,6 +95,7 @@ cd build
 %{_datadir}/dbus-1/system.d/*.conf
 %{_datadir}/%{name}/config.yaml
 %{_datadir}/mime/packages/*
+%{_datadir}/%{name}/api/api.json
 
 %files -n linglong-builder
 %license LICENSE

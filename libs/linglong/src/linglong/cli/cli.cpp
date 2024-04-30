@@ -290,12 +290,24 @@ int Cli::run(std::map<std::string, docopt::value> &args)
     filePathMapping(args, command, *p.args);
 
     QStringList envList = utils::command::getUserEnv(utils::command::envList);
-    if (!envList.isEmpty()) {
-        p.env = p.env.value_or(std::vector<std::string>{});
-    }
+    std::vector<std::string> originEnvs = p.env.value_or(std::vector<std::string>{});
     for (const auto &env : envList) {
-        p.env->push_back(env.toStdString());
+        auto key = env.right(env.indexOf('=') + 1);
+        auto it =
+          std::find_if(originEnvs.cbegin(), originEnvs.cend(), [&key](const std::string &env) {
+              return QString::fromStdString(env).startsWith(key);
+          });
+
+        if (it != originEnvs.cend()) {
+            qWarning() << "duplicate environment has been detected: ["
+                       << "original:" << QString::fromStdString(*it) << "user:" << env
+                       << "], choose original.";
+            continue;
+        }
+
+        originEnvs.emplace_back(env.toStdString());
     }
+    p.env = originEnvs;
 
     auto result = (*container)->run(p);
     if (!result) {

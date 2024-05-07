@@ -401,6 +401,8 @@ public:
 
     int PivotRoot() const
     {
+        containerMounter->finalizeMounts();
+
         int ret = -1;
         chdir(hostRoot.c_str());
 
@@ -446,13 +448,13 @@ public:
 
     int MountContainerPath()
     {
-        if (runtime.mounts.has_value()) {
-            for (auto const &mount : runtime.mounts.value()) {
-                containerMounter->MountNode(mount);
-            }
-        };
+        if (!runtime.mounts) {
+            return 0;
+        }
 
-        containerMounter->finalizeMounts();
+        for (auto const &mount : runtime.mounts.value()) {
+            containerMounter->MountNode(mount);
+        }
 
         return 0;
     }

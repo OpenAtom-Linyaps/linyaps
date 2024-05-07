@@ -55,9 +55,9 @@ upgrade_from_1_4_x() {
 
         ll-cli list | tail -n +2 | awk -F\  '{print $1}' | grep -v "org.deepin.Runtime" >/tmp/linglong-upgrade.list
         echo "Backup old data..."
-        oldData=$(TMPDIR=/var/lib/linglong mktemp -d old-data-XXXXXXXX)
-        mv /var/lib/linglong/layers /var/lib/linglong/$oldData
-        mv /var/lib/linglong/entries /var/lib/linglong/$oldData
+        oldData=$(mktemp --tmpdir=/var/lib/linglong -d old-data-XXXXXXXX)
+        mv /var/lib/linglong/layers "$oldData"
+        mv /var/lib/linglong/entries "$oldData"
 }
 
 case "$1" in

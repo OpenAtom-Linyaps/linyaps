@@ -452,6 +452,8 @@ public:
             }
         };
 
+        containerMounter->finalizeMounts();
+
         return 0;
     }
 };

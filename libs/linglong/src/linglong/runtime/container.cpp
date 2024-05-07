@@ -161,7 +161,7 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
     }
     {
         std::ofstream ofs(
-          bundle.absoluteFilePath("zz_deepib-linglong-app.ld.so.conf").toStdString());
+          bundle.absoluteFilePath("zz_deepin-linglong-app.ld.so.conf").toStdString());
         Q_ASSERT(ofs.is_open());
         if (!ofs.is_open()) {
             return LINGLONG_ERR("create ld config in bundle directory");
@@ -177,7 +177,7 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
     this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
       .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
       .options = { { "ro", "rbind" } },
-      .source = bundle.absoluteFilePath("zz_deepib-linglong-app.ld.so.conf").toStdString(),
+      .source = bundle.absoluteFilePath("zz_deepin-linglong-app.ld.so.conf").toStdString(),
       .type = "bind",
     });
 

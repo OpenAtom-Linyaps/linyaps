@@ -755,8 +755,8 @@ utils::error::Result<void> Builder::extractLayer(const QString &layerPath,
     }
 
     QDir destDir = destination;
-    if (!destDir.mkpath(".")) {
-        return LINGLONG_ERR("mkpath " + destination);
+    if (destDir.exists()) {
+        return LINGLONG_ERR(destination + " already exists");
     }
 
     package::LayerPackager pkg;
@@ -766,8 +766,8 @@ utils::error::Result<void> Builder::extractLayer(const QString &layerPath,
     }
 
     auto output =
-      utils::command::Exec("mv",
-                           QStringList() << layerDir->absolutePath() << destDir.absolutePath());
+      utils::command::Exec("cp",
+                           QStringList() << "-r" << layerDir->absolutePath() << destDir.absolutePath());
     if (!output) {
         return LINGLONG_ERR(output);
     }

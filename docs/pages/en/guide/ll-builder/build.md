@@ -18,15 +18,26 @@ Here is the output:
 
 ```text
 Usage: ll-builder [options] build
+linglong build command tools
+Examples:
+ll-builder build -v
+ll-builder build -v -- bash -c "echo hello"
 
 Options:
-  -v, --verbose show detail log
-  -h, --help Displays help on commandline options.
-  --help-all Displays help including Qt specific options.
-  --exec <exec> run exec than build script
+  -v, --verbose         show detail log (deprecated, use QT_LOGGING_RULES)
+  -h, --help            Displays help on commandline options.
+  --help-all            Displays help including Qt specific options.
+  --exec <command>      run exec than build script
+  --offline             only use local files. This implies --skip-fetch-source
+                        and --skip-pull-depend
+  --skip-fetch-source   skip fetch sources
+  --skip-pull-depend    skip pull dependency
+  --skip-run-container  skip run container. This implies skip-commit-output
+  --skip-commit-output  skip commit build output
+  --arch <arch>         set the build arch
 
 Arguments:
-  build build project
+  build                 build project
 ```
 
 The `ll-builder build` command must be run in the root directory of the project, where the `linglong.yaml` file is located.

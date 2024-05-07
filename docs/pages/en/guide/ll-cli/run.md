@@ -24,8 +24,6 @@ Options:
                                                      commandline options.
   --help-all                                         Displays help including Qt
                                                      specific options.
-  --file=FILE                                        file is passed as separate argument to th app.
-  --url=URL                                          url is passed as separate argument to th app.
   --repo-point                                       app repo type to use
   --exec </bin/bash>                                 run exec
   --no-proxy                                         whether to use dbus proxy
@@ -45,34 +43,25 @@ Arguments:
 When the application is installed normally, use the `ll-cli run` command to start it:
 
 ```bash
-ll-cli run <org.deepin.calculator>
+ll-cli run org.deepin.calculator
 ```
 
 By default, executing the run command will start the application of the highest version. If you want to run the application of the specified version, you need to append the corresponding version number after `appid`:
 
 ```bash
-ll-cli run <org.deepin.calculator/5.7.21.4>
+ll-cli run org.deepin.calculator/5.7.21.4
 ```
 
-By default, `ll-dbus-proxy` is used to intercept and forward `dbus` messages. If you do not want to use `ll-dbus-proxy`, you can use the `--no-proxy` parameter:
+By default, `ll-dbus-proxy` is used to intercept and forward `dbus` messages. If you do not want to use `ll-dbus-proxy`, you can use the `--no-dbus-proxy` parameter:
 
 ```bash
-ll-cli run <org.deepin.calculator> --no-proxy
-```
-If you want to pass file parameters to the app, you can use the `--file` option, and then in the command line parameters, you can use `%%f` to pass the parameters to the specified container to run. The path of the file will be mapped to the container's `/run/host` directory
-```bash
-ll-cli run <org.deepin.editor> --file /home/deepin/Desktop/test.txt -- %%f
-```
-
-If you want to pass url parameters to the app, you can use the `--url` option, and then in the command line parameters, you can use `%%u` to pass the parameters to the specified container to run. if the url is the `file:///` format, The path of the file will be mapped to the container's `/run/host` directory
-```bash
-ll-cli run <org.deepin.editor> --url file::////home/deepin/Desktop/test.txt -- %%u
+ll-cli run org.deepin.calculator --no-dbus-proxy
 ```
 
 Use the `ll-cli run` command to enter the specified program container:
 
 ```bash
-ll-cli run <org.deepin.calculator> --exec /bin/bash
+ll-cli run org.deepin.calculator --exec /bin/bash
 ```
 
 After entering, execute `shell` commands, such as `gdb`, `strace`, `ls`, `find`, etc.

@@ -6,47 +6,39 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # 从远程仓库查询应用
 
-`ll-cli query`命令可以查询玲珑远程仓库中的应用信息。
+`ll-cli search`命令可以查询玲珑远程仓库中的应用信息。
 
-查看`ll-cli query`命令的帮助信息：
+查看 `ll-cli search`命令的帮助信息：
 
 ```bash
-ll-cli query --help
+ll-cli search --help
 ```
 
-`ll-cli query`命令的帮助信息如下：
+`ll-cli search`命令的帮助信息如下：
 
 ```text
-Usage: ll-cli [options] query com.deepin.demo
+Usage: ll-cli [options] search com.deepin.demo
 
 Options:
   -h, --help                           Displays help on commandline options.
   --help-all                           Displays help including Qt specific
                                        options.
   --repo-point                         app repo type to use
-  --force                              query from server directly, not from
-                                       cache
 
 Arguments:
-  query                                query app info
+  search                               search app info
   appId                                application id
 ```
 
-通过`ll-cli query`命令可以从远程 repo 中查找应用程序信息:
+通过 `ll-cli search`命令可以从远程 repo 中查找应用程序信息:
 
 ```bash
-ll-cli query <calculator>
+ll-cli search calculator
 ```
 
-加上`--force`可以强制从远程 `repo` 中查询应用信息:
+该命令将返回 `appid`(appid 是应用唯一标识) 中包含 calculator 关键词的所有应用程序信息，包含完整的 `appid`、应用程序名称、版本、平台及应用描述信息。
 
-```bash
-ll-cli query <calculator> --force
-```
-
-该命令将返回`appid`(appid 是应用唯一标识) 中包含 calculator 关键词的所有应用程序信息，包含完整的`appid`、应用程序名称、版本、平台及应用描述信息。
-
-`ll-cli query calculator --force`输出如下：
+`ll-cli search calculator`输出如下：
 
 ```text
 appId                           name                            version         arch        channel         module      description

@@ -31,7 +31,7 @@ public:
     enum Level {
         Debug,
         Info,
-        Warring,
+        Warning,
         Error,
         Fatal,
     };
@@ -57,7 +57,7 @@ public:
         case Info:
             syslogLevel = LOG_INFO;
             break;
-        case Warring:
+        case Warning:
             syslogLevel = LOG_WARNING;
             break;
         case Error:
@@ -82,7 +82,7 @@ public:
                       << ss.str();
             std::cout << "\033[0m" << std::endl;
             break;
-        case Warring:
+        case Warning:
             prefix = "[WAN |";
             std::cout << "\033[1;93m";
             std::cout << prefix << " " << pid_ns << " | " << function << ":" << line << " ] "

@@ -1,8 +1,8 @@
 #!/usr/bin/make -f
 
-OS=$(shell awk '/DISTRIB_ID=/' /etc/*-release | sed 's/DISTRIB_ID=//' | tr '[:upper:]' '[:lower:]')
+OS=$(shell awk '/^NAME=/' /etc/os-release | sed 's/NAME=//' | sed 's/\"//g' | tr '[:upper:]' '[:lower:]')
 ARCH=$(shell dpkg-architecture -qDEB_HOST_ARCH | cut -c1-3)
-VERSION=$(shell awk '/DISTRIB_RELEASE=/' /etc/*-release | sed 's/DISTRIB_RELEASE=//' | sed 's/[.]0/./')
+VERSION=$(shell awk '/VERSION=/' /etc/os-release | sed 's/VERSION=//' | sed 's/\"//g' | sed 's/[.]0/./')
 
 %:
 	dh $@ --buildsystem=cmake

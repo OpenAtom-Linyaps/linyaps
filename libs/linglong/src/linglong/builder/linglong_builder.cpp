@@ -8,6 +8,7 @@
 
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/builder/file.h"
+#include "linglong/builder/printer.h"
 #include "linglong/package/architecture.h"
 #include "linglong/package/layer_packager.h"
 #include "linglong/repo/ostree_repo.h"
@@ -85,12 +86,28 @@ fetchSources(const std::vector<api::types::v1::BuilderProjectSource> &sources,
 {
     LINGLONG_TRACE("fetch sources to " + destination.absolutePath());
 
-    for (const auto &source : sources) {
-        SourceFetcher sf(source, cfg);
+    for (int pos = 0; pos < sources.size(); ++pos) {
+        printReplacedText(
+          QString("%1%2%3%4")
+            .arg("Source " + QString::number(pos), -20)
+            .arg(QString::fromStdString(sources.at(pos).kind), -15)
+            .arg(QString::fromStdString(*(sources.at(pos).url)), -75)
+            .arg("downloading ...")
+            .toStdString(),
+          2);
+        SourceFetcher sf(sources.at(pos), cfg);
         auto result = sf.fetch(QDir(destination));
         if (!result) {
             return LINGLONG_ERR(result);
         }
+        printReplacedText(
+          QString("%1%2%3%4")
+            .arg("Source " + QString::number(pos), -20)
+            .arg(QString::fromStdString(sources.at(pos).kind), -15)
+            .arg(QString::fromStdString(*(sources.at(pos).url)), -75)
+            .arg("complete\n")
+            .toStdString(),
+          2);
     }
 
     return LINGLONG_OK;
@@ -127,7 +144,14 @@ pullDependency(QString fuzzyRefStr, repo::OSTreeRepo &repo, bool develop, bool o
     auto taskPtr = std::make_shared<service::InstallTask>(taskID);
 
     auto partChanged = [&ref](QString, QString percentage, QString, service::InstallTask::Status) {
-        qInfo().noquote() << "pulling" << ref->toString() << percentage;
+        printReplacedText(QString("%1%2%3%4 %5")
+                            .arg(ref->id, -25)
+                            .arg(ref->version.toString(), -15)
+                            .arg("develop", -15)
+                            .arg("downloading")
+                            .arg(percentage)
+                            .toStdString(),
+                          2);
     };
     QObject::connect(taskPtr.get(), &service::InstallTask::PartChanged, partChanged);
     repo.pull(taskPtr, *ref, develop);
@@ -311,9 +335,34 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     LINGLONG_TRACE(
       QString("build project %1").arg(this->workingDir.absoluteFilePath("linglong.yaml")));
 
+    auto arch = package::Architecture::parse(QSysInfo::currentCpuArchitecture());
+    if (!arch) {
+        return LINGLONG_ERR(arch);
+    }
+    printMessage("[Build Target]");
+    printMessage(this->project.package.id, 2);
+    printMessage("[Project Info]");
+    printMessage("Package Name: " + this->project.package.name, 2);
+    printMessage("Version: " + this->project.package.version, 2);
+    printMessage("Package Type: " + this->project.package.kind, 2);
+    printMessage("Build Arch: " + arch->toString().toStdString(), 2);
+
+    auto repoCfg = this->repo.getConfig();
+    printMessage("[Current Repo]");
+    printMessage("Name: " + repoCfg.defaultRepo, 2);
+    printMessage("Url: " + repoCfg.repos.at(repoCfg.defaultRepo), 2);
+
     this->workingDir.mkdir("linglong");
 
     if (this->project.sources && !cfg.skipFetchSource) {
+        printMessage("[Processing Sources]");
+        printMessage(QString("%1%2%3%4")
+                       .arg("Name", -20)
+                       .arg("Type", -15)
+                       .arg("Url", -75)
+                       .arg("Status")
+                       .toStdString(),
+                     2);
         auto result = fetchSources(*this->project.sources,
                                    this->workingDir.absoluteFilePath("linglong/sources"),
                                    this->cfg);
@@ -322,6 +371,14 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         }
     }
 
+    printMessage("[Processing Dependency]");
+    printMessage(QString("%1%2%3%4")
+                   .arg("Package", -25)
+                   .arg("Version", -15)
+                   .arg("Module", -15)
+                   .arg("Status")
+                   .toStdString(),
+                 2);
     std::optional<package::Reference> runtime;
     QString runtimeLayerDir;
     if (this->project.runtime) {
@@ -338,6 +395,13 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
             return LINGLONG_ERR("get runtime layer dir", ret);
         }
         runtimeLayerDir = ret->absolutePath();
+        printReplacedText(QString("%1%2%3%4")
+                            .arg(runtime->id, -25)
+                            .arg(runtime->version.toString(), -15)
+                            .arg("develop", -15)
+                            .arg("complete\n")
+                            .toStdString(),
+                          2);
         qDebug() << "pull runtime success" << runtime->toString();
     }
 
@@ -352,6 +416,13 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     if (!baseLayerDir) {
         return LINGLONG_ERR(baseLayerDir);
     }
+    printReplacedText(QString("%1%2%3%4")
+                        .arg(base->id, -25)
+                        .arg(base->version.toString(), -15)
+                        .arg("develop", -15)
+                        .arg("complete\n")
+                        .toStdString(),
+                      2);
     qDebug() << "pull base success" << base->toString();
 
     if (cfg.skipRunContainer) {
@@ -452,10 +523,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     for (const auto &arg : args) {
         arguments.push_back(arg.toStdString());
     }
-    auto arch = package::Architecture::parse(QSysInfo::currentCpuArchitecture());
-    if (!arch) {
-        return LINGLONG_ERR(arch);
-    }
+
     auto process = ocppi::runtime::config::types::Process{
         .apparmorProfile = {},
         .args = arguments,
@@ -475,6 +543,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         .selinuxLabel = {},
         .terminal = true,
     };
+    printMessage("[Start Build]");
     auto result = (*container)->run(process);
     if (!result) {
         return LINGLONG_ERR(result);
@@ -483,6 +552,8 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     if (cfg.skipCommitOutput) {
         return LINGLONG_OK;
     }
+    
+    printMessage("[Commit Contents]");
     QDir runtimeOutput = this->workingDir.absoluteFilePath("linglong/output/runtime/files");
     if (!runtimeOutput.mkpath(".")) {
         return LINGLONG_ERR("make path " + runtimeOutput.absolutePath() + ": failed.");
@@ -615,6 +686,8 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     if (!result) {
         return LINGLONG_ERR(result);
     }
+
+    printMessage("Successfully build " + this->project.package.id);
     return LINGLONG_OK;
 }
 

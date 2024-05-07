@@ -53,6 +53,7 @@ pfl_add_library(
   src/linglong/builder/linglong_builder.h
   src/linglong/builder/source_fetcher.cpp
   src/linglong/builder/source_fetcher.h
+  src/linglong/builder/printer.h
   src/linglong/cli/cli.cpp
   src/linglong/cli/cli.h
   src/linglong/cli/json_printer.cpp

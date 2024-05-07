@@ -20,17 +20,30 @@ Here is the output:
 Usage: ll-cli [options] subcommand [sub-option]
 
 Options:
-  -h, --help  Displays help on commandline options.
-  --help-all  Displays help including Qt specific options.
+    -h --help                 Show this screen.
+    --version                 Show version.
+    --json                    Use json to output command result.
+    --no-dbus                 Use peer to peer DBus, this is used only in case that DBus daemon is not available.
+    --no-dbus-proxy           Do not enable linglong-dbus-proxy.
+    --dbus-proxy-cfg=PATH     Path of config of linglong-dbus-proxy.
+    --file=FILE               you can refer to https://linglong.dev/guide/ll-cli/run.html to use this parameter.
+    --url=URL                 you can refer to https://linglong.dev/guide/ll-cli/run.html to use this parameter.
+    --working-directory=PATH  Specify working directory.
+    --type=TYPE               Filter result with tiers type. One of "lib", "app" or "dev". [default: app]
+    --state=STATE             Filter result with the tiers install state. Should be "local" or "remote". [default: local]
+    --prune                   Remove application data if the tier is an application and all version of that application has been removed.
 
-Arguments:
-  subcommand  run
-              ps
-              exec
-              kill
-              install
-              uninstall
-              update
-              query
-              list
+Subcommands:
+    run        Run an application.
+    ps         List all pagodas.
+    exec       Execute command in a pagoda.
+    enter      Enter a pagoda.
+    kill       Stop applications and remove the pagoda.
+    install    Install tier(s).
+    uninstall  Uninstall tier(s).
+    upgrade    Upgrade tier(s).
+    search     Search for tiers.
+    list       List known tiers.
+    repo       Display or modify information of the repository currently using.
+    info       Display the information of layer
 ```

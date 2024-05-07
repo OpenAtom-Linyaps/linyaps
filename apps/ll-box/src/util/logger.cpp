@@ -39,13 +39,13 @@ static Logger::Level getLogLevelFromStr(std::string str)
     } else if (str == "Info") {
         return Logger::Info;
     } else if (str == "Warning") {
-        return Logger::Warring;
+        return Logger::Warning;
     } else if (str == "Error") {
         return Logger::Error;
     } else if (str == "Fatal") {
         return Logger::Fatal;
     } else {
-        return Logger::Level(Logger::Fatal + 1);
+        return Logger::Level(Logger::Warning);
     }
 }
 

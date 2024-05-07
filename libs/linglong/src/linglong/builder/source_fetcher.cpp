@@ -191,7 +191,7 @@ auto fetchGitRepo(const api::types::v1::BuilderProjectSource &source, QDir desti
     }
 
     // 如果二进制安装在系统目录中，优先使用系统中安装的脚本文件（便于用户更改），否则使用二进制内嵌的脚本（便于开发调试）
-    auto scriptFile = QString(LINGLONG_LIBEXEC_DIR) + "/fetch-git-repo.sh";
+    auto scriptFile = QString(LINGLONG_LIBEXEC_DIR) + "/fetch-git-repo";
     auto useInstalledFile = utils::global::linglongInstalled() && QFile(scriptFile).exists();
     QScopedPointer<QTemporaryDir> dir;
     if (!useInstalledFile) {

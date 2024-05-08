@@ -86,6 +86,11 @@ public:
         }
     }
 
+    int touch_symlink(const std::string &target) const
+    {
+        return symlink(target.c_str(), this->string().c_str());
+    }
+
 private:
     friend std::ostream &operator<<(std::ostream &cout, path obj);
     std::vector<std::string> p;

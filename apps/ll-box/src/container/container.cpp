@@ -448,7 +448,9 @@ public:
     {
         if (runtime.mounts.has_value()) {
             for (auto const &mount : runtime.mounts.value()) {
-                containerMounter->MountNode(mount);
+                if (containerMounter->MountNode(mount) != 0) {
+                    logWan() << "failed to Mount:" << strerror(errno);
+                }
             }
         };
 

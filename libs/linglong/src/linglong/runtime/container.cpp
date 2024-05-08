@@ -32,7 +32,7 @@ Container::Container(const ocppi::runtime::config::types::Config &cfg,
     , appID(appID)
     , cli(cli)
 {
-    Q_ASSERT(!cfg.process.has_value());
+    Q_ASSERT(cfg.process.has_value());
 }
 
 utils::error::Result<void>

@@ -86,7 +86,10 @@ struct Mount
 
     Type fsType;
     uint32_t flags = 0u;
+    uint32_t extraFlags{ 0U };
 };
+
+enum { OPTION_COPY_SYMLINK = 1 };
 
 inline void from_json(const nlohmann::json &j, Mount &o)
 {
@@ -100,6 +103,7 @@ inline void from_json(const nlohmann::json &j, Mount &o)
     {
         bool clear;
         uint32_t flag;
+        uint32_t extraFlags{ 0 };
     };
 
     static std::map<std::string, mountFlag> optionFlags = {
@@ -138,6 +142,7 @@ inline void from_json(const nlohmann::json &j, Mount &o)
         { "suid", { true, MS_NOSUID } },
         { "sync", { false, MS_SYNCHRONOUS } },
         // {"symfollow",{true, MS_NOSYMFOLLOW}}, // since kernel 5.10
+        { "copy-symlink", { false, 0, OPTION_COPY_SYMLINK } }
     };
 
     o.destination = j.at("destination").get<std::string>();
@@ -158,8 +163,12 @@ inline void from_json(const nlohmann::json &j, Mount &o)
         if (it != optionFlags.end()) {
             if (it->second.clear) {
                 o.flags &= ~it->second.flag;
-            } else
+                o.extraFlags &= ~it->second.extraFlags;
+            } else {
                 o.flags |= it->second.flag;
+                o.extraFlags |= it->second.extraFlags;
+            }
+
         } else {
             o.data.push_back(opt);
         }

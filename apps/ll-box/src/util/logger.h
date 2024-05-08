@@ -125,7 +125,7 @@ private:
 } // namespace linglong
 
 #define logDbg() (linglong::util::Logger(linglong::util::Logger::Debug, __FUNCTION__, __LINE__))
-#define logWan() (linglong::util::Logger(linglong::util::Logger::Warring, __FUNCTION__, __LINE__))
+#define logWan() (linglong::util::Logger(linglong::util::Logger::Warning, __FUNCTION__, __LINE__))
 #define logInf() (linglong::util::Logger(linglong::util::Logger::Info, __FUNCTION__, __LINE__))
 #define logErr() (linglong::util::Logger(linglong::util::Logger::Error, __FUNCTION__, __LINE__))
 #define logFal() (linglong::util::Logger(linglong::util::Logger::Fatal, __FUNCTION__, __LINE__))

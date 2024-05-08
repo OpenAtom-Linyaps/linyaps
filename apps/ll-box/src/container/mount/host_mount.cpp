@@ -11,16 +11,8 @@
 #include "util/logger.h"
 
 #include <utility>
-#include <vector>
 
 #include <sys/stat.h>
-
-struct remountNode
-{
-    unsigned long flags;
-    std::string target;
-    std::string data;
-};
 
 namespace linglong {
 
@@ -119,7 +111,7 @@ public:
                                              source.c_str(),
                                              host_dest_full_path.string().c_str(),
                                              nullptr,
-                                             real_flags & ~MS_RDONLY,
+                                             real_flags,
                                              nullptr);
             if (0 != ret) {
                 break;
@@ -134,13 +126,16 @@ public:
                 break;
             }
 
-            // When doing a remount, source and fstype are ignored by kernel.
-            remountList.emplace_back(remountNode{
-              .flags = m.flags | MS_BIND | MS_REMOUNT,
-              .target = host_dest_full_path.string(),
-              .data = data,
-            });
+            real_flags = m.flags | MS_BIND | MS_REMOUNT;
 
+            // When doing a remount, source and fstype are ignored by kernel.
+            real_data = data;
+            ret = util::fs::do_mount_with_fd(root.c_str(),
+                                             nullptr,
+                                             host_dest_full_path.string().c_str(),
+                                             nullptr,
+                                             real_flags,
+                                             real_data.c_str());
             break;
         case Mount::Proc:
         case Mount::Devpts:
@@ -203,7 +198,7 @@ public:
                      << "failed:" << util::RetErrString(ret) << "\nmount args is:" << m.type
                      << real_flags << real_data;
             if (is_path) {
-                logErr() << "source file type is: 0x" << std::oct << (source_stat.st_mode & S_IFMT);
+                logErr() << "source file type is: 0x" << std::hex << (source_stat.st_mode & S_IFMT);
                 DUMP_FILE_INFO(source);
             }
             DUMP_FILE_INFO(host_dest_full_path.string());
@@ -212,24 +207,6 @@ public:
         return ret;
     }
 
-    void finalizeMounts()
-    {
-        auto root = driver_->HostPath(util::fs::path("/"));
-        for (const auto &node : remountList) {
-            if (util::fs::do_mount_with_fd(root.c_str(),
-                                           "none",
-                                           node.target.c_str(),
-                                           "",
-                                           node.flags,
-                                           node.data.c_str())
-                != 0) {
-                logErr() << "failed to remount" << node.target;
-                break;
-            }
-        }
-    }
-
-    mutable std::vector<remountNode> remountList;
     std::unique_ptr<FilesystemDriver> driver_;
     mutable bool sysfs_is_binded = false;
 };
@@ -242,11 +219,6 @@ HostMount::HostMount()
 int HostMount::MountNode(const struct Mount &m)
 {
     return dd_ptr->MountNode(m);
-}
-
-void HostMount::finalizeMounts()
-{
-    dd_ptr->finalizeMounts();
 }
 
 int HostMount::Setup(FilesystemDriver *driver)

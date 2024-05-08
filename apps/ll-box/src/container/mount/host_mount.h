@@ -24,8 +24,6 @@ public:
 
     int MountNode(const Mount &m);
 
-    void finalizeMounts();
-
 private:
     std::unique_ptr<HostMountPrivate> dd_ptr;
 };

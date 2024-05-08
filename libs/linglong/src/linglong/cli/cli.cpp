@@ -530,20 +530,21 @@ int Cli::install(std::map<std::string, docopt::value> &args)
     QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
     loop.exec();
 
-    // Call ReloadApplications() in AM for now. Remove later.
+    // Reloading ApplicationManager, maybe remove later.
     if ((QSysInfo::productType() == "uos" || QSysInfo::productType() == "Deepin")
         && this->lastStatus == service::InstallTask::Success) {
-        QDBusConnection conn = QDBusConnection::sessionBus();
+        QDBusConnection conn = QDBusConnection::systemBus();
         if (!conn.isConnected()) {
-            qWarning() << "Failed to connect to the session bus";
+            qWarning() << "Failed to connect to the system bus";
         }
-        QDBusMessage msg = QDBusMessage::createMethodCall("org.desktopspec.ApplicationManager1",
-                                                          "/org/desktopspec/ApplicationManager1",
-                                                          "org.desktopspec.ApplicationManager1",
-                                                          "ReloadApplications");
+        QDBusMessage msg =
+          QDBusMessage::createMethodCall("org.desktopspec.ApplicationUpdateNotifier1",
+                                         "/org/desktopspec/ApplicationUpdateNotifier1",
+                                         "org.freedesktop.DBus.Peer",
+                                         "Ping");
         auto ret = QDBusConnection::sessionBus().call(msg, QDBus::NoBlock);
         if (ret.type() == QDBusMessage::ErrorMessage) {
-            qWarning() << "call reloadApplications failed:" << ret.errorMessage();
+            qWarning() << "applications may not reload" << ret.errorMessage();
         }
     }
     return 0;
@@ -614,20 +615,21 @@ int Cli::upgrade(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    // Call ReloadApplications() in AM for now. Remove later.
+    // Reloading ApplicationManager, maybe remove later.
     if ((QSysInfo::productType() == "uos" || QSysInfo::productType() == "Deepin")
         && this->lastStatus == service::InstallTask::Success) {
-        QDBusConnection conn = QDBusConnection::sessionBus();
+        QDBusConnection conn = QDBusConnection::systemBus();
         if (!conn.isConnected()) {
-            qWarning() << "Failed to connect to the session bus";
+            qWarning() << "Failed to connect to the system bus";
         }
-        QDBusMessage msg = QDBusMessage::createMethodCall("org.desktopspec.ApplicationManager1",
-                                                          "/org/desktopspec/ApplicationManager1",
-                                                          "org.desktopspec.ApplicationManager1",
-                                                          "ReloadApplications");
+        QDBusMessage msg =
+          QDBusMessage::createMethodCall("org.desktopspec.ApplicationUpdateNotifier1",
+                                         "/org/desktopspec/ApplicationUpdateNotifier1",
+                                         "org.freedesktop.DBus.Peer",
+                                         "Ping");
         auto ret = QDBusConnection::sessionBus().call(msg, QDBus::NoBlock);
         if (ret.type() == QDBusMessage::ErrorMessage) {
-            qWarning() << "call reloadApplications failed:" << ret.errorMessage();
+            qWarning() << "applications may not reload" << ret.errorMessage();
         }
     }
 

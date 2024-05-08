@@ -216,7 +216,7 @@ public:
     {
         auto root = driver_->HostPath(util::fs::path("/"));
         for (const auto &node : remountList) {
-            if (util::fs::do_mount_with_fd(root.string().c_str(),
+            if (util::fs::do_mount_with_fd(root.c_str(),
                                            "none",
                                            node.target.c_str(),
                                            "",

@@ -1426,6 +1426,50 @@ void OSTreeRepo::unexportReference(const package::Reference &ref) noexcept
 
 void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
 {
+    bool shouldExport = true;
+
+    [&ref, this, &shouldExport]() {
+        // Check if we should export the application we just pulled to system.
+
+        auto pkgInfos = this->listLocal();
+        if (!pkgInfos) {
+            qCritical() << pkgInfos.error();
+            Q_ASSERT(false);
+            return;
+        }
+
+        std::vector<package::Reference> refs;
+
+        for (const auto &localInfo : *pkgInfos) {
+            if (QString::fromStdString(localInfo.appid) != ref.id) {
+                continue;
+            }
+
+            auto localRef = package::Reference::fromPackageInfo(localInfo);
+            if (!localRef) {
+                qCritical() << localRef.error();
+                Q_ASSERT(false);
+                continue;
+            }
+
+            if (localRef->version > ref.version) {
+                qInfo() << localRef->toString() << "exists, we should not export" << ref.toString();
+                shouldExport = false;
+                return;
+            }
+
+            refs.push_back(*localRef);
+        }
+
+        for (const auto &ref : refs) {
+            this->unexportReference(ref);
+        }
+    }();
+
+    if (!shouldExport) {
+        return;
+    }
+
     auto entriesDir = QDir(this->repoDir.absoluteFilePath("entries/share"));
     if (!entriesDir.exists()) {
         // entries directory should exists.

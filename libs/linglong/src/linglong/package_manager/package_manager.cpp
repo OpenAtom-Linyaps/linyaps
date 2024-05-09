@@ -301,49 +301,7 @@ void PackageManager::Install(const std::shared_ptr<InstallTask> &taskContext,
         }
     }
 
-    bool shouldExport = true;
-
-    [&ref, this, &shouldExport]() {
-        // Check if we should export the application we just pulled to system.
-
-        auto pkgInfos = this->repo.listLocal();
-        if (!pkgInfos) {
-            qCritical() << pkgInfos.error();
-            Q_ASSERT(false);
-            return;
-        }
-
-        std::vector<package::Reference> refs;
-
-        for (const auto &localInfo : *pkgInfos) {
-            if (QString::fromStdString(localInfo.appid) != ref.id) {
-                continue;
-            }
-
-            auto localRef = package::Reference::fromPackageInfo(localInfo);
-            if (!localRef) {
-                qCritical() << localRef.error();
-                Q_ASSERT(false);
-                continue;
-            }
-
-            if (localRef->version > ref.version) {
-                qInfo() << localRef->toString() << "exists, we should not export" << ref.toString();
-                shouldExport = false;
-                return;
-            }
-
-            refs.push_back(*localRef);
-        }
-
-        for (const auto &ref : refs) {
-            this->repo.unexportReference(ref);
-        }
-    }();
-
-    if (shouldExport) {
-        this->repo.exportReference(ref);
-    }
+    this->repo.exportReference(ref);
 
     taskContext->updateStatus(InstallTask::Success, "Install " + ref.toString() + " success");
     t.commit();

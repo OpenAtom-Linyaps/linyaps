@@ -1381,6 +1381,7 @@ void OSTreeRepo::removeDanglingXDGIntergation() noexcept
             Q_ASSERT(false);
         }
     }
+    this->updateSharedInfo();
 }
 
 void OSTreeRepo::unexportReference(const package::Reference &ref) noexcept
@@ -1420,6 +1421,7 @@ void OSTreeRepo::unexportReference(const package::Reference &ref) noexcept
             Q_ASSERT(false);
         }
     }
+    this->updateSharedInfo();
 }
 
 void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
@@ -1465,6 +1467,43 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
         if (!QFile::link(to, from)) {
             qCritical() << "Failed to create link" << to << "->" << from;
             Q_ASSERT(false);
+        }
+    }
+    this->updateSharedInfo();
+}
+
+void OSTreeRepo::updateSharedInfo() noexcept
+{
+    LINGLONG_TRACE("update shared info");
+
+    auto applicationDir = QDir(this->repoDir.absoluteFilePath("entries/share/applications"));
+    auto mimeDataDir = QDir(this->repoDir.absoluteFilePath("entries/share/mime"));
+    auto glibSchemasDir = QDir(this->repoDir.absoluteFilePath("entries/share/glib-2.0/schemas"));
+    // 更新 desktop database
+    if (applicationDir.exists()) {
+        auto ret =
+          utils::command::Exec("update-desktop-database", { applicationDir.absolutePath() });
+        if (!ret) {
+            qWarning() << "warning: failed to update desktop database in "
+                + applicationDir.absolutePath() + ": " + *ret;
+        }
+    }
+
+    // 更新 mime type database
+    if (mimeDataDir.exists()) {
+        auto ret = utils::command::Exec("update-mime-database", { mimeDataDir.absolutePath() });
+        if (!ret) {
+            qWarning() << "warning: failed to update mime type database in "
+                + mimeDataDir.absolutePath() + ": " + *ret;
+        }
+    }
+
+    // 更新 glib-2.0/schemas
+    if (glibSchemasDir.exists()) {
+        auto ret = utils::command::Exec("glib-compile-schemas", { glibSchemasDir.absolutePath() });
+        if (!ret) {
+            qWarning() << "warning: failed to update schemas in " + glibSchemasDir.absolutePath()
+                + ": " + *ret;
         }
     }
 }

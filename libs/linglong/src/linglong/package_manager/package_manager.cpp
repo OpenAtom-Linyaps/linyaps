@@ -117,6 +117,16 @@ auto PackageManager::InstallLayer(const QDBusUnixFileDescriptor &fd) noexcept ->
         return toDBusReply(result);
     }
 
+    auto info = (*layerDir).info();
+    if (!info) {
+        return toDBusReply(info);
+    }
+
+    auto ref = package::Reference::fromPackageInfo(*info);
+    if (!ref) {
+        return toDBusReply(ref);
+    }
+    this->repo.exportReference(*ref);
     return toDBusReply(0, "Install layer file success.");
 }
 

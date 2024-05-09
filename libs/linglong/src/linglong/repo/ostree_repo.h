@@ -73,6 +73,7 @@ public:
     void removeDanglingXDGIntergation() noexcept;
     void exportReference(const package::Reference &ref) noexcept;
     void unexportReference(const package::Reference &ref) noexcept;
+    void updateSharedInfo() noexcept;
 
 private:
     api::types::v1::RepoConfig cfg;

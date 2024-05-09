@@ -93,9 +93,9 @@ int main()
           }
 
           mounts.push_back({
-            { "destination", hostDir },
+            { "destination", destDir },
             { "options", nlohmann::json::array({ "rbind" }) },
-            { "source", destDir },
+            { "source", hostDir },
             { "type", "bind" },
           });
 

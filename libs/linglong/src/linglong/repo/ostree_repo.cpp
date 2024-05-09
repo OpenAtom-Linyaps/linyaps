@@ -1366,8 +1366,10 @@ void OSTreeRepo::removeDanglingXDGIntergation() noexcept
         }
 
         if (!info.isSymLink()) {
-            // NOTE: Everything in entries is directory or symbol link.
-            qWarning() << "Invalid entries dir detected." << info.absoluteFilePath();
+            // NOTE: Everything in entries should be directory or symbol link.
+            // But it can be some cache file, we should not remove it too.
+            qWarning() << "Invalid file detected." << info.absoluteFilePath();
+            qWarning() << "If the file is a cache or something like that, ignore this warning.";
             Q_ASSERT(false);
             continue;
         }
@@ -1406,8 +1408,10 @@ void OSTreeRepo::unexportReference(const package::Reference &ref) noexcept
         }
 
         if (!info.isSymLink()) {
-            // NOTE: Everything in entries is directory or symbol link.
-            qWarning() << "Invalid entries dir detected." << info.absoluteFilePath();
+            // NOTE: Everything in entries should be directory or symbol link.
+            // But it can be some cache file, we should not remove it too.
+            qWarning() << "Invalid file detected." << info.absoluteFilePath();
+            qWarning() << "If the file is a cache or something like that, ignore this warning.";
             Q_ASSERT(false);
             continue;
         }

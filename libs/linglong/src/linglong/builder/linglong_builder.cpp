@@ -641,8 +641,14 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         }
     }
 
-    // Let base updated at runtime.
-    base->version.tweak = std::nullopt;
+    // when the base version is likes 20.0.0.1, warning that it is a full version
+    // if the base version is likes 20.0.0, we should also write 20.0.0 to info.json
+    if (fuzzyBase->version->tweak)
+    {
+        qWarning() << fuzzyBase->toString() << "is set a full version.";
+    } else {
+        base->version.tweak = std::nullopt;
+    }
 
     auto info = api::types::v1::PackageInfo{
         .appid = this->project.package.id,
@@ -661,6 +667,12 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     };
 
     if (runtime) {
+        // the runtime version is same as base.
+        if (fuzzyRuntime->version->tweak) {
+            qWarning() << fuzzyRuntime->toString() << "is set a full version.";
+        } else {
+            runtime->version.tweak = std::nullopt;
+        }
         info.runtime = runtime->toString().toStdString();
     }
 

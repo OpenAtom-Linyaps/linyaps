@@ -113,24 +113,22 @@ fetchSources(const std::vector<api::types::v1::BuilderProjectSource> &sources,
     return LINGLONG_OK;
 }
 
-utils::error::Result<package::Reference>
-pullDependency(QString fuzzyRefStr, repo::OSTreeRepo &repo, bool develop, bool onlyLocal) noexcept
+utils::error::Result<package::Reference> pullDependency(const package::FuzzyReference &fuzzyRef,
+                                                        repo::OSTreeRepo &repo,
+                                                        bool develop,
+                                                        bool onlyLocal) noexcept
 {
-    LINGLONG_TRACE("pull " + fuzzyRefStr);
+    LINGLONG_TRACE("pull " + fuzzyRef.toString());
 
-    auto fuzzyRef = package::FuzzyReference::parse(fuzzyRefStr);
-    if (!fuzzyRef) {
-        return LINGLONG_ERR(fuzzyRef);
-    }
     if (onlyLocal) {
         auto ref =
-          repo.clearReference(*fuzzyRef, { .forceRemote = false, .fallbackToRemote = false });
+          repo.clearReference(fuzzyRef, { .forceRemote = false, .fallbackToRemote = false });
         if (!ref) {
             return LINGLONG_ERR(ref);
         }
         return *ref;
     }
-    auto ref = repo.clearReference(*fuzzyRef, { .forceRemote = true, .fallbackToRemote = false });
+    auto ref = repo.clearReference(fuzzyRef, { .forceRemote = true, .fallbackToRemote = false });
     if (!ref) {
         return LINGLONG_ERR(ref);
     }
@@ -159,8 +157,21 @@ pullDependency(QString fuzzyRefStr, repo::OSTreeRepo &repo, bool develop, bool o
         return LINGLONG_ERR("pull " + ref->toString() + " failed",
                             std::move(taskPtr->currentError()));
     }
-
     return *ref;
+}
+
+utils::error::Result<package::Reference> pullDependency(const QString &fuzzyRefStr,
+                                                        repo::OSTreeRepo &repo,
+                                                        bool develop,
+                                                        bool onlyLocal) noexcept
+{
+    LINGLONG_TRACE("pull " + fuzzyRefStr);
+    auto fuzzyRef = package::FuzzyReference::parse(fuzzyRefStr);
+    if (!fuzzyRef) {
+        return LINGLONG_ERR(fuzzyRef);
+    }
+
+    return pullDependency(*fuzzyRef, repo, develop, onlyLocal);
 }
 
 } // namespace
@@ -380,9 +391,16 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
                    .toStdString(),
                  2);
     std::optional<package::Reference> runtime;
+    std::optional<package::FuzzyReference> fuzzyRuntime;
     QString runtimeLayerDir;
     if (this->project.runtime) {
-        auto ref = pullDependency(QString::fromStdString(*this->project.runtime),
+        auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(*this->project.runtime));
+        if (!fuzzyRef) {
+            return LINGLONG_ERR(fuzzyRef);
+        }
+        
+        fuzzyRuntime = *fuzzyRef; 
+        auto ref = pullDependency(*fuzzyRuntime,
                                   this->repo,
                                   true,
                                   cfg.skipPullDepend.has_value() && *cfg.skipPullDepend);
@@ -405,7 +423,11 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         qDebug() << "pull runtime success" << runtime->toString();
     }
 
-    auto base = pullDependency(QString::fromStdString(this->project.base),
+    auto fuzzyBase = package::FuzzyReference::parse(QString::fromStdString(this->project.base));
+    if (!fuzzyBase) {
+        return LINGLONG_ERR(fuzzyBase);
+    }
+    auto base = pullDependency(*fuzzyBase,
                                this->repo,
                                true,
                                cfg.skipPullDepend.has_value() && *cfg.skipPullDepend);

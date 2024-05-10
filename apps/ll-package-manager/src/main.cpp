@@ -74,15 +74,6 @@ void withoutDBusDaemon()
 {
     qInfo() << "Running linglong package manager without dbus daemon...";
 
-    auto pkgManHelperConn =
-      QDBusConnection::connectToPeer("unix:path=/tmp/linglong-system-helper.socket",
-                                     "ll-system-helper");
-    if (!pkgManHelperConn.isConnected()) {
-        qCritical() << "Failed to connect to system helper:" << pkgManHelperConn.lastError();
-        QCoreApplication::exit(-1);
-        return;
-    }
-
     auto config = linglong::repo::loadConfig(
       { LINGLONG_ROOT "/config.yaml", LINGLONG_DATA_DIR "/config.yaml" });
     if (!config.has_value()) {

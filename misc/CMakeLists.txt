@@ -104,14 +104,16 @@ set(SYSTEMD_USER_GENERATOR_PATH
     ${CMAKE_INSTALL_PREFIX}/lib/systemd/user-environment-generators)
 install(
   DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/systemd/user-environment-generators/
-  DESTINATION ${SYSTEMD_USER_GENERATOR_PATH})
+  DESTINATION ${SYSTEMD_USER_GENERATOR_PATH}
+  USE_SOURCE_PERMISSIONS)
 
 set(SYSTEMD_SYSTEM_GENERATOR_PATH
     ${CMAKE_INSTALL_PREFIX}/lib/systemd/system-environment-generators)
 install(
   DIRECTORY
     ${CMAKE_CURRENT_BINARY_DIR}/lib/systemd/system-environment-generators/
-  DESTINATION ${SYSTEMD_SYSTEM_GENERATOR_PATH})
+  DESTINATION ${SYSTEMD_SYSTEM_GENERATOR_PATH}
+  USE_SOURCE_PERMISSIONS)
 
 # sysuser
 

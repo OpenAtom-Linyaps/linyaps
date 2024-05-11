@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+echo "[玲珑修复工具]"
+
+oldPackageList="/var/lib/linglong/old-package.list"
+
+if [ ! -f $oldPackageList ]; then
+        echo "无需重装任何应用。"
+
+        read anykey
+        read -p "按下任意键退出：" anykey
+        exit 0
+fi
+
+echo "重新安装旧的应用，这可能会花点时间～"
+for package in $(cat $oldPackageList); do
+        echo "正在安装 $package..."
+        ll-cli install $package
+        if ! [ $? -eq 0 ]; then
+                failed+="$package\n"
+        fi
+done
+
+if [ "$failed" != "" ]; then
+        echo -e "一些应用重装失败，它们可能会从启动器或桌面中消失。请帮忙报告这些问题。\n\n失败的应用：\n$failed"
+        echo "如果该应用已经回退成deb版本，可忽略此问题。"
+else
+        echo "修复完成。"
+fi
+
+# Hide this tool after reinstallation
+pkexec --user root mv $oldPackageList ${oldPackageList}-done
+
+# deepin-terminal -C linglong-repair-tool will set 'exit' to stdin
+# so we have to read it first.
+read anykey
+read -p "按下任意键退出：" anykey

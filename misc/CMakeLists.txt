@@ -49,6 +49,8 @@ configure_files(
   share/linglong/builder/templates/appimage-url.yaml
   share/linglong/builder/templates/example.yaml
   share/mime/packages/deepin-linglong.xml
+  share/applications/linglong-repair-tool.desktop
+  script/linglong-repair-tool
   script/linglong.sh)
 
 # bash-completion
@@ -135,6 +137,16 @@ install(
   DESTINATION /etc/X11/Xsession.d/
   RENAME 21linglong
 )
+
+# linglong-repair-tool bin
+install(
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/script/linglong-repair-tool
+  DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+# linglong-repair-tool desktop
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/share/applications/linglong-repair-tool.desktop
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
 
 install(
         FILES ${CMAKE_SOURCE_DIR}/api/schema/v1.json

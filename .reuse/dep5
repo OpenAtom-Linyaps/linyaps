@@ -109,3 +109,8 @@ Copyright: UnionTech Software Technology Co., Ltd.
 Files: api/schema/*.json
 License: CC0-1.0
 Copyright: None
+
+# linglong-repair-tool
+Files: misc/share/applications/*.desktop
+License: CC0-1.0
+Copyright: None

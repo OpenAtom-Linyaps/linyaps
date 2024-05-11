@@ -74,6 +74,7 @@ cd build
 %{_sysconfdir}/X11/Xsession.d/*
 %{_bindir}/ll-cli
 %{_bindir}/llpkg
+%{_bindir}/linglong-repair-tool
 %{_bindir}/ll-package-manager
 %{_prefix}/lib/%{name}/container/*
 %{_prefix}/lib/sysusers.d/*.conf
@@ -96,6 +97,7 @@ cd build
 %{_datadir}/%{name}/config.yaml
 %{_datadir}/mime/packages/*
 %{_datadir}/%{name}/api/api.json
+%{_datadir}/applications/*.desktop
 
 %files -n linglong-builder
 %license LICENSE

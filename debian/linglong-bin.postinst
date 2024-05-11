@@ -84,15 +84,6 @@ configure)
         if [ -f /etc/sysctl.d/linglong.conf ];then
                 sysctl -p /etc/sysctl.d/linglong.conf
         fi
-        if [ -f /tmp/linglong-upgrade.list ] && dpkg --compare-versions "$version" lt "1.5.0" ; then
-                echo "Reinstall old package, this may take a long time..."
-                for p in $(cat /tmp/linglong-upgrade.list)
-                do
-                    echo "Installing $p..."
-                    ll-cli install $p || true
-                done
-                mv /tmp/linglong-upgrade.list /tmp/linglong-upgrade.list-done
-        fi
         ;;
 abort-upgrade | abort-remove | abort-deconfigure) ;;
 *)

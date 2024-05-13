@@ -54,14 +54,14 @@ upgrade_from_1_4_x() {
         echo "upgrade from 1.4.x"
 
         echo "Backup old data..."
-        oldPackageList="/var/lib/linglong/old-package.list"
-        ll-cli list | tail -n +2 | awk -F\  '{print $1}' | grep -v "org.deepin.Runtime" > $oldPackageList
+#        oldPackageList="/var/lib/linglong/old-package.list"
+#        ll-cli list | tail -n +2 | awk -F\  '{print $1}' | grep -v "org.deepin.Runtime" > $oldPackageList
         oldData=$(mktemp --tmpdir=/var/lib/linglong -d old-data-XXXXXXXX)
         mv /var/lib/linglong/layers "$oldData"
         mv /var/lib/linglong/entries "$oldData"
         # chmod is for linglong-repair-tool.desktop(TryExec=$oldPackageList).
-        chmod +x $oldPackageList
-        chown deepin-linglong:deepin-linglong $oldPackageList
+#        chmod +x $oldPackageList
+#        chown deepin-linglong:deepin-linglong $oldPackageList
         chown -R deepin-linglong:deepin-linglong $oldData
 }
 

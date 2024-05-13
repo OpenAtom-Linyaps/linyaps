@@ -46,3 +46,9 @@ org.deepin.calculator           deepin-calculator               5.5.23          
 org.deepin.calculator           deepin-calculator               5.7.1           x86_64      linglong        runtime     Calculator for UOS
 
 ```
+
+如果需要查找 Base 和 Runtime 可以使用以下命令：
+
+```bash
+ll-cli search . --type=runtime
+```

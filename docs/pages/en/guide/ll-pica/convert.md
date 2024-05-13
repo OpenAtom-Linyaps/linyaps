@@ -1,0 +1,72 @@
+## Conversion application
+
+The `ll-pica convert` command is used to generate the `linglong.yaml` file required by Linglong.
+
+View the help information for the `ll-cli convert` command:
+
+```bash
+ll-pica convert --help
+```
+
+Here is the output:
+
+```bash
+Convert deb to uab
+
+Usage:
+  ll-pica convert [flags]
+
+Flags:
+  -b, --build            build linglong
+  -c, --config string    config file
+  -h, --help             help for convert
+      --pi string        package id
+      --pn string        package name
+  -t, --type string      get app type (default "local")
+  -w, --workdir string   work directory
+
+Global Flags:
+  -V, --verbose   verbose output
+```
+
+Translation: After executing the `ll-pica init -w w --pi com.baidu.baidunetdisk --pn com.baidu.baidunetdisk -t repo` command
+
+We only need to execute the command `ll-pica convert -w w -b` to convert the Linglong application. Here, we will use the `apt download` command to download the deb package named `com.baidu.baidunetdisk`.
+
+```bash
+ll-pica convert -c com.baidu.baidunetdisk_4.17.7_amd64.deb -w work -b
+```
+
+:::tip
+Here, the `apt download` command is used to download the deb package; however, the process may fail due to
+the deb package being excessively large or issues with obtaining the link. It is recommended to use the following command instead. If you use the following command directly, there is no need to execute the command `ll-pica init -w w --pi com.baidu.baidunetdisk --pn com.baidu.baidunetdisk -t repo`.
+:::
+
+```bash
+apt download com.baidu.baidunetdisk
+```
+
+```bash
+ll-pica convert -c com.baidu.baidunetdisk_4.17.7_amd64.deb -w w -b
+```
+
+- -w working directory。
+- -c The configuration method employed here utilizes deb files.
+- -b It indicates that a build is required; without adding this parameter, neither building nor exporting the layer file will take place.
+
+The constructed products are as follows:
+
+```bash
+├── package
+│   └── com.baidu.baidunetdisk
+│       └── amd64
+│           ├── com.baidu.baidunetdisk_4.17.7.0_x86_64_develop.layer
+│           ├── com.baidu.baidunetdisk_4.17.7.0_x86_64_runtime.layer
+│           ├── linglong
+│           └── linglong.yaml
+└── package.yaml
+```
+
+Layer files are divided into two categories: `runtime` and `develop`. The `runtime` includes the application's execution environment, while the `develop` layer, built upon the `runtime`, retains the debugging environment.
+
+Installing Layer Files and Running the Application Reference：[Install Linglong Apps](../ll-cli/install.md)

@@ -22,7 +22,9 @@ public:
 
     int Setup(FilesystemDriver *driver);
 
-    int MountNode(const Mount &m);
+    int MountNode(const Mount &m) const;
+
+    void finalizeMounts() const;
 
 private:
     std::unique_ptr<HostMountPrivate> dd_ptr;

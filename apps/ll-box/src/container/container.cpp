@@ -401,6 +401,8 @@ public:
 
     int PivotRoot() const
     {
+        containerMounter->finalizeMounts();
+
         int ret = -1;
         chdir(hostRoot.c_str());
 

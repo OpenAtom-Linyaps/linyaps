@@ -16,6 +16,15 @@
 
 #include <sys/stat.h>
 
+struct remountNode
+{
+    uint32_t flags{ 0U };
+    uint32_t extraFlags{ 0U };
+    int targetFd{ -1 };
+    std::string targetPath;
+    std::string data;
+};
+
 namespace linglong {
 
 class HostMountPrivate
@@ -110,7 +119,7 @@ public:
         auto real_flags = m.flags;
 
         switch (m.fsType) {
-        case Mount::Bind:
+        case Mount::Bind: {
             // make sure m.flags always have MS_BIND
             real_flags |= MS_BIND;
 
@@ -124,7 +133,7 @@ public:
                                              source.c_str(),
                                              host_dest_full_path.string().c_str(),
                                              nullptr,
-                                             real_flags,
+                                             real_flags & ~MS_RDONLY,
                                              nullptr);
             if (0 != ret) {
                 break;
@@ -139,22 +148,27 @@ public:
                 break;
             }
 
-            real_flags = m.flags | MS_BIND | MS_REMOUNT;
-
+            real_flags = m.flags | MS_BIND | MS_REMOUNT | MS_RDONLY;
+            auto newFd = ::open(host_dest_full_path.string().c_str(), O_PATH | O_CLOEXEC);
+            if (newFd == -1) {
+                logErr() << "failed to open" << host_dest_full_path.string();
+                break;
+            }
             // When doing a remount, source and fstype are ignored by kernel.
-            real_data = data;
-            ret = util::fs::do_mount_with_fd(root.c_str(),
-                                             nullptr,
-                                             host_dest_full_path.string().c_str(),
-                                             nullptr,
-                                             real_flags,
-                                             real_data.c_str());
+            remountList.emplace_back(remountNode{
+              .flags = real_flags,
+              .extraFlags = m.extraFlags,
+              .targetFd = newFd,
+              .targetPath = util::format("/proc/self/fd/%d", newFd),
+              .data = data,
+            });
             break;
+        }
         case Mount::Proc:
         case Mount::Devpts:
         case Mount::Mqueue:
         case Mount::Tmpfs:
-        case Mount::Sysfs:
+        case Mount::Sysfs: {
             ret = util::fs::do_mount_with_fd(root.c_str(),
                                              source.c_str(),
                                              host_dest_full_path.string().c_str(),
@@ -189,6 +203,7 @@ public:
                 }
             }
             break;
+        }
         case Mount::Cgroup:
             ret = util::fs::do_mount_with_fd(root.c_str(),
                                              source.c_str(),
@@ -220,6 +235,20 @@ public:
         return ret;
     }
 
+    void finalizeMounts()
+    {
+        for (const auto &node : remountList) {
+            if (::mount("none", node.targetPath.c_str(), "", node.flags, node.data.c_str()) != 0) {
+                logWan() << "failed to remount" << node.targetPath << strerror(errno);
+            }
+
+            if (::close(node.targetFd) == -1) {
+                logWan() << "failed to close fd" << node.targetFd << strerror(errno);
+            }
+        }
+    }
+
+    mutable std::vector<remountNode> remountList;
     std::unique_ptr<FilesystemDriver> driver_;
     mutable bool sysfs_is_binded = false;
 };
@@ -229,9 +258,14 @@ HostMount::HostMount()
 {
 }
 
-int HostMount::MountNode(const struct Mount &m)
+int HostMount::MountNode(const struct Mount &m) const
 {
     return dd_ptr->MountNode(m);
+}
+
+void HostMount::finalizeMounts() const
+{
+    dd_ptr->finalizeMounts();
 }
 
 int HostMount::Setup(FilesystemDriver *driver)

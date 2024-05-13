@@ -36,7 +36,7 @@ package:
     calculator for deepin os.
 ```
 
-| name        | description                                        |
+| 名称        | 描述                                               |
 | ----------- | -------------------------------------------------- |
 | description | 构建产物的详细描述                                 |
 | id          | 构建产物的唯一名称                                 |
@@ -45,12 +45,16 @@ package:
 
 ### 基础环境（base）
 
+```bash
+base: org.deepin.foundation/23.0.0
+```
+
 最小根文件系统。
 
-| name    | description                                                                              |
-| ------- | ---------------------------------------------------------------------------------------- |
-| id      | Unique name of the base                                                                  |
-| version | Base version, A three-digit number can be loosely matched with a potential fourth digit |
+| 名称    | 描述                                     |
+| ------- | ---------------------------------------- |
+| id      | base 的唯一名称                         |
+| version | base 的版本号, 三位数可以模糊匹配第四位 |
 
 ### 运行时（runtime）
 
@@ -60,7 +64,7 @@ package:
 runtime: org.deepin.Runtime/23.0.1
 ```
 
-| name    | description                                     |
+| 名称    | 描述                                            |
 | ------- | ----------------------------------------------- |
 | id      | 运行时（runtime）的唯一名称                     |
 | version | 运行时（runtime）版本，三位数可以模糊匹配第四位 |
@@ -80,7 +84,7 @@ source:
     - patches/fix-lib-install-path.patch
 ```
 
-| name    | description                                               |
+| 名称    | 描述                                                      |
 | ------- | --------------------------------------------------------- |
 | kind    | 源码类型，可选类型 local、archive、git                    |
 | url     | 源码地址，类型为 archive、git 时填写                      |
@@ -100,7 +104,7 @@ build: |
   make install
 ```
 
-| name  | description     |
+| 名称  | 描述            |
 | ----- | --------------- |
 | build | 构建时build规则 |
 
@@ -108,7 +112,7 @@ build: |
 
 描述构建可以使用的变量，配合build构建使用。
 
-| name    | description                                                                                          |
+| 名称    | 描述                                                                                                 |
 | ------- | ---------------------------------------------------------------------------------------------------- |
 | PREFIX  | 环境变量之一，可在variable、build字段下使用；提供构建时的安装路径，如/opt/apps/org.deepin.calculator |
 | TRIPLET | 环境变量之一，可在variable、build字段下使用；提供包含架构信息的三元组，如x86_64-linux-gnu            |
@@ -127,7 +131,7 @@ bash build_base.sh beige amd64
 
 | 发行版            | 架构                      |
 | ----------------- | ------------------------- |
-| eagle (uos 20)    | amd64、arm64、loongarch64 |
+| eagle (UOS 20)    | amd64、arm64、loongarch64 |
 | beige (deepin 23) | amd64、arm64              |
 
 ### 构建运行时
@@ -157,7 +161,7 @@ package:
     calculator for deepin os.
 
 command:
-  - /opt/apps/org.deepin.demo/files/bin/deepin-calculator
+  - /opt/apps/org.deepin.calculator/files/bin/deepin-calculator
 
 base: org.deepin.foundation/23.0.0
 runtime: org.deepin.Runtime/23.0.1

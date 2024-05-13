@@ -123,11 +123,11 @@ cd org.deepin.foundation
 bash build_base.sh eagle amd64
 ```
 
-该项目用来构建玲珑使用的根文件系统。eagle 指发行版代号，amd64 指架构。
+The project is designed to construct the root filesystem utilized by Linglong, with "eagle" referring to the codename of the distribution and "amd64" indicating the architecture.
 
 | Distribution version | Arch                      |
 | -------------------- | ------------------------- |
-| eagle (uos 20)       | amd64、arm64、loongarch64 |
+| eagle (UOS 20)       | amd64、arm64、loongarch64 |
 | beige (deepin 23)    | amd64、arm64              |
 
 ### Build runtime

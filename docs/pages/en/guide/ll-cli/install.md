@@ -57,3 +57,17 @@ message: install org.deepin.calculator, version:5.7.21.4 success
 ```
 
 After the application is installed, the installation result will be displayed.
+
+The layer files we export using the `ll-builder export` command can be installed using the `ll-cli install` command.
+
+```bash
+ll-cli install ./com.baidu.baidunetdisk_4.17.7.0_x86_64_runtime.layer
+```
+
+You can use the command `ll-cli list | grep com.baidu.baidunetdisk` to check if it has been installed successfully.
+
+Run the application using the following command.
+
+```bash
+ll-cli run com.baidu.baidunetdisk
+```

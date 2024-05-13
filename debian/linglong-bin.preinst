@@ -53,9 +53,15 @@ upgrade_from_1_4_x() {
         fi
         echo "upgrade from 1.4.x"
 
+        if [ ! -d /var/lib/linglong/layers ]; then
+                echo "Old data not found."
+                echo "Finish upgrading from 1.4.x without touch anything."
+                return
+        fi
+
         echo "Backup old data..."
         oldPackageList="/var/lib/linglong/old-package.list"
-        ll-cli list | tail -n +2 | awk -F\  '{print $1}' | grep -v "org.deepin.Runtime" > $oldPackageList
+        ls /var/lib/linglong/layers | grep -v "org.deepin.Runtime" >$oldPackageList
         oldData=$(mktemp --tmpdir=/var/lib/linglong -d old-data-XXXXXXXX)
         mv /var/lib/linglong/layers "$oldData"
         mv /var/lib/linglong/entries "$oldData"

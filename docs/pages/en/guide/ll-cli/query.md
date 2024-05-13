@@ -45,3 +45,9 @@ appId                           name                            version         
 org.deepin.calculator           deepin-calculator               5.5.23          x86_64      linglong        runtime     Calculator for UOS
 org.deepin.calculator           deepin-calculator               5.7.1           x86_64      linglong        runtime     Calculator for UOS
 ```
+
+If you need to look up Base and Runtime, you can use the following command:
+
+```bash
+ll-cli search . --type=runtime
+```

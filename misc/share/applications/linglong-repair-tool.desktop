@@ -5,4 +5,5 @@ Name[zh_CN]=玲珑修复工具
 Type=Application
 TryExec=/var/lib/linglong/old-package.list
 Exec=deepin-terminal -C linglong-repair-tool
+Icon=deepin-repair-tools
 Categories=ConsoleOnly;System;

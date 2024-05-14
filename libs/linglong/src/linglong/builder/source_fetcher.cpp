@@ -136,14 +136,14 @@ auto fetchFile(const api::types::v1::BuilderProjectSource &source, QDir destinat
 
     auto path = destination.absoluteFilePath(url.fileName());
 
-    QFile file = path;
+    QFile file(path);
 
-    if (needDownload(source, file)) {
-        file.remove();
+    if (!file.open(QIODevice::ReadWrite)) {
+        return LINGLONG_ERR(file);
     }
 
-    if (!file.open(QIODevice::WriteOnly)) {
-        return LINGLONG_ERR(file);
+    if (!needDownload(source, file)) {
+        return file.fileName();
     }
 
     QNetworkRequest request;

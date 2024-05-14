@@ -45,8 +45,8 @@ Usage:
     ll-cli [--json] upgrade TIER
     ll-cli [--json] search [--type=TYPE] [--dev] TEXT
     ll-cli [--json] [--no-dbus] list [--type=TYPE]
-    ll-cli [--json] repo modify [--name=REPO] URL
-    ll-cli [--json] repo show
+    ll-cli [--json] [--no-dbus] repo modify [--name=REPO] URL
+    ll-cli [--json] [--no-dbus] repo show
     ll-cli [--json] info TIER
     ll-cli [--json] content APP
 

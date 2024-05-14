@@ -293,8 +293,11 @@ auto SourceFetcher::fetch(QDir destination) noexcept -> utils::error::Result<voi
     }
 
     if (this->source.kind == "archive") {
-        QTemporaryDir cacheDir(destination.path());
-        auto archivePath = fetchFile(this->source, QDir(cacheDir.path()));
+        QDir cacheDir(destination.absoluteFilePath("../cache"));
+        if (!cacheDir.mkpath(".")) {
+            return LINGLONG_ERR(cacheDir.absolutePath() + "cache directory failed to create.");
+        }
+        auto archivePath = fetchFile(this->source, cacheDir);
         if (!archivePath) {
             return LINGLONG_ERR(archivePath);
         }
@@ -309,14 +312,17 @@ auto SourceFetcher::fetch(QDir destination) noexcept -> utils::error::Result<voi
     }
 
     if (source.kind == "file") {
-        QTemporaryDir cacheDir(destination.path());
-        auto path = fetchFile(this->source, QDir(cacheDir.path()));
+        QDir cacheDir(destination.absoluteFilePath("../cache"));
+        if (!cacheDir.mkpath(".")) {
+            return LINGLONG_ERR(cacheDir.absolutePath() + "cache directory failed to create.");
+        }
+        auto path = fetchFile(this->source, cacheDir);
         if (!path) {
             return LINGLONG_ERR(path);
         }
         // 将文件从临时目录移动到sources目录，并更改文件名
         auto name = builder::getSourceName(source);
-        QFile::rename(*path, destination.absoluteFilePath(name));
+        QFile::copy(*path, destination.absoluteFilePath(name));
         return LINGLONG_OK;
     }
 

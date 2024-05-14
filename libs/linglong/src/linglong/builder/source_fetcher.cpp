@@ -272,6 +272,10 @@ auto SourceFetcher::fetch(QDir destination) noexcept -> utils::error::Result<voi
 {
     LINGLONG_TRACE("fetch source");
 
+    if (!destination.mkpath(".")) {
+        return LINGLONG_ERR(destination.absolutePath() + "source directory failed to create.");
+    }
+
     if (this->source.kind == "git") {
         auto ret = fetchGitRepo(this->source, destination);
         if (!ret) {

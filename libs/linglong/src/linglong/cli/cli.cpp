@@ -15,6 +15,7 @@
 #include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/serialize/json.h"
+#include "ocppi/runtime/ExecOption.hpp"
 #include "ocppi/runtime/Signal.hpp"
 #include "ocppi/types/ContainerListItem.hpp"
 
@@ -341,15 +342,18 @@ int Cli::exec(std::map<std::string, docopt::value> &args)
 
     qInfo() << "select pagoda" << QString::fromStdString(pagoda);
 
-    std::vector<std::string> command;
-    if (args["COMMAND"].isStringList()) {
-        command = args["COMMAND"].asStringList();
-        // exec命令使用原始args中的进程替换bash进程
-        QStringList bashArgs = { "exec" };
+    std::vector<std::string> command = args["COMMAND"].asStringList();
+    if (command.size() != 0) {
+        QStringList bashArgs;
         // 为避免原始args包含空格，每个arg都使用单引号包裹，并对arg内部的单引号进行转义替换
-        for (auto arg : command) {
+        for (const auto &arg : command) {
             bashArgs.push_back(
               QString("'%1'").arg(QString::fromStdString(arg).replace("'", "'\\''")));
+        }
+
+        if (!bashArgs.isEmpty()) {
+            // exec命令使用原始args中的进程替换bash进程
+            bashArgs.prepend("exec");
         }
         // 在原始args前面添加bash --login -c，这样可以使用/etc/profile配置的环境变量
         command = std::vector<std::string>{
@@ -359,11 +363,14 @@ int Cli::exec(std::map<std::string, docopt::value> &args)
             bashArgs.join(" ").toStdString(),
         };
     } else {
-        command = { std::string("bash", "--login") };
+        command = { "bash", "--login" };
     }
-    auto result = this->ociCLI.exec(pagoda,
-                                    command[0],
-                                    std::vector<std::string>(command.begin() + 1, command.end()));
+
+    auto result =
+      this->ociCLI.exec(pagoda,
+                        command[0],
+                        std::vector<std::string>(command.begin() + 1, command.end()),
+                        ocppi::runtime::ExecOption{ .uid = ::getuid(), .gid = ::getgid() });
     if (!result) {
         auto err = LINGLONG_ERRV(result);
         this->printer.printErr(err);

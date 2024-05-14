@@ -38,13 +38,6 @@ int main()
                     "rbind"
             ]
         },{
-            "destination": "/dev/dri",
-            "type": "bind",
-            "source": "/dev/dri",
-            "options": [
-                    "rbind"
-            ]
-        },{
             "destination": "/dev/snd",
             "type": "bind",
             "source": "/dev/snd",
@@ -56,10 +49,16 @@ int main()
 
     auto &mounts = content["mounts"];
     mounts.insert(mounts.end(), commonMounts.begin(), commonMounts.end());
+    if (std::filesystem::exists("/dev/dri")) {
+        mounts.push_back({ { "destination", "/dev/dri" },
+                           { "type", "bind" },
+                           { "source", "/dev/dri" },
+                           { "options", nlohmann::json::array({ "rbind" }) } });
+    }
 
     nlohmann::json videoMounts = nlohmann::json::array();
     for (const auto &entry : std::filesystem::directory_iterator{ "/dev" }) {
-        const auto& devPath = entry.path();
+        const auto &devPath = entry.path();
         auto devName = devPath.filename().string();
         if ((devName.rfind("video", 0) == 0) || (devName.rfind("nvidia", 0) == 0)) {
             auto dev = u8R"(

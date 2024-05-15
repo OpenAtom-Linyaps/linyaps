@@ -17,7 +17,7 @@ cd "$workdir"
 if [ -d ".git" ]; then
     git remote set-url origin "$url"
 else
-    git init --initial-branch "$version"
+    git init
     git remote add origin "$url"
 fi
 

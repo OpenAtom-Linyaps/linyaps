@@ -293,11 +293,7 @@ auto SourceFetcher::fetch(QDir destination) noexcept -> utils::error::Result<voi
     }
 
     if (this->source.kind == "archive") {
-        QDir cacheDir(destination.absoluteFilePath("../cache"));
-        if (!cacheDir.mkpath(".")) {
-            return LINGLONG_ERR(cacheDir.absolutePath() + "cache directory failed to create.");
-        }
-        auto archivePath = fetchFile(this->source, cacheDir);
+        auto archivePath = fetchFile(this->source, this->cacheDir);
         if (!archivePath) {
             return LINGLONG_ERR(archivePath);
         }
@@ -312,11 +308,7 @@ auto SourceFetcher::fetch(QDir destination) noexcept -> utils::error::Result<voi
     }
 
     if (source.kind == "file") {
-        QDir cacheDir(destination.absoluteFilePath("../cache"));
-        if (!cacheDir.mkpath(".")) {
-            return LINGLONG_ERR(cacheDir.absolutePath() + "cache directory failed to create.");
-        }
-        auto path = fetchFile(this->source, cacheDir);
+        auto path = fetchFile(this->source, this->cacheDir);
         if (!path) {
             return LINGLONG_ERR(path);
         }
@@ -330,10 +322,18 @@ auto SourceFetcher::fetch(QDir destination) noexcept -> utils::error::Result<voi
 }
 
 SourceFetcher::SourceFetcher(api::types::v1::BuilderProjectSource s,
-                             api::types::v1::BuilderConfig cfg)
+                             api::types::v1::BuilderConfig cfg,
+                             const QDir &cacheDir)
     : source(std::move(s))
     , cfg(std::move(cfg))
+    , cacheDir(cacheDir)
 {
+    if (this->cacheDir.mkpath(".")) {
+        return;
+    }
+
+    qCritical() << "mkpath" << this->cacheDir << "failed";
+    Q_ASSERT(false);
 }
 
 } // namespace linglong::builder

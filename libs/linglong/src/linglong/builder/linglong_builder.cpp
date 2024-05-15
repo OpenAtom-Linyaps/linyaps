@@ -81,33 +81,32 @@ currentReference(const api::types::v1::BuilderProject &project)
 
 utils::error::Result<void>
 fetchSources(const std::vector<api::types::v1::BuilderProjectSource> &sources,
+             const QDir &cacheDir,
              const QDir &destination,
              const api::types::v1::BuilderConfig &cfg) noexcept
 {
     LINGLONG_TRACE("fetch sources to " + destination.absolutePath());
 
     for (int pos = 0; pos < sources.size(); ++pos) {
-        printReplacedText(
-          QString("%1%2%3%4")
-            .arg("Source " + QString::number(pos), -20)
-            .arg(QString::fromStdString(sources.at(pos).kind), -15)
-            .arg(QString::fromStdString(*(sources.at(pos).url)), -75)
-            .arg("downloading ...")
-            .toStdString(),
-          2);
-        SourceFetcher sf(sources.at(pos), cfg);
+        printReplacedText(QString("%1%2%3%4")
+                            .arg("Source " + QString::number(pos), -20)
+                            .arg(QString::fromStdString(sources.at(pos).kind), -15)
+                            .arg(QString::fromStdString(*(sources.at(pos).url)), -75)
+                            .arg("downloading ...")
+                            .toStdString(),
+                          2);
+        SourceFetcher sf(sources.at(pos), cfg, cacheDir);
         auto result = sf.fetch(QDir(destination));
         if (!result) {
             return LINGLONG_ERR(result);
         }
-        printReplacedText(
-          QString("%1%2%3%4")
-            .arg("Source " + QString::number(pos), -20)
-            .arg(QString::fromStdString(sources.at(pos).kind), -15)
-            .arg(QString::fromStdString(*(sources.at(pos).url)), -75)
-            .arg("complete\n")
-            .toStdString(),
-          2);
+        printReplacedText(QString("%1%2%3%4")
+                            .arg("Source " + QString::number(pos), -20)
+                            .arg(QString::fromStdString(sources.at(pos).kind), -15)
+                            .arg(QString::fromStdString(*(sources.at(pos).url)), -75)
+                            .arg("complete\n")
+                            .toStdString(),
+                          2);
     }
 
     return LINGLONG_OK;
@@ -375,6 +374,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
                        .toStdString(),
                      2);
         auto result = fetchSources(*this->project.sources,
+                                   this->workingDir.absoluteFilePath("linglong/cache"),
                                    this->workingDir.absoluteFilePath("linglong/sources"),
                                    this->cfg);
         if (!result) {
@@ -394,12 +394,13 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     std::optional<package::FuzzyReference> fuzzyRuntime;
     QString runtimeLayerDir;
     if (this->project.runtime) {
-        auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(*this->project.runtime));
+        auto fuzzyRef =
+          package::FuzzyReference::parse(QString::fromStdString(*this->project.runtime));
         if (!fuzzyRef) {
             return LINGLONG_ERR(fuzzyRef);
         }
-        
-        fuzzyRuntime = *fuzzyRef; 
+
+        fuzzyRuntime = *fuzzyRef;
         auto ref = pullDependency(*fuzzyRuntime,
                                   this->repo,
                                   true,
@@ -574,7 +575,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     if (cfg.skipCommitOutput) {
         return LINGLONG_OK;
     }
-    
+
     printMessage("[Commit Contents]");
     QDir runtimeOutput = this->workingDir.absoluteFilePath("linglong/output/runtime/files");
     if (!runtimeOutput.mkpath(".")) {
@@ -643,8 +644,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
 
     // when the base version is likes 20.0.0.1, warning that it is a full version
     // if the base version is likes 20.0.0, we should also write 20.0.0 to info.json
-    if (fuzzyBase->version->tweak)
-    {
+    if (fuzzyBase->version->tweak) {
         qWarning() << fuzzyBase->toString() << "is set a full version.";
     } else {
         base->version.tweak = std::nullopt;
@@ -799,9 +799,9 @@ utils::error::Result<void> Builder::extractLayer(const QString &layerPath,
         return LINGLONG_ERR(layerDir);
     }
 
-    auto output =
-      utils::command::Exec("cp",
-                           QStringList() << "-r" << layerDir->absolutePath() << destDir.absolutePath());
+    auto output = utils::command::Exec("cp",
+                                       QStringList() << "-r" << layerDir->absolutePath()
+                                                     << destDir.absolutePath());
     if (!output) {
         return LINGLONG_ERR(output);
     }

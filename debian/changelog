@@ -1,3 +1,12 @@
+linglong (1.5.2-1) unstable; urgency=medium
+
+  * fix: mount failed when '$HOME/.deepinwine' is a symlink
+  * fix: some app won't exit after recieved SIGTERM
+  * fix: '$HOME/.deepinwine' should not be mount directly
+  * fix: linglong app can not access network
+
+ -- dengbo <dengbo@deepin.org>  Thu, 16 May 2024 16:53:50 +0800
+
 linglong (1.5.1-1) unstable; urgency=medium
 
   * fix: move the reinstall operation to new script

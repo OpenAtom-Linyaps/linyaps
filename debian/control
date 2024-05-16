@@ -28,7 +28,7 @@ Architecture: any
 Depends: desktop-file-utils,
          erofsfuse,
          libglib2.0-bin,
-         linglong-box | crun,
+         crun,
          ostree,
          shared-mime-info,
          ${misc:Depends},
@@ -44,7 +44,7 @@ Depends: erofs-utils,
          erofsfuse,
          git,
          linglong-bin,
-         linglong-box | crun,
+         crun,
          ${misc:Depends},
          ${shlibs:Depends}
 Recommends: devscripts, linglong-loader

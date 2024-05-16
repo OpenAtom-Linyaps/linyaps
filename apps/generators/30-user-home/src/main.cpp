@@ -114,12 +114,6 @@ int main()
     }
     env.emplace_back("HOME=" + cognitiveHomeDir.string());
 
-    mountDir(hostHomeDir / ".deepinwine", cognitiveHomeDir / ".deepinwine", ec);
-    if (ec) {
-        std::cerr << "Mount .deepinwine failed:" << ec.message() << std::endl;
-        return -1;
-    }
-
     auto hostAppDataDir = std::filesystem::path(hostHomeDir / ".linglong" / appID);
     std::filesystem::create_directories(hostAppDataDir, ec);
     if (ec) {

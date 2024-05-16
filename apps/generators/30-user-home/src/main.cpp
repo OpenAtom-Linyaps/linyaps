@@ -82,7 +82,12 @@ int main()
 
     auto mountDir =
       [&mounts](const std::string &hostDir, const std::string &destDir, std::error_code &ec) {
-          std::filesystem::create_directories(hostDir, ec);
+          std::string realHostDir = hostDir;
+          if (std::filesystem::is_symlink(hostDir)) {
+              realHostDir = std::filesystem::read_symlink(hostDir);
+          }
+
+          std::filesystem::create_directories(realHostDir, ec);
           if (ec) {
               return;
           }
@@ -95,7 +100,7 @@ int main()
           mounts.push_back({
             { "destination", destDir },
             { "options", nlohmann::json::array({ "rbind" }) },
-            { "source", hostDir },
+            { "source", realHostDir },
             { "type", "bind" },
           });
 

@@ -28,7 +28,7 @@ int main()
     }
 
     auto &mounts = content["mounts"];
-    std::map<std::string, std::string> roMountMap{
+    std::multimap<std::string, std::string> roMountMap{
         { "/etc/resolv.conf", "/run/host/etc/resolv.conf" },
         { "/etc/resolvconf", "/run/host/etc/resolvconf" },
         { "/etc/localtime", "/run/host/etc/localtime" },
@@ -42,6 +42,9 @@ int main()
         { "/usr/share/themes", "/usr/share/themes" },
         { "/usr/share/icons", "/usr/share/icons" },
         { "/usr/share/zoneinfo", "/usr/share/zoneinfo" },
+        { "/etc/resolv.conf", "/etc/resolv.conf" },
+        { "/etc/resolvconf", "/etc/resolvconf" },
+        { "/etc/localtime", "/etc/localtime" },
     };
 
     for (const auto &[source, destination] : roMountMap) {

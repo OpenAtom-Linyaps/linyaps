@@ -113,6 +113,8 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
             bashArgs.push_back(
               QString("'%1'").arg(QString::fromStdString(arg).replace("'", "'\\''")));
         }
+        // quickfix: 某些应用在以bash -c启动后，收到SIGTERM后不会完全退出
+        bashArgs.push_back("; exit");
         auto arguments = std::vector<std::string>{
             "/bin/bash",
             "--login",

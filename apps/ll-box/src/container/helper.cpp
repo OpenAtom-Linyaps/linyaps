@@ -41,9 +41,16 @@ void writeContainerJson(const std::string &bundle, const std::string &id, pid_t 
 nlohmann::json readAllContainerJson() noexcept
 {
     nlohmann::json result = nlohmann::json::array();
-
     auto dir =
       std::filesystem::path("/run") / "user" / std::to_string(getuid()) / "linglong" / "box";
+
+    std::error_code ec;
+    std::filesystem::create_directories(dir, ec);
+    if (ec) {
+        logErr() << "failed to create" << dir.string() << ec.message();
+        return {};
+    }
+
     for (auto entry : std::filesystem::directory_iterator{ dir }) {
         std::ifstream containerInfo = entry.path();
         if (!containerInfo.is_open()) {

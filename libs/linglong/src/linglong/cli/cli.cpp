@@ -225,6 +225,38 @@ int Cli::run(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
+    auto command = args["COMMAND"].asStringList();
+    if (command.empty()) {
+        command = info->command.value_or(std::vector<std::string>{});
+    }
+    if (command.empty()) {
+        qWarning() << "invalid command found in package" << QString::fromStdString(info->appid);
+        command = { "bash" };
+    }
+    auto execArgs = filePathMapping(args, command);
+
+    auto containers = this->ociCLI.list().value_or(std::vector<ocppi::types::ContainerListItem>{});
+    for (const auto &container : containers) {
+        const auto &decodedID = QString(QByteArray::fromBase64(container.id.c_str()));
+        if (!decodedID.startsWith(ref->toString())) {
+            continue;
+        }
+
+        auto result =
+          this->ociCLI.exec(container.id,
+                            execArgs[0],
+                            std::vector<std::string>(execArgs.cbegin() + 1, execArgs.cend()),
+                            ocppi::runtime::ExecOption{ .uid = ::getuid(), .gid = ::getgid() });
+
+        if (!result) {
+            auto err = LINGLONG_ERRV(result);
+            this->printer.printErr(err);
+            return -1;
+        }
+
+        return 0;
+    }
+
     std::vector<ocppi::runtime::config::types::Mount> applicationMounts{};
     auto bindMount =
       [&applicationMounts](const api::types::v1::ApplicationConfigurationPermissionsBind &bind) {
@@ -275,21 +307,7 @@ int Cli::run(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    ocppi::runtime::config::types::Process p;
-
-    auto command = args["COMMAND"].asStringList();
-    if (command.empty()) {
-        command = info->command.value_or(std::vector<std::string>{});
-    }
-
-    if (command.empty()) {
-        qWarning() << "invalid command found in package" << QString::fromStdString(info->appid);
-        command = { "bash" };
-    }
-
-    p.args = std::vector<std::string>{};
-    filePathMapping(args, command, *p.args);
-
+    ocppi::runtime::config::types::Process p{ .args = execArgs };
     QStringList envList = utils::command::getUserEnv(utils::command::envList);
     std::vector<std::string> originEnvs = p.env.value_or(std::vector<std::string>{});
     for (const auto &env : envList) {
@@ -935,12 +953,12 @@ int Cli::content(std::map<std::string, docopt::value> &args)
     return 0;
 }
 
-void Cli::filePathMapping(std::map<std::string, docopt::value> &args,
-                          const std::vector<std::string> &command,
-                          std::vector<std::string> &execArgs) const noexcept
+std::vector<std::string>
+Cli::filePathMapping(std::map<std::string, docopt::value> &args,
+                     const std::vector<std::string> &command) const noexcept
 {
     std::string targetHostPath;
-
+    std::vector<std::string> execArgs;
     // if the --file or --url option is specified, need to map the file path to the linglong
     // path(/run/host).
     for (const auto &arg : command) {
@@ -986,10 +1004,12 @@ void Cli::filePathMapping(std::map<std::string, docopt::value> &args,
 
         qWarning() << "unkown command argument" << QString::fromStdString(arg);
     }
+
+    return execArgs;
 }
 
 void Cli::filterPackageInfosFromType(std::vector<api::types::v1::PackageInfo> &list,
-                                     const QString &type)
+                                     const QString &type) noexcept
 {
     // if type is all, do nothing, return tier of all packages.
     if (type == "all") {

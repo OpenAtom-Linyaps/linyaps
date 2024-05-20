@@ -183,12 +183,19 @@ int main(int argc, char **argv)
         QDir projectDir = QDir::current().absoluteFilePath(projectName);
         projectDir.mkpath(".");
         auto configFilePath = projectDir.absoluteFilePath("linglong.yaml");
-        auto templateFilePath = LINGLONG_DATA_DIR "/buidler/templates/example.yaml";
+        auto templateFilePath = LINGLONG_DATA_DIR "/builder/templates/example.yaml";
 
         if (QFileInfo::exists(templateFilePath)) {
             QFile::copy(templateFilePath, configFilePath);
         } else {
+            // In this case, the permission of linglong.yaml will be 0444.
+            // the file which in qrc will considered to be read-only.
             QFile::copy(":/example.yaml", configFilePath);
+
+            // set the permission to 0644
+            QFile::setPermissions(configFilePath,
+                                  QFileDevice::ReadOwner | QFileDevice::WriteOwner
+                                    | QFileDevice::ReadGroup | QFileDevice::ReadOther);
         }
 
         return 0;

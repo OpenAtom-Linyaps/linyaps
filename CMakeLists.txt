@@ -6,10 +6,17 @@ cmake_minimum_required(VERSION 3.11.4)
 
 project(
   linglong
-  VERSION 1.5.0
+  VERSION 1.5.1
   DESCRIPTION "a container based package manager for deepin"
   HOMEPAGE_URL "https://github.com/linuxdeepin/linglong"
   LANGUAGES CXX)
+
+set(LINGLONG_VERSION "" CACHE STRING "The version of linglong project.")
+
+if(NOT ("${LINGLONG_VERSION}" STREQUAL ""))
+  message(STATUS "Project version has been overridden to ${LINGLONG_VERSION}")
+  set(CMAKE_PROJECT_VERSION ${LINGLONG_VERSION})
+endif()
 
 set(LINGLONG_USERNAME
     "deepin-linglong"

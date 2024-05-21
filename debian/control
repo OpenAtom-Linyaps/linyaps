@@ -53,6 +53,8 @@ Description: Linglong application building tools.
 
 Package: linglong-box
 Architecture: any
-Depends: ${misc:Depends}, ${shlibs:Depends}
+Depends: util-linux,
+         ${misc:Depends},
+         ${shlibs:Depends}
 Description: Deepin sandbox with OCI standard.
  Deepin sandbox...

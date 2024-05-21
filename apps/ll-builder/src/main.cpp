@@ -185,17 +185,26 @@ int main(int argc, char **argv)
         auto configFilePath = projectDir.absoluteFilePath("linglong.yaml");
         auto templateFilePath = LINGLONG_DATA_DIR "/builder/templates/example.yaml";
 
-        if (QFileInfo::exists(templateFilePath)) {
-            QFile::copy(templateFilePath, configFilePath);
-        } else {
-            // In this case, the permission of linglong.yaml will be 0444.
-            // the file which in qrc will considered to be read-only.
-            QFile::copy(":/example.yaml", configFilePath);
+        if (!QFileInfo::exists(templateFilePath)) {
+            templateFilePath = ":/example.yaml";
+        }
+        QFile templateFile(templateFilePath);
+        QFile configFile(configFilePath);
+        if (!templateFile.open(QIODevice::ReadOnly)) {
+            qDebug() << templateFilePath << templateFile.error();
+            return -1;
+        }
 
-            // set the permission to 0644
-            QFile::setPermissions(configFilePath,
-                                  QFileDevice::ReadOwner | QFileDevice::WriteOwner
-                                    | QFileDevice::ReadGroup | QFileDevice::ReadOther);
+        if (!configFile.open(QIODevice::WriteOnly)) {
+            qDebug() << configFilePath << configFile.error();
+            return -1;
+        }
+
+        auto rawData = templateFile.readAll();
+        rawData.replace("@ID@", projectName.toUtf8());
+        if (!configFile.write(rawData)) {
+            qDebug() << configFilePath << configFile.error();
+            return -1;
         }
 
         return 0;

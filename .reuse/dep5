@@ -114,3 +114,8 @@ Copyright: None
 Files: misc/share/applications/*.desktop
 License: CC0-1.0
 Copyright: None
+
+# ll-builder template yaml
+Files: misc/linglong/builder/templates/example.yaml
+License: CC0-1.0
+Copyright: None

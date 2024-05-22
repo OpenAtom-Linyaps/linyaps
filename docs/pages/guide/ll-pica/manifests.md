@@ -8,10 +8,9 @@ package.yaml 是 `ll-pica` 转换 deb 包的基础信息。如构建的 base、r
 {workdir}
 ├── package
 │   └── {appid}
-│       └── amd64
-│           ├── linglong
-│           ├── linglong.yaml
-│           └── start.sh
+│       ├── linglong
+│       ├── linglong.yaml
+│       └── start.sh
 └── package.yaml
 ```
 

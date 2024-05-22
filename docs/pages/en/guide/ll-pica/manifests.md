@@ -8,10 +8,9 @@ The `package.yaml` file serves as the foundation for ll-pica to convert packages
 {workdir}
 ├── package
 │   └── {appid}
-│       └── amd64
-│           ├── linglong
-│           ├── linglong.yaml
-│           └── start.sh
+│       ├── linglong
+│       ├── linglong.yaml
+│       └── start.sh
 └── package.yaml
 ```
 

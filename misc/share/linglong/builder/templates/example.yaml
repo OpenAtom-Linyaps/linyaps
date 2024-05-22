@@ -1,28 +1,27 @@
-# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-#
-# SPDX-License-Identifier: LGPL-3.0-or-later
+version: "1"
 
 package:
-  id: org.deepin.demo
-  name: deepin-demo
-  version: 0.0.1
+  id: @ID@
+  name: your name #set your application name
+  version: 0.0.0.1 #set your version
   kind: app
   description: |
-    simple qt demo.
+    your description #set a brief text to introduce your application.
 
-runtime:
-  id: org.deepin.Runtime
-  version: 23.0.0
+command: [echo, -e, hello world] #the commands that your application need to run.
 
-depends:
-  - id: icu
-    version: 63.1.0
-    type: runtime
+base: org.deepin.foundation/23.0.0 #set the base environment, this can be changed.
 
-sources:
-  - kind: git
-    url: "https://github.com/linuxdeepin/linglong-builder-demo.git"
-    commit: a3b89c3aa34c1aff8d7f823f0f4a87d5da8d4dc0
+#set the runtime environment if you need, a example of setting deepin runtime is as follows.
+#runtime:
+#org.deepin.Runtime/23.0.1
 
-build:
-  kind: qmake
+#set the source if you need, a simple example of git is as follows.
+#source:
+#  - kind: git
+#    url: https://github.com/linuxdeepin/linglong-builder-demo.git
+#    version: master\n
+#    commit: a3b89c3aa34c1aff8d7f823f0f4a87d5da8d4dc0
+
+build: |
+  echo 'hello' #some operation to build this project

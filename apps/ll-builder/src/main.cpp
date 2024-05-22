@@ -288,6 +288,15 @@ int main(int argc, char **argv)
             const auto version = templateArgs.at(5);
             const auto description = templateArgs.at(6);
 
+            auto fixVersion = linglong::package::Version::parse(version);
+            if (!fixVersion) {
+                return LINGLONG_ERR(fixVersion);
+            }
+
+            if (!fixVersion->tweak) {
+                fixVersion->tweak = 0;
+            }
+
             auto projectPath = QDir(name);
             if (!projectPath.mkpath(".")) {
                 return LINGLONG_ERR("create " + projectPath.absolutePath() + ": failed");
@@ -322,19 +331,30 @@ int main(int argc, char **argv)
             if (!projectFile.open(QFile::ReadOnly)) {
                 return LINGLONG_ERR("open " + projectFilePath);
             }
+
             auto contents = projectFile.readAll();
             if (projectFile.error() != QFile::NoError) {
                 return LINGLONG_ERR(projectFile);
             }
             projectFile.close();
+            const QString commandOpt = "/opt/apps/" + id + "/files/bin/" + id;
             contents.replace("{{{ID}}}", id.toUtf8());
             contents.replace("{{{NAME}}}", name.toUtf8());
-            contents.replace("{{{VERSION}}}", version.toUtf8());
+            contents.replace("{{{VERSION}}}", fixVersion->toString().toUtf8());
             contents.replace("{{{DESCRIPTION}}}", description.toUtf8());
+            contents.replace("{{{COMMAND}}}", commandOpt.toUtf8());
 
             if (file.isEmpty()) {
                 contents.replace("{{{URL}}}", url.toUtf8());
                 contents.replace("{{{DIGEST}}}", hash.toUtf8());
+            }
+
+            if (!projectFile.isWritable()) {
+                qWarning() << projectFile << " no write permission, will set write permission";
+
+                if (!projectFile.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner)) {
+                    return LINGLONG_ERR("change file permission with u+rw", projectFile);
+                }
             }
 
             if (!projectFile.open(QFile::WriteOnly)) {
@@ -416,7 +436,7 @@ int main(int argc, char **argv)
                                                  repo,
                                                  *containerBuidler,
                                                  *builderCfg);
-              auto result = builder.build({ "/source/linglong/entry.sh" });
+              auto result = builder.build();
               if (!result) {
                   qCritical() << result.error();
                   return -1;

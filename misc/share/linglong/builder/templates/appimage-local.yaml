@@ -1,6 +1,4 @@
-# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-#
-# SPDX-License-Identifier: LGPL-3.0-or-later
+version: "1"
 
 package:
   id: '{{{ID}}}'
@@ -10,11 +8,14 @@ package:
   description: |
     {{{DESCRIPTION}}}
 
+command: ['{{{COMMAND}}}'] #the commands that your application need to run.
+base: org.deepin.foundation/23.0.0 #set the base environment, this can be changed.
+
 build: |
   APPIMAGE=$(find . -regex '.*\.AppImage\|.*\appimage' -exec basename {} \;)
   chmod +x ${APPIMAGE}
   ./${APPIMAGE} --appimage-extract
-  BINNAME=${APPID}
+  BINNAME=${LINGLONG_APPID}
   APP_PREFIX=${BINNAME}
   echo "#!/usr/bin/env bash" > ${BINNAME}
   echo "unset LD_LIBRARY_PATH" >> ${BINNAME}
@@ -22,7 +23,7 @@ build: |
   # only search for .desktop file in the squashfs-root directory
   DESKTOP_FILE=$(find squashfs-root -maxdepth 1 -regex '.*\.desktop' -exec basename {} \;)
   cp squashfs-root/${DESKTOP_FILE} .
-  sed -i "s@Exec=.*@Exec=/${PREFIX}/bin/${BINNAME}@" ${DESKTOP_FILE}
+  sed -i "s@Exec=.*@Exec=${PREFIX}/bin/${BINNAME}@" ${DESKTOP_FILE}
 
   cd squashfs-root
   if [ ! $PREFIX ]; then

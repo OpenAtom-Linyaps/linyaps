@@ -102,7 +102,7 @@ ll-builder run
 
 `ll-builder run` 运行成功输出如下：
 
-![org.deepin.demo.png](../ll-builder/images/org.deepin.demo.png)
+![org.deepin.calculator.png](./images/org.deepin.calculator.png)
 
 为了便于调试，使用额外的 `--exec /bin/bash`参数可替换进入容器后默认执行的程序，如：
 
@@ -152,3 +152,7 @@ ll-cli run com.baidu.baidunetdisk
 运行成功输出如下：
 
 ![img](images/com.baidu.baidunetdisk.png)
+
+# 视频链接
+
+[同心联盟《开发赋能共建玲珑生态》分享直播会回看视频](https://www.bilibili.com/video/BV1ff421R7aY)

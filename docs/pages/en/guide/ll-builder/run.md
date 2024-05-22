@@ -36,7 +36,9 @@ ll-builder run
 
 If `ll-builder run` runs successfully, the output is as follows:
 
-![org.deepin.demo.png](./images/org.deepin.demo.png)
+```bash
+hello world
+```
 
 To facilitate debugging, use an additional `--exec /bin/bash` parameter to replace the default execution program after entering the container, such as:
 

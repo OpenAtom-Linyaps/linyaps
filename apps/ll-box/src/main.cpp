@@ -148,9 +148,17 @@ int exec(struct arg_exec *arg, int argc, char **argv) noexcept
     }
 
     auto wdns = linglong::util::format("--wdns=%s", arg->cwd.c_str());
-    const char *nsenterArg[] = { "nsenter", "-t",         boxPidStr.c_str(),        "-U",   "-m",
-                                 "-p",      wdns.c_str(), "--preserve-credentials", "bash", "-c" };
-    auto newArgc = 10 + argc + 1; // except argv[0] and add '&'
+    const char *nsenterArgv[] = {
+        "nsenter", "-t",         boxPidStr.c_str(),        "-U",   "-m",
+        "-p",      wdns.c_str(), "--preserve-credentials", "bash", "--login",
+        "-c",      nullptr
+    };
+
+    int nsenterArgc{ 0 };
+    while (nsenterArgv[nsenterArgc] != nullptr) {
+        ++nsenterArgc;
+    }
+    auto newArgc = nsenterArgc + argc + 1; // except argv[0] and add '&'
     const char **newArgv = (const char **)malloc(sizeof(char *) * newArgc);
 
     if (newArgv == nullptr) {
@@ -158,12 +166,12 @@ int exec(struct arg_exec *arg, int argc, char **argv) noexcept
         return errno;
     }
 
-    for (int i = 0; i < 10; ++i) {
-        newArgv[i] = nsenterArg[i];
+    for (int i = 0; i < nsenterArgc; ++i) {
+        newArgv[i] = nsenterArgv[i];
     }
 
     for (int i = 0; i < argc; ++i) {
-        newArgv[i + 10] = argv[i + 1];
+        newArgv[i + nsenterArgc] = argv[i + 1];
     }
 
     newArgv[newArgc - 2] = "&";
@@ -461,19 +469,22 @@ int cmd_kill(struct argp_state *state)
 
     ::free(argv[0]);
     argv[0] = argv0;
-    state->next += 1;
+    state->next += argc - 1;
 
-    if (argv[1] == nullptr) {
+    if (state->argv[state->next] == nullptr) {
         logErr() << "container id must be set.";
         return EINVAL;
     }
 
-    std::string container{ argv[1] };
+    std::string container{ state->argv[state->next++] };
     std::string signal;
-    if (argv[2] != nullptr) {
-        signal = argv[2];
+    if (state->argv[state->next] != nullptr) {
+        signal = state->argv[state->next++];
     }
-    state->next += 2;
+
+    while (state->argv[state->next] != nullptr) {
+        ++(state->next);
+    }
 
     auto *global = (struct arg_global *)state->input;
     global->exitCode = kill(container, signal);

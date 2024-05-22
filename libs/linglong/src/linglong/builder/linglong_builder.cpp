@@ -140,11 +140,11 @@ utils::error::Result<package::Reference> pullDependency(const package::FuzzyRefe
     auto taskID = QUuid::createUuid();
     auto taskPtr = std::make_shared<service::InstallTask>(taskID);
 
-    auto partChanged = [&ref](QString, QString percentage, QString, service::InstallTask::Status) {
+    auto partChanged = [&ref, develop](QString, QString percentage, QString, service::InstallTask::Status) {
         printReplacedText(QString("%1%2%3%4 %5")
                             .arg(ref->id, -25)
                             .arg(ref->version.toString(), -15)
-                            .arg("develop", -15)
+                            .arg(develop ? "develop" : "runtime", -15)
                             .arg("downloading")
                             .arg(percentage)
                             .toStdString(),

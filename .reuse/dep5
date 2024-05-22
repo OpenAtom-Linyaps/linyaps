@@ -116,6 +116,6 @@ License: CC0-1.0
 Copyright: None
 
 # ll-builder template yaml
-Files: misc/linglong/builder/templates/example.yaml
+Files: misc/share/linglong/builder/templates/*.yaml
 License: CC0-1.0
 Copyright: None

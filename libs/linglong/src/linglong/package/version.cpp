@@ -117,7 +117,7 @@ Version::Version(const QString &raw)
     QRegularExpressionMatch matched = regexExp.match(raw);
 
     if (!matched.hasMatch()) {
-        throw std::runtime_error("version regex mismatched");
+        throw std::runtime_error("version regex mismatched, please use four digits version like 1.0.0.0");
     }
 
     bool ok = false;

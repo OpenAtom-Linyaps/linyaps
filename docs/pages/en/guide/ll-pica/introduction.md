@@ -1,6 +1,6 @@
 # ll-pica Introduction
 
-This tool currently provides the capability to convert DEB packages into Linglong packages. Only software packages that comply with the [app store packaging standards](https://doc.chinauos.com/content/M7kCi3QB_uwzIp6HyF5J) are supported for conversion.
+This tool currently provides the capability to convert DEB packages into Linglong packages. Generate the required `linglong.yaml` file for building Linglong applications and rely on `ll-builder` to implement application build and export. Only software packages that comply with the [app store packaging standards](https://doc.chinauos.com/content/M7kCi3QB_uwzIp6HyF5J) are supported for conversion.
 
 :::tip
 

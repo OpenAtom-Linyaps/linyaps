@@ -32,13 +32,13 @@ Arguments:
 `ll-builder create`命令根据输入的项目名称在当前目录创建对应的文件夹，同时生成构建所需的 `linglong.yaml`模板文件。示例如下：
 
 ```bash
-ll-builder create org.deepin.demo
+ll-builder create org.deepin.hello
 ```
 
-`ll-builder create org.deepin.demo`命令输出如下：
+`ll-builder create org.deepin.hello`命令输出如下：
 
 ```text
-org.deepin.demo/
+org.deepin.hello/
 └── linglong.yaml
 ```
 
@@ -54,8 +54,8 @@ version: "1"
 
 ```yaml
 package:
-  id: org.deepin.demo
-  name: deepin-demo
+  id: org.deepin.hello
+  name: hello
   version: 0.0.0.1
   kind: app
   description: |
@@ -83,8 +83,7 @@ runtime: org.deepin.Runtime/23.0.1
 玲珑应用的启动命令。
 
 ```yaml
-command:
-  - /opt/apps/org.deepin.demo/files/bin/demo
+command: [echo, -e, hello world]
 ```
 
 ### 源码
@@ -119,28 +118,28 @@ build: |
 version: "1"
 
 package:
-  id: org.deepin.demo
-  name: deepin-demo
-  version: 0.0.0.1
+  id: @ID@
+  name: your name #set your application name
+  version: 0.0.0.1 #set your version
   kind: app
   description: |
-    simple qt demo.
+    your description #set a brief text to introduce your application.
 
-command:
-  - /opt/apps/org.deepin.demo/files/bin/demo
+command: [echo, -e, hello world] #the commands that your application need to run.
 
-base: org.deepin.foundation/23.0.0
-runtime: org.deepin.Runtime/23.0.1
+base: org.deepin.foundation/23.0.0 #set the base environment, this can be changed.
 
-sources:
-  - kind: git
-    url: "https://github.com/linuxdeepin/linglong-builder-demo.git"
-    version: master
-    commit: a3b89c3aa34c1aff8d7f823f0f4a87d5da8d4dc0
+#set the runtime environment if you need, a example of setting deepin runtime is as follows.
+#runtime:
+#org.deepin.Runtime/23.0.1
+
+#set the source if you need, a simple example of git is as follows.
+#source:
+#  - kind: git
+#    url: https://github.com/linuxdeepin/linglong-builder-demo.git
+#    version: master\n
+#    commit: a3b89c3aa34c1aff8d7f823f0f4a87d5da8d4dc0
 
 build: |
-  cd /project/linglong/sources/linglong-builder-demo.git
-  qmake -makefile PREFIX=${PREFIX} LIB_INSTALL_DIR=${PREFIX}/lib/${TRIPLET}
-  make
-  make install
+  echo 'hello' #some operation to build this project
 ```

@@ -9,3 +9,10 @@
 3. Why is there no sound from software that requires audio?
 
    Prompt "libpulsecommon-12.2.so not found" can be addressed by adding a line in the `build` section of the linglong.yaml file: `mv $PREFIX/lib/$TRIPLET/pulseaudio/* $PREFIX/lib/$TRIPLET`.
+4. Why is the `command` field empty in the generated `linglong.yaml` file?
+
+   ll-pica retrieves the 'Exec' field from the desktop file within the deb package. If the command is empty, please verify if the desktop file path
+   within the deb package exists in the following locations.
+
+   - /opt/apps/$appid/entries/applications
+   - /usr/share/applications

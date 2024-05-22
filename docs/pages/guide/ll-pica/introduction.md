@@ -1,6 +1,6 @@
 # ll-pica 简介
 
-本工具目前提供 deb 包转换为玲珑包的能力。目前只支持转换符合[应用商店打包规范](https://doc.chinauos.com/content/M7kCi3QB_uwzIp6HyF5J)的软件包。
+本工具目前提供 deb 包转换为玲珑包的能力，生成构建玲珑应用需要的 linglong.yaml 文件，并依赖 ll-builder 来实现应用构建和导出。目前只支持转换符合[应用商店打包规范](https://doc.chinauos.com/content/M7kCi3QB_uwzIp6HyF5J)的软件包。
 
 :::tip
 

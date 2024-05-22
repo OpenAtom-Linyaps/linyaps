@@ -98,7 +98,7 @@ ll-builder run
 
 the successful output of `ll-builder run` is as follows:
 
-![org.deepin.demo.png](../ll-builder/images/org.deepin.demo.png)
+![org.deepin.calculator.png](./images/org.deepin.calculator.png)
 
 For debugging purposes, use the additional `--exec /bin/bash` parameter to replace the default program executed upon entering the container, for example:
 

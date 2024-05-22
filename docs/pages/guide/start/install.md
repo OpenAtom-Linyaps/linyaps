@@ -4,19 +4,21 @@ SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-# 安装
+# 安装玲珑
 
-目前支持，deepin v23、UOS 1070。
+玲珑由三部分组成
 
-## 系统
+- ll-builder 用来构建和调试玲珑应用，由 linglong-builder 提供。
+- ll-box 沙箱容器，由 linglong-box 提供。
+- ll-cli 管理和运行玲珑应用，由 linglong-bin 提供。
 
-- deepin v23
+## deepin v23
 
 ```bash
-sudo apt install linglong-builder
+sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
-- UOS 1070
+## UOS 1070
 
 添加玲珑仓库源
 
@@ -26,5 +28,23 @@ echo "deb [trusted=yes] https://ci.deepin.com/repo/deepin/deepin-community/lingl
 
 ```bash
 sudo apt update
-sudo apt install linglong-builder
+sudo apt install linglong-builder linglong-box linglong-bin
+```
+
+# 安装 pica
+
+本工具目前提供 deb 包转换为玲珑包的能力，生成构建玲珑应用需要的 linglong.yaml 文件，并依赖 ll-builder 来实现应用构建和导出。
+
+## deepin v23
+
+```bash
+sudo apt install linglong-pica
+```
+
+## UOS 1070
+
+需要添加仓库源，前面已添加。
+
+```bash
+sudo apt install linglong-pica
 ```

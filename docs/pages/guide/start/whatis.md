@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-# 简介
+# 概述
 
 玲珑是统信软件自研的开源软件包格式，用于替代 `deb`、`rpm`等包管理工具，实现了应用包管理、分发、容器、集成开发工具等功能。
 
@@ -45,28 +45,10 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 | 不安装运行                | ✔ （提供 Bundle 模式）         | ✘            | ✘               | ✔                                      |
 | 不解压运行                | ✔ （提供 Bundle 模式）         | ✘            | ✔               | ✔                                      |
 | 自分发/绿色格式分发       | ◐ （技术可行，但是系统做限制） | ✘            | ✘               | ✔                                      |
-| 支持 Wine 应用运行        | ✔                              | ◐ （理论可行 | ◐ （理论可行）  | ◐ （使用 LD 修改 open 调用，兼容性差） |
+| 支持 Wine 应用运行        | ◐   (适配中)                 | ◐ （理论可行 | ◐ （理论可行）  | ◐ （使用 LD 修改 open 调用，兼容性差） |
 | 离线环境支持              | ✔                              | ✔            | ✔               | ✔                                      |
 | 权限管理                  | ✔                              | ✔            | ✔               | ✘                                      |
-| 中心仓库                  | repo.linglong.space                  | FlatHub       | Snap Store       | AppImageHub                             |
+| 中心仓库                  | mirror-repo-linglong.deepin.com | FlatHub       | Snap Store       | AppImageHub                             |
 | 多版本共存                | ✔                              | ✔            | ✔               | ✔                                      |
 | 点对点分发                | ✔                              | ✔            | ✔               | ✔                                      |
 | 应用升级                  | 仓库升级                        | 仓库升级      | 仓库升级         | 官方工具升级                            |
-
-```vue
-<template>
-  <div>ttttdddd</div>
-  <div>{{test}}</div>
-</template>
-<script>
-export default {
-  data() {
-    return {
-      test: 344
-    }
-  },
-  mounted(){
-    
-  }
-}
-</script>

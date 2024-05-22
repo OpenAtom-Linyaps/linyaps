@@ -8,7 +8,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 `ll-builder run`命令可以运行编译后的可执行程序。
 
-查看`ll-builder run`命令的帮助信息：
+查看 `ll-builder run`命令的帮助信息：
 
 ```bash
 ll-builder run --help
@@ -36,12 +36,14 @@ ll-builder run
 
 `ll-builder run`运行成功输出如下：
 
-![org.deepin.demo.png](./images/org.deepin.demo.png)
+```bash
+hello world
+```
 
-为了便于调试，使用额外的`--exec /bin/bash`参数可替换进入容器后默认执行的程序，如：
+为了便于调试，使用额外的 `--exec /bin/bash`参数可替换进入容器后默认执行的程序，如：
 
 ```bash
 ll-builder run --exec /bin/bash
 ```
 
-使用该选项，`ll-builder`创建容器后将进入`bash`终端，可在容器内执行其他操作。
+使用该选项，`ll-builder`创建容器后将进入 `bash`终端，可在容器内执行其他操作。

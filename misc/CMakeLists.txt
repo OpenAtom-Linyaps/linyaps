@@ -140,7 +140,7 @@ install(
 
 # linglong-repair-tool bin
 install(
-  FILES ${CMAKE_CURRENT_BINARY_DIR}/script/linglong-repair-tool
+  PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/script/linglong-repair-tool
   DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 

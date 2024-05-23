@@ -28,7 +28,7 @@ Global Flags:
 ```
 
 ```bash
-ll-builder adep -d "dep1,dep2" -p /path/to/linglong.yaml
+ll-pica adep -d "dep1,dep2" -p /path/to/linglong.yaml
 ```
 
 如果在 linglong.yaml 所在路径中执行不用添加 -p 参数。

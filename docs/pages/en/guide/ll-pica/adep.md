@@ -29,7 +29,7 @@ Global Flags:
 ```
 
 ```bash
-ll-builder adep -d "dep1,dep2" -p /path/to/linglong.yaml
+ll-pica adep -d "dep1,dep2" -p /path/to/linglong.yaml
 ```
 
 If executing within the same path where the `linglong.yaml` file resides, there is no need to include the `-p` parameter.

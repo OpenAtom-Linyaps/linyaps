@@ -1499,6 +1499,18 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
         if (info.isDir()) {
             continue;
         }
+        // In KDE environment, every desktop should own the executable permission
+        // We just set the file permission to 0755 here.
+        if (info.suffix() == "desktop") {
+            if (!QFile::setPermissions(info.absoluteFilePath(),
+                                       QFileDevice::ReadOwner | QFileDevice::WriteOwner
+                                         | QFileDevice::ExeOwner | QFileDevice::ReadGroup
+                                         | QFileDevice::ExeGroup | QFileDevice::ReadOther
+                                         | QFileDevice::ExeOther)) {
+                qCritical() << "Failed to chmod" << info.absoluteFilePath();
+                Q_ASSERT(false);
+            }
+        }
 
         const auto parentDirForLinkPath =
           layerEntriesDir.relativeFilePath(it.fileInfo().dir().absolutePath());

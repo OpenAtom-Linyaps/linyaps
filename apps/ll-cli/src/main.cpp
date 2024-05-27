@@ -145,7 +145,7 @@ int main(int argc, char **argv)
                              LINGLONG_USERNAME,
                              "--preserve-env=QT_FORCE_STDERR_LOGGING",
                              "--preserve-env=QDBUS_DEBUG",
-                             "ll-package-manager",
+                             LINGLONG_LIBEXEC_DIR "/ll-package-manager",
                              "--no-dbus" });
               QThread::sleep(1);
 

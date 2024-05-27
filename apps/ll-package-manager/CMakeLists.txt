@@ -7,6 +7,8 @@ pfl_add_executable(
   ./src/main.cpp
   OUTPUT_NAME
   ll-package-manager
+  LIBEXEC
+  linglong
   LINK_LIBRARIES
   PUBLIC
   linglong::linglong)

@@ -75,7 +75,6 @@ cd build
 %{_bindir}/ll-cli
 %{_bindir}/llpkg
 %{_bindir}/linglong-repair-tool
-%{_bindir}/ll-package-manager
 %{_prefix}/lib/%{name}/container/*
 %{_prefix}/lib/sysusers.d/*.conf
 %{_prefix}/lib/systemd/system/*.service
@@ -83,6 +82,7 @@ cd build
 %{_prefix}/lib/systemd/user/*
 %{_prefix}/lib/systemd/system-environment-generators/*
 %{_prefix}/lib/systemd/user-environment-generators/*
+%{_libexecdir}/%{name}/ll-package-manager
 %{_libexecdir}/%{name}/00-id-mapping
 %{_libexecdir}/%{name}/05-initialize
 %{_libexecdir}/%{name}/20-devices

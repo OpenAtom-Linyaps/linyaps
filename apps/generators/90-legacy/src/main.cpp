@@ -45,7 +45,6 @@ int main()
         { "/etc/resolv.conf", "/etc/resolv.conf" },
         { "/etc/resolvconf", "/etc/resolvconf" },
         { "/etc/localtime", "/etc/localtime" },
-        { "/etc/timezone ", "/etc/timezone" },
     };
 
     for (const auto &[source, destination] : roMountMap) {

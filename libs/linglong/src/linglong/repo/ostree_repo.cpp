@@ -856,7 +856,7 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
         api::client::Request_Auth auth;
         auth.setUsername(env.value("LINGLONG_USERNAME"));
         auth.setPassword(env.value("LINGLONG_PASSWORD"));
-        qInfo() << "use auth:" << auth.asJson();
+        qInfo() << "use username: " << auth.getUsername();
 
         QEventLoop loop;
         QEventLoop::connect(
@@ -1113,7 +1113,7 @@ void OSTreeRepo::pull(std::shared_ptr<service::InstallTask> taskContext,
     }
     // 因为更改了仓库配置，所以不使用初始化的值而是重新打开仓库
     g_autoptr(GError) gErr = nullptr;
-    auto repoPath = g_file_new_for_path(tmpRepoDir.path().toStdString().c_str());
+    g_autoptr(GFile) repoPath = g_file_new_for_path(tmpRepoDir.path().toStdString().c_str());
     auto tmpRepo = ostree_repo_new(repoPath);
     auto _ = utils::finally::finally([&]() {
         g_clear_object(&tmpRepo);

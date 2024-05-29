@@ -154,7 +154,8 @@ int main(int argc, char **argv)
     parser.addOptions({ optVerbose });
     parser.addHelpOption();
 
-    QStringList subCommandList = { "create", "build", "run", "export", "push", "convert", "import", "extract" };
+    QStringList subCommandList = { "create", "build",   "run",    "export",
+                                   "push",   "convert", "import", "extract" };
 
     parser.addPositionalArgument("subcommand",
                                  subCommandList.join("\n"),
@@ -467,7 +468,8 @@ int main(int argc, char **argv)
 
               parser.clearPositionalArguments();
 
-              auto execVerbose = QCommandLineOption("exec", "run exec than build script", "command");
+              auto execVerbose =
+                QCommandLineOption("exec", "run exec than build script", "command");
               auto buildOffline = QCommandLineOption(
                 "offline",
                 "only use local files. This implies --skip-fetch-source and --skip-pull-depend",
@@ -574,8 +576,10 @@ int main(int argc, char **argv)
 
               parser.clearPositionalArguments();
 
-              auto execVerbose = QCommandLineOption("exec", "run exec than build script", "command");
-              parser.addOptions({ execVerbose });
+              auto execVerbose =
+                QCommandLineOption("exec", "run exec than build script", "command");
+              auto buildOffline = QCommandLineOption("offline", "only use local files.", "");
+              parser.addOptions({ execVerbose, buildOffline });
 
               parser.addPositionalArgument("run", "run project", "build");
 
@@ -598,7 +602,13 @@ int main(int argc, char **argv)
               if (parser.isSet(execVerbose)) {
                   exec = splitExec(parser.value(execVerbose));
               }
-
+              if (parser.isSet(buildOffline)) {
+                  auto cfg = builder.getConfig();
+                  cfg.skipFetchSource = true;
+                  cfg.skipPullDepend = true;
+                  cfg.offline = true;
+                  builder.setConfig(cfg);
+              }
               auto result = builder.run(exec);
               if (!result) {
                   qCritical() << result.error();

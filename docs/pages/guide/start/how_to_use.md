@@ -82,7 +82,7 @@ build: |
   cmake --build build --target install
 ```
 
-linglong.yaml 文件遵循 yaml 语法规范编写的。
+linglong.yaml 文件遵循 yaml 语法规范。
 
 linglong.yaml 中字段的详细解释参考：[构建配置文件简介](../ll-builder/manifests.md)
 
@@ -115,11 +115,11 @@ ll-builder run --exec /bin/bash
 
 # 转换 deb 应用
 
-这里使用百度网盘作为 deb 转换玲珑包的例子。
+以“百度网盘”为例，接下来介绍将 deb 包转为为玲珑包的过程。
 
 ## 获取软件包
 
-以百度网盘为例。先获取 deb 包文件。目前只支持转换遵循应用商店打包规范的软件。
+先获取 deb 包文件。目前只支持转换遵循应用商店打包规范的软件。
 
 ```bash
 apt download com.baidu.baidunetdisk

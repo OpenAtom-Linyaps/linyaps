@@ -108,11 +108,11 @@ ll-builder run --exec /bin/bash
 
 # Conversion application
 
-Here, we use  baidunetdisk as an example for converting to a Linglong package from a deb package.
+Here, we use  baidunetdisk as an example. We will introduce the process of converting DEB packages into Linglong packages
 
 ## Obtain software package
 
-Take baidunetdisk as an example. First, obtain the deb package file.
+First, obtain the deb package file.
 Currently, only software following the application store packaging
 specifications is supported for conversion.
 

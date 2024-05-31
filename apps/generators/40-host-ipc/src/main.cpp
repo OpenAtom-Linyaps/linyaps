@@ -35,15 +35,19 @@ int main()
     }
 
     auto &mounts = content["mounts"];
+    auto bindIfExist = [&mounts](std::string_view source, std::string_view destination) mutable {
+        if (!std::filesystem::exists(source)) {
+            return;
+        }
 
-    mounts.push_back(u8R"(  {
-        "destination": "/tmp/.X11-unix",
-        "type": "bind",
-        "source": "/tmp/.X11-unix",
-        "options": [
-                "rbind"
-        ]
-    } )"_json);
+        auto realDest = destination.empty() ? source : destination;
+        mounts.push_back({ { "source", source },
+                           { "type", "bind" },
+                           { "destination", realDest },
+                           { "options", nlohmann::json::array({ "rbind" }) } });
+    };
+
+    bindIfExist("/tmp/.X11-unix", "");
 
     auto mount = u8R"({
         "type": "bind",
@@ -82,7 +86,7 @@ int main()
 
     bool xdgRuntimeDirMounted = false;
 
-    [mount, &mounts, &xdgRuntimeDirMounted, &content]() {
+    [mount, &mounts, &xdgRuntimeDirMounted, &content, &bindIfExist]() {
         auto *XDGRuntimeDirEnv = getenv("XDG_RUNTIME_DIR"); // NOLINT
         if (XDGRuntimeDirEnv == nullptr) {
             return;
@@ -127,15 +131,10 @@ int main()
 
         xdgRuntimeDirMounted = true;
 
-        auto pulseMount = mount;
-        pulseMount["destination"] = cognitiveXDGRuntimeDir / "pulse";
-        pulseMount["source"] = hostXDGRuntimeDir / "pulse";
-        mounts.push_back(std::move(pulseMount));
-
-        auto gvfsMount = mount;
-        gvfsMount["destination"] = cognitiveXDGRuntimeDir / "gvfs";
-        gvfsMount["source"] = hostXDGRuntimeDir / "gvfs";
-        mounts.push_back(std::move(gvfsMount));
+        bindIfExist((hostXDGRuntimeDir / "pulse").string(),
+                    (cognitiveXDGRuntimeDir / "pulse").string());
+        bindIfExist((hostXDGRuntimeDir / "gvfs").string(),
+                    (cognitiveXDGRuntimeDir / "gvfs").string());
 
         [&hostXDGRuntimeDir, &cognitiveXDGRuntimeDir, &mounts]() {
             auto *waylandDisplayEnv = getenv("WAYLAND_DISPLAY"); // NOLINT

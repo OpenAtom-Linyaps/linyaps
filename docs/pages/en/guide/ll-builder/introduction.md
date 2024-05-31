@@ -11,8 +11,11 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 The main functions are as follows:
 
 - Supports building in a standalone sandbox.
+
 <!-- - Defined a version management system. -->
-- Provides a list of software development kits.
+
+- Provides DTK software development kits.
+
 <!-- - Contains a complete release process. -->
 
 View the help information for the `ll-builder` command:
@@ -38,4 +41,6 @@ Arguments:
                  export
                  push
                  convert
+                 import
+                 extract
 ```

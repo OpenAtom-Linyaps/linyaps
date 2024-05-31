@@ -1,3 +1,9 @@
+linglong (1.5.3-1) unstable; urgency=medium
+
+  * release 1.5.3-1
+
+ -- dengbo <dengbo<dengbo@deepin.org>>  Fri, 31 May 2024 11:36:50 +0800
+
 linglong (1.5.2-1) unstable; urgency=medium
 
   * fix: mount failed when '$HOME/.deepinwine' is a symlink

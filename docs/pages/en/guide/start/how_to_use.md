@@ -6,7 +6,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # Build Linglong applications
 
-Here, we use `deepin-calculator` as an example for building a Linglong application from source code.
+Taking [deepin-calculator](https://github.com/linuxdeepin/deepin-calculator.git) as an example, introduce the process of building a Linglong package from source code.
 
 ## Create Linglong project
 

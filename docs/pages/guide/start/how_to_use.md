@@ -6,7 +6,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # 构建玲珑应用
 
-这里以 [deepin-calculator](https://github.com/linuxdeepin/deepin-calculator.git) 作为从源码构建玲珑应用的例子。
+以 [deepin-calculator](https://github.com/linuxdeepin/deepin-calculator.git) 为例，介绍从源码构建玲珑包的过程。
 
 玲珑应用的 appid 需要使用倒置域名的方式命名。
 
@@ -115,7 +115,7 @@ ll-builder run --exec /bin/bash
 
 # 转换 deb 应用
 
-以“百度网盘”为例，接下来介绍将 deb 包转为为玲珑包的过程。
+以百度网盘为例，介绍将 deb 包转为玲珑包的过程。
 
 ## 获取软件包
 

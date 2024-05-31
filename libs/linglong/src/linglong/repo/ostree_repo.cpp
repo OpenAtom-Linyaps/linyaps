@@ -1066,10 +1066,29 @@ utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref, boo
 {
     LINGLONG_TRACE("remove " + ref.toString());
 
-    if (!this->getLayerQDir(ref, develop).removeRecursively()) {
+    auto layerDir = this->getLayerQDir(ref, develop);
+    if (!layerDir.removeRecursively()) {
         qCritical() << "Failed to remove layer directory of" << ref.toString()
                     << "develop:" << develop;
         Q_ASSERT(false);
+    }
+   
+    // clean empty directories
+    // from LINGLONG_ROOT/layers/main/APPID/version/arch
+    // to LINGLONG_ROOT/layers
+
+    QDir repoLayerDir(this->repoDir.absoluteFilePath("layers"));
+    while (layerDir != repoLayerDir) {
+        if (!layerDir.isEmpty()) {
+            break;
+        }
+        if (!layerDir.removeRecursively()) {
+            qCritical() << "Failed to remove dir: " << layerDir.absolutePath();
+        }
+        if (!layerDir.cdUp()) {
+            qCritical() << "Failed to access the parent dir: " << layerDir.absolutePath();
+            break;
+        }
     }
 
     auto refspec = ostreeSpecFromReference(ref, develop).toUtf8();

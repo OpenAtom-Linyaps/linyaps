@@ -29,32 +29,22 @@ int main()
         return -1;
     }
 
-    auto commonMounts = u8R"( [
-        {
-            "destination": "/run/udev",
-            "type": "bind",
-            "source": "/run/udev",
-            "options": [
-                    "rbind"
-            ]
-        },{
-            "destination": "/dev/snd",
-            "type": "bind",
-            "source": "/dev/snd",
-            "options": [
-                    "rbind"
-            ]
-        }
-    ])"_json;
-
     auto &mounts = content["mounts"];
-    mounts.insert(mounts.end(), commonMounts.begin(), commonMounts.end());
-    if (std::filesystem::exists("/dev/dri")) {
-        mounts.push_back({ { "destination", "/dev/dri" },
+    auto bindIfExist = [&mounts](std::string_view source, std::string_view destination) mutable {
+        if (!std::filesystem::exists(source)) {
+            return;
+        }
+
+        auto realDest = destination.empty() ? source : destination;
+        mounts.push_back({ { "source", source },
                            { "type", "bind" },
-                           { "source", "/dev/dri" },
+                           { "destination", realDest },
                            { "options", nlohmann::json::array({ "rbind" }) } });
-    }
+    };
+
+    bindIfExist("/run/udev", "");
+    bindIfExist("/dev/snd", "");
+    bindIfExist("/dev/dri", "");
 
     nlohmann::json videoMounts = nlohmann::json::array();
     for (const auto &entry : std::filesystem::directory_iterator{ "/dev" }) {

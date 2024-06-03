@@ -11,11 +11,13 @@ project(
   HOMEPAGE_URL "https://github.com/linuxdeepin/linglong"
   LANGUAGES CXX)
 
-set(LINGLONG_VERSION "" CACHE STRING "The version of linglong project.")
+set(LINGLONG_VERSION
+    ""
+    CACHE STRING "The version of linglong project.")
 
 if(NOT ("${LINGLONG_VERSION}" STREQUAL ""))
   message(STATUS "Project version has been overridden to ${LINGLONG_VERSION}")
-  set(CMAKE_PROJECT_VERSION ${LINGLONG_VERSION})
+  set(PROJECT_VERSION ${LINGLONG_VERSION})
 endif()
 
 set(LINGLONG_USERNAME

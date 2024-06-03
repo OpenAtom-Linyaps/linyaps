@@ -21,7 +21,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 5. Where is app data saved? Where can I find it outside the container?
 
    Because Linglong applications follow the principle of non-interference, the `XDG_DATA_HOME`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME` environment variables are defined in the corresponding path of the host machine, `~/.linglong/<appid>`/. So the user application data will be saved under this path. When writing data while the application is running, it should also be able to read the corresponding environment variable to write the data. Prohibit reading and writing configurations of other applications.
-6. The application provides the `dbus service` file, where do I place it? What does the `Exec` segment write?
+6. The application provides the `dbus service` file, where do I place it? What does the `Exec` field write?
 
    When the application provides the `dbus service` file, it needs to be placed in the `entries/dbus-1/services` directory. If `Exec` executes the binary in the Linglong package, use the `--exec` option parameter to execute the corresponding binary.
 7. After the app is installed, the launcher cannot find it?
@@ -35,11 +35,11 @@ SPDX-License-Identifier: LGPL-3.0-or-later
    The desktop file does not provide Icon field.
 10. Where are the icons stored?
 
-    svg  -> $PREFIX/share/icons/hicolor/scalable/apps/
+    svg  → $PREFIX/share/icons/hicolor/scalable/apps/
 
     Other formats are stored according to resolution, such as 16x16.
 
-    png/xpm -> $PREFIX/share/icons/hicolor/16X16/apps/
+    png/xpm → $PREFIX/share/icons/hicolor/16X16/apps/
 11. Why do `xdg-open` and `xdg-email` that come with the application fail?
 
     Linglong specially handles `xdg-open` and `xdg-email` in `runtime`, so the application is forbidden to execute the executable file or script of `xdg-open` and `xdg-email` that it carries.
@@ -54,7 +54,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
     Due to the system upgrade of `glibc`, the application fails to use the built-in browser, and the application needs to be re-adapted. A temporary solution is to set the environment variable: `export QTWEBENGINE_DISABLE_SANDBOX=1`.
 15. When the application is running, the `libqxcb.so` library cannot be found or the `qtwebengine` error is reported. What can I do?
 
-    When a `qt.conf` file exists, you need to configure the correct path in the file or use the `QTWEBENGINEPROCESS_PATH`, `QTWEBENGINE_RESOURCE_PATH`, `QT_QPA_PLATFORM_PLUGIN_PATH`, and `QT_PLUGIN_PATH` environment variables to configure the search path.
+    When a `qt.conf` file exists, you need to configure the correct path in the file or use the `QTWEBENGINEPROCESS_PATH`, `QTWEBENGINE_RESOURCES_PATH`, `QT_QPA_PLATFORM_PLUGIN_PATH`, and `QT_PLUGIN_PATH` environment variables to configure the search path.
 16. Can the application carry the database file by itself and write data to the database during operation?
 
     The file system in the container is a read-only file system and does not allow data to be written to application resource files.

@@ -21,7 +21,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 5. 应用数据保存到哪里？在容器外哪里能找到？
 
    因玲珑应用遵循互不干涉原则，`XDG_DATA_HOME`、`XDG_CONFIG_HOME`、`XDG_CACHE_HOME`环境变量被定义到宿主机 `~/.linglong/<appid>`/对应的路径下，因此用户应用数据会保存在此路径下，应用运行过程中写入数据时，也应该读取对应的环境变量写入数据。禁止读写其它应用的配置。
-6. 应用提供了 `dbus service`文件，如何放置？`Exec`段写什么？
+6. 应用提供了 `dbus service`文件，如何放置？`Exec`字段写什么？
 
    应用提供 `dbus service`文件时，需要放到 `entries/dbus-1/services`目录下，如果 `Exec`执行玲珑包内二进制，使用 `--exec`选项参数执行对应的二进制。
 7. 应用安装后，启动器无法找到？
@@ -29,17 +29,17 @@ SPDX-License-Identifier: LGPL-3.0-or-later
    TryExec=xxx, 当xxx 在 $PATH 路径中不存在时，会认为该应用不存在不予显示。
 8. 为什么图标显示为小黑点？
 
-   desktop 写了 Icon 字段，且 Icon 字段名称不对或者使用绝对路径。
+   desktop 写了 Icon 字段，Icon 字段名称错误或者使用了绝对路径。
 9. 为什么图标显示为齿轮？
 
    desktop 未提供 Icon 字段。
 10. 图标存放在哪个路径？
 
-    svg  -> $PREFIX/share/icons/hicolor/scalable/apps/
+    svg  → $PREFIX/share/icons/hicolor/scalable/apps/
 
     其他格式按分辨率存放，如16X16
 
-    png/xpm -> $PREFIX/share/icons/hicolor/16X16/apps/
+    png/xpm → $PREFIX/share/icons/hicolor/16X16/apps/
 11. 应用自带的 `xdg-open`、`xdg-email`为什么失效？
 
     `runtime`中玲珑特殊处理了 `xdg-open`、`xdg-email`，因此应用禁止执行自己携带的xdg-open、xdg-email可执行文件或者脚本。

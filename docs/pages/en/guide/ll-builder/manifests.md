@@ -70,14 +70,11 @@ runtime: org.deepin.Runtime/23.0.1
 Describes the source information.
 
 ```yaml
-source:
+sources:
   kind: git
   url: https://github.com/linuxdeepin/deepin-calculator.git
   version: master
   commit: d7e207b4a71bbd97f7d818de5044228c1a6e2c92
-  patch:
-    - patches/fix-install-prefix-path.patch
-    - patches/fix-lib-install-path.patch
 ```
 
 | name    | description                                                                                   |

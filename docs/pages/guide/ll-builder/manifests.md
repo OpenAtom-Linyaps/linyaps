@@ -74,14 +74,11 @@ runtime: org.deepin.Runtime/23.0.1
 描述源码信息。
 
 ```yaml
-source:
+sources:
   kind: git
   url: https://github.com/linuxdeepin/deepin-calculator.git
   version: master
   commit: d7e207b4a71bbd97f7d818de5044228c1a6e2c92
-  patch: 
-    - patches/fix-install-prefix-path.patch
-    - patches/fix-lib-install-path.patch
 ```
 
 | 名称    | 描述                                                      |
@@ -91,7 +88,6 @@ source:
 | version | 源码分支版本，类型为 git 时填写                           |
 | digest  | 归档文件的hash值，使用sha256算法加密，类型为archive时填写 |
 | commit  | 源码某次提交 hash 值，类型为 git 时填写                   |
-| patch   | 源码补丁路径                                              |
 
 ### 构建规则
 

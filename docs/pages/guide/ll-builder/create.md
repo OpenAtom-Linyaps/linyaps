@@ -91,7 +91,7 @@ command: [echo, -e, hello world]
 使用git源码
 
 ```yaml
-source:
+sources:
   kind: git
   url: "https://github.com/linuxdeepin/linglong-builder-demo.git"
   version: master
@@ -134,7 +134,7 @@ base: org.deepin.foundation/23.0.0 #set the base environment, this can be change
 #org.deepin.Runtime/23.0.1
 
 #set the source if you need, a simple example of git is as follows.
-#source:
+#sources:
 #  - kind: git
 #    url: https://github.com/linuxdeepin/linglong-builder-demo.git
 #    version: master\n

@@ -1,8 +1,17 @@
+linglong (1.5.4-1) unstable; urgency=medium
+
+  * fix: remove extra dir after uninstall
+  * fix: no package exist after update failed
+  * fix: check some file exists or not during generating config
+  * fix: fix docs
+
+ -- dengbo <dengbo@deepin.org>  Mon, 03 Jun 2024 14:15:43 +0800
+
 linglong (1.5.3-1) unstable; urgency=medium
 
   * release 1.5.3-1
 
- -- dengbo <dengbo<dengbo@deepin.org>>  Fri, 31 May 2024 11:36:50 +0800
+ -- dengbo <dengbo@deepin.org>  Fri, 31 May 2024 11:36:50 +0800
 
 linglong (1.5.2-1) unstable; urgency=medium
 

@@ -104,7 +104,7 @@ ll-builder run
 
 ![org.deepin.calculator.png](./images/org.deepin.calculator.png)
 
-为了便于调试，使用额外的 `--exec /bin/bash`参数可替换进入容器后默认执行的程序，如：
+为了便于调试，可以使用额外的 `--exec /bin/bash` 参数，替换进入容器后默认执行的程序
 
 ```bash
 ll-builder run --exec /bin/bash

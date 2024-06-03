@@ -426,25 +426,27 @@ void PackageManager::Update(const std::shared_ptr<InstallTask> &taskContext,
         || taskContext->currentStatus() == InstallTask::Canceled) {
         return;
     }
-    t.addRollBack([this, &newRef, &develop]() noexcept {
+    t.addRollBack([this, &newRef, &ref, &develop]() noexcept {
         auto result = this->repo.remove(newRef, develop);
         if (!result) {
             qCritical() << result.error();
         }
         this->repo.unexportReference(newRef);
+        this->repo.exportReference(ref);
     });
-
-    auto result = this->repo.remove(ref, develop);
-    if (!result) {
-        taskContext->updateStatus(InstallTask::Failed, result.error().message());
-        return;
-    }
 
     this->repo.unexportReference(ref);
     this->repo.exportReference(newRef);
 
-    taskContext->updateStatus(InstallTask::Success, "Upgrade " + ref.toString() + " success");
+    taskContext->updateStatus(InstallTask::Success,
+                              "Upgrade " + ref.toString() + "to" + newRef.toString() + " success");
     t.commit();
+
+    // try to remove old version
+    auto result = this->repo.remove(ref, develop);
+    if (!result) {
+        qCritical() << "Failed to remove old package: " << ref.toString();
+    }
 }
 
 auto PackageManager::Search(const QVariantMap &parameters) noexcept -> QVariantMap

@@ -1,0 +1,56 @@
+# Maintainer: ComixHe <self@comix.he.cn>
+
+pkgname=linglong-git
+_pkgname=linglong
+pkgver=1.5.3.r0.gd0664b9f
+pkgrel=1
+pkgdesc="Linglong is the container application toolkit of deepin"
+arch=('x86_64' 'aarch64')
+url='https://github.com/linuxdeepin/linglong'
+license=('LGPL3')
+depends=(
+        'bash'
+        'ostree'
+        'desktop-file-utils'
+        'shared-mime-info'
+        'glib2'
+        'erofs-utils'
+        'git'
+)
+makedepends=(
+        'cmake'
+        'gtest'
+        'git'
+        'docopt'
+        'qt5-websockets'
+        'pkg-config'
+        'systemd-libs'
+        'ninja'
+)
+optdepends=(
+        'crun'
+)
+provides=('linglong')
+conflicts=('linglong')
+source=("git+https://github.com/linuxdeepin/linglong.git")
+sha256sums=('SKIP')
+
+pkgver() {
+        cd $srcdir/$_pkgname
+        git describe --long --tags "$(git rev-list --tags --max-count=1)" | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+prepare() {
+        cd $srcdir/$_pkgname
+        cmake -B build -GNinja \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_INSTALL_PREFIX=/usr \
+                -DCPM_LOCAL_PACKAGES_ONLY=ON \
+                -DLINGLONG_VERSION="$pkgver"
+        cmake --build build
+}
+
+package() {
+        cd $srcdir/$_pkgname/build
+        DESTDIR="$pkgdir" ninja install
+}

@@ -54,7 +54,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
     因系统升级了 `glibc`，导致应用使用内置浏览器时失败，需要应用重新适配。临时解决方案是设置环境变量：`export QTWEBENGINE_DISABLE_SANDBOX=1`。
 15. 应用运行时，找不到 `libqxcb.so`库或者 `qtwebengine` 报错？
 
-    存在 `qt.conf`文件时，在文件中配置正确路径，或者使用 `QTWEBENGINEPROCESS_PATH`、`QTWEBENGINE_RESOURCE_PATH`、`QT_QPA_PLATFORM_PLUGIN_PATH`、`QT_PLUGIN_PATH`环境变量配置搜索路径。
+    存在 `qt.conf`文件时，在文件中配置正确路径，或者使用 `QTWEBENGINEPROCESS_PATH`、`QTWEBENGINE_RESOURCES_PATH`、`QT_QPA_PLATFORM_PLUGIN_PATH`、`QT_PLUGIN_PATH`环境变量配置搜索路径。
 16. 应用能否自己携带数据库文件，并在运行中往数据库中写入数据？
 
     容器内文件系统是只读文件系统，不允许往应用资源文件中写入数据。

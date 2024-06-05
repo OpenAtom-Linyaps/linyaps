@@ -230,7 +230,7 @@ int Cli::run(std::map<std::string, docopt::value> &args)
         command = info->command.value_or(std::vector<std::string>{});
     }
     if (command.empty()) {
-        qWarning() << "invalid command found in package" << QString::fromStdString(info->appid);
+        qWarning() << "invalid command found in package" << QString::fromStdString(info->id);
         command = { "bash" };
     }
     auto execArgs = filePathMapping(args, command);
@@ -698,13 +698,13 @@ int Cli::search(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    std::vector<api::types::v1::PackageInfo> pkgs;
+    std::vector<api::types::v1::PackageInfoV2> pkgs;
 
     if (isShowDev) {
         pkgs = *result->packages;
     } else {
         for (const auto &info : *result->packages) {
-            if (info.packageInfoModule == "develop") {
+            if (info.packageInfoV2Module == "develop") {
                 continue;
             }
 
@@ -1008,7 +1008,7 @@ Cli::filePathMapping(std::map<std::string, docopt::value> &args,
     return execArgs;
 }
 
-void Cli::filterPackageInfosFromType(std::vector<api::types::v1::PackageInfo> &list,
+void Cli::filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> &list,
                                      const QString &type) noexcept
 {
     // if type is all, do nothing, return tier of all packages.
@@ -1016,7 +1016,7 @@ void Cli::filterPackageInfosFromType(std::vector<api::types::v1::PackageInfo> &l
         return;
     }
 
-    std::vector<api::types::v1::PackageInfo> temp;
+    std::vector<api::types::v1::PackageInfoV2> temp;
 
     // if type is runtime or app, return tier of specific type.
     for (const auto &info : list) {

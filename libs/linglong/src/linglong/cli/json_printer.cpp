@@ -25,12 +25,12 @@ void JSONPrinter::printErr(const utils::error::Error &err)
     }.dump() << std::endl;
 }
 
-void JSONPrinter::printPackage(const api::types::v1::PackageInfo &info)
+void JSONPrinter::printPackage(const api::types::v1::PackageInfoV2 &info)
 {
     std::cout << nlohmann::json(info).dump() << std::endl;
 }
 
-void JSONPrinter::printPackages(const std::vector<api::types::v1::PackageInfo> &list)
+void JSONPrinter::printPackages(const std::vector<api::types::v1::PackageInfoV2> &list)
 {
     std::cout << nlohmann::json(list).dump() << std::endl;
 }

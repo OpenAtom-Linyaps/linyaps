@@ -10,7 +10,7 @@
 #include "linglong/api/types/v1/CliContainer.hpp"
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/LayerInfo.hpp"
-#include "linglong/api/types/v1/PackageInfo.hpp"
+#include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/PackageManager1GetRepoInfoResultRepoInfo.hpp"
 #include "linglong/api/types/v1/PackageManager1Package.hpp"
 #include "linglong/api/types/v1/RepoConfig.hpp"
@@ -35,8 +35,8 @@ public:
     virtual ~Printer() = default;
 
     virtual void printErr(const utils::error::Error &);
-    virtual void printPackage(const api::types::v1::PackageInfo &);
-    virtual void printPackages(const std::vector<api::types::v1::PackageInfo> &);
+    virtual void printPackage(const api::types::v1::PackageInfoV2 &);
+    virtual void printPackages(const std::vector<api::types::v1::PackageInfoV2> &);
     virtual void printContainers(const std::vector<api::types::v1::CliContainer> &);
     virtual void printReply(const api::types::v1::CommonResult &);
     virtual void printRepoConfig(const api::types::v1::RepoConfig &);
@@ -45,7 +45,7 @@ public:
     virtual void printContent(const QStringList &filePaths);
 
 private:
-    void printPackageInfo(const api::types::v1::PackageInfo &);
+    void printPackageInfo(const api::types::v1::PackageInfoV2 &);
 };
 
 } // namespace linglong::cli

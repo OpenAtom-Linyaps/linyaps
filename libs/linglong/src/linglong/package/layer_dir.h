@@ -7,7 +7,7 @@
 #ifndef LINGLONG_PACKAGE_LAYER_DIR_H_
 #define LINGLONG_PACKAGE_LAYER_DIR_H_
 
-#include "linglong/api/types/v1/PackageInfo.hpp"
+#include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/utils/error/error.h"
 
 #include <QDir>
@@ -18,7 +18,7 @@ class LayerDir : public QDir
 {
 public:
     using QDir::QDir;
-    utils::error::Result<api::types::v1::PackageInfo> info() const;
+    utils::error::Result<api::types::v1::PackageInfoV2> info() const;
     utils::error::Result<QByteArray> rawInfo() const;
 };
 

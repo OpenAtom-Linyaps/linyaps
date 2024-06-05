@@ -14,6 +14,7 @@
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container.h"
 #include "linglong/utils/command/env.h"
+#include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/command/ocppi-helper.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/global/initialize.h"
@@ -650,15 +651,16 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         base->version.tweak = std::nullopt;
     }
 
-    auto info = api::types::v1::PackageInfo{
-        .appid = this->project.package.id,
+    auto info = api::types::v1::PackageInfoV2{
         .arch = { QSysInfo::currentCpuArchitecture().toStdString() },
         .base = base->toString().toStdString(),
         .channel = ref->channel.toStdString(),
         .command = project.command,
         .description = this->project.package.description,
+        .id = this->project.package.id,
+        .schema_version = PACKAGE_INFO_VERSION,
         .kind = this->project.package.kind,
-        .packageInfoModule = "runtime",
+        .packageInfoV2Module = "runtime",
         .name = this->project.package.name,
         .permissions = this->project.permissions,
         .runtime = {},
@@ -688,7 +690,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
 
     infoFile.close();
 
-    info.packageInfoModule = "develop";
+    info.packageInfoV2Module = "develop";
     info.size = util::sizeOfDir(developOutput.absoluteFilePath(".."));
 
     infoFile.setFileName(developOutput.absoluteFilePath("../info.json"));

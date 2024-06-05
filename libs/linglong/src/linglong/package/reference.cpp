@@ -48,7 +48,7 @@ utils::error::Result<Reference> Reference::parse(const QString &raw) noexcept
 }
 
 utils::error::Result<Reference>
-Reference::fromPackageInfo(const api::types::v1::PackageInfo &info) noexcept
+Reference::fromPackageInfo(const api::types::v1::PackageInfoV2 &info) noexcept
 {
     LINGLONG_TRACE("parse reference from package info");
 
@@ -66,7 +66,7 @@ Reference::fromPackageInfo(const api::types::v1::PackageInfo &info) noexcept
     }
 
     auto reference = package::Reference::create(QString::fromStdString(info.channel),
-                                                QString::fromStdString(info.appid),
+                                                QString::fromStdString(info.id),
                                                 *version,
                                                 *architecture);
     if (!reference) {

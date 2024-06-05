@@ -467,7 +467,12 @@ int main(int argc, char **argv)
               LINGLONG_TRACE("command build");
 
               parser.clearPositionalArguments();
-
+              auto yamlFile =
+                QCommandLineOption("f",
+                                   "file path of the linglong.yaml (default is ./linglong.yaml)",
+                                   "path",
+                                   "linglong.yaml");
+              ;
               auto execVerbose =
                 QCommandLineOption("exec", "run exec than build script", "command");
               auto buildOffline = QCommandLineOption(
@@ -486,7 +491,8 @@ int main(int argc, char **argv)
                 QCommandLineOption("skip-commit-output", "skip commit build output", "");
               auto buildArch = QCommandLineOption("arch", "set the build arch", "arch");
 
-              parser.addOptions({ execVerbose,
+              parser.addOptions({ yamlFile,
+                                  execVerbose,
                                   buildOffline,
                                   buildSkipFetchSource,
                                   buildSkipPullDepend,
@@ -503,7 +509,7 @@ int main(int argc, char **argv)
               parser.process(app);
               auto project =
                 linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(
-                  QDir().absoluteFilePath("linglong.yaml"));
+                  QDir().absoluteFilePath(parser.value(yamlFile)));
               if (!project) {
                   qCritical() << project.error();
                   return -1;
@@ -576,10 +582,15 @@ int main(int argc, char **argv)
 
               parser.clearPositionalArguments();
 
+              auto yamlFile =
+                QCommandLineOption("f",
+                                   "file path of the linglong.yaml (default is ./linglong.yaml)",
+                                   "path",
+                                   "linglong.yaml");
               auto execVerbose =
                 QCommandLineOption("exec", "run exec than build script", "command");
               auto buildOffline = QCommandLineOption("offline", "only use local files.", "");
-              parser.addOptions({ execVerbose, buildOffline });
+              parser.addOptions({ yamlFile, execVerbose, buildOffline });
 
               parser.addPositionalArgument("run", "run project", "build");
 
@@ -587,7 +598,7 @@ int main(int argc, char **argv)
 
               auto project =
                 linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(
-                  QDir().absoluteFilePath("linglong.yaml"));
+                  QDir().absoluteFilePath(parser.value(yamlFile)));
               if (!project) {
                   qCritical() << project.error();
                   return -1;
@@ -621,11 +632,20 @@ int main(int argc, char **argv)
           [&](QCommandLineParser &parser) -> int {
               LINGLONG_TRACE("command export");
               parser.clearPositionalArguments();
+
+              auto yamlFile =
+                QCommandLineOption("f",
+                                   "file path of the linglong.yaml (default is ./linglong.yaml)",
+                                   "path",
+                                   "linglong.yaml");
+              parser.addOptions({
+                yamlFile,
+              });
               parser.process(app);
 
               auto project =
                 linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(
-                  QDir().absoluteFilePath("linglong.yaml"));
+                  QDir().absoluteFilePath(parser.value(yamlFile)));
               if (!project) {
                   qCritical() << project.error();
                   return -1;
@@ -730,6 +750,15 @@ int main(int argc, char **argv)
               LINGLONG_TRACE("command push");
 
               parser.clearPositionalArguments();
+
+              auto yamlFile =
+                QCommandLineOption("f",
+                                   "file path of the linglong.yaml (default is ./linglong.yaml)",
+                                   "path",
+                                   "linglong.yaml");
+              parser.addOptions({
+                yamlFile,
+              });
               parser.addPositionalArgument("push", "push build result to repo", "push");
 
               auto optRepoUrl = QCommandLineOption("repo-url", "remote repo url", "--repo-url");
@@ -737,7 +766,7 @@ int main(int argc, char **argv)
               auto optRepoChannel =
                 QCommandLineOption("channel", "remote repo channel", "--channel", "main");
               auto optNoDevel = QCommandLineOption("no-develop", "push without develop", "");
-              parser.addOptions({ optRepoUrl, optRepoName, optRepoChannel, optNoDevel });
+              parser.addOptions({ yamlFile, optRepoUrl, optRepoName, optRepoChannel, optNoDevel });
 
               parser.process(app);
 
@@ -748,7 +777,7 @@ int main(int argc, char **argv)
               bool pushWithDevel = parser.isSet(optNoDevel) ? false : true;
               auto project =
                 linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(
-                  QDir().absoluteFilePath("linglong.yaml"));
+                  QDir().absoluteFilePath(parser.value(yamlFile)));
               if (!project) {
                   qCritical() << project.error();
                   return -1;

@@ -281,6 +281,67 @@ $defs:
       module:
         type: string
         description: module of package manager
+  PackageInfoV2:
+    title: PackageInfoV2
+    description: this is the each item output of ll-cli list --json
+    type: object
+    required:
+      - channel
+      - id
+      - schema_version
+      - module
+      - arch
+      - version
+      - kind
+      - name
+      - size
+      - base
+    properties:
+      channel:
+        type: string
+        description: channel of package info
+      id:
+        type: string
+        description: id of package info
+      schema_version:
+        type: string
+        description: version of 'PackageInfo'
+      module:
+        type: string
+        description: module of package info
+      arch:
+        type: array
+        description: arch of package info
+        items:
+          type: string
+      version:
+        type: string
+        description: version of package info
+      kind:
+        type: string
+        description: kind of package info
+      name:
+        type: string
+        description: name of package info
+      size:
+        description: Uncompressed package size in bytes
+        type: integer
+      runtime:
+        type: string
+        description: runtime of package info
+      base:
+        type: string
+        description: base of package info
+      command:
+        type: array
+        description: command of package info
+        items:
+          type: string
+      permissions:
+        $ref: "#/$defs/ApplicationConfigurationPermissions"
+      description:
+        type: string
+        description: description of package info
   PackageInfo:
     title: PackageInfo
     description: this is the each item output of ll-cli list --json
@@ -301,7 +362,7 @@ $defs:
         description: channel of package info
       appid:
         type: string
-        description: appid of package info
+        description: appid of package info (deprecated in V2)
       module:
         type: string
         description: module of package info
@@ -432,7 +493,7 @@ $defs:
       packages:
         type: array
         items:
-          $ref: "#/$defs/PackageInfo"
+          $ref: "#/$defs/PackageInfoV2"
   PackageManager1GetRepoInfoResult:
     type: object
     description: result of package manager get repo info

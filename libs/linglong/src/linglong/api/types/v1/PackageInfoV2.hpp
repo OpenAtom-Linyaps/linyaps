@@ -9,7 +9,7 @@
 //
 //  Then include this file, and then do
 //
-//     PackageInfo.hpp data = nlohmann::json::parse(jsonString);
+//     PackageInfoV2.hpp data = nlohmann::json::parse(jsonString);
 
 #pragma once
 
@@ -23,27 +23,68 @@ namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
+/**
+* this is the each item output of ll-cli list --json
+*/
+
 using nlohmann::json;
 
-struct PackageInfo {
 /**
-* appid of package info (deprecated in V2)
+* this is the each item output of ll-cli list --json
 */
-std::string appid;
+struct PackageInfoV2 {
+/**
+* arch of package info
+*/
 std::vector<std::string> arch;
+/**
+* base of package info
+*/
 std::string base;
+/**
+* channel of package info
+*/
 std::string channel;
+/**
+* command of package info
+*/
 std::optional<std::vector<std::string>> command;
+/**
+* description of package info
+*/
 std::optional<std::string> description;
+/**
+* id of package info
+*/
+std::string id;
+/**
+* version of 'PackageInfo'
+*/
+std::string schema_version;
+/**
+* kind of package info
+*/
 std::string kind;
-std::string packageInfoModule;
+/**
+* module of package info
+*/
+std::string packageInfoV2Module;
+/**
+* name of package info
+*/
 std::string name;
 std::optional<ApplicationConfigurationPermissions> permissions;
+/**
+* runtime of package info
+*/
 std::optional<std::string> runtime;
 /**
 * Uncompressed package size in bytes
 */
 int64_t size;
+/**
+* version of package info
+*/
 std::string version;
 };
 }

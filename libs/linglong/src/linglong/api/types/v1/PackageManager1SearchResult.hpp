@@ -17,7 +17,7 @@
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
-#include "linglong/api/types/v1/PackageInfo.hpp"
+#include "linglong/api/types/v1/PackageInfoV2.hpp"
 
 namespace linglong {
 namespace api {
@@ -26,7 +26,7 @@ namespace v1 {
 using nlohmann::json;
 
 struct PackageManager1SearchResult {
-std::optional<std::vector<PackageInfo>> packages;
+std::optional<std::vector<PackageInfoV2>> packages;
 /**
 * We do not use DBus error. We return an error code instead. Non-zero code indicated errors
 * occurs and message should be displayed to user.

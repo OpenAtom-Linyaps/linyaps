@@ -58,7 +58,7 @@ private:
     std::vector<std::string>
     filePathMapping(std::map<std::string, docopt::value> &args,
                     const std::vector<std::string> &command) const noexcept;
-    static void filterPackageInfosFromType(std::vector<api::types::v1::PackageInfo> &list,
+    static void filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> &list,
                                            const QString &type) noexcept;
 
 public:

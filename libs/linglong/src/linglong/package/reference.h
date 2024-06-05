@@ -7,7 +7,7 @@
 #ifndef LINGLONG_PACKAGE_REFERENCE_H_
 #define LINGLONG_PACKAGE_REFERENCE_H_
 
-#include "linglong/api/types/v1/PackageInfo.hpp"
+#include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/package/architecture.h"
 #include "linglong/package/version.h"
 
@@ -25,7 +25,7 @@ public:
                                                   const Version &version,
                                                   const Architecture &architecture) noexcept;
     static utils::error::Result<Reference>
-    fromPackageInfo(const api::types::v1::PackageInfo &info) noexcept;
+    fromPackageInfo(const api::types::v1::PackageInfoV2 &info) noexcept;
 
     QString channel;
     QString id;

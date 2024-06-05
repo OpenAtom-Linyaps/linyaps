@@ -18,6 +18,7 @@
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/transaction.h"
+#include "linglong/utils/packageinfo_handler.h"
 
 #include <gio/gio.h>
 #include <glib.h>
@@ -809,7 +810,7 @@ utils::error::Result<void> OSTreeRepo::importLayerDir(const package::LayerDir &d
         return LINGLONG_ERR(reference);
     }
 
-    const auto isDevel = info->packageInfoModule == "develop";
+    const auto isDevel = info->packageInfoV2Module == "develop";
 
     if (this->getLayerDir(*reference, isDevel)) {
         return LINGLONG_ERR(reference->toString() + " exists.");
@@ -1248,29 +1249,27 @@ utils::error::Result<package::Reference> OSTreeRepo::clearReference(
     return LINGLONG_ERR(reference);
 }
 
-utils::error::Result<std::vector<api::types::v1::PackageInfo>>
+utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
 OSTreeRepo::listLocal() const noexcept
 {
-    std::vector<api::types::v1::PackageInfo> pkgInfos;
+    std::vector<api::types::v1::PackageInfoV2> pkgInfos;
 
     QDir layersDir = this->repoDir.absoluteFilePath("layers");
     Q_ASSERT(layersDir.exists());
 
     auto pushBackPkgInfos = [&pkgInfos](QDir &dir) noexcept {
-        QFile runtimePkgInfoFile = dir.absoluteFilePath("runtime/info.json");
-        if (runtimePkgInfoFile.exists()) {
-            auto pkgInfo =
-              utils::serialize::LoadJSONFile<api::types::v1::PackageInfo>(runtimePkgInfoFile);
+        const QString runtimePkgInfoFilePath = dir.absoluteFilePath("runtime/info.json");
+        if (QFile::exists(runtimePkgInfoFilePath)) {
+            auto pkgInfo = utils::parsePackageInfo(runtimePkgInfoFilePath);
             if (pkgInfo) {
                 pkgInfos.emplace_back(std::move(*pkgInfo));
             }
         }
 
-        QFile devPkgInfoFile = dir.absoluteFilePath("develop/info.json");
-        if (devPkgInfoFile.exists()) {
-            auto pkgInfo =
-              utils::serialize::LoadJSONFile<api::types::v1::PackageInfo>(devPkgInfoFile);
-            if (!pkgInfo) {
+        const QString devPkgInfoFilePath = dir.absoluteFilePath("develop/info.json");
+        if (QFile::exists(devPkgInfoFilePath)) {
+            auto pkgInfo = utils::parsePackageInfo(devPkgInfoFilePath);
+            if (pkgInfo) {
                 pkgInfos.emplace_back(std::move(*pkgInfo));
             }
         }
@@ -1294,7 +1293,7 @@ OSTreeRepo::listLocal() const noexcept
     return pkgInfos;
 }
 
-utils::error::Result<std::vector<api::types::v1::PackageInfo>>
+utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
 OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
 {
     LINGLONG_TRACE("list remote references");
@@ -1315,8 +1314,8 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
         req.setVersion(fuzzyRef.version->toString());
     }
 
-    utils::error::Result<std::vector<api::types::v1::PackageInfo>> pkgInfos =
-      std::vector<api::types::v1::PackageInfo>{};
+    utils::error::Result<std::vector<api::types::v1::PackageInfoV2>> pkgInfos =
+      std::vector<api::types::v1::PackageInfoV2>{};
 
     QEventLoop loop;
     const qint32 HTTP_OK = 200;
@@ -1334,10 +1333,11 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
           for (const auto &record : resp.getData()) {
               auto json = nlohmann::json::parse(QJsonDocument(record.asJsonObject()).toJson());
               json["appid"] = json["appId"];
+              json["id"] = json["appId"];
               json.erase("appId");
               json["base"] = ""; // FIXME: This is werid.
               json["arch"] = nlohmann::json::array({ json["arch"] });
-              auto pkgInfo = utils::serialize::LoadJSON<api::types::v1::PackageInfo>(json);
+              auto pkgInfo = utils::parsePackageInfo(json);
               if (!pkgInfo) {
                   qCritical() << "Ignored invalid record" << record.asJson() << pkgInfo.error();
                   continue;
@@ -1464,7 +1464,7 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
         std::vector<package::Reference> refs;
 
         for (const auto &localInfo : *pkgInfos) {
-            if (QString::fromStdString(localInfo.appid) != ref.id) {
+            if (QString::fromStdString(localInfo.id) != ref.id) {
                 continue;
             }
 

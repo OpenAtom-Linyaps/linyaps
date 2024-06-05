@@ -34,6 +34,7 @@ pfl_add_library(
   src/linglong/api/types/v1/LinglongAPIV1.hpp
   src/linglong/api/types/v1/OciConfigurationPatch.hpp
   src/linglong/api/types/v1/PackageInfo.hpp
+  src/linglong/api/types/v1/PackageInfoV2.hpp
   src/linglong/api/types/v1/PackageManager1GetRepoInfoResult.hpp
   src/linglong/api/types/v1/PackageManager1GetRepoInfoResultRepoInfo.hpp
   src/linglong/api/types/v1/PackageManager1InstallParameters.hpp
@@ -111,6 +112,8 @@ pfl_add_library(
   src/linglong/utils/serialize/yaml.cpp
   src/linglong/utils/serialize/yaml.h
   src/linglong/utils/std_helper/qdebug_helper.h
+  src/linglong/utils/packageinfo_handler.cpp
+  src/linglong/utils/packageinfo_handler.h
   src/linglong/utils/transaction.cpp
   src/linglong/utils/transaction.h
   src/linglong/utils/xdg/desktop_entry.cpp

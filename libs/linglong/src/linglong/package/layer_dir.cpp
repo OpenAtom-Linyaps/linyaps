@@ -6,16 +6,17 @@
 
 #include "linglong/package/layer_dir.h"
 
+#include "linglong/api/types/v1/PackageInfo.hpp"
+#include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/serialize/json.h"
 
 namespace linglong::package {
 
-utils::error::Result<api::types::v1::PackageInfo> LayerDir::info() const
+utils::error::Result<api::types::v1::PackageInfoV2> LayerDir::info() const
 {
     LINGLONG_TRACE("get layer info from " + this->absolutePath());
 
-    auto info =
-      utils::serialize::LoadJSONFile<api::types::v1::PackageInfo>(this->filePath("info.json"));
+    auto info = utils::parsePackageInfo(this->filePath("info.json"));
     if (!info) {
         return LINGLONG_ERR(info);
     }

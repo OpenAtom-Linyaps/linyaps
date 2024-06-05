@@ -64,8 +64,8 @@ public:
     utils::error::Result<package::Reference> clearReference(
       const package::FuzzyReference &fuzz, const clearReferenceOption &opts) const noexcept;
 
-    utils::error::Result<std::vector<api::types::v1::PackageInfo>> listLocal() const noexcept;
-    utils::error::Result<std::vector<api::types::v1::PackageInfo>>
+    utils::error::Result<std::vector<api::types::v1::PackageInfoV2>> listLocal() const noexcept;
+    utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
     listRemote(const package::FuzzyReference &fuzzyRef) const noexcept;
 
     utils::error::Result<void> remove(const package::Reference &ref, bool develop = false) noexcept;

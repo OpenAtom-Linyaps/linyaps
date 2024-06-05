@@ -9,7 +9,7 @@
 //
 //  Then include this file, and then do
 //
-//     PackageInfo.hpp data = nlohmann::json::parse(jsonString);
+//     PackageInfoV2.hpp data = nlohmann::json::parse(jsonString);
 
 #pragma once
 
@@ -32,11 +32,7 @@ using nlohmann::json;
 /**
 * this is the each item output of ll-cli list --json
 */
-struct PackageInfo {
-/**
-* appid of package info (deprecated in V2)
-*/
-std::string appid;
+struct PackageInfoV2 {
 /**
 * arch of package info
 */
@@ -58,13 +54,21 @@ std::optional<std::vector<std::string>> command;
 */
 std::optional<std::string> description;
 /**
+* id of package info
+*/
+std::string id;
+/**
+* version of 'PackageInfo'
+*/
+std::string schema_version;
+/**
 * kind of package info
 */
 std::string kind;
 /**
 * module of package info
 */
-std::string packageInfoModule;
+std::string packageInfoV2Module;
 /**
 * name of package info
 */

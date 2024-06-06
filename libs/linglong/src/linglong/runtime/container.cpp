@@ -118,6 +118,7 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
         auto arguments = std::vector<std::string>{
             "/bin/bash",
             "--login",
+            "-e",
             "-c",
             bashArgs.join(" ").toStdString(),
         };

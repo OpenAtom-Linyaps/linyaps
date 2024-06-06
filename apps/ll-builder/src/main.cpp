@@ -127,8 +127,8 @@ int main(int argc, char **argv)
     // 初始化 qt qrc
     Q_INIT_RESOURCE(builder_releases);
     using namespace linglong::utils::global;
-
-    applicationInitializte();
+    // 初始化应用，builder在非tty环境也输出日志
+    applicationInitializte(true);
 
     auto ociRuntimeCLI = qgetenv("LINGLONG_OCI_RUNTIME");
     if (ociRuntimeCLI.isEmpty()) {

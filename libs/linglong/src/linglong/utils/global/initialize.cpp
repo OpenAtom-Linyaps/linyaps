@@ -46,9 +46,10 @@ void catchUnixSignals(std::initializer_list<int> quitSignals)
         sigaction(sig, &sa, nullptr);
 }
 
+bool forceStderrLogging = false;
+
 auto shouldLogToStderr() -> bool
 {
-    static bool forceStderrLogging = qEnvironmentVariableIntValue("QT_FORCE_STDERR_LOGGING");
     return forceStderrLogging || isatty(STDERR_FILENO);
 }
 
@@ -57,7 +58,7 @@ void linglong_message_handler(QtMsgType type,
                               const QString &message)
 {
     QString formattedMessage = qFormatLogMessage(type, context, message);
-
+    // 非tty环境可能是从systemd启动的应用，为避免和下面的sd_journal输出重复，不输出日志到标准错误流
     if (shouldLogToStderr()) {
         // print nothing if message pattern didn't apply / was empty.
         // (still print empty lines, e.g. because message itself was empty)
@@ -110,10 +111,15 @@ void linglong_message_handler(QtMsgType type,
 }
 } // namespace
 
-void applicationInitializte()
+void applicationInitializte(bool appForceStderrLogging)
 {
     QCoreApplication::setOrganizationName("deepin");
     QLoggingCategory::setFilterRules("*.debug=false");
+    if (appForceStderrLogging) {
+        forceStderrLogging = true;
+    } else if (qEnvironmentVariableIntValue("QT_FORCE_STDERR_LOGGING")) {
+        forceStderrLogging = true;
+    }
     installMessageHandler();
     catchUnixSignals({ SIGTERM, SIGQUIT, SIGINT, SIGHUP });
 }

@@ -9,7 +9,7 @@
 
 namespace linglong::utils::global {
 
-void applicationInitializte();
+void applicationInitializte(bool appForceStderrLogging = false);
 void installMessageHandler();
 bool linglongInstalled();
 

@@ -21,11 +21,27 @@ namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
+/**
+* this is the output result of ll-cli ps --json
+*/
+
 using nlohmann::json;
 
+/**
+* this is the output result of ll-cli ps --json
+*/
 struct CliContainer {
+/**
+* id of container
+*/
 std::string id;
+/**
+* package of container
+*/
 std::string package;
+/**
+* pid of container
+*/
 int64_t pid;
 };
 }

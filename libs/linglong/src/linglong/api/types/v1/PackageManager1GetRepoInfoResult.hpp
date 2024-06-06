@@ -23,9 +23,23 @@ namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
+/**
+* result of package manager get repo info
+*
+* this is common error result of ll-cli command --json
+*/
+
 using nlohmann::json;
 
+/**
+* result of package manager get repo info
+*
+* this is common error result of ll-cli command --json
+*/
 struct PackageManager1GetRepoInfoResult {
+/**
+* result of package manager get repo info
+*/
 PackageManager1GetRepoInfoResultRepoInfo repoInfo;
 /**
 * We do not use DBus error. We return an error code instead. Non-zero code indicated errors

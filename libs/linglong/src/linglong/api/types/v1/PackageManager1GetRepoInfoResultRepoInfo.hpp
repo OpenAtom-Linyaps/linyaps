@@ -21,10 +21,23 @@ namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
+/**
+* result of package manager get repo info
+*/
+
 using nlohmann::json;
 
+/**
+* result of package manager get repo info
+*/
 struct PackageManager1GetRepoInfoResultRepoInfo {
+/**
+* default repo of package manager get repo info
+*/
 std::string defaultRepo;
+/**
+* repos of package manager get repo info
+*/
 std::map<std::string, std::string> repos;
 };
 }

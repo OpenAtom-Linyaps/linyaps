@@ -23,8 +23,19 @@ namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
+/**
+* result of package manager search
+*
+* this is common error result of ll-cli command --json
+*/
+
 using nlohmann::json;
 
+/**
+* result of package manager search
+*
+* this is common error result of ll-cli command --json
+*/
 struct PackageManager1SearchResult {
 std::optional<std::vector<PackageInfo>> packages;
 /**

@@ -9,7 +9,7 @@
 //
 //  Then include this file, and then do
 //
-//     CommonResult.hpp data = nlohmann::json::parse(jsonString);
+//     Version.hpp data = nlohmann::json::parse(jsonString);
 
 #pragma once
 
@@ -21,26 +21,9 @@ namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
-/**
-* this is common error result of ll-cli command --json
-*/
-
 using nlohmann::json;
 
-/**
-* this is common error result of ll-cli command --json
-*/
-struct CommonResult {
-/**
-* We do not use DBus error. We return an error code instead. Non-zero code indicated errors
-* occurs and message should be displayed to user.
-*/
-int64_t code;
-/**
-* Human readable result message.
-*/
-std::string message;
-};
+enum class Version : int { The1 };
 }
 }
 }

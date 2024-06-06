@@ -23,10 +23,20 @@ namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
+/**
+* application configuration
+*/
+
 using nlohmann::json;
 
+/**
+* application configuration
+*/
 struct ApplicationConfiguration {
 std::optional<ApplicationConfigurationPermissions> permissions;
+/**
+* version of configuration file
+*/
 std::string version;
 };
 }

@@ -22,16 +22,19 @@ namespace api {
 namespace types {
 namespace v1 {
 /**
-* Meta infomation on the head of layer file.
+* Meta information on the head of layer file.
 */
 
 using nlohmann::json;
 
 /**
-* Meta infomation on the head of layer file.
+* Meta information on the head of layer file.
 */
 struct LayerInfo {
 nlohmann::json info;
+/**
+* version of layer info
+*/
 std::string version;
 };
 }

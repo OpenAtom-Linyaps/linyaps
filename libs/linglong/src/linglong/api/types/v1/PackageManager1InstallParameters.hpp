@@ -23,8 +23,15 @@ namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
+/**
+* package manager install parameters
+*/
+
 using nlohmann::json;
 
+/**
+* package manager install parameters
+*/
 struct PackageManager1InstallParameters {
 PackageManager1Package package;
 };

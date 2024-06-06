@@ -23,8 +23,15 @@ namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
+/**
+* package manager uninstall parameters
+*/
+
 using nlohmann::json;
 
+/**
+* package manager uninstall parameters
+*/
 struct PackageManager1UninstallParameters {
 PackageManager1Package package;
 };

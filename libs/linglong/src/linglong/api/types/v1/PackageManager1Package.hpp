@@ -21,12 +21,31 @@ namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
+/**
+* package manager of linglong
+*/
+
 using nlohmann::json;
 
+/**
+* package manager of linglong
+*/
 struct PackageManager1Package {
+/**
+* channel of package manager
+*/
 std::optional<std::string> channel;
+/**
+* id of package manager
+*/
 std::string id;
+/**
+* module of package manager
+*/
 std::optional<std::string> packageManager1PackageModule;
+/**
+* version of package manager
+*/
 std::optional<std::string> version;
 };
 }

@@ -21,10 +21,23 @@ namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
+/**
+* oci configuration patch
+*/
+
 using nlohmann::json;
 
+/**
+* oci configuration patch
+*/
 struct OciConfigurationPatch {
+/**
+* version of oci configuration patch
+*/
 std::string ociVersion;
+/**
+* oci configuration patch
+*/
 std::vector<nlohmann::json> patch;
 };
 }

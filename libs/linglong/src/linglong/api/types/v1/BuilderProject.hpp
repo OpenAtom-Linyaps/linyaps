@@ -35,14 +35,38 @@ using nlohmann::json;
 * Linglong project build file.
 */
 struct BuilderProject {
+/**
+* used base of package
+*/
 std::string base;
+/**
+* build script of builder project
+*/
 std::string build;
+/**
+* command of builder project
+*/
 std::optional<std::vector<std::string>> command;
+/**
+* package of build file
+*/
 BuilderProjectPackage package;
 std::optional<ApplicationConfigurationPermissions> permissions;
+/**
+* used runtime of package
+*/
 std::optional<std::string> runtime;
+/**
+* sources of package
+*/
 std::optional<std::vector<BuilderProjectSource>> sources;
+/**
+* strip script of builder project
+*/
 std::optional<std::string> strip;
+/**
+* version of build file
+*/
 std::string version;
 };
 }

@@ -9,7 +9,7 @@
 //
 //  Then include this file, and then do
 //
-//     CommonResult.hpp data = nlohmann::json::parse(jsonString);
+//     Sections.hpp data = nlohmann::json::parse(jsonString);
 
 #pragma once
 
@@ -21,25 +21,19 @@ namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
-/**
-* this is common error result of ll-cli command --json
-*/
-
 using nlohmann::json;
 
+struct Sections {
 /**
-* this is common error result of ll-cli command --json
+* Name of the section contains the read only filesystem image. It SHOULD always be
+* 'linglong.bundle'.
 */
-struct CommonResult {
+std::string bundle;
 /**
-* We do not use DBus error. We return an error code instead. Non-zero code indicated errors
-* occurs and message should be displayed to user.
+* Name of the section contains the icon of this UAB file. It SHOULD always be
+* 'linglong.icon'.
 */
-int64_t code;
-/**
-* Human readable result message.
-*/
-std::string message;
+std::optional<std::string> icon;
 };
 }
 }

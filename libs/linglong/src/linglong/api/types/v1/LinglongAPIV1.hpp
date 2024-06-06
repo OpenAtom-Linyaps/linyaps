@@ -36,6 +36,7 @@
 #include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1UpdateParameters.hpp"
 #include "linglong/api/types/v1/RepoConfig.hpp"
+#include "linglong/api/types/v1/UabMetaInfo.hpp"
 
 namespace linglong {
 namespace api {
@@ -76,6 +77,7 @@ std::optional<CommonResult> packageManager1UninstallResult;
 std::optional<PackageManager1UpdateParameters> packageManager1UpdateParameters;
 std::optional<PackageManager1ResultWithTaskID> packageManager1UpdateResult;
 std::optional<RepoConfig> repoConfig;
+std::optional<UabMetaInfo> uabMetaInfo;
 };
 }
 }

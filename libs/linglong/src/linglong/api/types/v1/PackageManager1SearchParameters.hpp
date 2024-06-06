@@ -21,9 +21,19 @@ namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
+/**
+* package manager search parameters
+*/
+
 using nlohmann::json;
 
+/**
+* package manager search parameters
+*/
 struct PackageManager1SearchParameters {
+/**
+* id of package manager search
+*/
 std::string id;
 };
 }

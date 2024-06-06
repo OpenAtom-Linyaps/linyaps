@@ -31,8 +31,17 @@ using nlohmann::json;
 * Configuration file for local linglong repository.
 */
 struct RepoConfig {
+/**
+* default repo of repo config
+*/
 std::string defaultRepo;
+/**
+* repos of repo config
+*/
 std::map<std::string, std::string> repos;
+/**
+* version of repo config
+*/
 int64_t version;
 };
 }

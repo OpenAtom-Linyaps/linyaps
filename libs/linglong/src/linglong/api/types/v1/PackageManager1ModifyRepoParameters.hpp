@@ -24,7 +24,13 @@ namespace v1 {
 using nlohmann::json;
 
 struct PackageManager1ModifyRepoParameters {
+/**
+* default repo of package manager modify repo parameters
+*/
 std::string defaultRepo;
+/**
+* repos of of package manager modify repo
+*/
 std::map<std::string, std::string> repos;
 };
 }

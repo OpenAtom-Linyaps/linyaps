@@ -21,10 +21,23 @@ namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
+/**
+* items of container
+*/
+
 using nlohmann::json;
 
+/**
+* items of container
+*/
 struct ApplicationConfigurationPermissionsBind {
+/**
+* mount source file to the container
+*/
 std::string destination;
+/**
+* source file of host
+*/
 std::string source;
 };
 }

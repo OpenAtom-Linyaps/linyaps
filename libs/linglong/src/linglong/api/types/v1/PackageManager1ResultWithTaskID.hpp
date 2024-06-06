@@ -21,9 +21,27 @@ namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
+/**
+* package manager update result
+*
+* package manager install result
+*
+* this is common error result of ll-cli command --json
+*/
+
 using nlohmann::json;
 
+/**
+* package manager update result
+*
+* package manager install result
+*
+* this is common error result of ll-cli command --json
+*/
 struct PackageManager1ResultWithTaskID {
+/**
+* task id of package manager install
+*/
 std::optional<std::string> taskID;
 /**
 * We do not use DBus error. We return an error code instead. Non-zero code indicated errors

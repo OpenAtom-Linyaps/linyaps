@@ -9,7 +9,7 @@
 //
 //  Then include this file, and then do
 //
-//     CommonResult.hpp data = nlohmann::json::parse(jsonString);
+//     Layer.hpp data = nlohmann::json::parse(jsonString);
 
 #pragma once
 
@@ -17,29 +17,20 @@
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
+#include "linglong/api/types/v1/PackageInfo.hpp"
+
 namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
-/**
-* this is common error result of ll-cli command --json
-*/
-
 using nlohmann::json;
 
+struct Layer {
+PackageInfo info;
 /**
-* this is common error result of ll-cli command --json
+* Whether this layer file is minified or not.
 */
-struct CommonResult {
-/**
-* We do not use DBus error. We return an error code instead. Non-zero code indicated errors
-* occurs and message should be displayed to user.
-*/
-int64_t code;
-/**
-* Human readable result message.
-*/
-std::string message;
+std::optional<bool> minified;
 };
 }
 }

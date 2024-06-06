@@ -21,15 +21,43 @@ namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
+/**
+* package of build file
+*/
+
 using nlohmann::json;
 
+/**
+* package of build file
+*/
 struct BuilderProjectPackage {
+/**
+* architecture of package
+*/
 std::optional<std::string> architecture;
+/**
+* channel of package
+*/
 std::optional<std::string> channel;
+/**
+* description of package
+*/
 std::string description;
+/**
+* id of package
+*/
 std::string id;
+/**
+* kind of package
+*/
 std::string kind;
+/**
+* name of package
+*/
 std::string name;
+/**
+* version of package
+*/
 std::string version;
 };
 }

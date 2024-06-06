@@ -18,6 +18,10 @@
 #include "linglong/api/types/v1/helper.hpp"
 
 #include "linglong/api/types/v1/LinglongAPIV1.hpp"
+#include "linglong/api/types/v1/UabMetaInfo.hpp"
+#include "linglong/api/types/v1/Version.hpp"
+#include "linglong/api/types/v1/Sections.hpp"
+#include "linglong/api/types/v1/Layer.hpp"
 #include "linglong/api/types/v1/RepoConfig.hpp"
 #include "linglong/api/types/v1/PackageManager1UpdateParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
@@ -119,8 +123,20 @@ void to_json(json & j, const PackageManager1UpdateParameters & x);
 void from_json(const json & j, RepoConfig & x);
 void to_json(json & j, const RepoConfig & x);
 
+void from_json(const json & j, Layer & x);
+void to_json(json & j, const Layer & x);
+
+void from_json(const json & j, Sections & x);
+void to_json(json & j, const Sections & x);
+
+void from_json(const json & j, UabMetaInfo & x);
+void to_json(json & j, const UabMetaInfo & x);
+
 void from_json(const json & j, LinglongAPIV1 & x);
 void to_json(json & j, const LinglongAPIV1 & x);
+
+void from_json(const json & j, Version & x);
+void to_json(json & j, const Version & x);
 
 inline void from_json(const json & j, ApplicationConfigurationPermissionsBind& x) {
 x.destination = j.at("destination").get<std::string>();
@@ -522,6 +538,49 @@ j["repos"] = x.repos;
 j["version"] = x.version;
 }
 
+inline void from_json(const json & j, Layer& x) {
+x.info = j.at("info").get<PackageInfo>();
+x.minified = get_stack_optional<bool>(j, "minified");
+}
+
+inline void to_json(json & j, const Layer & x) {
+j = json::object();
+j["info"] = x.info;
+if (x.minified) {
+j["minified"] = x.minified;
+}
+}
+
+inline void from_json(const json & j, Sections& x) {
+x.bundle = j.at("bundle").get<std::string>();
+x.icon = get_stack_optional<std::string>(j, "icon");
+}
+
+inline void to_json(json & j, const Sections & x) {
+j = json::object();
+j["bundle"] = x.bundle;
+if (x.icon) {
+j["icon"] = x.icon;
+}
+}
+
+inline void from_json(const json & j, UabMetaInfo& x) {
+x.digest = j.at("digest").get<std::string>();
+x.layers = j.at("layers").get<std::vector<Layer>>();
+x.sections = j.at("sections").get<Sections>();
+x.uuid = j.at("uuid").get<std::string>();
+x.version = j.at("version").get<Version>();
+}
+
+inline void to_json(json & j, const UabMetaInfo & x) {
+j = json::object();
+j["digest"] = x.digest;
+j["layers"] = x.layers;
+j["sections"] = x.sections;
+j["uuid"] = x.uuid;
+j["version"] = x.version;
+}
+
 inline void from_json(const json & j, LinglongAPIV1& x) {
 x.applicationConfiguration = get_stack_optional<ApplicationConfiguration>(j, "ApplicationConfiguration");
 x.applicationConfigurationPermissions = get_stack_optional<ApplicationConfigurationPermissions>(j, "ApplicationConfigurationPermissions");
@@ -546,6 +605,7 @@ x.packageManager1UninstallResult = get_stack_optional<CommonResult>(j, "PackageM
 x.packageManager1UpdateParameters = get_stack_optional<PackageManager1UpdateParameters>(j, "PackageManager1UpdateParameters");
 x.packageManager1UpdateResult = get_stack_optional<PackageManager1ResultWithTaskID>(j, "PackageManager1UpdateResult");
 x.repoConfig = get_stack_optional<RepoConfig>(j, "RepoConfig");
+x.uabMetaInfo = get_stack_optional<UabMetaInfo>(j, "UABMetaInfo");
 }
 
 inline void to_json(json & j, const LinglongAPIV1 & x) {
@@ -618,6 +678,21 @@ j["PackageManager1UpdateResult"] = x.packageManager1UpdateResult;
 }
 if (x.repoConfig) {
 j["RepoConfig"] = x.repoConfig;
+}
+if (x.uabMetaInfo) {
+j["UABMetaInfo"] = x.uabMetaInfo;
+}
+}
+
+inline void from_json(const json & j, Version & x) {
+if (j == "1") x = Version::The1;
+else { throw std::runtime_error("Input JSON does not conform to schema!"); }
+}
+
+inline void to_json(json & j, const Version & x) {
+switch (x) {
+case Version::The1: j = "1"; break;
+default: throw std::runtime_error("Unexpected value in enumeration \"[object Object]\": " + std::to_string(static_cast<int>(x)));
 }
 }
 }

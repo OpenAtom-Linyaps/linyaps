@@ -23,9 +23,19 @@ namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
+/**
+* package manager update result
+*/
+
 using nlohmann::json;
 
+/**
+* package manager update result
+*/
 struct PackageManager1UpdateParameters {
+/**
+* packages of package manager update
+*/
 std::vector<PackageManager1Package> packages;
 };
 }

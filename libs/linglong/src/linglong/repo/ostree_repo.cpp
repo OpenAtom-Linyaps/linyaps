@@ -1073,7 +1073,7 @@ utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref, boo
                     << "develop:" << develop;
         Q_ASSERT(false);
     }
-   
+
     // clean empty directories
     // from LINGLONG_ROOT/layers/main/APPID/version/arch
     // to LINGLONG_ROOT/layers
@@ -1112,38 +1112,6 @@ void OSTreeRepo::pull(std::shared_ptr<service::InstallTask> taskContext,
     LINGLONG_TRACE("pull " + refString);
 
     utils::Transaction transaction;
-    QTemporaryDir tmpRepoDir;
-    // 初始化临时仓库
-    {
-        if (!tmpRepoDir.isValid()) {
-            taskContext->updateStatus(service::InstallTask::Status::Failed,
-                                      LINGLONG_ERRV("invalid QTemporaryDir"));
-            return;
-        }
-
-        auto repo = createOstreeRepo(tmpRepoDir.path(),
-                                     QString::fromStdString(this->cfg.defaultRepo),
-                                     QString::fromStdString(this->cfg.repos[this->cfg.defaultRepo]),
-                                     this->ostreeRepoDir().absolutePath());
-        if (!repo) {
-            taskContext->updateStatus(service::InstallTask::Status::Failed, LINGLONG_ERRV(repo));
-            return;
-        }
-        g_clear_object(&(*repo));
-    }
-    // 因为更改了仓库配置，所以不使用初始化的值而是重新打开仓库
-    g_autoptr(GError) gErr = nullptr;
-    g_autoptr(GFile) repoPath = g_file_new_for_path(tmpRepoDir.path().toStdString().c_str());
-    auto tmpRepo = ostree_repo_new(repoPath);
-    auto _ = utils::finally::finally([&]() {
-        g_clear_object(&tmpRepo);
-    });
-    Q_ASSERT(tmpRepo != nullptr);
-    if (ostree_repo_open(tmpRepo, nullptr, &gErr) != TRUE) {
-        taskContext->updateStatus(service::InstallTask::Status::Failed,
-                                  LINGLONG_ERRV("ostree_repo_open", gErr));
-        return;
-    }
     auto *cancellable = taskContext->cancellable();
 
     char *refs[] = { (char *)refString.data(), nullptr };
@@ -1152,7 +1120,8 @@ void OSTreeRepo::pull(std::shared_ptr<service::InstallTask> taskContext,
     auto *progress = ostree_async_progress_new_and_connect(progress_changed, (void *)&data);
     Q_ASSERT(progress != nullptr);
 
-    if (ostree_repo_pull(tmpRepo,
+    g_autoptr(GError) gErr = nullptr;
+    if (ostree_repo_pull(this->ostreeRepo.get(),
                          this->cfg.defaultRepo.c_str(),
                          refs,
                          OSTREE_REPO_PULL_FLAGS_MIRROR,
@@ -1164,41 +1133,6 @@ void OSTreeRepo::pull(std::shared_ptr<service::InstallTask> taskContext,
                                   LINGLONG_ERRV("ostree_repo_pull", gErr));
         return;
     }
-
-    g_autofree auto *fileURLToTmpRepo =
-      g_strconcat("file://", tmpRepoDir.path().toUtf8().constData(), NULL);
-    GVariantBuilder builder{};
-    g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
-    g_variant_builder_add(&builder,
-                          "{s@v}",
-                          "refs",
-                          g_variant_new_variant(g_variant_new_strv((const char *const *)refs, -1)));
-    g_variant_builder_add(&builder,
-                          "{s@v}",
-                          "disable-static-deltas",
-                          g_variant_new_variant(g_variant_new_boolean(TRUE)));
-    g_variant_builder_add(&builder,
-                          "{s@v}",
-                          "disable-sign-verify",
-                          g_variant_new_variant(g_variant_new_boolean(TRUE)));
-    g_variant_builder_add(&builder,
-                          "{s@v}",
-                          "disable-sign-verify-summary",
-                          g_variant_new_variant(g_variant_new_boolean(TRUE)));
-
-    g_autoptr(GVariant) options = g_variant_ref_sink(g_variant_builder_end(&builder));
-
-    if (ostree_repo_pull_with_options(this->ostreeRepo.get(),
-                                      (char *)fileURLToTmpRepo,
-                                      options,
-                                      NULL,
-                                      cancellable,
-                                      &gErr)
-        == FALSE) {
-        taskContext->updateStatus(service::InstallTask::Failed,
-                                  LINGLONG_ERRV("ostree_repo_pull_with_options", gErr));
-        return;
-    };
 
     transaction.addRollBack([this, &reference, &develop]() noexcept {
         auto result = this->remove(reference, develop);

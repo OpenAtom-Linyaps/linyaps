@@ -148,11 +148,8 @@ int exec(struct arg_exec *arg, int argc, char **argv) noexcept
     }
 
     auto wdns = linglong::util::format("--wdns=%s", arg->cwd.c_str());
-    const char *nsenterArgv[] = {
-        "nsenter", "-t",         boxPidStr.c_str(),        "-U",   "-m",
-        "-p",      wdns.c_str(), "--preserve-credentials", "bash", "--login",
-        "-c",      nullptr
-    };
+    const char *nsenterArgv[] = { "nsenter", "-t",         boxPidStr.c_str(),        "-U",   "-m",
+                                  "-p",      wdns.c_str(), "--preserve-credentials", nullptr };
 
     int nsenterArgc{ 0 };
     while (nsenterArgv[nsenterArgc] != nullptr) {
@@ -165,11 +162,9 @@ int exec(struct arg_exec *arg, int argc, char **argv) noexcept
         logErr() << "malloc error";
         return errno;
     }
-
     for (int i = 0; i < nsenterArgc; ++i) {
         newArgv[i] = nsenterArgv[i];
     }
-
     for (int i = 0; i < argc; ++i) {
         newArgv[i + nsenterArgc] = argv[i + 1];
     }

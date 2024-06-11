@@ -246,6 +246,24 @@ int Cli::run(std::map<std::string, docopt::value> &args)
             continue;
         }
 
+        QStringList bashArgs;
+        // 为避免原始args包含空格，每个arg都使用单引号包裹，并对arg内部的单引号进行转义替换
+        for (const auto &arg : execArgs) {
+            bashArgs.push_back(
+              QString("'%1'").arg(QString::fromStdString(arg).replace("'", "'\\''")));
+        }
+
+        if (!bashArgs.isEmpty()) {
+            // exec命令使用原始args中的进程替换bash进程
+            bashArgs.prepend("exec");
+        }
+        // 在原始args前面添加bash --login -c，这样可以使用/etc/profile配置的环境变量
+        execArgs = std::vector<std::string>{
+            "/bin/bash",
+            "--login",
+            "-c",
+            bashArgs.join(" ").toStdString(),
+        };
         auto result =
           this->ociCLI.exec(container.id,
                             execArgs[0],

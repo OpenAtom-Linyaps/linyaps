@@ -40,11 +40,10 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
     LINGLONG_TRACE(QString("run container %1").arg(this->id));
 
     QDir runtimeDir = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+
+    // bundle dir is already created in ContainerBuilder::create 
     QDir bundle = runtimeDir.absoluteFilePath(QString("linglong/%1").arg(this->id));
-    Q_ASSERT(!bundle.exists());
-    if (!bundle.mkpath(".")) {
-        return LINGLONG_ERR("make bundle directory");
-    }
+
     if (!bundle.mkpath("./rootfs")) {
         return LINGLONG_ERR("make rootfs directory");
     }

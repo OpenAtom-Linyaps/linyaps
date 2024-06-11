@@ -18,6 +18,7 @@
 #include <qstandardpaths.h>
 #include <qtemporarydir.h>
 
+#include <fstream>
 #include <unordered_set>
 
 namespace linglong::runtime {
@@ -398,6 +399,34 @@ auto ContainerBuilder::create(const ContainerOptions &opts) noexcept
     if (!originalConfig) {
         return LINGLONG_ERR(originalConfig);
     }
+
+    QDir runtimeDir = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+    QDir bundle = runtimeDir.absoluteFilePath(QString("linglong/%1").arg(opts.containerID));
+    Q_ASSERT(!bundle.exists());
+    if (!bundle.mkpath(".")) {
+        return LINGLONG_ERR(QString("make bundle directory failed %1").arg(bundle.absolutePath()));
+    }
+
+    // save env to /run/user/1000/linglong/xxx/00env.sh, mount it to /etc/profile.d/00env.sh
+    std::string envShFile = bundle.absoluteFilePath("00env.sh").toStdString();
+    {
+        std::ofstream ofs(envShFile);
+        Q_ASSERT(ofs.is_open());
+        if (!ofs.is_open()) {
+            return LINGLONG_ERR("create 00env.sh failed in bundle directory");
+        }
+        for (const auto &env : originalConfig->process->env.value()) {
+            ofs << "export " << env << std::endl;
+        }
+        ofs.close();
+    }
+
+    originalConfig->mounts->push_back(ocppi::runtime::config::types::Mount{
+      .destination = "/etc/profile.d/00env.sh",
+      .options = { { "ro", "rbind" } },
+      .source = envShFile,
+      .type = "bind",
+    });
 
     auto config = fixMount(*originalConfig);
     if (!config) {

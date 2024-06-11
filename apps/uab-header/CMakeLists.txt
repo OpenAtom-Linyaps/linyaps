@@ -2,6 +2,10 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
+if (NOT ${ENABLE_UAB_HEADER})
+  return()
+endif()
+
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 find_library(FOUND_erofsfuse_STATIC "erofsfuse")
 

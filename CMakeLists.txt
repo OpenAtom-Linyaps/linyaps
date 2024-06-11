@@ -20,6 +20,8 @@ if(NOT ("${LINGLONG_VERSION}" STREQUAL ""))
   set(PROJECT_VERSION ${LINGLONG_VERSION})
 endif()
 
+set(ENABLE_UAB_HEADER OFF CACHE BOOL "enable building uab-header")
+
 set(LINGLONG_USERNAME
     "deepin-linglong"
     CACHE STRING "The username for linglong package manager")

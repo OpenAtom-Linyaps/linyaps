@@ -15,8 +15,14 @@ override_dh_auto_install:
 	dh_install debian/sysctl.d/linglong.conf /etc/sysctl.d
 endif
 
+EXTRA_OPTION = -DCPM_LOCAL_PACKAGES_ONLY=ON -DLINGLONG_VERSION=$(DEB_VERSION_UPSTREAM)
+
+ifeq ($(OS) $(VERSION), deepin 23)
+	EXTRA_OPTION += -DENABLE_UAB_HEADER=ON
+endif
+
 override_dh_auto_configure:
-	dh_auto_configure -- -DCPM_LOCAL_PACKAGES_ONLY=ON -DLINGLONG_VERSION=$(DEB_VERSION_UPSTREAM) ${DH_AUTO_ARGS}
+	dh_auto_configure --  ${EXTRA_OPTION}  ${DH_AUTO_ARGS}
 
 # https://sources.debian.org/src/amavisd-new/1:2.13.0-3/debian/rules/?hl=10#L10
 execute_after_dh_installinit:

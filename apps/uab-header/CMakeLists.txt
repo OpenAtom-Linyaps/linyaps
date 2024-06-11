@@ -14,6 +14,7 @@ message(STATUS "found liberofsfuse.a: ${ABS_FILE}")
 
 find_package(libdeflate REQUIRED COMPONENTS libdeflate_static)
 
+pkg_search_module(elf_static REQUIRED IMPORTED_TARGET libelf)
 pkg_search_module(lz4 REQUIRED IMPORTED_TARGET liblz4)
 pkg_search_module(lzma REQUIRED IMPORTED_TARGET liblzma)
 pkg_search_module(ZLIB REQUIRED IMPORTED_TARGET zlib)
@@ -33,7 +34,7 @@ pfl_add_executable(
   LINK_LIBRARIES
   PRIVATE
   ${ABS_FILE}
-  PkgConfig::ELF
+  PkgConfig::elf_static
   PkgConfig::lz4
   PkgConfig::lzma
   PkgConfig::ZLIB

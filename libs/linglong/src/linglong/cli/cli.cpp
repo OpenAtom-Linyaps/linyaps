@@ -22,6 +22,7 @@
 #include <nlohmann/json.hpp>
 
 #include <QFileInfo>
+#include <QTemporaryDir>
 
 #include <filesystem>
 #include <iostream>
@@ -293,20 +294,6 @@ int Cli::run(std::map<std::string, docopt::value> &args)
         }
     }
 
-    auto container = this->containerBuilder.create({
-      .appID = ref->id,
-      .containerID = (ref->toString() + "-" + QUuid::createUuid().toString()).toUtf8().toBase64(),
-      .runtimeDir = runtimeLayerDir,
-      .baseDir = *baseLayerDir,
-      .appDir = *layerDir,
-      .patches = {},
-      .mounts = std::move(applicationMounts),
-    });
-    if (!container) {
-        this->printer.printErr(container.error());
-        return -1;
-    }
-
     ocppi::runtime::config::types::Process p{ .args = execArgs };
     QStringList envList = utils::command::getUserEnv(utils::command::envList);
     std::vector<std::string> originEnvs = p.env.value_or(std::vector<std::string>{});
@@ -328,6 +315,41 @@ int Cli::run(std::map<std::string, docopt::value> &args)
     }
     p.env = originEnvs;
 
+    // write env to /run/user/1000/OCI_RUNTIME/linglong.99.sh
+    QTemporaryDir dir;
+    dir.setAutoRemove(false);
+    auto envShFile = dir.filePath("00env.sh").toStdString();
+    {
+        std::ofstream ofs(envShFile);
+        Q_ASSERT(ofs.is_open());
+        if (!ofs.is_open()) {
+            qWarning() << "create linglong99.sh in bundle directory";
+            return -1;
+        }
+        for (auto var : p.env.value()) {
+            ofs << "export " << var << std::endl;
+        }
+    }
+    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+      .destination = "/etc/profile.d/00env.sh",
+      .options = { { "ro", "rbind" } },
+      .source = envShFile,
+      .type = "bind",
+    });
+
+    auto container = this->containerBuilder.create({
+      .appID = ref->id,
+      .containerID = (ref->toString() + "-" + QUuid::createUuid().toString()).toUtf8().toBase64(),
+      .runtimeDir = runtimeLayerDir,
+      .baseDir = *baseLayerDir,
+      .appDir = *layerDir,
+      .patches = {},
+      .mounts = std::move(applicationMounts),
+    });
+    if (!container) {
+        this->printer.printErr(container.error());
+        return -1;
+    }
     auto result = (*container)->run(p);
     if (!result) {
         this->printer.printErr(result.error());

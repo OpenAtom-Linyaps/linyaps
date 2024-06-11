@@ -158,7 +158,7 @@ int exec(struct arg_exec *arg, int argc, char **argv) noexcept
     while (nsenterArgv[nsenterArgc] != nullptr) {
         ++nsenterArgc;
     }
-    auto newArgc = nsenterArgc + argc + 1; // except argv[0] and add '&'
+    auto newArgc = nsenterArgc + 2; // add argvStr and add '&'
     const char **newArgv = (const char **)malloc(sizeof(char *) * newArgc);
 
     if (newArgv == nullptr) {
@@ -170,12 +170,22 @@ int exec(struct arg_exec *arg, int argc, char **argv) noexcept
         newArgv[i] = nsenterArgv[i];
     }
 
-    for (int i = 0; i < argc; ++i) {
-        newArgv[i + nsenterArgc] = argv[i + 1];
+    int argvStrLen = 2; // with two double quote
+    for (int i = 1; i < argc; ++i) {
+        argvStrLen += strlen(argv[i]) + 1; // each str with a blank
     }
 
-    newArgv[newArgc - 2] = "&";
-    newArgv[newArgc - 1] = nullptr;
+    char *argvStr = (char *)malloc(argvStrLen + 1);
+    strcpy(argvStr, "\"");
+    for (int i = 1; i < argc; i++) {
+        strcat(argvStr, argv[i]);
+        if (i < argc - 1) {
+            strcat(argvStr, " ");
+        }
+    }
+    strcat(argvStr, "\"");
+    newArgv[nsenterArgc] = argvStr;
+    newArgv[newArgc - 1] = "&";
 
     for (int i = 0; i < newArgc; ++i) {
         logDbg() << "newArgv[" << i << "]:" << newArgv[i];

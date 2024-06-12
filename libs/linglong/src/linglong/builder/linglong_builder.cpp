@@ -658,12 +658,12 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         .command = project.command,
         .description = this->project.package.description,
         .id = this->project.package.id,
-        .schema_version = PACKAGE_INFO_VERSION,
         .kind = this->project.package.kind,
         .packageInfoV2Module = "runtime",
         .name = this->project.package.name,
         .permissions = this->project.permissions,
         .runtime = {},
+        .schemaVersion = PACKAGE_INFO_VERSION,
         .size = static_cast<int64_t>(util::sizeOfDir(runtimeOutput.absoluteFilePath(".."))),
         .version = this->project.package.version,
     };

@@ -18,12 +18,12 @@ error::Result<api::types::v1::PackageInfoV2> toPackageInfoV2(const api::types::v
         .command = oldInfo.command,
         .description = oldInfo.description,
         .id = oldInfo.appid,
-        .schema_version = PACKAGE_INFO_VERSION,
         .kind = oldInfo.kind,
         .packageInfoV2Module = oldInfo.packageInfoModule,
         .name = oldInfo.name,
         .permissions = oldInfo.permissions,
         .runtime = oldInfo.runtime,
+        .schemaVersion = PACKAGE_INFO_VERSION,
         .size = oldInfo.size,
         .version = oldInfo.version,
     };

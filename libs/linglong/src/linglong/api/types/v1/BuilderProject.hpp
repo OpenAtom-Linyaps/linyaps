@@ -20,6 +20,7 @@
 #include "linglong/api/types/v1/BuilderProjectPackage.hpp"
 #include "linglong/api/types/v1/ApplicationConfigurationPermissions.hpp"
 #include "linglong/api/types/v1/BuilderProjectSource.hpp"
+#include "linglong/api/types/v1/UabInfo.hpp"
 
 namespace linglong {
 namespace api {
@@ -64,6 +65,10 @@ std::optional<std::vector<BuilderProjectSource>> sources;
 * strip script of builder project
 */
 std::optional<std::string> strip;
+/**
+* additional information for exporting uab
+*/
+std::optional<UabInfo> uabInfo;
 /**
 * version of build file
 */

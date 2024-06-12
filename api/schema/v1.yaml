@@ -168,6 +168,18 @@ $defs:
       - build
       - base
     properties:
+      UABInfo:
+        title: UABInfo
+        type: object
+        description: additional information for exporting uab
+        properties:
+          loader:
+            type: string
+            description: path to the execution entry of uab
+          extra:
+            type: string
+            description: path to directory which contains extra
+                         files used by loader to start container
       version:
         type: string
         description: version of build file

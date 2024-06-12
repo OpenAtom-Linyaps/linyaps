@@ -40,6 +40,7 @@
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/CliContainer.hpp"
 #include "linglong/api/types/v1/BuilderProject.hpp"
+#include "linglong/api/types/v1/UabInfo.hpp"
 #include "linglong/api/types/v1/BuilderProjectSource.hpp"
 #include "linglong/api/types/v1/BuilderProjectPackage.hpp"
 #include "linglong/api/types/v1/BuilderConfig.hpp"
@@ -72,6 +73,9 @@ void to_json(json & j, const BuilderProjectPackage & x);
 
 void from_json(const json & j, BuilderProjectSource & x);
 void to_json(json & j, const BuilderProjectSource & x);
+
+void from_json(const json & j, UabInfo & x);
+void to_json(json & j, const UabInfo & x);
 
 void from_json(const json & j, BuilderProject & x);
 void to_json(json & j, const BuilderProject & x);
@@ -285,6 +289,21 @@ j["version"] = x.version;
 }
 }
 
+inline void from_json(const json & j, UabInfo& x) {
+x.extra = get_stack_optional<std::string>(j, "extra");
+x.loader = get_stack_optional<std::string>(j, "loader");
+}
+
+inline void to_json(json & j, const UabInfo & x) {
+j = json::object();
+if (x.extra) {
+j["extra"] = x.extra;
+}
+if (x.loader) {
+j["loader"] = x.loader;
+}
+}
+
 inline void from_json(const json & j, BuilderProject& x) {
 x.base = j.at("base").get<std::string>();
 x.build = j.at("build").get<std::string>();
@@ -294,6 +313,7 @@ x.permissions = get_stack_optional<ApplicationConfigurationPermissions>(j, "perm
 x.runtime = get_stack_optional<std::string>(j, "runtime");
 x.sources = get_stack_optional<std::vector<BuilderProjectSource>>(j, "sources");
 x.strip = get_stack_optional<std::string>(j, "strip");
+x.uabInfo = get_stack_optional<UabInfo>(j, "UABInfo");
 x.version = j.at("version").get<std::string>();
 }
 
@@ -316,6 +336,9 @@ j["sources"] = x.sources;
 }
 if (x.strip) {
 j["strip"] = x.strip;
+}
+if (x.uabInfo) {
+j["UABInfo"] = x.uabInfo;
 }
 j["version"] = x.version;
 }

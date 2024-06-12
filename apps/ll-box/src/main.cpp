@@ -103,7 +103,7 @@ int exec(struct arg_exec *arg, int argc, char **argv) noexcept
     auto boxPidStr = std::to_string(boxPid);
     auto findLastBox = [&boxPidStr]() {
         std::filesystem::path proc{ "/proc" };
-        if (!std::filesystem::exists(proc)) {
+        if(!std::filesystem::exists(proc)) {
             logFal() << "/proc doesn't exist.";
         }
         auto boxBin = std::filesystem::read_symlink("/proc/self/exe");
@@ -147,40 +147,38 @@ int exec(struct arg_exec *arg, int argc, char **argv) noexcept
         return -1;
     }
 
-    auto wdns = linglong::util::format("--wdns=%s", arg->cwd.c_str());
-    const char *nsenterArgv[] = {
-        "nsenter", "-t",         boxPidStr.c_str(),        "-U",   "-m",
-        "-p",      wdns.c_str(), "--preserve-credentials", "bash", "--login",
-        "-c",      nullptr
-    };
+    int exitCode{ 0 };
+    auto subPid = ::fork();
+    if (subPid == 0) {
+        auto wdns = linglong::util::format("--wdns=%s", arg->cwd.c_str());
+        const char *nsenterArg[] = { "nsenter", "-t", boxPidStr.c_str(), "-U",
+                                     "-m",      "-p", wdns.c_str(),      "--preserve-credentials" };
+        auto newArgc = 7 + argc - 1; // except argv[0]
+        char **newArgv = (char **)malloc(sizeof(char *) * newArgc);
 
-    int nsenterArgc{ 0 };
-    while (nsenterArgv[nsenterArgc] != nullptr) {
-        ++nsenterArgc;
+        if (newArgv == nullptr) {
+            return errno;
+        }
+
+        newArgv[newArgc - 1] = nullptr;
+
+        for (int i = 0; i <= 7; ++i) {
+            newArgv[i] = const_cast<char *>(nsenterArg[i]);
+        }
+
+        for (int i = 0; i < argc; ++i) {
+            newArgv[i + 8] = argv[i + 1];
+        }
+
+        return ::execvp("nsenter", newArgv);
     }
-    auto newArgc = nsenterArgc + argc + 1; // except argv[0] and add '&'
-    const char **newArgv = (const char **)malloc(sizeof(char *) * newArgc);
 
-    if (newArgv == nullptr) {
-        logErr() << "malloc error";
-        return errno;
+    if (::waitpid(subPid, &exitCode, 0) == -1) {
+        logErr() << "waitpid error" << strerror(errno);
+        return -1;
     }
 
-    for (int i = 0; i < nsenterArgc; ++i) {
-        newArgv[i] = nsenterArgv[i];
-    }
-
-    for (int i = 0; i < argc; ++i) {
-        newArgv[i + nsenterArgc] = argv[i + 1];
-    }
-
-    newArgv[newArgc - 2] = "&";
-    newArgv[newArgc - 1] = nullptr;
-
-    for (int i = 0; i < newArgc; ++i) {
-        logDbg() << "newArgv[" << i << "]:" << newArgv[i];
-    }
-    return ::execvp("nsenter", const_cast<char **>(newArgv));
+    return exitCode;
 }
 
 int run(struct arg_run *arg, const std::string &container) noexcept
@@ -439,7 +437,7 @@ int cmd_exec(struct argp_state *state)
     argv[0] = argv0;
     state->next += argc - 1;
 
-    argc = state->argc - state->next;
+    argc = exec_arg.global->exitCode = state->argc - state->next + 1;
     argv = &state->argv[state->next];
     exec_arg.global->exitCode = exec(&exec_arg, argc, argv);
 

@@ -51,7 +51,7 @@ int main()
 
     if (annotations.find("org.deepin.linglong.appDir") != annotations.end()) {
         mounts.push_back({
-          { "destination", "/opt/apps/" },
+          { "destination", "/opt" },
           { "options", nlohmann::json::array({ "nodev", "nosuid", "mode=700" }) },
           { "source", "tmpfs" },
           { "type", "tmpfs" },

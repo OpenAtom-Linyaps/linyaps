@@ -23,7 +23,6 @@ pfl_add_library(
   src/linglong/api/types/v1/CommonResult.hpp
   src/linglong/api/types/v1/Generators.hpp
   src/linglong/api/types/v1/helper.hpp
-  src/linglong/api/types/v1/Layer.hpp
   src/linglong/api/types/v1/LayerInfo.hpp
   src/linglong/api/types/v1/LinglongAPIV1.hpp
   src/linglong/api/types/v1/OciConfigurationPatch.hpp
@@ -41,6 +40,7 @@ pfl_add_library(
   src/linglong/api/types/v1/PackageManager1UpdateParameters.hpp
   src/linglong/api/types/v1/RepoConfig.hpp
   src/linglong/api/types/v1/Sections.hpp
+  src/linglong/api/types/v1/UabLayer.hpp
   src/linglong/api/types/v1/UabMetaInfo.hpp
   src/linglong/api/types/v1/Version.hpp
   COMPILE_FEATURES

@@ -114,6 +114,7 @@ int importSelf(const std::string &cliBin, const char *uab) noexcept
 std::optional<GElf_Shdr> getSectionHeader(int elfFd, const char *sectionName) noexcept
 {
     std::error_code ec;
+    std::optional<GElf_Shdr> secHdr{ std::nullopt };
 
     auto elfPath = std::filesystem::read_symlink(std::filesystem::path{ "/proc/self/fd" }
                                                    / std::to_string(elfFd),
@@ -122,36 +123,42 @@ std::optional<GElf_Shdr> getSectionHeader(int elfFd, const char *sectionName) no
         std::cerr << "failed to get binary path:" << ec.message() << std::endl;
         return std::nullopt;
     }
+
     auto *elf = elf_begin(elfFd, ELF_C_READ, nullptr);
     if (elf == nullptr) {
         std::cerr << elfPath << " not usable:" << elf_errmsg(-1) << std::endl;
-        return {};
+        goto ret;
     }
 
-    size_t shdrstrndx{ 0 };
-    if (elf_getshdrstrndx(elf, &shdrstrndx) == -1) {
-        std::cerr << "failed to get section header index of bundle " << elfPath << ":"
-                  << elf_errmsg(-1) << std::endl;
-        return {};
-    }
-
-    Elf_Scn *scn = nullptr;
-    std::optional<GElf_Shdr> metaSh;
-    while ((scn = elf_nextscn(elf, scn)) != nullptr) {
-        GElf_Shdr shdr;
-        if (gelf_getshdr(scn, &shdr) == nullptr) {
-            std::cerr << "failed to get section header of bundle " << elfPath << ":"
+    {
+        size_t shdrstrndx{ 0 };
+        if (elf_getshdrstrndx(elf, &shdrstrndx) == -1) {
+            std::cerr << "failed to get section header index of bundle " << elfPath << ":"
                       << elf_errmsg(-1) << std::endl;
-            break;
+            goto ret;
         }
 
-        auto *sname = elf_strptr(elf, shdrstrndx, shdr.sh_name);
-        if (::strcmp(sname, sectionName) == 0) {
-            return shdr;
+        Elf_Scn *scn = nullptr;
+        std::optional<GElf_Shdr> metaSh;
+        while ((scn = elf_nextscn(elf, scn)) != nullptr) {
+            GElf_Shdr shdr;
+            if (gelf_getshdr(scn, &shdr) == nullptr) {
+                std::cerr << "failed to get section header of bundle " << elfPath << ":"
+                          << elf_errmsg(-1) << std::endl;
+                break;
+            }
+
+            auto *sname = elf_strptr(elf, shdrstrndx, shdr.sh_name);
+            if (::strcmp(sname, sectionName) == 0) {
+                secHdr = shdr;
+                break;
+            }
         }
     }
 
-    return std::nullopt;
+ret:
+    elf_end(elf);
+    return secHdr;
 }
 
 bool digestCheck(int fd,
@@ -344,7 +351,7 @@ void cleanResource() noexcept
         }
 
         if (pid == 0) {
-            if (::execlp("umount", "umount", mountPoint.c_str()) == -1) {
+            if (::execlp("umount", "umount", mountPoint.c_str(), nullptr) == -1) {
                 std::cerr << "umount error: " << strerror(errno) << std::endl;
                 return;
             }
@@ -524,7 +531,7 @@ int extractBundle(const std::string &destination) noexcept
     return 0;
 }
 
-void runAppLoader(const std::vector<std::string> &loaderArgs) noexcept
+void runAppLoader(const nlohmann::json &info, const std::vector<std::string> &loaderArgs) noexcept
 {
     auto loader = std::filesystem::path{ mountPoint } / "loader";
     auto loaderStr = loader.string();
@@ -536,16 +543,68 @@ void runAppLoader(const std::vector<std::string> &loaderArgs) noexcept
         argv[i + 1] = loaderArgs[i].c_str();
     }
 
+    std::string baseID;
+    std::string runtimeID;
+    std::string appID;
+    for (const auto &layer : info["layers"]) {
+        const auto &kind = layer["info"]["kind"].get<std::string>();
+        if (kind == "app") {
+            appID = layer["info"]["id"];
+
+            auto baseStr = layer["info"]["base"].get<std::string>();
+            auto splitSlash = std::find(baseStr.cbegin(), baseStr.cend(), '/');
+            auto splitColon = std::find(baseStr.cbegin(), baseStr.cend(), ':');
+            baseID = std::string(splitColon + 1, splitSlash);
+
+            if (layer["info"].contains("runtime")) {
+                auto runtimeStr = layer["info"]["runtime"].get<std::string>();
+                auto splitSlash = std::find(runtimeStr.cbegin(), runtimeStr.cend(), '/');
+                auto splitColon = std::find(runtimeStr.cbegin(), runtimeStr.cend(), ':');
+                runtimeID = std::string(splitColon + 1, splitSlash);
+            }
+
+            break;
+        }
+    }
+
+    if (baseID.empty() || appID.empty()) {
+        std::cerr << "failed to get all ids," << " base id: " << baseID << " app id: " << appID
+                  << std::endl;
+        cleanAndExit(-1);
+    }
+
     auto loaderPid = fork();
     if (loaderPid < 0) {
         std::cerr << "fork() error" << ": " << strerror(errno) << std::endl;
-        return;
+        cleanAndExit(errno);
     }
 
     if (loaderPid == 0) {
+        if (::setenv("UAB_BASE_ID", baseID.c_str(), 1) == -1) {
+            std::cerr << "setenv error:" << strerror(errno) << std::endl;
+            ::exit(errno);
+        }
+
+        if (!runtimeID.empty() && ::setenv("UAB_RUNTIME_ID", runtimeID.c_str(), 1) == -1) {
+            std::cerr << "setenv error:" << strerror(errno) << std::endl;
+            ::exit(errno);
+        }
+
+        if (::setenv("UAB_APP_ID", appID.c_str(), 1) == -1) {
+            std::cerr << "setenv error:" << strerror(errno) << std::endl;
+            ::exit(errno);
+        }
+
+        std::error_code ec;
+        std::filesystem::current_path(mountPoint, ec);
+        if (ec) {
+            std::cerr << "change working directory failed: " << ec.message() << std::endl;
+            ::exit(errno);
+        }
+
         if (::execv(loaderStr.c_str(), (char *const *)(argv)) == -1) {
             std::cerr << "execv(" << loaderStr << ") error: " << strerror(errno) << std::endl;
-            return;
+            ::exit(errno);
         }
     }
 
@@ -553,15 +612,15 @@ void runAppLoader(const std::vector<std::string> &loaderArgs) noexcept
     auto ret = ::waitpid(loaderPid, &status, 0);
     if (ret == -1) {
         std::cerr << "wait failed:" << strerror(errno) << std::endl;
-        return;
+        cleanAndExit(errno);
     }
 
     cleanAndExit(WEXITSTATUS(status));
 }
 
-[[noreturn]] void runAppLinglong(const std::string &cliBin,
-                                 const nlohmann::json &info,
-                                 const std::vector<std::string> &loaderArgs) noexcept
+void runAppLinglong(const std::string &cliBin,
+                    const nlohmann::json &info,
+                    const std::vector<std::string> &loaderArgs) noexcept
 {
     if (!info.contains("id") || !info["id"].is_string()) {
         std::cerr << "couldn't get appId, stop to delegate runnning operation to linglong"
@@ -739,5 +798,5 @@ int main(int argc, char **argv)
         cleanAndExit(-1);
     }
 
-    runAppLoader(opts.loaderArgs);
+    runAppLoader(metaInfo, opts.loaderArgs);
 }

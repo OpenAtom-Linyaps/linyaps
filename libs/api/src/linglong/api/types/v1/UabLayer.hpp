@@ -9,7 +9,7 @@
 //
 //  Then include this file, and then do
 //
-//     Layer.hpp data = nlohmann::json::parse(jsonString);
+//     UabLayer.hpp data = nlohmann::json::parse(jsonString);
 
 #pragma once
 
@@ -17,7 +17,7 @@
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
-#include "linglong/api/types/v1/PackageInfo.hpp"
+#include "linglong/api/types/v1/PackageInfoV2.hpp"
 
 namespace linglong {
 namespace api {
@@ -25,8 +25,8 @@ namespace types {
 namespace v1 {
 using nlohmann::json;
 
-struct Layer {
-PackageInfo info;
+struct UabLayer {
+PackageInfoV2 info;
 /**
 * Whether this layer file is minified or not.
 */

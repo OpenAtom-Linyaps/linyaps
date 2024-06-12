@@ -16,6 +16,12 @@ EXTRA_OPTION = -DCPM_LOCAL_PACKAGES_ONLY=ON -DLINGLONG_VERSION=$(DEB_VERSION_UPS
 
 ifeq ($(OS) $(VERSION), deepin 23)
 	EXTRA_OPTION += -DENABLE_UAB_HEADER=ON
+
+override_dh_auto_install:
+	dh_auto_install
+
+	install -d debian/linglong-builder/usr/share/linglong/builder/uab
+	dh_install -p linglong-builder usr/share/linglong/builder/uab/ usr/share/linglong/builder/
 endif
 
 override_dh_auto_configure:

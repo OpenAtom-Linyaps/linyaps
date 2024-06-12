@@ -179,6 +179,6 @@ pfl_add_libraries(
   ll-cli
   ll-package-manager
   llpkg
-  uab-header)
+  uab)
 
 add_subdirectory(misc)

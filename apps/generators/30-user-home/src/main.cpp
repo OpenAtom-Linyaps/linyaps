@@ -31,11 +31,9 @@ int main()
     }
 
     nlohmann::json annotations;
-    std::string baseDir;
     std::string appID;
     try {
         annotations = content.at("annotations");
-        baseDir = annotations.at("org.deepin.linglong.baseDir");
         appID = annotations.at("org.deepin.linglong.appID");
     } catch (std::exception &exp) {
         std::cerr << exp.what() << std::endl;
@@ -46,20 +44,14 @@ int main()
     auto &env = content["process"]["env"];
 
     auto *homeEnv = ::getenv("HOME");
-    if (homeEnv == nullptr) {
-        std::cerr << "Couldn't get HOME from env." << std::endl;
+    auto *userNameEnv = ::getenv("USER");
+    if (homeEnv == nullptr || userNameEnv == nullptr) {
+        std::cerr << "Couldn't get HOME or USER from env." << std::endl;
         return -1;
     }
 
-    auto *userInfo = ::getpwuid(::getuid());
-    if (userInfo == nullptr || userInfo->pw_name == nullptr) {
-        std::cerr << "Couldn't get current user's info:" << ::strerror(errno) << std::endl;
-        return -1;
-    }
-
-    auto *userName = userInfo->pw_name;
     auto hostHomeDir = std::filesystem::path(homeEnv);
-    auto cognitiveHomeDir = std::filesystem::path{ "/home" } / userName;
+    auto cognitiveHomeDir = std::filesystem::path{ "/home" } / userNameEnv;
     if (!std::filesystem::exists(hostHomeDir)) {
         std::cerr << "Home " << hostHomeDir << "doesn't exists." << std::endl;
         return -1;

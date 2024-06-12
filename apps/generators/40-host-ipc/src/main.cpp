@@ -212,15 +212,14 @@ int main()
             return;
         }
 
-        auto *userInfo = ::getpwuid(::getuid());
-        if (userInfo == nullptr || userInfo->pw_name == nullptr) {
-            std::cerr << "Couldn't get current user's info:" << ::strerror(errno) << std::endl;
+        auto *userEnv = ::getenv("USER");
+        if (userEnv == nullptr) {
+            std::cerr << "Couldn't get USER from env." << std::endl;
             return;
         }
 
-        auto *userName = userInfo->pw_name;
         auto hostXauthFile = std::string{ homeEnv } + "/.Xauthority";
-        auto cognitiveXauthFile = std::string{ "/home/" } + userName + "/.Xauthority";
+        auto cognitiveXauthFile = std::string{ "/home/" } + userEnv + "/.Xauthority";
 
         auto *xauthFileEnv = getenv("XAUTHORITY"); // NOLINT
         if (xauthFileEnv != nullptr && std::filesystem::exists(xauthFileEnv)) {

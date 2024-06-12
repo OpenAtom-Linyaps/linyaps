@@ -53,6 +53,7 @@ Architecture: any
 Depends: erofs-utils,
          erofsfuse,
          git,
+         libelf1,
          linglong-bin,
          linglong-box | crun,
          ${misc:Depends},

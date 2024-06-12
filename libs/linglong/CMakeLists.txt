@@ -43,6 +43,8 @@ pfl_add_library(
   src/linglong/package_manager/task.h
   src/linglong/package/reference.cpp
   src/linglong/package/reference.h
+  src/linglong/package/uab_packager.cpp
+  src/linglong/package/uab_packager.h
   src/linglong/package/version.cpp
   src/linglong/package/version.h
   src/linglong/package/version_range.cpp
@@ -67,14 +69,20 @@ pfl_add_library(
   PUBLIC
   linglong::dbus-api
   linglong::utils
+  linglong::api
   PkgConfig::ostree1
   PkgConfig::systemd
+  PkgConfig::ELF
   Qt5::Concurrent
   Qt5::Core
+  Qt5::DBus
   Qt5::Network
   Qt5::WebSockets
   QtLinglongRepoClientAPI
   docopt
+  ytj::ytj
+  tl::expected
+  linglong::ocppi
   ${YAML_CPP})
 
   function(

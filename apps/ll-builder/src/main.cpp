@@ -645,9 +645,8 @@ int main(int argc, char **argv)
                                    "file path of the linglong.yaml (default is ./linglong.yaml)",
                                    "path",
                                    "linglong.yaml");
-              parser.addOptions({
-                yamlFile,
-              });
+              auto iconFile = QCommandLineOption("i", "uab icon (optional)", "path");
+              parser.addOptions({ yamlFile, iconFile });
               parser.process(app);
 
               auto project = parseProjectConfig(QDir().absoluteFilePath(parser.value(yamlFile)));
@@ -661,7 +660,9 @@ int main(int argc, char **argv)
                                                  repo,
                                                  *containerBuidler,
                                                  *builderCfg);
-              auto result = builder.exportLayer(QDir().absolutePath());
+              auto result = builder.exportUAB(
+                QDir::currentPath(),
+                { .iconPath = parser.value(iconFile), .exportDevelop = true, .exportI18n = true });
               if (!result) {
                   qCritical() << result.error();
                   return -1;

@@ -43,6 +43,8 @@ pfl_add_library(
   cxx_std_17
   LINK_LIBRARIES
   PUBLIC
+  Qt5::Core
+  Qt5::DBus
   PkgConfig::glib2
   tl::expected
   ytj::ytj

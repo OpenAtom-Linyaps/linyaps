@@ -15,6 +15,13 @@
 
 namespace linglong::builder {
 
+struct UABOption
+{
+    QString iconPath;
+    bool exportDevelop{ false };
+    bool exportI18n{ false };
+};
+
 class Builder
 {
 public:
@@ -28,16 +35,19 @@ public:
 
     auto create(const QString &projectName) -> utils::error::Result<void>;
 
-    auto build(const QStringList &args = { "/project/linglong/entry.sh" }) noexcept
-      -> utils::error::Result<void>;
+    auto build(const QStringList &args = {
+                 "/project/linglong/entry.sh" }) noexcept -> utils::error::Result<void>;
 
+    auto exportUAB(const QString &destination,
+                   const UABOption &option) -> utils::error::Result<void>;
     auto exportLayer(const QString &destination) -> utils::error::Result<void>;
 
-    auto extractLayer(const QString &layerPath, const QString &destination)
-      -> utils::error::Result<void>;
+    auto extractLayer(const QString &layerPath,
+                      const QString &destination) -> utils::error::Result<void>;
 
-    auto push(bool pushWithDevel = true, const QString &repoUrl = "", const QString &repoName = "")
-      -> utils::error::Result<void>;
+    auto push(bool pushWithDevel = true,
+              const QString &repoUrl = "",
+              const QString &repoName = "") -> utils::error::Result<void>;
 
     auto import() -> utils::error::Result<void>;
 
@@ -48,8 +58,9 @@ public:
     auto appimageConvert(const QStringList &templateArgs) -> utils::error::Result<void>;
 
 private:
-    auto splitDevelop(QDir developOutput, QDir runtimeOutput, QString prefix)
-      -> utils::error::Result<void>;
+    auto splitDevelop(QDir developOutput,
+                      QDir runtimeOutput,
+                      QString prefix) -> utils::error::Result<void>;
 
     repo::OSTreeRepo &repo;
     QDir workingDir;

@@ -2,10 +2,6 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-if (NOT ${ENABLE_UAB_HEADER})
-  return()
-endif()
-
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 find_library(FOUND_erofsfuse_STATIC "erofsfuse")
 
@@ -52,4 +48,4 @@ pfl_add_executable(
 include(GNUInstallDirs)
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/uab-header
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/linglong/builder/data)
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/linglong/builder/uab)

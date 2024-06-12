@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
+add_link_options(-static -static-libgcc -static-libstdc++)
+
 pfl_add_executable(
   OUTPUT_NAME
   05-initialize

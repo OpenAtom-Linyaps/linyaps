@@ -87,7 +87,6 @@ install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/share/linglong/builder/templates/
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/linglong/builder/templates)
 
 # libexec
-
 install(
   DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/
   DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/linglong

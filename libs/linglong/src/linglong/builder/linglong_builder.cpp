@@ -11,6 +11,7 @@
 #include "linglong/builder/printer.h"
 #include "linglong/package/architecture.h"
 #include "linglong/package/layer_packager.h"
+#include "linglong/package/uab_packager.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container.h"
 #include "linglong/utils/command/env.h"
@@ -723,6 +724,70 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     }
 
     printMessage("Successfully build " + this->project.package.id);
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> Builder::exportUAB(const QString &destination, const UABOption &option)
+{
+    LINGLONG_TRACE("export uab file");
+
+    QDir destDir(destination);
+    if (!destDir.mkpath(".")) {
+        return LINGLONG_ERR("mkpath " + destination + ": failed");
+    }
+
+    package::UABPackager packager{ destDir };
+
+    if (!option.iconPath.isEmpty()) {
+        if (auto ret = packager.setIcon(option.iconPath); !ret) {
+            return LINGLONG_ERR(ret);
+        }
+    }
+
+    auto baseRef = pullDependency(QString::fromStdString(this->project.base),
+                                  this->repo,
+                                  false,
+                                  cfg.skipPullDepend.has_value() && *cfg.skipPullDepend);
+    if (!baseRef) {
+        return LINGLONG_ERR(baseRef);
+    }
+    auto baseDir = this->repo.getLayerDir(*baseRef, false);
+    if (!baseDir) {
+        return LINGLONG_ERR(baseDir);
+    }
+    packager.appendLayer(*baseDir);
+
+    if (this->project.runtime) {
+        auto ref = pullDependency(QString::fromStdString(*this->project.runtime),
+                                  this->repo,
+                                  false,
+                                  cfg.skipPullDepend.has_value() && *cfg.skipPullDepend);
+        if (!ref) {
+            return LINGLONG_ERR(ref);
+        }
+        auto runtimeDir = this->repo.getLayerDir(*ref, false);
+        if (!runtimeDir) {
+            return LINGLONG_ERR(runtimeDir);
+        }
+        packager.appendLayer(*runtimeDir);
+    }
+
+    auto curRef = currentReference(this->project);
+    if (!curRef) {
+        return LINGLONG_ERR(curRef);
+    }
+
+    auto appDir = this->repo.getLayerDir(*curRef);
+    if (!appDir) {
+        return LINGLONG_ERR(appDir);
+    }
+    packager.appendLayer(*appDir);
+
+    auto uabFile = curRef->id + ".uab";
+    if (auto ret = packager.pack(uabFile); !ret) {
+        return LINGLONG_ERR(ret);
+    }
+
     return LINGLONG_OK;
 }
 

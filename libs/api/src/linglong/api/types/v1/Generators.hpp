@@ -21,7 +21,7 @@
 #include "linglong/api/types/v1/UabMetaInfo.hpp"
 #include "linglong/api/types/v1/Version.hpp"
 #include "linglong/api/types/v1/Sections.hpp"
-#include "linglong/api/types/v1/Layer.hpp"
+#include "linglong/api/types/v1/UabLayer.hpp"
 #include "linglong/api/types/v1/RepoConfig.hpp"
 #include "linglong/api/types/v1/PackageManager1UpdateParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
@@ -127,8 +127,8 @@ void to_json(json & j, const PackageManager1UpdateParameters & x);
 void from_json(const json & j, RepoConfig & x);
 void to_json(json & j, const RepoConfig & x);
 
-void from_json(const json & j, Layer & x);
-void to_json(json & j, const Layer & x);
+void from_json(const json & j, UabLayer & x);
+void to_json(json & j, const UabLayer & x);
 
 void from_json(const json & j, Sections & x);
 void to_json(json & j, const Sections & x);
@@ -585,12 +585,12 @@ j["repos"] = x.repos;
 j["version"] = x.version;
 }
 
-inline void from_json(const json & j, Layer& x) {
-x.info = j.at("info").get<PackageInfo>();
+inline void from_json(const json & j, UabLayer& x) {
+x.info = j.at("info").get<PackageInfoV2>();
 x.minified = get_stack_optional<bool>(j, "minified");
 }
 
-inline void to_json(json & j, const Layer & x) {
+inline void to_json(json & j, const UabLayer & x) {
 j = json::object();
 j["info"] = x.info;
 if (x.minified) {
@@ -613,7 +613,7 @@ j["icon"] = x.icon;
 
 inline void from_json(const json & j, UabMetaInfo& x) {
 x.digest = j.at("digest").get<std::string>();
-x.layers = j.at("layers").get<std::vector<Layer>>();
+x.layers = j.at("layers").get<std::vector<UabLayer>>();
 x.sections = j.at("sections").get<Sections>();
 x.uuid = j.at("uuid").get<std::string>();
 x.version = j.at("version").get<Version>();

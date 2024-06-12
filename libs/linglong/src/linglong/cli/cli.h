@@ -49,11 +49,11 @@ private:
     QString taskID;
     bool taskDone{ true };
     service::InstallTask::Status lastStatus;
-    std::vector<std::string>
-    filePathMapping(std::map<std::string, docopt::value> &args,
-                    const std::vector<std::string> &command) const noexcept;
-    static void filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> &list,
-                                           const QString &type) noexcept;
+    void filePathMapping(std::map<std::string, docopt::value> &arg,
+                         const std::vector<std::string> &command,
+                         std::vector<std::string> &execArgs) const noexcept;
+    void filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> &list,
+                                    const QString &type);
 
 public:
     int run(std::map<std::string, docopt::value> &args);

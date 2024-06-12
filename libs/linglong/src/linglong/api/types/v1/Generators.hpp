@@ -414,12 +414,12 @@ x.channel = j.at("channel").get<std::string>();
 x.command = get_stack_optional<std::vector<std::string>>(j, "command");
 x.description = get_stack_optional<std::string>(j, "description");
 x.id = j.at("id").get<std::string>();
-x.schema_version = j.at("schema_version").get<std::string>();
 x.kind = j.at("kind").get<std::string>();
 x.packageInfoV2Module = j.at("module").get<std::string>();
 x.name = j.at("name").get<std::string>();
 x.permissions = get_stack_optional<ApplicationConfigurationPermissions>(j, "permissions");
 x.runtime = get_stack_optional<std::string>(j, "runtime");
+x.schemaVersion = j.at("schema_version").get<std::string>();
 x.size = j.at("size").get<int64_t>();
 x.version = j.at("version").get<std::string>();
 }
@@ -436,7 +436,6 @@ if (x.description) {
 j["description"] = x.description;
 }
 j["id"] = x.id;
-j["schema_version"] = x.schema_version;
 j["kind"] = x.kind;
 j["module"] = x.packageInfoV2Module;
 j["name"] = x.name;
@@ -446,6 +445,7 @@ j["permissions"] = x.permissions;
 if (x.runtime) {
 j["runtime"] = x.runtime;
 }
+j["schema_version"] = x.schemaVersion;
 j["size"] = x.size;
 j["version"] = x.version;
 }

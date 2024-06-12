@@ -58,10 +58,6 @@ std::optional<std::string> description;
 */
 std::string id;
 /**
-* version of 'PackageInfo'
-*/
-std::string schema_version;
-/**
 * kind of package info
 */
 std::string kind;
@@ -78,6 +74,10 @@ std::optional<ApplicationConfigurationPermissions> permissions;
 * runtime of package info
 */
 std::optional<std::string> runtime;
+/**
+* version of 'PackageInfo'
+*/
+std::string schemaVersion;
 /**
 * Uncompressed package size in bytes
 */

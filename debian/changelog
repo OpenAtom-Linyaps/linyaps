@@ -1,3 +1,9 @@
+linglong (1.5.5-1) unstable; urgency=medium
+
+  * revert: reuse container when application is runnnig.
+
+ -- chenhuixing <chenhuixing@deepin.org>  Wed, 12 Jun 2024 14:30:00 +0800
+
 linglong (1.5.4-1) unstable; urgency=medium
 
   * fix: remove extra dir after uninstall

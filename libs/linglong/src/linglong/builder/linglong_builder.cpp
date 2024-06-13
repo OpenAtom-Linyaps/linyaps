@@ -145,7 +145,7 @@ utils::error::Result<package::Reference> pullDependency(const package::FuzzyRefe
         printReplacedText(QString("%1%2%3%4 %5")
                             .arg(ref->id, -25)
                             .arg(ref->version.toString(), -15)
-                            .arg(develop ? "develop" : "runtime", -15)
+                            .arg(develop ? "develop" : "binary", -15)
                             .arg("downloading")
                             .arg(percentage)
                             .toStdString(),
@@ -204,16 +204,16 @@ void Builder::setConfig(const api::types::v1::BuilderConfig &cfg) noexcept
     this->cfg = cfg;
 }
 
-// 拆分develop和runtime的文件
+// 拆分develop和binary的文件
 utils::error::Result<void> Builder::splitDevelop(QDir developOutput,
-                                                 QDir runtimeOutput,
+                                                 QDir binaryOutput,
                                                  QString prefix)
 {
     LINGLONG_TRACE("split layers file");
     const QString installFilename =
       QString("%1.install").arg(QString::fromStdString(project.package.id));
     const QString src = developOutput.absolutePath();
-    const QString dest = runtimeOutput.absolutePath();
+    const QString dest = binaryOutput.absolutePath();
     // get install file rule
     QStringList installRules;
 
@@ -326,7 +326,7 @@ utils::error::Result<void> Builder::splitDevelop(QDir developOutput,
             }
         }
     }
-    for (auto dir : { developOutput, runtimeOutput }) {
+    for (auto dir : { developOutput, binaryOutput }) {
         // save all installed file path to ${appid}.install
         const auto installRulePath = dir.filePath("../" + installFilename);
         QFile configFile(installRulePath);
@@ -578,11 +578,11 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     }
 
     printMessage("[Commit Contents]");
-    QDir runtimeOutput = this->workingDir.absoluteFilePath("linglong/output/runtime/files");
-    if (!runtimeOutput.mkpath(".")) {
-        return LINGLONG_ERR("make path " + runtimeOutput.absolutePath() + ": failed.");
+    QDir binaryOutput = this->workingDir.absoluteFilePath("linglong/output/binary/files");
+    if (!binaryOutput.mkpath(".")) {
+        return LINGLONG_ERR("make path " + binaryOutput.absolutePath() + ": failed.");
     }
-    qDebug() << "create runtime output success";
+    qDebug() << "create binary output success";
 
     // generate application's configure file
     auto scriptFile = QString(LINGLONG_LIBEXEC_DIR) + "/app-conf-generator";
@@ -605,27 +605,27 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     }
 
     auto ret =
-      splitDevelop(developOutput.absolutePath(), runtimeOutput.absolutePath(), installPrefix);
+      splitDevelop(developOutput.absolutePath(), binaryOutput.absolutePath(), installPrefix);
     if (!ret) {
         return LINGLONG_ERR(ret);
     }
     if (this->project.package.kind != "runtime") {
-        QDir runtimeEntries = this->workingDir.absoluteFilePath("linglong/output/runtime/entries");
+        QDir binaryEntries = this->workingDir.absoluteFilePath("linglong/output/binary/entries");
         QDir developEntries = this->workingDir.absoluteFilePath("linglong/output/develop/entries");
-        if (!runtimeEntries.mkpath(".")) {
-            return LINGLONG_ERR("make path " + runtimeEntries.absolutePath() + ": failed.");
+        if (!binaryEntries.mkpath(".")) {
+            return LINGLONG_ERR("make path " + binaryEntries.absolutePath() + ": failed.");
         }
         if (!developEntries.mkpath(".")) {
             return LINGLONG_ERR("make path " + developEntries.absolutePath() + ": failed.");
         }
-        if (!QFile::link("../files/share", runtimeEntries.absoluteFilePath("share"))) {
+        if (!QFile::link("../files/share", binaryEntries.absoluteFilePath("share"))) {
             return LINGLONG_ERR("link entries share to files share: failed");
         }
-        if (!runtimeOutput.mkpath("share/systemd")) {
+        if (!binaryOutput.mkpath("share/systemd")) {
             return LINGLONG_ERR("mkpath files/share/systemd/user: failed");
         }
         if (!QFile::link("../../lib/systemd/user",
-                         runtimeOutput.absoluteFilePath("share/systemd/user"))) {
+                         binaryOutput.absoluteFilePath("share/systemd/user"))) {
             return LINGLONG_ERR("link systemd user service to files/share/systemd/user: failed");
         }
         if (!QFile::link("../files/share", developEntries.absoluteFilePath("share"))) {
@@ -659,12 +659,12 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         .description = this->project.package.description,
         .id = this->project.package.id,
         .kind = this->project.package.kind,
-        .packageInfoV2Module = "runtime",
+        .packageInfoV2Module = "binary",
         .name = this->project.package.name,
         .permissions = this->project.permissions,
         .runtime = {},
         .schemaVersion = PACKAGE_INFO_VERSION,
-        .size = static_cast<int64_t>(util::sizeOfDir(runtimeOutput.absoluteFilePath(".."))),
+        .size = static_cast<int64_t>(util::sizeOfDir(binaryOutput.absoluteFilePath(".."))),
         .version = this->project.package.version,
     };
 
@@ -678,7 +678,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         info.runtime = runtime->toString().toStdString();
     }
 
-    QFile infoFile = runtimeOutput.absoluteFilePath("../info.json");
+    QFile infoFile = binaryOutput.absoluteFilePath("../info.json");
     if (!infoFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         return LINGLONG_ERR(infoFile);
     }
@@ -703,12 +703,12 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         return LINGLONG_ERR(infoFile);
     }
     infoFile.close();
-    package::LayerDir runtimeOutputLayerDir = runtimeOutput.absoluteFilePath("..");
+    package::LayerDir binaryOutputLayerDir = binaryOutput.absoluteFilePath("..");
     result = this->repo.remove(*ref);
     if (!result) {
         qWarning() << "remove" << ref->toString() << result.error().message();
     }
-    result = this->repo.importLayerDir(runtimeOutputLayerDir);
+    result = this->repo.importLayerDir(binaryOutputLayerDir);
     if (!result) {
         return LINGLONG_ERR(result);
     }
@@ -743,16 +743,16 @@ utils::error::Result<void> Builder::exportLayer(const QString &destination)
         return LINGLONG_ERR(ref);
     }
 
-    auto runtimeLayerDir = this->repo.getLayerDir(*ref);
-    if (!runtimeLayerDir) {
-        return LINGLONG_ERR(runtimeLayerDir);
+    auto binaryLayerDir = this->repo.getLayerDir(*ref);
+    if (!binaryLayerDir) {
+        return LINGLONG_ERR(binaryLayerDir);
     }
-    const auto runtimeLayerPath = QString("%1/%2_%3_%4_%5.layer")
+    const auto binaryLayerPath = QString("%1/%2_%3_%4_%5.layer")
                                     .arg(destDir.absolutePath(),
                                          ref->id,
                                          ref->version.toString(),
                                          ref->arch.toString(),
-                                         "runtime");
+                                         "binary");
 
     auto developLayerDir = this->repo.getLayerDir(*ref, true);
     const auto develLayerPath = QString("%1/%2_%3_%4_%5.layer")
@@ -767,9 +767,9 @@ utils::error::Result<void> Builder::exportLayer(const QString &destination)
 
     package::LayerPackager pkger;
 
-    auto runtimeLayer = pkger.pack(*runtimeLayerDir, runtimeLayerPath);
-    if (!runtimeLayer) {
-        return LINGLONG_ERR(runtimeLayer);
+    auto binaryLayer = pkger.pack(*binaryLayerDir, binaryLayerPath);
+    if (!binaryLayer) {
+        return LINGLONG_ERR(binaryLayer);
     }
 
     auto develLayer = pkger.pack(*developLayerDir, develLayerPath);

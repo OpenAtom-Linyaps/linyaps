@@ -185,7 +185,6 @@ int main(int argc, char **argv)
               printer = std::make_unique<Printer>();
           }
 
-          linglong::api::client::ClientApi api;
           auto config = linglong::repo::loadConfig(
             { LINGLONG_ROOT "/config.yaml", LINGLONG_DATA_DIR "/config.yaml" });
           if (!config) {
@@ -193,7 +192,8 @@ int main(int argc, char **argv)
               QCoreApplication::exit(-1);
               return;
           }
-          auto *repo = new linglong::repo::OSTreeRepo(QDir(LINGLONG_ROOT), *config, api);
+          linglong::repo::ClientFactory clientFactory(config->repos[config->defaultRepo]);
+          auto *repo = new linglong::repo::OSTreeRepo(QDir(LINGLONG_ROOT), *config, clientFactory);
           repo->setParent(QCoreApplication::instance());
 
           auto ociRuntimeCLI = qgetenv("LINGLONG_OCI_RUNTIME");

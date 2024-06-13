@@ -7,12 +7,12 @@
 #ifndef LINGLONG_SRC_MODULE_REPO_OSTREE_REPO_H_
 #define LINGLONG_SRC_MODULE_REPO_OSTREE_REPO_H_
 
-#include "ClientApi.h"
 #include "linglong/api/types/v1/RepoConfig.hpp"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
 #include "linglong/package_manager/task.h"
+#include "linglong/repo/client_factory.h"
 #include "linglong/utils/error/error.h"
 
 #include <ostree.h>
@@ -42,7 +42,7 @@ public:
     OSTreeRepo &operator=(OSTreeRepo &&) = delete;
     OSTreeRepo(const QDir &path,
                const api::types::v1::RepoConfig &cfg,
-               api::client::ClientApi &client) noexcept;
+               ClientFactory &clientFactory) noexcept;
 
     ~OSTreeRepo() override;
 
@@ -92,7 +92,7 @@ private:
     QDir ostreeRepoDir() const noexcept;
     QDir getLayerQDir(const package::Reference &ref, bool develop = false) const noexcept;
 
-    api::client::ClientApi &apiClient;
+    ClientFactory &m_clientFactory;
 };
 
 } // namespace linglong::repo

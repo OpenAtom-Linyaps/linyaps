@@ -16,9 +16,9 @@
 #include "linglong/utils/command/env.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
+#include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/transaction.h"
-#include "linglong/utils/packageinfo_handler.h"
 
 #include <gio/gio.h>
 #include <glib.h>
@@ -28,9 +28,7 @@
 #include <QProcess>
 #include <QtWebSockets/QWebSocket>
 
-#include <complex>
 #include <cstddef>
-#include <utility>
 
 #include <fcntl.h>
 
@@ -244,8 +242,6 @@ void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
 
 QString ostreeSpecFromReference(const package::Reference &ref, bool develop = false) noexcept
 {
-
-    // TODO(wurongjie) 在推送develop版的base和runtime后,应该将devel改为develop
     if (develop) {
         return QString("%1/%2/%3/%4/develop")
           .arg(ref.channel, ref.id, ref.version.toString(), ref.arch.toString());
@@ -638,19 +634,16 @@ utils::error::Result<package::Reference> clearReferenceRemote(const package::Fuz
               ref = *currentRef;
           }
           return;
-      },
-      loop.thread() == api.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
+      });
 
-    QEventLoop::connect(
-      &api,
-      &api::client::ClientApi::fuzzySearchAppSignalEFull,
-      &loop,
-      [&](auto, auto error_type, const QString &error_str) {
-          LINGLONG_TRACE("fuzzySearchAppSignalEFull");
-          loop.exit();
-          ref = LINGLONG_ERR(error_str, error_type);
-      },
-      loop.thread() == api.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
+    QEventLoop::connect(&api,
+                        &api::client::ClientApi::fuzzySearchAppSignalEFull,
+                        &loop,
+                        [&](auto, auto error_type, const QString &error_str) {
+                            LINGLONG_TRACE("fuzzySearchAppSignalEFull");
+                            loop.exit();
+                            ref = LINGLONG_ERR(error_str, error_type);
+                        });
 
     api.fuzzySearchApp(req);
     loop.exec();
@@ -681,9 +674,9 @@ QDir OSTreeRepo::ostreeRepoDir() const noexcept
 
 OSTreeRepo::OSTreeRepo(const QDir &path,
                        const api::types::v1::RepoConfig &cfg,
-                       api::client::ClientApi &client) noexcept
+                       ClientFactory &clientFactory) noexcept
     : cfg(cfg)
-    , apiClient(client)
+    , m_clientFactory(clientFactory)
 {
     if (!path.exists()) {
         path.mkpath(".");
@@ -774,10 +767,7 @@ utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfi
             Q_ASSERT(false);
         }
     });
-
-    this->apiClient.setNewServerForAllOperations(
-      QString::fromStdString(cfg.repos.at(cfg.defaultRepo)));
-
+    this->m_clientFactory.setServer(QString::fromStdString(cfg.repos.at(cfg.defaultRepo)));
     this->cfg = cfg;
 
     transaction.commit();
@@ -858,33 +848,30 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
         auth.setUsername(env.value("LINGLONG_USERNAME"));
         auth.setPassword(env.value("LINGLONG_PASSWORD"));
         qInfo() << "use username: " << auth.getUsername();
-
+        auto apiClient = this->m_clientFactory.createClient().data();
+        apiClient->setTimeOut(10 * 60 * 1000);
         QEventLoop loop;
-        QEventLoop::connect(
-          &this->apiClient,
-          &api::client::ClientApi::signInSignal,
-          &loop,
-          [&](api::client::SignIn_200_response resp) {
-              loop.exit();
-              if (resp.getCode() != HTTP_OK) {
-                  result = LINGLONG_ERR(resp.getMsg(), resp.getCode());
-                  return;
-              }
-              result = resp.getData().getToken();
-              return;
-          },
-          loop.thread() == apiClient.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
-        QEventLoop::connect(
-          &apiClient,
-          &api::client::ClientApi::signInSignalEFull,
-          &loop,
-          [&](auto, auto error_type, const QString &error_str) {
-              loop.exit();
-              result = LINGLONG_ERR(error_str, error_type);
-          },
-          loop.thread() == apiClient.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
+        QEventLoop::connect(apiClient,
+                            &api::client::ClientApi::signInSignal,
+                            &loop,
+                            [&](api::client::SignIn_200_response resp) {
+                                loop.exit();
+                                if (resp.getCode() != HTTP_OK) {
+                                    result = LINGLONG_ERR(resp.getMsg(), resp.getCode());
+                                    return;
+                                }
+                                result = resp.getData().getToken();
+                                return;
+                            });
+        QEventLoop::connect(apiClient,
+                            &api::client::ClientApi::signInSignalEFull,
+                            &loop,
+                            [&](auto, auto error_type, const QString &error_str) {
+                                loop.exit();
+                                result = LINGLONG_ERR(error_str, error_type);
+                            });
 
-        apiClient.signIn(auth);
+        apiClient->signIn(auth);
         loop.exec();
 
         if (!result) {
@@ -905,31 +892,28 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
         uploadReq.setRef(ostreeSpecFromReference(ref, develop));
         uploadReq.setRepoName(QString::fromStdString(this->cfg.defaultRepo));
 
+        auto apiClient = this->m_clientFactory.createClient().data();
         QEventLoop loop;
-        QEventLoop::connect(
-          &this->apiClient,
-          &api::client::ClientApi::newUploadTaskIDSignal,
-          &loop,
-          [&](const api::client::NewUploadTaskID_200_response &resp) {
-              loop.exit();
-              if (resp.getCode() != HTTP_OK) {
-                  result = LINGLONG_ERR(resp.getMsg(), resp.getCode());
-                  return;
-              }
-              result = resp.getData().getId();
-          },
-          loop.thread() == apiClient.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
-        QEventLoop::connect(
-          &apiClient,
-          &api::client::ClientApi::newUploadTaskIDSignalEFull,
-          &loop,
-          [&](auto, auto error_type, const QString &error_str) {
-              loop.exit();
-              result = LINGLONG_ERR(error_str, error_type);
-          },
-          loop.thread() == apiClient.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
+        QEventLoop::connect(apiClient,
+                            &api::client::ClientApi::newUploadTaskIDSignal,
+                            &loop,
+                            [&](const api::client::NewUploadTaskID_200_response &resp) {
+                                loop.exit();
+                                if (resp.getCode() != HTTP_OK) {
+                                    result = LINGLONG_ERR(resp.getMsg(), resp.getCode());
+                                    return;
+                                }
+                                result = resp.getData().getId();
+                            });
+        QEventLoop::connect(apiClient,
+                            &api::client::ClientApi::newUploadTaskIDSignalEFull,
+                            &loop,
+                            [&](auto, auto error_type, const QString &error_str) {
+                                loop.exit();
+                                result = LINGLONG_ERR(error_str, error_type);
+                            });
 
-        apiClient.newUploadTaskID(*token, uploadReq);
+        apiClient->newUploadTaskID(*token, uploadReq);
         loop.exec();
         if (!result) {
             return LINGLONG_ERR(result);
@@ -962,33 +946,30 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
 
         utils::error::Result<void> result;
 
+        auto apiClient = this->m_clientFactory.createClient().data();
         QEventLoop loop;
-        QEventLoop::connect(
-          &this->apiClient,
-          &api::client::ClientApi::uploadTaskFileSignal,
-          &loop,
-          [&](const api::client::Api_UploadTaskFileResp &resp) {
-              loop.exit();
-              if (resp.getCode() != HTTP_OK) {
-                  result = LINGLONG_ERR(resp.getMsg(), resp.getCode());
-                  return;
-              }
-          },
-          loop.thread() == apiClient.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
-        QEventLoop::connect(
-          &this->apiClient,
-          &api::client::ClientApi::uploadTaskFileSignalEFull,
-          &loop,
-          [&](auto, auto error_type, const QString &error_str) {
-              loop.exit();
-              result = LINGLONG_ERR(error_str, error_type);
-          },
-          loop.thread() == apiClient.thread() ? Qt::AutoConnection : Qt::BlockingQueuedConnection);
+        QEventLoop::connect(apiClient,
+                            &api::client::ClientApi::uploadTaskFileSignal,
+                            &loop,
+                            [&](const api::client::Api_UploadTaskFileResp &resp) {
+                                loop.exit();
+                                if (resp.getCode() != HTTP_OK) {
+                                    result = LINGLONG_ERR(resp.getMsg(), resp.getCode());
+                                    return;
+                                }
+                            });
+        QEventLoop::connect(apiClient,
+                            &api::client::ClientApi::uploadTaskFileSignalEFull,
+                            &loop,
+                            [&](auto, auto error_type, const QString &error_str) {
+                                loop.exit();
+                                result = LINGLONG_ERR(error_str, error_type);
+                            });
 
         api::client::HttpFileElement file;
         file.setFileName(tarFilePath);
         file.setRequestFileName(tarFilePath);
-        apiClient.uploadTaskFile(*token, *taskID, file);
+        apiClient->uploadTaskFile(*token, *taskID, file);
 
         loop.exec();
         return result;
@@ -1002,45 +983,41 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
 
         utils::error::Result<bool> isFinished;
 
+        auto apiClient = this->m_clientFactory.createClient().data();
         while (true) {
             QEventLoop loop;
-            QEventLoop::connect(
-              &this->apiClient,
-              &api::client::ClientApi::uploadTaskInfoSignal,
-              &loop,
-              [&](const api::client::UploadTaskInfo_200_response &resp) {
-                  loop.exit();
-                  const qint32 HTTP_OK = 200;
-                  if (resp.getCode() != HTTP_OK) {
-                      isFinished = LINGLONG_ERR(resp.getMsg(), resp.getCode());
-                      return;
-                  }
-                  qDebug() << "pushing" << ref.toString() << (develop ? "develop" : "runtime")
-                           << " status: " << resp.getData().getStatus();
-                  if (resp.getData().getStatus() == "complete") {
-                      isFinished = true;
-                      return;
-                  }
-                  if (resp.getData().getStatus() == "failed") {
-                      isFinished = LINGLONG_ERR(resp.getData().asJson());
-                      return;
-                  }
+            QEventLoop::connect(apiClient,
+                                &api::client::ClientApi::uploadTaskInfoSignal,
+                                &loop,
+                                [&](const api::client::UploadTaskInfo_200_response &resp) {
+                                    loop.exit();
+                                    const qint32 HTTP_OK = 200;
+                                    if (resp.getCode() != HTTP_OK) {
+                                        isFinished = LINGLONG_ERR(resp.getMsg(), resp.getCode());
+                                        return;
+                                    }
+                                    qDebug() << "pushing" << ref.toString()
+                                             << (develop ? "develop" : "runtime")
+                                             << " status: " << resp.getData().getStatus();
+                                    if (resp.getData().getStatus() == "complete") {
+                                        isFinished = true;
+                                        return;
+                                    }
+                                    if (resp.getData().getStatus() == "failed") {
+                                        isFinished = LINGLONG_ERR(resp.getData().asJson());
+                                        return;
+                                    }
 
-                  isFinished = false;
-              },
-              loop.thread() == apiClient.thread() ? Qt::AutoConnection
-                                                  : Qt::BlockingQueuedConnection);
-            QEventLoop::connect(
-              &apiClient,
-              &api::client::ClientApi::uploadTaskInfoSignalEFull,
-              &loop,
-              [&](auto, auto error_type, const QString &error_str) {
-                  loop.exit();
-                  isFinished = LINGLONG_ERR(error_str, error_type);
-              },
-              loop.thread() == apiClient.thread() ? Qt::AutoConnection
-                                                  : Qt::BlockingQueuedConnection);
-            apiClient.uploadTaskInfo(*token, *taskID);
+                                    isFinished = false;
+                                });
+            QEventLoop::connect(apiClient,
+                                &api::client::ClientApi::uploadTaskInfoSignalEFull,
+                                &loop,
+                                [&](auto, auto error_type, const QString &error_str) {
+                                    loop.exit();
+                                    isFinished = LINGLONG_ERR(error_str, error_type);
+                                });
+            apiClient->uploadTaskInfo(*token, *taskID);
             loop.exec();
 
             if (!isFinished) {
@@ -1173,9 +1150,9 @@ utils::error::Result<package::Reference> OSTreeRepo::clearReference(
         qInfo() << reference.error();
         qInfo() << "fallback to Remote";
     }
-
+    auto apiClient = this->m_clientFactory.createClient().data();
     reference =
-      clearReferenceRemote(fuzzy, this->apiClient, QString::fromStdString(this->cfg.defaultRepo));
+      clearReferenceRemote(fuzzy, *apiClient, QString::fromStdString(this->cfg.defaultRepo));
     if (reference) {
         return reference;
     }
@@ -1250,11 +1227,11 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
 
     utils::error::Result<std::vector<api::types::v1::PackageInfoV2>> pkgInfos =
       std::vector<api::types::v1::PackageInfoV2>{};
-
+    auto apiClient = this->m_clientFactory.createClient().data();
     QEventLoop loop;
     const qint32 HTTP_OK = 200;
     QEventLoop::connect(
-      &this->apiClient,
+      apiClient,
       &api::client::ClientApi::fuzzySearchAppSignal,
       &loop,
       [&](const api::client::FuzzySearchApp_200_response &resp) {
@@ -1280,22 +1257,17 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
               pkgInfos->emplace_back(*std::move(pkgInfo));
           }
           return;
-      },
-      loop.thread() == this->apiClient.thread() ? Qt::AutoConnection
-                                                : Qt::BlockingQueuedConnection);
+      });
 
-    QEventLoop::connect(
-      &this->apiClient,
-      &api::client::ClientApi::fuzzySearchAppSignalEFull,
-      &loop,
-      [&](auto, auto error_type, const QString &error_str) {
-          loop.exit();
-          pkgInfos = LINGLONG_ERR(error_str, error_type);
-      },
-      loop.thread() == this->apiClient.thread() ? Qt::AutoConnection
-                                                : Qt::BlockingQueuedConnection);
+    QEventLoop::connect(apiClient,
+                        &api::client::ClientApi::fuzzySearchAppSignalEFull,
+                        &loop,
+                        [&](auto, auto error_type, const QString &error_str) {
+                            loop.exit();
+                            pkgInfos = LINGLONG_ERR(error_str, error_type);
+                        });
 
-    this->apiClient.fuzzySearchApp(req);
+    apiClient->fuzzySearchApp(req);
     loop.exec();
 
     if (!pkgInfos) {

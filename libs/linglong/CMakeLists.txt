@@ -83,6 +83,8 @@ pfl_add_library(
   src/linglong/package/version_range.h
   src/linglong/repo/config.cpp
   src/linglong/repo/config.h
+  src/linglong/repo/client_factory.h
+  src/linglong/repo/client_factory.cpp
   src/linglong/repo/ostree_repo.cpp
   src/linglong/repo/ostree_repo.h
   src/linglong/runtime/container_builder.cpp

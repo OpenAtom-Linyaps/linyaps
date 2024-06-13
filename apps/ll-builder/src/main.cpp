@@ -8,6 +8,7 @@
 #include "linglong/builder/config.h"
 #include "linglong/builder/linglong_builder.h"
 #include "linglong/package/architecture.h"
+#include "linglong/repo/client_factory.h"
 #include "linglong/repo/config.h"
 #include "linglong/utils/command/env.h"
 #include "linglong/utils/configure.h"
@@ -400,15 +401,10 @@ int main(int argc, char **argv)
         qCritical() << repoCfg.error();
         return -1;
     }
-
-    QNetworkAccessManager networkAccessManager;
-
-    linglong::api::client::ClientApi api;
-    api.setTimeOut(10 * 60 * 1000);
-    api.setNetworkAccessManager(&networkAccessManager);
-    api.setNewServerForAllOperations(QString::fromStdString(repoCfg->repos[repoCfg->defaultRepo]));
-
-    linglong::repo::OSTreeRepo repo(QString::fromStdString(builderCfg->repo), *repoCfg, api);
+    linglong::repo::ClientFactory clientFactory(repoCfg->repos[repoCfg->defaultRepo]);
+    linglong::repo::OSTreeRepo repo(QString::fromStdString(builderCfg->repo),
+                                    *repoCfg,
+                                    clientFactory);
 
     auto containerBuidler = new linglong::runtime::ContainerBuilder(**ociRuntime);
     containerBuidler->setParent(QCoreApplication::instance());

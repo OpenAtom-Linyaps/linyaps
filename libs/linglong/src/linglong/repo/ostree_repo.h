@@ -91,6 +91,7 @@ private:
     QDir repoDir;
     QDir ostreeRepoDir() const noexcept;
     QDir getLayerQDir(const package::Reference &ref, bool develop = false) const noexcept;
+    QDir getLayerQDirV2(const package::Reference &ref, bool develop = false) const noexcept;
 
     ClientFactory &m_clientFactory;
 };

@@ -386,8 +386,10 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
     auto taskPtr = std::make_shared<InstallTask>(taskID);
     connect(taskPtr.get(), &InstallTask::TaskChanged, this, &PackageManager::TaskChanged);
 
-    auto reference = *ref;
-    auto newReference = *newRef;
+    const auto reference = *ref;
+    const auto newReference = *newRef;
+
+    qInfo() << "Before upgrade, old Ref: " << reference.toString() << " new Ref: " << newReference.toString();
 
     auto develop = paras->package.packageManager1PackageModule.value_or("runtime") == "develop";
 

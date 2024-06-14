@@ -7,6 +7,7 @@
 #include "linglong/builder/config.h"
 #include "linglong/builder/linglong_builder.h"
 #include "linglong/package/architecture.h"
+#include "linglong/package/version.h"
 #include "linglong/repo/client_factory.h"
 #include "linglong/repo/config.h"
 #include "linglong/utils/command/env.h"
@@ -65,7 +66,7 @@ QStringList splitExec(const QString &exec)
     return res;
 }
 
-QStringList projectConfigPaths()
+QStringList projectBuildConfigPaths()
 {
     QStringList result{};
 
@@ -80,7 +81,7 @@ QStringList projectConfigPaths()
     return result;
 }
 
-QStringList nonProjectConfigPaths()
+QStringList nonProjectBuildConfigPaths()
 {
     QStringList result{};
 
@@ -115,6 +116,23 @@ void initDefaultBuildConfig()
     config.version = 1;
     config.repo = cacheLocation.filePath("linglong-builder").toStdString();
     linglong::builder::saveConfig(config, configFilePath);
+}
+
+linglong::utils::error::Result<linglong::api::types::v1::BuilderProject>
+parseProjectConfig(QString filename)
+{
+    LINGLONG_TRACE(QString("parse project config %1").arg(filename));
+    auto project =
+      linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(filename);
+    if (!project) {
+        return project;
+    }
+    auto version = linglong::package::Version(QString::fromStdString(project->package.version));
+    if (!version.tweak) {
+        return LINGLONG_ERR("Please ensure the package.version number has three parts formatted as "
+                            "'MAJOR.MINOR.PATCH.TWEAK'");
+    }
+    return project;
 }
 
 } // namespace
@@ -382,8 +400,8 @@ int main(int argc, char **argv)
     QStringList configPaths = {};
     // 初始化 build config
     initDefaultBuildConfig();
-    configPaths << projectConfigPaths();
-    configPaths << nonProjectConfigPaths();
+    configPaths << projectBuildConfigPaths();
+    configPaths << nonProjectBuildConfigPaths();
 
     auto builderCfg = linglong::builder::loadConfig(configPaths);
     if (!builderCfg) {
@@ -500,9 +518,7 @@ int main(int argc, char **argv)
                                                "ll-builder build -v -- bash -c \"echo hello\"");
 
               parser.process(app);
-              auto project =
-                linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(
-                  QDir().absoluteFilePath(parser.value(yamlFile)));
+              auto project = parseProjectConfig(QDir().absoluteFilePath(parser.value(yamlFile)));
               if (!project) {
                   qCritical() << project.error();
                   return -1;
@@ -589,9 +605,7 @@ int main(int argc, char **argv)
 
               parser.process(app);
 
-              auto project =
-                linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(
-                  QDir().absoluteFilePath(parser.value(yamlFile)));
+              auto project = parseProjectConfig(QDir().absoluteFilePath(parser.value(yamlFile)));
               if (!project) {
                   qCritical() << project.error();
                   return -1;
@@ -636,9 +650,7 @@ int main(int argc, char **argv)
               });
               parser.process(app);
 
-              auto project =
-                linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(
-                  QDir().absoluteFilePath(parser.value(yamlFile)));
+              auto project = parseProjectConfig(QDir().absoluteFilePath(parser.value(yamlFile)));
               if (!project) {
                   qCritical() << project.error();
                   return -1;
@@ -768,9 +780,7 @@ int main(int argc, char **argv)
               auto repoChannel = parser.value(optRepoChannel);
 
               bool pushWithDevel = parser.isSet(optNoDevel) ? false : true;
-              auto project =
-                linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(
-                  QDir().absoluteFilePath(parser.value(yamlFile)));
+              auto project = parseProjectConfig(QDir().absoluteFilePath(parser.value(yamlFile)));
               if (!project) {
                   qCritical() << project.error();
                   return -1;

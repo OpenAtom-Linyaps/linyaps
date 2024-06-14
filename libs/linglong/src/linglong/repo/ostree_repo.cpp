@@ -848,10 +848,10 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
         auth.setUsername(env.value("LINGLONG_USERNAME"));
         auth.setPassword(env.value("LINGLONG_PASSWORD"));
         qInfo() << "use username: " << auth.getUsername();
-        auto apiClient = this->m_clientFactory.createClient().data();
+        auto apiClient = this->m_clientFactory.createClient();
         apiClient->setTimeOut(10 * 60 * 1000);
         QEventLoop loop;
-        QEventLoop::connect(apiClient,
+        QEventLoop::connect(apiClient.data(),
                             &api::client::ClientApi::signInSignal,
                             &loop,
                             [&](api::client::SignIn_200_response resp) {
@@ -863,7 +863,7 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
                                 result = resp.getData().getToken();
                                 return;
                             });
-        QEventLoop::connect(apiClient,
+        QEventLoop::connect(apiClient.data(),
                             &api::client::ClientApi::signInSignalEFull,
                             &loop,
                             [&](auto, auto error_type, const QString &error_str) {
@@ -892,9 +892,9 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
         uploadReq.setRef(ostreeSpecFromReference(ref, develop));
         uploadReq.setRepoName(QString::fromStdString(this->cfg.defaultRepo));
 
-        auto apiClient = this->m_clientFactory.createClient().data();
+        auto apiClient = this->m_clientFactory.createClient();
         QEventLoop loop;
-        QEventLoop::connect(apiClient,
+        QEventLoop::connect(apiClient.data(),
                             &api::client::ClientApi::newUploadTaskIDSignal,
                             &loop,
                             [&](const api::client::NewUploadTaskID_200_response &resp) {
@@ -905,7 +905,7 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
                                 }
                                 result = resp.getData().getId();
                             });
-        QEventLoop::connect(apiClient,
+        QEventLoop::connect(apiClient.data(),
                             &api::client::ClientApi::newUploadTaskIDSignalEFull,
                             &loop,
                             [&](auto, auto error_type, const QString &error_str) {
@@ -946,9 +946,9 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
 
         utils::error::Result<void> result;
 
-        auto apiClient = this->m_clientFactory.createClient().data();
+        auto apiClient = this->m_clientFactory.createClient();
         QEventLoop loop;
-        QEventLoop::connect(apiClient,
+        QEventLoop::connect(apiClient.data(),
                             &api::client::ClientApi::uploadTaskFileSignal,
                             &loop,
                             [&](const api::client::Api_UploadTaskFileResp &resp) {
@@ -958,7 +958,7 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
                                     return;
                                 }
                             });
-        QEventLoop::connect(apiClient,
+        QEventLoop::connect(apiClient.data(),
                             &api::client::ClientApi::uploadTaskFileSignalEFull,
                             &loop,
                             [&](auto, auto error_type, const QString &error_str) {
@@ -983,10 +983,10 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
 
         utils::error::Result<bool> isFinished;
 
-        auto apiClient = this->m_clientFactory.createClient().data();
+        auto apiClient = this->m_clientFactory.createClient();
         while (true) {
             QEventLoop loop;
-            QEventLoop::connect(apiClient,
+            QEventLoop::connect(apiClient.data(),
                                 &api::client::ClientApi::uploadTaskInfoSignal,
                                 &loop,
                                 [&](const api::client::UploadTaskInfo_200_response &resp) {
@@ -1010,7 +1010,7 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
 
                                     isFinished = false;
                                 });
-            QEventLoop::connect(apiClient,
+            QEventLoop::connect(apiClient.data(),
                                 &api::client::ClientApi::uploadTaskInfoSignalEFull,
                                 &loop,
                                 [&](auto, auto error_type, const QString &error_str) {
@@ -1216,7 +1216,7 @@ utils::error::Result<package::Reference> OSTreeRepo::clearReference(
         qInfo() << reference.error();
         qInfo() << "fallback to Remote";
     }
-    auto apiClient = this->m_clientFactory.createClient().data();
+    auto apiClient = this->m_clientFactory.createClient();
     reference =
       clearReferenceRemote(fuzzy, *apiClient, QString::fromStdString(this->cfg.defaultRepo));
     if (reference) {
@@ -1293,11 +1293,11 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
 
     utils::error::Result<std::vector<api::types::v1::PackageInfoV2>> pkgInfos =
       std::vector<api::types::v1::PackageInfoV2>{};
-    auto apiClient = this->m_clientFactory.createClient().data();
+    auto apiClient = this->m_clientFactory.createClient();
     QEventLoop loop;
     const qint32 HTTP_OK = 200;
     QEventLoop::connect(
-      apiClient,
+      apiClient.data(),
       &api::client::ClientApi::fuzzySearchAppSignal,
       &loop,
       [&](const api::client::FuzzySearchApp_200_response &resp) {
@@ -1325,7 +1325,7 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
           return;
       });
 
-    QEventLoop::connect(apiClient,
+    QEventLoop::connect(apiClient.data(),
                         &api::client::ClientApi::fuzzySearchAppSignalEFull,
                         &loop,
                         [&](auto, auto error_type, const QString &error_str) {

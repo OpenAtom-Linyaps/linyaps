@@ -23,7 +23,6 @@ QSharedPointer<api::client::ClientApi> ClientFactory::createClient() const
     auto api = QSharedPointer<linglong::api::client::ClientApi>::create();
     api->setTimeOut(5000);
     api->setNewServerForAllOperations(m_server);
-    api->setParent(QCoreApplication::instance());
     return api;
 }
 

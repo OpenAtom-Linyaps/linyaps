@@ -11,16 +11,12 @@
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/LayerInfo.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
-#include "linglong/api/types/v1/PackageManager1GetRepoInfoResultRepoInfo.hpp"
-#include "linglong/api/types/v1/PackageManager1Package.hpp"
 #include "linglong/api/types/v1/RepoConfig.hpp"
 #include "linglong/utils/error/error.h"
 
 #include <QJsonObject>
 #include <QObject>
 #include <QString>
-
-#include <cstddef>
 
 namespace linglong::cli {
 

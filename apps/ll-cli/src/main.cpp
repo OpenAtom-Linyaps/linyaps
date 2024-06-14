@@ -11,6 +11,7 @@
 #include "linglong/runtime/container_builder.h"
 #include "linglong/utils/configure.h"
 #include "linglong/utils/finally/finally.h"
+#include "linglong/utils/global/initialize.h"
 #include "ocppi/cli/crun/Crun.hpp"
 
 #include <QJsonDocument>
@@ -19,9 +20,7 @@
 
 #include <cstddef>
 #include <functional>
-#include <iostream>
 #include <memory>
-#include <ostream>
 
 #include <wordexp.h>
 

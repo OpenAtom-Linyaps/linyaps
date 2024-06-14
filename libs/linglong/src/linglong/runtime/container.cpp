@@ -7,7 +7,6 @@
 #include "linglong/runtime/container.h"
 
 #include "linglong/package/architecture.h"
-#include "linglong/package/layer_packager.h"
 #include "linglong/utils/finally/finally.h"
 #include "ocppi/runtime/RunOption.hpp"
 #include "ocppi/runtime/config/types/Generators.hpp"
@@ -116,11 +115,7 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
         // quickfix: 某些应用在以bash -c启动后，收到SIGTERM后不会完全退出
         bashArgs.push_back("; wait");
         auto arguments = std::vector<std::string>{
-            "/bin/bash",
-            "--login",
-            "-e",
-            "-c",
-            bashArgs.join(" ").toStdString(),
+            "/bin/bash", "--login", "-e", "-c", bashArgs.join(" ").toStdString(),
         };
         this->cfg.process->args = arguments;
     }

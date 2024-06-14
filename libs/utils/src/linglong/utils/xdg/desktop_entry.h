@@ -8,7 +8,6 @@
 #define LINGLONG_UTILS_XDG_DESKTOP_ENTRY_H_
 
 #include "linglong/utils/error/error.h"
-#include "linglong/utils/finally/finally.h"
 
 #include <glib.h>
 #include <tl/expected.hpp>
@@ -16,7 +15,6 @@
 #include <QFile>
 #include <QString>
 
-#include <type_traits>
 
 namespace linglong::utils::xdg {
 
@@ -74,8 +72,8 @@ public:
     void setValue(const QString &key, const Value &value, const SectionName &section = MainSection);
 
     template<typename Value>
-    auto getValue(const QString &key, const SectionName &section = MainSection) const
-      -> error::Result<Value>;
+    auto getValue(const QString &key,
+                  const SectionName &section = MainSection) const -> error::Result<Value>;
 
     auto groups() -> QStringList
     {
@@ -118,9 +116,8 @@ inline void DesktopEntry::setValue(const QString &key,
 }
 
 template<>
-[[nodiscard]] inline auto DesktopEntry::getValue(const QString &key,
-                                                 const SectionName &section) const
-  -> error::Result<QString>
+[[nodiscard]] inline auto DesktopEntry::getValue(
+  const QString &key, const SectionName &section) const -> error::Result<QString>
 {
     LINGLONG_TRACE(QString("get %1 from %2").arg(key, section));
 

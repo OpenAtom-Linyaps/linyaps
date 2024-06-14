@@ -7,7 +7,6 @@
 #include "package_manager.h"
 
 #include "linglong/api/types/v1/Generators.hpp"
-#include "linglong/api/types/v1/PackageManager1ModifyRepoParameters.hpp"
 #include "linglong/package/layer_file.h"
 #include "linglong/package/layer_packager.h"
 #include "linglong/utils/finally/finally.h"

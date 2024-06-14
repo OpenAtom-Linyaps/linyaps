@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/builder/config.h"
 #include "linglong/builder/linglong_builder.h"
 #include "linglong/package/architecture.h"
@@ -22,8 +21,6 @@
 #include <QCoreApplication>
 #include <QMap>
 #include <QRegExp>
-
-#include <fstream>
 
 #include <wordexp.h>
 

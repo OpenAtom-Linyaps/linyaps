@@ -8,7 +8,6 @@
 #include "linglong/api/types/v1/PackageInfo.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/utils/error/error.h"
-#include "linglong/utils/serialize/json.h"
 
 #include <QString>
 

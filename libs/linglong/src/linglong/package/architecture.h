@@ -8,7 +8,6 @@
 #define LINGLONG_PACKAGE_ARCHITECTURE_H_
 
 #include "linglong/utils/error/error.h"
-#include "nlohmann/json.hpp"
 
 #include <QString>
 

@@ -6,7 +6,6 @@
 
 #include "linglong/cli/printer.h"
 
-#include "linglong/package_manager/task.h"
 #include "linglong/api/types/v1/Generators.hpp"
 
 #include <QJsonArray>
@@ -78,9 +77,8 @@ void Printer::printContent(const QStringList &filePaths)
 
 void Printer::printTaskStatus(const QString &percentage, const QString &message, int /*status*/)
 {
-    std::cout << "\r\33[K"
-              << "\033[?25l" << percentage.toStdString() << "% " << message.toStdString()
-              << "\033[?25h";
+    std::cout << "\r\33[K" << "\033[?25l" << percentage.toStdString() << "% "
+              << message.toStdString() << "\033[?25h";
     std::cout.flush();
 }
 
@@ -109,6 +107,6 @@ void Printer::printPackageInfo(const api::types::v1::PackageInfoV2 &info)
 
 void Printer::printPackage(const api::types::v1::PackageInfoV2 &info)
 {
-    std::cout << nlohmann::json(info).dump(4)<<std::endl;
+    std::cout << nlohmann::json(info).dump(4) << std::endl;
 }
 } // namespace linglong::cli

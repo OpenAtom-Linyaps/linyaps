@@ -7,6 +7,7 @@
 #include "linglong/package/layer_file.h"
 
 #include "linglong/api/types/v1/LayerInfo.hpp"
+#include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/utils/serialize/json.h"
 
 #include <QDataStream>

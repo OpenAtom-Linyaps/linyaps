@@ -1,0 +1,52 @@
+# SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+pfl_add_library(
+  MERGED_HEADER_PLACEMENT
+  DISABLE_INSTALL
+  LIBRARY_TYPE
+  STATIC
+  SOURCES
+  # find -regex '\.\/*.+\.[ch]\(pp\)?\(.in\)?' -type f -printf '%P\n'| sort
+  src/linglong/utils/command/env.cpp
+  src/linglong/utils/command/env.h
+  src/linglong/utils/command/ocppi-helper.cpp
+  src/linglong/utils/command/ocppi-helper.h
+  src/linglong/utils/configure.cpp
+  src/linglong/utils/configure.h.in
+  src/linglong/utils/dbus/log.cpp
+  src/linglong/utils/dbus/log.h
+  src/linglong/utils/dbus/register.cpp
+  src/linglong/utils/dbus/register.h
+  src/linglong/utils/error/details/error_impl.cpp
+  src/linglong/utils/error/details/error_impl.h
+  src/linglong/utils/error/error.cpp
+  src/linglong/utils/error/error.h
+  src/linglong/utils/finally/finally.cpp
+  src/linglong/utils/finally/finally.h
+  src/linglong/utils/global/initialize.cpp
+  src/linglong/utils/global/initialize.h
+  src/linglong/utils/packageinfo_handler.cpp
+  src/linglong/utils/packageinfo_handler.h
+  src/linglong/utils/serialize/json.cpp
+  src/linglong/utils/serialize/json.h
+  src/linglong/utils/serialize/yaml.cpp
+  src/linglong/utils/serialize/yaml.h
+  src/linglong/utils/std_helper/qdebug_helper.h
+  src/linglong/utils/transaction.cpp
+  src/linglong/utils/transaction.h
+  src/linglong/utils/xdg/desktop_entry.cpp
+  src/linglong/utils/xdg/desktop_entry.h
+  COMPILE_FEATURES
+  PUBLIC
+  cxx_std_17
+  LINK_LIBRARIES
+  PUBLIC
+  PkgConfig::glib2
+  tl::expected
+  ytj::ytj
+  linglong::ocppi
+  linglong::api
+  Qt5::Core
+  Qt5::DBus)

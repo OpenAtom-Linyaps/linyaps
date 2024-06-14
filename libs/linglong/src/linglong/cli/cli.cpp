@@ -7,6 +7,7 @@
 #include "linglong/cli/cli.h"
 
 #include "linglong/api/types/v1/CommonResult.hpp"
+#include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1Package.hpp"
 #include "linglong/api/types/v1/PackageManager1ResultWithTaskID.hpp"
 #include "linglong/package/layer_file.h"
@@ -18,6 +19,9 @@
 #include "ocppi/runtime/ExecOption.hpp"
 #include "ocppi/runtime/Signal.hpp"
 #include "ocppi/types/ContainerListItem.hpp"
+#include "linglong/api/types/v1/PackageManager1SearchParameters.hpp"
+#include "linglong/api/types/v1/PackageManager1SearchResult.hpp"
+#include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
 
 #include <nlohmann/json.hpp>
 

@@ -6,9 +6,7 @@
 
 #include "linglong/package/layer_dir.h"
 
-#include "linglong/api/types/v1/PackageInfo.hpp"
 #include "linglong/utils/packageinfo_handler.h"
-#include "linglong/utils/serialize/json.h"
 
 namespace linglong::package {
 

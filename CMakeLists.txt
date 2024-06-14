@@ -162,6 +162,9 @@ include(GNUInstallDirs)
 
 pfl_add_libraries(
   LIBS
+  api
+  dbus-api
+  utils
   ocppi
   linglong
   APPS

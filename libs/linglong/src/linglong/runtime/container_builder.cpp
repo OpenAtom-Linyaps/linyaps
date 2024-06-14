@@ -9,7 +9,6 @@
 #include "linglong/api/types/v1/ApplicationConfiguration.hpp"
 #include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
-#include "linglong/utils/global/initialize.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/serialize/yaml.h"
 #include "ocppi/runtime/config/types/Generators.hpp"

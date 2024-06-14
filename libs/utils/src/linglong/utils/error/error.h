@@ -21,7 +21,6 @@
 #include <QStringBuilder>
 
 #include <memory>
-#include <tuple>
 #include <utility>
 
 namespace linglong::utils::error {
@@ -40,9 +39,11 @@ public:
 
     [[nodiscard]] auto message() const { return pImpl->message(); }
 
-    static auto
-    Err(const char *file, int line, const QString &trace_msg, const QString &msg, int code = -1)
-      -> Error
+    static auto Err(const char *file,
+                    int line,
+                    const QString &trace_msg,
+                    const QString &msg,
+                    int code = -1) -> Error
     {
         return Error(std::make_unique<details::ErrorImpl>(file,
                                                           line,
@@ -67,8 +68,8 @@ public:
                                                nullptr));
     }
 
-    static auto Err(const char *file, int line, const QString &trace_msg, const QFile &qfile)
-      -> Error
+    static auto
+    Err(const char *file, int line, const QString &trace_msg, const QFile &qfile) -> Error
     {
         return Error(std::make_unique<details::ErrorImpl>(file,
                                                           line,
@@ -79,9 +80,11 @@ public:
                                                           nullptr));
     }
 
-    static auto
-    Err(const char *file, int line, const QString &trace_msg, std::exception_ptr err, int code = -1)
-      -> Error
+    static auto Err(const char *file,
+                    int line,
+                    const QString &trace_msg,
+                    std::exception_ptr err,
+                    int code = -1) -> Error
     {
         QString what = trace_msg + ": ";
         try {
@@ -116,8 +119,8 @@ public:
           std::make_unique<details::ErrorImpl>(file, line, "default", code, what, nullptr));
     }
 
-    static auto Err(const char *file, int line, const QString &trace_msg, const std::exception &e)
-      -> Error
+    static auto
+    Err(const char *file, int line, const QString &trace_msg, const std::exception &e) -> Error
     {
         return Error(std::make_unique<details::ErrorImpl>(file,
                                                           line,
@@ -194,9 +197,11 @@ public:
                                                           std::move(cause.error().pImpl)));
     }
 
-    static auto
-    Err(const char *file, int line, const QString &trace_msg, const QString &msg, Error &&cause)
-      -> Error
+    static auto Err(const char *file,
+                    int line,
+                    const QString &trace_msg,
+                    const QString &msg,
+                    Error &&cause) -> Error
     {
         return Error(std::make_unique<details::ErrorImpl>(file,
                                                           line,

@@ -110,7 +110,7 @@ generate() {
 YQ=${YQ:=$(command -v yq)}
 
 "$YQ" e '.properties = ( [
-        .$defs | keys | .[] as $type | { 
+        .$defs | keys | .[] as $type | {
                 "key" : $type,
                 "value": {
                         "$ref": "#/$defs/"+$type
@@ -118,11 +118,11 @@ YQ=${YQ:=$(command -v yq)}
         } ] | from_entries
 )' "$repoRoot"/api/schema/v1.yaml -o json >"$repoRoot"/api/schema/v1.json
 
-rm -f "$repoRoot"/libs/linglong/src/linglong/api/types/v1/*.hpp
+rm -f "$repoRoot"/libs/api/src/linglong/api/types/v1/*.hpp
 
 generate \
         "$repoRoot/api/schema/v1.json" \
         LinglongAPIV1 \
         "linglong::api::types::v1" \
-        "/libs/linglong/src/" \
+        "/libs/api/src/" \
         "linglong/api/types/v1"

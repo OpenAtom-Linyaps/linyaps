@@ -2,7 +2,8 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-#include "linglong/utils/packageinfo_handler.h"
+#include "packageinfo_handler.h"
+#include "linglong/utils/serialize/json.h"
 
 #define PACKAGE_INFO_VERSION "1.0"
 namespace linglong::utils {

@@ -153,4 +153,4 @@ QString findLinglongConfigPath(const QString &subpath, bool writeable)
     return "";
 }
 
-} // namespace linglong
+} // namespace linglong::util

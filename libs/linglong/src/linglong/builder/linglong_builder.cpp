@@ -14,18 +14,13 @@
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container.h"
 #include "linglong/utils/command/env.h"
-#include "linglong/utils/packageinfo_handler.h"
-#include "linglong/utils/command/ocppi-helper.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/finally/finally.h"
 #include "linglong/utils/global/initialize.h"
-#include "linglong/utils/xdg/desktop_entry.h"
-#include "nlohmann/json.hpp"
-#include "ocppi/cli/CLI.hpp"
-#include "ocppi/runtime/ContainerID.hpp"
-#include "ocppi/runtime/config/types/Hook.hpp"
-#include "ocppi/runtime/config/types/Hooks.hpp"
+#include "linglong/utils/packageinfo_handler.h"
 #include "source_fetcher.h"
 
+#include <nlohmann/json.hpp>
 #include <sys/prctl.h>
 #include <yaml-cpp/yaml.h>
 
@@ -38,7 +33,6 @@
 #include <QUrl>
 
 #include <filesystem>
-#include <fstream>
 #include <optional>
 #include <string>
 #include <vector>
@@ -141,16 +135,17 @@ utils::error::Result<package::Reference> pullDependency(const package::FuzzyRefe
     auto taskID = QUuid::createUuid();
     auto taskPtr = std::make_shared<service::InstallTask>(taskID);
 
-    auto partChanged = [&ref, develop](QString, QString percentage, QString, service::InstallTask::Status) {
-        printReplacedText(QString("%1%2%3%4 %5")
-                            .arg(ref->id, -25)
-                            .arg(ref->version.toString(), -15)
-                            .arg(develop ? "develop" : "binary", -15)
-                            .arg("downloading")
-                            .arg(percentage)
-                            .toStdString(),
-                          2);
-    };
+    auto partChanged =
+      [&ref, develop](QString, QString percentage, QString, service::InstallTask::Status) {
+          printReplacedText(QString("%1%2%3%4 %5")
+                              .arg(ref->id, -25)
+                              .arg(ref->version.toString(), -15)
+                              .arg(develop ? "develop" : "binary", -15)
+                              .arg("downloading")
+                              .arg(percentage)
+                              .toStdString(),
+                            2);
+      };
     QObject::connect(taskPtr.get(), &service::InstallTask::PartChanged, partChanged);
     repo.pull(taskPtr, *ref, develop);
     if (taskPtr->currentStatus() == service::InstallTask::Status::Failed) {
@@ -748,11 +743,11 @@ utils::error::Result<void> Builder::exportLayer(const QString &destination)
         return LINGLONG_ERR(binaryLayerDir);
     }
     const auto binaryLayerPath = QString("%1/%2_%3_%4_%5.layer")
-                                    .arg(destDir.absolutePath(),
-                                         ref->id,
-                                         ref->version.toString(),
-                                         ref->arch.toString(),
-                                         "binary");
+                                   .arg(destDir.absolutePath(),
+                                        ref->id,
+                                        ref->version.toString(),
+                                        ref->arch.toString(),
+                                        "binary");
 
     auto developLayerDir = this->repo.getLayerDir(*ref, true);
     const auto develLayerPath = QString("%1/%2_%3_%4_%5.layer")

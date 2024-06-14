@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "linglong/utils/command/env.h"
+#include "env.h"
 
 #include <QProcessEnvironment>
 

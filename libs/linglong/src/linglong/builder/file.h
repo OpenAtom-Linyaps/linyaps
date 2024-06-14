@@ -21,7 +21,6 @@
 #include <QTemporaryFile>
 
 #include <cstdlib>
-#include <iostream>
 
 #include <unistd.h>
 

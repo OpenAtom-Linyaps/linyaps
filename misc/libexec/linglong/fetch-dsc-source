@@ -1,0 +1,48 @@
+#!/bin/sh
+
+# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+set -e
+
+outputdir=$1
+url=$2
+digest=$3
+cachedir=$4
+
+# Check command tools 
+if ! command -v dget
+then
+    echo "dget not found, please install devscripts first"
+    exit 1;
+fi
+
+# Clean up old directorie and create parent directory
+mkdir -p "$outputdir"
+rm -r "$outputdir"
+# Check cache
+if [ -d "$cachedir/dsc_$digest" ]; then
+    cp -r "$cachedir/dsc_$digest" "$outputdir"
+    exit;
+fi
+# Create a temporary directory
+tmpdir=$(mktemp -d)
+# change directory
+cd "$tmpdir"
+# Download dsc and tar
+name=$(basename "$url")
+dget -u -d "$url"
+# Compare digest
+actual_hash=$(sha256sum "$name" | awk '{print $1}')
+if [ "X$actual_hash" != "X$digest" ]; then
+    echo "File SHA256 digest is $actual_hash, expected $digest"
+    exit 1;
+fi
+# Extract the archive
+mkdir -p "$cachedir"
+rm -r "$cachedir/tmp_$digest" || true
+dpkg-source -x --no-copy "$name" "$cachedir/tmp_$digest"
+mv "$cachedir/tmp_$digest" "$cachedir/dsc_$digest"
+cp -r "$cachedir/dsc_$digest" "$outputdir"
+# Clean temporary directory
+rm -r "$tmpdir"

@@ -47,9 +47,9 @@ package:
 
 The minimum root filesystem.
 
-| name    | description                                                                              |
-| ------- | ---------------------------------------------------------------------------------------- |
-| id      | Unique name of the base                                                                  |
+| name    | description                                                                             |
+| ------- | --------------------------------------------------------------------------------------- |
+| id      | Unique name of the base                                                                 |
 | version | Base version, A three-digit number can be loosely matched with a potential fourth digit |
 
 ### Runtime
@@ -60,9 +60,9 @@ Describes the build and run dependencies of the application.
 runtime: org.deepin.Runtime/23.0.1
 ```
 
-| name    | description                                                                                 |
-| ------- | ------------------------------------------------------------------------------------------- |
-| id      | Unique name of the runtime                                                                  |
+| name    | description                                                                                |
+| ------- | ------------------------------------------------------------------------------------------ |
+| id      | Unique name of the runtime                                                                 |
 | version | Runtime version, A three-digit number can be loosely matched with a potential fourth digit |
 
 ### Source
@@ -77,14 +77,12 @@ sources:
   commit: d7e207b4a71bbd97f7d818de5044228c1a6e2c92
 ```
 
-| name    | description                                                                                   |
-| ------- | --------------------------------------------------------------------------------------------- |
-| kind    | Source code type, optional types local, archive, git                                          |
-| url     | Source address, fill in when the type is archive or git                                       |
-| version | Source branch version, fill in when the type is git                                           |
-| digest  | The Hash value of archive file encrypted using sha256 algorithm, fill in when the type is git |
-| commit  | The hash value of a source code commit, fill in when the type is git                          |
-| patch   | Source patch path                                                                             |
+| name   | description                                                                                               |
+| ------ | --------------------------------------------------------------------------------------------------------- |
+| kind   | Source code type, optional types git, file, archive, git                                                  |
+| url    | Source address, fill in when the type is archive or git                                                   |
+| digest | The Hash value of archive file encrypted using sha256 algorithm, fill in when the type is archive or file |
+| commit | The hash value of a source code commit, fill in when the type is git                                      |
 
 ### Build rules
 

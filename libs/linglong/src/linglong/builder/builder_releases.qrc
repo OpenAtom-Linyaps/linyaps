@@ -10,8 +10,10 @@ SPDX-License-Identifier: LGPL-3.0-or-later
     <file alias="appimage-url.yaml">../../../../../misc/share/linglong/builder/templates/appimage-url.yaml</file>
     <file alias="appimage-local.yaml">../../../../../misc/share/linglong/builder/templates/appimage-local.yaml</file>
     <!-- scripts -->
-    <file alias="scripts/fetch-git-repo">../../../../../misc/libexec/linglong/fetch-git-repo</file>
-    <file alias="scripts/fetch-dsc-repo">../../../../../misc/libexec/linglong/fetch-dsc-repo</file>
+    <file alias="scripts/fetch-git-source">../../../../../misc/libexec/linglong/fetch-git-source</file>
+    <file alias="scripts/fetch-dsc-source">../../../../../misc/libexec/linglong/fetch-dsc-source</file>
+    <file alias="scripts/fetch-file-source">../../../../../misc/libexec/linglong/fetch-file-source</file>
+    <file alias="scripts/fetch-archive-source">../../../../../misc/libexec/linglong/fetch-archive-source</file>
     <file alias="scripts/app-conf-generator">../../../../../misc/libexec/linglong/app-conf-generator</file>
     <file alias="container/config.json">../../../../../misc/lib/linglong/container/config.json</file>
   </qresource>

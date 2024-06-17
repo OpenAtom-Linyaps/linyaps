@@ -1,0 +1,32 @@
+#!/bin/sh
+
+# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+set -e
+
+outputfile=$1
+url=$2
+digest=$3
+cachedir=$4
+
+# Check command tools 
+if ! command -v wget
+then
+    echo "wget not found, please install wget first"
+    exit 1;
+fi
+# Check cache
+if [ -f "$cachedir/file_$digest" ]; then
+    cp "$cachedir/file_$digest" "$outputfile"
+    exit;
+fi
+# Download file
+wget "$url" -O "$cachedir/tmp_$digest"
+actual_hash=$(sha256sum "$cachedir/tmp_$digest" | awk '{print $1}')
+if [ "X$actual_hash" != "X$digest" ]; then
+    echo "File SHA256 digest is $actual_hash, expected $digest"
+    exit 1;
+fi
+mv "$cachedir/tmp_$digest" "$cachedir/file_$digest"
+cp "$cachedir/file_$digest" "$outputfile"

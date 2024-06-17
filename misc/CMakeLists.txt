@@ -14,8 +14,10 @@ configure_files(
   # find -regex '\.\/\(share\|lib\|libexec\)\/.*' -type f -printf '%P\n' | sort
   libexec/linglong/create-linglong-dirs
   libexec/linglong/app-conf-generator
-  libexec/linglong/fetch-dsc-repo
-  libexec/linglong/fetch-git-repo
+  libexec/linglong/fetch-dsc-source
+  libexec/linglong/fetch-git-source
+  libexec/linglong/fetch-file-source
+  libexec/linglong/fetch-archive-source
   libexec/linglong/upgrade-all
   libexec/linglong/builder/helper/config-check.sh
   libexec/linglong/builder/helper/ldd-check.sh

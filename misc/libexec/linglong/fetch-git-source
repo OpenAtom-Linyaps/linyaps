@@ -5,15 +5,22 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
 set -e
+
 workdir=$1
 url=$2
 commit=$3
-version=$4
+# cachedir=$4
 
+# Check command tools 
+if ! command -v git
+then
+    echo "git not found, please install git first"
+    exit 1;
+fi
 mkdir -p "$workdir" || true
 cd "$workdir"
 
-# init repo
+# Init repo
 if [ -d ".git" ]; then
     git remote set-url origin "$url"
 else
@@ -21,12 +28,11 @@ else
     git remote add origin "$url"
 fi
 
-# fetch commit
-git tag --delete "$version" || true
-git fetch origin "$commit:refs/tags/$version" --depth 1 -n
+# Fetch commit
+git fetch origin "$commit" --depth 1 -n
 git add :/
-git reset --hard "$version"
+git reset --hard "$commit"
 
-# init submodule
+# Fetch submodule
 git submodule update --init --recursive --depth 1
 git submodule foreach git reset --hard HEAD

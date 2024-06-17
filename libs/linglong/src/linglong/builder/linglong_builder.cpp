@@ -369,8 +369,12 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
                        .arg("Status")
                        .toStdString(),
                      2);
+        auto fetchCacheDir = this->workingDir.absoluteFilePath("linglong/cache");
+        if (!qgetenv("LINGLONG_FETCH_CACHE").isEmpty()) {
+            fetchCacheDir = qgetenv("LINGLONG_FETCH_CACHE");
+        }
         auto result = fetchSources(*this->project.sources,
-                                   this->workingDir.absoluteFilePath("linglong/cache"),
+                                   fetchCacheDir,
                                    this->workingDir.absoluteFilePath("linglong/sources"),
                                    this->cfg);
         if (!result) {

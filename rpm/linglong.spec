@@ -102,8 +102,10 @@ cd build
 %files -n linglong-builder
 %license LICENSE
 %{_bindir}/ll-builder
-%{_libexecdir}/%{name}/fetch-dsc-repo
-%{_libexecdir}/%{name}/fetch-git-repo
+%{_libexecdir}/%{name}/fetch-dsc-source
+%{_libexecdir}/%{name}/fetch-git-source
+%{_libexecdir}/%{name}/fetch-file-source
+%{_libexecdir}/%{name}/fetch-archive-source
 %{_libexecdir}/%{name}/app-conf-generator
 %{_libexecdir}/%{name}/builder/helper/*.sh
 %{_datadir}/bash-completion/completions/ll-builder

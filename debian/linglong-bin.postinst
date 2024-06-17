@@ -1,98 +1,101 @@
-#!/bin/sh
+#!/bin/bash
 
 # SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-#
 # SPDX-License-Identifier: LGPL-3.0-or-later
+
+log_file="/var/log/linglong-bin.log"  # Log file path
+
+# Ensure log file exists
+mkdir -p "$(dirname "$log_file")"
+touch "$log_file"
 
 # This systemd config is automatically generated from dh_installsysusers/13.11.4.
 # When the dh-compat < 13, some of them will not be generated.
 # So we just make this hard code.
 if [ "$1" = "configure" ] || [ "$1" = "abort-upgrade" ] || [ "$1" = "abort-deconfigure" ] || [ "$1" = "abort-remove" ] ; then
-   systemd-sysusers ${DPKG_ROOT:+--root="$DPKG_ROOT"} linglong.conf
+    systemd-sysusers ${DPKG_ROOT:+--root="$DPKG_ROOT"} linglong.conf | tee -a "$log_file"  # Add logging
 fi
 
 if [ "$1" = "configure" ] || [ "$1" = "abort-upgrade" ] || [ "$1" = "abort-deconfigure" ] || [ "$1" = "abort-remove" ] ; then
-        if [ -z "${DPKG_ROOT:-}" ] ; then
-                # The following line should be removed in trixie or trixie+1
-                deb-systemd-helper --user unmask 'linglong-upgrade.service' >/dev/null || true
-
-                # was-enabled defaults to true, so new installations run enable.
-                if deb-systemd-helper --quiet --user was-enabled 'linglong-upgrade.service' ; then
-                        # Enables the unit on first installation, creates new
-                        # symlinks on upgrades if the unit file has changed.
-                        deb-systemd-helper --user enable 'linglong-upgrade.service' >/dev/null || true
-                else
-                        # Update the statefile to add new symlinks (if any), which need to be
-                        # cleaned up on purge. Also remove old symlinks.
-                        deb-systemd-helper --user update-state 'linglong-upgrade.service' >/dev/null || true
-                fi
-        fi
-fi
-
-if [ "$1" = "configure" ] || [ "$1" = "abort-upgrade" ] || [ "$1" = "abort-deconfigure" ] || [ "$1" = "abort-remove" ] ; then
-        if [ -z "${DPKG_ROOT:-}" ] ; then
-                # The following line should be removed in trixie or trixie+1
-                deb-systemd-helper --user unmask 'linglong-upgrade.timer' >/dev/null || true
-
-                # was-enabled defaults to true, so new installations run enable.
-                if deb-systemd-helper --quiet --user was-enabled 'linglong-upgrade.timer' ; then
-                        # Enables the unit on first installation, creates new
-                        # symlinks on upgrades if the unit file has changed.
-                        deb-systemd-helper --user enable 'linglong-upgrade.timer' >/dev/null || true
-                else
-                        # Update the statefile to add new symlinks (if any), which need to be
-                        # cleaned up on purge. Also remove old symlinks.
-                        deb-systemd-helper --user update-state 'linglong-upgrade.timer' >/dev/null || true
-                fi
-        fi
-fi
-
-if [ "$1" = "configure" ] || [ "$1" = "abort-upgrade" ] || [ "$1" = "abort-deconfigure" ] || [ "$1" = "abort-remove" ] ; then
+    if [ -z "${DPKG_ROOT:-}" ] ; then
         # The following line should be removed in trixie or trixie+1
-        deb-systemd-helper unmask 'org.deepin.linglong.PackageManager.service' >/dev/null || true
+        deb-systemd-helper --user unmask 'linglong-upgrade.service' >/dev/null || true
 
         # was-enabled defaults to true, so new installations run enable.
-        if deb-systemd-helper --quiet was-enabled 'org.deepin.linglong.PackageManager.service'; then
-                # Enables the unit on first installation, creates new
-                # symlinks on upgrades if the unit file has changed.
-                deb-systemd-helper enable 'org.deepin.linglong.PackageManager.service' >/dev/null || true
+        if deb-systemd-helper --quiet --user was-enabled 'linglong-upgrade.service' ; then
+            # Enables the unit on first installation, creates new
+            # symlinks on upgrades if the unit file has changed.
+            deb-systemd-helper --user enable 'linglong-upgrade.service' >/dev/null || true
         else
-                # Update the statefile to add new symlinks (if any), which need to be
-                # cleaned up on purge. Also remove old symlinks.
-                deb-systemd-helper update-state 'org.deepin.linglong.PackageManager.service' >/dev/null || true
+            # Update the statefile to add new symlinks (if any), which need to be
+            # cleaned up on purge. Also remove old symlinks.
+            deb-systemd-helper --user update-state 'linglong-upgrade.service' >/dev/null || true
         fi
+    fi
 fi
 
 if [ "$1" = "configure" ] || [ "$1" = "abort-upgrade" ] || [ "$1" = "abort-deconfigure" ] || [ "$1" = "abort-remove" ] ; then
-        if [ -d /run/systemd/system ]; then
-                systemctl --system daemon-reload >/dev/null || true
-                if [ -n "$2" ]; then
-                        _dh_action=restart
-                else
-                        _dh_action=start
-                fi
-                deb-systemd-invoke $_dh_action 'org.deepin.linglong.PackageManager.service' >/dev/null || true
-        fi
-fi
-# End automatically added section
+    if [ -z "${DPKG_ROOT:-}" ] ; then
+        # The following line should be removed in trixie or trixie+1
+        deb-systemd-helper --user unmask 'linglong-upgrade.timer' >/dev/null || true
 
+        # was-enabled defaults to true, so new installations run enable.
+        if deb-systemd-helper --quiet --user was-enabled 'linglong-upgrade.timer' ; then
+            # Enables the unit on first installation, creates new
+            # symlinks on upgrades if the unit file has changed.
+            deb-systemd-helper --user enable 'linglong-upgrade.timer' >/dev/null || true
+        else
+            # Update the statefile to add new symlinks (if any), which need to be
+            # cleaned up on purge. Also remove old symlinks.
+            deb-systemd-helper --user update-state 'linglong-upgrade.timer' >/dev/null || true
+        fi
+    fi
+fi
+
+if [ "$1" = "configure" ] || [ "$1" = "abort-upgrade" ] || [ "$1" = "abort-deconfigure" ] || [ "$1" = "abort-remove" ] ; then
+    # The following line should be removed in trixie or trixie+1
+    deb-systemd-helper unmask 'org.deepin.linglong.PackageManager.service' >/dev/null || true
+
+    # was-enabled defaults to true, so new installations run enable.
+    if deb-systemd-helper --quiet was-enabled 'org.deepin.linglong.PackageManager.service'; then
+        # Enables the unit on first installation, creates new
+        # symlinks on upgrades if the unit file has changed.
+        deb-systemd-helper enable 'org.deepin.linglong.PackageManager.service' >/dev/null || true
+    else
+        # Update the statefile to add new symlinks (if any), which need to be
+        # cleaned up on purge. Also remove old symlinks.
+        deb-systemd-helper update-state 'org.deepin.linglong.PackageManager.service' >/dev/null || true
+    fi
+fi
+
+# Add logging to systemctl command
+if [ "$1" = "configure" ] || [ "$1" = "abort-upgrade" ] || [ "$1" = "abort-deconfigure" ] || [ "$1" = "abort-remove" ] ; then
+    if [ -d /run/systemd/system ]; then
+        systemctl --system daemon-reload >/dev/null || true | tee -a "$log_file"
+        if [ -n "$2" ]; then
+            _dh_action=restart
+        else
+            _dh_action=start
+        fi
+        deb-systemd-invoke $_dh_action 'org.deepin.linglong.PackageManager.service' >/dev/null || true | tee -a "$log_file" 
+    fi
+fi
+
+# End automatically added section
 case "$1" in
 configure)
-        version=$2
-        shift
-        # enable kernel.unprivileged_userns_clone
-        if [ -f /etc/sysctl.d/linglong.conf ];then
-                sysctl -p /etc/sysctl.d/linglong.conf
-        fi
-        ;;
+    # enable kernel.unprivileged_userns_clone
+    sysctl_config="/etc/sysctl.d/linglong.conf"
+    if [ -f "$sysctl_config" ]; then
+        echo "Enabling kernel.unprivileged_userns_clone..." | tee -a "$log_file"
+        sysctl -p "$sysctl_config" | tee -a "$log_file" 
+    fi
+    ;;
 abort-upgrade | abort-remove | abort-deconfigure) ;;
 *)
-        echo "postinst called with unknown argument '$1'" >&2
-        exit 0
-        ;;
-
+    echo "postinst called with unknown argument '$1'" >&2 | tee -a "$log_file"
+    exit 0
+    ;;
 esac
 
 exit 0
-
-# vi: ft=sh

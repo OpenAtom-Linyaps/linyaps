@@ -8,12 +8,9 @@ VERSION=$(shell awk '/VERSION=/' /etc/os-release | sed 's/VERSION=//' | sed 's/\
 %:
 	dh $@ --buildsystem=cmake
 
-ifeq ($(OS) $(VERSION) $(ARCH), uos 20 amd)
 override_dh_auto_install:
 	dh_auto_install
-# linglong.conf will be installed to the first package in control file
-	dh_install debian/sysctl.d/linglong.conf /etc/sysctl.d
-endif
+	dh_install debian/sysctl.d/linglong.conf /usr/lib/sysctl.d/
 
 EXTRA_OPTION = -DCPM_LOCAL_PACKAGES_ONLY=ON -DLINGLONG_VERSION=$(DEB_VERSION_UPSTREAM)
 

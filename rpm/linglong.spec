@@ -94,6 +94,7 @@ cd build
 %{_datadir}/bash-completion/completions/ll-cli
 %{_datadir}/dbus-1/system-services/*.service
 %{_datadir}/dbus-1/system.d/*.conf
+%{_datadir}/polkit-1/actions/org.deepin.linglong.PackageManager.policy
 %{_datadir}/%{name}/config.yaml
 %{_datadir}/mime/packages/*
 %{_datadir}/%{name}/api/api.json

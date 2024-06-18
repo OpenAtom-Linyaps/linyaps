@@ -12,6 +12,9 @@ Group=@LINGLONG_USERNAME@
 BusName=org.deepin.linglong.PackageManager
 ExecStartPre=+@CMAKE_INSTALL_FULL_LIBEXECDIR@/linglong/create-linglong-dirs
 ExecStart=@CMAKE_INSTALL_FULL_LIBEXECDIR@/linglong/ll-package-manager
+# this opt maybe not effective, it only used to skip DBus security check, it will be removed later
+CapabilityBoundingSet=~CAP_NET_RAW
+MemoryLimit=8G
 Restart=on-failure
 RestartSec=10
 

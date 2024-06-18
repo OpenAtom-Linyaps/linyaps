@@ -11,17 +11,17 @@ function(configure_files)
 endfunction()
 
 configure_files(
-  # find -regex '\.\/\(share\|lib\|libexec\)\/.*' -type f -printf '%P\n' | sort
-  libexec/linglong/create-linglong-dirs
+  # find -regex '\.\/\(script\|share\|lib\|libexec\)\/.*' -type f -printf '%P\n' | sort
   libexec/linglong/app-conf-generator
-  libexec/linglong/fetch-dsc-source
-  libexec/linglong/fetch-git-source
-  libexec/linglong/fetch-file-source
-  libexec/linglong/fetch-archive-source
-  libexec/linglong/upgrade-all
   libexec/linglong/builder/helper/config-check.sh
   libexec/linglong/builder/helper/ldd-check.sh
   libexec/linglong/builder/helper/main-check.sh
+  libexec/linglong/create-linglong-dirs
+  libexec/linglong/fetch-archive-source
+  libexec/linglong/fetch-dsc-source
+  libexec/linglong/fetch-file-source
+  libexec/linglong/fetch-git-source
+  libexec/linglong/upgrade-all
   lib/linglong/container/config.d/00-id-mapping
   lib/linglong/container/config.d/05-initialize
   lib/linglong/container/config.d/10-basics.json
@@ -34,12 +34,15 @@ configure_files(
   lib/linglong/container/config.json
   lib/linglong/container/README.md
   lib/systemd/system-environment-generators/61-linglong
-  lib/systemd/system-preset/91-linglong.preset
   lib/systemd/system/org.deepin.linglong.PackageManager.service
+  lib/systemd/system-preset/91-linglong.preset
   lib/systemd/user-environment-generators/61-linglong
   lib/systemd/user/linglong-upgrade.service
   lib/systemd/user/linglong-upgrade.timer
   lib/sysusers.d/linglong.conf
+  script/linglong-repair-tool
+  script/linglong.sh
+  share/applications/linglong-repair-tool.desktop
   share/bash-completion/completions/ll-builder
   share/bash-completion/completions/ll-cli
   share/dbus-1/system.d/org.deepin.linglong.PackageManager.conf
@@ -50,10 +53,9 @@ configure_files(
   share/linglong/builder/templates/appimage-local.yaml
   share/linglong/builder/templates/appimage-url.yaml
   share/linglong/builder/templates/example.yaml
+  share/linglong/config.yaml
   share/mime/packages/deepin-linglong.xml
-  share/applications/linglong-repair-tool.desktop
-  script/linglong-repair-tool
-  script/linglong.sh)
+  share/polkit-1/actions/org.deepin.linglong.PackageManager.policy)
 
 # bash-completion
 set(BASH_COMPLETIONS_DIR ${CMAKE_INSTALL_DATADIR}/bash-completion)
@@ -92,7 +94,8 @@ install(
   USE_SOURCE_PERMISSIONS)
 
 # systemd
-set(SYSTEMD_SYSTEM_PRESET_PATH ${CMAKE_INSTALL_PREFIX}/lib/systemd/system-preset)
+set(SYSTEMD_SYSTEM_PRESET_PATH
+    ${CMAKE_INSTALL_PREFIX}/lib/systemd/system-preset)
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/systemd/system-preset/
         DESTINATION ${SYSTEMD_SYSTEM_PRESET_PATH})
 
@@ -131,27 +134,31 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/share/mime/packages
 
 # set linglong XDG_DATA_DIRS environtment
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/script/linglong.sh
-        DESTINATION /etc/profile.d
-)
+        DESTINATION /etc/profile.d)
 
 install(
   FILES ${CMAKE_CURRENT_BINARY_DIR}/script/linglong.sh
   DESTINATION /etc/X11/Xsession.d/
-  RENAME 21linglong
-)
+  RENAME 21linglong)
 
 # linglong-repair-tool bin
-install(
-  PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/script/linglong-repair-tool
-  DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/script/linglong-repair-tool
+        DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # linglong-repair-tool desktop
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/share/applications/linglong-repair-tool.desktop
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+install(
+  FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/share/applications/linglong-repair-tool.desktop
+  DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
 
 install(
-        FILES ${CMAKE_SOURCE_DIR}/api/schema/v1.json
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/linglong/api/
-        RENAME api.json
-)
+  FILES ${CMAKE_SOURCE_DIR}/api/schema/v1.json
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/share/linglong/api/
+  RENAME api.json)
+
+# polkit actions this file only used to skip DBus security check, it will be
+# removed later
+install(
+  FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/share/polkit-1/actions/org.deepin.linglong.PackageManager.policy
+  DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/actions)

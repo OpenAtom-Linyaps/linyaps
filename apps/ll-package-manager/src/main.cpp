@@ -28,8 +28,10 @@ void withDBusDaemon()
         return;
     }
 
-    linglong::repo::ClientFactory clientFactory(config->repos[config->defaultRepo]);
-    auto ostreeRepo = new linglong::repo::OSTreeRepo(QDir(LINGLONG_ROOT), *config, clientFactory);
+    qWarning() << "server" << config->repos[config->defaultRepo].c_str();
+    auto clientFactory = new linglong::repo::ClientFactory(config->repos[config->defaultRepo]);
+    clientFactory->setParent(QCoreApplication::instance());
+    auto ostreeRepo = new linglong::repo::OSTreeRepo(QDir(LINGLONG_ROOT), *config, *clientFactory);
     ostreeRepo->setParent(QCoreApplication::instance());
 
     auto packageManager =
@@ -76,9 +78,9 @@ void withoutDBusDaemon()
         QCoreApplication::exit(-1);
         return;
     }
-
-    linglong::repo::ClientFactory clientFactory(config->repos[config->defaultRepo]);
-    auto ostreeRepo = new linglong::repo::OSTreeRepo(QDir(LINGLONG_ROOT), *config, clientFactory);
+    auto clientFactory = new linglong::repo::ClientFactory(config->repos[config->defaultRepo]);
+    clientFactory->setParent(QCoreApplication::instance());
+    auto ostreeRepo = new linglong::repo::OSTreeRepo(QDir(LINGLONG_ROOT), *config, *clientFactory);
     ostreeRepo->setParent(QCoreApplication::instance());
 
     auto packageManager =

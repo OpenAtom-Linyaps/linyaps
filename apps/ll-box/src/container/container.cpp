@@ -50,7 +50,13 @@ int ConfigUserNamespace(const linglong::Linux &linux, int initPid)
     logDbg() << "start write uid_map and pid_map" << initPid;
 
     // write uid map
-    std::ofstream uidMapFile(util::format("/proc/%s/uid_map", pid.c_str()));
+    auto uidMap = util::format("/proc/%s/uid_map", pid.c_str());
+    std::ofstream uidMapFile(uidMap);
+    if (!uidMapFile.is_open()) {
+        logErr() << "couldn't open file" << uidMap;
+        return -1;
+    }
+
     for (auto const &idMap : linux.uidMappings) {
         uidMapFile << util::format("%lu %lu %lu\n", idMap.containerID, idMap.hostID, idMap.size);
     }
@@ -59,10 +65,20 @@ int ConfigUserNamespace(const linglong::Linux &linux, int initPid)
     // write gid map
     auto setgroupsPath = util::format("/proc/%s/setgroups", pid.c_str());
     std::ofstream setgroupsFile(setgroupsPath);
+    if (!setgroupsFile.is_open()) {
+        logErr() << "couldn't open file" << setgroupsPath;
+        return -1;
+    }
     setgroupsFile << "deny";
     setgroupsFile.close();
 
-    std::ofstream gidMapFile(util::format("/proc/%s/gid_map", pid.c_str()));
+    auto gidMap = util::format("/proc/%s/gid_map", pid.c_str());
+    std::ofstream gidMapFile(gidMap);
+    if (!gidMapFile.is_open()) {
+        logErr() << "couldn't open file" << gidMap;
+        return -1;
+    }
+
     for (auto const &idMap : linux.gidMappings) {
         gidMapFile << util::format("%lu %lu %lu\n", idMap.containerID, idMap.hostID, idMap.size);
     }
@@ -87,13 +103,23 @@ static int ConfigCgroupV2(const std::string &cgroupsPath,
         for (auto const &cfg : cfgs) {
             logWan() << "ConfigCgroupV2" << cfg.first << cfg.second;
             std::ofstream cfgFile(cfg.first);
+            if (!cfgFile.is_open()) {
+                logErr() << "config file isn't open" << cfg.first;
+                return false;
+            }
+
             cfgFile << cfg.second << std::endl;
             cfgFile.close();
         }
+
+        return true;
     };
 
     auto cgroupsRoot = util::fs::path(cgroupsPath);
-    util::fs::create_directories(cgroupsRoot, 0755);
+    if (!util::fs::create_directories(cgroupsRoot, 0755)) {
+        logErr() << "create_directories cgroupsRoot failed" << util::errnoString();
+        return -1;
+    }
 
     int ret = mount("cgroup2", cgroupsRoot.string().c_str(), "cgroup2", 0u, nullptr);
     if (ret != 0) {
@@ -118,11 +144,16 @@ static int ConfigCgroupV2(const std::string &cgroupsPath,
     if (memMax > 0) {
         const auto memSwapMax = res.memory.swap - memMax;
         const auto memLow = res.memory.reservation;
-        writeConfig({
+        auto ret = writeConfig({
           { subCgroupPath("memory.max"), util::format("%d", memMax) },
           { subCgroupPath("memory.swap.max"), util::format("%d", memSwapMax) },
           { subCgroupPath("memory.low"), util::format("%d", memLow) },
         });
+
+        if (!ret) {
+            logErr() << "write memory config failed";
+            return -1;
+        }
     }
 
     // config cpu
@@ -131,15 +162,29 @@ static int ConfigCgroupV2(const std::string &cgroupsPath,
     // convert from [2-262144] to [1-10000], 262144 is 2^18
     const auto cpuWeight = (1 + ((res.cpu.shares - 2) * 9999) / 262142);
 
-    writeConfig({
-      { subCgroupPath("cpu.max"), util::format("%d %d", cpuMax, cpuPeriod) },
-      { subCgroupPath("cpu.weight"), util::format("%d", cpuWeight) },
-    });
+    {
+        auto ret = writeConfig({
+          { subCgroupPath("cpu.max"), util::format("%d %d", cpuMax, cpuPeriod) },
+          { subCgroupPath("cpu.weight"), util::format("%d", cpuWeight) },
+        });
+
+        if (!ret) {
+            logErr() << "write cpu config failed";
+            return -1;
+        }
+    }
 
     // config pid
-    writeConfig({
-      { subCgroupPath("cgroup.procs"), util::format("%d", initPid) },
-    });
+    {
+        auto ret = writeConfig({
+          { subCgroupPath("cgroup.procs"), util::format("%d", initPid) },
+        });
+
+        if (!ret) {
+            logErr() << "write cgroup config failed";
+            return -1;
+        }
+    }
 
     logDbg() << "move" << initPid << "to new cgroups";
 
@@ -174,8 +219,7 @@ static bool parse_wstatus(const int &wstatus, std::string &info)
 
 struct ContainerPrivate
 {
-public:
-    ContainerPrivate(Runtime r, const std::string &bundle, Container * /*parent*/)
+    ContainerPrivate(Runtime r, const std::string &bundle, Container * /*unused*/)
         : runtime(std::move(r))
         , nativeMounter(new HostMount)
         , overlayfsMounter(new HostMount)
@@ -207,35 +251,52 @@ public:
 
     std::map<int, std::string> pidMap;
 
-public:
-    static int DropPermissions()
+    [[nodiscard]] static int DropPermissions()
     {
         __gid_t newgid[1] = { getgid() };
         auto newuid = getuid();
         auto olduid = geteuid();
 
         if (0 == olduid) {
-            setgroups(1, newgid);
+            if (setgroups(1, newgid) == -1) {
+                logWan() << "setgroups err:" << util::errnoString();
+            }
         }
-        seteuid(newuid);
+
+        if (seteuid(newuid) == -1) {
+            logWan() << "seteuid err:" << util::errnoString();
+        }
+
         return 0;
     }
 
-    int PrepareLinks() const
+    [[nodiscard]] static int PrepareLinks()
     {
-        chdir("/");
+        if (auto ret = chdir("/"); ret == -1) {
+            logErr() << "chdir err:" << util::RetErrString(ret);
+            return -1;
+        }
+
+        const static std::unordered_map<std::string_view, std::string_view> linkMap = {
+            { "/proc/kcore", "/dev/core" },
+            { "/proc/self/fd", "/dev/fd" },
+            { "/proc/self/fd/2", "/dev/stderr" },
+            { "/proc/self/fd/0", "/dev/stdin" },
+            { "/proc/self/fd/1", "/dev/stdout" }
+        };
 
         // default link
-        symlink("/proc/kcore", "/dev/core");
-        symlink("/proc/self/fd", "/dev/fd");
-        symlink("/proc/self/fd/2", "/dev/stderr");
-        symlink("/proc/self/fd/0", "/dev/stdin");
-        symlink("/proc/self/fd/1", "/dev/stdout");
+        for (const auto &[from, to] : linkMap) {
+            if (auto ret = symlink(from.data(), to.data()); ret == -1) {
+                logErr() << "symlink" << from << "to" << to << "failed:" << util::RetErrString(ret);
+                return -1;
+            }
+        }
 
         return 0;
     }
 
-    int PrepareDefaultDevices() const
+    [[nodiscard]] int PrepareDefaultDevices() const
     {
         struct Device
         {
@@ -268,9 +329,7 @@ public:
 
         // FIXME(iceyer): /dev/console is set up if terminal is enabled in the config by bind
         // mounting the pseudoterminal slave to /dev/console.
-        symlink("/dev/pts/ptmx", (this->hostRoot + "/dev/ptmx").c_str());
-
-        return 0;
+        return symlink("/dev/pts/ptmx", (this->hostRoot + "/dev/ptmx").c_str());
     }
 
     void waitChildAndExec()
@@ -346,13 +405,15 @@ public:
                 }
             }
         }
-        return;
     }
 
-    bool forkAndExecProcess(const Process process, bool unblock = false)
+    [[nodiscard]] bool forkAndExecProcess(const Process &process, bool unblock = false)
     {
         // FIXME: parent may dead before this return.
-        prctl(PR_SET_PDEATHSIG, SIGKILL);
+        if (auto ret = prctl(PR_SET_PDEATHSIG, SIGKILL); ret == -1) {
+            logErr() << "couldn't manipulate current process" << util::RetErrString(ret);
+            return false;
+        }
 
         int pid = fork();
         if (pid < 0) {
@@ -372,10 +433,9 @@ public:
             }
             logDbg() << "process.args:" << process.args;
 
-            int ret;
-            ret = chdir(process.cwd.c_str());
-            if (ret) {
-                logErr() << "failed to chdir to" << process.cwd.c_str();
+            if (auto ret = chdir(process.cwd.c_str()); ret != 0) {
+                logErr() << "failed to chdir to" << process.cwd.c_str() << util::RetErrString(ret);
+                return false;
             }
 
             for (const auto &env : process.env) {
@@ -383,15 +443,16 @@ public:
                     continue;
                 }
 
-                setenv("PATH", env.c_str() + strlen("PATH="), 1);
+                if (auto ret = setenv("PATH", env.c_str() + strlen("PATH="), 1); ret == -1) {
+                    logWan() << "failed to set PATH" << util::RetErrString(ret);
+                }
             }
 
             logInf() << "start exec process";
-            ret = util::Exec(process.args, process.env);
-            if (0 != ret) {
+            if (auto ret = util::Exec(process.args, process.env); ret != 0) {
                 logErr() << "exec failed" << util::RetErrString(ret);
+                exit(ret);
             }
-            exit(ret);
         } else {
             pidMap.insert(make_pair(pid, process.args[0]));
         }
@@ -399,12 +460,16 @@ public:
         return true;
     }
 
-    int PivotRoot() const
+    [[nodiscard]] int PivotRoot() const
     {
         containerMounter->finalizeMounts();
 
         int ret = -1;
-        chdir(hostRoot.c_str());
+        ret = chdir(hostRoot.c_str());
+        if (ret != 0) {
+            logErr() << "chdir error:" << util::RetErrString(ret);
+            return -1;
+        }
 
         int flag = MS_BIND | MS_REC;
         ret = mount(".", ".", "bind", flag, nullptr);
@@ -413,11 +478,15 @@ public:
             return -1;
         }
 
-        auto llHostFilename = "ll-host";
+        const auto *llHostFilename = "ll-host";
 
         auto llHostPath = hostRoot + "/" + llHostFilename;
 
-        mkdir(llHostPath.c_str(), 0755);
+        ret = mkdir(llHostPath.c_str(), 0755);
+        if (ret != 0) {
+            logErr() << "mkdir" << llHostPath << "err:" << util::RetErrString(ret);
+            return -1;
+        }
 
         ret = syscall(SYS_pivot_root, hostRoot.c_str(), llHostPath.c_str());
         if (0 != ret) {
@@ -425,15 +494,29 @@ public:
             return -1;
         }
 
-        chdir("/");
+        ret = chdir("/");
+        if (ret != 0) {
+            logErr() << "chdir to root [before chroot]:" << util::RetErrString(ret);
+            return -1;
+        }
+
         ret = chroot(".");
         if (0 != ret) {
             logErr() << "chroot failed" << hostRoot << util::errnoString() << errno;
             return -1;
         }
 
-        chdir("/");
-        umount2(llHostFilename, MNT_DETACH);
+        ret = chdir("/");
+        if (ret != 0) {
+            logErr() << "chdir to root [after chroot]:" << util::RetErrString(ret);
+            return -1;
+        }
+
+        ret = umount2(llHostFilename, MNT_DETACH);
+        if (ret != 0) {
+            logErr() << "umount2" << llHostFilename << "err:" << util::RetErrString(ret);
+            return -1;
+        }
 
         return 0;
     }
@@ -451,7 +534,7 @@ public:
         if (runtime.mounts.has_value()) {
             for (auto const &mount : runtime.mounts.value()) {
                 if (containerMounter->MountNode(mount) != 0) {
-                    logWan() << "failed to Mount:" << strerror(errno);
+                    logWan() << "failed to Mount:" << util::RetErrString(errno);
                 }
             }
         };
@@ -501,7 +584,9 @@ int NonePrivilegeProc(void *arg)
     idMap.size = 1;
     linux.gidMappings.push_back(idMap);
 
-    ConfigUserNamespace(linux, 0);
+    if (auto ret = ConfigUserNamespace(linux, 0); ret != 0) {
+        return ret;
+    }
 
     auto ret = mount("proc", "/proc", "proc", 0, nullptr);
     if (0 != ret) {
@@ -520,7 +605,10 @@ int NonePrivilegeProc(void *arg)
         }
     }
 
-    containerPrivate.forkAndExecProcess(containerPrivate.runtime.process);
+    if (!containerPrivate.forkAndExecProcess(containerPrivate.runtime.process)) {
+        logErr() << "fork and exec failed";
+        return -1;
+    }
 
     return util::WaitAllUntil(containerPrivate.pidMap.begin()->first);
 }
@@ -534,7 +622,9 @@ int EntryProc(void *arg)
 {
     auto &containerPrivate = *reinterpret_cast<ContainerPrivate *>(arg);
 
-    ConfigUserNamespace(containerPrivate.runtime.linux, 0);
+    if (auto ret = ConfigUserNamespace(containerPrivate.runtime.linux, 0); ret != 0) {
+        return ret;
+    }
 
     // FIXME: change HOSTNAME will broken XAUTH
     auto new_hostname = containerPrivate.runtime.hostname;
@@ -556,16 +646,28 @@ int EntryProc(void *arg)
     containerPrivate.MountContainerPath();
 
     if (containerPrivate.useNewCgroupNs) {
-        ConfigCgroupV2(containerPrivate.runtime.linux.cgroupsPath,
-                       containerPrivate.runtime.linux.resources,
-                       getpid());
+        auto ret = ConfigCgroupV2(containerPrivate.runtime.linux.cgroupsPath,
+                                  containerPrivate.runtime.linux.resources,
+                                  getpid());
+        if (ret != 0) {
+            logErr() << "config cgroupV2 failed";
+            return -1;
+        }
     }
 
-    containerPrivate.PrepareDefaultDevices();
+    if (auto ret = containerPrivate.PrepareDefaultDevices(); ret == -1) {
+        logWan() << "prepare default devices failed";
+    }
 
-    containerPrivate.PivotRoot();
+    if (auto ret = containerPrivate.PivotRoot(); ret == -1) {
+        logErr() << "pivotRoot failed";
+        return -1;
+    }
 
-    containerPrivate.PrepareLinks();
+    if (auto ret = linglong::ContainerPrivate::PrepareLinks(); ret == -1) {
+        logWan() << "prepareLinks failed";
+        return -1;
+    }
 
     int nonePrivilegeProcFlag = SIGCHLD | CLONE_NEWUSER | CLONE_NEWPID | CLONE_NEWNS;
 
@@ -575,7 +677,9 @@ int EntryProc(void *arg)
         return -1;
     }
 
-    ContainerPrivate::DropPermissions();
+    if (ContainerPrivate::DropPermissions() != 0) {
+        logWan() << "drop permissions failed";
+    }
 
     // FIXME: parent may dead before this return.
     prctl(PR_SET_PDEATHSIG, SIGKILL);
@@ -632,7 +736,9 @@ int Container::Start()
 
     // FIXME: maybe we need c.opt.child_need_wait?
 
-    ContainerPrivate::DropPermissions();
+    if (ContainerPrivate::DropPermissions() != 0) {
+        logWan() << "drop permissions failed";
+    }
 
     // FIXME: parent may dead before this return.
     prctl(PR_SET_PDEATHSIG, SIGKILL);

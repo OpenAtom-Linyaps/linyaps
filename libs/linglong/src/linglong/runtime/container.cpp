@@ -77,8 +77,8 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
         return LINGLONG_ERR("process.env is not set");
     }
 
-    auto originEnvs = this->cfg.process->env.value();
-    this->cfg.process = process;
+    // we only set args in process parameter for now
+    this->cfg.process->args = process.args;
 
     if (this->cfg.process->user) {
         qWarning() << "`user` field is ignored.";
@@ -118,39 +118,6 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
             "/bin/bash", "--login", "-e", "-c", bashArgs.join(" ").toStdString(),
         };
         this->cfg.process->args = arguments;
-    }
-
-    for (const auto &env : *this->cfg.process->env) {
-        auto key = env.substr(0, env.find_first_of('='));
-        auto it =
-          std::find_if(originEnvs.cbegin(), originEnvs.cend(), [&key](const std::string &env) {
-              return env.rfind(key, 0) == 0;
-          });
-
-        if (it != originEnvs.cend()) {
-            qWarning() << "duplicate environment has been detected: ["
-                       << "original:" << QString::fromStdString(*it)
-                       << "user:" << QString::fromStdString(env) << "], choose original.";
-            continue;
-        }
-
-        originEnvs.emplace_back(env);
-    }
-
-    this->cfg.process->env = originEnvs;
-
-    const auto *appIDEnvStr = "LINGLONG_APPID=";
-    auto env = this->cfg.process->env.value();
-    auto appIDEnv = std::find_if(env.cbegin(), env.cend(), [&appIDEnvStr](const std::string &str) {
-        return str.rfind(appIDEnvStr, 0) == 0;
-    });
-
-    if (appIDEnv != env.cend()) {
-        qWarning() << "LINGLONG_APPID already has been set to"
-                   << QString::fromStdString(appIDEnv->substr(::strlen(appIDEnvStr) - 1));
-    } else {
-        env.emplace_back(QString{ "LINGLONG_APPID=%1" }.arg(this->appID).toStdString());
-        this->cfg.process->env = std::move(env);
     }
 
     auto arch = package::Architecture::parse(QSysInfo::currentCpuArchitecture());

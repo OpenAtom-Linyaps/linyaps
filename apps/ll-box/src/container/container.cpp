@@ -479,16 +479,15 @@ struct ContainerPrivate
         }
 
         const auto *llHostFilename = "ll-host";
-
-        auto llHostPath = hostRoot + "/" + llHostFilename;
-
-        ret = mkdir(llHostPath.c_str(), 0755);
+        auto llHostInPath = std::string{ "/run/" } + llHostFilename;
+        auto llHostOutPath = hostRoot + llHostInPath;
+        ret = mkdir(llHostOutPath.c_str(), 0755);
         if (ret != 0) {
-            logErr() << "mkdir" << llHostPath << "err:" << util::RetErrString(ret);
+            logErr() << "mkdir" << llHostOutPath << "err:" << util::RetErrString(ret);
             return -1;
         }
 
-        ret = syscall(SYS_pivot_root, hostRoot.c_str(), llHostPath.c_str());
+        ret = syscall(SYS_pivot_root, hostRoot.c_str(), llHostOutPath.c_str());
         if (0 != ret) {
             logErr() << "SYS_pivot_root failed" << hostRoot << util::errnoString() << errno << ret;
             return -1;
@@ -512,9 +511,9 @@ struct ContainerPrivate
             return -1;
         }
 
-        ret = umount2(llHostFilename, MNT_DETACH);
+        ret = umount2(llHostInPath.c_str(), MNT_DETACH);
         if (ret != 0) {
-            logErr() << "umount2" << llHostFilename << "err:" << util::RetErrString(ret);
+            logErr() << "umount2" << llHostInPath << "err:" << util::RetErrString(ret);
             return -1;
         }
 

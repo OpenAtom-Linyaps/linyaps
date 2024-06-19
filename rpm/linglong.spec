@@ -87,6 +87,7 @@ cd build
 %{_libexecdir}/%{name}/00-id-mapping
 %{_libexecdir}/%{name}/05-initialize
 %{_libexecdir}/%{name}/20-devices
+%{_libexecdir}/%{name}/25-host-env
 %{_libexecdir}/%{name}/30-user-home
 %{_libexecdir}/%{name}/40-host-ipc
 %{_libexecdir}/%{name}/90-legacy

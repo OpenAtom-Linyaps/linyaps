@@ -14,6 +14,7 @@ usr/lib/sysusers.d/linglong.conf
 usr/libexec/linglong/00-id-mapping
 usr/libexec/linglong/05-initialize
 usr/libexec/linglong/20-devices
+usr/libexec/linglong/25-host-env
 usr/libexec/linglong/30-user-home
 usr/libexec/linglong/40-host-ipc
 usr/libexec/linglong/90-legacy

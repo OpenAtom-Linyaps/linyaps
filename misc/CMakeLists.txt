@@ -28,6 +28,7 @@ configure_files(
   lib/linglong/container/config.d/20-devices
   lib/linglong/container/config.d/25-host-rootfs.json
   lib/linglong/container/config.d/25-host-statics.json
+  lib/linglong/container/config.d/25-host-env
   lib/linglong/container/config.d/30-user-home
   lib/linglong/container/config.d/40-host-ipc
   lib/linglong/container/config.d/90-legacy

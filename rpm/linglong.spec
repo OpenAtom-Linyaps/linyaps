@@ -68,6 +68,9 @@ cd build
 %license LICENSE
 %exclude %{_libdir}/cmake/linglong-*/*.cmake
 
+# exclude uab files currently
+%exclude %{_datadir}/%{name}/builder/uab/*
+
 %files -n linglong-bin
 %doc README.md
 %license LICENSE

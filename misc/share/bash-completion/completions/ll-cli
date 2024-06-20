@@ -23,6 +23,10 @@ __ll_cli_get_app_list() {
         ll-cli search . | tail -n+2 | awk '{print $1}' | tr '\n' ' '
 }
 
+__ll_cli_get_layer_list() {
+        ls *.layer | tr '\n' ' '
+}
+
 _ll_cli() {
         local wordlist
 
@@ -53,7 +57,7 @@ _ll_cli() {
                 ;;
         install)
                 install_option="--no-dbus"
-                wordlist="$wordlist $install_option $(__ll_cli_get_app_list)"
+                wordlist="$wordlist $install_option $(__ll_cli_get_app_list) $(__ll_cli_get_layer_list)"
                 ;;
         uninstall)
                 uninstall_option="--all --prune"

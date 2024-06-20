@@ -53,6 +53,10 @@ LayerPackager::pack(const LayerDir &dir, const QString &layerFilePath) const
     LINGLONG_TRACE("pack layer");
 
     QFile layer(layerFilePath);
+    if (layer.exists()) {
+        layer.remove();
+    }
+
     if (!layer.open(QIODevice::WriteOnly | QIODevice::Append)) {
         return LINGLONG_ERR(layer);
     }

@@ -15,7 +15,7 @@ override_dh_auto_install:
 EXTRA_OPTION = -DCPM_LOCAL_PACKAGES_ONLY=ON -DLINGLONG_VERSION=$(DEB_VERSION_UPSTREAM)
 
 ifeq ($(OS) $(VERSION), deepin 23)
-	EXTRA_OPTION += -DENABLE_UAB_HEADER=ON
+	EXTRA_OPTION += -DENABLE_UAB=ON
 
 override_dh_auto_install:
 	dh_auto_install

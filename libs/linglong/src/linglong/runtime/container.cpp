@@ -76,8 +76,8 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
         return LINGLONG_ERR("process.env is not set");
     }
 
-    // we only set args in process parameter for now
-    this->cfg.process->args = process.args;
+    auto originEnvs = this->cfg.process->env.value();
+    this->cfg.process = process;
 
     if (this->cfg.process->user) {
         qWarning() << "`user` field is ignored.";
@@ -118,6 +118,25 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
         };
         this->cfg.process->args = arguments;
     }
+
+    for (const auto &env : *this->cfg.process->env) {
+        auto key = env.substr(0, env.find_first_of('='));
+        auto it =
+          std::find_if(originEnvs.cbegin(), originEnvs.cend(), [&key](const std::string &env) {
+              return env.rfind(key, 0) == 0;
+          });
+
+        if (it != originEnvs.cend()) {
+            qWarning() << "duplicate environment has been detected: ["
+                       << "original:" << QString::fromStdString(*it)
+                       << "user:" << QString::fromStdString(env) << "], choose original.";
+            continue;
+        }
+
+        originEnvs.emplace_back(env);
+    }
+
+    this->cfg.process->env = originEnvs;
 
     auto arch = package::Architecture::parse(QSysInfo::currentCpuArchitecture());
     if (!arch) {

@@ -1,3 +1,17 @@
+linglong (1.5.6-1) unstable; urgency=medium
+
+  * fix: layer size error when export layer repeatedly
+  * fix: missed some env variables when reusing container
+  * fix: builder did not exit when the build script failed
+  * feat: add option "--layer" for ll-builder to export layer
+  * fix: failed to run linglong app in ubuntu 24.04
+  * feat: Create dedicated client for HTTP requests
+  * feat: does not use temporary repository when pulling
+  * feat: ll-builder allows manual linglong.yaml selection
+  * fix: builder did not exit when the build script failed
+
+ -- dengbo <dengbo@deepin.org>  Thu, 20 Jun 2024 16:45:51 +0800
+
 linglong (1.5.1-1) unstable; urgency=medium
 
   * fix: move the reinstall operation to new script

@@ -10,7 +10,7 @@ VERSION=$(shell awk '/VERSION=/' /etc/os-release | sed 's/VERSION=//' | sed 's/\
 
 override_dh_auto_install:
 	dh_auto_install
-	dh_install debian/sysctl.d/linglong.conf /usr/lib/sysctl.d/
+	dh_install -p linglong-bin debian/sysctl.d/linglong.conf usr/lib/sysctl.d/
 
 EXTRA_OPTION = -DCPM_LOCAL_PACKAGES_ONLY=ON -DLINGLONG_VERSION=$(DEB_VERSION_UPSTREAM)
 

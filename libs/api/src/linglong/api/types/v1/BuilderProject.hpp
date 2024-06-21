@@ -48,6 +48,10 @@ std::string build;
 */
 std::optional<std::vector<std::string>> command;
 /**
+* Specify how to split application into modules.
+*/
+std::optional<std::map<std::string, std::vector<std::string>>> modules;
+/**
 * package of build file
 */
 BuilderProjectPackage package;

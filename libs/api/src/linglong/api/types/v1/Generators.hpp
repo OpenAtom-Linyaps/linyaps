@@ -297,6 +297,7 @@ inline void from_json(const json & j, BuilderProject& x) {
 x.base = j.at("base").get<std::string>();
 x.build = j.at("build").get<std::string>();
 x.command = get_stack_optional<std::vector<std::string>>(j, "command");
+x.modules = get_stack_optional<std::map<std::string, std::vector<std::string>>>(j, "modules");
 x.package = j.at("package").get<BuilderProjectPackage>();
 x.permissions = get_stack_optional<ApplicationConfigurationPermissions>(j, "permissions");
 x.runtime = get_stack_optional<std::string>(j, "runtime");
@@ -311,6 +312,9 @@ j["base"] = x.base;
 j["build"] = x.build;
 if (x.command) {
 j["command"] = x.command;
+}
+if (x.modules) {
+j["modules"] = x.modules;
 }
 j["package"] = x.package;
 if (x.permissions) {
@@ -773,7 +777,7 @@ else { throw std::runtime_error("Input JSON does not conform to schema!"); }
 inline void to_json(json & j, const Version & x) {
 switch (x) {
 case Version::The1: j = "1"; break;
-default: throw std::runtime_error("Unexpected value in enumeration \"[object Object]\": " + std::to_string(static_cast<int>(x)));
+default: throw std::runtime_error("This should not happen");
 }
 }
 }

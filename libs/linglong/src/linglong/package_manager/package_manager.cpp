@@ -96,7 +96,7 @@ auto PackageManager::setConfiguration(const QVariantMap &parameters) noexcept ->
     return toDBusReply(0, "Set repository configuration success.");
 }
 
-auto PackageManager::InstallLayer(const QDBusUnixFileDescriptor &fd) noexcept -> QVariantMap
+QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) noexcept
 {
     const auto layerFile =
       package::LayerFile::New(QString("/proc/%1/fd/%2").arg(getpid()).arg(fd.fileDescriptor()));
@@ -127,6 +127,20 @@ auto PackageManager::InstallLayer(const QDBusUnixFileDescriptor &fd) noexcept ->
     }
     this->repo.exportReference(*ref);
     return toDBusReply(0, "Install layer file success.");
+}
+
+auto PackageManager::InstallFromFile(const QDBusUnixFileDescriptor &fd,
+                                     const QString &fileType) noexcept -> QVariantMap
+{
+    const static QHash<QString, QVariantMap (PackageManager::*)(const QDBusUnixFileDescriptor &)>
+      installers = { { "layer", &PackageManager::installFromLayer } };
+
+    if (!installers.contains(fileType)) {
+        return toDBusReply(QDBusError::NotSupported,
+                           QString{ "%1 is unsupported fileType" }.arg(fileType));
+    }
+
+    return std::invoke(installers[fileType], this, fd);
 }
 
 auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariantMap
@@ -388,7 +402,8 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
     const auto reference = *ref;
     const auto newReference = *newRef;
 
-    qInfo() << "Before upgrade, old Ref: " << reference.toString() << " new Ref: " << newReference.toString();
+    qInfo() << "Before upgrade, old Ref: " << reference.toString()
+            << " new Ref: " << newReference.toString();
 
     auto develop = paras->package.packageManager1PackageModule.value_or("runtime") == "develop";
 

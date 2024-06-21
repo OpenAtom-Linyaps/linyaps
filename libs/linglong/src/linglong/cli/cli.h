@@ -73,6 +73,7 @@ public:
     void cancelCurrentTask();
 
 private Q_SLOTS:
+    int installFromFile(const QFileInfo& fileInfo);
     void processDownloadStatus(const QString &recTaskID,
                                const QString &percentage,
                                const QString &message,

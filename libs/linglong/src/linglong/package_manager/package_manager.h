@@ -43,7 +43,8 @@ public
     Q_SLOT : auto getConfiguration() const noexcept -> QVariantMap;
     auto setConfiguration(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Install(const QVariantMap &parameters) noexcept -> QVariantMap;
-    auto InstallLayer(const QDBusUnixFileDescriptor &fd) noexcept -> QVariantMap;
+    auto InstallFromFile(const QDBusUnixFileDescriptor &fd,
+                         const QString &fileType) noexcept -> QVariantMap;
     auto Uninstall(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Update(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Search(const QVariantMap &parameters) noexcept -> QVariantMap;
@@ -53,6 +54,7 @@ Q_SIGNALS:
     void TaskChanged(QString taskID, QString percentage, QString message, int status);
 
 private:
+    QVariantMap installFromLayer(const QDBusUnixFileDescriptor &fd) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT
     std::map<QString, std::shared_ptr<InstallTask>> taskMap;
 };

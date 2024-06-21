@@ -180,6 +180,7 @@ pfl_add_libraries(
   ll-cli
   ll-package-manager
   llpkg
-  uab)
+  uab
+  ll-session-helper)
 
 add_subdirectory(misc)

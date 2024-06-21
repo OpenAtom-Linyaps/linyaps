@@ -249,6 +249,15 @@ $defs:
         title: BuilderProjectStripScript
         description: strip script of builder project
         type: string
+      modules:
+        title: BuilderProjectModules
+        description: |
+          Specify how to split application into modules.
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            type: string
   BuilderConfig:
     description: Configuration file for ll-builder.
     type: object

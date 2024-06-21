@@ -22,6 +22,7 @@ pkg_search_module(FUSE REQUIRED IMPORTED_TARGET fuse)
 pkg_search_module(SELINUX REQUIRED IMPORTED_TARGET libselinux)
 pkg_search_module(PCRE2-8 REQUIRED IMPORTED_TARGET libpcre2-8)
 pkg_search_module(CRYPTO REQUIRED IMPORTED_TARGET libcrypto)
+pkg_search_module(ZSTD REQUIRED IMPORTED_TARGET libzstd)
 
 add_link_options(-static -static-libgcc -static-libstdc++)
 
@@ -42,6 +43,7 @@ pfl_add_executable(
   PkgConfig::SELINUX
   PkgConfig::PCRE2-8
   PkgConfig::CRYPTO
+  PkgConfig::ZSTD
   libdeflate::libdeflate_static
   nlohmann_json::nlohmann_json)
 

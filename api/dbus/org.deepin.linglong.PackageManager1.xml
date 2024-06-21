@@ -6,8 +6,9 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "https://specifications.freedesktop.org/dbus/introspect-latest.dtd">
 <node>
   <interface name="org.deepin.linglong.PackageManager1">
-    <method name="InstallLayer">
+    <method name="InstallFromFile">
       <arg direction="in" name="fd" type="h" />
+      <arg direction="in" name="fileType" type="s" />
       <arg direction="out" name="result" type="a{sv}" />
       <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
     </method>

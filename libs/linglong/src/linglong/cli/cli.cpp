@@ -10,6 +10,9 @@
 #include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1Package.hpp"
 #include "linglong/api/types/v1/PackageManager1ResultWithTaskID.hpp"
+#include "linglong/api/types/v1/PackageManager1SearchParameters.hpp"
+#include "linglong/api/types/v1/PackageManager1SearchResult.hpp"
+#include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
 #include "linglong/package/layer_file.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/utils/command/env.h"
@@ -19,9 +22,6 @@
 #include "ocppi/runtime/ExecOption.hpp"
 #include "ocppi/runtime/Signal.hpp"
 #include "ocppi/types/ContainerListItem.hpp"
-#include "linglong/api/types/v1/PackageManager1SearchParameters.hpp"
-#include "linglong/api/types/v1/PackageManager1SearchResult.hpp"
-#include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
 
 #include <nlohmann/json.hpp>
 
@@ -470,42 +470,49 @@ void Cli::cancelCurrentTask()
     }
 }
 
+int Cli::installFromFile(const QFileInfo &fileInfo)
+{
+    auto filePath = fileInfo.absoluteFilePath();
+    LINGLONG_TRACE(QString{ "install from file %1" }.arg(filePath))
+
+    qInfo() << "install from file" << filePath;
+    QFile file{ filePath };
+    if (!file.open(QIODevice::ReadOnly | QIODevice::ExistingOnly)) {
+        auto err = LINGLONG_ERR(file);
+        this->printer.printErr(err.value());
+        return -1;
+    }
+
+    QDBusUnixFileDescriptor dbusFileDescriptor(file.handle());
+    auto pendingReply = this->pkgMan.InstallFromFile(dbusFileDescriptor, fileInfo.suffix());
+    pendingReply.waitForFinished();
+    auto reply = pendingReply.value();
+    auto result =
+      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1ResultWithTaskID>(reply);
+    if (!result) {
+        qCritical() << result.error();
+        qCritical() << "linglong bug detected.";
+        std::abort();
+    }
+    if (result->code != 0) {
+        auto err = LINGLONG_ERRV(QString::fromStdString(result->message), result->code);
+        this->printer.printErr(err);
+        return -1;
+    }
+
+    return 0;
+}
+
 int Cli::install(std::map<std::string, docopt::value> &args)
 {
     LINGLONG_TRACE("command install");
 
     auto tier = args["TIER"].asString();
+    QFileInfo info(QString::fromStdString(tier));
 
-    QFileInfo file(QString::fromStdString(tier));
-
-    // 如果检测是layer文件，则直接安装
-    if (file.isFile() && file.suffix() == "layer") {
-        const auto layerFile = package::LayerFile::New(QString::fromStdString(tier));
-        if (!layerFile) {
-            qCritical() << layerFile.error();
-            return -1;
-        }
-        if (!(*layerFile)->isReadable()) {
-            qCritical() << QFileInfo(**layerFile).absoluteFilePath() << "is not readable.";
-            return -1;
-        }
-        qInfo() << "install layer file" << QString::fromStdString(tier);
-        QDBusUnixFileDescriptor dbusFileDescriptor((*layerFile)->handle());
-        auto pendingReply = this->pkgMan.InstallLayer(dbusFileDescriptor);
-        auto reply = pendingReply.value();
-        auto result =
-          utils::serialize::fromQVariantMap<api::types::v1::PackageManager1ResultWithTaskID>(reply);
-        if (!result) {
-            qCritical() << result.error();
-            qCritical() << "linglong bug detected.";
-            std::abort();
-        }
-        if (result->code != 0) {
-            auto err = LINGLONG_ERRV(QString::fromStdString(result->message), result->code);
-            this->printer.printErr(err);
-            return -1;
-        }
-        return 0;
+    // 如果检测是文件，则直接安装
+    if (info.exists() && info.isFile()) {
+        return installFromFile(info.absoluteFilePath());
     }
 
     auto conn = this->pkgMan.connection();

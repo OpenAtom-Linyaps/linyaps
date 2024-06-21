@@ -36,6 +36,8 @@
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/PackageInfo.hpp"
 #include "linglong/api/types/v1/OciConfigurationPatch.hpp"
+#include "linglong/api/types/v1/MinifiedInfo.hpp"
+#include "linglong/api/types/v1/Info.hpp"
 #include "linglong/api/types/v1/LayerInfo.hpp"
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/CliContainer.hpp"
@@ -84,6 +86,12 @@ void to_json(json & j, const CommonResult & x);
 
 void from_json(const json & j, LayerInfo & x);
 void to_json(json & j, const LayerInfo & x);
+
+void from_json(const json & j, Info & x);
+void to_json(json & j, const Info & x);
+
+void from_json(const json & j, MinifiedInfo & x);
+void to_json(json & j, const MinifiedInfo & x);
 
 void from_json(const json & j, OciConfigurationPatch & x);
 void to_json(json & j, const OciConfigurationPatch & x);
@@ -353,6 +361,26 @@ inline void to_json(json & j, const LayerInfo & x) {
 j = json::object();
 j["info"] = x.info;
 j["version"] = x.version;
+}
+
+inline void from_json(const json & j, Info& x) {
+x.digest = j.at("digest").get<std::string>();
+x.id = j.at("id").get<std::string>();
+}
+
+inline void to_json(json & j, const Info & x) {
+j = json::object();
+j["digest"] = x.digest;
+j["id"] = x.id;
+}
+
+inline void from_json(const json & j, MinifiedInfo& x) {
+x.infos = j.at("infos").get<std::vector<Info>>();
+}
+
+inline void to_json(json & j, const MinifiedInfo & x) {
+j = json::object();
+j["infos"] = x.infos;
 }
 
 inline void from_json(const json & j, OciConfigurationPatch& x) {
@@ -636,6 +664,7 @@ x.builderProject = get_stack_optional<BuilderProject>(j, "BuilderProject");
 x.cliContainer = get_stack_optional<CliContainer>(j, "CLIContainer");
 x.commonResult = get_stack_optional<CommonResult>(j, "CommonResult");
 x.layerInfo = get_stack_optional<LayerInfo>(j, "LayerInfo");
+x.minifiedInfo = get_stack_optional<MinifiedInfo>(j, "MinifiedInfo");
 x.ociConfigurationPatch = get_stack_optional<OciConfigurationPatch>(j, "OCIConfigurationPatch");
 x.packageInfo = get_stack_optional<PackageInfo>(j, "PackageInfo");
 x.packageInfoV2 = get_stack_optional<PackageInfoV2>(j, "PackageInfoV2");
@@ -678,6 +707,9 @@ j["CommonResult"] = x.commonResult;
 }
 if (x.layerInfo) {
 j["LayerInfo"] = x.layerInfo;
+}
+if (x.minifiedInfo) {
+j["MinifiedInfo"] = x.minifiedInfo;
 }
 if (x.ociConfigurationPatch) {
 j["OCIConfigurationPatch"] = x.ociConfigurationPatch;

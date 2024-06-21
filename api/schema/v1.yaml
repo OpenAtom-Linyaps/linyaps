@@ -332,6 +332,28 @@ $defs:
       module:
         type: string
         description: module of package manager
+  MinifiedInfo: # minifiedInfo is an internal api and some break changes may occur in the future
+    title: MinifiedInfo
+    description: this is used to associate application with specific dependencies
+    type: object
+    required:
+      - infos
+    properties:
+      infos:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          required:
+            - id
+            - digest
+          properties:
+            id:
+              type: string
+              description: id of application package
+            digest:
+              type: string
+              description: which minified layer is used by this application
   PackageInfoV2:
     title: PackageInfoV2
     description: this is the each item output of ll-cli list --json

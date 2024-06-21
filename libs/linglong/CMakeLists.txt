@@ -73,6 +73,7 @@ pfl_add_library(
   PkgConfig::ostree1
   PkgConfig::systemd
   PkgConfig::ELF
+  PkgConfig::ZSTD
   Qt5::Concurrent
   Qt5::Core
   Qt5::DBus

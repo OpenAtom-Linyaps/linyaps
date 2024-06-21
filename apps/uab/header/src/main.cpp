@@ -126,15 +126,15 @@ std::optional<GElf_Shdr> getSectionHeader(int elfFd, const char *sectionName) no
 
     auto *elf = elf_begin(elfFd, ELF_C_READ, nullptr);
     if (elf == nullptr) {
-        std::cerr << elfPath << " not usable:" << elf_errmsg(-1) << std::endl;
-        goto ret;
+        std::cerr << elfPath << " not usable:" << elf_errmsg(errno) << std::endl;
+        return std::nullopt;
     }
 
     {
         size_t shdrstrndx{ 0 };
         if (elf_getshdrstrndx(elf, &shdrstrndx) == -1) {
             std::cerr << "failed to get section header index of bundle " << elfPath << ":"
-                      << elf_errmsg(-1) << std::endl;
+                      << elf_errmsg(errno) << std::endl;
             goto ret;
         }
 
@@ -144,7 +144,7 @@ std::optional<GElf_Shdr> getSectionHeader(int elfFd, const char *sectionName) no
             GElf_Shdr shdr;
             if (gelf_getshdr(scn, &shdr) == nullptr) {
                 std::cerr << "failed to get section header of bundle " << elfPath << ":"
-                          << elf_errmsg(-1) << std::endl;
+                          << elf_errmsg(errno) << std::endl;
                 break;
             }
 
@@ -186,30 +186,26 @@ bool digestCheck(int fd,
         return false;
     }
 
-    std::array<unsigned char, 1024> buf{};
+    std::array<unsigned char, 4096> buf{};
     std::array<unsigned char, EVP_MAX_MD_SIZE> md_value{};
     md_value.fill(0);
-    buf.fill(0);
 
-    auto expectedRead = bundleLength > buf.size() ? buf.size() : bundleLength;
+    auto expectedRead = buf.size();
     int readLength{ 0 };
     unsigned int digestLength{ 0 };
-    while ((readLength = ::read(file, buf._M_elems, expectedRead)) != 0) {
+    while ((readLength = ::read(file, buf.data(), expectedRead)) != 0) {
         if (readLength == -1) {
+            if (errno == EAGAIN) {
+                continue;
+            }
+
             std::cerr << "read bundle error:" << strerror(errno) << std::endl;
             ::close(file);
             EVP_MD_CTX_free(ctx);
             return false;
         }
 
-        if (readLength != expectedRead) {
-            std::cout << "mismatched read during digest checking" << std::endl;
-            ::close(file);
-            EVP_MD_CTX_free(ctx);
-            return false;
-        }
-
-        if (EVP_DigestUpdate(ctx, buf._M_elems, readLength) == 0) {
+        if (EVP_DigestUpdate(ctx, buf.data(), readLength) == 0) {
             std::cerr << "update digest error" << std::endl;
             ::close(file);
             EVP_MD_CTX_free(ctx);
@@ -406,10 +402,11 @@ void handleSig() noexcept
 
 int createMountPoint(const std::string &uuid) noexcept
 {
-    auto *runtimeDirPtr = ::getenv("XDG_RUNTIME_DIR");
+    const char *runtimeDirPtr{ nullptr };
+    runtimeDirPtr = ::getenv("XDG_RUNTIME_DIR");
     if (runtimeDirPtr == nullptr) {
-        std::cerr << "failed to get XDG_RUNTIME_DIR" << std::endl;
-        return -1;
+        std::cerr << "failed to get XDG_RUNTIME_DIR, fallback to /tmp" << std::endl;
+        runtimeDirPtr = "/tmp";
     }
 
     auto mountPointPath =

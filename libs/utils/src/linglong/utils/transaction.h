@@ -94,6 +94,9 @@ private:
 
 class Transaction
 {
+    using rollbackPtr = std::unique_ptr<_internal::TransactionRollBackBase>;
+    using transactionPtr = std::unique_ptr<Transaction>;
+
 public:
     Transaction() = default;
     Transaction(const Transaction &) = delete;
@@ -103,21 +106,41 @@ public:
 
     ~Transaction()
     {
-        std::for_each(m_rollbacks.rbegin(), m_rollbacks.rend(), [](const auto &func) {
+        std::for_each(m_subTransactions.begin(),
+                      m_subTransactions.end(),
+                      [](transactionPtr &transaction) {
+                          transaction.reset();
+                      });
+
+        std::for_each(m_rollbacks.rbegin(), m_rollbacks.rend(), [](const rollbackPtr &func) {
             (*func)();
         });
     }
 
-    void commit() noexcept { m_rollbacks.clear(); }
+    void commit() noexcept
+    {
+        m_rollbacks.clear();
+        std::for_each(m_subTransactions.begin(),
+                      m_subTransactions.end(),
+                      [](transactionPtr &subTrans) {
+                          subTrans->commit();
+                      });
+    }
 
     template<typename Fn, typename... Args>
-    void addRollBack(Fn func, Args... args) noexcept
+    void addRollBack(Fn func, Args... args) & noexcept
     {
         m_rollbacks.emplace_back(std::make_unique<TransactionRollback<Fn, Args...>>(func, args...));
     }
 
+    [[nodiscard]] Transaction &subTransaction() & noexcept
+    {
+        return *(m_subTransactions.emplace_back(std::make_unique<Transaction>()));
+    }
+
 private:
-    std::vector<std::unique_ptr<_internal::TransactionRollBackBase>> m_rollbacks;
+    std::vector<rollbackPtr> m_rollbacks;
+    std::vector<transactionPtr> m_subTransactions;
 };
 
 }; // namespace linglong::utils

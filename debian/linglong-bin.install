@@ -20,6 +20,7 @@ usr/libexec/linglong/40-host-ipc
 usr/libexec/linglong/90-legacy
 usr/libexec/linglong/create-linglong-dirs
 usr/libexec/linglong/upgrade-all
+usr/libexec/linglong/ll-session-helper
 usr/share/bash-completion/completions/ll-cli
 usr/share/dbus-1/system-services/org.deepin.linglong.PackageManager.service
 usr/share/dbus-1/system.d/org.deepin.linglong.PackageManager.conf

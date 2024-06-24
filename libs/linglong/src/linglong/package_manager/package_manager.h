@@ -55,6 +55,7 @@ Q_SIGNALS:
 
 private:
     QVariantMap installFromLayer(const QDBusUnixFileDescriptor &fd) noexcept;
+    QVariantMap installFromUAB(const QDBusUnixFileDescriptor& fd) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT
     std::map<QString, std::shared_ptr<InstallTask>> taskMap;
 };

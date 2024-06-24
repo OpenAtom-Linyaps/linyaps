@@ -13,11 +13,12 @@
 #include <QCryptographicHash>
 #include <QStandardPaths>
 
+#include <filesystem>
 #include <utility>
-#include <unistd.h>
+
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <filesystem>
+#include <unistd.h>
 
 namespace linglong::package {
 

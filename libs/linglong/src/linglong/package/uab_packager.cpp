@@ -291,7 +291,7 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir) noe
     }
 
     QString appID;
-    for (auto layer : this->layers) {
+    for (const auto &layer : this->layers) {
         auto infoRet = layer.info();
         if (!infoRet) {
             return LINGLONG_ERR(QString{ "failed export layer %1:" }.arg(layer.absolutePath()),
@@ -299,25 +299,32 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir) noe
         }
 
         const auto &info = *infoRet;
-        auto layerDir = QDir{ layersDir.absoluteFilePath(QString::fromStdString(info.id)) };
+        auto layerDir =
+          QDir{ layersDir.absoluteFilePath(QString::fromStdString(info.id) % QDir::separator()
+                                           % QString::fromStdString(info.packageInfoV2Module)) };
         if (!layerDir.mkpath(".")) {
             return LINGLONG_ERR(
               QString{ "couldn't create directory %1" }.arg(layerDir.absolutePath()));
         }
 
-        std::error_code ec;
-
         // copy all files currently
-        layer.cdUp();
-        std::filesystem::copy(layer.absolutePath().toStdString(),
-                              layerDir.absolutePath().toStdString(),
-                              std::filesystem::copy_options::copy_symlinks
-                                | std::filesystem::copy_options::recursive
-                                | std::filesystem::copy_options::update_existing,
-                              ec);
-        if (ec) {
-            return LINGLONG_ERR(QString::fromStdString(ec.message()));
-        }
+        for (const auto &info :
+             layer.entryInfoList(QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot)) {
+            if (info.fileName().startsWith("minified")) {
+                continue;
+            }
+
+            std::error_code ec;
+            std::filesystem::copy(info.absolutePath().toStdString(),
+                                  layerDir.absolutePath().toStdString(),
+                                  std::filesystem::copy_options::copy_symlinks
+                                    | std::filesystem::copy_options::recursive
+                                    | std::filesystem::copy_options::update_existing,
+                                  ec);
+            if (ec) {
+                return LINGLONG_ERR(QString::fromStdString(ec.message()));
+            }
+        };
 
         this->meta.layers.push_back({ .info = info, .minified = false });
         if (info.kind == "app") {

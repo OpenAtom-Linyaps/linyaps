@@ -6,7 +6,7 @@ add_link_options(-static -static-libgcc -static-libstdc++)
 
 pfl_add_executable(
   OUTPUT_NAME
-  40-host-ipc
+  40-host-ipc-static
   LIBEXEC
   linglong
   SOURCES

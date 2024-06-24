@@ -380,8 +380,8 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir) noe
     }
     for (const auto &gen : srcGens.entryInfoList(QDir::NoDotAndDotDot | QDir::Files)) {
         QFile realGen{ gen.absoluteFilePath() };
-        if (gen.isExecutable()) {
-            realGen.setFileName(LINGLONG_LIBEXEC_DIR % QDir::separator() + gen.fileName());
+        if (gen.isExecutable() && gen.isSymLink()) {
+            realGen.setFileName(gen.symLinkTarget());
         } else if (!gen.fileName().endsWith(".json")) {
             qWarning() << "unknown config generator" << gen.absoluteFilePath();
             continue;

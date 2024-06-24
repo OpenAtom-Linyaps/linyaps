@@ -22,16 +22,9 @@ configure_files(
   libexec/linglong/fetch-file-source
   libexec/linglong/fetch-git-source
   libexec/linglong/upgrade-all
-  lib/linglong/container/config.d/00-id-mapping
-  lib/linglong/container/config.d/05-initialize
   lib/linglong/container/config.d/10-basics.json
-  lib/linglong/container/config.d/20-devices
   lib/linglong/container/config.d/25-host-rootfs.json
   lib/linglong/container/config.d/25-host-statics.json
-  lib/linglong/container/config.d/25-host-env
-  lib/linglong/container/config.d/30-user-home
-  lib/linglong/container/config.d/40-host-ipc
-  lib/linglong/container/config.d/90-legacy
   lib/linglong/container/config.json
   lib/linglong/container/README.md
   lib/systemd/system-environment-generators/61-linglong
@@ -73,7 +66,30 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/share/dbus-1/system-services
         DESTINATION ${DBUS_SYSTEM_BUS_DIR})
 
 # linglong
-
+file(
+  CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/00-id-mapping-static
+  ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/00-id-mapping
+  SYMBOLIC)
+file(
+    CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/05-initialize-static
+    ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/05-initialize
+    SYMBOLIC)
+file(
+    CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/20-devices-static
+    ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/20-devices
+    SYMBOLIC)
+file(
+    CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/25-host-env-static
+    ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/30-user-home
+    SYMBOLIC)
+file(
+    CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/40-host-ipc-static
+    ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/40-host-ipc
+    SYMBOLIC)
+file(
+    CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/90-legacy-static
+    ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/90-legacy
+    SYMBOLIC)
 install(
   DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/
   DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/linglong

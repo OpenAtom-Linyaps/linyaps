@@ -6,7 +6,7 @@ add_link_options(-static -static-libgcc -static-libstdc++)
 
 pfl_add_executable(
   OUTPUT_NAME
-  25-host-env
+  25-host-env-static
   LIBEXEC
   linglong
   SOURCES

@@ -6,7 +6,7 @@ add_link_options(-static -static-libgcc -static-libstdc++)
 
 pfl_add_executable(
   OUTPUT_NAME
-  30-user-home
+  30-user-home-static
   LIBEXEC
   linglong
   SOURCES

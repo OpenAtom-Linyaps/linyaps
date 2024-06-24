@@ -6,7 +6,7 @@ add_link_options(-static -static-libgcc -static-libstdc++)
 
 pfl_add_executable(
   OUTPUT_NAME
-  05-initialize
+  05-initialize-static
   LIBEXEC
   linglong
   SOURCES

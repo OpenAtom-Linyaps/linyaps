@@ -129,11 +129,17 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
     return toDBusReply(0, "Install layer file success.");
 }
 
+QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) noexcept {
+    //TODO: impl
+}
+
 auto PackageManager::InstallFromFile(const QDBusUnixFileDescriptor &fd,
                                      const QString &fileType) noexcept -> QVariantMap
 {
-    const static QHash<QString, QVariantMap (PackageManager::*)(const QDBusUnixFileDescriptor &)>
-      installers = { { "layer", &PackageManager::installFromLayer } };
+    const static QHash<QString,
+                       QVariantMap (PackageManager::*)(const QDBusUnixFileDescriptor &) noexcept>
+      installers = { { "layer", &PackageManager::installFromLayer },
+                     { "uab", &PackageManager::installFromUAB } };
 
     if (!installers.contains(fileType)) {
         return toDBusReply(QDBusError::NotSupported,

@@ -783,7 +783,10 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
     }
     packager.appendLayer(*appDir);
 
-    auto uabFile = curRef->id + ".uab";
+    auto uabFile = QString{ "%1_%2_%3_%4.uab" }.arg(curRef->id,
+                                                    curRef->arch.toString(),
+                                                    curRef->version.toString(),
+                                                    curRef->channel);
     if (auto ret = packager.pack(uabFile); !ret) {
         return LINGLONG_ERR(ret);
     }

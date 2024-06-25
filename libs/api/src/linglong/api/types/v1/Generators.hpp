@@ -364,14 +364,14 @@ j["version"] = x.version;
 }
 
 inline void from_json(const json & j, Info& x) {
-x.digest = j.at("digest").get<std::string>();
-x.id = j.at("id").get<std::string>();
+x.appRef = j.at("appRef").get<std::string>();
+x.uuid = j.at("uuid").get<std::string>();
 }
 
 inline void to_json(json & j, const Info & x) {
 j = json::object();
-j["digest"] = x.digest;
-j["id"] = x.id;
+j["appRef"] = x.appRef;
+j["uuid"] = x.uuid;
 }
 
 inline void from_json(const json & j, MinifiedInfo& x) {
@@ -615,15 +615,13 @@ j["version"] = x.version;
 
 inline void from_json(const json & j, UabLayer& x) {
 x.info = j.at("info").get<PackageInfoV2>();
-x.minified = get_stack_optional<bool>(j, "minified");
+x.minified = j.at("minified").get<bool>();
 }
 
 inline void to_json(json & j, const UabLayer & x) {
 j = json::object();
 j["info"] = x.info;
-if (x.minified) {
 j["minified"] = x.minified;
-}
 }
 
 inline void from_json(const json & j, Sections& x) {

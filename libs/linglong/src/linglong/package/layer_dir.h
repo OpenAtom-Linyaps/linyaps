@@ -21,8 +21,8 @@ public:
     using QDir::QDir;
 
     [[nodiscard]] utils::error::Result<api::types::v1::PackageInfoV2> info() const;
-    [[nodiscard]] utils::error::Result<std::optional<api::types::v1::MinifiedInfo>>
-    minifiedInfo() const;
+    [[nodiscard]] bool hasMinified() const noexcept;
+    [[nodiscard]] utils::error::Result<api::types::v1::MinifiedInfo> minifiedInfo() const;
 };
 
 } // namespace linglong::package

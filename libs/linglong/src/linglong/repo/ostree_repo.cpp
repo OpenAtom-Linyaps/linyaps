@@ -251,15 +251,21 @@ QString ostreeSpecFromReference(const package::Reference &ref, bool develop = fa
       .arg(ref.channel, ref.id, ref.version.toString(), ref.arch.toString());
 }
 
-QString ostreeSpecFromReferenceV2(const package::Reference &ref, bool develop = false) noexcept
+QString ostreeSpecFromReferenceV2(const package::Reference &ref,
+                                  bool develop = false,
+                                  const QString &subRef = "") noexcept
 {
-    if (develop) {
-        return QString("%1/%2/%3/%4/develop")
-          .arg(ref.channel, ref.id, ref.version.toString(), ref.arch.toString());
+    auto ret = QString{ "%1/%2/%3/%4/" }.arg(ref.channel,
+                                             ref.id,
+                                             ref.version.toString(),
+                                             ref.arch.toString());
+    const auto *_module = develop ? "develop" : "binary";
+
+    if (subRef.isEmpty()) {
+        return ret + _module;
     }
 
-    return QString("%1/%2/%3/%4/binary")
-      .arg(ref.channel, ref.id, ref.version.toString(), ref.arch.toString());
+    return ret + _module + "/" + subRef;
 }
 
 utils::error::Result<void> removeOstreeRef(OstreeRepo *repo, const char *ref) noexcept
@@ -292,9 +298,9 @@ utils::error::Result<void> removeOstreeRef(OstreeRepo *repo, const char *ref) no
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> commitDirToRepo(GFile *dir,
-                                           OstreeRepo *repo,
-                                           const char *refspec) noexcept
+utils::error::Result<QString> commitDirToRepo(GFile *dir,
+                                              OstreeRepo *repo,
+                                              const char *refspec) noexcept
 {
     Q_ASSERT(dir != nullptr);
     Q_ASSERT(repo != nullptr);
@@ -344,7 +350,7 @@ utils::error::Result<void> commitDirToRepo(GFile *dir,
         return LINGLONG_ERR("ostree_repo_commit_transaction", gErr);
     }
 
-    return LINGLONG_OK;
+    return commit;
 }
 
 utils::error::Result<void> handleRepositoryUpdate(OstreeRepo *repo,
@@ -674,10 +680,13 @@ QDir OSTreeRepo::getLayerQDir(const package::Reference &ref, bool develop) const
     return this->repoDir.absoluteFilePath("layers/" + ostreeSpecFromReference(ref, develop));
 }
 
-QDir OSTreeRepo::getLayerQDirV2(const package::Reference &ref, bool develop) const noexcept
+QDir OSTreeRepo::getLayerQDirV2(const package::Reference &ref,
+                                bool develop,
+                                const QString &subRef) const noexcept
 {
     // for new ref which module is binary
-    return this->repoDir.absoluteFilePath("layers/" + ostreeSpecFromReferenceV2(ref, develop));
+    return this->repoDir.absoluteFilePath("layers/"
+                                          + ostreeSpecFromReferenceV2(ref, develop, subRef));
 }
 
 QDir OSTreeRepo::ostreeRepoDir() const noexcept
@@ -803,7 +812,8 @@ utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfi
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> OSTreeRepo::importLayerDir(const package::LayerDir &dir) noexcept
+utils::error::Result<void> OSTreeRepo::importLayerDir(const package::LayerDir &dir,
+                                                      const QString &subRef) noexcept
 {
     LINGLONG_TRACE("import layer dir");
 
@@ -830,16 +840,16 @@ utils::error::Result<void> OSTreeRepo::importLayerDir(const package::LayerDir &d
 
     const auto isDevel = info->packageInfoV2Module == "develop";
 
-    if (this->getLayerDir(*reference, isDevel)) {
-        return LINGLONG_ERR(reference->toString() + " exists.");
+    if (this->getLayerDir(*reference, isDevel, subRef)) {
+        return LINGLONG_ERR(reference->toString() + " exists.", 0);
     }
 
-    const auto refspec = ostreeSpecFromReferenceV2(*reference, isDevel).toUtf8();
-
-    auto result = commitDirToRepo(gFile, this->ostreeRepo.get(), refspec);
-    if (!result) {
-        return LINGLONG_ERR(result);
+    auto refspec = ostreeSpecFromReferenceV2(*reference, isDevel, subRef).toLocal8Bit();
+    auto commitID = commitDirToRepo(gFile, this->ostreeRepo.get(), refspec);
+    if (!commitID) {
+        return LINGLONG_ERR(commitID);
     }
+
     transaction.addRollBack([this, &refspec]() noexcept {
         auto result = removeOstreeRef(this->ostreeRepo.get(), refspec);
         if (!result) {
@@ -848,9 +858,8 @@ utils::error::Result<void> OSTreeRepo::importLayerDir(const package::LayerDir &d
         }
     });
 
-    result = handleRepositoryUpdate(this->ostreeRepo.get(),
-                                    this->getLayerQDirV2(*reference, isDevel),
-                                    refspec);
+    auto layerDir = this->getLayerQDirV2(*reference, isDevel, subRef);
+    auto result = handleRepositoryUpdate(this->ostreeRepo.get(), layerDir, refspec);
     if (!result) {
         return LINGLONG_ERR(result);
     }
@@ -1068,11 +1077,13 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref, bool develop) noexcept
+utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref,
+                                              bool develop,
+                                              const QString &subRef) noexcept
 {
     LINGLONG_TRACE("remove " + ref.toString());
 
-    auto layerDir = this->getLayerQDirV2(ref, develop);
+    auto layerDir = this->getLayerQDirV2(ref, develop, subRef);
     if (!layerDir.exists()) {
         // fallback to old ref
         layerDir = this->getLayerQDir(ref, develop);
@@ -1103,7 +1114,7 @@ utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref, boo
     }
 
     // remove ref from ostree repo, try new ref first
-    auto refspec = ostreeSpecFromReferenceV2(ref, develop).toUtf8();
+    auto refspec = ostreeSpecFromReferenceV2(ref, develop, subRef).toUtf8();
     const auto *data = refspec.constData();
 
     auto result = removeOstreeRef(this->ostreeRepo.get(), data);
@@ -1357,7 +1368,6 @@ void OSTreeRepo::removeDanglingXDGIntergation() noexcept
             // But it can be some cache file, we should not remove it too.
             qWarning() << "Invalid file detected." << info.absoluteFilePath();
             qWarning() << "If the file is a cache or something like that, ignore this warning.";
-            Q_ASSERT(false);
             continue;
         }
 
@@ -1420,7 +1430,6 @@ void OSTreeRepo::unexportReference(const package::Reference &ref) noexcept
             // But it can be some cache file, we should not remove it too.
             qWarning() << "Invalid file detected." << info.absoluteFilePath();
             qWarning() << "If the file is a cache or something like that, ignore this warning.";
-            Q_ASSERT(false);
             continue;
         }
 
@@ -1576,11 +1585,11 @@ void OSTreeRepo::updateSharedInfo() noexcept
     }
 }
 
-auto OSTreeRepo::getLayerDir(const package::Reference &ref, bool develop) const noexcept
-  -> utils::error::Result<package::LayerDir>
+auto OSTreeRepo::getLayerDir(const package::Reference &ref, bool develop, const QString &subRef)
+  const noexcept -> utils::error::Result<package::LayerDir>
 {
     LINGLONG_TRACE("get dir of " + ref.toString());
-    auto dir = this->getLayerQDirV2(ref, develop);
+    auto dir = this->getLayerQDirV2(ref, develop, subRef);
     if (dir.exists()) {
         return dir.absolutePath();
     }

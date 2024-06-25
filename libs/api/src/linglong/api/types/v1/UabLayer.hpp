@@ -30,7 +30,7 @@ PackageInfoV2 info;
 /**
 * Whether this layer file is minified or not.
 */
-std::optional<bool> minified;
+bool minified;
 };
 }
 }

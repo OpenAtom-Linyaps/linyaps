@@ -164,7 +164,8 @@
           "items": {
             "type": "object",
             "required": [
-              "info"
+              "info",
+              "minified"
             ],
             "properties": {
               "info": {
@@ -432,17 +433,17 @@
           "items": {
             "type": "object",
             "required": [
-              "id",
-              "digest"
+              "appRef",
+              "uuid"
             ],
             "properties": {
-              "id": {
+              "appRef": {
                 "type": "string",
-                "description": "id of application package"
+                "description": "reference of application"
               },
-              "digest": {
+              "uuid": {
                 "type": "string",
-                "description": "which minified layer is used by this application"
+                "description": "uuid of imported uab"
               }
             }
           }

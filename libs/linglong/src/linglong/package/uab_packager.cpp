@@ -300,30 +300,33 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir) noe
         }
 
         const auto &info = *infoRet;
-        auto layerDir =
+        auto moduleDir =
           QDir{ layersDir.absoluteFilePath(QString::fromStdString(info.id) % QDir::separator()
                                            % QString::fromStdString(info.packageInfoV2Module)) };
-        if (!layerDir.mkpath(".")) {
+        if (!moduleDir.mkpath(".")) {
             return LINGLONG_ERR(
-              QString{ "couldn't create directory %1" }.arg(layerDir.absolutePath()));
+              QString{ "couldn't create directory %1" }.arg(moduleDir.absolutePath()));
         }
 
         // copy all files currently
         for (const auto &info :
              layer.entryInfoList(QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot)) {
-            if (info.fileName().startsWith("minified")) {
+            const auto &componentName = info.fileName();
+            if (componentName.startsWith("minified")) {
                 continue;
             }
 
             std::error_code ec;
-            std::filesystem::copy(info.absolutePath().toStdString(),
-                                  layerDir.absolutePath().toStdString(),
+            std::filesystem::copy(info.absoluteFilePath().toStdString(),
+                                  moduleDir.absoluteFilePath(componentName).toStdString(),
                                   std::filesystem::copy_options::copy_symlinks
                                     | std::filesystem::copy_options::recursive
                                     | std::filesystem::copy_options::update_existing,
                                   ec);
             if (ec) {
-                return LINGLONG_ERR(QString::fromStdString(ec.message()));
+                return LINGLONG_ERR("couldn't copy from " % info.absoluteFilePath() % " to "
+                                    % moduleDir.absoluteFilePath(componentName) % " "
+                                    % QString::fromStdString(ec.message()));
             }
         };
 

@@ -70,7 +70,9 @@ InstallTask &InstallTask::operator=(InstallTask &&other) noexcept
 
 InstallTask::~InstallTask()
 {
-    g_object_unref(m_cancelFlag);
+    if (m_cancelFlag != nullptr) {
+        g_object_unref(m_cancelFlag);
+    }
 }
 
 void InstallTask::updateTask(double currentPercentage,

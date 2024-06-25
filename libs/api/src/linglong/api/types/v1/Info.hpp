@@ -25,13 +25,13 @@ using nlohmann::json;
 
 struct Info {
 /**
-* which minified layer is used by this application
+* reference of application
 */
-std::string digest;
+std::string appRef;
 /**
-* id of application package
+* uuid of imported uab
 */
-std::string id;
+std::string uuid;
 };
 }
 }

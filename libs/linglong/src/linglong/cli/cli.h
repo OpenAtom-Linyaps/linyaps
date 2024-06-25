@@ -54,6 +54,7 @@ private:
                     const std::vector<std::string> &command) const noexcept;
     static void filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> &list,
                                            const QString &type) noexcept;
+    void updateAM() noexcept;
 
 public:
     int run(std::map<std::string, docopt::value> &args);

@@ -3,12 +3,15 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "packageinfo_handler.h"
+
 #include "linglong/utils/serialize/json.h"
 
 #define PACKAGE_INFO_VERSION "1.0"
+
 namespace linglong::utils {
 
-error::Result<api::types::v1::PackageInfoV2> toPackageInfoV2(const api::types::v1::PackageInfo &oldInfo)
+error::Result<api::types::v1::PackageInfoV2>
+toPackageInfoV2(const api::types::v1::PackageInfo &oldInfo)
 {
     LINGLONG_TRACE("convert PackageInfo to PackageInfoV2");
 
@@ -44,7 +47,7 @@ error::Result<api::types::v1::PackageInfoV2> parsePackageInfo(const QString &pat
     qDebug() << "not PackageInfoV2, parse with PackageInfo";
     auto oldPkgInfo = serialize::LoadJSONFile<api::types::v1::PackageInfo>(path);
     if (!oldPkgInfo) {
-          return LINGLONG_ERR(toPackageInfoV2(*oldPkgInfo));
+        return LINGLONG_ERR(oldPkgInfo.error());
     }
 
     return toPackageInfoV2(*oldPkgInfo);
@@ -62,7 +65,7 @@ error::Result<api::types::v1::PackageInfoV2> parsePackageInfo(nlohmann::json &js
     qDebug() << "not PackageInfoV2, parse with PackageInfo";
     auto oldPkgInfo = serialize::LoadJSON<api::types::v1::PackageInfo>(json);
     if (!oldPkgInfo) {
-          return LINGLONG_ERR(toPackageInfoV2(*oldPkgInfo));
+        return LINGLONG_ERR(oldPkgInfo.error());
     }
 
     return toPackageInfoV2(*oldPkgInfo);

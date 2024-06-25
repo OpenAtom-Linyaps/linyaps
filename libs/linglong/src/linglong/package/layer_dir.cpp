@@ -25,13 +25,10 @@ utils::error::Result<api::types::v1::PackageInfoV2> LayerDir::info() const
     return info;
 }
 
-utils::error::Result<std::optional<api::types::v1::MinifiedInfo>> LayerDir::minifiedInfo() const
+utils::error::Result<api::types::v1::MinifiedInfo> LayerDir::minifiedInfo() const
 {
     LINGLONG_TRACE("get minified info from " + absolutePath())
     auto filePath = absoluteFilePath("minified.json");
-    if (!QFileInfo::exists(filePath)) {
-        return std::nullopt;
-    }
 
     std::fstream stream{ filePath.toStdString() };
     if (!stream.is_open()) {
@@ -46,6 +43,11 @@ utils::error::Result<std::optional<api::types::v1::MinifiedInfo>> LayerDir::mini
     }
 
     return content.get<api::types::v1::MinifiedInfo>();
+}
+
+bool LayerDir::hasMinified() const noexcept
+{
+    return this->exists("minified.json");
 }
 
 } // namespace linglong::package

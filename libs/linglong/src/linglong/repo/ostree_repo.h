@@ -49,10 +49,12 @@ public:
     api::types::v1::RepoConfig getConfig() const noexcept;
     utils::error::Result<void> setConfig(const api::types::v1::RepoConfig &cfg) noexcept;
 
-    utils::error::Result<void> importLayerDir(const package::LayerDir &dir) noexcept;
+    utils::error::Result<void> importLayerDir(const package::LayerDir &dir,
+                                              const QString &subRef = "") noexcept;
 
     utils::error::Result<package::LayerDir> getLayerDir(const package::Reference &ref,
-                                                        bool develop = false) const noexcept;
+                                                        bool develop = false,
+                                                        const QString &subRef = "") const noexcept;
 
     utils::error::Result<void> push(const package::Reference &reference,
                                     bool develop = false) const noexcept;
@@ -68,7 +70,9 @@ public:
     utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
     listRemote(const package::FuzzyReference &fuzzyRef) const noexcept;
 
-    utils::error::Result<void> remove(const package::Reference &ref, bool develop = false) noexcept;
+    utils::error::Result<void> remove(const package::Reference &ref,
+                                      bool develop = false,
+                                      const QString &subRef = "") noexcept;
 
     void removeDanglingXDGIntergation() noexcept;
     void exportReference(const package::Reference &ref) noexcept;
@@ -91,7 +95,9 @@ private:
     QDir repoDir;
     QDir ostreeRepoDir() const noexcept;
     QDir getLayerQDir(const package::Reference &ref, bool develop = false) const noexcept;
-    QDir getLayerQDirV2(const package::Reference &ref, bool develop = false) const noexcept;
+    QDir getLayerQDirV2(const package::Reference &ref,
+                        bool develop = false,
+                        const QString &subRef = "") const noexcept;
 
     ClientFactory &m_clientFactory;
 };

@@ -148,6 +148,7 @@ $defs:
           type: object
           required:
             - info
+            - minified
           properties:
             info:
               $ref: "#/$defs/PackageInfoV2"
@@ -345,15 +346,15 @@ $defs:
         items:
           type: object
           required:
-            - id
-            - digest
+            - appRef
+            - uuid
           properties:
-            id:
+            appRef:
               type: string
-              description: id of application package
-            digest:
+              description: reference of application
+            uuid:
               type: string
-              description: which minified layer is used by this application
+              description: uuid of imported uab
   PackageInfoV2:
     title: PackageInfoV2
     description: this is the each item output of ll-cli list --json

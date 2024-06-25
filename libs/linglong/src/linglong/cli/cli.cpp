@@ -482,10 +482,34 @@ int Cli::installFromFile(const QFileInfo &fileInfo)
         this->printer.printErr(err.value());
         return -1;
     }
-
     QDBusUnixFileDescriptor dbusFileDescriptor(file.handle());
+
+    auto conn = this->pkgMan.connection();
+    auto con = conn.connect(
+      this->pkgMan.service(),
+      this->pkgMan.path(),
+      this->pkgMan.interface(),
+      "TaskChanged",
+      this,
+      SLOT(processDownloadStatus(const QString &, const QString &, const QString &, int)));
+    if (!con) {
+        qCritical() << "Failed to connect signal: TaskChanged. state may be incorrect.";
+        return -1;
+    }
+
     auto pendingReply = this->pkgMan.InstallFromFile(dbusFileDescriptor, fileInfo.suffix());
     pendingReply.waitForFinished();
+    if (!pendingReply.isFinished()) {
+        auto err = LINGLONG_ERRV("dbus early return");
+        this->printer.printErr(err);
+        return -1;
+    }
+    if (pendingReply.isError()) {
+        auto err = LINGLONG_ERRV(pendingReply.error().message());
+        this->printer.printErr(err);
+        return -1;
+    }
+
     auto reply = pendingReply.value();
     auto result =
       utils::serialize::fromQVariantMap<api::types::v1::PackageManager1ResultWithTaskID>(reply);
@@ -494,13 +518,48 @@ int Cli::installFromFile(const QFileInfo &fileInfo)
         qCritical() << "linglong bug detected.";
         std::abort();
     }
+
     if (result->code != 0) {
         auto err = LINGLONG_ERRV(QString::fromStdString(result->message), result->code);
         this->printer.printErr(err);
         return -1;
     }
 
+    this->taskID = QString::fromStdString(*result->taskID);
+    this->taskDone = false;
+    QEventLoop loop;
+    std::function<void()> statusChecker = std::function{ [&loop, &statusChecker, this]() -> void {
+        if (this->taskDone) {
+            loop.exit(0);
+        }
+        QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
+    } };
+
+    QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
+    loop.exec();
+
+    updateAM();
     return 0;
+}
+
+void Cli::updateAM() noexcept
+{
+    // Call ReloadApplications() in AM for now. Remove later.
+    if ((QSysInfo::productType() == "uos" || QSysInfo::productType() == "Deepin")
+        && this->lastStatus == service::InstallTask::Success) {
+        QDBusConnection conn = QDBusConnection::sessionBus();
+        if (!conn.isConnected()) {
+            qWarning() << "Failed to connect to the session bus";
+        }
+        QDBusMessage msg = QDBusMessage::createMethodCall("org.desktopspec.ApplicationManager1",
+                                                          "/org/desktopspec/ApplicationManager1",
+                                                          "org.desktopspec.ApplicationManager1",
+                                                          "ReloadApplications");
+        auto ret = QDBusConnection::sessionBus().call(msg, QDBus::NoBlock);
+        if (ret.type() == QDBusMessage::ErrorMessage) {
+            qWarning() << "call reloadApplications failed:" << ret.errorMessage();
+        }
+    }
 }
 
 int Cli::install(std::map<std::string, docopt::value> &args)
@@ -540,6 +599,17 @@ int Cli::install(std::map<std::string, docopt::value> &args)
 
     auto pendingReply = this->pkgMan.Install(utils::serialize::toQVariantMap(params));
     auto reply = pendingReply.value();
+    if (!pendingReply.isFinished()) {
+        auto err = LINGLONG_ERRV("dbus early return");
+        this->printer.printErr(err);
+        return -1;
+    }
+    if (pendingReply.isError()) {
+        auto err = LINGLONG_ERRV(pendingReply.error().message());
+        this->printer.printErr(err);
+        return -1;
+    }
+
     auto result =
       utils::serialize::fromQVariantMap<api::types::v1::PackageManager1ResultWithTaskID>(reply);
     if (!result) {
@@ -565,22 +635,7 @@ int Cli::install(std::map<std::string, docopt::value> &args)
     QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
     loop.exec();
 
-    // Call ReloadApplications() in AM for now. Remove later.
-    if ((QSysInfo::productType() == "uos" || QSysInfo::productType() == "Deepin")
-        && this->lastStatus == service::InstallTask::Success) {
-        QDBusConnection conn = QDBusConnection::sessionBus();
-        if (!conn.isConnected()) {
-            qWarning() << "Failed to connect to the session bus";
-        }
-        QDBusMessage msg = QDBusMessage::createMethodCall("org.desktopspec.ApplicationManager1",
-                                                          "/org/desktopspec/ApplicationManager1",
-                                                          "org.desktopspec.ApplicationManager1",
-                                                          "ReloadApplications");
-        auto ret = QDBusConnection::sessionBus().call(msg, QDBus::NoBlock);
-        if (ret.type() == QDBusMessage::ErrorMessage) {
-            qWarning() << "call reloadApplications failed:" << ret.errorMessage();
-        }
-    }
+    updateAM();
     return 0;
 }
 
@@ -649,23 +704,7 @@ int Cli::upgrade(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    // Call ReloadApplications() in AM for now. Remove later.
-    if ((QSysInfo::productType() == "uos" || QSysInfo::productType() == "Deepin")
-        && this->lastStatus == service::InstallTask::Success) {
-        QDBusConnection conn = QDBusConnection::sessionBus();
-        if (!conn.isConnected()) {
-            qWarning() << "Failed to connect to the session bus";
-        }
-        QDBusMessage msg = QDBusMessage::createMethodCall("org.desktopspec.ApplicationManager1",
-                                                          "/org/desktopspec/ApplicationManager1",
-                                                          "org.desktopspec.ApplicationManager1",
-                                                          "ReloadApplications");
-        auto ret = QDBusConnection::sessionBus().call(msg, QDBus::NoBlock);
-        if (ret.type() == QDBusMessage::ErrorMessage) {
-            qWarning() << "call reloadApplications failed:" << ret.errorMessage();
-        }
-    }
-
+    updateAM();
     return this->lastStatus == service::InstallTask::Success ? 0 : -1;
 }
 

@@ -415,8 +415,20 @@ auto ContainerBuilder::create(const ContainerOptions &opts) noexcept
         if (!ofs.is_open()) {
             return LINGLONG_ERR("create 00env.sh failed in bundle directory");
         }
+
         for (const auto &env : originalConfig->process->env.value()) {
-            ofs << "export " << env << std::endl;
+            const QString envStr = QString::fromStdString(env);
+            auto pos = envStr.indexOf("=");
+            auto value = envStr.mid(pos + 1, envStr.length());
+            // here we process environment variables with single quotes.
+            // A=a'b ===> A='a'\''b'
+            value.replace("'", R"('\'')");
+
+            // We need to quote the values environment variables
+            // avoid loading errors when some environment variables have multiple values, such as
+            // (a;b).
+            const auto fixEnv = QString(R"(%1='%2')").arg(envStr.mid(0, pos)).arg(value);
+            ofs << "export " << fixEnv.toStdString() << std::endl;
         }
         ofs.close();
     }

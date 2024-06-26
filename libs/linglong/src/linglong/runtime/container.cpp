@@ -85,7 +85,7 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
     }
 
     if (!this->cfg.process->env) {
-        qWarning() << "`env` field is not exists.";
+        qDebug() << "user `env` field is not exists.";
         Q_ASSERT(false);
         this->cfg.process->env = std::vector<std::string>{};
     }

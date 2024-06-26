@@ -24,7 +24,7 @@ __ll_cli_get_app_list() {
 }
 
 __ll_cli_get_layer_list() {
-        ls *.layer | tr '\n' ' '
+        ls $1* 2>/dev/null | tr '\n' ' '
 }
 
 _ll_cli() {
@@ -57,7 +57,7 @@ _ll_cli() {
                 ;;
         install)
                 install_option="--no-dbus"
-                wordlist="$wordlist $install_option $(__ll_cli_get_app_list) $(__ll_cli_get_layer_list)"
+                wordlist="$wordlist $install_option $(__ll_cli_get_app_list) $(__ll_cli_get_layer_list ${COMP_WORDS[2]})"
                 ;;
         uninstall)
                 uninstall_option="--all --prune"
@@ -87,8 +87,7 @@ _ll_cli() {
                 wordlist="$wordlist $subcommand $repo_option"
                 ;;
         info)
-                current_file_list=$(find . -maxdepth 1 -type f -name "*.layer" | tr '\n' ' ')
-                wordlist="$wordlist $current_file_list"
+                wordlist="$wordlist $(__ll_cli_get_installed_list) $(__ll_cli_get_layer_list ${COMP_WORDS[2]})"
                 ;;
         esac
 

@@ -17,6 +17,7 @@ sources:
     digest: '{{{DIGEST}}}'
 
 build: |
+  cd linglong/sources
   APPIMAGE=$(find . -regex '.*\.AppImage\|.*\appimage' -exec basename {} \;)
   chmod +x ${APPIMAGE}
   ./${APPIMAGE} --appimage-extract

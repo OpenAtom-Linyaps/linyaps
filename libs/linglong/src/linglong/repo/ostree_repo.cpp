@@ -719,6 +719,15 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
         ostreeRepo = ostree_repo_new(repoPath);
         Q_ASSERT(ostreeRepo != nullptr);
         if (ostree_repo_open(ostreeRepo, nullptr, &gErr) == TRUE) {
+            auto result =
+              updateOstreeRepoConfig(ostreeRepo,
+                                     QString::fromStdString(cfg.defaultRepo),
+                                     QString::fromStdString(cfg.repos.at(cfg.defaultRepo)));
+            if (!result) {
+                qCritical() << LINGLONG_ERRV(result);
+                qFatal("abort");
+            }
+
             this->ostreeRepo.reset(static_cast<OstreeRepo *>(g_steal_pointer(&ostreeRepo)));
             return;
         }

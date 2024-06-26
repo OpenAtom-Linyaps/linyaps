@@ -167,10 +167,11 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
                                          {
                                            .fallbackToRemote = false // NOLINT
                                          });
-    auto develop = paras->package.packageManager1PackageModule.value_or("runtime") == "develop";
+    auto curModule = paras->package.packageManager1PackageModule.value_or("runtime");
+    auto isDevelop = curModule == "develop";
 
     if (ref) {
-        auto layerDir = this->repo.getLayerDir(*ref, develop);
+        auto layerDir = this->repo.getLayerDir(*ref, isDevelop);
         if (layerDir) {
             return toDBusReply(-1, ref->toString() + " is already installed");
         }
@@ -183,61 +184,58 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     if (!ref) {
         return toDBusReply(ref);
     }
+    auto reference = *ref;
 
-    if (taskMap.find(ref->toString()) != taskMap.cend()) {
-        return toDBusReply(-1, ref->toString() + " is installing");
+    InstallTask task{ reference, curModule };
+    if (std::find(this->taskList.cbegin(), this->taskList.cend(), task) != this->taskList.cend()) {
+        return toDBusReply(-1,
+                           "the target " % reference.toString() % "/"
+                             % QString::fromStdString(curModule) % " is being operated");
     }
 
-    auto taskID = QUuid::createUuid();
-    auto taskPtr = std::make_shared<InstallTask>(taskID);
-    connect(taskPtr.get(), &InstallTask::TaskChanged, this, &PackageManager::TaskChanged);
-
-    auto reference = *ref;
+    auto &taskRef = this->taskList.emplace_back(std::move(task));
+    connect(&taskRef, &InstallTask::TaskChanged, this, &PackageManager::TaskChanged);
 
     QMetaObject::invokeMethod(
       QCoreApplication::instance(),
-      [this, reference, taskPtr, develop] {
-          auto _ = utils::finally::finally([this, reference]() {
-              this->taskMap.erase(reference.toString());
+      [this, reference, &taskRef, isDevelop] {
+          auto _ = utils::finally::finally([this, reference, &taskRef]() {
+              const auto &_ = std::remove(this->taskList.begin(), this->taskList.end(), taskRef);
           });
 
-          this->Install(taskPtr, reference, develop);
+          this->Install(taskRef, reference, isDevelop);
       },
       Qt::QueuedConnection);
 
-    // FIXME: Install task contains module, we should not just use ref as key.
-    taskMap.emplace(ref->toString(), std::move(taskPtr));
-
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1ResultWithTaskID{
-      .taskID = taskID.toString(QUuid::WithoutBraces).toStdString(),
+      .taskID = taskRef.taskID().toStdString(),
       .code = 0,
       .message = (ref->toString() + " is now installing").toStdString(),
     });
 }
 
-void PackageManager::Install(const std::shared_ptr<InstallTask> &taskContext,
+void PackageManager::Install(InstallTask &taskContext,
                              const package::Reference &ref,
                              bool develop) noexcept
 {
     LINGLONG_TRACE("install " + ref.toString());
 
-    taskContext->updateStatus(InstallTask::preInstall, "prepare installing " + ref.toString());
+    taskContext.updateStatus(InstallTask::preInstall, "prepare installing " + ref.toString());
 
     auto currentArch = package::Architecture::parse(QSysInfo::currentCpuArchitecture());
     Q_ASSERT(currentArch.has_value());
     if (ref.arch != *currentArch) {
-        taskContext->updateStatus(InstallTask::Failed,
-                                  "app arch:" + ref.arch.toString()
-                                    + " not match host architecture");
-        taskMap.erase(ref.toString());
+        taskContext.updateStatus(InstallTask::Failed,
+                                 "app arch:" + ref.arch.toString()
+                                   + " not match host architecture");
         return;
     }
 
     utils::Transaction t;
 
     this->repo.pull(taskContext, ref, develop);
-    if (taskContext->currentStatus() == InstallTask::Failed
-        || taskContext->currentStatus() == InstallTask::Canceled) {
+    if (taskContext.currentStatus() == InstallTask::Failed
+        || taskContext.currentStatus() == InstallTask::Canceled) {
         return;
     }
     t.addRollBack([this, &ref, develop]() noexcept {
@@ -250,13 +248,13 @@ void PackageManager::Install(const std::shared_ptr<InstallTask> &taskContext,
 
     auto layerDir = this->repo.getLayerDir(ref);
     if (!layerDir) {
-        taskContext->updateStatus(InstallTask::Failed, LINGLONG_ERRV(layerDir).message());
+        taskContext.updateStatus(InstallTask::Failed, LINGLONG_ERRV(layerDir).message());
         return;
     }
 
     auto info = layerDir->info();
     if (!info) {
-        taskContext->updateStatus(InstallTask::Failed, LINGLONG_ERRV(info).message());
+        taskContext.updateStatus(InstallTask::Failed, LINGLONG_ERRV(info).message());
         return;
     }
     // for 'kind: app', check runtime and foundation
@@ -265,8 +263,8 @@ void PackageManager::Install(const std::shared_ptr<InstallTask> &taskContext,
             auto fuzzyRuntime =
               package::FuzzyReference::parse(QString::fromStdString(*info->runtime));
             if (!fuzzyRuntime) {
-                taskContext->updateStatus(InstallTask::Failed,
-                                          LINGLONG_ERRV(fuzzyRuntime).message());
+                taskContext.updateStatus(InstallTask::Failed,
+                                         LINGLONG_ERRV(fuzzyRuntime).message());
                 return;
             }
 
@@ -275,15 +273,15 @@ void PackageManager::Install(const std::shared_ptr<InstallTask> &taskContext,
                                                        .forceRemote = true // NOLINT
                                                      });
             if (!runtime) {
-                taskContext->updateStatus(InstallTask::Failed, runtime.error().message());
+                taskContext.updateStatus(InstallTask::Failed, runtime.error().message());
                 return;
             }
 
-            taskContext->updateStatus(InstallTask::installRuntime,
-                                      "Installing runtime " + runtime->toString());
+            taskContext.updateStatus(InstallTask::installRuntime,
+                                     "Installing runtime " + runtime->toString());
             this->repo.pull(taskContext, *runtime, develop);
-            if (taskContext->currentStatus() == InstallTask::Failed
-                || taskContext->currentStatus() == InstallTask::Canceled) {
+            if (taskContext.currentStatus() == InstallTask::Failed
+                || taskContext.currentStatus() == InstallTask::Canceled) {
                 return;
             }
 
@@ -299,7 +297,7 @@ void PackageManager::Install(const std::shared_ptr<InstallTask> &taskContext,
 
         auto fuzzyBase = package::FuzzyReference::parse(QString::fromStdString(info->base));
         if (!fuzzyBase) {
-            taskContext->updateStatus(InstallTask::Failed, LINGLONG_ERRV(info).message());
+            taskContext.updateStatus(InstallTask::Failed, LINGLONG_ERRV(info).message());
             return;
         }
 
@@ -308,21 +306,21 @@ void PackageManager::Install(const std::shared_ptr<InstallTask> &taskContext,
                                                 .forceRemote = true // NOLINT
                                               });
         if (!base) {
-            taskContext->updateStatus(InstallTask::Failed, LINGLONG_ERRV(base).message());
+            taskContext.updateStatus(InstallTask::Failed, LINGLONG_ERRV(base).message());
             return;
         }
 
-        taskContext->updateStatus(InstallTask::installBase, "Installing base " + base->toString());
+        taskContext.updateStatus(InstallTask::installBase, "Installing base " + base->toString());
         this->repo.pull(taskContext, *base, develop);
-        if (taskContext->currentStatus() == InstallTask::Failed
-            || taskContext->currentStatus() == InstallTask::Canceled) {
+        if (taskContext.currentStatus() == InstallTask::Failed
+            || taskContext.currentStatus() == InstallTask::Canceled) {
             return;
         }
     }
 
     this->repo.exportReference(ref);
 
-    taskContext->updateStatus(InstallTask::Success, "Install " + ref.toString() + " success");
+    taskContext.updateStatus(InstallTask::Success, "Install " + ref.toString() + " success");
     t.commit();
 }
 
@@ -401,40 +399,42 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
             .arg(ref->version.toString()));
     }
 
-    auto taskID = QUuid::createUuid();
-    auto taskPtr = std::make_shared<InstallTask>(taskID);
-    connect(taskPtr.get(), &InstallTask::TaskChanged, this, &PackageManager::TaskChanged);
-
     const auto reference = *ref;
     const auto newReference = *newRef;
-
     qInfo() << "Before upgrade, old Ref: " << reference.toString()
             << " new Ref: " << newReference.toString();
 
-    auto develop = paras->package.packageManager1PackageModule.value_or("runtime") == "develop";
+    auto curModule = paras->package.packageManager1PackageModule.value_or("runtime");
+    auto isDevelop = curModule == "develop";
+
+    InstallTask task{ newReference, curModule };
+    if (std::find(this->taskList.cbegin(), this->taskList.cend(), task) != this->taskList.cend()) {
+        return toDBusReply(-1,
+                           "the target " % newReference.toString() % "/"
+                             % QString::fromStdString(curModule) % " is being operated");
+    }
+
+    auto &taskRef = this->taskList.emplace_back(std::move(task));
+    connect(&taskRef, &InstallTask::TaskChanged, this, &PackageManager::TaskChanged);
 
     QMetaObject::invokeMethod(
       QCoreApplication::instance(),
-      [this, reference, newReference, taskPtr, develop] {
-          auto _ = utils::finally::finally([this, reference]() {
-              this->taskMap.erase(reference.toString());
+      [this, reference, newReference, &taskRef, isDevelop] {
+          auto _ = utils::finally::finally([this, reference, &taskRef]() {
+              const auto &_ = std::remove(this->taskList.begin(), this->taskList.end(), taskRef);
           });
-          this->Update(taskPtr, reference, newReference, develop);
+          this->Update(taskRef, reference, newReference, isDevelop);
       },
       Qt::QueuedConnection);
 
-    // FIXME(black_desk):
-    // taskPtr is updating ref to newRef, but we just using ref as key. Does it really make sense?
-    taskMap.emplace(ref->toString(), std::move(taskPtr));
-
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1ResultWithTaskID{
-      .taskID = taskID.toString(QUuid::WithoutBraces).toStdString(),
+      .taskID = taskRef.taskID().toStdString(),
       .code = 0,
       .message = (ref->toString() + " is updating").toStdString(),
     });
 }
 
-void PackageManager::Update(const std::shared_ptr<InstallTask> &taskContext,
+void PackageManager::Update(InstallTask &taskContext,
                             const package::Reference &ref,
                             const package::Reference &newRef,
                             bool develop) noexcept
@@ -444,8 +444,8 @@ void PackageManager::Update(const std::shared_ptr<InstallTask> &taskContext,
     utils::Transaction t;
 
     this->Install(taskContext, newRef, develop);
-    if (taskContext->currentStatus() == InstallTask::Failed
-        || taskContext->currentStatus() == InstallTask::Canceled) {
+    if (taskContext.currentStatus() == InstallTask::Failed
+        || taskContext.currentStatus() == InstallTask::Canceled) {
         return;
     }
     t.addRollBack([this, &newRef, &ref, &develop]() noexcept {
@@ -460,8 +460,8 @@ void PackageManager::Update(const std::shared_ptr<InstallTask> &taskContext,
     this->repo.unexportReference(ref);
     this->repo.exportReference(newRef);
 
-    taskContext->updateStatus(InstallTask::Success,
-                              "Upgrade " + ref.toString() + "to" + newRef.toString() + " success");
+    taskContext.updateStatus(InstallTask::Success,
+                             "Upgrade " + ref.toString() + "to" + newRef.toString() + " success");
     t.commit();
 
     // try to remove old version
@@ -500,18 +500,19 @@ auto PackageManager::Search(const QVariantMap &parameters) noexcept -> QVariantM
 
 void PackageManager::CancelTask(const QString &taskID) noexcept
 {
-    auto task = std::find_if(taskMap.cbegin(), taskMap.cend(), [&taskID](const auto &task) {
-        return task.second->taskID() == taskID;
+    auto task = std::find_if(taskList.begin(), taskList.end(), [&taskID](const InstallTask &task) {
+        return task.taskID() == taskID;
     });
 
-    if (task == taskMap.cend()) {
+    if (task == taskList.cend()) {
         return;
     }
 
-    task->second->cancelTask();
-    task->second->updateStatus(InstallTask::Canceled,
-                               QString{ "cancel installing app 1" }.arg(task->first));
-    taskMap.erase(task);
+    task->cancelTask();
+    task->updateStatus(InstallTask::Canceled,
+                       QString{ "cancel installing app %1" }.arg(task->layer()));
+
+    taskList.erase(task);
 }
 
 } // namespace linglong::service

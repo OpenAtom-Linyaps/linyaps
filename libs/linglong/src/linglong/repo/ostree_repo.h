@@ -57,7 +57,7 @@ public:
     utils::error::Result<void> push(const package::Reference &reference,
                                     bool develop = false) const noexcept;
 
-    void pull(std::shared_ptr<service::InstallTask> taskContext,
+    void pull(service::InstallTask &taskContext,
               const package::Reference &reference,
               bool develop = false) noexcept;
 

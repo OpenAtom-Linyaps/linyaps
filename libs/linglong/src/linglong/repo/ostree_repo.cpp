@@ -1111,7 +1111,7 @@ utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref, boo
     return LINGLONG_OK;
 }
 
-void OSTreeRepo::pull(std::shared_ptr<service::InstallTask> taskContext,
+void OSTreeRepo::pull(service::InstallTask &taskContext,
                       const package::Reference &reference,
                       bool develop) noexcept
 {
@@ -1120,11 +1120,11 @@ void OSTreeRepo::pull(std::shared_ptr<service::InstallTask> taskContext,
     LINGLONG_TRACE("pull " + refString);
 
     utils::Transaction transaction;
-    auto *cancellable = taskContext->cancellable();
+    auto *cancellable = taskContext.cancellable();
 
     char *refs[] = { (char *)refString.data(), nullptr };
 
-    ostreeUserData data{ .repo = this, .taskContext = taskContext.get() };
+    ostreeUserData data{ .repo = this, .taskContext = &taskContext };
     auto *progress = ostree_async_progress_new_and_connect(progress_changed, (void *)&data);
     Q_ASSERT(progress != nullptr);
 
@@ -1153,8 +1153,8 @@ void OSTreeRepo::pull(std::shared_ptr<service::InstallTask> taskContext,
                                   cancellable,
                                   &gErr);
         if (status == FALSE) {
-            taskContext->updateStatus(service::InstallTask::Failed,
-                                      LINGLONG_ERRV("ostree_repo_pull", gErr));
+            taskContext.updateStatus(service::InstallTask::Failed,
+                                     LINGLONG_ERRV("ostree_repo_pull", gErr));
             return;
         }
     }
@@ -1171,7 +1171,7 @@ void OSTreeRepo::pull(std::shared_ptr<service::InstallTask> taskContext,
                                          this->getLayerQDirV2(reference, develop),
                                          refString);
     if (!result) {
-        taskContext->updateStatus(service::InstallTask::Failed, LINGLONG_ERRV(result));
+        taskContext.updateStatus(service::InstallTask::Failed, LINGLONG_ERRV(result));
         return;
     }
 

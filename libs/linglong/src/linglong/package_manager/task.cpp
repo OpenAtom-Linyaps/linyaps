@@ -9,11 +9,63 @@
 
 namespace linglong::service {
 
-InstallTask::InstallTask(const QUuid &taskID, QObject *parent)
-    : QObject(parent)
-    , m_taskID(taskID)
+InstallTask InstallTask::createTemporaryTask() noexcept
+{
+    return {};
+}
+
+InstallTask::InstallTask()
+    : m_taskID(QUuid::createUuid())
     , m_cancelFlag(g_cancellable_new())
 {
+}
+
+InstallTask::InstallTask(const package::Reference &ref, const QString &module, QObject *parent)
+    : QObject(parent)
+    , m_taskID(QUuid::createUuid())
+    , m_layer(ref.toString() % "-" % module)
+    , m_cancelFlag(g_cancellable_new())
+{
+}
+
+InstallTask::InstallTask(const package::Reference &ref, const std::string &module, QObject *parent)
+    : InstallTask(ref, QString::fromStdString(module), parent)
+{
+}
+
+InstallTask::InstallTask(InstallTask &&other) noexcept
+    : m_status(other.m_status)
+    , m_err(std::move(other).m_err)
+    , m_statePercentage(other.m_statePercentage)
+    , m_taskID(std::move(other).m_taskID)
+    , m_layer(std::move(other).m_layer)
+    , m_cancelFlag(other.m_cancelFlag)
+{
+    other.m_cancelFlag = nullptr;
+    other.m_status = Status::Queued;
+    other.m_statePercentage = 0;
+}
+
+InstallTask &InstallTask::operator=(InstallTask &&other) noexcept
+{
+    if (*this == other) {
+        return *this;
+    }
+
+    this->m_status = other.m_status;
+    other.m_status = Status::Queued;
+
+    this->m_cancelFlag = other.m_cancelFlag;
+    other.m_cancelFlag = nullptr;
+
+    this->m_statePercentage = other.m_statePercentage;
+    other.m_statePercentage = 0;
+
+    this->m_layer = std::move(other).m_layer;
+    this->m_err = std::move(other).m_err;
+    this->m_taskID = std::move(other).m_taskID;
+
+    return *this;
 }
 
 InstallTask::~InstallTask()

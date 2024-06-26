@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "linglong/package/reference.h"
 #include "linglong/utils/error/error.h"
 
 #include <gio/gio.h>
@@ -19,8 +20,17 @@ class InstallTask : public QObject
 {
     Q_OBJECT
 public:
-    explicit InstallTask(const QUuid &taskID, QObject *parent = nullptr);
+    explicit InstallTask(const package::Reference &ref,
+                         const QString &module,
+                         QObject *parent = nullptr);
+    explicit InstallTask(const package::Reference &ref,
+                         const std::string &module,
+                         QObject *parent = nullptr);
+    InstallTask(InstallTask &&other) noexcept;
+    InstallTask &operator=(InstallTask &&other) noexcept;
     ~InstallTask() override;
+
+    static InstallTask createTemporaryTask() noexcept;
 
     enum Status {
         Queued,
@@ -35,6 +45,13 @@ public:
     };
     Q_ENUM(Status)
 
+    friend bool operator==(const InstallTask &lhs, const InstallTask &rhs)
+    {
+        return lhs.m_layer == rhs.m_layer;
+    }
+
+    friend bool operator!=(const InstallTask &lhs, const InstallTask &rhs) { return !(lhs == rhs); }
+
     void updateTask(double currentPercentage,
                     double totalPercentage,
                     const QString &message = "") noexcept;
@@ -43,7 +60,7 @@ public:
 
     [[nodiscard]] Status currentStatus() const noexcept { return m_status; }
 
-    [[nodiscard]] utils::error::Error &&currentError() noexcept { return std::move(m_err); }
+    [[nodiscard]] utils::error::Error currentError() && noexcept { return std::move(m_err); }
 
     [[nodiscard]] QString taskID() const noexcept
     {
@@ -54,6 +71,8 @@ public:
 
     auto cancellable() noexcept { return m_cancelFlag; }
 
+    [[nodiscard]] const QString &layer() const noexcept { return m_layer; }
+
 Q_SIGNALS:
     void
     TaskChanged(QString taskID, QString percentage, QString message, Status status, QPrivateSignal);
@@ -61,11 +80,13 @@ Q_SIGNALS:
     PartChanged(QString taskID, QString percentage, QString message, Status status, QPrivateSignal);
 
 private:
-    QString formatPercentage(double increase = 0) const noexcept;
+    InstallTask();
+    [[nodiscard]] QString formatPercentage(double increase = 0) const noexcept;
     Status m_status{ Queued };
     utils::error::Error m_err;
     double m_statePercentage{ 0 };
     QUuid m_taskID;
+    QString m_layer;
     GCancellable *m_cancelFlag{ nullptr };
 
     inline static QMap<Status, double> partsMap{ { Queued, 0 },       { Canceled, 0 },

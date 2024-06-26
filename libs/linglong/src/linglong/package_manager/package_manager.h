@@ -31,10 +31,10 @@ public:
     PackageManager(PackageManager &&) = delete;
     auto operator=(const PackageManager &) -> PackageManager & = delete;
     auto operator=(PackageManager &&) -> PackageManager & = delete;
-    void Install(const std::shared_ptr<InstallTask> &taskContext,
+    void Install(InstallTask &taskContext,
                  const package::Reference &ref,
                  bool devel) noexcept;
-    void Update(const std::shared_ptr<InstallTask> &taskContext,
+    void Update(InstallTask &taskContext,
                 const package::Reference &ref,
                 const package::Reference &newRef,
                 bool develop) noexcept;
@@ -57,7 +57,7 @@ private:
     QVariantMap installFromLayer(const QDBusUnixFileDescriptor &fd) noexcept;
     QVariantMap installFromUAB(const QDBusUnixFileDescriptor& fd) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT
-    std::map<QString, std::shared_ptr<InstallTask>> taskMap;
+    std::vector<InstallTask> taskList;
 };
 
 } // namespace linglong::service

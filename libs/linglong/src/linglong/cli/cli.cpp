@@ -636,7 +636,7 @@ int Cli::install(std::map<std::string, docopt::value> &args)
     loop.exec();
 
     updateAM();
-    return 0;
+    return this->lastStatus == service::InstallTask::Success ? 0 : -1;
 }
 
 int Cli::upgrade(std::map<std::string, docopt::value> &args)

@@ -854,8 +854,6 @@ void PackageManager::CancelTask(const QString &taskID) noexcept
     task->cancelTask();
     task->updateStatus(InstallTask::Canceled,
                        QString{ "cancel installing app %1" }.arg(task->layer()));
-
-    taskList.erase(task);
 }
 
 } // namespace linglong::service

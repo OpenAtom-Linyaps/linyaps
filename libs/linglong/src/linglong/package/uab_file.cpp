@@ -17,7 +17,17 @@
 
 namespace linglong::package {
 
-utils::error::Result<std::unique_ptr<UABFile>> UABFile::loadFromFile(const QString &input)
+/**
+ * In the package_manager.cpp file, the method installFromUAB attempts to move a lambda to
+ * QCoreApplication::instance() via QMetaObject::invokeMethod, which has a object of type
+ * std::unique_ptr<uabFile> that created from this method. However, when compiling this project with
+ * Qt 5.11, the type of lambda (rvalue reference) is lost during parameter passing to Qt's internal
+ * method, so the compiler tries to call the copy constructor of this lambda. std::unique_ptr has a
+ * deleted copy constructor, so it compiles failed. The temporary resolution is that returning a
+ * std::shared_pointer<UABFile>, if linglong depends on a minimal version of Qt above 5.11, change
+ * the type of returned value to std::unique_ptr<UABFile>.
+ **/
+utils::error::Result<std::shared_ptr<UABFile>> UABFile::loadFromFile(const QString &input)
 {
     struct EnableMaker : public UABFile
     {
@@ -25,7 +35,7 @@ utils::error::Result<std::unique_ptr<UABFile>> UABFile::loadFromFile(const QStri
     };
 
     LINGLONG_TRACE("load uab file")
-    auto file = std::make_unique<EnableMaker>();
+    auto file = std::make_shared<EnableMaker>();
 
     file->setFileName(input);
     if (!file->open(QIODevice::ReadOnly | QIODevice::ExistingOnly)) {

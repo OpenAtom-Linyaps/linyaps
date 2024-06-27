@@ -16,6 +16,6 @@ namespace linglong::utils {
 
 error::Result<api::types::v1::PackageInfoV2> toPackageInfoV2(const api::types::v1::PackageInfo &oldInfo);
 error::Result<api::types::v1::PackageInfoV2> parsePackageInfo(const QString &path);
-error::Result<api::types::v1::PackageInfoV2> parsePackageInfo(nlohmann::json &json);
+error::Result<api::types::v1::PackageInfoV2> parsePackageInfo(const nlohmann::json &json);
 }; // namespace linglong::utils
 #endif

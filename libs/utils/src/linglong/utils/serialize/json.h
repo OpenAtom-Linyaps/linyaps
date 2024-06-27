@@ -50,7 +50,7 @@ error::Result<T> LoadJSON(const Source &content) noexcept
 }
 
 template<typename T>
-error::Result<T> LoadJSON(nlohmann::json &content) noexcept
+error::Result<T> LoadJSON(const nlohmann::json &content) noexcept
 {
     LINGLONG_TRACE("load json");
 

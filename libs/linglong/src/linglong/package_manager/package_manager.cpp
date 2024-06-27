@@ -10,7 +10,9 @@
 #include "linglong/package/layer_file.h"
 #include "linglong/package/layer_packager.h"
 #include "linglong/package/uab_file.h"
+#include "linglong/utils/command/env.h"
 #include "linglong/utils/finally/finally.h"
+#include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/transaction.h"
 
@@ -99,35 +101,113 @@ auto PackageManager::setConfiguration(const QVariantMap &parameters) noexcept ->
 
 QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) noexcept
 {
-    const auto layerFile =
-      package::LayerFile::New(QString("/proc/%1/fd/%2").arg(getpid()).arg(fd.fileDescriptor()));
-    if (!layerFile) {
-        return toDBusReply(layerFile);
+    QFile info = QString("/proc/%1/fd/%2").arg(getpid()).arg(fd.fileDescriptor());
+    const auto &realFile = info.symLinkTarget();
+    auto layerFileRet = package::LayerFile::New(realFile);
+    if (!layerFileRet) {
+        return toDBusReply(layerFileRet);
     }
-    Q_ASSERT(*layerFile != nullptr);
+    Q_ASSERT(*layerFileRet != nullptr);
 
-    package::LayerPackager layerPackager;
-    auto layerDir = layerPackager.unpack(**layerFile);
-    if (!layerDir) {
-        return toDBusReply(layerDir);
-    }
-
-    auto result = this->repo.importLayerDir(*layerDir);
-    if (!result) {
-        return toDBusReply(result);
+    const auto &layerFile = *layerFileRet;
+    auto metaInfoRet = layerFile->metaInfo();
+    if (!metaInfoRet) {
+        return toDBusReply(metaInfoRet);
     }
 
-    auto info = (*layerDir).info();
-    if (!info) {
-        return toDBusReply(info);
+    const auto &metaInfo = *metaInfoRet;
+    auto packageInfoRet = utils::parsePackageInfo(metaInfo.info);
+    if (!packageInfoRet) {
+        return toDBusReply(packageInfoRet);
     }
 
-    auto ref = package::Reference::fromPackageInfo(*info);
-    if (!ref) {
-        return toDBusReply(ref);
+    const auto &packageInfo = *packageInfoRet;
+    auto versionRet = package::Version::parse(QString::fromStdString(packageInfo.version));
+    if (!versionRet) {
+        return toDBusReply(versionRet);
     }
-    this->repo.exportReference(*ref);
-    return toDBusReply(0, "Install layer file success.");
+
+    auto architectureRet =
+      package::Architecture::parse(QString::fromStdString(packageInfo.arch[0]));
+    if (!architectureRet) {
+        return toDBusReply(architectureRet);
+    }
+
+    auto packageRefRet = package::Reference::create(QString::fromStdString(packageInfo.channel),
+                                                    QString::fromStdString(packageInfo.id),
+                                                    *versionRet,
+                                                    *architectureRet);
+    if (!packageRefRet) {
+        return toDBusReply(packageRefRet);
+    }
+    const auto &packageRef = *packageRefRet;
+
+    InstallTask task{ packageRef, packageInfo.packageInfoV2Module };
+    if (std::find(this->taskList.cbegin(), this->taskList.cend(), task) != this->taskList.cend()) {
+        return toDBusReply(-1,
+                           "the target " % packageRef.toString() % "/"
+                             % QString::fromStdString(packageInfo.packageInfoV2Module)
+                             % " is being operated");
+    }
+    auto &taskRef = this->taskList.emplace_back(std::move(task));
+    connect(&taskRef, &InstallTask::TaskChanged, this, &PackageManager::TaskChanged);
+
+    auto installer = [this,
+                      &taskRef,
+                      packageRef = std::move(packageRefRet).value(),
+                      layerFile = std::move(layerFileRet).value()]() {
+        auto removeTask = utils::finally::finally([&taskRef, this] {
+            auto elem = std::find(this->taskList.begin(), this->taskList.end(), taskRef);
+            if (elem == this->taskList.end()) {
+                qCritical() << "the status of package manager is invalid";
+                return;
+            }
+            this->taskList.erase(elem);
+        });
+        taskRef.updateStatus(InstallTask::preInstall, "prepare for installing layer");
+
+        package::LayerPackager layerPackager;
+        auto layerDir = layerPackager.unpack(*layerFile);
+        if (!layerDir) {
+            taskRef.updateStatus(InstallTask::Failed, std::move(layerDir).error());
+            return;
+        }
+
+        auto unmountLayer = utils::finally::finally([mountPoint = layerDir->absolutePath()] {
+            if (QFileInfo::exists(mountPoint)) {
+                auto ret = utils::command::Exec("umount", { mountPoint });
+                if (!ret) {
+                    qCritical() << "failed to umount " << mountPoint
+                                << ", please umount it manually";
+                }
+            }
+        });
+
+        auto info = (*layerDir).info();
+        if (!info) {
+            taskRef.updateStatus(InstallTask::Failed, std::move(info).error());
+            return;
+        }
+
+        auto result = this->repo.importLayerDir(*layerDir);
+        if (!result) {
+            taskRef.updateStatus(InstallTask::Failed, std::move(result).error());
+            return;
+        }
+
+        this->repo.exportReference(packageRef);
+        taskRef.updateStatus(InstallTask::Success, "install layer successfully");
+    };
+
+    QMetaObject::invokeMethod(QCoreApplication::instance(),
+                              std::move(installer),
+                              Qt::QueuedConnection);
+
+    return utils::serialize::toQVariantMap(api::types::v1::PackageManager1ResultWithTaskID{
+      .taskID = taskRef.taskID().toStdString(),
+      .code = 0,
+      .message = (realFile + " is now installing").toStdString(),
+    });
 }
 
 utils::error::Result<api::types::v1::MinifiedInfo> PackageManager::updateMinifiedInfo(

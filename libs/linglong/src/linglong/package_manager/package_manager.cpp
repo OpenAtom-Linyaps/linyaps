@@ -532,7 +532,12 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
       QCoreApplication::instance(),
       [this, reference, &taskRef, isDevelop] {
           auto _ = utils::finally::finally([this, reference, &taskRef]() {
-              const auto &_ = std::remove(this->taskList.begin(), this->taskList.end(), taskRef);
+              auto elem = std::find(this->taskList.begin(), this->taskList.end(), taskRef);
+              if (elem == this->taskList.end()) {
+                  qCritical() << "the status of package manager is invalid";
+                  return;
+              }
+              this->taskList.erase(elem);
           });
 
           this->Install(taskRef, reference, isDevelop);
@@ -752,9 +757,15 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
     QMetaObject::invokeMethod(
       QCoreApplication::instance(),
       [this, reference, newReference, &taskRef, isDevelop] {
-          auto _ = utils::finally::finally([this, reference, &taskRef]() {
-              const auto &_ = std::remove(this->taskList.begin(), this->taskList.end(), taskRef);
+          auto removeTask = utils::finally::finally([&taskRef, this] {
+              auto elem = std::find(this->taskList.begin(), this->taskList.end(), taskRef);
+              if (elem == this->taskList.end()) {
+                  qCritical() << "the status of package manager is invalid";
+                  return;
+              }
+              this->taskList.erase(elem);
           });
+
           this->Update(taskRef, reference, newReference, isDevelop);
       },
       Qt::QueuedConnection);

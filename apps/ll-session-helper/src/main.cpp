@@ -14,8 +14,8 @@
 #include <QTimer>
 #include <unistd.h>
 
-void copyFileToTargetPath(const QFileInfo &fileInfo, QString path);
-void copyDirToTargetPath(const QFileInfo &fileInfo, QString path, QMap<QString, QMap<QString, QDateTime>> &directoryFileTimes);
+void copyFileToTargetPath(const QFileInfo &fileInfo, const QString path);
+void copyDirToTargetPath(const QFileInfo &fileInfo, const QString path, QMap<QString, QMap<QString, QDateTime>> &directoryFileTimes);
 
 int main(int argc, char *argv[])
 {

@@ -73,6 +73,7 @@ public:
     utils::error::Result<void> remove(const package::Reference &ref,
                                       bool develop = false,
                                       const QString &subRef = "") noexcept;
+    utils::error::Result<void> prune();
 
     void removeDanglingXDGIntergation() noexcept;
     void exportReference(const package::Reference &ref) noexcept;

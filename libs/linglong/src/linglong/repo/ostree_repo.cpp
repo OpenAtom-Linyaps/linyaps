@@ -279,22 +279,6 @@ utils::error::Result<void> removeOstreeRef(OstreeRepo *repo, const char *ref) no
         return LINGLONG_ERR("ostree_repo_set_ref_immediate", gErr);
     }
 
-    [[maybe_unused]] gint out_objects_total = 0;
-    [[maybe_unused]] gint out_objects_pruned = 0;
-    [[maybe_unused]] guint64 out_pruned_object_size_total = 0;
-
-    if (ostree_repo_prune(repo,
-                          OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY,
-                          0,
-                          &out_objects_total,
-                          &out_objects_pruned,
-                          &out_pruned_object_size_total,
-                          nullptr,
-                          &gErr)
-        == FALSE) {
-        return LINGLONG_ERR("ostree_repo_prune", gErr);
-    }
-
     return LINGLONG_OK;
 }
 
@@ -367,7 +351,10 @@ utils::error::Result<void> handleRepositoryUpdate(OstreeRepo *repo,
     auto path = layerDir.absolutePath();
     path = path.right(path.length() - 1);
 
-    Q_ASSERT(layerDir.exists() == false);
+    if (layerDir.exists()) {
+        qDebug() << layerDir.absolutePath() << "exists";
+    }
+
     if (!layerDir.mkpath(".")) {
         Q_ASSERT(false);
     }
@@ -1132,6 +1119,28 @@ utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref,
     return LINGLONG_OK;
 }
 
+utils::error::Result<void> OSTreeRepo::prune()
+{
+    LINGLONG_TRACE("prune ostree repo");
+    // TODO(wurongjie) Perform pruning at the right time
+    [[maybe_unused]] gint out_objects_total = 0;
+    [[maybe_unused]] gint out_objects_pruned = 0;
+    [[maybe_unused]] guint64 out_pruned_object_size_total = 0;
+    g_autoptr(GError) gErr = nullptr;
+    if (ostree_repo_prune(this->ostreeRepo.get(),
+                          OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY,
+                          0,
+                          &out_objects_total,
+                          &out_objects_pruned,
+                          &out_pruned_object_size_total,
+                          nullptr,
+                          &gErr)
+        == FALSE) {
+        return LINGLONG_ERR("ostree_repo_prune", gErr);
+    }
+    return LINGLONG_OK;
+}
+
 void OSTreeRepo::pull(service::InstallTask &taskContext,
                       const package::Reference &reference,
                       bool develop) noexcept
@@ -1585,8 +1594,10 @@ void OSTreeRepo::updateSharedInfo() noexcept
     }
 }
 
-auto OSTreeRepo::getLayerDir(const package::Reference &ref, bool develop, const QString &subRef)
-  const noexcept -> utils::error::Result<package::LayerDir>
+auto OSTreeRepo::getLayerDir(const package::Reference &ref,
+                             bool develop,
+                             const QString &subRef) const noexcept
+  -> utils::error::Result<package::LayerDir>
 {
     LINGLONG_TRACE("get dir of " + ref.toString());
     auto dir = this->getLayerQDirV2(ref, develop, subRef);

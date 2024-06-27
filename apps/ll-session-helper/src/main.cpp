@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
     return a.exec();
 }
 
-// 拷贝修改的文件到目标路径，同时文件的父目录也需要携带上
+// 拷贝修改的文件到目标路径
 void copyFileToTargetPath(const QFileInfo &fileInfo, const QString &path) {
     QString targetFilePath = path + "/" + fileInfo.fileName();
 

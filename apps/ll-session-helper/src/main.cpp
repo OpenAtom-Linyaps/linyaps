@@ -14,8 +14,8 @@
 #include <QTimer>
 #include <unistd.h>
 
-void copyFileToTargetPath(const QFileInfo &fileInfo, const QString path);
-void copyDirToTargetPath(const QFileInfo &fileInfo, const QString path, QMap<QString, QMap<QString, QDateTime>> &directoryFileTimes);
+void copyFileToTargetPath(const QFileInfo &fileInfo, const QString &path);
+void copyDirToTargetPath(const QFileInfo &fileInfo, const QString &path, QMap<QString, QMap<QString, QDateTime>> &directoryFileTimes);
 
 int main(int argc, char *argv[])
 {
@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
     return a.exec();
 }
 
-// 拷贝修改的文件到目标路径，同时文件的父目录也需要携带上
+// 拷贝修改的文件到目标路径
 void copyFileToTargetPath(const QFileInfo &fileInfo, const QString &path) {
     QString targetFilePath = path + "/" + fileInfo.fileName();
 

@@ -53,7 +53,7 @@ error::Result<api::types::v1::PackageInfoV2> parsePackageInfo(const QString &pat
     return toPackageInfoV2(*oldPkgInfo);
 }
 
-error::Result<api::types::v1::PackageInfoV2> parsePackageInfo(nlohmann::json &json)
+error::Result<api::types::v1::PackageInfoV2> parsePackageInfo(const nlohmann::json &json)
 {
     LINGLONG_TRACE("parse package info from json");
 

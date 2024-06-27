@@ -96,6 +96,7 @@ cd build
 %{_libexecdir}/%{name}/90-legacy
 %{_libexecdir}/%{name}/create-linglong-dirs
 %{_libexecdir}/%{name}/upgrade-all
+%{_libexecdir}/%{name}/ll-session-helper
 %{_datadir}/bash-completion/completions/ll-cli
 %{_datadir}/dbus-1/system-services/*.service
 %{_datadir}/dbus-1/system.d/*.conf

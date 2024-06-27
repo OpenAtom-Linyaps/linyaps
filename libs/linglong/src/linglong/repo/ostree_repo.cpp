@@ -724,8 +724,9 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
                                      QString::fromStdString(cfg.defaultRepo),
                                      QString::fromStdString(cfg.repos.at(cfg.defaultRepo)));
             if (!result) {
-                qCritical() << LINGLONG_ERRV(result);
-                qFatal("abort");
+                // when ll-cli construct this object, it has no permission to wirte ostree config
+                // we can't abort here.
+                qDebug() << LINGLONG_ERRV(result);
             }
 
             this->ostreeRepo.reset(static_cast<OstreeRepo *>(g_steal_pointer(&ostreeRepo)));

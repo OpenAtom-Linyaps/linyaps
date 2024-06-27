@@ -100,7 +100,7 @@ LayerPackager::pack(const LayerDir &dir, const QString &layerFilePath) const
 
     // compress data with erofs
     const auto &compressedFilePath = this->workDir.absoluteFilePath("tmp.erofs");
-    const auto &ignoreRegex = QString{ "--exclude-regex=" } % "minified*";
+    const auto &ignoreRegex = QString{ "--exclude-regex=minified*" };
     auto ret =
       utils::command::Exec("mkfs.erofs",
                            { "-zlz4hc,9", compressedFilePath, ignoreRegex, dir.absolutePath() });

@@ -66,8 +66,19 @@ int runProcess(const std::string &binaryPath,
                 output.append(buffer.data(), readCount);
         }
 
-        if (::wait(&ret) == -1) {
-                throw std::system_error(errno, std::generic_category(), "wait");
+
+        int interruptTimes = 0;
+        while (true) {
+            if (::wait(&ret) == -1) {
+                if (errno == EINTR) {
+                    interruptTimes < 2 ? ++interruptTimes : kill(childId, SIGKILL);
+                    continue; 
+                } 
+                
+                throw std::system_error(errno, std::generic_category(), "wait: " + std::to_string(errno));
+            } else {
+                break;
+            }
         }
 
         ::close(pipes[0]);
@@ -98,8 +109,18 @@ int runProcess(const std::string &binaryPath,
                                         "execvp");
         }
 
-        if (::wait(&ret) == -1) {
-                throw std::system_error(errno, std::generic_category(), "wait");
+        int interruptTimes = 0;
+        while (true) {
+            if (::wait(&ret) == -1) {
+                if (errno == EINTR) {
+                    interruptTimes < 2 ? ++interruptTimes : kill(childId, SIGKILL);
+                    continue; 
+                } 
+                
+                throw std::system_error(errno, std::generic_category(), "wait: " + std::to_string(errno));
+            } else {
+                break;
+            }
         }
 
         return ret;

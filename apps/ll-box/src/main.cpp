@@ -56,6 +56,32 @@ enum globalOption { OPTION_CGROUP_MANAGER = 1000 };
 
 enum execOption { OPTION_CWD = 1000 };
 
+void containerJsonCleanUp()
+{
+    auto containers = linglong::readAllContainerJson();
+
+    auto it = containers.begin();
+    while (it != containers.end()) {
+        auto boxPid = it->value("pid", -1);
+        if (boxPid == -1) {
+            ++it;
+            continue;
+        }
+
+        if (kill(boxPid, 0) != 0) {
+            auto jsonPath = std::filesystem::path("/run") / "user" / std::to_string(getuid())
+              / "linglong" / "box" / (it->value("id", "unknown") + ".json");
+
+            if (!std::filesystem::remove(jsonPath)) {
+                logErr() << "remove" << jsonPath << "failed";
+            }
+            it = containers.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
 int list(struct arg_list *arg) noexcept
 {
     auto containers = linglong::readAllContainerJson();
@@ -539,7 +565,8 @@ int main(int argc, char **argv)
         logErr() << "please specify a command";
         return -1;
     }
-
+    // make sure that all containers status are valid 
+    containerJsonCleanUp();
     struct argp_option options[] = { {
                                        .name = "cgroup-manager",
                                        .key = OPTION_CGROUP_MANAGER,

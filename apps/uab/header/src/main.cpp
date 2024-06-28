@@ -93,7 +93,7 @@ int importSelf(const std::string &cliBin, const char *uab) noexcept
     }
 
     if (pid == 0) {
-        return ::execl(cliBin.c_str(), cliBin.c_str(), "import", uab, nullptr);
+        return ::execl(cliBin.c_str(), cliBin.c_str(), "install", uab, nullptr);
     }
 
     int status{ 0 };
@@ -104,7 +104,7 @@ int importSelf(const std::string &cliBin, const char *uab) noexcept
     }
 
     if (auto result = WEXITSTATUS(status); result != 0) {
-        std::cerr << "ll-cli import failed, return code:" << result << std::endl;
+        std::cerr << "ll-cli install failed, return code:" << result << std::endl;
         ::exit(-1);
     }
 

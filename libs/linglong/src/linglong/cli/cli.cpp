@@ -589,6 +589,11 @@ int Cli::install(std::map<std::string, docopt::value> &args)
 
     api::types::v1::PackageManager1InstallParameters params;
     auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(tier));
+    if (!fuzzyRef) {
+        this->printer.printErr(fuzzyRef.error());
+        return -1;
+    }
+
     params.package.id = fuzzyRef->id.toStdString();
     if (fuzzyRef->channel) {
         params.package.channel = fuzzyRef->channel->toStdString();

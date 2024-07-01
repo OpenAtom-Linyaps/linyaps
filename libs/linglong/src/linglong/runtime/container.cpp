@@ -41,7 +41,7 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
 
     QDir runtimeDir = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
 
-    // bundle dir is already created in ContainerBuilder::create 
+    // bundle dir is already created in ContainerBuilder::create
     QDir bundle = runtimeDir.absoluteFilePath(QString("linglong/%1").arg(this->id));
 
     if (!bundle.mkpath("./rootfs")) {
@@ -81,12 +81,10 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
 
     if (this->cfg.process->user) {
         qWarning() << "`user` field is ignored.";
-        Q_ASSERT(false);
     }
 
     if (!this->cfg.process->env) {
         qDebug() << "user `env` field is not exists.";
-        Q_ASSERT(false);
         this->cfg.process->env = std::vector<std::string>{};
     }
 

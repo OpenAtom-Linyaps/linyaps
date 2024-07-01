@@ -617,7 +617,7 @@ void runAppLoader(const nlohmann::json &info, const std::vector<std::string> &lo
 
 void runAppLinglong(const std::string &cliBin,
                     const nlohmann::json &info,
-                    const std::vector<std::string> &loaderArgs) noexcept
+                    [[maybe_unused]] const std::vector<std::string> &loaderArgs) noexcept
 {
     if (!info.contains("id") || !info["id"].is_string()) {
         std::cerr << "couldn't get appId, stop to delegate runnning operation to linglong"
@@ -625,17 +625,14 @@ void runAppLinglong(const std::string &cliBin,
         cleanAndExit(-1);
     }
 
-    const auto &appId = info["id"];
-    auto argc = loaderArgs.size() + 2;
-    auto *argv = (const char **)malloc(sizeof(char *) * argc);
+    const auto &appId = info["id"].get<std::string>();
+    std::array<const char *, 4> argv{};
     argv[0] = cliBin.c_str();
-    argv[argc - 1] = nullptr;
+    argv[1] = "run";
+    argv[2] = appId.c_str();
+    argv[3] = nullptr;
 
-    for (std::size_t i = 0; i < loaderArgs.size(); ++i) {
-        argv[i + 1] = loaderArgs[i].c_str();
-    }
-
-    cleanAndExit(::execv(cliBin.c_str(), (char *const *)(argv)));
+    cleanAndExit(::execv(cliBin.c_str(), (char *const *)argv.data()));
 }
 
 enum uabOption {
@@ -781,13 +778,27 @@ int main(int argc, char **argv)
             return -1;
         }
 
-        const auto &appLayer = metaInfo["layers"].front();
-        if (!appLayer.is_object() || !appLayer.contains("info") || !appLayer["info"].is_object()) {
-            std::cerr << "invalid format of app layer" << std::endl;
+        const auto &layersRef = metaInfo["layers"].get<std::vector<nlohmann::json>>();
+        const auto &appLayer =
+          std::find_if(layersRef.cbegin(), layersRef.cend(), [](const nlohmann::json &layer) {
+              if (!layer.is_object() || !layer.contains("info") || !layer["info"].is_object()) {
+                  return false;
+              }
+
+              const auto &infoRef = layer["info"];
+              if (!infoRef.contains("kind")) {
+                  return false;
+              }
+
+              return infoRef["kind"] == "app";
+          });
+
+        if (appLayer == layersRef.cend()) {
+            std::cerr << "couldn't find application layer" << std::endl;
             return -1;
         }
 
-        auto info = appLayer["info"];
+        auto info = (*appLayer)["info"];
         runAppLinglong(cliPath, info, opts.loaderArgs);
     }
 

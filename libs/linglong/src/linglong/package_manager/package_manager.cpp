@@ -101,15 +101,15 @@ auto PackageManager::setConfiguration(const QVariantMap &parameters) noexcept ->
 
 QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) noexcept
 {
-    QFile info = QString("/proc/%1/fd/%2").arg(getpid()).arg(fd.fileDescriptor());
-    const auto &realFile = info.symLinkTarget();
-    auto layerFileRet = package::LayerFile::New(realFile);
+    auto layerFileRet =
+      package::LayerFile::New(QString("/proc/%1/fd/%2").arg(getpid()).arg(fd.fileDescriptor()));
     if (!layerFileRet) {
         return toDBusReply(layerFileRet);
     }
     Q_ASSERT(*layerFileRet != nullptr);
 
     const auto &layerFile = *layerFileRet;
+    auto realFile = layerFile->symLinkTarget();
     auto metaInfoRet = layerFile->metaInfo();
     if (!metaInfoRet) {
         return toDBusReply(metaInfoRet);
@@ -152,52 +152,54 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
     auto &taskRef = this->taskList.emplace_back(std::move(task));
     connect(&taskRef, &InstallTask::TaskChanged, this, &PackageManager::TaskChanged);
 
-    auto installer = [this,
-                      &taskRef,
-                      packageRef = std::move(packageRefRet).value(),
-                      layerFile = std::move(layerFileRet).value()]() {
-        auto removeTask = utils::finally::finally([&taskRef, this] {
-            auto elem = std::find(this->taskList.begin(), this->taskList.end(), taskRef);
-            if (elem == this->taskList.end()) {
-                qCritical() << "the status of package manager is invalid";
-                return;
-            }
-            this->taskList.erase(elem);
-        });
-        taskRef.updateStatus(InstallTask::preInstall, "prepare for installing layer");
+    auto installer =
+      [this,
+       fdDup = fd, // keep file descriptor don't close by the destructor of QDBusUnixFileDescriptor
+       &taskRef,
+       packageRef = std::move(packageRefRet).value(),
+       layerFile = *layerFileRet]() {
+          auto removeTask = utils::finally::finally([&taskRef, this] {
+              auto elem = std::find(this->taskList.begin(), this->taskList.end(), taskRef);
+              if (elem == this->taskList.end()) {
+                  qCritical() << "the status of package manager is invalid";
+                  return;
+              }
+              this->taskList.erase(elem);
+          });
+          taskRef.updateStatus(InstallTask::preInstall, "prepare for installing layer");
 
-        package::LayerPackager layerPackager;
-        auto layerDir = layerPackager.unpack(*layerFile);
-        if (!layerDir) {
-            taskRef.updateStatus(InstallTask::Failed, std::move(layerDir).error());
-            return;
-        }
+          package::LayerPackager layerPackager;
+          auto layerDir = layerPackager.unpack(*layerFile);
+          if (!layerDir) {
+              taskRef.updateStatus(InstallTask::Failed, std::move(layerDir).error());
+              return;
+          }
 
-        auto unmountLayer = utils::finally::finally([mountPoint = layerDir->absolutePath()] {
-            if (QFileInfo::exists(mountPoint)) {
-                auto ret = utils::command::Exec("umount", { mountPoint });
-                if (!ret) {
-                    qCritical() << "failed to umount " << mountPoint
-                                << ", please umount it manually";
-                }
-            }
-        });
+          auto unmountLayer = utils::finally::finally([mountPoint = layerDir->absolutePath()] {
+              if (QFileInfo::exists(mountPoint)) {
+                  auto ret = utils::command::Exec("umount", { mountPoint });
+                  if (!ret) {
+                      qCritical() << "failed to umount " << mountPoint
+                                  << ", please umount it manually";
+                  }
+              }
+          });
 
-        auto info = (*layerDir).info();
-        if (!info) {
-            taskRef.updateStatus(InstallTask::Failed, std::move(info).error());
-            return;
-        }
+          auto info = (*layerDir).info();
+          if (!info) {
+              taskRef.updateStatus(InstallTask::Failed, std::move(info).error());
+              return;
+          }
 
-        auto result = this->repo.importLayerDir(*layerDir);
-        if (!result) {
-            taskRef.updateStatus(InstallTask::Failed, std::move(result).error());
-            return;
-        }
+          auto result = this->repo.importLayerDir(*layerDir);
+          if (!result) {
+              taskRef.updateStatus(InstallTask::Failed, std::move(result).error());
+              return;
+          }
 
-        this->repo.exportReference(packageRef);
-        taskRef.updateStatus(InstallTask::Success, "install layer successfully");
-    };
+          this->repo.exportReference(packageRef);
+          taskRef.updateStatus(InstallTask::Success, "install layer successfully");
+      };
 
     QMetaObject::invokeMethod(QCoreApplication::instance(),
                               std::move(installer),
@@ -259,14 +261,14 @@ utils::error::Result<api::types::v1::MinifiedInfo> PackageManager::updateMinifie
 
 QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) noexcept
 {
-    QFile info = QString("/proc/%1/fd/%2").arg(getpid()).arg(fd.fileDescriptor());
-    auto realFile = info.symLinkTarget();
-    auto uabRet = package::UABFile::loadFromFile(realFile);
+    auto uabRet = package::UABFile::loadFromFile(
+      QString("/proc/%1/fd/%2").arg(getpid()).arg(fd.fileDescriptor()));
     if (!uabRet) {
         return toDBusReply(uabRet);
     }
-
     const auto &uab = *uabRet;
+    auto realFile = uab->symLinkTarget();
+
     auto metaInfoRet = uab->getMetaInfo();
     if (!metaInfoRet) {
         return toDBusReply(metaInfoRet);
@@ -317,142 +319,146 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
     auto &taskRef = this->taskList.emplace_back(std::move(task));
     connect(&taskRef, &InstallTask::TaskChanged, this, &PackageManager::TaskChanged);
 
-    auto installer = [this,
-                      &taskRef,
-                      uab = std::move(uabRet).value(),
-                      layerInfos = std::move(layerInfos),
-                      metaInfo = std::move(metaInfoRet).value(),
-                      appRef = std::move(appRefRet).value()] {
-        auto removeTask = utils::finally::finally([&taskRef, this] {
-            auto elem = std::find(this->taskList.begin(), this->taskList.end(), taskRef);
-            if (elem == this->taskList.end()) {
-                qCritical() << "the status of package manager is invalid";
-                return;
-            }
-            this->taskList.erase(elem);
-        });
-        taskRef.updateStatus(InstallTask::preInstall, "prepare for installing uab");
-        auto verifyRet = uab->verify();
-        if (!verifyRet) {
-            taskRef.updateStatus(InstallTask::Failed, std::move(verifyRet).error());
-            return;
-        }
+    auto installer =
+      [this,
+       &taskRef,
+       fdDup = fd, // keep file descriptor don't close by the destructor of QDBusUnixFileDescriptor
+       uab = std::move(uabRet).value(),
+       layerInfos = std::move(layerInfos),
+       metaInfo = std::move(metaInfoRet).value(),
+       appRef = std::move(appRefRet).value()] {
+          auto removeTask = utils::finally::finally([&taskRef, this] {
+              auto elem = std::find(this->taskList.begin(), this->taskList.end(), taskRef);
+              if (elem == this->taskList.end()) {
+                  qCritical() << "the status of package manager is invalid";
+                  return;
+              }
+              this->taskList.erase(elem);
+          });
+          taskRef.updateStatus(InstallTask::preInstall, "prepare for installing uab");
+          auto verifyRet = uab->verify();
+          if (!verifyRet) {
+              taskRef.updateStatus(InstallTask::Failed, std::move(verifyRet).error());
+              return;
+          }
 
-        if (!*verifyRet) {
-            taskRef.updateStatus(InstallTask::Failed, "couldn't pass uab verification");
-            return;
-        }
+          if (!*verifyRet) {
+              taskRef.updateStatus(InstallTask::Failed, "couldn't pass uab verification");
+              return;
+          }
 
-        auto mountPoint = uab->mountUab();
-        if (!mountPoint) {
-            taskRef.updateStatus(InstallTask::Failed, std::move(mountPoint).error());
-            return;
-        }
+          auto mountPoint = uab->mountUab();
+          if (!mountPoint) {
+              taskRef.updateStatus(InstallTask::Failed, std::move(mountPoint).error());
+              return;
+          }
 
-        const auto &uabLayersDirInfo = QFileInfo{ mountPoint->absoluteFilePath("layers") };
-        if (!uabLayersDirInfo.exists() || !uabLayersDirInfo.isDir()) {
-            taskRef.updateStatus(InstallTask::Failed, "the contents of this uab file are invalid");
-            return;
-        }
+          const auto &uabLayersDirInfo = QFileInfo{ mountPoint->absoluteFilePath("layers") };
+          if (!uabLayersDirInfo.exists() || !uabLayersDirInfo.isDir()) {
+              taskRef.updateStatus(InstallTask::Failed,
+                                   "the contents of this uab file are invalid");
+              return;
+          }
 
-        utils::Transaction transaction;
-        const auto &uabLayersDir = QDir{ uabLayersDirInfo.absoluteFilePath() };
-        for (const auto &layer : layerInfos) {
-            QDir layerDirPath = uabLayersDir.absoluteFilePath(
-              QString::fromStdString(layer.info.id) % QDir::separator()
-              % QString::fromStdString(layer.info.packageInfoV2Module));
+          utils::Transaction transaction;
+          const auto &uabLayersDir = QDir{ uabLayersDirInfo.absoluteFilePath() };
+          for (const auto &layer : layerInfos) {
+              QDir layerDirPath = uabLayersDir.absoluteFilePath(
+                QString::fromStdString(layer.info.id) % QDir::separator()
+                % QString::fromStdString(layer.info.packageInfoV2Module));
 
-            if (!layerDirPath.exists()) {
-                taskRef.updateStatus(InstallTask::Failed,
-                                     "layer directory " % layerDirPath.absolutePath()
-                                       % " doesn't exist");
-                return;
-            }
+              if (!layerDirPath.exists()) {
+                  taskRef.updateStatus(InstallTask::Failed,
+                                       "layer directory " % layerDirPath.absolutePath()
+                                         % " doesn't exist");
+                  return;
+              }
 
-            const auto &layerDir = package::LayerDir{ layerDirPath.absolutePath() };
-            QString subRef;
-            if (layer.minified) {
-                subRef = "minified/" + QString::fromStdString(metaInfo.get().uuid);
-            }
+              const auto &layerDir = package::LayerDir{ layerDirPath.absolutePath() };
+              QString subRef;
+              if (layer.minified) {
+                  subRef = "minified/" + QString::fromStdString(metaInfo.get().uuid);
+              }
 
-            bool isAppLayer = layer.info.kind == "app";
-            if (isAppLayer) { // it's meaningless for app layer that declare minified is true
-                subRef.clear();
-            }
+              bool isAppLayer = layer.info.kind == "app";
+              if (isAppLayer) { // it's meaningless for app layer that declare minified is true
+                  subRef.clear();
+              }
 
-            auto infoRet = layerDir.info();
-            if (!infoRet) {
-                taskRef.updateStatus(InstallTask::Failed, std::move(infoRet).error());
-                return;
-            }
-            auto &info = *infoRet;
+              auto infoRet = layerDir.info();
+              if (!infoRet) {
+                  taskRef.updateStatus(InstallTask::Failed, std::move(infoRet).error());
+                  return;
+              }
+              auto &info = *infoRet;
 
-            auto refRet = package::Reference::fromPackageInfo(info);
-            if (!refRet) {
-                taskRef.updateStatus(InstallTask::Failed, std::move(refRet).error());
-                return;
-            }
-            auto &ref = *refRet;
+              auto refRet = package::Reference::fromPackageInfo(info);
+              if (!refRet) {
+                  taskRef.updateStatus(InstallTask::Failed, std::move(refRet).error());
+                  return;
+              }
+              auto &ref = *refRet;
 
-            auto ret = this->repo.importLayerDir(layerDir, subRef);
-            if (!ret) {
-                if (ret.error().code() == 0
-                    && !isAppLayer) { // if dependency already exist, skip it
-                    continue;
-                }
-                taskRef.updateStatus(InstallTask::Failed, std::move(ret).error());
-                return;
-            }
-
-            transaction.addRollBack(
-              [this, layerInfo = std::move(info), layerRef = ref, subRef]() noexcept {
-                  auto ret =
-                    this->repo.remove(layerRef, layerInfo.packageInfoV2Module == "develop", subRef);
-                  if (!ret) {
-                      qCritical() << "rollback importLayerDir failed:" << ret.error().message();
+              auto ret = this->repo.importLayerDir(layerDir, subRef);
+              if (!ret) {
+                  if (ret.error().code() == 0
+                      && !isAppLayer) { // if dependency already exist, skip it
+                      continue;
                   }
-              });
+                  taskRef.updateStatus(InstallTask::Failed, std::move(ret).error());
+                  return;
+              }
 
-            if (!subRef.isEmpty()) {
-                const auto &completedLayer = this->repo.getLayerDir(ref);
-                if (!completedLayer) {
-                    taskRef.updateStatus(InstallTask::Failed, std::move(ret).error());
-                    return;
-                }
-
-                const auto &minifiedPath = completedLayer->absoluteFilePath("minified.json");
-                auto ret = this->updateMinifiedInfo(minifiedPath,
-                                                    appRef.toString(),
-                                                    QString::fromStdString(metaInfo.get().uuid));
-                if (!ret) {
-                    taskRef.updateStatus(InstallTask::Failed, std::move(ret).error());
-                    return;
-                }
-
-                transaction.addRollBack([minifiedPath, originalInfo = *ret]() noexcept {
-                    QFile minifiedFile{ minifiedPath };
-                    if (!minifiedFile.open(QIODevice::WriteOnly | QIODevice::Truncate
-                                           | QIODevice::Text)) {
-                        qCritical() << minifiedFile.errorString();
-                        return;
-                    }
-
-                    QTextStream ofs{ &minifiedFile };
-                    ofs << QString::fromStdString(nlohmann::json(originalInfo).dump());
-                    ofs.flush();
-
-                    if (ofs.status() == QTextStream::WriteFailed) {
-                        qCritical() << "couldn't rollback to the original minified.json";
+              transaction.addRollBack(
+                [this, layerInfo = std::move(info), layerRef = ref, subRef]() noexcept {
+                    auto ret = this->repo.remove(layerRef,
+                                                 layerInfo.packageInfoV2Module == "develop",
+                                                 subRef);
+                    if (!ret) {
+                        qCritical() << "rollback importLayerDir failed:" << ret.error().message();
                     }
                 });
-            }
-        }
 
-        transaction.commit();
-        this->repo.exportReference(appRef);
+              if (!subRef.isEmpty()) {
+                  const auto &completedLayer = this->repo.getLayerDir(ref);
+                  if (!completedLayer) {
+                      taskRef.updateStatus(InstallTask::Failed, std::move(ret).error());
+                      return;
+                  }
 
-        taskRef.updateStatus(InstallTask::Success, "install uab successfully");
-    };
+                  const auto &minifiedPath = completedLayer->absoluteFilePath("minified.json");
+                  auto ret = this->updateMinifiedInfo(minifiedPath,
+                                                      appRef.toString(),
+                                                      QString::fromStdString(metaInfo.get().uuid));
+                  if (!ret) {
+                      taskRef.updateStatus(InstallTask::Failed, std::move(ret).error());
+                      return;
+                  }
+
+                  transaction.addRollBack([minifiedPath, originalInfo = *ret]() noexcept {
+                      QFile minifiedFile{ minifiedPath };
+                      if (!minifiedFile.open(QIODevice::WriteOnly | QIODevice::Truncate
+                                             | QIODevice::Text)) {
+                          qCritical() << minifiedFile.errorString();
+                          return;
+                      }
+
+                      QTextStream ofs{ &minifiedFile };
+                      ofs << QString::fromStdString(nlohmann::json(originalInfo).dump());
+                      ofs.flush();
+
+                      if (ofs.status() == QTextStream::WriteFailed) {
+                          qCritical() << "couldn't rollback to the original minified.json";
+                      }
+                  });
+              }
+          }
+
+          transaction.commit();
+          this->repo.exportReference(appRef);
+
+          taskRef.updateStatus(InstallTask::Success, "install uab successfully");
+      };
 
     QMetaObject::invokeMethod(QCoreApplication::instance(),
                               std::move(installer),

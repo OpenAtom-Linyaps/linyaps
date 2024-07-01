@@ -1,3 +1,16 @@
+linglong (1.5.7-1) unstable; urgency=medium
+
+  * fix: failed to run app after ll-cli received SIGINT
+  * fix: Canceling a task causes the package manager to crash.
+  * fix: remove task after installation
+  * fix: ll-cli install return error errcode
+  * feat: support for installing from uab
+  * fix: container env error when environment variables have multiple values
+  * fix: ll-builder convert appimage error when use url
+  * fix: update bash completion
+
+ -- dengbo <dengbo@deepin.org>  Mon, 01 Jul 2024 15:32:20 +0800
+
 linglong (1.5.6-1) unstable; urgency=medium
 
   * fix: layer size error when export layer repeatedly

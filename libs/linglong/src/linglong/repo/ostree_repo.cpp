@@ -17,6 +17,7 @@
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/packageinfo_handler.h"
+#include "linglong/utils/serialize/json.h"
 #include "linglong/utils/transaction.h"
 
 #include <gio/gio.h>
@@ -350,20 +351,95 @@ utils::error::Result<void> handleRepositoryUpdate(OstreeRepo *repo,
 
     auto path = layerDir.absolutePath();
     path = path.right(path.length() - 1);
+    const auto *minifiedJson = "minified.json";
+    QFileInfo minified = layerDir.absoluteFilePath(minifiedJson);
+    bool isMinified{ false };
 
-    if (layerDir.exists()) {
-        qDebug() << layerDir.absolutePath() << "exists";
+    if (minified.exists()) {
+        isMinified = true;
+        auto newName =
+          QDir::cleanPath(layerDir.absoluteFilePath(QString{ "../%1" }.arg(minifiedJson)));
+        if (!QFile::copy(newName, minified.absoluteFilePath())) {
+            return LINGLONG_ERR("couldn't move minified.json to parent directory");
+        }
+        minified.setFile(newName);
     }
 
     if (!layerDir.mkpath(".")) {
         Q_ASSERT(false);
+        return LINGLONG_ERR(QString{ "couldn't create directory %1" }.arg(layerDir.absolutePath()));
     }
+
     if (!layerDir.removeRecursively()) {
         Q_ASSERT(false);
+        return LINGLONG_ERR(QString{ "couldn't remove directory %1" }.arg(layerDir.absolutePath()));
     }
 
-    g_autoptr(GError) gErr = nullptr;
+    auto recheckMinifiedLayer =
+      utils::finally::finally([isMinified,
+                               refspec,
+                               &layerDir,
+                               currentName = minified.absoluteFilePath(),
+                               originalName = layerDir.absoluteFilePath(minifiedJson),
+                               &repo,
+                               root] {
+          if (!isMinified) {
+              return;
+          }
 
+          QDir minifiedDir = layerDir.absoluteFilePath("minified");
+          if (!minifiedDir.mkpath(".")) {
+              qCritical() << "couldn't create minified directory";
+              return;
+          }
+
+          if (!QFile::copy(currentName, originalName)) {
+              qCritical() << "couldn't move" << currentName << "to" << originalName;
+              return;
+          }
+
+          auto minifiedJsonRet =
+            utils::serialize::LoadJSONFile<api::types::v1::MinifiedInfo>(originalName);
+          if (!minifiedJsonRet) {
+              qCritical() << minifiedJsonRet.error().message();
+              return;
+          }
+          const auto &minifiedJson = *minifiedJsonRet;
+
+          for (const auto &item : minifiedJson.infos) {
+              QDir specLayerDir = minifiedDir.absoluteFilePath(QString::fromStdString(item.uuid));
+              if (!specLayerDir.mkpath(".")) {
+                  qCritical() << "couldn't create directory" << specLayerDir.absolutePath();
+                  return;
+              }
+              auto minifiedSpecRef =
+                QByteArray{ refspec } + "/minified/" + QByteArray::fromStdString(item.uuid);
+
+              g_autoptr(GError) gErr{ nullptr };
+              g_autofree char *commit{ nullptr };
+              if (ostree_repo_resolve_rev(repo, refspec, FALSE, &commit, &gErr) == FALSE) {
+                  qCritical() << "ostree_repo_resolve_rev" << gErr;
+                  return;
+              }
+
+              auto destPath = (minifiedDir.absolutePath().mid(1) + QDir::separator()
+                               + QString::fromStdString(item.uuid))
+                                .toLocal8Bit();
+              if (ostree_repo_checkout_at(repo,
+                                          nullptr,
+                                          root,
+                                          destPath.constData(),
+                                          commit,
+                                          nullptr,
+                                          &gErr)
+                  == FALSE) {
+                  qCritical() << "ostree_repo_checkout_at" << destPath << ":" << gErr;
+                  return;
+              }
+          }
+      });
+
+    g_autoptr(GError) gErr = nullptr;
     g_autofree char *commit;
 
     if (ostree_repo_resolve_rev(repo, refspec, FALSE, &commit, &gErr) == FALSE) {
@@ -799,8 +875,8 @@ utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfi
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> OSTreeRepo::importLayerDir(const package::LayerDir &dir,
-                                                      const QString &subRef) noexcept
+utils::error::Result<package::LayerDir> OSTreeRepo::importLayerDir(const package::LayerDir &dir,
+                                                                   const QString &subRef) noexcept
 {
     LINGLONG_TRACE("import layer dir");
 
@@ -852,7 +928,7 @@ utils::error::Result<void> OSTreeRepo::importLayerDir(const package::LayerDir &d
     }
 
     transaction.commit();
-    return LINGLONG_OK;
+    return package::LayerDir{ layerDir.absolutePath() };
 }
 
 utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
@@ -1076,10 +1152,27 @@ utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref,
         layerDir = this->getLayerQDir(ref, develop);
     }
 
-    if (!layerDir.removeRecursively()) {
-        qCritical() << "Failed to remove layer directory of" << ref.toString()
-                    << "develop:" << develop;
-        Q_ASSERT(false);
+    for (const auto &entry :
+         layerDir.entryInfoList(QDir::NoDotAndDotDot | QDir::AllDirs | QDir::Files)) {
+        if (entry.fileName().startsWith("minified")) {
+            continue;
+        }
+
+        if (entry.isDir()) {
+            auto tmp = QDir{ entry.absoluteFilePath() };
+            if (!tmp.removeRecursively()) {
+                return LINGLONG_ERR("Failed to remove" + entry.absoluteFilePath()
+                                    + "which under layer directory of" + ref.toString()
+                                    + "develop:" + develop);
+            }
+            continue;
+        }
+
+        if (!QFile::remove(entry.absoluteFilePath())) {
+            return LINGLONG_ERR("Failed to remove" + entry.absoluteFilePath()
+                                + "which under layer directory of" + ref.toString()
+                                + "develop:" + develop);
+        }
     }
 
     // clean empty directories
@@ -1594,10 +1687,8 @@ void OSTreeRepo::updateSharedInfo() noexcept
     }
 }
 
-auto OSTreeRepo::getLayerDir(const package::Reference &ref,
-                             bool develop,
-                             const QString &subRef) const noexcept
-  -> utils::error::Result<package::LayerDir>
+auto OSTreeRepo::getLayerDir(const package::Reference &ref, bool develop, const QString &subRef)
+  const noexcept -> utils::error::Result<package::LayerDir>
 {
     LINGLONG_TRACE("get dir of " + ref.toString());
     auto dir = this->getLayerQDirV2(ref, develop, subRef);

@@ -49,8 +49,8 @@ public:
     api::types::v1::RepoConfig getConfig() const noexcept;
     utils::error::Result<void> setConfig(const api::types::v1::RepoConfig &cfg) noexcept;
 
-    utils::error::Result<void> importLayerDir(const package::LayerDir &dir,
-                                              const QString &subRef = "") noexcept;
+    utils::error::Result<package::LayerDir> importLayerDir(const package::LayerDir &dir,
+                                                           const QString &subRef = "") noexcept;
 
     utils::error::Result<package::LayerDir> getLayerDir(const package::Reference &ref,
                                                         bool develop = false,

@@ -315,7 +315,8 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
     }
 
     layerInfos.erase(appLayerIt);
-    layerInfos.insert(layerInfos.begin(), std::move(appLayer));
+    layerInfos.insert(layerInfos.begin(),
+                      std::move(appLayer)); // app layer should place to the first of vector
     auto &taskRef = this->taskList.emplace_back(std::move(task));
     connect(&taskRef, &InstallTask::TaskChanged, this, &PackageManager::TaskChanged);
 
@@ -335,6 +336,13 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
               }
               this->taskList.erase(elem);
           });
+
+          if (taskRef.currentStatus() == InstallTask::Canceled) {
+              qInfo() << "task" << taskRef.taskID() << "has been canceled by user, layer"
+                      << taskRef.layer();
+              return;
+          }
+
           taskRef.updateStatus(InstallTask::preInstall, "prepare for installing uab");
           auto verifyRet = uab->verify();
           if (!verifyRet) {
@@ -347,9 +355,21 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
               return;
           }
 
+          if (taskRef.currentStatus() == InstallTask::Canceled) {
+              qInfo() << "task" << taskRef.taskID() << "has been canceled by user, layer"
+                      << taskRef.layer();
+              return;
+          }
+
           auto mountPoint = uab->mountUab();
           if (!mountPoint) {
               taskRef.updateStatus(InstallTask::Failed, std::move(mountPoint).error());
+              return;
+          }
+
+          if (taskRef.currentStatus() == InstallTask::Canceled) {
+              qInfo() << "task" << taskRef.taskID() << "has been canceled by user, layer"
+                      << taskRef.layer();
               return;
           }
 
@@ -362,7 +382,14 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
 
           utils::Transaction transaction;
           const auto &uabLayersDir = QDir{ uabLayersDirInfo.absoluteFilePath() };
+          package::LayerDir appLayerDir;
           for (const auto &layer : layerInfos) {
+              if (taskRef.currentStatus() == InstallTask::Canceled) {
+                  qInfo() << "task" << taskRef.taskID() << "has been canceled by user, layer"
+                          << taskRef.layer();
+                  return;
+              }
+
               QDir layerDirPath = uabLayersDir.absoluteFilePath(
                 QString::fromStdString(layer.info.id) % QDir::separator()
                 % QString::fromStdString(layer.info.packageInfoV2Module));
@@ -380,11 +407,6 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
                   subRef = "minified/" + QString::fromStdString(metaInfo.get().uuid);
               }
 
-              bool isAppLayer = layer.info.kind == "app";
-              if (isAppLayer) { // it's meaningless for app layer that declare minified is true
-                  subRef.clear();
-              }
-
               auto infoRet = layerDir.info();
               if (!infoRet) {
                   taskRef.updateStatus(InstallTask::Failed, std::move(infoRet).error());
@@ -398,6 +420,11 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
                   return;
               }
               auto &ref = *refRet;
+
+              bool isAppLayer = layer.info.kind == "app";
+              if (isAppLayer) { // it's meaningless for app layer that declare minified is true
+                  subRef.clear();
+              }
 
               auto ret = this->repo.importLayerDir(layerDir, subRef);
               if (!ret) {
@@ -419,7 +446,18 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
                     }
                 });
 
+              if (isAppLayer) {
+                  appLayerDir = *ret;
+              }
+
               if (!subRef.isEmpty()) {
+                  QFile tagFile =
+                    appLayerDir.absoluteFilePath(QString{ ".minified-%1" }.arg(ref.id));
+                  if (!tagFile.open(QIODevice::NewOnly | QIODevice::WriteOnly)) {
+                      taskRef.updateStatus(InstallTask::Failed, tagFile.errorString());
+                      return;
+                  }
+
                   const auto &completedLayer = this->repo.getLayerDir(ref);
                   if (!completedLayer) {
                       taskRef.updateStatus(InstallTask::Failed, std::move(ret).error());

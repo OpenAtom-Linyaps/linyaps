@@ -55,6 +55,8 @@ private:
     static void filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> &list,
                                            const QString &type) noexcept;
     void updateAM() noexcept;
+    [[nodiscard]] utils::error::Result<package::LayerDir> getDependLayerDir(
+      const package::Reference &appRef, const package::Reference &ref) const noexcept;
 
 public:
     int run(std::map<std::string, docopt::value> &args);
@@ -74,7 +76,7 @@ public:
     void cancelCurrentTask();
 
 private Q_SLOTS:
-    int installFromFile(const QFileInfo& fileInfo);
+    int installFromFile(const QFileInfo &fileInfo);
     void processDownloadStatus(const QString &recTaskID,
                                const QString &percentage,
                                const QString &message,

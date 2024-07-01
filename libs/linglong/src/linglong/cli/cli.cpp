@@ -143,6 +143,48 @@ Cli::Cli(Printer &printer,
 {
 }
 
+utils::error::Result<package::LayerDir> Cli::getDependLayerDir(
+  const package::Reference &appRef, const package::Reference &dependRef) const noexcept
+{
+    LINGLONG_TRACE("get layer dir of depends")
+
+    auto appLayerDir = this->repository.getLayerDir(appRef);
+    if (!appLayerDir) {
+        return LINGLONG_ERR(appLayerDir);
+    }
+
+    auto dependLayerDir = this->repository.getLayerDir(dependRef);
+    if (!dependLayerDir) {
+        return LINGLONG_ERR(dependLayerDir);
+    }
+
+    if (!appLayerDir->exists(QString{ ".minified-%1" }.arg(dependRef.id))) {
+        return dependLayerDir;
+    }
+
+    auto minified = utils::serialize::LoadJSONFile<api::types::v1::MinifiedInfo>(
+      dependLayerDir->absoluteFilePath("minified.json"));
+    if (!minified) {
+        return LINGLONG_ERR(minified);
+    }
+
+    const auto &appRefStr = appRef.toString().toStdString();
+    QString subRef;
+    for (const auto &[appRef, uuid] : minified->infos) {
+        if (appRef == appRefStr) {
+            subRef = QString{ "minified/%1" }.arg(QString::fromStdString(uuid));
+            break;
+        }
+    }
+
+    if (subRef.isEmpty()) {
+        return LINGLONG_ERR("couldn't find the association between app and depend in minified.json "
+                            "which under the layer directory.");
+    }
+
+    return this->repository.getLayerDir(dependRef, false, subRef);
+}
+
 int Cli::run(std::map<std::string, docopt::value> &args)
 {
     LINGLONG_TRACE("command run");
@@ -156,30 +198,29 @@ int Cli::run(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    auto ref = this->repository.clearReference(*fuzzyRef,
-                                               {
-                                                 .forceRemote = false,
-                                                 .fallbackToRemote = false,
-                                               });
-    if (!ref) {
-        this->printer.printErr(ref.error());
+    auto curAppRef = this->repository.clearReference(*fuzzyRef,
+                                                     {
+                                                       .forceRemote = false,
+                                                       .fallbackToRemote = false,
+                                                     });
+    if (!curAppRef) {
+        this->printer.printErr(curAppRef.error());
         return -1;
     }
 
-    auto layerDir = this->repository.getLayerDir(*ref, false);
-    if (!layerDir) {
-        this->printer.printErr(layerDir.error());
+    auto appLayerDir = this->repository.getLayerDir(*curAppRef, false);
+    if (!appLayerDir) {
+        this->printer.printErr(appLayerDir.error());
         return -1;
     }
 
-    auto info = layerDir->info();
+    auto info = appLayerDir->info();
     if (!info) {
         this->printer.printErr(info.error());
         return -1;
     }
 
     std::optional<package::LayerDir> runtimeLayerDir;
-
     if (info->runtime) {
         auto runtimeFuzzyRef =
           package::FuzzyReference::parse(QString::fromStdString(*info->runtime));
@@ -198,13 +239,13 @@ int Cli::run(std::map<std::string, docopt::value> &args)
             return -1;
         }
 
-        auto layerDir = this->repository.getLayerDir(*runtimeRef);
-        if (!layerDir) {
-            this->printer.printErr(layerDir.error());
+        auto dependRet = getDependLayerDir(*curAppRef, *runtimeRef);
+        if (!dependRet) {
+            this->printer.printErr(dependRet.error());
             return -1;
         }
 
-        runtimeLayerDir = *layerDir;
+        runtimeLayerDir = *dependRet;
     }
 
     auto baseFuzzyRef = package::FuzzyReference::parse(QString::fromStdString(info->base));
@@ -223,7 +264,7 @@ int Cli::run(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    auto baseLayerDir = this->repository.getLayerDir(*baseRef);
+    auto baseLayerDir = getDependLayerDir(*curAppRef, *baseRef);
     if (!baseLayerDir) {
         this->printer.printErr(LINGLONG_ERRV(baseLayerDir));
         return -1;
@@ -242,7 +283,7 @@ int Cli::run(std::map<std::string, docopt::value> &args)
     auto containers = this->ociCLI.list().value_or(std::vector<ocppi::types::ContainerListItem>{});
     for (const auto &container : containers) {
         const auto &decodedID = QString(QByteArray::fromBase64(container.id.c_str()));
-        if (!decodedID.startsWith(ref->toString())) {
+        if (!decodedID.startsWith(curAppRef->toString())) {
             continue;
         }
 
@@ -310,17 +351,18 @@ int Cli::run(std::map<std::string, docopt::value> &args)
         if (perm->innerBinds) {
             const auto &innerBinds = perm->innerBinds;
             const auto &hostSourceDir =
-              std::filesystem::path{ layerDir->absolutePath().toStdString() };
+              std::filesystem::path{ appLayerDir->absolutePath().toStdString() };
             std::for_each(innerBinds->cbegin(), innerBinds->cend(), bindInnerMount);
         }
     }
 
     auto container = this->containerBuilder.create({
-      .appID = ref->id,
-      .containerID = (ref->toString() + "-" + QUuid::createUuid().toString()).toUtf8().toBase64(),
+      .appID = curAppRef->id,
+      .containerID =
+        (curAppRef->toString() + "-" + QUuid::createUuid().toString()).toUtf8().toBase64(),
       .runtimeDir = runtimeLayerDir,
       .baseDir = *baseLayerDir,
-      .appDir = *layerDir,
+      .appDir = *appLayerDir,
       .patches = {},
       .mounts = std::move(applicationMounts),
     });

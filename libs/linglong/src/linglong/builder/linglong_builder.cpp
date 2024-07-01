@@ -708,9 +708,9 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     if (!result) {
         qWarning() << "remove" << ref->toString() << result.error().message();
     }
-    result = this->repo.importLayerDir(binaryOutputLayerDir);
-    if (!result) {
-        return LINGLONG_ERR(result);
+    auto localLayer = this->repo.importLayerDir(binaryOutputLayerDir);
+    if (!localLayer) {
+        return LINGLONG_ERR(localLayer);
     }
 
     package::LayerDir developOutputLayerDir = developOutput.absoluteFilePath("..");
@@ -718,9 +718,9 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     if (!result) {
         qWarning() << "remove" << ref->toString() << result.error().message();
     }
-    result = this->repo.importLayerDir(developOutputLayerDir);
-    if (!result) {
-        return LINGLONG_ERR(result);
+    localLayer = this->repo.importLayerDir(developOutputLayerDir);
+    if (!localLayer) {
+        return LINGLONG_ERR(localLayer);
     }
 
     printMessage("Successfully build " + this->project.package.id);

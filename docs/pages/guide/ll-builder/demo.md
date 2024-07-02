@@ -99,7 +99,7 @@ ll-builder run
 在玲珑工程根目录下执行export子命令，检出构建内容。
 
 ```bash
-ll-builder export
+ll-builder export --layer
 ```
 
 目录结构如下：

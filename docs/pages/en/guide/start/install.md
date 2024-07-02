@@ -15,7 +15,7 @@ Linglong is composed of three parts.
 ## deepin v23
 
 ```bash
-sudo apt install linglong-builder
+sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
 ## UOS 1070
@@ -28,7 +28,20 @@ echo "deb [trusted=yes] https://ci.deepin.com/repo/deepin/deepin-community/lingl
 
 ```bash
 sudo apt update
-sudo apt install linglong-builder
+sudo apt install linglong-builder linglong-box linglong-bin
+```
+
+## OpenEuler
+
+add Linglong repository source
+
+```bash
+sudo curl -o /etc/yum.repos.d/linglong.repo -L https://eur.openeuler.openatom.cn/coprs/kamiyadm/linglong/repo/openeuler-24.03_LTS/kamiyadm-linglong-openeuler-24.03_LTS.repo
+```
+
+```
+sudo dnf update
+sudo dnf install linglong-builder linglong-box linglong-bin
 ```
 
 # Install the Pica tool

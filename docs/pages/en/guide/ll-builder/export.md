@@ -20,9 +20,12 @@ Here is the output:
 Usage: ll-builder [options]
 
 Options:
-  -v, --verbose  show detail log (deprecated, use QT_LOGGING_RULES)
-  -h, --help     Displays help on commandline options.
-  --help-all     Displays help including Qt specific options.
+  -v, --verbose      show detail log (deprecated, use QT_LOGGING_RULES)
+  -h, --help         Displays help on commandline options.
+  --help-all         Displays help including Qt specific options.
+  -f, --file <path>  file path of the linglong.yaml (default is ./linglong.yaml)
+  -i, --icon <path>  uab icon (optional)
+  -l, --layer        export layer file
 ```
 
 The `ll-builder export` command creates a directory named `appid` in the project root directory, then checks out the local build cache to this directory, and generate layer file to the build result.
@@ -30,8 +33,10 @@ The `ll-builder export` command creates a directory named `appid` in the project
 An example of the `ll-builder export` command is as follows:
 
 ```bash
-ll-builder export
+ll-builder export --layer
 ```
+
+`Tips: When the Linglong version is greater than 1.5.6, export defaults to exporting the uab file. If you want to export a layer file, you need to add the --layer parameter`
 
 The directory structure after checkout is as follows:
 

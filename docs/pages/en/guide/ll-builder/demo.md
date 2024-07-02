@@ -23,6 +23,7 @@ package:
   description: |
     calculator for deepin os.
 ```
+
 ### Fill in the runtime info
 
 ```text
@@ -30,6 +31,7 @@ runtime:
   id: org.deepin.Runtime
   version: 23.0.0
 ```
+
 ### Fill in the source code info
 
 Use git source code
@@ -40,6 +42,7 @@ source:
   url: "https://github.com/linuxdeepin/deepin-calculator.git"
   commit: 7b5fdf8d133c356317636bb4b4a76fc73ef288c6
 ```
+
 ### Fill in the dependencies
 
 ```text
@@ -54,6 +57,7 @@ depends:
   - id: xcb-util
     type: runtime
 ```
+
 ### Choose build template
 
 The source code is a cmake project, and choose the build type as cmake (see cmake.yaml for the template content).
@@ -77,6 +81,7 @@ variables:
 ```
 
 Override the build command “build”:
+
 ```text
 build:
   kind: cmake
@@ -85,6 +90,7 @@ build:
       cd ${build_dir} && make -j8
  
 ```
+
 ### Complete linglong.yaml
 
 ```text
@@ -119,6 +125,7 @@ source:
 build:
   kind: cmake
 ```
+
 ## Start building
 
 Execute the build subcommand in the root directory of Linglong projects:
@@ -126,13 +133,15 @@ Execute the build subcommand in the root directory of Linglong projects:
 ```text
 ll-builder build
 ```
+
 ## Export build content
 
 Execute the export subcommand in the root directory of Linglong projects to check out the build content and generate the bundle package.
 
 ```text
-ll-builder export
+ll-builder export --layer
 ```
+
 ## Push to repositories
 
 ```text

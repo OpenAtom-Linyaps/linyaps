@@ -20,9 +20,12 @@ ll-builder export --help
 Usage: ll-builder [options]
 
 Options:
-  -v, --verbose  show detail log (deprecated, use QT_LOGGING_RULES)
-  -h, --help     Displays help on commandline options.
-  --help-all     Displays help including Qt specific options.
+  -v, --verbose      show detail log (deprecated, use QT_LOGGING_RULES)
+  -h, --help         Displays help on commandline options.
+  --help-all         Displays help including Qt specific options.
+  -f, --file <path>  file path of the linglong.yaml (default is ./linglong.yaml)
+  -i, --icon <path>  uab icon (optional)
+  -l, --layer        export layer file
 ```
 
 `ll-builder export`命令在工程根目录下创建以 `appid`为名称的目录，并将本地构建缓存检出到该目录。同时根据该构建结果生成 layer 文件。
@@ -30,8 +33,10 @@ Options:
 `ll-builder export`命令使用示例如下：
 
 ```bash
-ll-builder export
+ll-builder export --layer
 ```
+
+`Tips: 在玲珑版本大于1.5.6时，export 默认导出 uab 包，如果要导出 layer 文件，需要加上 --layer 参数`
 
 检出后的目录结构如下：
 

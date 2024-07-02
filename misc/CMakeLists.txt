@@ -80,6 +80,10 @@ file(
     SYMBOLIC)
 file(
     CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/25-host-env-static
+    ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/25-host-env
+    SYMBOLIC)
+file(
+    CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/30-user-home-static
     ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/30-user-home
     SYMBOLIC)
 file(

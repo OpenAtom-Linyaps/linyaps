@@ -90,7 +90,7 @@ static bool parse_wstatus(const int &wstatus, std::string &info)
 static int DoWait(const int pid, int target = 0)
 {
     logDbg() << util::format("DoWait called with pid=%d, target=%d", pid, target);
-    int wstatus;
+    int wstatus{ -1 };
     while (int child = waitpid(pid, &wstatus, 0)) {
         if (child > 0) {
             std::string info;
@@ -110,15 +110,16 @@ static int DoWait(const int pid, int target = 0)
             if (errno == ECHILD) {
                 logDbg() << format("no child to wait");
                 return -1;
-            } else {
-                auto string = errnoString();
-                logErr() << format("waitpid failed, %s", string.c_str());
-                return -1;
             }
+
+            auto string = errnoString();
+            logErr() << format("waitpid failed, %s", string.c_str());
+            return -1;
         }
     }
     // when we pass options=0 to waitpid, it will never return 0
     logWan() << "waitpid return 0, this should not happen normally";
+    return -1;
 }
 
 // wait all child

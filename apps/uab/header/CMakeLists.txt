@@ -35,6 +35,7 @@ pfl_add_executable(
   LINK_LIBRARIES
   PRIVATE
   ${ABS_FILE}
+  linglong::api
   PkgConfig::elf_static
   PkgConfig::lz4
   PkgConfig::lzma

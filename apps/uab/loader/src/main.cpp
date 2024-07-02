@@ -118,49 +118,80 @@ void applyExecutablePatch(ocppi::runtime::config::types::Config &cfg,
     std::array<int, 2> outPipe{ -1, -1 };
     std::array<int, 2> errPipe{ -1, -1 };
     if (::pipe(outPipe.data()) == -1) {
-        std::cerr << "pipe error:" << strerror(errno) << std::endl;
+        std::cerr << "pipe error:" << ::strerror(errno) << std::endl;
         return;
     }
+
+    auto clearPipe = [](int &fd) {
+        ::close(fd);
+        fd = -1;
+    };
+
+    auto closeInPipe = defer([&pipes = outPipe] {
+        for (auto &pipe : pipes) {
+            if (pipe != -1) {
+                ::close(pipe);
+            }
+        }
+    });
 
     if (::pipe(errPipe.data()) == -1) {
-        std::cerr << "pipe error:" << strerror(errno) << std::endl;
+        std::cerr << "pipe error:" << ::strerror(errno) << std::endl;
         return;
     }
+
+    auto closeErrPipe = defer([&pipes = errPipe] {
+        for (auto &pipe : pipes) {
+            if (pipe != -1) {
+                ::close(pipe);
+            }
+        }
+    });
 
     if (::pipe(inPipe.data()) == -1) {
-        std::cerr << "pipe error:" << strerror(errno) << std::endl;
+        std::cerr << "pipe error:" << ::strerror(errno) << std::endl;
         return;
     }
 
+    auto closeOPipe = defer([&pipes = inPipe] {
+        for (auto &pipe : pipes) {
+            if (pipe != -1) {
+                ::close(pipe);
+            }
+        }
+    });
+
     auto pid = fork();
+    if (pid < 0) {
+        std::cerr << "fork error:" << ::strerror(errno) << std::endl;
+        return;
+    }
+
     if (pid == 0) {
         ::dup2(inPipe[0], STDIN_FILENO);
         ::dup2(outPipe[1], STDOUT_FILENO);
         ::dup2(errPipe[1], STDERR_FILENO);
 
-        ::close(inPipe[1]);
-        ::close(errPipe[0]);
-        ::close(outPipe[0]);
+        clearPipe(inPipe[1]);
+        clearPipe(errPipe[0]);
+        clearPipe(outPipe[0]);
 
         if (::execl(info.c_str(), info.c_str(), nullptr) == -1) {
-            std::cerr << "execl " << info << " error:" << strerror(errno) << std::endl;
+            std::cerr << "execl " << info << " error:" << ::strerror(errno) << std::endl;
             return;
         }
-    } else if (pid < 0) {
-        std::cerr << "fork error:" << strerror(errno) << std::endl;
-        return;
     }
 
-    ::close(inPipe[0]);
-    ::close(errPipe[1]);
-    ::close(outPipe[1]);
+    clearPipe(inPipe[0]);
+    clearPipe(errPipe[1]);
+    clearPipe(outPipe[1]);
 
     auto input = nlohmann::json(cfg).dump();
     auto bytesWrite = input.size();
     while (true) {
         auto writeBytes = ::write(inPipe[1], input.c_str(), bytesWrite);
         if (writeBytes == -1) {
-            if (errno == EAGAIN) {
+            if (errno == EINTR) {
                 continue;
             }
 
@@ -172,24 +203,24 @@ void applyExecutablePatch(ocppi::runtime::config::types::Config &cfg,
             break;
         }
     }
-    ::close(inPipe[1]);
+    clearPipe(inPipe[1]);
 
     using namespace std::chrono_literals;
-    auto timeout = 200;
+    auto timeout = 400;
     int wstatus{ -1 };
     std::string err;
     std::string out;
 
     while (true) {
-        std::this_thread::sleep_for(50ms);
+        std::this_thread::sleep_for(100ms);
         int child{ -1 };
         if (child = ::waitpid(pid, &wstatus, WNOHANG); child == -1) {
-            std::cerr << "wait for process error:" << strerror(errno) << std::endl;
+            std::cerr << "wait for process error:" << ::strerror(errno) << std::endl;
             return;
         }
 
         if (child == 0) {
-            timeout -= 50;
+            timeout -= 100;
             if (timeout == 0) {
                 std::cerr << "generator " << info << " timeout" << std::endl;
                 return;
@@ -201,7 +232,7 @@ void applyExecutablePatch(ocppi::runtime::config::types::Config &cfg,
         int reads{ -1 };
         while ((reads = ::read(errPipe[0], buf.data(), buf.size())) != 0) {
             if (reads < 0) {
-                if (errno == EAGAIN) {
+                if (errno == EINTR) {
                     continue;
                 }
                 std::cerr << "read error:" << strerror(errno) << std::endl;
@@ -214,10 +245,10 @@ void applyExecutablePatch(ocppi::runtime::config::types::Config &cfg,
         reads = -1;
         while ((reads = ::read(outPipe[0], buf.data(), buf.size())) != 0) {
             if (reads < 0) {
-                if (errno == EAGAIN) {
+                if (errno == EINTR) {
                     continue;
                 }
-                std::cerr << "read error:" << strerror(errno) << std::endl;
+                std::cerr << "read error:" << ::strerror(errno) << std::endl;
                 return;
             }
 
@@ -250,8 +281,8 @@ void applyExecutablePatch(ocppi::runtime::config::types::Config &cfg,
         return;
     }
 
-    ::close(errPipe[0]);
-    ::close(outPipe[0]);
+    clearPipe(errPipe[0]);
+    clearPipe(outPipe[0]);
 
     cfg = std::move(modified);
 }
@@ -259,6 +290,12 @@ void applyExecutablePatch(ocppi::runtime::config::types::Config &cfg,
 void applyPatches(ocppi::runtime::config::types::Config &cfg,
                   const std::vector<std::filesystem::path> &patches) noexcept
 {
+    auto testExec = [](std::filesystem::perms perm) {
+        using p = std::filesystem::perms;
+        return (perm & p::owner_exec) != p::none || (perm & p::group_exec) != p::none
+          || (perm & p::others_exec) != p::none;
+    };
+
     std::error_code ec;
     for (const auto &info : patches) {
         if (!std::filesystem::is_regular_file(info, ec)) {
@@ -272,17 +309,13 @@ void applyPatches(ocppi::runtime::config::types::Config &cfg,
             continue;
         }
 
-        struct stat fileStat
-        {
-        };
-
-        if (stat(info.c_str(), &fileStat) == -1) {
-            std::cerr << "stat file " << info << " err:" << strerror(errno) << std::endl;
+        auto status = std::filesystem::status(info, ec);
+        if (ec) {
+            std::cerr << "couldn't get status of " << info << std::endl;
             continue;
         }
 
-        auto mode = fileStat.st_mode;
-        if ((mode & S_IXUSR) || (mode & S_IXGRP) || (mode & S_IXOTH)) {
+        if (testExec(status.permissions())) {
             applyExecutablePatch(cfg, info);
             continue;
         }
@@ -291,7 +324,7 @@ void applyPatches(ocppi::runtime::config::types::Config &cfg,
     }
 }
 
-int main(int argc, char **argv)
+int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 {
     auto *runtimeID = ::getenv("UAB_RUNTIME_ID");
 
@@ -368,7 +401,7 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    auto compatibleFilePath = [](const std::string &layerID) -> std::string {
+    auto compatibleFilePath = [](std::string_view layerID) -> std::string {
         std::error_code ec;
 
         auto layerDir = std::filesystem::current_path() / "layers" / layerID;
@@ -392,7 +425,7 @@ int main(int argc, char **argv)
 
     auto layerFilesDir = compatibleFilePath(baseID);
     if (layerFilesDir.empty()) {
-        std::cerr << "couldn't get compatiblePath" << std::endl;
+        std::cerr << "couldn't get compatiblePath of base" << std::endl;
         return -1;
     }
 
@@ -412,7 +445,7 @@ int main(int argc, char **argv)
     if (runtimeID != nullptr) {
         layerFilesDir = compatibleFilePath(runtimeID);
         if (layerFilesDir.empty()) {
-            std::cerr << "couldn't get compatiblePath" << std::endl;
+            std::cerr << "couldn't get compatiblePath of runtime" << std::endl;
             return -1;
         }
 
@@ -422,7 +455,7 @@ int main(int argc, char **argv)
 
     layerFilesDir = compatibleFilePath(appID);
     if (layerFilesDir.empty()) {
-        std::cerr << "couldn't get compatiblePath" << std::endl;
+        std::cerr << "couldn't get compatiblePath of application" << std::endl;
         return -1;
     }
 
@@ -538,7 +571,7 @@ int main(int argc, char **argv)
 
     auto pid = fork();
     if (pid < 0) {
-        std::cerr << "fork err: " << strerror(errno) << std::endl;
+        std::cerr << "fork() err: " << ::strerror(errno) << std::endl;
         return -1;
     }
 
@@ -555,7 +588,7 @@ int main(int argc, char **argv)
 
     int wstatus{ -1 };
     if (auto ret = ::waitpid(pid, &wstatus, 0); ret == -1) {
-        std::cerr << "waitpid err:" << strerror(errno) << std::endl;
+        std::cerr << "waitpid() err:" << ::strerror(errno) << std::endl;
         return -1;
     }
 

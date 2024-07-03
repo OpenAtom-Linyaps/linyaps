@@ -2,25 +2,25 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-#include "task.h"
+#include "packageTask.h"
 
 #include <QDebug>
 #include <QUuid>
 
 namespace linglong::service {
 
-InstallTask InstallTask::createTemporaryTask() noexcept
+PackageTask PackageTask::createTemporaryTask() noexcept
 {
     return {};
 }
 
-InstallTask::InstallTask()
+PackageTask::PackageTask()
     : m_taskID(QUuid::createUuid())
     , m_cancelFlag(g_cancellable_new())
 {
 }
 
-InstallTask::InstallTask(const package::Reference &ref, const QString &module, QObject *parent)
+PackageTask::PackageTask(const package::Reference &ref, const QString &module, QObject *parent)
     : QObject(parent)
     , m_taskID(QUuid::createUuid())
     , m_layer(ref.toString() % "-" % module)
@@ -28,12 +28,12 @@ InstallTask::InstallTask(const package::Reference &ref, const QString &module, Q
 {
 }
 
-InstallTask::InstallTask(const package::Reference &ref, const std::string &module, QObject *parent)
-    : InstallTask(ref, QString::fromStdString(module), parent)
+PackageTask::PackageTask(const package::Reference &ref, const std::string &module, QObject *parent)
+    : PackageTask(ref, QString::fromStdString(module), parent)
 {
 }
 
-InstallTask::InstallTask(InstallTask &&other) noexcept
+PackageTask::PackageTask(PackageTask &&other) noexcept
     : m_status(other.m_status)
     , m_err(std::move(other).m_err)
     , m_statePercentage(other.m_statePercentage)
@@ -46,7 +46,7 @@ InstallTask::InstallTask(InstallTask &&other) noexcept
     other.m_statePercentage = 0;
 }
 
-InstallTask &InstallTask::operator=(InstallTask &&other) noexcept
+PackageTask &PackageTask::operator=(PackageTask &&other) noexcept
 {
     if (*this == other) {
         return *this;
@@ -68,14 +68,14 @@ InstallTask &InstallTask::operator=(InstallTask &&other) noexcept
     return *this;
 }
 
-InstallTask::~InstallTask()
+PackageTask::~PackageTask()
 {
     if (m_cancelFlag != nullptr) {
         g_object_unref(m_cancelFlag);
     }
 }
 
-void InstallTask::updateTask(double currentPercentage,
+void PackageTask::updateTask(double currentPercentage,
                              double totalPercentage,
                              const QString &message) noexcept
 {
@@ -91,7 +91,7 @@ void InstallTask::updateTask(double currentPercentage,
     Q_EMIT TaskChanged(taskID(), formatPercentage(increase), message, m_status, {});
 }
 
-void InstallTask::updateStatus(Status newStatus, const QString &message) noexcept
+void PackageTask::updateStatus(Status newStatus, const QString &message) noexcept
 {
     qInfo() << "update task" << m_taskID << "status to" << newStatus << message;
 
@@ -105,7 +105,7 @@ void InstallTask::updateStatus(Status newStatus, const QString &message) noexcep
     Q_EMIT TaskChanged(taskID(), formatPercentage(), message, m_status, {});
 }
 
-void InstallTask::updateStatus(Status newStatus, linglong::utils::error::Error err) noexcept
+void PackageTask::updateStatus(Status newStatus, linglong::utils::error::Error err) noexcept
 {
     qInfo() << "update task" << m_taskID << "status to" << newStatus << err.message();
 
@@ -120,14 +120,14 @@ void InstallTask::updateStatus(Status newStatus, linglong::utils::error::Error e
     m_err = std::move(err);
 }
 
-QString InstallTask::formatPercentage(double increase) const noexcept
+QString PackageTask::formatPercentage(double increase) const noexcept
 {
     QString ret;
     ret.setNum(m_statePercentage + increase, 'g', 4);
     return ret;
 }
 
-void InstallTask::cancelTask() noexcept
+void PackageTask::cancelTask() noexcept
 {
     if (g_cancellable_is_cancelled(m_cancelFlag) == 0) {
         g_cancellable_cancel(m_cancelFlag);

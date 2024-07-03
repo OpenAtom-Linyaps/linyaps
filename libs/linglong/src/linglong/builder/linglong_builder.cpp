@@ -133,9 +133,9 @@ utils::error::Result<package::Reference> pullDependency(const package::FuzzyRefe
         return *ref;
     }
 
-    auto tmpTask = service::InstallTask::createTemporaryTask();
+    auto tmpTask = service::PackageTask::createTemporaryTask();
     auto partChanged =
-      [&ref, develop](QString, const QString &percentage, QString, service::InstallTask::Status) {
+      [&ref, develop](QString, const QString &percentage, QString, service::PackageTask::Status) {
           printReplacedText(QString("%1%2%3%4 %5")
                               .arg(ref->id, -25)
                               .arg(ref->version.toString(), -15)
@@ -145,9 +145,9 @@ utils::error::Result<package::Reference> pullDependency(const package::FuzzyRefe
                               .toStdString(),
                             2);
       };
-    QObject::connect(&tmpTask, &service::InstallTask::PartChanged, partChanged);
+    QObject::connect(&tmpTask, &service::PackageTask::PartChanged, partChanged);
     repo.pull(tmpTask, *ref, develop);
-    if (tmpTask.currentStatus() == service::InstallTask::Status::Failed) {
+    if (tmpTask.currentStatus() == service::PackageTask::Status::Failed) {
         return LINGLONG_ERR("pull " + ref->toString() + " failed",
                             std::move(tmpTask).currentError());
     }

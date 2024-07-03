@@ -11,7 +11,6 @@
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
-#include "linglong/package_manager/task.h"
 #include "linglong/repo/config.h"
 #include "linglong/utils/command/env.h"
 #include "linglong/utils/error/error.h"
@@ -39,7 +38,7 @@ namespace {
 struct ostreeUserData
 {
     OSTreeRepo *repo{ nullptr };
-    service::InstallTask *taskContext{ nullptr };
+    service::PackageTask *taskContext{ nullptr };
 };
 
 char *formatted_time_remaining_from_seconds(guint64 seconds_remaining)
@@ -132,7 +131,7 @@ void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
     } else if (caught_error) {
         auto msg = "Caught error, waiting for outstanding tasks";
         g_string_append_printf(buf, "%s", msg);
-        Q_EMIT data->taskContext->updateStatus(service::InstallTask::Failed, msg);
+        Q_EMIT data->taskContext->updateStatus(service::PackageTask::Failed, msg);
     } else if (outstanding_fetches) {
         guint64 bytes_transferred, start_time, total_delta_part_size;
         guint fetched, metadata_fetched, requested;
@@ -1273,7 +1272,7 @@ utils::error::Result<void> OSTreeRepo::prune()
     return LINGLONG_OK;
 }
 
-void OSTreeRepo::pull(service::InstallTask &taskContext,
+void OSTreeRepo::pull(service::PackageTask &taskContext,
                       const package::Reference &reference,
                       bool develop) noexcept
 {
@@ -1315,7 +1314,7 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
                                   cancellable,
                                   &gErr);
         if (status == FALSE) {
-            taskContext.updateStatus(service::InstallTask::Failed,
+            taskContext.updateStatus(service::PackageTask::Failed,
                                      LINGLONG_ERRV("ostree_repo_pull", gErr));
             return;
         }
@@ -1333,7 +1332,7 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
                                          this->getLayerQDirV2(reference, develop),
                                          refString);
     if (!result) {
-        taskContext.updateStatus(service::InstallTask::Failed, LINGLONG_ERRV(result));
+        taskContext.updateStatus(service::PackageTask::Failed, LINGLONG_ERRV(result));
         return;
     }
 

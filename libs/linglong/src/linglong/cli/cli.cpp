@@ -104,24 +104,24 @@ void Cli::processDownloadStatus(const QString &recTaskID,
         return;
     }
 
-    this->lastStatus = static_cast<service::InstallTask::Status>(status);
+    this->lastStatus = static_cast<service::PackageTask::Status>(status);
     switch (status) {
-    case service::InstallTask::Canceled:
-    case service::InstallTask::Queued:
-    case service::InstallTask::preInstall:
-    case service::InstallTask::installBase:
-    case service::InstallTask::installRuntime:
-    case service::InstallTask::installApplication:
+    case service::PackageTask::Canceled:
+    case service::PackageTask::Queued:
+    case service::PackageTask::preInstall:
+    case service::PackageTask::installBase:
+    case service::PackageTask::installRuntime:
+    case service::PackageTask::installApplication:
         [[fallthrough]];
-    case service::InstallTask::postInstall: {
+    case service::PackageTask::postInstall: {
         this->printer.printTaskStatus(percentage, message, status);
     } break;
-    case service::InstallTask::Success: {
+    case service::PackageTask::Success: {
         this->taskDone = true;
         this->printer.printTaskStatus(percentage, message, status);
         std::cout << std::endl;
     } break;
-    case service::InstallTask::Failed: {
+    case service::PackageTask::Failed: {
         this->printer.printErr(LINGLONG_ERRV("\n" + message));
         this->taskDone = true;
     }
@@ -581,14 +581,17 @@ int Cli::installFromFile(const QFileInfo &fileInfo)
     loop.exec();
 
     updateAM();
-    return 0;
+    auto success = this->lastStatus == service::PackageTask::Success
+      || this->lastStatus == service::PackageTask::Canceled;
+
+    return success ? 0 : -1;
 }
 
 void Cli::updateAM() noexcept
 {
     // Call ReloadApplications() in AM for now. Remove later.
     if ((QSysInfo::productType() == "uos" || QSysInfo::productType() == "Deepin")
-        && this->lastStatus == service::InstallTask::Success) {
+        && this->lastStatus == service::PackageTask::Success) {
         QDBusConnection conn = QDBusConnection::sessionBus();
         if (!conn.isConnected()) {
             qWarning() << "Failed to connect to the session bus";
@@ -683,7 +686,10 @@ int Cli::install(std::map<std::string, docopt::value> &args)
     loop.exec();
 
     updateAM();
-    return this->lastStatus == service::InstallTask::Success ? 0 : -1;
+    auto success = this->lastStatus == service::PackageTask::Success
+      || this->lastStatus == service::PackageTask::Canceled;
+
+    return success ? 0 : -1;
 }
 
 int Cli::upgrade(std::map<std::string, docopt::value> &args)
@@ -747,12 +753,15 @@ int Cli::upgrade(std::map<std::string, docopt::value> &args)
     QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
     loop.exec();
 
-    if (this->lastStatus != service::InstallTask::Success) {
+    if (this->lastStatus != service::PackageTask::Success) {
         return -1;
     }
 
     updateAM();
-    return this->lastStatus == service::InstallTask::Success ? 0 : -1;
+    auto success = this->lastStatus == service::PackageTask::Success
+      || this->lastStatus == service::PackageTask::Canceled;
+
+    return success ? 0 : -1;
 }
 
 int Cli::search(std::map<std::string, docopt::value> &args)
@@ -847,24 +856,45 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
         params.package.version = fuzzyRef->version->toString().toStdString();
     }
 
-    auto reply = this->pkgMan.Uninstall(utils::serialize::toQVariantMap(params));
-    reply.waitForFinished();
-    if (!reply.isValid()) {
-        this->printer.printErr(LINGLONG_ERRV(reply.error().message(), reply.error().type()));
-        return -1;
-    }
-    auto result = utils::serialize::fromQVariantMap<api::types::v1::CommonResult>(reply.value());
-    if (!result) {
-        this->printer.printErr(result.error());
-        return -1;
-    }
-    if (result->code != 0) {
-        this->printer.printErr(
-          LINGLONG_ERRV(QString::fromStdString(result->message), result->code));
+    auto pendingReply = this->pkgMan.Uninstall(utils::serialize::toQVariantMap(params));
+    pendingReply.waitForFinished();
+    if (pendingReply.isError()) {
+        auto err = LINGLONG_ERRV(pendingReply.error().message());
+        this->printer.printErr(err);
         return -1;
     }
 
-    return 0;
+    auto result =
+      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1ResultWithTaskID>(
+        pendingReply);
+    if (!result) {
+        qCritical() << "bug detected.";
+        std::abort();
+    }
+
+    if (result->code != 0) {
+        this->printer.printReply({ .code = result->code, .message = result->message });
+        return -1;
+    }
+
+    this->taskID = QString::fromStdString(*result->taskID);
+    this->taskDone = false;
+    QEventLoop loop;
+    std::function<void()> statusChecker = std::function{ [&loop, &statusChecker, this]() -> void {
+        if (this->taskDone) {
+            loop.exit(0);
+        }
+        QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
+    } };
+
+    QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
+    loop.exec();
+
+    updateAM();
+    auto success = this->lastStatus == service::PackageTask::Success
+      || this->lastStatus == service::PackageTask::Canceled;
+
+    return success ? 0 : -1;
 }
 
 int Cli::list(std::map<std::string, docopt::value> &args)

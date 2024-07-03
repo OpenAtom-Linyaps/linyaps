@@ -2,11 +2,11 @@
 
 pkgname=linglong-git
 _pkgname=linglong
-pkgver=1.5.3.r0.gd0664b9f
+pkgver=1.5.6.r0.ga6e370d2
 pkgrel=1
 pkgdesc="Linglong is the container application toolkit of deepin"
 arch=('x86_64' 'aarch64')
-url='https://github.com/linuxdeepin/linglong'
+url='https://github.com/OpenAtomFoundation/linglong'
 license=('LGPL3')
 depends=(
         'bash'
@@ -32,7 +32,7 @@ optdepends=(
 )
 provides=('linglong')
 conflicts=('linglong')
-source=("git+https://github.com/linuxdeepin/linglong.git")
+source=("git+https://github.com/OpenAtomFoundation/linglong.git")
 sha256sums=('SKIP')
 
 pkgver() {

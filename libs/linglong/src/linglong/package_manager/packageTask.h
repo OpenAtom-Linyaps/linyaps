@@ -16,28 +16,33 @@
 
 namespace linglong::service {
 
-class InstallTask : public QObject
+class PackageTask : public QObject
 {
     Q_OBJECT
 public:
-    explicit InstallTask(const package::Reference &ref,
+    explicit PackageTask(const package::Reference &ref,
                          const QString &module,
                          QObject *parent = nullptr);
-    explicit InstallTask(const package::Reference &ref,
+    explicit PackageTask(const package::Reference &ref,
                          const std::string &module,
                          QObject *parent = nullptr);
-    InstallTask(InstallTask &&other) noexcept;
-    InstallTask &operator=(InstallTask &&other) noexcept;
-    ~InstallTask() override;
+    PackageTask(PackageTask &&other) noexcept;
+    PackageTask &operator=(PackageTask &&other) noexcept;
+    ~PackageTask() override;
 
-    static InstallTask createTemporaryTask() noexcept;
+    static PackageTask createTemporaryTask() noexcept;
 
     enum Status {
         Queued,
+        preUninstall,
         preInstall,
+        uninstallRuntime,
         installRuntime,
+        uninstallBase,
         installBase,
+        uninstallApplication,
         installApplication,
+        postUninstall,
         postInstall,
         Success,
         Failed,
@@ -45,12 +50,12 @@ public:
     };
     Q_ENUM(Status)
 
-    friend bool operator==(const InstallTask &lhs, const InstallTask &rhs)
+    friend bool operator==(const PackageTask &lhs, const PackageTask &rhs)
     {
         return lhs.m_layer == rhs.m_layer;
     }
 
-    friend bool operator!=(const InstallTask &lhs, const InstallTask &rhs) { return !(lhs == rhs); }
+    friend bool operator!=(const PackageTask &lhs, const PackageTask &rhs) { return !(lhs == rhs); }
 
     void updateTask(double currentPercentage,
                     double totalPercentage,
@@ -80,7 +85,7 @@ Q_SIGNALS:
     PartChanged(QString taskID, QString percentage, QString message, Status status, QPrivateSignal);
 
 private:
-    InstallTask();
+    PackageTask();
     [[nodiscard]] QString formatPercentage(double increase = 0) const noexcept;
     Status m_status{ Queued };
     utils::error::Error m_err;
@@ -89,10 +94,19 @@ private:
     QString m_layer;
     GCancellable *m_cancelFlag{ nullptr };
 
-    inline static QMap<Status, double> partsMap{ { Queued, 0 },       { Canceled, 0 },
-                                                 { preInstall, 10 },  { installRuntime, 20 },
-                                                 { installBase, 20 }, { installApplication, 20 },
-                                                 { postInstall, 20 }, { Success, 10 },
+    inline static QMap<Status, double> partsMap{ { Queued, 0 },
+                                                 { Canceled, 0 },
+                                                 { preUninstall, 10 },
+                                                 { preInstall, 10 },
+                                                 { uninstallRuntime, 20 },
+                                                 { installRuntime, 20 },
+                                                 { uninstallBase, 20 },
+                                                 { installBase, 20 },
+                                                 { uninstallApplication, 20 },
+                                                 { installApplication, 20 },
+                                                 { postUninstall, 20 },
+                                                 { postInstall, 20 },
+                                                 { Success, 10 },
                                                  { Failed, 10 } };
 };
 

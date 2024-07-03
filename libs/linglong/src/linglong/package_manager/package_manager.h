@@ -8,7 +8,7 @@
 #define LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_H_
 
 #include "linglong/repo/ostree_repo.h"
-#include "task.h"
+#include "packageTask.h"
 
 #include <QDBusArgument>
 #include <QDBusContext>
@@ -31,10 +31,8 @@ public:
     PackageManager(PackageManager &&) = delete;
     auto operator=(const PackageManager &) -> PackageManager & = delete;
     auto operator=(PackageManager &&) -> PackageManager & = delete;
-    void Install(InstallTask &taskContext,
-                 const package::Reference &ref,
-                 bool devel) noexcept;
-    void Update(InstallTask &taskContext,
+    void Install(PackageTask &taskContext, const package::Reference &ref, bool devel) noexcept;
+    void Update(PackageTask &taskContext,
                 const package::Reference &ref,
                 const package::Reference &newRef,
                 bool develop) noexcept;
@@ -59,7 +57,7 @@ private:
     utils::error::Result<api::types::v1::MinifiedInfo>
     updateMinifiedInfo(const QFileInfo &file, const QString &appRef, const QString &uuid) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT
-    std::vector<InstallTask> taskList;
+    std::vector<PackageTask> taskList;
 };
 
 } // namespace linglong::service

@@ -48,7 +48,7 @@ private:
     api::dbus::v1::PackageManager &pkgMan;
     QString taskID;
     bool taskDone{ true };
-    service::InstallTask::Status lastStatus;
+    service::PackageTask::Status lastStatus;
     std::vector<std::string>
     filePathMapping(std::map<std::string, docopt::value> &args,
                     const std::vector<std::string> &command) const noexcept;

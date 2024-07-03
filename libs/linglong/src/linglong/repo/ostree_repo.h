@@ -11,7 +11,7 @@
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
-#include "linglong/package_manager/task.h"
+#include "linglong/package_manager/packageTask.h"
 #include "linglong/repo/client_factory.h"
 #include "linglong/utils/error/error.h"
 
@@ -59,7 +59,7 @@ public:
     utils::error::Result<void> push(const package::Reference &reference,
                                     bool develop = false) const noexcept;
 
-    void pull(service::InstallTask &taskContext,
+    void pull(service::PackageTask &taskContext,
               const package::Reference &reference,
               bool develop = false) noexcept;
 

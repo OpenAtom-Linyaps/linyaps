@@ -305,9 +305,16 @@ utils::error::Result<QString> commitDirToRepo(GFile *dir,
     LINGLONG_TRACE("commit to ostree linglong repo");
 
     g_autoptr(GError) gErr = nullptr;
+    utils::Transaction transaction;
     if (ostree_repo_prepare_transaction(repo, NULL, NULL, &gErr) == FALSE) {
         return LINGLONG_ERR("ostree_repo_prepare_transaction", gErr);
     }
+
+    transaction.addRollBack([repo, &gErr]() noexcept {
+        if (ostree_repo_abort_transaction(repo, nullptr, &gErr) == FALSE) {
+            qCritical() << "ostree_repo_abort_transaction:" << gErr->message << gErr->code;
+        }
+    });
 
     g_autoptr(OstreeMutableTree) mtree = ostree_mutable_tree_new();
     g_autoptr(OstreeRepoCommitModifier) modifier = nullptr;
@@ -317,6 +324,9 @@ utils::error::Result<QString> commitDirToRepo(GFile *dir,
                                       nullptr,
                                       nullptr);
     Q_ASSERT(modifier != nullptr);
+    if (modifier == nullptr) {
+        return LINGLONG_ERR("ostree_repo_commit_modifier_new return a nullptr");
+    }
 
     if (ostree_repo_write_directory_to_mtree(repo, dir, mtree, modifier, nullptr, &gErr) == FALSE) {
         return LINGLONG_ERR("ostree_repo_write_directory_to_mtree", gErr);
@@ -347,6 +357,7 @@ utils::error::Result<QString> commitDirToRepo(GFile *dir,
         return LINGLONG_ERR("ostree_repo_commit_transaction", gErr);
     }
 
+    transaction.commit();
     return commit;
 }
 

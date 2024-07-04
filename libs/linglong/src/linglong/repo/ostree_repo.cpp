@@ -1526,35 +1526,18 @@ void OSTreeRepo::removeDanglingXDGIntergation() noexcept
 
 void OSTreeRepo::unexportReference(const package::Reference &ref) noexcept
 {
-    /*
-       V1  id/version/arch/{runtime}
-       V2  id/version/arch/{binary}
+    auto layerQDir = this->getLayerQDir(ref);
+    if (!layerQDir.exists()) {
+        layerQDir = this->getLayerQDirV2(ref);
+    }
 
-       oldLayerQDir.exists() | newLayerQDir.exists() | status
-       false                 |  false                | uninstall
-       false                 |  true                 | upgrade V2->V2
-       true                  |  false                | upgrade V1->V2
-       true                  |  true                 | impossible, this is invalid
-    */
-    QDir layerQDir;
-    auto oldLayerQDir = this->getLayerQDir(ref);
-    auto newLayerQDir = this->getLayerQDirV2(ref);
-    // if no layerQDir exists, this package should have been removed
-    // call removeDanglingXDGIntergation() to clean symlinks
-    if (!oldLayerQDir.exists() && !newLayerQDir.exists()) {
-        removeDanglingXDGIntergation();
+    if (!layerQDir.exists()) {
+        Q_ASSERT(false);
+        qCritical() << "Failed to unexport" << ref.toString() << "LayerDir"
+                    << layerQDir.absolutePath() << "not exists.";
         return;
     }
 
-    if (oldLayerQDir.exists()) {
-        layerQDir = oldLayerQDir;
-    }
-
-    if (newLayerQDir.exists()) {
-        layerQDir = newLayerQDir;
-    }
-
-    // if upgrade package
     QDir entriesDir = this->repoDir.absoluteFilePath("entries/share");
     QDirIterator it(entriesDir.absolutePath(),
                     QDir::AllEntries | QDir::NoDot | QDir::NoDotDot | QDir::System,
@@ -1640,6 +1623,13 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
     }
 
     auto layerDir = this->getLayerQDirV2(ref);
+    if (!layerDir.exists()) {
+        Q_ASSERT(false);
+        qCritical() << QString("Failed to export %1:").arg(ref.toString()) << layerDir
+                    << "not exists.";
+        return;
+    }
+
     auto layerEntriesDir = QDir(layerDir.absoluteFilePath("entries/share"));
     if (!layerEntriesDir.exists()) {
         Q_ASSERT(false);

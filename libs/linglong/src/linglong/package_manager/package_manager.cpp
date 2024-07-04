@@ -729,12 +729,12 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
 
     auto develop = paras->package.packageManager1PackageModule.value_or("runtime") == "develop";
 
+    this->repo.unexportReference(*ref);
+
     auto result = this->repo.remove(*ref, develop);
     if (!result) {
         return toDBusReply(result);
     }
-
-    this->repo.unexportReference(*ref);
 
     return toDBusReply(0, "Uninstall " + ref->toString() + " success.");
 }

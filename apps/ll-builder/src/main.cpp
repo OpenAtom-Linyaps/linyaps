@@ -198,7 +198,17 @@ int main(int argc, char **argv)
         }
 
         QDir projectDir = QDir::current().absoluteFilePath(projectName);
-        projectDir.mkpath(".");
+        if (projectDir.exists()) {
+            qCritical() << projectName << "project dir already exists";
+            return -1;
+        }
+
+        auto ret = projectDir.mkpath(".");
+        if (!ret) {
+            qCritical() << "create project dir failed";
+            return -1;
+        }
+
         auto configFilePath = projectDir.absoluteFilePath("linglong.yaml");
         auto templateFilePath = LINGLONG_DATA_DIR "/builder/templates/example.yaml";
 

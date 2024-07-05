@@ -149,10 +149,12 @@ public:
                     const QString &msg,
                     GError const *const e) -> Error
     {
-        if (e == nullptr) {
-            return Err(file, line, trace_msg, msg + ": unknown glib error");
+        QString new_msg = msg;
+        if (e != nullptr) {
+            new_msg.append(
+              QString{ " error code:%1, message:%2" }.arg(QString::number(e->code), e->message));
         }
-        return Err(file, line, trace_msg, msg + ": " + e->message, e->code);
+        return Err(file, line, trace_msg, new_msg);
     }
 
     static auto Err(const char *file,

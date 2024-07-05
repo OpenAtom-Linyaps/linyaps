@@ -276,6 +276,18 @@ utils::error::Result<void> removeOstreeRef(OstreeRepo *repo, const char *ref) no
     LINGLONG_TRACE("remove ostree refspec from repository");
 
     g_autoptr(GError) gErr = nullptr;
+    g_autofree char *rev{ nullptr };
+
+    if (ostree_repo_resolve_rev_ext(repo,
+                                    ref,
+                                    FALSE,
+                                    OstreeRepoResolveRevExtFlags::OSTREE_REPO_RESOLVE_REV_EXT_NONE,
+                                    &rev,
+                                    &gErr)
+        == FALSE) {
+        return LINGLONG_ERR(QString{ "couldn't resolve ref %1 on local machine" }.arg(ref), gErr);
+    }
+
     if (ostree_repo_set_ref_immediate(repo, nullptr, ref, nullptr, nullptr, &gErr) == FALSE) {
         return LINGLONG_ERR("ostree_repo_set_ref_immediate", gErr);
     }
@@ -417,7 +429,17 @@ utils::error::Result<void> handleRepositoryUpdate(OstreeRepo *repo,
 
               g_autoptr(GError) gErr{ nullptr };
               g_autofree char *commit{ nullptr };
-              if (ostree_repo_resolve_rev(repo, refspec, FALSE, &commit, &gErr) == FALSE) {
+              if (ostree_repo_resolve_rev_ext( // only resolve local ref
+                    repo,
+                    refspec,
+                    FALSE,
+                    OstreeRepoResolveRevExtFlags::
+                      OSTREE_REPO_RESOLVE_REV_EXT_NONE, // The flag
+                                                        // OSTREE_REPO_RESOLVE_REV_EXT_LOCAL_ONLY
+                                                        // is implied so using it has no effect.
+                    &commit,
+                    &gErr)
+                  == FALSE) {
                   qCritical() << "ostree_repo_resolve_rev" << gErr;
                   return;
               }
@@ -440,9 +462,15 @@ utils::error::Result<void> handleRepositoryUpdate(OstreeRepo *repo,
       });
 
     g_autoptr(GError) gErr = nullptr;
-    g_autofree char *commit;
+    g_autofree char *commit{ nullptr };
 
-    if (ostree_repo_resolve_rev(repo, refspec, FALSE, &commit, &gErr) == FALSE) {
+    if (ostree_repo_resolve_rev_ext(repo,
+                                    refspec,
+                                    FALSE,
+                                    OstreeRepoResolveRevExtFlags::OSTREE_REPO_RESOLVE_REV_EXT_NONE,
+                                    &commit,
+                                    &gErr)
+        == FALSE) {
         return LINGLONG_ERR("ostree_repo_resolve_rev", gErr);
     }
 

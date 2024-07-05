@@ -24,6 +24,24 @@ inline void printReplacedText(const std::string &text, const size_t num = 0)
 
     std::cout << "\33[2K\r" << blank << text << std::flush;
 }
+
+inline void printProgress(const size_t num = 0)
+{
+    std::cout << "\33[2K\r"
+              << "[";
+    for (int i = 0; i < num; ++i) {
+        std::cout << "=";
+    }
+    if (num != 0)
+        std::cout << ">";
+    else
+        std::cout << " ";
+    for (int i = 0; i < 100 - num; ++i) {
+        std::cout << " ";
+    }
+    std::cout << "] " << num << "%" << std::flush;
+}
+
 } // namespace linglong::builder
 
 #endif // LINGLONG_SRC_BUILDER_PRINTER_H_

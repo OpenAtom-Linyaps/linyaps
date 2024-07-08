@@ -475,7 +475,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     std::vector<std::string> command;
     try {
         auto content = nlohmann::json::parse(appStream);
-        if (content.contains("command")) {
+        if (content.find("command") != content.end()) {
             command = content["command"].get<std::vector<std::string>>();
         }
     } catch (nlohmann::json::parse_error &e) {

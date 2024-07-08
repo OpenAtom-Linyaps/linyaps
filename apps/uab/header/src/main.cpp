@@ -18,6 +18,7 @@
 #include <atomic>
 #include <cstring>
 #include <filesystem>
+#include <iomanip>
 #include <iostream>
 #include <optional>
 
@@ -280,7 +281,7 @@ std::string calculateDigest(int fd, std::size_t bundleOffset, std::size_t bundle
     };
     auto ctx =
       std::unique_ptr<EVP_MD_CTX, decltype(ctxDeleter)>(EVP_MD_CTX_new(), std::move(ctxDeleter));
-    if (EVP_DigestInit_ex2(ctx.get(), EVP_sha256(), nullptr) == 0) {
+    if (EVP_DigestInit_ex(ctx.get(), EVP_sha256(), nullptr) == 0) {
         std::cerr << "init digest context error" << std::endl;
         return {};
     }

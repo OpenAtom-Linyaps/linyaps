@@ -16,7 +16,8 @@
 
 namespace linglong {
 
-#define DUMP_DBG(func, line) (linglong::util::Logger(linglong::util::Logger::Debug, func, line))
+#define DUMP_DBG(func, line) /*NOLINT*/ \
+    (linglong::util::Logger(linglong::util::Logger::Debug, func, line))
 
 void DumpIDMap()
 {
@@ -69,9 +70,9 @@ void DumpUidGidGroup()
 
     logDbg() << "getuid" << getuid() << "geteuid" << geteuid();
     logDbg() << "getgid" << getgid() << "getegid" << getegid();
-    const int groupSize = getgroups(0, NULL);
-    __gid_t list[groupSize + 1];
-    getgroups(groupSize, list);
+    const int groupSize = getgroups(0, nullptr);
+    auto list = std::unique_ptr<__gid_t[]>(new __gid_t[groupSize + 1]); // NOLINT
+    getgroups(groupSize, list.get());
 
     std::string groupListStr;
     for (int i = 0; i < groupSize; ++i) {
@@ -84,15 +85,15 @@ void DumpUidGidGroup()
 void DumpFilesystem(const std::string &path, const char *func, int line)
 {
     if (nullptr == func) {
-        func = const_cast<char *>(__FUNCTION__);
+        func = __FUNCTION__;
     }
+
     DUMP_DBG(func, line) << "DumpFilesystem begin -----------" << path;
-    DIR *dir;
-    if ((dir = opendir(path.c_str())) != NULL) {
-        struct dirent *ent;
+    DIR *dir = opendir(path.c_str());
+    if (dir != nullptr) {
         /* print all the files and directories within directory */
-        while ((ent = readdir(dir)) != NULL) {
-            DUMP_DBG(func, line) << path + "/" + ent->d_name;
+        for (struct dirent *ent = readdir(dir); ent != nullptr; ent = readdir(dir)) { // NOLINT
+            DUMP_DBG(func, line) << path + "/" + ent->d_name;                         // NOLINT
         }
         closedir(dir);
     } else {
@@ -110,9 +111,8 @@ void DumpFileInfo(const std::string &path)
 
 void DumpFileInfo1(const std::string &path, const char *func, int line)
 {
-    struct stat st
-    {
-    };
+    using stat = struct stat;
+    stat st{}; // NOLINT
 
     auto ret = lstat(path.c_str(), &st);
     if (0 != ret) {

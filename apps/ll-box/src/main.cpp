@@ -22,7 +22,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-const char *argp_program_bug_address = "https://github.com/linuxdeepin/linglong/issues";
+const char *argp_program_bug_address = "https://github.com/linuxdeepin/linglong/issues"; // NOLINT
 
 namespace {
 struct arg_global
@@ -60,7 +60,7 @@ void containerJsonCleanUp()
 {
     auto containers = linglong::readAllContainerJson();
 
-    auto it = containers.begin();
+    auto it = containers.begin(); // NOLINT
     while (it != containers.end()) {
         auto boxPid = it->value("pid", -1);
         if (boxPid == -1) {
@@ -133,7 +133,7 @@ int exec(struct arg_exec *arg, int argc, char **argv) noexcept
             logFal() << "/proc doesn't exist.";
         }
         auto boxBin = std::filesystem::read_symlink("/proc/self/exe");
-        std::error_code ec;
+        std::error_code ec; // NOLINT
         while (true) {
             auto children = proc / boxPidStr / "task" / boxPidStr / "children";
             std::ifstream stream{ children };
@@ -174,37 +174,26 @@ int exec(struct arg_exec *arg, int argc, char **argv) noexcept
     }
 
     auto wdns = linglong::util::format("--wdns=%s", arg->cwd.c_str());
-    const char *nsenterArgv[] = { "nsenter", "-t",         boxPidStr.c_str(),        "-U",   "-m",
-                                  "-p",      wdns.c_str(), "--preserve-credentials", nullptr };
 
-    int nsenterArgc{ 0 };
-    while (nsenterArgv[nsenterArgc] != nullptr) {
-        ++nsenterArgc;
-    }
-    auto newArgc = nsenterArgc + argc + 1; // except argv[0] and add '&'
-    const char **newArgv = (const char **)malloc(sizeof(char *) * newArgc);
+    std::vector<const char *> newArgv{
+        "nsenter", "-t", boxPidStr.c_str(), "-U", "-m", "-p", wdns.c_str(), "--preserve-credentials"
+    };
 
-    if (newArgv == nullptr) {
-        logErr() << "malloc error";
-        return errno;
-    }
-    for (int i = 0; i < nsenterArgc; ++i) {
-        newArgv[i] = nsenterArgv[i];
-    }
     for (int i = 0; i < argc; ++i) {
-        newArgv[i + nsenterArgc] = argv[i + 1];
+        newArgv.push_back(argv[i + 1]);
     }
 
-    newArgv[newArgc - 2] = "&";
-    newArgv[newArgc - 1] = nullptr;
+    newArgv.push_back("&");
+    newArgv.push_back(nullptr);
 
-    for (int i = 0; i < newArgc; ++i) {
+    for (decltype(newArgv.size()) i = 0; i < newArgv.size(); ++i) {
         logDbg() << "newArgv[" << i << "]:" << newArgv[i];
     }
-    return ::execvp("nsenter", const_cast<char **>(newArgv));
+
+    return ::execvp("nsenter", const_cast<char **>(newArgv.data())); // NOLINT
 }
 
-int run(struct arg_run *arg, const std::string &container) noexcept
+int run(struct arg_run *arg, const std::string &containerID) noexcept
 try {
     if (arg->bundle.at(0) != '/') {
         arg->bundle = std::filesystem::current_path() / arg->bundle;
@@ -221,8 +210,8 @@ try {
     auto json = nlohmann::json::parse(configFileStream);
     auto runtime = json.get<linglong::Runtime>();
 
-    linglong::Container c(bundleDir, container, runtime);
-    return c.Start();
+    linglong::Container container(bundleDir, containerID, runtime);
+    return container.Start();
 } catch (const std::exception &e) {
     logErr() << "run failed:" << e.what();
     return -1;
@@ -253,27 +242,25 @@ int kill(const std::string &containerID, const std::string &signal) noexcept
 
 int parse_list(int key, char *arg, struct argp_state *state)
 {
-    auto *input = (struct arg_list *)state->input;
+    auto *input = reinterpret_cast<struct arg_list *>(state->input); // NOLINT
     static std::vector<std::string> formatMap = { "json", "table" };
 
-    switch (key) {
-    case 'f': {
-        std::string val{ arg };
-        if (std::find(formatMap.cbegin(), formatMap.cend(), val) == formatMap.cend()) {
-            argp_failure(state, -1, EINVAL, "invalid format %s", arg);
-        }
-        input->format = std::move(val);
-    } break;
-    default:
+    if (key != 'f') {
         return ARGP_ERR_UNKNOWN;
     }
+
+    std::string val{ arg };
+    if (std::find(formatMap.cbegin(), formatMap.cend(), val) == formatMap.cend()) {
+        argp_failure(state, -1, EINVAL, "invalid format %s", arg); // NOLINT
+    }
+    input->format = std::move(val);
 
     return 0;
 }
 
 int parse_run(int key, char *arg, struct argp_state *state)
 {
-    auto *input = (struct arg_run *)state->input;
+    auto *input = reinterpret_cast<struct arg_run *>(state->input); // NOLINT
 
     switch (key) {
     case 'f': {
@@ -283,7 +270,7 @@ int parse_run(int key, char *arg, struct argp_state *state)
         input->bundle = arg;
     } break;
     case ARGP_KEY_NO_ARGS: {
-        argp_usage(state);
+        argp_usage(state); // NOLINT
     } break;
     default:
         return ARGP_ERR_UNKNOWN;
@@ -294,7 +281,7 @@ int parse_run(int key, char *arg, struct argp_state *state)
 
 int parse_exec(int key, char *arg, struct argp_state *state)
 {
-    auto *input = (struct arg_exec *)state->input;
+    auto *input = reinterpret_cast<struct arg_exec *>(state->input); // NOLINT
 
     switch (key) {
     case 'u': {
@@ -314,7 +301,7 @@ int parse_exec(int key, char *arg, struct argp_state *state)
         input->cwd = arg;
     } break;
     case ARGP_KEY_NO_ARGS: {
-        argp_usage(state);
+        argp_usage(state); // NOLINT
     } break;
     default:
         return ARGP_ERR_UNKNOWN;
@@ -327,34 +314,36 @@ int cmd_list(struct argp_state *state)
 {
     struct arg_list list_arg
     {
-        .global = (struct arg_global *)state->input
+        .global = reinterpret_cast<struct arg_global *>(state->input), // NOLINT
     };
 
     int argc = state->argc - state->next + 1;
-    char **argv = &state->argv[state->next - 1];
-    char *argv0 = argv[0];
+    char **argv = &state->argv[state->next - 1]; // NOLINT
+    char *argv0 = argv[0];                       // NOLINT
 
-    argv[0] = (char *)::malloc(strlen(state->name) + strlen(" list") + 1);
-    if (argv[0] == nullptr) {
-        argp_failure(state, -1, ENOMEM, nullptr);
-    }
-    sprintf(argv[0], "%s list", state->name);
+    std::string name = state->name;
+    name += " list";
+    argv[0] = name.data(); // NOLINT
 
-    struct argp_option list_opt[] = { {
-                                        .name = "format",
-                                        .key = 'f',
-                                        .arg = "FORMAT",
-                                        .flags = 0,
-                                        .doc = "select one of: table or json (default: \"table\")",
-                                        .group = 0,
-                                      },
-                                      { nullptr } };
+    struct argp_option list_opt[] = // NOLINT
+      {
+          {
+            .name = "format",
+            .key = 'f',
+            .arg = "FORMAT",
+            .flags = 0,
+            .doc = "select one of: table or json (default: \"table\")",
+            .group = 0,
+          },
+          { nullptr } // NOLINT
+      };
 
-    struct argp list_argp = { .options = list_opt, .parser = parse_list, .doc = "OCI runtime" };
+    struct argp list_argp = { .options = list_opt, // NOLINT
+                              .parser = parse_list,
+                              .doc = "OCI runtime" }; // NOLINT
 
-    argp_parse(&list_argp, argc, argv, ARGP_IN_ORDER, &argc, &list_arg);
-    ::free(argv[0]);
-    argv[0] = argv0;
+    argp_parse(&list_argp, argc, argv, ARGP_IN_ORDER, &argc, &list_arg); // NOLINT
+    argv[0] = argv0;                                                     // NOLINT
     state->next += argc - 1;
 
     list_arg.global->exitCode = list(&list_arg);
@@ -365,52 +354,55 @@ int cmd_run(struct argp_state *state)
 {
     struct arg_run run_arg
     {
-        .global = (struct arg_global *)state->input
+        .global = reinterpret_cast<struct arg_global *>(state->input), // NOLINT
     };
 
     int argc = state->argc - state->next + 1;
-    char **argv = &state->argv[state->next - 1];
-    char *argv0 = argv[0];
+    char **argv = &state->argv[state->next - 1]; // NOLINT
+    char *argv0 = argv[0];                       // NOLINT
 
-    argv[0] = (char *)::malloc(strlen(state->name) + strlen(" run") + 1);
-    if (argv[0] == nullptr) {
-        argp_failure(state, -1, ENOMEM, nullptr);
-    }
-    sprintf(argv[0], "%s run", state->name);
+    std::string name = state->name;
+    name += " run";
 
-    struct argp_option run_opt[] = { {
-                                       .name = "bundle",
-                                       .key = 'b',
-                                       .arg = "DIR",
-                                       .flags = 0,
-                                       .doc = "container bundle (default \".\")",
-                                       .group = 0,
-                                     },
-                                     {
-                                       .name = "config",
-                                       .key = 'f',
-                                       .arg = "FILE",
-                                       .flags = 0,
-                                       .doc = "override the config file name",
-                                       .group = 0,
-                                     },
-                                     { nullptr } };
+    argv[0] = name.data(); // NOLINT
 
-    struct argp run_argp = { .options = run_opt,
+    struct argp_option run_opt[] = // NOLINT
+      {
+          {
+            .name = "bundle",
+            .key = 'b',
+            .arg = "DIR",
+            .flags = 0,
+            .doc = "container bundle (default \".\")",
+            .group = 0,
+          },
+          {
+            .name = "config",
+            .key = 'f',
+            .arg = "FILE",
+            .flags = 0,
+            .doc = "override the config file name",
+            .group = 0,
+          },
+          { nullptr } // NOLINT
+      };
+
+    struct argp run_argp = { .options = run_opt, // NOLINT
                              .parser = parse_run,
                              .args_doc = "CONTAINER",
-                             .doc = "OCI runtime" };
+                             .doc = "OCI runtime" }; // NOLINT
 
-    argp_parse(&run_argp, argc, argv, ARGP_IN_ORDER, &argc, &run_arg);
+    argp_parse(&run_argp, argc, argv, ARGP_IN_ORDER, &argc, &run_arg); // NOLINT
 
-    ::free(argv[0]);
-    argv[0] = argv0;
-    if (!argv[state->next]) {
+    argv[0] = argv0;          // NOLINT
+    if (!argv[state->next]) { // NOLINT
         logErr() << "container id must be set";
         return -1;
     }
 
-    std::string container{ argv[state->next] };
+    std::string container{
+        argv[state->next] // NOLINT
+    };
     state->next += argc;
     run_arg.global->exitCode = run(&run_arg, container);
     return 0;
@@ -420,48 +412,49 @@ int cmd_exec(struct argp_state *state)
 {
     struct arg_exec exec_arg
     {
-        .global = (struct arg_global *)state->input
+        .global = reinterpret_cast<struct arg_global *>(state->input), // NOLINT
     };
 
     int argc = state->argc - state->next + 1;
-    char **argv = &state->argv[state->next - 1];
-    char *argv0 = argv[0];
+    char **argv = &state->argv[state->next - 1]; // NOLINT
+    char *argv0 = argv[0];                       // NOLINT
 
-    argv[0] = (char *)::malloc(strlen(state->name) + strlen(" exec") + 1);
-    if (argv[0] == nullptr) {
-        argp_failure(state, -1, ENOMEM, nullptr);
-    }
-    sprintf(argv[0], "%s exec", state->name);
+    std::string name = state->name;
+    name += " exec";
 
-    struct argp_option exec_opt[] = { {
-                                        .name = "user",
-                                        .key = 'u',
-                                        .arg = "USERSPEC",
-                                        .flags = 0,
-                                        .doc = "specify the user in the form UID[:GID]",
-                                        .group = 0,
-                                      },
-                                      { .name = "cwd",
-                                        .key = OPTION_CWD,
-                                        .arg = "CWD",
-                                        .flags = 0,
-                                        .doc = "current working directory",
-                                        .group = 0 },
-                                      { nullptr } };
+    argv[0] = name.data(); // NOLINT
 
-    struct argp exec_argp = { .options = exec_opt,
+    struct argp_option exec_opt[] = // NOLINT
+      {
+          {
+            .name = "user",
+            .key = 'u',
+            .arg = "USERSPEC",
+            .flags = 0,
+            .doc = "specify the user in the form UID[:GID]",
+            .group = 0,
+          },
+          { .name = "cwd",
+            .key = OPTION_CWD,
+            .arg = "CWD",
+            .flags = 0,
+            .doc = "current working directory",
+            .group = 0 },
+          { nullptr } // NOLINT
+      };
+
+    struct argp exec_argp = { .options = exec_opt, // NOLINT
                               .parser = parse_exec,
                               .args_doc = "CONTAINER cmd",
-                              .doc = "OCI runtime" };
+                              .doc = "OCI runtime" }; // NOLINT
 
-    argp_parse(&exec_argp, argc, argv, ARGP_IN_ORDER, &argc, &exec_arg);
+    argp_parse(&exec_argp, argc, argv, ARGP_IN_ORDER, &argc, &exec_arg); // NOLINT
 
-    ::free(argv[0]);
-    argv[0] = argv0;
+    argv[0] = argv0; // NOLINT
     state->next += argc - 1;
 
     argc = state->argc - state->next;
-    argv = &state->argv[state->next];
+    argv = &state->argv[state->next]; // NOLINT
     exec_arg.global->exitCode = exec(&exec_arg, argc, argv);
 
     // consume args
@@ -472,49 +465,44 @@ int cmd_exec(struct argp_state *state)
 int cmd_kill(struct argp_state *state)
 {
     int argc = state->argc - state->next + 1;
-    char **argv = &state->argv[state->next - 1];
-    char *argv0 = argv[0];
+    char **argv = &state->argv[state->next - 1]; // NOLINT
+    char *argv0 = argv[0];                       // NOLINT
 
-    argv[0] = (char *)::malloc(strlen(state->name) + strlen(" kill") + 1);
-    if (argv[0] == nullptr) {
-        argp_failure(state, -1, ENOMEM, nullptr);
-    }
-    sprintf(argv[0], "%s kill", state->name);
+    std::string name = state->name;
+    name += " kill";
 
     struct argp kill_argp = { .options = nullptr,
                               .parser = nullptr,
                               .args_doc = "CONTAINER",
-                              .doc = "OCI runtime" };
+                              .doc = "OCI runtime" }; // NOLINT
     // no option currently, just for doc
-    argp_parse(&kill_argp, argc, argv, ARGP_IN_ORDER, &argc, nullptr);
-
-    ::free(argv[0]);
+    argp_parse(&kill_argp, argc, argv, ARGP_IN_ORDER, &argc, nullptr); // NOLINT
     argv[0] = argv0;
     state->next += argc - 1;
 
-    if (state->argv[state->next] == nullptr) {
+    if (state->argv[state->next] == nullptr) { // NOLINT
         logErr() << "container id must be set.";
         return EINVAL;
     }
 
-    std::string container{ state->argv[state->next++] };
+    std::string container{ state->argv[state->next++] }; // NOLINT
     std::string signal;
-    if (state->argv[state->next] != nullptr) {
-        signal = state->argv[state->next++];
+    if (state->argv[state->next] != nullptr) { // NOLINT
+        signal = state->argv[state->next++];   // NOLINT
     }
 
-    while (state->argv[state->next] != nullptr) {
+    while (state->argv[state->next] != nullptr) { // NOLINT
         ++(state->next);
     }
 
-    auto *global = (struct arg_global *)state->input;
+    auto *global = reinterpret_cast<struct arg_global *>(state->input); // NOLINT
     global->exitCode = kill(container, signal);
     return 0;
 }
 
 int parse_global(int key, char *arg, struct argp_state *state)
 {
-    auto *input = (struct arg_global *)state->input;
+    auto *input = reinterpret_cast<struct arg_global *>(state->input); // NOLINT
 
     switch (key) {
     case OPTION_CGROUP_MANAGER: {
@@ -523,7 +511,7 @@ int parse_global(int key, char *arg, struct argp_state *state)
             break;
         }
 
-        argp_failure(state, -1, EINVAL, "invalid cgroup manager %s", arg);
+        argp_failure(state, -1, EINVAL, "invalid cgroup manager %s", arg); // NOLINT
         return -1;
     } break;
     case ARGP_KEY_ARG: {
@@ -543,12 +531,12 @@ int parse_global(int key, char *arg, struct argp_state *state)
             return cmd_kill(state);
         }
 
-        argp_error(state, "unknown command %s", arg);
+        argp_error(state, "unknown command %s", arg); // NOLINT
 
         return -1;
     } break;
     case ARGP_KEY_NO_ARGS: {
-        argp_usage(state);
+        argp_usage(state); // NOLINT
     } break;
     default:
         return ARGP_ERR_UNKNOWN;
@@ -565,32 +553,35 @@ int main(int argc, char **argv)
         logErr() << "please specify a command";
         return -1;
     }
-    // make sure that all containers status are valid 
+    // make sure that all containers status are valid
     containerJsonCleanUp();
-    struct argp_option options[] = { {
-                                       .name = "cgroup-manager",
-                                       .key = OPTION_CGROUP_MANAGER,
-                                       .arg = "MANAGER",
-                                       .flags = 0,
-                                       .doc = "cgroup manager",
-                                       .group = 0,
-                                     },
-                                     { nullptr } };
+    struct argp_option options[] = // NOLINT
+      {
+          {
+            .name = "cgroup-manager",
+            .key = OPTION_CGROUP_MANAGER,
+            .arg = "MANAGER",
+            .flags = 0,
+            .doc = "cgroup manager",
+            .group = 0,
+          },
+          { nullptr } // NOLINT
+      };
 
-    auto doc = "\nCOMMANDS:\n"
-               "\tlist        - list known containers\n"
-               "\trun         - run a container\n"
-               "\texec        - exec a command in a running container\n"
-               "\tkill        - send a signal to the container init process\n";
+    const auto *doc = "\nCOMMANDS:\n"
+                      "\tlist        - list known containers\n"
+                      "\trun         - run a container\n"
+                      "\texec        - exec a command in a running container\n"
+                      "\tkill        - send a signal to the container init process\n";
 
-    struct argp global_argp = { .options = options,
+    struct argp global_argp = { .options = options, // NOLINT
                                 .parser = parse_global,
                                 .args_doc = "COMMAND [OPTION...]",
-                                .doc = doc };
+                                .doc = doc }; // NOLINT
 
     struct arg_global global;
 
-    argp_parse(&global_argp, argc, argv, ARGP_IN_ORDER, nullptr, &global);
+    argp_parse(&global_argp, argc, argv, ARGP_IN_ORDER, nullptr, &global); // NOLINT
 
     return global.exitCode;
 }

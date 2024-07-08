@@ -83,27 +83,27 @@ fetchSources(const std::vector<api::types::v1::BuilderProjectSource> &sources,
 {
     LINGLONG_TRACE("fetch sources to " + destination.absolutePath());
 
-    for (int pos = 0; pos < sources.size(); ++pos) {
+    for (decltype(sources.size()) pos = 0; pos < sources.size(); ++pos) {
         auto url = QString::fromStdString(*(sources.at(pos).url));
-        if (url.length() > 75) {
-            url = "..." + url.right(70);
+        if (url.length() > 75) {         // NOLINT
+            url = "..." + url.right(70); // NOLINT
         }
         printReplacedText(QString("%1%2%3%4")
-                            .arg("Source " + QString::number(pos), -20)
-                            .arg(QString::fromStdString(sources.at(pos).kind), -15)
-                            .arg(url, -75)
+                            .arg("Source " + QString::number(pos), -20)             // NOLINT
+                            .arg(QString::fromStdString(sources.at(pos).kind), -15) // NOLINT
+                            .arg(url, -75)                                          // NOLINT
                             .arg("downloading ...")
                             .toStdString(),
                           2);
-        SourceFetcher sf(sources.at(pos), cfg, cacheDir);
-        auto result = sf.fetch(QDir(destination));
+        SourceFetcher fetcher(sources.at(pos), cfg, cacheDir);
+        auto result = fetcher.fetch(QDir(destination));
         if (!result) {
             return LINGLONG_ERR(result);
         }
         printReplacedText(QString("%1%2%3%4")
-                            .arg("Source " + QString::number(pos), -20)
-                            .arg(QString::fromStdString(sources.at(pos).kind), -15)
-                            .arg(url, -75)
+                            .arg("Source " + QString::number(pos), -20)             // NOLINT
+                            .arg(QString::fromStdString(sources.at(pos).kind), -15) // NOLINT
+                            .arg(url, -75)                                          // NOLINT
                             .arg("complete\n")
                             .toStdString(),
                           2);
@@ -138,17 +138,19 @@ utils::error::Result<package::Reference> pullDependency(const package::FuzzyRefe
     }
 
     auto tmpTask = service::InstallTask::createTemporaryTask();
-    auto partChanged =
-      [&ref, develop](QString, const QString &percentage, QString, service::InstallTask::Status) {
-          printReplacedText(QString("%1%2%3%4 %5")
-                              .arg(ref->id, -25)
-                              .arg(ref->version.toString(), -15)
-                              .arg(develop ? "develop" : "binary", -15)
-                              .arg("downloading")
-                              .arg(percentage)
-                              .toStdString(),
-                            2);
-      };
+    auto partChanged = [&ref, develop](const QString &,
+                                       const QString &percentage,
+                                       const QString &,
+                                       service::InstallTask::Status) {
+        printReplacedText(QString("%1%2%3%4 %5")
+                            .arg(ref->id, -25)                        // NOLINT
+                            .arg(ref->version.toString(), -15)        // NOLINT
+                            .arg(develop ? "develop" : "binary", -15) // NOLINT
+                            .arg("downloading")
+                            .arg(percentage)
+                            .toStdString(),
+                          2);
+    };
     QObject::connect(&tmpTask, &service::InstallTask::PartChanged, partChanged);
     repo.pull(tmpTask, *ref, develop);
     if (tmpTask.currentStatus() == service::InstallTask::Status::Failed) {
@@ -174,10 +176,10 @@ utils::error::Result<package::Reference> pullDependency(const QString &fuzzyRefS
 
 // 拆分develop和binary的文件
 utils::error::Result<void> splitDevelop(QString installFilepath,
-                                        QDir developOutput,
-                                        QDir binaryOutput,
-                                        QString prefix,
-                                        std::function<void(QString, int)> handleProgress)
+                                        const QDir &developOutput,
+                                        const QDir &binaryOutput,
+                                        const QString &prefix,
+                                        const std::function<void(int)> &handleProgress)
 {
     LINGLONG_TRACE("split layers file");
     const QString src = developOutput.absolutePath();
@@ -197,12 +199,12 @@ utils::error::Result<void> splitDevelop(QString installFilepath,
         installRules.removeDuplicates();
     } else {
         qDebug() << "generate install list from " << src;
-        QDirIterator it(src,
-                        QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System,
-                        QDirIterator::Subdirectories);
-        while (it.hasNext()) {
-            it.next();
-            auto filepath = it.filePath();
+        QDirIterator iter(src,
+                          QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System,
+                          QDirIterator::Subdirectories);
+        while (iter.hasNext()) {
+            iter.next();
+            auto filepath = iter.filePath();
             qDebug() << filepath;
             // $PROJECT_ROOT/.../files to /opt/apps/${appid}
             // $PROJECT_ROOT/ to /runtime/
@@ -224,19 +226,20 @@ utils::error::Result<void> splitDevelop(QString installFilepath,
         if (info.isSymLink()) {
             qDebug() << QString("percentage: %1%").arg(percentage) << "matched symlinks"
                      << info.absoluteFilePath();
-            char buf[PATH_MAX];
+            std::array<char, PATH_MAX + 1> buf{};
             // qt的readlin无法区分相对链接还是绝对链接，所以用c库的readlink
-            auto size = readlink(info.filePath().toStdString().c_str(), buf, sizeof(buf) - 1);
+            auto size = readlink(info.filePath().toStdString().c_str(), buf.data(), PATH_MAX);
             if (size == -1) {
                 qCritical() << "readlink failed! " << info.filePath();
                 return LINGLONG_ERR("readlink failed!");
             }
-            buf[size] = '\0';
-            QString linkpath(buf);
+
+            QString linkpath(buf.data());
             qDebug() << "link" << linkpath << "to" << dstPath;
             QFile file(linkpath);
-            if (!file.link(dstPath))
+            if (!file.link(dstPath)) {
                 return LINGLONG_ERR("link file failed, relative path", file);
+            }
             return LINGLONG_OK;
         }
         // 链接也是文件，isFile要放到isSymLink后面
@@ -245,8 +248,9 @@ utils::error::Result<void> splitDevelop(QString installFilepath,
                      << info.absoluteFilePath();
             QDir().mkpath(info.path().replace(src, dest));
             QFile file(info.absoluteFilePath());
-            if (!file.copy(dstPath))
+            if (!file.copy(dstPath)) {
                 return LINGLONG_ERR("copy file", file);
+            }
             return LINGLONG_OK;
         }
         return LINGLONG_ERR(QString("unknown file type %1").arg(info.path()));
@@ -256,12 +260,12 @@ utils::error::Result<void> splitDevelop(QString installFilepath,
     for (auto rule : installRules) {
         // 计算进度
         ruleIndex++;
-        auto percentage = ruleIndex * 100 / installRules.length();
+        auto percentage = ruleIndex * 100 / installRules.length(); // NOLINT
         // /opt/apps/${appid} to $PROJECT_ROOT/.../files
         // /runtime/ to $PROJECT_ROOT/
         rule.replace(0, prefix.length(), src);
         if (handleProgress) {
-            handleProgress(rule, percentage);
+            handleProgress(percentage);
         }
         // 如果不以^符号开头，当作普通路径使用
         if (!rule.startsWith("^")) {
@@ -280,23 +284,23 @@ utils::error::Result<void> splitDevelop(QString installFilepath,
             continue;
         }
         // convert prefix in container to real path in host
-        QRegularExpression re(rule);
+        QRegularExpression regexp(rule);
         // reverse files in src
-        QDirIterator it(src,
-                        QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System,
-                        QDirIterator::Subdirectories);
-        while (it.hasNext()) {
-            it.next();
-            if (re.match(it.fileInfo().absoluteFilePath()).hasMatch()) {
-                const QString dstPath = it.fileInfo().absoluteFilePath().replace(src, dest);
-                auto ret = copyFile(percentage, it.fileInfo(), dstPath);
+        QDirIterator iter(src,
+                          QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System,
+                          QDirIterator::Subdirectories);
+        while (iter.hasNext()) {
+            iter.next();
+            if (regexp.match(iter.fileInfo().absoluteFilePath()).hasMatch()) {
+                const QString dstPath = iter.fileInfo().absoluteFilePath().replace(src, dest);
+                auto ret = copyFile(percentage, iter.fileInfo(), dstPath);
                 if (!ret.has_value()) {
                     return LINGLONG_ERR(ret);
                 }
             }
         }
     }
-    for (auto dir : { developOutput, binaryOutput }) {
+    for (const auto &dir : { developOutput, binaryOutput }) {
         // save all installed file path to ${appid}.install
         const auto installRulePath = dir.filePath("../" + QFileInfo(installFilepath).fileName());
         QFile configFile(installRulePath);
@@ -314,7 +318,7 @@ utils::error::Result<void> splitDevelop(QString installFilepath,
 } // namespace
 
 Builder::Builder(const api::types::v1::BuilderProject &project,
-                 QDir workingDir,
+                 const QDir &workingDir,
                  repo::OSTreeRepo &repo,
                  runtime::ContainerBuilder &containerBuilder,
                  const api::types::v1::BuilderConfig &cfg)
@@ -368,9 +372,9 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     if (this->project.sources && !cfg.skipFetchSource) {
         printMessage("[Processing Sources]");
         printMessage(QString("%1%2%3%4")
-                       .arg("Name", -20)
-                       .arg("Type", -15)
-                       .arg("Url", -75)
+                       .arg("Name", -20) // NOLINT
+                       .arg("Type", -15) // NOLINT
+                       .arg("Url", -75)  // NOLINT
                        .arg("Status")
                        .toStdString(),
                      2);
@@ -389,9 +393,9 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
 
     printMessage("[Processing Dependency]");
     printMessage(QString("%1%2%3%4")
-                   .arg("Package", -25)
-                   .arg("Version", -15)
-                   .arg("Module", -15)
+                   .arg("Package", -25) // NOLINT
+                   .arg("Version", -15) // NOLINT
+                   .arg("Module", -15)  // NOLINT
                    .arg("Status")
                    .toStdString(),
                  2);
@@ -420,9 +424,9 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         }
         runtimeLayerDir = ret->absolutePath();
         printReplacedText(QString("%1%2%3%4")
-                            .arg(runtime->id, -25)
-                            .arg(runtime->version.toString(), -15)
-                            .arg("develop", -15)
+                            .arg(runtime->id, -25)                 // NOLINT
+                            .arg(runtime->version.toString(), -15) // NOLINT
+                            .arg("develop", -15)                   // NOLINT
                             .arg("complete\n")
                             .toStdString(),
                           2);
@@ -445,9 +449,9 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         return LINGLONG_ERR(baseLayerDir);
     }
     printReplacedText(QString("%1%2%3%4")
-                        .arg(base->id, -25)
-                        .arg(base->version.toString(), -15)
-                        .arg("develop", -15)
+                        .arg(base->id, -25)                 // NOLINT
+                        .arg(base->version.toString(), -15) // NOLINT
+                        .arg("develop", -15)                // NOLINT
                         .arg("complete\n")
                         .toStdString(),
                       2);
@@ -501,10 +505,12 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         .containerID = ("linglong-builder-" + ref->toString() + QUuid::createUuid().toString())
                          .toUtf8()
                          .toBase64(),
+        .runtimeDir = {},
         .baseDir = *baseLayerDir,
         .appDir = {},
         .patches = {},
         .mounts = {},
+        .masks = {},
     };
     if (!runtimeLayerDir.isEmpty()) {
         opts.runtimeDir = runtimeLayerDir;
@@ -554,25 +560,16 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         arguments.push_back(arg.toStdString());
     }
 
-    auto process = ocppi::runtime::config::types::Process{
-        .apparmorProfile = {},
-        .args = arguments,
-        .capabilities = {},
-        .commandLine = {},
-        .consoleSize = {},
-        .cwd = "/project",
-        .env = { {
-          "PREFIX=" + installPrefix.toStdString(),
-          "TRIPLET=" + arch->getTriplet().toStdString(),
-        } },
-        .ioPriority = {},
-        .noNewPrivileges = true,
-        .oomScoreAdj = {},
-        .rlimits = {},
-        .scheduler = {},
-        .selinuxLabel = {},
-        .terminal = true,
-    };
+    auto process = ocppi::runtime::config::types::Process{};
+    process.args = arguments;
+    process.cwd = "/project";
+    process.env = { {
+      "PREFIX=" + installPrefix.toStdString(),
+      "TRIPLET=" + arch->getTriplet().toStdString(),
+    } };
+    process.noNewPrivileges = true;
+    process.terminal = true;
+
     printMessage("[Start Build]");
     auto result = (*container)->run(process);
     if (!result) {
@@ -620,7 +617,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
                             developOutput.absolutePath(),
                             binaryOutput.absolutePath(),
                             installPrefix,
-                            [](auto, int percentage) {
+                            [](int percentage) {
                                 printProgress(percentage);
                             });
     if (!ret) {
@@ -727,16 +724,16 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
 
     printMessage("[Commit Contents]");
     printMessage(QString("%1%2%3%4")
-                   .arg("Package", -25)
-                   .arg("Version", -15)
-                   .arg("Module", -15)
+                   .arg("Package", -25) // NOLINT
+                   .arg("Version", -15) // NOLINT
+                   .arg("Module", -15)  // NOLINT
                    .arg("Status")
                    .toStdString(),
                  2);
     printReplacedText(QString("%1%2%3%4")
-                        .arg(info.id.c_str(), -25)
-                        .arg(info.version.c_str(), -15)
-                        .arg("binary", -15)
+                        .arg(info.id.c_str(), -25)      // NOLINT
+                        .arg(info.version.c_str(), -15) // NOLINT
+                        .arg("binary", -15)             // NOLINT
                         .arg("committing")
                         .toStdString(),
                       2);
@@ -751,17 +748,17 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         return LINGLONG_ERR(localLayer);
     }
     printReplacedText(QString("%1%2%3%4")
-                        .arg(info.id.c_str(), -25)
-                        .arg(info.version.c_str(), -15)
-                        .arg("binary", -15)
+                        .arg(info.id.c_str(), -25)      // NOLINT
+                        .arg(info.version.c_str(), -15) // NOLINT
+                        .arg("binary", -15)             // NOLINT
                         .arg("complete\n")
                         .toStdString(),
                       2);
 
     printReplacedText(QString("%1%2%3%4")
-                        .arg(info.id.c_str(), -25)
-                        .arg(info.version.c_str(), -15)
-                        .arg("develop", -15)
+                        .arg(info.id.c_str(), -25)      // NOLINT
+                        .arg(info.version.c_str(), -15) // NOLINT
+                        .arg("develop", -15)            // NOLINT
                         .arg("committing")
                         .toStdString(),
                       2);
@@ -776,9 +773,9 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         return LINGLONG_ERR(localLayer);
     }
     printReplacedText(QString("%1%2%3%4")
-                        .arg(info.id.c_str(), -25)
-                        .arg(info.version.c_str(), -15)
-                        .arg("binary", -15)
+                        .arg(info.id.c_str(), -25)      // NOLINT
+                        .arg(info.version.c_str(), -15) // NOLINT
+                        .arg("binary", -15)             // NOLINT
                         .arg("complete\n")
                         .toStdString(),
                       2);
@@ -937,8 +934,8 @@ utils::error::Result<void> Builder::extractLayer(const QString &layerPath,
 }
 
 linglong::utils::error::Result<void> Builder::push(bool pushWithDevel,
-                                                   const QString &repoName,
-                                                   const QString &repoUrl)
+                                                   const QString &repoUrl,
+                                                   const QString &repoName)
 {
     LINGLONG_TRACE("push reference to remote repository");
 
@@ -950,9 +947,10 @@ linglong::utils::error::Result<void> Builder::push(bool pushWithDevel,
     auto cfg = this->repo.getConfig();
     auto oldCfg = cfg;
 
-    auto _ = utils::finally::finally([this, &oldCfg]() {
-        this->repo.setConfig(oldCfg);
-    });
+    auto _ = // NOLINT
+      utils::finally::finally([this, &oldCfg]() {
+          this->repo.setConfig(oldCfg);
+      });
 
     if (repoName != "") {
         cfg.defaultRepo = repoName.toStdString();
@@ -1082,9 +1080,11 @@ utils::error::Result<void> Builder::run(const QStringList &args)
       [&applicationMounts](const api::types::v1::ApplicationConfigurationPermissionsBind &bind) {
           applicationMounts.push_back(ocppi::runtime::config::types::Mount{
             .destination = bind.destination,
+            .gidMappings = {},
             .options = { { "rbind" } },
             .source = bind.source,
             .type = "bind",
+            .uidMappings = {},
           });
       };
     auto bindInnerMount =
@@ -1092,9 +1092,11 @@ utils::error::Result<void> Builder::run(const QStringList &args)
         const api::types::v1::ApplicationConfigurationPermissionsInnerBind &bind) {
           applicationMounts.push_back(ocppi::runtime::config::types::Mount{
             .destination = bind.destination,
+            .gidMappings = {},
             .options = { { "rbind" } },
             .source = "rootfs" + bind.source,
             .type = "bind",
+            .uidMappings = {},
           });
       };
 
@@ -1120,21 +1122,21 @@ utils::error::Result<void> Builder::run(const QStringList &args)
         return LINGLONG_ERR(container);
     }
 
-    ocppi::runtime::config::types::Process p;
+    ocppi::runtime::config::types::Process process;
 
     if (!args.isEmpty()) {
-        p.args = std::vector<std::string>{};
+        process.args = std::vector<std::string>{};
         for (const auto &arg : args) {
-            p.args->push_back(arg.toStdString());
+            process.args->push_back(arg.toStdString());
         }
     } else {
-        p.args = this->project.command;
-        if (!p.args) {
-            p.args = std::vector<std::string>{ "bash" };
+        process.args = this->project.command;
+        if (!process.args) {
+            process.args = std::vector<std::string>{ "bash" };
         }
     }
 
-    auto result = container->data()->run(p);
+    auto result = container->data()->run(process);
     if (!result) {
         return LINGLONG_ERR(result);
     }

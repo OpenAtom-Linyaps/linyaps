@@ -183,38 +183,42 @@ void inline copyDir(const QString &src, const QString &dst)
         if (info.fileName() == "." || info.fileName() == "..") {
             continue;
         }
+
         if (info.isDir()) {
             // 穿件文件夹，递归调用
             copyDir(info.filePath(), dst + "/" + info.fileName());
             continue;
         }
-        if (info.isSymLink()) {
-            char buf[PATH_MAX];
-            auto size = readlink(info.filePath().toStdString().c_str(), buf, sizeof(buf) - 1);
-            if (size == -1) {
-                qWarning() << "readlink failed! " << info.filePath();
-                continue;
-            }
-            buf[size] = '\0';
-            QFileInfo originFile(info.symLinkTarget());
-            QString newLinkFile = dst + "/" + info.fileName();
 
-            if (QString(buf).startsWith("/")) {
-                QFile::link(info.symLinkTarget(), newLinkFile);
-            } else {
-                // caculator the relative path
-                QDir linkFileDir(info.dir());
-                QString relativePath = linkFileDir.relativeFilePath(originFile.path());
-                auto newOriginFile = relativePath.endsWith("/")
-                  ? relativePath + originFile.fileName()
-                  : relativePath + "/" + originFile.fileName();
-                QFile::link(newOriginFile, newLinkFile);
-            }
+        if (!info.isSymLink()) {
+            // 拷贝文件
+            QFile file(info.filePath());
+            file.copy(dst + "/" + info.fileName());
             continue;
         }
-        // 拷贝文件
-        QFile file(info.filePath());
-        file.copy(dst + "/" + info.fileName());
+
+        std::array<char, PATH_MAX + 1> buf{};
+        auto size = readlink(info.filePath().toStdString().c_str(), buf.data(), PATH_MAX);
+        if (size == -1) {
+            qWarning() << "readlink failed! " << info.filePath();
+            continue;
+        }
+
+        QFileInfo originFile(info.symLinkTarget());
+        QString newLinkFile = dst + "/" + info.fileName();
+
+        if (buf.at(0) == '/') {
+            QFile::link(info.symLinkTarget(), newLinkFile);
+            continue;
+        }
+
+        // caculator the relative path
+        QDir linkFileDir(info.dir());
+        QString relativePath = linkFileDir.relativeFilePath(originFile.path());
+        auto newOriginFile = relativePath.endsWith("/")
+          ? relativePath + originFile.fileName()
+          : relativePath + "/" + originFile.fileName();
+        QFile::link(newOriginFile, newLinkFile);
     }
 }
 

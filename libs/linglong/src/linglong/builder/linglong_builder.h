@@ -26,7 +26,7 @@ class Builder
 {
 public:
     explicit Builder(const api::types::v1::BuilderProject &project,
-                     QDir workingDir,
+                     const QDir& workingDir,
                      repo::OSTreeRepo &repo,
                      runtime::ContainerBuilder &containerBuilder,
                      const api::types::v1::BuilderConfig &cfg);
@@ -42,8 +42,8 @@ public:
       -> utils::error::Result<void>;
     auto exportLayer(const QString &destination) -> utils::error::Result<void>;
 
-    auto extractLayer(const QString &layerPath, const QString &destination)
-      -> utils::error::Result<void>;
+    static auto extractLayer(const QString &layerPath,
+                      const QString &destination) -> utils::error::Result<void>;
 
     auto push(bool pushWithDevel = true, const QString &repoName = "", const QString &repoUrl = "")
       -> utils::error::Result<void>;

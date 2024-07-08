@@ -101,7 +101,7 @@ function(_pfl_fatal)
   _pfl_message(FATAL_ERROR ${ARGV})
 endfunction()
 
-set(_PFL_VERSION "v0.5.1")
+set(_PFL_VERSION "v0.5.2")
 
 _pfl_info("Version: ${_PFL_VERSION}")
 
@@ -747,10 +747,12 @@ function(pfl_add_library)
   endif()
 
   if(NOT "${PFL_ARG_LIBRARY_TYPE}" STREQUAL "HEADER_ONLY")
-    _pfl_warn("OUTPUT_NAME of ${TARGET_ALIAS} not set,"
-              "using ${PFL_ARG_OUTPUT_NAME}")
     set_target_properties("${TARGET}" PROPERTIES OUTPUT_NAME
                                                  ${PFL_ARG_OUTPUT_NAME})
+    if(NOT PFL_ARG_DISABLE_INSTALL)
+      _pfl_warn("OUTPUT_NAME of ${TARGET_ALIAS} not set,"
+                "using ${PFL_ARG_OUTPUT_NAME}")
+    endif()
   endif()
 
   _pfl_add_target_common()

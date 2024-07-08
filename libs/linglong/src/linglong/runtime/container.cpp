@@ -165,42 +165,11 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
       .uidMappings = {},
     });
 
-    {
-        std::ofstream ofs(bundle.absoluteFilePath("ld.so.cache").toStdString());
-        Q_ASSERT(ofs.is_open());
-        if (!ofs.is_open()) {
-            return LINGLONG_ERR("create ld config in bundle directory");
-        }
-    }
-    {
-        std::ofstream ofs(bundle.absoluteFilePath("ld.so.cache~").toStdString());
-        Q_ASSERT(ofs.is_open());
-        if (!ofs.is_open()) {
-            return LINGLONG_ERR("create ld config in bundle directory");
-        }
-    }
+    symlink("/run/linglong/etc/ld.so.cache", bundle.absoluteFilePath("ld.so.cache").toUtf8());
     this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
       .destination = "/etc/ld.so.cache",
-      .gidMappings = {},
-      .options = { { "rbind" } },
+      .options = { { "rbind", "ro", "nosymfollow" } },
       .source = bundle.absoluteFilePath("ld.so.cache").toStdString(),
-      .type = "bind",
-      .uidMappings = {},
-    });
-    this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
-      .destination = "/etc/ld.so.cache~",
-      .gidMappings = {},
-      .options = { { "rbind" } },
-      .source = bundle.absoluteFilePath("ld.so.cache~").toStdString(),
-      .type = "bind",
-      .uidMappings = {},
-    });
-
-    this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
-      .destination = "/run/host/monitor",
-      .gidMappings = {},
-      .options = { { "rbind" } },
-      .source = runtimeDir.absoluteFilePath("linglong/monitor").toStdString(),
       .type = "bind",
       .uidMappings = {},
     });
@@ -220,7 +189,7 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
     qDebug() << "run container in " << bundle.path();
     ocppi::runtime::RunOption opt;
     // 禁用crun自己创建cgroup，便于AM识别和管理玲珑应用
-    opt.GlobalOption::extra.emplace_back( "--cgroup-manager=disabled" );
+    opt.GlobalOption::extra.emplace_back("--cgroup-manager=disabled");
     auto result = this->cli.run(ocppi::runtime::ContainerID(this->id.toStdString()),
                                 std::filesystem::path(bundle.absolutePath().toStdString()),
                                 opt);

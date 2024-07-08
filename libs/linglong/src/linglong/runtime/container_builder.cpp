@@ -330,7 +330,8 @@ auto fixMount(ocppi::runtime::config::types::Config config) noexcept
     }
 
     using MountType = std::remove_reference_t<decltype(mounts)>::value_type;
-    auto rootBinds = originalRoot.entryInfoList(QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot);
+    auto rootBinds =
+      originalRoot.entryInfoList(QDir::Dirs | QDir::Files | QDir::System | QDir::NoDotAndDotDot);
     auto pos = mounts.begin();
     for (const auto &bind : rootBinds) {
         auto mountPoint = MountType{
@@ -363,7 +364,7 @@ auto fixMount(ocppi::runtime::config::types::Config config) noexcept
 
         auto dir = QDir{ tmpfs };
         for (const auto &rootDest :
-             dir.entryInfoList(QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot)) {
+             dir.entryInfoList(QDir::Dirs | QDir::Files | QDir::System | QDir::NoDotAndDotDot)) {
             auto rootDestPath = rootDest.absoluteFilePath();
             auto destination = rootDestPath.mid(originalRoot.absolutePath().size());
             auto mountPoint = MountType{

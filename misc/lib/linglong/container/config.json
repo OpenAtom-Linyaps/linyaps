@@ -28,19 +28,16 @@
             {
                 "path": "/bin/bash",
                 "args": [
-                    "/bin/bash",
                     "-c",
-                    "( /sbin/ldconfig || true ) && cat /etc/ld.so.cache~ > /etc/ld.so.cache"
+                    "mkdir -p /run/linglong/etc && /sbin/ldconfig -C /run/linglong/etc/ld.so.cache"
                 ]
             }
         ]
     },
     "mounts": [],
     "process": {
-        "env": [],
+        "env": ["LINGLONG_LD_SO_CACHE=/run/linglong/etc/ld.so.cache"],
         "cwd": "/",
-        "args": [
-            "bash"
-        ]
+        "args": ["bash"]
     }
 }

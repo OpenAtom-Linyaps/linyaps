@@ -47,20 +47,22 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
     if (!bundle.mkpath("./rootfs")) {
         return LINGLONG_ERR("make rootfs directory");
     }
-    auto _ = utils::finally::finally([&]() {
-        if (!qgetenv("LINGLONG_DEBUG").isEmpty()) {
-            runtimeDir.mkpath("linglong/debug");
-            auto archive = runtimeDir.absoluteFilePath(QString("linglong/debug/%1").arg(this->id));
-            if (QDir().rename(bundle.absolutePath(), archive)) {
-                return;
-            }
-            qCritical() << "failed to archive" << bundle.absolutePath() << "to" << archive;
-        }
-        if (bundle.removeRecursively()) {
-            return;
-        }
-        qCritical() << "failed to remove" << runtimeDir.absolutePath();
-    });
+    auto _ = // NOLINT
+      utils::finally::finally([&]() {
+          if (!qgetenv("LINGLONG_DEBUG").isEmpty()) {
+              runtimeDir.mkpath("linglong/debug");
+              auto archive =
+                runtimeDir.absoluteFilePath(QString("linglong/debug/%1").arg(this->id));
+              if (QDir().rename(bundle.absolutePath(), archive)) {
+                  return;
+              }
+              qCritical() << "failed to archive" << bundle.absolutePath() << "to" << archive;
+          }
+          if (bundle.removeRecursively()) {
+              return;
+          }
+          qCritical() << "failed to remove" << runtimeDir.absolutePath();
+      });
 
     if (!this->cfg.process) {
         // NOTE: process should be set in /usr/lib/linglong/container/config.json,
@@ -93,10 +95,9 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
         this->cfg.process->cwd = ("/run/host/rootfs" + QDir::currentPath()).toStdString();
     }
 
-    this->cfg.process->user = ocppi::runtime::config::types::User{
-        .gid = getgid(),
-        .uid = getuid(),
-    };
+    this->cfg.process->user = ocppi::runtime::config::types::User{};
+    this->cfg.process->user->gid = getgid();
+    this->cfg.process->user->uid = getuid();
 
     if (isatty(fileno(stdin)) != 0) {
         this->cfg.process->terminal = true;
@@ -119,7 +120,7 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
 
     for (const auto &env : *this->cfg.process->env) {
         auto key = env.substr(0, env.find_first_of('='));
-        auto it =
+        auto it = // NOLINT
           std::find_if(originEnvs.cbegin(), originEnvs.cend(), [&key](const std::string &env) {
               return env.rfind(key, 0) == 0;
           });
@@ -157,9 +158,11 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
     }
     this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
       .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
+      .gidMappings = {},
       .options = { { "ro", "rbind" } },
       .source = bundle.absoluteFilePath("zz_deepin-linglong-app.ld.so.conf").toStdString(),
       .type = "bind",
+      .uidMappings = {},
     });
 
     {
@@ -178,15 +181,19 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
     }
     this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
       .destination = "/etc/ld.so.cache",
+      .gidMappings = {},
       .options = { { "rbind" } },
       .source = bundle.absoluteFilePath("ld.so.cache").toStdString(),
       .type = "bind",
+      .uidMappings = {},
     });
     this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
       .destination = "/etc/ld.so.cache~",
+      .gidMappings = {},
       .options = { { "rbind" } },
       .source = bundle.absoluteFilePath("ld.so.cache~").toStdString(),
       .type = "bind",
+      .uidMappings = {},
     });
 
     nlohmann::json json = this->cfg;
@@ -204,7 +211,7 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
     qDebug() << "run container in " << bundle.path();
     ocppi::runtime::RunOption opt;
     // 禁用crun自己创建cgroup，便于AM识别和管理玲珑应用
-    opt.GlobalOption::extra.push_back({ "--cgroup-manager=disabled" });
+    opt.GlobalOption::extra.emplace_back( "--cgroup-manager=disabled" );
     auto result = this->cli.run(ocppi::runtime::ContainerID(this->id.toStdString()),
                                 std::filesystem::path(bundle.absolutePath().toStdString()),
                                 opt);

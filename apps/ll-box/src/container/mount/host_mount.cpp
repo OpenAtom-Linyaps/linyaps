@@ -86,7 +86,6 @@ public:
             driver_->CreateDestinationPath(dest_parent_path);
             if (m.extraFlags & OPTION_COPY_SYMLINK) {
                 std::array<char, PATH_MAX + 1> buf{};
-                buf.fill(0);
                 auto len = readlink(source.c_str(), buf._M_elems, PATH_MAX);
                 if (len == -1) {
                     logErr() << "readlink failed:" << source << strerror(errno);

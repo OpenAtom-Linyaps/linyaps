@@ -45,27 +45,25 @@ int PlatformClone(int (*callback)(void *), int flags, void *arg, ...)
 int Exec(const util::str_vec &args, std::optional<std::vector<std::string>> env_list)
 {
     auto targetArgc = args.size();
-    const char *targetArgv[targetArgc + 1];
+    std::vector<const char *> targetArgv;
     for (decltype(targetArgc) i = 0; i < targetArgc; i++) {
-        targetArgv[i] = args[i].c_str();
+        targetArgv.push_back(args[i].c_str());
     }
-    targetArgv[targetArgc] = nullptr;
+    targetArgv.push_back(nullptr);
 
     auto targetEnvc = env_list.has_value() ? env_list->size() : 0;
-    const char **targetEnvv = targetEnvc ? new const char *[targetEnvc + 1] : nullptr;
-    if (targetEnvv) {
-        for (decltype(targetEnvc) i = 0; i < targetEnvc; i++) {
-            targetEnvv[i] = env_list.value().at(i).c_str();
-        }
-        targetEnvv[targetEnvc] = nullptr;
+    std::vector<const char *> targetEnvv;
+
+    for (decltype(targetEnvc) i = 0; i < targetEnvc; i++) {
+        targetEnvv.push_back(env_list.value().at(i).c_str());
     }
+    targetEnvv.push_back(nullptr);
 
     logDbg() << "execve" << targetArgv[0] << " in pid:" << getpid();
 
-    int ret =
-      execvpe(targetArgv[0], const_cast<char **>(targetArgv), const_cast<char **>(targetEnvv));
-
-    delete[] targetEnvv;
+    int ret = execvpe(targetArgv[0],
+                      const_cast<char **>(targetArgv.data()),
+                      const_cast<char **>(targetEnvv.data()));
 
     return ret;
 }

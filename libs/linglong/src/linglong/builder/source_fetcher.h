@@ -21,7 +21,7 @@ namespace linglong::builder {
 class SourceFetcher
 {
 public:
-    explicit SourceFetcher(api::types::v1::BuilderProjectSource s,
+    explicit SourceFetcher(api::types::v1::BuilderProjectSource source,
                            api::types::v1::BuilderConfig cfg,
                            const QDir &cacheDir);
 

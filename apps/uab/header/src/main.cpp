@@ -103,7 +103,7 @@ std::string detectLinglong() noexcept
     return cliPath;
 }
 
-int importSelf(std::string_view cliBin, std::string_view appRef, std::string_view uab) noexcept
+int importSelf(const std::string &cliBin, std::string_view appRef, const std::string &uab) noexcept
 {
     std::array<int, 2> out{};
     if (pipe(out.data()) == -1) {
@@ -124,7 +124,10 @@ int importSelf(std::string_view cliBin, std::string_view appRef, std::string_vie
             return -1;
         }
 
-        return ::execl(cliBin.data(), cliBin.data(), "--json", "list", nullptr);
+        if (::execl(cliBin.data(), cliBin.data(), "--json", "list", nullptr) == -1) {
+            std::cerr << "execl() failed:" << ::strerror(errno) << std::endl;
+            return -1;
+        }
     }
 
     ::close(out[1]);
@@ -192,7 +195,10 @@ int importSelf(std::string_view cliBin, std::string_view appRef, std::string_vie
     }
 
     if (pid == 0) {
-        return ::execl(cliBin.data(), cliBin.data(), "install", uab, nullptr);
+        if (::execl(cliBin.data(), cliBin.data(), "install", uab.data(), nullptr) == -1) {
+            std::cerr << "execl() failed:" << ::strerror(errno) << std::endl;
+            return -1;
+        }
     }
 
     status = -1;
@@ -638,7 +644,7 @@ int extractBundle(std::string_view destination) noexcept
                 const auto &runtimeStr = layer.info.runtime.value();
                 auto splitSlash = std::find(runtimeStr.cbegin(), runtimeStr.cend(), '/');
                 auto splitColon = std::find(runtimeStr.cbegin(), runtimeStr.cend(), ':');
-                runtimeID = runtimeStr.substr(std::distance(baseStr.cbegin(), splitColon) + 1,
+                runtimeID = runtimeStr.substr(std::distance(runtimeStr.cbegin(), splitColon) + 1,
                                               splitSlash - splitColon - 1);
             }
 
@@ -870,7 +876,8 @@ int main(int argc, char **argv)
     auto appRef =
       appInfo.channel + ":" + appInfo.id + "/" + appInfo.version + "/" + appInfo.arch[0];
     if (!cliPath.empty()) {
-        if (importSelf(cliPath, appRef, selfBin) != 0) {
+        std::string uab{ selfBin.cbegin(), selfBin.cend() };
+        if (importSelf(cliPath, appRef, uab) != 0) {
             std::cerr << "failed to import uab by ll-cli" << std::endl;
             return -1;
         }

@@ -58,10 +58,23 @@ message: install org.deepin.calculator, version:5.7.21.4 success
 
 After the application is installed, the installation result will be displayed.
 
-The layer files we export using the `ll-builder export` command can be installed using the `ll-cli install` command.
+The layer or uab files we export using the `ll-builder export` command can be installed using the `ll-cli install` command.
 
+`.layer`
 ```bash
 ll-cli install ./com.baidu.baidunetdisk_4.17.7.0_x86_64_runtime.layer
+```
+
+`.uab`
+There are two ways to install uab files
+- use `ll-cli install` to install
+```bash
+ll-cli install com.baidu.baidunetdisk_x86_64_4.17.7.0_main.uab
+```
+
+- Install by running `.uab` directly
+```bash
+./com.baidu.baidunetdisk_x86_64_4.17.7.0_main.uab
 ```
 
 You can use the command `ll-cli list | grep com.baidu.baidunetdisk` to check if it has been installed successfully.

@@ -18,4 +18,4 @@ pfl_add_executable(
 
 include(GNUInstallDirs)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/uab-loader
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/linglong/builder/uab)
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/linglong/builder/uab)

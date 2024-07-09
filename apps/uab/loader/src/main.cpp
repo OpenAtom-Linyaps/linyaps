@@ -475,8 +475,15 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     std::vector<std::string> command;
     try {
         auto content = nlohmann::json::parse(appStream);
-        if (content.find("command") != content.end()) {
-            command = content["command"].get<std::vector<std::string>>();
+        if (content.find("command") == content.end()) {
+            std::cerr << "couldn't find command of application" << std::endl;
+            return -1;
+        }
+
+        command = content["command"].get<std::vector<std::string>>();
+        if (command.empty()) {
+            std::cerr << "empty commands has been detected" << std::endl;
+            return -1;
         }
     } catch (nlohmann::json::parse_error &e) {
         std::cerr << "parse container config failed: " << e.what() << std::endl;
@@ -489,9 +496,38 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
         return -1;
     }
 
-    if (!command.empty()) {
-        config.process->args = command;
+    // To avoid the original args containing spaces, each arg is wrapped in single quotes, and the
+    // single quotes inside the arg are escaped and replaced
+    using namespace std::literals;
+    constexpr auto replaceStr = R"('\'')"sv;
+    std::for_each(command.begin(), command.end(), [replaceStr](std::string &arg) {
+        std::string::size_type pos{ 0 };
+        while ((pos = arg.find('\'', pos)) != std::string::npos) {
+            arg.replace(pos, replaceStr.size(), replaceStr);
+            pos += replaceStr.size();
+        }
+
+        arg.insert(arg.begin(), '\'');
+        arg.push_back('\'');
+    });
+    command.insert(command.begin(), "exec");
+
+    std::string commandStr;
+    while (true) {
+        commandStr.append(command.front());
+        command.erase(command.begin());
+
+        if (command.empty()) {
+            break;
+        }
+
+        commandStr.push_back(' ');
     }
+
+    // Add 'bash' '--login' '-c' in front of the original args so that we can use the environment
+    // variables configured in /etc/profile
+    command = { "/bin/bash", "--login", "-c", std::move(commandStr) };
+    config.process->args = std::move(command);
 
     std::filesystem::directory_iterator it{ generatorsDir, ec };
     if (ec) {

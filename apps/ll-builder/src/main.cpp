@@ -243,6 +243,8 @@ int main(int argc, char **argv)
                          "linglong.yaml,then enter the directory(app name) and execute "
                          "the script to generate the linglong .layer(.uab)",
                          "script name");
+    auto layerMode = QCommandLineOption({ "l", "layer" }, "export layer file");
+    auto iconFile = QCommandLineOption("icon", "uab icon (optional)", "path");
     if (command == "convert") {
         parser.clearPositionalArguments();
         auto pkgFile = QCommandLineOption({ "f", "file" },
@@ -265,8 +267,16 @@ int main(int argc, char **argv)
         auto pkgDescription = QCommandLineOption({ "d", "description" },
                                                  "detailed description of the app",
                                                  "app description");
-        parser.addOptions(
-          { pkgFile, pkgUrl, pkgHash, pkgID, pkgName, pkgVersion, pkgDescription, scriptOpt });
+        parser.addOptions({ pkgFile,
+                            pkgUrl,
+                            pkgHash,
+                            pkgID,
+                            pkgName,
+                            pkgVersion,
+                            pkgDescription,
+                            scriptOpt,
+                            layerMode,
+                            iconFile });
         parser.addPositionalArgument(
           "convert",
           "convert app with (deb,AppImage(appimage)) format to linglong format, you can "
@@ -304,7 +314,7 @@ int main(int argc, char **argv)
           << parser.value(pkgID) << parser.value(pkgName) << parser.value(pkgVersion)
           << parser.value(pkgDescription);
 
-        auto createPorject = [&]() -> linglong::utils::error::Result<void> {
+        auto createProject = [&]() -> linglong::utils::error::Result<void> {
             LINGLONG_TRACE("create appimage project");
 
             const auto file = templateArgs.at(0);
@@ -400,7 +410,7 @@ int main(int argc, char **argv)
             return LINGLONG_OK;
         };
 
-        auto result = createPorject();
+        auto result = createProject();
         if (!result) {
             qCritical() << result.error();
             return -1;
@@ -464,10 +474,21 @@ int main(int argc, char **argv)
                   return -1;
               }
 
-              result = builder.exportLayer(QDir::current().absolutePath());
-              if (!result) {
-                  qCritical() << result.error();
-                  return -1;
+              if (parser.isSet(layerMode)) {
+                  result = builder.exportLayer(QDir::current().absolutePath());
+                  if (!result) {
+                      qCritical() << result.error();
+                      return -1;
+                  }
+              } else {
+                  result = builder.exportUAB(QDir::currentPath(),
+                                             { .iconPath = parser.value(iconFile),
+                                               .exportDevelop = true,
+                                               .exportI18n = true });
+                  if (!result) {
+                      qCritical() << result.error();
+                      return -1;
+                  }
               }
 
               // delete the generated temporary file, only keep .layer(.uab) files

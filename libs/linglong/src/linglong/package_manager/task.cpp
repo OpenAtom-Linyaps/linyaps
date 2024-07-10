@@ -82,7 +82,8 @@ void InstallTask::updateTask(double currentPercentage,
     if (totalPercentage == 0) {
         return;
     }
-    auto increase = (currentPercentage / totalPercentage) * partsMap[Success];
+
+    auto increase = (currentPercentage / totalPercentage) * partsMap[m_status];
     auto partPercentage = QString("%1/%2(%3%)")
                             .arg(currentPercentage)
                             .arg(totalPercentage)
@@ -105,19 +106,13 @@ void InstallTask::updateStatus(Status newStatus, const QString &message) noexcep
     Q_EMIT TaskChanged(taskID(), formatPercentage(), message, m_status, {});
 }
 
-void InstallTask::updateStatus(Status newStatus, linglong::utils::error::Error err) noexcept
+void InstallTask::reportError(linglong::utils::error::Error err) noexcept
 {
-    qInfo() << "update task" << m_taskID << "status to" << newStatus << err.message();
-
-    if (newStatus == Success || newStatus == Failed || newStatus == Canceled) {
-        m_statePercentage = 100;
-    } else {
-        m_statePercentage += partsMap[m_status];
-    }
-
-    Q_EMIT TaskChanged(taskID(), formatPercentage(), err.message(), newStatus, {});
-    m_status = newStatus;
+    m_statePercentage = 100;
+    m_status = Status::Failed;
     m_err = std::move(err);
+
+    Q_EMIT TaskChanged(taskID(), formatPercentage(), err.message(), Status::Failed, {});
 }
 
 QString InstallTask::formatPercentage(double increase) const noexcept

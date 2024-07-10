@@ -171,7 +171,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
           package::LayerPackager layerPackager;
           auto layerDir = layerPackager.unpack(*layerFile);
           if (!layerDir) {
-              taskRef.updateStatus(InstallTask::Failed, std::move(layerDir).error());
+              taskRef.reportError(std::move(layerDir).error());
               return;
           }
 
@@ -187,13 +187,13 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
 
           auto info = (*layerDir).info();
           if (!info) {
-              taskRef.updateStatus(InstallTask::Failed, std::move(info).error());
+              taskRef.reportError(std::move(info).error());
               return;
           }
 
           auto result = this->repo.importLayerDir(*layerDir);
           if (!result) {
-              taskRef.updateStatus(InstallTask::Failed, std::move(result).error());
+              taskRef.reportError(std::move(result).error());
               return;
           }
 
@@ -346,7 +346,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
           taskRef.updateStatus(InstallTask::preInstall, "prepare for installing uab");
           auto verifyRet = uab->verify();
           if (!verifyRet) {
-              taskRef.updateStatus(InstallTask::Failed, std::move(verifyRet).error());
+              taskRef.reportError(std::move(verifyRet).error());
               return;
           }
 
@@ -363,7 +363,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
 
           auto mountPoint = uab->mountUab();
           if (!mountPoint) {
-              taskRef.updateStatus(InstallTask::Failed, std::move(mountPoint).error());
+              taskRef.reportError(std::move(mountPoint).error());
               return;
           }
 
@@ -409,14 +409,14 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
 
               auto infoRet = layerDir.info();
               if (!infoRet) {
-                  taskRef.updateStatus(InstallTask::Failed, std::move(infoRet).error());
+                  taskRef.reportError(std::move(infoRet).error());
                   return;
               }
               auto &info = *infoRet;
 
               auto refRet = package::Reference::fromPackageInfo(info);
               if (!refRet) {
-                  taskRef.updateStatus(InstallTask::Failed, std::move(refRet).error());
+                  taskRef.reportError(std::move(refRet).error());
                   return;
               }
               auto &ref = *refRet;
@@ -432,7 +432,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
                       && !isAppLayer) { // if dependency already exist, skip it
                       continue;
                   }
-                  taskRef.updateStatus(InstallTask::Failed, std::move(ret).error());
+                  taskRef.reportError(std::move(ret).error());
                   return;
               }
 
@@ -460,7 +460,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
 
                   const auto &completedLayer = this->repo.getLayerDir(ref);
                   if (!completedLayer) {
-                      taskRef.updateStatus(InstallTask::Failed, std::move(ret).error());
+                      taskRef.reportError(std::move(ret).error());
                       return;
                   }
 
@@ -469,7 +469,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
                                                       appRef.toString(),
                                                       QString::fromStdString(metaInfo.get().uuid));
                   if (!ret) {
-                      taskRef.updateStatus(InstallTask::Failed, std::move(ret).error());
+                      taskRef.reportError(std::move(ret).error());
                       return;
                   }
 

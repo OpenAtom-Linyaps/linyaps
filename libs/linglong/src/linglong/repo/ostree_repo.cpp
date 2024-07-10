@@ -38,206 +38,176 @@ namespace {
 
 struct ostreeUserData
 {
-    OSTreeRepo *repo{ nullptr };
+    bool scanning{ false };
+    bool caught_error{ false };
+    bool last_was_metadata{ false };
+    guint outstanding_fetches{ 0 };
+    guint outstanding_writes{ 0 };
+    guint fetched{ 0 };
+    guint requested{ 0 };
+    guint scanned_metadata{ 0 };
+    guint bytes_transferred{ 0 };
+    guint fetched_delta_parts{ 0 };
+    guint total_delta_parts{ 0 };
+    guint fetched_delta_fallbacks{ 0 };
+    guint total_delta_fallbacks{ 0 };
+    guint total_delta_superblocks{ 0 };
+    guint outstanding_metadata_fetches{ 0 };
+    guint metadata_fetched{ 0 };
+    guint64 fetched_delta_part_size{ 0 };
+    guint64 total_delta_part_size{ 0 };
+    guint64 total_delta_part_usize{ 0 };
+    char *ostree_status{ nullptr };
     service::InstallTask *taskContext{ nullptr };
+    std::string status;
+    long double progress{ 0 };
+    long double last_total{ 0 };
+
+    ~ostreeUserData() { g_clear_pointer(&ostree_status, g_free); }
 };
-
-char *formatted_time_remaining_from_seconds(guint64 seconds_remaining)
-{
-    guint64 minutes_remaining = seconds_remaining / 60;
-    guint64 hours_remaining = minutes_remaining / 60;
-    guint64 days_remaining = hours_remaining / 24;
-
-    GString *description = g_string_new(NULL);
-
-    if (days_remaining != 0U) {
-        g_string_append_printf(description, "%" G_GUINT64_FORMAT " days ", days_remaining);
-    }
-
-    if (hours_remaining != 0U) {
-        g_string_append_printf(description, "%" G_GUINT64_FORMAT " hours ", hours_remaining % 24);
-    }
-
-    if (minutes_remaining != 0U) {
-        g_string_append_printf(description,
-                               "%" G_GUINT64_FORMAT " minutes ",
-                               minutes_remaining % 60);
-    }
-
-    g_string_append_printf(description, "%" G_GUINT64_FORMAT " seconds ", seconds_remaining % 60);
-
-    return g_string_free(description, FALSE);
-}
 
 void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
 {
+    auto *data = static_cast<ostreeUserData *>(user_data);
+    g_clear_pointer(&data->ostree_status, g_free);
 
-    auto data = static_cast<ostreeUserData *>(user_data);
-
-    g_autofree char *status = NULL;
-    gboolean caught_error = 0;
-    gboolean scanning = 0;
-    guint outstanding_fetches = 0;
-    guint outstanding_metadata_fetches = 0;
-    guint outstanding_writes = 0;
-    guint n_scanned_metadata = 0;
-    guint fetched_delta_parts = 0;
-    guint total_delta_parts = 0;
-    guint fetched_delta_part_fallbacks = 0;
-    guint total_delta_part_fallbacks = 0;
-    guint new_progress = 0;
-    char const *formatted_bytes_sec = "0KB";
-
-    g_autoptr(GString) buf = g_string_new("");
+    if (data->caught_error) {
+        return;
+    }
 
     ostree_async_progress_get(progress,
                               "outstanding-fetches",
                               "u",
-                              &outstanding_fetches,
-                              "outstanding-metadata-fetches",
-                              "u",
-                              &outstanding_metadata_fetches,
+                              &data->outstanding_fetches,
                               "outstanding-writes",
                               "u",
-                              &outstanding_writes,
-                              "caught-error",
-                              "b",
-                              &caught_error,
+                              &data->outstanding_writes,
+                              "fetched",
+                              "u",
+                              &data->fetched,
+                              "requested",
+                              "u",
+                              &data->requested,
                               "scanning",
                               "u",
-                              &scanning,
+                              &data->scanning,
+                              "caught-error",
+                              "b",
+                              &data->caught_error,
                               "scanned-metadata",
                               "u",
-                              &n_scanned_metadata,
+                              &data->scanned_metadata,
+                              "bytes-transferred",
+                              "t",
+                              &data->bytes_transferred,
                               "fetched-delta-parts",
                               "u",
-                              &fetched_delta_parts,
+                              &data->fetched_delta_parts,
                               "total-delta-parts",
                               "u",
-                              &total_delta_parts,
+                              &data->total_delta_parts,
                               "fetched-delta-fallbacks",
                               "u",
-                              &fetched_delta_part_fallbacks,
+                              &data->fetched_delta_fallbacks,
                               "total-delta-fallbacks",
                               "u",
-                              &total_delta_part_fallbacks,
+                              &data->total_delta_fallbacks,
+                              "fetched-delta-part-size",
+                              "t",
+                              &data->fetched_delta_part_size,
+                              "total-delta-part-size",
+                              "t",
+                              &data->total_delta_part_size,
+                              "total-delta-part-usize",
+                              "t",
+                              &data->total_delta_part_usize,
+                              "total-delta-superblocks",
+                              "u",
+                              &data->total_delta_superblocks,
+                              "outstanding-metadata-fetches",
+                              "u",
+                              &data->outstanding_metadata_fetches,
+                              "metadata-fetched",
+                              "u",
+                              &data->metadata_fetched,
                               "status",
                               "s",
-                              &status,
-                              NULL);
+                              &data->ostree_status,
+                              nullptr);
 
-    if (*status != '\0') {
-        new_progress = 100;
-        g_string_append(buf, status);
-    } else if (caught_error) {
-        auto msg = "Caught error, waiting for outstanding tasks";
-        g_string_append_printf(buf, "%s", msg);
-        Q_EMIT data->taskContext->updateStatus(service::InstallTask::Failed, msg);
-    } else if (outstanding_fetches) {
-        guint64 bytes_transferred, start_time, total_delta_part_size;
-        guint fetched, metadata_fetched, requested;
-        guint64 current_time = g_get_monotonic_time();
-        g_autofree char *formatted_bytes_transferred = NULL;
-        guint64 bytes_sec = 0;
+    long double total{ 0 };
+    long double new_progress{ 0 };
+    guint64 total_transferred{ 0 };
+    bool last_was_metadata{ data->last_was_metadata };
 
-        /* Note: This is not atomic wrt the above getter call. */
-        ostree_async_progress_get(progress,
-                                  "bytes-transferred",
-                                  "t",
-                                  &bytes_transferred,
-                                  "fetched",
-                                  "u",
-                                  &fetched,
-                                  "metadata-fetched",
-                                  "u",
-                                  &metadata_fetched,
-                                  "requested",
-                                  "u",
-                                  &requested,
-                                  "start-time",
-                                  "t",
-                                  &start_time,
-                                  "total-delta-part-size",
-                                  "t",
-                                  &total_delta_part_size,
-                                  NULL);
+    auto updateProgress = utils::finally::finally([&new_progress, data, &total] {
+        LINGLONG_TRACE("update progress status")
 
-        formatted_bytes_transferred = g_format_size_full(bytes_transferred, (GFormatSizeFlags)0);
-        /* Ignore the first second, or when we haven't transferred any
-        data, since those could cause divide by zero below. */
-        if ((current_time - start_time) < G_USEC_PER_SEC || bytes_transferred == 0) {
-            bytes_sec = 0;
-            formatted_bytes_sec = g_strdup("-");
-        } else {
-            bytes_sec = bytes_transferred / ((current_time - start_time) / G_USEC_PER_SEC);
-            formatted_bytes_sec = g_format_size(bytes_sec);
+        if (data->caught_error) {
+            Q_EMIT data->taskContext->reportError(
+              LINGLONG_ERRV("Caught error during pulling data, waiting for outstanding task"));
+            return;
         }
 
-        /* Are we doing deltas?  If so, we can be more accurate */
-        if (total_delta_parts > 0) {
-            guint64 fetched_delta_part_size =
-              ostree_async_progress_get_uint64(progress, "fetched-delta-part-size");
-            g_autofree char *formatted_fetched = NULL;
-            g_autofree char *formatted_total = NULL;
-
-            /* Here we merge together deltaparts + fallbacks to avoid bloating the text UI */
-            fetched_delta_parts += fetched_delta_part_fallbacks;
-            total_delta_parts += total_delta_part_fallbacks;
-
-            formatted_fetched = g_format_size(fetched_delta_part_size);
-            formatted_total = g_format_size(total_delta_part_size);
-
-            if (bytes_sec > 0) {
-                guint64 est_time_remaining = 0;
-                if (total_delta_part_size > fetched_delta_part_size) {
-                    est_time_remaining =
-                      (total_delta_part_size - fetched_delta_part_size) / bytes_sec;
-                }
-                g_autofree char *formatted_est_time_remaining =
-                  formatted_time_remaining_from_seconds(est_time_remaining);
-                /*No space between %s and remaining, since formatted_est_time_remaining has a
-                trailing space */
-                g_string_append_printf(buf,
-                                       "Receiving delta parts: %u/%u %s/%s %s/s %sremaining",
-                                       fetched_delta_parts,
-                                       total_delta_parts,
-                                       formatted_fetched,
-                                       formatted_total,
-                                       formatted_bytes_sec,
-                                       formatted_est_time_remaining);
-            } else {
-                g_string_append_printf(buf,
-                                       "Receiving delta parts: %u/%u %s/%s",
-                                       fetched_delta_parts,
-                                       total_delta_parts,
-                                       formatted_fetched,
-                                       formatted_total);
-            }
-        } else if ((scanning != 0) || (outstanding_metadata_fetches != 0U)) {
-            new_progress += 5;
-            g_object_set_data(G_OBJECT(progress), "last-was-metadata", GUINT_TO_POINTER(TRUE));
-            g_string_append_printf(buf,
-                                   "Receiving metadata objects: %u/(estimating) %s/s %s",
-                                   metadata_fetched,
-                                   formatted_bytes_sec,
-                                   formatted_bytes_transferred);
-        } else {
-            g_string_append_printf(buf,
-                                   "Receiving objects: %u%% (%u/%u) %s/s %s",
-                                   (guint)((((double)fetched) / requested) * 100),
-                                   fetched,
-                                   requested,
-                                   formatted_bytes_sec,
-                                   formatted_bytes_transferred);
-            new_progress = fetched * 97 / requested;
+        if (new_progress < data->progress && data->last_total != total) {
+            qInfo() << "ignore increase of total objects, old:"
+                    << static_cast<double>(data->last_total)
+                    << "new:" << static_cast<double>(total);
+            new_progress = data->progress;
         }
 
-        Q_EMIT data->taskContext->updateTask(fetched, requested, "pulling.");
-    } else if (outstanding_writes) {
-        g_string_append_printf(buf, "Writing objects: %u", outstanding_writes);
-    } else {
-        g_string_append_printf(buf, "Scanning metadata: %u", n_scanned_metadata);
+        data->last_total = total;
+        if (new_progress > 100) {
+            qDebug() << "progress overflow, limiting to 100";
+            new_progress = 100;
+        }
+
+        data->progress = new_progress;
+        Q_EMIT data->taskContext->updateTask(static_cast<double>(data->progress),
+                                             100,
+                                             QString::fromStdString(data->status));
+    });
+
+    if (data->requested == 0) {
+        return;
     }
+
+    if (*(data->ostree_status) != 0) {
+        new_progress = 100;
+        return;
+    }
+
+    total_transferred = data->bytes_transferred;
+    data->last_was_metadata = false;
+    if (data->total_delta_parts == 0
+        && (data->outstanding_metadata_fetches > 0 || last_was_metadata)
+        && data->metadata_fetched < 20) {
+        if (data->outstanding_metadata_fetches > 0) {
+            data->last_was_metadata = true;
+        }
+
+        data->status = "Downloading metadata";
+        new_progress = 0;
+        if (data->progress > 0) {
+            new_progress = (data->fetched * 5.0) / data->requested;
+        }
+    } else {
+        if (data->total_delta_parts > 0) {
+            total = data->total_delta_part_size - data->fetched_delta_part_size;
+            data->status = "Downloading delta part";
+        } else {
+            auto average_object_size{ 1.0 };
+            if (data->fetched > 0) {
+                average_object_size = static_cast<double>(data->bytes_transferred) / data->fetched;
+            }
+
+            total = average_object_size * data->requested;
+            data->status = "Downloading files";
+        }
+    }
+
+    new_progress = total > 0 ? 5 + ((total_transferred / total) * 92) : 97;
+    new_progress += (data->outstanding_writes > 0 ? (3.0 / data->outstanding_writes) : 3.0);
 }
 
 QString ostreeSpecFromReference(const package::Reference &ref,
@@ -781,7 +751,6 @@ QDir OSTreeRepo::createLayerQDir(const package::Reference &ref,
 {
     QDir dir =
       this->repoDir.absoluteFilePath("layers/" + ostreeSpecFromReferenceV2(ref, module, subRef));
-    Q_ASSERT(dir.exists());
     dir.mkpath(".");
     return dir;
 }
@@ -1282,7 +1251,7 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
 
     char *refs[] = { (char *)refString.data(), nullptr };
 
-    ostreeUserData data{ .repo = this, .taskContext = &taskContext };
+    ostreeUserData data{ .taskContext = &taskContext };
     auto *progress = ostree_async_progress_new_and_connect(progress_changed, (void *)&data);
     Q_ASSERT(progress != nullptr);
 
@@ -1294,6 +1263,7 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
                                    progress,
                                    cancellable,
                                    &gErr);
+    ostree_async_progress_finish(progress);
     if (status == FALSE) {
         // fallback to old ref
         qWarning() << gErr->message;
@@ -1311,8 +1281,7 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
                                   cancellable,
                                   &gErr);
         if (status == FALSE) {
-            taskContext.updateStatus(service::InstallTask::Failed,
-                                     LINGLONG_ERRV("ostree_repo_pull", gErr));
+            taskContext.reportError(LINGLONG_ERRV("ostree_repo_pull", gErr));
             return;
         }
     }
@@ -1329,7 +1298,7 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
                                          this->createLayerQDir(reference, module),
                                          refString);
     if (!result) {
-        taskContext.updateStatus(service::InstallTask::Failed, LINGLONG_ERRV(result));
+        taskContext.reportError(LINGLONG_ERRV(result));
         return;
     }
 

@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     QDir monitorPath = QStringLiteral("/run/user/") + uidString + QStringLiteral("/linglong/monitor");
 
     if (!monitorPath.exists())
-        monitorPath.mkpath(".");
+        monitorPath.mkpath(monitorPath.absolutePath());
 
     for(QString &filePath: watchFilesPaths) {
         qDebug() << QString("Add to watch: %1").arg(filePath);

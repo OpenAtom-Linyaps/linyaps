@@ -32,6 +32,7 @@ configure_files(
   lib/systemd/system-preset/91-linglong.preset
   lib/systemd/user-environment-generators/61-linglong
   lib/systemd/user/linglong-upgrade.service
+  lib/systemd/user/linglong-session-helper.service
   lib/systemd/user/linglong-upgrade.timer
   lib/sysusers.d/linglong.conf
   script/linglong-repair-tool

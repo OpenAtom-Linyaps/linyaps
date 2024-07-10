@@ -748,21 +748,23 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
         return toDBusReply(paras);
     }
 
-    auto fuzzyRef = fuzzyReferenceFromPackage(paras->package);
-    if (!fuzzyRef) {
-        return toDBusReply(fuzzyRef);
+    auto installedAppFuzzyRef = package::FuzzyReference::parse(QString::fromStdString(paras->package.id));
+    if (!installedAppFuzzyRef) {
+        return toDBusReply(installedAppFuzzyRef);
     }
 
-    auto ref = this->repo.clearReference(*fuzzyRef,
+    auto ref = this->repo.clearReference(*installedAppFuzzyRef,
                                          {
                                            .fallbackToRemote = false // NOLINT
                                          });
     if (!ref) {
-        return toDBusReply(-1, fuzzyRef->toString() + " not installed.");
+        return toDBusReply(-1, installedAppFuzzyRef->toString() + " not installed.");
     }
 
-    auto fuzzyRefWithoutVersion = *fuzzyRef;
-    fuzzyRefWithoutVersion.version = std::nullopt;
+    auto fuzzyRef = fuzzyReferenceFromPackage(paras->package);
+    if (!fuzzyRef) {
+        return toDBusReply(fuzzyRef);
+    }
 
     auto newRef = this->repo.clearReference(*fuzzyRef,
                                             {

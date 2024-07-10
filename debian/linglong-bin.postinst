@@ -26,6 +26,13 @@ if [ "$1" = "configure" ] || [ "$1" = "abort-upgrade" ] || [ "$1" = "abort-decon
                         # cleaned up on purge. Also remove old symlinks.
                         deb-systemd-helper --user update-state 'linglong-upgrade.service' >/dev/null || true
                 fi
+
+                deb-systemd-helper --user unmask 'linglong-session-helper.service' >/dev/null || true
+                if deb-systemd-helper --quiet --user was-enabled 'linglong-session-helper.service' ; then
+                        deb-systemd-helper --user enable 'linglong-session-helper.service' >/dev/null || true
+                else
+                        deb-systemd-helper --user update-state 'linglong-session-helper.service' >/dev/null || true
+                fi
         fi
 fi
 

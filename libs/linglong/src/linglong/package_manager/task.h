@@ -56,7 +56,7 @@ public:
                     double totalPercentage,
                     const QString &message = "") noexcept;
     void updateStatus(Status newStatus, const QString &message = "") noexcept;
-    void updateStatus(Status newStatus, linglong::utils::error::Error) noexcept;
+    void reportError(linglong::utils::error::Error err) noexcept;
 
     [[nodiscard]] Status currentStatus() const noexcept { return m_status; }
 

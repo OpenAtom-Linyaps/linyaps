@@ -690,6 +690,10 @@ utils::error::Result<package::Reference> clearReferenceRemote(const package::Fuz
           }
 
           for (const auto &record : resp.getData()) {
+              if (fuzzy.id != record.getAppId()) {
+                  continue;
+              }
+
               auto version = package::Version::parse(record.getVersion());
               if (!version) {
                   qWarning() << "Ignore invalid package record" << record.asJson()

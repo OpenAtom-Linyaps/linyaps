@@ -1058,6 +1058,7 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
         utils::error::Result<void> result;
 
         auto apiClient = this->m_clientFactory.createClient();
+        apiClient->setTimeOut(10 * 60 * 1000);
         QEventLoop loop;
         QEventLoop::connect(apiClient.data(),
                             &api::client::ClientApi::uploadTaskFileSignal,

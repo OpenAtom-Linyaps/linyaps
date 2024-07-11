@@ -340,23 +340,31 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
         return -1;
     }
 
-    std::error_code ec;
-    auto containerID = genRandomString();
-    auto bundleDir = std::filesystem::current_path().parent_path().parent_path() / containerID;
-    if (!std::filesystem::create_directories(bundleDir, ec)) {
-        std::cerr << "couldn't create directory " << bundleDir << " :" << ec.message() << std::endl;
+    auto *bundleDirStr = ::getenv("UAB_BUNDLE_DIR");
+    if (bundleDirStr == nullptr) {
+        std::cerr << "couldn't get UAB_BUNDLE_DIR" << std::endl;
         return -1;
     }
 
-    defer removeBundle{ [bundleDir]() noexcept {
+    std::error_code ec;
+    auto containerID = genRandomString();
+    auto bundleDir = std::filesystem::path{ bundleDirStr };
+    auto containerBundleDir = bundleDir.parent_path().parent_path() / containerID;
+    if (!std::filesystem::create_directories(containerBundleDir, ec)) {
+        std::cerr << "couldn't create directory " << containerBundleDir << " :" << ec.message()
+                  << std::endl;
+        return -1;
+    }
+
+    defer removeContainerBundleDir{ [containerBundleDir]() noexcept {
         std::error_code ec;
-        std::filesystem::remove_all(bundleDir, ec);
+        std::filesystem::remove_all(containerBundleDir, ec);
         if (ec) {
             std::cerr << "remove bundle error:" << ec.message() << std::endl;
         }
     } };
 
-    auto extraDir = std::filesystem::current_path() / "extra";
+    auto extraDir = bundleDir / "extra";
     if (!std::filesystem::exists(extraDir, ec)) {
         std::cerr << extraDir << " doesn't exist:" << ec.message() << std::endl;
         return -1;
@@ -401,10 +409,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
         return -1;
     }
 
-    auto compatibleFilePath = [](std::string_view layerID) -> std::string {
+    auto compatibleFilePath = [&bundleDir](std::string_view layerID) -> std::string {
         std::error_code ec;
 
-        auto layerDir = std::filesystem::current_path() / "layers" / layerID;
+        auto layerDir = bundleDir / "layers" / layerID;
         if (!std::filesystem::exists(layerDir, ec)) {
             std::cerr << "container layer path: " << layerDir << "doesn't exist:" << ec.message()
                       << std::endl;
@@ -557,7 +565,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     });
 
     {
-        std::ofstream ofs(bundleDir / "ld.so.cache");
+        std::ofstream ofs(containerBundleDir / "ld.so.cache");
         if (!ofs.is_open()) {
             std::cerr << "create ld config in bundle directory" << std::endl;
             return -1;
@@ -567,12 +575,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     config.mounts->push_back(ocppi::runtime::config::types::Mount{
       .destination = "/etc/ld.so.cache",
       .options = { { "rbind" } },
-      .source = bundleDir / "ld.so.cache",
+      .source = containerBundleDir / "ld.so.cache",
       .type = "bind",
     });
 
     {
-        std::ofstream ofs(bundleDir / "ld.so.cache~");
+        std::ofstream ofs(containerBundleDir / "ld.so.cache~");
         if (!ofs.is_open()) {
             std::cerr << "create ld config in bundle directory" << std::endl;
             return -1;
@@ -582,12 +590,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     config.mounts->push_back(ocppi::runtime::config::types::Mount{
       .destination = "/etc/ld.so.cache~",
       .options = { { "rbind" } },
-      .source = bundleDir / "ld.so.cache~",
+      .source = containerBundleDir / "ld.so.cache~",
       .type = "bind",
     });
 
     // dump to bundle
-    auto bundleCfg = bundleDir / "config.json";
+    auto bundleCfg = containerBundleDir / "config.json";
     std::ofstream cfgStream{ bundleCfg.string() };
     if (!cfgStream.is_open()) {
         std::cerr << "couldn't create bundle config.json" << std::endl;
@@ -603,7 +611,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
         std::cout << json.dump(4) << std::endl;
     }
 
-    auto bundleArg = "--bundle=" + bundleDir.string();
+    auto bundleArg = "--bundle=" + containerBundleDir.string();
 
     auto pid = fork();
     if (pid < 0) {

@@ -430,7 +430,7 @@ void cleanResource() noexcept
         }
 
         if (pid == 0) {
-            if (::execlp("umount", "umount", mountPoint.c_str(), nullptr) == -1) {
+            if (::execlp("umount", "umount", "-l", mountPoint.c_str(), nullptr) == -1) {
                 std::cerr << "umount error: " << strerror(errno) << std::endl;
                 return;
             }
@@ -454,13 +454,13 @@ void cleanResource() noexcept
 [[noreturn]] static void cleanAndExit(int exitCode) noexcept
 {
     cleanResource();
-    ::exit(exitCode);
+    ::_exit(exitCode);
 }
 
 void handleSig() noexcept
 {
     auto handler = [](int sig) -> void {
-        cleanAndExit(sig);
+        cleanAndExit(WEXITSTATUS(wstatus));
     };
 
     sigset_t blocking_mask;
@@ -680,10 +680,8 @@ int extractBundle(std::string_view destination) noexcept
             cleanAndExit(errno);
         }
 
-        std::error_code ec;
-        std::filesystem::current_path(mountPoint, ec);
-        if (ec) {
-            std::cerr << "changing working directory failed: " << ec.message() << std::endl;
+        if (::setenv("UAB_BUNDLE_DIR", mountPoint.data(), 1) == -1) {
+            std::cerr << "setenv() error:" << ::strerror(errno) << std::endl;
             cleanAndExit(errno);
         }
 

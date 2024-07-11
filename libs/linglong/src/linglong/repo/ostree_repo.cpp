@@ -279,7 +279,8 @@ utils::error::Result<QString> commitDirToRepo(GFile *dir,
         return LINGLONG_ERR("ostree_repo_prepare_transaction", gErr);
     }
 
-    transaction.addRollBack([repo, &gErr]() noexcept {
+    transaction.addRollBack([repo]() noexcept {
+        g_autoptr(GError) gErr = nullptr;
         if (ostree_repo_abort_transaction(repo, nullptr, &gErr) == FALSE) {
             qCritical() << "ostree_repo_abort_transaction:" << gErr->message << gErr->code;
         }

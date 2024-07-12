@@ -11,4 +11,4 @@ ExecStart=@CMAKE_INSTALL_FULL_LIBEXECDIR@/linglong/ll-session-helper
 Restart=always
 
 [Install]
-WantedBy=multi-users.target
+WantedBy=multi-user.target

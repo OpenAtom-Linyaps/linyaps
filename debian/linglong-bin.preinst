@@ -76,9 +76,9 @@ upgrade)
         upgrade_from_1_3_x $2
         upgrade_from_1_4_x $2
         ;;
-abort-upgrade | abort-remove | abort-deconfigure) ;;
+install) ;;
 *)
-        echo "postinst called with unknown argument '$1'" >&2
+        echo "preinst called with unknown argument '$1'" >&2
         exit 0
         ;;
 

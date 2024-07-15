@@ -21,6 +21,7 @@ if(NOT ("${LINGLONG_VERSION}" STREQUAL ""))
 endif()
 
 set(ENABLE_UAB OFF CACHE BOOL "enable building UAB")
+set(ENABLE_LINGLONG_INSTALLER OFF CACHE BOOL "enable linglong installer")
 
 set(LINGLONG_USERNAME
     "deepin-linglong"
@@ -181,6 +182,7 @@ pfl_add_libraries(
   ll-package-manager
   llpkg
   uab
-  ll-session-helper)
+  ll-session-helper
+  ll-store-installer)
 
 add_subdirectory(misc)

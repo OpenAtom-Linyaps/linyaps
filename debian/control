@@ -69,3 +69,9 @@ Depends: ${misc:Depends},
          ${shlibs:Depends}
 Description: Deepin sandbox with OCI standard.
  Deepin sandbox...
+
+Package: linglong-installer
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, linglong-bin
+Description: Linglong online store application installation tool.
+ Linglong apps installation tool for deepin linglong web store(https://store.linglong.dev/).

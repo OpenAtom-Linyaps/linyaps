@@ -19,7 +19,7 @@ override_dh_auto_install:
 	dh_auto_install
 	dh_install -p linglong-bin debian/sysctl.d/linglong.conf usr/lib/sysctl.d/
 
-EXTRA_OPTION = -DCPM_LOCAL_PACKAGES_ONLY=ON -DLINGLONG_VERSION=$(DEB_VERSION_UPSTREAM)
+EXTRA_OPTION = -DCPM_LOCAL_PACKAGES_ONLY=ON -DLINGLONG_VERSION=$(DEB_VERSION_UPSTREAM) -DENABLE_LINGLONG_INSTALLER=ON
 
 ifeq ($(ENABLE_UAB_SUPPORT), TRUE)
 

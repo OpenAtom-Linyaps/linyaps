@@ -38,6 +38,7 @@ configure_files(
   script/linglong-repair-tool
   script/linglong.sh
   share/applications/linglong-repair-tool.desktop
+  share/applications/linglong-store-installer.desktop
   share/bash-completion/completions/ll-builder
   share/bash-completion/completions/ll-cli
   share/dbus-1/system.d/org.deepin.linglong.PackageManager.conf
@@ -170,6 +171,12 @@ install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/script/linglong-repair-tool
 install(
   FILES
     ${CMAKE_CURRENT_BINARY_DIR}/share/applications/linglong-repair-tool.desktop
+  DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+
+  # linglong-store-installer.desktop
+install(
+  FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/share/applications/linglong-store-installer.desktop
   DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
 
 install(

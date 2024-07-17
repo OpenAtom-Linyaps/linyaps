@@ -174,6 +174,22 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
       .uidMappings = {},
     });
 
+    QStringList watchFilesPaths = {"localtime", "resolv.conf", "timezone"};
+    for (const QString &watchFile: watchFilesPaths) {
+        if (symlink("/run/host/monitor/"+watchFile.toUtf8(), bundle.absoluteFilePath(watchFile).toUtf8()) != 0) {
+            qCritical() << "Failed to create symlink for" << watchFile;
+            continue;
+        }
+        this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
+          .destination = "/etc/"+watchFile.toStdString(),
+          .gidMappings = {},
+          .options = { { "rbind", "copy-symlink" } },
+          .source = bundle.absoluteFilePath(watchFile).toStdString(),
+          .type = "bind",
+          .uidMappings = {},
+        });
+    }
+
     nlohmann::json json = this->cfg;
 
     {

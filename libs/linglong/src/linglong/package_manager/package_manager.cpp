@@ -127,6 +127,24 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
         return toDBusReply(versionRet);
     }
 
+    auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(packageInfo.id));
+    if (!fuzzyRef) {
+        return toDBusReply(fuzzyRef);
+    }
+
+    auto ref = this->repo.clearReference(*fuzzyRef,
+                                         {
+                                           .fallbackToRemote = false // NOLINT
+                                         });
+    auto isDevelop = packageInfo.packageInfoV2Module == "develop";
+
+    if (ref) {
+        auto layerDir = this->repo.getLayerDir(*ref, isDevelop);
+        if (layerDir) {
+            return toDBusReply(-1, ref->toString() + " is already installed");
+        }
+    }
+
     auto architectureRet =
       package::Architecture::parse(QString::fromStdString(packageInfo.arch[0]));
     if (!architectureRet) {
@@ -157,7 +175,8 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
        fdDup = fd, // keep file descriptor don't close by the destructor of QDBusUnixFileDescriptor
        &taskRef,
        packageRef = std::move(packageRefRet).value(),
-       layerFile = *layerFileRet]() {
+       layerFile = *layerFileRet,
+       isDevelop]() {
           auto removeTask = utils::finally::finally([&taskRef, this] {
               auto elem = std::find(this->taskList.begin(), this->taskList.end(), taskRef);
               if (elem == this->taskList.end()) {
@@ -190,6 +209,8 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
               taskRef.reportError(std::move(info).error());
               return;
           }
+
+          pullDependency(taskRef, *info, isDevelop);
 
           auto result = this->repo.importLayerDir(*layerDir);
           if (!result) {
@@ -640,63 +661,7 @@ void PackageManager::Install(InstallTask &taskContext,
     }
     // for 'kind: app', check runtime and foundation
     if (info->kind == "app") {
-        if (info->runtime) {
-            auto fuzzyRuntime =
-              package::FuzzyReference::parse(QString::fromStdString(*info->runtime));
-            if (!fuzzyRuntime) {
-                taskContext.updateStatus(InstallTask::Failed,
-                                         LINGLONG_ERRV(fuzzyRuntime).message());
-                return;
-            }
-
-            auto runtime = this->repo.clearReference(*fuzzyRuntime,
-                                                     {
-                                                       .forceRemote = true // NOLINT
-                                                     });
-            if (!runtime) {
-                taskContext.updateStatus(InstallTask::Failed, runtime.error().message());
-                return;
-            }
-
-            taskContext.updateStatus(InstallTask::installRuntime,
-                                     "Installing runtime " + runtime->toString());
-            this->repo.pull(taskContext, *runtime, develop);
-            if (taskContext.currentStatus() == InstallTask::Failed
-                || taskContext.currentStatus() == InstallTask::Canceled) {
-                return;
-            }
-
-            auto runtimeRef = *runtime;
-            t.addRollBack([this, runtimeRef, develop]() noexcept {
-                auto result = this->repo.remove(runtimeRef, develop);
-                if (!result) {
-                    qCritical() << result.error();
-                    Q_ASSERT(false);
-                }
-            });
-        }
-
-        auto fuzzyBase = package::FuzzyReference::parse(QString::fromStdString(info->base));
-        if (!fuzzyBase) {
-            taskContext.updateStatus(InstallTask::Failed, LINGLONG_ERRV(info).message());
-            return;
-        }
-
-        auto base = this->repo.clearReference(*fuzzyBase,
-                                              {
-                                                .forceRemote = true // NOLINT
-                                              });
-        if (!base) {
-            taskContext.updateStatus(InstallTask::Failed, LINGLONG_ERRV(base).message());
-            return;
-        }
-
-        taskContext.updateStatus(InstallTask::installBase, "Installing base " + base->toString());
-        this->repo.pull(taskContext, *base, develop);
-        if (taskContext.currentStatus() == InstallTask::Failed
-            || taskContext.currentStatus() == InstallTask::Canceled) {
-            return;
-        }
+        pullDependency(taskContext, *info, develop);
     }
 
     this->repo.exportReference(ref);
@@ -900,6 +865,84 @@ void PackageManager::CancelTask(const QString &taskID) noexcept
     task->cancelTask();
     task->updateStatus(InstallTask::Canceled,
                        QString{ "cancel installing app %1" }.arg(task->layer()));
+}
+
+void PackageManager::pullDependency(InstallTask &taskContext,
+                                    const api::types::v1::PackageInfoV2 &info,
+                                    bool develop) noexcept
+{
+    LINGLONG_TRACE("pull dependency runtime and base");
+
+    utils::Transaction transaction;
+
+    if (info.runtime) {
+        auto fuzzyRuntime = package::FuzzyReference::parse(QString::fromStdString(*info.runtime));
+        if (!fuzzyRuntime) {
+            taskContext.updateStatus(InstallTask::Failed, LINGLONG_ERRV(fuzzyRuntime).message());
+            return;
+        }
+
+        auto runtime = this->repo.clearReference(*fuzzyRuntime,
+                                                 {
+                                                   .forceRemote = true // NOLINT
+                                                 });
+        if (!runtime) {
+            taskContext.updateStatus(InstallTask::Failed, runtime.error().message());
+            return;
+        }
+
+        taskContext.updateStatus(InstallTask::installRuntime,
+                                 "Installing runtime " + runtime->toString());
+
+        if (taskContext.currentStatus() == InstallTask::Canceled) {
+            return;
+        }
+
+        this->repo.pull(taskContext, *runtime, develop);
+
+        if (taskContext.currentStatus() == InstallTask::Failed) {
+            return;
+        }
+
+        auto runtimeRef = *runtime;
+        transaction.addRollBack([this, runtimeRef, develop]() noexcept {
+            auto result = this->repo.remove(runtimeRef, develop);
+            if (!result) {
+                qCritical() << result.error();
+                Q_ASSERT(false);
+            }
+        });
+    }
+
+    auto fuzzyBase = package::FuzzyReference::parse(QString::fromStdString(info.base));
+    if (!fuzzyBase) {
+        taskContext.updateStatus(InstallTask::Failed, LINGLONG_ERRV(fuzzyBase).message());
+        return;
+    }
+
+    auto base = this->repo.clearReference(*fuzzyBase,
+                                          {
+                                            .forceRemote = true // NOLINT
+                                          });
+    if (!base) {
+        taskContext.updateStatus(InstallTask::Failed, LINGLONG_ERRV(base).message());
+        return;
+    }
+
+    taskContext.updateStatus(InstallTask::installBase, "Installing base " + base->toString());
+    if (taskContext.currentStatus() == InstallTask::Canceled) {
+        return;
+    }
+
+    this->repo.pull(taskContext, *base, develop);
+
+    if (taskContext.currentStatus() == InstallTask::Failed) {
+        return;
+    }
+
+    auto baseRef = *base;
+
+    transaction.commit();
 }
 
 } // namespace linglong::service

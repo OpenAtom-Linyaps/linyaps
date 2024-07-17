@@ -58,6 +58,9 @@ private:
     QVariantMap installFromUAB(const QDBusUnixFileDescriptor &fd) noexcept;
     utils::error::Result<api::types::v1::MinifiedInfo>
     updateMinifiedInfo(const QFileInfo &file, const QString &appRef, const QString &uuid) noexcept;
+    void pullDependency(InstallTask &taskContext,
+                        const api::types::v1::PackageInfoV2 &info,
+                        bool develop) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT
     std::vector<InstallTask> taskList;
 };

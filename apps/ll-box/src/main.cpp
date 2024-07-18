@@ -183,7 +183,6 @@ int exec(struct arg_exec *arg, int argc, char **argv) noexcept
         newArgv.push_back(argv[i + 1]);
     }
 
-    newArgv.push_back("&");
     newArgv.push_back(nullptr);
 
     for (decltype(newArgv.size()) i = 0; i < newArgv.size(); ++i) {

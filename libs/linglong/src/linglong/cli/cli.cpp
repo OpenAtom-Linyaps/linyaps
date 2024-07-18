@@ -304,6 +304,7 @@ int Cli::run(std::map<std::string, docopt::value> &args)
             "--login",
             "-c",
             bashArgs.join(" ").toStdString(),
+            "; wait"
         };
 
         auto opt = ocppi::runtime::ExecOption{};
@@ -435,6 +436,7 @@ int Cli::exec(std::map<std::string, docopt::value> &args)
             "--login",
             "-c",
             bashArgs.join(" ").toStdString(),
+            "; wait"
         };
     } else {
         command = { "bash", "--login" };

@@ -17,13 +17,15 @@ Usage:
   ll-pica convert [flags]
 
 Flags:
-  -b, --build            build linglong
-  -c, --config string    config file
-  -h, --help             help for convert
-      --pi string        package id
-      --pn string        package name
-  -t, --type string      get app type (default "local")
-  -w, --workdir string   work directory
+  -b, --build               build linglong
+  -c, --config string       config file
+      --exportFile string   export uab or layer (default "uab")
+  -h, --help                help for convert
+      --pi string           package id
+      --pn string           package name
+  -t, --type string         get app type (default "local")
+      --withDep             Add dependency tree
+  -w, --workdir string      work directory
 
 Global Flags:
   -V, --verbose   verbose output
@@ -47,12 +49,13 @@ apt download com.baidu.baidunetdisk
 ```
 
 ```bash
-ll-pica convert -c com.baidu.baidunetdisk_4.17.7_amd64.deb -w w -b
+ll-pica convert -c com.baidu.baidunetdisk_4.17.7_amd64.deb -w w -b  --exportFile
 ```
 
 - -w working directory。
 - -c The configuration method employed here utilizes deb files.
 - -b It indicates that a build is required; without adding this parameter, neither building nor exporting the layer file will take place.
+- --exportFile The default export product is a uab file when using --exportFile. If you need a layer file, you should use `--exportFile layer` instead.
 
 The constructed products are as follows:
 
@@ -60,12 +63,14 @@ The constructed products are as follows:
 ├── package
 │   └── com.baidu.baidunetdisk
 │       ├── com.baidu.baidunetdisk_4.17.7.0_x86_64_develop.layer
-│       ├── com.baidu.baidunetdisk_4.17.7.0_x86_64_runtime.layer
+│       ├── com.baidu.baidunetdisk_4.17.7.0_x86_64_binary.layer
 │       ├── linglong
 │       └── linglong.yaml
 └── package.yaml
 ```
 
-Layer files are divided into two categories: `runtime` and `develop`. The `runtime` includes the application's execution environment, while the `develop` layer, built upon the `runtime`, retains the debugging environment.
+Layer files are divided into two categories: `binary` and `develop`. The `binary` includes the application's execution environment, while the `develop` layer, built upon the `binary`, retains the debugging environment.
+
+The uab file is an offline distribution format used by the LingLong software package, which is not suitable for systems that can normally connect to the LingLong repository. Instead, one should utilize the delta transfer scheme provided by the LingLong software repository to reduce the network transmission size.
 
 Installing Layer Files and Running the Application Reference：[Install Linglong Apps](../ll-cli/install.md)

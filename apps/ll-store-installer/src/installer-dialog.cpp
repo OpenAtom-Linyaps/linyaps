@@ -41,6 +41,7 @@ InstallerDialog::InstallerDialog(QWidget *parent)
     Q_D(InstallerDialog);
 
     setWindowTitle("Linglong Installer");
+    setWindowFlags(Qt::Dialog);
 
     auto w = new QWidget(this);
 

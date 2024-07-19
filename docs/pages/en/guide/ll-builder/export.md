@@ -4,9 +4,9 @@ SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-# Export Layer File
+# Export layer file or uab file
 
-Use `ll-builder export` to check out the build content and generate layer file.
+Use `ll-builder export` to check out the build content and generate layer file or uab file.
 
 View the help information for the `ll-builder export` command:
 
@@ -32,6 +32,8 @@ The `ll-builder export` command creates a directory named `appid` in the project
 
 An example of the `ll-builder export` command is as follows:
 
+## Export layer file
+
 ```bash
 ll-builder export --layer
 ```
@@ -44,7 +46,15 @@ The directory structure after checkout is as follows:
 linglong.yaml org.deepin.demo_0.0.0.1_x86_64_develop.layer org.deepin.demo_0.0.0.1_x86_64_runtime.layer
 ```
 
-Layer files are divided into two categories: `runtime` and `develop`. The `runtime` includes the application's execution environment, while the `develop` layer, built upon the `runtime`, retains the debugging environment.
+Layer files are divided into two categories: `binary` and `develop`. The `binary` includes the application's execution environment, while the `develop` layer, built upon the `binary`, retains the debugging environment.
+
+## Export Uab File
+
+```bash
+ll-builder export
+```
+
+The uab file is an offline distribution format used by the LingLong software package, which is not suitable for systems that can normally connect to the LingLong repository. Instead, one should utilize the delta transfer scheme provided by the LingLong software repository to reduce the network transmission size.
 
 Take the `org.deepin.demo` Linglong application as an example. The directory is as follows:
 

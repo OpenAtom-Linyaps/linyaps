@@ -89,7 +89,7 @@ struct Mount
     uint32_t extraFlags{ 0U };
 };
 
-enum { OPTION_COPY_SYMLINK = 1 };
+enum { OPTION_COPY_SYMLINK = 1, OPTION_NOSYMFOLLOW = 2 };
 
 inline void from_json(const nlohmann::json &j, Mount &o)
 {
@@ -131,7 +131,8 @@ inline void from_json(const nlohmann::json &j, Mount &o)
         { "norelatime", { true, MS_RELATIME } },
         { "nostrictatime", { true, MS_STRICTATIME } },
         { "nosuid", { false, MS_NOSUID } },
-        // {"nosymfollow",{false, MS_NOSYMFOLLOW}}, // since kernel 5.10
+        { "nosymfollow",
+          { false, 0, OPTION_NOSYMFOLLOW } }, // for compatibility, use custom flag for now
         { "rbind", { false, MS_BIND | MS_REC } },
         { "relatime", { false, MS_RELATIME } },
         { "remount", { false, MS_REMOUNT } },

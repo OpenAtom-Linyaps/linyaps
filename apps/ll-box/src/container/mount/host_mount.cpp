@@ -69,6 +69,8 @@ public:
         auto dest_parent_path = util::fs::path(dest_full_path).parent_path();
         auto host_dest_full_path = driver_->HostPath(dest_full_path);
         auto root = driver_->HostPath(util::fs::path("/"));
+        int sourceFd{ -1 }; // FIXME: use local variable store fd temporarily, we should refactoring
+                            // the whole MountNode in the future
 
         switch (source_stat.st_mode & S_IFMT) {
         case S_IFCHR: {
@@ -94,7 +96,20 @@ public:
 
                 return host_dest_full_path.touch_symlink(std::string(buf.cbegin(), buf.cend()));
             }
+
             host_dest_full_path.touch();
+
+            if (m.extraFlags & OPTION_NOSYMFOLLOW) {
+                sourceFd = ::open(source.c_str(), O_PATH | O_NOFOLLOW | O_CLOEXEC);
+                if (sourceFd < 0) {
+                    logFal() << util::format("fail to open source(%s):", source.c_str())
+                             << util::errnoString();
+                }
+
+                source = util::format("/proc/self/fd/%d", sourceFd);
+                break;
+            }
+
             source = util::fs::read_symlink(util::fs::path(source)).string();
             break;
         }
@@ -230,6 +245,10 @@ public:
                 DUMP_FILE_INFO(source);
             }
             DUMP_FILE_INFO(host_dest_full_path.string());
+        }
+
+        if (sourceFd != -1) {
+            ::close(sourceFd);
         }
 
         return ret;

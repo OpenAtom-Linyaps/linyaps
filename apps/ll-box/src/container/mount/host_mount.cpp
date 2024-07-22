@@ -163,6 +163,10 @@ public:
                 break;
             }
 
+            if (m.extraFlags & OPTION_NOSYMFOLLOW) {
+                break; // FIXME: Refactoring the mounting process
+            }
+
             real_flags = m.flags | MS_BIND | MS_REMOUNT | MS_RDONLY;
             auto newFd = ::open(host_dest_full_path.string().c_str(), O_PATH | O_CLOEXEC);
             if (newFd == -1) {

@@ -28,6 +28,7 @@
             {
                 "path": "/bin/bash",
                 "args": [
+                    "/bin/bash",
                     "-c",
                     "mkdir -p /run/linglong/etc && /sbin/ldconfig -C /run/linglong/etc/ld.so.cache"
                 ]

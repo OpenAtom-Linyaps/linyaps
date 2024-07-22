@@ -75,6 +75,18 @@ auto getPatchesForApplication(const QString &appID) noexcept
     return patches;
 }
 
+// getBundleDir 用于获取容器的运行目录
+utils::error::Result<QDir> getBundleDir(QString containerID)
+{
+    LINGLONG_TRACE("get bundle dir");
+    QDir runtimeDir = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+    QDir bundle = runtimeDir.absoluteFilePath(QString("linglong/%1").arg(containerID));
+    if (!bundle.mkpath(".")) {
+        return LINGLONG_ERR(QString("make bundle directory failed %1").arg(bundle.absolutePath()));
+    }
+    return bundle;
+}
+
 void applyJSONPatch(ocppi::runtime::config::types::Config &cfg,
                     const api::types::v1::OciConfigurationPatch &patch) noexcept
 {
@@ -123,13 +135,15 @@ void applyJSONFilePatch(ocppi::runtime::config::types::Config &cfg, const QFileI
     applyJSONPatch(cfg, *patch);
 }
 
-void applyExecutablePatch(ocppi::runtime::config::types::Config &cfg,
+void applyExecutablePatch(QString workdir,
+                          ocppi::runtime::config::types::Config &cfg,
                           const QFileInfo &info) noexcept
 {
     LINGLONG_TRACE(QString("process oci configuration generator %1").arg(info.absoluteFilePath()));
 
     QProcess generatorProcess;
     generatorProcess.setProgram(info.absoluteFilePath());
+    generatorProcess.setWorkingDirectory(workdir);
     generatorProcess.start();
     generatorProcess.write(QByteArray::fromStdString(nlohmann::json(cfg).dump()));
     generatorProcess.closeWriteChannel();
@@ -165,8 +179,11 @@ void applyExecutablePatch(ocppi::runtime::config::types::Config &cfg,
     cfg = *modified;
 }
 
-void applyPatches(ocppi::runtime::config::types::Config &cfg, const QFileInfoList &patches) noexcept
+void applyPatches(const ContainerOptions &opts,
+                  ocppi::runtime::config::types::Config &cfg,
+                  const QFileInfoList &patches) noexcept
 {
+    auto bundleDir = getBundleDir(opts.containerID);
 
     for (const auto &info : patches) {
         if (!info.isFile()) {
@@ -174,7 +191,7 @@ void applyPatches(ocppi::runtime::config::types::Config &cfg, const QFileInfoLis
         }
 
         if (info.isExecutable()) {
-            applyExecutablePatch(cfg, info);
+            applyExecutablePatch(bundleDir->path(), cfg, info);
             continue;
         }
 
@@ -236,7 +253,7 @@ auto getOCIConfig(const ContainerOptions &opts) noexcept
     QDir configDotDDir = QFileInfo(containerConfigFilePath).dir().filePath("config.d");
     Q_ASSERT(configDotDDir.exists());
 
-    applyPatches(*config, configDotDDir.entryInfoList(QDir::Files));
+    applyPatches(opts, *config, configDotDDir.entryInfoList(QDir::Files));
 
     auto appPatches = getPatchesForApplication(opts.appID);
 
@@ -409,20 +426,16 @@ auto ContainerBuilder::create(const ContainerOptions &opts) noexcept
 {
     LINGLONG_TRACE("create container");
 
+    auto bundle = getBundleDir(opts.containerID);
+    if (!bundle.has_value()) {
+        return LINGLONG_ERR(bundle);
+    }
     auto originalConfig = getOCIConfig(opts);
     if (!originalConfig) {
         return LINGLONG_ERR(originalConfig);
     }
-
-    QDir runtimeDir = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
-    QDir bundle = runtimeDir.absoluteFilePath(QString("linglong/%1").arg(opts.containerID));
-    Q_ASSERT(!bundle.exists());
-    if (!bundle.mkpath(".")) {
-        return LINGLONG_ERR(QString("make bundle directory failed %1").arg(bundle.absolutePath()));
-    }
-
     // save env to /run/user/1000/linglong/xxx/00env.sh, mount it to /etc/profile.d/00env.sh
-    std::string envShFile = bundle.absoluteFilePath("00env.sh").toStdString();
+    std::string envShFile = bundle->absoluteFilePath("00env.sh").toStdString();
     {
         std::ofstream ofs(envShFile);
         Q_ASSERT(ofs.is_open());

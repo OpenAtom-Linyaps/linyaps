@@ -247,6 +247,30 @@ int main()
         return;
     }();
 
+    auto pwd = std::filesystem::current_path();
+    // [name, destination, target]
+    std::vector<std::array<std::string_view, 3>> vec = {
+        { "ld.so.cache", "/etc/ld.so.cache", "/run/linglong/etc/ld.so.cache" },
+        { "localtime", "/etc/localtime", "/run/host/rootfs/etc/localtime" },
+        { "resolv.conf", "/etc/resolv.conf", "/run/host/rootfs/etc/resolv.conf" },
+        { "timezone", "/etc/timezone", "/run/host/rootfs/etc/timezone" },
+    };
+    for (const auto &[name, destination, target] : vec) {
+        auto linkfile = (pwd / name);
+        std::error_code ec;
+        std::filesystem::create_symlink(target, linkfile.c_str(), ec);
+        if (ec) {
+            std::cerr << "Failed to create symlink from " << target << " to " << linkfile << ": "
+                      << ec.message() << std::endl;
+            continue;
+        };
+        mounts.push_back({
+          { "destination", destination },
+          { "options", nlohmann::json::array({ "rbind", "ro", "nosymfollow" }) },
+          { "source", linkfile.string() },
+          { "type", "bind" },
+        });
+    }
     std::cout << content.dump() << std::endl;
     return 0;
 }

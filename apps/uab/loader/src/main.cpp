@@ -15,6 +15,7 @@
 #include <iostream>
 #include <random>
 #include <string>
+#include <system_error>
 #include <thread>
 #include <utility>
 
@@ -111,7 +112,8 @@ void applyJSONFilePatch(ocppi::runtime::config::types::Config &cfg,
     applyJSONPatch(cfg, patch);
 }
 
-void applyExecutablePatch(ocppi::runtime::config::types::Config &cfg,
+void applyExecutablePatch(const std::string &workdir,
+                          ocppi::runtime::config::types::Config &cfg,
                           const std::filesystem::path &info) noexcept
 {
     std::array<int, 2> inPipe{ -1, -1 };
@@ -168,6 +170,12 @@ void applyExecutablePatch(ocppi::runtime::config::types::Config &cfg,
     }
 
     if (pid == 0) {
+        std::error_code ec;
+        std::filesystem::current_path(workdir, ec);
+        if (ec) {
+            std::cerr << "change workdir error: " << ec.message() << std::endl;
+            return;
+        }
         ::dup2(inPipe[0], STDIN_FILENO);
         ::dup2(outPipe[1], STDOUT_FILENO);
         ::dup2(errPipe[1], STDERR_FILENO);
@@ -287,7 +295,8 @@ void applyExecutablePatch(ocppi::runtime::config::types::Config &cfg,
     cfg = std::move(modified);
 }
 
-void applyPatches(ocppi::runtime::config::types::Config &cfg,
+void applyPatches(const std::string &woridir,
+                  ocppi::runtime::config::types::Config &cfg,
                   const std::vector<std::filesystem::path> &patches) noexcept
 {
     auto testExec = [](std::filesystem::perms perm) {
@@ -316,7 +325,7 @@ void applyPatches(ocppi::runtime::config::types::Config &cfg,
         }
 
         if (testExec(status.permissions())) {
-            applyExecutablePatch(cfg, info);
+            applyExecutablePatch(woridir, cfg, info);
             continue;
         }
 
@@ -540,7 +549,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
         gens.emplace_back(path.path());
     }
 
-    applyPatches(config, gens);
+    applyPatches(bundleDir, config, gens);
 
     // append ld conf
     auto ldConfDir = extraDir / "ld.conf.d";
@@ -553,36 +562,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
       .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
       .options = { { "ro", "rbind" } },
       .source = ldConfDir / "zz_deepin-linglong-app.ld.so.conf",
-      .type = "bind",
-    });
-
-    {
-        std::ofstream ofs(bundleDir / "ld.so.cache");
-        if (!ofs.is_open()) {
-            std::cerr << "create ld config in bundle directory" << std::endl;
-            return -1;
-        }
-        ofs.close();
-    }
-    config.mounts->push_back(ocppi::runtime::config::types::Mount{
-      .destination = "/etc/ld.so.cache",
-      .options = { { "rbind" } },
-      .source = bundleDir / "ld.so.cache",
-      .type = "bind",
-    });
-
-    {
-        std::ofstream ofs(bundleDir / "ld.so.cache~");
-        if (!ofs.is_open()) {
-            std::cerr << "create ld config in bundle directory" << std::endl;
-            return -1;
-        }
-        ofs.close();
-    }
-    config.mounts->push_back(ocppi::runtime::config::types::Mount{
-      .destination = "/etc/ld.so.cache~",
-      .options = { { "rbind" } },
-      .source = bundleDir / "ld.so.cache~",
       .type = "bind",
     });
 

@@ -10,7 +10,6 @@ Type=dbus
 User=@LINGLONG_USERNAME@
 Group=@LINGLONG_USERNAME@
 BusName=org.deepin.linglong.PackageManager
-ExecStartPre=+@CMAKE_INSTALL_FULL_LIBEXECDIR@/linglong/create-linglong-dirs
 ExecStart=@CMAKE_INSTALL_FULL_LIBEXECDIR@/linglong/ll-package-manager
 MemoryMax=8G
 Restart=on-failure

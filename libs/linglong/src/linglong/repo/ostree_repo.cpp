@@ -149,13 +149,7 @@ void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
             return;
         }
 
-        if (new_progress < data->progress && data->last_total != total) {
-            qInfo() << "ignore increase of total objects, old:"
-                    << static_cast<double>(data->last_total)
-                    << "new:" << static_cast<double>(total);
-            new_progress = data->progress;
-        }
-
+        new_progress = std::max(new_progress, data->progress);
         data->last_total = total;
         if (new_progress > 100) {
             qDebug() << "progress overflow, limiting to 100";

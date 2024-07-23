@@ -430,7 +430,7 @@ void cleanResource() noexcept
         }
 
         if (pid == 0) {
-            if (::execlp("umount", "umount", mountPoint.c_str(), nullptr) == -1) {
+            if (::execlp("umount", "umount", "-l", mountPoint.c_str(), nullptr) == -1) {
                 std::cerr << "umount error: " << strerror(errno) << std::endl;
                 return;
             }
@@ -454,7 +454,7 @@ void cleanResource() noexcept
 [[noreturn]] static void cleanAndExit(int exitCode) noexcept
 {
     cleanResource();
-    ::exit(exitCode);
+    ::_exit(exitCode);
 }
 
 void handleSig() noexcept
@@ -626,38 +626,6 @@ int extractBundle(std::string_view destination) noexcept
         argv[i + 1] = loaderArgs[i].data();
     }
 
-    std::string baseID;
-    std::string runtimeID;
-    std::string appID;
-    for (const auto &layer : meta.layers) {
-        const auto &kind = layer.info.kind;
-        if (kind == "app") {
-            appID = layer.info.id;
-
-            const auto &baseStr = layer.info.base;
-            auto splitSlash = std::find(baseStr.cbegin(), baseStr.cend(), '/');
-            auto splitColon = std::find(baseStr.cbegin(), baseStr.cend(), ':');
-            baseID = baseStr.substr(std::distance(baseStr.cbegin(), splitColon) + 1,
-                                    splitSlash - splitColon - 1);
-
-            if (layer.info.runtime) {
-                const auto &runtimeStr = layer.info.runtime.value();
-                auto splitSlash = std::find(runtimeStr.cbegin(), runtimeStr.cend(), '/');
-                auto splitColon = std::find(runtimeStr.cbegin(), runtimeStr.cend(), ':');
-                runtimeID = runtimeStr.substr(std::distance(runtimeStr.cbegin(), splitColon) + 1,
-                                              splitSlash - splitColon - 1);
-            }
-
-            break;
-        }
-    }
-
-    if (baseID.empty() || appID.empty()) {
-        std::cerr << "failed to get all ids," << " base id: " << baseID << " app id: " << appID
-                  << std::endl;
-        cleanAndExit(-1);
-    }
-
     auto loaderPid = fork();
     if (loaderPid < 0) {
         std::cerr << "fork() error" << ": " << ::strerror(errno) << std::endl;
@@ -665,28 +633,6 @@ int extractBundle(std::string_view destination) noexcept
     }
 
     if (loaderPid == 0) {
-        if (::setenv("UAB_BASE_ID", baseID.data(), 1) == -1) {
-            std::cerr << "setenv() error:" << ::strerror(errno) << std::endl;
-            cleanAndExit(errno);
-        }
-
-        if (!runtimeID.empty() && ::setenv("UAB_RUNTIME_ID", runtimeID.data(), 1) == -1) {
-            std::cerr << "setenv() error:" << ::strerror(errno) << std::endl;
-            cleanAndExit(errno);
-        }
-
-        if (::setenv("UAB_APP_ID", appID.data(), 1) == -1) {
-            std::cerr << "setenv() error:" << ::strerror(errno) << std::endl;
-            cleanAndExit(errno);
-        }
-
-        std::error_code ec;
-        std::filesystem::current_path(mountPoint, ec);
-        if (ec) {
-            std::cerr << "changing working directory failed: " << ec.message() << std::endl;
-            cleanAndExit(errno);
-        }
-
         if (::execv(loaderStr.c_str(), reinterpret_cast<char *const *>(const_cast<char **>(argv)))
             == -1) {
             std::cerr << "execv(" << loaderStr << ") error: " << ::strerror(errno) << std::endl;

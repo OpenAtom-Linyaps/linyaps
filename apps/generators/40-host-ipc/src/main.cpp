@@ -49,7 +49,7 @@ int main()
 
     bindIfExist("/tmp/.X11-unix", "");
 
-    auto mount = u8R"({
+    auto mount = R"({
         "type": "bind",
         "options": [
             "rbind"
@@ -60,7 +60,7 @@ int main()
         auto *systemBusEnv = getenv("DBUS_SYSTEM_BUS_ADDRESS"); // NOLINT
 
         // https://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-types:~:text=the%20default%20locations.-,System%20message%20bus,-A%20computer%20may
-        std::string systemBus{ u8"/var/run/dbus/system_bus_socket" };
+        std::string systemBus{ "/var/run/dbus/system_bus_socket" };
         if (systemBusEnv != nullptr && std::filesystem::exists(systemBusEnv)) {
             systemBus = systemBusEnv;
         }

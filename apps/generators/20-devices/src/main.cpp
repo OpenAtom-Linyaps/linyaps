@@ -51,7 +51,7 @@ int main()
         const auto &devPath = entry.path();
         auto devName = devPath.filename().string();
         if ((devName.rfind("video", 0) == 0) || (devName.rfind("nvidia", 0) == 0)) {
-            auto dev = u8R"(
+            auto dev = R"(
             {
                 "type": "bind",
                 "options": [ "rbind" ]

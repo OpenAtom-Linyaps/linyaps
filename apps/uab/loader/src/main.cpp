@@ -15,7 +15,6 @@
 #include <iostream>
 #include <random>
 #include <string>
-#include <system_error>
 #include <thread>
 #include <utility>
 
@@ -112,7 +111,7 @@ void applyJSONFilePatch(ocppi::runtime::config::types::Config &cfg,
     applyJSONPatch(cfg, patch);
 }
 
-void applyExecutablePatch(const std::string &workdir,
+void applyExecutablePatch(const std::filesystem::path &workdir,
                           ocppi::runtime::config::types::Config &cfg,
                           const std::filesystem::path &info) noexcept
 {
@@ -176,6 +175,7 @@ void applyExecutablePatch(const std::string &workdir,
             std::cerr << "change workdir error: " << ec.message() << std::endl;
             return;
         }
+
         ::dup2(inPipe[0], STDIN_FILENO);
         ::dup2(outPipe[1], STDOUT_FILENO);
         ::dup2(errPipe[1], STDERR_FILENO);
@@ -295,7 +295,7 @@ void applyExecutablePatch(const std::string &workdir,
     cfg = std::move(modified);
 }
 
-void applyPatches(const std::string &woridir,
+void applyPatches(const std::filesystem::path &woridir,
                   ocppi::runtime::config::types::Config &cfg,
                   const std::vector<std::filesystem::path> &patches) noexcept
 {
@@ -333,39 +333,152 @@ void applyPatches(const std::string &woridir,
     }
 }
 
+std::optional<linglong::api::types::v1::PackageInfoV2>
+loadPackageInfoFromJson(const std::filesystem::path &json) noexcept
+{
+    std::ifstream stream{ json };
+    if (!stream.is_open()) {
+        std::cerr << "couldn't open " << json << std::endl;
+        return std::nullopt;
+    }
+
+    try {
+        auto content = nlohmann::json::parse(stream);
+        return content.get<linglong::api::types::v1::PackageInfoV2>();
+    } catch (const nlohmann::json::parse_error &err) {
+        std::cerr << "parsing error: " << err.what() << std::endl;
+    } catch (const nlohmann::json::out_of_range &err) {
+        std::cerr << "parsing out of range:" << err.what() << std::endl;
+    } catch (const std::exception &err) {
+        std::cout << "catching exception: " << err.what() << std::endl;
+    }
+
+    std::cout << "fallback to PackageInfoV1" << std::endl;
+    stream.seekg(0);
+
+    try { // TODO: use public fallback method on later
+        auto content = nlohmann::json::parse(stream);
+        auto oldInfo = content.get<linglong::api::types::v1::PackageInfo>();
+        return linglong::api::types::v1::PackageInfoV2{
+            .arch = oldInfo.arch,
+            .base = oldInfo.base,
+            .channel = oldInfo.channel,
+            .command = oldInfo.command,
+            .description = oldInfo.description,
+            .id = oldInfo.appid,
+            .kind = oldInfo.kind,
+            .packageInfoV2Module = oldInfo.packageInfoModule,
+            .name = oldInfo.name,
+            .permissions = oldInfo.permissions,
+            .runtime = oldInfo.runtime,
+            .schemaVersion = "1.0",
+            .size = oldInfo.size,
+            .version = oldInfo.version,
+        };
+    } catch (const nlohmann::json::parse_error &err) {
+        std::cerr << "parsing error: " << err.what() << std::endl;
+    } catch (const nlohmann::json::out_of_range &err) {
+        std::cerr << "parsing out of range:" << err.what() << std::endl;
+    } catch (const std::exception &err) {
+        std::cout << "catching exception: " << err.what() << std::endl;
+    }
+
+    return std::nullopt;
+}
+
 int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 {
-    auto *runtimeID = ::getenv("UAB_RUNTIME_ID");
-
-    auto *baseID = ::getenv("UAB_BASE_ID");
-    if (baseID == nullptr) {
-        std::cerr << "couldn't get UAB_BASE_ID" << std::endl;
+    const auto &bundleDir = std::filesystem::read_symlink("/proc/self/exe").parent_path();
+    const auto &layersDir = bundleDir / "layers";
+    if (!std::filesystem::exists(layersDir)) {
+        std::cerr << "couldn't find directory 'layers'" << std::endl;
         return -1;
     }
 
-    auto *appID = ::getenv("UAB_APP_ID");
-    if (appID == nullptr) {
-        std::cerr << "couldn't get UAB_APP_ID" << std::endl;
-        return -1;
-    }
-
+    std::optional<linglong::api::types::v1::PackageInfoV2> appInfo;
     std::error_code ec;
-    auto containerID = genRandomString();
-    auto bundleDir = std::filesystem::current_path().parent_path().parent_path() / containerID;
-    if (!std::filesystem::create_directories(bundleDir, ec)) {
-        std::cerr << "couldn't create directory " << bundleDir << " :" << ec.message() << std::endl;
+    for (const auto &layer : std::filesystem::directory_iterator{ layersDir, ec }) {
+        if (!layer.is_directory()) { // seeking layer directory
+            continue;
+        }
+
+        bool foundApp{ false };
+        for (const auto &layerModule : std::filesystem::directory_iterator{ layer, ec }) {
+            if (!layerModule.is_directory()
+                || layerModule.path().filename()
+                  != "binary") { // we only need binary module to run the application
+                continue;
+            }
+
+            auto infoFile = layerModule.path() / "info.json";
+            auto info = loadPackageInfoFromJson(infoFile);
+            if (!info) {
+                std::cerr << "couldn't get meta info, exit" << std::endl;
+                return -1;
+            }
+
+            if (info->kind == "app") {
+                appInfo = std::move(info);
+                foundApp = true;
+                break;
+            }
+        }
+
+        if (ec) {
+            std::cerr << "uab internal module error: " << ec.message() << " code:" << ec.value()
+                      << std::endl;
+            return -1;
+        }
+
+        if (foundApp) {
+            break;
+        }
+    }
+
+    if (ec) {
+        std::cerr << "uab internal layer error: " << ec.message() << " code:" << ec.value()
+                  << std::endl;
         return -1;
     }
 
-    defer removeBundle{ [bundleDir]() noexcept {
+    if (!appInfo) {
+        std::cerr << "couldn't find meta info of application" << std::endl;
+        return -1;
+    }
+
+    std::string appID = appInfo->id;
+    const auto &baseStr = appInfo->base;
+    auto splitSlash = std::find(baseStr.cbegin(), baseStr.cend(), '/');
+    auto splitColon = std::find(baseStr.cbegin(), baseStr.cend(), ':');
+    auto baseID =
+      baseStr.substr(std::distance(baseStr.cbegin(), splitColon) + 1, splitSlash - splitColon - 1);
+
+    std::string runtimeID;
+    if (appInfo->runtime) {
+        const auto &runtimeStr = appInfo->runtime.value();
+        auto splitSlash = std::find(runtimeStr.cbegin(), runtimeStr.cend(), '/');
+        auto splitColon = std::find(runtimeStr.cbegin(), runtimeStr.cend(), ':');
+        runtimeID = runtimeStr.substr(std::distance(runtimeStr.cbegin(), splitColon) + 1,
+                                      splitSlash - splitColon - 1);
+    }
+
+    auto containerID = genRandomString();
+    auto containerBundleDir = bundleDir.parent_path().parent_path() / containerID;
+    if (!std::filesystem::create_directories(containerBundleDir, ec) && ec) {
+        std::cerr << "couldn't create directory " << containerBundleDir << " :" << ec.message()
+                  << std::endl;
+        return -1;
+    }
+
+    defer removeContainerBundleDir{ [containerBundleDir]() noexcept {
         std::error_code ec;
-        std::filesystem::remove_all(bundleDir, ec);
+        std::filesystem::remove_all(containerBundleDir, ec);
         if (ec) {
             std::cerr << "remove bundle error:" << ec.message() << std::endl;
         }
     } };
 
-    auto extraDir = std::filesystem::current_path() / "extra";
+    auto extraDir = bundleDir / "extra";
     if (!std::filesystem::exists(extraDir, ec)) {
         std::cerr << extraDir << " doesn't exist:" << ec.message() << std::endl;
         return -1;
@@ -410,10 +523,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
         return -1;
     }
 
-    auto compatibleFilePath = [](std::string_view layerID) -> std::string {
+    auto compatibleFilePath = [&bundleDir](std::string_view layerID) -> std::string {
         std::error_code ec;
 
-        auto layerDir = std::filesystem::current_path() / "layers" / layerID;
+        auto layerDir = bundleDir / "layers" / layerID;
         if (!std::filesystem::exists(layerDir, ec)) {
             std::cerr << "container layer path: " << layerDir << "doesn't exist:" << ec.message()
                       << std::endl;
@@ -451,7 +564,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     auto annotations = config.annotations.value_or(std::map<std::string, std::string>{});
     annotations["org.deepin.linglong.appID"] = appID;
 
-    if (runtimeID != nullptr) {
+    if (!runtimeID.empty()) {
         layerFilesDir = compatibleFilePath(runtimeID);
         if (layerFilesDir.empty()) {
             std::cerr << "couldn't get compatiblePath of runtime" << std::endl;
@@ -474,36 +587,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     config.annotations = std::move(annotations);
 
     // replace commands
-    auto appInfo = appDir / "info.json";
-    std::ifstream appStream{ appInfo };
-    if (!appStream.is_open()) {
-        std::cerr << "couldn't open app info.json" << std::endl;
+    if (!appInfo->command || appInfo->command->empty()) {
+        std::cerr << "couldn't find command of application" << std::endl;
         return -1;
     }
-
-    std::vector<std::string> command;
-    try {
-        auto content = nlohmann::json::parse(appStream);
-        if (content.find("command") == content.end()) {
-            std::cerr << "couldn't find command of application" << std::endl;
-            return -1;
-        }
-
-        command = content["command"].get<std::vector<std::string>>();
-        if (command.empty()) {
-            std::cerr << "empty commands has been detected" << std::endl;
-            return -1;
-        }
-    } catch (nlohmann::json::parse_error &e) {
-        std::cerr << "parse container config failed: " << e.what() << std::endl;
-        return -1;
-    } catch (std::exception &e) {
-        std::cerr << "catch an exception:" << e.what() << std::endl;
-        return -1;
-    } catch (...) {
-        std::cerr << "catch an unknown exception." << std::endl;
-        return -1;
-    }
+    auto command = appInfo->command.value();
 
     // To avoid the original args containing spaces, each arg is wrapped in single quotes, and the
     // single quotes inside the arg are escaped and replaced
@@ -549,7 +637,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
         gens.emplace_back(path.path());
     }
 
-    applyPatches(bundleDir, config, gens);
+    applyPatches(containerBundleDir, config, gens);
 
     // append ld conf
     auto ldConfDir = extraDir / "ld.conf.d";
@@ -566,7 +654,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     });
 
     // dump to bundle
-    auto bundleCfg = bundleDir / "config.json";
+    auto bundleCfg = containerBundleDir / "config.json";
     std::ofstream cfgStream{ bundleCfg.string() };
     if (!cfgStream.is_open()) {
         std::cerr << "couldn't create bundle config.json" << std::endl;
@@ -582,7 +670,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
         std::cout << json.dump(4) << std::endl;
     }
 
-    auto bundleArg = "--bundle=" + bundleDir.string();
+    auto bundleArg = "--bundle=" + containerBundleDir.string();
 
     auto pid = fork();
     if (pid < 0) {

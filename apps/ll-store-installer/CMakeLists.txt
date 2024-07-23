@@ -13,7 +13,7 @@ pfl_add_executable(
   src/installer-dialog.cpp
   src/installer-dialog.h
   OUTPUT_NAME
-  ll-store-installer
+  ll-installer
   LINK_LIBRARIES
   PRIVATE
   Qt5::Widgets

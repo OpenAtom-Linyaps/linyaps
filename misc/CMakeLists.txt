@@ -16,7 +16,6 @@ configure_files(
   libexec/linglong/builder/helper/config-check.sh
   libexec/linglong/builder/helper/ldd-check.sh
   libexec/linglong/builder/helper/main-check.sh
-  libexec/linglong/create-linglong-dirs
   libexec/linglong/fetch-archive-source
   libexec/linglong/fetch-dsc-source
   libexec/linglong/fetch-file-source
@@ -31,10 +30,11 @@ configure_files(
   lib/systemd/system/org.deepin.linglong.PackageManager.service
   lib/systemd/system-preset/91-linglong.preset
   lib/systemd/user-environment-generators/61-linglong
-  lib/systemd/user/linglong-upgrade.service
   lib/systemd/user/linglong-session-helper.service
+  lib/systemd/user/linglong-upgrade.service
   lib/systemd/user/linglong-upgrade.timer
   lib/sysusers.d/linglong.conf
+  lib/tmpfiles.d/linglong.conf
   script/linglong-repair-tool
   script/linglong.sh
   share/applications/linglong-repair-tool.desktop
@@ -68,34 +68,27 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/share/dbus-1/system-services
         DESTINATION ${DBUS_SYSTEM_BUS_DIR})
 
 # linglong
-file(
-  CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/00-id-mapping-static
-  ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/00-id-mapping
-  SYMBOLIC)
-file(
-    CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/05-initialize-static
-    ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/05-initialize
-    SYMBOLIC)
-file(
-    CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/20-devices-static
-    ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/20-devices
-    SYMBOLIC)
-file(
-    CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/25-host-env-static
-    ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/25-host-env
-    SYMBOLIC)
-file(
-    CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/30-user-home-static
-    ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/30-user-home
-    SYMBOLIC)
-file(
-    CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/40-host-ipc-static
-    ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/40-host-ipc
-    SYMBOLIC)
-file(
-    CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/90-legacy-static
-    ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/90-legacy
-    SYMBOLIC)
+file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/00-id-mapping-static
+     ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/00-id-mapping
+     SYMBOLIC)
+file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/05-initialize-static
+     ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/05-initialize
+     SYMBOLIC)
+file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/20-devices-static
+     ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/20-devices
+     SYMBOLIC)
+file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/25-host-env-static
+     ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/25-host-env
+     SYMBOLIC)
+file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/30-user-home-static
+     ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/30-user-home
+     SYMBOLIC)
+file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/40-host-ipc-static
+     ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/40-host-ipc
+     SYMBOLIC)
+file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/90-legacy-static
+     ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/90-legacy
+     SYMBOLIC)
 install(
   DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/
   DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/linglong
@@ -150,6 +143,11 @@ set(SYSTEMD_SYSUSERSDIR ${CMAKE_INSTALL_PREFIX}/lib/sysusers.d)
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/sysusers.d/
         DESTINATION ${SYSTEMD_SYSUSERSDIR})
 
+# tmpfiles
+set(SYSTEMD_TMPFILESDIR ${CMAKE_INSTALL_PREFIX}/lib/tmpfiles.d)
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/tmpfiles.d/
+        DESTINATION ${SYSTEMD_TMPFILESDIR})
+
 # xdg
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/share/mime/packages
         DESTINATION ${CMAKE_INSTALL_DATADIR}/mime)
@@ -173,7 +171,7 @@ install(
     ${CMAKE_CURRENT_BINARY_DIR}/share/applications/linglong-repair-tool.desktop
   DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
 
-  # linglong-store-installer.desktop
+# linglong-store-installer.desktop
 install(
   FILES
     ${CMAKE_CURRENT_BINARY_DIR}/share/applications/linglong-store-installer.desktop

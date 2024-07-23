@@ -68,9 +68,6 @@ cd build
 %license LICENSE
 %exclude %{_libdir}/cmake/linglong-*/*.cmake
 
-# exclude uab files currently
-%exclude %{_datadir}/%{name}/builder/uab/*
-
 %files -n linglong-bin
 %doc README.md
 %license LICENSE
@@ -81,6 +78,7 @@ cd build
 %{_bindir}/linglong-repair-tool
 %{_prefix}/lib/%{name}/container/*
 %{_prefix}/lib/sysusers.d/*.conf
+%{_prefix}/lib/tmpfiles.d/*.conf
 %{_prefix}/lib/systemd/system/*.service
 %{_prefix}/lib/systemd/system-preset/*.preset
 %{_prefix}/lib/systemd/user/*
@@ -94,7 +92,6 @@ cd build
 %{_libexecdir}/%{name}/30-user-home-static
 %{_libexecdir}/%{name}/40-host-ipc-static
 %{_libexecdir}/%{name}/90-legacy-static
-%{_libexecdir}/%{name}/create-linglong-dirs
 %{_libexecdir}/%{name}/upgrade-all
 %{_libexecdir}/%{name}/ll-session-helper
 %{_datadir}/bash-completion/completions/ll-cli

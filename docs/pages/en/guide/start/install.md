@@ -20,28 +20,62 @@ sudo apt install linglong-builder linglong-box linglong-bin
 
 ## UOS 1070
 
-add Linglong repository source
+Add Linglong repository source.
 
 ```bash
 echo "deb [trusted=yes] https://ci.deepin.com/repo/deepin/deepin-community/linglong-repo/ unstable main" | sudo tee -a /etc/apt/sources.list
 ```
+
+Update the repository and install Linglong.
 
 ```bash
 sudo apt update
 sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
-## OpenEuler
+## OpenEuler 24.03
 
-add Linglong repository source
+Add Linglong repository source.
 
 ```bash
 sudo curl -o /etc/yum.repos.d/linglong.repo -L https://eur.openeuler.openatom.cn/coprs/kamiyadm/linglong/repo/openeuler-24.03_LTS/kamiyadm-linglong-openeuler-24.03_LTS.repo
 ```
 
+Update the repository and install Linglong.
+
 ```
 sudo dnf update
 sudo dnf install linglong-builder linglong-box linglong-bin
+```
+
+## Ubuntu 24.04
+
+Add Linglong repository source.
+
+```bash
+sudo bash -c "echo 'deb [trusted=yes] https://download.opensuse.org/repositories/home:/kamiyadm/xUbuntu_24.04/ ./' > /etc/apt/sources.list.d/linglong.list"
+```
+
+Update the repository and install Linglong.
+
+```bash
+sudo apt update
+sudo apt install linglong-builder linglong-box linglong-bin
+```
+
+## debian 12
+
+Add Linglong repository source.
+
+```bash
+sudo bash -c "echo 'deb [trusted=yes] https://download.opensuse.org/repositories/home:/kamiyadm/Debian_12/ ./' > /etc/apt/sources.list.d/linglong.list"
+```
+
+Update the repository and install Linglong.
+
+```bash
+sudo apt update
+sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
 # Install the Pica tool

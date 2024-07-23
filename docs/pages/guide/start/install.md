@@ -6,7 +6,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # 安装玲珑
 
-玲珑由三部分组成
+玲珑由三部分组成：
 
 - ll-builder 用来构建和调试玲珑应用，由 linglong-builder 提供。
 - ll-box 沙箱容器，由 linglong-box 提供。
@@ -20,28 +20,62 @@ sudo apt install linglong-builder linglong-box linglong-bin
 
 ## UOS 1070
 
-添加玲珑仓库源
+添加玲珑仓库源。
 
 ```bash
 echo "deb [trusted=yes] https://ci.deepin.com/repo/deepin/deepin-community/linglong-repo/ unstable main" | sudo tee -a /etc/apt/sources.list
 ```
+
+更新仓库并安装玲珑。
 
 ```bash
 sudo apt update
 sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
-## OpenEuler
+## OpenEuler 24.03
 
-添加玲珑仓库源
+添加玲珑仓库源。
 
 ```bash
 sudo curl -o /etc/yum.repos.d/linglong.repo -L https://eur.openeuler.openatom.cn/coprs/kamiyadm/linglong/repo/openeuler-24.03_LTS/kamiyadm-linglong-openeuler-24.03_LTS.repo
 ```
 
+更新仓库并安装玲珑。
+
 ```bash
 sudo dnf update
 sudo dnf install linglong-builder linglong-box linglong-bin
+```
+
+## Ubuntu 24.04
+
+添加玲珑仓库源。
+
+```bash
+sudo bash -c "echo 'deb [trusted=yes] https://download.opensuse.org/repositories/home:/kamiyadm/xUbuntu_24.04/ ./' > /etc/apt/sources.list.d/linglong.list"
+```
+
+更新仓库并安装玲珑。
+
+```bash
+sudo apt update
+sudo apt install linglong-builder linglong-box linglong-bin
+```
+
+## debian 12
+
+添加玲珑仓库源。
+
+```bash
+sudo bash -c "echo 'deb [trusted=yes] https://download.opensuse.org/repositories/home:/kamiyadm/Debian_12/ ./' > /etc/apt/sources.list.d/linglong.list"
+```
+
+更新仓库并安装玲珑。
+
+```bash
+sudo apt update
+sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
 # 安装 pica

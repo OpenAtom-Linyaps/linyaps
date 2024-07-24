@@ -9,6 +9,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <atomic>
 #include <exception>
 #include <filesystem>
 #include <fstream>
@@ -21,6 +22,23 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+static std::atomic_bool bundleFlag{ false };
+static std::filesystem::path containerBundle;
+
+template<typename Func>
+struct defer
+{
+    explicit defer(Func newF)
+        : f(std::move(newF))
+    {
+    }
+
+    ~defer() { f(); }
+
+private:
+    Func f;
+};
 
 std::string genRandomString() noexcept
 {
@@ -40,19 +58,59 @@ std::string genRandomString() noexcept
     return ret;
 }
 
-template<typename Func>
-struct defer
+void cleanResource()
 {
-    explicit defer(Func newF)
-        : f(std::move(newF))
-    {
+    if (!bundleFlag.load(std::memory_order_relaxed)) {
+        return;
     }
 
-    ~defer() { f(); }
+    std::error_code ec;
+    if (!std::filesystem::exists(containerBundle, ec) || ec) {
+        std::cerr << "filesystem error:" << containerBundle << " " << ec.message() << std::endl;
+        return;
+    }
 
-private:
-    Func f;
-};
+    if (!std::filesystem::remove_all(containerBundle, ec) || ec) {
+        std::cerr << "failed to remove directory " << containerBundle << ":" << ec.message()
+                  << std::endl;
+        return;
+    }
+
+    bundleFlag.store(false, std::memory_order_relaxed);
+    return;
+}
+
+[[noreturn]] static void cleanAndExit(int exitCode) noexcept
+{
+    cleanResource();
+    ::_exit(exitCode);
+}
+
+void handleSig() noexcept
+{
+    auto handler = [](int sig) -> void {
+        cleanAndExit(sig);
+    };
+
+    sigset_t blocking_mask;
+    sigemptyset(&blocking_mask);
+    auto quitSignals = { SIGTERM, SIGINT, SIGQUIT, SIGHUP, SIGABRT, SIGSEGV };
+    for (auto sig : quitSignals) {
+        sigaddset(&blocking_mask, sig);
+    }
+
+    struct sigaction sa
+    {
+    };
+
+    sa.sa_handler = handler;
+    sa.sa_mask = blocking_mask;
+    sa.sa_flags = 0;
+
+    for (auto sig : quitSignals) {
+        sigaction(sig, &sa, nullptr);
+    }
+}
 
 bool applyJSONPatch(ocppi::runtime::config::types::Config &cfg,
                     const linglong::api::types::v1::OciConfigurationPatch &patch) noexcept
@@ -388,15 +446,17 @@ loadPackageInfoFromJson(const std::filesystem::path &json) noexcept
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 {
+    handleSig();
+
     const auto &bundleDir = std::filesystem::read_symlink("/proc/self/exe").parent_path();
     const auto &layersDir = bundleDir / "layers";
-    if (!std::filesystem::exists(layersDir)) {
-        std::cerr << "couldn't find directory 'layers'" << std::endl;
+    std::error_code ec;
+    if (!std::filesystem::exists(layersDir, ec) || ec) {
+        std::cerr << "couldn't find directory 'layers':" << ec.message() << std::endl;
         return -1;
     }
 
     std::optional<linglong::api::types::v1::PackageInfoV2> appInfo;
-    std::error_code ec;
     for (const auto &layer : std::filesystem::directory_iterator{ layersDir, ec }) {
         if (!layer.is_directory()) { // seeking layer directory
             continue;
@@ -464,41 +524,37 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 
     auto containerID = genRandomString();
     auto containerBundleDir = bundleDir.parent_path().parent_path() / containerID;
-    if (!std::filesystem::create_directories(containerBundleDir, ec) && ec) {
+    if (!std::filesystem::create_directories(containerBundleDir, ec) || ec) {
         std::cerr << "couldn't create directory " << containerBundleDir << " :" << ec.message()
                   << std::endl;
         return -1;
     }
 
-    defer removeContainerBundleDir{ [containerBundleDir]() noexcept {
-        std::error_code ec;
-        std::filesystem::remove_all(containerBundleDir, ec);
-        if (ec) {
-            std::cerr << "remove bundle error:" << ec.message() << std::endl;
-        }
-    } };
+    containerBundle = std::move(containerBundleDir);
+    bundleFlag.store(true, std::memory_order_relaxed);
+    defer removeContainerBundleDir{ cleanResource };
 
     auto extraDir = bundleDir / "extra";
-    if (!std::filesystem::exists(extraDir, ec)) {
-        std::cerr << extraDir << " doesn't exist:" << ec.message() << std::endl;
+    if (!std::filesystem::exists(extraDir, ec) || ec) {
+        std::cerr << extraDir << " may not exist:" << ec.message() << std::endl;
         return -1;
     }
 
     auto boxBin = extraDir / "ll-box";
-    if (!std::filesystem::exists(boxBin, ec)) {
-        std::cerr << boxBin << " doesn't exist:" << ec.message() << std::endl;
+    if (!std::filesystem::exists(boxBin, ec) || ec) {
+        std::cerr << boxBin << " may not exist:" << ec.message() << std::endl;
         return -1;
     }
 
     auto containerCfgDir = extraDir / "container";
-    if (!std::filesystem::exists(containerCfgDir, ec)) {
-        std::cerr << containerCfgDir << " doesn't exist:" << ec.message() << std::endl;
+    if (!std::filesystem::exists(containerCfgDir, ec) || ec) {
+        std::cerr << containerCfgDir << " may not exist:" << ec.message() << std::endl;
         return -1;
     }
 
     auto initCfg = containerCfgDir / "config.json";
-    if (!std::filesystem::exists(initCfg, ec)) {
-        std::cerr << initCfg << " doesn't exist:" << ec.message() << std::endl;
+    if (!std::filesystem::exists(initCfg, ec) || ec) {
+        std::cerr << initCfg << " may not exist:" << ec.message() << std::endl;
         return -1;
     }
 
@@ -527,17 +583,18 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
         std::error_code ec;
 
         auto layerDir = bundleDir / "layers" / layerID;
-        if (!std::filesystem::exists(layerDir, ec)) {
-            std::cerr << "container layer path: " << layerDir << "doesn't exist:" << ec.message()
+        if (!std::filesystem::exists(layerDir, ec) || ec) {
+            std::cerr << "container layer path: " << layerDir << "may not exist:" << ec.message()
                       << std::endl;
             return {};
         }
 
-        if (auto runtime = layerDir / "runtime/files"; std::filesystem::exists(runtime)) {
+        // ignore error code when directory doesn't exist
+        if (auto runtime = layerDir / "runtime/files"; std::filesystem::exists(runtime, ec)) {
             return runtime.string();
         }
 
-        if (auto binary = layerDir / "binary/files"; std::filesystem::exists(binary)) {
+        if (auto binary = layerDir / "binary/files"; std::filesystem::exists(binary, ec)) {
             return binary.string();
         }
 
@@ -556,8 +613,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 
     // apply generators
     auto generatorsDir = containerCfgDir / "config.d";
-    if (!std::filesystem::exists(generatorsDir, ec)) {
-        std::cerr << initCfg << " doesn't exist:" << ec.message() << std::endl;
+    if (!std::filesystem::exists(generatorsDir, ec) || ec) {
+        std::cerr << initCfg << " may not exist:" << ec.message() << std::endl;
         return -1;
     }
 
@@ -637,12 +694,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
         gens.emplace_back(path.path());
     }
 
-    applyPatches(containerBundleDir, config, gens);
+    applyPatches(containerBundle, config, gens);
 
     // append ld conf
     auto ldConfDir = extraDir / "ld.conf.d";
-    if (!std::filesystem::exists(ldConfDir)) {
-        std::cerr << "ld config directory doesn't exist" << std::endl;
+    if (!std::filesystem::exists(ldConfDir, ec) || ec) {
+        std::cerr << "ld config directory may not exist" << std::endl;
         return -1;
     }
 
@@ -654,7 +711,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     });
 
     // dump to bundle
-    auto bundleCfg = containerBundleDir / "config.json";
+    auto bundleCfg = containerBundle / "config.json";
     std::ofstream cfgStream{ bundleCfg.string() };
     if (!cfgStream.is_open()) {
         std::cerr << "couldn't create bundle config.json" << std::endl;
@@ -670,8 +727,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
         std::cout << json.dump(4) << std::endl;
     }
 
-    auto bundleArg = "--bundle=" + containerBundleDir.string();
-
+    auto bundleArg = "--bundle=" + containerBundle.string();
     auto pid = fork();
     if (pid < 0) {
         std::cerr << "fork() err: " << ::strerror(errno) << std::endl;

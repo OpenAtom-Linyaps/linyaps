@@ -31,7 +31,7 @@ extern "C" int erofsfuse_main(int argc, char **argv);
 
 static std::atomic_bool mountFlag{ false };
 static std::atomic_bool createFlag{ false };
-static std::string mountPoint{};
+static std::filesystem::path mountPoint;
 
 constexpr auto usage = u8R"(Linglong Universal Application Bundle
 
@@ -406,33 +406,21 @@ int mountSelfBundle(std::string_view selfBin,
 
 void cleanResource() noexcept
 {
-    if (!createFlag.load()) {
-        return;
-    }
-
-    std::error_code ec;
-    if (!std::filesystem::exists(mountPoint, ec)) {
-        if (ec) {
-            std::cerr << "filesystem error:" << ec.message() << std::endl;
-        }
-        return;
-    }
-
-    [] {
-        if (!mountFlag.load()) {
-            return;
+    auto umountRet = [] {
+        if (!mountFlag.load(std::memory_order_relaxed)) {
+            return true;
         }
 
         auto pid = fork();
         if (pid < 0) {
             std::cerr << "fork() error" << ": " << strerror(errno) << std::endl;
-            return;
+            return false;
         }
 
         if (pid == 0) {
             if (::execlp("umount", "umount", "-l", mountPoint.c_str(), nullptr) == -1) {
                 std::cerr << "umount error: " << strerror(errno) << std::endl;
-                return;
+                return false;
             }
         }
 
@@ -440,14 +428,31 @@ void cleanResource() noexcept
         auto ret = ::waitpid(pid, &status, 0);
         if (ret == -1) {
             std::cerr << "wait failed:" << strerror(errno) << std::endl;
-            return;
+            return false;
         }
+
+        mountFlag.store(false, std::memory_order_relaxed);
+        return true;
     }();
 
-    if (!std::filesystem::remove(mountPoint, ec)) {
-        if (ec) {
-            std::cerr << "failed to remove mount point:" << ec.message() << std::endl;
+    if (umountRet && createFlag.load(std::memory_order_relaxed)) {
+        std::error_code ec;
+        if (!std::filesystem::exists(mountPoint, ec)) {
+            if (ec) {
+                std::cerr << "filesystem error " << mountPoint << ":" << ec.message() << std::endl;
+                return;
+            }
+
+            createFlag.store(false, std::memory_order_relaxed);
+            return;
         }
+
+        if (!std::filesystem::remove_all(mountPoint, ec) || ec) {
+            std::cerr << "failed to remove mount point:" << ec.message() << std::endl;
+            return;
+        }
+
+        createFlag.store(false, std::memory_order_relaxed);
     }
 }
 
@@ -485,6 +490,11 @@ void handleSig() noexcept
 
 int createMountPoint(std::string_view uuid) noexcept
 {
+    if (createFlag.load(std::memory_order_relaxed)) {
+        std::cout << "mount point already has been created" << std::endl;
+        return 0;
+    }
+
     const char *runtimeDirPtr{ nullptr };
     runtimeDirPtr = ::getenv("XDG_RUNTIME_DIR");
     if (runtimeDirPtr == nullptr) {
@@ -504,12 +514,8 @@ int createMountPoint(std::string_view uuid) noexcept
         }
     }
 
-    mountPoint = mountPointPath.string();
-    bool expected{ false };
-    if (!createFlag.compare_exchange_strong(expected, true)) {
-        std::cerr << "internal create flag error" << std::endl;
-        return -1;
-    }
+    mountPoint = std::move(mountPointPath);
+    createFlag.store(true, std::memory_order_relaxed);
 
     return 0;
 }
@@ -558,37 +564,23 @@ int extractBundle(std::string_view destination) noexcept
 {
     std::error_code ec;
     auto path = std::filesystem::path(destination);
-    if (!std::filesystem::exists(path.parent_path(), ec)) {
+    if (!std::filesystem::exists(path.parent_path(), ec) || ec) {
         std::cerr << path.parent_path() << ": " << ec.message() << std::endl;
         return ec.value();
     }
 
-    if (!std::filesystem::create_directory(path, path.parent_path(), ec)) {
-        if (ec) {
-            std::cerr << "create " << path << ":" << ec.message() << std::endl;
-            return ec.value();
-        }
-    }
-
-    if (!std::filesystem::is_directory(path, ec)) {
-        std::cerr << path;
-        if (ec) {
-            std::cerr << ":" << ec.message();
-        } else {
-            std::cerr << " isn't a directory";
-        }
-        std::cerr << std::endl;
+    if (!std::filesystem::create_directory(path, path.parent_path(), ec) || ec) {
+        std::cerr << "create " << path << ":" << ec.message() << std::endl;
         return ec.value();
     }
 
-    if (!std::filesystem::is_empty(path, ec)) {
-        std::cerr << path;
-        if (ec) {
-            std::cerr << ":" << ec.message();
-        } else {
-            std::cerr << " isn't empty";
-        }
-        std::cerr << std::endl;
+    if (!std::filesystem::is_directory(path, ec) || ec) {
+        std::cerr << "filesystem error:" << path << " " << ec.message() << std::endl;
+        return ec.value();
+    }
+
+    if (!std::filesystem::is_empty(path, ec) || ec) {
+        std::cerr << "filesystem error:" << path << " " << ec.message() << std::endl;
         return ec.value();
     }
 
@@ -607,7 +599,7 @@ int extractBundle(std::string_view destination) noexcept
 [[noreturn]] void runAppLoader(const linglong::api::types::v1::UabMetaInfo &meta,
                                const std::vector<std::string_view> &loaderArgs) noexcept
 {
-    auto loader = std::filesystem::path{ mountPoint } / "loader";
+    auto loader = mountPoint / "loader";
     auto loaderStr = loader.string();
     auto argc = loaderArgs.size() + 2;
     auto *argv = new (std::nothrow) const char *[argc]();
@@ -742,6 +734,11 @@ argOption parseArgs(const std::vector<std::string_view> &args)
 int mountSelf(std::string_view selfBin,
               const linglong::api::types::v1::UabMetaInfo &metaInfo) noexcept
 {
+    if (mountFlag.load(std::memory_order_relaxed)) {
+        std::cout << "bundle already has been mounted" << std::endl;
+        return 0;
+    }
+
     const auto &uuid = metaInfo.uuid;
     if (auto ret = createMountPoint(uuid); ret != 0) {
         return ret;
@@ -751,12 +748,7 @@ int mountSelf(std::string_view selfBin,
         return -1;
     }
 
-    bool expected{ false };
-    if (!mountFlag.compare_exchange_strong(expected, true)) {
-        std::cerr << "internal create flag error" << std::endl;
-        return -1;
-    }
-
+    mountFlag.store(true, std::memory_order_relaxed);
     return 0;
 }
 

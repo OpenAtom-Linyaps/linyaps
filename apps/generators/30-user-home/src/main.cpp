@@ -191,11 +191,18 @@ int main()
         return -1;
     }
 
-    auto hostAppDconfPath = hostAppConfigHome / "dconf";
+    // FIXME: Many applications get configurations from dconf, so we expose dconf to all
+    // applications for now. If there is a better solution to fix this issue, please change the
+    // following codes
+    auto XDGUserConfig = hostHomeDir / ".config";
+    if (auto *ptr = ::getenv("XDG_CONFIG_HOME"); ptr != nullptr) {
+        XDGUserConfig = ptr;
+    }
+    auto hostUserDconfPath = XDGUserConfig / "dconf";
     auto cognitiveAppDconfPath = cognitiveAppConfigHome / "dconf";
-    mountDir(hostAppDconfPath, cognitiveAppDconfPath, ec);
+    mountDir(hostUserDconfPath, cognitiveAppDconfPath, ec);
     if (ec) {
-        std::cerr << "Failed to mount " << hostAppDconfPath << " to " << cognitiveAppDconfPath
+        std::cerr << "Failed to mount " << hostUserDconfPath << " to " << cognitiveAppDconfPath
                   << ec.message() << std::endl;
         return -1;
     }

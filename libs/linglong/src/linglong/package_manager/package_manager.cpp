@@ -891,27 +891,31 @@ void PackageManager::pullDependency(InstallTask &taskContext,
             return;
         }
 
-        taskContext.updateStatus(InstallTask::installRuntime,
-                                 "Installing runtime " + runtime->toString());
+        // 如果runtime已存在，则直接使用, 否则从远程拉取
+        auto runtimeLayerDir = repo.getLayerDir(*runtime, develop);
+        if (!runtimeLayerDir) {
+            taskContext.updateStatus(InstallTask::installRuntime,
+                                     "Installing runtime " + runtime->toString());
 
-        if (taskContext.currentStatus() == InstallTask::Canceled) {
-            return;
-        }
-
-        this->repo.pull(taskContext, *runtime, develop);
-
-        if (taskContext.currentStatus() == InstallTask::Failed) {
-            return;
-        }
-
-        auto runtimeRef = *runtime;
-        transaction.addRollBack([this, runtimeRef, develop]() noexcept {
-            auto result = this->repo.remove(runtimeRef, develop);
-            if (!result) {
-                qCritical() << result.error();
-                Q_ASSERT(false);
+            if (taskContext.currentStatus() == InstallTask::Canceled) {
+                return;
             }
-        });
+
+            this->repo.pull(taskContext, *runtime, develop);
+
+            if (taskContext.currentStatus() == InstallTask::Failed) {
+                return;
+            }
+
+            auto runtimeRef = *runtime;
+            transaction.addRollBack([this, runtimeRef, develop]() noexcept {
+                auto result = this->repo.remove(runtimeRef, develop);
+                if (!result) {
+                    qCritical() << result.error();
+                    Q_ASSERT(false);
+                }
+            });
+        }
     }
 
     auto fuzzyBase = package::FuzzyReference::parse(QString::fromStdString(info.base));
@@ -929,18 +933,20 @@ void PackageManager::pullDependency(InstallTask &taskContext,
         return;
     }
 
-    taskContext.updateStatus(InstallTask::installBase, "Installing base " + base->toString());
-    if (taskContext.currentStatus() == InstallTask::Canceled) {
-        return;
+    // 如果base已存在，则直接使用, 否则从远程拉取
+    auto baseLayerDir = repo.getLayerDir(*base, develop);
+    if (!baseLayerDir) {
+        taskContext.updateStatus(InstallTask::installBase, "Installing base " + base->toString());
+        if (taskContext.currentStatus() == InstallTask::Canceled) {
+            return;
+        }
+
+        this->repo.pull(taskContext, *base, develop);
+
+        if (taskContext.currentStatus() == InstallTask::Failed) {
+            return;
+        }
     }
-
-    this->repo.pull(taskContext, *base, develop);
-
-    if (taskContext.currentStatus() == InstallTask::Failed) {
-        return;
-    }
-
-    auto baseRef = *base;
 
     transaction.commit();
 }

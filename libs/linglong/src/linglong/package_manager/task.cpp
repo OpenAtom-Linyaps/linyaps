@@ -106,13 +106,13 @@ void InstallTask::updateStatus(Status newStatus, const QString &message) noexcep
     Q_EMIT TaskChanged(taskID(), formatPercentage(), message, m_status, {});
 }
 
-void InstallTask::reportError(linglong::utils::error::Error err) noexcept
+void InstallTask::reportError(linglong::utils::error::Error &&err) noexcept
 {
     m_statePercentage = 100;
     m_status = Status::Failed;
     m_err = std::move(err);
 
-    Q_EMIT TaskChanged(taskID(), formatPercentage(), err.message(), Status::Failed, {});
+    Q_EMIT TaskChanged(taskID(), formatPercentage(), m_err.message(), Status::Failed, {});
 }
 
 QString InstallTask::formatPercentage(double increase) const noexcept

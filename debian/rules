@@ -2,7 +2,7 @@
 include /usr/share/dpkg/pkg-info.mk
 
 OS=$(shell awk '/^NAME=/' /etc/os-release | sed 's/NAME=//' | sed 's/\"//g' | tr '[:upper:]' '[:lower:]')
-ARCH=$(shell dpkg-architecture -qDEB_TARGET_GNU_TYPE)
+ARCH=$(shell dpkg-architecture -qDEB_TARGET_MULTIARCH)
 VERSION=$(shell awk '/VERSION=/' /etc/os-release | sed 's/VERSION=//' | sed 's/\"//g' | sed 's/[.]0/./')
 ENABLE_UAB_SUPPORT=FALSE
 

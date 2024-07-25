@@ -9,8 +9,10 @@
 #include "filesystem_driver.h"
 #include "util/debug/debug.h"
 #include "util/logger.h"
+#include "util/oci_runtime.h"
 
 #include <linux/limits.h>
+#include <sys/vfs.h>
 
 #include <utility>
 
@@ -20,7 +22,7 @@
 struct remountNode
 {
     uint32_t flags{ 0U };
-    uint32_t extraFlags{ 0U };
+    uint32_t extensionFlags{ 0U };
     int targetFd{ -1 };
     std::string targetPath;
     std::string data;
@@ -47,7 +49,6 @@ public:
         };
 
         bool is_path = false;
-
         auto source = m.source;
 
         if (!m.source.empty() && m.source[0] == '/') {
@@ -86,7 +87,7 @@ public:
         }
         case S_IFLNK: {
             driver_->CreateDestinationPath(dest_parent_path);
-            if (m.extraFlags & OPTION_COPY_SYMLINK) {
+            if (m.extensionFlags & Extension::COPY_SYMLINK) {
                 std::array<char, PATH_MAX + 1> buf{};
                 auto len = readlink(source.c_str(), buf._M_elems, PATH_MAX);
                 if (len == -1) {
@@ -99,7 +100,7 @@ public:
 
             host_dest_full_path.touch();
 
-            if (m.extraFlags & OPTION_NOSYMFOLLOW) {
+            if (m.flags & LINGLONG_MS_NOSYMFOLLOW) {
                 sourceFd = ::open(source.c_str(), O_PATH | O_NOFOLLOW | O_CLOEXEC);
                 if (sourceFd < 0) {
                     logFal() << util::format("fail to open source(%s):", source.c_str())
@@ -132,6 +133,7 @@ public:
         auto data = util::str_vec_join(m.data, ',');
         auto real_data = data;
         auto real_flags = m.flags;
+        constexpr uint32_t all_propagations = (MS_SHARED | MS_PRIVATE | MS_SLAVE | MS_UNBINDABLE);
 
         switch (m.fsType) {
         case Mount::Bind: {
@@ -139,16 +141,17 @@ public:
             real_flags |= MS_BIND;
 
             // When doing a bind mount, all flags expect MS_BIND and MS_REC are ignored by kernel.
-            real_flags &= (MS_BIND | MS_REC);
+            real_flags &=
+              ((static_cast<uint32_t>(MS_BIND) | MS_REC) & ~static_cast<uint32_t>(MS_RDONLY));
 
             // When doing a bind mount, data and fstype are ignored by kernel. We should set them by
             // remounting.
-            real_data = "";
+            real_data.clear();
             ret = util::fs::do_mount_with_fd(root.c_str(),
                                              source.c_str(),
                                              host_dest_full_path.string().c_str(),
                                              nullptr,
-                                             real_flags & ~MS_RDONLY,
+                                             real_flags,
                                              nullptr);
             if (0 != ret) {
                 break;
@@ -158,16 +161,39 @@ public:
                 sysfs_is_binded = true;
             }
 
+            if (m.propagationFlags & all_propagations) {
+                auto rec = m.propagationFlags & MS_REC;
+                auto propagation = m.propagationFlags & all_propagations;
+
+                if (propagation != 0U) {
+                    ret = util::fs::do_mount_with_fd(root.c_str(),
+                                                     nullptr,
+                                                     host_dest_full_path.string().c_str(),
+                                                     nullptr,
+                                                     rec | propagation,
+                                                     nullptr);
+                    if (ret < 0) {
+                        logErr() << "failed to set propagation for" << host_dest_full_path.string();
+                        break;
+                    }
+                }
+            }
+
             if (data.empty() && (m.flags & ~(MS_BIND | MS_REC | MS_REMOUNT)) == 0) {
                 // no need to be remounted
                 break;
             }
 
-            if (m.extraFlags & OPTION_NOSYMFOLLOW) {
+            if (m.flags & LINGLONG_MS_NOSYMFOLLOW) {
                 break; // FIXME: Refactoring the mounting process
             }
 
-            real_flags = m.flags | MS_BIND | MS_REMOUNT | MS_RDONLY;
+            real_flags = m.flags | MS_BIND | MS_REMOUNT;
+            if ((real_flags & MS_RDONLY) == 0U) {
+                ret = remount(host_dest_full_path.string(), real_flags, data);
+                break;
+            }
+
             auto newFd = ::open(host_dest_full_path.string().c_str(), O_PATH | O_CLOEXEC);
             if (newFd == -1) {
                 logErr() << "failed to open" << host_dest_full_path.string();
@@ -176,13 +202,12 @@ public:
             // When doing a remount, source and fstype are ignored by kernel.
             remountList.emplace_back(remountNode{
               .flags = real_flags,
-              .extraFlags = m.extraFlags,
+              .extensionFlags = m.extensionFlags,
               .targetFd = newFd,
               .targetPath = util::format("/proc/self/fd/%d", newFd),
               .data = data,
             });
-            break;
-        }
+        } break;
         case Mount::Proc:
         case Mount::Devpts:
         case Mount::Mqueue:
@@ -258,15 +283,61 @@ public:
         return ret;
     }
 
+    static int remount(const std::string &target, uint32_t flags, const std::string &data)
+    {
+        const char *data_ptr = data.c_str();
+        if (flags & (MS_REMOUNT | MS_RDONLY)) {
+            data_ptr = nullptr;
+        }
+
+        auto ret = ::mount("none", target.c_str(), "", flags, data_ptr);
+        if (ret == 0) {
+            return 0;
+        }
+
+        // retry remount
+        struct statfs sfs
+        {
+        };
+
+        ret = ::statfs(target.c_str(), &sfs);
+        if (ret < 0) {
+            logErr() << "statfs file" << target << "error:" << ::strerror(errno);
+            return ret;
+        }
+
+        auto remount_flags =
+          static_cast<uint32_t>(sfs.f_flags) & (MS_NOSUID | MS_NODEV | MS_NOEXEC);
+        if ((flags | remount_flags) != flags) {
+            ret = ::mount(nullptr, target.c_str(), nullptr, flags | remount_flags, data_ptr);
+            if (ret == 0) {
+                return 0;
+            }
+
+            /* If it still fails and MS_RDONLY is present in the mount, try adding it.  */
+            if ((sfs.f_flags & MS_RDONLY) != 0) {
+                remount_flags = sfs.f_flags & (MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RDONLY);
+                ret = ::mount(nullptr, target.c_str(), nullptr, flags | remount_flags, data_ptr);
+            }
+        }
+
+        if (ret < 0) {
+            logErr() << "failed to remount" << target << "error:" << ::strerror(errno);
+            return ret;
+        }
+
+        return 0;
+    }
+
     void finalizeMounts()
     {
         for (const auto &node : remountList) {
-            if (::mount("none", node.targetPath.c_str(), "", node.flags, node.data.c_str()) != 0) {
-                logWan() << "failed to remount" << node.targetPath << strerror(errno);
+            if (remount(node.targetPath, node.flags, node.data) != 0) {
+                logWan() << "failed to remount" << node.targetPath << ::strerror(errno);
             }
 
             if (::close(node.targetFd) == -1) {
-                logWan() << "failed to close fd" << node.targetFd << strerror(errno);
+                logWan() << "failed to close fd" << node.targetFd << ::strerror(errno);
             }
         }
     }

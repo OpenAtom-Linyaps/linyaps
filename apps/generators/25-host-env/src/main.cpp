@@ -13,14 +13,12 @@ const std::vector<std::string> envList = {
     "DISPLAY",
     "LANG",
     "LANGUAGE",
-    "XAUTHORITY",
     "XDG_SESSION_DESKTOP",
     "D_DISABLE_RT_SCREEN_SCALE",
     "XMODIFIERS",
     "DESKTOP_SESSION",
     "DEEPIN_WINE_SCALE",
     "XDG_CURRENT_DESKTOP",
-    //"XDG_DATA_HOME", //30-user-home add this
     "XIM",
     "XDG_SESSION_TYPE",
     "XDG_RUNTIME_DIR",
@@ -35,7 +33,6 @@ const std::vector<std::string> envList = {
     "no_proxy",     // 网络系统代理手动配置代理
     "USER",         // wine应用会读取此环境变量
     "PATH",
-    //"HOME", //30-user-home add this
     "QT_IM_MODULE",    // 输入法
     "LINGLONG_ROOT",   // 玲珑安装位置
     "WAYLAND_DISPLAY", // 导入wayland相关环境变量
@@ -83,7 +80,8 @@ int main()
     }
 
     auto annotations = content.at("annotations");
-    env.push_back("LINGLONG_APPID=" + annotations.at("org.deepin.linglong.appID").get<std::string>());
+    env.push_back("LINGLONG_APPID="
+                  + annotations.at("org.deepin.linglong.appID").get<std::string>());
 
     std::cout << content.dump() << std::endl;
     return 0;

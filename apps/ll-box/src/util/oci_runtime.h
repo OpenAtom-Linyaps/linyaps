@@ -11,6 +11,15 @@
 
 #include <sys/mount.h>
 
+// Compatible with linux kernel which is under 5.10
+// ll-box will open the symlink with O_PATH | O_NOFOLLOW and replace source by '/proc/self/fd/${fd}'
+// impl: method MountNode in file host_mount.cpp
+#ifndef MS_NOSYMFOLLOW
+#  define LINGLONG_MS_NOSYMFOLLOW 256
+#else
+#  define LINGLONG_MS_NOSYMFOLLOW MS_NOSYMFOLLOW
+#endif
+
 namespace linglong {
 
 #define LLJS_FROM(KEY) (LLJS_FROM_VARNAME(KEY, KEY))
@@ -85,15 +94,16 @@ struct Mount
     util::str_vec data;
 
     Type fsType;
-    uint32_t flags = 0u;
-    uint32_t extraFlags{ 0U };
+    uint32_t flags{ 0 };
+    uint32_t propagationFlags{ 0 };
+    uint32_t extensionFlags{ 0 };
 };
 
-enum { OPTION_COPY_SYMLINK = 1, OPTION_NOSYMFOLLOW = 2 };
+enum Extension { COPY_SYMLINK = 1 };
 
 inline void from_json(const nlohmann::json &j, Mount &o)
 {
-    static std::map<std::string, Mount::Type> fsTypes = {
+    const static std::map<std::string_view, Mount::Type> fsTypes = {
         { "bind", Mount::Bind },     { "proc", Mount::Proc },       { "devpts", Mount::Devpts },
         { "mqueue", Mount::Mqueue }, { "tmpfs", Mount::Tmpfs },     { "sysfs", Mount::Sysfs },
         { "cgroup", Mount::Cgroup }, { "cgroup2", Mount::Cgroup2 },
@@ -101,12 +111,11 @@ inline void from_json(const nlohmann::json &j, Mount &o)
 
     struct mountFlag
     {
-        bool clear;
-        uint32_t flag;
-        uint32_t extraFlags{ 0 };
+        bool clear{ false };
+        uint32_t flag{ 0 };
     };
 
-    static std::map<std::string, mountFlag> optionFlags = {
+    const static std::map<std::string_view, mountFlag> optionFlags = {
         { "acl", { false, MS_POSIXACL } },
         { "async", { true, MS_SYNCHRONOUS } },
         { "atime", { true, MS_NOATIME } },
@@ -131,8 +140,7 @@ inline void from_json(const nlohmann::json &j, Mount &o)
         { "norelatime", { true, MS_RELATIME } },
         { "nostrictatime", { true, MS_STRICTATIME } },
         { "nosuid", { false, MS_NOSUID } },
-        { "nosymfollow",
-          { false, 0, OPTION_NOSYMFOLLOW } }, // for compatibility, use custom flag for now
+        { "nosymfollow", { false, LINGLONG_MS_NOSYMFOLLOW } }, // since kernel 5.10
         { "rbind", { false, MS_BIND | MS_REC } },
         { "relatime", { false, MS_RELATIME } },
         { "remount", { false, MS_REMOUNT } },
@@ -143,7 +151,17 @@ inline void from_json(const nlohmann::json &j, Mount &o)
         { "suid", { true, MS_NOSUID } },
         { "sync", { false, MS_SYNCHRONOUS } },
         // {"symfollow",{true, MS_NOSYMFOLLOW}}, // since kernel 5.10
-        { "copy-symlink", { false, 0, OPTION_COPY_SYMLINK } }
+    };
+
+    const static std::map<std::string_view, uint32_t> propagationFlags{
+        { "rprivate", MS_PRIVATE | MS_REC },       { "private", MS_PRIVATE },
+        { "rslave", MS_SLAVE | MS_REC },           { "slave", MS_SLAVE },
+        { "rshared", MS_SHARED | MS_REC },         { "shared", MS_SHARED },
+        { "runbindable", MS_UNBINDABLE | MS_REC }, { "unbindable", MS_UNBINDABLE }
+    };
+
+    const static std::map<std::string_view, mountFlag> extensionFlags{
+        { "copy-symlink", { false, Extension::COPY_SYMLINK } }
     };
 
     o.destination = j.at("destination").get<std::string>();
@@ -156,20 +174,24 @@ inline void from_json(const nlohmann::json &j, Mount &o)
     o.data = {};
 
     // Parse options to data and flags.
-    // FIXME: support "propagation flags" and "recursive mount attrs"
+    // FIXME: support "recursive mount attrs" in the future
     // https://github.com/opencontainers/runc/blob/c83abc503de7e8b3017276e92e7510064eee02a8/libcontainer/specconv/spec_linux.go#L958
     auto options = j.value("options", util::str_vec());
     for (auto const &opt : options) {
-        auto it = optionFlags.find(opt);
-        if (it != optionFlags.end()) {
+        if (auto it = optionFlags.find(opt); it != optionFlags.cend() && it->second.flag != 0) {
             if (it->second.clear) {
                 o.flags &= ~it->second.flag;
-                o.extraFlags &= ~it->second.extraFlags;
             } else {
                 o.flags |= it->second.flag;
-                o.extraFlags |= it->second.extraFlags;
             }
-
+        } else if (auto it = propagationFlags.find(opt); it != propagationFlags.cend()) {
+            o.propagationFlags |= it->second;
+        } else if (auto it = extensionFlags.find(opt); it != extensionFlags.cend()) {
+            if (it->second.clear) {
+                o.extensionFlags &= ~it->second.flag;
+            } else {
+                o.extensionFlags |= it->second.flag;
+            }
         } else {
             o.data.push_back(opt);
         }

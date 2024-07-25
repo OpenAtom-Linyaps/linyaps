@@ -31,7 +31,7 @@ fi
 # Fetch commit
 git fetch origin "$commit" --depth 1 -n
 git add :/
-git reset --hard "$commit"
+git reset --hard FETCH_HEAD
 
 # Fetch submodule
 git submodule update --init --recursive --depth 1

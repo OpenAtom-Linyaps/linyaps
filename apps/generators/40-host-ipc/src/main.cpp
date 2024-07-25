@@ -84,9 +84,7 @@ int main()
       { "type", "tmpfs" },
     });
 
-    bool xdgRuntimeDirMounted = false;
-
-    [mount, &mounts, &xdgRuntimeDirMounted, &content, &bindIfExist]() {
+    [mount, &mounts, &content, &bindIfExist]() {
         auto *XDGRuntimeDirEnv = getenv("XDG_RUNTIME_DIR"); // NOLINT
         if (XDGRuntimeDirEnv == nullptr) {
             return;
@@ -125,11 +123,8 @@ int main()
           { "type", "tmpfs" },
           { "options", nlohmann::json::array({ "nodev", "nosuid", "mode=700" }) },
         }));
-
         content["process"]["env"].emplace_back(std::string{ "XDG_RUNTIME_DIR=" }
                                                + cognitiveXDGRuntimeDir.string());
-
-        xdgRuntimeDirMounted = true;
 
         bindIfExist((hostXDGRuntimeDir / "pulse").string(),
                     (cognitiveXDGRuntimeDir / "pulse").string());
@@ -205,7 +200,7 @@ int main()
         }();
     }();
 
-    [xauthPatch = mount, &mounts, xdgRuntimeDirMounted, &content]() mutable {
+    [xauthPatch = mount, &mounts, &content]() mutable {
         auto *homeEnv = ::getenv("HOME"); // NOLINT
         if (homeEnv == nullptr) {
             std::cerr << "Couldn't get HOME from env." << std::endl;
@@ -221,21 +216,15 @@ int main()
         auto hostXauthFile = std::string{ homeEnv } + "/.Xauthority";
         auto cognitiveXauthFile = std::string{ "/home/" } + userEnv + "/.Xauthority";
 
-        auto *xauthFileEnv = getenv("XAUTHORITY"); // NOLINT
-        if (xauthFileEnv != nullptr && std::filesystem::exists(xauthFileEnv)) {
+        auto *xauthFileEnv = ::getenv("XAUTHORITY"); // NOLINT
+        std::error_code ec;
+        if (xauthFileEnv != nullptr && std::filesystem::exists(xauthFileEnv, ec)) {
             hostXauthFile = xauthFileEnv;
         }
 
-        if (hostXauthFile.rfind(homeEnv, 0) != 0U
-            && ((!xdgRuntimeDirMounted)
-                || hostXauthFile.rfind("/run/user/" + std::to_string(::getuid()), 0) != 0U)) {
-            std::cerr << "XAUTHORITY equals to " << hostXauthFile << " is not supported now."
+        if (!std::filesystem::exists(hostXauthFile, ec) || ec) {
+            std::cerr << "XAUTHORITY file not found at " << hostXauthFile << ":" << ec.message()
                       << std::endl;
-            return;
-        }
-
-        if (!std::filesystem::exists(hostXauthFile)) {
-            std::cerr << "XAUTHORITY file not found at " << hostXauthFile << "." << std::endl;
             return;
         }
 
@@ -244,7 +233,6 @@ int main()
 
         mounts.emplace_back(std::move(xauthPatch));
         content["process"]["env"].emplace_back("XAUTHORITY=" + cognitiveXauthFile);
-        return;
     }();
 
     auto pwd = std::filesystem::current_path();

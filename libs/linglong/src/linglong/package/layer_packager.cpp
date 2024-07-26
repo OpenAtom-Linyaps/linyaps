@@ -101,9 +101,11 @@ LayerPackager::pack(const LayerDir &dir, const QString &layerFilePath) const
     // compress data with erofs
     const auto &compressedFilePath = this->workDir.absoluteFilePath("tmp.erofs");
     const auto &ignoreRegex = QString{ "--exclude-regex=minified*" };
-    auto ret =
-      utils::command::Exec("mkfs.erofs",
-                           { "-zlz4hc,9", compressedFilePath, ignoreRegex, dir.absolutePath() });
+    // 使用-b统一指定block size为4096(2^12), 避免不同系统的兼容问题
+    // loongarch64默认使用(16384)2^14, 在x86和arm64不受支持, 会导致无法推包
+    auto ret = utils::command::Exec(
+      "mkfs.erofs",
+      { "-zlz4hc,9", "-b4096", compressedFilePath, ignoreRegex, dir.absolutePath() });
     if (!ret) {
         return LINGLONG_ERR(ret);
     }

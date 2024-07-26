@@ -78,6 +78,21 @@ sudo apt update
 sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
+## openkylin 2.0rc
+
+添加玲珑仓库源。
+
+```bash
+sudo bash -c "echo 'deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/multi_distro/openkylin2.0_repo/ ./' > /etc/apt/sources.list.d/linglong.list"
+```
+
+更新仓库并安装玲珑。
+
+```bash
+sudo apt update
+sudo apt install linglong-builder linglong-box linglong-bin
+```
+
 # 安装 pica
 
 本工具目前提供 deb 包转换为玲珑包的能力，生成构建玲珑应用需要的 linglong.yaml 文件，并依赖 ll-builder 来实现应用构建和导出。

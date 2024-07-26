@@ -78,6 +78,21 @@ sudo apt update
 sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
+## openkylin 2.0rc
+
+Add Linglong repository source.
+
+```bash
+sudo bash -c "echo 'deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/multi_distro/openkylin2.0_repo/ ./' > /etc/apt/sources.list.d/linglong.list"
+```
+
+Update the repository and install Linglong.
+
+```bash
+sudo apt update
+sudo apt install linglong-builder linglong-box linglong-bin
+```
+
 # Install the Pica tool
 
 This tool currently provides the capability to convert DEB packages into Linglong packages. Generate the required `linglong.yaml` file for building Linglong applications and rely on `ll-builder` to implement application build and export.

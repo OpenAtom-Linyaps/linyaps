@@ -62,8 +62,21 @@ int main()
             videoMounts.emplace_back(std::move(dev));
         }
     }
-
     mounts.insert(mounts.end(), videoMounts.begin(), videoMounts.end());
+
+    // using FHS media directory and ignore '/run/media' for now
+    // FIXME: the mount base location of udisks will be affected by the flag '--enable-fhs-media',
+    // if not set this option, udisks will choose `/run/media` as the mount location. some linux
+    // distros (e.g. ArchLinux) don't have this flag enabled, perhaps we could find a better way to
+    // compatible with those distros.
+    // https://github.com/storaged-project/udisks/commit/ae2a5ff1e49ae924605502ace170eb831e9c38e4
+    if (std::filesystem::exists("/media")) {
+        mounts.push_back({ { "source", "/media" },
+                           { "type", "bind" },
+                           { "destination", "/media" },
+                           { "options", { "rbind, rshared" } } });
+    }
+
     std::cout << content.dump() << std::endl;
     return 0;
 }

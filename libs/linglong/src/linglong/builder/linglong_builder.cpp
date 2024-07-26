@@ -627,7 +627,9 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
 
     qDebug() << "generate entries";
     if (this->project.package.kind != "runtime") {
+        QDir binaryFiles = this->workingDir.absoluteFilePath("linglong/output/binary/files");
         QDir binaryEntries = this->workingDir.absoluteFilePath("linglong/output/binary/entries");
+        QDir developFiles = this->workingDir.absoluteFilePath("linglong/output/develop/files");
         QDir developEntries = this->workingDir.absoluteFilePath("linglong/output/develop/entries");
         if (!binaryEntries.mkpath(".")) {
             return LINGLONG_ERR("make path " + binaryEntries.absolutePath() + ": failed.");
@@ -635,25 +637,33 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         if (!developEntries.mkpath(".")) {
             return LINGLONG_ERR("make path " + developEntries.absolutePath() + ": failed.");
         }
+
         if (!QFile::link("../files/share", binaryEntries.absoluteFilePath("share"))) {
             return LINGLONG_ERR("link entries share to files share: failed");
-        }
-        if (!binaryOutput.mkpath("share/systemd")) {
-            return LINGLONG_ERR("mkpath files/share/systemd/user: failed");
-        }
-        if (!QFile::link("../../lib/systemd/user",
-                         binaryOutput.absoluteFilePath("share/systemd/user"))) {
-            return LINGLONG_ERR("link systemd user service to files/share/systemd/user: failed");
         }
         if (!QFile::link("../files/share", developEntries.absoluteFilePath("share"))) {
             return LINGLONG_ERR("link entries share to files share: failed");
         }
-        if (!developOutput.mkpath("share/systemd")) {
-            return LINGLONG_ERR("mkpath files/share/systemd/user: failed");
+
+        if (binaryFiles.exists("lib/systemd/user")) {
+            if (!binaryEntries.mkpath("share/systemd/user")) {
+                return LINGLONG_ERR("mkpath files/share/systemd/user: failed");
+            }
+            auto ret = util::copyDir(binaryFiles.filePath("lib/systemd/user"),
+                                     binaryEntries.absoluteFilePath("share/systemd/user"));
+            if (!ret.has_value()) {
+                return LINGLONG_ERR(ret);
+            }
         }
-        if (!QFile::link("../../lib/systemd/user",
-                         developOutput.absoluteFilePath("share/systemd/user"))) {
-            return LINGLONG_ERR("link systemd user service to files/share/systemd/user: failed");
+        if (developFiles.exists("lib/systemd/user")) {
+            if (!developOutput.mkpath("share/systemd/user")) {
+                return LINGLONG_ERR("mkpath files/share/systemd/user: failed");
+            }
+            auto ret = util::copyDir(developFiles.filePath("lib/systemd/user"),
+                                     developEntries.absoluteFilePath("share/systemd/user"));
+            if (!ret.has_value()) {
+                return LINGLONG_ERR(ret);
+            }
         }
         if (project.command.value_or(std::vector<std::string>{}).empty()) {
             return LINGLONG_ERR("command field is required, please specify!");

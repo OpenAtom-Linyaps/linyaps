@@ -59,8 +59,8 @@ ll-pica convert -c com.baidu.baidunetdisk_4.17.7_amd64.deb -w w -b --exportFile
 │   └── com.baidu.baidunetdisk
 │       ├── com.baidu.baidunetdisk_4.17.7.0_x86_64_develop.layer
 │       ├── com.baidu.baidunetdisk_4.17.7.0_x86_64_binary.layer
-│       ├── linglong
-│       └── linglong.yaml
+	or
+│       ├── com.baidu.baidunetdisk_x86_64_4.17.7.0_main.uab
 └── package.yaml
 ```
 

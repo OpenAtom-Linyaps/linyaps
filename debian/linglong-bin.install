@@ -1,3 +1,4 @@
+debian/sysctl.d/linglong.conf usr/lib/sysctl.d/
 etc/X11/Xsession.d/21linglong
 etc/profile.d/linglong.sh
 usr/bin/linglong-repair-tool

@@ -2,14 +2,19 @@
 include /usr/share/dpkg/pkg-info.mk
 
 OS=$(shell awk '/^NAME=/' /etc/os-release | sed 's/NAME=//' | sed 's/\"//g' | tr '[:upper:]' '[:lower:]')
+OSVERSION=$(shell awk '/VERSION=/' /etc/os-release | sed 's/VERSION=//' | sed 's/\"//g' | sed 's/[.]0/./')
 ARCH=$(shell dpkg-architecture -qDEB_TARGET_MULTIARCH)
-VERSION=$(shell awk '/VERSION=/' /etc/os-release | sed 's/VERSION=//' | sed 's/\"//g' | sed 's/[.]0/./')
 ENABLE_UAB_SUPPORT=FALSE
+ENABLE_STATIC_BOX=FALSE
 
 ifeq ($(OS) $(VERSION), deepin 23)
-	ENABLE_UAB_SUPPORT=TRUE
-else ifeq ($(OS) $(VERSION), uos 20)
-	ENABLE_UAB_SUPPORT=TRUE
+ENABLE_UAB_SUPPORT=TRUE
+ENABLE_STATIC_BOX=TRUE
+endif
+
+ifeq ($(OS) $(VERSION), uos 20)
+ENABLE_UAB_SUPPORT=TRUE
+ENABLE_STATIC_BOX=TRUE
 endif
 
 %:
@@ -17,20 +22,20 @@ endif
 
 override_dh_auto_install:
 	dh_auto_install
-	dh_install -p linglong-bin debian/sysctl.d/linglong.conf usr/lib/sysctl.d/
-
-EXTRA_OPTION = -DCPM_LOCAL_PACKAGES_ONLY=ON -DLINGLONG_VERSION=$(DEB_VERSION_UPSTREAM) -DENABLE_LINGLONG_INSTALLER=ON
-
 ifeq ($(ENABLE_UAB_SUPPORT), TRUE)
-
-	EXTRA_OPTION += -DENABLE_UAB=ON -DSTATIC_BOX=ON
-
-override_dh_auto_install:
-	dh_auto_install
-
 	install -d debian/linglong-builder/usr/lib/$(ARCH)/linglong/builder/uab
 	dh_install -p linglong-builder usr/lib/$(ARCH)/linglong/builder/uab/ usr/lib/$(ARCH)/linglong/builder/
+endif
+ifeq ($(ENABLE_STATIC_BOX), TRUE)
 	dh_install -p linglong-box usr/bin/ll-box-static usr/bin
+endif
+
+EXTRA_OPTION = -DCPM_LOCAL_PACKAGES_ONLY=ON -DLINGLONG_VERSION=$(DEB_VERSION_UPSTREAM) -DENABLE_LINGLONG_INSTALLER=ON
+ifeq ($(ENABLE_UAB_SUPPORT), TRUE)
+EXTRA_OPTION += -DENABLE_UAB=ON
+endif
+ifeq ($(ENABLE_STATIC_BOX), TRUE)
+EXTRA_OPTION += -DSTATIC_BOX=ON
 endif
 
 override_dh_auto_configure:

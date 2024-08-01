@@ -27,8 +27,7 @@ case $check_level in
 esac
 
 echo "start ldd check"
-ldd-check.sh "/usr/bin:/usr/lib:/opt/apps/:/runtime"
-if [ ! $? -eq 0 ]; then
+if ! /usr/libexec/linglong/builder/helper/ldd-check.sh "/opt/apps/${LINGLONG_APPID}/files"; then
         echo "Error: ldd check failed."
         if [ $check_level -eq 1 ]; then
                 exit 1
@@ -36,8 +35,6 @@ if [ ! $? -eq 0 ]; then
 fi
 
 echo "start application configure check"
-config-check.sh
-
-if [ ! $? -eq 0 ]; then
+if ! /usr/libexec/linglong/builder/helper/config-check.sh; then
         echo "Warnning: configue check failed."
 fi

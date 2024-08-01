@@ -686,6 +686,14 @@ set -e
     }
 
     qDebug() << "generate app info";
+
+    static QRegularExpression appIDReg(
+      "[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+");
+    auto matches = appIDReg.match(QString::fromStdString(this->project.package.id));
+    if (not(matches.isValid() && matches.hasMatch())) {
+        qWarning() << "This app id does not follow the reverse domain name notation convention. "
+                      "See https://wikipedia.org/wiki/Reverse_domain_name_notation";
+    }
     // when the base version is likes 20.0.0.1, warning that it is a full version
     // if the base version is likes 20.0.0, we should also write 20.0.0 to info.json
     if (fuzzyBase->version->tweak) {

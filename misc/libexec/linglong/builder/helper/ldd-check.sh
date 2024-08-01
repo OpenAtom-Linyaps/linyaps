@@ -6,43 +6,154 @@
 
 #ldd check binary script
 
-declare failedList
-declare -i total=0 pass=0 fail=0
+declare -a dependLibs=()
+declare -a allLibs=()
+declare -r ErrColor="\033[0;31m"
+declare -r WarningColor="\033[1;33m"
+declare -r NoColor="\033[0m"
 
-if [ "$1" == "" ]; then
-        echo "usage: lddscan.sh path or lddscan.sh [path1:path2:pathn]"
-        exit -1
-fi
+logErr() {
+        echo -e "${ErrColor}Error:$1${NoColor}\n"
+}
 
-#support multiple path, split by ':'
-paths=$(echo $1 | tr ':' ' ')
+logWarn() {
+        echo -e "${WarningColor}Warning:$1${NoColor}\n"
+}
 
-filePaths=$(find $paths -type f)
-IFS=$'\n'
-for filePath in $filePaths; do
-        mimeType=$(file $filePath --mime-type)
-        isPieExe=$(echo $mimeType | grep "application/x-pie-executable")
-        isSharedLib=$(echo $mimeType | grep "application/x-sharedlib")
-        if [[ "$isPieExe" != "" || "$isSharedLib" != "" ]]; then
-                echo "$filePath is ELF, checking ..."
-                total+=1
-                if [ "$(ldd $filePath | grep "not found")" != "" ]; then
-                        echo "Warning! The ldd check is failed: $filePath"
-                        fail+=1
-                        failedList+="$filePath\n"
+logDbg() {
+        echo -e "Debug:$1\n"
+}
+
+processExecBin() {
+        local filePath="$1"
+        if [[ -z ${filePath} || ! -f ${filePath} ]]; then
+                logErr "Invalid file path: ${filePath}"
+                return 255
+        fi
+
+        logDbg "${filePath} is an executable binary, processing ..."
+
+        declare lddInfos
+        if ! lddInfos=$(ldd "${filePath}"); then
+                logErr "Failed to execute ldd on ${filePath}"
+                return 255
+        fi
+
+        # Trim leading and trailing whitespace
+        lddInfos=$(echo "${lddInfos}" | awk '{$1=$1;print}')
+        readarray -t lddInfoList <<<"${lddInfos}"
+
+        IFS=" "
+        for line in "${lddInfoList[@]}"; do
+                read -ra elements <<<"${line}"
+                elementSize=${#elements[@]}
+
+                if [[ ${elementSize} -gt 4 || ${elementSize} -lt 2 ]]; then
+                        logErr "Unexpected line format: '${line}' split into ${elementSize} parts"
                         continue
                 fi
-                pass=$pass+1
-        fi
-done
 
-echo "---------------------------"
-echo "TOTAL: $total, PASS: $pass, FAIL: $fail"
-echo "---------------------------"
-if [ "$failedList" != "" ]; then
-        echo -e "FAIL LIST:\n"
-        echo -e "$failedList"
-        echo "---------------------------"
-        exit 1
-fi
-exit 0
+                if [[ ${elementSize} -eq 2 ]]; then
+                        # https://regex101.com/r/sPAsBt/1
+                        # https://man7.org/linux/man-pages/man7/vdso.7.html
+                        if [[ ${elements[0]:0:1} == "/" ]]; then
+                                dependLibs+=("$(realpath -s "${elements[0]}")")
+                        elif [[ ${elements[0]} =~ linux-(vdso|gate){1}(32|64)?\.so\.[0-9]+ ]]; then
+                                continue
+                                #ignore virtual ELF dynamic shared object
+                        else
+                                rawStr="${elements[0]} ${elements[1]}"
+                                if [[ ${rawStr} == "statically linked" ]]; then
+                                        continue
+                                fi
+                                logErr "unexpected conditions, unkonwn line: ${line}"
+                        fi
+                elif [[ ${elementSize} -eq 4 ]]; then
+                        rawStr="${elements[2]} ${elements[3]}"
+                        if [[ ${rawStr} == "not found" ]]; then
+                                logErr "couldn't find dependency \"${elements[0]}\" of ${filePath}"
+                                continue
+                        fi
+
+                        # clean path
+                        dependLibs+=("$(realpath -s "${elements[2]}")")
+                else
+                        logErr "unexpected conditions, unkonwn line: ${line}"
+                fi
+        done
+}
+
+updateDepensLibs() {
+        #support multiple path, split by ':'
+        declare paths
+        paths=$(echo "$1" | tr ':' ' ')
+
+        if [[ -z ${paths} ]]; then
+                logErr "No paths provided"
+                return 255
+        fi
+
+        filePaths=$(find "${paths}" -type f)
+
+        IFS=$'\n'
+        for filePath in ${filePaths}; do
+                local mimeType
+                mimeType="$(file --mime-type --brief "${filePath}")"
+                if [[ ${mimeType} == "application/x-pie-executable" ]]; then
+                        processExecBin "${filePath}"
+                fi
+        done
+
+        # remove duplicates
+        local oldIFS="${IFS}"
+        IFS=" " read -r -a dependLibs <<<"$(echo "${dependLibs[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ' || true)"
+        IFS="${oldIFS}"
+}
+
+element_in_array() {
+        local element="$1"
+        shift
+        local array=("$@")
+        for item in "${array[@]}"; do
+                if [[ ${item} == "${element}" ]]; then
+                        return 0
+                fi
+        done
+        return 1
+}
+
+main() {
+        declare arg1="$1"
+        if [[ -z ${arg1} ]]; then
+                echo "usage:
+                        ldd-check.sh path
+                        ldd-check.sh [path:...]"
+                return 0
+        fi
+
+        logDbg "start checking..."
+
+        # Get the needed dynamic libraries for the specified binaries
+        updateDepensLibs "${arg1}"
+
+        # Get all dynamic libraries
+        readarray -t allLibs <<<"$(ldconfig -p | awk 'NR>2 {print last} {last=$4}' | sort -u || true)"
+
+        dependLibsContent=$(printf "%s\n" "${dependLibs[@]}")
+        local tailorableList=()
+        for item in "${allLibs[@]}"; do
+                if [[ -z "$(echo "${dependLibsContent}" | grep "${item}" || true)" ]]; then
+                        tailorableList+=("${item}")
+                fi
+        done
+
+        yamlContent="extraLibs:\n"
+        yamlContent+=$(printf "  - %s\n" "${tailorableList[@]}")
+        echo -e "${yamlContent}" >"/project/extraLibs.uab.yaml"
+
+        logDbg "checking done"
+        return 0
+}
+
+set -eo pipefail
+main "$@"

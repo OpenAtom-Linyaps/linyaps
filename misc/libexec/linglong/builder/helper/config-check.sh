@@ -7,14 +7,12 @@
 #check app config file script
 #config file type: desktop|context-menu|dbus service| systemd user service
 
-APPID=$(ls /opt/apps)
-
-if [ -d "/opt/apps/$APPID" ]; then
+if [ ! -d "/opt/apps/${LINGLONG_APPID}" ]; then
         echo "/opt/apps/$APPID is not exist."
-        exit -1
+        exit 255
 fi
 
-PREFIX="/opt/apps/$APPID/files"
+PREFIX="/opt/apps/${LINGLONG_APPID}/files"
 
 declare results invalidList
 
@@ -23,21 +21,21 @@ contextMenu=$PREFIX/share/applications/context-menus
 dbusService=$PREFIX/share/dbus-1/services
 systemdUserService=$PREFIX/lib/systemd/user
 
-if [ -d $desktop ]; then
-        results+=$(find $desktop -name "*.desktop")
+if [ -d "$desktop" ]; then
+        results+=$(find "$desktop" -name "*.desktop")
         results+="\n"
 fi
-if [ -d $contextMenu ]; then
-        results+=$(find $contextMenu -name "*.conf")
+if [ -d "$contextMenu" ]; then
+        results+=$(find "$contextMenu" -name "*.conf")
         results+="\n"
 fi
-if [ -d $dbusService ]; then
-        results+=$(find $dbusService -name "*.service")
+if [ -d "$dbusService" ]; then
+        results+=$(find "$dbusService" -name "*.service")
         results+="\n"
 fi
-if [ -d $systemdUserService ]; then
+if [ -d "$systemdUserService" ]; then
         results+=$(
-                find $systemdUserService -name "*.service" \
+                find "$systemdUserService" -name "*.service" \
                         -o -name "*.socket" \
                         -o -name "*.device" \
                         -o -name "*.mount" \
@@ -51,10 +49,9 @@ if [ -d $systemdUserService ]; then
         )
 fi
 
-IFS=$'\n'
-for filePath in $results; do
+for filePath in $(echo -e "$results"); do
         fileName=${filePath##*/}
-        ret=$(echo $fileName | grep "^$APPID")
+        ret=$(echo "$fileName" | grep "^${LINGLONG_APPID}")
         if [ "$ret" == "" ]; then
                 invalidList+="$filePath\n"
         fi
@@ -63,7 +60,7 @@ done
 if [ "$invalidList" != "" ]; then
         echo -e "These files have invalid file names:\n"
         echo -e "$invalidList"
-        echo -e "We prefer to use \$APPID as the prefix. Such as $APPID.xxx."
+        echo -e "We prefer to use \$LINGLONG_APPID as the prefix. Such as ${LINGLONG_APPID}.xxx."
         exit 1
 fi
 

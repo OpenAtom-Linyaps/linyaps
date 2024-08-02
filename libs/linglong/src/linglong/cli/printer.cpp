@@ -101,29 +101,26 @@ void Printer::printPackageInfo(const api::types::v1::PackageInfoV2 &info)
         simpleDescriptionWStr = subwstr(simpleDescriptionWStr, 53) + L"...";
         simpleDescription = QString::fromStdWString(simpleDescriptionWStr);
     }
-    auto simpleDescriptionStr = simpleDescription.toStdString();
-    auto simpleDescriptionWidth = simpleDescriptionStr.size();
 
     auto id = QString::fromStdString(info.id).simplified();
+    if (id.size() > 32) {
+        id.push_back(" ");
+    }
 
     auto name = QString::fromStdString(info.name).simplified();
     auto nameWStr = name.toStdWString();
     auto nameWcswidth = wcswidth(nameWStr.c_str(), -1);
     if (nameWcswidth > 32) {
         nameWStr = subwstr(nameWStr, 29) + L"...";
+        nameWcswidth = wcswidth(nameWStr.c_str(), -1);
         name = QString::fromStdWString(nameWStr);
     }
-    if (id.size() > 32) {
-        name.push_front(" ");
-        nameWStr = name.toStdWString();
-    }
-    nameWcswidth = wcswidth(nameWStr.c_str(), -1);
     auto nameStr = name.toStdString();
     auto nameOffset = nameStr.size() - nameWcswidth;
     std::cout << std::setw(33) << id.toStdString() << std::setw(33 + nameOffset) << nameStr
               << std::setw(16) << info.version << std::setw(12) << info.arch[0] << std::setw(16)
               << info.channel << std::setw(12) << info.packageInfoV2Module
-              << std::setw(simpleDescriptionWidth) << simpleDescriptionStr << std::endl;
+              << simpleDescription.toStdString() << std::endl;
 }
 
 void Printer::printPackage(const api::types::v1::PackageInfoV2 &info)

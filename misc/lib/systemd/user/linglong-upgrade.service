@@ -4,7 +4,7 @@
 
 [Unit]
 Description=Upgrade linglong applications.
-After=network.target
+After=default.target
 
 [Service]
 Type=oneshot

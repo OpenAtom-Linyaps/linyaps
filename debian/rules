@@ -2,17 +2,17 @@
 include /usr/share/dpkg/pkg-info.mk
 
 OS=$(shell awk '/^NAME=/' /etc/os-release | sed 's/NAME=//' | sed 's/\"//g' | tr '[:upper:]' '[:lower:]')
-OSVERSION=$(shell awk '/VERSION=/' /etc/os-release | sed 's/VERSION=//' | sed 's/\"//g' | sed 's/[.]0/./')
+OS_VERSION=$(shell awk '/VERSION=/' /etc/os-release | sed 's/VERSION=//' | sed 's/\"//g' | sed 's/[.]0/./')
 ARCH=$(shell dpkg-architecture -qDEB_TARGET_MULTIARCH)
 ENABLE_UAB_SUPPORT=FALSE
 ENABLE_STATIC_BOX=FALSE
 
-ifeq ($(OS) $(VERSION), deepin 23)
+ifeq ($(OS) $(OS_VERSION), deepin 23)
 ENABLE_UAB_SUPPORT=TRUE
 ENABLE_STATIC_BOX=TRUE
 endif
 
-ifeq ($(OS) $(VERSION), uos 20)
+ifeq ($(OS) $(OS_VERSION), uos 20)
 ENABLE_UAB_SUPPORT=TRUE
 ENABLE_STATIC_BOX=TRUE
 endif

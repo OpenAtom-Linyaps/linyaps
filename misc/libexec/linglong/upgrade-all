@@ -4,4 +4,9 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-ll-cli list --type=all | tail -n +2 | awk '{print  $1}' | xargs -I {} sh -c "ll-cli upgrade {} || true; sleep 5"
+# update application
+ll-cli list | tail -n +2 | awk '{print  $1}' | xargs -I {} sh -c "ll-cli upgrade {} || true; sleep 5"
+# update runtime and base within compatible range
+# if the verison is 1.1.1.1, cut it to 1.1.1
+# provide xxx/1.1.1 to ll-cli
+ll-cli list --type runtime | tail -n+2 | awk -F "[ ]{2,}" '{print $1"/"$3}' | sed 's/\.[^\.]*$//' | xargs -I {} sh -c "ll-cli upgrade {} || true; sleep 5"

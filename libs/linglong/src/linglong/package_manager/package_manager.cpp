@@ -723,7 +723,7 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
         return toDBusReply(paras);
     }
 
-    auto installedAppFuzzyRef = package::FuzzyReference::parse(QString::fromStdString(paras->package.id));
+    auto installedAppFuzzyRef = fuzzyReferenceFromPackage(paras->package);
     if (!installedAppFuzzyRef) {
         return toDBusReply(installedAppFuzzyRef);
     }
@@ -736,12 +736,7 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
         return toDBusReply(-1, installedAppFuzzyRef->toString() + " not installed.");
     }
 
-    auto fuzzyRef = fuzzyReferenceFromPackage(paras->package);
-    if (!fuzzyRef) {
-        return toDBusReply(fuzzyRef);
-    }
-
-    auto newRef = this->repo.clearReference(*fuzzyRef,
+    auto newRef = this->repo.clearReference(*installedAppFuzzyRef,
                                             {
                                               .forceRemote = true // NOLINT
                                             });

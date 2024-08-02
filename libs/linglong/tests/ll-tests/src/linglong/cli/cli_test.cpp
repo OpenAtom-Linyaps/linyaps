@@ -24,6 +24,29 @@
 
 namespace linglong::cli::test {
 
+TEST(SubwstrTest, WithinWidthLimit) {
+    std::wstring input = L"short";
+    int width = 10;
+    std::wstring result = subwstr(input, width);
+    EXPECT_EQ(result, input);
+}
+
+TEST(SubwstrTest, TrimmedString) {
+    std::wstring input = L"this is a very long string";
+    int width = 10;
+    std::wstring expected = L"this is a ";
+    std::wstring result = subwstr(input, width);
+    EXPECT_EQ(result, expected);
+}
+
+TEST(SubwstrTest, WideCharacters) {
+    std::wstring input = L"这是一个非常长的字符串";
+    int width = 10;
+    std::wstring expected = L"这是一个非";
+    std::wstring result = subwstr(input, width);
+    EXPECT_EQ(result, expected);
+}
+
 namespace {
 
 std::map<std::string, docopt::value> parseCommand(const QString &command)

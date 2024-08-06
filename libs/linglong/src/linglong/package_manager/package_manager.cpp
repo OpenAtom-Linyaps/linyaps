@@ -211,6 +211,10 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
           }
 
           pullDependency(taskRef, *info, isDevelop);
+          if (taskRef.currentStatus() == InstallTask::Failed
+              || taskRef.currentStatus() == InstallTask::Canceled) {
+              return;
+          }
 
           auto result = this->repo.importLayerDir(*layerDir);
           if (!result) {
@@ -662,6 +666,12 @@ void PackageManager::Install(InstallTask &taskContext,
     // for 'kind: app', check runtime and foundation
     if (info->kind == "app") {
         pullDependency(taskContext, *info, develop);
+    }
+
+    // check the status of pull runtime and foundation
+    if (taskContext.currentStatus() == InstallTask::Failed
+        || taskContext.currentStatus() == InstallTask::Canceled) {
+        return;
     }
 
     this->repo.exportReference(ref);

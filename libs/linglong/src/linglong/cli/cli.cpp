@@ -929,6 +929,10 @@ int Cli::repo(std::map<std::string, docopt::value> &args)
     }
     if (args["URL"].isString()) {
         url = QString::fromStdString(args["URL"].asString());
+        // remove last slash
+        if (url.endsWith("/")) {
+            url.chop(1);
+        }
     }
 
     cfg->repos[name.toStdString()] = url.toStdString();

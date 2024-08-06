@@ -23,6 +23,7 @@ public:
     [[nodiscard]] utils::error::Result<api::types::v1::PackageInfoV2> info() const;
     [[nodiscard]] bool hasMinified() const noexcept;
     [[nodiscard]] utils::error::Result<api::types::v1::MinifiedInfo> minifiedInfo() const;
+    [[nodiscard]] QString filesDirPath() const noexcept;
 };
 
 } // namespace linglong::package

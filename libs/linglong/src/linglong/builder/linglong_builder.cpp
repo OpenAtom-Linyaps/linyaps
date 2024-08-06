@@ -833,6 +833,15 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
         }
     }
 
+    QFileInfo filterFile = QDir::current().absoluteFilePath("extraLibs.uab.yaml");
+    if (filterFile.exists()) {
+        qInfo() << "applying filter:" << filterFile.absoluteFilePath();
+        auto ret = packager.applyYamlFilter(filterFile);
+        if (!ret) {
+            return LINGLONG_ERR(ret);
+        }
+    }
+
     auto baseRef = pullDependency(QString::fromStdString(this->project.base),
                                   this->repo,
                                   false,
@@ -840,7 +849,7 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
     if (!baseRef) {
         return LINGLONG_ERR(baseRef);
     }
-    auto baseDir = this->repo.getLayerDir(*baseRef, false);
+    auto baseDir = this->repo.getLayerDir(*baseRef);
     if (!baseDir) {
         return LINGLONG_ERR(baseDir);
     }
@@ -854,7 +863,7 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
         if (!ref) {
             return LINGLONG_ERR(ref);
         }
-        auto runtimeDir = this->repo.getLayerDir(*ref, false);
+        auto runtimeDir = this->repo.getLayerDir(*ref);
         if (!runtimeDir) {
             return LINGLONG_ERR(runtimeDir);
         }

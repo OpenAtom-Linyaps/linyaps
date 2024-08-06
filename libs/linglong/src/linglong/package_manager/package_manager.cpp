@@ -240,45 +240,51 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
 utils::error::Result<api::types::v1::MinifiedInfo> PackageManager::updateMinifiedInfo(
   const QFileInfo &file, const QString &appRef, const QString &uuid) noexcept
 {
-    LINGLONG_TRACE("update minified file:" + file.absoluteFilePath())
+    LINGLONG_TRACE("update minified file: " + file.absoluteFilePath())
 
-    api::types::v1::MinifiedInfo originalInfo;
-
-    if (file.exists()) {
-        try {
-            auto content = nlohmann::json::parse(file.absoluteFilePath().toStdString());
-            originalInfo = content.get<api::types::v1::MinifiedInfo>();
-        } catch (nlohmann::json::parse_error &e) {
-            return LINGLONG_ERR("parsing minified.json err:" % QString::fromStdString(e.what()));
-        } catch (...) {
-            return LINGLONG_ERR("parsing minified.json err: unknown");
-        }
+    auto ret =
+      utils::serialize::LoadJSONFile<api::types::v1::MinifiedInfo>(file.absoluteFilePath());
+    if (!ret) {
+        return LINGLONG_ERR(ret);
     }
 
+    const auto &originalInfo = *ret;
     auto newInfo = originalInfo;
-    newInfo.infos.push_back({ appRef.toStdString(), uuid.toStdString() });
+
+    auto it = std::find_if(newInfo.infos.begin(),
+                           newInfo.infos.end(),
+                           [appRef = appRef.toStdString()](const api::types::v1::Info &info) {
+                               return appRef == info.appRef;
+                           });
+
+    // update existing info
+    if (it != newInfo.infos.cend()) {
+        it->uuid = uuid.toStdString();
+    } else {
+        newInfo.infos.push_back({ appRef.toStdString(), uuid.toStdString() });
+    }
+
     auto tmpName = file.absoluteDir().absoluteFilePath(file.fileName() + "~");
     QFile tmpFile{ tmpName };
-    if (!tmpFile.open(QIODevice::Text | QIODevice::NewOnly | QIODevice::WriteOnly)) {
+    if (!tmpFile.open(QIODevice::Text | QIODevice::Truncate | QIODevice::WriteOnly)) {
         return LINGLONG_ERR(tmpFile);
     }
-
-    auto removeTmp = utils::finally::finally([&tmpName] {
-        if (QFileInfo::exists(tmpName) && !QFile::remove(tmpName)) {
-            qWarning() << "couldn't remove" << tmpName << ", please remove it manually";
-        }
-    });
 
     QTextStream ofs{ &tmpFile };
     ofs << QString::fromStdString(nlohmann::json(newInfo).dump());
     ofs.flush();
 
     if (ofs.status() == QTextStream::WriteFailed) {
-        return LINGLONG_ERR("failed to write" % tmpName);
+        return LINGLONG_ERR("failed to write " % tmpName);
     }
 
-    if (!QFile::rename(tmpName, file.absoluteFilePath())) {
-        return LINGLONG_ERR("couldn't move from" % tmpName % "to" % file.absoluteFilePath());
+    if (!QFile::remove(file.absoluteFilePath())) {
+        return LINGLONG_ERR("couldn't remove file " % file.absoluteFilePath());
+    }
+
+    if (!tmpFile.rename(file.absoluteFilePath())) {
+        return LINGLONG_ERR("couldn't rename " % tmpName % "to" % file.absoluteFilePath() % ":"
+                            % tmpFile.errorString());
     }
 
     return originalInfo;
@@ -490,9 +496,14 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
                   }
 
                   const auto &minifiedPath = completedLayer->absoluteFilePath("minified.json");
-                  auto ret = this->updateMinifiedInfo(minifiedPath,
-                                                      appRef.toString(),
-                                                      QString::fromStdString(metaInfo.get().uuid));
+                  if (!QFileInfo::exists(minifiedPath)) {
+                      continue;
+                  }
+
+                  auto ret = linglong::service::PackageManager::updateMinifiedInfo(
+                    minifiedPath,
+                    appRef.toString(),
+                    QString::fromStdString(metaInfo.get().uuid));
                   if (!ret) {
                       taskRef.reportError(std::move(ret).error());
                       return;

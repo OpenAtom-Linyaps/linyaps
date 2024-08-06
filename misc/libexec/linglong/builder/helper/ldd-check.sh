@@ -57,7 +57,7 @@ processExecBin() {
                         # https://regex101.com/r/sPAsBt/1
                         # https://man7.org/linux/man-pages/man7/vdso.7.html
                         if [[ ${elements[0]:0:1} == "/" ]]; then
-                                dependLibs+=("$(realpath -s "${elements[0]}")")
+                                dependLibs+=("$(realpath "${elements[0]}")")
                         elif [[ ${elements[0]} =~ linux-(vdso|gate){1}(32|64)?\.so\.[0-9]+ ]]; then
                                 continue
                                 #ignore virtual ELF dynamic shared object
@@ -76,7 +76,7 @@ processExecBin() {
                         fi
 
                         # clean path
-                        dependLibs+=("$(realpath -s "${elements[2]}")")
+                        dependLibs+=("$(realpath "${elements[2]}")")
                 else
                         logErr "unexpected conditions, unkonwn line: ${line}"
                 fi
@@ -137,9 +137,9 @@ main() {
         updateDepensLibs "${arg1}"
 
         # Get all dynamic libraries
-        readarray -t allLibs <<<"$(ldconfig -p | awk 'NR>2 {print last} {last=$4}' | sort -u || true)"
+        readarray -t allLibs <<<"$(ldconfig -p | awk 'NR>2 {print last} {last=$4}' | xargs realpath | sort -u || true)"
 
-        dependLibsContent=$(printf "%s\n" "${dependLibs[@]}")
+        dependLibsContent=$(printf "%s\n" "${dependLibs[@]}" | sort -u)
         local tailorableList=()
         for item in "${allLibs[@]}"; do
                 if [[ -z "$(echo "${dependLibsContent}" | grep "${item}" || true)" ]]; then
@@ -147,7 +147,12 @@ main() {
                 fi
         done
 
-        yamlContent="extraLibs:\n"
+        yamlContent="# Attention: the content of this file and the file name\n"
+        yamlContent+="# is linglong internal infomation, please DO NOT use\n"
+        yamlContent+="# these contents in other places. The content may be\n"
+        yamlContent+="# different in the future.\n\n"
+        yamlContent+="# Usage: Comment which library you want to keep in uab\n\n"
+        yamlContent+="extra_libs:\n"
         yamlContent+=$(printf "  - %s\n" "${tailorableList[@]}")
         echo -e "${yamlContent}" >"/project/extraLibs.uab.yaml"
 

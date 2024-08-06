@@ -50,4 +50,9 @@ bool LayerDir::hasMinified() const noexcept
     return this->exists("minified.json");
 }
 
+QString LayerDir::filesDirPath() const noexcept
+{
+    return this->absoluteFilePath("files");
+}
+
 } // namespace linglong::package

@@ -17,6 +17,8 @@
 #include <QString>
 #include <QUuid>
 
+#include <unordered_set>
+
 namespace linglong::package {
 
 Q_DECLARE_LOGGING_CATEGORY(uab_packager)
@@ -64,18 +66,22 @@ public:
 
     UABPackager(UABPackager &&) = delete;
 
-    utils::error::Result<void> setIcon(const QFileInfo &icon);
-    utils::error::Result<void> appendLayer(const LayerDir &layer);
-    utils::error::Result<void> pack(const QString &uabFilename);
+    utils::error::Result<void> setIcon(const QFileInfo &icon) noexcept;
+    utils::error::Result<void> appendLayer(const LayerDir &layer) noexcept;
+    utils::error::Result<void> pack(const QString &uabFilename) noexcept;
+    utils::error::Result<void> applyYamlFilter(const QFileInfo &filter) noexcept;
 
 private:
     [[nodiscard]] utils::error::Result<void> packIcon() noexcept;
     [[nodiscard]] utils::error::Result<void> packBundle() noexcept;
     [[nodiscard]] utils::error::Result<void> prepareBundle(const QDir &bundleDir) noexcept;
     [[nodiscard]] utils::error::Result<void> packMetaInfo() noexcept;
+    [[nodiscard]] utils::error::Result<std::pair<bool, std::vector<std::filesystem::path>>>
+    filteringFiles(const LayerDir &layer) noexcept;
 
     elfHelper uab;
     QList<LayerDir> layers;
+    std::unordered_set<std::string> filterSet;
     std::optional<QFileInfo> icon{ std::nullopt };
     api::types::v1::UabMetaInfo meta;
     QDir buildDir;

@@ -28,6 +28,8 @@ int main()
     }
 
     auto &mounts = content["mounts"];
+    // FIXME: time zone in the container does not change when the host time zone changes，need to be
+    // repaired later.
     std::multimap<std::string, std::string> roMountMap{
         { "/etc/resolvconf", "/run/host/etc/resolvconf" },
         { "/etc/machine-id", "/run/host/etc/machine-id" },
@@ -41,6 +43,8 @@ int main()
         { "/usr/share/icons", "/usr/share/icons" },
         { "/usr/share/zoneinfo", "/usr/share/zoneinfo" },
         { "/etc/resolvconf", "/etc/resolvconf" },
+        { "/etc/localtime", "/run/host/etc/localtime" },
+        { "/etc/localtime", "/etc/localtime" },
     };
 
     for (const auto &[source, destination] : roMountMap) {

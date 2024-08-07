@@ -239,7 +239,6 @@ int main()
     // [name, destination, target]
     std::vector<std::array<std::string_view, 3>> vec = {
         { "ld.so.cache", "/etc/ld.so.cache", "/run/linglong/etc/ld.so.cache" },
-        { "localtime", "/etc/localtime", "/run/host/rootfs/etc/localtime" },
         { "resolv.conf", "/etc/resolv.conf", "/run/host/rootfs/etc/resolv.conf" },
         { "timezone", "/etc/timezone", "/run/host/rootfs/etc/timezone" },
     };

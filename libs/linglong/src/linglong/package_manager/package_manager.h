@@ -60,7 +60,7 @@ private:
                         const api::types::v1::PackageInfoV2 &info,
                         bool develop) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT
-    std::vector<InstallTask> taskList;
+    std::list<InstallTask> taskList;
 };
 
 } // namespace linglong::service

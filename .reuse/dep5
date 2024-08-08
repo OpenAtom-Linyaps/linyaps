@@ -129,3 +129,8 @@ Copyright: None
 Files: misc/share/polkit-1/actions/org.deepin.linglong.PackageManager.policy
 License: LGPL-3.0-only
 Copyright: UnionTech Software Technology Co., Ltd.
+
+# layer icon check tool
+Files: tools/layer-icon-checker.sh
+License: CC0-1.0
+Copyright: None

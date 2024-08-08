@@ -74,7 +74,7 @@ int main()
         mounts.push_back({ { "source", "/media" },
                            { "type", "bind" },
                            { "destination", "/media" },
-                           { "options", { "rbind, rshared" } } });
+                           { "options", { "rbind", "rshared" } } });
     }
 
     std::cout << content.dump() << std::endl;

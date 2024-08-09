@@ -106,6 +106,147 @@ int list(struct arg_list *arg) noexcept
     return 0;
 }
 
+pid_t findParentPid(const std::filesystem::path &process) noexcept
+{
+    auto stat = process / "stat";
+    std::ifstream stream{ stat };
+    if (!stream.is_open()) {
+        logErr() << "couldn't open stat file" << stat.string();
+        return -1;
+    }
+
+    std::string content;
+    if (!std::getline(stream, content, '\n')) {
+        logErr() << "couldn't read from stat file";
+        return -1;
+    }
+    stream.close();
+
+    std::istringstream sstream{ content };
+    std::string element;
+    for (int i = 0; i < 4; std::getline(sstream, element, ' '), ++i) { }
+    return std::stoi(element);
+}
+
+pid_t findLastBoxFallback(pid_t rootPid) noexcept
+{
+    std::error_code ec;
+    auto proc_iterator = std::filesystem::directory_iterator("/proc", ec);
+    if (ec) {
+        logErr() << "create directory iterator of /proc error:" << ec.message();
+        return -1;
+    }
+
+    auto boxBinPath = std::filesystem::read_symlink("/proc/self/exe", ec);
+    if (ec) {
+        logErr() << "read symlink error:" << ec.message();
+        return -1;
+    }
+    auto boxBinName = boxBinPath.filename().string();
+
+    std::map<pid_t, std::filesystem::path> processes;
+    for (const auto &entry : proc_iterator) {
+        if (!entry.is_directory(ec)) {
+            if (ec) {
+                logErr() << "filesystem error:" << ec.message();
+                return -1;
+            }
+
+            continue;
+        }
+
+        pid_t pid{ -1 };
+        try {
+            pid = std::stoi(entry.path().filename().string());
+        } catch (std::invalid_argument &e) {
+            // ignore these directory
+            continue;
+        }
+
+        if (pid <= rootPid) {
+            continue;
+        }
+
+        processes.insert({ pid, entry.path() });
+    }
+
+    auto currentPid = rootPid;
+    pid_t lastBox{ -1 };
+    for (const auto &[pid, path] : processes) {
+        auto parent = findParentPid(path);
+        if (parent != currentPid) {
+            continue;
+        }
+
+        auto bin = std::filesystem::read_symlink(path / "exe", ec);
+        if (ec) {
+            logErr() << "read symlink error:" << ec.message();
+            return -1;
+        }
+
+        if (auto binStr = bin.filename().string(); binStr == boxBinName) {
+            lastBox = currentPid;
+            currentPid = pid;
+            continue;
+        }
+
+        break;
+    }
+
+    return lastBox;
+}
+
+pid_t findLastBox(pid_t rootPid) noexcept
+{
+    std::filesystem::path proc{ "/proc" };
+    if (!std::filesystem::exists(proc)) {
+        logFal() << "/proc doesn't exist.";
+    }
+
+    auto pidStr = std::to_string(rootPid);
+    auto children = proc / pidStr / "task" / pidStr / "children";
+    if (!std::filesystem::exists(children)) {
+        logDbg() << children.string() << "not exist, fallback to stat file";
+        return findLastBoxFallback(rootPid);
+    }
+
+    auto boxBin = std::filesystem::read_symlink("/proc/self/exe");
+    std::error_code ec; // NOLINT
+    while (true) {
+        std::ifstream stream{ children };
+        if (!stream.is_open()) {
+            logErr() << "couldn't open" << children;
+            return -1;
+        }
+
+        int chPid{ -1 };
+        bool childBoxFound{ false };
+        while (stream >> chPid) {
+            auto exe = proc / std::to_string(chPid) / "exe";
+            auto realExe = std::filesystem::read_symlink(exe, ec);
+            if (ec) {
+                logErr() << "failed to read symlink" << exe << ":" << ec.message();
+                return -1;
+            }
+
+            if (realExe.filename() == boxBin.filename()) {
+                childBoxFound = true;
+                break;
+            }
+        }
+
+        if (childBoxFound) {
+            pidStr = std::to_string(chPid);
+            children = proc / pidStr / "task" / pidStr / "children";
+            continue;
+        }
+
+        break;
+    }
+
+    return std::stoi(pidStr);
+}
+
 int exec(struct arg_exec *arg, int argc, char **argv) noexcept
 {
     std::string containerID = argv[0];
@@ -126,53 +267,13 @@ int exec(struct arg_exec *arg, int argc, char **argv) noexcept
         return -1;
     }
 
-    auto boxPidStr = std::to_string(boxPid);
-    auto findLastBox = [&boxPidStr]() {
-        std::filesystem::path proc{ "/proc" };
-        if (!std::filesystem::exists(proc)) {
-            logFal() << "/proc doesn't exist.";
-        }
-        auto boxBin = std::filesystem::read_symlink("/proc/self/exe");
-        std::error_code ec; // NOLINT
-        while (true) {
-            auto children = proc / boxPidStr / "task" / boxPidStr / "children";
-            std::ifstream stream{ children };
-            if (!stream.is_open()) {
-                logErr() << "couldn't open" << children;
-                return -1;
-            }
-
-            int chPid{ -1 };
-            bool childBoxFound{ false };
-            while (stream >> chPid) {
-                auto exe = proc / std::to_string(chPid) / "exe";
-                auto realExe = std::filesystem::read_symlink(exe, ec);
-                if (ec) {
-                    logErr() << "failed to read symlink" << exe << ":" << ec.message();
-                    return -1;
-                }
-
-                if (realExe.filename() == boxBin.filename()) {
-                    childBoxFound = true;
-                    break;
-                }
-            }
-
-            if (childBoxFound) {
-                boxPidStr = std::to_string(chPid);
-                continue;
-            }
-
-            break;
-        }
-
-        return 0;
-    };
-
-    if (findLastBox() == -1) {
+    auto lastBox = findLastBox(boxPid);
+    if (lastBox == -1) {
+        logErr() << "couldn't find pid of last ll-box";
         return -1;
     }
 
+    auto boxPidStr = std::to_string(lastBox);
     auto wdns = linglong::util::format("--wdns=%s", arg->cwd.c_str());
 
     std::vector<const char *> newArgv{

@@ -55,4 +55,9 @@ QString LayerDir::filesDirPath() const noexcept
     return this->absoluteFilePath("files");
 }
 
+bool LayerDir::valid() const noexcept
+{
+    return this->exists("info.json");
+}
+
 } // namespace linglong::package

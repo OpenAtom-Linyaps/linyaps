@@ -346,7 +346,7 @@ utils::error::Result<void> handleRepositoryUpdate(OstreeRepo *repo,
         isMinified = true;
         auto newName =
           QDir::cleanPath(layerDir.absoluteFilePath(QString{ "../%1" }.arg(minifiedJson)));
-        if (!QFile::copy(newName, minified.absoluteFilePath())) {
+        if (!QFile::copy(minified.absoluteFilePath(), newName)) {
             return LINGLONG_ERR("couldn't copy minified.json to parent directory");
         }
         minified.setFile(newName);

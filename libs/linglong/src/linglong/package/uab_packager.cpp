@@ -15,7 +15,6 @@
 #include <QCryptographicHash>
 #include <QStandardPaths>
 
-#include <filesystem>
 #include <utility>
 
 #include <fcntl.h>

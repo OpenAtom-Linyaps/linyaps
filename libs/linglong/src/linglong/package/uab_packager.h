@@ -17,6 +17,7 @@
 #include <QString>
 #include <QUuid>
 
+#include <filesystem>
 #include <unordered_set>
 
 namespace linglong::package {

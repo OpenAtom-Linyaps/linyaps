@@ -43,8 +43,6 @@ int main()
         { "/usr/share/icons", "/usr/share/icons" },
         { "/usr/share/zoneinfo", "/usr/share/zoneinfo" },
         { "/etc/resolvconf", "/etc/resolvconf" },
-        { "/etc/localtime", "/run/host/etc/localtime" },
-        { "/etc/localtime", "/etc/localtime" },
     };
 
     for (const auto &[source, destination] : roMountMap) {

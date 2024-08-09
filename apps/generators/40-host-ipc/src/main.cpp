@@ -234,11 +234,25 @@ int main()
         mounts.emplace_back(std::move(xauthPatch));
         content["process"]["env"].emplace_back("XAUTHORITY=" + cognitiveXauthFile);
     }();
+    // 在容器中把易变的文件挂载成软链接，指向/run/host/rootfs，实现实时响应
+
+    // 如果/etc/localtime是嵌套软链会导致chromium时区异常，需要特殊处理
+    std::string localtimePath = "/run/host/rootfs/etc/localtime";
+    if (std::filesystem::is_symlink("/etc/localtime")) {
+        auto target = std::filesystem::read_symlink("/etc/localtime");
+        auto absoluteTarget = target.string();
+        if (target.is_relative()) {
+            localtimePath = "/run/host/rootfs/etc/" + target.string();
+        } else {
+            localtimePath = "/run/host/rootfs" + absoluteTarget;
+        }
+    }
 
     auto pwd = std::filesystem::current_path();
     // [name, destination, target]
     std::vector<std::array<std::string_view, 3>> vec = {
         { "ld.so.cache", "/etc/ld.so.cache", "/run/linglong/etc/ld.so.cache" },
+        { "localtime", "/etc/localtime", localtimePath },
         { "resolv.conf", "/etc/resolv.conf", "/run/host/rootfs/etc/resolv.conf" },
         { "timezone", "/etc/timezone", "/run/host/rootfs/etc/timezone" },
     };

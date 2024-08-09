@@ -1205,6 +1205,9 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
     Q_ASSERT(progress != nullptr);
 
     g_autoptr(GError) gErr = nullptr;
+
+    auto threadContext = g_main_context_new();
+    g_main_context_push_thread_default(threadContext);
     auto status = ostree_repo_pull(this->ostreeRepo.get(),
                                    this->cfg.defaultRepo.c_str(),
                                    refs,
@@ -1213,6 +1216,7 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
                                    cancellable,
                                    &gErr);
     ostree_async_progress_finish(progress);
+    g_main_context_unref(threadContext);
     if (status == FALSE) {
         // fallback to old ref
         qWarning() << gErr->message;
@@ -1222,6 +1226,9 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
         char *oldRefs[] = { (char *)refString.data(), nullptr };
 
         g_clear_error(&gErr);
+
+        auto threadContext = g_main_context_new();
+        g_main_context_push_thread_default(threadContext);
         status = ostree_repo_pull(this->ostreeRepo.get(),
                                   this->cfg.defaultRepo.c_str(),
                                   oldRefs,
@@ -1229,6 +1236,8 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
                                   progress,
                                   cancellable,
                                   &gErr);
+        ostree_async_progress_finish(progress);
+        g_main_context_unref(threadContext);
         if (status == FALSE) {
             taskContext.reportError(LINGLONG_ERRV("ostree_repo_pull", gErr));
             return;

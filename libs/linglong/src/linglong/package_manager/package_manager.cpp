@@ -140,7 +140,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
 
     if (ref) {
         auto layerDir = this->repo.getLayerDir(*ref, isDevelop);
-        if (layerDir) {
+        if (layerDir && layerDir->valid()) {
             return toDBusReply(-1, ref->toString() + " is already installed");
         }
     }
@@ -584,7 +584,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
 
     if (ref) {
         auto layerDir = this->repo.getLayerDir(*ref, isDevelop);
-        if (layerDir) {
+        if (layerDir && layerDir->valid()) {
             return toDBusReply(-1, ref->toString() + " is already installed");
         }
     }

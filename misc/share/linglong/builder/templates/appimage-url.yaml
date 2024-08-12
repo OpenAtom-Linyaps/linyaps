@@ -9,7 +9,7 @@ package:
     {{{DESCRIPTION}}}
 
 command: ['{{{COMMAND}}}'] #the commands that your application need to run.
-base: org.deepin.foundation/23.0.0 #set the base environment, this can be changed.
+base: org.deepin.foundation/20.0.0 #set the base environment, this can be changed.
 
 sources:
   - kind: file

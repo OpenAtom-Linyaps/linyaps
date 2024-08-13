@@ -44,13 +44,13 @@ apt download com.baidu.baidunetdisk
 ```
 
 ```bash
-ll-pica convert -c com.baidu.baidunetdisk_4.17.7_amd64.deb -w w -b --exportFile
+ll-pica convert -c com.baidu.baidunetdisk_4.17.7_amd64.deb -w w -b --exportFile layer
 ```
 
 - -w 表示工作目录。
 - -c 配置的方式，这里使用 deb 文件。
 - -b 表示需要进行构建，不添加该参数不会进行构建和导出 layer 文件。
-- --exportFile 导出产物的默认为 uab 文件，如果需要 layer 文件，需要使用 --exportFile layer。
+- --exportFile layer 导出产物为 layer 文件，如果到出 uab 文件，使用 --exportFile uab。
 
 构建产物如下：
 

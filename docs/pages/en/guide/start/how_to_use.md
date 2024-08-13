@@ -123,7 +123,7 @@ apt download com.baidu.baidunetdisk
 ## Conversion
 
 ```bash
-ll-pica convert -c com.baidu.baidunetdisk_4.17.7_amd64.deb -w work -b
+ll-pica convert -c com.baidu.baidunetdisk_4.17.7_amd64.deb -w work -b --exportFile layer
 ```
 
 Enter the directory

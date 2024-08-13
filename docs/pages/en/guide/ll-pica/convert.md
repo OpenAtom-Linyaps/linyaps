@@ -49,13 +49,13 @@ apt download com.baidu.baidunetdisk
 ```
 
 ```bash
-ll-pica convert -c com.baidu.baidunetdisk_4.17.7_amd64.deb -w w -b  --exportFile
+ll-pica convert -c com.baidu.baidunetdisk_4.17.7_amd64.deb -w w -b  --exportFile layer
 ```
 
 - -w working directory。
 - -c The configuration method employed here utilizes deb files.
 - -b It indicates that a build is required; without adding this parameter, neither building nor exporting the layer file will take place.
-- --exportFile The default export product is a uab file when using --exportFile. If you need a layer file, you should use `--exportFile layer` instead.
+- --exportFile layer exports the output as a layer file. If you want to export a uab file, use --exportFile uab.
 
 The constructed products are as follows:
 

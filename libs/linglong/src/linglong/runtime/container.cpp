@@ -137,7 +137,7 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
 
     this->cfg.process->env = originEnvs;
 
-    auto arch = package::Architecture::parse(QSysInfo::currentCpuArchitecture());
+    auto arch = package::Architecture::currentCPUArchitecture();
     if (!arch) {
         return LINGLONG_ERR(arch);
     }

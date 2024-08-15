@@ -34,7 +34,7 @@ utils::error::Result<Reference> Reference::parse(const QString &raw) noexcept
         return LINGLONG_ERR(version);
     }
 
-    auto arch = Architecture::parse(architectureStr);
+    auto arch = Architecture::parse(architectureStr.toStdString());
     if (!arch) {
         return LINGLONG_ERR(arch);
     }
@@ -60,7 +60,7 @@ Reference::fromPackageInfo(const api::types::v1::PackageInfoV2 &info) noexcept
         return LINGLONG_ERR("version .tweak is required");
     }
 
-    auto architecture = package::Architecture::parse(QString::fromStdString(info.arch[0]));
+    auto architecture = package::Architecture::parse(info.arch[0]);
     if (!architecture) {
         return LINGLONG_ERR(architecture);
     }

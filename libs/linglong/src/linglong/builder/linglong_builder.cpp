@@ -55,10 +55,9 @@ currentReference(const api::types::v1::BuilderProject &project)
         return LINGLONG_ERR(version);
     }
 
-    auto architecture = package::Architecture::parse(QSysInfo::currentCpuArchitecture());
+    auto architecture = package::Architecture::currentCPUArchitecture();
     if (project.package.architecture) {
-        architecture =
-          package::Architecture::parse(QString::fromStdString(*project.package.architecture));
+        architecture = package::Architecture::parse(*project.package.architecture);
     }
     if (!architecture) {
         return LINGLONG_ERR(architecture);
@@ -358,7 +357,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     LINGLONG_TRACE(
       QString("build project %1").arg(this->workingDir.absoluteFilePath("linglong.yaml")));
 
-    auto arch = package::Architecture::parse(QSysInfo::currentCpuArchitecture());
+    auto arch = package::Architecture::currentCPUArchitecture();
     if (!arch) {
         return LINGLONG_ERR(arch);
     }
@@ -711,7 +710,7 @@ set -e
     }
 
     auto info = api::types::v1::PackageInfoV2{
-        .arch = { QSysInfo::currentCpuArchitecture().toStdString() },
+        .arch = { package::Architecture::currentCPUArchitecture()->toString().toStdString() },
         .base = base->toString().toStdString(),
         .channel = ref->channel.toStdString(),
         .command = project.command,

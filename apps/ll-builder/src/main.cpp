@@ -562,7 +562,8 @@ int main(int argc, char **argv)
                                                  *builderCfg);
 
               if (parser.isSet(buildArch)) {
-                  auto arch = linglong::package::Architecture::parse(parser.value(buildArch));
+                  auto arch =
+                    linglong::package::Architecture::parse(parser.value(buildArch).toStdString());
                   if (!arch) {
                       qCritical() << arch.error();
                       return -1;

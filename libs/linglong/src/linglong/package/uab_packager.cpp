@@ -498,7 +498,7 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir) noe
     }
 
     // generate ld configs
-    auto arch = Architecture::parse(QSysInfo::currentCpuArchitecture());
+    auto arch = Architecture::currentCPUArchitecture();
     auto ldConfsDir = QDir{ extraDir.absoluteFilePath("ld.conf.d") };
     if (!ldConfsDir.mkpath(".")) {
         return LINGLONG_ERR(

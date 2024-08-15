@@ -44,7 +44,7 @@ utils::error::Result<FuzzyReference> FuzzyReference::parse(const QString &raw) n
     std::optional<Architecture> architecture;
     auto architectureStr = matches.captured("architecture");
     if ((!architectureStr.isEmpty()) && architectureStr != "unknown") {
-        auto tmpArchitecture = Architecture::parse(architectureStr);
+        auto tmpArchitecture = Architecture::parse(architectureStr.toStdString());
         if (!tmpArchitecture) {
             return LINGLONG_ERR(tmpArchitecture);
         }

@@ -502,7 +502,7 @@ utils::error::Result<package::Reference> clearReferenceLocal(const package::Fuzz
 {
     LINGLONG_TRACE("clear fuzzy reference locally");
 
-    auto arch = package::Architecture::parse(QSysInfo::currentCpuArchitecture());
+    auto arch = package::Architecture::currentCPUArchitecture();
     if (fuzzy.arch) {
         arch = *fuzzy.arch;
     }
@@ -611,7 +611,7 @@ utils::error::Result<package::Reference> clearReferenceRemote(const package::Fuz
         req.setArch(fuzzy.arch->toString());
     } else {
         // NOTE: Server requires that arch is set, but why?
-        req.setArch(QSysInfo::currentCpuArchitecture());
+        req.setArch(package::Architecture::currentCPUArchitecture()->toString());
     }
 
     req.setRepoName(repoName);
@@ -645,7 +645,7 @@ utils::error::Result<package::Reference> clearReferenceRemote(const package::Fuz
                   continue;
               }
 
-              auto arch = package::Architecture::parse(record.getArch());
+              auto arch = package::Architecture::parse(record.getArch().toStdString());
               if (!arch) {
                   qWarning() << "Ignore invalid package record" << record.asJson() << arch.error();
                   continue;
@@ -1353,7 +1353,7 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
     if (fuzzyRef.arch) {
         req.setArch(fuzzyRef.arch->toString());
     } else {
-        req.setArch(QSysInfo::currentCpuArchitecture());
+        req.setArch(package::Architecture::currentCPUArchitecture()->toString());
     }
     if (fuzzyRef.channel) {
         req.setChannel(*fuzzyRef.channel);

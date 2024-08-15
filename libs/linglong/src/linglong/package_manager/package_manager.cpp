@@ -145,8 +145,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
         }
     }
 
-    auto architectureRet =
-      package::Architecture::parse(QString::fromStdString(packageInfo.arch[0]));
+    auto architectureRet = package::Architecture::parse(packageInfo.arch[0]);
     if (!architectureRet) {
         return toDBusReply(architectureRet);
     }
@@ -322,8 +321,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
         return toDBusReply(versionRet);
     }
 
-    auto architectureRet =
-      package::Architecture::parse(QString::fromStdString(appLayer.info.arch[0]));
+    auto architectureRet = package::Architecture::parse(appLayer.info.arch[0]);
     if (!architectureRet) {
         return toDBusReply(architectureRet);
     }
@@ -639,7 +637,7 @@ void PackageManager::Install(InstallTask &taskContext,
 
     taskContext.updateStatus(InstallTask::preInstall, "prepare installing " + ref.toString());
 
-    auto currentArch = package::Architecture::parse(QSysInfo::currentCpuArchitecture());
+    auto currentArch = package::Architecture::currentCPUArchitecture();
     Q_ASSERT(currentArch.has_value());
     if (ref.arch != *currentArch) {
         taskContext.updateStatus(InstallTask::Failed,

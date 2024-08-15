@@ -11,6 +11,8 @@
 
 #include <QString>
 
+#include <string>
+
 namespace linglong::package {
 
 class Architecture
@@ -21,10 +23,11 @@ public:
         X86_64,
         ARM64,
         LOONGARCH64,
+        LOONG64,
     };
 
     explicit Architecture(Value value = UNKNOW);
-    explicit Architecture(const QString &raw);
+    explicit Architecture(const std::string &raw);
 
     QString toString() const noexcept;
     QString getTriplet() const noexcept;
@@ -33,10 +36,13 @@ public:
 
     bool operator!=(const Architecture &that) const noexcept { return this->v != that.v; }
 
-    static utils::error::Result<Architecture> parse(const QString &raw) noexcept;
+    static utils::error::Result<Architecture> parse(const std::string &raw) noexcept;
+
+    static utils::error::Result<Architecture> currentCPUArchitecture() noexcept;
 
 private:
     Value v;
+    static std::string getInterpreter();
 };
 
 } // namespace linglong::package

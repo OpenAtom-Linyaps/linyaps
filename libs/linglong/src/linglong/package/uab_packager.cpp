@@ -417,12 +417,9 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir) noe
                   QString{ "is_directory error:%1" }.arg(QString::fromStdString(ec.message())));
             }
 
-            std::filesystem::copy_file(source,
-                                       destination,
-                                       std::filesystem::copy_options::update_existing,
-                                       ec);
+            std::filesystem::create_hard_link(source, destination, ec);
             if (ec) {
-                return LINGLONG_ERR("couldn't copy from " % QString::fromStdString(source.string())
+                return LINGLONG_ERR("couldn't link from " % QString::fromStdString(source.string())
                                     % " to " % QString::fromStdString(destination.string()) % " "
                                     % QString::fromStdString(ec.message()));
             }

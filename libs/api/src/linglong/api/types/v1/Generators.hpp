@@ -297,6 +297,8 @@ inline void from_json(const json & j, BuilderProject& x) {
 x.base = j.at("base").get<std::string>();
 x.build = j.at("build").get<std::string>();
 x.command = get_stack_optional<std::vector<std::string>>(j, "command");
+x.exclude = get_stack_optional<std::vector<std::string>>(j, "exclude");
+x.include = get_stack_optional<std::vector<std::string>>(j, "include");
 x.modules = get_stack_optional<std::map<std::string, std::vector<std::string>>>(j, "modules");
 x.package = j.at("package").get<BuilderProjectPackage>();
 x.permissions = get_stack_optional<ApplicationConfigurationPermissions>(j, "permissions");
@@ -312,6 +314,12 @@ j["base"] = x.base;
 j["build"] = x.build;
 if (x.command) {
 j["command"] = x.command;
+}
+if (x.exclude) {
+j["exclude"] = x.exclude;
+}
+if (x.include) {
+j["include"] = x.include;
 }
 if (x.modules) {
 j["modules"] = x.modules;
@@ -777,7 +785,7 @@ else { throw std::runtime_error("Input JSON does not conform to schema!"); }
 inline void to_json(json & j, const Version & x) {
 switch (x) {
 case Version::The1: j = "1"; break;
-default: throw std::runtime_error("This should not happen");
+default: throw std::runtime_error("Unexpected value in enumeration \"[object Object]\": " + std::to_string(static_cast<int>(x)));
 }
 }
 }

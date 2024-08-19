@@ -6,14 +6,13 @@
 
 #ldd check binary script
 
-declare -a dependLibs=()
-declare -a allLibs=()
 declare -r ErrColor="\033[0;31m"
 declare -r WarningColor="\033[1;33m"
 declare -r NoColor="\033[0m"
 
 logErr() {
         echo -e "${ErrColor}Error:$1${NoColor}\n"
+        exit 255
 }
 
 logWarn() {
@@ -28,7 +27,6 @@ processExecBin() {
         local filePath="$1"
         if [[ -z ${filePath} || ! -f ${filePath} ]]; then
                 logErr "Invalid file path: ${filePath}"
-                return 255
         fi
 
         logDbg "${filePath} is an executable binary, processing ..."
@@ -36,7 +34,6 @@ processExecBin() {
         declare lddInfos
         if ! lddInfos=$(ldd "${filePath}"); then
                 logErr "Failed to execute ldd on ${filePath}"
-                return 255
         fi
 
         # Trim leading and trailing whitespace
@@ -49,7 +46,7 @@ processExecBin() {
                 elementSize=${#elements[@]}
 
                 if [[ ${elementSize} -gt 4 || ${elementSize} -lt 2 ]]; then
-                        logErr "Unexpected line format: '${line}' split into ${elementSize} parts"
+                        logWarn "Unexpected line format: '${line}' split into ${elementSize} parts"
                         continue
                 fi
 
@@ -57,7 +54,7 @@ processExecBin() {
                         # https://regex101.com/r/sPAsBt/1
                         # https://man7.org/linux/man-pages/man7/vdso.7.html
                         if [[ ${elements[0]:0:1} == "/" ]]; then
-                                dependLibs+=("$(realpath "${elements[0]}")")
+                                continue
                         elif [[ ${elements[0]} =~ linux-(vdso|gate){1}(32|64)?\.so\.[0-9]+ ]]; then
                                 continue
                                 #ignore virtual ELF dynamic shared object
@@ -66,31 +63,26 @@ processExecBin() {
                                 if [[ ${rawStr} == "statically linked" ]]; then
                                         continue
                                 fi
-                                logErr "unexpected conditions, unkonwn line: ${line}"
+                                logWarn "unexpected conditions, unkonwn line: ${line}"
                         fi
                 elif [[ ${elementSize} -eq 4 ]]; then
                         rawStr="${elements[2]} ${elements[3]}"
                         if [[ ${rawStr} == "not found" ]]; then
                                 logErr "couldn't find dependency \"${elements[0]}\" of ${filePath}"
-                                continue
                         fi
-
-                        # clean path
-                        dependLibs+=("$(realpath "${elements[2]}")")
                 else
-                        logErr "unexpected conditions, unkonwn line: ${line}"
+                        logWarn "unexpected conditions, unkonwn line: ${line}"
                 fi
         done
 }
 
-updateDepensLibs() {
+checkDepensLibs() {
         #support multiple path, split by ':'
         declare paths
         paths=$(echo "$1" | tr ':' ' ')
 
         if [[ -z ${paths} ]]; then
                 logErr "No paths provided"
-                return 255
         fi
 
         filePaths=$(find "${paths}" -type f)
@@ -105,23 +97,6 @@ updateDepensLibs() {
                         processExecBin "${filePath}"
                 fi
         done
-
-        # remove duplicates
-        local oldIFS="${IFS}"
-        IFS=" " read -r -a dependLibs <<<"$(echo "${dependLibs[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ' || true)"
-        IFS="${oldIFS}"
-}
-
-element_in_array() {
-        local element="$1"
-        shift
-        local array=("$@")
-        for item in "${array[@]}"; do
-                if [[ ${item} == "${element}" ]]; then
-                        return 0
-                fi
-        done
-        return 1
 }
 
 main() {
@@ -135,28 +110,8 @@ main() {
 
         logDbg "start checking..."
 
-        # Get the needed dynamic libraries for the specified binaries
-        updateDepensLibs "${arg1}"
-
-        # Get all dynamic libraries
-        readarray -t allLibs <<<"$(ldconfig -p | awk 'NR>2 {print last} {last=$4}' | xargs realpath | sort -u || true)"
-
-        dependLibsContent=$(printf "%s\n" "${dependLibs[@]}" | sort -u)
-        local tailorableList=()
-        for item in "${allLibs[@]}"; do
-                if [[ -z "$(echo "${dependLibsContent}" | grep "${item}" || true)" ]]; then
-                        tailorableList+=("${item}")
-                fi
-        done
-
-        yamlContent="# Attention: the content of this file and the file name\n"
-        yamlContent+="# is linglong internal infomation, please DO NOT use\n"
-        yamlContent+="# these contents in other places. The content may be\n"
-        yamlContent+="# different in the future.\n\n"
-        yamlContent+="# Usage: Comment which library you want to keep in uab\n\n"
-        yamlContent+="extra_libs:\n"
-        yamlContent+=$(printf "  - %s\n" "${tailorableList[@]}")
-        echo -e "${yamlContent}" >"/project/extraLibs.uab.yaml"
+        # Check the needed dynamic libraries for the specified binaries
+        checkDepensLibs "${arg1}"
 
         logDbg "checking done"
         return 0

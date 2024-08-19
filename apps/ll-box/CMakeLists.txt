@@ -19,19 +19,15 @@ pfl_add_executable(
   src/container/container.h
   src/container/helper.h
   src/container/helper.cpp
-  src/container/mount/filesystem_driver.cpp
-  src/container/mount/filesystem_driver.h
   src/container/mount/host_mount.cpp
   src/container/mount/host_mount.h
   src/container/seccomp.cpp
-  src/container/seccomp.h
+  src/container/seccomp_p.h
   src/main.cpp
   src/util/common.cpp
   src/util/common.h
   src/util/debug/debug.cpp
   src/util/debug/debug.h
-  src/util/filesystem.cpp
-  src/util/filesystem.h
   src/util/json.h
   src/util/logger.cpp
   src/util/logger.h

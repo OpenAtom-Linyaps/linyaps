@@ -840,13 +840,12 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
         }
     }
 
-    QFileInfo filterFile = QDir::current().absoluteFilePath("extraLibs.uab.yaml");
-    if (filterFile.exists()) {
-        qInfo() << "applying filter:" << filterFile.absoluteFilePath();
-        auto ret = packager.applyYamlFilter(filterFile);
-        if (!ret) {
-            return LINGLONG_ERR(ret);
-        }
+    if (project.exclude) {
+        packager.exclude(project.exclude.value());
+    }
+
+    if (project.include) {
+        packager.include(project.include.value());
     }
 
     auto baseRef = pullDependency(QString::fromStdString(this->project.base),

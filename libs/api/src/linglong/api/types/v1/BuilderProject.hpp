@@ -48,6 +48,18 @@ std::string build;
 */
 std::optional<std::vector<std::string>> command;
 /**
+* exclude files during exporting UAB. Every item should be absolute path in container. It
+* could be a directory or a regular file. e.g. - /usr/share/locale (exclude all files which
+* in this directory) - /usr/lib/libavfs.a (exclude one file)
+*/
+std::optional<std::vector<std::string>> exclude;
+/**
+* include files during exporting UAB. For example, the packer can declare a file/directory
+* (e.g. /usr/share/locale/zh_CN) in the excluded directory (e.g. /usr/share/locale)  to
+* exclude all files in /usr/share/locale except /usr/share/locale/zh_CN.
+*/
+std::optional<std::vector<std::string>> include;
+/**
 * Specify how to split application into modules.
 */
 std::optional<std::map<std::string, std::vector<std::string>>> modules;

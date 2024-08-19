@@ -9,25 +9,39 @@
 
 #include "util/oci_runtime.h"
 
+#include <filesystem>
+
 namespace linglong {
 
-class FilesystemDriver;
-class HostMountPrivate;
+struct remountNode
+{
+    uint32_t flags{ 0U };
+    uint32_t extensionFlags{ 0U };
+    int targetFd{ -1 };
+    std::string data;
+};
 
 class HostMount
 {
 public:
-    HostMount();
-    ~HostMount();
+    explicit HostMount(std::filesystem::path containerRoot);
+    ~HostMount() = default;
 
-    int Setup(FilesystemDriver *driver);
-
-    int MountNode(const Mount &m) const;
-
+    [[nodiscard]] bool MountNode(const Mount &m);
+    static bool remount(const std::filesystem::path &target,
+                        uint32_t flags,
+                        const std::string &data);
     void finalizeMounts() const;
 
 private:
-    std::unique_ptr<HostMountPrivate> dd_ptr;
+    std::filesystem::path containerRoot;
+    bool sysfs_is_binded{ false };
+    std::filesystem::path
+    toHostDestination(const std::filesystem::path &containerDestination) noexcept;
+    static bool ensureDirectoryExist(const std::filesystem::path &destination) noexcept;
+    static bool ensureFileExist(const std::filesystem::path &destination) noexcept;
+    static std::optional<bool> isDummy(const std::string& filesystemType) noexcept;
+    std::vector<remountNode> remountList;
 };
 
 } // namespace linglong

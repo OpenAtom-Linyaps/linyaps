@@ -14,10 +14,23 @@
 #include <memory>
 #include <vector>
 
-namespace linglong {
-namespace util {
+namespace linglong::util {
 
-typedef std::vector<std::string> str_vec;
+using str_vec = std::vector<std::string>;
+
+template<typename Func>
+struct defer
+{
+    explicit defer(Func newF)
+        : f(std::move(newF))
+    {
+    }
+
+    ~defer() { f(); }
+
+private:
+    Func f;
+};
 
 str_vec str_spilt(const std::string &s, const std::string &sep);
 
@@ -42,8 +55,7 @@ inline std::string format(const std::string fmt, ...)
     return std::string{ formatted.get() };
 }
 
-} // namespace util
-} // namespace linglong
+} // namespace linglong::util
 
 template<typename T>
 std::ostream &operator<<(std::ostream &out, const std::vector<T> &v)

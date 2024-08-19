@@ -8,8 +8,7 @@
 
 #include <sys/syslog.h>
 
-namespace linglong {
-namespace util {
+namespace linglong::util {
 
 std::string errnoString()
 {
@@ -58,5 +57,5 @@ static Logger::Level initLogLevel()
 
 Logger::Level Logger::LOGLEVEL = initLogLevel();
 
-} // namespace util
-} // namespace linglong
+} // namespace linglong::util
+

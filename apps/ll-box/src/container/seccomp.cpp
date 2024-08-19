@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "seccomp.h"
+#include "seccomp_p.h"
 
 #include "util/logger.h"
 

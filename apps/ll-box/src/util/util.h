@@ -8,16 +8,13 @@
 #define LINGLONG_BOX_SRC_UTIL_UTIL_H_
 
 #include "common.h"
-#include "filesystem.h"
 #include "json.h"
 #include "macro.h"
 #include "semaphore.h"
 
 #include <fstream>
 
-namespace linglong {
-namespace util {
-namespace json {
+namespace linglong::util::json {
 
 inline nlohmann::json fromByteArray(const std::string &content)
 {
@@ -32,8 +29,6 @@ inline nlohmann::json fromFile(const std::string &filepath)
     return j;
 }
 
-} // namespace json
-} // namespace util
-} // namespace linglong
+} // namespace linglong::util::json
 
 #endif /* LINGLONG_BOX_SRC_UTIL_UTIL_H_ */

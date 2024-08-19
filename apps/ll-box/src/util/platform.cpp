@@ -22,24 +22,20 @@ const int kStackSize = (1024 * 1024);
 
 namespace util {
 
-int PlatformClone(int (*callback)(void *), int flags, void *arg, ...)
+int PlatformClone(int (*callback)(void *), int flags, void *arg)
 {
-    char *stack;
-    char *stackTop;
-
-    stack = reinterpret_cast<char *>(mmap(nullptr,
-                                          kStackSize,
-                                          PROT_READ | PROT_WRITE,
-                                          MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK,
-                                          -1,
-                                          0));
+    auto *stack = reinterpret_cast<char *>(mmap(nullptr,
+                                                kStackSize,
+                                                PROT_READ | PROT_WRITE,
+                                                MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK,
+                                                -1,
+                                                0));
     if (stack == MAP_FAILED) {
         return EXIT_FAILURE;
     }
 
-    stackTop = stack + kStackSize;
-
-    return clone(callback, stackTop, flags, arg);
+    auto *stackTop = stack + kStackSize;
+    return ::clone(callback, stackTop, flags, arg);
 }
 
 int Exec(const util::str_vec &args, std::optional<std::vector<std::string>> env_list)

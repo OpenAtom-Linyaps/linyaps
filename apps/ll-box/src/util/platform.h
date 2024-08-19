@@ -11,20 +11,18 @@
 
 #include <optional>
 
-namespace linglong {
+#include <sys/mman.h>
 
-namespace util {
+constexpr auto kStackSize = (1024 * 1024);
 
-int PlatformClone(int (*callback)(void *), int flags, void *arg, ...);
+namespace linglong::util {
 
+int PlatformClone(int (*callback)(void *), int flags, void *arg);
 int Exec(const util::str_vec &args, std::optional<std::vector<std::string>> env_list);
-
-int Wait(const int pid);
+int Wait(int pid);
 int WaitAll();
-int WaitAllUntil(const int pid);
+int WaitAllUntil(int pid);
 
-} // namespace util
-
-} // namespace linglong
+} // namespace linglong::util
 
 #endif /* LINGLONG_BOX_SRC_UTIL_PLATFORM_H_ */

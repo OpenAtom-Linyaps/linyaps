@@ -15,6 +15,7 @@
 #include <QCryptographicHash>
 #include <QStandardPaths>
 
+#include <unordered_set>
 #include <utility>
 
 #include <fcntl.h>
@@ -170,40 +171,29 @@ utils::error::Result<void> UABPackager::appendLayer(const LayerDir &layer) noexc
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> UABPackager::applyYamlFilter(const QFileInfo &filter) noexcept
+utils::error::Result<void> UABPackager::exclude(const std::vector<std::string> &files) noexcept
 {
-    LINGLONG_TRACE("apply uab minified filters")
-
-    if (!filter.isFile() || filter.suffix() != "yaml") {
-        return LINGLONG_ERR("filter isn't a yaml file");
-    }
-
-    YAML::Node content;
-    try {
-        content = YAML::LoadFile(filter.absoluteFilePath().toStdString());
-    } catch (YAML::ParserException &e) {
-        return LINGLONG_ERR(e.what());
-    } catch (YAML::BadFile &e) {
-        return LINGLONG_ERR(e.what());
-    }
-
-    auto extraLibs = content["extra_libs"];
-    if (!extraLibs.IsDefined() || !extraLibs.IsSequence()) {
-        return LINGLONG_ERR(
-          QString{ "not found filter sequence in %1" }.arg(filter.absoluteFilePath()));
-    }
-
-    for (const auto &val : extraLibs) {
-        auto filter = val.as<QString>(QString{});
-        if (filter.isEmpty()) {
-            continue;
+    LINGLONG_TRACE("append excluding files")
+    for (const auto &file : files) {
+        if (file.empty() || (file.at(0) != '/')) {
+            return LINGLONG_ERR("invalid format, excluding file:" + QString::fromStdString(file));
         }
 
-        if (filter.startsWith(QDir::separator())) {
-            filter.remove(0, 1);
+        excludeFiles.insert(file);
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> UABPackager::include(const std::vector<std::string> &files) noexcept
+{
+    LINGLONG_TRACE("append including files")
+    for (const auto &file : files) {
+        if (file.empty() || (file.at(0) != '/')) {
+            return LINGLONG_ERR("invalid format, including file:" + QString::fromStdString(file));
         }
 
-        filterSet.emplace(filter.toStdString());
+        includeFiles.insert(file);
     }
 
     return LINGLONG_OK;
@@ -378,7 +368,7 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir) noe
         }
 
         auto moduleFilesDir = moduleDir.absolutePath().toStdString() / basePath.filename();
-        if (!std::filesystem::create_directory(moduleFilesDir, ec) && ec) {
+        if (!std::filesystem::create_directories(moduleFilesDir, ec) && ec) {
             return LINGLONG_ERR(QString{ "couldn't create directory: %1, error: %2" }
                                   .arg(QString::fromStdString(moduleFilesDir.string()))
                                   .arg(QString::fromStdString(ec.message())));
@@ -386,6 +376,13 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir) noe
 
         for (const auto &source : files) {
             auto destination = moduleFilesDir / source.lexically_relative(basePath);
+
+            // Ensure that the parent directory exists
+            if (!std::filesystem::create_directories(destination.parent_path(), ec) && ec) {
+                return LINGLONG_ERR("couldn't create directories "
+                                    % QString::fromStdString(destination.parent_path().string()
+                                                             + ":" + ec.message()));
+            }
 
             if (std::filesystem::is_symlink(source, ec)) {
                 std::filesystem::copy_symlink(source, destination, ec);
@@ -404,7 +401,7 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir) noe
             }
 
             if (std::filesystem::is_directory(source, ec)) {
-                if (!std::filesystem::create_directory(destination, ec) && ec) {
+                if (!std::filesystem::create_directories(destination, ec) && ec) {
                     return LINGLONG_ERR(QString{ "couldn't create directory: %1, error: %2" }
                                           .arg(QString::fromStdString(destination.string()))
                                           .arg(QString::fromStdString(ec.message())));
@@ -498,7 +495,7 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir) noe
     }
 
     // generate ld configs
-    auto arch = Architecture::parse(QSysInfo::currentCpuArchitecture());
+    auto arch = Architecture::currentCPUArchitecture();
     auto ldConfsDir = QDir{ extraDir.absoluteFilePath("ld.conf.d") };
     if (!ldConfsDir.mkpath(".")) {
         return LINGLONG_ERR(
@@ -603,8 +600,8 @@ utils::error::Result<void> UABPackager::packMetaInfo() noexcept
     return LINGLONG_OK;
 }
 
-utils::error::Result<std::pair<bool, std::vector<std::filesystem::path>>>
-UABPackager::filteringFiles(const LayerDir &layer) noexcept
+utils::error::Result<std::pair<bool, std::unordered_set<std::filesystem::path>>>
+UABPackager::filteringFiles(const LayerDir &layer) const noexcept
 {
     LINGLONG_TRACE("filtering files in layer directory")
 
@@ -613,7 +610,67 @@ UABPackager::filteringFiles(const LayerDir &layer) noexcept
         return LINGLONG_ERR(
           QString{ "there isn't a files dir in layer %1" }.arg(layer.absolutePath()));
     }
-    auto prefix = std::filesystem::path{ filesDir.toStdString() };
+
+    auto expandPaths = [prefix = std::filesystem::path{ filesDir.toStdString() }](
+                         const std::unordered_set<std::string> &originalFiles)
+      -> utils::error::Result<std::unordered_set<std::filesystem::path>> {
+        LINGLONG_TRACE("expand all filters")
+        std::unordered_set<std::filesystem::path> expandFiles;
+        std::error_code ec;
+
+        for (const auto &originalEntry : originalFiles) {
+            auto entry = prefix / originalEntry.substr(1);
+            if (!std::filesystem::exists(entry, ec)) {
+                if (ec) {
+                    return LINGLONG_ERR(QString::fromStdString(ec.message()));
+                }
+                continue;
+            }
+
+            if (std::filesystem::is_regular_file(entry, ec)) {
+                expandFiles.insert(entry);
+                continue;
+            }
+            if (ec) {
+                return LINGLONG_ERR(QString::fromStdString(ec.message()));
+            }
+
+            if (std::filesystem::is_directory(entry, ec)) {
+                auto iterator = std::filesystem::recursive_directory_iterator(entry, ec);
+                if (ec) {
+                    return LINGLONG_ERR(QString::fromStdString(ec.message()));
+                }
+
+                for (const auto &file : iterator) {
+                    expandFiles.insert(file.path());
+                }
+            }
+            if (ec) {
+                return LINGLONG_ERR(QString::fromStdString(ec.message()));
+            }
+        }
+
+        return expandFiles;
+    };
+
+    auto expandedExcludesRet = expandPaths(excludeFiles);
+    if (!expandedExcludesRet) {
+        return LINGLONG_ERR(expandedExcludesRet);
+    }
+    auto &expandedExcludes = *expandedExcludesRet;
+
+    auto expandedIncludeRet = expandPaths(includeFiles);
+    if (!expandedIncludeRet) {
+        return LINGLONG_ERR(expandedIncludeRet);
+    }
+    const auto &expandedInclude = *expandedIncludeRet;
+
+    for (const auto &entry : expandedInclude) {
+        auto it = expandedExcludes.find(entry);
+        if (it != expandedExcludes.cend()) {
+            expandedExcludes.erase(it);
+        }
+    }
 
     std::error_code ec;
     auto iterator = std::filesystem::recursive_directory_iterator(filesDir.toStdString(), ec);
@@ -621,41 +678,17 @@ UABPackager::filteringFiles(const LayerDir &layer) noexcept
         return LINGLONG_ERR(QString::fromStdString(ec.message()));
     }
 
-    std::vector<std::filesystem::path> files;
-    bool minified{ false };
-    for (const auto &entry : iterator) {
-        auto path = entry.path();
-        if (filterSet.count(path.lexically_relative(prefix).string()) == 1) {
-            minified = true;
-            qDebug() << "file" << QString::fromStdString(path.string()) << "has been filtered";
-            continue;
-        }
-
-        files.emplace_back(std::move(path));
+    std::unordered_set<std::filesystem::path> allFiles;
+    for (const auto &file : iterator) {
+        allFiles.insert(file.path());
     }
 
-    std::sort(files.begin(), files.end());
-    return std::make_pair(minified, std::move(files));
+    bool minified = !expandedExcludes.empty();
+    for (const auto &excludeFile : expandedExcludes) {
+        allFiles.erase(excludeFile);
+    }
+
+    return std::make_pair(minified, std::move(allFiles));
 }
 
 } // namespace linglong::package
-
-// using QString fully-specialized class template only affects the current compilation unit.
-// maybe we could provide a Qt wrapper for yaml-cpp
-namespace YAML {
-template<>
-struct convert<QString>
-{
-    static Node encode(const QString &rhs) { return Node(rhs.toStdString()); }
-
-    static bool decode(const Node &node, QString &rhs)
-    {
-        if (!node.IsScalar()) {
-            return false;
-        }
-
-        rhs = QString::fromStdString(node.Scalar());
-        return true;
-    }
-};
-} // namespace YAML

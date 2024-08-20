@@ -37,13 +37,32 @@ void Printer::printPackages(const std::vector<api::types::v1::PackageInfoV2> &li
 
 void Printer::printContainers(const std::vector<api::types::v1::CliContainer> &list)
 {
-    std::cout << "\033[38;5;214m" << std::left << std::setw(48) << qUtf8Printable("App")
-              << std::setw(36) << qUtf8Printable("ContainerID") << std::setw(8)
-              << qUtf8Printable("Pid") << qUtf8Printable("Path") << "\033[0m" << std::endl;
+    const std::size_t padding{ 5 };
+    std::size_t packageLen = 0;
+    std::size_t idLen = 0;
+    std::size_t pidLen = 0;
+
+    std::for_each(list.cbegin(),
+                  list.cend(),
+                  [&packageLen, &idLen, &pidLen](const api::types::v1::CliContainer &con) {
+                      packageLen = std::max(packageLen, con.package.size());
+                      idLen = std::max(idLen, con.id.size());
+                      pidLen = std::max(pidLen, std::to_string(con.pid).size());
+                  });
+
+    packageLen += padding;
+    idLen += padding;
+    pidLen += padding;
+
+    std::cout << "\033[38;5;214m" << std::left << std::setw(static_cast<int>(packageLen))
+              << qUtf8Printable("App") << std::setw(static_cast<int>(idLen))
+              << qUtf8Printable("ContainerID") << std::setw(static_cast<int>(pidLen))
+              << qUtf8Printable("Pid") << "\033[0m" << std::endl;
 
     for (auto const &container : list) {
-        std::cout << std::setw(48) << container.package << std::setw(36) << container.id
-                  << std::setw(8) << container.pid << std::endl;
+        std::cout << std::setw(static_cast<int>(packageLen)) << container.package
+                  << std::setw(static_cast<int>(idLen)) << container.id
+                  << std::setw(static_cast<int>(pidLen)) << container.pid << std::endl;
     }
 }
 
@@ -84,11 +103,13 @@ void Printer::printTaskStatus(const QString &percentage, const QString &message,
 
 std::wstring subwstr(std::wstring wstr, int width)
 {
-    if (wcswidth(wstr.c_str(), -1) <= width) return wstr;
+    if (wcswidth(wstr.c_str(), -1) <= width)
+        return wstr;
     int halfsize = wstr.size() / 2;
     std::wstring halfwstr = wstr.substr(0, halfsize);
     int halfwidth = wcswidth(halfwstr.c_str(), -1);
-    if (halfwidth >= width) return subwstr(halfwstr, width);
+    if (halfwidth >= width)
+        return subwstr(halfwstr, width);
     return halfwstr + subwstr(wstr.substr(halfsize, halfsize), width - halfwidth);
 }
 

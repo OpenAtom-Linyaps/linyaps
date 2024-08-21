@@ -922,21 +922,19 @@ int Cli::repo(std::map<std::string, docopt::value> &args)
         return 0;
     }
 
-    QString name;
-    QString url;
+    std::string url;
     if (args["--name"].isString()) {
-        name = QString::fromStdString(args["--name"].asString());
+        cfg->defaultRepo = args["--name"].asString();
     }
     if (args["URL"].isString()) {
-        url = QString::fromStdString(args["URL"].asString());
+        url = args["URL"].asString();
         // remove last slash
-        if (url.endsWith("/")) {
-            url.chop(1);
+        if (url.at(url.length() - 1) == '/') {
+            url.pop_back();
         }
     }
 
-    cfg->repos[name.toStdString()] = url.toStdString();
-    cfg->defaultRepo = name.toStdString();
+    cfg->repos[cfg->defaultRepo] = url;
     this->pkgMan.setConfiguration(utils::serialize::toQVariantMap(*cfg));
     return 0;
 }

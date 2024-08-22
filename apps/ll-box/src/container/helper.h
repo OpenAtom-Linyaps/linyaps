@@ -10,7 +10,8 @@
 #include <string>
 
 namespace linglong {
-void writeContainerJson(const std::string &bundle, const std::string &id, pid_t pid);
+void writeContainerJson(const std::string &bundle, const std::string &id,
+                        pid_t pid);
 nlohmann::json readAllContainerJson() noexcept;
-}; // namespace linglong
+};  // namespace linglong
 #endif

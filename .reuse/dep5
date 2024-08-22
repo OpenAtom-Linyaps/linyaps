@@ -134,3 +134,8 @@ Copyright: UnionTech Software Technology Co., Ltd.
 Files: tools/layer-icon-checker.sh
 License: CC0-1.0
 Copyright: None
+
+# tools
+Files: apps/ll-box/.clang-*
+License: CC0-1.0
+Copyright: None

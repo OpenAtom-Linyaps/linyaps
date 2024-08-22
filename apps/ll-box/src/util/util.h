@@ -7,25 +7,23 @@
 #ifndef LINGLONG_BOX_SRC_UTIL_UTIL_H_
 #define LINGLONG_BOX_SRC_UTIL_UTIL_H_
 
-#include <nlohmann/json.hpp>
-
 #include <fstream>
+#include <nlohmann/json.hpp>
 
 namespace linglong::util::json {
 
-inline nlohmann::json fromByteArray(const std::string &content)
-{
-    return nlohmann::json::parse(content);
+inline nlohmann::json fromByteArray(const std::string &content) {
+  return nlohmann::json::parse(content);
 }
 
-inline nlohmann::json fromFile(const std::string &filepath)
-{
-    std::ifstream f(filepath);
-    std::string str((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
-    auto j = fromByteArray(str);
-    return j;
+inline nlohmann::json fromFile(const std::string &filepath) {
+  std::ifstream f(filepath);
+  std::string str((std::istreambuf_iterator<char>(f)),
+                  std::istreambuf_iterator<char>());
+  auto j = fromByteArray(str);
+  return j;
 }
 
-} // namespace linglong::util::json
+}  // namespace linglong::util::json
 
 #endif /* LINGLONG_BOX_SRC_UTIL_UTIL_H_ */

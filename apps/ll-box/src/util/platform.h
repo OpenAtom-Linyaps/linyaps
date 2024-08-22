@@ -7,20 +7,21 @@
 #ifndef LINGLONG_BOX_SRC_UTIL_PLATFORM_H_
 #define LINGLONG_BOX_SRC_UTIL_PLATFORM_H_
 
-#include "common.h"
+#include <sys/mman.h>
 
 #include <optional>
 
-#include <sys/mman.h>
+#include "common.h"
 
 constexpr auto kStackSize = (1024 * 1024);
 
 namespace linglong::util {
 
 int PlatformClone(int (*callback)(void *), int flags, void *arg);
-int Exec(const util::str_vec &args, std::optional<std::vector<std::string>> env_list);
+int Exec(const util::str_vec &args,
+         std::optional<std::vector<std::string>> env_list);
 int WaitAllUntil(int pid);
 
-} // namespace linglong::util
+}  // namespace linglong::util
 
 #endif /* LINGLONG_BOX_SRC_UTIL_PLATFORM_H_ */

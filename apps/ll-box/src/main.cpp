@@ -7,7 +7,6 @@
 #include "container/container.h"
 #include "container/helper.h"
 #include "util/logger.h"
-#include "util/message_reader.h"
 #include "util/oci_runtime.h"
 
 #include <argp.h>

@@ -7,10 +7,7 @@
 #ifndef LINGLONG_BOX_SRC_UTIL_UTIL_H_
 #define LINGLONG_BOX_SRC_UTIL_UTIL_H_
 
-#include "common.h"
-#include "json.h"
-#include "macro.h"
-#include "semaphore.h"
+#include <nlohmann/json.hpp>
 
 #include <fstream>
 

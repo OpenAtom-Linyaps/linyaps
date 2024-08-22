@@ -6,6 +6,8 @@
 
 #include "logger.h"
 
+#include "util/common.h"
+
 #include <sys/syslog.h>
 
 namespace linglong::util {
@@ -58,4 +60,3 @@ static Logger::Level initLogLevel()
 Logger::Level Logger::LOGLEVEL = initLogLevel();
 
 } // namespace linglong::util
-

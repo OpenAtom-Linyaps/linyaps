@@ -8,8 +8,12 @@
 #define LINGLONG_BOX_SRC_UTIL_OCI_RUNTIME_H_
 
 #include "util.h"
+#include "util/common.h"
+#include "util/json.h"
 
 #include <sys/mount.h>
+
+#include <optional>
 
 // Compatible with linux kernel which is under 5.10
 // ll-box will open the symlink with O_PATH | O_NOFOLLOW and replace source by '/proc/self/fd/${fd}'

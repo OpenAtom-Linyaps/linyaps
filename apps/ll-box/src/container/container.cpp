@@ -8,11 +8,8 @@
 
 #include "container/helper.h"
 #include "container/mount/host_mount.h"
-#include "container/seccomp_p.h"
-#include "util/debug/debug.h"
 #include "util/logger.h"
 #include "util/platform.h"
-#include "util/semaphore.h"
 
 #include <sys/epoll.h>
 #include <sys/mount.h>

@@ -19,8 +19,6 @@ namespace linglong::util {
 
 int PlatformClone(int (*callback)(void *), int flags, void *arg);
 int Exec(const util::str_vec &args, std::optional<std::vector<std::string>> env_list);
-int Wait(int pid);
-int WaitAll();
 int WaitAllUntil(int pid);
 
 } // namespace linglong::util

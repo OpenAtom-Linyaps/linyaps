@@ -32,8 +32,6 @@ private:
     Func f;
 };
 
-str_vec str_spilt(const std::string &s, const std::string &sep);
-
 std::string str_vec_join(const str_vec &vec, char sep);
 
 inline std::string format(const std::string fmt, ...)

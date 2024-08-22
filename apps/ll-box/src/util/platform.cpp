@@ -7,7 +7,6 @@
 #include "platform.h"
 
 #include "logger.h"
-#include "util/debug/debug.h"
 
 #include <cstdlib>
 
@@ -114,18 +113,6 @@ static int DoWait(const int pid, int target = 0)
     // when we pass options=0 to waitpid, it will never return 0
     logWan() << "waitpid return 0, this should not happen normally";
     return -1;
-}
-
-// wait all child
-int WaitAll()
-{
-    return DoWait(-1);
-}
-
-// wait pid to exit
-int Wait(const int pid)
-{
-    return DoWait(pid);
 }
 
 // wait all child until pid exit

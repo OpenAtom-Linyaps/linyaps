@@ -7,6 +7,7 @@
 #include "seccomp_p.h"
 
 #include "util/logger.h"
+#include "util/macro.h"
 
 #include <seccomp.h>
 

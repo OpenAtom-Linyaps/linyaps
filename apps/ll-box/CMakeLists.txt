@@ -32,13 +32,9 @@ pfl_add_executable(
   src/util/logger.cpp
   src/util/logger.h
   src/util/macro.h
-  src/util/message_reader.cpp
-  src/util/message_reader.h
   src/util/oci_runtime.h
   src/util/platform.cpp
   src/util/platform.h
-  src/util/semaphore.cpp
-  src/util/semaphore.h
   src/util/util.h
   OUTPUT_NAME
   ${BOX_BIN_NAME}

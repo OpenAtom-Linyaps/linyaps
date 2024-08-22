@@ -762,6 +762,10 @@ set -e
     }
     infoFile.close();
 
+    qDebug() << "copy linglong.yaml to output";
+    QFile::copy(this->workingDir.absoluteFilePath("linglong.yaml"), this->workingDir.absoluteFilePath("linglong/output/binary/linglong.yaml"));
+    QFile::copy(this->workingDir.absoluteFilePath("linglong.yaml"), this->workingDir.absoluteFilePath("linglong/output/develop/linglong.yaml"));
+
     printMessage("[Commit Contents]");
     printMessage(QString("%1%2%3%4")
                    .arg("Package", -25) // NOLINT

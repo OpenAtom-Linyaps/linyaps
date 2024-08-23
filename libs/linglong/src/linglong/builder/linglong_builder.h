@@ -54,8 +54,6 @@ public:
 
     auto run(const QStringList &args = { QString("bash") }) -> utils::error::Result<void>;
 
-    auto appimageConvert(const QStringList &templateArgs) -> utils::error::Result<void>;
-
 private:
     repo::OSTreeRepo &repo;
     QDir workingDir;

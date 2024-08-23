@@ -4,7 +4,7 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-#Used for generate configure file in application after build, such 
+#Used for generate configure file in application after build, such
 # as *.desktop, *.service.
 
 #set -x
@@ -12,78 +12,62 @@ set -e
 
 # replace 'Exec=XX' to 'Exec=ll-cli run ${appId} -- "XX"'
 # warning: the XX maybe include a prefix such as "/usr/bin".
-ExecReplace()
-{
-    filePath=$1
-    fileType=$2
-    for path in `ls ${filePath}/${fileType}`
-    do
-        if [ "$fileType" == "*.desktop" ]; then
-            sed -i "/\[Desktop Entry\]/a X-linglong=${appId}" ${path}
-            sed -i "/TryExec=*/c TryExec=ll-cli" ${path}
-        fi
-        execContent=$(grep "^Exec=" ${path})
-        IFS=$'\n'
-        for content in ${execContent[@]}
-        do
-            if [[ "${content}" =~ "/usr/bin/ll-cli run" ]];then
-                continue
-            fi
-            startByLinglong="Exec=/usr/bin/ll-cli run ${appId} -- ${content/Exec=}"
-            sed -i "s|${content}|${startByLinglong}|g" ${path}
+ExecReplace() {
+        filePath=$1
+        fileType=$2
+        for path in $(ls ${filePath}/${fileType}); do
+                if [ "$fileType" == "*.desktop" ]; then
+                        sed -i "/\[Desktop Entry\]/a X-linglong=${appId}" ${path}
+                        sed -i "/TryExec=*/c TryExec=ll-cli" ${path}
+                fi
+                startByLinglong="ll-cli run ${appId} -- "
+                sed -i "s/^\(Exec=\)\(.*\)/\1${startByLinglong}\2/" $path
         done
-    done
 }
 
-IconsReplace()
-{
-    #Not impelement yet
-    echo "replace Icons"
+IconsReplace() {
+        #Not impelement yet
+        echo "replace Icons"
 }
 
-DesktopGenerator()
-{   
-    ExecReplace $1 "*.desktop"
-    IconsReplace
+DesktopGenerator() {
+        ExecReplace $1 "*.desktop"
+        IconsReplace
 }
 
-DBusServiceGenerator()
-{
-    ExecReplace $1 "*.service"
+DBusServiceGenerator() {
+        ExecReplace $1 "*.service"
 }
 
-SystemdServiceGenerator()
-{
-    ExecReplace $1 "*.service"
+SystemdServiceGenerator() {
+        ExecReplace $1 "*.service"
 }
 
-ContextMenuGenerator()
-{
-    ExecReplace $1 "*.conf"
+ContextMenuGenerator() {
+        ExecReplace $1 "*.conf"
 }
 
-main ()
-{
-    appId=$1
-    appEntriesPath=$2
+main() {
+        appId=$1
+        appEntriesPath=$2
 
-    desktopPath="${appEntriesPath}/share/applications"
-    systemdServicePath="${appEntriesPath}/share/systemd/user"
-    dbusServicePath="${appEntriesPath}/share/dbus-1/services"
-    contextMenuPath="${appEntriesPath}/share/applications/context-menus"
+        desktopPath="${appEntriesPath}/share/applications"
+        systemdServicePath="${appEntriesPath}/share/systemd/user"
+        dbusServicePath="${appEntriesPath}/share/dbus-1/services"
+        contextMenuPath="${appEntriesPath}/share/applications/context-menus"
 
-    if [ -d "${desktopPath}" ]; then
-        DesktopGenerator ${desktopPath}
-    fi
-    if [ -d "${dbusServicePath}" ]; then
-        DBusServiceGenerator ${dbusServicePath}
-    fi
-    if [ -d "${systemdServicePath}" ]; then
-        SystemdServiceGenerator ${systemdServicePath}
-    fi
-    if [ -d "${contextMenuPath}" ]; then
-        ContextMenuGenerator ${contextMenuPath}
-    fi
+        if [ -d "${desktopPath}" ]; then
+                DesktopGenerator ${desktopPath}
+        fi
+        if [ -d "${dbusServicePath}" ]; then
+                DBusServiceGenerator ${dbusServicePath}
+        fi
+        if [ -d "${systemdServicePath}" ]; then
+                SystemdServiceGenerator ${systemdServicePath}
+        fi
+        if [ -d "${contextMenuPath}" ]; then
+                ContextMenuGenerator ${contextMenuPath}
+        fi
 }
 
 # $1 appid

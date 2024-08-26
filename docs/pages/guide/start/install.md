@@ -53,7 +53,10 @@ sudo dnf install linglong-builder linglong-box linglong-bin
 添加玲珑仓库源。
 
 ```bash
-sudo bash -c "echo 'deb [trusted=yes] https://download.opensuse.org/repositories/home:/kamiyadm/xUbuntu_24.04/ ./' > /etc/apt/sources.list.d/linglong.list"
+sudo apt install -y apt-transport-https ca-certificates curl gpg xdg-utils
+sudo mkdir -p /etc/apt/keyrings/
+curl -fsSL https://download.opensuse.org/repositories/home:/kamiyadm/xUbuntu_24.04/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/linglong-apt-keyring.gpg
+echo "deb [signed-by=/etc/apt/keyrings/linglong-apt-keyring.gpg] https://download.opensuse.org/repositories/home:/kamiyadm/xUbuntu_24.04/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
 ```
 
 更新仓库并安装玲珑。
@@ -68,7 +71,10 @@ sudo apt install linglong-builder linglong-box linglong-bin
 添加玲珑仓库源。
 
 ```bash
-sudo bash -c "echo 'deb [trusted=yes] https://download.opensuse.org/repositories/home:/kamiyadm/Debian_12/ ./' > /etc/apt/sources.list.d/linglong.list"
+sudo apt install -y apt-transport-https ca-certificates curl gpg xdg-utils
+sudo mkdir -p /etc/apt/keyrings/
+curl -fsSL https://download.opensuse.org/repositories/home:/kamiyadm/Debian_12/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/linglong-apt-keyring.gpg
+echo "deb [signed-by=/etc/apt/keyrings/linglong-apt-keyring.gpg] https://download.opensuse.org/repositories/home:/kamiyadm/Debian_12/ ./" | sudo tee /etc/apt/sources.list.d/linglong.list
 ```
 
 更新仓库并安装玲珑。

@@ -88,6 +88,24 @@ sources:
 | digest | 归档文件的 hash 值，使用 sha256 算法加密，类型为 file、archive 时填写 |
 | commit | 源码某次提交 hash 值，类型为 git 时填写                               |
 
+### 导出裁剪规则（UAB）
+
+构建应用后导出到 UAB 包时，需要裁剪的文件如下例所示：
+
+```yaml
+exclude:
+  - /usr/share/locale # 裁剪整个文件夹
+  - /usr/lib/libavfs.a # 裁剪单个文件
+
+include:
+  - /usr/share/locale/zh_CN.UTF-8 # 配合exclude实现仅导出一个文件夹下的某些文件
+```
+
+| 名称    | 描述                                      |
+| ------- | ----------------------------------------- |
+| exclude | 容器内的绝对路径，可以为文件或文件夹      |
+| include | 容器内的绝对路径，需要导入进 UAB 包的文件 |
+
 ### 构建规则
 
 描述构建规则。
@@ -145,7 +163,7 @@ ll-builder build --skip-fetch-source
 #### 计算器
 
 ```yaml
-version: "1"
+version: '1'
 
 package:
   id: org.deepin.calculator

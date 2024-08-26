@@ -804,6 +804,52 @@
           ]
         }
       }
+    },
+    "RepositoryCache": {
+      "title": "RepositoryCache",
+      "type": "object",
+      "description": "storing information of all packages and config of repo",
+      "required": [
+        "version",
+        "ll-version",
+        "config",
+        "layers"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "version of storage"
+        },
+        "ll-version": {
+          "type": "string",
+          "description": "version of linglong at the time of generating the file"
+        },
+        "config": {
+          "$ref": "#/$defs/RepoConfig"
+        },
+        "layers": {
+          "title": "RepositoryCacheLayers",
+          "type": "object",
+          "description": "stores the full module name with repo name and the corresponding ostree commit",
+          "additionalProperties": {
+            "title": "RepositoryCacheLayersItem",
+            "type": "object",
+            "required": [
+              "commit",
+              "info"
+            ],
+            "properties": {
+              "commit": {
+                "type": "string",
+                "description": "ostree commit hash"
+              },
+              "info": {
+                "$ref": "#/$defs/PackageInfoV2"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "type": "object",
@@ -885,6 +931,9 @@
     },
     "PackageManager1GetRepoInfoResult": {
       "$ref": "#/$defs/PackageManager1GetRepoInfoResult"
+    },
+    "RepositoryCache": {
+      "$ref": "#/$defs/RepositoryCache"
     }
   }
 }

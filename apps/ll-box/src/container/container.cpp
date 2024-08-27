@@ -415,49 +415,30 @@ struct ContainerPrivate
             return false;
         }
 
-        int pid = fork();
-        if (pid < 0) {
-            logErr() << "fork failed" << util::RetErrString(pid);
+        logDbg() << "process.args:" << process.args;
+
+        if (auto ret = chdir(process.cwd.c_str()); ret != 0) {
+            logErr() << "failed to chdir to" << process.cwd.c_str() << util::RetErrString(ret);
             return false;
         }
 
-        if (0 == pid) {
-            if (unblock) {
-                // FIXME: As we use signalfd, we have to block signal, but child created by fork
-                // will inherit blocked signal set, so we have to unblock it. This is just a
-                // workaround.
-                sigset_t mask;
-                sigfillset(&mask);
-                if (sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1)
-                    logWan() << "sigprocmask unblock";
-            }
-            logDbg() << "process.args:" << process.args;
-
-            if (auto ret = chdir(process.cwd.c_str()); ret != 0) {
-                logErr() << "failed to chdir to" << process.cwd.c_str() << util::RetErrString(ret);
-                return false;
+        for (const auto &env : process.env) {
+            if (env.rfind("PATH=", 0) != 0) {
+                continue;
             }
 
-            for (const auto &env : process.env) {
-                if (env.rfind("PATH=", 0) != 0) {
-                    continue;
-                }
-
-                if (auto ret = setenv("PATH", env.c_str() + strlen("PATH="), 1); ret == -1) {
-                    logWan() << "failed to set PATH" << util::RetErrString(ret);
-                }
+            if (auto ret = setenv("PATH", env.c_str() + strlen("PATH="), 1); ret == -1) {
+                logWan() << "failed to set PATH" << util::RetErrString(ret);
             }
-
-            logInf() << "start exec process";
-            if (auto ret = util::Exec(process.args, process.env); ret != 0) {
-                logErr() << "exec failed" << util::RetErrString(ret);
-                exit(ret);
-            }
-        } else {
-            pidMap.insert(make_pair(pid, process.args[0]));
         }
 
-        return true;
+        logInf() << "start exec process";
+        if (auto ret = util::Exec(process.args, process.env); ret != 0) {
+            logErr() << "exec failed" << util::RetErrString(ret);
+            exit(ret);
+        }
+
+        return false;
     }
 
     [[nodiscard]] int PivotRoot() const

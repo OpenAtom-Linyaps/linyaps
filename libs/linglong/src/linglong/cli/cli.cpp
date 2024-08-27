@@ -185,6 +185,22 @@ utils::error::Result<package::LayerDir> Cli::getDependLayerDir(
     return this->repository.getLayerDir(dependRef, false, subRef);
 }
 
+std::string joinWithSpaces(const std::vector<std::string> &vec)
+{
+    std::ostringstream result;
+    auto it = vec.begin();
+
+    if (it != vec.end()) {
+        result << *it;
+        ++it; 
+        for (; it != vec.end(); ++it) {
+            result << " " << *it; 
+        }
+    }
+
+    return result.str();
+}
+
 int Cli::run(std::map<std::string, docopt::value> &args)
 {
     LINGLONG_TRACE("command run");
@@ -278,7 +294,7 @@ int Cli::run(std::map<std::string, docopt::value> &args)
         qWarning() << "invalid command found in package" << QString::fromStdString(info->id);
         command = { "bash" };
     }
-    auto execArgs = filePathMapping(args, command);
+    std::vector<std::string> execArgs = filePathMapping(args, command);
 
     auto containers = this->ociCLI.list().value_or(std::vector<ocppi::types::ContainerListItem>{});
     for (const auto &container : containers) {
@@ -287,24 +303,18 @@ int Cli::run(std::map<std::string, docopt::value> &args)
             continue;
         }
 
-        QStringList bashArgs;
-        // 为避免原始args包含空格，每个arg都使用单引号包裹，并对arg内部的单引号进行转义替换
-        for (const auto &arg : execArgs) {
-            bashArgs.push_back(
-              QString("'%1'").arg(QString::fromStdString(arg).replace("'", "'\\''")));
-        }
-
-        if (!bashArgs.isEmpty()) {
+        if (!execArgs.empty()) {
             // exec命令使用原始args中的进程替换bash进程
-            bashArgs.prepend("exec");
+            execArgs.emplace(execArgs.begin(), "exec");
         }
         // 在原始args前面添加bash --login -c，这样可以使用/etc/profile配置的环境变量
         execArgs = std::vector<std::string>{
             "/bin/bash",
             "--login",
             "-c",
-            bashArgs.join(" ").toStdString(),
-            "; wait"
+            "\\$@ & wait"
+            "init",
+            joinWithSpaces(execArgs),
         };
 
         auto opt = ocppi::runtime::ExecOption{};
@@ -419,24 +429,18 @@ int Cli::exec(std::map<std::string, docopt::value> &args)
 
     std::vector<std::string> command = args["COMMAND"].asStringList();
     if (command.size() != 0) {
-        QStringList bashArgs;
-        // 为避免原始args包含空格，每个arg都使用单引号包裹，并对arg内部的单引号进行转义替换
-        for (const auto &arg : command) {
-            bashArgs.push_back(
-              QString("'%1'").arg(QString::fromStdString(arg).replace("'", "'\\''")));
-        }
-
-        if (!bashArgs.isEmpty()) {
+        if (!command.empty()) {
             // exec命令使用原始args中的进程替换bash进程
-            bashArgs.prepend("exec");
+            command.emplace(command.begin(), "exec");
         }
         // 在原始args前面添加bash --login -c，这样可以使用/etc/profile配置的环境变量
         command = std::vector<std::string>{
             "/bin/bash",
             "--login",
             "-c",
-            bashArgs.join(" ").toStdString(),
-            "; wait"
+            "\\$@ & wait"
+            "init",
+            joinWithSpaces(command),
         };
     } else {
         command = { "bash", "--login" };

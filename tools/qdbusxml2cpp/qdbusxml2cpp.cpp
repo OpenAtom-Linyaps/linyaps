@@ -463,19 +463,7 @@ static void writeProxy(const QString &filename, const QDBusIntrospection::Interf
         writeHeader(cs, false);
 
     // include guards:
-    QString includeGuard;
-    if (!headerName.isEmpty() && headerName != QLatin1String("-")) {
-        includeGuard = headerName.toUpper().replace(QLatin1Char('.'), QLatin1Char('_'));
-        int pos = includeGuard.lastIndexOf(QLatin1Char('/'));
-        if (pos != -1)
-            includeGuard = includeGuard.mid(pos + 1);
-    } else {
-        includeGuard = QLatin1String("QDBUSXML2CPP_PROXY");
-    }
-    includeGuard = QString(QLatin1String("%1"))
-                   .arg(includeGuard);
-    hs << "#ifndef " << includeGuard << Qt::endl
-       << "#define " << includeGuard << Qt::endl
+    hs << "#pragma once" << Qt::endl
        << Qt::endl;
 
     // include our stuff:
@@ -725,9 +713,6 @@ static void writeProxy(const QString &filename, const QDBusIntrospection::Interf
             last = current;
         } while (true);
     }
-
-    // close the include guard
-    hs << "#endif" << Qt::endl;
 
     QString mocName = moc(filename);
     if (includeMocs && !mocName.isEmpty())

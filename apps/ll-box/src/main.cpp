@@ -128,7 +128,7 @@ pid_t findParentPid(const std::filesystem::path &process) noexcept
     return std::stoi(element);
 }
 
-pid_t findLastBoxFallback(pid_t rootPid) noexcept
+pid_t findInitProcessFallback(pid_t rootPid, const std::string &initBin) noexcept
 {
     std::error_code ec;
     auto proc_iterator = std::filesystem::directory_iterator("/proc", ec);
@@ -136,13 +136,6 @@ pid_t findLastBoxFallback(pid_t rootPid) noexcept
         logErr() << "create directory iterator of /proc error:" << ec.message();
         return -1;
     }
-
-    auto boxBinPath = std::filesystem::read_symlink("/proc/self/exe", ec);
-    if (ec) {
-        logErr() << "read symlink error:" << ec.message();
-        return -1;
-    }
-    auto boxBinName = boxBinPath.filename().string();
 
     std::map<pid_t, std::filesystem::path> processes;
     for (const auto &entry : proc_iterator) {
@@ -171,7 +164,7 @@ pid_t findLastBoxFallback(pid_t rootPid) noexcept
     }
 
     auto currentPid = rootPid;
-    pid_t lastBox{ -1 };
+    pid_t initPid{ -1 };
     for (const auto &[pid, path] : processes) {
         auto parent = findParentPid(path);
         if (parent != currentPid) {
@@ -184,8 +177,8 @@ pid_t findLastBoxFallback(pid_t rootPid) noexcept
             return -1;
         }
 
-        if (auto binStr = bin.filename().string(); binStr == boxBinName) {
-            lastBox = currentPid;
+        if (auto binStr = bin.filename().string(); binStr == initBin) {
+            initPid = currentPid;
             currentPid = pid;
             continue;
         }
@@ -193,24 +186,24 @@ pid_t findLastBoxFallback(pid_t rootPid) noexcept
         break;
     }
 
-    return lastBox;
+    return initPid;
 }
 
-pid_t findLastBox(pid_t rootPid) noexcept
+pid_t findInitProcess(pid_t rootPid) noexcept
 {
     std::filesystem::path proc{ "/proc" };
     if (!std::filesystem::exists(proc)) {
         logFal() << "/proc doesn't exist.";
     }
 
+    std::string initBin = "bash";
     auto pidStr = std::to_string(rootPid);
     auto children = proc / pidStr / "task" / pidStr / "children";
     if (!std::filesystem::exists(children)) {
         logDbg() << children.string() << "not exist, fallback to stat file";
-        return findLastBoxFallback(rootPid);
+        return findInitProcessFallback(rootPid, initBin);
     }
-
-    auto boxBin = std::filesystem::read_symlink("/proc/self/exe");
+    
     std::error_code ec; // NOLINT
     while (true) {
         std::ifstream stream{ children };
@@ -229,7 +222,7 @@ pid_t findLastBox(pid_t rootPid) noexcept
                 return -1;
             }
 
-            if (realExe.filename() == boxBin.filename()) {
+            if (realExe.filename() == initBin) {
                 childBoxFound = true;
                 break;
             }
@@ -267,17 +260,20 @@ int exec(struct arg_exec *arg, int argc, char **argv) noexcept
         return -1;
     }
 
-    auto lastBox = findLastBox(boxPid);
-    if (lastBox == -1) {
-        logErr() << "couldn't find pid of last ll-box";
+    // https://github.com/OpenAtom-Linyaps/linyaps/pull/665/commits/74fd810e56acac3515c84b438741766d61956809
+    // we make bash to be the init process(pid=1) in container.
+    // Now, we need to find bash instead of ll-box
+    auto initProcess = findInitProcess(boxPid);
+    if (initProcess == -1) {
+        logErr() << "couldn't find pid of init process which in container";
         return -1;
     }
 
-    auto boxPidStr = std::to_string(lastBox);
+    auto initProcessStr = std::to_string(initProcess);
     auto wdns = linglong::util::format("--wdns=%s", arg->cwd.c_str());
 
     std::vector<const char *> newArgv{
-        "nsenter", "-t", boxPidStr.c_str(), "-U", "-m", "-p", wdns.c_str(), "--preserve-credentials"
+        "nsenter", "-t", initProcessStr.c_str(), "-U", "-m", "-p", wdns.c_str(), "--preserve-credentials"
     };
 
     for (int i = 0; i < argc; ++i) {

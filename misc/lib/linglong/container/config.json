@@ -26,11 +26,11 @@
     "hooks": {
         "startContainer": [
             {
-                "path": "/bin/bash",
+                "path": "/sbin/ldconfig",
                 "args": [
-                    "/bin/bash",
-                    "-c",
-                    "mkdir -p /run/linglong/etc && /sbin/ldconfig -C /run/linglong/etc/ld.so.cache"
+                    "/sbin/ldconfig",
+                    "-C",
+                    "/run/linglong/etc/ld.so.cache"
                 ]
             }
         ]

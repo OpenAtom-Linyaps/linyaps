@@ -247,6 +247,13 @@ int main()
             localtimePath = "/run/host/rootfs" + absoluteTarget;
         }
     }
+    // 为 /run/linglong/etc/ld.so.cache 创建父目录
+    mounts.push_back({
+      { "destination", "/run/linglong/etc" },
+      { "options", nlohmann::json::array({ "nodev", "nosuid", "mode=700" }) },
+      { "source", "tmpfs" },
+      { "type", "tmpfs" },
+    });
 
     auto pwd = std::filesystem::current_path();
     // [name, destination, target]

@@ -375,7 +375,8 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir) noe
         }
 
         for (const auto &source : files) {
-            auto destination = moduleFilesDir / source.lexically_relative(basePath);
+            auto destination =
+              moduleFilesDir / std::filesystem::path{ source }.lexically_relative(basePath);
 
             // Ensure that the parent directory exists
             if (!std::filesystem::create_directories(destination.parent_path(), ec) && ec) {
@@ -388,7 +389,7 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir) noe
                 std::filesystem::copy_symlink(source, destination, ec);
                 if (ec) {
                     return LINGLONG_ERR("couldn't copy symlink from "
-                                        % QString::fromStdString(source.string()) % " to "
+                                        % QString::fromStdString(source) % " to "
                                         % QString::fromStdString(destination.string()) % " "
                                         % QString::fromStdString(ec.message()));
                 }
@@ -416,8 +417,8 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir) noe
 
             std::filesystem::create_hard_link(source, destination, ec);
             if (ec) {
-                return LINGLONG_ERR("couldn't link from " % QString::fromStdString(source.string())
-                                    % " to " % QString::fromStdString(destination.string()) % " "
+                return LINGLONG_ERR("couldn't link from " % QString::fromStdString(source) % " to "
+                                    % QString::fromStdString(destination.string()) % " "
                                     % QString::fromStdString(ec.message()));
             }
         }
@@ -600,7 +601,7 @@ utils::error::Result<void> UABPackager::packMetaInfo() noexcept
     return LINGLONG_OK;
 }
 
-utils::error::Result<std::pair<bool, std::unordered_set<std::filesystem::path>>>
+utils::error::Result<std::pair<bool, std::unordered_set<std::string>>>
 UABPackager::filteringFiles(const LayerDir &layer) const noexcept
 {
     LINGLONG_TRACE("filtering files in layer directory")
@@ -613,9 +614,9 @@ UABPackager::filteringFiles(const LayerDir &layer) const noexcept
 
     auto expandPaths = [prefix = std::filesystem::path{ filesDir.toStdString() }](
                          const std::unordered_set<std::string> &originalFiles)
-      -> utils::error::Result<std::unordered_set<std::filesystem::path>> {
+      -> utils::error::Result<std::unordered_set<std::string>> {
         LINGLONG_TRACE("expand all filters")
-        std::unordered_set<std::filesystem::path> expandFiles;
+        std::unordered_set<std::string> expandFiles;
         std::error_code ec;
 
         for (const auto &originalEntry : originalFiles) {
@@ -642,7 +643,7 @@ UABPackager::filteringFiles(const LayerDir &layer) const noexcept
                 }
 
                 for (const auto &file : iterator) {
-                    expandFiles.insert(file.path());
+                    expandFiles.insert(file.path().string());
                 }
             }
             if (ec) {
@@ -678,9 +679,9 @@ UABPackager::filteringFiles(const LayerDir &layer) const noexcept
         return LINGLONG_ERR(QString::fromStdString(ec.message()));
     }
 
-    std::unordered_set<std::filesystem::path> allFiles;
+    std::unordered_set<std::string> allFiles;
     for (const auto &file : iterator) {
-        allFiles.insert(file.path());
+        allFiles.insert(file.path().string());
     }
 
     bool minified = !expandedExcludes.empty();

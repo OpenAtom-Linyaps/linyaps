@@ -78,7 +78,7 @@ private:
     [[nodiscard]] utils::error::Result<void> packBundle() noexcept;
     [[nodiscard]] utils::error::Result<void> prepareBundle(const QDir &bundleDir) noexcept;
     [[nodiscard]] utils::error::Result<void> packMetaInfo() noexcept;
-    [[nodiscard]] utils::error::Result<std::pair<bool, std::unordered_set<std::filesystem::path>>>
+    [[nodiscard]] utils::error::Result<std::pair<bool, std::unordered_set<std::string>>>
     filteringFiles(const LayerDir &layer) const noexcept;
 
     elfHelper uab;

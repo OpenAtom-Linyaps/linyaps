@@ -763,8 +763,10 @@ set -e
     infoFile.close();
 
     qDebug() << "copy linglong.yaml to output";
-    QFile::copy(this->workingDir.absoluteFilePath("linglong.yaml"), this->workingDir.absoluteFilePath("linglong/output/binary/linglong.yaml"));
-    QFile::copy(this->workingDir.absoluteFilePath("linglong.yaml"), this->workingDir.absoluteFilePath("linglong/output/develop/linglong.yaml"));
+    QFile::copy(this->workingDir.absoluteFilePath("linglong.yaml"),
+                this->workingDir.absoluteFilePath("linglong/output/binary/linglong.yaml"));
+    QFile::copy(this->workingDir.absoluteFilePath("linglong.yaml"),
+                this->workingDir.absoluteFilePath("linglong/output/develop/linglong.yaml"));
 
     printMessage("[Commit Contents]");
     printMessage(QString("%1%2%3%4")
@@ -985,9 +987,9 @@ utils::error::Result<void> Builder::extractLayer(const QString &layerPath,
     return LINGLONG_OK;
 }
 
-linglong::utils::error::Result<void> Builder::push(bool pushWithDevel,
-                                                   const QString &repoUrl,
-                                                   const QString &repoName)
+linglong::utils::error::Result<void> Builder::push(const std::string &module,
+                                                   const std::string &repoUrl,
+                                                   const std::string &repoName)
 {
     LINGLONG_TRACE("push reference to remote repository");
 
@@ -996,41 +998,11 @@ linglong::utils::error::Result<void> Builder::push(bool pushWithDevel,
         return LINGLONG_ERR(ref);
     }
 
-    auto cfg = this->repo.getConfig();
-    auto oldCfg = cfg;
-
-    auto _ = // NOLINT
-      utils::finally::finally([this, &oldCfg]() {
-          this->repo.setConfig(oldCfg);
-      });
-
-    if (repoName != "") {
-        cfg.defaultRepo = repoName.toStdString();
-    }
-    if (repoUrl != "") {
-        cfg.repos[cfg.defaultRepo] = repoUrl.toStdString();
+    if (repoName.empty() || repoUrl.empty()) {
+        return repo.push(*ref, module);
     }
 
-    auto result = this->repo.setConfig(cfg);
-
-    if (!result) {
-        return LINGLONG_ERR(result);
-    }
-
-    if (pushWithDevel) {
-        result = repo.push(*ref, true);
-
-        if (!result) {
-            return LINGLONG_ERR(result);
-        }
-    }
-
-    result = repo.push(*ref);
-    if (!result) {
-        return LINGLONG_ERR(result);
-    }
-
-    return LINGLONG_OK;
+    return repo.pushToRemote(repoName, repoUrl, *ref, module);
 }
 
 utils::error::Result<void> Builder::importLayer(const QString &path)

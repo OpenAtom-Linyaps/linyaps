@@ -775,18 +775,50 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
     this->ostreeRepo.reset(*result);
 }
 
-api::types::v1::RepoConfig OSTreeRepo::getConfig() const noexcept
+const api::types::v1::RepoConfig &OSTreeRepo::getConfig() const noexcept
 {
     return cfg;
+}
+
+utils::error::Result<void>
+OSTreeRepo::updateConfig(const api::types::v1::RepoConfig &newCfg) noexcept
+{
+    LINGLONG_TRACE("update underlying config")
+
+    auto result = saveConfig(newCfg, this->repoDir.absoluteFilePath("config.yaml"));
+    if (!result) {
+        return LINGLONG_ERR(result);
+    }
+
+    utils::Transaction transaction;
+    result = updateOstreeRepoConfig(this->ostreeRepo.get(),
+                                    QString::fromStdString(newCfg.defaultRepo),
+                                    QString::fromStdString(newCfg.repos.at(newCfg.defaultRepo)));
+    transaction.addRollBack([this]() noexcept {
+        auto result =
+          updateOstreeRepoConfig(this->ostreeRepo.get(),
+                                 QString::fromStdString(this->cfg.defaultRepo),
+                                 QString::fromStdString(this->cfg.repos.at(this->cfg.defaultRepo)));
+        if (!result) {
+            qCritical() << result.error();
+            Q_ASSERT(false);
+        }
+    });
+    if (!result) {
+        return LINGLONG_ERR(result);
+    }
+
+    transaction.commit();
+
+    this->m_clientFactory.setServer(QString::fromStdString(newCfg.repos.at(newCfg.defaultRepo)));
+    this->cfg = newCfg;
+
+    return LINGLONG_OK;
 }
 
 utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfig &cfg) noexcept
 {
     LINGLONG_TRACE("set config");
-
-    if (cfg == this->cfg) {
-        return LINGLONG_OK;
-    }
 
     utils::Transaction transaction;
 
@@ -884,19 +916,29 @@ utils::error::Result<package::LayerDir> OSTreeRepo::importLayerDir(const package
     return package::LayerDir{ layerDir.absolutePath() };
 }
 
-utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
-                                            const QString &module) const noexcept
+[[nodiscard]] utils::error::Result<void> OSTreeRepo::push(const package::Reference &reference,
+                                                          const std::string &module) const noexcept
+{
+    const auto &remoteRepo = this->cfg.defaultRepo;
+    const auto &remoteURL = this->cfg.repos.at(remoteRepo);
+    return pushToRemote(remoteRepo, remoteURL, reference, module);
+}
+
+utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRepo,
+                                                    const std::string &url,
+                                                    const package::Reference &reference,
+                                                    const std::string &module) const noexcept
 {
     const qint32 HTTP_OK = 200;
 
-    LINGLONG_TRACE("push " + ref.toString());
+    LINGLONG_TRACE("push " + reference.toString());
 
-    auto layerDir = this->getLayerDir(ref, module);
+    auto layerDir = this->getLayerDir(reference, module);
     if (!layerDir) {
         return LINGLONG_ERR("layer not found");
     }
 
-    auto token = [this]() -> utils::error::Result<QString> {
+    auto token = [this, &url]() -> utils::error::Result<QString> {
         LINGLONG_TRACE("sign in");
 
         utils::error::Result<QString> result;
@@ -907,12 +949,15 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
         auth.setPassword(env.value("LINGLONG_PASSWORD"));
         qInfo() << "use username: " << auth.getUsername();
         auto apiClient = this->m_clientFactory.createClient();
-        apiClient->setTimeOut(10 * 60 * 1000);
+        apiClient->setNewServerForAllOperations(QString::fromStdString(url));
+
+        const auto timeOut = 10 * 60 * 1000;
+        apiClient->setTimeOut(timeOut);
         QEventLoop loop;
         QEventLoop::connect(apiClient.data(),
                             &api::client::ClientApi::signInSignal,
                             &loop,
-                            [&](api::client::SignIn_200_response resp) {
+                            [&](const api::client::SignIn_200_response &resp) {
                                 loop.exit();
                                 if (resp.getCode() != HTTP_OK) {
                                     result = LINGLONG_ERR(resp.getMsg(), resp.getCode());
@@ -941,16 +986,19 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
         return LINGLONG_ERR(token);
     }
 
-    auto taskID = [&ref, &module, this, &token]() -> utils::error::Result<QString> {
+    auto taskID =
+      [&reference, &module, this, &token, &remoteRepo, &url]() -> utils::error::Result<QString> {
         LINGLONG_TRACE("new upload task request");
 
         utils::error::Result<QString> result;
 
         api::client::Schema_NewUploadTaskReq uploadReq;
-        uploadReq.setRef(ostreeSpecFromReferenceV2(ref, module));
-        uploadReq.setRepoName(QString::fromStdString(this->cfg.defaultRepo));
+        uploadReq.setRef(
+          QString::fromStdString(ostreeSpecFromReferenceV2(reference, std::nullopt, module)));
+        uploadReq.setRepoName(QString::fromStdString(remoteRepo));
 
         auto apiClient = this->m_clientFactory.createClient();
+        apiClient->setNewServerForAllOperations(QString::fromStdString(url));
         QEventLoop loop;
         QEventLoop::connect(apiClient.data(),
                             &api::client::ClientApi::newUploadTaskIDSignal,
@@ -987,7 +1035,7 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
         return LINGLONG_ERR(tmpDir.errorString());
     }
 
-    const QString tarFileName = QString("%1.tgz").arg(ref.id);
+    const QString tarFileName = QString("%1.tgz").arg(reference.id);
     const QString tarFilePath = QDir::cleanPath(tmpDir.filePath(tarFileName));
     QStringList args = { "-zcf", tarFilePath, "-C", layerDir->absolutePath(), "." };
     auto tarStdout = utils::command::Exec("tar", args);
@@ -995,13 +1043,16 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
         return LINGLONG_ERR(tarStdout);
     }
 
-    auto uploadTaskResult = [this, &tarFilePath, &token, &taskID]() -> utils::error::Result<void> {
+    auto uploadTaskResult =
+      [this, &tarFilePath, &token, &taskID, &url]() -> utils::error::Result<void> {
         LINGLONG_TRACE("do upload task");
 
         utils::error::Result<void> result;
 
         auto apiClient = this->m_clientFactory.createClient();
-        apiClient->setTimeOut(10 * 60 * 1000);
+        apiClient->setNewServerForAllOperations(QString::fromStdString(url));
+        const auto timeOut = 10 * 60 * 1000;
+        apiClient->setTimeOut(timeOut);
         QEventLoop loop;
         QEventLoop::connect(apiClient.data(),
                             &api::client::ClientApi::uploadTaskFileSignal,
@@ -1033,12 +1084,14 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
         return LINGLONG_ERR(uploadTaskResult);
     }
 
-    auto uploadResult = [&taskID, &token, &ref, &module, this]() -> utils::error::Result<void> {
+    auto uploadResult =
+      [&taskID, &token, &reference, &module, this, &url]() -> utils::error::Result<void> {
         LINGLONG_TRACE("get upload status");
 
         utils::error::Result<bool> isFinished;
 
         auto apiClient = this->m_clientFactory.createClient();
+        apiClient->setNewServerForAllOperations(QString::fromStdString(url));
         while (true) {
             QEventLoop loop;
             QEventLoop::connect(apiClient.data(),
@@ -1051,7 +1104,8 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
                                         isFinished = LINGLONG_ERR(resp.getMsg(), resp.getCode());
                                         return;
                                     }
-                                    qDebug() << "pushing" << ref.toString() << module
+                                    qDebug() << "pushing" << reference.toString()
+                                             << QString::fromStdString(module)
                                              << "status:" << resp.getData().getStatus();
                                     if (resp.getData().getStatus() == "complete") {
                                         isFinished = true;

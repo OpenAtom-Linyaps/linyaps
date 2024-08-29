@@ -26,7 +26,7 @@ class Builder
 {
 public:
     explicit Builder(const api::types::v1::BuilderProject &project,
-                     const QDir& workingDir,
+                     const QDir &workingDir,
                      repo::OSTreeRepo &repo,
                      runtime::ContainerBuilder &containerBuilder,
                      const api::types::v1::BuilderConfig &cfg);
@@ -35,18 +35,19 @@ public:
 
     auto create(const QString &projectName) -> utils::error::Result<void>;
 
-    auto build(const QStringList &args = { "/project/linglong/entry.sh" }) noexcept
-      -> utils::error::Result<void>;
+    auto build(const QStringList &args = {
+                 "/project/linglong/entry.sh" }) noexcept -> utils::error::Result<void>;
 
-    auto exportUAB(const QString &destination, const UABOption &option)
-      -> utils::error::Result<void>;
+    auto exportUAB(const QString &destination,
+                   const UABOption &option) -> utils::error::Result<void>;
     auto exportLayer(const QString &destination) -> utils::error::Result<void>;
 
     static auto extractLayer(const QString &layerPath,
-                      const QString &destination) -> utils::error::Result<void>;
+                             const QString &destination) -> utils::error::Result<void>;
 
-    auto push(bool pushWithDevel = true, const QString &repoName = "", const QString &repoUrl = "")
-      -> utils::error::Result<void>;
+    auto push(const std::string &module,
+              const std::string &repoUrl = "",
+              const std::string &repoName = "") -> utils::error::Result<void>;
 
     auto import() -> utils::error::Result<void>;
 

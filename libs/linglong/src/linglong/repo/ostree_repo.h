@@ -46,7 +46,7 @@ public:
 
     ~OSTreeRepo() override;
 
-    api::types::v1::RepoConfig getConfig() const noexcept;
+    [[nodiscard]] const api::types::v1::RepoConfig &getConfig() const noexcept;
     utils::error::Result<void> setConfig(const api::types::v1::RepoConfig &cfg) noexcept;
 
     utils::error::Result<package::LayerDir> importLayerDir(const package::LayerDir &dir,
@@ -81,6 +81,12 @@ public:
         }
         return push(reference, QString("binary"));
     }
+
+    [[nodiscard]] utils::error::Result<void>
+    pushToRemote(const std::string &remoteRepo,
+                 const std::string &url,
+                 const package::Reference &reference,
+                 const std::string &module = "binary") const noexcept;
 
     void pull(service::InstallTask &taskContext,
               const package::Reference &reference,
@@ -145,6 +151,7 @@ private:
 
     std::unique_ptr<OstreeRepo, OstreeRepoDeleter> ostreeRepo = nullptr;
     QDir repoDir;
+    utils::error::Result<void> updateConfig(const api::types::v1::RepoConfig &newCfg) noexcept;
     QDir ostreeRepoDir() const noexcept;
     QDir createLayerQDir(const package::Reference &ref,
                          const QString &module = "binary",

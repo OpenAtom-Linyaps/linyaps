@@ -51,6 +51,10 @@ Usage:
     ll-cli [--json] search [--type=TYPE] [--dev] TEXT
     ll-cli [--json] [--no-dbus] list [--type=TYPE]
     ll-cli [--json] repo modify [--name=REPO] URL
+    ll-cli [--json] repo add NAME URL
+    ll-cli [--json] repo remove NAME
+    ll-cli [--json] repo update NAME URL
+    ll-cli [--json] repo set-default NAME
     ll-cli [--json] repo show
     ll-cli [--json] info TIER
     ll-cli [--json] content APP
@@ -59,7 +63,8 @@ Arguments:
     APP     Specify the application.
     PAGODA  Specify the pagodas (container).
     TIER    Specify the tier (container layer).
-    URL     Specify the new repo URL.
+    NAME    Specify the repo name.
+    URL     Specify the repo URL.
     TEXT    The text used to search tiers.
 
 Options:
@@ -239,9 +244,10 @@ int Cli::run(std::map<std::string, docopt::value> &args)
             return -1;
         }
 
-        auto dependRet = getDependLayerDir(*curAppRef, *runtimeRef);
-        if (!dependRet) {
-            this->printer.printErr(dependRet.error());
+        auto runtimeLayerDirRet =
+          this->repository.getLayerDir(*runtimeRef, std::string{ "binary" }, info->uuid);
+        if (!runtimeLayerDirRet) {
+            this->printer.printErr(runtimeLayerDirRet.error());
             return -1;
         }
 
@@ -264,7 +270,7 @@ int Cli::run(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    auto baseLayerDir = getDependLayerDir(*curAppRef, *baseRef);
+    auto baseLayerDir = this->repository.getLayerDir(*baseRef, std::string{ "binary" }, info->uuid);
     if (!baseLayerDir) {
         this->printer.printErr(LINGLONG_ERRV(baseLayerDir));
         return -1;
@@ -299,13 +305,11 @@ int Cli::run(std::map<std::string, docopt::value> &args)
             bashArgs.prepend("exec");
         }
         // 在原始args前面添加bash --login -c，这样可以使用/etc/profile配置的环境变量
-        execArgs = std::vector<std::string>{
-            "/bin/bash",
-            "--login",
-            "-c",
-            bashArgs.join(" ").toStdString(),
-            "; wait"
-        };
+        execArgs = std::vector<std::string>{ "/bin/bash",
+                                             "--login",
+                                             "-c",
+                                             bashArgs.join(" ").toStdString(),
+                                             "; wait" };
 
         auto opt = ocppi::runtime::ExecOption{};
         opt.uid = ::getuid();
@@ -431,13 +435,11 @@ int Cli::exec(std::map<std::string, docopt::value> &args)
             bashArgs.prepend("exec");
         }
         // 在原始args前面添加bash --login -c，这样可以使用/etc/profile配置的环境变量
-        command = std::vector<std::string>{
-            "/bin/bash",
-            "--login",
-            "-c",
-            bashArgs.join(" ").toStdString(),
-            "; wait"
-        };
+        command = std::vector<std::string>{ "/bin/bash",
+                                            "--login",
+                                            "-c",
+                                            bashArgs.join(" ").toStdString(),
+                                            "; wait" };
     } else {
         command = { "bash", "--login" };
     }
@@ -908,35 +910,115 @@ int Cli::repo(std::map<std::string, docopt::value> &args)
     LINGLONG_TRACE("command repo");
 
     auto propCfg = this->pkgMan.configuration();
-    auto tmp = propCfg.value("repos");
-
     auto cfg = utils::serialize::fromQVariantMap<api::types::v1::RepoConfig>(propCfg);
     if (!cfg) {
         qCritical() << cfg.error();
         qCritical() << "linglong bug detected.";
         std::abort();
     }
+    auto &cfgRef = *cfg;
 
-    if (!args["modify"].asBool()) {
+    auto op = args.find("show");
+    if (args.empty() || op != args.cend()) {
         this->printer.printRepoConfig(*cfg);
         return 0;
     }
 
-    std::string url;
-    if (args["--name"].isString()) {
-        cfg->defaultRepo = args["--name"].asString();
+    op = args.find("modify");
+    if (op != args.cend()) {
+        this->printer.printErr(
+          LINGLONG_ERRV("sub-command 'modify' already has been deprecated, please use sub-command "
+                        "'add' to add a remote repository and use it as default."));
+        return EINVAL;
     }
-    if (args["URL"].isString()) {
-        url = args["URL"].asString();
+
+    auto it = args.find("NAME");
+    std::string name;
+    if (it == args.cend() || !it->second.isString()) {
+        this->printer.printErr(LINGLONG_ERRV("repo name must be specified as string"));
+        return EINVAL;
+    }
+    name = it->second.asString();
+
+    it = args.find("URL");
+    std::string url;
+    if (it != args.cend() && it->second.isString()) {
+        // TODO: verify more complexly
+        if (url.rfind("http", 0) != 0) {
+            this->printer.printErr(LINGLONG_ERRV("url is invalid"));
+            return EINVAL;
+        }
+
         // remove last slash
-        if (url.at(url.length() - 1) == '/') {
+        url = it->second.asString();
+        if (url.back() == '/') {
             url.pop_back();
         }
     }
 
-    cfg->repos[cfg->defaultRepo] = url;
-    this->pkgMan.setConfiguration(utils::serialize::toQVariantMap(*cfg));
-    return 0;
+    op = args.find("add");
+    if (op != args.cend()) {
+        if (url.empty()) {
+            this->printer.printErr(LINGLONG_ERRV("url is empty."));
+            return EINVAL;
+        }
+
+        auto ret = cfgRef.repos.try_emplace(name, url);
+        if (!ret.second) {
+            this->printer.printErr(
+              LINGLONG_ERRV(QString{ "repo " } + name.c_str() + " already exist."));
+            return -1;
+        }
+
+        this->pkgMan.setConfiguration(utils::serialize::toQVariantMap(cfgRef));
+        return 0;
+    }
+
+    auto existingRepo = cfgRef.repos.find(name);
+    if (existingRepo == cfgRef.repos.cend()) {
+        this->printer.printErr(
+          LINGLONG_ERRV(QString{ "the operated repo " } + name.c_str() + "doesn't exist"));
+        return -1;
+    }
+
+    op = args.find("remove");
+    if (op != args.cend()) {
+        if (cfgRef.defaultRepo == name) {
+            this->printer.printErr(
+              LINGLONG_ERRV(QString{ "repo " } + name.c_str()
+                            + "is default repo, please change default repo before removing it."));
+            return -1;
+        }
+
+        cfgRef.repos.erase(existingRepo);
+        this->pkgMan.setConfiguration(utils::serialize::toQVariantMap(cfgRef));
+        return 0;
+    }
+
+    op = args.find("update");
+    if (op != args.cend()) {
+        if (url.empty()) {
+            this->printer.printErr(LINGLONG_ERRV("url is empty."));
+            return -1;
+        }
+
+        existingRepo->second = url;
+        this->pkgMan.setConfiguration(utils::serialize::toQVariantMap(cfgRef));
+        return 0;
+    }
+
+    op = args.find("set-default");
+    if (op != args.end()) {
+        if (cfgRef.defaultRepo != name) {
+            cfgRef.defaultRepo = name;
+            this->pkgMan.setConfiguration(utils::serialize::toQVariantMap(cfgRef));
+        }
+
+        return 0;
+    }
+
+    this->printer.printErr(LINGLONG_ERRV("unknown operation"));
+    return -1;
 }
 
 int Cli::info(std::map<std::string, docopt::value> &args)

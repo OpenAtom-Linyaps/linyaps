@@ -19,7 +19,6 @@
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/packageinfo_handler.h"
-#include "linglong/utils/serialize/json.h"
 #include "linglong/utils/transaction.h"
 
 #include <gio/gio.h>
@@ -689,18 +688,50 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
     this->ostreeRepo.reset(*result);
 }
 
-api::types::v1::RepoConfig OSTreeRepo::getConfig() const noexcept
+const api::types::v1::RepoConfig &OSTreeRepo::getConfig() const noexcept
 {
     return cfg;
+}
+
+utils::error::Result<void>
+OSTreeRepo::updateConfig(const api::types::v1::RepoConfig &newCfg) noexcept
+{
+    LINGLONG_TRACE("update underlying config")
+
+    auto result = saveConfig(newCfg, this->repoDir.absoluteFilePath("config.yaml"));
+    if (!result) {
+        return LINGLONG_ERR(result);
+    }
+
+    utils::Transaction transaction;
+    result = updateOstreeRepoConfig(this->ostreeRepo.get(),
+                                    QString::fromStdString(newCfg.defaultRepo),
+                                    QString::fromStdString(newCfg.repos.at(newCfg.defaultRepo)));
+    transaction.addRollBack([this]() noexcept {
+        auto result =
+          updateOstreeRepoConfig(this->ostreeRepo.get(),
+                                 QString::fromStdString(this->cfg.defaultRepo),
+                                 QString::fromStdString(this->cfg.repos.at(this->cfg.defaultRepo)));
+        if (!result) {
+            qCritical() << result.error();
+            Q_ASSERT(false);
+        }
+    });
+    if (!result) {
+        return LINGLONG_ERR(result);
+    }
+
+    transaction.commit();
+
+    this->m_clientFactory.setServer(QString::fromStdString(newCfg.repos.at(newCfg.defaultRepo)));
+    this->cfg = newCfg;
+
+    return LINGLONG_OK;
 }
 
 utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfig &cfg) noexcept
 {
     LINGLONG_TRACE("set config");
-
-    if (cfg == this->cfg) {
-        return LINGLONG_OK;
-    }
 
     utils::Transaction transaction;
 
@@ -798,40 +829,52 @@ utils::error::Result<package::LayerDir> OSTreeRepo::importLayerDir(const package
     return package::LayerDir{ layerDir.absolutePath() };
 }
 
-utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
-                                            const QString &module) const noexcept
+[[nodiscard]] utils::error::Result<void> OSTreeRepo::push(const package::Reference &reference,
+                                                          const std::string &module) const noexcept
 {
-    LINGLONG_TRACE("push " + ref.toString());
+    const auto &remoteRepo = this->cfg.defaultRepo;
+    const auto &remoteURL = this->cfg.repos.at(remoteRepo);
+    return pushToRemote(remoteRepo, remoteURL, reference, module);
+}
 
-    auto layerDir = this->getLayerDir(ref, module);
+utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRepo,
+                                                    const std::string &url,
+                                                    const package::Reference &reference,
+                                                    const std::string &module) const noexcept
+{
+    const qint32 HTTP_OK = 200;
+
+    LINGLONG_TRACE("push " + reference.toString());
+    auto layerDir = this->getLayerDir(reference, module);
     if (!layerDir) {
         return LINGLONG_ERR("layer not found");
     }
+
     auto env = QProcessEnvironment::systemEnvironment();
     auto client = this->m_clientFactory.createClientV2();
+    client->basePath = const_cast<char *>(url.c_str());
     // 登录认证
     auto envUsername = env.value("LINGLONG_USERNAME").toUtf8();
     auto envPassword = env.value("LINGLONG_PASSWORD").toUtf8();
     request_auth_t auth;
     auth.username = envUsername.data();
     auth.password = envPassword.data();
-    auto signResRaw = ClientAPI_signIn(client.get(), &auth);
-    if (!signResRaw) {
+    auto *signResRaw = ClientAPI_signIn(client.get(), &auth);
+    if (signResRaw == nullptr) {
         return LINGLONG_ERR("sign error");
     }
     auto signRes = std::shared_ptr<sign_in_200_response_t>(signResRaw, sign_in_200_response_free);
     if (signRes->code != 200) {
         return LINGLONG_ERR(QString("sign error(%1): %2").arg(auth.username).arg(signRes->msg));
     }
-    auto token = signRes->data->token;
+    auto *token = signRes->data->token;
     // 创建上传任务
     schema_new_upload_task_req_t newTaskReq;
-    auto refStr = ostreeSpecFromReferenceV2(ref, module).toStdString();
-    auto repoName = this->cfg.defaultRepo;
-    newTaskReq.ref = refStr.data();
-    newTaskReq.repo_name = repoName.data();
-    auto newTaskResRaw = ClientAPI_newUploadTaskID(client.get(), token, &newTaskReq);
-    if (!newTaskResRaw) {
+    auto refStr = ostreeSpecFromReferenceV2(reference, std::nullopt, module);
+    newTaskReq.ref = const_cast<char *>(refStr.c_str());
+    newTaskReq.repo_name = const_cast<char *>(remoteRepo.c_str());
+    auto *newTaskResRaw = ClientAPI_newUploadTaskID(client.get(), token, &newTaskReq);
+    if (newTaskResRaw == nullptr) {
         return LINGLONG_ERR("create task error");
     }
     auto newTaskRes =
@@ -840,20 +883,22 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
     if (newTaskRes->code != 200) {
         return LINGLONG_ERR(QString("create task error: %1").arg(newTaskRes->msg));
     }
-    auto taskID = newTaskRes->data->id;
+    auto *taskID = newTaskRes->data->id;
 
     // 上传tar文件
     const QTemporaryDir tmpDir;
     if (!tmpDir.isValid()) {
         return LINGLONG_ERR(tmpDir.errorString());
     }
-    const QString tarFileName = QString("%1.tgz").arg(ref.id);
+
+    const QString tarFileName = QString("%1.tgz").arg(reference.id);
     const QString tarFilePath = QDir::cleanPath(tmpDir.filePath(tarFileName));
     QStringList args = { "-zcf", tarFilePath, "-C", layerDir->absolutePath(), "." };
     auto tarStdout = utils::command::Exec("tar", args);
     if (!tarStdout) {
         return LINGLONG_ERR(tarStdout);
     }
+
     // 上传文件, 原来的binary_t需要将文件存储到内存，对大文件上传不友好，改为存储文件名
     // 底层改用 curl_mime_filedata 替换 curl_mime_data
     auto filepath = tarFilePath.toUtf8();
@@ -861,8 +906,8 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
     binary_t binary;
     binary.filepath = filepath.data();
     binary.filename = filename.data();
-    auto uploadTaskResRaw = ClientAPI_uploadTaskFile(client.get(), token, taskID, &binary);
-    if (!uploadTaskResRaw) {
+    auto *uploadTaskResRaw = ClientAPI_uploadTaskFile(client.get(), token, taskID, &binary);
+    if (uploadTaskResRaw == nullptr) {
         return LINGLONG_ERR(QString("upload file error(%1)").arg(taskID));
     }
     auto uploadTaskRes =
@@ -875,8 +920,8 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
     // 查询任务状态
     while (true) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
-        auto uploadInfoRaw = ClientAPI_uploadTaskInfo(client.get(), token, taskID);
-        if (!uploadInfoRaw) {
+        auto *uploadInfoRaw = ClientAPI_uploadTaskInfo(client.get(), token, taskID);
+        if (uploadInfoRaw == nullptr) {
             return LINGLONG_ERR(QString("get upload info error(%1)").arg(taskID));
         }
         auto uploadInfo =
@@ -886,7 +931,8 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
             return LINGLONG_ERR(
               QString("get upload info error(%1): %2").arg(taskID).arg(uploadInfo->msg));
         }
-        qInfo() << "pushing" << ref.toString() << module << "status:" << uploadInfo->data->status;
+        qInfo() << "pushing" << reference.toString() << module.c_str()
+                << "status:" << uploadInfo->data->status;
         if (std::string(uploadInfo->data->status) == "complete") {
             return LINGLONG_OK;
         }

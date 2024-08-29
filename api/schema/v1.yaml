@@ -646,12 +646,11 @@ $defs:
       config:
         $ref: '#/$defs/RepoConfig'
       layers:
-        title: RepositoryCacheLayers
-        type: object
-        description: stores the full module name with repo name and the corresponding ostree commit
-        additionalProperties:
-          title: RepositoryCacheLayersItem
+        type: array
+        items:
           type: object
+          description: stores the full module name with repo name and the corresponding ostree commit
+          title: RepositoryCacheLayersItem
           required:
             - commit
             - info

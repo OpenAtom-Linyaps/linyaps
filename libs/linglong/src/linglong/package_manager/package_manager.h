@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "linglong/api/dbus/v1/package_manager.h"
 #include "linglong/repo/ostree_repo.h"
 #include "task.h"
 
@@ -59,7 +60,7 @@ public:
 class PackageManager : public QObject, protected QDBusContext
 {
     Q_OBJECT
-    Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.PackageManager")
+    Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.PackageManager1")
     Q_PROPERTY(QVariantMap Configuration READ getConfiguration WRITE setConfiguration)
 
 public:
@@ -76,7 +77,7 @@ public:
                 bool develop) noexcept;
 
 public
-    Q_SLOT : auto getConfiguration() const noexcept -> QVariantMap;
+    Q_SLOT : [[nodiscard]] auto getConfiguration() const noexcept -> QVariantMap;
     auto setConfiguration(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Install(const QVariantMap &parameters) noexcept -> QVariantMap;
     void installRef(InstallTask &taskContext, const package::Reference &ref, bool devel) noexcept;

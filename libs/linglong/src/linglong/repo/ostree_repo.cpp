@@ -775,39 +775,25 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
     this->ostreeRepo.reset(*result);
 }
 
-api::types::v1::RepoConfig OSTreeRepo::getConfig() const noexcept
+const api::types::v1::RepoConfig &OSTreeRepo::getConfig() const noexcept
 {
     return cfg;
 }
 
-utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfig &cfg) noexcept
+utils::error::Result<void>
+OSTreeRepo::updateConfig(const api::types::v1::RepoConfig &newCfg) noexcept
 {
-    LINGLONG_TRACE("set config");
+    LINGLONG_TRACE("update underlying config")
 
-    if (cfg == this->cfg) {
-        return LINGLONG_OK;
+    auto result = saveConfig(newCfg, this->repoDir.absoluteFilePath("config.yaml"));
+    if (!result) {
+        return LINGLONG_ERR(result);
     }
 
     utils::Transaction transaction;
-
-    auto result = saveConfig(cfg, this->repoDir.absoluteFilePath("config.yaml"));
-    if (!result) {
-        return LINGLONG_ERR(result);
-    }
-    transaction.addRollBack([this]() noexcept {
-        auto result = saveConfig(this->cfg, this->repoDir.absoluteFilePath("config.yaml"));
-        if (!result) {
-            qCritical() << result.error();
-            Q_ASSERT(false);
-        }
-    });
-
     result = updateOstreeRepoConfig(this->ostreeRepo.get(),
-                                    QString::fromStdString(cfg.defaultRepo),
-                                    QString::fromStdString(cfg.repos.at(cfg.defaultRepo)));
-    if (!result) {
-        return LINGLONG_ERR(result);
-    }
+                                    QString::fromStdString(newCfg.defaultRepo),
+                                    QString::fromStdString(newCfg.repos.at(newCfg.defaultRepo)));
     transaction.addRollBack([this]() noexcept {
         auto result =
           updateOstreeRepoConfig(this->ostreeRepo.get(),
@@ -818,10 +804,97 @@ utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfi
             Q_ASSERT(false);
         }
     });
-    this->m_clientFactory.setServer(QString::fromStdString(cfg.repos.at(cfg.defaultRepo)));
-    this->cfg = cfg;
+    if (!result) {
+        return LINGLONG_ERR(result);
+    }
 
     transaction.commit();
+
+    this->m_clientFactory.setServer(QString::fromStdString(newCfg.repos.at(newCfg.defaultRepo)));
+    this->cfg = newCfg;
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> OSTreeRepo::setDefaultRemoteRepo(const QString &repoName) noexcept
+{
+    LINGLONG_TRACE("try to set default remote repo to" + repoName)
+
+    if (cfg.defaultRepo == repoName.toStdString()) {
+        return LINGLONG_OK;
+    }
+
+    auto newCfg = cfg;
+    newCfg.defaultRepo = repoName.toStdString();
+
+    auto result = updateConfig(newCfg);
+    if (!result) {
+        return LINGLONG_ERR(result);
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> OSTreeRepo::removeRemoteRepo(const QString &repoName) noexcept
+{
+    LINGLONG_TRACE("try to remove existing remote repo")
+
+    const auto &repo = repoName.toStdString();
+    if (repo == cfg.defaultRepo) {
+        return LINGLONG_ERR(
+          "must set another repo to default before removing current default repo");
+    }
+
+    auto newCfg = cfg;
+    newCfg.repos.erase(repo);
+
+    auto result = updateConfig(newCfg);
+    if (!result) {
+        return LINGLONG_ERR(result);
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> OSTreeRepo::addRemoteRepo(const QString &repoName,
+                                                     const QString &url) noexcept
+{
+    LINGLONG_TRACE("try to add new remote repo")
+
+    auto repo = repoName.toStdString();
+    if (auto it = cfg.repos.find(repo); it != cfg.repos.cend()) {
+        qDebug() << "try to add an existing remote repo";
+        return LINGLONG_OK;
+    }
+
+    auto newCfg = cfg;
+    newCfg.repos.emplace(std::move(repo), url.toStdString());
+
+    auto result = updateConfig(newCfg);
+    if (!result) {
+        return LINGLONG_ERR(result);
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> OSTreeRepo::updateRemoteRepo(const QString &repoName,
+                                                        const QString &url) noexcept
+{
+    LINGLONG_TRACE("try to update existing remote repo")
+
+    auto repo = repoName.toStdString();
+    if (auto it = cfg.repos.find(repo); it == cfg.repos.cend()) {
+        return LINGLONG_ERR("repo " + repoName + " doesn't exist");
+    }
+
+    auto newCfg = cfg;
+    newCfg.repos[repo] = url.toStdString();
+
+    auto result = updateConfig(newCfg);
+    if (!result) {
+        return LINGLONG_ERR(result);
+    }
 
     return LINGLONG_OK;
 }

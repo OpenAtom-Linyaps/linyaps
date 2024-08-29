@@ -23,6 +23,8 @@
 #include <QMap>
 #include <QRegExp>
 
+#include <iostream>
+
 #include <wordexp.h>
 
 namespace {
@@ -170,9 +172,8 @@ int main(int argc, char **argv)
     parser.addOptions({ optVerbose });
     parser.addHelpOption();
 
-    QStringList subCommandList = {
-        "create", "build", "run", "export", "push", "import", "extract"
-    };
+    QStringList subCommandList = { "create", "build",  "run",     "export",
+                                   "push",   "import", "extract", "repo" };
 
     parser.addPositionalArgument("subcommand",
                                  subCommandList.join("\n"),
@@ -266,6 +267,80 @@ int main(int argc, char **argv)
     containerBuidler->setParent(QCoreApplication::instance());
 
     QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
+        { "repo",
+          [&](QCommandLineParser &parser) -> int {
+              parser.clearPositionalArguments();
+
+              parser.addPositionalArgument("add", "add a remote repo");
+              parser.addPositionalArgument("remove", "remove existing repo");
+              parser.addPositionalArgument("update", "update url of existing repo");
+              parser.addPositionalArgument("use", "set default repo");
+              parser.addPositionalArgument("show", "show current config", "show\n");
+              parser.setApplicationDescription("ll-builder repo add --name=NAME --url=URL\n"
+                                               "ll-builder repo remove --name=NAME\n"
+                                               "ll-builder repo update --name=NAME --url=NEWURL\n"
+                                               "ll-builder repo use --name=NAME\n"
+                                               "ll-builder repo show");
+
+              auto name = QCommandLineOption("name", "name of remote repo", "name");
+              auto url = QCommandLineOption("url", "url of remote repo", "url");
+              parser.addOptions({ name, url });
+              parser.process(app);
+
+              QStringList args = parser.positionalArguments();
+              if (args.size() < 2) {
+                  std::cerr << "please specifying an operation" << std::endl;
+                  return EINVAL;
+              }
+
+              linglong::utils::error::Result<void> ret;
+              const auto &operation = args.at(1);
+              if (operation == "add") {
+                  if (!parser.isSet(name) || !parser.isSet(url)) {
+                      std::cerr << "please specifying the repo name and url" << std::endl;
+                      return EINVAL;
+                  }
+                  ret = repo.addRemoteRepo(parser.value(name), parser.value(url));
+              } else if (operation == "remove") {
+                  if (!parser.isSet(name)) {
+                      std::cerr << "please specifying the repo name" << std::endl;
+                      return EINVAL;
+                  }
+                  ret = repo.removeRemoteRepo(parser.value(name));
+              } else if (operation == "update") {
+                  if (!parser.isSet(name) || !parser.isSet(url)) {
+                      std::cerr << "please specifying the repo name and url" << std::endl;
+                      return EINVAL;
+                  }
+                  ret = repo.updateRemoteRepo(parser.value(name), parser.value(url));
+              } else if (operation == "use") {
+                  if (!parser.isSet(name)) {
+                      std::cerr << "please specifying the repo name" << std::endl;
+                      return EINVAL;
+                  }
+                  ret = repo.setDefaultRemoteRepo(parser.value(name));
+              } else if (operation == "show") {
+                  const auto &cfg = repo.getConfig();
+                  auto &output = std::cout;
+                  output << "version: " << cfg.version << "\ndefaultRepo: " << cfg.defaultRepo
+                         << "\nrepos:\n"
+                         << "name\turl\n";
+                  std::for_each(cfg.repos.cbegin(), cfg.repos.cend(), [](const auto &pair) {
+                      const auto &[name, url] = pair;
+                      output << name << '\t' << url << "\n";
+                  });
+              } else {
+                  std::cerr << "unknown operation:" << operation.toStdString();
+                  return EINVAL;
+              }
+
+              if (!ret) {
+                  std::cerr << ret.error().message().toStdString();
+                  return -1;
+              }
+
+              return 0;
+          } },
         { "build",
           [&](QCommandLineParser &parser) -> int {
               LINGLONG_TRACE("command build");
@@ -276,7 +351,6 @@ int main(int argc, char **argv)
                                    "file path of the linglong.yaml (default is ./linglong.yaml)",
                                    "path",
                                    "linglong.yaml");
-              ;
               auto execVerbose =
                 QCommandLineOption("exec", "run exec than build script", "command");
               auto buildOffline = QCommandLineOption(

@@ -84,16 +84,43 @@ auto PackageManager::getConfiguration() const noexcept -> QVariantMap
     return utils::serialize::toQVariantMap(this->repo.getConfig());
 }
 
-auto PackageManager::setConfiguration(const QVariantMap &parameters) noexcept -> QVariantMap
+auto PackageManager::UpdateConfiguration(uint16_t operation,
+                                         const QString &repoName,
+                                         const QString &url) noexcept -> QVariantMap
 {
-    auto cfg = utils::serialize::fromQVariantMap<api::types::v1::RepoConfig>(parameters);
-    if (!cfg) {
-        return toDBusReply(cfg);
+    LINGLONG_TRACE("update configuration")
+
+    utils::error::Result<void> ret;
+    if (repoName.isEmpty()) {
+        ret = LINGLONG_ERR("repoName is an empty string");
+        return toDBusReply(ret);
     }
 
-    auto result = this->repo.setConfig(*cfg);
-    if (!result) {
-        return toDBusReply(result);
+    using Operation = linglong::api::dbus::v1::PackageManager::Operation;
+    if (operation >= static_cast<int>(Operation::Unknown)) {
+        ret = LINGLONG_ERR("repoName is an empty string");
+        return toDBusReply(ret);
+    }
+
+    switch (static_cast<Operation>(operation)) {
+    case api::dbus::v1::PackageManager::Operation::Add: {
+        ret = this->repo.addRemoteRepo(repoName, url);
+    } break;
+    case api::dbus::v1::PackageManager::Operation::Remove: {
+        ret = this->repo.removeRemoteRepo(repoName);
+    } break;
+    case api::dbus::v1::PackageManager::Operation::Update: {
+        ret = this->repo.updateRemoteRepo(repoName, url);
+    } break;
+    case api::dbus::v1::PackageManager::Operation::Use: {
+        ret = this->repo.setDefaultRemoteRepo(repoName);
+    } break;
+    case api::dbus::v1::PackageManager::Operation::Unknown:
+        break;
+    }
+
+    if (!ret) {
+        return toDBusReply(ret);
     }
 
     return toDBusReply(0, "Set repository configuration success.");

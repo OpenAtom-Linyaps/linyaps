@@ -763,8 +763,10 @@ set -e
     infoFile.close();
 
     qDebug() << "copy linglong.yaml to output";
-    QFile::copy(this->workingDir.absoluteFilePath("linglong.yaml"), this->workingDir.absoluteFilePath("linglong/output/binary/linglong.yaml"));
-    QFile::copy(this->workingDir.absoluteFilePath("linglong.yaml"), this->workingDir.absoluteFilePath("linglong/output/develop/linglong.yaml"));
+    QFile::copy(this->workingDir.absoluteFilePath("linglong.yaml"),
+                this->workingDir.absoluteFilePath("linglong/output/binary/linglong.yaml"));
+    QFile::copy(this->workingDir.absoluteFilePath("linglong.yaml"),
+                this->workingDir.absoluteFilePath("linglong/output/develop/linglong.yaml"));
 
     printMessage("[Commit Contents]");
     printMessage(QString("%1%2%3%4")
@@ -996,22 +998,75 @@ linglong::utils::error::Result<void> Builder::push(bool pushWithDevel,
         return LINGLONG_ERR(ref);
     }
 
+    using backUp = struct
+    {
+        QString oldVal;
+        QString newVal;
+    };
+
+    backUp defaultRepo;
+    backUp url;
+
     auto cfg = this->repo.getConfig();
-    auto oldCfg = cfg;
+    defaultRepo.oldVal = QString::fromStdString(cfg.defaultRepo);
+    url.oldVal = QString::fromStdString(cfg.repos.at(cfg.defaultRepo));
+    uint8_t flag{ 0 };
 
-    auto _ = // NOLINT
-      utils::finally::finally([this, &oldCfg]() {
-          this->repo.setConfig(oldCfg);
-      });
+    // name     url
+    //  0        0 no change
+    //  0        1 modify repo
+    //  1        0 set default
+    //  1        1 add repo
+    auto revokeRepoChange = utils::finally::finally([this, &defaultRepo, &url, &flag]() {
+        utils::error::Result<void> ret = LINGLONG_OK;
 
-    if (repoName != "") {
-        cfg.defaultRepo = repoName.toStdString();
+        if (flag == 1) {
+            ret = this->repo.updateRemoteRepo(defaultRepo.oldVal, url.oldVal);
+        } else if (flag == 2 || flag == 3) {
+            ret = this->repo.setDefaultRemoteRepo(defaultRepo.oldVal);
+            if (!ret) {
+                qCritical() << ret.error().message();
+                return;
+            }
+
+            if (flag == 3) {
+                ret = this->repo.removeRemoteRepo(defaultRepo.newVal);
+            }
+        }
+
+        if (!ret) {
+            qCritical() << ret.error().message();
+            return;
+        }
+    });
+
+    if (!repoName.isEmpty()) {
+        auto it = cfg.repos.find(repoName.toStdString());
+        if (it == cfg.repos.cend()) {
+            defaultRepo.newVal = repoName;
+            flag <<= 1U;
+        }
     }
-    if (repoUrl != "") {
-        cfg.repos[cfg.defaultRepo] = repoUrl.toStdString();
+    if (!repoUrl.isEmpty()) {
+        auto urlStr = repoUrl.toStdString();
+        if (defaultRepo.newVal.isEmpty() && cfg.repos[cfg.defaultRepo] != urlStr) {
+            url.newVal = repoUrl;
+            flag <<= 1U;
+        }
     }
 
-    auto result = this->repo.setConfig(cfg);
+    utils::error::Result<void> result = LINGLONG_OK;
+    if (flag == 1) {
+        result = this->repo.updateRemoteRepo(defaultRepo.oldVal, url.newVal);
+    } else if (flag == 2) {
+        result = this->repo.setDefaultRemoteRepo(defaultRepo.newVal);
+    } else if (flag == 3) {
+        result = this->repo.addRemoteRepo(defaultRepo.newVal, url.newVal);
+        if (!result) {
+            return LINGLONG_ERR(result);
+        }
+        result = this->repo.setDefaultRemoteRepo(defaultRepo.newVal);
+    }
 
     if (!result) {
         return LINGLONG_ERR(result);

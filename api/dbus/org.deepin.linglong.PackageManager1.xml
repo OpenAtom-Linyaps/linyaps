@@ -39,13 +39,26 @@ SPDX-License-Identifier: LGPL-3.0-or-later
     <method name="CancelTask">
       <arg name="taskID" type="s" direction="in" />
     </method>
+    <method name="UpdateConfiguration">
+      <arg direction="in" name="operation" type="q" />
+      <arg direction="in" name="repoName" type="s" />
+      <arg direction="in" name="url" type="s" />
+      <arg direction="out" name="result" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
+      <annotation name="org.freedesktop.DBus.Description"
+        value="
+        This method is used to update repository config of package manager.
+        The type of Parameter 'Operation' is enum class, details refer to file:
+        'libs/dbus-api/src/linglong/api/dbus/v1/package_manager.h'
+      " />
+    </method>
     <signal name="TaskChanged">
       <arg name="taskID" type="s" />
       <arg name="percentage" type="s" />
       <arg name="message" type="s" />
       <arg name="status" type="i" />
     </signal>
-    <property name="Configuration" type="a{sv}" access="readwrite">
+    <property name="Configuration" type="a{sv}" access="read">
       <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap" />
     </property>
   </interface>

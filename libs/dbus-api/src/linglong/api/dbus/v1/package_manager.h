@@ -10,7 +10,15 @@
 #include "linglong/api/dbus/v1/gen_org_deepin_linglong_packagemanager1.h"
 
 namespace linglong::api::dbus::v1 {
-using PackageManager = OrgDeepinLinglongPackageManager1Interface;
-}
+
+class PackageManager : public ::OrgDeepinLinglongPackageManager1Interface
+{
+public:
+
+    using OrgDeepinLinglongPackageManager1Interface::OrgDeepinLinglongPackageManager1Interface;
+    enum class Operation : uint16_t { Add, Remove, Update, Use, Unknown };
+};
+
+} // namespace linglong::api::dbus::v1
 
 #endif

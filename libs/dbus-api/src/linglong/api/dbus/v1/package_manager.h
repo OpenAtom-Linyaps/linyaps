@@ -9,5 +9,7 @@
 #include "linglong/api/dbus/v1/gen_org_deepin_linglong_packagemanager1.h"
 
 namespace linglong::api::dbus::v1 {
+
 using PackageManager = OrgDeepinLinglongPackageManager1Interface;
+
 }

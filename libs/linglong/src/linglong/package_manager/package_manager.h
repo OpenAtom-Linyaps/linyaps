@@ -7,6 +7,7 @@
 #ifndef LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_H_
 #define LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_H_
 
+#include "linglong/api/dbus/v1/package_manager.h"
 #include "linglong/repo/ostree_repo.h"
 #include "task.h"
 
@@ -21,7 +22,7 @@ class PackageManager : public QObject, protected QDBusContext
 {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.PackageManager")
-    Q_PROPERTY(QVariantMap Configuration READ getConfiguration WRITE setConfiguration)
+    Q_PROPERTY(QVariantMap Configuration READ getConfiguration)
 
 public:
     PackageManager(linglong::repo::OSTreeRepo &repo, QObject *parent);
@@ -39,7 +40,9 @@ public:
 
 public
     Q_SLOT : auto getConfiguration() const noexcept -> QVariantMap;
-    auto setConfiguration(const QVariantMap &parameters) noexcept -> QVariantMap;
+    auto UpdateConfiguration(uint16_t operation,
+                             const QString &repoName,
+                             const QString &url) noexcept -> QVariantMap;
     auto Install(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto InstallFromFile(const QDBusUnixFileDescriptor &fd,
                          const QString &fileType) noexcept -> QVariantMap;

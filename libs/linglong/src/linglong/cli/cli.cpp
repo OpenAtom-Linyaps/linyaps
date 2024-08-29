@@ -51,6 +51,10 @@ Usage:
     ll-cli [--json] search [--type=TYPE] [--dev] TEXT
     ll-cli [--json] [--no-dbus] list [--type=TYPE]
     ll-cli [--json] repo modify [--name=REPO] URL
+    ll-cli [--json] repo add NAME URL
+    ll-cli [--json] repo remove NAME
+    ll-cli [--json] repo update NAME URL
+    ll-cli [--json] repo use NAME
     ll-cli [--json] repo show
     ll-cli [--json] info TIER
     ll-cli [--json] content APP
@@ -59,7 +63,8 @@ Arguments:
     APP     Specify the application.
     PAGODA  Specify the pagodas (container).
     TIER    Specify the tier (container layer).
-    URL     Specify the new repo URL.
+    NAME    Specify the repo name.
+    URL     Specify the repo URL.
     TEXT    The text used to search tiers.
 
 Options:
@@ -299,13 +304,11 @@ int Cli::run(std::map<std::string, docopt::value> &args)
             bashArgs.prepend("exec");
         }
         // 在原始args前面添加bash --login -c，这样可以使用/etc/profile配置的环境变量
-        execArgs = std::vector<std::string>{
-            "/bin/bash",
-            "--login",
-            "-c",
-            bashArgs.join(" ").toStdString(),
-            "; wait"
-        };
+        execArgs = std::vector<std::string>{ "/bin/bash",
+                                             "--login",
+                                             "-c",
+                                             bashArgs.join(" ").toStdString(),
+                                             "; wait" };
 
         auto opt = ocppi::runtime::ExecOption{};
         opt.uid = ::getuid();
@@ -431,13 +434,11 @@ int Cli::exec(std::map<std::string, docopt::value> &args)
             bashArgs.prepend("exec");
         }
         // 在原始args前面添加bash --login -c，这样可以使用/etc/profile配置的环境变量
-        command = std::vector<std::string>{
-            "/bin/bash",
-            "--login",
-            "-c",
-            bashArgs.join(" ").toStdString(),
-            "; wait"
-        };
+        command = std::vector<std::string>{ "/bin/bash",
+                                            "--login",
+                                            "-c",
+                                            bashArgs.join(" ").toStdString(),
+                                            "; wait" };
     } else {
         command = { "bash", "--login" };
     }
@@ -908,34 +909,101 @@ int Cli::repo(std::map<std::string, docopt::value> &args)
     LINGLONG_TRACE("command repo");
 
     auto propCfg = this->pkgMan.configuration();
-    auto tmp = propCfg.value("repos");
-
     auto cfg = utils::serialize::fromQVariantMap<api::types::v1::RepoConfig>(propCfg);
     if (!cfg) {
         qCritical() << cfg.error();
         qCritical() << "linglong bug detected.";
         std::abort();
     }
+    auto &cfgRef = *cfg;
 
-    if (!args["modify"].asBool()) {
+    if (args.empty() || args["show"].asBool()) {
         this->printer.printRepoConfig(*cfg);
         return 0;
     }
 
-    std::string url;
-    if (args["--name"].isString()) {
-        cfg->defaultRepo = args["--name"].asString();
+    if (args["modify"].asBool()) {
+        this->printer.printErr(
+          LINGLONG_ERRV("sub-command 'modify' already has been deprecated, please use sub-command "
+                        "'add' to add a remote repository and use it as default."));
+        return EINVAL;
     }
+
+    QString url;
+    QString name;
+    if (args["NAME"].isString()) {
+        name = QString::fromStdString(args["NAME"].asString());
+    }
+
     if (args["URL"].isString()) {
-        url = args["URL"].asString();
+        url = QString::fromStdString(args["URL"].asString());
         // remove last slash
-        if (url.at(url.length() - 1) == '/') {
-            url.pop_back();
+        if (url.back() == '/') {
+            url.chop(1);
+        }
+
+        // TODO: verify more complexly
+        if (!url.startsWith("http")) {
+            this->printer.printErr(LINGLONG_ERRV("url is invalid"));
+            return -1;
         }
     }
 
-    cfg->repos[cfg->defaultRepo] = url;
-    this->pkgMan.setConfiguration(utils::serialize::toQVariantMap(*cfg));
+    using operation = api::dbus::v1::PackageManager::Operation;
+    operation type = operation::Unknown;
+    auto it = cfgRef.repos.find(name.toStdString());
+    if (args["add"].asBool()) {
+        if (it != cfgRef.repos.cend()) {
+            this->printer.printErr(LINGLONG_ERRV("add error: repo " + name + " already exist"));
+            return -1;
+        }
+        type = operation::Add;
+    } else if (args["remove"].asBool()) {
+        if (it == cfgRef.repos.cend()) {
+            this->printer.printErr(LINGLONG_ERRV("remove error: repo " + name + " doesn't exist"));
+            return -1;
+        }
+        type = operation::Remove;
+    } else if (args["update"].asBool()) {
+        if (it == cfgRef.repos.cend()) {
+            this->printer.printErr(LINGLONG_ERRV("modify error: repo " + name + " doesn't exist"));
+            return -1;
+        }
+        type = operation::Update;
+    } else if (args["use"].asBool()) {
+        if (it == cfgRef.repos.cend()) {
+            this->printer.printErr(LINGLONG_ERRV("modify error: repo " + name + " doesn't exist"));
+            return -1;
+        }
+        type = operation::Use;
+    }
+
+    if (type == operation::Unknown) {
+        this->printer.printErr(LINGLONG_ERRV("unsupported operation"));
+        return -1;
+    }
+
+    auto reply = this->pkgMan.UpdateConfiguration(static_cast<uint16_t>(type), name, url);
+    reply.waitForFinished();
+
+    if (reply.isError()) {
+        qCritical() << reply.error().message();
+        return -1;
+    }
+
+    auto result =
+      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1ResultWithTaskID>(
+        reply.value());
+    if (!result) {
+        qCritical() << "bug detected.";
+        std::abort();
+    }
+
+    if (result->code != 0) {
+        this->printer.printReply({ .code = result->code, .message = result->message });
+        return -1;
+    }
+
     return 0;
 }
 

@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_CLI_CLI_H_
-#define LINGLONG_CLI_CLI_H_
+#pragma once
 
 #include "linglong/api/dbus/v1/package_manager.h"
 #include "linglong/cli/printer.h"
@@ -84,4 +83,3 @@ private Q_SLOTS:
 };
 
 } // namespace linglong::cli
-#endif // LINGLONG_SRC_CLI_CLI_H

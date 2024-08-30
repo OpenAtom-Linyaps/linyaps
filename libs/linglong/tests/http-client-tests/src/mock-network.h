@@ -3,8 +3,7 @@
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
-#ifndef LINGLONG_TESTS_QT_UTILS_MOCK_NETWORK_H_
-#define LINGLONG_TESTS_QT_UTILS_MOCK_NETWORK_H_
+#pragma once
 
 #include <QBuffer>
 #include <QEventLoop>
@@ -50,5 +49,3 @@ protected:
                                  const QNetworkRequest &req,
                                  QIODevice *outgoingData = Q_NULLPTR);
 };
-
-#endif // LINGLONG_TESTS_QT_UTILS_MOCK_NETWORK_H_

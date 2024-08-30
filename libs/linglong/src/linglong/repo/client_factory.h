@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_SRC_MODULE_REPO_CLIENT_FACTORY_H_
-#define LINGLONG_SRC_MODULE_REPO_CLIENT_FACTORY_H_
+#pragma once
+
 #include "ClientApi.h"
 
 #include <QObject>
@@ -28,5 +28,3 @@ private:
     QString m_server;
 };
 } // namespace linglong::repo
-
-#endif // LINGLONG_SRC_MODULE_REPO_CLIENT_FACTORY_H_

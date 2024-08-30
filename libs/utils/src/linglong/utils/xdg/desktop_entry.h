@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_UTILS_XDG_DESKTOP_ENTRY_H_
-#define LINGLONG_UTILS_XDG_DESKTOP_ENTRY_H_
+#pragma once
 
 #include "linglong/utils/error/error.h"
 
@@ -136,5 +135,3 @@ template<>
 }
 
 } // namespace linglong::utils::xdg
-
-#endif

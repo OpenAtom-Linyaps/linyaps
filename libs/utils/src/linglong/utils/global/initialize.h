@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_UTILS_GLOBAL_INITIALIZE_H_
-#define LINGLONG_UTILS_GLOBAL_INITIALIZE_H_
+#pragma once
 
 namespace linglong::utils::global {
 
@@ -14,5 +13,3 @@ void installMessageHandler();
 bool linglongInstalled();
 
 } // namespace linglong::utils::global
-
-#endif

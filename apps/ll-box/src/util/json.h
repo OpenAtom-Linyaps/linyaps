@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_BOX_SRC_UTIL_JSON_H_
-#define LINGLONG_BOX_SRC_UTIL_JSON_H_
+#pragma once
 
 #include "nlohmann/json.hpp"
 
@@ -52,5 +51,3 @@ std::optional<T> optional(const nlohmann::json &j, const char *key)
 }
 
 } // namespace linglong
-
-#endif /* LINGLONG_BOX_SRC_UTIL_JSON_H_ */

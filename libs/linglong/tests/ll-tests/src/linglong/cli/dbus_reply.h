@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_TEST_MODULE_CLI_REPLY_H_
-#define LINGLONG_TEST_MODULE_CLI_REPLY_H_
+#pragma once
 
 #include <qdbusmetatype.h>
 #define private public
@@ -27,5 +26,3 @@ QDBusPendingReply<ReturnValue> createReply(const ReturnValue &value,
     msg.d_ptr->signature = QDBusMetaType::typeToSignature(QMetaType::fromType<ReturnValue>().id());
     return QDBusPendingCall::fromCompletedCall(msg);
 }
-
-#endif // LINGLONG_TEST_MODULE_CLI_REPLY_H_

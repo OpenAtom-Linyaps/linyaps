@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_SRC_MODULE_UTIL_FILE_H_
-#define LINGLONG_SRC_MODULE_UTIL_FILE_H_
+#pragma once
 
 #include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
@@ -329,4 +328,3 @@ QString inline getLinglongRootPath()
 QString findLinglongConfigPath(const QString &subpath, bool writeable);
 
 } // namespace linglong::util
-#endif

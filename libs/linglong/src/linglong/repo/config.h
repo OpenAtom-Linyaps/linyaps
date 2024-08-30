@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_REPO_CONFIG_H_
-#define LINGLONG_REPO_CONFIG_H_
+#pragma once
 
 #include "linglong/api/types/helper.h"
 #include "linglong/api/types/v1/RepoConfig.hpp"
@@ -21,4 +20,3 @@ utils::error::Result<void> saveConfig(const api::types::v1::RepoConfig &cfg,
                                       const QString &path) noexcept;
 
 } // namespace linglong::repo
-#endif

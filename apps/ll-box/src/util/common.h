@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_BOX_SRC_UTIL_COMMON_H_
-#define LINGLONG_BOX_SRC_UTIL_COMMON_H_
+#pragma once
 
 #include <cstdarg>
 #include <cstring>
@@ -55,5 +54,3 @@ std::ostream &operator<<(std::ostream &out, const std::vector<T> &v)
     }
     return out;
 }
-
-#endif /* LINGLONG_BOX_SRC_UTIL_COMMON_H_ */

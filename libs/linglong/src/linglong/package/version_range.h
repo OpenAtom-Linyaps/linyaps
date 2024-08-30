@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_PACKAGE_VERSION_RANGE_H_
-#define LINGLONG_PACKAGE_VERSION_RANGE_H_
+#pragma once
 
 #include "linglong/package/version.h"
 
@@ -29,5 +28,3 @@ private:
     explicit VersionRange(const std::tuple<QString, QString> &raw);
 };
 } // namespace linglong::package
-
-#endif

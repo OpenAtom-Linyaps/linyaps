@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_BOX_SRC_CONTAINER_CONTAINER_H_
-#define LINGLONG_BOX_SRC_CONTAINER_CONTAINER_H_
+#pragma once
 
 #include "util/message_reader.h"
 #include "util/oci_runtime.h"
@@ -32,5 +31,3 @@ private:
 };
 
 } // namespace linglong
-
-#endif /* LINGLONG_BOX_SRC_CONTAINER_CONTAINER_H_ */

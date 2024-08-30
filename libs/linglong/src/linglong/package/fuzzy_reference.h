@@ -3,9 +3,7 @@
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
-
-#ifndef LINGLONG_PACKAGE_FUZZY_REFERENCE_H_
-#define LINGLONG_PACKAGE_FUZZY_REFERENCE_H_
+#pragma once
 
 #include "linglong/package/architecture.h"
 #include "linglong/package/version.h"
@@ -42,5 +40,3 @@ private:
 };
 
 } // namespace linglong::package
-
-#endif

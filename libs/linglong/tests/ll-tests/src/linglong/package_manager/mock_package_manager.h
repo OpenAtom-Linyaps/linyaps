@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_PACAKGE_MANAGER_MOCK_PACKAGE_MANAGER_H_
-#define LINGLONG_PACAKGE_MANAGER_MOCK_PACKAGE_MANAGER_H_
+#pragma once
 
 #include <gmock/gmock.h>
 
@@ -21,5 +20,3 @@ class MockPackageManager : public PackageManager
     MOCK_METHOD(void, setNoDBusMode, (bool enable), (override));
 };
 } // namespace linglong::service::test
-
-#endif

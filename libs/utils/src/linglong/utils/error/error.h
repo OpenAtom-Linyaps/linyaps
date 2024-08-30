@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_UTILS_ERROR_H_
-#define LINGLONG_UTILS_ERROR_H_
+#pragma once
 
 #include "linglong/utils/error/details/error_impl.h"
 
@@ -327,5 +326,3 @@ inline QDebug operator<<(QDebug debug, const linglong::utils::error::Error &err)
                               << "\t" << err.message().replace("\n", "\n\t");
     return debug;
 }
-
-#endif // LINGLONG_UTILS_ERROR_H_

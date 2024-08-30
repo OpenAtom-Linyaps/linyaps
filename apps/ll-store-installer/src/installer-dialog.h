@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_STORE_LL_INSTALLER_INSTALLER_DIALOG_H_
-#define LINGLONG_STORE_LL_INSTALLER_INSTALLER_DIALOG_H_
+#pragma once
 
 #include <QMainWindow>
 #include <QScopedPointer>
@@ -31,4 +30,3 @@ private:
 
 } // namespace installer
 } // namespace linglong
-#endif

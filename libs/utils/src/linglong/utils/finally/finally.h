@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#ifndef LINGLONG_UTILS_FINALLY_H_
-#define LINGLONG_UTILS_FINALLY_H_
+#pragma once
 
 // Code in this file comes from
 // https://github.com/microsoft/GSL/blob/52212c2d7600c816ec9b0438d3fbd2a95c190c2f/include/gsl/util
@@ -76,5 +75,3 @@ template<class F>
     return final_action<std::decay_t<F>>{ std::forward<F>(f) };
 }
 } // namespace linglong::utils::finally
-
-#endif

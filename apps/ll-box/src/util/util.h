@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_BOX_SRC_UTIL_UTIL_H_
-#define LINGLONG_BOX_SRC_UTIL_UTIL_H_
+#pragma once
 
 #include "common.h"
 #include "filesystem.h"
@@ -35,5 +34,3 @@ inline nlohmann::json fromFile(const std::string &filepath)
 } // namespace json
 } // namespace util
 } // namespace linglong
-
-#endif /* LINGLONG_BOX_SRC_UTIL_UTIL_H_ */

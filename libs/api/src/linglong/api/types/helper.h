@@ -3,9 +3,7 @@
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
-
-#ifndef LINGLONG_API_TYPES_HELPER_H_
-#define LINGLONG_API_TYPES_HELPER_H_
+#pragma once
 
 #include "linglong/api/types/v1/RepoConfig.hpp"
 
@@ -23,4 +21,3 @@ inline bool operator!=(const RepoConfig &cfg1, const RepoConfig &cfg2) noexcept
 }
 
 } // namespace linglong::api::types::v1
-#endif

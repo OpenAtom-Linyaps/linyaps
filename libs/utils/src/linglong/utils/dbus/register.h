@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_UTILS_DBUS_H_
-#define LINGLONG_UTILS_DBUS_H_
+#pragma once
 
 #include "linglong/utils/dbus/log.h"
 #include "linglong/utils/error/error.h"
@@ -74,5 +73,3 @@ inline void unregisterDBusObject(QDBusConnection conn, const QString &path)
 }
 
 } // namespace linglong::utils::dbus
-
-#endif

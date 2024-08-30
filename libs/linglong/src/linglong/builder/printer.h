@@ -3,8 +3,7 @@
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
-#ifndef LINGLONG_SRC_BUILDER_PRINTER_H_
-#define LINGLONG_SRC_BUILDER_PRINTER_H_
+#pragma once
 
 #include <iostream>
 #include <string>
@@ -43,5 +42,3 @@ inline void printProgress(const size_t num = 0)
 }
 
 } // namespace linglong::builder
-
-#endif // LINGLONG_SRC_BUILDER_PRINTER_H_

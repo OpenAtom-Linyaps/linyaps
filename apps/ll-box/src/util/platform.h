@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_BOX_SRC_UTIL_PLATFORM_H_
-#define LINGLONG_BOX_SRC_UTIL_PLATFORM_H_
+#pragma once
 
 #include "common.h"
 
@@ -26,5 +25,3 @@ int WaitAllUntil(const int pid);
 } // namespace util
 
 } // namespace linglong
-
-#endif /* LINGLONG_BOX_SRC_UTIL_PLATFORM_H_ */

@@ -2,8 +2,7 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-#ifndef LINGLONG_UTILS_PACKAGEINFO_HANDLER_H
-#define LINGLONG_UTILS_PACKAGEINFO_HANDLER_H
+#pragma once
 
 #include "linglong/api/types/v1/PackageInfo.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
@@ -18,4 +17,3 @@ error::Result<api::types::v1::PackageInfoV2> toPackageInfoV2(const api::types::v
 error::Result<api::types::v1::PackageInfoV2> parsePackageInfo(const QString &path);
 error::Result<api::types::v1::PackageInfoV2> parsePackageInfo(const nlohmann::json &json);
 }; // namespace linglong::utils
-#endif

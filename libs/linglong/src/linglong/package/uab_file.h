@@ -2,8 +2,7 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-#ifndef UAB_FILE_H
-#define UAB_FILE_H
+#pragma once
 
 #include "linglong/api/types/v1/UabMetaInfo.hpp"
 #include "linglong/utils/error/error.h"
@@ -41,5 +40,3 @@ private:
 };
 
 } // namespace linglong::package
-
-#endif

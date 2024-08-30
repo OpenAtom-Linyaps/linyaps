@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_RUNTIME_CONTAINER_BUILDER_H_
-#define LINGLONG_RUNTIME_CONTAINER_BUILDER_H_
+#pragma once
 
 #include "linglong/api/types/v1/OciConfigurationPatch.hpp"
 #include "linglong/runtime/container.h"
@@ -46,5 +45,3 @@ private:
 };
 
 }; // namespace linglong::runtime
-
-#endif

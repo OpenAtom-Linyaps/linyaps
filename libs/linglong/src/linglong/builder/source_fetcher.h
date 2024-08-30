@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_SRC_BUILDER_SOURCE_FETCHER_H_
-#define LINGLONG_SRC_BUILDER_SOURCE_FETCHER_H_
+#pragma once
 
 #include "linglong/api/types/v1/BuilderConfig.hpp"
 #include "linglong/api/types/v1/BuilderProjectSource.hpp"
@@ -35,5 +34,3 @@ private:
 };
 
 } // namespace linglong::builder
-
-#endif // LINGLONG_SRC_BUILDER_SOURCE_FETCHER_H_

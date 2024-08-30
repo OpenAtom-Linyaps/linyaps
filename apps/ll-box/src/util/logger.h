@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_BOX_SRC_UTIL_LOGGER_H_
-#define LINGLONG_BOX_SRC_UTIL_LOGGER_H_
+#pragma once
 
 #include "util.h"
 
@@ -129,5 +128,3 @@ private:
 #define logInf() (linglong::util::Logger(linglong::util::Logger::Info, __FUNCTION__, __LINE__))
 #define logErr() (linglong::util::Logger(linglong::util::Logger::Error, __FUNCTION__, __LINE__))
 #define logFal() (linglong::util::Logger(linglong::util::Logger::Fatal, __FUNCTION__, __LINE__))
-
-#endif /* LINGLONG_BOX_SRC_UTIL_LOGGER_H_ */

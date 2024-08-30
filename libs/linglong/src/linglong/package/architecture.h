@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_PACKAGE_ARCHITECTURE_H_
-#define LINGLONG_PACKAGE_ARCHITECTURE_H_
+#pragma once
 
 #include "linglong/utils/error/error.h"
 
@@ -46,5 +45,3 @@ private:
 };
 
 } // namespace linglong::package
-
-#endif

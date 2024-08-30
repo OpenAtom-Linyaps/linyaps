@@ -2,8 +2,7 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-#ifndef UAB_PACKAGER_H
-#define UAB_PACKAGER_H
+#pragma once
 
 #include "linglong/api/types/v1/UabMetaInfo.hpp"
 #include "linglong/package/layer_dir.h"
@@ -90,5 +89,3 @@ private:
     QDir buildDir;
 };
 } // namespace linglong::package
-
-#endif

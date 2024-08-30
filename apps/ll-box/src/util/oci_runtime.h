@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_BOX_SRC_UTIL_OCI_RUNTIME_H_
-#define LINGLONG_BOX_SRC_UTIL_OCI_RUNTIME_H_
+#pragma once
 
 #include "util.h"
 
@@ -537,5 +536,3 @@ inline static Runtime fromString(const std::string &content)
 }
 
 } // namespace linglong
-
-#endif /* LINGLONG_BOX_SRC_UTIL_OCI_RUNTIME_H_ */

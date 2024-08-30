@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_API_DBUS_V1_MOCK_PACKAGE_MANAGER_H_
-#define LINGLONG_API_DBUS_V1_MOCK_PACKAGE_MANAGER_H_
+#pragma once
 
 #include <gmock/gmock.h>
 
@@ -41,5 +40,3 @@ public:
     MOCK_METHOD(QDBusPendingReply<linglong::service::QueryReply>, getRepoInfo, (), (override));
 };
 } // namespace linglong::api::dbus::v1::test
-
-#endif

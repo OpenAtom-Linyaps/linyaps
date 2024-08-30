@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_TEST_MODULE_CLI_FAKE_APP_MANAGER_H_
-#define LINGLONG_TEST_MODULE_CLI_FAKE_APP_MANAGER_H_
+#pragma once
 
 #include <gmock/gmock.h>
 
@@ -46,5 +45,3 @@ public:
 };
 
 } // namespace linglong::cli::test
-
-#endif // LINGLONG_TEST_MODULE_CLI_FAKE_APP_MANAGER_H_

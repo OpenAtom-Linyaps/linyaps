@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_CLI_JSON_PRINTER_H_
-#define LINGLONG_CLI_JSON_PRINTER_H_
+#pragma once
 
 #include "linglong/cli/printer.h"
 
@@ -26,5 +25,3 @@ public:
 };
 
 } // namespace linglong::cli
-
-#endif

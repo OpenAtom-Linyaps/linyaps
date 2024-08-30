@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_UTILS_ERROR_DETAILS_H_
-#define LINGLONG_UTILS_ERROR_DETAILS_H_
+#pragma once
 
 #include "QJsonDocument"
 #include "QJsonObject"
@@ -56,5 +55,3 @@ private:
 };
 
 } // namespace linglong::utils::error::details
-
-#endif

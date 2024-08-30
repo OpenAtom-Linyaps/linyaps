@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_SRC_MODULE_REPO_OSTREE_REPO_H_
-#define LINGLONG_SRC_MODULE_REPO_OSTREE_REPO_H_
+#pragma once
 
 #include "linglong/api/types/v1/RepoConfig.hpp"
 #include "linglong/package/fuzzy_reference.h"
@@ -154,5 +153,3 @@ private:
 };
 
 } // namespace linglong::repo
-
-#endif // LINGLONG_SRC_MODULE_REPO_OSTREE_REPO_H_

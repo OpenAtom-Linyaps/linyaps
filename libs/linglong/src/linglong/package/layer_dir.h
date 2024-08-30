@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_PACKAGE_LAYER_DIR_H_
-#define LINGLONG_PACKAGE_LAYER_DIR_H_
+#pragma once
 
 #include "linglong/api/types/v1/MinifiedInfo.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
@@ -28,5 +27,3 @@ public:
 };
 
 } // namespace linglong::package
-
-#endif /* LINGLONG_PACKAGE_LAYER_DIR_H_ */

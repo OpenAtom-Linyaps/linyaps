@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_SRC_BUILDER_BUILDER_BUILDER_CONFIG_H_
-#define LINGLONG_SRC_BUILDER_BUILDER_BUILDER_CONFIG_H_
+#pragma once
 
 #include "linglong/api/types/v1/BuilderConfig.hpp"
 #include "linglong/utils/error/error.h"
@@ -23,5 +22,3 @@ auto saveConfig(const api::types::v1::BuilderConfig &cfg, const QString &path) n
   -> utils::error::Result<void>;
 
 } // namespace linglong::builder
-
-#endif // LINGLONG_SRC_BUILDER_BUILDER_BUILDER_CONFIG_H_

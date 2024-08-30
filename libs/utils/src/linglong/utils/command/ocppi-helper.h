@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_UTILS_COMMAND_OCPPI_HELPER_H_
-#define LINGLONG_UTILS_COMMAND_OCPPI_HELPER_H_
+#pragma once
 
 #include "ocppi/runtime/config/types/Config.hpp"
 
@@ -25,5 +24,3 @@ void AddAnnotation(ocppi::runtime::config::types::Config &config,
                    const QString &val);
 
 } // namespace linglong::utils::command
-
-#endif

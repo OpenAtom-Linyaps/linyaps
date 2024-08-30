@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_UTILS_SERIALIZE_JSON_H
-#define LINGLONG_UTILS_SERIALIZE_JSON_H
+#pragma once
 
 // NOTE: DO NOT REMOVE THIS HEADER, nlohmann::json need this header to lookup function 'from_json'
 #include "linglong/api/types/v1/Generators.hpp"
@@ -139,5 +138,3 @@ error::Result<T> fromQVariantMap(const QVariantMap &vmap)
 }
 
 } // namespace linglong::utils::serialize
-
-#endif

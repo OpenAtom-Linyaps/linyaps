@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_H_
-#define LINGLONG_SRC_PACKAGE_MANAGER_PACKAGE_MANAGER_H_
+#pragma once
 
 #include "linglong/repo/ostree_repo.h"
 #include "task.h"
@@ -64,5 +63,3 @@ private:
 };
 
 } // namespace linglong::service
-
-#endif

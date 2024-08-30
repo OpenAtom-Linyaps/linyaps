@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_BOX_SRC_UTIL_MESSAGE_READER_H_
-#define LINGLONG_BOX_SRC_UTIL_MESSAGE_READER_H_
+#pragma once
 
 #include "nlohmann/json.hpp"
 
@@ -28,5 +27,3 @@ private:
 };
 } // namespace util
 } // namespace linglong
-
-#endif /* LINGLONG_BOX_SRC_UTIL_OCI_RUNTIME_H_ */

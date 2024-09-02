@@ -1,33 +1,58 @@
 /*
- * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
 #include "repo_cache.h"
 
-#include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/utils/configure.h"
 #include "linglong/utils/serialize/json.h"
 
 #include <fstream>
+#include <iostream>
 
 namespace linglong::repo {
 
-utils::error::Result<RepoCache> RepoCache::create(const std::filesystem::path &repoRoot,
-                                                  const api::types::v1::RepoConfig &repoConfig,
-                                                  const OstreeRepo &repo)
+RepoCache::RepoCache(RepoCache &&other) noexcept
+    : cache(std::move(other).cache)
+    , configPath(std::move(other).configPath)
+{
+}
+
+RepoCache &RepoCache::operator=(RepoCache &&other) noexcept
+{
+    if (&other == this) {
+        return *this;
+    }
+
+    this->cache = std::move(other).cache;
+    this->configPath = std::move(other).configPath;
+    return *this;
+}
+
+utils::error::Result<std::unique_ptr<RepoCache>>
+RepoCache::create(const std::filesystem::path &repoRoot,
+                  const api::types::v1::RepoConfig &repoConfig,
+                  const OstreeRepo &repo)
 {
     LINGLONG_TRACE("create RepoCache");
 
-    RepoCache repoCache(repoRoot);
+    struct enableMaker : public RepoCache
+    {
+        using RepoCache::RepoCache;
+    };
+
+    auto repoCache = std::make_unique<enableMaker>();
+    repoCache->configPath = repoRoot / "cache.json";
+
     std::error_code ec;
-    if (!std::filesystem::exists(repoCache.configPath, ec)) {
+    if (!std::filesystem::exists(repoCache->configPath, ec)) {
         if (ec) {
             std::string error = "checking file existence failed: " + ec.message();
             return LINGLONG_ERR(error.c_str());
         }
-        auto ret = repoCache.rebuildCache(repoConfig, repo);
+        auto ret = repoCache->rebuildCache(repoConfig, repo);
         if (!ret) {
             return LINGLONG_ERR(ret);
         }
@@ -35,21 +60,21 @@ utils::error::Result<RepoCache> RepoCache::create(const std::filesystem::path &r
     }
 
     auto result = utils::serialize::LoadJSONFile<api::types::v1::RepositoryCache>(
-      QString::fromStdString(repoCache.configPath));
+      QString::fromStdString(repoCache->configPath));
     if (!result) {
         std::cout << "invalid cache file, rebuild cache..." << std::endl;
-        auto ret = repoCache.rebuildCache(repoConfig, repo);
+        auto ret = repoCache->rebuildCache(repoConfig, repo);
         if (!ret) {
             return LINGLONG_ERR(ret);
         }
         return repoCache;
     }
 
-    repoCache.cache = *result;
+    repoCache->cache = std::move(result).value();
     std::string cliVersion = LINGLONG_VERSION;
     if (result->llVersion > cliVersion) {
         std::cout << "linglong cli version is older than cache file, rebuild cache..." << std::endl;
-        auto ret = repoCache.rebuildCache(repoConfig, repo);
+        auto ret = repoCache->rebuildCache(repoConfig, repo);
         if (!ret) {
             return LINGLONG_ERR(ret);
         }
@@ -57,15 +82,8 @@ utils::error::Result<RepoCache> RepoCache::create(const std::filesystem::path &r
     }
 
     // update repo config
-    repoCache.cache.config = repoConfig;
-
+    repoCache->cache.config = repoConfig;
     return repoCache;
-}
-
-RepoCache::RepoCache(const std::filesystem::path &repoRoot)
-    : configPath(repoRoot / "cache.json")
-    , cache({})
-{
 }
 
 utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoConfig &repoConfig,

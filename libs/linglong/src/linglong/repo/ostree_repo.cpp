@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022-2024 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -773,6 +773,16 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
     }
 
     this->ostreeRepo.reset(*result);
+
+    auto ret = linglong::repo::RepoCache::create(this->repoDir.absolutePath().toStdString(),
+                                                 this->cfg,
+                                                 *(this->ostreeRepo));
+    if (!ret) {
+        qCritical() << LINGLONG_ERRV(ret);
+        qFatal("abort");
+    }
+
+    this->cache = std::move(ret).value();
 }
 
 const api::types::v1::RepoConfig &OSTreeRepo::getConfig() const noexcept

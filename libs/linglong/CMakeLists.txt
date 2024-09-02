@@ -57,6 +57,8 @@ pfl_add_library(
   src/linglong/repo/config.h
   src/linglong/repo/ostree_repo.cpp
   src/linglong/repo/ostree_repo.h
+  src/linglong/repo/repo_cache.cpp
+  src/linglong/repo/repo_cache.h
   src/linglong/runtime/container_builder.cpp
   src/linglong/runtime/container_builder.h
   src/linglong/runtime/container.cpp

@@ -646,7 +646,22 @@ $defs:
           required:
             - commit
             - info
+          # TODO: maybe we should add the map of module which depends by this item in the future
           properties:
+            base:
+              type: string
+              description: The commit hash of base that this item depends on.
+                If this item is an app which installed from UAB and depends
+                on an minified base, this property should be the corresponding
+                commit hash. It means the base of app has been locked. It should
+                be null in other conditions.
+            runtime:
+              type: string
+              description: The commit hash of runtime that this item depends on.
+                If this item is an app which installed from UAB and depends
+                on an minified runtime, this property should be the corresponding
+                commit hash. It means the runtime of app has been locked. It should
+                be null in other conditions.
             commit:
               type: string
               description: ostree commit hash

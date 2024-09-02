@@ -27,10 +27,24 @@ using nlohmann::json;
 
 struct RepositoryCacheLayersItem {
 /**
+* The commit hash of base that this item depends on. If this item is an app which installed
+* from UAB and depends on an minified base, this property should be the corresponding
+* commit hash. It means the base of app has been locked. It should be null in other
+* conditions.
+*/
+std::optional<std::string> base;
+/**
 * ostree commit hash
 */
 std::string commit;
 PackageInfoV2 info;
+/**
+* The commit hash of runtime that this item depends on. If this item is an app which
+* installed from UAB and depends on an minified runtime, this property should be the
+* corresponding commit hash. It means the runtime of app has been locked. It should be null
+* in other conditions.
+*/
+std::optional<std::string> runtime;
 };
 }
 }

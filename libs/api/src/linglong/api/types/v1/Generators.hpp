@@ -634,14 +634,22 @@ j["version"] = x.version;
 }
 
 inline void from_json(const json & j, RepositoryCacheLayersItem& x) {
+x.base = get_stack_optional<std::string>(j, "base");
 x.commit = j.at("commit").get<std::string>();
 x.info = j.at("info").get<PackageInfoV2>();
+x.runtime = get_stack_optional<std::string>(j, "runtime");
 }
 
 inline void to_json(json & j, const RepositoryCacheLayersItem & x) {
 j = json::object();
+if (x.base) {
+j["base"] = x.base;
+}
 j["commit"] = x.commit;
 j["info"] = x.info;
+if (x.runtime) {
+j["runtime"] = x.runtime;
+}
 }
 
 inline void from_json(const json & j, RepositoryCache& x) {

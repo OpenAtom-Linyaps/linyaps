@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 UnionTech Software Technology Co., Ltd.
+ * SPDX-FileCopyrightText: 2022-2024 UnionTech Software Technology Co., Ltd.
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -12,6 +12,7 @@
 #include "linglong/package/reference.h"
 #include "linglong/package_manager/task.h"
 #include "linglong/repo/client_factory.h"
+#include "linglong/repo/repo_cache.h"
 #include "linglong/utils/error/error.h"
 
 #include <ostree.h>
@@ -149,6 +150,7 @@ private:
 
     std::unique_ptr<OstreeRepo, OstreeRepoDeleter> ostreeRepo = nullptr;
     QDir repoDir;
+    std::unique_ptr<linglong::repo::RepoCache> cache{ nullptr };
     utils::error::Result<void> updateConfig(const api::types::v1::RepoConfig &newCfg) noexcept;
     QDir ostreeRepoDir() const noexcept;
     QDir createLayerQDir(const package::Reference &ref,

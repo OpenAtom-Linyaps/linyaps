@@ -71,4 +71,22 @@ error::Result<api::types::v1::PackageInfoV2> parsePackageInfo(const nlohmann::js
     return toPackageInfoV2(*oldPkgInfo);
 }
 
+error::Result<api::types::v1::PackageInfoV2> parsePackageInfo(GFile *file)
+{
+    LINGLONG_TRACE("parse package info from GFile");
+
+    auto pkgInfo = serialize::LoadJSONFile<api::types::v1::PackageInfoV2>(file);
+    if (pkgInfo) {
+        return pkgInfo;
+    }
+
+    qDebug() << "not PackageInfoV2, parse with PackageInfo";
+    auto oldPkgInfo = serialize::LoadJSONFile<api::types::v1::PackageInfo>(file);
+    if (!oldPkgInfo) {
+        return LINGLONG_ERR(oldPkgInfo.error());
+    }
+
+    return toPackageInfoV2(*oldPkgInfo);
+}
+
 }; // namespace linglong::utils

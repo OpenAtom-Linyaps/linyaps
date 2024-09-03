@@ -497,20 +497,7 @@ int main(int argc, char **argv)
                   parser.showHelp(-1);
               }
 
-              auto project =
-                linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(
-                  QDir().absoluteFilePath("linglong.yaml"));
-              if (!project) {
-                  qCritical() << project.error();
-                  return -1;
-              }
-
-              linglong::builder::Builder builder(*project,
-                                                 QDir::current(),
-                                                 repo,
-                                                 *containerBuidler,
-                                                 *builderCfg);
-              auto result = builder.extractLayer(layerPath, destination);
+              auto result = linglong::builder::Builder::extractLayer(layerPath, destination);
               if (!result) {
                   qCritical() << result.error();
                   return -1;

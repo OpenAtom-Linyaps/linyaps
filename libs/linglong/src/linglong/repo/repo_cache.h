@@ -8,6 +8,7 @@
 
 #include "linglong/api/types/v1/RepoConfig.hpp"
 #include "linglong/api/types/v1/RepositoryCache.hpp"
+#include "linglong/package/reference.h"
 #include "linglong/utils/error/error.h"
 
 #include <ostree.h>
@@ -15,6 +16,24 @@
 #include <filesystem>
 
 namespace linglong::repo {
+
+struct cacheRef
+{
+    std::string id;
+    std::optional<std::string> repo; // not used currently
+    std::optional<std::string> channel;
+    std::optional<std::string> version; // could be fuzzy version
+    std::optional<std::string> module;
+    std::optional<std::string> uuid;
+    const inline static std::string arch = []() noexcept {
+        auto ret = package::Architecture::currentCPUArchitecture();
+        if (ret) {
+            return ret->toString().toStdString();
+        }
+        qCritical() << ret.error().message();
+        return std::string{ "unknown" };
+    }();
+};
 
 class RepoCache
 {
@@ -29,15 +48,10 @@ public:
     create(const std::filesystem::path &repoRoot,
            const api::types::v1::RepoConfig &repoConfig,
            const OstreeRepo &repo);
-    utils::error::Result<std::map<std::string, api::types::v1::RepositoryCacheLayersItem>::iterator>
-    addLayerItem(const std::string &ref, const api::types::v1::RepositoryCacheLayersItem &item);
-    utils::error::Result<void> deleteLayerItem(const std::string &ref);
-    utils::error::Result<std::map<std::string, api::types::v1::RepositoryCacheLayersItem>::iterator>
-    updateLayerItem(const std::string &ref, const api::types::v1::RepositoryCacheLayersItem &item);
-    utils::error::Result<api::types::v1::RepositoryCacheLayersItem>
-    searchLayerItem(const std::string &ref);
-
-    utils::error::Result<void> writeToDisk();
+    utils::error::Result<void> addLayerItem(const cacheRef &ref,
+                                            const api::types::v1::RepositoryCacheLayersItem &item);
+    utils::error::Result<void> deleteLayerItem(const cacheRef &ref);
+    utils::error::Result<std::vector<package::Reference>> searchLayerItem(const cacheRef &ref);
 
 private:
     RepoCache() = default;
@@ -45,6 +59,7 @@ private:
     scanAllLayers(const OstreeRepo &repo);
     utils::error::Result<void> rebuildCache(const api::types::v1::RepoConfig &repoConfig,
                                             const OstreeRepo &repo);
+    utils::error::Result<void> writeToDisk();
 
     api::types::v1::RepositoryCache cache;
     std::string configPath;

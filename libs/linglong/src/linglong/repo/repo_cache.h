@@ -47,7 +47,7 @@ public:
     static utils::error::Result<std::unique_ptr<RepoCache>>
     create(const std::filesystem::path &repoRoot,
            const api::types::v1::RepoConfig &repoConfig,
-           const OstreeRepo &repo);
+           OstreeRepo &repo);
     utils::error::Result<void> addLayerItem(const cacheRef &ref,
                                             const api::types::v1::RepositoryCacheLayersItem &item);
     utils::error::Result<void> deleteLayerItem(const cacheRef &ref);
@@ -55,10 +55,8 @@ public:
 
 private:
     RepoCache() = default;
-    utils::error::Result<std::map<std::string, api::types::v1::RepositoryCacheLayersItem>>
-    scanAllLayers(const OstreeRepo &repo);
     utils::error::Result<void> rebuildCache(const api::types::v1::RepoConfig &repoConfig,
-                                            const OstreeRepo &repo);
+                                            OstreeRepo &repo);
     utils::error::Result<void> writeToDisk();
 
     api::types::v1::RepositoryCache cache;

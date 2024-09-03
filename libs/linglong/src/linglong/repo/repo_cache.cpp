@@ -8,6 +8,7 @@
 
 #include "linglong/utils/configure.h"
 #include "linglong/utils/serialize/json.h"
+#include "linglong/utils/packageinfo_handler.h"
 
 #include <fstream>
 #include <iostream>
@@ -34,7 +35,7 @@ RepoCache &RepoCache::operator=(RepoCache &&other) noexcept
 utils::error::Result<std::unique_ptr<RepoCache>>
 RepoCache::create(const std::filesystem::path &repoRoot,
                   const api::types::v1::RepoConfig &repoConfig,
-                  const OstreeRepo &repo)
+                  OstreeRepo &repo)
 {
     LINGLONG_TRACE("create RepoCache");
 
@@ -45,7 +46,6 @@ RepoCache::create(const std::filesystem::path &repoRoot,
 
     auto repoCache = std::make_unique<enableMaker>();
     repoCache->configPath = repoRoot / "cache.json";
-
     std::error_code ec;
     if (!std::filesystem::exists(repoCache->configPath, ec)) {
         if (ec) {
@@ -87,18 +87,62 @@ RepoCache::create(const std::filesystem::path &repoRoot,
 }
 
 utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoConfig &repoConfig,
-                                                   const OstreeRepo &repo)
+                                                   OstreeRepo &repo)
 {
     LINGLONG_TRACE("rebuild repo cache");
+
     this->cache.llVersion = LINGLONG_VERSION;
     this->cache.config = repoConfig;
     this->cache.version = "0.0.1";
-    this->cache.layers = {}; // scanf all layer
-}
 
-utils::error::Result<std::map<std::string, api::types::v1::RepositoryCacheLayersItem>>
-scanAllLayers(const OstreeRepo &repo)
-{
+    g_autoptr(GHashTable) refsTable = nullptr;
+    g_autoptr(GError) gErr = nullptr;
+    std::vector<std::string> refs;
+
+    if (!ostree_repo_list_refs(&repo, nullptr, &refsTable, nullptr, &gErr)) {
+        return LINGLONG_ERR("ostree_repo_list_refs", gErr);
+    }
+
+    g_hash_table_foreach(
+      refsTable,
+      [](gpointer key, gpointer value, gpointer data) {
+          // key,value -> ref,checksum
+          std::vector<std::string> *vec = static_cast<std::vector<std::string> *>(data);
+          vec->emplace_back(static_cast<char *>(key));
+      },
+      &refs);
+
+    for (const auto ref : refs) {
+        g_autofree char *commit = nullptr;
+        g_autoptr(GError) gErr = nullptr;
+        g_autoptr(GFile) root = nullptr;
+        api::types::v1::RepositoryCacheLayersItem item;
+
+        if (!ostree_repo_read_commit(&repo, ref.c_str(), &root, &commit, nullptr, &gErr)) {
+            return LINGLONG_ERR("ostree_repo_read_commit", gErr);
+        }
+
+        g_clear_error(&gErr);
+        // ostree ls --repo repo ref, the file path of info.json is /info.json.
+        g_autoptr(GFile) infoFile = g_file_resolve_relative_path(root, "info.json");
+
+        auto info = utils::parsePackageInfo(infoFile);
+        if (!info) {
+            return LINGLONG_ERR(info);
+        }
+
+        item.commit = commit;
+        item.info = *info;
+        std::string fullRef = this->cache.config.defaultRepo + ":" + ref;
+        this->cache.layers.insert(std::make_pair(fullRef, item));
+    }
+
+    auto ret = writeToDisk();
+    if(!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    return LINGLONG_OK;
 }
 
 utils::error::Result<void>

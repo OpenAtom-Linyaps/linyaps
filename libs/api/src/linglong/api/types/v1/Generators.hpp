@@ -38,8 +38,6 @@
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/PackageInfo.hpp"
 #include "linglong/api/types/v1/OciConfigurationPatch.hpp"
-#include "linglong/api/types/v1/MinifiedInfo.hpp"
-#include "linglong/api/types/v1/Info.hpp"
 #include "linglong/api/types/v1/LayerInfo.hpp"
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/CliContainer.hpp"
@@ -88,12 +86,6 @@ void to_json(json & j, const CommonResult & x);
 
 void from_json(const json & j, LayerInfo & x);
 void to_json(json & j, const LayerInfo & x);
-
-void from_json(const json & j, Info & x);
-void to_json(json & j, const Info & x);
-
-void from_json(const json & j, MinifiedInfo & x);
-void to_json(json & j, const MinifiedInfo & x);
 
 void from_json(const json & j, OciConfigurationPatch & x);
 void to_json(json & j, const OciConfigurationPatch & x);
@@ -383,26 +375,6 @@ j["info"] = x.info;
 j["version"] = x.version;
 }
 
-inline void from_json(const json & j, Info& x) {
-x.appRef = j.at("appRef").get<std::string>();
-x.uuid = j.at("uuid").get<std::string>();
-}
-
-inline void to_json(json & j, const Info & x) {
-j = json::object();
-j["appRef"] = x.appRef;
-j["uuid"] = x.uuid;
-}
-
-inline void from_json(const json & j, MinifiedInfo& x) {
-x.infos = j.at("infos").get<std::vector<Info>>();
-}
-
-inline void to_json(json & j, const MinifiedInfo & x) {
-j = json::object();
-j["infos"] = x.infos;
-}
-
 inline void from_json(const json & j, OciConfigurationPatch& x) {
 x.ociVersion = j.at("ociVersion").get<std::string>();
 x.patch = j.at("patch").get<std::vector<nlohmann::json>>();
@@ -469,6 +441,7 @@ x.permissions = get_stack_optional<ApplicationConfigurationPermissions>(j, "perm
 x.runtime = get_stack_optional<std::string>(j, "runtime");
 x.schemaVersion = j.at("schema_version").get<std::string>();
 x.size = j.at("size").get<int64_t>();
+x.uuid = get_stack_optional<std::string>(j, "uuid");
 x.version = j.at("version").get<std::string>();
 }
 
@@ -495,6 +468,9 @@ j["runtime"] = x.runtime;
 }
 j["schema_version"] = x.schemaVersion;
 j["size"] = x.size;
+if (x.uuid) {
+j["uuid"] = x.uuid;
+}
 j["version"] = x.version;
 }
 
@@ -634,27 +610,21 @@ j["version"] = x.version;
 }
 
 inline void from_json(const json & j, RepositoryCacheLayersItem& x) {
-x.base = get_stack_optional<std::string>(j, "base");
 x.commit = j.at("commit").get<std::string>();
 x.info = j.at("info").get<PackageInfoV2>();
-x.runtime = get_stack_optional<std::string>(j, "runtime");
+x.repo = j.at("repo").get<std::string>();
 }
 
 inline void to_json(json & j, const RepositoryCacheLayersItem & x) {
 j = json::object();
-if (x.base) {
-j["base"] = x.base;
-}
 j["commit"] = x.commit;
 j["info"] = x.info;
-if (x.runtime) {
-j["runtime"] = x.runtime;
-}
+j["repo"] = x.repo;
 }
 
 inline void from_json(const json & j, RepositoryCache& x) {
 x.config = j.at("config").get<RepoConfig>();
-x.layers = j.at("layers").get<std::map<std::string, RepositoryCacheLayersItem>>();
+x.layers = j.at("layers").get<std::vector<RepositoryCacheLayersItem>>();
 x.llVersion = j.at("ll-version").get<std::string>();
 x.version = j.at("version").get<std::string>();
 }
@@ -716,7 +686,6 @@ x.builderProject = get_stack_optional<BuilderProject>(j, "BuilderProject");
 x.cliContainer = get_stack_optional<CliContainer>(j, "CLIContainer");
 x.commonResult = get_stack_optional<CommonResult>(j, "CommonResult");
 x.layerInfo = get_stack_optional<LayerInfo>(j, "LayerInfo");
-x.minifiedInfo = get_stack_optional<MinifiedInfo>(j, "MinifiedInfo");
 x.ociConfigurationPatch = get_stack_optional<OciConfigurationPatch>(j, "OCIConfigurationPatch");
 x.packageInfo = get_stack_optional<PackageInfo>(j, "PackageInfo");
 x.packageInfoV2 = get_stack_optional<PackageInfoV2>(j, "PackageInfoV2");
@@ -760,9 +729,6 @@ j["CommonResult"] = x.commonResult;
 }
 if (x.layerInfo) {
 j["LayerInfo"] = x.layerInfo;
-}
-if (x.minifiedInfo) {
-j["MinifiedInfo"] = x.minifiedInfo;
 }
 if (x.ociConfigurationPatch) {
 j["OCIConfigurationPatch"] = x.ociConfigurationPatch;

@@ -8,7 +8,7 @@
 
 #include "linglong/api/types/v1/RepoConfig.hpp"
 #include "linglong/api/types/v1/RepositoryCache.hpp"
-#include "linglong/package/reference.h"
+#include "linglong/package/architecture.h"
 #include "linglong/utils/error/error.h"
 
 #include <ostree.h>
@@ -48,10 +48,13 @@ public:
     create(const std::filesystem::path &repoRoot,
            const api::types::v1::RepoConfig &repoConfig,
            OstreeRepo &repo);
-    utils::error::Result<void> addLayerItem(const CacheRef &ref,
-                                            const api::types::v1::RepositoryCacheLayersItem &item);
-    utils::error::Result<void> deleteLayerItem(const CacheRef &ref);
-    utils::error::Result<std::vector<package::Reference>> searchLayerItem(const CacheRef &ref);
+    utils::error::Result<void> addLayerItem(const api::types::v1::RepositoryCacheLayersItem &item);
+    utils::error::Result<void>
+    deleteLayerItem(const api::types::v1::RepositoryCacheLayersItem &item);
+    utils::error::Result<void>
+    updateLayerItem(const api::types::v1::RepositoryCacheLayersItem &item);
+    [[nodiscard]] utils::error::Result<std::vector<api::types::v1::RepositoryCacheLayersItem>>
+    searchLayerItem(const CacheRef &ref) const;
 
 private:
     RepoCache() = default;

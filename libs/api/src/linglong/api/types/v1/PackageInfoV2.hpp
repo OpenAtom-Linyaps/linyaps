@@ -83,6 +83,11 @@ std::string schemaVersion;
 */
 int64_t size;
 /**
+* this property is only used for app which instead from UAB and it should be null in other
+* conditions.
+*/
+std::optional<std::string> uuid;
+/**
 * version of package info
 */
 std::string version;

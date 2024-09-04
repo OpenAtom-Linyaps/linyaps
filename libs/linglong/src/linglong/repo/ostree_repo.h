@@ -153,9 +153,7 @@ private:
     std::unique_ptr<linglong::repo::RepoCache> cache{ nullptr };
     utils::error::Result<void> updateConfig(const api::types::v1::RepoConfig &newCfg) noexcept;
     QDir ostreeRepoDir() const noexcept;
-    QDir createLayerQDir(const package::Reference &ref,
-                         const QString &module = "binary",
-                         const QString &subRef = "") const noexcept;
+    QDir createLayerQDir(const std::string &commit) const noexcept;
 
     ClientFactory &m_clientFactory;
 };

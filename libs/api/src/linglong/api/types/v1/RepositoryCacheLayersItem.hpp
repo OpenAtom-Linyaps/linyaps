@@ -23,28 +23,25 @@ namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
+/**
+* stores the full module name with repo name and the corresponding ostree commit
+*/
+
 using nlohmann::json;
 
-struct RepositoryCacheLayersItem {
 /**
-* The commit hash of base that this item depends on. If this item is an app which installed
-* from UAB and depends on an minified base, this property should be the corresponding
-* commit hash. It means the base of app has been locked. It should be null in other
-* conditions.
+* stores the full module name with repo name and the corresponding ostree commit
 */
-std::optional<std::string> base;
+struct RepositoryCacheLayersItem {
 /**
 * ostree commit hash
 */
 std::string commit;
 PackageInfoV2 info;
 /**
-* The commit hash of runtime that this item depends on. If this item is an app which
-* installed from UAB and depends on an minified runtime, this property should be the
-* corresponding commit hash. It means the runtime of app has been locked. It should be null
-* in other conditions.
+* which repo is this app belongs to
 */
-std::optional<std::string> runtime;
+std::string repo;
 };
 }
 }

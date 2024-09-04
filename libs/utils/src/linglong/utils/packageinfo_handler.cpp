@@ -29,6 +29,7 @@ toPackageInfoV2(const api::types::v1::PackageInfo &oldInfo)
         .runtime = oldInfo.runtime,
         .schemaVersion = PACKAGE_INFO_VERSION,
         .size = oldInfo.size,
+        .uuid = std::nullopt,
         .version = oldInfo.version,
     };
 

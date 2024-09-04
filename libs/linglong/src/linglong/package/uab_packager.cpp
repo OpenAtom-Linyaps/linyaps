@@ -9,12 +9,14 @@
 #include "linglong/package/architecture.h"
 #include "linglong/utils/command/env.h"
 #include "linglong/utils/configure.h"
+#include "linglong/utils/serialize/json.h"
 
 #include <yaml-cpp/yaml.h>
 
 #include <QCryptographicHash>
 #include <QStandardPaths>
 
+#include <fstream>
 #include <unordered_set>
 #include <utility>
 
@@ -349,6 +351,7 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir) noe
         for (const auto &info : layer.entryInfoList(QDir::Files | QDir::NoDotAndDotDot)) {
             const auto &componentName = info.fileName();
 
+            // maybe we will modify info.json later, copy them all
             std::filesystem::copy(info.absoluteFilePath().toStdString(),
                                   moduleDir.absoluteFilePath(componentName).toStdString(),
                                   std::filesystem::copy_options::copy_symlinks
@@ -426,6 +429,32 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir) noe
         this->meta.layers.push_back({ .info = info, .minified = minified });
         if (info.kind == "app") {
             appID = QString::fromStdString(info.id);
+            auto hasMinifiedDeps = std::any_of(this->meta.layers.cbegin(),
+                                               this->meta.layers.cend(),
+                                               [](const api::types::v1::UabLayer &layer) {
+                                                   return layer.minified;
+                                               });
+            if (!hasMinifiedDeps) {
+                break;
+            }
+
+            // app layer is the last layer, so we could update it's packageInfo directly
+            auto appInfoPath = moduleDir.absoluteFilePath("info.json");
+            auto info =
+              linglong::utils::serialize::LoadJSONFile<linglong::api::types::v1::PackageInfoV2>(
+                appInfoPath);
+            if (!ret) {
+                return LINGLONG_ERR(info);
+            }
+            auto newInfo = *info;
+            newInfo.uuid = this->meta.uuid;
+
+            std::ofstream stream;
+            stream.open(appInfoPath.toStdString(), std::ios_base::out | std::ios_base::trunc);
+            if (!stream.is_open()) {
+                return LINGLONG_ERR("couldn't open file: " + appInfoPath);
+            }
+            stream << nlohmann::json(newInfo).dump();
         }
     }
 

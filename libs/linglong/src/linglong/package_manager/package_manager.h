@@ -32,11 +32,13 @@ public:
     PackageManager(PackageManager &&) = delete;
     auto operator=(const PackageManager &) -> PackageManager & = delete;
     auto operator=(PackageManager &&) -> PackageManager & = delete;
-    void Install(InstallTask &taskContext, const package::Reference &ref, bool devel) noexcept;
+    void Install(InstallTask &taskContext,
+                 const package::Reference &ref,
+                 const std::string &module) noexcept;
     void Update(InstallTask &taskContext,
                 const package::Reference &ref,
                 const package::Reference &newRef,
-                bool develop) noexcept;
+                const std::string &module) noexcept;
 
 public
     Q_SLOT : [[nodiscard]] auto getConfiguration() const noexcept -> QVariantMap;
@@ -55,11 +57,9 @@ Q_SIGNALS:
 private:
     QVariantMap installFromLayer(const QDBusUnixFileDescriptor &fd) noexcept;
     QVariantMap installFromUAB(const QDBusUnixFileDescriptor &fd) noexcept;
-    static utils::error::Result<api::types::v1::MinifiedInfo>
-    updateMinifiedInfo(const QFileInfo &file, const QString &appRef, const QString &uuid) noexcept;
     void pullDependency(InstallTask &taskContext,
                         const api::types::v1::PackageInfoV2 &info,
-                        bool develop) noexcept;
+                        const std::string &module) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT
     std::list<InstallTask> taskList;
 };

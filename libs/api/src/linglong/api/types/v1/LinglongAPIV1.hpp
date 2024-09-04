@@ -24,7 +24,6 @@
 #include "linglong/api/types/v1/CliContainer.hpp"
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/LayerInfo.hpp"
-#include "linglong/api/types/v1/MinifiedInfo.hpp"
 #include "linglong/api/types/v1/OciConfigurationPatch.hpp"
 #include "linglong/api/types/v1/PackageInfo.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
@@ -64,7 +63,6 @@ std::optional<BuilderProject> builderProject;
 std::optional<CliContainer> cliContainer;
 std::optional<CommonResult> commonResult;
 std::optional<LayerInfo> layerInfo;
-std::optional<MinifiedInfo> minifiedInfo;
 std::optional<OciConfigurationPatch> ociConfigurationPatch;
 std::optional<PackageInfo> packageInfo;
 std::optional<PackageInfoV2> packageInfoV2;

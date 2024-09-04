@@ -358,28 +358,6 @@ $defs:
       module:
         type: string
         description: module of package manager
-  MinifiedInfo: # minifiedInfo is an internal api and some break changes may occur in the future
-    title: MinifiedInfo
-    description: this is used to associate application with specific dependencies
-    type: object
-    required:
-      - infos
-    properties:
-      infos:
-        type: array
-        minItems: 1
-        items:
-          type: object
-          required:
-            - appRef
-            - uuid
-          properties:
-            appRef:
-              type: string
-              description: reference of application
-            uuid:
-              type: string
-              description: uuid of imported uab
   PackageInfoV2:
     title: PackageInfoV2
     description: this is the each item output of ll-cli list --json
@@ -396,6 +374,10 @@ $defs:
       - size
       - base
     properties:
+      uuid:
+        type: string
+        description: this property is only used for app which instead from UAB
+          and it should be null in other conditions.
       channel:
         type: string
         description: channel of package info
@@ -638,30 +620,20 @@ $defs:
         $ref: '#/$defs/RepoConfig'
       layers:
         title: RepositoryCacheLayers
-        type: object
-        description: stores the full module name with repo name and the corresponding ostree commit
-        additionalProperties:
-          title: RepositoryCacheLayersItem
+        type: array
+        items:
           type: object
+          description: stores the full module name with repo name and the corresponding ostree commit
+          title: RepositoryCacheLayersItem
           required:
+            - repo
             - commit
             - info
           # TODO: maybe we should add the map of module which depends by this item in the future
           properties:
-            base:
+            repo:
               type: string
-              description: The commit hash of base that this item depends on.
-                If this item is an app which installed from UAB and depends
-                on an minified base, this property should be the corresponding
-                commit hash. It means the base of app has been locked. It should
-                be null in other conditions.
-            runtime:
-              type: string
-              description: The commit hash of runtime that this item depends on.
-                If this item is an app which installed from UAB and depends
-                on an minified runtime, this property should be the corresponding
-                commit hash. It means the runtime of app has been locked. It should
-                be null in other conditions.
+              description: which repo is this app belongs to
             commit:
               type: string
               description: ostree commit hash

@@ -217,6 +217,38 @@ void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
     new_progress += (data->outstanding_writes > 0 ? (3.0 / data->outstanding_writes) : 3.0);
 }
 
+CacheRef cacheRefFromReference(const package::Reference &ref,
+                               const std::string &repo,
+                               const std::string &module = "binary")
+{
+    auto cacheRef = CacheRef{
+        .id = ref.id.toStdString(),
+        .repo = repo,
+        .channel = ref.channel.toStdString(),
+        .version = ref.version.toString().toStdString(),
+        .module = (module == "binary" ? "runtime" : module),
+    };
+
+    return cacheRef;
+}
+
+CacheRef cacheRefFromReferenceV2(const package::Reference &ref,
+                                 const std::string &repo,
+                                 const std::string &module = "binary",
+                                 const std::string &subRef = "")
+{
+    auto cacheRef = CacheRef{
+        .id = ref.id.toStdString(),
+        .repo = repo,
+        .channel = ref.channel.toStdString(),
+        .version = ref.version.toString().toStdString(),
+        .module = module,
+        .uuid = subRef,
+    };
+
+    return cacheRef;
+}
+
 QString ostreeSpecFromReference(const package::Reference &ref,
                                 const QString &module = "binary") noexcept
 {
@@ -606,12 +638,10 @@ utils::error::Result<package::Reference> clearReferenceLocal(const package::Fuzz
 
 } // namespace
 
-QDir OSTreeRepo::createLayerQDir(const package::Reference &ref,
-                                 const QString &module,
-                                 const QString &subRef) const noexcept
+QDir OSTreeRepo::createLayerQDir(const std::string &commit) const noexcept
 {
     QDir dir =
-      this->repoDir.absoluteFilePath("layers/" + ostreeSpecFromReferenceV2(ref, module, subRef));
+      this->repoDir.absoluteFilePath(QString::fromStdString("layers/" + commit));
     dir.mkpath(".");
     return dir;
 }
@@ -828,8 +858,7 @@ utils::error::Result<package::LayerDir> OSTreeRepo::importLayerDir(const package
         }
     });
 
-    auto layerDir =
-      this->createLayerQDir(*reference, QString::fromStdString(info->packageInfoV2Module), subRef);
+    auto layerDir = this->createLayerQDir((*commitID).toStdString());
     auto result = handleRepositoryUpdate(this->ostreeRepo.get(), layerDir, refspec);
     if (!result) {
         return LINGLONG_ERR(result);
@@ -1050,6 +1079,7 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
                       const QString &module) noexcept
 {
     auto refString = ostreeSpecFromReferenceV2(reference, module).toUtf8();
+    bool fallbackReference = false;
 
     LINGLONG_TRACE("pull " + refString);
 
@@ -1076,17 +1106,18 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
         auto *progress = ostree_async_progress_new_and_connect(progress_changed, (void *)&data);
         Q_ASSERT(progress != nullptr);
         // fallback to old ref
+        fallbackReference = true;
         qWarning() << gErr->message;
         refString = ostreeSpecFromReference(reference, module).toUtf8();
         qWarning() << "fallback to module runtime, pull " << refString;
 
-        char *oldRefs[] = { (char *)refString.data(), nullptr };
+        refs[0] = refString.data();
 
         g_clear_error(&gErr);
 
         status = ostree_repo_pull(this->ostreeRepo.get(),
                                   this->cfg.defaultRepo.c_str(),
-                                  oldRefs,
+                                  refs,
                                   OSTREE_REPO_PULL_FLAGS_MIRROR,
                                   progress,
                                   cancellable,
@@ -1098,16 +1129,56 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
         }
     }
 
-    transaction.addRollBack([this, &reference, &module]() noexcept {
+    transaction.addRollBack([this, &reference, &module, fallbackReference]() noexcept {
         auto result = this->remove(reference, module);
         if (!result) {
             qCritical() << result.error();
             Q_ASSERT(false);
         }
+        auto cacheRef = fallbackReference
+          ? cacheRefFromReference(reference, this->cfg.defaultRepo, module.toStdString())
+          : cacheRefFromReferenceV2(reference, this->cfg.defaultRepo, module.toStdString());
+
+        auto ret = this->cache->deleteLayerItem(cacheRef);
+        if (!ret) {
+            qCritical() << ret.error();
+            Q_ASSERT(false);
+        }
     });
 
+    g_autofree char *commit = nullptr;
+    g_autoptr(GFile) root = nullptr;
+    api::types::v1::RepositoryCacheLayersItem item;
+
+    g_clear_error(&gErr);
+    if (!ostree_repo_read_commit(this->ostreeRepo.get(), *refs, &root, &commit, cancellable, &gErr)) {
+        taskContext.reportError(LINGLONG_ERRV("ostree_repo_read_commit", gErr));
+        return;
+    }
+
+    g_autoptr(GFile) infoFile = g_file_resolve_relative_path(root, "info.json");
+
+    auto info = utils::parsePackageInfo(infoFile);
+    if (!info) {
+        taskContext.reportError(LINGLONG_ERRV(info));
+        return;
+    }
+
+    item.commit = commit;
+    item.info = *info;
+
+    auto cacheRef = fallbackReference
+      ? cacheRefFromReference(reference, this->cfg.defaultRepo, module.toStdString())
+      : cacheRefFromReferenceV2(reference, this->cfg.defaultRepo, module.toStdString());
+
+    auto ret = this->cache->addLayerItem(cacheRef, item);
+    if (!ret) {
+        taskContext.reportError(LINGLONG_ERRV(ret));
+        return;
+    }
+
     auto result = handleRepositoryUpdate(this->ostreeRepo.get(),
-                                         this->createLayerQDir(reference, module),
+                                         this->createLayerQDir(item.commit),
                                          refString);
     if (!result) {
         taskContext.reportError(LINGLONG_ERRV(result));

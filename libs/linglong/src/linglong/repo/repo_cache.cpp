@@ -118,11 +118,11 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
         g_autoptr(GFile) root = nullptr;
         api::types::v1::RepositoryCacheLayersItem item;
 
+        g_clear_error(&gErr);
         if (!ostree_repo_read_commit(&repo, ref.c_str(), &root, &commit, nullptr, &gErr)) {
             return LINGLONG_ERR("ostree_repo_read_commit", gErr);
         }
 
-        g_clear_error(&gErr);
         // ostree ls --repo repo ref, the file path of info.json is /info.json.
         g_autoptr(GFile) infoFile = g_file_resolve_relative_path(root, "info.json");
 
@@ -146,7 +146,7 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
 }
 
 utils::error::Result<void>
-RepoCache::addLayerItem(const cacheRef &ref, const api::types::v1::RepositoryCacheLayersItem &item)
+RepoCache::addLayerItem(const CacheRef &ref, const api::types::v1::RepositoryCacheLayersItem &item)
 {
     LINGLONG_TRACE("add layer item");
 
@@ -155,17 +155,23 @@ RepoCache::addLayerItem(const cacheRef &ref, const api::types::v1::RepositoryCac
     }
 
     std::string cacheRef = ref.repo.value() + ":" + ref.channel.value() + "/" + ref.id + "/"
-      + ref.version.value() + linglong::repo::cacheRef::arch + ref.module.value();
+      + ref.version.value() + linglong::repo::CacheRef::arch + ref.module.value();
 
     if (ref.uuid) {
         cacheRef += "_" + ref.uuid.value();
     }
 
     cache.layers.emplace(std::move(cacheRef), item);
+
+    auto ret = writeToDisk();
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> RepoCache::deleteLayerItem(const cacheRef &ref)
+utils::error::Result<void> RepoCache::deleteLayerItem(const CacheRef &ref)
 {
     LINGLONG_TRACE("delete layer item");
 
@@ -174,18 +180,24 @@ utils::error::Result<void> RepoCache::deleteLayerItem(const cacheRef &ref)
     }
 
     std::string cacheRef = ref.repo.value() + ":" + ref.channel.value() + "/" + ref.id + "/"
-      + ref.version.value() + linglong::repo::cacheRef::arch + ref.module.value();
+      + ref.version.value() + linglong::repo::CacheRef::arch + ref.module.value();
 
     if (ref.uuid) {
         cacheRef += "_" + ref.uuid.value();
     }
 
     cache.layers.erase(cacheRef);
+
+    auto ret = writeToDisk();
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
     return LINGLONG_OK;
 }
 
 utils::error::Result<std::vector<package::Reference>>
-RepoCache::searchLayerItem(const cacheRef &ref)
+RepoCache::searchLayerItem(const CacheRef &ref)
 {
     LINGLONG_TRACE("search layer item");
 

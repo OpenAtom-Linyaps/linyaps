@@ -17,7 +17,7 @@
 
 namespace linglong::repo {
 
-struct cacheRef
+struct CacheRef
 {
     std::string id;
     std::optional<std::string> repo; // not used currently
@@ -48,10 +48,10 @@ public:
     create(const std::filesystem::path &repoRoot,
            const api::types::v1::RepoConfig &repoConfig,
            OstreeRepo &repo);
-    utils::error::Result<void> addLayerItem(const cacheRef &ref,
+    utils::error::Result<void> addLayerItem(const CacheRef &ref,
                                             const api::types::v1::RepositoryCacheLayersItem &item);
-    utils::error::Result<void> deleteLayerItem(const cacheRef &ref);
-    utils::error::Result<std::vector<package::Reference>> searchLayerItem(const cacheRef &ref);
+    utils::error::Result<void> deleteLayerItem(const CacheRef &ref);
+    utils::error::Result<std::vector<package::Reference>> searchLayerItem(const CacheRef &ref);
 
 private:
     RepoCache() = default;

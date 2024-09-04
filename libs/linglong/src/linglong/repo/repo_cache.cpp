@@ -7,8 +7,8 @@
 #include "repo_cache.h"
 
 #include "linglong/utils/configure.h"
-#include "linglong/utils/serialize/json.h"
 #include "linglong/utils/packageinfo_handler.h"
+#include "linglong/utils/serialize/json.h"
 
 #include <fstream>
 #include <iostream>
@@ -133,12 +133,11 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
 
         item.commit = commit;
         item.info = *info;
-        std::string fullRef = this->cache.config.defaultRepo + ":" + ref;
-        this->cache.layers.insert(std::make_pair(fullRef, item));
+        this->cache.layers.emplace_back(item);
     }
 
     auto ret = writeToDisk();
-    if(!ret) {
+    if (!ret) {
         return LINGLONG_ERR(ret);
     }
 
@@ -146,23 +145,25 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
 }
 
 utils::error::Result<void>
-RepoCache::addLayerItem(const CacheRef &ref, const api::types::v1::RepositoryCacheLayersItem &item)
+RepoCache::addLayerItem(const api::types::v1::RepositoryCacheLayersItem &item)
 {
     LINGLONG_TRACE("add layer item");
 
-    if (!ref.version || !ref.repo || !ref.channel || !ref.module || ref.id.empty()) {
-        return LINGLONG_ERR("unqualified cache ref");
+    auto it = std::find_if(
+      cache.layers.begin(),
+      cache.layers.end(),
+      [&item](const api::types::v1::RepositoryCacheLayersItem &val) {
+          return !(item.commit != val.commit || item.repo != val.repo
+                   || item.info.channel != val.info.channel || item.info.id != val.info.id
+                   || item.info.version != val.info.version || item.info.arch != val.info.arch
+                   || item.info.packageInfoV2Module != val.info.packageInfoV2Module);
+      });
+
+    if (it != cache.layers.end()) {
+        return LINGLONG_ERR("item already exist");
     }
 
-    std::string cacheRef = ref.repo.value() + ":" + ref.channel.value() + "/" + ref.id + "/"
-      + ref.version.value() + linglong::repo::CacheRef::arch + ref.module.value();
-
-    if (ref.uuid) {
-        cacheRef += "_" + ref.uuid.value();
-    }
-
-    cache.layers.emplace(std::move(cacheRef), item);
-
+    cache.layers.emplace_back(item);
     auto ret = writeToDisk();
     if (!ret) {
         return LINGLONG_ERR(ret);
@@ -171,23 +172,26 @@ RepoCache::addLayerItem(const CacheRef &ref, const api::types::v1::RepositoryCac
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> RepoCache::deleteLayerItem(const CacheRef &ref)
+utils::error::Result<void>
+RepoCache::deleteLayerItem(const api::types::v1::RepositoryCacheLayersItem &item)
 {
     LINGLONG_TRACE("delete layer item");
 
-    if (!ref.version || !ref.repo || !ref.channel || !ref.module || ref.id.empty()) {
-        return LINGLONG_ERR("unqualified cache ref");
+    auto it = std::find_if(
+      cache.layers.begin(),
+      cache.layers.end(),
+      [&item](const api::types::v1::RepositoryCacheLayersItem &val) {
+          return !(item.commit != val.commit || item.repo != val.repo
+                   || item.info.channel != val.info.channel || item.info.id != val.info.id
+                   || item.info.version != val.info.version || item.info.arch != val.info.arch
+                   || item.info.packageInfoV2Module != val.info.packageInfoV2Module);
+      });
+
+    if (it == cache.layers.end()) {
+        return LINGLONG_ERR("item doesn't exist");
     }
 
-    std::string cacheRef = ref.repo.value() + ":" + ref.channel.value() + "/" + ref.id + "/"
-      + ref.version.value() + linglong::repo::CacheRef::arch + ref.module.value();
-
-    if (ref.uuid) {
-        cacheRef += "_" + ref.uuid.value();
-    }
-
-    cache.layers.erase(cacheRef);
-
+    cache.layers.erase(it);
     auto ret = writeToDisk();
     if (!ret) {
         return LINGLONG_ERR(ret);
@@ -196,98 +200,52 @@ utils::error::Result<void> RepoCache::deleteLayerItem(const CacheRef &ref)
     return LINGLONG_OK;
 }
 
-utils::error::Result<std::vector<package::Reference>>
-RepoCache::searchLayerItem(const CacheRef &ref)
+utils::error::Result<std::vector<api::types::v1::RepositoryCacheLayersItem>>
+RepoCache::searchLayerItem(const CacheRef &ref) const
 {
     LINGLONG_TRACE("search layer item");
 
-    std::vector<package::Reference> refs;
-    for (const auto &[ref, item] : cache.layers) {
-        // format: repo:channel/id/version/arch/module[_uuid]
-        auto location = ref.find(':');
-        if (location == std::string::npos) {
-            qCritical() << "invalid content of cache ref:" << QString::fromStdString(ref);
+    using itemRef = std::reference_wrapper<const api::types::v1::RepositoryCacheLayersItem>;
+    std::vector<itemRef> layers;
+    for (const auto &layer : cache.layers) {
+        if (ref.id != layer.info.id) {
             continue;
         }
 
-        std::string channel;
-        std::string id;
-        std::string version;
+        if (ref.repo && ref.repo.value() != layer.repo) {
+            continue;
+        }
 
-        auto newRef = ref.substr(location + 1); // no need to match 'repo' for now
-        std::istringstream stream{ newRef };
-        std::string component;
-        while (std::getline(stream, component, '/')) {
-            if (channel.empty()) {
-                channel = std::move(component);
+        if (ref.channel && ref.channel.value() != layer.info.channel) {
+            continue;
+        }
+
+        if (ref.version && ref.version.value() != layer.info.version) {
+            continue;
+        }
+
+        if (ref.module && ref.module.value() != layer.info.packageInfoV2Module) {
+            continue;
+        }
+
+        if (ref.uuid) {
+            if (!layer.info.uuid) {
                 continue;
             }
 
-            if (id.empty()) {
-                id = std::move(component);
+            if (ref.uuid.value() != layer.info.uuid.value()) {
                 continue;
             }
-
-            if (version.empty()) {
-                version = std::move(component);
-                continue;
-            }
-
-            break;
         }
 
-        auto packageVer = package::Version::parse(QString::fromStdString(version));
-        if (!packageVer) {
-            qCritical() << packageVer.error() << ":" << QString::fromStdString(ref);
-            continue;
-        }
-
-        auto arch = package::Architecture::currentCPUArchitecture();
-        if (!arch) {
-            qCritical() << arch.error() << ":" << QString::fromStdString(ref);
-            continue;
-        }
-
-        auto packageRef = package::Reference::create(QString::fromStdString(channel),
-                                                     QString::fromStdString(id),
-                                                     *packageVer,
-                                                     *arch);
-        if (!packageRef) {
-            qCritical() << packageRef.error() << QString::fromStdString(ref);
-            continue;
-        }
-
-        refs.emplace_back(std::move(packageRef).value());
+        layers.emplace_back(layer);
     }
 
-    auto excludeFilter = [&refs](auto pred) {
-        static_assert(std::is_invocable_r_v<bool, decltype(pred), const package::Reference &>);
-        refs.erase(std::remove_if(refs.begin(), refs.end(), pred), std::end(refs));
-    };
-
-    excludeFilter([&ref](const package::Reference &pkgRef) {
-        return ref.id != pkgRef.id.toStdString();
+    std::sort(layers.begin(), layers.end(), [](itemRef lhs, itemRef rhs) {
+        return lhs.get().info.version > rhs.get().info.version;
     });
 
-    if (ref.channel) {
-        excludeFilter([&ref](const package::Reference &pkgRef) {
-            return ref.channel != pkgRef.channel.toStdString();
-        });
-    }
-
-    if (ref.version) {
-        excludeFilter([&ref](const package::Reference &pkgRef) {
-            return ref.channel != pkgRef.channel.toStdString();
-        });
-    }
-
-    std::sort(refs.begin(),
-              refs.end(),
-              [](const package::Reference &lhs, const package::Reference &rhs) {
-                  return lhs.version > rhs.version;
-              });
-
-    return refs;
+    return std::vector<api::types::v1::RepositoryCacheLayersItem>(layers.cbegin(), layers.cend());
 }
 
 utils::error::Result<void> RepoCache::writeToDisk()

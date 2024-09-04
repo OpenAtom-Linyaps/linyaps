@@ -49,26 +49,26 @@ public:
     utils::error::Result<void> setConfig(const api::types::v1::RepoConfig &cfg) noexcept;
 
     utils::error::Result<package::LayerDir> importLayerDir(const package::LayerDir &dir,
-                                                           const QString &subRef = "") noexcept;
+                                                           const std::string &subRef = "") noexcept;
 
-    utils::error::Result<package::LayerDir> getLayerDir(const package::Reference &ref,
-                                                        const QString &module = "binary",
-                                                        const QString &subRef = "") const noexcept;
+    utils::error::Result<package::LayerDir>
+    getLayerDir(const package::Reference &ref,
+                const std::string &module = "binary",
+                const std::string &subRef = "") const noexcept;
 
     Q_DECL_DEPRECATED_X(R"(Use the "module" version)")
 
-    utils::error::Result<package::LayerDir> getLayerDir(const package::Reference &ref,
-                                                        bool develop,
-                                                        const QString &subRef = "") const noexcept
+    utils::error::Result<package::LayerDir> getLayerDir(
+      const package::Reference &ref, bool develop, const std::string &subRef = "") const noexcept
     {
         if (develop) {
-            return getLayerDir(ref, QString("develop"), subRef);
+            return getLayerDir(ref, std::string{ "develop" }, subRef);
         }
-        return getLayerDir(ref, QString("binary"), subRef);
+        return getLayerDir(ref, std::string{ "binary" }, subRef);
     }
 
     utils::error::Result<void> push(const package::Reference &reference,
-                                    const QString &module = "binary") const noexcept;
+                                    const std::string &module = "binary") const noexcept;
 
     Q_DECL_DEPRECATED_X(R"(Use the "module" version)")
 
@@ -76,9 +76,9 @@ public:
                                     bool develop) const noexcept
     {
         if (develop) {
-            return push(reference, QString("develop"));
+            return push(reference, std::string{ "develop" });
         }
-        return push(reference, QString("binary"));
+        return push(reference, std::string{ "binary" });
     }
 
     [[nodiscard]] utils::error::Result<void>
@@ -89,7 +89,7 @@ public:
 
     void pull(service::InstallTask &taskContext,
               const package::Reference &reference,
-              const QString &module = "binary") noexcept;
+              const std::string &module = "binary") noexcept;
 
     Q_DECL_DEPRECATED_X(R"(Use the "module" version)")
 
@@ -98,10 +98,10 @@ public:
               bool develop) noexcept
     {
         if (develop) {
-            pull(taskContext, reference, QString("develop"));
+            pull(taskContext, reference, std::string{ "develop" });
             return;
         }
-        pull(taskContext, reference, QString("binary"));
+        pull(taskContext, reference, std::string{ "binary" });
     }
 
     utils::error::Result<package::Reference> clearReference(
@@ -112,19 +112,19 @@ public:
     listRemote(const package::FuzzyReference &fuzzyRef) const noexcept;
 
     utils::error::Result<void> remove(const package::Reference &ref,
-                                      const QString &module = "binary",
-                                      const QString &subRef = "") noexcept;
+                                      const std::string &module = "binary",
+                                      const std::string &subRef = "") noexcept;
 
     Q_DECL_DEPRECATED_X(R"(Use the "module" version)")
 
     utils::error::Result<void> remove(const package::Reference &ref,
                                       bool develop,
-                                      const QString &subRef = "") noexcept
+                                      const std::string &subRef = "") noexcept
     {
         if (develop) {
-            return remove(ref, QString("develop"), subRef);
+            return remove(ref, std::string{ "develop" }, subRef);
         }
-        return remove(ref, QString("binary"), subRef);
+        return remove(ref, std::string{ "binary" }, subRef);
     }
 
     utils::error::Result<void> prune();

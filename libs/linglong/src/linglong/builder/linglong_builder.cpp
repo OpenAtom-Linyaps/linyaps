@@ -908,7 +908,7 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
     if (!appDir) {
         return LINGLONG_ERR(appDir);
     }
-    packager.appendLayer(*appDir);
+    packager.appendLayer(*appDir); // app layer must be the last of appended layer
 
     auto uabFile = QString{ "%1_%2_%3_%4.uab" }.arg(curRef->id,
                                                     curRef->arch.toString(),

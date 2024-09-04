@@ -33,7 +33,7 @@ public:
     Version version;
     Architecture arch;
 
-    QString toString() const noexcept;
+    [[nodiscard]] QString toString() const noexcept;
 
 private:
     Reference(const QString &channel,

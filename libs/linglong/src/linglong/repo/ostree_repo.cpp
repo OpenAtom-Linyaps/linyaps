@@ -518,11 +518,7 @@ utils::error::Result<package::Reference> clearReferenceLocal(const linglong::rep
     cacheRef.id = fuzzy.id.toStdString();
     cacheRef.channel = fuzzy.channel.value().toStdString();
 
-    auto availablePackageRet = cache.searchLayerItem(cacheRef);
-    if (!availablePackageRet) {
-        return LINGLONG_ERR(availablePackageRet);
-    }
-    const auto &availablePackage = *availablePackageRet;
+    const auto availablePackage = cache.searchLayerItem(cacheRef);
 
     if (availablePackage.empty()) {
         return LINGLONG_ERR("package not found:" % fuzzy.toString());
@@ -1238,9 +1234,7 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
                       const package::Reference &reference,
                       const std::string &module) noexcept
 {
-    bool fallbackReference = false;
     auto refString = ostreeSpecFromReferenceV2(reference, module);
-
     LINGLONG_TRACE("pull " + QString::fromStdString(refString));
 
     utils::Transaction transaction;
@@ -1258,7 +1252,7 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
     auto status = ostree_repo_pull(this->ostreeRepo.get(),
                                    this->cfg.defaultRepo.c_str(),
                                    const_cast<char **>(refs.data()), // NOLINT
-                                   OSTREE_REPO_PULL_FLAGS_MIRROR,
+                                   OSTREE_REPO_PULL_FLAGS_NONE,
                                    progress,
                                    cancellable,
                                    &gErr);
@@ -1266,20 +1260,19 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
     g_main_context_unref(threadContext);
     if (status == FALSE) {
         // fallback to old ref
-        fallbackReference = true;
         qWarning() << gErr->message;
         refString = ostreeSpecFromReference(reference, module);
         qWarning() << "fallback to module runtime, pull " << QString::fromStdString(refString);
 
-        std::array<const char *, 2> oldRefs{ refString.c_str(), nullptr };
+        refs[0] = refString.c_str();
         g_clear_error(&gErr);
 
         auto *threadContext = g_main_context_new();
         g_main_context_push_thread_default(threadContext);
         status = ostree_repo_pull(this->ostreeRepo.get(),
                                   this->cfg.defaultRepo.c_str(),
-                                  const_cast<char **>(oldRefs.data()), // NOLINT
-                                  OSTREE_REPO_PULL_FLAGS_MIRROR,
+                                  const_cast<char **>(refs.data()), // NOLINT
+                                  OSTREE_REPO_PULL_FLAGS_NONE,
                                   progress,
                                   cancellable,
                                   &gErr);
@@ -1311,6 +1304,7 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
 
     item.commit = commit;
     item.info = *info;
+    item.repo = this->cfg.defaultRepo;
 
     auto ret = this->cache->addLayerItem(item);
     if (!ret) {
@@ -1318,15 +1312,12 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
         return;
     }
 
-    transaction.addRollBack([this, &reference, &module, fallbackReference, &item]() noexcept {
+    transaction.addRollBack([this, &reference, &module, &item]() noexcept {
         auto result = this->remove(reference, module);
         if (!result) {
             qCritical() << result.error();
             Q_ASSERT(false);
         }
-        auto cacheRef = fallbackReference
-          ? cacheRefFromReference(reference, this->cfg.defaultRepo, module)
-          : cacheRefFromReferenceV2(reference, this->cfg.defaultRepo, module);
 
         auto ret = this->cache->deleteLayerItem(item);
         if (!ret) {
@@ -1384,41 +1375,10 @@ OSTreeRepo::listLocal() const noexcept
     QDir layersDir = this->repoDir.absoluteFilePath("layers");
     Q_ASSERT(layersDir.exists());
 
-    auto pushBackPkgInfos = [&pkgInfos](QDir &dir) noexcept {
-        QString binaryPkgInfoFilePath = dir.absoluteFilePath("binary/info.json");
-        if (!QFile::exists(binaryPkgInfoFilePath)) {
-            // fallback to old ref
-            binaryPkgInfoFilePath = dir.absoluteFilePath("runtime/info.json");
-        }
-        if (QFile::exists(binaryPkgInfoFilePath)) {
-            auto pkgInfo = utils::parsePackageInfo(binaryPkgInfoFilePath);
-            if (pkgInfo) {
-                pkgInfos.emplace_back(std::move(*pkgInfo));
-            }
-        }
-
-        const QString devPkgInfoFilePath = dir.absoluteFilePath("develop/info.json");
-        if (QFile::exists(devPkgInfoFilePath)) {
-            auto pkgInfo = utils::parsePackageInfo(devPkgInfoFilePath);
-            if (pkgInfo) {
-                pkgInfos.emplace_back(std::move(*pkgInfo));
-            }
-        }
-    };
-
-    for (const auto &channelDir : layersDir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
-        for (const auto &applicationInfo :
-             QDir(channelDir.absoluteFilePath()).entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
-            for (const auto &versionInfo : QDir(applicationInfo.absoluteFilePath())
-                                             .entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
-                for (const auto &architectureInfo :
-                     QDir(versionInfo.absoluteFilePath())
-                       .entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
-                    QDir architectureDir = architectureInfo.absoluteFilePath();
-                    pushBackPkgInfos(architectureDir);
-                }
-            }
-        }
+    CacheRef cacheRef{ .id = "" };
+    auto items = this->cache->searchLayerItem(cacheRef);
+    for (const auto &item : items) {
+        pkgInfos.emplace_back(item.info);
     }
 
     return pkgInfos;

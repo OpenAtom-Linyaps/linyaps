@@ -20,7 +20,6 @@ configure_files(
   libexec/linglong/fetch-dsc-source
   libexec/linglong/fetch-file-source
   libexec/linglong/fetch-git-source
-  libexec/linglong/upgrade-all
   lib/linglong/container/config.d/10-basics.json
   lib/linglong/container/config.d/25-host-rootfs.json
   lib/linglong/container/config.d/25-host-statics.json
@@ -31,8 +30,6 @@ configure_files(
   lib/systemd/system/org.deepin.linglong.PackageManager.service
   lib/systemd/system-preset/91-linglong.preset
   lib/systemd/user/linglong-session-helper.service
-  lib/systemd/user/linglong-upgrade.service
-  lib/systemd/user/linglong-upgrade.timer
   lib/sysusers.d/linglong.conf
   lib/tmpfiles.d/linglong.conf
   script/linglong-repair-tool

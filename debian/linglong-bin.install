@@ -8,8 +8,6 @@ usr/lib/linglong/*
 usr/lib/systemd/system-environment-generators/61-linglong
 usr/lib/systemd/system/org.deepin.linglong.PackageManager.service lib/systemd/system/
 usr/lib/systemd/user/linglong-session-helper.service
-usr/lib/systemd/user/linglong-upgrade.service
-usr/lib/systemd/user/linglong-upgrade.timer
 usr/lib/sysusers.d/linglong.conf
 usr/lib/tmpfiles.d/linglong.conf
 usr/libexec/linglong/00-id-mapping-static
@@ -21,7 +19,6 @@ usr/libexec/linglong/40-host-ipc-static
 usr/libexec/linglong/90-legacy-static
 usr/libexec/linglong/ll-package-manager
 usr/libexec/linglong/ll-session-helper
-usr/libexec/linglong/upgrade-all
 usr/share/applications/linglong-repair-tool.desktop
 usr/share/bash-completion/completions/ll-cli
 usr/share/dbus-1/system-services/org.deepin.linglong.PackageManager.service

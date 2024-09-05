@@ -92,7 +92,6 @@ cd build
 %{_libexecdir}/%{name}/30-user-home-static
 %{_libexecdir}/%{name}/40-host-ipc-static
 %{_libexecdir}/%{name}/90-legacy-static
-%{_libexecdir}/%{name}/upgrade-all
 %{_libexecdir}/%{name}/ll-session-helper
 %{_datadir}/bash-completion/completions/ll-cli
 %{_datadir}/dbus-1/system-services/*.service

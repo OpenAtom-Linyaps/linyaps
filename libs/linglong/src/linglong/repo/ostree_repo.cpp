@@ -217,38 +217,6 @@ void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
     new_progress += (data->outstanding_writes > 0 ? (3.0 / data->outstanding_writes) : 3.0);
 }
 
-CacheRef cacheRefFromReference(const package::Reference &ref,
-                               const std::string &repo,
-                               const std::string &module = "binary")
-{
-    auto cacheRef = CacheRef{
-        .id = ref.id.toStdString(),
-        .repo = repo,
-        .channel = ref.channel.toStdString(),
-        .version = ref.version.toString().toStdString(),
-        .module = (module == "binary" ? "runtime" : module),
-    };
-
-    return cacheRef;
-}
-
-CacheRef cacheRefFromReferenceV2(const package::Reference &ref,
-                                 const std::string &repo,
-                                 const std::string &module = "binary",
-                                 const std::string &subRef = "")
-{
-    auto cacheRef = CacheRef{
-        .id = ref.id.toStdString(),
-        .repo = repo,
-        .channel = ref.channel.toStdString(),
-        .version = ref.version.toString().toStdString(),
-        .module = module,
-        .uuid = subRef,
-    };
-
-    return cacheRef;
-}
-
 std::string ostreeSpecFromReference(const package::Reference &ref,
                                     std::string module = "binary") noexcept
 {
@@ -262,16 +230,16 @@ std::string ostreeSpecFromReference(const package::Reference &ref,
 
 std::string ostreeSpecFromReferenceV2(const package::Reference &ref,
                                       const std::string &module = "binary",
-                                      const std::string &subRef = "") noexcept
+                                      const std::optional<std::string> &subRef = "") noexcept
 {
     auto ret = ref.channel.toStdString() + "/" + ref.id.toStdString() + "/"
       + ref.version.toString().toStdString() + "/" + ref.arch.toString().toStdString() + module;
 
-    if (subRef.empty()) {
+    if (!subRef) {
         return ret;
     }
 
-    return ret + "_" + subRef;
+    return ret + "_" + subRef.value();
 }
 
 utils::error::Result<void> removeOstreeRef(OstreeRepo *repo, const char *ref) noexcept
@@ -915,7 +883,7 @@ utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRep
 
 utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref,
                                               const std::string &module,
-                                              const std::string &subRef) noexcept
+                                              const std::optional<std::string> &subRef) noexcept
 {
     LINGLONG_TRACE("remove " + ref.toString());
 
@@ -1510,19 +1478,26 @@ void OSTreeRepo::updateSharedInfo() noexcept
 
 auto OSTreeRepo::getLayerDir(const package::Reference &ref,
                              const std::string &module,
-                             const std::string &subRef) const noexcept
+                             const std::optional<std::string> &subRef) const noexcept
   -> utils::error::Result<package::LayerDir>
 {
     LINGLONG_TRACE("get dir of " + ref.toString());
-    QDir dir = this->repoDir.absoluteFilePath(
-      QString::fromStdString("layers/" + ostreeSpecFromReferenceV2(ref, module, subRef)));
-    if (!dir.exists()) {
-        dir.setPath(this->repoDir.absoluteFilePath(
-          QString::fromStdString("layers/" + ostreeSpecFromReference(ref, module))));
+
+    linglong::repo::CacheRef cacheRef{ .id = ref.id.toStdString(),
+                                       .repo = std::nullopt,
+                                       .channel = ref.channel.toStdString(),
+                                       .version = ref.version.toString().toStdString(),
+                                       .module = module,
+                                       .uuid = subRef };
+    auto ret = cache->searchLayerItem(cacheRef);
+    if (auto count = ret.size(); count != 1) {
+        return LINGLONG_ERR("ambiguous ref, matched count:" + QString::number(count));
     }
 
+    const auto &item = ret.front();
+    QDir dir = this->repoDir.absoluteFilePath(QString::fromStdString("layers/" + item.commit));
     if (!dir.exists()) {
-        return LINGLONG_ERR(ref.toString() + " not exist.");
+        return LINGLONG_ERR(ref.toString() + "doesn't exist");
     }
 
     return dir.absolutePath();

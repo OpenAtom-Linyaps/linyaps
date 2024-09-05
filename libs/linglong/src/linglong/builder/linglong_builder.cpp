@@ -113,7 +113,7 @@ fetchSources(const std::vector<api::types::v1::BuilderProjectSource> &sources,
 
 utils::error::Result<package::Reference> pullDependency(const package::FuzzyReference &fuzzyRef,
                                                         repo::OSTreeRepo &repo,
-                                                        bool develop,
+                                                        const std::string &module,
                                                         bool onlyLocal) noexcept
 {
     LINGLONG_TRACE("pull " + fuzzyRef.toString());
@@ -131,27 +131,27 @@ utils::error::Result<package::Reference> pullDependency(const package::FuzzyRefe
         return LINGLONG_ERR(ref);
     }
     // 如果依赖已存在，则直接使用
-    auto baseLayerDir = repo.getLayerDir(*ref, develop);
+    auto baseLayerDir = repo.getLayerDir(*ref, module);
     if (baseLayerDir) {
         return *ref;
     }
 
     auto tmpTask = service::InstallTask::createTemporaryTask();
-    auto partChanged = [&ref, develop](const QString &,
+    auto partChanged = [&ref, &module](const QString &,
                                        const QString &percentage,
                                        const QString &,
                                        service::InstallTask::Status) {
         printReplacedText(QString("%1%2%3%4 %5")
                             .arg(ref->id, -25)                        // NOLINT
                             .arg(ref->version.toString(), -15)        // NOLINT
-                            .arg(develop ? "develop" : "binary", -15) // NOLINT
+                            .arg(QString::fromStdString(module), -15) // NOLINT
                             .arg("downloading")
                             .arg(percentage)
                             .toStdString(),
                           2);
     };
     QObject::connect(&tmpTask, &service::InstallTask::PartChanged, partChanged);
-    repo.pull(tmpTask, *ref, develop);
+    repo.pull(tmpTask, *ref, module);
     if (tmpTask.currentStatus() == service::InstallTask::Status::Failed) {
         return LINGLONG_ERR("pull " + ref->toString() + " failed",
                             std::move(tmpTask).currentError());
@@ -161,7 +161,7 @@ utils::error::Result<package::Reference> pullDependency(const package::FuzzyRefe
 
 utils::error::Result<package::Reference> pullDependency(const QString &fuzzyRefStr,
                                                         repo::OSTreeRepo &repo,
-                                                        bool develop,
+                                                        const std::string &module,
                                                         bool onlyLocal) noexcept
 {
     LINGLONG_TRACE("pull " + fuzzyRefStr);
@@ -170,7 +170,7 @@ utils::error::Result<package::Reference> pullDependency(const QString &fuzzyRefS
         return LINGLONG_ERR(fuzzyRef);
     }
 
-    return pullDependency(*fuzzyRef, repo, develop, onlyLocal);
+    return pullDependency(*fuzzyRef, repo, module, onlyLocal);
 }
 
 // 拆分develop和binary的文件
@@ -419,13 +419,13 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         fuzzyRuntime = *fuzzyRef;
         auto ref = pullDependency(*fuzzyRuntime,
                                   this->repo,
-                                  true,
+                                  "develop",
                                   cfg.skipPullDepend.has_value() && *cfg.skipPullDepend);
         if (!ref) {
             return LINGLONG_ERR("pull runtime", ref);
         }
         runtime = *ref;
-        auto ret = this->repo.getLayerDir(*runtime, true);
+        auto ret = this->repo.getLayerDir(*runtime, "develop");
         if (!ret.has_value()) {
             return LINGLONG_ERR("get runtime layer dir", ret);
         }
@@ -446,12 +446,12 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     }
     auto base = pullDependency(*fuzzyBase,
                                this->repo,
-                               true,
+                               "develop",
                                cfg.skipPullDepend.has_value() && *cfg.skipPullDepend);
     if (!base) {
         return LINGLONG_ERR("pull base", base);
     }
-    auto baseLayerDir = this->repo.getLayerDir(*base, true);
+    auto baseLayerDir = this->repo.getLayerDir(*base, "develop");
     if (!baseLayerDir) {
         return LINGLONG_ERR(baseLayerDir);
     }
@@ -810,7 +810,7 @@ set -e
                       2);
     qDebug() << "import develop to layers";
     package::LayerDir developOutputLayerDir = developOutput.absoluteFilePath("..");
-    result = this->repo.remove(*ref, true);
+    result = this->repo.remove(*ref, "develop");
     if (!result) {
         qWarning() << "remove" << ref->toString() << result.error().message();
     }
@@ -856,7 +856,7 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
 
     auto baseRef = pullDependency(QString::fromStdString(this->project.base),
                                   this->repo,
-                                  false,
+                                  "binary",
                                   cfg.skipPullDepend.has_value() && *cfg.skipPullDepend);
     if (!baseRef) {
         return LINGLONG_ERR(baseRef);
@@ -870,7 +870,7 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
     if (this->project.runtime) {
         auto ref = pullDependency(QString::fromStdString(*this->project.runtime),
                                   this->repo,
-                                  false,
+                                  "binary",
                                   cfg.skipPullDepend.has_value() && *cfg.skipPullDepend);
         if (!ref) {
             return LINGLONG_ERR(ref);
@@ -931,7 +931,7 @@ utils::error::Result<void> Builder::exportLayer(const QString &destination)
                                         ref->arch.toString(),
                                         "binary");
 
-    auto developLayerDir = this->repo.getLayerDir(*ref, true);
+    auto developLayerDir = this->repo.getLayerDir(*ref, "develop");
     const auto develLayerPath = QString("%1/%2_%3_%4_%5.layer")
                                   .arg(destDir.absolutePath(),
                                        ref->id,
@@ -1061,12 +1061,12 @@ utils::error::Result<void> Builder::run(const QStringList &args)
 
     auto baseRef = pullDependency(QString::fromStdString(this->project.base),
                                   this->repo,
-                                  false,
+                                  "binary",
                                   cfg.skipPullDepend.has_value() && *cfg.skipPullDepend);
     if (!baseRef) {
         return LINGLONG_ERR(baseRef);
     }
-    auto baseDir = this->repo.getLayerDir(*baseRef, false);
+    auto baseDir = this->repo.getLayerDir(*baseRef, "binary");
     if (!baseDir) {
         return LINGLONG_ERR(baseDir);
     }
@@ -1075,12 +1075,12 @@ utils::error::Result<void> Builder::run(const QStringList &args)
     if (this->project.runtime) {
         auto ref = pullDependency(QString::fromStdString(*this->project.runtime),
                                   this->repo,
-                                  false,
+                                  "binary",
                                   cfg.skipPullDepend.has_value() && *cfg.skipPullDepend);
         if (!ref) {
             return LINGLONG_ERR(ref);
         }
-        auto dir = this->repo.getLayerDir(*ref, false);
+        auto dir = this->repo.getLayerDir(*ref, "binary");
         if (!dir) {
             return LINGLONG_ERR(dir);
         }

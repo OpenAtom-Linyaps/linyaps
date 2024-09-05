@@ -603,11 +603,9 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
         return toDBusReply(-1, fuzzyRef->toString() + " not installed.");
     }
 
-    auto develop = paras->package.packageManager1PackageModule.value_or("runtime") == "develop";
-
+    auto module = paras->package.packageManager1PackageModule.value_or("binary");
     this->repo.unexportReference(*ref);
-
-    auto result = this->repo.remove(*ref, develop);
+    auto result = this->repo.remove(*ref, module);
     if (!result) {
         return toDBusReply(result);
     }

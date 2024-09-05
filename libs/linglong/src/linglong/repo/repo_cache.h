@@ -53,7 +53,7 @@ public:
     deleteLayerItem(const api::types::v1::RepositoryCacheLayersItem &item);
     utils::error::Result<void>
     updateLayerItem(const api::types::v1::RepositoryCacheLayersItem &item);
-    [[nodiscard]] utils::error::Result<std::vector<api::types::v1::RepositoryCacheLayersItem>>
+    [[nodiscard]] std::vector<api::types::v1::RepositoryCacheLayersItem>
     searchLayerItem(const CacheRef &ref) const;
 
 private:

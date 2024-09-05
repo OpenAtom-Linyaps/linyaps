@@ -77,13 +77,13 @@ cd build
 %{_bindir}/llpkg
 %{_bindir}/linglong-repair-tool
 %{_prefix}/lib/%{name}/container/*
+%{_prefix}/lib/%{name}/generate-xdg-data-dirs.sh
 %{_prefix}/lib/sysusers.d/*.conf
 %{_prefix}/lib/tmpfiles.d/*.conf
 %{_prefix}/lib/systemd/system/*.service
 %{_prefix}/lib/systemd/system-preset/*.preset
 %{_prefix}/lib/systemd/user/*
 %{_prefix}/lib/systemd/system-environment-generators/*
-%{_prefix}/lib/systemd/user-environment-generators/*
 %{_libexecdir}/%{name}/ll-package-manager
 %{_libexecdir}/%{name}/00-id-mapping-static
 %{_libexecdir}/%{name}/05-initialize-static

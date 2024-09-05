@@ -133,6 +133,13 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
 
         item.commit = commit;
         item.info = *info;
+        size_t pos = ref.find(":");
+        if (pos != std::string::npos) {
+            item.repo = ref.substr(0, pos);
+        } else {
+            std::cout << "invalid ref: " << ref;
+            continue;
+        }
         this->cache.layers.emplace_back(item);
     }
 
@@ -200,14 +207,18 @@ RepoCache::deleteLayerItem(const api::types::v1::RepositoryCacheLayersItem &item
     return LINGLONG_OK;
 }
 
-utils::error::Result<std::vector<api::types::v1::RepositoryCacheLayersItem>>
+std::vector<api::types::v1::RepositoryCacheLayersItem>
 RepoCache::searchLayerItem(const CacheRef &ref) const
 {
-    LINGLONG_TRACE("search layer item");
-
     using itemRef = std::reference_wrapper<const api::types::v1::RepositoryCacheLayersItem>;
     std::vector<itemRef> layers;
     for (const auto &layer : cache.layers) {
+        // if id is empty, return all items.
+        if (ref.id.empty()) {
+            layers.emplace_back(layer);
+            continue;
+        }
+
         if (ref.id != layer.info.id) {
             continue;
         }
@@ -250,7 +261,7 @@ RepoCache::searchLayerItem(const CacheRef &ref) const
 
 utils::error::Result<void> RepoCache::writeToDisk()
 {
-    LINGLONG_TRACE("save repo cache to");
+    LINGLONG_TRACE("save repo cache");
 
     auto ofs = std::ofstream(this->configPath, std::ofstream::out | std::ofstream::trunc);
     if (!ofs.is_open()) {

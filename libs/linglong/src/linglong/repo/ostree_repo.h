@@ -50,14 +50,14 @@ public:
     [[nodiscard]] const api::types::v1::RepoConfig &getConfig() const noexcept;
     utils::error::Result<void> setConfig(const api::types::v1::RepoConfig &cfg) noexcept;
 
-    utils::error::Result<package::LayerDir> importLayerDir(const package::LayerDir &dir,
-                                                           const std::string &subRef = "") noexcept;
+    utils::error::Result<package::LayerDir>
+    importLayerDir(const package::LayerDir &dir,
+                   const std::optional<std::string> &subRef = std::nullopt) noexcept;
 
     [[nodiscard]] utils::error::Result<package::LayerDir>
     getLayerDir(const package::Reference &ref,
                 const std::string &module = "binary",
                 const std::optional<std::string> &subRef = std::nullopt) const noexcept;
-
     [[nodiscard]] utils::error::Result<void>
     push(const package::Reference &reference, const std::string &module = "binary") const noexcept;
 
@@ -107,11 +107,22 @@ private:
     std::unique_ptr<OstreeRepo, OstreeRepoDeleter> ostreeRepo = nullptr;
     QDir repoDir;
     std::unique_ptr<linglong::repo::RepoCache> cache{ nullptr };
+    ClientFactory &m_clientFactory;
+
     utils::error::Result<void> updateConfig(const api::types::v1::RepoConfig &newCfg) noexcept;
     QDir ostreeRepoDir() const noexcept;
     QDir createLayerQDir(const std::string &commit) const noexcept;
+    utils::error::Result<void> handleRepositoryUpdate(
+      QDir layerDir, const api::types::v1::RepositoryCacheLayersItem &layer) noexcept;
+    utils::error::Result<void>
+    removeOstreeRef(const api::types::v1::RepositoryCacheLayersItem &layer) noexcept;
+    [[nodiscard]] utils::error::Result<package::LayerDir>
+    getLayerDir(const api::types::v1::RepositoryCacheLayersItem &layer) const noexcept;
 
-    ClientFactory &m_clientFactory;
+    [[nodiscard]] utils::error::Result<api::types::v1::RepositoryCacheLayersItem>
+    getLayerItem(const package::Reference &ref,
+                 const std::string &module,
+                 const std::optional<std::string> &subRef = std::nullopt) const noexcept;
 };
 
 } // namespace linglong::repo

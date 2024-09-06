@@ -86,6 +86,11 @@ RepoCache::create(const std::filesystem::path &repoRoot,
     return repoCache;
 }
 
+bool RepoCache::isLayerEmpty() 
+{
+    return this->cache.layers.empty();
+}
+
 utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoConfig &repoConfig,
                                                    OstreeRepo &repo)
 {

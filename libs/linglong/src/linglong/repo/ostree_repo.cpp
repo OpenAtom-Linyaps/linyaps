@@ -1205,9 +1205,7 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
     Q_ASSERT(progress != nullptr);
 
     g_autoptr(GError) gErr = nullptr;
-
-    auto threadContext = g_main_context_new();
-    g_main_context_push_thread_default(threadContext);
+    // 这里不能使用g_main_context_push_thread_default，因为会阻塞Qt的事件循环
     auto status = ostree_repo_pull(this->ostreeRepo.get(),
                                    this->cfg.defaultRepo.c_str(),
                                    refs,
@@ -1216,8 +1214,9 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
                                    cancellable,
                                    &gErr);
     ostree_async_progress_finish(progress);
-    g_main_context_unref(threadContext);
     if (status == FALSE) {
+        auto *progress = ostree_async_progress_new_and_connect(progress_changed, (void *)&data);
+        Q_ASSERT(progress != nullptr);
         // fallback to old ref
         qWarning() << gErr->message;
         refString = ostreeSpecFromReference(reference, module).toUtf8();
@@ -1227,8 +1226,6 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
 
         g_clear_error(&gErr);
 
-        auto threadContext = g_main_context_new();
-        g_main_context_push_thread_default(threadContext);
         status = ostree_repo_pull(this->ostreeRepo.get(),
                                   this->cfg.defaultRepo.c_str(),
                                   oldRefs,
@@ -1237,7 +1234,6 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
                                   cancellable,
                                   &gErr);
         ostree_async_progress_finish(progress);
-        g_main_context_unref(threadContext);
         if (status == FALSE) {
             taskContext.reportError(LINGLONG_ERRV("ostree_repo_pull", gErr));
             return;
@@ -1535,8 +1531,6 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
 
     auto entriesDir = QDir(this->repoDir.absoluteFilePath("entries/share"));
     if (!entriesDir.exists()) {
-        // entries directory should exists.
-        Q_ASSERT(false);
         entriesDir.mkpath(".");
     }
 
@@ -1584,7 +1578,6 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
 
         if (!entriesDir.mkpath(parentDirForLinkPath)) {
             qCritical() << "Failed to mkpath" << entriesDir.absoluteFilePath(parentDirForLinkPath);
-            Q_ASSERT(false);
         }
 
         QDir parentDir(entriesDir.absoluteFilePath(parentDirForLinkPath));

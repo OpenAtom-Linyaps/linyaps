@@ -30,7 +30,6 @@ public:
     PackageManager(PackageManager &&) = delete;
     auto operator=(const PackageManager &) -> PackageManager & = delete;
     auto operator=(PackageManager &&) -> PackageManager & = delete;
-    void Install(InstallTask &taskContext, const package::Reference &ref, bool devel) noexcept;
     void Update(InstallTask &taskContext,
                 const package::Reference &ref,
                 const package::Reference &newRef,
@@ -40,14 +39,16 @@ public
     Q_SLOT : auto getConfiguration() const noexcept -> QVariantMap;
     auto setConfiguration(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Install(const QVariantMap &parameters) noexcept -> QVariantMap;
-    auto InstallFromFile(const QDBusUnixFileDescriptor &fd,
-                         const QString &fileType) noexcept -> QVariantMap;
+    void installRef(InstallTask &taskContext, const package::Reference &ref, bool devel) noexcept;
+    auto InstallFromFile(const QDBusUnixFileDescriptor &fd, const QString &fileType) noexcept
+      -> QVariantMap;
     auto Uninstall(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Update(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Search(const QVariantMap &parameters) noexcept -> QVariantMap;
     void CancelTask(const QString &taskID) noexcept;
 
 Q_SIGNALS:
+    void TaskListChanged(QString taskID);
     void TaskChanged(QString taskID, QString percentage, QString message, int status);
 
 private:
@@ -60,6 +61,8 @@ private:
                         bool develop) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT
     std::list<InstallTask> taskList;
+    // 正在运行的任务ID
+    QString runningTaskID;
 };
 
 } // namespace linglong::service

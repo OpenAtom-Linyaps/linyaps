@@ -10,6 +10,7 @@
 #include "linglong/package/layer_file.h"
 #include "linglong/package/layer_packager.h"
 #include "linglong/package/uab_file.h"
+#include "linglong/package_manager/task.h"
 #include "linglong/utils/command/env.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/packageinfo_handler.h"
@@ -24,6 +25,9 @@
 #include <QJsonArray>
 #include <QMetaObject>
 #include <QSettings>
+
+#include <algorithm>
+#include <utility>
 
 namespace linglong::service {
 
@@ -77,6 +81,43 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo, QObject *parent
     : QObject(parent)
     , repo(repo)
 {
+    // exec install on task list changed signal
+    connect(
+      this,
+      &PackageManager::TaskListChanged,
+      this,
+      [this](const QString &taskID) {
+          // notify task waiting
+          if (!this->runningTaskID.isEmpty()) {
+              for (auto &task : taskList) {
+                  // skip tasks without job
+                  if (!task.getJob().has_value() || task.taskID() == runningTaskID) {
+                      continue;
+                  }
+                  auto msg = QString("Waiting for the other tasks");
+                  task.updateStatus(InstallTask::Queued, msg);
+              }
+              return;
+          }
+          // start next task
+          this->runningTaskID = taskID;
+          if (this->taskList.empty()) {
+              return;
+          };
+          for (auto task = taskList.begin(); task != taskList.end(); ++task) {
+              if (!task->getJob().has_value() || task->currentStatus() != InstallTask::Queued) {
+                  continue;
+              }
+              // execute the task
+              auto func = *task->getJob();
+              func();
+              this->runningTaskID = "";
+              taskList.erase(task);
+              Q_EMIT this->TaskListChanged("");
+              return;
+          }
+      },
+      Qt::QueuedConnection);
 }
 
 auto PackageManager::getConfiguration() const noexcept -> QVariantMap
@@ -227,11 +268,8 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
           this->repo.exportReference(packageRef);
           taskRef.updateStatus(InstallTask::Success, "install layer successfully");
       };
-
-    QMetaObject::invokeMethod(QCoreApplication::instance(),
-                              std::move(installer),
-                              Qt::QueuedConnection);
-
+    taskRef.setJob(std::move(installer));
+    Q_EMIT TaskListChanged(taskRef.taskID());
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1ResultWithTaskID{
       .taskID = taskRef.taskID().toStdString(),
       .code = 0,
@@ -535,10 +573,8 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
           taskRef.updateStatus(InstallTask::Success, "install uab successfully");
       };
 
-    QMetaObject::invokeMethod(QCoreApplication::instance(),
-                              std::move(installer),
-                              Qt::QueuedConnection);
-
+    taskRef.setJob(std::move(installer));
+    Q_EMIT TaskListChanged(taskRef.taskID());
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1ResultWithTaskID{
       .taskID = taskRef.taskID().toStdString(),
       .code = 0,
@@ -606,25 +642,16 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
                              % QString::fromStdString(curModule) % " is being operated");
     }
 
+    // append to the task list
     auto &taskRef = this->taskList.emplace_back(std::move(task));
     connect(&taskRef, &InstallTask::TaskChanged, this, &PackageManager::TaskChanged);
 
-    QMetaObject::invokeMethod(
-      QCoreApplication::instance(),
-      [this, reference, &taskRef, isDevelop] {
-          auto _ = utils::finally::finally([this, reference, &taskRef]() {
-              auto elem = std::find(this->taskList.begin(), this->taskList.end(), taskRef);
-              if (elem == this->taskList.end()) {
-                  qCritical() << "the status of package manager is invalid";
-                  return;
-              }
-              this->taskList.erase(elem);
-          });
-
-          this->Install(taskRef, reference, isDevelop);
-      },
-      Qt::QueuedConnection);
-
+    taskRef.setJob([this, &taskRef, reference, isDevelop]() {
+        this->installRef(taskRef, reference, isDevelop);
+    });
+    // notify task list change
+    Q_EMIT TaskListChanged(taskRef.taskID());
+    qWarning() << "current task queue size:" << this->taskList.size();
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1ResultWithTaskID{
       .taskID = taskRef.taskID().toStdString(),
       .code = 0,
@@ -632,9 +659,9 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     });
 }
 
-void PackageManager::Install(InstallTask &taskContext,
-                             const package::Reference &ref,
-                             bool develop) noexcept
+void PackageManager::installRef(InstallTask &taskContext,
+                                const package::Reference &ref,
+                                bool develop) noexcept
 {
     LINGLONG_TRACE("install " + ref.toString());
 
@@ -781,23 +808,10 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
 
     auto &taskRef = this->taskList.emplace_back(std::move(task));
     connect(&taskRef, &InstallTask::TaskChanged, this, &PackageManager::TaskChanged);
-
-    QMetaObject::invokeMethod(
-      QCoreApplication::instance(),
-      [this, reference, newReference, &taskRef, isDevelop] {
-          auto removeTask = utils::finally::finally([&taskRef, this] {
-              auto elem = std::find(this->taskList.begin(), this->taskList.end(), taskRef);
-              if (elem == this->taskList.end()) {
-                  qCritical() << "the status of package manager is invalid";
-                  return;
-              }
-              this->taskList.erase(elem);
-          });
-
-          this->Update(taskRef, reference, newReference, isDevelop);
-      },
-      Qt::QueuedConnection);
-
+    taskRef.setJob([this, &taskRef, reference, newReference, isDevelop]() {
+        this->Update(taskRef, reference, newReference, isDevelop);
+    });
+    Q_EMIT TaskListChanged(taskRef.taskID());
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1ResultWithTaskID{
       .taskID = taskRef.taskID().toStdString(),
       .code = 0,
@@ -814,7 +828,7 @@ void PackageManager::Update(InstallTask &taskContext,
 
     utils::Transaction t;
 
-    this->Install(taskContext, newRef, develop);
+    this->installRef(taskContext, newRef, develop);
     if (taskContext.currentStatus() == InstallTask::Failed
         || taskContext.currentStatus() == InstallTask::Canceled) {
         return;

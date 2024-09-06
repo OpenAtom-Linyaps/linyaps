@@ -14,6 +14,9 @@
 #include <QString>
 #include <QUuid>
 
+#include <functional>
+#include <optional>
+
 namespace linglong::service {
 
 class InstallTask : public QObject
@@ -73,6 +76,10 @@ public:
 
     [[nodiscard]] const QString &layer() const noexcept { return m_layer; }
 
+    auto getJob() { return m_job; }
+
+    void setJob(std::function<void()> job) { m_job = job; };
+
 Q_SIGNALS:
     void
     TaskChanged(QString taskID, QString percentage, QString message, Status status, QPrivateSignal);
@@ -88,7 +95,7 @@ private:
     QUuid m_taskID;
     QString m_layer;
     GCancellable *m_cancelFlag{ nullptr };
-
+    std::optional<std::function<void()>> m_job;
     inline static QMap<Status, double> partsMap{ { Queued, 0 },       { Canceled, 0 },
                                                  { preInstall, 10 },  { installRuntime, 20 },
                                                  { installBase, 20 }, { installApplication, 20 },

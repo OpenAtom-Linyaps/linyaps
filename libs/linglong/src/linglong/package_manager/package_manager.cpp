@@ -901,7 +901,8 @@ void PackageManager::pullDependency(InstallTask &taskContext,
 
         auto runtime = this->repo.clearReference(*fuzzyRuntime,
                                                  {
-                                                   .forceRemote = true // NOLINT
+                                                   .forceRemote = false,
+                                                   .fallbackToRemote = true,
                                                  });
         if (!runtime) {
             taskContext.updateStatus(InstallTask::Failed, runtime.error().message());
@@ -924,8 +925,7 @@ void PackageManager::pullDependency(InstallTask &taskContext,
                 return;
             }
 
-            auto runtimeRef = *runtime;
-            transaction.addRollBack([this, runtimeRef, develop]() noexcept {
+            transaction.addRollBack([this, runtimeRef = *runtime, develop]() noexcept {
                 auto result = this->repo.remove(runtimeRef, develop);
                 if (!result) {
                     qCritical() << result.error();
@@ -943,7 +943,8 @@ void PackageManager::pullDependency(InstallTask &taskContext,
 
     auto base = this->repo.clearReference(*fuzzyBase,
                                           {
-                                            .forceRemote = true // NOLINT
+                                            .forceRemote = false,
+                                            .fallbackToRemote = true,
                                           });
     if (!base) {
         taskContext.updateStatus(InstallTask::Failed, LINGLONG_ERRV(base).message());

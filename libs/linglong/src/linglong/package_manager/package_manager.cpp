@@ -209,10 +209,13 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
               return;
           }
 
-          pullDependency(taskRef, *info, isDevelop);
-          if (taskRef.currentStatus() == InstallTask::Failed
-              || taskRef.currentStatus() == InstallTask::Canceled) {
-              return;
+          if (info->kind == "app") {
+              pullDependency(taskRef, *info, isDevelop);
+
+              if (taskRef.currentStatus() == InstallTask::Failed
+                  || taskRef.currentStatus() == InstallTask::Canceled) {
+                  return;
+              }
           }
 
           auto result = this->repo.importLayerDir(*layerDir);

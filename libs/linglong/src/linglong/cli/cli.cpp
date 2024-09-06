@@ -204,7 +204,7 @@ int Cli::run(std::map<std::string, docopt::value> &args)
 
         auto runtimeLayerDirRet = this->repository.getLayerDir(*runtimeRef,
                                                                std::string{ "binary" },
-                                                               info->uuid.value_or(""));
+                                                               info->uuid);
         if (!runtimeLayerDirRet) {
             this->printer.printErr(runtimeLayerDirRet.error());
             return -1;
@@ -230,7 +230,7 @@ int Cli::run(std::map<std::string, docopt::value> &args)
     }
 
     auto baseLayerDir =
-      this->repository.getLayerDir(*baseRef, std::string{ "binary" }, info->uuid.value_or(""));
+      this->repository.getLayerDir(*baseRef, std::string{ "binary" }, info->uuid);
     if (!baseLayerDir) {
         this->printer.printErr(LINGLONG_ERRV(baseLayerDir));
         return -1;

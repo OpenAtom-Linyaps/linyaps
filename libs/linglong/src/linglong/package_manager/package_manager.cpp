@@ -497,7 +497,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
                                          {
                                            .fallbackToRemote = false // NOLINT
                                          });
-    auto curModule = paras->package.packageManager1PackageModule.value_or("runtime");
+    auto curModule = paras->package.packageManager1PackageModule.value_or("binary");
 
     if (ref) {
         auto layerDir = this->repo.getLayerDir(*ref, curModule);

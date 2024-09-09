@@ -165,7 +165,7 @@ int main(int argc, char **argv)
           } else {
               // call WaitForAvailable first, maybe ll-package-manager is processing update
               // waiting for the update task complete
-              QDBusInterface iface("org.deepin.linglong.Migrate1",
+              QDBusInterface iface("org.deepin.linglong.PackageManager1",
                                    "/org/deepin/linglong/Migrate1",
                                    "org.deepin.linglong.Migrate1",
                                    pkgManConn);
@@ -174,7 +174,7 @@ int main(int argc, char **argv)
               if (!migrateReply.isValid()
                   && migrateReply.error().type() != QDBusError::UnknownObject) {
                   qCritical() << "Processing migrate failed! Restart service or rollback "
-                                 "the client version";
+                                 "the client version" << migrateReply.error().message();
                   QCoreApplication::exit(-1);
                   return;
               }

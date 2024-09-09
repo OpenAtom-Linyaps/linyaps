@@ -657,6 +657,14 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
             }
 
             this->cache = std::move(ret).value();
+
+            // try to migrate old ostree repo
+            auto migrateRet = this->migrate();
+            if (!migrateRet) {
+                qCritical() << LINGLONG_ERRV(migrateRet);
+                qFatal("abort");
+            }
+
             return;
         }
 
@@ -687,13 +695,6 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
     }
 
     this->cache = std::move(ret).value();
-
-    // try to migrate old ostree repo
-    auto migrateRet = this->migrate();
-    if (!migrateRet) {
-        qCritical() << LINGLONG_ERRV(migrateRet);
-        qFatal("abort");
-    }
 }
 
 const api::types::v1::RepoConfig &OSTreeRepo::getConfig() const noexcept
@@ -1578,6 +1579,7 @@ utils::error::Result<void> OSTreeRepo::migrate() noexcept
     LINGLONG_TRACE("migrate old ostree repo")
 
     if (!cache->isLayerEmpty()) {
+        qInfo() << "layer is not empty.";
         return LINGLONG_OK;
     }
 
@@ -1588,6 +1590,18 @@ utils::error::Result<void> OSTreeRepo::migrate() noexcept
                      const std::filesystem::path &newDir) -> utils::error::Result<void> {
         LINGLONG_TRACE(QString{ "back up %1 to %2" }.arg(oldDir.c_str(), newDir.c_str()));
         std::error_code ec;
+        if (std::filesystem::exists(newDir, ec)) {
+            std::filesystem::remove_all(newDir, ec);
+            if (ec) {
+                return LINGLONG_ERR(
+                  QString{ "remove %1 error: %2" }.arg(newDir.c_str(), ec.message().c_str()));
+            }
+        }
+        if (ec) {
+            return LINGLONG_ERR(
+              QString{ "couldn't check %1: %2" }.arg(newDir.c_str(), ec.message().c_str()));
+        }
+
         std::filesystem::rename(oldDir, newDir, ec);
         if (ec) {
             return LINGLONG_ERR(QString{ "rename %1 to %2 error: %3" }.arg(oldDir.c_str(),
@@ -1609,8 +1623,8 @@ utils::error::Result<void> OSTreeRepo::migrate() noexcept
     std::error_code ec;
     // back up entries directory
     auto oldEntries = repoDir / "entries";
+    auto newEntries = repoDir / "entries_backup";
     if (std::filesystem::exists(oldEntries, ec)) {
-        auto newEntries = repoDir / "entries_backup";
         auto ret = backupDirs(oldEntries, newEntries);
         if (!ret) {
             return LINGLONG_ERR(ret);
@@ -1623,8 +1637,8 @@ utils::error::Result<void> OSTreeRepo::migrate() noexcept
 
     // back up layers directory
     auto oldLayers = repoDir / "layers";
+    auto newLayers = repoDir / "layers_backup";
     if (std::filesystem::exists(oldLayers, ec)) {
-        auto newLayers = repoDir / "layers_backup";
         auto ret = backupDirs(oldLayers, newLayers);
         if (!ret) {
             return LINGLONG_ERR(ret);
@@ -1650,7 +1664,7 @@ utils::error::Result<void> OSTreeRepo::migrate() noexcept
       },
       &refs);
 
-    if (ostree_repo_prepare_transaction(this->ostreeRepo.get(), nullptr, nullptr, &gErr) != 0) {
+    if (ostree_repo_prepare_transaction(this->ostreeRepo.get(), nullptr, nullptr, &gErr) == 0) {
         return LINGLONG_ERR("ostree_repo_prepare_transaction", gErr);
     }
 
@@ -1659,15 +1673,17 @@ utils::error::Result<void> OSTreeRepo::migrate() noexcept
                                         this->cfg.defaultRepo.c_str(),
                                         ref.data(),
                                         checksum.data());
+
+        ostree_repo_transaction_set_ref(this->ostreeRepo.get(), nullptr, ref.data(), nullptr);
     }
 
-    if (ostree_repo_commit_transaction(this->ostreeRepo.get(), nullptr, nullptr, &gErr) != 0) {
+    if (ostree_repo_commit_transaction(this->ostreeRepo.get(), nullptr, nullptr, &gErr) == 0) {
         return LINGLONG_ERR("ostree_repo_commit_transaction", gErr);
     }
 
     transaction.addRollBack([&refs, this]() noexcept {
         g_autoptr(GError) gErr{ nullptr };
-        if (ostree_repo_prepare_transaction(this->ostreeRepo.get(), nullptr, nullptr, &gErr) != 0) {
+        if (ostree_repo_prepare_transaction(this->ostreeRepo.get(), nullptr, nullptr, &gErr) == 0) {
             qCritical() << "rollback ostree refs error: ostree_repo_prepare_transaction"
                         << gErr->message;
             return;
@@ -1680,7 +1696,7 @@ utils::error::Result<void> OSTreeRepo::migrate() noexcept
                                             checksum.data());
         }
 
-        if (ostree_repo_commit_transaction(this->ostreeRepo.get(), nullptr, nullptr, &gErr) != 0) {
+        if (ostree_repo_commit_transaction(this->ostreeRepo.get(), nullptr, nullptr, &gErr) == 0) {
             qCritical() << "rollback ostree refs error: ostree_repo_commit_transaction"
                         << gErr->message;
             return;
@@ -1715,7 +1731,7 @@ utils::error::Result<void> OSTreeRepo::migrate() noexcept
                                     commit.data(),
                                     nullptr,
                                     &gErr)
-            != 0) {
+            == 0) {
             return LINGLONG_ERR(QString("ostree_repo_checkout_at: %1").arg(layerDir.c_str()), gErr);
         }
     }
@@ -1753,6 +1769,16 @@ utils::error::Result<void> OSTreeRepo::migrate() noexcept
     }
 
     transaction.commit();
+
+    std::filesystem::remove_all(newEntries, ec);
+    if (ec) {
+        qWarning() << "Failed to remove" << newEntries.c_str();
+    }
+
+    std::filesystem::remove_all(newLayers, ec);
+    if (ec) {
+        qWarning() << "Failed to remove" << newLayers.c_str();
+    }
 
     return LINGLONG_OK;
 }

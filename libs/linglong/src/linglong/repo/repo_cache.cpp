@@ -81,6 +81,15 @@ RepoCache::create(const std::filesystem::path &repoRoot,
         return repoCache;
     }
 
+    if (repoCache->isLayerEmpty()) {
+        std::cout << "layer in cache is empty, try to rebuild cache..." << std::endl;
+        auto ret = repoCache->rebuildCache(repoConfig, repo);
+        if (!ret) {
+            return LINGLONG_ERR(ret);
+        }
+        return repoCache;
+    }
+
     // update repo config
     repoCache->cache.config = repoConfig;
     return repoCache;

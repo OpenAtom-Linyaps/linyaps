@@ -17,7 +17,6 @@
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/packageinfo_handler.h"
-#include "linglong/utils/serialize/json.h"
 #include "linglong/utils/transaction.h"
 
 #include <gio/gio.h>
@@ -206,8 +205,8 @@ void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
 
 std::string ostreeRefFromLayerItem(const api::types::v1::RepositoryCacheLayersItem &layer)
 {
-    std::string refspec = layer.info.channel + "/" + layer.info.id + "/" + layer.info.version
-      + "/" + layer.info.arch.front() + "/" + layer.info.packageInfoV2Module;
+    std::string refspec = layer.info.channel + "/" + layer.info.id + "/" + layer.info.version + "/"
+      + layer.info.arch.front() + "/" + layer.info.packageInfoV2Module;
 
     return refspec;
 }
@@ -255,7 +254,6 @@ ostreeSpecFromReferenceV2(const package::Reference &ref,
 
     return ret + "_" + subRef.value();
 }
-
 
 utils::error::Result<QString> commitDirToRepo(GFile *dir,
                                               OstreeRepo *repo,
@@ -625,7 +623,6 @@ OSTreeRepo::removeOstreeRef(const api::types::v1::RepositoryCacheLayersItem &lay
     return LINGLONG_OK;
 }
 
-
 utils::error::Result<void> OSTreeRepo::handleRepositoryUpdate(
   QDir layerDir, const api::types::v1::RepositoryCacheLayersItem &layer) noexcept
 {
@@ -905,8 +902,8 @@ utils::error::Result<void> OSTreeRepo::updateRemoteRepo(const QString &repoName,
     return LINGLONG_OK;
 }
 
-utils::error::Result<package::LayerDir>
-OSTreeRepo::importLayerDir(const package::LayerDir &dir, const std::optional<std::string> &subRef) noexcept
+utils::error::Result<package::LayerDir> OSTreeRepo::importLayerDir(
+  const package::LayerDir &dir, const std::optional<std::string> &subRef) noexcept
 {
     LINGLONG_TRACE("import layer dir");
 
@@ -1034,8 +1031,8 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
         utils::error::Result<QString> result;
 
         api::client::Schema_NewUploadTaskReq uploadReq;
-        uploadReq.setRef(QString::fromStdString(
-          ostreeSpecFromReferenceV2(ref, std::nullopt, module)));
+        uploadReq.setRef(
+          QString::fromStdString(ostreeSpecFromReferenceV2(ref, std::nullopt, module)));
         uploadReq.setRepoName(QString::fromStdString(this->cfg.defaultRepo));
 
         auto apiClient = this->m_clientFactory.createClient();
@@ -1735,6 +1732,12 @@ auto OSTreeRepo::getLayerDir(const package::Reference &ref,
     }
 
     return getLayerDir(*layer);
+}
+
+utils::error::Result<void> OSTreeRepo::migrate() noexcept
+{
+    // if (cache.isLayersEmpty()) { retrun LINGLONG_OK; }
+    // TODO: implement this
 }
 
 OSTreeRepo::~OSTreeRepo() = default;

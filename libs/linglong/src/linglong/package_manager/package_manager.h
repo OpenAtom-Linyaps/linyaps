@@ -21,7 +21,7 @@ namespace linglong::service {
 class PackageManager : public QObject, protected QDBusContext
 {
     Q_OBJECT
-    Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.PackageManager")
+    Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.PackageManager1")
     Q_PROPERTY(QVariantMap Configuration READ getConfiguration)
 
 public:

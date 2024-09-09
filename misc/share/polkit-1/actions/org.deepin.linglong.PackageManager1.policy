@@ -6,7 +6,7 @@
         <vendor />
         <vendor_url />
         <icon_name>stock_person</icon_name>
-        <action id="org.deepin.linglong.PackageManager.checkAuthentication">
+        <action id="org.deepin.linglong.PackageManager1.checkAuthentication">
                 <description>Check Authentication</description>
                 <message>Authentication is required to perform this action</message>
                 <defaults>

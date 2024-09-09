@@ -30,7 +30,7 @@ using namespace linglong::cli;
 
 namespace {
 
-void startProcess(QString program, QStringList args = {})
+void startProcess(const QString& program, const QStringList& args = {})
 {
     QProcess process;
     auto envs = process.environment();
@@ -82,10 +82,10 @@ std::vector<std::string> transformOldExec(int argc, char **argv) noexcept
     }
 
     res.erase(exec, res.end());
-    res.push_back("--");
+    res.emplace_back("--");
 
     for (size_t i = 0; i < words.we_wordc; i++) {
-        res.push_back(words.we_wordv[i]);
+        res.emplace_back(words.we_wordv[i]);
     }
 
     QStringList list{};
@@ -120,9 +120,9 @@ int main(int argc, char **argv)
                            "linglong CLI " LINGLONG_VERSION); // version string
 
           auto pkgManConn = QDBusConnection::systemBus();
-          auto pkgMan =
-            new linglong::api::dbus::v1::PackageManager("org.deepin.linglong.PackageManager",
-                                                        "/org/deepin/linglong/PackageManager",
+          auto *pkgMan =
+            new linglong::api::dbus::v1::PackageManager("org.deepin.linglong.PackageManager1",
+                                                        "/org/deepin/linglong/PackageManager1",
                                                         pkgManConn,
                                                         QCoreApplication::instance());
 
@@ -158,19 +158,19 @@ int main(int argc, char **argv)
 
               pkgMan =
                 new linglong::api::dbus::v1::PackageManager("",
-                                                            "/org/deepin/linglong/PackageManager",
+                                                            "/org/deepin/linglong/PackageManager1",
                                                             pkgManConn,
                                                             QCoreApplication::instance());
           } else {
               // NOTE: We need to ping package manager to make it initialize system linglong
               // repository.
-              auto peer = linglong::api::dbus::v1::DBusPeer("org.deepin.linglong.PackageManager",
-                                                            "/org/deepin/linglong/PackageManager",
+              auto peer = linglong::api::dbus::v1::DBusPeer("org.deepin.linglong.PackageManager1",
+                                                            "/org/deepin/linglong/PackageManager1",
                                                             pkgManConn);
               auto reply = peer.Ping();
               reply.waitForFinished();
               if (!reply.isValid()) {
-                  qCritical() << "Failed to activate org.deepin.linglong.PackageManager"
+                  qCritical() << "Failed to activate org.deepin.linglong.PackageManager1"
                               << reply.error();
                   QCoreApplication::exit(-1);
                   return;
@@ -210,9 +210,9 @@ int main(int argc, char **argv)
           if (!ociRuntime) {
               std::rethrow_exception(ociRuntime.error());
           }
-          auto containerBuidler = new linglong::runtime::ContainerBuilder(**ociRuntime);
+          auto *containerBuidler = new linglong::runtime::ContainerBuilder(**ociRuntime);
           containerBuidler->setParent(QCoreApplication::instance());
-          auto cli = new linglong::cli::Cli(*printer,
+          auto *cli = new linglong::cli::Cli(*printer,
                                             **ociRuntime,
                                             *containerBuidler,
                                             *pkgMan,
@@ -234,17 +234,18 @@ int main(int argc, char **argv)
                               { "info", &Cli::info },
                               { "content", &Cli::content } };
 
-          if (!QObject::connect(QCoreApplication::instance(),
-                                &QCoreApplication::aboutToQuit,
-                                cli,
-                                &Cli::cancelCurrentTask)) {
+          if (QObject::connect(QCoreApplication::instance(),
+                               &QCoreApplication::aboutToQuit,
+                               cli,
+                               &Cli::cancelCurrentTask)
+              == nullptr) {
               qCritical() << "failed to connect signal: aboutToQuit";
               QCoreApplication::exit(-1);
               return;
           }
 
           for (const auto &subcommand : subcommandMap.keys()) {
-              if (args[subcommand.toStdString()].asBool() == true) {
+              if (args[subcommand.toStdString()].asBool()) {
                   QCoreApplication::exit(subcommandMap[subcommand](cli, args));
                   return;
               }

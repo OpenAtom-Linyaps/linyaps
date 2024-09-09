@@ -19,8 +19,8 @@ usr/libexec/linglong/90-legacy-static
 usr/libexec/linglong/ll-package-manager
 usr/libexec/linglong/ll-session-helper
 usr/share/bash-completion/completions/ll-cli
-usr/share/dbus-1/system-services/org.deepin.linglong.PackageManager.service
-usr/share/dbus-1/system.d/org.deepin.linglong.PackageManager.conf
+usr/share/dbus-1/system-services/org.deepin.linglong.PackageManager1.service
+usr/share/dbus-1/system.d/org.deepin.linglong.PackageManager1.conf
 usr/share/linglong/config.yaml
 usr/share/mime/packages/deepin-linglong.xml
-usr/share/polkit-1/actions/org.deepin.linglong.PackageManager.policy
+usr/share/polkit-1/actions/org.deepin.linglong.PackageManager1.policy

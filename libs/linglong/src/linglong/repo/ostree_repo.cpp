@@ -219,8 +219,8 @@ void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
 
 std::string ostreeRefFromLayerItem(const api::types::v1::RepositoryCacheLayersItem &layer)
 {
-    std::string refspec = layer.info.channel + "/" + layer.info.id + "/" + layer.info.version
-      + "/" + layer.info.arch.front() + "/" + layer.info.packageInfoV2Module;
+    std::string refspec = layer.info.channel + "/" + layer.info.id + "/" + layer.info.version + "/"
+      + layer.info.arch.front() + "/" + layer.info.packageInfoV2Module;
 
     return refspec;
 }
@@ -268,7 +268,6 @@ ostreeSpecFromReferenceV2(const package::Reference &ref,
 
     return ret + "_" + subRef.value();
 }
-
 
 utils::error::Result<QString> commitDirToRepo(GFile *dir,
                                               OstreeRepo *repo,
@@ -534,7 +533,6 @@ OSTreeRepo::removeOstreeRef(const api::types::v1::RepositoryCacheLayersItem &lay
     return LINGLONG_OK;
 }
 
-
 utils::error::Result<void> OSTreeRepo::handleRepositoryUpdate(
   QDir layerDir, const api::types::v1::RepositoryCacheLayersItem &layer) noexcept
 {
@@ -773,8 +771,8 @@ utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfi
     return LINGLONG_OK;
 }
 
-utils::error::Result<package::LayerDir>
-OSTreeRepo::importLayerDir(const package::LayerDir &dir, const std::optional<std::string> &subRef) noexcept
+utils::error::Result<package::LayerDir> OSTreeRepo::importLayerDir(
+  const package::LayerDir &dir, const std::optional<std::string> &subRef) noexcept
 {
     LINGLONG_TRACE("import layer dir");
 
@@ -1564,6 +1562,12 @@ auto OSTreeRepo::getLayerDir(const package::Reference &ref,
     }
 
     return getLayerDir(*layer);
+}
+
+utils::error::Result<void> OSTreeRepo::migrate() noexcept
+{
+    // if (cache.isLayersEmpty()) { retrun LINGLONG_OK; }
+    // TODO: implement this
 }
 
 OSTreeRepo::~OSTreeRepo() = default;

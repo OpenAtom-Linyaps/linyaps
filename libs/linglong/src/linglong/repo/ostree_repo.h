@@ -118,6 +118,7 @@ private:
     removeOstreeRef(const api::types::v1::RepositoryCacheLayersItem &layer) noexcept;
     [[nodiscard]] utils::error::Result<package::LayerDir>
     getLayerDir(const api::types::v1::RepositoryCacheLayersItem &layer) const noexcept;
+    utils::error::Result<void> migrate() noexcept;
 
     [[nodiscard]] utils::error::Result<api::types::v1::RepositoryCacheLayersItem>
     getLayerItem(const package::Reference &ref,

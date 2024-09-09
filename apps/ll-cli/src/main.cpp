@@ -120,6 +120,7 @@ int main(int argc, char **argv)
                            "linglong CLI " LINGLONG_VERSION); // version string
 
           auto pkgManConn = QDBusConnection::systemBus();
+
           auto *pkgMan =
             new linglong::api::dbus::v1::PackageManager("org.deepin.linglong.PackageManager1",
                                                         "/org/deepin/linglong/PackageManager1",
@@ -162,6 +163,21 @@ int main(int argc, char **argv)
                                                             pkgManConn,
                                                             QCoreApplication::instance());
           } else {
+              // call WaitForAvailable first, maybe ll-package-manager is processing update
+              // waiting for the update task complete
+              QDBusInterface iface("org.deepin.linglong.Migrate1",
+                                   "/org/deepin/linglong/Migrate1",
+                                   "org.deepin.linglong.Migrate1",
+                                   pkgManConn);
+
+              QDBusReply<QString> migrateReply = iface.call("WaitForAvailable");
+              if (!migrateReply.isValid()
+                  && migrateReply.error().type() != QDBusError::UnknownObject) {
+                  qCritical() << "Processing migrate failed! Restart service or rollback "
+                                 "the client version";
+                  QCoreApplication::exit(-1);
+                  return;
+              }
               // NOTE: We need to ping package manager to make it initialize system linglong
               // repository.
               auto peer = linglong::api::dbus::v1::DBusPeer("org.deepin.linglong.PackageManager1",

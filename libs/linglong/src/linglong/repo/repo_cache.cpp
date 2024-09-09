@@ -86,7 +86,7 @@ RepoCache::create(const std::filesystem::path &repoRoot,
     return repoCache;
 }
 
-bool RepoCache::isLayerEmpty() 
+bool RepoCache::isLayerEmpty() const noexcept
 {
     return this->cache.layers.empty();
 }

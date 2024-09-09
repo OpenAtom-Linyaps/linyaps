@@ -55,7 +55,7 @@ public:
     updateLayerItem(const api::types::v1::RepositoryCacheLayersItem &item);
     [[nodiscard]] std::vector<api::types::v1::RepositoryCacheLayersItem>
     searchLayerItem(const CacheRef &ref) const;
-    bool isLayerEmpty();
+    [[nodiscard]] bool isLayerEmpty() const noexcept;
 
 private:
     RepoCache() = default;

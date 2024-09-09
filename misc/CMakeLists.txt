@@ -36,12 +36,12 @@ configure_files(
   script/linglong.sh
   share/bash-completion/completions/ll-builder
   share/bash-completion/completions/ll-cli
-  share/dbus-1/system.d/org.deepin.linglong.PackageManager.conf
-  share/dbus-1/system-services/org.deepin.linglong.PackageManager.service
+  share/dbus-1/system.d/org.deepin.linglong.PackageManager1.conf
+  share/dbus-1/system-services/org.deepin.linglong.PackageManager1.service
   share/linglong/builder/templates/example.yaml
   share/linglong/config.yaml
   share/mime/packages/deepin-linglong.xml
-  share/polkit-1/actions/org.deepin.linglong.PackageManager.policy)
+  share/polkit-1/actions/org.deepin.linglong.PackageManager1.policy)
 
 # bash-completion
 set(BASH_COMPLETIONS_DIR ${CMAKE_INSTALL_DATADIR}/bash-completion)
@@ -173,5 +173,5 @@ install(
 # removed later
 install(
   FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/share/polkit-1/actions/org.deepin.linglong.PackageManager.policy
+    ${CMAKE_CURRENT_BINARY_DIR}/share/polkit-1/actions/org.deepin.linglong.PackageManager1.policy
   DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/actions)

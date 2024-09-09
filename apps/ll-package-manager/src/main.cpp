@@ -4,7 +4,9 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
+#include "linglong/adaptors/migrate/migrate1.h"
 #include "linglong/adaptors/package_manager/package_manager1.h"
+#include "linglong/package_manager/migrate.h"
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
@@ -29,42 +31,50 @@ void withDBusDaemon()
     }
 
     qWarning() << "server" << config->repos[config->defaultRepo].c_str();
-    auto clientFactory = new linglong::repo::ClientFactory(config->repos[config->defaultRepo]);
+    auto *clientFactory = new linglong::repo::ClientFactory(config->repos[config->defaultRepo]);
     clientFactory->setParent(QCoreApplication::instance());
-    auto ostreeRepo = new linglong::repo::OSTreeRepo(QDir(LINGLONG_ROOT), *config, *clientFactory);
-    ostreeRepo->setParent(QCoreApplication::instance());
-
-    auto packageManager =
-      new linglong::service::PackageManager(*ostreeRepo, QCoreApplication::instance());
-    new linglong::adaptors::package_manger::PackageManager1(packageManager);
 
     QDBusConnection conn = QDBusConnection::systemBus();
-    auto result = registerDBusObject(conn, "/org/deepin/linglong/PackageManager", packageManager);
+    auto *migrate = new linglong::service::Migrate(QCoreApplication::instance());
+    new linglong::adaptors::migrate::Migrate1(migrate);
+    auto result = registerDBusObject(conn, "/org/deepin/linglong/Migrate1", migrate);
+    if (!result.has_value()) {
+        qCritical().noquote() << "Launching failed:" << Qt::endl << result.error().message();
+        QCoreApplication::exit(-1);
+        return;
+    }
+
+    result = registerDBusService(conn, "org.deepin.linglong.PackageManager1");
     if (!result.has_value()) {
         qCritical().noquote() << "Launching failed:" << Qt::endl << result.error().message();
         QCoreApplication::exit(-1);
         return;
     }
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn] {
-        unregisterDBusObject(conn, "/org/deepin/linglong/PackageManager");
-    });
-
-    result = registerDBusService(conn, "org.deepin.linglong.PackageManager");
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn] {
         auto result = unregisterDBusService(conn,
                                             // FIXME: use cmake option
-                                            "org.deepin.linglong.PackageManager");
+                                            "org.deepin.linglong.PackageManager1");
         if (!result.has_value()) {
             qWarning().noquote() << "During exiting:" << Qt::endl << result.error().message();
         }
     });
+
+    auto *ostreeRepo = new linglong::repo::OSTreeRepo(QDir(LINGLONG_ROOT), *config, *clientFactory);
+    ostreeRepo->setParent(QCoreApplication::instance());
+    auto *packageManager =
+      new linglong::service::PackageManager(*ostreeRepo, QCoreApplication::instance());
+    new linglong::adaptors::package_manger::PackageManager1(packageManager);
+    result = registerDBusObject(conn, "/org/deepin/linglong/PackageManager1", packageManager);
     if (!result.has_value()) {
         qCritical().noquote() << "Launching failed:" << Qt::endl << result.error().message();
         QCoreApplication::exit(-1);
         return;
     }
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn] {
+        unregisterDBusObject(conn, "/org/deepin/linglong/PackageManager1");
+    });
 
-    return;
+    unregisterDBusObject(conn, "/org/deepin/linglong/Migrate1");
 }
 
 void withoutDBusDaemon()
@@ -102,13 +112,13 @@ void withoutDBusDaemon()
     });
 
     QObject::connect(server, &QDBusServer::newConnection, [packageManager](QDBusConnection conn) {
-        auto res = registerDBusObject(conn, "/org/deepin/linglong/PackageManager", packageManager);
+        auto res = registerDBusObject(conn, "/org/deepin/linglong/PackageManager1", packageManager);
         if (!res.has_value()) {
             qCritical() << res.error().code() << res.error().message();
             return;
         }
         QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn]() {
-            unregisterDBusObject(conn, "/org/deepin/linglong/PackageManager");
+            unregisterDBusObject(conn, "/org/deepin/linglong/PackageManager1");
         });
     });
 }

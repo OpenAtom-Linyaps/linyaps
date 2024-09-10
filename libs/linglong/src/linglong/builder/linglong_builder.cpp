@@ -802,10 +802,17 @@ set -e
                       2);
     qDebug() << "import binary to layers";
     package::LayerDir binaryOutputLayerDir = binaryOutput.absoluteFilePath("..");
-    result = this->repo.remove(*ref);
-    if (!result) {
-        qWarning() << "remove" << ref->toString() << result.error().message();
+
+    // remove ref if exist
+    auto layerDir = this->repo.getLayerDir(*ref);
+    if (layerDir) {
+        auto result = this->repo.remove(*ref);
+        if (!result) {
+            return LINGLONG_ERR("failed to remove" + ref->toString() + ":"
+                                + result.error().message());
+        }
     }
+
     auto localLayer = this->repo.importLayerDir(binaryOutputLayerDir);
     if (!localLayer) {
         return LINGLONG_ERR(localLayer);
@@ -871,10 +878,8 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
         packager.include(project.include.value());
     }
 
-    auto baseRef = pullDependency(QString::fromStdString(this->project.base),
-                                  this->repo,
-                                  "binary",
-                                  cfg.skipPullDepend.has_value() && *cfg.skipPullDepend);
+    auto baseRef =
+      pullDependency(QString::fromStdString(this->project.base), this->repo, "binary", false);
     if (!baseRef) {
         return LINGLONG_ERR(baseRef);
     }
@@ -888,7 +893,7 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
         auto ref = pullDependency(QString::fromStdString(*this->project.runtime),
                                   this->repo,
                                   "binary",
-                                  cfg.skipPullDepend.has_value() && *cfg.skipPullDepend);
+                                  false);
         if (!ref) {
             return LINGLONG_ERR(ref);
         }

@@ -403,7 +403,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
               }
 
               const auto &layerDir = package::LayerDir{ layerDirPath.absolutePath() };
-              std::string subRef;
+              std::optional<std::string> subRef{ std::nullopt };
               if (layer.minified) {
                   subRef = metaInfo.get().uuid;
               }
@@ -424,7 +424,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
 
               bool isAppLayer = layer.info.kind == "app";
               if (isAppLayer) { // it's meaningless for app layer that declare minified is true
-                  subRef.clear();
+                  subRef = std::nullopt;
               }
 
               auto ret = this->repo.importLayerDir(layerDir, subRef);

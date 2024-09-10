@@ -429,15 +429,12 @@ utils::error::Result<package::Reference> clearReferenceLocal(const linglong::rep
             return LINGLONG_ERR("arch mismatch with host arch");
         }
     }
-    // 'main' is default channel
-    fuzzy.channel = fuzzy.channel.value_or("main");
 
+    // NOTE: ignore channel, two packages with the same version but different channels are not
+    // allowed to be installed
     linglong::repo::CacheRef cacheRef;
     cacheRef.id = fuzzy.id.toStdString();
-    cacheRef.channel = fuzzy.channel.value().toStdString();
-
     const auto availablePackage = cache.searchLayerItem(cacheRef);
-
     if (availablePackage.empty()) {
         return LINGLONG_ERR("package not found:" % fuzzy.toString());
     }
@@ -1696,16 +1693,29 @@ OSTreeRepo::getLayerItem(const package::Reference &ref,
     auto items = this->cache->searchLayerItem(cacheRef);
     auto count = items.size();
     if (count > 1) {
-        return LINGLONG_ERR("ambiguous ref, matched count: " + QString::number(count));
+        std::for_each(items.begin(),
+                      items.end(),
+                      [](const api::types::v1::RepositoryCacheLayersItem &item) {
+                          qDebug().nospace()
+                            << "dump item ref [" << item.repo.c_str() << ":" << item.info.id.c_str()
+                            << ":" << item.info.version.c_str() << ":"
+                            << item.info.arch.front().c_str() << ":"
+                            << item.info.packageInfoV2Module.c_str() << "]";
+                      });
+        return LINGLONG_ERR("ambiguous ref has been detected, maybe underlying storage already "
+                            "broken.");
     }
 
     if (count == 0) {
-        // fallback to runtime module
+        qDebug() << "fallback to runtime module";
         cacheRef.module = "runtime";
         items = this->cache->searchLayerItem(cacheRef);
         if (items.size() > 1) {
-            return LINGLONG_ERR("ambiguous ref, matched count: " + QString::number(count));
-        } else if (items.size() == 0) {
+            return LINGLONG_ERR("ambiguous ref has been detected, maybe underlying storage already "
+                                "broken.");
+        }
+
+        if (items.size() == 0) {
             return LINGLONG_ERR(ref.toString() + " fallback to runtime still not found");
         }
     }
@@ -1738,6 +1748,8 @@ auto OSTreeRepo::getLayerDir(const package::Reference &ref,
 
     auto layer = this->getLayerItem(ref, module, subRef);
     if (!layer) {
+        qDebug().nospace() << "no such item:" << ref.toString() << "/" << module.c_str() << ":"
+                           << layer.error().message();
         return LINGLONG_ERR(layer);
     }
 
@@ -1749,7 +1761,7 @@ utils::error::Result<void> OSTreeRepo::migrate() noexcept
     LINGLONG_TRACE("migrate old ostree repo")
 
     if (!cache->isLayerEmpty()) {
-        qInfo() << "layer is not empty.";
+        qDebug() << "layer is not empty.";
         return LINGLONG_OK;
     }
 

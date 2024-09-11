@@ -109,4 +109,53 @@ QString Reference::toString() const noexcept
     return QString("%1:%2/%3/%4").arg(channel, id, version.toString(), arch.toString());
 }
 
+QVariantMap Reference::toVariantMap(const Reference &ref) noexcept
+{
+    nlohmann::json json;
+    json["channel"] = ref.channel.toStdString();
+    json["id"] = ref.id.toStdString();
+    json["version"] = ref.version.toString().toStdString();
+    json["arch"] = ref.arch.toString().toStdString();
+
+    QJsonDocument doc = QJsonDocument::fromJson(json.dump().data());
+    Q_ASSERT(doc.isObject());
+    return doc.object().toVariantMap();
+}
+
+utils::error::Result<Reference> Reference::fromVariantMap(const QVariantMap &data) noexcept
+{
+    LINGLONG_TRACE("parse reference VariantMap");
+
+    QJsonDocument doc(QJsonObject::fromVariantMap(data));
+    nlohmann::json json;
+    try {
+        json = nlohmann::json::parse(doc.toJson().constData());
+    } catch (const std::exception &e) {
+        return LINGLONG_ERR("parse json failed", e);
+    }
+
+    auto channel = json["channel"];
+    auto id = json["id"];
+    auto rawVersion = json["version"];
+    auto rawArch = json["arch"];
+
+    auto version = Version::parse(QString::fromStdString(rawVersion));
+    if (!version) {
+        return LINGLONG_ERR(version);
+    }
+
+    auto arch = Architecture::parse(rawArch);
+    if (!arch) {
+        return LINGLONG_ERR(arch);
+    }
+
+    auto reference =
+      create(QString::fromStdString(channel), QString::fromStdString(id), *version, *arch);
+    if (!reference) {
+        return LINGLONG_ERR(reference);
+    }
+
+    return *reference;
+}
+
 } // namespace linglong::package

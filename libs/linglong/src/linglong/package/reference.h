@@ -25,6 +25,8 @@ public:
                                                   const Architecture &architecture) noexcept;
     static utils::error::Result<Reference>
     fromPackageInfo(const api::types::v1::PackageInfoV2 &info) noexcept;
+    static QVariantMap toVariantMap(const Reference &ref) noexcept;
+    static utils::error::Result<Reference> fromVariantMap(const QVariantMap &data) noexcept;
 
     QString channel;
     QString id;

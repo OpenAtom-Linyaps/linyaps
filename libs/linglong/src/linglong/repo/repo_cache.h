@@ -17,22 +17,24 @@
 
 namespace linglong::repo {
 
-struct CacheRef
+struct repoCacheQuery
 {
-    std::string id;
+    std::optional<std::string> id;
     std::optional<std::string> repo; // not used currently
     std::optional<std::string> channel;
     std::optional<std::string> version; // could be fuzzy version
     std::optional<std::string> module;
     std::optional<std::string> uuid;
-    const inline static std::string arch = []() noexcept {
+
+    static auto arch()
+    {
         auto ret = package::Architecture::currentCPUArchitecture();
         if (ret) {
             return ret->toString().toStdString();
         }
-        qCritical() << ret.error().message();
+
         return std::string{ "unknown" };
-    }();
+    }
 };
 
 class RepoCache
@@ -40,30 +42,37 @@ class RepoCache
 public:
     RepoCache(const RepoCache &) = delete;
     RepoCache &operator=(const RepoCache &) = delete;
-    RepoCache(RepoCache &&other) noexcept;
-    RepoCache &operator=(RepoCache &&other) noexcept;
+    RepoCache(RepoCache &&other) = delete;
+    RepoCache &operator=(RepoCache &&other) = delete;
     ~RepoCache() = default;
 
     static utils::error::Result<std::unique_ptr<RepoCache>>
-    create(const std::filesystem::path &repoRoot,
+    create(const std::filesystem::path &cacheFile,
            const api::types::v1::RepoConfig &repoConfig,
            OstreeRepo &repo);
     utils::error::Result<void> addLayerItem(const api::types::v1::RepositoryCacheLayersItem &item);
     utils::error::Result<void>
-    deleteLayerItem(const api::types::v1::RepositoryCacheLayersItem &item);
+    deleteLayerItem(const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
     utils::error::Result<void>
-    updateLayerItem(const api::types::v1::RepositoryCacheLayersItem &item);
+    updateLayerItem(const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
+
     [[nodiscard]] std::vector<api::types::v1::RepositoryCacheLayersItem>
-    searchLayerItem(const CacheRef &ref) const;
-    [[nodiscard]] bool isLayerEmpty() const noexcept;
+    queryLayerItem(const repoCacheQuery &query) const noexcept;
+
+    [[nodiscard]] const std::vector<api::types::v1::RepositoryCacheLayersItem> &
+    queryLayerItem() const noexcept
+    {
+        return this->cache.layers;
+    }
+
+    utils::error::Result<void> rebuildCache(const api::types::v1::RepoConfig &repoConfig,
+                                            OstreeRepo &repo) noexcept;
 
 private:
     RepoCache() = default;
-    utils::error::Result<void> rebuildCache(const api::types::v1::RepoConfig &repoConfig,
-                                            OstreeRepo &repo);
     utils::error::Result<void> writeToDisk();
 
     api::types::v1::RepositoryCache cache;
-    std::string configPath;
+    std::filesystem::path cacheFile;
 };
 } // namespace linglong::repo

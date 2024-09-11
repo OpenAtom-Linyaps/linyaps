@@ -622,6 +622,9 @@ $defs:
       version:
         type: string
         description: version of storage
+        # const: "1"
+        # FIXME: quicktype will generate enum class and ignore the hierarchy
+        # so comparing this value inside code
       ll-version:
         type: string
         description: version of linglong at the time of generating the file

@@ -432,9 +432,9 @@ utils::error::Result<package::Reference> clearReferenceLocal(const linglong::rep
 
     // NOTE: ignore channel, two packages with the same version but different channels are not
     // allowed to be installed
-    linglong::repo::CacheRef cacheRef;
-    cacheRef.id = fuzzy.id.toStdString();
-    const auto availablePackage = cache.searchLayerItem(cacheRef);
+    repoCacheQuery query;
+    query.id = fuzzy.id.toStdString();
+    const auto availablePackage = cache.queryLayerItem(query);
     if (availablePackage.empty()) {
         return LINGLONG_ERR("package not found:" % fuzzy.toString());
     }
@@ -735,9 +735,11 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
             }
 
             this->ostreeRepo.reset(static_cast<OstreeRepo *>(g_steal_pointer(&ostreeRepo)));
-            auto ret = linglong::repo::RepoCache::create(this->repoDir.absolutePath().toStdString(),
-                                                         this->cfg,
-                                                         *(this->ostreeRepo));
+
+            auto ret = linglong::repo::RepoCache::create(
+              this->repoDir.absoluteFilePath("states.json").toStdString(),
+              this->cfg,
+              *(this->ostreeRepo));
             if (!ret) {
                 qCritical() << LINGLONG_ERRV(ret);
                 qFatal("abort");
@@ -773,9 +775,10 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
 
     this->ostreeRepo.reset(*result);
 
-    auto ret = linglong::repo::RepoCache::create(this->repoDir.absolutePath().toStdString(),
-                                                 this->cfg,
-                                                 *(this->ostreeRepo));
+    auto ret =
+      linglong::repo::RepoCache::create(this->repoDir.absoluteFilePath("states.json").toStdString(),
+                                        this->cfg,
+                                        *(this->ostreeRepo));
     if (!ret) {
         qCritical() << LINGLONG_ERRV(ret);
         qFatal("abort");
@@ -1269,17 +1272,22 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
     }
 
     g_autofree char *commit = nullptr;
-    g_autoptr(GFile) root = nullptr;
+    g_autoptr(GFile) layerRootDir = nullptr;
     api::types::v1::RepositoryCacheLayersItem item;
 
     g_clear_error(&gErr);
-    if (ostree_repo_read_commit(this->ostreeRepo.get(), refs[0], &root, &commit, cancellable, &gErr)
+    if (ostree_repo_read_commit(this->ostreeRepo.get(),
+                                refs[0],
+                                &layerRootDir,
+                                &commit,
+                                cancellable,
+                                &gErr)
         == 0) {
         taskContext.reportError(LINGLONG_ERRV("ostree_repo_read_commit", gErr));
         return;
     }
 
-    g_autoptr(GFile) infoFile = g_file_resolve_relative_path(root, "info.json");
+    g_autoptr(GFile) infoFile = g_file_resolve_relative_path(layerRootDir, "info.json");
     auto info = utils::parsePackageInfo(infoFile);
     if (!info) {
         taskContext.reportError(LINGLONG_ERRV(info));
@@ -1352,8 +1360,7 @@ OSTreeRepo::listLocal() const noexcept
     QDir layersDir = this->repoDir.absoluteFilePath("layers");
     Q_ASSERT(layersDir.exists());
 
-    CacheRef cacheRef{ .id = "" };
-    auto items = this->cache->searchLayerItem(cacheRef);
+    auto items = this->cache->queryLayerItem();
     pkgInfos.reserve(items.size());
     for (const auto &item : items) {
         pkgInfos.emplace_back(item.info);
@@ -1663,13 +1670,13 @@ OSTreeRepo::getLayerItem(const package::Reference &ref,
 {
     LINGLONG_TRACE("get latest layer of " + ref.toString());
 
-    linglong::repo::CacheRef cacheRef{ .id = ref.id.toStdString(),
-                                       .repo = std::nullopt,
-                                       .channel = ref.channel.toStdString(),
-                                       .version = ref.version.toString().toStdString(),
-                                       .module = module,
-                                       .uuid = subRef };
-    auto items = this->cache->searchLayerItem(cacheRef);
+    repoCacheQuery query{ .id = ref.id.toStdString(),
+                          .repo = std::nullopt,
+                          .channel = ref.channel.toStdString(),
+                          .version = ref.version.toString().toStdString(),
+                          .module = module,
+                          .uuid = subRef };
+    auto items = this->cache->queryLayerItem(query);
     auto count = items.size();
     if (count > 1) {
         std::for_each(items.begin(),
@@ -1687,8 +1694,8 @@ OSTreeRepo::getLayerItem(const package::Reference &ref,
 
     if (count == 0) {
         qDebug() << "fallback to runtime module";
-        cacheRef.module = "runtime";
-        items = this->cache->searchLayerItem(cacheRef);
+        query.module = "runtime";
+        items = this->cache->queryLayerItem(query);
         if (items.size() > 1) {
             return LINGLONG_ERR("ambiguous ref has been detected, maybe underlying storage already "
                                 "broken.");
@@ -1739,8 +1746,8 @@ utils::error::Result<void> OSTreeRepo::migrate() noexcept
 {
     LINGLONG_TRACE("migrate old ostree repo")
 
-    if (!cache->isLayerEmpty()) {
-        qDebug() << "layer is not empty.";
+    if (!cache->queryLayerItem().empty()) {
+        qDebug() << "layer is not empty, skip migration.";
         return LINGLONG_OK;
     }
 

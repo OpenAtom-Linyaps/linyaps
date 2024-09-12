@@ -42,7 +42,7 @@ public:
 
 public
     Q_SLOT : [[nodiscard]] auto getConfiguration() const noexcept -> QVariantMap;
-    auto setConfiguration(const QVariantMap &parameters) noexcept -> QVariantMap;
+    void setConfiguration(const QVariantMap &parameters) noexcept;
     auto Install(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto InstallFromFile(const QDBusUnixFileDescriptor &fd,
                          const QString &fileType) noexcept -> QVariantMap;

@@ -127,19 +127,32 @@ auto PackageManager::getConfiguration() const noexcept -> QVariantMap
     return utils::serialize::toQVariantMap(this->repo.getConfig());
 }
 
-auto PackageManager::setConfiguration(const QVariantMap &parameters) noexcept -> QVariantMap
+void PackageManager::setConfiguration(const QVariantMap &parameters) noexcept
 {
     auto cfg = utils::serialize::fromQVariantMap<api::types::v1::RepoConfig>(parameters);
     if (!cfg) {
-        return toDBusReply(cfg);
+        sendErrorReply(QDBusError::InvalidArgs, cfg.error().message());
+        return;
+    }
+
+    const auto &cfgRef = *cfg;
+    const auto &curCfg = repo.getConfig();
+    if (cfgRef.version == curCfg.version && cfgRef.defaultRepo == curCfg.defaultRepo
+        && cfgRef.repos == curCfg.repos) {
+        return;
+    }
+
+    if (const auto &defaultRepo = cfg->defaultRepo;
+        cfg->repos.find(defaultRepo) == cfg->repos.end()) {
+        sendErrorReply(QDBusError::Failed,
+                       "default repository is missing after updating configuration.");
+        return;
     }
 
     auto result = this->repo.setConfig(*cfg);
     if (!result) {
-        return toDBusReply(result);
+        sendErrorReply(QDBusError::Failed, result.error().message());
     }
-
-    return toDBusReply(0, "Set repository configuration success.");
 }
 
 QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) noexcept

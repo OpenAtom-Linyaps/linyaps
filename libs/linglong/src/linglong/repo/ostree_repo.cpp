@@ -1751,6 +1751,26 @@ utils::error::Result<void> OSTreeRepo::migrate() noexcept
         return LINGLONG_OK;
     }
 
+    g_autoptr(GHashTable) refsTable{ nullptr };
+    g_autoptr(GError) gErr{ nullptr };
+    if (ostree_repo_list_refs(this->ostreeRepo.get(), nullptr, &refsTable, nullptr, &gErr) == 0) {
+        return LINGLONG_ERR("ostree_repo_list_refs", gErr);
+    }
+
+    std::map<std::string_view, std::string_view> refs;
+    g_hash_table_foreach(
+      refsTable,
+      [](gpointer key, gpointer value, gpointer data) {
+          auto &refs = *static_cast<std::map<std::string_view, std::string_view> *>(data);
+          refs.emplace(static_cast<const char *>(key), static_cast<const char *>(value));
+      },
+      &refs);
+
+    if (refs.empty()) {
+        qDebug() << "empty repo, skip migration.";
+        return LINGLONG_OK;
+    }
+
     utils::Transaction transaction;
     auto repoDir = std::filesystem::path{ this->repoDir.absolutePath().toStdString() };
     auto backupDirs =
@@ -1816,21 +1836,6 @@ utils::error::Result<void> OSTreeRepo::migrate() noexcept
         return LINGLONG_ERR(
           QString{ "couldn't check %1: %2" }.arg(oldEntries.c_str(), ec.message().c_str()));
     }
-
-    g_autoptr(GHashTable) refsTable{ nullptr };
-    g_autoptr(GError) gErr{ nullptr };
-    if (ostree_repo_list_refs(this->ostreeRepo.get(), nullptr, &refsTable, nullptr, &gErr) == 0) {
-        return LINGLONG_ERR("ostree_repo_list_refs", gErr);
-    }
-
-    std::map<std::string_view, std::string_view> refs;
-    g_hash_table_foreach(
-      refsTable,
-      [](gpointer key, gpointer value, gpointer data) {
-          auto &refs = *static_cast<std::map<std::string_view, std::string_view> *>(data);
-          refs.emplace(static_cast<const char *>(key), static_cast<const char *>(value));
-      },
-      &refs);
 
     if (ostree_repo_prepare_transaction(this->ostreeRepo.get(), nullptr, nullptr, &gErr) == 0) {
         return LINGLONG_ERR("ostree_repo_prepare_transaction", gErr);

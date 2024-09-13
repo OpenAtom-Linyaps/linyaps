@@ -22,7 +22,6 @@ makedepends=(
         'gtest'
         'git'
         'docopt'
-        'qt5-websockets'
         'pkg-config'
         'systemd-libs'
         'ninja'

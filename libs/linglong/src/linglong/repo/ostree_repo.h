@@ -16,7 +16,6 @@
 
 #include <ostree.h>
 
-#include <QHttpPart>
 #include <QList>
 #include <QPointer>
 #include <QProcess>

@@ -142,7 +142,7 @@ add_definitions("-DQT_MESSAGELOGCONTEXT")
 
 find_package(
   Qt5
-  COMPONENTS Core Concurrent DBus Network
+  COMPONENTS Core DBus
   REQUIRED)
 
 find_package(PkgConfig REQUIRED)

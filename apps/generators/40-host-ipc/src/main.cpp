@@ -274,7 +274,7 @@ int main()
         };
         mounts.push_back({
           { "destination", destination },
-          { "options", nlohmann::json::array({ "rbind", "ro", "nosymfollow" }) },
+          { "options", nlohmann::json::array({ "rbind", "ro", "nosymfollow", "copy-symlink" }) },
           { "source", linkfile.string() },
           { "type", "bind" },
         });

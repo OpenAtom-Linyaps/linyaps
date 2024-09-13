@@ -669,8 +669,7 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
     qInfo() << "Before upgrade, old Ref: " << reference.toString()
             << " new Ref: " << newReference.toString();
 
-    auto curModule = paras->package.packageManager1PackageModule.value_or("runtime");
-
+    auto curModule = paras->package.packageManager1PackageModule.value_or("binary");
     InstallTask task{ newReference, curModule };
     if (std::find(this->taskList.cbegin(), this->taskList.cend(), task) != this->taskList.cend()) {
         return toDBusReply(-1,

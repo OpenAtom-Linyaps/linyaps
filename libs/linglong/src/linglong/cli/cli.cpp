@@ -204,9 +204,8 @@ int Cli::run(std::map<std::string, docopt::value> &args)
             return -1;
         }
 
-        auto runtimeLayerDirRet = this->repository.getLayerDir(*runtimeRef,
-                                                               std::string{ "binary" },
-                                                               info->uuid);
+        auto runtimeLayerDirRet =
+          this->repository.getLayerDir(*runtimeRef, std::string{ "binary" }, info->uuid);
         if (!runtimeLayerDirRet) {
             this->printer.printErr(runtimeLayerDirRet.error());
             return -1;
@@ -231,8 +230,7 @@ int Cli::run(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    auto baseLayerDir =
-      this->repository.getLayerDir(*baseRef, std::string{ "binary" }, info->uuid);
+    auto baseLayerDir = this->repository.getLayerDir(*baseRef, std::string{ "binary" }, info->uuid);
     if (!baseLayerDir) {
         this->printer.printErr(LINGLONG_ERRV(baseLayerDir));
         return -1;
@@ -897,46 +895,41 @@ int Cli::repo(std::map<std::string, docopt::value> &args)
     }
     auto &cfgRef = *cfg;
 
-    auto op = args.find("show");
-    if (args.empty() || op != args.cend()) {
+    if (args.empty() || args["show"].asBool()) {
         this->printer.printRepoConfig(*cfg);
         return 0;
     }
 
-    op = args.find("modify");
-    if (op != args.cend()) {
+    if (args["modify"].asBool()) {
         this->printer.printErr(
           LINGLONG_ERRV("sub-command 'modify' already has been deprecated, please use sub-command "
                         "'add' to add a remote repository and use it as default."));
         return EINVAL;
     }
 
-    auto it = args.find("NAME");
     std::string name;
-    if (it == args.cend() || !it->second.isString()) {
+    if (!args["NAME"].isString()) {
         this->printer.printErr(LINGLONG_ERRV("repo name must be specified as string"));
         return EINVAL;
     }
-    name = it->second.asString();
+    name = args["NAME"].asString();
 
-    it = args.find("URL");
     std::string url;
-    if (it != args.cend() && it->second.isString()) {
+    if (args["URL"].isString()) {
         // TODO: verify more complexly
+        url = args["URL"].asString();
         if (url.rfind("http", 0) != 0) {
-            this->printer.printErr(LINGLONG_ERRV("url is invalid"));
+            this->printer.printErr(LINGLONG_ERRV(QString{ "url is invalid: " } + url.c_str()));
             return EINVAL;
         }
 
         // remove last slash
-        url = it->second.asString();
         if (url.back() == '/') {
             url.pop_back();
         }
     }
 
-    op = args.find("add");
-    if (op != args.cend()) {
+    if (args["add"].asBool()) {
         if (url.empty()) {
             this->printer.printErr(LINGLONG_ERRV("url is empty."));
             return EINVAL;
@@ -956,12 +949,11 @@ int Cli::repo(std::map<std::string, docopt::value> &args)
     auto existingRepo = cfgRef.repos.find(name);
     if (existingRepo == cfgRef.repos.cend()) {
         this->printer.printErr(
-          LINGLONG_ERRV(QString{ "the operated repo " } + name.c_str() + "doesn't exist"));
+          LINGLONG_ERRV(QString{ "the operated repo " } + name.c_str() + " doesn't exist"));
         return -1;
     }
 
-    op = args.find("remove");
-    if (op != args.cend()) {
+    if (args["remove"].asBool()) {
         if (cfgRef.defaultRepo == name) {
             this->printer.printErr(
               LINGLONG_ERRV(QString{ "repo " } + name.c_str()
@@ -974,8 +966,7 @@ int Cli::repo(std::map<std::string, docopt::value> &args)
         return 0;
     }
 
-    op = args.find("update");
-    if (op != args.cend()) {
+    if (args["update"].asBool()) {
         if (url.empty()) {
             this->printer.printErr(LINGLONG_ERRV("url is empty."));
             return -1;
@@ -986,8 +977,7 @@ int Cli::repo(std::map<std::string, docopt::value> &args)
         return 0;
     }
 
-    op = args.find("set-default");
-    if (op != args.end()) {
+    if (args["set-default"].asBool()) {
         if (cfgRef.defaultRepo != name) {
             cfgRef.defaultRepo = name;
             this->pkgMan.setConfiguration(utils::serialize::toQVariantMap(cfgRef));

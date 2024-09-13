@@ -348,7 +348,7 @@ int main(int argc, char **argv)
 
               auto existingRepo = newCfg.repos.find(nameVal);
               if (existingRepo == newCfg.repos.cend()) {
-                  std::cerr << "the operated repo " + nameVal + "doesn't exist." << std::endl;
+                  std::cerr << "the operated repo " + nameVal + " doesn't exist." << std::endl;
                   return -1;
               }
 

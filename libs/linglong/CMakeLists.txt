@@ -69,13 +69,13 @@ pfl_add_library(
   cxx_std_17
   LINK_LIBRARIES
   PUBLIC
+  pthread
   linglong::dbus-api
   linglong::utils
   linglong::api
   PkgConfig::ostree1
   PkgConfig::systemd
   PkgConfig::ELF
-  Qt5::Concurrent
   Qt5::Core
   Qt5::DBus
   LinglongRepoClientAPI

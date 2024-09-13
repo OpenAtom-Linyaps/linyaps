@@ -12,7 +12,7 @@ GIT=${GIT:="git"}
 repoRoot="$("$GIT" rev-parse --show-toplevel)"
 cd "$repoRoot/tools"
 
-output=../external/http2
+output=../external/http
 # 单个接口可能存在有多个tag，openapi-generator-cli会为每个tag生成client文件，
 # 这些client之间有重复并且在客户端不会被用到，所以这里只保留第一个tag
 onlyFirstTag=KEEP_ONLY_FIRST_TAG_IN_OPERATION=true

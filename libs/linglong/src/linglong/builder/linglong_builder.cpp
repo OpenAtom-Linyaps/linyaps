@@ -29,6 +29,7 @@
 #include <QDir>
 #include <QHash>
 #include <QProcess>
+#include <QRegularExpression>
 #include <QTemporaryDir>
 #include <QTemporaryFile>
 #include <QThread>

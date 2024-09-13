@@ -8,7 +8,7 @@ set(CMAKE_CXX_VISIBILITY_PRESET default)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN OFF)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
+option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 
 find_package(OpenSSL)
 
@@ -120,55 +120,6 @@ target_include_directories(
 )
 
 include(PostTarget.cmake OPTIONAL)
-
-# installation of libraries, headers, and config files
-if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in)
-    install(TARGETS ${pkgName} DESTINATION lib)
-else()
-    include(GNUInstallDirs)
-    install(TARGETS ${pkgName} DESTINATION lib EXPORT ${pkgName}Targets)
-
-    foreach(HDR_FILE ${HDRS})
-        get_filename_component(HDR_DIRECTORY ${HDR_FILE} DIRECTORY)
-        get_filename_component(ABSOLUTE_HDR_DIRECTORY ${HDR_DIRECTORY} ABSOLUTE)
-        file(RELATIVE_PATH RELATIVE_HDR_PATH ${CMAKE_CURRENT_SOURCE_DIR} ${ABSOLUTE_HDR_DIRECTORY})
-        install(FILES ${HDR_FILE} DESTINATION include/${pkgName}/${RELATIVE_HDR_PATH})
-    endforeach()
-
-    include(CMakePackageConfigHelpers)
-    write_basic_package_version_file(
-            "${CMAKE_CURRENT_BINARY_DIR}/${pkgName}/${pkgName}ConfigVersion.cmake"
-            VERSION "${PROJECT_VERSION_STRING}"
-            COMPATIBILITY AnyNewerVersion
-    )
-
-    export(EXPORT ${pkgName}Targets
-            FILE "${CMAKE_CURRENT_BINARY_DIR}/${pkgName}/${pkgName}Targets.cmake"
-            NAMESPACE ${pkgName}::
-            )
-
-    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in
-            "${CMAKE_CURRENT_BINARY_DIR}/${pkgName}/${pkgName}Config.cmake"
-            @ONLY
-            )
-
-    set(ConfigPackageLocation lib/cmake/${pkgName})
-    install(EXPORT ${pkgName}Targets
-            FILE
-            ${pkgName}Targets.cmake
-            NAMESPACE
-            ${pkgName}::
-            DESTINATION
-            ${ConfigPackageLocation}
-            )
-    install(
-            FILES
-            "${CMAKE_CURRENT_BINARY_DIR}/${pkgName}/${pkgName}Config.cmake"
-            "${CMAKE_CURRENT_BINARY_DIR}/${pkgName}/${pkgName}ConfigVersion.cmake"
-            DESTINATION
-            ${ConfigPackageLocation}
-    )
-endif()
 
 # make installation packages
 include(Packing.cmake OPTIONAL)

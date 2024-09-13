@@ -13,7 +13,6 @@
 #include <QDBusContext>
 #include <QList>
 #include <QObject>
-#include <QTimer>
 
 namespace linglong::service {
 
@@ -40,7 +39,7 @@ private:
 
         // 如果还有任务，继续执行
         if (taskList.size() > 0) {
-            QTimer::singleShot(0, this, &JobQueue::run);
+            QMetaObject::invokeMethod(this, &JobQueue::run, Qt::QueuedConnection);
         } else {
             runningJobsCount--;
         }
@@ -52,7 +51,7 @@ public:
         taskList.emplace_back(func);
         if (runningJobsCount < runningJobsMax) {
             runningJobsCount++;
-            QTimer::singleShot(0, this, &JobQueue::run);
+            QMetaObject::invokeMethod(this, &JobQueue::run, Qt::QueuedConnection);
         }
     }
 };

@@ -1550,44 +1550,73 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
         return;
     }
 
-    QDirIterator it(layerEntriesDir.absolutePath(),
-                    QDir::AllEntries | QDir::NoDotAndDotDot | QDir::System,
-                    QDirIterator::Subdirectories);
-    while (it.hasNext()) {
-        it.next();
-        const auto info = it.fileInfo();
-        if (info.isDir()) {
+    const QStringList exportPaths = {
+        "applications", // Copy desktop files
+        "mime",         // Copy MIME Type files
+        "icons",        // Icons
+        "dbus-1",       // D-Bus service files
+        "gnome-shell",  // Search providers
+        "appdata",      // Copy appdata/metainfo files (legacy path)
+        "metainfo",     // Copy appdata/metainfo files
+        "plugins", // Copy plugins conf，The configuration files provided by some applications maybe
+                   // used by the host dde-file-manager.
+        "systemd", // copy systemd service files
+    };
+
+    for (const auto &path : exportPaths) {
+        QStringList exportDirs = layerEntriesDir.entryList(QDir::NoDotAndDotDot | QDir::Dirs);
+        if (!exportDirs.contains(path)) {
             continue;
         }
-        // In KDE environment, every desktop should own the executable permission
-        // We just set the file permission to 0755 here.
-        if (info.suffix() == "desktop") {
-            if (!QFile::setPermissions(info.absoluteFilePath(),
-                                       QFileDevice::ReadOwner | QFileDevice::WriteOwner
-                                         | QFileDevice::ExeOwner | QFileDevice::ReadGroup
-                                         | QFileDevice::ExeGroup | QFileDevice::ReadOther
-                                         | QFileDevice::ExeOther)) {
-                qCritical() << "Failed to chmod" << info.absoluteFilePath();
+
+        QDir exportDir = layerEntriesDir.absoluteFilePath(path);
+        if (!exportDir.exists()) {
+            continue;
+        }
+
+        QDirIterator it(exportDir.absolutePath(),
+                        QDir::AllEntries | QDir::NoDotAndDotDot | QDir::System,
+                        QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            it.next();
+            const auto info = it.fileInfo();
+            if (info.isDir()) {
+                continue;
+            }
+
+            // In KDE environment, every desktop should own the executable permission
+            // We just set the file permission to 0755 here.
+            if (info.suffix() == "desktop") {
+                if (!QFile::setPermissions(info.absoluteFilePath(),
+                                           QFileDevice::ReadOwner | QFileDevice::WriteOwner
+                                             | QFileDevice::ExeOwner | QFileDevice::ReadGroup
+                                             | QFileDevice::ExeGroup | QFileDevice::ReadOther
+                                             | QFileDevice::ExeOther)) {
+                    qCritical() << "Failed to chmod" << info.absoluteFilePath();
+                    Q_ASSERT(false);
+                }
+            }
+
+            const auto parentDirForLinkPath =
+              layerEntriesDir.relativeFilePath(it.fileInfo().dir().absolutePath());
+
+            if (!entriesDir.mkpath(parentDirForLinkPath)) {
+                qCritical() << "Failed to mkpath"
+                            << entriesDir.absoluteFilePath(parentDirForLinkPath);
+            }
+
+            QDir parentDir(entriesDir.absoluteFilePath(parentDirForLinkPath));
+            const auto from =
+              entriesDir.absoluteFilePath(parentDirForLinkPath) + "/" + it.fileName();
+            const auto to = parentDir.relativeFilePath(info.absoluteFilePath());
+
+            if (!QFile::link(to, from)) {
+                qCritical() << "Failed to create link" << to << "->" << from;
                 Q_ASSERT(false);
             }
         }
-
-        const auto parentDirForLinkPath =
-          layerEntriesDir.relativeFilePath(it.fileInfo().dir().absolutePath());
-
-        if (!entriesDir.mkpath(parentDirForLinkPath)) {
-            qCritical() << "Failed to mkpath" << entriesDir.absoluteFilePath(parentDirForLinkPath);
-        }
-
-        QDir parentDir(entriesDir.absoluteFilePath(parentDirForLinkPath));
-        const auto from = entriesDir.absoluteFilePath(parentDirForLinkPath) + "/" + it.fileName();
-        const auto to = parentDir.relativeFilePath(info.absoluteFilePath());
-
-        if (!QFile::link(to, from)) {
-            qCritical() << "Failed to create link" << to << "->" << from;
-            Q_ASSERT(false);
-        }
     }
+
     this->updateSharedInfo();
 }
 

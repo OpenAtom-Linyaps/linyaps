@@ -87,19 +87,6 @@ public:
         }
         case S_IFLNK: {
             driver_->CreateDestinationPath(dest_parent_path);
-            if (m.extensionFlags & Extension::COPY_SYMLINK) {
-                std::array<char, PATH_MAX + 1> buf{};
-                auto len = readlink(source.c_str(), buf._M_elems, PATH_MAX);
-                if (len == -1) {
-                    logErr() << "readlink failed:" << source << strerror(errno);
-                    return -1;
-                }
-
-                return host_dest_full_path.touch_symlink(std::string(buf.cbegin(), buf.cend()));
-            }
-
-            host_dest_full_path.touch();
-
             if (m.flags & LINGLONG_MS_NOSYMFOLLOW) {
                 sourceFd = ::open(source.c_str(), O_PATH | O_NOFOLLOW | O_CLOEXEC);
                 if (sourceFd < 0) {
@@ -111,6 +98,21 @@ public:
                 break;
             }
 
+            if (m.extensionFlags & Extension::COPY_SYMLINK) {
+                std::array<char, PATH_MAX + 1> buf{};
+                auto len = readlink(source.c_str(), buf.data(), PATH_MAX);
+                if (len == -1) {
+                    logErr() << "readlink failed:" << source << ::strerror(errno);
+                    return -1;
+                }
+
+                return host_dest_full_path.touch_symlink(std::string(buf.cbegin(), buf.cend()));
+            }
+
+            if (!host_dest_full_path.touch()) {
+                logErr() << "create destination failed:" << host_dest_full_path.string();
+                return -1;
+            }
             source = util::fs::read_symlink(util::fs::path(source)).string();
             break;
         }

@@ -78,11 +78,14 @@ public:
         return 0;
     }
 
-    void touch()
+    bool touch() const
     {
         if (!exists(this->string())) {
-            std::ofstream(this->string());
+            auto newFile = std::ofstream(this->string());
+            return newFile.is_open();
         }
+
+        return true;
     }
 
     int touch_symlink(const std::string &target) const

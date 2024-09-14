@@ -217,14 +217,6 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
        packageRef = std::move(packageRefRet).value(),
        layerFile = *layerFileRet,
        isDevelop]() {
-          auto removeTask = utils::finally::finally([&taskRef, this] {
-              auto elem = std::find(this->taskList.begin(), this->taskList.end(), taskRef);
-              if (elem == this->taskList.end()) {
-                  qCritical() << "the status of package manager is invalid";
-                  return;
-              }
-              this->taskList.erase(elem);
-          });
           taskRef.updateStatus(InstallTask::preInstall, "prepare for installing layer");
 
           package::LayerPackager layerPackager;
@@ -398,15 +390,6 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
        layerInfos = std::move(layerInfos),
        metaInfo = std::move(metaInfoRet).value(),
        appRef = std::move(appRefRet).value()] {
-          auto removeTask = utils::finally::finally([&taskRef, this] {
-              auto elem = std::find(this->taskList.begin(), this->taskList.end(), taskRef);
-              if (elem == this->taskList.end()) {
-                  qCritical() << "the status of package manager is invalid";
-                  return;
-              }
-              this->taskList.erase(elem);
-          });
-
           if (taskRef.currentStatus() == InstallTask::Canceled) {
               qInfo() << "task" << taskRef.taskID() << "has been canceled by user, layer"
                       << taskRef.layer();

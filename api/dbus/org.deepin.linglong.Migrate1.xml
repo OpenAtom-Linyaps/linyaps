@@ -10,5 +10,9 @@ SPDX-License-Identifier: LGPL-3.0-or-later
             <annotation name="org.freedesktop.DBus.Description"
                 value="This method is a blocking method that retruns only only when package manager is available." />
         </method>
+        <signal name="MigrateDone">
+            <arg name="code" type="i" />
+            <arg name="message" type="s" />
+        </signal>
     </interface>
 </node>

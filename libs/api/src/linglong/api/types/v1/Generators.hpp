@@ -40,6 +40,8 @@
 #include "linglong/api/types/v1/PackageInfo.hpp"
 #include "linglong/api/types/v1/OciConfigurationPatch.hpp"
 #include "linglong/api/types/v1/LayerInfo.hpp"
+#include "linglong/api/types/v1/InteractionRequest.hpp"
+#include "linglong/api/types/v1/InteractionReply.hpp"
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/CliContainer.hpp"
 #include "linglong/api/types/v1/BuilderProject.hpp"
@@ -84,6 +86,12 @@ void to_json(json & j, const CliContainer & x);
 
 void from_json(const json & j, CommonResult & x);
 void to_json(json & j, const CommonResult & x);
+
+void from_json(const json & j, InteractionReply & x);
+void to_json(json & j, const InteractionReply & x);
+
+void from_json(const json & j, InteractionRequest & x);
+void to_json(json & j, const InteractionRequest & x);
 
 void from_json(const json & j, LayerInfo & x);
 void to_json(json & j, const LayerInfo & x);
@@ -368,6 +376,38 @@ j["code"] = x.code;
 j["message"] = x.message;
 }
 
+inline void from_json(const json & j, InteractionReply& x) {
+x.action = get_stack_optional<std::string>(j, "action");
+}
+
+inline void to_json(json & j, const InteractionReply & x) {
+j = json::object();
+if (x.action) {
+j["action"] = x.action;
+}
+}
+
+inline void from_json(const json & j, InteractionRequest& x) {
+x.actions = get_stack_optional<std::vector<std::string>>(j, "actions");
+x.appName = j.at("appName").get<std::string>();
+x.body = get_stack_optional<std::string>(j, "body");
+x.summary = j.at("summary").get<std::string>();
+x.timeout = j.at("timeout").get<int64_t>();
+}
+
+inline void to_json(json & j, const InteractionRequest & x) {
+j = json::object();
+if (x.actions) {
+j["actions"] = x.actions;
+}
+j["appName"] = x.appName;
+if (x.body) {
+j["body"] = x.body;
+}
+j["summary"] = x.summary;
+j["timeout"] = x.timeout;
+}
+
 inline void from_json(const json & j, LayerInfo& x) {
 x.info = get_untyped(j, "info");
 x.version = j.at("version").get<std::string>();
@@ -645,6 +685,7 @@ inline void from_json(const json & j, RepositoryCache& x) {
 x.config = j.at("config").get<RepoConfig>();
 x.layers = j.at("layers").get<std::vector<RepositoryCacheLayersItem>>();
 x.llVersion = j.at("ll-version").get<std::string>();
+x.migratingStage = get_stack_optional<std::vector<int64_t>>(j, "migrating_stage");
 x.version = j.at("version").get<std::string>();
 }
 
@@ -653,6 +694,9 @@ j = json::object();
 j["config"] = x.config;
 j["layers"] = x.layers;
 j["ll-version"] = x.llVersion;
+if (x.migratingStage) {
+j["migrating_stage"] = x.migratingStage;
+}
 j["version"] = x.version;
 }
 
@@ -704,6 +748,8 @@ x.builderConfig = get_stack_optional<BuilderConfig>(j, "BuilderConfig");
 x.builderProject = get_stack_optional<BuilderProject>(j, "BuilderProject");
 x.cliContainer = get_stack_optional<CliContainer>(j, "CLIContainer");
 x.commonResult = get_stack_optional<CommonResult>(j, "CommonResult");
+x.interactionReply = get_stack_optional<InteractionReply>(j, "InteractionReply");
+x.interactionRequest = get_stack_optional<InteractionRequest>(j, "InteractionRequest");
 x.layerInfo = get_stack_optional<LayerInfo>(j, "LayerInfo");
 x.ociConfigurationPatch = get_stack_optional<OciConfigurationPatch>(j, "OCIConfigurationPatch");
 x.packageInfo = get_stack_optional<PackageInfo>(j, "PackageInfo");
@@ -713,6 +759,7 @@ x.packageManager1InstallLayerFDResult = get_stack_optional<CommonResult>(j, "Pac
 x.packageManager1InstallParameters = get_stack_optional<PackageManager1InstallParameters>(j, "PackageManager1InstallParameters");
 x.packageManager1InstallResult = get_stack_optional<PackageManager1ResultWithTaskID>(j, "PackageManager1InstallResult");
 x.packageManager1JobInfo = get_stack_optional<PackageManager1JobInfo>(j, "PackageManager1JobInfo");
+x.packageManager1MigrateResult = get_stack_optional<CommonResult>(j, "PackageManager1MigrateResult");
 x.packageManager1ModifyRepoParameters = get_stack_optional<PackageManager1ModifyRepoParameters>(j, "PackageManager1ModifyRepoParameters");
 x.packageManager1ModifyRepoResult = get_stack_optional<CommonResult>(j, "PackageManager1ModifyRepoResult");
 x.packageManager1Package = get_stack_optional<PackageManager1Package>(j, "PackageManager1Package");
@@ -747,6 +794,12 @@ j["CLIContainer"] = x.cliContainer;
 if (x.commonResult) {
 j["CommonResult"] = x.commonResult;
 }
+if (x.interactionReply) {
+j["InteractionReply"] = x.interactionReply;
+}
+if (x.interactionRequest) {
+j["InteractionRequest"] = x.interactionRequest;
+}
 if (x.layerInfo) {
 j["LayerInfo"] = x.layerInfo;
 }
@@ -773,6 +826,9 @@ j["PackageManager1InstallResult"] = x.packageManager1InstallResult;
 }
 if (x.packageManager1JobInfo) {
 j["PackageManager1JobInfo"] = x.packageManager1JobInfo;
+}
+if (x.packageManager1MigrateResult) {
+j["PackageManager1MigrateResult"] = x.packageManager1MigrateResult;
 }
 if (x.packageManager1ModifyRepoParameters) {
 j["PackageManager1ModifyRepoParameters"] = x.packageManager1ModifyRepoParameters;

@@ -23,6 +23,8 @@
 #include "linglong/api/types/v1/BuilderProject.hpp"
 #include "linglong/api/types/v1/CliContainer.hpp"
 #include "linglong/api/types/v1/CommonResult.hpp"
+#include "linglong/api/types/v1/InteractionReply.hpp"
+#include "linglong/api/types/v1/InteractionRequest.hpp"
 #include "linglong/api/types/v1/LayerInfo.hpp"
 #include "linglong/api/types/v1/OciConfigurationPatch.hpp"
 #include "linglong/api/types/v1/PackageInfo.hpp"
@@ -63,6 +65,8 @@ std::optional<BuilderConfig> builderConfig;
 std::optional<BuilderProject> builderProject;
 std::optional<CliContainer> cliContainer;
 std::optional<CommonResult> commonResult;
+std::optional<InteractionReply> interactionReply;
+std::optional<InteractionRequest> interactionRequest;
 std::optional<LayerInfo> layerInfo;
 std::optional<OciConfigurationPatch> ociConfigurationPatch;
 std::optional<PackageInfo> packageInfo;
@@ -72,6 +76,7 @@ std::optional<CommonResult> packageManager1InstallLayerFDResult;
 std::optional<PackageManager1InstallParameters> packageManager1InstallParameters;
 std::optional<PackageManager1ResultWithTaskID> packageManager1InstallResult;
 std::optional<PackageManager1JobInfo> packageManager1JobInfo;
+std::optional<CommonResult> packageManager1MigrateResult;
 std::optional<PackageManager1ModifyRepoParameters> packageManager1ModifyRepoParameters;
 std::optional<CommonResult> packageManager1ModifyRepoResult;
 std::optional<PackageManager1Package> packageManager1Package;

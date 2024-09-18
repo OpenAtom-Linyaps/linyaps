@@ -60,6 +60,7 @@ Usage:
     ll-cli [--json] repo show
     ll-cli [--json] info TIER
     ll-cli [--json] content APP
+    ll-cli [--json] migrate
 
 Arguments:
     APP     Specify the application.
@@ -140,12 +141,14 @@ Cli::Cli(Printer &printer,
          runtime::ContainerBuilder &containerBuilder,
          api::dbus::v1::PackageManager &pkgMan,
          repo::OSTreeRepo &repo,
+         std::unique_ptr<InteractiveNotifier> &&notifier,
          QObject *parent)
     : QObject(parent)
     , printer(printer)
     , ociCLI(ociCLI)
     , containerBuilder(containerBuilder)
     , repository(repo)
+    , notifier(std::move(notifier))
     , pkgMan(pkgMan)
 {
 }
@@ -1117,6 +1120,137 @@ int Cli::content(std::map<std::string, docopt::value> &args)
     return 0;
 }
 
+int Cli::migrate([[maybe_unused]] std::map<std::string, docopt::value> &args)
+{
+    LINGLONG_TRACE("cli migrate")
+
+    if (!notifier) {
+        qCritical() << "there hasn't notifier, abort migrate.";
+        return -1;
+    }
+
+    std::vector<std::string> actions{ "Yes", "No" };
+    for (auto it = actions.begin(); it != actions.end(); ++it) {
+        // May be we need localization in the future
+        it = actions.insert(it + 1, *it);
+    }
+
+    api::types::v1::InteractionRequest req{
+        .actions = actions,
+        .body = "Do you want to migrate immediately?\nThis will stop all runnning applications.",
+        .summary = "Package Manager needs to migrate data.",
+    };
+
+    while (true) {
+        auto reply = notifier->request(req);
+        if (!reply) {
+            qCritical() << "internal error: notify failed";
+            std::abort();
+        }
+
+        auto action = reply->action.value_or("No");
+        if (action == "Yes") {
+            qDebug() << "approve migration";
+            break;
+        }
+
+        auto ret = notifier->notify(
+          { .summary = "you could run 'll-cli migrate' on later to migrating data." });
+        if (!ret) {
+            this->printer.printErr(ret.error());
+            return -1;
+        }
+
+        return 0;
+    }
+
+    // stop all running apps
+    // FIXME: In multi-user conditions, we couldn't kill applications which started by different
+    // user
+    auto containers = this->ociCLI.list();
+    if (!containers) {
+        auto err = LINGLONG_ERRV(containers);
+        this->printer.printErr(err);
+        return -1;
+    }
+
+    for (const auto &container : *containers) {
+        auto result = this->ociCLI.kill(ocppi::runtime::ContainerID(container.id),
+                                        ocppi::runtime::Signal("SIGTERM"));
+        if (!result) {
+            auto err = LINGLONG_ERRV(result);
+            this->printer.printErr(err);
+            return -1;
+        }
+    }
+
+    // beginning migrating data
+    if (!this->pkgMan.connection().connect(this->pkgMan.service(),
+                                           "/org/deepin/linglong/Migrate1",
+                                           "org.deepin.linglong.Migrate1",
+                                           "MigrateDone",
+                                           this,
+                                           SLOT(forwardMigrateDone(int, QString)))) {
+        qFatal("couldn't connect to dbus signal MigrateDone");
+    }
+
+    int retCode = std::numeric_limits<int>::min();
+    QString retMsg;
+    QObject::connect(this, &Cli::migrateDone, [&retCode, &retMsg](int newCode, QString newMsg) {
+        retCode = newCode;
+        retMsg = std::move(newMsg);
+    });
+
+    auto reply = this->pkgMan.Migrate();
+    reply.waitForFinished();
+
+    if (!reply.isValid()) {
+        this->printer.printErr(LINGLONG_ERRV("invalid reply from migrate", -1));
+        return -1;
+    }
+
+    if (reply.isError()) {
+        this->printer.printErr(LINGLONG_ERRV(reply.error().message(), -1));
+        return -1;
+    }
+
+    auto result = utils::serialize::fromQVariantMap<api::types::v1::CommonResult>(reply.value());
+    if (!result) {
+        auto err = LINGLONG_ERR(
+          "internal bug detected, application will exit, but migration may already staring");
+        this->printer.printErr(err.value());
+        std::abort();
+    }
+
+    auto ret = notifier->notify({ .summary = result->message });
+    if (!ret) {
+        auto err = LINGLONG_ERR(
+          "internal bug detected, application will exit, but migration may already staring",
+          ret.error());
+        this->printer.printErr(err.value());
+        std::abort();
+    }
+
+    QEventLoop loop;
+    std::function<void()> statusChecker =
+      std::function{ [&loop, &statusChecker, &retCode]() -> void {
+          if (retCode != std::numeric_limits<int>::min()) {
+              loop.exit(0);
+          }
+          QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
+      } };
+    QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
+    loop.exec();
+
+    ret = this->notifier->notify({ .summary = retMsg.toStdString() });
+    if (!ret) {
+        this->printer.printReply({ .code = retCode, .message = retMsg.toStdString() });
+        return -1;
+    }
+
+    return retCode;
+}
+
 std::vector<std::string>
 Cli::filePathMapping(std::map<std::string, docopt::value> &args,
                      const std::vector<std::string> &command) const noexcept
@@ -1191,6 +1325,11 @@ void Cli::filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> 
 
     list.clear();
     std::move(temp.begin(), temp.end(), std::back_inserter(list));
+}
+
+void Cli::forwardMigrateDone(int code, QString message)
+{
+    Q_EMIT migrateDone(code, message, {});
 }
 
 } // namespace linglong::cli

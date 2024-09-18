@@ -41,6 +41,10 @@ std::vector<RepositoryCacheLayersItem> layers;
 */
 std::string llVersion;
 /**
+* solutions should apply to migrating progress
+*/
+std::optional<std::vector<int64_t>> migratingStage;
+/**
 * version of storage
 */
 std::string version;

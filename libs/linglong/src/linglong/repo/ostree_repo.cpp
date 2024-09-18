@@ -702,8 +702,9 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
     , m_clientFactory(clientFactory)
 {
     if (!path.exists()) {
-        path.mkpath(".");
+        qFatal("repo doesn't exists");
     }
+
     if (!QFileInfo(path.absolutePath()).isReadable()) {
         auto msg = QString("read linglong repository(%1): permission denied ")
                      .arg(path.path())
@@ -733,7 +734,6 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
                 // we can't abort here.
                 qDebug() << LINGLONG_ERRV(result);
             }
-
             this->ostreeRepo.reset(static_cast<OstreeRepo *>(g_steal_pointer(&ostreeRepo)));
 
             auto ret = linglong::repo::RepoCache::create(
@@ -744,15 +744,7 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
                 qCritical() << LINGLONG_ERRV(ret);
                 qFatal("abort");
             }
-
             this->cache = std::move(ret).value();
-
-            // try to migrate old ostree repo
-            auto migrateRet = this->migrate();
-            if (!migrateRet) {
-                qCritical() << LINGLONG_ERRV(migrateRet);
-                qFatal("abort");
-            }
 
             return;
         }
@@ -1742,14 +1734,35 @@ auto OSTreeRepo::getLayerDir(const package::Reference &ref,
     return getLayerDir(*layer);
 }
 
-utils::error::Result<void> OSTreeRepo::migrate() noexcept
+utils::error::Result<void> OSTreeRepo::dispatchMigration() noexcept
 {
-    LINGLONG_TRACE("migrate old ostree repo")
+    LINGLONG_TRACE("applying migrations")
 
-    if (!cache->queryLayerItem().empty()) {
-        qDebug() << "layer is not empty, skip migration.";
+    auto stages = cache->migrations();
+    if (!stages) {
         return LINGLONG_OK;
     }
+
+    for (auto stage : stages.value()) {
+        utils::error::Result<void> ret = LINGLONG_OK;
+
+        switch (stage) {
+        case MigrationStage::RefsWithoutRepo: {
+            ret = migrateRefs();
+        } break;
+        }
+
+        if (!ret) {
+            return LINGLONG_ERR(ret);
+        }
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> OSTreeRepo::migrateRefs() noexcept
+{
+    LINGLONG_TRACE("migrate old ostree repo")
 
     g_autoptr(GHashTable) refsTable{ nullptr };
     g_autoptr(GError) gErr{ nullptr };
@@ -1770,6 +1783,7 @@ utils::error::Result<void> OSTreeRepo::migrate() noexcept
     const auto newRefSpecPrefix = this->cfg.defaultRepo + ":";
     for (auto it = refs.begin(); it != refs.end(); ++it) {
         if (it->first.rfind(newRefSpecPrefix, 0) == 0) {
+            qDebug() << "found a valid ref:" << it->first.data() << ",skip it.";
             it = refs.erase(it);
         }
     }

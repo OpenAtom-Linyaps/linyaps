@@ -6,11 +6,14 @@
 
 #include "package_manager.h"
 
+#include "linglong/adaptors/migrate/migrate1.h"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/package/layer_file.h"
 #include "linglong/package/layer_packager.h"
 #include "linglong/package/uab_file.h"
+#include "linglong/package_manager/migrate.h"
 #include "linglong/utils/command/env.h"
+#include "linglong/utils/dbus/register.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/serialize/json.h"
@@ -765,6 +768,38 @@ auto PackageManager::Search(const QVariantMap &parameters) noexcept -> QVariantM
     });
 
     return result;
+}
+
+QVariantMap PackageManager::Migrate() noexcept
+{
+    qDebug() << "migrate request from:" << message().service();
+
+    auto *migrate = new linglong::service::Migrate(this);
+    new linglong::adaptors::migrate::Migrate1(migrate);
+    auto ret =
+      utils::dbus::registerDBusObject(connection(), "/org/deepin/linglong/Migrate1", migrate);
+    if (!ret) {
+        return toDBusReply(ret);
+    }
+
+    QMetaObject::invokeMethod(
+      QCoreApplication::instance(),
+      [this, migrate]() {
+          auto ret = this->repo.dispatchMigration();
+          if (!ret) {
+              Q_EMIT migrate->MigrateDone(ret.error().code(), ret.error().message());
+          } else {
+              Q_EMIT migrate->MigrateDone(0, "migrate successfully");
+          }
+
+          migrate->deleteLater();
+      },
+      Qt::QueuedConnection);
+
+    return utils::serialize::toQVariantMap(api::types::v1::CommonResult{
+      .code = 0,
+      .message = "package manager is migrating data",
+    });
 }
 
 void PackageManager::CancelTask(const QString &taskID) noexcept

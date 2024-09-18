@@ -1618,6 +1618,14 @@ utils::error::Result<void> OSTreeRepo::migrate() noexcept
       },
       &refs);
 
+    // we only migrate old refs
+    const auto newRefSpecPrefix = this->cfg.defaultRepo + ":";
+    for (auto it = refs.begin(); it != refs.end(); ++it) {
+        if (it->first.rfind(newRefSpecPrefix, 0) == 0) {
+            it = refs.erase(it);
+        }
+    }
+
     if (refs.empty()) {
         qDebug() << "empty repo, skip migration.";
         return LINGLONG_OK;
@@ -1762,11 +1770,10 @@ utils::error::Result<void> OSTreeRepo::migrate() noexcept
     }
 
     // reset repoCache
-    auto newCache = RepoCache::create(repoDir, this->cfg, *(this->ostreeRepo));
-    if (!newCache) {
-        return LINGLONG_ERR(newCache);
+    auto ret = this->cache->rebuildCache(this->cfg, *(this->ostreeRepo));
+    if (!ret) {
+        return LINGLONG_ERR(ret);
     }
-    this->cache = std::move(newCache).value();
 
     // export all package
     auto localPkgs = this->listLocal();

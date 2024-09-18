@@ -12,6 +12,8 @@ pfl_add_library(
   # find -regex '\./src/.+\.[ch]\(pp\)?\(\.in\)?' -type f -printf '%P\n'| sort
   src/linglong/adaptors/package_manager/package_manager1.cpp
   src/linglong/adaptors/package_manager/package_manager1.h
+  src/linglong/adaptors/task/task1.cpp
+  src/linglong/adaptors/task/task1.h
   src/linglong/builder/config.cpp
   src/linglong/builder/config.h
   src/linglong/builder/file.cpp
@@ -39,8 +41,8 @@ pfl_add_library(
   src/linglong/package/layer_packager.h
   src/linglong/package_manager/package_manager.cpp
   src/linglong/package_manager/package_manager.h
-  src/linglong/package_manager/task.cpp
-  src/linglong/package_manager/task.h
+  src/linglong/package_manager/package_task.cpp
+  src/linglong/package_manager/package_task.h
   src/linglong/package/reference.cpp
   src/linglong/package/reference.h
   src/linglong/package/uab_file.cpp
@@ -87,31 +89,39 @@ pfl_add_library(
   linglong::ocppi
   ${YAML_CPP})
 
-  function(
-    linglong_add_dbus_adaptor
-    target
-    xml
-    includes
-    parent_class
-    basename
-    classname)
-    get_real_target_name(target ${target})
+function(
+  linglong_add_dbus_adaptor
+  target
+  xml
+  includes
+  parent_class
+  basename
+  classname)
+  get_real_target_name(target ${target})
 
-    set(DBUS_ADAPTOR_SOURCE)
+  set(DBUS_ADAPTOR_SOURCE)
 
-    set(Qt5DBus_QDBUSXML2CPP_EXECUTABLE qdbusxml2cpp)
-    qt5_add_dbus_adaptor(DBUS_ADAPTOR_SOURCE ${xml} ${includes} ${parent_class}
-                         ${basename} ${classname})
-    # FIXME(black_desk): `qt5_add_dbus_adaptor` will use basename as include and
-    # this cannot be configured at all. This is just a workaround.
-    target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-    target_sources(${target} PRIVATE ${DBUS_ADAPTOR_SOURCE})
-  endfunction()
+  set(Qt5DBus_QDBUSXML2CPP_EXECUTABLE qdbusxml2cpp)
+  qt5_add_dbus_adaptor(DBUS_ADAPTOR_SOURCE ${xml} ${includes} ${parent_class}
+                       ${basename} ${classname})
+  # FIXME(black_desk): `qt5_add_dbus_adaptor` will use basename as include and
+  # this cannot be configured at all. This is just a workaround.
+  target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+  target_sources(${target} PRIVATE ${DBUS_ADAPTOR_SOURCE})
+endfunction()
 
-  linglong_add_dbus_adaptor(
-    linglong::linglong
-    ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManager1.xml
-    linglong/package_manager/package_manager.h
-    linglong::service::PackageManager
-    src/linglong/adaptors/package_manager/gen_org_deepin_linglong_packagemanager1
-    OrgDeepinLinglongPackagemanager1Adaptor)
+linglong_add_dbus_adaptor(
+  linglong::linglong
+  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManager1.xml
+  linglong/package_manager/package_manager.h
+  linglong::service::PackageManager
+  src/linglong/adaptors/package_manager/gen_org_deepin_linglong_packagemanager1
+  OrgDeepinLinglongPackagemanager1Adaptor)
+
+linglong_add_dbus_adaptor(
+  linglong::linglong
+  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.Task1.xml
+  linglong/package_manager/task.h
+  linglong::service::Task
+  src/linglong/adaptors/task/gen_org_deepin_linglong_task1
+  OrgDeepinLinglongTask1Adaptor)

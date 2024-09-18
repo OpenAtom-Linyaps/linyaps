@@ -9,44 +9,48 @@ SPDX-License-Identifier: LGPL-3.0-or-later
     <method name="InstallFromFile">
       <arg direction="in" name="fd" type="h" />
       <arg direction="in" name="fileType" type="s" />
-      <arg direction="out" name="result" type="a{sv}" />
-      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
+      <arg direction="out" name="task_object_path" type="o" />
     </method>
     <method name="Install">
       <arg direction="in" name="parameters" type="a{sv}" />
       <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap" />
-      <arg direction="out" name="result" type="a{sv}" />
-      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
+      <arg direction="out" name="task_object_path" type="o" />
     </method>
     <method name="Uninstall">
       <arg direction="in" name="parameters" type="a{sv}" />
       <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap" />
-      <arg direction="out" name="result" type="a{sv}" />
-      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
+      <arg direction="out" name="task_object_path" type="o" />
     </method>
     <method name="Update">
       <arg direction="in" name="parameters" type="a{sv}" />
       <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap" />
-      <arg direction="out" name="result" type="a{sv}" />
-      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
+      <arg direction="out" name="task_object_path" type="o" />
     </method>
     <method name="Search">
       <arg direction="in" name="parameters" type="a{sv}" />
       <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap" />
-      <arg direction="out" name="result" type="a{sv}" />
-      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
+      <arg direction="out" name="task_object_path" type="o" />
     </method>
-    <method name="CancelTask">
-      <arg name="taskID" type="s" direction="in" />
+    <method name="replyInteraction">
+      <arg name="ID" type="s" />
+      <arg name="replies" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.In1" value="QVariantMap" />
     </method>
-    <signal name="TaskChanged">
-      <arg name="taskID" type="s" />
-      <arg name="percentage" type="s" />
-      <arg name="message" type="s" />
-      <arg name="status" type="i" />
-    </signal>
     <property name="Configuration" type="a{sv}" access="readwrite">
       <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap" />
     </property>
+    <signal name="TaskChanged">
+      <arg name="task" type="o" />
+      <arg name="structured_message" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out1" value="QVariantMap" />
+      <annotation name="org.freedesktop.DBus.Description"
+        value="Structed message for better reporting current state"
+      />
+    </signal>
+    <signal name="requestInteraction">
+      <arg name="task" type="o" />
+      <arg name="ID" type="s" />
+      <arg name="messageID" type="u" />
+    </signal>
   </interface>
 </node>

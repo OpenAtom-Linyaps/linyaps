@@ -514,6 +514,30 @@ $defs:
           Non-zero code indicated errors occurs
           and message should be displayed to user.
         type: integer
+  PackageTaskMessage:
+    description: all message which should report from package manager to frontend
+    type: object
+    required:
+      - percentage
+      - state
+      - subState
+      - message
+    properties:
+      percentage:
+        description: present total progress
+        type: number
+      state:
+        description: main state of current task,
+        enum: ["Queued", "Pending", "Installing", "Succeed", "Failed", "Canceled"]
+      subState:
+        description: subState of current task,
+        enum: [ "PreAction", "InstallRuntime", "InstallBase",
+                "InstallApplication", "PostAction", "Done"]
+      message:
+        description: Human readable message to report additional message
+        type: string
+      result:
+        $ref: "#/$defs/CommonResult"
   PackageManager1InstallLayerFDResult:
     $ref: "#/$defs/CommonResult"
   PackageManager1InstallParameters:

@@ -23,8 +23,10 @@ pfl_add_library(
   src/linglong/api/types/v1/CommonResult.hpp
   src/linglong/api/types/v1/Generators.hpp
   src/linglong/api/types/v1/helper.hpp
+  src/linglong/api/types/v1/Info.hpp
   src/linglong/api/types/v1/LayerInfo.hpp
   src/linglong/api/types/v1/LinglongAPIV1.hpp
+  src/linglong/api/types/v1/MinifiedInfo.hpp
   src/linglong/api/types/v1/OciConfigurationPatch.hpp
   src/linglong/api/types/v1/PackageInfo.hpp
   src/linglong/api/types/v1/PackageInfoV2.hpp
@@ -38,8 +40,13 @@ pfl_add_library(
   src/linglong/api/types/v1/PackageManager1SearchResult.hpp
   src/linglong/api/types/v1/PackageManager1UninstallParameters.hpp
   src/linglong/api/types/v1/PackageManager1UpdateParameters.hpp
+  src/linglong/api/types/v1/PackageTaskMessage.hpp
   src/linglong/api/types/v1/RepoConfig.hpp
+  src/linglong/api/types/v1/RepositoryCache.hpp
+  src/linglong/api/types/v1/RepositoryCacheLayersItem.hpp
   src/linglong/api/types/v1/Sections.hpp
+  src/linglong/api/types/v1/State.hpp
+  src/linglong/api/types/v1/SubState.hpp
   src/linglong/api/types/v1/UabLayer.hpp
   src/linglong/api/types/v1/UabMetaInfo.hpp
   src/linglong/api/types/v1/Version.hpp

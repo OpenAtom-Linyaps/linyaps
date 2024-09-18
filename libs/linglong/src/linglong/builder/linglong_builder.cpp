@@ -486,8 +486,11 @@ set -e
 
     scriptContent.append(project.build);
     scriptContent.push_back('\n');
-    scriptContent.append("# POST BUILD PROCESS\n");
-    scriptContent.append(LINGLONG_BUILDER_HELPER "/main-check.sh\n");
+    // Do some checks after run container
+    if (this->project.package.kind == "app") {
+        scriptContent.append("# POST BUILD PROCESS\n");
+        scriptContent.append(LINGLONG_BUILDER_HELPER "/main-check.sh\n");
+    }
     auto writeBytes = scriptContent.size();
     auto bytesWrite = entry.write(scriptContent.c_str());
 

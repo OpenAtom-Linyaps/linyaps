@@ -4,9 +4,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#include "linglong/adaptors/migrate/migrate1.h"
 #include "linglong/adaptors/package_manager/package_manager1.h"
-#include "linglong/package_manager/migrate.h"
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
@@ -34,15 +32,28 @@ void withDBusDaemon()
     auto *clientFactory = new linglong::repo::ClientFactory(config->repos[config->defaultRepo]);
     clientFactory->setParent(QCoreApplication::instance());
 
+    auto repoRoot = QDir(LINGLONG_ROOT);
+    if (!repoRoot.exists() && !repoRoot.mkpath(".")) {
+        qCritical() << "failed to create repository directory" << repoRoot.absolutePath();
+        std::abort();
+    }
+
+    auto *ostreeRepo = new linglong::repo::OSTreeRepo(repoRoot, *config, *clientFactory);
+    ostreeRepo->setParent(QCoreApplication::instance());
+
     QDBusConnection conn = QDBusConnection::systemBus();
-    auto *migrate = new linglong::service::Migrate(QCoreApplication::instance());
-    new linglong::adaptors::migrate::Migrate1(migrate);
-    auto result = registerDBusObject(conn, "/org/deepin/linglong/Migrate1", migrate);
+    auto *packageManager =
+      new linglong::service::PackageManager(*ostreeRepo, QCoreApplication::instance());
+    new linglong::adaptors::package_manger::PackageManager1(packageManager);
+    auto result = registerDBusObject(conn, "/org/deepin/linglong/PackageManager1", packageManager);
     if (!result.has_value()) {
         qCritical().noquote() << "Launching failed:" << Qt::endl << result.error().message();
         QCoreApplication::exit(-1);
         return;
     }
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn] {
+        unregisterDBusObject(conn, "/org/deepin/linglong/PackageManager1");
+    });
 
     result = registerDBusService(conn, "org.deepin.linglong.PackageManager1");
     if (!result.has_value()) {
@@ -58,23 +69,6 @@ void withDBusDaemon()
             qWarning().noquote() << "During exiting:" << Qt::endl << result.error().message();
         }
     });
-
-    auto *ostreeRepo = new linglong::repo::OSTreeRepo(QDir(LINGLONG_ROOT), *config, *clientFactory);
-    ostreeRepo->setParent(QCoreApplication::instance());
-    auto *packageManager =
-      new linglong::service::PackageManager(*ostreeRepo, QCoreApplication::instance());
-    new linglong::adaptors::package_manger::PackageManager1(packageManager);
-    result = registerDBusObject(conn, "/org/deepin/linglong/PackageManager1", packageManager);
-    if (!result.has_value()) {
-        qCritical().noquote() << "Launching failed:" << Qt::endl << result.error().message();
-        QCoreApplication::exit(-1);
-        return;
-    }
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn] {
-        unregisterDBusObject(conn, "/org/deepin/linglong/PackageManager1");
-    });
-
-    unregisterDBusObject(conn, "/org/deepin/linglong/Migrate1");
 }
 
 void withoutDBusDaemon()
@@ -88,9 +82,16 @@ void withoutDBusDaemon()
         QCoreApplication::exit(-1);
         return;
     }
-    auto clientFactory = new linglong::repo::ClientFactory(config->repos[config->defaultRepo]);
+    auto *clientFactory = new linglong::repo::ClientFactory(config->repos[config->defaultRepo]);
     clientFactory->setParent(QCoreApplication::instance());
-    auto ostreeRepo = new linglong::repo::OSTreeRepo(QDir(LINGLONG_ROOT), *config, *clientFactory);
+
+    auto repoRoot = QDir(LINGLONG_ROOT);
+    if (!repoRoot.exists() && !repoRoot.mkpath(".")) {
+        qCritical() << "failed to create repository directory" << repoRoot.absolutePath();
+        std::abort();
+    }
+
+    auto *ostreeRepo = new linglong::repo::OSTreeRepo(repoRoot, *config, *clientFactory);
     ostreeRepo->setParent(QCoreApplication::instance());
 
     auto packageManager =

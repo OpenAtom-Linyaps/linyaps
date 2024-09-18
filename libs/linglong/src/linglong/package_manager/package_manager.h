@@ -49,6 +49,7 @@ public
     auto Uninstall(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Update(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Search(const QVariantMap &parameters) noexcept -> QVariantMap;
+    auto Migrate() noexcept -> QVariantMap;
     void CancelTask(const QString &taskID) noexcept;
 
 Q_SIGNALS:

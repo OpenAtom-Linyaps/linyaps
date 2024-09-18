@@ -246,9 +246,65 @@ utils::error::Result<void> RepoCache::writeToDisk()
 {
     LINGLONG_TRACE("save repo cache");
 
+    std::error_code ec;
+    if (!std::filesystem::exists(this->cacheFile.parent_path(), ec)) {
+        return LINGLONG_ERR("The parent directory of state.json doesn't exist:"
+                            + QString::fromStdString(ec.message()));
+    }
+
     auto ofs = std::ofstream(this->cacheFile, std::ofstream::out | std::ofstream::trunc);
-    if (!ofs.is_open()) {
-        return LINGLONG_ERR("open failed");
+    if (!ofs.is_open()) { // dump all info
+        auto dumpStatus = [](const std::filesystem::path &p, std::error_code &ec) {
+            LINGLONG_TRACE("dump status")
+            auto status = std::filesystem::status(p, ec);
+            if (ec) {
+                return;
+            }
+
+            auto targetPerm = status.permissions();
+
+            using std::filesystem::perms;
+            auto out = qInfo().nospace();
+            out << QString::fromStdString(p.string()) << ":";
+            auto show = [&out, targetPerm](char op, perms perm) {
+                out << (perms::none == (perm & targetPerm) ? '-' : op);
+            };
+            show('r', perms::owner_read);
+            show('w', perms::owner_write);
+            show('x', perms::owner_exec);
+            show('r', perms::group_read);
+            show('w', perms::group_write);
+            show('x', perms::group_exec);
+            show('r', perms::others_read);
+            show('w', perms::others_write);
+            show('x', perms::others_exec);
+        };
+
+        qInfo() << "process uid:" << ::getuid() << "process gid:" << ::getgid();
+
+        dumpStatus(this->cacheFile.parent_path(), ec);
+        if (ec) {
+            QString msg = "get status of directory"
+              + QString::fromStdString(this->cacheFile.parent_path())
+              + "error:" + QString::fromStdString(ec.message());
+            return LINGLONG_ERR(msg);
+        }
+
+        if (std::filesystem::exists(this->cacheFile, ec)) {
+            dumpStatus(this->cacheFile, ec);
+            if (ec) {
+                QString msg = "get status of file"
+                  + QString::fromStdString(this->cacheFile.string())
+                  + "error:" + QString::fromStdString(ec.message());
+                return LINGLONG_ERR(msg);
+            }
+        }
+
+        if (ec) {
+            QString msg = "check file" + QString::fromStdString(this->cacheFile.string())
+              + "exist error:" + QString::fromStdString(ec.message());
+            return LINGLONG_ERR(msg);
+        }
     }
 
     auto data = nlohmann::json(this->cache).dump();

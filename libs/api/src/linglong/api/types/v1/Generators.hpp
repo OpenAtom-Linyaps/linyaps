@@ -27,6 +27,9 @@
 #include "linglong/api/types/v1/RepositoryCacheMergedItem.hpp"
 #include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
 #include "linglong/api/types/v1/RepoConfig.hpp"
+#include "linglong/api/types/v1/PackageTaskMessage.hpp"
+#include "linglong/api/types/v1/SubState.hpp"
+#include "linglong/api/types/v1/State.hpp"
 #include "linglong/api/types/v1/PackageManager1UpdateParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1SearchResult.hpp"
@@ -152,6 +155,9 @@ void to_json(json & j, const PackageManager1UninstallParameters & x);
 void from_json(const json & j, PackageManager1UpdateParameters & x);
 void to_json(json & j, const PackageManager1UpdateParameters & x);
 
+void from_json(const json & j, PackageTaskMessage & x);
+void to_json(json & j, const PackageTaskMessage & x);
+
 void from_json(const json & j, RepoConfig & x);
 void to_json(json & j, const RepoConfig & x);
 
@@ -178,6 +184,12 @@ void to_json(json & j, const UpgradeListResult & x);
 
 void from_json(const json & j, LinglongAPIV1 & x);
 void to_json(json & j, const LinglongAPIV1 & x);
+
+void from_json(const json & j, State & x);
+void to_json(json & j, const State & x);
+
+void from_json(const json & j, SubState & x);
+void to_json(json & j, const SubState & x);
 
 void from_json(const json & j, Version & x);
 void to_json(json & j, const Version & x);
@@ -720,6 +732,25 @@ j = json::object();
 j["packages"] = x.packages;
 }
 
+inline void from_json(const json & j, PackageTaskMessage& x) {
+x.message = j.at("message").get<std::string>();
+x.percentage = j.at("percentage").get<double>();
+x.result = get_stack_optional<CommonResult>(j, "result");
+x.state = j.at("state").get<State>();
+x.subState = j.at("subState").get<SubState>();
+}
+
+inline void to_json(json & j, const PackageTaskMessage & x) {
+j = json::object();
+j["message"] = x.message;
+j["percentage"] = x.percentage;
+if (x.result) {
+j["result"] = x.result;
+}
+j["state"] = x.state;
+j["subState"] = x.subState;
+}
+
 inline void from_json(const json & j, RepoConfig& x) {
 x.defaultRepo = j.at("defaultRepo").get<std::string>();
 x.repos = j.at("repos").get<std::map<std::string, std::string>>();
@@ -873,6 +904,7 @@ x.packageManager1UninstallParameters = get_stack_optional<PackageManager1Uninsta
 x.packageManager1UninstallResult = get_stack_optional<CommonResult>(j, "PackageManager1UninstallResult");
 x.packageManager1UpdateParameters = get_stack_optional<PackageManager1UpdateParameters>(j, "PackageManager1UpdateParameters");
 x.packageManager1UpdateResult = get_stack_optional<PackageManager1ResultWithTaskID>(j, "PackageManager1UpdateResult");
+x.packageTaskMessage = get_stack_optional<PackageTaskMessage>(j, "PackageTaskMessage");
 x.repoConfig = get_stack_optional<RepoConfig>(j, "RepoConfig");
 x.repositoryCache = get_stack_optional<RepositoryCache>(j, "RepositoryCache");
 x.uabMetaInfo = get_stack_optional<UabMetaInfo>(j, "UABMetaInfo");
@@ -965,6 +997,9 @@ j["PackageManager1UpdateParameters"] = x.packageManager1UpdateParameters;
 if (x.packageManager1UpdateResult) {
 j["PackageManager1UpdateResult"] = x.packageManager1UpdateResult;
 }
+if (x.packageTaskMessage) {
+j["PackageTaskMessage"] = x.packageTaskMessage;
+}
 if (x.repoConfig) {
 j["RepoConfig"] = x.repoConfig;
 }
@@ -976,6 +1011,50 @@ j["UABMetaInfo"] = x.uabMetaInfo;
 }
 if (x.upgradeListResult) {
 j["UpgradeListResult"] = x.upgradeListResult;
+}
+}
+
+inline void from_json(const json & j, State & x) {
+if (j == "Canceled") x = State::Canceled;
+else if (j == "Failed") x = State::Failed;
+else if (j == "Installing") x = State::Installing;
+else if (j == "Pending") x = State::Pending;
+else if (j == "Queued") x = State::Queued;
+else if (j == "Succeed") x = State::Succeed;
+else { throw std::runtime_error("Input JSON does not conform to schema!"); }
+}
+
+inline void to_json(json & j, const State & x) {
+switch (x) {
+case State::Canceled: j = "Canceled"; break;
+case State::Failed: j = "Failed"; break;
+case State::Installing: j = "Installing"; break;
+case State::Pending: j = "Pending"; break;
+case State::Queued: j = "Queued"; break;
+case State::Succeed: j = "Succeed"; break;
+default: throw std::runtime_error("Unexpected value in enumeration \"[object Object]\": " + std::to_string(static_cast<int>(x)));
+}
+}
+
+inline void from_json(const json & j, SubState & x) {
+if (j == "Done") x = SubState::Done;
+else if (j == "InstallApplication") x = SubState::InstallApplication;
+else if (j == "InstallBase") x = SubState::InstallBase;
+else if (j == "InstallRuntime") x = SubState::InstallRuntime;
+else if (j == "PostAction") x = SubState::PostAction;
+else if (j == "PreAction") x = SubState::PreAction;
+else { throw std::runtime_error("Input JSON does not conform to schema!"); }
+}
+
+inline void to_json(json & j, const SubState & x) {
+switch (x) {
+case SubState::Done: j = "Done"; break;
+case SubState::InstallApplication: j = "InstallApplication"; break;
+case SubState::InstallBase: j = "InstallBase"; break;
+case SubState::InstallRuntime: j = "InstallRuntime"; break;
+case SubState::PostAction: j = "PostAction"; break;
+case SubState::PreAction: j = "PreAction"; break;
+default: throw std::runtime_error("Unexpected value in enumeration \"[object Object]\": " + std::to_string(static_cast<int>(x)));
 }
 }
 

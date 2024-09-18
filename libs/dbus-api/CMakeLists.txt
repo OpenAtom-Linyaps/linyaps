@@ -15,6 +15,8 @@ pfl_add_library(
   src/linglong/api/dbus/v1/migrate.h
   src/linglong/api/dbus/v1/package_manager.cpp
   src/linglong/api/dbus/v1/package_manager.h
+  src/linglong/api/dbus/v1/task.cpp
+  src/linglong/api/dbus/v1/task.h
   COMPILE_FEATURES
   PUBLIC
   cxx_std_17
@@ -53,6 +55,11 @@ linglong_add_dbus_interface(
   ${real_dbus_api}
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.Migrate1.xml
   src/linglong/api/dbus/v1/gen_org_deepin_linglong_migrate1)
+
+linglong_add_dbus_interface(
+  ${real_dbus_api} ${PROJECT_SOURCE_DIR}/api/dbus/org.freedesktop.DBus.Peer.xml
+  ${real_dbus_api} ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.Task1.xml
+  src/linglong/api/dbus/v1/gen_org_deepin_linglong_task1)
 
 linglong_add_dbus_interface(
   ${real_dbus_api} ${PROJECT_SOURCE_DIR}/api/dbus/org.freedesktop.DBus.Peer.xml

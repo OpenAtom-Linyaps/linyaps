@@ -71,6 +71,45 @@
         }
       }
     },
+    "InteractionRequest": {
+      "description": "structured message which inspired by freedesktop Notification Spec.\nrefer: https://specifications.freedesktop.org/notification-spec/latest/protocol.html#id-1.10.3.3.4\n",
+      "type": "object",
+      "required": [
+        "appName",
+        "summary",
+        "timeout"
+      ],
+      "properties": {
+        "appName": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "timeout": {
+          "type": "integer"
+        }
+      }
+    },
+    "InteractionReply": {
+      "description": "message from user reply",
+      "type": "object",
+      "properties": {
+        "action": {
+          "description": "choice which in requested actions",
+          "type": "string"
+        }
+      }
+    },
     "OCIConfigurationPatch": {
       "title": "OCIConfigurationPatch",
       "description": "oci configuration patch",
@@ -622,6 +661,9 @@
         }
       }
     },
+    "PackageManager1MigrateResult": {
+      "$ref": "#/$defs/CommonResult"
+    },
     "PackageManager1InstallLayerFDResult": {
       "$ref": "#/$defs/CommonResult"
     },
@@ -804,6 +846,14 @@
         "layers"
       ],
       "properties": {
+        "migrating_stage": {
+          "type": "array",
+          "description": "solutions should apply to migrating progress",
+          "minItems": 1,
+          "items": {
+            "type": "integer"
+          }
+        },
         "version": {
           "type": "string",
           "description": "version of storage"
@@ -852,6 +902,12 @@
     "ApplicationConfigurationPermissions": {
       "$ref": "#/$defs/ApplicationConfigurationPermissions"
     },
+    "InteractionRequest": {
+      "$ref": "#/$defs/InteractionRequest"
+    },
+    "InteractionReply": {
+      "$ref": "#/$defs/InteractionReply"
+    },
     "OCIConfigurationPatch": {
       "$ref": "#/$defs/OCIConfigurationPatch"
     },
@@ -884,6 +940,9 @@
     },
     "CommonResult": {
       "$ref": "#/$defs/CommonResult"
+    },
+    "PackageManager1MigrateResult": {
+      "$ref": "#/$defs/PackageManager1MigrateResult"
     },
     "PackageManager1InstallLayerFDResult": {
       "$ref": "#/$defs/PackageManager1InstallLayerFDResult"

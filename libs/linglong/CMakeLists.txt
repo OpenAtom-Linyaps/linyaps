@@ -25,10 +25,17 @@ pfl_add_library(
   src/linglong/builder/source_fetcher.h
   src/linglong/cli/cli.cpp
   src/linglong/cli/cli.h
+  src/linglong/cli/dbus_notifier.cpp
+  src/linglong/cli/dbus_notifier.h
+  src/linglong/cli/dummy_notifier.cpp
+  src/linglong/cli/dummy_notifier.h
+  src/linglong/cli/interactive_notifier.h
   src/linglong/cli/json_printer.cpp
   src/linglong/cli/json_printer.h
   src/linglong/cli/printer.cpp
   src/linglong/cli/printer.h
+  src/linglong/cli/terminal_notifier.cpp
+  src/linglong/cli/terminal_notifier.h
   src/linglong/package/architecture.cpp
   src/linglong/package/architecture.h
   src/linglong/package/fuzzy_reference.cpp

@@ -7,6 +7,7 @@
 #pragma once
 
 #include "linglong/api/dbus/v1/package_manager.h"
+#include "linglong/cli/interactive_notifier.h"
 #include "linglong/cli/printer.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
@@ -35,6 +36,7 @@ public:
         runtime::ContainerBuilder &containerBuidler,
         api::dbus::v1::PackageManager &pkgMan,
         repo::OSTreeRepo &repo,
+        std::unique_ptr<InteractiveNotifier> &&notifier,
         QObject *parent = nullptr);
 
     static const char USAGE[];
@@ -44,6 +46,7 @@ private:
     ocppi::cli::CLI &ociCLI;
     runtime::ContainerBuilder &containerBuilder;
     repo::OSTreeRepo &repository;
+    std::unique_ptr<InteractiveNotifier> notifier;
     api::dbus::v1::PackageManager &pkgMan;
     QString taskID;
     bool taskDone{ true };
@@ -69,6 +72,7 @@ public:
     int repo(std::map<std::string, docopt::value> &args);
     int info(std::map<std::string, docopt::value> &args);
     int content(std::map<std::string, docopt::value> &args);
+    int migrate(std::map<std::string, docopt::value> &args);
 
     void cancelCurrentTask();
 
@@ -78,6 +82,10 @@ private Q_SLOTS:
                                const QString &percentage,
                                const QString &message,
                                int status);
+    void forwardMigrateDone(int code, QString message);
+
+Q_SIGNALS:
+    void migrateDone(int code, QString message, QPrivateSignal);
 };
 
 } // namespace linglong::cli

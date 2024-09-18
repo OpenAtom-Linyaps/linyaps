@@ -4,7 +4,8 @@
 
 #pragma once
 
-#include "linglong/api/dbus/v1/migrate.h"
+#include <QDBusContext>
+#include <QObject>
 
 namespace linglong::service {
 class Migrate : public QObject, protected QDBusContext
@@ -21,5 +22,8 @@ public:
 
 public
     Q_SLOT : void WaitForAvailable() noexcept;
+
+Q_SIGNALS:
+    void MigrateDone(int code, QString message);
 };
 } // namespace linglong::service

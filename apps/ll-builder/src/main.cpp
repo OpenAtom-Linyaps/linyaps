@@ -171,8 +171,8 @@ int main(int argc, char **argv)
     parser.addOptions({ optVerbose });
     parser.addHelpOption();
 
-    QStringList subCommandList = { "create", "build",  "run",     "export",
-                                   "push",   "import", "extract", "repo" };
+    QStringList subCommandList = { "create", "build",   "run",  "export", "push",
+                                   "import", "extract", "repo", "migrate" };
 
     parser.addPositionalArgument("subcommand",
                                  subCommandList.join("\n"),
@@ -258,9 +258,34 @@ int main(int argc, char **argv)
         return -1;
     }
     linglong::repo::ClientFactory clientFactory(repoCfg->repos[repoCfg->defaultRepo]);
-    linglong::repo::OSTreeRepo repo(QString::fromStdString(builderCfg->repo),
-                                    *repoCfg,
-                                    clientFactory);
+
+    auto repoRoot = QDir{ QString::fromStdString(builderCfg->repo) };
+    if (!repoRoot.exists() && !repoRoot.mkpath(".")) {
+        qCritical() << "failed to create the repository of builder.";
+        return -1;
+    }
+
+    linglong::repo::OSTreeRepo repo(repoRoot, *repoCfg, clientFactory);
+    if (command == "migrate") {
+        LINGLONG_TRACE("command migrate");
+
+        parser.clearPositionalArguments();
+        parser.addPositionalArgument("migrate", "migrate underlying data", "migrate");
+        parser.process(app);
+
+        auto ret = repo.dispatchMigration();
+        if (!ret) {
+            qCritical() << "The underlying data may be corrupted, migration failed:"
+                        << ret.error().message();
+            return -1;
+        }
+
+        return 0;
+    }
+
+    if (repo.needMigrate()) {
+        qFatal("underlying data needs migrating, please run 'll-builder migrate'");
+    }
 
     auto *containerBuidler = new linglong::runtime::ContainerBuilder(**ociRuntime);
     containerBuidler->setParent(QCoreApplication::instance());

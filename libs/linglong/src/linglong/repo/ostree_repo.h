@@ -89,6 +89,10 @@ public:
     // unexportReference should be called when LayerDir of ref is existed in local repo
     void unexportReference(const package::Reference &ref) noexcept;
     void updateSharedInfo() noexcept;
+    utils::error::Result<void> dispatchMigration() noexcept;
+    utils::error::Result<void> migrateRefs() noexcept;
+
+    [[nodiscard]] bool needMigrate() const noexcept { return !!this->cache->migrations(); };
 
 private:
     api::types::v1::RepoConfig cfg;
@@ -116,7 +120,6 @@ private:
     removeOstreeRef(const api::types::v1::RepositoryCacheLayersItem &layer) noexcept;
     [[nodiscard]] utils::error::Result<package::LayerDir>
     getLayerDir(const api::types::v1::RepositoryCacheLayersItem &layer) const noexcept;
-    utils::error::Result<void> migrate() noexcept;
 
     [[nodiscard]] utils::error::Result<api::types::v1::RepositoryCacheLayersItem>
     getLayerItem(const package::Reference &ref,

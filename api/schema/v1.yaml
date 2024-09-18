@@ -32,7 +32,7 @@ $defs:
         type: string
         description: version of configuration file
       permissions:
-        $ref: "#/$defs/ApplicationConfigurationPermissions"
+        $ref: '#/$defs/ApplicationConfigurationPermissions'
   ApplicationConfigurationPermissions:
     title: ApplicationConfigurationPermissions
     description: application configuration permissions
@@ -71,6 +71,35 @@ $defs:
             destination:
               type: string
               description: mount source file to the another position of container
+  InteractionRequest:
+    description: |
+      structured message which inspired by freedesktop Notification Spec.
+      refer: https://specifications.freedesktop.org/notification-spec/latest/protocol.html#id-1.10.3.3.4
+    type: object
+    required:
+      - appName
+      - summary
+      - timeout
+    properties:
+      appName:
+        type: string
+      summary:
+        type: string
+      body:
+        type: string
+      actions:
+        type: array
+        items:
+          type: string
+      timeout:
+        type: integer
+  InteractionReply:
+    description: message from user reply
+    type: object
+    properties:
+      action:
+        description: choice which in requested actions
+        type: string
   OCIConfigurationPatch:
     title: OCIConfigurationPatch
     description: oci configuration patch
@@ -116,7 +145,7 @@ $defs:
       version:
         description: The format version of linglong.meta data.
         type: string
-        const: "1"
+        const: '1'
       sections:
         type: object
         required:
@@ -151,7 +180,7 @@ $defs:
             - minified
           properties:
             info:
-              $ref: "#/$defs/PackageInfoV2"
+              $ref: '#/$defs/PackageInfoV2'
             minified:
               description: Whether this layer file is minified or not.
               type: boolean
@@ -170,18 +199,20 @@ $defs:
         description: version of build file
       exclude:
         type: array
-        description: exclude files during exporting UAB. Every item should be absolute path in container.
-                     It could be a directory or a regular file.
-                     e.g. - /usr/share/locale (exclude all files which in this directory)
-                          - /usr/lib/libavfs.a (exclude one file)
+        description:
+          exclude files during exporting UAB. Every item should be absolute path in container.
+          It could be a directory or a regular file.
+          e.g. - /usr/share/locale (exclude all files which in this directory)
+          - /usr/lib/libavfs.a (exclude one file)
         items:
           type: string
       include:
         type: array
-        description: include files during exporting UAB. For example, the packer can declare a
-                     file/directory (e.g. /usr/share/locale/zh_CN) in the excluded directory
-                     (e.g. /usr/share/locale)  to exclude all files in /usr/share/locale
-                     except /usr/share/locale/zh_CN.
+        description:
+          include files during exporting UAB. For example, the packer can declare a
+          file/directory (e.g. /usr/share/locale/zh_CN) in the excluded directory
+          (e.g. /usr/share/locale)  to exclude all files in /usr/share/locale
+          except /usr/share/locale/zh_CN.
         items:
           type: string
       package:
@@ -217,7 +248,7 @@ $defs:
             type: string
             description: channel of package
       permissions:
-        $ref: "#/$defs/ApplicationConfigurationPermissions"
+        $ref: '#/$defs/ApplicationConfigurationPermissions'
       runtime:
         type: string
         description: used runtime of package
@@ -419,7 +450,7 @@ $defs:
         items:
           type: string
       permissions:
-        $ref: "#/$defs/ApplicationConfigurationPermissions"
+        $ref: '#/$defs/ApplicationConfigurationPermissions'
       description:
         type: string
         description: description of package info
@@ -476,7 +507,7 @@ $defs:
         items:
           type: string
       permissions:
-        $ref: "#/$defs/ApplicationConfigurationPermissions"
+        $ref: '#/$defs/ApplicationConfigurationPermissions'
       description:
         type: string
         description: description of package info
@@ -496,8 +527,10 @@ $defs:
           Non-zero code indicated errors occurs
           and message should be displayed to user.
         type: integer
+  PackageManager1MigrateResult:
+    $ref: '#/$defs/CommonResult'
   PackageManager1InstallLayerFDResult:
-    $ref: "#/$defs/CommonResult"
+    $ref: '#/$defs/CommonResult'
   PackageManager1InstallParameters:
     type: object
     description: package manager install parameters
@@ -505,12 +538,12 @@ $defs:
       - package
     properties:
       package:
-        $ref: "#/$defs/PackageManager1Package"
+        $ref: '#/$defs/PackageManager1Package'
   PackageManager1InstallResult:
     title: PackageManager1ResultWithTaskID
     description: package manager install result
     allOf:
-      - $ref: "#/$defs/CommonResult"
+      - $ref: '#/$defs/CommonResult'
     properties:
       taskID:
         type: string
@@ -522,9 +555,9 @@ $defs:
       - package
     properties:
       package:
-        $ref: "#/$defs/PackageManager1Package"
+        $ref: '#/$defs/PackageManager1Package'
   PackageManager1UninstallResult:
-    $ref: "#/$defs/CommonResult"
+    $ref: '#/$defs/CommonResult'
   PackageManager1UpdateParameters:
     type: object
     description: package manager update result
@@ -535,11 +568,11 @@ $defs:
         type: array
         description: packages of package manager update
         items:
-          $ref: "#/$defs/PackageManager1Package"
+          $ref: '#/$defs/PackageManager1Package'
   PackageManager1UpdateResult:
     title: PackageManager1UpdateResult
     description: package manager update result
-    $ref: "#/$defs/PackageManager1InstallResult"
+    $ref: '#/$defs/PackageManager1InstallResult'
   PackageManager1ModifyRepoParameters:
     type: object
     required:
@@ -555,7 +588,7 @@ $defs:
         additionalProperties:
           type: string
   PackageManager1ModifyRepoResult:
-    $ref: "#/$defs/CommonResult"
+    $ref: '#/$defs/CommonResult'
   PackageManager1SearchParameters:
     type: object
     description: package manager search parameters
@@ -578,17 +611,17 @@ $defs:
     type: object
     description: result of package manager search
     allOf:
-      - $ref: "#/$defs/CommonResult"
+      - $ref: '#/$defs/CommonResult'
     properties:
       packages:
         type: array
         items:
-          $ref: "#/$defs/PackageInfoV2"
+          $ref: '#/$defs/PackageInfoV2'
   PackageManager1GetRepoInfoResult:
     type: object
     description: result of package manager get repo info
     allOf:
-      - $ref: "#/$defs/CommonResult"
+      - $ref: '#/$defs/CommonResult'
     required:
       - repoInfo
     properties:
@@ -619,6 +652,12 @@ $defs:
       - config
       - layers
     properties:
+      migrating_stage:
+        type: array
+        description: solutions should apply to migrating progress
+        minItems: 1
+        items:
+          type: integer
       version:
         type: string
         description: version of storage

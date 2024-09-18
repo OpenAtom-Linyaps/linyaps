@@ -37,6 +37,8 @@ struct repoCacheQuery
     }
 };
 
+enum class MigrationStage : int64_t { RefsWithoutRepo };
+
 class RepoCache
 {
 public:
@@ -67,11 +69,11 @@ public:
 
     utils::error::Result<void> rebuildCache(const api::types::v1::RepoConfig &repoConfig,
                                             OstreeRepo &repo) noexcept;
+    [[nodiscard]] std::optional<std::vector<MigrationStage>> migrations() const noexcept;
 
 private:
     RepoCache() = default;
     utils::error::Result<void> writeToDisk();
-
     api::types::v1::RepositoryCache cache;
     std::filesystem::path cacheFile;
 };

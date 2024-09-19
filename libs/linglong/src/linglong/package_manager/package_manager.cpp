@@ -99,7 +99,7 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo, QObject *parent
                       continue;
                   }
                   auto msg = QString("Waiting for the other tasks");
-                  task.updateStatus(InstallTask::Queued, msg);
+                  task.updateState(PackageTask::Queued, msg);
               }
               return;
           }
@@ -109,7 +109,7 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo, QObject *parent
               return;
           };
           for (auto task = taskList.begin(); task != taskList.end(); ++task) {
-              if (!task->getJob().has_value() || task->currentStatus() != InstallTask::Queued) {
+              if (!task->getJob().has_value() || task->state() != PackageTask::Queued) {
                   continue;
               }
               // execute the task
@@ -215,7 +215,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
     }
     const auto &packageRef = *packageRefRet;
 
-    InstallTask task{ packageRef, packageInfo.packageInfoV2Module };
+    PackageTask task{ packageRef, packageInfo.packageInfoV2Module };
     if (std::find(this->taskList.cbegin(), this->taskList.cend(), task) != this->taskList.cend()) {
         return toDBusReply(-1,
                            "the target " % packageRef.toString() % "/"
@@ -240,7 +240,8 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
               }
               this->taskList.erase(elem);
           });
-          taskRef.updateStatus(InstallTask::preInstall, "prepare for installing layer");
+          taskRef.updateState(PackageTask::State::Installing, "installing layer");
+          taskRef.updateSubState(PackageTask::SubState::PreAction, "preparing environment");
 
           package::LayerPackager layerPackager;
           auto layerDir = layerPackager.unpack(*layerFile);
@@ -266,8 +267,8 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
           }
 
           pullDependency(taskRef, *info, module);
-          if (taskRef.currentStatus() == InstallTask::Failed
-              || taskRef.currentStatus() == InstallTask::Canceled) {
+          if (taskRef.state() == PackageTask::Failed
+              || taskRef.state() == PackageTask::Canceled) {
               return;
           }
 
@@ -278,7 +279,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
           }
 
           this->repo.exportReference(packageRef);
-          taskRef.updateStatus(InstallTask::Success, "install layer successfully");
+          taskRef.updateState(PackageTask::Succeed, "install layer successfully");
       };
     taskRef.setJob(std::move(installer));
     Q_EMIT TaskListChanged(taskRef.taskID());
@@ -335,7 +336,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
     }
     const auto &appRef = *appRefRet;
 
-    InstallTask task{ appRef, appLayer.info.packageInfoV2Module };
+    PackageTask task{ appRef, appLayer.info.packageInfoV2Module };
     if (std::find(this->taskList.cbegin(), this->taskList.cend(), task) != this->taskList.cend()) {
         return toDBusReply(-1,
                            "the target " % appRef.toString() % "/"
@@ -363,7 +364,8 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
               return;
           }
 
-          taskRef.updateStatus(InstallTask::preInstall, "prepare for installing uab");
+          taskRef.updateState(PackageTask::Installing, "installing uab");
+          taskRef.updateSubState(PackageTask::PreAction, "prepare environment");
           auto verifyRet = uab->verify();
           if (!verifyRet) {
               taskRef.reportError(std::move(verifyRet).error());
@@ -371,11 +373,11 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
           }
 
           if (!*verifyRet) {
-              taskRef.updateStatus(InstallTask::Failed, "couldn't pass uab verification");
+              taskRef.updateState(PackageTask::Failed, "couldn't pass uab verification");
               return;
           }
 
-          if (taskRef.currentStatus() == InstallTask::Canceled) {
+          if (taskRef.state() == PackageTask::Canceled) {
               qInfo() << "task" << taskRef.taskID() << "has been canceled by user, layer"
                       << taskRef.layer();
               return;
@@ -387,7 +389,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
               return;
           }
 
-          if (taskRef.currentStatus() == InstallTask::Canceled) {
+          if (taskRef.state() == PackageTask::Canceled) {
               qInfo() << "task" << taskRef.taskID() << "has been canceled by user, layer"
                       << taskRef.layer();
               return;
@@ -395,8 +397,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
 
           const auto &uabLayersDirInfo = QFileInfo{ mountPoint->absoluteFilePath("layers") };
           if (!uabLayersDirInfo.exists() || !uabLayersDirInfo.isDir()) {
-              taskRef.updateStatus(InstallTask::Failed,
-                                   "the contents of this uab file are invalid");
+              taskRef.updateState(PackageTask::Failed, "the contents of this uab file are invalid");
               return;
           }
 
@@ -404,7 +405,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
           const auto &uabLayersDir = QDir{ uabLayersDirInfo.absoluteFilePath() };
           package::LayerDir appLayerDir;
           for (const auto &layer : layerInfos) {
-              if (taskRef.currentStatus() == InstallTask::Canceled) {
+              if (taskRef.state() == PackageTask::Canceled) {
                   qInfo() << "task" << taskRef.taskID() << "has been canceled by user, layer"
                           << taskRef.layer();
                   return;
@@ -415,9 +416,9 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
                 % QString::fromStdString(layer.info.packageInfoV2Module));
 
               if (!layerDirPath.exists()) {
-                  taskRef.updateStatus(InstallTask::Failed,
-                                       "layer directory " % layerDirPath.absolutePath()
-                                         % " doesn't exist");
+                  taskRef.updateState(PackageTask::Failed,
+                                      "layer directory " % layerDirPath.absolutePath()
+                                        % " doesn't exist");
                   return;
               }
 
@@ -468,7 +469,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
           transaction.commit();
           this->repo.exportReference(appRef);
 
-          taskRef.updateStatus(InstallTask::Success, "install uab successfully");
+          taskRef.updateState(PackageTask::Succeed, "install uab successfully");
       };
 
     taskRef.setJob(std::move(installer));
@@ -532,7 +533,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     }
     auto reference = *ref;
 
-    InstallTask task{ reference, curModule };
+    PackageTask task{ reference, curModule };
     if (std::find(this->taskList.cbegin(), this->taskList.cend(), task) != this->taskList.cend()) {
         return toDBusReply(-1,
                            "the target " % reference.toString() % "/"
@@ -556,28 +557,28 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     });
 }
 
-void PackageManager::InstallRef(InstallTask &taskContext,
+void PackageManager::InstallRef(PackageTask &taskContext,
                                 const package::Reference &ref,
                                 const std::string &module) noexcept
 {
     LINGLONG_TRACE("install " + ref.toString());
 
-    taskContext.updateStatus(InstallTask::preInstall, "prepare installing " + ref.toString());
+    taskContext.updateState(PackageTask::Installing, "installing " + ref.toString());
+    taskContext.updateSubState(PackageTask::PreAction, "beginning to install");
 
     auto currentArch = package::Architecture::currentCPUArchitecture();
     Q_ASSERT(currentArch.has_value());
     if (ref.arch != *currentArch) {
-        taskContext.updateStatus(InstallTask::Failed,
-                                 "app arch:" + ref.arch.toString()
-                                   + " not match host architecture");
+        taskContext.updateState(PackageTask::Failed,
+                                "app arch:" + ref.arch.toString() + " not match host architecture");
         return;
     }
 
     utils::Transaction t;
 
-    this->repo.pull(taskContext, ref, module);
-    if (taskContext.currentStatus() == InstallTask::Failed
-        || taskContext.currentStatus() == InstallTask::Canceled) {
+    this->repo.pull(taskContext, ref, develop);
+    if (taskContext.state() == PackageTask::Failed
+        || taskContext.state() == PackageTask::Canceled) {
         return;
     }
     t.addRollBack([this, &ref, &module]() noexcept {
@@ -590,13 +591,13 @@ void PackageManager::InstallRef(InstallTask &taskContext,
 
     auto layerDir = this->repo.getLayerDir(ref);
     if (!layerDir) {
-        taskContext.updateStatus(InstallTask::Failed, LINGLONG_ERRV(layerDir).message());
+        taskContext.updateState(PackageTask::Failed, LINGLONG_ERRV(layerDir).message());
         return;
     }
 
     auto info = layerDir->info();
     if (!info) {
-        taskContext.updateStatus(InstallTask::Failed, LINGLONG_ERRV(info).message());
+        taskContext.updateState(PackageTask::Failed, LINGLONG_ERRV(info).message());
         return;
     }
 
@@ -606,14 +607,14 @@ void PackageManager::InstallRef(InstallTask &taskContext,
     }
 
     // check the status of pull runtime and foundation
-    if (taskContext.currentStatus() == InstallTask::Failed
-        || taskContext.currentStatus() == InstallTask::Canceled) {
+    if (taskContext.state() == PackageTask::Failed
+        || taskContext.state() == PackageTask::Canceled) {
         return;
     }
 
     this->repo.exportReference(ref);
 
-    taskContext.updateStatus(InstallTask::Success, "Install " + ref.toString() + " success");
+    taskContext.updateState(PackageTask::Succeed, "Install " + ref.toString() + " success");
     t.commit();
 }
 
@@ -693,7 +694,7 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
             << " new Ref: " << newReference.toString();
 
     auto curModule = paras->package.packageManager1PackageModule.value_or("binary");
-    InstallTask task{ newReference, curModule };
+    PackageTask task{ newReference, curModule };
     if (std::find(this->taskList.cbegin(), this->taskList.cend(), task) != this->taskList.cend()) {
         return toDBusReply(-1,
                            "the target " % newReference.toString() % "/"
@@ -714,7 +715,7 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
     });
 }
 
-void PackageManager::Update(InstallTask &taskContext,
+void PackageManager::Update(PackageTask &taskContext,
                             const package::Reference &ref,
                             const package::Reference &newRef,
                             const std::string &module) noexcept
@@ -724,8 +725,8 @@ void PackageManager::Update(InstallTask &taskContext,
     utils::Transaction t;
 
     this->InstallRef(taskContext, newRef, module);
-    if (taskContext.currentStatus() == InstallTask::Failed
-        || taskContext.currentStatus() == InstallTask::Canceled) {
+    if (taskContext.state() == PackageTask::Failed
+        || taskContext.state() == PackageTask::Canceled) {
         return;
     }
     t.addRollBack([this, &newRef, &ref, &module]() noexcept {
@@ -740,8 +741,8 @@ void PackageManager::Update(InstallTask &taskContext,
     this->repo.unexportReference(ref);
     this->repo.exportReference(newRef);
 
-    taskContext.updateStatus(InstallTask::Success,
-                             "Upgrade " + ref.toString() + "to" + newRef.toString() + " success");
+    taskContext.updateState(PackageTask::Succeed,
+                            "Upgrade " + ref.toString() + "to" + newRef.toString() + " success");
     t.commit();
 
     // try to remove old version
@@ -819,22 +820,39 @@ QVariantMap PackageManager::Migrate() noexcept
     });
 }
 
-void PackageManager::CancelTask(const QString &taskID) noexcept
+QVariantMap PackageManager::Migrate() noexcept
 {
-    auto task = std::find_if(taskList.begin(), taskList.end(), [&taskID](const InstallTask &task) {
-        return task.taskID() == taskID;
-    });
+    qDebug() << "migrate request from:" << message().service();
 
-    if (task == taskList.cend()) {
-        return;
+    auto *migrate = new linglong::service::Migrate(this);
+    new linglong::adaptors::migrate::Migrate1(migrate);
+    auto ret =
+      utils::dbus::registerDBusObject(connection(), "/org/deepin/linglong/Migrate1", migrate);
+    if (!ret) {
+        return toDBusReply(ret);
     }
 
-    task->cancelTask();
-    task->updateStatus(InstallTask::Canceled,
-                       QString{ "cancel installing app %1" }.arg(task->layer()));
+    QMetaObject::invokeMethod(
+      QCoreApplication::instance(),
+      [this, migrate]() {
+          auto ret = this->repo.dispatchMigration();
+          if (!ret) {
+              Q_EMIT migrate->MigrateDone(ret.error().code(), ret.error().message());
+          } else {
+              Q_EMIT migrate->MigrateDone(0, "migrate successfully");
+          }
+
+          migrate->deleteLater();
+      },
+      Qt::QueuedConnection);
+
+    return utils::serialize::toQVariantMap(api::types::v1::CommonResult{
+      .code = 0,
+      .message = "package manager is migrating data",
+    });
 }
 
-void PackageManager::pullDependency(InstallTask &taskContext,
+void PackageManager::pullDependency(PackageTask &taskContext,
                                     const api::types::v1::PackageInfoV2 &info,
                                     const std::string &module) noexcept
 {
@@ -849,7 +867,7 @@ void PackageManager::pullDependency(InstallTask &taskContext,
     if (info.runtime) {
         auto fuzzyRuntime = package::FuzzyReference::parse(QString::fromStdString(*info.runtime));
         if (!fuzzyRuntime) {
-            taskContext.updateStatus(InstallTask::Failed, LINGLONG_ERRV(fuzzyRuntime).message());
+            taskContext.updateState(PackageTask::Failed, LINGLONG_ERRV(fuzzyRuntime).message());
             return;
         }
 
@@ -859,24 +877,24 @@ void PackageManager::pullDependency(InstallTask &taskContext,
                                                    .fallbackToRemote = true,
                                                  });
         if (!runtime) {
-            taskContext.updateStatus(InstallTask::Failed, runtime.error().message());
+            taskContext.updateState(PackageTask::Failed, runtime.error().message());
             return;
         }
 
-        taskContext.updateStatus(InstallTask::installRuntime,
-                                 "Installing runtime " + runtime->toString());
+        taskContext.updateSubState(PackageTask::InstallRuntime,
+                                   "Installing runtime " + runtime->toString());
 
         // 如果runtime已存在，则直接使用, 否则从远程拉取
         auto runtimeLayerDir = repo.getLayerDir(*runtime, module);
         if (!runtimeLayerDir) {
-            if (taskContext.currentStatus() == InstallTask::Canceled) {
+            if (taskContext.state() == PackageTask::Canceled) {
                 return;
             }
 
             this->repo.pull(taskContext, *runtime, module);
 
-            if (taskContext.currentStatus() == InstallTask::Canceled
-                || taskContext.currentStatus() == InstallTask::Failed) {
+            if (taskContext.state() == PackageTask::Canceled
+                || taskContext.state() == PackageTask::Failed) {
                 return;
             }
 
@@ -892,7 +910,7 @@ void PackageManager::pullDependency(InstallTask &taskContext,
 
     auto fuzzyBase = package::FuzzyReference::parse(QString::fromStdString(info.base));
     if (!fuzzyBase) {
-        taskContext.updateStatus(InstallTask::Failed, LINGLONG_ERRV(fuzzyBase).message());
+        taskContext.updateState(PackageTask::Failed, LINGLONG_ERRV(fuzzyBase).message());
         return;
     }
 
@@ -902,7 +920,7 @@ void PackageManager::pullDependency(InstallTask &taskContext,
                                             .fallbackToRemote = true,
                                           });
     if (!base) {
-        taskContext.updateStatus(InstallTask::Failed, LINGLONG_ERRV(base).message());
+        taskContext.updateState(PackageTask::Failed, LINGLONG_ERRV(base).message());
         return;
     }
 
@@ -911,14 +929,15 @@ void PackageManager::pullDependency(InstallTask &taskContext,
     // 如果base已存在，则直接使用, 否则从远程拉取
     auto baseLayerDir = repo.getLayerDir(*base, module);
     if (!baseLayerDir) {
-        if (taskContext.currentStatus() == InstallTask::Canceled) {
+        taskContext.updateSubState(PackageTask::InstallBase, "Installing base " + base->toString());
+        if (taskContext.state() == PackageTask::Canceled) {
             return;
         }
 
         this->repo.pull(taskContext, *base, module);
 
-        if (taskContext.currentStatus() == InstallTask::Canceled
-            || taskContext.currentStatus() == InstallTask::Failed) {
+        if (taskContext.state() == PackageTask::Canceled
+            || taskContext.state() == PackageTask::Failed) {
             return;
         }
     }

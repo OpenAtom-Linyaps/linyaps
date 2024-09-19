@@ -8,7 +8,7 @@
 
 #include "linglong/api/dbus/v1/package_manager.h"
 #include "linglong/repo/ostree_repo.h"
-#include "task.h"
+#include "package_task.h"
 
 #include <QDBusArgument>
 #include <QDBusContext>
@@ -71,7 +71,7 @@ public:
     PackageManager(PackageManager &&) = delete;
     auto operator=(const PackageManager &) -> PackageManager & = delete;
     auto operator=(PackageManager &&) -> PackageManager & = delete;
-    void Update(InstallTask &taskContext,
+    void Update(PackageTask &taskContext,
                 const package::Reference &ref,
                 const package::Reference &newRef,
                 const std::string &module) noexcept;
@@ -80,7 +80,7 @@ public
     Q_SLOT : [[nodiscard]] auto getConfiguration() const noexcept -> QVariantMap;
     void setConfiguration(const QVariantMap &parameters) noexcept;
     auto Install(const QVariantMap &parameters) noexcept -> QVariantMap;
-    void InstallRef(InstallTask &taskContext,
+    void InstallRef(PackageTask &taskContext,
                     const package::Reference &ref,
                     const std::string &module) noexcept;
     auto InstallFromFile(const QDBusUnixFileDescriptor &fd,
@@ -89,21 +89,21 @@ public
     auto Update(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Search(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Migrate() noexcept -> QVariantMap;
-    void CancelTask(const QString &taskID) noexcept;
+    void replyInteraction(const QString &interactionID, const QVariantMap &replies);
 
 Q_SIGNALS:
     void TaskListChanged(QString taskID);
-    void TaskChanged(QString taskID, QString percentage, QString message, int status);
+    void TaskChanged(QDBusObjectPath task, QString percentage, QString message, int status);
     void SearchFinished(QString jobID, QVariantMap result);
 
 private:
     QVariantMap installFromLayer(const QDBusUnixFileDescriptor &fd) noexcept;
     QVariantMap installFromUAB(const QDBusUnixFileDescriptor &fd) noexcept;
-    void pullDependency(InstallTask &taskContext,
+    void pullDependency(PackageTask &taskContext,
                         const api::types::v1::PackageInfoV2 &info,
                         const std::string &module) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT
-    std::list<InstallTask> taskList;
+    std::list<PackageTask> taskList;
     // 正在运行的任务ID
     QString runningTaskID;
 

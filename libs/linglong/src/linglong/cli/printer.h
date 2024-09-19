@@ -10,6 +10,7 @@
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/LayerInfo.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
+#include "linglong/api/types/v1/PackageTaskMessage.hpp"
 #include "linglong/api/types/v1/RepoConfig.hpp"
 #include "linglong/utils/error/error.h"
 
@@ -36,7 +37,7 @@ public:
     virtual void printReply(const api::types::v1::CommonResult &);
     virtual void printRepoConfig(const api::types::v1::RepoConfig &);
     virtual void printLayerInfo(const api::types::v1::LayerInfo &);
-    virtual void printTaskStatus(const QString &percentage, const QString &message, int status);
+    virtual void printTaskMessage(const api::types::v1::PackageTaskMessage &);
     virtual void printContent(const QStringList &filePaths);
 
 private:

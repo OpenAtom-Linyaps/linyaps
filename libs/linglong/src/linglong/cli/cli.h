@@ -8,6 +8,7 @@
 
 #include "linglong/api/dbus/v1/package_manager.h"
 #include "linglong/cli/interactive_notifier.h"
+#include "linglong/api/dbus/v1/task.h"
 #include "linglong/cli/printer.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
@@ -42,9 +43,9 @@ private:
     repo::OSTreeRepo &repository;
     std::unique_ptr<InteractiveNotifier> notifier;
     api::dbus::v1::PackageManager &pkgMan;
-    QString taskID;
-    bool taskDone{ true };
-    service::InstallTask::Status lastStatus;
+    std::unique_ptr<api::dbus::v1::Task1> task{ nullptr };
+    service::PackageTask::State lastState;
+    service::PackageTask::SubState lastSubState;
     std::vector<std::string>
     filePathMapping(std::map<std::string, docopt::value> &args,
                     const std::vector<std::string> &command) const noexcept;
@@ -72,10 +73,10 @@ public:
 
 private Q_SLOTS:
     int installFromFile(const QFileInfo &fileInfo);
-    void processDownloadStatus(const QString &recTaskID,
-                               const QString &percentage,
-                               const QString &message,
-                               int status);
+    void processDownloadState(const QString &recTaskID,
+                              const QString &percentage,
+                              const QString &message,
+                              int status);
     void forwardMigrateDone(int code, QString message);
 
 Q_SIGNALS:

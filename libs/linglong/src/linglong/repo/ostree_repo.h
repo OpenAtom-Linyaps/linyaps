@@ -10,7 +10,7 @@
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
-#include "linglong/package_manager/task.h"
+#include "linglong/package_manager/package_task.h"
 #include "linglong/repo/client_factory.h"
 #include "linglong/repo/repo_cache.h"
 #include "linglong/utils/error/error.h"
@@ -59,7 +59,7 @@ public:
                  const package::Reference &reference,
                  const std::string &module = "binary") const noexcept;
 
-    void pull(service::InstallTask &taskContext,
+    void pull(service::PackageTask &taskContext,
               const package::Reference &reference,
               const std::string &module = "binary") noexcept;
 

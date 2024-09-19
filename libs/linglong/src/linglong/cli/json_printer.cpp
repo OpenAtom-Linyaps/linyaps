@@ -7,7 +7,7 @@
 #include "linglong/cli/json_printer.h"
 
 #include "linglong/api/types/v1/Generators.hpp"
-#include "linglong/package_manager/task.h"
+#include "linglong/package_manager/package_task.h"
 
 #include <QMetaEnum>
 #include <QJsonArray>
@@ -61,14 +61,14 @@ void JSONPrinter::printContent(const QStringList &filePaths)
     std::cout << QString::fromUtf8(QJsonDocument(obj).toJson()).toStdString() << std::endl;
 }
 
-void JSONPrinter::printTaskStatus(const QString &percentage, const QString &message, int status)
+void JSONPrinter::printTaskMessage(const api::types::v1::PackageTaskMessage& message)
 {
     QJsonArray jsonArray;
 
     jsonArray.push_back(QJsonObject{
       { "percentage", percentage },
       { "message", message },
-      { "state", QMetaEnum::fromType<service::InstallTask::Status>().valueToKey(status) },
+      { "state", QMetaEnum::fromType<service::PackageTask::State>().valueToKey(state) },
     });
 
     std::cout << QString::fromUtf8(QJsonDocument(jsonArray).toJson()).toStdString() << std::endl;

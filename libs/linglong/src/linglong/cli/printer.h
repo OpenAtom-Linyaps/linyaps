@@ -10,6 +10,7 @@
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/LayerInfo.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
+#include "linglong/api/types/v1/PackageTaskMessage.hpp"
 #include "linglong/api/types/v1/RepoConfig.hpp"
 #include "linglong/api/types/v1/UpgradeListResult.hpp"
 #include "linglong/utils/error/error.h"
@@ -33,7 +34,7 @@ public:
     virtual void printReply(const api::types::v1::CommonResult &) = 0;
     virtual void printRepoConfig(const api::types::v1::RepoConfig &) = 0;
     virtual void printLayerInfo(const api::types::v1::LayerInfo &) = 0;
-    virtual void printTaskStatus(const QString &percentage, const QString &message, int status) = 0;
+    virtual void printTaskMessage(const api::types::v1::PackageTaskMessage &) = 0;
     virtual void printContent(const QStringList &filePaths) = 0;
     virtual void printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &) = 0;
 };

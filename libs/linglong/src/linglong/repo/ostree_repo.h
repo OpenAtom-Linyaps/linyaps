@@ -31,6 +31,15 @@ struct clearReferenceOption
     bool fallbackToRemote = true;
 };
 
+struct OstreeRepoDeleter
+{
+    void operator()(OstreeRepo *repo)
+    {
+        qDebug() << "delete OstreeRepo" << repo;
+        g_clear_object(&repo);
+    }
+};
+
 class OSTreeRepo : public QObject
 {
     Q_OBJECT
@@ -133,23 +142,15 @@ public:
 private:
     api::types::v1::RepoConfig cfg;
 
-    struct OstreeRepoDeleter
-    {
-        void operator()(OstreeRepo *repo)
-        {
-            qDebug() << "delete OstreeRepo" << repo;
-            g_clear_object(&repo);
-        }
-    };
-
-    std::unique_ptr<OstreeRepo, OstreeRepoDeleter> ostreeRepo = nullptr;
     QDir repoDir;
     QDir ostreeRepoDir() const noexcept;
     QDir createLayerQDir(const package::Reference &ref,
                          const QString &module = "binary",
                          const QString &subRef = "") const noexcept;
+    utils::error::Result<OstreeRepo *> getOStreeRepo();
 
     ClientFactory &m_clientFactory;
+    std::unique_ptr<OstreeRepo, OstreeRepoDeleter> m_ostreeRepo = nullptr;
 };
 
 } // namespace linglong::repo

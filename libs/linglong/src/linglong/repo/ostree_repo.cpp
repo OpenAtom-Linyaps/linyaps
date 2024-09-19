@@ -719,60 +719,7 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
     : cfg(cfg)
     , m_clientFactory(clientFactory)
 {
-    if (!path.exists()) {
-        path.mkpath(".");
-    }
-    if (!QFileInfo(path.absolutePath()).isReadable()) {
-        auto msg = QString("read linglong repository(%1): permission denied ")
-                     .arg(path.path())
-                     .toStdString();
-        qFatal("%s", msg.c_str());
-    }
-
-    g_autoptr(GError) gErr = nullptr;
-    g_autoptr(GFile) repoPath = nullptr;
-    g_autoptr(OstreeRepo) ostreeRepo = nullptr;
-
     this->repoDir = path;
-
-    {
-        LINGLONG_TRACE("use linglong repo at " + path.absolutePath());
-
-        repoPath = g_file_new_for_path(this->ostreeRepoDir().absolutePath().toUtf8());
-        ostreeRepo = ostree_repo_new(repoPath);
-        Q_ASSERT(ostreeRepo != nullptr);
-        if (ostree_repo_open(ostreeRepo, nullptr, &gErr) == TRUE) {
-            auto result =
-              updateOstreeRepoConfig(ostreeRepo,
-                                     QString::fromStdString(cfg.defaultRepo),
-                                     QString::fromStdString(cfg.repos.at(cfg.defaultRepo)));
-            if (!result) {
-                // when ll-cli construct this object, it has no permission to wirte ostree config
-                // we can't abort here.
-                qDebug() << LINGLONG_ERRV(result);
-            }
-
-            this->ostreeRepo.reset(static_cast<OstreeRepo *>(g_steal_pointer(&ostreeRepo)));
-            return;
-        }
-
-        qDebug() << LINGLONG_ERRV("ostree_repo_open", gErr);
-
-        g_clear_error(&gErr);
-        g_clear_object(&ostreeRepo);
-    }
-
-    LINGLONG_TRACE("init ostree-based linglong repository");
-
-    auto result = createOstreeRepo(this->ostreeRepoDir().absolutePath(),
-                                   QString::fromStdString(this->cfg.defaultRepo),
-                                   QString::fromStdString(this->cfg.repos[this->cfg.defaultRepo]));
-    if (!result) {
-        qCritical() << LINGLONG_ERRV(result);
-        qFatal("abort");
-    }
-
-    this->ostreeRepo.reset(*result);
 }
 
 api::types::v1::RepoConfig OSTreeRepo::getConfig() const noexcept
@@ -786,6 +733,11 @@ utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfi
 
     if (cfg == this->cfg) {
         return LINGLONG_OK;
+    }
+
+    auto repo = this->getOStreeRepo();
+    if (!repo.has_value()) {
+        return LINGLONG_ERR(repo);
     }
 
     utils::Transaction transaction;
@@ -802,15 +754,15 @@ utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfi
         }
     });
 
-    result = updateOstreeRepoConfig(this->ostreeRepo.get(),
+    result = updateOstreeRepoConfig(*repo,
                                     QString::fromStdString(cfg.defaultRepo),
                                     QString::fromStdString(cfg.repos.at(cfg.defaultRepo)));
     if (!result) {
         return LINGLONG_ERR(result);
     }
-    transaction.addRollBack([this]() noexcept {
+    transaction.addRollBack([this, &repo]() noexcept {
         auto result =
-          updateOstreeRepoConfig(this->ostreeRepo.get(),
+          updateOstreeRepoConfig(*repo,
                                  QString::fromStdString(this->cfg.defaultRepo),
                                  QString::fromStdString(this->cfg.repos.at(this->cfg.defaultRepo)));
         if (!result) {
@@ -830,6 +782,11 @@ utils::error::Result<package::LayerDir> OSTreeRepo::importLayerDir(const package
                                                                    const QString &subRef) noexcept
 {
     LINGLONG_TRACE("import layer dir");
+
+    auto repo = this->getOStreeRepo();
+    if (!repo.has_value()) {
+        return LINGLONG_ERR("get ostree repo", repo);
+    }
 
     if (!dir.exists()) {
         return LINGLONG_ERR(QString("layer directory %1 not exists").arg(dir.absolutePath()));
@@ -860,13 +817,13 @@ utils::error::Result<package::LayerDir> OSTreeRepo::importLayerDir(const package
                                              QString::fromStdString(info->packageInfoV2Module),
                                              subRef)
                      .toLocal8Bit();
-    auto commitID = commitDirToRepo(gFile, this->ostreeRepo.get(), refspec);
+    auto commitID = commitDirToRepo(gFile, *repo, refspec);
     if (!commitID) {
         return LINGLONG_ERR(commitID);
     }
 
-    transaction.addRollBack([this, &refspec]() noexcept {
-        auto result = removeOstreeRef(this->ostreeRepo.get(), refspec);
+    transaction.addRollBack([&refspec, &repo]() noexcept {
+        auto result = removeOstreeRef(*repo, refspec);
         if (!result) {
             qCritical() << result.error();
             Q_ASSERT(false);
@@ -875,7 +832,7 @@ utils::error::Result<package::LayerDir> OSTreeRepo::importLayerDir(const package
 
     auto layerDir =
       this->createLayerQDir(*reference, QString::fromStdString(info->packageInfoV2Module), subRef);
-    auto result = handleRepositoryUpdate(this->ostreeRepo.get(), layerDir, refspec);
+    auto result = handleRepositoryUpdate(*repo, layerDir, refspec);
     if (!result) {
         return LINGLONG_ERR(result);
     }
@@ -1100,6 +1057,11 @@ utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref,
 {
     LINGLONG_TRACE("remove " + ref.toString());
 
+    auto repo = this->getOStreeRepo();
+    if (!repo.has_value()) {
+        return LINGLONG_ERR("get ostree repo", repo);
+    }
+
     auto layerDir = this->getLayerDir(ref, module, subRef);
     if (!layerDir) {
         return LINGLONG_ERR("layer not found");
@@ -1150,14 +1112,14 @@ utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref,
     auto refspec = ostreeSpecFromReferenceV2(ref, module, subRef).toUtf8();
     const auto *data = refspec.constData();
 
-    auto result = removeOstreeRef(this->ostreeRepo.get(), data);
+    auto result = removeOstreeRef(*repo, data);
     if (result) {
         return LINGLONG_OK;
     }
 
     // fallback to old ref
     refspec = ostreeSpecFromReference(ref, module).toUtf8();
-    result = removeOstreeRef(this->ostreeRepo.get(), refspec.constData());
+    result = removeOstreeRef(*repo, refspec.constData());
     if (!result) {
         return LINGLONG_ERR(result);
     }
@@ -1168,12 +1130,18 @@ utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref,
 utils::error::Result<void> OSTreeRepo::prune()
 {
     LINGLONG_TRACE("prune ostree repo");
+
+    auto repo = this->getOStreeRepo();
+    if (!repo.has_value()) {
+        return LINGLONG_ERR("get ostree repo", repo);
+    }
+
     // TODO(wurongjie) Perform pruning at the right time
     [[maybe_unused]] gint out_objects_total = 0;
     [[maybe_unused]] gint out_objects_pruned = 0;
     [[maybe_unused]] guint64 out_pruned_object_size_total = 0;
     g_autoptr(GError) gErr = nullptr;
-    if (ostree_repo_prune(this->ostreeRepo.get(),
+    if (ostree_repo_prune(*repo,
                           OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY,
                           0,
                           &out_objects_total,
@@ -1195,6 +1163,12 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
 
     LINGLONG_TRACE("pull " + refString);
 
+    auto repo = this->getOStreeRepo();
+    if (!repo.has_value()) {
+        qCritical() << repo.error();
+        Q_ASSERT(false);
+    }
+
     utils::Transaction transaction;
     auto *cancellable = taskContext.cancellable();
 
@@ -1206,7 +1180,7 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
 
     g_autoptr(GError) gErr = nullptr;
     // 这里不能使用g_main_context_push_thread_default，因为会阻塞Qt的事件循环
-    auto status = ostree_repo_pull(this->ostreeRepo.get(),
+    auto status = ostree_repo_pull(*repo,
                                    this->cfg.defaultRepo.c_str(),
                                    refs,
                                    OSTREE_REPO_PULL_FLAGS_MIRROR,
@@ -1225,8 +1199,7 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
         char *oldRefs[] = { (char *)refString.data(), nullptr };
 
         g_clear_error(&gErr);
-
-        status = ostree_repo_pull(this->ostreeRepo.get(),
+        status = ostree_repo_pull(*repo,
                                   this->cfg.defaultRepo.c_str(),
                                   oldRefs,
                                   OSTREE_REPO_PULL_FLAGS_MIRROR,
@@ -1247,10 +1220,8 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
             Q_ASSERT(false);
         }
     });
-
-    auto result = handleRepositoryUpdate(this->ostreeRepo.get(),
-                                         this->createLayerQDir(reference, module),
-                                         refString);
+    auto result =
+      handleRepositoryUpdate(*repo, this->createLayerQDir(reference, module), refString);
     if (!result) {
         taskContext.reportError(LINGLONG_ERRV(result));
         return;
@@ -1646,6 +1617,66 @@ auto OSTreeRepo::getLayerDir(const package::Reference &ref,
     }
 
     return dir.absolutePath();
+}
+
+utils::error::Result<OstreeRepo *> OSTreeRepo::getOStreeRepo()
+{
+    if (m_ostreeRepo) {
+        return m_ostreeRepo.get();
+    }
+    if (!this->repoDir.exists()) {
+        this->repoDir.mkpath(".");
+    }
+    if (!QFileInfo(this->repoDir.absolutePath()).isReadable()) {
+        auto msg = QString("read linglong repository(%1): permission denied ")
+                     .arg(this->repoDir.path())
+                     .toStdString();
+        qFatal("%s", msg.c_str());
+    }
+
+    g_autoptr(GError) gErr = nullptr;
+    g_autoptr(GFile) repoPath = nullptr;
+    g_autoptr(OstreeRepo) ostreeRepo = nullptr;
+
+    {
+        LINGLONG_TRACE("use linglong repo at " + this->repoDir.absolutePath());
+
+        repoPath = g_file_new_for_path(this->ostreeRepoDir().absolutePath().toUtf8());
+        ostreeRepo = ostree_repo_new(repoPath);
+        Q_ASSERT(ostreeRepo != nullptr);
+        if (ostree_repo_open(ostreeRepo, nullptr, &gErr) == TRUE) {
+            auto result =
+              updateOstreeRepoConfig(ostreeRepo,
+                                     QString::fromStdString(cfg.defaultRepo),
+                                     QString::fromStdString(cfg.repos.at(cfg.defaultRepo)));
+            if (!result) {
+                // when ll-cli construct this object, it has no permission to wirte ostree config
+                // we can't abort here.
+                qDebug() << LINGLONG_ERRV(result);
+            }
+
+            this->m_ostreeRepo.reset(static_cast<OstreeRepo *>(g_steal_pointer(&ostreeRepo)));
+            return m_ostreeRepo.get();
+        }
+
+        qDebug() << LINGLONG_ERRV("ostree_repo_open", gErr);
+
+        g_clear_error(&gErr);
+        g_clear_object(&ostreeRepo);
+    }
+
+    LINGLONG_TRACE("init ostree-based linglong repository");
+
+    auto result = createOstreeRepo(this->ostreeRepoDir().absolutePath(),
+                                   QString::fromStdString(this->cfg.defaultRepo),
+                                   QString::fromStdString(this->cfg.repos[this->cfg.defaultRepo]));
+    if (!result) {
+        qCritical() << LINGLONG_ERRV(result);
+        qFatal("abort");
+    }
+
+    this->m_ostreeRepo.reset(*result);
+    return m_ostreeRepo.get();
 }
 
 OSTreeRepo::~OSTreeRepo() = default;

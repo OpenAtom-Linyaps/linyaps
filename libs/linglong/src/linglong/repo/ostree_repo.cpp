@@ -58,7 +58,7 @@ struct ostreeUserData
     guint64 total_delta_part_size{ 0 };
     guint64 total_delta_part_usize{ 0 };
     char *ostree_status{ nullptr };
-    service::InstallTask *taskContext{ nullptr };
+    service::PackageTask *taskContext{ nullptr };
     std::string status;
     long double progress{ 0 };
     long double last_total{ 0 };
@@ -1187,7 +1187,7 @@ utils::error::Result<void> OSTreeRepo::prune()
     return LINGLONG_OK;
 }
 
-void OSTreeRepo::pull(service::InstallTask &taskContext,
+void OSTreeRepo::pull(service::PackageTask &taskContext,
                       const package::Reference &reference,
                       const QString &module) noexcept
 {

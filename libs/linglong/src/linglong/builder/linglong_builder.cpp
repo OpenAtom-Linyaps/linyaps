@@ -136,11 +136,8 @@ utils::error::Result<package::Reference> pullDependency(const package::FuzzyRefe
         return *ref;
     }
 
-    auto tmpTask = service::InstallTask::createTemporaryTask();
-    auto partChanged = [&ref, develop](const QString &,
-                                       const QString &percentage,
-                                       const QString &,
-                                       service::InstallTask::Status) {
+    auto tmpTask = service::PackageTask::createTemporaryTask();
+    auto partChanged = [&ref, develop](const QString &percentage) {
         printReplacedText(QString("%1%2%3%4 %5")
                             .arg(ref->id, -25)                        // NOLINT
                             .arg(ref->version.toString(), -15)        // NOLINT
@@ -150,11 +147,10 @@ utils::error::Result<package::Reference> pullDependency(const package::FuzzyRefe
                             .toStdString(),
                           2);
     };
-    QObject::connect(&tmpTask, &service::InstallTask::PartChanged, partChanged);
+    QObject::connect(&tmpTask, &service::PackageTask::PartChanged, partChanged);
     repo.pull(tmpTask, *ref, develop);
-    if (tmpTask.currentStatus() == service::InstallTask::Status::Failed) {
-        return LINGLONG_ERR("pull " + ref->toString() + " failed",
-                            std::move(tmpTask).currentError());
+    if (tmpTask.state() == service::PackageTask::Failed) {
+        return LINGLONG_ERR("pull " + ref->toString() + " failed", std::move(tmpTask).takeError());
     }
     return *ref;
 }
@@ -763,8 +759,10 @@ set -e
     infoFile.close();
 
     qDebug() << "copy linglong.yaml to output";
-    QFile::copy(this->workingDir.absoluteFilePath("linglong.yaml"), this->workingDir.absoluteFilePath("linglong/output/binary/linglong.yaml"));
-    QFile::copy(this->workingDir.absoluteFilePath("linglong.yaml"), this->workingDir.absoluteFilePath("linglong/output/develop/linglong.yaml"));
+    QFile::copy(this->workingDir.absoluteFilePath("linglong.yaml"),
+                this->workingDir.absoluteFilePath("linglong/output/binary/linglong.yaml"));
+    QFile::copy(this->workingDir.absoluteFilePath("linglong.yaml"),
+                this->workingDir.absoluteFilePath("linglong/output/develop/linglong.yaml"));
 
     printMessage("[Commit Contents]");
     printMessage(QString("%1%2%3%4")

@@ -93,35 +93,31 @@ Subcommands:
     content    Display the exported files of application
 )";
 
-void Cli::processDownloadStatus(const QString &recTaskID,
-                                const QString &percentage,
-                                const QString &message,
-                                int status)
+void Cli::processDownloadState(const QString &recTaskID,
+                               const QString &percentage,
+                               const QString &message,
+                               int status)
 {
     LINGLONG_TRACE("download status")
 
-    if (recTaskID != this->taskID) {
-        return;
-    }
-
-    this->lastStatus = static_cast<service::InstallTask::Status>(status);
+    this->lastState = static_cast<service::PackageTask::State>(status);
     switch (status) {
-    case service::InstallTask::Canceled:
-    case service::InstallTask::Queued:
-    case service::InstallTask::preInstall:
-    case service::InstallTask::installBase:
-    case service::InstallTask::installRuntime:
-    case service::InstallTask::installApplication:
+    case service::PackageTask::Canceled:
+    case service::PackageTask::Queued:
+    case service:: ::preInstall:
+    case service::PackageTask::installBase:
+    case service::PackageTask::installRuntime:
+    case service::PackageTask::installApplication:
         [[fallthrough]];
-    case service::InstallTask::postInstall: {
+    case service::PackageTask::postInstall: {
         this->printer.printTaskStatus(percentage, message, status);
     } break;
-    case service::InstallTask::Success: {
+    case service::PackageTask::Success: {
         this->taskDone = true;
         this->printer.printTaskStatus(percentage, message, status);
         std::cout << std::endl;
     } break;
-    case service::InstallTask::Failed: {
+    case service::PackageTask::Failed: {
         this->printer.printErr(LINGLONG_ERRV("\n" + message));
         this->taskDone = true;
     }
@@ -299,13 +295,11 @@ int Cli::run(std::map<std::string, docopt::value> &args)
             bashArgs.prepend("exec");
         }
         // 在原始args前面添加bash --login -c，这样可以使用/etc/profile配置的环境变量
-        execArgs = std::vector<std::string>{
-            "/bin/bash",
-            "--login",
-            "-c",
-            bashArgs.join(" ").toStdString(),
-            "; wait"
-        };
+        execArgs = std::vector<std::string>{ "/bin/bash",
+                                             "--login",
+                                             "-c",
+                                             bashArgs.join(" ").toStdString(),
+                                             "; wait" };
 
         auto opt = ocppi::runtime::ExecOption{};
         opt.uid = ::getuid();
@@ -431,13 +425,11 @@ int Cli::exec(std::map<std::string, docopt::value> &args)
             bashArgs.prepend("exec");
         }
         // 在原始args前面添加bash --login -c，这样可以使用/etc/profile配置的环境变量
-        command = std::vector<std::string>{
-            "/bin/bash",
-            "--login",
-            "-c",
-            bashArgs.join(" ").toStdString(),
-            "; wait"
-        };
+        command = std::vector<std::string>{ "/bin/bash",
+                                            "--login",
+                                            "-c",
+                                            bashArgs.join(" ").toStdString(),
+                                            "; wait" };
     } else {
         command = { "bash", "--login" };
     }
@@ -520,9 +512,9 @@ int Cli::kill(std::map<std::string, docopt::value> &args)
 
 void Cli::cancelCurrentTask()
 {
-    if (!this->taskDone) {
-        this->pkgMan.CancelTask(this->taskID);
-        std::cout << "cancel downloading application." << std::endl;
+    if ((this->lastSubState != service::PackageTask::Done) && this->task != nullptr) {
+        this->task->Cancel();
+        std::cout << "cancel running task." << std::endl;
     }
 }
 
@@ -602,7 +594,7 @@ void Cli::updateAM() noexcept
 {
     // Call ReloadApplications() in AM for now. Remove later.
     if ((QSysInfo::productType() == "uos" || QSysInfo::productType() == "Deepin")
-        && this->lastStatus == service::InstallTask::Success) {
+        && this->lastState == service::PackageTask::Succeed) {
         QDBusConnection conn = QDBusConnection::sessionBus();
         if (!conn.isConnected()) {
             qWarning() << "Failed to connect to the session bus";
@@ -697,7 +689,7 @@ int Cli::install(std::map<std::string, docopt::value> &args)
     loop.exec();
 
     updateAM();
-    return this->lastStatus == service::InstallTask::Success ? 0 : -1;
+    return this->lastState == service::PackageTask::Succeed ? 0 : -1;
 }
 
 int Cli::upgrade(std::map<std::string, docopt::value> &args)
@@ -749,10 +741,9 @@ int Cli::upgrade(std::map<std::string, docopt::value> &args)
     }
 
     this->taskID = QString::fromStdString(*result->taskID);
-    this->taskDone = false;
     QEventLoop loop;
     std::function<void()> statusChecker = std::function{ [&loop, &statusChecker, this]() -> void {
-        if (this->taskDone) {
+        if (this->lastSubState == service::PackageTask::Done) {
             loop.exit(0);
         }
         QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
@@ -761,12 +752,12 @@ int Cli::upgrade(std::map<std::string, docopt::value> &args)
     QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
     loop.exec();
 
-    if (this->lastStatus != service::InstallTask::Success) {
+    if (this->lastState != service::PackageTask::Succeed) {
         return -1;
     }
 
     updateAM();
-    return this->lastStatus == service::InstallTask::Success ? 0 : -1;
+    return this->lastState == service::PackageTask::Succeed ? 0 : -1;
 }
 
 int Cli::search(std::map<std::string, docopt::value> &args)

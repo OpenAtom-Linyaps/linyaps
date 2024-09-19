@@ -94,11 +94,19 @@ void Printer::printContent(const QStringList &filePaths)
     }
 }
 
-void Printer::printTaskStatus(const QString &percentage, const QString &message, int /*status*/)
+void Printer::printTaskMessage(const api::types::v1::PackageTaskMessage &message)
 {
-    std::cout << "\r\33[K" << "\033[?25l" << percentage.toStdString() << "% "
-              << message.toStdString() << "\033[?25h";
-    std::cout.flush();
+    auto &stdout = std::cout;
+    stdout << "\r\33[K" << "\033[?25l" << message.percentage << "% ";
+
+    if (message.result) {
+        stdout << message.result->message << ":" << message.result->code;
+    } else {
+        stdout << message.message;
+    }
+
+    stdout << "\033[?25h\n";
+    stdout.flush();
 }
 
 std::wstring subwstr(std::wstring wstr, int width)

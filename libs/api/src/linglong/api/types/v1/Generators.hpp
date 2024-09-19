@@ -47,6 +47,8 @@
 #include "linglong/api/types/v1/BuilderProjectSource.hpp"
 #include "linglong/api/types/v1/BuilderProjectPackage.hpp"
 #include "linglong/api/types/v1/BuilderConfig.hpp"
+#include "linglong/api/types/v1/ApplicationSetting.hpp"
+#include "linglong/api/types/v1/AllowPath.hpp"
 #include "linglong/api/types/v1/ApplicationConfiguration.hpp"
 #include "linglong/api/types/v1/ApplicationConfigurationPermissions.hpp"
 #include "linglong/api/types/v1/ApplicationConfigurationPermissionsInnerBind.hpp"
@@ -67,6 +69,12 @@ void to_json(json & j, const ApplicationConfigurationPermissions & x);
 
 void from_json(const json & j, ApplicationConfiguration & x);
 void to_json(json & j, const ApplicationConfiguration & x);
+
+void from_json(const json & j, AllowPath & x);
+void to_json(json & j, const AllowPath & x);
+
+void from_json(const json & j, ApplicationSetting & x);
+void to_json(json & j, const ApplicationSetting & x);
 
 void from_json(const json & j, BuilderConfig & x);
 void to_json(json & j, const BuilderConfig & x);
@@ -206,6 +214,30 @@ if (x.permissions) {
 j["permissions"] = x.permissions;
 }
 j["version"] = x.version;
+}
+
+inline void from_json(const json & j, AllowPath& x) {
+x.path = j.at("path").get<std::string>();
+x.permissions = get_stack_optional<std::string>(j, "permissions");
+}
+
+inline void to_json(json & j, const AllowPath & x) {
+j = json::object();
+j["path"] = x.path;
+if (x.permissions) {
+j["permissions"] = x.permissions;
+}
+}
+
+inline void from_json(const json & j, ApplicationSetting& x) {
+x.allowPaths = get_stack_optional<std::vector<AllowPath>>(j, "allow_paths");
+}
+
+inline void to_json(json & j, const ApplicationSetting & x) {
+j = json::object();
+if (x.allowPaths) {
+j["allow_paths"] = x.allowPaths;
+}
 }
 
 inline void from_json(const json & j, BuilderConfig& x) {
@@ -703,6 +735,7 @@ j["version"] = x.version;
 inline void from_json(const json & j, LinglongAPIV1& x) {
 x.applicationConfiguration = get_stack_optional<ApplicationConfiguration>(j, "ApplicationConfiguration");
 x.applicationConfigurationPermissions = get_stack_optional<ApplicationConfigurationPermissions>(j, "ApplicationConfigurationPermissions");
+x.applicationSetting = get_stack_optional<ApplicationSetting>(j, "ApplicationSetting");
 x.builderConfig = get_stack_optional<BuilderConfig>(j, "BuilderConfig");
 x.builderProject = get_stack_optional<BuilderProject>(j, "BuilderProject");
 x.cliContainer = get_stack_optional<CliContainer>(j, "CLIContainer");
@@ -737,6 +770,9 @@ j["ApplicationConfiguration"] = x.applicationConfiguration;
 }
 if (x.applicationConfigurationPermissions) {
 j["ApplicationConfigurationPermissions"] = x.applicationConfigurationPermissions;
+}
+if (x.applicationSetting) {
+j["ApplicationSetting"] = x.applicationSetting;
 }
 if (x.builderConfig) {
 j["BuilderConfig"] = x.builderConfig;

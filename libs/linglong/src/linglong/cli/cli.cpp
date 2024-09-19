@@ -6,6 +6,8 @@
 
 #include "linglong/cli/cli.h"
 
+#include "linglong/api/types/v1/AllowPath.hpp"
+#include "linglong/api/types/v1/ApplicationSetting.hpp"
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1Package.hpp"
@@ -19,6 +21,7 @@
 #include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/serialize/json.h"
+#include "linglong/utils/serialize/yaml.h"
 #include "ocppi/runtime/ExecOption.hpp"
 #include "ocppi/runtime/Signal.hpp"
 #include "ocppi/types/ContainerListItem.hpp"
@@ -28,6 +31,7 @@
 #include <QFileInfo>
 
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 
 using namespace linglong::utils::error;
@@ -54,6 +58,10 @@ Usage:
     ll-cli [--json] repo show
     ll-cli [--json] info TIER
     ll-cli [--json] content APP
+    ll-cli [--json] setting show APP
+    ll-cli [--json] setting get APP KEY
+    ll-cli [--json] setting set APP KEY VALUE
+    ll-cli [--json] setting unset APP KEY
 
 Arguments:
     APP     Specify the application.
@@ -299,13 +307,11 @@ int Cli::run(std::map<std::string, docopt::value> &args)
             bashArgs.prepend("exec");
         }
         // 在原始args前面添加bash --login -c，这样可以使用/etc/profile配置的环境变量
-        execArgs = std::vector<std::string>{
-            "/bin/bash",
-            "--login",
-            "-c",
-            bashArgs.join(" ").toStdString(),
-            "; wait"
-        };
+        execArgs = std::vector<std::string>{ "/bin/bash",
+                                             "--login",
+                                             "-c",
+                                             bashArgs.join(" ").toStdString(),
+                                             "; wait" };
 
         auto opt = ocppi::runtime::ExecOption{};
         opt.uid = ::getuid();
@@ -363,6 +369,31 @@ int Cli::run(std::map<std::string, docopt::value> &args)
             const auto &hostSourceDir =
               std::filesystem::path{ appLayerDir->absolutePath().toStdString() };
             std::for_each(innerBinds->cbegin(), innerBinds->cend(), bindInnerMount);
+        }
+    }
+
+    auto setting = this->settingGet(curAppRef->id.toStdString());
+    if (setting.has_value() && setting->allowPaths.has_value()) {
+        auto home = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
+        for (auto allowPath : *setting->allowPaths) {
+            auto path = allowPath.path;
+            auto permission = "rw";
+            if (allowPath.permissions.has_value() && *allowPath.permissions == "ro") {
+                permission = "ro";
+            }
+            // 不以/开头，认为是家目录的相对路径
+            if (path.find("/") != 0) {
+                path = home.toStdString() + "/" + path;
+            }
+            applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+              .destination = path,
+              .options = { {
+                "rbind",
+                permission,
+              } },
+              .source = path,
+              .type = "bind",
+            });
         }
     }
 
@@ -431,13 +462,11 @@ int Cli::exec(std::map<std::string, docopt::value> &args)
             bashArgs.prepend("exec");
         }
         // 在原始args前面添加bash --login -c，这样可以使用/etc/profile配置的环境变量
-        command = std::vector<std::string>{
-            "/bin/bash",
-            "--login",
-            "-c",
-            bashArgs.join(" ").toStdString(),
-            "; wait"
-        };
+        command = std::vector<std::string>{ "/bin/bash",
+                                            "--login",
+                                            "-c",
+                                            bashArgs.join(" ").toStdString(),
+                                            "; wait" };
     } else {
         command = { "bash", "--login" };
     }
@@ -1063,6 +1092,133 @@ int Cli::content(std::map<std::string, docopt::value> &args)
     }
 
     this->printer.printContent(contents);
+    return 0;
+}
+
+utils::error::Result<api::types::v1::ApplicationSetting> Cli::settingGet(std::string app)
+{
+    LINGLONG_TRACE("setting get");
+    auto list = QStandardPaths::standardLocations(QStandardPaths::GenericConfigLocation);
+    for (QDir configLocations : list) {
+        auto configFile =
+          configLocations.filePath(QString("linglong/apps/%1.yaml").arg(app.c_str()));
+        if (!QFile::exists(configFile)) {
+            qDebug() << "The app configuration was not found in the" << configFile;
+            continue;
+        }
+        qDebug() << "Found the app configuration in" << configFile;
+        auto appSettingRet =
+          linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::ApplicationSetting>(
+            configFile);
+        if (!appSettingRet.has_value()) {
+            return LINGLONG_ERR("read app setting file", appSettingRet);
+        }
+        return appSettingRet;
+    }
+    return LINGLONG_ERR("app setting does not exists");
+}
+
+utils::error::Result<void> Cli::settingDel(std::string app)
+{
+    LINGLONG_TRACE("setting get");
+    QDir configLocations = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
+    auto configFile = configLocations.filePath(QString("linglong/apps/%1.yaml").arg(app.c_str()));
+    if (QFile::exists(configFile)) {
+        QFile::remove(configFile);
+    }
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> Cli::settingSet(std::string app,
+                                           const api::types::v1::ApplicationSetting &setting)
+{
+    LINGLONG_TRACE("setting set");
+    QDir configLocations = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
+    auto configFile = configLocations.filePath(QString("linglong/apps/%1.yaml").arg(app.c_str()));
+    if (!QFile::exists(configFile)) {
+        configLocations.mkpath("linglong/apps");
+    }
+    auto ofs = std::ofstream(configFile.toStdString());
+    if (!ofs.is_open()) {
+        return LINGLONG_ERR("open failed");
+    }
+    auto node = ytj::to_yaml(setting);
+    ofs << node;
+    return LINGLONG_OK;
+}
+
+int Cli::setting(std::map<std::string, docopt::value> &args)
+{
+    LINGLONG_TRACE("command setting");
+    const auto userInputAPP = QString::fromStdString(args["APP"].asString());
+    auto userInputKey = args["KEY"];
+    auto userInputVal = args["VALUE"];
+
+    auto fuzzyRef = package::FuzzyReference::parse(userInputAPP);
+    if (!fuzzyRef) {
+        this->printer.printErr(fuzzyRef.error());
+        return -1;
+    }
+    api::types::v1::ApplicationSetting appSetting;
+    {
+        // 如果配置不存在，show命令返回{}而不要报错
+        auto appSettingRef = this->settingGet(fuzzyRef->id.toStdString());
+        if (!appSettingRef.has_value()) {
+            qWarning() << "Get application settings error" << appSettingRef.error();
+        } else {
+            appSetting = *appSettingRef;
+        }
+    }
+    // show all setting values
+    if (args["show"].asBool()) {
+        std::cout << nlohmann::json(appSetting).dump(4) << std::endl;
+        return 0;
+    }
+    // show one setting value
+    else if (args["get"].asBool()) {
+        if (userInputKey.asString() == "allow_paths") {
+            if (appSetting.allowPaths.has_value()) {
+                std::cout << nlohmann::json(appSetting.allowPaths).dump(4) << std::endl;
+            }
+            return 0;
+        }
+        return 0;
+    }
+    // unset one setting value
+    else if (args["unset"].asBool()) {
+        if (userInputKey.asString() == "allow_paths") {
+            appSetting.allowPaths = std::nullopt;
+        }
+        // if all key is not found, delete the configuration
+        if (!appSetting.allowPaths) {
+            this->settingDel(fuzzyRef->id.toStdString());
+        } else {
+            auto setRet = this->settingSet(fuzzyRef->id.toStdString(), appSetting);
+            if (!setRet.has_value()) {
+                this->printer.printErr(setRet.error());
+                return -1;
+            }
+        }
+        return 0;
+    }
+    // set one setting value
+    else if (args["set"].asBool()) {
+        if (userInputKey.asString() == "allow_paths") {
+            std::vector<api::types::v1::AllowPath> val;
+            for (auto path : QString::fromStdString(userInputVal.asString()).split(",")) {
+                // TODO(wurongjie) missing permission check
+                auto data = path.toUtf8();
+                val.push_back({ data.data(), "rw" });
+            }
+            appSetting.allowPaths = val;
+        }
+        auto setRet = this->settingSet(fuzzyRef->id.toStdString(), appSetting);
+        if (!setRet.has_value()) {
+            this->printer.printErr(setRet.error());
+            return -1;
+        }
+        return 0;
+    }
     return 0;
 }
 

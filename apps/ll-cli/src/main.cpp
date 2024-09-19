@@ -232,7 +232,8 @@ int main(int argc, char **argv)
                               { "list", &Cli::list },
                               { "repo", &Cli::repo },
                               { "info", &Cli::info },
-                              { "content", &Cli::content } };
+                              { "content", &Cli::content },
+                              { "setting", &Cli::setting } };
 
           if (!QObject::connect(QCoreApplication::instance(),
                                 &QCoreApplication::aboutToQuit,
@@ -244,7 +245,7 @@ int main(int argc, char **argv)
           }
 
           for (const auto &subcommand : subcommandMap.keys()) {
-              if (args[subcommand.toStdString()].asBool() == true) {
+              if (args[subcommand.toStdString()].asBool()) {
                   QCoreApplication::exit(subcommandMap[subcommand](cli, args));
                   return;
               }

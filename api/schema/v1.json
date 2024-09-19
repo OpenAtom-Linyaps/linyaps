@@ -850,6 +850,32 @@
           }
         }
       }
+    },
+    "ApplicationSetting": {
+      "type": "object",
+      "description": "User settings for the application",
+      "properties": {
+        "allow_paths": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "Allow the application to access the directory",
+            "required": [
+              "path"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Relative to the home directory"
+              },
+              "permissions": {
+                "type": "string",
+                "description": "Access permissions. Default is rw, optional ro"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "type": "object",
@@ -934,6 +960,9 @@
     },
     "RepositoryCache": {
       "$ref": "#/$defs/RepositoryCache"
+    },
+    "ApplicationSetting": {
+      "$ref": "#/$defs/ApplicationSetting"
     }
   }
 }

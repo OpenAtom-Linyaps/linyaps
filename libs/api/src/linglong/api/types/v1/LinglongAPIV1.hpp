@@ -19,6 +19,7 @@
 
 #include "linglong/api/types/v1/ApplicationConfiguration.hpp"
 #include "linglong/api/types/v1/ApplicationConfigurationPermissions.hpp"
+#include "linglong/api/types/v1/ApplicationSetting.hpp"
 #include "linglong/api/types/v1/BuilderConfig.hpp"
 #include "linglong/api/types/v1/BuilderProject.hpp"
 #include "linglong/api/types/v1/CliContainer.hpp"
@@ -59,6 +60,7 @@ using nlohmann::json;
 struct LinglongAPIV1 {
 std::optional<ApplicationConfiguration> applicationConfiguration;
 std::optional<ApplicationConfigurationPermissions> applicationConfigurationPermissions;
+std::optional<ApplicationSetting> applicationSetting;
 std::optional<BuilderConfig> builderConfig;
 std::optional<BuilderProject> builderProject;
 std::optional<CliContainer> cliContainer;

@@ -7,9 +7,11 @@
 #pragma once
 
 #include "linglong/api/dbus/v1/package_manager.h"
+#include "linglong/api/types/v1/ApplicationSetting.hpp"
 #include "linglong/cli/printer.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
+#include "linglong/utils/error/error.h"
 
 #include <docopt.h>
 
@@ -71,7 +73,7 @@ public:
     int repo(std::map<std::string, docopt::value> &args);
     int info(std::map<std::string, docopt::value> &args);
     int content(std::map<std::string, docopt::value> &args);
-
+    int setting(std::map<std::string, docopt::value> &args);
     void cancelCurrentTask();
 
 private Q_SLOTS:
@@ -80,6 +82,11 @@ private Q_SLOTS:
                                const QString &percentage,
                                const QString &message,
                                int status);
+
+    utils::error::Result<api::types::v1::ApplicationSetting> settingGet(std::string app);
+    utils::error::Result<void> settingSet(std::string app,
+                                          const api::types::v1::ApplicationSetting &setting);
+    utils::error::Result<void> settingDel(std::string app);
 };
 
 } // namespace linglong::cli

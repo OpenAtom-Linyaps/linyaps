@@ -26,7 +26,6 @@
 
 #include <QDir>
 #include <QProcess>
-#include <QtWebSockets/QWebSocket>
 
 #include <cstddef>
 

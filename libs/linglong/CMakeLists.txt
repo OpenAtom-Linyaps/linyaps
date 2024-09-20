@@ -79,7 +79,6 @@ pfl_add_library(
   Qt5::Core
   Qt5::DBus
   Qt5::Network
-  Qt5::WebSockets
   QtLinglongRepoClientAPI
   docopt
   ytj::ytj

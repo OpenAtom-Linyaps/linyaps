@@ -32,7 +32,9 @@
 #include <QTemporaryFile>
 #include <QThread>
 #include <QUrl>
+#include <QUuid>
 
+#include <cstdlib>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -44,6 +46,19 @@
 namespace linglong::builder {
 
 namespace {
+
+// generate a unique id for then container
+QString genContainerID(const package::Reference &ref)
+{
+    auto containerID =
+      "linglong-builder-" + ref.id + "-" + QUuid::createUuid().toString(QUuid::Id128);
+    // 如果LINGLONG_DEBUG为true，则对ID进行编码，避免外部依赖该ID规则
+    // 调试模式则不进行二次编码，便于跟踪排查
+    if (std::string(std::getenv("LINGLONG_DEBUG")).empty()) {
+        containerID = containerID.toUtf8().toBase64();
+    }
+    return containerID;
+}
 
 utils::error::Result<package::Reference>
 currentReference(const api::types::v1::BuilderProject &project)
@@ -524,12 +539,9 @@ set -e
     if (!ref) {
         return LINGLONG_ERR(ref);
     }
-
     auto opts = runtime::ContainerOptions{
         .appID = QString::fromStdString(this->project.package.id),
-        .containerID = ("linglong-builder-" + ref->toString() + QUuid::createUuid().toString())
-                         .toUtf8()
-                         .toBase64(),
+        .containerID = genContainerID(*ref),
         .runtimeDir = {},
         .baseDir = *baseLayerDir,
         .appDir = {},
@@ -766,8 +778,10 @@ set -e
     infoFile.close();
 
     qDebug() << "copy linglong.yaml to output";
-    QFile::copy(this->workingDir.absoluteFilePath("linglong.yaml"), this->workingDir.absoluteFilePath("linglong/output/binary/linglong.yaml"));
-    QFile::copy(this->workingDir.absoluteFilePath("linglong.yaml"), this->workingDir.absoluteFilePath("linglong/output/develop/linglong.yaml"));
+    QFile::copy(this->workingDir.absoluteFilePath("linglong.yaml"),
+                this->workingDir.absoluteFilePath("linglong/output/binary/linglong.yaml"));
+    QFile::copy(this->workingDir.absoluteFilePath("linglong.yaml"),
+                this->workingDir.absoluteFilePath("linglong/output/develop/linglong.yaml"));
 
     printMessage("[Commit Contents]");
     printMessage(QString("%1%2%3%4")
@@ -1081,8 +1095,7 @@ utils::error::Result<void> Builder::run(const QStringList &args)
 
     auto options = runtime::ContainerOptions{
         .appID = curRef->id,
-        .containerID =
-          (curRef->toString() + "-" + QUuid::createUuid().toString()).toUtf8().toBase64(),
+        .containerID = genContainerID(*curRef),
         .runtimeDir = {},
         .baseDir = {},
         .appDir = {},

@@ -139,9 +139,11 @@ public:
     void unexportReference(const package::Reference &ref) noexcept;
     void updateSharedInfo() noexcept;
 
+    void disableUpdateOstreeRepoConfig() { this->autoUpdateOstreeRepoConfig = false; }
+
 private:
     api::types::v1::RepoConfig cfg;
-
+    bool autoUpdateOstreeRepoConfig = true;
     QDir repoDir;
     QDir ostreeRepoDir() const noexcept;
     QDir createLayerQDir(const package::Reference &ref,

@@ -1619,6 +1619,7 @@ auto OSTreeRepo::getLayerDir(const package::Reference &ref,
     return dir.absolutePath();
 }
 
+// get ostree repo. if not exist, create it.
 utils::error::Result<OstreeRepo *> OSTreeRepo::getOStreeRepo()
 {
     if (m_ostreeRepo) {
@@ -1637,24 +1638,25 @@ utils::error::Result<OstreeRepo *> OSTreeRepo::getOStreeRepo()
     g_autoptr(GError) gErr = nullptr;
     g_autoptr(GFile) repoPath = nullptr;
     g_autoptr(OstreeRepo) ostreeRepo = nullptr;
-
+    // try to open the repository if it exists
     {
         LINGLONG_TRACE("use linglong repo at " + this->repoDir.absolutePath());
-
         repoPath = g_file_new_for_path(this->ostreeRepoDir().absolutePath().toUtf8());
         ostreeRepo = ostree_repo_new(repoPath);
         Q_ASSERT(ostreeRepo != nullptr);
         if (ostree_repo_open(ostreeRepo, nullptr, &gErr) == TRUE) {
-            auto result =
-              updateOstreeRepoConfig(ostreeRepo,
-                                     QString::fromStdString(cfg.defaultRepo),
-                                     QString::fromStdString(cfg.repos.at(cfg.defaultRepo)));
-            if (!result) {
-                // when ll-cli construct this object, it has no permission to wirte ostree config
-                // we can't abort here.
-                qDebug() << LINGLONG_ERRV(result);
+            // update repo config only when autoUpdateOstreeRepoConfig is true
+            if (autoUpdateOstreeRepoConfig) {
+                auto result =
+                  updateOstreeRepoConfig(ostreeRepo,
+                                         QString::fromStdString(cfg.defaultRepo),
+                                         QString::fromStdString(cfg.repos.at(cfg.defaultRepo)));
+                if (!result) {
+                    // when ll-cli construct this object, it has no permission to wirte ostree
+                    // config we can't abort here.
+                    qDebug() << LINGLONG_ERRV(result);
+                }
             }
-
             this->m_ostreeRepo.reset(static_cast<OstreeRepo *>(g_steal_pointer(&ostreeRepo)));
             return m_ostreeRepo.get();
         }
@@ -1664,7 +1666,7 @@ utils::error::Result<OstreeRepo *> OSTreeRepo::getOStreeRepo()
         g_clear_error(&gErr);
         g_clear_object(&ostreeRepo);
     }
-
+    // initialize ostree repo
     LINGLONG_TRACE("init ostree-based linglong repository");
 
     auto result = createOstreeRepo(this->ostreeRepoDir().absolutePath(),

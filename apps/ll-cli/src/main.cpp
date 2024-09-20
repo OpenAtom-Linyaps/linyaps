@@ -194,6 +194,8 @@ int main(int argc, char **argv)
           linglong::repo::ClientFactory clientFactory(config->repos[config->defaultRepo]);
           auto *repo = new linglong::repo::OSTreeRepo(QDir(LINGLONG_ROOT), *config, clientFactory);
           repo->setParent(QCoreApplication::instance());
+          // 禁止cli自动更新ostree仓库配置
+          repo->disableUpdateOstreeRepoConfig();
 
           auto ociRuntimeCLI = qgetenv("LINGLONG_OCI_RUNTIME");
           if (ociRuntimeCLI.isEmpty()) {

@@ -9,7 +9,6 @@
 #include "ClientApi.h"
 
 #include <QObject>
-#include <QPoint>
 
 namespace linglong::repo {
 

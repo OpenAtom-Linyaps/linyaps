@@ -7,7 +7,7 @@ URL:            https://github.com/linuxdeepin/%{name}
 Source0:        %{url}/archive/%{version}/linglong-%{version}.tar.gz
 
 BuildRequires:  cmake gcc-c++
-BuildRequires:  qt5-qtbase-devel qt5-qtwebsockets-devel qt5-qtbase-private-devel
+BuildRequires:  qt5-qtbase-devel qt5-qtbase-private-devel
 BuildRequires:  glib2-devel nlohmann-json-devel ostree-devel yaml-cpp-devel
 BuildRequires:  systemd-devel gtest-devel libseccomp-devel elfutils-libelf-devel
 BuildRequires:  glibc-static libstdc++-static
@@ -75,7 +75,6 @@ cd build
 %{_sysconfdir}/X11/Xsession.d/*
 %{_bindir}/ll-cli
 %{_bindir}/llpkg
-%{_bindir}/linglong-repair-tool
 %{_prefix}/lib/%{name}/container/*
 %{_prefix}/lib/%{name}/generate-xdg-data-dirs.sh
 %{_prefix}/lib/sysusers.d/*.conf
@@ -99,8 +98,6 @@ cd build
 %{_datadir}/polkit-1/actions/org.deepin.linglong.PackageManager.policy
 %{_datadir}/%{name}/config.yaml
 %{_datadir}/mime/packages/*
-%{_datadir}/%{name}/api/api.json
-%{_datadir}/applications/*.desktop
 
 %files -n linglong-builder
 %license LICENSE

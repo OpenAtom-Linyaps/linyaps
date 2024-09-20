@@ -11,7 +11,8 @@ function(configure_files)
 endfunction()
 
 configure_files(
-  # find -regex '\.\/\(script\|share\|lib\|libexec\)\/.*' -type f -printf '%P\n' | sort
+  # find -regex '\.\/\(script\|share\|lib\|libexec\)\/.*' -type f -printf '%P\n'
+  # | sort
   libexec/linglong/app-conf-generator
   libexec/linglong/builder/helper/config-check.sh
   libexec/linglong/builder/helper/ldd-check.sh
@@ -32,10 +33,7 @@ configure_files(
   lib/systemd/user/linglong-session-helper.service
   lib/sysusers.d/linglong.conf
   lib/tmpfiles.d/linglong.conf
-  script/linglong-repair-tool
   script/linglong.sh
-  share/applications/linglong-repair-tool.desktop
-  share/applications/linglong-store-installer.desktop
   share/bash-completion/completions/ll-builder
   share/bash-completion/completions/ll-cli
   share/dbus-1/system.d/org.deepin.linglong.PackageManager.conf
@@ -59,6 +57,35 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/share/dbus-1/system.d
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/share/dbus-1/system-services
         DESTINATION ${DBUS_SYSTEM_BUS_DIR})
 
+# libexec
+set(LIBEXEC_LINGLONG_DIR ${CMAKE_INSTALL_PREFIX}/libexec/linglong)
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/app-conf-generator
+        DESTINATION ${LIBEXEC_LINGLONG_DIR})
+install(
+  PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/fetch-archive-source
+  DESTINATION ${LIBEXEC_LINGLONG_DIR})
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/fetch-dsc-source
+        DESTINATION ${LIBEXEC_LINGLONG_DIR})
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/fetch-file-source
+        DESTINATION ${LIBEXEC_LINGLONG_DIR})
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/fetch-git-source
+        DESTINATION ${LIBEXEC_LINGLONG_DIR})
+
+# builder helpers
+set(LIBEXEC_LINGLONG_BUILDER_DIR ${LIBEXEC_LINGLONG_DIR}/builder/helper)
+install(
+  PROGRAMS
+    ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/builder/helper/config-check.sh
+  DESTINATION ${LIBEXEC_LINGLONG_BUILDER_DIR})
+install(
+  PROGRAMS
+    ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/builder/helper/ldd-check.sh
+  DESTINATION ${LIBEXEC_LINGLONG_BUILDER_DIR})
+install(
+  PROGRAMS
+    ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/builder/helper/main-check.sh
+  DESTINATION ${LIBEXEC_LINGLONG_BUILDER_DIR})
+
 # linglong
 file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/00-id-mapping-static
      ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/00-id-mapping
@@ -81,10 +108,31 @@ file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/40-host-ipc-static
 file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/90-legacy-static
      ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/90-legacy
      SYMBOLIC)
+
 install(
-  DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/linglong
-  USE_SOURCE_PERMISSIONS)
+  PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/generate-xdg-data-dirs.sh
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/linglong)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.json
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/linglong/container)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/README.md
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/linglong/container)
+
+install(
+  FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/10-basics.json
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/linglong/container/config.d)
+
+install(
+  FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/25-host-rootfs.json
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/linglong/container/config.d)
+
+install(
+  FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/25-host-statics.json
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/linglong/container/config.d)
 
 # linglong default configuration
 install(FILES ${CMAKE_CURRENT_LIST_DIR}/share/linglong/config.yaml
@@ -93,12 +141,6 @@ install(FILES ${CMAKE_CURRENT_LIST_DIR}/share/linglong/config.yaml
 # builder templates
 install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/share/linglong/builder/templates/
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/linglong/builder/templates)
-
-# libexec
-install(
-  DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/
-  DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/linglong
-  USE_SOURCE_PERMISSIONS)
 
 # systemd
 set(SYSTEMD_SYSTEM_PRESET_PATH
@@ -116,11 +158,11 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/systemd/user
 
 set(SYSTEMD_SYSTEM_GENERATOR_PATH
     ${CMAKE_INSTALL_PREFIX}/lib/systemd/system-environment-generators)
+
 install(
-  DIRECTORY
-    ${CMAKE_CURRENT_BINARY_DIR}/lib/systemd/system-environment-generators/
-  DESTINATION ${SYSTEMD_SYSTEM_GENERATOR_PATH}
-  USE_SOURCE_PERMISSIONS)
+  PROGRAMS
+    ${CMAKE_CURRENT_BINARY_DIR}/lib/systemd/system-environment-generators/61-linglong
+  DESTINATION ${SYSTEMD_SYSTEM_GENERATOR_PATH})
 
 # sysuser
 
@@ -145,27 +187,6 @@ install(
   FILES ${CMAKE_CURRENT_BINARY_DIR}/script/linglong.sh
   DESTINATION /etc/X11/Xsession.d/
   RENAME 21linglong)
-
-# linglong-repair-tool bin
-install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/script/linglong-repair-tool
-        DESTINATION ${CMAKE_INSTALL_BINDIR})
-
-# linglong-repair-tool desktop
-install(
-  FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/share/applications/linglong-repair-tool.desktop
-  DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
-
-# linglong-store-installer.desktop
-install(
-  FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/share/applications/linglong-store-installer.desktop
-  DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
-
-install(
-  FILES ${CMAKE_SOURCE_DIR}/api/schema/v1.json
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/share/linglong/api/
-  RENAME api.json)
 
 # polkit actions this file only used to skip DBus security check, it will be
 # removed later

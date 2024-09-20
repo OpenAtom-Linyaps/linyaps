@@ -1,16 +1,14 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: linglong
 Upstream-Contact:  UnionTech Software Technology Co., Ltd. <>
-Source: https://github.com/linuxdeepin/linglong
+Source: https://github.com/OpenAtom-Linyaps/linyaps
 
 # CI config files
 Files: .github/* .obs/* OWNERS
 License: CC0-1.0
 Copyright: None
 
-# external
-
-# tl-expected
+# tl-expected external
 Files: external/tl-expected/*
 License: CC0-1.0
 Copyright: None
@@ -112,11 +110,6 @@ Copyright: UnionTech Software Technology Co., Ltd.
 
 # json schemas
 Files: api/schema/*.json
-License: CC0-1.0
-Copyright: None
-
-# linglong-repair-tool
-Files: misc/share/applications/*.desktop
 License: CC0-1.0
 Copyright: None
 

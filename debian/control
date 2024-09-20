@@ -17,7 +17,6 @@ Build-Depends: cmake,
                liblzma-dev,
                libostree-dev,
                libpcre2-dev,
-               libqt5websockets5-dev,
                libseccomp-dev,
                libselinux1-dev,
                libssl-dev,
@@ -40,7 +39,6 @@ Depends: desktop-file-utils,
          erofsfuse,
          libglib2.0-bin,
          linglong-box | crun,
-         ostree,
          shared-mime-info,
          ${misc:Depends},
          ${shlibs:Depends}
@@ -54,7 +52,6 @@ Architecture: any
 Depends: erofs-utils,
          erofsfuse,
          git,
-         libelf1,
          linglong-bin,
          linglong-box | crun,
          ${misc:Depends},
@@ -68,9 +65,3 @@ Architecture: any
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Description: Deepin sandbox with OCI standard.
  Deepin sandbox...
-
-Package: linglong-installer
-Architecture: any
-Depends: linglong-bin, ${misc:Depends}, ${shlibs:Depends}
-Description: Linglong online store application installation tool.
- Linglong apps installation tool for deepin linglong web store(https://store.linglong.dev/).

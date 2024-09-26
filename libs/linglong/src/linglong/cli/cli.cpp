@@ -8,6 +8,7 @@
 
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
+#include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
 #include "linglong/api/types/v1/PackageManager1Package.hpp"
 #include "linglong/api/types/v1/PackageManager1ResultWithTaskID.hpp"
 #include "linglong/api/types/v1/PackageManager1SearchParameters.hpp"
@@ -25,6 +26,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <QEventLoop>
 #include <QFileInfo>
 
 #include <filesystem>
@@ -299,13 +301,11 @@ int Cli::run(std::map<std::string, docopt::value> &args)
             bashArgs.prepend("exec");
         }
         // 在原始args前面添加bash --login -c，这样可以使用/etc/profile配置的环境变量
-        execArgs = std::vector<std::string>{
-            "/bin/bash",
-            "--login",
-            "-c",
-            bashArgs.join(" ").toStdString(),
-            "; wait"
-        };
+        execArgs = std::vector<std::string>{ "/bin/bash",
+                                             "--login",
+                                             "-c",
+                                             bashArgs.join(" ").toStdString(),
+                                             "; wait" };
 
         auto opt = ocppi::runtime::ExecOption{};
         opt.uid = ::getuid();
@@ -431,13 +431,11 @@ int Cli::exec(std::map<std::string, docopt::value> &args)
             bashArgs.prepend("exec");
         }
         // 在原始args前面添加bash --login -c，这样可以使用/etc/profile配置的环境变量
-        command = std::vector<std::string>{
-            "/bin/bash",
-            "--login",
-            "-c",
-            bashArgs.join(" ").toStdString(),
-            "; wait"
-        };
+        command = std::vector<std::string>{ "/bin/bash",
+                                            "--login",
+                                            "-c",
+                                            bashArgs.join(" ").toStdString(),
+                                            "; wait" };
     } else {
         command = { "bash", "--login" };
     }
@@ -796,38 +794,55 @@ int Cli::search(std::map<std::string, docopt::value> &args)
         return -1;
     }
     auto result =
-      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1SearchResult>(reply.value());
+      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1JobInfo>(reply.value());
     if (!result) {
         this->printer.printErr(result.error());
         return -1;
     }
 
-    if (!result->packages) {
+    if (!result->id) {
         this->printer.printErr(
           LINGLONG_ERRV("\n" + QString::fromStdString(result->message), result->code));
         return -1;
     }
 
-    std::vector<api::types::v1::PackageInfoV2> pkgs;
+    QEventLoop loop;
 
-    if (isShowDev) {
-        pkgs = *result->packages;
-    } else {
-        for (const auto &info : *result->packages) {
-            if (info.packageInfoV2Module == "develop") {
-                continue;
-            }
+    connect(&this->pkgMan,
+            &api::dbus::v1::PackageManager::SearchFinished,
+            [&](const QString &jobID, const QVariantMap &data) {
+                if (result->id->c_str() != jobID) {
+                    return;
+                }
+                auto result =
+                  utils::serialize::fromQVariantMap<api::types::v1::PackageManager1SearchResult>(
+                    data);
+                if (!result) {
+                    this->printer.printErr(result.error());
+                    loop.exit(-1);
+                }
+                std::vector<api::types::v1::PackageInfoV2> pkgs;
 
-            pkgs.push_back(info);
-        }
-    }
+                if (isShowDev) {
+                    pkgs = *result->packages;
+                } else {
+                    for (const auto &info : *result->packages) {
+                        if (info.packageInfoV2Module == "develop") {
+                            continue;
+                        }
 
-    if (!type.isEmpty()) {
-        filterPackageInfosFromType(pkgs, type);
-    }
+                        pkgs.push_back(info);
+                    }
+                }
 
-    this->printer.printPackages(pkgs);
-    return 0;
+                if (!type.isEmpty()) {
+                    filterPackageInfosFromType(pkgs, type);
+                }
+
+                this->printer.printPackages(pkgs);
+                loop.exit(0);
+            });
+    return loop.exec();
 }
 
 int Cli::uninstall(std::map<std::string, docopt::value> &args)

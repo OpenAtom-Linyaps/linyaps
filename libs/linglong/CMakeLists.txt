@@ -78,8 +78,7 @@ pfl_add_library(
   Qt5::Concurrent
   Qt5::Core
   Qt5::DBus
-  Qt5::Network
-  QtLinglongRepoClientAPI
+  LinglongRepoClientAPI
   docopt
   ytj::ytj
   tl::expected

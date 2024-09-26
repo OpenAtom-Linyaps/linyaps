@@ -88,7 +88,7 @@ if(ENABLE_CPM)
     OPTIONS "JSON_BuildTests OFF")
 endif()
 
-set(linglong_EXTERNALS "ytj ytj::ytj" "http/client client")
+set(linglong_EXTERNALS "ytj ytj::ytj")
 
 # NOTE: UOS v20 do not have docopt packaged.
 find_package(docopt 0.6.1 QUIET)
@@ -157,6 +157,7 @@ set(ytj_ENABLE_INSTALL NO)
 
 pfl_init(AUTO)
 
+add_subdirectory(external/http)
 add_subdirectory(tools/qdbusxml2cpp)
 
 include(GNUInstallDirs)

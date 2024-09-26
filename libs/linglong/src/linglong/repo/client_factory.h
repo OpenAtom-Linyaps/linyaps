@@ -6,10 +6,14 @@
 
 #pragma once
 
-#include "ClientApi.h"
+extern "C" {
+#include "api/ClientAPI.h"
+}
 
 #include <QObject>
 #include <QPoint>
+
+#include <memory>
 
 namespace linglong::repo {
 
@@ -20,9 +24,9 @@ public:
     ClientFactory(const QString &server);
     ClientFactory(const std::string &server);
 
-    QSharedPointer<api::client::ClientApi> createClient() const;
-
+    std::shared_ptr<apiClient_t> createClientV2();
     void setServer(QString server);
+    void setServer(std::string server);
 
 private:
     QString m_server;

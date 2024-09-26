@@ -583,6 +583,15 @@ $defs:
       id:
         type: string
         description: id of package manager search
+  PackageManager1JobInfo:
+    type: object
+    description: Get the job result using an ID
+    allOf:
+      - $ref: "#/$defs/CommonResult"
+    properties:
+      id:
+        type: string
+        description: id of job info
   PackageManager1SearchResult:
     type: object
     description: result of package manager search

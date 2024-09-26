@@ -37,6 +37,10 @@ int main()
         { "/etc/ssl/certs", "/run/host/etc/ssl/certs" },
         { "/etc/ssl/certs", "/etc/ssl/certs" },
         { "/var/cache/fontconfig", "/run/host/appearance/fonts-cache" },
+        // FIXME: app can not display normally due to missing cjk font cache file,so we need bind
+        // /var/cache/fontconfig to container. this is just a temporary solution,need to be repaired
+        // later.
+        { "/var/cache/fontconfig", "/var/cache/fontconfig" },
         { "/usr/share/fonts", "/usr/share/fonts" },
         { "/usr/lib/locale/", "/usr/lib/locale/" },
         { "/usr/share/themes", "/usr/share/themes" },

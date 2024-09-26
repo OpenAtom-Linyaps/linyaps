@@ -7,6 +7,7 @@
 #include "package_manager.h"
 
 #include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
 #include "linglong/package/layer_file.h"
 #include "linglong/package/layer_packager.h"
 #include "linglong/package/uab_file.h"
@@ -25,6 +26,7 @@
 #include <QJsonArray>
 #include <QMetaObject>
 #include <QSettings>
+#include <QUuid>
 
 #include <algorithm>
 #include <utility>
@@ -851,18 +853,27 @@ auto PackageManager::Search(const QVariantMap &parameters) noexcept -> QVariantM
     if (!fuzzyRef) {
         return toDBusReply(fuzzyRef);
     }
-
-    auto pkgInfos = this->repo.listRemote(*fuzzyRef);
-    if (!pkgInfos) {
-        return toDBusReply(pkgInfos);
-    }
-
-    auto result = utils::serialize::toQVariantMap(api::types::v1::PackageManager1SearchResult{
-      .packages = std::move(*pkgInfos),
+    auto jobID = QUuid::createUuid().toString();
+    auto ref = *fuzzyRef;
+    m_search_queue.runTask([this, jobID, ref]() {
+        auto pkgInfos = this->repo.listRemote(ref);
+        if (!pkgInfos.has_value()) {
+            qWarning() << "list remote failed: " << pkgInfos.error().message();
+            Q_EMIT this->SearchFinished(jobID, toDBusReply(pkgInfos));
+            return;
+        }
+        auto result = api::types::v1::PackageManager1SearchResult{
+            .packages = *pkgInfos,
+            .code = 0,
+            .message = "",
+        };
+        Q_EMIT this->SearchFinished(jobID, utils::serialize::toQVariantMap(result));
+    });
+    auto result = utils::serialize::toQVariantMap(api::types::v1::PackageManager1JobInfo{
+      .id = jobID.toStdString(),
       .code = 0,
       .message = "",
     });
-
     return result;
 }
 

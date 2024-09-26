@@ -13,8 +13,49 @@
 #include <QDBusContext>
 #include <QList>
 #include <QObject>
+#include <QTimer>
 
 namespace linglong::service {
+
+class JobQueue : public QObject
+{
+    Q_OBJECT
+private:
+    uint runningJobsCount = 0;
+    uint runningJobsMax = 1;
+    std::list<std::function<void()>> taskList = {};
+
+    void run()
+    {
+        // 检查任务队列是否为空
+        if (taskList.size() == 0) {
+            runningJobsCount--;
+            return;
+        }
+        // 从队列中取出任务
+        auto func = taskList.front();
+        taskList.pop_front();
+        // 执行任务
+        func();
+
+        // 如果还有任务，继续执行
+        if (taskList.size() > 0) {
+            QTimer::singleShot(0, this, &JobQueue::run);
+        } else {
+            runningJobsCount--;
+        }
+    }
+
+public:
+    void runTask(std::function<void()> func)
+    {
+        taskList.emplace_back(func);
+        if (runningJobsCount < runningJobsMax) {
+            runningJobsCount++;
+            QTimer::singleShot(0, this, &JobQueue::run);
+        }
+    }
+};
 
 class PackageManager : public QObject, protected QDBusContext
 {
@@ -50,6 +91,7 @@ public
 Q_SIGNALS:
     void TaskListChanged(QString taskID);
     void TaskChanged(QString taskID, QString percentage, QString message, int status);
+    void SearchFinished(QString jobID, QVariantMap result);
 
 private:
     QVariantMap installFromLayer(const QDBusUnixFileDescriptor &fd) noexcept;
@@ -63,6 +105,8 @@ private:
     std::list<InstallTask> taskList;
     // 正在运行的任务ID
     QString runningTaskID;
+
+    JobQueue m_search_queue = {};
 };
 
 } // namespace linglong::service

@@ -56,12 +56,17 @@ public:
             source = driver_->HostSource(util::fs::path(m.source)).string();
         }
 
-        ret = lstat(source.c_str(), &source_stat);
-        if (0 == ret) {
+        // https://github.com/containers/crun/blob/4ab4ac079879e97d998851ac216c37da931e7e13/src/libcrun/linux.c#L2147-L2163
+        if (m.flags & LINGLONG_MS_NOSYMFOLLOW || m.extensionFlags & Extension::COPY_SYMLINK) {
+            ret = lstat(source.c_str(), &source_stat);
         } else {
+            ret = stat(source.c_str(), &source_stat);
+        }
+
+        if (ret != 0) {
             // source not exist
             if (m.fsType == Mount::Bind) {
-                logErr() << "lstat" << source << "failed";
+                logErr() << "(l)stat" << source << "failed";
                 return -1;
             }
         }

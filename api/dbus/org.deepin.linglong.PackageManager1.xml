@@ -36,6 +36,11 @@ SPDX-License-Identifier: LGPL-3.0-or-later
       <arg direction="out" name="result" type="a{sv}" />
       <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
     </method>
+    <signal name="SearchFinished">
+      <arg name="taskID" type="s" />
+      <arg name="result" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out1" value="QVariantMap" />
+    </signal>
     <method name="CancelTask">
       <arg name="taskID" type="s" direction="in" />
     </method>

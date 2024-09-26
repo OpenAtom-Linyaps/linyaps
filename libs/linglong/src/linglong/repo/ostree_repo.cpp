@@ -6,8 +6,10 @@
 
 #include "ostree_repo.h"
 
+#include "api/ClientAPI.h"
 #include "linglong/api/types/helper.h"
 #include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
@@ -22,14 +24,27 @@
 
 #include <gio/gio.h>
 #include <glib.h>
+#include <nlohmann/json_fwd.hpp>
 #include <ostree-repo.h>
 
+#include <QDebug>
 #include <QDir>
+#include <QDirIterator>
+#include <QEventLoop>
 #include <QProcess>
+#include <QTemporaryDir>
+#include <QTimer>
 
+#include <chrono>
 #include <cstddef>
+#include <cstring>
+#include <future>
+#include <memory>
+#include <string>
+#include <thread>
 
 #include <fcntl.h>
+#include <unistd.h>
 
 namespace linglong::repo {
 
@@ -588,107 +603,7 @@ utils::error::Result<package::Reference> clearReferenceLocal(const package::Fuzz
     }
 
     return ref;
-}
-
-utils::error::Result<package::Reference> clearReferenceRemote(const package::FuzzyReference &fuzzy,
-                                                              api::client::ClientApi &api,
-                                                              const QString &repoName) noexcept
-{
-    LINGLONG_TRACE("clear reference remotely");
-
-    api::client::Request_FuzzySearchReq req;
-    if (fuzzy.channel) {
-        req.setChannel(*fuzzy.channel);
-    }
-
-    req.setAppId(fuzzy.id);
-    if (fuzzy.version) {
-        req.setVersion(fuzzy.version->toString());
-    }
-
-    if (fuzzy.arch) {
-        req.setArch(fuzzy.arch->toString());
-    } else {
-        // NOTE: Server requires that arch is set, but why?
-        req.setArch(package::Architecture::currentCPUArchitecture()->toString());
-    }
-
-    req.setRepoName(repoName);
-
-    utils::error::Result<package::Reference> ref = LINGLONG_ERR("unknown error");
-
-    QEventLoop loop;
-    const qint32 HTTP_OK = 200;
-    QEventLoop::connect(
-      &api,
-      &api::client::ClientApi::fuzzySearchAppSignal,
-      &loop,
-      [&](api::client::FuzzySearchApp_200_response resp) {
-          LINGLONG_TRACE("fuzzySearchAppSignal");
-
-          loop.exit();
-          if (resp.getCode() != HTTP_OK) {
-              ref = LINGLONG_ERR(resp.getMsg(), resp.getCode());
-              return;
-          }
-
-          for (const auto &record : resp.getData()) {
-              if (fuzzy.id != record.getAppId()) {
-                  continue;
-              }
-
-              auto version = package::Version::parse(record.getVersion());
-              if (!version) {
-                  qWarning() << "Ignore invalid package record" << record.asJson()
-                             << version.error();
-                  continue;
-              }
-
-              auto arch = package::Architecture::parse(record.getArch().toStdString());
-              if (!arch) {
-                  qWarning() << "Ignore invalid package record" << record.asJson() << arch.error();
-                  continue;
-              }
-
-              auto currentRef =
-                package::Reference::create(record.getChannel(), record.getAppId(), *version, *arch);
-              if (!currentRef) {
-                  qWarning() << "Ignore invalid package record" << record.asJson()
-                             << currentRef.error();
-                  continue;
-              }
-              if (!ref) {
-                  ref = *currentRef;
-                  continue;
-              }
-
-              if (ref->version >= currentRef->version) {
-                  continue;
-              }
-
-              ref = *currentRef;
-          }
-          return;
-      });
-
-    QEventLoop::connect(&api,
-                        &api::client::ClientApi::fuzzySearchAppSignalEFull,
-                        &loop,
-                        [&](auto, auto error_type, const QString &error_str) {
-                            LINGLONG_TRACE("fuzzySearchAppSignalEFull");
-                            loop.exit();
-                            ref = LINGLONG_ERR(error_str, error_type);
-                        });
-
-    api.fuzzySearchApp(req);
-    loop.exec();
-
-    if (!ref) {
-        return LINGLONG_ERR("not found", ref);
-    }
-
-    return *ref;
-}
+};
 
 } // namespace
 
@@ -817,7 +732,7 @@ utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfi
             Q_ASSERT(false);
         }
     });
-    this->m_clientFactory.setServer(QString::fromStdString(cfg.repos.at(cfg.defaultRepo)));
+    this->m_clientFactory.setServer(cfg.repos.at(cfg.defaultRepo));
     this->cfg = cfg;
 
     transaction.commit();
@@ -886,106 +801,52 @@ utils::error::Result<package::LayerDir> OSTreeRepo::importLayerDir(const package
 utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
                                             const QString &module) const noexcept
 {
-    const qint32 HTTP_OK = 200;
-
     LINGLONG_TRACE("push " + ref.toString());
 
     auto layerDir = this->getLayerDir(ref, module);
     if (!layerDir) {
         return LINGLONG_ERR("layer not found");
     }
-
-    auto token = [this]() -> utils::error::Result<QString> {
-        LINGLONG_TRACE("sign in");
-
-        utils::error::Result<QString> result;
-
-        auto env = QProcessEnvironment::systemEnvironment();
-        api::client::Request_Auth auth;
-        auth.setUsername(env.value("LINGLONG_USERNAME"));
-        auth.setPassword(env.value("LINGLONG_PASSWORD"));
-        qInfo() << "use username: " << auth.getUsername();
-        auto apiClient = this->m_clientFactory.createClient();
-        apiClient->setTimeOut(10 * 60 * 1000);
-        QEventLoop loop;
-        QEventLoop::connect(apiClient.data(),
-                            &api::client::ClientApi::signInSignal,
-                            &loop,
-                            [&](api::client::SignIn_200_response resp) {
-                                loop.exit();
-                                if (resp.getCode() != HTTP_OK) {
-                                    result = LINGLONG_ERR(resp.getMsg(), resp.getCode());
-                                    return;
-                                }
-                                result = resp.getData().getToken();
-                                return;
-                            });
-        QEventLoop::connect(apiClient.data(),
-                            &api::client::ClientApi::signInSignalEFull,
-                            &loop,
-                            [&](auto, auto error_type, const QString &error_str) {
-                                loop.exit();
-                                result = LINGLONG_ERR(error_str, error_type);
-                            });
-
-        apiClient->signIn(auth);
-        loop.exec();
-
-        if (!result) {
-            return LINGLONG_ERR(result);
-        }
-        return result;
-    }();
-    if (!token) {
-        return LINGLONG_ERR(token);
+    auto env = QProcessEnvironment::systemEnvironment();
+    auto client = this->m_clientFactory.createClientV2();
+    // 登录认证
+    auto envUsername = env.value("LINGLONG_USERNAME").toUtf8();
+    auto envPassword = env.value("LINGLONG_PASSWORD").toUtf8();
+    request_auth_t auth;
+    auth.username = envUsername.data();
+    auth.password = envPassword.data();
+    auto signResRaw = ClientAPI_signIn(client.get(), &auth);
+    if (!signResRaw) {
+        return LINGLONG_ERR("sign error");
     }
-
-    auto taskID = [&ref, &module, this, &token]() -> utils::error::Result<QString> {
-        LINGLONG_TRACE("new upload task request");
-
-        utils::error::Result<QString> result;
-
-        api::client::Schema_NewUploadTaskReq uploadReq;
-        uploadReq.setRef(ostreeSpecFromReferenceV2(ref, module));
-        uploadReq.setRepoName(QString::fromStdString(this->cfg.defaultRepo));
-
-        auto apiClient = this->m_clientFactory.createClient();
-        QEventLoop loop;
-        QEventLoop::connect(apiClient.data(),
-                            &api::client::ClientApi::newUploadTaskIDSignal,
-                            &loop,
-                            [&](const api::client::NewUploadTaskID_200_response &resp) {
-                                loop.exit();
-                                if (resp.getCode() != HTTP_OK) {
-                                    result = LINGLONG_ERR(resp.getMsg(), resp.getCode());
-                                    return;
-                                }
-                                result = resp.getData().getId();
-                            });
-        QEventLoop::connect(apiClient.data(),
-                            &api::client::ClientApi::newUploadTaskIDSignalEFull,
-                            &loop,
-                            [&](auto, auto error_type, const QString &error_str) {
-                                loop.exit();
-                                result = LINGLONG_ERR(error_str, error_type);
-                            });
-
-        apiClient->newUploadTaskID(*token, uploadReq);
-        loop.exec();
-        if (!result) {
-            return LINGLONG_ERR(result);
-        }
-        return result;
-    }();
-    if (!taskID) {
-        return LINGLONG_ERR(taskID);
+    auto signRes = std::shared_ptr<sign_in_200_response_t>(signResRaw, sign_in_200_response_free);
+    if (signRes->code != 200) {
+        return LINGLONG_ERR(QString("sign error(%1): %2").arg(auth.username).arg(signRes->msg));
     }
+    auto token = signRes->data->token;
+    // 创建上传任务
+    schema_new_upload_task_req_t newTaskReq;
+    auto refStr = ostreeSpecFromReferenceV2(ref, module).toStdString();
+    auto repoName = this->cfg.defaultRepo;
+    newTaskReq.ref = refStr.data();
+    newTaskReq.repo_name = repoName.data();
+    auto newTaskResRaw = ClientAPI_newUploadTaskID(client.get(), token, &newTaskReq);
+    if (!newTaskResRaw) {
+        return LINGLONG_ERR("create task error");
+    }
+    auto newTaskRes =
+      std::shared_ptr<new_upload_task_id_200_response_t>(newTaskResRaw,
+                                                         new_upload_task_id_200_response_free);
+    if (newTaskRes->code != 200) {
+        return LINGLONG_ERR(QString("create task error: %1").arg(newTaskRes->msg));
+    }
+    auto taskID = newTaskRes->data->id;
 
+    // 上传tar文件
     const QTemporaryDir tmpDir;
     if (!tmpDir.isValid()) {
         return LINGLONG_ERR(tmpDir.errorString());
     }
-
     const QString tarFileName = QString("%1.tgz").arg(ref.id);
     const QString tarFilePath = QDir::cleanPath(tmpDir.filePath(tarFileName));
     QStringList args = { "-zcf", tarFilePath, "-C", layerDir->absolutePath(), "." };
@@ -993,104 +854,46 @@ utils::error::Result<void> OSTreeRepo::push(const package::Reference &ref,
     if (!tarStdout) {
         return LINGLONG_ERR(tarStdout);
     }
-
-    auto uploadTaskResult = [this, &tarFilePath, &token, &taskID]() -> utils::error::Result<void> {
-        LINGLONG_TRACE("do upload task");
-
-        utils::error::Result<void> result;
-
-        auto apiClient = this->m_clientFactory.createClient();
-        apiClient->setTimeOut(10 * 60 * 1000);
-        QEventLoop loop;
-        QEventLoop::connect(apiClient.data(),
-                            &api::client::ClientApi::uploadTaskFileSignal,
-                            &loop,
-                            [&](const api::client::Api_UploadTaskFileResp &resp) {
-                                loop.exit();
-                                if (resp.getCode() != HTTP_OK) {
-                                    result = LINGLONG_ERR(resp.getMsg(), resp.getCode());
-                                    return;
-                                }
-                            });
-        QEventLoop::connect(apiClient.data(),
-                            &api::client::ClientApi::uploadTaskFileSignalEFull,
-                            &loop,
-                            [&](auto, auto error_type, const QString &error_str) {
-                                loop.exit();
-                                result = LINGLONG_ERR(error_str, error_type);
-                            });
-
-        api::client::HttpFileElement file;
-        file.setFileName(tarFilePath);
-        file.setRequestFileName(tarFilePath);
-        apiClient->uploadTaskFile(*token, *taskID, file);
-
-        loop.exec();
-        return result;
-    }();
-    if (!uploadTaskResult) {
-        return LINGLONG_ERR(uploadTaskResult);
+    // 上传文件, 原来的binary_t需要将文件存储到内存，对大文件上传不友好，改为存储文件名
+    // 底层改用 curl_mime_filedata 替换 curl_mime_data
+    auto filepath = tarFilePath.toUtf8();
+    auto filename = tarFileName.toUtf8();
+    binary_t binary;
+    binary.filepath = filepath.data();
+    binary.filename = filename.data();
+    auto uploadTaskResRaw = ClientAPI_uploadTaskFile(client.get(), token, taskID, &binary);
+    if (!uploadTaskResRaw) {
+        return LINGLONG_ERR(QString("upload file error(%1)").arg(taskID));
     }
-
-    auto uploadResult = [&taskID, &token, &ref, &module, this]() -> utils::error::Result<void> {
-        LINGLONG_TRACE("get upload status");
-
-        utils::error::Result<bool> isFinished;
-
-        auto apiClient = this->m_clientFactory.createClient();
-        while (true) {
-            QEventLoop loop;
-            QEventLoop::connect(apiClient.data(),
-                                &api::client::ClientApi::uploadTaskInfoSignal,
-                                &loop,
-                                [&](const api::client::UploadTaskInfo_200_response &resp) {
-                                    loop.exit();
-                                    const qint32 HTTP_OK = 200;
-                                    if (resp.getCode() != HTTP_OK) {
-                                        isFinished = LINGLONG_ERR(resp.getMsg(), resp.getCode());
-                                        return;
-                                    }
-                                    qDebug() << "pushing" << ref.toString() << module
-                                             << "status:" << resp.getData().getStatus();
-                                    if (resp.getData().getStatus() == "complete") {
-                                        isFinished = true;
-                                        return;
-                                    }
-                                    if (resp.getData().getStatus() == "failed") {
-                                        isFinished = LINGLONG_ERR(resp.getData().asJson());
-                                        return;
-                                    }
-
-                                    isFinished = false;
-                                });
-            QEventLoop::connect(apiClient.data(),
-                                &api::client::ClientApi::uploadTaskInfoSignalEFull,
-                                &loop,
-                                [&](auto, auto error_type, const QString &error_str) {
-                                    loop.exit();
-                                    isFinished = LINGLONG_ERR(error_str, error_type);
-                                });
-            apiClient->uploadTaskInfo(*token, *taskID);
-            loop.exec();
-
-            if (!isFinished) {
-                return LINGLONG_ERR(isFinished);
-            }
-
-            if (*isFinished) {
-                return LINGLONG_OK;
-            }
-
-            QThread::sleep(1);
+    auto uploadTaskRes =
+      std::shared_ptr<api_upload_task_file_resp_t>(uploadTaskResRaw,
+                                                   api_upload_task_file_resp_free);
+    if (uploadTaskRes->code != 200) {
+        return LINGLONG_ERR(
+          QString("upload file error(%1): %2").arg(taskID).arg(uploadTaskRes->msg));
+    }
+    // 查询任务状态
+    while (true) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        auto uploadInfoRaw = ClientAPI_uploadTaskInfo(client.get(), token, taskID);
+        if (!uploadInfoRaw) {
+            return LINGLONG_ERR(QString("get upload info error(%1)").arg(taskID));
         }
-
-        return LINGLONG_OK;
-    }();
-    if (!uploadResult) {
-        return LINGLONG_ERR(uploadResult);
+        auto uploadInfo =
+          std::shared_ptr<upload_task_info_200_response_t>(uploadInfoRaw,
+                                                           upload_task_info_200_response_free);
+        if (uploadInfo->code != 200) {
+            return LINGLONG_ERR(
+              QString("get upload info error(%1): %2").arg(taskID).arg(uploadInfo->msg));
+        }
+        qInfo() << "pushing" << ref.toString() << module << "status:" << uploadInfo->data->status;
+        if (std::string(uploadInfo->data->status) == "complete") {
+            return LINGLONG_OK;
+        }
+        if (std::string(uploadInfo->data->status) == "failed") {
+            return LINGLONG_ERR(QString("An error occurred on the remote server(%1)").arg(taskID));
+        }
     }
-
-    return LINGLONG_OK;
 }
 
 utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref,
@@ -1278,14 +1081,55 @@ utils::error::Result<package::Reference> OSTreeRepo::clearReference(
         qInfo() << reference.error();
         qInfo() << "fallback to Remote";
     }
-    auto apiClient = this->m_clientFactory.createClient();
-    reference =
-      clearReferenceRemote(fuzzy, *apiClient, QString::fromStdString(this->cfg.defaultRepo));
-    if (reference) {
-        return reference;
-    }
 
-    return LINGLONG_ERR(reference);
+    auto list = this->listRemote(fuzzy);
+    if (!list.has_value()) {
+        return LINGLONG_ERR("get ref list from remote", list);
+    }
+    for (auto record : *list) {
+        auto recordStr = nlohmann::json(record).dump();
+        if (fuzzy.channel && fuzzy.channel->toStdString() != record.channel) {
+            continue;
+        }
+        if (fuzzy.id.toStdString() != record.id) {
+            continue;
+        }
+        auto version = package::Version::parse(QString::fromStdString(record.version));
+        if (!version) {
+            qWarning() << "Ignore invalid package record" << recordStr.c_str() << version.error();
+            continue;
+        }
+        if (record.arch.empty()) {
+            qWarning() << "Ignore invalid package record";
+            continue;
+        }
+        auto arch = package::Architecture::parse(record.arch[0]);
+        if (!arch) {
+            qWarning() << "Ignore invalid package record" << recordStr.c_str() << arch.error();
+            continue;
+        }
+        auto channel = QString::fromStdString(record.channel);
+        auto currentRef = package::Reference::create(channel, fuzzy.id, *version, *arch);
+        if (!currentRef) {
+            qWarning() << "Ignore invalid package record" << recordStr.c_str()
+                       << currentRef.error();
+            continue;
+        }
+        if (!reference) {
+            reference = *currentRef;
+            continue;
+        }
+
+        if (reference->version >= currentRef->version) {
+            continue;
+        }
+
+        reference = *currentRef;
+    }
+    if (!reference) {
+        return LINGLONG_ERR("filter ref from list");
+    }
+    return reference;
 }
 
 utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
@@ -1341,71 +1185,67 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
 {
     LINGLONG_TRACE("list remote references");
 
-    api::client::Request_FuzzySearchReq req;
-
-    req.setRepoName(QString::fromStdString(this->cfg.defaultRepo));
-    req.setAppId(fuzzyRef.id);
-    if (fuzzyRef.arch) {
-        req.setArch(fuzzyRef.arch->toString());
-    } else {
-        req.setArch(package::Architecture::currentCPUArchitecture()->toString());
-    }
+    auto client = m_clientFactory.createClientV2();
+    std::string id, repo, channel, version, arch;
+    id = fuzzyRef.id.toStdString();
+    repo = this->cfg.defaultRepo;
     if (fuzzyRef.channel) {
-        req.setChannel(*fuzzyRef.channel);
+        channel = fuzzyRef.channel->toStdString();
     }
     if (fuzzyRef.version) {
-        req.setVersion(fuzzyRef.version->toString());
+        version = fuzzyRef.version->toString().toStdString();
     }
-
-    utils::error::Result<std::vector<api::types::v1::PackageInfoV2>> pkgInfos =
-      std::vector<api::types::v1::PackageInfoV2>{};
-    auto apiClient = this->m_clientFactory.createClient();
+    if (fuzzyRef.arch) {
+        arch = fuzzyRef.arch->toString().toStdString();
+    } else {
+        arch = package::Architecture::currentCPUArchitecture()->toString().toStdString();
+    }
+    request_fuzzy_search_req_t req;
+    req.channel = channel.data();
+    req.version = version.data();
+    req.arch = arch.data();
+    req.app_id = id.data();
+    req.repo_name = repo.data();
+    // wait http request to finish
+    auto httpFuture = std::async(std::launch::async, [client, &req]() {
+        return ClientAPI_fuzzySearchApp(client.get(), &req);
+    });
     QEventLoop loop;
-    const qint32 HTTP_OK = 200;
-    QEventLoop::connect(
-      apiClient.data(),
-      &api::client::ClientApi::fuzzySearchAppSignal,
-      &loop,
-      [&](const api::client::FuzzySearchApp_200_response &resp) {
-          loop.exit();
-          if (resp.getCode() != HTTP_OK) {
-              pkgInfos = LINGLONG_ERR(resp.getMsg(), resp.getCode());
-              return;
-          }
-
-          for (const auto &record : resp.getData()) {
-              auto json = nlohmann::json::parse(QJsonDocument(record.asJsonObject()).toJson());
-              json["appid"] = json["appId"];
-              json["id"] = json["appId"];
-              json.erase("appId");
-              json["base"] = ""; // FIXME: This is werid.
-              json["arch"] = nlohmann::json::array({ json["arch"] });
-              auto pkgInfo = utils::parsePackageInfo(json);
-              if (!pkgInfo) {
-                  qCritical() << "Ignored invalid record" << record.asJson() << pkgInfo.error();
-                  continue;
-              }
-
-              pkgInfos->emplace_back(*std::move(pkgInfo));
-          }
-          return;
-      });
-
-    QEventLoop::connect(apiClient.data(),
-                        &api::client::ClientApi::fuzzySearchAppSignalEFull,
-                        &loop,
-                        [&](auto, auto error_type, const QString &error_str) {
-                            loop.exit();
-                            pkgInfos = LINGLONG_ERR(error_str, error_type);
-                        });
-
-    apiClient->fuzzySearchApp(req);
+    QTimer timer;
+    connect(&timer, &QTimer::timeout, [&loop, &httpFuture]() {
+        if (httpFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+            loop.quit();
+        };
+    });
+    timer.start(100);
     loop.exec();
 
-    if (!pkgInfos) {
-        return LINGLONG_ERR(pkgInfos);
+    auto res = httpFuture.get();
+    if (!res) {
+        return LINGLONG_ERR("cannot send request to remote server");
     }
-
+    if (res->code != 200) {
+        return LINGLONG_ERR(res->msg);
+    }
+    if (!res->data) {
+        return {};
+    }
+    auto pkgInfos = std::vector<api::types::v1::PackageInfoV2>{};
+    for (auto entry = res->data->firstEntry; entry != nullptr; entry = entry->nextListEntry) {
+        auto item = (request_register_struct_t *)entry->data;
+        pkgInfos.emplace_back(api::types::v1::PackageInfoV2{
+          .arch = { item->arch },
+          .channel = item->channel,
+          .description = item->description,
+          .id = item->app_id,
+          .kind = item->kind,
+          .name = item->name,
+          .runtime = item->runtime,
+          .size = item->size,
+          .version = item->version,
+        });
+    }
+    fuzzy_search_app_200_response_free(res);
     return pkgInfos;
 }
 

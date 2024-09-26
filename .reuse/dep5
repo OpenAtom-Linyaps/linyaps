@@ -24,12 +24,12 @@ License: LGPL-3.0-only
 Copyright: Chen Linxuan <me@black-desk.cn>
 
 # openapi generator code
-Files: external/http/*
+Files: external/http2/*
 License: CC0-1.0
 Copyright: None
 
 # openapi template and patch
-Files: tools/openapi-cpp-qt-client tools/no-cmake.patch tools/no-qt-keywords.patch
+Files: tools/openapi-c-libcurl-client tools/no-cmake.patch tools/no-qt-keywords.patch tools/openapitools.json
 License: CC0-1.0
 Copyright: None
 

@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 2.6...3.10.2)
-project (CGenerator)
+project (LinglongRepoClientAPI)
 
 cmake_policy(SET CMP0063 NEW)
 
@@ -27,7 +27,7 @@ else()
     message (STATUS "OpenSSL Not found.")
 endif()
 
-set(pkgName "{{projectName}}")
+set(pkgName LinglongRepoClientAPI)
 
 # this default version can be overridden in PreTarget.cmake
 set(PROJECT_VERSION_MAJOR 0)

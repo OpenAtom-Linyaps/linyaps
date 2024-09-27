@@ -244,13 +244,11 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
               return;
           }
 
-          if (info->kind == "app") {
-              pullDependency(taskRef, *info, isDevelop);
+          pullDependency(taskRef, *info, isDevelop);
 
-              if (taskRef.currentStatus() == InstallTask::Failed
-                  || taskRef.currentStatus() == InstallTask::Canceled) {
-                  return;
-              }
+          if (taskRef.currentStatus() == InstallTask::Failed
+              || taskRef.currentStatus() == InstallTask::Canceled) {
+              return;
           }
 
           auto result = this->repo.importLayerDir(*layerDir);
@@ -687,10 +685,8 @@ void PackageManager::installRef(InstallTask &taskContext,
         taskContext.updateStatus(InstallTask::Failed, LINGLONG_ERRV(info).message());
         return;
     }
-    // for 'kind: app', check runtime and foundation
-    if (info->kind == "app") {
-        pullDependency(taskContext, *info, develop);
-    }
+
+    pullDependency(taskContext, *info, develop);
 
     // check the status of pull runtime and foundation
     if (taskContext.currentStatus() == InstallTask::Failed
@@ -896,6 +892,10 @@ void PackageManager::pullDependency(InstallTask &taskContext,
                                     const api::types::v1::PackageInfoV2 &info,
                                     bool develop) noexcept
 {
+    if (info.kind != "app") {
+        return;
+    }
+
     LINGLONG_TRACE("pull dependency runtime and base");
 
     utils::Transaction transaction;

@@ -1,3 +1,14 @@
+linglong (1.6.3-1) unstable; urgency=medium
+
+  * feat: add task queue to package manager
+  * refactor: use libcurl to replace QT NetworkManager
+  * feat: optimization reference export
+  * fix(box): default to follow symbol link when parse mount source
+  * fix(box): adjust 'nosymfollow' priority to highest
+  * fix: using queues to control install order
+
+ -- dengbo <dengbo@deepin.org>  Fri, 27 Sep 2024 17:29:36 +0800
+
 linglong (1.5.6-1) unstable; urgency=medium
 
   * fix: layer size error when export layer repeatedly

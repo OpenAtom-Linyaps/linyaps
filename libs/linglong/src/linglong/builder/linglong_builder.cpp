@@ -56,7 +56,7 @@ QString genContainerID(const package::Reference &ref)
       "linglong-builder-" + ref.id + "-" + QUuid::createUuid().toString(QUuid::Id128);
     // 如果LINGLONG_DEBUG为true，则对ID进行编码，避免外部依赖该ID规则
     // 调试模式则不进行二次编码，便于跟踪排查
-    if (std::string(std::getenv("LINGLONG_DEBUG")).empty()) {
+    if (!std::getenv("LINGLONG_DEBUG")) {
         containerID = containerID.toUtf8().toBase64();
     }
     return containerID;

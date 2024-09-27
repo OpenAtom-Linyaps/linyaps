@@ -917,19 +917,20 @@ void PackageManager::pullDependency(InstallTask &taskContext,
             return;
         }
 
+        taskContext.updateStatus(InstallTask::installRuntime,
+                                     "Installing runtime " + runtime->toString());
+
         // 如果runtime已存在，则直接使用, 否则从远程拉取
         auto runtimeLayerDir = repo.getLayerDir(*runtime, develop);
         if (!runtimeLayerDir) {
-            taskContext.updateStatus(InstallTask::installRuntime,
-                                     "Installing runtime " + runtime->toString());
-
             if (taskContext.currentStatus() == InstallTask::Canceled) {
                 return;
             }
 
             this->repo.pull(taskContext, *runtime, develop);
 
-            if (taskContext.currentStatus() == InstallTask::Failed) {
+            if (taskContext.currentStatus() == InstallTask::Canceled
+                || taskContext.currentStatus() == InstallTask::Failed) {
                 return;
             }
 
@@ -959,17 +960,19 @@ void PackageManager::pullDependency(InstallTask &taskContext,
         return;
     }
 
+    taskContext.updateStatus(InstallTask::installBase, "Installing base " + base->toString());
+
     // 如果base已存在，则直接使用, 否则从远程拉取
     auto baseLayerDir = repo.getLayerDir(*base, develop);
     if (!baseLayerDir) {
-        taskContext.updateStatus(InstallTask::installBase, "Installing base " + base->toString());
         if (taskContext.currentStatus() == InstallTask::Canceled) {
             return;
         }
 
         this->repo.pull(taskContext, *base, develop);
 
-        if (taskContext.currentStatus() == InstallTask::Failed) {
+        if (taskContext.currentStatus() == InstallTask::Canceled
+            || taskContext.currentStatus() == InstallTask::Failed) {
             return;
         }
     }

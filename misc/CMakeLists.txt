@@ -59,79 +59,60 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/share/dbus-1/system-services
 
 # libexec
 set(LIBEXEC_LINGLONG_DIR ${CMAKE_INSTALL_PREFIX}/libexec/linglong)
-install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/app-conf-generator
-        DESTINATION ${LIBEXEC_LINGLONG_DIR})
 install(
-  PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/fetch-archive-source
+  PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/app-conf-generator
+           ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/fetch-archive-source
+           ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/fetch-dsc-source
+           ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/fetch-file-source
+           ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/fetch-git-source
   DESTINATION ${LIBEXEC_LINGLONG_DIR})
-install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/fetch-dsc-source
-        DESTINATION ${LIBEXEC_LINGLONG_DIR})
-install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/fetch-file-source
-        DESTINATION ${LIBEXEC_LINGLONG_DIR})
-install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/fetch-git-source
-        DESTINATION ${LIBEXEC_LINGLONG_DIR})
 
 # builder helpers
 set(LIBEXEC_LINGLONG_BUILDER_DIR ${LIBEXEC_LINGLONG_DIR}/builder/helper)
 install(
   PROGRAMS
     ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/builder/helper/config-check.sh
-  DESTINATION ${LIBEXEC_LINGLONG_BUILDER_DIR})
-install(
-  PROGRAMS
     ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/builder/helper/ldd-check.sh
-  DESTINATION ${LIBEXEC_LINGLONG_BUILDER_DIR})
-install(
-  PROGRAMS
     ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/builder/helper/main-check.sh
   DESTINATION ${LIBEXEC_LINGLONG_BUILDER_DIR})
 
 # linglong
+set(LINGLONG_CONFIG_DIR
+    ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d)
 file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/00-id-mapping-static
-     ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/00-id-mapping
-     SYMBOLIC)
+     ${LINGLONG_CONFIG_DIR}/00-id-mapping SYMBOLIC)
 file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/05-initialize-static
-     ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/05-initialize
-     SYMBOLIC)
+     ${LINGLONG_CONFIG_DIR}/05-initialize SYMBOLIC)
 file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/20-devices-static
-     ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/20-devices
-     SYMBOLIC)
+     ${LINGLONG_CONFIG_DIR}/20-devices SYMBOLIC)
 file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/25-host-env-static
-     ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/25-host-env
-     SYMBOLIC)
+     ${LINGLONG_CONFIG_DIR}/25-host-env SYMBOLIC)
 file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/30-user-home-static
-     ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/30-user-home
-     SYMBOLIC)
+     ${LINGLONG_CONFIG_DIR}/30-user-home SYMBOLIC)
 file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/40-host-ipc-static
-     ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/40-host-ipc
-     SYMBOLIC)
+     ${LINGLONG_CONFIG_DIR}/40-host-ipc SYMBOLIC)
 file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/90-legacy-static
-     ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/90-legacy
-     SYMBOLIC)
+     ${LINGLONG_CONFIG_DIR}/90-legacy SYMBOLIC)
 
 install(
   PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/generate-xdg-data-dirs.sh
   DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/linglong)
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.json
+              ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/README.md
         DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/linglong/container)
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/README.md
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/linglong/container)
-
 install(
-  FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/10-basics.json
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/linglong/container/config.d)
-
-install(
-  FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/25-host-rootfs.json
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/linglong/container/config.d)
-
-install(
-  FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d/25-host-statics.json
+  FILES ${LINGLONG_CONFIG_DIR}/10-basics.json
+        ${LINGLONG_CONFIG_DIR}/25-host-rootfs.json
+        ${LINGLONG_CONFIG_DIR}/25-host-statics.json
+        ${LINGLONG_CONFIG_DIR}/00-id-mapping
+        ${LINGLONG_CONFIG_DIR}/05-initialize
+        ${LINGLONG_CONFIG_DIR}/20-devices
+        ${LINGLONG_CONFIG_DIR}/25-host-env
+        ${LINGLONG_CONFIG_DIR}/30-user-home
+        ${LINGLONG_CONFIG_DIR}/40-host-ipc
+        ${LINGLONG_CONFIG_DIR}/90-legacy
   DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/linglong/container/config.d)
 
 # linglong default configuration

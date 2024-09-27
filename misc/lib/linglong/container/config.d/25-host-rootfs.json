@@ -8,11 +8,7 @@
                 "destination": "/run/host",
                 "type": "tmpfs",
                 "source": "tmpfs",
-                "options": [
-                    "nodev",
-                    "nosuid",
-                    "mode=700"
-                ]
+                "options": ["nodev", "nosuid", "mode=700"]
             }
         },
         {
@@ -22,10 +18,7 @@
                 "destination": "/run/host/rootfs",
                 "type": "bind",
                 "source": "/",
-                "options": [
-                    "rbind",
-                    "ro"
-                ]
+                "options": ["rbind"]
             }
         }
     ]

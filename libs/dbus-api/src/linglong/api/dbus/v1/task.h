@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "linglong/api/dbus/v1/gen_org_deepin_linglong.task1.h"
+#include "linglong/api/dbus/v1/gen_org_deepin_linglong_task1.h"
 
 namespace linglong::api::dbus::v1 {
 using Task1 = OrgDeepinLinglongTask1Interface;

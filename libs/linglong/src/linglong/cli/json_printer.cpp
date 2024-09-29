@@ -61,17 +61,62 @@ void JSONPrinter::printContent(const QStringList &filePaths)
     std::cout << QString::fromUtf8(QJsonDocument(obj).toJson()).toStdString() << std::endl;
 }
 
-void JSONPrinter::printTaskMessage(const api::types::v1::PackageTaskMessage& message)
+std::string stateToString(service::PackageTask::State state)
 {
-    QJsonArray jsonArray;
+    switch (state) {
+    case service::PackageTask::State::Canceled:
+        return "Canceled";
+    case service::PackageTask::State::Failed:
+        return "Failed";
+    case service::PackageTask::State::Processing:
+        return "Processing";
+    case service::PackageTask::State::Pending:
+        return "Pending";
+    case service::PackageTask::State::Queued:
+        return "Queued";
+    case service::PackageTask::State::Succeed:
+        return "Succeed";
+    default:
+        return "Unknown State";
+    }
+}
 
-    jsonArray.push_back(QJsonObject{
-      { "percentage", percentage },
-      { "message", message },
-      { "state", QMetaEnum::fromType<service::PackageTask::State>().valueToKey(state) },
-    });
+std::string subStateToString(service::PackageTask::SubState state)
+{
+    switch (state) {
+    case service::PackageTask::SubState::Done:
+        return "Done";
+    case service::PackageTask::SubState::InstallApplication:
+        return "InstallApplication";
+    case service::PackageTask::SubState::InstallBase:
+        return "InstallBase";
+    case service::PackageTask::SubState::InstallRuntime:
+        return "InstallRuntime";
+    case service::PackageTask::SubState::PostAction:
+        return "PostAction";
+    case service::PackageTask::SubState::PreAction:
+        return "PreAction";
+    case service::PackageTask::SubState::PreRemove:
+        return "PreAction";
+    case service::PackageTask::SubState::Uninstall:
+        return "PreAction";
+    default:
+        return "Unknown SubState";
+    }
+}
 
-    std::cout << QString::fromUtf8(QJsonDocument(jsonArray).toJson()).toStdString() << std::endl;
+void JSONPrinter::printTaskState(const double percentage,
+                                  const QString &message,
+                                  const api::types::v1::State state,
+                                  const api::types::v1::SubState subState)
+{
+    nlohmann::json json;
+    json["percentage"] = percentage;
+    json["message"] = message.toStdString();
+    json["state"] = stateToString(state);
+    json["subState"] = subStateToString(subState);
+
+    std::cout << json.dump() << std::endl;
 }
 
 void JSONPrinter::printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &list)

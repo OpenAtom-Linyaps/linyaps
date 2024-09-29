@@ -139,18 +139,14 @@ void CLIPrinter::printContent(const QStringList &filePaths)
     }
 }
 
-void CLIPrinter::printTaskMessage(const api::types::v1::PackageTaskMessage &message)
+void CLIPrinter::printTaskState(double percentage,
+                                const QString &message,
+                                api::types::v1::State state,
+                                api::types::v1::SubState subState)
 {
     auto &stdout = std::cout;
-    stdout << "\r\33[K" << "\033[?25l" << message.percentage << "% ";
-
-    if (message.result) {
-        stdout << message.result->message << ":" << message.result->code;
-    } else {
-        stdout << message.message;
-    }
-
-    stdout << "\033[?25h\n";
+    stdout << "\r\33[K" << "\033[?25l" << percentage << "% " << message.toStdString()
+           << "\033[?25h";
     stdout.flush();
 }
 

@@ -13,7 +13,6 @@
 #include "ocppi/runtime/config/types/Mount.hpp"
 
 #include <QDir>
-#include <QProcess>
 
 namespace linglong::runtime {
 

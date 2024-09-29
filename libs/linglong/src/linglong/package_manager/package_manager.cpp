@@ -25,7 +25,6 @@
 #include <QEventLoop>
 #include <QJsonArray>
 #include <QMetaObject>
-#include <QSettings>
 #include <QUuid>
 
 #include <algorithm>

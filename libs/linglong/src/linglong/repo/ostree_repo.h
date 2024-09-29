@@ -16,12 +16,6 @@
 
 #include <ostree.h>
 
-#include <QList>
-#include <QPointer>
-#include <QProcess>
-#include <QScopedPointer>
-#include <QThread>
-
 namespace linglong::repo {
 
 struct clearReferenceOption

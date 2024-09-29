@@ -11,7 +11,6 @@
 #include <libelf.h>
 
 #include <QDir>
-#include <QScopedPointer>
 #include <QString>
 
 namespace linglong::package {

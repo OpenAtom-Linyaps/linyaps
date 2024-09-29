@@ -7,7 +7,7 @@
 #include "linglong_builder.h"
 
 #include "linglong/api/types/v1/Generators.hpp"
-#include "linglong/builder/file.h"
+#include "linglong/utils/configure.h"
 #include "linglong/builder/printer.h"
 #include "linglong/package/architecture.h"
 #include "linglong/package/layer_packager.h"
@@ -35,6 +35,7 @@
 #include <QThread>
 #include <QUrl>
 #include <QUuid>
+#include <QDirIterator>
 
 #include <cstdlib>
 #include <filesystem>
@@ -44,6 +45,7 @@
 
 #include <sys/socket.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 
 namespace linglong::builder {
 
@@ -60,6 +62,106 @@ QString genContainerID(const package::Reference &ref)
         containerID = containerID.toUtf8().toBase64();
     }
     return containerID;
+}
+
+quint64 sizeOfDir(const QString &srcPath)
+{
+    QDir srcDir(srcPath);
+    quint64 size = 0;
+    QFileInfoList list = srcDir.entryInfoList();
+
+    for (auto info : list) {
+        if (info.fileName() == "." || info.fileName() == "..") {
+            continue;
+        }
+        if (info.isSymLink()) {
+            // FIXME: https://bugreports.qt.io/browse/QTBUG-50301
+            struct stat symlinkStat;
+            lstat(info.absoluteFilePath().toLocal8Bit(), &symlinkStat);
+            size += symlinkStat.st_size;
+        } else if (info.isDir()) {
+            // 一个文件夹大小为4K
+            size += 4 * 1024;
+            size += sizeOfDir(QStringList{ srcPath, info.fileName() }.join("/"));
+        } else {
+            size += info.size();
+        }
+    }
+
+    return size;
+}
+
+/*!
+ * 拷贝目录
+ * @param src 来源
+ * @param dst 目标
+ * @return
+ */
+utils::error::Result<void> inline copyDir(const QString &src, const QString &dst)
+{
+    LINGLONG_TRACE(QString("copy %1 to %2").arg(src).arg(dst));
+
+    QDir srcDir(src);
+    QDir dstDir(dst);
+
+    if (!dstDir.exists()) {
+        if (!dstDir.mkpath(".")) {
+            return LINGLONG_ERR("create " + dstDir.absolutePath() + ": failed");
+        };
+    }
+
+    QFileInfoList list = srcDir.entryInfoList();
+
+    for (const auto &info : list) {
+        if (info.fileName() == "." || info.fileName() == "..") {
+            continue;
+        }
+
+        if (info.isDir()) {
+            // 穿件文件夹，递归调用
+            auto ret = copyDir(info.filePath(), dst + "/" + info.fileName());
+            if (!ret.has_value()) {
+                return ret;
+            }
+            continue;
+        }
+
+        if (!info.isSymLink()) {
+            // 拷贝文件
+            QFile file(info.filePath());
+            if (!file.copy(dst + "/" + info.fileName())) {
+                return LINGLONG_ERR(file);
+            };
+            continue;
+        }
+
+        std::array<char, PATH_MAX + 1> buf{};
+        auto size = readlink(info.filePath().toStdString().c_str(), buf.data(), PATH_MAX);
+        if (size == -1) {
+            return LINGLONG_ERR("readlink failed! " + info.filePath());
+        }
+
+        QFileInfo originFile(info.symLinkTarget());
+        QString newLinkFile = dst + "/" + info.fileName();
+
+        if (buf.at(0) == '/') {
+            if (!QFile::link(info.symLinkTarget(), newLinkFile)) {
+                return LINGLONG_ERR("Failed to create link: " + QFile().errorString());
+            };
+            continue;
+        }
+
+        // caculator the relative path
+        QDir linkFileDir(info.dir());
+        QString relativePath = linkFileDir.relativeFilePath(originFile.path());
+        auto newOriginFile = relativePath.endsWith("/")
+          ? relativePath + originFile.fileName()
+          : relativePath + "/" + originFile.fileName();
+        if (!QFile::link(newOriginFile, newLinkFile)) {
+            return LINGLONG_ERR("Failed to create link: " + QFile().errorString());
+        };
+    }
+    return LINGLONG_OK;
 }
 
 utils::error::Result<package::Reference>
@@ -688,7 +790,7 @@ set -e
             if (!binaryEntries.mkpath("share/systemd/user")) {
                 return LINGLONG_ERR("mkpath files/share/systemd/user: failed");
             }
-            auto ret = util::copyDir(binaryFiles.filePath("lib/systemd/user"),
+            auto ret = copyDir(binaryFiles.filePath("lib/systemd/user"),
                                      binaryEntries.absoluteFilePath("share/systemd/user"));
             if (!ret.has_value()) {
                 return LINGLONG_ERR(ret);
@@ -698,7 +800,7 @@ set -e
             if (!developOutput.mkpath("share/systemd/user")) {
                 return LINGLONG_ERR("mkpath files/share/systemd/user: failed");
             }
-            auto ret = util::copyDir(developFiles.filePath("lib/systemd/user"),
+            auto ret = copyDir(developFiles.filePath("lib/systemd/user"),
                                      developEntries.absoluteFilePath("share/systemd/user"));
             if (!ret.has_value()) {
                 return LINGLONG_ERR(ret);
@@ -739,7 +841,7 @@ set -e
         .permissions = this->project.permissions,
         .runtime = {},
         .schemaVersion = PACKAGE_INFO_VERSION,
-        .size = static_cast<int64_t>(util::sizeOfDir(binaryOutput.absoluteFilePath(".."))),
+        .size = static_cast<int64_t>(sizeOfDir(binaryOutput.absoluteFilePath(".."))),
         .version = this->project.package.version,
     };
 
@@ -766,7 +868,7 @@ set -e
     infoFile.close();
 
     info.packageInfoV2Module = "develop";
-    info.size = util::sizeOfDir(developOutput.absoluteFilePath(".."));
+    info.size = sizeOfDir(developOutput.absoluteFilePath(".."));
 
     infoFile.setFileName(developOutput.absoluteFilePath("../info.json"));
     if (!infoFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {

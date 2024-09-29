@@ -6,8 +6,8 @@
 
 #include "source_fetcher.h"
 
-#include "linglong/builder/file.h"
 #include "linglong/utils/command/env.h"
+#include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/global/initialize.h"
 

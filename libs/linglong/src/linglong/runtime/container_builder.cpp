@@ -14,9 +14,9 @@
 #include "ocppi/runtime/config/types/Generators.hpp"
 #include "ocppi/runtime/config/types/Mount.hpp"
 
-#include <qglobal.h>
-#include <qstandardpaths.h>
-#include <qtemporarydir.h>
+#include <QStandardPaths>
+#include <QTemporaryDir>
+#include <QProcess>
 
 #include <fstream>
 #include <unordered_set>

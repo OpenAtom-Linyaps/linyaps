@@ -232,7 +232,8 @@ int main(int argc, char **argv)
                               { "list", &Cli::list },
                               { "repo", &Cli::repo },
                               { "info", &Cli::info },
-                              { "content", &Cli::content } };
+                              { "content", &Cli::content },
+                              { "prune", &Cli::prune } };
 
           if (!QObject::connect(QCoreApplication::instance(),
                                 &QCoreApplication::aboutToQuit,

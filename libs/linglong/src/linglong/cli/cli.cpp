@@ -12,10 +12,12 @@
 #include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
 #include "linglong/api/types/v1/PackageManager1Package.hpp"
-#include "linglong/api/types/v1/PackageManager1ResultWithTaskID.hpp"
+#include "linglong/api/types/v1/PackageManager1ResultWithTaskObjectPath.hpp"
 #include "linglong/api/types/v1/PackageManager1SearchParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1SearchResult.hpp"
 #include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
+#include "linglong/api/types/v1/State.hpp"
+#include "linglong/api/types/v1/SubState.hpp"
 #include "linglong/api/types/v1/UpgradeListResult.hpp"
 #include "linglong/cli/printer.h"
 #include "linglong/package/layer_file.h"
@@ -51,9 +53,9 @@ Usage:
     ll-cli [--json] exec PAGODA [--working-directory=PATH] [--] COMMAND...
     ll-cli [--json] enter PAGODA [--working-directory=PATH] [--] [COMMAND...]
     ll-cli [--json] kill PAGODA
-    ll-cli [--json] [--no-dbus] install [--module=MODULE] TIER
+    ll-cli [--json] [--no-dbus] install [--module=MODULE] TIER [--force]
     ll-cli [--json] uninstall [--module=MODULE] TIER [--all] [--prune]
-    ll-cli [--json] upgrade TIER
+    ll-cli [--json] upgrade TIER [--force]
     ll-cli [--json] search [--type=TYPE] [--dev] TEXT
     ll-cli [--json] [--no-dbus] list [--type=TYPE] [--upgradable]
     ll-cli [--json] repo modify [--name=REPO] URL
@@ -65,6 +67,7 @@ Usage:
     ll-cli [--json] info TIER
     ll-cli [--json] content APP
     ll-cli [--json] migrate
+    ll-cli [--json] prune
 
 Arguments:
     APP     Specify the application.
@@ -102,37 +105,42 @@ Subcommands:
     search     Search for tiers.
     list       List known tiers.
     repo       Display or modify information of the repository currently using.
-    info       Display the information of layer
-    content    Display the exported files of application
+    info       Display the information of layer.
+    content    Display the exported files of application.
+    prune      Remove the unused base or runtime.
 )";
 
-void Cli::processDownloadState(const QString &recTaskID,
-                               const QString &percentage,
-                               const QString &message,
-                               int status)
+void Cli::processDownloadState(const QString &taskObjectPath, const QString &message)
 {
     LINGLONG_TRACE("download status")
 
-    this->lastState = static_cast<service::PackageTask::State>(status);
-    switch (status) {
-    case service::PackageTask::Canceled:
-    case service::PackageTask::Queued:
-    case service:: ::preInstall:
-    case service::PackageTask::installBase:
-    case service::PackageTask::installRuntime:
-    case service::PackageTask::installApplication:
+    if (taskObjectPath != this->task->path()) {
+        return;
+    }
+
+    this->lastState = static_cast<api::types::v1::State>(this->task->state());
+    this->lastSubState = static_cast<api::types::v1::SubState>(this->task->subState());
+
+    switch (this->lastState) {
+    case api::types::v1::State::Canceled:
+    case api::types::v1::State::Queued:
+    case api::types::v1::State::Pending:
         [[fallthrough]];
-    case service::PackageTask::postInstall: {
-        this->printer.printTaskStatus(percentage, message, status);
+    case api::types::v1::State::Processing: {
+        this->printer.printTaskState(this->task->percentage(),
+                                      message,
+                                      this->lastState,
+                                      this->lastSubState);
     } break;
-    case service::PackageTask::Success: {
-        this->taskDone = true;
-        this->printer.printTaskStatus(percentage, message, status);
+    case api::types::v1::State::Succeed: {
+        this->printer.printTaskState(this->task->percentage(),
+                                      message,
+                                      this->lastState,
+                                      this->lastSubState);
         std::cout << std::endl;
     } break;
-    case service::PackageTask::Failed: {
+    case api::types::v1::State::Failed: {
         this->printer.printErr(LINGLONG_ERRV("\n" + message));
-        this->taskDone = true;
     }
     }
 }
@@ -498,7 +506,7 @@ int Cli::kill(std::map<std::string, docopt::value> &args)
 
 void Cli::cancelCurrentTask()
 {
-    if ((this->lastSubState != service::PackageTask::Done) && this->task != nullptr) {
+    if ((this->lastSubState != service::PackageTask::SubState::Done) && this->task != nullptr) {
         this->task->Cancel();
         std::cout << "cancel running task." << std::endl;
     }
@@ -525,7 +533,7 @@ int Cli::installFromFile(const QFileInfo &fileInfo)
       this->pkgMan.interface(),
       "TaskChanged",
       this,
-      SLOT(processDownloadStatus(const QString &, const QString &, const QString &, int)));
+      SLOT(processDownloadState(const QVariantMap &)));
     if (!con) {
         qCritical() << "Failed to connect signal: TaskChanged. state may be incorrect.";
         return -1;
@@ -550,8 +558,9 @@ int Cli::installFromFile(const QFileInfo &fileInfo)
     }
 
     auto reply = pendingReply.value();
+
     auto result =
-      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1ResultWithTaskID>(reply);
+      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1ResultWithTaskObjectPath>(reply);
     if (!result) {
         qCritical() << result.error();
         qCritical() << "linglong bug detected.";
@@ -564,28 +573,41 @@ int Cli::installFromFile(const QFileInfo &fileInfo)
         return -1;
     }
 
-    this->taskID = QString::fromStdString(*result->taskID);
-    this->taskDone = false;
+    auto taskConn = QDBusConnection::systemBus();
+    this->task =
+      std::make_unique<api::dbus::v1::Task1>("org.deepin.linglong.PackageManager",
+                                             QString::fromStdString(result->taskObjectPath.value()),
+                                             taskConn);
+    if (!this->task->isValid()) {
+        qCritical() << "connect to task object failed";
+        return -1;
+    }
+
     QEventLoop loop;
     std::function<void()> statusChecker = std::function{ [&loop, &statusChecker, this]() -> void {
-        if (this->taskDone) {
+        if (this->lastSubState == service::PackageTask::SubState::Done) {
             loop.exit(0);
         }
+
         QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
     } };
 
     QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
     loop.exec();
 
+    if (this->lastState != service::PackageTask::State::Succeed) {
+        return -1;
+    }
+
     updateAM();
-    return 0;
+    return this->lastState == service::PackageTask::State::Succeed ? 0 : -1;
 }
 
 void Cli::updateAM() noexcept
 {
     // Call ReloadApplications() in AM for now. Remove later.
     if ((QSysInfo::productType() == "uos" || QSysInfo::productType() == "Deepin")
-        && this->lastState == service::PackageTask::Succeed) {
+        && this->lastState == service::PackageTask::State::Succeed) {
         QDBusConnection conn = QDBusConnection::sessionBus();
         if (!conn.isConnected()) {
             qWarning() << "Failed to connect to the session bus";
@@ -614,13 +636,13 @@ int Cli::install(std::map<std::string, docopt::value> &args)
     }
 
     auto conn = this->pkgMan.connection();
-    auto con = conn.connect(
-      this->pkgMan.service(),
-      this->pkgMan.path(),
-      this->pkgMan.interface(),
-      "TaskChanged",
-      this,
-      SLOT(processDownloadStatus(const QString &, const QString &, const QString &, int)));
+    auto con =
+      conn.connect(this->pkgMan.service(),
+                   this->pkgMan.path(),
+                   this->pkgMan.interface(),
+                   "TaskChanged",
+                   this,
+                   SLOT(processDownloadState(const QString &, const QString &)));
     if (!con) {
         qCritical() << "Failed to connect signal: TaskChanged. state may be incorrect.";
         return -1;
@@ -664,7 +686,7 @@ int Cli::install(std::map<std::string, docopt::value> &args)
     }
 
     auto result =
-      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1ResultWithTaskID>(reply);
+      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1ResultWithTaskObjectPath>(reply);
     if (!result) {
         qCritical() << "bug detected.";
         std::abort();
@@ -675,13 +697,23 @@ int Cli::install(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    this->taskID = QString::fromStdString(*result->taskID);
-    this->taskDone = false;
+    auto taskConn = QDBusConnection::systemBus();
+    this->task =
+      std::make_unique<api::dbus::v1::Task1>("org.deepin.linglong.PackageManager",
+                                             QString::fromStdString(result->taskObjectPath.value()),
+                                             taskConn);
+
+    if (!this->task->isValid()) {
+        qCritical() << "connect to task object failed";
+        return -1;
+    }
+
     QEventLoop loop;
     std::function<void()> statusChecker = std::function{ [&loop, &statusChecker, this]() -> void {
-        if (this->taskDone) {
+        if (this->lastSubState == service::PackageTask::SubState::Done) {
             loop.exit(0);
         }
+
         QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
     } };
 
@@ -689,7 +721,7 @@ int Cli::install(std::map<std::string, docopt::value> &args)
     loop.exec();
 
     updateAM();
-    return this->lastState == service::PackageTask::Succeed ? 0 : -1;
+    return this->lastState == service::PackageTask::State::Succeed ? 0 : -1;
 }
 
 int Cli::upgrade(std::map<std::string, docopt::value> &args)
@@ -714,13 +746,12 @@ int Cli::upgrade(std::map<std::string, docopt::value> &args)
     }
 
     auto conn = this->pkgMan.connection();
-    auto con = conn.connect(
-      this->pkgMan.service(),
-      this->pkgMan.path(),
-      this->pkgMan.interface(),
-      "TaskChanged",
-      this,
-      SLOT(processDownloadStatus(const QString &, const QString &, const QString &, int)));
+    auto con = conn.connect(this->pkgMan.service(),
+                            this->pkgMan.path(),
+                            this->pkgMan.interface(),
+                            "TaskChanged",
+                            this,
+                            SLOT(processDownloadState(const QString &, const QString &)));
     if (!con) {
         qCritical() << "Failed to connect signal: TaskChanged. state may be incorrect.";
         return -1;
@@ -746,7 +777,7 @@ int Cli::upgrade(std::map<std::string, docopt::value> &args)
     }
 
     auto result =
-      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1ResultWithTaskID>(reply);
+      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1ResultWithTaskObjectPath>(reply);
     if (!result) {
         this->printer.printErr(result.error());
         return -1;
@@ -757,11 +788,19 @@ int Cli::upgrade(std::map<std::string, docopt::value> &args)
         this->printer.printErr(err);
         return -1;
     }
+    auto taskConn = QDBusConnection::systemBus();
+    this->task =
+      std::make_unique<api::dbus::v1::Task1>("org.deepin.linglong.PackageManager",
+                                             QString::fromStdString(result->taskObjectPath.value()),
+                                             taskConn);
+    if (!this->task->isValid()) {
+        qCritical() << "connect to task object failed";
+        return -1;
+    }
 
-    this->taskID = QString::fromStdString(*result->taskID);
     QEventLoop loop;
     std::function<void()> statusChecker = std::function{ [&loop, &statusChecker, this]() -> void {
-        if (this->lastSubState == service::PackageTask::Done) {
+        if (this->lastSubState == service::PackageTask::SubState::Done) {
             loop.exit(0);
         }
         QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
@@ -770,12 +809,12 @@ int Cli::upgrade(std::map<std::string, docopt::value> &args)
     QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
     loop.exec();
 
-    if (this->lastState != service::PackageTask::Succeed) {
+    if (this->lastState != service::PackageTask::State::Succeed) {
         return -1;
     }
 
     updateAM();
-    return this->lastState == service::PackageTask::Succeed ? 0 : -1;
+    return this->lastState == service::PackageTask::State::Succeed ? 0 : -1;
 }
 
 int Cli::search(std::map<std::string, docopt::value> &args)
@@ -856,6 +895,20 @@ int Cli::search(std::map<std::string, docopt::value> &args)
     return loop.exec();
 }
 
+int Cli::prune(std::map<std::string, docopt::value> &args)
+{
+    LINGLONG_TRACE("command prune");
+
+    auto reply = this->pkgMan.Prune();
+    reply.waitForFinished();
+    if (!reply.isValid()) {
+        this->printer.printErr(LINGLONG_ERRV(reply.error().message(), reply.error().type()));
+        return -1;
+    }
+
+    return 0;
+}
+
 int Cli::uninstall(std::map<std::string, docopt::value> &args)
 {
     LINGLONG_TRACE("command uninstall");
@@ -903,18 +956,43 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
         this->printer.printErr(err);
         return -1;
     }
-    auto result = utils::serialize::fromQVariantMap<api::types::v1::CommonResult>(reply);
+    auto result =
+      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1ResultWithTaskObjectPath>(
+        reply);
     if (!result) {
         this->printer.printErr(result.error());
         return -1;
     }
+
     if (result->code != 0) {
-        this->printer.printErr(
-          LINGLONG_ERRV(QString::fromStdString(result->message), result->code));
+        auto err = LINGLONG_ERRV(QString::fromStdString(result->message), result->code);
+        this->printer.printErr(err);
+        return -1;
+    }
+    auto taskConn = QDBusConnection::systemBus();
+    this->task =
+      std::make_unique<api::dbus::v1::Task1>("org.deepin.linglong.PackageManager",
+                                             QString::fromStdString(result->taskObjectPath.value()),
+                                             taskConn
+                                             );
+
+    if (!this->task->isValid()) {
+        qCritical() << "connect to task object failed";
         return -1;
     }
 
-    return 0;
+    QEventLoop loop;
+    std::function<void()> statusChecker = std::function{ [&loop, &statusChecker, this]() -> void {
+        if (this->lastSubState == service::PackageTask::SubState::Done) {
+            loop.exit(0);
+        }
+        QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
+    } };
+
+    QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
+    loop.exec();
+
+    return this->lastState == service::PackageTask::State::Succeed ? 0 : -1;
 }
 
 int Cli::list(std::map<std::string, docopt::value> &args)

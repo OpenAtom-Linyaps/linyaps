@@ -301,7 +301,8 @@ int main(int argc, char **argv)
                               { "repo", &Cli::repo },
                               { "info", &Cli::info },
                               { "content", &Cli::content },
-                              { "migrate", &Cli::migrate } };
+                              { "migrate", &Cli::migrate },
+                              { "prune", &Cli::prune } };
 
           if (QObject::connect(QCoreApplication::instance(),
                                &QCoreApplication::aboutToQuit,

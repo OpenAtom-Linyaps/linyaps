@@ -5,6 +5,7 @@
 #include "package_task.h"
 
 #include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/utils/serialize/json.h"
 
 #include <QDebug>
 #include <QUuid>
@@ -46,8 +47,8 @@ PackageTask::PackageTask(PackageTask &&other) noexcept
     , m_job(std::move(other).m_job)
 {
     other.m_cancelFlag = nullptr;
-    other.m_state = State::Canceled;
-    other.m_subState = SubState::Done;
+    other.m_state = State::Unknown;
+    other.m_subState = SubState::Unknown;
     other.m_curPercentage = 0;
 }
 
@@ -58,10 +59,10 @@ PackageTask &PackageTask::operator=(PackageTask &&other) noexcept
     }
 
     this->m_state = other.m_state;
-    other.m_state = State::Canceled;
+    other.m_state = State::Unknown;
 
     this->m_subState = other.m_subState;
-    other.m_subState = SubState::Done;
+    other.m_subState = SubState::Unknown;
 
     this->m_cancelFlag = other.m_cancelFlag;
     other.m_cancelFlag = nullptr;
@@ -98,41 +99,35 @@ void PackageTask::updateTask(uint part, uint whole, const QString &message) noex
 
     auto partPercentage = part / whole;
     auto partPercentageMsg =
-      QString("%1/%2(%3%)").arg(part).arg(whole).arg(formatPercentage(partPercentage * 100));
+      QString("%1/%2(%3%)").arg(part).arg(whole).arg(currentPercentage(partPercentage * 100));
+
     Q_EMIT PartChanged(partPercentageMsg, {});
-    Q_EMIT TaskChanged(formatPercentage(partPercentage * m_subStateMap[m_subState]),
-                       message,
-                       m_state,
-                       m_subState,
-                       {});
+    Q_EMIT TaskChanged(taskObjectPath(), message, {});
 }
 
 void PackageTask::updateState(State newState, const QString &message) noexcept
 {
     m_state = newState;
 
-    if (newState == State::Canceled || newState == State::Failed || newState == State::Succeed) {
-        updateSubState(SubState::Done);
+    if (m_state == State::Canceled || m_state == State::Failed || m_state == State::Succeed) {
+        updateSubState(SubState::Done, message);
         return;
     }
 
-    Q_EMIT TaskChanged(formatPercentage(), message, m_state, m_subState, {});
+    Q_EMIT TaskChanged(taskObjectPath(), message, {});
 }
 
 void PackageTask::updateSubState(SubState newSubState, const QString &message) noexcept
 {
-    if (m_subState == SubState::Done) {
-        return;
-    }
+    m_subState = newSubState;
 
-    if (newSubState == SubState::Done) {
+    if (m_subState == SubState::Done) {
         m_curPercentage = 100;
     } else {
         m_curPercentage += m_subStateMap[m_subState];
     }
 
-    m_subState = newSubState;
-    Q_EMIT TaskChanged(formatPercentage(), message, m_state, m_subState, {});
+    Q_EMIT TaskChanged(taskObjectPath(), message, {});
 }
 
 void PackageTask::reportError(linglong::utils::error::Error &&err) noexcept
@@ -142,14 +137,12 @@ void PackageTask::reportError(linglong::utils::error::Error &&err) noexcept
     m_subState = SubState::Done;
     m_err = std::move(err);
 
-    Q_EMIT TaskChanged(formatPercentage(), m_err.message(), m_state, m_subState, {});
+    Q_EMIT TaskChanged(taskObjectPath(), m_err.message(), {});
 }
 
-QString PackageTask::formatPercentage(double increase) noexcept
+double PackageTask::currentPercentage(double increase) noexcept
 {
-    QString ret;
-    ret.setNum(increase, 'g', 4);
-    return ret;
+    return m_curPercentage + increase;
 }
 
 void PackageTask::cancelTask() noexcept
@@ -157,6 +150,11 @@ void PackageTask::cancelTask() noexcept
     if (g_cancellable_is_cancelled(m_cancelFlag) == 0) {
         g_cancellable_cancel(m_cancelFlag);
     }
+
+    m_state = State::Canceled;
+    m_subState = SubState::Done;
+    
+    Q_EMIT TaskChanged(taskObjectPath(), "Task canceled", {});
 }
 
 } // namespace linglong::service

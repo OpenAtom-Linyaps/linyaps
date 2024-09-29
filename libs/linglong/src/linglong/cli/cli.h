@@ -46,8 +46,8 @@ private:
     std::unique_ptr<InteractiveNotifier> notifier;
     api::dbus::v1::PackageManager &pkgMan;
     std::unique_ptr<api::dbus::v1::Task1> task{ nullptr };
-    service::PackageTask::State lastState;
-    service::PackageTask::SubState lastSubState;
+    service::PackageTask::State lastState{ service::PackageTask::State::Unknown };
+    service::PackageTask::SubState lastSubState{ service::PackageTask::SubState::Unknown };
     std::vector<std::string>
     filePathMapping(std::map<std::string, docopt::value> &args,
                     const std::vector<std::string> &command) const noexcept;
@@ -70,15 +70,13 @@ public:
     int info(std::map<std::string, docopt::value> &args);
     int content(std::map<std::string, docopt::value> &args);
     int migrate(std::map<std::string, docopt::value> &args);
+    int prune(std::map<std::string, docopt::value> &args);
 
     void cancelCurrentTask();
 
 private Q_SLOTS:
     int installFromFile(const QFileInfo &fileInfo);
-    void processDownloadState(const QString &recTaskID,
-                              const QString &percentage,
-                              const QString &message,
-                              int status);
+    void processDownloadState(const QString &taskObjectPath, const QString &message);
     void forwardMigrateDone(int code, QString message);
 
 Q_SIGNALS:

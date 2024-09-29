@@ -35,12 +35,11 @@ pfl_add_library(
   src/linglong/api/types/v1/PackageManager1InstallParameters.hpp
   src/linglong/api/types/v1/PackageManager1ModifyRepoParameters.hpp
   src/linglong/api/types/v1/PackageManager1Package.hpp
-  src/linglong/api/types/v1/PackageManager1ResultWithTaskID.hpp
+  src/linglong/api/types/v1/PackageManager1ResultWithTaskObjectPath.hpp
   src/linglong/api/types/v1/PackageManager1SearchParameters.hpp
   src/linglong/api/types/v1/PackageManager1SearchResult.hpp
   src/linglong/api/types/v1/PackageManager1UninstallParameters.hpp
   src/linglong/api/types/v1/PackageManager1UpdateParameters.hpp
-  src/linglong/api/types/v1/PackageTaskMessage.hpp
   src/linglong/api/types/v1/RepoConfig.hpp
   src/linglong/api/types/v1/RepositoryCache.hpp
   src/linglong/api/types/v1/RepositoryCacheLayersItem.hpp

@@ -708,50 +708,31 @@
     "PackageManager1MigrateResult": {
       "$ref": "#/$defs/CommonResult"
     },
-    "PackageTaskMessage": {
-      "description": "all message which should report from package manager to frontend",
-      "type": "object",
-      "required": [
-        "percentage",
-        "state",
-        "subState",
-        "message"
-      ],
-      "properties": {
-        "percentage": {
-          "description": "present total progress",
-          "type": "number"
-        },
-        "state": {
-          "description": "main state of current task,",
-          "enum": [
-            "Queued",
-            "Pending",
-            "Installing",
-            "Succeed",
-            "Failed",
-            "Canceled"
-          ]
-        },
-        "subState": {
-          "description": "subState of current task,",
-          "enum": [
-            "PreAction",
-            "InstallRuntime",
-            "InstallBase",
-            "InstallApplication",
-            "PostAction",
-            "Done"
-          ]
-        },
-        "message": {
-          "description": "Human readable message to report additional message",
-          "type": "string"
-        },
-        "result": {
-          "$ref": "#/$defs/CommonResult"
-        }
-      }
+    "State": {
+      "description": "main state of current task,",
+      "enum": [
+        "Unknown",
+        "Queued",
+        "Pending",
+        "Processing",
+        "Succeed",
+        "Failed",
+        "Canceled"
+      ]
+    },
+    "SubState": {
+      "description": "subState of current task,",
+      "enum": [
+        "Unknown",
+        "PreAction",
+        "InstallRuntime",
+        "InstallBase",
+        "InstallApplication",
+        "PostAction",
+        "PreRemove",
+        "Uninstall",
+        "Done"
+      ]
     },
     "PackageManager1InstallLayerFDResult": {
       "$ref": "#/$defs/CommonResult"
@@ -769,7 +750,7 @@
       }
     },
     "PackageManager1InstallResult": {
-      "title": "PackageManager1ResultWithTaskID",
+      "title": "PackageManager1ResultWithTaskObjectPath",
       "description": "package manager install result",
       "allOf": [
         {
@@ -777,9 +758,9 @@
         }
       ],
       "properties": {
-        "taskID": {
+        "taskObjectPath": {
           "type": "string",
-          "description": "task id of package manager install"
+          "description": "task dbus object path of package manager install"
         }
       }
     },
@@ -1101,8 +1082,11 @@
     "PackageManager1MigrateResult": {
       "$ref": "#/$defs/PackageManager1MigrateResult"
     },
-    "PackageTaskMessage": {
-      "$ref": "#/$defs/PackageTaskMessage"
+    "State": {
+      "$ref": "#/$defs/State"
+    },
+    "SubState": {
+      "$ref": "#/$defs/SubState"
     },
     "PackageManager1InstallLayerFDResult": {
       "$ref": "#/$defs/PackageManager1InstallLayerFDResult"

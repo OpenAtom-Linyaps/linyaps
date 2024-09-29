@@ -6,6 +6,7 @@
 
 #include "package_task.h"
 
+#include <QObject>
 #include <QDBusContext>
 
 namespace linglong::service {
@@ -13,8 +14,9 @@ class Task : public QObject, protected QDBusContext
 {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.Task1")
-    Q_PROPERTY(QString State READ state)
-    Q_PROPERTY(QString SubState READ subState)
+    Q_PROPERTY(quint32 State READ state)
+    Q_PROPERTY(quint32 SubState READ subState)
+    Q_PROPERTY(double Percentage READ percentage)
 
 public:
     explicit Task(PackageTask *parent)
@@ -22,8 +24,11 @@ public:
     {
     }
 
-    [[nodiscard]] QString state() const noexcept;
-    [[nodiscard]] QString subState() const noexcept;
+    ~Task() override = default;
+
+    [[nodiscard]] quint32 state() const noexcept;
+    [[nodiscard]] quint32 subState() const noexcept;
+    [[nodiscard]] double percentage() const noexcept;
 
 public Q_SLOTS:
     void Cancel();

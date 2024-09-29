@@ -20,7 +20,10 @@ public:
     void printReply(const api::types::v1::CommonResult &) override;
     void printRepoConfig(const api::types::v1::RepoConfig &) override;
     void printLayerInfo(const api::types::v1::LayerInfo &) override;
-    void printTaskMessage(const api::types::v1::PackageTaskMessage &) override;
+    void printTaskState(double percentage,
+                         const QString &message,
+                         const api::types::v1::State state,
+                         const api::types::v1::SubState subState) override;
     void printContent(const QStringList &desktopPaths) override;
 };
 

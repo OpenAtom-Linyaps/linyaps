@@ -10,8 +10,9 @@
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/LayerInfo.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
-#include "linglong/api/types/v1/PackageTaskMessage.hpp"
 #include "linglong/api/types/v1/RepoConfig.hpp"
+#include "linglong/api/types/v1/State.hpp"
+#include "linglong/api/types/v1/SubState.hpp"
 #include "linglong/utils/error/error.h"
 
 #include <QJsonObject>
@@ -37,7 +38,10 @@ public:
     virtual void printReply(const api::types::v1::CommonResult &);
     virtual void printRepoConfig(const api::types::v1::RepoConfig &);
     virtual void printLayerInfo(const api::types::v1::LayerInfo &);
-    virtual void printTaskMessage(const api::types::v1::PackageTaskMessage &);
+    virtual void printTaskState(const double percentage,
+                                 const QString &message,
+                                 const api::types::v1::State state,
+                                 const api::types::v1::SubState subState);
     virtual void printContent(const QStringList &filePaths);
 
 private:

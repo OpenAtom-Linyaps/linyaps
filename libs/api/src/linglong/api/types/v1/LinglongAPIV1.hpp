@@ -32,7 +32,7 @@
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/PackageManager1GetRepoInfoResult.hpp"
 #include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
-#include "linglong/api/types/v1/PackageManager1ResultWithTaskID.hpp"
+#include "linglong/api/types/v1/PackageManager1ResultWithTaskObjectPath.hpp"
 #include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
 #include "linglong/api/types/v1/PackageManager1ModifyRepoParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1Package.hpp"
@@ -40,11 +40,21 @@
 #include "linglong/api/types/v1/PackageManager1SearchResult.hpp"
 #include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1UpdateParameters.hpp"
-#include "linglong/api/types/v1/PackageTaskMessage.hpp"
 #include "linglong/api/types/v1/RepoConfig.hpp"
 #include "linglong/api/types/v1/RepositoryCache.hpp"
 #include "linglong/api/types/v1/UabMetaInfo.hpp"
 #include "linglong/api/types/v1/UpgradeListResult.hpp"
+
+namespace linglong {
+namespace api {
+namespace types {
+namespace v1 {
+enum class State : int;
+enum class SubState : int;
+}
+}
+}
+}
 
 namespace linglong {
 namespace api {
@@ -78,7 +88,7 @@ std::optional<PackageInfoV2> packageInfoV2;
 std::optional<PackageManager1GetRepoInfoResult> packageManager1GetRepoInfoResult;
 std::optional<CommonResult> packageManager1InstallLayerFDResult;
 std::optional<PackageManager1InstallParameters> packageManager1InstallParameters;
-std::optional<PackageManager1ResultWithTaskID> packageManager1InstallResult;
+std::optional<PackageManager1ResultWithTaskObjectPath> packageManager1InstallResult;
 std::optional<PackageManager1JobInfo> packageManager1JobInfo;
 std::optional<CommonResult> packageManager1MigrateResult;
 std::optional<PackageManager1ModifyRepoParameters> packageManager1ModifyRepoParameters;
@@ -89,10 +99,11 @@ std::optional<PackageManager1SearchResult> packageManager1SearchResult;
 std::optional<PackageManager1UninstallParameters> packageManager1UninstallParameters;
 std::optional<CommonResult> packageManager1UninstallResult;
 std::optional<PackageManager1UpdateParameters> packageManager1UpdateParameters;
-std::optional<PackageManager1ResultWithTaskID> packageManager1UpdateResult;
-std::optional<PackageTaskMessage> packageTaskMessage;
+std::optional<PackageManager1ResultWithTaskObjectPath> packageManager1UpdateResult;
 std::optional<RepoConfig> repoConfig;
 std::optional<RepositoryCache> repositoryCache;
+std::optional<State> state;
+std::optional<SubState> subState;
 std::optional<UabMetaInfo> uabMetaInfo;
 std::optional<UpgradeListResult> upgradeListResult;
 };

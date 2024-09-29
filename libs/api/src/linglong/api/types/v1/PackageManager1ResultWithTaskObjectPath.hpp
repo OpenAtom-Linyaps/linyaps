@@ -9,7 +9,7 @@
 //
 //  Then include this file, and then do
 //
-//     PackageManager1ResultWithTaskID.hpp data = nlohmann::json::parse(jsonString);
+//     PackageManager1ResultWithTaskObjectPath.hpp data = nlohmann::json::parse(jsonString);
 
 #pragma once
 
@@ -38,11 +38,11 @@ using nlohmann::json;
 *
 * this is common error result of ll-cli command --json
 */
-struct PackageManager1ResultWithTaskID {
+struct PackageManager1ResultWithTaskObjectPath {
 /**
-* task id of package manager install
+* task dbus object path of package manager install
 */
-std::optional<std::string> taskID;
+std::optional<std::string> taskObjectPath;
 /**
 * We do not use DBus error. We return an error code instead. Non-zero code indicated errors
 * occurs and message should be displayed to user.

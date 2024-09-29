@@ -30,7 +30,7 @@ using nlohmann::json;
 /**
 * main state of current task,
 */
-enum class State : int { Canceled, Failed, Installing, Pending, Queued, Succeed };
+enum class State : int { Canceled, Failed, Pending, Processing, Queued, Succeed, Unknown };
 }
 }
 }

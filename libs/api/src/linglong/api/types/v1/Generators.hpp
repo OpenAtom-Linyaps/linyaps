@@ -23,20 +23,19 @@
 #include "linglong/api/types/v1/Version.hpp"
 #include "linglong/api/types/v1/Sections.hpp"
 #include "linglong/api/types/v1/UabLayer.hpp"
+#include "linglong/api/types/v1/SubState.hpp"
+#include "linglong/api/types/v1/State.hpp"
 #include "linglong/api/types/v1/RepositoryCache.hpp"
 #include "linglong/api/types/v1/RepositoryCacheMergedItem.hpp"
 #include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
 #include "linglong/api/types/v1/RepoConfig.hpp"
-#include "linglong/api/types/v1/PackageTaskMessage.hpp"
-#include "linglong/api/types/v1/SubState.hpp"
-#include "linglong/api/types/v1/State.hpp"
 #include "linglong/api/types/v1/PackageManager1UpdateParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1SearchResult.hpp"
 #include "linglong/api/types/v1/PackageManager1SearchParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1ModifyRepoParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
-#include "linglong/api/types/v1/PackageManager1ResultWithTaskID.hpp"
+#include "linglong/api/types/v1/PackageManager1ResultWithTaskObjectPath.hpp"
 #include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1Package.hpp"
 #include "linglong/api/types/v1/PackageManager1GetRepoInfoResult.hpp"
@@ -134,8 +133,8 @@ void to_json(json & j, const PackageManager1Package & x);
 void from_json(const json & j, PackageManager1InstallParameters & x);
 void to_json(json & j, const PackageManager1InstallParameters & x);
 
-void from_json(const json & j, PackageManager1ResultWithTaskID & x);
-void to_json(json & j, const PackageManager1ResultWithTaskID & x);
+void from_json(const json & j, PackageManager1ResultWithTaskObjectPath & x);
+void to_json(json & j, const PackageManager1ResultWithTaskObjectPath & x);
 
 void from_json(const json & j, PackageManager1JobInfo & x);
 void to_json(json & j, const PackageManager1JobInfo & x);
@@ -154,9 +153,6 @@ void to_json(json & j, const PackageManager1UninstallParameters & x);
 
 void from_json(const json & j, PackageManager1UpdateParameters & x);
 void to_json(json & j, const PackageManager1UpdateParameters & x);
-
-void from_json(const json & j, PackageTaskMessage & x);
-void to_json(json & j, const PackageTaskMessage & x);
 
 void from_json(const json & j, RepoConfig & x);
 void to_json(json & j, const RepoConfig & x);
@@ -649,16 +645,16 @@ j = json::object();
 j["package"] = x.package;
 }
 
-inline void from_json(const json & j, PackageManager1ResultWithTaskID& x) {
-x.taskID = get_stack_optional<std::string>(j, "taskID");
+inline void from_json(const json & j, PackageManager1ResultWithTaskObjectPath& x) {
+x.taskObjectPath = get_stack_optional<std::string>(j, "taskObjectPath");
 x.code = j.at("code").get<int64_t>();
 x.message = j.at("message").get<std::string>();
 }
 
-inline void to_json(json & j, const PackageManager1ResultWithTaskID & x) {
+inline void to_json(json & j, const PackageManager1ResultWithTaskObjectPath & x) {
 j = json::object();
-if (x.taskID) {
-j["taskID"] = x.taskID;
+if (x.taskObjectPath) {
+j["taskObjectPath"] = x.taskObjectPath;
 }
 j["code"] = x.code;
 j["message"] = x.message;
@@ -730,25 +726,6 @@ x.packages = j.at("packages").get<std::vector<PackageManager1Package>>();
 inline void to_json(json & j, const PackageManager1UpdateParameters & x) {
 j = json::object();
 j["packages"] = x.packages;
-}
-
-inline void from_json(const json & j, PackageTaskMessage& x) {
-x.message = j.at("message").get<std::string>();
-x.percentage = j.at("percentage").get<double>();
-x.result = get_stack_optional<CommonResult>(j, "result");
-x.state = j.at("state").get<State>();
-x.subState = j.at("subState").get<SubState>();
-}
-
-inline void to_json(json & j, const PackageTaskMessage & x) {
-j = json::object();
-j["message"] = x.message;
-j["percentage"] = x.percentage;
-if (x.result) {
-j["result"] = x.result;
-}
-j["state"] = x.state;
-j["subState"] = x.subState;
 }
 
 inline void from_json(const json & j, RepoConfig& x) {
@@ -892,7 +869,7 @@ x.packageInfoV2 = get_stack_optional<PackageInfoV2>(j, "PackageInfoV2");
 x.packageManager1GetRepoInfoResult = get_stack_optional<PackageManager1GetRepoInfoResult>(j, "PackageManager1GetRepoInfoResult");
 x.packageManager1InstallLayerFDResult = get_stack_optional<CommonResult>(j, "PackageManager1InstallLayerFDResult");
 x.packageManager1InstallParameters = get_stack_optional<PackageManager1InstallParameters>(j, "PackageManager1InstallParameters");
-x.packageManager1InstallResult = get_stack_optional<PackageManager1ResultWithTaskID>(j, "PackageManager1InstallResult");
+x.packageManager1InstallResult = get_stack_optional<PackageManager1ResultWithTaskObjectPath>(j, "PackageManager1InstallResult");
 x.packageManager1JobInfo = get_stack_optional<PackageManager1JobInfo>(j, "PackageManager1JobInfo");
 x.packageManager1MigrateResult = get_stack_optional<CommonResult>(j, "PackageManager1MigrateResult");
 x.packageManager1ModifyRepoParameters = get_stack_optional<PackageManager1ModifyRepoParameters>(j, "PackageManager1ModifyRepoParameters");
@@ -903,10 +880,11 @@ x.packageManager1SearchResult = get_stack_optional<PackageManager1SearchResult>(
 x.packageManager1UninstallParameters = get_stack_optional<PackageManager1UninstallParameters>(j, "PackageManager1UninstallParameters");
 x.packageManager1UninstallResult = get_stack_optional<CommonResult>(j, "PackageManager1UninstallResult");
 x.packageManager1UpdateParameters = get_stack_optional<PackageManager1UpdateParameters>(j, "PackageManager1UpdateParameters");
-x.packageManager1UpdateResult = get_stack_optional<PackageManager1ResultWithTaskID>(j, "PackageManager1UpdateResult");
-x.packageTaskMessage = get_stack_optional<PackageTaskMessage>(j, "PackageTaskMessage");
+x.packageManager1UpdateResult = get_stack_optional<PackageManager1ResultWithTaskObjectPath>(j, "PackageManager1UpdateResult");
 x.repoConfig = get_stack_optional<RepoConfig>(j, "RepoConfig");
 x.repositoryCache = get_stack_optional<RepositoryCache>(j, "RepositoryCache");
+x.state = get_stack_optional<State>(j, "State");
+x.subState = get_stack_optional<SubState>(j, "SubState");
 x.uabMetaInfo = get_stack_optional<UabMetaInfo>(j, "UABMetaInfo");
 x.upgradeListResult = get_stack_optional<UpgradeListResult>(j, "UpgradeListResult");
 }
@@ -997,14 +975,17 @@ j["PackageManager1UpdateParameters"] = x.packageManager1UpdateParameters;
 if (x.packageManager1UpdateResult) {
 j["PackageManager1UpdateResult"] = x.packageManager1UpdateResult;
 }
-if (x.packageTaskMessage) {
-j["PackageTaskMessage"] = x.packageTaskMessage;
-}
 if (x.repoConfig) {
 j["RepoConfig"] = x.repoConfig;
 }
 if (x.repositoryCache) {
 j["RepositoryCache"] = x.repositoryCache;
+}
+if (x.state) {
+j["State"] = x.state;
+}
+if (x.subState) {
+j["SubState"] = x.subState;
 }
 if (x.uabMetaInfo) {
 j["UABMetaInfo"] = x.uabMetaInfo;
@@ -1017,10 +998,11 @@ j["UpgradeListResult"] = x.upgradeListResult;
 inline void from_json(const json & j, State & x) {
 if (j == "Canceled") x = State::Canceled;
 else if (j == "Failed") x = State::Failed;
-else if (j == "Installing") x = State::Installing;
 else if (j == "Pending") x = State::Pending;
+else if (j == "Processing") x = State::Processing;
 else if (j == "Queued") x = State::Queued;
 else if (j == "Succeed") x = State::Succeed;
+else if (j == "Unknown") x = State::Unknown;
 else { throw std::runtime_error("Input JSON does not conform to schema!"); }
 }
 
@@ -1028,10 +1010,11 @@ inline void to_json(json & j, const State & x) {
 switch (x) {
 case State::Canceled: j = "Canceled"; break;
 case State::Failed: j = "Failed"; break;
-case State::Installing: j = "Installing"; break;
 case State::Pending: j = "Pending"; break;
+case State::Processing: j = "Processing"; break;
 case State::Queued: j = "Queued"; break;
 case State::Succeed: j = "Succeed"; break;
+case State::Unknown: j = "Unknown"; break;
 default: throw std::runtime_error("Unexpected value in enumeration \"[object Object]\": " + std::to_string(static_cast<int>(x)));
 }
 }
@@ -1043,6 +1026,9 @@ else if (j == "InstallBase") x = SubState::InstallBase;
 else if (j == "InstallRuntime") x = SubState::InstallRuntime;
 else if (j == "PostAction") x = SubState::PostAction;
 else if (j == "PreAction") x = SubState::PreAction;
+else if (j == "PreRemove") x = SubState::PreRemove;
+else if (j == "Uninstall") x = SubState::Uninstall;
+else if (j == "Unknown") x = SubState::Unknown;
 else { throw std::runtime_error("Input JSON does not conform to schema!"); }
 }
 
@@ -1054,6 +1040,9 @@ case SubState::InstallBase: j = "InstallBase"; break;
 case SubState::InstallRuntime: j = "InstallRuntime"; break;
 case SubState::PostAction: j = "PostAction"; break;
 case SubState::PreAction: j = "PreAction"; break;
+case SubState::PreRemove: j = "PreRemove"; break;
+case SubState::Uninstall: j = "Uninstall"; break;
+case SubState::Unknown: j = "Unknown"; break;
 default: throw std::runtime_error("Unexpected value in enumeration \"[object Object]\": " + std::to_string(static_cast<int>(x)));
 }
 }

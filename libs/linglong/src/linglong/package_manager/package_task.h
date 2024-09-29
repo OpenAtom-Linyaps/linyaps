@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "linglong/api/types/v1/PackageTaskMessage.hpp"
 #include "linglong/api/types/v1/State.hpp"
 #include "linglong/api/types/v1/SubState.hpp"
 #include "linglong/package/reference.h"
@@ -61,7 +60,12 @@ public:
 
     [[nodiscard]] QString taskID() const noexcept
     {
-        return m_taskID.toString(QUuid::WithoutBraces);
+        return m_taskID.toString(QUuid::Id128);
+    }
+
+    [[nodiscard]] QString taskObjectPath() const noexcept
+    {
+        return "/org/deepin/linglong/Task1/" + taskID();
     }
 
     void cancelTask() noexcept;
@@ -74,16 +78,16 @@ public:
 
     void setJob(std::function<void()> job) { m_job = job; };
 
+    [[nodiscard]] double currentPercentage(double increase = 0) noexcept;
+
 Q_SIGNALS:
-    void TaskChanged(
-      QString percentage, QString message, State status, SubState subState, QPrivateSignal);
+    void TaskChanged(QString taskObjectPath, QString message, QPrivateSignal);
     void PartChanged(QString percentage, QPrivateSignal);
 
 private:
     PackageTask();
-    [[nodiscard]] static QString formatPercentage(double increase = 0) noexcept;
-    State m_state{ State::Queued };
-    SubState m_subState{ SubState::Done };
+    State m_state = State::Queued;
+    SubState m_subState = SubState::Unknown;
     utils::error::Error m_err;
     double m_curPercentage{ 0 };
     QUuid m_taskID;
@@ -96,8 +100,11 @@ private:
                                                         { SubState::InstallBase, 30 },
                                                         { SubState::InstallRuntime, 30 },
                                                         { SubState::InstallApplication, 20 },
-                                                        // ...
-                                                        { SubState::PostAction, 10 } };
+                                                        // exportReference
+                                                        { SubState::PostAction, 10 },
+                                                        // unexportReference
+                                                        { SubState::PreRemove, 10 },
+                                                        { SubState::Uninstall, 30 } };
 };
 
 } // namespace linglong::service

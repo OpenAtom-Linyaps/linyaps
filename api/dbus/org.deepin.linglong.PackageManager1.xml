@@ -9,27 +9,43 @@ SPDX-License-Identifier: LGPL-3.0-or-later
     <method name="InstallFromFile">
       <arg direction="in" name="fd" type="h" />
       <arg direction="in" name="fileType" type="s" />
-      <arg direction="out" name="task_object_path" type="o" />
+      <arg direction="out" name="result" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
     </method>
     <method name="Install">
       <arg direction="in" name="parameters" type="a{sv}" />
       <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap" />
-      <arg direction="out" name="task_object_path" type="o" />
+      <arg direction="out" name="result" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
     </method>
     <method name="Uninstall">
       <arg direction="in" name="parameters" type="a{sv}" />
       <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap" />
-      <arg direction="out" name="task_object_path" type="o" />
+      <arg direction="out" name="result" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
     </method>
     <method name="Update">
       <arg direction="in" name="parameters" type="a{sv}" />
       <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap" />
-      <arg direction="out" name="task_object_path" type="o" />
+      <arg direction="out" name="result" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
     </method>
     <method name="Search">
       <arg direction="in" name="parameters" type="a{sv}" />
       <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap" />
-      <arg direction="out" name="task_object_path" type="o" />
+      <arg direction="out" name="result" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
+    </method>
+    <method name="SetRunningState">
+      <arg direction="in" name="parameters" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap" />
+      <arg direction="out" name="result" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
+    </method>
+    <method name="Prune">
+      <annotation name="org.freedesktop.DBus.Description" value="Remove unused base or runtime." />
+      <arg direction="out" name="result" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
     </method>
     <signal name="SearchFinished">
       <arg name="taskID" type="s" />
@@ -49,12 +65,8 @@ SPDX-License-Identifier: LGPL-3.0-or-later
       <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap" />
     </property>
     <signal name="TaskChanged">
-      <arg name="task" type="o" />
-      <arg name="structured_message" type="a{sv}" />
-      <annotation name="org.qtproject.QtDBus.QtTypeName.Out1" value="QVariantMap" />
-      <annotation name="org.freedesktop.DBus.Description"
-        value="Structed message for better reporting current state"
-      />
+      <arg name="taskObjectPath" type="s" />
+      <arg name="message" type="s" />
     </signal>
     <signal name="requestInteraction">
       <arg name="task" type="o" />

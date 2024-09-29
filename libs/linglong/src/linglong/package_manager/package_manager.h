@@ -9,6 +9,7 @@
 #include "linglong/api/dbus/v1/package_manager.h"
 #include "linglong/repo/ostree_repo.h"
 #include "package_task.h"
+#include "task.h"
 
 #include <QDBusArgument>
 #include <QDBusContext>
@@ -86,14 +87,17 @@ public
     auto InstallFromFile(const QDBusUnixFileDescriptor &fd,
                          const QString &fileType) noexcept -> QVariantMap;
     auto Uninstall(const QVariantMap &parameters) noexcept -> QVariantMap;
+    void Uninstall(PackageTask &taskContext, const package::Reference &ref, bool devel) noexcept;
     auto Update(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Search(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Migrate() noexcept -> QVariantMap;
+    auto Prune() noexcept -> QVariantMap;
+    auto SetRunningState(const QVariantMap &parameters) noexcept -> QVariantMap;
     void replyInteraction(const QString &interactionID, const QVariantMap &replies);
 
 Q_SIGNALS:
     void TaskListChanged(QString taskID);
-    void TaskChanged(QDBusObjectPath task, QString percentage, QString message, int status);
+    void TaskChanged(QString taskObjectPath, QString message);
     void SearchFinished(QString jobID, QVariantMap result);
 
 private:

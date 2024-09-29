@@ -9,8 +9,7 @@
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/package_manager/task.h"
 
-#include <qmetaobject.h>
-
+#include <QMetaEnum>
 #include <QJsonArray>
 
 #include <iostream>

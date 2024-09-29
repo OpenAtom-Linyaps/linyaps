@@ -183,7 +183,6 @@ pfl_add_libraries(
   ll-package-manager
   llpkg
   uab
-  ll-session-helper
-  ll-store-installer)
+  ll-session-helper)
 
 add_subdirectory(misc)

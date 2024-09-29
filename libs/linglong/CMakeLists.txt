@@ -16,8 +16,6 @@ pfl_add_library(
   src/linglong/adaptors/package_manager/package_manager1.h
   src/linglong/builder/config.cpp
   src/linglong/builder/config.h
-  src/linglong/builder/file.cpp
-  src/linglong/builder/file.h
   src/linglong/builder/linglong_builder.cpp
   src/linglong/builder/linglong_builder.h
   src/linglong/builder/printer.h

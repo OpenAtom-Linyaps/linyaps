@@ -14,12 +14,6 @@
 
 #include <docopt.h>
 
-#include <QCommandLineOption>
-#include <QCommandLineParser>
-#include <QCoreApplication>
-
-#include <csignal>
-
 namespace linglong::cli {
 
 class Cli : public QObject

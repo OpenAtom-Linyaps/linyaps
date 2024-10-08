@@ -9,7 +9,7 @@
 //
 //  Then include this file, and then do
 //
-//     MinifiedInfo.hpp data = nlohmann::json::parse(jsonString);
+//     InteractionReply.hpp data = nlohmann::json::parse(jsonString);
 
 #pragma once
 
@@ -17,23 +17,24 @@
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
-#include "linglong/api/types/v1/Info.hpp"
-
 namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
 /**
-* this is used to associate application with specific dependencies
+* message from user reply
 */
 
 using nlohmann::json;
 
 /**
-* this is used to associate application with specific dependencies
+* message from user reply
 */
-struct MinifiedInfo {
-std::vector<Info> infos;
+struct InteractionReply {
+/**
+* choice which in requested actions
+*/
+std::optional<std::string> action;
 };
 }
 }

@@ -35,14 +35,15 @@ using nlohmann::json;
 */
 struct RepositoryCache {
 RepoConfig config;
-/**
-* stores the full module name with repo name and the corresponding ostree commit
-*/
-std::map<std::string, RepositoryCacheLayersItem> layers;
+std::vector<RepositoryCacheLayersItem> layers;
 /**
 * version of linglong at the time of generating the file
 */
 std::string llVersion;
+/**
+* solutions should apply to migrating progress
+*/
+std::optional<std::vector<int64_t>> migratingStage;
 /**
 * version of storage
 */

@@ -11,9 +11,12 @@
 #include "linglong/utils/error/error.h"
 #include "nlohmann/json.hpp"
 
+#include <gio/gio.h>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <filesystem>
+#include <fstream>
 
 namespace linglong::utils::serialize {
 
@@ -71,6 +74,41 @@ error::Result<T> LoadJSON(Source &content) noexcept
     } catch (const std::exception &e) {
         return LINGLONG_ERR(content, e);
     }
+}
+
+template<typename T>
+error::Result<T> LoadJSONFile(GFile *file) noexcept
+{
+    LINGLONG_TRACE("load json from " + QString::fromStdString(g_file_get_path(file)));
+
+    g_autoptr(GError) gErr = nullptr;
+    gchar *content = nullptr;
+    gsize length;
+
+    if (!g_file_load_contents(file, nullptr, &content, &length, nullptr, &gErr)) {
+        return LINGLONG_ERR("g_file_load_contents", gErr);
+    }
+
+    return LoadJSON<T>(content);
+}
+
+template<typename T>
+error::Result<T> LoadJSONFile(const std::filesystem::path &filePath) noexcept
+{
+    LINGLONG_TRACE("load json from " + QString::fromStdString(filePath.string()));
+    std::ifstream file(filePath);
+    if (!file.is_open()) {
+        return LINGLONG_ERR("failed to open file");
+    }
+
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    if (file.fail()) {
+        return LINGLONG_ERR("failed to read file");
+    }
+
+    std::string content = buffer.str();
+    return LoadJSON<T>(content);
 }
 
 template<typename T>

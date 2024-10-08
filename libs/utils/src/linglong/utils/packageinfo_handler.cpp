@@ -29,6 +29,7 @@ toPackageInfoV2(const api::types::v1::PackageInfo &oldInfo)
         .runtime = oldInfo.runtime,
         .schemaVersion = PACKAGE_INFO_VERSION,
         .size = oldInfo.size,
+        .uuid = std::nullopt,
         .version = oldInfo.version,
     };
 
@@ -64,6 +65,24 @@ error::Result<api::types::v1::PackageInfoV2> parsePackageInfo(const nlohmann::js
 
     qDebug() << "not PackageInfoV2, parse with PackageInfo";
     auto oldPkgInfo = serialize::LoadJSON<api::types::v1::PackageInfo>(json);
+    if (!oldPkgInfo) {
+        return LINGLONG_ERR(oldPkgInfo.error());
+    }
+
+    return toPackageInfoV2(*oldPkgInfo);
+}
+
+error::Result<api::types::v1::PackageInfoV2> parsePackageInfo(GFile *file)
+{
+    LINGLONG_TRACE("parse package info from GFile");
+
+    auto pkgInfo = serialize::LoadJSONFile<api::types::v1::PackageInfoV2>(file);
+
+    if (pkgInfo) {
+        return pkgInfo;
+    }
+    qDebug() << "not PackageInfoV2, parse with PackageInfo";
+    auto oldPkgInfo = serialize::LoadJSONFile<api::types::v1::PackageInfo>(file);
     if (!oldPkgInfo) {
         return LINGLONG_ERR(oldPkgInfo.error());
     }

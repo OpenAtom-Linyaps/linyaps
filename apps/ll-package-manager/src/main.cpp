@@ -29,42 +29,46 @@ void withDBusDaemon()
     }
 
     qWarning() << "server" << config->repos[config->defaultRepo].c_str();
-    auto clientFactory = new linglong::repo::ClientFactory(config->repos[config->defaultRepo]);
+    auto *clientFactory = new linglong::repo::ClientFactory(config->repos[config->defaultRepo]);
     clientFactory->setParent(QCoreApplication::instance());
-    auto ostreeRepo = new linglong::repo::OSTreeRepo(QDir(LINGLONG_ROOT), *config, *clientFactory);
+
+    auto repoRoot = QDir(LINGLONG_ROOT);
+    if (!repoRoot.exists() && !repoRoot.mkpath(".")) {
+        qCritical() << "failed to create repository directory" << repoRoot.absolutePath();
+        std::abort();
+    }
+
+    auto *ostreeRepo = new linglong::repo::OSTreeRepo(repoRoot, *config, *clientFactory);
     ostreeRepo->setParent(QCoreApplication::instance());
 
-    auto packageManager =
+    QDBusConnection conn = QDBusConnection::systemBus();
+    auto *packageManager =
       new linglong::service::PackageManager(*ostreeRepo, QCoreApplication::instance());
     new linglong::adaptors::package_manger::PackageManager1(packageManager);
-
-    QDBusConnection conn = QDBusConnection::systemBus();
-    auto result = registerDBusObject(conn, "/org/deepin/linglong/PackageManager", packageManager);
+    auto result = registerDBusObject(conn, "/org/deepin/linglong/PackageManager1", packageManager);
     if (!result.has_value()) {
         qCritical().noquote() << "Launching failed:" << Qt::endl << result.error().message();
         QCoreApplication::exit(-1);
         return;
     }
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn] {
-        unregisterDBusObject(conn, "/org/deepin/linglong/PackageManager");
+        unregisterDBusObject(conn, "/org/deepin/linglong/PackageManager1");
     });
 
-    result = registerDBusService(conn, "org.deepin.linglong.PackageManager");
+    result = registerDBusService(conn, "org.deepin.linglong.PackageManager1");
+    if (!result.has_value()) {
+        qCritical().noquote() << "Launching failed:" << Qt::endl << result.error().message();
+        QCoreApplication::exit(-1);
+        return;
+    }
     QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn] {
         auto result = unregisterDBusService(conn,
                                             // FIXME: use cmake option
-                                            "org.deepin.linglong.PackageManager");
+                                            "org.deepin.linglong.PackageManager1");
         if (!result.has_value()) {
             qWarning().noquote() << "During exiting:" << Qt::endl << result.error().message();
         }
     });
-    if (!result.has_value()) {
-        qCritical().noquote() << "Launching failed:" << Qt::endl << result.error().message();
-        QCoreApplication::exit(-1);
-        return;
-    }
-
-    return;
 }
 
 void withoutDBusDaemon()
@@ -78,9 +82,16 @@ void withoutDBusDaemon()
         QCoreApplication::exit(-1);
         return;
     }
-    auto clientFactory = new linglong::repo::ClientFactory(config->repos[config->defaultRepo]);
+    auto *clientFactory = new linglong::repo::ClientFactory(config->repos[config->defaultRepo]);
     clientFactory->setParent(QCoreApplication::instance());
-    auto ostreeRepo = new linglong::repo::OSTreeRepo(QDir(LINGLONG_ROOT), *config, *clientFactory);
+
+    auto repoRoot = QDir(LINGLONG_ROOT);
+    if (!repoRoot.exists() && !repoRoot.mkpath(".")) {
+        qCritical() << "failed to create repository directory" << repoRoot.absolutePath();
+        std::abort();
+    }
+
+    auto *ostreeRepo = new linglong::repo::OSTreeRepo(repoRoot, *config, *clientFactory);
     ostreeRepo->setParent(QCoreApplication::instance());
 
     auto packageManager =
@@ -102,13 +113,13 @@ void withoutDBusDaemon()
     });
 
     QObject::connect(server, &QDBusServer::newConnection, [packageManager](QDBusConnection conn) {
-        auto res = registerDBusObject(conn, "/org/deepin/linglong/PackageManager", packageManager);
+        auto res = registerDBusObject(conn, "/org/deepin/linglong/PackageManager1", packageManager);
         if (!res.has_value()) {
             qCritical() << res.error().code() << res.error().message();
             return;
         }
         QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [conn]() {
-            unregisterDBusObject(conn, "/org/deepin/linglong/PackageManager");
+            unregisterDBusObject(conn, "/org/deepin/linglong/PackageManager1");
         });
     });
 }

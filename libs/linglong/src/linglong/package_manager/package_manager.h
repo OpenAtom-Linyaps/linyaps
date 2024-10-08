@@ -59,7 +59,7 @@ public:
 class PackageManager : public QObject, protected QDBusContext
 {
     Q_OBJECT
-    Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.PackageManager")
+    Q_CLASSINFO("D-Bus Interface", "org.deepin.linglong.PackageManager1")
     Q_PROPERTY(QVariantMap Configuration READ getConfiguration WRITE setConfiguration)
 
 public:
@@ -70,21 +70,25 @@ public:
     PackageManager(PackageManager &&) = delete;
     auto operator=(const PackageManager &) -> PackageManager & = delete;
     auto operator=(PackageManager &&) -> PackageManager & = delete;
+    void Install(InstallTask &taskContext,
+                 const package::Reference &ref,
+                 const std::string &module) noexcept;
     void Update(InstallTask &taskContext,
                 const package::Reference &ref,
                 const package::Reference &newRef,
-                bool develop) noexcept;
+                const std::string &module) noexcept;
 
 public
-    Q_SLOT : auto getConfiguration() const noexcept -> QVariantMap;
-    auto setConfiguration(const QVariantMap &parameters) noexcept -> QVariantMap;
+    Q_SLOT : [[nodiscard]] auto getConfiguration() const noexcept -> QVariantMap;
+    void setConfiguration(const QVariantMap &parameters) noexcept;
     auto Install(const QVariantMap &parameters) noexcept -> QVariantMap;
-    void installRef(InstallTask &taskContext, const package::Reference &ref, bool devel) noexcept;
+    void installRef(InstallTask &taskContext, const package::Reference &ref, const std::string &module) noexcept;
     auto InstallFromFile(const QDBusUnixFileDescriptor &fd, const QString &fileType) noexcept
       -> QVariantMap;
     auto Uninstall(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Update(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Search(const QVariantMap &parameters) noexcept -> QVariantMap;
+    auto Migrate() noexcept -> QVariantMap;
     void CancelTask(const QString &taskID) noexcept;
 
 Q_SIGNALS:
@@ -95,11 +99,9 @@ Q_SIGNALS:
 private:
     QVariantMap installFromLayer(const QDBusUnixFileDescriptor &fd) noexcept;
     QVariantMap installFromUAB(const QDBusUnixFileDescriptor &fd) noexcept;
-    static utils::error::Result<api::types::v1::MinifiedInfo>
-    updateMinifiedInfo(const QFileInfo &file, const QString &appRef, const QString &uuid) noexcept;
     void pullDependency(InstallTask &taskContext,
                         const api::types::v1::PackageInfoV2 &info,
-                        bool develop) noexcept;
+                        const std::string &module) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT
     std::list<InstallTask> taskList;
     // 正在运行的任务ID

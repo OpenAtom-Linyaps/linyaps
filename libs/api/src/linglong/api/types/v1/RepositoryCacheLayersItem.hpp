@@ -23,14 +23,25 @@ namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
+/**
+* stores the full module name with repo name and the corresponding ostree commit
+*/
+
 using nlohmann::json;
 
+/**
+* stores the full module name with repo name and the corresponding ostree commit
+*/
 struct RepositoryCacheLayersItem {
 /**
 * ostree commit hash
 */
 std::string commit;
 PackageInfoV2 info;
+/**
+* which repo is this app belongs to
+*/
+std::string repo;
 };
 }
 }

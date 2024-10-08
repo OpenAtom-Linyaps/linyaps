@@ -5,7 +5,10 @@
  */
 #include "linglong/api/dbus/v1/dbus_peer.h"
 #include "linglong/cli/cli.h"
+#include "linglong/cli/dbus_notifier.h"
+#include "linglong/cli/dummy_notifier.h"
 #include "linglong/cli/json_printer.h"
+#include "linglong/cli/terminal_notifier.h"
 #include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
@@ -22,6 +25,7 @@
 #include <functional>
 #include <memory>
 
+#include <unistd.h>
 #include <wordexp.h>
 
 using namespace linglong::utils::error;
@@ -30,7 +34,7 @@ using namespace linglong::cli;
 
 namespace {
 
-void startProcess(QString program, QStringList args = {})
+void startProcess(const QString &program, const QStringList &args = {})
 {
     QProcess process;
     auto envs = process.environment();
@@ -82,10 +86,10 @@ std::vector<std::string> transformOldExec(int argc, char **argv) noexcept
     }
 
     res.erase(exec, res.end());
-    res.push_back("--");
+    res.emplace_back("--");
 
     for (size_t i = 0; i < words.we_wordc; i++) {
-        res.push_back(words.we_wordv[i]);
+        res.emplace_back(words.we_wordv[i]);
     }
 
     QStringList list{};
@@ -111,22 +115,40 @@ int main(int argc, char **argv)
     auto ret = QMetaObject::invokeMethod(
       QCoreApplication::instance(),
       [&argc, &argv]() {
-          auto raw_args = transformOldExec(argc, argv);
+          auto repoRoot = QDir(LINGLONG_ROOT);
+          if (!repoRoot.exists()) {
+              qCritical() << "underlying repository doesn't exist:" << repoRoot.absolutePath();
+              QCoreApplication::exit(-1);
+              return;
+          }
 
+          auto raw_args = transformOldExec(argc, argv);
           std::map<std::string, docopt::value> args =
             docopt::docopt(Cli::USAGE,
                            raw_args,
                            true,                              // show help if requested
                            "linglong CLI " LINGLONG_VERSION); // version string
-
           auto pkgManConn = QDBusConnection::systemBus();
-          auto pkgMan =
-            new linglong::api::dbus::v1::PackageManager("org.deepin.linglong.PackageManager",
-                                                        "/org/deepin/linglong/PackageManager",
+
+          auto msg = QDBusMessage::createMethodCall("org.deepin.linglong.PackageManager1",
+                                                    "/org/deepin/linglong/Migrate1",
+                                                    "org.deepin.linglong.Migrate1",
+                                                    "WaitForAvailable");
+          QDBusReply<void> migrateReply = pkgManConn.call(msg);
+          if (migrateReply.isValid()) {
+              qCritical()
+                << "package manager is migrating underlying data, please try again later.";
+              QCoreApplication::exit(-1);
+              return;
+          }
+
+          auto *pkgMan =
+            new linglong::api::dbus::v1::PackageManager("org.deepin.linglong.PackageManager1",
+                                                        "/org/deepin/linglong/PackageManager1",
                                                         pkgManConn,
                                                         QCoreApplication::instance());
-
-          if (args["--no-dbus"].asBool()) {
+          bool noDBus = args["--no-dbus"].asBool();
+          if (noDBus) {
               if (getuid() != 0) {
                   qCritical() << "--no-dbus should only be used by root user.";
                   QCoreApplication::exit(-1);
@@ -158,19 +180,19 @@ int main(int argc, char **argv)
 
               pkgMan =
                 new linglong::api::dbus::v1::PackageManager("",
-                                                            "/org/deepin/linglong/PackageManager",
+                                                            "/org/deepin/linglong/PackageManager1",
                                                             pkgManConn,
                                                             QCoreApplication::instance());
           } else {
               // NOTE: We need to ping package manager to make it initialize system linglong
               // repository.
-              auto peer = linglong::api::dbus::v1::DBusPeer("org.deepin.linglong.PackageManager",
-                                                            "/org/deepin/linglong/PackageManager",
+              auto peer = linglong::api::dbus::v1::DBusPeer("org.deepin.linglong.PackageManager1",
+                                                            "/org/deepin/linglong/PackageManager1",
                                                             pkgManConn);
               auto reply = peer.Ping();
               reply.waitForFinished();
               if (!reply.isValid()) {
-                  qCritical() << "Failed to activate org.deepin.linglong.PackageManager"
+                  qCritical() << "Failed to activate org.deepin.linglong.PackageManager1"
                               << reply.error();
                   QCoreApplication::exit(-1);
                   return;
@@ -192,7 +214,8 @@ int main(int argc, char **argv)
               return;
           }
           linglong::repo::ClientFactory clientFactory(config->repos[config->defaultRepo]);
-          auto *repo = new linglong::repo::OSTreeRepo(QDir(LINGLONG_ROOT), *config, clientFactory);
+
+          auto *repo = new linglong::repo::OSTreeRepo(repoRoot, *config, clientFactory);
           repo->setParent(QCoreApplication::instance());
 
           auto ociRuntimeCLI = qgetenv("LINGLONG_OCI_RUNTIME");
@@ -210,14 +233,58 @@ int main(int argc, char **argv)
           if (!ociRuntime) {
               std::rethrow_exception(ociRuntime.error());
           }
-          auto containerBuidler = new linglong::runtime::ContainerBuilder(**ociRuntime);
+          auto *containerBuidler = new linglong::runtime::ContainerBuilder(**ociRuntime);
           containerBuidler->setParent(QCoreApplication::instance());
-          auto cli = new linglong::cli::Cli(*printer,
-                                            **ociRuntime,
-                                            *containerBuidler,
-                                            *pkgMan,
-                                            *repo,
-                                            QCoreApplication::instance());
+
+          std::unique_ptr<InteractiveNotifier> notifier{ nullptr };
+          while (true) {
+              try {
+                  notifier = std::make_unique<DBusNotifier>();
+                  break;
+              } catch (std::runtime_error &err) {
+                  qWarning() << "initialize DBus notifier error:" << err.what()
+                             << "try to fallback to terminal notifier.";
+              }
+
+              if (::isatty(STDIN_FILENO) == 0) {
+                  qWarning()
+                    << "The standard input fd isn't a tty, terminal notifier is unavailable";
+                  break;
+              }
+
+              if (::isatty(STDOUT_FILENO) == 0) {
+                  qWarning()
+                    << "The standard output fd isn't a tty, terminal notifier is unavailable";
+                  break;
+              }
+
+              notifier = std::make_unique<TerminalNotifier>();
+              break;
+          }
+
+          if (noDBus) {
+              notifier.reset();
+              notifier = std::make_unique<linglong::cli::DummyNotifier>();
+          }
+
+          if (!notifier) {
+              qCritical() << "no available notifier, exit";
+              QCoreApplication::exit(-1);
+              return;
+          }
+
+          auto *cli = new linglong::cli::Cli(*printer,
+                                             **ociRuntime,
+                                             *containerBuidler,
+                                             *pkgMan,
+                                             *repo,
+                                             std::move(notifier),
+                                             QCoreApplication::instance());
+          if (repo->needMigrate()) {
+              auto nullArg = std::map<std::string, docopt::value>{};
+              QCoreApplication::exit(cli->migrate(nullArg));
+              return;
+          }
 
           QMap<QString, std::function<int(Cli *, std::map<std::string, docopt::value> &)>>
             subcommandMap = { { "run", &Cli::run },
@@ -232,19 +299,21 @@ int main(int argc, char **argv)
                               { "list", &Cli::list },
                               { "repo", &Cli::repo },
                               { "info", &Cli::info },
-                              { "content", &Cli::content } };
+                              { "content", &Cli::content },
+                              { "migrate", &Cli::migrate } };
 
-          if (!QObject::connect(QCoreApplication::instance(),
-                                &QCoreApplication::aboutToQuit,
-                                cli,
-                                &Cli::cancelCurrentTask)) {
+          if (QObject::connect(QCoreApplication::instance(),
+                               &QCoreApplication::aboutToQuit,
+                               cli,
+                               &Cli::cancelCurrentTask)
+              == nullptr) {
               qCritical() << "failed to connect signal: aboutToQuit";
               QCoreApplication::exit(-1);
               return;
           }
 
           for (const auto &subcommand : subcommandMap.keys()) {
-              if (args[subcommand.toStdString()].asBool() == true) {
+              if (args[subcommand.toStdString()].asBool()) {
                   QCoreApplication::exit(subcommandMap[subcommand](cli, args));
                   return;
               }

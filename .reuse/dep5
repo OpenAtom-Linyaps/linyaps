@@ -119,7 +119,7 @@ License: CC0-1.0
 Copyright: None
 
 # polkit-1 actions
-Files: misc/share/polkit-1/actions/org.deepin.linglong.PackageManager.policy
+Files: misc/share/polkit-1/actions/org.deepin.linglong.PackageManager1.policy
 License: LGPL-3.0-only
 Copyright: UnionTech Software Technology Co., Ltd.
 

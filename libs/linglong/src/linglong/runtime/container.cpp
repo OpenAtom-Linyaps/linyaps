@@ -151,10 +151,16 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
 
         ofs << "/runtime/lib" << std::endl;
         ofs << "/runtime/lib/" + arch->getTriplet().toStdString() << std::endl;
-        ofs << "/opt/apps/" + this->appID.toStdString() + "/files/lib" << std::endl;
-        ofs << "/opt/apps/" + this->appID.toStdString() + "/files/lib/"
-            + arch->getTriplet().toStdString()
-            << std::endl;
+
+        auto appPrefix = "/opt/apps/" + this->appID.toStdString() + "/files";
+        if (cfg.annotations) {
+            auto annotations = *cfg.annotations;
+            if (annotations.find("org.deepin.linglong.appPrefix") != annotations.end()) {
+                appPrefix = annotations["org.deepin.linglong.appPrefix"];
+            }
+        }
+        ofs << appPrefix + "/lib" << std::endl;
+        ofs << appPrefix + "/lib/" + arch->getTriplet().toStdString() << std::endl;
     }
     this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
       .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",

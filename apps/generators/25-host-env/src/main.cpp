@@ -6,6 +6,7 @@
 
 #include <filesystem>
 #include <iostream>
+#include <string>
 
 extern char **environ;
 
@@ -79,9 +80,11 @@ int main()
     }
 
     auto annotations = content.at("annotations");
-    env.push_back("LINGLONG_APPID="
-                  + annotations.at("org.deepin.linglong.appID").get<std::string>());
-
+    auto appID = annotations.at("org.deepin.linglong.appID").get<std::string>();
+    // appPrefix
+    auto appPrefix = annotations.at("org.deepin.linglong.appPrefix").get<std::string>();
+    env.push_back("LINGLONG_APPID=" + appID);
+    env.push_back("LINGLONG_APP_PREFIX=" + appPrefix);
     std::cout << content.dump() << std::endl;
     return 0;
 }

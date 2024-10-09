@@ -17,6 +17,7 @@
 #include <QUuid>
 
 #include <filesystem>
+#include <string>
 #include <unordered_set>
 
 namespace linglong::package {
@@ -68,6 +69,7 @@ public:
     UABPackager(UABPackager &&) = delete;
 
     utils::error::Result<void> setIcon(const QFileInfo &icon) noexcept;
+    void setAppPrefix(const std::string &appPrefix) noexcept;
     utils::error::Result<void> appendLayer(const LayerDir &layer) noexcept;
     utils::error::Result<void> pack(const QString &uabFilename) noexcept;
     utils::error::Result<void> exclude(const std::vector<std::string> &files) noexcept;
@@ -86,6 +88,7 @@ private:
     std::unordered_set<std::string> excludeFiles;
     std::unordered_set<std::string> includeFiles;
     std::optional<QFileInfo> icon{ std::nullopt };
+    std::optional<std::string> m_appPrefix;
     api::types::v1::UabMetaInfo meta;
     QDir buildDir;
 };

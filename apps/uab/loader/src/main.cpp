@@ -641,6 +641,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
     auto appDir = std::filesystem::path{ layerFilesDir }.parent_path();
 
     annotations["org.deepin.linglong.appDir"] = appDir.string();
+    if (opts.appPrefix) {
+        annotations["org.deepin.linglong.appPrefix"] = *opts.appPrefix;
+    } else {
+        annotations["org.deepin.linglong.appPrefix"] = "/opt/apps/" + opts.appID + "/files";
+    }
     config.annotations = std::move(annotations);
 
     // replace commands

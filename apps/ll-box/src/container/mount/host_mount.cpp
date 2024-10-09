@@ -100,6 +100,7 @@ public:
                 }
 
                 source = util::format("/proc/self/fd/%d", sourceFd);
+                host_dest_full_path.touch();
                 break;
             }
 

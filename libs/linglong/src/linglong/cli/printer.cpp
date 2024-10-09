@@ -38,6 +38,10 @@ void Printer::printPackages(const std::vector<api::types::v1::PackageInfoV2> &li
 void Printer::printContainers(const std::vector<api::types::v1::CliContainer> &list)
 {
     const std::size_t padding{ 5 };
+    const std::string packageSection = qUtf8Printable("App");
+    const std::string idSection = qUtf8Printable("ContainerID");
+    const std::string pidSection = qUtf8Printable("Pid");
+
     std::size_t packageLen = 0;
     std::size_t idLen = 0;
     std::size_t pidLen = 0;
@@ -50,14 +54,17 @@ void Printer::printContainers(const std::vector<api::types::v1::CliContainer> &l
                       pidLen = std::max(pidLen, std::to_string(con.pid).size());
                   });
 
+    packageLen = std::max(packageSection.size(), packageLen);
+    idLen = std::max(idSection.size(), idLen);
+    pidLen = std::max(pidSection.size(), pidLen);
+
     packageLen += padding;
     idLen += padding;
     pidLen += padding;
 
     std::cout << "\033[38;5;214m" << std::left << std::setw(static_cast<int>(packageLen))
-              << qUtf8Printable("App") << std::setw(static_cast<int>(idLen))
-              << qUtf8Printable("ContainerID") << std::setw(static_cast<int>(pidLen))
-              << qUtf8Printable("Pid") << "\033[0m" << std::endl;
+              << packageSection << std::setw(static_cast<int>(idLen)) << idSection
+              << std::setw(static_cast<int>(pidLen)) << pidSection << "\033[0m" << std::endl;
 
     for (auto const &container : list) {
         std::cout << std::setw(static_cast<int>(packageLen)) << container.package

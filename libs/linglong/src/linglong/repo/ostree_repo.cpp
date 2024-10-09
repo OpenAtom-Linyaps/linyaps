@@ -486,7 +486,10 @@ utils::error::Result<package::Reference> clearReferenceLocal(const linglong::rep
 
     auto ver = linglong::package::Version::parse(QString::fromStdString(foundRef->info.version));
     auto arch = linglong::package::Architecture::parse(foundRef->info.arch[0]);
-    return package::Reference::create(fuzzy.channel.value(), fuzzy.id, *ver, *arch);
+    return package::Reference::create(QString::fromStdString(foundRef->info.channel),
+                                      QString::fromStdString(foundRef->info.id),
+                                      *ver,
+                                      *arch);
 };
 
 } // namespace

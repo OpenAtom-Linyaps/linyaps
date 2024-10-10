@@ -57,7 +57,6 @@ linglong_add_dbus_interface(
   src/linglong/api/dbus/v1/gen_org_deepin_linglong_migrate1)
 
 linglong_add_dbus_interface(
-  ${real_dbus_api} ${PROJECT_SOURCE_DIR}/api/dbus/org.freedesktop.DBus.Peer.xml
   ${real_dbus_api} ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.Task1.xml
   src/linglong/api/dbus/v1/gen_org_deepin_linglong_task1)
 

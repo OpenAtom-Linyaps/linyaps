@@ -118,7 +118,7 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo, QObject *parent
               auto func = *task->getJob();
               func();
               this->runningTaskID = "";
-              task->deleteLater();
+              this->taskList.erase(task);
               Q_EMIT this->TaskListChanged("");
               return;
           }
@@ -254,7 +254,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
        &taskRef,
        packageRef = std::move(packageRefRet).value(),
        layerFile = *layerFileRet,
-       isDevelop]() {
+       module = packageInfo.packageInfoV2Module]() {
           taskRef.updateState(PackageTask::State::Processing, "installing layer");
           taskRef.updateSubState(PackageTask::SubState::PreAction, "preparing environment");
 
@@ -719,7 +719,6 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
     }
     auto reference = *ref;
     auto curModule = paras->package.packageManager1PackageModule.value_or("binary");
-    auto isDevelop = curModule == "develop";
 
     PackageTask pkgTask{ reference, curModule };
     if (std::find(this->taskList.cbegin(), this->taskList.cend(), pkgTask)
@@ -744,8 +743,8 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
 
     connect(&taskRef, &PackageTask::TaskChanged, this, &PackageManager::TaskChanged);
 
-    taskRef.setJob([this, &taskRef, reference, isDevelop]() {
-        this->Uninstall(taskRef, reference, isDevelop);
+    taskRef.setJob([this, &taskRef, reference, curModule]() {
+        this->Uninstall(taskRef, reference, curModule);
     });
     // notify task list change
     Q_EMIT TaskListChanged(taskRef.taskID());
@@ -759,7 +758,7 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
 
 void PackageManager::Uninstall(PackageTask &taskContext,
                                const package::Reference &ref,
-                               bool develop) noexcept
+                               const std::string &module) noexcept
 {
     LINGLONG_TRACE("uninstall " + ref.toString());
     // TODO: 向repo请求应用运行状态
@@ -776,7 +775,7 @@ void PackageManager::Uninstall(PackageTask &taskContext,
     }
 
     taskContext.updateSubState(PackageTask::SubState::Uninstall, "Remove layer files");
-    auto result = this->repo.remove(ref, develop);
+    auto result = this->repo.remove(ref, module);
     if (!result) {
         taskContext.updateState(PackageTask::State::Failed, LINGLONG_ERRV(result).message());
         return;
@@ -868,8 +867,8 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
     }
 
     connect(&taskRef, &PackageTask::TaskChanged, this, &PackageManager::TaskChanged);
-    taskRef.setJob([this, &taskRef, reference, newReference, isDevelop]() {
-        this->Update(taskRef, reference, newReference, isDevelop);
+    taskRef.setJob([this, &taskRef, reference, newReference, curModule]() {
+        this->Update(taskRef, reference, newReference, curModule);
     });
     Q_EMIT TaskListChanged(taskRef.taskID());
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1ResultWithTaskObjectPath{
@@ -999,38 +998,6 @@ QVariantMap PackageManager::Migrate() noexcept
     });
 }
 
-QVariantMap PackageManager::Migrate() noexcept
-{
-    qDebug() << "migrate request from:" << message().service();
-
-    auto *migrate = new linglong::service::Migrate(this);
-    new linglong::adaptors::migrate::Migrate1(migrate);
-    auto ret =
-      utils::dbus::registerDBusObject(connection(), "/org/deepin/linglong/Migrate1", migrate);
-    if (!ret) {
-        return toDBusReply(ret);
-    }
-
-    QMetaObject::invokeMethod(
-      QCoreApplication::instance(),
-      [this, migrate]() {
-          auto ret = this->repo.dispatchMigration();
-          if (!ret) {
-              Q_EMIT migrate->MigrateDone(ret.error().code(), ret.error().message());
-          } else {
-              Q_EMIT migrate->MigrateDone(0, "migrate successfully");
-          }
-
-          migrate->deleteLater();
-      },
-      Qt::QueuedConnection);
-
-    return utils::serialize::toQVariantMap(api::types::v1::CommonResult{
-      .code = 0,
-      .message = "package manager is migrating data",
-    });
-}
-
 void PackageManager::pullDependency(PackageTask &taskContext,
                                     const api::types::v1::PackageInfoV2 &info,
                                     const std::string &module) noexcept
@@ -1063,7 +1030,7 @@ void PackageManager::pullDependency(PackageTask &taskContext,
         taskContext.updateSubState(PackageTask::SubState::InstallRuntime,
                                    "Installing runtime " + runtime->toString());
         // 如果runtime已存在，则直接使用, 否则从远程拉取
-        auto runtimeLayerDir = repo.getLayerDir(*runtime, develop);
+        auto runtimeLayerDir = repo.getLayerDir(*runtime, module);
         if (!runtimeLayerDir) {
             if (taskContext.state() == PackageTask::State::Canceled) {
                 return;
@@ -1101,8 +1068,6 @@ void PackageManager::pullDependency(PackageTask &taskContext,
         taskContext.updateState(PackageTask::State::Failed, LINGLONG_ERRV(base).message());
         return;
     }
-
-    taskContext.updateStatus(InstallTask::installBase, "Installing base " + base->toString());
 
     taskContext.updateSubState(PackageTask::SubState::InstallBase,
                                "Installing base " + base->toString());

@@ -452,6 +452,8 @@ int main(int argc, char **argv)
               auto buildSkipCommitOutput =
                 QCommandLineOption("skip-commit-output", "skip commit build output", "");
               auto buildArch = QCommandLineOption("arch", "set the build arch", "arch");
+              auto buildSkipOutputCheck =
+                QCommandLineOption("skip-output-check", "skip output check", "");
 
               parser.addOptions({ yamlFile,
                                   execVerbose,
@@ -460,7 +462,8 @@ int main(int argc, char **argv)
                                   buildSkipPullDepend,
                                   buildSkipRunContainer,
                                   buildSkipCommitOutput,
-                                  buildArch });
+                                  buildArch,
+                                  buildSkipOutputCheck });
 
               parser.addPositionalArgument("build", "build project", "build");
               parser.setApplicationDescription("linglong build command tools\n"
@@ -518,6 +521,12 @@ int main(int argc, char **argv)
                   cfg.skipFetchSource = true;
                   cfg.skipPullDepend = true;
                   cfg.offline = true;
+                  builder.setConfig(cfg);
+              }
+
+              if (parser.isSet(buildSkipOutputCheck)) {
+                  auto cfg = builder.getConfig();
+                  cfg.skipCheckOutput = true;
                   builder.setConfig(cfg);
               }
               auto allArgs = QCoreApplication::arguments();

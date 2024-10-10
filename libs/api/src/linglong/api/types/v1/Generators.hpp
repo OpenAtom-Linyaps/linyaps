@@ -217,6 +217,7 @@ x.arch = get_stack_optional<std::string>(j, "arch");
 x.cache = get_stack_optional<std::string>(j, "cache");
 x.offline = get_stack_optional<bool>(j, "offline");
 x.repo = j.at("repo").get<std::string>();
+x.skipCheckOutput = get_stack_optional<bool>(j, "skip_check_output");
 x.skipCommitOutput = get_stack_optional<bool>(j, "skip_commit_output");
 x.skipFetchSource = get_stack_optional<bool>(j, "skip_fetch_source");
 x.skipPullDepend = get_stack_optional<bool>(j, "skip_pull_depend");
@@ -236,6 +237,9 @@ if (x.offline) {
 j["offline"] = x.offline;
 }
 j["repo"] = x.repo;
+if (x.skipCheckOutput) {
+j["skip_check_output"] = x.skipCheckOutput;
+}
 if (x.skipCommitOutput) {
 j["skip_commit_output"] = x.skipCommitOutput;
 }

@@ -401,6 +401,10 @@
           "type": "boolean",
           "description": "skip commit output when build"
         },
+        "skip_check_output": {
+          "type": "boolean",
+          "description": "skip check output when build"
+        },
         "arch": {
           "type": "string",
           "description": "arch of builder config"

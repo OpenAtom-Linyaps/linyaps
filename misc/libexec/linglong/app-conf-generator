@@ -20,8 +20,9 @@ ExecReplace() {
                         sed -i "/\[Desktop Entry\]/a X-linglong=${appId}" ${path}
                         sed -i "/TryExec=*/c TryExec=ll-cli" ${path}
                 fi
-                startByLinglong="ll-cli run ${appId} -- "
-                sed -i "s/^\(Exec=\)\(.*\)/\1${startByLinglong}\2/" $path
+                startByLinglong="/usr/bin/ll-cli run ${appId} -- "
+                sed -i "s#^\(Exec[[:space:]]*=\)\(.*\)#\1${startByLinglong}\2#" $path
+                sed -i "s#^\(ExecStart[[:space:]]*=\)\(.*\)#\1${startByLinglong}\2#" $path
         done
 }
 
@@ -49,12 +50,11 @@ ContextMenuGenerator() {
 
 main() {
         appId=$1
-        appEntriesPath=$2
+        appFilesPath=$2
 
-        desktopPath="${appEntriesPath}/share/applications"
-        systemdServicePath="${appEntriesPath}/share/systemd/user"
-        dbusServicePath="${appEntriesPath}/share/dbus-1/services"
-        contextMenuPath="${appEntriesPath}/share/applications/context-menus"
+        desktopPath="${appFilesPath}/share/applications"
+        dbusServicePath="${appFilesPath}/share/dbus-1/services"
+        contextMenuPath="${appFilesPath}/share/applications/context-menus"
 
         if [ -d "${desktopPath}" ]; then
                 DesktopGenerator ${desktopPath}
@@ -62,8 +62,11 @@ main() {
         if [ -d "${dbusServicePath}" ]; then
                 DBusServiceGenerator ${dbusServicePath}
         fi
-        if [ -d "${systemdServicePath}" ]; then
-                SystemdServiceGenerator ${systemdServicePath}
+        if [ -d "${appFilesPath}/lib/systemd/user" ]; then
+                SystemdServiceGenerator "${appFilesPath}/lib/systemd/user"
+        fi
+        if [ -d "${appFilesPath}/share/systemd/user" ]; then
+                SystemdServiceGenerator "${appFilesPath}/share/systemd/user"
         fi
         if [ -d "${contextMenuPath}" ]; then
                 ContextMenuGenerator ${contextMenuPath}

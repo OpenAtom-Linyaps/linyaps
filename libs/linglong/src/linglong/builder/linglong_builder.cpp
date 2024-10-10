@@ -860,8 +860,10 @@ set -e
             return LINGLONG_ERR("link entries share to files share: failed");
         }
         if (binaryFiles.exists("lib/systemd/user")) {
+            // 配置放到share/systemd/user或lib/systemd/user对systemd来说基本等价
+            // 但玲珑仅将share导出到XDG_DATA_DIR，所以要将lib/systemd/user的内容复制到share/systemd/user
             if (!binaryEntries.mkpath("share/systemd/user")) {
-                return LINGLONG_ERR("mkpath files/share/systemd/user: failed");
+                qWarning() << "mkpath files/share/systemd/user: failed";
             }
             auto ret = copyDir(binaryFiles.filePath("lib/systemd/user"),
                                binaryEntries.absoluteFilePath("share/systemd/user"));

@@ -606,7 +606,7 @@ set -e
     scriptContent.append(project.build);
     scriptContent.push_back('\n');
     // Do some checks after run container
-    if (this->project.package.kind == "app") {
+    if (!cfg.skipCheckOutput && this->project.package.kind == "app") {
         scriptContent.append("# POST BUILD PROCESS\n");
         scriptContent.append(LINGLONG_BUILDER_HELPER "/main-check.sh\n");
     }

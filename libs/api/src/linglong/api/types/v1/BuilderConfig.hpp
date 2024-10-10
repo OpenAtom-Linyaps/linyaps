@@ -48,6 +48,10 @@ std::optional<bool> offline;
 */
 std::string repo;
 /**
+* skip check output when build
+*/
+std::optional<bool> skipCheckOutput;
+/**
 * skip commit output when build
 */
 std::optional<bool> skipCommitOutput;

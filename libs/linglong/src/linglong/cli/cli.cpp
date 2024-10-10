@@ -553,7 +553,7 @@ int Cli::installFromFile(const QFileInfo &fileInfo)
 
     auto taskConn = QDBusConnection::systemBus();
     this->task =
-      std::make_unique<api::dbus::v1::Task1>("org.deepin.linglong.PackageManager",
+      std::make_unique<api::dbus::v1::Task1>("org.deepin.linglong.PackageManager1",
                                              QString::fromStdString(result->taskObjectPath.value()),
                                              taskConn);
     if (!this->task->isValid()) {
@@ -668,7 +668,7 @@ int Cli::install(std::map<std::string, docopt::value> &args)
 
     auto taskConn = QDBusConnection::systemBus();
     this->task =
-      std::make_unique<api::dbus::v1::Task1>("org.deepin.linglong.PackageManager",
+      std::make_unique<api::dbus::v1::Task1>("org.deepin.linglong.PackageManager1",
                                              QString::fromStdString(result->taskObjectPath.value()),
                                              taskConn);
 
@@ -741,7 +741,7 @@ int Cli::upgrade(std::map<std::string, docopt::value> &args)
     }
     auto taskConn = QDBusConnection::systemBus();
     this->task =
-      std::make_unique<api::dbus::v1::Task1>("org.deepin.linglong.PackageManager",
+      std::make_unique<api::dbus::v1::Task1>("org.deepin.linglong.PackageManager1",
                                              QString::fromStdString(result->taskObjectPath.value()),
                                              taskConn);
     if (!this->task->isValid()) {
@@ -919,7 +919,7 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
     }
     auto taskConn = QDBusConnection::systemBus();
     this->task =
-      std::make_unique<api::dbus::v1::Task1>("org.deepin.linglong.PackageManager",
+      std::make_unique<api::dbus::v1::Task1>("org.deepin.linglong.PackageManager1",
                                              QString::fromStdString(result->taskObjectPath.value()),
                                              taskConn
                                              );

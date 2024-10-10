@@ -87,7 +87,9 @@ public
     auto InstallFromFile(const QDBusUnixFileDescriptor &fd,
                          const QString &fileType) noexcept -> QVariantMap;
     auto Uninstall(const QVariantMap &parameters) noexcept -> QVariantMap;
-    void Uninstall(PackageTask &taskContext, const package::Reference &ref, bool devel) noexcept;
+    void Uninstall(PackageTask &taskContext,
+                   const package::Reference &ref,
+                   const std::string &module) noexcept;
     auto Update(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Search(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Migrate() noexcept -> QVariantMap;

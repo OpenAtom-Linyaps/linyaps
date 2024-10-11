@@ -94,6 +94,8 @@ public
     auto Search(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Migrate() noexcept -> QVariantMap;
     auto Prune() noexcept -> QVariantMap;
+    utils::error::Result<void>
+    Prune(std::vector<api::types::v1::PackageInfoV2> &removedInfo) noexcept;
     auto SetRunningState(const QVariantMap &parameters) noexcept -> QVariantMap;
     void replyInteraction(const QString &interactionID, const QVariantMap &replies);
 
@@ -101,6 +103,7 @@ Q_SIGNALS:
     void TaskListChanged(QString taskID);
     void TaskChanged(QString taskObjectPath, QString message);
     void SearchFinished(QString jobID, QVariantMap result);
+    void PruneFinished(QString jobID, QVariantMap result);
 
 private:
     QVariantMap installFromLayer(const QDBusUnixFileDescriptor &fd) noexcept;
@@ -114,6 +117,7 @@ private:
     QString runningTaskID;
 
     JobQueue m_search_queue = {};
+    JobQueue m_prune_queue = {};
 };
 
 } // namespace linglong::service

@@ -856,8 +856,44 @@ int Cli::prune(std::map<std::string, docopt::value> &args)
         this->printer.printErr(LINGLONG_ERRV(reply.error().message(), reply.error().type()));
         return -1;
     }
+    if (reply.isError()) {
+        this->printer.printErr(LINGLONG_ERRV(reply.error().message(), -1));
+        return -1;
+    }
 
-    return 0;
+    auto result =
+      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1JobInfo>(reply.value());
+    if (!result) {
+        this->printer.printErr(result.error());
+        return -1;
+    }
+
+    if (!result->id) {
+        this->printer.printErr(
+          LINGLONG_ERRV("\n" + QString::fromStdString(result->message), result->code));
+        return -1;
+    }
+
+    QEventLoop loop;
+
+    connect(&this->pkgMan,
+            &api::dbus::v1::PackageManager::PruneFinished,
+            [&](const QString &jobID, const QVariantMap &data) {
+                if (result->id->c_str() != jobID) {
+                    return;
+                }
+                auto result =
+                  utils::serialize::fromQVariantMap<api::types::v1::PackageManager1SearchResult>(
+                    data);
+                if (!result) {
+                    this->printer.printErr(result.error());
+                    loop.exit(-1);
+                }
+
+                this->printer.printPruneResult(*result->packages);
+                loop.exit(0);
+            });
+    return loop.exec();
 }
 
 int Cli::uninstall(std::map<std::string, docopt::value> &args)

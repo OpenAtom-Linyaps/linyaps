@@ -34,6 +34,7 @@ public:
     Architecture arch;
 
     [[nodiscard]] QString toString() const noexcept;
+     friend bool operator<(const Reference& lhs, const Reference& rhs) noexcept;
 
 private:
     Reference(const QString &channel,

@@ -1091,7 +1091,121 @@ void PackageManager::pullDependency(PackageTask &taskContext,
 
 auto PackageManager::Prune() noexcept -> QVariantMap
 {
-    //
+    auto jobID = QUuid::createUuid().toString();
+    m_prune_queue.runTask([this, jobID]() {
+        std::vector<api::types::v1::PackageInfoV2> pkgs;
+        auto ret = Prune(pkgs);
+        if (!ret.has_value()) {
+            Q_EMIT this->PruneFinished(jobID, toDBusReply(ret));
+            return;
+        }
+        auto result = api::types::v1::PackageManager1SearchResult{
+            .packages = pkgs,
+            .code = 0,
+            .message = "",
+        };
+        Q_EMIT this->PruneFinished(jobID, utils::serialize::toQVariantMap(result));
+    });
+    auto result = utils::serialize::toQVariantMap(api::types::v1::PackageManager1JobInfo{
+      .id = jobID.toStdString(),
+      .code = 0,
+      .message = "",
+    });
+    return result;
+}
+
+utils::error::Result<void>
+PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexcept
+{
+    LINGLONG_TRACE("prune");
+    auto pkgsInfo = this->repo.listLocal();
+    if (!pkgsInfo) {
+        return LINGLONG_ERR(pkgsInfo);
+    }
+
+    std::map<package::Reference, int> target;
+    for (const auto &info : *pkgsInfo) {
+        if(info.packageInfoV2Module != "binary") {
+            continue;
+        }
+
+        if (info.kind != "app") {
+            auto ref = package::Reference::fromPackageInfo(info);
+            if (!ref) {
+                qWarning() << ref.error().message();
+                continue;
+            }
+            // Note: if the ref already exists, it's ok, somebody depends it.
+            target.try_emplace(std::move(*ref), 0);
+            continue;
+        }
+
+        if (info.runtime) {
+            auto runtimeFuzzyRef =
+              package::FuzzyReference::parse(QString::fromStdString(info.runtime.value()));
+            if (!runtimeFuzzyRef) {
+                qWarning() << runtimeFuzzyRef.error().message();
+                continue;
+            }
+
+            auto runtimeRef = this->repo.clearReference(*runtimeFuzzyRef,
+                                                        {
+                                                          .forceRemote = false,
+                                                          .fallbackToRemote = false,
+                                                        });
+            if (!runtimeRef) {
+                qWarning() << runtimeRef.error().message();
+                continue;
+            }
+            target[*runtimeRef] += 1;
+        }
+
+        auto baseFuzzyRef = package::FuzzyReference::parse(QString::fromStdString(info.base));
+        if (!baseFuzzyRef) {
+            qWarning() << baseFuzzyRef.error().message();
+            continue;
+        }
+
+        auto baseRef = this->repo.clearReference(*baseFuzzyRef,
+                                                       {
+                                                         .forceRemote = false,
+                                                         .fallbackToRemote = false,
+                                                       });
+        if (!baseRef) {
+            qWarning() << baseRef.error().message();
+            continue;
+        }
+        target[*baseRef] += 1;
+    }
+
+    for (auto it = target.cbegin(); it != target.cend(); ++it) {
+        if(it->second != 0) {
+            continue;
+        }
+        // NOTE: if the binary module is removed, other modules should be removed too.
+        for (const auto module : { "binary", "develop" }) {
+            auto layer = this->repo.getLayerDir(it->first, module);
+            if (!layer) {
+                qWarning() << layer.error().message();
+                continue;
+            }
+
+            auto info = layer->info();
+
+            if (!info) {
+                qWarning() << info.error().message();
+                continue;
+            }
+
+            removed.emplace_back(std::move(*info));
+
+            auto result = this->repo.remove(it->first, module);
+            if (!result) {
+                return LINGLONG_ERR(result);
+            }
+        }
+    }
+    return LINGLONG_OK;
 }
 
 auto PackageManager::SetRunningState(const QVariantMap &parameters) noexcept -> QVariantMap

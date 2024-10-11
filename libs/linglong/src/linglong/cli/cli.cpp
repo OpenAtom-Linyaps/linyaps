@@ -1196,6 +1196,9 @@ int Cli::migrate([[maybe_unused]] std::map<std::string, docopt::value> &args)
 
     int retCode = std::numeric_limits<int>::min();
     QString retMsg;
+
+    // connecting to this lambda before connecting the second one of the slot 'quit' of event loop
+    // see comments below for details
     QObject::connect(this, &Cli::migrateDone, [&retCode, &retMsg](int newCode, QString newMsg) {
         retCode = newCode;
         retMsg = std::move(newMsg);
@@ -1231,16 +1234,19 @@ int Cli::migrate([[maybe_unused]] std::map<std::string, docopt::value> &args)
         std::abort();
     }
 
-    QEventLoop loop;
-    std::function<void()> statusChecker =
-      std::function{ [&loop, &statusChecker, &retCode]() -> void {
-          if (retCode != std::numeric_limits<int>::min()) {
-              loop.exit(0);
-          }
-          QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
-      } };
-    QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
-    loop.exec();
+    if (retCode == std::numeric_limits<int>::min()) {
+        // If a signal is connected to several slots,
+        // the slots are activated in the same order in which the connections were made,
+        // when the signal is emitted.
+        // refer: https://doc.qt.io/qt-5/qobject.html#connect
+
+        QEventLoop loop;
+        if (connect(this, &Cli::migrateDone, &loop, &QEventLoop::quit) == nullptr) {
+            qCritical() << "failed to waiting for reply";
+            return -1;
+        }
+        loop.exec();
+    }
 
     ret = this->notifier->notify({ .summary = retMsg.toStdString() });
     if (!ret) {

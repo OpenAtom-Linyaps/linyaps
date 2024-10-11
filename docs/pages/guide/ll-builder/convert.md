@@ -4,6 +4,8 @@ SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
+**Tips: 此文档适用于1.6.3以下的玲珑版本，1.6.3以上的版本可参考文档：[转换appimage应用包格式](../ll-appimage-convert/convert-appimage.md)**
+
 # 转换 `appimage` 包格式( `.appimage` 或 `.AppImage` ) 到玲珑包格式( `.layer` 或 `.uab` )
 
 使用 `ll-builder convert` 转换 appimage 包格式( `.appimage` 或 `.AppImage` )为玲珑包格式( `.layer` 或 `.uab` )

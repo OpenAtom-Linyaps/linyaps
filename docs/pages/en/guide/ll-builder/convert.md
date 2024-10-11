@@ -4,6 +4,8 @@ SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
+**Tips: This document is applicable to linglong versions below 1.6.3. if the version of linglong is above 1.6.3, please refer to the document: [Conversion appimage application](../ll-appimage-convert/convert-appimage.md)**
+
 # convert `appimage` format( `.appimage` or `.AppImage` ) pkg to linglong format( `.layer` or `.uab` ) pkg
 
 Use `ll-builder convert` to convert `appimage` format( `.appimage` or `.AppImage` ) pkg to linglong format( `.layer` or `.uab` ) pkg.

@@ -109,6 +109,14 @@ QString Reference::toString() const noexcept
     return QString("%1:%2/%3/%4").arg(channel, id, version.toString(), arch.toString());
 }
 
+bool operator<(const Reference &lhs, const Reference &rhs) noexcept
+{
+    if (lhs.channel == rhs.channel && lhs.id == rhs.id && lhs.arch == rhs.arch)
+        return lhs.version < rhs.version;
+
+    return lhs.toString() < rhs.toString();
+}
+
 QVariantMap Reference::toVariantMap(const Reference &ref) noexcept
 {
     nlohmann::json json;

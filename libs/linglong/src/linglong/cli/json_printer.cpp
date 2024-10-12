@@ -34,6 +34,11 @@ void JSONPrinter::printPackages(const std::vector<api::types::v1::PackageInfoV2>
     std::cout << nlohmann::json(list).dump() << std::endl;
 }
 
+void JSONPrinter::printPruneResult(const std::vector<api::types::v1::PackageInfoV2> &list)
+{
+    printPackages(list);
+}
+
 void JSONPrinter::printContainers(const std::vector<api::types::v1::CliContainer> &list)
 {
     std::cout << nlohmann::json(list).dump() << std::endl;

@@ -34,6 +34,7 @@ public:
     virtual void printErr(const utils::error::Error &);
     virtual void printPackage(const api::types::v1::PackageInfoV2 &);
     virtual void printPackages(const std::vector<api::types::v1::PackageInfoV2> &);
+    virtual void printPruneResult(const std::vector<api::types::v1::PackageInfoV2> &);
     virtual void printContainers(const std::vector<api::types::v1::CliContainer> &);
     virtual void printReply(const api::types::v1::CommonResult &);
     virtual void printRepoConfig(const api::types::v1::RepoConfig &);

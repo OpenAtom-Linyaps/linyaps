@@ -16,6 +16,7 @@ public:
     void printErr(const utils::error::Error &) override;
     void printPackage(const api::types::v1::PackageInfoV2 &) override;
     void printPackages(const std::vector<api::types::v1::PackageInfoV2> &) override;
+    void printPruneResult(const std::vector<api::types::v1::PackageInfoV2> &) override;
     void printContainers(const std::vector<api::types::v1::CliContainer> &) override;
     void printReply(const api::types::v1::CommonResult &) override;
     void printRepoConfig(const api::types::v1::RepoConfig &) override;

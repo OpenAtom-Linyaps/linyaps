@@ -51,8 +51,8 @@ base: org.deepin.foundation/23.0.0
 
 最小根文件系统。
 
-| 名称    | 描述                                     |
-| ------- | ---------------------------------------- |
+| 名称    | 描述                                      |
+| ------- | ----------------------------------------- |
 | id      | base  的唯一名称                         |
 | version | base 的版本号,  三位数可以模糊匹配第四位 |
 
@@ -188,6 +188,7 @@ sources:
   - kind: git
     url: https://github.com/linuxdeepin/dde-qt-dbus-factory.git
     version: master
+    commit: d952e1913172c5507af080f644a654f9ba5fed95
 
 build: |
   # build dde-qt-dbus-factory
@@ -204,7 +205,7 @@ build: |
   cd /project/linglong/sources/deepin-calculator.git
   cmake -Bbuild \
         -DCMAKE_INSTALL_PREFIX=${PREFIX} \
-        -DCMAKE_INSTALL_LIBDIR=${PREFIX}/lib/${TRIPLET}
+        -DCMAKE_INSTALL_LIBDIR=${PREFIX}/lib/${TRIPLET} \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_SAFETYTEST_ARG="CMAKE_SAFETYTEST_ARG_OFF" \
         -DAPP_VERSION=5.7.21 \

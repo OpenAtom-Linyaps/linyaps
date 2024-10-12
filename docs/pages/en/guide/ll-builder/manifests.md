@@ -152,7 +152,7 @@ package:
     calculator for deepin os.
 
 command:
-  - /opt/apps/org.deepin.demo/files/bin/deepin-calculator
+  - /opt/apps/org.deepin.calculator/files/bin/deepin-calculator
 
 base: org.deepin.foundation/23.0.0
 runtime: org.deepin.Runtime/23.0.1
@@ -166,6 +166,7 @@ sources:
   - kind: git
     url: https://github.com/linuxdeepin/dde-qt-dbus-factory.git
     version: master
+    commit: d952e1913172c5507af080f644a654f9ba5fed95
 
 build: |
   # build dde-qt-dbus-factory
@@ -182,7 +183,7 @@ build: |
   cd /project/linglong/sources/deepin-calculator.git
   cmake -Bbuild \
         -DCMAKE_INSTALL_PREFIX=${PREFIX} \
-        -DCMAKE_INSTALL_LIBDIR=${PREFIX}/lib/${TRIPLET}
+        -DCMAKE_INSTALL_LIBDIR=${PREFIX}/lib/${TRIPLET} \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_SAFETYTEST_ARG="CMAKE_SAFETYTEST_ARG_OFF" \
         -DAPP_VERSION=5.7.21 \

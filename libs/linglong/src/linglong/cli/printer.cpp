@@ -7,6 +7,7 @@
 #include "linglong/cli/printer.h"
 
 #include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/package/reference.h"
 
 #include <QJsonArray>
 
@@ -19,6 +20,15 @@ void Printer::printErr(const utils::error::Error &err)
 {
     std::cout << "Error: CODE=" << err.code() << std::endl
               << err.message().toStdString() << std::endl;
+}
+
+void Printer::printPruneResult(const std::vector<api::types::v1::PackageInfoV2> &list)
+{
+    for (const auto &info : list) {
+        auto ref = package::Reference::fromPackageInfo(info);
+        std::cout << ref->toString().toStdString() << std::endl;
+    }
+    std::cout << list.size() << " unused layers have been removed." << std::endl;
 }
 
 void Printer::printPackages(const std::vector<api::types::v1::PackageInfoV2> &list)

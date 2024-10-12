@@ -17,6 +17,7 @@ configure_files(
   libexec/linglong/builder/helper/config-check.sh
   libexec/linglong/builder/helper/ldd-check.sh
   libexec/linglong/builder/helper/main-check.sh
+  libexec/linglong/builder/helper/symbols-strip.sh
   libexec/linglong/fetch-archive-source
   libexec/linglong/fetch-dsc-source
   libexec/linglong/fetch-file-source
@@ -74,6 +75,7 @@ install(
     ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/builder/helper/config-check.sh
     ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/builder/helper/ldd-check.sh
     ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/builder/helper/main-check.sh
+    ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/builder/helper/symbols-strip.sh
   DESTINATION ${LIBEXEC_LINGLONG_BUILDER_DIR})
 
 # linglong

@@ -12,6 +12,8 @@
 #include "linglong/runtime/container_builder.h"
 #include "linglong/utils/error/error.h"
 
+#include <string>
+
 namespace linglong::builder {
 
 struct UABOption
@@ -24,6 +26,12 @@ struct UABOption
 class Builder
 {
 public:
+    // 记录linglong.yaml的位置，因为可以通过命令行参数传递，位置不再固定
+    // 主要用于在构建完成后将linglong.yaml复制到应用中
+    std::string projectYamlFile;
+    // 兼容选项，在制作runtime时构建全量develop, 以兼容旧版本linglong-builder使用
+    // TODO 后续版本删除该选项
+    bool fullDevelop = false;
     explicit Builder(const api::types::v1::BuilderProject &project,
                      const QDir &workingDir,
                      repo::OSTreeRepo &repo,
@@ -34,15 +42,15 @@ public:
 
     auto create(const QString &projectName) -> utils::error::Result<void>;
 
-    auto build(const QStringList &args = {
-                 "/project/linglong/entry.sh" }) noexcept -> utils::error::Result<void>;
+    auto build(const QStringList &args = { "/project/linglong/entry.sh" }) noexcept
+      -> utils::error::Result<void>;
 
-    auto exportUAB(const QString &destination,
-                   const UABOption &option) -> utils::error::Result<void>;
+    auto exportUAB(const QString &destination, const UABOption &option)
+      -> utils::error::Result<void>;
     auto exportLayer(const QString &destination) -> utils::error::Result<void>;
 
-    static auto extractLayer(const QString &layerPath,
-                             const QString &destination) -> utils::error::Result<void>;
+    static auto extractLayer(const QString &layerPath, const QString &destination)
+      -> utils::error::Result<void>;
 
     auto push(const std::string &module,
               const std::string &repoUrl = "",

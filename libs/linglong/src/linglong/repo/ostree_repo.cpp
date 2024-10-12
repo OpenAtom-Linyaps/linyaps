@@ -855,17 +855,17 @@ utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRep
                                                     const package::Reference &reference,
                                                     const std::string &module) const noexcept
 {
-    const qint32 HTTP_OK = 200;
-
     LINGLONG_TRACE("push " + reference.toString());
+    qDebug() << "push" << reference.toString() << "to" << url.c_str();
     auto layerDir = this->getLayerDir(reference, module);
     if (!layerDir) {
         return LINGLONG_ERR("layer not found");
     }
-
     auto env = QProcessEnvironment::systemEnvironment();
     auto client = this->m_clientFactory.createClientV2();
-    client->basePath = const_cast<char *>(url.c_str());
+    // apiClient会调用free释放basePath，为避免重复释放复制一份url
+    client->basePath = new char[url.length() + 1];
+    strcpy(client->basePath, url.c_str());
     // 登录认证
     auto envUsername = env.value("LINGLONG_USERNAME").toUtf8();
     auto envPassword = env.value("LINGLONG_PASSWORD").toUtf8();
@@ -1566,9 +1566,6 @@ auto OSTreeRepo::getLayerDir(const api::types::v1::RepositoryCacheLayersItem &la
     if (!dir.exists()) {
         return LINGLONG_ERR(dir.absolutePath() + " doesn't exist");
     }
-
-    qCritical() << QString::fromStdString(layer.info.id)
-                << QString::fromStdString(layer.info.version);
     return dir.absolutePath();
 }
 

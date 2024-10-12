@@ -51,7 +51,7 @@ auto SourceFetcher::fetch(QDir destination) noexcept -> utils::error::Result<voi
         // 便于在执行失败时进行调试
         dir->setAutoRemove(false);
         scriptFile = dir->filePath(scriptName);
-        qWarning() << "Dumping " << scriptName << "from qrc to" << scriptFile;
+        qDebug() << "Dumping " << scriptName << "from qrc to" << scriptFile;
         QFile::copy(":/scripts/" + scriptName, scriptFile);
     }
     auto output = utils::command::Exec(

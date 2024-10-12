@@ -68,6 +68,10 @@ std::optional<bool> skipPullDepend;
 */
 std::optional<bool> skipRunContainer;
 /**
+* skip strip debug symbols
+*/
+std::optional<bool> skipStripSymbols;
+/**
 * version of builder config
 */
 int64_t version;

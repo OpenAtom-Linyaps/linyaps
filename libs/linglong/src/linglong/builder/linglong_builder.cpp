@@ -7,7 +7,6 @@
 #include "linglong_builder.h"
 
 #include "linglong/api/types/v1/Generators.hpp"
-#include "linglong/utils/configure.h"
 #include "linglong/builder/printer.h"
 #include "linglong/package/architecture.h"
 #include "linglong/package/layer_packager.h"
@@ -15,6 +14,7 @@
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container.h"
 #include "linglong/utils/command/env.h"
+#include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/global/initialize.h"
@@ -22,11 +22,13 @@
 #include "source_fetcher.h"
 
 #include <nlohmann/json.hpp>
+#include <qdebug.h>
 #include <sys/prctl.h>
 #include <yaml-cpp/yaml.h>
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QDirIterator>
 #include <QHash>
 #include <QProcess>
 #include <QRegularExpression>
@@ -35,17 +37,17 @@
 #include <QThread>
 #include <QUrl>
 #include <QUuid>
-#include <QDirIterator>
 
 #include <cstdlib>
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <system_error>
 #include <vector>
 
 #include <sys/socket.h>
-#include <sys/wait.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 
 namespace linglong::builder {
 
@@ -292,90 +294,39 @@ utils::error::Result<package::Reference> pullDependency(const QString &fuzzyRefS
     return pullDependency(*fuzzyRef, repo, module, onlyLocal);
 }
 
-// 拆分develop和binary的文件
-utils::error::Result<void> splitDevelop(QString installFilepath,
-                                        const QDir &developOutput,
-                                        const QDir &binaryOutput,
-                                        const QString &prefix,
-                                        const std::function<void(int)> &handleProgress)
+// 安装模块文件
+utils::error::Result<void> installModule(QStringList installRules,
+                                         const QDir &buildOutput,
+                                         const QDir &moduleOutput,
+                                         const std::function<void(int)> &handleProgress)
 {
-    LINGLONG_TRACE("split layers file");
-    const QString src = developOutput.absolutePath();
-    const QString dest = binaryOutput.absolutePath();
-    // get install file rule
-    QStringList installRules;
+    LINGLONG_TRACE("install module file");
+    const QString src = buildOutput.absolutePath();
+    const QString dest = moduleOutput.absolutePath();
 
-    // if ${PROJECT_ROOT}/${appid}.install is not exist, copy all files
-    if (QFileInfo(installFilepath).exists()) {
-        QFile configFile(installFilepath);
-        if (!configFile.open(QIODevice::ReadOnly)) {
-            return LINGLONG_ERR("open file", configFile);
-        }
-        installRules.append(QString(configFile.readAll()).split('\n'));
-        // remove empty or duplicate lines
-        installRules.removeAll("");
-        installRules.removeDuplicates();
-    } else {
-        qDebug() << "generate install list from " << src;
-        QDirIterator iter(src,
-                          QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System,
-                          QDirIterator::Subdirectories);
-        while (iter.hasNext()) {
-            iter.next();
-            auto filepath = iter.filePath();
-            qDebug() << filepath;
-            // $PROJECT_ROOT/.../files to /opt/apps/${appid}
-            // $PROJECT_ROOT/ to /runtime/
-            filepath.replace(0, src.length(), prefix);
-            installRules.append(filepath);
-        }
-    }
     // 复制目录、文件和超链接
-    auto copyFile = [&](const int &percentage,
-                        const QFileInfo &info,
-                        const QString &dstPath) -> utils::error::Result<void> {
-        LINGLONG_TRACE("copy file");
+    auto installFile = [&](const QFileInfo &info,
+                           const QString &dstPath) -> utils::error::Result<void> {
+        LINGLONG_TRACE("install file");
         if (info.isDir()) {
-            qDebug() << QString("percentage: %1%").arg(percentage) << "matched dir"
-                     << info.absoluteFilePath();
             QDir().mkpath(dstPath);
             return LINGLONG_OK;
-        }
-        if (info.isSymLink()) {
-            qDebug() << QString("percentage: %1%").arg(percentage) << "matched symlinks"
-                     << info.absoluteFilePath();
-            std::array<char, PATH_MAX + 1> buf{};
-            // qt的readlin无法区分相对链接还是绝对链接，所以用c库的readlink
-            auto size = readlink(info.filePath().toStdString().c_str(), buf.data(), PATH_MAX);
-            if (size == -1) {
-                qCritical() << "readlink failed! " << info.filePath();
-                return LINGLONG_ERR("readlink failed!");
-            }
-
-            QString linkpath(buf.data());
-            qDebug() << "link" << linkpath << "to" << dstPath;
-            QFile file(linkpath);
-            if (!file.link(dstPath)) {
-                return LINGLONG_ERR("link file failed, relative path", file);
-            }
+        } else {
+            QDir(dstPath.left(dstPath.lastIndexOf('/'))).mkpath(".");
+            // QDir(dstPath).mkpath("..");
+            QFile::rename(info.filePath(), dstPath);
             return LINGLONG_OK;
         }
-        // 链接也是文件，isFile要放到isSymLink后面
-        if (info.isFile()) {
-            qDebug() << QString("percentage: %1%").arg(percentage) << "matched file"
-                     << info.absoluteFilePath();
-            QDir().mkpath(info.path().replace(src, dest));
-            QFile file(info.absoluteFilePath());
-            if (!file.copy(dstPath)) {
-                return LINGLONG_ERR("copy file", file);
-            }
-            return LINGLONG_OK;
-        }
-        return LINGLONG_ERR(QString("unknown file type %1").arg(info.path()));
     };
 
     auto ruleIndex = 0;
     for (auto rule : installRules) {
+        rule = rule.simplified();
+        // 跳过注释
+        if (rule.isEmpty() || rule.startsWith("#")) {
+            continue;
+        }
+        qDebug() << "install rule" << rule;
         // 计算进度
         ruleIndex++;
         auto percentage = ruleIndex * 100 / installRules.length(); // NOLINT
@@ -383,20 +334,16 @@ utils::error::Result<void> splitDevelop(QString installFilepath,
         if (handleProgress) {
             handleProgress(percentage);
         }
-        // 跳过注释
-        if (rule.startsWith("#")) {
-            continue;
-        }
         // 如果不以^符号开头，当作普通路径使用
         if (!rule.startsWith("^")) {
-            // replace $prefix with $PROJECT_ROOT/output/$model/files
-            rule.replace(0, prefix.length(), src);
+            // append $PROJECT_ROOT/output/_build/files to prefix
+            rule = src + "/" + rule;
             QFileInfo info(rule);
             // 链接指向的文件如果不存在，info.exists会返回false
             // 所以要先判断文件是否是链接
             if (info.isSymLink() || info.exists()) {
                 const QString dstPath = info.absoluteFilePath().replace(src, dest);
-                auto ret = copyFile(percentage, info, dstPath);
+                auto ret = installFile(info, dstPath);
                 if (!ret.has_value()) {
                     return LINGLONG_ERR(ret);
                 }
@@ -405,11 +352,7 @@ utils::error::Result<void> splitDevelop(QString installFilepath,
             }
             continue;
         }
-        // replace $prefix with $PROJECT_ROOT/output/$model/files
-        // TODO(wurongjie) 应该只替换一次, 避免路径包含多个prefix
-        // 但不能使用 rule.replace(0, prefix.length), 会导致正则匹配错误
-        rule.replace(prefix, src);
-        // convert prefix in container to real path in host
+        rule = "^" + src + rule.mid(1);
         QRegularExpression regexp(rule);
         // reverse files in src
         QDirIterator iter(src,
@@ -419,25 +362,15 @@ utils::error::Result<void> splitDevelop(QString installFilepath,
             iter.next();
             if (regexp.match(iter.fileInfo().absoluteFilePath()).hasMatch()) {
                 const QString dstPath = iter.fileInfo().absoluteFilePath().replace(src, dest);
-                auto ret = copyFile(percentage, iter.fileInfo(), dstPath);
+                qDebug() << rule << "match" << iter.filePath();
+                auto ret = installFile(iter.fileInfo(), dstPath);
                 if (!ret.has_value()) {
                     return LINGLONG_ERR(ret);
                 }
             }
         }
     }
-    for (const auto &dir : { developOutput, binaryOutput }) {
-        // save all installed file path to ${appid}.install
-        const auto installRulePath = dir.filePath("../" + QFileInfo(installFilepath).fileName());
-        QFile configFile(installRulePath);
-        if (!configFile.open(QIODevice::WriteOnly)) {
-            return LINGLONG_ERR("open file", configFile);
-        }
-        if (configFile.write(installRules.join('\n').toUtf8()) < 0) {
-            return LINGLONG_ERR("write file", configFile);
-        }
-        configFile.close();
-    }
+    handleProgress(100);
     return LINGLONG_OK;
 }
 
@@ -602,7 +535,12 @@ set -e
 # This file is generated by `build` in linglong.yaml
 # DO NOT EDIT IT
 )";
-
+    if (!cfg.skipStripSymbols) {
+        scriptContent.push_back('\n');
+        scriptContent.append("# enable strip symbols\n");
+        scriptContent.append("export CFLAGS=\"-g $CFLAGS\"\n");
+        scriptContent.append("export CXXFLAGS=\"-g $CFLAGS\"\n");
+    }
     scriptContent.append(project.build);
     scriptContent.push_back('\n');
     // Do some checks after run container
@@ -610,6 +548,10 @@ set -e
         scriptContent.append("# POST BUILD PROCESS\n");
         scriptContent.append(LINGLONG_BUILDER_HELPER "/main-check.sh\n");
     }
+    if (!cfg.skipStripSymbols) {
+        scriptContent.append(LINGLONG_BUILDER_HELPER "/symbols-strip.sh\n");
+    }
+
     auto writeBytes = scriptContent.size();
     auto bytesWrite = entry.write(scriptContent.c_str());
 
@@ -633,9 +575,9 @@ set -e
     // clean output
     QDir(this->workingDir.absoluteFilePath("linglong/output")).removeRecursively();
 
-    QDir developOutput = this->workingDir.absoluteFilePath("linglong/output/develop/files");
-    if (!developOutput.mkpath(".")) {
-        return LINGLONG_ERR("make path " + developOutput.absolutePath() + ": failed.");
+    QDir buildOutput = this->workingDir.absoluteFilePath("linglong/output/_build");
+    if (!buildOutput.mkpath(".")) {
+        return LINGLONG_ERR("make path " + buildOutput.path() + ": failed.");
     }
     qDebug() << "create develop output success";
 
@@ -665,7 +607,7 @@ set -e
       .destination = installPrefix.toStdString(),
       .gidMappings = {},
       .options = { { "rbind", "rw" } },
-      .source = developOutput.absolutePath().toStdString(),
+      .source = buildOutput.path().toStdString(),
       .type = "bind",
       .uidMappings = {},
     });
@@ -722,19 +664,13 @@ set -e
         return LINGLONG_OK;
     }
 
-    qDebug() << "create binary output";
-    QDir binaryOutput = this->workingDir.absoluteFilePath("linglong/output/binary/files");
-    if (!binaryOutput.mkpath(".")) {
-        return LINGLONG_ERR("make path " + binaryOutput.absolutePath() + ": failed.");
-    }
-
     qDebug() << "generate application configure";
     // generate application's configure file
     auto scriptFile = QString(LINGLONG_LIBEXEC_DIR) + "/app-conf-generator";
     auto useInstalledFile = utils::global::linglongInstalled() && QFile(scriptFile).exists();
     QScopedPointer<QTemporaryDir> dir;
     if (!useInstalledFile) {
-        qWarning() << "Dumping app-conf-generator from qrc...";
+        qDebug() << "Dumping app-conf-generator from qrc...";
         dir.reset(new QTemporaryDir);
         // 便于在执行失败时进行调试
         dir->setAutoRemove(false);
@@ -744,64 +680,145 @@ set -e
     auto output = utils::command::Exec(
       "bash",
       QStringList() << "-e" << scriptFile << QString::fromStdString(this->project.package.id)
-                    << developOutput.absolutePath());
-    if (!output) {
-        return LINGLONG_ERR(output);
-    }
+                    << buildOutput.path());
 
+    auto appIDPrintWidth = -this->project.package.id.size() + -5;
     printMessage("[Install Files]");
-    qDebug() << "split develop";
-
-    const auto installRulePath =
-      workingDir.filePath(QString::fromStdString(project.package.id) + ".install");
-    auto ret = splitDevelop(installRulePath,
-                            developOutput.absolutePath(),
-                            binaryOutput.absolutePath(),
-                            installPrefix,
-                            [](int percentage) {
-                                printProgress(percentage);
-                            });
-    if (!ret) {
-        return LINGLONG_ERR(ret);
+    printMessage(QString("%1%2%3%4")
+                   .arg("Package", appIDPrintWidth)
+                   .arg("Version", -15)
+                   .arg("Module", -15)
+                   .arg("Status")
+                   .toStdString(),
+                 2);
+    if (this->project.modules.has_value()) {
+        for (const auto &module : *this->project.modules) {
+            auto name = QString::fromStdString(module.name);
+            printReplacedText(QString("%1%2%3%4")
+                                .arg(this->project.package.id.c_str(), appIDPrintWidth)
+                                .arg(this->project.package.version.c_str(), -15)
+                                .arg(name, -15)
+                                .arg("installing")
+                                .toStdString(),
+                              2);
+            qDebug() << "install modules" << name;
+            QDir moduleDir = this->workingDir.absoluteFilePath("linglong/output/" + name);
+            auto installRules = QString::fromStdString(module.files).split("\n");
+            installRules.removeDuplicates();
+            auto ret = installModule(installRules,
+                                     buildOutput.path(),
+                                     moduleDir.filePath("files"),
+                                     [](int percentage) {});
+            if (!ret.has_value()) {
+                return LINGLONG_ERR("install module", ret);
+            }
+            // save install fule to ${appid}.install
+            auto appID = QString::fromStdString(project.package.id);
+            const auto installRulePath = moduleDir.filePath(appID + ".install");
+            QFile configFile(installRulePath);
+            if (!configFile.open(QIODevice::WriteOnly)) {
+                return LINGLONG_ERR("open file " + installRulePath, configFile);
+            }
+            if (configFile.write(installRules.join('\n').toUtf8()) < 0) {
+                return LINGLONG_ERR("write file " + installRulePath, configFile);
+            }
+            configFile.close();
+            printReplacedText(QString("%1%2%3%4")
+                                .arg(this->project.package.id.c_str(), appIDPrintWidth)
+                                .arg(this->project.package.version.c_str(), -15)
+                                .arg(name, -15)
+                                .arg("complete\n")
+                                .toStdString(),
+                              2);
+        }
+    } else if (this->fullDevelop) {
+        QDir moduleDir = this->workingDir.absoluteFilePath("linglong/output/develop/files");
+        auto ret = copyDir(buildOutput.path(), moduleDir.path());
+        if (!ret.has_value()) {
+            return ret;
+        }
     }
+    // save binary install files
+    {
+        QStringList installRules;
+        auto installFilepath = this->workingDir.absoluteFilePath(
+          QString::fromStdString(this->project.package.id) + ".install");
+        // TODO 兼容$appid.install文件，后续版本删除
+        if (QFile::exists(installFilepath)) {
+            qWarning() << "$appid.install is deprecated. see "
+                          "https://linglong.space/guide/ll-builder/modules.html";
+            QFile configFile(installFilepath);
+            if (!configFile.open(QIODevice::ReadOnly)) {
+                return LINGLONG_ERR("open file", configFile);
+            }
+            installRules.append(QString(configFile.readAll()).split('\n'));
+            // remove empty or duplicate lines
+            installRules.removeAll("");
+            installRules.removeDuplicates();
+        } else {
+            QDirIterator iter(buildOutput.path(),
+                              QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System,
+                              QDirIterator::Subdirectories);
+            while (iter.hasNext()) {
+                iter.next();
+                auto filepath = iter.filePath().mid(buildOutput.path().length());
+                installRules.append(filepath);
+            }
+        }
+        printReplacedText(QString("%1%2%3%4")
+                            .arg(this->project.package.id.c_str(), appIDPrintWidth)
+                            .arg(this->project.package.version.c_str(), -15)
+                            .arg("binary", -15)
+                            .arg("installing")
+                            .toStdString(),
+                          2);
+        QDir moduleDir = this->workingDir.absoluteFilePath("linglong/output/binary");
+        auto ret = installModule(installRules,
+                                 buildOutput.path(),
+                                 moduleDir.filePath("files"),
+                                 [](int percentage) {});
+        if (!ret.has_value()) {
+            return LINGLONG_ERR("install module", ret);
+        }
+        // save install fule to ${appid}.install
+        auto appID = QString::fromStdString(project.package.id);
+        const auto installRulePath = moduleDir.filePath(appID + ".install");
+        QFile configFile(installRulePath);
+        if (!configFile.open(QIODevice::WriteOnly)) {
+            return LINGLONG_ERR("open file " + installRulePath, configFile);
+        }
+        if (configFile.write(installRules.join('\n').toUtf8()) < 0) {
+            return LINGLONG_ERR("write file " + installRulePath, configFile);
+        }
+        configFile.close();
+        printReplacedText(QString("%1%2%3%4")
+                            .arg(this->project.package.id.c_str(), appIDPrintWidth)
+                            .arg(this->project.package.version.c_str(), -15)
+                            .arg("binary", -15)
+                            .arg("complete\n")
+                            .toStdString(),
+                          2);
+    }
+
     printMessage("");
 
     qDebug() << "generate entries";
     if (this->project.package.kind != "runtime") {
         QDir binaryFiles = this->workingDir.absoluteFilePath("linglong/output/binary/files");
         QDir binaryEntries = this->workingDir.absoluteFilePath("linglong/output/binary/entries");
-        QDir developFiles = this->workingDir.absoluteFilePath("linglong/output/develop/files");
-        QDir developEntries = this->workingDir.absoluteFilePath("linglong/output/develop/entries");
         if (!binaryEntries.mkpath(".")) {
             return LINGLONG_ERR("make path " + binaryEntries.absolutePath() + ": failed.");
-        }
-        if (!developEntries.mkpath(".")) {
-            return LINGLONG_ERR("make path " + developEntries.absolutePath() + ": failed.");
         }
 
         if (!QFile::link("../files/share", binaryEntries.absoluteFilePath("share"))) {
             return LINGLONG_ERR("link entries share to files share: failed");
         }
-        if (!QFile::link("../files/share", developEntries.absoluteFilePath("share"))) {
-            return LINGLONG_ERR("link entries share to files share: failed");
-        }
-
         if (binaryFiles.exists("lib/systemd/user")) {
             if (!binaryEntries.mkpath("share/systemd/user")) {
                 return LINGLONG_ERR("mkpath files/share/systemd/user: failed");
             }
             auto ret = copyDir(binaryFiles.filePath("lib/systemd/user"),
-                                     binaryEntries.absoluteFilePath("share/systemd/user"));
-            if (!ret.has_value()) {
-                return LINGLONG_ERR(ret);
-            }
-        }
-        if (developFiles.exists("lib/systemd/user")) {
-            if (!developOutput.mkpath("share/systemd/user")) {
-                return LINGLONG_ERR("mkpath files/share/systemd/user: failed");
-            }
-            auto ret = copyDir(developFiles.filePath("lib/systemd/user"),
-                                     developEntries.absoluteFilePath("share/systemd/user"));
+                               binaryEntries.absoluteFilePath("share/systemd/user"));
             if (!ret.has_value()) {
                 return LINGLONG_ERR(ret);
             }
@@ -836,12 +853,10 @@ set -e
         .description = this->project.package.description,
         .id = this->project.package.id,
         .kind = this->project.package.kind,
-        .packageInfoV2Module = "binary",
         .name = this->project.package.name,
         .permissions = this->project.permissions,
         .runtime = {},
         .schemaVersion = PACKAGE_INFO_VERSION,
-        .size = static_cast<int64_t>(sizeOfDir(binaryOutput.absoluteFilePath(".."))),
         .version = this->project.package.version,
     };
 
@@ -855,102 +870,75 @@ set -e
         info.runtime = runtime->toString().toStdString();
     }
 
-    QFile infoFile = binaryOutput.absoluteFilePath("../info.json");
-    if (!infoFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        return LINGLONG_ERR(infoFile);
+    QStringList modules = { "binary" };
+
+    if (this->project.modules.has_value()) {
+        for (const auto &module : this->project.modules.value()) {
+            modules.push_back(module.name.c_str());
+        }
+    } else if (this->fullDevelop) {
+        modules.push_back("develop");
     }
-
-    infoFile.write(nlohmann::json(info).dump().c_str());
-    if (infoFile.error() != QFile::NoError) {
-        return LINGLONG_ERR(infoFile);
-    }
-
-    infoFile.close();
-
-    info.packageInfoV2Module = "develop";
-    info.size = sizeOfDir(developOutput.absoluteFilePath(".."));
-
-    infoFile.setFileName(developOutput.absoluteFilePath("../info.json"));
-    if (!infoFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        return LINGLONG_ERR(infoFile);
-    }
-
-    infoFile.write(nlohmann::json(info).dump().c_str());
-    if (infoFile.error() != QFile::NoError) {
-        return LINGLONG_ERR(infoFile);
-    }
-    infoFile.close();
-
-    qDebug() << "copy linglong.yaml to output";
-    QFile::copy(this->workingDir.absoluteFilePath("linglong.yaml"),
-                this->workingDir.absoluteFilePath("linglong/output/binary/linglong.yaml"));
-    QFile::copy(this->workingDir.absoluteFilePath("linglong.yaml"),
-                this->workingDir.absoluteFilePath("linglong/output/develop/linglong.yaml"));
-
     printMessage("[Commit Contents]");
     printMessage(QString("%1%2%3%4")
-                   .arg("Package", -25) // NOLINT
-                   .arg("Version", -15) // NOLINT
-                   .arg("Module", -15)  // NOLINT
+                   .arg("Package", appIDPrintWidth) // NOLINT
+                   .arg("Version", -15)             // NOLINT
+                   .arg("Module", -15)              // NOLINT
                    .arg("Status")
                    .toStdString(),
                  2);
-    printReplacedText(QString("%1%2%3%4")
-                        .arg(info.id.c_str(), -25)      // NOLINT
-                        .arg(info.version.c_str(), -15) // NOLINT
-                        .arg("binary", -15)             // NOLINT
-                        .arg("committing")
-                        .toStdString(),
-                      2);
-    qDebug() << "import binary to layers";
-    package::LayerDir binaryOutputLayerDir = binaryOutput.absoluteFilePath("..");
+    for (const auto &module : modules) {
+        QDir moduleOutput = this->workingDir.absoluteFilePath("linglong/output/" + module);
+        info.packageInfoV2Module = module.toStdString();
+        info.size = sizeOfDir(moduleOutput.path());
 
-    // remove ref if exist
-    auto layerDir = this->repo.getLayerDir(*ref);
-    if (layerDir) {
-        auto result = this->repo.remove(*ref);
-        if (!result) {
-            return LINGLONG_ERR("failed to remove" + ref->toString() + ":"
-                                + result.error().message());
+        QFile infoFile = moduleOutput.filePath("info.json");
+        if (!infoFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+            return LINGLONG_ERR(infoFile);
         }
+
+        infoFile.write(nlohmann::json(info).dump().c_str());
+        if (infoFile.error() != QFile::NoError) {
+            return LINGLONG_ERR(infoFile);
+        }
+        infoFile.close();
+
+        qDebug() << "copy linglong.yaml to output";
+
+        std::error_code ec;
+        std::filesystem::copy(this->projectYamlFile,
+                              moduleOutput.filePath("linglong.yaml").toStdString(),
+                              ec);
+        if (ec) {
+            return LINGLONG_ERR(
+              QString("copy linglong.yaml to output failed: %1").arg(ec.message().c_str()));
+        }
+        qDebug() << "import module to layers";
+        package::LayerDir binaryOutputLayerDir = moduleOutput.path();
+        printReplacedText(QString("%1%2%3%4")
+                            .arg(info.id.c_str(), appIDPrintWidth) // NOLINT
+                            .arg(info.version.c_str(), -15)        // NOLINT
+                            .arg(module, -15)                      // NOLINT
+                            .arg("committing")
+                            .toStdString(),
+                          2);
+        result = this->repo.remove(*ref, module.toStdString());
+        if (!result) {
+            qDebug() << "remove" << ref->toString() << result.error().message();
+        }
+        auto localLayer = this->repo.importLayerDir(binaryOutputLayerDir);
+        if (!localLayer) {
+            return LINGLONG_ERR(localLayer);
+        }
+        printReplacedText(QString("%1%2%3%4")
+                            .arg(info.id.c_str(), appIDPrintWidth) // NOLINT
+                            .arg(info.version.c_str(), -15)        // NOLINT
+                            .arg(module, -15)                      // NOLINT
+                            .arg("complete\n")
+                            .toStdString(),
+                          2);
     }
 
-    auto localLayer = this->repo.importLayerDir(binaryOutputLayerDir);
-    if (!localLayer) {
-        return LINGLONG_ERR(localLayer);
-    }
-    printReplacedText(QString("%1%2%3%4")
-                        .arg(info.id.c_str(), -25)      // NOLINT
-                        .arg(info.version.c_str(), -15) // NOLINT
-                        .arg("binary", -15)             // NOLINT
-                        .arg("complete\n")
-                        .toStdString(),
-                      2);
-
-    printReplacedText(QString("%1%2%3%4")
-                        .arg(info.id.c_str(), -25)      // NOLINT
-                        .arg(info.version.c_str(), -15) // NOLINT
-                        .arg("develop", -15)            // NOLINT
-                        .arg("committing")
-                        .toStdString(),
-                      2);
-    qDebug() << "import develop to layers";
-    package::LayerDir developOutputLayerDir = developOutput.absoluteFilePath("..");
-    result = this->repo.remove(*ref, "develop");
-    if (!result) {
-        qWarning() << "remove" << ref->toString() << result.error().message();
-    }
-    localLayer = this->repo.importLayerDir(developOutputLayerDir);
-    if (!localLayer) {
-        return LINGLONG_ERR(localLayer);
-    }
-    printReplacedText(QString("%1%2%3%4")
-                        .arg(info.id.c_str(), -25)      // NOLINT
-                        .arg(info.version.c_str(), -15) // NOLINT
-                        .arg("develop", -15)            // NOLINT
-                        .arg("complete\n")
-                        .toStdString(),
-                      2);
     printMessage("Successfully build " + this->project.package.id);
     return LINGLONG_OK;
 }

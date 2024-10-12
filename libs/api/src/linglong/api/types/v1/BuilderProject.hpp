@@ -17,6 +17,7 @@
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
+#include "linglong/api/types/v1/BuilderProjectModules.hpp"
 #include "linglong/api/types/v1/BuilderProjectPackage.hpp"
 #include "linglong/api/types/v1/ApplicationConfigurationPermissions.hpp"
 #include "linglong/api/types/v1/BuilderProjectSource.hpp"
@@ -62,7 +63,7 @@ std::optional<std::vector<std::string>> include;
 /**
 * Specify how to split application into modules.
 */
-std::optional<std::map<std::string, std::vector<std::string>>> modules;
+std::optional<std::vector<BuilderProjectModules>> modules;
 /**
 * package of build file
 */

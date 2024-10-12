@@ -300,11 +300,21 @@ $defs:
         title: BuilderProjectModules
         description: |
           Specify how to split application into modules.
-        type: object
-        additionalProperties:
-          type: array
-          items:
-            type: string
+        type: array
+        items:
+          title: BuilderProjectModules
+          description: items of modules of builder project
+          type: object
+          required:
+            - name
+            - files
+          properties:
+            name:
+              type: string
+              description: module name
+            files:
+              type: string
+              description: module install files
   BuilderConfig:
     description: Configuration file for ll-builder.
     type: object
@@ -333,6 +343,9 @@ $defs:
       skip_check_output:
         type: boolean
         description: skip check output when build
+      skip_strip_symbols:
+        type: boolean
+        description: skip strip debug symbols
       arch:
         type: string
         description: arch of builder config
@@ -605,7 +618,7 @@ $defs:
     type: object
     description: Get the job result using an ID
     allOf:
-      - $ref: "#/$defs/CommonResult"
+      - $ref: '#/$defs/CommonResult'
     properties:
       id:
         type: string

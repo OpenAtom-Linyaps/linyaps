@@ -22,7 +22,10 @@
 #include <QMap>
 #include <QRegExp>
 
+#include <algorithm>
 #include <iostream>
+#include <list>
+#include <string>
 
 #include <wordexp.h>
 
@@ -132,6 +135,18 @@ parseProjectConfig(const QString &filename)
     if (!version.tweak) {
         return LINGLONG_ERR("Please ensure the package.version number has three parts formatted as "
                             "'MAJOR.MINOR.PATCH.TWEAK'");
+    }
+    if (project->modules.has_value()) {
+        if (std::any_of(project->modules->begin(), project->modules->end(), [](const auto &module) {
+                return module.name == "binary";
+            })) {
+            return LINGLONG_ERR("configuration of binary modules is not allowed. see "
+                                "https://linglong.space/guide/ll-builder/modules.html");
+        }
+    }
+    if (project->package.kind == "app" && !project->command.has_value()) {
+        return LINGLONG_ERR(
+          "'command' field is missing, app should hava command as the default startup command");
     }
     return project;
 }
@@ -345,7 +360,7 @@ int main(int argc, char **argv)
                          << "name\turl\n";
                   std::for_each(cfg.repos.cbegin(), cfg.repos.cend(), [](const auto &pair) {
                       const auto &[name, url] = pair;
-                      output << name << '\t' << url << "\n";
+                      std::cout << name << '\t' << url << "\n";
                   });
               }
 
@@ -454,16 +469,24 @@ int main(int argc, char **argv)
               auto buildArch = QCommandLineOption("arch", "set the build arch", "arch");
               auto buildSkipOutputCheck =
                 QCommandLineOption("skip-output-check", "skip output check", "");
+              auto buildSkipStripSymbols =
+                QCommandLineOption("skip-strip-symbols", "skip strip debug symbols", "");
+              auto buildFullDevelop = QCommandLineOption(
+                "full-develop-module",
+                "compatibility options, used to make full develop packages, runtime requires",
+                "");
 
               parser.addOptions({ yamlFile,
+                                  buildArch,
                                   execVerbose,
                                   buildOffline,
+                                  buildFullDevelop,
                                   buildSkipFetchSource,
                                   buildSkipPullDepend,
                                   buildSkipRunContainer,
                                   buildSkipCommitOutput,
-                                  buildArch,
-                                  buildSkipOutputCheck });
+                                  buildSkipOutputCheck,
+                                  buildSkipStripSymbols });
 
               parser.addPositionalArgument("build", "build project", "build");
               parser.setApplicationDescription("linglong build command tools\n"
@@ -483,7 +506,8 @@ int main(int argc, char **argv)
                                                  repo,
                                                  *containerBuidler,
                                                  *builderCfg);
-
+              builder.projectYamlFile =
+                QDir().absoluteFilePath(parser.value(yamlFile)).toStdString();
               if (parser.isSet(buildArch)) {
                   auto arch =
                     linglong::package::Architecture::parse(parser.value(buildArch).toStdString());
@@ -528,6 +552,14 @@ int main(int argc, char **argv)
                   auto cfg = builder.getConfig();
                   cfg.skipCheckOutput = true;
                   builder.setConfig(cfg);
+              }
+              if (parser.isSet(buildSkipStripSymbols)) {
+                  auto cfg = builder.getConfig();
+                  cfg.skipStripSymbols = true;
+                  builder.setConfig(cfg);
+              }
+              if (parser.isSet(buildFullDevelop)) {
+                  builder.fullDevelop = true;
               }
               auto allArgs = QCoreApplication::arguments();
               linglong::utils::error::Result<void> ret;
@@ -731,14 +763,15 @@ int main(int argc, char **argv)
               auto optRepoName = QCommandLineOption("repo-name", "remote repo name", "--repo-name");
               auto optRepoChannel =
                 QCommandLineOption("channel", "remote repo channel", "--channel", "main");
-              auto optNoDevel = QCommandLineOption("no-develop", "push without develop", "");
-              parser.addOptions({ yamlFile, optRepoUrl, optRepoName, optRepoChannel, optNoDevel });
+              auto optModule = QCommandLineOption("module", "push single module", "");
+              parser.addOptions({ yamlFile, optRepoUrl, optRepoName, optRepoChannel, optModule });
 
               parser.process(app);
 
               auto repoUrl = parser.value(optRepoUrl);
               auto repoName = parser.value(optRepoName);
               auto repoChannel = parser.value(optRepoChannel);
+              auto pushModule = parser.value(optModule).toStdString();
 
               auto project = parseProjectConfig(QDir().absoluteFilePath(parser.value(yamlFile)));
               if (!project) {
@@ -751,17 +784,21 @@ int main(int argc, char **argv)
                                                  repo,
                                                  *containerBuidler,
                                                  *builderCfg);
-              auto result = builder.push("binary", repoUrl.toStdString(), repoName.toStdString());
-              if (!result) {
-                  qCritical() << result.error();
-                  return -1;
+              std::list<std::string> modules;
+              if (project->modules.has_value()) {
+                  for (const auto &module : project->modules.value()) {
+                      modules.push_back(module.name);
+                  }
               }
-
-              if (!parser.isSet(optNoDevel)) {
-                  result = builder.push("develop", repoUrl.toStdString(), repoName.toStdString());
-                  if (!result) {
-                      qCritical() << result.error();
-                      return -1;
+              modules.push_back("binary");
+              for (const auto &module : modules) {
+                  if (pushModule.empty() || pushModule == module) {
+                      auto result =
+                        builder.push(module, repoUrl.toStdString(), repoName.toStdString());
+                      if (!result) {
+                          qCritical() << result.error();
+                          return -1;
+                      }
                   }
               }
 

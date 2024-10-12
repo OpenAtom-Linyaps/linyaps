@@ -359,11 +359,24 @@
         "modules": {
           "title": "BuilderProjectModules",
           "description": "Specify how to split application into modules.\n",
-          "type": "object",
-          "additionalProperties": {
-            "type": "array",
-            "items": {
-              "type": "string"
+          "type": "array",
+          "items": {
+            "title": "BuilderProjectModules",
+            "description": "items of modules of builder project",
+            "type": "object",
+            "required": [
+              "name",
+              "files"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "module name"
+              },
+              "files": {
+                "type": "string",
+                "description": "module install files"
+              }
             }
           }
         }
@@ -404,6 +417,10 @@
         "skip_check_output": {
           "type": "boolean",
           "description": "skip check output when build"
+        },
+        "skip_strip_symbols": {
+          "type": "boolean",
+          "description": "skip strip debug symbols"
         },
         "arch": {
           "type": "string",

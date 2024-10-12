@@ -47,6 +47,7 @@
 #include "linglong/api/types/v1/BuilderProject.hpp"
 #include "linglong/api/types/v1/BuilderProjectSource.hpp"
 #include "linglong/api/types/v1/BuilderProjectPackage.hpp"
+#include "linglong/api/types/v1/BuilderProjectModules.hpp"
 #include "linglong/api/types/v1/BuilderConfig.hpp"
 #include "linglong/api/types/v1/ApplicationConfiguration.hpp"
 #include "linglong/api/types/v1/ApplicationConfigurationPermissions.hpp"
@@ -71,6 +72,9 @@ void to_json(json & j, const ApplicationConfiguration & x);
 
 void from_json(const json & j, BuilderConfig & x);
 void to_json(json & j, const BuilderConfig & x);
+
+void from_json(const json & j, BuilderProjectModules & x);
+void to_json(json & j, const BuilderProjectModules & x);
 
 void from_json(const json & j, BuilderProjectPackage & x);
 void to_json(json & j, const BuilderProjectPackage & x);
@@ -222,6 +226,7 @@ x.skipCommitOutput = get_stack_optional<bool>(j, "skip_commit_output");
 x.skipFetchSource = get_stack_optional<bool>(j, "skip_fetch_source");
 x.skipPullDepend = get_stack_optional<bool>(j, "skip_pull_depend");
 x.skipRunContainer = get_stack_optional<bool>(j, "skip_run_container");
+x.skipStripSymbols = get_stack_optional<bool>(j, "skip_strip_symbols");
 x.version = j.at("version").get<int64_t>();
 }
 
@@ -252,7 +257,21 @@ j["skip_pull_depend"] = x.skipPullDepend;
 if (x.skipRunContainer) {
 j["skip_run_container"] = x.skipRunContainer;
 }
+if (x.skipStripSymbols) {
+j["skip_strip_symbols"] = x.skipStripSymbols;
+}
 j["version"] = x.version;
+}
+
+inline void from_json(const json & j, BuilderProjectModules& x) {
+x.files = j.at("files").get<std::string>();
+x.name = j.at("name").get<std::string>();
+}
+
+inline void to_json(json & j, const BuilderProjectModules & x) {
+j = json::object();
+j["files"] = x.files;
+j["name"] = x.name;
 }
 
 inline void from_json(const json & j, BuilderProjectPackage& x) {
@@ -315,7 +334,7 @@ x.build = j.at("build").get<std::string>();
 x.command = get_stack_optional<std::vector<std::string>>(j, "command");
 x.exclude = get_stack_optional<std::vector<std::string>>(j, "exclude");
 x.include = get_stack_optional<std::vector<std::string>>(j, "include");
-x.modules = get_stack_optional<std::map<std::string, std::vector<std::string>>>(j, "modules");
+x.modules = get_stack_optional<std::vector<BuilderProjectModules>>(j, "modules");
 x.package = j.at("package").get<BuilderProjectPackage>();
 x.permissions = get_stack_optional<ApplicationConfigurationPermissions>(j, "permissions");
 x.runtime = get_stack_optional<std::string>(j, "runtime");

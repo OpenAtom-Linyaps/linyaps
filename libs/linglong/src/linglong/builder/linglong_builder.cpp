@@ -850,15 +850,53 @@ set -e
 
     qDebug() << "generate entries";
     if (this->project.package.kind != "runtime") {
+        const QStringList exportPaths = {
+            "share/applications", // Copy desktop files
+            "share/mime",         // Copy MIME Type files
+            "share/icons",        // Icons
+            "share/dbus-1",       // D-Bus service files
+            "share/gnome-shell",  // Search providers
+            "share/appdata",      // Copy appdata/metainfo files (legacy path)
+            "share/metainfo",     // Copy appdata/metainfo files
+            "share/plugins",      // Copy plugins conf，The configuration files provided by some
+                                  // applications maybe used by the host dde-file-manager.
+            "share/systemd",      // copy systemd service files
+        };
+
         QDir binaryFiles = this->workingDir.absoluteFilePath("linglong/output/binary/files");
         QDir binaryEntries = this->workingDir.absoluteFilePath("linglong/output/binary/entries");
+
         if (!binaryEntries.mkpath(".")) {
             return LINGLONG_ERR("make path " + binaryEntries.absolutePath() + ": failed.");
         }
 
-        if (!QFile::link("../files/share", binaryEntries.absoluteFilePath("share"))) {
-            return LINGLONG_ERR("link entries share to files share: failed");
+        if (binaryFiles.exists("share")) {
+            if (!binaryEntries.mkpath("share")) {
+                return LINGLONG_ERR("mkpath files/share: failed");
+            }
         }
+
+        for (const auto &path : exportPaths) {
+            if (!binaryFiles.exists(path)) {
+                continue;
+            }
+
+            const QString dest = QString("../../files/%1").arg(path);
+
+            if (path == "share/appdata") {
+                if (!QFile::link(dest, binaryEntries.absoluteFilePath("share/metainfo"))) {
+                    qWarning() << "link binary entries share to files share/" << path << "failed";
+                }
+
+                continue;
+            }
+
+            if (!QFile::link(dest, binaryEntries.absoluteFilePath(path))) {
+                qWarning() << "link binary entries " << path << "to files share: failed";
+                continue;
+            }
+        }
+
         if (binaryFiles.exists("lib/systemd/user")) {
             // 配置放到share/systemd/user或lib/systemd/user对systemd来说基本等价
             // 但玲珑仅将share导出到XDG_DATA_DIR，所以要将lib/systemd/user的内容复制到share/systemd/user
@@ -871,6 +909,7 @@ set -e
                 return LINGLONG_ERR(ret);
             }
         }
+
         if (project.command.value_or(std::vector<std::string>{}).empty()) {
             return LINGLONG_ERR("command field is required, please specify!");
         }

@@ -11,6 +11,7 @@
 #include "linglong/api/types/v1/LayerInfo.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/RepoConfig.hpp"
+#include "linglong/api/types/v1/UpgradeListResult.hpp"
 #include "linglong/utils/error/error.h"
 
 #include <QJsonObject>
@@ -38,9 +39,11 @@ public:
     virtual void printLayerInfo(const api::types::v1::LayerInfo &);
     virtual void printTaskStatus(const QString &percentage, const QString &message, int status);
     virtual void printContent(const QStringList &filePaths);
+    virtual void printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &);
 
 private:
     void printPackageInfo(const api::types::v1::PackageInfoV2 &);
+    void printUpgradeList(const api::types::v1::UpgradeListResult &);
 };
 
 } // namespace linglong::cli

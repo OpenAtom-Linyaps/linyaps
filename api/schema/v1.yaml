@@ -719,6 +719,9 @@ $defs:
             repo:
               type: string
               description: which repo is this app belongs to
+            deleted:
+              description: deleted mark
+              type: boolean
             commit:
               type: string
               description: ostree commit hash

@@ -30,7 +30,8 @@ pfl_add_library(
   src/linglong/cli/interactive_notifier.h
   src/linglong/cli/json_printer.cpp
   src/linglong/cli/json_printer.h
-  src/linglong/cli/printer.cpp
+  src/linglong/cli/cli_printer.cpp
+  src/linglong/cli/cli_printer.h
   src/linglong/cli/printer.h
   src/linglong/cli/terminal_notifier.cpp
   src/linglong/cli/terminal_notifier.h

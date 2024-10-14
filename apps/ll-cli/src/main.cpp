@@ -8,6 +8,7 @@
 #include "linglong/cli/dbus_notifier.h"
 #include "linglong/cli/dummy_notifier.h"
 #include "linglong/cli/json_printer.h"
+#include "linglong/cli/cli_printer.h"
 #include "linglong/cli/terminal_notifier.h"
 #include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
@@ -203,7 +204,7 @@ int main(int argc, char **argv)
           if (args["--json"].asBool()) {
               printer = std::make_unique<JSONPrinter>();
           } else {
-              printer = std::make_unique<Printer>();
+              printer = std::make_unique<CLIPrinter>();
           }
 
           auto config = linglong::repo::loadConfig(

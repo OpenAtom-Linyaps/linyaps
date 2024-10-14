@@ -43,6 +43,7 @@
 #include "linglong/api/types/v1/RepoConfig.hpp"
 #include "linglong/api/types/v1/RepositoryCache.hpp"
 #include "linglong/api/types/v1/UabMetaInfo.hpp"
+#include "linglong/api/types/v1/UpgradeListResult.hpp"
 
 namespace linglong {
 namespace api {
@@ -91,6 +92,7 @@ std::optional<PackageManager1ResultWithTaskID> packageManager1UpdateResult;
 std::optional<RepoConfig> repoConfig;
 std::optional<RepositoryCache> repositoryCache;
 std::optional<UabMetaInfo> uabMetaInfo;
+std::optional<UpgradeListResult> upgradeListResult;
 };
 }
 }

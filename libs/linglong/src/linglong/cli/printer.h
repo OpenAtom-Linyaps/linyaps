@@ -11,11 +11,8 @@
 #include "linglong/api/types/v1/LayerInfo.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/RepoConfig.hpp"
+#include "linglong/api/types/v1/UpgradeListResult.hpp"
 #include "linglong/utils/error/error.h"
-
-#include <QJsonObject>
-#include <QObject>
-#include <QString>
 
 namespace linglong::cli {
 
@@ -29,18 +26,16 @@ public:
     Printer &operator=(Printer &&) = delete;
     virtual ~Printer() = default;
 
-    virtual void printErr(const utils::error::Error &);
-    virtual void printPackage(const api::types::v1::PackageInfoV2 &);
-    virtual void printPackages(const std::vector<api::types::v1::PackageInfoV2> &);
-    virtual void printContainers(const std::vector<api::types::v1::CliContainer> &);
-    virtual void printReply(const api::types::v1::CommonResult &);
-    virtual void printRepoConfig(const api::types::v1::RepoConfig &);
-    virtual void printLayerInfo(const api::types::v1::LayerInfo &);
-    virtual void printTaskStatus(const QString &percentage, const QString &message, int status);
-    virtual void printContent(const QStringList &filePaths);
-
-private:
-    void printPackageInfo(const api::types::v1::PackageInfoV2 &);
+    virtual void printErr(const utils::error::Error &) = 0;
+    virtual void printPackage(const api::types::v1::PackageInfoV2 &) = 0;
+    virtual void printPackages(const std::vector<api::types::v1::PackageInfoV2> &) = 0;
+    virtual void printContainers(const std::vector<api::types::v1::CliContainer> &) = 0;
+    virtual void printReply(const api::types::v1::CommonResult &) = 0;
+    virtual void printRepoConfig(const api::types::v1::RepoConfig &) = 0;
+    virtual void printLayerInfo(const api::types::v1::LayerInfo &) = 0;
+    virtual void printTaskStatus(const QString &percentage, const QString &message, int status) = 0;
+    virtual void printContent(const QStringList &filePaths) = 0;
+    virtual void printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &) = 0;
 };
 
 } // namespace linglong::cli

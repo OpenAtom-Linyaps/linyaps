@@ -23,6 +23,8 @@ pfl_add_library(
   src/linglong/api/types/v1/CommonResult.hpp
   src/linglong/api/types/v1/Generators.hpp
   src/linglong/api/types/v1/helper.hpp
+  src/linglong/api/types/v1/InteractionReply.hpp
+  src/linglong/api/types/v1/InteractionRequest.hpp
   src/linglong/api/types/v1/LayerInfo.hpp
   src/linglong/api/types/v1/LinglongAPIV1.hpp
   src/linglong/api/types/v1/OciConfigurationPatch.hpp
@@ -31,9 +33,10 @@ pfl_add_library(
   src/linglong/api/types/v1/PackageManager1GetRepoInfoResult.hpp
   src/linglong/api/types/v1/PackageManager1GetRepoInfoResultRepoInfo.hpp
   src/linglong/api/types/v1/PackageManager1InstallParameters.hpp
+  src/linglong/api/types/v1/PackageManager1JobInfo.hpp
   src/linglong/api/types/v1/PackageManager1ModifyRepoParameters.hpp
   src/linglong/api/types/v1/PackageManager1Package.hpp
-  src/linglong/api/types/v1/PackageManager1ResultWithTaskObjectPath.hpp
+  src/linglong/api/types/v1/PackageManager1PackageTaskResult.hpp
   src/linglong/api/types/v1/PackageManager1SearchParameters.hpp
   src/linglong/api/types/v1/PackageManager1SearchResult.hpp
   src/linglong/api/types/v1/PackageManager1UninstallParameters.hpp

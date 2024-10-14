@@ -6,6 +6,6 @@
 
 #include "linglong/adaptors/task/gen_org_deepin_linglong_task1.h"
 
-namespace linglong::adaptors::package_manger {
+namespace linglong::adaptors::task {
 using Task1 = OrgDeepinLinglongTask1Adaptor;
 }

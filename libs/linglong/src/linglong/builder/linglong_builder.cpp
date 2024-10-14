@@ -268,7 +268,7 @@ utils::error::Result<package::Reference> pullDependency(const package::FuzzyRefe
     };
     QObject::connect(&tmpTask, &service::PackageTask::PartChanged, partChanged);
     repo.pull(tmpTask, *ref, module);
-    if (tmpTask.state() == service::PackageTask::State::Failed) {
+    if (tmpTask.state() == linglong::api::types::v1::State::Failed) {
         return LINGLONG_ERR("pull " + ref->toString() + " failed", std::move(tmpTask).takeError());
     }
     return *ref;

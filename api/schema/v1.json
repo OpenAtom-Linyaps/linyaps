@@ -685,7 +685,6 @@
         "InstallBase",
         "InstallApplication",
         "PostAction",
-        "PreRemove",
         "Uninstall",
         "Done"
       ]
@@ -705,9 +704,8 @@
         }
       }
     },
-    "PackageManager1InstallResult": {
-      "title": "PackageManager1ResultWithTaskObjectPath",
-      "description": "package manager install result",
+    "PackageManager1PackageTaskResult": {
+      "description": "package manager task result",
       "allOf": [
         {
           "$ref": "#/$defs/CommonResult"
@@ -732,9 +730,6 @@
         }
       }
     },
-    "PackageManager1UninstallResult": {
-      "$ref": "#/$defs/CommonResult"
-    },
     "PackageManager1UpdateParameters": {
       "type": "object",
       "description": "package manager update result",
@@ -750,11 +745,6 @@
           }
         }
       }
-    },
-    "PackageManager1UpdateResult": {
-      "title": "PackageManager1UpdateResult",
-      "description": "package manager update result",
-      "$ref": "#/$defs/PackageManager1InstallResult"
     },
     "PackageManager1ModifyRepoParameters": {
       "type": "object",
@@ -982,20 +972,14 @@
     "PackageManager1InstallParameters": {
       "$ref": "#/$defs/PackageManager1InstallParameters"
     },
-    "PackageManager1InstallResult": {
-      "$ref": "#/$defs/PackageManager1InstallResult"
+    "PackageManager1PackageTaskResult": {
+      "$ref": "#/$defs/PackageManager1PackageTaskResult"
     },
     "PackageManager1UninstallParameters": {
       "$ref": "#/$defs/PackageManager1UninstallParameters"
     },
-    "PackageManager1UninstallResult": {
-      "$ref": "#/$defs/PackageManager1UninstallResult"
-    },
     "PackageManager1UpdateParameters": {
       "$ref": "#/$defs/PackageManager1UpdateParameters"
-    },
-    "PackageManager1UpdateResult": {
-      "$ref": "#/$defs/PackageManager1UpdateResult"
     },
     "PackageManager1ModifyRepoParameters": {
       "$ref": "#/$defs/PackageManager1ModifyRepoParameters"

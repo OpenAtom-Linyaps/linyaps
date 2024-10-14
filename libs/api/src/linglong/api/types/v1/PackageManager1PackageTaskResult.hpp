@@ -9,7 +9,7 @@
 //
 //  Then include this file, and then do
 //
-//     PackageManager1ResultWithTaskObjectPath.hpp data = nlohmann::json::parse(jsonString);
+//     PackageManager1PackageTaskResult.hpp data = nlohmann::json::parse(jsonString);
 
 #pragma once
 
@@ -22,9 +22,7 @@ namespace api {
 namespace types {
 namespace v1 {
 /**
-* package manager update result
-*
-* package manager install result
+* package manager task result
 *
 * this is common error result of ll-cli command --json
 */
@@ -32,13 +30,11 @@ namespace v1 {
 using nlohmann::json;
 
 /**
-* package manager update result
-*
-* package manager install result
+* package manager task result
 *
 * this is common error result of ll-cli command --json
 */
-struct PackageManager1ResultWithTaskObjectPath {
+struct PackageManager1PackageTaskResult {
 /**
 * task dbus object path of package manager install
 */

@@ -22,9 +22,9 @@ public:
     void printRepoConfig(const api::types::v1::RepoConfig &) override;
     void printLayerInfo(const api::types::v1::LayerInfo &) override;
     void printTaskState(double percentage,
-                         const QString &message,
-                         const api::types::v1::State state,
-                         const api::types::v1::SubState subState) override;
+                        const QString &message,
+                        api::types::v1::State state,
+                        api::types::v1::SubState subState) override;
     void printContent(const QStringList &desktopPaths) override;
 };
 

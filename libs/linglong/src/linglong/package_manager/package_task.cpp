@@ -4,11 +4,15 @@
 
 #include "package_task.h"
 
-#include "linglong/api/types/v1/Generators.hpp"
-#include "linglong/utils/serialize/json.h"
+#include "linglong/adaptors/task/task1.h"
+#include "linglong/utils/dbus/register.h"
 
 #include <QDebug>
 #include <QUuid>
+
+#include <utility>
+
+const auto TASK_DONE = 100;
 
 namespace linglong::service {
 
@@ -17,71 +21,83 @@ PackageTask PackageTask::createTemporaryTask() noexcept
     return {};
 }
 
+std::unique_ptr<PackageTask> PackageTask::creatSubTask(double partOfTotal) noexcept
+{
+    if (partOfTotal >= TASK_DONE) {
+        qDebug() << "The total progress of subTask couldn't great than 100.";
+        return nullptr;
+    }
+
+    struct EnableMaker : public PackageTask
+    {
+        using PackageTask::PackageTask;
+    };
+
+    auto subTask = std::make_unique<EnableMaker>();
+    auto *subTaskPtr = subTask.get();
+    connect(subTaskPtr, &PackageTask::StateChanged, [this](int newState) {
+        this->setProperty("State", newState);
+    });
+    connect(subTaskPtr, &PackageTask::SubStateChanged, [this](int newSubState) {
+        this->setProperty("SubState", newSubState);
+    });
+    connect(subTaskPtr, &PackageTask::MessageChanged, [this](const QString &newMessage) {
+        this->setProperty("Message", newMessage);
+    });
+    connect(subTaskPtr, &PackageTask::PercentageChanged, [this, partOfTotal](double newPercentage) {
+        this->m_totalPercentage = newPercentage * partOfTotal;
+        Q_EMIT this->PercentageChanged(this->getPercentage());
+    });
+
+    return subTask;
+}
+
 PackageTask::PackageTask()
     : m_taskID(QUuid::createUuid())
     , m_cancelFlag(g_cancellable_new())
 {
 }
 
-PackageTask::PackageTask(const package::Reference &ref, const QString &module, QObject *parent)
+PackageTask::PackageTask(QDBusConnection connection, QString refSpec, QObject *parent)
     : QObject(parent)
     , m_taskID(QUuid::createUuid())
-    , m_layer(ref.toString() % "/" % module)
+    , m_refSpec(std::move(refSpec))
     , m_cancelFlag(g_cancellable_new())
 {
-}
-
-PackageTask::PackageTask(const package::Reference &ref, const std::string &module, QObject *parent)
-    : PackageTask(ref, QString::fromStdString(module), parent)
-{
-}
-
-PackageTask::PackageTask(PackageTask &&other) noexcept
-    : m_state(other.m_state)
-    , m_subState(other.m_subState)
-    , m_err(std::move(other).m_err)
-    , m_curPercentage(other.m_curPercentage)
-    , m_taskID(std::move(other).m_taskID)
-    , m_layer(std::move(other).m_layer)
-    , m_cancelFlag(other.m_cancelFlag)
-    , m_job(std::move(other).m_job)
-{
-    other.m_cancelFlag = nullptr;
-    other.m_state = State::Unknown;
-    other.m_subState = SubState::Unknown;
-    other.m_curPercentage = 0;
-}
-
-PackageTask &PackageTask::operator=(PackageTask &&other) noexcept
-{
-    if (*this == other) {
-        return *this;
+    auto *ptr = new linglong::adaptors::task::Task1(this);
+    const auto *mo = ptr->metaObject();
+    auto interfaceIndex = mo->indexOfClassInfo("D-Bus Interface");
+    if (interfaceIndex == -1) {
+        qFatal("internal adaptor error");
+        return;
+    }
+    auto ret = linglong::utils::dbus::registerDBusObject(connection, taskObjectPath(), ptr);
+    if (!ret) {
+        qCritical() << ret.error();
+        return;
     }
 
-    this->m_state = other.m_state;
-    other.m_state = State::Unknown;
-
-    this->m_subState = other.m_subState;
-    other.m_subState = SubState::Unknown;
-
-    this->m_cancelFlag = other.m_cancelFlag;
-    other.m_cancelFlag = nullptr;
-
-    this->m_curPercentage = other.m_curPercentage;
-    other.m_curPercentage = 100;
-
-    this->m_layer = std::move(other).m_layer;
-    this->m_err = std::move(other).m_err;
-    this->m_taskID = std::move(other).m_taskID;
-    this->m_job = std::move(other).m_job;
-
-    return *this;
+    const auto *interface = mo->classInfo(interfaceIndex).value();
+    m_forwarder =
+      new utils::dbus::PropertiesForwarder(connection, taskObjectPath(), interface, this);
 }
 
 PackageTask::~PackageTask()
 {
     if (m_cancelFlag != nullptr) {
         g_object_unref(m_cancelFlag);
+    }
+}
+
+void PackageTask::changePropertiesDone() const noexcept
+{
+    if (m_forwarder == nullptr) {
+        return;
+    }
+
+    auto ret = m_forwarder->forward();
+    if (!ret) {
+        qCritical() << ret.error();
     }
 }
 
@@ -97,64 +113,81 @@ void PackageTask::updateTask(uint part, uint whole, const QString &message) noex
         return;
     }
 
-    auto partPercentage = part / whole;
+    this->setProperty("Message", message);
+    m_curStagePercentage = static_cast<double>(part) / whole;
     auto partPercentageMsg =
-      QString("%1/%2(%3%)").arg(part).arg(whole).arg(currentPercentage(partPercentage * 100));
+      QString("%1/%2(%3%)")
+        .arg(part)
+        .arg(whole)
+        .arg(m_totalPercentage
+             + (m_curStagePercentage
+                * m_subStateMap[static_cast<api::types::v1::SubState>(m_subState)]));
+
+    Q_EMIT PercentageChanged(getPercentage());
+    changePropertiesDone();
 
     Q_EMIT PartChanged(partPercentageMsg, {});
-    Q_EMIT TaskChanged(taskObjectPath(), message, {});
 }
 
-void PackageTask::updateState(State newState, const QString &message) noexcept
+void PackageTask::updateState(linglong::api::types::v1::State newState,
+                              const QString &message) noexcept
 {
-    m_state = newState;
+    this->setProperty("State", static_cast<int>(newState));
+    auto curState = state();
+    if (curState == linglong::api::types::v1::State::Canceled
+        || curState == linglong::api::types::v1::State::Failed
+        || curState == linglong::api::types::v1::State::Succeed) {
+        updateSubState(linglong::api::types::v1::SubState::Done, message);
+        return;
+    }
+    this->setProperty("Message", message);
+    changePropertiesDone();
+}
 
-    if (m_state == State::Canceled || m_state == State::Failed || m_state == State::Succeed) {
-        updateSubState(SubState::Done, message);
+void PackageTask::updateSubState(linglong::api::types::v1::SubState newSubState,
+                                 const QString &message) noexcept
+{
+    this->setProperty("SubState", static_cast<linglong::api::types::v1::SubState>(newSubState));
+    this->setProperty("Message", message);
+
+    auto curSubState = subState();
+    if (curSubState == linglong::api::types::v1::SubState::Done) {
+        m_totalPercentage = TASK_DONE;
+        Q_EMIT PercentageChanged(getPercentage());
+        changePropertiesDone();
         return;
     }
 
-    Q_EMIT TaskChanged(taskObjectPath(), message, {});
-}
-
-void PackageTask::updateSubState(SubState newSubState, const QString &message) noexcept
-{
-    m_subState = newSubState;
-
-    if (m_subState == SubState::Done) {
-        m_curPercentage = 100;
-    } else {
-        m_curPercentage += m_subStateMap[m_subState];
-    }
-
-    Q_EMIT TaskChanged(taskObjectPath(), message, {});
+    m_totalPercentage += m_subStateMap[curSubState];
+    m_curStagePercentage = 0;
+    Q_EMIT PercentageChanged(getPercentage());
+    changePropertiesDone();
 }
 
 void PackageTask::reportError(linglong::utils::error::Error &&err) noexcept
 {
-    m_curPercentage = 100;
-    m_state = State::Failed;
-    m_subState = SubState::Done;
+    m_totalPercentage = TASK_DONE;
+    m_curStagePercentage = 0;
+    Q_EMIT PercentageChanged(getPercentage());
+
+    this->setProperty("State", static_cast<int>(linglong::api::types::v1::State::Failed));
+    this->setProperty("SubState", static_cast<int>(linglong::api::types::v1::SubState::Done));
     m_err = std::move(err);
 
-    Q_EMIT TaskChanged(taskObjectPath(), m_err.message(), {});
+    this->setProperty("Message", m_err.message());
+    changePropertiesDone();
 }
 
-double PackageTask::currentPercentage(double increase) noexcept
+void PackageTask::Cancel() noexcept
 {
-    return m_curPercentage + increase;
-}
-
-void PackageTask::cancelTask() noexcept
-{
-    if (g_cancellable_is_cancelled(m_cancelFlag) == 0) {
-        g_cancellable_cancel(m_cancelFlag);
+    if (g_cancellable_is_cancelled(m_cancelFlag) == TRUE) {
+        return;
     }
 
-    m_state = State::Canceled;
-    m_subState = SubState::Done;
-    
-    Q_EMIT TaskChanged(taskObjectPath(), "Task canceled", {});
+    qInfo() << "task " << taskID() << "has been canceled by user";
+    g_cancellable_cancel(m_cancelFlag);
+    updateState(linglong::api::types::v1::State::Canceled,
+                QString{ "task %1 has been canceled by user" }.arg(taskID()));
 }
 
 } // namespace linglong::service

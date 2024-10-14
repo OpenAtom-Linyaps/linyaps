@@ -1015,6 +1015,24 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
+    auto layerDir = this->repository.getLayerDir(*ref);
+    if (!layerDir) {
+        this->printer.printErr(layerDir.error());
+        return -1;
+    }
+
+    auto info = layerDir->info();
+    if (!info) {
+        this->printer.printErr(info.error());
+        return -1;
+    }
+
+    if (info->kind != "app") {
+        this->printer.printErr(
+          LINGLONG_ERRV("This layer is not an application, please use 'll-cli prune'.", -1));
+        return -1;
+    }
+
     auto params = api::types::v1::PackageManager1UninstallParameters{};
     params.package.id = fuzzyRef->id.toStdString();
     if (fuzzyRef->channel) {

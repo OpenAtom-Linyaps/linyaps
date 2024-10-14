@@ -78,7 +78,7 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
 
     this->cache.llVersion = LINGLONG_VERSION;
     this->cache.config = repoConfig;
-    this->cache.version = "1";
+    this->cache.version = "2";
     this->cache.migratingStage = std::nullopt;
     this->cache.layers.clear();
 

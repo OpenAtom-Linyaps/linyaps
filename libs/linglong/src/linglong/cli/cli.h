@@ -7,8 +7,8 @@
 #pragma once
 
 #include "linglong/api/dbus/v1/package_manager.h"
-#include "linglong/cli/interactive_notifier.h"
 #include "linglong/api/dbus/v1/task.h"
+#include "linglong/cli/interactive_notifier.h"
 #include "linglong/cli/printer.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
@@ -45,15 +45,19 @@ private:
     repo::OSTreeRepo &repository;
     std::unique_ptr<InteractiveNotifier> notifier;
     api::dbus::v1::PackageManager &pkgMan;
-    std::unique_ptr<api::dbus::v1::Task1> task{ nullptr };
-    service::PackageTask::State lastState{ service::PackageTask::State::Unknown };
-    service::PackageTask::SubState lastSubState{ service::PackageTask::SubState::Unknown };
+    QString taskObjectPath;
+    api::dbus::v1::Task1 *task{ nullptr };
+    linglong::api::types::v1::State lastState{ linglong::api::types::v1::State::Unknown };
+    linglong::api::types::v1::SubState lastSubState{ linglong::api::types::v1::SubState::Unknown };
+    QString lastMessage;
+    double lastPercentage{ 0 };
     std::vector<std::string>
     filePathMapping(std::map<std::string, docopt::value> &args,
                     const std::vector<std::string> &command) const noexcept;
     static void filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> &list,
                                            const QString &type) noexcept;
     void updateAM() noexcept;
+    void printProgress() noexcept;
 
 public:
     int run(std::map<std::string, docopt::value> &args);
@@ -76,11 +80,17 @@ public:
 
 private Q_SLOTS:
     int installFromFile(const QFileInfo &fileInfo);
-    void processDownloadState(const QString &taskObjectPath, const QString &message);
+    // maybe use in the future
+    void onTaskAdded(QDBusObjectPath object_path);
+    void onTaskRemoved(QDBusObjectPath object_path, int state, int subState, QString message);
+    void onTaskPropertiesChanged(QString interface,
+                                 QVariantMap changed_properties,
+                                 QStringList invalidated_properties);
     void forwardMigrateDone(int code, QString message);
 
 Q_SIGNALS:
     void migrateDone(int code, QString message, QPrivateSignal);
+    void taskDone();
 };
 
 } // namespace linglong::cli

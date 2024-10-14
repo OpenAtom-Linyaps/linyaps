@@ -39,11 +39,15 @@ public:
     virtual void printReply(const api::types::v1::CommonResult &);
     virtual void printRepoConfig(const api::types::v1::RepoConfig &);
     virtual void printLayerInfo(const api::types::v1::LayerInfo &);
-    virtual void printTaskState(const double percentage,
-                                 const QString &message,
-                                 const api::types::v1::State state,
-                                 const api::types::v1::SubState subState);
+    virtual void printTaskState(double percentage,
+                                const QString &message,
+                                api::types::v1::State state,
+                                api::types::v1::SubState subState);
     virtual void printContent(const QStringList &filePaths);
+
+protected:
+    static std::string toString(linglong::api::types::v1::State state) noexcept;
+    static std::string toString(linglong::api::types::v1::SubState state) noexcept;
 
 private:
     void printPackageInfo(const api::types::v1::PackageInfoV2 &);

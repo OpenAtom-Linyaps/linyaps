@@ -111,14 +111,56 @@ void Printer::printContent(const QStringList &filePaths)
     }
 }
 
-void Printer::printTaskState(const double percentage,
-                              const QString &message,
-                              const api::types::v1::State /*state*/,
-                              const api::types::v1::SubState /*subState*/)
+std::string Printer::toString(linglong::api::types::v1::SubState state) noexcept
+{
+    switch (state) {
+    case linglong::api::types::v1::SubState::Done:
+        return "Done";
+    case linglong::api::types::v1::SubState::InstallApplication:
+        return "InstallApplication";
+    case linglong::api::types::v1::SubState::InstallBase:
+        return "InstallBase";
+    case linglong::api::types::v1::SubState::InstallRuntime:
+        return "InstallRuntime";
+    case linglong::api::types::v1::SubState::PostAction:
+        return "PostAction";
+    case linglong::api::types::v1::SubState::PreAction:
+        return "PreAction";
+    case linglong::api::types::v1::SubState::Uninstall:
+        return "Uninstall";
+    default:
+        return "UnknownSubState";
+    }
+}
+
+std::string Printer::toString(linglong::api::types::v1::State state) noexcept
+{
+    switch (state) {
+    case linglong::api::types::v1::State::Canceled:
+        return "Canceled";
+    case linglong::api::types::v1::State::Failed:
+        return "Failed";
+    case linglong::api::types::v1::State::Processing:
+        return "Processing";
+    case linglong::api::types::v1::State::Pending:
+        return "Pending";
+    case linglong::api::types::v1::State::Queued:
+        return "Queued";
+    case linglong::api::types::v1::State::Succeed:
+        return "Succeed";
+    default:
+        return "UnknownState";
+    }
+}
+
+void Printer::printTaskState(double percentage,
+                             const QString &message,
+                             api::types::v1::State state,
+                             api::types::v1::SubState subState)
 {
     auto &stdout = std::cout;
-    stdout << "\r\33[K"
-           << "\033[?25l" << percentage << "% " << message.toStdString() << "\033[?25h";
+    stdout << "\r\33[K" << "\033[?25l" << message.toStdString() << ":" << percentage << "%"
+           << "\033[?25h";
     stdout.flush();
 }
 

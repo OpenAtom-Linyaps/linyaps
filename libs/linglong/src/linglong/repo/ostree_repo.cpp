@@ -13,7 +13,7 @@
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
-#include "linglong/package_manager/task.h"
+#include "linglong/package_manager/package_task.h"
 #include "linglong/repo/config.h"
 #include "linglong/utils/command/env.h"
 #include "linglong/utils/error/error.h"
@@ -73,7 +73,7 @@ struct ostreeUserData
     guint64 total_delta_part_usize{ 0 };
     char *ostree_status{ nullptr };
     service::PackageTask *taskContext{ nullptr };
-    std::string status;
+    std::string status{ "Beginning to pull data" };
     long double progress{ 0 };
     long double last_total{ 0 };
 
@@ -158,7 +158,7 @@ void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
         LINGLONG_TRACE("update progress status")
 
         if (data->caught_error) {
-            Q_EMIT data->taskContext->reportError(
+            data->taskContext->reportError(
               LINGLONG_ERRV("Caught error during pulling data, waiting for outstanding task"));
             return;
         }
@@ -171,9 +171,9 @@ void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
         }
 
         data->progress = new_progress;
-        Q_EMIT data->taskContext->updateTask(static_cast<double>(data->progress),
-                                             100,
-                                             QString::fromStdString(data->status));
+        data->taskContext->updateTask(static_cast<double>(data->progress),
+                                      100,
+                                      QString::fromStdString(data->status));
     });
 
     if (data->requested == 0) {
@@ -1460,13 +1460,35 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
             }
 
             QDir parentDir(entriesDir.absoluteFilePath(parentDirForLinkPath));
-            const auto from =
-              entriesDir.absoluteFilePath(parentDirForLinkPath) + "/" + it.fileName();
-            const auto to = parentDir.relativeFilePath(info.absoluteFilePath());
+            auto from = std::filesystem::path{
+                entriesDir.absoluteFilePath(parentDirForLinkPath).toStdString()
+            } / it.fileName().toStdString();
+            auto to = std::filesystem::path{
+                parentDir.relativeFilePath(info.absoluteFilePath()).toStdString()
+            };
 
-            if (!QFile::link(to, from)) {
-                qCritical() << "Failed to create link" << to << "->" << from;
-                Q_ASSERT(false);
+            std::error_code ec;
+            if (std::filesystem::exists(from, ec)) {
+                if (ec) {
+                    qCritical() << "failed to get file" << from.c_str()
+                                << "status:" << QString::fromStdString(ec.message());
+                    continue;
+                }
+
+                qInfo() << from.c_str() << "already exists, try to remove it";
+                if (!std::filesystem::remove(from, ec)) {
+                    qCritical() << "remove" << from.c_str()
+                                << "error:" << QString::fromStdString(ec.message());
+                    continue;
+                }
+            }
+
+            std::filesystem::create_symlink(to, from, ec);
+            if (ec) {
+                qCritical().nospace()
+                  << "Failed to create link " << from.c_str() << " -> " << to.c_str() << " : "
+                  << QString::fromStdString(ec.message());
+                continue;
             }
         }
     }

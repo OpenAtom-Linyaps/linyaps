@@ -7,9 +7,7 @@
 #include "linglong/cli/json_printer.h"
 
 #include "linglong/api/types/v1/Generators.hpp"
-#include "linglong/package_manager/package_task.h"
 
-#include <QMetaEnum>
 #include <QJsonArray>
 
 #include <iostream>
@@ -66,60 +64,16 @@ void JSONPrinter::printContent(const QStringList &filePaths)
     std::cout << QString::fromUtf8(QJsonDocument(obj).toJson()).toStdString() << std::endl;
 }
 
-std::string stateToString(service::PackageTask::State state)
-{
-    switch (state) {
-    case service::PackageTask::State::Canceled:
-        return "Canceled";
-    case service::PackageTask::State::Failed:
-        return "Failed";
-    case service::PackageTask::State::Processing:
-        return "Processing";
-    case service::PackageTask::State::Pending:
-        return "Pending";
-    case service::PackageTask::State::Queued:
-        return "Queued";
-    case service::PackageTask::State::Succeed:
-        return "Succeed";
-    default:
-        return "Unknown State";
-    }
-}
-
-std::string subStateToString(service::PackageTask::SubState state)
-{
-    switch (state) {
-    case service::PackageTask::SubState::Done:
-        return "Done";
-    case service::PackageTask::SubState::InstallApplication:
-        return "InstallApplication";
-    case service::PackageTask::SubState::InstallBase:
-        return "InstallBase";
-    case service::PackageTask::SubState::InstallRuntime:
-        return "InstallRuntime";
-    case service::PackageTask::SubState::PostAction:
-        return "PostAction";
-    case service::PackageTask::SubState::PreAction:
-        return "PreAction";
-    case service::PackageTask::SubState::PreRemove:
-        return "PreAction";
-    case service::PackageTask::SubState::Uninstall:
-        return "PreAction";
-    default:
-        return "Unknown SubState";
-    }
-}
-
 void JSONPrinter::printTaskState(const double percentage,
-                                  const QString &message,
-                                  const api::types::v1::State state,
-                                  const api::types::v1::SubState subState)
+                                 const QString &message,
+                                 api::types::v1::State state,
+                                 api::types::v1::SubState subState)
 {
     nlohmann::json json;
     json["percentage"] = percentage;
     json["message"] = message.toStdString();
-    json["state"] = stateToString(state);
-    json["subState"] = subStateToString(subState);
+    json["state"] = Printer::toString(state);
+    json["subState"] = Printer::toString(subState);
 
     std::cout << json.dump() << std::endl;
 }

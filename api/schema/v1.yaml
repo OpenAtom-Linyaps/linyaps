@@ -535,7 +535,7 @@ $defs:
   SubState:
     description: subState of current task,
     enum: ["Unknown", "PreAction", "InstallRuntime", "InstallBase", "InstallApplication",
-           "PostAction", "PreRemove", "Uninstall", "Done"]
+           "PostAction", "Uninstall", "Done"]
   PackageManager1InstallLayerFDResult:
     $ref: '#/$defs/CommonResult'
   PackageManager1InstallParameters:
@@ -546,9 +546,8 @@ $defs:
     properties:
       package:
         $ref: '#/$defs/PackageManager1Package'
-  PackageManager1InstallResult:
-    title: PackageManager1ResultWithTaskObjectPath
-    description: package manager install result
+  PackageManager1PackageTaskResult:
+    description: package manager task result
     allOf:
       - $ref: '#/$defs/CommonResult'
     properties:
@@ -563,8 +562,6 @@ $defs:
     properties:
       package:
         $ref: '#/$defs/PackageManager1Package'
-  PackageManager1UninstallResult:
-    $ref: '#/$defs/CommonResult'
   PackageManager1UpdateParameters:
     type: object
     description: package manager update result
@@ -576,10 +573,6 @@ $defs:
         description: packages of package manager update
         items:
           $ref: '#/$defs/PackageManager1Package'
-  PackageManager1UpdateResult:
-    title: PackageManager1UpdateResult
-    description: package manager update result
-    $ref: '#/$defs/PackageManager1InstallResult'
   PackageManager1ModifyRepoParameters:
     type: object
     required:

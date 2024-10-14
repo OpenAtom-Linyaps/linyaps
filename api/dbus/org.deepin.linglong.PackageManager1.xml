@@ -36,12 +36,6 @@ SPDX-License-Identifier: LGPL-3.0-or-later
       <arg direction="out" name="result" type="a{sv}" />
       <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
     </method>
-    <method name="SetRunningState">
-      <arg direction="in" name="parameters" type="a{sv}" />
-      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap" />
-      <arg direction="out" name="result" type="a{sv}" />
-      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
-    </method>
     <method name="Prune">
       <annotation name="org.freedesktop.DBus.Description" value="Remove unused base or runtime." />
       <arg direction="out" name="result" type="a{sv}" />
@@ -69,8 +63,13 @@ SPDX-License-Identifier: LGPL-3.0-or-later
     <property name="Configuration" type="a{sv}" access="readwrite">
       <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap" />
     </property>
-    <signal name="TaskChanged">
-      <arg name="taskObjectPath" type="s" />
+    <signal name="TaskAdded">
+      <arg name="task" type="o" />
+    </signal>
+    <signal name="TaskRemoved">
+      <arg name="task" type="o" />
+      <arg name="state" type="i" />
+      <arg name="subState" type="i" />
       <arg name="message" type="s" />
     </signal>
     <signal name="requestInteraction">

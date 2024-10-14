@@ -31,9 +31,9 @@
 #include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1SearchResult.hpp"
 #include "linglong/api/types/v1/PackageManager1SearchParameters.hpp"
+#include "linglong/api/types/v1/PackageManager1PackageTaskResult.hpp"
 #include "linglong/api/types/v1/PackageManager1ModifyRepoParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
-#include "linglong/api/types/v1/PackageManager1ResultWithTaskObjectPath.hpp"
 #include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1Package.hpp"
 #include "linglong/api/types/v1/PackageManager1GetRepoInfoResult.hpp"
@@ -119,14 +119,14 @@ void to_json(json & j, const PackageManager1Package & x);
 void from_json(const json & j, PackageManager1InstallParameters & x);
 void to_json(json & j, const PackageManager1InstallParameters & x);
 
-void from_json(const json & j, PackageManager1ResultWithTaskObjectPath & x);
-void to_json(json & j, const PackageManager1ResultWithTaskObjectPath & x);
-
 void from_json(const json & j, PackageManager1JobInfo & x);
 void to_json(json & j, const PackageManager1JobInfo & x);
 
 void from_json(const json & j, PackageManager1ModifyRepoParameters & x);
 void to_json(json & j, const PackageManager1ModifyRepoParameters & x);
+
+void from_json(const json & j, PackageManager1PackageTaskResult & x);
+void to_json(json & j, const PackageManager1PackageTaskResult & x);
 
 void from_json(const json & j, PackageManager1SearchParameters & x);
 void to_json(json & j, const PackageManager1SearchParameters & x);
@@ -580,21 +580,6 @@ j = json::object();
 j["package"] = x.package;
 }
 
-inline void from_json(const json & j, PackageManager1ResultWithTaskObjectPath& x) {
-x.taskObjectPath = get_stack_optional<std::string>(j, "taskObjectPath");
-x.code = j.at("code").get<int64_t>();
-x.message = j.at("message").get<std::string>();
-}
-
-inline void to_json(json & j, const PackageManager1ResultWithTaskObjectPath & x) {
-j = json::object();
-if (x.taskObjectPath) {
-j["taskObjectPath"] = x.taskObjectPath;
-}
-j["code"] = x.code;
-j["message"] = x.message;
-}
-
 inline void from_json(const json & j, PackageManager1JobInfo& x) {
 x.id = get_stack_optional<std::string>(j, "id");
 x.code = j.at("code").get<int64_t>();
@@ -619,6 +604,21 @@ inline void to_json(json & j, const PackageManager1ModifyRepoParameters & x) {
 j = json::object();
 j["defaultRepo"] = x.defaultRepo;
 j["repos"] = x.repos;
+}
+
+inline void from_json(const json & j, PackageManager1PackageTaskResult& x) {
+x.taskObjectPath = get_stack_optional<std::string>(j, "taskObjectPath");
+x.code = j.at("code").get<int64_t>();
+x.message = j.at("message").get<std::string>();
+}
+
+inline void to_json(json & j, const PackageManager1PackageTaskResult & x) {
+j = json::object();
+if (x.taskObjectPath) {
+j["taskObjectPath"] = x.taskObjectPath;
+}
+j["code"] = x.code;
+j["message"] = x.message;
 }
 
 inline void from_json(const json & j, PackageManager1SearchParameters& x) {
@@ -765,18 +765,16 @@ x.packageInfoV2 = get_stack_optional<PackageInfoV2>(j, "PackageInfoV2");
 x.packageManager1GetRepoInfoResult = get_stack_optional<PackageManager1GetRepoInfoResult>(j, "PackageManager1GetRepoInfoResult");
 x.packageManager1InstallLayerFDResult = get_stack_optional<CommonResult>(j, "PackageManager1InstallLayerFDResult");
 x.packageManager1InstallParameters = get_stack_optional<PackageManager1InstallParameters>(j, "PackageManager1InstallParameters");
-x.packageManager1InstallResult = get_stack_optional<PackageManager1ResultWithTaskObjectPath>(j, "PackageManager1InstallResult");
 x.packageManager1JobInfo = get_stack_optional<PackageManager1JobInfo>(j, "PackageManager1JobInfo");
 x.packageManager1MigrateResult = get_stack_optional<CommonResult>(j, "PackageManager1MigrateResult");
 x.packageManager1ModifyRepoParameters = get_stack_optional<PackageManager1ModifyRepoParameters>(j, "PackageManager1ModifyRepoParameters");
 x.packageManager1ModifyRepoResult = get_stack_optional<CommonResult>(j, "PackageManager1ModifyRepoResult");
 x.packageManager1Package = get_stack_optional<PackageManager1Package>(j, "PackageManager1Package");
+x.packageManager1PackageTaskResult = get_stack_optional<PackageManager1PackageTaskResult>(j, "PackageManager1PackageTaskResult");
 x.packageManager1SearchParameters = get_stack_optional<PackageManager1SearchParameters>(j, "PackageManager1SearchParameters");
 x.packageManager1SearchResult = get_stack_optional<PackageManager1SearchResult>(j, "PackageManager1SearchResult");
 x.packageManager1UninstallParameters = get_stack_optional<PackageManager1UninstallParameters>(j, "PackageManager1UninstallParameters");
-x.packageManager1UninstallResult = get_stack_optional<CommonResult>(j, "PackageManager1UninstallResult");
 x.packageManager1UpdateParameters = get_stack_optional<PackageManager1UpdateParameters>(j, "PackageManager1UpdateParameters");
-x.packageManager1UpdateResult = get_stack_optional<PackageManager1ResultWithTaskObjectPath>(j, "PackageManager1UpdateResult");
 x.repoConfig = get_stack_optional<RepoConfig>(j, "RepoConfig");
 x.repositoryCache = get_stack_optional<RepositoryCache>(j, "RepositoryCache");
 x.state = get_stack_optional<State>(j, "State");
@@ -831,9 +829,6 @@ j["PackageManager1InstallLayerFDResult"] = x.packageManager1InstallLayerFDResult
 if (x.packageManager1InstallParameters) {
 j["PackageManager1InstallParameters"] = x.packageManager1InstallParameters;
 }
-if (x.packageManager1InstallResult) {
-j["PackageManager1InstallResult"] = x.packageManager1InstallResult;
-}
 if (x.packageManager1JobInfo) {
 j["PackageManager1JobInfo"] = x.packageManager1JobInfo;
 }
@@ -849,6 +844,9 @@ j["PackageManager1ModifyRepoResult"] = x.packageManager1ModifyRepoResult;
 if (x.packageManager1Package) {
 j["PackageManager1Package"] = x.packageManager1Package;
 }
+if (x.packageManager1PackageTaskResult) {
+j["PackageManager1PackageTaskResult"] = x.packageManager1PackageTaskResult;
+}
 if (x.packageManager1SearchParameters) {
 j["PackageManager1SearchParameters"] = x.packageManager1SearchParameters;
 }
@@ -858,14 +856,8 @@ j["PackageManager1SearchResult"] = x.packageManager1SearchResult;
 if (x.packageManager1UninstallParameters) {
 j["PackageManager1UninstallParameters"] = x.packageManager1UninstallParameters;
 }
-if (x.packageManager1UninstallResult) {
-j["PackageManager1UninstallResult"] = x.packageManager1UninstallResult;
-}
 if (x.packageManager1UpdateParameters) {
 j["PackageManager1UpdateParameters"] = x.packageManager1UpdateParameters;
-}
-if (x.packageManager1UpdateResult) {
-j["PackageManager1UpdateResult"] = x.packageManager1UpdateResult;
 }
 if (x.repoConfig) {
 j["RepoConfig"] = x.repoConfig;
@@ -915,7 +907,6 @@ else if (j == "InstallBase") x = SubState::InstallBase;
 else if (j == "InstallRuntime") x = SubState::InstallRuntime;
 else if (j == "PostAction") x = SubState::PostAction;
 else if (j == "PreAction") x = SubState::PreAction;
-else if (j == "PreRemove") x = SubState::PreRemove;
 else if (j == "Uninstall") x = SubState::Uninstall;
 else if (j == "Unknown") x = SubState::Unknown;
 else { throw std::runtime_error("Input JSON does not conform to schema!"); }
@@ -929,7 +920,6 @@ case SubState::InstallBase: j = "InstallBase"; break;
 case SubState::InstallRuntime: j = "InstallRuntime"; break;
 case SubState::PostAction: j = "PostAction"; break;
 case SubState::PreAction: j = "PreAction"; break;
-case SubState::PreRemove: j = "PreRemove"; break;
 case SubState::Uninstall: j = "Uninstall"; break;
 case SubState::Unknown: j = "Unknown"; break;
 default: throw std::runtime_error("Unexpected value in enumeration \"[object Object]\": " + std::to_string(static_cast<int>(x)));

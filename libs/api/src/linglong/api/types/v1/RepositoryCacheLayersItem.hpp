@@ -37,6 +37,10 @@ struct RepositoryCacheLayersItem {
 * ostree commit hash
 */
 std::string commit;
+/**
+* deleted mark
+*/
+std::optional<bool> deleted;
 PackageInfoV2 info;
 /**
 * which repo is this app belongs to

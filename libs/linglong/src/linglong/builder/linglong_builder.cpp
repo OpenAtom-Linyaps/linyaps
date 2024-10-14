@@ -324,8 +324,7 @@ utils::error::Result<void> splitDevelop(QString installFilepath,
             iter.next();
             auto filepath = iter.filePath();
             qDebug() << filepath;
-            // $PROJECT_ROOT/.../files to /opt/apps/${appid}
-            // $PROJECT_ROOT/ to /runtime/
+            // $PROJECT_ROOT/.../files to installPrefix
             filepath.replace(0, src.length(), prefix);
             installRules.append(filepath);
         }
@@ -574,6 +573,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     if (!baseLayerDir) {
         return LINGLONG_ERR(baseLayerDir);
     }
+    auto baseInfo = baseLayerDir->info();
     printReplacedText(QString("%1%2%3%4")
                         .arg(base->id, -25)                 // NOLINT
                         .arg(base->version.toString(), -15) // NOLINT
@@ -649,6 +649,7 @@ set -e
         .runtimeDir = {},
         .baseDir = *baseLayerDir,
         .appDir = {},
+        .appPrefix = baseInfo->appPrefix,
         .patches = {},
         .mounts = {},
         .masks = {},
@@ -659,7 +660,12 @@ set -e
     // 构建安装路径
     QString installPrefix = "/runtime";
     if (this->project.package.kind != "runtime") {
-        installPrefix = QString::fromStdString("/opt/apps/" + this->project.package.id + "/files");
+        if (baseInfo->appPrefix) {
+            installPrefix = QString::fromStdString(*baseInfo->appPrefix);
+        } else {
+            installPrefix =
+              QString::fromStdString("/opt/apps/" + this->project.package.id + "/files");
+        }
     }
     opts.mounts.push_back({
       .destination = installPrefix.toStdString(),
@@ -989,6 +995,10 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
     if (!baseDir) {
         return LINGLONG_ERR(baseDir);
     }
+    auto info = baseDir->info();
+    if (info->appPrefix) {
+        packager.setappPrefix(*info->appPrefix);
+    }
     packager.appendLayer(*baseDir);
 
     if (this->project.runtime) {
@@ -1193,7 +1203,9 @@ utils::error::Result<void> Builder::run(const QStringList &args)
     if (!baseDir) {
         return LINGLONG_ERR(baseDir);
     }
+    auto baseInfo = baseDir->info();
     options.baseDir = QDir(baseDir->absolutePath());
+    options.appPrefix = baseInfo->appPrefix;
 
     if (this->project.runtime) {
         auto ref = pullDependency(QString::fromStdString(*this->project.runtime),

@@ -248,6 +248,12 @@ auto getOCIConfig(const ContainerOptions &opts) noexcept
     if (opts.appDir) {
         annotations["org.deepin.linglong.appDir"] = opts.appDir->absolutePath().toStdString();
     }
+    if (opts.appPrefix) {
+        annotations["org.deepin.linglong.appPrefix"] = *opts.appPrefix;
+    } else {
+        annotations["org.deepin.linglong.appPrefix"] =
+          "/opt/apps/" + opts.appID.toStdString() + "/files";
+    }
     config->annotations = std::move(annotations);
 
     QDir configDotDDir = QFileInfo(containerConfigFilePath).dir().filePath("config.d");

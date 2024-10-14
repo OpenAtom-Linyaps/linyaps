@@ -16,6 +16,8 @@
 #include "linglong/api/types/v1/PackageManager1SearchParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1SearchResult.hpp"
 #include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
+#include "linglong/api/types/v1/UpgradeListResult.hpp"
+#include "linglong/cli/printer.h"
 #include "linglong/package/layer_file.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/utils/command/env.h"
@@ -53,7 +55,7 @@ Usage:
     ll-cli [--json] uninstall [--module=MODULE] TIER [--all] [--prune]
     ll-cli [--json] upgrade TIER
     ll-cli [--json] search [--type=TYPE] [--dev] TEXT
-    ll-cli [--json] [--no-dbus] list [--type=TYPE]
+    ll-cli [--json] [--no-dbus] list [--type=TYPE] [--upgradable]
     ll-cli [--json] repo modify [--name=REPO] URL
     ll-cli [--json] repo add NAME URL
     ll-cli [--json] repo remove NAME
@@ -85,7 +87,8 @@ Options:
     --type=TYPE               Filter result with tiers type. One of "runtime", "app" or "all". [default: app]
     --state=STATE             Filter result with the tiers install state. Should be "local" or "remote". [default: local]
     --prune                   Remove application data if the tier is an application and all version of that application has been removed.
-    --dev                     include develop tiers in result.
+    --dev                     Include develop tiers in result.
+    --upgradable              Show the latest version list of the currently installed tiers, it only works for app.
 
 Subcommands:
     run        Run an application.
@@ -884,7 +887,10 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
 
 int Cli::list(std::map<std::string, docopt::value> &args)
 {
+    LINGLONG_TRACE("command list");
+
     QString type;
+    bool isShowUpgradeList = false;
 
     if (args["--type"].isString()) {
         type = QString::fromStdString(args["--type"].asString());
@@ -900,7 +906,104 @@ int Cli::list(std::map<std::string, docopt::value> &args)
         filterPackageInfosFromType(*pkgs, type);
     }
 
-    this->printer.printPackages(*pkgs);
+    if (args["--upgradable"].isBool()) {
+        isShowUpgradeList = args["--upgradable"].asBool();
+    } else {
+        this->printer.printPackages(*pkgs);
+        return 0;
+    }
+
+    if (isShowUpgradeList) {
+        std::vector<api::types::v1::UpgradeListResult> upgradeList;
+
+        auto fullFuzzyRef = package::FuzzyReference::parse(QString::fromStdString("."));
+        if (!fullFuzzyRef) {
+            return -1;
+        }
+
+        auto remotePkgs = this->repository.listRemote(*fullFuzzyRef);
+        if (!remotePkgs.has_value()) {
+            return -1;
+        }
+
+        utils::error::Result<package::Reference> reference = LINGLONG_ERR("reference not exists");
+
+        for (const auto &pkg : *pkgs) {
+            auto fuzzy = package::FuzzyReference::parse(QString::fromStdString(pkg.id));
+            if (!fuzzy) {
+                this->printer.printErr(fuzzy.error());
+                continue;
+            }
+
+            reference = LINGLONG_ERR("reference not exists");
+
+            for (auto record : *remotePkgs) {
+                auto recordStr = nlohmann::json(record).dump();
+                if (fuzzy->channel && fuzzy->channel->toStdString() != record.channel) {
+                    continue;
+                }
+                if (fuzzy->id.toStdString() != record.id) {
+                    continue;
+                }
+                auto version = package::Version::parse(QString::fromStdString(record.version));
+                if (!version) {
+                    qWarning() << "Ignore invalid package record" << recordStr.c_str()
+                               << version.error();
+                    continue;
+                }
+                if (record.arch.empty()) {
+                    qWarning() << "Ignore invalid package record";
+                    continue;
+                }
+
+                auto arch = package::Architecture::parse(record.arch[0]);
+                if (!arch) {
+                    qWarning() << "Ignore invalid package record" << recordStr.c_str()
+                               << arch.error();
+                    continue;
+                }
+                auto channel = QString::fromStdString(record.channel);
+                auto currentRef = package::Reference::create(channel, fuzzy->id, *version, *arch);
+                if (!currentRef) {
+                    qWarning() << "Ignore invalid package record" << recordStr.c_str()
+                               << currentRef.error();
+                    continue;
+                }
+                if (!reference) {
+                    reference = *currentRef;
+                    continue;
+                }
+
+                if (reference->version >= currentRef->version) {
+                    continue;
+                }
+
+                reference = *currentRef;
+            }
+
+            if (!reference) {
+                std::cout << "Failed to find the package: " << fuzzy->id.toStdString()
+                          << ", maybe it is local package, skip it." << std::endl;
+                continue;
+            }
+
+            const auto oldVersion = pkg.version;
+            const auto newVersion = reference->version.toString().toStdString();
+
+            if (newVersion <= oldVersion) {
+                qDebug() << "The local package" << QString::fromStdString(pkg.id)
+                         << "version is higher than the remote repository version, skip it.";
+                continue;
+            }
+
+            upgradeList.emplace_back(api::types::v1::UpgradeListResult{ .id = pkg.id,
+                                                                        .newVersion = newVersion,
+                                                                        .oldVersion = oldVersion });
+        }
+
+        this->printer.printUpgradeList(upgradeList);
+    }
+
     return 0;
 }
 

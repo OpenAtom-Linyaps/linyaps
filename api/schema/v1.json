@@ -977,6 +977,30 @@
           }
         }
       }
+    },
+    "UpgradeListResult": {
+      "title": "UpgradeListResult",
+      "description": "this is upgrade list result of ll-cli upgrade --json",
+      "type": "object",
+      "required": [
+        "id",
+        "old_version",
+        "new_version"
+      ],
+      "properties": {
+        "id": {
+          "description": "id of package.",
+          "type": "string"
+        },
+        "old_version": {
+          "description": "version of current installed.",
+          "type": "string"
+        },
+        "new_version": {
+          "description": "version of latest version in remote repo.",
+          "type": "string"
+        }
+      }
     }
   },
   "type": "object",
@@ -1073,6 +1097,9 @@
     },
     "RepositoryCache": {
       "$ref": "#/$defs/RepositoryCache"
+    },
+    "UpgradeListResult": {
+      "$ref": "#/$defs/UpgradeListResult"
     }
   }
 }

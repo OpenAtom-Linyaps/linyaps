@@ -18,6 +18,7 @@
 #include "linglong/api/types/v1/helper.hpp"
 
 #include "linglong/api/types/v1/LinglongAPIV1.hpp"
+#include "linglong/api/types/v1/UpgradeListResult.hpp"
 #include "linglong/api/types/v1/UabMetaInfo.hpp"
 #include "linglong/api/types/v1/Version.hpp"
 #include "linglong/api/types/v1/Sections.hpp"
@@ -171,6 +172,9 @@ void to_json(json & j, const Sections & x);
 
 void from_json(const json & j, UabMetaInfo & x);
 void to_json(json & j, const UabMetaInfo & x);
+
+void from_json(const json & j, UpgradeListResult & x);
+void to_json(json & j, const UpgradeListResult & x);
 
 void from_json(const json & j, LinglongAPIV1 & x);
 void to_json(json & j, const LinglongAPIV1 & x);
@@ -827,6 +831,19 @@ j["uuid"] = x.uuid;
 j["version"] = x.version;
 }
 
+inline void from_json(const json & j, UpgradeListResult& x) {
+x.id = j.at("id").get<std::string>();
+x.newVersion = j.at("new_version").get<std::string>();
+x.oldVersion = j.at("old_version").get<std::string>();
+}
+
+inline void to_json(json & j, const UpgradeListResult & x) {
+j = json::object();
+j["id"] = x.id;
+j["new_version"] = x.newVersion;
+j["old_version"] = x.oldVersion;
+}
+
 inline void from_json(const json & j, LinglongAPIV1& x) {
 x.applicationAccessPrivileges = get_stack_optional<ApplicationAccessPrivileges>(j, "ApplicationAccessPrivileges");
 x.applicationConfiguration = get_stack_optional<ApplicationConfiguration>(j, "ApplicationConfiguration");
@@ -859,6 +876,7 @@ x.packageManager1UpdateResult = get_stack_optional<PackageManager1ResultWithTask
 x.repoConfig = get_stack_optional<RepoConfig>(j, "RepoConfig");
 x.repositoryCache = get_stack_optional<RepositoryCache>(j, "RepositoryCache");
 x.uabMetaInfo = get_stack_optional<UabMetaInfo>(j, "UABMetaInfo");
+x.upgradeListResult = get_stack_optional<UpgradeListResult>(j, "UpgradeListResult");
 }
 
 inline void to_json(json & j, const LinglongAPIV1 & x) {
@@ -955,6 +973,9 @@ j["RepositoryCache"] = x.repositoryCache;
 }
 if (x.uabMetaInfo) {
 j["UABMetaInfo"] = x.uabMetaInfo;
+}
+if (x.upgradeListResult) {
+j["UpgradeListResult"] = x.upgradeListResult;
 }
 }
 

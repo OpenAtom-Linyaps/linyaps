@@ -74,4 +74,9 @@ void JSONPrinter::printTaskStatus(const QString &percentage, const QString &mess
     std::cout << QString::fromUtf8(QJsonDocument(jsonArray).toJson()).toStdString() << std::endl;
 }
 
+void JSONPrinter::printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &list)
+{
+    std::cout << nlohmann::json(list).dump(4) << std::endl;
+}
+
 } // namespace linglong::cli

@@ -678,6 +678,7 @@ j["version"] = x.version;
 
 inline void from_json(const json & j, RepositoryCacheLayersItem& x) {
 x.commit = j.at("commit").get<std::string>();
+x.deleted = get_stack_optional<bool>(j, "deleted");
 x.info = j.at("info").get<PackageInfoV2>();
 x.repo = j.at("repo").get<std::string>();
 }
@@ -685,6 +686,9 @@ x.repo = j.at("repo").get<std::string>();
 inline void to_json(json & j, const RepositoryCacheLayersItem & x) {
 j = json::object();
 j["commit"] = x.commit;
+if (x.deleted) {
+j["deleted"] = x.deleted;
+}
 j["info"] = x.info;
 j["repo"] = x.repo;
 }

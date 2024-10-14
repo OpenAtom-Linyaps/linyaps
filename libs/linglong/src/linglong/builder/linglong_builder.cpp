@@ -768,22 +768,72 @@ set -e
 
     qDebug() << "generate entries";
     if (this->project.package.kind != "runtime") {
+        const QStringList exportPaths = {
+            "share/applications", // Copy desktop files
+            "share/mime",         // Copy MIME Type files
+            "share/icons",        // Icons
+            "share/dbus-1",       // D-Bus service files
+            "share/gnome-shell",  // Search providers
+            "share/appdata",      // Copy appdata/metainfo files (legacy path)
+            "share/metainfo",     // Copy appdata/metainfo files
+            "share/plugins",      // Copy plugins conf，The configuration files provided by some
+                             // applications maybe used by the host dde-file-manager.
+            "share/systemd", // copy systemd service files
+        };
+
         QDir binaryFiles = this->workingDir.absoluteFilePath("linglong/output/binary/files");
         QDir binaryEntries = this->workingDir.absoluteFilePath("linglong/output/binary/entries");
         QDir developFiles = this->workingDir.absoluteFilePath("linglong/output/develop/files");
         QDir developEntries = this->workingDir.absoluteFilePath("linglong/output/develop/entries");
+
         if (!binaryEntries.mkpath(".")) {
             return LINGLONG_ERR("make path " + binaryEntries.absolutePath() + ": failed.");
         }
+
         if (!developEntries.mkpath(".")) {
             return LINGLONG_ERR("make path " + developEntries.absolutePath() + ": failed.");
         }
 
-        if (!QFile::link("../files/share", binaryEntries.absoluteFilePath("share"))) {
-            return LINGLONG_ERR("link entries share to files share: failed");
+        if (binaryFiles.exists("share")) {
+            if (!binaryEntries.mkpath("share")) {
+                return LINGLONG_ERR("mkpath files/share: failed");
+            }
         }
-        if (!QFile::link("../files/share", developEntries.absoluteFilePath("share"))) {
-            return LINGLONG_ERR("link entries share to files share: failed");
+
+        if (developFiles.exists("share")) {
+            if (!developEntries.mkpath("share")) {
+                return LINGLONG_ERR("mkpath files/share: failed");
+            }
+        }
+
+        for (const auto &path : exportPaths) {
+            if (!binaryFiles.exists(path)) {
+                continue;
+            }
+
+            const QString dest = QString("../../files/%1").arg(path);
+
+            if (path == "share/appdata") {
+                if (!QFile::link(dest, binaryEntries.absoluteFilePath("share/metainfo"))) {
+                    qWarning() << "link binary entries share to files share/" << path << "failed";
+                }
+
+                if (!QFile::link(dest, developEntries.absoluteFilePath("share/metainfo"))) {
+                    qWarning() << "link develop entries share to files share/" << path << "failed";
+                }
+
+                continue;
+            }
+
+            if (!QFile::link(dest, binaryEntries.absoluteFilePath(path))) {
+                qWarning() << "link binary entries " << path << "to files share: failed";
+                continue;
+            }
+
+            if (!QFile::link(dest, developEntries.absoluteFilePath(path))) {
+                qWarning() << "link develop entries " << path << "to files share: failed";
+                continue;
+            }
         }
 
         if (binaryFiles.exists("lib/systemd/user")) {

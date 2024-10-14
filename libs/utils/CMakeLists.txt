@@ -17,6 +17,8 @@ pfl_add_library(
   src/linglong/utils/configure.h.in
   src/linglong/utils/dbus/log.cpp
   src/linglong/utils/dbus/log.h
+  src/linglong/utils/dbus/properties_forwarder.cpp
+  src/linglong/utils/dbus/properties_forwarder.h
   src/linglong/utils/dbus/register.cpp
   src/linglong/utils/dbus/register.h
   src/linglong/utils/error/details/error_impl.cpp

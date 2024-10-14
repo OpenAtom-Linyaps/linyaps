@@ -53,8 +53,6 @@ pfl_add_library(
   src/linglong/package_manager/package_manager.h
   src/linglong/package_manager/package_task.cpp
   src/linglong/package_manager/package_task.h
-  src/linglong/package_manager/task.cpp
-  src/linglong/package_manager/task.h
   src/linglong/package/reference.cpp
   src/linglong/package/reference.h
   src/linglong/package/uab_file.cpp
@@ -166,7 +164,7 @@ linglong_add_dbus_adaptor(
 linglong_add_dbus_adaptor(
   linglong::linglong
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.Task1.xml
-  linglong/package_manager/task.h
-  linglong::service::Task
+  linglong/package_manager/package_task.h
+  linglong::service::PackageTask
   src/linglong/adaptors/task/gen_org_deepin_linglong_task1
   OrgDeepinLinglongTask1Adaptor)

@@ -6,10 +6,8 @@
 
 #pragma once
 
-#include "linglong/api/dbus/v1/package_manager.h"
 #include "linglong/repo/ostree_repo.h"
 #include "package_task.h"
-#include "task.h"
 
 #include <QDBusArgument>
 #include <QDBusContext>
@@ -24,7 +22,7 @@ class JobQueue : public QObject
 private:
     uint runningJobsCount = 0;
     uint runningJobsMax = 1;
-    std::list<std::function<void()>> taskList = {};
+    std::list<std::function<void()>> taskList;
 
     void run()
     {
@@ -80,11 +78,11 @@ public
     Q_SLOT : [[nodiscard]] auto getConfiguration() const noexcept -> QVariantMap;
     void setConfiguration(const QVariantMap &parameters) noexcept;
     auto Install(const QVariantMap &parameters) noexcept -> QVariantMap;
-    void InstallRef(PackageTask &taskContext,
-                    const package::Reference &ref,
-                    const std::string &module) noexcept;
-    auto InstallFromFile(const QDBusUnixFileDescriptor &fd, const QString &fileType) noexcept
-      -> QVariantMap;
+    void Install(PackageTask &taskContext,
+                 const package::Reference &ref,
+                 const std::string &module) noexcept;
+    auto InstallFromFile(const QDBusUnixFileDescriptor &fd,
+                         const QString &fileType) noexcept -> QVariantMap;
     auto Uninstall(const QVariantMap &parameters) noexcept -> QVariantMap;
     void Uninstall(PackageTask &taskContext,
                    const package::Reference &ref,
@@ -95,23 +93,29 @@ public
     auto Prune() noexcept -> QVariantMap;
     utils::error::Result<void>
     Prune(std::vector<api::types::v1::PackageInfoV2> &removedInfo) noexcept;
-    auto SetRunningState(const QVariantMap &parameters) noexcept -> QVariantMap;
     void replyInteraction(const QString &interactionID, const QVariantMap &replies);
 
 Q_SIGNALS:
+    void TaskAdded(QDBusObjectPath object_path);
+    void TaskRemoved(QDBusObjectPath object_path, int state, int subState, QString message);
     void TaskListChanged(QString taskID);
-    void TaskChanged(QString taskObjectPath, QString message);
     void SearchFinished(QString jobID, QVariantMap result);
     void PruneFinished(QString jobID, QVariantMap result);
 
 private:
+    void InstallRef(PackageTask &taskContext,
+                    const package::Reference &ref,
+                    const std::string &module) noexcept;
+    void UninstallRef(PackageTask &taskContext,
+                      const package::Reference &ref,
+                      const std::string &module) noexcept;
     QVariantMap installFromLayer(const QDBusUnixFileDescriptor &fd) noexcept;
     QVariantMap installFromUAB(const QDBusUnixFileDescriptor &fd) noexcept;
     void pullDependency(PackageTask &taskContext,
                         const api::types::v1::PackageInfoV2 &info,
                         const std::string &module) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT
-    std::list<PackageTask> taskList;
+    std::list<PackageTask *> taskList;
     // 正在运行的任务ID
     QString runningTaskID;
 

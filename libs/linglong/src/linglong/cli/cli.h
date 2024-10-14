@@ -8,13 +8,14 @@
 
 #include "linglong/api/dbus/v1/package_manager.h"
 #include "linglong/cli/interactive_notifier.h"
-#include "linglong/cli/printer.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
 
 #include <docopt.h>
 
 namespace linglong::cli {
+
+class Printer;
 
 class Cli : public QObject
 {

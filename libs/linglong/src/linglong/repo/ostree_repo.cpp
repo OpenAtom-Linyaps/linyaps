@@ -1140,6 +1140,7 @@ OSTreeRepo::clearReference(const package::FuzzyReference &fuzzy,
     if (!list.has_value()) {
         return LINGLONG_ERR("get ref list from remote", list);
     }
+
     for (auto record : *list) {
         auto recordStr = nlohmann::json(record).dump();
         if (fuzzy.channel && fuzzy.channel->toStdString() != record.channel) {
@@ -1189,12 +1190,14 @@ OSTreeRepo::clearReference(const package::FuzzyReference &fuzzy,
 
         reference = *currentRef;
     }
+
     if (!reference) {
         auto msg = QString("not found ref:%1 module:%2 from remote repo")
                      .arg(fuzzy.toString())
                      .arg(module.c_str());
         return LINGLONG_ERR(msg);
     }
+
     return reference;
 }
 

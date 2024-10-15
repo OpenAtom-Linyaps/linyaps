@@ -85,6 +85,10 @@ public:
     void updateSharedInfo() noexcept;
     utils::error::Result<void> dispatchMigration() noexcept;
     utils::error::Result<void> migrateRefs() noexcept;
+    utils::error::Result<void>
+    markDeleted(const package::Reference &ref,
+                const std::string &module = "binary",
+                const std::optional<std::string> &subRef = std::nullopt) noexcept;
 
     [[nodiscard]] bool needMigrate() const noexcept { return !!this->cache->migrations(); };
 

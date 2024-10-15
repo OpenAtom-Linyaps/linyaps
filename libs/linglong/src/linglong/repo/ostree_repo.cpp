@@ -1532,6 +1532,33 @@ void OSTreeRepo::updateSharedInfo() noexcept
     }
 }
 
+utils::error::Result<void>
+OSTreeRepo::markDeleted(const package::Reference &ref,
+                        const std::string &module,
+                        const std::optional<std::string> &subRef) noexcept
+{
+    LINGLONG_TRACE("mark " + ref.toString() + " to deleted");
+
+    auto item = this->getLayerItem(ref, module, subRef);
+    if (!item) {
+        return LINGLONG_ERR(item);
+    }
+
+    auto it = this->cache->findMatchingItem(*item);
+    if(!it) {
+        return LINGLONG_ERR(it);
+    }
+
+    (*it)->deleted = true;
+
+    auto result = this->cache->writeToDisk();
+    if(!result) {
+        return LINGLONG_ERR(result);
+    }
+
+    return LINGLONG_OK;
+}
+
 utils::error::Result<api::types::v1::RepositoryCacheLayersItem>
 OSTreeRepo::getLayerItem(const package::Reference &ref,
                          const std::string &module,

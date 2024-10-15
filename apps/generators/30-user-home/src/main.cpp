@@ -5,6 +5,7 @@
 #include "nlohmann/json.hpp"
 
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 
 #include <pwd.h>
@@ -258,7 +259,18 @@ int main()
     } else {
         std::cerr << "failed to mask bashrc" << std::endl;
     }
-
+    {
+        std::ofstream f("gdbinit");
+        f << "set debug-file-directory "
+             "/usr/lib/debug:/runtime/lib/debug:/opt/apps/"
+            + appID + "/files/lib/debug";
+        mounts.push_back({
+          { "destination", hostHomeDir / ".gdbinit" },
+          { "options", nlohmann::json::array({ "ro", "rbind" }) },
+          { "source", std::filesystem::current_path() / "gdbinit" },
+          { "type", "bind" },
+        });
+    }
     std::cout << content.dump() << std::endl;
     return 0;
 }

@@ -60,7 +60,8 @@ public:
 
     auto importLayer(const QString &path) -> utils::error::Result<void>;
 
-    auto run(const QStringList &args = { QString("bash") }) -> utils::error::Result<void>;
+    auto run(const QStringList &modules, const QStringList &args, const bool &debug)
+      -> utils::error::Result<void>;
 
 private:
     repo::OSTreeRepo &repo;

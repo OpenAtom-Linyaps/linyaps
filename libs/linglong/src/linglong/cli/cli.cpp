@@ -7,6 +7,8 @@
 #include "linglong/cli/cli.h"
 
 #include "linglong/api/types/v1/CommonResult.hpp"
+#include "linglong/api/types/v1/InteractionReply.hpp"
+#include "linglong/api/types/v1/InteractionRequest.hpp"
 #include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
 #include "linglong/api/types/v1/PackageManager1Package.hpp"
@@ -47,8 +49,8 @@ Usage:
     ll-cli [--json] exec PAGODA [--working-directory=PATH] [--] COMMAND...
     ll-cli [--json] enter PAGODA [--working-directory=PATH] [--] [COMMAND...]
     ll-cli [--json] kill PAGODA
-    ll-cli [--json] [--no-dbus] install TIER
-    ll-cli [--json] uninstall TIER [--all] [--prune]
+    ll-cli [--json] [--no-dbus] install [--module=MODULE] TIER
+    ll-cli [--json] uninstall [--module=MODULE] TIER [--all] [--prune]
     ll-cli [--json] upgrade TIER
     ll-cli [--json] search [--type=TYPE] [--dev] TEXT
     ll-cli [--json] [--no-dbus] list [--type=TYPE]
@@ -175,8 +177,7 @@ int Cli::run(std::map<std::string, docopt::value> &args)
         this->printer.printErr(curAppRef.error());
         return -1;
     }
-
-    auto appLayerDir = this->repository.getLayerDir(*curAppRef, std::string{ "binary" });
+    auto appLayerDir = this->repository.getMergedModuleDir(*curAppRef);
     if (!appLayerDir) {
         this->printer.printErr(appLayerDir.error());
         return -1;
@@ -206,15 +207,22 @@ int Cli::run(std::map<std::string, docopt::value> &args)
             this->printer.printErr(runtimeRef.error());
             return -1;
         }
-
-        auto runtimeLayerDirRet =
-          this->repository.getLayerDir(*runtimeRef, std::string{ "binary" }, info->uuid);
-        if (!runtimeLayerDirRet) {
-            this->printer.printErr(runtimeLayerDirRet.error());
-            return -1;
+        if (info->uuid->empty()) {
+            auto runtimeLayerDirRet = this->repository.getMergedModuleDir(*runtimeRef);
+            if (!runtimeLayerDirRet) {
+                this->printer.printErr(runtimeLayerDirRet.error());
+                return -1;
+            }
+            runtimeLayerDir = *runtimeLayerDirRet;
+        } else {
+            auto runtimeLayerDirRet =
+              this->repository.getLayerDir(*runtimeRef, std::string{ "binary" }, info->uuid);
+            if (!runtimeLayerDirRet) {
+                this->printer.printErr(runtimeLayerDirRet.error());
+                return -1;
+            }
+            runtimeLayerDir = *runtimeLayerDirRet;
         }
-
-        runtimeLayerDir = *runtimeLayerDirRet;
     }
 
     auto baseFuzzyRef = package::FuzzyReference::parse(QString::fromStdString(info->base));
@@ -232,8 +240,14 @@ int Cli::run(std::map<std::string, docopt::value> &args)
         this->printer.printErr(LINGLONG_ERRV(baseRef));
         return -1;
     }
-
-    auto baseLayerDir = this->repository.getLayerDir(*baseRef, std::string{ "binary" }, info->uuid);
+    utils::error::Result<package::LayerDir> baseLayerDir;
+    if (!info->uuid.has_value()) {
+        qDebug() << "getMergedModuleDir base";
+        baseLayerDir = this->repository.getMergedModuleDir(*baseRef);
+    } else {
+        qDebug() << "getLayerDir base" << info->uuid->c_str();
+        baseLayerDir = this->repository.getLayerDir(*baseRef, std::string{ "binary" }, info->uuid);
+    }
     if (!baseLayerDir) {
         this->printer.printErr(LINGLONG_ERRV(baseLayerDir));
         return -1;
@@ -622,6 +636,9 @@ int Cli::install(std::map<std::string, docopt::value> &args)
     if (fuzzyRef->version) {
         params.package.version = fuzzyRef->version->toString().toStdString();
     }
+    if (args["--module"].isString()) {
+        params.package.packageManager1PackageModule = args["--module"].asString();
+    }
 
     auto pendingReply = this->pkgMan.Install(utils::serialize::toQVariantMap(params));
     auto reply = pendingReply.value();
@@ -842,7 +859,9 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
     if (fuzzyRef->version) {
         params.package.version = fuzzyRef->version->toString().toStdString();
     }
-
+    if (args["--module"].isString()) {
+        params.package.packageManager1PackageModule = args["--module"].asString();
+    }
     auto reply = this->pkgMan.Uninstall(utils::serialize::toQVariantMap(params));
     reply.waitForFinished();
     if (!reply.isValid()) {
@@ -1028,7 +1047,7 @@ int Cli::info(std::map<std::string, docopt::value> &args)
             return -1;
         }
 
-        auto layer = this->repository.getLayerDir(*ref);
+        auto layer = this->repository.getLayerDir(*ref, "binary");
         if (!layer) {
             this->printer.printErr(layer.error());
             return -1;
@@ -1086,7 +1105,7 @@ int Cli::content(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    auto layer = this->repository.getLayerDir(*ref);
+    auto layer = this->repository.getLayerDir(*ref, "binary");
     if (!layer) {
         this->printer.printErr(layer.error());
         return -1;

@@ -9,6 +9,7 @@
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/builder/printer.h"
 #include "linglong/package/architecture.h"
+#include "linglong/package/layer_dir.h"
 #include "linglong/package/layer_packager.h"
 #include "linglong/package/uab_packager.h"
 #include "linglong/repo/ostree_repo.h"
@@ -301,6 +302,8 @@ utils::error::Result<void> installModule(QStringList installRules,
                                          const std::function<void(int)> &handleProgress)
 {
     LINGLONG_TRACE("install module file");
+    buildOutput.mkpath(".");
+    moduleOutput.mkpath(".");
     const QString src = buildOutput.absolutePath();
     const QString dest = moduleOutput.absolutePath();
 
@@ -691,7 +694,9 @@ set -e
                    .arg("Status")
                    .toStdString(),
                  2);
-    if (this->project.modules.has_value()) {
+    if (this->fullDevelop) {
+
+    } else if (this->project.modules.has_value()) {
         for (const auto &module : *this->project.modules) {
             auto name = QString::fromStdString(module.name);
             printReplacedText(QString("%1%2%3%4")
@@ -938,7 +943,10 @@ set -e
                             .toStdString(),
                           2);
     }
-
+    auto mergeRet = this->repo.mergeModules();
+    if (!mergeRet.has_value()) {
+        return mergeRet;
+    }
     printMessage("Successfully build " + this->project.package.id);
     return LINGLONG_OK;
 }
@@ -1141,7 +1149,9 @@ utils::error::Result<void> Builder::importLayer(const QString &path)
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> Builder::run(const QStringList &args)
+utils::error::Result<void> Builder::run(const QStringList &modules,
+                                        const QStringList &args,
+                                        const bool &debug)
 {
     LINGLONG_TRACE("run application");
 
@@ -1150,9 +1160,22 @@ utils::error::Result<void> Builder::run(const QStringList &args)
         return LINGLONG_ERR(curRef);
     }
 
-    auto curDir = this->repo.getLayerDir(*curRef);
-    if (!curDir) {
-        return LINGLONG_ERR(curDir);
+    utils::error::Result<package::LayerDir> curDir;
+    // mergedDir 会自动在释放时删除临时目录，所以要用变量保留住
+    utils::error::Result<std::shared_ptr<package::LayerDir>> mergedDir;
+    if (modules.size() > 1) {
+        qDebug() << "create temp merge dir."
+                 << "ref: " << curRef->toString() << "modules: " << modules;
+        mergedDir = this->repo.getMergedModuleDir(*curRef, modules);
+        if (!mergedDir.has_value()) {
+            return LINGLONG_ERR(mergedDir);
+        }
+        curDir = *mergedDir->get();
+    } else {
+        curDir = this->repo.getLayerDir(*curRef);
+        if (!curDir) {
+            return LINGLONG_ERR(curDir);
+        }
     }
 
     auto info = curDir->info();
@@ -1177,7 +1200,8 @@ utils::error::Result<void> Builder::run(const QStringList &args)
     if (!baseRef) {
         return LINGLONG_ERR(baseRef);
     }
-    auto baseDir = this->repo.getLayerDir(*baseRef, "binary");
+    auto baseDir =
+      debug ? this->repo.getMergedModuleDir(*baseRef) : this->repo.getLayerDir(*baseRef, "binary");
     if (!baseDir) {
         return LINGLONG_ERR(baseDir);
     }
@@ -1191,7 +1215,8 @@ utils::error::Result<void> Builder::run(const QStringList &args)
         if (!ref) {
             return LINGLONG_ERR(ref);
         }
-        auto dir = this->repo.getLayerDir(*ref, "binary");
+        auto dir =
+          debug ? this->repo.getMergedModuleDir(*ref) : this->repo.getLayerDir(*ref, "binary");
         if (!dir) {
             return LINGLONG_ERR(dir);
         }

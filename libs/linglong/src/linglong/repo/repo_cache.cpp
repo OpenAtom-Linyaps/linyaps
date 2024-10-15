@@ -168,18 +168,8 @@ RepoCache::addLayerItem(const api::types::v1::RepositoryCacheLayersItem &item)
 {
     LINGLONG_TRACE("add layer item");
 
-    auto it = std::find_if(
-      cache.layers.begin(),
-      cache.layers.end(),
-      [&item](const api::types::v1::RepositoryCacheLayersItem &val) {
-          return !(item.commit != val.commit || item.repo != val.repo
-                   || item.info.channel != val.info.channel || item.info.id != val.info.id
-                   || item.info.version != val.info.version
-                   || item.info.arch.front() != val.info.arch.front()
-                   || item.info.packageInfoV2Module != val.info.packageInfoV2Module);
-      });
-
-    if (it != cache.layers.end()) {
+    auto it = findMatchingItem(item);
+    if (it) {
         assert(false);
         return LINGLONG_ERR("item already exist");
     }
@@ -193,11 +183,10 @@ RepoCache::addLayerItem(const api::types::v1::RepositoryCacheLayersItem &item)
     return LINGLONG_OK;
 }
 
-utils::error::Result<void>
-RepoCache::deleteLayerItem(const api::types::v1::RepositoryCacheLayersItem &item) noexcept
+utils::error::Result<std::vector<api::types::v1::RepositoryCacheLayersItem>::iterator>
+RepoCache::findMatchingItem(const api::types::v1::RepositoryCacheLayersItem &item) noexcept
 {
-    LINGLONG_TRACE("delete layer item");
-
+    LINGLONG_TRACE("find matching item");
     auto it = std::find_if(
       cache.layers.begin(),
       cache.layers.end(),
@@ -209,12 +198,25 @@ RepoCache::deleteLayerItem(const api::types::v1::RepositoryCacheLayersItem &item
                    || item.info.packageInfoV2Module != val.info.packageInfoV2Module);
       });
 
-    if (it == cache.layers.end()) {
+      if(it == cache.layers.end()) {
+         return LINGLONG_ERR("item doesn't exist");
+      }
+
+      return it;
+}
+
+utils::error::Result<void>
+RepoCache::deleteLayerItem(const api::types::v1::RepositoryCacheLayersItem &item) noexcept
+{
+    LINGLONG_TRACE("delete layer item");
+
+    auto it = findMatchingItem(item);
+    if (!it) {
         assert(false);
-        return LINGLONG_ERR("item doesn't exist");
+        return LINGLONG_ERR(it);
     }
 
-    cache.layers.erase(it);
+    cache.layers.erase(*it);
     auto ret = writeToDisk();
     if (!ret) {
         return LINGLONG_ERR(ret);

@@ -56,8 +56,6 @@ public:
     utils::error::Result<void> addLayerItem(const api::types::v1::RepositoryCacheLayersItem &item);
     utils::error::Result<void>
     deleteLayerItem(const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
-    utils::error::Result<void>
-    updateLayerItem(const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
 
     [[nodiscard]] std::vector<api::types::v1::RepositoryCacheLayersItem>
     queryLayerItem(const repoCacheQuery &query) const noexcept;
@@ -80,10 +78,12 @@ public:
     utils::error::Result<void> rebuildCache(const api::types::v1::RepoConfig &repoConfig,
                                             OstreeRepo &repo) noexcept;
     [[nodiscard]] std::optional<std::vector<MigrationStage>> migrations() const noexcept;
+    utils::error::Result<std::vector<api::types::v1::RepositoryCacheLayersItem>::iterator>
+    findMatchingItem(const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
+    utils::error::Result<void> writeToDisk();
 
 private:
     RepoCache() = default;
-    utils::error::Result<void> writeToDisk();
     api::types::v1::RepositoryCache cache;
     std::filesystem::path cacheFile;
 };

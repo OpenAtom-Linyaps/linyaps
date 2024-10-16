@@ -281,29 +281,17 @@ int main(int argc, char **argv)
           containerBuidler->setParent(QCoreApplication::instance());
 
           std::unique_ptr<InteractiveNotifier> notifier{ nullptr };
-          while (true) {
+
+          // if ll-cli is running in tty, should use terminalNotifier.
+          if (::isatty(STDIN_FILENO) != 0 && ::isatty(STDOUT_FILENO) != 0) {
+              notifier = std::make_unique<TerminalNotifier>();
+          } else {
               try {
                   notifier = std::make_unique<DBusNotifier>();
-                  break;
               } catch (std::runtime_error &err) {
                   qWarning() << "initialize DBus notifier error:" << err.what()
                              << "try to fallback to terminal notifier.";
               }
-
-              if (::isatty(STDIN_FILENO) == 0) {
-                  qWarning()
-                    << "The standard input fd isn't a tty, terminal notifier is unavailable";
-                  break;
-              }
-
-              if (::isatty(STDOUT_FILENO) == 0) {
-                  qWarning()
-                    << "The standard output fd isn't a tty, terminal notifier is unavailable";
-                  break;
-              }
-
-              notifier = std::make_unique<TerminalNotifier>();
-              break;
           }
 
           if (noDBus) {

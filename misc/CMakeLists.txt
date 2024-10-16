@@ -41,7 +41,7 @@ configure_files(
   share/dbus-1/system-services/org.deepin.linglong.PackageManager1.service
   share/linglong/builder/templates/example.yaml
   share/linglong/config.yaml
-  share/mime/packages/deepin-linglong.xml
+  share/mime/packages/vnd.linyaps.uab.xml
   share/polkit-1/actions/org.deepin.linglong.PackageManager1.policy)
 
 # bash-completion

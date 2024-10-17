@@ -155,4 +155,27 @@ void Printer::printPackage(const api::types::v1::PackageInfoV2 &info)
 {
     std::cout << nlohmann::json(info).dump(4) << std::endl;
 }
+
+void Printer::printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &list)
+{
+    std::cout << "\033[38;5;214m" << std::left << std::setw(33) << qUtf8Printable("id")
+              << std::setw(16) << qUtf8Printable("installed") << std::setw(16)
+              << qUtf8Printable("new") << "\033[0m" << std::endl;
+
+    for (const auto &result : list) {
+        this->printUpgradeList(result);
+    }
+}
+
+void Printer::printUpgradeList(const api::types::v1::UpgradeListResult &result)
+{
+    auto id = QString::fromStdString(result.id).simplified();
+    if (id.size() > 32) {
+        id.push_back(" ");
+    }
+
+    std::cout << std::setw(33) << id.toStdString() << std::setw(16) << result.oldVersion
+              << std::setw(16) << result.newVersion << std::endl;
+}
+
 } // namespace linglong::cli

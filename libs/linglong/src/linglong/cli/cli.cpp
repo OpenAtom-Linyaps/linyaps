@@ -14,6 +14,7 @@
 #include "linglong/api/types/v1/PackageManager1SearchParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1SearchResult.hpp"
 #include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
+#include "linglong/api/types/v1/UpgradeListResult.hpp"
 #include "linglong/package/layer_file.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/utils/command/env.h"
@@ -50,8 +51,9 @@ Usage:
     ll-cli [--json] [--no-dbus] install TIER
     ll-cli [--json] uninstall TIER [--all] [--prune]
     ll-cli [--json] upgrade TIER
+    ll-cli [--json] upgrade
     ll-cli [--json] search [--type=TYPE] [--dev] TEXT
-    ll-cli [--json] [--no-dbus] list [--type=TYPE]
+    ll-cli [--json] [--no-dbus] list [--type=TYPE] [--upgradable]
     ll-cli [--json] repo modify [--name=REPO] URL
     ll-cli [--json] repo add NAME URL
     ll-cli [--json] repo remove NAME
@@ -83,7 +85,8 @@ Options:
     --type=TYPE               Filter result with tiers type. One of "runtime", "app" or "all". [default: app]
     --state=STATE             Filter result with the tiers install state. Should be "local" or "remote". [default: local]
     --prune                   Remove application data if the tier is an application and all version of that application has been removed.
-    --dev                     include develop tiers in result.
+    --dev                     Include develop tiers in result.
+    --upgradable              Show the latest version list of the currently installed tiers, it only works for app.
 
 Subcommands:
     run        Run an application.
@@ -866,6 +869,7 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
 int Cli::list(std::map<std::string, docopt::value> &args)
 {
     QString type;
+    bool isShowUpgradeList = false;
 
     if (args["--type"].isString()) {
         type = QString::fromStdString(args["--type"].asString());
@@ -879,6 +883,51 @@ int Cli::list(std::map<std::string, docopt::value> &args)
 
     if (!type.isEmpty()) {
         filterPackageInfosFromType(*pkgs, type);
+    }
+
+    if (args["--upgradable"].isBool()) {
+        isShowUpgradeList = args["--upgradable"].asBool();
+    }
+
+    if (isShowUpgradeList) {
+        std::vector<api::types::v1::UpgradeListResult> upgradeList;
+        upgradeList.reserve(pkgs->size());
+
+        for (const auto &pkg : *pkgs) {
+            auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(pkg.id));
+            if (!fuzzyRef) {
+                this->printer.printErr(fuzzyRef.error());
+                return -1;
+            }
+
+            auto ref = this->repository.clearReference(*fuzzyRef,
+                                                       {
+                                                         .forceRemote = true,
+                                                         .fallbackToRemote = false,
+                                                       });
+            if (!ref) {
+                qDebug() << QString::fromStdString(pkg.id)
+                         << "can't be found in remote repo, maybe it is local package, skip it.";
+                continue;
+            }
+
+            const auto oldVersion = pkg.version;
+            const auto newVersion = ref->version.toString().toStdString();
+
+            if (newVersion <= oldVersion) {
+                qDebug() << "The local package" << QString::fromStdString(pkg.id)
+                         << "version is higher than the remote repository version, skip it.";
+                continue;
+            }
+
+            upgradeList.emplace_back(api::types::v1::UpgradeListResult{ .id = pkg.id,
+                                                                        .newVersion = newVersion,
+                                                                        .oldVersion = oldVersion });
+        }
+
+        this->printer.printUpgradeList(upgradeList);
+
+        return 0;
     }
 
     this->printer.printPackages(*pkgs);

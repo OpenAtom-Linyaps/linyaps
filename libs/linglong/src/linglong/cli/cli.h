@@ -12,9 +12,53 @@
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
 
-#include <docopt.h>
+#include <CLI/App.hpp>
 
 namespace linglong::cli {
+
+struct CliOptions
+{
+    CliOptions(const std::string &filePath,
+               const std::string &fileUrl,
+               const std::string &workDir,
+               const std::string &appid,
+               const std::string &pagoda,
+               const std::string &tier,
+               const std::string &module,
+               const std::string &type,
+               const std::string &repoName,
+               const std::string &repoUrl,
+               std::vector<std::string> commands,
+               bool showDevel)
+        : filePath(filePath)
+        , fileUrl(fileUrl)
+        , workDir(workDir)
+        , appid(appid)
+        , pagoda(pagoda)
+        , tier(tier)
+        , module(module)
+        , type(type)
+        , repoName(repoName)
+        , repoUrl(repoUrl)
+        , commands(commands)
+        , showDevel(showDevel){};
+
+    CliOptions() = default;
+    ~CliOptions() = default;
+
+    std::string filePath;
+    std::string fileUrl;
+    std::string workDir;
+    std::string appid;
+    std::string pagoda;
+    std::string tier;
+    std::string module;
+    std::string type;
+    std::string repoName;
+    std::string repoUrl;
+    std::vector<std::string> commands;
+    bool showDevel = false;
+};
 
 class Cli : public QObject
 {
@@ -33,7 +77,42 @@ public:
         std::unique_ptr<InteractiveNotifier> &&notifier,
         QObject *parent = nullptr);
 
-    static const char USAGE[];
+    int run();
+    int exec();
+    int enter();
+    int ps();
+    int kill();
+    int install();
+    int upgrade();
+    int search();
+    int uninstall();
+    int list();
+    int repo(CLI::App *app);
+    int info();
+    int content();
+    int migrate();
+
+    void cancelCurrentTask();
+
+    void setCliOptions(const CliOptions &options) noexcept { this->options = options; }
+
+private:
+    int installFromFile(const QFileInfo &fileInfo);
+    std::vector<std::string>
+    filePathMapping(const std::vector<std::string> &command) const noexcept;
+    static void filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> &list,
+                                           const std::string &type) noexcept;
+    void updateAM() noexcept;
+
+private Q_SLOTS:
+    void processDownloadStatus(const QString &recTaskID,
+                               const QString &percentage,
+                               const QString &message,
+                               int status);
+    void forwardMigrateDone(int code, QString message);
+
+Q_SIGNALS:
+    void migrateDone(int code, QString message, QPrivateSignal);
 
 private:
     Printer &printer;
@@ -45,41 +124,7 @@ private:
     QString taskID;
     bool taskDone{ true };
     service::InstallTask::Status lastStatus;
-    std::vector<std::string>
-    filePathMapping(std::map<std::string, docopt::value> &args,
-                    const std::vector<std::string> &command) const noexcept;
-    static void filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> &list,
-                                           const QString &type) noexcept;
-    void updateAM() noexcept;
-
-public:
-    int run(std::map<std::string, docopt::value> &args);
-    int exec(std::map<std::string, docopt::value> &args);
-    int enter(std::map<std::string, docopt::value> &args);
-    int ps(std::map<std::string, docopt::value> &args);
-    int kill(std::map<std::string, docopt::value> &args);
-    int install(std::map<std::string, docopt::value> &args);
-    int upgrade(std::map<std::string, docopt::value> &args);
-    int search(std::map<std::string, docopt::value> &args);
-    int uninstall(std::map<std::string, docopt::value> &args);
-    int list(std::map<std::string, docopt::value> &args);
-    int repo(std::map<std::string, docopt::value> &args);
-    int info(std::map<std::string, docopt::value> &args);
-    int content(std::map<std::string, docopt::value> &args);
-    int migrate(std::map<std::string, docopt::value> &args);
-
-    void cancelCurrentTask();
-
-private Q_SLOTS:
-    int installFromFile(const QFileInfo &fileInfo);
-    void processDownloadStatus(const QString &recTaskID,
-                               const QString &percentage,
-                               const QString &message,
-                               int status);
-    void forwardMigrateDone(int code, QString message);
-
-Q_SIGNALS:
-    void migrateDone(int code, QString message, QPrivateSignal);
+    linglong::cli::CliOptions options;
 };
 
 } // namespace linglong::cli

@@ -16,8 +16,6 @@
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
 
-#include <docopt.h>
-
 #include <iostream>
 
 #include <wordexp.h>

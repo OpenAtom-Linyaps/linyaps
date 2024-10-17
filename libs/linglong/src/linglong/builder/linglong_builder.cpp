@@ -41,7 +41,9 @@
 
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <optional>
+#include <ostream>
 #include <string>
 #include <system_error>
 #include <vector>
@@ -694,9 +696,7 @@ set -e
                    .arg("Status")
                    .toStdString(),
                  2);
-    if (this->fullDevelop) {
-
-    } else if (this->project.modules.has_value()) {
+    if (this->project.modules.has_value()) {
         for (const auto &module : *this->project.modules) {
             auto name = QString::fromStdString(module.name);
             printReplacedText(QString("%1%2%3%4")
@@ -1273,6 +1273,43 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
               std::filesystem::path{ curDir->absolutePath().toStdString() };
             std::for_each(innerBinds->cbegin(), innerBinds->cend(), bindInnerMount);
         }
+    }
+    if (debug) {
+        std::string appPrefix = "/opt/apps/" + this->project.package.id + "/files";
+        std::string debugFileDirectory =
+          "/usr/lib/debug:/runtime/lib/debug:" + appPrefix + "/lib/debug";
+
+        auto gdbinit = this->workingDir.absoluteFilePath("linglong/host_gdbinit").toStdString();
+        std::ofstream hostConf(gdbinit);
+        // project => workdir
+        hostConf << "set substitute-path /project " + this->workingDir.absolutePath().toStdString()
+                 << std::endl;
+        // /opt/apps/$appid/files => mergedDir
+        hostConf << "set substitute-path " + appPrefix + " "
+            + options.appDir->absolutePath().toStdString()
+                 << std::endl;
+        hostConf << "set debug-file-directory " + debugFileDirectory << std::endl;
+        hostConf << "# target remote :1234";
+
+        // 支持在容器中命令行调试
+        auto *homeEnv = ::getenv("HOME");
+        auto hostHomeDir = std::filesystem::path(homeEnv);
+        gdbinit = this->workingDir.absoluteFilePath("linglong/gdbinit").toStdString();
+        std::ofstream f(gdbinit);
+        f << "set debug-file-directory " + debugFileDirectory;
+
+        applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+          .destination = hostHomeDir / ".gdbinit",
+          .options = { { "ro", "rbind" } },
+          .source = gdbinit,
+          .type = "bind",
+        });
+        applicationMounts.push_back({
+          .destination = "/project",
+          .options = { { "rbind", "rw" } },
+          .source = this->workingDir.absolutePath().toStdString(),
+          .type = "bind",
+        });
     }
 
     options.mounts = std::move(applicationMounts);

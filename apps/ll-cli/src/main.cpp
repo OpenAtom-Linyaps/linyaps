@@ -18,6 +18,8 @@
 #include "linglong/utils/global/initialize.h"
 #include "ocppi/cli/crun/Crun.hpp"
 
+#include <sys/file.h>
+
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QtGlobal>
@@ -26,6 +28,7 @@
 #include <functional>
 #include <memory>
 
+#include <fcntl.h>
 #include <unistd.h>
 #include <wordexp.h>
 
@@ -103,6 +106,24 @@ std::vector<std::string> transformOldExec(int argc, char **argv) noexcept
     return res;
 }
 
+void ensureDirectory(const std::filesystem::path &dir)
+{
+    std::error_code ec;
+    if (!std::filesystem::exists(dir, ec)) {
+        if (ec) {
+            qCritical() << QString{ "get status of" } << dir.c_str()
+                        << "failed:" << ec.message().c_str();
+            std::abort();
+        }
+
+        if (!std::filesystem::create_directory(dir, ec)) {
+            qCritical() << "failed to create directory:" << ec.message().c_str();
+            QCoreApplication::exit(ec.value());
+            std::abort();
+        }
+    }
+}
+
 } // namespace
 
 using namespace linglong::utils::global;
@@ -110,7 +131,6 @@ using namespace linglong::utils::global;
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
-
     applicationInitializte();
 
     auto ret = QMetaObject::invokeMethod(
@@ -122,6 +142,29 @@ int main(int argc, char **argv)
               QCoreApplication::exit(-1);
               return;
           }
+
+          auto userContainerDir =
+            std::filesystem::path{ "/run/linglong" } / std::to_string(::getuid());
+          ensureDirectory(userContainerDir);
+
+          auto mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+          auto pidFile = userContainerDir / std::to_string(::getpid());
+          auto fd = ::open(pidFile.c_str(), O_WRONLY | O_CREAT | O_EXCL, mode);
+          if (fd == -1) {
+              qCritical() << QString{ "create file " } + pidFile.c_str()
+                  + " error:" + ::strerror(errno);
+              QCoreApplication::exit(-1);
+              return;
+          }
+          ::close(fd);
+
+          QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [pidFile] {
+              std::error_code ec;
+              if (!std::filesystem::remove(pidFile, ec) && ec) {
+                  qCritical().nospace()
+                    << "failed to remove file " << pidFile.c_str() << ": " << ec.message().c_str();
+              }
+          });
 
           auto raw_args = transformOldExec(argc, argv);
           std::map<std::string, docopt::value> args =

@@ -27,11 +27,13 @@
 
 #include <nlohmann/json.hpp>
 
+#include <QCryptographicHash>
 #include <QEventLoop>
 #include <QFileInfo>
 
 #include <filesystem>
 #include <iostream>
+#include <system_error>
 
 using namespace linglong::utils::error;
 
@@ -278,6 +280,7 @@ int Cli::run(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
+    std::optional<std::string> runtimeLayerRef;
     std::optional<package::LayerDir> runtimeLayerDir;
     if (info->runtime) {
         auto runtimeFuzzyRef =
@@ -287,24 +290,25 @@ int Cli::run(std::map<std::string, docopt::value> &args)
             return -1;
         }
 
-        auto runtimeRef = this->repository.clearReference(*runtimeFuzzyRef,
-                                                          {
-                                                            .forceRemote = false,
-                                                            .fallbackToRemote = false,
-                                                          });
-        if (!runtimeRef) {
-            this->printer.printErr(runtimeRef.error());
+        auto runtimeRefRet = this->repository.clearReference(*runtimeFuzzyRef,
+                                                             {
+                                                               .forceRemote = false,
+                                                               .fallbackToRemote = false,
+                                                             });
+        if (!runtimeRefRet) {
+            this->printer.printErr(runtimeRefRet.error());
             return -1;
         }
 
         auto runtimeLayerDirRet =
-          this->repository.getLayerDir(*runtimeRef, std::string{ "binary" }, info->uuid);
+          this->repository.getLayerDir(*runtimeRefRet, std::string{ "binary" }, info->uuid);
         if (!runtimeLayerDirRet) {
             this->printer.printErr(runtimeLayerDirRet.error());
             return -1;
         }
 
-        runtimeLayerDir = *runtimeLayerDirRet;
+        runtimeLayerRef = runtimeRefRet->toString().toStdString();
+        runtimeLayerDir = std::move(runtimeLayerDirRet).value();
     }
 
     auto baseFuzzyRef = package::FuzzyReference::parse(QString::fromStdString(info->base));
@@ -339,11 +343,62 @@ int Cli::run(std::map<std::string, docopt::value> &args)
     }
     auto execArgs = filePathMapping(args, command);
 
-    auto containers = this->ociCLI.list().value_or(std::vector<ocppi::types::ContainerListItem>{});
+    auto newContainerID = [id = curAppRef->toString() + "-"]() mutable {
+        auto now = std::chrono::steady_clock::now().time_since_epoch().count();
+        id.append(QByteArray::fromStdString(std::to_string(now)));
+        return QCryptographicHash::hash(id.toUtf8(), QCryptographicHash::Sha256).toHex();
+    }();
+
+    // this lambda will dump reference of containerID, app, base and runtime to
+    // /run/linglong/getuid()/getpid() to store these needed infomation
+    auto dumpContainerInfo = [app = curAppRef->toString().toStdString(),
+                              base = baseRef->toString().toStdString(),
+                              containerID = newContainerID.toStdString(),
+                              runtime = runtimeLayerRef.value(),
+                              this]() -> bool {
+        LINGLONG_TRACE("dump info")
+        std::error_code ec;
+        auto pidFile = std::filesystem::path{ "/run/linglong" } / std::to_string(::getuid())
+          / std::to_string(::getpid());
+        if (!std::filesystem::exists(pidFile, ec)) {
+            if (ec) {
+                qCritical() << "couldn't get status of" << pidFile.c_str() << ":"
+                            << ec.message().c_str();
+                return ec.value();
+            }
+
+            auto msg = "state file " + pidFile.string() + "doesn't exist, abort.";
+            qFatal("%s", msg.c_str());
+        }
+
+        auto stateInfo = linglong::api::types::v1::ContainerProcessStateInfo{
+            .app = app,
+            .base = base,
+            .containerID = containerID,
+            .runtime = runtime,
+        };
+
+        std::ofstream stream{ pidFile };
+        if (!stream.is_open()) {
+            auto msg = QString{ "failed to open " } + pidFile.c_str();
+            this->printer.printErr(LINGLONG_ERRV(msg));
+            return false;
+        }
+        stream << nlohmann::json(stateInfo).dump();
+        stream.close();
+
+        return true;
+    };
+
+    auto containers = getCurrentContainers().value_or(std::vector<api::types::v1::CliContainer>{});
     for (const auto &container : containers) {
-        const auto &decodedID = QString(QByteArray::fromBase64(container.id.c_str()));
-        if (!decodedID.startsWith(curAppRef->toString())) {
+        if (container.package != curAppRef->toString().toStdString()) {
+            qDebug() << "mismatch:" << container.package.c_str() << " -- " << curAppRef->toString();
             continue;
+        }
+
+        if (!dumpContainerInfo()) {
+            return -1;
         }
 
         QStringList bashArgs;
@@ -425,8 +480,7 @@ int Cli::run(std::map<std::string, docopt::value> &args)
 
     auto container = this->containerBuilder.create({
       .appID = curAppRef->id,
-      .containerID =
-        (curAppRef->toString() + "-" + QUuid::createUuid().toString()).toUtf8().toBase64(),
+      .containerID = newContainerID,
       .runtimeDir = runtimeLayerDir,
       .baseDir = *baseLayerDir,
       .appDir = *appLayerDir,
@@ -441,6 +495,10 @@ int Cli::run(std::map<std::string, docopt::value> &args)
 
     ocppi::runtime::config::types::Process process{};
     process.args = execArgs;
+
+    if (!dumpContainerInfo()) {
+        return -1;
+    }
 
     auto result = (*container)->run(process);
     if (!result) {
@@ -512,29 +570,77 @@ int Cli::exec(std::map<std::string, docopt::value> &args)
     return 0;
 }
 
+utils::error::Result<std::vector<api::types::v1::CliContainer>>
+Cli::getCurrentContainers() const noexcept
+{
+    LINGLONG_TRACE("get current running containers")
+
+    auto containersRet = this->ociCLI.list();
+    if (!containersRet) {
+        return LINGLONG_ERR(containersRet);
+    }
+    auto containers = std::move(containersRet).value();
+
+    std::vector<api::types::v1::CliContainer> myContainers;
+    auto infoDir = std::filesystem::path{ "/run/linglong" } / std::to_string(::getuid());
+    for (const auto &pidFile : std::filesystem::directory_iterator{ infoDir }) {
+        const auto &file = pidFile.path();
+        const auto &process = "/proc" / file.filename();
+
+        std::error_code ec;
+        if (!std::filesystem::exists(process, ec)) {
+            // this process may exit abnormally, skip it.
+            qDebug() << process.c_str() << "doesn't exist";
+            continue;
+        }
+
+        auto info = linglong::utils::serialize::LoadJSONFile<
+          linglong::api::types::v1::ContainerProcessStateInfo>(
+          QString::fromStdString(file.string()));
+        if (!info) {
+            qDebug() << "load info from" << file.c_str() << "error:" << info.error().message();
+            continue;
+        }
+
+        auto container = std::find_if(containers.begin(),
+                                      containers.end(),
+                                      [&info](const ocppi::types::ContainerListItem &item) {
+                                          return item.id == info->containerID;
+                                      });
+        if (container == containers.cend()) {
+            qDebug() << "couldn't find container that process " << file.filename().c_str()
+                     << "belongs to";
+            continue;
+        }
+
+        myContainers.emplace_back(api::types::v1::CliContainer{
+          .id = std::move(info->containerID),
+          .package = std::move(info->app),
+          .pid = container->pid,
+        });
+    }
+
+    return myContainers;
+}
+
 int Cli::ps(std::map<std::string, docopt::value> & /*args*/)
 {
     LINGLONG_TRACE("command ps");
 
-    auto containers = this->ociCLI.list();
-    if (!containers) {
-        auto err = LINGLONG_ERRV(containers);
-        this->printer.printErr(err);
+    auto myContainers = getCurrentContainers();
+    if (!myContainers) {
+        this->printer.printErr(myContainers.error());
         return -1;
     }
 
-    std::vector<api::types::v1::CliContainer> myContainers;
-    for (const auto &container : *containers) {
-        auto decodedID = QString(QByteArray::fromBase64(container.id.c_str()));
-        auto pkgName = decodedID.left(decodedID.indexOf('-'));
-        myContainers.push_back({
-          .id = container.id,
-          .package = pkgName.toStdString(),
-          .pid = container.pid,
-        });
-    }
+    // TODO: add option --no-truncated
+    std::for_each(myContainers->begin(),
+                  myContainers->end(),
+                  [](api::types::v1::CliContainer &container) {
+                      container.id = container.id.substr(0, 12);
+                  });
 
-    this->printer.printContainers(myContainers);
+    this->printer.printContainers(*myContainers);
 
     return 0;
 }

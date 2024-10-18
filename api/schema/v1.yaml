@@ -71,6 +71,24 @@ $defs:
             destination:
               type: string
               description: mount source file to the another position of container
+  ContainerProcessStateInfo:
+    description: |
+      information about process which in container that start by ll-cli, all content
+      will write to /run/linglong/UID/PID
+    type: object
+    required:
+      - containerID
+      - app
+      - base
+    properties:
+      containerID:
+        type: string
+      app:
+        type: string
+      base:
+        type: string
+      runtime:
+        type: string
   InteractionRequest:
     description: |
       structured message which inspired by freedesktop Notification Spec.

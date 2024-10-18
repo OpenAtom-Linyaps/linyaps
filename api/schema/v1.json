@@ -71,6 +71,29 @@
         }
       }
     },
+    "ContainerProcessStateInfo": {
+      "description": "information about process which in container that start by ll-cli, all content\nwill write to /run/linglong/UID/PID\n",
+      "type": "object",
+      "required": [
+        "containerID",
+        "app",
+        "base"
+      ],
+      "properties": {
+        "containerID": {
+          "type": "string"
+        },
+        "app": {
+          "type": "string"
+        },
+        "base": {
+          "type": "string"
+        },
+        "runtime": {
+          "type": "string"
+        }
+      }
+    },
     "InteractionRequest": {
       "description": "structured message which inspired by freedesktop Notification Spec.\nrefer: https://specifications.freedesktop.org/notification-spec/latest/protocol.html#id-1.10.3.3.4\n",
       "type": "object",
@@ -921,6 +944,9 @@
     },
     "ApplicationConfigurationPermissions": {
       "$ref": "#/$defs/ApplicationConfigurationPermissions"
+    },
+    "ContainerProcessStateInfo": {
+      "$ref": "#/$defs/ContainerProcessStateInfo"
     },
     "InteractionRequest": {
       "$ref": "#/$defs/InteractionRequest"

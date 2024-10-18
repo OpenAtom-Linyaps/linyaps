@@ -44,6 +44,7 @@
 #include "linglong/api/types/v1/LayerInfo.hpp"
 #include "linglong/api/types/v1/InteractionRequest.hpp"
 #include "linglong/api/types/v1/InteractionReply.hpp"
+#include "linglong/api/types/v1/ContainerProcessStateInfo.hpp"
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/CliContainer.hpp"
 #include "linglong/api/types/v1/BuilderProject.hpp"
@@ -88,6 +89,9 @@ void to_json(json & j, const CliContainer & x);
 
 void from_json(const json & j, CommonResult & x);
 void to_json(json & j, const CommonResult & x);
+
+void from_json(const json & j, ContainerProcessStateInfo & x);
+void to_json(json & j, const ContainerProcessStateInfo & x);
 
 void from_json(const json & j, InteractionReply & x);
 void to_json(json & j, const InteractionReply & x);
@@ -382,6 +386,23 @@ inline void to_json(json & j, const CommonResult & x) {
 j = json::object();
 j["code"] = x.code;
 j["message"] = x.message;
+}
+
+inline void from_json(const json & j, ContainerProcessStateInfo& x) {
+x.app = j.at("app").get<std::string>();
+x.base = j.at("base").get<std::string>();
+x.containerID = j.at("containerID").get<std::string>();
+x.runtime = get_stack_optional<std::string>(j, "runtime");
+}
+
+inline void to_json(json & j, const ContainerProcessStateInfo & x) {
+j = json::object();
+j["app"] = x.app;
+j["base"] = x.base;
+j["containerID"] = x.containerID;
+if (x.runtime) {
+j["runtime"] = x.runtime;
+}
 }
 
 inline void from_json(const json & j, InteractionReply& x) {
@@ -760,6 +781,7 @@ x.builderConfig = get_stack_optional<BuilderConfig>(j, "BuilderConfig");
 x.builderProject = get_stack_optional<BuilderProject>(j, "BuilderProject");
 x.cliContainer = get_stack_optional<CliContainer>(j, "CLIContainer");
 x.commonResult = get_stack_optional<CommonResult>(j, "CommonResult");
+x.containerProcessStateInfo = get_stack_optional<ContainerProcessStateInfo>(j, "ContainerProcessStateInfo");
 x.interactionReply = get_stack_optional<InteractionReply>(j, "InteractionReply");
 x.interactionRequest = get_stack_optional<InteractionRequest>(j, "InteractionRequest");
 x.layerInfo = get_stack_optional<LayerInfo>(j, "LayerInfo");
@@ -805,6 +827,9 @@ j["CLIContainer"] = x.cliContainer;
 }
 if (x.commonResult) {
 j["CommonResult"] = x.commonResult;
+}
+if (x.containerProcessStateInfo) {
+j["ContainerProcessStateInfo"] = x.containerProcessStateInfo;
 }
 if (x.interactionReply) {
 j["InteractionReply"] = x.interactionReply;

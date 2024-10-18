@@ -7,7 +7,6 @@
 #include "linglong_builder.h"
 
 #include "linglong/api/types/v1/Generators.hpp"
-#include "linglong/utils/configure.h"
 #include "linglong/builder/printer.h"
 #include "linglong/package/architecture.h"
 #include "linglong/package/layer_packager.h"
@@ -15,6 +14,7 @@
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container.h"
 #include "linglong/utils/command/env.h"
+#include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/global/initialize.h"
@@ -26,7 +26,9 @@
 #include <yaml-cpp/yaml.h>
 
 #include <QCoreApplication>
+#include <QCryptographicHash>
 #include <QDir>
+#include <QDirIterator>
 #include <QHash>
 #include <QProcess>
 #include <QRegularExpression>
@@ -35,7 +37,6 @@
 #include <QThread>
 #include <QUrl>
 #include <QUuid>
-#include <QDirIterator>
 
 #include <cstdlib>
 #include <filesystem>
@@ -44,8 +45,8 @@
 #include <vector>
 
 #include <sys/socket.h>
-#include <sys/wait.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 
 namespace linglong::builder {
 
@@ -54,14 +55,17 @@ namespace {
 // generate a unique id for then container
 QString genContainerID(const package::Reference &ref)
 {
-    auto containerID =
-      "linglong-builder-" + ref.id + "-" + QUuid::createUuid().toString(QUuid::Id128);
+    auto content = ref.id + "-";
+    auto now = std::chrono::steady_clock::now().time_since_epoch().count();
+    content.append(QString::fromStdString(std::to_string(now)));
+
     // 如果LINGLONG_DEBUG为true，则对ID进行编码，避免外部依赖该ID规则
     // 调试模式则不进行二次编码，便于跟踪排查
-    if (!std::getenv("LINGLONG_DEBUG")) {
-        containerID = containerID.toUtf8().toBase64();
+    if (::getenv("LINGLONG_DEBUG") != nullptr) {
+        return content;
     }
-    return containerID;
+
+    return QCryptographicHash::hash(content.toUtf8(), QCryptographicHash::Sha256).toHex();
 }
 
 quint64 sizeOfDir(const QString &srcPath)
@@ -787,7 +791,7 @@ set -e
                 return LINGLONG_ERR("mkpath files/share/systemd/user: failed");
             }
             auto ret = copyDir(binaryFiles.filePath("lib/systemd/user"),
-                                     binaryEntries.absoluteFilePath("share/systemd/user"));
+                               binaryEntries.absoluteFilePath("share/systemd/user"));
             if (!ret.has_value()) {
                 return LINGLONG_ERR(ret);
             }
@@ -797,7 +801,7 @@ set -e
                 return LINGLONG_ERR("mkpath files/share/systemd/user: failed");
             }
             auto ret = copyDir(developFiles.filePath("lib/systemd/user"),
-                                     developEntries.absoluteFilePath("share/systemd/user"));
+                               developEntries.absoluteFilePath("share/systemd/user"));
             if (!ret.has_value()) {
                 return LINGLONG_ERR(ret);
             }

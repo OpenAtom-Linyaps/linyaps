@@ -30,6 +30,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include <QCoreApplication>
+#include <QCryptographicHash>
 #include <QDir>
 #include <QDirIterator>
 #include <QHash>
@@ -61,14 +62,17 @@ namespace {
 // generate a unique id for then container
 QString genContainerID(const package::Reference &ref)
 {
-    auto containerID =
-      "linglong-builder-" + ref.id + "-" + QUuid::createUuid().toString(QUuid::Id128);
+    auto content = ref.id + "-";
+    auto now = std::chrono::steady_clock::now().time_since_epoch().count();
+    content.append(QString::fromStdString(std::to_string(now)));
+
     // 如果LINGLONG_DEBUG为true，则对ID进行编码，避免外部依赖该ID规则
     // 调试模式则不进行二次编码，便于跟踪排查
-    if (!std::getenv("LINGLONG_DEBUG")) {
-        containerID = containerID.toUtf8().toBase64();
+    if (::getenv("LINGLONG_DEBUG") != nullptr) {
+        return content;
     }
-    return containerID;
+
+    return QCryptographicHash::hash(content.toUtf8(), QCryptographicHash::Sha256).toHex();
 }
 
 quint64 sizeOfDir(const QString &srcPath)
@@ -861,6 +865,16 @@ set -e
             }
             auto ret = copyDir(binaryFiles.filePath("lib/systemd/user"),
                                binaryEntries.absoluteFilePath("share/systemd/user"));
+            if (!ret.has_value()) {
+                return LINGLONG_ERR(ret);
+            }
+        }
+        if (developFiles.exists("lib/systemd/user")) {
+            if (!developOutput.mkpath("share/systemd/user")) {
+                return LINGLONG_ERR("mkpath files/share/systemd/user: failed");
+            }
+            auto ret = copyDir(developFiles.filePath("lib/systemd/user"),
+                               developEntries.absoluteFilePath("share/systemd/user"));
             if (!ret.has_value()) {
                 return LINGLONG_ERR(ret);
             }

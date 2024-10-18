@@ -58,6 +58,8 @@ private:
                                            const QString &type) noexcept;
     void updateAM() noexcept;
     void printProgress() noexcept;
+    [[nodiscard]] utils::error::Result<std::vector<api::types::v1::CliContainer>>
+    getCurrentContainers() const noexcept;
 
 public:
     int run(std::map<std::string, docopt::value> &args);

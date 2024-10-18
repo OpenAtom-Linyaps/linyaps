@@ -12,9 +12,11 @@
 #include "nlohmann/json.hpp"
 
 #include <gio/gio.h>
+
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
+
 #include <filesystem>
 #include <fstream>
 

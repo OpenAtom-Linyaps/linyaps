@@ -17,6 +17,10 @@
 
 #include <ostree.h>
 
+#include <memory>
+#include <string>
+#include <vector>
+
 namespace linglong::repo {
 
 struct clearReferenceOption
@@ -63,8 +67,10 @@ public:
               const package::Reference &reference,
               const std::string &module = "binary") noexcept;
 
-    [[nodiscard]] utils::error::Result<package::Reference> clearReference(
-      const package::FuzzyReference &fuzz, const clearReferenceOption &opts) const noexcept;
+    [[nodiscard]] utils::error::Result<package::Reference>
+    clearReference(const package::FuzzyReference &fuzz,
+                   const clearReferenceOption &opts,
+                   const std::string &module = "binary") const noexcept;
 
     utils::error::Result<std::vector<api::types::v1::PackageInfoV2>> listLocal() const noexcept;
     utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
@@ -87,6 +93,17 @@ public:
     utils::error::Result<void> migrateRefs() noexcept;
 
     [[nodiscard]] bool needMigrate() const noexcept { return !!this->cache->migrations(); };
+
+    // 扫描layers变动，重新合并变动layer的modules
+    [[nodiscard]] utils::error::Result<void> mergeModules() const noexcept;
+    // 获取合并后的layerDir，如果没有找到返回binary模块的layerDir
+    [[nodiscard]] utils::error::Result<package::LayerDir>
+    getMergedModuleDir(const package::Reference &ref, bool fallbackLayerDir = true) const noexcept;
+    // 临时将指定的modules合并，并返回合并后的layerDir，供打包者调试应用
+    // 临时目录会在智能指针释放时删除
+    [[nodiscard]] utils::error::Result<std::shared_ptr<package::LayerDir>>
+    getMergedModuleDir(const package::Reference &ref, const QStringList &modules) const noexcept;
+    std::vector<std::string> getModuleList(const package::Reference &ref) noexcept;
 
 private:
     api::types::v1::RepoConfig cfg;

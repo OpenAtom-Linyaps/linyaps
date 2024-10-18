@@ -32,13 +32,13 @@ Arguments:
 The `ll-builder create` command creates a folder in the current directory according to the project name, and generates the `linglong.yaml` template file required for the build. Here is an example:
 
 ```bash
-ll-builder create org.deepin.hello
+ll-builder create org.deepin.demo
 ```
 
 Here is the output:
 
 ```text
-org.deepin.hello/
+org.deepin.demo/
 └── linglong.yaml
 ```
 
@@ -54,7 +54,7 @@ version: "1"
 
 ```yaml
 package:
-  id: org.deepin.hello
+  id: org.deepin.demo
   name: hello
   version: 0.0.0.1
   kind: app

@@ -23,6 +23,7 @@
 #include "linglong/api/types/v1/Sections.hpp"
 #include "linglong/api/types/v1/UabLayer.hpp"
 #include "linglong/api/types/v1/RepositoryCache.hpp"
+#include "linglong/api/types/v1/RepositoryCacheMergedItem.hpp"
 #include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
 #include "linglong/api/types/v1/RepoConfig.hpp"
 #include "linglong/api/types/v1/PackageManager1UpdateParameters.hpp"
@@ -147,6 +148,9 @@ void to_json(json & j, const RepoConfig & x);
 
 void from_json(const json & j, RepositoryCacheLayersItem & x);
 void to_json(json & j, const RepositoryCacheLayersItem & x);
+
+void from_json(const json & j, RepositoryCacheMergedItem & x);
+void to_json(json & j, const RepositoryCacheMergedItem & x);
 
 void from_json(const json & j, RepositoryCache & x);
 void to_json(json & j, const RepositoryCache & x);
@@ -704,10 +708,32 @@ j["info"] = x.info;
 j["repo"] = x.repo;
 }
 
+inline void from_json(const json & j, RepositoryCacheMergedItem& x) {
+x.binaryCommit = get_stack_optional<std::string>(j, "binaryCommit");
+x.commits = j.at("commits").get<std::vector<std::string>>();
+x.id = j.at("id").get<std::string>();
+x.modules = j.at("modules").get<std::vector<std::string>>();
+x.name = get_stack_optional<std::string>(j, "name");
+}
+
+inline void to_json(json & j, const RepositoryCacheMergedItem & x) {
+j = json::object();
+if (x.binaryCommit) {
+j["binaryCommit"] = x.binaryCommit;
+}
+j["commits"] = x.commits;
+j["id"] = x.id;
+j["modules"] = x.modules;
+if (x.name) {
+j["name"] = x.name;
+}
+}
+
 inline void from_json(const json & j, RepositoryCache& x) {
 x.config = j.at("config").get<RepoConfig>();
 x.layers = j.at("layers").get<std::vector<RepositoryCacheLayersItem>>();
 x.llVersion = j.at("ll-version").get<std::string>();
+x.merged = get_stack_optional<std::vector<RepositoryCacheMergedItem>>(j, "merged");
 x.migratingStage = get_stack_optional<std::vector<int64_t>>(j, "migrating_stage");
 x.version = j.at("version").get<std::string>();
 }
@@ -717,6 +743,9 @@ j = json::object();
 j["config"] = x.config;
 j["layers"] = x.layers;
 j["ll-version"] = x.llVersion;
+if (x.merged) {
+j["merged"] = x.merged;
+}
 if (x.migratingStage) {
 j["migrating_stage"] = x.migratingStage;
 }

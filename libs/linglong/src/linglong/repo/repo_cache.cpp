@@ -269,6 +269,18 @@ RepoCache::queryLayerItem(const repoCacheQuery &query) const noexcept
     return { layers_view.cbegin(), layers_view.cend() };
 }
 
+utils::error::Result<void> RepoCache::updateMergedItems(
+  const std::vector<api::types::v1::RepositoryCacheMergedItem> &items) noexcept
+{
+    LINGLONG_TRACE("update merged items");
+    cache.merged = items;
+    auto ret = writeToDisk();
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+    return LINGLONG_OK;
+};
+
 utils::error::Result<void> RepoCache::writeToDisk()
 {
     LINGLONG_TRACE("save repo cache");

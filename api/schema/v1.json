@@ -911,6 +911,47 @@
               }
             }
           }
+        },
+        "merged": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "Merge multiple modules into one directory",
+            "title": "RepositoryCacheMergedItem",
+            "required": [
+              "id",
+              "modules",
+              "commits"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "binary module ostree commit hash"
+              },
+              "name": {
+                "type": "string",
+                "description": "human readable name"
+              },
+              "binaryCommit": {
+                "type": "string",
+                "description": "binary module ostree commit hash"
+              },
+              "modules": {
+                "type": "array",
+                "description": "list of merged module names",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "commits": {
+                "type": "array",
+                "description": "list of ostree commit hashes for each module",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
         }
       }
     }

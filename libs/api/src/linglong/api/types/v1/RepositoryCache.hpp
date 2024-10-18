@@ -19,6 +19,7 @@
 
 #include "linglong/api/types/v1/RepoConfig.hpp"
 #include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
+#include "linglong/api/types/v1/RepositoryCacheMergedItem.hpp"
 
 namespace linglong {
 namespace api {
@@ -40,6 +41,7 @@ std::vector<RepositoryCacheLayersItem> layers;
 * version of linglong at the time of generating the file
 */
 std::string llVersion;
+std::optional<std::vector<RepositoryCacheMergedItem>> merged;
 /**
 * solutions should apply to migrating progress
 */

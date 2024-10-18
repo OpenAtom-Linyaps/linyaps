@@ -8,6 +8,7 @@
 
 #include "linglong/api/types/v1/RepoConfig.hpp"
 #include "linglong/api/types/v1/RepositoryCache.hpp"
+#include "linglong/api/types/v1/RepositoryCacheMergedItem.hpp"
 #include "linglong/package/architecture.h"
 #include "linglong/utils/error/error.h"
 
@@ -65,6 +66,15 @@ public:
     queryLayerItem() const noexcept
     {
         return this->cache.layers;
+    }
+
+    utils::error::Result<void>
+    updateMergedItems(const std::vector<api::types::v1::RepositoryCacheMergedItem> &items) noexcept;
+
+    [[nodiscard]] const std::optional<std::vector<api::types::v1::RepositoryCacheMergedItem>> &
+    queryMergedItems() const noexcept
+    {
+        return this->cache.merged;
     }
 
     utils::error::Result<void> rebuildCache(const api::types::v1::RepoConfig &repoConfig,

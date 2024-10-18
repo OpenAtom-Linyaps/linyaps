@@ -10,6 +10,8 @@
 #include "linglong/api/types/helper.h"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
+#include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
+#include "linglong/api/types/v1/RepositoryCacheMergedItem.hpp"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
@@ -26,6 +28,7 @@
 #include <nlohmann/json_fwd.hpp>
 #include <ostree-repo.h>
 
+#include <QCryptographicHash>
 #include <QDebug>
 #include <QDir>
 #include <QDirIterator>
@@ -34,14 +37,18 @@
 #include <QTemporaryDir>
 #include <QTimer>
 
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
 #include <cstring>
+#include <filesystem>
 #include <future>
+#include <map>
 #include <memory>
 #include <string>
 #include <thread>
 #include <utility>
+#include <vector>
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -462,7 +469,7 @@ utils::error::Result<package::Reference> clearReferenceLocal(const linglong::rep
             qFatal("internal error: broken data of repo cache: %s", ver.toStdString().c_str());
         }
 
-        qDebug() << "available layer found:" << ver;
+        qDebug() << "available layer found:" << fuzzy.toString() << ver;
         if (fuzzy.version) {
             if (!fuzzy.version->tweak) {
                 pkgVer->tweak = std::nullopt;
@@ -588,7 +595,6 @@ utils::error::Result<void> OSTreeRepo::handleRepositoryUpdate(
     if (!ret) {
         return LINGLONG_ERR(ret);
     }
-
     return LINGLONG_OK;
 }
 
@@ -1106,8 +1112,10 @@ void OSTreeRepo::pull(service::InstallTask &taskContext,
     transaction.commit();
 }
 
-utils::error::Result<package::Reference> OSTreeRepo::clearReference(
-  const package::FuzzyReference &fuzzy, const clearReferenceOption &opts) const noexcept
+utils::error::Result<package::Reference>
+OSTreeRepo::clearReference(const package::FuzzyReference &fuzzy,
+                           const clearReferenceOption &opts,
+                           const std::string &module) const noexcept
 {
     LINGLONG_TRACE("clear fuzzy reference " + fuzzy.toString());
 
@@ -1148,6 +1156,15 @@ utils::error::Result<package::Reference> OSTreeRepo::clearReference(
             qWarning() << "Ignore invalid package record";
             continue;
         }
+        if (module == "binary") {
+            if (record.packageInfoV2Module != "binary" && record.packageInfoV2Module != "runtime") {
+                continue;
+            }
+        } else {
+            if (record.packageInfoV2Module != module) {
+                continue;
+            }
+        }
         auto arch = package::Architecture::parse(record.arch[0]);
         if (!arch) {
             qWarning() << "Ignore invalid package record" << recordStr.c_str() << arch.error();
@@ -1172,7 +1189,10 @@ utils::error::Result<package::Reference> OSTreeRepo::clearReference(
         reference = *currentRef;
     }
     if (!reference) {
-        return LINGLONG_ERR("filter ref from list");
+        auto msg = QString("not found ref:%1 module:%2 from remote repo")
+                     .arg(fuzzy.toString())
+                     .arg(module.c_str());
+        return LINGLONG_ERR(msg);
     }
     return reference;
 }
@@ -1301,8 +1321,7 @@ void OSTreeRepo::unexportReference(const package::Reference &ref) noexcept
 {
     auto layerDir = this->getLayerDir(ref);
     if (!layerDir) {
-        Q_ASSERT(false);
-        qCritical() << "Failed to unexport" << ref.toString() << "layer not exists.";
+        qCritical() << "Failed to unexport" << ref.toString() << layerDir.error().message();
         return;
     }
 
@@ -1390,16 +1409,15 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
 
     auto layerDir = this->getLayerDir(ref);
     if (!layerDir) {
-        Q_ASSERT(false);
         qCritical() << QString("Failed to export %1:").arg(ref.toString())
-                    << "layer directory not exists.";
+                    << "layer directory not exists." << layerDir.error().message();
+        Q_ASSERT(false);
         return;
     }
     if (!layerDir->exists()) { }
 
     auto layerEntriesDir = QDir(layerDir->absoluteFilePath("entries/share"));
     if (!layerEntriesDir.exists()) {
-        Q_ASSERT(false);
         qCritical() << QString("Failed to export %1:").arg(ref.toString()) << layerEntriesDir
                     << "not exists.";
         return;
@@ -1585,6 +1603,258 @@ auto OSTreeRepo::getLayerDir(const package::Reference &ref,
     }
 
     return getLayerDir(*layer);
+}
+
+// get all module list
+std::vector<std::string> OSTreeRepo::getModuleList(const package::Reference &ref) noexcept
+{
+    repoCacheQuery query{
+        .id = ref.id.toStdString(),
+        .repo = std::nullopt,
+        .channel = ref.channel.toStdString(),
+        .version = ref.version.toString().toStdString(),
+    };
+    auto layers = this->cache->queryLayerItem(query);
+    // 按module字母从小到大排序，提前排序以保证后面的commits比较
+    std::sort(layers.begin(),
+              layers.end(),
+              [](api::types::v1::RepositoryCacheLayersItem lhs,
+                 api::types::v1::RepositoryCacheLayersItem rhs) {
+                  return lhs.info.packageInfoV2Module < rhs.info.packageInfoV2Module;
+              });
+    std::vector<std::string> modules;
+    for (const auto &item : layers) {
+        modules.push_back(item.info.packageInfoV2Module);
+    }
+    return modules;
+}
+
+auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref,
+                                    bool fallbackLayerDir) const noexcept
+  -> utils::error::Result<package::LayerDir>
+{
+    LINGLONG_TRACE("get merge dir from ref " + ref.toString());
+    qDebug() << "getMergedModuleDir" << ref.toString();
+    QDir mergedDir = this->repoDir.absoluteFilePath("merged");
+    auto layer = this->getLayerItem(ref, "binary", {});
+    if (!layer) {
+        qDebug().nospace() << "no such item:" << ref.toString()
+                           << "/binary:" << layer.error().message();
+        return LINGLONG_ERR(layer);
+    }
+    auto items = this->cache->queryMergedItems();
+    // 如果没有merged记录，尝试使用layer
+    if (!items.has_value()) {
+        qDebug().nospace() << "not exists merged items";
+        if (fallbackLayerDir) {
+            return getLayerDir(*layer);
+        }
+        return LINGLONG_ERR("no merged item found");
+    }
+    // 如果找到layer对应的merge，就返回merge目录，否则回退到layer目录
+    for (auto item : items.value()) {
+        if (item.binaryCommit == layer->commit) {
+            QDir dir = mergedDir.filePath(item.id.c_str());
+            if (dir.exists()) {
+                return dir.path();
+            } else {
+                qWarning().nospace() << "not exists merged dir" << dir;
+            }
+        }
+    }
+    if (fallbackLayerDir) {
+        return getLayerDir(*layer);
+    }
+    return LINGLONG_ERR("merged doesn't exist");
+}
+
+auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref,
+                                    const QStringList &loadModules) const noexcept
+  -> utils::error::Result<std::shared_ptr<package::LayerDir>>
+{
+    LINGLONG_TRACE("merge modules");
+    QDir mergedDir = this->repoDir.absoluteFilePath("merged");
+    auto layerItems = this->cache->queryLayerItem();
+    QCryptographicHash hash(QCryptographicHash::Sha256);
+    std::vector<std::string> commits;
+    std::string findModules;
+    // 筛选指定的layer
+    for (auto &layer : layerItems) {
+        std::string arch;
+        if (!layer.info.arch.empty()) {
+            arch = layer.info.arch.front();
+        }
+        if (layer.info.id != ref.id.toStdString()
+            || layer.info.version != ref.version.toString().toStdString()
+            || arch != ref.arch.toString().toStdString()) {
+            continue;
+        }
+        if (!loadModules.contains(layer.info.packageInfoV2Module.c_str())) {
+            continue;
+        }
+        commits.push_back(layer.commit);
+        findModules += layer.info.packageInfoV2Module + " ";
+        hash.addData(QString::fromStdString(layer.commit).toUtf8());
+    }
+    if (commits.empty()) {
+        return LINGLONG_ERR("not found any layer");
+    }
+    // 模块未全部找到
+    if (commits.size() < loadModules.size()) {
+        return LINGLONG_ERR(QString("missing module, only found: ") + findModules.c_str());
+    }
+    // 合并layer，生成临时merged目录
+    QString mergeID = hash.result().toHex();
+    auto mergeTmp = mergedDir.filePath("tmp_" + mergeID);
+    for (auto commit : commits) {
+        int root = open("/", O_DIRECTORY);
+        auto _ = utils::finally::finally([root]() {
+            close(root);
+        });
+        g_autoptr(GError) gErr = nullptr;
+        OstreeRepoCheckoutAtOptions opt = {};
+        opt.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES;
+        if (ostree_repo_checkout_at(this->ostreeRepo.get(),
+                                    &opt,
+                                    root,
+                                    mergeTmp.mid(1).toUtf8(),
+                                    commit.c_str(),
+                                    nullptr,
+                                    &gErr)
+            == FALSE) {
+            return LINGLONG_ERR(QString("ostree_repo_checkout_at %1").arg(mergeTmp), gErr);
+        }
+    }
+    auto ptr = new package::LayerDir(mergeTmp);
+    return std::shared_ptr<package::LayerDir>(ptr, [](package::LayerDir *ptr) {
+        ptr->removeRecursively();
+        delete ptr;
+    });
+}
+
+utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
+{
+    LINGLONG_TRACE("merge modules");
+    QDir mergedDir = this->repoDir.absoluteFilePath("merged");
+    auto layerItems = this->cache->queryLayerItem();
+    auto mergedItems = this->cache->queryMergedItems();
+    // 对layerItems分组
+    std::map<std::string, std::vector<api::types::v1::RepositoryCacheLayersItem>> layerGroup;
+    for (auto &layer : layerItems) {
+        std::string arch;
+        if (!layer.info.arch.empty()) {
+            arch = layer.info.arch.front();
+        }
+        // 将id、version和arch相同的item合并，不区分repo和channel
+        auto groupKey = QString("%1/%2/%3")
+                          .arg(layer.info.id.c_str())
+                          .arg(layer.info.version.c_str())
+                          .arg(arch.c_str())
+                          .toStdString();
+        layerGroup[groupKey].push_back(layer);
+    }
+    // 对同组layer进行合并，生成mergedItem
+    std::vector<api::types::v1::RepositoryCacheMergedItem> newMergedItems;
+    for (auto &it : layerGroup) {
+        auto &layers = it.second;
+        // 只有一个module不需要合并
+        if (layers.size() == 1) {
+            continue;
+        }
+        // 按module字母从小到大排序，提前排序以保证后面的commits比较
+        std::sort(layers.begin(),
+                  layers.end(),
+                  [](api::types::v1::RepositoryCacheLayersItem lhs,
+                     api::types::v1::RepositoryCacheLayersItem rhs) {
+                      return lhs.info.packageInfoV2Module < rhs.info.packageInfoV2Module;
+                  });
+        // 查找binary模块的commit id
+        std::string binaryCommit;
+        std::vector<std::string> commits;
+        std::vector<std::string> modules;
+        QCryptographicHash hash(QCryptographicHash::Sha256);
+        for (const auto &layer : layers) {
+            commits.push_back(layer.commit);
+            modules.push_back(layer.info.packageInfoV2Module);
+            hash.addData(QString::fromStdString(layer.commit).toUtf8());
+            if (layer.info.packageInfoV2Module == "binary") {
+                binaryCommit = layer.commit;
+            }
+        }
+        auto mergeID = hash.result().toHex().toStdString();
+        // 判断单个merged是否有变动
+        auto mergedChanged = true;
+        if (mergedItems.has_value()) {
+            // 查找已存在的merged记录
+            for (auto &merge : mergedItems.value()) {
+                if (merge.id == mergeID) {
+                    if (merge.commits == commits) {
+                        newMergedItems.push_back(merge);
+                        mergedChanged = false;
+                    }
+                    break;
+                }
+            }
+        }
+        if (!mergedChanged) {
+            continue;
+        }
+        // 创建临时目录
+        auto mergeTmp = mergedDir.filePath(QString("tmp_") + mergeID.c_str());
+        std::filesystem::remove_all(mergeTmp.toStdString());
+        std::filesystem::create_directories(mergeTmp.toStdString());
+        // 将所有module文件合并到临时目录
+        for (auto layer : layers) {
+            qDebug() << "merge module" << it.first.c_str()
+                     << layer.info.packageInfoV2Module.c_str();
+            int root = open("/", O_DIRECTORY);
+            auto _ = utils::finally::finally([root]() {
+                close(root);
+            });
+            g_autoptr(GError) gErr = nullptr;
+            OstreeRepoCheckoutAtOptions opt = {};
+            opt.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES;
+            if (ostree_repo_checkout_at(this->ostreeRepo.get(),
+                                        &opt,
+                                        root,
+                                        mergeTmp.mid(1).toUtf8(),
+                                        layer.commit.c_str(),
+                                        nullptr,
+                                        &gErr)
+                == FALSE) {
+                return LINGLONG_ERR(QString("ostree_repo_checkout_at %1").arg(mergeTmp), gErr);
+            }
+        }
+        // 将临时目录改名到正式目录，以binary模块的commit为文件名
+        auto mergeOutput = mergedDir.filePath(mergeID.c_str());
+        std::filesystem::remove_all(mergeOutput.toStdString());
+        std::filesystem::rename(mergeTmp.toStdString(), mergeOutput.toStdString());
+        newMergedItems.push_back({
+          .binaryCommit = binaryCommit,
+          .commits = commits,
+          .id = mergeID,
+          .modules = modules,
+          .name = it.first,
+        });
+    }
+    // 保存merged记录
+    auto ret = this->cache->updateMergedItems(newMergedItems);
+    if (!ret.has_value()) {
+        return LINGLONG_ERR("update merged items", ret);
+    }
+    // 清理merged无效目录
+    for (auto &entry : std::filesystem::directory_iterator(mergedDir.path().toStdString())) {
+        auto leak = true;
+        for (const auto &mergedItem : newMergedItems) {
+            if (entry.path().filename() == mergedItem.id) {
+                leak = false;
+            }
+        }
+        if (leak) {
+            std::filesystem::remove_all(entry.path());
+        }
+    }
+    return LINGLONG_OK;
 }
 
 utils::error::Result<void> OSTreeRepo::dispatchMigration() noexcept

@@ -32,17 +32,17 @@ Arguments:
 `ll-builder create`命令根据输入的项目名称在当前目录创建对应的文件夹，同时生成构建所需的 `linglong.yaml`模板文件。示例如下：
 
 ```bash
-ll-builder create org.deepin.hello
+ll-builder create org.deepin.demo
 ```
 
-`ll-builder create org.deepin.hello`命令输出如下：
+`ll-builder create org.deepin.demo`命令输出如下：
 
 ```text
-org.deepin.hello/
+org.deepin.demo/
 └── linglong.yaml
 ```
 
-## 编辑linglong.yaml
+## 编辑 linglong.yaml
 
 ### linglong.yaml 文件语法的版本
 
@@ -54,7 +54,7 @@ version: "1"
 
 ```yaml
 package:
-  id: org.deepin.hello
+  id: org.deepin.demo
   name: hello
   version: 0.0.0.1
   kind: app
@@ -88,7 +88,7 @@ command: [echo, -e, hello world]
 
 ### 源码
 
-使用git源码
+使用 git 源码
 
 ```yaml
 sources:
@@ -110,7 +110,7 @@ build: |
   make install
 ```
 
-### 完整的linglong.yaml配置
+### 完整的 linglong.yaml 配置
 
 `linglong.yaml`文件内容如下：
 

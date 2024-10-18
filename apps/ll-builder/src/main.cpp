@@ -589,10 +589,17 @@ int main(int argc, char **argv)
                                    "file path of the linglong.yaml (default is ./linglong.yaml)",
                                    "path",
                                    "linglong.yaml");
+              auto execModules =
+                QCommandLineOption("modules",
+                                   "run using the specified module. eg --modules binary,develop",
+                                   "modules");
               auto execVerbose =
                 QCommandLineOption("exec", "run exec than build script", "command");
               auto buildOffline = QCommandLineOption("offline", "only use local files.", "");
-              parser.addOptions({ yamlFile, execVerbose, buildOffline });
+              auto debugMode =
+                QCommandLineOption("debug", "run in debug mode(base and runtime)", "");
+
+              parser.addOptions({ yamlFile, execVerbose, execModules, buildOffline, debugMode });
 
               parser.addPositionalArgument("run", "run project", "build");
 
@@ -613,6 +620,15 @@ int main(int argc, char **argv)
               if (parser.isSet(execVerbose)) {
                   exec = splitExec(parser.value(execVerbose));
               }
+              QStringList modules = { "binary" };
+              if (parser.isSet(execModules)) {
+                  modules = parser.value(execModules).split(",");
+              }
+              bool debug = false;
+              if (parser.isSet(debugMode)) {
+                  modules.push_back("develop");
+                  debug = true;
+              }
               if (parser.isSet(buildOffline)) {
                   auto cfg = builder.getConfig();
                   cfg.skipFetchSource = true;
@@ -620,7 +636,7 @@ int main(int argc, char **argv)
                   cfg.offline = true;
                   builder.setConfig(cfg);
               }
-              auto result = builder.run(exec);
+              auto result = builder.run(modules, exec, debug);
               if (!result) {
                   qCritical() << result.error();
                   return -1;

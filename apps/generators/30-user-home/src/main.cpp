@@ -258,7 +258,6 @@ int main()
     } else {
         std::cerr << "failed to mask bashrc" << std::endl;
     }
-
     std::cout << content.dump() << std::endl;
     return 0;
 }

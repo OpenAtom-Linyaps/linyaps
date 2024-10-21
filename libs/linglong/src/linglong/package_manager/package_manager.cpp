@@ -631,35 +631,40 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     auto *taskPtr = new PackageTask{ connection(), refSpec };
     auto &taskRef = *(this->taskList.emplace_back(taskPtr));
     auto reference = *remoteRef;
+    bool skipInteraction = paras->options.skipInteraction;
 
     // Note: do not capture any variable which defined in this func.
-    taskRef.setJob([this, &taskRef, reference, curModule, msgType, additionalMessage]() {
-        if (msgType == api::types::v1::InteractionMessageType::Upgrade) {
-            Q_EMIT RequestInteraction(QDBusObjectPath(taskRef.taskObjectPath()),
-                                      static_cast<int>(msgType),
-                                      utils::serialize::toQVariantMap(additionalMessage));
-            QEventLoop loop;
-            connect(
+    taskRef.setJob(
+      [this, &taskRef, reference, curModule, skipInteraction, msgType, additionalMessage]() {
+          if (msgType == api::types::v1::InteractionMessageType::Upgrade && !skipInteraction) {
+              Q_EMIT RequestInteraction(QDBusObjectPath(taskRef.taskObjectPath()),
+                                        static_cast<int>(msgType),
+                                        utils::serialize::toQVariantMap(additionalMessage));
+              QEventLoop loop;
+              connect(
+
               this,
+
               &PackageManager::ReplyReceived,
+
               [&taskRef, &loop](const QVariantMap &reply) {
-                  // handle reply
-                  auto interactionReply =
-                    utils::serialize::fromQVariantMap<api::types::v1::InteractionReply>(reply);
-                  if (interactionReply->action != "yes") {
-                      taskRef.updateState(linglong::api::types::v1::State::Canceled, "canceled");
-                  }
+                      // handle reply
+                      auto interactionReply =
+                        utils::serialize::fromQVariantMap<api::types::v1::InteractionReply>(reply);
+                      if (interactionReply->action != "yes") {
+                          taskRef.updateState(linglong::api::types::v1::State::Canceled, "canceled");
+                      }
 
-                  loop.exit(0);
-              });
-            loop.exec();
-        }
+                      loop.exit(0);
+                  });
+              loop.exec();
+          }
 
-        if (taskRef.subState() == linglong::api::types::v1::SubState::Done) {
-            return;
-        }
-        this->Install(taskRef, reference, curModule);
-    });
+          if (taskRef.subState() == linglong::api::types::v1::SubState::Done) {
+              return;
+          }
+          this->Install(taskRef, reference, curModule);
+      });
     // notify task list change
     Q_EMIT TaskListChanged(taskRef.taskObjectPath());
     qDebug() << "current task queue size:" << this->taskList.size();

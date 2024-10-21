@@ -7,6 +7,7 @@
 #include "linglong/cli/cli.h"
 
 #include "linglong/api/types/v1/CommonResult.hpp"
+#include "linglong/api/types/v1/InteractionRequest.hpp"
 #include "linglong/api/types/v1/InteractionReply.hpp"
 #include "linglong/api/types/v1/InteractionRequest.hpp"
 #include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
@@ -121,14 +122,13 @@ void Cli::onTaskPropertiesChanged(QString interface,                            
         return;
     }
 
-    for (auto entry = changed_properties.constKeyValueBegin();
-         entry != changed_properties.constKeyValueEnd();
-         ++entry) {
-        const auto &key = entry->first;
+    for (auto entry = changed_properties.cbegin(); entry != changed_properties.cend(); ++entry) {
+        const auto &key = entry.key();
+        const auto &value = entry.value();
 
         if (key == "State") {
             bool ok{ false };
-            auto val = entry->second.toInt(&ok);
+            auto val = value.toInt(&ok);
             if (!ok) {
                 qCritical() << "dbus ipc error, State couldn't convert to int";
                 continue;
@@ -140,7 +140,7 @@ void Cli::onTaskPropertiesChanged(QString interface,                            
 
         if (key == "SubState") {
             bool ok{ false };
-            auto val = entry->second.toInt(&ok);
+            auto val = value.toInt(&ok);
             if (!ok) {
                 qCritical() << "dbus ipc error, SubState couldn't convert to int";
                 continue;
@@ -152,7 +152,7 @@ void Cli::onTaskPropertiesChanged(QString interface,                            
 
         if (key == "Percentage") {
             bool ok{ false };
-            auto val = entry->second.toDouble(&ok);
+            auto val = value.toDouble(&ok);
             if (!ok) {
                 qCritical() << "dbus ipc error, Percentage couldn't convert to int";
                 continue;
@@ -163,12 +163,12 @@ void Cli::onTaskPropertiesChanged(QString interface,                            
         }
 
         if (key == "Message") {
-            if (!entry->second.canConvert<QString>()) {
+            if (!value.canConvert<QString>()) {
                 qCritical() << "dbus ipc error, Message couldn't convert to QString";
                 continue;
             }
 
-            lastMessage = entry->second.toString();
+            lastMessage = value.toString();
             continue;
         }
     }

@@ -142,8 +142,9 @@ private:
             auto msg = QString{ "set property %1 failed, original value: " }.arg(name);
             if constexpr (std::is_enum_v<T>) {
                 auto underlying_value = static_cast<std::underlying_type_t<T>>(value);
+                auto typeId = QMetaTypeId2<T>::qt_metatype_id();
                 auto enumStr = QString::number(underlying_value)
-                  + " [ Enum Type = " + QMetaType::fromType<T>().name() + " ]";
+                  + " [ Enum Type = " + QMetaType::typeName(typeId) + " ]";
                 msg.append(enumStr);
             }
 

@@ -94,14 +94,18 @@ public
     auto Prune() noexcept -> QVariantMap;
     utils::error::Result<void>
     Prune(std::vector<api::types::v1::PackageInfoV2> &removedInfo) noexcept;
-    void replyInteraction(const QString &interactionID, const QVariantMap &replies);
+    void ReplyInteraction(QDBusObjectPath object_path, const QVariantMap &replies);
 
 Q_SIGNALS:
     void TaskAdded(QDBusObjectPath object_path);
     void TaskRemoved(QDBusObjectPath object_path, int state, int subState, QString message);
-    void TaskListChanged(QString taskID);
+    void TaskListChanged(const QString &taskObjectPath);
+    void RequestInteraction(QDBusObjectPath object_path,
+                            int messageID,
+                            QVariantMap additionalMessage);
     void SearchFinished(QString jobID, QVariantMap result);
     void PruneFinished(QString jobID, QVariantMap result);
+    void ReplyReceived(const QVariantMap &replies);
 
 private:
     void InstallRef(PackageTask &taskContext,
@@ -117,8 +121,8 @@ private:
                         const std::string &module) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT
     std::list<PackageTask *> taskList;
-    // 正在运行的任务ID
-    QString runningTaskID;
+    // 正在运行的任务对象路径
+    QString runningTaskObjectPath;
 
     JobQueue m_search_queue = {};
     JobQueue m_prune_queue = {};

@@ -90,12 +90,13 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo, QObject *parent
       this,
       &PackageManager::TaskListChanged,
       this,
-      [this](const QString &taskID) {
+      [this](const QString &taskObjectPath) {
           // notify task waiting
-          if (!this->runningTaskID.isEmpty()) {
+          if (!this->runningTaskObjectPath.isEmpty()) {
               for (auto *task : taskList) {
                   // skip tasks without job
-                  if (!task->getJob().has_value() || task->taskID() == runningTaskID) {
+                  if (!task->getJob().has_value()
+                      || task->taskObjectPath() == runningTaskObjectPath) {
                       continue;
                   }
                   auto msg = QString("Waiting for the other tasks");
@@ -104,7 +105,7 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo, QObject *parent
               return;
           }
           // start next task
-          this->runningTaskID = taskID;
+          this->runningTaskObjectPath = taskObjectPath;
           if (this->taskList.empty()) {
               return;
           };
@@ -117,7 +118,7 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo, QObject *parent
               // execute the task
               auto func = *task->getJob();
               func();
-              this->runningTaskID = "";
+              this->runningTaskObjectPath = "";
               Q_EMIT this->TaskRemoved(QDBusObjectPath{ task->taskObjectPath() },
                                        static_cast<int>(task->state()),
                                        static_cast<int>(task->subState()),
@@ -289,7 +290,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
     taskRef.setJob(std::move(installer));
 
     Q_EMIT TaskAdded(QDBusObjectPath{ taskRef.taskObjectPath() });
-    Q_EMIT TaskListChanged(taskRef.taskID());
+    Q_EMIT TaskListChanged(taskRef.taskObjectPath());
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
       .taskObjectPath = taskRef.taskObjectPath().toStdString(),
       .code = 0,
@@ -480,7 +481,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
       };
 
     taskRef.setJob(std::move(installer));
-    Q_EMIT TaskListChanged(taskRef.taskID());
+    Q_EMIT TaskListChanged(taskRef.taskObjectPath());
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
       .taskObjectPath = taskRef.taskObjectPath().toStdString(),
       .code = 0,
@@ -518,32 +519,46 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
         return toDBusReply(fuzzyRef);
     }
 
-    auto ref = this->repo.clearReference(*fuzzyRef,
-                                         {
-                                           .fallbackToRemote = false // NOLINT
-                                         });
     auto curModule = paras->package.packageManager1PackageModule.value_or("binary");
+    auto remoteRef = this->repo.clearReference(*fuzzyRef,
+                                               {
+                                                 .forceRemote = true // NOLINT
+                                               });
+    if (!remoteRef) {
+        return toDBusReply(remoteRef);
+    }
 
-    if (ref) {
-        auto layerDir = this->repo.getLayerDir(*ref, curModule);
+    api::types::v1::PackageManager1RequestInteractionAdditonalMessage additionalMessage;
+    api::types::v1::InteractionMessageType msgType = api::types::v1::InteractionMessageType::Install;
+
+    additionalMessage.remoteRef = remoteRef->toString().toStdString();
+
+    // Note: We can't clear the local Reference with a specific version.
+    fuzzyRef->version.reset();
+    auto localRef = this->repo.clearReference(*fuzzyRef,
+                                              {
+                                                .fallbackToRemote = false // NOLINT
+                                              });
+    if (localRef) {
+        auto layerDir = this->repo.getLayerDir(*localRef, curModule);
         if (layerDir && layerDir->valid()) {
-            return toDBusReply(-1, ref->toString() + " is already installed");
+            additionalMessage.localRef = localRef->toString().toStdString();
         }
     }
 
-    ref = this->repo.clearReference(*fuzzyRef,
-                                    {
-                                      .forceRemote = true // NOLINT
-                                    });
-    if (!ref) {
-        return toDBusReply(ref);
+    if (!additionalMessage.localRef.empty()) {
+        if (remoteRef->version == localRef->version) {
+            return toDBusReply(-1, localRef->toString() + " is already installed");
+        } else if (remoteRef->version > localRef->version) {
+            msgType = api::types::v1::InteractionMessageType::Upgrade;
+        } else if(!paras->force){
+            return toDBusReply(-1,
+                               "The latest version has been installed. If you need to "
+                               "overwrite it, try using '--force'");
+        }
     }
-    auto reference = *ref;
 
-    auto refSpec =
-      QString{ "%1:%2/%3" }.arg(QString::fromStdString(this->repo.getConfig().defaultRepo),
-                                reference.toString(),
-                                QString::fromStdString(curModule));
+    auto refSpec = remoteRef->toString() + "/" + QString::fromStdString(curModule);
     auto task = std::find_if(this->taskList.cbegin(),
                              this->taskList.cend(),
                              [&refSpec](const PackageTask *task) {
@@ -552,22 +567,43 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     if (task != this->taskList.cend()) {
         return toDBusReply(-1, "the target " % refSpec % " is being operated");
     }
+
     auto *taskPtr = new PackageTask{ connection(), refSpec };
     auto &taskRef = *(this->taskList.emplace_back(taskPtr));
+    auto reference = *remoteRef;
 
-    taskRef.setJob([this, &taskRef, reference, curModule]() {
+    // Note: do not capture any variable which defined in this func.
+    taskRef.setJob([this, &taskRef, reference, curModule, msgType, additionalMessage]() {
+        if (msgType == api::types::v1::InteractionMessageType::Upgrade) {
+            Q_EMIT RequestInteraction(QDBusObjectPath(taskRef.taskObjectPath()),
+                                      static_cast<int>(msgType),
+                                      utils::serialize::toQVariantMap(additionalMessage));
+            QEventLoop loop;
+            connect(this, &PackageManager::ReplyReceived, [&taskRef, &loop](const QVariantMap &reply) {
+                // handle reply
+                auto interactionReply =
+                  utils::serialize::fromQVariantMap<api::types::v1::InteractionReply>(reply);
+                if (interactionReply->action != "yes") {
+                    taskRef.updateState(linglong::api::types::v1::State::Canceled, "canceled");
+                }
+
+                loop.exit(0);
+            });
+            loop.exec();
+        }
+
         if (taskRef.subState() == linglong::api::types::v1::SubState::Done) {
             return;
         }
         this->Install(taskRef, reference, curModule);
     });
     // notify task list change
-    Q_EMIT TaskListChanged(taskRef.taskID());
+    Q_EMIT TaskListChanged(taskRef.taskObjectPath());
     qDebug() << "current task queue size:" << this->taskList.size();
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
       .taskObjectPath = taskRef.taskObjectPath().toStdString(),
       .code = 0,
-      .message = (ref->toString() + " is now installing").toStdString(),
+      .message = (remoteRef->toString() + " is now installing").toStdString(),
     });
 }
 
@@ -690,7 +726,7 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
         this->Uninstall(taskRef, reference, curModule);
     });
     // notify task list change
-    Q_EMIT TaskListChanged(taskRef.taskID());
+    Q_EMIT TaskListChanged(taskRef.taskObjectPath());
     qDebug() << "current task queue size:" << this->taskList.size();
     taskPtr->updateState(api::types::v1::State::Queued, "add uninstall task to task queue.");
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
@@ -795,10 +831,7 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
             << " new Ref: " << newReference.toString();
 
     auto curModule = paras->package.packageManager1PackageModule.value_or("binary");
-    auto refSpec =
-      QString{ "%1:%2/%3" }.arg(QString::fromStdString(this->repo.getConfig().defaultRepo),
-                                newReference.toString(),
-                                QString::fromStdString(curModule));
+    auto refSpec = newReference.toString() + "/" + QString::fromStdString(curModule);
     auto task = std::find_if(this->taskList.cbegin(),
                              this->taskList.cend(),
                              [&refSpec](const PackageTask *task) {
@@ -817,7 +850,7 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
 
         this->Update(taskRef, reference, newReference, curModule);
     });
-    Q_EMIT TaskListChanged(taskRef.taskID());
+    Q_EMIT TaskListChanged(taskRef.taskObjectPath());
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
       .taskObjectPath = taskRef.taskObjectPath().toStdString(),
       .code = 0,
@@ -1141,6 +1174,9 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
     return LINGLONG_OK;
 }
 
-void PackageManager::replyInteraction(const QString &interactionID, const QVariantMap &replies) { }
+void PackageManager::ReplyInteraction(QDBusObjectPath object_path, const QVariantMap &replies)
+{
+    Q_EMIT this->ReplyReceived(replies);
+}
 
 } // namespace linglong::service

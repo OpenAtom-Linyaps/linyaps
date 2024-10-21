@@ -580,6 +580,20 @@ $defs:
           Non-zero code indicated errors occurs
           and message should be displayed to user.
         type: integer
+  InteractionMessageType:
+    description: To identify what message to print during interaction.
+    enum: ["Unknown", "Install", "Uninstall", "Upgrade", "Downgrade"]
+  PackageManager1RequestInteractionAdditonalMessage:
+    type: object
+    description: fill ref string to additional message in requestInteraction
+    required:
+      - LocalRef
+      - RemoteRef
+    properties:
+      LocalRef:
+        type: string
+      RemoteRef:
+        type: string
   PackageManager1MigrateResult:
     $ref: '#/$defs/CommonResult'
   State:
@@ -596,9 +610,12 @@ $defs:
     description: package manager install parameters
     required:
       - package
+      - force
     properties:
       package:
         $ref: '#/$defs/PackageManager1Package'
+      force:
+        type: boolean
   PackageManager1PackageTaskResult:
     description: package manager task result
     allOf:

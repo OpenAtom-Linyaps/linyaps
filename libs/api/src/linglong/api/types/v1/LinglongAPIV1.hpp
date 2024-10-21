@@ -37,6 +37,7 @@
 #include "linglong/api/types/v1/PackageManager1ModifyRepoParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1Package.hpp"
 #include "linglong/api/types/v1/PackageManager1PackageTaskResult.hpp"
+#include "linglong/api/types/v1/PackageManager1RequestInteractionAdditonalMessage.hpp"
 #include "linglong/api/types/v1/PackageManager1SearchParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1SearchResult.hpp"
 #include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
@@ -50,6 +51,7 @@ namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
+enum class InteractionMessageType : int;
 enum class State : int;
 enum class SubState : int;
 }
@@ -81,6 +83,7 @@ std::optional<BuilderProject> builderProject;
 std::optional<CliContainer> cliContainer;
 std::optional<CommonResult> commonResult;
 std::optional<ContainerProcessStateInfo> containerProcessStateInfo;
+std::optional<InteractionMessageType> interactionMessageType;
 std::optional<InteractionReply> interactionReply;
 std::optional<InteractionRequest> interactionRequest;
 std::optional<LayerInfo> layerInfo;
@@ -96,6 +99,7 @@ std::optional<PackageManager1ModifyRepoParameters> packageManager1ModifyRepoPara
 std::optional<CommonResult> packageManager1ModifyRepoResult;
 std::optional<PackageManager1Package> packageManager1Package;
 std::optional<PackageManager1PackageTaskResult> packageManager1PackageTaskResult;
+std::optional<PackageManager1RequestInteractionAdditonalMessage> packageManager1RequestInteractionAdditonalMessage;
 std::optional<PackageManager1SearchParameters> packageManager1SearchParameters;
 std::optional<PackageManager1SearchResult> packageManager1SearchResult;
 std::optional<PackageManager1UninstallParameters> packageManager1UninstallParameters;

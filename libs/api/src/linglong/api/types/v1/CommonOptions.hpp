@@ -9,7 +9,7 @@
 //
 //  Then include this file, and then do
 //
-//     PackageManager1InstallParameters.hpp data = nlohmann::json::parse(jsonString);
+//     CommonOptions.hpp data = nlohmann::json::parse(jsonString);
 
 #pragma once
 
@@ -17,25 +17,28 @@
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
-#include "linglong/api/types/v1/CommonOptions.hpp"
-#include "linglong/api/types/v1/PackageManager1Package.hpp"
-
 namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
 /**
-* package manager install parameters
+* this is common option for Install and InstallFromFile
 */
 
 using nlohmann::json;
 
 /**
-* package manager install parameters
+* this is common option for Install and InstallFromFile
 */
-struct PackageManager1InstallParameters {
-CommonOptions options;
-PackageManager1Package package;
+struct CommonOptions {
+/**
+* force to overwrite
+*/
+bool force;
+/**
+* skip interaction, such as 'apt install aa -y'
+*/
+bool skipInteraction;
 };
 }
 }

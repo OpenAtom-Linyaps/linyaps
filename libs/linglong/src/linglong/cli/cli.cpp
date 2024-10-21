@@ -856,11 +856,15 @@ int Cli::install(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    api::types::v1::PackageManager1InstallParameters params;
-    params.force = false;
+    auto params =
+      api::types::v1::PackageManager1InstallParameters{ .options = { .force = false,
+                                                                     .skipInteraction = false } };
+    if (args["--force"].asBool()) {
+        params.options.force = true;
+    }
 
-    if(args["--force"].asBool()) {
-        params.force = true;
+    if(args["-y"].asBool()) {
+        params.options.skipInteraction = true;
     }
 
     auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(tier));

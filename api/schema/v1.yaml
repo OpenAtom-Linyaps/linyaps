@@ -529,6 +529,20 @@ $defs:
       description:
         type: string
         description: description of package info
+  CommonOptions:
+    title: CommonOptions
+    description: this is common option for Install and InstallFromFile
+    type: object
+    required:
+      - skipInteraction
+      - force
+    properties:
+      skipInteraction:
+        description: skip interaction, such as 'apt install aa -y'
+        type: boolean
+      force:
+        description: force to overwrite
+        type: boolean
   CommonResult:
     title: CommonResult
     description: this is common error result of ll-cli command --json
@@ -575,12 +589,12 @@ $defs:
     description: package manager install parameters
     required:
       - package
-      - force
+      - options
     properties:
       package:
         $ref: '#/$defs/PackageManager1Package'
-      force:
-        type: boolean
+      options:
+        $ref: '#/$defs/CommonOptions'
   PackageManager1PackageTaskResult:
     description: package manager task result
     allOf:

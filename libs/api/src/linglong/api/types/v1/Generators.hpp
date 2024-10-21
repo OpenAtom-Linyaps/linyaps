@@ -45,9 +45,10 @@
 #include "linglong/api/types/v1/LayerInfo.hpp"
 #include "linglong/api/types/v1/InteractionRequest.hpp"
 #include "linglong/api/types/v1/InteractionReply.hpp"
-#include "linglong/api/types/v1/ContainerProcessStateInfo.hpp"
 #include "linglong/api/types/v1/InteractionMessageType.hpp"
+#include "linglong/api/types/v1/ContainerProcessStateInfo.hpp"
 #include "linglong/api/types/v1/CommonResult.hpp"
+#include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/api/types/v1/CliContainer.hpp"
 #include "linglong/api/types/v1/BuilderProject.hpp"
 #include "linglong/api/types/v1/BuilderProjectSource.hpp"
@@ -88,6 +89,9 @@ void to_json(json & j, const BuilderProject & x);
 
 void from_json(const json & j, CliContainer & x);
 void to_json(json & j, const CliContainer & x);
+
+void from_json(const json & j, CommonOptions & x);
+void to_json(json & j, const CommonOptions & x);
 
 void from_json(const json & j, CommonResult & x);
 void to_json(json & j, const CommonResult & x);
@@ -385,6 +389,17 @@ j["package"] = x.package;
 j["pid"] = x.pid;
 }
 
+inline void from_json(const json & j, CommonOptions& x) {
+x.force = j.at("force").get<bool>();
+x.skipInteraction = j.at("skipInteraction").get<bool>();
+}
+
+inline void to_json(json & j, const CommonOptions & x) {
+j = json::object();
+j["force"] = x.force;
+j["skipInteraction"] = x.skipInteraction;
+}
+
 inline void from_json(const json & j, CommonResult& x) {
 x.code = j.at("code").get<int64_t>();
 x.message = j.at("message").get<std::string>();
@@ -601,13 +616,13 @@ j["version"] = x.version;
 }
 
 inline void from_json(const json & j, PackageManager1InstallParameters& x) {
-x.force = j.at("force").get<bool>();
+x.options = j.at("options").get<CommonOptions>();
 x.package = j.at("package").get<PackageManager1Package>();
 }
 
 inline void to_json(json & j, const PackageManager1InstallParameters & x) {
 j = json::object();
-j["force"] = x.force;
+j["options"] = x.options;
 j["package"] = x.package;
 }
 
@@ -801,6 +816,7 @@ x.applicationConfigurationPermissions = get_stack_optional<ApplicationConfigurat
 x.builderConfig = get_stack_optional<BuilderConfig>(j, "BuilderConfig");
 x.builderProject = get_stack_optional<BuilderProject>(j, "BuilderProject");
 x.cliContainer = get_stack_optional<CliContainer>(j, "CLIContainer");
+x.commonOptions = get_stack_optional<CommonOptions>(j, "CommonOptions");
 x.commonResult = get_stack_optional<CommonResult>(j, "CommonResult");
 x.containerProcessStateInfo = get_stack_optional<ContainerProcessStateInfo>(j, "ContainerProcessStateInfo");
 x.interactionMessageType = get_stack_optional<InteractionMessageType>(j, "InteractionMessageType");
@@ -847,6 +863,9 @@ j["BuilderProject"] = x.builderProject;
 }
 if (x.cliContainer) {
 j["CLIContainer"] = x.cliContainer;
+}
+if (x.commonOptions) {
+j["CommonOptions"] = x.commonOptions;
 }
 if (x.commonResult) {
 j["CommonResult"] = x.commonResult;

@@ -55,8 +55,8 @@ SPDX-License-Identifier: LGPL-3.0-or-later
       <arg direction="out" name="result" type="a{sv}" />
       <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
     </method>
-    <method name="replyInteraction">
-      <arg name="ID" type="s" />
+    <method name="ReplyInteraction">
+      <arg name="task" type="o" />
       <arg name="replies" type="a{sv}" />
       <annotation name="org.qtproject.QtDBus.QtTypeName.In1" value="QVariantMap" />
     </method>
@@ -72,10 +72,11 @@ SPDX-License-Identifier: LGPL-3.0-or-later
       <arg name="subState" type="i" />
       <arg name="message" type="s" />
     </signal>
-    <signal name="requestInteraction">
+    <signal name="RequestInteraction">
       <arg name="task" type="o" />
-      <arg name="ID" type="s" />
-      <arg name="messageID" type="u" />
+      <arg name="messageID" type="i" />
+      <arg name="additionalMessage" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out2" value="QVariantMap" />
     </signal>
   </interface>
 </node>

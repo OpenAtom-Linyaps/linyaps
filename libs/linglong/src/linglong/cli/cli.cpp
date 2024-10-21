@@ -7,6 +7,7 @@
 #include "linglong/cli/cli.h"
 
 #include "linglong/api/types/v1/CommonResult.hpp"
+#include "linglong/api/types/v1/InteractionRequest.hpp"
 #include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
 #include "linglong/api/types/v1/PackageManager1Package.hpp"
@@ -116,14 +117,13 @@ void Cli::onTaskPropertiesChanged(QString interface,                            
         return;
     }
 
-    for (auto entry = changed_properties.constKeyValueBegin();
-         entry != changed_properties.constKeyValueEnd();
-         ++entry) {
-        const auto &key = entry->first;
+    for (auto entry = changed_properties.cbegin(); entry != changed_properties.cend(); ++entry) {
+        const auto &key = entry.key();
+        const auto &value = entry.value();
 
         if (key == "State") {
             bool ok{ false };
-            auto val = entry->second.toInt(&ok);
+            auto val = value.toInt(&ok);
             if (!ok) {
                 qCritical() << "dbus ipc error, State couldn't convert to int";
                 continue;
@@ -135,7 +135,7 @@ void Cli::onTaskPropertiesChanged(QString interface,                            
 
         if (key == "SubState") {
             bool ok{ false };
-            auto val = entry->second.toInt(&ok);
+            auto val = value.toInt(&ok);
             if (!ok) {
                 qCritical() << "dbus ipc error, SubState couldn't convert to int";
                 continue;
@@ -147,7 +147,7 @@ void Cli::onTaskPropertiesChanged(QString interface,                            
 
         if (key == "Percentage") {
             bool ok{ false };
-            auto val = entry->second.toDouble(&ok);
+            auto val = value.toDouble(&ok);
             if (!ok) {
                 qCritical() << "dbus ipc error, Percentage couldn't convert to int";
                 continue;
@@ -158,12 +158,12 @@ void Cli::onTaskPropertiesChanged(QString interface,                            
         }
 
         if (key == "Message") {
-            if (!entry->second.canConvert<QString>()) {
+            if (!value.canConvert<QString>()) {
                 qCritical() << "dbus ipc error, Message couldn't convert to QString";
                 continue;
             }
 
-            lastMessage = entry->second.toString();
+            lastMessage = value.toString();
             continue;
         }
     }
@@ -1429,8 +1429,8 @@ int Cli::migrate([[maybe_unused]] std::map<std::string, docopt::value> &args)
             break;
         }
 
-        auto ret = notifier->notify(
-          { .summary = "you could run 'll-cli migrate' on later to migrating data." });
+        auto ret = notifier->notify(api::types::v1::InteractionRequest{
+          .summary = "you could run 'll-cli migrate' on later to migrating data." });
         if (!ret) {
             this->printer.printErr(ret.error());
             return -1;
@@ -1497,7 +1497,7 @@ int Cli::migrate([[maybe_unused]] std::map<std::string, docopt::value> &args)
         std::abort();
     }
 
-    auto ret = notifier->notify({ .summary = result->message });
+    auto ret = notifier->notify(api::types::v1::InteractionRequest{ .summary = result->message });
     if (!ret) {
         auto err = LINGLONG_ERR(
           "internal bug detected, application will exit, but migration may already staring",
@@ -1517,7 +1517,8 @@ int Cli::migrate([[maybe_unused]] std::map<std::string, docopt::value> &args)
     QMetaObject::invokeMethod(&loop, statusChecker, Qt::QueuedConnection);
     loop.exec();
 
-    ret = this->notifier->notify({ .summary = retMsg.toStdString() });
+    ret =
+      this->notifier->notify(api::types::v1::InteractionRequest{ .summary = retMsg.toStdString() });
     if (!ret) {
         this->printer.printReply({ .code = retCode, .message = retMsg.toStdString() });
         return -1;

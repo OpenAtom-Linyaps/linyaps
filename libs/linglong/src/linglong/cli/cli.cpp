@@ -1154,8 +1154,8 @@ int Cli::migrate([[maybe_unused]] std::map<std::string, docopt::value> &args)
             break;
         }
 
-        auto ret = notifier->notify(
-          { .summary = "you could run 'll-cli migrate' on later to migrating data." });
+        auto ret = notifier->notify(api::types::v1::InteractionRequest{
+          .summary = "you could run 'll-cli migrate' on later to migrating data." });
         if (!ret) {
             this->printer.printErr(ret.error());
             return -1;
@@ -1225,7 +1225,7 @@ int Cli::migrate([[maybe_unused]] std::map<std::string, docopt::value> &args)
         std::abort();
     }
 
-    auto ret = notifier->notify({ .summary = result->message });
+    auto ret = notifier->notify(api::types::v1::InteractionRequest{ .summary = result->message });
     if (!ret) {
         auto err = LINGLONG_ERR(
           "internal bug detected, application will exit, but migration may already staring",
@@ -1248,7 +1248,8 @@ int Cli::migrate([[maybe_unused]] std::map<std::string, docopt::value> &args)
         loop.exec();
     }
 
-    ret = this->notifier->notify({ .summary = retMsg.toStdString() });
+    ret =
+      this->notifier->notify(api::types::v1::InteractionRequest{ .summary = retMsg.toStdString() });
     if (!ret) {
         this->printer.printReply({ .code = retCode, .message = retMsg.toStdString() });
         return -1;

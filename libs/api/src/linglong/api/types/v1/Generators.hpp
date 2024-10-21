@@ -31,6 +31,7 @@
 #include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1SearchResult.hpp"
 #include "linglong/api/types/v1/PackageManager1SearchParameters.hpp"
+#include "linglong/api/types/v1/PackageManager1RequestInteractionAdditonalMessage.hpp"
 #include "linglong/api/types/v1/PackageManager1PackageTaskResult.hpp"
 #include "linglong/api/types/v1/PackageManager1ModifyRepoParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
@@ -45,6 +46,7 @@
 #include "linglong/api/types/v1/InteractionRequest.hpp"
 #include "linglong/api/types/v1/InteractionReply.hpp"
 #include "linglong/api/types/v1/ContainerProcessStateInfo.hpp"
+#include "linglong/api/types/v1/InteractionMessageType.hpp"
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/CliContainer.hpp"
 #include "linglong/api/types/v1/BuilderProject.hpp"
@@ -132,6 +134,9 @@ void to_json(json & j, const PackageManager1ModifyRepoParameters & x);
 void from_json(const json & j, PackageManager1PackageTaskResult & x);
 void to_json(json & j, const PackageManager1PackageTaskResult & x);
 
+void from_json(const json & j, PackageManager1RequestInteractionAdditonalMessage & x);
+void to_json(json & j, const PackageManager1RequestInteractionAdditonalMessage & x);
+
 void from_json(const json & j, PackageManager1SearchParameters & x);
 void to_json(json & j, const PackageManager1SearchParameters & x);
 
@@ -164,6 +169,9 @@ void to_json(json & j, const UabMetaInfo & x);
 
 void from_json(const json & j, LinglongAPIV1 & x);
 void to_json(json & j, const LinglongAPIV1 & x);
+
+void from_json(const json & j, InteractionMessageType & x);
+void to_json(json & j, const InteractionMessageType & x);
 
 void from_json(const json & j, State & x);
 void to_json(json & j, const State & x);
@@ -593,11 +601,13 @@ j["version"] = x.version;
 }
 
 inline void from_json(const json & j, PackageManager1InstallParameters& x) {
+x.force = j.at("force").get<bool>();
 x.package = j.at("package").get<PackageManager1Package>();
 }
 
 inline void to_json(json & j, const PackageManager1InstallParameters & x) {
 j = json::object();
+j["force"] = x.force;
 j["package"] = x.package;
 }
 
@@ -640,6 +650,17 @@ j["taskObjectPath"] = x.taskObjectPath;
 }
 j["code"] = x.code;
 j["message"] = x.message;
+}
+
+inline void from_json(const json & j, PackageManager1RequestInteractionAdditonalMessage& x) {
+x.localRef = j.at("LocalRef").get<std::string>();
+x.remoteRef = j.at("RemoteRef").get<std::string>();
+}
+
+inline void to_json(json & j, const PackageManager1RequestInteractionAdditonalMessage & x) {
+j = json::object();
+j["LocalRef"] = x.localRef;
+j["RemoteRef"] = x.remoteRef;
 }
 
 inline void from_json(const json & j, PackageManager1SearchParameters& x) {
@@ -782,6 +803,7 @@ x.builderProject = get_stack_optional<BuilderProject>(j, "BuilderProject");
 x.cliContainer = get_stack_optional<CliContainer>(j, "CLIContainer");
 x.commonResult = get_stack_optional<CommonResult>(j, "CommonResult");
 x.containerProcessStateInfo = get_stack_optional<ContainerProcessStateInfo>(j, "ContainerProcessStateInfo");
+x.interactionMessageType = get_stack_optional<InteractionMessageType>(j, "InteractionMessageType");
 x.interactionReply = get_stack_optional<InteractionReply>(j, "InteractionReply");
 x.interactionRequest = get_stack_optional<InteractionRequest>(j, "InteractionRequest");
 x.layerInfo = get_stack_optional<LayerInfo>(j, "LayerInfo");
@@ -797,6 +819,7 @@ x.packageManager1ModifyRepoParameters = get_stack_optional<PackageManager1Modify
 x.packageManager1ModifyRepoResult = get_stack_optional<CommonResult>(j, "PackageManager1ModifyRepoResult");
 x.packageManager1Package = get_stack_optional<PackageManager1Package>(j, "PackageManager1Package");
 x.packageManager1PackageTaskResult = get_stack_optional<PackageManager1PackageTaskResult>(j, "PackageManager1PackageTaskResult");
+x.packageManager1RequestInteractionAdditonalMessage = get_stack_optional<PackageManager1RequestInteractionAdditonalMessage>(j, "PackageManager1RequestInteractionAdditonalMessage");
 x.packageManager1SearchParameters = get_stack_optional<PackageManager1SearchParameters>(j, "PackageManager1SearchParameters");
 x.packageManager1SearchResult = get_stack_optional<PackageManager1SearchResult>(j, "PackageManager1SearchResult");
 x.packageManager1UninstallParameters = get_stack_optional<PackageManager1UninstallParameters>(j, "PackageManager1UninstallParameters");
@@ -830,6 +853,9 @@ j["CommonResult"] = x.commonResult;
 }
 if (x.containerProcessStateInfo) {
 j["ContainerProcessStateInfo"] = x.containerProcessStateInfo;
+}
+if (x.interactionMessageType) {
+j["InteractionMessageType"] = x.interactionMessageType;
 }
 if (x.interactionReply) {
 j["InteractionReply"] = x.interactionReply;
@@ -876,6 +902,9 @@ j["PackageManager1Package"] = x.packageManager1Package;
 if (x.packageManager1PackageTaskResult) {
 j["PackageManager1PackageTaskResult"] = x.packageManager1PackageTaskResult;
 }
+if (x.packageManager1RequestInteractionAdditonalMessage) {
+j["PackageManager1RequestInteractionAdditonalMessage"] = x.packageManager1RequestInteractionAdditonalMessage;
+}
 if (x.packageManager1SearchParameters) {
 j["PackageManager1SearchParameters"] = x.packageManager1SearchParameters;
 }
@@ -902,6 +931,26 @@ j["SubState"] = x.subState;
 }
 if (x.uabMetaInfo) {
 j["UABMetaInfo"] = x.uabMetaInfo;
+}
+}
+
+inline void from_json(const json & j, InteractionMessageType & x) {
+if (j == "Downgrade") x = InteractionMessageType::Downgrade;
+else if (j == "Install") x = InteractionMessageType::Install;
+else if (j == "Uninstall") x = InteractionMessageType::Uninstall;
+else if (j == "Unknown") x = InteractionMessageType::Unknown;
+else if (j == "Upgrade") x = InteractionMessageType::Upgrade;
+else { throw std::runtime_error("Input JSON does not conform to schema!"); }
+}
+
+inline void to_json(json & j, const InteractionMessageType & x) {
+switch (x) {
+case InteractionMessageType::Downgrade: j = "Downgrade"; break;
+case InteractionMessageType::Install: j = "Install"; break;
+case InteractionMessageType::Uninstall: j = "Uninstall"; break;
+case InteractionMessageType::Unknown: j = "Unknown"; break;
+case InteractionMessageType::Upgrade: j = "Upgrade"; break;
+default: throw std::runtime_error("Unexpected value in enumeration \"[object Object]\": " + std::to_string(static_cast<int>(x)));
 }
 }
 

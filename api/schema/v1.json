@@ -684,6 +684,32 @@
         }
       }
     },
+    "InteractionMessageType": {
+      "description": "To identify what message to print during interaction.",
+      "enum": [
+        "Unknown",
+        "Install",
+        "Uninstall",
+        "Upgrade",
+        "Downgrade"
+      ]
+    },
+    "PackageManager1RequestInteractionAdditonalMessage": {
+      "type": "object",
+      "description": "fill ref string to additional message in requestInteraction",
+      "required": [
+        "LocalRef",
+        "RemoteRef"
+      ],
+      "properties": {
+        "LocalRef": {
+          "type": "string"
+        },
+        "RemoteRef": {
+          "type": "string"
+        }
+      }
+    },
     "PackageManager1MigrateResult": {
       "$ref": "#/$defs/CommonResult"
     },
@@ -719,11 +745,15 @@
       "type": "object",
       "description": "package manager install parameters",
       "required": [
-        "package"
+        "package",
+        "force"
       ],
       "properties": {
         "package": {
           "$ref": "#/$defs/PackageManager1Package"
+        },
+        "force": {
+          "type": "boolean"
         }
       }
     },
@@ -986,6 +1016,12 @@
     },
     "CommonResult": {
       "$ref": "#/$defs/CommonResult"
+    },
+    "InteractionMessageType": {
+      "$ref": "#/$defs/InteractionMessageType"
+    },
+    "PackageManager1RequestInteractionAdditonalMessage": {
+      "$ref": "#/$defs/PackageManager1RequestInteractionAdditonalMessage"
     },
     "PackageManager1MigrateResult": {
       "$ref": "#/$defs/PackageManager1MigrateResult"

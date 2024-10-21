@@ -9,7 +9,7 @@
 //
 //  Then include this file, and then do
 //
-//     PackageManager1InstallParameters.hpp data = nlohmann::json::parse(jsonString);
+//     InteractionMessageType.hpp data = nlohmann::json::parse(jsonString);
 
 #pragma once
 
@@ -17,25 +17,20 @@
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
-#include "linglong/api/types/v1/PackageManager1Package.hpp"
-
 namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
 /**
-* package manager install parameters
+* To identify what message to print during interaction.
 */
 
 using nlohmann::json;
 
 /**
-* package manager install parameters
+* To identify what message to print during interaction.
 */
-struct PackageManager1InstallParameters {
-bool force;
-PackageManager1Package package;
-};
+enum class InteractionMessageType : int { Downgrade, Install, Uninstall, Unknown, Upgrade };
 }
 }
 }

@@ -9,7 +9,7 @@
 //
 //  Then include this file, and then do
 //
-//     PackageManager1InstallParameters.hpp data = nlohmann::json::parse(jsonString);
+//     PackageManager1RequestInteractionAdditonalMessage.hpp data = nlohmann::json::parse(jsonString);
 
 #pragma once
 
@@ -17,24 +17,22 @@
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
-#include "linglong/api/types/v1/PackageManager1Package.hpp"
-
 namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
 /**
-* package manager install parameters
+* fill ref string to additional message in requestInteraction
 */
 
 using nlohmann::json;
 
 /**
-* package manager install parameters
+* fill ref string to additional message in requestInteraction
 */
-struct PackageManager1InstallParameters {
-bool force;
-PackageManager1Package package;
+struct PackageManager1RequestInteractionAdditonalMessage {
+std::string localRef;
+std::string remoteRef;
 };
 }
 }

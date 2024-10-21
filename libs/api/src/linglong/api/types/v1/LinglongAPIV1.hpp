@@ -22,6 +22,7 @@
 #include "linglong/api/types/v1/BuilderConfig.hpp"
 #include "linglong/api/types/v1/BuilderProject.hpp"
 #include "linglong/api/types/v1/CliContainer.hpp"
+#include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/ContainerProcessStateInfo.hpp"
 #include "linglong/api/types/v1/InteractionReply.hpp"
@@ -78,6 +79,7 @@ std::optional<ApplicationConfigurationPermissions> applicationConfigurationPermi
 std::optional<BuilderConfig> builderConfig;
 std::optional<BuilderProject> builderProject;
 std::optional<CliContainer> cliContainer;
+std::optional<CommonOptions> commonOptions;
 std::optional<CommonResult> commonResult;
 std::optional<ContainerProcessStateInfo> containerProcessStateInfo;
 std::optional<InteractionMessageType> interactionMessageType;

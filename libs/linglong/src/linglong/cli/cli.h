@@ -89,6 +89,9 @@ private Q_SLOTS:
                                  QVariantMap changed_properties,
                                  QStringList invalidated_properties);
     void forwardMigrateDone(int code, QString message);
+    void interaction(QDBusObjectPath object_path,
+                     int messageID,
+                     QVariantMap additionalMessage);
 
 Q_SIGNALS:
     void migrateDone(int code, QString message, QPrivateSignal);

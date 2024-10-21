@@ -176,6 +176,59 @@ void Cli::onTaskPropertiesChanged(QString interface,                            
     printProgress();
 }
 
+void Cli::interaction(QDBusObjectPath object_path,
+                      int messageID,
+                      QVariantMap additionalMessage)
+{
+    if (object_path.path() != taskObjectPath) {
+        return;
+    }
+
+    auto messageType = static_cast<api::types::v1::InteractionMessageType>(messageID);
+    auto msg = utils::serialize::fromQVariantMap<
+      api::types::v1::PackageManager1RequestInteractionAdditonalMessage>(additionalMessage);
+
+    std::vector<std::string> actions{ "nes", "Yes", "no", "No" };
+
+    api::types::v1::InteractionRequest req;
+    req.actions = actions;
+    req.summary = "Package Manager needs to confirm request.";
+
+    switch (messageType) {
+    case api::types::v1::InteractionMessageType::Upgrade:
+        auto tips = QString("The lower version %1 is currently installed. Do you "
+                            "want to continue installing the latest version %2?")
+                      .arg(QString::fromStdString(msg->localRef))
+                      .arg(QString::fromStdString(msg->remoteRef));
+        req.body = tips.toStdString();
+    }
+
+    std::string action;
+    auto notifyReply = notifier->request(req);
+    if (!notifyReply) {
+        qCritical() << "internal error: notify failed";
+        action = "no";
+    } else {
+        action = notifyReply->action.value();
+    }
+
+    if (action == "Y" || action == "y" || action == "Yes" || action == "yes") {
+        action = "yes";
+    } else {
+        action = "no";
+    }
+
+    qDebug() << "action: " << QString::fromStdString(action);
+
+    auto reply = api::types::v1::InteractionReply{ .action = action };
+
+    QDBusReply<void> dbusReply =
+      this->pkgMan.ReplyInteraction(object_path, utils::serialize::toQVariantMap(reply));
+    if (!dbusReply.isValid()) {
+        qCritical() << "call ReplyInteraction failed. " << dbusReply.error();
+    }
+}
+
 void Cli::onTaskAdded([[maybe_unused]] QDBusObjectPath object_path)
 {
     qDebug() << "task added" << object_path.path();
@@ -813,7 +866,25 @@ int Cli::install(std::map<std::string, docopt::value> &args)
         return installFromFile(info.absoluteFilePath());
     }
 
+    auto conn = this->pkgMan.connection();
+    auto con = conn.connect(this->pkgMan.service(),
+                            this->pkgMan.path(),
+                            this->pkgMan.interface(),
+                            "RequestInteraction",
+                            this,
+                            SLOT(interaction(QDBusObjectPath, int, QVariantMap)));
+    if (!con) {
+        qCritical() << "Failed to connect signal: RequestInteraction. state may be incorrect.";
+        return -1;
+    }
+
     api::types::v1::PackageManager1InstallParameters params;
+    params.force = false;
+
+    if(args["--force"].asBool()) {
+        params.force = true;
+    }
+
     auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(tier));
     if (!fuzzyRef) {
         this->printer.printErr(fuzzyRef.error());
@@ -863,7 +934,6 @@ int Cli::install(std::map<std::string, docopt::value> &args)
     }
 
     this->taskObjectPath = QString::fromStdString(result->taskObjectPath.value());
-    auto conn = pkgMan.connection();
     task = new api::dbus::v1::Task1(pkgMan.service(), taskObjectPath, conn);
 
     if (!conn.connect(pkgMan.service(),

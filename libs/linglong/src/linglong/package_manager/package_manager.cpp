@@ -1089,7 +1089,7 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
         return LINGLONG_ERR(pkgsInfo);
     }
 
-    std::map<package::Reference, int> target;
+    std::unordered_map<package::Reference, int> target;
     for (const auto &info : *pkgsInfo) {
         if (info.packageInfoV2Module != "binary") {
             continue;

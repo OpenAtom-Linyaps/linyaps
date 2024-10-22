@@ -109,12 +109,15 @@ QString Reference::toString() const noexcept
     return QString("%1:%2/%3/%4").arg(channel, id, version.toString(), arch.toString());
 }
 
-bool operator<(const Reference &lhs, const Reference &rhs) noexcept
+bool operator!=(const Reference &lhs, const Reference &rhs) noexcept
 {
-    if (lhs.channel == rhs.channel && lhs.id == rhs.id && lhs.arch == rhs.arch)
-        return lhs.version < rhs.version;
+    return lhs.channel != rhs.channel || lhs.id != rhs.id || lhs.version != rhs.version
+      || lhs.arch != rhs.arch;
+}
 
-    return lhs.toString() < rhs.toString();
+bool operator==(const Reference &lhs, const Reference &rhs) noexcept
+{
+    return !(lhs != rhs);
 }
 
 QVariantMap Reference::toVariantMap(const Reference &ref) noexcept

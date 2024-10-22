@@ -7,6 +7,7 @@
 #pragma once
 
 #include "linglong/repo/ostree_repo.h"
+#include "linglong/api/types/v1/CommonOptions.hpp"
 #include "package_task.h"
 
 #include <QDBusArgument>
@@ -82,7 +83,8 @@ public
                  const package::Reference &ref,
                  const std::string &module) noexcept;
     auto InstallFromFile(const QDBusUnixFileDescriptor &fd,
-                         const QString &fileType) noexcept -> QVariantMap;
+                         const QString &fileType,
+                         const QVariantMap &options) noexcept -> QVariantMap;
     auto Uninstall(const QVariantMap &parameters) noexcept -> QVariantMap;
     void Uninstall(PackageTask &taskContext,
                    const package::Reference &ref,
@@ -113,8 +115,10 @@ private:
     void UninstallRef(PackageTask &taskContext,
                       const package::Reference &ref,
                       const std::string &module) noexcept;
-    QVariantMap installFromLayer(const QDBusUnixFileDescriptor &fd) noexcept;
-    QVariantMap installFromUAB(const QDBusUnixFileDescriptor &fd) noexcept;
+    QVariantMap installFromLayer(const QDBusUnixFileDescriptor &fd,
+                                 const api::types::v1::CommonOptions &options) noexcept;
+    QVariantMap installFromUAB(const QDBusUnixFileDescriptor &fd,
+                               const api::types::v1::CommonOptions &options) noexcept;
     void pullDependency(PackageTask &taskContext,
                         const api::types::v1::PackageInfoV2 &info,
                         const std::string &module) noexcept;

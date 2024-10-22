@@ -8,6 +8,7 @@
 
 #include "linglong/api/dbus/v1/package_manager.h"
 #include "linglong/api/dbus/v1/task.h"
+#include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/cli/interactive_notifier.h"
 #include "linglong/cli/printer.h"
 #include "linglong/repo/ostree_repo.h"
@@ -79,7 +80,7 @@ public:
     void cancelCurrentTask();
 
 private Q_SLOTS:
-    int installFromFile(const QFileInfo &fileInfo);
+    int installFromFile(const QFileInfo &fileInfo, const api::types::v1::CommonOptions &options);
     // maybe use in the future
     void onTaskAdded(QDBusObjectPath object_path);
     void onTaskRemoved(QDBusObjectPath object_path, int state, int subState, QString message);

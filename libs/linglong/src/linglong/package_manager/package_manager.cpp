@@ -165,7 +165,8 @@ void PackageManager::setConfiguration(const QVariantMap &parameters) noexcept
     }
 }
 
-QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) noexcept
+QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
+                                             const api::types::v1::CommonOptions &options) noexcept
 {
     auto layerFileRet =
       package::LayerFile::New(QString("/proc/%1/fd/%2").arg(getpid()).arg(fd.fileDescriptor()));
@@ -188,43 +189,50 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
     }
 
     const auto &packageInfo = *packageInfoRet;
-    auto versionRet = package::Version::parse(QString::fromStdString(packageInfo.version));
-    if (!versionRet) {
-        return toDBusReply(versionRet);
+    auto packageRefRet = package::Reference::fromPackageInfo(packageInfo);
+    if (!packageRefRet) {
+        return toDBusReply(packageRefRet);
     }
 
-    auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(packageInfo.id));
+    const auto &packageRef = *packageRefRet;
+
+    api::types::v1::PackageManager1RequestInteractionAdditonalMessage additionalMessage;
+    api::types::v1::InteractionMessageType msgType =
+      api::types::v1::InteractionMessageType::Install;
+
+    additionalMessage.remoteRef = packageRef.toString().toStdString();
+
+    // Note: same as InstallRef, we should fuzzy the id instead of version
+    auto fuzzyRef = package::FuzzyReference::parse(packageRef.id);
     if (!fuzzyRef) {
         return toDBusReply(fuzzyRef);
     }
 
-    auto ref = this->repo.clearReference(*fuzzyRef,
-                                         {
-                                           .fallbackToRemote = false // NOLINT
-                                         });
-    if (ref) {
-        auto layerDir = this->repo.getLayerDir(*ref, packageInfo.packageInfoV2Module);
+    auto localRef = this->repo.clearReference(*fuzzyRef,
+                                              {
+                                                .fallbackToRemote = false // NOLINT
+                                              });
+    if (localRef) {
+        auto layerDir = this->repo.getLayerDir(*localRef, packageInfo.packageInfoV2Module);
         if (layerDir && layerDir->valid()) {
-            return toDBusReply(-1, ref->toString() + " is already installed");
+            additionalMessage.localRef = localRef->toString().toStdString();
         }
     }
 
-    auto architectureRet = package::Architecture::parse(packageInfo.arch[0]);
-    if (!architectureRet) {
-        return toDBusReply(architectureRet);
+    if (!additionalMessage.localRef.empty()) {
+        if (packageRef.version == localRef->version) {
+            return toDBusReply(-1, localRef->toString() + " is already installed");
+        } else if (packageRef.version > localRef->version) {
+            msgType = api::types::v1::InteractionMessageType::Upgrade;
+        } else if (!options.force) {
+            return toDBusReply(-1,
+                               "The latest version has been installed. If you need to "
+                               "overwrite it, try using '--force'");
+        }
     }
-
-    auto packageRefRet = package::Reference::create(QString::fromStdString(packageInfo.channel),
-                                                    QString::fromStdString(packageInfo.id),
-                                                    *versionRet,
-                                                    *architectureRet);
-    if (!packageRefRet) {
-        return toDBusReply(packageRefRet);
-    }
-    const auto &packageRef = *packageRefRet;
 
     auto refSpec =
-      QString{ "%1:%2/%3" }.arg("local",
+      QString{ "%1/%2/%3" }.arg("local",
                                 packageRef.toString(),
                                 QString::fromStdString(packageInfo.packageInfoV2Module));
     auto task = std::find_if(this->taskList.cbegin(),
@@ -242,9 +250,37 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
       [this,
        fdDup = fd, // keep file descriptor don't close by the destructor of QDBusUnixFileDescriptor
        &taskRef,
-       packageRef = std::move(packageRefRet).value(),
+       packageRef,
        layerFile = *layerFileRet,
-       module = packageInfo.packageInfoV2Module]() {
+       module = packageInfo.packageInfoV2Module,
+       options,
+       msgType,
+       additionalMessage]() {
+          if (msgType == api::types::v1::InteractionMessageType::Upgrade
+              && !options.skipInteraction) {
+              Q_EMIT RequestInteraction(QDBusObjectPath(taskRef.taskObjectPath()),
+                                        static_cast<int>(msgType),
+                                        utils::serialize::toQVariantMap(additionalMessage));
+              QEventLoop loop;
+              connect(
+                this,
+                &PackageManager::ReplyReceived,
+                [&taskRef, &loop](const QVariantMap &reply) {
+                    // handle reply
+                    auto interactionReply =
+                      utils::serialize::fromQVariantMap<api::types::v1::InteractionReply>(reply);
+                    if (interactionReply->action != "yes") {
+                        taskRef.updateState(linglong::api::types::v1::State::Canceled, "canceled");
+                    }
+
+                    loop.exit(0);
+                });
+              loop.exec();
+          }
+          if (taskRef.subState() == linglong::api::types::v1::SubState::Done) {
+              return;
+          }
+
           taskRef.updateState(linglong::api::types::v1::State::Processing, "installing layer");
           taskRef.updateSubState(linglong::api::types::v1::SubState::PreAction,
                                  "preparing environment");
@@ -298,14 +334,24 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
     });
 }
 
-QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) noexcept
+QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
+                                           const api::types::v1::CommonOptions &options) noexcept
 {
     auto uabRet = package::UABFile::loadFromFile(
       QString("/proc/%1/fd/%2").arg(getpid()).arg(fd.fileDescriptor()));
     if (!uabRet) {
         return toDBusReply(uabRet);
     }
+
     const auto &uab = *uabRet;
+    auto verifyRet = uab->verify();
+    if (!verifyRet) {
+        return toDBusReply(verifyRet);
+    }
+    if (!*verifyRet) {
+        return toDBusReply(-1, "couldn't pass uab verification");
+    }
+
     auto realFile = uab->symLinkTarget();
 
     auto metaInfoRet = uab->getMetaInfo();
@@ -325,27 +371,50 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
     }
     auto appLayer = *appLayerIt;
 
-    auto versionRet = package::Version::parse(QString::fromStdString(appLayer.info.version));
-    if (!versionRet) {
-        return toDBusReply(versionRet);
-    }
-
-    auto architectureRet = package::Architecture::parse(appLayer.info.arch[0]);
-    if (!architectureRet) {
-        return toDBusReply(architectureRet);
-    }
-
-    auto appRefRet = package::Reference::create(QString::fromStdString(appLayer.info.channel),
-                                                QString::fromStdString(appLayer.info.id),
-                                                *versionRet,
-                                                *architectureRet);
+    auto appRefRet = package::Reference::fromPackageInfo(appLayer.info);
     if (!appRefRet) {
         return toDBusReply(appRefRet);
     }
+
     const auto &appRef = *appRefRet;
 
+    api::types::v1::PackageManager1RequestInteractionAdditonalMessage additionalMessage;
+    api::types::v1::InteractionMessageType msgType =
+      api::types::v1::InteractionMessageType::Install;
+
+    additionalMessage.remoteRef = appRef.toString().toStdString();
+
+    // Note: same as InstallRef, we should fuzzy the id instead of version
+    auto fuzzyRef = package::FuzzyReference::parse(appRef.id);
+    if (!fuzzyRef) {
+        return toDBusReply(fuzzyRef);
+    }
+
+    auto localRef = this->repo.clearReference(*fuzzyRef,
+                                              {
+                                                .fallbackToRemote = false // NOLINT
+                                              });
+    if (localRef) {
+        auto layerDir = this->repo.getLayerDir(*localRef, appLayer.info.packageInfoV2Module);
+        if (layerDir && layerDir->valid()) {
+            additionalMessage.localRef = localRef->toString().toStdString();
+        }
+    }
+
+    if (!additionalMessage.localRef.empty()) {
+        if (appRef.version == localRef->version) {
+            return toDBusReply(-1, localRef->toString() + " is already installed");
+        } else if (appRef.version > localRef->version) {
+            msgType = api::types::v1::InteractionMessageType::Upgrade;
+        } else if (!options.force) {
+            return toDBusReply(-1,
+                               "The latest version has been installed. If you need to "
+                               "overwrite it, try using '--force'");
+        }
+    }
+
     auto refSpec =
-      QString{ "%1:%2/%3" }.arg("local",
+      QString{ "%1/%2/%3" }.arg("local",
                                 appRef.toString(),
                                 QString::fromStdString(appLayer.info.packageInfoV2Module));
     auto task = std::find_if(this->taskList.cbegin(),
@@ -370,7 +439,31 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
        uab = std::move(uabRet).value(),
        layerInfos = std::move(layerInfos),
        metaInfo = std::move(metaInfoRet).value(),
-       appRef = std::move(appRefRet).value()] {
+       appRef = std::move(appRefRet).value(),
+       options,
+       msgType,
+       additionalMessage] {
+          if (msgType == api::types::v1::InteractionMessageType::Upgrade
+              && !options.skipInteraction) {
+              Q_EMIT RequestInteraction(QDBusObjectPath(taskRef.taskObjectPath()),
+                                        static_cast<int>(msgType),
+                                        utils::serialize::toQVariantMap(additionalMessage));
+              QEventLoop loop;
+              connect(
+                this,
+                &PackageManager::ReplyReceived,
+                [&taskRef, &loop](const QVariantMap &reply) {
+                    // handle reply
+                    auto interactionReply =
+                      utils::serialize::fromQVariantMap<api::types::v1::InteractionReply>(reply);
+                    if (interactionReply->action != "yes") {
+                        taskRef.updateState(linglong::api::types::v1::State::Canceled, "canceled");
+                    }
+
+                    loop.exit(0);
+                });
+              loop.exec();
+          }
           if (taskRef.subState() == linglong::api::types::v1::SubState::Done) {
               return;
           }
@@ -378,21 +471,6 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
           taskRef.updateState(linglong::api::types::v1::State::Processing, "installing uab");
           taskRef.updateSubState(linglong::api::types::v1::SubState::PreAction,
                                  "prepare environment");
-          auto verifyRet = uab->verify();
-          if (!verifyRet) {
-              taskRef.reportError(std::move(verifyRet).error());
-              return;
-          }
-
-          if (!*verifyRet) {
-              taskRef.updateState(linglong::api::types::v1::State::Failed,
-                                  "couldn't pass uab verification");
-              return;
-          }
-
-          if (taskRef.subState() == linglong::api::types::v1::SubState::Done) {
-              return;
-          }
 
           auto mountPoint = uab->mountUab();
           if (!mountPoint) {
@@ -453,6 +531,19 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
               bool isAppLayer = layer.info.kind == "app";
               if (isAppLayer) { // it's meaningless for app layer that declare minified is true
                   subRef = std::nullopt;
+              } else{
+                  auto fuzzyString = refRet->id + "/" + refRet->version.toString();
+                  auto fuzzyRef = package::FuzzyReference::parse(fuzzyString);
+                  auto localRef = this->repo.clearReference(*fuzzyRef,
+                                                            {
+                                                              .fallbackToRemote = false // NOLINT
+                                                            });
+                  if (localRef) {
+                      auto layerDir = this->repo.getLayerDir(*localRef, info.packageInfoV2Module);
+                      if (layerDir && layerDir->valid() && refRet->version == localRef->version) {
+                          continue;
+                      }
+                  }
               }
 
               auto ret = this->repo.importLayerDir(layerDir, subRef);
@@ -490,10 +581,18 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
 }
 
 auto PackageManager::InstallFromFile(const QDBusUnixFileDescriptor &fd,
-                                     const QString &fileType) noexcept -> QVariantMap
+                                     const QString &fileType,
+                                     const QVariantMap &options) noexcept -> QVariantMap
 {
+    auto opts = utils::serialize::fromQVariantMap<api::types::v1::CommonOptions>(options);
+    if (!opts) {
+        return toDBusReply(opts);
+    }
+
     const static QHash<QString,
-                       QVariantMap (PackageManager::*)(const QDBusUnixFileDescriptor &) noexcept>
+                       QVariantMap (PackageManager::*)(
+                         const QDBusUnixFileDescriptor &,
+                         const api::types::v1::CommonOptions &) noexcept>
       installers = { { "layer", &PackageManager::installFromLayer },
                      { "uab", &PackageManager::installFromUAB } };
 
@@ -502,7 +601,7 @@ auto PackageManager::InstallFromFile(const QDBusUnixFileDescriptor &fd,
                            QString{ "%1 is unsupported fileType" }.arg(fileType));
     }
 
-    return std::invoke(installers[fileType], this, fd);
+    return std::invoke(installers[fileType], this, fd, *opts);
 }
 
 auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariantMap
@@ -529,7 +628,8 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     }
 
     api::types::v1::PackageManager1RequestInteractionAdditonalMessage additionalMessage;
-    api::types::v1::InteractionMessageType msgType = api::types::v1::InteractionMessageType::Install;
+    api::types::v1::InteractionMessageType msgType =
+      api::types::v1::InteractionMessageType::Install;
 
     additionalMessage.remoteRef = remoteRef->toString().toStdString();
 
@@ -551,7 +651,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
             return toDBusReply(-1, localRef->toString() + " is already installed");
         } else if (remoteRef->version > localRef->version) {
             msgType = api::types::v1::InteractionMessageType::Upgrade;
-        } else if(!paras->options.force){
+        } else if (!paras->options.force) {
             return toDBusReply(-1,
                                "The latest version has been installed. If you need to "
                                "overwrite it, try using '--force'");

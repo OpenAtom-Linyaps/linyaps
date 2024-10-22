@@ -51,7 +51,7 @@ Usage:
     ll-cli [--json] exec PAGODA [--working-directory=PATH] [--] COMMAND...
     ll-cli [--json] enter PAGODA [--working-directory=PATH] [--] [COMMAND...]
     ll-cli [--json] kill PAGODA
-    ll-cli [--json] [--no-dbus] install TIER [--force]
+    ll-cli [--json] [--no-dbus] install TIER [--force] [-y]
     ll-cli [--json] uninstall TIER [--all] [--prune]
     ll-cli [--json] upgrade TIER [--force]
     ll-cli [--json] search [--type=TYPE] [--dev] TEXT
@@ -740,7 +740,7 @@ void Cli::cancelCurrentTask()
     }
 }
 
-int Cli::installFromFile(const QFileInfo &fileInfo)
+int Cli::installFromFile(const QFileInfo &fileInfo, const api::types::v1::CommonOptions &options)
 {
     auto filePath = fileInfo.absoluteFilePath();
     LINGLONG_TRACE(QString{ "install from file %1" }.arg(filePath))
@@ -752,9 +752,24 @@ int Cli::installFromFile(const QFileInfo &fileInfo)
         this->printer.printErr(err.value());
         return -1;
     }
+
+    auto conn = this->pkgMan.connection();
+    auto con = conn.connect(this->pkgMan.service(),
+                            this->pkgMan.path(),
+                            this->pkgMan.interface(),
+                            "RequestInteraction",
+                            this,
+                            SLOT(interaction(QDBusObjectPath, int, QVariantMap)));
+    if (!con) {
+        qCritical() << "Failed to connect signal: RequestInteraction. state may be incorrect.";
+        return -1;
+    }
+
     QDBusUnixFileDescriptor dbusFileDescriptor(file.handle());
 
-    auto pendingReply = this->pkgMan.InstallFromFile(dbusFileDescriptor, fileInfo.suffix());
+    auto pendingReply = this->pkgMan.InstallFromFile(dbusFileDescriptor,
+                                                     fileInfo.suffix(),
+                                                     utils::serialize::toQVariantMap(options));
     pendingReply.waitForFinished();
     if (!pendingReply.isFinished()) {
         auto err = LINGLONG_ERRV("dbus early return");
@@ -783,7 +798,6 @@ int Cli::installFromFile(const QFileInfo &fileInfo)
     }
 
     this->taskObjectPath = QString::fromStdString(result->taskObjectPath.value());
-    auto conn = pkgMan.connection();
     task = new api::dbus::v1::Task1(pkgMan.service(), taskObjectPath, conn);
 
     if (!conn.connect(pkgMan.service(),
@@ -839,9 +853,20 @@ int Cli::install(std::map<std::string, docopt::value> &args)
     auto tier = args["TIER"].asString();
     QFileInfo info(QString::fromStdString(tier));
 
+    auto params =
+      api::types::v1::PackageManager1InstallParameters{ .options = { .force = false,
+                                                                     .skipInteraction = false } };
+    if (args["--force"].asBool()) {
+        params.options.force = true;
+    }
+
+    if(args["-y"].asBool()) {
+        params.options.skipInteraction = true;
+    }
+
     // 如果检测是文件，则直接安装
     if (info.exists() && info.isFile()) {
-        return installFromFile(info.absoluteFilePath());
+        return installFromFile(info.absoluteFilePath(), params.options);
     }
 
     auto conn = this->pkgMan.connection();
@@ -854,17 +879,6 @@ int Cli::install(std::map<std::string, docopt::value> &args)
     if (!con) {
         qCritical() << "Failed to connect signal: RequestInteraction. state may be incorrect.";
         return -1;
-    }
-
-    auto params =
-      api::types::v1::PackageManager1InstallParameters{ .options = { .force = false,
-                                                                     .skipInteraction = false } };
-    if (args["--force"].asBool()) {
-        params.options.force = true;
-    }
-
-    if(args["-y"].asBool()) {
-        params.options.skipInteraction = true;
     }
 
     auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(tier));

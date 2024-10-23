@@ -40,6 +40,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <future>
@@ -869,8 +870,8 @@ utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRep
     }
     auto env = QProcessEnvironment::systemEnvironment();
     auto client = this->m_clientFactory.createClientV2();
-    // apiClient会调用free释放basePath，为避免重复释放复制一份url
-    client->basePath = new char[url.length() + 1];
+    // apiClient会调用free释放basePath，为避免重复释放这里复制一次url
+    client->basePath = (char *)malloc(url.length() + 1);
     strcpy(client->basePath, url.c_str());
     // 登录认证
     auto envUsername = env.value("LINGLONG_USERNAME").toUtf8();

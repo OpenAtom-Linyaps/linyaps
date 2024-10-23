@@ -9,8 +9,10 @@
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/builder/printer.h"
 #include "linglong/package/architecture.h"
+#include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
 #include "linglong/package/layer_packager.h"
+#include "linglong/package/reference.h"
 #include "linglong/package/uab_packager.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container.h"
@@ -207,6 +209,9 @@ fetchSources(const std::vector<api::types::v1::BuilderProjectSource> &sources,
     LINGLONG_TRACE("fetch sources to " + destination.absolutePath());
 
     for (decltype(sources.size()) pos = 0; pos < sources.size(); ++pos) {
+        if (!sources.at(pos).url.has_value()) {
+            return LINGLONG_ERR("source missing url");
+        }
         auto url = QString::fromStdString(*(sources.at(pos).url));
         if (url.length() > 75) {         // NOLINT
             url = "..." + url.right(70); // NOLINT
@@ -357,7 +362,11 @@ utils::error::Result<void> installModule(QStringList installRules,
             }
             continue;
         }
-        rule = "^" + src + rule.mid(1);
+        if (rule.startsWith("^/")) {
+            rule = "^" + src + rule.mid(1);
+        } else {
+            rule = "^" + src + "/" + rule.mid(1);
+        }
         QRegularExpression regexp(rule);
         // reverse files in src
         QDirIterator iter(src,
@@ -432,7 +441,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     printMessage("Url: " + repoCfg.repos.at(repoCfg.defaultRepo), 2);
 
     this->workingDir.mkdir("linglong");
-
+    /*** Fetch Source Stage ***/
     if (this->project.sources && !cfg.skipFetchSource) {
         printMessage("[Processing Sources]");
         printMessage(QString("%1%2%3%4")
@@ -454,7 +463,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
             return LINGLONG_ERR(result);
         }
     }
-
+    /*** Pull Depend Stage ***/
     printMessage("[Processing Dependency]");
     printMessage(QString("%1%2%3%4")
                    .arg("Package", -25) // NOLINT
@@ -463,68 +472,96 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
                    .arg("Status")
                    .toStdString(),
                  2);
-    std::optional<package::Reference> runtime;
-    std::optional<package::FuzzyReference> fuzzyRuntime;
-    QString runtimeLayerDir;
-    if (this->project.runtime) {
-        auto fuzzyRef =
-          package::FuzzyReference::parse(QString::fromStdString(*this->project.runtime));
-        if (!fuzzyRef) {
-            return LINGLONG_ERR(fuzzyRef);
-        }
-
-        fuzzyRuntime = *fuzzyRef;
-        auto ref = pullDependency(*fuzzyRuntime,
-                                  this->repo,
-                                  "develop",
-                                  cfg.skipPullDepend.has_value() && *cfg.skipPullDepend);
-        if (!ref) {
-            return LINGLONG_ERR("pull runtime", ref);
-        }
-        runtime = *ref;
-        auto ret = this->repo.getLayerDir(*runtime, "develop");
-        if (!ret.has_value()) {
-            return LINGLONG_ERR("get runtime layer dir", ret);
-        }
-        runtimeLayerDir = ret->absolutePath();
-        printReplacedText(QString("%1%2%3%4")
-                            .arg(runtime->id, -25)                 // NOLINT
-                            .arg(runtime->version.toString(), -15) // NOLINT
-                            .arg("develop", -15)                   // NOLINT
-                            .arg("complete\n")
-                            .toStdString(),
-                          2);
-        qDebug() << "pull runtime success" << runtime->toString();
-    }
-
     auto fuzzyBase = package::FuzzyReference::parse(QString::fromStdString(this->project.base));
     if (!fuzzyBase) {
         return LINGLONG_ERR(fuzzyBase);
     }
-    auto base = pullDependency(*fuzzyBase,
-                               this->repo,
-                               "develop",
-                               cfg.skipPullDepend.has_value() && *cfg.skipPullDepend);
-    if (!base) {
-        return LINGLONG_ERR("pull base", base);
-    }
-    auto baseLayerDir = this->repo.getLayerDir(*base, "develop");
-    if (!baseLayerDir) {
-        return LINGLONG_ERR(baseLayerDir);
+    auto baseRef =
+      pullDependency(*fuzzyBase, this->repo, "binary", cfg.skipPullDepend.value_or(false));
+    if (!baseRef) {
+        return LINGLONG_ERR("pull base binary", baseRef);
     }
     printReplacedText(QString("%1%2%3%4")
-                        .arg(base->id, -25)                 // NOLINT
-                        .arg(base->version.toString(), -15) // NOLINT
-                        .arg("develop", -15)                // NOLINT
+                        .arg(baseRef->id, -25)                 // NOLINT
+                        .arg(baseRef->version.toString(), -15) // NOLINT
+                        .arg("binary", -15)                    // NOLINT
                         .arg("complete\n")
                         .toStdString(),
                       2);
-    qDebug() << "pull base success" << base->toString();
+    baseRef = pullDependency(*fuzzyBase, this->repo, "develop", cfg.skipPullDepend.value_or(false));
+    if (!baseRef) {
+        return LINGLONG_ERR("pull base develop", baseRef);
+    }
+    auto ret = this->repo.mergeModules();
+    if (!ret.has_value()) {
+        return LINGLONG_ERR(ret);
+    }
+    printReplacedText(QString("%1%2%3%4")
+                        .arg(baseRef->id, -25)                 // NOLINT
+                        .arg(baseRef->version.toString(), -15) // NOLINT
+                        .arg("develop", -15)                   // NOLINT
+                        .arg("complete\n")
+                        .toStdString(),
+                      2);
+    auto baseLayerDir = this->repo.getMergedModuleDir(*baseRef, false);
+    if (!baseLayerDir) {
+        return LINGLONG_ERR("get base layer dir", baseLayerDir);
+    }
 
+    std::optional<package::FuzzyReference> fuzzyRuntime;
+    std::optional<package::Reference> runtimeRef;
+    std::optional<package::LayerDir> runtimeLayerDir;
+    if (this->project.runtime) {
+        auto fuzzyRuntimeRet =
+          package::FuzzyReference::parse(QString::fromStdString(*this->project.runtime));
+        if (!fuzzyRuntimeRet) {
+            return LINGLONG_ERR(fuzzyRuntimeRet);
+        }
+        fuzzyRuntime = *fuzzyRuntimeRet;
+        auto runtimeRet = pullDependency(*fuzzyRuntime,
+                                         this->repo,
+                                         "binary",
+                                         cfg.skipPullDepend.has_value() && *cfg.skipPullDepend);
+        if (!runtimeRet) {
+            return LINGLONG_ERR("pull runtime", runtimeRet);
+        }
+        printReplacedText(QString("%1%2%3%4")
+                            .arg(runtimeRet->id, -25)                 // NOLINT
+                            .arg(runtimeRet->version.toString(), -15) // NOLINT
+                            .arg("binary", -15)                       // NOLINT
+                            .arg("complete\n")
+                            .toStdString(),
+                          2);
+        runtimeRet = pullDependency(*fuzzyRuntime,
+                                    this->repo,
+                                    "develop",
+                                    cfg.skipPullDepend.has_value() && *cfg.skipPullDepend);
+        if (!runtimeRet) {
+            return LINGLONG_ERR("pull runtime", runtimeRet);
+        }
+        auto ret = this->repo.mergeModules();
+        if (!ret.has_value()) {
+            return LINGLONG_ERR(ret);
+        }
+        printReplacedText(QString("%1%2%3%4")
+                            .arg(runtimeRet->id, -25)                 // NOLINT
+                            .arg(runtimeRet->version.toString(), -15) // NOLINT
+                            .arg("develop", -15)                      // NOLINT
+                            .arg("complete\n")
+                            .toStdString(),
+                          2);
+        auto runtimeLayerDirRet = this->repo.getMergedModuleDir(*runtimeRet, false);
+        if (!runtimeLayerDirRet.has_value()) {
+            return LINGLONG_ERR("get runtime layer dir", runtimeLayerDirRet);
+        }
+        runtimeRef = *runtimeRet;
+        runtimeLayerDir = *runtimeLayerDirRet;
+    }
+
+    /*** Run Container Stage ***/
     if (cfg.skipRunContainer) {
         return LINGLONG_OK;
     }
-
     QFile entry = this->workingDir.absoluteFilePath("linglong/entry.sh");
     if (entry.exists() && !entry.remove()) {
         return LINGLONG_ERR(entry);
@@ -600,8 +637,8 @@ set -e
         .mounts = {},
         .masks = {},
     };
-    if (!runtimeLayerDir.isEmpty()) {
-        opts.runtimeDir = runtimeLayerDir;
+    if (runtimeLayerDir.has_value()) {
+        opts.runtimeDir = *runtimeLayerDir;
     }
     // 构建安装路径
     QString installPrefix = "/runtime";
@@ -664,6 +701,8 @@ set -e
         return LINGLONG_ERR(result);
     }
     qDebug() << "run container success";
+
+    /*** Commit Output Stage ***/
     if (cfg.skipCommitOutput) {
         qWarning() << "skip commit output";
         return LINGLONG_OK;
@@ -696,6 +735,14 @@ set -e
                    .arg("Status")
                    .toStdString(),
                  2);
+    // 保存全量的develop, runtime需要对旧的ll-builder保持兼容
+    if (this->fullDevelop) {
+        QDir moduleDir = this->workingDir.absoluteFilePath("linglong/output/develop/files");
+        auto ret = copyDir(buildOutput.path(), moduleDir.path());
+        if (!ret.has_value()) {
+            return ret;
+        }
+    }
     if (this->project.modules.has_value()) {
         for (const auto &module : *this->project.modules) {
             auto name = QString::fromStdString(module.name);
@@ -735,12 +782,6 @@ set -e
                                 .arg("complete\n")
                                 .toStdString(),
                               2);
-        }
-    } else if (this->fullDevelop) {
-        QDir moduleDir = this->workingDir.absoluteFilePath("linglong/output/develop/files");
-        auto ret = copyDir(buildOutput.path(), moduleDir.path());
-        if (!ret.has_value()) {
-            return ret;
         }
     }
     // save binary install files
@@ -842,17 +883,9 @@ set -e
         qWarning() << "This app id does not follow the reverse domain name notation convention. "
                       "See https://wikipedia.org/wiki/Reverse_domain_name_notation";
     }
-    // when the base version is likes 20.0.0.1, warning that it is a full version
-    // if the base version is likes 20.0.0, we should also write 20.0.0 to info.json
-    if (fuzzyBase->version->tweak) {
-        qWarning() << fuzzyBase->toString() << "is set a full version.";
-    } else {
-        base->version.tweak = std::nullopt;
-    }
 
     auto info = api::types::v1::PackageInfoV2{
         .arch = { package::Architecture::currentCPUArchitecture()->toString().toStdString() },
-        .base = base->toString().toStdString(),
         .channel = ref->channel.toStdString(),
         .command = project.command,
         .description = this->project.package.description,
@@ -864,25 +897,40 @@ set -e
         .schemaVersion = PACKAGE_INFO_VERSION,
         .version = this->project.package.version,
     };
-
-    if (runtime) {
+    // when the base version is likes 20.0.0.1, warning that it is a full version
+    // if the base version is likes 20.0.0, we should also write 20.0.0 to info.json
+    if (fuzzyBase->version->tweak) {
+        qWarning() << fuzzyBase->toString() << "is set a full version.";
+    } else {
+        baseRef->version.tweak = std::nullopt;
+    }
+    info.base = baseRef->toString().toStdString();
+    if (runtimeRef) {
         // the runtime version is same as base.
         if (fuzzyRuntime->version->tweak) {
             qWarning() << fuzzyRuntime->toString() << "is set a full version.";
         } else {
-            runtime->version.tweak = std::nullopt;
+            runtimeRef->version.tweak = std::nullopt;
         }
-        info.runtime = runtime->toString().toStdString();
+        info.runtime = runtimeRef->toString().toStdString();
     }
-
+    // 从本地仓库清理旧的ref
+    auto existsModules = this->repo.getModuleList(*ref);
+    for (const auto &module : existsModules) {
+        result = this->repo.remove(*ref, module);
+        if (!result) {
+            qDebug() << "remove" << ref->toString() << result.error().message();
+        }
+    }
+    // 推送新的ref到本地仓库
     QStringList modules = { "binary" };
-
+    if (this->fullDevelop) {
+        modules.push_back("develop");
+    }
     if (this->project.modules.has_value()) {
         for (const auto &module : this->project.modules.value()) {
             modules.push_back(module.name.c_str());
         }
-    } else if (this->fullDevelop) {
-        modules.push_back("develop");
     }
     printMessage("[Commit Contents]");
     printMessage(QString("%1%2%3%4")
@@ -919,7 +967,6 @@ set -e
               QString("copy linglong.yaml to output failed: %1").arg(ec.message().c_str()));
         }
         qDebug() << "import module to layers";
-        package::LayerDir binaryOutputLayerDir = moduleOutput.path();
         printReplacedText(QString("%1%2%3%4")
                             .arg(info.id.c_str(), appIDPrintWidth) // NOLINT
                             .arg(info.version.c_str(), -15)        // NOLINT
@@ -927,11 +974,7 @@ set -e
                             .arg("committing")
                             .toStdString(),
                           2);
-        result = this->repo.remove(*ref, module.toStdString());
-        if (!result) {
-            qDebug() << "remove" << ref->toString() << result.error().message();
-        }
-        auto localLayer = this->repo.importLayerDir(binaryOutputLayerDir);
+        auto localLayer = this->repo.importLayerDir(moduleOutput.path());
         if (!localLayer) {
             return LINGLONG_ERR(localLayer);
         }
@@ -1200,12 +1243,6 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     if (!baseRef) {
         return LINGLONG_ERR(baseRef);
     }
-    auto baseDir =
-      debug ? this->repo.getMergedModuleDir(*baseRef) : this->repo.getLayerDir(*baseRef, "binary");
-    if (!baseDir) {
-        return LINGLONG_ERR(baseDir);
-    }
-    options.baseDir = QDir(baseDir->absolutePath());
 
     if (this->project.runtime) {
         auto ref = pullDependency(QString::fromStdString(*this->project.runtime),
@@ -1215,13 +1252,28 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
         if (!ref) {
             return LINGLONG_ERR(ref);
         }
+        auto ret = this->repo.mergeModules();
+        if (!ret.has_value()) {
+            return ret;
+        }
         auto dir =
           debug ? this->repo.getMergedModuleDir(*ref) : this->repo.getLayerDir(*ref, "binary");
         if (!dir) {
             return LINGLONG_ERR(dir);
         }
         options.runtimeDir = QDir(dir->absolutePath());
+    } else {
+        auto ret = this->repo.mergeModules();
+        if (!ret.has_value()) {
+            return ret;
+        }
     }
+    auto baseDir =
+      debug ? this->repo.getMergedModuleDir(*baseRef) : this->repo.getLayerDir(*baseRef, "binary");
+    if (!baseDir) {
+        return LINGLONG_ERR(baseDir);
+    }
+    options.baseDir = QDir(baseDir->absolutePath());
 
     if (this->project.package.kind == "runtime") {
         options.runtimeDir = QDir(curDir->absolutePath());
@@ -1304,7 +1356,7 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
           .source = gdbinit,
           .type = "bind",
         });
-        applicationMounts.push_back({
+        applicationMounts.push_back(ocppi::runtime::config::types::Mount{
           .destination = "/project",
           .options = { { "rbind", "rw" } },
           .source = this->workingDir.absolutePath().toStdString(),

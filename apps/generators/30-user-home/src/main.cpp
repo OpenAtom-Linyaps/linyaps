@@ -2,15 +2,18 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
+#include "linglong/api/types/v1/ApplicationAccessPrivileges.hpp"
+#include "linglong/api/types/v1/Generators.hpp"
 #include "nlohmann/json.hpp"
 
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 
 #include <pwd.h>
 #include <unistd.h>
 
-int main()
+int main() // NOLINT
 {
     nlohmann::json content;
     std::string ociVersion;
@@ -72,37 +75,33 @@ int main()
         return it != env.cend();
     };
 
-    auto mountDir =
-      [&mounts](const std::string &hostDir, const std::string &destDir, std::error_code &ec) {
-          std::string realHostDir = hostDir;
-          if (std::filesystem::is_symlink(hostDir)) {
-              realHostDir = std::filesystem::read_symlink(hostDir);
-          }
+    auto mountDir = [&mounts](const std::string &hostDir, const std::string &containerDir) {
+        std::error_code ec;
+        if (!std::filesystem::exists(hostDir, ec)) {
+            if (ec) {
+                std::cerr << "failed to get state of directories " << hostDir << ":" << ec.message()
+                          << std::endl;
+                return false;
+            }
 
-          std::filesystem::create_directories(realHostDir, ec);
-          if (ec) {
-              return;
-          }
+            if (!std::filesystem::create_directories(hostDir, ec) && ec) {
+                std::cerr << "failed to create directories " << hostDir << ":" << ec.message()
+                          << std::endl;
+                return false;
+            }
+        }
 
-          std::filesystem::create_directories(destDir, ec);
-          if (ec) {
-              return;
-          }
+        mounts.push_back({
+          { "destination", containerDir },
+          { "options", nlohmann::json::array({ "rbind" }) },
+          { "source", hostDir },
+          { "type", "bind" },
+        });
 
-          mounts.push_back({
-            { "destination", destDir },
-            { "options", nlohmann::json::array({ "rbind" }) },
-            { "source", realHostDir },
-            { "type", "bind" },
-          });
+        return true;
+    };
 
-          ec.clear();
-      };
-
-    std::error_code ec;
-    mountDir(hostHomeDir, cognitiveHomeDir, ec);
-    if (ec) {
-        std::cerr << "Mount home failed:" << ec.message() << std::endl;
+    if (!mountDir(hostHomeDir, cognitiveHomeDir)) {
         return -1;
     }
     if (envExist("HOME")) {
@@ -111,134 +110,148 @@ int main()
     }
     env.emplace_back("HOME=" + cognitiveHomeDir.string());
 
-    auto hostAppDataDir = std::filesystem::path(hostHomeDir / ".linglong" / appID);
-    std::filesystem::create_directories(hostAppDataDir, ec);
-    if (ec) {
-        std::cerr << "Check appDataDir failed:" << ec.message() << std::endl;
-        return -1;
-    }
-
     // process XDG_* environment variables.
+    std::error_code ec;
+    auto privateAppDir = hostHomeDir / ".linglong" / appID;
 
-    // Data files should access by other application.
-    auto *ptr = ::getenv("XDG_DATA_HOME");
-    auto XDGDataHome = ptr == nullptr ? "" : std::string{ ptr };
-    if (XDGDataHome.empty()) {
-        XDGDataHome = hostHomeDir / ".local/share";
-    }
-
-    auto cognitiveXDGDataHome = (cognitiveHomeDir / ".local/share").string();
-    mountDir(XDGDataHome, cognitiveXDGDataHome, ec);
-    if (ec) {
-        std::cerr << "Failed to passthrough " << XDGDataHome << ec.message() << std::endl;
+    if (!std::filesystem::create_directories(privateAppDir, ec) && ec) {
+        std::cerr << "failed to create " << privateAppDir << ": " << ec.message() << std::endl;
         return -1;
     }
+
+    // XDG_DATA_HOME
+    auto *ptr = ::getenv("XDG_DATA_HOME");
+    std::filesystem::path XDGDataHome = ptr == nullptr ? "" : std::string{ ptr };
+    if (XDGDataHome.empty()) {
+        XDGDataHome = hostHomeDir / ".local" / "share";
+    }
+
+    std::filesystem::path cognitiveDataHome = cognitiveHomeDir / ".local" / "share";
+    if (!mountDir(XDGDataHome, cognitiveDataHome)) {
+        return -1;
+    }
+
     if (envExist("XDG_DATA_HOME")) {
         std::cerr << "XDG_DATA_HOME already exist." << std::endl;
         return -1;
     }
-    env.emplace_back("XDG_DATA_HOME=" + cognitiveXDGDataHome);
+    env.emplace_back("XDG_DATA_HOME=" + cognitiveDataHome.string());
 
-    auto hostAppConfigHome = hostAppDataDir / "config";
-    auto cognitiveAppConfigHome = cognitiveHomeDir / ".config";
-    mountDir(hostAppConfigHome, cognitiveAppConfigHome, ec);
-    if (ec) {
-        std::cerr << "Failed to mount " << hostAppConfigHome << " to " << cognitiveAppConfigHome
-                  << ec.message() << std::endl;
+    // XDG_CONFIG_HOME
+    ptr = ::getenv("XDG_CONFIG_HOME");
+    std::filesystem::path XDGConfigHome = ptr == nullptr ? "" : std::string{ ptr };
+    if (XDGConfigHome.empty()) {
+        XDGConfigHome = hostHomeDir / ".config";
+    }
+    if (auto privateConfigDir = privateAppDir / "config";
+        std::filesystem::exists(privateConfigDir, ec)) {
+        XDGConfigHome = privateConfigDir;
+    }
+    ec.clear();
+
+    auto cognitiveConfigHome = cognitiveHomeDir / ".config";
+    if (!mountDir(XDGConfigHome, cognitiveConfigHome)) {
         return -1;
     }
+
     if (envExist("XDG_CONFIG_HOME")) {
         std::cerr << "XDG_CONFIG_HOME already exist." << std::endl;
         return -1;
     }
-    env.emplace_back("XDG_CONFIG_HOME=" + cognitiveAppConfigHome.string());
+    env.emplace_back("XDG_CONFIG_HOME=" + cognitiveConfigHome.string());
 
-    auto hostAppCacheHome = hostAppDataDir / "cache";
-    auto cognitiveAppCacheHome = cognitiveHomeDir / ".cache";
-    mountDir(hostAppCacheHome, cognitiveAppCacheHome, ec);
-    if (ec) {
-        std::cerr << "Failed to mount " << hostAppCacheHome << " to " << cognitiveAppCacheHome
-                  << ec.message() << std::endl;
+    // XDG_CACHE_HOME
+    ptr = ::getenv("XDG_CACHE_HOME");
+    std::filesystem::path XDGCacheHome = ptr == nullptr ? "" : std::string{ ptr };
+    if (XDGCacheHome.empty()) {
+        XDGCacheHome = hostHomeDir / ".cache";
+    }
+    if (auto privateCacheDir = privateAppDir / "cache";
+        std::filesystem::exists(privateCacheDir, ec)) {
+        XDGCacheHome = privateCacheDir;
+    }
+    ec.clear();
+
+    auto cognitiveCacheHome = cognitiveHomeDir / ".cache";
+    if (!mountDir(XDGCacheHome, cognitiveCacheHome)) {
         return -1;
     }
+
     if (envExist("XDG_CACHE_HOME")) {
         std::cerr << "XDG_CACHE_HOME already exist." << std::endl;
         return -1;
     }
-    env.emplace_back("XDG_CACHE_HOME=" + cognitiveAppCacheHome.string());
+    env.emplace_back("XDG_CACHE_HOME=" + cognitiveCacheHome.string());
 
-    auto hostAppStateHome = hostAppDataDir / "state";
-    auto cognitiveAppStateHome = cognitiveHomeDir / ".local" / "state";
-    mountDir(hostAppStateHome, cognitiveAppStateHome, ec);
-    if (ec) {
-        std::cerr << "Failed to mount " << hostAppStateHome << " to " << cognitiveAppStateHome
-                  << ec.message() << std::endl;
+    // XDG_STATE_HOME
+    ptr = ::getenv("XDG_STATE_HOME");
+    std::filesystem::path XDGStateHome = ptr == nullptr ? "" : std::string{ ptr };
+    if (XDGStateHome.empty()) {
+        XDGStateHome = hostHomeDir / ".local" / "state";
+    }
+    if (auto privateStateDir = privateAppDir / "config";
+        std::filesystem::exists(privateStateDir, ec)) {
+        XDGStateHome = privateStateDir;
+    }
+    ec.clear();
+
+    auto cognitiveStateHome = cognitiveHomeDir / ".local" / "state";
+    if (!mountDir(XDGStateHome, cognitiveStateHome)) {
         return -1;
     }
+
     if (envExist("XDG_STATE_HOME")) {
         std::cerr << "XDG_STATE_HOME already exist." << std::endl;
         return -1;
     }
-    env.emplace_back("XDG_STATE_HOME=" + cognitiveAppStateHome.string());
+    env.emplace_back("XDG_STATE_HOME=" + cognitiveStateHome.string());
 
     // systemd user path
-    auto hostSystemdUserDir = hostAppConfigHome / "systemd/user";
-    auto cognitiveSystemdUserDir = cognitiveAppConfigHome / "systemd/user";
-    mountDir(hostSystemdUserDir, cognitiveSystemdUserDir, ec);
-    if (ec) {
-        std::cerr << "Failed to mount " << hostSystemdUserDir << " to " << cognitiveSystemdUserDir
-                  << ec.message() << std::endl;
-        return -1;
+    auto hostSystemdUserDir = XDGConfigHome / "systemd" / "user";
+    if (std::filesystem::exists(hostSystemdUserDir, ec)) {
+        auto cognitiveSystemdUserDir = cognitiveConfigHome / "systemd" / "user";
+        if (!mountDir(hostSystemdUserDir, cognitiveSystemdUserDir)) {
+            return -1;
+        }
     }
 
     // FIXME: Many applications get configurations from dconf, so we expose dconf to all
     // applications for now. If there is a better solution to fix this issue, please change the
     // following codes
-    auto XDGUserConfig = hostHomeDir / ".config";
-    if (auto *ptr = ::getenv("XDG_CONFIG_HOME"); ptr != nullptr) {
-        XDGUserConfig = ptr;
-    }
-    auto hostUserDconfPath = XDGUserConfig / "dconf";
-    auto cognitiveAppDconfPath = cognitiveAppConfigHome / "dconf";
-    mountDir(hostUserDconfPath, cognitiveAppDconfPath, ec);
-    if (ec) {
-        std::cerr << "Failed to mount " << hostUserDconfPath << " to " << cognitiveAppDconfPath
-                  << ec.message() << std::endl;
-        return -1;
+    auto hostUserDconfPath = XDGConfigHome / "dconf";
+    if (std::filesystem::exists(hostUserDconfPath, ec)) {
+        auto cognitiveAppDconfPath = cognitiveConfigHome / "dconf";
+        if (!mountDir(hostUserDconfPath, cognitiveAppDconfPath)) {
+            return -1;
+        }
     }
 
     // for dde application theme
-    ptr = ::getenv("XDG_CACHE_HOME");
-    auto hostXDGCacheHome = ptr == nullptr ? "" : std::string{ ptr };
-    if (hostXDGCacheHome.empty()) {
-        hostXDGCacheHome = hostHomeDir / ".cache";
-    }
-
-    auto hostDDEApiPath = std::filesystem::path{ hostXDGCacheHome } / "deepin/dde-api";
-    auto cognitiveDDEApiPath = cognitiveAppCacheHome / "deepin/dde-api";
-    mountDir(hostDDEApiPath, cognitiveDDEApiPath, ec);
-    if (ec) {
-        std::cerr << "Failed to mount " << hostDDEApiPath << " to " << cognitiveDDEApiPath
-                  << ec.message() << std::endl;
-        return -1;
+    auto hostDDEApiPath = XDGCacheHome / "deepin" / "dde-api";
+    if (std::filesystem::exists(hostDDEApiPath, ec)) {
+        auto cognitiveDDEApiPath = cognitiveCacheHome / "deepin" / "dde-api";
+        if (!mountDir(hostDDEApiPath, cognitiveDDEApiPath)) {
+            return -1;
+        }
     }
 
     // for xdg-user-dirs
-    if (auto userDirs = hostHomeDir / ".config/user-dirs.dirs"; std::filesystem::exists(userDirs)) {
+    auto XDGUserDirs = XDGConfigHome / "user-dirs.dirs";
+    if (std::filesystem::exists(XDGUserDirs, ec)) {
         mounts.push_back({
-          { "destination", userDirs },
+          { "destination", cognitiveConfigHome / "user-dirs.dirs" },
           { "options", nlohmann::json::array({ "rbind" }) },
-          { "source", userDirs },
+          { "source", XDGUserDirs },
           { "type", "bind" },
         });
     }
 
-    if (auto userLocale = hostHomeDir / ".config/user-dirs.locale";
-        std::filesystem::exists(userLocale)) {
+    auto XDGUserLocale = XDGConfigHome / "user-dirs.locale";
+    if (std::filesystem::exists(XDGUserLocale, ec)) {
         mounts.push_back({
-          { "destination", userLocale },
+          { "destination", cognitiveConfigHome / "user-dirs.locale" },
           { "options", nlohmann::json::array({ "rbind" }) },
-          { "source", userLocale },
+          { "source", XDGUserLocale },
           { "type", "bind" },
         });
     }
@@ -258,6 +271,141 @@ int main()
     } else {
         std::cerr << "failed to mask bashrc" << std::endl;
     }
+
+    // hide self data
+    auto linglongDataDir = hostHomeDir / ".linglong";
+    if (!mountDir(linglongDataDir / "data", cognitiveHomeDir / ".linglong")) {
+        return -1;
+    }
+
+    auto privileges = linglong::api::types::v1::ApplicationAccessPrivileges{};
+    auto config = privateAppDir / "permissions.json";
+    if (std::filesystem::exists(config, ec)) {
+        auto input = std::ifstream(config);
+        if (!input.is_open()) {
+            std::cerr << "couldn't open config file " << config.c_str() << std::endl;
+            return -1;
+        }
+
+        try {
+            auto content = nlohmann::json::parse(input);
+            privileges = content.get<linglong::api::types::v1::ApplicationAccessPrivileges>();
+        } catch (nlohmann::json::parse_error &e) {
+            std::cerr << "deserialize error:" << e.what() << std::endl;
+            return -1;
+        } catch (std::exception &e) {
+            std::cerr << "unknown exception:" << e.what() << std::endl;
+            return -1;
+        }
+    }
+    if (ec) {
+        std::cerr << "failed to get status of " << config.c_str() << ": " << ec.message()
+                  << std::endl;
+        return -1;
+    }
+    auto directories =
+      privileges.userDirectories.value_or(linglong::api::types::v1::UserDirectories{});
+
+    // FIXME: we should resolve real home through env GNUPGHOME
+    // FIXME: we should resolve user dirs through ${XDG_CONFIG_HOME}/user-dirs.dirs
+
+    // process blocklist
+    auto disallowedDirs = directories.disallowed.value_or(std::vector<std::string>{});
+    std::sort(disallowedDirs.begin(), disallowedDirs.end());
+    auto dupIt = std::unique(disallowedDirs.begin(), disallowedDirs.end());
+    disallowedDirs.erase(dupIt, disallowedDirs.end());
+
+    for (const std::filesystem::path relative : disallowedDirs) {
+        if (relative.empty() || relative.is_absolute()) {
+            std::cerr << "invalid path:" << relative << std::endl;
+            return -1;
+        }
+
+        if (auto hostLocation = hostHomeDir / relative;
+            !std::filesystem::exists(hostLocation, ec)) {
+            if (ec) {
+                std::cerr << "failed to get state of " << hostLocation << ": " << ec.message()
+                          << std::endl;
+                return -1;
+            }
+
+            continue;
+        }
+
+        // we don't need to concern about source is symlink
+        if (!mountDir(privateAppDir / relative, cognitiveHomeDir / relative)) {
+            return -1;
+        }
+    }
+
+    // process whitelist
+    auto allowedDirs = directories.allowed.value_or(std::vector<std::string>{});
+    std::sort(allowedDirs.begin(), allowedDirs.end());
+    dupIt = std::unique(allowedDirs.begin(), allowedDirs.end());
+    allowedDirs.erase(dupIt, allowedDirs.end());
+    for (std::filesystem::path relative : allowedDirs) {
+        if (relative.empty() || relative.is_absolute()) {
+            std::cerr << "invalid path:" << relative << std::endl;
+            return -1;
+        }
+
+        auto hostLocation = hostHomeDir / relative;
+        if (!std::filesystem::exists(hostLocation, ec)) {
+            if (ec) {
+                std::cerr << "failed to get state of " << hostLocation << ": " << ec.message()
+                          << std::endl;
+                return -1;
+            }
+
+            continue;
+        }
+
+        if (!std::filesystem::is_symlink(hostLocation, ec)) {
+            if (ec) {
+                std::cerr << "failed to get file type of" << hostLocation << ": " << ec.message()
+                          << std::endl;
+                return -1;
+            }
+
+            if (!mountDir(hostLocation, cognitiveHomeDir / relative)) {
+                return -1;
+            }
+
+            continue;
+        }
+
+        auto realHostLocation = std::filesystem::read_symlink(hostLocation, ec);
+        if (ec) {
+            std::cerr << "failed to resolve symlink " << hostLocation << ": " << ec.message()
+                      << std::endl;
+            return -1;
+        }
+
+        if (!std::filesystem::exists(realHostLocation, ec)) {
+            if (ec) {
+                std::cerr << "failed to get state of " << realHostLocation << ": " << ec.message()
+                          << std::endl;
+                return -1;
+            }
+
+            continue;
+        }
+
+        if (auto realHostLocationStr = realHostLocation.string();
+            realHostLocationStr.rfind(hostHomeDir, 0) != 0) {
+            std::cerr << "real host directory doesn't in user's home:" << realHostLocation
+                      << std::endl;
+            return -1;
+        }
+
+        mounts.push_back({
+          { "destination", hostLocation.string() },
+          { "options", nlohmann::json::array({ "rbind", "copy-symlink" }) },
+          { "source", hostLocation.string() },
+          { "type", "bind" },
+        });
+    }
+
     std::cout << content.dump() << std::endl;
     return 0;
 }

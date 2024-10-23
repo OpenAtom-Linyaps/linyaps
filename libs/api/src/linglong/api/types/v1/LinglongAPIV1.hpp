@@ -17,6 +17,7 @@
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
+#include "linglong/api/types/v1/ApplicationAccessPrivileges.hpp"
 #include "linglong/api/types/v1/ApplicationConfiguration.hpp"
 #include "linglong/api/types/v1/ApplicationConfigurationPermissions.hpp"
 #include "linglong/api/types/v1/BuilderConfig.hpp"
@@ -59,6 +60,7 @@ using nlohmann::json;
 * top level type is a place holder to make quicktype work.
 */
 struct LinglongAPIV1 {
+std::optional<ApplicationAccessPrivileges> applicationAccessPrivileges;
 std::optional<ApplicationConfiguration> applicationConfiguration;
 std::optional<ApplicationConfigurationPermissions> applicationConfigurationPermissions;
 std::optional<BuilderConfig> builderConfig;

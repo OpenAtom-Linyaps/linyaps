@@ -180,6 +180,20 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
     }
 
     const auto &packageInfo = *packageInfoRet;
+
+    auto architectureRet = package::Architecture::parse(packageInfo.arch[0]);
+    if (!architectureRet) {
+        return toDBusReply(architectureRet);
+    }
+
+    auto currentArch = package::Architecture::currentCPUArchitecture();
+    Q_ASSERT(currentArch.has_value());
+    if (*architectureRet != *currentArch) {
+        return toDBusReply(-1,
+                           "app arch:" + architectureRet->toString()
+                             + " not match host architecture");
+    }
+
     auto versionRet = package::Version::parse(QString::fromStdString(packageInfo.version));
     if (!versionRet) {
         return toDBusReply(versionRet);
@@ -199,11 +213,6 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
         if (layerDir && layerDir->valid()) {
             return toDBusReply(-1, ref->toString() + " is already installed");
         }
-    }
-
-    auto architectureRet = package::Architecture::parse(packageInfo.arch[0]);
-    if (!architectureRet) {
-        return toDBusReply(architectureRet);
     }
 
     auto packageRefRet = package::Reference::create(QString::fromStdString(packageInfo.channel),
@@ -329,6 +338,14 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
     auto architectureRet = package::Architecture::parse(appLayer.info.arch[0]);
     if (!architectureRet) {
         return toDBusReply(architectureRet);
+    }
+
+    auto currentArch = package::Architecture::currentCPUArchitecture();
+    Q_ASSERT(currentArch.has_value());
+    if (*architectureRet != *currentArch) {
+        return toDBusReply(-1,
+                           "app arch:" + architectureRet->toString()
+                             + " not match host architecture");
     }
 
     auto appRefRet = package::Reference::create(QString::fromStdString(appLayer.info.channel),

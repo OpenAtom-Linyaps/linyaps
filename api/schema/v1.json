@@ -19,6 +19,29 @@
         }
       }
     },
+    "ApplicationAccessPrivileges": {
+      "description": "Privileges that application access to some directories\nwhich in user's home directory.\ndirectory should be relative path of home directory,\ne.g. [ \"Desktop\", \"Downloads/browser\" ]\n",
+      "type": "object",
+      "properties": {
+        "userDirectories": {
+          "type": "object",
+          "properties": {
+            "allowed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "disallowed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
     "ApplicationConfigurationPermissions": {
       "title": "ApplicationConfigurationPermissions",
       "description": "application configuration permissions",
@@ -960,6 +983,9 @@
   "properties": {
     "ApplicationConfiguration": {
       "$ref": "#/$defs/ApplicationConfiguration"
+    },
+    "ApplicationAccessPrivileges": {
+      "$ref": "#/$defs/ApplicationAccessPrivileges"
     },
     "ApplicationConfigurationPermissions": {
       "$ref": "#/$defs/ApplicationConfigurationPermissions"

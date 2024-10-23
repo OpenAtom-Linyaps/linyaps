@@ -13,5 +13,6 @@ pfl_add_executable(
   src/main.cpp
   LINK_LIBRARIES
   PRIVATE
+  linglong::api
   nlohmann_json::nlohmann_json
   stdc++fs)

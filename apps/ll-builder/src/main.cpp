@@ -597,7 +597,7 @@ int main(int argc, char **argv)
                 QCommandLineOption("exec", "run exec than build script", "command");
               auto buildOffline = QCommandLineOption("offline", "only use local files.", "");
               auto debugMode =
-                QCommandLineOption("debug", "run in debug mode(base and runtime)", "");
+                QCommandLineOption("debug", "run in debug mode (enable develop module)", "");
 
               parser.addOptions({ yamlFile, execVerbose, execModules, buildOffline, debugMode });
 
@@ -779,7 +779,7 @@ int main(int argc, char **argv)
               auto optRepoName = QCommandLineOption("repo-name", "remote repo name", "--repo-name");
               auto optRepoChannel =
                 QCommandLineOption("channel", "remote repo channel", "--channel", "main");
-              auto optModule = QCommandLineOption("module", "push single module", "");
+              auto optModule = QCommandLineOption("module", "push single module", "--module");
               parser.addOptions({ yamlFile, optRepoUrl, optRepoName, optRepoChannel, optModule });
 
               parser.process(app);
@@ -794,12 +794,20 @@ int main(int argc, char **argv)
                   qCritical() << project.error();
                   return -1;
               }
-
               linglong::builder::Builder builder(*project,
                                                  QDir::current(),
                                                  repo,
                                                  *containerBuidler,
                                                  *builderCfg);
+              if (!pushModule.empty()) {
+                  auto result =
+                    builder.push(pushModule, repoUrl.toStdString(), repoName.toStdString());
+                  if (!result) {
+                      qCritical() << result.error();
+                      return -1;
+                  }
+                  return 0;
+              }
               std::list<std::string> modules;
               if (project->modules.has_value()) {
                   for (const auto &module : project->modules.value()) {
@@ -808,13 +816,10 @@ int main(int argc, char **argv)
               }
               modules.push_back("binary");
               for (const auto &module : modules) {
-                  if (pushModule.empty() || pushModule == module) {
-                      auto result =
-                        builder.push(module, repoUrl.toStdString(), repoName.toStdString());
-                      if (!result) {
-                          qCritical() << result.error();
-                          return -1;
-                      }
+                  auto result = builder.push(module, repoUrl.toStdString(), repoName.toStdString());
+                  if (!result) {
+                      qCritical() << result.error();
+                      return -1;
                   }
               }
 

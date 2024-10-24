@@ -21,7 +21,7 @@ makedepends=(
         'cmake'
         'gtest'
         'git'
-        'docopt'
+        'cli11'
         'pkg-config'
         'systemd-libs'
         'ninja'

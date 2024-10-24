@@ -23,17 +23,6 @@ unzip "$zip_file" || exit 255
 
 mv ytj-master external/ytj || exit 255
 
-zip_file="$tmpdir"/external/github-docopt-docopt.cpp-v0.6.3.zip
-
-wget https://github.com/docopt/docopt.cpp/archive/refs/tags/v0.6.3.zip \
-        -O "$zip_file" || exit 255
-
-rm -rf external/docopt.cpp
-
-unzip "$zip_file" || exit 255
-
-mv docopt.cpp-0.6.3 external/docopt.cpp || exit 255
-
 zip_file="$tmpdir"/external/github-TartanLlama-expected-v1.1.0.zip
 
 wget https://github.com/TartanLlama/expected/archive/refs/tags/v1.1.0.zip \
@@ -44,3 +33,12 @@ rm -rf external/tl-expected
 unzip "$zip_file" || exit 255
 
 mv expected-1.1.0 external/tl-expected || exit 255
+
+wget https://github.com/CLIUtils/CLI11/archive/refs/tags/v2.4.1.zip \
+        -O "$zip_file" || exit 255
+
+rm -rf external/CLI11
+
+unzip "$zip_file" || exit 255
+
+mv CLI11-2.4.1 external/CLI11 || exit 255

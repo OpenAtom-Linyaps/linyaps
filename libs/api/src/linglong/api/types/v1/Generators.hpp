@@ -54,11 +54,19 @@
 #include "linglong/api/types/v1/ApplicationConfigurationPermissions.hpp"
 #include "linglong/api/types/v1/ApplicationConfigurationPermissionsInnerBind.hpp"
 #include "linglong/api/types/v1/ApplicationConfigurationPermissionsBind.hpp"
+#include "linglong/api/types/v1/ApplicationAccessPrivileges.hpp"
+#include "linglong/api/types/v1/UserDirectories.hpp"
 
 namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
+void from_json(const json & j, UserDirectories & x);
+void to_json(json & j, const UserDirectories & x);
+
+void from_json(const json & j, ApplicationAccessPrivileges & x);
+void to_json(json & j, const ApplicationAccessPrivileges & x);
+
 void from_json(const json & j, ApplicationConfigurationPermissionsBind & x);
 void to_json(json & j, const ApplicationConfigurationPermissionsBind & x);
 
@@ -169,6 +177,32 @@ void to_json(json & j, const LinglongAPIV1 & x);
 
 void from_json(const json & j, Version & x);
 void to_json(json & j, const Version & x);
+
+inline void from_json(const json & j, UserDirectories& x) {
+x.allowed = get_stack_optional<std::vector<std::string>>(j, "allowed");
+x.disallowed = get_stack_optional<std::vector<std::string>>(j, "disallowed");
+}
+
+inline void to_json(json & j, const UserDirectories & x) {
+j = json::object();
+if (x.allowed) {
+j["allowed"] = x.allowed;
+}
+if (x.disallowed) {
+j["disallowed"] = x.disallowed;
+}
+}
+
+inline void from_json(const json & j, ApplicationAccessPrivileges& x) {
+x.userDirectories = get_stack_optional<UserDirectories>(j, "userDirectories");
+}
+
+inline void to_json(json & j, const ApplicationAccessPrivileges & x) {
+j = json::object();
+if (x.userDirectories) {
+j["userDirectories"] = x.userDirectories;
+}
+}
 
 inline void from_json(const json & j, ApplicationConfigurationPermissionsBind& x) {
 x.destination = j.at("destination").get<std::string>();
@@ -794,6 +828,7 @@ j["version"] = x.version;
 }
 
 inline void from_json(const json & j, LinglongAPIV1& x) {
+x.applicationAccessPrivileges = get_stack_optional<ApplicationAccessPrivileges>(j, "ApplicationAccessPrivileges");
 x.applicationConfiguration = get_stack_optional<ApplicationConfiguration>(j, "ApplicationConfiguration");
 x.applicationConfigurationPermissions = get_stack_optional<ApplicationConfigurationPermissions>(j, "ApplicationConfigurationPermissions");
 x.builderConfig = get_stack_optional<BuilderConfig>(j, "BuilderConfig");
@@ -828,6 +863,9 @@ x.uabMetaInfo = get_stack_optional<UabMetaInfo>(j, "UABMetaInfo");
 
 inline void to_json(json & j, const LinglongAPIV1 & x) {
 j = json::object();
+if (x.applicationAccessPrivileges) {
+j["ApplicationAccessPrivileges"] = x.applicationAccessPrivileges;
+}
 if (x.applicationConfiguration) {
 j["ApplicationConfiguration"] = x.applicationConfiguration;
 }

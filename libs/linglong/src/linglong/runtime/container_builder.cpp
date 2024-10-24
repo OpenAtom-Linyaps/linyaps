@@ -14,9 +14,9 @@
 #include "ocppi/runtime/config/types/Generators.hpp"
 #include "ocppi/runtime/config/types/Mount.hpp"
 
+#include <QProcess>
 #include <QStandardPaths>
 #include <QTemporaryDir>
-#include <QProcess>
 
 #include <fstream>
 #include <unordered_set>
@@ -158,9 +158,9 @@ void applyExecutablePatch(QString workdir,
     auto error = generatorProcess.readAllStandardError();
     if (generatorProcess.exitCode() != 0) {
         qCritical() << "generator" << info.absoluteFilePath() << "return"
-                    << generatorProcess.exitCode() << Qt::endl
-                    << "input:" << nlohmann::json(cfg).dump().c_str() << Qt::endl
-                    << "stderr:" << error;
+                    << generatorProcess.exitCode() << "\ninput:\n"
+                    << nlohmann::json(cfg).dump().c_str() << "\n\nstderr:\n"
+                    << qPrintable(error);
         Q_ASSERT(false);
         return;
     }

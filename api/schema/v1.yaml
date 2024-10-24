@@ -33,6 +33,25 @@ $defs:
         description: version of configuration file
       permissions:
         $ref: '#/$defs/ApplicationConfigurationPermissions'
+  ApplicationAccessPrivileges:
+    description: |
+      Privileges that application access to some directories
+      which in user's home directory.
+      directory should be relative path of home directory,
+      e.g. [ "Desktop", "Downloads/browser" ]
+    type: object
+    properties:
+      userDirectories:
+        type: object
+        properties:
+          allowed:
+            type: array
+            items:
+              type: string
+          disallowed:
+            type: array
+            items:
+              type: string
   ApplicationConfigurationPermissions:
     title: ApplicationConfigurationPermissions
     description: application configuration permissions

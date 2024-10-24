@@ -84,7 +84,7 @@ sudo apt update
 sudo apt install linglong-builder linglong-box linglong-bin
 ```
 
-## openkylin 2.0rc
+## openKylin 2.0
 
 添加玲珑仓库源。
 
@@ -98,6 +98,23 @@ sudo bash -c "echo 'deb [trusted=yes] https://ci.deepin.com/repo/obs/linglong:/m
 sudo apt update
 sudo apt install linglong-builder linglong-box linglong-bin
 ```
+
+\* 注意，目前`openKylin 2.0`官方仓库`nile`源中收录了来自社区维护者共享的玲珑相关软件包；经过实测，这些软件包在安装后并不能正常发挥玲珑的完整功能，因此需要安装来自上述附加`玲珑仓库源`的版本。在安装时请注意甄别当前安装版本的来源，参考:
+
+```
+linglong-bin:
+  已安装：1.5.8-1
+  候选： 1.5.8-1
+  版本列表：
+ *** 1.5.8-1 500
+        500 https://ci.deepin.com/repo/obs/linglong:/multi_distro/openkylin2.0_repo ./ Packages
+        100 /var/lib/dpkg/status
+     1.5.7-1ok1 500
+        500 https://mirrors.aliyun.com/openkylin nile/main amd64 Packages
+```
+
+此处官方仓库`nile`提供的`linglong-bin`及相关依赖包在安装后无法正常使用。
+\* 本结论仅适用于当前说明的`1.5.7-1ok1`版本，考虑到软件包的可迭代性，如后续出现其他较新版本，需以实际运行结果为准。
 
 # 安装 pica
 

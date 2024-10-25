@@ -690,9 +690,14 @@
       "type": "object",
       "required": [
         "message",
-        "code"
+        "code",
+        "type"
       ],
       "properties": {
+        "type": {
+          "description": "error type, to indicate client what should be done.",
+          "type": "string"
+        },
         "message": {
           "description": "Human readable result message.",
           "type": "string"
@@ -713,7 +718,7 @@
         "Downgrade"
       ]
     },
-    "PackageManager1RequestInteractionAdditonalMessage": {
+    "PackageManager1RequestInteractionAdditionalMessage": {
       "type": "object",
       "description": "fill ref string to additional message in requestInteraction",
       "required": [
@@ -754,7 +759,8 @@
         "InstallApplication",
         "PostAction",
         "Uninstall",
-        "Done"
+        "AllDone",
+        "PackageManagerDone"
       ]
     },
     "PackageManager1InstallLayerFDResult": {
@@ -1042,8 +1048,8 @@
     "InteractionMessageType": {
       "$ref": "#/$defs/InteractionMessageType"
     },
-    "PackageManager1RequestInteractionAdditonalMessage": {
-      "$ref": "#/$defs/PackageManager1RequestInteractionAdditonalMessage"
+    "PackageManager1RequestInteractionAdditionalMessage": {
+      "$ref": "#/$defs/PackageManager1RequestInteractionAdditionalMessage"
     },
     "PackageManager1MigrateResult": {
       "$ref": "#/$defs/PackageManager1MigrateResult"

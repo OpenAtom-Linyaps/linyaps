@@ -30,7 +30,7 @@ using nlohmann::json;
 /**
 * subState of current task,
 */
-enum class SubState : int { Done, InstallApplication, InstallBase, InstallRuntime, PostAction, PreAction, Uninstall, Unknown };
+enum class SubState : int { AllDone, InstallApplication, InstallBase, InstallRuntime, PackageManagerDone, PostAction, PreAction, Uninstall, Unknown };
 }
 }
 }

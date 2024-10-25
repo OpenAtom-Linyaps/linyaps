@@ -36,6 +36,8 @@
 #include <iostream>
 #include <system_error>
 
+#include <fcntl.h>
+
 using namespace linglong::utils::error;
 
 namespace linglong::cli {
@@ -171,9 +173,7 @@ void Cli::onTaskPropertiesChanged(QString interface,                            
     printProgress();
 }
 
-void Cli::interaction(QDBusObjectPath object_path,
-                      int messageID,
-                      QVariantMap additionalMessage)
+void Cli::interaction(QDBusObjectPath object_path, int messageID, QVariantMap additionalMessage)
 {
     if (object_path.path() != taskObjectPath) {
         return;
@@ -181,7 +181,7 @@ void Cli::interaction(QDBusObjectPath object_path,
 
     auto messageType = static_cast<api::types::v1::InteractionMessageType>(messageID);
     auto msg = utils::serialize::fromQVariantMap<
-      api::types::v1::PackageManager1RequestInteractionAdditonalMessage>(additionalMessage);
+      api::types::v1::PackageManager1RequestInteractionAdditionalMessage>(additionalMessage);
 
     std::vector<std::string> actions{ "nes", "Yes", "no", "No" };
 
@@ -229,7 +229,8 @@ void Cli::onTaskAdded([[maybe_unused]] QDBusObjectPath object_path)
     qDebug() << "task added" << object_path.path();
 }
 
-void Cli::onTaskRemoved(QDBusObjectPath object_path, int state, int subState, QString message)
+void Cli::onTaskRemoved(
+  QDBusObjectPath object_path, int state, int subState, QString message, double percentage)
 {
     if (object_path.path() != taskObjectPath) {
         return;
@@ -238,12 +239,24 @@ void Cli::onTaskRemoved(QDBusObjectPath object_path, int state, int subState, QS
     delete task;
     task = nullptr;
 
-    if (lastSubState != api::types::v1::SubState::Done) {
-        lastState = static_cast<api::types::v1::State>(state);
-        lastSubState = static_cast<api::types::v1::SubState>(subState);
-        lastMessage = std::move(message);
-        lastPercentage = 100;
-        printProgress();
+    // no change, skip
+    if (lastState == static_cast<api::types::v1::State>(state)
+        && lastSubState == static_cast<api::types::v1::SubState>(subState) && lastMessage == message
+        && lastPercentage == percentage) {
+        Q_EMIT taskDone();
+        return;
+    }
+
+    this->lastState = static_cast<api::types::v1::State>(state);
+    this->lastSubState = static_cast<api::types::v1::SubState>(subState);
+    this->lastMessage = std::move(message);
+    this->lastPercentage = percentage;
+
+    if (this->lastSubState == api::types::v1::SubState::AllDone) {
+        this->printProgress();
+    } else if (this->lastSubState == api::types::v1::SubState::PackageManagerDone) {
+        this->notifier->notify(
+          api::types::v1::InteractionRequest{ .summary = this->lastMessage.toStdString() });
     }
 
     Q_EMIT taskDone();
@@ -293,7 +306,7 @@ Cli::Cli(Printer &printer,
                       pkgMan.interface(),
                       "TaskRemoved",
                       this,
-                      SLOT(onTaskRemoved(QDBusObjectPath, int, int, QString)))) {
+                      SLOT(onTaskRemoved(QDBusObjectPath, int, int, QString, double)))) {
         qFatal("couldn't connect to package manager signal 'TaskRemoved'");
     }
 }
@@ -301,6 +314,24 @@ Cli::Cli(Printer &printer,
 int Cli::run(std::map<std::string, docopt::value> &args)
 {
     LINGLONG_TRACE("command run");
+    auto userContainerDir = std::filesystem::path{ "/run/linglong" } / std::to_string(::getuid());
+    auto mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+    auto pidFile = userContainerDir / std::to_string(::getpid());
+    auto fd = ::open(pidFile.c_str(), O_WRONLY | O_CREAT | O_EXCL, mode);
+    if (fd == -1) {
+        qCritical() << QString{ "create file " } + pidFile.c_str() + " error:" + ::strerror(errno);
+        QCoreApplication::exit(-1);
+        return -1;
+    }
+    ::close(fd);
+
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [pidFile] {
+        std::error_code ec;
+        if (!std::filesystem::remove(pidFile, ec) && ec) {
+            qCritical().nospace() << "failed to remove file " << pidFile.c_str() << ": "
+                                  << ec.message().c_str();
+        }
+    });
 
     const auto userInputAPP = QString::fromStdString(args["APP"].asString());
     Q_ASSERT(!userInputAPP.isEmpty());
@@ -734,7 +765,9 @@ int Cli::kill(std::map<std::string, docopt::value> &args)
 
 void Cli::cancelCurrentTask()
 {
-    if ((this->lastSubState != linglong::api::types::v1::SubState::Done) && this->task != nullptr) {
+    bool isRunning = this->lastSubState != linglong::api::types::v1::SubState::AllDone
+      && this->lastSubState != linglong::api::types::v1::SubState::PackageManagerDone;
+    if (isRunning && this->task != nullptr) {
         this->task->Cancel();
         std::cout << "cancel running task." << std::endl;
     }
@@ -860,7 +893,7 @@ int Cli::install(std::map<std::string, docopt::value> &args)
         params.options.force = true;
     }
 
-    if(args["-y"].asBool()) {
+    if (args["-y"].asBool()) {
         params.options.skipInteraction = true;
     }
 
@@ -1197,7 +1230,14 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
 
     if (result->code != 0) {
         auto err = LINGLONG_ERRV(QString::fromStdString(result->message), result->code);
-        this->printer.printErr(err);
+        if (result->type == "notification") {
+            this->notifier->notify(
+              api::types::v1::InteractionRequest{ .appName = "ll-cli",
+                                                  .summary = result->message });
+        } else {
+            this->printer.printErr(err);
+        }
+
         return -1;
     }
 

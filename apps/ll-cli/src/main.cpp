@@ -26,6 +26,7 @@
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <thread>
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -123,6 +124,45 @@ void ensureDirectory(const std::filesystem::path &dir)
     }
 }
 
+int lockCheck() noexcept
+{
+    std::error_code ec;
+    constexpr auto lock = "/run/linglong/lock";
+    if (!std::filesystem::exists(lock, ec)) {
+        if (ec) {
+            qCritical() << "failed to get status of" << lock;
+            return -1;
+        }
+
+        return 0;
+    }
+
+    auto fd = ::open(lock, O_RDONLY);
+    if (fd == -1) {
+        qCritical() << "failed to open lock" << lock;
+        return -1;
+    }
+    auto closeFd = linglong::utils::finally::finally([fd]() {
+        ::close(fd);
+    });
+
+    struct flock lock_info
+    {
+        .l_type = F_RDLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0
+    };
+
+    if (::fcntl(fd, F_GETLK, &lock_info) == -1) {
+        qCritical() << "failed to get lock" << lock;
+        return -1;
+    }
+
+    if (lock_info.l_type == F_UNLCK) {
+        return 0;
+    }
+
+    return lock_info.l_pid;
+}
+
 } // namespace
 
 using namespace linglong::utils::global;
@@ -146,24 +186,25 @@ int main(int argc, char **argv)
             std::filesystem::path{ "/run/linglong" } / std::to_string(::getuid());
           ensureDirectory(userContainerDir);
 
-          auto mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
-          auto pidFile = userContainerDir / std::to_string(::getpid());
-          auto fd = ::open(pidFile.c_str(), O_WRONLY | O_CREAT | O_EXCL, mode);
-          if (fd == -1) {
-              qCritical() << QString{ "create file " } + pidFile.c_str()
-                  + " error:" + ::strerror(errno);
-              QCoreApplication::exit(-1);
-              return;
-          }
-          ::close(fd);
-
-          QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [pidFile] {
-              std::error_code ec;
-              if (!std::filesystem::remove(pidFile, ec) && ec) {
-                  qCritical().nospace()
-                    << "failed to remove file " << pidFile.c_str() << ": " << ec.message().c_str();
+          while (true) {
+              auto lockOwner = lockCheck();
+              if (lockOwner == -1) {
+                  qCritical() << "lock check failed";
+                  QCoreApplication::exit(-1);
+                  return;
               }
-          });
+
+              if (lockOwner > 0) {
+                  qInfo() << "\r\33[K" << "\033[?25l"
+                          << "repository is being operated by another process, waiting for"
+                          << lockOwner << "\033[?25h";
+                  using namespace std::chrono_literals;
+                  std::this_thread::sleep_for(1s);
+                  continue;
+              }
+
+              break;
+          }
 
           auto raw_args = transformOldExec(argc, argv);
           std::map<std::string, docopt::value> args =

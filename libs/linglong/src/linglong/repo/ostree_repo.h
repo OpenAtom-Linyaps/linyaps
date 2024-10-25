@@ -69,6 +69,8 @@ public:
     utils::error::Result<std::vector<api::types::v1::PackageInfoV2>> listLocal() const noexcept;
     utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
     listRemote(const package::FuzzyReference &fuzzyRef) const noexcept;
+    [[nodiscard]] utils::error::Result<std::vector<api::types::v1::RepositoryCacheLayersItem>>
+    listLocalBy(const linglong::repo::repoCacheQuery &query) const noexcept;
 
     utils::error::Result<void>
     remove(const package::Reference &ref,
@@ -87,6 +89,7 @@ public:
     utils::error::Result<void> migrateRefs() noexcept;
     utils::error::Result<void>
     markDeleted(const package::Reference &ref,
+                bool deleted,
                 const std::string &module = "binary",
                 const std::optional<std::string> &subRef = std::nullopt) noexcept;
 

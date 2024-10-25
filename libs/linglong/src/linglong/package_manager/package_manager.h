@@ -6,8 +6,9 @@
 
 #pragma once
 
-#include "linglong/repo/ostree_repo.h"
 #include "linglong/api/types/v1/CommonOptions.hpp"
+#include "linglong/api/types/v1/ContainerProcessStateInfo.hpp"
+#include "linglong/repo/ostree_repo.h"
 #include "package_task.h"
 
 #include <QDBusArgument>
@@ -66,7 +67,7 @@ class PackageManager : public QObject, protected QDBusContext
 public:
     PackageManager(linglong::repo::OSTreeRepo &repo, QObject *parent);
 
-    ~PackageManager() override = default;
+    ~PackageManager() override;
     PackageManager(const PackageManager &) = delete;
     PackageManager(PackageManager &&) = delete;
     auto operator=(const PackageManager &) -> PackageManager & = delete;
@@ -81,7 +82,8 @@ public
     void setConfiguration(const QVariantMap &parameters) noexcept;
     auto Install(const QVariantMap &parameters) noexcept -> QVariantMap;
     void Install(PackageTask &taskContext,
-                 const package::Reference &ref,
+                 const package::Reference &newRef,
+                 std::optional<std::reference_wrapper<const package::Reference>> oldRef,
                  const std::string &module) noexcept;
     auto InstallFromFile(const QDBusUnixFileDescriptor &fd,
                          const QString &fileType,
@@ -100,7 +102,8 @@ public
 
 Q_SIGNALS:
     void TaskAdded(QDBusObjectPath object_path);
-    void TaskRemoved(QDBusObjectPath object_path, int state, int subState, QString message);
+    void TaskRemoved(
+      QDBusObjectPath object_path, int state, int subState, QString message, double percentage);
     void TaskListChanged(const QString &taskObjectPath);
     void RequestInteraction(QDBusObjectPath object_path,
                             int messageID,
@@ -123,6 +126,14 @@ private:
     void pullDependency(PackageTask &taskContext,
                         const api::types::v1::PackageInfoV2 &info,
                         const std::string &module) noexcept;
+    [[nodiscard]] utils::error::Result<void> lockRepo() noexcept;
+    [[nodiscard]] utils::error::Result<void> unlockRepo() noexcept;
+    [[nodiscard]] static utils::error::Result<
+      std::vector<api::types::v1::ContainerProcessStateInfo>>
+    getAllRunningContainers() noexcept;
+    utils::error::Result<bool> isRefBusy(const package::Reference &ref) noexcept;
+    void deferredUninstall() noexcept;
+    utils::error::Result<void> removeAfterInstall(const package::Reference &oldRef) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT
     std::list<PackageTask *> taskList;
     // 正在运行的任务对象路径
@@ -130,6 +141,8 @@ private:
 
     JobQueue m_search_queue = {};
     JobQueue m_prune_queue = {};
+
+    int lockFd{ -1 };
 };
 
 } // namespace linglong::service

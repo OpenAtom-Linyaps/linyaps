@@ -456,6 +456,11 @@ utils::error::Result<package::Reference> clearReferenceLocal(const linglong::rep
     utils::error::Result<linglong::api::types::v1::RepositoryCacheLayersItem> foundRef =
       LINGLONG_ERR("compatible layer not found");
     for (const auto &ref : availablePackage) {
+        // we should ignore deleted layers
+        if (ref.deleted && ref.deleted.value()) {
+            continue;
+        }
+
         auto ver = QString::fromStdString(ref.info.version);
         auto pkgVer = linglong::package::Version::parse(ver);
         if (!pkgVer) {
@@ -1188,6 +1193,10 @@ OSTreeRepo::listLocal() const noexcept
     auto items = this->cache->queryLayerItem();
     pkgInfos.reserve(items.size());
     for (const auto &item : items) {
+        if (item.deleted && item.deleted.value()) {
+            continue;
+        }
+
         pkgInfos.emplace_back(item.info);
     }
 
@@ -1534,6 +1543,7 @@ void OSTreeRepo::updateSharedInfo() noexcept
 
 utils::error::Result<void>
 OSTreeRepo::markDeleted(const package::Reference &ref,
+                        bool deleted,
                         const std::string &module,
                         const std::optional<std::string> &subRef) noexcept
 {
@@ -1545,16 +1555,25 @@ OSTreeRepo::markDeleted(const package::Reference &ref,
     }
 
     auto it = this->cache->findMatchingItem(*item);
-    if(!it) {
+    if (!it) {
         return LINGLONG_ERR(it);
     }
 
-    (*it)->deleted = true;
+    auto originalValue = (*it)->deleted;
+    std::optional<bool> deletedOpt = deleted ? std::optional<bool>(true) : std::nullopt;
+
+    utils::Transaction transaction;
+    (*it)->deleted = deletedOpt;
+    transaction.addRollBack([iterator = *it, originalValue]() noexcept {
+        iterator->deleted = originalValue;
+    });
 
     auto result = this->cache->writeToDisk();
-    if(!result) {
+    if (!result) {
         return LINGLONG_ERR(result);
     }
+
+    transaction.commit();
 
     return LINGLONG_OK;
 }
@@ -1879,6 +1898,12 @@ utils::error::Result<void> OSTreeRepo::migrateRefs() noexcept
     }
 
     return LINGLONG_OK;
+}
+
+utils::error::Result<std::vector<api::types::v1::RepositoryCacheLayersItem>>
+OSTreeRepo::listLocalBy(const linglong::repo::repoCacheQuery &query) const noexcept
+{
+    return this->cache->queryLayerItem(query);
 }
 
 OSTreeRepo::~OSTreeRepo() = default;

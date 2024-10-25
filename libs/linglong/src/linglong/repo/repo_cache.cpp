@@ -58,7 +58,8 @@ RepoCache::create(const std::filesystem::path &cacheFile,
     }
 
     repoCache->cache = std::move(result).value();
-    if (repoCache->cache.version != repoCache->cacheFileVersion || repoCache->cache.llVersion != LINGLONG_VERSION) {
+    if (repoCache->cache.version != repoCache->cacheFileVersion
+        || repoCache->cache.llVersion != LINGLONG_VERSION) {
         std::cout << "The existing cache is outdated, rebuild cache..." << std::endl;
         auto ret = repoCache->rebuildCache(repoConfig, repo);
         if (!ret) {
@@ -199,11 +200,11 @@ RepoCache::findMatchingItem(const api::types::v1::RepositoryCacheLayersItem &ite
                    || item.info.packageInfoV2Module != val.info.packageInfoV2Module);
       });
 
-      if(it == cache.layers.end()) {
-         return LINGLONG_ERR("item doesn't exist");
-      }
+    if (it == cache.layers.end()) {
+        return LINGLONG_ERR("item doesn't exist");
+    }
 
-      return it;
+    return it;
 }
 
 utils::error::Result<void>
@@ -250,6 +251,16 @@ RepoCache::queryLayerItem(const repoCacheQuery &query) const noexcept
 
         if (query.module && query.module.value() != layer.info.packageInfoV2Module) {
             continue;
+        }
+
+        if (query.deleted) {
+            if (!layer.deleted) {
+                continue;
+            }
+
+            if (query.deleted.value() != layer.deleted.value()) {
+                continue;
+            }
         }
 
         if (query.uuid) {

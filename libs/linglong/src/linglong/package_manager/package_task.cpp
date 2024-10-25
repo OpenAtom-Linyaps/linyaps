@@ -87,6 +87,7 @@ PackageTask::~PackageTask()
     if (m_cancelFlag != nullptr) {
         g_object_unref(m_cancelFlag);
     }
+    qDebug() << "Task: " << taskObjectPath() << "finished...";
 }
 
 void PackageTask::changePropertiesDone() const noexcept
@@ -147,7 +148,7 @@ void PackageTask::updateState(linglong::api::types::v1::State newState,
 void PackageTask::updateSubState(linglong::api::types::v1::SubState newSubState,
                                  const QString &message) noexcept
 {
-    this->setProperty("SubState", static_cast<linglong::api::types::v1::SubState>(newSubState));
+    this->setProperty("SubState", static_cast<int>(newSubState));
     this->setProperty("Message", message);
 
     auto curSubState = subState();

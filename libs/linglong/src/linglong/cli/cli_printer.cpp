@@ -199,6 +199,9 @@ void Printer::printTaskState(double percentage,
     auto &stdout = std::cout;
     stdout << "\r\33[K" << "\033[?25l" << message.toStdString() << ":" << percentage << "%"
            << "\033[?25h";
+    if (subState == api::types::v1::SubState::Done) {
+        stdout << "\n";
+    }
     stdout.flush();
 }
 

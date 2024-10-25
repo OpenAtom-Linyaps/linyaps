@@ -84,6 +84,7 @@ public:
 
 private:
     RepoCache() = default;
+    static constexpr auto cacheFileVersion = "2";
     api::types::v1::RepositoryCache cache;
     std::filesystem::path cacheFile;
 };

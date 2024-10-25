@@ -58,7 +58,7 @@ RepoCache::create(const std::filesystem::path &cacheFile,
     }
 
     repoCache->cache = std::move(result).value();
-    if (repoCache->cache.version != "1" || repoCache->cache.llVersion != LINGLONG_VERSION) {
+    if (repoCache->cache.version != repoCache->cacheFileVersion || repoCache->cache.llVersion != LINGLONG_VERSION) {
         std::cout << "The existing cache is outdated, rebuild cache..." << std::endl;
         auto ret = repoCache->rebuildCache(repoConfig, repo);
         if (!ret) {
@@ -79,7 +79,7 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
 
     this->cache.llVersion = LINGLONG_VERSION;
     this->cache.config = repoConfig;
-    this->cache.version = "2";
+    this->cache.version = cacheFileVersion;
     this->cache.migratingStage = std::nullopt;
     this->cache.layers.clear();
 

@@ -187,7 +187,10 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd) 
     }
 
     auto currentArch = package::Architecture::currentCPUArchitecture();
-    Q_ASSERT(currentArch.has_value());
+    if (!currentArch) {
+        return toDBusReply(currentArch);
+    }
+
     if (*architectureRet != *currentArch) {
         return toDBusReply(-1,
                            "app arch:" + architectureRet->toString()
@@ -341,7 +344,10 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd) no
     }
 
     auto currentArch = package::Architecture::currentCPUArchitecture();
-    Q_ASSERT(currentArch.has_value());
+    if (!currentArch) {
+        return toDBusReply(currentArch);
+    }
+
     if (*architectureRet != *currentArch) {
         return toDBusReply(-1,
                            "app arch:" + architectureRet->toString()
@@ -603,7 +609,11 @@ void PackageManager::InstallRef(InstallTask &taskContext,
     taskContext.updateStatus(InstallTask::preInstall, "prepare installing " + ref.toString());
 
     auto currentArch = package::Architecture::currentCPUArchitecture();
-    Q_ASSERT(currentArch.has_value());
+    if (!currentArch) {
+        taskContext.updateStatus(InstallTask::Failed, currentArch.error().message());
+        return;
+    }
+
     if (ref.arch != *currentArch) {
         taskContext.updateStatus(InstallTask::Failed,
                                  "app arch:" + ref.arch.toString()

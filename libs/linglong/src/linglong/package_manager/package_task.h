@@ -92,8 +92,6 @@ public:
              * m_subStateMap[static_cast<api::types::v1::SubState>(m_subState)]);
     };
 
-    bool setProperty(const char *name, const QVariant &value) = delete;
-
 public Q_SLOTS:
     void Cancel() noexcept;
 
@@ -121,38 +119,14 @@ private:
     inline static QMap<linglong::api::types::v1::SubState, double> m_subStateMap{
         { linglong::api::types::v1::SubState::PreAction, 10 },
         // install
-        { linglong::api::types::v1::SubState::InstallBase, 30 },
-        { linglong::api::types::v1::SubState::InstallRuntime, 30 },
+        { linglong::api::types::v1::SubState::InstallBase, 20 },
+        { linglong::api::types::v1::SubState::InstallRuntime, 20 },
         { linglong::api::types::v1::SubState::InstallApplication, 20 },
         // uninstall
         { linglong::api::types::v1::SubState::Uninstall, 80 },
         // export/unexportReference
         { linglong::api::types::v1::SubState::PostAction, 5 },
     };
-
-    template<typename T>
-    void setProperty(const char *name, const T &value)
-    {
-        if (this->QObject::setProperty(name, QVariant::fromValue(value))) {
-            return;
-        }
-
-        {
-            auto outPut = qCritical().nospace();
-            auto msg = QString{ "set property %1 failed, original value: " }.arg(name);
-            if constexpr (std::is_enum_v<T>) {
-                auto underlying_value = static_cast<std::underlying_type_t<T>>(value);
-                auto typeId = QMetaTypeId2<T>::qt_metatype_id();
-                auto enumStr = QString::number(underlying_value)
-                  + " [ Enum Type = " + QMetaType::typeName(typeId) + " ]";
-                msg.append(enumStr);
-            }
-
-            outPut << msg;
-        }
-
-        Q_ASSERT(false);
-    }
 
     void changePropertiesDone() const noexcept;
 };

@@ -33,7 +33,7 @@
 #include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1SearchResult.hpp"
 #include "linglong/api/types/v1/PackageManager1SearchParameters.hpp"
-#include "linglong/api/types/v1/PackageManager1RequestInteractionAdditonalMessage.hpp"
+#include "linglong/api/types/v1/PackageManager1RequestInteractionAdditionalMessage.hpp"
 #include "linglong/api/types/v1/PackageManager1PackageTaskResult.hpp"
 #include "linglong/api/types/v1/PackageManager1ModifyRepoParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
@@ -152,8 +152,8 @@ void to_json(json & j, const PackageManager1ModifyRepoParameters & x);
 void from_json(const json & j, PackageManager1PackageTaskResult & x);
 void to_json(json & j, const PackageManager1PackageTaskResult & x);
 
-void from_json(const json & j, PackageManager1RequestInteractionAdditonalMessage & x);
-void to_json(json & j, const PackageManager1RequestInteractionAdditonalMessage & x);
+void from_json(const json & j, PackageManager1RequestInteractionAdditionalMessage & x);
+void to_json(json & j, const PackageManager1RequestInteractionAdditionalMessage & x);
 
 void from_json(const json & j, PackageManager1SearchParameters & x);
 void to_json(json & j, const PackageManager1SearchParameters & x);
@@ -468,12 +468,14 @@ j["skipInteraction"] = x.skipInteraction;
 inline void from_json(const json & j, CommonResult& x) {
 x.code = j.at("code").get<int64_t>();
 x.message = j.at("message").get<std::string>();
+x.type = j.at("type").get<std::string>();
 }
 
 inline void to_json(json & j, const CommonResult & x) {
 j = json::object();
 j["code"] = x.code;
 j["message"] = x.message;
+j["type"] = x.type;
 }
 
 inline void from_json(const json & j, ContainerProcessStateInfo& x) {
@@ -650,6 +652,7 @@ inline void from_json(const json & j, PackageManager1GetRepoInfoResult& x) {
 x.repoInfo = j.at("repoInfo").get<PackageManager1GetRepoInfoResultRepoInfo>();
 x.code = j.at("code").get<int64_t>();
 x.message = j.at("message").get<std::string>();
+x.type = j.at("type").get<std::string>();
 }
 
 inline void to_json(json & j, const PackageManager1GetRepoInfoResult & x) {
@@ -657,6 +660,7 @@ j = json::object();
 j["repoInfo"] = x.repoInfo;
 j["code"] = x.code;
 j["message"] = x.message;
+j["type"] = x.type;
 }
 
 inline void from_json(const json & j, PackageManager1Package& x) {
@@ -695,6 +699,7 @@ inline void from_json(const json & j, PackageManager1JobInfo& x) {
 x.id = get_stack_optional<std::string>(j, "id");
 x.code = j.at("code").get<int64_t>();
 x.message = j.at("message").get<std::string>();
+x.type = j.at("type").get<std::string>();
 }
 
 inline void to_json(json & j, const PackageManager1JobInfo & x) {
@@ -704,6 +709,7 @@ j["id"] = x.id;
 }
 j["code"] = x.code;
 j["message"] = x.message;
+j["type"] = x.type;
 }
 
 inline void from_json(const json & j, PackageManager1ModifyRepoParameters& x) {
@@ -721,6 +727,7 @@ inline void from_json(const json & j, PackageManager1PackageTaskResult& x) {
 x.taskObjectPath = get_stack_optional<std::string>(j, "taskObjectPath");
 x.code = j.at("code").get<int64_t>();
 x.message = j.at("message").get<std::string>();
+x.type = j.at("type").get<std::string>();
 }
 
 inline void to_json(json & j, const PackageManager1PackageTaskResult & x) {
@@ -730,14 +737,15 @@ j["taskObjectPath"] = x.taskObjectPath;
 }
 j["code"] = x.code;
 j["message"] = x.message;
+j["type"] = x.type;
 }
 
-inline void from_json(const json & j, PackageManager1RequestInteractionAdditonalMessage& x) {
+inline void from_json(const json & j, PackageManager1RequestInteractionAdditionalMessage& x) {
 x.localRef = j.at("LocalRef").get<std::string>();
 x.remoteRef = j.at("RemoteRef").get<std::string>();
 }
 
-inline void to_json(json & j, const PackageManager1RequestInteractionAdditonalMessage & x) {
+inline void to_json(json & j, const PackageManager1RequestInteractionAdditionalMessage & x) {
 j = json::object();
 j["LocalRef"] = x.localRef;
 j["RemoteRef"] = x.remoteRef;
@@ -756,6 +764,7 @@ inline void from_json(const json & j, PackageManager1SearchResult& x) {
 x.packages = get_stack_optional<std::vector<PackageInfoV2>>(j, "packages");
 x.code = j.at("code").get<int64_t>();
 x.message = j.at("message").get<std::string>();
+x.type = j.at("type").get<std::string>();
 }
 
 inline void to_json(json & j, const PackageManager1SearchResult & x) {
@@ -765,6 +774,7 @@ j["packages"] = x.packages;
 }
 j["code"] = x.code;
 j["message"] = x.message;
+j["type"] = x.type;
 }
 
 inline void from_json(const json & j, PackageManager1UninstallParameters& x) {
@@ -939,7 +949,7 @@ x.packageManager1ModifyRepoParameters = get_stack_optional<PackageManager1Modify
 x.packageManager1ModifyRepoResult = get_stack_optional<CommonResult>(j, "PackageManager1ModifyRepoResult");
 x.packageManager1Package = get_stack_optional<PackageManager1Package>(j, "PackageManager1Package");
 x.packageManager1PackageTaskResult = get_stack_optional<PackageManager1PackageTaskResult>(j, "PackageManager1PackageTaskResult");
-x.packageManager1RequestInteractionAdditonalMessage = get_stack_optional<PackageManager1RequestInteractionAdditonalMessage>(j, "PackageManager1RequestInteractionAdditonalMessage");
+x.packageManager1RequestInteractionAdditionalMessage = get_stack_optional<PackageManager1RequestInteractionAdditionalMessage>(j, "PackageManager1RequestInteractionAdditionalMessage");
 x.packageManager1SearchParameters = get_stack_optional<PackageManager1SearchParameters>(j, "PackageManager1SearchParameters");
 x.packageManager1SearchResult = get_stack_optional<PackageManager1SearchResult>(j, "PackageManager1SearchResult");
 x.packageManager1UninstallParameters = get_stack_optional<PackageManager1UninstallParameters>(j, "PackageManager1UninstallParameters");
@@ -1029,8 +1039,8 @@ j["PackageManager1Package"] = x.packageManager1Package;
 if (x.packageManager1PackageTaskResult) {
 j["PackageManager1PackageTaskResult"] = x.packageManager1PackageTaskResult;
 }
-if (x.packageManager1RequestInteractionAdditonalMessage) {
-j["PackageManager1RequestInteractionAdditonalMessage"] = x.packageManager1RequestInteractionAdditonalMessage;
+if (x.packageManager1RequestInteractionAdditionalMessage) {
+j["PackageManager1RequestInteractionAdditionalMessage"] = x.packageManager1RequestInteractionAdditionalMessage;
 }
 if (x.packageManager1SearchParameters) {
 j["PackageManager1SearchParameters"] = x.packageManager1SearchParameters;
@@ -1109,10 +1119,11 @@ default: throw std::runtime_error("Unexpected value in enumeration \"[object Obj
 }
 
 inline void from_json(const json & j, SubState & x) {
-if (j == "Done") x = SubState::Done;
+if (j == "AllDone") x = SubState::AllDone;
 else if (j == "InstallApplication") x = SubState::InstallApplication;
 else if (j == "InstallBase") x = SubState::InstallBase;
 else if (j == "InstallRuntime") x = SubState::InstallRuntime;
+else if (j == "PackageManagerDone") x = SubState::PackageManagerDone;
 else if (j == "PostAction") x = SubState::PostAction;
 else if (j == "PreAction") x = SubState::PreAction;
 else if (j == "Uninstall") x = SubState::Uninstall;
@@ -1122,10 +1133,11 @@ else { throw std::runtime_error("Input JSON does not conform to schema!"); }
 
 inline void to_json(json & j, const SubState & x) {
 switch (x) {
-case SubState::Done: j = "Done"; break;
+case SubState::AllDone: j = "AllDone"; break;
 case SubState::InstallApplication: j = "InstallApplication"; break;
 case SubState::InstallBase: j = "InstallBase"; break;
 case SubState::InstallRuntime: j = "InstallRuntime"; break;
+case SubState::PackageManagerDone: j = "PackageManagerDone"; break;
 case SubState::PostAction: j = "PostAction"; break;
 case SubState::PreAction: j = "PreAction"; break;
 case SubState::Uninstall: j = "Uninstall"; break;

@@ -9,7 +9,7 @@
 //
 //  Then include this file, and then do
 //
-//     PackageManager1RequestInteractionAdditonalMessage.hpp data = nlohmann::json::parse(jsonString);
+//     PackageManager1RequestInteractionAdditionalMessage.hpp data = nlohmann::json::parse(jsonString);
 
 #pragma once
 
@@ -30,7 +30,7 @@ using nlohmann::json;
 /**
 * fill ref string to additional message in requestInteraction
 */
-struct PackageManager1RequestInteractionAdditonalMessage {
+struct PackageManager1RequestInteractionAdditionalMessage {
 std::string localRef;
 std::string remoteRef;
 };

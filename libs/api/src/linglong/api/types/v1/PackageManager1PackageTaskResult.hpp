@@ -48,6 +48,10 @@ int64_t code;
 * Human readable result message.
 */
 std::string message;
+/**
+* error type, to indicate client what should be done.
+*/
+std::string type;
 };
 }
 }

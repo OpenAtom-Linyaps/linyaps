@@ -1739,7 +1739,9 @@ auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref,
 utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
 {
     LINGLONG_TRACE("merge modules");
+    std::error_code ec;
     QDir mergedDir = this->repoDir.absoluteFilePath("merged");
+    mergedDir.mkpath(".");
     auto layerItems = this->cache->queryLayerItem();
     auto mergedItems = this->cache->queryMergedItems();
     // 对layerItems分组
@@ -1805,10 +1807,16 @@ utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
         }
         // 创建临时目录
         auto mergeTmp = mergedDir.filePath(QString("tmp_") + mergeID.c_str());
-        std::filesystem::remove_all(mergeTmp.toStdString());
-        std::filesystem::create_directories(mergeTmp.toStdString());
+        std::filesystem::remove_all(mergeTmp.toStdString(), ec);
+        if (ec) {
+            return LINGLONG_ERR("clean merge tmp dir", ec);
+        }
+        std::filesystem::create_directories(mergeTmp.toStdString(), ec);
+        if (ec) {
+            return LINGLONG_ERR("create merge tmp dir", ec);
+        }
         // 将所有module文件合并到临时目录
-        for (auto layer : layers) {
+        for (const auto &layer : layers) {
             qDebug() << "merge module" << it.first.c_str()
                      << layer.info.packageInfoV2Module.c_str();
             int root = open("/", O_DIRECTORY);
@@ -1831,8 +1839,14 @@ utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
         }
         // 将临时目录改名到正式目录，以binary模块的commit为文件名
         auto mergeOutput = mergedDir.filePath(mergeID.c_str());
-        std::filesystem::remove_all(mergeOutput.toStdString());
-        std::filesystem::rename(mergeTmp.toStdString(), mergeOutput.toStdString());
+        std::filesystem::remove_all(mergeOutput.toStdString(), ec);
+        if (ec) {
+            return LINGLONG_ERR("clean merge dir", ec);
+        }
+        std::filesystem::rename(mergeTmp.toStdString(), mergeOutput.toStdString(), ec);
+        if (ec) {
+            return LINGLONG_ERR("rename merge dir", ec);
+        }
         newMergedItems.push_back({
           .binaryCommit = binaryCommit,
           .commits = commits,
@@ -1847,7 +1861,11 @@ utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
         return LINGLONG_ERR("update merged items", ret);
     }
     // 清理merged无效目录
-    for (auto &entry : std::filesystem::directory_iterator(mergedDir.path().toStdString())) {
+    auto iter = std::filesystem::directory_iterator(mergedDir.path().toStdString(), ec);
+    if (ec) {
+        return LINGLONG_ERR("read merge directory", ec);
+    }
+    for (const auto &entry : iter) {
         auto leak = true;
         for (const auto &mergedItem : newMergedItems) {
             if (entry.path().filename() == mergedItem.id) {
@@ -1855,7 +1873,10 @@ utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
             }
         }
         if (leak) {
-            std::filesystem::remove_all(entry.path());
+            std::filesystem::remove_all(entry.path(), ec);
+            if (ec) {
+                qWarning() << ec.message().c_str();
+            }
         }
     }
     return LINGLONG_OK;

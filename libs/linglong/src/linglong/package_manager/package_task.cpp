@@ -131,14 +131,16 @@ void PackageTask::updateTask(uint part, uint whole, const QString &message) noex
 }
 
 void PackageTask::updateState(linglong::api::types::v1::State newState,
-                              const QString &message) noexcept
+                              const QString &message,
+                              std::optional<linglong::api::types::v1::SubState> optDone) noexcept
 {
     this->setProperty("State", static_cast<int>(newState));
     auto curState = state();
     if (curState == linglong::api::types::v1::State::Canceled
         || curState == linglong::api::types::v1::State::Failed
         || curState == linglong::api::types::v1::State::Succeed) {
-        updateSubState(linglong::api::types::v1::SubState::Done, message);
+        auto subState = optDone.value_or(linglong::api::types::v1::SubState::AllDone);
+        updateSubState(subState, message);
         return;
     }
     this->setProperty("Message", message);
@@ -152,7 +154,8 @@ void PackageTask::updateSubState(linglong::api::types::v1::SubState newSubState,
     this->setProperty("Message", message);
 
     auto curSubState = subState();
-    if (curSubState == linglong::api::types::v1::SubState::Done) {
+    if (curSubState == linglong::api::types::v1::SubState::AllDone
+        || curSubState == linglong::api::types::v1::SubState::PackageManagerDone) {
         m_totalPercentage = TASK_DONE;
         Q_EMIT PercentageChanged(getPercentage());
         changePropertiesDone();
@@ -172,7 +175,7 @@ void PackageTask::reportError(linglong::utils::error::Error &&err) noexcept
     Q_EMIT PercentageChanged(getPercentage());
 
     this->setProperty("State", static_cast<int>(linglong::api::types::v1::State::Failed));
-    this->setProperty("SubState", static_cast<int>(linglong::api::types::v1::SubState::Done));
+    this->setProperty("SubState", static_cast<int>(linglong::api::types::v1::SubState::AllDone));
     m_err = std::move(err);
 
     this->setProperty("Message", m_err.message());

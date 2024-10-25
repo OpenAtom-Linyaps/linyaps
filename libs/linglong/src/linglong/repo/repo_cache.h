@@ -26,6 +26,7 @@ struct repoCacheQuery
     std::optional<std::string> version; // could be fuzzy version
     std::optional<std::string> module;
     std::optional<std::string> uuid;
+    std::optional<bool> deleted;
 
     static auto arch()
     {

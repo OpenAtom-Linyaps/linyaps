@@ -51,7 +51,10 @@ public:
     friend bool operator!=(const PackageTask &lhs, const PackageTask &rhs) { return !(lhs == rhs); }
 
     void updateTask(uint part, uint whole, const QString &message) noexcept;
-    void updateState(linglong::api::types::v1::State newState, const QString &message) noexcept;
+    void
+    updateState(linglong::api::types::v1::State newState,
+                const QString &message,
+                std::optional<linglong::api::types::v1::SubState> optDone = std::nullopt) noexcept;
     void updateSubState(linglong::api::types::v1::SubState newSubState,
                         const QString &message) noexcept;
     void reportError(linglong::utils::error::Error &&err) noexcept;
@@ -63,12 +66,24 @@ public:
         return static_cast<linglong::api::types::v1::State>(m_state);
     }
 
+    void setState(linglong::api::types::v1::State newState) noexcept
+    {
+        m_state = static_cast<int>(newState);
+    }
+
     [[nodiscard]] linglong::api::types::v1::SubState subState() const noexcept
     {
         return static_cast<linglong::api::types::v1::SubState>(m_subState);
     }
 
+    void setSubState(linglong::api::types::v1::SubState newSubState) noexcept
+    {
+        m_subState = static_cast<int>(newSubState);
+    }
+
     [[nodiscard]] QString message() const noexcept { return m_message; }
+
+    void setMessage(const QString &message) noexcept { m_message = message; }
 
     [[nodiscard]] QString taskID() const noexcept { return m_taskID.toString(QUuid::Id128); }
 
@@ -87,6 +102,12 @@ public:
 
     [[nodiscard]] double getPercentage() const noexcept
     {
+        if (m_subState == static_cast<int>(linglong::api::types::v1::SubState::AllDone)
+            || m_subState
+              == static_cast<int>(linglong::api::types::v1::SubState::PackageManagerDone)) {
+            return 100;
+        }
+
         return m_totalPercentage
           + (m_curStagePercentage
              * m_subStateMap[static_cast<api::types::v1::SubState>(m_subState)]);

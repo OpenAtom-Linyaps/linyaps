@@ -152,8 +152,10 @@ void CLIPrinter::printContent(const QStringList &filePaths)
 std::string Printer::toString(linglong::api::types::v1::SubState state) noexcept
 {
     switch (state) {
-    case linglong::api::types::v1::SubState::Done:
-        return "Done";
+    case linglong::api::types::v1::SubState::AllDone:
+        return "AllDone";
+    case linglong::api::types::v1::SubState::PackageManagerDone:
+        return "PackageManagerDone";
     case linglong::api::types::v1::SubState::InstallApplication:
         return "InstallApplication";
     case linglong::api::types::v1::SubState::InstallBase:
@@ -199,7 +201,8 @@ void Printer::printTaskState(double percentage,
     auto &stdout = std::cout;
     stdout << "\r\33[K" << "\033[?25l" << message.toStdString() << ":" << percentage << "%"
            << "\033[?25h";
-    if (subState == api::types::v1::SubState::Done) {
+    if (subState == api::types::v1::SubState::AllDone
+        || subState == api::types::v1::SubState::PackageManagerDone) {
         stdout << "\n";
     }
     stdout.flush();

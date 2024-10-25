@@ -585,7 +585,11 @@ $defs:
     required:
       - message
       - code
+      - type
     properties:
+      type:
+        description: error type, to indicate client what should be done.
+        type: string
       message:
         description: Human readable result message.
         type: string
@@ -597,7 +601,7 @@ $defs:
   InteractionMessageType:
     description: To identify what message to print during interaction.
     enum: ["Unknown", "Install", "Uninstall", "Upgrade", "Downgrade"]
-  PackageManager1RequestInteractionAdditonalMessage:
+  PackageManager1RequestInteractionAdditionalMessage:
     type: object
     description: fill ref string to additional message in requestInteraction
     required:
@@ -616,7 +620,7 @@ $defs:
   SubState:
     description: subState of current task,
     enum: ["Unknown", "PreAction", "InstallRuntime", "InstallBase", "InstallApplication",
-           "PostAction", "Uninstall", "Done"]
+           "PostAction", "Uninstall", "AllDone", "PackageManagerDone"]
   PackageManager1InstallLayerFDResult:
     $ref: '#/$defs/CommonResult'
   PackageManager1InstallParameters:

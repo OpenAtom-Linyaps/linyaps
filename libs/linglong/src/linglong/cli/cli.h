@@ -85,7 +85,8 @@ private Q_SLOTS:
     int installFromFile(const QFileInfo &fileInfo, const api::types::v1::CommonOptions &options);
     // maybe use in the future
     void onTaskAdded(QDBusObjectPath object_path);
-    void onTaskRemoved(QDBusObjectPath object_path, int state, int subState, QString message);
+    void onTaskRemoved(
+      QDBusObjectPath object_path, int state, int subState, QString message, double percentage);
     void onTaskPropertiesChanged(QString interface,
                                  QVariantMap changed_properties,
                                  QStringList invalidated_properties);

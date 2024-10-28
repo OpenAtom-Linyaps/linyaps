@@ -53,10 +53,10 @@ struct std::hash<linglong::package::Reference>
     size_t operator()(const linglong::package::Reference &ref) const noexcept
     {
         size_t hash = 0;
-        hash ^= std::hash<QString>{}(ref.channel);
-        hash ^= std::hash<QString>{}(ref.id) << 1;
-        hash ^= std::hash<QString>{}(ref.version.toString()) << 2;
-        hash ^= std::hash<QString>{}(ref.arch.toString()) << 3;
+        hash ^= qHash(ref.channel);
+        hash ^= qHash(ref.id) << 1;
+        hash ^= qHash(ref.version.toString()) << 2;
+        hash ^= qHash(ref.arch.toString()) << 3;
         return hash;
     }
 };

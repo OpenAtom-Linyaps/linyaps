@@ -724,31 +724,30 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     auto reference = *remoteRef;
     bool skipInteraction = paras->options.skipInteraction;
 
-    // Note: do not capture any variable which defined in this func.
+    // Note: do not capture any reference of variable which defined in this func.
+    // it will be a dangling reference.
     taskRef.setJob(
       [this, &taskRef, reference, curModule, skipInteraction, msgType, additionalMessage]() {
           if (msgType == api::types::v1::InteractionMessageType::Upgrade && !skipInteraction) {
               Q_EMIT RequestInteraction(QDBusObjectPath(taskRef.taskObjectPath()),
                                         static_cast<int>(msgType),
                                         utils::serialize::toQVariantMap(additionalMessage));
+
               QEventLoop loop;
-              connect(
-
-              this,
-
-              &PackageManager::ReplyReceived,
-
-              [&taskRef, &loop](const QVariantMap &reply) {
-                      // handle reply
-                      auto interactionReply =
-                        utils::serialize::fromQVariantMap<api::types::v1::InteractionReply>(reply);
-                      if (interactionReply->action != "yes") {
-                          taskRef.updateState(linglong::api::types::v1::State::Canceled, "canceled");
-                      }
-
-                      loop.exit(0);
-                  });
+              api::types::v1::InteractionReply interactionReply;
+              // Note: if capture the &taskRef into this lambda, be careful with it's life cycle.
+              connect(this,
+                      &PackageManager::ReplyReceived,
+                      [&interactionReply, &loop](const QVariantMap &reply) {
+                          interactionReply =
+                            *utils::serialize::fromQVariantMap<api::types::v1::InteractionReply>(
+                              reply);
+                          loop.exit(0);
+                      });
               loop.exec();
+              if (interactionReply.action != "yes") {
+                  taskRef.updateState(linglong::api::types::v1::State::Canceled, "canceled");
+              }
           }
 
           if (taskRef.subState() == linglong::api::types::v1::SubState::Done) {

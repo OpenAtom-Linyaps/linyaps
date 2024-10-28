@@ -13,11 +13,6 @@ Files: external/tl-expected/*
 License: CC0-1.0
 Copyright: None
 
-# docopt
-Files: external/docopt.cpp/*
-License: MIT
-Copyright: 2012 Vladimir Keleshev, <vladimir@keleshev.com>
-
 # CLI11
 Files: external/CLI11/*
 License: BSD-3-Clause

@@ -58,15 +58,6 @@ endif()
 if(ENABLE_CPM)
   include(CPM)
   CPMFindPackage(
-    NAME docopt
-    VERSION 0.6.1 # NOTE: Upstream cmake version doesn't match git tag, we need
-                  # https://github.com/docopt/docopt.cpp/pull/102 in v0.6.3, but
-                  # cmake version of v0.6.3 is 0.6.1.
-    GITHUB_REPOSITORY docopt/docopt.cpp
-    GIT_SHALLOW ON
-    GIT_TAG v0.6.3
-    EXCLUDE_FROM_ALL ON)
-  CPMFindPackage(
     NAME tl-expected
     VERSION 1.0.0 # NOTE: Upstream cmake version doesn't match git tag, we need
                   # https://github.com/TartanLlama/expected/pull/62 in v1.1.0,
@@ -100,16 +91,6 @@ if(ENABLE_CPM)
 endif()
 
 set(linglong_EXTERNALS "ytj ytj::ytj")
-
-# NOTE: UOS v20 do not have docopt packaged.
-find_package(docopt 0.6.1 QUIET)
-if(NOT docopt_FOUND)
-  # list(APPEND linglong_EXTERNALS "docopt.cpp docopt.cpp") # we use header only
-  add_library(docopt INTERFACE)
-  target_compile_definitions(docopt INTERFACE DOCOPT_HEADER_ONLY)
-  target_include_directories(docopt INTERFACE ./external/docopt.cpp)
-  list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake.external)
-endif()
 
 # NOTE: UOS v20 do not have tl-expected packaged.
 find_package(tl-expected 1.0.0 QUIET)

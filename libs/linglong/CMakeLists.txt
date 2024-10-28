@@ -93,7 +93,6 @@ pfl_add_library(
   Qt5::Core
   Qt5::DBus
   LinglongRepoClientAPI
-  docopt
   ytj::ytj
   tl::expected
   linglong::ocppi

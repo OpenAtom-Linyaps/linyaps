@@ -5,10 +5,10 @@
  */
 #include "linglong/api/dbus/v1/dbus_peer.h"
 #include "linglong/cli/cli.h"
+#include "linglong/cli/cli_printer.h"
 #include "linglong/cli/dbus_notifier.h"
 #include "linglong/cli/dummy_notifier.h"
 #include "linglong/cli/json_printer.h"
-#include "linglong/cli/cli_printer.h"
 #include "linglong/cli/terminal_notifier.h"
 #include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
@@ -18,12 +18,14 @@
 #include "linglong/utils/global/initialize.h"
 #include "ocppi/cli/crun/Crun.hpp"
 
+#include <CLI/CLI.hpp>
 #include <sys/file.h>
 
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QtGlobal>
 
+#include <algorithm>
 #include <cstddef>
 #include <functional>
 #include <memory>
@@ -173,9 +175,330 @@ int main(int argc, char **argv)
     QCoreApplication app(argc, argv);
     applicationInitializte();
 
+    bool versionFlag = false, jsonFlag = false, noDBus = false;
+
+    CLI::App commandParser{
+        "linyaps CLI\n"
+        "A CLI program to run application and manage linyaps application and runtime.\n"
+    };
+    commandParser.set_help_all_flag("--help-all", "Expand all help");
+    commandParser.footer(R"(if you found any problems during use,
+you can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues.)");
+
+    // group empty will hide command
+    std::string CliHiddenGroup = "";
+
+    // add flags
+    commandParser.add_flag("--version", versionFlag, "Show version.");
+    commandParser
+      .add_flag(
+        "--no-dbus",
+        noDBus,
+        "Use peer to peer DBus, this is used only in case that DBus daemon is not available.")
+      ->group(CliHiddenGroup);
+    commandParser.add_flag("--json", jsonFlag, R"(Use json to output command result.)");
+
+    CLI::Validator validatorString{
+        [](std::string &parameter) {
+            if (parameter.empty()) {
+                return std::string{
+                    "input parameter is empty, please input valid parameter instead\n"
+                };
+            }
+            return std::string();
+        },
+        ""
+    };
+
+    CliOptions options = CliOptions{ .type = "app" };
+
+    // groups
+    std::string CliBuildInGroup = "Managing installed applications and runtimes";
+    std::string CliAppManagingGroup = "Managing running applications";
+    std::string CliSearchGroup = "Finding applications and runtimes";
+    std::string CliRepoGroup = "Managing remote repositories";
+
+    // add sub command run
+    std::vector<std::string> oldCommands;
+    auto cliRun =
+      commandParser.add_subcommand("run", "Run an application.\n")->group(CliAppManagingGroup);
+
+    // add sub command run options
+    cliRun->add_option("APP", options.appid, "Specify the application ID.")
+      ->required()
+      ->check(validatorString);
+    cliRun->usage(R"(Usage: ll-cli run [OPTIONS] APP [COMMAND...]
+
+Example:
+# run application by appid.
+ll-cli run org.deepin.demo
+# execute commands in the container rather than running the application.
+ll-cli run org.deepin.demo bash
+ll-cli run org.deepin.demo -- bash
+ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)");
+    cliRun
+      ->add_option("--file",
+                   options.filePath,
+                   "You can pass file to applications running in a sandbox..")
+      ->type_name("FILE")
+      ->check(CLI::ExistingFile);
+    cliRun
+      ->add_option("--url",
+                   options.fileUrl,
+                   "You can pass url to applications running in a sandbox..")
+      ->type_name("URL");
+    cliRun->add_option("COMMAND", options.commands, "Run commands in a running sandbox.");
+
+    // add sub command ps
+    auto cliPs = commandParser.add_subcommand("ps", "List running applications.\n")
+                   ->group(CliAppManagingGroup);
+
+    // add sub command exec
+    auto cliExec =
+      commandParser.add_subcommand("exec", "Execute commands in the currently running sandbox.\n")
+        ->group(CliHiddenGroup);
+    cliExec
+      ->add_option("INSTANCE",
+                   options.instance,
+                   "Specify the application running instance(you can get it by ps command).")
+      ->required()
+      ->check(validatorString);
+    cliExec->add_option("--working-directory", options.workDir, "Specify working directory.")
+      ->type_name("PATH")
+      ->check(CLI::ExistingDirectory);
+    cliExec->add_option("COMMAND", options.commands, "Run commands in a running sandbox.");
+
+    // add sub command enter
+    auto cliEnter =
+      commandParser
+        .add_subcommand("enter", "Enter the namespace where the application is running.\n")
+        ->group(CliAppManagingGroup);
+    cliEnter
+      ->add_option("INSTANCE",
+                   options.instance,
+                   "Specify the application running instance(you can get it by ps command).")
+      ->required();
+    cliEnter->add_option("--working-directory", options.workDir, "Specify working directory.")
+      ->type_name("PATH")
+      ->check(CLI::ExistingDirectory);
+    cliEnter->add_option("COMMAND", options.commands, "Run commands in a running sandbox.");
+
+    // add sub command kill
+    auto cliKill = commandParser.add_subcommand("kill", "Stop running applications.\n")
+                     ->group(CliAppManagingGroup);
+    cliKill
+      ->add_option("INSTANCE",
+                   options.instance,
+                   "Specify the application running instance(you can get it by ps command).")
+      ->required()
+      ->check(validatorString);
+
+    // add sub command install
+    auto cliInstall =
+      commandParser.add_subcommand("install", "Installing an application or runtime.\n")
+        ->group(CliBuildInGroup);
+    cliInstall->usage(R"(Usage: ll-cli install [OPTIONS] APP
+
+Example:
+# install application by appid.
+ll-cli install org.deepin.demo
+# install application by linyaps layer.
+ll-cli install demo_0.0.0.1_x86_64_binary.layer
+# install application by linyaps uab.
+ll-cli install demo_x86_64_0.0.0.1_main.uab
+# install specified module of the appid.
+ll-cli install org.deepin.demo --module=binary
+# install specified version of the appid.
+ll-cli install org.deepin.demo/0.0.0.1
+# install application by detailed reference.
+ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
+    )");
+    cliInstall
+      ->add_option("APP",
+                   options.appid,
+                   "Specify the application ID, and it can also be a .uab or .layer file.")
+      ->required()
+      ->check(validatorString);
+    cliInstall->add_option("--module", options.module, "Install a specify module.")
+      ->type_name("MODULE")
+      ->check(validatorString);
+    cliInstall->add_flag("--force", options.forceOpt, "Force install the application.");
+    cliInstall->add_flag("-y", options.confirmOpt, "Automatically answer yes to all questions.");
+
+    // add sub command uninstall
+    auto cliUninstall =
+      commandParser.add_subcommand("uninstall", "Uninstall the application or runtimes.\n")
+        ->group(CliBuildInGroup);
+    cliUninstall->add_option("APP", options.appid, "Specify the applications ID.")
+      ->required()
+      ->check(validatorString);
+    cliUninstall->add_option("--module", options.module, "Uninstall a specify module.")
+      ->type_name("MODULE")
+      ->check(validatorString);
+
+    // add sub command upgrade
+    auto cliUpgrade =
+      commandParser.add_subcommand("upgrade", "Upgrade the application or runtimes.\n")
+        ->group(CliBuildInGroup);
+    cliUpgrade
+      ->add_option(
+        "APP",
+        options.appid,
+        "Specify the application ID.If it not be specified, all applications will be upgraded.")
+      ->check(validatorString);
+    cliUpgrade->add_flag("--force", options.forceOpt, "Force upgrade the application.");
+
+    // add sub command search
+    auto cliSearch = commandParser
+                       .add_subcommand("search",
+                                       "Search the applications/runtimes containing the specified "
+                                       "text from the remote repository.\n")
+                       ->group(CliSearchGroup);
+    cliSearch->usage(R"(Usage: ll-cli search [OPTIONS] KEYWORDS
+
+Example:
+# find remotely app by name.
+ll-cli search org.deepin.demo
+# find remotely runtime by name.
+ll-cli search org.deepin.base --type=runtime
+# find all off app of remote.
+ll-cli search .
+# find all off runtime of remote.
+ll-cli search . --type=runtime)");
+    cliSearch->add_option("KEYWORDS", options.appid, "Specify the Keywords.")
+      ->required()
+      ->check(validatorString);
+    cliSearch
+      ->add_option("--type",
+                   options.type,
+                   R"(Filter result with specify type. One of "runtime", "app" or "all".)")
+      ->type_name("TYPE")
+      ->capture_default_str()
+      ->check(validatorString);
+    cliSearch->add_flag("--dev", options.showDevel, "include develop application in result.");
+
+    // add sub command list
+    auto cliList =
+      commandParser.add_subcommand("list", "List installed applications or runtimes.\n")
+        ->group(CliBuildInGroup);
+    cliList->usage(R"(Usage: ll-cli list [OPTIONS]
+
+Example:
+# show installed application(s).
+ll-cli list
+# show installed runtime(s).
+ll-cli list --type=runtime
+# show the latest version list of the currently installed application(s).
+ll-cli list --upgradable
+)");
+    cliList
+      ->add_option("--type",
+                   options.type,
+                   R"(Filter result with specify type. One of "runtime", "app" or "all".)")
+      ->type_name("TYPE")
+      ->capture_default_str()
+      ->check(validatorString);
+    cliList->add_flag("--upgradable",
+                      options.showUpgradeList,
+                      "Show the list of latest version of the currently installed applications, it "
+                      "only works for app.");
+
+    // add sub command repo
+    auto cliRepo =
+      commandParser
+        .add_subcommand("repo",
+                        "Display or modify information of the repository currently using.\n")
+        ->group(CliRepoGroup);
+    cliRepo->require_subcommand(1);
+
+    // add repo sub command add
+    auto repoAdd = cliRepo->add_subcommand("add", "Add a new repository.\n");
+    repoAdd->add_option("NAME", options.repoName, "Specify the repo name.")
+      ->required()
+      ->check(validatorString);
+    repoAdd->add_option("URL", options.repoUrl, "Url of the repository.")
+      ->required()
+      ->check(validatorString);
+
+    // add repo sub command modify
+    auto repoModify = cliRepo->add_subcommand("modify", "Modify repository URL.\n");
+    repoModify->add_option("--name", options.repoName, "Specify the repo name.")
+      ->type_name("REPO")
+      ->check(validatorString);
+    repoModify->add_option("URL", options.repoUrl, "Url of the repository.")
+      ->required()
+      ->check(validatorString);
+
+    // add repo sub command remove
+    auto repoRemove = cliRepo->add_subcommand("remove", "Remove a repository.\n");
+    repoRemove->add_option("NAME", options.repoName, "Specify the repo name.")
+      ->required()
+      ->check(validatorString);
+
+    // add repo sub command update
+    auto repoUpdate = cliRepo->add_subcommand("update", "Update to a new repository.\n");
+    repoUpdate->add_option("NAME", options.repoName, "Specify the repo name.")
+      ->required()
+      ->check(validatorString);
+    repoUpdate->add_option("URL", options.repoUrl, "Url of the repository.")
+      ->required()
+      ->check(validatorString);
+
+    // add repo sub command set-default
+    auto repoSetDefault = cliRepo->add_subcommand("set-default", "Set default repository name.\n");
+    repoSetDefault->add_option("NAME", options.repoName, "Specify the repo name.")
+      ->required()
+      ->check(validatorString);
+
+    // add repo sub command show
+    auto repoShow = cliRepo->add_subcommand("show", "Show repository.\n");
+
+    // add sub command info
+    auto cliInfo =
+      commandParser
+        .add_subcommand("info", "Display information about installed apps or runtimes.\n")
+        ->group(CliBuildInGroup);
+    cliInfo
+      ->add_option("APP",
+                   options.appid,
+                   "Specify the application ID, and it can also be a .layer file..")
+      ->required()
+      ->check(validatorString);
+
+    // add sub command content
+    auto cliContent =
+      commandParser.add_subcommand("content", "Display the exported files of application.\n")
+        ->group(CliBuildInGroup);
+    cliContent->add_option("APP", options.appid, "Specify the application.")
+      ->required()
+      ->check(validatorString);
+
+    // add sub command content
+    auto cliMigrate =
+      commandParser.add_subcommand("migrate", "migrate repository data.\n")->group(CliHiddenGroup);
+
+    // add sub command prune
+    auto cliPrune = commandParser.add_subcommand("prune", "Remove the unused base or runtime.\n")
+                      ->group(CliAppManagingGroup);
+
+    auto res = transformOldExec(argc, argv);
+
+    std::reverse(res.begin(), res.end());
+
+    CLI11_PARSE(commandParser, res);
+
+    if (versionFlag) {
+        std::cout << "linyaps CLI version " << LINGLONG_VERSION << std::endl;
+        return 0;
+    }
+
+    if (options.commands.empty() && !oldCommands.empty()) {
+        options.commands = oldCommands;
+    }
+
     auto ret = QMetaObject::invokeMethod(
       QCoreApplication::instance(),
-      [&argc, &argv]() {
+      [&argc, &argv, &commandParser, &noDBus, &jsonFlag, &options]() {
           auto repoRoot = QDir(LINGLONG_ROOT);
           if (!repoRoot.exists()) {
               qCritical() << "underlying repository doesn't exist:" << repoRoot.absolutePath();
@@ -196,7 +519,8 @@ int main(int argc, char **argv)
               }
 
               if (lockOwner > 0) {
-                  qInfo() << "\r\33[K" << "\033[?25l"
+                  qInfo() << "\r\33[K"
+                          << "\033[?25l"
                           << "repository is being operated by another process, waiting for"
                           << lockOwner << "\033[?25h";
                   using namespace std::chrono_literals;
@@ -207,12 +531,6 @@ int main(int argc, char **argv)
               break;
           }
 
-          auto raw_args = transformOldExec(argc, argv);
-          std::map<std::string, docopt::value> args =
-            docopt::docopt(Cli::USAGE,
-                           raw_args,
-                           true,                              // show help if requested
-                           "linglong CLI " LINGLONG_VERSION); // version string
           auto pkgManConn = QDBusConnection::systemBus();
 
           auto msg = QDBusMessage::createMethodCall("org.deepin.linglong.PackageManager1",
@@ -232,7 +550,6 @@ int main(int argc, char **argv)
                                                         "/org/deepin/linglong/PackageManager1",
                                                         pkgManConn,
                                                         QCoreApplication::instance());
-          bool noDBus = args["--no-dbus"].asBool();
           if (noDBus) {
               if (getuid() != 0) {
                   qCritical() << "--no-dbus should only be used by root user.";
@@ -285,7 +602,7 @@ int main(int argc, char **argv)
           }
 
           std::unique_ptr<Printer> printer;
-          if (args["--json"].asBool()) {
+          if (jsonFlag) {
               printer = std::make_unique<JSONPrinter>();
           } else {
               printer = std::make_unique<CLIPrinter>();
@@ -353,28 +670,28 @@ int main(int argc, char **argv)
                                              *repo,
                                              std::move(notifier),
                                              QCoreApplication::instance());
+          cli->setCliOptions(options);
           if (repo->needMigrate()) {
-              auto nullArg = std::map<std::string, docopt::value>{};
-              QCoreApplication::exit(cli->migrate(nullArg));
+              QCoreApplication::exit(cli->migrate());
               return;
           }
 
-          QMap<QString, std::function<int(Cli *, std::map<std::string, docopt::value> &)>>
-            subcommandMap = { { "run", &Cli::run },
-                              { "exec", &Cli::exec },
-                              { "enter", &Cli::exec },
-                              { "ps", &Cli::ps },
-                              { "kill", &Cli::kill },
-                              { "install", &Cli::install },
-                              { "upgrade", &Cli::upgrade },
-                              { "search", &Cli::search },
-                              { "uninstall", &Cli::uninstall },
-                              { "list", &Cli::list },
-                              { "repo", &Cli::repo },
-                              { "info", &Cli::info },
-                              { "content", &Cli::content },
-                              { "migrate", &Cli::migrate },
-                              { "prune", &Cli::prune } };
+          QMap<QString, std::function<int(Cli *)>> subcommandMap = {
+              { "run", &Cli::run },
+              { "exec", &Cli::exec },
+              { "enter", &Cli::exec },
+              { "ps", &Cli::ps },
+              { "kill", &Cli::kill },
+              { "install", &Cli::install },
+              { "upgrade", &Cli::upgrade },
+              { "search", &Cli::search },
+              { "uninstall", &Cli::uninstall },
+              { "list", &Cli::list },
+              { "info", &Cli::info },
+              { "content", &Cli::content },
+              { "migrate", &Cli::migrate },
+              { "prune", &Cli::prune }
+          };
 
           if (QObject::connect(QCoreApplication::instance(),
                                &QCoreApplication::aboutToQuit,
@@ -386,12 +703,25 @@ int main(int argc, char **argv)
               return;
           }
 
-          for (const auto &subcommand : subcommandMap.keys()) {
-              if (args[subcommand.toStdString()].asBool()) {
-                  QCoreApplication::exit(subcommandMap[subcommand](cli, args));
-                  return;
-              }
+          auto commands = commandParser.get_subcommands();
+
+          auto ret =
+            std::find_if(commands.begin(), commands.end(), [&subcommandMap](CLI::App *app) {
+                auto name = app->get_name();
+                return app->parsed()
+                  && (name == "repo" || subcommandMap.contains(QString::fromStdString(name)));
+            });
+
+          if (ret == commands.end()) {
+              std::cout << commandParser.help("", CLI::AppFormatMode::All);
+              return QCoreApplication::exit(-1);
           }
+
+          auto name = (*ret)->get_name();
+
+          // ll-cli repo need app to parse subcommand
+          return QCoreApplication::exit(
+            name == "repo" ? cli->repo(*ret) : subcommandMap[QString::fromStdString(name)](cli));
       },
       Qt::QueuedConnection);
     Q_ASSERT(ret);

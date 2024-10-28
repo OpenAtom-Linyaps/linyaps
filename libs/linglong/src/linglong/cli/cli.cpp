@@ -45,74 +45,6 @@ using namespace linglong::utils::error;
 
 namespace linglong::cli {
 
-const char Cli::USAGE[] =
-  R"(linglong CLI
-A CLI program to run application and manage linglong pagoda and tiers.
-
-Usage:
-    ll-cli [--json] --version
-    ll-cli [--json] run APP [--no-dbus-proxy] [--dbus-proxy-cfg=PATH] ( [--file=FILE] | [--url=URL] ) [--] [COMMAND...]
-    ll-cli [--json] ps
-    ll-cli [--json] exec PAGODA [--working-directory=PATH] [--] COMMAND...
-    ll-cli [--json] enter PAGODA [--working-directory=PATH] [--] [COMMAND...]
-    ll-cli [--json] kill PAGODA
-    ll-cli [--json] [--no-dbus] install [--module=MODULE] TIER [--force] [-y]
-    ll-cli [--json] uninstall [--module=MODULE] TIER [--all] [--prune]
-    ll-cli [--json] upgrade TIER [--force]
-    ll-cli [--json] search [--type=TYPE] [--dev] TEXT
-    ll-cli [--json] [--no-dbus] list [--type=TYPE] [--upgradable]
-    ll-cli [--json] repo modify [--name=REPO] URL
-    ll-cli [--json] repo add NAME URL
-    ll-cli [--json] repo remove NAME
-    ll-cli [--json] repo update NAME URL
-    ll-cli [--json] repo set-default NAME
-    ll-cli [--json] repo show
-    ll-cli [--json] info TIER
-    ll-cli [--json] content APP
-    ll-cli [--json] migrate
-    ll-cli [--json] prune
-
-Arguments:
-    APP     Specify the application.
-    PAGODA  Specify the pagodas (container).
-    TIER    Specify the tier (container layer).
-    NAME    Specify the repo name.
-    URL     Specify the repo URL.
-    TEXT    The text used to search tiers.
-
-Options:
-    -h --help                 Show help information of ll-cli.
-    --version                 Show version.
-    --json                    Use json to output command result, you can get the description of the output refer to linglong api documentation(/usr/share/linglong/api/api.json).
-    --no-dbus                 Use peer to peer DBus, this is used only in case that DBus daemon is not available.
-    --no-dbus-proxy           Do not enable linglong-dbus-proxy.
-    --dbus-proxy-cfg=PATH     Path of config of linglong-dbus-proxy.
-    --file=FILE               you can refer to https://linglong.dev/guide/ll-cli/run.html to use this parameter.
-    --url=URL                 you can refer to https://linglong.dev/guide/ll-cli/run.html to use this parameter.
-    --working-directory=PATH  Specify working directory.
-    --type=TYPE               Filter result with tiers type. One of "runtime", "app" or "all". [default: app]
-    --state=STATE             Filter result with the tiers install state. Should be "local" or "remote". [default: local]
-    --prune                   Remove application data if the tier is an application and all version of that application has been removed.
-    --dev                     Include develop tiers in result.
-    --upgradable              Show the latest version list of the currently installed tiers, it only works for app.
-
-Subcommands:
-    run        Run an application.
-    ps         List all pagodas.
-    exec       Execute command in a pagoda.
-    enter      Enter a pagoda.
-    kill       Stop applications and remove the pagoda.
-    install    Install tier(s).
-    uninstall  Uninstall tier(s).
-    upgrade    Upgrade tier(s).
-    search     Search for tiers.
-    list       List known tiers.
-    repo       Display or modify information of the repository currently using.
-    info       Display the information of layer.
-    content    Display the exported files of application.
-    prune      Remove the unused base or runtime.
-)";
-
 void Cli::onTaskPropertiesChanged(QString interface,                                   // NOLINT
                                   QVariantMap changed_properties,                      // NOLINT
                                   [[maybe_unused]] QStringList invalidated_properties) // NOLINT
@@ -333,7 +265,7 @@ Cli::Cli(Printer &printer,
     }
 }
 
-int Cli::run(std::map<std::string, docopt::value> &args)
+int Cli::run()
 {
     LINGLONG_TRACE("command run");
     auto userContainerDir = std::filesystem::path{ "/run/linglong" } / std::to_string(::getuid());
@@ -355,7 +287,7 @@ int Cli::run(std::map<std::string, docopt::value> &args)
         }
     });
 
-    const auto userInputAPP = QString::fromStdString(args["APP"].asString());
+    const auto userInputAPP = QString::fromStdString(options.appid);
     Q_ASSERT(!userInputAPP.isEmpty());
 
     auto fuzzyRef = package::FuzzyReference::parse(userInputAPP);
@@ -453,15 +385,16 @@ int Cli::run(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    auto command = args["COMMAND"].asStringList();
-    if (command.empty()) {
-        command = info->command.value_or(std::vector<std::string>{});
+    auto commands = options.commands;
+    if (commands.empty()) {
+        commands = info->command.value_or(std::vector<std::string>{});
     }
-    if (command.empty()) {
+
+    if (commands.empty()) {
         qWarning() << "invalid command found in package" << QString::fromStdString(info->id);
-        command = { "bash" };
+        commands = { "bash" };
     }
-    auto execArgs = filePathMapping(args, command);
+    auto execArgs = filePathMapping(commands);
 
     auto newContainerID = [id = curAppRef->toString() + "-"]() mutable {
         auto now = std::chrono::steady_clock::now().time_since_epoch().count();
@@ -629,7 +562,7 @@ int Cli::run(std::map<std::string, docopt::value> &args)
     return 0;
 }
 
-int Cli::exec(std::map<std::string, docopt::value> &args)
+int Cli::exec()
 {
     LINGLONG_TRACE("ll-cli exec");
 
@@ -641,9 +574,9 @@ int Cli::exec(std::map<std::string, docopt::value> &args)
     }
 
     std::string containerID;
-    auto pagoda = args["PAGODA"].asString();
+    auto instance = options.instance;
     for (const auto &container : *containers) {
-        if (container.package == pagoda) {
+        if (container.package == instance) {
             containerID = container.id;
             break;
         }
@@ -654,13 +587,13 @@ int Cli::exec(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    qInfo() << "select pagoda" << QString::fromStdString(containerID);
+    qInfo() << "select container id" << QString::fromStdString(containerID);
 
-    std::vector<std::string> command = args["COMMAND"].asStringList();
-    if (command.size() != 0) {
+    auto commands = options.commands;
+    if (commands.size() != 0) {
         QStringList bashArgs;
         // 为避免原始args包含空格，每个arg都使用单引号包裹，并对arg内部的单引号进行转义替换
-        for (const auto &arg : command) {
+        for (const auto &arg : commands) {
             bashArgs.push_back(
               QString("'%1'").arg(QString::fromStdString(arg).replace("'", "'\\''")));
         }
@@ -670,13 +603,13 @@ int Cli::exec(std::map<std::string, docopt::value> &args)
             bashArgs.prepend("exec");
         }
         // 在原始args前面添加bash --login -c，这样可以使用/etc/profile配置的环境变量
-        command = std::vector<std::string>{ "/bin/bash",
-                                            "--login",
-                                            "-c",
-                                            bashArgs.join(" ").toStdString(),
-                                            "; wait" };
+        commands = std::vector<std::string>{ "/bin/bash",
+                                             "--login",
+                                             "-c",
+                                             bashArgs.join(" ").toStdString(),
+                                             "; wait" };
     } else {
-        command = { "bash", "--login" };
+        commands = { "bash", "--login" };
     }
 
     auto opt = ocppi::runtime::ExecOption{};
@@ -684,7 +617,7 @@ int Cli::exec(std::map<std::string, docopt::value> &args)
     opt.gid = ::getgid();
 
     auto result =
-      this->ociCLI.exec(containerID, command[0], { command.begin() + 1, command.end() }, opt);
+      this->ociCLI.exec(containerID, commands[0], { commands.begin() + 1, commands.end() }, opt);
     if (!result) {
         auto err = LINGLONG_ERRV(result);
         this->printer.printErr(err);
@@ -747,7 +680,7 @@ Cli::getCurrentContainers() const noexcept
     return myContainers;
 }
 
-int Cli::ps(std::map<std::string, docopt::value> & /*args*/)
+int Cli::ps()
 {
     LINGLONG_TRACE("command ps");
 
@@ -769,7 +702,7 @@ int Cli::ps(std::map<std::string, docopt::value> & /*args*/)
     return 0;
 }
 
-int Cli::kill(std::map<std::string, docopt::value> &args)
+int Cli::kill()
 {
     LINGLONG_TRACE("command kill");
 
@@ -781,9 +714,9 @@ int Cli::kill(std::map<std::string, docopt::value> &args)
     }
 
     std::string containerID;
-    auto pagoda = args["PAGODA"].asString();
+    auto instance = options.instance;
     for (const auto &container : *containers) {
-        if (container.package == pagoda) {
+        if (container.package == instance) {
             containerID = container.id;
             break;
         }
@@ -794,7 +727,7 @@ int Cli::kill(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    qInfo() << "select pagoda" << QString::fromStdString(containerID);
+    qInfo() << "select container id" << QString::fromStdString(containerID);
 
     auto result = this->ociCLI.kill(ocppi::runtime::ContainerID(containerID),
                                     ocppi::runtime::Signal("SIGTERM"));
@@ -923,7 +856,7 @@ void Cli::updateAM() noexcept
     }
 }
 
-int Cli::install(std::map<std::string, docopt::value> &args)
+int Cli::install()
 {
     LINGLONG_TRACE("command install");
 
@@ -942,19 +875,14 @@ int Cli::install(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    auto tier = args["TIER"].asString();
-    QFileInfo info(QString::fromStdString(tier));
+    auto app = QString::fromStdString(options.appid);
+    QFileInfo info(app);
 
     auto params =
       api::types::v1::PackageManager1InstallParameters{ .options = { .force = false,
                                                                      .skipInteraction = false } };
-    if (args["--force"].asBool()) {
-        params.options.force = true;
-    }
-
-    if (args["-y"].asBool()) {
-        params.options.skipInteraction = true;
-    }
+    params.options.force = options.forceOpt;
+    params.options.skipInteraction = options.confirmOpt;
 
     // 如果检测是文件，则直接安装
     if (info.exists() && info.isFile()) {
@@ -973,7 +901,7 @@ int Cli::install(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(tier));
+    auto fuzzyRef = package::FuzzyReference::parse(app);
     if (!fuzzyRef) {
         this->printer.printErr(fuzzyRef.error());
         return -1;
@@ -986,8 +914,9 @@ int Cli::install(std::map<std::string, docopt::value> &args)
     if (fuzzyRef->version) {
         params.package.version = fuzzyRef->version->toString().toStdString();
     }
-    if (args["--module"].isString()) {
-        params.package.packageManager1PackageModule = args["--module"].asString();
+
+    if (!options.module.empty()) {
+        params.package.packageManager1PackageModule = options.module;
     }
 
     auto pendingReply = this->pkgMan.Install(utils::serialize::toQVariantMap(params));
@@ -1043,7 +972,7 @@ int Cli::install(std::map<std::string, docopt::value> &args)
     return this->lastState == linglong::api::types::v1::State::Succeed ? 0 : -1;
 }
 
-int Cli::upgrade(std::map<std::string, docopt::value> &args)
+int Cli::upgrade()
 {
     LINGLONG_TRACE("command upgrade");
 
@@ -1060,9 +989,7 @@ int Cli::upgrade(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    auto tier = args["TIER"].asString();
-
-    auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(tier));
+    auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(options.appid));
     if (!fuzzyRef) {
         this->printer.printErr(fuzzyRef.error());
         return -1;
@@ -1136,24 +1063,12 @@ int Cli::upgrade(std::map<std::string, docopt::value> &args)
     return this->lastState == linglong::api::types::v1::State::Succeed ? 0 : -1;
 }
 
-int Cli::search(std::map<std::string, docopt::value> &args)
+int Cli::search()
 {
     LINGLONG_TRACE("command search");
 
-    QString type;
-    bool isShowDev = false;
-
-    if (args["--type"].isString()) {
-        type = QString::fromStdString(args["--type"].asString());
-    }
-
-    if (args["--dev"].isBool()) {
-        isShowDev = args["--dev"].asBool();
-    }
-
-    auto text = args["TEXT"].asString();
     auto params = api::types::v1::PackageManager1SearchParameters{
-        .id = text,
+        .id = options.appid,
     };
 
     auto pendingReply = this->pkgMan.Search(utils::serialize::toQVariantMap(params));
@@ -1201,7 +1116,7 @@ int Cli::search(std::map<std::string, docopt::value> &args)
                 }
                 std::vector<api::types::v1::PackageInfoV2> pkgs;
 
-                if (isShowDev) {
+                if (options.showDevel) {
                     pkgs = *result->packages;
                 } else {
                     for (const auto &info : *result->packages) {
@@ -1213,8 +1128,8 @@ int Cli::search(std::map<std::string, docopt::value> &args)
                     }
                 }
 
-                if (!type.isEmpty()) {
-                    filterPackageInfosFromType(pkgs, type);
+                if (!options.type.empty()) {
+                    filterPackageInfosFromType(pkgs, options.type);
                 }
 
                 this->printer.printPackages(pkgs);
@@ -1223,7 +1138,7 @@ int Cli::search(std::map<std::string, docopt::value> &args)
     return loop.exec();
 }
 
-int Cli::prune(std::map<std::string, docopt::value> &args)
+int Cli::prune()
 {
     LINGLONG_TRACE("command prune");
 
@@ -1293,7 +1208,7 @@ int Cli::prune(std::map<std::string, docopt::value> &args)
     return loop.exec();
 }
 
-int Cli::uninstall(std::map<std::string, docopt::value> &args)
+int Cli::uninstall()
 {
     LINGLONG_TRACE("command uninstall");
 
@@ -1310,9 +1225,7 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    auto tier = args["TIER"].asString();
-
-    auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(tier));
+    auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(options.appid));
     if (!fuzzyRef) {
         this->printer.printErr(fuzzyRef.error());
         return -1;
@@ -1354,8 +1267,9 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
     if (fuzzyRef->version) {
         params.package.version = fuzzyRef->version->toString().toStdString();
     }
-    if (args["--module"].isString()) {
-        params.package.packageManager1PackageModule = args["--module"].asString();
+
+    if (!options.module.empty()) {
+        params.package.packageManager1PackageModule = options.module;
     }
     auto pendingReply = this->pkgMan.Uninstall(utils::serialize::toQVariantMap(params));
     pendingReply.waitForFinished();
@@ -1418,14 +1332,9 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
     return this->lastState == linglong::api::types::v1::State::Succeed ? 0 : -1;
 }
 
-int Cli::list(std::map<std::string, docopt::value> &args)
+int Cli::list()
 {
     LINGLONG_TRACE("command list");
-
-    QString type;
-    if (args["--type"].isString()) {
-        type = QString::fromStdString(args["--type"].asString());
-    }
 
     auto pkgs = this->repository.listLocal();
     if (!pkgs) {
@@ -1433,11 +1342,11 @@ int Cli::list(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    if (!type.isEmpty()) {
-        filterPackageInfosFromType(*pkgs, type);
+    if (!options.type.empty()) {
+        filterPackageInfosFromType(*pkgs, options.type);
     }
 
-    if (!args["--upgradable"].asBool()) {
+    if (!options.showUpgradeList) {
         this->printer.printPackages(*pkgs);
         return 0;
     }
@@ -1530,7 +1439,7 @@ int Cli::list(std::map<std::string, docopt::value> &args)
     return 0;
 }
 
-int Cli::repo(std::map<std::string, docopt::value> &args)
+int Cli::repo(CLI::App *app)
 {
     LINGLONG_TRACE("command repo");
 
@@ -1541,43 +1450,41 @@ int Cli::repo(std::map<std::string, docopt::value> &args)
         qCritical() << "linglong bug detected.";
         std::abort();
     }
-    auto &cfgRef = *cfg;
 
-    if (args.empty() || args["show"].asBool()) {
+    auto argsParseFunc = [&app](const std::string &name) -> bool {
+        return app->get_subcommand(name)->parsed();
+    };
+
+    if (argsParseFunc("show")) {
         this->printer.printRepoConfig(*cfg);
         return 0;
     }
 
-    if (args["modify"].asBool()) {
+    if (argsParseFunc("modify")) {
         this->printer.printErr(
           LINGLONG_ERRV("sub-command 'modify' already has been deprecated, please use sub-command "
                         "'add' to add a remote repository and use it as default."));
         return EINVAL;
     }
 
-    std::string name;
-    if (!args["NAME"].isString()) {
-        this->printer.printErr(LINGLONG_ERRV("repo name must be specified as string"));
-        return EINVAL;
-    }
-    name = args["NAME"].asString();
+    std::string url = options.repoUrl;
 
-    std::string url;
-    if (args["URL"].isString()) {
-        // TODO: verify more complexly
-        url = args["URL"].asString();
+    if (argsParseFunc("add") || argsParseFunc("update")) {
         if (url.rfind("http", 0) != 0) {
             this->printer.printErr(LINGLONG_ERRV(QString{ "url is invalid: " } + url.c_str()));
             return EINVAL;
         }
 
         // remove last slash
-        if (url.back() == '/') {
-            url.pop_back();
+        if (options.repoUrl.back() == '/') {
+            options.repoUrl.pop_back();
         }
     }
 
-    if (args["add"].asBool()) {
+    std::string name = options.repoName;
+    auto &cfgRef = *cfg;
+
+    if (argsParseFunc("add")) {
         if (url.empty()) {
             this->printer.printErr(LINGLONG_ERRV("url is empty."));
             return EINVAL;
@@ -1601,7 +1508,7 @@ int Cli::repo(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    if (args["remove"].asBool()) {
+    if (argsParseFunc("remove")) {
         if (cfgRef.defaultRepo == name) {
             this->printer.printErr(
               LINGLONG_ERRV(QString{ "repo " } + name.c_str()
@@ -1614,7 +1521,7 @@ int Cli::repo(std::map<std::string, docopt::value> &args)
         return 0;
     }
 
-    if (args["update"].asBool()) {
+    if (argsParseFunc("update")) {
         if (url.empty()) {
             this->printer.printErr(LINGLONG_ERRV("url is empty."));
             return -1;
@@ -1625,7 +1532,7 @@ int Cli::repo(std::map<std::string, docopt::value> &args)
         return 0;
     }
 
-    if (args["set-default"].asBool()) {
+    if (argsParseFunc("set-default")) {
         if (cfgRef.defaultRepo != name) {
             cfgRef.defaultRepo = name;
             this->pkgMan.setConfiguration(utils::serialize::toQVariantMap(cfgRef));
@@ -1638,27 +1545,24 @@ int Cli::repo(std::map<std::string, docopt::value> &args)
     return -1;
 }
 
-int Cli::info(std::map<std::string, docopt::value> &args)
+int Cli::info()
 {
     LINGLONG_TRACE("command info");
 
-    QString tier;
-    if (args["TIER"].isString()) {
-        tier = QString::fromStdString(args["TIER"].asString());
-    }
+    QString app = QString::fromStdString(options.appid);
 
-    if (tier.isEmpty()) {
+    if (app.isEmpty()) {
         auto err = LINGLONG_ERR("failed to get layer path").value();
         this->printer.printErr(err);
         return err.code();
     }
 
-    QFileInfo file(tier);
+    QFileInfo file(app);
     auto isLayerFile = file.isFile() && file.suffix() == "layer";
 
-    // 如果是app，显示app tier信息
+    // 如果是app，显示app 包信息
     if (!isLayerFile) {
-        auto fuzzyRef = package::FuzzyReference::parse(tier);
+        auto fuzzyRef = package::FuzzyReference::parse(app);
         if (!fuzzyRef) {
             this->printer.printErr(fuzzyRef.error());
             return -1;
@@ -1689,8 +1593,8 @@ int Cli::info(std::map<std::string, docopt::value> &args)
         return 0;
     }
 
-    // 如果是layer文件，显示layer文件 tier信息
-    const auto layerFile = package::LayerFile::New(tier);
+    // 如果是layer文件，显示layer文件 包信息
+    const auto layerFile = package::LayerFile::New(app);
 
     if (!layerFile) {
         this->printer.printErr(layerFile.error());
@@ -1707,17 +1611,13 @@ int Cli::info(std::map<std::string, docopt::value> &args)
     return 0;
 }
 
-int Cli::content(std::map<std::string, docopt::value> &args)
+int Cli::content()
 {
     LINGLONG_TRACE("command content");
 
-    QString tier;
     QStringList contents{};
-    if (args["APP"].isString()) {
-        tier = QString::fromStdString(args["APP"].asString());
-    }
 
-    auto fuzzyRef = package::FuzzyReference::parse(tier);
+    auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(options.appid));
     if (!fuzzyRef) {
         this->printer.printErr(fuzzyRef.error());
         return -1;
@@ -1765,7 +1665,7 @@ int Cli::content(std::map<std::string, docopt::value> &args)
     return 0;
 }
 
-int Cli::migrate([[maybe_unused]] std::map<std::string, docopt::value> &args)
+int Cli::migrate()
 {
     LINGLONG_TRACE("cli migrate")
 
@@ -1905,8 +1805,7 @@ int Cli::migrate([[maybe_unused]] std::map<std::string, docopt::value> &args)
 }
 
 std::vector<std::string>
-Cli::filePathMapping(std::map<std::string, docopt::value> &args,
-                     const std::vector<std::string> &command) const noexcept
+Cli::filePathMapping(const std::vector<std::string> &command) const noexcept
 {
     std::string targetHostPath;
     std::vector<std::string> execArgs;
@@ -1919,7 +1818,7 @@ Cli::filePathMapping(std::map<std::string, docopt::value> &args,
         }
 
         if (arg == "%%f") {
-            const auto file = args["--file"].asString();
+            const auto file = options.filePath;
 
             if (file.empty()) {
                 continue;
@@ -1931,9 +1830,9 @@ Cli::filePathMapping(std::map<std::string, docopt::value> &args,
         }
 
         if (arg == "%%u") {
-            const auto url = QString::fromStdString(args["--url"].asString());
+            const auto url = QString::fromStdString(options.fileUrl);
 
-            if (url.isEmpty()) {
+            if (options.fileUrl.empty()) {
                 continue;
             }
 
@@ -1960,18 +1859,18 @@ Cli::filePathMapping(std::map<std::string, docopt::value> &args,
 }
 
 void Cli::filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> &list,
-                                     const QString &type) noexcept
+                                     const std::string &type) noexcept
 {
-    // if type is all, do nothing, return tier of all packages.
+    // if type is all, do nothing, return app of all packages.
     if (type == "all") {
         return;
     }
 
     std::vector<api::types::v1::PackageInfoV2> temp;
 
-    // if type is runtime or app, return tier of specific type.
+    // if type is runtime or app, return app of specific type.
     for (const auto &info : list) {
-        if (info.kind == type.toStdString()) {
+        if (info.kind == type) {
             temp.push_back(info);
         }
     }
@@ -2000,18 +1899,18 @@ utils::error::Result<void> Cli::runningAsRoot()
     qDebug() << "environment variables:" << envList;
 
     auto targetArgc = argv.size();
-    std::vector<char*> targetArgv;  
-    for (const auto &arg : argv) {  
+    std::vector<char *> targetArgv;
+    for (const auto &arg : argv) {
         QByteArray byteArray = arg.toUtf8();
         targetArgv.push_back(strdup(byteArray.constData()));
-    }  
+    }
     targetArgv.push_back(nullptr);
 
-    std::vector<char*> targetEnvv;  
-    for (const auto &env : envList) {  
+    std::vector<char *> targetEnvv;
+    for (const auto &env : envList) {
         QByteArray byteArray = env.toUtf8();
         targetEnvv.push_back(strdup(byteArray.constData()));
-    }  
+    }
     targetEnvv.push_back(nullptr);
 
     auto ret = execvpe(pkexecBin,

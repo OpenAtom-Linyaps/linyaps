@@ -18,6 +18,11 @@ Files: external/docopt.cpp/*
 License: MIT
 Copyright: 2012 Vladimir Keleshev, <vladimir@keleshev.com>
 
+# CLI11
+Files: external/CLI11/*
+License: BSD-3-Clause
+Copyright: 2017-2024 University of Cincinnati, developed by Henry
+
 # ytj
 Files: external/ytj/*
 License: LGPL-3.0-only

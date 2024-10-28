@@ -97,6 +97,7 @@ pfl_add_library(
   ytj::ytj
   tl::expected
   linglong::ocppi
+  CLI11::CLI11
   ${YAML_CPP})
 
 function(

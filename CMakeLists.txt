@@ -20,8 +20,12 @@ if(NOT ("${LINGLONG_VERSION}" STREQUAL ""))
   set(PROJECT_VERSION ${LINGLONG_VERSION})
 endif()
 
-set(ENABLE_UAB OFF CACHE BOOL "enable building UAB")
-set(ENABLE_LINGLONG_INSTALLER OFF CACHE BOOL "enable linglong installer")
+set(ENABLE_UAB
+    OFF
+    CACHE BOOL "enable building UAB")
+set(ENABLE_LINGLONG_INSTALLER
+    OFF
+    CACHE BOOL "enable linglong installer")
 
 set(LINGLONG_USERNAME
     "deepin-linglong"
@@ -86,6 +90,13 @@ if(ENABLE_CPM)
     URL "https://github.com/nlohmann/json/archive/refs/tags/v3.5.0.tar.gz"
     EXCLUDE_FROM_ALL ON
     OPTIONS "JSON_BuildTests OFF")
+  CPMFindPackage(
+    NAME CLI11
+    VERSION 2.4.1
+    GITHUB_REPOSITORY CLIUtils/CLI11
+    GIT_TAG v2.4.1
+    EXCLUDE_FROM_ALL ON
+    OPTIONS "CLI11_BUILD_TESTS OFF")
 endif()
 
 set(linglong_EXTERNALS "ytj ytj::ytj")
@@ -115,6 +126,12 @@ find_package(nlohmann_json 3.5.0 QUIET)
 if(NOT nlohmann_json_FOUND)
   list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake.fix)
   find_package(nlohmann_json 3.5.0 REQUIRED)
+endif()
+
+# NOTE: UOS v20 do not have cli11 packaged.
+find_package(CLI11 2.4.1 QUIET)
+if(NOT CLI11_FOUND)
+  list(APPEND linglong_EXTERNALS "CLI11 CLI11::CLI11")
 endif()
 
 function(get_real_target_name output target)

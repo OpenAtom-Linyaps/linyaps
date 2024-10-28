@@ -71,7 +71,7 @@ PackageTask::PackageTask(QDBusConnection connection, QString refSpec, QObject *p
         qFatal("internal adaptor error");
         return;
     }
-    auto ret = linglong::utils::dbus::registerDBusObject(connection, taskObjectPath(), ptr);
+    auto ret = linglong::utils::dbus::registerDBusObject(connection, taskObjectPath(), this);
     if (!ret) {
         qCritical() << ret.error();
         return;

@@ -14,11 +14,29 @@
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
 
-#include <docopt.h>
+#include <CLI/App.hpp>
 
 namespace linglong::cli {
 
 class Printer;
+
+struct CliOptions
+{
+    std::string filePath;
+    std::string fileUrl;
+    std::string workDir;
+    std::string appid;
+    std::string instance;
+    std::string module;
+    std::string type;
+    std::string repoName;
+    std::string repoUrl;
+    std::vector<std::string> commands;
+    bool showDevel;
+    bool showUpgradeList;
+    bool forceOpt;
+    bool confirmOpt;
+};
 
 class Cli : public QObject
 {
@@ -31,13 +49,58 @@ public:
     ~Cli() override = default;
     Cli(Printer &printer,
         ocppi::cli::CLI &cli,
-        runtime::ContainerBuilder &containerBuidler,
+        runtime::ContainerBuilder &containerBuilder,
         api::dbus::v1::PackageManager &pkgMan,
         repo::OSTreeRepo &repo,
         std::unique_ptr<InteractiveNotifier> &&notifier,
         QObject *parent = nullptr);
 
-    static const char USAGE[];
+    int run();
+    int exec();
+    int enter();
+    int ps();
+    int kill();
+    int install();
+    int upgrade();
+    int search();
+    int uninstall();
+    int list();
+    int repo(CLI::App *app);
+    int info();
+    int content();
+    int migrate();
+    int prune();
+
+    void cancelCurrentTask();
+
+    void setCliOptions(const CliOptions &options) noexcept { this->options = options; }
+
+private:
+    std::vector<std::string>
+    filePathMapping(const std::vector<std::string> &command) const noexcept;
+    static void filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> &list,
+                                           const std::string &type) noexcept;
+    void updateAM() noexcept;
+    void printProgress() noexcept;
+    [[nodiscard]] utils::error::Result<std::vector<api::types::v1::CliContainer>>
+    getCurrentContainers() const noexcept;
+    int installFromFile(const QFileInfo &fileInfo, const api::types::v1::CommonOptions &options);
+    utils::error::Result<void> runningAsRoot();
+
+private Q_SLOTS:
+    // maybe use in the future
+    void onTaskAdded(QDBusObjectPath object_path);
+    void onTaskRemoved(
+      QDBusObjectPath object_path, int state, int subState, QString message, double percentage);
+    void onTaskPropertiesChanged(QString interface,
+                                 QVariantMap changed_properties,
+                                 QStringList invalidated_properties);
+    void forwardMigrateDone(int code, QString message);
+    void interaction(QDBusObjectPath object_path, int messageID, QVariantMap additionalMessage);
+
+Q_SIGNALS:
+    void migrateDone(int code, QString message, QPrivateSignal);
+    void taskDone();
 
 private:
     Printer &printer;
@@ -52,53 +115,7 @@ private:
     linglong::api::types::v1::SubState lastSubState{ linglong::api::types::v1::SubState::Unknown };
     QString lastMessage;
     double lastPercentage{ 0 };
-    std::vector<std::string>
-    filePathMapping(std::map<std::string, docopt::value> &args,
-                    const std::vector<std::string> &command) const noexcept;
-    static void filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> &list,
-                                           const QString &type) noexcept;
-    void updateAM() noexcept;
-    void printProgress() noexcept;
-    [[nodiscard]] utils::error::Result<std::vector<api::types::v1::CliContainer>>
-    getCurrentContainers() const noexcept;
-
-public:
-    int run(std::map<std::string, docopt::value> &args);
-    int exec(std::map<std::string, docopt::value> &args);
-    int enter(std::map<std::string, docopt::value> &args);
-    int ps(std::map<std::string, docopt::value> &args);
-    int kill(std::map<std::string, docopt::value> &args);
-    int install(std::map<std::string, docopt::value> &args);
-    int upgrade(std::map<std::string, docopt::value> &args);
-    int search(std::map<std::string, docopt::value> &args);
-    int uninstall(std::map<std::string, docopt::value> &args);
-    int list(std::map<std::string, docopt::value> &args);
-    int repo(std::map<std::string, docopt::value> &args);
-    int info(std::map<std::string, docopt::value> &args);
-    int content(std::map<std::string, docopt::value> &args);
-    int migrate(std::map<std::string, docopt::value> &args);
-    int prune(std::map<std::string, docopt::value> &args);
-
-    void cancelCurrentTask();
-
-private Q_SLOTS:
-    int installFromFile(const QFileInfo &fileInfo, const api::types::v1::CommonOptions &options);
-    // maybe use in the future
-    void onTaskAdded(QDBusObjectPath object_path);
-    void onTaskRemoved(
-      QDBusObjectPath object_path, int state, int subState, QString message, double percentage);
-    void onTaskPropertiesChanged(QString interface,
-                                 QVariantMap changed_properties,
-                                 QStringList invalidated_properties);
-    void forwardMigrateDone(int code, QString message);
-    void interaction(QDBusObjectPath object_path,
-                     int messageID,
-                     QVariantMap additionalMessage);
-    utils::error::Result<void> runningAsRoot();
-
-Q_SIGNALS:
-    void migrateDone(int code, QString message, QPrivateSignal);
-    void taskDone();
+    linglong::cli::CliOptions options;
 };
 
 } // namespace linglong::cli

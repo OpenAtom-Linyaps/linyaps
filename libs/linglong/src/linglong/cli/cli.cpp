@@ -543,6 +543,11 @@ int Cli::installFromFile(const QFileInfo &fileInfo)
         return -1;
     }
     if (pendingReply.isError()) {
+        if (pendingReply.error().type() == QDBusError::AccessDenied) {
+            this->notifier->notify(api::types::v1::InteractionRequest{
+              .summary = "Permission deny, please check whether you are running as root." });
+            return -1;
+        }
         auto err = LINGLONG_ERRV(pendingReply.error().message());
         this->printer.printErr(err);
         return -1;
@@ -650,7 +655,13 @@ int Cli::install(std::map<std::string, docopt::value> &args)
         this->printer.printErr(err);
         return -1;
     }
+
     if (pendingReply.isError()) {
+        if (pendingReply.error().type() == QDBusError::AccessDenied) {
+            this->notifier->notify(api::types::v1::InteractionRequest{
+              .summary = "Permission deny, please check whether you are running as root." });
+            return -1;
+        }
         auto err = LINGLONG_ERRV(pendingReply.error().message());
         this->printer.printErr(err);
         return -1;
@@ -719,7 +730,25 @@ int Cli::upgrade(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    auto reply = this->pkgMan.Update(utils::serialize::toQVariantMap(params)).value();
+    auto pendingReply = this->pkgMan.Update(utils::serialize::toQVariantMap(params));
+    auto reply = pendingReply.value();
+    if (!pendingReply.isFinished()) {
+        auto err = LINGLONG_ERRV("dbus early return");
+        this->printer.printErr(err);
+        return -1;
+    }
+
+    if (pendingReply.isError()) {
+        if (pendingReply.error().type() == QDBusError::AccessDenied) {
+            this->notifier->notify(api::types::v1::InteractionRequest{
+              .summary = "Permission deny, please check whether you are running as root." });
+            return -1;
+        }
+        auto err = LINGLONG_ERRV(pendingReply.error().message());
+        this->printer.printErr(err);
+        return -1;
+    }
+
     auto result =
       utils::serialize::fromQVariantMap<api::types::v1::PackageManager1ResultWithTaskID>(reply);
     if (!result) {
@@ -865,13 +894,21 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
     if (args["--module"].isString()) {
         params.package.packageManager1PackageModule = args["--module"].asString();
     }
-    auto reply = this->pkgMan.Uninstall(utils::serialize::toQVariantMap(params));
-    reply.waitForFinished();
-    if (!reply.isValid()) {
-        this->printer.printErr(LINGLONG_ERRV(reply.error().message(), reply.error().type()));
+    auto pendingReply = this->pkgMan.Uninstall(utils::serialize::toQVariantMap(params));
+    pendingReply.waitForFinished();
+    auto reply = pendingReply.value();
+
+    if (pendingReply.isError()) {
+        if (pendingReply.error().type() == QDBusError::AccessDenied) {
+            this->notifier->notify(api::types::v1::InteractionRequest{
+              .summary = "Permission deny, please check whether you are running as root." });
+            return -1;
+        }
+        auto err = LINGLONG_ERRV(pendingReply.error().message());
+        this->printer.printErr(err);
         return -1;
     }
-    auto result = utils::serialize::fromQVariantMap<api::types::v1::CommonResult>(reply.value());
+    auto result = utils::serialize::fromQVariantMap<api::types::v1::CommonResult>(reply);
     if (!result) {
         this->printer.printErr(result.error());
         return -1;
@@ -1335,6 +1372,11 @@ int Cli::migrate([[maybe_unused]] std::map<std::string, docopt::value> &args)
     }
 
     if (reply.isError()) {
+        if (reply.error().type() == QDBusError::AccessDenied) {
+            this->notifier->notify(api::types::v1::InteractionRequest{
+              .summary = "Permission deny, please check whether you are running as root." });
+            return -1;
+        }
         this->printer.printErr(LINGLONG_ERRV(reply.error().message(), -1));
         return -1;
     }

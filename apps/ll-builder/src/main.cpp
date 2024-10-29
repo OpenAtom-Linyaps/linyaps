@@ -317,6 +317,21 @@ int main(int argc, char **argv)
                   return EINVAL;
               }
 
+              const auto &operation = args.at(1);
+              if (operation == "show") {
+                  const auto &cfg = repo.getConfig();
+                  auto &output = std::cout;
+                  output << "version: " << cfg.version << "\ndefaultRepo: " << cfg.defaultRepo
+                         << "\nrepos:\n"
+                         << "name\turl\n";
+                  std::for_each(cfg.repos.cbegin(), cfg.repos.cend(), [](const auto &pair) {
+                      const auto &[name, url] = pair;
+                      output << name << '\t' << url << "\n";
+                  });
+
+                  return 0;
+              }
+
               if (!parser.isSet(name)) {
                   std::cerr << "please specifying the repo name." << std::endl;
                   return EINVAL;
@@ -334,19 +349,6 @@ int main(int argc, char **argv)
                   if (urlVal.back() == '/') {
                       urlVal.pop_back();
                   }
-              }
-
-              const auto &operation = args.at(1);
-              if (operation == "show") {
-                  const auto &cfg = repo.getConfig();
-                  auto &output = std::cout;
-                  output << "version: " << cfg.version << "\ndefaultRepo: " << cfg.defaultRepo
-                         << "\nrepos:\n"
-                         << "name\turl\n";
-                  std::for_each(cfg.repos.cbegin(), cfg.repos.cend(), [](const auto &pair) {
-                      const auto &[name, url] = pair;
-                      output << name << '\t' << url << "\n";
-                  });
               }
 
               auto newCfg = repo.getConfig();

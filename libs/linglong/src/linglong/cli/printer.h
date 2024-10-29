@@ -18,6 +18,50 @@
 
 namespace linglong::cli {
 
+inline std::string toString(linglong::api::types::v1::SubState subState) noexcept
+{
+    switch (subState) {
+    case linglong::api::types::v1::SubState::AllDone:
+        return "AllDone";
+    case linglong::api::types::v1::SubState::PackageManagerDone:
+        return "PackageManagerDone";
+    case linglong::api::types::v1::SubState::InstallApplication:
+        return "InstallApplication";
+    case linglong::api::types::v1::SubState::InstallBase:
+        return "InstallBase";
+    case linglong::api::types::v1::SubState::InstallRuntime:
+        return "InstallRuntime";
+    case linglong::api::types::v1::SubState::PostAction:
+        return "PostAction";
+    case linglong::api::types::v1::SubState::PreAction:
+        return "PreAction";
+    case linglong::api::types::v1::SubState::Uninstall:
+        return "Uninstall";
+    default:
+        return "UnknownSubState";
+    }
+}
+
+inline std::string toString(linglong::api::types::v1::State state) noexcept
+{
+    switch (state) {
+    case linglong::api::types::v1::State::Canceled:
+        return "Canceled";
+    case linglong::api::types::v1::State::Failed:
+        return "Failed";
+    case linglong::api::types::v1::State::Processing:
+        return "Processing";
+    case linglong::api::types::v1::State::Pending:
+        return "Pending";
+    case linglong::api::types::v1::State::Queued:
+        return "Queued";
+    case linglong::api::types::v1::State::Succeed:
+        return "Succeed";
+    default:
+        return "UnknownState";
+    }
+}
+
 class Printer
 {
 public:
@@ -44,8 +88,6 @@ public:
     virtual void printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &) = 0;
 
 protected:
-    static std::string toString(linglong::api::types::v1::State state) noexcept;
-    static std::string toString(linglong::api::types::v1::SubState state) noexcept;
 };
 
 } // namespace linglong::cli

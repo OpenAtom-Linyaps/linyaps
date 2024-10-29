@@ -859,6 +859,7 @@ set -e
         if (!QFile::link("../files/share", binaryEntries.absoluteFilePath("share"))) {
             return LINGLONG_ERR("link entries share to files share: failed");
         }
+
         if (binaryFiles.exists("lib/systemd/user")) {
             if (!binaryEntries.mkpath("share/systemd/user")) {
                 return LINGLONG_ERR("mkpath files/share/systemd/user: failed");
@@ -869,16 +870,7 @@ set -e
                 return LINGLONG_ERR(ret);
             }
         }
-        if (developFiles.exists("lib/systemd/user")) {
-            if (!developOutput.mkpath("share/systemd/user")) {
-                return LINGLONG_ERR("mkpath files/share/systemd/user: failed");
-            }
-            auto ret = copyDir(developFiles.filePath("lib/systemd/user"),
-                               developEntries.absoluteFilePath("share/systemd/user"));
-            if (!ret.has_value()) {
-                return LINGLONG_ERR(ret);
-            }
-        }
+
         if (project.command.value_or(std::vector<std::string>{}).empty()) {
             return LINGLONG_ERR("command field is required, please specify!");
         }
@@ -1217,8 +1209,8 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     // mergedDir 会自动在释放时删除临时目录，所以要用变量保留住
     utils::error::Result<std::shared_ptr<package::LayerDir>> mergedDir;
     if (modules.size() > 1) {
-        qDebug() << "create temp merge dir."
-                 << "ref: " << curRef->toString() << "modules: " << modules;
+        qDebug() << "create temp merge dir." << "ref: " << curRef->toString()
+                 << "modules: " << modules;
         mergedDir = this->repo.getMergedModuleDir(*curRef, modules);
         if (!mergedDir.has_value()) {
             return LINGLONG_ERR(mergedDir);

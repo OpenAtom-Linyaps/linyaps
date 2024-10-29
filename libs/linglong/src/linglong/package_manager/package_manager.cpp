@@ -482,9 +482,11 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
         return toDBusReply(versionRet);
     }
 
-    auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(packageInfo.id));
+    auto packageRefRet = package::Reference::fromPackageInfo(packageInfo);
+    if (!packageRefRet) {
+        return toDBusReply(packageRefRet);
+    }
     const auto &packageRef = *packageRefRet;
-
     api::types::v1::PackageManager1RequestInteractionAdditionalMessage additionalMessage;
     api::types::v1::InteractionMessageType msgType =
       api::types::v1::InteractionMessageType::Install;
@@ -497,14 +499,14 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
         return toDBusReply(fuzzyRef);
     }
 
-    auto ref = this->repo.clearReference(*fuzzyRef,
-                                         {
-                                           .fallbackToRemote = false // NOLINT
-                                         });
-    if (ref) {
-        auto layerDir = this->repo.getLayerDir(*ref, packageInfo.packageInfoV2Module);
+    auto localRef = this->repo.clearReference(*fuzzyRef,
+                                              {
+                                                .fallbackToRemote = false // NOLINT
+                                              });
+    if (localRef) {
+        auto layerDir = this->repo.getLayerDir(*localRef, packageInfo.packageInfoV2Module);
         if (layerDir && layerDir->valid()) {
-            return toDBusReply(-1, ref->toString() + " is already installed");
+            additionalMessage.localRef = localRef->toString().toStdString();
         }
     }
 
@@ -521,19 +523,6 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
                                "overwrite it, try using '--force'");
         }
     }
-    auto architectureRet = package::Architecture::parse(packageInfo.arch[0]);
-    if (!architectureRet) {
-        return toDBusReply(architectureRet);
-    }
-
-    auto packageRefRet = package::Reference::create(QString::fromStdString(packageInfo.channel),
-                                                    QString::fromStdString(packageInfo.id),
-                                                    *versionRet,
-                                                    *architectureRet);
-    if (!packageRefRet) {
-        return toDBusReply(packageRefRet);
-    }
-    const auto &packageRef = *packageRefRet;
 
     auto refSpec =
       QString{ "%1/%2/%3" }.arg("local",
@@ -697,23 +686,6 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
     }
     auto appLayer = *appLayerIt;
 
-    auto versionRet = package::Version::parse(QString::fromStdString(appLayer.info.version));
-    if (!versionRet) {
-        return toDBusReply(versionRet);
-    }
-
-    const auto &appRef = *appRefRet;
-
-    api::types::v1::PackageManager1RequestInteractionAdditionalMessage additionalMessage;
-    api::types::v1::InteractionMessageType msgType =
-      api::types::v1::InteractionMessageType::Install;
-
-    additionalMessage.remoteRef = appRef.toString().toStdString();
-
-    // Note: same as InstallRef, we should fuzzy the id instead of version
-    auto fuzzyRef = package::FuzzyReference::parse(appRef.id);
-    if (!fuzzyRef) {
-        return toDBusReply(fuzzyRef);
     auto architectureRet = package::Architecture::parse(appLayer.info.arch[0]);
     if (!architectureRet) {
         return toDBusReply(architectureRet);
@@ -728,6 +700,30 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
         return toDBusReply(-1,
                            "app arch:" + architectureRet->toString()
                              + " not match host architecture");
+    }
+
+    auto versionRet = package::Version::parse(QString::fromStdString(appLayer.info.version));
+    if (!versionRet) {
+        return toDBusReply(versionRet);
+    }
+
+    auto appRefRet = package::Reference::fromPackageInfo(appLayer.info);
+    if (!appRefRet) {
+        return toDBusReply(appRefRet);
+    }
+
+    const auto &appRef = *appRefRet;
+
+    api::types::v1::PackageManager1RequestInteractionAdditionalMessage additionalMessage;
+    api::types::v1::InteractionMessageType msgType =
+      api::types::v1::InteractionMessageType::Install;
+
+    additionalMessage.remoteRef = appRef.toString().toStdString();
+
+    // Note: same as InstallRef, we should fuzzy the id instead of version
+    auto fuzzyRef = package::FuzzyReference::parse(appRef.id);
+    if (!fuzzyRef) {
+        return toDBusReply(fuzzyRef);
     }
 
     auto localAppRef = this->repo.clearReference(*fuzzyRef,
@@ -889,8 +885,8 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
                 if (localRef) {
                     auto layerDir = this->repo.getLayerDir(*localRef, info.packageInfoV2Module);
                     if (layerDir && layerDir->valid() && refRet->version == localRef->version) {
-                        // if the completed reference of local installed has the same version, skip
-                        // it
+                        // if the completed reference of local installed has the same version,
+                        // skip it
                         continue;
                     }
                 }
@@ -922,10 +918,11 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
         transaction.commit();
         this->repo.exportReference(appRef);
 
-          auto mergeRet = this->repo.mergeModules();
-          if (!mergeRet.has_value()) {
-              qCritical() << "merge modules failed: " << mergeRet.error().message();
-          }
+        auto mergeRet = this->repo.mergeModules();
+        if (!mergeRet.has_value()) {
+            qCritical() << "merge modules failed: " << mergeRet.error().message();
+        }
+
         taskRef.updateState(linglong::api::types::v1::State::Succeed, "install uab successfully");
     };
 
@@ -977,17 +974,27 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     }
 
     auto curModule = paras->package.packageManager1PackageModule.value_or("binary");
-    auto remoteRef = this->repo.clearReference(*fuzzyRef,
-                                               {
-                                                 .forceRemote = true // NOLINT
-                                               });
-    if (!remoteRef) {
-        return toDBusReply(remoteRef);
+    auto remoteRefRet = this->repo.clearReference(*fuzzyRef,
+                                                  {
+                                                    .forceRemote = true // NOLINT
+                                                  },
+                                                  curModule);
+    if (!remoteRefRet) {
+        return toDBusReply(remoteRefRet);
+    }
+    auto remoteRef = *remoteRefRet;
+
+    // 安装模块之前要先安装binary
+    if (curModule != "binary") {
+        auto layerDir = this->repo.getLayerDir(remoteRef, "binary");
+        if (!layerDir.has_value() || !layerDir->valid()) {
+            return toDBusReply(-1, "to install the module, one must first install the binary");
+        }
     }
 
     api::types::v1::PackageManager1RequestInteractionAdditionalMessage additionalMessage;
     auto msgType = api::types::v1::InteractionMessageType::Install;
-    additionalMessage.remoteRef = remoteRef->toString().toStdString();
+    additionalMessage.remoteRef = remoteRef.toString().toStdString();
 
     // Note: We can't clear the local Reference with a specific version.
     fuzzyRef->version.reset();
@@ -1000,41 +1007,19 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
         if (layerDir && layerDir->valid()) {
             additionalMessage.localRef = localRef->toString().toStdString();
         }
+
         // 如果要安装module，并且没有指定版本，应该使用已安装的binary的版本
         if (curModule != "binary" && !fuzzyRef->version.has_value()) {
             fuzzyRef->version = localRef->version;
         }
     }
-    // 查询远程应用
-    auto ref = this->repo.clearReference(*fuzzyRef,
-                                         {
-                                           .forceRemote = true // NOLINT
-                                         },
-                                         curModule);
-    if (!ref) {
-        return toDBusReply(ref);
-    }
-    auto reference = *ref;
-
-    // 安装模块之前要先安装binary
-    if (curModule != "binary") {
-        auto layerDir = this->repo.getLayerDir(reference, "binary");
-        if (!layerDir.has_value() || !layerDir->valid()) {
-            return toDBusReply(-1, "to install the module, one must first install the binary");
-        }
-    }
-
-    auto refSpec =
-      QString{ "%1:%2/%3" }.arg(QString::fromStdString(this->repo.getConfig().defaultRepo),
-                                reference.toString(),
-                                QString::fromStdString(curModule));
 
     if (!additionalMessage.localRef.empty()) {
-        if (remoteRef->version == localRef->version) {
+        if (remoteRef.version == localRef->version) {
             return toDBusReply(-1, localRef->toString() + " is already installed");
         }
 
-        if (remoteRef->version > localRef->version) {
+        if (remoteRef.version > localRef->version) {
             msgType = api::types::v1::InteractionMessageType::Upgrade;
         } else if (!paras->options.force) {
             return toDBusReply(-1,
@@ -1044,8 +1029,8 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     }
 
     auto refSpec =
-      QString{ "%1/%2/%3" }.arg(QString::fromStdString(this->repo.getConfig().defaultRepo),
-                                remoteRef->toString(),
+      QString{ "%1:%2/%3" }.arg(QString::fromStdString(this->repo.getConfig().defaultRepo),
+                                remoteRef.toString(),
                                 QString::fromStdString(curModule));
     auto task = std::find_if(this->taskList.cbegin(),
                              this->taskList.cend(),
@@ -1058,20 +1043,14 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
 
     auto *taskPtr = new PackageTask{ connection(), refSpec };
     auto &taskRef = *(this->taskList.emplace_back(taskPtr));
-    auto reference = *remoteRef;
     bool skipInteraction = paras->options.skipInteraction;
-
-    std::optional<package::Reference> oldRef;
-    if (localRef) {
-        oldRef = std::move(localRef).value();
-    }
 
     // Note: do not capture any reference of variable which defined in this func.
     // it will be a dangling reference.
     taskRef.setJob([this,
                     &taskRef,
-                    reference,
-                    oldRef = std::move(oldRef),
+                    remoteRef,
+                    localRef = std::move(localRef).value(),
                     curModule,
                     skipInteraction,
                     msgType,
@@ -1102,11 +1081,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
             return;
         }
 
-        std::optional<std::reference_wrapper<const package::Reference>> ref;
-        if (oldRef) {
-            ref = std::cref(*oldRef);
-        }
-        this->Install(taskRef, reference, ref, curModule);
+        this->Install(taskRef, remoteRef, localRef, curModule);
     });
     // notify task list change
     Q_EMIT TaskListChanged(taskRef.taskObjectPath());
@@ -1114,13 +1089,13 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
       .taskObjectPath = taskRef.taskObjectPath().toStdString(),
       .code = 0,
-      .message = (remoteRef->toString() + " is now installing").toStdString(),
+      .message = (remoteRef.toString() + " is now installing").toStdString(),
     });
 }
 
 void PackageManager::Install(PackageTask &taskContext,
                              const package::Reference &newRef,
-                             std::optional<std::reference_wrapper<const package::Reference>> oldRef,
+                             std::optional<package::Reference> oldRef,
                              const std::string &module) noexcept
 {
     taskContext.updateState(linglong::api::types::v1::State::Processing,
@@ -1138,9 +1113,8 @@ void PackageManager::Install(PackageTask &taskContext,
         auto ret = this->removeAfterInstall(oldRef.value());
         if (!ret) {
             taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                    "Failed to remove old reference "
-                                      % oldRef.value().get().toString() % " after install "
-                                      % newRef.toString());
+                                    "Failed to remove old reference " % oldRef->toString()
+                                      % " after install " % newRef.toString());
             return;
         }
     }
@@ -1159,7 +1133,8 @@ void PackageManager::InstallRef(PackageTask &taskContext,
                                "Beginning to install");
     auto currentArch = package::Architecture::currentCPUArchitecture();
     if (!currentArch) {
-        taskContext.updateStatus(InstallTask::Failed, currentArch.error().message());
+        taskContext.updateState(linglong::api::types::v1::State::Failed,
+                                currentArch.error().message());
         return;
     }
 
@@ -1244,7 +1219,8 @@ void PackageManager::InstallRef(PackageTask &taskContext,
     if (!mergeRet.has_value()) {
         qCritical() << "merge modules failed: " << mergeRet.error().message();
     }
-    taskContext.updateState(PackageTask::Succeed, "Install " + ref.toString() + " success");
+    taskContext.updateState(linglong::api::types::v1::State::Succeed,
+                            "Install " + ref.toString() + " success");
     t.commit();
 }
 
@@ -1342,7 +1318,6 @@ void PackageManager::UninstallRef(PackageTask &taskContext,
         return;
     }
 
-    taskContext.updateState(PackageTask::State::Succeed,
     transaction.commit();
 }
 
@@ -1444,11 +1419,13 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
 
 void PackageManager::Update(PackageTask &taskContext,
                             const package::Reference &ref,
-                            const package::Reference &newRef) noexcept
+                            const package::Reference &newRef,
+                            const std::string &module) noexcept
 {
     LINGLONG_TRACE("update " + ref.toString());
     taskContext.updateState(api::types::v1::State::Processing, "start to uninstalling package");
     auto modules = this->repo.getModuleList(ref);
+
     utils::Transaction t;
     t.addRollBack([this, &newRef, &modules]() noexcept {
         for (const auto &module : modules) {
@@ -1458,19 +1435,16 @@ void PackageManager::Update(PackageTask &taskContext,
             }
         }
     });
+
     for (const auto &module : modules) {
         qDebug() << "update module:" << QString::fromStdString(module);
+
         this->InstallRef(taskContext, newRef, module);
-        if (taskContext.state() == PackageTask::State::Failed
-            || taskContext.state() == PackageTask::State::Canceled) {
-            auto msg = QString("Upgrade %1/%3 to %2/%3 faield")
-                         .arg(ref.toString())
-                         .arg(newRef.toString())
-                         .arg(module.c_str());
-            taskContext.updateStatus(InstallTask::Failed, msg);
+        if (isTaskDone(taskContext.subState())) {
             return;
         }
     }
+
     t.addRollBack([this, &newRef, &ref]() noexcept {
         this->repo.unexportReference(newRef);
         this->repo.exportReference(ref);
@@ -1479,6 +1453,7 @@ void PackageManager::Update(PackageTask &taskContext,
     if (isTaskDone(taskContext.subState())) {
         return;
     }
+
     this->repo.unexportReference(ref);
     this->repo.exportReference(newRef);
     t.commit();
@@ -1493,10 +1468,11 @@ void PackageManager::Update(PackageTask &taskContext,
 
     for (const auto &module : modules) {
         // we don't need to set task state to failed after install newer version successfully
-    auto ret = removeAfterInstall(ref);
+        auto ret = removeAfterInstall(ref);
         if (!ret) {
-            qCritical() << "get state of ref" << ref.toString() << "failed:" << ret.error().message();
-        return;
+            qCritical() << "get state of ref" << ref.toString()
+                        << "failed:" << ret.error().message();
+            return;
         }
     }
     auto mergeRet = this->repo.mergeModules();

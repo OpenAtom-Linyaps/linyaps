@@ -366,19 +366,6 @@ int main(int argc, char **argv)
                   }
               }
 
-              const auto &operation = args.at(1);
-              if (operation == "show") {
-                  const auto &cfg = repo.getConfig();
-                  auto &output = std::cout;
-                  output << "version: " << cfg.version << "\ndefaultRepo: " << cfg.defaultRepo
-                         << "\nrepos:\n"
-                         << "name\turl\n";
-                  std::for_each(cfg.repos.cbegin(), cfg.repos.cend(), [](const auto &pair) {
-                      const auto &[name, url] = pair;
-                      std::cout << name << '\t' << url << "\n";
-                  });
-              }
-
               auto newCfg = repo.getConfig();
               if (operation == "add") {
                   if (urlVal.empty()) {

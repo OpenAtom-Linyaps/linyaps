@@ -780,6 +780,11 @@ utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfi
             Q_ASSERT(false);
         }
     });
+
+    if (auto ret = this->cache->rebuildCache(cfg, *(this->ostreeRepo)); !ret) {
+        return LINGLONG_ERR(ret);
+    }
+
     this->m_clientFactory.setServer(cfg.repos.at(cfg.defaultRepo));
     this->cfg = cfg;
 

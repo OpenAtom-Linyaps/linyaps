@@ -1182,6 +1182,26 @@ int Cli::prune(std::map<std::string, docopt::value> &args)
 {
     LINGLONG_TRACE("command prune");
 
+    QEventLoop loop;
+    QString jobIDReply = "";
+    auto ret = connect(
+      &this->pkgMan,
+      &api::dbus::v1::PackageManager::PruneFinished,
+      [this, &loop, &jobIDReply](const QString &jobID, const QVariantMap &data) {
+          if (jobIDReply != jobID) {
+              return;
+          }
+          auto ret =
+            utils::serialize::fromQVariantMap<api::types::v1::PackageManager1SearchResult>(data);
+          if (!ret) {
+              this->printer.printErr(ret.error());
+              loop.exit(-1);
+          }
+
+          this->printer.printPruneResult(*ret->packages);
+          loop.exit(0);
+      });
+
     auto reply = this->pkgMan.Prune();
     reply.waitForFinished();
     if (!reply.isValid()) {
@@ -1206,25 +1226,8 @@ int Cli::prune(std::map<std::string, docopt::value> &args)
         return -1;
     }
 
-    QEventLoop loop;
+    jobIDReply = QString::fromStdString(result->id.value());
 
-    connect(&this->pkgMan,
-            &api::dbus::v1::PackageManager::PruneFinished,
-            [&](const QString &jobID, const QVariantMap &data) {
-                if (result->id->c_str() != jobID) {
-                    return;
-                }
-                auto result =
-                  utils::serialize::fromQVariantMap<api::types::v1::PackageManager1SearchResult>(
-                    data);
-                if (!result) {
-                    this->printer.printErr(result.error());
-                    loop.exit(-1);
-                }
-
-                this->printer.printPruneResult(*result->packages);
-                loop.exit(0);
-            });
     return loop.exec();
 }
 

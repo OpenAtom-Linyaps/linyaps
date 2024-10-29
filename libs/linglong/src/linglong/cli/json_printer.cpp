@@ -72,8 +72,8 @@ void JSONPrinter::printTaskState(const double percentage,
     nlohmann::json json;
     json["percentage"] = percentage;
     json["message"] = message.toStdString();
-    json["state"] = Printer::toString(state);
-    json["subState"] = Printer::toString(subState);
+    json["state"] = linglong::cli::toString(state);
+    json["subState"] = linglong::cli::toString(subState);
 
     std::cout << json.dump() << std::endl;
 }

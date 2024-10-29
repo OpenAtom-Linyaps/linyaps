@@ -74,16 +74,13 @@ public:
     auto operator=(PackageManager &&) -> PackageManager & = delete;
     void Update(PackageTask &taskContext,
                 const package::Reference &ref,
-                const package::Reference &newRef) noexcept;
+                const package::Reference &newRef,
+                const std::string &module) noexcept;
 
 public
     Q_SLOT : [[nodiscard]] auto getConfiguration() const noexcept -> QVariantMap;
     void setConfiguration(const QVariantMap &parameters) noexcept;
     auto Install(const QVariantMap &parameters) noexcept -> QVariantMap;
-    void Install(PackageTask &taskContext,
-                 const package::Reference &newRef,
-                 std::optional<std::reference_wrapper<const package::Reference>> oldRef,
-                 const std::string &module) noexcept;
     auto InstallFromFile(const QDBusUnixFileDescriptor &fd,
                          const QString &fileType,
                          const QVariantMap &options) noexcept -> QVariantMap;
@@ -112,6 +109,10 @@ Q_SIGNALS:
     void ReplyReceived(const QVariantMap &replies);
 
 private:
+    void Install(PackageTask &taskContext,
+                 const package::Reference &newRef,
+                 std::optional<package::Reference> oldRef,
+                 const std::string &module) noexcept;
     void InstallRef(PackageTask &taskContext,
                     const package::Reference &ref,
                     const std::string &module) noexcept;

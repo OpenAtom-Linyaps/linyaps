@@ -7,7 +7,6 @@
 #include "linglong/cli/cli.h"
 
 #include "linglong/api/types/v1/CommonResult.hpp"
-#include "linglong/api/types/v1/InteractionRequest.hpp"
 #include "linglong/api/types/v1/InteractionReply.hpp"
 #include "linglong/api/types/v1/InteractionRequest.hpp"
 #include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
@@ -387,8 +386,10 @@ int Cli::run(std::map<std::string, docopt::value> &args)
             this->printer.printErr(runtimeRefRet.error());
             return -1;
         }
+        auto &runtimeRef = *runtimeRefRet;
+
         if (info->uuid->empty()) {
-            auto runtimeLayerDirRet = this->repository.getMergedModuleDir(*runtimeRef);
+            auto runtimeLayerDirRet = this->repository.getMergedModuleDir(runtimeRef);
             if (!runtimeLayerDirRet) {
                 this->printer.printErr(runtimeLayerDirRet.error());
                 return -1;

@@ -455,7 +455,7 @@ int Cli::run(std::map<std::string, docopt::value> &args)
     auto dumpContainerInfo = [app = curAppRef->toString().toStdString(),
                               base = baseRef->toString().toStdString(),
                               containerID = newContainerID.toStdString(),
-                              runtime = runtimeLayerRef.value(),
+                              runtime = runtimeLayerRef,
                               this]() -> bool {
         LINGLONG_TRACE("dump info")
         std::error_code ec;
@@ -614,24 +614,28 @@ int Cli::exec(std::map<std::string, docopt::value> &args)
 {
     LINGLONG_TRACE("ll-cli exec");
 
-    auto containers = this->ociCLI.list();
+    auto containers = getCurrentContainers();
     if (!containers) {
         auto err = LINGLONG_ERRV(containers);
         this->printer.printErr(err);
         return -1;
     }
 
+    std::string containerID;
     auto pagoda = args["PAGODA"].asString();
     for (const auto &container : *containers) {
-        auto decodedID = QString(QByteArray::fromBase64(container.id.c_str()));
-        if (!decodedID.startsWith(QString::fromStdString(pagoda))) {
-            continue;
+        if (container.package == pagoda) {
+            containerID = container.id;
+            break;
         }
-        pagoda = container.id;
-        break;
     }
 
-    qInfo() << "select pagoda" << QString::fromStdString(pagoda);
+    if (containerID.empty()) {
+        this->printer.printErr(LINGLONG_ERRV("no container found"));
+        return -1;
+    }
+
+    qInfo() << "select pagoda" << QString::fromStdString(containerID);
 
     std::vector<std::string> command = args["COMMAND"].asStringList();
     if (command.size() != 0) {
@@ -750,27 +754,31 @@ int Cli::kill(std::map<std::string, docopt::value> &args)
 {
     LINGLONG_TRACE("command kill");
 
-    auto containers = this->ociCLI.list();
+    auto containers = getCurrentContainers();
     if (!containers) {
         auto err = LINGLONG_ERRV(containers);
         this->printer.printErr(err);
         return -1;
     }
 
+    std::string containerID;
     auto pagoda = args["PAGODA"].asString();
     for (const auto &container : *containers) {
-        auto decodedID = QString(QByteArray::fromBase64(container.id.c_str()));
-        if (!decodedID.startsWith(QString::fromStdString(pagoda))) {
-            continue;
+        if (container.package == pagoda) {
+            containerID = container.id;
+            break;
         }
-        pagoda = container.id;
-        break;
     }
 
-    qInfo() << "select pagoda" << QString::fromStdString(pagoda);
+    if (containerID.empty()) {
+        this->printer.printErr(LINGLONG_ERRV("no container found"));
+        return -1;
+    }
 
-    auto result =
-      this->ociCLI.kill(ocppi::runtime::ContainerID(pagoda), ocppi::runtime::Signal("SIGTERM"));
+    qInfo() << "select pagoda" << QString::fromStdString(containerID);
+
+    auto result = this->ociCLI.kill(ocppi::runtime::ContainerID(containerID),
+                                    ocppi::runtime::Signal("SIGTERM"));
     if (!result) {
         auto err = LINGLONG_ERRV(result);
         this->printer.printErr(err);

@@ -179,6 +179,7 @@ void Cli::onTaskPropertiesChanged(QString interface,                            
 
 void Cli::interaction(QDBusObjectPath object_path, int messageID, QVariantMap additionalMessage)
 {
+    LINGLONG_TRACE("interactive with user")
     if (object_path.path() != taskObjectPath) {
         return;
     }
@@ -194,12 +195,21 @@ void Cli::interaction(QDBusObjectPath object_path, int messageID, QVariantMap ad
     req.summary = "Package Manager needs to confirm request.";
 
     switch (messageType) {
-    case api::types::v1::InteractionMessageType::Upgrade:
+    case api::types::v1::InteractionMessageType::Upgrade: {
         auto tips = QString("The lower version %1 is currently installed. Do you "
                             "want to continue installing the latest version %2?")
                       .arg(QString::fromStdString(msg->localRef))
                       .arg(QString::fromStdString(msg->remoteRef));
         req.body = tips.toStdString();
+    } break;
+    case api::types::v1::InteractionMessageType::Downgrade:
+    case api::types::v1::InteractionMessageType::Install:
+    case api::types::v1::InteractionMessageType::Uninstall:
+        [[fallthrough]];
+    case api::types::v1::InteractionMessageType::Unknown:
+        // reserve for future use
+        req.body = "unknown interaction type";
+        break;
     }
 
     std::string action;
@@ -221,10 +231,18 @@ void Cli::interaction(QDBusObjectPath object_path, int messageID, QVariantMap ad
 
     auto reply = api::types::v1::InteractionReply{ .action = action };
 
-    QDBusReply<void> dbusReply =
+    QDBusPendingReply<void> dbusReply =
       this->pkgMan.ReplyInteraction(object_path, utils::serialize::toQVariantMap(reply));
-    if (!dbusReply.isValid()) {
-        qCritical() << "call ReplyInteraction failed. " << dbusReply.error();
+    dbusReply.waitForFinished();
+    if (dbusReply.isError()) {
+        if (dbusReply.error().type() == QDBusError::AccessDenied) {
+            this->notifier->notify(api::types::v1::InteractionRequest{
+              .summary = "Permission deny, please check whether you are running as root." });
+            return;
+        }
+
+        this->printer.printErr(
+          LINGLONG_ERRV(dbusReply.error().message(), dbusReply.error().type()));
     }
 }
 
@@ -666,7 +684,7 @@ int Cli::exec(std::map<std::string, docopt::value> &args)
     opt.gid = ::getgid();
 
     auto result =
-      this->ociCLI.exec(pagoda, command[0], { command.begin() + 1, command.end() }, opt);
+      this->ociCLI.exec(containerID, command[0], { command.begin() + 1, command.end() }, opt);
     if (!result) {
         auto err = LINGLONG_ERRV(result);
         this->printer.printErr(err);
@@ -830,11 +848,6 @@ int Cli::installFromFile(const QFileInfo &fileInfo, const api::types::v1::Common
                                                      fileInfo.suffix(),
                                                      utils::serialize::toQVariantMap(options));
     pendingReply.waitForFinished();
-    if (!pendingReply.isFinished()) {
-        auto err = LINGLONG_ERRV("dbus early return");
-        this->printer.printErr(err);
-        return -1;
-    }
     if (pendingReply.isError()) {
         if (pendingReply.error().type() == QDBusError::AccessDenied) {
             this->notifier->notify(api::types::v1::InteractionRequest{
@@ -846,9 +859,9 @@ int Cli::installFromFile(const QFileInfo &fileInfo, const api::types::v1::Common
         return -1;
     }
 
-    auto reply = pendingReply.value();
     auto result =
-      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1PackageTaskResult>(reply);
+      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1PackageTaskResult>(
+        pendingReply.value());
     if (!result) {
         qCritical() << result.error();
         qCritical() << "linglong bug detected.";
@@ -963,12 +976,7 @@ int Cli::install(std::map<std::string, docopt::value> &args)
     }
 
     auto pendingReply = this->pkgMan.Install(utils::serialize::toQVariantMap(params));
-    auto reply = pendingReply.value();
-    if (!pendingReply.isFinished()) {
-        auto err = LINGLONG_ERRV("dbus early return");
-        this->printer.printErr(err);
-        return -1;
-    }
+    pendingReply.waitForFinished();
 
     if (pendingReply.isError()) {
         if (pendingReply.error().type() == QDBusError::AccessDenied) {
@@ -976,13 +984,15 @@ int Cli::install(std::map<std::string, docopt::value> &args)
               .summary = "Permission deny, please check whether you are running as root." });
             return -1;
         }
-        auto err = LINGLONG_ERRV(pendingReply.error().message());
-        this->printer.printErr(err);
+
+        this->printer.printErr(
+          LINGLONG_ERRV(pendingReply.error().message(), pendingReply.error().type()));
         return -1;
     }
 
     auto result =
-      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1PackageTaskResult>(reply);
+      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1PackageTaskResult>(
+        pendingReply.value());
     if (!result) {
         qCritical() << "bug detected:" << result.error().message();
         std::abort();
@@ -1040,12 +1050,7 @@ int Cli::upgrade(std::map<std::string, docopt::value> &args)
     }
 
     auto pendingReply = this->pkgMan.Update(utils::serialize::toQVariantMap(params));
-    auto reply = pendingReply.value();
-    if (!pendingReply.isFinished()) {
-        auto err = LINGLONG_ERRV("dbus early return");
-        this->printer.printErr(err);
-        return -1;
-    }
+    pendingReply.waitForFinished();
 
     if (pendingReply.isError()) {
         if (pendingReply.error().type() == QDBusError::AccessDenied) {
@@ -1053,13 +1058,15 @@ int Cli::upgrade(std::map<std::string, docopt::value> &args)
               .summary = "Permission deny, please check whether you are running as root." });
             return -1;
         }
+
         auto err = LINGLONG_ERRV(pendingReply.error().message());
         this->printer.printErr(err);
         return -1;
     }
 
     auto result =
-      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1PackageTaskResult>(reply);
+      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1PackageTaskResult>(
+        pendingReply.value());
     if (!result) {
         this->printer.printErr(result.error());
         return -1;
@@ -1121,14 +1128,23 @@ int Cli::search(std::map<std::string, docopt::value> &args)
         .id = text,
     };
 
-    auto reply = this->pkgMan.Search(utils::serialize::toQVariantMap(params));
-    reply.waitForFinished();
-    if (!reply.isValid()) {
-        this->printer.printErr(LINGLONG_ERRV(reply.error().message(), reply.error().type()));
+    auto pendingReply = this->pkgMan.Search(utils::serialize::toQVariantMap(params));
+    pendingReply.waitForFinished();
+
+    if (pendingReply.isError()) {
+        if (pendingReply.error().type() == QDBusError::AccessDenied) {
+            this->notifier->notify(api::types::v1::InteractionRequest{
+              .summary = "Permission deny, please check whether you are running as root." });
+            return -1;
+        }
+
+        auto err = LINGLONG_ERRV(pendingReply.error().message());
+        this->printer.printErr(err);
         return -1;
     }
-    auto result =
-      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1JobInfo>(reply.value());
+
+    auto result = utils::serialize::fromQVariantMap<api::types::v1::PackageManager1JobInfo>(
+      pendingReply.value());
     if (!result) {
         this->printer.printErr(result.error());
         return -1;
@@ -1203,19 +1219,23 @@ int Cli::prune(std::map<std::string, docopt::value> &args)
           loop.exit(0);
       });
 
-    auto reply = this->pkgMan.Prune();
-    reply.waitForFinished();
-    if (!reply.isValid()) {
-        this->printer.printErr(LINGLONG_ERRV(reply.error().message(), reply.error().type()));
-        return -1;
-    }
-    if (reply.isError()) {
-        this->printer.printErr(LINGLONG_ERRV(reply.error().message(), -1));
+    auto pendingReply = this->pkgMan.Prune();
+    pendingReply.waitForFinished();
+
+    if (pendingReply.isError()) {
+        if (pendingReply.error().type() == QDBusError::AccessDenied) {
+            this->notifier->notify(api::types::v1::InteractionRequest{
+              .summary = "Permission deny, please check whether you are running as root." });
+            return -1;
+        }
+
+        auto err = LINGLONG_ERRV(pendingReply.error().message());
+        this->printer.printErr(err);
         return -1;
     }
 
-    auto result =
-      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1JobInfo>(reply.value());
+    auto result = utils::serialize::fromQVariantMap<api::types::v1::PackageManager1JobInfo>(
+      pendingReply.value());
     if (!result) {
         this->printer.printErr(result.error());
         return -1;
@@ -1285,7 +1305,6 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
     }
     auto pendingReply = this->pkgMan.Uninstall(utils::serialize::toQVariantMap(params));
     pendingReply.waitForFinished();
-    auto reply = pendingReply.value();
 
     if (pendingReply.isError()) {
         if (pendingReply.error().type() == QDBusError::AccessDenied) {
@@ -1293,12 +1312,15 @@ int Cli::uninstall(std::map<std::string, docopt::value> &args)
               .summary = "Permission deny, please check whether you are running as root." });
             return -1;
         }
+
         auto err = LINGLONG_ERRV(pendingReply.error().message());
         this->printer.printErr(err);
         return -1;
     }
+
     auto result =
-      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1PackageTaskResult>(reply);
+      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1PackageTaskResult>(
+        pendingReply.value());
     if (!result) {
         this->printer.printErr(result.error());
         return -1;
@@ -1347,8 +1369,6 @@ int Cli::list(std::map<std::string, docopt::value> &args)
     LINGLONG_TRACE("command list");
 
     QString type;
-    bool isShowUpgradeList = false;
-
     if (args["--type"].isString()) {
         type = QString::fromStdString(args["--type"].asString());
     }
@@ -1363,104 +1383,96 @@ int Cli::list(std::map<std::string, docopt::value> &args)
         filterPackageInfosFromType(*pkgs, type);
     }
 
-    if (args["--upgradable"].isBool()) {
-        isShowUpgradeList = args["--upgradable"].asBool();
-    } else {
+    if (!args["--upgradable"].asBool()) {
         this->printer.printPackages(*pkgs);
         return 0;
     }
 
-    if (isShowUpgradeList) {
-        std::vector<api::types::v1::UpgradeListResult> upgradeList;
-
-        auto fullFuzzyRef = package::FuzzyReference::parse(QString::fromStdString("."));
-        if (!fullFuzzyRef) {
-            return -1;
-        }
-
-        auto remotePkgs = this->repository.listRemote(*fullFuzzyRef);
-        if (!remotePkgs.has_value()) {
-            return -1;
-        }
-
-        utils::error::Result<package::Reference> reference = LINGLONG_ERR("reference not exists");
-
-        for (const auto &pkg : *pkgs) {
-            auto fuzzy = package::FuzzyReference::parse(QString::fromStdString(pkg.id));
-            if (!fuzzy) {
-                this->printer.printErr(fuzzy.error());
-                continue;
-            }
-
-            reference = LINGLONG_ERR("reference not exists");
-
-            for (auto record : *remotePkgs) {
-                auto recordStr = nlohmann::json(record).dump();
-                if (fuzzy->channel && fuzzy->channel->toStdString() != record.channel) {
-                    continue;
-                }
-                if (fuzzy->id.toStdString() != record.id) {
-                    continue;
-                }
-                auto version = package::Version::parse(QString::fromStdString(record.version));
-                if (!version) {
-                    qWarning() << "Ignore invalid package record" << recordStr.c_str()
-                               << version.error();
-                    continue;
-                }
-                if (record.arch.empty()) {
-                    qWarning() << "Ignore invalid package record";
-                    continue;
-                }
-
-                auto arch = package::Architecture::parse(record.arch[0]);
-                if (!arch) {
-                    qWarning() << "Ignore invalid package record" << recordStr.c_str()
-                               << arch.error();
-                    continue;
-                }
-                auto channel = QString::fromStdString(record.channel);
-                auto currentRef = package::Reference::create(channel, fuzzy->id, *version, *arch);
-                if (!currentRef) {
-                    qWarning() << "Ignore invalid package record" << recordStr.c_str()
-                               << currentRef.error();
-                    continue;
-                }
-                if (!reference) {
-                    reference = *currentRef;
-                    continue;
-                }
-
-                if (reference->version >= currentRef->version) {
-                    continue;
-                }
-
-                reference = *currentRef;
-            }
-
-            if (!reference) {
-                std::cout << "Failed to find the package: " << fuzzy->id.toStdString()
-                          << ", maybe it is local package, skip it." << std::endl;
-                continue;
-            }
-
-            const auto oldVersion = pkg.version;
-            const auto newVersion = reference->version.toString().toStdString();
-
-            if (newVersion <= oldVersion) {
-                qDebug() << "The local package" << QString::fromStdString(pkg.id)
-                         << "version is higher than the remote repository version, skip it.";
-                continue;
-            }
-
-            upgradeList.emplace_back(api::types::v1::UpgradeListResult{ .id = pkg.id,
-                                                                        .newVersion = newVersion,
-                                                                        .oldVersion = oldVersion });
-        }
-
-        this->printer.printUpgradeList(upgradeList);
+    std::vector<api::types::v1::UpgradeListResult> upgradeList;
+    auto fullFuzzyRef = package::FuzzyReference::parse(QString::fromStdString("."));
+    if (!fullFuzzyRef) {
+        return -1;
     }
 
+    auto remotePkgs = this->repository.listRemote(*fullFuzzyRef);
+    if (!remotePkgs.has_value()) {
+        return -1;
+    }
+
+    utils::error::Result<package::Reference> reference = LINGLONG_ERR("reference not exists");
+    for (const auto &pkg : *pkgs) {
+        auto fuzzy = package::FuzzyReference::parse(QString::fromStdString(pkg.id));
+        if (!fuzzy) {
+            this->printer.printErr(fuzzy.error());
+            continue;
+        }
+
+        reference = LINGLONG_ERR("reference not exists");
+
+        for (auto record : *remotePkgs) {
+            auto recordStr = nlohmann::json(record).dump();
+            if (fuzzy->channel && fuzzy->channel->toStdString() != record.channel) {
+                continue;
+            }
+            if (fuzzy->id.toStdString() != record.id) {
+                continue;
+            }
+            auto version = package::Version::parse(QString::fromStdString(record.version));
+            if (!version) {
+                qWarning() << "Ignore invalid package record" << recordStr.c_str()
+                           << version.error();
+                continue;
+            }
+            if (record.arch.empty()) {
+                qWarning() << "Ignore invalid package record";
+                continue;
+            }
+
+            auto arch = package::Architecture::parse(record.arch[0]);
+            if (!arch) {
+                qWarning() << "Ignore invalid package record" << recordStr.c_str() << arch.error();
+                continue;
+            }
+            auto channel = QString::fromStdString(record.channel);
+            auto currentRef = package::Reference::create(channel, fuzzy->id, *version, *arch);
+            if (!currentRef) {
+                qWarning() << "Ignore invalid package record" << recordStr.c_str()
+                           << currentRef.error();
+                continue;
+            }
+            if (!reference) {
+                reference = *currentRef;
+                continue;
+            }
+
+            if (reference->version >= currentRef->version) {
+                continue;
+            }
+
+            reference = *currentRef;
+        }
+
+        if (!reference) {
+            std::cout << "Failed to find the package: " << fuzzy->id.toStdString()
+                      << ", maybe it is local package, skip it." << std::endl;
+            continue;
+        }
+
+        const auto oldVersion = pkg.version;
+        const auto newVersion = reference->version.toString().toStdString();
+
+        if (newVersion <= oldVersion) {
+            qDebug() << "The local package" << QString::fromStdString(pkg.id)
+                     << "version is higher than the remote repository version, skip it.";
+            continue;
+        }
+
+        upgradeList.emplace_back(api::types::v1::UpgradeListResult{ .id = pkg.id,
+                                                                    .newVersion = newVersion,
+                                                                    .oldVersion = oldVersion });
+    }
+
+    this->printer.printUpgradeList(upgradeList);
     return 0;
 }
 
@@ -1786,18 +1798,14 @@ int Cli::migrate([[maybe_unused]] std::map<std::string, docopt::value> &args)
     auto reply = this->pkgMan.Migrate();
     reply.waitForFinished();
 
-    if (!reply.isValid()) {
-        this->printer.printErr(LINGLONG_ERRV("invalid reply from migrate", -1));
-        return -1;
-    }
-
     if (reply.isError()) {
         if (reply.error().type() == QDBusError::AccessDenied) {
             this->notifier->notify(api::types::v1::InteractionRequest{
               .summary = "Permission deny, please check whether you are running as root." });
             return -1;
         }
-        this->printer.printErr(LINGLONG_ERRV(reply.error().message(), -1));
+
+        this->printer.printErr(LINGLONG_ERRV(reply.error().message(), reply.error().type()));
         return -1;
     }
 

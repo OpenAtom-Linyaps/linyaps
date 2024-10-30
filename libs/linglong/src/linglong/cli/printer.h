@@ -86,8 +86,6 @@ public:
                                 api::types::v1::SubState subState) = 0;
     virtual void printContent(const QStringList &filePaths) = 0;
     virtual void printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &) = 0;
-
-protected:
 };
 
 } // namespace linglong::cli

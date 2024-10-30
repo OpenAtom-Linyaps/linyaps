@@ -173,7 +173,8 @@ using namespace linglong::utils::global;
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
-    applicationInitializte();
+
+    applicationInitialize();
 
     bool versionFlag = false, jsonFlag = false, noDBus = false;
 

@@ -318,10 +318,13 @@ utils::error::Result<void>
 PackageManager::removeAfterInstall(const package::Reference &oldRef) noexcept
 {
     LINGLONG_TRACE("remove old reference after install")
-    this->repo.unexportReference(oldRef);
-    auto needDelay = isRefBusy(oldRef);
 
-    if (needDelay) {
+    auto needDelayRet = isRefBusy(oldRef);
+    if (!needDelayRet) {
+        return LINGLONG_ERR(needDelayRet);
+    }
+
+    if (*needDelayRet) {
         auto ret = this->repo.markDeleted(oldRef, true);
         if (!ret) {
             return LINGLONG_ERR("Failed to mark old reference " % oldRef.toString() % " as deleted",
@@ -334,6 +337,7 @@ PackageManager::removeAfterInstall(const package::Reference &oldRef) noexcept
         }
     }
 
+    this->repo.unexportReference(oldRef);
     return LINGLONG_OK;
 }
 
@@ -1050,7 +1054,9 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     taskRef.setJob([this,
                     &taskRef,
                     remoteRef,
-                    localRef = std::move(localRef).value(),
+                    localRef = localRef.has_value()
+                      ? std::make_optional(std::move(localRef).value())
+                      : std::nullopt,
                     curModule,
                     skipInteraction,
                     msgType,
@@ -1083,9 +1089,11 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
 
         this->Install(taskRef, remoteRef, localRef, curModule);
     });
+
     // notify task list change
     Q_EMIT TaskListChanged(taskRef.taskObjectPath());
     qDebug() << "current task queue size:" << this->taskList.size();
+
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
       .taskObjectPath = taskRef.taskObjectPath().toStdString(),
       .code = 0,
@@ -1100,14 +1108,27 @@ void PackageManager::Install(PackageTask &taskContext,
 {
     taskContext.updateState(linglong::api::types::v1::State::Processing,
                             "Installing " + newRef.toString());
+
+    utils::Transaction transaction;
     InstallRef(taskContext, newRef, module);
     if (isTaskDone(taskContext.subState())) {
         return;
     }
 
+    transaction.addRollBack([this, &newRef, &module]() noexcept {
+        auto tmp = PackageTask::createTemporaryTask();
+        UninstallRef(tmp, newRef, module);
+        if (tmp.state() != linglong::api::types::v1::State::Succeed) {
+            qCritical() << "failed to rollback install " << newRef.toString();
+        }
+    });
+
     taskContext.updateSubState(linglong::api::types::v1::SubState::PostAction,
                                "Export shared files");
     this->repo.exportReference(newRef);
+    transaction.addRollBack([this, &newRef]() noexcept {
+        this->repo.unexportReference(newRef);
+    });
 
     if (oldRef) {
         auto ret = this->removeAfterInstall(oldRef.value());
@@ -1118,6 +1139,8 @@ void PackageManager::Install(PackageTask &taskContext,
             return;
         }
     }
+
+    transaction.commit();
 
     taskContext.updateState(linglong::api::types::v1::State::Succeed,
                             "Install " + newRef.toString() + " success");
@@ -1176,7 +1199,6 @@ void PackageManager::InstallRef(PackageTask &taskContext,
                             << ret.error().message();
                 taskContext.updateState(linglong::api::types::v1::State::Failed, "install failed");
                 Q_ASSERT(false);
-                return;
             }
 
             return;
@@ -1219,8 +1241,6 @@ void PackageManager::InstallRef(PackageTask &taskContext,
     if (!mergeRet.has_value()) {
         qCritical() << "merge modules failed: " << mergeRet.error().message();
     }
-    taskContext.updateState(linglong::api::types::v1::State::Succeed,
-                            "Install " + ref.toString() + " success");
     t.commit();
 }
 

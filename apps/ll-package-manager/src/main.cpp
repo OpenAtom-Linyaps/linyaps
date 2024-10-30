@@ -130,7 +130,7 @@ auto main(int argc, char *argv[]) -> int
 {
     QCoreApplication app(argc, argv);
 
-    applicationInitializte();
+    applicationInitialize();
 
     auto ret = QMetaObject::invokeMethod(
       QCoreApplication::instance(),

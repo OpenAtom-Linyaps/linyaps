@@ -111,7 +111,7 @@ void linglong_message_handler(QtMsgType type,
 }
 } // namespace
 
-void applicationInitializte(bool appForceStderrLogging)
+void applicationInitialize(bool appForceStderrLogging)
 {
     QCoreApplication::setOrganizationName("deepin");
     QLoggingCategory::setFilterRules("*.debug=false");

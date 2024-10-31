@@ -61,11 +61,8 @@ public:
     [[nodiscard]] std::vector<api::types::v1::RepositoryCacheLayersItem>
     queryLayerItem(const repoCacheQuery &query) const noexcept;
 
-    [[nodiscard]] const std::vector<api::types::v1::RepositoryCacheLayersItem> &
-    queryLayerItem() const noexcept
-    {
-        return this->cache.layers;
-    }
+    [[nodiscard]] std::vector<api::types::v1::RepositoryCacheLayersItem>
+    queryExistingLayerItem() const noexcept;
 
     utils::error::Result<void>
     updateMergedItems(const std::vector<api::types::v1::RepositoryCacheMergedItem> &items) noexcept;

@@ -42,7 +42,8 @@ configure_files(
   share/linglong/builder/templates/example.yaml
   share/linglong/config.yaml
   share/mime/packages/vnd.linyaps.uab.xml
-  share/polkit-1/actions/org.deepin.linglong.PackageManager1.policy)
+  share/polkit-1/actions/org.deepin.linglong.PackageManager1.policy
+  share/polkit-1/rules.d/org.deepin.linglong.PackageManager1.rules)
 
 # bash-completion
 set(BASH_COMPLETIONS_DIR ${CMAKE_INSTALL_DATADIR}/bash-completion)
@@ -171,9 +172,14 @@ install(
   DESTINATION /etc/X11/Xsession.d/
   RENAME 21linglong)
 
-# polkit actions this file only used to skip DBus security check, it will be
-# removed later
+# polkit actions
 install(
   FILES
     ${CMAKE_CURRENT_BINARY_DIR}/share/polkit-1/actions/org.deepin.linglong.PackageManager1.policy
   DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/actions)
+
+# polkit rules
+install(
+  FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/share/polkit-1/rules.d/org.deepin.linglong.PackageManager1.rules
+  DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/rules.d)

@@ -94,6 +94,7 @@ private Q_SLOTS:
     void interaction(QDBusObjectPath object_path,
                      int messageID,
                      QVariantMap additionalMessage);
+    utils::error::Result<void> runningAsRoot();
 
 Q_SIGNALS:
     void migrateDone(int code, QString message, QPrivateSignal);

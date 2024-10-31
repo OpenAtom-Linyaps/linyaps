@@ -1817,5 +1817,4 @@ void PackageManager::ReplyInteraction(QDBusObjectPath object_path, const QVarian
 {
     Q_EMIT this->ReplyReceived(replies);
 }
-
 } // namespace linglong::service

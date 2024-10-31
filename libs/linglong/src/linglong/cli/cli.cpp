@@ -927,6 +927,21 @@ int Cli::install(std::map<std::string, docopt::value> &args)
 {
     LINGLONG_TRACE("command install");
 
+    // Note: we deny the org.freedesktop.DBus.Introspectable for now.
+    // Use this interface to determin that this client whether have permission to call PM.
+    QDBusInterface dbusIntrospect(this->pkgMan.service(),
+                                  this->pkgMan.path(),
+                                  "org.freedesktop.DBus.Introspectable",
+                                  this->pkgMan.connection());
+    QDBusReply<QString> authReply = dbusIntrospect.call("Introspect");
+    if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
+        auto ret = this->runningAsRoot();
+        if (!ret) {
+            this->printer.printErr(ret.error());
+        }
+        return -1;
+    }
+
     auto tier = args["TIER"].asString();
     QFileInfo info(QString::fromStdString(tier));
 
@@ -1031,6 +1046,19 @@ int Cli::install(std::map<std::string, docopt::value> &args)
 int Cli::upgrade(std::map<std::string, docopt::value> &args)
 {
     LINGLONG_TRACE("command upgrade");
+
+    QDBusInterface dbusIntrospect(this->pkgMan.service(),
+                                  this->pkgMan.path(),
+                                  "org.freedesktop.DBus.Introspectable",
+                                  this->pkgMan.connection());
+    QDBusReply<QString> authReply = dbusIntrospect.call("Introspect");
+    if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
+        auto ret = this->runningAsRoot();
+        if (!ret) {
+            this->printer.printErr(ret.error());
+        }
+        return -1;
+    }
 
     auto tier = args["TIER"].asString();
 
@@ -1199,6 +1227,19 @@ int Cli::prune(std::map<std::string, docopt::value> &args)
 {
     LINGLONG_TRACE("command prune");
 
+    QDBusInterface dbusIntrospect(this->pkgMan.service(),
+                                  this->pkgMan.path(),
+                                  "org.freedesktop.DBus.Introspectable",
+                                  this->pkgMan.connection());
+    QDBusReply<QString> authReply = dbusIntrospect.call("Introspect");
+    if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
+        auto ret = this->runningAsRoot();
+        if (!ret) {
+            this->printer.printErr(ret.error());
+        }
+        return -1;
+    }
+
     QEventLoop loop;
     QString jobIDReply = "";
     auto ret = connect(
@@ -1255,6 +1296,19 @@ int Cli::prune(std::map<std::string, docopt::value> &args)
 int Cli::uninstall(std::map<std::string, docopt::value> &args)
 {
     LINGLONG_TRACE("command uninstall");
+
+    QDBusInterface dbusIntrospect(this->pkgMan.service(),
+                                  this->pkgMan.path(),
+                                  "org.freedesktop.DBus.Introspectable",
+                                  this->pkgMan.connection());
+    QDBusReply<QString> authReply = dbusIntrospect.call("Introspect");
+    if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
+        auto ret = this->runningAsRoot();
+        if (!ret) {
+            this->printer.printErr(ret.error());
+        }
+        return -1;
+    }
 
     auto tier = args["TIER"].asString();
 
@@ -1929,6 +1983,49 @@ void Cli::filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> 
 void Cli::forwardMigrateDone(int code, QString message)
 {
     Q_EMIT migrateDone(code, message, {});
+}
+
+utils::error::Result<void> Cli::runningAsRoot()
+{
+    LINGLONG_TRACE("run with pkexec");
+
+    const char *pkexecBin = "pkexec";
+    QStringList argv{ pkexecBin };
+    argv.append(QCoreApplication::instance()->arguments());
+
+    QProcessEnvironment sysEnv = QProcessEnvironment::systemEnvironment();
+    QStringList envList = sysEnv.toStringList();
+
+    qDebug() << "run with pkexec:" << argv;
+    qDebug() << "environment variables:" << envList;
+
+    auto targetArgc = argv.size();
+    std::vector<char*> targetArgv;  
+    for (const auto &arg : argv) {  
+        QByteArray byteArray = arg.toUtf8();
+        targetArgv.push_back(strdup(byteArray.constData()));
+    }  
+    targetArgv.push_back(nullptr);
+
+    std::vector<char*> targetEnvv;  
+    for (const auto &env : envList) {  
+        QByteArray byteArray = env.toUtf8();
+        targetEnvv.push_back(strdup(byteArray.constData()));
+    }  
+    targetEnvv.push_back(nullptr);
+
+    auto ret = execvpe(pkexecBin,
+                       const_cast<char **>(targetArgv.data()),
+                       const_cast<char **>(targetEnvv.data()));
+    // NOTE: if reached here, exevpe is failed.
+    for (auto arg : targetArgv) {
+        free(arg);
+    }
+    for (auto env : targetEnvv) {
+        free(env);
+    }
+
+    return LINGLONG_ERR("execve error", ret);
 }
 
 } // namespace linglong::cli

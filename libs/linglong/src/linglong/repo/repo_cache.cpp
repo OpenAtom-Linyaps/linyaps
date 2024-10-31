@@ -12,7 +12,6 @@
 
 #include <fstream>
 #include <iostream>
-#include <random>
 
 namespace linglong::repo {
 
@@ -225,6 +224,20 @@ RepoCache::deleteLayerItem(const api::types::v1::RepositoryCacheLayersItem &item
     }
 
     return LINGLONG_OK;
+}
+
+std::vector<api::types::v1::RepositoryCacheLayersItem>
+RepoCache::queryExistingLayerItem() const noexcept
+{
+    auto layers = this->cache.layers;
+    auto it = std::remove_if(layers.begin(),
+                             layers.end(),
+                             [](const api::types::v1::RepositoryCacheLayersItem &item) {
+                                 return item.deleted.has_value() && item.deleted.value();
+                             });
+    layers.erase(it, layers.end());
+
+    return layers;
 }
 
 std::vector<api::types::v1::RepositoryCacheLayersItem>

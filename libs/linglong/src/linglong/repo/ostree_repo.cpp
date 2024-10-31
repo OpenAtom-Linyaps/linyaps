@@ -1219,7 +1219,7 @@ OSTreeRepo::listLocal() const noexcept
     QDir layersDir = this->repoDir.absoluteFilePath("layers");
     Q_ASSERT(layersDir.exists());
 
-    auto items = this->cache->queryLayerItem();
+    auto items = this->cache->queryExistingLayerItem();
     pkgInfos.reserve(items.size());
     for (const auto &item : items) {
         if (item.deleted && item.deleted.value()) {
@@ -1376,50 +1376,6 @@ void OSTreeRepo::unexportReference(const package::Reference &ref) noexcept
 
 void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
 {
-    bool shouldExport = true;
-
-    [&ref, this, &shouldExport]() {
-        // Check if we should export the application we just pulled to system.
-
-        auto pkgInfos = this->listLocal();
-        if (!pkgInfos) {
-            qCritical() << pkgInfos.error();
-            Q_ASSERT(false);
-            return;
-        }
-
-        std::vector<package::Reference> refs;
-
-        for (const auto &localInfo : *pkgInfos) {
-            if (QString::fromStdString(localInfo.id) != ref.id) {
-                continue;
-            }
-
-            auto localRef = package::Reference::fromPackageInfo(localInfo);
-            if (!localRef) {
-                qCritical() << localRef.error();
-                Q_ASSERT(false);
-                continue;
-            }
-
-            if (localRef->version > ref.version) {
-                qInfo() << localRef->toString() << "exists, we should not export" << ref.toString();
-                shouldExport = false;
-                return;
-            }
-
-            refs.push_back(*localRef);
-        }
-
-        for (const auto &ref : refs) {
-            this->unexportReference(ref);
-        }
-    }();
-
-    if (!shouldExport) {
-        return;
-    }
-
     auto entriesDir = QDir(this->repoDir.absoluteFilePath("entries/share"));
     if (!entriesDir.exists()) {
         entriesDir.mkpath(".");
@@ -1618,7 +1574,8 @@ OSTreeRepo::getLayerItem(const package::Reference &ref,
                           .channel = ref.channel.toStdString(),
                           .version = ref.version.toString().toStdString(),
                           .module = module,
-                          .uuid = subRef };
+                          .uuid = subRef,
+                          .deleted = std::nullopt };
     auto items = this->cache->queryLayerItem(query);
     auto count = items.size();
     if (count > 1) {
@@ -1636,7 +1593,7 @@ OSTreeRepo::getLayerItem(const package::Reference &ref,
     }
 
     if (count == 0) {
-        qDebug() << "fallback to runtime module";
+        qInfo() << "fallback to runtime module";
         query.module = "runtime";
         items = this->cache->queryLayerItem(query);
         if (items.size() > 1) {
@@ -1706,9 +1663,8 @@ std::vector<std::string> OSTreeRepo::getModuleList(const package::Reference &ref
     return modules;
 }
 
-auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref,
-                                    bool fallbackLayerDir) const noexcept
-  -> utils::error::Result<package::LayerDir>
+auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref, bool fallbackLayerDir)
+  const noexcept -> utils::error::Result<package::LayerDir>
 {
     LINGLONG_TRACE("get merge dir from ref " + ref.toString());
     qDebug() << "getMergedModuleDir" << ref.toString();
@@ -1745,13 +1701,12 @@ auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref,
     return LINGLONG_ERR("merged doesn't exist");
 }
 
-auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref,
-                                    const QStringList &loadModules) const noexcept
-  -> utils::error::Result<std::shared_ptr<package::LayerDir>>
+auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref, const QStringList &loadModules)
+  const noexcept -> utils::error::Result<std::shared_ptr<package::LayerDir>>
 {
     LINGLONG_TRACE("merge modules");
     QDir mergedDir = this->repoDir.absoluteFilePath("merged");
-    auto layerItems = this->cache->queryLayerItem();
+    auto layerItems = this->cache->queryExistingLayerItem();
     QCryptographicHash hash(QCryptographicHash::Sha256);
     std::vector<std::string> commits;
     std::string findModules;
@@ -1815,7 +1770,7 @@ utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
     std::error_code ec;
     QDir mergedDir = this->repoDir.absoluteFilePath("merged");
     mergedDir.mkpath(".");
-    auto layerItems = this->cache->queryLayerItem();
+    auto layerItems = this->cache->queryExistingLayerItem();
     auto mergedItems = this->cache->queryMergedItems();
     // 对layerItems分组
     std::map<std::string, std::vector<api::types::v1::RepositoryCacheLayersItem>> layerGroup;
@@ -1832,6 +1787,7 @@ utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
                           .toStdString();
         layerGroup[groupKey].push_back(layer);
     }
+
     // 对同组layer进行合并，生成mergedItem
     std::vector<api::types::v1::RepositoryCacheMergedItem> newMergedItems;
     for (auto &it : layerGroup) {

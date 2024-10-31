@@ -118,7 +118,7 @@ private:
                     const std::string &module) noexcept;
     void UninstallRef(PackageTask &taskContext,
                       const package::Reference &ref,
-                      const std::string &module) noexcept;
+                      const std::vector<std::string> &modules) noexcept;
     QVariantMap installFromLayer(const QDBusUnixFileDescriptor &fd,
                                  const api::types::v1::CommonOptions &options) noexcept;
     QVariantMap installFromUAB(const QDBusUnixFileDescriptor &fd,

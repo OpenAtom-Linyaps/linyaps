@@ -403,7 +403,19 @@ void PackageManager::deferredUninstall() noexcept
             return;
         }
 
-        this->repo.remove(*ref);
+        auto ret = this->repo.remove(*ref);
+        if (!ret) {
+            qCritical() << "failed to remove reference:" << ref->toString() << ":"
+                        << ret.error().message();
+            continue;
+        }
+
+        this->repo.unexportReference(*ref);
+    }
+
+    auto mergeRet = this->repo.mergeModules();
+    if (!mergeRet.has_value()) {
+        qCritical() << "merge modules failed: " << mergeRet.error().message();
     }
 }
 
@@ -977,7 +989,27 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
         return toDBusReply(fuzzyRef);
     }
 
+    api::types::v1::PackageManager1RequestInteractionAdditionalMessage additionalMessage;
     auto curModule = paras->package.packageManager1PackageModule.value_or("binary");
+
+    // we need least local reference
+    std::optional<package::Version> version = fuzzyRef->version;
+    fuzzyRef->version.reset();
+    auto localRef = this->repo.clearReference(*fuzzyRef,
+                                              {
+                                                .fallbackToRemote = false // NOLINT
+                                              });
+    // set version back
+    fuzzyRef->version = version;
+    if (localRef) {
+        // fallback to local version if version of fuzzyRef is not set
+        if (curModule != "binary" && fuzzyRef->version) {
+            fuzzyRef->version = localRef->version;
+        }
+
+        additionalMessage.localRef = localRef->toString().toStdString();
+    }
+
     auto remoteRefRet = this->repo.clearReference(*fuzzyRef,
                                                   {
                                                     .forceRemote = true // NOLINT
@@ -987,6 +1019,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
         return toDBusReply(remoteRefRet);
     }
     auto remoteRef = *remoteRefRet;
+    additionalMessage.remoteRef = remoteRef.toString().toStdString();
 
     // 安装模块之前要先安装binary
     if (curModule != "binary") {
@@ -996,28 +1029,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
         }
     }
 
-    api::types::v1::PackageManager1RequestInteractionAdditionalMessage additionalMessage;
     auto msgType = api::types::v1::InteractionMessageType::Install;
-    additionalMessage.remoteRef = remoteRef.toString().toStdString();
-
-    // Note: We can't clear the local Reference with a specific version.
-    fuzzyRef->version.reset();
-    auto localRef = this->repo.clearReference(*fuzzyRef,
-                                              {
-                                                .fallbackToRemote = false // NOLINT
-                                              });
-    if (localRef) {
-        auto layerDir = this->repo.getLayerDir(*localRef, curModule);
-        if (layerDir && layerDir->valid()) {
-            additionalMessage.localRef = localRef->toString().toStdString();
-        }
-
-        // 如果要安装module，并且没有指定版本，应该使用已安装的binary的版本
-        if (curModule != "binary" && !fuzzyRef->version.has_value()) {
-            fuzzyRef->version = localRef->version;
-        }
-    }
-
     if (!additionalMessage.localRef.empty()) {
         if (remoteRef.version == localRef->version) {
             return toDBusReply(-1, localRef->toString() + " is already installed");
@@ -1117,18 +1129,14 @@ void PackageManager::Install(PackageTask &taskContext,
 
     transaction.addRollBack([this, &newRef, &module]() noexcept {
         auto tmp = PackageTask::createTemporaryTask();
-        UninstallRef(tmp, newRef, module);
+        Uninstall(tmp, newRef, module);
         if (tmp.state() != linglong::api::types::v1::State::Succeed) {
             qCritical() << "failed to rollback install " << newRef.toString();
         }
     });
 
     taskContext.updateSubState(linglong::api::types::v1::SubState::PostAction,
-                               "Export shared files");
-    this->repo.exportReference(newRef);
-    transaction.addRollBack([this, &newRef]() noexcept {
-        this->repo.unexportReference(newRef);
-    });
+                               "processing after install");
 
     if (oldRef) {
         auto ret = this->removeAfterInstall(oldRef.value());
@@ -1140,6 +1148,7 @@ void PackageManager::Install(PackageTask &taskContext,
         }
     }
 
+    this->repo.exportReference(newRef);
     transaction.commit();
 
     taskContext.updateState(linglong::api::types::v1::State::Succeed,
@@ -1209,6 +1218,7 @@ void PackageManager::InstallRef(PackageTask &taskContext,
     if (isTaskDone(taskContext.subState())) {
         return;
     }
+
     t.addRollBack([this, &ref, &module]() noexcept {
         auto result = this->repo.remove(ref, module);
         if (!result) {
@@ -1236,12 +1246,12 @@ void PackageManager::InstallRef(PackageTask &taskContext,
     if (isTaskDone(taskContext.subState())) {
         return;
     }
+    t.commit();
 
     auto mergeRet = this->repo.mergeModules();
     if (!mergeRet.has_value()) {
         qCritical() << "merge modules failed: " << mergeRet.error().message();
     }
-    t.commit();
 }
 
 auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVariantMap
@@ -1315,50 +1325,68 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
 
 void PackageManager::UninstallRef(PackageTask &taskContext,
                                   const package::Reference &ref,
-                                  const std::string &module) noexcept
+                                  const std::vector<std::string> &modules) noexcept
 {
     LINGLONG_TRACE("uninstall ref " + ref.toString());
-    taskContext.updateSubState(linglong::api::types::v1::SubState::PreAction,
-                               "prepare uninstalling package");
     if (isTaskDone(taskContext.subState())) {
         return;
     }
 
     taskContext.updateSubState(linglong::api::types::v1::SubState::Uninstall, "Remove layer files");
     utils::Transaction transaction;
-    transaction.addRollBack([this, &ref, &module]() noexcept {
-        auto tmpTask = PackageTask::createTemporaryTask();
-        this->repo.pull(tmpTask, ref, module);
-    });
 
-    auto result = this->repo.remove(ref, module);
-    if (!result) {
-        taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                LINGLONG_ERRV(result).message());
-        return;
+    for (const auto &module : modules) {
+        auto result = this->repo.remove(ref, module);
+        if (!result) {
+            taskContext.updateState(linglong::api::types::v1::State::Failed,
+                                    LINGLONG_ERRV(result).message());
+            return;
+        }
+
+        transaction.addRollBack([this, &ref, &module]() noexcept {
+            auto tmpTask = PackageTask::createTemporaryTask();
+            this->repo.pull(tmpTask, ref, module);
+            if (tmpTask.state() != linglong::api::types::v1::State::Succeed) {
+                qCritical() << "failed to rollback module" << module.c_str() << "of ref"
+                            << ref.toString();
+            }
+        });
     }
 
     transaction.commit();
+
+    auto mergeRet = this->repo.mergeModules();
+    if (!mergeRet.has_value()) {
+        qCritical() << "merge modules failed: " << mergeRet.error().message();
+    }
 }
 
 void PackageManager::Uninstall(PackageTask &taskContext,
                                const package::Reference &ref,
                                const std::string &module) noexcept
 {
-    taskContext.updateState(api::types::v1::State::Processing, "start to uninstalling package");
-    utils::Transaction transaction;
-
-    this->repo.unexportReference(ref);
-    transaction.addRollBack([this, &ref]() noexcept {
-        this->repo.exportReference(ref);
-    });
-
-    UninstallRef(taskContext, ref, module);
     if (isTaskDone(taskContext.subState())) {
         return;
     }
 
-    transaction.commit();
+    taskContext.updateState(api::types::v1::State::Processing, "start to uninstalling package");
+    taskContext.updateSubState(linglong::api::types::v1::SubState::PreAction,
+                               "prepare uninstalling package");
+
+    std::vector<std::string> removedModules{ "binary" };
+    if (module == "binary") {
+        auto modules = this->repo.getModuleList(ref);
+        removedModules = std::move(modules);
+    }
+
+    UninstallRef(taskContext, ref, removedModules);
+
+    if (isTaskDone(taskContext.subState())) {
+        return;
+    }
+
+    this->repo.unexportReference(ref);
+
     taskContext.updateState(linglong::api::types::v1::State::Succeed,
                             "Uninstall " + ref.toString() + " success");
 }
@@ -1749,13 +1777,14 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
         target[*baseRef] += 1;
     }
 
-    for (auto it = target.cbegin(); it != target.cend(); ++it) {
-        if (it->second != 0) {
+    for (const auto &it : target) {
+        if (it.second != 0) {
             continue;
         }
+
         // NOTE: if the binary module is removed, other modules should be removed too.
-        for (const auto module : { "binary", "develop" }) {
-            auto layer = this->repo.getLayerDir(it->first, module);
+        for (const auto &module : this->repo.getModuleList(it.first)) {
+            auto layer = this->repo.getLayerDir(it.first, module);
             if (!layer) {
                 qWarning() << layer.error().message();
                 continue;
@@ -1770,11 +1799,16 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
 
             removed.emplace_back(std::move(*info));
 
-            auto result = this->repo.remove(it->first, module);
+            auto result = this->repo.remove(it.first, module);
             if (!result) {
                 return LINGLONG_ERR(result);
             }
         }
+    }
+
+    auto mergeRet = this->repo.mergeModules();
+    if (!mergeRet.has_value()) {
+        qCritical() << "merge modules failed: " << mergeRet.error().message();
     }
     return LINGLONG_OK;
 }

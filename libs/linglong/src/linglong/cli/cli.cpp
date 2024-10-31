@@ -1507,7 +1507,7 @@ int Cli::list(std::map<std::string, docopt::value> &args)
         }
 
         if (!reference) {
-            std::cout << "Failed to find the package: " << fuzzy->id.toStdString()
+            std::cerr << "Failed to find the package: " << fuzzy->id.toStdString()
                       << ", maybe it is local package, skip it." << std::endl;
             continue;
         }

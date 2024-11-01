@@ -444,30 +444,6 @@
           "type": "boolean",
           "description": "use offline mode when build"
         },
-        "skip_fetch_source": {
-          "type": "boolean",
-          "description": "skip fetch source when build"
-        },
-        "skip_pull_depend": {
-          "type": "boolean",
-          "description": "skip pull depend when build"
-        },
-        "skip_run_container": {
-          "type": "boolean",
-          "description": "skip run container when build"
-        },
-        "skip_commit_output": {
-          "type": "boolean",
-          "description": "skip commit output when build"
-        },
-        "skip_check_output": {
-          "type": "boolean",
-          "description": "skip check output when build"
-        },
-        "skip_strip_symbols": {
-          "type": "boolean",
-          "description": "skip strip debug symbols"
-        },
         "arch": {
           "type": "string",
           "description": "arch of builder config"

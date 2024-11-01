@@ -287,12 +287,6 @@ x.arch = get_stack_optional<std::string>(j, "arch");
 x.cache = get_stack_optional<std::string>(j, "cache");
 x.offline = get_stack_optional<bool>(j, "offline");
 x.repo = j.at("repo").get<std::string>();
-x.skipCheckOutput = get_stack_optional<bool>(j, "skip_check_output");
-x.skipCommitOutput = get_stack_optional<bool>(j, "skip_commit_output");
-x.skipFetchSource = get_stack_optional<bool>(j, "skip_fetch_source");
-x.skipPullDepend = get_stack_optional<bool>(j, "skip_pull_depend");
-x.skipRunContainer = get_stack_optional<bool>(j, "skip_run_container");
-x.skipStripSymbols = get_stack_optional<bool>(j, "skip_strip_symbols");
 x.version = j.at("version").get<int64_t>();
 }
 
@@ -308,24 +302,6 @@ if (x.offline) {
 j["offline"] = x.offline;
 }
 j["repo"] = x.repo;
-if (x.skipCheckOutput) {
-j["skip_check_output"] = x.skipCheckOutput;
-}
-if (x.skipCommitOutput) {
-j["skip_commit_output"] = x.skipCommitOutput;
-}
-if (x.skipFetchSource) {
-j["skip_fetch_source"] = x.skipFetchSource;
-}
-if (x.skipPullDepend) {
-j["skip_pull_depend"] = x.skipPullDepend;
-}
-if (x.skipRunContainer) {
-j["skip_run_container"] = x.skipRunContainer;
-}
-if (x.skipStripSymbols) {
-j["skip_strip_symbols"] = x.skipStripSymbols;
-}
 j["version"] = x.version;
 }
 

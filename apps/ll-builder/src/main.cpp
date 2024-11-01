@@ -16,16 +16,16 @@
 #include "linglong/utils/serialize/yaml.h"
 #include "ocppi/cli/crun/Crun.hpp"
 
-#include <QCommandLineOption>
-#include <QCommandLineParser>
-#include <QCoreApplication>
-#include <QMap>
-#include <QRegExp>
+#include <CLI/CLI.hpp>
 
-#include <algorithm>
+#include <QCoreApplication>
+#include <QStringList>
+
 #include <iostream>
 #include <list>
+#include <ostream>
 #include <string>
+#include <vector>
 
 #include <wordexp.h>
 
@@ -162,6 +162,184 @@ int main(int argc, char **argv)
     // 初始化应用，builder在非tty环境也输出日志
     applicationInitialize(true);
 
+    bool verboseFlag = false, jsonFlag = false;
+    CLI::App commandParser{
+        "linyaps builder CLI \n"
+        "A CLI program to build linyaps application and export linyaps uab or layer.\n"
+    };
+    commandParser.set_help_all_flag("--help-all", "Expand all help");
+    commandParser.footer([]() {
+        return R"(If you found any problems during use
+You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues.)";
+    });
+
+    // add flags
+    commandParser.add_flag("--verbose",
+                           verboseFlag,
+                           "show detail log (deprecated, use QT_LOGGING_RULES).");
+
+    CLI::Validator validatorString{
+        [](std::string &parameter) {
+            if (parameter.empty()) {
+                return std::string{
+                    "input parameter is empty, please input valid parameter instead\n"
+                };
+            }
+            return std::string();
+        },
+        ""
+    };
+
+    // add builder create
+    std::string projectName;
+    auto buildCreate =
+      commandParser.add_subcommand("create", "Create linyaps build template project.");
+    buildCreate->add_option("NAME", projectName, "Project name.")
+      ->required()
+      ->check(validatorString);
+
+    // add builder build
+    bool buildOffline = false, fullDevelopModule = false, skipFetchSource = false,
+         skipPullDepend = false, skipCheckOutput = false, buildSkipFetchSource = false,
+         skipStripSymbols = false, skipCommitOutput = false, buildSkipRunContainer = false;
+    std::string filePath{ "./linglong.yaml" }, arch;
+    // group empty will hide command
+    std::string hiddenGroup = "";
+    std::vector<std::string> oldCommands;
+    std::vector<std::string> newCommands;
+    auto buildBuilder = commandParser.add_subcommand("build", "Build a linyaps project.");
+    buildBuilder->add_option("--file", filePath, "File path of the linglong.yaml.")
+      ->type_name("FILE")
+      ->capture_default_str()
+      ->check(CLI::ExistingFile);
+    buildBuilder->add_option("--arch", arch, "Set the build arch.")
+      ->type_name("ARCH")
+      ->check(validatorString);
+    buildBuilder->add_option("COMMAND", newCommands, "Run exec than build script.");
+    buildBuilder->add_option("--exec", oldCommands, "Run exec than build script.")
+      ->group(hiddenGroup);
+    buildBuilder->add_flag(
+      "--offline",
+      buildOffline,
+      "Only use local files. This implies --skip-fetch-source and --skip-pull-depend.");
+    buildBuilder->add_flag(
+      "--full-develop-module",
+      fullDevelopModule,
+      "Compatibility options, used to make full develop packages, runtime requires.");
+    buildBuilder->add_flag("--skip-fetch-source", skipFetchSource, "Skip fetch sources.");
+    buildBuilder->add_flag("--skip-pull-depend", skipPullDepend, "Skip pull dependency.");
+    buildBuilder->add_flag("--skip-run-container", buildSkipRunContainer, "Skip fetch sources.");
+    buildBuilder->add_flag("--skip-commit-output", skipCommitOutput, "Skip commit build output.");
+    buildBuilder->add_flag("--skip-output-check", skipCheckOutput, "Skip output check.");
+    buildBuilder->add_flag("--skip-strip-symbols", skipStripSymbols, "Skip strip debug symbols.");
+
+    // add builder run
+    bool debugMode = false;
+    std::vector<std::string> execModules;
+    auto buildRun = commandParser.add_subcommand("run", "Run builded linyaps app.");
+    buildRun->add_option("--file", filePath, "File path of the linglong.yaml.")
+      ->type_name("FILE")
+      ->capture_default_str()
+      ->check(CLI::ExistingFile);
+    buildRun->add_flag("--offline", buildOffline, "Only use local files.");
+    buildRun
+      ->add_option("--modules",
+                   execModules,
+                   "Run using the specified module. eg: --modules binary,develop.")
+      ->delimiter(',')
+      ->type_name("modules");
+    buildRun->add_option("COMMAND", newCommands, "Run exec than build script.");
+    buildRun->add_option("--exec", oldCommands, "Run exec than build script.")->group(hiddenGroup);
+    buildRun->add_flag("--debug", debugMode, "Run in debug mode (enable develop module).");
+
+    // build export
+    bool layerMode = false;
+    std::string iconFile;
+    auto buildExport = commandParser.add_subcommand("export", "Export to linyaps layer or uab.");
+    buildExport->add_option("--file", filePath, "File path of the linglong.yaml.")
+      ->type_name("FILE")
+      ->capture_default_str()
+      ->check(CLI::ExistingFile);
+    buildExport->add_option("--icon", iconFile, "Uab icon (optional).")
+      ->type_name("FILE")
+      ->check(CLI::ExistingFile);
+    buildExport->add_flag("--layer", layerMode, "Export layer file.");
+
+    // build push
+    std::string repoName, repoUrl, pushModule;
+    auto buildPush = commandParser.add_subcommand("push", "Push linyaps app to remote repo.");
+    buildPush->add_option("--file", filePath, "File path of the linglong.yaml.")
+      ->type_name("FILE")
+      ->capture_default_str()
+      ->check(CLI::ExistingFile);
+    buildPush->add_option("--repo-url", repoUrl, "Remote repo url.")
+      ->type_name("URL")
+      ->check(validatorString);
+    buildPush->add_option("--repo-name", repoUrl, "Remote repo name.")
+      ->type_name("NAME")
+      ->check(validatorString);
+    buildPush->add_option("--module", pushModule, "Push single module.")->check(validatorString);
+
+    // add build import
+    std::string layerFile;
+    auto buildImport =
+      commandParser.add_subcommand("import", "Import linyaps layer to build repo.");
+    buildImport->add_option("LAYER", layerFile, "Layer file path.")
+      ->type_name("FILE")
+      ->check(CLI::ExistingFile);
+
+    // add build extract
+    std::string dir;
+    auto buildExtract = commandParser.add_subcommand("extract", "Extract linyaps layer to dir.");
+    buildExtract->add_option("LAYER", layerFile, "Layer file path.")->check(CLI::ExistingFile);
+    buildExtract->add_option("DIR", dir, "Destination directory.")->type_name("DIR");
+
+    // add build repo
+    auto buildRepo = commandParser.add_subcommand(
+      "repo",
+      "Display or modify information of the repository currently using.\n");
+    buildRepo->require_subcommand(1);
+
+    // add repo sub command add
+    auto buildRepoAdd = buildRepo->add_subcommand("add", "Add a new repository.");
+    buildRepoAdd->add_option("NAME", repoName, "Specify the repo name.")
+      ->required()
+      ->check(validatorString);
+    buildRepoAdd->add_option("URL", repoUrl, "Url of the repository.")
+      ->required()
+      ->check(validatorString);
+
+    // add repo sub command remove
+    auto buildRepoRemove = buildRepo->add_subcommand("remove", "Remove a repository.");
+    buildRepoRemove->add_option("NAME", repoName, "Specify the repo name.")
+      ->required()
+      ->check(validatorString);
+
+    // add repo sub command update
+    auto buildRepoUpdate = buildRepo->add_subcommand("update", "Update to a new repository.");
+    buildRepoUpdate->add_option("NAME", repoName, "Specify the repo name.")
+      ->required()
+      ->check(validatorString);
+    buildRepoUpdate->add_option("URL", repoUrl, "Url of the repository.")
+      ->required()
+      ->check(validatorString);
+
+    // add repo sub command update
+    auto buildRepoSetDefault =
+      buildRepo->add_subcommand("set-default", "Set default repository name.");
+    buildRepoSetDefault->add_option("NAME", repoName, "Specify the repo name.")
+      ->required()
+      ->check(validatorString);
+
+    // add repo sub command show
+    auto buildRepoShow = buildRepo->add_subcommand("show", "Show repository.");
+
+    // add build migrate
+    auto buildMigrate =
+      commandParser.add_subcommand("migrate", "Migrate underlying data.")->group(hiddenGroup);
+
+    CLI11_PARSE(commandParser, argc, argv);
+
     auto ociRuntimeCLI = qgetenv("LINGLONG_OCI_RUNTIME");
     if (ociRuntimeCLI.isEmpty()) {
         ociRuntimeCLI = LINGLONG_DEFAULT_OCI_RUNTIME;
@@ -178,44 +356,11 @@ int main(int argc, char **argv)
         std::rethrow_exception(ociRuntime.error());
     }
 
-    QCommandLineParser parser;
-
-    auto optVerbose = QCommandLineOption({ "v", "verbose" },
-                                         "show detail log (deprecated, use QT_LOGGING_RULES)",
-                                         "");
-    parser.addOptions({ optVerbose });
-    parser.addHelpOption();
-
-    QStringList subCommandList = { "create", "build",   "run",  "export", "push",
-                                   "import", "extract", "repo", "migrate" };
-
-    parser.addPositionalArgument("subcommand",
-                                 subCommandList.join("\n"),
-                                 "subcommand [sub-option]");
-
-    parser.parse(QCoreApplication::arguments());
-
-    QStringList args = parser.positionalArguments();
-    QString command = args.isEmpty() ? QString() : args.first();
-    if (command == "create") {
-        LINGLONG_TRACE("command create");
-
-        parser.clearPositionalArguments();
-        parser.addPositionalArgument("create", "create build template project", "create");
-        parser.addPositionalArgument("name", "project name", "<org.deepin.demo>");
-
-        parser.process(app);
-
-        auto args = parser.positionalArguments();
-        auto projectName = args.value(1);
-
-        if (projectName.isEmpty()) {
-            parser.showHelp(-1);
-        }
-
-        QDir projectDir = QDir::current().absoluteFilePath(projectName);
+    if (buildCreate->parsed()) {
+        auto name = QString::fromStdString(projectName);
+        QDir projectDir = QDir::current().absoluteFilePath(name);
         if (projectDir.exists()) {
-            qCritical() << projectName << "project dir already exists";
+            qCritical() << name << "project dir already exists";
             return -1;
         }
 
@@ -244,7 +389,7 @@ int main(int argc, char **argv)
         }
 
         auto rawData = templateFile.readAll();
-        rawData.replace("@ID@", projectName.toUtf8());
+        rawData.replace("@ID@", name.toUtf8());
         if (configFile.write(rawData) == 0) {
             qDebug() << configFilePath << configFile.error();
             return -1;
@@ -281,13 +426,20 @@ int main(int argc, char **argv)
     }
 
     linglong::repo::OSTreeRepo repo(repoRoot, *repoCfg, clientFactory);
-    if (command == "migrate") {
-        LINGLONG_TRACE("command migrate");
 
-        parser.clearPositionalArguments();
-        parser.addPositionalArgument("migrate", "migrate underlying data", "migrate");
-        parser.process(app);
+    // if user use old opt(--exec) passing parameters, pass it to the new commands;
+    if (newCommands.empty() && !oldCommands.empty()) {
+        newCommands = oldCommands;
+    }
 
+    QStringList commandList;
+    if (!newCommands.empty() && (buildBuilder->parsed() || buildRun->parsed())) {
+        for (const std::string &command : newCommands) {
+            commandList.append(QString::fromStdString(command));
+        }
+    }
+
+    if (buildMigrate->parsed()) {
         auto ret = repo.dispatchMigration();
         if (!ret) {
             qCritical() << "The underlying data may be corrupted, migration failed:"
@@ -302,538 +454,357 @@ int main(int argc, char **argv)
         qFatal("underlying data needs migrating, please run 'll-builder migrate'");
     }
 
-    auto *containerBuidler = new linglong::runtime::ContainerBuilder(**ociRuntime);
-    containerBuidler->setParent(QCoreApplication::instance());
-
-    QMap<QString, std::function<int(QCommandLineParser & parser)>> subcommandMap = {
-        { "repo",
-          [&](QCommandLineParser &parser) -> int {
-              parser.clearPositionalArguments();
-
-              parser.addPositionalArgument("add", "add a remote repo");
-              parser.addPositionalArgument("remove", "remove existing repo");
-              parser.addPositionalArgument("update", "update url of existing repo");
-              parser.addPositionalArgument("set-default", "set default repo");
-              parser.addPositionalArgument("show", "show current config", "show\n");
-              parser.setApplicationDescription("ll-builder repo add --name=NAME --url=URL\n"
-                                               "ll-builder repo remove --name=NAME\n"
-                                               "ll-builder repo update --name=NAME --url=NEWURL\n"
-                                               "ll-builder repo set-default --name=NAME\n"
-                                               "ll-builder repo show");
-
-              auto name = QCommandLineOption("name", "name of remote repo", "name");
-              auto url = QCommandLineOption("url", "url of remote repo", "url");
-              parser.addOptions({ name, url });
-              parser.process(app);
-
-              QStringList args = parser.positionalArguments();
-              if (args.size() < 2) {
-                  std::cerr << "please specifying an operation." << std::endl;
-                  return EINVAL;
-              }
-
-              const auto &operation = args.at(1);
-              if (operation == "show") {
-                  const auto &cfg = repo.getConfig();
-                  auto &output = std::cout;
-                  output << "version: " << cfg.version << "\ndefaultRepo: " << cfg.defaultRepo
-                         << "\nrepos:\n"
-                         << "name\turl\n";
-                  std::for_each(cfg.repos.cbegin(), cfg.repos.cend(), [](const auto &pair) {
-                      const auto &[name, url] = pair;
-                      output << name << '\t' << url << "\n";
-                  });
-
-                  return 0;
-              }
-
-              if (!parser.isSet(name)) {
-                  std::cerr << "please specifying the repo name." << std::endl;
-                  return EINVAL;
-              }
-              std::string nameVal = parser.value(name).toStdString();
-
-              std::string urlVal;
-              if (parser.isSet(url)) {
-                  urlVal = parser.value(url).toStdString();
-                  if (urlVal.rfind("http", 0) != 0) {
-                      std::cerr << "url is invalid." << std::endl;
-                      return EINVAL;
-                  }
-
-                  if (urlVal.back() == '/') {
-                      urlVal.pop_back();
-                  }
-              }
-
-              auto newCfg = repo.getConfig();
-              if (operation == "add") {
-                  if (urlVal.empty()) {
-                      std::cerr << "url is empty." << std::endl;
-                      return EINVAL;
-                  }
-
-                  auto node = newCfg.repos.try_emplace(nameVal, urlVal);
-                  if (!node.second) {
-                      std::cerr << "repo " + nameVal + " already exist." << std::endl;
-                      return -1;
-                  }
-
-                  auto ret = repo.setConfig(newCfg);
-                  if (!ret) {
-                      std::cerr << ret.error().message().toStdString() << std::endl;
-                      return -1;
-                  }
-
-                  return 0;
-              }
-
-              auto existingRepo = newCfg.repos.find(nameVal);
-              if (existingRepo == newCfg.repos.cend()) {
-                  std::cerr << "the operated repo " + nameVal + " doesn't exist." << std::endl;
-                  return -1;
-              }
-
-              if (operation == "remove") {
-                  if (newCfg.defaultRepo == nameVal) {
-                      std::cerr << "repo " + nameVal
-                          + "is default repo, please change default repo before removing it.";
-                      return -1;
-                  }
-
-                  newCfg.repos.erase(existingRepo);
-                  auto ret = repo.setConfig(newCfg);
-                  if (!ret) {
-                      std::cerr << ret.error().message().toStdString() << std::endl;
-                      return -1;
-                  }
-
-                  return 0;
-              }
-
-              if (operation == "update") {
-                  if (urlVal.empty()) {
-                      std::cerr << "url is empty." << std::endl;
-                      return -1;
-                  }
-
-                  existingRepo->second = urlVal;
-                  auto ret = repo.setConfig(newCfg);
-                  if (!ret) {
-                      std::cerr << ret.error().message().toStdString() << std::endl;
-                      return -1;
-                  }
-
-                  return 0;
-              }
-
-              if (operation == "set-default") {
-                  if (newCfg.defaultRepo != nameVal) {
-                      newCfg.defaultRepo = nameVal;
-                      auto ret = repo.setConfig(newCfg);
-                      if (!ret) {
-                          std::cerr << ret.error().message().toStdString() << std::endl;
-                          return -1;
-                      }
-                  }
-                  return 0;
-              }
-
-              std::cerr << "unknown operation:" << operation.toStdString() << std::endl;
-              return EINVAL;
-          } },
-        { "build",
-          [&](QCommandLineParser &parser) -> int {
-              LINGLONG_TRACE("command build");
-
-              parser.clearPositionalArguments();
-              auto yamlFile =
-                QCommandLineOption("f",
-                                   "file path of the linglong.yaml (default is ./linglong.yaml)",
-                                   "path",
-                                   "linglong.yaml");
-              auto execVerbose =
-                QCommandLineOption("exec", "run exec than build script", "command");
-              auto buildOffline = QCommandLineOption(
-                "offline",
-                "only use local files. This implies --skip-fetch-source and --skip-pull-depend",
-                "");
-              auto buildSkipFetchSource =
-                QCommandLineOption("skip-fetch-source", "skip fetch sources", "");
-              auto buildSkipPullDepend =
-                QCommandLineOption("skip-pull-depend", "skip pull dependency", "");
-              auto buildSkipRunContainer =
-                QCommandLineOption("skip-run-container",
-                                   "skip run container. This implies skip-commit-output",
-                                   "");
-              auto buildSkipCommitOutput =
-                QCommandLineOption("skip-commit-output", "skip commit build output", "");
-              auto buildArch = QCommandLineOption("arch", "set the build arch", "arch");
-              auto buildSkipOutputCheck =
-                QCommandLineOption("skip-output-check", "skip output check", "");
-              auto buildSkipStripSymbols =
-                QCommandLineOption("skip-strip-symbols", "skip strip debug symbols", "");
-              auto buildFullDevelop = QCommandLineOption(
-                "full-develop-module",
-                "compatibility options, used to make full develop packages, runtime requires",
-                "");
-
-              parser.addOptions({ yamlFile,
-                                  buildArch,
-                                  execVerbose,
-                                  buildOffline,
-                                  buildFullDevelop,
-                                  buildSkipFetchSource,
-                                  buildSkipPullDepend,
-                                  buildSkipRunContainer,
-                                  buildSkipCommitOutput,
-                                  buildSkipOutputCheck,
-                                  buildSkipStripSymbols });
-
-              parser.addPositionalArgument("build", "build project", "build");
-              parser.setApplicationDescription("linglong build command tools\n"
-                                               "Examples:\n"
-                                               "ll-builder build -v\n"
-                                               "ll-builder build -v -- bash -c \"echo hello\"");
-
-              parser.process(app);
-              auto project = parseProjectConfig(QDir().absoluteFilePath(parser.value(yamlFile)));
-              if (!project) {
-                  qCritical() << project.error();
-                  return -1;
-              }
-
-              linglong::builder::Builder builder(*project,
-                                                 QDir::current(),
-                                                 repo,
-                                                 *containerBuidler,
-                                                 *builderCfg);
-              builder.projectYamlFile =
-                QDir().absoluteFilePath(parser.value(yamlFile)).toStdString();
-              if (parser.isSet(buildArch)) {
-                  auto arch =
-                    linglong::package::Architecture::parse(parser.value(buildArch).toStdString());
-                  if (!arch) {
-                      qCritical() << arch.error();
-                      return -1;
-                  }
-                  auto cfg = builder.getConfig();
-                  cfg.arch = arch->toString().toStdString();
-                  builder.setConfig(cfg);
-              }
-              if (parser.isSet(buildSkipFetchSource)) {
-                  auto cfg = builder.getConfig();
-                  cfg.skipFetchSource = true;
-                  builder.setConfig(cfg);
-              }
-              if (parser.isSet(buildSkipPullDepend)) {
-                  auto cfg = builder.getConfig();
-                  cfg.skipPullDepend = true;
-                  builder.setConfig(cfg);
-              }
-              if (parser.isSet(buildSkipRunContainer)) {
-                  auto cfg = builder.getConfig();
-                  cfg.skipRunContainer = true;
-                  cfg.skipCommitOutput = true;
-                  builder.setConfig(cfg);
-              }
-              if (parser.isSet(buildSkipCommitOutput)) {
-                  auto cfg = builder.getConfig();
-                  cfg.skipCommitOutput = true;
-                  builder.setConfig(cfg);
-              }
-              if (parser.isSet(buildOffline)) {
-                  auto cfg = builder.getConfig();
-                  cfg.skipFetchSource = true;
-                  cfg.skipPullDepend = true;
-                  cfg.offline = true;
-                  builder.setConfig(cfg);
-              }
-
-              if (parser.isSet(buildSkipOutputCheck)) {
-                  auto cfg = builder.getConfig();
-                  cfg.skipCheckOutput = true;
-                  builder.setConfig(cfg);
-              }
-              if (parser.isSet(buildSkipStripSymbols)) {
-                  auto cfg = builder.getConfig();
-                  cfg.skipStripSymbols = true;
-                  builder.setConfig(cfg);
-              }
-              if (parser.isSet(buildFullDevelop)) {
-                  builder.fullDevelop = true;
-              }
-              auto allArgs = QCoreApplication::arguments();
-              linglong::utils::error::Result<void> ret;
-              if (parser.isSet(execVerbose)) {
-                  auto exec = splitExec(parser.value(execVerbose));
-                  ret = builder.build(exec);
-              } else if (allArgs.indexOf("--") > 0) {
-                  auto exec = allArgs.mid(allArgs.indexOf("--") + 1);
-                  ret = builder.build(exec);
-              } else {
-                  ret = builder.build();
-              }
-              if (!ret) {
-                  qCritical() << ret.error();
-                  return ret.error().code();
-              }
-              return 0;
-          } },
-        { "run",
-          [&](QCommandLineParser &parser) -> int {
-              LINGLONG_TRACE("command run");
-
-              parser.clearPositionalArguments();
-
-              auto yamlFile =
-                QCommandLineOption("f",
-                                   "file path of the linglong.yaml (default is ./linglong.yaml)",
-                                   "path",
-                                   "linglong.yaml");
-              auto execModules =
-                QCommandLineOption("modules",
-                                   "run using the specified module. eg --modules binary,develop",
-                                   "modules");
-              auto execVerbose =
-                QCommandLineOption("exec", "run exec than build script", "command");
-              auto buildOffline = QCommandLineOption("offline", "only use local files.", "");
-              auto debugMode =
-                QCommandLineOption("debug", "run in debug mode (enable develop module)", "");
-
-              parser.addOptions({ yamlFile, execVerbose, execModules, buildOffline, debugMode });
-
-              parser.addPositionalArgument("run", "run project", "build");
-
-              parser.process(app);
-
-              auto project = parseProjectConfig(QDir().absoluteFilePath(parser.value(yamlFile)));
-              if (!project) {
-                  qCritical() << project.error();
-                  return -1;
-              }
-
-              linglong::builder::Builder builder(*project,
-                                                 QDir::current(),
-                                                 repo,
-                                                 *containerBuidler,
-                                                 *builderCfg);
-              QStringList exec;
-              if (parser.isSet(execVerbose)) {
-                  exec = splitExec(parser.value(execVerbose));
-              }
-              QStringList modules = { "binary" };
-              if (parser.isSet(execModules)) {
-                  modules = parser.value(execModules).split(",");
-              }
-              bool debug = false;
-              if (parser.isSet(debugMode)) {
-                  modules.push_back("develop");
-                  debug = true;
-              }
-              if (parser.isSet(buildOffline)) {
-                  auto cfg = builder.getConfig();
-                  cfg.skipFetchSource = true;
-                  cfg.skipPullDepend = true;
-                  cfg.offline = true;
-                  builder.setConfig(cfg);
-              }
-              auto result = builder.run(modules, exec, debug);
-              if (!result) {
-                  qCritical() << result.error();
-                  return -1;
-              }
-
-              return 0;
-          } },
-        { "export",
-          [&](QCommandLineParser &parser) -> int {
-              LINGLONG_TRACE("command export");
-              parser.clearPositionalArguments();
-
-              auto yamlFile =
-                QCommandLineOption({ "f", "file" },
-                                   "file path of the linglong.yaml (default is ./linglong.yaml)",
-                                   "path",
-                                   "linglong.yaml");
-              auto iconFile = QCommandLineOption({ "i", "icon" }, "uab icon (optional)", "path");
-              auto layerMode = QCommandLineOption({ "l", "layer" }, "export layer file");
-              parser.addOptions({ yamlFile, iconFile, layerMode });
-              parser.process(app);
-
-              auto project = parseProjectConfig(QDir().absoluteFilePath(parser.value(yamlFile)));
-              if (!project) {
-                  qCritical() << project.error();
-                  return -1;
-              }
-
-              linglong::builder::Builder builder(*project,
-                                                 QDir::current(),
-                                                 repo,
-                                                 *containerBuidler,
-                                                 *builderCfg);
-
-              if (parser.isSet(layerMode)) {
-                  auto result = builder.exportLayer(QDir::currentPath());
-                  if (!result) {
-                      qCritical() << result.error();
-                      return -1;
-                  }
-
-                  return 0;
-              }
-
-              auto result = builder.exportUAB(
-                QDir::currentPath(),
-                { .iconPath = parser.value(iconFile), .exportDevelop = true, .exportI18n = true });
-              if (!result) {
-                  qCritical() << result.error();
-                  return -1;
-              }
-
-              return 0;
-          } },
-        { "extract",
-          [&](QCommandLineParser &parser) -> int {
-              LINGLONG_TRACE("command extract");
-
-              parser.clearPositionalArguments();
-
-              parser.addPositionalArgument("extract",
-                                           "extract the layer to a directory",
-                                           "extract");
-              parser.addPositionalArgument("layer", "layer file path", "[layer]");
-              parser.addPositionalArgument("destination", "destination directory", "[destination]");
-
-              parser.process(app);
-
-              const auto layerPath = parser.positionalArguments().value(1);
-              const auto destination = parser.positionalArguments().value(2);
-
-              if (layerPath.isEmpty() || destination.isEmpty()) {
-                  parser.showHelp(-1);
-              }
-
-              auto result = linglong::builder::Builder::extractLayer(layerPath, destination);
-              if (!result) {
-                  qCritical() << result.error();
-                  return -1;
-              }
-
-              return 0;
-          } },
-        { "import",
-          [&](QCommandLineParser &parser) -> int {
-              LINGLONG_TRACE("command import");
-
-              parser.clearPositionalArguments();
-
-              parser.addPositionalArgument("import", "import layer to local repo", "import");
-
-              parser.addPositionalArgument("path", "layer file path", "[path]");
-
-              parser.process(app);
-
-              auto path = parser.positionalArguments().value(1);
-
-              if (path.isEmpty()) {
-                  qCritical() << "the layer path should be specified.";
-                  parser.showHelp(-1);
-              }
-
-              auto project =
-                linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(
-                  QDir().absoluteFilePath("linglong.yaml"));
-              if (!project) {
-                  qCritical() << project.error();
-                  return -1;
-              }
-
-              linglong::builder::Builder builder(*project,
-                                                 QDir::current(),
-                                                 repo,
-                                                 *containerBuidler,
-                                                 *builderCfg);
-              auto result = builder.importLayer(path);
-              if (!result) {
-                  qCritical() << result.error();
-                  return -1;
-              }
-              return 0;
-          } },
-        { "push",
-          [&](QCommandLineParser &parser) -> int {
-              LINGLONG_TRACE("command push");
-
-              parser.clearPositionalArguments();
-
-              auto yamlFile =
-                QCommandLineOption("f",
-                                   "file path of the linglong.yaml (default is ./linglong.yaml)",
-                                   "path",
-                                   "linglong.yaml");
-              parser.addOptions({
-                yamlFile,
-              });
-              parser.addPositionalArgument("push", "push build result to repo", "push");
-
-              auto optRepoUrl = QCommandLineOption("repo-url", "remote repo url", "--repo-url");
-              auto optRepoName = QCommandLineOption("repo-name", "remote repo name", "--repo-name");
-              auto optRepoChannel =
-                QCommandLineOption("channel", "remote repo channel", "--channel", "main");
-              auto optModule = QCommandLineOption("module", "push single module", "--module");
-              parser.addOptions({ yamlFile, optRepoUrl, optRepoName, optRepoChannel, optModule });
-
-              parser.process(app);
-
-              auto repoUrl = parser.value(optRepoUrl);
-              auto repoName = parser.value(optRepoName);
-              auto repoChannel = parser.value(optRepoChannel);
-              auto pushModule = parser.value(optModule).toStdString();
-
-              auto project = parseProjectConfig(QDir().absoluteFilePath(parser.value(yamlFile)));
-              if (!project) {
-                  qCritical() << project.error();
-                  return -1;
-              }
-              linglong::builder::Builder builder(*project,
-                                                 QDir::current(),
-                                                 repo,
-                                                 *containerBuidler,
-                                                 *builderCfg);
-              if (!pushModule.empty()) {
-                  auto result =
-                    builder.push(pushModule, repoUrl.toStdString(), repoName.toStdString());
-                  if (!result) {
-                      qCritical() << result.error();
-                      return -1;
-                  }
-                  return 0;
-              }
-              std::list<std::string> modules;
-              if (project->modules.has_value()) {
-                  for (const auto &module : project->modules.value()) {
-                      modules.push_back(module.name);
-                  }
-              }
-              modules.push_back("binary");
-              for (const auto &module : modules) {
-                  auto result = builder.push(module, repoUrl.toStdString(), repoName.toStdString());
-                  if (!result) {
-                      qCritical() << result.error();
-                      return -1;
-                  }
-              }
-
-              return 0;
-          } },
-    };
-
-    if (subcommandMap.contains(command)) {
-        auto subcommand = subcommandMap[command];
-        return subcommand(parser);
+    auto *containerBuilder = new linglong::runtime::ContainerBuilder(**ociRuntime);
+    containerBuilder->setParent(QCoreApplication::instance());
+    linglong::builder::BuilderBuildOptions options;
+
+    if (buildBuilder->parsed()) {
+        auto yamlFile = QString::fromStdString(filePath);
+        auto project = parseProjectConfig(QDir().absoluteFilePath(yamlFile));
+        if (!project) {
+            qCritical() << project.error();
+            return -1;
+        }
+
+        linglong::builder::Builder builder(*project,
+                                           QDir::current(),
+                                           repo,
+                                           *containerBuilder,
+                                           *builderCfg);
+        builder.projectYamlFile = QDir().absoluteFilePath(yamlFile).toStdString();
+        if (!arch.empty()) {
+            auto buildArch = QString::fromStdString(arch);
+            auto arch = linglong::package::Architecture::parse(buildArch.toStdString());
+            if (!arch) {
+                qCritical() << arch.error();
+                return -1;
+            }
+            auto cfg = builder.getConfig();
+            cfg.arch = arch->toString().toStdString();
+            builder.setConfig(cfg);
+        }
+
+        if (buildSkipFetchSource) {
+            auto cfg = builder.getConfig();
+            options.skipFetchSource = true;
+        }
+
+        if (skipPullDepend) {
+            auto cfg = builder.getConfig();
+            options.skipPullDepend = true;
+        }
+
+        if (buildSkipRunContainer) {
+            auto cfg = builder.getConfig();
+            options.skipRunContainer = true;
+            options.skipCommitOutput = true;
+        }
+
+        if (skipCommitOutput) {
+            auto cfg = builder.getConfig();
+            options.skipCommitOutput = true;
+        }
+
+        if (buildOffline) {
+            auto cfg = builder.getConfig();
+            options.skipFetchSource = true;
+            options.skipPullDepend = true;
+            cfg.offline = true;
+            builder.setConfig(cfg);
+        }
+
+        if (skipCheckOutput) {
+            auto cfg = builder.getConfig();
+            options.skipCheckOutput = true;
+        }
+
+        if (skipStripSymbols) {
+            auto cfg = builder.getConfig();
+            options.skipStripSymbols = true;
+        }
+
+        if (fullDevelopModule) {
+            options.fullDevelop = true;
+        }
+
+        builder.setBuildOptions(options);
+
+        linglong::utils::error::Result<void> ret;
+        if (!newCommands.empty()) {
+            auto execVerbose = commandList.join(" ");
+            auto exec = splitExec(execVerbose);
+            ret = builder.build(exec);
+        } else {
+            ret = builder.build();
+        }
+        if (!ret) {
+            qCritical() << ret.error();
+            return ret.error().code();
+        }
+        return 0;
     }
 
-    parser.showHelp();
+    if (buildRepo->parsed()) {
+        if (buildRepoShow->parsed()) {
+            const auto &cfg = repo.getConfig();
+            auto &output = std::cout;
+            output << "version: " << cfg.version << "\ndefaultRepo: " << cfg.defaultRepo
+                   << "\nrepos:\n"
+                   << "name\turl\n";
+            std::for_each(cfg.repos.cbegin(), cfg.repos.cend(), [](const auto &pair) {
+                const auto &[name, url] = pair;
+                std::cout << name << '\t' << url << "\n";
+            });
+        }
+
+        auto newCfg = repo.getConfig();
+
+        if (!repoUrl.empty()) {
+            if (repoUrl.rfind("http", 0) != 0) {
+                std::cerr << "url is invalid." << std::endl;
+                return EINVAL;
+            }
+
+            if (repoUrl.back() == '/') {
+                repoUrl.pop_back();
+            }
+        }
+
+        if (buildRepoAdd->parsed()) {
+            if (repoUrl.empty()) {
+                std::cerr << "url is empty." << std::endl;
+                return EINVAL;
+            }
+
+            auto node = newCfg.repos.try_emplace(repoName, repoUrl);
+            if (!node.second) {
+                std::cerr << "repo " + repoName + " already exist." << std::endl;
+                return -1;
+            }
+
+            auto ret = repo.setConfig(newCfg);
+            if (!ret) {
+                std::cerr << ret.error().message().toStdString() << std::endl;
+                return -1;
+            }
+
+            return 0;
+        }
+
+        auto existingRepo = newCfg.repos.find(repoName);
+        if (existingRepo == newCfg.repos.cend()) {
+            std::cerr << "the operated repo " + repoName + " doesn't exist." << std::endl;
+            return -1;
+        }
+
+        if (buildRepoRemove->parsed()) {
+            if (newCfg.defaultRepo == repoName) {
+                std::cerr << "repo " + repoName
+                    + "is default repo, please change default repo before removing it.";
+                return -1;
+            }
+
+            newCfg.repos.erase(existingRepo);
+            auto ret = repo.setConfig(newCfg);
+            if (!ret) {
+                std::cerr << ret.error().message().toStdString() << std::endl;
+                return -1;
+            }
+
+            return 0;
+        }
+
+        if (buildRepoUpdate->parsed()) {
+            if (repoUrl.empty()) {
+                std::cerr << "url is empty." << std::endl;
+                return -1;
+            }
+
+            existingRepo->second = repoUrl;
+            auto ret = repo.setConfig(newCfg);
+            if (!ret) {
+                std::cerr << ret.error().message().toStdString() << std::endl;
+                return -1;
+            }
+
+            return 0;
+        }
+
+        if (buildRepoSetDefault->parsed()) {
+            if (newCfg.defaultRepo != repoName) {
+                newCfg.defaultRepo = repoName;
+                auto ret = repo.setConfig(newCfg);
+                if (!ret) {
+                    std::cerr << ret.error().message().toStdString() << std::endl;
+                    return -1;
+                }
+            }
+            return 0;
+        }
+
+        std::cerr << "unknown operation, please see help information." << std::endl;
+        return EINVAL;
+    }
+
+    if (buildRun->parsed()) {
+        auto project =
+          parseProjectConfig(QDir().absoluteFilePath(QString::fromStdString(filePath)));
+        if (!project) {
+            qCritical() << project.error();
+            return -1;
+        }
+
+        linglong::builder::Builder builder(*project,
+                                           QDir::current(),
+                                           repo,
+                                           *containerBuilder,
+                                           *builderCfg);
+        QStringList exec;
+        QStringList modules = { "binary" };
+        if (!newCommands.empty()) {
+            auto execVerbose = commandList.join(" ");
+            exec = splitExec(execVerbose);
+        }
+
+        if (!execModules.empty()) {
+            for (const std::string &module : execModules) {
+                modules.append(QString::fromStdString(module));
+            }
+        }
+
+        bool debug = false;
+        if (debugMode) {
+            modules.push_back("develop");
+            debug = true;
+        }
+
+        if (buildOffline) {
+            auto cfg = builder.getConfig();
+            options.skipFetchSource = true;
+            options.skipPullDepend = true;
+            cfg.offline = true;
+            builder.setConfig(cfg);
+            builder.setBuildOptions(options);
+        }
+
+        auto result = builder.run(modules, exec, debug);
+        if (!result) {
+            qCritical() << result.error();
+            return -1;
+        }
+
+        return 0;
+    }
+
+    if (buildExport->parsed()) {
+        auto project =
+          parseProjectConfig(QDir().absoluteFilePath(QString::fromStdString(filePath)));
+        if (!project) {
+            qCritical() << project.error();
+            return -1;
+        }
+
+        linglong::builder::Builder builder(*project,
+                                           QDir::current(),
+                                           repo,
+                                           *containerBuilder,
+                                           *builderCfg);
+
+        if (layerMode) {
+            auto result = builder.exportLayer(QDir::currentPath());
+            if (!result) {
+                qCritical() << result.error();
+                return -1;
+            }
+
+            return 0;
+        }
+
+        auto result = builder.exportUAB(QDir::currentPath(),
+                                        { .iconPath = QString::fromStdString(iconFile),
+                                          .exportDevelop = true,
+                                          .exportI18n = true });
+        if (!result) {
+            qCritical() << result.error();
+            return -1;
+        }
+
+        return 0;
+    }
+
+    if (buildExtract->parsed()) {
+        auto result = linglong::builder::Builder::extractLayer(QString::fromStdString(layerFile),
+                                                               QString::fromStdString(dir));
+        if (!result) {
+            qCritical() << result.error();
+            return -1;
+        }
+
+        return 0;
+    }
+
+    if (buildImport->parsed()) {
+        auto project =
+          linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(
+            QDir().absoluteFilePath("linglong.yaml"));
+        if (!project) {
+            qCritical() << project.error();
+            return -1;
+        }
+
+        linglong::builder::Builder builder(*project,
+                                           QDir::current(),
+                                           repo,
+                                           *containerBuilder,
+                                           *builderCfg);
+        auto result = builder.importLayer(QString::fromStdString(layerFile));
+        if (!result) {
+            qCritical() << result.error();
+            return -1;
+        }
+        return 0;
+    }
+
+    if (buildPush->parsed()) {
+        auto project =
+          parseProjectConfig(QDir().absoluteFilePath(QString::fromStdString(filePath)));
+        if (!project) {
+            qCritical() << project.error();
+            return -1;
+        }
+
+        linglong::builder::Builder builder(*project,
+                                           QDir::current(),
+                                           repo,
+                                           *containerBuilder,
+                                           *builderCfg);
+        if (!pushModule.empty()) {
+            auto result = builder.push(pushModule, repoUrl, repoName);
+            if (!result) {
+                qCritical() << result.error();
+                return -1;
+            }
+            return 0;
+        }
+        std::list<std::string> modules;
+        if (project->modules.has_value()) {
+            for (const auto &module : project->modules.value()) {
+                modules.push_back(module.name);
+            }
+        }
+        modules.push_back("binary");
+        for (const auto &module : modules) {
+            auto result = builder.push(module, repoUrl, repoName);
+            if (!result) {
+                qCritical() << result.error();
+                return -1;
+            }
+        }
+
+        return 0;
+    }
+
+    std::cout << commandParser.help("", CLI::AppFormatMode::All);
+
     return 0;
 }

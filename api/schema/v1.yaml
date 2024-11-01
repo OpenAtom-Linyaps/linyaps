@@ -507,6 +507,9 @@ $defs:
       description:
         type: string
         description: description of package info
+      compatible_version:
+        type: string
+        description: record linyaps package is compatible with linyaps component version
   PackageInfo:
     title: PackageInfo
     description: this is the each item output of ll-cli list --json
@@ -600,7 +603,7 @@ $defs:
         type: integer
   InteractionMessageType:
     description: To identify what message to print during interaction.
-    enum: ["Unknown", "Install", "Uninstall", "Upgrade", "Downgrade"]
+    enum: ['Unknown', 'Install', 'Uninstall', 'Upgrade', 'Downgrade']
   PackageManager1RequestInteractionAdditionalMessage:
     type: object
     description: fill ref string to additional message in requestInteraction
@@ -616,11 +619,30 @@ $defs:
     $ref: '#/$defs/CommonResult'
   State:
     description: main state of current task,
-    enum: ["Unknown", "Queued", "Pending", "Processing", "Succeed", "Failed", "Canceled"]
+    enum:
+      [
+        'Unknown',
+        'Queued',
+        'Pending',
+        'Processing',
+        'Succeed',
+        'Failed',
+        'Canceled',
+      ]
   SubState:
     description: subState of current task,
-    enum: ["Unknown", "PreAction", "InstallRuntime", "InstallBase", "InstallApplication",
-           "PostAction", "Uninstall", "AllDone", "PackageManagerDone"]
+    enum:
+      [
+        'Unknown',
+        'PreAction',
+        'InstallRuntime',
+        'InstallBase',
+        'InstallApplication',
+        'PostAction',
+        'Uninstall',
+        'AllDone',
+        'PackageManagerDone',
+      ]
   PackageManager1InstallLayerFDResult:
     $ref: '#/$defs/CommonResult'
   PackageManager1InstallParameters:

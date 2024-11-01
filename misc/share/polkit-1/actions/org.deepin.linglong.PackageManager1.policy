@@ -14,6 +14,7 @@
                         <allow_inactive>auth_admin</allow_inactive>
                         <allow_active>auth_admin_keep</allow_active>
                 </defaults>
+                <annotate key="org.freedesktop.policykit.exec.path">@CMAKE_INSTALL_FULL_BINDIR@/@LINGLONG_CLI_BIN@</annotate>
                 <description xml:lang="en_US">Check Authentication</description>
                 <message xml:lang="en_US">Authentication is required to perform this action</message>
                 <description xml:lang="it">Check Authentication</description>

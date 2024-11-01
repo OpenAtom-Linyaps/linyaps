@@ -188,7 +188,7 @@ void Cli::interaction(QDBusObjectPath object_path, int messageID, QVariantMap ad
     auto msg = utils::serialize::fromQVariantMap<
       api::types::v1::PackageManager1RequestInteractionAdditionalMessage>(additionalMessage);
 
-    std::vector<std::string> actions{ "nes", "Yes", "no", "No" };
+    std::vector<std::string> actions{ "yes", "Yes", "no", "No" };
 
     api::types::v1::InteractionRequest req;
     req.actions = actions;

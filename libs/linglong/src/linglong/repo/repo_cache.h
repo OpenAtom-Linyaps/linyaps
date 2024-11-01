@@ -37,6 +37,15 @@ struct repoCacheQuery
 
         return std::string{ "unknown" };
     }
+
+    [[nodiscard]] std::string to_string() const noexcept
+    {
+        std::stringstream ss;
+        ss << repo.value_or("undefined") << ":" << channel.value_or("undefined") << "/"
+           << id.value_or("undefined") << "/" << version.value_or("undefined") << "/" << arch()
+           << "/" << module.value_or("undefined");
+        return ss.str();
+    }
 };
 
 enum class MigrationStage : int64_t { RefsWithoutRepo };

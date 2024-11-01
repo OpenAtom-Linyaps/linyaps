@@ -1594,7 +1594,12 @@ OSTreeRepo::getLayerItem(const package::Reference &ref,
     }
 
     if (count == 0) {
-        qInfo() << "fallback to runtime module";
+        if (query.module != "binary") {
+            return LINGLONG_ERR("couldn't find layer item " % ref.toString() % "/"
+                                % module.c_str());
+        }
+
+        qInfo() << "fallback to runtime:" << query.to_string().c_str();
         query.module = "runtime";
         items = this->cache->queryLayerItem(query);
         if (items.size() > 1) {
@@ -1664,9 +1669,8 @@ std::vector<std::string> OSTreeRepo::getModuleList(const package::Reference &ref
     return modules;
 }
 
-auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref,
-                                    bool fallbackLayerDir) const noexcept
-  -> utils::error::Result<package::LayerDir>
+auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref, bool fallbackLayerDir)
+  const noexcept -> utils::error::Result<package::LayerDir>
 {
     LINGLONG_TRACE("get merge dir from ref " + ref.toString());
     qDebug() << "getMergedModuleDir" << ref.toString();
@@ -1703,9 +1707,8 @@ auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref,
     return LINGLONG_ERR("merged doesn't exist");
 }
 
-auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref,
-                                    const QStringList &loadModules) const noexcept
-  -> utils::error::Result<std::shared_ptr<package::LayerDir>>
+auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref, const QStringList &loadModules)
+  const noexcept -> utils::error::Result<std::shared_ptr<package::LayerDir>>
 {
     LINGLONG_TRACE("merge modules");
     QDir mergedDir = this->repoDir.absoluteFilePath("merged");

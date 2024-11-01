@@ -74,8 +74,7 @@ public:
     auto operator=(PackageManager &&) -> PackageManager & = delete;
     void Update(PackageTask &taskContext,
                 const package::Reference &ref,
-                const package::Reference &newRef,
-                const std::string &module) noexcept;
+                const package::Reference &newRef) noexcept;
 
 public
     Q_SLOT : [[nodiscard]] auto getConfiguration() const noexcept -> QVariantMap;
@@ -109,13 +108,14 @@ Q_SIGNALS:
     void ReplyReceived(const QVariantMap &replies);
 
 private:
+    // passing multiple modules to install may use in the future
     void Install(PackageTask &taskContext,
                  const package::Reference &newRef,
                  std::optional<package::Reference> oldRef,
-                 const std::string &module) noexcept;
+                 const std::vector<std::string> &modules) noexcept;
     void InstallRef(PackageTask &taskContext,
                     const package::Reference &ref,
-                    const std::string &module) noexcept;
+                    std::vector<std::string> modules) noexcept;
     void UninstallRef(PackageTask &taskContext,
                       const package::Reference &ref,
                       const std::vector<std::string> &modules) noexcept;
@@ -133,7 +133,8 @@ private:
     getAllRunningContainers() noexcept;
     utils::error::Result<bool> isRefBusy(const package::Reference &ref) noexcept;
     void deferredUninstall() noexcept;
-    utils::error::Result<void> removeAfterInstall(const package::Reference &oldRef) noexcept;
+    utils::error::Result<void> removeAfterInstall(const package::Reference &oldRef,
+                                                  const std::vector<std::string> &modules) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT
     std::list<PackageTask *> taskList;
     // 正在运行的任务对象路径

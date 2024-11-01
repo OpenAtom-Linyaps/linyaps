@@ -40,6 +40,10 @@ set(LINGLONG_DEFAULT_OCI_RUNTIME
     "ll-box"
     CACHE STRING "The oci runtime which linglong use by default")
 
+set(LINGLONG_CLI_BIN
+    "ll-cli"
+    CACHE STRING "The client of package management.")
+
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(PFL)
 

@@ -6,7 +6,7 @@ pfl_add_executable(
   SOURCES
   ./src/main.cpp
   OUTPUT_NAME
-  ll-cli
+  ${LINGLONG_CLI_BIN}
   LINK_LIBRARIES
   PUBLIC
   linglong::linglong)

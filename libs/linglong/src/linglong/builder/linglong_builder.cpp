@@ -861,6 +861,7 @@ set -e
             "share/plugins",      // Copy plugins conf，The configuration files provided by some
                                   // applications maybe used by the host dde-file-manager.
             "share/systemd",      // copy systemd service files
+            "share/deepin-manual" // copy deepin-manual files
         };
 
         QDir binaryFiles = this->workingDir.absoluteFilePath("linglong/output/binary/files");
@@ -1248,8 +1249,8 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     // mergedDir 会自动在释放时删除临时目录，所以要用变量保留住
     utils::error::Result<std::shared_ptr<package::LayerDir>> mergedDir;
     if (modules.size() > 1) {
-        qDebug() << "create temp merge dir." << "ref: " << curRef->toString()
-                 << "modules: " << modules;
+        qDebug() << "create temp merge dir."
+                 << "ref: " << curRef->toString() << "modules: " << modules;
         mergedDir = this->repo.getMergedModuleDir(*curRef, modules);
         if (!mergedDir.has_value()) {
             return LINGLONG_ERR(mergedDir);

@@ -183,8 +183,8 @@ int main(int argc, char **argv)
         "A CLI program to run application and manage linyaps application and runtime.\n"
     };
     commandParser.set_help_all_flag("--help-all", "Expand all help");
-    commandParser.footer(R"(if you found any problems during use,
-you can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues.)");
+    commandParser.footer(R"(If you found any problems during use,
+You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues.)");
 
     // group empty will hide command
     std::string CliHiddenGroup = "";
@@ -222,7 +222,7 @@ you can report bugs to the linyaps team under this project: https://github.com/O
     // add sub command run
     std::vector<std::string> oldCommands;
     auto cliRun =
-      commandParser.add_subcommand("run", "Run an application.\n")->group(CliAppManagingGroup);
+      commandParser.add_subcommand("run", "Run an application.")->group(CliAppManagingGroup);
 
     // add sub command run options
     cliRun->add_option("APP", options.appid, "Specify the application ID.")
@@ -240,23 +240,23 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)");
     cliRun
       ->add_option("--file",
                    options.filePath,
-                   "You can pass file to applications running in a sandbox..")
+                   "You can pass file to applications running in a sandbox.")
       ->type_name("FILE")
       ->check(CLI::ExistingFile);
     cliRun
       ->add_option("--url",
                    options.fileUrl,
-                   "You can pass url to applications running in a sandbox..")
+                   "You can pass url to applications running in a sandbox.")
       ->type_name("URL");
     cliRun->add_option("COMMAND", options.commands, "Run commands in a running sandbox.");
 
     // add sub command ps
-    auto cliPs = commandParser.add_subcommand("ps", "List running applications.\n")
-                   ->group(CliAppManagingGroup);
+    auto cliPs =
+      commandParser.add_subcommand("ps", "List running applications.")->group(CliAppManagingGroup);
 
     // add sub command exec
     auto cliExec =
-      commandParser.add_subcommand("exec", "Execute commands in the currently running sandbox.\n")
+      commandParser.add_subcommand("exec", "Execute commands in the currently running sandbox.")
         ->group(CliHiddenGroup);
     cliExec
       ->add_option("INSTANCE",
@@ -272,7 +272,7 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)");
     // add sub command enter
     auto cliEnter =
       commandParser
-        .add_subcommand("enter", "Enter the namespace where the application is running.\n")
+        .add_subcommand("enter", "Enter the namespace where the application is running.")
         ->group(CliAppManagingGroup);
     cliEnter
       ->add_option("INSTANCE",
@@ -285,7 +285,7 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)");
     cliEnter->add_option("COMMAND", options.commands, "Run commands in a running sandbox.");
 
     // add sub command kill
-    auto cliKill = commandParser.add_subcommand("kill", "Stop running applications.\n")
+    auto cliKill = commandParser.add_subcommand("kill", "Stop running applications.")
                      ->group(CliAppManagingGroup);
     cliKill
       ->add_option("INSTANCE",
@@ -296,7 +296,7 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)");
 
     // add sub command install
     auto cliInstall =
-      commandParser.add_subcommand("install", "Installing an application or runtime.\n")
+      commandParser.add_subcommand("install", "Installing an application or runtime.")
         ->group(CliBuildInGroup);
     cliInstall->usage(R"(Usage: ll-cli install [OPTIONS] APP
 
@@ -328,7 +328,7 @@ ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
 
     // add sub command uninstall
     auto cliUninstall =
-      commandParser.add_subcommand("uninstall", "Uninstall the application or runtimes.\n")
+      commandParser.add_subcommand("uninstall", "Uninstall the application or runtimes.")
         ->group(CliBuildInGroup);
     cliUninstall->add_option("APP", options.appid, "Specify the applications ID.")
       ->required()
@@ -339,7 +339,7 @@ ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
 
     // add sub command upgrade
     auto cliUpgrade =
-      commandParser.add_subcommand("upgrade", "Upgrade the application or runtimes.\n")
+      commandParser.add_subcommand("upgrade", "Upgrade the application or runtimes.")
         ->group(CliBuildInGroup);
     cliUpgrade
       ->add_option(
@@ -353,7 +353,7 @@ ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
     auto cliSearch = commandParser
                        .add_subcommand("search",
                                        "Search the applications/runtimes containing the specified "
-                                       "text from the remote repository.\n")
+                                       "text from the remote repository.")
                        ->group(CliSearchGroup);
     cliSearch->usage(R"(Usage: ll-cli search [OPTIONS] KEYWORDS
 
@@ -379,9 +379,8 @@ ll-cli search . --type=runtime)");
     cliSearch->add_flag("--dev", options.showDevel, "include develop application in result.");
 
     // add sub command list
-    auto cliList =
-      commandParser.add_subcommand("list", "List installed applications or runtimes.\n")
-        ->group(CliBuildInGroup);
+    auto cliList = commandParser.add_subcommand("list", "List installed applications or runtimes.")
+                     ->group(CliBuildInGroup);
     cliList->usage(R"(Usage: ll-cli list [OPTIONS]
 
 Example:
@@ -407,13 +406,12 @@ ll-cli list --upgradable
     // add sub command repo
     auto cliRepo =
       commandParser
-        .add_subcommand("repo",
-                        "Display or modify information of the repository currently using.\n")
+        .add_subcommand("repo", "Display or modify information of the repository currently using.")
         ->group(CliRepoGroup);
     cliRepo->require_subcommand(1);
 
     // add repo sub command add
-    auto repoAdd = cliRepo->add_subcommand("add", "Add a new repository.\n");
+    auto repoAdd = cliRepo->add_subcommand("add", "Add a new repository.");
     repoAdd->add_option("NAME", options.repoName, "Specify the repo name.")
       ->required()
       ->check(validatorString);
@@ -422,7 +420,7 @@ ll-cli list --upgradable
       ->check(validatorString);
 
     // add repo sub command modify
-    auto repoModify = cliRepo->add_subcommand("modify", "Modify repository URL.\n");
+    auto repoModify = cliRepo->add_subcommand("modify", "Modify repository URL.");
     repoModify->add_option("--name", options.repoName, "Specify the repo name.")
       ->type_name("REPO")
       ->check(validatorString);
@@ -431,13 +429,13 @@ ll-cli list --upgradable
       ->check(validatorString);
 
     // add repo sub command remove
-    auto repoRemove = cliRepo->add_subcommand("remove", "Remove a repository.\n");
+    auto repoRemove = cliRepo->add_subcommand("remove", "Remove a repository.");
     repoRemove->add_option("NAME", options.repoName, "Specify the repo name.")
       ->required()
       ->check(validatorString);
 
     // add repo sub command update
-    auto repoUpdate = cliRepo->add_subcommand("update", "Update to a new repository.\n");
+    auto repoUpdate = cliRepo->add_subcommand("update", "Update to a new repository.");
     repoUpdate->add_option("NAME", options.repoName, "Specify the repo name.")
       ->required()
       ->check(validatorString);
@@ -446,18 +444,17 @@ ll-cli list --upgradable
       ->check(validatorString);
 
     // add repo sub command set-default
-    auto repoSetDefault = cliRepo->add_subcommand("set-default", "Set default repository name.\n");
+    auto repoSetDefault = cliRepo->add_subcommand("set-default", "Set default repository name.");
     repoSetDefault->add_option("NAME", options.repoName, "Specify the repo name.")
       ->required()
       ->check(validatorString);
 
     // add repo sub command show
-    auto repoShow = cliRepo->add_subcommand("show", "Show repository.\n");
+    auto repoShow = cliRepo->add_subcommand("show", "Show repository.");
 
     // add sub command info
     auto cliInfo =
-      commandParser
-        .add_subcommand("info", "Display information about installed apps or runtimes.\n")
+      commandParser.add_subcommand("info", "Display information about installed apps or runtimes.")
         ->group(CliBuildInGroup);
     cliInfo
       ->add_option("APP",
@@ -468,7 +465,7 @@ ll-cli list --upgradable
 
     // add sub command content
     auto cliContent =
-      commandParser.add_subcommand("content", "Display the exported files of application.\n")
+      commandParser.add_subcommand("content", "Display the exported files of application.")
         ->group(CliBuildInGroup);
     cliContent->add_option("APP", options.appid, "Specify the application.")
       ->required()
@@ -476,10 +473,10 @@ ll-cli list --upgradable
 
     // add sub command content
     auto cliMigrate =
-      commandParser.add_subcommand("migrate", "migrate repository data.\n")->group(CliHiddenGroup);
+      commandParser.add_subcommand("migrate", "migrate repository data.")->group(CliHiddenGroup);
 
     // add sub command prune
-    auto cliPrune = commandParser.add_subcommand("prune", "Remove the unused base or runtime.\n")
+    auto cliPrune = commandParser.add_subcommand("prune", "Remove the unused base or runtime.")
                       ->group(CliAppManagingGroup);
 
     auto res = transformOldExec(argc, argv);

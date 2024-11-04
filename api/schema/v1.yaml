@@ -350,8 +350,11 @@ $defs:
               type: string
               description: module name
             files:
-              type: string
+              type: array
               description: module install files
+              items:
+                type: string
+                description: module install file
   BuilderConfig:
     description: Configuration file for ll-builder.
     type: object

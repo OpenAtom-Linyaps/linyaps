@@ -420,8 +420,12 @@
                 "description": "module name"
               },
               "files": {
-                "type": "string",
-                "description": "module install files"
+                "type": "array",
+                "description": "module install files",
+                "items": {
+                  "type": "string",
+                  "description": "module install file"
+                }
               }
             }
           }
@@ -607,6 +611,10 @@
         "description": {
           "type": "string",
           "description": "description of package info"
+        },
+        "compatible_version": {
+          "type": "string",
+          "description": "record linyaps package is compatible with linyaps component version"
         }
       }
     },

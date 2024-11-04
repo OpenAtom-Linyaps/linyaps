@@ -306,7 +306,7 @@ j["version"] = x.version;
 }
 
 inline void from_json(const json & j, BuilderProjectModules& x) {
-x.files = j.at("files").get<std::string>();
+x.files = j.at("files").get<std::vector<std::string>>();
 x.name = j.at("name").get<std::string>();
 }
 
@@ -571,6 +571,7 @@ x.arch = j.at("arch").get<std::vector<std::string>>();
 x.base = j.at("base").get<std::string>();
 x.channel = j.at("channel").get<std::string>();
 x.command = get_stack_optional<std::vector<std::string>>(j, "command");
+x.compatibleVersion = get_stack_optional<std::string>(j, "compatible_version");
 x.description = get_stack_optional<std::string>(j, "description");
 x.id = j.at("id").get<std::string>();
 x.kind = j.at("kind").get<std::string>();
@@ -591,6 +592,9 @@ j["base"] = x.base;
 j["channel"] = x.channel;
 if (x.command) {
 j["command"] = x.command;
+}
+if (x.compatibleVersion) {
+j["compatible_version"] = x.compatibleVersion;
 }
 if (x.description) {
 j["description"] = x.description;

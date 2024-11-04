@@ -64,7 +64,8 @@ public:
 
     auto import() -> utils::error::Result<void>;
 
-    auto importLayer(const QString &path) -> utils::error::Result<void>;
+    static auto importLayer(repo::OSTreeRepo &repo, const QString &path)
+      -> utils::error::Result<void>;
 
     auto run(const QStringList &modules, const QStringList &args, const bool &debug)
       -> utils::error::Result<void>;

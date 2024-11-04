@@ -1196,7 +1196,7 @@ linglong::utils::error::Result<void> Builder::push(const std::string &module,
     return repo.pushToRemote(repoName, repoUrl, *ref, module);
 }
 
-utils::error::Result<void> Builder::importLayer(const QString &path)
+utils::error::Result<void> Builder::importLayer(repo::OSTreeRepo &ostree, const QString &path)
 {
     LINGLONG_TRACE("import layer");
 
@@ -1212,7 +1212,7 @@ utils::error::Result<void> Builder::importLayer(const QString &path)
         return LINGLONG_ERR(layerDir);
     }
 
-    auto result = this->repo.importLayerDir(*layerDir);
+    auto result = ostree.importLayerDir(*layerDir);
     if (!result) {
         return LINGLONG_ERR(result);
     }

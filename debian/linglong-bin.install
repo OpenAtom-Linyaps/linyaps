@@ -25,3 +25,4 @@ usr/share/linglong/config.yaml
 usr/share/mime/packages/vnd.linyaps.uab.xml
 usr/share/polkit-1/actions/org.deepin.linglong.PackageManager1.policy
 usr/share/polkit-1/rules.d/org.deepin.linglong.PackageManager1.rules
+usr/share/locale

@@ -100,6 +100,7 @@ cd build
 %{_datadir}/polkit-1/rules.d/org.deepin.linglong.PackageManager1.rules
 %{_datadir}/%{name}/config.yaml
 %{_datadir}/mime/packages/*
+%{_datadir}/locale/*
 
 %files -n linglong-builder
 %license LICENSE

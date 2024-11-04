@@ -43,6 +43,9 @@ set(LINGLONG_DEFAULT_OCI_RUNTIME
 set(LINGLONG_CLI_BIN
     "ll-cli"
     CACHE STRING "The client of package management.")
+set(GETTEXT_DOMAIN_NAME
+    "linyaps"
+    CACHE STRING "The name of gettext domain.")
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(PFL)
@@ -188,3 +191,4 @@ pfl_add_libraries(
   ll-session-helper)
 
 add_subdirectory(misc)
+add_subdirectory(po)

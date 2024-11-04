@@ -1121,38 +1121,28 @@ utils::error::Result<void> Builder::exportLayer(const QString &destination)
         return LINGLONG_ERR(ref);
     }
 
-    auto binaryLayerDir = this->repo.getLayerDir(*ref);
-    if (!binaryLayerDir) {
-        return LINGLONG_ERR(binaryLayerDir);
-    }
-    const auto binaryLayerPath = QString("%1/%2_%3_%4_%5.layer")
-                                   .arg(destDir.absolutePath(),
-                                        ref->id,
-                                        ref->version.toString(),
-                                        ref->arch.toString(),
-                                        "binary");
-
-    auto developLayerDir = this->repo.getLayerDir(*ref, "develop");
-    const auto develLayerPath = QString("%1/%2_%3_%4_%5.layer")
-                                  .arg(destDir.absolutePath(),
-                                       ref->id,
-                                       ref->version.toString(),
-                                       ref->arch.toString(),
-                                       "develop");
-    if (!developLayerDir) {
-        return LINGLONG_ERR(developLayerDir);
-    }
+    auto modules = this->repo.getModuleList(*ref);
 
     package::LayerPackager pkger;
+    for (const auto &module : modules) {
+        auto layerDir = this->repo.getLayerDir(*ref, module);
+        if (!layerDir) {
+            qCritical().nospace() << "resolve layer " << ref->toString() << "/" << module.c_str()
+                                  << " failed: " << layerDir.error().message();
+            continue;
+        }
 
-    auto binaryLayer = pkger.pack(*binaryLayerDir, binaryLayerPath);
-    if (!binaryLayer) {
-        return LINGLONG_ERR(binaryLayer);
-    }
-
-    auto develLayer = pkger.pack(*developLayerDir, develLayerPath);
-    if (!develLayer) {
-        return LINGLONG_ERR(develLayer);
+        auto layerFile = QString("%1/%2_%3_%4_%5.layer")
+                           .arg(destDir.absolutePath(),
+                                ref->id,
+                                ref->version.toString(),
+                                ref->arch.toString(),
+                                module.c_str());
+        auto ret = pkger.pack(*layerDir, layerFile);
+        if (!ret) {
+            qCritical().nospace() << "export layer " << ref->toString() << "/" << module.c_str()
+                                  << " failed: " << ret.error().message();
+        }
     }
 
     return LINGLONG_OK;

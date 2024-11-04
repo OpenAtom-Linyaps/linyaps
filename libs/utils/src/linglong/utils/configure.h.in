@@ -19,3 +19,9 @@
 #define LINGLONG_DEFAULT_OCI_RUNTIME "@LINGLONG_DEFAULT_OCI_RUNTIME@"
 #define LINGLONG_UAB_DATA_LOCATION "@CMAKE_INSTALL_FULL_LIBDIR@/linglong/builder/uab"
 #define LINGLONG_BUILDER_HELPER LINGLONG_LIBEXEC_DIR "/builder/helper"
+
+// The package's locale domain.
+#define PACKAGE_LOCALE_DOMAIN "@GETTEXT_DOMAIN_NAME@"
+
+// The directory where the package's translations reside.
+#define PACKAGE_LOCALE_DIR "@CMAKE_INSTALL_FULL_DATADIR@/locale"

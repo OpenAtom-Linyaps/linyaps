@@ -127,3 +127,13 @@ Copyright: UnionTech Software Technology Co., Ltd.
 Files: tools/layer-icon-checker.sh
 License: CC0-1.0
 Copyright: None
+
+# translation files
+Files: po/CMakeLists.txt
+License: GPL-2.0-or-later
+Copyright: 2018 Xiphos Development Team
+
+# translation files
+Files: po/*.po po/*.pot po/POTFILES.in po/LINGUAS
+License: LGPL-3.0-only
+Copyright: UnionTech Software Technology Co., Ltd.

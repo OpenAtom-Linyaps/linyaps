@@ -547,14 +547,15 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     if (buildRepo->parsed()) {
         if (buildRepoShow->parsed()) {
             const auto &cfg = repo.getConfig();
-            auto &output = std::cout;
-            output << "version: " << cfg.version << "\ndefaultRepo: " << cfg.defaultRepo
-                   << "\nrepos:\n"
-                   << "name\turl\n";
-            std::for_each(cfg.repos.cbegin(), cfg.repos.cend(), [](const auto &pair) {
-                const auto &[name, url] = pair;
-                std::cout << name << '\t' << url << "\n";
-            });
+            // Note: keep the same format as ll-cli repo
+            std::cout << "Default: " << cfg.defaultRepo << std::endl;
+            std::cout << std::left << std::setw(11) << "Name";
+            std::cout << "Url" << std::endl;
+            for (const auto &r : cfg.repos) {
+                std::cout << std::left << std::setw(10) << r.first << " " << r.second
+                          << std::endl;
+            }
+            return 0;
         }
 
         auto newCfg = repo.getConfig();
@@ -744,20 +745,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     }
 
     if (buildImport->parsed()) {
-        auto project =
-          linglong::utils::serialize::LoadYAMLFile<linglong::api::types::v1::BuilderProject>(
-            QDir().absoluteFilePath("linglong.yaml"));
-        if (!project) {
-            qCritical() << project.error();
-            return -1;
-        }
-
-        linglong::builder::Builder builder(*project,
-                                           QDir::current(),
-                                           repo,
-                                           *containerBuilder,
-                                           *builderCfg);
-        auto result = builder.importLayer(QString::fromStdString(layerFile));
+        auto result =
+          linglong::builder::Builder::importLayer(repo, QString::fromStdString(layerFile));
         if (!result) {
             qCritical() << result.error();
             return -1;

@@ -40,6 +40,7 @@ pfl_add_library(
   src/linglong/utils/transaction.h
   src/linglong/utils/xdg/desktop_entry.cpp
   src/linglong/utils/xdg/desktop_entry.h
+  src/linglong/utils/gettext.h
   COMPILE_FEATURES
   PUBLIC
   cxx_std_17

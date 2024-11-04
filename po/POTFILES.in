@@ -1,0 +1,6 @@
+
+[encoding: UTF-8]
+
+# ll-cli source files
+
+apps/ll-cli/src/main.cpp

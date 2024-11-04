@@ -1,0 +1,386 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-11-05 16:42+0800\n"
+"PO-Revision-Date: 2024-11-04 21:31+0800\n"
+"Last-Translator:  deepiner, 2024\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ../apps/ll-cli/src/main.cpp:185
+msgid ""
+"linyaps CLI\n"
+"A CLI program to run application and manage application and runtime\n"
+msgstr ""
+"如意玲珑 CLI\n"
+"一个用于运行应用程序和管理应用程序和运行时的命令行工具\n"
+
+#: ../apps/ll-cli/src/main.cpp:187
+msgid "Print this help message and exit"
+msgstr "打印帮助信息并退出"
+
+#: ../apps/ll-cli/src/main.cpp:188
+msgid "Expand all help"
+msgstr "展开所有帮助"
+
+#: ../apps/ll-cli/src/main.cpp:189
+msgid "Usage: [OPTIONS] [SUBCOMMAND]"
+msgstr "用法：[选项] [子命令]"
+
+#: ../apps/ll-cli/src/main.cpp:190
+msgid ""
+"If you found any problems during use,\n"
+"You can report bugs to the linyaps team under this project: https://github."
+"com/OpenAtom-Linyaps/linyaps/issues"
+msgstr ""
+"如果在使用过程中遇到任何问题，\n"
+"您可以通过此项目向如意玲珑项目团队报告错误：https://github.com/OpenAtom-"
+"Linyaps/linyaps/issues"
+
+#. add flags
+#: ../apps/ll-cli/src/main.cpp:197
+msgid "Show version"
+msgstr "显示版本"
+
+#: ../apps/ll-cli/src/main.cpp:202
+msgid ""
+"Use peer to peer DBus, this is used only in case that DBus daemon is not "
+"available"
+msgstr "使用点对点 DBus，仅在 DBus 守护程序不可用时使用"
+
+#: ../apps/ll-cli/src/main.cpp:204
+msgid "Use json format to output result"
+msgstr "使用json格式输出结果"
+
+#: ../apps/ll-cli/src/main.cpp:210
+msgid "Input parameter is empty, please input valid parameter instead"
+msgstr "输入参数为空，请输入有效参数"
+
+#. groups
+#: ../apps/ll-cli/src/main.cpp:220
+msgid "Managing installed applications and runtimes"
+msgstr "管理已安装的应用程序和运行时"
+
+#: ../apps/ll-cli/src/main.cpp:221
+msgid "Managing running applications"
+msgstr "管理正在运行的应用程序"
+
+#: ../apps/ll-cli/src/main.cpp:222
+msgid "Finding applications and runtimes"
+msgstr "查找应用程序和运行时"
+
+#: ../apps/ll-cli/src/main.cpp:223
+msgid "Managing remote repositories"
+msgstr "管理仓库"
+
+#: ../apps/ll-cli/src/main.cpp:228
+msgid "Run an application"
+msgstr "运行应用程序"
+
+#. add sub command run options
+#: ../apps/ll-cli/src/main.cpp:231
+msgid "Specify the application ID"
+msgstr "指定应用程序名"
+
+#: ../apps/ll-cli/src/main.cpp:234
+msgid ""
+"Usage: ll-cli run [OPTIONS] APP [COMMAND...]\n"
+"\n"
+"Example:\n"
+"# run application by appid\n"
+"ll-cli run org.deepin.demo\n"
+"# execute commands in the container rather than running the application\n"
+"ll-cli run org.deepin.demo bash\n"
+"ll-cli run org.deepin.demo -- bash\n"
+"ll-cli run org.deepin.demo -- bash -x /path/to/bash/script"
+msgstr ""
+"用法: ll-cli run [选项] 应用程序 [命令...]\n"
+"\n"
+"示例:\n"
+"# 通过应用名运行应用程序\n"
+"ll-cli run org.deepin.demo\n"
+"# 在容器中执行命令而不是运行应用程序\n"
+"ll-cli run org.deepin.demo bash\n"
+"ll-cli run org.deepin.demo -- bash\n"
+"ll-cli run org.deepin.demo -- bash -x /path/to/bash/script"
+
+#: ../apps/ll-cli/src/main.cpp:246
+msgid "Pass file to applications running in a sandbox"
+msgstr "将文件传递到沙盒中运行的应用程序"
+
+#: ../apps/ll-cli/src/main.cpp:252
+msgid "Pass url to applications running in a sandbox"
+msgstr "将URL传递到沙盒中运行的应用程序"
+
+#: ../apps/ll-cli/src/main.cpp:254 ../apps/ll-cli/src/main.cpp:272
+#: ../apps/ll-cli/src/main.cpp:287
+msgid "Run commands in a running sandbox"
+msgstr "在正在运行的沙盒中运行命令"
+
+#. add sub command ps
+#: ../apps/ll-cli/src/main.cpp:257
+msgid "List running applications"
+msgstr "列出正在运行的应用程序"
+
+#: ../apps/ll-cli/src/main.cpp:261
+
+msgid "Execute commands in the currently running sandbox"
+msgstr "在当前运行的沙盒中执行命令。"
+
+#: ../apps/ll-cli/src/main.cpp:266 ../apps/ll-cli/src/main.cpp:282
+#: ../apps/ll-cli/src/main.cpp:295
+msgid "Specify the application running instance(you can get it by ps command)"
+msgstr "指定应用程序运行实例（可以通过ps命令获取）"
+
+#: ../apps/ll-cli/src/main.cpp:269 ../apps/ll-cli/src/main.cpp:284
+msgid "Specify working directory"
+msgstr "指定工作目录"
+
+#: ../apps/ll-cli/src/main.cpp:277
+msgid "Enter the namespace where the application is running"
+msgstr "进入应用程序正在运行的命名空间"
+
+#. add sub command kill
+#: ../apps/ll-cli/src/main.cpp:290
+msgid "Stop running applications"
+msgstr "停止运行的应用程序"
+
+#: ../apps/ll-cli/src/main.cpp:301
+msgid "Installing an application or runtime"
+msgstr "安装应用程序或运行时"
+
+#: ../apps/ll-cli/src/main.cpp:303
+msgid ""
+"Usage: ll-cli install [OPTIONS] APP\n"
+"\n"
+"Example:\n"
+"# install application by appid\n"
+"ll-cli install org.deepin.demo\n"
+"# install application by linyaps layer\n"
+"ll-cli install demo_0.0.0.1_x86_64_binary.layer\n"
+"# install application by linyaps uab\n"
+"ll-cli install demo_x86_64_0.0.0.1_main.uab\n"
+"# install specified module of the appid\n"
+"ll-cli install org.deepin.demo --module=binary\n"
+"# install specified version of the appid\n"
+"ll-cli install org.deepin.demo/0.0.0.1\n"
+"# install application by detailed reference\n"
+"ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64\n"
+"    "
+msgstr ""
+"用法: ll-cli install [选项] 应用程序\n"
+"\n"
+"示例:\n"
+"# 通过应用名安装应用程序\n"
+"ll-cli install org.deepin.demo\n"
+"# 通过如意玲珑.layer文件安装应用程序\n"
+"ll-cli install demo_0.0.0.1_x86_64_binary.layer\n"
+"# 通过通过如意玲珑.uab文件安装应用程序\n"
+"ll-cli install demo_x86_64_0.0.0.1_main.uab\n"
+"# 安装应用的指定模块\n"
+"ll-cli install org.deepin.demo --module=binary\n"
+"# 安装应用的指定版本\n"
+"ll-cli install org.deepin.demo/0.0.0.1\n"
+"# 通过特定标识安装应用程序\n"
+"ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64\n"
+"    "
+
+#: ../apps/ll-cli/src/main.cpp:322
+msgid "Specify the application ID, and it can also be a .uab or .layer file"
+msgstr "指定应用名，也可以是 .uab 或 .layer 文件"
+
+#: ../apps/ll-cli/src/main.cpp:325
+
+msgid "Install a specify module"
+msgstr "安装指定模块"
+
+#: ../apps/ll-cli/src/main.cpp:328
+msgid "Force install the application"
+msgstr "强制安装指定版本的应用程序"
+
+#: ../apps/ll-cli/src/main.cpp:329
+msgid "Automatically answer yes to all questions"
+msgstr "自动对所有问题回答是"
+
+#: ../apps/ll-cli/src/main.cpp:333
+msgid "Uninstall the application or runtimes"
+msgstr "卸载应用程序或运行时"
+
+#: ../apps/ll-cli/src/main.cpp:335
+msgid "Specify the applications ID"
+msgstr "指定应用程序名"
+
+#: ../apps/ll-cli/src/main.cpp:338
+msgid "Uninstall a specify module"
+msgstr "卸载指定模块"
+
+#: ../apps/ll-cli/src/main.cpp:344
+msgid "Upgrade the application or runtimes"
+msgstr "升级应用程序或运行时"
+
+#: ../apps/ll-cli/src/main.cpp:350
+msgid ""
+"Specify the application ID.If it not be specified, all applications will be "
+"upgraded"
+msgstr "指定应用程序名。如果未指定，将升级所有可升级的应用程序"
+
+#: ../apps/ll-cli/src/main.cpp:356
+msgid ""
+"Search the applications/runtimes containing the specified text from the "
+"remote repository"
+msgstr "从远程仓库中搜索包含指定关键词的应用程序/运行时"
+
+#: ../apps/ll-cli/src/main.cpp:359
+msgid ""
+"Usage: ll-cli search [OPTIONS] KEYWORDS\n"
+"\n"
+"Example:\n"
+"# find remotely app by name\n"
+"ll-cli search org.deepin.demo\n"
+"# find remotely runtime by name\n"
+"ll-cli search org.deepin.base --type=runtime\n"
+"# find all off app of remote\n"
+"ll-cli search .\n"
+"# find all off runtime of remote\n"
+"ll-cli search . --type=runtime"
+msgstr ""
+"用法: ll-cli search [选项] 关键词\n"
+"\n"
+"示例:\n"
+"# 通过应用名从远程仓库搜索应用程序\n"
+"ll-cli search org.deepin.demo\n"
+"# 从远程仓库里搜索指定类型的应用程序\n"
+"ll-cli search org.deepin.base --type=runtime\n"
+"# 从远程仓库搜索所有应用程序\n"
+"ll-cli search .\n"
+"# 从远程仓库搜索所有运行时\n"
+"ll-cli search . --type=runtime"
+
+#: ../apps/ll-cli/src/main.cpp:370
+msgid "Specify the Keywords"
+msgstr "指定搜索关键词"
+
+#: ../apps/ll-cli/src/main.cpp:376 ../apps/ll-cli/src/main.cpp:399
+msgid "Filter result with specify type. One of \"runtime\", \"app\" or \"all\""
+msgstr "使用指定类型过滤结果。“runtime”、“app”或“all”之一"
+
+#: ../apps/ll-cli/src/main.cpp:380
+msgid "include develop application in result"
+msgstr "搜索结果中包括应用调试包"
+
+#: ../apps/ll-cli/src/main.cpp:384
+msgid "List installed applications or runtimes"
+msgstr "列出已安装的应用程序或运行时"
+
+#: ../apps/ll-cli/src/main.cpp:386
+msgid ""
+"Usage: ll-cli list [OPTIONS]\n"
+"\n"
+"Example:\n"
+"# show installed application(s)\n"
+"ll-cli list\n"
+"# show installed runtime(s)\n"
+"ll-cli list --type=runtime\n"
+"# show the latest version list of the currently installed application(s)\n"
+"ll-cli list --upgradable\n"
+msgstr ""
+"用法: ll-cli list [选项]\n"
+"\n"
+"示例:\n"
+"# 显示已安装的应用程序\n"
+"ll-cli list\n"
+"# 显示已安装的运行时\n"
+"ll-cli list --type=runtime\n"
+"# 显示当前已安装应用程序的最新版本列表\n"
+"ll-cli list --upgradable\n"
+
+#: ../apps/ll-cli/src/main.cpp:405
+msgid ""
+"Show the list of latest version of the currently installed applications, it "
+"only works for app"
+msgstr "显示当前已安装应用程序的最新版本列表，仅适用于应用程序"
+
+#: ../apps/ll-cli/src/main.cpp:412
+msgid "Display or modify information of the repository currently using"
+msgstr "显示或修改当前使用的仓库信息"
+
+#. add repo sub command add
+#: ../apps/ll-cli/src/main.cpp:417
+msgid "Add a new repository"
+msgstr "添加新的仓库"
+
+#: ../apps/ll-cli/src/main.cpp:418 ../apps/ll-cli/src/main.cpp:427
+#: ../apps/ll-cli/src/main.cpp:436 ../apps/ll-cli/src/main.cpp:442
+#: ../apps/ll-cli/src/main.cpp:451
+msgid "Specify the repo name"
+msgstr "指定仓库名称"
+
+#: ../apps/ll-cli/src/main.cpp:421 ../apps/ll-cli/src/main.cpp:430
+#: ../apps/ll-cli/src/main.cpp:445
+msgid "Url of the repository"
+msgstr "仓库URL"
+
+#. add repo sub command modify
+#: ../apps/ll-cli/src/main.cpp:426
+msgid "Modify repository URL"
+msgstr "修改仓库URL"
+
+#. add repo sub command remove
+#: ../apps/ll-cli/src/main.cpp:435
+msgid "Remove a repository"
+msgstr "移除仓库"
+
+#. add repo sub command update
+#: ../apps/ll-cli/src/main.cpp:441
+msgid "Update to a new repository"
+msgstr "更新仓库"
+
+#. add repo sub command set-default
+#: ../apps/ll-cli/src/main.cpp:450
+msgid "Set default repository name"
+msgstr "设置默认仓库名称"
+
+#. add repo sub command show
+#: ../apps/ll-cli/src/main.cpp:456
+msgid "Show repository"
+msgstr "显示仓库信息"
+
+#: ../apps/ll-cli/src/main.cpp:461
+msgid "Display information about installed apps or runtimes"
+msgstr "显示已安装的应用程序或运行时的信息"
+
+#: ../apps/ll-cli/src/main.cpp:466
+msgid "Specify the application ID, and it can also be a .layer file"
+msgstr "指定应用程序名，也可以是如意玲珑.layer文件"
+
+#: ../apps/ll-cli/src/main.cpp:472
+msgid "Display the exported files of installed application"
+msgstr "显示已安装应用导出的文件"
+
+#: ../apps/ll-cli/src/main.cpp:474
+msgid "Specify the installed application ID"
+msgstr "指定已安装应用程序名"
+
+#. add sub command content
+#: ../apps/ll-cli/src/main.cpp:479
+msgid "migrate repository data"
+msgstr "迁移仓库数据"
+
+#. add sub command prune
+#: ../apps/ll-cli/src/main.cpp:482
+msgid "Remove the unused base or runtime"
+msgstr "移除未使用的最小系统或运行时"
+
+#: ../apps/ll-cli/src/main.cpp:492
+msgid "linyaps CLI version "
+msgstr "如意玲珑CLI版本 "

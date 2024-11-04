@@ -739,46 +739,66 @@ set -e
             return ret;
         }
     }
+    std::vector<api::types::v1::BuilderProjectModules> projectModules;
+
+    auto hasDevelop = false;
     if (this->project.modules.has_value()) {
         for (const auto &module : *this->project.modules) {
-            auto name = QString::fromStdString(module.name);
-            printReplacedText(QString("%1%2%3%4")
-                                .arg(this->project.package.id.c_str(), appIDPrintWidth)
-                                .arg(this->project.package.version.c_str(), -15)
-                                .arg(name, -15)
-                                .arg("installing")
-                                .toStdString(),
-                              2);
-            qDebug() << "install modules" << name;
-            QDir moduleDir = this->workingDir.absoluteFilePath("linglong/output/" + name);
-            auto installRules = QString::fromStdString(module.files).split("\n");
-            installRules.removeDuplicates();
-            auto ret = installModule(installRules,
-                                     buildOutput.path(),
-                                     moduleDir.filePath("files"),
-                                     [](int percentage) {});
-            if (!ret.has_value()) {
-                return LINGLONG_ERR("install module", ret);
+            if (module.name == "develop") {
+                hasDevelop = true;
             }
-            // save install fule to ${appid}.install
-            auto appID = QString::fromStdString(project.package.id);
-            const auto installRulePath = moduleDir.filePath(appID + ".install");
-            QFile configFile(installRulePath);
-            if (!configFile.open(QIODevice::WriteOnly)) {
-                return LINGLONG_ERR("open file " + installRulePath, configFile);
-            }
-            if (configFile.write(installRules.join('\n').toUtf8()) < 0) {
-                return LINGLONG_ERR("write file " + installRulePath, configFile);
-            }
-            configFile.close();
-            printReplacedText(QString("%1%2%3%4")
-                                .arg(this->project.package.id.c_str(), appIDPrintWidth)
-                                .arg(this->project.package.version.c_str(), -15)
-                                .arg(name, -15)
-                                .arg("complete\n")
-                                .toStdString(),
-                              2);
+            projectModules.push_back(module);
         }
+    }
+    // 如果没有develop模块，则添加一个默认的，包含include/**, lib/debug/**, lib/**.a三种匹配
+    if (!this->buildOptions.fullDevelop && !hasDevelop) {
+        projectModules.push_back(api::types::v1::BuilderProjectModules{
+          .files = { "^/include/.+", "^/lib/debug/.+", "^/lib/.+\\.a$" },
+          .name = "develop",
+        });
+    }
+
+    for (const auto &module : projectModules) {
+        auto name = QString::fromStdString(module.name);
+        printReplacedText(QString("%1%2%3%4")
+                            .arg(this->project.package.id.c_str(), appIDPrintWidth)
+                            .arg(this->project.package.version.c_str(), -15)
+                            .arg(name, -15)
+                            .arg("installing")
+                            .toStdString(),
+                          2);
+        qDebug() << "install modules" << name;
+        QDir moduleDir = this->workingDir.absoluteFilePath("linglong/output/" + name);
+        QStringList installRules;
+        for (const auto &file : module.files) {
+            installRules.append(file.c_str());
+        }
+        installRules.removeDuplicates();
+        auto ret = installModule(installRules,
+                                 buildOutput.path(),
+                                 moduleDir.filePath("files"),
+                                 [](int percentage) {});
+        if (!ret.has_value()) {
+            return LINGLONG_ERR("install module", ret);
+        }
+        // save install fule to ${appid}.install
+        auto appID = QString::fromStdString(project.package.id);
+        const auto installRulePath = moduleDir.filePath(appID + ".install");
+        QFile configFile(installRulePath);
+        if (!configFile.open(QIODevice::WriteOnly)) {
+            return LINGLONG_ERR("open file " + installRulePath, configFile);
+        }
+        if (configFile.write(installRules.join('\n').toUtf8()) < 0) {
+            return LINGLONG_ERR("write file " + installRulePath, configFile);
+        }
+        configFile.close();
+        printReplacedText(QString("%1%2%3%4")
+                            .arg(this->project.package.id.c_str(), appIDPrintWidth)
+                            .arg(this->project.package.version.c_str(), -15)
+                            .arg(name, -15)
+                            .arg("complete\n")
+                            .toStdString(),
+                          2);
     }
     // save binary install files
     {
@@ -965,10 +985,8 @@ set -e
     if (this->buildOptions.fullDevelop) {
         modules.push_back("develop");
     }
-    if (this->project.modules.has_value()) {
-        for (const auto &module : this->project.modules.value()) {
-            modules.push_back(module.name.c_str());
-        }
+    for (const auto &module : projectModules) {
+        modules.push_back(module.name.c_str());
     }
     printMessage("[Commit Contents]");
     printMessage(QString("%1%2%3%4")

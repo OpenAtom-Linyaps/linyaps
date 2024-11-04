@@ -34,7 +34,7 @@ struct BuilderProjectModules {
 /**
 * module install files
 */
-std::string files;
+std::vector<std::string> files;
 /**
 * module name
 */

@@ -50,6 +50,10 @@ std::string channel;
 */
 std::optional<std::vector<std::string>> command;
 /**
+* record linyaps package is compatible with linyaps component version
+*/
+std::optional<std::string> compatibleVersion;
+/**
 * description of package info
 */
 std::optional<std::string> description;

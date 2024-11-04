@@ -14,22 +14,21 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ```yaml
 modules:
-    - name: 模块1
-      files: |
-      /path/to/file1
-      /path/to/file2
-      ^/path/to/dir1/.*
-    - name: 模块2
-      files: |
-      /path/to/files
-
+  - name: 模块1
+    files:
+      - /path/to/file1
+      - /path/to/file2
+      - ^/path/to/dir1/.*
+  - name: 模块2
+    files:
+      - /path/to/files
 ```
 
-模块名可自定义，但一些保留的模块名有特殊含义，例如 `binary`、`develop`、`lang-*` 等，建议开发者自定义的模块以`x-`开头，以避免冲突。
+模块名可自定义，但不能重复，并且有一些保留的模块名有特殊含义，例如 `binary`、`develop`、`lang-*` 等，建议开发者自定义的模块以`x-`开头，以避免冲突。
 
-files 每行都是一个文件路径（支持正则表达式），文件会自动添加应用安装路径 `$PREFIX` 作为前缀，所以如果模块要包含 `$PREFIX/bin/demo` 文件仅需写 /bin/demo，玲珑会自动转换成 /opt/apps/org.deepin.demo/files/bin/demo 这种路径。
+files 是一个字符串数组，每列写一个文件路径，支持正则表达式。文件路径会自动添加应用安装路径 `$PREFIX` 作为前缀，所以如果模块要包含 `$PREFIX/bin/demo` 文件，仅需写 /bin/demo，玲珑会自动转换成 /opt/apps/org.deepin.demo/files/bin/demo 这种路径。
 
-如果同一个文件路径被多个模块包含，仅会复制到第一个模块中(按模块名排序)，在 files 中写正则表达式需要以^开头，否则会被认为是普通文件路径，正则也会自动添加 `$PREFIX` 作为前缀，打包者无需重复添加。
+如果同一个文件路径被多个模块包含，仅会移动文件到第一个模块中(按 modules 的顺序)，在 files 中写正则表达式需要以^开头，否则会被认为是普通文件路径，正则表达式会自动在^后添加 `$PREFIX` 作为前缀，打包者无需重复添加。
 
 ## 保留模块名
 
@@ -41,15 +40,21 @@ _这是默认模块，无需在 modules 中声明_，binary 会保存其他模�
 
 ### develop 模块
 
-该模块可以存放用于应用的调试符号和开发工具。玲珑会在构建后将构建产物的调试符号剥离到 `$PREFIX/lib/debug` 和 `$PREFIX/lib/include` 这些目录就特别合适存放到该模块。推荐写法：
+该模块可以存放用于应用的调试符号和开发工具。玲珑会在构建后将构建产物的调试符号剥离到 `$PREFIX/lib/debug` 和 `$PREFIX/lib/include` 这些目录就特别合适存放到该模块。所以玲珑构建后如果没有 modules 字段或 modules 没有 develop 模块时自动创建 develop 模块，并使用以下默认值：
 
 ```yaml
 modules:
   - name: develop
-    files: |
-      ^/lib/debug/.+
-      ^/lib/include/.+
+    files:
+      # 剥离的调试符号
+      - ^/lib/debug/.+
+      # 头文件
+      - ^/lib/include/.+
+      # 静态链接库
+      - ^/lib/.+\.a$
 ```
+
+如果需要自定义 develop 模块，可以在 `modules` 字段中添加 develop 模块的配置覆盖默认值。
 
 ### 打包测试
 
@@ -63,6 +68,6 @@ modules:
 
 `ll-cli install`命令可以安装应用，默认会安装应用的 binary 模块，如需安装其他模块，可以使用 `--module` 参数，注意和 `ll-builder run --modules` 不一样，ll-cli 一次仅能安装一个模块。例子：
 
-安装语言模块：`ll-cli install --module=lang-zh_CN org.xxx.xxx/1.x.x`
+安装语言模块：`ll-cli install --module=lang-zh_CN org.xxx.xxx`
 
-安装 develop 模块：`ll-cli install --module=develop org.xxx.xxx/1.x.x`
+安装 develop 模块：`ll-cli install --module=develop org.xxx.xxx`

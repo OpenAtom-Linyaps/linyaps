@@ -1756,6 +1756,21 @@ int Cli::migrate()
         }
     }
 
+    // Note: We can't be the root before stop all running apps unless we can find out all
+    // containers(multi-user).
+    QDBusInterface dbusIntrospect(this->pkgMan.service(),
+                                  this->pkgMan.path(),
+                                  "org.freedesktop.DBus.Introspectable",
+                                  this->pkgMan.connection());
+    QDBusReply<QString> authReply = dbusIntrospect.call("Introspect");
+    if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
+        auto ret = this->runningAsRoot();
+        if (!ret) {
+            this->printer.printErr(ret.error());
+        }
+        return -1;
+    }
+
     // beginning migrating data
     if (!this->pkgMan.connection().connect(this->pkgMan.service(),
                                            "/org/deepin/linglong/Migrate1",

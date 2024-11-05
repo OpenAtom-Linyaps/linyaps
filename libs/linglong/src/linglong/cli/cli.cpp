@@ -1715,39 +1715,10 @@ int Cli::migrate()
         return -1;
     }
 
-    std::vector<std::string> actions{ "Yes", "No" };
-    for (auto it = actions.begin(); it != actions.end(); ++it) {
-        // May be we need localization in the future
-        it = actions.insert(it + 1, *it);
-    }
-
-    api::types::v1::InteractionRequest req{
-        .actions = actions,
-        .body = "Do you want to migrate immediately?\nThis will stop all runnning applications.",
-        .summary = "Package Manager needs to migrate data.",
-    };
-
-    while (true) {
-        auto reply = notifier->request(req);
-        if (!reply) {
-            qCritical() << "internal error: notify failed";
-            std::abort();
-        }
-
-        auto action = reply->action.value_or("No");
-        if (action == "Yes") {
-            qDebug() << "approve migration";
-            break;
-        }
-
-        auto ret = notifier->notify(api::types::v1::InteractionRequest{
-          .summary = "you could run 'll-cli migrate' on later to migrating data." });
-        if (!ret) {
-            this->printer.printErr(ret.error());
-            return -1;
-        }
-
-        return 0;
+    if (!this->repository.needMigrate()) {
+        this->notifier->notify(
+          api::types::v1::InteractionRequest{ .summary = "No migration required." });
+        return -1;
     }
 
     // stop all running apps

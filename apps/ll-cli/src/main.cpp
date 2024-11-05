@@ -471,7 +471,7 @@ ll-cli list --upgradable
       ->required()
       ->check(validatorString);
 
-    // add sub command content
+    // add sub command migrate
     commandParser.add_subcommand("migrate", _("migrate repository data"))->group(CliHiddenGroup);
 
     // add sub command prune
@@ -660,7 +660,9 @@ ll-cli list --upgradable
               return;
           }
 
-          if (repo->needMigrate()) {
+          // Note: Make sure migrateion is completed before other operations if need migrate here.
+          auto migrateOption = commandParser.get_subcommand("migrate");
+          if (repo->needMigrate() && !migrateOption->parsed()) {
               notifier->notify(linglong::api::types::v1::InteractionRequest{
                 .summary = "The old data is found locally and needs to be migrated. Please run "
                            "'ll-cli migrate' and wait for the migration to complete." });

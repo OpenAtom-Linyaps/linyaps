@@ -95,16 +95,22 @@ utils::error::Result<elfHelper> elfHelper::create(const QByteArray &filePath) no
 }
 
 utils::error::Result<void> elfHelper::addNewSection(const QByteArray &sectionName,
-                                                    const QFileInfo &dataFile) const noexcept
+                                                    const QFileInfo &dataFile,
+                                                    QStringList flags) const noexcept
 {
     LINGLONG_TRACE(QString{ "add section:%1" }.arg(QString{ sectionName }))
 
-    auto ret = utils::command::Exec(
-      "objcopy",
-      { QString{ "--add-section" },
-        QString{ "%1=%2" }.arg(QString{ sectionName }).arg(dataFile.absoluteFilePath()),
-        this->elfPath(),
-        this->elfPath() });
+    auto args = QStringList{
+        QString{ "--add-section" },
+        QString{ "%1=%2" }.arg(QString{ sectionName }).arg(dataFile.absoluteFilePath())
+    };
+
+    if (!flags.empty()) {
+        args.append({ "--set-section-flags", flags.join(QString{ "," }) });
+    }
+
+    args.append({ this->elfPath(), this->elfPath() });
+    auto ret = utils::command::Exec("objcopy", args);
     if (!ret) {
         return LINGLONG_ERR(ret.error());
     }
@@ -623,7 +629,9 @@ utils::error::Result<void> UABPackager::packMetaInfo() noexcept
     metaFile.close();
 
     const auto *metaSection = "linglong.meta";
-    if (auto ret = this->uab.addNewSection(metaSection, metaFile); !ret) {
+    if (auto ret =
+          this->uab.addNewSection(metaSection, metaFile, { "linglong.meta=readonly,code" });
+        !ret) {
         return LINGLONG_ERR(ret);
     }
 

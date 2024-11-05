@@ -1718,7 +1718,7 @@ int Cli::migrate()
     if (!this->repository.needMigrate()) {
         this->notifier->notify(
           api::types::v1::InteractionRequest{ .summary = "No migration required." });
-        return -1;
+        return 0;
     }
 
     // stop all running apps

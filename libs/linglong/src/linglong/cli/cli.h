@@ -85,6 +85,7 @@ private:
     [[nodiscard]] utils::error::Result<std::vector<api::types::v1::CliContainer>>
     getCurrentContainers() const noexcept;
     int installFromFile(const QFileInfo &fileInfo, const api::types::v1::CommonOptions &options);
+    int setRepoConfig(const QVariantMap &config);
     utils::error::Result<void> runningAsRoot();
 
 private Q_SLOTS:

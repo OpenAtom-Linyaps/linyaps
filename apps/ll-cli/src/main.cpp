@@ -661,14 +661,6 @@ ll-cli list --upgradable
               return;
           }
 
-          auto *cli = new linglong::cli::Cli(*printer,
-                                             **ociRuntime,
-                                             *containerBuidler,
-                                             *pkgMan,
-                                             *repo,
-                                             std::move(notifier),
-                                             QCoreApplication::instance());
-          cli->setCliOptions(options);
           if (repo->needMigrate()) {
               notifier->notify(linglong::api::types::v1::InteractionRequest{
                 .summary = "The old data is found locally and needs to be migrated. Please run "
@@ -677,6 +669,14 @@ ll-cli list --upgradable
               return;
           }
 
+          auto *cli = new linglong::cli::Cli(*printer,
+                                             **ociRuntime,
+                                             *containerBuidler,
+                                             *pkgMan,
+                                             *repo,
+                                             std::move(notifier),
+                                             QCoreApplication::instance());
+          cli->setCliOptions(options);
           QMap<QString, std::function<int(Cli *)>> subcommandMap = {
               { "run", &Cli::run },
               { "exec", &Cli::exec },

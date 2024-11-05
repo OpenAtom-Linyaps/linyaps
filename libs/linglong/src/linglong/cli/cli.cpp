@@ -1444,6 +1444,19 @@ int Cli::repo(CLI::App *app)
     LINGLONG_TRACE("command repo");
 
     auto propCfg = this->pkgMan.configuration();
+    // check error here, this operation could be failed
+    if (this->pkgMan.lastError().isValid()) {
+        if (this->pkgMan.lastError().type() == QDBusError::AccessDenied) {
+            this->notifier->notify(api::types::v1::InteractionRequest{
+              .summary = "Permission deny, please check whether you are running as root." });
+            return -1;
+        }
+
+        auto err = LINGLONG_ERRV(this->pkgMan.lastError().message());
+        this->printer.printErr(err);
+        return -1;
+    }
+
     auto cfg = utils::serialize::fromQVariantMap<api::types::v1::RepoConfig>(propCfg);
     if (!cfg) {
         qCritical() << cfg.error();
@@ -1496,9 +1509,7 @@ int Cli::repo(CLI::App *app)
               LINGLONG_ERRV(QString{ "repo " } + name.c_str() + " already exist."));
             return -1;
         }
-
-        this->pkgMan.setConfiguration(utils::serialize::toQVariantMap(cfgRef));
-        return 0;
+        return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
     }
 
     auto existingRepo = cfgRef.repos.find(name);
@@ -1517,8 +1528,7 @@ int Cli::repo(CLI::App *app)
         }
 
         cfgRef.repos.erase(existingRepo);
-        this->pkgMan.setConfiguration(utils::serialize::toQVariantMap(cfgRef));
-        return 0;
+        return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
     }
 
     if (argsParseFunc("update")) {
@@ -1528,14 +1538,13 @@ int Cli::repo(CLI::App *app)
         }
 
         existingRepo->second = url;
-        this->pkgMan.setConfiguration(utils::serialize::toQVariantMap(cfgRef));
-        return 0;
+        return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
     }
 
     if (argsParseFunc("set-default")) {
         if (cfgRef.defaultRepo != name) {
             cfgRef.defaultRepo = name;
-            this->pkgMan.setConfiguration(utils::serialize::toQVariantMap(cfgRef));
+            return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
         }
 
         return 0;
@@ -1543,6 +1552,38 @@ int Cli::repo(CLI::App *app)
 
     this->printer.printErr(LINGLONG_ERRV("unknown operation"));
     return -1;
+}
+
+int Cli::setRepoConfig(const QVariantMap &config)
+{
+    LINGLONG_TRACE("set repo config");
+
+    QDBusInterface dbusIntrospect(this->pkgMan.service(),
+                                  this->pkgMan.path(),
+                                  "org.freedesktop.DBus.Introspectable",
+                                  this->pkgMan.connection());
+    QDBusReply<QString> authReply = dbusIntrospect.call("Introspect");
+    if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
+        auto ret = this->runningAsRoot();
+        if (!ret) {
+            this->printer.printErr(ret.error());
+        }
+        return -1;
+    }
+
+    this->pkgMan.setConfiguration(config);
+    if (this->pkgMan.lastError().isValid()) {
+        if (this->pkgMan.lastError().type() == QDBusError::AccessDenied) {
+            this->notifier->notify(api::types::v1::InteractionRequest{
+              .summary = "Permission deny, please check whether you are running as root." });
+            return -1;
+        }
+
+        auto err = LINGLONG_ERRV(this->pkgMan.lastError().message());
+        this->printer.printErr(err);
+        return -1;
+    }
+    return 0;
 }
 
 int Cli::info()

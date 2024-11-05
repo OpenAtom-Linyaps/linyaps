@@ -670,7 +670,10 @@ ll-cli list --upgradable
                                              QCoreApplication::instance());
           cli->setCliOptions(options);
           if (repo->needMigrate()) {
-              QCoreApplication::exit(cli->migrate());
+              notifier->notify(api::types::v1::InteractionRequest{
+                .summary = "The old data is found locally and needs to be migrated. Please run "
+                           "'ll-cli migrate' and wait for the migration to complete." });
+              QCoreApplication::exit(-1);
               return;
           }
 

@@ -1104,6 +1104,7 @@ int Cli::search()
     connect(&this->pkgMan,
             &api::dbus::v1::PackageManager::SearchFinished,
             [&](const QString &jobID, const QVariantMap &data) {
+                // Note: once an error occurs, remember to return after exiting the loop.
                 if (result->id->c_str() != jobID) {
                     return;
                 }
@@ -1113,13 +1114,27 @@ int Cli::search()
                 if (!result) {
                     this->printer.printErr(result.error());
                     loop.exit(-1);
+                    return;
+                }
+                // Note: should check return code of PackageManager1SearchResult
+                if (result->code != 0) {
+                    this->printer.printErr(
+                      LINGLONG_ERRV("\n" + QString::fromStdString(result->message), result->code));
+                    loop.exit(result->code);
+                    return;
+                }
+
+                if (!result->packages.has_value()) {
+                    this->printer.printPackages({});
+                    loop.exit(0);
+                    return;
                 }
                 std::vector<api::types::v1::PackageInfoV2> pkgs;
 
                 if (options.showDevel) {
                     pkgs = *result->packages;
                 } else {
-                    for (const auto &info : *result->packages) {
+                    for (const auto &info : result->packages.value()) {
                         if (info.packageInfoV2Module == "develop") {
                             continue;
                         }

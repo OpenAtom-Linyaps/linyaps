@@ -989,19 +989,45 @@ int Cli::upgrade()
         return -1;
     }
 
-    auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(options.appid));
-    if (!fuzzyRef) {
-        this->printer.printErr(fuzzyRef.error());
-        return -1;
+    std::vector<package::FuzzyReference> fuzzyRefs;
+    if (!options.appid.empty()) {
+        auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(options.appid));
+        if (!fuzzyRef) {
+            this->printer.printErr(fuzzyRef.error());
+            return -1;
+        }
+        fuzzyRefs.emplace_back(std::move(*fuzzyRef));
+    } else {
+        // Note: upgrade all apps for now.
+        auto list = this->listUpgradable("app");
+        if (!list) {
+            this->printer.printErr(list.error());
+            return -1;
+        }
+        for (const auto &item : *list) {
+            auto fuzzyRef =
+              package::FuzzyReference::parse(QString("%1/%2")
+                                               .arg(QString::fromStdString(item.id))
+                                               .arg(QString::fromStdString(item.oldVersion)));
+            if (!fuzzyRef) {
+                this->printer.printErr(fuzzyRef.error());
+                return -1;
+            }
+            fuzzyRefs.emplace_back(std::move(*fuzzyRef));
+        }
     }
 
-    api::types::v1::PackageManager1InstallParameters params;
-    params.package.id = fuzzyRef->id.toStdString();
-    if (fuzzyRef->channel) {
-        params.package.channel = fuzzyRef->channel->toStdString();
-    }
-    if (fuzzyRef->version) {
-        params.package.version = fuzzyRef->version->toString().toStdString();
+    api::types::v1::PackageManager1UpdateParameters params;
+    for (const auto &fuzzyRef : fuzzyRefs) {
+        api::types::v1::PackageManager1Package package;
+        package.id = fuzzyRef.id.toStdString();
+        if (fuzzyRef.channel) {
+            package.channel = fuzzyRef.channel->toStdString();
+        }
+        if (fuzzyRef.version) {
+            package.version = fuzzyRef.version->toString().toStdString();
+        }
+        params.packages.emplace_back(std::move(package));
     }
 
     auto pendingReply = this->pkgMan.Update(utils::serialize::toQVariantMap(params));
@@ -1060,7 +1086,7 @@ int Cli::upgrade()
     }
 
     updateAM();
-    return this->lastState == linglong::api::types::v1::State::Succeed ? 0 : -1;
+    return 0;
 }
 
 int Cli::search()
@@ -1365,20 +1391,34 @@ int Cli::list()
         this->printer.printPackages(*pkgs);
         return 0;
     }
+    
+    auto upgradeList = this->listUpgradable(std::move(pkgs).value());
+    if(!upgradeList) {
+        this->printer.printErr(upgradeList.error());
+    }
+
+    this->printer.printUpgradeList(*upgradeList);
+    return 0;
+}
+
+utils::error::Result<std::vector<api::types::v1::UpgradeListResult>>
+Cli::listUpgradable(std::vector<api::types::v1::PackageInfoV2> pkgs)
+{
+    LINGLONG_TRACE("list upgradable from list");
 
     std::vector<api::types::v1::UpgradeListResult> upgradeList;
     auto fullFuzzyRef = package::FuzzyReference::parse(QString::fromStdString("."));
     if (!fullFuzzyRef) {
-        return -1;
+        return LINGLONG_ERR(fullFuzzyRef);
     }
 
     auto remotePkgs = this->repository.listRemote(*fullFuzzyRef);
-    if (!remotePkgs.has_value()) {
-        return -1;
+    if (!remotePkgs) {
+        return LINGLONG_ERR(remotePkgs);
     }
 
     utils::error::Result<package::Reference> reference = LINGLONG_ERR("reference not exists");
-    for (const auto &pkg : *pkgs) {
+    for (const auto &pkg : pkgs) {
         auto fuzzy = package::FuzzyReference::parse(QString::fromStdString(pkg.id));
         if (!fuzzy) {
             this->printer.printErr(fuzzy.error());
@@ -1449,9 +1489,21 @@ int Cli::list()
                                                                     .newVersion = newVersion,
                                                                     .oldVersion = oldVersion });
     }
+    return upgradeList;
+}
 
-    this->printer.printUpgradeList(upgradeList);
-    return 0;
+utils::error::Result<std::vector<api::types::v1::UpgradeListResult>>
+Cli::listUpgradable(const std::string &type)
+{
+    LINGLONG_TRACE("list upgradable");
+    auto pkgs = this->repository.listLocal();
+    if (!pkgs) {
+        return LINGLONG_ERR(pkgs);
+    }
+
+    filterPackageInfosFromType(*pkgs, type);
+
+    return this->listUpgradable(std::move(pkgs).value());
 }
 
 int Cli::repo(CLI::App *app)

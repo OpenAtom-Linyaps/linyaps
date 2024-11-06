@@ -87,6 +87,10 @@ private:
     int installFromFile(const QFileInfo &fileInfo, const api::types::v1::CommonOptions &options);
     int setRepoConfig(const QVariantMap &config);
     utils::error::Result<void> runningAsRoot();
+    utils::error::Result<std::vector<api::types::v1::UpgradeListResult>>
+    listUpgradable(std::vector<api::types::v1::PackageInfoV2> pkgs);
+    utils::error::Result<std::vector<api::types::v1::UpgradeListResult>>
+    listUpgradable(const std::string &type);
 
 private Q_SLOTS:
     // maybe use in the future

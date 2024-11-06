@@ -155,9 +155,11 @@ void CLIPrinter::printTaskState(double percentage,
                                 api::types::v1::SubState subState)
 {
     auto &stdout = std::cout;
-    stdout << "\r\33[K" << "\033[?25l" << message.toStdString() << ":" << percentage << "%"
+    stdout << "\r\33[K"
+           << "\033[?25l" << message.toStdString() << ":" << percentage << "%"
            << "\033[?25h";
-    if (subState == api::types::v1::SubState::AllDone
+    if (state == api::types::v1::State::PartCompleted
+        || subState == api::types::v1::SubState::AllDone
         || subState == api::types::v1::SubState::PackageManagerDone) {
         stdout << "\n";
     }

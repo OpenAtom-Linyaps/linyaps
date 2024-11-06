@@ -12,6 +12,7 @@
 #include "linglong/repo/config.h"
 #include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/gettext.h"
 #include "linglong/utils/global/initialize.h"
 #include "linglong/utils/serialize/yaml.h"
 #include "ocppi/cli/crun/Crun.hpp"
@@ -155,6 +156,8 @@ parseProjectConfig(const QString &filename)
 
 int main(int argc, char **argv)
 {
+    bindtextdomain(PACKAGE_LOCALE_DOMAIN, PACKAGE_LOCALE_DIR);
+    textdomain(PACKAGE_LOCALE_DOMAIN);
     QCoreApplication app(argc, argv);
     // 初始化 qt qrc
     Q_INIT_RESOURCE(builder_releases);
@@ -162,39 +165,36 @@ int main(int argc, char **argv)
     // 初始化应用，builder在非tty环境也输出日志
     applicationInitialize(true);
 
-    bool verboseFlag = false, jsonFlag = false;
-    CLI::App commandParser{
-        "linyaps builder CLI \n"
-        "A CLI program to build linyaps application and export linyaps uab or layer.\n"
-    };
-    commandParser.set_help_all_flag("--help-all", "Expand all help");
+    CLI::App commandParser{ _("linyaps builder CLI \n"
+                              "A CLI program to build linyaps application\n") };
+    commandParser.get_help_ptr()->description(_("Print this help message and exit"));
+    commandParser.set_help_all_flag("--help-all", _("Expand all help"));
+    commandParser.usage(_("Usage: ll-builder [OPTIONS] [SUBCOMMAND]"));
     commandParser.footer([]() {
-        return R"(If you found any problems during use
-You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues.)";
+        return _(R"(If you found any problems during use
+You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues)");
     });
 
-    // add flags
-    commandParser.add_flag("--verbose",
-                           verboseFlag,
-                           "show detail log (deprecated, use QT_LOGGING_RULES).");
-
     CLI::Validator validatorString{
-        [](std::string &parameter) {
+        [](const std::string &parameter) {
             if (parameter.empty()) {
-                return std::string{
-                    "input parameter is empty, please input valid parameter instead\n"
-                };
+                return std::string{ _(
+                  "Input parameter is empty, please input valid parameter instead") };
             }
             return std::string();
         },
         ""
     };
 
+    // add builder flags
+    bool versionFlag = false;
+    commandParser.add_flag("--version", versionFlag, _("Show version"));
+
     // add builder create
     std::string projectName;
     auto buildCreate =
-      commandParser.add_subcommand("create", "Create linyaps build template project.");
-    buildCreate->add_option("NAME", projectName, "Project name.")
+      commandParser.add_subcommand("create", _("Create linyaps build template project"));
+    buildCreate->add_option("NAME", projectName, _("Project name"))
       ->required()
       ->check(validatorString);
 
@@ -207,138 +207,155 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     std::string hiddenGroup = "";
     std::vector<std::string> oldCommands;
     std::vector<std::string> newCommands;
-    auto buildBuilder = commandParser.add_subcommand("build", "Build a linyaps project.");
-    buildBuilder->add_option("--file", filePath, "File path of the linglong.yaml.")
+    auto buildBuilder = commandParser.add_subcommand("build", _("Build a linyaps project"));
+    buildBuilder->add_option("--file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")
       ->capture_default_str()
       ->check(CLI::ExistingFile);
-    buildBuilder->add_option("--arch", arch, "Set the build arch.")
+    buildBuilder->add_option("--arch", arch, _("Set the build arch"))
       ->type_name("ARCH")
       ->check(validatorString);
-    buildBuilder->add_option("COMMAND", newCommands, "Run exec than build script.");
-    buildBuilder->add_option("--exec", oldCommands, "Run exec than build script.")
+    buildBuilder->add_option(
+      "COMMAND",
+      newCommands,
+      _("Enter the container to execute command instead of building applications"));
+    buildBuilder
+      ->add_option("--exec",
+                   oldCommands,
+                   _("Enter the container to execute command instead of building applications"))
       ->group(hiddenGroup);
-    buildBuilder->add_flag(
-      "--offline",
-      buildOffline,
-      "Only use local files. This implies --skip-fetch-source and --skip-pull-depend.");
-    buildBuilder->add_flag(
-      "--full-develop-module",
-      fullDevelopModule,
-      "Compatibility options, used to make full develop packages, runtime requires.");
-    buildBuilder->add_flag("--skip-fetch-source", skipFetchSource, "Skip fetch sources.");
-    buildBuilder->add_flag("--skip-pull-depend", skipPullDepend, "Skip pull dependency.");
-    buildBuilder->add_flag("--skip-run-container", buildSkipRunContainer, "Skip fetch sources.");
-    buildBuilder->add_flag("--skip-commit-output", skipCommitOutput, "Skip commit build output.");
-    buildBuilder->add_flag("--skip-output-check", skipCheckOutput, "Skip output check.");
-    buildBuilder->add_flag("--skip-strip-symbols", skipStripSymbols, "Skip strip debug symbols.");
+    buildBuilder->add_flag("--offline",
+                           buildOffline,
+                           _("Only use local files. This implies --skip-fetch-source and "
+                             "--skip-pull-depend will be set"));
+    buildBuilder
+      ->add_flag("--full-develop-module",
+                 fullDevelopModule,
+                 _("Build full develop packages, runtime requires"))
+      ->group(hiddenGroup);
+    buildBuilder->add_flag("--skip-fetch-source", skipFetchSource, _("Skip fetch sources"));
+    buildBuilder->add_flag("--skip-pull-depend", skipPullDepend, _("Skip pull dependency"));
+    buildBuilder->add_flag("--skip-run-container", buildSkipRunContainer, _("Skip run container"));
+    buildBuilder->add_flag("--skip-commit-output", skipCommitOutput, _("Skip commit build output"));
+    buildBuilder->add_flag("--skip-output-check", skipCheckOutput, _("Skip output check"));
+    buildBuilder->add_flag("--skip-strip-symbols", skipStripSymbols, _("Skip strip debug symbols"));
 
     // add builder run
     bool debugMode = false;
     std::vector<std::string> execModules;
-    auto buildRun = commandParser.add_subcommand("run", "Run builded linyaps app.");
-    buildRun->add_option("--file", filePath, "File path of the linglong.yaml.")
+    auto buildRun = commandParser.add_subcommand("run", _("Run builded linyaps app"));
+    buildRun->add_option("--file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")
       ->capture_default_str()
       ->check(CLI::ExistingFile);
-    buildRun->add_flag("--offline", buildOffline, "Only use local files.");
+    buildRun->add_flag("--offline", buildOffline, _("Only use local files"));
     buildRun
       ->add_option("--modules",
                    execModules,
-                   "Run using the specified module. eg: --modules binary,develop.")
+                   _("Run specified module. eg: --modules binary,develop"))
       ->delimiter(',')
       ->type_name("modules");
-    buildRun->add_option("COMMAND", newCommands, "Run exec than build script.");
-    buildRun->add_option("--exec", oldCommands, "Run exec than build script.")->group(hiddenGroup);
-    buildRun->add_flag("--debug", debugMode, "Run in debug mode (enable develop module).");
+    buildRun->add_option(
+      "COMMAND",
+      newCommands,
+      _("Enter the container to execute command instead of running application"));
+    buildRun
+      ->add_option("--exec",
+                   oldCommands,
+                   _("Enter the container to execute command instead of running application"))
+      ->group(hiddenGroup);
+    buildRun->add_flag("--debug", debugMode, _("Run in debug mode (enable develop module)"));
 
     // build export
     bool layerMode = false;
     std::string iconFile;
-    auto buildExport = commandParser.add_subcommand("export", "Export to linyaps layer or uab.");
-    buildExport->add_option("--file", filePath, "File path of the linglong.yaml.")
+    auto buildExport = commandParser.add_subcommand("export", _("Export to linyaps layer or uab"));
+    buildExport->add_option("--file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")
       ->capture_default_str()
       ->check(CLI::ExistingFile);
-    buildExport->add_option("--icon", iconFile, "Uab icon (optional).")
+    buildExport->add_option("--icon", iconFile, _("Uab icon (optional)"))
       ->type_name("FILE")
       ->check(CLI::ExistingFile);
-    buildExport->add_flag("--layer", layerMode, "Export layer file.");
+    buildExport->add_flag("--layer", layerMode, _("Export to linyaps layer file"));
 
     // build push
     std::string repoName, repoUrl, pushModule;
-    auto buildPush = commandParser.add_subcommand("push", "Push linyaps app to remote repo.");
-    buildPush->add_option("--file", filePath, "File path of the linglong.yaml.")
+    auto buildPush = commandParser.add_subcommand("push", _("Push linyaps app to remote repo"));
+    buildPush->add_option("--file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")
       ->capture_default_str()
       ->check(CLI::ExistingFile);
-    buildPush->add_option("--repo-url", repoUrl, "Remote repo url.")
+    buildPush->add_option("--repo-url", repoUrl, _("Remote repo url"))
       ->type_name("URL")
       ->check(validatorString);
-    buildPush->add_option("--repo-name", repoUrl, "Remote repo name.")
+    buildPush->add_option("--repo-name", repoUrl, _("Remote repo name"))
       ->type_name("NAME")
       ->check(validatorString);
-    buildPush->add_option("--module", pushModule, "Push single module.")->check(validatorString);
+    buildPush->add_option("--module", pushModule, _("Push single module"))->check(validatorString);
 
     // add build import
     std::string layerFile;
     auto buildImport =
-      commandParser.add_subcommand("import", "Import linyaps layer to build repo.");
-    buildImport->add_option("LAYER", layerFile, "Layer file path.")
+      commandParser.add_subcommand("import", _("Import linyaps layer to build repo"));
+    buildImport->add_option("LAYER", layerFile, _("Layer file path"))
       ->type_name("FILE")
       ->check(CLI::ExistingFile);
 
     // add build extract
     std::string dir;
-    auto buildExtract = commandParser.add_subcommand("extract", "Extract linyaps layer to dir.");
-    buildExtract->add_option("LAYER", layerFile, "Layer file path.")->check(CLI::ExistingFile);
-    buildExtract->add_option("DIR", dir, "Destination directory.")->type_name("DIR");
+    auto buildExtract = commandParser.add_subcommand("extract", _("Extract linyaps layer to dir"));
+    buildExtract->add_option("LAYER", layerFile, _("Layer file path"))->check(CLI::ExistingFile);
+    buildExtract->add_option("DIR", dir, _("Destination directory"))->type_name("DIR");
 
     // add build repo
-    auto buildRepo = commandParser.add_subcommand(
-      "repo",
-      "Display or modify information of the repository currently using.\n");
+    auto buildRepo = commandParser.add_subcommand("repo", _("Display and manage repositories"));
     buildRepo->require_subcommand(1);
 
     // add repo sub command add
-    auto buildRepoAdd = buildRepo->add_subcommand("add", "Add a new repository.");
-    buildRepoAdd->add_option("NAME", repoName, "Specify the repo name.")
+    auto buildRepoAdd = buildRepo->add_subcommand("add", _("Add a new repository"));
+    buildRepoAdd->add_option("NAME", repoName, _("Specify the repo name"))
       ->required()
       ->check(validatorString);
-    buildRepoAdd->add_option("URL", repoUrl, "Url of the repository.")
+    buildRepoAdd->add_option("URL", repoUrl, _("Url of the repository"))
       ->required()
       ->check(validatorString);
 
     // add repo sub command remove
-    auto buildRepoRemove = buildRepo->add_subcommand("remove", "Remove a repository.");
-    buildRepoRemove->add_option("NAME", repoName, "Specify the repo name.")
+    auto buildRepoRemove = buildRepo->add_subcommand("remove", _("Remove a repository"));
+    buildRepoRemove->add_option("NAME", repoName, _("Specify the repo name"))
       ->required()
       ->check(validatorString);
 
     // add repo sub command update
-    auto buildRepoUpdate = buildRepo->add_subcommand("update", "Update to a new repository.");
-    buildRepoUpdate->add_option("NAME", repoName, "Specify the repo name.")
+    auto buildRepoUpdate = buildRepo->add_subcommand("update", _("Update to a new repository"));
+    buildRepoUpdate->add_option("NAME", repoName, _("Specify the repo name"))
       ->required()
       ->check(validatorString);
-    buildRepoUpdate->add_option("URL", repoUrl, "Url of the repository.")
+    buildRepoUpdate->add_option("URL", repoUrl, _("Url of the repository"))
       ->required()
       ->check(validatorString);
 
     // add repo sub command update
     auto buildRepoSetDefault =
-      buildRepo->add_subcommand("set-default", "Set default repository name.");
-    buildRepoSetDefault->add_option("NAME", repoName, "Specify the repo name.")
+      buildRepo->add_subcommand("set-default", _("Set default repository"));
+    buildRepoSetDefault->add_option("NAME", repoName, _("Specify the repo name"))
       ->required()
       ->check(validatorString);
 
     // add repo sub command show
-    auto buildRepoShow = buildRepo->add_subcommand("show", "Show repository.");
+    auto buildRepoShow = buildRepo->add_subcommand("show", _("Show repository"));
 
     // add build migrate
     auto buildMigrate =
-      commandParser.add_subcommand("migrate", "Migrate underlying data.")->group(hiddenGroup);
+      commandParser.add_subcommand("migrate", _("Migrate repository data"))->group(hiddenGroup);
 
     CLI11_PARSE(commandParser, argc, argv);
+
+    if (versionFlag) {
+        std::cout << _("linyaps build tool version ") << LINGLONG_VERSION << std::endl;
+        return 0;
+    }
 
     auto ociRuntimeCLI = qgetenv("LINGLONG_OCI_RUNTIME");
     if (ociRuntimeCLI.isEmpty()) {
@@ -552,8 +569,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
             std::cout << std::left << std::setw(11) << "Name";
             std::cout << "Url" << std::endl;
             for (const auto &r : cfg.repos) {
-                std::cout << std::left << std::setw(10) << r.first << " " << r.second
-                          << std::endl;
+                std::cout << std::left << std::setw(10) << r.first << " " << r.second << std::endl;
             }
             return 0;
         }

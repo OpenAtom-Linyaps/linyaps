@@ -214,7 +214,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         ""
     };
 
-    CliOptions options = CliOptions{ .type = "app" };
+    CliOptions options;
+    options.type = "app";
 
     // groups
     std::string CliBuildInGroup = _("Managing installed applications and runtimes");
@@ -472,7 +473,7 @@ ll-cli list --upgradable
       ->check(validatorString);
 
     // add sub command migrate
-    commandParser.add_subcommand("migrate", _("migrate repository data"))->group(CliHiddenGroup);
+    commandParser.add_subcommand("migrate", _("Migrate repository data"))->group(CliHiddenGroup);
 
     // add sub command prune
     commandParser.add_subcommand("prune", _("Remove the unused base or runtime"))

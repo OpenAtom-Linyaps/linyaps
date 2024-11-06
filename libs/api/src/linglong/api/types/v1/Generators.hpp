@@ -1077,6 +1077,7 @@ default: throw std::runtime_error("Unexpected value in enumeration \"[object Obj
 inline void from_json(const json & j, State & x) {
 if (j == "Canceled") x = State::Canceled;
 else if (j == "Failed") x = State::Failed;
+else if (j == "PartCompleted") x = State::PartCompleted;
 else if (j == "Pending") x = State::Pending;
 else if (j == "Processing") x = State::Processing;
 else if (j == "Queued") x = State::Queued;
@@ -1089,6 +1090,7 @@ inline void to_json(json & j, const State & x) {
 switch (x) {
 case State::Canceled: j = "Canceled"; break;
 case State::Failed: j = "Failed"; break;
+case State::PartCompleted: j = "PartCompleted"; break;
 case State::Pending: j = "Pending"; break;
 case State::Processing: j = "Processing"; break;
 case State::Queued: j = "Queued"; break;

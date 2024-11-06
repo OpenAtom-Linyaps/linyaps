@@ -35,7 +35,7 @@ public:
     Q_PROPERTY(double Percentage READ getPercentage NOTIFY PercentageChanged)
     Q_PROPERTY(QString Message MEMBER m_message NOTIFY MessageChanged)
 
-    explicit PackageTask(QDBusConnection connection, QString layer, QObject *parent = nullptr);
+    explicit PackageTask(QDBusConnection connection, QStringList refs, QObject *parent = nullptr);
     PackageTask(PackageTask &&other) = delete;
     PackageTask &operator=(PackageTask &&other) = delete;
     ~PackageTask() override;
@@ -45,7 +45,7 @@ public:
 
     friend bool operator==(const PackageTask &lhs, const PackageTask &rhs)
     {
-        return lhs.m_refSpec == rhs.m_refSpec;
+        return lhs.m_refs == rhs.m_refs;
     }
 
     friend bool operator!=(const PackageTask &lhs, const PackageTask &rhs) { return !(lhs == rhs); }
@@ -94,7 +94,7 @@ public:
 
     auto cancellable() noexcept { return m_cancelFlag; }
 
-    [[nodiscard]] QString refSpec() const noexcept { return m_refSpec; }
+    bool isRefExist(const QString &ref) const noexcept { return m_refs.contains(ref); }
 
     auto getJob() { return m_job; }
 
@@ -132,7 +132,8 @@ private:
     double m_curStagePercentage{ 0 };
     QString m_message;
     QUuid m_taskID;
-    QString m_refSpec;
+    QStringList m_refs;
+    uint m_taskParts{ 0 };
     GCancellable *m_cancelFlag{ nullptr };
     std::optional<std::function<void()>> m_job;
     utils::dbus::PropertiesForwarder *m_forwarder{ nullptr };

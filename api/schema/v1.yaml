@@ -610,6 +610,7 @@ $defs:
         'Queued',
         'Pending',
         'Processing',
+        'PartCompleted',
         'Succeed',
         'Failed',
         'Canceled',

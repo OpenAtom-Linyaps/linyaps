@@ -35,7 +35,6 @@ const QStringList envList = {
     "SOCKS_SERVER", // 网络系统代理手动socks代理
     "no_proxy",     // 网络系统代理手动配置代理
     "USER",         // wine应用会读取此环境变量
-    "PATH",
     "HOME",
     "QT_IM_MODULE",    // 输入法
     "LINGLONG_ROOT",   // 玲珑安装位置

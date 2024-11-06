@@ -214,8 +214,20 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         ""
     };
 
-    CliOptions options;
-    options.type = "app";
+    CliOptions options = CliOptions{ .filePath = "",
+                                     .fileUrl = "",
+                                     .workDir = "",
+                                     .appid = "",
+                                     .instance = "",
+                                     .module = "",
+                                     .type = "app",
+                                     .repoName = "",
+                                     .repoUrl = "",
+                                     .commands = {},
+                                     .showDevel = false,
+                                     .showUpgradeList = false,
+                                     .forceOpt = false,
+                                     .confirmOpt = false };
 
     // groups
     std::string CliBuildInGroup = _("Managing installed applications and runtimes");

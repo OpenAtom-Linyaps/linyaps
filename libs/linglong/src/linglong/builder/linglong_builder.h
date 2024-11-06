@@ -27,9 +27,13 @@ struct BuilderBuildOptions
 {
     // 兼容选项，在制作runtime时构建全量develop, 以兼容旧版本linglong-builder使用
     // TODO 后续版本删除该选项
-    bool fullDevelop;
-    bool skipFetchSource, skipPullDepend, skipRunContainer, skipCommitOutput, skipCheckOutput,
-      skipStripSymbols;
+    bool fullDevelop {false};
+    bool skipFetchSource {false};
+    bool skipPullDepend {false};
+    bool skipRunContainer {false};
+    bool skipCommitOutput {false};
+    bool skipCheckOutput {false};
+    bool skipStripSymbols {false};
 };
 
 class Builder

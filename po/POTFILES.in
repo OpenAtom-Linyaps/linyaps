@@ -4,3 +4,6 @@
 # ll-cli source files
 
 apps/ll-cli/src/main.cpp
+
+# ll-builder source files
+apps/ll-builder/src/main.cpp

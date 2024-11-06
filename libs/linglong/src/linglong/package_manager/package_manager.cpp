@@ -570,12 +570,12 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
     auto task = std::find_if(this->taskList.cbegin(),
                              this->taskList.cend(),
                              [&refSpec](const PackageTask *task) {
-                                 return refSpec == task->refSpec();
+                                 return task->isRefExist(refSpec);
                              });
     if (task != this->taskList.cend()) {
         return toDBusReply(-1, "the target " % refSpec % " is being operated");
     }
-    auto *taskPtr = new PackageTask{ connection(), refSpec };
+    auto *taskPtr = new PackageTask{ connection(), QStringList{ refSpec } };
     auto &taskRef = *(this->taskList.emplace_back(taskPtr));
 
     auto installer =
@@ -797,12 +797,12 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
     auto task = std::find_if(this->taskList.cbegin(),
                              this->taskList.cend(),
                              [&refSpec](const PackageTask *task) {
-                                 return refSpec == task->refSpec();
+                                 return task->isRefExist(refSpec);
                              });
     if (task != this->taskList.cend()) {
         return toDBusReply(-1, "the target " % refSpec % " is being operated");
     }
-    auto *taskPtr = new PackageTask{ connection(), refSpec };
+    auto *taskPtr = new PackageTask{ connection(), QStringList{ refSpec } };
     auto &taskRef = *(this->taskList.emplace_back(taskPtr));
 
     layerInfos.erase(appLayerIt);
@@ -1063,7 +1063,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
         } else if (!paras->options.force) {
             return toDBusReply(-1,
                                "The latest version has been installed. If you need to "
-                               "overwrite it, try using '--force'");
+                               "overwrite it, try using '--force'.");
         }
     }
 
@@ -1074,13 +1074,13 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     auto task = std::find_if(this->taskList.cbegin(),
                              this->taskList.cend(),
                              [&refSpec](const PackageTask *task) {
-                                 return refSpec == task->refSpec();
+                                 return task->isRefExist(refSpec);
                              });
     if (task != this->taskList.cend()) {
         return toDBusReply(-1, "the target " % refSpec % " is being operated");
     }
 
-    auto *taskPtr = new PackageTask{ connection(), refSpec };
+    auto *taskPtr = new PackageTask{ connection(), QStringList{ refSpec } };
     auto &taskRef = *(this->taskList.emplace_back(taskPtr));
     bool skipInteraction = paras->options.skipInteraction;
 
@@ -1285,7 +1285,8 @@ void PackageManager::InstallRef(PackageTask &taskContext,
             return;
         }
 
-        pullDependency(taskContext, *info, module);
+        // Note: Do not set module by app's module here
+        pullDependency(taskContext, *info, "binary");
     }
 
     t.commit();
@@ -1334,12 +1335,12 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
     auto task = std::find_if(this->taskList.cbegin(),
                              this->taskList.cend(),
                              [&refSpec](const PackageTask *task) {
-                                 return refSpec == task->refSpec();
+                                 return task->isRefExist(refSpec);
                              });
     if (task != this->taskList.cend()) {
         return toDBusReply(-1, "the target " % refSpec % " is being operated");
     }
-    auto *taskPtr = new PackageTask{ connection(), refSpec };
+    auto *taskPtr = new PackageTask{ connection(), QStringList{ refSpec } };
     auto &taskRef = *(this->taskList.emplace_back(taskPtr));
 
     taskRef.setJob([this, &taskRef, reference, curModule]() {
@@ -1428,78 +1429,119 @@ void PackageManager::Uninstall(PackageTask &taskContext,
     }
 }
 
+utils::error::Result<package::Reference>
+PackageManager::latestRemoteReference(const std::string &kind, package::FuzzyReference &fuzzyRef) noexcept
+{
+    LINGLONG_TRACE("get latest reference");
+
+    // Note: 应用更新策略与base/runtime不一致
+    // 对于应用来说，不应该带着版本去查询, 允许从0.0.1更新到1.0.0
+    // 对于base/runtime，应该带着版本去查询，只允许从0.0.1更新到0.0.2
+    if (kind == "app") {
+        fuzzyRef.version.reset();
+        auto ref = this->repo.clearReference(fuzzyRef,
+                                             {
+                                               .forceRemote = true // NOLINT
+                                             });
+        if (!ref) {
+            return LINGLONG_ERR(ref);
+        }
+        return ref;
+    }
+    auto ref = this->repo.clearReference(fuzzyRef,
+                                         {
+                                           .forceRemote = true // NOLINT
+                                         });
+    if (!ref) {
+        return LINGLONG_ERR(ref);
+    }
+    return ref;
+}
+
 auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantMap
 {
     auto paras =
-      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1UninstallParameters>(
+      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1UpdateParameters>(
         parameters);
     if (!paras) {
         return toDBusReply(paras);
     }
 
-    auto installedAppFuzzyRef = fuzzyReferenceFromPackage(paras->package);
-    if (!installedAppFuzzyRef) {
-        return toDBusReply(installedAppFuzzyRef);
+    QStringList refSpecList{};
+    std::vector<std::pair<package::Reference, package::Reference>> upgradeList;
+
+    for (const auto &package : paras->packages) {
+        auto installedAppFuzzyRef = fuzzyReferenceFromPackage(package);
+        if (!installedAppFuzzyRef) {
+            return toDBusReply(installedAppFuzzyRef);
+        }
+
+        auto ref = this->repo.clearReference(*installedAppFuzzyRef,
+                                             {
+                                               .fallbackToRemote = false // NOLINT
+                                             });
+        if (!ref) {
+            return toDBusReply(-1, installedAppFuzzyRef->toString() + " not installed.");
+        }
+
+        auto layerItem = this->repo.getLayerItem(*ref);
+        if (!layerItem) {
+            return toDBusReply(layerItem);
+        }
+
+        auto newRef = this->latestRemoteReference(layerItem->info.kind, *installedAppFuzzyRef);
+        if (!newRef) {
+            return toDBusReply(newRef);
+        }
+
+        if (newRef->version <= ref->version) {
+            return toDBusReply(
+              -1,
+              QString("remote version is %1, the latest version %2 is already installed")
+                .arg(newRef->version.toString())
+                .arg(ref->version.toString()));
+        }
+
+        const auto reference = *ref;
+        const auto newReference = *newRef;
+        qInfo() << "Before upgrade, old Ref: " << reference.toString()
+                << " new Ref: " << newReference.toString();
+
+        // FIXME: use sha256 instead of refSpec
+        auto curModule = package.packageManager1PackageModule.value_or("binary");
+        auto refSpec =
+          QString{ "%1/%2/%3" }.arg(QString::fromStdString(this->repo.getConfig().defaultRepo),
+                                    newReference.toString(),
+                                    QString::fromStdString(curModule));
+        auto task = std::find_if(this->taskList.cbegin(),
+                                 this->taskList.cend(),
+                                 [&refSpec](const PackageTask *task) {
+                                     return task->isRefExist(refSpec);
+                                 });
+        if (task != this->taskList.cend()) {
+            return toDBusReply(-1, "the target " % refSpec % " is being operated");
+        }
+        refSpecList.append(refSpec);
+        upgradeList.push_back(std::make_pair(reference, newReference));
     }
 
-    auto ref = this->repo.clearReference(*installedAppFuzzyRef,
-                                         {
-                                           .fallbackToRemote = false // NOLINT
-                                         });
-    if (!ref) {
-        return toDBusReply(-1, installedAppFuzzyRef->toString() + " not installed.");
-    }
-
-    auto newRef = this->repo.clearReference(*installedAppFuzzyRef,
-                                            {
-                                              .forceRemote = true // NOLINT
-                                            });
-    if (!newRef) {
-        return toDBusReply(newRef);
-    }
-
-    if (newRef->version <= ref->version) {
-        return toDBusReply(
-          -1,
-          QString("remote version is %1, the latest version %2 is already installed")
-            .arg(newRef->version.toString())
-            .arg(ref->version.toString()));
-    }
-
-    const auto reference = *ref;
-    const auto newReference = *newRef;
-    qInfo() << "Before upgrade, old Ref: " << reference.toString()
-            << " new Ref: " << newReference.toString();
-
-    // FIXME: use sha256 instead of refSpec
-    auto curModule = paras->package.packageManager1PackageModule.value_or("binary");
-    auto refSpec =
-      QString{ "%1/%2/%3" }.arg(QString::fromStdString(this->repo.getConfig().defaultRepo),
-                                newReference.toString(),
-                                QString::fromStdString(curModule));
-    auto task = std::find_if(this->taskList.cbegin(),
-                             this->taskList.cend(),
-                             [&refSpec](const PackageTask *task) {
-                                 return refSpec == task->refSpec();
-                             });
-    if (task != this->taskList.cend()) {
-        return toDBusReply(-1, "the target " % refSpec % " is being operated");
-    }
-    auto *taskPtr = new PackageTask{ connection(), refSpec };
+    auto *taskPtr = new PackageTask{ connection(), refSpecList };
     auto &taskRef = *(this->taskList.emplace_back(taskPtr));
 
-    taskRef.setJob([this, &taskRef, reference, newReference]() {
+    taskRef.setJob([this, &taskRef, upgradeList = std::move(upgradeList)]() {
         if (isTaskDone(taskRef.subState())) {
             return;
         }
 
-        this->Update(taskRef, reference, newReference);
+        for (auto refs : upgradeList) {
+            this->Update(taskRef, refs.first, refs.second);
+        }
     });
     Q_EMIT TaskListChanged(taskRef.taskObjectPath());
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
       .taskObjectPath = taskRef.taskObjectPath().toStdString(),
       .code = 0,
-      .message = (ref->toString() + " is updating").toStdString(),
+      .message = "updating",
     });
 }
 
@@ -1519,7 +1561,7 @@ void PackageManager::Update(PackageTask &taskContext,
     this->repo.unexportReference(ref);
     this->repo.exportReference(newRef);
 
-    taskContext.updateState(linglong::api::types::v1::State::Succeed,
+    taskContext.updateState(linglong::api::types::v1::State::PartCompleted,
                             "Upgrade " + ref.toString() + " to " + newRef.toString() + " success");
 
     // use setMessage and setSubState directly will not trigger signal
@@ -1641,7 +1683,7 @@ void PackageManager::pullDependency(PackageTask &taskContext,
         taskContext.updateSubState(linglong::api::types::v1::SubState::InstallRuntime,
                                    "Installing runtime " + runtime->toString());
         // 如果runtime已存在，则直接使用, 否则从远程拉取
-        auto runtimeLayerDir = repo.getLayerDir(*runtime, module);
+        auto runtimeLayerDir = repo.getLayerDir(*runtime);
         if (!runtimeLayerDir) {
             if (isTaskDone(taskContext.subState())) {
                 return;
@@ -1689,7 +1731,6 @@ void PackageManager::pullDependency(PackageTask &taskContext,
         if (isTaskDone(taskContext.subState())) {
             return;
         }
-
         this->repo.pull(taskContext, *base, module);
         if (isTaskDone(taskContext.subState())) {
             return;

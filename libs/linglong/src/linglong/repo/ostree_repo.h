@@ -112,6 +112,11 @@ public:
     getMergedModuleDir(const package::Reference &ref, const QStringList &modules) const noexcept;
     std::vector<std::string> getModuleList(const package::Reference &ref) noexcept;
 
+    [[nodiscard]] utils::error::Result<api::types::v1::RepositoryCacheLayersItem>
+    getLayerItem(const package::Reference &ref,
+                 const std::string &module = "binary",
+                 const std::optional<std::string> &subRef = std::nullopt) const noexcept;
+
 private:
     api::types::v1::RepoConfig cfg;
 
@@ -138,11 +143,6 @@ private:
     removeOstreeRef(const api::types::v1::RepositoryCacheLayersItem &layer) noexcept;
     [[nodiscard]] utils::error::Result<package::LayerDir>
     getLayerDir(const api::types::v1::RepositoryCacheLayersItem &layer) const noexcept;
-
-    [[nodiscard]] utils::error::Result<api::types::v1::RepositoryCacheLayersItem>
-    getLayerItem(const package::Reference &ref,
-                 const std::string &module,
-                 const std::optional<std::string> &subRef = std::nullopt) const noexcept;
 };
 
 } // namespace linglong::repo

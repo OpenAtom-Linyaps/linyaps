@@ -135,6 +135,8 @@ private:
     void deferredUninstall() noexcept;
     utils::error::Result<void> removeAfterInstall(const package::Reference &oldRef,
                                                   const std::vector<std::string> &modules) noexcept;
+    utils::error::Result<package::Reference>
+    latestRemoteReference(const std::string &kind, package::FuzzyReference &fuzzyRef) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT
     std::list<PackageTask *> taskList;
     // 正在运行的任务对象路径

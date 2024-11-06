@@ -58,10 +58,10 @@ PackageTask::PackageTask()
 {
 }
 
-PackageTask::PackageTask(QDBusConnection connection, QString refSpec, QObject *parent)
+PackageTask::PackageTask(QDBusConnection connection, QStringList refs, QObject *parent)
     : QObject(parent)
     , m_taskID(QUuid::createUuid())
-    , m_refSpec(std::move(refSpec))
+    , m_refs(std::move(refs))
     , m_cancelFlag(g_cancellable_new())
 {
     auto *ptr = new linglong::adaptors::task::Task1(this);
@@ -136,6 +136,22 @@ void PackageTask::updateState(linglong::api::types::v1::State newState,
 {
     this->setProperty("State", static_cast<int>(newState));
     auto curState = state();
+    // Each part is completed, count it and reset the percentage
+    if (curState == linglong::api::types::v1::State::PartCompleted) {
+        ++m_taskParts;
+        m_totalPercentage = TASK_DONE;
+        Q_EMIT PercentageChanged(getPercentage());
+
+        m_totalPercentage = 0;
+        m_curStagePercentage = 0;
+    }
+
+    // Every part is completed, it means succeed
+    if (this->m_taskParts == this->m_refs.size()) {
+        this->setProperty("State", static_cast<int>(linglong::api::types::v1::State::Succeed));
+        auto curState = state();
+    }
+
     if (curState == linglong::api::types::v1::State::Canceled
         || curState == linglong::api::types::v1::State::Failed
         || curState == linglong::api::types::v1::State::Succeed) {

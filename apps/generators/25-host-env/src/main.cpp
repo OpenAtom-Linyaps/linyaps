@@ -25,14 +25,13 @@ const std::vector<std::string> envList = {
     "CLUTTER_IM_MODULE",
     "QT4_IM_MODULE",
     "GTK_IM_MODULE",
-    "auto_proxy",   // 网络系统代理自动代理
-    "http_proxy",   // 网络系统代理手动http代理
-    "https_proxy",  // 网络系统代理手动https代理
-    "ftp_proxy",    // 网络系统代理手动ftp代理
-    "SOCKS_SERVER", // 网络系统代理手动socks代理
-    "no_proxy",     // 网络系统代理手动配置代理
-    "USER",         // wine应用会读取此环境变量
-    "PATH",
+    "auto_proxy",      // 网络系统代理自动代理
+    "http_proxy",      // 网络系统代理手动http代理
+    "https_proxy",     // 网络系统代理手动https代理
+    "ftp_proxy",       // 网络系统代理手动ftp代理
+    "SOCKS_SERVER",    // 网络系统代理手动socks代理
+    "no_proxy",        // 网络系统代理手动配置代理
+    "USER",            // wine应用会读取此环境变量
     "QT_IM_MODULE",    // 输入法
     "LINGLONG_ROOT",   // 玲珑安装位置
     "WAYLAND_DISPLAY", // 导入wayland相关环境变量

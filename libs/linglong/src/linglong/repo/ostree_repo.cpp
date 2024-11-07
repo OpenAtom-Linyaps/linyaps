@@ -261,9 +261,12 @@ std::string ostreeSpecFromReference(const package::Reference &ref,
 std::string
 ostreeSpecFromReferenceV2(const package::Reference &ref,
                           const std::optional<std::string> &repo = std::nullopt,
-                          const std::string &module = "binary",
+                          std::string module = "binary",
                           const std::optional<std::string> &subRef = std::nullopt) noexcept
 {
+    if (module == "runtime") {
+        module = "binary";
+    }
     auto ret = ref.channel.toStdString() + "/" + ref.id.toStdString() + "/"
       + ref.version.toString().toStdString() + "/" + ref.arch.toString().toStdString() + "/"
       + module;
@@ -1047,7 +1050,8 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
                                    cancellable,
                                    &gErr);
     ostree_async_progress_finish(progress);
-    if (status == FALSE) {
+    // Note: this fallback is only for binary to runtime
+    if (status == FALSE && module == "binary") {
         auto *progress = ostree_async_progress_new_and_connect(progress_changed, (void *)&data);
         Q_ASSERT(progress != nullptr);
         // fallback to old ref

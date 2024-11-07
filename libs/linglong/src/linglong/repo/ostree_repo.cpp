@@ -943,8 +943,7 @@ utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRep
     auto env = QProcessEnvironment::systemEnvironment();
     auto client = this->m_clientFactory.createClientV2();
     // apiClient会调用free释放basePath，为避免重复释放这里复制一次url
-    client->basePath = (char *)malloc(url.length() + 1);
-    strcpy(client->basePath, url.c_str());
+    client->basePath = strdup(client->basePath);
     // 登录认证
     auto envUsername = env.value("LINGLONG_USERNAME").toUtf8();
     auto envPassword = env.value("LINGLONG_PASSWORD").toUtf8();
@@ -1124,14 +1123,26 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
 
     g_autoptr(GError) gErr = nullptr;
 
+    std::string userAgent = "linglong/" LINGLONG_VERSION;
+    GVariantBuilder builder;
+    g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
+    g_variant_builder_add(&builder,
+                          "{s@v}",
+                          "refs",
+                          g_variant_new_variant(g_variant_new_strv(refs.data(), -1)));
+    g_variant_builder_add(&builder,
+                          "{s@v}",
+                          "append-user-agent",
+                          g_variant_new_variant(g_variant_new_string(userAgent.c_str())));
+
+    g_autoptr(GVariant) pull_options = g_variant_ref_sink(g_variant_builder_end(&builder));
     // 这里不能使用g_main_context_push_thread_default，因为会阻塞Qt的事件循环
-    auto status = ostree_repo_pull(this->ostreeRepo.get(),
-                                   this->cfg.defaultRepo.c_str(),
-                                   const_cast<char **>(refs.data()), // NOLINT
-                                   OSTREE_REPO_PULL_FLAGS_NONE,
-                                   progress,
-                                   cancellable,
-                                   &gErr);
+    auto status = ostree_repo_pull_with_options(this->ostreeRepo.get(),
+                                                this->cfg.defaultRepo.c_str(),
+                                                pull_options,
+                                                progress,
+                                                cancellable,
+                                                &gErr);
     ostree_async_progress_finish(progress);
     auto shouldFallback = false;
     if (status == FALSE) {
@@ -1154,13 +1165,25 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
         refs[0] = refString.c_str();
         g_clear_error(&gErr);
 
-        status = ostree_repo_pull(this->ostreeRepo.get(),
-                                  this->cfg.defaultRepo.c_str(),
-                                  const_cast<char **>(refs.data()), // NOLINT
-                                  OSTREE_REPO_PULL_FLAGS_NONE,
-                                  progress,
-                                  cancellable,
-                                  &gErr);
+        GVariantBuilder builder;
+        g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
+        g_variant_builder_add(&builder,
+                              "{s@v}",
+                              "refs",
+                              g_variant_new_variant(g_variant_new_strv(refs.data(), -1)));
+        g_variant_builder_add(&builder,
+                              "{s@v}",
+                              "append-user-agent",
+                              g_variant_new_variant(g_variant_new_string(userAgent.c_str())));
+
+        g_autoptr(GVariant) pull_options = g_variant_ref_sink(g_variant_builder_end(&builder));
+
+        status = ostree_repo_pull_with_options(this->ostreeRepo.get(),
+                                               this->cfg.defaultRepo.c_str(),
+                                               pull_options,
+                                               progress,
+                                               cancellable,
+                                               &gErr);
         ostree_async_progress_finish(progress);
         if (status == FALSE) {
             taskContext.reportError(LINGLONG_ERRV("ostree_repo_pull", gErr));

@@ -898,7 +898,8 @@ utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRep
     }
     auto signRes = std::shared_ptr<sign_in_200_response_t>(signResRaw, sign_in_200_response_free);
     if (signRes->code != 200) {
-        return LINGLONG_ERR(QString("sign error(%1): %2").arg(auth.username).arg(signRes->msg));
+        auto msg = signRes->msg ? signRes->msg : "cannot send request to remote server";
+        return LINGLONG_ERR(QString("sign error(%1): %2").arg(auth.username).arg(msg));
     }
     auto *token = signRes->data->token;
     // 创建上传任务
@@ -914,7 +915,8 @@ utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRep
       std::shared_ptr<new_upload_task_id_200_response_t>(newTaskResRaw,
                                                          new_upload_task_id_200_response_free);
     if (newTaskRes->code != 200) {
-        return LINGLONG_ERR(QString("create task error: %1").arg(newTaskRes->msg));
+        auto msg = newTaskRes->msg ? newTaskRes->msg : "cannot send request to remote server";
+        return LINGLONG_ERR(QString("create task error: %1").arg(msg));
     }
     auto *taskID = newTaskRes->data->id;
 
@@ -947,8 +949,8 @@ utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRep
       std::shared_ptr<api_upload_task_file_resp_t>(uploadTaskResRaw,
                                                    api_upload_task_file_resp_free);
     if (uploadTaskRes->code != 200) {
-        return LINGLONG_ERR(
-          QString("upload file error(%1): %2").arg(taskID).arg(uploadTaskRes->msg));
+        auto msg = uploadTaskRes->msg ? uploadTaskRes->msg : "cannot send request to remote server";
+        return LINGLONG_ERR(QString("upload file error(%1): %2").arg(taskID).arg(msg));
     }
     // 查询任务状态
     while (true) {
@@ -961,8 +963,8 @@ utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRep
           std::shared_ptr<upload_task_info_200_response_t>(uploadInfoRaw,
                                                            upload_task_info_200_response_free);
         if (uploadInfo->code != 200) {
-            return LINGLONG_ERR(
-              QString("get upload info error(%1): %2").arg(taskID).arg(uploadInfo->msg));
+            auto msg = uploadInfo->msg ? uploadInfo->msg : "cannot send request to remote server";
+            return LINGLONG_ERR(QString("get upload info error(%1): %2").arg(taskID).arg(msg));
         }
         qInfo() << "pushing" << reference.toString() << module.c_str()
                 << "status:" << uploadInfo->data->status;
@@ -1281,7 +1283,8 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
         return LINGLONG_ERR("cannot send request to remote server");
     }
     if (res->code != 200) {
-        return LINGLONG_ERR(res->msg);
+        auto msg = res->msg ? res->msg : "cannot send request to remote server";
+        return LINGLONG_ERR(msg);
     }
     if (!res->data) {
         return {};

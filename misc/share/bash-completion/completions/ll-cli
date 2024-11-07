@@ -135,8 +135,12 @@ _ll_cli_complete() {
                 output_options="${output_options} $(__ll_cli_get_installed_list)"
                 ;;
         search)
+                search_target="."
+                if [[ x${cur} != x ]]; then
+                        search_target=${cur}
+                fi
                 search_options="--type --dev"
-                output_options="${output_options} ${search_options} $(__ll_cli_get_app_list)"
+                output_options="${output_options} ${search_options} $(__ll_cli_get_app_list ${search_target})"
                 ;;
         repo)
                 local repo_subcommands="add remove update set-default show"

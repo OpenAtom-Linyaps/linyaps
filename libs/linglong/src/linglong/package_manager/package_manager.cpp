@@ -1267,7 +1267,7 @@ void PackageManager::InstallRef(PackageTask &taskContext,
             }
         });
 
-        if (module == "binary" || module == "runtime") {
+        if (module != "binary" && module != "runtime") {
             continue;
         }
 

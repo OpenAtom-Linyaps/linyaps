@@ -10,6 +10,8 @@ extern "C" {
 #include "api/ClientAPI.h"
 }
 
+#include "linglong/utils/configure.h"
+
 #include <QObject>
 #include <QPoint>
 
@@ -25,10 +27,11 @@ public:
     ClientFactory(const std::string &server);
 
     std::shared_ptr<apiClient_t> createClientV2();
-    void setServer(QString server);
-    void setServer(std::string server);
+    void setServer(const QString &server);
+    void setServer(const std::string &server);
 
 private:
-    QString m_server;
+    std::string m_server;
+    std::string m_user_agent = "linglong/" LINGLONG_VERSION;
 };
 } // namespace linglong::repo

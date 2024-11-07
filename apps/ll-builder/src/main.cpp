@@ -199,9 +199,9 @@ You can report bugs to the linyaps team under this project: https://github.com/O
       ->check(validatorString);
 
     // add builder build
-    bool buildOffline = false, fullDevelopModule = false, skipFetchSource = false,
-         skipPullDepend = false, skipCheckOutput = false, buildSkipFetchSource = false,
-         skipStripSymbols = false, skipCommitOutput = false, buildSkipRunContainer = false;
+    bool buildOffline = false, buildFullDevelopModule = false, buildSkipFetchSource = false,
+         buildSkipPullDepend = false, buildSkipCheckOutput = false, buildSkipStripSymbols = false,
+         buildSkipCommitOutput = false, buildSkipRunContainer = false;
     std::string filePath{ "./linglong.yaml" }, arch;
     // group empty will hide command
     std::string hiddenGroup = "";
@@ -230,15 +230,19 @@ You can report bugs to the linyaps team under this project: https://github.com/O
                              "--skip-pull-depend will be set"));
     buildBuilder
       ->add_flag("--full-develop-module",
-                 fullDevelopModule,
+                 buildFullDevelopModule,
                  _("Build full develop packages, runtime requires"))
       ->group(hiddenGroup);
-    buildBuilder->add_flag("--skip-fetch-source", skipFetchSource, _("Skip fetch sources"));
-    buildBuilder->add_flag("--skip-pull-depend", skipPullDepend, _("Skip pull dependency"));
+    buildBuilder->add_flag("--skip-fetch-source", buildSkipFetchSource, _("Skip fetch sources"));
+    buildBuilder->add_flag("--skip-pull-depend", buildSkipPullDepend, _("Skip pull dependency"));
     buildBuilder->add_flag("--skip-run-container", buildSkipRunContainer, _("Skip run container"));
-    buildBuilder->add_flag("--skip-commit-output", skipCommitOutput, _("Skip commit build output"));
-    buildBuilder->add_flag("--skip-output-check", skipCheckOutput, _("Skip output check"));
-    buildBuilder->add_flag("--skip-strip-symbols", skipStripSymbols, _("Skip strip debug symbols"));
+    buildBuilder->add_flag("--skip-commit-output",
+                           buildSkipCommitOutput,
+                           _("Skip commit build output"));
+    buildBuilder->add_flag("--skip-output-check", buildSkipCheckOutput, _("Skip output check"));
+    buildBuilder->add_flag("--skip-strip-symbols",
+                           buildSkipStripSymbols,
+                           _("Skip strip debug symbols"));
 
     // add builder run
     bool debugMode = false;
@@ -500,48 +504,22 @@ You can report bugs to the linyaps team under this project: https://github.com/O
             cfg.arch = arch->toString().toStdString();
             builder.setConfig(cfg);
         }
-
-        if (buildSkipFetchSource) {
-            auto cfg = builder.getConfig();
-            options.skipFetchSource = true;
-        }
-
-        if (skipPullDepend) {
-            auto cfg = builder.getConfig();
-            options.skipPullDepend = true;
-        }
-
+        options.skipFetchSource = buildSkipFetchSource;
+        options.skipPullDepend = buildSkipPullDepend;
+        options.skipCommitOutput = buildSkipCommitOutput;
+        options.skipCheckOutput = buildSkipCheckOutput;
+        options.skipStripSymbols = buildSkipStripSymbols;
+        options.fullDevelop = buildFullDevelopModule;
         if (buildSkipRunContainer) {
-            auto cfg = builder.getConfig();
+            options.skipCommitOutput = true;
             options.skipRunContainer = true;
-            options.skipCommitOutput = true;
         }
-
-        if (skipCommitOutput) {
-            auto cfg = builder.getConfig();
-            options.skipCommitOutput = true;
-        }
-
         if (buildOffline) {
             auto cfg = builder.getConfig();
             options.skipFetchSource = true;
             options.skipPullDepend = true;
             cfg.offline = true;
             builder.setConfig(cfg);
-        }
-
-        if (skipCheckOutput) {
-            auto cfg = builder.getConfig();
-            options.skipCheckOutput = true;
-        }
-
-        if (skipStripSymbols) {
-            auto cfg = builder.getConfig();
-            options.skipStripSymbols = true;
-        }
-
-        if (fullDevelopModule) {
-            options.fullDevelop = true;
         }
 
         builder.setBuildOptions(options);

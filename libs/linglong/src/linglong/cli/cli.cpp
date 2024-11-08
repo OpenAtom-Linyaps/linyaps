@@ -1931,16 +1931,9 @@ utils::error::Result<void> Cli::runningAsRoot()
     LINGLONG_TRACE("run with pkexec");
 
     const char *pkexecBin = "pkexec";
-    QStringList argv{ pkexecBin };
+    QStringList argv{ pkexecBin, "--keep-cwd" };
     argv.append(QCoreApplication::instance()->arguments());
-
-    QProcessEnvironment sysEnv = QProcessEnvironment::systemEnvironment();
-    QStringList envList = sysEnv.toStringList();
-
     qDebug() << "run with pkexec:" << argv;
-    qDebug() << "environment variables:" << envList;
-
-    auto targetArgc = argv.size();
     std::vector<char *> targetArgv;
     for (const auto &arg : argv) {
         QByteArray byteArray = arg.toUtf8();
@@ -1948,24 +1941,11 @@ utils::error::Result<void> Cli::runningAsRoot()
     }
     targetArgv.push_back(nullptr);
 
-    std::vector<char *> targetEnvv;
-    for (const auto &env : envList) {
-        QByteArray byteArray = env.toUtf8();
-        targetEnvv.push_back(strdup(byteArray.constData()));
-    }
-    targetEnvv.push_back(nullptr);
-
-    auto ret = execvpe(pkexecBin,
-                       const_cast<char **>(targetArgv.data()),
-                       const_cast<char **>(targetEnvv.data()));
+    auto ret = execvp(pkexecBin, const_cast<char **>(targetArgv.data()));
     // NOTE: if reached here, exevpe is failed.
     for (auto arg : targetArgv) {
         free(arg);
     }
-    for (auto env : targetEnvv) {
-        free(env);
-    }
-
     return LINGLONG_ERR("execve error", ret);
 }
 

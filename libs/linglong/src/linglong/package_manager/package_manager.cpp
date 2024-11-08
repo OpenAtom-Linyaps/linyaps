@@ -917,7 +917,8 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
             return;
         }
 
-        const auto &uabLayersDirInfo = QFileInfo{ mountPoint->absoluteFilePath("layers") };
+        auto uabLayersDir = *mountPoint / "layers";
+        const auto &uabLayersDirInfo = QFileInfo{ uabLayersDir.c_str() };
         if (!uabLayersDirInfo.exists() || !uabLayersDirInfo.isDir()) {
             taskRef.updateState(linglong::api::types::v1::State::Failed,
                                 "the contents of this uab file are invalid");
@@ -925,24 +926,28 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
         }
 
         utils::Transaction transaction;
-        const auto &uabLayersDir = QDir{ uabLayersDirInfo.absoluteFilePath() };
         for (const auto &layer : layerInfos) {
             if (isTaskDone(taskRef.subState())) {
                 return;
             }
 
-            QDir layerDirPath = uabLayersDir.absoluteFilePath(
-              QString::fromStdString(layer.info.id) % QDir::separator()
-              % QString::fromStdString(layer.info.packageInfoV2Module));
+            std::error_code ec;
+            auto layerDirPath = uabLayersDir / layer.info.id / layer.info.packageInfoV2Module;
+            if (!std::filesystem::exists(layerDirPath, ec)) {
+                if (ec) {
+                    taskRef.updateState(linglong::api::types::v1::State::Failed,
+                                        QString{ "get status of" } % layerDirPath.c_str()
+                                          % "failed:" % ec.message().c_str());
+                    return;
+                }
 
-            if (!layerDirPath.exists()) {
                 taskRef.updateState(linglong::api::types::v1::State::Failed,
-                                    "layer directory " % layerDirPath.absolutePath()
+                                    QString{ "layer directory " } % layerDirPath.c_str()
                                       % " doesn't exist");
                 return;
             }
 
-            const auto &layerDir = package::LayerDir{ layerDirPath.absolutePath() };
+            const auto &layerDir = package::LayerDir{ layerDirPath.c_str() };
             std::optional<std::string> subRef{ std::nullopt };
             if (layer.minified) {
                 subRef = metaInfo.get().uuid;
@@ -962,9 +967,19 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
             }
             auto &ref = *refRet;
 
+            std::vector<std::filesystem::path> overlays;
             bool isAppLayer = layer.info.kind == "app";
             if (isAppLayer) { // it's meaningless for app layer that declare minified is true
                 subRef = std::nullopt;
+                auto ret = uab->extractSignData();
+                if (!ret) {
+                    taskRef.reportError(std::move(ret).error());
+                    return;
+                }
+
+                if (!ret->empty()) {
+                    overlays.emplace_back(std::move(ret).value());
+                }
             } else {
                 auto fuzzyString = refRet->id + "/" + refRet->version.toString();
                 auto fuzzyRef = package::FuzzyReference::parse(fuzzyString);
@@ -982,11 +997,18 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
                 }
             }
 
-            auto ret = this->repo.importLayerDir(layerDir, subRef);
+            auto ret = this->repo.importLayerDir(layerDir, overlays, subRef);
             if (!ret) {
                 taskRef.reportError(std::move(ret).error());
                 return;
             }
+
+            std::for_each(overlays.begin(), overlays.end(), [](const std::filesystem::path &dir) {
+                std::error_code ec;
+                if (std::filesystem::remove_all(dir, ec) == static_cast<std::uintmax_t>(-1) && ec) {
+                    qWarning() << "failed to remove temporary directory" << dir.c_str();
+                }
+            });
 
             transaction.addRollBack(
               [this, layerInfo = std::move(info), layerRef = ref, subRef]() noexcept {
@@ -1957,7 +1979,7 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
 
     if (!target.empty()) {
         auto pruneRet = this->repo.prune();
-        if(!pruneRet) {
+        if (!pruneRet) {
             return LINGLONG_ERR(pruneRet);
         }
         auto mergeRet = this->repo.mergeModules();

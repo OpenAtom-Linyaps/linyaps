@@ -281,11 +281,11 @@ ostreeSpecFromReferenceV2(const package::Reference &ref,
     return ret + "_" + subRef.value();
 }
 
-utils::error::Result<QString> commitDirToRepo(GFile *dir,
+utils::error::Result<QString> commitDirToRepo(std::vector<GFile *> dirs,
                                               OstreeRepo *repo,
                                               const char *refspec) noexcept
 {
-    Q_ASSERT(dir != nullptr);
+    Q_ASSERT(dirs.size() >= 1);
     Q_ASSERT(repo != nullptr);
 
     LINGLONG_TRACE("commit to ostree linglong repo");
@@ -315,8 +315,11 @@ utils::error::Result<QString> commitDirToRepo(GFile *dir,
         return LINGLONG_ERR("ostree_repo_commit_modifier_new return a nullptr");
     }
 
-    if (ostree_repo_write_directory_to_mtree(repo, dir, mtree, modifier, nullptr, &gErr) == FALSE) {
-        return LINGLONG_ERR("ostree_repo_write_directory_to_mtree", gErr);
+    for (auto *dir : dirs) {
+        if (ostree_repo_write_directory_to_mtree(repo, dir, mtree, modifier, nullptr, &gErr)
+            == FALSE) {
+            return LINGLONG_ERR("ostree_repo_write_directory_to_mtree", gErr);
+        }
     }
 
     g_autoptr(GFile) file = nullptr;
@@ -340,11 +343,12 @@ utils::error::Result<QString> commitDirToRepo(GFile *dir,
 
     ostree_repo_transaction_set_ref(repo, "local", refspec, commit);
 
+    transaction.commit();
+
     if (ostree_repo_commit_transaction(repo, NULL, NULL, &gErr) == FALSE) {
         return LINGLONG_ERR("ostree_repo_commit_transaction", gErr);
     }
 
-    transaction.commit();
     return commit;
 }
 
@@ -796,8 +800,10 @@ utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfi
     return LINGLONG_OK;
 }
 
-utils::error::Result<package::LayerDir> OSTreeRepo::importLayerDir(
-  const package::LayerDir &dir, const std::optional<std::string> &subRef) noexcept
+utils::error::Result<package::LayerDir>
+OSTreeRepo::importLayerDir(const package::LayerDir &dir,
+                           std::vector<std::filesystem::path> overlays,
+                           const std::optional<std::string> &subRef) noexcept
 {
     LINGLONG_TRACE("import layer dir");
 
@@ -806,11 +812,6 @@ utils::error::Result<package::LayerDir> OSTreeRepo::importLayerDir(
     }
 
     utils::Transaction transaction;
-
-    g_autoptr(GFile) gFile = g_file_new_for_path(dir.absolutePath().toUtf8());
-    if (gFile == nullptr) {
-        qFatal("g_file_new_for_path");
-    }
 
     auto info = dir.info();
     if (!info) {
@@ -826,10 +827,27 @@ utils::error::Result<package::LayerDir> OSTreeRepo::importLayerDir(
         return LINGLONG_ERR(reference->toString() + " exists.", 0);
     }
 
+    overlays.insert(overlays.begin(), dir.absolutePath().toStdString());
+
+    std::vector<GFile *> dirs;
+    auto cleanRes = utils::finally::finally([&dirs] {
+        std::for_each(dirs.begin(), dirs.end(), [](GFile *file) {
+            g_object_unref(file);
+        });
+    });
+
+    for (const auto &overlay : overlays) {
+        auto *gFile = g_file_new_for_path(overlay.c_str());
+        if (gFile == nullptr) {
+            qFatal("g_file_new_for_path");
+        }
+        dirs.push_back(gFile);
+    }
+
     // NOTE: we save repo info in cache, if import a local layer dir, set repo to 'local'
     auto refspec =
       ostreeSpecFromReferenceV2(*reference, std::nullopt, info->packageInfoV2Module, subRef);
-    auto commitID = commitDirToRepo(gFile, this->ostreeRepo.get(), refspec.c_str());
+    auto commitID = commitDirToRepo(dirs, this->ostreeRepo.get(), refspec.c_str());
     if (!commitID) {
         return LINGLONG_ERR(commitID);
     }
@@ -1463,8 +1481,9 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
         "metainfo",     // Copy appdata/metainfo files
         "plugins", // Copy plugins conf，The configuration files provided by some applications maybe
                    // used by the host dde-file-manager.
-        "systemd",      // copy systemd service files
-        "deepin-manual" // copy deepin-manual files
+        "systemd",          // copy systemd service files
+        "deepin-manual",    // copy deepin-manual files
+        "deepin-elf-verify" // for uab signature
     };
 
     for (const auto &path : exportPaths) {
@@ -1479,7 +1498,7 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
         }
 
         QDirIterator it(exportDir.absolutePath(),
-                        QDir::AllEntries | QDir::NoDotAndDotDot | QDir::System,
+                        QDir::AllEntries | QDir::NoDotAndDotDot | QDir::System | QDir::Hidden,
                         QDirIterator::Subdirectories);
         while (it.hasNext()) {
             it.next();

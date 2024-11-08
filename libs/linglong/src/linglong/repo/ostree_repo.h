@@ -48,6 +48,7 @@ public:
 
     utils::error::Result<package::LayerDir>
     importLayerDir(const package::LayerDir &dir,
+                   std::vector<std::filesystem::path> overlays = {},
                    const std::optional<std::string> &subRef = std::nullopt) noexcept;
 
     [[nodiscard]] utils::error::Result<package::LayerDir>

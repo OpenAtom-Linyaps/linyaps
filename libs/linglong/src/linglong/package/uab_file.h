@@ -24,7 +24,10 @@ public:
     ~UABFile() override;
 
     utils::error::Result<bool> verify() noexcept;
-    utils::error::Result<QDir> mountUab() noexcept;
+    utils::error::Result<std::filesystem::path> mountUab() noexcept;
+
+    // this method will extract sign data to a temporary directory, caller should remove it
+    utils::error::Result<std::filesystem::path> extractSignData() noexcept;
     [[nodiscard]] utils::error::Result<std::reference_wrapper<const api::types::v1::UabMetaInfo>>
     getMetaInfo() noexcept;
 
@@ -35,7 +38,7 @@ private:
 
     Elf *e{ nullptr };
     std::unique_ptr<api::types::v1::UabMetaInfo> metaInfo{ nullptr };
-    QString mountPoint;
+    std::filesystem::path mountPoint;
 };
 
 } // namespace linglong::package

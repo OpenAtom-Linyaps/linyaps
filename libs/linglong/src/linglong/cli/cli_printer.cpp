@@ -36,11 +36,15 @@ void CLIPrinter::printErr(const utils::error::Error &err)
 
 void CLIPrinter::printPruneResult(const std::vector<api::types::v1::PackageInfoV2> &list)
 {
+    if(list.size() == 0) {
+        std::cout << "No unused base or runtime." << std::endl;
+    }
+    std::cout << "Unused base or runtime:" <<std::endl;
     for (const auto &info : list) {
         auto ref = package::Reference::fromPackageInfo(info);
         std::cout << ref->toString().toStdString() << std::endl;
     }
-    std::cout << list.size() << " unused layers have been removed." << std::endl;
+    std::cout << list.size() << " unused base or runtime have been removed." << std::endl;
 }
 
 void CLIPrinter::printPackages(const std::vector<api::types::v1::PackageInfoV2> &list)

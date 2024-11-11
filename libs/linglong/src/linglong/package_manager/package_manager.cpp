@@ -1797,7 +1797,7 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
 
     std::unordered_map<package::Reference, int> target;
     for (const auto &info : *pkgsInfo) {
-        if (info.packageInfoV2Module != "binary") {
+        if (info.packageInfoV2Module != "binary" && info.packageInfoV2Module != "runtime") {
             continue;
         }
 

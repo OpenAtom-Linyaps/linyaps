@@ -10,11 +10,11 @@ package:
 
 command: [echo, -e, hello world] #the commands that your application need to run.
 
-base: org.deepin.foundation/20.0.0 #set the base environment, this can be changed.
+base: org.deepin.base/23.1.0 #set the base environment, this can be changed.
 
 #set the runtime environment if you need, a example of setting deepin runtime is as follows.
 #runtime:
-#org.deepin.Runtime/23.0.1
+#org.deepin.runtime.dtk/23.1.0
 
 #set the source if you need, a simple example of git is as follows.
 #sources:

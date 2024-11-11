@@ -1591,10 +1591,13 @@ OSTreeRepo::markDeleted(const package::Reference &ref,
 
 utils::error::Result<api::types::v1::RepositoryCacheLayersItem>
 OSTreeRepo::getLayerItem(const package::Reference &ref,
-                         const std::string &module,
+                         std::string module,
                          const std::optional<std::string> &subRef) const noexcept
 {
     LINGLONG_TRACE("get latest layer of " + ref.toString());
+    if (module == "runtime") {
+        module = "binary";
+    }
 
     repoCacheQuery query{ .id = ref.id.toStdString(),
                           .repo = std::nullopt,

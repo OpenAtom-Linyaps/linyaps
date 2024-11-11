@@ -149,7 +149,7 @@ void PackageTask::updateState(linglong::api::types::v1::State newState,
     // Every part is completed, it means succeed
     if (this->m_taskParts == this->m_refs.size()) {
         this->setProperty("State", static_cast<int>(linglong::api::types::v1::State::Succeed));
-        auto curState = state();
+        curState = state();
     }
 
     if (curState == linglong::api::types::v1::State::Canceled

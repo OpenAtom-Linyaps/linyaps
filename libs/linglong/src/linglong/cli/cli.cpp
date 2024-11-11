@@ -153,7 +153,9 @@ void Cli::interaction(QDBusObjectPath object_path, int messageID, QVariantMap ad
         action = notifyReply->action.value();
     }
 
-    if (action == "Y" || action == "y" || action == "Yes" || action == "yes") {
+    // FIXME: if the notifier is a DummyNotifier, treat the action as yes.(for deepin-app-store)
+    // But this behavior is no correct. We should treat it as no and tell people to add additional option '-y'.
+    if (action == "Y" || action == "y" || action == "Yes" || action == "yes" || action == "dummy") {
         action = "yes";
     } else {
         action = "no";

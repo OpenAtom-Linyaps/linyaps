@@ -1393,7 +1393,7 @@ int Cli::list()
         this->printer.printPackages(*pkgs);
         return 0;
     }
-    
+
     auto upgradeList = this->listUpgradable(std::move(pkgs).value());
     if(!upgradeList) {
         this->printer.printErr(upgradeList.error());

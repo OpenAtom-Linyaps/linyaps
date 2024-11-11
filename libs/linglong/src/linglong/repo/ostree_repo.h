@@ -114,7 +114,7 @@ public:
 
     [[nodiscard]] utils::error::Result<api::types::v1::RepositoryCacheLayersItem>
     getLayerItem(const package::Reference &ref,
-                 const std::string &module = "binary",
+                 std::string module = "binary",
                  const std::optional<std::string> &subRef = std::nullopt) const noexcept;
 
 private:

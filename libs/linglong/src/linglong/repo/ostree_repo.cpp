@@ -1030,6 +1030,8 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
                       const package::Reference &reference,
                       const std::string &module) noexcept
 {
+    // Note: if module is runtime, refString will be channel:id/version/binary.
+    // because we need considering update channel:id/version/runtime to channel:id/version/binary.
     auto refString = ostreeSpecFromReferenceV2(reference, std::nullopt, module);
     LINGLONG_TRACE("pull " + QString::fromStdString(refString));
 
@@ -1053,7 +1055,7 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
                                    &gErr);
     ostree_async_progress_finish(progress);
     // Note: this fallback is only for binary to runtime
-    if (status == FALSE && module == "binary") {
+    if (status == FALSE && (module == "binary" || module == "runtime")) {
         auto *progress = ostree_async_progress_new_and_connect(progress_changed, (void *)&data);
         Q_ASSERT(progress != nullptr);
         // fallback to old ref
@@ -1072,10 +1074,10 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
                                   cancellable,
                                   &gErr);
         ostree_async_progress_finish(progress);
-        if (status == FALSE) {
-            taskContext.reportError(LINGLONG_ERRV("ostree_repo_pull", gErr));
-            return;
-        }
+    }
+    if (status == FALSE) {
+        taskContext.reportError(LINGLONG_ERRV("ostree_repo_pull", gErr));
+        return;
     }
 
     g_autofree char *commit = nullptr;

@@ -5,6 +5,7 @@ Maintainer: Deepin Packages Builder <packages@deepin.com>
 Build-Depends: cmake,
                debhelper-compat (= 12),
                erofsfuse,
+               intltool,
                libcli11-dev (>= 2.4.1) | hello,
                libcurl4-openssl-dev,
                libdeflate-dev,

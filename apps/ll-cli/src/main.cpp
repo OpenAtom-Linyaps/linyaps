@@ -186,7 +186,8 @@ int main(int argc, char **argv)
       "A CLI program to run application and manage application and runtime\n") };
     commandParser.get_help_ptr()->description(_("Print this help message and exit"));
     commandParser.set_help_all_flag("--help-all", _("Expand all help"));
-    commandParser.usage(_("Usage: [OPTIONS] [SUBCOMMAND]"));
+
+    commandParser.usage(_("Usage: ll-cli [OPTIONS] [SUBCOMMAND]"));
     commandParser.footer(_(R"(If you found any problems during use,
 You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues)"));
 
@@ -261,7 +262,9 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
     cliRun->add_option("COMMAND", options.commands, _("Run commands in a running sandbox"));
 
     // add sub command ps
-    commandParser.add_subcommand("ps", _("List running applications"))->group(CliAppManagingGroup);
+    commandParser.add_subcommand("ps", _("List running applications"))
+      ->group(CliAppManagingGroup)
+      ->usage(_("Usage: ll-cli ps [OPTIONS]"));
 
     // add sub command exec
     auto cliExec =
@@ -283,6 +286,7 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
       commandParser
         .add_subcommand("enter", _("Enter the namespace where the application is running"))
         ->group(CliAppManagingGroup);
+    cliEnter->usage(_("Usage: ll-cli enter [OPTIONS] INSTANCE [COMMAND...]"));
     cliEnter
       ->add_option("INSTANCE",
                    options.instance,
@@ -296,6 +300,7 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
     // add sub command kill
     auto cliKill = commandParser.add_subcommand("kill", _("Stop running applications"))
                      ->group(CliAppManagingGroup);
+    cliKill->usage(_("Usage: ll-cli kill [OPTIONS] INSTANCE"));
     cliKill
       ->add_option("INSTANCE",
                    options.instance,
@@ -339,6 +344,7 @@ ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
     auto cliUninstall =
       commandParser.add_subcommand("uninstall", _("Uninstall the application or runtimes"))
         ->group(CliBuildInGroup);
+    cliUninstall->usage(_("Usage: ll-cli uninstall [OPTIONS] APP"));
     cliUninstall->add_option("APP", options.appid, _("Specify the applications ID"))
       ->required()
       ->check(validatorString);
@@ -350,6 +356,7 @@ ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
     auto cliUpgrade =
       commandParser.add_subcommand("upgrade", _("Upgrade the application or runtimes"))
         ->group(CliBuildInGroup);
+    cliUpgrade->usage(_("Usage: ll-cli upgrade [OPTIONS] [APP]"));
     cliUpgrade
       ->add_option(
         "APP",
@@ -418,10 +425,12 @@ ll-cli list --upgradable
         .add_subcommand("repo",
                         _("Display or modify information of the repository currently using"))
         ->group(CliRepoGroup);
+    cliRepo->usage(_("Usage: ll-cli repo SUBCOMMAND [OPTIONS]"));
     cliRepo->require_subcommand(1);
 
     // add repo sub command add
     auto repoAdd = cliRepo->add_subcommand("add", _("Add a new repository"));
+    repoAdd->usage(_("Usage: ll-cli repo add [OPTIONS] NAME URL"));
     repoAdd->add_option("NAME", options.repoName, _("Specify the repo name"))
       ->required()
       ->check(validatorString);
@@ -430,7 +439,8 @@ ll-cli list --upgradable
       ->check(validatorString);
 
     // add repo sub command modify
-    auto repoModify = cliRepo->add_subcommand("modify", _("Modify repository URL"));
+    auto repoModify =
+      cliRepo->add_subcommand("modify", _("Modify repository URL"))->group(CliHiddenGroup);
     repoModify->add_option("--name", options.repoName, _("Specify the repo name"))
       ->type_name("REPO")
       ->check(validatorString);
@@ -440,12 +450,14 @@ ll-cli list --upgradable
 
     // add repo sub command remove
     auto repoRemove = cliRepo->add_subcommand("remove", _("Remove a repository"));
+    repoRemove->usage(_("Usage: ll-cli repo remove [OPTIONS] NAME"));
     repoRemove->add_option("NAME", options.repoName, _("Specify the repo name"))
       ->required()
       ->check(validatorString);
 
     // add repo sub command update
-    auto repoUpdate = cliRepo->add_subcommand("update", _("Update to a new repository"));
+    auto repoUpdate = cliRepo->add_subcommand("update", _("Update the repository URL"));
+    repoUpdate->usage(_("Usage: ll-cli repo update [OPTIONS] NAME URL"));
     repoUpdate->add_option("NAME", options.repoName, _("Specify the repo name"))
       ->required()
       ->check(validatorString);
@@ -454,19 +466,23 @@ ll-cli list --upgradable
       ->check(validatorString);
 
     // add repo sub command set-default
-    auto repoSetDefault = cliRepo->add_subcommand("set-default", _("Set default repository name"));
+    auto repoSetDefault =
+      cliRepo->add_subcommand("set-default", _("Set a default repository name"));
+    repoSetDefault->usage(_("Usage: ll-cli repo set-default [OPTIONS] NAME"));
     repoSetDefault->add_option("NAME", options.repoName, _("Specify the repo name"))
       ->required()
       ->check(validatorString);
 
     // add repo sub command show
-    cliRepo->add_subcommand("show", _("Show repository"));
+    cliRepo->add_subcommand("show", _("Show repository information"))
+      ->usage(_("Usage: ll-cli repo show [OPTIONS]"));
 
     // add sub command info
     auto cliInfo =
       commandParser
         .add_subcommand("info", _("Display information about installed apps or runtimes"))
         ->group(CliBuildInGroup);
+    cliInfo->usage(_("Usage: ll-cli info [OPTIONS] APP"));
     cliInfo
       ->add_option("APP",
                    options.appid,
@@ -479,6 +495,7 @@ ll-cli list --upgradable
       commandParser
         .add_subcommand("content", _("Display the exported files of installed application"))
         ->group(CliBuildInGroup);
+    cliContent->usage(_("Usage: ll-cli content [OPTIONS] APP"));
     cliContent->add_option("APP", options.appid, _("Specify the installed application ID"))
       ->required()
       ->check(validatorString);
@@ -488,7 +505,8 @@ ll-cli list --upgradable
 
     // add sub command prune
     commandParser.add_subcommand("prune", _("Remove the unused base or runtime"))
-      ->group(CliAppManagingGroup);
+      ->group(CliAppManagingGroup)
+      ->usage(_("Usage: ll-cli prune [OPTIONS]"));
 
     auto res = transformOldExec(argc, argv);
 
@@ -663,7 +681,8 @@ ll-cli list --upgradable
           }
 
           if (!notifier) {
-              qInfo() << "Using DummyNotifier, expected interactions and prompts will not be displayed.";
+              qInfo()
+                << "Using DummyNotifier, expected interactions and prompts will not be displayed.";
               notifier = std::make_unique<linglong::cli::DummyNotifier>();
           }
 
@@ -671,8 +690,8 @@ ll-cli list --upgradable
           auto migrateOption = commandParser.get_subcommand("migrate");
           if (repo->needMigrate() && !migrateOption->parsed()) {
               notifier->notify(linglong::api::types::v1::InteractionRequest{
-                .summary = "The old data is found locally and needs to be migrated. Please run "
-                           "'ll-cli migrate' and wait for the migration to complete." });
+                .summary = _("The old data is found locally and needs to be migrated. Please run "
+                             "'ll-cli migrate' in the terminal and wait for the migration to complete.") });
               QCoreApplication::exit(-1);
               return;
           }

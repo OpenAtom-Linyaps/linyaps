@@ -169,6 +169,7 @@ int main(int argc, char **argv)
                               "A CLI program to build linyaps application\n") };
     commandParser.get_help_ptr()->description(_("Print this help message and exit"));
     commandParser.set_help_all_flag("--help-all", _("Expand all help"));
+
     commandParser.usage(_("Usage: ll-builder [OPTIONS] [SUBCOMMAND]"));
     commandParser.footer([]() {
         return _(R"(If you found any problems during use
@@ -194,6 +195,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     std::string projectName;
     auto buildCreate =
       commandParser.add_subcommand("create", _("Create linyaps build template project"));
+    buildCreate->usage(_("Usage: ll-builder create [OPTIONS] NAME"));
     buildCreate->add_option("NAME", projectName, _("Project name"))
       ->required()
       ->check(validatorString);
@@ -208,6 +210,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     std::vector<std::string> oldCommands;
     std::vector<std::string> newCommands;
     auto buildBuilder = commandParser.add_subcommand("build", _("Build a linyaps project"));
+    buildBuilder->usage(_("Usage: ll-builder build [OPTIONS] [COMMAND...]"));
     buildBuilder->add_option("--file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")
       ->capture_default_str()
@@ -248,6 +251,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     bool debugMode = false;
     std::vector<std::string> execModules;
     auto buildRun = commandParser.add_subcommand("run", _("Run builded linyaps app"));
+    buildRun->usage(_("Usage: ll-builder run [OPTIONS] [COMMAND...]"));
     buildRun->add_option("--file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")
       ->capture_default_str()
@@ -274,6 +278,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     bool layerMode = false;
     std::string iconFile;
     auto buildExport = commandParser.add_subcommand("export", _("Export to linyaps layer or uab"));
+    buildExport->usage(_("Usage: ll-builder export [OPTIONS]"));
     buildExport->add_option("--file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")
       ->capture_default_str()
@@ -286,6 +291,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     // build push
     std::string repoName, repoUrl, pushModule;
     auto buildPush = commandParser.add_subcommand("push", _("Push linyaps app to remote repo"));
+    buildPush->usage(_("Usage: ll-builder push [OPTIONS]"));
     buildPush->add_option("--file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")
       ->capture_default_str()
@@ -302,22 +308,29 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     std::string layerFile;
     auto buildImport =
       commandParser.add_subcommand("import", _("Import linyaps layer to build repo"));
+    buildImport->usage(_("Usage: ll-builder import [OPTIONS] LAYER"));
     buildImport->add_option("LAYER", layerFile, _("Layer file path"))
       ->type_name("FILE")
+      ->required()
       ->check(CLI::ExistingFile);
 
     // add build extract
     std::string dir;
     auto buildExtract = commandParser.add_subcommand("extract", _("Extract linyaps layer to dir"));
-    buildExtract->add_option("LAYER", layerFile, _("Layer file path"))->check(CLI::ExistingFile);
-    buildExtract->add_option("DIR", dir, _("Destination directory"))->type_name("DIR");
+    buildExtract->usage(_("Usage: ll-builder extract [OPTIONS] LAYER DIR"));
+    buildExtract->add_option("LAYER", layerFile, _("Layer file path"))
+      ->required()
+      ->check(CLI::ExistingFile);
+    buildExtract->add_option("DIR", dir, _("Destination directory"))->type_name("DIR")->required();
 
     // add build repo
     auto buildRepo = commandParser.add_subcommand("repo", _("Display and manage repositories"));
+    buildRepo->usage(_("Usage: ll-builder repo [OPTIONS] SUBCOMMAND"));
     buildRepo->require_subcommand(1);
 
     // add repo sub command add
     auto buildRepoAdd = buildRepo->add_subcommand("add", _("Add a new repository"));
+    buildRepoAdd->usage(_("Usage: ll-builder repo add [OPTIONS] NAME URL"));
     buildRepoAdd->add_option("NAME", repoName, _("Specify the repo name"))
       ->required()
       ->check(validatorString);
@@ -327,12 +340,14 @@ You can report bugs to the linyaps team under this project: https://github.com/O
 
     // add repo sub command remove
     auto buildRepoRemove = buildRepo->add_subcommand("remove", _("Remove a repository"));
+    buildRepoRemove->usage(_("Usage: ll-builder repo remove [OPTIONS] NAME"));
     buildRepoRemove->add_option("NAME", repoName, _("Specify the repo name"))
       ->required()
       ->check(validatorString);
 
     // add repo sub command update
-    auto buildRepoUpdate = buildRepo->add_subcommand("update", _("Update to a new repository"));
+    auto buildRepoUpdate = buildRepo->add_subcommand("update", _("Update the repository URL"));
+    buildRepoUpdate->usage(_("Usage: ll-builder repo update [OPTIONS] NAME URL"));
     buildRepoUpdate->add_option("NAME", repoName, _("Specify the repo name"))
       ->required()
       ->check(validatorString);
@@ -342,13 +357,15 @@ You can report bugs to the linyaps team under this project: https://github.com/O
 
     // add repo sub command update
     auto buildRepoSetDefault =
-      buildRepo->add_subcommand("set-default", _("Set default repository"));
+      buildRepo->add_subcommand("set-default", _("Set a default repository name"));
+    buildRepoSetDefault->usage(_("Usage: ll-builder repo set-default [OPTIONS] NAME"));
     buildRepoSetDefault->add_option("NAME", repoName, _("Specify the repo name"))
       ->required()
       ->check(validatorString);
 
     // add repo sub command show
-    auto buildRepoShow = buildRepo->add_subcommand("show", _("Show repository"));
+    auto buildRepoShow = buildRepo->add_subcommand("show", _("Show repository information"));
+    buildRepoShow->usage(_("Usage: ll-builder repo show [OPTIONS]"));
 
     // add build migrate
     auto buildMigrate =

@@ -1014,10 +1014,20 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
         return toDBusReply(fuzzyRef);
     }
 
+    if (fuzzyRef->version) {
+        auto ref = this->repo.clearReference(*fuzzyRef,
+                                             {
+                                               .fallbackToRemote = false // NOLINT
+                                             });
+        if (ref) {
+            return toDBusReply(-1, ref->toString() + " is already installed.");
+        }
+    }
+
     api::types::v1::PackageManager1RequestInteractionAdditionalMessage additionalMessage;
     auto curModule = paras->package.packageManager1PackageModule.value_or("binary");
 
-    // we need least local reference
+    // we need latest local reference
     std::optional<package::Version> version = fuzzyRef->version;
     fuzzyRef->version.reset();
     auto localRef = this->repo.clearReference(*fuzzyRef,

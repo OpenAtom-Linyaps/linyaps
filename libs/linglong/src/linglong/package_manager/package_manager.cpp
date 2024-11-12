@@ -325,6 +325,11 @@ utils::error::Result<void> PackageManager::removeAfterInstall(
     }
 
     utils::Transaction transaction;
+    this->repo.unexportReference(oldRef);
+    transaction.addRollBack([&oldRef, this]() noexcept {
+        this->repo.exportReference(oldRef);
+    });
+
     for (const auto &module : modules) {
         if (*needDelayRet) {
             auto ret = this->repo.markDeleted(oldRef, true, module);
@@ -359,8 +364,6 @@ utils::error::Result<void> PackageManager::removeAfterInstall(
     }
 
     transaction.commit();
-
-    this->repo.unexportReference(oldRef);
     return LINGLONG_OK;
 }
 
@@ -426,14 +429,13 @@ void PackageManager::deferredUninstall() noexcept
             return;
         }
 
+        this->repo.unexportReference(*ref);
         auto ret = this->repo.remove(*ref);
         if (!ret) {
             qCritical() << "failed to remove reference:" << ref->toString() << ":"
                         << ret.error().message();
             continue;
         }
-
-        this->repo.unexportReference(*ref);
     }
 
     auto mergeRet = this->repo.mergeModules();
@@ -1412,13 +1414,19 @@ void PackageManager::Uninstall(PackageTask &taskContext,
         removedModules = std::move(modules);
     }
 
-    UninstallRef(taskContext, ref, removedModules);
+    utils::Transaction transaction;
 
+    this->repo.unexportReference(ref);
+    transaction.addRollBack([this, &ref]() noexcept {
+        this->repo.exportReference(ref);
+    });
+
+    UninstallRef(taskContext, ref, removedModules);
     if (isTaskDone(taskContext.subState())) {
         return;
     }
 
-    this->repo.unexportReference(ref);
+    transaction.commit();
 
     taskContext.updateState(linglong::api::types::v1::State::Succeed,
                             "Uninstall " + ref.toString() + " success");
@@ -1429,8 +1437,8 @@ void PackageManager::Uninstall(PackageTask &taskContext,
     }
 }
 
-utils::error::Result<package::Reference>
-PackageManager::latestRemoteReference(const std::string &kind, package::FuzzyReference &fuzzyRef) noexcept
+utils::error::Result<package::Reference> PackageManager::latestRemoteReference(
+  const std::string &kind, package::FuzzyReference &fuzzyRef) noexcept
 {
     LINGLONG_TRACE("get latest reference");
 
@@ -1460,9 +1468,8 @@ PackageManager::latestRemoteReference(const std::string &kind, package::FuzzyRef
 
 auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantMap
 {
-    auto paras =
-      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1UpdateParameters>(
-        parameters);
+    auto paras = utils::serialize::fromQVariantMap<api::types::v1::PackageManager1UpdateParameters>(
+      parameters);
     if (!paras) {
         return toDBusReply(paras);
     }

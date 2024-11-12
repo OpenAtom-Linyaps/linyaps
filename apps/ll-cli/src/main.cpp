@@ -236,7 +236,6 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     std::string CliRepoGroup = _("Managing remote repositories");
 
     // add sub command run
-    std::vector<std::string> oldCommands;
     auto cliRun =
       commandParser.add_subcommand("run", _("Run an application"))->group(CliAppManagingGroup);
 
@@ -505,10 +504,6 @@ ll-cli list --upgradable
         }
 
         return 0;
-    }
-
-    if (options.commands.empty() && !oldCommands.empty()) {
-        options.commands = oldCommands;
     }
 
     auto ret = QMetaObject::invokeMethod(

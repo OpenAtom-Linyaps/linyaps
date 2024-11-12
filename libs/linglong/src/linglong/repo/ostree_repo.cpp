@@ -1469,14 +1469,15 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
             };
 
             std::error_code ec;
-            if (std::filesystem::exists(from, ec)) {
-                if (ec) {
-                    qCritical() << "failed to get file" << from.c_str()
-                                << "status:" << QString::fromStdString(ec.message());
-                    continue;
-                }
+            auto status = std::filesystem::symlink_status(from, ec);
+            if (ec) {
+                qCritical() << "failed to get file status:" << from.c_str() << ":"
+                            << ec.message().c_str() << ", skip it.";
+                continue;
+            }
 
-                qInfo() << from.c_str() << "already exists, try to remove it";
+            if (std::filesystem::exists(status)) {
+                qInfo() << from.c_str() << "symlink already exists, try to remove it";
                 if (!std::filesystem::remove(from, ec)) {
                     qCritical() << "remove" << from.c_str()
                                 << "error:" << QString::fromStdString(ec.message());
@@ -1679,9 +1680,8 @@ std::vector<std::string> OSTreeRepo::getModuleList(const package::Reference &ref
     return modules;
 }
 
-auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref,
-                                    bool fallbackLayerDir) const noexcept
-  -> utils::error::Result<package::LayerDir>
+auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref, bool fallbackLayerDir)
+  const noexcept -> utils::error::Result<package::LayerDir>
 {
     LINGLONG_TRACE("get merge dir from ref " + ref.toString());
     qDebug() << "getMergedModuleDir" << ref.toString();
@@ -1718,9 +1718,8 @@ auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref,
     return LINGLONG_ERR("merged doesn't exist");
 }
 
-auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref,
-                                    const QStringList &loadModules) const noexcept
-  -> utils::error::Result<std::shared_ptr<package::LayerDir>>
+auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref, const QStringList &loadModules)
+  const noexcept -> utils::error::Result<std::shared_ptr<package::LayerDir>>
 {
     LINGLONG_TRACE("merge modules");
     QDir mergedDir = this->repoDir.absoluteFilePath("merged");

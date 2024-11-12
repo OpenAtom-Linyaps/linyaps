@@ -1966,26 +1966,42 @@ utils::error::Result<void> OSTreeRepo::migrateRefs() noexcept
         return LINGLONG_ERR("ostree_repo_list_refs", gErr);
     }
 
-    std::map<std::string_view, std::string_view> refs;
+    std::vector<std::string> newRef; // to prevent local dirty refs
+    std::map<std::string_view, std::string_view> allRefs;
     g_hash_table_foreach(
       refsTable,
       [](gpointer key, gpointer value, gpointer data) {
           auto &refs = *static_cast<std::map<std::string_view, std::string_view> *>(data);
           refs.emplace(static_cast<const char *>(key), static_cast<const char *>(value));
       },
-      &refs);
+      &allRefs);
 
     // we only migrate old refs
     const auto newRefSpecPrefix = this->cfg.defaultRepo + ":";
-    for (auto it = refs.begin(); it != refs.end(); ++it) {
+    for (auto it = allRefs.begin(); it != allRefs.end(); ++it) {
         if (it->first.rfind(newRefSpecPrefix, 0) == 0) {
-            qDebug() << "found a valid ref:" << it->first.data() << ",skip it.";
-            it = refs.erase(it);
+            qInfo() << "found a valid ref:" << it->first.data() << ",skip it.";
+            newRef.emplace_back(it->first.data());
+            it = allRefs.erase(it);
         }
     }
 
-    if (refs.empty()) {
-        qDebug() << "empty repo, skip migration.";
+    if (allRefs.empty()) {
+        qDebug() << "no valid old refs be found, skip migration.";
+        return LINGLONG_OK;
+    }
+
+    for (const auto &ref : newRef) {
+        auto it = allRefs.find(ref.substr(newRefSpecPrefix.size()));
+        if (it != allRefs.end()) {
+            qInfo() << "detect same refs after migration:" << ref.c_str() << "and"
+                    << it->first.data() << ", skip it.";
+            allRefs.erase(it);
+        }
+    }
+
+    if (allRefs.empty()) {
+        qDebug() << "no valid old refs be found, skip migration.";
         return LINGLONG_OK;
     }
 
@@ -2059,7 +2075,7 @@ utils::error::Result<void> OSTreeRepo::migrateRefs() noexcept
         return LINGLONG_ERR("ostree_repo_prepare_transaction", gErr);
     }
 
-    for (auto [ref, checksum] : refs) {
+    for (auto [ref, checksum] : allRefs) {
         ostree_repo_transaction_set_ref(this->ostreeRepo.get(),
                                         this->cfg.defaultRepo.c_str(),
                                         ref.data(),
@@ -2072,7 +2088,7 @@ utils::error::Result<void> OSTreeRepo::migrateRefs() noexcept
         return LINGLONG_ERR("ostree_repo_commit_transaction", gErr);
     }
 
-    transaction.addRollBack([&refs, this]() noexcept {
+    transaction.addRollBack([&allRefs, this]() noexcept {
         g_autoptr(GError) gErr{ nullptr };
         if (ostree_repo_prepare_transaction(this->ostreeRepo.get(), nullptr, nullptr, &gErr) == 0) {
             qCritical() << "rollback ostree refs error: ostree_repo_prepare_transaction"
@@ -2080,7 +2096,7 @@ utils::error::Result<void> OSTreeRepo::migrateRefs() noexcept
             return;
         }
 
-        for (auto [ref, checksum] : refs) {
+        for (auto [ref, checksum] : allRefs) {
             ostree_repo_transaction_set_ref(this->ostreeRepo.get(),
                                             nullptr,
                                             ref.data(),
@@ -2113,7 +2129,7 @@ utils::error::Result<void> OSTreeRepo::migrateRefs() noexcept
         }
     });
 
-    for (auto [oldRef, commit] : refs) {
+    for (auto [oldRef, commit] : allRefs) {
         auto layerDir = oldLayers / commit;
         if (ostree_repo_checkout_at(this->ostreeRepo.get(),
                                     nullptr,

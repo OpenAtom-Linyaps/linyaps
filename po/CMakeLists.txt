@@ -55,7 +55,7 @@ if(GETTEXT_FOUND)
   # target to refresh POT file
   find_program(INTLTOOL_UPDATE intltool-update)
   add_custom_target(
-    linyaps_pot
+    pot
     COMMAND ${INTLTOOL_UPDATE} --pot --gettext-package=${GETTEXT_DOMAIN_NAME}
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/po
     COMMENT "Updating pot file.")
@@ -63,7 +63,7 @@ if(GETTEXT_FOUND)
   # target for updating a given PO file
   foreach(language ${langs})
     add_custom_target(
-      linyaps_${language}.po
+      ${language}.po
       COMMAND ${GETTEXT_MSGMERGE_EXECUTABLE} --update --verbose ${language}.po
               ${GETTEXT_DOMAIN_NAME}.pot
       WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/po
@@ -86,7 +86,7 @@ if(GETTEXT_FOUND)
   # target for updating all PO files
   set(PO_UPDATE_ALL pwd ${PO_UPDATE_ALL})
   add_custom_target(
-    linyaps_po
+    po
     COMMAND ${PO_UPDATE_ALL}
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/po
     COMMENT "Updating all PO files"

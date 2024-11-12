@@ -1028,7 +1028,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     fuzzyRef->version = version;
     if (localRef) {
         // fallback to local version if version of fuzzyRef is not set
-        if (curModule != "binary" && fuzzyRef->version) {
+        if (curModule != "binary" && !fuzzyRef->version) {
             fuzzyRef->version = localRef->version;
         }
 
@@ -1047,7 +1047,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     additionalMessage.remoteRef = remoteRef.toString().toStdString();
 
     // 安装模块之前要先安装binary
-    if (curModule != "binary") {
+    if (curModule != "binary" && curModule != "runtime") {
         auto layerDir = this->repo.getLayerDir(remoteRef, "binary");
         if (!layerDir.has_value() || !layerDir->valid()) {
             return toDBusReply(-1, "to install the module, one must first install the binary");

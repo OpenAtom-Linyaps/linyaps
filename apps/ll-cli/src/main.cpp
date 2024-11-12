@@ -498,7 +498,12 @@ ll-cli list --upgradable
     CLI11_PARSE(commandParser, res);
 
     if (versionFlag) {
-        std::cout << _("linyaps CLI version ") << LINGLONG_VERSION << std::endl;
+        if (jsonFlag) {
+            std::cout << nlohmann::json{ { "version", LINGLONG_VERSION } } << std::endl;
+        } else {
+            std::cout << _("linyaps CLI version ") << LINGLONG_VERSION << std::endl;
+        }
+
         return 0;
     }
 

@@ -1472,9 +1472,9 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
 
             std::error_code ec;
             auto status = std::filesystem::symlink_status(from, ec);
-            if (ec) {
-                qCritical() << "failed to get file status:" << from.c_str() << ":"
-                            << ec.message().c_str() << ", skip it.";
+            if (ec.value() != static_cast<int>(std::errc::no_such_file_or_directory)) {
+                qCritical() << "symlink_status" << from.c_str()
+                            << "error:" << QString::fromStdString(ec.message());
                 continue;
             }
 

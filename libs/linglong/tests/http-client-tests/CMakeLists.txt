@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
 find_package(
-  Qt5
+  Qt${QT_VERSION_MAJOR}
   COMPONENTS Test
   REQUIRED)
 
@@ -18,7 +18,7 @@ pfl_add_executable(
   src/mock-network.cpp
   LINK_LIBRARIES
   PRIVATE
-  Qt5::Test
+  Qt${QT_VERSION_MAJOR}::Test
   linglong::linglong)
 
 add_test(NAME http_client_tests COMMAND http_client_tests)

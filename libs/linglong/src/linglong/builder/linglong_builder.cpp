@@ -1249,29 +1249,6 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
         return LINGLONG_ERR(curRef);
     }
 
-    utils::error::Result<package::LayerDir> curDir;
-    // mergedDir 会自动在释放时删除临时目录，所以要用变量保留住
-    utils::error::Result<std::shared_ptr<package::LayerDir>> mergedDir;
-    if (modules.size() > 1) {
-        qDebug() << "create temp merge dir."
-                 << "ref: " << curRef->toString() << "modules: " << modules;
-        mergedDir = this->repo.getMergedModuleDir(*curRef, modules);
-        if (!mergedDir.has_value()) {
-            return LINGLONG_ERR(mergedDir);
-        }
-        curDir = *mergedDir->get();
-    } else {
-        curDir = this->repo.getLayerDir(*curRef);
-        if (!curDir) {
-            return LINGLONG_ERR(curDir);
-        }
-    }
-
-    auto info = curDir->info();
-    if (!info) {
-        return LINGLONG_ERR(info);
-    }
-
     auto options = runtime::ContainerOptions{
         .appID = curRef->id,
         .containerID = genContainerID(*curRef),
@@ -1321,16 +1298,33 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     }
     options.baseDir = QDir(baseDir->absolutePath());
 
-    if (this->project.package.kind == "runtime") {
-        options.runtimeDir = QDir(curDir->absolutePath());
+    utils::error::Result<package::LayerDir> curDir;
+    // mergedDir 会自动在释放时删除临时目录，所以要用变量保留住
+    utils::error::Result<std::shared_ptr<package::LayerDir>> mergedDir;
+    if (modules.size() > 1) {
+        qDebug() << "create temp merge dir."
+                 << "ref: " << curRef->toString() << "modules: " << modules;
+        mergedDir = this->repo.getMergedModuleDir(*curRef, modules);
+        if (!mergedDir.has_value()) {
+            return LINGLONG_ERR(mergedDir);
+        }
+        curDir = *mergedDir->get();
+    } else {
+        curDir = this->repo.getLayerDir(*curRef);
+        if (!curDir) {
+            return LINGLONG_ERR(curDir);
+        }
     }
 
-    if (this->project.package.kind == "base") {
-        options.baseDir = QDir(curDir->absolutePath());
+    auto info = curDir->info();
+    if (!info) {
+        return LINGLONG_ERR(info);
     }
 
     if (this->project.package.kind == "app") {
         options.appDir = QDir(curDir->absolutePath());
+    } else {
+        return LINGLONG_ERR("when kind equals to runtime, it cannot run");
     }
 
     std::vector<ocppi::runtime::config::types::Mount> applicationMounts{};

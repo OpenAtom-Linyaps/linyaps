@@ -183,12 +183,12 @@ DBusNotifier::request(const api::types::v1::InteractionRequest &request)
 
 void DBusNotifier::forwardActionInvoked(quint32 ID, QString action)
 {
-    Q_EMIT actionInvoked(ID, action, {});
+    Q_EMIT actionInvoked(ID, action, QPrivateSignal{});
 }
 
 void DBusNotifier::forwardNotificationClosed(quint32 ID, quint32 reason)
 {
-    Q_EMIT notificationClosed(ID, reason, {});
+    Q_EMIT notificationClosed(ID, reason, QPrivateSignal{});
 }
 
 } // namespace linglong::cli

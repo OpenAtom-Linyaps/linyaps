@@ -1062,7 +1062,7 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
     package::UABPackager packager{ destDir };
 
     if (!option.iconPath.isEmpty()) {
-        if (auto ret = packager.setIcon(option.iconPath); !ret) {
+        if (auto ret = packager.setIcon(QFileInfo{ option.iconPath }); !ret) {
             return LINGLONG_ERR(ret);
         }
     }

@@ -889,7 +889,7 @@ int Cli::install()
 
     // 如果检测是文件，则直接安装
     if (info.exists() && info.isFile()) {
-        return installFromFile(info.absoluteFilePath(), params.options);
+        return installFromFile(QFileInfo{ info.absoluteFilePath() }, params.options);
     }
 
     auto conn = this->pkgMan.connection();
@@ -1982,7 +1982,7 @@ void Cli::filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> 
 
 void Cli::forwardMigrateDone(int code, QString message)
 {
-    Q_EMIT migrateDone(code, message, {});
+    Q_EMIT migrateDone(code, message, QPrivateSignal{});
 }
 
 utils::error::Result<void> Cli::runningAsRoot()

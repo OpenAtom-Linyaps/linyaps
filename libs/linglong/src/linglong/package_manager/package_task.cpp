@@ -127,7 +127,7 @@ void PackageTask::updateTask(uint part, uint whole, const QString &message) noex
     Q_EMIT PercentageChanged(getPercentage());
     changePropertiesDone();
 
-    Q_EMIT PartChanged(partPercentageMsg, {});
+    Q_EMIT PartChanged(partPercentageMsg, QPrivateSignal{});
 }
 
 void PackageTask::updateState(linglong::api::types::v1::State newState,

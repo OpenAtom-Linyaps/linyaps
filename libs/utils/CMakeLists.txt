@@ -46,12 +46,10 @@ pfl_add_library(
   cxx_std_17
   LINK_LIBRARIES
   PUBLIC
-  Qt5::Core
-  Qt5::DBus
+  Qt${QT_VERSION_MAJOR}::Core
+  Qt${QT_VERSION_MAJOR}::DBus
   PkgConfig::glib2
   tl::expected
   ytj::ytj
   linglong::ocppi
-  linglong::api
-  Qt5::Core
-  Qt5::DBus)
+  linglong::api)

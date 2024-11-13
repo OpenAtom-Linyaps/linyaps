@@ -289,7 +289,7 @@ utils::error::Result<void> UABPackager::packIcon() noexcept
     }
 
     QByteArray iconSection{ "linglong.icon" };
-    if (auto ret = this->uab.addNewSection(iconSection, iconAchieve); !ret) {
+    if (auto ret = this->uab.addNewSection(iconSection, QFileInfo{ iconAchieve }); !ret) {
         return LINGLONG_ERR(ret);
     }
 
@@ -604,7 +604,7 @@ utils::error::Result<void> UABPackager::packBundle() noexcept
     }
     this->meta.digest = cryptor.result().toHex().toStdString();
     const auto *bundleSection = "linglong.bundle";
-    if (auto ret = this->uab.addNewSection(bundleSection, bundleFile); !ret) {
+    if (auto ret = this->uab.addNewSection(bundleSection, QFileInfo{ bundleFile }); !ret) {
         return LINGLONG_ERR(ret);
     }
     this->meta.sections.bundle = bundleSection;
@@ -629,8 +629,9 @@ utils::error::Result<void> UABPackager::packMetaInfo() noexcept
     metaFile.close();
 
     const auto *metaSection = "linglong.meta";
-    if (auto ret =
-          this->uab.addNewSection(metaSection, metaFile, { "linglong.meta=readonly,code" });
+    if (auto ret = this->uab.addNewSection(metaSection,
+                                           QFileInfo{ metaFile },
+                                           { "linglong.meta=readonly,code" });
         !ret) {
         return LINGLONG_ERR(ret);
     }

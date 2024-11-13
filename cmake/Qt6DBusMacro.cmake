@@ -4,7 +4,7 @@
 
 include(MacroAddFileDependencies)
 
-function(qt6_add_dbus_interface _sources _interface _relativename)
+function(qt6_add_dbus_interface_override _target _sources _interface _relativename)
     get_filename_component(_infile ${_interface} ABSOLUTE)
     get_filename_component(_basepath ${_relativename} DIRECTORY)
     get_filename_component(_basename ${_relativename} NAME)
@@ -34,8 +34,8 @@ function(qt6_add_dbus_interface _sources _interface _relativename)
     endif()
 
     add_custom_command(OUTPUT "${_impl}" "${_header}"
-        COMMAND ${QT_CMAKE_EXPORT_NAMESPACE}::qdbusxml2cpp ${_params} -p ${_relativename} ${_infile}
-        DEPENDS ${_infile} ${QT_CMAKE_EXPORT_NAMESPACE}::qdbuscpp2xml
+        COMMAND ${_target} ${_params} -p ${_relativename} ${_infile}
+        DEPENDS ${_infile} ${_target}
         VERBATIM
     )
 
@@ -51,16 +51,16 @@ function(qt6_add_dbus_interface _sources _interface _relativename)
     set(${_sources} ${${_sources}} PARENT_SCOPE)
 endfunction()
 
-function(qt6_add_dbus_adaptor _sources _xml_file _include) # _optionalParentClass _optionalRelativename _optionalClassName)
+function(qt6_add_dbus_adaptor_override _target _sources _xml_file _include) # _optionalParentClass _optionalRelativename _optionalClassName)
     get_filename_component(_infile ${_xml_file} ABSOLUTE)
 
-    set(_optionalParentClass "${ARGV3}")
+    set(_optionalParentClass "${ARGV4}")
     if(_optionalParentClass)
         set(_parentClassOption "-l")
         set(_parentClass "${_optionalParentClass}")
     endif()
 
-    set(_optionalRelativename "${ARGV4}")
+    set(_optionalRelativename "${ARGV5}")
     if(_optionalRelativename)
         set(_relativename ${_optionalRelativename})
     else()
@@ -70,7 +70,7 @@ function(qt6_add_dbus_adaptor _sources _xml_file _include) # _optionalParentClas
     get_filename_component(_basepath ${_relativename} DIRECTORY)
     get_filename_component(_basename ${_relativename} NAME)
 
-    set(_optionalClassName "${ARGV5}")
+    set(_optionalClassName "${ARGV6}")
     set(_header "${CMAKE_CURRENT_BINARY_DIR}/${_relativename}.h")
     set(_impl   "${CMAKE_CURRENT_BINARY_DIR}/${_relativename}.cpp")
     if(_basepath)
@@ -81,14 +81,14 @@ function(qt6_add_dbus_adaptor _sources _xml_file _include) # _optionalParentClas
 
     if(_optionalClassName)
         add_custom_command(OUTPUT "${_impl}" "${_header}"
-          COMMAND ${QT_CMAKE_EXPORT_NAMESPACE}::qdbusxml2cpp -m -a ${_relativename} -c ${_optionalClassName} -i ${_include} ${_parentClassOption} ${_parentClass} ${_infile}
-          DEPENDS ${_infile} ${QT_CMAKE_EXPORT_NAMESPACE}::qdbuscpp2xml
+          COMMAND ${_target} -m -a ${_relativename} -c ${_optionalClassName} -i ${_include} ${_parentClassOption} ${_parentClass} ${_infile}
+          DEPENDS ${_infile} ${_target}
           VERBATIM
         )
     else()
         add_custom_command(OUTPUT "${_impl}" "${_header}"
-          COMMAND ${QT_CMAKE_EXPORT_NAMESPACE}::qdbusxml2cpp -m -a ${_relativename} -i ${_include} ${_parentClassOption} ${_parentClass} ${_infile}
-          DEPENDS ${_infile} ${QT_CMAKE_EXPORT_NAMESPACE}::qdbuscpp2xml
+          COMMAND ${_target} -m -a ${_relativename} -i ${_include} ${_parentClassOption} ${_parentClass} ${_infile}
+          DEPENDS ${_infile} ${_target}
           VERBATIM
         )
     endif()

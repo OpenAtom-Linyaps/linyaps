@@ -63,7 +63,7 @@ if(GETTEXT_FOUND)
   # target for updating a given PO file
   foreach(language ${langs})
     add_custom_target(
-      ${language}.po
+      linyaps_${language}.po
       COMMAND ${GETTEXT_MSGMERGE_EXECUTABLE} --update --verbose ${language}.po
               ${GETTEXT_DOMAIN_NAME}.pot
       WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/po

@@ -2,6 +2,9 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-add_executable(qdbusxml2cpp qdbusxml2cpp.cpp)
+set(SOURCE qdbusxml2cpp_${QT_VERSION_MAJOR}.cpp)
+add_executable(qdbusxml2cpp ${SOURCE})
 
-target_link_libraries(qdbusxml2cpp PRIVATE Qt5::DBus Qt5::Core Qt5::DBusPrivate)
+target_link_libraries(
+  qdbusxml2cpp PRIVATE Qt${QT_VERSION_MAJOR}::DBus Qt${QT_VERSION_MAJOR}::Core
+                       Qt${QT_VERSION_MAJOR}::DBusPrivate)

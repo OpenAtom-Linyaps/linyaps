@@ -90,8 +90,8 @@ pfl_add_library(
   PkgConfig::ostree1
   PkgConfig::systemd
   PkgConfig::ELF
-  Qt5::Core
-  Qt5::DBus
+  Qt${QT_VERSION_MAJOR}::Core
+  Qt${QT_VERSION_MAJOR}::DBus
   LinglongRepoClientAPI
   ytj::ytj
   tl::expected
@@ -111,9 +111,21 @@ function(
 
   set(DBUS_ADAPTOR_SOURCE)
 
-  set(Qt5DBus_QDBUSXML2CPP_EXECUTABLE qdbusxml2cpp)
-  qt5_add_dbus_adaptor(DBUS_ADAPTOR_SOURCE ${xml} ${includes} ${parent_class}
-                       ${basename} ${classname})
+  if(${QT_VERSION_MAJOR} EQUAL 6)
+    qt6_add_dbus_adaptor_override(
+      qdbusxml2cpp
+      DBUS_ADAPTOR_SOURCE
+      ${xml}
+      ${includes}
+      ${parent_class}
+      ${basename}
+      ${classname})
+  else()
+    set(Qt5DBus_QDBUSXML2CPP_EXECUTABLE qdbusxml2cpp) # this varible only exists
+                                                      # in qt5
+    qt5_add_dbus_adaptor(DBUS_ADAPTOR_SOURCE ${xml} ${includes} ${parent_class}
+                         ${basename} ${classname})
+  endif()
   # FIXME(black_desk): `qt5_add_dbus_adaptor` will use basename as include and
   # this cannot be configured at all. This is just a workaround.
   target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})

@@ -98,9 +98,13 @@ License: CC0-1.0
 Copyright: None
 
 # qdbusxml2cpp
-Files: tools/qdbusxml2cpp/qdbusxml2cpp.cpp
+Files: tools/qdbusxml2cpp/qdbusxml2cpp_5.cpp
 License: GPL-3.0-only
 Copyright: 2020 The Qt Company Ltd.
+
+Files: tools/qdbusxml2cpp/qdbusxml2cpp_6.h
+License: GPL-3.0-only
+Copyright: 2021 The Qt Company Ltd.
 
 # ocppi
 

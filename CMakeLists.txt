@@ -46,9 +46,16 @@ set(LINGLONG_CLI_BIN
 set(GETTEXT_DOMAIN_NAME
     "linyaps"
     CACHE STRING "The name of gettext domain.")
+set(QT_VERSION_MAJOR
+    5
+    CACHE STRING "The major version of qt.")
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(PFL)
+
+if(${QT_VERSION_MAJOR} EQUAL 6)
+  include(Qt6DBusMacro)
+endif()
 
 set(ENABLE_CPM YES)
 
@@ -145,8 +152,16 @@ add_definitions("-DQT_NO_KEYWORDS")
 # NOTE(black_desk): Enable Qt logging with context.
 add_definitions("-DQT_MESSAGELOGCONTEXT")
 
+# We need to support both Qt5 and Qt6, and according to the Qt documentation, we
+# should be using versioned targets and functions. These varible must be set
+# before find_package()
+# https://doc.qt.io/qt-6/cmake-qt5-and-qt6-compatibility.html#recommended-practices
+set(QT_DEFAULT_MAJOR_VERSION ${QT_VERSION_MAJOR})
+set(QT_NO_CREATE_VERSIONLESS_FUNCTIONS ON)
+set(QT_NO_CREATE_VERSIONLESS_TARGETS ON)
+
 find_package(
-  Qt5
+  Qt${QT_VERSION_MAJOR}
   COMPONENTS Core DBus
   REQUIRED)
 

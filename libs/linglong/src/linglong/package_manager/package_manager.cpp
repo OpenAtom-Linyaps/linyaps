@@ -1237,7 +1237,18 @@ void PackageManager::InstallRef(PackageTask &taskContext,
             return;
         }
 
-        auto it = std::find(modules.begin(), modules.end(), deletedItem.info.packageInfoV2Module);
+        auto it =
+          std::find_if(modules.begin(), modules.end(), [&deletedItem](const std::string &module) {
+              if (module == "runtime" && deletedItem.info.packageInfoV2Module == "binary") {
+                  return true;
+              }
+
+              if (module == "binary" && deletedItem.info.packageInfoV2Module == "runtime") {
+                  return true;
+              }
+
+              return module == deletedItem.info.packageInfoV2Module;
+          });
         if (it == modules.end()) {
             continue;
         }

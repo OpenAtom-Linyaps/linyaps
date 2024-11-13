@@ -22,8 +22,8 @@ pfl_add_library(
   cxx_std_17
   LINK_LIBRARIES
   PUBLIC
-  Qt5::Core
-  Qt5::DBus)
+  Qt${QT_VERSION_MAJOR}::Core
+  Qt${QT_VERSION_MAJOR}::DBus)
 
 function(linglong_add_dbus_interface target xml basename) # include
 
@@ -37,8 +37,13 @@ function(linglong_add_dbus_interface target xml basename) # include
   endif()
 
   set(INTERFACE_SOURCES)
-  set(Qt5DBus_QDBUSXML2CPP_EXECUTABLE qdbusxml2cpp)
-  qt5_add_dbus_interface(INTERFACE_SOURCES ${xml} ${basename})
+  if(${QT_VERSION_MAJOR} EQUAL 6)
+    qt6_add_dbus_interface_override(qdbusxml2cpp INTERFACE_SOURCES ${xml}
+                                    ${basename})
+  else()
+    set(Qt5DBus_QDBUSXML2CPP_EXECUTABLE qdbusxml2cpp)
+    qt5_add_dbus_interface(INTERFACE_SOURCES ${xml} ${basename})
+  endif()
   target_sources(${target} PRIVATE ${INTERFACE_SOURCES})
 endfunction()
 

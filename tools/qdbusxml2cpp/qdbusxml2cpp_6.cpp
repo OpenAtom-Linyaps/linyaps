@@ -1,6 +1,8 @@
 // Copyright (C) 2021 The Qt Company Ltd.
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GPL-3.0-only WITH Qt-GPL-exception-1.0
 
+// ATTENTION: This file has been modified
+
 #include <private/qdbusintrospection_p.h>
 #include <qbytearray.h>
 #include <qcommandlineparser.h>
@@ -325,7 +327,7 @@ QString QDBusXmlToCpp::classNameForInterface(const QString &interface,
             retval += part.mid(1);
         }
     } else {
-        retval += parts.last()[0].toUpper() + parts.last().mid(1);
+        retval += parts.last()[0].toUpper() + parts.last().mid(1).toString();
     }
 
     if (classType == Proxy)
@@ -592,20 +594,7 @@ void QDBusXmlToCpp::writeProxy(const QString &filename,
         writeHeader(cs, false);
 
     // include guards:
-    QString includeGuard;
-    if (!headerName.isEmpty() && headerName != "-"_L1) {
-        includeGuard = headerName.toUpper().replace(u'.', u'_');
-        qsizetype pos = includeGuard.lastIndexOf(u'/');
-        if (pos != -1)
-            includeGuard = includeGuard.mid(pos + 1);
-    } else {
-        includeGuard = u"QDBUSXML2CPP_PROXY"_s;
-    }
-
-    hs << "#ifndef " << includeGuard
-       << "\n"
-          "#define "
-       << includeGuard << "\n\n";
+    hs << "#pragma once" << "\n\n";
 
     // include our stuff:
     hs << "#include <QtCore/QObject>\n" << includeList;
@@ -663,22 +652,16 @@ void QDBusXmlToCpp::writeProxy(const QString &filename,
            << interface->name << "\"; }\n\n";
 
         // constructors/destructors:
-        hs << "public:\n"
-              "    "
-           << className
+        hs << "    " << className
            << "(const QString &service, const QString &path, const QDBusConnection &connection, "
               "QObject *parent = nullptr);\n\n"
               "    ~"
-           << className << "();\n\n";
+           << className << "() override = default;\n\n";
         cs << className << "::" << className
            << "(const QString &service, const QString &path, const QDBusConnection &connection, "
               "QObject *parent)\n"
               "    : QDBusAbstractInterface(service, path, staticInterfaceName(), connection, "
               "parent)\n"
-              "{\n"
-              "}\n\n"
-           << className << "::~" << className
-           << "()\n"
               "{\n"
               "}\n\n";
 
@@ -704,7 +687,7 @@ void QDBusXmlToCpp::writeProxy(const QString &filename,
 
             // getter:
             if (property.access != QDBusIntrospection::Property::Write) {
-                hs << "    inline " << type << " " << getter
+                hs << "  [[nodiscard]] virtual inline " << type << " " << getter
                    << "() const\n"
                       "    { return qvariant_cast< "
                    << type << " >(property(\"" << property.name << "\")); }\n";
@@ -712,7 +695,7 @@ void QDBusXmlToCpp::writeProxy(const QString &filename,
 
             // setter:
             if (property.access != QDBusIntrospection::Property::Read) {
-                hs << "    inline void " << setter << "(" << constRefArg(type)
+                hs << "    virtual inline void " << setter << "(" << constRefArg(type)
                    << "value)\n"
                       "    { setProperty(\""
                    << property.name << "\", QVariant::fromValue(value)); }\n";
@@ -737,14 +720,14 @@ void QDBusXmlToCpp::writeProxy(const QString &filename,
             }
 
             if (isDeprecated)
-                hs << "    Q_DECL_DEPRECATED ";
+                hs << "    [[deprecated]] ";
             else
                 hs << "    ";
 
             if (isNoReply) {
-                hs << "Q_NOREPLY inline void ";
+                hs << "Q_NOREPLY virtual inline void ";
             } else {
-                hs << "inline QDBusPendingReply<";
+                hs << "virtual inline QDBusPendingReply<";
                 for (qsizetype i = 0; i < method.outputArgs.size(); ++i)
                     hs << (i > 0 ? ", " : "")
                        << templateArg(qtTypeName(method.outputArgs.at(i).location,
@@ -888,9 +871,6 @@ void QDBusXmlToCpp::writeProxy(const QString &filename,
             last = current;
         } while (true);
     }
-
-    // close the include guard
-    hs << "#endif\n";
 
     QString mocName = moc(filename);
     if (includeMocs && !mocName.isEmpty())

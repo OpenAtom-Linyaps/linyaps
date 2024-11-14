@@ -879,7 +879,7 @@ utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRep
     qDebug() << "push" << reference.toString() << "to" << url.c_str();
     auto layerDir = this->getLayerDir(reference, module);
     if (!layerDir) {
-        return LINGLONG_ERR("layer not found");
+        return LINGLONG_ERR("layer not found", layerDir);
     }
     auto env = QProcessEnvironment::systemEnvironment();
     auto client = this->m_clientFactory.createClientV2();
@@ -1682,8 +1682,9 @@ std::vector<std::string> OSTreeRepo::getModuleList(const package::Reference &ref
     return modules;
 }
 
-auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref, bool fallbackLayerDir)
-  const noexcept -> utils::error::Result<package::LayerDir>
+auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref,
+                                    bool fallbackLayerDir) const noexcept
+  -> utils::error::Result<package::LayerDir>
 {
     LINGLONG_TRACE("get merge dir from ref " + ref.toString());
     qDebug() << "getMergedModuleDir" << ref.toString();
@@ -1720,8 +1721,9 @@ auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref, bool fallback
     return LINGLONG_ERR("merged doesn't exist");
 }
 
-auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref, const QStringList &loadModules)
-  const noexcept -> utils::error::Result<std::shared_ptr<package::LayerDir>>
+auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref,
+                                    const QStringList &loadModules) const noexcept
+  -> utils::error::Result<std::shared_ptr<package::LayerDir>>
 {
     LINGLONG_TRACE("merge modules");
     QDir mergedDir = this->repoDir.absoluteFilePath("merged");

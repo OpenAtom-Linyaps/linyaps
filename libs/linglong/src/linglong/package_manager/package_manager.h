@@ -134,6 +134,7 @@ private:
     utils::error::Result<bool> isRefBusy(const package::Reference &ref) noexcept;
     void deferredUninstall() noexcept;
     utils::error::Result<void> removeAfterInstall(const package::Reference &oldRef,
+                                                  const package::Reference &newRef,
                                                   const std::vector<std::string> &modules) noexcept;
     utils::error::Result<package::Reference>
     latestRemoteReference(const std::string &kind, package::FuzzyReference &fuzzyRef) noexcept;

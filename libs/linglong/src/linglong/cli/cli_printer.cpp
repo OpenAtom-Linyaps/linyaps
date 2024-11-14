@@ -38,6 +38,7 @@ void CLIPrinter::printPruneResult(const std::vector<api::types::v1::PackageInfoV
 {
     if(list.size() == 0) {
         std::cout << "No unused base or runtime." << std::endl;
+        return;
     }
     std::cout << "Unused base or runtime:" <<std::endl;
     for (const auto &info : list) {

@@ -1397,6 +1397,7 @@ int Cli::list()
     auto upgradeList = this->listUpgradable(options.type);
     if (!upgradeList) {
         this->printer.printErr(upgradeList.error());
+        return -1;
     }
 
     this->printer.printUpgradeList(*upgradeList);

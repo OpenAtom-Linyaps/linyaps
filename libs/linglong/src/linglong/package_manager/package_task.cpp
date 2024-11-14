@@ -140,7 +140,7 @@ void PackageTask::updateState(linglong::api::types::v1::State newState,
     if (curState == linglong::api::types::v1::State::PartCompleted) {
         ++m_taskParts;
         m_totalPercentage = TASK_DONE;
-        Q_EMIT PercentageChanged(getPercentage());
+        Q_EMIT PercentageChanged(m_totalPercentage);
 
         m_totalPercentage = 0;
         m_curStagePercentage = 0;

@@ -786,13 +786,15 @@ You can report bugs to the linyaps team under this project: https://github.com/O
             }
             return 0;
         }
-        std::list<std::string> modules;
+        std::list<std::string> modules = { "binary", "develop" };
         if (project->modules.has_value()) {
             for (const auto &module : project->modules.value()) {
+                if (module.name == "develop") {
+                    continue;
+                }
                 modules.push_back(module.name);
             }
         }
-        modules.push_back("binary");
         for (const auto &module : modules) {
             auto result = builder.push(module, repoUrl, repoName);
             if (!result) {

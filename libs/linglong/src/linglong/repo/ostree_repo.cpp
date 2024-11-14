@@ -1612,7 +1612,7 @@ OSTreeRepo::getLayerItem(const package::Reference &ref,
                                 % module.c_str());
         }
 
-        qInfo() << "fallback to runtime:" << query.to_string().c_str();
+        qDebug() << "fallback to runtime:" << query.to_string().c_str();
         query.module = "runtime";
         items = this->cache->queryLayerItem(query);
         if (items.size() > 1) {

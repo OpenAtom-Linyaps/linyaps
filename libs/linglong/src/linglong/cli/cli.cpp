@@ -1380,22 +1380,21 @@ int Cli::list()
 {
     LINGLONG_TRACE("command list");
 
-    auto pkgs = this->repository.listLocal();
-    if (!pkgs) {
-        this->printer.printErr(pkgs.error());
-        return -1;
-    }
-
-    if (!options.type.empty()) {
-        filterPackageInfosFromType(*pkgs, options.type);
-    }
-
     if (!options.showUpgradeList) {
+        auto pkgs = this->repository.listLocal();
+        if (!pkgs) {
+            this->printer.printErr(pkgs.error());
+            return -1;
+        }
+
+        if (!options.type.empty()) {
+            filterPackageInfosFromType(*pkgs, options.type);
+        }
         this->printer.printPackages(*pkgs);
         return 0;
     }
 
-    auto upgradeList = this->listUpgradable(std::move(pkgs).value());
+    auto upgradeList = this->listUpgradable(options.type);
     if (!upgradeList) {
         this->printer.printErr(upgradeList.error());
     }
@@ -1405,9 +1404,17 @@ int Cli::list()
 }
 
 utils::error::Result<std::vector<api::types::v1::UpgradeListResult>>
-Cli::listUpgradable(const std::vector<api::types::v1::PackageInfoV2> &pkgs)
+Cli::listUpgradable(const std::string &type)
 {
-    LINGLONG_TRACE("list upgradable from list");
+    LINGLONG_TRACE("list upgradable");
+    auto pkgs = this->repository.listLocalLatest();
+    if (!pkgs) {
+        return LINGLONG_ERR(pkgs);
+    }
+
+    if (!type.empty()) {
+        filterPackageInfosFromType(*pkgs, options.type);
+    }
 
     std::vector<api::types::v1::UpgradeListResult> upgradeList;
     auto fullFuzzyRef = package::FuzzyReference::parse(QString::fromStdString("."));
@@ -1421,7 +1428,7 @@ Cli::listUpgradable(const std::vector<api::types::v1::PackageInfoV2> &pkgs)
     }
 
     utils::error::Result<package::Reference> reference = LINGLONG_ERR("reference not exists");
-    for (const auto &pkg : pkgs) {
+    for (const auto &pkg : *pkgs) {
         auto fuzzy = package::FuzzyReference::parse(QString::fromStdString(pkg.id));
         if (!fuzzy) {
             this->printer.printErr(fuzzy.error());
@@ -1497,20 +1504,6 @@ Cli::listUpgradable(const std::vector<api::types::v1::PackageInfoV2> &pkgs)
           .oldVersion = oldVersion->toString().toStdString() });
     }
     return upgradeList;
-}
-
-utils::error::Result<std::vector<api::types::v1::UpgradeListResult>>
-Cli::listUpgradable(const std::string &type)
-{
-    LINGLONG_TRACE("list upgradable");
-    auto pkgs = this->repository.listLocal();
-    if (!pkgs) {
-        return LINGLONG_ERR(pkgs);
-    }
-
-    filterPackageInfosFromType(*pkgs, type);
-
-    return this->listUpgradable(std::move(pkgs).value());
 }
 
 int Cli::repo(CLI::App *app)

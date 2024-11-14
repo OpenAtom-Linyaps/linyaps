@@ -675,7 +675,7 @@ ll-cli list --upgradable
               try {
                   notifier = std::make_unique<DBusNotifier>();
               } catch (std::runtime_error &err) {
-                  qWarning() << "initialize DBus notifier error:" << err.what()
+                  qInfo() << "initialize DBus notifier failed:" << err.what()
                              << "try to fallback to terminal notifier.";
               }
           }

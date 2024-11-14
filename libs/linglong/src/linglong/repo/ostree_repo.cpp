@@ -1240,6 +1240,53 @@ OSTreeRepo::listLocal() const noexcept
     return pkgInfos;
 }
 
+// Note: Since version 1.7.0, multiple versions are no longer supported, so there will be multiple
+// versions locally. In some places, we need to list the latest version of each package.
+utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
+OSTreeRepo::listLocalLatest() const noexcept
+{
+    LINGLONG_TRACE("list local latest package");
+    std::vector<api::types::v1::PackageInfoV2> pkgInfos;
+
+    QDir layersDir = this->repoDir.absoluteFilePath("layers");
+    Q_ASSERT(layersDir.exists());
+
+    auto items = this->cache->queryExistingLayerItem();
+    pkgInfos.reserve(items.size());
+    for (const auto &item : items) {
+        if (item.deleted && item.deleted.value()) {
+            continue;
+        }
+
+        auto it = std::find_if(pkgInfos.begin(),
+                               pkgInfos.end(),
+                               [&item](const api::types::v1::PackageInfoV2 &info) {
+                                   return item.info.id == info.id;
+                               });
+        if (it == pkgInfos.end()) {
+            pkgInfos.emplace_back(item.info);
+            continue;
+        }
+
+        auto pkgInfoVersion = package::Version::parse(QString::fromStdString(it->version));
+        if (!pkgInfoVersion) {
+            return LINGLONG_ERR(pkgInfoVersion);
+        }
+        auto itemVersion = package::Version::parse(QString::fromStdString(item.info.version));
+        if (!itemVersion) {
+            return LINGLONG_ERR(itemVersion);
+        }
+
+        if (*itemVersion <= *pkgInfoVersion) {
+            continue;
+        }
+        pkgInfos.erase(it);
+        pkgInfos.emplace_back(item.info);
+    }
+
+    return pkgInfos;
+}
+
 utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
 OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
 {
@@ -2150,7 +2197,7 @@ utils::error::Result<void> OSTreeRepo::migrateRefs() noexcept
     }
 
     // export all package
-    auto localPkgs = this->listLocal();
+    auto localPkgs = this->listLocalLatest();
     if (!localPkgs) {
         return LINGLONG_ERR(localPkgs);
     }

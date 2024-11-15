@@ -154,16 +154,8 @@ parseProjectConfig(const QString &filename)
 
 } // namespace
 
-int main(int argc, char **argv)
+int run(int argc, char **argv)
 {
-    bindtextdomain(PACKAGE_LOCALE_DOMAIN, PACKAGE_LOCALE_DIR);
-    textdomain(PACKAGE_LOCALE_DOMAIN);
-    QCoreApplication app(argc, argv);
-    // 初始化 qt qrc
-    Q_INIT_RESOURCE(builder_releases);
-    using namespace linglong::utils::global;
-    // 初始化应用，builder在非tty环境也输出日志
-    applicationInitialize(true);
 
     CLI::App commandParser{ _("linyaps builder CLI \n"
                               "A CLI program to build linyaps application\n") };
@@ -809,4 +801,36 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     std::cout << commandParser.help("", CLI::AppFormatMode::All);
 
     return 0;
+}
+
+int main(int argc, char **argv)
+{
+    bindtextdomain(PACKAGE_LOCALE_DOMAIN, PACKAGE_LOCALE_DIR);
+    textdomain(PACKAGE_LOCALE_DOMAIN);
+    QCoreApplication app(argc, argv);
+    // 初始化 qt qrc
+    Q_INIT_RESOURCE(builder_releases);
+    using namespace linglong::utils::global;
+    // 初始化应用，builder在非tty环境也输出日志
+    applicationInitialize(true);
+    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, [] {
+        std::cout << "aboutToQuit########################################################"
+                  << std::endl;
+    });
+    QObject::connect(
+      QCoreApplication::instance(),
+      &QCoreApplication::applicationVersionChanged,
+      [] {
+          std::cout
+            << "applicationVersionChanged########################################################"
+            << std::endl;
+      });
+
+    QMetaObject::invokeMethod(
+      QCoreApplication::instance(),
+      [&argc, &argv] {
+          run(argc, argv);
+      },
+      Qt::QueuedConnection);
+    return app.exec();
 }

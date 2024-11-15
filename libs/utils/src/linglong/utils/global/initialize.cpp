@@ -8,11 +8,12 @@
 
 #include "linglong/utils/configure.h"
 
-#include <qloggingcategory.h>
 #include <systemd/sd-journal.h>
 
 #include <QCoreApplication>
+#include <QDateTime>
 #include <QDebug>
+#include <QLoggingCategory>
 
 #include <csignal>
 
@@ -26,6 +27,8 @@ void catchUnixSignals(std::initializer_list<int> quitSignals)
 {
     auto handler = [](int sig) -> void {
         qInfo().noquote() << QString("Quit the application by signal(%1).").arg(sig);
+        QCoreApplication::instance()->setApplicationVersion(
+          QDateTime::currentDateTime().toString());
         QCoreApplication::quit();
     };
 

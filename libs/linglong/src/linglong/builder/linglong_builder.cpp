@@ -45,6 +45,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <optional>
 #include <ostream>
 #include <string>
@@ -280,9 +281,15 @@ utils::error::Result<package::Reference> pullDependency(const package::FuzzyRefe
                             .toStdString(),
                           2);
     };
+    QObject::connect(QCoreApplication::instance(),
+                     &QCoreApplication::applicationVersionChanged,
+                     [&tmpTask] {
+                         tmpTask.Cancel();
+                     });
     QObject::connect(&tmpTask, &service::PackageTask::PartChanged, partChanged);
     repo.pull(tmpTask, *ref, module);
-    if (tmpTask.state() == linglong::api::types::v1::State::Failed) {
+    if (tmpTask.state() == linglong::api::types::v1::State::Failed
+        || tmpTask.state() == linglong::api::types::v1::State::Canceled) {
         return LINGLONG_ERR("pull " + ref->toString() + " failed", std::move(tmpTask).takeError());
     }
     return *ref;

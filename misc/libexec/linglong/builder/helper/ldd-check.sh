@@ -109,7 +109,10 @@ main() {
         fi
 
         logDbg "start checking..."
-
+        # 更新ld.so.cache
+        if [ -n "$LINGLONG_LD_SO_CACHE" ]; then
+                ldconfig -C "$LINGLONG_LD_SO_CACHE"
+        fi
         # Check the needed dynamic libraries for the specified binaries
         checkDepensLibs "${arg1}"
 

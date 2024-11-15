@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <unordered_set>
 
 #include <pwd.h>
 #include <unistd.h>
@@ -310,7 +311,9 @@ int main() // NOLINT
     // FIXME: we should resolve user dirs through ${XDG_CONFIG_HOME}/user-dirs.dirs
 
     // process blocklist
+    static const std::unordered_set<std::string_view> blackList = { ".gnupg", ".ssh" };
     auto disallowedDirs = directories.disallowed.value_or(std::vector<std::string>{});
+    disallowedDirs.insert(disallowedDirs.end(), blackList.begin(), blackList.end());
     std::sort(disallowedDirs.begin(), disallowedDirs.end());
     auto dupIt = std::unique(disallowedDirs.begin(), disallowedDirs.end());
     disallowedDirs.erase(dupIt, disallowedDirs.end());
@@ -349,24 +352,23 @@ int main() // NOLINT
             return -1;
         }
 
-        auto hostLocation = hostHomeDir / relative;
-        if (!std::filesystem::exists(hostLocation, ec)) {
-            if (ec) {
-                std::cerr << "failed to get state of " << hostLocation << ": " << ec.message()
-                          << std::endl;
-                return -1;
-            }
-
+        if (blackList.find(relative.string()) != blackList.end()) {
             continue;
         }
 
-        if (!std::filesystem::is_symlink(hostLocation, ec)) {
-            if (ec) {
-                std::cerr << "failed to get file type of" << hostLocation << ": " << ec.message()
-                          << std::endl;
-                return -1;
+        auto hostLocation = hostHomeDir / relative;
+        std::filesystem::file_status status = std::filesystem::symlink_status(hostLocation, ec);
+        if (ec) {
+            if (ec == std::errc::no_such_file_or_directory) {
+                continue;
             }
 
+            std::cerr << "failed to get file type of" << hostLocation << ": " << ec.message()
+                      << std::endl;
+            return -1;
+        }
+
+        if (status.type() != std::filesystem::file_type::symlink) {
             if (!mountDir(hostLocation, cognitiveHomeDir / relative)) {
                 return -1;
             }

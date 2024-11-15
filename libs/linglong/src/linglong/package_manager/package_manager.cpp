@@ -1088,8 +1088,8 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     // set version back
     fuzzyRef->version = version;
     if (localRef) {
-        // fallback to local version if version of fuzzyRef is not set
-        if (curModule != "binary" && !fuzzyRef->version) {
+        // ignore fuzzy version if not binary or runtime
+        if (curModule != "binary" && curModule != "runtime") {
             fuzzyRef->version = localRef->version;
         }
 

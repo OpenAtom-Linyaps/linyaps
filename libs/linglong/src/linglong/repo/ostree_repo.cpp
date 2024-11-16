@@ -2044,7 +2044,7 @@ utils::error::Result<void> OSTreeRepo::migrateRefs() noexcept
 
     // we only migrate old refs
     const auto newRefSpecPrefix = this->cfg.defaultRepo + ":";
-    for (auto it = allRefs.begin(); it != allRefs.end(); ++it) {
+    for (auto it = allRefs.begin(); it != allRefs.end();) {
         if (it->first.rfind(newRefSpecPrefix, 0) == 0) {
             qInfo() << "found a valid ref:" << it->first.data() << ",skip it.";
             newRef.emplace_back(it->first.data());

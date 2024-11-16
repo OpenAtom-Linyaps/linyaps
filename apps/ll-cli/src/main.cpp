@@ -263,6 +263,7 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
 
     // add sub command ps
     commandParser.add_subcommand("ps", _("List running applications"))
+      ->fallthrough()
       ->group(CliAppManagingGroup)
       ->usage(_("Usage: ll-cli ps [OPTIONS]"));
 
@@ -369,6 +370,7 @@ ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
                        .add_subcommand("search",
                                        _("Search the applications/runtimes containing the "
                                          "specified text from the remote repository"))
+                       ->fallthrough()
                        ->group(CliSearchGroup);
     cliSearch->usage(_(R"(Usage: ll-cli search [OPTIONS] KEYWORDS
 
@@ -396,6 +398,7 @@ ll-cli search . --type=runtime)"));
     // add sub command list
     auto cliList =
       commandParser.add_subcommand("list", _("List installed applications or runtimes"))
+        ->fallthrough()
         ->group(CliBuildInGroup);
     cliList->usage(_(R"(Usage: ll-cli list [OPTIONS]
 
@@ -481,6 +484,7 @@ ll-cli list --upgradable
     auto cliInfo =
       commandParser
         .add_subcommand("info", _("Display information about installed apps or runtimes"))
+        ->fallthrough()
         ->group(CliBuildInGroup);
     cliInfo->usage(_("Usage: ll-cli info [OPTIONS] APP"));
     cliInfo
@@ -494,6 +498,7 @@ ll-cli list --upgradable
     auto cliContent =
       commandParser
         .add_subcommand("content", _("Display the exported files of installed application"))
+        ->fallthrough()
         ->group(CliBuildInGroup);
     cliContent->usage(_("Usage: ll-cli content [OPTIONS] APP"));
     cliContent->add_option("APP", options.appid, _("Specify the installed application ID"))
@@ -676,7 +681,7 @@ ll-cli list --upgradable
                   notifier = std::make_unique<DBusNotifier>();
               } catch (std::runtime_error &err) {
                   qInfo() << "initialize DBus notifier failed:" << err.what()
-                             << "try to fallback to terminal notifier.";
+                          << "try to fallback to terminal notifier.";
               }
           }
 
@@ -690,8 +695,9 @@ ll-cli list --upgradable
           auto migrateOption = commandParser.get_subcommand("migrate");
           if (repo->needMigrate() && !migrateOption->parsed()) {
               notifier->notify(linglong::api::types::v1::InteractionRequest{
-                .summary = _("The old data is found locally and needs to be migrated. Please run "
-                             "'ll-cli migrate' in the terminal and wait for the migration to complete.") });
+                .summary =
+                  _("The old data is found locally and needs to be migrated. Please run "
+                    "'ll-cli migrate' in the terminal and wait for the migration to complete.") });
               QCoreApplication::exit(-1);
               return;
           }

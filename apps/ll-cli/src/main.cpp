@@ -238,8 +238,9 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     std::string CliRepoGroup = _("Managing remote repositories");
 
     // add sub command run
-    auto cliRun =
-      commandParser.add_subcommand("run", _("Run an application"))->group(CliAppManagingGroup);
+    auto cliRun = commandParser.add_subcommand("run", _("Run an application"))
+                    ->group(CliAppManagingGroup)
+                    ->fallthrough();
 
     // add sub command run options
     cliRun->add_option("APP", options.appid, _("Specify the application ID"))
@@ -264,12 +265,14 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
 
     // add sub command ps
     commandParser.add_subcommand("ps", _("List running applications"))
+      ->fallthrough()
       ->group(CliAppManagingGroup)
       ->usage(_("Usage: ll-cli ps [OPTIONS]"));
 
     // add sub command exec
     auto cliExec =
       commandParser.add_subcommand("exec", _("Execute commands in the currently running sandbox"))
+        ->fallthrough()
         ->group(CliHiddenGroup);
     cliExec
       ->add_option("INSTANCE",
@@ -286,7 +289,8 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
     auto cliEnter =
       commandParser
         .add_subcommand("enter", _("Enter the namespace where the application is running"))
-        ->group(CliAppManagingGroup);
+        ->group(CliAppManagingGroup)
+        ->fallthrough();
     cliEnter->usage(_("Usage: ll-cli enter [OPTIONS] INSTANCE [COMMAND...]"));
     cliEnter
       ->add_option("INSTANCE",
@@ -300,7 +304,8 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
 
     // add sub command kill
     auto cliKill = commandParser.add_subcommand("kill", _("Stop running applications"))
-                     ->group(CliAppManagingGroup);
+                     ->group(CliAppManagingGroup)
+                     ->fallthrough();
     cliKill->usage(_("Usage: ll-cli kill [OPTIONS] INSTANCE"));
     cliKill
       ->add_option("INSTANCE",
@@ -312,7 +317,8 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
     // add sub command install
     auto cliInstall =
       commandParser.add_subcommand("install", _("Installing an application or runtime"))
-        ->group(CliBuildInGroup);
+        ->group(CliBuildInGroup)
+        ->fallthrough();
     cliInstall->usage(_(R"(Usage: ll-cli install [OPTIONS] APP
 
 Example:
@@ -344,7 +350,8 @@ ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
     // add sub command uninstall
     auto cliUninstall =
       commandParser.add_subcommand("uninstall", _("Uninstall the application or runtimes"))
-        ->group(CliBuildInGroup);
+        ->group(CliBuildInGroup)
+        ->fallthrough();
     cliUninstall->usage(_("Usage: ll-cli uninstall [OPTIONS] APP"));
     cliUninstall->add_option("APP", options.appid, _("Specify the applications ID"))
       ->required()
@@ -356,7 +363,8 @@ ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
     // add sub command upgrade
     auto cliUpgrade =
       commandParser.add_subcommand("upgrade", _("Upgrade the application or runtimes"))
-        ->group(CliBuildInGroup);
+        ->group(CliBuildInGroup)
+        ->fallthrough();
     cliUpgrade->usage(_("Usage: ll-cli upgrade [OPTIONS] [APP]"));
     cliUpgrade
       ->add_option(
@@ -370,6 +378,7 @@ ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
                        .add_subcommand("search",
                                        _("Search the applications/runtimes containing the "
                                          "specified text from the remote repository"))
+                       ->fallthrough()
                        ->group(CliSearchGroup);
     cliSearch->usage(_(R"(Usage: ll-cli search [OPTIONS] KEYWORDS
 
@@ -397,6 +406,7 @@ ll-cli search . --type=runtime)"));
     // add sub command list
     auto cliList =
       commandParser.add_subcommand("list", _("List installed applications or runtimes"))
+        ->fallthrough()
         ->group(CliBuildInGroup);
     cliList->usage(_(R"(Usage: ll-cli list [OPTIONS]
 
@@ -482,6 +492,7 @@ ll-cli list --upgradable
     auto cliInfo =
       commandParser
         .add_subcommand("info", _("Display information about installed apps or runtimes"))
+        ->fallthrough()
         ->group(CliBuildInGroup);
     cliInfo->usage(_("Usage: ll-cli info [OPTIONS] APP"));
     cliInfo
@@ -495,6 +506,7 @@ ll-cli list --upgradable
     auto cliContent =
       commandParser
         .add_subcommand("content", _("Display the exported files of installed application"))
+        ->fallthrough()
         ->group(CliBuildInGroup);
     cliContent->usage(_("Usage: ll-cli content [OPTIONS] APP"));
     cliContent->add_option("APP", options.appid, _("Specify the installed application ID"))

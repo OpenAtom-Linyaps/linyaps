@@ -813,7 +813,9 @@ set -e
             if (!configFile.open(QIODevice::ReadOnly)) {
                 return LINGLONG_ERR("open file", configFile);
             }
-            installRules.append(QString(configFile.readAll()).split('\n'));
+            for (auto &line : QString(configFile.readAll()).split('\n')) {
+                installRules.append(line.replace(installPrefix, ""));
+            }
             // remove empty or duplicate lines
             installRules.removeAll("");
             installRules.removeDuplicates();

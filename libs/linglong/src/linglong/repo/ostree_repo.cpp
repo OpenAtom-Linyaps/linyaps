@@ -7,7 +7,6 @@
 #include "ostree_repo.h"
 
 #include "api/ClientAPI.h"
-#include "linglong/api/types/helper.h"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
@@ -44,10 +43,12 @@
 #include <cstring>
 #include <filesystem>
 #include <future>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <string>
 #include <thread>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -1019,6 +1020,26 @@ utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref,
         qCritical() << "Failed to remove dir: " << layerDir->absolutePath();
     }
 
+    QFileInfo dirInfo{ layerDir->absolutePath() };
+    if (!dirInfo.isSymLink()) {
+        return LINGLONG_OK;
+    }
+
+    QDir target = dirInfo.symLinkTarget();
+    QDir topLevel = dirInfo.absoluteDir().absolutePath();
+    target.cdUp();
+    while (topLevel.relativeFilePath(target.absolutePath()) != ".") {
+        if (target.isEmpty() && !QFile::remove(target.absolutePath())) {
+            qWarning() << "remove " << target.absolutePath() << "failed";
+        }
+
+        if (!target.cdUp()) {
+            qCritical() << "failed to cd up from " << target.absolutePath();
+            break;
+        }
+    }
+
+    QFile::remove(layerDir->absolutePath());
     return LINGLONG_OK;
 }
 
@@ -2002,268 +2023,6 @@ utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
             }
         }
     }
-    return LINGLONG_OK;
-}
-
-utils::error::Result<void> OSTreeRepo::dispatchMigration() noexcept
-{
-    LINGLONG_TRACE("applying migrations")
-
-    auto stages = cache->migrations();
-    if (!stages) {
-        return LINGLONG_OK;
-    }
-
-    for (auto stage : stages.value()) {
-        utils::error::Result<void> ret = LINGLONG_OK;
-
-        switch (stage) {
-        case MigrationStage::RefsWithoutRepo: {
-            ret = migrateRefs();
-        } break;
-        }
-
-        if (!ret) {
-            return LINGLONG_ERR(ret);
-        }
-    }
-
-    return LINGLONG_OK;
-}
-
-utils::error::Result<void> OSTreeRepo::migrateRefs() noexcept
-{
-    LINGLONG_TRACE("migrate old ostree repo")
-
-    g_autoptr(GHashTable) refsTable{ nullptr };
-    g_autoptr(GError) gErr{ nullptr };
-    if (ostree_repo_list_refs(this->ostreeRepo.get(), nullptr, &refsTable, nullptr, &gErr) == 0) {
-        return LINGLONG_ERR("ostree_repo_list_refs", gErr);
-    }
-
-    std::vector<std::string> newRef; // to prevent local dirty refs
-    std::map<std::string_view, std::string_view> allRefs;
-    g_hash_table_foreach(
-      refsTable,
-      [](gpointer key, gpointer value, gpointer data) {
-          auto &refs = *static_cast<std::map<std::string_view, std::string_view> *>(data);
-          refs.emplace(static_cast<const char *>(key), static_cast<const char *>(value));
-      },
-      &allRefs);
-
-    // we only migrate old refs
-    const auto newRefSpecPrefix = this->cfg.defaultRepo + ":";
-    for (auto it = allRefs.begin(); it != allRefs.end(); ++it) {
-        if (it->first.rfind(newRefSpecPrefix, 0) == 0) {
-            qInfo() << "found a valid ref:" << it->first.data() << ",skip it.";
-            newRef.emplace_back(it->first.data());
-            it = allRefs.erase(it);
-            continue;
-        }
-
-        ++it;
-    }
-
-    if (allRefs.empty()) {
-        qDebug() << "no valid old refs be found, skip migration.";
-        return LINGLONG_OK;
-    }
-
-    for (const auto &ref : newRef) {
-        auto it = allRefs.find(ref.substr(newRefSpecPrefix.size()));
-        if (it != allRefs.end()) {
-            qInfo() << "detect same refs after migration:" << ref.c_str() << "and"
-                    << it->first.data() << ", skip it.";
-            allRefs.erase(it);
-        }
-    }
-
-    if (allRefs.empty()) {
-        qDebug() << "no valid old refs be found, skip migration.";
-        return LINGLONG_OK;
-    }
-
-    utils::Transaction transaction;
-    auto repoDir = std::filesystem::path{ this->repoDir.absolutePath().toStdString() };
-    auto backupDirs =
-      [&transaction](const std::filesystem::path &oldDir,
-                     const std::filesystem::path &newDir) -> utils::error::Result<void> {
-        LINGLONG_TRACE(QString{ "back up %1 to %2" }.arg(oldDir.c_str(), newDir.c_str()));
-        std::error_code ec;
-        if (std::filesystem::exists(newDir, ec)) {
-            std::filesystem::remove_all(newDir, ec);
-            if (ec) {
-                return LINGLONG_ERR(
-                  QString{ "remove %1 error: %2" }.arg(newDir.c_str(), ec.message().c_str()));
-            }
-        }
-        if (ec) {
-            return LINGLONG_ERR(
-              QString{ "couldn't check %1: %2" }.arg(newDir.c_str(), ec.message().c_str()));
-        }
-
-        std::filesystem::rename(oldDir, newDir, ec);
-        if (ec) {
-            return LINGLONG_ERR(QString{ "rename %1 to %2 error: %3" }.arg(oldDir.c_str(),
-                                                                           newDir.c_str(),
-                                                                           ec.message().c_str()));
-        }
-
-        transaction.addRollBack([oldDir, newDir]() noexcept {
-            std::error_code ec;
-            std::filesystem::rename(newDir, oldDir, ec);
-            if (ec) {
-                qCritical() << "rollback entries dir error:" << ec.message().c_str();
-            }
-        });
-
-        return LINGLONG_OK;
-    };
-
-    std::error_code ec;
-    // back up entries directory
-    auto oldEntries = repoDir / "entries";
-    auto newEntries = repoDir / "entries_backup";
-    if (std::filesystem::exists(oldEntries, ec)) {
-        auto ret = backupDirs(oldEntries, newEntries);
-        if (!ret) {
-            return LINGLONG_ERR(ret);
-        }
-    }
-    if (ec) {
-        return LINGLONG_ERR(
-          QString{ "couldn't check %1: %2" }.arg(oldEntries.c_str(), ec.message().c_str()));
-    }
-
-    // back up layers directory
-    auto oldLayers = repoDir / "layers";
-    auto newLayers = repoDir / "layers_backup";
-    if (std::filesystem::exists(oldLayers, ec)) {
-        auto ret = backupDirs(oldLayers, newLayers);
-        if (!ret) {
-            return LINGLONG_ERR(ret);
-        }
-    }
-    if (ec) {
-        return LINGLONG_ERR(
-          QString{ "couldn't check %1: %2" }.arg(oldEntries.c_str(), ec.message().c_str()));
-    }
-
-    if (ostree_repo_prepare_transaction(this->ostreeRepo.get(), nullptr, nullptr, &gErr) == 0) {
-        return LINGLONG_ERR("ostree_repo_prepare_transaction", gErr);
-    }
-
-    for (auto [ref, checksum] : allRefs) {
-        ostree_repo_transaction_set_ref(this->ostreeRepo.get(),
-                                        this->cfg.defaultRepo.c_str(),
-                                        ref.data(),
-                                        checksum.data());
-
-        ostree_repo_transaction_set_ref(this->ostreeRepo.get(), nullptr, ref.data(), nullptr);
-    }
-
-    if (ostree_repo_commit_transaction(this->ostreeRepo.get(), nullptr, nullptr, &gErr) == 0) {
-        return LINGLONG_ERR("ostree_repo_commit_transaction", gErr);
-    }
-
-    transaction.addRollBack([&allRefs, this]() noexcept {
-        g_autoptr(GError) gErr{ nullptr };
-        if (ostree_repo_prepare_transaction(this->ostreeRepo.get(), nullptr, nullptr, &gErr) == 0) {
-            qCritical() << "rollback ostree refs error: ostree_repo_prepare_transaction"
-                        << gErr->message;
-            return;
-        }
-
-        for (auto [ref, checksum] : allRefs) {
-            ostree_repo_transaction_set_ref(this->ostreeRepo.get(),
-                                            nullptr,
-                                            ref.data(),
-                                            checksum.data());
-        }
-
-        if (ostree_repo_commit_transaction(this->ostreeRepo.get(), nullptr, nullptr, &gErr) == 0) {
-            qCritical() << "rollback ostree refs error: ostree_repo_commit_transaction"
-                        << gErr->message;
-            return;
-        }
-    });
-
-    // recheck all package
-    int root = ::open("/", O_DIRECTORY);
-    if (root == -1) {
-        return LINGLONG_ERR(QString{ "open root error: %1" }.arg(strerror(errno)));
-    }
-    auto closeRoot = utils::finally::finally([root]() {
-        close(root);
-    });
-
-    if (!std::filesystem::create_directories(oldLayers, ec)) {
-        return LINGLONG_ERR(QString{ "couldn't create directory: %1" }.arg(oldLayers.c_str()));
-    }
-    transaction.addRollBack([&oldLayers]() noexcept {
-        std::error_code ec;
-        if (std::filesystem::remove_all(oldLayers, ec) == static_cast<std::uintmax_t>(-1)) {
-            qCritical() << "couldn't remove directory recursively:" << ec.message().c_str();
-        }
-    });
-
-    for (auto [oldRef, commit] : allRefs) {
-        auto layerDir = oldLayers / commit;
-        if (ostree_repo_checkout_at(this->ostreeRepo.get(),
-                                    nullptr,
-                                    root,
-                                    layerDir.c_str(),
-                                    commit.data(),
-                                    nullptr,
-                                    &gErr)
-            == 0) {
-            return LINGLONG_ERR(QString("ostree_repo_checkout_at: %1").arg(layerDir.c_str()), gErr);
-        }
-    }
-
-    // reset repoCache
-    auto ret = this->cache->rebuildCache(this->cfg, *(this->ostreeRepo));
-    if (!ret) {
-        return LINGLONG_ERR(ret);
-    }
-
-    // export all package
-    auto localPkgs = this->listLocalLatest();
-    if (!localPkgs) {
-        return LINGLONG_ERR(localPkgs);
-    }
-
-    if (!std::filesystem::create_directories(oldEntries / "share", ec)) {
-        return LINGLONG_ERR(QString{ "couldn't create directory: %1" }.arg(oldLayers.c_str()));
-    }
-    transaction.addRollBack([&oldEntries]() noexcept {
-        std::error_code ec;
-        if (std::filesystem::remove_all(oldEntries / "share", ec)
-            == static_cast<std::uintmax_t>(-1)) {
-            qCritical() << "couldn't remove directory recursively:" << ec.message().c_str();
-        }
-    });
-
-    for (const auto &info : *localPkgs) {
-        auto ret = package::Reference::fromPackageInfo(info);
-        if (!ret) {
-            return LINGLONG_ERR(ret);
-        }
-        exportReference(*ret);
-    }
-
-    transaction.commit();
-
-    std::filesystem::remove_all(newEntries, ec);
-    if (ec) {
-        qWarning() << "Failed to remove" << newEntries.c_str();
-    }
-
-    std::filesystem::remove_all(newLayers, ec);
-    if (ec) {
-        qWarning() << "Failed to remove" << newLayers.c_str();
-    }
-
     return LINGLONG_OK;
 }
 

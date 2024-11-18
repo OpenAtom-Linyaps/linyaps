@@ -84,7 +84,6 @@ public:
 
     utils::error::Result<void> rebuildCache(const api::types::v1::RepoConfig &repoConfig,
                                             OstreeRepo &repo) noexcept;
-    [[nodiscard]] std::optional<std::vector<MigrationStage>> migrations() const noexcept;
     utils::error::Result<std::vector<api::types::v1::RepositoryCacheLayersItem>::iterator>
     findMatchingItem(const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
     utils::error::Result<void> writeToDisk();

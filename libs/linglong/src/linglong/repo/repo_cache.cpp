@@ -80,7 +80,6 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
     this->cache.llVersion = LINGLONG_VERSION;
     this->cache.config = repoConfig;
     this->cache.version = cacheFileVersion;
-    this->cache.migratingStage = std::nullopt;
     this->cache.layers.clear();
 
     g_autoptr(GHashTable) refsTable = nullptr;
@@ -102,11 +101,9 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
       },
       &refs);
 
-    bool refsNeedMigrate{ false };
     for (auto ref : refs) {
         auto pos = ref.find(':');
         if (pos == std::string::npos) {
-            refsNeedMigrate = true;
             qWarning() << "invalid ref: " << ref.data();
             continue;
         }
@@ -133,35 +130,12 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
         this->cache.layers.emplace_back(std::move(item));
     }
 
-    if (refsNeedMigrate) {
-        if (!this->cache.migratingStage) {
-            this->cache.migratingStage = std::vector<int64_t>{};
-        }
-
-        this->cache.migratingStage->emplace_back(
-          static_cast<int64_t>(MigrationStage::RefsWithoutRepo));
-    }
-
     auto ret = writeToDisk();
     if (!ret) {
         return LINGLONG_ERR(ret);
     }
 
     return LINGLONG_OK;
-}
-
-std::optional<std::vector<MigrationStage>> RepoCache::migrations() const noexcept
-{
-    if (!cache.migratingStage) {
-        return std::nullopt;
-    }
-
-    std::vector<MigrationStage> stages;
-    for (auto stage : cache.migratingStage.value()) {
-        stages.emplace_back(static_cast<MigrationStage>(stage));
-    }
-
-    return stages;
 }
 
 utils::error::Result<void>
@@ -391,6 +365,16 @@ utils::error::Result<void> RepoCache::writeToDisk()
 
         return LINGLONG_ERR("failed to update cache");
     }
+
+    auto versionTag = parent_path / ".version";
+    ofs.open(parent_path / ".version", std::ios::out | std::ios::trunc);
+    if (ofs.fail()) {
+        qWarning() << "failed to open file" << versionTag.c_str();
+        return LINGLONG_OK;
+    }
+
+    ofs << LINGLONG_VERSION;
+    ofs.close();
 
     return LINGLONG_OK;
 }

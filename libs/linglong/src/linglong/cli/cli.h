@@ -68,7 +68,6 @@ public:
     int repo(CLI::App *app);
     int info();
     int content();
-    int migrate();
     int prune();
 
     void cancelCurrentTask();
@@ -99,11 +98,9 @@ private Q_SLOTS:
     void onTaskPropertiesChanged(QString interface,
                                  QVariantMap changed_properties,
                                  QStringList invalidated_properties);
-    void forwardMigrateDone(int code, QString message);
     void interaction(QDBusObjectPath object_path, int messageID, QVariantMap additionalMessage);
 
 Q_SIGNALS:
-    void migrateDone(int code, QString message, QPrivateSignal);
     void taskDone();
 
 private:

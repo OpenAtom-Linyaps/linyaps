@@ -6,7 +6,6 @@
 
 #include "linglong/cli/cli.h"
 
-#include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/InteractionReply.hpp"
 #include "linglong/api/types/v1/InteractionRequest.hpp"
 #include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
@@ -1751,131 +1750,6 @@ int Cli::content()
     return 0;
 }
 
-int Cli::migrate()
-{
-    LINGLONG_TRACE("cli migrate")
-
-    if (!notifier) {
-        qCritical() << "there hasn't notifier, abort migrate.";
-        return -1;
-    }
-
-    if (!this->repository.needMigrate()) {
-        this->notifier->notify(
-          api::types::v1::InteractionRequest{ .summary = "No migration required." });
-        return 0;
-    }
-
-    // stop all running apps
-    // FIXME: In multi-user conditions, we couldn't kill applications which started by different
-    // user
-    auto containers = this->ociCLI.list();
-    if (!containers) {
-        auto err = LINGLONG_ERRV(containers);
-        this->printer.printErr(err);
-        return -1;
-    }
-
-    for (const auto &container : *containers) {
-        auto result = this->ociCLI.kill(ocppi::runtime::ContainerID(container.id),
-                                        ocppi::runtime::Signal("SIGTERM"));
-        if (!result) {
-            auto err = LINGLONG_ERRV(result);
-            this->printer.printErr(err);
-            return -1;
-        }
-    }
-
-    // Note: We can't be the root before stop all running apps unless we can find out all
-    // containers(multi-user).
-    QDBusInterface dbusIntrospect(this->pkgMan.service(),
-                                  this->pkgMan.path(),
-                                  "org.freedesktop.DBus.Introspectable",
-                                  this->pkgMan.connection());
-    QDBusReply<QString> authReply = dbusIntrospect.call("Introspect");
-    if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
-        auto ret = this->runningAsRoot();
-        if (!ret) {
-            this->printer.printErr(ret.error());
-        }
-        return -1;
-    }
-
-    // beginning migrating data
-    if (!this->pkgMan.connection().connect(this->pkgMan.service(),
-                                           "/org/deepin/linglong/Migrate1",
-                                           "org.deepin.linglong.Migrate1",
-                                           "MigrateDone",
-                                           this,
-                                           SLOT(forwardMigrateDone(int, QString)))) {
-        qFatal("couldn't connect to dbus signal MigrateDone");
-    }
-
-    int retCode = std::numeric_limits<int>::min();
-    QString retMsg;
-
-    // connecting to this lambda before connecting the second one of the slot 'quit' of event loop
-    // see comments below for details
-    QObject::connect(this, &Cli::migrateDone, [&retCode, &retMsg](int newCode, QString newMsg) {
-        retCode = newCode;
-        retMsg = std::move(newMsg);
-    });
-
-    auto reply = this->pkgMan.Migrate();
-    reply.waitForFinished();
-
-    if (reply.isError()) {
-        if (reply.error().type() == QDBusError::AccessDenied) {
-            this->notifier->notify(api::types::v1::InteractionRequest{
-              .summary = "Permission deny, please check whether you are running as root." });
-            return -1;
-        }
-
-        this->printer.printErr(LINGLONG_ERRV(reply.error().message(), reply.error().type()));
-        return -1;
-    }
-
-    auto result = utils::serialize::fromQVariantMap<api::types::v1::CommonResult>(reply.value());
-    if (!result) {
-        auto err = LINGLONG_ERR(
-          "internal bug detected, application will exit, but migration may already staring");
-        this->printer.printErr(err.value());
-        std::abort();
-    }
-
-    auto ret = notifier->notify(api::types::v1::InteractionRequest{ .summary = result->message });
-    if (!ret) {
-        auto err = LINGLONG_ERR(
-          "internal bug detected, application will exit, but migration may already staring",
-          ret.error());
-        this->printer.printErr(err.value());
-        std::abort();
-    }
-
-    if (retCode == std::numeric_limits<int>::min()) {
-        // If a signal is connected to several slots,
-        // the slots are activated in the same order in which the connections were made,
-        // when the signal is emitted.
-        // refer: https://doc.qt.io/qt-5/qobject.html#connect
-
-        QEventLoop loop;
-        if (connect(this, &Cli::migrateDone, &loop, &QEventLoop::quit) == nullptr) {
-            qCritical() << "failed to waiting for reply";
-            return -1;
-        }
-        loop.exec();
-    }
-
-    ret =
-      this->notifier->notify(api::types::v1::InteractionRequest{ .summary = retMsg.toStdString() });
-    if (!ret) {
-        this->printer.printReply({ .code = retCode, .message = retMsg.toStdString() });
-        return -1;
-    }
-
-    return retCode;
-}
-
 std::vector<std::string>
 Cli::filePathMapping(const std::vector<std::string> &command) const noexcept
 {
@@ -1949,11 +1823,6 @@ void Cli::filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> 
 
     list.clear();
     std::move(temp.begin(), temp.end(), std::back_inserter(list));
-}
-
-void Cli::forwardMigrateDone(int code, QString message)
-{
-    Q_EMIT migrateDone(code, message, QPrivateSignal{});
 }
 
 utils::error::Result<void> Cli::runningAsRoot()

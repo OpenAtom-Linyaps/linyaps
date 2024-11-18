@@ -10,8 +10,6 @@ pfl_add_library(
   SOURCES
   src/linglong/builder/builder_releases.qrc
   # find -regex '\./src/.+\.[ch]\(pp\)?\(\.in\)?' -type f -printf '%P\n'| sort
-  src/linglong/adaptors/migrate/migrate1.cpp
-  src/linglong/adaptors/migrate/migrate1.h
   src/linglong/adaptors/package_manager/package_manager1.cpp
   src/linglong/adaptors/package_manager/package_manager1.h
   src/linglong/adaptors/task/task1.cpp
@@ -25,6 +23,8 @@ pfl_add_library(
   src/linglong/builder/source_fetcher.h
   src/linglong/cli/cli.cpp
   src/linglong/cli/cli.h
+  src/linglong/cli/cli_printer.cpp
+  src/linglong/cli/cli_printer.h
   src/linglong/cli/dbus_notifier.cpp
   src/linglong/cli/dbus_notifier.h
   src/linglong/cli/dummy_notifier.cpp
@@ -32,8 +32,6 @@ pfl_add_library(
   src/linglong/cli/interactive_notifier.h
   src/linglong/cli/json_printer.cpp
   src/linglong/cli/json_printer.h
-  src/linglong/cli/cli_printer.cpp
-  src/linglong/cli/cli_printer.h
   src/linglong/cli/printer.h
   src/linglong/cli/terminal_notifier.cpp
   src/linglong/cli/terminal_notifier.h
@@ -47,8 +45,6 @@ pfl_add_library(
   src/linglong/package/layer_file.h
   src/linglong/package/layer_packager.cpp
   src/linglong/package/layer_packager.h
-  src/linglong/package_manager/migrate.cpp
-  src/linglong/package_manager/migrate.h
   src/linglong/package_manager/package_manager.cpp
   src/linglong/package_manager/package_manager.h
   src/linglong/package_manager/package_task.cpp
@@ -67,6 +63,8 @@ pfl_add_library(
   src/linglong/repo/client_factory.h
   src/linglong/repo/config.cpp
   src/linglong/repo/config.h
+  src/linglong/repo/migrate.cpp
+  src/linglong/repo/migrate.h
   src/linglong/repo/ostree_repo.cpp
   src/linglong/repo/ostree_repo.h
   src/linglong/repo/repo_cache.cpp
@@ -139,14 +137,6 @@ linglong_add_dbus_adaptor(
   linglong::service::PackageManager
   src/linglong/adaptors/package_manager/gen_org_deepin_linglong_packagemanager1
   OrgDeepinLinglongPackagemanager1Adaptor)
-
-linglong_add_dbus_adaptor(
-  linglong::linglong
-  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.Migrate1.xml
-  linglong/package_manager/migrate.h
-  linglong::service::Migrate
-  src/linglong/adaptors/migrate/gen_org_deepin_linglong_migrate1
-  OrgDeepinLinglongMigrate1Adaptor)
 
 linglong_add_dbus_adaptor(
   linglong::linglong

@@ -367,10 +367,6 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     auto buildRepoShow = buildRepo->add_subcommand("show", _("Show repository information"));
     buildRepoShow->usage(_("Usage: ll-builder repo show [OPTIONS]"));
 
-    // add build migrate
-    auto buildMigrate =
-      commandParser.add_subcommand("migrate", _("Migrate repository data"))->group(hiddenGroup);
-
     CLI11_PARSE(commandParser, argc, argv);
 
     if (versionFlag) {
@@ -475,21 +471,6 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         for (const std::string &command : newCommands) {
             commandList.append(QString::fromStdString(command));
         }
-    }
-
-    if (buildMigrate->parsed()) {
-        auto ret = repo.dispatchMigration();
-        if (!ret) {
-            qCritical() << "The underlying data may be corrupted, migration failed:"
-                        << ret.error().message();
-            return -1;
-        }
-
-        return 0;
-    }
-
-    if (repo.needMigrate()) {
-        qFatal("underlying data needs migrating, please run 'll-builder migrate'");
     }
 
     auto *containerBuilder = new linglong::runtime::ContainerBuilder(**ociRuntime);

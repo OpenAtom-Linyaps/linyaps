@@ -11,8 +11,6 @@ pfl_add_library(
   # find -regex '\.\/.+\.[ch]\(pp\)?' -type f -printf '%P\n'| sort
   src/linglong/api/dbus/v1/dbus_peer.cpp
   src/linglong/api/dbus/v1/dbus_peer.h
-  src/linglong/api/dbus/v1/migrate.cpp
-  src/linglong/api/dbus/v1/migrate.h
   src/linglong/api/dbus/v1/package_manager.cpp
   src/linglong/api/dbus/v1/package_manager.h
   src/linglong/api/dbus/v1/task.cpp
@@ -55,11 +53,6 @@ linglong_add_dbus_interface(
   ${real_dbus_api}
   ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.PackageManager1.xml
   src/linglong/api/dbus/v1/gen_org_deepin_linglong_packagemanager1)
-
-linglong_add_dbus_interface(
-  ${real_dbus_api}
-  ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.Migrate1.xml
-  src/linglong/api/dbus/v1/gen_org_deepin_linglong_migrate1)
 
 linglong_add_dbus_interface(
   ${real_dbus_api} ${PROJECT_SOURCE_DIR}/api/dbus/org.deepin.linglong.Task1.xml

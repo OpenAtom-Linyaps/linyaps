@@ -94,15 +94,11 @@ public:
     // unexportReference should be called when LayerDir of ref is existed in local repo
     void unexportReference(const package::Reference &ref) noexcept;
     void updateSharedInfo() noexcept;
-    utils::error::Result<void> dispatchMigration() noexcept;
-    utils::error::Result<void> migrateRefs() noexcept;
     utils::error::Result<void>
     markDeleted(const package::Reference &ref,
                 bool deleted,
                 const std::string &module = "binary",
                 const std::optional<std::string> &subRef = std::nullopt) noexcept;
-
-    [[nodiscard]] bool needMigrate() const noexcept { return !!this->cache->migrations(); };
 
     // 扫描layers变动，重新合并变动layer的modules
     [[nodiscard]] utils::error::Result<void> mergeModules() const noexcept;

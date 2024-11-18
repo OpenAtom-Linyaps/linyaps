@@ -2,4 +2,8 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-#include "linglong/api/dbus/v1/migrate.h"
+#pragma once
+
+namespace linglong::repo {
+void tryMigrate() noexcept;
+}

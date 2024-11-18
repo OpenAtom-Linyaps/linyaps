@@ -96,7 +96,6 @@ std::optional<PackageManager1GetRepoInfoResult> packageManager1GetRepoInfoResult
 std::optional<CommonResult> packageManager1InstallLayerFDResult;
 std::optional<PackageManager1InstallParameters> packageManager1InstallParameters;
 std::optional<PackageManager1JobInfo> packageManager1JobInfo;
-std::optional<CommonResult> packageManager1MigrateResult;
 std::optional<PackageManager1ModifyRepoParameters> packageManager1ModifyRepoParameters;
 std::optional<CommonResult> packageManager1ModifyRepoResult;
 std::optional<PackageManager1Package> packageManager1Package;

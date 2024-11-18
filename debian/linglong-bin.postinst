@@ -4,6 +4,14 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
+case "$1" in
+configure)
+        sudo -u deepin-linglong ll-cli migrate || true
+        sudo -u deepin-linglong rm /var/lib/linglong/state.json 2>/dev/null || true
+        ;;
+*) ;;
+esac
+
 #DEBHELPER#
 
 # NOTE:
@@ -34,8 +42,6 @@ fi
 
 case "$1" in
 configure)
-        version=$2
-        shift
         # enable kernel.unprivileged_userns_clone
         # disable kernel.apparmor_restrict_unprivileged_unconfined and kernel.apparmor_restrict_unprivileged_userns
         if [ -f /usr/lib/sysctl.d/linglong.conf ]; then
@@ -47,7 +53,6 @@ abort-upgrade | abort-remove | abort-deconfigure) ;;
         echo "postinst called with unknown argument '$1'" >&2
         exit 0
         ;;
-
 esac
 
 exit 0

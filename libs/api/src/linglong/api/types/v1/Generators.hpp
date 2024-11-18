@@ -831,7 +831,6 @@ x.config = j.at("config").get<RepoConfig>();
 x.layers = j.at("layers").get<std::vector<RepositoryCacheLayersItem>>();
 x.llVersion = j.at("ll-version").get<std::string>();
 x.merged = get_stack_optional<std::vector<RepositoryCacheMergedItem>>(j, "merged");
-x.migratingStage = get_stack_optional<std::vector<int64_t>>(j, "migrating_stage");
 x.version = j.at("version").get<std::string>();
 }
 
@@ -842,9 +841,6 @@ j["layers"] = x.layers;
 j["ll-version"] = x.llVersion;
 if (x.merged) {
 j["merged"] = x.merged;
-}
-if (x.migratingStage) {
-j["migrating_stage"] = x.migratingStage;
 }
 j["version"] = x.version;
 }
@@ -924,7 +920,6 @@ x.packageManager1GetRepoInfoResult = get_stack_optional<PackageManager1GetRepoIn
 x.packageManager1InstallLayerFDResult = get_stack_optional<CommonResult>(j, "PackageManager1InstallLayerFDResult");
 x.packageManager1InstallParameters = get_stack_optional<PackageManager1InstallParameters>(j, "PackageManager1InstallParameters");
 x.packageManager1JobInfo = get_stack_optional<PackageManager1JobInfo>(j, "PackageManager1JobInfo");
-x.packageManager1MigrateResult = get_stack_optional<CommonResult>(j, "PackageManager1MigrateResult");
 x.packageManager1ModifyRepoParameters = get_stack_optional<PackageManager1ModifyRepoParameters>(j, "PackageManager1ModifyRepoParameters");
 x.packageManager1ModifyRepoResult = get_stack_optional<CommonResult>(j, "PackageManager1ModifyRepoResult");
 x.packageManager1Package = get_stack_optional<PackageManager1Package>(j, "PackageManager1Package");
@@ -1003,9 +998,6 @@ j["PackageManager1InstallParameters"] = x.packageManager1InstallParameters;
 }
 if (x.packageManager1JobInfo) {
 j["PackageManager1JobInfo"] = x.packageManager1JobInfo;
-}
-if (x.packageManager1MigrateResult) {
-j["PackageManager1MigrateResult"] = x.packageManager1MigrateResult;
 }
 if (x.packageManager1ModifyRepoParameters) {
 j["PackageManager1ModifyRepoParameters"] = x.packageManager1ModifyRepoParameters;

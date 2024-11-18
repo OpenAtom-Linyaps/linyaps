@@ -11,6 +11,7 @@
 #include "linglong/cli/json_printer.h"
 #include "linglong/cli/terminal_notifier.h"
 #include "linglong/repo/config.h"
+#include "linglong/repo/migrate.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/utils/configure.h"
@@ -524,9 +525,15 @@ ll-cli list --upgradable
         return 0;
     }
 
+    auto *migrateOption = commandParser.get_subcommand("migrate");
+    if (migrateOption->parsed()) {
+        linglong::repo::tryMigrate();
+        return 0;
+    }
+
     auto ret = QMetaObject::invokeMethod(
       QCoreApplication::instance(),
-      [&argc, &argv, &commandParser, &noDBus, &jsonFlag, &options]() {
+      [&commandParser, &noDBus, &jsonFlag, &options]() {
           auto repoRoot = QDir(LINGLONG_ROOT);
           if (!repoRoot.exists()) {
               qCritical() << "underlying repository doesn't exist:" << repoRoot.absolutePath();
@@ -560,19 +567,6 @@ ll-cli list --upgradable
           }
 
           auto pkgManConn = QDBusConnection::systemBus();
-
-          auto msg = QDBusMessage::createMethodCall("org.deepin.linglong.PackageManager1",
-                                                    "/org/deepin/linglong/Migrate1",
-                                                    "org.deepin.linglong.Migrate1",
-                                                    "WaitForAvailable");
-          QDBusReply<void> migrateReply = pkgManConn.call(msg);
-          if (migrateReply.isValid()) {
-              qCritical()
-                << "package manager is migrating underlying data, please try again later.";
-              QCoreApplication::exit(-1);
-              return;
-          }
-
           auto *pkgMan =
             new linglong::api::dbus::v1::PackageManager("org.deepin.linglong.PackageManager1",
                                                         "/org/deepin/linglong/PackageManager1",
@@ -643,8 +637,8 @@ ll-cli list --upgradable
               QCoreApplication::exit(-1);
               return;
           }
-          linglong::repo::ClientFactory clientFactory(config->repos[config->defaultRepo]);
 
+          linglong::repo::ClientFactory clientFactory(config->repos[config->defaultRepo]);
           auto *repo = new linglong::repo::OSTreeRepo(repoRoot, *config, clientFactory);
           repo->setParent(QCoreApplication::instance());
 
@@ -676,7 +670,7 @@ ll-cli list --upgradable
                   notifier = std::make_unique<DBusNotifier>();
               } catch (std::runtime_error &err) {
                   qInfo() << "initialize DBus notifier failed:" << err.what()
-                             << "try to fallback to terminal notifier.";
+                          << "try to fallback to terminal notifier.";
               }
           }
 
@@ -684,16 +678,6 @@ ll-cli list --upgradable
               qInfo()
                 << "Using DummyNotifier, expected interactions and prompts will not be displayed.";
               notifier = std::make_unique<linglong::cli::DummyNotifier>();
-          }
-
-          // Note: Make sure migrateion is completed before other operations if need migrate here.
-          auto migrateOption = commandParser.get_subcommand("migrate");
-          if (repo->needMigrate() && !migrateOption->parsed()) {
-              notifier->notify(linglong::api::types::v1::InteractionRequest{
-                .summary = _("The old data is found locally and needs to be migrated. Please run "
-                             "'ll-cli migrate' in the terminal and wait for the migration to complete.") });
-              QCoreApplication::exit(-1);
-              return;
           }
 
           auto *cli = new linglong::cli::Cli(*printer,
@@ -717,7 +701,6 @@ ll-cli list --upgradable
               { "list", &Cli::list },
               { "info", &Cli::info },
               { "content", &Cli::content },
-              { "migrate", &Cli::migrate },
               { "prune", &Cli::prune }
           };
 

@@ -53,10 +53,6 @@ SPDX-License-Identifier: LGPL-3.0-or-later
       <arg name="result" type="a{sv}" />
       <annotation name="org.qtproject.QtDBus.QtTypeName.Out1" value="QVariantMap" />
     </signal>
-    <method name="Migrate">
-      <arg direction="out" name="result" type="a{sv}" />
-      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
-    </method>
     <method name="ReplyInteraction">
       <arg name="task" type="o" />
       <arg name="replies" type="a{sv}" />

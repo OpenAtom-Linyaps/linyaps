@@ -1072,12 +1072,21 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
                                    cancellable,
                                    &gErr);
     ostree_async_progress_finish(progress);
+    auto shouldFallback = false;
+    if (status == FALSE) {
+        // gErr->code is 0, so we compare string here.
+        if (!strstr(gErr->message, "No such branch")) {
+            taskContext.reportError(LINGLONG_ERRV("ostree_repo_pull", gErr));
+            return;
+        }
+        qWarning() << gErr->code << gErr->message;
+        shouldFallback = true;
+    }
     // Note: this fallback is only for binary to runtime
-    if (status == FALSE && (module == "binary" || module == "runtime")) {
+    if (shouldFallback && (module == "binary" || module == "runtime")) {
         auto *progress = ostree_async_progress_new_and_connect(progress_changed, (void *)&data);
         Q_ASSERT(progress != nullptr);
         // fallback to old ref
-        qWarning() << gErr->message;
         refString = ostreeSpecFromReference(reference, std::nullopt, module);
         qWarning() << "fallback to module runtime, pull " << QString::fromStdString(refString);
 
@@ -1092,10 +1101,10 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
                                   cancellable,
                                   &gErr);
         ostree_async_progress_finish(progress);
-    }
-    if (status == FALSE) {
-        taskContext.reportError(LINGLONG_ERRV("ostree_repo_pull", gErr));
-        return;
+        if (status == FALSE) {
+            taskContext.reportError(LINGLONG_ERRV("ostree_repo_pull", gErr));
+            return;
+        }
     }
 
     g_autofree char *commit = nullptr;

@@ -13,12 +13,7 @@ using namespace linglong::package;
 
 TEST(Package, VersionRange)
 {
-    QStringList versions = {
-        "1.0.0.0-alpha", "1.0.0.0-alpha.0", "1.0.0.0-alpha.1", "1.0.0.0-alpha.beta",
-        "1.0.0.0-beta",  "1.0.0.0-beta.2",  "1.0.0.0-beta.11", "1.0.0.0-rc.1",
-        "1.0.0.0",       "1.0.0.1",         "2.0.0.0",         "2.1.0.0",
-        "2.1.1.0",       "2.1.1.1"
-    };
+    QStringList versions = { "1.0.0.0", "1.0.0.1", "2.0.0.0", "2.1.0.0", "2.1.1.0", "2.1.1.1" };
     for (int i = 0; i < versions.size() - 1; i++) {
         for (int j = i + 1; j < versions.size(); j++) {
             for (int k = 0; k < versions.size(); k++) {

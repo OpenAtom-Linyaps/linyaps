@@ -35,6 +35,7 @@
 #include <QProcess>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QUuid>
 
 #include <algorithm>
 #include <chrono>
@@ -1439,161 +1440,168 @@ void OSTreeRepo::removeDanglingXDGIntergation() noexcept
     this->updateSharedInfo();
 }
 
-void OSTreeRepo::unexportReference(const package::Reference &ref) noexcept
+utils::error::Result<void> OSTreeRepo::exportEntries()
 {
-    auto layerDir = this->getLayerDir(ref);
-    if (!layerDir) {
-        qCritical() << "Failed to unexport" << ref.toString() << layerDir.error().message();
-        return;
+    LINGLONG_TRACE("export entries");
+    std::error_code ec;
+    auto id = QUuid::createUuid().toString(QUuid::Id128);
+    auto entriesDir = QDir(this->repoDir.absoluteFilePath("entries/share_" + id));
+    if (entriesDir.exists()) {
+        std::filesystem::remove_all(entriesDir.absolutePath().toStdString(), ec);
+        if (ec) {
+            return LINGLONG_ERR("clean temp share directory", ec);
+        }
     }
-
-    QDir entriesDir = this->repoDir.absoluteFilePath("entries/share");
-    QDirIterator it(entriesDir.absolutePath(),
-                    QDir::AllEntries | QDir::NoDot | QDir::NoDotDot | QDir::System,
-                    QDirIterator::Subdirectories);
-    while (it.hasNext()) {
-        it.next();
-        const auto info = it.fileInfo();
-        if (info.isDir()) {
+    std::filesystem::create_directory(entriesDir.absolutePath().toStdString(), ec);
+    if (ec) {
+        return LINGLONG_ERR("create temp share directory", ec);
+    }
+    auto items = this->cache->queryExistingLayerItem();
+    for (const auto &item : items) {
+        auto layerDir = getMergedModuleDir(item);
+        if (!layerDir.has_value()) {
+            return LINGLONG_ERR("get layer dir", layerDir);
+        }
+        auto layerEntriesDir = QDir(layerDir->absoluteFilePath("entries/share"));
+        if (!layerEntriesDir.exists()) {
+            qCritical() << QString("Failed to export %1:").arg(item.info.id.c_str())
+                        << layerEntriesDir << "not exists.";
             continue;
         }
 
-        if (!info.isSymLink()) {
-            // NOTE: Everything in entries should be directory or symbol link.
-            // But it can be some cache file, we should not remove it too.
-            qWarning() << "Invalid file detected." << info.absoluteFilePath();
-            qWarning() << "If the file is a cache or something like that, ignore this warning.";
-            continue;
-        }
+        const QStringList exportPaths = {
+            "applications", // Copy desktop files
+            "mime",         // Copy MIME Type files
+            "icons",        // Icons
+            "dbus-1",       // D-Bus service files
+            "gnome-shell",  // Search providers
+            "appdata",      // Copy appdata/metainfo files (legacy path)
+            "metainfo",     // Copy appdata/metainfo files
+            "plugins", // Copy plugins conf，The configuration files provided by some applications
+                       // maybe used by the host dde-file-manager.
+            "systemd", // copy systemd service files
+            "deepin-manual",    // copy deepin-manual files
+            "deepin-elf-verify" // for uab signature
+        };
 
-        if (!info.symLinkTarget().startsWith(layerDir->absolutePath())) {
-            continue;
-        }
-
-        if (!entriesDir.remove(it.filePath())) {
-            qCritical() << "Failed to remove" << it.filePath();
-            Q_ASSERT(false);
-        }
-    }
-    this->updateSharedInfo();
-}
-
-void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
-{
-    auto entriesDir = QDir(this->repoDir.absoluteFilePath("entries/share"));
-    if (!entriesDir.exists()) {
-        entriesDir.mkpath(".");
-    }
-
-    auto layerDir = this->getLayerDir(ref);
-    if (!layerDir) {
-        qCritical() << QString("Failed to export %1:").arg(ref.toString())
-                    << "layer directory not exists." << layerDir.error().message();
-        Q_ASSERT(false);
-        return;
-    }
-    if (!layerDir->exists()) { }
-
-    auto layerEntriesDir = QDir(layerDir->absoluteFilePath("entries/share"));
-    if (!layerEntriesDir.exists()) {
-        qCritical() << QString("Failed to export %1:").arg(ref.toString()) << layerEntriesDir
-                    << "not exists.";
-        return;
-    }
-
-    const QStringList exportPaths = {
-        "applications", // Copy desktop files
-        "mime",         // Copy MIME Type files
-        "icons",        // Icons
-        "dbus-1",       // D-Bus service files
-        "gnome-shell",  // Search providers
-        "appdata",      // Copy appdata/metainfo files (legacy path)
-        "metainfo",     // Copy appdata/metainfo files
-        "plugins", // Copy plugins conf，The configuration files provided by some applications maybe
-                   // used by the host dde-file-manager.
-        "systemd",          // copy systemd service files
-        "deepin-manual",    // copy deepin-manual files
-        "deepin-elf-verify" // for uab signature
-    };
-
-    for (const auto &path : exportPaths) {
-        QStringList exportDirs = layerEntriesDir.entryList(QDir::NoDotAndDotDot | QDir::Dirs);
-        if (!exportDirs.contains(path)) {
-            continue;
-        }
-
-        QDir exportDir = layerEntriesDir.absoluteFilePath(path);
-        if (!exportDir.exists()) {
-            continue;
-        }
-
-        QDirIterator it(exportDir.absolutePath(),
-                        QDir::AllEntries | QDir::NoDotAndDotDot | QDir::System | QDir::Hidden,
-                        QDirIterator::Subdirectories);
-        while (it.hasNext()) {
-            it.next();
-            const auto info = it.fileInfo();
-            if (info.isDir()) {
+        for (const auto &path : exportPaths) {
+            QDir exportDir = layerEntriesDir.absoluteFilePath(path);
+            if (!exportDir.exists()) {
                 continue;
             }
 
-            // In KDE environment, every desktop should own the executable permission
-            // We just set the file permission to 0755 here.
-            if (info.suffix() == "desktop") {
-                if (!QFile::setPermissions(info.absoluteFilePath(),
-                                           QFileDevice::ReadOwner | QFileDevice::WriteOwner
-                                             | QFileDevice::ExeOwner | QFileDevice::ReadGroup
-                                             | QFileDevice::ExeGroup | QFileDevice::ReadOther
-                                             | QFileDevice::ExeOther)) {
-                    qCritical() << "Failed to chmod" << info.absoluteFilePath();
-                    Q_ASSERT(false);
+            QDirIterator it(exportDir.absolutePath(),
+                            QDir::AllEntries | QDir::NoDotAndDotDot | QDir::System | QDir::Hidden,
+                            QDirIterator::Subdirectories);
+            while (it.hasNext()) {
+                it.next();
+                const auto info = it.fileInfo();
+                if (info.isDir()) {
+                    continue;
                 }
-            }
+                // Check if the target file of the symbolic link exists.
+                if (info.isSymLink()
+                    && !std::filesystem::exists(info.symLinkTarget().toStdString())) {
+                    continue;
+                }
+                // In KDE environment, every desktop should own the executable permission
+                // We just set the file permission to 0755 here.
+                if (info.suffix() == "desktop") {
+                    if (!QFile::setPermissions(info.absoluteFilePath(),
+                                               QFileDevice::ReadOwner | QFileDevice::WriteOwner
+                                                 | QFileDevice::ExeOwner | QFileDevice::ReadGroup
+                                                 | QFileDevice::ExeGroup | QFileDevice::ReadOther
+                                                 | QFileDevice::ExeOther)) {
+                        qCritical() << "Failed to chmod" << info.absoluteFilePath();
+                        Q_ASSERT(false);
+                    }
+                }
 
-            const auto parentDirForLinkPath =
-              layerEntriesDir.relativeFilePath(it.fileInfo().dir().absolutePath());
+                const auto parentDirForLinkPath =
+                  layerEntriesDir.relativeFilePath(it.fileInfo().dir().absolutePath());
 
-            if (!entriesDir.mkpath(parentDirForLinkPath)) {
-                qCritical() << "Failed to mkpath"
-                            << entriesDir.absoluteFilePath(parentDirForLinkPath);
-            }
+                if (!entriesDir.mkpath(parentDirForLinkPath)) {
+                    qCritical() << "Failed to mkpath"
+                                << entriesDir.absoluteFilePath(parentDirForLinkPath);
+                }
 
-            QDir parentDir(entriesDir.absoluteFilePath(parentDirForLinkPath));
-            auto from = std::filesystem::path{
-                entriesDir.absoluteFilePath(parentDirForLinkPath).toStdString()
-            } / it.fileName().toStdString();
-            auto to = std::filesystem::path{
-                parentDir.relativeFilePath(info.absoluteFilePath()).toStdString()
-            };
+                QDir parentDir(entriesDir.absoluteFilePath(parentDirForLinkPath));
+                auto to = std::filesystem::path{
+                    parentDir.relativeFilePath(info.absoluteFilePath()).toStdString()
+                };
 
-            std::error_code ec;
-            auto status = std::filesystem::symlink_status(from, ec);
-            if (ec && ec.value() != static_cast<int>(std::errc::no_such_file_or_directory)) {
-                qCritical() << "symlink_status" << from.c_str()
-                            << "error:" << QString::fromStdString(ec.message());
-                continue;
-            }
-
-            if (std::filesystem::exists(status)) {
-                qInfo() << from.c_str() << "symlink already exists, try to remove it";
-                if (!std::filesystem::remove(from, ec)) {
-                    qCritical() << "remove" << from.c_str()
+                auto from = std::filesystem::path{
+                    entriesDir.absoluteFilePath(parentDirForLinkPath).toStdString()
+                } / it.fileName().toStdString();
+                std::error_code ec;
+                auto status = std::filesystem::symlink_status(from, ec);
+                if (ec && ec.value() != static_cast<int>(std::errc::no_such_file_or_directory)) {
+                    qCritical() << "symlink_status" << from.c_str()
                                 << "error:" << QString::fromStdString(ec.message());
                     continue;
                 }
-            }
 
-            std::filesystem::create_symlink(to, from, ec);
-            if (ec) {
-                qCritical().nospace()
-                  << "Failed to create link " << from.c_str() << " -> " << to.c_str() << " : "
-                  << QString::fromStdString(ec.message());
-                continue;
+                if (std::filesystem::exists(status)) {
+                    qInfo() << from.c_str() << "symlink already exists, try to remove it";
+                    if (!std::filesystem::remove(from, ec)) {
+                        qCritical() << "remove" << from.c_str()
+                                    << "error:" << QString::fromStdString(ec.message());
+                        continue;
+                    }
+                }
+
+                std::filesystem::create_symlink(to, from, ec);
+                if (ec) {
+                    qCritical().nospace()
+                      << "Failed to create link " << from.c_str() << " -> " << to.c_str() << " : "
+                      << QString::fromStdString(ec.message());
+                    continue;
+                }
             }
         }
     }
-
+    std::filesystem::path workdir = repoDir.absoluteFilePath("entries").toStdString();
+    // 如果share是软链接，先创建临时软链接指向 share_$uuid，再重命名临时软链接为share，实现原子切换
+    // 如果share是目录，先重命名share为share_old，创建名为share的软链接指向share_$uuid，然后再删除share_old，这是为了兼容旧数据
+    if (std::filesystem::is_symlink(workdir / "share")) {
+        auto tmpLink = "share_tmp_" + QUuid::createUuid().toString(QUuid::Id128).toStdString();
+        std::filesystem::create_symlink(entriesDir.dirName().toStdString(), workdir / tmpLink, ec);
+        if (ec) {
+            return LINGLONG_ERR("rename new share directory", ec);
+        }
+        std::filesystem::rename(workdir / tmpLink, workdir / "share", ec);
+        if (ec) {
+            return LINGLONG_ERR("rename share symlink", ec);
+        }
+    } else {
+        std::filesystem::rename(workdir / "share", workdir / "share_old", ec);
+        if (ec) {
+            return LINGLONG_ERR("rename old share directory", ec);
+        }
+        std::filesystem::create_symlink(entriesDir.dirName().toStdString(), workdir / "share", ec);
+        if (ec) {
+            return LINGLONG_ERR("create new share symlink", ec);
+        }
+        std::filesystem::remove_all(workdir / "share_old", ec);
+        if (ec) {
+            return LINGLONG_ERR("remove old share directory", ec);
+        }
+    }
+    // 清理未在列表中的文件
+    std::vector<std::string> list = { "share", entriesDir.dirName().toStdString() };
+    for (const auto &entry : std::filesystem::directory_iterator(workdir)) {
+        if (std::find(list.begin(), list.end(), entry.path().filename()) != list.end()) {
+            continue;
+        }
+        std::filesystem::remove_all(entry.path(), ec);
+        if (ec) {
+            qWarning() << QString("warning: failed to clean %1, error: %2")
+                            .arg(entry.path().c_str())
+                            .arg(ec.message().c_str());
+        }
+    }
     this->updateSharedInfo();
+    return LINGLONG_OK;
 }
 
 void OSTreeRepo::updateSharedInfo() noexcept
@@ -1778,8 +1786,41 @@ std::vector<std::string> OSTreeRepo::getModuleList(const package::Reference &ref
     return modules;
 }
 
-auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref, bool fallbackLayerDir)
-  const noexcept -> utils::error::Result<package::LayerDir>
+auto OSTreeRepo::getMergedModuleDir(const api::types::v1::RepositoryCacheLayersItem &layer,
+                                    bool fallbackLayerDir) const noexcept
+  -> utils::error::Result<package::LayerDir>
+{
+    LINGLONG_TRACE("get merge dir from layer " + QString::fromStdString(layer.info.id));
+    QDir mergedDir = this->repoDir.absoluteFilePath("merged");
+    auto items = this->cache->queryMergedItems();
+    // 如果没有merged记录，尝试使用layer
+    if (!items.has_value()) {
+        qDebug().nospace() << "not exists merged items";
+        if (fallbackLayerDir) {
+            return getLayerDir(layer);
+        }
+        return LINGLONG_ERR("no merged item found");
+    }
+    // 如果找到layer对应的merge，就返回merge目录，否则回退到layer目录
+    for (auto item : items.value()) {
+        if (item.binaryCommit == layer.commit) {
+            QDir dir = mergedDir.filePath(item.id.c_str());
+            if (dir.exists()) {
+                return dir.path();
+            } else {
+                qWarning().nospace() << "not exists merged dir" << dir;
+            }
+        }
+    }
+    if (fallbackLayerDir) {
+        return getLayerDir(layer);
+    }
+    return LINGLONG_ERR("merged doesn't exist");
+}
+
+auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref,
+                                    bool fallbackLayerDir) const noexcept
+  -> utils::error::Result<package::LayerDir>
 {
     LINGLONG_TRACE("get merge dir from ref " + ref.toString());
     qDebug() << "getMergedModuleDir" << ref.toString();
@@ -1790,34 +1831,12 @@ auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref, bool fallback
                            << "/binary:" << layer.error().message();
         return LINGLONG_ERR(layer);
     }
-    auto items = this->cache->queryMergedItems();
-    // 如果没有merged记录，尝试使用layer
-    if (!items.has_value()) {
-        qDebug().nospace() << "not exists merged items";
-        if (fallbackLayerDir) {
-            return getLayerDir(*layer);
-        }
-        return LINGLONG_ERR("no merged item found");
-    }
-    // 如果找到layer对应的merge，就返回merge目录，否则回退到layer目录
-    for (auto item : items.value()) {
-        if (item.binaryCommit == layer->commit) {
-            QDir dir = mergedDir.filePath(item.id.c_str());
-            if (dir.exists()) {
-                return dir.path();
-            } else {
-                qWarning().nospace() << "not exists merged dir" << dir;
-            }
-        }
-    }
-    if (fallbackLayerDir) {
-        return getLayerDir(*layer);
-    }
-    return LINGLONG_ERR("merged doesn't exist");
+    return this->getMergedModuleDir(*layer, fallbackLayerDir);
 }
 
-auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref, const QStringList &loadModules)
-  const noexcept -> utils::error::Result<std::shared_ptr<package::LayerDir>>
+auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref,
+                                    const QStringList &loadModules) const noexcept
+  -> utils::error::Result<std::shared_ptr<package::LayerDir>>
 {
     LINGLONG_TRACE("merge modules");
     QDir mergedDir = this->repoDir.absoluteFilePath("merged");

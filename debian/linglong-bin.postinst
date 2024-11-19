@@ -6,7 +6,7 @@
 
 case "$1" in
 configure)
-        sudo -u deepin-linglong ll-cli migrate || true
+        sudo -u deepin-linglong ll-cli automigrate || true
         sudo -u deepin-linglong rm /var/lib/linglong/state.json 2>/dev/null || true
         ;;
 *) ;;

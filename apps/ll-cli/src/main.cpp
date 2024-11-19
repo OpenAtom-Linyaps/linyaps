@@ -29,7 +29,9 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <filesystem>
 #include <functional>
+#include <iostream>
 #include <memory>
 #include <thread>
 
@@ -502,7 +504,8 @@ ll-cli list --upgradable
       ->check(validatorString);
 
     // add sub command migrate
-    commandParser.add_subcommand("migrate", _("Migrate repository data"))->group(CliHiddenGroup);
+    commandParser.add_subcommand("automigrate", _("Migrate repository data"))
+      ->group(CliHiddenGroup);
 
     // add sub command prune
     commandParser.add_subcommand("prune", _("Remove the unused base or runtime"))
@@ -525,9 +528,23 @@ ll-cli list --upgradable
         return 0;
     }
 
-    auto *migrateOption = commandParser.get_subcommand("migrate");
+    auto *migrateOption = commandParser.get_subcommand("automigrate");
     if (migrateOption->parsed()) {
         linglong::repo::tryMigrate();
+        auto repoRoot = QDir(LINGLONG_ROOT);
+
+        auto config = linglong::repo::loadConfig(
+          { LINGLONG_ROOT "/config.yaml", LINGLONG_DATA_DIR "/config.yaml" });
+        if (!config) {
+            std::cerr << "load config" << config.error().message().toStdString();
+            return 0;
+        }
+        linglong::repo::ClientFactory clientFactory(config->repos[config->defaultRepo]);
+        auto *repo = new linglong::repo::OSTreeRepo(repoRoot, *config, clientFactory);
+        auto ret = repo->exportEntries();
+        if (!ret.has_value()) {
+            std::cerr << "export entries" << ret.error().message().toStdString();
+        }
         return 0;
     }
 

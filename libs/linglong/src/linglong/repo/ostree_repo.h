@@ -89,10 +89,9 @@ public:
     utils::error::Result<void> prune();
 
     void removeDanglingXDGIntergation() noexcept;
-    // exportReference should be called when LayerDir of ref is existed in local repo
-    void exportReference(const package::Reference &ref) noexcept;
-    // unexportReference should be called when LayerDir of ref is existed in local repo
-    void unexportReference(const package::Reference &ref) noexcept;
+
+    utils::error::Result<void> exportEntries();
+
     void updateSharedInfo() noexcept;
     utils::error::Result<void>
     markDeleted(const package::Reference &ref,
@@ -105,6 +104,9 @@ public:
     // 获取合并后的layerDir，如果没有找到返回binary模块的layerDir
     [[nodiscard]] utils::error::Result<package::LayerDir>
     getMergedModuleDir(const package::Reference &ref, bool fallbackLayerDir = true) const noexcept;
+    [[nodiscard]] utils::error::Result<package::LayerDir>
+    getMergedModuleDir(const api::types::v1::RepositoryCacheLayersItem &item,
+                       bool fallbackLayerDir = true) const noexcept;
     // 临时将指定的modules合并，并返回合并后的layerDir，供打包者调试应用
     // 临时目录会在智能指针释放时删除
     [[nodiscard]] utils::error::Result<std::shared_ptr<package::LayerDir>>

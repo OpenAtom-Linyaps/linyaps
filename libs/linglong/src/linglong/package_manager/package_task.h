@@ -146,7 +146,7 @@ private:
         { linglong::api::types::v1::SubState::InstallApplication, 20 },
         // uninstall
         { linglong::api::types::v1::SubState::Uninstall, 80 },
-        // export/unexportReference
+        // exportEntries, mergeModule
         { linglong::api::types::v1::SubState::PostAction, 5 },
     };
 

@@ -347,11 +347,6 @@ PackageManager::removeAfterInstall(const package::Reference &oldRef,
         return LINGLONG_OK;
     }
 
-    this->repo.unexportReference(oldRef);
-    transaction.addRollBack([this, &oldRef]() noexcept {
-        this->repo.exportReference(oldRef);
-    });
-
     for (const auto &module : modules) {
         auto ret = this->repo.remove(oldRef);
         if (!ret) {
@@ -372,8 +367,10 @@ PackageManager::removeAfterInstall(const package::Reference &oldRef,
     if (!mergeRet.has_value()) {
         qCritical() << "merge modules failed: " << mergeRet.error().message();
     }
-
-    this->repo.exportReference(newRef);
+    auto exportRet = this->repo.exportEntries();
+    if (!exportRet.has_value()) {
+        qCritical() << "export entries failed: " << exportRet.error().message();
+    }
 
     transaction.commit();
     return LINGLONG_OK;
@@ -445,7 +442,6 @@ void PackageManager::deferredUninstall() noexcept
             return;
         }
 
-        this->repo.unexportReference(*pkgRef);
         for (const auto &item : items) {
             auto ret = this->repo.remove(*pkgRef, item.info.packageInfoV2Module, item.info.uuid);
             if (!ret) {
@@ -473,8 +469,11 @@ void PackageManager::deferredUninstall() noexcept
         if (!latestRef) {
             qCritical() << "failed to get latest layer item:" << latestRef.error().message();
         }
+    }
 
-        this->repo.exportReference(*latestRef);
+    auto exportRet = this->repo.exportEntries();
+    if (!exportRet.has_value()) {
+        qCritical() << "export entries failed: " << exportRet.error().message();
     }
 }
 
@@ -706,7 +705,6 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
                   return;
               }
 
-              this->repo.exportReference(*newRef);
               return;
           }
 
@@ -714,11 +712,14 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
           if (std::find(modules.cbegin(), modules.cend(), module) == modules.cend()) {
               return;
           }
-
           auto newRef = package::Reference::fromPackageInfo(*info);
           if (!newRef) {
               taskRef.reportError(std::move(newRef).error());
               return;
+          }
+          auto exportRet = this->repo.exportEntries();
+          if (!exportRet.has_value()) {
+              qCritical() << "export entries failed: " << exportRet.error().message();
           }
 
           auto ret = removeAfterInstall(*localRef, *newRef, std::vector{ module });
@@ -1030,8 +1031,10 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
             if (!mergeRet.has_value()) {
                 qCritical() << "merge modules failed: " << mergeRet.error().message();
             }
-
-            this->repo.exportReference(newAppRef);
+            auto exportRet = this->repo.exportEntries();
+            if (!exportRet.has_value()) {
+                qCritical() << "export entries failed: " << exportRet.error().message();
+            }
         }
 
         transaction.commit();
@@ -1268,7 +1271,10 @@ void PackageManager::Install(PackageTask &taskContext,
                 return;
             }
         } else {
-            this->repo.exportReference(newRef);
+            auto exportRet = this->repo.exportEntries();
+            if (!exportRet.has_value()) {
+                qCritical() << "export entries failed: " << exportRet.error().message();
+            }
         }
     }
 
@@ -1518,11 +1524,6 @@ void PackageManager::Uninstall(PackageTask &taskContext,
 
     utils::Transaction transaction;
 
-    this->repo.unexportReference(ref);
-    transaction.addRollBack([this, &ref]() noexcept {
-        this->repo.exportReference(ref);
-    });
-
     UninstallRef(taskContext, ref, removedModules);
     if (isTaskDone(taskContext.subState())) {
         return;
@@ -1536,6 +1537,10 @@ void PackageManager::Uninstall(PackageTask &taskContext,
     auto mergeRet = this->repo.mergeModules();
     if (!mergeRet.has_value()) {
         qCritical() << "merge modules failed: " << mergeRet.error().message();
+    }
+    auto exportRet = this->repo.exportEntries();
+    if (!exportRet.has_value()) {
+        qCritical() << "export entries failed: " << exportRet.error().message();
     }
 }
 

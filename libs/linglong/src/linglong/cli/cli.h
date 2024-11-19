@@ -80,7 +80,6 @@ private:
     filePathMapping(const std::vector<std::string> &command) const noexcept;
     static void filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> &list,
                                            const std::string &type) noexcept;
-    void updateAM() noexcept;
     void printProgress() noexcept;
     [[nodiscard]] utils::error::Result<std::vector<api::types::v1::CliContainer>>
     getCurrentContainers() const noexcept;

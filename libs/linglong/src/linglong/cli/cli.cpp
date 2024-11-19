@@ -835,28 +835,7 @@ int Cli::installFromFile(const QFileInfo &fileInfo, const api::types::v1::Common
         return -1;
     }
 
-    updateAM();
     return this->lastState == linglong::api::types::v1::State::Succeed ? 0 : -1;
-}
-
-void Cli::updateAM() noexcept
-{
-    // Call ReloadApplications() in AM for now. Remove later.
-    if ((QSysInfo::productType() == "uos" || QSysInfo::productType() == "Deepin")
-        && this->lastState == linglong::api::types::v1::State::Succeed) {
-        QDBusConnection conn = QDBusConnection::sessionBus();
-        if (!conn.isConnected()) {
-            qWarning() << "Failed to connect to the session bus";
-        }
-        QDBusMessage msg = QDBusMessage::createMethodCall("org.desktopspec.ApplicationManager1",
-                                                          "/org/desktopspec/ApplicationManager1",
-                                                          "org.desktopspec.ApplicationManager1",
-                                                          "ReloadApplications");
-        auto ret = QDBusConnection::sessionBus().call(msg, QDBus::NoBlock);
-        if (ret.type() == QDBusMessage::ErrorMessage) {
-            qWarning() << "call reloadApplications failed:" << ret.errorMessage();
-        }
-    }
 }
 
 int Cli::install()
@@ -971,7 +950,6 @@ int Cli::install()
     }
     loop.exec();
 
-    updateAM();
     return this->lastState == linglong::api::types::v1::State::Succeed ? 0 : -1;
 }
 
@@ -1088,7 +1066,6 @@ int Cli::upgrade()
         return -1;
     }
 
-    updateAM();
     return 0;
 }
 

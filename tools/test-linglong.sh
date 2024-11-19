@@ -23,11 +23,11 @@ ll-builder export
 ll-builder run
 
 #运行并安装uab
-ll-cli uninstall org.dde.demo || true
+sudo ll-cli uninstall org.dde.demo || true
 ./org.dde.demo_x86_64_0.0.0.1_main.uab
 
 #安装构建的应用
-ll-cli uninstall org.dde.demo || true
+sudo ll-cli uninstall org.dde.demo || true
 ll-cli install org.dde.demo_0.0.0.1_x86_64_binary.layer
 
 #运行安装好的demo
@@ -51,19 +51,19 @@ ll-cli search . --type=runtime
 appid=org.dde.calendar
 test_version=5.13.1.1
 #先卸载再安装
-ll-cli uninstall "$appid"
+sudo ll-cli uninstall "$appid" || true
 
 #ll-cli install命令用来安装玲珑应用
-ll-cli install "$appid"
+sudo ll-cli install "$appid"
 
 #先卸载再安装
-ll-cli uninstall "$appid"
+sudo ll-cli uninstall "$appid"
 
 #安装指定版本
-ll-cli install "$appid/$test_version"
+sudo ll-cli install "$appid/$test_version"
 
 #更新新版本
-ll-cli upgrade "$appid"
+sudo ll-cli upgrade "$appid"
 
 #运行玲珑应用
 ll-cli run "$appid" &

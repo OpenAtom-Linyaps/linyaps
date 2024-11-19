@@ -270,17 +270,27 @@ utils::error::Result<package::Reference> pullDependency(const package::FuzzyRefe
     }
 
     auto tmpTask = service::PackageTask::createTemporaryTask();
-    auto partChanged = [&ref, module](const QString &percentage) {
+    auto partChanged = [&ref, module](const uint fetched, const uint requested) {
+        auto percentage =  (uint)((((double)fetched) / requested) * 100);
+        auto progress = QString("(%1/%2 %3%)").arg(fetched).arg(requested).arg(percentage);
         printReplacedText(QString("%1%2%3%4 %5")
                             .arg(ref->id, -25)                        // NOLINT
                             .arg(ref->version.toString(), -15)        // NOLINT
                             .arg(QString::fromStdString(module), -15) // NOLINT
                             .arg("downloading")
-                            .arg(percentage)
+                            .arg(progress)
                             .toStdString(),
                           2);
     };
     QObject::connect(&tmpTask, &service::PackageTask::PartChanged, partChanged);
+    printReplacedText(QString("%1%2%3%4 %5")
+                        .arg(ref->id, -25)                        // NOLINT
+                        .arg(ref->version.toString(), -15)        // NOLINT
+                        .arg(QString::fromStdString(module), -15) // NOLINT
+                        .arg("waiting")
+                        .arg("...")
+                        .toStdString(),
+                      2);
     repo.pull(tmpTask, *ref, module);
     if (tmpTask.state() == linglong::api::types::v1::State::Failed) {
         return LINGLONG_ERR("pull " + ref->toString() + " failed", std::move(tmpTask).takeError());

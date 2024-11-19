@@ -116,18 +116,9 @@ void PackageTask::updateTask(uint part, uint whole, const QString &message) noex
 
     this->setProperty("Message", message);
     m_curStagePercentage = static_cast<double>(part) / whole;
-    auto partPercentageMsg =
-      QString("%1/%2(%3%)")
-        .arg(part)
-        .arg(whole)
-        .arg(m_totalPercentage
-             + (m_curStagePercentage
-                * m_subStateMap[static_cast<api::types::v1::SubState>(m_subState)]));
 
     Q_EMIT PercentageChanged(getPercentage());
     changePropertiesDone();
-
-    Q_EMIT PartChanged(partPercentageMsg, QPrivateSignal{});
 }
 
 void PackageTask::updateState(linglong::api::types::v1::State newState,

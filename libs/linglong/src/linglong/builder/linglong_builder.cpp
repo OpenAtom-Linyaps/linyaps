@@ -1379,38 +1379,37 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
         }
     }
     if (debug) {
-        std::string appPrefix = "/opt/apps/" + this->project.package.id + "/files";
-        std::string debugFileDirectory =
-          "/usr/lib/debug:/runtime/lib/debug:" + appPrefix + "/lib/debug";
+        std::filesystem::path workdir = this->workingDir.absolutePath().toStdString();
+        // 生成 host_gdbinit 可使用 gdb --init-command=linglong/host_gdbinit 从宿主机调试
+        {
+            auto gdbinit = workdir / "linglong/host_gdbinit";
+            auto debugDir = workdir / "linglong/output/develop/files/lib/debug";
+            std::ofstream hostConf(gdbinit);
+            hostConf << "set substitute-path /project " + workdir.string() << std::endl;
+            hostConf << "set debug-file-directory " + debugDir.string() << std::endl;
+            hostConf << "# target remote :12345";
+        }
+        // 生成 gdbinit 支持在容器中使用gdb $binary调试
+        {
+            std::string appPrefix = "/opt/apps/" + this->project.package.id + "/files";
+            std::string debugDir = "/usr/lib/debug:/runtime/lib/debug:" + appPrefix + "/lib/debug";
+            auto gdbinit = workdir / "linglong/gdbinit";
+            std::ofstream f(gdbinit);
+            f << "set debug-file-directory " + debugDir << std::endl;
 
-        auto gdbinit = this->workingDir.absoluteFilePath("linglong/host_gdbinit").toStdString();
-        std::ofstream hostConf(gdbinit);
-        // project => workdir
-        hostConf << "set substitute-path /project " + this->workingDir.absolutePath().toStdString()
-                 << std::endl;
-        // /opt/apps/$appid/files => mergedDir
-        hostConf << "set substitute-path " + appPrefix + " "
-            + options.appDir->absolutePath().toStdString()
-                 << std::endl;
-        hostConf << "set debug-file-directory " + debugFileDirectory << std::endl;
-        hostConf << "# target remote :1234";
-
-        // 支持在容器中命令行调试
-        auto *homeEnv = ::getenv("HOME");
-        auto hostHomeDir = std::filesystem::path(homeEnv);
-        gdbinit = this->workingDir.absoluteFilePath("linglong/gdbinit").toStdString();
-        std::ofstream f(gdbinit);
-        f << "set debug-file-directory " + debugFileDirectory;
-
-        applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-          .destination = hostHomeDir / ".gdbinit",
-          .options = { { "ro", "rbind" } },
-          .source = gdbinit,
-          .type = "bind",
-        });
+            auto *homeEnv = ::getenv("HOME");
+            auto hostHomeDir = std::filesystem::path(homeEnv);
+            applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+              .destination = hostHomeDir / ".gdbinit",
+              .options = { { "ro", "rbind" } },
+              .source = gdbinit,
+              .type = "bind",
+            });
+        }
+        // 挂载项目目录，便于gdb查看源码
         applicationMounts.push_back(ocppi::runtime::config::types::Mount{
           .destination = "/project",
-          .options = { { "rbind", "rw" } },
+          .options = { { "rbind", "ro" } },
           .source = this->workingDir.absolutePath().toStdString(),
           .type = "bind",
         });

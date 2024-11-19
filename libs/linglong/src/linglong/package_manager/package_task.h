@@ -121,7 +121,7 @@ Q_SIGNALS:
     void SubStateChanged(int newSubState);
     void PercentageChanged(double newPercentage);
     void MessageChanged(QString newMessage);
-    void PartChanged(QString percentage, QPrivateSignal);
+    void PartChanged(uint fetched, uint request);
 
 private:
     PackageTask();

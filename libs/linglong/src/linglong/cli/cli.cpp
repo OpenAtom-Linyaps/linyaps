@@ -1458,8 +1458,9 @@ Cli::listUpgradable(const std::string &type)
         }
 
         if (!reference) {
-            std::cerr << "Failed to find the package: " << fuzzy->id.toStdString()
-                      << ", maybe it is local package, skip it." << std::endl;
+            qDebug() << "Failed to find the package: "
+                     << QString::fromStdString(fuzzy->id.toStdString())
+                     << ", maybe it is local package, skip it.";
             continue;
         }
 

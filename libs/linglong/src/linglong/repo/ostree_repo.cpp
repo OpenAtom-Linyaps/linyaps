@@ -221,7 +221,7 @@ void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
             data->status = "Downloading files";
         }
     }
-
+    Q_EMIT data->taskContext->PartChanged(data->fetched, data->requested);
     new_progress = total > 0 ? 5 + ((total_transferred / total) * 92) : 97;
     new_progress += (data->outstanding_writes > 0 ? (3.0 / data->outstanding_writes) : 3.0);
 }

@@ -201,10 +201,9 @@ You can report bugs to the linyaps team under this project: https://github.com/O
       ->check(validatorString);
 
     // add builder build
-    bool buildOffline = false, buildFullDevelopModule = false, buildSkipFetchSource = false,
-         buildSkipPullDepend = false, buildSkipCheckOutput = false, buildSkipStripSymbols = false,
-         buildSkipCommitOutput = false, buildSkipRunContainer = false;
-    std::string filePath{ "./linglong.yaml" }, arch;
+    linglong::builder::BuilderBuildOptions options;
+    bool buildOffline = false;
+    std::string filePath{ "./linglong.yaml" }, archOpt;
     // group empty will hide command
     std::string hiddenGroup = "";
     std::vector<std::string> oldCommands;
@@ -215,7 +214,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
       ->type_name("FILE")
       ->capture_default_str()
       ->check(CLI::ExistingFile);
-    buildBuilder->add_option("--arch", arch, _("Set the build arch"))
+    buildBuilder->add_option("--arch", archOpt, _("Set the build arch"))
       ->type_name("ARCH")
       ->check(validatorString);
     buildBuilder->add_option(
@@ -233,18 +232,20 @@ You can report bugs to the linyaps team under this project: https://github.com/O
                              "--skip-pull-depend will be set"));
     buildBuilder
       ->add_flag("--full-develop-module",
-                 buildFullDevelopModule,
+                 options.fullDevelop,
                  _("Build full develop packages, runtime requires"))
       ->group(hiddenGroup);
-    buildBuilder->add_flag("--skip-fetch-source", buildSkipFetchSource, _("Skip fetch sources"));
-    buildBuilder->add_flag("--skip-pull-depend", buildSkipPullDepend, _("Skip pull dependency"));
-    buildBuilder->add_flag("--skip-run-container", buildSkipRunContainer, _("Skip run container"));
+    buildBuilder->add_flag("--skip-fetch-source", options.skipFetchSource, _("Skip fetch sources"));
+    buildBuilder->add_flag("--skip-pull-depend", options.skipPullDepend, _("Skip pull dependency"));
+    buildBuilder->add_flag("--skip-run-container",
+                           options.skipRunContainer,
+                           _("Skip run container"));
     buildBuilder->add_flag("--skip-commit-output",
-                           buildSkipCommitOutput,
+                           options.skipCommitOutput,
                            _("Skip commit build output"));
-    buildBuilder->add_flag("--skip-output-check", buildSkipCheckOutput, _("Skip output check"));
+    buildBuilder->add_flag("--skip-output-check", options.skipCheckOutput, _("Skip output check"));
     buildBuilder->add_flag("--skip-strip-symbols",
-                           buildSkipStripSymbols,
+                           options.skipStripSymbols,
                            _("Skip strip debug symbols"));
 
     // add builder run
@@ -475,7 +476,6 @@ You can report bugs to the linyaps team under this project: https://github.com/O
 
     auto *containerBuilder = new linglong::runtime::ContainerBuilder(**ociRuntime);
     containerBuilder->setParent(QCoreApplication::instance());
-    linglong::builder::BuilderBuildOptions options;
 
     if (buildBuilder->parsed()) {
         auto yamlFile = QString::fromStdString(filePath);
@@ -491,33 +491,34 @@ You can report bugs to the linyaps team under this project: https://github.com/O
                                            *containerBuilder,
                                            *builderCfg);
         builder.projectYamlFile = QDir().absoluteFilePath(yamlFile).toStdString();
-        if (!arch.empty()) {
-            auto buildArch = QString::fromStdString(arch);
-            auto arch = linglong::package::Architecture::parse(buildArch.toStdString());
+        auto cfg = builder.getConfig();
+
+        std::string buildArch;
+
+        if (cfg.arch.has_value() && !cfg.arch.value().empty()) {
+            buildArch = cfg.arch.value();
+        }
+
+        if (!archOpt.empty()) {
+            buildArch = archOpt;
+        }
+
+        if (!buildArch.empty()) {
+            auto arch = linglong::package::Architecture::parse(buildArch);
             if (!arch) {
                 qCritical() << arch.error();
                 return -1;
             }
-            auto cfg = builder.getConfig();
-            cfg.arch = arch->toString().toStdString();
-            builder.setConfig(cfg);
         }
-        options.skipFetchSource = buildSkipFetchSource;
-        options.skipPullDepend = buildSkipPullDepend;
-        options.skipCommitOutput = buildSkipCommitOutput;
-        options.skipCheckOutput = buildSkipCheckOutput;
-        options.skipStripSymbols = buildSkipStripSymbols;
-        options.fullDevelop = buildFullDevelopModule;
-        if (buildSkipRunContainer) {
+
+        if (options.skipRunContainer) {
             options.skipCommitOutput = true;
             options.skipRunContainer = true;
         }
-        if (buildOffline) {
-            auto cfg = builder.getConfig();
+
+        if (buildOffline || cfg.offline) {
             options.skipFetchSource = true;
             options.skipPullDepend = true;
-            cfg.offline = true;
-            builder.setConfig(cfg);
         }
 
         builder.setBuildOptions(options);
@@ -671,14 +672,12 @@ You can report bugs to the linyaps team under this project: https://github.com/O
             debug = true;
         }
 
-        if (buildOffline) {
-            auto cfg = builder.getConfig();
-            options.skipFetchSource = true;
+        auto cfg = builder.getConfig();
+        if (buildOffline || cfg.offline) {
             options.skipPullDepend = true;
-            cfg.offline = true;
-            builder.setConfig(cfg);
-            builder.setBuildOptions(options);
         }
+
+        builder.setBuildOptions(options);
 
         auto result = builder.run(modules, exec, debug);
         if (!result) {

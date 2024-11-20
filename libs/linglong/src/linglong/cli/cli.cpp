@@ -24,6 +24,7 @@
 #include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/serialize/json.h"
+#include "linglong/utils/xdg/directory.h"
 #include "ocppi/runtime/ExecOption.hpp"
 #include "ocppi/runtime/Signal.hpp"
 #include "ocppi/types/ContainerListItem.hpp"
@@ -323,6 +324,21 @@ int Cli::run()
     if (!info) {
         this->printer.printErr(info.error());
         return -1;
+    }
+
+    auto appDataDir = utils::xdg::appDataDir(info->id);
+    if (!appDataDir) {
+        this->printer.printErr(info.error());
+        return -1;
+    }
+
+    std::error_code ec;
+    auto permissionFile = std::filesystem::path{ *appDataDir } / "permissions.json";
+    if (!std::filesystem::exists(permissionFile, ec) && !ec) {
+        auto ret = RequestDirectories(*info);
+        if (!ret) {
+            qDebug() << ret.error().message();
+        }
     }
 
     std::optional<std::string> runtimeLayerRef;
@@ -1905,6 +1921,113 @@ utils::error::Result<void> Cli::runningAsRoot(const QList<QString> &args)
         free(arg);
     }
     return LINGLONG_ERR("execve error", ret);
+}
+
+utils::error::Result<void>
+Cli::RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept
+{
+    LINGLONG_TRACE("request directories");
+    auto userHome = qgetenv("HOME").toStdString();
+    if (userHome.empty()) {
+        return LINGLONG_ERR("HOME is not set, skip request directories");
+    }
+
+    QDir dialogPath = QDir{ LINGLONG_LIBEXEC_DIR }.filePath("dialog");
+    if (auto runtimeDir = qgetenv("LINGLONG_PERMISSION_DIALOG_DIR"); !runtimeDir.isEmpty()) {
+        dialogPath.setPath(runtimeDir);
+    }
+
+    auto appDataDir = utils::xdg::appDataDir(info.id);
+    if (!appDataDir) {
+        return LINGLONG_ERR(appDataDir);
+    }
+
+    auto requiredDirs = info.requiredDirectories.value_or(utils::xdg::userDirs());
+    if (requiredDirs.empty()) {
+        return LINGLONG_OK;
+    }
+
+    for (auto it = requiredDirs.begin(); it != requiredDirs.end();) {
+        if (it->rfind(userHome) != 0) {
+            qDebug() << "remove" << *it << "from requiredDirs, it is not in user home dir";
+            it = requiredDirs.erase(it);
+            continue;
+        }
+
+        *it = it->substr(userHome.size() + 1);
+        ++it;
+    }
+
+    auto availableDialog =
+      dialogPath.entryInfoList(QDir::Executable | QDir::Files | QDir::NoSymLinks, QDir::Name)
+        .first();
+    auto data = nlohmann::json(api::types::v1::RequiredPermissions{ .appID = info.id,
+                                                                    .directories = requiredDirs })
+                  .dump();
+    QProcess dialogProc;
+    dialogProc.setProgram(availableDialog.absoluteFilePath());
+    dialogProc.start();
+    if (!dialogProc.waitForStarted(1000)) {
+        return LINGLONG_ERR("failed to run dialog" + availableDialog.absoluteFilePath() + ":"
+                            + dialogProc.errorString()
+                            + "stderr:" + dialogProc.readAllStandardError());
+    }
+
+    dialogProc.write("CALLER SPECVERSION 1\n");
+    if (!dialogProc.waitForReadyRead(1000)) {
+        return LINGLONG_ERR("wait for reading from dialog " + availableDialog.absoluteFilePath()
+                            + "failed:" + dialogProc.errorString());
+    }
+
+    QByteArray reply;
+    if (dialogProc.state() != QProcess::Running) {
+        reply = dialogProc.readAllStandardError();
+    } else {
+        reply = dialogProc.readAllStandardOutput();
+    }
+
+    if (reply != "READY\n") {
+        dialogProc.kill();
+        return LINGLONG_ERR("error reply from dialog:" + reply);
+    }
+
+    dialogProc.write(QByteArray::fromStdString(data));
+    dialogProc.closeWriteChannel();
+    if (!dialogProc.waitForReadyRead(16 * 1000)) {
+        dialogProc.kill();
+        return LINGLONG_ERR("dialog not send any reply");
+    }
+
+    reply = dialogProc.readAllStandardOutput();
+    bool allowRequired{ false };
+    if (reply == "ALLOW\n") {
+        allowRequired = true;
+    } else if (reply == "DENY\n") {
+        allowRequired = false;
+    } else {
+        return LINGLONG_ERR("error reply from dialog" + reply);
+    }
+
+    api::types::v1::ApplicationAccessPrivileges privs;
+    if (allowRequired) {
+        privs.userDirectories = api::types::v1::UserDirectories{ .allowed = requiredDirs };
+    } else {
+        privs.userDirectories = api::types::v1::UserDirectories{ .disallowed = requiredDirs };
+    }
+    auto content = QByteArray::fromStdString(nlohmann::json(privs).dump());
+
+    auto absolutePath = QDir{ appDataDir->c_str() }.absoluteFilePath("permissions.json");
+    QFile permissionFile{ absolutePath };
+    if (!permissionFile.open(QIODevice::WriteOnly | QIODevice::NewOnly | QIODevice::Text)) {
+        return LINGLONG_ERR(permissionFile);
+    }
+
+    if (permissionFile.write(content) != content.size()) {
+        qWarning() << "incomplete write" << absolutePath;
+    }
+
+    dialogProc.waitForFinished(3000);
+    return LINGLONG_OK;
 }
 
 } // namespace linglong::cli

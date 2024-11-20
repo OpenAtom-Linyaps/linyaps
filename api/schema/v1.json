@@ -547,6 +547,13 @@
         "base"
       ],
       "properties": {
+        "requiredDirectories": {
+          "type": "array",
+          "description": "directories which required by app",
+          "items": {
+            "type": "string"
+          }
+        },
         "uuid": {
           "type": "string",
           "description": "this property is only used for app which instead from UAB and it should be null in other conditions."
@@ -689,6 +696,24 @@
         "description": {
           "type": "string",
           "description": "description of package info"
+        }
+      }
+    },
+    "RequiredPermissions": {
+      "type": "object",
+      "required": [
+        "appID",
+        "directories"
+      ],
+      "properties": {
+        "appID": {
+          "type": "string"
+        },
+        "directories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -1123,6 +1148,9 @@
     },
     "PackageInfo": {
       "$ref": "#/$defs/PackageInfo"
+    },
+    "RequiredPermissions": {
+      "$ref": "#/$defs/RequiredPermissions"
     },
     "CommonOptions": {
       "$ref": "#/$defs/CommonOptions"

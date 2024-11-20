@@ -283,29 +283,35 @@ int main() // NOLINT
 
     auto privileges = linglong::api::types::v1::ApplicationAccessPrivileges{};
     auto config = privateAppDir / "permissions.json";
-    if (std::filesystem::exists(config, ec)) {
-        auto input = std::ifstream(config);
-        if (!input.is_open()) {
-            std::cerr << "couldn't open config file " << config.c_str() << std::endl;
+    if (!std::filesystem::exists(config, ec)) {
+        if (ec) {
+            std::cerr << "failed to get status of " << config.c_str() << ": " << ec.message()
+                      << std::endl;
             return -1;
         }
 
-        try {
-            auto content = nlohmann::json::parse(input);
-            privileges = content.get<linglong::api::types::v1::ApplicationAccessPrivileges>();
-        } catch (nlohmann::json::parse_error &e) {
-            std::cerr << "deserialize error:" << e.what() << std::endl;
-            return -1;
-        } catch (std::exception &e) {
-            std::cerr << "unknown exception:" << e.what() << std::endl;
-            return -1;
-        }
+        // no permission config, do nothing
+        std::cout << content.dump() << std::endl;
+        return 0;
     }
-    if (ec) {
-        std::cerr << "failed to get status of " << config.c_str() << ": " << ec.message()
-                  << std::endl;
+
+    auto input = std::ifstream(config);
+    if (!input.is_open()) {
+        std::cerr << "couldn't open config file " << config.c_str() << std::endl;
         return -1;
     }
+
+    try {
+        auto content = nlohmann::json::parse(input);
+        privileges = content.get<linglong::api::types::v1::ApplicationAccessPrivileges>();
+    } catch (nlohmann::json::parse_error &e) {
+        std::cerr << "deserialize error:" << e.what() << std::endl;
+        return -1;
+    } catch (std::exception &e) {
+        std::cerr << "unknown exception:" << e.what() << std::endl;
+        return -1;
+    }
+
     auto directories =
       privileges.userDirectories.value_or(linglong::api::types::v1::UserDirectories{});
 

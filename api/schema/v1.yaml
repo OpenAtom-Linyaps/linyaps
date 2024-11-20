@@ -443,6 +443,11 @@ $defs:
       - size
       - base
     properties:
+      requiredDirectories:
+        type: array
+        description: directories which required by app
+        items:
+          type: string
       uuid:
         type: string
         description: this property is only used for app which instead from UAB
@@ -551,6 +556,18 @@ $defs:
       description:
         type: string
         description: description of package info
+  RequiredPermissions:
+    type: object
+    required:
+      - appID
+      - directories
+    properties:
+      appID:
+        type: string
+      directories:
+        type: array
+        items:
+          type: string
   CommonOptions:
     title: CommonOptions
     description: this is common option for Install and InstallFromFile

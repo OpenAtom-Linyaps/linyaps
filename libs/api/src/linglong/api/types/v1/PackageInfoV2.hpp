@@ -75,6 +75,10 @@ std::string packageInfoV2Module;
 std::string name;
 std::optional<ApplicationConfigurationPermissions> permissions;
 /**
+* directories which required by app
+*/
+std::optional<std::vector<std::string>> requiredDirectories;
+/**
 * runtime of package info
 */
 std::optional<std::string> runtime;

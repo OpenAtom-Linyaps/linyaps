@@ -45,6 +45,7 @@
 #include "linglong/api/types/v1/PackageManager1UpdateParameters.hpp"
 #include "linglong/api/types/v1/RepoConfig.hpp"
 #include "linglong/api/types/v1/RepositoryCache.hpp"
+#include "linglong/api/types/v1/RequiredPermissions.hpp"
 #include "linglong/api/types/v1/UabMetaInfo.hpp"
 #include "linglong/api/types/v1/UpgradeListResult.hpp"
 
@@ -107,6 +108,7 @@ std::optional<PackageManager1UninstallParameters> packageManager1UninstallParame
 std::optional<PackageManager1UpdateParameters> packageManager1UpdateParameters;
 std::optional<RepoConfig> repoConfig;
 std::optional<RepositoryCache> repositoryCache;
+std::optional<RequiredPermissions> requiredPermissions;
 std::optional<State> state;
 std::optional<SubState> subState;
 std::optional<UabMetaInfo> uabMetaInfo;

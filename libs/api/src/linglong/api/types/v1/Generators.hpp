@@ -25,6 +25,7 @@
 #include "linglong/api/types/v1/UabLayer.hpp"
 #include "linglong/api/types/v1/SubState.hpp"
 #include "linglong/api/types/v1/State.hpp"
+#include "linglong/api/types/v1/RequiredPermissions.hpp"
 #include "linglong/api/types/v1/RepositoryCache.hpp"
 #include "linglong/api/types/v1/RepositoryCacheMergedItem.hpp"
 #include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
@@ -178,6 +179,9 @@ void to_json(json & j, const RepositoryCacheMergedItem & x);
 
 void from_json(const json & j, RepositoryCache & x);
 void to_json(json & j, const RepositoryCache & x);
+
+void from_json(const json & j, RequiredPermissions & x);
+void to_json(json & j, const RequiredPermissions & x);
 
 void from_json(const json & j, UabLayer & x);
 void to_json(json & j, const UabLayer & x);
@@ -580,6 +584,7 @@ x.kind = j.at("kind").get<std::string>();
 x.packageInfoV2Module = j.at("module").get<std::string>();
 x.name = j.at("name").get<std::string>();
 x.permissions = get_stack_optional<ApplicationConfigurationPermissions>(j, "permissions");
+x.requiredDirectories = get_stack_optional<std::vector<std::string>>(j, "requiredDirectories");
 x.runtime = get_stack_optional<std::string>(j, "runtime");
 x.schemaVersion = j.at("schema_version").get<std::string>();
 x.size = j.at("size").get<int64_t>();
@@ -607,6 +612,9 @@ j["module"] = x.packageInfoV2Module;
 j["name"] = x.name;
 if (x.permissions) {
 j["permissions"] = x.permissions;
+}
+if (x.requiredDirectories) {
+j["requiredDirectories"] = x.requiredDirectories;
 }
 if (x.runtime) {
 j["runtime"] = x.runtime;
@@ -847,6 +855,17 @@ j["merged"] = x.merged;
 j["version"] = x.version;
 }
 
+inline void from_json(const json & j, RequiredPermissions& x) {
+x.appID = j.at("appID").get<std::string>();
+x.directories = j.at("directories").get<std::vector<std::string>>();
+}
+
+inline void to_json(json & j, const RequiredPermissions & x) {
+j = json::object();
+j["appID"] = x.appID;
+j["directories"] = x.directories;
+}
+
 inline void from_json(const json & j, UabLayer& x) {
 x.info = j.at("info").get<PackageInfoV2>();
 x.minified = j.at("minified").get<bool>();
@@ -933,6 +952,7 @@ x.packageManager1UninstallParameters = get_stack_optional<PackageManager1Uninsta
 x.packageManager1UpdateParameters = get_stack_optional<PackageManager1UpdateParameters>(j, "PackageManager1UpdateParameters");
 x.repoConfig = get_stack_optional<RepoConfig>(j, "RepoConfig");
 x.repositoryCache = get_stack_optional<RepositoryCache>(j, "RepositoryCache");
+x.requiredPermissions = get_stack_optional<RequiredPermissions>(j, "RequiredPermissions");
 x.state = get_stack_optional<State>(j, "State");
 x.subState = get_stack_optional<SubState>(j, "SubState");
 x.uabMetaInfo = get_stack_optional<UabMetaInfo>(j, "UABMetaInfo");
@@ -1033,6 +1053,9 @@ j["RepoConfig"] = x.repoConfig;
 }
 if (x.repositoryCache) {
 j["RepositoryCache"] = x.repositoryCache;
+}
+if (x.requiredPermissions) {
+j["RequiredPermissions"] = x.requiredPermissions;
 }
 if (x.state) {
 j["State"] = x.state;

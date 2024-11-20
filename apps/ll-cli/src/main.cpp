@@ -342,6 +342,9 @@ ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
     cliInstall->add_flag("-y", options.confirmOpt, _("Automatically answer yes to all questions"));
 
     // add sub command uninstall
+    // These two options are used when uninstalling apps in the app Store and need to be retained
+    // but hidden.
+    bool pruneOpt = false, allOpt = false;
     auto cliUninstall =
       commandParser.add_subcommand("uninstall", _("Uninstall the application or runtimes"))
         ->group(CliBuildInGroup);
@@ -352,6 +355,8 @@ ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
     cliUninstall->add_option("--module", options.module, _("Uninstall a specify module"))
       ->type_name("MODULE")
       ->check(validatorString);
+    cliUninstall->add_flag("--prune", pruneOpt, "Remove all unused modules")->group(CliHiddenGroup);
+    cliUninstall->add_flag("--all", allOpt, "Uninstall all modules")->group(CliHiddenGroup);
 
     // add sub command upgrade
     auto cliUpgrade =

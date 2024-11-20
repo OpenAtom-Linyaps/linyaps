@@ -75,6 +75,8 @@ public:
     void setCliOptions(const CliOptions &options) noexcept { this->options = options; }
 
 private:
+    [[nodiscard]] static utils::error::Result<void>
+    RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept;
     [[nodiscard]] std::vector<std::string>
     filePathMapping(const std::vector<std::string> &command) const noexcept;
     static std::filesystem::path mappingFile(const std::filesystem::path &file) noexcept;

@@ -27,6 +27,7 @@ pfl_add_library(
   src/linglong/utils/error/error.h
   src/linglong/utils/finally/finally.cpp
   src/linglong/utils/finally/finally.h
+  src/linglong/utils/gettext.h
   src/linglong/utils/global/initialize.cpp
   src/linglong/utils/global/initialize.h
   src/linglong/utils/packageinfo_handler.cpp
@@ -40,7 +41,7 @@ pfl_add_library(
   src/linglong/utils/transaction.h
   src/linglong/utils/xdg/desktop_entry.cpp
   src/linglong/utils/xdg/desktop_entry.h
-  src/linglong/utils/gettext.h
+  src/linglong/utils/xdg/directory.h
   COMPILE_FEATURES
   PUBLIC
   cxx_std_17

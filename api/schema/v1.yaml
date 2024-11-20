@@ -33,30 +33,28 @@ $defs:
         description: version of configuration file
       permissions:
         $ref: '#/$defs/ApplicationConfigurationPermissions'
-  ApplicationAccessPrivileges:
-    description: |
-      Privileges that application access to some directories
-      which in user's home directory.
-      directory should be relative path of home directory,
-      e.g. [ "Desktop", "Downloads/browser" ]
-    type: object
-    properties:
-      userDirectories:
-        type: object
-        properties:
-          allowed:
-            type: array
-            items:
-              type: string
-          disallowed:
-            type: array
-            items:
-              type: string
+  XDGDirectoryPermissions:
+    title: XDGDirectoryPermissions
+    type: array
+    items:
+      type: object
+      required:
+        - allowed
+        - dirType
+      properties:
+        allowed:
+          type: boolean
+          description: whether the xdg dir is allowed
+        dirType:
+          type: string
+          description: type of xdg dir, could be one of [Desktop, Downloads, Documents, Music, Pictures, Videos]
   ApplicationConfigurationPermissions:
     title: ApplicationConfigurationPermissions
     description: application configuration permissions
     type: object
     properties:
+      xdgDirectories:
+        $ref: '#/$defs/XDGDirectoryPermissions'
       binds:
         type: array
         items:
@@ -551,6 +549,16 @@ $defs:
       description:
         type: string
         description: description of package info
+  ApplicationPermissionsRequest:
+    type: object
+    required:
+      - appID
+      - xdgDirectories
+    properties:
+      appID:
+        type: string
+      xdgDirectories:
+        $ref: '#/$defs/XDGDirectoryPermissions'
   CommonOptions:
     title: CommonOptions
     description: this is common option for Install and InstallFromFile
@@ -826,6 +834,39 @@ $defs:
         type: string
       new_version:
         description: version of latest version in remote repo.
+        type: string
+  DialogMessage:
+    description: |
+      For interactive with frontend dialog. All message exchange between dialog and
+      caller should use stdin and stdout. The first four bytes indicate the length
+      of the message. The rest of the payload is the actual payload.
+    type: object
+    required:
+      - type
+      - payload
+    properties:
+      type:
+        description: type of dialog message, possible values are ['Handshake', 'Request']
+        type: string
+      payload:
+        description: payload of dialog message, the real payload depends on type
+        type: string
+  DialogHandShakePayload:
+    type: object
+    required:
+      - version
+    properties:
+      version:
+        description: |
+          Minimum protocol version supported by the client.
+          Current version is 1.0.
+          1.0 behavior: dialog MUST report self minimal protocol version at program start.
+              if client not reported protocol version, caller SHOULD kill dialog after timeout.
+              then, caller will send a directory permission request to dialog. if timeout,
+              client SHOULD exit immediately. after that, caller will wait for dialog exit
+              and use dialog exit code to know user allow the request or not. dialog MUST exit
+              with 0, any other value means user reject the request or dialog internal error and
+              dialog could output any message to stderr.
         type: string
 type: object
 properties:

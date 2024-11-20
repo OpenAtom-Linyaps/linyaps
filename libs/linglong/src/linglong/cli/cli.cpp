@@ -270,6 +270,12 @@ Cli::Cli(Printer &printer,
 int Cli::run()
 {
     LINGLONG_TRACE("command run");
+    // NOTE: ll-box is not support running as root for now.
+    if (getuid() == 0) {
+        qInfo() << "'ll-cli run' currently does not support running as root.";
+        return -1;
+    }
+
     auto userContainerDir = std::filesystem::path{ "/run/linglong" } / std::to_string(::getuid());
     auto mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
     auto pidFile = userContainerDir / std::to_string(::getpid());

@@ -18,6 +18,7 @@ configure_files(
   libexec/linglong/builder/helper/ldd-check.sh
   libexec/linglong/builder/helper/main-check.sh
   libexec/linglong/builder/helper/symbols-strip.sh
+  libexec/linglong/dialog/99-linglong-permission
   libexec/linglong/fetch-archive-source
   libexec/linglong/fetch-dsc-source
   libexec/linglong/fetch-file-source
@@ -67,6 +68,12 @@ install(
            ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/fetch-file-source
            ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/fetch-git-source
   DESTINATION ${LIBEXEC_LINGLONG_DIR})
+
+set(LINGLONG_DIALOG_DIR ${LIBEXEC_LINGLONG_DIR}/dialog)
+install(
+  PROGRAMS
+    ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/dialog/99-linglong-permission
+  DESTINATION ${LINGLONG_DIALOG_DIR})
 
 # builder helpers
 set(LIBEXEC_LINGLONG_BUILDER_DIR ${LIBEXEC_LINGLONG_DIR}/builder/helper)

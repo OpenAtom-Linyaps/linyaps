@@ -23,7 +23,9 @@
 #include "linglong/runtime/container_builder.h"
 #include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/finally/finally.h"
 #include "linglong/utils/serialize/json.h"
+#include "linglong/utils/xdg/directory.h"
 #include "ocppi/runtime/ExecOption.hpp"
 #include "ocppi/runtime/Signal.hpp"
 #include "ocppi/types/ContainerListItem.hpp"
@@ -37,8 +39,10 @@
 #include <filesystem>
 #include <iostream>
 #include <system_error>
+#include <thread>
 
 #include <fcntl.h>
+#include <sys/mman.h>
 
 using namespace linglong::utils::error;
 
@@ -323,6 +327,17 @@ int Cli::run()
     if (!info) {
         this->printer.printErr(info.error());
         return -1;
+    }
+
+    auto appDataDir = utils::xdg::appDataDir(info->id);
+    if (!appDataDir) {
+        this->printer.printErr(info.error());
+        return -1;
+    }
+
+    auto ret = RequestDirectories(*info);
+    if (!ret) {
+        qWarning() << ret.error().message();
     }
 
     std::optional<std::string> runtimeLayerRef;
@@ -1893,4 +1908,191 @@ QDBusReply<QString> Cli::authorization()
                                   this->pkgMan.connection());
     return dbusIntrospect.call("Permissions");
 }
+
+utils::error::Result<void>
+Cli::RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept
+{
+    LINGLONG_TRACE("request directories");
+
+    auto userHome = qgetenv("HOME").toStdString();
+    if (userHome.empty()) {
+        return LINGLONG_ERR("HOME is not set, skip request directories");
+    }
+
+    QDir dialogPath = QDir{ LINGLONG_LIBEXEC_DIR }.filePath("dialog");
+    if (auto runtimeDir = qgetenv("LINGLONG_PERMISSION_DIALOG_DIR"); !runtimeDir.isEmpty()) {
+        dialogPath.setPath(runtimeDir);
+    }
+
+    auto appDataDir = utils::xdg::appDataDir(info.id);
+    if (!appDataDir) {
+        return LINGLONG_ERR(appDataDir);
+    }
+
+    // make sure app data dir exists
+    auto dir = QDir{ appDataDir->c_str() };
+    if (!dir.mkpath(".")) {
+        return LINGLONG_ERR(QString("make app data directory failed %1").arg(appDataDir->c_str()));
+    }
+
+    auto permissions = QDir{ appDataDir->c_str() }.absoluteFilePath("permissions.json");
+    if (QFileInfo::exists(permissions)) {
+        return LINGLONG_OK;
+    }
+
+    auto fd = ::shm_open(info.id.c_str(), O_RDWR | O_CREAT, 0600);
+    if (fd < 0) {
+        return LINGLONG_ERR(QString{ "shm_open error:" } + ::strerror(errno));
+    }
+    auto closeFd = utils::finally::finally([fd] {
+        ::close(fd);
+    });
+
+    struct flock lock
+    {
+        .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0,
+    };
+
+    // all later processes should be blocked
+    bool anotherRunning{ false };
+    while (true) {
+        using namespace std::chrono_literals;
+        auto ret = ::fcntl(fd, F_SETLK, &lock);
+        if (ret == -1) {
+            if (errno == EACCES || errno == EAGAIN || errno == EINTR) {
+                anotherRunning = true;
+                std::this_thread::sleep_for(1s);
+                continue;
+            }
+
+            return LINGLONG_ERR(QString{ "fcntl lock error: " } + ::strerror(errno));
+        }
+
+        if (!anotherRunning) {
+            break;
+        }
+
+        lock.l_type = F_UNLCK;
+        ret = ::fcntl(fd, F_SETLK, &lock);
+        if (ret == -1) {
+            return LINGLONG_ERR(QString{ "fcntl unlock error: " } + ::strerror(errno));
+        }
+
+        return LINGLONG_OK;
+    }
+
+    // unlink by creator
+    auto releaseResource = utils::finally::finally([&info, &lock, fd] {
+        lock.l_type = F_UNLCK;
+        if (::fcntl(fd, F_SETLK, &lock) == -1) {
+            qDebug() << "failed to unlock mem file:" << ::strerror(errno);
+        }
+
+        if (::shm_unlink(info.id.c_str()) == -1) {
+            qDebug() << "shm_unlink error:" << ::strerror(errno);
+        }
+    });
+
+    std::vector<api::types::v1::XdgDirectoryPermission> requiredDirs = {
+        { .allowed = true, .dirType = "Desktop" },   { .allowed = true, .dirType = "Documents" },
+        { .allowed = true, .dirType = "Downloads" }, { .allowed = true, .dirType = "Music" },
+        { .allowed = true, .dirType = "Pictures" },  { .allowed = true, .dirType = "Videos" }
+    };
+    if (info.permissions && info.permissions->xdgDirectories) {
+        requiredDirs = info.permissions->xdgDirectories.value();
+    }
+
+    if (requiredDirs.empty()) {
+        qDebug() << "no required directories.";
+        return LINGLONG_OK;
+    }
+
+    auto availableDialogs =
+      dialogPath.entryInfoList(QDir::Executable | QDir::Files | QDir::NoSymLinks, QDir::Name);
+    if (availableDialogs.empty()) {
+        return LINGLONG_ERR("no available dialog");
+    }
+
+    auto dialogBin = availableDialogs.first().absoluteFilePath();
+    QProcess dialogProc;
+    dialogProc.setProgram(dialogBin);
+    dialogProc.start();
+    if (!dialogProc.waitForReadyRead(1000)) {
+        dialogProc.kill();
+        return LINGLONG_ERR("wait for reading from dialog " + dialogBin
+                            + "failed:" + dialogProc.errorString());
+    }
+
+    auto rawData = dialogProc.read(4);
+    auto *len = reinterpret_cast<uint32_t *>(rawData.data());
+    rawData = dialogProc.read(*len);
+    auto version = utils::serialize::LoadJSON<api::types::v1::DialogMessage>(rawData);
+    if (!version) {
+        dialogProc.kill();
+        return LINGLONG_ERR("error reply from dialog:" + version.error().message());
+    }
+
+    if (version->type != "Handshake") {
+        dialogProc.kill();
+        return LINGLONG_ERR("dialog message type is not Handshake");
+    }
+
+    auto handshake =
+      utils::serialize::LoadJSON<api::types::v1::DialogHandShakePayload>(version->payload);
+    if (!handshake) {
+        dialogProc.kill();
+        return LINGLONG_ERR(" handshake message error:" + handshake.error().message());
+    }
+
+    if (handshake->version != "1.0") {
+        dialogProc.kill();
+        return LINGLONG_ERR(
+          QString{ "incompatible version of dialog message protocol : required 1.0, actual " }
+          + handshake->version.c_str());
+    }
+
+    auto request = api::types::v1::ApplicationPermissionsRequest{ .appID = info.id,
+                                                                  .xdgDirectories = requiredDirs };
+    api::types::v1::DialogMessage msg{ .payload = nlohmann::json(request).dump(),
+                                       .type = "Request" };
+    auto data = nlohmann::json(msg).dump();
+    uint32_t size = data.size();
+    rawData = QByteArray{ reinterpret_cast<char *>(&size), 4 };
+    rawData.append(data.c_str());
+
+    dialogProc.write(rawData);
+    dialogProc.closeWriteChannel();
+    if (!dialogProc.waitForFinished(16 * 1000)) {
+        qWarning() << dialogProc.readAllStandardError();
+        dialogProc.kill();
+        return LINGLONG_ERR("dialog timeout");
+    }
+
+    bool allowRequired{ true };
+    if (dialogProc.exitCode() != 0) {
+        qDebug() << "dialog exited with code" << dialogProc.exitCode() << ":"
+                 << dialogProc.readAllStandardError();
+        allowRequired = false;
+    }
+
+    std::for_each(requiredDirs.begin(),
+                  requiredDirs.end(),
+                  [allowRequired](api::types::v1::XdgDirectoryPermission &dir) {
+                      dir.allowed = allowRequired;
+                  });
+    api::types::v1::ApplicationConfigurationPermissions privs{ .xdgDirectories = requiredDirs };
+    auto content = QByteArray::fromStdString(nlohmann::json(privs).dump());
+
+    QFile permissionFile{ permissions };
+    if (!permissionFile.open(QIODevice::WriteOnly | QIODevice::NewOnly | QIODevice::Text)) {
+        return LINGLONG_ERR(permissionFile);
+    }
+
+    if (permissionFile.write(content) != content.size()) {
+        qWarning() << "incomplete write to" << permissions << ":" << permissionFile.errorString();
+    }
+
+    return LINGLONG_OK;
+}
+
 } // namespace linglong::cli

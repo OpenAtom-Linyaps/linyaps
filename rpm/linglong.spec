@@ -94,6 +94,8 @@ cd build
 %{_libexecdir}/%{name}/40-host-ipc-static
 %{_libexecdir}/%{name}/90-legacy-static
 %{_libexecdir}/%{name}/ll-session-helper
+%{_libexecdir}/%{name}/ll-dialog
+%{_libexecdir}/%{name}/dialog/99-linglong-permission
 %{_datadir}/bash-completion/completions/ll-cli
 %{_datadir}/dbus-1/system-services/*.service
 %{_datadir}/dbus-1/system.d/*.conf

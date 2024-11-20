@@ -80,6 +80,7 @@ pfl_add_library(
   cxx_std_17
   LINK_LIBRARIES
   PUBLIC
+  rt # for shm_open and shm_unlink
   pthread
   linglong::dbus-api
   linglong::utils

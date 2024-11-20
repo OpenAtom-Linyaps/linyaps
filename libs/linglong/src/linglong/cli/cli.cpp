@@ -849,7 +849,18 @@ int Cli::install()
                                   this->pkgMan.connection());
     QDBusReply<QString> authReply = dbusIntrospect.call("Introspect");
     if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
-        auto ret = this->runningAsRoot();
+        auto args = QCoreApplication::instance()->arguments();
+        // pkexec在0.120版本之前没有keep-cwd选项，会将目录切换到/root
+        // 所以将layer或uab文件的相对路径转为绝对路径，再传给pkexec
+        if (std::filesystem::exists(options.appid)) {
+            auto path = std::filesystem::absolute(options.appid);
+            for (auto i = 0; i < args.length(); i++) {
+                if (args[i] == options.appid.c_str()) {
+                    args[i] = path.c_str();
+                }
+            }
+        }
+        auto ret = this->runningAsRoot(args);
         if (!ret) {
             this->printer.printErr(ret.error());
         }
@@ -1827,11 +1838,16 @@ void Cli::filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> 
 
 utils::error::Result<void> Cli::runningAsRoot()
 {
+    return runningAsRoot(QCoreApplication::instance()->arguments());
+}
+
+utils::error::Result<void> Cli::runningAsRoot(const QList<QString> &args)
+{
     LINGLONG_TRACE("run with pkexec");
 
     const char *pkexecBin = "pkexec";
-    QStringList argv{ pkexecBin, "--keep-cwd" };
-    argv.append(QCoreApplication::instance()->arguments());
+    QStringList argv{ pkexecBin };
+    argv.append(args);
     qDebug() << "run with pkexec:" << argv;
     std::vector<char *> targetArgv;
     for (const auto &arg : argv) {

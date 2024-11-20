@@ -85,6 +85,7 @@ private:
     int installFromFile(const QFileInfo &fileInfo, const api::types::v1::CommonOptions &options);
     int setRepoConfig(const QVariantMap &config);
     utils::error::Result<void> runningAsRoot();
+    utils::error::Result<void> runningAsRoot(const QList<QString> &args);
     utils::error::Result<std::vector<api::types::v1::UpgradeListResult>>
     listUpgradable(const std::vector<api::types::v1::PackageInfoV2> &pkgs);
     utils::error::Result<std::vector<api::types::v1::UpgradeListResult>>

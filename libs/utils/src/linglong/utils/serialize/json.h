@@ -49,7 +49,11 @@ error::Result<T> LoadJSON(const Source &content) noexcept
         auto json = nlohmann::json::parse(content);
         return json.template get<T>();
     } catch (const std::exception &e) {
-        return LINGLONG_ERR(content, e);
+        if constexpr (std::is_same_v<Source, std::string>) {
+            return LINGLONG_ERR(QString::fromStdString(content), e);
+        } else {
+            return LINGLONG_ERR(content, e);
+        }
     }
 }
 
@@ -62,19 +66,6 @@ error::Result<T> LoadJSON(const nlohmann::json &content) noexcept
         return content.template get<T>();
     } catch (const std::exception &e) {
         return LINGLONG_ERR(QString::fromStdString(content.dump()), e);
-    }
-}
-
-template<typename T, typename Source>
-error::Result<T> LoadJSON(Source &content) noexcept
-{
-    LINGLONG_TRACE("load json");
-
-    try {
-        auto json = nlohmann::json::parse(content);
-        return json.template get<T>();
-    } catch (const std::exception &e) {
-        return LINGLONG_ERR(content, e);
     }
 }
 

@@ -9,7 +9,7 @@
 //
 //  Then include this file, and then do
 //
-//     UserDirectories.hpp data = nlohmann::json::parse(jsonString);
+//     ApplicationPermissionsRequest.hpp data = nlohmann::json::parse(jsonString);
 
 #pragma once
 
@@ -17,15 +17,17 @@
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
+#include "linglong/api/types/v1/XdgDirectoryPermission.hpp"
+
 namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
 using nlohmann::json;
 
-struct UserDirectories {
-std::optional<std::vector<std::string>> allowed;
-std::optional<std::vector<std::string>> disallowed;
+struct ApplicationPermissionsRequest {
+std::string appID;
+std::vector<XdgDirectoryPermission> xdgDirectories;
 };
 }
 }

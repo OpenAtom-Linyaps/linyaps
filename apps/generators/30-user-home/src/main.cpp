@@ -2,7 +2,6 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-#include "linglong/api/types/v1/ApplicationAccessPrivileges.hpp"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "nlohmann/json.hpp"
 
@@ -11,10 +10,15 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <unordered_set>
 
 #include <pwd.h>
 #include <unistd.h>
+
+// TODO: resolve xdg-user-dir config
+std::string resolveXDGDir(const std::string &dirType)
+{
+    return dirType;
+}
 
 int main() // NOLINT
 {
@@ -276,140 +280,70 @@ int main() // NOLINT
     }
 
     // hide self data
-    auto linglongDataDir = hostHomeDir / ".linglong";
-    if (!mountDir(linglongDataDir / "data", cognitiveHomeDir / ".linglong")) {
+    auto linglongMaskDataDir = hostHomeDir / ".linglong" / "data";
+    if (!mountDir(linglongMaskDataDir, cognitiveHomeDir / ".linglong")) {
         return -1;
     }
 
-    auto privileges = linglong::api::types::v1::ApplicationAccessPrivileges{};
+    auto permissions = linglong::api::types::v1::ApplicationConfigurationPermissions{};
     auto config = privateAppDir / "permissions.json";
-    if (std::filesystem::exists(config, ec)) {
-        auto input = std::ifstream(config);
-        if (!input.is_open()) {
-            std::cerr << "couldn't open config file " << config.c_str() << std::endl;
+    if (!std::filesystem::exists(config, ec)) {
+        if (ec) {
+            std::cerr << "failed to get status of " << config.c_str() << ": " << ec.message()
+                      << std::endl;
             return -1;
         }
 
-        try {
-            auto content = nlohmann::json::parse(input);
-            privileges = content.get<linglong::api::types::v1::ApplicationAccessPrivileges>();
-        } catch (nlohmann::json::parse_error &e) {
-            std::cerr << "deserialize error:" << e.what() << std::endl;
-            return -1;
-        } catch (std::exception &e) {
-            std::cerr << "unknown exception:" << e.what() << std::endl;
-            return -1;
-        }
+        // no permission config, do nothing
+        std::cout << content.dump() << std::endl;
+        return 0;
     }
-    if (ec) {
-        std::cerr << "failed to get status of " << config.c_str() << ": " << ec.message()
-                  << std::endl;
+
+    auto input = std::ifstream(config);
+    if (!input.is_open()) {
+        std::cerr << "couldn't open config file " << config.c_str() << std::endl;
         return -1;
     }
-    auto directories =
-      privileges.userDirectories.value_or(linglong::api::types::v1::UserDirectories{});
+
+    try {
+        auto content = nlohmann::json::parse(input);
+        permissions = content.get<linglong::api::types::v1::ApplicationConfigurationPermissions>();
+    } catch (nlohmann::json::parse_error &e) {
+        std::cerr << "deserialize error:" << e.what() << std::endl;
+        return -1;
+    } catch (std::exception &e) {
+        std::cerr << "unknown exception:" << e.what() << std::endl;
+        return -1;
+    }
+
+    auto directories = permissions.xdgDirectories.value_or(
+      std::vector<linglong::api::types::v1::XdgDirectoryPermission>{});
 
     // FIXME: we should resolve real home through env GNUPGHOME
     // FIXME: we should resolve user dirs through ${XDG_CONFIG_HOME}/user-dirs.dirs
-
-    // process blocklist
-    static const std::unordered_set<std::string_view> blackList = { ".gnupg", ".ssh" };
-    auto disallowedDirs = directories.disallowed.value_or(std::vector<std::string>{});
-    disallowedDirs.insert(disallowedDirs.end(), blackList.begin(), blackList.end());
-    std::sort(disallowedDirs.begin(), disallowedDirs.end());
-    auto dupIt = std::unique(disallowedDirs.begin(), disallowedDirs.end());
-    disallowedDirs.erase(dupIt, disallowedDirs.end());
-
-    for (const std::filesystem::path relative : disallowedDirs) {
-        if (relative.empty() || relative.is_absolute()) {
-            std::cerr << "invalid path:" << relative << std::endl;
-            return -1;
-        }
-
-        if (auto hostLocation = hostHomeDir / relative;
-            !std::filesystem::exists(hostLocation, ec)) {
-            if (ec) {
-                std::cerr << "failed to get state of " << hostLocation << ": " << ec.message()
-                          << std::endl;
-                return -1;
-            }
-
-            continue;
-        }
-
-        // we don't need to concern about source is symlink
-        if (!mountDir(privateAppDir / relative, cognitiveHomeDir / relative)) {
-            return -1;
+    std::vector<std::string> blacklist = { ".gnupg", ".ssh" };
+    for (const auto &[allowed, dirType] : directories) {
+        if (!allowed) {
+            blacklist.push_back(resolveXDGDir(dirType));
         }
     }
 
-    // process whitelist
-    auto allowedDirs = directories.allowed.value_or(std::vector<std::string>{});
-    std::sort(allowedDirs.begin(), allowedDirs.end());
-    dupIt = std::unique(allowedDirs.begin(), allowedDirs.end());
-    allowedDirs.erase(dupIt, allowedDirs.end());
-    for (std::filesystem::path relative : allowedDirs) {
-        if (relative.empty() || relative.is_absolute()) {
-            std::cerr << "invalid path:" << relative << std::endl;
+    auto it =
+      std::remove_if(blacklist.begin(), blacklist.end(), [&hostHomeDir](const std::string &dir) {
+          std::error_code ec;
+          auto ret = !std::filesystem::exists(hostHomeDir / dir, ec);
+          if (ec) {
+              std::cerr << "failed to get state of " << hostHomeDir / dir << ": " << ec.message()
+                        << std::endl;
+          }
+          return ret;
+      });
+    blacklist.erase(it);
+
+    for (const auto &relative : blacklist) {
+        if (!mountDir(privateAppDir / relative, cognitiveHomeDir / relative)) {
             return -1;
         }
-
-        if (blackList.find(relative.string()) != blackList.end()) {
-            continue;
-        }
-
-        auto hostLocation = hostHomeDir / relative;
-        std::filesystem::file_status status = std::filesystem::symlink_status(hostLocation, ec);
-        if (ec) {
-            if (ec == std::errc::no_such_file_or_directory) {
-                continue;
-            }
-
-            std::cerr << "failed to get file type of" << hostLocation << ": " << ec.message()
-                      << std::endl;
-            return -1;
-        }
-
-        if (status.type() != std::filesystem::file_type::symlink) {
-            if (!mountDir(hostLocation, cognitiveHomeDir / relative)) {
-                return -1;
-            }
-
-            continue;
-        }
-
-        std::array<char, PATH_MAX + 1> buf{};
-        auto *resolved = ::realpath(hostLocation.c_str(), buf.data());
-        if (resolved == nullptr) {
-            std::cerr << "failed to resolve symlink " << hostLocation << ": " << ::strerror(errno)
-                      << std::endl;
-            return -1;
-        }
-
-        auto realHostLocation = std::filesystem::path(resolved);
-        if (!std::filesystem::exists(realHostLocation, ec)) {
-            if (ec) {
-                std::cerr << "failed to get state of " << realHostLocation << ": " << ec.message()
-                          << std::endl;
-                return -1;
-            }
-
-            continue;
-        }
-
-        if (auto realHostLocationStr = realHostLocation.string();
-            realHostLocationStr.rfind(hostHomeDir, 0) != 0) {
-            std::cerr << "real host directory doesn't in user's home:" << realHostLocation
-                      << std::endl;
-            return -1;
-        }
-
-        mounts.push_back({
-          { "destination", hostLocation.string() },
-          { "options", nlohmann::json::array({ "rbind", "copy-symlink" }) },
-          { "source", hostLocation.string() },
-          { "type", "bind" },
-        });
     }
 
     std::cout << content.dump() << std::endl;

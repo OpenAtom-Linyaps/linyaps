@@ -48,6 +48,8 @@
 #include "linglong/api/types/v1/InteractionRequest.hpp"
 #include "linglong/api/types/v1/InteractionReply.hpp"
 #include "linglong/api/types/v1/InteractionMessageType.hpp"
+#include "linglong/api/types/v1/DialogMessage.hpp"
+#include "linglong/api/types/v1/DialogHandShakePayload.hpp"
 #include "linglong/api/types/v1/ContainerProcessStateInfo.hpp"
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/CommonOptions.hpp"
@@ -57,34 +59,34 @@
 #include "linglong/api/types/v1/BuilderProjectPackage.hpp"
 #include "linglong/api/types/v1/BuilderProjectModules.hpp"
 #include "linglong/api/types/v1/BuilderConfig.hpp"
+#include "linglong/api/types/v1/ApplicationPermissionsRequest.hpp"
 #include "linglong/api/types/v1/ApplicationConfiguration.hpp"
 #include "linglong/api/types/v1/ApplicationConfigurationPermissions.hpp"
+#include "linglong/api/types/v1/XdgDirectoryPermission.hpp"
 #include "linglong/api/types/v1/ApplicationConfigurationPermissionsInnerBind.hpp"
 #include "linglong/api/types/v1/ApplicationConfigurationPermissionsBind.hpp"
-#include "linglong/api/types/v1/ApplicationAccessPrivileges.hpp"
-#include "linglong/api/types/v1/UserDirectories.hpp"
 
 namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
-void from_json(const json & j, UserDirectories & x);
-void to_json(json & j, const UserDirectories & x);
-
-void from_json(const json & j, ApplicationAccessPrivileges & x);
-void to_json(json & j, const ApplicationAccessPrivileges & x);
-
 void from_json(const json & j, ApplicationConfigurationPermissionsBind & x);
 void to_json(json & j, const ApplicationConfigurationPermissionsBind & x);
 
 void from_json(const json & j, ApplicationConfigurationPermissionsInnerBind & x);
 void to_json(json & j, const ApplicationConfigurationPermissionsInnerBind & x);
 
+void from_json(const json & j, XdgDirectoryPermission & x);
+void to_json(json & j, const XdgDirectoryPermission & x);
+
 void from_json(const json & j, ApplicationConfigurationPermissions & x);
 void to_json(json & j, const ApplicationConfigurationPermissions & x);
 
 void from_json(const json & j, ApplicationConfiguration & x);
 void to_json(json & j, const ApplicationConfiguration & x);
+
+void from_json(const json & j, ApplicationPermissionsRequest & x);
+void to_json(json & j, const ApplicationPermissionsRequest & x);
 
 void from_json(const json & j, BuilderConfig & x);
 void to_json(json & j, const BuilderConfig & x);
@@ -112,6 +114,12 @@ void to_json(json & j, const CommonResult & x);
 
 void from_json(const json & j, ContainerProcessStateInfo & x);
 void to_json(json & j, const ContainerProcessStateInfo & x);
+
+void from_json(const json & j, DialogHandShakePayload & x);
+void to_json(json & j, const DialogHandShakePayload & x);
+
+void from_json(const json & j, DialogMessage & x);
+void to_json(json & j, const DialogMessage & x);
 
 void from_json(const json & j, InteractionReply & x);
 void to_json(json & j, const InteractionReply & x);
@@ -206,32 +214,6 @@ void to_json(json & j, const SubState & x);
 void from_json(const json & j, Version & x);
 void to_json(json & j, const Version & x);
 
-inline void from_json(const json & j, UserDirectories& x) {
-x.allowed = get_stack_optional<std::vector<std::string>>(j, "allowed");
-x.disallowed = get_stack_optional<std::vector<std::string>>(j, "disallowed");
-}
-
-inline void to_json(json & j, const UserDirectories & x) {
-j = json::object();
-if (x.allowed) {
-j["allowed"] = x.allowed;
-}
-if (x.disallowed) {
-j["disallowed"] = x.disallowed;
-}
-}
-
-inline void from_json(const json & j, ApplicationAccessPrivileges& x) {
-x.userDirectories = get_stack_optional<UserDirectories>(j, "userDirectories");
-}
-
-inline void to_json(json & j, const ApplicationAccessPrivileges & x) {
-j = json::object();
-if (x.userDirectories) {
-j["userDirectories"] = x.userDirectories;
-}
-}
-
 inline void from_json(const json & j, ApplicationConfigurationPermissionsBind& x) {
 x.destination = j.at("destination").get<std::string>();
 x.source = j.at("source").get<std::string>();
@@ -254,9 +236,21 @@ j["destination"] = x.destination;
 j["source"] = x.source;
 }
 
+inline void from_json(const json & j, XdgDirectoryPermission& x) {
+x.allowed = j.at("allowed").get<bool>();
+x.dirType = j.at("dirType").get<std::string>();
+}
+
+inline void to_json(json & j, const XdgDirectoryPermission & x) {
+j = json::object();
+j["allowed"] = x.allowed;
+j["dirType"] = x.dirType;
+}
+
 inline void from_json(const json & j, ApplicationConfigurationPermissions& x) {
 x.binds = get_stack_optional<std::vector<ApplicationConfigurationPermissionsBind>>(j, "binds");
 x.innerBinds = get_stack_optional<std::vector<ApplicationConfigurationPermissionsInnerBind>>(j, "innerBinds");
+x.xdgDirectories = get_stack_optional<std::vector<XdgDirectoryPermission>>(j, "xdgDirectories");
 }
 
 inline void to_json(json & j, const ApplicationConfigurationPermissions & x) {
@@ -266,6 +260,9 @@ j["binds"] = x.binds;
 }
 if (x.innerBinds) {
 j["innerBinds"] = x.innerBinds;
+}
+if (x.xdgDirectories) {
+j["xdgDirectories"] = x.xdgDirectories;
 }
 }
 
@@ -280,6 +277,17 @@ if (x.permissions) {
 j["permissions"] = x.permissions;
 }
 j["version"] = x.version;
+}
+
+inline void from_json(const json & j, ApplicationPermissionsRequest& x) {
+x.appID = j.at("appID").get<std::string>();
+x.xdgDirectories = j.at("xdgDirectories").get<std::vector<XdgDirectoryPermission>>();
+}
+
+inline void to_json(json & j, const ApplicationPermissionsRequest & x) {
+j = json::object();
+j["appID"] = x.appID;
+j["xdgDirectories"] = x.xdgDirectories;
 }
 
 inline void from_json(const json & j, BuilderConfig& x) {
@@ -469,6 +477,26 @@ j["containerID"] = x.containerID;
 if (x.runtime) {
 j["runtime"] = x.runtime;
 }
+}
+
+inline void from_json(const json & j, DialogHandShakePayload& x) {
+x.version = j.at("version").get<std::string>();
+}
+
+inline void to_json(json & j, const DialogHandShakePayload & x) {
+j = json::object();
+j["version"] = x.version;
+}
+
+inline void from_json(const json & j, DialogMessage& x) {
+x.payload = j.at("payload").get<std::string>();
+x.type = j.at("type").get<std::string>();
+}
+
+inline void to_json(json & j, const DialogMessage & x) {
+j = json::object();
+j["payload"] = x.payload;
+j["type"] = x.type;
 }
 
 inline void from_json(const json & j, InteractionReply& x) {
@@ -902,15 +930,17 @@ j["old_version"] = x.oldVersion;
 }
 
 inline void from_json(const json & j, LinglongAPIV1& x) {
-x.applicationAccessPrivileges = get_stack_optional<ApplicationAccessPrivileges>(j, "ApplicationAccessPrivileges");
 x.applicationConfiguration = get_stack_optional<ApplicationConfiguration>(j, "ApplicationConfiguration");
 x.applicationConfigurationPermissions = get_stack_optional<ApplicationConfigurationPermissions>(j, "ApplicationConfigurationPermissions");
+x.applicationPermissionsRequest = get_stack_optional<ApplicationPermissionsRequest>(j, "ApplicationPermissionsRequest");
 x.builderConfig = get_stack_optional<BuilderConfig>(j, "BuilderConfig");
 x.builderProject = get_stack_optional<BuilderProject>(j, "BuilderProject");
 x.cliContainer = get_stack_optional<CliContainer>(j, "CLIContainer");
 x.commonOptions = get_stack_optional<CommonOptions>(j, "CommonOptions");
 x.commonResult = get_stack_optional<CommonResult>(j, "CommonResult");
 x.containerProcessStateInfo = get_stack_optional<ContainerProcessStateInfo>(j, "ContainerProcessStateInfo");
+x.dialogHandShakePayload = get_stack_optional<DialogHandShakePayload>(j, "DialogHandShakePayload");
+x.dialogMessage = get_stack_optional<DialogMessage>(j, "DialogMessage");
 x.interactionMessageType = get_stack_optional<InteractionMessageType>(j, "InteractionMessageType");
 x.interactionReply = get_stack_optional<InteractionReply>(j, "InteractionReply");
 x.interactionRequest = get_stack_optional<InteractionRequest>(j, "InteractionRequest");
@@ -937,18 +967,19 @@ x.state = get_stack_optional<State>(j, "State");
 x.subState = get_stack_optional<SubState>(j, "SubState");
 x.uabMetaInfo = get_stack_optional<UabMetaInfo>(j, "UABMetaInfo");
 x.upgradeListResult = get_stack_optional<UpgradeListResult>(j, "UpgradeListResult");
+x.xdgDirectoryPermissions = get_stack_optional<std::vector<XdgDirectoryPermission>>(j, "XDGDirectoryPermissions");
 }
 
 inline void to_json(json & j, const LinglongAPIV1 & x) {
 j = json::object();
-if (x.applicationAccessPrivileges) {
-j["ApplicationAccessPrivileges"] = x.applicationAccessPrivileges;
-}
 if (x.applicationConfiguration) {
 j["ApplicationConfiguration"] = x.applicationConfiguration;
 }
 if (x.applicationConfigurationPermissions) {
 j["ApplicationConfigurationPermissions"] = x.applicationConfigurationPermissions;
+}
+if (x.applicationPermissionsRequest) {
+j["ApplicationPermissionsRequest"] = x.applicationPermissionsRequest;
 }
 if (x.builderConfig) {
 j["BuilderConfig"] = x.builderConfig;
@@ -967,6 +998,12 @@ j["CommonResult"] = x.commonResult;
 }
 if (x.containerProcessStateInfo) {
 j["ContainerProcessStateInfo"] = x.containerProcessStateInfo;
+}
+if (x.dialogHandShakePayload) {
+j["DialogHandShakePayload"] = x.dialogHandShakePayload;
+}
+if (x.dialogMessage) {
+j["DialogMessage"] = x.dialogMessage;
 }
 if (x.interactionMessageType) {
 j["InteractionMessageType"] = x.interactionMessageType;
@@ -1045,6 +1082,9 @@ j["UABMetaInfo"] = x.uabMetaInfo;
 }
 if (x.upgradeListResult) {
 j["UpgradeListResult"] = x.upgradeListResult;
+}
+if (x.xdgDirectoryPermissions) {
+j["XDGDirectoryPermissions"] = x.xdgDirectoryPermissions;
 }
 }
 

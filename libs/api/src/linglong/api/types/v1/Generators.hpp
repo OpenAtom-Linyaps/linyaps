@@ -25,6 +25,7 @@
 #include "linglong/api/types/v1/UabLayer.hpp"
 #include "linglong/api/types/v1/SubState.hpp"
 #include "linglong/api/types/v1/State.hpp"
+#include "linglong/api/types/v1/RequiredPermissions.hpp"
 #include "linglong/api/types/v1/RepositoryCache.hpp"
 #include "linglong/api/types/v1/RepositoryCacheMergedItem.hpp"
 #include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
@@ -52,6 +53,7 @@
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/api/types/v1/CliContainer.hpp"
+#include "linglong/api/types/v1/ChosenPermissions.hpp"
 #include "linglong/api/types/v1/BuilderProject.hpp"
 #include "linglong/api/types/v1/BuilderProjectSource.hpp"
 #include "linglong/api/types/v1/BuilderProjectPackage.hpp"
@@ -100,6 +102,9 @@ void to_json(json & j, const BuilderProjectSource & x);
 
 void from_json(const json & j, BuilderProject & x);
 void to_json(json & j, const BuilderProject & x);
+
+void from_json(const json & j, ChosenPermissions & x);
+void to_json(json & j, const ChosenPermissions & x);
 
 void from_json(const json & j, CliContainer & x);
 void to_json(json & j, const CliContainer & x);
@@ -178,6 +183,9 @@ void to_json(json & j, const RepositoryCacheMergedItem & x);
 
 void from_json(const json & j, RepositoryCache & x);
 void to_json(json & j, const RepositoryCache & x);
+
+void from_json(const json & j, RequiredPermissions & x);
+void to_json(json & j, const RequiredPermissions & x);
 
 void from_json(const json & j, UabLayer & x);
 void to_json(json & j, const UabLayer & x);
@@ -415,6 +423,15 @@ if (x.strip) {
 j["strip"] = x.strip;
 }
 j["version"] = x.version;
+}
+
+inline void from_json(const json & j, ChosenPermissions& x) {
+x.directories = j.at("directories").get<std::vector<std::string>>();
+}
+
+inline void to_json(json & j, const ChosenPermissions & x) {
+j = json::object();
+j["directories"] = x.directories;
 }
 
 inline void from_json(const json & j, CliContainer& x) {
@@ -847,6 +864,15 @@ j["merged"] = x.merged;
 j["version"] = x.version;
 }
 
+inline void from_json(const json & j, RequiredPermissions& x) {
+x.appID = j.at("appID").get<std::string>();
+}
+
+inline void to_json(json & j, const RequiredPermissions & x) {
+j = json::object();
+j["appID"] = x.appID;
+}
+
 inline void from_json(const json & j, UabLayer& x) {
 x.info = j.at("info").get<PackageInfoV2>();
 x.minified = j.at("minified").get<bool>();
@@ -907,6 +933,7 @@ x.applicationConfiguration = get_stack_optional<ApplicationConfiguration>(j, "Ap
 x.applicationConfigurationPermissions = get_stack_optional<ApplicationConfigurationPermissions>(j, "ApplicationConfigurationPermissions");
 x.builderConfig = get_stack_optional<BuilderConfig>(j, "BuilderConfig");
 x.builderProject = get_stack_optional<BuilderProject>(j, "BuilderProject");
+x.chosenPermissions = get_stack_optional<ChosenPermissions>(j, "ChosenPermissions");
 x.cliContainer = get_stack_optional<CliContainer>(j, "CLIContainer");
 x.commonOptions = get_stack_optional<CommonOptions>(j, "CommonOptions");
 x.commonResult = get_stack_optional<CommonResult>(j, "CommonResult");
@@ -933,6 +960,7 @@ x.packageManager1UninstallParameters = get_stack_optional<PackageManager1Uninsta
 x.packageManager1UpdateParameters = get_stack_optional<PackageManager1UpdateParameters>(j, "PackageManager1UpdateParameters");
 x.repoConfig = get_stack_optional<RepoConfig>(j, "RepoConfig");
 x.repositoryCache = get_stack_optional<RepositoryCache>(j, "RepositoryCache");
+x.requiredPermissions = get_stack_optional<RequiredPermissions>(j, "RequiredPermissions");
 x.state = get_stack_optional<State>(j, "State");
 x.subState = get_stack_optional<SubState>(j, "SubState");
 x.uabMetaInfo = get_stack_optional<UabMetaInfo>(j, "UABMetaInfo");
@@ -955,6 +983,9 @@ j["BuilderConfig"] = x.builderConfig;
 }
 if (x.builderProject) {
 j["BuilderProject"] = x.builderProject;
+}
+if (x.chosenPermissions) {
+j["ChosenPermissions"] = x.chosenPermissions;
 }
 if (x.cliContainer) {
 j["CLIContainer"] = x.cliContainer;
@@ -1033,6 +1064,9 @@ j["RepoConfig"] = x.repoConfig;
 }
 if (x.repositoryCache) {
 j["RepositoryCache"] = x.repositoryCache;
+}
+if (x.requiredPermissions) {
+j["RequiredPermissions"] = x.requiredPermissions;
 }
 if (x.state) {
 j["State"] = x.state;

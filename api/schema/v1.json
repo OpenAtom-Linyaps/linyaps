@@ -692,6 +692,31 @@
         }
       }
     },
+    "RequiredPermissions": {
+      "type": "object",
+      "required": [
+        "appID"
+      ],
+      "properties": {
+        "appID": {
+          "type": "string"
+        }
+      }
+    },
+    "ChosenPermissions": {
+      "type": "object",
+      "required": [
+        "directories"
+      ],
+      "properties": {
+        "directories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "CommonOptions": {
       "title": "CommonOptions",
       "description": "this is common option for Install and InstallFromFile",
@@ -1123,6 +1148,12 @@
     },
     "PackageInfo": {
       "$ref": "#/$defs/PackageInfo"
+    },
+    "RequiredPermissions": {
+      "$ref": "#/$defs/RequiredPermissions"
+    },
+    "ChosenPermissions": {
+      "$ref": "#/$defs/ChosenPermissions"
     },
     "CommonOptions": {
       "$ref": "#/$defs/CommonOptions"

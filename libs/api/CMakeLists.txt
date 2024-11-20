@@ -11,18 +11,24 @@ pfl_add_library(
   # find -regex '\.\/.+\.[ch]\(pp\)?' -type f -printf '%P\n'| sort
   src/linglong/api/types/helper.cpp
   src/linglong/api/types/helper.h
+  src/linglong/api/types/v1/ApplicationAccessPrivileges.hpp
   src/linglong/api/types/v1/ApplicationConfiguration.hpp
   src/linglong/api/types/v1/ApplicationConfigurationPermissionsBind.hpp
   src/linglong/api/types/v1/ApplicationConfigurationPermissions.hpp
   src/linglong/api/types/v1/ApplicationConfigurationPermissionsInnerBind.hpp
   src/linglong/api/types/v1/BuilderConfig.hpp
   src/linglong/api/types/v1/BuilderProject.hpp
+  src/linglong/api/types/v1/BuilderProjectModules.hpp
   src/linglong/api/types/v1/BuilderProjectPackage.hpp
   src/linglong/api/types/v1/BuilderProjectSource.hpp
+  src/linglong/api/types/v1/ChosenPermissions.hpp
   src/linglong/api/types/v1/CliContainer.hpp
+  src/linglong/api/types/v1/CommonOptions.hpp
   src/linglong/api/types/v1/CommonResult.hpp
+  src/linglong/api/types/v1/ContainerProcessStateInfo.hpp
   src/linglong/api/types/v1/Generators.hpp
   src/linglong/api/types/v1/helper.hpp
+  src/linglong/api/types/v1/InteractionMessageType.hpp
   src/linglong/api/types/v1/InteractionReply.hpp
   src/linglong/api/types/v1/InteractionRequest.hpp
   src/linglong/api/types/v1/LayerInfo.hpp
@@ -37,6 +43,7 @@ pfl_add_library(
   src/linglong/api/types/v1/PackageManager1ModifyRepoParameters.hpp
   src/linglong/api/types/v1/PackageManager1Package.hpp
   src/linglong/api/types/v1/PackageManager1PackageTaskResult.hpp
+  src/linglong/api/types/v1/PackageManager1RequestInteractionAdditionalMessage.hpp
   src/linglong/api/types/v1/PackageManager1SearchParameters.hpp
   src/linglong/api/types/v1/PackageManager1SearchResult.hpp
   src/linglong/api/types/v1/PackageManager1UninstallParameters.hpp
@@ -44,11 +51,15 @@ pfl_add_library(
   src/linglong/api/types/v1/RepoConfig.hpp
   src/linglong/api/types/v1/RepositoryCache.hpp
   src/linglong/api/types/v1/RepositoryCacheLayersItem.hpp
+  src/linglong/api/types/v1/RepositoryCacheMergedItem.hpp
+  src/linglong/api/types/v1/RequiredPermissions.hpp
   src/linglong/api/types/v1/Sections.hpp
   src/linglong/api/types/v1/State.hpp
   src/linglong/api/types/v1/SubState.hpp
   src/linglong/api/types/v1/UabLayer.hpp
   src/linglong/api/types/v1/UabMetaInfo.hpp
+  src/linglong/api/types/v1/UpgradeListResult.hpp
+  src/linglong/api/types/v1/UserDirectories.hpp
   src/linglong/api/types/v1/Version.hpp
   COMPILE_FEATURES
   PUBLIC

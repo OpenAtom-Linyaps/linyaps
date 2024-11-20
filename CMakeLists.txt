@@ -222,6 +222,7 @@ pfl_add_libraries(
   generators/30-user-home
   generators/40-host-ipc
   generators/90-legacy
+  ll-dialog
   ll-box
   ll-builder
   ll-cli

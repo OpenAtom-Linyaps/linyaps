@@ -89,6 +89,8 @@ public:
     utils::error::Result<void> prune();
 
     void removeDanglingXDGIntergation() noexcept;
+    // exportEntries will clear the entries/share and export all applications to the entries/share
+    utils::error::Result<void> exportAllEntries() noexcept;
     // exportReference should be called when LayerDir of ref is existed in local repo
     void exportReference(const package::Reference &ref) noexcept;
     // unexportReference should be called when LayerDir of ref is existed in local repo
@@ -102,10 +104,10 @@ public:
 
     // 扫描layers变动，重新合并变动layer的modules
     [[nodiscard]] utils::error::Result<void> mergeModules() const noexcept;
-    // 获取合并后的layerDir，如果没有找到返回binary模块的layerDir
+    // 获取合并后的layerDir，如果没有找到则返回binary模块的layerDir
     [[nodiscard]] utils::error::Result<package::LayerDir>
     getMergedModuleDir(const package::Reference &ref, bool fallbackLayerDir = true) const noexcept;
-    // 临时将指定的modules合并，并返回合并后的layerDir，供打包者调试应用
+    // 将指定的modules合并到临时目录，并返回合并后的layerDir，供打包者调试应用
     // 临时目录会在智能指针释放时删除
     [[nodiscard]] utils::error::Result<std::shared_ptr<package::LayerDir>>
     getMergedModuleDir(const package::Reference &ref, const QStringList &modules) const noexcept;
@@ -142,6 +144,13 @@ private:
     removeOstreeRef(const api::types::v1::RepositoryCacheLayersItem &layer) noexcept;
     [[nodiscard]] utils::error::Result<package::LayerDir>
     getLayerDir(const api::types::v1::RepositoryCacheLayersItem &layer) const noexcept;
+
+    // 获取合并后的layerDir，如果没有找到则返回binary模块的layerDir
+    [[nodiscard]] utils::error::Result<package::LayerDir>
+    getMergedModuleDir(const api::types::v1::RepositoryCacheLayersItem &layer,
+                       bool fallbackLayerDir = true) const noexcept;
+    utils::error::Result<void> exportEntries(
+      const QDir &entriesDir, const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
 };
 
 } // namespace linglong::repo

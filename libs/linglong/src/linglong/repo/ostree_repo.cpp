@@ -1484,21 +1484,33 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
     if (!entriesDir.exists()) {
         entriesDir.mkpath(".");
     }
-
-    auto layerDir = this->getLayerDir(ref);
-    if (!layerDir) {
+    auto item = this->getLayerItem(ref);
+    if (!item.has_value()) {
         qCritical() << QString("Failed to export %1:").arg(ref.toString())
-                    << "layer directory not exists." << layerDir.error().message();
+                    << "layer directory not exists." << item.error().message();
         Q_ASSERT(false);
-        return;
     }
-    if (!layerDir->exists()) { }
+    auto ret = exportEntries(entriesDir, *item);
+    if (!ret.has_value()) {
+        qCritical() << QString("Failed to export %1:").arg(ref.toString()) << ret.error().message();
+        Q_ASSERT(false);
+    }
+    this->updateSharedInfo();
+}
 
+utils::error::Result<void> OSTreeRepo::exportEntries(
+  const QDir &entriesDir, const api::types::v1::RepositoryCacheLayersItem &item) noexcept
+{
+    LINGLONG_TRACE(QString("export %1").arg(item.info.id.c_str()));
+    auto layerDir = getMergedModuleDir(item);
+    if (!layerDir.has_value()) {
+        return LINGLONG_ERR("get layer dir", layerDir);
+    }
     auto layerEntriesDir = QDir(layerDir->absoluteFilePath("entries/share"));
     if (!layerEntriesDir.exists()) {
-        qCritical() << QString("Failed to export %1:").arg(ref.toString()) << layerEntriesDir
+        qCritical() << QString("Failed to export %1:").arg(item.info.id.c_str()) << layerEntriesDir
                     << "not exists.";
-        return;
+        return LINGLONG_OK;
     }
 
     const QStringList exportPaths = {
@@ -1509,19 +1521,14 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
         "gnome-shell",  // Search providers
         "appdata",      // Copy appdata/metainfo files (legacy path)
         "metainfo",     // Copy appdata/metainfo files
-        "plugins", // Copy plugins conf，The configuration files provided by some applications maybe
-                   // used by the host dde-file-manager.
-        "systemd",          // copy systemd service files
+        "plugins",      // Copy plugins conf，The configuration files provided by some applications
+                        // maybe used by the host dde-file-manager.
+        "systemd",      // copy systemd service files
         "deepin-manual",    // copy deepin-manual files
         "deepin-elf-verify" // for uab signature
     };
 
     for (const auto &path : exportPaths) {
-        QStringList exportDirs = layerEntriesDir.entryList(QDir::NoDotAndDotDot | QDir::Dirs);
-        if (!exportDirs.contains(path)) {
-            continue;
-        }
-
         QDir exportDir = layerEntriesDir.absoluteFilePath(path);
         if (!exportDir.exists()) {
             continue;
@@ -1536,7 +1543,11 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
             if (info.isDir()) {
                 continue;
             }
-
+            // Check if the target file of the symbolic link exists.
+            if (info.isSymLink() && !std::filesystem::exists(info.symLinkTarget().toStdString())) {
+                qCritical() << "Invalid symlink: " << info.filePath();
+                continue;
+            }
             // In KDE environment, every desktop should own the executable permission
             // We just set the file permission to 0755 here.
             if (info.suffix() == "desktop") {
@@ -1557,11 +1568,11 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
                 qCritical() << "Failed to mkpath"
                             << entriesDir.absoluteFilePath(parentDirForLinkPath);
             }
-
-            QDir parentDir(entriesDir.absoluteFilePath(parentDirForLinkPath));
             auto from = std::filesystem::path{
                 entriesDir.absoluteFilePath(parentDirForLinkPath).toStdString()
             } / it.fileName().toStdString();
+
+            QDir parentDir(entriesDir.absoluteFilePath(parentDirForLinkPath));
             auto to = std::filesystem::path{
                 parentDir.relativeFilePath(info.absoluteFilePath()).toStdString()
             };
@@ -1592,8 +1603,59 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
             }
         }
     }
+    return LINGLONG_OK;
+}
 
+utils::error::Result<void> OSTreeRepo::exportAllEntries() noexcept
+{
+    LINGLONG_TRACE("export all entries");
+    std::error_code ec;
+    // 创建新的share目录
+    auto id = QUuid::createUuid().toString(QUuid::Id128);
+    auto entriesDir = QDir(this->repoDir.absoluteFilePath("entries/share_new_" + id));
+    if (entriesDir.exists()) {
+        std::filesystem::remove_all(entriesDir.absolutePath().toStdString(), ec);
+        if (ec) {
+            return LINGLONG_ERR("clean temp share directory", ec);
+        }
+    }
+    std::filesystem::create_directory(entriesDir.absolutePath().toStdString(), ec);
+    if (ec) {
+        return LINGLONG_ERR("create temp share directory", ec);
+    }
+    // 导出所有layer
+    auto items = this->cache->queryExistingLayerItem();
+    for (const auto &item : items) {
+        auto ret = exportEntries(entriesDir, item);
+        if (!ret.has_value()) {
+            return ret;
+        }
+    }
+    // 用新的share目录替换旧的
+    std::filesystem::path workdir = repoDir.absoluteFilePath("entries").toStdString();
+
+    if (!std::filesystem::exists(workdir / "share")) {
+        std::filesystem::rename(entriesDir.dirName().toStdString(), workdir / "share", ec);
+        if (ec) {
+            return LINGLONG_ERR("create new share symlink", ec);
+        }
+    } else {
+        auto oldshare = "share_old_" + QUuid::createUuid().toString(QUuid::Id128).toStdString();
+        std::filesystem::rename(workdir / "share", workdir / oldshare, ec);
+        if (ec) {
+            return LINGLONG_ERR("rename old share directory", ec);
+        }
+        std::filesystem::rename(entriesDir.dirName().toStdString(), workdir / "share", ec);
+        if (ec) {
+            return LINGLONG_ERR("create new share symlink", ec);
+        }
+        std::filesystem::remove_all(workdir / oldshare, ec);
+        if (ec) {
+            return LINGLONG_ERR("remove old share directory", ec);
+        }
+    }
     this->updateSharedInfo();
+    return LINGLONG_OK;
 }
 
 void OSTreeRepo::updateSharedInfo() noexcept
@@ -1778,8 +1840,9 @@ std::vector<std::string> OSTreeRepo::getModuleList(const package::Reference &ref
     return modules;
 }
 
-auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref, bool fallbackLayerDir)
-  const noexcept -> utils::error::Result<package::LayerDir>
+// 获取合并后的layerDir，如果没有找到则返回binary模块的layerDir
+utils::error::Result<package::LayerDir>
+OSTreeRepo::getMergedModuleDir(const package::Reference &ref, bool fallbackLayerDir) const noexcept
 {
     LINGLONG_TRACE("get merge dir from ref " + ref.toString());
     qDebug() << "getMergedModuleDir" << ref.toString();
@@ -1790,18 +1853,27 @@ auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref, bool fallback
                            << "/binary:" << layer.error().message();
         return LINGLONG_ERR(layer);
     }
+    return getMergedModuleDir(*layer, fallbackLayerDir);
+}
+
+// 获取合并后的layerDir，如果没有找到则返回binary模块的layerDir
+utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
+  const api::types::v1::RepositoryCacheLayersItem &layer, bool fallbackLayerDir) const noexcept
+{
+    LINGLONG_TRACE("get merge dir from layer " + QString::fromStdString(layer.info.id));
+    QDir mergedDir = this->repoDir.absoluteFilePath("merged");
     auto items = this->cache->queryMergedItems();
     // 如果没有merged记录，尝试使用layer
     if (!items.has_value()) {
         qDebug().nospace() << "not exists merged items";
         if (fallbackLayerDir) {
-            return getLayerDir(*layer);
+            return getLayerDir(layer);
         }
         return LINGLONG_ERR("no merged item found");
     }
     // 如果找到layer对应的merge，就返回merge目录，否则回退到layer目录
     for (auto item : items.value()) {
-        if (item.binaryCommit == layer->commit) {
+        if (item.binaryCommit == layer.commit) {
             QDir dir = mergedDir.filePath(item.id.c_str());
             if (dir.exists()) {
                 return dir.path();
@@ -1811,13 +1883,13 @@ auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref, bool fallback
         }
     }
     if (fallbackLayerDir) {
-        return getLayerDir(*layer);
+        return getLayerDir(layer);
     }
     return LINGLONG_ERR("merged doesn't exist");
 }
 
-auto OSTreeRepo::getMergedModuleDir(const package::Reference &ref, const QStringList &loadModules)
-  const noexcept -> utils::error::Result<std::shared_ptr<package::LayerDir>>
+utils::error::Result<std::shared_ptr<package::LayerDir>> OSTreeRepo::getMergedModuleDir(
+  const package::Reference &ref, const QStringList &loadModules) const noexcept
 {
     LINGLONG_TRACE("merge modules");
     QDir mergedDir = this->repoDir.absoluteFilePath("merged");

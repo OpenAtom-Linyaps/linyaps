@@ -533,6 +533,24 @@ ll-cli list --upgradable
     auto *migrateOption = commandParser.get_subcommand("migrate");
     if (migrateOption->parsed()) {
         linglong::repo::tryMigrate();
+        auto repoRoot = QDir(LINGLONG_ROOT);
+        if (!repoRoot.exists()) {
+            std::cerr << "underlying repository doesn't exist:"
+                      << repoRoot.absolutePath().toStdString();
+            return 0;
+        }
+        auto config = linglong::repo::loadConfig(
+          { LINGLONG_ROOT "/config.yaml", LINGLONG_DATA_DIR "/config.yaml" });
+        if (!config) {
+            std::cerr << "load config" << config.error().message().toStdString();
+            return 0;
+        }
+        linglong::repo::ClientFactory clientFactory(config->repos[config->defaultRepo]);
+        auto *repo = new linglong::repo::OSTreeRepo(repoRoot, *config, clientFactory);
+        auto ret = repo->exportAllEntries();
+        if (!ret.has_value()) {
+            std::cerr << "export entries" << ret.error().message().toStdString();
+        }
         return 0;
     }
 

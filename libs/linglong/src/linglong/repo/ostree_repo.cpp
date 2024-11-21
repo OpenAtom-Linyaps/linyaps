@@ -1536,7 +1536,7 @@ utils::error::Result<void> OSTreeRepo::exportEntries(
 
         QDirIterator it(exportDir.absolutePath(),
                         QDir::AllEntries | QDir::NoDotAndDotDot | QDir::System | QDir::Hidden,
-                        QDirIterator::Subdirectories);
+                        QDirIterator::Subdirectories | QDirIterator::FollowSymlinks);
         while (it.hasNext()) {
             it.next();
             const auto info = it.fileInfo();
@@ -1626,6 +1626,9 @@ utils::error::Result<void> OSTreeRepo::exportAllEntries() noexcept
     // 导出所有layer
     auto items = this->cache->queryExistingLayerItem();
     for (const auto &item : items) {
+        if (item.info.kind != "app") {
+            continue;
+        }
         auto ret = exportEntries(entriesDir, item);
         if (!ret.has_value()) {
             return ret;
@@ -1645,7 +1648,9 @@ utils::error::Result<void> OSTreeRepo::exportAllEntries() noexcept
         if (ec) {
             return LINGLONG_ERR("rename old share directory", ec);
         }
-        std::filesystem::rename(entriesDir.dirName().toStdString(), workdir / "share", ec);
+        std::filesystem::rename(workdir / entriesDir.dirName().toStdString(),
+                                workdir / "share",
+                                ec);
         if (ec) {
             return LINGLONG_ERR("create new share symlink", ec);
         }

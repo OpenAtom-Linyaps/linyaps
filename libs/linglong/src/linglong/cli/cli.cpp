@@ -1753,48 +1753,54 @@ int Cli::content()
 std::vector<std::string>
 Cli::filePathMapping(const std::vector<std::string> &command) const noexcept
 {
-    std::string targetHostPath;
     std::vector<std::string> execArgs;
     // if the --file or --url option is specified, need to map the file path to the linglong
     // path(/run/host).
+    auto replaceIfSymlink = [](std::filesystem::path &file) {
+        std::error_code ec;
+        if (std::filesystem::is_symlink(file, ec)) {
+            file = std::filesystem::read_symlink(file, ec);
+            if (ec) {
+                qInfo() << "resolve symlink " << file.c_str() << " error: " << ec.message().c_str()
+                        << ", passing the file path to app as it is.";
+            }
+        }
+    };
+
     for (const auto &arg : command) {
         if (arg.substr(0, 2) != "%%") {
-            execArgs.push_back(arg);
+            execArgs.emplace_back(arg);
             continue;
         }
 
         if (arg == "%%f") {
-            const auto file = options.filePath;
-
+            std::filesystem::path file = options.filePath;
             if (file.empty()) {
                 continue;
             }
 
-            targetHostPath = LINGLONG_HOST_PATH + file;
-            execArgs.push_back(targetHostPath);
+            replaceIfSymlink(file);
+            execArgs.emplace_back(LINGLONG_HOST_PATH / file);
             continue;
         }
 
         if (arg == "%%u") {
-            const auto url = QString::fromStdString(options.fileUrl);
-
             if (options.fileUrl.empty()) {
                 continue;
             }
 
-            const QString filePre = "file://";
-
             // if url is "file://" format, need to map the file path to the linglong path, or
             // deliver url directly.
-            if (url.startsWith(filePre)) {
-                const auto filePath = url.mid(filePre.length(), url.length() - filePre.length());
-                targetHostPath =
-                  filePre.toStdString() + LINGLONG_HOST_PATH + filePath.toStdString();
+            constexpr std::string_view filePrefix = "file://";
+            if (options.fileUrl.rfind(filePrefix, 0) == 0) {
+                std::filesystem::path nativePath = options.fileUrl.substr(filePrefix.size());
+                replaceIfSymlink(nativePath);
+                execArgs.emplace_back(std::string{ filePrefix }
+                                      + (LINGLONG_HOST_PATH / nativePath).string());
             } else {
-                targetHostPath = url.toStdString();
+                execArgs.emplace_back(options.fileUrl);
             }
 
-            execArgs.push_back(targetHostPath);
             continue;
         }
 

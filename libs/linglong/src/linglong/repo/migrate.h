@@ -4,6 +4,13 @@
 
 #pragma once
 
+#include "linglong/api/types/v1/RepoConfig.hpp"
+
+#include <filesystem>
+
 namespace linglong::repo {
-void tryMigrate() noexcept;
-}
+enum class MigrateResult { Success, Failed, NoChange };
+
+MigrateResult tryMigrate(const std::filesystem::path &root,
+                         const linglong::api::types::v1::RepoConfig &cfg) noexcept;
+} // namespace linglong::repo

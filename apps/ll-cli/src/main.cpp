@@ -542,33 +542,33 @@ ll-cli list --upgradable
         return 0;
     }
 
+    auto config = linglong::repo::loadConfig(
+      { LINGLONG_ROOT "/config.yaml", LINGLONG_DATA_DIR "/config.yaml" });
+    if (!config) {
+        qCritical() << config.error();
+        return -1;
+    }
+    linglong::repo::ClientFactory clientFactory(config->repos[config->defaultRepo]);
+
     auto *migrateOption = commandParser.get_subcommand("migrate");
     if (migrateOption->parsed()) {
-        linglong::repo::tryMigrate();
-        auto repoRoot = QDir(LINGLONG_ROOT);
-        if (!repoRoot.exists()) {
-            std::cerr << "underlying repository doesn't exist:"
-                      << repoRoot.absolutePath().toStdString();
-            return 0;
+        auto result = linglong::repo::tryMigrate(LINGLONG_ROOT, *config);
+        if (result == linglong::repo::MigrateResult::Failed) {
+            return -1;
         }
-        auto config = linglong::repo::loadConfig(
-          { LINGLONG_ROOT "/config.yaml", LINGLONG_DATA_DIR "/config.yaml" });
-        if (!config) {
-            std::cerr << "load config" << config.error().message().toStdString();
-            return 0;
-        }
-        linglong::repo::ClientFactory clientFactory(config->repos[config->defaultRepo]);
-        auto *repo = new linglong::repo::OSTreeRepo(repoRoot, *config, clientFactory);
+
+        auto *repo = new linglong::repo::OSTreeRepo(QDir{ LINGLONG_ROOT }, *config, clientFactory);
         auto ret = repo->exportAllEntries();
         if (!ret.has_value()) {
-            std::cerr << "export entries" << ret.error().message().toStdString();
+            std::cerr << "failed to export entries:" << ret.error().message().toStdString();
         }
+
         return 0;
     }
 
     auto ret = QMetaObject::invokeMethod(
       QCoreApplication::instance(),
-      [&commandParser, &noDBus, &jsonFlag, &options]() {
+      [&commandParser, &noDBus, &jsonFlag, &options, &config, &clientFactory]() {
           auto repoRoot = QDir(LINGLONG_ROOT);
           if (!repoRoot.exists()) {
               qCritical() << "underlying repository doesn't exist:" << repoRoot.absolutePath();
@@ -665,15 +665,6 @@ ll-cli list --upgradable
               printer = std::make_unique<CLIPrinter>();
           }
 
-          auto config = linglong::repo::loadConfig(
-            { LINGLONG_ROOT "/config.yaml", LINGLONG_DATA_DIR "/config.yaml" });
-          if (!config) {
-              qCritical() << config.error();
-              QCoreApplication::exit(-1);
-              return;
-          }
-
-          linglong::repo::ClientFactory clientFactory(config->repos[config->defaultRepo]);
           auto *repo = new linglong::repo::OSTreeRepo(repoRoot, *config, clientFactory);
           repo->setParent(QCoreApplication::instance());
 

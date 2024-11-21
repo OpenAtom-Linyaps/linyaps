@@ -10,6 +10,7 @@
 #include "linglong/package/version.h"
 #include "linglong/repo/client_factory.h"
 #include "linglong/repo/config.h"
+#include "linglong/repo/migrate.h"
 #include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/gettext.h"
@@ -452,8 +453,37 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         qCritical() << repoCfg.error();
         return -1;
     }
-    linglong::repo::ClientFactory clientFactory(repoCfg->repos[repoCfg->defaultRepo]);
 
+    auto result = linglong::repo::tryMigrate(builderCfg->repo, *repoCfg);
+    if (result == linglong::repo::MigrateResult::Failed) {
+        auto pathTemp = (std::filesystem::path{ builderCfg->repo }.parent_path()
+                         / ("linglong-builder.old-XXXXXX"))
+                          .string();
+        std::error_code ec;
+        auto *oldPtr = ::mkdtemp(pathTemp.data());
+        if (oldPtr == nullptr) {
+            qCritical() << "we couldn't generate a temporary directory for migrate, old repo will "
+                           "be removed.";
+            std::filesystem::remove(builderCfg->repo, ec);
+            if (ec) {
+                qCritical() << "failed to remove the old repo:"
+                            << QString::fromStdString(builderCfg->repo);
+                return -1;
+            }
+        }
+
+        std::filesystem::rename(builderCfg->repo, oldPtr, ec);
+        if (ec) {
+            qCritical() << "underlying repo need to migrate but failed, please move(or remove) it "
+                           "to another place manually.";
+            return -1;
+        }
+
+        qInfo() << "failed to migrate the repository of builder, old repo will be moved to"
+                << oldPtr << ", all data will be pulled again.";
+    }
+
+    linglong::repo::ClientFactory clientFactory(repoCfg->repos[repoCfg->defaultRepo]);
     auto repoRoot = QDir{ QString::fromStdString(builderCfg->repo) };
     if (!repoRoot.exists() && !repoRoot.mkpath(".")) {
         qCritical() << "failed to create the repository of builder.";

@@ -340,7 +340,7 @@ int Cli::run()
         }
         auto &runtimeRef = *runtimeRefRet;
 
-        if (info->uuid->empty()) {
+        if (!info->uuid.has_value()) {
             auto runtimeLayerDirRet = this->repository.getMergedModuleDir(runtimeRef);
             if (!runtimeLayerDirRet) {
                 this->printer.printErr(runtimeLayerDirRet.error());
@@ -379,7 +379,7 @@ int Cli::run()
         qDebug() << "getMergedModuleDir base";
         baseLayerDir = this->repository.getMergedModuleDir(*baseRef);
     } else {
-        qDebug() << "getLayerDir base" << info->uuid->c_str();
+        qDebug() << "getLayerDir base" << info->uuid.value().c_str();
         baseLayerDir = this->repository.getLayerDir(*baseRef, std::string{ "binary" }, info->uuid);
     }
     if (!baseLayerDir) {

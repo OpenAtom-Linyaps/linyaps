@@ -19,6 +19,7 @@
 
 struct MigrateRefData
 {
+    std::filesystem::path root;
     std::string repoName;
 };
 
@@ -60,13 +61,13 @@ try {
     return std::nullopt;
 }
 
-void migrateRef(OstreeRepo *repo, const MigrateRefData &data)
+int migrateRef(OstreeRepo *repo, const MigrateRefData &data)
 {
     g_autoptr(GError) gErr = nullptr;
     g_autoptr(GHashTable) refsTable{ nullptr };
     if (ostree_repo_list_refs(repo, nullptr, &refsTable, nullptr, &gErr) == FALSE) {
         std::cerr << "couldn't list refs in repo: " << gErr->message << std::endl;
-        return;
+        return -1;
     }
 
     std::unordered_map<std::string_view, std::string_view> allRefs;
@@ -79,8 +80,7 @@ void migrateRef(OstreeRepo *repo, const MigrateRefData &data)
       &allRefs);
 
     if (allRefs.empty()) {
-        std::cout << "underlying repo is empty, no need to migrate." << std::endl;
-        return;
+        return 0;
     }
 
     std::unordered_map<std::string_view, std::string_view> needMigrate;
@@ -104,13 +104,12 @@ void migrateRef(OstreeRepo *repo, const MigrateRefData &data)
     }
 
     if (needMigrate.empty()) {
-        std::cout << "all refs have been migrated, no need to migrate." << std::endl;
-        return;
+        return 0;
     }
 
     if (ostree_repo_prepare_transaction(repo, nullptr, nullptr, &gErr) == FALSE) {
         std::cerr << "failed to prepare transaction:" << gErr->message << std::endl;
-        return;
+        return -1;
     }
 
     for (auto [ref, checksum] : needMigrate) {
@@ -119,17 +118,18 @@ void migrateRef(OstreeRepo *repo, const MigrateRefData &data)
 
     if (ostree_repo_commit_transaction(repo, nullptr, nullptr, &gErr) == 0) {
         std::cerr << "failed to commit transaction:" << gErr->message << std::endl;
-        return;
+        return -1;
     }
 
     std::error_code ec;
-    auto layers = std::filesystem::path{ LINGLONG_ROOT } / "layers";
+    auto layers = data.root / "layers";
     if (!std::filesystem::exists(layers, ec)) {
         if (ec) {
             std::cerr << "couldn't get status of " << layers << std::endl;
         }
 
-        return;
+        std::cerr << "layers not found: " << layers << std::endl;
+        return -1;
     }
 
     for (auto [ref, checksum] : needMigrate) {
@@ -171,20 +171,25 @@ void migrateRef(OstreeRepo *repo, const MigrateRefData &data)
         if (ec && ec != std::errc::file_exists) {
             std::cerr << "couldn't create symlink from " << oldLayerPath << " to " << newLayerPath
                       << std::endl;
-            return;
+            return -1;
         }
     }
+
+    return 1;
 }
 
-void dispatchMigrations(const Version &from)
+int dispatchMigrations(const Version &from,
+                       const std::filesystem::path &root,
+                       const linglong::api::types::v1::RepoConfig &cfg)
 {
     std::error_code ec;
-    auto ostreeRepo = std::filesystem::path{ LINGLONG_ROOT } / "repo";
+    std::filesystem::path ostreeRepo = root / "repo";
     if (!std::filesystem::exists(ostreeRepo, ec)) {
         if (ec) {
             std::cerr << "couldn't get status of " << ostreeRepo << std::endl;
         }
-        return;
+
+        return 0;
     }
 
     g_autoptr(GError) gErr = nullptr;
@@ -195,52 +200,76 @@ void dispatchMigrations(const Version &from)
     repo = ostree_repo_new(repoPath);
     if (ostree_repo_open(repo, nullptr, &gErr) == FALSE) {
         std::cerr << "couldn't open repo " << ostreeRepo << ":" << gErr->message << std::endl;
-        return;
+        return -1;
     }
 
+    int ret{ std::numeric_limits<int>::max() };
     auto version_1_7_0 = parseVersion("1.7.0");
     if (from < *version_1_7_0) {
-        migrateRef(repo, MigrateRefData{ .repoName = "stable" });
+        ret = migrateRef(repo, MigrateRefData{ .root = root, .repoName = cfg.defaultRepo });
     }
+    if (ret == -1) {
+        return -1;
+    }
+
+    return ret;
 }
 
 namespace linglong::repo {
-void tryMigrate() noexcept
+MigrateResult tryMigrate(const std::filesystem::path &root,
+                         const linglong::api::types::v1::RepoConfig &cfg) noexcept
 {
     std::error_code ec;
+    if (!std::filesystem::exists(root, ec)) {
+        if (ec) {
+            std::cerr << "couldn't get status of " << root << std::endl;
+            return MigrateResult::Failed;
+        }
+
+        return MigrateResult::NoChange;
+    }
+
     std::optional<std::string> repoVersion;
-    std::filesystem::path version = std::filesystem::path{ LINGLONG_ROOT } / ".version";
+    std::filesystem::path version = std::filesystem::path{ root } / ".version";
     if (std::filesystem::exists(version, ec)) {
         std::ifstream in{ version };
         if (!in.is_open()) {
             std::cerr << "couldn't open " << version << std::endl;
-        } else {
-            std::stringstream buffer;
-            buffer << in.rdbuf();
-            repoVersion = buffer.str();
+            return MigrateResult::Failed;
         }
+
+        std::stringstream buffer;
+        buffer << in.rdbuf();
+        repoVersion = buffer.str();
     }
 
     auto repoVer = repoVersion.value_or("1.5.0");
     if (repoVer == LINGLONG_VERSION) {
-        return;
+        return MigrateResult::NoChange;
     }
 
     auto from = parseVersion(repoVer);
     if (!from) {
         std::cerr << "failed to parse repo version " << repoVer << std::endl;
-        return;
+        return MigrateResult::Failed;
     }
 
-    dispatchMigrations(*from);
+    auto ret = dispatchMigrations(*from, root, cfg);
+    if (ret == -1) {
+        return MigrateResult::Failed;
+    }
+
+    auto result = ret == 0 ? MigrateResult::NoChange : MigrateResult::Success;
 
     std::ofstream out;
     out.open(version, std::ios_base::out | std::ios_base::trunc);
     if (!out.is_open()) {
         std::cerr << "couldn't open " << version << std::endl;
-    } else {
-        out << LINGLONG_VERSION;
+        return MigrateResult::Failed;
     }
-    out.clear();
+    out << LINGLONG_VERSION;
+    out.close();
+
+    return result;
 }
 } // namespace linglong::repo

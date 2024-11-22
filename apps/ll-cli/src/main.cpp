@@ -220,7 +220,6 @@ You can report bugs to the linyaps team under this project: https://github.com/O
                                      .fileUrl = "",
                                      .workDir = "",
                                      .appid = "",
-                                     .instance = "",
                                      .module = "",
                                      .type = "app",
                                      .repoName = "",
@@ -275,9 +274,9 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
         ->fallthrough()
         ->group(CliHiddenGroup);
     cliExec
-      ->add_option("INSTANCE",
-                   options.instance,
-                   _("Specify the application running instance(you can get it by ps command)"))
+      ->add_option("APP",
+                   options.appid,
+                   _("Specify the running application"))
       ->required()
       ->check(validatorString);
     cliExec->add_option("--working-directory", options.workDir, _("Specify working directory"))
@@ -291,11 +290,11 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
         .add_subcommand("enter", _("Enter the namespace where the application is running"))
         ->group(CliAppManagingGroup)
         ->fallthrough();
-    cliEnter->usage(_("Usage: ll-cli enter [OPTIONS] INSTANCE [COMMAND...]"));
+    cliEnter->usage(_("Usage: ll-cli enter [OPTIONS] APP [COMMAND...]"));
     cliEnter
-      ->add_option("INSTANCE",
-                   options.instance,
-                   _("Specify the application running instance(you can get it by ps command)"))
+      ->add_option("APP",
+                   options.appid,
+                   _("Specify the running application"))
       ->required();
     cliEnter->add_option("--working-directory", options.workDir, _("Specify working directory"))
       ->type_name("PATH")
@@ -306,11 +305,11 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
     auto cliKill = commandParser.add_subcommand("kill", _("Stop running applications"))
                      ->group(CliAppManagingGroup)
                      ->fallthrough();
-    cliKill->usage(_("Usage: ll-cli kill [OPTIONS] INSTANCE"));
+    cliKill->usage(_("Usage: ll-cli kill [OPTIONS] APP"));
     cliKill
-      ->add_option("INSTANCE",
-                   options.instance,
-                   _("Specify the application running instance(you can get it by ps command)"))
+      ->add_option("APP",
+                   options.appid,
+                   _("Specify the running application"))
       ->required()
       ->check(validatorString);
 

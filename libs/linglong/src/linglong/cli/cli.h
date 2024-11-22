@@ -26,7 +26,6 @@ struct CliOptions
     std::string fileUrl;
     std::string workDir;
     std::string appid;
-    std::string instance;
     std::string module;
     std::string type;
     std::string repoName;

@@ -216,8 +216,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         ""
     };
 
-    CliOptions options = CliOptions{ .filePath = "",
-                                     .fileUrl = "",
+    CliOptions options = CliOptions{ .filePaths = {},
+                                     .fileUrls = {},
                                      .workDir = "",
                                      .appid = "",
                                      .instance = "",
@@ -256,11 +256,12 @@ ll-cli run org.deepin.demo bash
 ll-cli run org.deepin.demo -- bash
 ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
     cliRun
-      ->add_option("--file", options.filePath, _("Pass file to applications running in a sandbox"))
-      ->type_name("FILE")
+      ->add_option("--file", options.filePaths, _("Pass file to applications running in a sandbox"))
+      ->type_name("FILES")
       ->check(CLI::ExistingFile);
-    cliRun->add_option("--url", options.fileUrl, _("Pass url to applications running in a sandbox"))
-      ->type_name("URL");
+    cliRun
+      ->add_option("--url", options.fileUrls, _("Pass url to applications running in a sandbox"))
+      ->type_name("URLS");
     cliRun->add_option("COMMAND", options.commands, _("Run commands in a running sandbox"));
 
     // add sub command ps

@@ -582,9 +582,14 @@ int Cli::exec()
     }
 
     std::string containerID;
-    auto instance = options.instance;
     for (const auto &container : *containers) {
-        if (container.package == instance) {
+        auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(container.package));
+        if (!fuzzyRef) {
+            this->printer.printErr(fuzzyRef.error());
+            continue;
+        }
+
+        if (fuzzyRef->id.toStdString() == options.appid) {
             containerID = container.id;
             break;
         }
@@ -722,9 +727,14 @@ int Cli::kill()
     }
 
     std::string containerID;
-    auto instance = options.instance;
     for (const auto &container : *containers) {
-        if (container.package == instance) {
+        auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(container.package));
+        if (!fuzzyRef) {
+            this->printer.printErr(fuzzyRef.error());
+            continue;
+        }
+
+        if (fuzzyRef->id.toStdString() == options.appid) {
             containerID = container.id;
             break;
         }

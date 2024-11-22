@@ -1757,55 +1757,82 @@ int Cli::content()
     return 0;
 }
 
+[[nodiscard]] std::filesystem::path Cli::mappingFile(const std::filesystem::path &file) noexcept
+{
+    std::error_code ec;
+    if (!std::filesystem::is_symlink(file, ec)) {
+        if (ec) {
+            qWarning() << "failed to check symlink " << file.c_str() << ":" << ec.message().c_str()
+                       << ", passing the file path to app as it is.";
+        }
+
+        return file;
+    }
+
+    auto target = std::filesystem::read_symlink(file, ec);
+    if (ec) {
+        qWarning() << "resolve symlink " << file.c_str() << " error: " << ec.message().c_str()
+                   << ", passing the file path to app as it is.";
+        return file;
+    }
+
+    return std::filesystem::path{ "/run/host/rootfs" } / target.lexically_relative("/");
+}
+
+[[nodiscard]] std::string Cli::mappingUrl(const std::string &url) noexcept
+{
+    if (url.rfind('/', 0) == 0) {
+        return mappingFile(url);
+    }
+
+    // if the scheme of url is "file", we need to map the native file path to the corresponding
+    // container path, others will deliver to app directly.
+    constexpr std::string_view filePrefix = "file://";
+    if (url.rfind(filePrefix, 0) == 0) {
+        std::filesystem::path nativePath = url.substr(filePrefix.size());
+        auto target = mappingFile(nativePath);
+        return std::string{ filePrefix } + target.lexically_relative("/").string();
+    }
+
+    return url;
+}
+
 std::vector<std::string>
 Cli::filePathMapping(const std::vector<std::string> &command) const noexcept
 {
+    // FIXME: couldn't handel command like 'll-cli run org.xxx.yyy --file f1 f2 f3 org.xxx.yyy %%F'
+    // can't distinguish the boundary of command , need validate the command arguments in the future
+
     std::vector<std::string> execArgs;
     // if the --file or --url option is specified, need to map the file path to the linglong
     // path(/run/host).
-    auto replaceIfSymlink = [](std::filesystem::path &file) {
-        std::error_code ec;
-        if (std::filesystem::is_symlink(file, ec)) {
-            file = std::filesystem::read_symlink(file, ec);
-            if (ec) {
-                qInfo() << "resolve symlink " << file.c_str() << " error: " << ec.message().c_str()
-                        << ", passing the file path to app as it is.";
-            }
-        }
-    };
-
     for (const auto &arg : command) {
-        if (arg.substr(0, 2) != "%%") {
+        if (arg.rfind("%%", 0) != 0) {
             execArgs.emplace_back(arg);
             continue;
         }
 
-        if (arg == "%%f") {
-            std::filesystem::path file = options.filePath;
-            if (file.empty()) {
-                continue;
+        if (arg == "%%f" || arg == "%%F") {
+            if (arg == "%%f" && options.filePaths.size() > 1) {
+                // refer:
+                // https://specifications.freedesktop.org/desktop-entry-spec/latest/exec-variables.html
+                qWarning() << "more than one file path specified, all file paths will be passed.";
             }
 
-            replaceIfSymlink(file);
-            execArgs.emplace_back(LINGLONG_HOST_PATH / file);
+            for (const auto &file : options.filePaths) {
+                execArgs.emplace_back(mappingFile(file));
+            }
+
             continue;
         }
 
-        if (arg == "%%u") {
-            if (options.fileUrl.empty()) {
-                continue;
+        if (arg == "%%u" || arg == "%%U") {
+            if (arg == "%%u" && options.fileUrls.size() > 1) {
+                qWarning() << "more than one url specified, all file paths will be passed.";
             }
 
-            // if url is "file://" format, need to map the file path to the linglong path, or
-            // deliver url directly.
-            constexpr std::string_view filePrefix = "file://";
-            if (options.fileUrl.rfind(filePrefix, 0) == 0) {
-                std::filesystem::path nativePath = options.fileUrl.substr(filePrefix.size());
-                replaceIfSymlink(nativePath);
-                execArgs.emplace_back(std::string{ filePrefix }
-                                      + (LINGLONG_HOST_PATH / nativePath).string());
-            } else {
-                execArgs.emplace_back(options.fileUrl);
+            for (const auto &url : options.fileUrls) {
+                execArgs.emplace_back(mappingUrl(url));
             }
 
             continue;

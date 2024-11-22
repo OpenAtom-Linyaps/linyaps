@@ -33,9 +33,6 @@ set(LINGLONG_USERNAME
 set(LINGLONG_ROOT
     "/var/lib/linglong"
     CACHE STRING "The location where linglong related program puts their data")
-set(LINGLONG_HOST_PATH
-    "/run/host"
-    CACHE STRING "The location where linglong host path mapping")
 set(LINGLONG_DEFAULT_OCI_RUNTIME
     "ll-box"
     CACHE STRING "The oci runtime which linglong use by default")

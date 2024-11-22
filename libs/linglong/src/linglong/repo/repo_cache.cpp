@@ -115,7 +115,8 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
         g_autoptr(GError) gErr{ nullptr };
         g_autoptr(GFile) root{ nullptr };
         if (ostree_repo_read_commit(&repo, ref.data(), &root, &commit, nullptr, &gErr) == FALSE) {
-            return LINGLONG_ERR("ostree_repo_read_commit", gErr);
+            qWarning() << "ostree_repo_read_commit failed:" << gErr->message;
+            continue;
         }
         item.commit = commit;
 
@@ -123,7 +124,8 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
         g_autoptr(GFile) infoFile = g_file_resolve_relative_path(root, "info.json");
         auto info = utils::parsePackageInfo(infoFile);
         if (!info) {
-            return LINGLONG_ERR(info);
+            qWarning() << "invalid info.json:" << info.error();
+            continue;
         }
         item.info = *info;
 

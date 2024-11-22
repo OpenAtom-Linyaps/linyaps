@@ -22,8 +22,8 @@ class Printer;
 
 struct CliOptions
 {
-    std::string filePath;
-    std::string fileUrl;
+    std::vector<std::string> filePaths;
+    std::vector<std::string> fileUrls;
     std::string workDir;
     std::string appid;
     std::string instance;
@@ -75,8 +75,10 @@ public:
     void setCliOptions(const CliOptions &options) noexcept { this->options = options; }
 
 private:
-    std::vector<std::string>
+    [[nodiscard]] std::vector<std::string>
     filePathMapping(const std::vector<std::string> &command) const noexcept;
+    static std::filesystem::path mappingFile(const std::filesystem::path &file) noexcept;
+    static std::string mappingUrl(const std::string &url) noexcept;
     static void filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> &list,
                                            const std::string &type) noexcept;
     void printProgress() noexcept;

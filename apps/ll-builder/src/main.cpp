@@ -211,7 +211,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     std::vector<std::string> newCommands;
     auto buildBuilder = commandParser.add_subcommand("build", _("Build a linyaps project"));
     buildBuilder->usage(_("Usage: ll-builder build [OPTIONS] [COMMAND...]"));
-    buildBuilder->add_option("--file", filePath, _("File path of the linglong.yaml"))
+    buildBuilder->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")
       ->capture_default_str()
       ->check(CLI::ExistingFile);
@@ -254,7 +254,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     std::vector<std::string> execModules;
     auto buildRun = commandParser.add_subcommand("run", _("Run builded linyaps app"));
     buildRun->usage(_("Usage: ll-builder run [OPTIONS] [COMMAND...]"));
-    buildRun->add_option("--file", filePath, _("File path of the linglong.yaml"))
+    buildRun->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")
       ->capture_default_str()
       ->check(CLI::ExistingFile);
@@ -281,7 +281,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     std::string iconFile;
     auto buildExport = commandParser.add_subcommand("export", _("Export to linyaps layer or uab"));
     buildExport->usage(_("Usage: ll-builder export [OPTIONS]"));
-    buildExport->add_option("--file", filePath, _("File path of the linglong.yaml"))
+    buildExport->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")
       ->capture_default_str()
       ->check(CLI::ExistingFile);
@@ -294,7 +294,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     std::string repoName, repoUrl, pushModule;
     auto buildPush = commandParser.add_subcommand("push", _("Push linyaps app to remote repo"));
     buildPush->usage(_("Usage: ll-builder push [OPTIONS]"));
-    buildPush->add_option("--file", filePath, _("File path of the linglong.yaml"))
+    buildPush->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")
       ->capture_default_str()
       ->check(CLI::ExistingFile);

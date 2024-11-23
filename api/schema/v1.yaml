@@ -500,7 +500,6 @@ $defs:
     description: this is the each item output of ll-cli list --json
     type: object
     required:
-      - channel
       - appid
       - module
       - arch

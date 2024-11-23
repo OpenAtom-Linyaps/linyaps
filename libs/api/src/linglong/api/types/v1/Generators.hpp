@@ -529,7 +529,7 @@ inline void from_json(const json & j, PackageInfo& x) {
 x.appid = j.at("appid").get<std::string>();
 x.arch = j.at("arch").get<std::vector<std::string>>();
 x.base = j.at("base").get<std::string>();
-x.channel = j.at("channel").get<std::string>();
+x.channel = get_stack_optional<std::string>(j, "channel");
 x.command = get_stack_optional<std::vector<std::string>>(j, "command");
 x.description = get_stack_optional<std::string>(j, "description");
 x.kind = j.at("kind").get<std::string>();
@@ -546,7 +546,9 @@ j = json::object();
 j["appid"] = x.appid;
 j["arch"] = x.arch;
 j["base"] = x.base;
+if (x.channel) {
 j["channel"] = x.channel;
+}
 if (x.command) {
 j["command"] = x.command;
 }

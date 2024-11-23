@@ -573,7 +573,6 @@ int Cli::run()
 int Cli::exec()
 {
     LINGLONG_TRACE("ll-cli exec");
-
     auto containers = getCurrentContainers();
     if (!containers) {
         auto err = LINGLONG_ERRV(containers);
@@ -583,13 +582,7 @@ int Cli::exec()
 
     std::string containerID;
     for (const auto &container : *containers) {
-        auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(container.package));
-        if (!fuzzyRef) {
-            this->printer.printErr(fuzzyRef.error());
-            continue;
-        }
-
-        if (fuzzyRef->id.toStdString() == options.appid) {
+        if (container.package == options.instance) {
             containerID = container.id;
             break;
         }
@@ -601,7 +594,6 @@ int Cli::exec()
     }
 
     qInfo() << "select container id" << QString::fromStdString(containerID);
-
     auto commands = options.commands;
     if (commands.size() != 0) {
         QStringList bashArgs;
@@ -610,7 +602,6 @@ int Cli::exec()
             bashArgs.push_back(
               QString("'%1'").arg(QString::fromStdString(arg).replace("'", "'\\''")));
         }
-
         if (!bashArgs.isEmpty()) {
             // exec命令使用原始args中的进程替换bash进程
             bashArgs.prepend("exec");
@@ -624,11 +615,9 @@ int Cli::exec()
     } else {
         commands = { "bash", "--login" };
     }
-
     auto opt = ocppi::runtime::ExecOption{};
     opt.uid = ::getuid();
     opt.gid = ::getgid();
-
     auto result =
       this->ociCLI.exec(containerID, commands[0], { commands.begin() + 1, commands.end() }, opt);
     if (!result) {
@@ -636,7 +625,6 @@ int Cli::exec()
         this->printer.printErr(err);
         return -1;
     }
-
     return 0;
 }
 
@@ -726,7 +714,7 @@ int Cli::kill()
         return -1;
     }
 
-    std::string containerID;
+    std::vector<std::string> containerIDList;
     for (const auto &container : *containers) {
         auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(container.package));
         if (!fuzzyRef) {
@@ -734,28 +722,28 @@ int Cli::kill()
             continue;
         }
 
-        if (fuzzyRef->id.toStdString() == options.appid) {
-            containerID = container.id;
-            break;
+        // support matching container id based on appid or fuzzy ref
+        if (fuzzyRef->id.toStdString() == options.appid
+            || fuzzyRef->toString().toStdString() == options.appid) {
+            containerIDList.emplace_back(container.id);
         }
     }
 
-    if (containerID.empty()) {
-        this->printer.printErr(LINGLONG_ERRV("no container found"));
-        return -1;
+    auto ret = 0;
+
+    for (const auto &containerID : containerIDList) {
+        qInfo() << "select container id" << QString::fromStdString(containerID);
+
+        auto result = this->ociCLI.kill(ocppi::runtime::ContainerID(containerID),
+                                        ocppi::runtime::Signal("SIGTERM"));
+        if (!result) {
+            auto err = LINGLONG_ERRV(result);
+            this->printer.printErr(err);
+            ret = -1;
+        }
     }
 
-    qInfo() << "select container id" << QString::fromStdString(containerID);
-
-    auto result = this->ociCLI.kill(ocppi::runtime::ContainerID(containerID),
-                                    ocppi::runtime::Signal("SIGTERM"));
-    if (!result) {
-        auto err = LINGLONG_ERRV(result);
-        this->printer.printErr(err);
-        return -1;
-    }
-
-    return 0;
+    return ret;
 }
 
 void Cli::cancelCurrentTask()

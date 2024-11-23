@@ -301,7 +301,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     buildPush->add_option("--repo-url", repoUrl, _("Remote repo url"))
       ->type_name("URL")
       ->check(validatorString);
-    buildPush->add_option("--repo-name", repoUrl, _("Remote repo name"))
+    buildPush->add_option("--repo-name", repoName, _("Remote repo name"))
       ->type_name("NAME")
       ->check(validatorString);
     buildPush->add_option("--module", pushModule, _("Push single module"))->check(validatorString);

@@ -1489,11 +1489,13 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
         qCritical() << QString("Failed to export %1:").arg(ref.toString())
                     << "layer directory not exists." << item.error().message();
         Q_ASSERT(false);
+        return;
     }
     auto ret = exportEntries(entriesDir, *item);
     if (!ret.has_value()) {
         qCritical() << QString("Failed to export %1:").arg(ref.toString()) << ret.error().message();
         Q_ASSERT(false);
+        return;
     }
     this->updateSharedInfo();
 }

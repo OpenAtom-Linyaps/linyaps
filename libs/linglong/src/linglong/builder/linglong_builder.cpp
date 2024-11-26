@@ -1346,44 +1346,40 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
         .mounts = {},
     };
 
-    auto baseRef = pullDependency(QString::fromStdString(this->project.base),
-                                  this->repo,
-                                  "binary",
-                                  this->buildOptions.skipPullDepend);
+    auto fuzzyBase = package::FuzzyReference::parse(QString::fromStdString(this->project.base));
+    if (!fuzzyBase) {
+        return LINGLONG_ERR(fuzzyBase);
+    }
+    auto baseRef = this->repo.clearReference(*fuzzyBase, { .forceRemote = false, .fallbackToRemote = false });
     if (!baseRef) {
         return LINGLONG_ERR(baseRef);
-    }
-
-    if (this->project.runtime) {
-        auto ref = pullDependency(QString::fromStdString(*this->project.runtime),
-                                  this->repo,
-                                  "binary",
-                                  this->buildOptions.skipPullDepend);
-        if (!ref) {
-            return LINGLONG_ERR(ref);
-        }
-        auto ret = this->repo.mergeModules();
-        if (!ret.has_value()) {
-            return ret;
-        }
-        auto dir =
-          debug ? this->repo.getMergedModuleDir(*ref) : this->repo.getLayerDir(*ref, "binary");
-        if (!dir) {
-            return LINGLONG_ERR(dir);
-        }
-        options.runtimeDir = QDir(dir->absolutePath());
-    } else {
-        auto ret = this->repo.mergeModules();
-        if (!ret.has_value()) {
-            return ret;
-        }
     }
     auto baseDir =
       debug ? this->repo.getMergedModuleDir(*baseRef) : this->repo.getLayerDir(*baseRef, "binary");
     if (!baseDir) {
         return LINGLONG_ERR(baseDir);
     }
-    options.baseDir = QDir(baseDir->absolutePath());
+    options.baseDir = *baseDir;
+
+    if (this->project.runtime) {
+        auto fuzzyRuntime =
+          package::FuzzyReference::parse(QString::fromStdString(this->project.runtime.value()));
+        if (!fuzzyRuntime) {
+            return LINGLONG_ERR(fuzzyRuntime);
+        }
+        auto runtimeRef =
+          this->repo.clearReference(*fuzzyRuntime,
+                                    { .forceRemote = false, .fallbackToRemote = false });
+        if (!runtimeRef) {
+            return LINGLONG_ERR(runtimeRef);
+        }
+        auto runtimeDir = debug ? this->repo.getMergedModuleDir(*runtimeRef)
+                                : this->repo.getLayerDir(*runtimeRef, "binary");
+        if (!runtimeDir) {
+            return LINGLONG_ERR(runtimeDir);
+        }
+        options.runtimeDir = *runtimeDir;
+    }
 
     utils::error::Result<package::LayerDir> curDir;
     // mergedDir 会自动在释放时删除临时目录，所以要用变量保留住

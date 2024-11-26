@@ -6,7 +6,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # Manifests
 
-`linglong.yaml` is the description file of a Linglong project, which stores the relevant information required for building. Such as the name, version, source address, build dependencies, etc., of the build product.
+`linglong.yaml` is the description file of a linyaps project, which stores the relevant information required for building. Such as the name, version, source address, build dependencies, etc., of the build product.
 
 ## Project directory structure
 
@@ -57,7 +57,7 @@ The minimum root filesystem.
 Describes the build and run dependencies of the application.
 
 ```text
-runtime: org.deepin.Runtime/23.0.1
+runtime: org.deepin.runtime.dtk/23.1.0
 ```
 
 | name    | description                                                                                |
@@ -118,7 +118,7 @@ cd org.deepin.foundation
 bash build_base.sh eagle amd64
 ```
 
-The project is designed to construct the root filesystem utilized by Linglong, with "eagle" referring to the codename of the distribution and "amd64" indicating the architecture.
+The project is designed to construct the root filesystem utilized by linyaps, with "eagle" referring to the codename of the distribution and "amd64" indicating the architecture.
 
 | Distribution version | Arch                      |
 | -------------------- | ------------------------- |
@@ -154,8 +154,8 @@ package:
 command:
   - /opt/apps/org.deepin.calculator/files/bin/deepin-calculator
 
-base: org.deepin.foundation/23.0.0
-runtime: org.deepin.Runtime/23.0.1
+base: org.deepin.base/23.1.0
+runtime: org.deepin.runtime.dtk/23.1.0
 
 sources:
   - kind: git

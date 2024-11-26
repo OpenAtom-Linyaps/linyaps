@@ -4,9 +4,9 @@ SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-# Install Linglong Apps
+# Install linyaps Apps
 
-Use `ll-cli install` to install Linglong apps.
+Use `ll-cli install` to install linyaps apps.
 
 View the help information for the `ll-cli install` command:
 
@@ -17,24 +17,39 @@ ll-cli install --help
 Here is the output:
 
 ```text
-Usage: ll-cli [options] install com.deepin.demo
+Installing an application or runtime
+Usage: ll-cli install [OPTIONS] APP
+
+Example:
+# install application by appid
+ll-cli install org.deepin.demo
+# install application by linyaps layer
+ll-cli install demo_0.0.0.1_x86_64_binary.layer
+# install application by linyaps uab
+ll-cli install demo_x86_64_0.0.0.1_main.uab
+# install specified module of the appid
+ll-cli install org.deepin.demo --module=binary
+# install specified version of the appid
+ll-cli install org.deepin.demo/0.0.0.1
+# install application by detailed reference
+ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
+
+
+Positionals:
+  APP TEXT REQUIRED           Specify the application ID, and it can also be a .uab or .layer file
 
 Options:
-  -h, --help                           Displays help on commandline options.
-  --help-all                           Displays help including Qt specific
-                                       options.
-  --repo-point <--repo-point=flatpak>  app repo type to use
-  --nodbus                             execute cmd directly, not via dbus(only
-                                       for root user)
-  --channel <--channel=linglong>       the channel of app
-  --module <--module=runtime>          the module of app
+  -h,--help                   Print this help message and exit
+  --help-all                  Expand all help
+  --module MODULE             Install a specify module
+  --force                     Force install the application
+  -y                          Automatically answer yes to all questions
 
-Arguments:
-  install                              install an application
-  appId                                application id
+If you found any problems during use,
+You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```
 
-Example of the `ll-cli install` command to install a Linglong app:
+Example of the `ll-cli install` command to install a linyaps app:
 
 ```bash
 ll-cli install <org.deepin.calculator>
@@ -51,9 +66,7 @@ ll-cli install <org.deepin.calculator/5.1.2>
 Here is the output of `ll-cli install org.deepin.calculator`:
 
 ```text
-install org.deepin.calculator , please wait a few minutes...
-org.deepin.calculator is installing...
-message: install org.deepin.calculator, version:5.7.21.4 success
+Install main:org.deepin.calculator/5.7.21.4/x86_64 success:100%
 ```
 
 After the application is installed, the installation result will be displayed.
@@ -72,7 +85,7 @@ There are two ways to install uab files
 ll-cli install com.baidu.baidunetdisk_x86_64_4.17.7.0_main.uab
 ```
 
-- Install by running `.uab` directly
+- Execute `uab` on a machine with linyaps environment to install the application.
 ```bash
 ./com.baidu.baidunetdisk_x86_64_4.17.7.0_main.uab
 ```

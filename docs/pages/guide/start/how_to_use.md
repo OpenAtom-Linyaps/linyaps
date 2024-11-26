@@ -4,11 +4,11 @@ SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-# 构建玲珑应用
+# 构建如意玲珑应用
 
-以 [deepin-calculator](https://github.com/linuxdeepin/deepin-calculator.git) 为例，介绍从源码构建玲珑包的过程。
+以 [deepin-calculator](https://github.com/linuxdeepin/deepin-calculator.git) 为例，介绍从源码构建如意玲珑包的过程。
 
-玲珑应用的 appid 需要使用倒置域名的方式命名。
+如意玲珑应用的 appid 需要使用倒置域名的方式命名。
 
 ## 创建项目
 
@@ -44,8 +44,8 @@ package:
 command:
   - /opt/apps/org.deepin.calculator/files/bin/deepin-calculator
 
-base: org.deepin.foundation/23.0.0
-runtime: org.deepin.Runtime/23.0.1
+base: org.deepin.base/23.1.0
+runtime: org.deepin.runtime.dtk/23.1.0
 
 sources:
   - kind: git
@@ -93,9 +93,9 @@ linglong.yaml 中字段的详细解释参考：[构建配置文件简介](../ll-
 ll-builder build
 ```
 
-等待玲珑应用构建完成。
+等待如意玲珑应用构建完成。
 
-## 运行玲珑应用
+## 运行如意玲珑应用
 
 ```bash
 ll-builder run
@@ -116,7 +116,7 @@ ll-builder run --exec /bin/bash
 
 # 转换 deb 应用
 
-以百度网盘为例，介绍将 deb 包转为玲珑包的过程。
+以百度网盘为例，介绍将 deb 包转为如意玲珑包的过程。
 
 ## 获取软件包
 
@@ -156,4 +156,4 @@ ll-cli run com.baidu.baidunetdisk
 
 # 视频链接
 
-[同心联盟《开发赋能共建玲珑生态》分享直播会回看视频](https://www.bilibili.com/video/BV1ff421R7aY)
+[同心联盟《开发赋能共建如意玲珑生态》分享直播会回看视频](https://www.bilibili.com/video/BV1ff421R7aY)

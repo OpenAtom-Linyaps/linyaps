@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-# 调试玲珑应用
+# 调试如意玲珑应用
 
 以下教程以“构建工具”一节中提到的 org.deepin.demo 项目为例。
 
@@ -40,7 +40,7 @@ _如果运行环境没有 gdbserver 命令，请检查应用是否使用 org.dee
 
 ## 在 vscode 中使用 gdb 进行调试
 
-首先给 vscode 安装 C/C++ 插件，因为 vscode 是运行在宿主机上的，所以也需要通过 gdbserver 来为玲珑容器中的应用提供调试。和上个步骤一样，先在运行环境中启动 gdbserver，然后 vscode 配置好 launch.json 文件即可。具体配置如下：
+首先给 vscode 安装 C/C++ 插件，因为 vscode 是运行在宿主机上的，所以也需要通过 gdbserver 来为如意玲珑容器中的应用提供调试。和上个步骤一样，先在运行环境中启动 gdbserver，然后 vscode 配置好 launch.json 文件即可。具体配置如下：
 
 ```json
 {
@@ -115,10 +115,10 @@ Init Commands: `set substitute-path /project /tmp/org.deepin.demo`
 
 ## 保存调试符号
 
-玲珑在构建应用后会自动剥离二进制的调试符号，并存放到 `$PREFIX/lib/debug` 目录，但是一些工具链会在构建时提前将调试符号剥离，这会导致玲珑无法在二进制文件中找到这些符号，如果你的项目是使用 qmake，需要在 pro 文件中添加以下配置
+如意玲珑在构建应用后会自动剥离二进制的调试符号，并存放到 `$PREFIX/lib/debug` 目录，但是一些工具链会在构建时提前将调试符号剥离，这会导致如意玲珑无法在二进制文件中找到这些符号，如果你的项目是使用 qmake，需要在 pro 文件中添加以下配置
 
 ```
-# 玲珑在CFLAGS和CXXFLAGS环境变量里设置了-g选项，这里需要qmake继承这个环境变量
+# 如意玲珑在CFLAGS和CXXFLAGS环境变量里设置了-g选项，这里需要qmake继承这个环境变量
 QMAKE_CFLAGS += $$(CFLAGS)
 QMAKE_CXXFLAGS += $$(CXXFLAGS)
 # 使用debug选项避免qmake自动剥离调试符号

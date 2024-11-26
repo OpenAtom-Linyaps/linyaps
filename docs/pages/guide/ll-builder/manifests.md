@@ -6,7 +6,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # 构建配置文件简介
 
-`linglong.yaml` 是玲珑项目工程的描述文件，记录构建所需的相关信息。如构建产物的名称、版本、源码地址、构建依赖等。
+`linglong.yaml` 是如意玲珑项目工程的描述文件，记录构建所需的相关信息。如构建产物的名称、版本、源码地址、构建依赖等。
 
 ## 工程目录结构
 
@@ -46,7 +46,7 @@ package:
 ### 基础环境（base）
 
 ```bash
-base: org.deepin.foundation/23.0.0
+base: org.deepin.base/23.1.0
 ```
 
 最小根文件系统。
@@ -61,7 +61,7 @@ base: org.deepin.foundation/23.0.0
 应用运行时依赖，同时也是构建依赖。
 
 ```text
-runtime: org.deepin.Runtime/23.0.1
+runtime: org.deepin.runtime.dtk/23.1.0
 ```
 
 | 名称    | 描述                                            |
@@ -140,7 +140,7 @@ cd org.deepin.foundation
 bash build_base.sh beige amd64
 ```
 
-该项目用来构建玲珑使用的根文件系统。eagle 指发行版代号，amd64 指架构。
+该项目用来构建如意玲珑使用的根文件系统。eagle 指发行版代号，amd64 指架构。
 
 | 发行版            | 架构                      |
 | ----------------- | ------------------------- |
@@ -176,8 +176,8 @@ package:
 command:
   - /opt/apps/org.deepin.calculator/files/bin/deepin-calculator
 
-base: org.deepin.foundation/23.0.0
-runtime: org.deepin.Runtime/23.0.1
+base: org.deepin.base/23.1.0
+runtime: org.deepin.runtime.dtk/23.1.0
 
 sources:
   - kind: git

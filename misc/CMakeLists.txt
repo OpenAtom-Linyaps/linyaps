@@ -14,6 +14,8 @@ configure_files(
   # find -regex '\.\/\(script\|share\|lib\|libexec\)\/.*' -type f -printf '%P\n'
   # | sort
   libexec/linglong/app-conf-generator
+  libexec/linglong/ld-cache-generator
+  libexec/linglong/font-cache-generator
   libexec/linglong/builder/helper/config-check.sh
   libexec/linglong/builder/helper/ldd-check.sh
   libexec/linglong/builder/helper/main-check.sh
@@ -63,6 +65,8 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/share/dbus-1/system-services
 set(LIBEXEC_LINGLONG_DIR ${CMAKE_INSTALL_PREFIX}/libexec/linglong)
 install(
   PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/app-conf-generator
+           ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/ld-cache-generator
+           ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/font-cache-generator
            ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/fetch-archive-source
            ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/fetch-dsc-source
            ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/fetch-file-source

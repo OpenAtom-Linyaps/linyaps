@@ -23,21 +23,9 @@
             }
         ]
     },
-    "hooks": {
-        "startContainer": [
-            {
-                "path": "/sbin/ldconfig",
-                "args": [
-                    "/sbin/ldconfig",
-                    "-C",
-                    "/run/linglong/etc/ld.so.cache"
-                ]
-            }
-        ]
-    },
     "mounts": [],
     "process": {
-        "env": ["LINGLONG_LD_SO_CACHE=/run/linglong/etc/ld.so.cache"],
+        "env": ["LINGLONG_LD_SO_CACHE=/run/linglong/cache/ld.so.cache"],
         "cwd": "/",
         "args": ["bash"]
     }

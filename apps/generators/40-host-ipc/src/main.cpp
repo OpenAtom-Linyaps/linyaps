@@ -252,18 +252,11 @@ int main()
         auto absoluteTarget = std::filesystem::path{ target }.lexically_relative("/");
         localtimePath = "/run/host/rootfs" / absoluteTarget;
     }
-    // 为 /run/linglong/etc/ld.so.cache 创建父目录
-    mounts.push_back({
-      { "destination", "/run/linglong/etc" },
-      { "options", nlohmann::json::array({ "nodev", "nosuid", "mode=700" }) },
-      { "source", "tmpfs" },
-      { "type", "tmpfs" },
-    });
 
     auto pwd = std::filesystem::current_path();
     // [name, destination, target]
     std::vector<std::array<std::string_view, 3>> vec = {
-        { "ld.so.cache", "/etc/ld.so.cache", "/run/linglong/etc/ld.so.cache" },
+        { "ld.so.cache", "/etc/ld.so.cache", "/run/linglong/cache/ld.so.cache" },
         { "localtime", "/etc/localtime", localtimePath },
         { "resolv.conf", "/etc/resolv.conf", "/run/host/rootfs/etc/resolv.conf" },
         { "timezone", "/etc/timezone", "/run/host/rootfs/etc/timezone" },

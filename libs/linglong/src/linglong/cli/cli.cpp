@@ -554,6 +554,35 @@ int Cli::run()
         }
     }
 
+    auto appLayerItem = this->repository.getLayerItem(*curAppRef);
+    if (!appLayerItem) {
+        this->printer.printErr(appLayerItem.error());
+        return -1;
+    }
+
+    std::error_code ec;
+    const auto appCache = std::filesystem::path(LINGLONG_ROOT) / "cache" / appLayerItem->commit;
+    if (!std::filesystem::exists(appCache, ec)) {
+        qCritical() << QString::fromStdString(ec.message());
+        this->notifier->notify(api::types::v1::InteractionRequest{
+          .summary = "ld cache does not exist, the application will not start. Please reinstall "
+                     "the application." });
+        return -1;
+    }
+    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+      .destination = "/run/linglong/cache",
+      .options = nlohmann::json::array({ "rbind", "ro" }),
+      .source = appCache,
+      .type = "bind",
+    });
+
+    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+      .destination = "/var/cache/fontconfig",
+      .options = nlohmann::json::array({ "rbind", "ro" }),
+      .source = appCache / "fontconfig",
+      .type = "bind",
+    });
+
     auto container = this->containerBuilder.create({
       .appID = curAppRef->id,
       .containerID = newContainerID,

@@ -9,6 +9,7 @@
 #include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/api/types/v1/ContainerProcessStateInfo.hpp"
 #include "linglong/repo/ostree_repo.h"
+#include "linglong/runtime/container_builder.h"
 #include "package_task.h"
 
 #include <QDBusArgument>
@@ -65,7 +66,9 @@ class PackageManager : public QObject, protected QDBusContext
     Q_PROPERTY(QVariantMap Configuration READ getConfiguration WRITE setConfiguration)
 
 public:
-    PackageManager(linglong::repo::OSTreeRepo &repo, QObject *parent);
+    PackageManager(linglong::repo::OSTreeRepo &repo,
+                   linglong::runtime::ContainerBuilder &containerBuilder,
+                   QObject *parent);
 
     ~PackageManager() override;
     PackageManager(const PackageManager &) = delete;
@@ -140,6 +143,8 @@ private:
                                                   const std::vector<std::string> &modules) noexcept;
     utils::error::Result<package::Reference>
     latestRemoteReference(const std::string &kind, package::FuzzyReference &fuzzyRef) noexcept;
+    utils::error::Result<void> generateCache(const package::Reference &ref) noexcept;
+    utils::error::Result<void> removeCache(const package::Reference &ref) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT
     std::list<PackageTask *> taskList;
     // 正在运行的任务对象路径
@@ -149,6 +154,7 @@ private:
     JobQueue m_prune_queue = {};
 
     int lockFd{ -1 };
+    linglong::runtime::ContainerBuilder &containerBuilder;
 };
 
 } // namespace linglong::service

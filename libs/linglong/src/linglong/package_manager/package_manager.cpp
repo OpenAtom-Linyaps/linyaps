@@ -18,6 +18,7 @@
 #include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/transaction.h"
+#include "linglong/utils/configure.h"
 
 #include <QDBusInterface>
 #include <QDBusReply>
@@ -91,9 +92,12 @@ fuzzyReferenceFromPackage(const api::types::v1::PackageManager1Package &pkg) noe
 }
 } // namespace
 
-PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo, QObject *parent)
+PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo,
+                               linglong::runtime::ContainerBuilder &containerBuilder,
+                               QObject *parent)
     : QObject(parent)
     , repo(repo)
+    , containerBuilder(containerBuilder)
 {
     // exec install on task list changed signal
     connect(
@@ -361,6 +365,13 @@ PackageManager::removeAfterInstall(const package::Reference &oldRef,
     });
 
     for (const auto &module : modules) {
+        if (module == "binary" || module == "runtime") {
+            auto ret = this->removeCache(oldRef);
+            if (!ret) {
+                qCritical() <<ret.error().message();
+            }
+        }
+
         auto ret = this->repo.remove(oldRef);
         if (!ret) {
             return LINGLONG_ERR("Failed to remove old reference " % oldRef.toString(), ret);
@@ -372,6 +383,12 @@ PackageManager::removeAfterInstall(const package::Reference &oldRef,
             if (tmp.state() != linglong::api::types::v1::State::Succeed) {
                 qWarning() << "failed to rollback remove old reference" << oldRef.toString() << ":"
                            << tmp.message();
+            }
+            if (module == "binary" || module == "runtime") {
+                auto ret = this->generateCache(oldRef);
+                if (!ret) {
+                    qCritical() << ret.error().message();
+                }
             }
         });
     }
@@ -455,6 +472,13 @@ void PackageManager::deferredUninstall() noexcept
 
         this->repo.unexportReference(*pkgRef);
         for (const auto &item : items) {
+            if (item.info.packageInfoV2Module == "binary"
+                || item.info.packageInfoV2Module == "runtime") {
+                auto removeCacheRet = this->removeCache(*pkgRef);
+                if (!removeCacheRet) {
+                    qCritical() << "remove cache failed: " << removeCacheRet.error().message();
+                }
+            }
             auto ret = this->repo.remove(*pkgRef, item.info.packageInfoV2Module, item.info.uuid);
             if (!ret) {
                 qCritical() << ret.error();
@@ -736,6 +760,12 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
                   return;
               }
 
+              auto generateCacheRet = this->generateCache(*newRef);
+              if (!generateCacheRet) {
+                  taskRef.reportError(std::move(generateCacheRet).error());
+                  return;
+              }
+
               this->repo.exportReference(*newRef);
               return;
           }
@@ -748,6 +778,12 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
           auto newRef = package::Reference::fromPackageInfo(*info);
           if (!newRef) {
               taskRef.reportError(std::move(newRef).error());
+              return;
+          }
+
+          auto generateCacheRet = this->generateCache(*newRef);
+          if (!generateCacheRet) {
+              taskRef.reportError(std::move(generateCacheRet).error());
               return;
           }
 
@@ -1070,6 +1106,12 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
             }
 
             this->repo.exportReference(newAppRef);
+            auto result = this->generateCache(newAppRef);
+            if (!result) {
+                taskRef.updateState(linglong::api::types::v1::State::Failed,
+                                        "Failed to generate some cache of " + newAppRef.toString());
+                return;
+            }
         }
 
         transaction.commit();
@@ -1312,6 +1354,12 @@ void PackageManager::Install(PackageTask &taskContext,
         } else {
             this->repo.exportReference(newRef);
         }
+        auto result = this->generateCache(newRef);
+        if (!result) {
+            taskContext.updateState(linglong::api::types::v1::State::Failed,
+                                    "Failed to generate some cache of " + newRef.toString());
+            return;
+        }
     }
 
     transaction.commit();
@@ -1523,6 +1571,12 @@ void PackageManager::UninstallRef(PackageTask &taskContext,
     utils::Transaction transaction;
 
     for (const auto &module : modules) {
+        if (module == "binary" || module == "runtime") {
+            auto ret = this->removeCache(ref);
+            if (!ret) {
+                qCritical() << ret.error().message();
+            }
+        }
         auto result = this->repo.remove(ref, module);
         if (!result) {
             taskContext.updateState(linglong::api::types::v1::State::Failed,
@@ -1536,6 +1590,12 @@ void PackageManager::UninstallRef(PackageTask &taskContext,
             if (tmpTask.state() != linglong::api::types::v1::State::Succeed) {
                 qCritical() << "failed to rollback module" << module.c_str() << "of ref"
                             << ref.toString();
+            }
+            if (module == "binary" || module == "runtime") {
+                auto ret = this->generateCache(ref);
+                if (!ret) {
+                    qCritical() << ret.error().message();
+                }
             }
         });
     }
@@ -1738,9 +1798,15 @@ void PackageManager::Update(PackageTask &taskContext,
         if (!ret) {
             qCritical() << "remove after install of ref" << ref.toString()
                         << "failed:" << ret.error().message();
+            return;
         }
 
-        return;
+        auto result = this->generateCache(newRef);
+        if (!result) {
+            taskContext.updateState(linglong::api::types::v1::State::Failed,
+                                    "Failed to generate some cache of " + newRef.toString());
+            return;
+        }
     }
 
     auto mergeRet = this->repo.mergeModules();
@@ -2013,5 +2079,215 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
 void PackageManager::ReplyInteraction(QDBusObjectPath object_path, const QVariantMap &replies)
 {
     Q_EMIT this->ReplyReceived(replies);
+}
+
+utils::error::Result<void> prepareLayerDir(const repo::OSTreeRepo &repo,
+                                           const package::Reference &ref,
+                                           package::LayerDir &appLayerDir,
+                                           std::optional<package::LayerDir> &runtimeLayerDir,
+                                           package::LayerDir &baseLayerDir)
+{
+    LINGLONG_TRACE("prepare layer dir before running");
+    auto appLayerDirRet = repo.getMergedModuleDir(ref);
+    if (!appLayerDirRet) {
+        return LINGLONG_ERR(appLayerDirRet);
+    }
+    appLayerDir = std::move(appLayerDirRet).value();
+
+    auto info = appLayerDir.info();
+    if (!info) {
+        return LINGLONG_ERR(info);
+    }
+    if (info->runtime) {
+        auto runtimeFuzzyRef =
+          package::FuzzyReference::parse(QString::fromStdString(*info->runtime));
+        if (!runtimeFuzzyRef) {
+            return LINGLONG_ERR(runtimeFuzzyRef);
+        }
+
+        auto runtimeRefRet = repo.clearReference(*runtimeFuzzyRef,
+                                                 {
+                                                   .forceRemote = false,
+                                                   .fallbackToRemote = false,
+                                                 });
+        if (!runtimeRefRet) {
+            return LINGLONG_ERR(runtimeRefRet);
+        }
+        auto &runtimeRef = *runtimeRefRet;
+
+        if (!info->uuid.has_value()) {
+            auto runtimeLayerDirRet = repo.getMergedModuleDir(runtimeRef);
+            if (!runtimeLayerDirRet) {
+                return LINGLONG_ERR(runtimeLayerDirRet);
+            }
+            runtimeLayerDir = std::make_optional(std::move(runtimeLayerDirRet).value());
+        } else {
+            auto runtimeLayerDirRet =
+              repo.getLayerDir(*runtimeRefRet, std::string{ "binary" }, info->uuid);
+            if (!runtimeLayerDirRet) {
+                return LINGLONG_ERR(runtimeLayerDirRet);
+            }
+            runtimeLayerDir = std::make_optional(std::move(runtimeLayerDirRet).value());
+        }
+    }
+
+    auto baseFuzzyRef = package::FuzzyReference::parse(QString::fromStdString(info->base));
+    if (!baseFuzzyRef) {
+        return LINGLONG_ERR(baseFuzzyRef);
+    }
+
+    auto baseRef = repo.clearReference(*baseFuzzyRef,
+                                       {
+                                         .forceRemote = false,
+                                         .fallbackToRemote = false,
+                                       });
+    if (!baseRef) {
+        return LINGLONG_ERR(baseRef);
+    }
+
+    if (!info->uuid.has_value()) {
+        qDebug() << "getMergedModuleDir base";
+        auto baseLayerDirRet = repo.getMergedModuleDir(*baseRef);
+        if (!baseLayerDirRet) {
+            return LINGLONG_ERR(baseLayerDirRet);
+        }
+        baseLayerDir = std::move(baseLayerDirRet).value();
+    } else {
+        qDebug() << "getLayerDir base" << info->uuid.value().c_str();
+        auto baseLayerDirRet = repo.getLayerDir(*baseRef, std::string{ "binary" }, info->uuid);
+        if (!baseLayerDirRet) {
+            return LINGLONG_ERR(baseLayerDirRet);
+        }
+        baseLayerDir = std::move(baseLayerDirRet).value();
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> PackageManager::generateCache(const package::Reference &ref) noexcept
+{
+    LINGLONG_TRACE("generate cache for " + ref.toString());
+
+    auto layerItem = this->repo.getLayerItem(ref);
+    if(!layerItem) {
+        return LINGLONG_ERR(layerItem);
+    }
+
+    const auto appCache = std::filesystem::path(LINGLONG_ROOT) / "cache" / layerItem->commit;
+    const auto appFontCache = appCache / "fontconfig";
+    const std::string appCacheDest = "/run/linglong/cache";
+    const std::string generatorDest = "/run/linglong/generator";
+    const std::string ldGenerator = generatorDest + "/ld-cache-generator";
+    const std::string fontGenerator = generatorDest + "/font-cache-generator";
+
+    utils::Transaction transaction;
+    std::error_code ec;
+    if (!std::filesystem::exists(appFontCache, ec)) {
+        if (ec) {
+            return LINGLONG_ERR(QString::fromStdString(ec.message()));
+        }
+        if (!std::filesystem::create_directories(appFontCache, ec)) {
+            return LINGLONG_ERR(QString::fromStdString(ec.message()));
+        }
+    }
+
+    transaction.addRollBack([&appCache]() noexcept {
+        std::error_code ec;
+        std::filesystem::remove_all(appCache, ec);
+        if (ec) {
+            qCritical() << QString::fromStdString(ec.message());
+        }
+    });
+
+    // bind mount cache root
+    std::vector<ocppi::runtime::config::types::Mount> applicationMounts{};
+    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+      .destination = appCacheDest,
+      .options = nlohmann::json::array({ "rbind", "rw" }),
+      .source = appCache,
+      .type = "bind",
+    });
+    // bind mount font cache
+    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+      .destination = "/var/cache/fontconfig",
+      .options = nlohmann::json::array({ "rbind", "rw" }),
+      .source = appFontCache,
+      .type = "bind",
+    });
+    // bind mount generator
+    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+      .destination = generatorDest,
+      .options = nlohmann::json::array({ "rbind", "ro" }),
+      .source = LINGLONG_LIBEXEC_DIR,
+      .type = "bind",
+    });
+
+
+    package::LayerDir appLayerDir;
+    std::optional<package::LayerDir> runtimeLayerDir;
+    package::LayerDir baseLayerDir;
+
+    auto ret = prepareLayerDir(this->repo, ref, appLayerDir, runtimeLayerDir, baseLayerDir);
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    auto container = this->containerBuilder.create({
+      .appID = ref.id,
+      .containerID = ref.id,
+      .runtimeDir = runtimeLayerDir,
+      .baseDir = baseLayerDir,
+      .appDir = appLayerDir,
+      .patches = {},
+      .mounts = std::move(applicationMounts),
+      .masks = {},
+    });
+    if (!container) {
+        return LINGLONG_ERR(container);
+    }
+
+    ocppi::runtime::config::types::Process process{};
+    process.cwd = "/";
+    process.noNewPrivileges = true;
+    process.terminal = true;
+
+    auto currentArch = package::Architecture::currentCPUArchitecture();
+    if (!currentArch) {
+        return LINGLONG_ERR(currentArch);
+    }
+    // Usage: ld-cache-generator [cacheRoot] [id] [gnu_arch_triplet]
+    //        font-cache-generator [cacheRoot] [id]
+    const std::string ldGenerateCmd = ldGenerator + " " + appCacheDest + " " + ref.id.toStdString()
+      + " " + currentArch->getTriplet().toStdString();
+    const std::string fontGenerateCmd =
+      fontGenerator + " " + appCacheDest + " " + ref.id.toStdString();
+    process.args = std::vector<std::string>{ "bash", "-c", ldGenerateCmd + ";" + fontGenerateCmd };
+
+    auto result = container->data()->run(process);
+    if(!result) {
+        return LINGLONG_ERR(result);
+    }
+
+    transaction.commit();
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> PackageManager::removeCache(const package::Reference &ref) noexcept
+{
+    LINGLONG_TRACE("remove the cache of " + ref.toString());
+
+    auto layerItem = this->repo.getLayerItem(ref);
+    if(!layerItem) {
+        return LINGLONG_ERR(layerItem);
+    }
+
+    const auto appCache = std::filesystem::path(LINGLONG_ROOT) / "cache" / layerItem->commit;
+    std::error_code ec;
+    std::filesystem::remove_all(appCache, ec);
+    if (ec) {
+        return LINGLONG_ERR("failed to remove cache directory", ec);
+    }
+
+    return LINGLONG_OK;
 }
 } // namespace linglong::service

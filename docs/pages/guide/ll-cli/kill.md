@@ -17,25 +17,22 @@ ll-cli kill --help
 `ll-cli kill` 命令的帮助信息如下：
 
 ```text
-Usage: ll-cli [options] kill container-id
+停止运行的应用程序
+用法: ll-cli kill [选项] 应用
+
+Positionals:
+  APP TEXT REQUIRED           指定正在运行的应用程序名
 
 Options:
-  -h, --help        Displays this help.
-  --default-config  default config json filepath
+  -h,--help                   打印帮助信息并退出
+  --help-all                  展开所有帮助
 
-Arguments:
-  kill              kill container with id
-  container-id      container id
+如果在使用过程中遇到任何问题，
+您可以通过此项目向如意玲珑项目团队报告错误：https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```
 
 使用 `ll-cli kill` 命令可以强制退出正在运行的玲珑应用:
 
 ```bash
-ll-cli kill <9c41c0af2bad4617aea8485f5aaeb93a>
-```
-
-`ll-cli kill 9c41c0af2bad4617aea8485f5aaeb93a`命令输出如下：
-
-```text
-kill app:org.deepin.calculator/5.7.21.4/x86_64 success
+ll-cli kill org.deepin.calculator
 ```

@@ -18,7 +18,7 @@ The `package.yaml` file serves as the foundation for ll-pica to convert packages
 
 ### Build environment
 
-Conversion build environment for DEB packages to Linglong packages.
+Conversion build environment for DEB packages to linyaps packages.
 
 ```bash
 runtime:

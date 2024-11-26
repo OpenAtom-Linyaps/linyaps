@@ -1,6 +1,6 @@
 ## Add dependency
 
-Linglong applications may lack package dependencies, which can currently
+linyaps applications may lack package dependencies, which can currently
  be addressed by adding the corresponding package dependencies in the `linglong.yaml` file.
 
 The `ll-pica adep` command is used to add package dependencies to the `linglong.yaml` file.

@@ -17,15 +17,20 @@ ll-builder run --help
 `ll-builder run`命令的帮助信息如下：
 
 ```text
-Usage: ll-builder [options] run
+运行构建好的应用程序
+用法: ll-builder run [选项] [命令...]
+
+Positionals:
+  COMMAND TEXT ...            进入容器执行命令而不是运行应用
 
 Options:
-  -v, --verbose  show detail log
-  -h, --help     Displays this help.
-  --exec <exec>  run exec than build script
-
-Arguments:
-  run            run project
+  -h,--help                   打印帮助信息并退出
+  --help-all                  展开所有帮助
+  --file FILE:FILE [./linglong.yaml]
+                              linglong.yaml的文件路径
+  --offline                   仅使用本地文件
+  --modules modules ...       运行指定模块。例如: --modules binary,develop
+  --debug                     在调试模式下运行（启用开发模块）
 ```
 
 `ll-builder run`命令根据配置文件读取该程序相关的运行环境信息，构造一个容器环境，并在容器中执行该程序而无需安装。

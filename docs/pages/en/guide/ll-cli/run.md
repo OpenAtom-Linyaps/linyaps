@@ -6,7 +6,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # Run App
 
-Use `ll-cli run` command to start a Linglong application.
+Use `ll-cli run` command to start a linyaps application.
 
 See help for the `ll-cli run` command:
 
@@ -17,45 +17,33 @@ ll-cli run --help
 View the help information for the `ll-cli run` command:
 
 ```text
-Usage: ll-cli [options] run com.deepin.demo
+Run an application
+Usage: ll-cli run [OPTIONS] APP [COMMAND...]
+
+Example:
+# run application by appid                                                                                                                                                                      ll-cli run org.deepin.demo
+# execute commands in the container rather than running the application
+ll-cli run org.deepin.demo bash
+ll-cli run org.deepin.demo -- bash
+ll-cli run org.deepin.demo -- bash -x /path/to/bash/script
+
+Positionals:
+  APP TEXT REQUIRED           Specify the application ID
+  COMMAND TEXT ...            Run commands in a running sandbox
 
 Options:
-  -h, --help                                         Displays help on
-                                                     commandline options.
-  --help-all                                         Displays help including Qt
-                                                     specific options.
-  --repo-point                                       app repo type to use
-  --exec </bin/bash>                                 run exec
-  --no-proxy                                         whether to use dbus proxy
-                                                     in box
-  --filter-name <--filter-name=com.deepin.linglong.A dbus name filter to use
-  ppManager>
-  --filter-path <--filter-path=/com/deepin/linglong/ dbus path filter to use
-  PackageManager>
-  --filter-interface <--filter-interface=com.deepin. dbus interface filter to
-  linglong.PackageManager>                           use
+  -h,--help                   Print this help message and exit
+  --help-all                  Expand all help                                                                                                                                                     --file FILE:FILE            Pass file to applications running in a sandbox
+  --url URL                   Pass url to applications running in a sandbox
 
-Arguments:
-  run                                                run application
-  appId                                              application id
+If you found any problems during use,
+You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```
 
 When the application is installed normally, use the `ll-cli run` command to start it:
 
 ```bash
 ll-cli run org.deepin.calculator
-```
-
-By default, executing the run command will start the application of the highest version. If you want to run the application of the specified version, you need to append the corresponding version number after `appid`:
-
-```bash
-ll-cli run org.deepin.calculator/5.7.21.4
-```
-
-By default, `ll-dbus-proxy` is used to intercept and forward `dbus` messages. If you do not want to use `ll-dbus-proxy`, you can use the `--no-dbus-proxy` parameter:
-
-```bash
-ll-cli run org.deepin.calculator --no-dbus-proxy
 ```
 
 Use the `ll-cli run` command to enter the specified program container:
@@ -66,7 +54,7 @@ ll-cli run org.deepin.calculator --exec /bin/bash
 
 After entering, execute `shell` commands, such as `gdb`, `strace`, `ls`, `find`, etc.
 
-Since Linglong applications run in the container, they cannot be directly debugged in the conventional way. You need to run debugging tools in the container, such as `gdb`:
+Since linyaps applications run in the container, they cannot be directly debugged in the conventional way. You need to run debugging tools in the container, such as `gdb`:
 
 ```bash
 gdb /opt/apps/org.deepin.calculator/files/bin/deepin-calculator
@@ -74,4 +62,4 @@ gdb /opt/apps/org.deepin.calculator/files/bin/deepin-calculator
 
 The path is the absolute path of the application in the container.
 
-For more debugging information on Linglong application `release` version, please refer to: [Run FAQ](../debug/faq.md).
+For more debugging information on linyaps application `release` version, please refer to: [Run FAQ](../debug/faq.md).

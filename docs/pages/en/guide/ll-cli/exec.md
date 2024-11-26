@@ -6,7 +6,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # Attach To Container
 
-Use `ll-cli exec` to enter the inside of the running Linglong container.
+Use `ll-cli exec` to enter the inside of the running linyaps container.
 
 View the help information for the `ll-cli exec` command:
 
@@ -17,34 +17,38 @@ ll-cli exec --help
 Here is the output:
 
 ```text
-Usage: ll-cli [options] exec 9c41c0af2bad4617aea8485f5aaeb93a "bash"
+Execute commands in the currently running sandbox
+Usage: ll-cli [OPTIONS] [SUBCOMMAND]
+
+Positionals:
+  INSTANCE TEXT REQUIRED      Specify the application running instance(you can get it by ps command)
+  COMMAND TEXT ...            Run commands in a running sandbox
 
 Options:
-  -h, --help        Displays help on commandline options.
-  --help-all        Displays help including Qt specific options.
-  -e, --env <env>   extra environment variables splited by comma
-  -d, --path <pwd>  location to exec the new command
+  -h,--help                   Print this help message and exit
+  --help-all                  Expand all help
+  --working-directory PATH:DIR
+                              Specify working directory
 
-Arguments:
-  exec              exec command in container
-  containerId       container id
-  cmd               command
+If you found any problems during use,
+You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```
 
 Open a new terminal window and run these commands:
 
-```bash
-killall ll-service
-ll-service
-```
+Example of using `ll-cli exec` to get inside org.dde.calendar container:
 
-Example of using `ll-cli exec` to get inside a running container:
+1. using `ll-cli ps` to get container id:
 
 ```bash
-ll-cli exec 9c41c0af2bad4617aea8485f5aaeb93a /bin/bash
+App                                       ContainerID      Pid
+main:org.dde.calendar/5.14.5.0/x86_64     c3b5ce363172     539537
 ```
 
-Return to the `ll-service` terminal interface and find that it has entered the application container.
+2. enter the org.dde.calendar container
+```bash
+ll-cli exec main:org.dde.calendar/5.14.5.0/x86_64 /bin/bash
+```
 
 Use `ls -l /` to view the root directory structure. The output is as follows:
 

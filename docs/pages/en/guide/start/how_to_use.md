@@ -4,11 +4,11 @@ SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-# Build Linglong applications
+# Build linyaps applications
 
-Taking [deepin-calculator](https://github.com/linuxdeepin/deepin-calculator.git) as an example, introduce the process of building a Linglong package from source code.
+Taking [deepin-calculator](https://github.com/linuxdeepin/deepin-calculator.git) as an example, introduce the process of building a linyaps package from source code.
 
-## Create Linglong project
+## Create linyaps project
 
 ```bash
 mkdir org.deepin.calculator
@@ -109,7 +109,7 @@ ll-builder run --exec /bin/bash
 
 # Conversion application
 
-Here, we use  baidunetdisk as an example. We will introduce the process of converting DEB packages into Linglong packages
+Here, we use  baidunetdisk as an example. We will introduce the process of converting DEB packages into linyaps packages
 
 ## Obtain software package
 

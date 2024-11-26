@@ -536,6 +536,13 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
 
     const auto &packageInfo = *packageInfoRet;
 
+    // FIXME: need to support install develop
+    if (packageInfo.packageInfoV2Module != "binary"
+        && packageInfo.packageInfoV2Module != "runtime") {
+        return toDBusReply(-1,
+                           "The current version does not support the develop module installation.");
+    }
+
     auto architectureRet = package::Architecture::parse(packageInfo.arch[0]);
     if (!architectureRet) {
         return toDBusReply(architectureRet);
@@ -691,6 +698,13 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
           auto result = this->repo.importLayerDir(*layerDir);
           if (!result) {
               taskRef.reportError(std::move(result).error());
+              return;
+          }
+
+          // develop module only need to import
+          if (module != "binary" && module != "runtime") {
+              taskRef.updateState(linglong::api::types::v1::State::Succeed,
+                                  "install layer successfully");
               return;
           }
 
@@ -1519,18 +1533,18 @@ void PackageManager::Uninstall(PackageTask &taskContext,
     taskContext.updateSubState(linglong::api::types::v1::SubState::PreAction,
                                "prepare uninstalling package");
 
-    std::vector<std::string> removedModules{ "binary" };
-    if (module == "binary") {
-        auto modules = this->repo.getModuleList(ref);
-        removedModules = std::move(modules);
-    }
-
+    std::vector<std::string> removedModules{ module };
     utils::Transaction transaction;
 
-    this->repo.unexportReference(ref);
-    transaction.addRollBack([this, &ref]() noexcept {
-        this->repo.exportReference(ref);
-    });
+    if (module == "binary" || module == "runtime") {
+        auto modules = this->repo.getModuleList(ref);
+        removedModules = std::move(modules);
+
+        this->repo.unexportReference(ref);
+        transaction.addRollBack([this, &ref]() noexcept {
+            this->repo.exportReference(ref);
+        });
+    }
 
     UninstallRef(taskContext, ref, removedModules);
     if (isTaskDone(taskContext.subState())) {
@@ -1750,7 +1764,7 @@ void PackageManager::pullDependency(PackageTask &taskContext,
                                     const api::types::v1::PackageInfoV2 &info,
                                     const std::string &module) noexcept
 {
-    if (info.kind != "app") {
+    if (info.kind != "app" || module != "binary" || module != "runtime") {
         return;
     }
 

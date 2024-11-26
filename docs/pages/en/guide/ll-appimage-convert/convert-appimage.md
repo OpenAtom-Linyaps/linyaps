@@ -6,7 +6,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Conversion appimage application
 
-convert `appimage` format( `.appimage` or `.AppImage` ) application to linglong format( `.layer` or `.uab` ) application
+convert `appimage` format( `.appimage` or `.AppImage` ) application to linyaps format( `.layer` or `.uab` ) application
 
 View the help information for the `ll-appimage-convert convert --help` command:
 
@@ -36,20 +36,20 @@ Global Flags:
   -V, --verbose   verbose output
 ```
 
-The `ll-appimage-convert convert` command will generate a directory according to specified app name( `--name` option), it will as a root directory of the linglong project, where the `linglong.yaml` file is located. and it supports two convert methods:
+The `ll-appimage-convert convert` command will generate a directory according to specified app name( `--name` option), it will as a root directory of the linyaps project, where the `linglong.yaml` file is located. and it supports two convert methods:
 
-1. you can use `--file` option to convert to linglong application according to specified appimage file;
-2. you can use `--url` and `--hash` option to convert to linglong application according to specified appimage url and hash value;
+1. you can use `--file` option to convert to linyaps application according to specified appimage file;
+2. you can use `--url` and `--hash` option to convert to linyaps application according to specified appimage url and hash value;
 3. you can use `--layer` option to export `.layer`, or it will export `.uab` default.
 
 `Tips: When the linglong version is greater than 1.5.7, the default convert package format is `.uab`, if you want to export a `.layer` file, you need to add the --layer option.`
 
-you can use `--output` option to generate config file( `linglong.yaml` ) of linglong project and a script of build linglong `.layer`(`.uab`)
-then you can execute script file to generate after you modify the `linglong.yaml` file. if you do not specify this option, it will export linglong `.layer` or linglong `.uab` directly.
+you can use `--output` option to generate config file( `linglong.yaml` ) of linyaps project and a script of build linyaps `.layer`(`.uab`)
+then you can execute script file to generate after you modify the `linglong.yaml` file. if you do not specify this option, it will export linyaps `.layer` or `.uab` directly.
 
-Take converting [BrainWaves](https://github.com/makebrainwaves/BrainWaves/releases/download/v0.15.1/BrainWaves-0.15.1.AppImage) into linglong `.layer` through `--url` as an example, the main steps as follows:
+Take converting [BrainWaves](https://github.com/makebrainwaves/BrainWaves/releases/download/v0.15.1/BrainWaves-0.15.1.AppImage) into linyaps `.layer` through `--url` as an example, the main steps as follows:
 
-Specify the relevant parameters of the linglong package you want to convert, you can acquire `io.github.brainwaves_0.15.1.0_x86_64_runtime.layer` or `io.github.brainwaves_0.15.1.0_x86_64_runtime.uab` wait a moment.
+Specify the relevant parameters of the linyaps package you want to convert, you can acquire `io.github.brainwaves_0.15.1.0_x86_64_runtime.layer` or `io.github.brainwaves_0.15.1.0_x86_64_runtime.uab` wait a moment.
 
 ```bash
 ll-appimage-convert convert --url "https://github.com/makebrainwaves/BrainWaves/releases/download/v0.15.1/BrainWaves-0.15.1.AppImage" --hash "04fcfb9ccf5c0437cd3007922fdd7cd1d0a73883fd28e364b79661dbd25a4093" --name "io.github.brainwaves" --id "io.github.brainwaves" --version "0.15.1.0" --description "io.github.brainwaves" -b

@@ -6,7 +6,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # 模块拆分
 
-在玲珑构建时，一个应用可以拆分为多个模块，每个模块包含部分构建产物，例如调试符号放到 `develop` 模块，翻译文件放到 `lang-*` 模块等。这样用户可以按需安装，缩减应用体积。
+在如意玲珑构建时，一个应用可以拆分为多个模块，每个模块包含部分构建产物，例如调试符号放到 `develop` 模块，翻译文件放到 `lang-*` 模块等。这样用户可以按需安装，缩减应用体积。
 
 ## 模块文件
 
@@ -26,7 +26,7 @@ modules:
 
 模块名可自定义，但不能重复，并且有一些保留的模块名有特殊含义，例如 `binary`、`develop`、`lang-*` 等，建议开发者自定义的模块以`x-`开头，以避免冲突。
 
-files 是一个字符串数组，每列写一个文件路径，支持正则表达式。文件路径会自动添加应用安装路径 `$PREFIX` 作为前缀，所以如果模块要包含 `$PREFIX/bin/demo` 文件，仅需写 /bin/demo，玲珑会自动转换成 /opt/apps/org.deepin.demo/files/bin/demo 这种路径。
+files 是一个字符串数组，每列写一个文件路径，支持正则表达式。文件路径会自动添加应用安装路径 `$PREFIX` 作为前缀，所以如果模块要包含 `$PREFIX/bin/demo` 文件，仅需写 /bin/demo，如意玲珑会自动转换成 /opt/apps/org.deepin.demo/files/bin/demo 这种路径。
 
 如果同一个文件路径被多个模块包含，仅会移动文件到第一个模块中(按 modules 的顺序)，在 files 中写正则表达式需要以^开头，否则会被认为是普通文件路径，正则表达式会自动在^后添加 `$PREFIX` 作为前缀，打包者无需重复添加。
 
@@ -40,7 +40,7 @@ _这是默认模块，无需在 modules 中声明_，binary 会保存其他模�
 
 ### develop 模块
 
-该模块可以存放用于应用的调试符号和开发工具。玲珑会在构建后将构建产物的调试符号剥离到 `$PREFIX/lib/debug` 和 `$PREFIX/lib/include` 这些目录就特别合适存放到该模块。所以玲珑构建后如果没有 modules 字段或 modules 没有 develop 模块时自动创建 develop 模块，并使用以下默认值：
+该模块可以存放用于应用的调试符号和开发工具。如意玲珑会在构建后将构建产物的调试符号剥离到 `$PREFIX/lib/debug` 和 `$PREFIX/lib/include` 这些目录就特别合适存放到该模块。所以如意玲珑构建后如果没有 modules 字段或 modules 没有 develop 模块时自动创建 develop 模块，并使用以下默认值：
 
 ```yaml
 modules:

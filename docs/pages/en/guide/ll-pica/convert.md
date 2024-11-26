@@ -1,6 +1,6 @@
 ## Conversion application
 
-The `ll-pica convert` command is used to generate the `linglong.yaml` file required by Linglong.
+The `ll-pica convert` command is used to generate the `linglong.yaml` file required by linyaps.
 
 View the help information for the `ll-cli convert` command:
 
@@ -33,7 +33,7 @@ Global Flags:
 
 Translation: After executing the `ll-pica init -w w --pi com.baidu.baidunetdisk --pn com.baidu.baidunetdisk -t repo` command
 
-We only need to execute the command `ll-pica convert -w w -b` to convert the Linglong application. Here, we will use the `apt download` command to download the deb package named `com.baidu.baidunetdisk`.
+We only need to execute the command `ll-pica convert -w w -b` to convert the linyaps application. Here, we will use the `apt download` command to download the deb package named `com.baidu.baidunetdisk`.
 
 ```bash
 ll-pica convert -c com.baidu.baidunetdisk_4.17.7_amd64.deb -w work -b
@@ -71,6 +71,6 @@ The constructed products are as follows:
 
 Layer files are divided into two categories: `binary` and `develop`. The `binary` includes the application's execution environment, while the `develop` layer, built upon the `binary`, retains the debugging environment.
 
-The uab file is an offline distribution format used by the LingLong software package, which is not suitable for systems that can normally connect to the LingLong repository. Instead, one should utilize the delta transfer scheme provided by the LingLong software repository to reduce the network transmission size.
+The uab file is an offline distribution format used by the linyaps software package, which is not suitable for systems that can normally connect to the linyaps repository. Instead, one should utilize the delta transfer scheme provided by the linyaps software repository to reduce the network transmission size.
 
-Installing Layer Files and Running the Application Reference：[Install Linglong Apps](../ll-cli/install.md)
+Installing Layer Files and Running the Application Reference：[Install linyaps Apps](../ll-cli/install.md)

@@ -7,6 +7,7 @@
 #include "linglong/adaptors/package_manager/package_manager1.h"
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/repo/config.h"
+#include "linglong/repo/migrate.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/configure.h"
 #include "linglong/utils/dbus/register.h"
@@ -40,6 +41,16 @@ void withDBusDaemon()
 
     auto *ostreeRepo = new linglong::repo::OSTreeRepo(repoRoot, *config, *clientFactory);
     ostreeRepo->setParent(QCoreApplication::instance());
+
+    auto ret = linglong::repo::tryMigrate(LINGLONG_ROOT, *config);
+    if (ret == linglong::repo::MigrateResult::Failed) {
+        qCritical() << "failed to migrate repository";
+        QCoreApplication::exit(-1);
+    }
+
+    if (auto ret = ostreeRepo->exportAllEntries(); !ret) {
+        qCritical() << "failed to export entries:" << ret.error();
+    }
 
     QDBusConnection conn = QDBusConnection::systemBus();
     auto *packageManager =

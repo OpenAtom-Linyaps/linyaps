@@ -43,9 +43,12 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
 
     // bundle dir is already created in ContainerBuilder::create
     QDir bundle = runtimeDir.absoluteFilePath(QString("linglong/%1").arg(this->id));
-
     if (!bundle.mkpath("./rootfs")) {
         return LINGLONG_ERR("make rootfs directory");
+    }
+
+    if (!bundle.mkpath("conf.d")) {
+        return LINGLONG_ERR("make conf.d directory");
     }
     auto _ = // NOLINT
       utils::finally::finally([&]() {
@@ -148,19 +151,37 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
         if (!ofs.is_open()) {
             return LINGLONG_ERR("create ld config in bundle directory");
         }
-
-        ofs << "/runtime/lib" << std::endl;
-        ofs << "/runtime/lib/" + arch->getTriplet().toStdString() << std::endl;
-        ofs << "/opt/apps/" + this->appID.toStdString() + "/files/lib" << std::endl;
-        ofs << "/opt/apps/" + this->appID.toStdString() + "/files/lib/"
-            + arch->getTriplet().toStdString()
-            << std::endl;
+        ofs << "include /run/linglong/cache/ld.so.conf" << std::endl;
     }
+
+    {
+        std::ofstream ofs(bundle.absoluteFilePath("conf.d/99-linglong.conf").toStdString());
+        Q_ASSERT(ofs.is_open());
+        if (!ofs.is_open()) {
+            return LINGLONG_ERR("create font config in bundle directory");
+        }
+        ofs << "<?xml version=\"1.0\"?>" << std::endl;
+        ofs << "<!DOCTYPE fontconfig SYSTEM \"urn:fontconfig:fonts.dtd\">" << std::endl;
+        ofs << "<fontconfig>" << std::endl;
+        ofs << " <include ignore_missing=\"yes\">/run/linglong/cache/fonts/fonts.conf</include>"
+            << std::endl;
+        ofs << "</fontconfig>" << std::endl;
+    }
+
     this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
       .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
       .gidMappings = {},
       .options = { { "ro", "rbind" } },
       .source = bundle.absoluteFilePath("zz_deepin-linglong-app.ld.so.conf").toStdString(),
+      .type = "bind",
+      .uidMappings = {},
+    });
+
+    this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
+      .destination = "/etc/fonts/conf.d",
+      .gidMappings = {},
+      .options = { { "ro", "rbind" } },
+      .source = bundle.absoluteFilePath("conf.d").toStdString(),
       .type = "bind",
       .uidMappings = {},
     });
@@ -178,7 +199,7 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
         ofs.close();
     }
     qDebug() << "run container in " << bundle.path();
-    ocppi::runtime::RunOption opt;
+    ocppi::runtime::RunOption opt{};
     // 禁用crun自己创建cgroup，便于AM识别和管理玲珑应用
     opt.GlobalOption::extra.emplace_back("--cgroup-manager=disabled");
     auto result = this->cli.run(ocppi::runtime::ContainerID(this->id.toStdString()),

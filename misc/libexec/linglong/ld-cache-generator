@@ -1,0 +1,41 @@
+#!/bin/sh
+
+# SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+set -e
+
+ld_so_conf_generator()
+{
+	local ld_so_conf="$1/ld.so.conf"
+	local app_id="$2"
+	local gnu_arch_triplet=$3
+
+cat << EOF > ${ld_so_conf}
+/runtime/lib
+/runtime/lib/${gnu_arch_triplet}
+include /runtime/etc/ld.so.conf
+/opt/apps/${app_id}/files/lib
+/opt/apps/${app_id}/files/lib/${gnu_arch_triplet}
+include /opt/apps/${app_id}/files/etc/ld.so.conf
+EOF
+}
+
+ld_so_cache_generator()
+{
+	local ld_so_cache="$1/ld.so.cache"
+	ldconfig -C ${ld_so_cache}
+}
+
+main()
+{
+	local cache_root=$1
+	local id=$2
+	local triplet=$3
+	# conf should be generated before cache
+	ld_so_conf_generator ${cache_root} ${id} ${triplet}
+	ld_so_cache_generator ${cache_root}
+}
+
+main $@

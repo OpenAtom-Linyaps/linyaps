@@ -1276,7 +1276,14 @@ int Cli::uninstall()
         return -1;
     }
 
-    auto layerDir = this->repository.getLayerDir(*ref);
+    std::string module = "binary";
+    auto params = api::types::v1::PackageManager1UninstallParameters{};
+    if (!options.module.empty()) {
+        module = options.module;
+        params.package.packageManager1PackageModule = module;
+    }
+
+    auto layerDir = this->repository.getLayerDir(*ref, module);
     if (!layerDir) {
         this->printer.printErr(layerDir.error());
         return -1;
@@ -1294,7 +1301,6 @@ int Cli::uninstall()
         return -1;
     }
 
-    auto params = api::types::v1::PackageManager1UninstallParameters{};
     params.package.id = fuzzyRef->id.toStdString();
     if (fuzzyRef->channel) {
         params.package.channel = fuzzyRef->channel->toStdString();
@@ -1303,9 +1309,6 @@ int Cli::uninstall()
         params.package.version = fuzzyRef->version->toString().toStdString();
     }
 
-    if (!options.module.empty()) {
-        params.package.packageManager1PackageModule = options.module;
-    }
     auto pendingReply = this->pkgMan.Uninstall(utils::serialize::toQVariantMap(params));
     pendingReply.waitForFinished();
 

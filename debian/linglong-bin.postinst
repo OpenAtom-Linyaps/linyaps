@@ -4,15 +4,6 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-case "$1" in
-configure)
-        # deepin-linglong doesn't has a login shell, use /bin/sh to execute 'migrate'
-        su -s /bin/sh -c "ll-cli migrate" deepin-linglong 2>/dev/null || true
-        rm /var/lib/linglong/state.json 2>/dev/null || true
-        ;;
-*) ;;
-esac
-
 #DEBHELPER#
 
 # NOTE:

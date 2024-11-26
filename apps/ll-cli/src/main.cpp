@@ -11,7 +11,6 @@
 #include "linglong/cli/json_printer.h"
 #include "linglong/cli/terminal_notifier.h"
 #include "linglong/repo/config.h"
-#include "linglong/repo/migrate.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/utils/configure.h"
@@ -519,9 +518,6 @@ ll-cli list --upgradable
       ->required()
       ->check(validatorString);
 
-    // add sub command migrate
-    commandParser.add_subcommand("migrate", _("Migrate repository data"))->group(CliHiddenGroup);
-
     // add sub command prune
     commandParser.add_subcommand("prune", _("Remove the unused base or runtime"))
       ->group(CliAppManagingGroup)
@@ -550,22 +546,6 @@ ll-cli list --upgradable
         return -1;
     }
     linglong::repo::ClientFactory clientFactory(config->repos[config->defaultRepo]);
-
-    auto *migrateOption = commandParser.get_subcommand("migrate");
-    if (migrateOption->parsed()) {
-        auto result = linglong::repo::tryMigrate(LINGLONG_ROOT, *config);
-        if (result == linglong::repo::MigrateResult::Failed) {
-            return -1;
-        }
-
-        auto *repo = new linglong::repo::OSTreeRepo(QDir{ LINGLONG_ROOT }, *config, clientFactory);
-        auto ret = repo->exportAllEntries();
-        if (!ret.has_value()) {
-            std::cerr << "failed to export entries:" << ret.error().message().toStdString();
-        }
-
-        return 0;
-    }
 
     auto ret = QMetaObject::invokeMethod(
       QCoreApplication::instance(),

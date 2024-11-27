@@ -93,6 +93,7 @@ public
     auto Update(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Search(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Prune() noexcept -> QVariantMap;
+    auto GenerateCache(const QString &reference) noexcept -> QVariantMap;
     void ReplyInteraction(QDBusObjectPath object_path, const QVariantMap &replies);
 
     // Nothing to do here, Permissions() will be rejected in org.deepin.linglong.PackageManager.conf
@@ -108,6 +109,7 @@ Q_SIGNALS:
                             QVariantMap additionalMessage);
     void SearchFinished(QString jobID, QVariantMap result);
     void PruneFinished(QString jobID, QVariantMap result);
+    void GenerateCacheFinished(QString jobID, bool status);
     void ReplyReceived(const QVariantMap &replies);
 
 private:
@@ -152,6 +154,7 @@ private:
 
     JobQueue m_search_queue = {};
     JobQueue m_prune_queue = {};
+    JobQueue m_generator_queue = {};
 
     int lockFd{ -1 };
     linglong::runtime::ContainerBuilder &containerBuilder;

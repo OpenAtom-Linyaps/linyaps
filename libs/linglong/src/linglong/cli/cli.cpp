@@ -323,28 +323,30 @@ int Cli::run()
         return -1;
     }
 
-    auto info = appLayerDir->info();
-    if (!info) {
-        this->printer.printErr(info.error());
+    // Note: we should use the info.json which from states.json instead of layer dir
+    auto appLayerItem = this->repository.getLayerItem(*curAppRef);
+    if (!appLayerItem) {
+        this->printer.printErr(appLayerItem.error());
         return -1;
     }
+    const auto &info = appLayerItem->info; 
 
-    auto appDataDir = utils::xdg::appDataDir(info->id);
+    auto appDataDir = utils::xdg::appDataDir(info.id);
     if (!appDataDir) {
-        this->printer.printErr(info.error());
+        this->printer.printErr(appDataDir.error());
         return -1;
     }
 
-    auto ret = RequestDirectories(*info);
+    auto ret = RequestDirectories(info);
     if (!ret) {
         qWarning() << ret.error().message();
     }
 
     std::optional<std::string> runtimeLayerRef;
     std::optional<package::LayerDir> runtimeLayerDir;
-    if (info->runtime) {
+    if (info.runtime) {
         auto runtimeFuzzyRef =
-          package::FuzzyReference::parse(QString::fromStdString(*info->runtime));
+          package::FuzzyReference::parse(QString::fromStdString(info.runtime.value()));
         if (!runtimeFuzzyRef) {
             this->printer.printErr(runtimeFuzzyRef.error());
             return -1;
@@ -361,7 +363,7 @@ int Cli::run()
         }
         auto &runtimeRef = *runtimeRefRet;
 
-        if (!info->uuid.has_value()) {
+        if (!info.uuid.has_value()) {
             auto runtimeLayerDirRet = this->repository.getMergedModuleDir(runtimeRef);
             if (!runtimeLayerDirRet) {
                 this->printer.printErr(runtimeLayerDirRet.error());
@@ -370,7 +372,7 @@ int Cli::run()
             runtimeLayerDir = *runtimeLayerDirRet;
         } else {
             auto runtimeLayerDirRet =
-              this->repository.getLayerDir(*runtimeRefRet, std::string{ "binary" }, info->uuid);
+              this->repository.getLayerDir(*runtimeRefRet, std::string{ "binary" }, info.uuid);
             if (!runtimeLayerDirRet) {
                 this->printer.printErr(runtimeLayerDirRet.error());
                 return -1;
@@ -380,7 +382,7 @@ int Cli::run()
         }
     }
 
-    auto baseFuzzyRef = package::FuzzyReference::parse(QString::fromStdString(info->base));
+    auto baseFuzzyRef = package::FuzzyReference::parse(QString::fromStdString(info.base));
     if (!baseFuzzyRef) {
         this->printer.printErr(baseFuzzyRef.error());
         return -1;
@@ -396,25 +398,31 @@ int Cli::run()
         return -1;
     }
     utils::error::Result<package::LayerDir> baseLayerDir;
-    if (!info->uuid.has_value()) {
+    if (!info.uuid.has_value()) {
         qDebug() << "getMergedModuleDir base";
         baseLayerDir = this->repository.getMergedModuleDir(*baseRef);
     } else {
-        qDebug() << "getLayerDir base" << info->uuid.value().c_str();
-        baseLayerDir = this->repository.getLayerDir(*baseRef, std::string{ "binary" }, info->uuid);
+        qDebug() << "getLayerDir base" << info.uuid.value().c_str();
+        baseLayerDir = this->repository.getLayerDir(*baseRef, std::string{ "binary" }, *(info.uuid));
     }
     if (!baseLayerDir) {
         this->printer.printErr(LINGLONG_ERRV(baseLayerDir));
         return -1;
     }
 
+    auto appCache = this->ensureCache(*curAppRef, *appLayerItem);
+    if(!appCache) {
+        this->printer.printErr(LINGLONG_ERRV(appCache));
+        return -1;
+    }
+
     auto commands = options.commands;
     if (commands.empty()) {
-        commands = info->command.value_or(std::vector<std::string>{});
+        commands = info.command.value_or(std::vector<std::string>{});
     }
 
     if (commands.empty()) {
-        qWarning() << "invalid command found in package" << QString::fromStdString(info->id);
+        qWarning() << "invalid command found in package" << QString::fromStdString(info.id);
         commands = { "bash" };
     }
     auto execArgs = filePathMapping(commands);
@@ -539,8 +547,8 @@ int Cli::run()
           });
       };
 
-    if (info->permissions) {
-        auto &perm = info->permissions;
+    if (info.permissions) {
+        auto &perm = info.permissions;
         if (perm->binds) {
             const auto &binds = perm->binds;
             std::for_each(binds->cbegin(), binds->cend(), bindMount);
@@ -554,32 +562,17 @@ int Cli::run()
         }
     }
 
-    auto appLayerItem = this->repository.getLayerItem(*curAppRef);
-    if (!appLayerItem) {
-        this->printer.printErr(appLayerItem.error());
-        return -1;
-    }
-
-    std::error_code ec;
-    const auto appCache = std::filesystem::path(LINGLONG_ROOT) / "cache" / appLayerItem->commit;
-    if (!std::filesystem::exists(appCache, ec)) {
-        qCritical() << QString::fromStdString(ec.message());
-        this->notifier->notify(api::types::v1::InteractionRequest{
-          .summary = "ld cache does not exist, the application will not start. Please reinstall "
-                     "the application." });
-        return -1;
-    }
     applicationMounts.push_back(ocppi::runtime::config::types::Mount{
       .destination = "/run/linglong/cache",
       .options = nlohmann::json::array({ "rbind", "ro" }),
-      .source = appCache,
+      .source = *appCache,
       .type = "bind",
     });
 
     applicationMounts.push_back(ocppi::runtime::config::types::Mount{
       .destination = "/var/cache/fontconfig",
       .options = nlohmann::json::array({ "rbind", "ro" }),
-      .source = appCache / "fontconfig",
+      .source = *appCache + "/fontconfig",
       .type = "bind",
     });
 
@@ -2124,4 +2117,139 @@ Cli::RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept
     return LINGLONG_OK;
 }
 
+int Cli::generateCache(const package::Reference &ref)
+{
+    LINGLONG_TRACE("generate cache for all applications");
+    QEventLoop loop;
+    QString jobIDReply = "";
+    auto ret = connect(&this->pkgMan,
+                       &api::dbus::v1::PackageManager::GenerateCacheFinished,
+                       [this, &loop, &jobIDReply](const QString &jobID, bool success) {
+                           if (jobIDReply != jobID) {
+                               return;
+                           }
+                           if (!success) {
+                               loop.exit(-1);
+                               return;
+                           }
+                           loop.exit(0);
+                       });
+
+    auto pendingReply = this->pkgMan.GenerateCache(ref.toString());
+    pendingReply.waitForFinished();
+    if (pendingReply.isError()) {
+        auto err = LINGLONG_ERRV(pendingReply.error().message());
+        this->printer.printErr(err);
+        return -1;
+    }
+
+    auto result = utils::serialize::fromQVariantMap<api::types::v1::PackageManager1JobInfo>(
+      pendingReply.value());
+    if (!result) {
+        this->printer.printErr(result.error());
+        return -1;
+    }
+
+    if (!result->id) {
+        this->printer.printErr(
+          LINGLONG_ERRV("\n" + QString::fromStdString(result->message), result->code));
+        return -1;
+    }
+
+    jobIDReply = QString::fromStdString(result->id.value());
+    return loop.exec();
+}
+
+utils::error::Result<std::string>
+Cli::ensureCache(const package::Reference &ref,
+                 const api::types::v1::RepositoryCacheLayersItem &appLayerItem) noexcept
+{
+    LINGLONG_TRACE("ensure cache for: " + QString::fromStdString(appLayerItem.info.id));
+
+    int lockfd;
+    std::error_code ec;
+    auto appCache = std::filesystem::path(LINGLONG_ROOT) / "cache" / appLayerItem.commit;
+    const auto fileLock = "/run/linglong/" + appLayerItem.commit + ".lock";
+
+    struct flock locker
+    {
+        .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0
+    };
+
+    // Note: If the cache directory exists, check if there is a file lock.
+    //       If the lock file is not exist, it means that the cache has been generated.
+    if (std::filesystem::exists(appCache, ec)) {
+        if (!std::filesystem::exists(fileLock, ec)) {
+            if (ec) {
+                return LINGLONG_ERR(QString::fromStdString(ec.message()), ec.value());
+            }
+            return appCache;
+        }
+
+        lockfd = open(fileLock.c_str(), O_CREAT | O_RDWR, 0644);
+        if (lockfd < 0) {
+            return LINGLONG_ERR("failed to open file lock " + QString::fromStdString(fileLock), -1);
+        }
+        auto closefd = utils::finally::finally([&lockfd] {
+            close(lockfd);
+        });
+
+        while (true) {
+            // Block here until the write lock is successfully set
+            using namespace std::chrono_literals;
+            if (::fcntl(lockfd, F_SETLK, &locker) == 0) {
+                break;
+            }
+            if (errno == EACCES || errno == EAGAIN || errno == EINTR) {
+                std::this_thread::sleep_for(100ms);
+            } else {
+                return LINGLONG_ERR(QString("failed to set lock ") + ::strerror(errno), -1);
+            }
+        }
+        locker.l_type = F_UNLCK;
+        if (::fcntl(lockfd, F_SETLK, &locker)) {
+            return LINGLONG_ERR("failed to unlock" + QString::fromStdString(appCache), -1);
+        }
+
+        return appCache;
+    }
+
+    if (ec) {
+        return LINGLONG_ERR(QString::fromStdString(ec.message()), ec.value());
+    }
+
+    lockfd = open(fileLock.c_str(), O_CREAT | O_RDWR, 0644);
+    if (lockfd < 0) {
+        return LINGLONG_ERR("failed to open file lock " + QString::fromStdString(fileLock), -1);
+    }
+
+    auto closefd = utils::finally::finally([&lockfd] {
+        close(lockfd);
+    });
+
+    if (::fcntl(lockfd, F_SETLK, &locker) == -1) {
+        return LINGLONG_ERR("failed to lock" + QString::fromStdString(appCache), -1);
+    }
+
+    // Try to generate cache here
+    this->notifier->notify(api::types::v1::InteractionRequest{
+      .summary = "This old application is trying to run under the new linglong client. It needs to "
+                 "regenerate some cache. This operation will take some time but only once." });
+    auto ret = this->generateCache(ref);
+    if (ret != 0) {
+        this->notifier->notify(api::types::v1::InteractionRequest{
+          .summary =
+            "The cache generation failed, please uninstall and reinstall the application." });
+    } else {
+        this->notifier->notify(
+          api::types::v1::InteractionRequest{ .summary = "The cache has been regenerated." });
+    }
+
+    locker.l_type = F_UNLCK;
+    if (::fcntl(lockfd, F_SETLK, &locker)) {
+        return LINGLONG_ERR("failed to unlock" + QString::fromStdString(appCache), -1);
+    }
+
+    return appCache;
+}
 } // namespace linglong::cli

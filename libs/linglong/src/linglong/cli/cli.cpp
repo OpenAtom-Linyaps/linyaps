@@ -1778,14 +1778,16 @@ int Cli::content()
         return file;
     }
 
-    auto target = std::filesystem::read_symlink(file, ec);
-    if (ec) {
-        qWarning() << "resolve symlink " << file.c_str() << " error: " << ec.message().c_str()
+    std::array<char, PATH_MAX + 1> buf{};
+    auto *target = ::realpath(file.c_str(), buf.data());
+    if (target == nullptr) {
+        qWarning() << "resolve symlink " << file.c_str() << " error: " << ::strerror(errno)
                    << ", passing the file path to app as it is.";
         return file;
     }
 
-    return std::filesystem::path{ "/run/host/rootfs" } / target.lexically_relative("/");
+    return std::filesystem::path{ "/run/host/rootfs" }
+    / std::filesystem::path{ target }.lexically_relative("/");
 }
 
 [[nodiscard]] std::string Cli::mappingUrl(const std::string &url) noexcept

@@ -6,6 +6,8 @@
 #include "linglong/api/types/v1/Generators.hpp"
 #include "nlohmann/json.hpp"
 
+#include <linux/limits.h>
+
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -376,13 +378,15 @@ int main() // NOLINT
             continue;
         }
 
-        auto realHostLocation = std::filesystem::read_symlink(hostLocation, ec);
-        if (ec) {
-            std::cerr << "failed to resolve symlink " << hostLocation << ": " << ec.message()
+        std::array<char, PATH_MAX + 1> buf{};
+        auto *resolved = ::realpath(hostLocation.c_str(), buf.data());
+        if (resolved == nullptr) {
+            std::cerr << "failed to resolve symlink " << hostLocation << ": " << ::strerror(errno)
                       << std::endl;
             return -1;
         }
 
+        auto realHostLocation = std::filesystem::path(resolved);
         if (!std::filesystem::exists(realHostLocation, ec)) {
             if (ec) {
                 std::cerr << "failed to get state of " << realHostLocation << ": " << ec.message()

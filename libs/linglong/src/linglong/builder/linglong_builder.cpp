@@ -42,9 +42,11 @@
 #include <QUrl>
 #include <QUuid>
 
+#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <optional>
 #include <ostream>
 #include <string>
@@ -271,7 +273,7 @@ utils::error::Result<package::Reference> pullDependency(const package::FuzzyRefe
 
     auto tmpTask = service::PackageTask::createTemporaryTask();
     auto partChanged = [&ref, module](const uint fetched, const uint requested) {
-        auto percentage =  (uint)((((double)fetched) / requested) * 100);
+        auto percentage = (uint)((((double)fetched) / requested) * 100);
         auto progress = QString("(%1/%2 %3%)").arg(fetched).arg(requested).arg(percentage);
         printReplacedText(QString("%1%2%3%4 %5")
                             .arg(ref->id, -25)                        // NOLINT
@@ -399,6 +401,59 @@ utils::error::Result<void> installModule(QStringList installRules,
 }
 
 } // namespace
+
+utils::error::Result<void> cmdListApp(repo::OSTreeRepo &repo)
+{
+    LINGLONG_TRACE("cmd list app");
+    auto list = repo.listLocal();
+    if (!list.has_value()) {
+        return LINGLONG_ERR("list local pkg", list);
+    }
+    std::vector<std::string> refs;
+    for (const auto &item : *list) {
+        auto ref = package::Reference::fromPackageInfo(item);
+        if (!ref.has_value()) {
+            continue;
+        }
+        refs.push_back(ref->toString().toStdString());
+    }
+    std::sort(refs.begin(), refs.end());
+    auto it = std::unique(refs.begin(), refs.end());
+    refs.erase(it, refs.end());
+    for (const auto &ref : refs) {
+        std::cout << ref << std::endl;
+    }
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> cmdRemoveApp(repo::OSTreeRepo &repo, std::vector<std::string> refs)
+{
+    LINGLONG_TRACE("cmd remove app");
+    for (const auto &ref : refs) {
+        auto r = package::Reference::parse(QString::fromStdString(ref));
+        if (!r.has_value()) {
+            std::cerr << ref << ": " << r.error().message().toStdString() << std::endl;
+            continue;
+        }
+        auto modules = repo.getModuleList(*r);
+        for (const auto &module : modules) {
+            auto v = repo.remove(*r, module);
+            if (!v.has_value()) {
+                std::cerr << ref << ": " << v.error().message().toStdString() << std::endl;
+                continue;
+            }
+        }
+    }
+    auto v = repo.prune();
+    if (!v.has_value()) {
+        std::cerr << v.error().message().toStdString();
+    }
+    v = repo.mergeModules();
+    if (!v.has_value()) {
+        std::cerr << v.error().message().toStdString();
+    }
+    return LINGLONG_OK;
+}
 
 Builder::Builder(const api::types::v1::BuilderProject &project,
                  const QDir &workingDir,

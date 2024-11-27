@@ -268,6 +268,8 @@ auto getOCIConfig(const ContainerOptions &opts) noexcept
 
     config->linux_->maskedPaths = opts.masks;
 
+    config->hooks = opts.hooks;
+
     return config;
 }
 

@@ -27,6 +27,7 @@ struct ContainerOptions
 
     std::vector<api::types::v1::OciConfigurationPatch> patches;
     std::vector<ocppi::runtime::config::types::Mount> mounts; // extra mounts
+    ocppi::runtime::config::types::Hooks hooks;
     std::vector<std::string> masks;
 };
 

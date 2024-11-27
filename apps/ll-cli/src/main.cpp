@@ -307,10 +307,7 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
                      ->group(CliAppManagingGroup)
                      ->fallthrough();
     cliKill->usage(_("Usage: ll-cli kill [OPTIONS] APP"));
-    cliKill
-      ->add_option("APP",
-                   options.appid,
-                   _("Specify the running application"))
+    cliKill->add_option("APP", options.appid, _("Specify the running application"))
       ->required()
       ->check(validatorString);
 
@@ -341,9 +338,10 @@ ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
                    _("Specify the application ID, and it can also be a .uab or .layer file"))
       ->required()
       ->check(validatorString);
-    cliInstall->add_option("--module", options.module, _("Install a specify module"))
-      ->type_name("MODULE")
-      ->check(validatorString);
+    // FIXME: The module function is not normal, temporarily blocked
+    // cliInstall->add_option("--module", options.module, _("Install a specify module"))
+    //   ->type_name("MODULE")
+    //   ->check(validatorString);
     cliInstall->add_flag("--force", options.forceOpt, _("Force install the application"));
     cliInstall->add_flag("-y", options.confirmOpt, _("Automatically answer yes to all questions"));
 
@@ -359,9 +357,10 @@ ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
     cliUninstall->add_option("APP", options.appid, _("Specify the applications ID"))
       ->required()
       ->check(validatorString);
-    cliUninstall->add_option("--module", options.module, _("Uninstall a specify module"))
-      ->type_name("MODULE")
-      ->check(validatorString);
+    // FIXME: The module function is not normal, temporarily blocked
+    // cliUninstall->add_option("--module", options.module, _("Uninstall a specify module"))
+    //   ->type_name("MODULE")
+    //   ->check(validatorString);
     cliUninstall->add_flag("--prune", pruneOpt, "Remove all unused modules")->group(CliHiddenGroup);
     cliUninstall->add_flag("--all", allOpt, "Uninstall all modules")->group(CliHiddenGroup);
 

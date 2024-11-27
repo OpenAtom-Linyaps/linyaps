@@ -276,6 +276,13 @@ You can report bugs to the linyaps team under this project: https://github.com/O
       ->group(hiddenGroup);
     buildRun->add_flag("--debug", debugMode, _("Run in debug mode (enable develop module)"));
 
+    auto buildList = commandParser.add_subcommand("list", _("List builded linyaps app"));
+    buildList->usage(_("Usage: ll-builder list [OPTIONS]"));
+    std::vector<std::string> removeList;
+    auto buildRemove = commandParser.add_subcommand("remove", _("Remove builded linyaps app"));
+    buildRemove->usage(_("Usage: ll-builder remove [OPTIONS] [APP...]"));
+    buildRemove->add_option("APP", removeList);
+
     // build export
     bool layerMode = false;
     std::string iconFile;
@@ -813,6 +820,22 @@ You can report bugs to the linyaps team under this project: https://github.com/O
             }
         }
 
+        return 0;
+    }
+
+    if (buildList->parsed()) {
+        auto ret = linglong::builder::cmdListApp(repo);
+        if (!ret.has_value()) {
+            return -1;
+        }
+        return 0;
+    }
+
+    if (buildRemove->parsed()) {
+        auto ret = linglong::builder::cmdRemoveApp(repo, removeList);
+        if (!ret.has_value()) {
+            return -1;
+        }
         return 0;
     }
 

@@ -2290,4 +2290,34 @@ utils::error::Result<void> PackageManager::removeCache(const package::Reference 
 
     return LINGLONG_OK;
 }
+
+auto PackageManager::GenerateCache(const QString &reference) noexcept -> QVariantMap
+{
+    auto refRet = package::Reference::parse(reference);
+    if (!refRet) {
+        return toDBusReply(refRet);
+    }
+    auto ref = *refRet;
+    auto jobID = QUuid::createUuid().toString();
+    m_generator_queue.runTask([this, jobID, ref]() {
+            qInfo() << "Generate cache for:" << ref.toString();
+            auto ret = this->generateCache(ref);
+            if (!ret) {
+                qCritical() << "failed to generate cache for:" << ref.toString();
+                qCritical() << ret.error().message();
+                Q_EMIT this->GenerateCacheFinished(jobID, false);
+                return;
+            }
+
+        qInfo() << "Generate cache finished";
+        Q_EMIT this->GenerateCacheFinished(jobID, true);
+    });
+    auto result = utils::serialize::toQVariantMap(api::types::v1::PackageManager1JobInfo{
+      .id = jobID.toStdString(),
+      .code = 0,
+      .message = "",
+    });
+    return result;
+}
+
 } // namespace linglong::service

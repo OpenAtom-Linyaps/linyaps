@@ -94,6 +94,10 @@ private:
     listUpgradable(const std::vector<api::types::v1::PackageInfoV2> &pkgs);
     utils::error::Result<std::vector<api::types::v1::UpgradeListResult>>
     listUpgradable(const std::string &type);
+    int generateCache(const package::Reference &ref);
+    utils::error::Result<std::string>
+    ensureCache(const package::Reference &ref,
+                const api::types::v1::RepositoryCacheLayersItem &appLayerItem) noexcept;
     QDBusReply<QString> authorization();
 
 private Q_SLOTS:

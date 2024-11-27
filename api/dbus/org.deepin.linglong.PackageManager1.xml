@@ -43,6 +43,12 @@ SPDX-License-Identifier: LGPL-3.0-or-later
       <arg direction="out" name="result" type="a{sv}" />
       <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
     </method>
+    <method name="GenerateCache">
+      <annotation name="org.freedesktop.DBus.Description" value="Generate cache for app if no cache exists." />
+      <arg direction="in" name="reference" type="s" />
+      <arg direction="out" name="result" type="a{sv}" />
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap" />
+    </method>
     <method name="Permissions">
       <annotation name="org.freedesktop.DBus.Description" value="Used by the client to check whether it has permission to call privileged methods" />
     </method>
@@ -55,6 +61,10 @@ SPDX-License-Identifier: LGPL-3.0-or-later
       <arg name="taskID" type="s" />
       <arg name="result" type="a{sv}" />
       <annotation name="org.qtproject.QtDBus.QtTypeName.Out1" value="QVariantMap" />
+    </signal>
+    <signal name="GenerateCacheFinished">
+      <arg name="taskID" type="s" />
+      <arg name="status" type="b" />
     </signal>
     <method name="ReplyInteraction">
       <arg name="task" type="o" />

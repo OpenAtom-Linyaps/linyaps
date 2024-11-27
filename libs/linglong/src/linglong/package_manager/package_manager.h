@@ -93,8 +93,6 @@ public
     auto Update(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Search(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Prune() noexcept -> QVariantMap;
-    utils::error::Result<void>
-    Prune(std::vector<api::types::v1::PackageInfoV2> &removedInfo) noexcept;
     void ReplyInteraction(QDBusObjectPath object_path, const QVariantMap &replies);
 
     // Nothing to do here, Permissions() will be rejected in org.deepin.linglong.PackageManager.conf
@@ -143,6 +141,8 @@ private:
                                                   const std::vector<std::string> &modules) noexcept;
     utils::error::Result<package::Reference>
     latestRemoteReference(const std::string &kind, package::FuzzyReference &fuzzyRef) noexcept;
+    utils::error::Result<void>
+    Prune(std::vector<api::types::v1::PackageInfoV2> &removedInfo) noexcept;
     utils::error::Result<void> generateCache(const package::Reference &ref) noexcept;
     utils::error::Result<void> removeCache(const package::Reference &ref) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT

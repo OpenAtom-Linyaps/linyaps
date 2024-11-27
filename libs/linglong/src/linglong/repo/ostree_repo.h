@@ -137,7 +137,8 @@ private:
 
     utils::error::Result<void> updateConfig(const api::types::v1::RepoConfig &newCfg) noexcept;
     QDir ostreeRepoDir() const noexcept;
-    QDir createLayerQDir(const std::string &commit) const noexcept;
+    [[nodiscard]] utils::error::Result<QDir>
+    ensureEmptyLayerDir(const std::string &commit) const noexcept;
     utils::error::Result<void> handleRepositoryUpdate(
       QDir layerDir, const api::types::v1::RepositoryCacheLayersItem &layer) noexcept;
     utils::error::Result<void>

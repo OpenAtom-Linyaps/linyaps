@@ -602,9 +602,11 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
     }
 
     auto refSpec =
-      QString{ "%1/%2/%3" }.arg("local",
-                                packageRef.toString(),
-                                QString::fromStdString(packageInfo.packageInfoV2Module));
+      QString{ "%1:%2/%3/%4/%5" }.arg("local",
+                                      packageRef.channel,
+                                      packageRef.id,
+                                      packageRef.arch.toString(),
+                                      QString::fromStdString(packageInfo.packageInfoV2Module));
     auto task = std::find_if(this->taskList.cbegin(),
                              this->taskList.cend(),
                              [&refSpec](const PackageTask *task) {
@@ -843,9 +845,11 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
     }
 
     auto refSpec =
-      QString{ "%1/%2/%3" }.arg("local",
-                                appRef.toString(),
-                                QString::fromStdString(appLayer.info.packageInfoV2Module));
+      QString{ "%1:%2/%3/%4/%5" }.arg("local",
+                                      appRef.channel,
+                                      appRef.id,
+                                      appRef.arch.toString(),
+                                      QString::fromStdString(appLayer.info.packageInfoV2Module));
     auto task = std::find_if(this->taskList.cbegin(),
                              this->taskList.cend(),
                              [&refSpec](const PackageTask *task) {
@@ -1151,9 +1155,11 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     }
 
     auto refSpec =
-      QString{ "%1:%2/%3" }.arg(QString::fromStdString(this->repo.getConfig().defaultRepo),
-                                remoteRef.toString(),
-                                QString::fromStdString(curModule));
+      QString{ "%1:%2/%3/%4/%5" }.arg(QString::fromStdString(this->repo.getConfig().defaultRepo),
+                                      remoteRef.channel,
+                                      remoteRef.id,
+                                      remoteRef.arch.toString(),
+                                      QString::fromStdString(curModule));
     auto task = std::find_if(this->taskList.cbegin(),
                              this->taskList.cend(),
                              [&refSpec](const PackageTask *task) {
@@ -1433,9 +1439,12 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
 
     auto curModule = paras->package.packageManager1PackageModule.value_or("binary");
     auto refSpec =
-      QString{ "%1/%2/%3" }.arg(QString::fromStdString(this->repo.getConfig().defaultRepo),
-                                reference.toString(),
-                                QString::fromStdString(curModule));
+      QString{ "%1:%2/%3/%4/%5" }.arg(QString::fromStdString(this->repo.getConfig().defaultRepo),
+                                      reference.channel,
+                                      reference.id,
+                                      reference.arch.toString(),
+                                      QString::fromStdString(curModule));
+
     auto task = std::find_if(this->taskList.cbegin(),
                              this->taskList.cend(),
                              [&refSpec](const PackageTask *task) {
@@ -1618,10 +1627,12 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
 
         // FIXME: use sha256 instead of refSpec
         auto curModule = package.packageManager1PackageModule.value_or("binary");
-        auto refSpec =
-          QString{ "%1/%2/%3" }.arg(QString::fromStdString(this->repo.getConfig().defaultRepo),
-                                    newReference.toString(),
-                                    QString::fromStdString(curModule));
+        auto refSpec = QString{ "%1:%2/%3/%4/%5" }.arg(
+          QString::fromStdString(this->repo.getConfig().defaultRepo),
+          reference.channel,
+          reference.id,
+          reference.arch.toString(),
+          QString::fromStdString(curModule));
         auto task = std::find_if(this->taskList.cbegin(),
                                  this->taskList.cend(),
                                  [&refSpec](const PackageTask *task) {
@@ -1631,7 +1642,7 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
             return toDBusReply(-1, "the target " % refSpec % " is being operated");
         }
         refSpecList.append(refSpec);
-        upgradeList.push_back(std::make_pair(reference, newReference));
+        upgradeList.emplace_back(reference, newReference);
     }
 
     auto *taskPtr = new PackageTask{ connection(), refSpecList };
@@ -1642,8 +1653,8 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
             return;
         }
 
-        for (auto refs : upgradeList) {
-            this->Update(taskRef, refs.first, refs.second);
+        for (const auto &[oldRef, newRef] : upgradeList) {
+            this->Update(taskRef, oldRef, newRef);
         }
     });
     Q_EMIT TaskListChanged(taskRef.taskObjectPath());

@@ -37,7 +37,7 @@ configure)
         # enable kernel.unprivileged_userns_clone
         # disable kernel.apparmor_restrict_unprivileged_unconfined and kernel.apparmor_restrict_unprivileged_userns
         if [ -f /usr/lib/sysctl.d/linglong.conf ]; then
-                sysctl -p /usr/lib/sysctl.d/linglong.conf >/dev/null || true
+                sysctl -p /usr/lib/sysctl.d/linglong.conf 2>/dev/null || true
         fi
         ;;
 abort-upgrade | abort-remove | abort-deconfigure) ;;

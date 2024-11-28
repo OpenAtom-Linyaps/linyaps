@@ -27,7 +27,7 @@ set(ENABLE_LINGLONG_INSTALLER
     OFF
     CACHE BOOL "enable linglong installer")
 
-set(ENABLE_TESTTING
+set(ENABLE_TESTING
     ON
     CACHE BOOL "enable testting")
 
@@ -104,7 +104,7 @@ if(ENABLE_CPM)
     EXCLUDE_FROM_ALL ON
     OPTIONS "CLI11_BUILD_TESTS OFF")
 
-  if(ENABLE_TESTTING)
+  if(ENABLE_TESTING)
     include(CTest)
     CPMFindPackage(
       NAME googletest
@@ -143,7 +143,10 @@ if(NOT CLI11_FOUND)
   list(APPEND linglong_EXTERNALS "CLI11 CLI11::CLI11")
 endif()
 
-if(ENABLE_TESTTING)
+find_package(PkgConfig REQUIRED)
+
+if(ENABLE_TESTING)
+  pkg_search_module(CRYPTO REQUIRED IMPORTED_TARGET libcrypto)
   find_package(GTest REQUIRED)
 endif()
 
@@ -182,8 +185,6 @@ find_package(
   Qt${QT_VERSION_MAJOR}
   COMPONENTS Core DBus
   REQUIRED)
-
-find_package(PkgConfig REQUIRED)
 
 pkg_search_module(glib2 REQUIRED IMPORTED_TARGET glib-2.0)
 pkg_search_module(ostree1 REQUIRED IMPORTED_TARGET ostree-1)

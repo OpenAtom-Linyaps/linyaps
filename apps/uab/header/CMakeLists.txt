@@ -41,6 +41,7 @@ pfl_add_executable(
   DISABLE_INSTALL
   SOURCES
   ./src/main.cpp
+  ./include/sha256.h
   OUTPUT_NAME
   uab-header
   LINK_LIBRARIES

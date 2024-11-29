@@ -1764,7 +1764,11 @@ void PackageManager::pullDependency(PackageTask &taskContext,
                                     const api::types::v1::PackageInfoV2 &info,
                                     const std::string &module) noexcept
 {
-    if (info.kind != "app" || module != "binary" || module != "runtime") {
+    if (info.kind != "app") {
+        return;
+    }
+
+    if (module != "binary" && module != "runtime") {
         return;
     }
 

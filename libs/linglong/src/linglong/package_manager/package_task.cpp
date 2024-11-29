@@ -6,6 +6,7 @@
 
 #include "linglong/adaptors/task/task1.h"
 #include "linglong/utils/dbus/register.h"
+#include "linglong/utils/global/initialize.h"
 
 #include <QDebug>
 #include <QUuid>
@@ -56,6 +57,10 @@ PackageTask::PackageTask()
     : m_taskID(QUuid::createUuid())
     , m_cancelFlag(g_cancellable_new())
 {
+    connect(utils::global::GlobalTaskControl::instance(),
+            &utils::global::GlobalTaskControl::OnCancel,
+            this,
+            &PackageTask::Cancel);
 }
 
 PackageTask::PackageTask(QDBusConnection connection, QStringList refs, QObject *parent)
@@ -80,6 +85,11 @@ PackageTask::PackageTask(QDBusConnection connection, QStringList refs, QObject *
     const auto *interface = mo->classInfo(interfaceIndex).value();
     m_forwarder =
       new utils::dbus::PropertiesForwarder(connection, taskObjectPath(), interface, this);
+
+    connect(utils::global::GlobalTaskControl::instance(),
+            &utils::global::GlobalTaskControl::OnCancel,
+            this,
+            &PackageTask::Cancel);
 }
 
 PackageTask::~PackageTask()

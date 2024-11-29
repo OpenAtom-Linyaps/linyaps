@@ -39,14 +39,14 @@ void withDBusDaemon()
         std::abort();
     }
 
-    auto *ostreeRepo = new linglong::repo::OSTreeRepo(repoRoot, *config, *clientFactory);
-    ostreeRepo->setParent(QCoreApplication::instance());
-
     auto ret = linglong::repo::tryMigrate(LINGLONG_ROOT, *config);
     if (ret == linglong::repo::MigrateResult::Failed) {
         qCritical() << "failed to migrate repository";
         QCoreApplication::exit(-1);
     }
+
+    auto *ostreeRepo = new linglong::repo::OSTreeRepo(repoRoot, *config, *clientFactory);
+    ostreeRepo->setParent(QCoreApplication::instance());
 
     if (auto ret = ostreeRepo->exportAllEntries(); !ret) {
         qCritical() << "failed to export entries:" << ret.error();

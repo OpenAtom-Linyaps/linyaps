@@ -76,7 +76,8 @@ int main()
             return -1;
         }
 
-        if ("com.360.browser-stable" == appID) {
+        bool skipHomeGenerate = (std::getenv("LINGLONG_SKIP_HOME_GENERATE") != nullptr);
+        if ("com.360.browser-stable" == appID && !skipHomeGenerate) {
             auto *home = ::getenv("HOME");
             if (home == nullptr) {
                 std::cerr << "Couldn't get HOME." << std::endl;

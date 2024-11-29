@@ -2207,6 +2207,11 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
         return LINGLONG_ERR(ret);
     }
 
+    auto putEnvRet = qputenv("LINGLONG_SKIP_HOME_GENERATE", "1");
+    if (!putEnvRet) {
+        qWarning() << "failed to set env LINGLONG_SKIP_HOME_GENERATE";
+    }
+
     auto container = this->containerBuilder.create({
       .appID = ref.id,
       .containerID = ref.id,

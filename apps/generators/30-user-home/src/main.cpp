@@ -53,6 +53,19 @@ int main() // NOLINT
     auto &mounts = content["mounts"];
     auto &env = content["process"]["env"];
 
+    mounts.push_back({
+      { "destination", "/home" },
+      { "options", nlohmann::json::array({ "nodev", "nosuid", "mode=700" }) },
+      { "source", "tmpfs" },
+      { "type", "tmpfs" },
+    });
+
+    bool skipHomeGenerate = (std::getenv("LINGLONG_SKIP_HOME_GENERATE") != nullptr);
+    if (skipHomeGenerate) {
+        std::cout << content.dump() << std::endl;
+        return 0;
+    }
+
     auto *homeEnv = ::getenv("HOME");
     auto *userNameEnv = ::getenv("USER");
     if (homeEnv == nullptr || userNameEnv == nullptr) {
@@ -66,13 +79,6 @@ int main() // NOLINT
         std::cerr << "Home " << hostHomeDir << "doesn't exists." << std::endl;
         return -1;
     }
-
-    mounts.push_back({
-      { "destination", "/home" },
-      { "options", nlohmann::json::array({ "nodev", "nosuid", "mode=700" }) },
-      { "source", "tmpfs" },
-      { "type", "tmpfs" },
-    });
 
     auto envExist = [&env](const std::string &key) {
         auto prefix = key + "=";

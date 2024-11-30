@@ -18,6 +18,7 @@
 #include <ostree.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -112,6 +113,9 @@ public:
     [[nodiscard]] utils::error::Result<std::shared_ptr<package::LayerDir>>
     getMergedModuleDir(const package::Reference &ref, const QStringList &modules) const noexcept;
     std::vector<std::string> getModuleList(const package::Reference &ref) noexcept;
+    utils::error::Result<std::vector<std::string>>
+    getRemoteModuleList(const package::Reference &ref,
+                        const std::optional<std::vector<std::string>> &filter) noexcept;
 
     [[nodiscard]] utils::error::Result<api::types::v1::RepositoryCacheLayersItem>
     getLayerItem(const package::Reference &ref,

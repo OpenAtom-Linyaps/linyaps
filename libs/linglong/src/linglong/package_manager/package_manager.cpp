@@ -8,6 +8,7 @@
 
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
+#include "linglong/api/types/v1/State.hpp"
 #include "linglong/package/layer_file.h"
 #include "linglong/package/layer_packager.h"
 #include "linglong/package/uab_file.h"
@@ -339,8 +340,8 @@ PackageManager::removeAfterInstall(const package::Reference &oldRef,
         for (const auto &module : modules) {
             auto ret = this->repo.markDeleted(oldRef, true, module);
             if (!ret) {
-                return LINGLONG_ERR("Failed to mark old reference " % oldRef.toString()
-                                      % " as deleted",
+                return LINGLONG_ERR("Failed to mark old reference " % oldRef.toString() % "/"
+                                      % module.c_str() % " as deleted",
                                     ret);
             }
 
@@ -370,7 +371,7 @@ PackageManager::removeAfterInstall(const package::Reference &oldRef,
             }
         }
 
-        auto ret = this->repo.remove(oldRef);
+        auto ret = this->repo.remove(oldRef, module);
         if (!ret) {
             return LINGLONG_ERR("Failed to remove old reference " % oldRef.toString(), ret);
         }
@@ -1157,12 +1158,45 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     if (!paras) {
         return toDBusReply(paras);
     }
-
+    // 解析用户输入
     auto fuzzyRef = fuzzyReferenceFromPackage(paras->package);
     if (!fuzzyRef) {
         return toDBusReply(fuzzyRef);
     }
+    auto curModule = paras->package.packageManager1PackageModule.value_or("binary");
 
+    // 安装module
+    if (curModule != "binary") {
+        // 安装module必须是和binary相同的版本，所以不允许指定
+        if (fuzzyRef->version) {
+            return toDBusReply(-1, "cannot specify a version when installing a module");
+        }
+        auto *taskPtr = new PackageTask{ connection(), { fuzzyRef->toString() } };
+        auto &taskRef = *(this->taskList.emplace_back(taskPtr));
+        taskRef.setJob([this, &taskRef, curModule, fuzzyRef = std::move(*fuzzyRef)] {
+            auto localRef = this->repo.clearReference(fuzzyRef, { .fallbackToRemote = false });
+            if (!localRef.has_value()) {
+                taskRef.updateState(api::types::v1::State::Failed,
+                                    "to install the module, one must first install the app");
+                return;
+            }
+            auto modules = this->repo.getModuleList(*localRef);
+            if (std::find(modules.begin(), modules.end(), curModule) != modules.end()) {
+                taskRef.updateState(api::types::v1::State::Failed, "module is already installed");
+                return;
+            }
+            this->Install(taskRef, *localRef, std::nullopt, std::vector{ curModule });
+        });
+
+        Q_EMIT TaskListChanged(taskRef.taskObjectPath(), "Install");
+        return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
+          .taskObjectPath = taskRef.taskObjectPath().toStdString(),
+          .code = 0,
+          .message = "installing",
+        });
+    }
+
+    // 如果用户输入了版本号，检查本地是否已经安装此版本
     if (fuzzyRef->version) {
         auto ref = this->repo.clearReference(*fuzzyRef,
                                              {
@@ -1173,9 +1207,6 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
         }
     }
 
-    api::types::v1::PackageManager1RequestInteractionAdditionalMessage additionalMessage;
-    auto curModule = paras->package.packageManager1PackageModule.value_or("binary");
-
     // we need latest local reference
     std::optional<package::Version> version = fuzzyRef->version;
     fuzzyRef->version.reset();
@@ -1185,12 +1216,9 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
                                               });
     // set version back
     fuzzyRef->version = version;
-    if (localRef) {
-        // ignore fuzzy version if not binary or runtime
-        if (curModule != "binary" && curModule != "runtime") {
-            fuzzyRef->version = localRef->version;
-        }
 
+    api::types::v1::PackageManager1RequestInteractionAdditionalMessage additionalMessage;
+    if (localRef) {
         additionalMessage.localRef = localRef->toString().toStdString();
     }
 
@@ -1205,14 +1233,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     auto remoteRef = *remoteRefRet;
     additionalMessage.remoteRef = remoteRef.toString().toStdString();
 
-    // 安装模块之前要先安装binary
-    if (curModule != "binary" && curModule != "runtime") {
-        auto layerDir = this->repo.getLayerDir(remoteRef, "binary");
-        if (!layerDir.has_value() || !layerDir->valid()) {
-            return toDBusReply(-1, "to install the module, one must first install the binary");
-        }
-    }
-
+    // 如果远程版本大于本地版本就升级，否则需要加--force降级，如果本地没有则直接安装，如果本地版本和远程版本相等就提示已安装
     auto msgType = api::types::v1::InteractionMessageType::Install;
     if (!additionalMessage.localRef.empty()) {
         if (remoteRef.version == localRef->version) {
@@ -1261,6 +1282,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
                     skipInteraction,
                     msgType,
                     additionalMessage]() {
+        // 升级需要用户交互
         if (msgType == api::types::v1::InteractionMessageType::Upgrade && !skipInteraction) {
             Q_EMIT RequestInteraction(QDBusObjectPath(taskRef.taskObjectPath()),
                                       static_cast<int>(msgType),
@@ -1286,8 +1308,11 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
         if (isTaskDone(taskRef.subState())) {
             return;
         }
-
-        this->Install(taskRef, remoteRef, localRef, std::vector{ curModule });
+        auto modules = std::vector{ curModule };
+        if (localRef.has_value()) {
+            modules = this->repo.getModuleList(*localRef);
+        }
+        this->Install(taskRef, remoteRef, localRef, modules);
     });
 
     // notify task list change
@@ -1310,19 +1335,30 @@ void PackageManager::Install(PackageTask &taskContext,
                             "Installing " + newRef.toString());
 
     utils::Transaction transaction;
-
-    InstallRef(taskContext, newRef, modules);
-    if (isTaskDone(taskContext.subState())) {
+    // 仅安装远程存在的modules
+    auto installModules = this->repo.getRemoteModuleList(newRef, modules);
+    if (!installModules.has_value()) {
+        taskContext.reportError(std::move(installModules).error());
         return;
     }
-
-    transaction.addRollBack([this, &newRef, &modules]() noexcept {
+    if (installModules->empty()) {
+        auto list = std::accumulate(modules.begin(), modules.end(), std::string(","));
+        taskContext.updateState(linglong::api::types::v1::State::Failed,
+                                "These modules do not exist remotely: "
+                                  + QString::fromStdString(list));
+        return;
+    }
+    transaction.addRollBack([this, &newRef, installModules = *installModules]() noexcept {
         auto tmp = PackageTask::createTemporaryTask();
-        UninstallRef(tmp, newRef, modules);
+        UninstallRef(tmp, newRef, installModules);
         if (tmp.state() != linglong::api::types::v1::State::Succeed) {
             qCritical() << "failed to rollback install " << newRef.toString();
         }
     });
+    InstallRef(taskContext, newRef, *installModules);
+    if (isTaskDone(taskContext.subState())) {
+        return;
+    }
 
     taskContext.updateSubState(linglong::api::types::v1::SubState::PostAction,
                                "processing after install");
@@ -1337,16 +1373,16 @@ void PackageManager::Install(PackageTask &taskContext,
         taskContext.reportError(std::move(layer).error());
         return;
     }
-
     // only app should do 'remove' and 'export'
     if (layer->info.kind == "app") {
         // remove all previous modules
         if (oldRef) {
-            auto ret = this->removeAfterInstall(*oldRef, newRef, this->repo.getModuleList(*oldRef));
+            auto ret = this->removeAfterInstall(*oldRef, newRef, modules);
             if (!ret) {
                 taskContext.updateState(linglong::api::types::v1::State::Failed,
                                         "Failed to remove old reference " % oldRef->toString()
-                                          % " after install " % newRef.toString());
+                                          % " after install " % newRef.toString() % ": "
+                                          % ret.error().message());
                 return;
             }
         } else {
@@ -1509,7 +1545,9 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
 
     auto runningRef = isRefBusy(reference);
     if (!runningRef) {
-        return toDBusReply(-1, "failed to get the state of target ref:" % reference.toString());
+        return toDBusReply(-1,
+                           "failed to get the state of target ref:" % reference.toString() + ": "
+                             + runningRef.error().message());
     }
 
     if (*runningRef) {
@@ -1766,8 +1804,20 @@ void PackageManager::Update(PackageTask &taskContext,
     LINGLONG_TRACE("update " + ref.toString());
     taskContext.updateState(api::types::v1::State::Processing, "start to uninstalling package");
     auto modules = this->repo.getModuleList(ref);
-
-    this->InstallRef(taskContext, newRef, modules);
+    // 仅安装远程存在的modules
+    auto installModules = this->repo.getRemoteModuleList(newRef, modules);
+    if (!installModules.has_value()) {
+        taskContext.reportError(std::move(installModules).error());
+        return;
+    }
+    if (installModules->empty()) {
+        auto list = std::accumulate(modules.begin(), modules.end(), std::string(","));
+        taskContext.updateState(linglong::api::types::v1::State::Failed,
+                                "These modules do not exist remotely: "
+                                  + QString::fromStdString(list));
+        return;
+    }
+    this->InstallRef(taskContext, newRef, *installModules);
     if (isTaskDone(taskContext.subState())) {
         return;
     }

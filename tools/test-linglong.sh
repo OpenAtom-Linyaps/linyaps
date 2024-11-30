@@ -72,3 +72,21 @@ sleep 20
 cur_version=$(ll-cli info "$appid" | jq '.version' | xargs)
 arch=$(uname -m)
 ll-cli kill "main:$appid/$cur_version/$arch"
+
+# 测试module安装
+ll-cli uninstall org.dde.calendar
+ll-cli install org.dde.calendar/5.14.4.102
+ll-cli install --module develop org.dde.calendar
+ll-cli install --module unuse org.dde.calendar
+ll-cli install --module lang-ja org.dde.calendar
+# 101版本没有unuse模块，降级后删除unuse模块，保留其他模块
+ll-cli install --force org.dde.calendar/5.14.4.101
+ll-cli list | grep org.dde.calendar | grep -q binary
+ll-cli list | grep org.dde.calendar | grep -q develop
+ll-cli list | grep org.dde.calendar | grep -q lang-ja
+ll-cli list | grep org.dde.calendar | grep -vq unuse
+# 最新版本没有lang-ja模块，升级后删除lang-ja模块，保留其他模块
+ll-cli upgrade org.dde.calendar
+ll-cli list | grep org.dde.calendar | grep -q binary
+ll-cli list | grep org.dde.calendar | grep -vq lang-ja
+ll-cli list | grep org.dde.calendar | grep -vq unuse

@@ -570,6 +570,10 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
                       2);
     auto baseLayerDir = this->repo.getMergedModuleDir(*baseRef, false);
     if (!baseLayerDir) {
+        baseLayerDir = this->repo.getLayerDir(*baseRef, "develop");
+        if (!baseLayerDir.has_value()) {
+            return LINGLONG_ERR("get base layer dir", baseLayerDir);
+        }
         return LINGLONG_ERR("get base layer dir", baseLayerDir);
     }
 
@@ -613,7 +617,10 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
                           2);
         auto runtimeLayerDirRet = this->repo.getMergedModuleDir(*runtimeRet, false);
         if (!runtimeLayerDirRet.has_value()) {
-            return LINGLONG_ERR("get runtime layer dir", runtimeLayerDirRet);
+            runtimeLayerDirRet = this->repo.getLayerDir(*runtimeRet, "develop");
+            if (!runtimeLayerDirRet.has_value()) {
+                return LINGLONG_ERR("get runtime layer dir", runtimeLayerDirRet);
+            }
         }
         runtimeRef = *runtimeRet;
         runtimeLayerDir = *runtimeLayerDirRet;

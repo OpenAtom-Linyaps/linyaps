@@ -12,7 +12,10 @@
 #include <filesystem>
 
 namespace linglong {
-void writeContainerJson(const std::string &bundle, const std::string &id, pid_t pid)
+void writeContainerJson(const std::filesystem::path &stateRoot,
+                        const std::string &bundle,
+                        const std::string &id,
+                        pid_t pid)
 {
     ocppi::types::ContainerListItem item = {
         .bundle = bundle,
@@ -21,37 +24,33 @@ void writeContainerJson(const std::string &bundle, const std::string &id, pid_t 
         .status = "running",
     };
 
-    auto dir =
-      std::filesystem::path("/run") / "user" / std::to_string(getuid()) / "linglong" / "box";
-    std::filesystem::create_directories(dir);
-    if (!std::filesystem::exists(dir)) {
-        logErr() << "create_directories" << dir << "failed";
+    std::filesystem::create_directories(stateRoot);
+    if (!std::filesystem::exists(stateRoot)) {
+        logErr() << "create_directories" << stateRoot << "failed";
         assert(false);
     }
 
-    std::ofstream file(dir / (id + ".json"));
+    std::ofstream file(stateRoot / (id + ".json"));
     if (file.is_open()) {
         file << nlohmann::json(item).dump(4);
     } else {
-        logErr() << "open" << dir / (id + ".json") << "failed";
+        logErr() << "open" << stateRoot / (id + ".json") << "failed";
         assert(false);
     }
 }
 
-nlohmann::json readAllContainerJson() noexcept
+nlohmann::json readAllContainerJson(const std::filesystem::path &stateRoot) noexcept
 {
     nlohmann::json result = nlohmann::json::array();
-    auto dir =
-      std::filesystem::path("/run") / "user" / std::to_string(getuid()) / "linglong" / "box";
 
     std::error_code ec;
-    std::filesystem::create_directories(dir, ec);
+    std::filesystem::create_directories(stateRoot, ec);
     if (ec) {
-        logErr() << "failed to create" << dir.string() << ec.message();
+        logErr() << "failed to create" << stateRoot.string() << ec.message();
         return {};
     }
 
-    for (auto entry : std::filesystem::directory_iterator{ dir }) {
+    for (const auto &entry : std::filesystem::directory_iterator{ stateRoot }) {
         std::ifstream containerInfo = entry.path();
         if (!containerInfo.is_open()) {
             continue;

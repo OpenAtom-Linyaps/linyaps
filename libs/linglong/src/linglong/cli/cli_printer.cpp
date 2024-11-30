@@ -7,6 +7,7 @@
 #include "linglong/cli/cli_printer.h"
 
 #include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/api/types/v1/State.hpp"
 #include "linglong/package/reference.h"
 
 #include <QJsonArray>
@@ -36,11 +37,11 @@ void CLIPrinter::printErr(const utils::error::Error &err)
 
 void CLIPrinter::printPruneResult(const std::vector<api::types::v1::PackageInfoV2> &list)
 {
-    if(list.size() == 0) {
+    if (list.size() == 0) {
         std::cout << "No unused base or runtime." << std::endl;
         return;
     }
-    std::cout << "Unused base or runtime:" <<std::endl;
+    std::cout << "Unused base or runtime:" << std::endl;
     for (const auto &info : list) {
         auto ref = package::Reference::fromPackageInfo(info);
         std::cout << ref->toString().toStdString() << std::endl;
@@ -160,9 +161,14 @@ void CLIPrinter::printTaskState(double percentage,
                                 api::types::v1::SubState subState)
 {
     auto &stdout = std::cout;
-    stdout << "\r\33[K"
-           << "\033[?25l" << message.toStdString() << ":" << percentage << "%"
-           << "\033[?25h";
+    if (state == api::types::v1::State::Failed) {
+        stdout << "\r\33[K"
+               << "\033[?25l" << message.toStdString() << "\033[?25h";
+    } else {
+        stdout << "\r\33[K"
+               << "\033[?25l" << message.toStdString() << ":" << percentage << "%"
+               << "\033[?25h";
+    }
     if (state == api::types::v1::State::PartCompleted
         || subState == api::types::v1::SubState::AllDone
         || subState == api::types::v1::SubState::PackageManagerDone) {

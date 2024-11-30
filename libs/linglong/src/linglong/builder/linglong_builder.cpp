@@ -271,7 +271,7 @@ utils::error::Result<package::Reference> pullDependency(const package::FuzzyRefe
 
     auto tmpTask = service::PackageTask::createTemporaryTask();
     auto partChanged = [&ref, module](const uint fetched, const uint requested) {
-        auto percentage =  (uint)((((double)fetched) / requested) * 100);
+        auto percentage = (uint)((((double)fetched) / requested) * 100);
         auto progress = QString("(%1/%2 %3%)").arg(fetched).arg(requested).arg(percentage);
         printReplacedText(QString("%1%2%3%4 %5")
                             .arg(ref->id, -25)                        // NOLINT
@@ -515,6 +515,10 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
                       2);
     auto baseLayerDir = this->repo.getMergedModuleDir(*baseRef, false);
     if (!baseLayerDir) {
+        baseLayerDir = this->repo.getLayerDir(*baseRef, "develop");
+        if (!baseLayerDir.has_value()) {
+            return LINGLONG_ERR("get base layer dir", baseLayerDir);
+        }
         return LINGLONG_ERR("get base layer dir", baseLayerDir);
     }
 
@@ -558,7 +562,10 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
                           2);
         auto runtimeLayerDirRet = this->repo.getMergedModuleDir(*runtimeRet, false);
         if (!runtimeLayerDirRet.has_value()) {
-            return LINGLONG_ERR("get runtime layer dir", runtimeLayerDirRet);
+            runtimeLayerDirRet = this->repo.getLayerDir(*runtimeRet, "develop");
+            if (!runtimeLayerDirRet.has_value()) {
+                return LINGLONG_ERR("get runtime layer dir", runtimeLayerDirRet);
+            }
         }
         runtimeRef = *runtimeRet;
         runtimeLayerDir = *runtimeLayerDirRet;

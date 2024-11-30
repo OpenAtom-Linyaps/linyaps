@@ -2041,6 +2041,9 @@ utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
                 binaryCommit = layer.commit;
             }
         }
+        if (binaryCommit.empty()) {
+            continue;
+        }
         auto mergeID = hash.result().toHex().toStdString();
         // 判断单个merged是否有变动
         auto mergedChanged = true;

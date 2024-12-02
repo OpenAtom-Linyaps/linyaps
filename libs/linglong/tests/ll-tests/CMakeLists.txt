@@ -34,5 +34,6 @@ include(GoogleTest)
 get_real_target_name(tests linglong::linglong::ll-tests)
 gtest_discover_tests(${tests} WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
 
-#FIXME: we should'n include header directly
-target_include_directories(${tests} PUBLIC ${PROJECT_SOURCE_DIR}/apps/uab/header/src)
+# FIXME: we should'n include header directly
+target_include_directories(${tests}
+                           PUBLIC ${PROJECT_SOURCE_DIR}/apps/uab/header/src)

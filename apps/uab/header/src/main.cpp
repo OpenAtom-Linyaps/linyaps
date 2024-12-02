@@ -2,13 +2,14 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
+#include "light_elf.h"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/UabMetaInfo.hpp"
 #include "sha256.h"
+#include "utils.h"
 
 #include <gelf.h>
 #include <getopt.h>
-#include <libelf.h>
 #include <linux/limits.h>
 #include <nlohmann/json.hpp>
 #include <sys/mount.h>
@@ -45,20 +46,6 @@ Options:
     --print-meta print content of json which from the 'linglong.meta' segment of uab to STDOUT [exclusive]
     --help print usage of uab [exclusive]
 )";
-
-template<typename Func>
-struct defer
-{
-    explicit defer(Func newF)
-        : f(std::move(newF))
-    {
-    }
-
-    ~defer() { f(); }
-
-private:
-    Func f;
-};
 
 std::string resolveRealPath(std::string_view source) noexcept
 {
@@ -216,85 +203,21 @@ int importSelf(const std::string &cliBin, std::string_view appRef, const std::st
     return 0;
 }
 
-std::optional<GElf_Shdr> getSectionHeader(int elfFd, std::string_view sectionName) noexcept
-{
-    std::error_code ec;
-    std::optional<GElf_Shdr> secHdr;
-
-    auto elfPath = std::filesystem::read_symlink(std::filesystem::path{ "/proc/self/fd" }
-                                                   / std::to_string(elfFd),
-                                                 ec);
-    if (ec) {
-        std::cerr << "failed to get binary path:" << ec.message() << std::endl;
-        return std::nullopt;
-    }
-
-    auto *elf = elf_begin(elfFd, ELF_C_READ, nullptr);
-    if (elf == nullptr) {
-        std::cerr << elfPath << " not usable:" << elf_errmsg(errno) << std::endl;
-        return std::nullopt;
-    }
-
-    auto closeElf = defer([elf] {
-        elf_end(elf);
-    });
-
-    size_t shdrstrndx{ 0 };
-    if (elf_getshdrstrndx(elf, &shdrstrndx) == -1) {
-        std::cerr << "failed to get section header index of bundle " << elfPath << ":"
-                  << elf_errmsg(errno) << std::endl;
-        return std::nullopt;
-    }
-
-    Elf_Scn *scn = nullptr;
-    while ((scn = elf_nextscn(elf, scn)) != nullptr) {
-        GElf_Shdr shdr;
-        if (gelf_getshdr(scn, &shdr) == nullptr) {
-            std::cerr << "failed to get section header of bundle " << elfPath << ":"
-                      << elf_errmsg(errno) << std::endl;
-            break;
-        }
-
-        std::string_view sname = elf_strptr(elf, shdrstrndx, shdr.sh_name);
-        if (sname == sectionName) {
-            secHdr = shdr;
-            break;
-        }
-    }
-
-    return secHdr;
-}
-
 std::string calculateDigest(int fd, std::size_t bundleOffset, std::size_t bundleLength) noexcept
 {
-    auto file = ::dup(fd);
-    if (file == -1) {
-        std::cerr << "dup() error:" << ::strerror(errno) << std::endl;
-        return {};
-    }
-
-    auto closeFile = defer([file] {
-        ::close(file);
-    });
-
-    if (::lseek(file, bundleOffset, SEEK_SET) == -1) {
-        std::cerr << "lseek() error:" << ::strerror(errno) << std::endl;
-        return {};
-    }
-
     digest::SHA256 sha256;
     std::array<std::byte, 4096> buf{};
     std::array<std::byte, 32> md_value{};
     auto expectedRead = buf.size();
     int readLength{ 0 };
 
-    while ((readLength = ::read(file, buf.data(), expectedRead)) != 0) {
+    while ((readLength = ::pread(fd, buf.data(), expectedRead, bundleOffset)) != 0) {
         if (readLength == -1) {
             if (errno == EINTR) {
                 continue;
             }
 
-            std::cerr << "read bundle error:" << ::strerror(errno) << std::endl;
+            std::cerr << "read uab error:" << ::strerror(errno) << std::endl;
             return {};
         }
 
@@ -306,6 +229,7 @@ std::string calculateDigest(int fd, std::size_t bundleOffset, std::size_t bundle
             break;
         }
 
+        bundleOffset += readLength;
         expectedRead = bundleLength > buf.size() ? buf.size() : bundleLength;
     }
 
@@ -319,37 +243,28 @@ std::string calculateDigest(int fd, std::size_t bundleOffset, std::size_t bundle
     return stream.str();
 }
 
-int mountSelfBundle(std::string_view selfBin,
+int mountSelfBundle(const lightElf::native_elf &elf,
                     const linglong::api::types::v1::UabMetaInfo &meta) noexcept
 {
-    auto selfBinFd = ::open(selfBin.data(), O_RDONLY | O_CLOEXEC);
-    if (selfBinFd == -1) {
-        std::cerr << "failed to open bundle " << selfBin << std::endl;
-        return {};
-    }
-
-    auto closeSelfBin = defer([selfBinFd] {
-        ::close(selfBinFd);
-    });
-
-    auto bundleSh = getSectionHeader(selfBinFd, meta.sections.bundle);
+    auto bundleSh = elf.getSectionHeader(meta.sections.bundle);
     if (!bundleSh) {
         std::cerr << "couldn't get bundle section '" << meta.sections.bundle << "'" << std::endl;
         return -1;
     }
 
     auto bundleOffset = bundleSh->sh_offset;
-    if (auto digest = calculateDigest(selfBinFd, bundleOffset, bundleSh->sh_size);
+    if (auto digest = calculateDigest(elf.underlyingFd(), bundleOffset, bundleSh->sh_size);
         digest != meta.digest) {
         std::cerr << "sha256 mismatched, expected: " << meta.digest << " calculated: " << digest
                   << std::endl;
         return -1;
     }
 
+    auto selfBin = elf.absolutePath();
     auto offsetStr = "--offset=" + std::to_string(bundleOffset);
     std::array<const char *, 4> erofs_argv = { "erofsfuse",
                                                offsetStr.c_str(),
-                                               selfBin.data(),
+                                               selfBin.c_str(),
                                                mountPoint.c_str() };
 
     auto fusePid = fork();
@@ -503,32 +418,16 @@ int createMountPoint(std::string_view uuid) noexcept
     return 0;
 }
 
-std::optional<linglong::api::types::v1::UabMetaInfo> getMetaInfo(std::string_view uab) noexcept
+std::optional<linglong::api::types::v1::UabMetaInfo> getMetaInfo(const lightElf::native_elf &elf)
 {
-    auto selfBinFd = ::open(uab.data(), O_RDONLY);
-    if (selfBinFd == -1) {
-        std::cerr << "failed to open bundle " << uab << std::endl;
-        return std::nullopt;
-    }
-
-    auto closeUAB = defer([selfBinFd] {
-        ::close(selfBinFd);
-    });
-
-    auto metaSh = getSectionHeader(selfBinFd, "linglong.meta");
+    auto metaSh = elf.getSectionHeader("linglong.meta");
     if (!metaSh) {
         std::cerr << "couldn't find meta section" << std::endl;
         return std::nullopt;
     }
 
-    if (::lseek(selfBinFd, metaSh->sh_offset, SEEK_SET) == -1) {
-        std::cerr << "lseek failed:" << ::strerror(errno) << std::endl;
-        return std::nullopt;
-    }
-
-    std::string content;
-    content.resize(metaSh->sh_size, 0);
-    if (::read(selfBinFd, content.data(), content.size()) == -1) {
+    std::string content(metaSh->sh_size, '\0');
+    if (::pread(elf.underlyingFd(), content.data(), metaSh->sh_size, metaSh->sh_offset) == -1) {
         std::cerr << "read failed:" << ::strerror(errno) << std::endl;
         return {};
     }
@@ -536,8 +435,8 @@ std::optional<linglong::api::types::v1::UabMetaInfo> getMetaInfo(std::string_vie
     nlohmann::json meta;
     try {
         meta = nlohmann::json::parse(content);
-    } catch (nlohmann::json::parse_error &ex) {
-        std::cerr << "parse error: " << ex.what() << std::endl;
+    } catch (const std::exception &ex) {
+        std::cerr << "exception: " << ex.what() << std::endl;
     }
 
     return meta;
@@ -700,7 +599,7 @@ argOption parseArgs(const std::vector<std::string_view> &args)
     return opts;
 }
 
-int mountSelf(std::string_view selfBin,
+int mountSelf(const lightElf::native_elf &elf,
               const linglong::api::types::v1::UabMetaInfo &metaInfo) noexcept
 {
     if (mountFlag.load(std::memory_order_relaxed)) {
@@ -713,7 +612,7 @@ int mountSelf(std::string_view selfBin,
         return ret;
     }
 
-    if (auto ret = mountSelfBundle(selfBin, metaInfo); ret != 0) {
+    if (auto ret = mountSelfBundle(elf, metaInfo); ret != 0) {
         return -1;
     }
 
@@ -723,7 +622,6 @@ int mountSelf(std::string_view selfBin,
 
 int main(int argc, char **argv)
 {
-    elf_version(EV_CURRENT);
     handleSig();
 
     std::vector<std::string_view> args;
@@ -740,7 +638,8 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    auto metaInfoRet = getMetaInfo(selfBin);
+    lightElf::native_elf elf(selfBin);
+    auto metaInfoRet = getMetaInfo(elf);
     if (!metaInfoRet) {
         std::cerr << "couldn't get metaInfo of this uab file" << std::endl;
         return -1;
@@ -753,7 +652,7 @@ int main(int argc, char **argv)
     }
 
     if (!opts.extractPath.empty()) {
-        if (mountSelf(selfBin, metaInfo) != 0) {
+        if (mountSelf(elf, metaInfo) != 0) {
             cleanAndExit(-1);
         }
 
@@ -789,7 +688,7 @@ int main(int argc, char **argv)
         runAppLinglong(cliPath, *appLayer, opts.loaderArgs);
     }
 
-    if (mountSelf(selfBin, metaInfo) != 0) {
+    if (mountSelf(elf, metaInfo) != 0) {
         cleanAndExit(-1);
     }
 

@@ -23,11 +23,8 @@ endif()
 get_filename_component(LIBDEFLATE_ABS_FILE ${FOUND_libdeflate_STATIC} ABSOLUTE)
 message(STATUS "found libdeflate.a: ${LIBDEFLATE_ABS_FILE}")
 
-pkg_search_module(elf_static REQUIRED IMPORTED_TARGET libelf)
 pkg_search_module(lz4 REQUIRED IMPORTED_TARGET liblz4)
 pkg_search_module(lzma REQUIRED IMPORTED_TARGET liblzma)
-pkg_search_module(ZLIB REQUIRED IMPORTED_TARGET zlib)
-pkg_search_module(ZSTD REQUIRED IMPORTED_TARGET libzstd)
 pkg_search_module(FUSE REQUIRED IMPORTED_TARGET fuse)
 pkg_search_module(SELINUX REQUIRED IMPORTED_TARGET libselinux)
 
@@ -39,6 +36,8 @@ pfl_add_executable(
   SOURCES
   ./src/main.cpp
   ./src/sha256.h
+  ./src/light_elf.h
+  ./src/utils.h
   OUTPUT_NAME
   uab-header
   LINK_LIBRARIES
@@ -46,11 +45,8 @@ pfl_add_executable(
   linglong::api
   nlohmann_json::nlohmann_json
   PkgConfig::SELINUX
-  PkgConfig::elf_static
   PkgConfig::lz4
   PkgConfig::lzma
-  PkgConfig::ZLIB
-  PkgConfig::ZSTD
   PkgConfig::FUSE
   ${EROFSFUSE_ABS_FILE}
   ${LIBDEFLATE_ABS_FILE}
@@ -63,6 +59,7 @@ target_link_options(${UAB_HEADER_TARGET} PRIVATE -static -static-libgcc
                     -static-libstdc++)
 
 if(${AGGRESSIVE_UAB_SIZE})
+  message(STATUS "minify uab header aggressively")
   target_compile_options(
     ${UAB_HEADER_TARGET} PRIVATE -Os -fno-asynchronous-unwind-tables -fno-rtti
                                  -fdata-sections -ffunction-sections -flto=auto)

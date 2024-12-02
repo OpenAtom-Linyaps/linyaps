@@ -4,13 +4,13 @@
 
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/UabMetaInfo.hpp"
+#include "sha256.h"
 
 #include <gelf.h>
 #include <getopt.h>
 #include <libelf.h>
 #include <linux/limits.h>
 #include <nlohmann/json.hpp>
-#include <openssl/evp.h>
 #include <sys/mount.h>
 
 #include <algorithm>
@@ -282,18 +282,9 @@ std::string calculateDigest(int fd, std::size_t bundleOffset, std::size_t bundle
         return {};
     }
 
-    auto ctxDeleter = [](EVP_MD_CTX *self) {
-        EVP_MD_CTX_free(self);
-    };
-    auto ctx =
-      std::unique_ptr<EVP_MD_CTX, decltype(ctxDeleter)>(EVP_MD_CTX_new(), std::move(ctxDeleter));
-    if (EVP_DigestInit_ex(ctx.get(), EVP_sha256(), nullptr) == 0) {
-        std::cerr << "init digest context error" << std::endl;
-        return {};
-    }
-
-    std::array<unsigned char, 4096> buf{};
-    std::array<unsigned char, EVP_MAX_MD_SIZE> md_value{};
+    digest::SHA256 sha256;
+    std::array<std::byte, 4096> buf{};
+    std::array<std::byte, 32> md_value{};
     auto expectedRead = buf.size();
     int readLength{ 0 };
     unsigned int digestLength{ 0 };
@@ -308,19 +299,12 @@ std::string calculateDigest(int fd, std::size_t bundleOffset, std::size_t bundle
             return {};
         }
 
-        if (EVP_DigestUpdate(ctx.get(), buf.data(), readLength) == 0) {
-            std::cerr << "update digest error" << std::endl;
-            return {};
-        }
+        sha256.update(buf.data(), readLength);
 
         bundleLength -= readLength;
         if (bundleLength == 0) {
-            if (EVP_DigestFinal(ctx.get(), md_value.data(), &digestLength) == 1) {
-                break;
-            }
-
-            std::cerr << "get digest error" << std::endl;
-            return {};
+            sha256.final(md_value.data());
+            break;
         }
 
         expectedRead = bundleLength > buf.size() ? buf.size() : bundleLength;

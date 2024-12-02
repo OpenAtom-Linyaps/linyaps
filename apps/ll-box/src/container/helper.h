@@ -8,6 +8,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <filesystem>
 #include <string>
 
 namespace linglong {

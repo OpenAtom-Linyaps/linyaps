@@ -13,6 +13,7 @@
 #include <argp.h>
 
 #include <csignal>
+#include <cstring>
 #include <filesystem>
 #include <iostream>
 #include <variant>
@@ -332,29 +333,10 @@ try {
 int kill(const arg_kill &arg) noexcept
 {
     int sig = SIGTERM;
-    while (!arg.signal.empty()) {
+    if (!arg.signal.empty()) {
         if (std::all_of(arg.signal.cbegin(), arg.signal.cend(), ::isdigit)) {
             sig = std::stoi(arg.signal);
-            break;
         }
-
-        // TODO: maybe use a more efficient way
-        bool parsed{ false };
-        auto sigView = std::string_view{ arg.signal };
-        for (int i = 0; i < NSIG; ++i) {
-            if (::strsignal(i) == sigView) {
-                sig = i;
-                parsed = true;
-                break;
-            }
-        }
-
-        if (!parsed) {
-            logErr() << "unknown signal:" << arg.signal;
-            return -1;
-        }
-
-        break;
     }
 
     auto containers = linglong::readAllContainerJson(arg.global->root);
@@ -532,12 +514,11 @@ arg_run subCommand_run(struct argp_state *state)
     argv[0] = argv0; // NOLINT
     state->next += argc - 1;
 
-    if (argv[state->next] == nullptr) {                              // NOLINT
+    if (state->argv[state->next] == nullptr) {                       // NOLINT
         argp_failure(state, -1, EINVAL, "container id must be set"); // NOLINT
     }
-    run_arg.container = argv[state->next]; // NOLINT
+    run_arg.container = state->argv[state->next++]; // NOLINT
 
-    state->next += argc;
     return run_arg;
 }
 

@@ -1283,19 +1283,13 @@ int Cli::uninstall()
         params.package.packageManager1PackageModule = module;
     }
 
-    auto layerDir = this->repository.getLayerDir(*ref, module);
-    if (!layerDir) {
-        this->printer.printErr(layerDir.error());
+    auto layerItem = this->repository.getLayerItem(*ref, module);
+    if (!layerItem) {
+        this->printer.printErr(layerItem.error());
         return -1;
     }
 
-    auto info = layerDir->info();
-    if (!info) {
-        this->printer.printErr(info.error());
-        return -1;
-    }
-
-    if (info->kind != "app") {
+    if (layerItem->info.kind != "app") {
         this->printer.printErr(
           LINGLONG_ERRV("This layer is not an application, please use 'll-cli prune'.", -1));
         return -1;

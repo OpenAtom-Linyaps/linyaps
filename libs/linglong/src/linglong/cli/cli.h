@@ -92,6 +92,7 @@ private:
     listUpgradable(const std::vector<api::types::v1::PackageInfoV2> &pkgs);
     utils::error::Result<std::vector<api::types::v1::UpgradeListResult>>
     listUpgradable(const std::string &type);
+    QDBusReply<QString> authorization();
 
 private Q_SLOTS:
     // maybe use in the future

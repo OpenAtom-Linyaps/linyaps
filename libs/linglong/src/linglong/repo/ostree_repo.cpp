@@ -1046,14 +1046,16 @@ utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref,
     if (!layer) {
         return LINGLONG_ERR(layer);
     }
-    auto layerDir = this->getLayerDir(*layer);
-    if (!layerDir) {
-        return LINGLONG_ERR(layerDir);
-    }
 
     auto ret = this->removeOstreeRef(*layer);
     if (!ret) {
         return LINGLONG_ERR(ret);
+    }
+
+    auto layerDir = this->getLayerDir(*layer);
+    if (!layerDir) {
+        qWarning() << layerDir.error().message();
+        return LINGLONG_OK;
     }
 
     if (!layerDir->removeRecursively()) {

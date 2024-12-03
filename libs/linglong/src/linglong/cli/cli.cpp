@@ -845,13 +845,7 @@ int Cli::install()
 {
     LINGLONG_TRACE("command install");
 
-    // Note: we deny the org.freedesktop.DBus.Introspectable for now.
-    // Use this interface to determin that this client whether have permission to call PM.
-    QDBusInterface dbusIntrospect(this->pkgMan.service(),
-                                  this->pkgMan.path(),
-                                  "org.freedesktop.DBus.Introspectable",
-                                  this->pkgMan.connection());
-    QDBusReply<QString> authReply = dbusIntrospect.call("Introspect");
+    QDBusReply<QString> authReply = this->authorization();
     if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
         auto args = QCoreApplication::instance()->arguments();
         // pkexec在0.120版本之前没有keep-cwd选项，会将目录切换到/root
@@ -971,11 +965,7 @@ int Cli::upgrade()
 {
     LINGLONG_TRACE("command upgrade");
 
-    QDBusInterface dbusIntrospect(this->pkgMan.service(),
-                                  this->pkgMan.path(),
-                                  "org.freedesktop.DBus.Introspectable",
-                                  this->pkgMan.connection());
-    QDBusReply<QString> authReply = dbusIntrospect.call("Introspect");
+    QDBusReply<QString> authReply = this->authorization();
     if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
         auto ret = this->runningAsRoot();
         if (!ret) {
@@ -1177,11 +1167,7 @@ int Cli::prune()
 {
     LINGLONG_TRACE("command prune");
 
-    QDBusInterface dbusIntrospect(this->pkgMan.service(),
-                                  this->pkgMan.path(),
-                                  "org.freedesktop.DBus.Introspectable",
-                                  this->pkgMan.connection());
-    QDBusReply<QString> authReply = dbusIntrospect.call("Introspect");
+    QDBusReply<QString> authReply = this->authorization();
     if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
         auto ret = this->runningAsRoot();
         if (!ret) {
@@ -1247,11 +1233,7 @@ int Cli::uninstall()
 {
     LINGLONG_TRACE("command uninstall");
 
-    QDBusInterface dbusIntrospect(this->pkgMan.service(),
-                                  this->pkgMan.path(),
-                                  "org.freedesktop.DBus.Introspectable",
-                                  this->pkgMan.connection());
-    QDBusReply<QString> authReply = dbusIntrospect.call("Introspect");
+    QDBusReply<QString> authReply = this->authorization();
     if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
         auto ret = this->runningAsRoot();
         if (!ret) {
@@ -1621,11 +1603,7 @@ int Cli::setRepoConfig(const QVariantMap &config)
 {
     LINGLONG_TRACE("set repo config");
 
-    QDBusInterface dbusIntrospect(this->pkgMan.service(),
-                                  this->pkgMan.path(),
-                                  "org.freedesktop.DBus.Introspectable",
-                                  this->pkgMan.connection());
-    QDBusReply<QString> authReply = dbusIntrospect.call("Introspect");
+    QDBusReply<QString> authReply = this->authorization();
     if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
         auto ret = this->runningAsRoot();
         if (!ret) {
@@ -1907,4 +1885,14 @@ utils::error::Result<void> Cli::runningAsRoot(const QList<QString> &args)
     return LINGLONG_ERR("execve error", ret);
 }
 
+QDBusReply<QString> Cli::authorization()
+{
+    // Note: we have marked the method Prune of PM as rejected.
+    // Use this method to determin that this client whether have permission to call PM.
+    QDBusInterface dbusIntrospect(this->pkgMan.service(),
+                                  this->pkgMan.path(),
+                                  this->pkgMan.service(),
+                                  this->pkgMan.connection());
+    return dbusIntrospect.call("Prune");
+}
 } // namespace linglong::cli

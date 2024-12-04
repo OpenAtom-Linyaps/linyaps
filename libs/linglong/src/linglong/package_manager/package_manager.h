@@ -9,6 +9,7 @@
 #include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/api/types/v1/ContainerProcessStateInfo.hpp"
 #include "linglong/repo/ostree_repo.h"
+#include "linglong/runtime/container_builder.h"
 #include "package_task.h"
 
 #include <QDBusArgument>
@@ -65,7 +66,9 @@ class PackageManager : public QObject, protected QDBusContext
     Q_PROPERTY(QVariantMap Configuration READ getConfiguration WRITE setConfiguration)
 
 public:
-    PackageManager(linglong::repo::OSTreeRepo &repo, QObject *parent);
+    PackageManager(linglong::repo::OSTreeRepo &repo,
+                   linglong::runtime::ContainerBuilder &containerBuilder,
+                   QObject *parent);
 
     ~PackageManager() override;
     PackageManager(const PackageManager &) = delete;
@@ -90,8 +93,7 @@ public
     auto Update(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Search(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Prune() noexcept -> QVariantMap;
-    utils::error::Result<void>
-    Prune(std::vector<api::types::v1::PackageInfoV2> &removedInfo) noexcept;
+    auto GenerateCache(const QString &reference) noexcept -> QVariantMap;
     void ReplyInteraction(QDBusObjectPath object_path, const QVariantMap &replies);
 
 Q_SIGNALS:
@@ -104,6 +106,7 @@ Q_SIGNALS:
                             QVariantMap additionalMessage);
     void SearchFinished(QString jobID, QVariantMap result);
     void PruneFinished(QString jobID, QVariantMap result);
+    void GenerateCacheFinished(QString jobID, bool status);
     void ReplyReceived(const QVariantMap &replies);
 
 private:
@@ -137,6 +140,10 @@ private:
                                                   const std::vector<std::string> &modules) noexcept;
     utils::error::Result<package::Reference>
     latestRemoteReference(const std::string &kind, package::FuzzyReference &fuzzyRef) noexcept;
+    utils::error::Result<void>
+    Prune(std::vector<api::types::v1::PackageInfoV2> &removedInfo) noexcept;
+    utils::error::Result<void> generateCache(const package::Reference &ref) noexcept;
+    utils::error::Result<void> removeCache(const package::Reference &ref) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT
     std::list<PackageTask *> taskList;
     // 正在运行的任务对象路径
@@ -144,8 +151,10 @@ private:
 
     JobQueue m_search_queue = {};
     JobQueue m_prune_queue = {};
+    JobQueue m_generator_queue = {};
 
     int lockFd{ -1 };
+    linglong::runtime::ContainerBuilder &containerBuilder;
 };
 
 } // namespace linglong::service

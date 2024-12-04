@@ -703,6 +703,7 @@ set -e
         .appDir = {},
         .patches = {},
         .mounts = {},
+        .hooks = {},
         .masks = {},
     };
     if (runtimeLayerDir.has_value()) {
@@ -739,6 +740,65 @@ set -e
       .type = "bind",
       .uidMappings = {},
     });
+
+    // initialize the cache dir
+    QDir appCache = this->workingDir.absoluteFilePath("linglong/cache");
+    QDir appFontCache = appCache.absoluteFilePath("fontconfig");
+    if (!appFontCache.mkpath(".")) {
+        return LINGLONG_ERR("make path " + appFontCache.absolutePath() + ": failed.");
+    }
+    QDir appFonts = appCache.absoluteFilePath("fonts");
+    if (!appFonts.mkpath(".")) {
+        return LINGLONG_ERR("make path " + appFonts.absolutePath() + ": failed.");
+    }
+    // write ld.so.conf
+    QFile ldsoconf = appCache.absoluteFilePath("ld.so.conf");
+    if (!ldsoconf.open(QIODevice::WriteOnly)) {
+        return LINGLONG_ERR(ldsoconf);
+    }
+    QString ldRawConf = R"(/runtime/lib
+/runtime/lib/@triplet@
+include /runtime/etc/ld.so.conf
+/opt/apps/@id@/files/lib
+/opt/apps/@id@/files/lib/@triplet@
+include /opt/apps/@id@/files/etc/ld.so.conf)";
+    ldRawConf.replace("@id@", QString::fromStdString(this->project.package.id));
+    ldRawConf.replace("@triplet@", arch->getTriplet());
+    ldsoconf.write(ldRawConf.toUtf8());
+    // must be closed here, this conf will be used later.
+    ldsoconf.close();
+    // write fonts.conf
+    QFile fontsConf = appFonts.absoluteFilePath("fonts.conf");
+    if (!fontsConf.open(QIODevice::WriteOnly)) {
+        return LINGLONG_ERR(fontsConf);
+    }
+    QString fontsRawConf = R"(<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
+<fontconfig>
+  <dir>/run/linglong/fonts</dir>
+  <include ignore_missing="yes">/opt/apps/@id@/files/etc/fonts/fonts.conf</include>
+</fontconfig>)";
+    fontsRawConf.replace("@id@", QString::fromStdString(this->project.package.id));
+    fontsConf.write(fontsRawConf.toUtf8());
+
+    opts.mounts.push_back({
+      .destination = "/run/linglong/cache",
+      .gidMappings = {},
+      .options = { { "rbind", "rw" } },
+      .source = appCache.absolutePath().toStdString(),
+      .type = "bind",
+      .uidMappings = {},
+    });
+    // it seems that generating font cache during build is unnecessary
+    std::vector<ocppi::runtime::config::types::Hook> generateCache{};
+    std::vector<std::string> ldconfigCmd = {"/sbin/ldconfig", "-C", "/run/linglong/cache/ld.so.cache"};
+    generateCache.push_back(ocppi::runtime::config::types::Hook{
+      .args = std::move(ldconfigCmd),
+      .env = {},
+      .path = "/sbin/ldconfig",
+      .timeout = {},
+    });
+    opts.hooks.startContainer = std::move(generateCache);
 
     opts.masks.emplace_back("/project/linglong/output");
 
@@ -1331,46 +1391,43 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
         .appDir = {},
         .patches = {},
         .mounts = {},
+        .hooks = {},
     };
 
-    auto baseRef = pullDependency(QString::fromStdString(this->project.base),
-                                  this->repo,
-                                  "binary",
-                                  this->buildOptions.skipPullDepend);
+    auto fuzzyBase = package::FuzzyReference::parse(QString::fromStdString(this->project.base));
+    if (!fuzzyBase) {
+        return LINGLONG_ERR(fuzzyBase);
+    }
+    auto baseRef = this->repo.clearReference(*fuzzyBase, { .forceRemote = false, .fallbackToRemote = false });
     if (!baseRef) {
         return LINGLONG_ERR(baseRef);
-    }
-
-    if (this->project.runtime) {
-        auto ref = pullDependency(QString::fromStdString(*this->project.runtime),
-                                  this->repo,
-                                  "binary",
-                                  this->buildOptions.skipPullDepend);
-        if (!ref) {
-            return LINGLONG_ERR(ref);
-        }
-        auto ret = this->repo.mergeModules();
-        if (!ret.has_value()) {
-            return ret;
-        }
-        auto dir =
-          debug ? this->repo.getMergedModuleDir(*ref) : this->repo.getLayerDir(*ref, "binary");
-        if (!dir) {
-            return LINGLONG_ERR(dir);
-        }
-        options.runtimeDir = QDir(dir->absolutePath());
-    } else {
-        auto ret = this->repo.mergeModules();
-        if (!ret.has_value()) {
-            return ret;
-        }
     }
     auto baseDir =
       debug ? this->repo.getMergedModuleDir(*baseRef) : this->repo.getLayerDir(*baseRef, "binary");
     if (!baseDir) {
         return LINGLONG_ERR(baseDir);
     }
-    options.baseDir = QDir(baseDir->absolutePath());
+    options.baseDir = *baseDir;
+
+    if (this->project.runtime) {
+        auto fuzzyRuntime =
+          package::FuzzyReference::parse(QString::fromStdString(this->project.runtime.value()));
+        if (!fuzzyRuntime) {
+            return LINGLONG_ERR(fuzzyRuntime);
+        }
+        auto runtimeRef =
+          this->repo.clearReference(*fuzzyRuntime,
+                                    { .forceRemote = false, .fallbackToRemote = false });
+        if (!runtimeRef) {
+            return LINGLONG_ERR(runtimeRef);
+        }
+        auto runtimeDir = debug ? this->repo.getMergedModuleDir(*runtimeRef)
+                                : this->repo.getLayerDir(*runtimeRef, "binary");
+        if (!runtimeDir) {
+            return LINGLONG_ERR(runtimeDir);
+        }
+        options.runtimeDir = *runtimeDir;
+    }
 
     utils::error::Result<package::LayerDir> curDir;
     // mergedDir 会自动在释放时删除临时目录，所以要用变量保留住
@@ -1476,7 +1533,39 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
           .type = "bind",
         });
     }
+    // mount app cache
+    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+      .destination = "/run/linglong/cache",
+      .options = { { "rbind", "rw" } },
+      .source = this->workingDir.absoluteFilePath("linglong/cache").toStdString(),
+      .type = "bind",
+    });
+    // mount font cache
+    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+      .destination = "/var/cache/fontconfig",
+      .options = { { "rbind", "rw" } },
+      .source = this->workingDir.absoluteFilePath("linglong/cache/fontconfig").toStdString(),
+      .type = "bind",
+    });
 
+    std::vector<ocppi::runtime::config::types::Hook> generateCache{};
+    std::vector<std::string> ldconfigCmd = { "/sbin/ldconfig",
+                                             "-C",
+                                             "/run/linglong/cache/ld.so.cache" };
+    std::vector<std::string> fontconfiCmd = { "fc-cache", "-f" };
+    generateCache.push_back(ocppi::runtime::config::types::Hook{
+      .args = std::move(ldconfigCmd),
+      .env = {},
+      .path = "/sbin/ldconfig",
+      .timeout = {},
+    });
+    generateCache.push_back(ocppi::runtime::config::types::Hook{
+      .args = std::move(fontconfiCmd),
+      .env = {},
+      .path = "/bin/fc-cache",
+      .timeout = {},
+    });
+    options.hooks.startContainer = std::move(generateCache);
     options.mounts = std::move(applicationMounts);
 
     auto container = this->containerBuilder.create(options);

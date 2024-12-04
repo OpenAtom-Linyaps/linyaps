@@ -393,6 +393,32 @@ int Cli::run()
         return -1;
     }
 
+    auto appLayerItem = this->repository.getLayerItem(*curAppRef);
+    if (!appLayerItem) {
+        this->printer.printErr(appLayerItem.error());
+        return -1;
+    }
+    // check cache here after every layer were found.
+    std::error_code ec;
+    const auto appCache = std::filesystem::path(LINGLONG_ROOT) / "cache" / appLayerItem->commit;
+    if (!std::filesystem::exists(appCache, ec)) {
+        // try to generate cache here
+        this->notifier->notify(api::types::v1::InteractionRequest{
+          .summary =
+            "This old application is trying to run under the new linglong client. It needs to "
+            "regenerate some cache. This operation will take some time but only once." });
+            auto sta = this->generateCache(*curAppRef);
+            qCritical() << sta;
+        if (sta != 0) {
+            this->notifier->notify(api::types::v1::InteractionRequest{
+              .summary =
+                "The cache generation failed, please uninstall and reinstall the application." });
+        } else {
+            this->notifier->notify(
+              api::types::v1::InteractionRequest{ .summary = "The cache has been regenerated." });
+        }
+    }
+
     auto commands = options.commands;
     if (commands.empty()) {
         commands = info->command.value_or(std::vector<std::string>{});
@@ -538,6 +564,20 @@ int Cli::run()
             std::for_each(innerBinds->cbegin(), innerBinds->cend(), bindInnerMount);
         }
     }
+
+    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+      .destination = "/run/linglong/cache",
+      .options = nlohmann::json::array({ "rbind", "ro" }),
+      .source = appCache,
+      .type = "bind",
+    });
+
+    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+      .destination = "/var/cache/fontconfig",
+      .options = nlohmann::json::array({ "rbind", "ro" }),
+      .source = appCache / "fontconfig",
+      .type = "bind",
+    });
 
     auto container = this->containerBuilder.create({
       .appID = curAppRef->id,
@@ -1905,6 +1945,49 @@ utils::error::Result<void> Cli::runningAsRoot(const QList<QString> &args)
         free(arg);
     }
     return LINGLONG_ERR("execve error", ret);
+}
+
+int Cli::generateCache(const package::Reference &ref)
+{
+    LINGLONG_TRACE("generate cache for all applications");
+    QEventLoop loop;
+    QString jobIDReply = "";
+    auto ret = connect(&this->pkgMan,
+                       &api::dbus::v1::PackageManager::GenerateCacheFinished,
+                       [this, &loop, &jobIDReply](const QString &jobID, bool success) {
+                           if (jobIDReply != jobID) {
+                               return;
+                           }
+                           if (!success) {
+                               loop.exit(-1);
+                               return;
+                           }
+                           loop.exit(0);
+                       });
+
+    auto pendingReply = this->pkgMan.GenerateCache(ref.toString());
+    pendingReply.waitForFinished();
+    if (pendingReply.isError()) {
+        auto err = LINGLONG_ERRV(pendingReply.error().message());
+        this->printer.printErr(err);
+        return -1;
+    }
+
+    auto result = utils::serialize::fromQVariantMap<api::types::v1::PackageManager1JobInfo>(
+      pendingReply.value());
+    if (!result) {
+        this->printer.printErr(result.error());
+        return -1;
+    }
+
+    if (!result->id) {
+        this->printer.printErr(
+          LINGLONG_ERRV("\n" + QString::fromStdString(result->message), result->code));
+        return -1;
+    }
+
+    jobIDReply = QString::fromStdString(result->id.value());
+    return loop.exec();
 }
 
 } // namespace linglong::cli

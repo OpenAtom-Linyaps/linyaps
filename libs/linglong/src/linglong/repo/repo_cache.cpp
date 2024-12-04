@@ -132,6 +132,12 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
         this->cache.layers.emplace_back(std::move(item));
     }
 
+    // FIXME: ll-cli may initialize repo, it can make states.json own by root
+    if (getuid() == 0) {  
+        qWarning() << "Rebuild the cache by root, skip to write data to states.json";
+        return LINGLONG_OK;
+    }
+
     auto ret = writeToDisk();
     if (!ret) {
         return LINGLONG_ERR(ret);

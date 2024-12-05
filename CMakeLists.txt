@@ -27,15 +27,16 @@ set(ENABLE_LINGLONG_INSTALLER
     OFF
     CACHE BOOL "enable linglong installer")
 
+set(ENABLE_TESTING
+    ON
+    CACHE BOOL "enable testing")
+
 set(LINGLONG_USERNAME
     "deepin-linglong"
     CACHE STRING "The username for linglong package manager")
 set(LINGLONG_ROOT
     "/var/lib/linglong"
     CACHE STRING "The location where linglong related program puts their data")
-set(LINGLONG_HOST_PATH
-    "/run/host"
-    CACHE STRING "The location where linglong host path mapping")
 set(LINGLONG_DEFAULT_OCI_RUNTIME
     "ll-box"
     CACHE STRING "The oci runtime which linglong use by default")
@@ -102,6 +103,19 @@ if(ENABLE_CPM)
     GIT_TAG v2.4.1
     EXCLUDE_FROM_ALL ON
     OPTIONS "CLI11_BUILD_TESTS OFF")
+
+  if(ENABLE_TESTING)
+    include(CTest)
+    CPMFindPackage(
+      NAME googletest
+      GITHUB_REPOSITORY google/googletest
+      GIT_TAG v1.14.0
+      VERSION 1.12.1
+      OPTIONS "INSTALL_GTEST OFF" "gtest_force_shared_crt"
+      FIND_PACKAGE_ARGUMENTS "NAMES GTest"
+      GIT_SHALLOW ON
+      EXCLUDE_FROM_ALL ON)
+  endif()
 endif()
 
 set(linglong_EXTERNALS "ytj ytj::ytj")
@@ -127,6 +141,19 @@ endif()
 find_package(CLI11 2.4.1 QUIET)
 if(NOT CLI11_FOUND)
   list(APPEND linglong_EXTERNALS "CLI11 CLI11::CLI11")
+endif()
+
+find_package(PkgConfig REQUIRED)
+
+if(ENABLE_TESTING)
+  pkg_search_module(CRYPTO REQUIRED IMPORTED_TARGET libcrypto)
+  find_package(GTest REQUIRED)
+
+  # compatible with old gtest
+  if(NOT TARGET GTest::gmock)
+    message(STATUS "GTest::gmock not found, alias GTest::gtest")
+    add_library(GTest::gmock ALIAS GTest::GTest) # available since 3.5
+  endif()
 endif()
 
 function(get_real_target_name output target)
@@ -164,8 +191,6 @@ find_package(
   Qt${QT_VERSION_MAJOR}
   COMPONENTS Core DBus
   REQUIRED)
-
-find_package(PkgConfig REQUIRED)
 
 pkg_search_module(glib2 REQUIRED IMPORTED_TARGET glib-2.0)
 pkg_search_module(ostree1 REQUIRED IMPORTED_TARGET ostree-1)

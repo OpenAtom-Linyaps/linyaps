@@ -420,7 +420,7 @@ loadPackageInfoFromJson(const std::filesystem::path &json) noexcept
         return linglong::api::types::v1::PackageInfoV2{
             .arch = oldInfo.arch,
             .base = oldInfo.base,
-            .channel = oldInfo.channel,
+            .channel = oldInfo.channel.value_or("main"),
             .command = oldInfo.command,
             .description = oldInfo.description,
             .id = oldInfo.appid,

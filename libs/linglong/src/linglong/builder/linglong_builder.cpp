@@ -42,9 +42,11 @@
 #include <QUrl>
 #include <QUuid>
 
+#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <optional>
 #include <ostream>
 #include <string>
@@ -270,17 +272,27 @@ utils::error::Result<package::Reference> pullDependency(const package::FuzzyRefe
     }
 
     auto tmpTask = service::PackageTask::createTemporaryTask();
-    auto partChanged = [&ref, module](const QString &percentage) {
+    auto partChanged = [&ref, module](const uint fetched, const uint requested) {
+        auto percentage = (uint)((((double)fetched) / requested) * 100);
+        auto progress = QString("(%1/%2 %3%)").arg(fetched).arg(requested).arg(percentage);
         printReplacedText(QString("%1%2%3%4 %5")
                             .arg(ref->id, -25)                        // NOLINT
                             .arg(ref->version.toString(), -15)        // NOLINT
                             .arg(QString::fromStdString(module), -15) // NOLINT
                             .arg("downloading")
-                            .arg(percentage)
+                            .arg(progress)
                             .toStdString(),
                           2);
     };
     QObject::connect(&tmpTask, &service::PackageTask::PartChanged, partChanged);
+    printReplacedText(QString("%1%2%3%4 %5")
+                        .arg(ref->id, -25)                        // NOLINT
+                        .arg(ref->version.toString(), -15)        // NOLINT
+                        .arg(QString::fromStdString(module), -15) // NOLINT
+                        .arg("waiting")
+                        .arg("...")
+                        .toStdString(),
+                      2);
     repo.pull(tmpTask, *ref, module);
     if (tmpTask.state() == linglong::api::types::v1::State::Failed) {
         return LINGLONG_ERR("pull " + ref->toString() + " failed", std::move(tmpTask).takeError());
@@ -389,6 +401,59 @@ utils::error::Result<void> installModule(QStringList installRules,
 }
 
 } // namespace
+
+utils::error::Result<void> cmdListApp(repo::OSTreeRepo &repo)
+{
+    LINGLONG_TRACE("cmd list app");
+    auto list = repo.listLocal();
+    if (!list.has_value()) {
+        return LINGLONG_ERR("list local pkg", list);
+    }
+    std::vector<std::string> refs;
+    for (const auto &item : *list) {
+        auto ref = package::Reference::fromPackageInfo(item);
+        if (!ref.has_value()) {
+            continue;
+        }
+        refs.push_back(ref->toString().toStdString());
+    }
+    std::sort(refs.begin(), refs.end());
+    auto it = std::unique(refs.begin(), refs.end());
+    refs.erase(it, refs.end());
+    for (const auto &ref : refs) {
+        std::cout << ref << std::endl;
+    }
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> cmdRemoveApp(repo::OSTreeRepo &repo, std::vector<std::string> refs)
+{
+    LINGLONG_TRACE("cmd remove app");
+    for (const auto &ref : refs) {
+        auto r = package::Reference::parse(QString::fromStdString(ref));
+        if (!r.has_value()) {
+            std::cerr << ref << ": " << r.error().message().toStdString() << std::endl;
+            continue;
+        }
+        auto modules = repo.getModuleList(*r);
+        for (const auto &module : modules) {
+            auto v = repo.remove(*r, module);
+            if (!v.has_value()) {
+                std::cerr << ref << ": " << v.error().message().toStdString() << std::endl;
+                continue;
+            }
+        }
+    }
+    auto v = repo.prune();
+    if (!v.has_value()) {
+        std::cerr << v.error().message().toStdString();
+    }
+    v = repo.mergeModules();
+    if (!v.has_value()) {
+        std::cerr << v.error().message().toStdString();
+    }
+    return LINGLONG_OK;
+}
 
 Builder::Builder(const api::types::v1::BuilderProject &project,
                  const QDir &workingDir,
@@ -505,6 +570,10 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
                       2);
     auto baseLayerDir = this->repo.getMergedModuleDir(*baseRef, false);
     if (!baseLayerDir) {
+        baseLayerDir = this->repo.getLayerDir(*baseRef, "develop");
+        if (!baseLayerDir.has_value()) {
+            return LINGLONG_ERR("get base layer dir", baseLayerDir);
+        }
         return LINGLONG_ERR("get base layer dir", baseLayerDir);
     }
 
@@ -548,7 +617,10 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
                           2);
         auto runtimeLayerDirRet = this->repo.getMergedModuleDir(*runtimeRet, false);
         if (!runtimeLayerDirRet.has_value()) {
-            return LINGLONG_ERR("get runtime layer dir", runtimeLayerDirRet);
+            runtimeLayerDirRet = this->repo.getLayerDir(*runtimeRet, "develop");
+            if (!runtimeLayerDirRet.has_value()) {
+                return LINGLONG_ERR("get runtime layer dir", runtimeLayerDirRet);
+            }
         }
         runtimeRef = *runtimeRet;
         runtimeLayerDir = *runtimeLayerDirRet;
@@ -813,7 +885,9 @@ set -e
             if (!configFile.open(QIODevice::ReadOnly)) {
                 return LINGLONG_ERR("open file", configFile);
             }
-            installRules.append(QString(configFile.readAll()).split('\n'));
+            for (auto &line : QString(configFile.readAll()).split('\n')) {
+                installRules.append(line.replace(installPrefix, ""));
+            }
             // remove empty or duplicate lines
             installRules.removeAll("");
             installRules.removeDuplicates();
@@ -1367,38 +1441,37 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
         }
     }
     if (debug) {
-        std::string appPrefix = "/opt/apps/" + this->project.package.id + "/files";
-        std::string debugFileDirectory =
-          "/usr/lib/debug:/runtime/lib/debug:" + appPrefix + "/lib/debug";
+        std::filesystem::path workdir = this->workingDir.absolutePath().toStdString();
+        // 生成 host_gdbinit 可使用 gdb --init-command=linglong/host_gdbinit 从宿主机调试
+        {
+            auto gdbinit = workdir / "linglong/host_gdbinit";
+            auto debugDir = workdir / "linglong/output/develop/files/lib/debug";
+            std::ofstream hostConf(gdbinit);
+            hostConf << "set substitute-path /project " + workdir.string() << std::endl;
+            hostConf << "set debug-file-directory " + debugDir.string() << std::endl;
+            hostConf << "# target remote :12345";
+        }
+        // 生成 gdbinit 支持在容器中使用gdb $binary调试
+        {
+            std::string appPrefix = "/opt/apps/" + this->project.package.id + "/files";
+            std::string debugDir = "/usr/lib/debug:/runtime/lib/debug:" + appPrefix + "/lib/debug";
+            auto gdbinit = workdir / "linglong/gdbinit";
+            std::ofstream f(gdbinit);
+            f << "set debug-file-directory " + debugDir << std::endl;
 
-        auto gdbinit = this->workingDir.absoluteFilePath("linglong/host_gdbinit").toStdString();
-        std::ofstream hostConf(gdbinit);
-        // project => workdir
-        hostConf << "set substitute-path /project " + this->workingDir.absolutePath().toStdString()
-                 << std::endl;
-        // /opt/apps/$appid/files => mergedDir
-        hostConf << "set substitute-path " + appPrefix + " "
-            + options.appDir->absolutePath().toStdString()
-                 << std::endl;
-        hostConf << "set debug-file-directory " + debugFileDirectory << std::endl;
-        hostConf << "# target remote :1234";
-
-        // 支持在容器中命令行调试
-        auto *homeEnv = ::getenv("HOME");
-        auto hostHomeDir = std::filesystem::path(homeEnv);
-        gdbinit = this->workingDir.absoluteFilePath("linglong/gdbinit").toStdString();
-        std::ofstream f(gdbinit);
-        f << "set debug-file-directory " + debugFileDirectory;
-
-        applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-          .destination = hostHomeDir / ".gdbinit",
-          .options = { { "ro", "rbind" } },
-          .source = gdbinit,
-          .type = "bind",
-        });
+            auto *homeEnv = ::getenv("HOME");
+            auto hostHomeDir = std::filesystem::path(homeEnv);
+            applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+              .destination = hostHomeDir / ".gdbinit",
+              .options = { { "ro", "rbind" } },
+              .source = gdbinit,
+              .type = "bind",
+            });
+        }
+        // 挂载项目目录，便于gdb查看源码
         applicationMounts.push_back(ocppi::runtime::config::types::Mount{
           .destination = "/project",
-          .options = { { "rbind", "rw" } },
+          .options = { { "rbind", "ro" } },
           .source = this->workingDir.absolutePath().toStdString(),
           .type = "bind",
         });

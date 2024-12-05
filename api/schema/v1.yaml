@@ -500,7 +500,6 @@ $defs:
     description: this is the each item output of ll-cli list --json
     type: object
     required:
-      - channel
       - appid
       - module
       - arch
@@ -600,8 +599,6 @@ $defs:
         type: string
       RemoteRef:
         type: string
-  PackageManager1MigrateResult:
-    $ref: '#/$defs/CommonResult'
   State:
     description: main state of current task,
     enum:
@@ -748,12 +745,6 @@ $defs:
       - config
       - layers
     properties:
-      migrating_stage:
-        type: array
-        description: solutions should apply to migrating progress
-        minItems: 1
-        items:
-          type: integer
       version:
         type: string
         description: version of storage

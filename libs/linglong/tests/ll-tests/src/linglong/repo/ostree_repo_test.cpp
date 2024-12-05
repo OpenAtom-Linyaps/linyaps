@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include "linglong/package/ref.h"
+#include "linglong/package/reference.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/util/file.h"
 #include "linglong/utils/error/error.h"

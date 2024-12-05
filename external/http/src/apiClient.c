@@ -37,7 +37,7 @@ apiClient_t *apiClient_create_with_base_path(const char *basePath
     }else{
         apiClient->sslConfig = NULL;
     }
-
+    apiClient->userAgent = NULL;
     apiClient->dataReceived = NULL;
     apiClient->dataReceivedLen = 0;
     apiClient->data_callback_func = NULL;
@@ -267,6 +267,11 @@ void apiClient_invoke(apiClient_t    *apiClient,
         if(requestType != NULL) {
             curl_easy_setopt(handle, CURLOPT_CUSTOMREQUEST,
                              requestType);
+        }
+
+        if(apiClient->userAgent != NULL) {
+            curl_easy_setopt(handle, CURLOPT_USERAGENT,
+                             apiClient->userAgent);
         }
 
         if(formParameters != NULL) {

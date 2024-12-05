@@ -6,7 +6,6 @@
 
 #include "linglong/cli/cli.h"
 
-#include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/InteractionReply.hpp"
 #include "linglong/api/types/v1/InteractionRequest.hpp"
 #include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
@@ -271,6 +270,12 @@ Cli::Cli(Printer &printer,
 int Cli::run()
 {
     LINGLONG_TRACE("command run");
+    // NOTE: ll-box is not support running as root for now.
+    if (getuid() == 0) {
+        qInfo() << "'ll-cli run' currently does not support running as root.";
+        return -1;
+    }
+
     auto userContainerDir = std::filesystem::path{ "/run/linglong" } / std::to_string(::getuid());
     auto mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
     auto pidFile = userContainerDir / std::to_string(::getpid());
@@ -341,7 +346,7 @@ int Cli::run()
         }
         auto &runtimeRef = *runtimeRefRet;
 
-        if (info->uuid->empty()) {
+        if (!info->uuid.has_value()) {
             auto runtimeLayerDirRet = this->repository.getMergedModuleDir(runtimeRef);
             if (!runtimeLayerDirRet) {
                 this->printer.printErr(runtimeLayerDirRet.error());
@@ -380,7 +385,7 @@ int Cli::run()
         qDebug() << "getMergedModuleDir base";
         baseLayerDir = this->repository.getMergedModuleDir(*baseRef);
     } else {
-        qDebug() << "getLayerDir base" << info->uuid->c_str();
+        qDebug() << "getLayerDir base" << info->uuid.value().c_str();
         baseLayerDir = this->repository.getLayerDir(*baseRef, std::string{ "binary" }, info->uuid);
     }
     if (!baseLayerDir) {
@@ -568,7 +573,6 @@ int Cli::run()
 int Cli::exec()
 {
     LINGLONG_TRACE("ll-cli exec");
-
     auto containers = getCurrentContainers();
     if (!containers) {
         auto err = LINGLONG_ERRV(containers);
@@ -577,9 +581,8 @@ int Cli::exec()
     }
 
     std::string containerID;
-    auto instance = options.instance;
     for (const auto &container : *containers) {
-        if (container.package == instance) {
+        if (container.package == options.instance) {
             containerID = container.id;
             break;
         }
@@ -591,7 +594,6 @@ int Cli::exec()
     }
 
     qInfo() << "select container id" << QString::fromStdString(containerID);
-
     auto commands = options.commands;
     if (commands.size() != 0) {
         QStringList bashArgs;
@@ -600,7 +602,6 @@ int Cli::exec()
             bashArgs.push_back(
               QString("'%1'").arg(QString::fromStdString(arg).replace("'", "'\\''")));
         }
-
         if (!bashArgs.isEmpty()) {
             // exec命令使用原始args中的进程替换bash进程
             bashArgs.prepend("exec");
@@ -614,11 +615,9 @@ int Cli::exec()
     } else {
         commands = { "bash", "--login" };
     }
-
     auto opt = ocppi::runtime::ExecOption{};
     opt.uid = ::getuid();
     opt.gid = ::getgid();
-
     auto result =
       this->ociCLI.exec(containerID, commands[0], { commands.begin() + 1, commands.end() }, opt);
     if (!result) {
@@ -626,7 +625,6 @@ int Cli::exec()
         this->printer.printErr(err);
         return -1;
     }
-
     return 0;
 }
 
@@ -716,31 +714,36 @@ int Cli::kill()
         return -1;
     }
 
-    std::string containerID;
-    auto instance = options.instance;
+    std::vector<std::string> containerIDList;
     for (const auto &container : *containers) {
-        if (container.package == instance) {
-            containerID = container.id;
-            break;
+        auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(container.package));
+        if (!fuzzyRef) {
+            this->printer.printErr(fuzzyRef.error());
+            continue;
+        }
+
+        // support matching container id based on appid or fuzzy ref
+        if (fuzzyRef->id.toStdString() == options.appid
+            || fuzzyRef->toString().toStdString() == options.appid) {
+            containerIDList.emplace_back(container.id);
         }
     }
 
-    if (containerID.empty()) {
-        this->printer.printErr(LINGLONG_ERRV("no container found"));
-        return -1;
+    auto ret = 0;
+
+    for (const auto &containerID : containerIDList) {
+        qInfo() << "select container id" << QString::fromStdString(containerID);
+
+        auto result = this->ociCLI.kill(ocppi::runtime::ContainerID(containerID),
+                                        ocppi::runtime::Signal("SIGTERM"));
+        if (!result) {
+            auto err = LINGLONG_ERRV(result);
+            this->printer.printErr(err);
+            ret = -1;
+        }
     }
 
-    qInfo() << "select container id" << QString::fromStdString(containerID);
-
-    auto result = this->ociCLI.kill(ocppi::runtime::ContainerID(containerID),
-                                    ocppi::runtime::Signal("SIGTERM"));
-    if (!result) {
-        auto err = LINGLONG_ERRV(result);
-        this->printer.printErr(err);
-        return -1;
-    }
-
-    return 0;
+    return ret;
 }
 
 void Cli::cancelCurrentTask()
@@ -835,43 +838,27 @@ int Cli::installFromFile(const QFileInfo &fileInfo, const api::types::v1::Common
         return -1;
     }
 
-    updateAM();
     return this->lastState == linglong::api::types::v1::State::Succeed ? 0 : -1;
-}
-
-void Cli::updateAM() noexcept
-{
-    // Call ReloadApplications() in AM for now. Remove later.
-    if ((QSysInfo::productType() == "uos" || QSysInfo::productType() == "Deepin")
-        && this->lastState == linglong::api::types::v1::State::Succeed) {
-        QDBusConnection conn = QDBusConnection::sessionBus();
-        if (!conn.isConnected()) {
-            qWarning() << "Failed to connect to the session bus";
-        }
-        QDBusMessage msg = QDBusMessage::createMethodCall("org.desktopspec.ApplicationManager1",
-                                                          "/org/desktopspec/ApplicationManager1",
-                                                          "org.desktopspec.ApplicationManager1",
-                                                          "ReloadApplications");
-        auto ret = QDBusConnection::sessionBus().call(msg, QDBus::NoBlock);
-        if (ret.type() == QDBusMessage::ErrorMessage) {
-            qWarning() << "call reloadApplications failed:" << ret.errorMessage();
-        }
-    }
 }
 
 int Cli::install()
 {
     LINGLONG_TRACE("command install");
 
-    // Note: we deny the org.freedesktop.DBus.Introspectable for now.
-    // Use this interface to determin that this client whether have permission to call PM.
-    QDBusInterface dbusIntrospect(this->pkgMan.service(),
-                                  this->pkgMan.path(),
-                                  "org.freedesktop.DBus.Introspectable",
-                                  this->pkgMan.connection());
-    QDBusReply<QString> authReply = dbusIntrospect.call("Introspect");
+    QDBusReply<QString> authReply = this->authorization();
     if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
-        auto ret = this->runningAsRoot();
+        auto args = QCoreApplication::instance()->arguments();
+        // pkexec在0.120版本之前没有keep-cwd选项，会将目录切换到/root
+        // 所以将layer或uab文件的相对路径转为绝对路径，再传给pkexec
+        if (std::filesystem::exists(options.appid)) {
+            auto path = std::filesystem::absolute(options.appid);
+            for (auto i = 0; i < args.length(); i++) {
+                if (args[i] == options.appid.c_str()) {
+                    args[i] = path.c_str();
+                }
+            }
+        }
+        auto ret = this->runningAsRoot(args);
         if (!ret) {
             this->printer.printErr(ret.error());
         }
@@ -971,7 +958,6 @@ int Cli::install()
     }
     loop.exec();
 
-    updateAM();
     return this->lastState == linglong::api::types::v1::State::Succeed ? 0 : -1;
 }
 
@@ -979,11 +965,7 @@ int Cli::upgrade()
 {
     LINGLONG_TRACE("command upgrade");
 
-    QDBusInterface dbusIntrospect(this->pkgMan.service(),
-                                  this->pkgMan.path(),
-                                  "org.freedesktop.DBus.Introspectable",
-                                  this->pkgMan.connection());
-    QDBusReply<QString> authReply = dbusIntrospect.call("Introspect");
+    QDBusReply<QString> authReply = this->authorization();
     if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
         auto ret = this->runningAsRoot();
         if (!ret) {
@@ -1088,7 +1070,6 @@ int Cli::upgrade()
         return -1;
     }
 
-    updateAM();
     return 0;
 }
 
@@ -1186,11 +1167,7 @@ int Cli::prune()
 {
     LINGLONG_TRACE("command prune");
 
-    QDBusInterface dbusIntrospect(this->pkgMan.service(),
-                                  this->pkgMan.path(),
-                                  "org.freedesktop.DBus.Introspectable",
-                                  this->pkgMan.connection());
-    QDBusReply<QString> authReply = dbusIntrospect.call("Introspect");
+    QDBusReply<QString> authReply = this->authorization();
     if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
         auto ret = this->runningAsRoot();
         if (!ret) {
@@ -1256,11 +1233,7 @@ int Cli::uninstall()
 {
     LINGLONG_TRACE("command uninstall");
 
-    QDBusInterface dbusIntrospect(this->pkgMan.service(),
-                                  this->pkgMan.path(),
-                                  "org.freedesktop.DBus.Introspectable",
-                                  this->pkgMan.connection());
-    QDBusReply<QString> authReply = dbusIntrospect.call("Introspect");
+    QDBusReply<QString> authReply = this->authorization();
     if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
         auto ret = this->runningAsRoot();
         if (!ret) {
@@ -1285,25 +1258,25 @@ int Cli::uninstall()
         return -1;
     }
 
-    auto layerDir = this->repository.getLayerDir(*ref);
-    if (!layerDir) {
-        this->printer.printErr(layerDir.error());
+    std::string module = "binary";
+    auto params = api::types::v1::PackageManager1UninstallParameters{};
+    if (!options.module.empty()) {
+        module = options.module;
+        params.package.packageManager1PackageModule = module;
+    }
+
+    auto layerItem = this->repository.getLayerItem(*ref, module);
+    if (!layerItem) {
+        this->printer.printErr(layerItem.error());
         return -1;
     }
 
-    auto info = layerDir->info();
-    if (!info) {
-        this->printer.printErr(info.error());
-        return -1;
-    }
-
-    if (info->kind != "app") {
+    if (layerItem->info.kind != "app") {
         this->printer.printErr(
           LINGLONG_ERRV("This layer is not an application, please use 'll-cli prune'.", -1));
         return -1;
     }
 
-    auto params = api::types::v1::PackageManager1UninstallParameters{};
     params.package.id = fuzzyRef->id.toStdString();
     if (fuzzyRef->channel) {
         params.package.channel = fuzzyRef->channel->toStdString();
@@ -1312,9 +1285,6 @@ int Cli::uninstall()
         params.package.version = fuzzyRef->version->toString().toStdString();
     }
 
-    if (!options.module.empty()) {
-        params.package.packageManager1PackageModule = options.module;
-    }
     auto pendingReply = this->pkgMan.Uninstall(utils::serialize::toQVariantMap(params));
     pendingReply.waitForFinished();
 
@@ -1482,8 +1452,9 @@ Cli::listUpgradable(const std::string &type)
         }
 
         if (!reference) {
-            std::cerr << "Failed to find the package: " << fuzzy->id.toStdString()
-                      << ", maybe it is local package, skip it." << std::endl;
+            qDebug() << "Failed to find the package: "
+                     << QString::fromStdString(fuzzy->id.toStdString())
+                     << ", maybe it is local package, skip it.";
             continue;
         }
 
@@ -1626,11 +1597,7 @@ int Cli::setRepoConfig(const QVariantMap &config)
 {
     LINGLONG_TRACE("set repo config");
 
-    QDBusInterface dbusIntrospect(this->pkgMan.service(),
-                                  this->pkgMan.path(),
-                                  "org.freedesktop.DBus.Introspectable",
-                                  this->pkgMan.connection());
-    QDBusReply<QString> authReply = dbusIntrospect.call("Introspect");
+    QDBusReply<QString> authReply = this->authorization();
     if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
         auto ret = this->runningAsRoot();
         if (!ret) {
@@ -1774,176 +1741,86 @@ int Cli::content()
     return 0;
 }
 
-int Cli::migrate()
+[[nodiscard]] std::filesystem::path Cli::mappingFile(const std::filesystem::path &file) noexcept
 {
-    LINGLONG_TRACE("cli migrate")
-
-    if (!notifier) {
-        qCritical() << "there hasn't notifier, abort migrate.";
-        return -1;
-    }
-
-    if (!this->repository.needMigrate()) {
-        this->notifier->notify(
-          api::types::v1::InteractionRequest{ .summary = "No migration required." });
-        return 0;
-    }
-
-    // stop all running apps
-    // FIXME: In multi-user conditions, we couldn't kill applications which started by different
-    // user
-    auto containers = this->ociCLI.list();
-    if (!containers) {
-        auto err = LINGLONG_ERRV(containers);
-        this->printer.printErr(err);
-        return -1;
-    }
-
-    for (const auto &container : *containers) {
-        auto result = this->ociCLI.kill(ocppi::runtime::ContainerID(container.id),
-                                        ocppi::runtime::Signal("SIGTERM"));
-        if (!result) {
-            auto err = LINGLONG_ERRV(result);
-            this->printer.printErr(err);
-            return -1;
-        }
-    }
-
-    // Note: We can't be the root before stop all running apps unless we can find out all
-    // containers(multi-user).
-    QDBusInterface dbusIntrospect(this->pkgMan.service(),
-                                  this->pkgMan.path(),
-                                  "org.freedesktop.DBus.Introspectable",
-                                  this->pkgMan.connection());
-    QDBusReply<QString> authReply = dbusIntrospect.call("Introspect");
-    if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
-        auto ret = this->runningAsRoot();
-        if (!ret) {
-            this->printer.printErr(ret.error());
-        }
-        return -1;
-    }
-
-    // beginning migrating data
-    if (!this->pkgMan.connection().connect(this->pkgMan.service(),
-                                           "/org/deepin/linglong/Migrate1",
-                                           "org.deepin.linglong.Migrate1",
-                                           "MigrateDone",
-                                           this,
-                                           SLOT(forwardMigrateDone(int, QString)))) {
-        qFatal("couldn't connect to dbus signal MigrateDone");
-    }
-
-    int retCode = std::numeric_limits<int>::min();
-    QString retMsg;
-
-    // connecting to this lambda before connecting the second one of the slot 'quit' of event loop
-    // see comments below for details
-    QObject::connect(this, &Cli::migrateDone, [&retCode, &retMsg](int newCode, QString newMsg) {
-        retCode = newCode;
-        retMsg = std::move(newMsg);
-    });
-
-    auto reply = this->pkgMan.Migrate();
-    reply.waitForFinished();
-
-    if (reply.isError()) {
-        if (reply.error().type() == QDBusError::AccessDenied) {
-            this->notifier->notify(api::types::v1::InteractionRequest{
-              .summary = "Permission deny, please check whether you are running as root." });
-            return -1;
+    std::error_code ec;
+    if (!std::filesystem::is_symlink(file, ec)) {
+        if (ec) {
+            qWarning() << "failed to check symlink " << file.c_str() << ":" << ec.message().c_str()
+                       << ", passing the file path to app as it is.";
         }
 
-        this->printer.printErr(LINGLONG_ERRV(reply.error().message(), reply.error().type()));
-        return -1;
+        return file;
     }
 
-    auto result = utils::serialize::fromQVariantMap<api::types::v1::CommonResult>(reply.value());
-    if (!result) {
-        auto err = LINGLONG_ERR(
-          "internal bug detected, application will exit, but migration may already staring");
-        this->printer.printErr(err.value());
-        std::abort();
+    std::array<char, PATH_MAX + 1> buf{};
+    auto *target = ::realpath(file.c_str(), buf.data());
+    if (target == nullptr) {
+        qWarning() << "resolve symlink " << file.c_str() << " error: " << ::strerror(errno)
+                   << ", passing the file path to app as it is.";
+        return file;
     }
 
-    auto ret = notifier->notify(api::types::v1::InteractionRequest{ .summary = result->message });
-    if (!ret) {
-        auto err = LINGLONG_ERR(
-          "internal bug detected, application will exit, but migration may already staring",
-          ret.error());
-        this->printer.printErr(err.value());
-        std::abort();
+    return std::filesystem::path{ "/run/host/rootfs" }
+    / std::filesystem::path{ target }.lexically_relative("/");
+}
+
+[[nodiscard]] std::string Cli::mappingUrl(const std::string &url) noexcept
+{
+    if (url.rfind('/', 0) == 0) {
+        return mappingFile(url);
     }
 
-    if (retCode == std::numeric_limits<int>::min()) {
-        // If a signal is connected to several slots,
-        // the slots are activated in the same order in which the connections were made,
-        // when the signal is emitted.
-        // refer: https://doc.qt.io/qt-5/qobject.html#connect
-
-        QEventLoop loop;
-        if (connect(this, &Cli::migrateDone, &loop, &QEventLoop::quit) == nullptr) {
-            qCritical() << "failed to waiting for reply";
-            return -1;
-        }
-        loop.exec();
+    // if the scheme of url is "file", we need to map the native file path to the corresponding
+    // container path, others will deliver to app directly.
+    constexpr std::string_view filePrefix = "file://";
+    if (url.rfind(filePrefix, 0) == 0) {
+        std::filesystem::path nativePath = url.substr(filePrefix.size());
+        auto target = mappingFile(nativePath);
+        return std::string{ filePrefix } + target.lexically_relative("/").string();
     }
 
-    ret =
-      this->notifier->notify(api::types::v1::InteractionRequest{ .summary = retMsg.toStdString() });
-    if (!ret) {
-        this->printer.printReply({ .code = retCode, .message = retMsg.toStdString() });
-        return -1;
-    }
-
-    return retCode;
+    return url;
 }
 
 std::vector<std::string>
 Cli::filePathMapping(const std::vector<std::string> &command) const noexcept
 {
-    std::string targetHostPath;
+    // FIXME: couldn't handel command like 'll-cli run org.xxx.yyy --file f1 f2 f3 org.xxx.yyy %%F'
+    // can't distinguish the boundary of command , need validate the command arguments in the future
+
     std::vector<std::string> execArgs;
     // if the --file or --url option is specified, need to map the file path to the linglong
     // path(/run/host).
     for (const auto &arg : command) {
-        if (arg.substr(0, 2) != "%%") {
-            execArgs.push_back(arg);
+        if (arg.rfind("%%", 0) != 0) {
+            execArgs.emplace_back(arg);
             continue;
         }
 
-        if (arg == "%%f") {
-            const auto file = options.filePath;
-
-            if (file.empty()) {
-                continue;
+        if (arg == "%%f" || arg == "%%F") {
+            if (arg == "%%f" && options.filePaths.size() > 1) {
+                // refer:
+                // https://specifications.freedesktop.org/desktop-entry-spec/latest/exec-variables.html
+                qWarning() << "more than one file path specified, all file paths will be passed.";
             }
 
-            targetHostPath = LINGLONG_HOST_PATH + file;
-            execArgs.push_back(targetHostPath);
+            for (const auto &file : options.filePaths) {
+                execArgs.emplace_back(mappingFile(file));
+            }
+
             continue;
         }
 
-        if (arg == "%%u") {
-            const auto url = QString::fromStdString(options.fileUrl);
-
-            if (options.fileUrl.empty()) {
-                continue;
+        if (arg == "%%u" || arg == "%%U") {
+            if (arg == "%%u" && options.fileUrls.size() > 1) {
+                qWarning() << "more than one url specified, all file paths will be passed.";
             }
 
-            const QString filePre = "file://";
-
-            // if url is "file://" format, need to map the file path to the linglong path, or
-            // deliver url directly.
-            if (url.startsWith(filePre)) {
-                const auto filePath = url.mid(filePre.length(), url.length() - filePre.length());
-                targetHostPath =
-                  filePre.toStdString() + LINGLONG_HOST_PATH + filePath.toStdString();
-            } else {
-                targetHostPath = url.toStdString();
+            for (const auto &url : options.fileUrls) {
+                execArgs.emplace_back(mappingUrl(url));
             }
 
-            execArgs.push_back(targetHostPath);
             continue;
         }
 
@@ -1974,18 +1851,18 @@ void Cli::filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> 
     std::move(temp.begin(), temp.end(), std::back_inserter(list));
 }
 
-void Cli::forwardMigrateDone(int code, QString message)
+utils::error::Result<void> Cli::runningAsRoot()
 {
-    Q_EMIT migrateDone(code, message, QPrivateSignal{});
+    return runningAsRoot(QCoreApplication::instance()->arguments());
 }
 
-utils::error::Result<void> Cli::runningAsRoot()
+utils::error::Result<void> Cli::runningAsRoot(const QList<QString> &args)
 {
     LINGLONG_TRACE("run with pkexec");
 
     const char *pkexecBin = "pkexec";
-    QStringList argv{ pkexecBin, "--keep-cwd" };
-    argv.append(QCoreApplication::instance()->arguments());
+    QStringList argv{ pkexecBin };
+    argv.append(args);
     qDebug() << "run with pkexec:" << argv;
     std::vector<char *> targetArgv;
     for (const auto &arg : argv) {
@@ -2002,4 +1879,14 @@ utils::error::Result<void> Cli::runningAsRoot()
     return LINGLONG_ERR("execve error", ret);
 }
 
+QDBusReply<QString> Cli::authorization()
+{
+    // Note: we have marked the method Prune of PM as rejected.
+    // Use this method to determin that this client whether have permission to call PM.
+    QDBusInterface dbusIntrospect(this->pkgMan.service(),
+                                  this->pkgMan.path(),
+                                  this->pkgMan.service(),
+                                  this->pkgMan.connection());
+    return dbusIntrospect.call("Prune");
+}
 } // namespace linglong::cli

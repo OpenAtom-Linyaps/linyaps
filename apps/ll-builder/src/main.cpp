@@ -10,6 +10,7 @@
 #include "linglong/package/version.h"
 #include "linglong/repo/client_factory.h"
 #include "linglong/repo/config.h"
+#include "linglong/repo/migrate.h"
 #include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/gettext.h"
@@ -201,21 +202,20 @@ You can report bugs to the linyaps team under this project: https://github.com/O
       ->check(validatorString);
 
     // add builder build
-    bool buildOffline = false, buildFullDevelopModule = false, buildSkipFetchSource = false,
-         buildSkipPullDepend = false, buildSkipCheckOutput = false, buildSkipStripSymbols = false,
-         buildSkipCommitOutput = false, buildSkipRunContainer = false;
-    std::string filePath{ "./linglong.yaml" }, arch;
+    linglong::builder::BuilderBuildOptions options;
+    bool buildOffline = false;
+    std::string filePath{ "./linglong.yaml" }, archOpt;
     // group empty will hide command
     std::string hiddenGroup = "";
     std::vector<std::string> oldCommands;
     std::vector<std::string> newCommands;
     auto buildBuilder = commandParser.add_subcommand("build", _("Build a linyaps project"));
     buildBuilder->usage(_("Usage: ll-builder build [OPTIONS] [COMMAND...]"));
-    buildBuilder->add_option("--file", filePath, _("File path of the linglong.yaml"))
+    buildBuilder->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")
       ->capture_default_str()
       ->check(CLI::ExistingFile);
-    buildBuilder->add_option("--arch", arch, _("Set the build arch"))
+    buildBuilder->add_option("--arch", archOpt, _("Set the build arch"))
       ->type_name("ARCH")
       ->check(validatorString);
     buildBuilder->add_option(
@@ -233,18 +233,20 @@ You can report bugs to the linyaps team under this project: https://github.com/O
                              "--skip-pull-depend will be set"));
     buildBuilder
       ->add_flag("--full-develop-module",
-                 buildFullDevelopModule,
+                 options.fullDevelop,
                  _("Build full develop packages, runtime requires"))
       ->group(hiddenGroup);
-    buildBuilder->add_flag("--skip-fetch-source", buildSkipFetchSource, _("Skip fetch sources"));
-    buildBuilder->add_flag("--skip-pull-depend", buildSkipPullDepend, _("Skip pull dependency"));
-    buildBuilder->add_flag("--skip-run-container", buildSkipRunContainer, _("Skip run container"));
+    buildBuilder->add_flag("--skip-fetch-source", options.skipFetchSource, _("Skip fetch sources"));
+    buildBuilder->add_flag("--skip-pull-depend", options.skipPullDepend, _("Skip pull dependency"));
+    buildBuilder->add_flag("--skip-run-container",
+                           options.skipRunContainer,
+                           _("Skip run container"));
     buildBuilder->add_flag("--skip-commit-output",
-                           buildSkipCommitOutput,
+                           options.skipCommitOutput,
                            _("Skip commit build output"));
-    buildBuilder->add_flag("--skip-output-check", buildSkipCheckOutput, _("Skip output check"));
+    buildBuilder->add_flag("--skip-output-check", options.skipCheckOutput, _("Skip output check"));
     buildBuilder->add_flag("--skip-strip-symbols",
-                           buildSkipStripSymbols,
+                           options.skipStripSymbols,
                            _("Skip strip debug symbols"));
 
     // add builder run
@@ -252,7 +254,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     std::vector<std::string> execModules;
     auto buildRun = commandParser.add_subcommand("run", _("Run builded linyaps app"));
     buildRun->usage(_("Usage: ll-builder run [OPTIONS] [COMMAND...]"));
-    buildRun->add_option("--file", filePath, _("File path of the linglong.yaml"))
+    buildRun->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")
       ->capture_default_str()
       ->check(CLI::ExistingFile);
@@ -274,12 +276,19 @@ You can report bugs to the linyaps team under this project: https://github.com/O
       ->group(hiddenGroup);
     buildRun->add_flag("--debug", debugMode, _("Run in debug mode (enable develop module)"));
 
+    auto buildList = commandParser.add_subcommand("list", _("List builded linyaps app"));
+    buildList->usage(_("Usage: ll-builder list [OPTIONS]"));
+    std::vector<std::string> removeList;
+    auto buildRemove = commandParser.add_subcommand("remove", _("Remove builded linyaps app"));
+    buildRemove->usage(_("Usage: ll-builder remove [OPTIONS] [APP...]"));
+    buildRemove->add_option("APP", removeList);
+
     // build export
     bool layerMode = false;
     std::string iconFile;
     auto buildExport = commandParser.add_subcommand("export", _("Export to linyaps layer or uab"));
     buildExport->usage(_("Usage: ll-builder export [OPTIONS]"));
-    buildExport->add_option("--file", filePath, _("File path of the linglong.yaml"))
+    buildExport->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")
       ->capture_default_str()
       ->check(CLI::ExistingFile);
@@ -292,14 +301,14 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     std::string repoName, repoUrl, pushModule;
     auto buildPush = commandParser.add_subcommand("push", _("Push linyaps app to remote repo"));
     buildPush->usage(_("Usage: ll-builder push [OPTIONS]"));
-    buildPush->add_option("--file", filePath, _("File path of the linglong.yaml"))
+    buildPush->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")
       ->capture_default_str()
       ->check(CLI::ExistingFile);
     buildPush->add_option("--repo-url", repoUrl, _("Remote repo url"))
       ->type_name("URL")
       ->check(validatorString);
-    buildPush->add_option("--repo-name", repoUrl, _("Remote repo name"))
+    buildPush->add_option("--repo-name", repoName, _("Remote repo name"))
       ->type_name("NAME")
       ->check(validatorString);
     buildPush->add_option("--module", pushModule, _("Push single module"))->check(validatorString);
@@ -366,10 +375,6 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     // add repo sub command show
     auto buildRepoShow = buildRepo->add_subcommand("show", _("Show repository information"));
     buildRepoShow->usage(_("Usage: ll-builder repo show [OPTIONS]"));
-
-    // add build migrate
-    auto buildMigrate =
-      commandParser.add_subcommand("migrate", _("Migrate repository data"))->group(hiddenGroup);
 
     CLI11_PARSE(commandParser, argc, argv);
 
@@ -455,8 +460,37 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         qCritical() << repoCfg.error();
         return -1;
     }
-    linglong::repo::ClientFactory clientFactory(repoCfg->repos[repoCfg->defaultRepo]);
 
+    auto result = linglong::repo::tryMigrate(builderCfg->repo, *repoCfg);
+    if (result == linglong::repo::MigrateResult::Failed) {
+        auto pathTemp = (std::filesystem::path{ builderCfg->repo }.parent_path()
+                         / ("linglong-builder.old-XXXXXX"))
+                          .string();
+        std::error_code ec;
+        auto *oldPtr = ::mkdtemp(pathTemp.data());
+        if (oldPtr == nullptr) {
+            qCritical() << "we couldn't generate a temporary directory for migrate, old repo will "
+                           "be removed.";
+            std::filesystem::remove(builderCfg->repo, ec);
+            if (ec) {
+                qCritical() << "failed to remove the old repo:"
+                            << QString::fromStdString(builderCfg->repo);
+                return -1;
+            }
+        }
+
+        std::filesystem::rename(builderCfg->repo, oldPtr, ec);
+        if (ec) {
+            qCritical() << "underlying repo need to migrate but failed, please move(or remove) it "
+                           "to another place manually.";
+            return -1;
+        }
+
+        qInfo() << "failed to migrate the repository of builder, old repo will be moved to"
+                << oldPtr << ", all data will be pulled again.";
+    }
+
+    linglong::repo::ClientFactory clientFactory(repoCfg->repos[repoCfg->defaultRepo]);
     auto repoRoot = QDir{ QString::fromStdString(builderCfg->repo) };
     if (!repoRoot.exists() && !repoRoot.mkpath(".")) {
         qCritical() << "failed to create the repository of builder.";
@@ -477,24 +511,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         }
     }
 
-    if (buildMigrate->parsed()) {
-        auto ret = repo.dispatchMigration();
-        if (!ret) {
-            qCritical() << "The underlying data may be corrupted, migration failed:"
-                        << ret.error().message();
-            return -1;
-        }
-
-        return 0;
-    }
-
-    if (repo.needMigrate()) {
-        qFatal("underlying data needs migrating, please run 'll-builder migrate'");
-    }
-
     auto *containerBuilder = new linglong::runtime::ContainerBuilder(**ociRuntime);
     containerBuilder->setParent(QCoreApplication::instance());
-    linglong::builder::BuilderBuildOptions options;
 
     if (buildBuilder->parsed()) {
         auto yamlFile = QString::fromStdString(filePath);
@@ -510,33 +528,34 @@ You can report bugs to the linyaps team under this project: https://github.com/O
                                            *containerBuilder,
                                            *builderCfg);
         builder.projectYamlFile = QDir().absoluteFilePath(yamlFile).toStdString();
-        if (!arch.empty()) {
-            auto buildArch = QString::fromStdString(arch);
-            auto arch = linglong::package::Architecture::parse(buildArch.toStdString());
+        auto cfg = builder.getConfig();
+
+        std::string buildArch;
+
+        if (cfg.arch.has_value() && !cfg.arch.value().empty()) {
+            buildArch = cfg.arch.value();
+        }
+
+        if (!archOpt.empty()) {
+            buildArch = archOpt;
+        }
+
+        if (!buildArch.empty()) {
+            auto arch = linglong::package::Architecture::parse(buildArch);
             if (!arch) {
                 qCritical() << arch.error();
                 return -1;
             }
-            auto cfg = builder.getConfig();
-            cfg.arch = arch->toString().toStdString();
-            builder.setConfig(cfg);
         }
-        options.skipFetchSource = buildSkipFetchSource;
-        options.skipPullDepend = buildSkipPullDepend;
-        options.skipCommitOutput = buildSkipCommitOutput;
-        options.skipCheckOutput = buildSkipCheckOutput;
-        options.skipStripSymbols = buildSkipStripSymbols;
-        options.fullDevelop = buildFullDevelopModule;
-        if (buildSkipRunContainer) {
+
+        if (options.skipRunContainer) {
             options.skipCommitOutput = true;
             options.skipRunContainer = true;
         }
-        if (buildOffline) {
-            auto cfg = builder.getConfig();
+
+        if (buildOffline || cfg.offline) {
             options.skipFetchSource = true;
             options.skipPullDepend = true;
-            cfg.offline = true;
-            builder.setConfig(cfg);
         }
 
         builder.setBuildOptions(options);
@@ -690,14 +709,12 @@ You can report bugs to the linyaps team under this project: https://github.com/O
             debug = true;
         }
 
-        if (buildOffline) {
-            auto cfg = builder.getConfig();
-            options.skipFetchSource = true;
+        auto cfg = builder.getConfig();
+        if (buildOffline || cfg.offline) {
             options.skipPullDepend = true;
-            cfg.offline = true;
-            builder.setConfig(cfg);
-            builder.setBuildOptions(options);
         }
+
+        builder.setBuildOptions(options);
 
         auto result = builder.run(modules, exec, debug);
         if (!result) {
@@ -803,6 +820,22 @@ You can report bugs to the linyaps team under this project: https://github.com/O
             }
         }
 
+        return 0;
+    }
+
+    if (buildList->parsed()) {
+        auto ret = linglong::builder::cmdListApp(repo);
+        if (!ret.has_value()) {
+            return -1;
+        }
+        return 0;
+    }
+
+    if (buildRemove->parsed()) {
+        auto ret = linglong::builder::cmdRemoveApp(repo, removeList);
+        if (!ret.has_value()) {
+            return -1;
+        }
         return 0;
     }
 

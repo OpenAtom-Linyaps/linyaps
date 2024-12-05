@@ -6,6 +6,8 @@
 
 #include "nlohmann/json.hpp"
 
+#include <linux/limits.h>
+
 #include <filesystem>
 #include <iostream>
 #include <string>
@@ -239,13 +241,16 @@ int main()
     // 如果/etc/localtime是嵌套软链会导致chromium时区异常，需要特殊处理
     std::string localtimePath = "/run/host/rootfs/etc/localtime";
     if (std::filesystem::is_symlink("/etc/localtime")) {
-        auto target = std::filesystem::read_symlink("/etc/localtime");
-        auto absoluteTarget = target.string();
-        if (target.is_relative()) {
-            localtimePath = "/run/host/rootfs/etc/" + target.string();
-        } else {
-            localtimePath = "/run/host/rootfs" + absoluteTarget;
+        std::array<char, PATH_MAX + 1> buf{};
+        auto *target = ::realpath("/etc/localtime", buf.data());
+        if (target == nullptr) {
+            std::cerr << "Failed to get realpath of /etc/localtime: " << ::strerror(errno)
+                      << std::endl;
+            return -1;
         }
+
+        auto absoluteTarget = std::filesystem::path{ target }.lexically_relative("/");
+        localtimePath = "/run/host/rootfs" / absoluteTarget;
     }
     // 为 /run/linglong/etc/ld.so.cache 创建父目录
     mounts.push_back({

@@ -18,8 +18,9 @@ toPackageInfoV2(const api::types::v1::PackageInfo &oldInfo)
     auto info = api::types::v1::PackageInfoV2{
         .arch = oldInfo.arch,
         .base = oldInfo.base,
-        .channel = oldInfo.channel,
+        .channel = oldInfo.channel.value_or("main"),
         .command = oldInfo.command,
+        .compatibleVersion = std::nullopt,
         .description = oldInfo.description,
         .id = oldInfo.appid,
         .kind = oldInfo.kind,
@@ -77,7 +78,7 @@ error::Result<api::types::v1::PackageInfoV2> parsePackageInfo(GFile *file)
     LINGLONG_TRACE("parse package info from GFile");
 
     auto pkgInfo = serialize::LoadJSONFile<api::types::v1::PackageInfoV2>(file);
-   
+
     if (pkgInfo) {
         return pkgInfo;
     }

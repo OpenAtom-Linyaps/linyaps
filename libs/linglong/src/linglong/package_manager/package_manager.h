@@ -89,7 +89,6 @@ public
                    const std::string &module) noexcept;
     auto Update(const QVariantMap &parameters) noexcept -> QVariantMap;
     auto Search(const QVariantMap &parameters) noexcept -> QVariantMap;
-    auto Migrate() noexcept -> QVariantMap;
     auto Prune() noexcept -> QVariantMap;
     utils::error::Result<void>
     Prune(std::vector<api::types::v1::PackageInfoV2> &removedInfo) noexcept;

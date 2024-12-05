@@ -6,17 +6,14 @@
 
 #include "package_manager.h"
 
-#include "linglong/adaptors/migrate/migrate1.h"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
 #include "linglong/package/layer_file.h"
 #include "linglong/package/layer_packager.h"
 #include "linglong/package/uab_file.h"
-#include "linglong/package_manager/migrate.h"
 #include "linglong/package_manager/package_task.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/command/env.h"
-#include "linglong/utils/dbus/register.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/serialize/json.h"
@@ -29,6 +26,7 @@
 #include <QEventLoop>
 #include <QJsonArray>
 #include <QMetaObject>
+#include <QTimer>
 #include <QUuid>
 
 #include <algorithm>
@@ -538,6 +536,13 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
 
     const auto &packageInfo = *packageInfoRet;
 
+    // FIXME: need to support install develop
+    if (packageInfo.packageInfoV2Module != "binary"
+        && packageInfo.packageInfoV2Module != "runtime") {
+        return toDBusReply(-1,
+                           "The current version does not support the develop module installation.");
+    }
+
     auto architectureRet = package::Architecture::parse(packageInfo.arch[0]);
     if (!architectureRet) {
         return toDBusReply(architectureRet);
@@ -604,9 +609,11 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
     }
 
     auto refSpec =
-      QString{ "%1/%2/%3" }.arg("local",
-                                packageRef.toString(),
-                                QString::fromStdString(packageInfo.packageInfoV2Module));
+      QString{ "%1:%2/%3/%4/%5" }.arg("local",
+                                      packageRef.channel,
+                                      packageRef.id,
+                                      packageRef.arch.toString(),
+                                      QString::fromStdString(packageInfo.packageInfoV2Module));
     auto task = std::find_if(this->taskList.cbegin(),
                              this->taskList.cend(),
                              [&refSpec](const PackageTask *task) {
@@ -691,6 +698,13 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
           auto result = this->repo.importLayerDir(*layerDir);
           if (!result) {
               taskRef.reportError(std::move(result).error());
+              return;
+          }
+
+          // develop module only need to import
+          if (module != "binary" && module != "runtime") {
+              taskRef.updateState(linglong::api::types::v1::State::Succeed,
+                                  "install layer successfully");
               return;
           }
 
@@ -845,9 +859,11 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
     }
 
     auto refSpec =
-      QString{ "%1/%2/%3" }.arg("local",
-                                appRef.toString(),
-                                QString::fromStdString(appLayer.info.packageInfoV2Module));
+      QString{ "%1:%2/%3/%4/%5" }.arg("local",
+                                      appRef.channel,
+                                      appRef.id,
+                                      appRef.arch.toString(),
+                                      QString::fromStdString(appLayer.info.packageInfoV2Module));
     auto task = std::find_if(this->taskList.cbegin(),
                              this->taskList.cend(),
                              [&refSpec](const PackageTask *task) {
@@ -1153,9 +1169,11 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     }
 
     auto refSpec =
-      QString{ "%1:%2/%3" }.arg(QString::fromStdString(this->repo.getConfig().defaultRepo),
-                                remoteRef.toString(),
-                                QString::fromStdString(curModule));
+      QString{ "%1:%2/%3/%4/%5" }.arg(QString::fromStdString(this->repo.getConfig().defaultRepo),
+                                      remoteRef.channel,
+                                      remoteRef.id,
+                                      remoteRef.arch.toString(),
+                                      QString::fromStdString(curModule));
     auto task = std::find_if(this->taskList.cbegin(),
                              this->taskList.cend(),
                              [&refSpec](const PackageTask *task) {
@@ -1435,9 +1453,12 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
 
     auto curModule = paras->package.packageManager1PackageModule.value_or("binary");
     auto refSpec =
-      QString{ "%1/%2/%3" }.arg(QString::fromStdString(this->repo.getConfig().defaultRepo),
-                                reference.toString(),
-                                QString::fromStdString(curModule));
+      QString{ "%1:%2/%3/%4/%5" }.arg(QString::fromStdString(this->repo.getConfig().defaultRepo),
+                                      reference.channel,
+                                      reference.id,
+                                      reference.arch.toString(),
+                                      QString::fromStdString(curModule));
+
     auto task = std::find_if(this->taskList.cbegin(),
                              this->taskList.cend(),
                              [&refSpec](const PackageTask *task) {
@@ -1512,18 +1533,18 @@ void PackageManager::Uninstall(PackageTask &taskContext,
     taskContext.updateSubState(linglong::api::types::v1::SubState::PreAction,
                                "prepare uninstalling package");
 
-    std::vector<std::string> removedModules{ "binary" };
-    if (module == "binary") {
-        auto modules = this->repo.getModuleList(ref);
-        removedModules = std::move(modules);
-    }
-
+    std::vector<std::string> removedModules{ module };
     utils::Transaction transaction;
 
-    this->repo.unexportReference(ref);
-    transaction.addRollBack([this, &ref]() noexcept {
-        this->repo.exportReference(ref);
-    });
+    if (module == "binary" || module == "runtime") {
+        auto modules = this->repo.getModuleList(ref);
+        removedModules = std::move(modules);
+
+        this->repo.unexportReference(ref);
+        transaction.addRollBack([this, &ref]() noexcept {
+            this->repo.exportReference(ref);
+        });
+    }
 
     UninstallRef(taskContext, ref, removedModules);
     if (isTaskDone(taskContext.subState())) {
@@ -1620,10 +1641,12 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
 
         // FIXME: use sha256 instead of refSpec
         auto curModule = package.packageManager1PackageModule.value_or("binary");
-        auto refSpec =
-          QString{ "%1/%2/%3" }.arg(QString::fromStdString(this->repo.getConfig().defaultRepo),
-                                    newReference.toString(),
-                                    QString::fromStdString(curModule));
+        auto refSpec = QString{ "%1:%2/%3/%4/%5" }.arg(
+          QString::fromStdString(this->repo.getConfig().defaultRepo),
+          reference.channel,
+          reference.id,
+          reference.arch.toString(),
+          QString::fromStdString(curModule));
         auto task = std::find_if(this->taskList.cbegin(),
                                  this->taskList.cend(),
                                  [&refSpec](const PackageTask *task) {
@@ -1633,7 +1656,7 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
             return toDBusReply(-1, "the target " % refSpec % " is being operated");
         }
         refSpecList.append(refSpec);
-        upgradeList.push_back(std::make_pair(reference, newReference));
+        upgradeList.emplace_back(reference, newReference);
     }
 
     auto *taskPtr = new PackageTask{ connection(), refSpecList };
@@ -1644,8 +1667,8 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
             return;
         }
 
-        for (auto refs : upgradeList) {
-            this->Update(taskRef, refs.first, refs.second);
+        for (const auto &[oldRef, newRef] : upgradeList) {
+            this->Update(taskRef, oldRef, newRef);
         }
     });
     Q_EMIT TaskListChanged(taskRef.taskObjectPath());
@@ -1737,43 +1760,15 @@ auto PackageManager::Search(const QVariantMap &parameters) noexcept -> QVariantM
     return result;
 }
 
-QVariantMap PackageManager::Migrate() noexcept
-{
-    qDebug() << "migrate request from:" << message().service();
-
-    auto *migrate = new linglong::service::Migrate(this);
-    new linglong::adaptors::migrate::Migrate1(migrate);
-    auto ret =
-      utils::dbus::registerDBusObject(connection(), "/org/deepin/linglong/Migrate1", migrate);
-    if (!ret) {
-        return toDBusReply(ret);
-    }
-
-    QMetaObject::invokeMethod(
-      QCoreApplication::instance(),
-      [this, migrate]() {
-          auto ret = this->repo.dispatchMigration();
-          if (!ret) {
-              Q_EMIT migrate->MigrateDone(ret.error().code(), ret.error().message());
-          } else {
-              Q_EMIT migrate->MigrateDone(0, "migrate successfully");
-          }
-
-          migrate->deleteLater();
-      },
-      Qt::QueuedConnection);
-
-    return utils::serialize::toQVariantMap(api::types::v1::CommonResult{
-      .code = 0,
-      .message = "package manager is migrating data",
-    });
-}
-
 void PackageManager::pullDependency(PackageTask &taskContext,
                                     const api::types::v1::PackageInfoV2 &info,
                                     const std::string &module) noexcept
 {
     if (info.kind != "app") {
+        return;
+    }
+
+    if (module != "binary" && module != "runtime") {
         return;
     }
 

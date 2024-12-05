@@ -42,8 +42,7 @@ configure_files(
   share/linglong/builder/templates/example.yaml
   share/linglong/config.yaml
   share/mime/packages/vnd.linyaps.uab.xml
-  share/polkit-1/actions/org.deepin.linglong.PackageManager1.policy
-  share/polkit-1/rules.d/org.deepin.linglong.PackageManager1.rules)
+  share/polkit-1/actions/org.deepin.linglong.PackageManager1.policy)
 
 # bash-completion
 set(BASH_COMPLETIONS_DIR ${CMAKE_INSTALL_DATADIR}/bash-completion)
@@ -177,9 +176,3 @@ install(
   FILES
     ${CMAKE_CURRENT_BINARY_DIR}/share/polkit-1/actions/org.deepin.linglong.PackageManager1.policy
   DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/actions)
-
-# polkit rules
-install(
-  FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/share/polkit-1/rules.d/org.deepin.linglong.PackageManager1.rules
-  DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/rules.d)

@@ -22,8 +22,8 @@ class Printer;
 
 struct CliOptions
 {
-    std::string filePath;
-    std::string fileUrl;
+    std::vector<std::string> filePaths;
+    std::vector<std::string> fileUrls;
     std::string workDir;
     std::string appid;
     std::string instance;
@@ -68,7 +68,6 @@ public:
     int repo(CLI::App *app);
     int info();
     int content();
-    int migrate();
     int prune();
 
     void cancelCurrentTask();
@@ -76,21 +75,24 @@ public:
     void setCliOptions(const CliOptions &options) noexcept { this->options = options; }
 
 private:
-    std::vector<std::string>
+    [[nodiscard]] std::vector<std::string>
     filePathMapping(const std::vector<std::string> &command) const noexcept;
+    static std::filesystem::path mappingFile(const std::filesystem::path &file) noexcept;
+    static std::string mappingUrl(const std::string &url) noexcept;
     static void filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> &list,
                                            const std::string &type) noexcept;
-    void updateAM() noexcept;
     void printProgress() noexcept;
     [[nodiscard]] utils::error::Result<std::vector<api::types::v1::CliContainer>>
     getCurrentContainers() const noexcept;
     int installFromFile(const QFileInfo &fileInfo, const api::types::v1::CommonOptions &options);
     int setRepoConfig(const QVariantMap &config);
     utils::error::Result<void> runningAsRoot();
+    utils::error::Result<void> runningAsRoot(const QList<QString> &args);
     utils::error::Result<std::vector<api::types::v1::UpgradeListResult>>
     listUpgradable(const std::vector<api::types::v1::PackageInfoV2> &pkgs);
     utils::error::Result<std::vector<api::types::v1::UpgradeListResult>>
     listUpgradable(const std::string &type);
+    QDBusReply<QString> authorization();
 
 private Q_SLOTS:
     // maybe use in the future
@@ -100,11 +102,9 @@ private Q_SLOTS:
     void onTaskPropertiesChanged(QString interface,
                                  QVariantMap changed_properties,
                                  QStringList invalidated_properties);
-    void forwardMigrateDone(int code, QString message);
     void interaction(QDBusObjectPath object_path, int messageID, QVariantMap additionalMessage);
 
 Q_SIGNALS:
-    void migrateDone(int code, QString message, QPrivateSignal);
     void taskDone();
 
 private:

@@ -17,12 +17,12 @@ TEST(Package, Reference)
         "main:com.example.App/1.0.0.0/x86_64",
         "some_channel:com.example.App/1.0.0.0/x86_64",
         "main:com.example.App/1.0.0.0/x86_64",
-        "main:com.example.App/1.0.0.0-alpha/arm64",
-        "main:com.example.App/1.0.0.1-beta/arm64",
+        "main:com.example.App/1.0.0.0/arm64",
+        "main:com.example.App/1.0.0.1/arm64",
         "main:1111/1.0.0.0/x86_64",
         "main:2222/1.0.0.0/x86_64",
-        "main:3333/1.0.0.0-alpha/arm64",
-        "main:4444/1.0.0.1-beta/arm64",
+        "main:3333/1.0.0.0/arm64",
+        "main:4444/1.0.0.1/arm64",
     };
 
     for (const auto &vaildCase : vaildReferences) {
@@ -57,9 +57,9 @@ TEST(Package, Reference)
         { "com.example.App/1.0.0.0/unknown", "unknown:com.example.App/1.0.0.0/unknown" },
         { "com.example.App/1.0.0.0", "unknown:com.example.App/1.0.0.0/unknown" },
         { "com.example.App", "unknown:com.example.App/unknown/unknown" },
-        { "com.example.App/1.0.0.1-beta", "unknown:com.example.App/1.0.0.1-beta/unknown" },
-        { "3333/1.0.0.0-alpha/arm64", "unknown:3333/1.0.0.0-alpha/arm64" },
-        { "4444/1.0.0.1-beta/arm64", "unknown:4444/1.0.0.1-beta/arm64" },
+        { "com.example.App/1.0.0.1", "unknown:com.example.App/1.0.0.1/unknown" },
+        { "3333/1.0.0.0/arm64", "unknown:3333/1.0.0.0/arm64" },
+        { "4444/1.0.0.1/arm64", "unknown:4444/1.0.0.1/arm64" },
     };
 
     for (const auto &vaildCase : vaildFuzzReferences) {

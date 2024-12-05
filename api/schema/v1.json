@@ -623,7 +623,6 @@
       "description": "this is the each item output of ll-cli list --json",
       "type": "object",
       "required": [
-        "channel",
         "appid",
         "module",
         "arch",
@@ -761,9 +760,6 @@
           "type": "string"
         }
       }
-    },
-    "PackageManager1MigrateResult": {
-      "$ref": "#/$defs/CommonResult"
     },
     "State": {
       "description": "main state of current task,",
@@ -969,14 +965,6 @@
         "layers"
       ],
       "properties": {
-        "migrating_stage": {
-          "type": "array",
-          "description": "solutions should apply to migrating progress",
-          "minItems": 1,
-          "items": {
-            "type": "integer"
-          }
-        },
         "version": {
           "type": "string",
           "description": "version of storage"
@@ -1147,9 +1135,6 @@
     },
     "PackageManager1RequestInteractionAdditionalMessage": {
       "$ref": "#/$defs/PackageManager1RequestInteractionAdditionalMessage"
-    },
-    "PackageManager1MigrateResult": {
-      "$ref": "#/$defs/PackageManager1MigrateResult"
     },
     "State": {
       "$ref": "#/$defs/State"

@@ -12,6 +12,7 @@ BuildRequires:  glib2-devel nlohmann-json-devel ostree-devel yaml-cpp-devel
 BuildRequires:  systemd-devel gtest-devel libseccomp-devel elfutils-libelf-devel
 BuildRequires:  glibc-static libstdc++-static
 BuildRequires:  libcurl-devel openssl-devel
+BuildRequires:  gtest-devel gmock-devel
 Requires:       linglong-bin = %{version}-%{release}
 
 %description
@@ -97,7 +98,6 @@ cd build
 %{_datadir}/dbus-1/system-services/*.service
 %{_datadir}/dbus-1/system.d/*.conf
 %{_datadir}/polkit-1/actions/org.deepin.linglong.PackageManager1.policy
-%{_datadir}/polkit-1/rules.d/org.deepin.linglong.PackageManager1.rules
 %{_datadir}/%{name}/config.yaml
 %{_datadir}/mime/packages/*
 %{_datadir}/locale/*

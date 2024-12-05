@@ -48,7 +48,7 @@ std::string base;
 /**
 * channel of package info
 */
-std::string channel;
+std::optional<std::string> channel;
 /**
 * command of package info
 */

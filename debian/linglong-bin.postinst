@@ -34,12 +34,10 @@ fi
 
 case "$1" in
 configure)
-        version=$2
-        shift
         # enable kernel.unprivileged_userns_clone
         # disable kernel.apparmor_restrict_unprivileged_unconfined and kernel.apparmor_restrict_unprivileged_userns
         if [ -f /usr/lib/sysctl.d/linglong.conf ]; then
-                sysctl -p /usr/lib/sysctl.d/linglong.conf >/dev/null || true
+                sysctl -p /usr/lib/sysctl.d/linglong.conf 2>/dev/null || true
         fi
         ;;
 abort-upgrade | abort-remove | abort-deconfigure) ;;
@@ -47,7 +45,6 @@ abort-upgrade | abort-remove | abort-deconfigure) ;;
         echo "postinst called with unknown argument '$1'" >&2
         exit 0
         ;;
-
 esac
 
 exit 0

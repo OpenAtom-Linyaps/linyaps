@@ -18,13 +18,17 @@ struct ContainerPrivate;
 class Container
 {
 public:
-    explicit Container(const std::string &bundle, const std::string &id, const Runtime &r);
+    explicit Container(const std::string &bundle,
+                       const std::string &id,
+                       const std::string &stateDir,
+                       const Runtime &r);
 
     ~Container();
 
     int Start();
 
 private:
+    std::string stateDir;
     std::string bundle;
     std::string id;
     std::unique_ptr<ContainerPrivate> dd_ptr;

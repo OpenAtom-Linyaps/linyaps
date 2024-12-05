@@ -6,6 +6,11 @@
 
 #include <gtest/gtest.h>
 
+// compatible with old gtest
+#ifndef GTEST_SKIP
+#  define GTEST_SKIP() return
+#endif
+
 #include "linglong/utils/xdg/desktop_entry.h"
 
 #include <QTemporaryFile>

@@ -215,8 +215,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         ""
     };
 
-    CliOptions options = CliOptions{ .filePath = "",
-                                     .fileUrl = "",
+    CliOptions options = CliOptions{ .filePaths = {},
+                                     .fileUrls = {},
                                      .workDir = "",
                                      .appid = "",
                                      .instance = "",
@@ -237,8 +237,9 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     std::string CliRepoGroup = _("Managing remote repositories");
 
     // add sub command run
-    auto cliRun =
-      commandParser.add_subcommand("run", _("Run an application"))->group(CliAppManagingGroup);
+    auto cliRun = commandParser.add_subcommand("run", _("Run an application"))
+                    ->group(CliAppManagingGroup)
+                    ->fallthrough();
 
     // add sub command run options
     cliRun->add_option("APP", options.appid, _("Specify the application ID"))
@@ -254,21 +255,24 @@ ll-cli run org.deepin.demo bash
 ll-cli run org.deepin.demo -- bash
 ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
     cliRun
-      ->add_option("--file", options.filePath, _("Pass file to applications running in a sandbox"))
-      ->type_name("FILE")
+      ->add_option("--file", options.filePaths, _("Pass file to applications running in a sandbox"))
+      ->type_name("FILES")
       ->check(CLI::ExistingFile);
-    cliRun->add_option("--url", options.fileUrl, _("Pass url to applications running in a sandbox"))
-      ->type_name("URL");
+    cliRun
+      ->add_option("--url", options.fileUrls, _("Pass url to applications running in a sandbox"))
+      ->type_name("URLS");
     cliRun->add_option("COMMAND", options.commands, _("Run commands in a running sandbox"));
 
     // add sub command ps
     commandParser.add_subcommand("ps", _("List running applications"))
+      ->fallthrough()
       ->group(CliAppManagingGroup)
       ->usage(_("Usage: ll-cli ps [OPTIONS]"));
 
     // add sub command exec
     auto cliExec =
       commandParser.add_subcommand("exec", _("Execute commands in the currently running sandbox"))
+        ->fallthrough()
         ->group(CliHiddenGroup);
     cliExec
       ->add_option("INSTANCE",
@@ -285,7 +289,8 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
     auto cliEnter =
       commandParser
         .add_subcommand("enter", _("Enter the namespace where the application is running"))
-        ->group(CliAppManagingGroup);
+        ->group(CliAppManagingGroup)
+        ->fallthrough();
     cliEnter->usage(_("Usage: ll-cli enter [OPTIONS] INSTANCE [COMMAND...]"));
     cliEnter
       ->add_option("INSTANCE",
@@ -299,19 +304,21 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
 
     // add sub command kill
     auto cliKill = commandParser.add_subcommand("kill", _("Stop running applications"))
-                     ->group(CliAppManagingGroup);
-    cliKill->usage(_("Usage: ll-cli kill [OPTIONS] INSTANCE"));
+                     ->group(CliAppManagingGroup)
+                     ->fallthrough();
+    cliKill->usage(_("Usage: ll-cli kill [OPTIONS] APP"));
     cliKill
-      ->add_option("INSTANCE",
-                   options.instance,
-                   _("Specify the application running instance(you can get it by ps command)"))
+      ->add_option("APP",
+                   options.appid,
+                   _("Specify the running application"))
       ->required()
       ->check(validatorString);
 
     // add sub command install
     auto cliInstall =
       commandParser.add_subcommand("install", _("Installing an application or runtime"))
-        ->group(CliBuildInGroup);
+        ->group(CliBuildInGroup)
+        ->fallthrough();
     cliInstall->usage(_(R"(Usage: ll-cli install [OPTIONS] APP
 
 Example:
@@ -341,9 +348,13 @@ ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
     cliInstall->add_flag("-y", options.confirmOpt, _("Automatically answer yes to all questions"));
 
     // add sub command uninstall
+    // These two options are used when uninstalling apps in the app Store and need to be retained
+    // but hidden.
+    bool pruneOpt = false, allOpt = false;
     auto cliUninstall =
       commandParser.add_subcommand("uninstall", _("Uninstall the application or runtimes"))
-        ->group(CliBuildInGroup);
+        ->group(CliBuildInGroup)
+        ->fallthrough();
     cliUninstall->usage(_("Usage: ll-cli uninstall [OPTIONS] APP"));
     cliUninstall->add_option("APP", options.appid, _("Specify the applications ID"))
       ->required()
@@ -351,11 +362,14 @@ ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
     cliUninstall->add_option("--module", options.module, _("Uninstall a specify module"))
       ->type_name("MODULE")
       ->check(validatorString);
+    cliUninstall->add_flag("--prune", pruneOpt, "Remove all unused modules")->group(CliHiddenGroup);
+    cliUninstall->add_flag("--all", allOpt, "Uninstall all modules")->group(CliHiddenGroup);
 
     // add sub command upgrade
     auto cliUpgrade =
       commandParser.add_subcommand("upgrade", _("Upgrade the application or runtimes"))
-        ->group(CliBuildInGroup);
+        ->group(CliBuildInGroup)
+        ->fallthrough();
     cliUpgrade->usage(_("Usage: ll-cli upgrade [OPTIONS] [APP]"));
     cliUpgrade
       ->add_option(
@@ -369,6 +383,7 @@ ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
                        .add_subcommand("search",
                                        _("Search the applications/runtimes containing the "
                                          "specified text from the remote repository"))
+                       ->fallthrough()
                        ->group(CliSearchGroup);
     cliSearch->usage(_(R"(Usage: ll-cli search [OPTIONS] KEYWORDS
 
@@ -396,6 +411,7 @@ ll-cli search . --type=runtime)"));
     // add sub command list
     auto cliList =
       commandParser.add_subcommand("list", _("List installed applications or runtimes"))
+        ->fallthrough()
         ->group(CliBuildInGroup);
     cliList->usage(_(R"(Usage: ll-cli list [OPTIONS]
 
@@ -481,6 +497,7 @@ ll-cli list --upgradable
     auto cliInfo =
       commandParser
         .add_subcommand("info", _("Display information about installed apps or runtimes"))
+        ->fallthrough()
         ->group(CliBuildInGroup);
     cliInfo->usage(_("Usage: ll-cli info [OPTIONS] APP"));
     cliInfo
@@ -494,14 +511,12 @@ ll-cli list --upgradable
     auto cliContent =
       commandParser
         .add_subcommand("content", _("Display the exported files of installed application"))
+        ->fallthrough()
         ->group(CliBuildInGroup);
     cliContent->usage(_("Usage: ll-cli content [OPTIONS] APP"));
     cliContent->add_option("APP", options.appid, _("Specify the installed application ID"))
       ->required()
       ->check(validatorString);
-
-    // add sub command migrate
-    commandParser.add_subcommand("migrate", _("Migrate repository data"))->group(CliHiddenGroup);
 
     // add sub command prune
     commandParser.add_subcommand("prune", _("Remove the unused base or runtime"))
@@ -524,9 +539,17 @@ ll-cli list --upgradable
         return 0;
     }
 
+    auto config = linglong::repo::loadConfig(
+      { LINGLONG_ROOT "/config.yaml", LINGLONG_DATA_DIR "/config.yaml" });
+    if (!config) {
+        qCritical() << config.error();
+        return -1;
+    }
+    linglong::repo::ClientFactory clientFactory(config->repos[config->defaultRepo]);
+
     auto ret = QMetaObject::invokeMethod(
       QCoreApplication::instance(),
-      [&argc, &argv, &commandParser, &noDBus, &jsonFlag, &options]() {
+      [&commandParser, &noDBus, &jsonFlag, &options, &config, &clientFactory]() {
           auto repoRoot = QDir(LINGLONG_ROOT);
           if (!repoRoot.exists()) {
               qCritical() << "underlying repository doesn't exist:" << repoRoot.absolutePath();
@@ -560,19 +583,6 @@ ll-cli list --upgradable
           }
 
           auto pkgManConn = QDBusConnection::systemBus();
-
-          auto msg = QDBusMessage::createMethodCall("org.deepin.linglong.PackageManager1",
-                                                    "/org/deepin/linglong/Migrate1",
-                                                    "org.deepin.linglong.Migrate1",
-                                                    "WaitForAvailable");
-          QDBusReply<void> migrateReply = pkgManConn.call(msg);
-          if (migrateReply.isValid()) {
-              qCritical()
-                << "package manager is migrating underlying data, please try again later.";
-              QCoreApplication::exit(-1);
-              return;
-          }
-
           auto *pkgMan =
             new linglong::api::dbus::v1::PackageManager("org.deepin.linglong.PackageManager1",
                                                         "/org/deepin/linglong/PackageManager1",
@@ -636,15 +646,6 @@ ll-cli list --upgradable
               printer = std::make_unique<CLIPrinter>();
           }
 
-          auto config = linglong::repo::loadConfig(
-            { LINGLONG_ROOT "/config.yaml", LINGLONG_DATA_DIR "/config.yaml" });
-          if (!config) {
-              qCritical() << config.error();
-              QCoreApplication::exit(-1);
-              return;
-          }
-          linglong::repo::ClientFactory clientFactory(config->repos[config->defaultRepo]);
-
           auto *repo = new linglong::repo::OSTreeRepo(repoRoot, *config, clientFactory);
           repo->setParent(QCoreApplication::instance());
 
@@ -676,7 +677,7 @@ ll-cli list --upgradable
                   notifier = std::make_unique<DBusNotifier>();
               } catch (std::runtime_error &err) {
                   qInfo() << "initialize DBus notifier failed:" << err.what()
-                             << "try to fallback to terminal notifier.";
+                          << "try to fallback to terminal notifier.";
               }
           }
 
@@ -684,16 +685,6 @@ ll-cli list --upgradable
               qInfo()
                 << "Using DummyNotifier, expected interactions and prompts will not be displayed.";
               notifier = std::make_unique<linglong::cli::DummyNotifier>();
-          }
-
-          // Note: Make sure migrateion is completed before other operations if need migrate here.
-          auto migrateOption = commandParser.get_subcommand("migrate");
-          if (repo->needMigrate() && !migrateOption->parsed()) {
-              notifier->notify(linglong::api::types::v1::InteractionRequest{
-                .summary = _("The old data is found locally and needs to be migrated. Please run "
-                             "'ll-cli migrate' in the terminal and wait for the migration to complete.") });
-              QCoreApplication::exit(-1);
-              return;
           }
 
           auto *cli = new linglong::cli::Cli(*printer,
@@ -717,7 +708,6 @@ ll-cli list --upgradable
               { "list", &Cli::list },
               { "info", &Cli::info },
               { "content", &Cli::content },
-              { "migrate", &Cli::migrate },
               { "prune", &Cli::prune }
           };
 

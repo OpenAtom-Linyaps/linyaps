@@ -685,8 +685,10 @@ argOption parseArgs(const std::vector<std::string_view> &args)
             opts.help = true;
             ++counter;
         } break;
+        case '?':
+            ::exit(EINVAL);
         default:
-            break;
+            throw std::logic_error("UNREACHABLE!! unknown option:" + std::to_string(ch));
         }
     }
 

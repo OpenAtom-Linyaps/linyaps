@@ -602,9 +602,15 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
         if (packageRef.version > localRef->version) {
             msgType = api::types::v1::InteractionMessageType::Upgrade;
         } else if (!options.force) {
-            return toDBusReply(-1,
-                               "The latest version has been installed. If you need to "
-                               "overwrite it, try using '--force'");
+            auto layerName = QString("%1_%2_%3_%4.layer")
+                               .arg(packageRef.id)
+                               .arg(packageRef.version.toString())
+                               .arg(architectureRet->toString())
+                               .arg(packageInfo.packageInfoV2Module.c_str());
+            auto err = QString("The latest version has been installed. If you want to "
+                               "replace it, try using 'll-cli install %1 --force'")
+                         .arg(layerName);
+            return toDBusReply(-1, err);
         }
     }
 
@@ -852,9 +858,15 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
         if (appRef.version > localAppRef->version) {
             msgType = api::types::v1::InteractionMessageType::Upgrade;
         } else if (!options.force) {
-            return toDBusReply(-1,
-                               "The latest version has been installed. If you need to "
-                               "overwrite it, try using '--force'");
+            auto uabName =
+              QString{ "%1_%2_%3_%4.uab" }.arg(appRef.id,
+                                               architectureRet->toString(),
+                                               appRef.version.toString(),
+                                               appLayer.info.packageInfoV2Module.c_str());
+            auto err = QString("The latest version has been installed. If you want to "
+                               "replace it, try using 'll-cli install %1 --force'")
+                         .arg(uabName);
+            return toDBusReply(-1, err);
         }
     }
 
@@ -1162,9 +1174,11 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
         if (remoteRef.version > localRef->version) {
             msgType = api::types::v1::InteractionMessageType::Upgrade;
         } else if (!paras->options.force) {
-            return toDBusReply(-1,
-                               "The latest version has been installed. If you need to "
-                               "overwrite it, try using '--force'.");
+            auto err = QString("The latest version has been installed. If you want to "
+                               "replace it, try using 'll-cli install %1/%2 --force'")
+                         .arg(remoteRef.id)
+                         .arg(remoteRef.version.toString());
+            return toDBusReply(-1, err);
         }
     }
 

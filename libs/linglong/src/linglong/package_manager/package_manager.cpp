@@ -19,6 +19,7 @@
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/transaction.h"
 #include "linglong/utils/configure.h"
+#include "ocppi/runtime/RunOption.hpp"
 
 #include <QDBusInterface>
 #include <QDBusReply>
@@ -29,6 +30,7 @@
 #include <QMetaObject>
 #include <QTimer>
 #include <QUuid>
+#include <QStandardPaths>
 
 #include <algorithm>
 #include <utility>
@@ -2275,8 +2277,16 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
       fontGenerator + " " + appCacheDest + " " + ref.id.toStdString();
     process.args = std::vector<std::string>{ "bash", "-c", ldGenerateCmd + ";" + fontGenerateCmd };
 
-    auto result = container->data()->run(process);
-    if(!result) {
+    // Note: XDG_RUNTIME_DIR is not set in PM, the ll-box will finally fallback to /run/ll-box.
+    //       But PM has no write permission in that place, so we should specific the root path.
+    //       Qt will fackback to /tmp/runtime-{USER}, we use this fallback.
+    auto XDGRuntimeDir = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+    auto containerStateRoot = std::filesystem::path(XDGRuntimeDir.toStdString()) / "ll-box";
+
+    ocppi::runtime::RunOption opt{ "" };
+    opt.GlobalOption::root = containerStateRoot;
+    auto result = container->data()->run(process, opt);
+    if (!result) {
         return LINGLONG_ERR(result);
     }
 

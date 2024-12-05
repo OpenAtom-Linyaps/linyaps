@@ -21,7 +21,8 @@ public:
               const QString &conatinerID,
               ocppi::cli::CLI &cli);
 
-    utils::error::Result<void> run(const ocppi::runtime::config::types::Process &process) noexcept;
+    utils::error::Result<void> run(const ocppi::runtime::config::types::Process &process,
+                                   ocppi::runtime::RunOption &opt) noexcept;
 
 private:
     ocppi::runtime::config::types::Config cfg;

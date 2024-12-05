@@ -34,8 +34,8 @@ Container::Container(const ocppi::runtime::config::types::Config &cfg,
     Q_ASSERT(cfg.process.has_value());
 }
 
-utils::error::Result<void>
-Container::run(const ocppi::runtime::config::types::Process &process) noexcept
+utils::error::Result<void> Container::run(const ocppi::runtime::config::types::Process &process,
+                                          ocppi::runtime::RunOption &opt) noexcept
 {
     LINGLONG_TRACE(QString("run container %1").arg(this->id));
 
@@ -199,7 +199,6 @@ Container::run(const ocppi::runtime::config::types::Process &process) noexcept
         ofs.close();
     }
     qDebug() << "run container in " << bundle.path();
-    ocppi::runtime::RunOption opt{};
     // 禁用crun自己创建cgroup，便于AM识别和管理玲珑应用
     opt.GlobalOption::extra.emplace_back("--cgroup-manager=disabled");
     auto result = this->cli.run(ocppi::runtime::ContainerID(this->id.toStdString()),

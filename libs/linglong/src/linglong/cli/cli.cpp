@@ -25,6 +25,7 @@
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/serialize/json.h"
 #include "ocppi/runtime/ExecOption.hpp"
+#include "ocppi/runtime/RunOption.hpp"
 #include "ocppi/runtime/Signal.hpp"
 #include "ocppi/types/ContainerListItem.hpp"
 
@@ -583,7 +584,8 @@ int Cli::run()
         return -1;
     }
 
-    auto result = (*container)->run(process);
+    ocppi::runtime::RunOption opt{};
+    auto result = (*container)->run(process, opt);
     if (!result) {
         this->printer.printErr(result.error());
         return -1;

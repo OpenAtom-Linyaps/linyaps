@@ -287,7 +287,6 @@ std::string calculateDigest(int fd, std::size_t bundleOffset, std::size_t bundle
     std::array<std::byte, 32> md_value{};
     auto expectedRead = buf.size();
     int readLength{ 0 };
-    unsigned int digestLength{ 0 };
 
     while ((readLength = ::read(file, buf.data(), expectedRead)) != 0) {
         if (readLength == -1) {
@@ -313,8 +312,8 @@ std::string calculateDigest(int fd, std::size_t bundleOffset, std::size_t bundle
     std::stringstream stream;
     stream << std::setfill('0') << std::hex;
 
-    for (auto i = 0U; i < digestLength; i++) {
-        stream << std::setw(2) << static_cast<unsigned int>(md_value.at(i));
+    for (auto v : md_value) {
+        stream << std::setw(2) << static_cast<unsigned int>(v);
     }
 
     return stream.str();
@@ -547,24 +546,8 @@ std::optional<linglong::api::types::v1::UabMetaInfo> getMetaInfo(std::string_vie
 int extractBundle(std::string_view destination) noexcept
 {
     std::error_code ec;
-    auto path = std::filesystem::path(destination);
-    if (!std::filesystem::exists(path.parent_path(), ec) || ec) {
-        std::cerr << path.parent_path() << ": " << ec.message() << std::endl;
-        return ec.value();
-    }
-
-    if (!std::filesystem::create_directory(path, path.parent_path(), ec) || ec) {
-        std::cerr << "create " << path << ":" << ec.message() << std::endl;
-        return ec.value();
-    }
-
-    if (!std::filesystem::is_directory(path, ec) || ec) {
-        std::cerr << "filesystem error:" << path << " " << ec.message() << std::endl;
-        return ec.value();
-    }
-
-    if (!std::filesystem::is_empty(path, ec) || ec) {
-        std::cerr << "filesystem error:" << path << " " << ec.message() << std::endl;
+    if (!std::filesystem::create_directories(destination, ec) && ec) {
+        std::cerr << "failed to create " << destination << ": " << ec.message() << std::endl;
         return ec.value();
     }
 
@@ -768,12 +751,6 @@ int main(int argc, char **argv)
     }
 
     if (!opts.extractPath.empty()) {
-        opts.extractPath = resolveRealPath(opts.extractPath);
-        if (opts.extractPath.empty()) {
-            std::cerr << "couldn't resolve extractPath" << std::endl;
-            return -1;
-        }
-
         if (mountSelf(selfBin, metaInfo) != 0) {
             cleanAndExit(-1);
         }

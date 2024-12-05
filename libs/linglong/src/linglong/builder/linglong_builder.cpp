@@ -22,6 +22,7 @@
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/global/initialize.h"
 #include "linglong/utils/packageinfo_handler.h"
+#include "ocppi/runtime/RunOption.hpp"
 #include "source_fetcher.h"
 
 #include <nlohmann/json.hpp>
@@ -824,7 +825,8 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
     process.terminal = true;
 
     printMessage("[Start Build]");
-    auto result = (*container)->run(process);
+    ocppi::runtime::RunOption opt{};
+    auto result = (*container)->run(process, opt);
     if (!result) {
         return LINGLONG_ERR(result);
     }
@@ -1600,7 +1602,8 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
         }
     }
 
-    auto result = container->data()->run(process);
+    ocppi::runtime::RunOption opt{};
+    auto result = container->data()->run(process, opt);
     if (!result) {
         return LINGLONG_ERR(result);
     }

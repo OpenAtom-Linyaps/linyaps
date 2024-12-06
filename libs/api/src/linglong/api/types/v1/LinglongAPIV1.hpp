@@ -17,15 +17,17 @@
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
-#include "linglong/api/types/v1/ApplicationAccessPrivileges.hpp"
 #include "linglong/api/types/v1/ApplicationConfiguration.hpp"
 #include "linglong/api/types/v1/ApplicationConfigurationPermissions.hpp"
+#include "linglong/api/types/v1/ApplicationPermissionsRequest.hpp"
 #include "linglong/api/types/v1/BuilderConfig.hpp"
 #include "linglong/api/types/v1/BuilderProject.hpp"
 #include "linglong/api/types/v1/CliContainer.hpp"
 #include "linglong/api/types/v1/CommonOptions.hpp"
 #include "linglong/api/types/v1/CommonResult.hpp"
 #include "linglong/api/types/v1/ContainerProcessStateInfo.hpp"
+#include "linglong/api/types/v1/DialogHandShakePayload.hpp"
+#include "linglong/api/types/v1/DialogMessage.hpp"
 #include "linglong/api/types/v1/InteractionReply.hpp"
 #include "linglong/api/types/v1/InteractionRequest.hpp"
 #include "linglong/api/types/v1/LayerInfo.hpp"
@@ -47,6 +49,7 @@
 #include "linglong/api/types/v1/RepositoryCache.hpp"
 #include "linglong/api/types/v1/UabMetaInfo.hpp"
 #include "linglong/api/types/v1/UpgradeListResult.hpp"
+#include "linglong/api/types/v1/XdgDirectoryPermission.hpp"
 
 namespace linglong {
 namespace api {
@@ -76,15 +79,17 @@ using nlohmann::json;
 * top level type is a place holder to make quicktype work.
 */
 struct LinglongAPIV1 {
-std::optional<ApplicationAccessPrivileges> applicationAccessPrivileges;
 std::optional<ApplicationConfiguration> applicationConfiguration;
 std::optional<ApplicationConfigurationPermissions> applicationConfigurationPermissions;
+std::optional<ApplicationPermissionsRequest> applicationPermissionsRequest;
 std::optional<BuilderConfig> builderConfig;
 std::optional<BuilderProject> builderProject;
 std::optional<CliContainer> cliContainer;
 std::optional<CommonOptions> commonOptions;
 std::optional<CommonResult> commonResult;
 std::optional<ContainerProcessStateInfo> containerProcessStateInfo;
+std::optional<DialogHandShakePayload> dialogHandShakePayload;
+std::optional<DialogMessage> dialogMessage;
 std::optional<InteractionMessageType> interactionMessageType;
 std::optional<InteractionReply> interactionReply;
 std::optional<InteractionRequest> interactionRequest;
@@ -111,6 +116,7 @@ std::optional<State> state;
 std::optional<SubState> subState;
 std::optional<UabMetaInfo> uabMetaInfo;
 std::optional<UpgradeListResult> upgradeListResult;
+std::optional<std::vector<XdgDirectoryPermission>> xdgDirectoryPermissions;
 };
 }
 }

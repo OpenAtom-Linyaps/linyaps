@@ -19,6 +19,7 @@
 
 #include "linglong/api/types/v1/ApplicationConfigurationPermissionsBind.hpp"
 #include "linglong/api/types/v1/ApplicationConfigurationPermissionsInnerBind.hpp"
+#include "linglong/api/types/v1/XdgDirectoryPermission.hpp"
 
 namespace linglong {
 namespace api {
@@ -39,6 +40,7 @@ std::optional<std::vector<ApplicationConfigurationPermissionsBind>> binds;
 * inner binds of container
 */
 std::optional<std::vector<ApplicationConfigurationPermissionsInnerBind>> innerBinds;
+std::optional<std::vector<XdgDirectoryPermission>> xdgDirectories;
 };
 }
 }

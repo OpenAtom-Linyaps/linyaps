@@ -100,7 +100,11 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo, QObject *parent
       this,
       &PackageManager::TaskListChanged,
       this,
-      [this](const QString &taskObjectPath) {
+      [this](const QString &taskObjectPath, const QString &taskDescription) {
+          if (!taskObjectPath.isEmpty()) {
+              qInfo() << QString("Task %1 added, type is %2.")
+                           .arg(taskObjectPath.section('/', -1), taskDescription);
+          }
           // notify task waiting
           if (!this->runningTaskObjectPath.isEmpty()) {
               for (auto *task : taskList) {
@@ -126,8 +130,10 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo, QObject *parent
                   continue;
               }
               // execute the task
+              qInfo() << QString("Task %1 start.").arg(task->taskID());
               auto func = *task->getJob();
               func();
+              qInfo() << QString("Task %1 finished.").arg(task->taskID()) ;
               Q_EMIT TaskRemoved(QDBusObjectPath{ task->taskObjectPath() },
                                  static_cast<int>(task->state()),
                                  static_cast<int>(task->subState()),
@@ -136,7 +142,7 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo, QObject *parent
               this->runningTaskObjectPath = "";
               this->taskList.erase(it);
               task->deleteLater();
-              Q_EMIT this->TaskListChanged("");
+              Q_EMIT this->TaskListChanged("", "TaskSwitch");
               return;
           }
       },
@@ -754,7 +760,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
     taskRef.setJob(std::move(installer));
 
     Q_EMIT TaskAdded(QDBusObjectPath{ taskRef.taskObjectPath() });
-    Q_EMIT TaskListChanged(taskRef.taskObjectPath());
+    Q_EMIT TaskListChanged(taskRef.taskObjectPath(), "InstallLayer");
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
       .taskObjectPath = taskRef.taskObjectPath().toStdString(),
       .code = 0,
@@ -1069,7 +1075,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
     };
 
     taskRef.setJob(std::move(installer));
-    Q_EMIT TaskListChanged(taskRef.taskObjectPath());
+    Q_EMIT TaskListChanged(taskRef.taskObjectPath(), "InstallUAB");
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
       .taskObjectPath = taskRef.taskObjectPath().toStdString(),
       .code = 0,
@@ -1243,7 +1249,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     });
 
     // notify task list change
-    Q_EMIT TaskListChanged(taskRef.taskObjectPath());
+    Q_EMIT TaskListChanged(taskRef.taskObjectPath(), "Install");
     qDebug() << "current task queue size:" << this->taskList.size();
 
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
@@ -1492,7 +1498,7 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
         this->Uninstall(taskRef, reference, curModule);
     });
     // notify task list change
-    Q_EMIT TaskListChanged(taskRef.taskObjectPath());
+    Q_EMIT TaskListChanged(taskRef.taskObjectPath(), "Uninstall");
     qDebug() << "current task queue size:" << this->taskList.size();
     taskPtr->updateState(api::types::v1::State::Queued, "add uninstall task to task queue.");
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
@@ -1685,7 +1691,7 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
             this->Update(taskRef, oldRef, newRef);
         }
     });
-    Q_EMIT TaskListChanged(taskRef.taskObjectPath());
+    Q_EMIT TaskListChanged(taskRef.taskObjectPath(), "Update");
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
       .taskObjectPath = taskRef.taskObjectPath().toStdString(),
       .code = 0,

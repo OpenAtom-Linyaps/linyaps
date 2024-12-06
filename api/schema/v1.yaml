@@ -495,6 +495,9 @@ $defs:
       compatible_version:
         type: string
         description: record linyaps package is compatible with linyaps component version
+      app_prefix:
+        type: string
+        description: application install location. The field is intended solely for the use of the base, indicating the installation path of applications built using that base.
   PackageInfo:
     title: PackageInfo
     description: this is the each item output of ll-cli list --json

@@ -58,10 +58,8 @@ int main()
         });
 
         mounts.push_back(
-          { { "destination",
-              std::filesystem::path("/opt/apps") / annotations["org.deepin.linglong.appID"]
-                / "files" },
-            { "options", nlohmann::json::array({ "rbind", "rw" }) },
+          { { "destination", annotations["org.deepin.linglong.appPrefix"] },
+            { "options", nlohmann::json::array({ "rbind", "ro" }) },
             { "source",
               std::filesystem::path(annotations["org.deepin.linglong.appDir"].get<std::string>())
                 / "files" },

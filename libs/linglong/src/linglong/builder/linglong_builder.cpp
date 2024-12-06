@@ -1149,11 +1149,18 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
         packager.include(project.include.value());
     }
 
+    auto baseFuzzyRef = package::FuzzyReference::parse(QString::fromStdString(this->project.base));
+    if (!baseFuzzyRef) {
+        return LINGLONG_ERR(baseFuzzyRef);
+    }
+
     auto baseRef =
-      pullDependency(QString::fromStdString(this->project.base), this->repo, "binary", false);
+      this->repo.clearReference(*baseFuzzyRef,
+                                linglong::repo::clearReferenceOption{ .fallbackToRemote = false });
     if (!baseRef) {
         return LINGLONG_ERR(baseRef);
     }
+
     auto baseDir = this->repo.getLayerDir(*baseRef);
     if (!baseDir) {
         return LINGLONG_ERR(baseDir);
@@ -1161,14 +1168,20 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
     packager.appendLayer(*baseDir);
 
     if (this->project.runtime) {
-        auto ref = pullDependency(QString::fromStdString(*this->project.runtime),
-                                  this->repo,
-                                  "binary",
-                                  false);
-        if (!ref) {
-            return LINGLONG_ERR(ref);
+        auto runtimeFuzzyRef =
+          package::FuzzyReference::parse(QString::fromStdString(this->project.runtime.value()));
+        if (!runtimeFuzzyRef) {
+            return LINGLONG_ERR(runtimeFuzzyRef);
         }
-        auto runtimeDir = this->repo.getLayerDir(*ref);
+
+        auto runtimeRef = this->repo.clearReference(
+          *runtimeFuzzyRef,
+          linglong::repo::clearReferenceOption{ .fallbackToRemote = false });
+        if (!runtimeRef) {
+            return LINGLONG_ERR(runtimeRef);
+        }
+
+        auto runtimeDir = this->repo.getLayerDir(*runtimeRef);
         if (!runtimeDir) {
             return LINGLONG_ERR(runtimeDir);
         }

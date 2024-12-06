@@ -5,7 +5,7 @@
    The configuration file for `ll-pica` is located at `~/.pica/config.json`.
 2. Does ll-pica fail to convert software such as Wine, Android apps, input methods, or security applications?
 
-   Linglong applications currently do not support this type of application, and consequently, ll-pica cannot convert them either.
+   linyaps applications currently do not support this type of application, and consequently, ll-pica cannot convert them either.
 3. Why is there no sound from software that requires audio?
 
    Prompt "libpulsecommon-12.2.so not found" can be addressed by adding a line in the `build` section of the linglong.yaml file: `mv $PREFIX/lib/$TRIPLET/pulseaudio/* $PREFIX/lib/$TRIPLET`.

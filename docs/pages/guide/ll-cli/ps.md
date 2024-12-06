@@ -6,7 +6,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # 查看运行中的应用
 
-`ll-cli ps`命令可以查看正在运行的玲珑应用。
+`ll-cli ps`命令可以查看正在运行的如意玲珑应用。
 
 查看`ll-cli ps`命令的帮助信息：
 
@@ -17,15 +17,15 @@ ll-cli ps --help
 `ll-cli ps` 命令的帮助信息如下：
 
 ```text
-Usage: ll-cli [options] ps
+列出正在运行的应用程序
+用法: ll-cli ps [选项]
 
 Options:
-  -h, --help                 Displays help on commandline options.
-  --help-all                 Displays help including Qt specific options.
-  --output-format <console>  json/console
+  -h,--help                   打印帮助信息并退出
+  --help-all                  展开所有帮助
 
-Arguments:
-  ps                         show running applications
+如果在使用过程中遇到任何问题，
+您可以通过此项目向如意玲珑项目团队报告错误：https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```
 
 查看正在运行的应用，运行`ll-cli ps`命令：
@@ -37,6 +37,7 @@ ll-cli ps
 `ll-cli ps`命令输出如下：
 
 ```text
-App                                             ContainerID                         Pid     Path
-org.deepin.calculator/5.7.21.4/x86_64           7c4299db7f5647428a79896658efa35c    1943975 /run/user/1000/linglong/7c4299db7f5647428a79896658efa35c
+App                                        ContainerID      Pid
+main:org.dde.calendar/5.14.5.0/x86_64      9f3690279d38     218513
+main:org.deepin.browser/6.5.5.4/x86_64     876f27bc1bd6     529194
 ```

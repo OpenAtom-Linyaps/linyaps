@@ -6,7 +6,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # demo示例
 
-## 初始化玲珑工程
+## 初始化如意玲珑工程
 
 ```bash
 ll-builder create org.deepin.demo
@@ -66,8 +66,8 @@ package:
     simple Qt demo.
 
 runtime:
-  id: org.deepin.Runtime
-  version: 23.0.0
+  id: org.deepin.runtime.dtk
+  version: 23.1.0
 
 source:
   kind: git
@@ -80,7 +80,7 @@ build:
 
 ## 开始构建
 
-在玲珑工程根目录下执行build子命令：
+在如意玲珑工程根目录下执行build子命令：
 
 ```bash
 ll-builder build
@@ -88,7 +88,7 @@ ll-builder build
 
 ## 运行应用
 
-构建成功后，在玲珑工程目录下执行run子命令，可以直接运行应用而无需安装。
+构建成功后，在如意玲珑工程目录下执行run子命令，可以直接运行应用而无需安装。
 
 ```bash
 ll-builder run
@@ -96,7 +96,7 @@ ll-builder run
 
 ## 查看构建内容
 
-在玲珑工程根目录下执行export子命令，检出构建内容。
+在如意玲珑工程根目录下执行export子命令，检出构建内容。
 
 ```bash
 ll-builder export --layer

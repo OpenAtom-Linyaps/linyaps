@@ -4,11 +4,11 @@ SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-**Tips: This document is applicable to linglong versions below 1.6.3. if the version of linglong is above 1.6.3, please refer to the document: [Conversion appimage application](../ll-appimage-convert/convert-appimage.md)**
+**Tips: This document is applicable to linyaps versions below 1.6.3. if the version of linyaps is above 1.6.3, please refer to the document: [Conversion appimage application](../ll-appimage-convert/convert-appimage.md)**
 
-# convert `appimage` format( `.appimage` or `.AppImage` ) pkg to linglong format( `.layer` or `.uab` ) pkg
+# convert `appimage` format( `.appimage` or `.AppImage` ) pkg to linyaps format( `.layer` or `.uab` ) pkg
 
-Use `ll-builder convert` to convert `appimage` format( `.appimage` or `.AppImage` ) pkg to linglong format( `.layer` or `.uab` ) pkg.
+Use `ll-builder convert` to convert `appimage` format( `.appimage` or `.AppImage` ) pkg to linyaps format( `.layer` or `.uab` ) pkg.
 
 View the help information for the `ll-builder convert` command:
 
@@ -57,20 +57,20 @@ Arguments:
                                              you can generate convert config file by use -o option
 ```
 
-The `ll-builder convert` command will generate a directory according to specified app name( `--name` option), it will as a root directory of the linglong project, where the `linglong.yaml` file is located. and it supports two convert methods:
+The `ll-builder convert` command will generate a directory according to specified app name( `--name` option), it will as a root directory of the linyaps project, where the `linglong.yaml` file is located. and it supports two convert methods:
 
-1. you can use `--file` option to convert to linglong pkg according to specified appimage file;
-2. you can use `--url` and `--hash` option to convert to linglong pkg according to specified appimage url and hash value;
+1. you can use `--file` option to convert to linyaps pkg according to specified appimage file;
+2. you can use `--url` and `--hash` option to convert to linyaps pkg according to specified appimage url and hash value;
 3. you can use `--layer` option to export `.layer`, or it will export `.uab` default.
 
-`Tips: When the linglong version is greater than 1.5.7, the default convert package format is `.uab`, if you want to export a `.layer` file, you need to add the --layer option.`
+`Tips: When the linyaps version is greater than 1.5.7, the default convert package format is `.uab`, if you want to export a `.layer` file, you need to add the --layer option.`
 
-you can use `--output` option to generate config file( `linglong.yaml` ) of linglong project and a script of build linglong `.layer`(`.uab`)
-then you can execute script file to generate after you modify the `linglong.yaml` file. if you do not specify this option, it will export linglong `.layer` or linglong `.uab` directly.
+you can use `--output` option to generate config file( `linglong.yaml` ) of linyaps project and a script of build linyaps `.layer`(`.uab`)
+then you can execute script file to generate after you modify the `linglong.yaml` file. if you do not specify this option, it will export linyaps `.layer` or `.uab` directly.
 
-Take converting [BrainWaves](https://github.com/makebrainwaves/BrainWaves/releases/download/v0.15.1/BrainWaves-0.15.1.AppImage) into linglong `.layer` through `--url` as an example, the main steps as follows:
+Take converting [BrainWaves](https://github.com/makebrainwaves/BrainWaves/releases/download/v0.15.1/BrainWaves-0.15.1.AppImage) into linyaps `.layer` through `--url` as an example, the main steps as follows:
 
-Specify the relevant parameters of the linglong package you want to convert, you can acquire `io.github.brainwaves_0.15.1_x86_64_runtime.layer` or `io.github.brainwaves_0.15.1_x86_64_runtime.uab` wait a moment.
+Specify the relevant parameters of the linyaps package you want to convert, you can acquire `io.github.brainwaves_0.15.1_x86_64_runtime.layer` or `io.github.brainwaves_0.15.1_x86_64_runtime.uab` wait a moment.
 
 ```bash
 ll-builder convert --url "https://github.com/makebrainwaves/BrainWaves/releases/download/v0.15.1/BrainWaves-0.15.1.AppImage" --hash "04fcfb9ccf5c0437cd3007922fdd7cd1d0a73883fd28e364b79661dbd25a4093" --name "io.github.brainwaves" --id "io.github.brainwaves" --version "0.15.1" --description "io.github.brainwaves" -v

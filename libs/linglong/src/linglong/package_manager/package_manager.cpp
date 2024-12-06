@@ -101,7 +101,7 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo, QObject *parent
       &PackageManager::TaskListChanged,
       this,
       [this](const QString &taskObjectPath, const QString &taskDescription) {
-          if (!taskObjectPath.isEmpty()) {
+          if (taskDescription != "TaskSwitch") {
               qInfo() << QString("Task %1 added, type is %2.")
                            .arg(taskObjectPath.section('/', -1), taskDescription);
           }
@@ -121,6 +121,7 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo, QObject *parent
           // start next task
           this->runningTaskObjectPath = taskObjectPath;
           if (this->taskList.empty()) {
+              this->runningTaskObjectPath = "";
               return;
           };
           for (auto it = taskList.begin(); it != taskList.end(); ++it) {
@@ -140,9 +141,12 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo, QObject *parent
                                  task->message(),
                                  task->getPercentage());
               this->runningTaskObjectPath = "";
-              this->taskList.erase(it);
+              auto nextIt = this->taskList.erase(it);
               task->deleteLater();
-              Q_EMIT this->TaskListChanged("", "TaskSwitch");
+              if (nextIt != taskList.end()) {
+                  qInfo() << "Task switch to" << (*nextIt)->taskID();
+                  Q_EMIT this->TaskListChanged((*nextIt)->taskID(), "TaskSwitch");
+              }
               return;
           }
       },

@@ -354,14 +354,19 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir) noe
 
         // first step, copy files which in layer directory
         std::error_code ec;
-        for (const auto &info : layer.entryInfoList(QDir::Files | QDir::NoDotAndDotDot)) {
+        for (const auto &info :
+             layer.entryInfoList(QDir::Files | QDir::Dirs | QDir::Hidden | QDir::NoDotAndDotDot)) {
             const auto &componentName = info.fileName();
 
-            // maybe we will modify info.json later, copy them all
+            // we will apply some filters to files later, skip
+            if (componentName == "files") {
+                continue;
+            }
+
             std::filesystem::copy(info.absoluteFilePath().toStdString(),
                                   moduleDir.absoluteFilePath(componentName).toStdString(),
                                   std::filesystem::copy_options::copy_symlinks
-                                    | std::filesystem::copy_options::update_existing,
+                                    | std::filesystem::copy_options::recursive,
                                   ec);
             if (ec) {
                 return LINGLONG_ERR("couldn't copy from " % info.absoluteFilePath() % " to "

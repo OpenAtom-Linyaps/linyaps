@@ -105,8 +105,8 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo, QObject *parent
           if (!this->runningTaskObjectPath.isEmpty()) {
               for (auto *task : taskList) {
                   // skip tasks without job
-                  if (!task->getJob().has_value()
-                      || task->taskObjectPath() == runningTaskObjectPath) {
+                  if (!task->getJob().has_value() || task->taskObjectPath() == runningTaskObjectPath
+                      || task->state() == linglong::api::types::v1::State::Canceled) {
                       continue;
                   }
                   auto msg = QString("Waiting for the other tasks");

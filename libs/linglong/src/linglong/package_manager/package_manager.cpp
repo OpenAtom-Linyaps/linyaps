@@ -108,13 +108,11 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo, QObject *parent
           // notify task waiting
           if (!this->runningTaskObjectPath.isEmpty()) {
               for (auto *task : taskList) {
-                  // skip tasks without job
-                  if (!task->getJob().has_value()
-                      || task->taskObjectPath() == runningTaskObjectPath) {
-                      continue;
+                  if (task->getJob().has_value()
+                      && task->state() == linglong::api::types::v1::State::Queued) {
+                      auto msg = QString("Waiting for the other tasks");
+                      task->updateState(linglong::api::types::v1::State::Queued, msg);
                   }
-                  auto msg = QString("Waiting for the other tasks");
-                  task->updateState(linglong::api::types::v1::State::Queued, msg);
               }
               return;
           }

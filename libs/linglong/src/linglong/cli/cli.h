@@ -116,7 +116,7 @@ private:
     api::dbus::v1::PackageManager &pkgMan;
     QString taskObjectPath;
     api::dbus::v1::Task1 *task{ nullptr };
-    linglong::api::types::v1::State lastState{ linglong::api::types::v1::State::Unknown };
+    linglong::api::types::v1::State lastState{ linglong::api::types::v1::State::Queued };
     linglong::api::types::v1::SubState lastSubState{ linglong::api::types::v1::SubState::Unknown };
     QString lastMessage;
     double lastPercentage{ 0 };

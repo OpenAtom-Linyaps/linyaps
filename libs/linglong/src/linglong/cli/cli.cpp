@@ -815,6 +815,7 @@ int Cli::installFromFile(const QFileInfo &fileInfo, const api::types::v1::Common
 
     this->taskObjectPath = QString::fromStdString(result->taskObjectPath.value());
     task = new api::dbus::v1::Task1(pkgMan.service(), taskObjectPath, conn);
+    this->lastState = linglong::api::types::v1::State::Queued;
 
     if (!conn.connect(pkgMan.service(),
                       taskObjectPath,
@@ -939,6 +940,7 @@ int Cli::install()
 
     this->taskObjectPath = QString::fromStdString(result->taskObjectPath.value());
     task = new api::dbus::v1::Task1(pkgMan.service(), taskObjectPath, conn);
+    this->lastState = linglong::api::types::v1::State::Queued;
 
     if (!conn.connect(pkgMan.service(),
                       taskObjectPath,
@@ -1047,6 +1049,7 @@ int Cli::upgrade()
     this->taskObjectPath = QString::fromStdString(result->taskObjectPath.value());
     auto conn = pkgMan.connection();
     task = new api::dbus::v1::Task1(pkgMan.service(), taskObjectPath, conn);
+    this->lastState = linglong::api::types::v1::State::Queued;
 
     if (!conn.connect(pkgMan.service(),
                       taskObjectPath,
@@ -1324,6 +1327,7 @@ int Cli::uninstall()
     this->taskObjectPath = QString::fromStdString(result->taskObjectPath.value());
     auto conn = pkgMan.connection();
     task = new api::dbus::v1::Task1(pkgMan.service(), taskObjectPath, conn);
+    this->lastState = linglong::api::types::v1::State::Queued;
 
     if (!conn.connect(pkgMan.service(),
                       taskObjectPath,
@@ -1881,12 +1885,12 @@ utils::error::Result<void> Cli::runningAsRoot(const QList<QString> &args)
 
 QDBusReply<QString> Cli::authorization()
 {
-    // Note: we have marked the method Prune of PM as rejected.
+    // Note: we have marked the method Permissions of PM as rejected.
     // Use this method to determin that this client whether have permission to call PM.
     QDBusInterface dbusIntrospect(this->pkgMan.service(),
                                   this->pkgMan.path(),
                                   this->pkgMan.service(),
                                   this->pkgMan.connection());
-    return dbusIntrospect.call("Prune");
+    return dbusIntrospect.call("Permissions");
 }
 } // namespace linglong::cli

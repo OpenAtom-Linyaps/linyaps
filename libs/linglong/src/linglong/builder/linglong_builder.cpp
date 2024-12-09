@@ -546,6 +546,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     if (!baseRef) {
         return LINGLONG_ERR("pull base binary", baseRef);
     }
+    auto baseInfo = baseLayerDir->info();
     printReplacedText(QString("%1%2%3%4")
                         .arg(baseRef->id, -25)                 // NOLINT
                         .arg(baseRef->version.toString(), -15) // NOLINT
@@ -701,6 +702,7 @@ set -e
         .runtimeDir = {},
         .baseDir = *baseLayerDir,
         .appDir = {},
+        .appPrefix = baseInfo->appPrefix,
         .patches = {},
         .mounts = {},
         .masks = {},
@@ -711,7 +713,12 @@ set -e
     // 构建安装路径
     QString installPrefix = "/runtime";
     if (this->project.package.kind != "runtime") {
-        installPrefix = QString::fromStdString("/opt/apps/" + this->project.package.id + "/files");
+        if (baseInfo->appPrefix) {
+            installPrefix = QString::fromStdString(*baseInfo->appPrefix);
+        } else {
+            installPrefix =
+              QString::fromStdString("/opt/apps/" + this->project.package.id + "/files");
+        }
     }
     opts.mounts.push_back({
       .destination = installPrefix.toStdString(),
@@ -1165,6 +1172,10 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
     if (!baseDir) {
         return LINGLONG_ERR(baseDir);
     }
+    auto info = baseDir->info();
+    if (info->appPrefix) {
+        packager.setappPrefix(*info->appPrefix);
+    }
     packager.appendLayer(*baseDir);
 
     if (this->project.runtime) {
@@ -1353,6 +1364,13 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     if (!baseRef) {
         return LINGLONG_ERR(baseRef);
     }
+    auto baseDir = this->repo.getLayerDir(*baseRef, "binary");
+    if (!baseDir) {
+        return LINGLONG_ERR(baseDir);
+    }
+    auto baseInfo = baseDir->info();
+    options.baseDir = QDir(baseDir->absolutePath());
+    options.appPrefix = baseInfo->appPrefix;
 
     if (this->project.runtime) {
         auto ref = pullDependency(QString::fromStdString(*this->project.runtime),

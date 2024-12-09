@@ -392,6 +392,7 @@ int Cli::run()
         this->printer.printErr(LINGLONG_ERRV(baseLayerDir));
         return -1;
     }
+    auto baseInfo = baseLayerDir->info();
 
     auto commands = options.commands;
     if (commands.empty()) {
@@ -545,6 +546,7 @@ int Cli::run()
       .runtimeDir = runtimeLayerDir,
       .baseDir = *baseLayerDir,
       .appDir = *appLayerDir,
+      .appPrefix = baseInfo->appPrefix,
       .patches = {},
       .mounts = std::move(applicationMounts),
       .masks = {},

@@ -6,7 +6,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # View Running Apps
 
-Use `ll-cli ps` to view running Linglong Apps.
+Use `ll-cli ps` to view running linyaps Apps.
 
 View the help information for the `ll-cli ps` command:
 
@@ -17,18 +17,18 @@ ll-cli ps --help
 Here is the output:
 
 ```text
-Usage: ll-cli [options] ps
+List running applications
+Usage: ll-cli ps [OPTIONS]
 
 Options:
-  -h, --help                 Displays help on commandline options.
-  --help-all                 Displays help including Qt specific options.
-  --output-format <console>  json/console
+  -h,--help                   Print this help message and exit
+  --help-all                  Expand all help
 
-Arguments:
-  ps                         show running applications
+If you found any problems during use,
+You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```
 
-Use `ll-cli ps` to view running Linglong Apps:
+Use `ll-cli ps` to view running linyaps Apps:
 
 ```bash
 ll-cli ps
@@ -37,6 +37,6 @@ ll-cli ps
 Here is the output of `ll-cli ps`:
 
 ```text
-App                                             ContainerID                         Pid     Path
-org.deepin.calculator/5.7.21.4/x86_64           7c4299db7f5647428a79896658efa35c    1943975 /run/user/1000/linglong/7c4299db7f5647428a79896658efa35c
+App                                       ContainerID      Pid
+main:org.dde.calendar/5.14.5.0/x86_64     c3b5ce363172     539537
 ```

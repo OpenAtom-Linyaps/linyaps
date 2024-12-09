@@ -17,15 +17,20 @@ ll-builder run --help
 Here is the output:
 
 ```text
-Usage: ll-builder [options] run
+Run builded linyaps app
+Usage: ll-builder run [OPTIONS] [COMMAND...]
+
+Positionals:
+  COMMAND TEXT ...            Enter the container to execute command instead of running application
 
 Options:
-   -v, --verbose show detail log
-   -h, --help Displays this help.
-   --exec <exec> run exec than build script
-
-Arguments:
-   run run project
+  -h,--help                   Print this help message and exit
+  --help-all                  Expand all help
+  --file FILE:FILE [./linglong.yaml]
+                              File path of the linglong.yaml
+  --offline                   Only use local files
+  --modules modules ...       Run specified module. eg: --modules binary,develop
+  --debug                     Run in debug mode (enable develop module)
 ```
 
 The `ll-builder run` command reads the operating system environment information related to the program according to the configuration file, constructs a container, and executes the program in the container without installation.

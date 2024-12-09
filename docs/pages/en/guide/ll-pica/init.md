@@ -39,7 +39,7 @@ ll-pica init -w w --pi com.baidu.baidunetdisk --pn com.baidu.baidunetdisk -t rep
 ```
 
 - -w working directory
-- --pi specifies the appid used by the Linglong application.
+- --pi specifies the appid used by the linyaps application.
 - --pn specifies the correct package name that apt can search for.
 - -t specifies the type to retrieve, `repo` fetches from the apt repository.
 

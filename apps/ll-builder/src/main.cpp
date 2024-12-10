@@ -323,6 +323,16 @@ You can report bugs to the linyaps team under this project: https://github.com/O
       ->required()
       ->check(CLI::ExistingFile);
 
+    // add build importDir
+    std::string layerDir;
+    auto buildImportDir =
+      commandParser.add_subcommand("import-dir", _("Import linyaps layer dir to build repo"))
+        ->group(hiddenGroup);
+    buildImportDir->usage(_("Usage: ll-builder import-dir PATH"));
+    buildImportDir->add_option("PATH", layerDir, _("layer dir path"))
+      ->type_name("PATH")
+      ->required();
+
     // add build extract
     std::string dir;
     auto buildExtract = commandParser.add_subcommand("extract", _("Extract linyaps layer to dir"));
@@ -775,6 +785,16 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     if (buildImport->parsed()) {
         auto result =
           linglong::builder::Builder::importLayer(repo, QString::fromStdString(layerFile));
+        if (!result) {
+            qCritical() << result.error();
+            return -1;
+        }
+        return 0;
+    }
+
+    if (buildImportDir->parsed()) {
+        auto result =
+          linglong::builder::Builder::importLayer(repo, QString::fromStdString(layerDir));
         if (!result) {
             qCritical() << result.error();
             return -1;

@@ -1719,10 +1719,13 @@ void PackageManager::Update(PackageTask &taskContext,
     taskContext.updateState(linglong::api::types::v1::State::PartCompleted,
                             "Upgrade " + ref.toString() + " to " + newRef.toString() + " success");
 
-    // use setMessage and setSubState directly will not trigger signal
-    taskContext.setSubState(linglong::api::types::v1::SubState::PackageManagerDone),
-      taskContext.setMessage(
-        "Please restart the application after saving the data to experience the new version.");
+    auto ret = this->isRefBusy(ref);
+    if (ret.has_value() && *ret == true) {
+        // use setMessage and setSubState directly will not trigger signal
+        taskContext.setSubState(linglong::api::types::v1::SubState::PackageManagerDone),
+          taskContext.setMessage(
+            "Please restart the application after saving the data to experience the new version.");
+    }
 
     // we don't need to set task state to failed after install newer version successfully
     auto newItem = this->repo.getLayerItem(newRef);

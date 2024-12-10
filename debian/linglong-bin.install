@@ -18,6 +18,8 @@ usr/libexec/linglong/40-host-ipc-static
 usr/libexec/linglong/90-legacy-static
 usr/libexec/linglong/ll-package-manager
 usr/libexec/linglong/ll-session-helper
+usr/libexec/linglong/ll-dialog
+usr/libexec/linglong/dialog/99-linglong-permission
 usr/share/bash-completion/completions/ll-cli
 usr/share/dbus-1/system-services/org.deepin.linglong.PackageManager1.service
 usr/share/dbus-1/system.d/org.deepin.linglong.PackageManager1.conf

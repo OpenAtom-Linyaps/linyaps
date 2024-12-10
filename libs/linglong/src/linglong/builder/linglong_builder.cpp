@@ -1304,7 +1304,18 @@ linglong::utils::error::Result<void> Builder::push(const std::string &module,
 utils::error::Result<void> Builder::importLayer(repo::OSTreeRepo &ostree, const QString &path)
 {
     LINGLONG_TRACE("import layer");
-
+    if (std::filesystem::is_directory(path.toStdString())) {
+        auto layerDir = package::LayerDir(path);
+        auto info = layerDir.info();
+        if (!info) {
+            return LINGLONG_ERR(info);
+        }
+        auto result = ostree.importLayerDir(layerDir);
+        if (!result) {
+            return LINGLONG_ERR(result);
+        }
+        return LINGLONG_OK;
+    }
     auto layerFile = package::LayerFile::New(path);
     if (!layerFile) {
         return LINGLONG_ERR(layerFile);

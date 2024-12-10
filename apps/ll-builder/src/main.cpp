@@ -319,9 +319,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
       commandParser.add_subcommand("import", _("Import linyaps layer to build repo"));
     buildImport->usage(_("Usage: ll-builder import [OPTIONS] LAYER"));
     buildImport->add_option("LAYER", layerFile, _("Layer file path"))
-      ->type_name("FILE")
-      ->required()
-      ->check(CLI::ExistingFile);
+      ->type_name("PATH")
+      ->required();
 
     // add build extract
     std::string dir;

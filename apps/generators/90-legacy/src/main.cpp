@@ -6,6 +6,9 @@
 
 #include <filesystem>
 #include <iostream>
+#include <string>
+#include <system_error>
+#include <vector>
 
 int main()
 {
@@ -118,7 +121,34 @@ int main()
             });
         }
     }
-
+    // randomize mount points to avoid path dependency.
+    auto now = std::chrono::system_clock::now();
+    auto t = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+    auto shareDir = std::filesystem::path("/run/linglong/usr/share_" + std::to_string(t));
+    // add mount points to XDG_DATA_DIRS
+    std::vector<std::string> env = content["process"]["env"];
+    // 查找是否存在XDG_DATA_DIRS开头的环境变量，如果存在追加到尾部，不存在则添加
+    auto it = std::find_if(env.begin(), env.end(), [](const std::string &var) {
+        return var.find("XDG_DATA_DIRS=") == 0;
+    });
+    if (it != env.end()) {
+        // 如果存在，追加到尾部
+        *it += ":" + shareDir.string();
+    } else {
+        // 如果不存在，添加到末尾
+        env.push_back("XDG_DATA_DIRS=" + shareDir.string());
+    }
+    std::error_code ec;
+    // mount for dtk
+    if (std::filesystem::exists("/usr/share/deepin/distribution.info", ec)) {
+        mounts.push_back({
+          { "destination", shareDir / "deepin/distribution.info" },
+          { "options", nlohmann::json::array({ "nodev", "nosuid", "mode=0644" }) },
+          { "source", "/usr/share/deepin/distribution.info" },
+          { "type", "bind" },
+        });
+    }
+    content["process"]["env"] = env;
     std::cout << content.dump() << std::endl;
     return 0;
 }

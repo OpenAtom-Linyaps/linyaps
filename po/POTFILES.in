@@ -7,3 +7,6 @@ apps/ll-cli/src/main.cpp
 
 # ll-builder source files
 apps/ll-builder/src/main.cpp
+
+# ll-dialog
+apps/ll-dialog/src/permissionDialog.cpp

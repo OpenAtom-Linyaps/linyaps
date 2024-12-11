@@ -2234,9 +2234,14 @@ Cli::ensureCache(const package::Reference &ref,
     }
 
     // Try to generate cache here
-    this->notifier->notify(api::types::v1::InteractionRequest{
-      .summary = "This old application is trying to run under the new linglong client. It needs to "
-                 "regenerate some cache. This operation will take some time but only once." });
+    QProcess process;
+    process.setProgram(LINGLONG_LIBEXEC_DIR "/ll-dialog");
+    process.setArguments(QStringList() << "-m"
+                                       << "startup"
+                                       << "--id" << QString::fromStdString(appLayerItem.info.id));
+    process.start();
+    qDebug() << process.program() << process.arguments();
+
     auto ret = this->generateCache(ref);
     if (ret != 0) {
         this->notifier->notify(api::types::v1::InteractionRequest{
@@ -2246,6 +2251,7 @@ Cli::ensureCache(const package::Reference &ref,
         this->notifier->notify(
           api::types::v1::InteractionRequest{ .summary = "The cache has been regenerated." });
     }
+    process.close();
 
     locker.l_type = F_UNLCK;
     if (::fcntl(lockfd, F_SETLK, &locker)) {

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-12-10 14:00+0800\n"
+"POT-Creation-Date: 2024-12-11 11:01+0800\n"
 "PO-Revision-Date: 2024-11-21 18:08+0800\n"
 "Last-Translator:  deepiner, 2024\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -674,6 +674,14 @@ msgstr "允许"
 #, c-format
 msgid "Deny (%1s)"
 msgstr "不允许 (%1s)"
+
+#: ../apps/ll-dialog/src/cache_dialog.cpp:51
+msgid "Linglong Package Manager"
+msgstr "玲珑软件包管理器"
+
+#: ../apps/ll-dialog/src/cache_dialog.cpp:52
+msgid "is starting"
+msgstr "正在启动"
 
 #~ msgid "Migrate repository data"
 #~ msgstr "迁移仓库数据"

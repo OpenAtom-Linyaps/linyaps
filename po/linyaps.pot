@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-12-10 14:07+0800\n"
+"POT-Creation-Date: 2024-12-11 11:01+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -618,4 +618,12 @@ msgstr ""
 #: ../apps/ll-dialog/src/permissionDialog.cpp:48
 #, c-format
 msgid "Deny (%1s)"
+msgstr ""
+
+#: ../apps/ll-dialog/src/cache_dialog.cpp:51
+msgid "Linglong Package Manager"
+msgstr ""
+
+#: ../apps/ll-dialog/src/cache_dialog.cpp:52
+msgid "is starting"
 msgstr ""

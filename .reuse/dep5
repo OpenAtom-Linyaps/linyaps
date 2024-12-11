@@ -141,3 +141,8 @@ Copyright: 2018 Xiphos Development Team
 Files: po/*.po po/*.pot po/POTFILES.in po/LINGUAS
 License: LGPL-3.0-only
 Copyright: UnionTech Software Technology Co., Ltd.
+
+# dialog image resource
+Files: misc/image/*.jpeg misc/image/*.svg
+License: LGPL-3.0-or-later
+Copyright: UnionTech Software Technology Co., Ltd.

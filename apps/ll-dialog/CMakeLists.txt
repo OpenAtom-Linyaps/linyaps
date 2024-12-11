@@ -10,9 +10,12 @@ pfl_add_executable(
   LIBEXEC
   linglong
   SOURCES
+  ./src/cache_dialog_resource.qrc
   ./src/main.cpp
   ./src/permissionDialog.h
   ./src/permissionDialog.cpp
+  ./src/cache_dialog.h
+  ./src/cache_dialog.cpp
   LINK_LIBRARIES
   PRIVATE
   Qt${QT_VERSION_MAJOR}::Widgets

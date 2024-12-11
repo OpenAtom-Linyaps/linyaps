@@ -1880,6 +1880,34 @@ auto OSTreeRepo::getLayerDir(const package::Reference &ref,
 }
 
 // get all module list
+utils::error::Result<std::vector<std::string>> OSTreeRepo::getRemoteModuleList(
+  const package::Reference &ref, const std::optional<std::vector<std::string>> &filter) noexcept
+{
+    LINGLONG_TRACE("get remote module list");
+    auto fuzzy = package::FuzzyReference::create(ref.channel, ref.id, ref.version, ref.arch);
+    if (!fuzzy.has_value()) {
+        return LINGLONG_ERR("create fuzzy reference", fuzzy);
+    }
+    auto list = this->listRemote(*fuzzy);
+    if (!list.has_value()) {
+        return LINGLONG_ERR("list remote reference", fuzzy);
+    }
+    std::vector<std::string> modules;
+    for (const auto &ref : *list) {
+        auto m = ref.packageInfoV2Module;
+        if (!filter.has_value()) {
+            modules.push_back(m);
+        } else if (std::find(filter->begin(), filter->end(), m) != filter->end()) {
+            modules.push_back(m);
+        }
+    }
+    std::sort(modules.begin(), modules.end());
+    auto it = std::unique(modules.begin(), modules.end());
+    modules.erase(it, modules.end());
+    return modules;
+}
+
+// get all module list
 std::vector<std::string> OSTreeRepo::getModuleList(const package::Reference &ref) noexcept
 {
     repoCacheQuery query{

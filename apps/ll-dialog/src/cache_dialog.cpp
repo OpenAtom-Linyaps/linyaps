@@ -7,18 +7,18 @@
 #include "linglong/utils/gettext.h"
 
 #include <QApplication>
-#include <QDesktopWidget>
 #include <QHBoxLayout>
 #include <QIcon>
+#include <QLabel>
 #include <QPalette>
 #include <QPixmap>
+#include <QScreen>
 #include <QTimer>
-#include <QLabel>
 #include <QVBoxLayout>
 
-CacheDialog::CacheDialog(const QString &id)
+CacheDialog::CacheDialog(QString id)
     : QWidget(nullptr)
-    , id(id)
+    , id(std::move(id))
 {
     // set widget icon
     QIcon icon(":/logo.svg");
@@ -27,9 +27,10 @@ CacheDialog::CacheDialog(const QString &id)
 
     // set widget position and geometry
     QSize size(660, 430);
-    QDesktopWidget *desktop = QApplication::desktop();
-    int x = (desktop->width() - size.width()) / 2;
-    int y = (desktop->height() - size.height()) / 2;
+    auto *desktop = QGuiApplication::primaryScreen();
+    auto screenSize = desktop->size();
+    int x = (screenSize.width() - size.width()) / 2;
+    int y = (screenSize.height() - size.height()) / 2;
     this->setFixedSize(size);
     this->move(x, y);
 

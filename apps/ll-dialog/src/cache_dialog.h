@@ -10,7 +10,7 @@ class CacheDialog : public QWidget
 {
     Q_OBJECT
 public:
-    explicit CacheDialog(const QString &id);
+    explicit CacheDialog(QString id);
     ~CacheDialog() override = default;
 
 private:

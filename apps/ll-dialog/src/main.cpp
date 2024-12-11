@@ -4,6 +4,7 @@
 
 #include "linglong/utils/configure.h"
 #include "permissionDialog.h"
+#include "cache_dialog.h"
 #include "tl/expected.hpp"
 
 #include <QApplication>
@@ -163,6 +164,7 @@ int main(int argc, char *argv[])
     QApplication::setAttribute(Qt::ApplicationAttribute::AA_EnableHighDpiScaling);
 #endif
     QApplication app{ argc, argv };
+    Q_INIT_RESOURCE(cache_dialog_resource);
     QApplication::setApplicationName("ll-dialog");
     QApplication::setApplicationVersion(LINGLONG_VERSION);
 
@@ -172,7 +174,9 @@ int main(int argc, char *argv[])
     parser.addVersionOption();
 
     QCommandLineOption modeOption(QStringList{ "m", "mode" }, "setting dialog mode", "mode");
+    QCommandLineOption idOption("id", "Application id", "id");
     parser.addOption(modeOption);
+    parser.addOption(idOption);
     parser.process(app);
 
     auto mode = parser.value(modeOption);
@@ -184,6 +188,16 @@ int main(int argc, char *argv[])
         if (showPermissionDialog() != 0) {
             return -1;
         }
+    }
+
+    if (mode == "startup") {
+        auto id = parser.value(idOption);
+        if (id.isEmpty()) {
+            parser.showHelp();
+            return -1;
+        }
+        CacheDialog *dialog = new CacheDialog(id);
+        dialog->show();
     }
 
     return QApplication::exec();

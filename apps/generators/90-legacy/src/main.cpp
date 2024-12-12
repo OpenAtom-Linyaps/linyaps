@@ -6,6 +6,8 @@
 
 #include <filesystem>
 #include <iostream>
+#include <string>
+#include <system_error>
 
 int main()
 {
@@ -117,6 +119,24 @@ int main()
               { "type", "bind" },
             });
         }
+    }
+    // randomize mount points to avoid path dependency.
+    auto now = std::chrono::system_clock::now();
+    auto t = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+    auto shareDir = std::filesystem::path("/run/linglong/usr/share_" + std::to_string(t));
+    // add mount points to XDG_DATA_DIRS
+    auto &env = content["process"]["env"];
+    env.push_back("XDG_DATA_DIRS=" + shareDir.string());
+
+    std::error_code ec;
+    // mount for dtk
+    if (std::filesystem::exists("/usr/share/deepin/distribution.info", ec)) {
+        mounts.push_back({
+          { "destination", shareDir / "deepin/distribution.info" },
+          { "options", nlohmann::json::array({ "nodev", "nosuid", "mode=0644" }) },
+          { "source", "/usr/share/deepin/distribution.info" },
+          { "type", "bind" },
+        });
     }
 
     std::cout << content.dump() << std::endl;

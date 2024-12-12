@@ -597,6 +597,7 @@ j["version"] = x.version;
 }
 
 inline void from_json(const json & j, PackageInfoV2& x) {
+x.appPrefix = get_stack_optional<std::string>(j, "app_prefix");
 x.arch = j.at("arch").get<std::vector<std::string>>();
 x.base = j.at("base").get<std::string>();
 x.channel = j.at("channel").get<std::string>();
@@ -617,6 +618,9 @@ x.version = j.at("version").get<std::string>();
 
 inline void to_json(json & j, const PackageInfoV2 & x) {
 j = json::object();
+if (x.appPrefix) {
+j["app_prefix"] = x.appPrefix;
+}
 j["arch"] = x.arch;
 j["base"] = x.base;
 j["channel"] = x.channel;

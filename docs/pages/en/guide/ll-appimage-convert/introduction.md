@@ -1,13 +1,13 @@
 # ll-appimage-convert introduction
 
-This tool is provided by the `linglong-pica` package.which provides the ability to convert appimage packages into Linglong packages, generate the linglong.yaml file required to build Linglong applications, and rely on ll-builder to implement application building and export.
+This tool is provided by the `linglong-pica` package.which provides the ability to convert appimage packages into linyaps packages, generate the linglong.yaml file required to build linyaps applications, and rely on ll-builder to implement application building and export.
 
 :::tip
 
 The conversion tool is merely an auxiliary tool and does not guarantee
 that the converted application will definitely run. It's possible that
 the software depends on libraries installed in paths or other
-configuration paths that do not align with those inside LingLong's
+configuration paths that do not align with those inside linyaps's
 internal structure, leading to the inability to execute. In such cases,
 you would need to use the command `ll-builder run --exec bash` to enter the container for debugging purposes.
 :::

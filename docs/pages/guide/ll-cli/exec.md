@@ -17,34 +17,40 @@ ll-cli exec --help
 `ll-cli exec`命令的帮助信息如下：
 
 ```text
-Usage: ll-cli [options] exec 9c41c0af2bad4617aea8485f5aaeb93a "bash"
+在当前运行的沙盒中执行命令。
+用法: ll-cli [选项] [子命令]
+
+Positionals:
+  INSTANCE TEXT REQUIRED      指定正在运行的应用程序实例（可以通过 ps 命令获取）
+  COMMAND TEXT ...            在正在运行的沙盒中运行命令
 
 Options:
-  -h, --help        Displays help on commandline options.
-  --help-all        Displays help including Qt specific options.
-  -e, --env <env>   extra environment variables splited by comma
-  -d, --path <pwd>  location to exec the new command
+  -h,--help                   打印帮助信息并退出
+  --help-all                  展开所有帮助
+  --working-directory PATH:DIR
+                              指定工作目录
 
-Arguments:
-  exec              exec command in container
-  containerId       container id
-  cmd               command
+如果在使用过程中遇到任何问题，
+您可以通过此项目向如意玲珑项目团队报告错误：https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```
 
 新开一个终端，执行如下命令：
 
-```bash
-killall ll-service
-ll-service
-```
-
 使用`ll-cli exec`进入正在运行的容器内部：
 
+1. 使用 `ll-cli ps` 获取正在运行的容器ID:
+
+
 ```bash
-ll-cli exec 9c41c0af2bad4617aea8485f5aaeb93a /bin/bash
+App                                       ContainerID      Pid
+main:org.dde.calendar/5.14.5.0/x86_64     c3b5ce363172     539537
 ```
 
-返回`ll-service`终端界面，发现已进入应用容器。
+2. 进入`the org.dde.calendar`容器内部：
+
+```bash
+ll-cli exec main:org.dde.calendar/5.14.5.0/x86_64  /bin/bash
+```
 
 `ls -l /` 查看根目录结构，输出如下：
 

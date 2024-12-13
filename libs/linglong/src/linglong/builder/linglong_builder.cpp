@@ -792,7 +792,9 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
     });
     // it seems that generating font cache during build is unnecessary
     std::vector<ocppi::runtime::config::types::Hook> generateCache{};
-    std::vector<std::string> ldconfigCmd = {"/sbin/ldconfig", "-C", "/run/linglong/cache/ld.so.cache"};
+    std::vector<std::string> ldconfigCmd = { "/sbin/ldconfig",
+                                             "-C",
+                                             "/run/linglong/cache/ld.so.cache" };
     generateCache.push_back(ocppi::runtime::config::types::Hook{
       .args = std::move(ldconfigCmd),
       .env = {},
@@ -1002,6 +1004,7 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
 
     qDebug() << "generate entries";
     if (this->project.package.kind != "runtime") {
+        // 仅导出名单中的目录，以避免意外文件影响系统功能
         const QStringList exportPaths = {
             "share/applications", // Copy desktop files
             "share/mime",         // Copy MIME Type files
@@ -1033,18 +1036,19 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
             if (!binaryFiles.exists(path)) {
                 continue;
             }
-
-            const QString dest = QString("../../files/%1").arg(path);
-
+            // appdata是旧版本的metainfo
             if (path == "share/appdata") {
-                if (!QFile::link(dest, binaryEntries.absoluteFilePath("share/metainfo"))) {
+                auto ret = copyDir(binaryFiles.absoluteFilePath(path),
+                                   binaryEntries.filePath("share/metainfo"));
+                if (!ret.has_value()) {
                     qWarning() << "link binary entries share to files share/" << path << "failed";
                 }
 
                 continue;
             }
-
-            if (!QFile::link(dest, binaryEntries.absoluteFilePath(path))) {
+            auto ret =
+              copyDir(binaryFiles.absoluteFilePath(path), binaryEntries.absoluteFilePath(path));
+            if (!ret.has_value()) {
                 qWarning() << "link binary entries " << path << "to files share: failed";
                 continue;
             }
@@ -1413,7 +1417,8 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     if (!fuzzyBase) {
         return LINGLONG_ERR(fuzzyBase);
     }
-    auto baseRef = this->repo.clearReference(*fuzzyBase, { .forceRemote = false, .fallbackToRemote = false });
+    auto baseRef =
+      this->repo.clearReference(*fuzzyBase, { .forceRemote = false, .fallbackToRemote = false });
     if (!baseRef) {
         return LINGLONG_ERR(baseRef);
     }

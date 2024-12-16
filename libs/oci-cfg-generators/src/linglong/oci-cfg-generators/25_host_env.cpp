@@ -41,6 +41,7 @@ bool HostEnv::generate(ocppi::runtime::config::types::Config &config) const noex
         "XDG_SESSION_DESKTOP",
         "D_DISABLE_RT_SCREEN_SCALE",
         "XMODIFIERS",
+        "XCURSOR_SIZE", // 鼠标尺寸
         "DESKTOP_SESSION",
         "DEEPIN_WINE_SCALE",
         "XDG_CURRENT_DESKTOP",

@@ -21,6 +21,7 @@
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/transaction.h"
+#include "linglong/utils/gkeyfile_wrapper.h"
 
 #include <gio/gio.h>
 #include <glib.h>
@@ -1606,17 +1607,10 @@ utils::error::Result<void> OSTreeRepo::exportEntries(
                 qCritical() << "Invalid symlink: " << info.filePath();
                 continue;
             }
-            // In KDE environment, every desktop should own the executable permission
-            // We just set the file permission to 0755 here.
-            if (info.suffix() == "desktop") {
-                if (!QFile::setPermissions(info.absoluteFilePath(),
-                                           QFileDevice::ReadOwner | QFileDevice::WriteOwner
-                                             | QFileDevice::ExeOwner | QFileDevice::ReadGroup
-                                             | QFileDevice::ExeGroup | QFileDevice::ReadOther
-                                             | QFileDevice::ExeOther)) {
-                    qCritical() << "Failed to chmod" << info.absoluteFilePath();
-                    Q_ASSERT(false);
-                }
+
+            auto ret = IniLikeFileRewrite(info, QString::fromStdString(item.info.id));
+            if (!ret) {
+                qCritical() << ret.error().message();
             }
 
             const auto parentDirForLinkPath =
@@ -2219,6 +2213,237 @@ utils::error::Result<std::vector<api::types::v1::RepositoryCacheLayersItem>>
 OSTreeRepo::listLocalBy(const linglong::repo::repoCacheQuery &query) const noexcept
 {
     return this->cache->queryLayerItem(query);
+}
+
+QString getOriginRawExec(const QString &execArgs, const QString &id)
+{
+    auto args = execArgs.split(" ");
+
+    // Note: These strings have appeared in the app-conf-generator.sh of linglong-builder.
+    // So we need to remove them. If one of them appeared after '--' or '--exec', it will
+    // not be removed.
+
+    args.removeAt(args.indexOf("ll-cli"));
+    args.removeAt(args.indexOf("/usr/bin/ll-cli"));
+    args.removeAt(args.indexOf("run"));
+    args.removeAt(args.indexOf(id));
+    args.removeAt(args.indexOf("--"));
+    args.removeAt(args.indexOf("--exec"));
+
+    return args.join(" ");
+}
+
+utils::error::Result<void> desktopFileRewrite(const QString &filePath, const QString &id)
+{
+    LINGLONG_TRACE("rewrite desktop file " + filePath);
+
+    auto file = utils::GKeyFileWrapper::New(filePath);
+    if (!file) {
+        return LINGLONG_ERR(file);
+    }
+
+    const auto groups = file->getGroups();
+    // set Exec
+    for (const auto &group : groups) {
+        auto hasExecRet = file->hasKey("Exec", group);
+        if (!hasExecRet) {
+            return LINGLONG_ERR(hasExecRet);
+        }
+        const auto &hasExec = *hasExecRet;
+        if (!hasExec) {
+            qWarning() << "No Exec section in" << group << ", set a default value";
+            auto defaultExec = QString("%1 run %2").arg(LINGLONG_CLIENT_PATH, id);
+            file->setValue("Exec", defaultExec, group);
+            continue;
+        }
+
+        auto originExec = file->getValue<QString>("Exec", group);
+        if (!originExec) {
+            return LINGLONG_ERR(originExec);
+        }
+
+        auto rawExec = *originExec;
+        if (originExec->contains(LINGLONG_CLIENT_NAME)) {
+            qInfo() << "The Exec section in" << filePath << "has been generated, rewrite again.";
+            rawExec = getOriginRawExec(*originExec, id);
+        }
+
+        auto newExec = QString("%1 run %2 -- %3").arg(LINGLONG_CLIENT_PATH, id, rawExec);
+        file->setValue("Exec", newExec, group);
+    }
+
+    file->setValue<QString>("TryExec", LINGLONG_CLIENT_PATH, utils::GKeyFileWrapper::DesktopEntry);
+    file->setValue<QString>("X-linglong", id, utils::GKeyFileWrapper::DesktopEntry);
+
+    // save file
+    auto ret = file->saveToFile(filePath);
+    if(!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> dbusServiceRewrite(const QString &filePath, const QString &id)
+{
+    LINGLONG_TRACE("rewrite dbus service file " + filePath);
+
+    auto file = utils::GKeyFileWrapper::New(filePath);
+    if (!file) {
+        return LINGLONG_ERR(file);
+    }
+
+    auto hasExecRet = file->hasKey("Exec", utils::GKeyFileWrapper::DBusService);
+    if (!hasExecRet) {
+        return LINGLONG_ERR(hasExecRet);
+    }
+    const auto &hasExec = *hasExecRet;
+    if (!hasExec) {
+        qWarning() << "DBus service" << filePath << "has no Exec Section.";
+        return LINGLONG_OK;
+    }
+
+    auto originExec = file->getValue<QString>("Exec", utils::GKeyFileWrapper::DBusService);
+    if (!originExec) {
+        return LINGLONG_ERR(originExec);
+    }
+
+    auto rawExec = *originExec;
+    if (originExec->contains(LINGLONG_CLIENT_NAME)) {
+        qInfo() << "The Exec Section in" << filePath << "has been generated, rewrite again.";
+        rawExec = getOriginRawExec(*originExec, id);
+    }
+
+    auto newExec = QString("%1 run %2 -- %3").arg(LINGLONG_CLIENT_PATH, id, rawExec);
+    file->setValue<QString>("Exec", newExec, utils::GKeyFileWrapper::DBusService);
+
+    auto ret = file->saveToFile(filePath);
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> systemdServiceRewrite(const QString &filePath, const QString &id)
+{
+    LINGLONG_TRACE("rewrite systemd user service " + filePath);
+
+    // Related doc: https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html
+    // NOTE: The key is allowed to be repeated in the service group
+    QStringList execKeys{ "ExecStart", "ExecStartPost", "ExecCondition",
+                          "ExecStop",  "ExecStopPost",  "ExecReload" };
+    auto file = utils::GKeyFileWrapper::New(filePath);
+    if (!file) {
+        return LINGLONG_ERR(file);
+    }
+
+    auto keys = file->getkeys(utils::GKeyFileWrapper::SystemdService);
+    if(!keys) {
+        return LINGLONG_ERR(keys);
+    }
+    for(const auto &key : *keys) {
+        if(!execKeys.contains(key)) {
+            continue;
+        }
+
+        auto originExec = file->getValue<QString>(key, utils::GKeyFileWrapper::SystemdService);
+        if (!originExec) {
+            return LINGLONG_ERR(originExec);
+        }
+
+        auto rawExec = *originExec;
+        if (originExec->contains(LINGLONG_CLIENT_NAME)) {
+            qInfo() << "The Exec Section in" << filePath << "has been generated, rewrite again.";
+            rawExec = getOriginRawExec(*originExec, id);
+        }
+
+        auto newExec = QString("%1 run %2 -- %3").arg(LINGLONG_CLIENT_PATH, id, rawExec);
+        file->setValue<QString>(key, newExec, utils::GKeyFileWrapper::SystemdService);
+    }
+
+    auto ret = file->saveToFile(filePath);
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> contextMenuRewrite(const QString &filePath, const QString &id)
+{
+    LINGLONG_TRACE("rewrite context menu" + filePath);
+
+    auto file = utils::GKeyFileWrapper::New(filePath);
+    if (!file) {
+        return LINGLONG_ERR(file);
+    }
+
+    auto groups = file->getGroups();
+    // set Exec
+    for (const auto &group : groups) {
+        auto hasExecRet = file->hasKey("Exec", group);
+        if (!hasExecRet) {
+            return LINGLONG_ERR(hasExecRet);
+        }
+        const auto &hasExec = *hasExecRet;
+        // first group has no Exec, just skip it
+        if (!hasExec) {
+            continue;
+        }
+
+        auto originExec = file->getValue<QString>("Exec", group);
+        if (!originExec) {
+            return LINGLONG_ERR(originExec);
+        }
+        auto rawExec = *originExec;
+        if (originExec->contains(LINGLONG_CLIENT_NAME)) {
+            qInfo() << "The Exec Section in" << filePath << "has been generated, rewrite again.";
+            rawExec = getOriginRawExec(*originExec, id);
+        }
+        auto newExec = QString("%1 run %2 -- %3").arg(LINGLONG_CLIENT_PATH, id, rawExec);
+        file->setValue<QString>("Exec", newExec, group);
+    }
+
+    auto ret = file->saveToFile(filePath);
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> OSTreeRepo::IniLikeFileRewrite(const QFileInfo &info,
+                                                          const QString &id) noexcept
+{
+    LINGLONG_TRACE("ini-like file rewrite");
+
+    if (info.path().contains("share/applications") && info.suffix() == "desktop") {
+        auto ret = desktopFileRewrite(info.absoluteFilePath(), id);
+        if (!ret) {
+            return LINGLONG_ERR(ret);
+        }
+        // In KDE environment, every desktop should own the executable permission
+        // We just set the file permission to 0755 here.
+        if (!QFile::setPermissions(info.absoluteFilePath(),
+                                   QFileDevice::ReadOwner | QFileDevice::WriteOwner
+                                     | QFileDevice::ExeOwner | QFileDevice::ReadGroup
+                                     | QFileDevice::ExeGroup | QFileDevice::ReadOther
+                                     | QFileDevice::ExeOther)) {
+            qCritical() << "Failed to chmod" << info.absoluteFilePath();
+            Q_ASSERT(false);
+        }
+
+    } else if (info.path().contains("share/dbus-1") && info.suffix() == "service") {
+        return dbusServiceRewrite(info.absoluteFilePath(), id);
+    } else if (info.path().contains("share/systemd/user") && info.suffix() == "service") {
+        return systemdServiceRewrite(info.absoluteFilePath(), id);
+    } else if (info.path().contains("share/applications/context-menus")
+               && info.suffix() == "conf") {
+        return contextMenuRewrite(info.absoluteFilePath(), id);
+    }
+
+    return LINGLONG_OK;
 }
 
 OSTreeRepo::~OSTreeRepo() = default;

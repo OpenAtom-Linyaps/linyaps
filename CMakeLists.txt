@@ -214,14 +214,8 @@ pfl_add_libraries(
   utils
   ocppi
   linglong
+  oci-cfg-generators
   APPS
-  generators/00-id-mapping
-  generators/05-initialize
-  generators/20-devices
-  generators/25-host-env
-  generators/30-user-home
-  generators/40-host-ipc
-  generators/90-legacy
   ll-dialog
   ll-box
   ll-builder

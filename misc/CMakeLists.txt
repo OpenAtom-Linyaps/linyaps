@@ -11,11 +11,8 @@ function(configure_files)
 endfunction()
 
 configure_files(
-  # find -regex '\.\/\(script\|share\|lib\|libexec\)\/.*' -type f -printf '%P\n'
-  # | sort
+  # find -regex '\.\/\(script\|share\|lib\|libexec\)\/.*' -type f -printf '%P\n' | sort
   libexec/linglong/app-conf-generator
-  libexec/linglong/ld-cache-generator
-  libexec/linglong/font-cache-generator
   libexec/linglong/builder/helper/config-check.sh
   libexec/linglong/builder/helper/ldd-check.sh
   libexec/linglong/builder/helper/main-check.sh
@@ -25,9 +22,18 @@ configure_files(
   libexec/linglong/fetch-dsc-source
   libexec/linglong/fetch-file-source
   libexec/linglong/fetch-git-source
+  libexec/linglong/font-cache-generator
+  libexec/linglong/ld-cache-generator
+  lib/linglong/container/config.d/00-id-mapping
+  lib/linglong/container/config.d/05-initialize
   lib/linglong/container/config.d/10-basics.json
+  lib/linglong/container/config.d/20-devices
+  lib/linglong/container/config.d/25-host-env
   lib/linglong/container/config.d/25-host-rootfs.json
   lib/linglong/container/config.d/25-host-statics.json
+  lib/linglong/container/config.d/30-user-home
+  lib/linglong/container/config.d/40-host-ipc
+  lib/linglong/container/config.d/90-legacy
   lib/linglong/container/config.json
   lib/linglong/container/README.md
   lib/linglong/generate-xdg-data-dirs.sh
@@ -92,21 +98,6 @@ install(
 # linglong
 set(LINGLONG_CONFIG_DIR
     ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/container/config.d)
-file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/00-id-mapping-static
-     ${LINGLONG_CONFIG_DIR}/00-id-mapping SYMBOLIC)
-file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/05-initialize-static
-     ${LINGLONG_CONFIG_DIR}/05-initialize SYMBOLIC)
-file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/20-devices-static
-     ${LINGLONG_CONFIG_DIR}/20-devices SYMBOLIC)
-file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/25-host-env-static
-     ${LINGLONG_CONFIG_DIR}/25-host-env SYMBOLIC)
-file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/30-user-home-static
-     ${LINGLONG_CONFIG_DIR}/30-user-home SYMBOLIC)
-file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/40-host-ipc-static
-     ${LINGLONG_CONFIG_DIR}/40-host-ipc SYMBOLIC)
-file(CREATE_LINK ${CMAKE_INSTALL_PREFIX}/libexec/linglong/90-legacy-static
-     ${LINGLONG_CONFIG_DIR}/90-legacy SYMBOLIC)
-
 install(
   PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/lib/linglong/generate-xdg-data-dirs.sh
   DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/linglong)
@@ -119,6 +110,9 @@ install(
   FILES ${LINGLONG_CONFIG_DIR}/10-basics.json
         ${LINGLONG_CONFIG_DIR}/25-host-rootfs.json
         ${LINGLONG_CONFIG_DIR}/25-host-statics.json
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/linglong/container/config.d)
+
+install(PROGRAMS
         ${LINGLONG_CONFIG_DIR}/00-id-mapping
         ${LINGLONG_CONFIG_DIR}/05-initialize
         ${LINGLONG_CONFIG_DIR}/20-devices

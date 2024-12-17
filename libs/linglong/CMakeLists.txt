@@ -93,7 +93,7 @@ pfl_add_library(
   LinglongRepoClientAPI
   ytj::ytj
   tl::expected
-  linglong::ocppi
+  linglong::oci-cfg-generators
   CLI11::CLI11
   ${YAML_CPP})
 

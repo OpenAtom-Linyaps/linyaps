@@ -2,8 +2,9 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
+#include "30_user_home.h"
+
 #include "linglong/api/types/v1/Generators.hpp"
-#include "nlohmann/json.hpp"
 
 #include <linux/limits.h>
 
@@ -20,65 +21,55 @@ std::string resolveXDGDir(const std::string &dirType)
     return dirType;
 }
 
-int main() // NOLINT
+namespace linglong::generator {
+
+bool UserHome::generate(ocppi::runtime::config::types::Config &config) const noexcept
 {
-    nlohmann::json content;
-    std::string ociVersion;
-    try {
-        content = nlohmann::json::parse(std::cin);
-        ociVersion = content.at("ociVersion");
-    } catch (std::exception &exp) {
-        std::cerr << exp.what() << std::endl;
-        return -1;
-    } catch (...) {
-        std::cerr << "unknown error occurred during parsing json." << std::endl;
-        return -1;
-    }
-
-    if (ociVersion != "1.0.1") {
+    if (config.ociVersion != "1.0.1") {
         std::cerr << "OCI version mismatched." << std::endl;
-        return -1;
+        return false;
     }
 
-    nlohmann::json annotations;
-    std::string appID;
-    try {
-        annotations = content.at("annotations");
-        appID = annotations.at("org.deepin.linglong.appID");
-    } catch (std::exception &exp) {
-        std::cerr << exp.what() << std::endl;
-        return -1;
+    if (!config.annotations) {
+        std::cerr << "no annotations." << std::endl;
+        return false;
     }
 
-    auto &mounts = content["mounts"];
-    auto &env = content["process"]["env"];
-
-    mounts.push_back({
-      { "destination", "/home" },
-      { "options", nlohmann::json::array({ "nodev", "nosuid", "mode=700" }) },
-      { "source", "tmpfs" },
-      { "type", "tmpfs" },
-    });
-
-    bool skipHomeGenerate = (std::getenv("LINGLONG_SKIP_HOME_GENERATE") != nullptr);
-    if (skipHomeGenerate) {
-        std::cout << content.dump() << std::endl;
-        return 0;
+    auto appID = config.annotations->find("org.deepin.linglong.appID");
+    if (appID == config.annotations->end()) {
+        std::cerr << "appID not found." << std::endl;
+        return false;
     }
+
+    if (appID->second.empty()) {
+        std::cerr << "appID is empty." << std::endl;
+        return false;
+    }
+
+    auto mounts = config.mounts.value_or(std::vector<ocppi::runtime::config::types::Mount>{});
+    auto process = config.process.value_or(ocppi::runtime::config::types::Process{});
+    auto env = process.env.value_or(std::vector<std::string>{});
 
     auto *homeEnv = ::getenv("HOME");
     auto *userNameEnv = ::getenv("USER");
     if (homeEnv == nullptr || userNameEnv == nullptr) {
         std::cerr << "Couldn't get HOME or USER from env." << std::endl;
-        return -1;
+        return false;
     }
 
     auto hostHomeDir = std::filesystem::path(homeEnv);
     auto cognitiveHomeDir = std::filesystem::path{ "/home" } / userNameEnv;
     if (!std::filesystem::exists(hostHomeDir)) {
         std::cerr << "Home " << hostHomeDir << "doesn't exists." << std::endl;
-        return -1;
+        return false;
     }
+
+    mounts.push_back(ocppi::runtime::config::types::Mount{
+      .destination = "/home",
+      .options = string_list{ "nodev", "nosuid", "mode=700" },
+      .source = "tmpfs",
+      .type = "tmpfs",
+    });
 
     auto envExist = [&env](const std::string &key) {
         auto prefix = key + "=";
@@ -104,32 +95,32 @@ int main() // NOLINT
             }
         }
 
-        mounts.push_back({
-          { "destination", containerDir },
-          { "options", nlohmann::json::array({ "rbind" }) },
-          { "source", hostDir },
-          { "type", "bind" },
+        mounts.push_back(ocppi::runtime::config::types::Mount{
+          .destination = containerDir,
+          .options = string_list{ "rbind" },
+          .source = hostDir,
+          .type = "bind",
         });
 
         return true;
     };
 
     if (!mountDir(hostHomeDir, cognitiveHomeDir)) {
-        return -1;
+        return false;
     }
     if (envExist("HOME")) {
         std::cerr << "HOME already exist." << std::endl;
-        return -1;
+        return false;
     }
     env.emplace_back("HOME=" + cognitiveHomeDir.string());
 
     // process XDG_* environment variables.
     std::error_code ec;
-    auto privateAppDir = hostHomeDir / ".linglong" / appID;
+    auto privateAppDir = hostHomeDir / ".linglong" / appID->second;
 
     if (!std::filesystem::create_directories(privateAppDir, ec) && ec) {
         std::cerr << "failed to create " << privateAppDir << ": " << ec.message() << std::endl;
-        return -1;
+        return false;
     }
 
     // XDG_DATA_HOME
@@ -141,12 +132,12 @@ int main() // NOLINT
 
     std::filesystem::path cognitiveDataHome = cognitiveHomeDir / ".local" / "share";
     if (!mountDir(XDGDataHome, cognitiveDataHome)) {
-        return -1;
+        return false;
     }
 
     if (envExist("XDG_DATA_HOME")) {
         std::cerr << "XDG_DATA_HOME already exist." << std::endl;
-        return -1;
+        return false;
     }
     env.emplace_back("XDG_DATA_HOME=" + cognitiveDataHome.string());
 
@@ -164,12 +155,12 @@ int main() // NOLINT
 
     auto cognitiveConfigHome = cognitiveHomeDir / ".config";
     if (!mountDir(XDGConfigHome, cognitiveConfigHome)) {
-        return -1;
+        return false;
     }
 
     if (envExist("XDG_CONFIG_HOME")) {
         std::cerr << "XDG_CONFIG_HOME already exist." << std::endl;
-        return -1;
+        return false;
     }
     env.emplace_back("XDG_CONFIG_HOME=" + cognitiveConfigHome.string());
 
@@ -187,12 +178,12 @@ int main() // NOLINT
 
     auto cognitiveCacheHome = cognitiveHomeDir / ".cache";
     if (!mountDir(XDGCacheHome, cognitiveCacheHome)) {
-        return -1;
+        return false;
     }
 
     if (envExist("XDG_CACHE_HOME")) {
         std::cerr << "XDG_CACHE_HOME already exist." << std::endl;
-        return -1;
+        return false;
     }
     env.emplace_back("XDG_CACHE_HOME=" + cognitiveCacheHome.string());
 
@@ -210,12 +201,12 @@ int main() // NOLINT
 
     auto cognitiveStateHome = cognitiveHomeDir / ".local" / "state";
     if (!mountDir(XDGStateHome, cognitiveStateHome)) {
-        return -1;
+        return false;
     }
 
     if (envExist("XDG_STATE_HOME")) {
         std::cerr << "XDG_STATE_HOME already exist." << std::endl;
-        return -1;
+        return false;
     }
     env.emplace_back("XDG_STATE_HOME=" + cognitiveStateHome.string());
 
@@ -224,7 +215,7 @@ int main() // NOLINT
     if (std::filesystem::exists(hostSystemdUserDir, ec)) {
         auto cognitiveSystemdUserDir = cognitiveConfigHome / "systemd" / "user";
         if (!mountDir(hostSystemdUserDir, cognitiveSystemdUserDir)) {
-            return -1;
+            return false;
         }
     }
 
@@ -235,7 +226,7 @@ int main() // NOLINT
     if (std::filesystem::exists(hostUserDconfPath, ec)) {
         auto cognitiveAppDconfPath = cognitiveConfigHome / "dconf";
         if (!mountDir(hostUserDconfPath, cognitiveAppDconfPath)) {
-            return -1;
+            return false;
         }
     }
 
@@ -244,28 +235,28 @@ int main() // NOLINT
     if (std::filesystem::exists(hostDDEApiPath, ec)) {
         auto cognitiveDDEApiPath = cognitiveCacheHome / "deepin" / "dde-api";
         if (!mountDir(hostDDEApiPath, cognitiveDDEApiPath)) {
-            return -1;
+            return false;
         }
     }
 
     // for xdg-user-dirs
     auto XDGUserDirs = XDGConfigHome / "user-dirs.dirs";
     if (std::filesystem::exists(XDGUserDirs, ec)) {
-        mounts.push_back({
-          { "destination", cognitiveConfigHome / "user-dirs.dirs" },
-          { "options", nlohmann::json::array({ "rbind" }) },
-          { "source", XDGUserDirs },
-          { "type", "bind" },
+        mounts.push_back(ocppi::runtime::config::types::Mount{
+          .destination = cognitiveConfigHome / "user-dirs.dirs",
+          .options = string_list{ "rbind" },
+          .source = XDGUserDirs,
+          .type = "bind",
         });
     }
 
     auto XDGUserLocale = XDGConfigHome / "user-dirs.locale";
     if (std::filesystem::exists(XDGUserLocale, ec)) {
-        mounts.push_back({
-          { "destination", cognitiveConfigHome / "user-dirs.locale" },
-          { "options", nlohmann::json::array({ "rbind" }) },
-          { "source", XDGUserLocale },
-          { "type", "bind" },
+        mounts.push_back(ocppi::runtime::config::types::Mount{
+          .destination = cognitiveConfigHome / "user-dirs" / ".locale",
+          .options = string_list{ "rbind" },
+          .source = XDGUserLocale,
+          .type = "bind",
         });
     }
 
@@ -275,11 +266,11 @@ int main() // NOLINT
     // https://github.com/linuxdeepin/linglong/issues/459
     constexpr auto defaultBashrc = "/etc/skel/.bashrc";
     if (std::filesystem::exists(defaultBashrc)) {
-        mounts.push_back({
-          { "destination", hostHomeDir / ".bashrc" },
-          { "options", nlohmann::json::array({ "ro", "rbind" }) },
-          { "source", defaultBashrc },
-          { "type", "bind" },
+        mounts.push_back(ocppi::runtime::config::types::Mount{
+          .destination = hostHomeDir / ".bashrc",
+          .options = string_list{ "ro", "rbind" },
+          .source = defaultBashrc,
+          .type = "bind",
         });
     } else {
         std::cerr << "failed to mask bashrc" << std::endl;
@@ -288,27 +279,29 @@ int main() // NOLINT
     // hide self data
     auto linglongMaskDataDir = hostHomeDir / ".linglong" / "data";
     if (!mountDir(linglongMaskDataDir, cognitiveHomeDir / ".linglong")) {
-        return -1;
+        return false;
     }
 
     auto permissions = linglong::api::types::v1::ApplicationConfigurationPermissions{};
-    auto config = privateAppDir / "permissions.json";
-    if (!std::filesystem::exists(config, ec)) {
+    auto configFile = privateAppDir / "permissions.json";
+    if (!std::filesystem::exists(configFile, ec)) {
         if (ec) {
-            std::cerr << "failed to get status of " << config.c_str() << ": " << ec.message()
+            std::cerr << "failed to get status of " << configFile.c_str() << ": " << ec.message()
                       << std::endl;
-            return -1;
+            return false;
         }
 
         // no permission config, do nothing
-        std::cout << content.dump() << std::endl;
-        return 0;
+        process.env = std::move(env);
+        config.process = std::move(process);
+        config.mounts = std::move(mounts);
+        return true;
     }
 
-    auto input = std::ifstream(config);
+    auto input = std::ifstream(configFile);
     if (!input.is_open()) {
-        std::cerr << "couldn't open config file " << config.c_str() << std::endl;
-        return -1;
+        std::cerr << "couldn't open config file " << configFile.c_str() << std::endl;
+        return false;
     }
 
     try {
@@ -316,10 +309,10 @@ int main() // NOLINT
         permissions = content.get<linglong::api::types::v1::ApplicationConfigurationPermissions>();
     } catch (nlohmann::json::parse_error &e) {
         std::cerr << "deserialize error:" << e.what() << std::endl;
-        return -1;
+        return false;
     } catch (std::exception &e) {
         std::cerr << "unknown exception:" << e.what() << std::endl;
-        return -1;
+        return false;
     }
 
     auto directories = permissions.xdgDirectories.value_or(
@@ -348,10 +341,14 @@ int main() // NOLINT
 
     for (const auto &relative : blacklist) {
         if (!mountDir(privateAppDir / relative, cognitiveHomeDir / relative)) {
-            return -1;
+            return false;
         }
     }
 
-    std::cout << content.dump() << std::endl;
-    return 0;
+    process.env = std::move(env);
+    config.process = std::move(process);
+    config.mounts = std::move(mounts);
+    return true;
 }
+
+} // namespace linglong::generator

@@ -86,13 +86,6 @@ cd build
 %{_prefix}/lib/systemd/user/*
 %{_prefix}/lib/systemd/system-environment-generators/*
 %{_libexecdir}/%{name}/ll-package-manager
-%{_libexecdir}/%{name}/00-id-mapping-static
-%{_libexecdir}/%{name}/05-initialize-static
-%{_libexecdir}/%{name}/20-devices-static
-%{_libexecdir}/%{name}/25-host-env-static
-%{_libexecdir}/%{name}/30-user-home-static
-%{_libexecdir}/%{name}/40-host-ipc-static
-%{_libexecdir}/%{name}/90-legacy-static
 %{_libexecdir}/%{name}/ll-session-helper
 %{_libexecdir}/%{name}/ld-cache-generator
 %{_libexecdir}/%{name}/font-cache-generator

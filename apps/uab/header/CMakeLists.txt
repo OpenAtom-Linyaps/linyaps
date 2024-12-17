@@ -59,7 +59,7 @@ target_link_options(${UAB_HEADER_TARGET} PRIVATE -static -static-libgcc
                     -static-libstdc++)
 
 if(${AGGRESSIVE_UAB_SIZE})
-  message(STATUS "minify uab header aggressively")
+  message(STATUS "minify size of uab header aggressively")
   target_compile_options(
     ${UAB_HEADER_TARGET} PRIVATE -Os -fno-asynchronous-unwind-tables -fno-rtti
                                  -fdata-sections -ffunction-sections -flto=auto)

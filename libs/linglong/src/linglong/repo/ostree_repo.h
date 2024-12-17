@@ -156,6 +156,8 @@ private:
                        bool fallbackLayerDir = true) const noexcept;
     utils::error::Result<void> exportEntries(
       const QDir &entriesDir, const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
+    utils::error::Result<void> IniLikeFileRewrite(const QFileInfo &info,
+                                                  const QString &id) noexcept;
 };
 
 } // namespace linglong::repo

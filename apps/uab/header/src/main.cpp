@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <iomanip>
@@ -25,14 +26,15 @@
 
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 extern "C" int erofsfuse_main(int argc, char **argv);
 
-static std::atomic_bool mountFlag{ false };
-static std::atomic_bool createFlag{ false };
-static std::filesystem::path mountPoint;
+static std::atomic_bool mountFlag{ false };  // NOLINT
+static std::atomic_bool createFlag{ false }; // NOLINT
+static std::filesystem::path mountPoint;     // NOLINT
 
 constexpr auto usage = u8R"(Linglong Universal Application Bundle
 
@@ -124,7 +126,7 @@ int importSelf(const std::string &cliBin, std::string_view appRef, const std::st
 
     std::array<char, PIPE_BUF> buf{};
     std::string content;
-    auto bytesRead{ -1 };
+    ssize_t bytesRead{ -1 };
     while ((bytesRead = ::read(out[0], buf.data(), buf.size())) != 0) {
         if (bytesRead == -1) {
             if (errno == EINTR) {
@@ -311,13 +313,13 @@ void cleanResource() noexcept
 
         auto pid = fork();
         if (pid < 0) {
-            std::cerr << "fork() error" << ": " << strerror(errno) << std::endl;
+            std::cerr << "fork() error" << ": " << ::strerror(errno) << std::endl;
             return false;
         }
 
         if (pid == 0) {
             if (::execlp("umount", "umount", "-l", mountPoint.c_str(), nullptr) == -1) {
-                std::cerr << "umount error: " << strerror(errno) << std::endl;
+                std::cerr << "umount error: " << ::strerror(errno) << std::endl;
                 return false;
             }
         }
@@ -325,7 +327,7 @@ void cleanResource() noexcept
         int status{ 0 };
         auto ret = ::waitpid(pid, &status, 0);
         if (ret == -1) {
-            std::cerr << "wait failed:" << strerror(errno) << std::endl;
+            std::cerr << "wait failed:" << ::strerror(errno) << std::endl;
             return false;
         }
 
@@ -345,7 +347,7 @@ void cleanResource() noexcept
             return;
         }
 
-        if (!std::filesystem::remove_all(mountPoint, ec) || ec) {
+        if (std::filesystem::remove_all(mountPoint, ec) == static_cast<std::uintmax_t>(-1) || ec) {
             std::cerr << "failed to remove mount point:" << ec.message() << std::endl;
             return;
         }
@@ -401,7 +403,7 @@ int createMountPoint(std::string_view uuid) noexcept
     }
 
     auto mountPointPath =
-      std::filesystem::path{ resolveRealPath(runtimeDirPtr) } / "linglong/UAB" / uuid;
+      std::filesystem::path{ resolveRealPath(runtimeDirPtr) } / "linglong" / "UAB" / uuid;
 
     std::error_code ec;
     if (!std::filesystem::create_directories(mountPointPath, ec)) {
@@ -462,8 +464,7 @@ int extractBundle(std::string_view destination) noexcept
     return 0;
 }
 
-[[noreturn]] void runAppLoader(const linglong::api::types::v1::UabMetaInfo &meta,
-                               const std::vector<std::string_view> &loaderArgs) noexcept
+[[noreturn]] void runAppLoader(const std::vector<std::string_view> &loaderArgs) noexcept
 {
     auto loader = mountPoint / "loader";
     auto loaderStr = loader.string();
@@ -692,5 +693,5 @@ int main(int argc, char **argv)
         cleanAndExit(-1);
     }
 
-    runAppLoader(metaInfo, opts.loaderArgs);
+    runAppLoader(opts.loaderArgs);
 }

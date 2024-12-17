@@ -14,11 +14,11 @@
 #include "linglong/package_manager/package_task.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/command/env.h"
+#include "linglong/utils/configure.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/transaction.h"
-#include "linglong/utils/configure.h"
 #include "ocppi/runtime/RunOption.hpp"
 
 #include <QDBusInterface>
@@ -28,9 +28,9 @@
 #include <QEventLoop>
 #include <QJsonArray>
 #include <QMetaObject>
+#include <QStandardPaths>
 #include <QTimer>
 #include <QUuid>
-#include <QStandardPaths>
 
 #include <algorithm>
 #include <utility>
@@ -138,7 +138,7 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo,
               qInfo() << QString("Task %1 start.").arg(task->taskID());
               auto func = *task->getJob();
               func();
-              qInfo() << QString("Task %1 finished.").arg(task->taskID()) ;
+              qInfo() << QString("Task %1 finished.").arg(task->taskID());
               Q_EMIT TaskRemoved(QDBusObjectPath{ task->taskObjectPath() },
                                  static_cast<int>(task->state()),
                                  static_cast<int>(task->subState()),
@@ -370,7 +370,7 @@ PackageManager::removeAfterInstall(const package::Reference &oldRef,
         if (module == "binary" || module == "runtime") {
             auto ret = this->removeCache(oldRef);
             if (!ret) {
-                qCritical() <<ret.error().message();
+                qCritical() << ret.error().message();
             }
         }
 
@@ -1111,7 +1111,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
             auto result = this->generateCache(newAppRef);
             if (!result) {
                 taskRef.updateState(linglong::api::types::v1::State::Failed,
-                                        "Failed to generate some cache of " + newAppRef.toString());
+                                    "Failed to generate some cache of " + result.error().message());
                 return;
             }
         }
@@ -2171,7 +2171,7 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
     LINGLONG_TRACE("generate cache for " + ref.toString());
 
     auto layerItem = this->repo.getLayerItem(ref);
-    if(!layerItem) {
+    if (!layerItem) {
         return LINGLONG_ERR(layerItem);
     }
 
@@ -2223,7 +2223,6 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
       .source = LINGLONG_LIBEXEC_DIR,
       .type = "bind",
     });
-
 
     package::LayerDir appLayerDir;
     std::optional<package::LayerDir> runtimeLayerDir;
@@ -2299,7 +2298,7 @@ utils::error::Result<void> PackageManager::removeCache(const package::Reference 
     LINGLONG_TRACE("remove the cache of " + ref.toString());
 
     auto layerItem = this->repo.getLayerItem(ref);
-    if(!layerItem) {
+    if (!layerItem) {
         return LINGLONG_ERR(layerItem);
     }
 
@@ -2322,14 +2321,14 @@ auto PackageManager::GenerateCache(const QString &reference) noexcept -> QVarian
     auto ref = *refRet;
     auto jobID = QUuid::createUuid().toString();
     m_generator_queue.runTask([this, jobID, ref]() {
-            qInfo() << "Generate cache for:" << ref.toString();
-            auto ret = this->generateCache(ref);
-            if (!ret) {
-                qCritical() << "failed to generate cache for:" << ref.toString();
-                qCritical() << ret.error().message();
-                Q_EMIT this->GenerateCacheFinished(jobID, false);
-                return;
-            }
+        qInfo() << "Generate cache for:" << ref.toString();
+        auto ret = this->generateCache(ref);
+        if (!ret) {
+            qCritical() << "failed to generate cache for:" << ref.toString();
+            qCritical() << ret.error().message();
+            Q_EMIT this->GenerateCacheFinished(jobID, false);
+            return;
+        }
 
         qInfo() << "Generate cache finished";
         Q_EMIT this->GenerateCacheFinished(jobID, true);

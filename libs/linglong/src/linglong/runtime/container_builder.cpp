@@ -7,8 +7,10 @@
 #include "linglong/runtime/container_builder.h"
 
 #include "linglong/api/types/v1/ApplicationConfiguration.hpp"
+#include "linglong/oci-cfg-generators/builtins.h"
 #include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/finally/finally.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/serialize/yaml.h"
 #include "ocppi/runtime/config/types/Generators.hpp"
@@ -20,6 +22,8 @@
 
 #include <fstream>
 #include <unordered_set>
+
+#include <fcntl.h>
 
 namespace linglong::runtime {
 
@@ -76,7 +80,7 @@ auto getPatchesForApplication(const QString &appID) noexcept
 }
 
 // getBundleDir 用于获取容器的运行目录
-utils::error::Result<QDir> getBundleDir(QString containerID)
+utils::error::Result<QDir> getBundleDir(const QString &containerID)
 {
     LINGLONG_TRACE("get bundle dir");
     QDir runtimeDir = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
@@ -110,22 +114,37 @@ void applyJSONPatch(ocppi::runtime::config::types::Config &cfg,
     }
 }
 
-void applyJSONFilePatch(ocppi::runtime::config::types::Config &cfg, const QFileInfo &info) noexcept
+void applyJSONFilePatch(ocppi::runtime::config::types::Config &cfg,
+                        const QFileInfo &info,
+                        const generator::Generator &gen) noexcept
 {
-    if (!info.isFile()) {
-        return;
-    }
-
     LINGLONG_TRACE(QString("apply oci runtime config patch file %1").arg(info.absoluteFilePath()));
 
-    if (!info.absoluteFilePath().endsWith(".json")) {
-        qWarning() << LINGLONG_ERRV("file not ends with .json");
+    QFile file(info.absoluteFilePath());
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qWarning() << LINGLONG_ERRV(file);
         Q_ASSERT(false);
         return;
     }
 
-    auto patch = utils::serialize::LoadJSONFile<api::types::v1::OciConfigurationPatch>(
-      info.absoluteFilePath());
+    auto content = file.readAll();
+    if (file.error() != QFile::NoError) {
+        qWarning() << LINGLONG_ERRV(file);
+        Q_ASSERT(false);
+        return;
+    }
+
+    if (content.startsWith("null")) {
+        qDebug() << "use builtin generator" << gen.name().data();
+
+        if (!gen.generate(cfg)) {
+            qWarning() << "generator" << gen.name().data() << "failed";
+            return;
+        }
+    }
+
+    auto patch =
+      utils::serialize::LoadJSON<api::types::v1::OciConfigurationPatch>(content.toStdString());
     if (!patch) {
         qWarning() << LINGLONG_ERRV(patch);
         Q_ASSERT(false);
@@ -135,15 +154,58 @@ void applyJSONFilePatch(ocppi::runtime::config::types::Config &cfg, const QFileI
     applyJSONPatch(cfg, *patch);
 }
 
-void applyExecutablePatch(QString workdir,
-                          ocppi::runtime::config::types::Config &cfg,
-                          const QFileInfo &info) noexcept
+bool isCustomExecutablePatch(const QFileInfo &info) noexcept
+{
+    QFile file{ info.absoluteFilePath() };
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return false;
+    }
+
+    constexpr auto comment = "# LINGLONG_BUILTIN_GENERATOR";
+    QString buf;
+    QTextStream stream{ &file };
+
+    buf = stream.readLine(); // check shebang, only support shell script for now
+    if (!buf.startsWith("#!")) {
+        return false;
+    }
+
+    while (!stream.atEnd()) {
+        buf = stream.readLine();
+        if (buf.isEmpty()) {
+            continue;
+        }
+
+        if (!buf.startsWith("#")) {
+            return true;
+        }
+
+        if (buf.startsWith(comment)) {
+            return false;
+        }
+    }
+
+    return false;
+}
+
+void applyExecutablePatch(ocppi::runtime::config::types::Config &cfg,
+                          const QFileInfo &info,
+                          const generator::Generator &gen) noexcept
 {
     LINGLONG_TRACE(QString("process oci configuration generator %1").arg(info.absoluteFilePath()));
 
+    if (!isCustomExecutablePatch(info)) {
+        qDebug() << "use builtin generator" << gen.name().data();
+
+        if (!gen.generate(cfg)) {
+            qWarning() << "generator" << gen.name().data() << "failed";
+        }
+
+        return;
+    }
+
     QProcess generatorProcess;
     generatorProcess.setProgram(info.absoluteFilePath());
-    generatorProcess.setWorkingDirectory(workdir);
     generatorProcess.start();
     generatorProcess.write(QByteArray::fromStdString(nlohmann::json(cfg).dump()));
     generatorProcess.closeWriteChannel();
@@ -179,23 +241,44 @@ void applyExecutablePatch(QString workdir,
     cfg = *modified;
 }
 
-void applyPatches(const ContainerOptions &opts,
-                  ocppi::runtime::config::types::Config &cfg,
-                  const QFileInfoList &patches) noexcept
+void applyPatches(ocppi::runtime::config::types::Config &cfg, const QFileInfoList &patches) noexcept
 {
-    auto bundleDir = getBundleDir(opts.containerID);
-
+    const auto &builtins = linglong::generator::builtin_generators();
     for (const auto &info : patches) {
         if (!info.isFile()) {
+            qWarning() << "info is not file:" << info.absoluteFilePath();
+            continue;
+        }
+
+        auto gen = builtins.find(info.completeBaseName().toStdString());
+        if (gen == builtins.cend()) {
+            qInfo() << info.absoluteFilePath()
+                    << "is an unknown generator, but we don't support custom unknown generator "
+                       "currently.";
+            continue;
+        }
+
+        if (info.size() < 4) {
+            qDebug() << "generator" << info.absoluteFilePath() << "may be broken, use builtin";
+
+            if (!gen->second->generate(cfg)) {
+                qWarning() << "generator" << info.absoluteFilePath() << "failed";
+            }
+
+            continue;
+        }
+
+        if (info.completeSuffix() == "json") {
+            applyJSONFilePatch(cfg, info, *gen->second);
             continue;
         }
 
         if (info.isExecutable()) {
-            applyExecutablePatch(bundleDir->path(), cfg, info);
+            applyExecutablePatch(cfg, info, *gen->second);
             continue;
         }
 
-        applyJSONFilePatch(cfg, info);
+        qDebug() << "unsupported generator type:" << info.absoluteFilePath();
     }
 }
 
@@ -207,7 +290,7 @@ void applyPatches(ocppi::runtime::config::types::Config &cfg,
     }
 }
 
-auto getOCIConfig(const ContainerOptions &opts) noexcept
+auto getOCIConfig(const ContainerOptions &opts, const std::string &bundleDir) noexcept
   -> utils::error::Result<ocppi::runtime::config::types::Config>
 {
     LINGLONG_TRACE("get origin OCI configuration file");
@@ -225,8 +308,8 @@ auto getOCIConfig(const ContainerOptions &opts) noexcept
         }
     }
 
-    auto config = utils::serialize::LoadJSONFile<ocppi::runtime::config::types::Config>(
-      containerConfigFilePath);
+    auto config = utils::serialize::LoadJSON<ocppi::runtime::config::types::Config>(
+      linglong::generator::initConfig);
     if (!config) {
         Q_ASSERT(false);
         return LINGLONG_ERR(config);
@@ -240,6 +323,7 @@ auto getOCIConfig(const ContainerOptions &opts) noexcept
     auto annotations = config->annotations.value_or(std::map<std::string, std::string>{});
     annotations["org.deepin.linglong.appID"] = opts.appID.toStdString();
     annotations["org.deepin.linglong.baseDir"] = opts.baseDir.absolutePath().toStdString();
+    annotations["org.deepin.linglong.bundleDir"] = bundleDir;
 
     if (opts.runtimeDir) {
         annotations["org.deepin.linglong.runtimeDir"] =
@@ -253,7 +337,7 @@ auto getOCIConfig(const ContainerOptions &opts) noexcept
     QDir configDotDDir = QFileInfo(containerConfigFilePath).dir().filePath("config.d");
     Q_ASSERT(configDotDDir.exists());
 
-    applyPatches(opts, *config, configDotDDir.entryInfoList(QDir::Files));
+    applyPatches(*config, configDotDDir.entryInfoList(QDir::Files));
 
     auto appPatches = getPatchesForApplication(opts.appID);
 
@@ -432,7 +516,8 @@ auto ContainerBuilder::create(const ContainerOptions &opts) noexcept
     if (!bundle.has_value()) {
         return LINGLONG_ERR(bundle);
     }
-    auto originalConfig = getOCIConfig(opts);
+
+    auto originalConfig = getOCIConfig(opts, bundle->absolutePath().toStdString());
     if (!originalConfig) {
         return LINGLONG_ERR(originalConfig);
     }

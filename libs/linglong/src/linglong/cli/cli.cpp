@@ -330,7 +330,7 @@ int Cli::run()
         this->printer.printErr(appLayerItem.error());
         return -1;
     }
-    const auto &info = appLayerItem->info; 
+    const auto &info = appLayerItem->info;
 
     auto appDataDir = utils::xdg::appDataDir(info.id);
     if (!appDataDir) {
@@ -404,7 +404,8 @@ int Cli::run()
         baseLayerDir = this->repository.getMergedModuleDir(*baseRef);
     } else {
         qDebug() << "getLayerDir base" << info.uuid.value().c_str();
-        baseLayerDir = this->repository.getLayerDir(*baseRef, std::string{ "binary" }, *(info.uuid));
+        baseLayerDir =
+          this->repository.getLayerDir(*baseRef, std::string{ "binary" }, *(info.uuid));
     }
     if (!baseLayerDir) {
         this->printer.printErr(LINGLONG_ERRV(baseLayerDir));
@@ -412,7 +413,7 @@ int Cli::run()
     }
 
     auto appCache = this->ensureCache(*curAppRef, *appLayerItem);
-    if(!appCache) {
+    if (!appCache) {
         this->printer.printErr(LINGLONG_ERRV(appCache));
         return -1;
     }
@@ -449,7 +450,7 @@ int Cli::run()
             if (ec) {
                 qCritical() << "couldn't get status of" << pidFile.c_str() << ":"
                             << ec.message().c_str();
-                return ec.value();
+                return false;
             }
 
             auto msg = "state file " + pidFile.string() + "doesn't exist, abort.";
@@ -549,7 +550,7 @@ int Cli::run()
       };
 
     if (info.permissions) {
-        auto &perm = info.permissions;
+        const auto &perm = info.permissions;
         if (perm->binds) {
             const auto &binds = perm->binds;
             std::for_each(binds->cbegin(), binds->cend(), bindMount);

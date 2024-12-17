@@ -476,71 +476,12 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir) noe
         return LINGLONG_ERR(QString{ "couldn't create directory %1" }.arg(extraDir.absolutePath()));
     }
 
-    // copy config.json and generators
-    auto srcCfgDir = QDir{ LINGLONG_INSTALL_PREFIX "/lib/linglong/container" };
-    if (!srcCfgDir.exists()) {
-        return LINGLONG_ERR(QString("the container configuration directory doesn't exist: %1")
-                              .arg(srcCfgDir.absolutePath()));
-    }
-
-    auto destCfgDir = QDir{ extraDir.absoluteFilePath("container") };
-    if (!destCfgDir.mkpath(".")) {
-        return LINGLONG_ERR(
-          QString{ "couldn't create directory %1" }.arg(destCfgDir.absolutePath()));
-    };
-
-    auto srcInitCfg = QFile{ srcCfgDir.absoluteFilePath("config.json") };
-    if (!srcInitCfg.exists() || !QFileInfo{ srcInitCfg }.isFile()) {
-        return LINGLONG_ERR(
-          QString{ "%1 doesn't exist or it's not a file" }.arg(srcInitCfg.fileName()));
-    }
-    auto destInitCfg = destCfgDir.absoluteFilePath("config.json");
-    if (!srcInitCfg.copy(destInitCfg)) {
-        return LINGLONG_ERR(QString{ "couldn't copy %1 to %2: %3" }
-                              .arg(srcInitCfg.fileName())
-                              .arg(destInitCfg)
-                              .arg(srcInitCfg.errorString()));
-    }
-
-    auto srcGens = QDir{ srcCfgDir.absoluteFilePath("config.d") };
-    if (!srcGens.exists() || !QFileInfo{ srcGens.absolutePath() }.isDir()) {
-        return LINGLONG_ERR(
-          QString{ "%1 doesn't exist or it's not a directory" }.arg(srcGens.absolutePath()));
-    }
-    auto destGens = QDir{ destCfgDir.absoluteFilePath("config.d") };
-    if (!destGens.mkpath(".")) {
-        return LINGLONG_ERR(
-          QString{ "couldn't create directory %1" }.arg(destCfgDir.absolutePath()));
-    }
-    for (const auto &gen : srcGens.entryInfoList(QDir::NoDotAndDotDot | QDir::Files)) {
-        QFile realGen{ gen.absoluteFilePath() };
-        if (gen.isExecutable() && gen.isSymLink()) {
-            realGen.setFileName(gen.symLinkTarget());
-        } else if (!gen.fileName().endsWith(".json")) {
-            qWarning() << "unknown config generator" << gen.absoluteFilePath();
-            continue;
-        }
-
-        if (!realGen.exists()) {
-            return LINGLONG_ERR(
-              QString{ "config generator %1 doesn't exist" }.arg(realGen.fileName()));
-        }
-
-        auto destGen = destGens.absoluteFilePath(QFileInfo{ realGen.fileName() }.fileName());
-        if (!realGen.copy(destGen)) {
-            return LINGLONG_ERR(QString{ "couldn't copy %1 to %2: %3" }
-                                  .arg(realGen.fileName())
-                                  .arg(destGen)
-                                  .arg(realGen.errorString()));
-        }
-    }
-
     // generate ld configs
     auto arch = Architecture::currentCPUArchitecture();
     auto ldConfsDir = QDir{ extraDir.absoluteFilePath("ld.conf.d") };
     if (!ldConfsDir.mkpath(".")) {
         return LINGLONG_ERR(
-          QString{ "couldn't create directory %1" }.arg(destCfgDir.absolutePath()));
+          QString{ "couldn't create directory %1" }.arg(ldConfsDir.absolutePath()));
     }
 
     auto ldConf = QFile{ ldConfsDir.absoluteFilePath("zz_deepin-linglong-app.ld.so.conf") };

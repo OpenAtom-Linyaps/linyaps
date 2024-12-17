@@ -1,5 +1,7 @@
 # OCI configurations for linglong containers
 
+*NOTO*: [config.json] and generators has been builtin to program itself. all generator could be override by user.
+
 [config.json] is the initial OCI configuration file
 for linglong desktop containers.
 

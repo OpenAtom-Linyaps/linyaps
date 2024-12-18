@@ -6,8 +6,10 @@
 
 #include <linux/limits.h>
 
+#include <cstdlib>
 #include <filesystem>
 #include <iostream>
+#include <string>
 
 #include <sys/stat.h>
 #include <unistd.h>
@@ -61,24 +63,41 @@ bool HostIPC::generate(ocppi::runtime::config::types::Config &config) const noex
     auto mountTemplate =
       ocppi::runtime::config::types::Mount{ .options = string_list{ "rbind" }, .type = "bind" };
 
+    // TODO 应该参考规范文档实现更完善的地址解析支持
+    // https://dbus.freedesktop.org/doc/dbus-specification.html#addresses
     [dbusMount = mountTemplate, &mounts, &env]() mutable {
-        auto *systemBusEnv = getenv("DBUS_SYSTEM_BUS_ADDRESS"); // NOLINT
-
-        // https://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-types:~:text=the%20default%20locations.-,System%20message%20bus,-A%20computer%20may
-        std::string systemBus{ "/var/run/dbus/system_bus_socket" };
-        if (systemBusEnv != nullptr && std::filesystem::exists(systemBusEnv)) {
-            systemBus = systemBusEnv;
+        // default value from
+        // https://dbus.freedesktop.org/doc/dbus-specification.html#message-bus-types-system
+        std::string systemBusEnv = "unix:path=/var/run/dbus/system_bus_socket";
+        if (auto cStr = std::getenv("DBUS_SYSTEM_BUS_ADDRESS"); cStr != nullptr) {
+            systemBusEnv = cStr;
+        }
+        // address 可能是 unix:path=/xxxx,giud=xxx 这种格式
+        // 所以先将options部分提取出来，挂载时不需要关心
+        std::string options;
+        auto optionsPos = systemBusEnv.find(",");
+        if (optionsPos != std::string::npos) {
+            options = systemBusEnv.substr(optionsPos);
+            systemBusEnv.resize(optionsPos);
+        }
+        auto systemBus = std::string_view{ systemBusEnv };
+        auto suffix = std::string_view{ "unix:path=" };
+        if (systemBus.rfind(suffix, 0) != 0U) {
+            std::cerr << "Unexpected DBUS_SYSTEM_BUS_ADDRESS=" << systemBus << std::endl;
+            return;
         }
 
-        if (!std::filesystem::exists(systemBus)) {
-            std::cerr << "D-Bus system bus socket not found at " << systemBus << std::endl;
+        auto socketPath = std::filesystem::path(systemBus.substr(suffix.size()));
+        if (!std::filesystem::exists(socketPath)) {
+            std::cerr << "D-Bus session bus socket not found at " << socketPath << std::endl;
             return;
         }
 
         dbusMount.destination = "/run/dbus/system_bus_socket";
-        dbusMount.source = std::move(systemBus);
+        dbusMount.source = std::move(socketPath);
         mounts.emplace_back(std::move(dbusMount));
-        env.emplace_back("DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket");
+        // 将提取的options再拼到容器中的环境变量
+        env.emplace_back("DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket" + options);
     }();
 
     mounts.push_back(ocppi::runtime::config::types::Mount{
@@ -155,13 +174,25 @@ bool HostIPC::generate(ocppi::runtime::config::types::Config &config) const noex
             });
         }();
 
+        // TODO 应该参考规范文档实现更完善的地址解析支持
+        // https://dbus.freedesktop.org/doc/dbus-specification.html#addresses
         [&cognitiveXDGRuntimeDir, &mounts, &env]() {
-            auto *sessionBusEnv = getenv("DBUS_SESSION_BUS_ADDRESS"); // NOLINT
-            if (sessionBusEnv == nullptr) {
+            std::string sessionBusEnv;
+            if (auto cStr = std::getenv("DBUS_SESSION_BUS_ADDRESS"); cStr != nullptr) {
+                sessionBusEnv = cStr;
+            }
+            if (sessionBusEnv.empty()) {
                 std::cerr << "Couldn't get DBUS_SESSION_BUS_ADDRESS" << std::endl;
                 return;
             }
-
+            // address 可能是 unix:path=/xxxx,giud=xxx 这种格式
+            // 所以先将options部分提取出来，挂载时不需要关心
+            std::string options;
+            auto optionsPos = sessionBusEnv.find(",");
+            if (optionsPos != std::string::npos) {
+                options = sessionBusEnv.substr(optionsPos);
+                sessionBusEnv.resize(optionsPos);
+            }
             auto sessionBus = std::string_view{ sessionBusEnv };
             auto suffix = std::string_view{ "unix:path=" };
             if (sessionBus.rfind(suffix, 0) != 0U) {
@@ -182,9 +213,9 @@ bool HostIPC::generate(ocppi::runtime::config::types::Config &config) const noex
               .source = socketPath,
               .type = "bind",
             });
-
+            // 将提取的options再拼到容器中的环境变量
             env.emplace_back(std::string{ "DBUS_SESSION_BUS_ADDRESS=" }
-                             + "unix:path=" + cognitiveSessionBus.string());
+                             + "unix:path=" + cognitiveSessionBus.string() + options);
         }();
 
         [&hostXDGRuntimeDir, &cognitiveXDGRuntimeDir, &mounts]() {

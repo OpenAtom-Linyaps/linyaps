@@ -139,8 +139,9 @@ void applyJSONFilePatch(ocppi::runtime::config::types::Config &cfg,
 
         if (!gen.generate(cfg)) {
             qWarning() << "generator" << gen.name().data() << "failed";
-            return;
         }
+
+        return;
     }
 
     auto patch =

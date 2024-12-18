@@ -25,6 +25,10 @@ namespace linglong::generator {
 
 bool UserHome::generate(ocppi::runtime::config::types::Config &config) const noexcept
 {
+    if (::getenv("LINGLONG_SKIP_HOME_GENERATE") != nullptr) {
+        return true;
+    }
+
     if (config.ociVersion != "1.0.1") {
         std::cerr << "OCI version mismatched." << std::endl;
         return false;

@@ -122,18 +122,14 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo,
               }
               return;
           }
-          // start next task
-          this->runningTaskObjectPath = taskObjectPath;
-          if (this->taskList.empty()) {
-              this->runningTaskObjectPath = "";
-              return;
-          };
+
           for (auto it = taskList.begin(); it != taskList.end(); ++it) {
               auto *task = *it;
               if (!task->getJob().has_value()
                   || task->state() != linglong::api::types::v1::State::Queued) {
                   continue;
               }
+              this->runningTaskObjectPath = task->taskObjectPath();
               // execute the task
               qInfo() << QString("Task %1 start.").arg(task->taskID());
               auto func = *task->getJob();
@@ -148,8 +144,8 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo,
               auto nextIt = this->taskList.erase(it);
               task->deleteLater();
               if (nextIt != taskList.end()) {
-                  qInfo() << "Task switch to" << (*nextIt)->taskID();
-                  Q_EMIT this->TaskListChanged((*nextIt)->taskID(), "TaskSwitch");
+                  qInfo() << "Switch to next available task";
+                  Q_EMIT this->TaskListChanged("", "TaskSwitch");
               }
               return;
           }

@@ -94,7 +94,11 @@ public:
 
     auto cancellable() noexcept { return m_cancelFlag; }
 
-    bool isRefExist(const QString &ref) const noexcept { return m_refs.contains(ref); }
+    bool isRefExist(const QString &ref) const noexcept
+    {
+        return m_refs.contains(ref)
+          && this->m_state != static_cast<int>(linglong::api::types::v1::State::Canceled);
+    }
 
     auto getJob() { return m_job; }
 

@@ -124,10 +124,13 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo,
               return;
           }
 
-          for (auto it = taskList.begin(); it != taskList.end(); ++it) {
+          for (auto it = taskList.begin(); it != taskList.end();) {
               auto *task = *it;
               if (!task->getJob().has_value()
                   || task->state() != linglong::api::types::v1::State::Queued) {
+                  qInfo() << "Remove" << task->taskID()
+                          << "from task queue, it has no job or State is not Queued";
+                  it = this->taskList.erase(it);
                   continue;
               }
               this->runningTaskObjectPath = task->taskObjectPath();
@@ -142,9 +145,9 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo,
                                  task->message(),
                                  task->getPercentage());
               this->runningTaskObjectPath = "";
-              auto nextIt = this->taskList.erase(it);
+              it = this->taskList.erase(it);
               task->deleteLater();
-              if (nextIt != taskList.end()) {
+              if (it != taskList.end()) {
                   qInfo() << "Switch to next available task";
                   Q_EMIT this->TaskListChanged("", "TaskSwitch");
               }

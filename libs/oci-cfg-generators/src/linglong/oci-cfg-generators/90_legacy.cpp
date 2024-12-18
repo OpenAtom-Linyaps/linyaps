@@ -77,7 +77,8 @@ bool Legacy::generate(ocppi::runtime::config::types::Config &config) const noexc
     {
         // FIXME: com.360.browser-stable
         // 需要一个所有用户都有可读可写权限的目录(/apps-data/private/com.360.browser-stable)
-        if ("com.360.browser-stable" == appID->second) {
+        if (::getenv("LINGLONG_SKIP_HOME_GENERATE") == nullptr
+            && "com.360.browser-stable" == appID->second) {
             auto *home = ::getenv("HOME");
             if (home == nullptr) {
                 std::cerr << "Couldn't get HOME." << std::endl;

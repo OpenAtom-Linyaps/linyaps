@@ -1111,7 +1111,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
             auto result = this->generateCache(newAppRef);
             if (!result) {
                 taskRef.updateState(linglong::api::types::v1::State::Failed,
-                                    "Failed to generate some cache of " + result.error().message());
+                                    "Failed to generate some cache.\n" + result.error().message());
                 return;
             }
         }
@@ -1394,7 +1394,7 @@ void PackageManager::Install(PackageTask &taskContext,
         auto result = this->generateCache(newRef);
         if (!result) {
             taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                    "Failed to generate some cache of " + newRef.toString());
+                                    "Failed to generate some cache.\n" + result.error().message());
             return;
         }
     }
@@ -1855,7 +1855,7 @@ void PackageManager::Update(PackageTask &taskContext,
         auto result = this->generateCache(newRef);
         if (!result) {
             taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                    "Failed to generate some cache of " + newRef.toString());
+                                    "Failed to generate some cache.\n" + result.error().message());
             return;
         }
     }

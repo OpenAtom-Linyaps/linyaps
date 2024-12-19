@@ -114,38 +114,12 @@ void applyJSONPatch(ocppi::runtime::config::types::Config &cfg,
     }
 }
 
-void applyJSONFilePatch(ocppi::runtime::config::types::Config &cfg,
-                        const QFileInfo &info,
-                        const generator::Generator &gen) noexcept
+void applyJSONFilePatch(ocppi::runtime::config::types::Config &cfg, const QFileInfo &info) noexcept
 {
     LINGLONG_TRACE(QString("apply oci runtime config patch file %1").arg(info.absoluteFilePath()));
 
-    QFile file(info.absoluteFilePath());
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qWarning() << LINGLONG_ERRV(file);
-        Q_ASSERT(false);
-        return;
-    }
-
-    auto content = file.readAll();
-    if (file.error() != QFile::NoError) {
-        qWarning() << LINGLONG_ERRV(file);
-        Q_ASSERT(false);
-        return;
-    }
-
-    if (content.startsWith("null")) {
-        qDebug() << "use builtin generator" << gen.name().data();
-
-        if (!gen.generate(cfg)) {
-            qWarning() << "generator" << gen.name().data() << "failed";
-        }
-
-        return;
-    }
-
-    auto patch =
-      utils::serialize::LoadJSON<api::types::v1::OciConfigurationPatch>(content.toStdString());
+    auto patch = utils::serialize::LoadJSONFile<api::types::v1::OciConfigurationPatch>(
+      info.absoluteFilePath());
     if (!patch) {
         qWarning() << LINGLONG_ERRV(patch);
         Q_ASSERT(false);
@@ -155,55 +129,10 @@ void applyJSONFilePatch(ocppi::runtime::config::types::Config &cfg,
     applyJSONPatch(cfg, *patch);
 }
 
-bool isCustomExecutablePatch(const QFileInfo &info) noexcept
-{
-    QFile file{ info.absoluteFilePath() };
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return false;
-    }
-
-    constexpr auto comment = "# LINGLONG_BUILTIN_GENERATOR";
-    QString buf;
-    QTextStream stream{ &file };
-
-    buf = stream.readLine(); // check shebang, only support shell script for now
-    if (!buf.startsWith("#!")) {
-        return false;
-    }
-
-    while (!stream.atEnd()) {
-        buf = stream.readLine();
-        if (buf.isEmpty()) {
-            continue;
-        }
-
-        if (!buf.startsWith("#")) {
-            return true;
-        }
-
-        if (buf.startsWith(comment)) {
-            return false;
-        }
-    }
-
-    return false;
-}
-
 void applyExecutablePatch(ocppi::runtime::config::types::Config &cfg,
-                          const QFileInfo &info,
-                          const generator::Generator &gen) noexcept
+                          const QFileInfo &info) noexcept
 {
     LINGLONG_TRACE(QString("process oci configuration generator %1").arg(info.absoluteFilePath()));
-
-    if (!isCustomExecutablePatch(info)) {
-        qDebug() << "use builtin generator" << gen.name().data();
-
-        if (!gen.generate(cfg)) {
-            qWarning() << "generator" << gen.name().data() << "failed";
-        }
-
-        return;
-    }
 
     QProcess generatorProcess;
     generatorProcess.setProgram(info.absoluteFilePath());
@@ -251,35 +180,25 @@ void applyPatches(ocppi::runtime::config::types::Config &cfg, const QFileInfoLis
             continue;
         }
 
-        auto gen = builtins.find(info.completeBaseName().toStdString());
-        if (gen == builtins.cend()) {
-            qInfo() << info.absoluteFilePath()
-                    << "is an unknown generator, but we don't support custom unknown generator "
-                       "currently.";
-            continue;
-        }
-
-        if (info.size() < 4) {
-            qDebug() << "generator" << info.absoluteFilePath() << "may be broken, use builtin";
-
-            if (!gen->second->generate(cfg)) {
-                qWarning() << "generator" << info.absoluteFilePath() << "failed";
-            }
-
-            continue;
-        }
-
         if (info.completeSuffix() == "json") {
-            applyJSONFilePatch(cfg, info, *gen->second);
+            applyJSONFilePatch(cfg, info);
             continue;
         }
 
         if (info.isExecutable()) {
-            applyExecutablePatch(cfg, info, *gen->second);
+            applyExecutablePatch(cfg, info);
             continue;
         }
 
-        qDebug() << "unsupported generator type:" << info.absoluteFilePath();
+        auto gen = builtins.find(info.completeBaseName().toStdString());
+        if (gen == builtins.cend()) {
+            qDebug() << "unsupported generator:" << info.absoluteFilePath();
+            continue;
+        }
+
+        if (!gen->second->generate(cfg)) {
+            qDebug() << "builtin generator failed:" << gen->first.data();
+        }
     }
 }
 
@@ -309,8 +228,8 @@ auto getOCIConfig(const ContainerOptions &opts, const std::string &bundleDir) no
         }
     }
 
-    auto config = utils::serialize::LoadJSON<ocppi::runtime::config::types::Config>(
-      linglong::generator::initConfig);
+    auto config = utils::serialize::LoadJSONFile<ocppi::runtime::config::types::Config>(
+      containerConfigFilePath);
     if (!config) {
         Q_ASSERT(false);
         return LINGLONG_ERR(config);

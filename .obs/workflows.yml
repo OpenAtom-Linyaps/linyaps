@@ -62,5 +62,51 @@ commit_build:
     - trigger_services:
         project: deepin:Develop:dde
         package: %{SCM_REPOSITORY_NAME}
+
+    - link_package:
+        source_project: deepin:Develop:dde
+        source_package: %{SCM_REPOSITORY_NAME}
+        target_project: linglong:CI
+    - configure_repositories:
+        project: linglong:CI
+        repositories:
+          - name: deepin_develop
+            paths:
+              - target_project: linglong:CI
+                target_repository: deepin_develop
+            architectures:
+              - x86_64
+              - aarch64
+
+          - name: debian
+            paths:
+              - target_project: linglong:CI
+                target_repository: debian_sid
+            architectures:
+              - x86_64
+
+          - name: uos20
+            paths:
+              - target_project: linglong:CI
+                target_repository: uos_standard
+            architectures:
+              - x86_64
+              - aarch64
+
+          - name: anolisOS
+            paths:
+              - target_project: linglong:CI
+                target_repository: AnolisOS_8.8_repo
+            architectures:
+              - x86_64
+              - aarch64
+
+          - name: openEuler
+            paths:
+              - target_project: linglong:CI
+                target_repository: openEuler_23.09_repo
+            architectures:
+              - x86_64
+              - aarch64
   filters:
     event: push

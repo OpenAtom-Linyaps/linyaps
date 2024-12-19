@@ -19,9 +19,9 @@
 #include "linglong/utils/command/env.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
+#include "linglong/utils/gkeyfile_wrapper.h"
 #include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/transaction.h"
-#include "linglong/utils/gkeyfile_wrapper.h"
 
 #include <gio/gio.h>
 #include <glib.h>
@@ -2210,6 +2210,62 @@ QString getOriginRawExec(const QString &execArgs, const QString &id)
     return args.join(" ");
 }
 
+QString buildDesktopExec(QString origin, const QString &appID) noexcept
+{
+    auto newExec = QString{ "%1 run " }.arg(LINGLONG_CLIENT_PATH);
+
+    auto *begin = origin.begin();
+    while (true) {
+        if (begin == origin.end()) {
+            break;
+        }
+
+        begin = std::find(begin, origin.end(), '%');
+        if (begin == origin.end()) {
+            break;
+        }
+
+        auto *next = begin + 1;
+        if (next == origin.end()) {
+            break;
+        }
+
+        if (*next == '%') {
+            begin = next + 1;
+            continue;
+        }
+
+        QString code{ *next };
+        switch (next->toLatin1()) {
+        case 'f':
+            [[fallthrough]];
+        case 'F': {
+            origin.insert(next - origin.begin(), '%');
+            auto tmp =
+              QString{ "--file %%1 %2 -- %3" }.arg(std::move(code), appID, std::move(origin));
+            newExec.append(tmp);
+            return newExec;
+        }
+        case 'u':
+            [[fallthrough]];
+        case 'U': {
+            origin.insert(next - origin.begin(), '%');
+            auto tmp =
+              QString{ "--url %%1 %2 -- %3" }.arg(std::move(code), appID, std::move(origin));
+            newExec.append(tmp);
+            return newExec;
+        }
+        default: {
+            qDebug() << "no need to mapping" << *next;
+        } break;
+        }
+
+        break;
+    }
+
+    return newExec.append(QString{ "%1 -- %2" }.arg(appID, std::move(origin)));
+}
+
 utils::error::Result<void> desktopFileRewrite(const QString &filePath, const QString &id)
 {
     LINGLONG_TRACE("rewrite desktop file " + filePath);
@@ -2238,6 +2294,7 @@ utils::error::Result<void> desktopFileRewrite(const QString &filePath, const QSt
         if (!originExec) {
             return LINGLONG_ERR(originExec);
         }
+        const auto &originExecStr = originExec->toStdString();
 
         auto rawExec = *originExec;
         if (originExec->contains(LINGLONG_CLIENT_NAME)) {
@@ -2245,16 +2302,15 @@ utils::error::Result<void> desktopFileRewrite(const QString &filePath, const QSt
             rawExec = getOriginRawExec(*originExec, id);
         }
 
-        auto newExec = QString("%1 run %2 -- %3").arg(LINGLONG_CLIENT_PATH, id, rawExec);
-        file->setValue("Exec", newExec, group);
+        file->setValue("Exec", buildDesktopExec(rawExec, id), group);
     }
 
-    file->setValue<QString>("TryExec", LINGLONG_CLIENT_PATH, utils::GKeyFileWrapper::DesktopEntry);
-    file->setValue<QString>("X-linglong", id, utils::GKeyFileWrapper::DesktopEntry);
+    file->setValue("TryExec", LINGLONG_CLIENT_PATH, utils::GKeyFileWrapper::DesktopEntry);
+    file->setValue("X-linglong", id, utils::GKeyFileWrapper::DesktopEntry);
 
     // save file
     auto ret = file->saveToFile(filePath);
-    if(!ret) {
+    if (!ret) {
         return LINGLONG_ERR(ret);
     }
 
@@ -2292,7 +2348,7 @@ utils::error::Result<void> dbusServiceRewrite(const QString &filePath, const QSt
     }
 
     auto newExec = QString("%1 run %2 -- %3").arg(LINGLONG_CLIENT_PATH, id, rawExec);
-    file->setValue<QString>("Exec", newExec, utils::GKeyFileWrapper::DBusService);
+    file->setValue("Exec", newExec, utils::GKeyFileWrapper::DBusService);
 
     auto ret = file->saveToFile(filePath);
     if (!ret) {
@@ -2316,11 +2372,11 @@ utils::error::Result<void> systemdServiceRewrite(const QString &filePath, const 
     }
 
     auto keys = file->getkeys(utils::GKeyFileWrapper::SystemdService);
-    if(!keys) {
+    if (!keys) {
         return LINGLONG_ERR(keys);
     }
-    for(const auto &key : *keys) {
-        if(!execKeys.contains(key)) {
+    for (const auto &key : *keys) {
+        if (!execKeys.contains(key)) {
             continue;
         }
 
@@ -2336,7 +2392,7 @@ utils::error::Result<void> systemdServiceRewrite(const QString &filePath, const 
         }
 
         auto newExec = QString("%1 run %2 -- %3").arg(LINGLONG_CLIENT_PATH, id, rawExec);
-        file->setValue<QString>(key, newExec, utils::GKeyFileWrapper::SystemdService);
+        file->setValue(key, newExec, utils::GKeyFileWrapper::SystemdService);
     }
 
     auto ret = file->saveToFile(filePath);
@@ -2378,8 +2434,8 @@ utils::error::Result<void> contextMenuRewrite(const QString &filePath, const QSt
             qInfo() << "The Exec Section in" << filePath << "has been generated, rewrite again.";
             rawExec = getOriginRawExec(*originExec, id);
         }
-        auto newExec = QString("%1 run %2 -- %3").arg(LINGLONG_CLIENT_PATH, id, rawExec);
-        file->setValue<QString>("Exec", newExec, group);
+
+        file->setValue("Exec", buildDesktopExec(rawExec, id), group);
     }
 
     auto ret = file->saveToFile(filePath);

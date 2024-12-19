@@ -14,13 +14,17 @@
 #include <QFile>
 #include <QString>
 
-
 namespace linglong::utils {
 
 class GKeyFileWrapper final
 {
-    // constructors
 public:
+    using GroupName = QString;
+    static constexpr auto DesktopEntry{ "Desktop Entry" };
+    static constexpr auto DBusService{ "D-BUS Service" };
+    static constexpr auto SystemdService{ "Service" };
+    static constexpr auto ContextMenu{ "Menu Entry" };
+
     GKeyFileWrapper(GKeyFileWrapper &&) = default;
     GKeyFileWrapper(const GKeyFileWrapper &) = delete;
     auto operator=(GKeyFileWrapper &&) -> GKeyFileWrapper & = default;
@@ -49,32 +53,31 @@ public:
         return entry;
     }
 
-private:
-    GKeyFileWrapper()
-        : gKeyFile(std::unique_ptr<GKeyFile, decltype(&g_key_file_free)>(g_key_file_new(),
-                                                                         g_key_file_free)){};
-
-    // types
-public:
-    using GroupName = QString;
-
-public:
-    static const GroupName DesktopEntry;
-    static const GroupName DBusService;
-    static const GroupName SystemdService;
-    static const GroupName ContextMenu;
-
-    // data members
-private:
-    std::unique_ptr<GKeyFile, decltype(&g_key_file_free)> gKeyFile;
-
-    // methods
-public:
-    template<typename Value>
-    void setValue(const QString &key, const Value &value, const GroupName &group);
+    void setValue(const QString &key, const QString &value, const GroupName &group)
+    {
+        g_key_file_set_string(this->gKeyFile.get(),
+                              group.toLocal8Bit().constData(),
+                              key.toLocal8Bit().constData(),
+                              value.toLocal8Bit().constData());
+    }
 
     template<typename Value>
-    auto getValue(const QString &key, const GroupName &group) const -> error::Result<Value>;
+    auto getValue(const QString &key, const GroupName &group) const -> error::Result<Value>
+    {
+        LINGLONG_TRACE(QString("get %1 from %2").arg(key, group));
+
+        g_autoptr(GError) gErr = nullptr;
+        g_autofree gchar *value = g_key_file_get_string(this->gKeyFile.get(),
+                                                        group.toLocal8Bit().constData(),
+                                                        key.toLocal8Bit().constData(),
+                                                        &gErr);
+
+        if (gErr != nullptr) {
+            return LINGLONG_ERR("g_key_file_get_string", gErr);
+        }
+
+        return value;
+    }
 
     auto getGroups() -> QStringList
     {
@@ -95,7 +98,7 @@ public:
         LINGLONG_TRACE("get keys from " + group);
 
         g_autoptr(GError) gErr = nullptr;
-        gsize length;
+        gsize length{ 0 };
         g_auto(GStrv) keys = g_key_file_get_keys(this->gKeyFile.get(),
                                                  group.toLocal8Bit().constData(),
                                                  &length,
@@ -132,10 +135,11 @@ public:
         LINGLONG_TRACE(QString("check %1 is in %2 or not").arg(key).arg(group));
 
         g_autoptr(GError) gErr = nullptr;
-        if (!g_key_file_has_key(this->gKeyFile.get(),
-                                group.toLocal8Bit().constData(),
-                                key.toLocal8Bit().constData(),
-                                &gErr)) {
+        if (g_key_file_has_key(this->gKeyFile.get(),
+                               group.toLocal8Bit().constData(),
+                               key.toLocal8Bit().constData(),
+                               &gErr)
+            == FALSE) {
             if (gErr != nullptr) {
                 return LINGLONG_ERR("g_key_file_has_key", gErr);
             }
@@ -143,37 +147,12 @@ public:
         }
         return true;
     }
+
+private:
+    GKeyFileWrapper()
+        : gKeyFile(std::unique_ptr<GKeyFile, decltype(&g_key_file_free)>(g_key_file_new(),
+                                                                         g_key_file_free)) {};
+    std::unique_ptr<GKeyFile, decltype(&g_key_file_free)> gKeyFile;
 };
-
-template<>
-inline void GKeyFileWrapper::setValue(const QString &key,
-                                   const QString &value,
-                                   const GroupName &group)
-{
-    g_key_file_set_string(this->gKeyFile.get(),
-                          group.toLocal8Bit().constData(),
-                          key.toLocal8Bit().constData(),
-                          value.toLocal8Bit().constData());
-}
-
-template<>
-[[nodiscard]] inline auto GKeyFileWrapper::getValue(
-  const QString &key, const GroupName &group) const -> error::Result<QString>
-{
-    LINGLONG_TRACE(QString("get %1 from %2").arg(key, group));
-
-    g_autoptr(GError) gErr = nullptr;
-
-    g_autofree gchar *value = g_key_file_get_string(this->gKeyFile.get(),
-                                                    group.toLocal8Bit().constData(),
-                                                    key.toLocal8Bit().constData(),
-                                                    &gErr);
-
-    if (gErr != nullptr) {
-        return LINGLONG_ERR("g_key_file_get_string", gErr);
-    }
-
-    return value;
-}
 
 } // namespace linglong::utils

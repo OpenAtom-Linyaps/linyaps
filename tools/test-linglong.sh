@@ -88,5 +88,5 @@ ll-cli list | grep org.dde.calendar | grep -vq unuse
 # 最新版本没有lang-ja模块，升级后删除lang-ja模块，保留其他模块
 ll-cli upgrade org.dde.calendar
 ll-cli list | grep org.dde.calendar | grep -q binary
+ll-cli list | grep org.dde.calendar | grep -q develop
 ll-cli list | grep org.dde.calendar | grep -vq lang-ja
-ll-cli list | grep org.dde.calendar | grep -vq unuse

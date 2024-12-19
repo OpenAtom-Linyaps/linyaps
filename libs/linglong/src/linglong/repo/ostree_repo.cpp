@@ -1892,14 +1892,37 @@ utils::error::Result<std::vector<std::string>> OSTreeRepo::getRemoteModuleList(
     if (!list.has_value()) {
         return LINGLONG_ERR("list remote reference", fuzzy);
     }
+    if (list->size() == 0) {
+        return {};
+    }
+    auto include = [](const std::vector<std::string> &arr, const std::string &item) {
+        return std::find(arr.begin(), arr.end(), item) != arr.end();
+    };
     std::vector<std::string> modules;
     for (const auto &ref : *list) {
-        auto m = ref.packageInfoV2Module;
+        auto remoteModule = ref.packageInfoV2Module;
+        // 如果不筛选，返回所有module
         if (!filter.has_value()) {
-            modules.push_back(m);
-        } else if (std::find(filter->begin(), filter->end(), m) != filter->end()) {
-            modules.push_back(m);
+            modules.push_back(remoteModule);
+            continue;
         }
+        // 如果筛选，只返回指定的module
+        if (include(filter.value(), remoteModule)) {
+            modules.push_back(remoteModule);
+            continue;
+        }
+        // TODO 在未来删除对旧版本runtime module的兼容
+
+        // 如果过滤列表包含runtime，可以使用binary替换
+        // 这一般是在升级时，本地runtime模块升级到binary模块
+        if (remoteModule == "binary" && include(filter.value(), "runtime")) {
+            modules.push_back(remoteModule);
+            continue;
+        }
+    }
+    // 如果想安装binary模块，但远程没有binary模块，就安装runtime模块
+    if (include(filter.value(), "binary") && !include(modules, "binary")) {
+        modules.push_back("runtime");
     }
     std::sort(modules.begin(), modules.end());
     auto it = std::unique(modules.begin(), modules.end());

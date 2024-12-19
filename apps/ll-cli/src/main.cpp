@@ -121,7 +121,7 @@ void ensureDirectory(const std::filesystem::path &dir)
         }
 
         if (!std::filesystem::create_directory(dir, ec)) {
-            qCritical() << "failed to create directory:" << ec.message().c_str();
+            qCritical() << "failed to create directory :" << dir.c_str() << ec.message().c_str();
             QCoreApplication::exit(ec.value());
             std::abort();
         }
@@ -307,10 +307,7 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
                      ->group(CliAppManagingGroup)
                      ->fallthrough();
     cliKill->usage(_("Usage: ll-cli kill [OPTIONS] APP"));
-    cliKill
-      ->add_option("APP",
-                   options.appid,
-                   _("Specify the running application"))
+    cliKill->add_option("APP", options.appid, _("Specify the running application"))
       ->required()
       ->check(validatorString);
 

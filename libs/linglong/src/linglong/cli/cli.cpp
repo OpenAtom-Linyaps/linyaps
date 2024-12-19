@@ -1790,19 +1790,18 @@ int Cli::content()
     std::error_code ec;
     if (!std::filesystem::is_symlink(file, ec)) {
         if (ec) {
-            qWarning() << "failed to check symlink " << file.c_str() << ":" << ec.message().c_str()
-                       << ", passing the file path to app as it is.";
+            qCritical() << "failed to check symlink " << file.c_str() << ":"
+                        << ec.message().c_str();
         }
 
-        return file;
+        return std::filesystem::path{ "/run/host/rootfs" } / file.lexically_relative("/");
     }
 
     std::array<char, PATH_MAX + 1> buf{};
     auto *target = ::realpath(file.c_str(), buf.data());
     if (target == nullptr) {
-        qWarning() << "resolve symlink " << file.c_str() << " error: " << ::strerror(errno)
-                   << ", passing the file path to app as it is.";
-        return file;
+        qCritical() << "resolve symlink " << file.c_str() << " error: " << ::strerror(errno);
+        return std::filesystem::path{ "/run/host/rootfs" } / file.lexically_relative("/");
     }
 
     return std::filesystem::path{ "/run/host/rootfs" }

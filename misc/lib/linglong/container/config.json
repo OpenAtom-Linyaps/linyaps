@@ -1,1 +1,32 @@
-null
+{
+	"ociVersion": "1.0.1",
+	"hostname": "linglong",
+	"annotations": {
+		"org.deepin.linglong.appID": ""
+	},
+	"root": {
+		"path": ""
+	},
+	"linux": {
+		"namespaces": [
+			{
+				"type": "pid"
+			},
+			{
+				"type": "mount"
+			},
+			{
+				"type": "uts"
+			},
+			{
+				"type": "user"
+			}
+		]
+	},
+	"mounts": [],
+	"process": {
+		"env": ["LINGLONG_LD_SO_CACHE=/run/linglong/cache/ld.so.cache"],
+		"cwd": "/",
+		"args": ["bash"]
+	}
+}

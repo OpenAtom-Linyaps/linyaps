@@ -1,1 +1,55 @@
-null
+{
+	"ociVersion": "1.0.1",
+	"patch": [
+		{
+			"op": "add",
+			"path": "/mounts/-",
+			"value": {
+				"destination": "/usr/share/fonts",
+				"type": "bind",
+				"source": "/usr/share/fonts",
+				"options": ["rbind", "ro"]
+			}
+		},
+		{
+			"op": "add",
+			"path": "/mounts/-",
+			"value": {
+				"destination": "/usr/share/icons",
+				"type": "bind",
+				"source": "/usr/share/icons",
+				"options": ["rbind", "ro"]
+			}
+		},
+		{
+			"op": "add",
+			"path": "/mounts/-",
+			"value": {
+				"destination": "/etc/ssl/certs",
+				"type": "bind",
+				"source": "/etc/ssl/certs",
+				"options": ["rbind", "ro"]
+			}
+		},
+		{
+			"op": "add",
+			"path": "/mounts/-",
+			"value": {
+				"destination": "/etc/machine-id",
+				"type": "bind",
+				"source": "/etc/machine-id",
+				"options": ["rbind", "ro"]
+			}
+		},
+		{
+			"op": "add",
+			"path": "/mounts/-",
+			"value": {
+				"destination": "/usr/share/themes",
+				"type": "bind",
+				"source": "/usr/share/themes",
+				"options": ["rbind", "ro"]
+			}
+		}
+	]
+}

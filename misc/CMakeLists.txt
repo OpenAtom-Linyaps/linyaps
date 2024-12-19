@@ -110,9 +110,6 @@ install(
   FILES ${LINGLONG_CONFIG_DIR}/10-basics.json
         ${LINGLONG_CONFIG_DIR}/25-host-rootfs.json
         ${LINGLONG_CONFIG_DIR}/25-host-statics.json
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/linglong/container/config.d)
-
-install(PROGRAMS
         ${LINGLONG_CONFIG_DIR}/00-id-mapping
         ${LINGLONG_CONFIG_DIR}/05-initialize
         ${LINGLONG_CONFIG_DIR}/20-devices

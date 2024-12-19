@@ -67,3 +67,6 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 19. How can I know which packages are installed in a container environment?
 
     Enter the container environment using the command `ll-builder run --exec bash`. To view the pre-installed packages, utilize the command `cat /var/lib/dpkg/status | grep "^Package: "`. Additionally, for libraries compiled from source code, you can inspect them using `cat /runtime/packages.list`.
+20. Why is the application tray not displayed after the application is launched?
+
+    This issue might be caused by applications registering to the system tray using the same service name. According to the KDE/freedesktop StatusNotifierItem specification, applications register with a service name in the format of org.kde.StatusNotifierItem-`<process id>`-`<instance number>`. In the case of the linyaps application, the PID during runtime is 19. You can check whether there's a registered service using the following command: `dbus-send --session --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.NameHasOwner string:org.kde.StatusNotifierItem-19-1` If the reply contains boolean true, it indicates that the service has been registered.

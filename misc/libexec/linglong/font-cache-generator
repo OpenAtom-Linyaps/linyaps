@@ -11,7 +11,7 @@ font_conf_generator()
 	local font_conf_prefix="$1/fonts"
 	local font_conf="${font_conf_prefix}/fonts.conf"
 	local app_id=$2
-	mkdir ${font_conf_prefix}
+	mkdir ${font_conf_prefix} || true
 
 cat << EOF > ${font_conf}
 <?xml version="1.0"?>

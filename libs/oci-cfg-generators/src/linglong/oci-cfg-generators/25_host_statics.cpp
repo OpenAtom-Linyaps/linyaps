@@ -11,76 +11,14 @@
 namespace linglong::generator {
 bool HostStatics::generate(ocppi::runtime::config::types::Config &config) const noexcept
 {
-    auto rawPatch = R"({
-    "ociVersion": "1.0.1",
-    "patch": [
-        {
-            "op": "add",
-            "path": "/mounts/-",
-            "value": {
-                "destination": "/usr/share/fonts",
-                "type": "bind",
-                "source": "/usr/share/fonts",
-                "options": [
-                    "rbind",
-                    "ro"
-                ]
-            }
-        },
-        {
-            "op": "add",
-            "path": "/mounts/-",
-            "value": {
-                "destination": "/usr/share/icons",
-                "type": "bind",
-                "source": "/usr/share/icons",
-                "options": [
-                    "rbind",
-                    "ro"
-                ]
-            }
-        },
-        {
-            "op": "add",
-            "path": "/mounts/-",
-            "value": {
-                "destination": "/etc/ssl/certs",
-                "type": "bind",
-                "source": "/etc/ssl/certs",
-                "options": [
-                    "rbind",
-                    "ro"
-                ]
-            }
-        },
-        {
-            "op": "add",
-            "path": "/mounts/-",
-            "value": {
-                "destination": "/etc/machine-id",
-                "type": "bind",
-                "source": "/etc/machine-id",
-                "options": [
-                    "rbind",
-                    "ro"
-                ]
-            }
-        },
-        {
-            "op": "add",
-            "path": "/mounts/-",
-            "value": {
-                "destination": "/usr/share/themes",
-                "type": "bind",
-                "source": "/usr/share/themes",
-                "options": [
-                    "rbind",
-                    "ro"
-                ]
-            }
-        }
-    ]
-})"_json;
+    nlohmann::json rawPatch;
+
+    try {
+        rawPatch = nlohmann::json::parse(hostStaticsPatch);
+    } catch (const std::exception &e) {
+        std::cerr << "parse basicsPatch failed:" << e.what() << std::endl;
+        return false;
+    }
 
     if (config.ociVersion != rawPatch["ociVersion"].get<std::string>()) {
         std::cerr << "ociVersion mismatched" << std::endl;

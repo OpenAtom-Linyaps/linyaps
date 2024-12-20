@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "generator.h"
+#include "linglong/oci-cfg-generators/generator.h"
 
 namespace linglong::generator {
 

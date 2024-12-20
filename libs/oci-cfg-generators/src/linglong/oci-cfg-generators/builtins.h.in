@@ -4,53 +4,22 @@
 
 #pragma once
 
-#include "00_id_mapping.h"
-#include "05_initialize.h"
-#include "10_basics.h"
-#include "20_devices.h"
-#include "25_host_env.h"
-#include "25_host_rootfs.h"
-#include "25_host_statics.h"
-#include "30_user_home.h"
-#include "40_host_ipc.h"
-#include "90_legacy.h"
+#include "linglong/oci-cfg-generators/00_id_mapping.h"
+#include "linglong/oci-cfg-generators/05_initialize.h"
+#include "linglong/oci-cfg-generators/10_basics.h"
+#include "linglong/oci-cfg-generators/20_devices.h"
+#include "linglong/oci-cfg-generators/25_host_env.h"
+#include "linglong/oci-cfg-generators/25_host_rootfs.h"
+#include "linglong/oci-cfg-generators/25_host_statics.h"
+#include "linglong/oci-cfg-generators/30_user_home.h"
+#include "linglong/oci-cfg-generators/40_host_ipc.h"
+#include "linglong/oci-cfg-generators/90_legacy.h"
 
 namespace linglong::generator {
 
 using generators = std::map<std::string_view, std::unique_ptr<linglong::generator::Generator>>;
 
-constexpr auto initConfig = R"({
-    "ociVersion": "1.0.1",
-    "hostname": "linglong",
-    "annotations": {
-        "org.deepin.linglong.appID": ""
-    },
-    "root": {
-        "path": ""
-    },
-    "linux": {
-        "namespaces": [
-            {
-                "type": "pid"
-            },
-            {
-                "type": "mount"
-            },
-            {
-                "type": "uts"
-            },
-            {
-                "type": "user"
-            }
-        ]
-    },
-    "mounts": [],
-    "process": {
-        "env": ["LINGLONG_LD_SO_CACHE=/run/linglong/cache/ld.so.cache"],
-        "cwd": "/",
-        "args": ["bash"]
-    }
-})";
+constexpr auto initConfig = R"(@LINGLONG_OCI_CFG_GEN_CONFIG@)";
 
 inline const generators &builtin_generators() noexcept
 {

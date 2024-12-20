@@ -12,31 +12,14 @@ namespace linglong::generator {
 
 bool HostRootfs::generate(ocppi::runtime::config::types::Config &config) const noexcept
 {
-    auto rawPatch = R"({
-    "ociVersion": "1.0.1",
-    "patch": [
-        {
-            "op": "add",
-            "path": "/mounts/-",
-            "value": {
-                "destination": "/run/host",
-                "type": "tmpfs",
-                "source": "tmpfs",
-                "options": ["nodev", "nosuid", "mode=700"]
-            }
-        },
-        {
-            "op": "add",
-            "path": "/mounts/-",
-            "value": {
-                "destination": "/run/host/rootfs",
-                "type": "bind",
-                "source": "/",
-                "options": ["rbind"]
-            }
-        }
-    ]
-})"_json;
+    nlohmann::json rawPatch;
+
+    try {
+        rawPatch = nlohmann::json::parse(hostRootfsPatch);
+    } catch (const std::exception &e) {
+        std::cerr << "parse basicsPatch failed:" << e.what() << std::endl;
+        return false;
+    }
 
     if (config.ociVersion != rawPatch["ociVersion"].get<std::string>()) {
         std::cerr << "ociVersion mismatched" << std::endl;

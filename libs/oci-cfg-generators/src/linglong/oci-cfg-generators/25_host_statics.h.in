@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "generator.h"
+#include "linglong/oci-cfg-generators/generator.h"
 
 namespace linglong::generator {
 
@@ -13,6 +13,11 @@ struct HostStatics : public Generator
     [[nodiscard]] std::string_view name() const override { return "25-host-statics"; }
 
     bool generate(ocppi::runtime::config::types::Config &config) const noexcept override;
+
+private:
+    static constexpr std::string_view hostStaticsPatch{
+        R"(@LINGLONG_OCI_CFG_GEN_25_HOST_STATICS@)"
+    };
 };
 
 } // namespace linglong::generator

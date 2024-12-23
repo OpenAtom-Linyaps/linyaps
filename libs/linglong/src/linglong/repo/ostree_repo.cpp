@@ -36,6 +36,7 @@
 #include <QProcess>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QtGlobal>
 
 #include <algorithm>
 #include <chrono>
@@ -2217,25 +2218,35 @@ OSTreeRepo::listLocalBy(const linglong::repo::repoCacheQuery &query) const noexc
 
 QString getOriginRawExec(const QString &execArgs, const QString &id)
 {
-    auto args = execArgs.split(" ");
-
     // Note: These strings have appeared in the app-conf-generator.sh of linglong-builder.
-    // So we need to remove them. If one of them appeared after '--' or '--exec', it will
-    // not be removed.
+    // We need to remove them. 
 
-    args.removeAt(args.indexOf("ll-cli"));
-    args.removeAt(args.indexOf("/usr/bin/ll-cli"));
-    args.removeAt(args.indexOf("run"));
-    args.removeAt(args.indexOf(id));
-    args.removeAt(args.indexOf("--"));
-    args.removeAt(args.indexOf("--exec"));
+    const QString oldExec = "--exec ";
+    const QString newExec = "-- ";
 
-    return args.join(" ");
+    auto index = execArgs.indexOf(oldExec);
+    if (index != -1) {
+        return execArgs.mid(index + oldExec.length());
+    }
+
+    index = execArgs.indexOf(newExec);
+    if (index != -1) {
+        return execArgs.mid(index + newExec.length());
+    }
+
+    qCritical() << "'-- ' or '--exec ' is not exist in" << execArgs
+                << ", return an empty string";
+    return "";
 }
 
 QString buildDesktopExec(QString origin, const QString &appID) noexcept
 {
     auto newExec = QString{ "%1 run %2 " }.arg(LINGLONG_CLIENT_PATH, appID);
+
+    if(origin.isEmpty()) {
+        Q_ASSERT(false);
+        return newExec;
+    }
 
     auto *begin = origin.begin();
     while (true) {
@@ -2286,7 +2297,7 @@ QString buildDesktopExec(QString origin, const QString &appID) noexcept
         break;
     }
 
-    return newExec.append(QString{ "-- %1" }.arg(std::move(origin)));
+    return newExec.append(QString{ "-- %1" }.arg(origin));
 }
 
 utils::error::Result<void> desktopFileRewrite(const QString &filePath, const QString &id)
@@ -2321,7 +2332,7 @@ utils::error::Result<void> desktopFileRewrite(const QString &filePath, const QSt
 
         auto rawExec = *originExec;
         if (originExec->contains(LINGLONG_CLIENT_NAME)) {
-            qInfo() << "The Exec section in" << filePath << "has been generated, rewrite again.";
+            qDebug() << "The Exec section in" << filePath << "has been generated, rewrite again.";
             rawExec = getOriginRawExec(*originExec, id);
         }
 
@@ -2366,7 +2377,7 @@ utils::error::Result<void> dbusServiceRewrite(const QString &filePath, const QSt
 
     auto rawExec = *originExec;
     if (originExec->contains(LINGLONG_CLIENT_NAME)) {
-        qInfo() << "The Exec Section in" << filePath << "has been generated, rewrite again.";
+        qDebug() << "The Exec section in" << filePath << "has been generated, rewrite again.";
         rawExec = getOriginRawExec(*originExec, id);
     }
 
@@ -2410,7 +2421,7 @@ utils::error::Result<void> systemdServiceRewrite(const QString &filePath, const 
 
         auto rawExec = *originExec;
         if (originExec->contains(LINGLONG_CLIENT_NAME)) {
-            qInfo() << "The Exec Section in" << filePath << "has been generated, rewrite again.";
+            qDebug() << "The Exec section in" << filePath << "has been generated, rewrite again.";
             rawExec = getOriginRawExec(*originExec, id);
         }
 
@@ -2454,7 +2465,7 @@ utils::error::Result<void> contextMenuRewrite(const QString &filePath, const QSt
         }
         auto rawExec = *originExec;
         if (originExec->contains(LINGLONG_CLIENT_NAME)) {
-            qInfo() << "The Exec Section in" << filePath << "has been generated, rewrite again.";
+            qDebug() << "The Exec section in" << filePath << "has been generated, rewrite again.";
             rawExec = getOriginRawExec(*originExec, id);
         }
 

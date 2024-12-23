@@ -33,11 +33,11 @@ export DBUS_SYSTEM_BUS_ADDRESS="unix:path=/var/run/dbus/system_bus_socket,test=2
 ll-builder run --exec export | grep DBUS_SYSTEM_BUS_ADDRESS | grep test=2
 
 #运行并安装uab
-sudo ll-cli uninstall org.dde.demo || true
+ll-cli uninstall org.dde.demo || true
 ./org.dde.demo_x86_64_0.0.0.1_main.uab
 
 #安装构建的应用
-sudo ll-cli uninstall org.dde.demo || true
+ll-cli uninstall org.dde.demo || true
 ll-cli install org.dde.demo_0.0.0.1_x86_64_binary.layer
 
 #运行安装好的demo
@@ -61,19 +61,19 @@ ll-cli search . --type=runtime
 appid=org.dde.calendar
 test_version=5.13.1.1
 #先卸载再安装
-sudo ll-cli uninstall "$appid" || true
+ll-cli uninstall "$appid" || true
 
 #ll-cli install命令用来安装玲珑应用
-sudo ll-cli install "$appid"
+ll-cli install "$appid"
 
 #先卸载再安装
-sudo ll-cli uninstall "$appid"
+ll-cli uninstall "$appid"
 
 #安装指定版本
-sudo ll-cli install "$appid/$test_version"
+ll-cli install "$appid/$test_version"
 
 #更新新版本
-sudo ll-cli upgrade "$appid"
+ll-cli upgrade "$appid"
 
 #运行玲珑应用
 ll-cli run "$appid" &

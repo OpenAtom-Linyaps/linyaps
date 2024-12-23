@@ -889,9 +889,10 @@ int Cli::install()
     QDBusReply<QString> authReply = this->authorization();
     if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
         auto args = QCoreApplication::instance()->arguments();
+        std::error_code ec;
         // pkexec在0.120版本之前没有keep-cwd选项，会将目录切换到/root
         // 所以将layer或uab文件的相对路径转为绝对路径，再传给pkexec
-        if (std::filesystem::exists(options.appid)) {
+        if (std::filesystem::exists(options.appid, ec)) {
             auto path = std::filesystem::absolute(options.appid);
             for (auto i = 0; i < args.length(); i++) {
                 if (args[i] == options.appid.c_str()) {
@@ -899,11 +900,16 @@ int Cli::install()
                 }
             }
         }
+        if (ec) {
+            this->printer.printErr(LINGLONG_ERRV(ec.message().c_str()));
+            return -1;
+        }
         auto ret = this->runningAsRoot(args);
         if (!ret) {
             this->printer.printErr(ret.error());
+            return -1;
         }
-        return -1;
+        return 0;
     }
 
     auto app = QString::fromStdString(options.appid);

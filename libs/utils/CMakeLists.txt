@@ -39,6 +39,8 @@ pfl_add_library(
   src/linglong/utils/std_helper/qdebug_helper.h
   src/linglong/utils/transaction.cpp
   src/linglong/utils/transaction.h
+  src/linglong/utils/file.cpp
+  src/linglong/utils/file.h
   src/linglong/utils/xdg/desktop_entry.cpp
   src/linglong/utils/xdg/desktop_entry.h
   src/linglong/utils/xdg/directory.h

@@ -2115,14 +2115,14 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
     }
 
     if (!target.empty()) {
-        auto pruneRet = this->repo.prune();
-        if (!pruneRet) {
-            return LINGLONG_ERR(pruneRet);
-        }
         auto mergeRet = this->repo.mergeModules();
         if (!mergeRet.has_value()) {
             qCritical() << "merge modules failed: " << mergeRet.error().message();
         }
+    }
+    auto pruneRet = this->repo.prune();
+    if (!pruneRet) {
+        return LINGLONG_ERR(pruneRet);
     }
     return LINGLONG_OK;
 }

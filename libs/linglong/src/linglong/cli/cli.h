@@ -69,6 +69,7 @@ public:
     int info();
     int content();
     int prune();
+    int dir();
 
     void cancelCurrentTask();
 

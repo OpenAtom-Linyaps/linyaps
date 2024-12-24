@@ -318,8 +318,8 @@ void cleanResource() noexcept
         }
 
         if (pid == 0) {
-            if (::execlp("umount", "umount", "-l", mountPoint.c_str(), nullptr) == -1) {
-                std::cerr << "umount error: " << ::strerror(errno) << std::endl;
+            if (::execlp("fusermount", "fusermount", "-u", mountPoint.c_str(), nullptr) == -1) {
+                std::cerr << "fusermount error: " << ::strerror(errno) << std::endl;
                 return false;
             }
         }

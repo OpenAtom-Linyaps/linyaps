@@ -119,11 +119,10 @@ int lockCheck() noexcept
         ::close(fd);
     });
 
-    struct flock lock_info{ .l_type = F_RDLCK,
-                            .l_whence = SEEK_SET,
-                            .l_start = 0,
-                            .l_len = 0,
-                            .l_pid = 0 };
+    struct flock lock_info
+    {
+        .l_type = F_RDLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0, .l_pid = 0
+    };
 
     if (::fcntl(fd, F_GETLK, &lock_info) == -1) {
         qCritical() << "failed to get lock" << lock;
@@ -549,6 +548,14 @@ ll-cli list --upgradable
           return {};
       });
 
+    // add sub command dir
+    auto cliLayerDir =
+      commandParser.add_subcommand("dir", "Get the layer directory of app(base or runtime)")
+        ->group(CliHiddenGroup);
+    cliLayerDir->add_option("APP", options.appid, _("Specify the installed app(base or runtime)"))
+      ->required()
+      ->check(validatorString);
+
     auto res = transformOldExec(argc, argv);
     CLI11_PARSE(commandParser, std::move(res));
 
@@ -733,7 +740,8 @@ ll-cli list --upgradable
               { "content", &Cli::content },
               { "prune", &Cli::prune },
               { "inspect", &Cli::inspect },
-              { "repo", &Cli::repo }
+              { "repo", &Cli::repo },
+              { "dir", &Cli::dir }
           };
 
           if (QObject::connect(QCoreApplication::instance(),

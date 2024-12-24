@@ -81,6 +81,7 @@ public:
     int content(CLI::App *subcommand);
     int prune(CLI::App *subcommand);
     int inspect(CLI::App *subcommand);
+    int dir(CLI::App *subcommand);
 
     void cancelCurrentTask();
 

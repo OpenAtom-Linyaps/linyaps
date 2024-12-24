@@ -37,6 +37,7 @@
 #include <QEventLoop>
 #include <QFileInfo>
 
+#include <cstdlib>
 #include <filesystem>
 #include <iostream>
 #include <system_error>
@@ -46,6 +47,84 @@
 #include <sys/mman.h>
 
 using namespace linglong::utils::error;
+
+namespace {
+
+static std::vector<std::string> getAutoModuleList() noexcept
+{
+    auto getModuleFromLanguageEnv = [](const std::string &lang) -> std::vector<std::string> {
+        if (lang.length() < 2) {
+            return {};
+        }
+
+        if (!std::all_of(lang.begin(), lang.begin() + 2, [](char c) {
+                return 'a' <= c && c <= 'z';
+            })) {
+            return {};
+        }
+
+        std::vector<std::string> modules;
+        modules.push_back("lang_" + lang.substr(0, 2));
+
+        if (lang.length() == 2) {
+            return modules;
+        }
+
+        if (lang[2] == '.') {
+            return modules;
+        }
+
+        if (lang[2] == '@') {
+            return modules;
+        }
+
+        if (lang[2] != '_') {
+            return {};
+        }
+
+        if (lang.length() < 5) {
+            return {};
+        }
+
+        modules.push_back("lang_" + lang.substr(0, 5));
+
+        if (lang.length() == 5) {
+            return modules;
+        }
+
+        if (lang[5] == '.') {
+            return modules;
+        }
+
+        if (lang[5] == '@') {
+            return modules;
+        }
+
+        return {};
+    };
+
+    auto envs = {
+        "LANG",           "LC_ADDRESS",  "LC_ALL",       "LC_IDENTIFICATION",
+        "LC_MEASUREMENT", "LC_MESSAGES", "LC_MONETARY",  "LC_NAME",
+        "LC_NUMERIC",     "LC_PAPER",    "LC_TELEPHONE", "LC_TIME",
+    };
+
+    std::vector<std::string> result = { "binary" };
+
+    for (const auto &env : envs) {
+        auto lang = getenv(env);
+        if (lang == nullptr) {
+            continue;
+        }
+        auto modules = getModuleFromLanguageEnv(lang);
+        result.insert(result.end(), modules.begin(), modules.end());
+    }
+
+    std::sort(result.begin(), result.end());
+    return { result.begin(), std::unique(result.begin(), result.end()) };
+}
+
+} // namespace
 
 namespace linglong::cli {
 
@@ -953,7 +1032,14 @@ int Cli::install()
     }
 
     if (!options.module.empty()) {
-        params.package.packageManager1PackageModule = options.module;
+        params.package.modules = { options.module };
+    } else {
+        params.package.modules = getAutoModuleList();
+    }
+
+    qDebug() << "Install modules";
+    for (const auto &module : *params.package.modules) {
+        qDebug() << module.c_str();
     }
 
     auto pendingReply = this->pkgMan.Install(utils::serialize::toQVariantMap(params));

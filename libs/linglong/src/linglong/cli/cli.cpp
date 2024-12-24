@@ -1785,6 +1785,34 @@ int Cli::content()
     return 0;
 }
 
+int Cli::dir()
+{
+    LINGLONG_TRACE("command content");
+
+    auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(options.appid));
+    if (!fuzzyRef) {
+        this->printer.printErr(fuzzyRef.error());
+        return -1;
+    }
+
+    auto ref = this->repository.clearReference(*fuzzyRef,
+                                               { .forceRemote = false, .fallbackToRemote = false });
+    if (!ref) {
+        qDebug() << ref.error();
+        this->printer.printErr(LINGLONG_ERRV("Can not find such application."));
+        return -1;
+    }
+
+    auto layerItem = this->repository.getLayerItem(*ref);
+    if (!layerItem) {
+        this->printer.printErr(layerItem.error());
+        return -1;
+    }
+
+    std::cout << layerItem->commit << std::endl;
+    return 0;
+}
+
 [[nodiscard]] std::filesystem::path Cli::mappingFile(const std::filesystem::path &file) noexcept
 {
     std::error_code ec;

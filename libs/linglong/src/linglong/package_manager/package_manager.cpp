@@ -1092,12 +1092,26 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     if (!paras) {
         return toDBusReply(paras);
     }
+
+    api::types::v1::PackageManager1Package package;
+    package.id = paras->package.id;
+    package.channel = paras->package.channel;
+    package.version = paras->package.version;
+
     // 解析用户输入
-    auto fuzzyRef = fuzzyReferenceFromPackage(paras->package);
+    auto fuzzyRef = fuzzyReferenceFromPackage(package);
     if (!fuzzyRef) {
         return toDBusReply(fuzzyRef);
     }
-    auto curModule = paras->package.packageManager1PackageModule.value_or("binary");
+
+    std::string curModule = "binary";
+
+    if (paras->package.modules && paras->package.modules->size() == 1) {
+        // Manually install single module
+        curModule = paras->package.modules->front();
+    }
+
+    auto modules = paras->package.modules.value_or(std::vector<std::string>{ curModule });
 
     // 安装module
     if (curModule != "binary") {
@@ -1207,6 +1221,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
                         ? std::make_optional(std::move(localRef).value())
                         : std::nullopt,
                       curModule,
+                      modules,
                       skipInteraction = paras->options.skipInteraction,
                       msgType,
                       additionalMessage](PackageTask &taskRef) {
@@ -1236,11 +1251,11 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
         if (isTaskDone(taskRef.subState())) {
             return;
         }
-        auto modules = std::vector{ curModule };
-        if (localRef.has_value()) {
-            modules = this->repo.getModuleList(*localRef);
-        }
-        this->Install(taskRef, remoteRef, localRef, modules);
+
+        this->Install(taskRef,
+                      remoteRef,
+                      localRef,
+                      localRef.has_value() ? this->repo.getModuleList(*localRef) : modules);
     };
 
     auto taskRet = tasks.addNewTask({ refSpec }, std::move(installer), connection());

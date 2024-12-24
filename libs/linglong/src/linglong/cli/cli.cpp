@@ -2326,11 +2326,9 @@ Cli::RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept
         ::close(fd);
     });
 
-    struct flock lock{
-        .l_type = F_WRLCK,
-        .l_whence = SEEK_SET,
-        .l_start = 0,
-        .l_len = 0,
+    struct flock lock
+    {
+        .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0,
     };
 
     // all later processes should be blocked
@@ -2529,7 +2527,10 @@ Cli::ensureCache(const package::Reference &ref,
     auto appCache = std::filesystem::path(LINGLONG_ROOT) / "cache" / appLayerItem.commit;
     const auto fileLock = std::filesystem::path("/run/linglong/") / appLayerItem.commit / ".lock";
 
-    struct flock locker{ .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
+    struct flock locker
+    {
+        .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0
+    };
 
     // Note: If the cache directory exists, check if there is a file lock.
     //       If the lock file is not exist, it means that the cache has been generated.
@@ -2666,6 +2667,34 @@ int Cli::inspect([[maybe_unused]] CLI::App *subcommand)
     }
 
     this->printer.printInspect(result);
+    return 0;
+}
+
+int Cli::dir([[maybe_unused]] CLI::App *subcommand)
+{
+    LINGLONG_TRACE("command dir");
+
+    auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(options.appid));
+    if (!fuzzyRef) {
+        this->printer.printErr(fuzzyRef.error());
+        return -1;
+    }
+
+    auto ref = this->repository.clearReference(*fuzzyRef,
+                                               { .forceRemote = false, .fallbackToRemote = false });
+    if (!ref) {
+        qDebug() << ref.error();
+        this->printer.printErr(LINGLONG_ERRV("Can not find such application."));
+        return -1;
+    }
+
+    auto layerItem = this->repository.getLayerItem(*ref);
+    if (!layerItem) {
+        this->printer.printErr(layerItem.error());
+        return -1;
+    }
+
+    std::cout << layerItem->commit << std::endl;
     return 0;
 }
 

@@ -13,6 +13,7 @@
 
 #include <QDBusContext>
 #include <QDBusObjectPath>
+#include <QEvent>
 #include <QMap>
 #include <QObject>
 #include <QString>
@@ -26,6 +27,8 @@ Q_DECLARE_METATYPE(linglong::api::types::v1::SubState)
 
 namespace linglong::service {
 
+class PackageTaskQueue;
+
 class PackageTask : public QObject, protected QDBusContext
 {
     Q_OBJECT
@@ -35,13 +38,15 @@ public:
     Q_PROPERTY(double Percentage READ getPercentage NOTIFY PercentageChanged)
     Q_PROPERTY(QString Message MEMBER m_message NOTIFY MessageChanged)
 
-    explicit PackageTask(QDBusConnection connection, QStringList refs, QObject *parent = nullptr);
+    explicit PackageTask(const QDBusConnection &connection,
+                         QStringList refs,
+                         std::function<void(PackageTask &)> job,
+                         QObject *parent);
     PackageTask(PackageTask &&other) = delete;
     PackageTask &operator=(PackageTask &&other) = delete;
     ~PackageTask() override;
 
     static PackageTask createTemporaryTask() noexcept;
-    std::unique_ptr<PackageTask> creatSubTask(double partOfTotal) noexcept;
 
     friend bool operator==(const PackageTask &lhs, const PackageTask &rhs)
     {
@@ -94,15 +99,7 @@ public:
 
     auto cancellable() noexcept { return m_cancelFlag; }
 
-    bool isRefExist(const QString &ref) const noexcept
-    {
-        return m_refs.contains(ref)
-          && this->m_state != static_cast<int>(linglong::api::types::v1::State::Canceled);
-    }
-
-    auto getJob() { return m_job; }
-
-    void setJob(std::function<void()> job) { m_job = job; };
+    utils::error::Result<void> run() noexcept;
 
     [[nodiscard]] double getPercentage() const noexcept
     {
@@ -128,6 +125,7 @@ Q_SIGNALS:
     void PartChanged(uint fetched, uint request);
 
 private:
+    friend class PackageTaskQueue;
     PackageTask();
     int m_state{ static_cast<int>(linglong::api::types::v1::State::Queued) };
     int m_subState{ static_cast<int>(linglong::api::types::v1::SubState::Unknown) };
@@ -139,7 +137,7 @@ private:
     QStringList m_refs;
     uint m_taskParts{ 0 };
     GCancellable *m_cancelFlag{ nullptr };
-    std::optional<std::function<void()>> m_job;
+    std::function<void(PackageTask &)> m_job;
     utils::dbus::PropertiesForwarder *m_forwarder{ nullptr };
 
     inline static QMap<linglong::api::types::v1::SubState, double> m_subStateMap{
@@ -155,6 +153,59 @@ private:
     };
 
     void changePropertiesDone() const noexcept;
+};
+
+class PackageTaskQueue : public QObject
+
+{
+    Q_OBJECT
+public:
+    explicit PackageTaskQueue(QObject *parent);
+
+    template<typename Func>
+    utils::error::Result<std::reference_wrapper<PackageTask>>
+    addNewTask(const QStringList &refs,
+               Func &&job,
+               const QDBusConnection &conn = QDBusConnection::sessionBus()) noexcept
+    {
+        LINGLONG_TRACE("add new task");
+        static_assert(std::is_invocable_r_v<void, Func, PackageTask &>,
+                      "mismatch function signature");
+        auto exist =
+          std::any_of(m_taskQueue.begin(), m_taskQueue.end(), [&refs](const PackageTask &task) {
+              QStringList intersection;
+              std::set_intersection(refs.begin(),
+                                    refs.end(),
+                                    task.m_refs.begin(),
+                                    task.m_refs.end(),
+                                    std::back_inserter(intersection));
+              if (intersection.empty()) {
+                  return false;
+              }
+
+              for (const auto &ref : intersection) {
+                  qWarning() << "ref " << ref << " is operating by task " << task.taskID();
+              }
+
+              return true;
+          });
+
+        if (exist) {
+            return LINGLONG_ERR("ref conflict");
+        }
+        auto &ref = m_taskQueue.emplace_back(conn, refs, std::forward<Func>(job), this);
+
+        Q_EMIT taskAdded();
+        return ref;
+    }
+
+Q_SIGNALS:
+    void taskDone(const QString &id);
+    void startTask();
+    void taskAdded();
+
+private:
+    std::list<PackageTask> m_taskQueue;
 };
 
 } // namespace linglong::service

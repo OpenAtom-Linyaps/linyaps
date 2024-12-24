@@ -1836,13 +1836,13 @@ Cli::filePathMapping(const std::vector<std::string> &command) const noexcept
     // if the --file or --url option is specified, need to map the file path to the linglong
     // path(/run/host).
     for (const auto &arg : command) {
-        if (arg.rfind("%%", 0) != 0) {
+        if (arg.rfind('%', 0) != 0) {
             execArgs.emplace_back(arg);
             continue;
         }
 
-        if (arg == "%%f" || arg == "%%F") {
-            if (arg == "%%f" && options.filePaths.size() > 1) {
+        if (arg == "%f" || arg == "%F") {
+            if (arg == "%f" && options.filePaths.size() > 1) {
                 // refer:
                 // https://specifications.freedesktop.org/desktop-entry-spec/latest/exec-variables.html
                 qWarning() << "more than one file path specified, all file paths will be passed.";
@@ -1855,8 +1855,8 @@ Cli::filePathMapping(const std::vector<std::string> &command) const noexcept
             continue;
         }
 
-        if (arg == "%%u" || arg == "%%U") {
-            if (arg == "%%u" && options.fileUrls.size() > 1) {
+        if (arg == "%u" || arg == "%U") {
+            if (arg == "%u" && options.fileUrls.size() > 1) {
                 qWarning() << "more than one url specified, all file paths will be passed.";
             }
 

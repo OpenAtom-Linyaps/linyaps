@@ -148,9 +148,7 @@ private:
     utils::error::Result<void> generateCache(const package::Reference &ref) noexcept;
     utils::error::Result<void> removeCache(const package::Reference &ref) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT
-    std::list<PackageTask *> taskList;
-    // 正在运行的任务对象路径
-    QString runningTaskObjectPath;
+    PackageTaskQueue tasks;
 
     JobQueue m_search_queue = {};
     JobQueue m_prune_queue = {};

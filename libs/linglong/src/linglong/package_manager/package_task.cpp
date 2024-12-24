@@ -5,6 +5,7 @@
 #include "package_task.h"
 
 #include "linglong/adaptors/task/task1.h"
+#include "linglong/package_manager/package_manager.h"
 #include "linglong/utils/dbus/register.h"
 #include "linglong/utils/global/initialize.h"
 
@@ -22,39 +23,9 @@ PackageTask PackageTask::createTemporaryTask() noexcept
     return {};
 }
 
-std::unique_ptr<PackageTask> PackageTask::creatSubTask(double partOfTotal) noexcept
-{
-    if (partOfTotal >= TASK_DONE) {
-        qDebug() << "The total progress of subTask couldn't great than 100.";
-        return nullptr;
-    }
-
-    struct EnableMaker : public PackageTask
-    {
-        using PackageTask::PackageTask;
-    };
-
-    auto subTask = std::make_unique<EnableMaker>();
-    auto *subTaskPtr = subTask.get();
-    connect(subTaskPtr, &PackageTask::StateChanged, [this](int newState) {
-        this->setProperty("State", newState);
-    });
-    connect(subTaskPtr, &PackageTask::SubStateChanged, [this](int newSubState) {
-        this->setProperty("SubState", newSubState);
-    });
-    connect(subTaskPtr, &PackageTask::MessageChanged, [this](const QString &newMessage) {
-        this->setProperty("Message", newMessage);
-    });
-    connect(subTaskPtr, &PackageTask::PercentageChanged, [this, partOfTotal](double newPercentage) {
-        this->m_totalPercentage = newPercentage * partOfTotal;
-        Q_EMIT this->PercentageChanged(this->getPercentage());
-    });
-
-    return subTask;
-}
-
 PackageTask::PackageTask()
-    : m_taskID(QUuid::createUuid())
+    : m_state(static_cast<int>(linglong::api::types::v1::State::Processing))
+    , m_taskID(QUuid::createUuid())
     , m_cancelFlag(g_cancellable_new())
 {
     connect(utils::global::GlobalTaskControl::instance(),
@@ -63,11 +34,15 @@ PackageTask::PackageTask()
             &PackageTask::Cancel);
 }
 
-PackageTask::PackageTask(QDBusConnection connection, QStringList refs, QObject *parent)
+PackageTask::PackageTask(const QDBusConnection &connection,
+                         QStringList refs,
+                         std::function<void(PackageTask &)> job,
+                         QObject *parent)
     : QObject(parent)
     , m_taskID(QUuid::createUuid())
     , m_refs(std::move(refs))
     , m_cancelFlag(g_cancellable_new())
+    , m_job(std::move(job))
 {
     auto *ptr = new linglong::adaptors::task::Task1(this);
     const auto *mo = ptr->metaObject();
@@ -207,8 +182,87 @@ void PackageTask::Cancel() noexcept
 
     qInfo() << "task " << taskID() << "has been canceled by user";
     g_cancellable_cancel(m_cancelFlag);
+
+    const auto &id = taskID();
+    auto oldState = state();
     updateState(linglong::api::types::v1::State::Canceled,
-                QString{ "task %1 has been canceled by user" }.arg(taskID()));
+                QString{ "task %1 has been canceled by user" }.arg(id));
+    if (oldState == linglong::api::types::v1::State::Queued) {
+        auto *ptr = parent();
+        if (ptr == nullptr) { // temporary task
+            return;
+        }
+
+        Q_EMIT qobject_cast<PackageTaskQueue *>(ptr)->taskDone(id);
+    }
+}
+
+utils::error::Result<void> PackageTask::run() noexcept
+{
+    LINGLONG_TRACE("run task");
+    if (m_state != static_cast<int>(linglong::api::types::v1::State::Queued)) {
+        qInfo() << "task" << taskID() << " is not in queued state" << static_cast<int>(state());
+        return LINGLONG_ERR("task is not in queued state");
+    }
+
+    m_job(*this);
+    return LINGLONG_OK;
+}
+
+PackageTaskQueue::PackageTaskQueue(QObject *parent)
+    : QObject(parent)
+{
+    connect(this, &PackageTaskQueue::taskAdded, &PackageTaskQueue::startTask);
+    connect(this, &PackageTaskQueue::startTask, [this]() {
+        QMetaObject::invokeMethod(
+          QCoreApplication::instance(),
+          [this]() {
+              if (m_taskQueue.empty()) {
+                  return;
+              }
+
+              if (m_taskQueue.size() > 1) {
+                  qDebug() << "other task is running, wait for it done";
+                  return;
+              }
+
+              auto &task = m_taskQueue.front();
+              auto ret = task.run();
+              if (!ret) {
+                  qWarning() << ret.error();
+              }
+
+              Q_EMIT taskDone(task.taskID());
+          },
+          Qt::QueuedConnection);
+    });
+
+    connect(this, &PackageTaskQueue::taskDone, [this](const QString &taskID) {
+        auto task =
+          std::find_if(m_taskQueue.begin(), m_taskQueue.end(), [&taskID](const auto &task) {
+              return task.taskID() == taskID;
+          });
+
+        if (task == m_taskQueue.end()) {
+            qCritical() << "task " << taskID << " not found";
+            return;
+        }
+
+        // if queued task is done, only remove it from queue
+        // otherwise, remove it and start next task
+        bool isQueuedDone = task == m_taskQueue.begin();
+        Q_EMIT qobject_cast<PackageManager *>(this->parent())
+          ->TaskRemoved(QDBusObjectPath{ task->taskObjectPath() },
+                        static_cast<int>(task->state()),
+                        static_cast<int>(task->subState()),
+                        task->message(),
+                        task->getPercentage());
+        m_taskQueue.erase(task);
+
+        if (isQueuedDone) {
+            Q_EMIT startTask();
+        }
+    });
 }
 
 } // namespace linglong::service

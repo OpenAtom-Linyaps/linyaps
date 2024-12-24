@@ -521,6 +521,14 @@ ll-cli list --upgradable
       ->group(CliAppManagingGroup)
       ->usage(_("Usage: ll-cli prune [OPTIONS]"));
 
+    // add sub command dir
+    auto cliLayerDir =
+      commandParser.add_subcommand("dir", "Get the layer directory of app(base or runtime)")
+        ->group(CliHiddenGroup);
+    cliLayerDir->add_option("APP", options.appid, _("Specify the installed app(base or runtime)"))
+      ->required()
+      ->check(validatorString);
+
     auto res = transformOldExec(argc, argv);
     std::reverse(res.begin(), res.end());
     CLI11_PARSE(commandParser, res);
@@ -704,7 +712,8 @@ ll-cli list --upgradable
               { "list", &Cli::list },
               { "info", &Cli::info },
               { "content", &Cli::content },
-              { "prune", &Cli::prune }
+              { "prune", &Cli::prune },
+              { "dir", &Cli::dir }
           };
 
           if (QObject::connect(QCoreApplication::instance(),

@@ -208,9 +208,6 @@ int dispatchMigrations(const Version &from,
     if (from < *version_1_7_0) {
         ret = migrateRef(repo, MigrateRefData{ .root = root, .repoName = cfg.defaultRepo });
     }
-    if (ret == -1) {
-        return -1;
-    }
 
     return ret;
 }

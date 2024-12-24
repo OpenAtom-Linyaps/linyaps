@@ -11,11 +11,14 @@
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/configure.h"
 #include "linglong/utils/dbus/register.h"
+#include "linglong/utils/file.h"
 #include "linglong/utils/global/initialize.h"
-#include "ocppi/cli/crun/Crun.hpp"
 #include "ocppi/cli/CLI.hpp"
+#include "ocppi/cli/crun/Crun.hpp"
 
 #include <QCoreApplication>
+
+#include <filesystem>
 
 using namespace linglong::utils::global;
 using namespace linglong::utils::dbus;
@@ -46,12 +49,25 @@ void withDBusDaemon(ocppi::cli::CLI &cli)
         qCritical() << "failed to migrate repository";
         QCoreApplication::exit(-1);
     }
-
     auto *ostreeRepo = new linglong::repo::OSTreeRepo(repoRoot, *config, *clientFactory);
     ostreeRepo->setParent(QCoreApplication::instance());
-
-    if (auto ret = ostreeRepo->exportAllEntries(); !ret) {
-        qCritical() << "failed to export entries:" << ret.error();
+    {
+        auto exportVersion = repoRoot.absoluteFilePath("entries/.version").toStdString();
+        auto data = linglong::utils::readFile(exportVersion);
+        if (data && data == LINGLONG_EXPORT_VERSION) {
+            qDebug() << exportVersion.c_str() << data->c_str();
+            qDebug() << "skip export entry, already exported";
+        } else {
+            auto ret = ostreeRepo->exportAllEntries();
+            if (!ret.has_value()) {
+                qCritical() << "failed to export entries:" << ret.error();
+            } else {
+                ret = linglong::utils::writeFile(exportVersion, LINGLONG_EXPORT_VERSION);
+                if (!ret.has_value()) {
+                    qCritical() << "failed to write export version:" << ret.error();
+                }
+            }
+        }
     }
 
     auto *containerBuilder = new linglong::runtime::ContainerBuilder(cli);
@@ -114,8 +130,9 @@ void withoutDBusDaemon(ocppi::cli::CLI &cli)
     auto *containerBuilder = new linglong::runtime::ContainerBuilder(cli);
     containerBuilder->setParent(QCoreApplication::instance());
 
-    auto packageManager =
-      new linglong::service::PackageManager(*ostreeRepo, *containerBuilder, QCoreApplication::instance());
+    auto packageManager = new linglong::service::PackageManager(*ostreeRepo,
+                                                                *containerBuilder,
+                                                                QCoreApplication::instance());
     new linglong::adaptors::package_manger::PackageManager1(packageManager);
 
     auto server = new QDBusServer("unix:path=/tmp/linglong-package-manager.socket",

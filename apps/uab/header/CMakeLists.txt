@@ -7,20 +7,20 @@ set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 # TODO: if erofsfuse and libdeflate provides .pc file or config.cmake, change it
 # to pkg_search_modules/find_package
 
-find_library(FOUND_erofsfuse_STATIC "erofsfuse")
-if("${FOUND_erofsfuse_STATIC}" STREQUAL "")
-  message(FATAL_ERROR "liberofsfuse.a not found")
+find_library(static_liberofsfuse "erofsfuse")
+if("${static_liberofsfuse}" STREQUAL "static_liberofsfuse-NOTFOUND")
+  message(FATAL_ERROR "liberofsfuse.a not found.")
 endif()
 
-get_filename_component(EROFSFUSE_ABS_FILE ${FOUND_erofsfuse_STATIC} ABSOLUTE)
+get_filename_component(EROFSFUSE_ABS_FILE ${static_liberofsfuse} ABSOLUTE)
 message(STATUS "found liberofsfuse.a: ${ABS_FILE}")
 
-find_library(FOUND_libdeflate_STATIC "deflate")
-if("${FOUND_libdeflate_STATIC}" STREQUAL "")
+find_library(static_libdeflate "deflate")
+if("${static_libdeflate}" STREQUAL "static_libdeflate-NOTFOUND")
   message(FATAL_ERROR "libdeflate.a not found")
 endif()
 
-get_filename_component(LIBDEFLATE_ABS_FILE ${FOUND_libdeflate_STATIC} ABSOLUTE)
+get_filename_component(LIBDEFLATE_ABS_FILE ${static_libdeflate} ABSOLUTE)
 message(STATUS "found libdeflate.a: ${LIBDEFLATE_ABS_FILE}")
 
 pkg_search_module(lz4 REQUIRED IMPORTED_TARGET liblz4)

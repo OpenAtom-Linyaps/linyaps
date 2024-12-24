@@ -301,20 +301,6 @@ utils::error::Result<package::Reference> pullDependency(const package::FuzzyRefe
     return *ref;
 }
 
-utils::error::Result<package::Reference> pullDependency(const QString &fuzzyRefStr,
-                                                        repo::OSTreeRepo &repo,
-                                                        const std::string &module,
-                                                        bool onlyLocal) noexcept
-{
-    LINGLONG_TRACE("pull " + fuzzyRefStr);
-    auto fuzzyRef = package::FuzzyReference::parse(fuzzyRefStr);
-    if (!fuzzyRef) {
-        return LINGLONG_ERR(fuzzyRef);
-    }
-
-    return pullDependency(*fuzzyRef, repo, module, onlyLocal);
-}
-
 // 安装模块文件
 utils::error::Result<void> installModule(QStringList installRules,
                                          const QDir &buildOutput,

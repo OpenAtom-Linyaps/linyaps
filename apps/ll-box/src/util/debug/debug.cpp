@@ -8,6 +8,8 @@
 
 #include "util/logger.h"
 
+#include <sys/capability.h>
+
 #include <dirent.h>
 #include <grp.h>
 #include <pwd.h>
@@ -18,6 +20,35 @@ namespace linglong {
 
 #define DUMP_DBG(func, line) /*NOLINT*/ \
     (linglong::util::Logger(linglong::util::Logger::Debug, func, line))
+
+void DumpCap()
+{
+    cap_flag_value_t cap_value;
+    cap_value_t cap;
+
+    logDbg() << "start -----------";
+
+    // Get the current process capabilities
+    std::unique_ptr<_cap_struct, decltype(cap_free) *> caps(cap_get_proc(), cap_free);
+
+    // Iterate through all capabilities
+    for (cap = 0; cap <= CAP_LAST_CAP; cap++) {
+        if (cap_get_flag(caps.get(), cap, CAP_EFFECTIVE, &cap_value) == -1) {
+            logDbg() << "cap_get_flag failed";
+            continue;
+        }
+
+        const char *cap_name = cap_to_name(cap);
+        if (cap_name == nullptr) {
+            logDbg() << "Unknown capability: " << cap;
+            continue;
+        }
+
+        logDbg() << cap_name << ": " << (cap_value == CAP_SET ? "yes" : "no");
+    }
+
+    logDbg() << "end -----------";
+}
 
 void DumpIDMap()
 {

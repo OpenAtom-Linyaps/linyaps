@@ -8,6 +8,7 @@
 
 #include "util.h"
 
+#include <sys/capability.h>
 #include <sys/mount.h>
 
 // Compatible with linux kernel which is under 5.10
@@ -52,11 +53,80 @@ LLJS_TO_OBJ(Root)
     LLJS_TO(readonly);
 }
 
+const static std::map<std::string_view, int> capsMap{
+    { "CAP_CHOWN", CAP_CHOWN },
+    { "CAP_DAC_OVERRIDE", CAP_DAC_OVERRIDE },
+    { "CAP_DAC_READ_SEARCH", CAP_DAC_READ_SEARCH },
+    { "CAP_FOWNER", CAP_FOWNER },
+    { "CAP_FSETID", CAP_FSETID },
+    { "CAP_KILL", CAP_KILL },
+    { "CAP_SETGID", CAP_SETGID },
+    { "CAP_SETUID", CAP_SETUID },
+    { "CAP_SETPCAP", CAP_SETPCAP },
+    { "CAP_LINUX_IMMUTABLE", CAP_LINUX_IMMUTABLE },
+    { "CAP_NET_BIND_SERVICE", CAP_NET_BIND_SERVICE },
+    { "CAP_NET_BROADCAST", CAP_NET_BROADCAST },
+    { "CAP_NET_ADMIN", CAP_NET_ADMIN },
+    { "CAP_NET_RAW", CAP_NET_RAW },
+    { "CAP_IPC_LOCK", CAP_IPC_LOCK },
+    { "CAP_IPC_OWNER", CAP_IPC_OWNER },
+    { "CAP_SYS_MODULE", CAP_SYS_MODULE },
+    { "CAP_SYS_RAWIO", CAP_SYS_RAWIO },
+    { "CAP_SYS_CHROOT", CAP_SYS_CHROOT },
+    { "CAP_SYS_PTRACE", CAP_SYS_PTRACE },
+    { "CAP_SYS_PACCT", CAP_SYS_PACCT },
+    { "CAP_SYS_ADMIN", CAP_SYS_ADMIN },
+    { "CAP_SYS_BOOT", CAP_SYS_BOOT },
+    { "CAP_SYS_NICE", CAP_SYS_NICE },
+    { "CAP_SYS_RESOURCE", CAP_SYS_RESOURCE },
+    { "CAP_SYS_TIME", CAP_SYS_TIME },
+    { "CAP_SYS_TTY_CONFIG", CAP_SYS_TTY_CONFIG },
+    { "CAP_MKNOD", CAP_MKNOD },
+    { "CAP_LEASE", CAP_LEASE },
+    { "CAP_AUDIT_WRITE", CAP_AUDIT_WRITE },
+    { "CAP_AUDIT_CONTROL", CAP_AUDIT_CONTROL },
+    { "CAP_SETFCAP", CAP_SETFCAP },
+    { "CAP_MAC_OVERRIDE", CAP_MAC_OVERRIDE },
+    { "CAP_MAC_ADMIN", CAP_MAC_ADMIN },
+    { "CAP_SYSLOG", CAP_SYSLOG },
+    { "CAP_WAKE_ALARM", CAP_WAKE_ALARM },
+    { "CAP_BLOCK_SUSPEND", CAP_BLOCK_SUSPEND },
+    { "CAP_AUDIT_READ", CAP_AUDIT_READ }
+};
+
+struct Capabilities
+{
+    util::str_vec bounding;
+    util::str_vec permitted;
+    util::str_vec inheritable;
+    util::str_vec effective;
+    util::str_vec ambient;
+};
+
+inline void from_json(const nlohmann::json &j, Capabilities &o)
+{
+    o.bounding = j.at("bounding").get<util::str_vec>();
+    o.permitted = j.at("permitted").get<util::str_vec>();
+    o.inheritable = j.at("inheritable").get<util::str_vec>();
+    o.effective = j.at("effective").get<util::str_vec>();
+    o.ambient = j.at("ambient").get<util::str_vec>();
+}
+
+inline void to_json(nlohmann::json &j, const Capabilities &o)
+{
+    j["bounding"] = o.bounding;
+    j["permitted"] = o.permitted;
+    j["inheritable"] = o.inheritable;
+    j["effective"] = o.effective;
+    j["ambient"] = o.ambient;
+}
+
 struct Process
 {
     util::str_vec args;
     util::str_vec env;
     std::string cwd;
+    std::optional<Capabilities> capabilities;
 };
 
 inline void from_json(const nlohmann::json &j, Process &o)
@@ -64,6 +134,9 @@ inline void from_json(const nlohmann::json &j, Process &o)
     o.args = j.at("args").get<util::str_vec>();
     o.env = j.at("env").get<util::str_vec>();
     o.cwd = j.at("cwd").get<std::string>();
+    if (j.find("capabilities") != j.end()) {
+        o.capabilities = j.at("capabilities").get<Capabilities>();
+    }
 }
 
 inline void to_json(nlohmann::json &j, const Process &o)
@@ -71,6 +144,9 @@ inline void to_json(nlohmann::json &j, const Process &o)
     j["args"] = o.args;
     j["env"] = o.env;
     j["cwd"] = o.cwd;
+    if (o.capabilities) {
+        j["capabilities"] = o.capabilities;
+    }
 }
 
 struct Mount

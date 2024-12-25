@@ -9,13 +9,11 @@
 #include "container/helper.h"
 #include "container/mount/filesystem_driver.h"
 #include "container/mount/host_mount.h"
-#include "container/seccomp.h"
-#include "util/debug/debug.h"
 #include "util/filesystem.h"
 #include "util/logger.h"
 #include "util/platform.h"
-#include "util/semaphore.h"
 
+#include <sys/capability.h>
 #include <sys/epoll.h>
 #include <sys/mount.h>
 #include <sys/prctl.h>
@@ -215,6 +213,82 @@ static bool parse_wstatus(const int &wstatus, std::string &info)
         info = util::format("is dead with wstatus=%d", wstatus);
         return false;
     }
+}
+
+int setCapabilities(const Capabilities &capabilities)
+{
+    auto get_cap_list = [](const util::str_vec &cap_str_vec) -> std::vector<cap_value_t> {
+        std::vector<cap_value_t> cap_list;
+        for (const auto &cap : cap_str_vec) {
+            if (auto it = capsMap.find(cap); it != capsMap.end()) {
+                cap_list.push_back(it->second);
+            }
+        }
+
+        return cap_list;
+    };
+
+    std::unique_ptr<_cap_struct, decltype(&cap_free)> caps(cap_get_proc(), cap_free);
+    if (caps == nullptr) {
+        logErr() << "call cap_get_proc failed" << util::RetErrString(0);
+        return 1;
+    }
+
+    if (!capabilities.effective.empty()
+        && cap_set_flag(caps.get(),
+                        CAP_EFFECTIVE,
+                        capabilities.effective.size(),
+                        get_cap_list(capabilities.effective).data(),
+                        CAP_SET)
+          == -1) {
+        logErr() << "cap_set_flag CAP_EFFECTIVE" << util::RetErrString(-1);
+        return -1;
+    }
+
+    if (!capabilities.permitted.empty()
+        && cap_set_flag(caps.get(),
+                        CAP_PERMITTED,
+                        capabilities.permitted.size(),
+                        get_cap_list(capabilities.permitted).data(),
+                        CAP_SET)
+          == -1) {
+        logErr() << "cap_set_flag CAP_PERMITTED" << util::RetErrString(-1);
+        return -1;
+    }
+
+    if (!capabilities.inheritable.empty()
+        && cap_set_flag(caps.get(),
+                        CAP_INHERITABLE,
+                        capabilities.inheritable.size(),
+                        get_cap_list(capabilities.inheritable).data(),
+                        CAP_SET)
+          == -1) {
+        logErr() << "cap_set_flag CAP_INHERITABLE" << util::RetErrString(-1);
+        return -1;
+    }
+
+    // apply the modified capabilities to the process
+    if (cap_set_proc(caps.get()) == -1) {
+        logErr() << "cap_set_proc" << util::RetErrString(-1);
+        return -1;
+    }
+
+    for (auto cap : get_cap_list(capabilities.ambient)) {
+        if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, cap, 0, 0) == -1) {
+            logErr() << "prctl PR_CAP_AMBIENT PR_CAP_AMBIENT_RAISE" << cap
+                     << util::RetErrString(-1);
+            return -1;
+        }
+    }
+
+    for (auto cap : get_cap_list(capabilities.bounding)) {
+        if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_LOWER, cap, 0, 0) == -1) {
+            logErr() << "prctl PR_CAP_AMBIENT PR_CAP_AMBIENT_LOWER" << util::RetErrString(-1);
+            return -1;
+        }
+    }
+
+    return 0;
 }
 
 struct ContainerPrivate
@@ -583,12 +657,22 @@ int NonePrivilegeProc(void *arg)
     idMap.size = 1;
     linux.gidMappings.push_back(idMap);
 
-    if (auto ret = ConfigUserNamespace(linux, 0); ret != 0) {
-        return ret;
+    int ret{ -1 };
+    if (containerPrivate.runtime.process.capabilities) {
+        ret = setCapabilities(containerPrivate.runtime.process.capabilities.value());
+        if (ret == -1) {
+            logErr() << "setCapabilities failed";
+            return -1;
+        }
     }
 
-    auto ret = mount("proc", "/proc", "proc", 0, nullptr);
-    if (0 != ret) {
+    if (ret = ConfigUserNamespace(linux, 0); ret != 0) {
+        logErr() << "ConfigUserNamespace failed";
+        return -1;
+    }
+
+    ret = mount("proc", "/proc", "proc", 0, nullptr);
+    if (ret == -1) {
         logErr() << "mount proc failed" << util::RetErrString(ret);
         return -1;
     }

@@ -27,7 +27,7 @@ if(${AGGRESSIVE_UAB_SIZE})
 
   target_link_options(
     ${UAB_LOADER_TARGET} PRIVATE
-    -Wl,--gc-sections,--strip-all,--exclude-libs,ALL -flto=auto)
+    -Wl,--gc-sections,--as-needed,--strip-all,--exclude-libs,ALL -flto=auto)
 endif()
 
 include(GNUInstallDirs)

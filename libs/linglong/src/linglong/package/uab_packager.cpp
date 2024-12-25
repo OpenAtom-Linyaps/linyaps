@@ -532,7 +532,7 @@ utils::error::Result<void> UABPackager::packBundle() noexcept
 
         if (auto ret =
               utils::command::Exec("mkfs.erofs",
-                                   { "-zlz4hc,9", "-b4096", bundleFile, bundleDir.absolutePath() });
+                                   { "-zzstd,11", "-b4096", bundleFile, bundleDir.absolutePath() });
             !ret) {
             return LINGLONG_ERR(ret);
         }

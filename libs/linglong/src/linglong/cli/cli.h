@@ -99,6 +99,7 @@ private:
     ensureCache(const package::Reference &ref,
                 const api::types::v1::RepositoryCacheLayersItem &appLayerItem) noexcept;
     QDBusReply<QString> authorization();
+    void updateAM() noexcept;
 
 private Q_SLOTS:
     // maybe use in the future

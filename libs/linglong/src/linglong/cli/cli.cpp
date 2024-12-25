@@ -6,6 +6,7 @@
 
 #include "linglong/cli/cli.h"
 
+#include "linglong/api/dbus/v1/dbus_peer.h"
 #include "linglong/api/types/v1/InteractionReply.hpp"
 #include "linglong/api/types/v1/InteractionRequest.hpp"
 #include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
@@ -1032,6 +1033,7 @@ int Cli::installFromFile(const QFileInfo &fileInfo, const api::types::v1::Common
         return -1;
     }
 
+    updateAM();
     return this->lastState == linglong::api::types::v1::State::Succeed ? 0 : -1;
 }
 
@@ -1149,6 +1151,7 @@ int Cli::install()
     }
     loop.exec();
 
+    updateAM();
     return this->lastState == linglong::api::types::v1::State::Succeed ? 0 : -1;
 }
 
@@ -1258,6 +1261,7 @@ int Cli::upgrade()
     }
     loop.exec();
 
+    updateAM();
     if (this->lastState != linglong::api::types::v1::State::Succeed) {
         return -1;
     }
@@ -1536,6 +1540,7 @@ int Cli::uninstall()
     }
     loop.exec();
 
+    updateAM();
     return this->lastState == linglong::api::types::v1::State::Succeed ? 0 : -1;
 }
 
@@ -2408,5 +2413,26 @@ Cli::ensureCache(const package::Reference &ref,
     }
 
     return appCache;
+}
+
+void Cli::updateAM() noexcept
+{
+    // NOTE: make sure AM refresh the cache of desktop 
+    if ((QSysInfo::productType() == "Deepin" || QSysInfo::productType() == "deepin")
+        && this->lastState == linglong::api::types::v1::State::Succeed) {
+        QDBusConnection conn = QDBusConnection::systemBus();
+        if (!conn.isConnected()) {
+            qWarning() << "Failed to connect to the system bus";
+        }
+
+        auto peer = linglong::api::dbus::v1::DBusPeer("org.desktopspec.ApplicationUpdateNotifier1",
+                                                      "/org/desktopspec/ApplicationUpdateNotifier1",
+                                                      conn);
+        auto reply = peer.Ping();
+        reply.waitForFinished();
+        if (!reply.isValid()) {
+            qWarning() << "Failed to ping org.desktopspec.ApplicationUpdateNotifier1" << reply.error();
+        }
+    }
 }
 } // namespace linglong::cli

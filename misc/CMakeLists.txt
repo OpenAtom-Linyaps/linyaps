@@ -38,6 +38,7 @@ configure_files(
   lib/linglong/container/README.md
   lib/linglong/generate-xdg-data-dirs.sh
   lib/systemd/system-environment-generators/61-linglong
+  lib/systemd/user-generators/linglong-user-systemd-generator
   lib/systemd/system/org.deepin.linglong.PackageManager.service
   lib/systemd/system-preset/91-linglong.preset
   lib/systemd/user/linglong-session-helper.service
@@ -148,6 +149,11 @@ install(
   PROGRAMS
     ${CMAKE_CURRENT_BINARY_DIR}/lib/systemd/system-environment-generators/61-linglong
   DESTINATION ${SYSTEMD_SYSTEM_GENERATOR_PATH})
+
+install(
+  PROGRAMS
+    ${CMAKE_CURRENT_BINARY_DIR}/lib/systemd/user-generators/linglong-user-systemd-generator
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/user-generators)
 
 # sysuser
 

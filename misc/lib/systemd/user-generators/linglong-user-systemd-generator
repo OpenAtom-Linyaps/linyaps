@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+
+# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+# https://www.freedesktop.org/software/systemd/man/latest/systemd.generator.html
+late="$3"
+cp -rs @LINGLONG_ROOT@/entries/lib/systemd/user/* "$late/"

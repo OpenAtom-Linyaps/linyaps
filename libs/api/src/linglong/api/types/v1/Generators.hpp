@@ -35,10 +35,11 @@
 #include "linglong/api/types/v1/PackageManager1SearchParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1RequestInteractionAdditionalMessage.hpp"
 #include "linglong/api/types/v1/PackageManager1PackageTaskResult.hpp"
+#include "linglong/api/types/v1/PackageManager1Package.hpp"
 #include "linglong/api/types/v1/PackageManager1ModifyRepoParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
 #include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
-#include "linglong/api/types/v1/PackageManager1Package.hpp"
+#include "linglong/api/types/v1/PackageManager1InstallParametersPacakge.hpp"
 #include "linglong/api/types/v1/PackageManager1GetRepoInfoResult.hpp"
 #include "linglong/api/types/v1/PackageManager1GetRepoInfoResultRepoInfo.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
@@ -145,8 +146,8 @@ void to_json(json & j, const PackageManager1GetRepoInfoResultRepoInfo & x);
 void from_json(const json & j, PackageManager1GetRepoInfoResult & x);
 void to_json(json & j, const PackageManager1GetRepoInfoResult & x);
 
-void from_json(const json & j, PackageManager1Package & x);
-void to_json(json & j, const PackageManager1Package & x);
+void from_json(const json & j, PackageManager1InstallParametersPacakge & x);
+void to_json(json & j, const PackageManager1InstallParametersPacakge & x);
 
 void from_json(const json & j, PackageManager1InstallParameters & x);
 void to_json(json & j, const PackageManager1InstallParameters & x);
@@ -156,6 +157,9 @@ void to_json(json & j, const PackageManager1JobInfo & x);
 
 void from_json(const json & j, PackageManager1ModifyRepoParameters & x);
 void to_json(json & j, const PackageManager1ModifyRepoParameters & x);
+
+void from_json(const json & j, PackageManager1Package & x);
+void to_json(json & j, const PackageManager1Package & x);
 
 void from_json(const json & j, PackageManager1PackageTaskResult & x);
 void to_json(json & j, const PackageManager1PackageTaskResult & x);
@@ -673,21 +677,21 @@ j["message"] = x.message;
 j["type"] = x.type;
 }
 
-inline void from_json(const json & j, PackageManager1Package& x) {
+inline void from_json(const json & j, PackageManager1InstallParametersPacakge& x) {
 x.channel = get_stack_optional<std::string>(j, "channel");
 x.id = j.at("id").get<std::string>();
-x.packageManager1PackageModule = get_stack_optional<std::string>(j, "module");
+x.modules = get_stack_optional<std::vector<std::string>>(j, "modules");
 x.version = get_stack_optional<std::string>(j, "version");
 }
 
-inline void to_json(json & j, const PackageManager1Package & x) {
+inline void to_json(json & j, const PackageManager1InstallParametersPacakge & x) {
 j = json::object();
 if (x.channel) {
 j["channel"] = x.channel;
 }
 j["id"] = x.id;
-if (x.packageManager1PackageModule) {
-j["module"] = x.packageManager1PackageModule;
+if (x.modules) {
+j["modules"] = x.modules;
 }
 if (x.version) {
 j["version"] = x.version;
@@ -696,7 +700,7 @@ j["version"] = x.version;
 
 inline void from_json(const json & j, PackageManager1InstallParameters& x) {
 x.options = j.at("options").get<CommonOptions>();
-x.package = j.at("package").get<PackageManager1Package>();
+x.package = j.at("package").get<PackageManager1InstallParametersPacakge>();
 }
 
 inline void to_json(json & j, const PackageManager1InstallParameters & x) {
@@ -731,6 +735,27 @@ inline void to_json(json & j, const PackageManager1ModifyRepoParameters & x) {
 j = json::object();
 j["defaultRepo"] = x.defaultRepo;
 j["repos"] = x.repos;
+}
+
+inline void from_json(const json & j, PackageManager1Package& x) {
+x.channel = get_stack_optional<std::string>(j, "channel");
+x.id = j.at("id").get<std::string>();
+x.packageManager1PackageModule = get_stack_optional<std::string>(j, "module");
+x.version = get_stack_optional<std::string>(j, "version");
+}
+
+inline void to_json(json & j, const PackageManager1Package & x) {
+j = json::object();
+if (x.channel) {
+j["channel"] = x.channel;
+}
+j["id"] = x.id;
+if (x.packageManager1PackageModule) {
+j["module"] = x.packageManager1PackageModule;
+}
+if (x.version) {
+j["version"] = x.version;
+}
 }
 
 inline void from_json(const json & j, PackageManager1PackageTaskResult& x) {

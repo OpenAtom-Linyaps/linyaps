@@ -816,7 +816,28 @@
       ],
       "properties": {
         "package": {
-          "$ref": "#/$defs/PackageManager1Package"
+          "title": "PackageManager1InstallParametersPacakge",
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "channel": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            },
+            "modules": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
         },
         "options": {
           "$ref": "#/$defs/CommonOptions"

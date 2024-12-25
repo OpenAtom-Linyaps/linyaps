@@ -785,10 +785,11 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
 
     auto appLayer = *appLayerIt;
     layerInfos.erase(appLayerIt);
-    layerInfos.insert(layerInfos.begin(),
-                      std::move(appLayer)); // app layer should place to the first of vector
+    auto app =
+      layerInfos.insert(layerInfos.begin(),
+                        std::move(appLayer)); // app layer should place to the first of vector
 
-    auto architectureRet = package::Architecture::parse(appLayer.info.arch[0]);
+    auto architectureRet = package::Architecture::parse(app->info.arch[0]);
     if (!architectureRet) {
         return toDBusReply(architectureRet);
     }
@@ -804,12 +805,12 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
                              + " not match host architecture");
     }
 
-    auto versionRet = package::Version::parse(QString::fromStdString(appLayer.info.version));
+    auto versionRet = package::Version::parse(QString::fromStdString(app->info.version));
     if (!versionRet) {
         return toDBusReply(versionRet);
     }
 
-    auto appRefRet = package::Reference::fromPackageInfo(appLayer.info);
+    auto appRefRet = package::Reference::fromPackageInfo(app->info);
     if (!appRefRet) {
         return toDBusReply(appRefRet);
     }
@@ -831,7 +832,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
                                                    .fallbackToRemote = false // NOLINT
                                                  });
     if (localAppRef) {
-        auto layerDir = this->repo.getLayerDir(*localAppRef, appLayer.info.packageInfoV2Module);
+        auto layerDir = this->repo.getLayerDir(*localAppRef, app->info.packageInfoV2Module);
         if (layerDir && layerDir->valid()) {
             additionalMessage.localRef = localAppRef->toString().toStdString();
         }
@@ -845,11 +846,10 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
         if (appRef.version > localAppRef->version) {
             msgType = api::types::v1::InteractionMessageType::Upgrade;
         } else if (!options.force) {
-            auto uabName =
-              QString{ "%1_%2_%3_%4.uab" }.arg(appRef.id,
-                                               architectureRet->toString(),
-                                               appRef.version.toString(),
-                                               appLayer.info.packageInfoV2Module.c_str());
+            auto uabName = QString{ "%1_%2_%3_%4.uab" }.arg(appRef.id,
+                                                            architectureRet->toString(),
+                                                            appRef.version.toString(),
+                                                            app->info.packageInfoV2Module.c_str());
             auto err = QString("The latest version has been installed. If you want to "
                                "replace it, try using 'll-cli install %1 --force'")
                          .arg(uabName);
@@ -1044,7 +1044,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
                                       appRef.channel,
                                       appRef.id,
                                       appRef.arch.toString(),
-                                      QString::fromStdString(appLayer.info.packageInfoV2Module));
+                                      QString::fromStdString(app->info.packageInfoV2Module));
     auto taskRet = tasks.addNewTask({ refSpec }, std::move(installer), connection());
     if (!taskRet) {
         return toDBusReply(taskRet);

@@ -25,11 +25,10 @@ message(STATUS "found libdeflate.a: ${LIBDEFLATE_ABS_FILE}")
 
 pkg_search_module(lz4 REQUIRED IMPORTED_TARGET liblz4)
 pkg_search_module(lzma REQUIRED IMPORTED_TARGET liblzma)
-pkg_search_module(FUSE REQUIRED IMPORTED_TARGET fuse)
+pkg_search_module(FUSE3 REQUIRED IMPORTED_TARGET fuse3)
 pkg_search_module(SELINUX REQUIRED IMPORTED_TARGET libselinux)
-
-target_link_libraries(PkgConfig::SELINUX INTERFACE ${SELINUX_STATIC_LIBRARIES})
-target_link_libraries(PkgConfig::FUSE INTERFACE ${FUSE_STATIC_LIBRARIES})
+pkg_search_module(ZSTD REQUIRED IMPORTED_TARGET libzstd)
+pkg_search_module(PCRE2_8 REQUIRED IMPORTED_TARGET libpcre2-8)
 
 pfl_add_executable(
   DISABLE_INSTALL
@@ -45,9 +44,11 @@ pfl_add_executable(
   linglong::api
   nlohmann_json::nlohmann_json
   PkgConfig::SELINUX
+  PkgConfig::ZSTD
   PkgConfig::lz4
   PkgConfig::lzma
-  PkgConfig::FUSE
+  PkgConfig::PCRE2_8
+  PkgConfig::FUSE3
   ${EROFSFUSE_ABS_FILE}
   ${LIBDEFLATE_ABS_FILE}
   stdc++fs)
@@ -66,7 +67,7 @@ if(${AGGRESSIVE_UAB_SIZE})
 
   target_link_options(
     ${UAB_HEADER_TARGET} PRIVATE
-    -Wl,--gc-sections,--strip-all,--exclude-libs,ALL -flto=auto)
+    -Wl,--gc-sections,--as-needed,--strip-all,--exclude-libs,ALL -flto=auto)
 endif()
 
 include(GNUInstallDirs)

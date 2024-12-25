@@ -105,7 +105,7 @@ LayerPackager::pack(const LayerDir &dir, const QString &layerFilePath) const
     // loongarch64默认使用(16384)2^14, 在x86和arm64不受支持, 会导致无法推包
     auto ret = utils::command::Exec(
       "mkfs.erofs",
-      { "-zlz4hc,9", "-b4096", compressedFilePath, ignoreRegex, dir.absolutePath() });
+      { "-zzstd,11", "-b4096", compressedFilePath, ignoreRegex, dir.absolutePath() });
     if (!ret) {
         return LINGLONG_ERR(ret);
     }

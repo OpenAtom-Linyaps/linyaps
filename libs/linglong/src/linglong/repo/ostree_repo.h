@@ -154,10 +154,16 @@ private:
     [[nodiscard]] utils::error::Result<package::LayerDir>
     getMergedModuleDir(const api::types::v1::RepositoryCacheLayersItem &layer,
                        bool fallbackLayerDir = true) const noexcept;
-    utils::error::Result<void> exportEntries(
-      const QDir &entriesDir, const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
+    utils::error::Result<void>
+    exportEntries(const std::filesystem::path &rootEntriesDir,
+                  const api::types::v1::RepositoryCacheLayersItem &item) noexcept;
     static utils::error::Result<void> IniLikeFileRewrite(const QFileInfo &info,
                                                          const QString &id) noexcept;
+
+    utils::error::Result<void> exportDir(const std::string &appID,
+                                         const std::filesystem::path &source,
+                                         const std::filesystem::path &destination,
+                                         const int &max_depth);
 };
 
 } // namespace linglong::repo

@@ -49,6 +49,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <system_error>
 #include <thread>
 #include <unordered_map>
 #include <utility>
@@ -1505,7 +1506,7 @@ void OSTreeRepo::unexportReference(const package::Reference &ref) noexcept
         return;
     }
 
-    QDir entriesDir = this->repoDir.absoluteFilePath("entries/share");
+    QDir entriesDir = this->repoDir.absoluteFilePath("entries");
     QDirIterator it(entriesDir.absolutePath(),
                     QDir::AllEntries | QDir::NoDot | QDir::NoDotDot | QDir::System,
                     QDirIterator::Subdirectories);
@@ -1538,7 +1539,7 @@ void OSTreeRepo::unexportReference(const package::Reference &ref) noexcept
 
 void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
 {
-    auto entriesDir = QDir(this->repoDir.absoluteFilePath("entries/share"));
+    auto entriesDir = QDir(this->repoDir.absoluteFilePath("entries"));
     if (!entriesDir.exists()) {
         entriesDir.mkpath(".");
     }
@@ -1549,7 +1550,7 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
         Q_ASSERT(false);
         return;
     }
-    auto ret = exportEntries(entriesDir, *item);
+    auto ret = exportEntries(entriesDir.absolutePath().toStdString(), *item);
     if (!ret.has_value()) {
         qCritical() << QString("Failed to export %1:").arg(ref.toString()) << ret.error().message();
         Q_ASSERT(false);
@@ -1558,102 +1559,177 @@ void OSTreeRepo::exportReference(const package::Reference &ref) noexcept
     this->updateSharedInfo();
 }
 
-utils::error::Result<void> OSTreeRepo::exportEntries(
-  const QDir &entriesDir, const api::types::v1::RepositoryCacheLayersItem &item) noexcept
+// 递归源目录所有文件，并在目标目录创建软链接，max_depth 控制递归深度以避免环形链接导致的无限递归
+utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
+                                                 const std::filesystem::path &source,
+                                                 const std::filesystem::path &destination,
+                                                 const int &max_depth)
+{
+    LINGLONG_TRACE(QString("export %1").arg(source.c_str()));
+    if (max_depth <= 0) {
+        qWarning() << "ttl reached, skipping export for" << source.c_str();
+        return LINGLONG_OK;
+    }
+
+    std::error_code ec;
+    // 检查源目录是否存在
+    auto exists = std::filesystem::exists(source, ec);
+    if (ec) {
+        return LINGLONG_ERR("check source", ec);
+    }
+    if (!exists) {
+        return LINGLONG_ERR("source directory does not exist");
+    }
+    auto is_directory = std::filesystem::is_directory(source, ec);
+    if (ec) {
+        return LINGLONG_ERR("check source", ec);
+    }
+    if (!is_directory) {
+        return LINGLONG_ERR("source is not a directory");
+    }
+    // 检查目标目录是否存在，如果不存在则创建
+    exists = std::filesystem::exists(destination, ec);
+    if (ec) {
+        return LINGLONG_ERR(QString("Failed to check file existence: ") + destination.c_str(), ec);
+    }
+    // 如果目标非目录，则删除它并重新创建
+    if (exists && !std::filesystem::is_directory(destination, ec)) {
+        std::filesystem::remove(destination, ec);
+        if (ec) {
+            return LINGLONG_ERR(QString("Failed to remove file: ") + destination.c_str(), ec);
+        }
+        // 标记目标不存在
+        exists = false;
+    }
+    if (!exists) {
+        std::filesystem::create_directories(destination, ec);
+        if (ec) {
+            return LINGLONG_ERR(QString("Failed to create directory: ") + destination.c_str(), ec);
+        }
+    }
+    auto iterator = std::filesystem::directory_iterator(source, ec);
+    if (ec) {
+        return LINGLONG_ERR("list directory: " + source.string(), ec);
+    }
+    // 遍历源目录中的所有文件和子目录
+    for (const auto &entry : iterator) {
+        const auto &source_path = entry.path();
+        const auto &target_path = destination / source_path.filename();
+        // 跳过无效的软链接
+        exists = std::filesystem::exists(source_path, ec);
+        if (ec) {
+            return LINGLONG_ERR("check source existence" + source_path.string(), ec);
+        }
+        if (!exists) {
+            continue;
+        }
+
+        // 如果是文件，创建符号链接
+        auto is_regular_file = std::filesystem::is_regular_file(source_path, ec);
+        if (ec) {
+            return LINGLONG_ERR("check file type: " + source_path.string(), ec);
+        }
+        if (is_regular_file) {
+            exists = std::filesystem::exists(target_path, ec);
+            if (ec) {
+                return LINGLONG_ERR("check file existence", ec);
+            }
+            if (exists) {
+                std::filesystem::remove(target_path, ec);
+                if (ec) {
+                    return LINGLONG_ERR("remove file failed", ec);
+                }
+            }
+            auto ret = IniLikeFileRewrite(QFileInfo(source_path.c_str()), appID.c_str());
+            if (!ret) { }
+            std::filesystem::create_symlink(source_path, target_path, ec);
+            if (ec) {
+                return LINGLONG_ERR("create symlink failed: " + target_path.string(), ec);
+            }
+            continue;
+        }
+        // 如果是目录，进行递归导出
+        is_directory = std::filesystem::is_directory(source_path, ec);
+        if (ec) {
+            return LINGLONG_ERR("check file type", ec);
+        }
+        if (is_directory) {
+            auto ret = this->exportDir(appID, source_path, target_path, max_depth - 1);
+            if (!ret.has_value()) {
+                return ret;
+            }
+            continue;
+        }
+        // 其他情况，报错
+        qWarning() << "invalid file: " << source_path.c_str();
+    }
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void>
+OSTreeRepo::exportEntries(const std::filesystem::path &rootEntriesDir,
+                          const api::types::v1::RepositoryCacheLayersItem &item) noexcept
 {
     LINGLONG_TRACE(QString("export %1").arg(item.info.id.c_str()));
     auto layerDir = getMergedModuleDir(item);
     if (!layerDir.has_value()) {
         return LINGLONG_ERR("get layer dir", layerDir);
     }
-    auto layerEntriesDir = QDir(layerDir->absoluteFilePath("entries/share"));
-    if (!layerEntriesDir.exists()) {
-        qCritical() << QString("Failed to export %1:").arg(item.info.id.c_str()) << layerEntriesDir
-                    << "not exists.";
+    std::error_code ec;
+    // 检查目录是否存在
+    std::filesystem::path appEntriesDir = layerDir->absoluteFilePath("entries").toStdString();
+    auto exists = std::filesystem::exists(appEntriesDir, ec);
+    if (ec) {
+        return LINGLONG_ERR("check appEntriesDir exists", ec);
+    }
+    if (!exists) {
+        qCritical() << QString("Failed to export %1:").arg(item.info.id.c_str())
+                    << appEntriesDir.c_str() << "not exists.";
         return LINGLONG_OK;
     }
+    std::vector<std::string> exportPaths = {
+        "share/applications", // Copy desktop files
+        "share/mime",         // Copy MIME Type files
+        "share/icons",        // Icons
+        "share/dbus-1",       // D-Bus service files
+        "share/gnome-shell",  // Search providers
+        "share/appdata",      // Copy appdata/metainfo files (legacy path)
+        "share/metainfo",     // Copy appdata/metainfo files
+        "share/plugins", // Copy plugins conf，The configuration files provided by some applications
+                         // maybe used by the host dde-file-manager.
+        "share/deepin-manual",     // copy deepin-manual files
+        "share/deepin-elf-verify", // for uab signature
 
-    const QStringList exportPaths = {
-        "applications", // Copy desktop files
-        "mime",         // Copy MIME Type files
-        "icons",        // Icons
-        "dbus-1",       // D-Bus service files
-        "gnome-shell",  // Search providers
-        "appdata",      // Copy appdata/metainfo files (legacy path)
-        "metainfo",     // Copy appdata/metainfo files
-        "plugins",      // Copy plugins conf，The configuration files provided by some applications
-                        // maybe used by the host dde-file-manager.
-        "systemd",      // copy systemd service files
-        "deepin-manual",    // copy deepin-manual files
-        "deepin-elf-verify" // for uab signature
     };
-
+    // 如果存在lib/systemd目录，则导出lib/systemd，否则导出share/systemd
+    exists = std::filesystem::exists(appEntriesDir / "lib/systemd", ec);
+    if (ec) {
+        return LINGLONG_ERR("Failed to check the existence of lib/systemd directory: {}", ec);
+    }
+    if (exists) {
+        exportPaths.push_back("lib/systemd");
+    } else {
+        exportPaths.push_back("share/systemd");
+    }
+    // 导出应用entries目录下的所有文件到玲珑仓库的entries目录下
     for (const auto &path : exportPaths) {
-        QDir exportDir = layerEntriesDir.absoluteFilePath(path);
-        if (!exportDir.exists()) {
+        auto source = appEntriesDir / path;
+        auto destination = rootEntriesDir / path;
+        // 将 share/systemd 目录下的文件导出到 lib/systemd 目录下
+        if (path == "share/systemd") {
+            destination = rootEntriesDir / "lib/systemd";
+        }
+        // 检查源目录是否存在，跳过不存在的目录
+        exists = std::filesystem::exists(source, ec);
+        if (ec) {
+            return LINGLONG_ERR(QString("Failed to check file existence: ") + source.c_str(), ec);
+        }
+        if (!exists) {
             continue;
         }
-
-        QDirIterator it(exportDir.absolutePath(),
-                        QDir::AllEntries | QDir::NoDotAndDotDot | QDir::System | QDir::Hidden,
-                        QDirIterator::Subdirectories | QDirIterator::FollowSymlinks);
-        while (it.hasNext()) {
-            it.next();
-            const auto info = it.fileInfo();
-            if (info.isDir()) {
-                continue;
-            }
-            // Check if the target file of the symbolic link exists.
-            if (info.isSymLink() && !std::filesystem::exists(info.symLinkTarget().toStdString())) {
-                qCritical() << "Invalid symlink: " << info.filePath();
-                continue;
-            }
-
-            auto ret = IniLikeFileRewrite(info, QString::fromStdString(item.info.id));
-            if (!ret) {
-                qCritical() << ret.error().message();
-            }
-
-            const auto parentDirForLinkPath =
-              layerEntriesDir.relativeFilePath(it.fileInfo().dir().absolutePath());
-
-            if (!entriesDir.mkpath(parentDirForLinkPath)) {
-                qCritical() << "Failed to mkpath"
-                            << entriesDir.absoluteFilePath(parentDirForLinkPath);
-            }
-            auto from = std::filesystem::path{
-                entriesDir.absoluteFilePath(parentDirForLinkPath).toStdString()
-            } / it.fileName().toStdString();
-
-            QDir parentDir(entriesDir.absoluteFilePath(parentDirForLinkPath));
-            auto to = std::filesystem::path{
-                parentDir.relativeFilePath(info.absoluteFilePath()).toStdString()
-            };
-
-            std::error_code ec;
-            auto status = std::filesystem::symlink_status(from, ec);
-            if (ec && ec.value() != static_cast<int>(std::errc::no_such_file_or_directory)) {
-                qCritical() << "symlink_status" << from.c_str()
-                            << "error:" << QString::fromStdString(ec.message());
-                continue;
-            }
-
-            if (std::filesystem::exists(status)) {
-                qInfo() << from.c_str() << "symlink already exists, try to remove it";
-                if (!std::filesystem::remove(from, ec)) {
-                    qCritical() << "remove" << from.c_str()
-                                << "error:" << QString::fromStdString(ec.message());
-                    continue;
-                }
-            }
-
-            std::filesystem::create_symlink(to, from, ec);
-            if (ec) {
-                qCritical().nospace()
-                  << "Failed to create link " << from.c_str() << " -> " << to.c_str() << " : "
-                  << QString::fromStdString(ec.message());
-                continue;
-            }
+        auto ret = this->exportDir(item.info.id, source, destination, 10);
+        if (!ret.has_value()) {
+            return ret;
         }
     }
     return LINGLONG_OK;
@@ -1663,20 +1739,14 @@ utils::error::Result<void> OSTreeRepo::exportAllEntries() noexcept
 {
     LINGLONG_TRACE("export all entries");
     std::error_code ec;
-    // 创建新的share目录
+    // 创建一个新的entries目录，使用UUID作为名称
     auto id = QUuid::createUuid().toString(QUuid::Id128);
-    auto entriesDir = QDir(this->repoDir.absoluteFilePath("entries/share_new_" + id));
-    if (entriesDir.exists()) {
-        std::filesystem::remove_all(entriesDir.absolutePath().toStdString(), ec);
-        if (ec) {
-            return LINGLONG_ERR("clean temp share directory", ec);
-        }
-    }
-    std::filesystem::create_directory(entriesDir.absolutePath().toStdString(), ec);
+    std::filesystem::path entriesDir = this->repoDir.filePath("entries_new_" + id).toStdString();
+    std::filesystem::create_directory(entriesDir, ec);
     if (ec) {
         return LINGLONG_ERR("create temp share directory", ec);
     }
-    // 导出所有layer
+    // 导出所有layer到新entries目录
     auto items = this->cache->queryExistingLayerItem();
     for (const auto &item : items) {
         if (item.info.kind != "app") {
@@ -1687,27 +1757,29 @@ utils::error::Result<void> OSTreeRepo::exportAllEntries() noexcept
             return ret;
         }
     }
-    // 用新的share目录替换旧的
-    std::filesystem::path workdir = repoDir.absoluteFilePath("entries").toStdString();
-
-    if (!std::filesystem::exists(workdir / "share")) {
-        std::filesystem::rename(entriesDir.dirName().toStdString(), workdir / "share", ec);
+    // 用新的entries目录替换旧的
+    std::filesystem::path workdir = repoDir.absolutePath().toStdString();
+    auto existsOldEntries = std::filesystem::exists(workdir / "entries", ec);
+    if (ec) {
+        return LINGLONG_ERR("check entries directory", ec);
+    }
+    if (!existsOldEntries) {
+        std::filesystem::rename(entriesDir, workdir / "entries", ec);
         if (ec) {
-            return LINGLONG_ERR("create new share symlink", ec);
+            return LINGLONG_ERR("rename new entries directory", ec);
         }
     } else {
-        auto oldshare = "share_old_" + QUuid::createUuid().toString(QUuid::Id128).toStdString();
-        std::filesystem::rename(workdir / "share", workdir / oldshare, ec);
+        auto id = QUuid::createUuid().toString(QUuid::Id128).toStdString();
+        auto oldEntriesDir = workdir / ("entries_old_" + id);
+        std::filesystem::rename(workdir / "entries", oldEntriesDir, ec);
         if (ec) {
             return LINGLONG_ERR("rename old share directory", ec);
         }
-        std::filesystem::rename(workdir / entriesDir.dirName().toStdString(),
-                                workdir / "share",
-                                ec);
+        std::filesystem::rename(entriesDir, workdir / "entries", ec);
         if (ec) {
             return LINGLONG_ERR("create new share symlink", ec);
         }
-        std::filesystem::remove_all(workdir / oldshare, ec);
+        std::filesystem::remove_all(oldEntriesDir, ec);
         if (ec) {
             return LINGLONG_ERR("remove old share directory", ec);
         }
@@ -2219,7 +2291,7 @@ OSTreeRepo::listLocalBy(const linglong::repo::repoCacheQuery &query) const noexc
 QString getOriginRawExec(const QString &execArgs, const QString &id)
 {
     // Note: These strings have appeared in the app-conf-generator.sh of linglong-builder.
-    // We need to remove them. 
+    // We need to remove them.
 
     const QString oldExec = "--exec ";
     const QString newExec = "-- ";
@@ -2234,8 +2306,7 @@ QString getOriginRawExec(const QString &execArgs, const QString &id)
         return execArgs.mid(index + newExec.length());
     }
 
-    qCritical() << "'-- ' or '--exec ' is not exist in" << execArgs
-                << ", return an empty string";
+    qCritical() << "'-- ' or '--exec ' is not exist in" << execArgs << ", return an empty string";
     return "";
 }
 
@@ -2243,7 +2314,7 @@ QString buildDesktopExec(QString origin, const QString &appID) noexcept
 {
     auto newExec = QString{ "%1 run %2 " }.arg(LINGLONG_CLIENT_PATH, appID);
 
-    if(origin.isEmpty()) {
+    if (origin.isEmpty()) {
         Q_ASSERT(false);
         return newExec;
     }
@@ -2275,8 +2346,7 @@ QString buildDesktopExec(QString origin, const QString &appID) noexcept
             [[fallthrough]];
         case 'F': {
             origin.insert(next - origin.begin(), '%');
-            auto tmp =
-              QString{ "--file %%1 -- %2" }.arg(std::move(code), std::move(origin));
+            auto tmp = QString{ "--file %%1 -- %2" }.arg(std::move(code), std::move(origin));
             newExec.append(tmp);
             return newExec;
         }
@@ -2284,8 +2354,7 @@ QString buildDesktopExec(QString origin, const QString &appID) noexcept
             [[fallthrough]];
         case 'U': {
             origin.insert(next - origin.begin(), '%');
-            auto tmp =
-              QString{ "--url %%1 -- %2" }.arg(std::move(code), std::move(origin));
+            auto tmp = QString{ "--url %%1 -- %2" }.arg(std::move(code), std::move(origin));
             newExec.append(tmp);
             return newExec;
         }

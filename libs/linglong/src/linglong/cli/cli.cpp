@@ -45,6 +45,7 @@
 
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <unistd.h>
 
 using namespace linglong::utils::error;
 
@@ -358,6 +359,18 @@ int Cli::run()
     if (getuid() == 0) {
         qInfo() << "'ll-cli run' currently does not support running as root.";
         return -1;
+    }
+
+    // NOTE: this is for the new behavior of 'll-cli install xxx.uab'.
+    // old behavior: install->installFromFile->PM
+    // new behavior: install->installFromFile->(Execute xxx.uab)->install->installFromFile->PM
+    // We want to let uab check itself once by executing it. But executing uab will cause it to run
+    // directly. So we use an environment variable to skip the running step. Another implementation
+    // is to add other parameters to uab.
+    auto skipRunning = qgetenv("LINGLONG_UAB_SKIP_RUNNING");
+    if (!skipRunning.isEmpty()) {
+        qDebug() << "LINGLONG_UAB_SKIP_RUNNING is set, skip running";
+        return 0;
     }
 
     auto userContainerDir = std::filesystem::path{ "/run/linglong" } / std::to_string(::getuid());
@@ -875,10 +888,71 @@ void Cli::cancelCurrentTask()
     }
 }
 
+bool isUAB(const QString &file)
+{
+    return file.endsWith(".uab");
+}
+
 int Cli::installFromFile(const QFileInfo &fileInfo, const api::types::v1::CommonOptions &options)
 {
     auto filePath = fileInfo.absoluteFilePath();
-    LINGLONG_TRACE(QString{ "install from file %1" }.arg(filePath))
+    LINGLONG_TRACE(QString{ "install from file %1" }.arg(filePath));
+
+#ifdef UAB_SPECIAL_INSTALL
+    if (fileInfo.suffix() == "uab") {
+        auto parent = getppid();
+
+        QFileInfo info(QString("/proc/%1/exe").arg(parent));
+        auto parentBin = info.symLinkTarget();
+        if (!isUAB(parentBin)) {
+            qDebug() << "The parent" << parentBin << "is not UAB.";
+            auto newParentBin = fileInfo.absoluteFilePath();
+            char *argv[] = { newParentBin.toLocal8Bit().data(), NULL };
+
+            QProcessEnvironment sysEnv = QProcessEnvironment::systemEnvironment();
+            QStringList envList = sysEnv.toStringList();
+
+            auto targetEnvc = envList.size();
+            std::vector<const char *> targetEnvv;
+
+            for (int i = 0; i < targetEnvc; i++) {
+                targetEnvv.push_back(envList.at(i).toLocal8Bit().constData());
+            }
+            targetEnvv.push_back("LINGLONG_UAB_SKIP_RUNNING=true");
+            targetEnvv.push_back(nullptr);
+
+            auto ret = ::execve(newParentBin.toLocal8Bit().constData(),
+                                argv,
+                                const_cast<char **>(targetEnvv.data()));
+            if (ret < 0) {
+                this->printer.printErr(
+                  LINGLONG_ERRV(QString("execve %1 failed, errno: %2")
+                                  .arg(newParentBin, QString::fromStdString(::strerror(errno)))));
+                return ret;
+            }
+        }
+        qDebug() << "The parent is UAB:" << parentBin;
+    }
+#endif
+
+    QDBusReply<QString> authReply = this->authorization();
+    if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
+        auto args = QCoreApplication::instance()->arguments();
+        // pkexec在0.120版本之前没有keep-cwd选项，会将目录切换到/root
+        // 所以将layer或uab文件的相对路径转为绝对路径，再传给pkexec
+        auto path = fileInfo.absoluteFilePath();
+        for (auto i = 0; i < args.length(); i++) {
+            if (args[i] == QString::fromStdString(this->options.appid)) {
+                args[i] = path.toLocal8Bit().constData();
+            }
+        }
+
+        auto ret = this->runningAsRoot(args);
+        if (!ret) {
+            this->printer.printErr(ret.error());
+        }
+        return -1;
+    }
 
     qInfo() << "install from file" << filePath;
     QFile file{ filePath };
@@ -965,44 +1039,27 @@ int Cli::install()
 {
     LINGLONG_TRACE("command install");
 
-    QDBusReply<QString> authReply = this->authorization();
-    if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
-        auto args = QCoreApplication::instance()->arguments();
-        std::error_code ec;
-        // pkexec在0.120版本之前没有keep-cwd选项，会将目录切换到/root
-        // 所以将layer或uab文件的相对路径转为绝对路径，再传给pkexec
-        if (std::filesystem::exists(options.appid, ec)) {
-            auto path = std::filesystem::absolute(options.appid);
-            for (auto i = 0; i < args.length(); i++) {
-                if (args[i] == options.appid.c_str()) {
-                    args[i] = path.c_str();
-                }
-            }
-        }
-        if (ec) {
-            this->printer.printErr(LINGLONG_ERRV(ec.message().c_str()));
-            return -1;
-        }
-        auto ret = this->runningAsRoot(args);
-        if (!ret) {
-            this->printer.printErr(ret.error());
-            return -1;
-        }
-        return 0;
-    }
-
-    auto app = QString::fromStdString(options.appid);
-    QFileInfo info(app);
-
     auto params =
       api::types::v1::PackageManager1InstallParameters{ .options = { .force = false,
                                                                      .skipInteraction = false } };
     params.options.force = options.forceOpt;
     params.options.skipInteraction = options.confirmOpt;
 
+    auto app = QString::fromStdString(options.appid);
+    QFileInfo info(app);
+
     // 如果检测是文件，则直接安装
     if (info.exists() && info.isFile()) {
         return installFromFile(QFileInfo{ info.absoluteFilePath() }, params.options);
+    }
+
+    QDBusReply<QString> authReply = this->authorization();
+    if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
+        auto ret = this->runningAsRoot();
+        if (!ret) {
+            this->printer.printErr(ret.error());
+        }
+        return -1;
     }
 
     auto conn = this->pkgMan.connection();

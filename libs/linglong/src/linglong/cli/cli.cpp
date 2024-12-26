@@ -2092,6 +2092,9 @@ Cli::RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept
 {
     LINGLONG_TRACE("request directories");
 
+    // TODO: skip request directories for now
+    return LINGLONG_OK;
+
     auto userHome = qgetenv("HOME").toStdString();
     if (userHome.empty()) {
         return LINGLONG_ERR("HOME is not set, skip request directories");

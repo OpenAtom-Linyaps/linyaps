@@ -676,6 +676,52 @@ Overload(Ts...) -> Overload<Ts...>;
 
 int main(int argc, char **argv)
 {
+    // detecting some kernel features at runtime to reporting errors friendly
+    std::error_code ec;
+    std::filesystem::path feature{ "/proc/sys/kernel/unprivileged_userns_clone" };
+
+    auto check = [](const std::filesystem::path &setting, int expected) {
+        // We assume that the fact that a file does not exist or that an error occurs during the
+        // detection process does not mean that the feature is disabled.
+        std::error_code ec;
+        if (!std::filesystem::exists(setting, ec)) {
+            return true;
+        }
+
+        std::ifstream stream{ setting };
+        if (!stream.is_open()) {
+            return true;
+        }
+
+        std::string content;
+        std::getline(stream, content);
+
+        try {
+            return std::stoi(content) == expected;
+        } catch (std::exception &e) {
+            logWan() << "ignore exception" << e.what() << "and continue"; // NOLINT
+            return true;
+        }
+    };
+
+    // for debian:
+    // https://salsa.debian.org/kernel-team/linux/-/blob/debian/latest/debian/patches/debian/add-sysctl-to-disallow-unprivileged-CLONE_NEWUSER-by-default.patch
+    if (!check("/proc/sys/kernel/unprivileged_userns_clone", 1)) {
+        logErr() << "unprivileged_userns_clone is not enabled";
+        return EPERM;
+    }
+
+    // for ubuntu:
+    // https://gitlab.com/apparmor/apparmor/-/wikis/unprivileged_userns_restriction#disabling-unprivileged-user-namespaces
+    if (!check("/proc/sys/kernel/apparmor_restrict_unprivileged_unconfined", 0)) {
+        logErr() << "apparmor_restrict_unprivileged_unconfined is not disabled";
+        return EPERM;
+    }
+    if (!check("/proc/sys/kernel/apparmor_restrict_unprivileged_userns", 0)) {
+        logErr() << "apparmor_restrict_unprivileged_userns is not disabled";
+        return EPERM;
+    }
+
     if (argc == 1) {
         logErr() << "please specify a command";
         return -1;

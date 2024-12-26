@@ -286,36 +286,30 @@ bool UserHome::generate(ocppi::runtime::config::types::Config &config) const noe
         return false;
     }
 
-    auto permissions = linglong::api::types::v1::ApplicationConfigurationPermissions{};
+    linglong::api::types::v1::ApplicationConfigurationPermissions permissions;
     auto configFile = privateAppDir / "permissions.json";
-    if (!std::filesystem::exists(configFile, ec)) {
-        if (ec) {
-            std::cerr << "failed to get status of " << configFile.c_str() << ": " << ec.message()
-                      << std::endl;
+    if (std::filesystem::exists(configFile, ec)) {
+        auto input = std::ifstream(configFile);
+        if (!input.is_open()) {
+            std::cerr << "couldn't open config file " << configFile.c_str() << std::endl;
             return false;
         }
 
-        // no permission config, do nothing
-        process.env = std::move(env);
-        config.process = std::move(process);
-        config.mounts = std::move(mounts);
-        return true;
+        try {
+            auto content = nlohmann::json::parse(input);
+            permissions =
+              content.get<linglong::api::types::v1::ApplicationConfigurationPermissions>();
+        } catch (nlohmann::json::parse_error &e) {
+            std::cerr << "deserialize error:" << e.what() << std::endl;
+            return false;
+        } catch (std::exception &e) {
+            std::cerr << "unknown exception:" << e.what() << std::endl;
+            return false;
+        }
     }
-
-    auto input = std::ifstream(configFile);
-    if (!input.is_open()) {
-        std::cerr << "couldn't open config file " << configFile.c_str() << std::endl;
-        return false;
-    }
-
-    try {
-        auto content = nlohmann::json::parse(input);
-        permissions = content.get<linglong::api::types::v1::ApplicationConfigurationPermissions>();
-    } catch (nlohmann::json::parse_error &e) {
-        std::cerr << "deserialize error:" << e.what() << std::endl;
-        return false;
-    } catch (std::exception &e) {
-        std::cerr << "unknown exception:" << e.what() << std::endl;
+    if (ec) {
+        std::cerr << "failed to get status of " << configFile.c_str() << ": " << ec.message()
+                  << std::endl;
         return false;
     }
 
@@ -341,7 +335,10 @@ bool UserHome::generate(ocppi::runtime::config::types::Config &config) const noe
           }
           return ret;
       });
-    blacklist.erase(it);
+
+    if (it != blacklist.end()) {
+        blacklist.erase(it);
+    }
 
     for (const auto &relative : blacklist) {
         if (!mountDir(privateAppDir / relative, cognitiveHomeDir / relative)) {

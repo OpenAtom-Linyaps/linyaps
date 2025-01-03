@@ -1,3 +1,19 @@
+linglong (1.7.0-2) stable; urgency=medium
+  
+  * bump the release to 1.7.0-2.
+  * Optimize the storage layer structure of the warehouse, so that application management does not rely on file systems.
+  * Optimize the data file export function to no longer export all files in the share directory.
+  * Support the packaging and operation of LoongArch (Like Loongson 3A6000+).
+  * No longer supports installing multiple versions of the same application locally at the same time.
+  * Delay the uninstallation of old versions when the application is being upgraded or downgraded while running.
+  * Command line tools help support information internationalization capabilities, currently supporting Chinese, English, and Spanish, and will be integrated into international translation platforms in the future.    
+  * Add A new command-line parameter parsing framework has been adopted to optimize the parsing of command line parameters, making the information of command line parameters clearer and more concise.
+  * Optimize application packaging and construction, using new building tools to package will strip the debugging symbols of the application, reduce the size of the application runtime/base, no longer support "uninstall" command to uninstall the type of "runtime", and provide the prune command to clean up unused runtime and base.        
+  * Add the "ll-cli list --upgradable" command to display a list of currently installed applications that can be updated.
+  * Resolve the issue of Linglong application debugging failure.
+  * Fixed the issue of using "ll-cli search" to search for app crashes after enabling system agents.
+ -- dengbo <dengbo@deepin.org>  Mon, 25 Nov 2024 11:06:45 +0800
+
 linglong (1.5.6-1) unstable; urgency=medium
 
   * fix: layer size error when export layer repeatedly

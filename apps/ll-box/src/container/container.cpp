@@ -548,49 +548,44 @@ struct ContainerPrivate
             return -1;
         }
 
-        int flag = MS_BIND | MS_REC;
-        ret = mount(".", ".", "bind", flag, nullptr);
-        if (0 != ret) {
+        int flag = MS_SILENT | MS_BIND | MS_REC;
+        ret = mount(".", ".", nullptr, flag, nullptr);
+        if (ret < 0) {
             logErr() << "mount / failed" << util::RetErrString(ret);
             return -1;
         }
 
-        const auto *llHostFilename = "ll-host";
-        auto llHostInPath = std::string{ "/run/" } + llHostFilename;
-        auto llHostOutPath = hostRoot + llHostInPath;
-        ret = mkdir(llHostOutPath.c_str(), 0755);
-        if (ret != 0) {
-            logErr() << "mkdir" << llHostOutPath << "err:" << util::RetErrString(ret);
+        // pivot with fd
+        int oldRootFd = open("/", O_DIRECTORY | O_PATH | O_CLOEXEC);
+        int newRootFd = open(hostRoot.c_str(), O_DIRECTORY | O_RDONLY | O_CLOEXEC);
+        ret = fchdir(newRootFd);
+        if (ret < 0) {
+            logErr() << "fchdir new root" << newRootFd << "failed:" << util::RetErrString(ret);
             return -1;
         }
 
-        ret = syscall(SYS_pivot_root, hostRoot.c_str(), llHostOutPath.c_str());
-        if (0 != ret) {
-            logErr() << "SYS_pivot_root failed" << hostRoot << util::errnoString() << errno << ret;
+        ret = syscall(SYS_pivot_root, ".", ".");
+        if (ret < 0) {
+            logErr() << "SYS_pivot_root" << hostRoot << "failed:" << util::errnoString() << errno
+                     << ret;
             return -1;
         }
 
-        ret = chdir("/");
-        if (ret != 0) {
-            logErr() << "chdir to root [before chroot]:" << util::RetErrString(ret);
+        ret = fchdir(oldRootFd);
+        if (ret < 0) {
+            logErr() << "fchdir old root" << oldRootFd << "failed:" << util::RetErrString(ret);
             return -1;
         }
 
-        ret = chroot(".");
-        if (0 != ret) {
-            logErr() << "chroot failed" << hostRoot << util::errnoString() << errno;
+        ret = mount(".", ".", NULL, MS_SILENT | MS_REC | MS_PRIVATE, NULL);
+        if (ret < 0) {
+            logErr() << "mount old root" << oldRootFd << "failed:" << util::RetErrString(ret);
             return -1;
         }
 
-        ret = chdir("/");
-        if (ret != 0) {
-            logErr() << "chdir to root [after chroot]:" << util::RetErrString(ret);
-            return -1;
-        }
-
-        ret = umount2(llHostInPath.c_str(), MNT_DETACH);
-        if (ret != 0) {
-            logErr() << "umount2" << llHostInPath << "err:" << util::RetErrString(ret);
+        ret = umount2(".", MNT_DETACH);
+        if (ret < 0) {
+            logErr() << "umount old root" << oldRootFd << "failed:" << util::RetErrString(ret);
             return -1;
         }
 

@@ -23,6 +23,7 @@
 #include "linglong/package/layer_file.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/utils/configure.h"
+#include "linglong/utils/gettext.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/serialize/json.h"
@@ -49,6 +50,9 @@
 #include <unistd.h>
 
 using namespace linglong::utils::error;
+
+static const std::string permissionNotifyMsg =
+  _("Permission deny, please check whether you are running as root.");
 
 namespace {
 
@@ -257,7 +261,7 @@ void Cli::interaction(QDBusObjectPath object_path, int messageID, QVariantMap ad
     if (dbusReply.isError()) {
         if (dbusReply.error().type() == QDBusError::AccessDenied) {
             this->notifier->notify(api::types::v1::InteractionRequest{
-              .summary = "Permission deny, please check whether you are running as root." });
+              .summary = permissionNotifyMsg });
             return;
         }
 
@@ -986,7 +990,7 @@ int Cli::installFromFile(const QFileInfo &fileInfo, const api::types::v1::Common
     if (pendingReply.isError()) {
         if (pendingReply.error().type() == QDBusError::AccessDenied) {
             this->notifier->notify(api::types::v1::InteractionRequest{
-              .summary = "Permission deny, please check whether you are running as root." });
+              .summary = permissionNotifyMsg });
             return -1;
         }
         auto err = LINGLONG_ERRV(pendingReply.error().message());
@@ -1109,7 +1113,7 @@ int Cli::install()
     if (pendingReply.isError()) {
         if (pendingReply.error().type() == QDBusError::AccessDenied) {
             this->notifier->notify(api::types::v1::InteractionRequest{
-              .summary = "Permission deny, please check whether you are running as root." });
+              .summary = permissionNotifyMsg });
             return -1;
         }
 
@@ -1217,7 +1221,7 @@ int Cli::upgrade()
     if (pendingReply.isError()) {
         if (pendingReply.error().type() == QDBusError::AccessDenied) {
             this->notifier->notify(api::types::v1::InteractionRequest{
-              .summary = "Permission deny, please check whether you are running as root." });
+              .summary = permissionNotifyMsg });
             return -1;
         }
 
@@ -1285,7 +1289,7 @@ int Cli::search()
     if (pendingReply.isError()) {
         if (pendingReply.error().type() == QDBusError::AccessDenied) {
             this->notifier->notify(api::types::v1::InteractionRequest{
-              .summary = "Permission deny, please check whether you are running as root." });
+              .summary = permissionNotifyMsg });
             return -1;
         }
 
@@ -1400,7 +1404,7 @@ int Cli::prune()
     if (pendingReply.isError()) {
         if (pendingReply.error().type() == QDBusError::AccessDenied) {
             this->notifier->notify(api::types::v1::InteractionRequest{
-              .summary = "Permission deny, please check whether you are running as root." });
+              .summary = permissionNotifyMsg });
             return -1;
         }
 
@@ -1489,7 +1493,7 @@ int Cli::uninstall()
     if (pendingReply.isError()) {
         if (pendingReply.error().type() == QDBusError::AccessDenied) {
             this->notifier->notify(api::types::v1::InteractionRequest{
-              .summary = "Permission deny, please check whether you are running as root." });
+              .summary = permissionNotifyMsg });
             return -1;
         }
 
@@ -1687,7 +1691,7 @@ int Cli::repo(CLI::App *app)
     if (this->pkgMan.lastError().isValid()) {
         if (this->pkgMan.lastError().type() == QDBusError::AccessDenied) {
             this->notifier->notify(api::types::v1::InteractionRequest{
-              .summary = "Permission deny, please check whether you are running as root." });
+              .summary = permissionNotifyMsg });
             return -1;
         }
 
@@ -1810,7 +1814,7 @@ int Cli::setRepoConfig(const QVariantMap &config)
     if (this->pkgMan.lastError().isValid()) {
         if (this->pkgMan.lastError().type() == QDBusError::AccessDenied) {
             this->notifier->notify(api::types::v1::InteractionRequest{
-              .summary = "Permission deny, please check whether you are running as root." });
+              .summary = permissionNotifyMsg });
             return -1;
         }
 
@@ -2405,10 +2409,7 @@ Cli::ensureCache(const package::Reference &ref,
     if (ret != 0) {
         this->notifier->notify(api::types::v1::InteractionRequest{
           .summary =
-            "The cache generation failed, please uninstall and reinstall the application." });
-    } else {
-        this->notifier->notify(
-          api::types::v1::InteractionRequest{ .summary = "The cache has been regenerated." });
+            _("The cache generation failed, please uninstall and reinstall the application.") });
     }
     process.close();
 

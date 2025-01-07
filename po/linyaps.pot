@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-01-07 10:11+0800\n"
+"POT-Creation-Date: 2025-01-07 17:11+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,6 +16,15 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:55
+msgid "Permission deny, please check whether you are running as root."
+msgstr ""
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2412
+msgid ""
+"The cache generation failed, please uninstall and reinstall the application."
+msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:179
 msgid ""
@@ -38,8 +47,8 @@ msgstr ""
 #: ../apps/ll-cli/src/main.cpp:189
 msgid ""
 "If you found any problems during use,\n"
-"You can report bugs to the linyaps team under this project: https://"
-"github.com/OpenAtom-Linyaps/linyaps/issues"
+"You can report bugs to the linyaps team under this project: https://github."
+"com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
 
 #: ../apps/ll-cli/src/main.cpp:199 ../apps/ll-builder/src/main.cpp:193
@@ -401,8 +410,8 @@ msgstr ""
 #: ../apps/ll-builder/src/main.cpp:176
 msgid ""
 "If you found any problems during use\n"
-"You can report bugs to the linyaps team under this project: https://"
-"github.com/OpenAtom-Linyaps/linyaps/issues"
+"You can report bugs to the linyaps team under this project: https://github."
+"com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:198
@@ -573,7 +582,7 @@ msgid "Usage: ll-builder import-dir PATH"
 msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:333
-msgid "layer dir path"
+msgid "Layer dir path"
 msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:339

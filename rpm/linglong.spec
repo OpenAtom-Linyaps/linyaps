@@ -111,6 +111,7 @@ cd build
 %{_libexecdir}/%{name}/builder/helper/*.sh
 %{_datadir}/bash-completion/completions/ll-builder
 %{_datadir}/%{name}/builder/templates/*.yaml
+%{_datadir}/%{name}/builder/uab/*
 
 %files -n linglong-box
 %license LICENSE

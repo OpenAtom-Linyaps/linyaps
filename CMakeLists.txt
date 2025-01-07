@@ -187,6 +187,16 @@ add_definitions("-DQT_NO_KEYWORDS")
 # NOTE(black_desk): Enable Qt logging with context.
 add_definitions("-DQT_MESSAGELOGCONTEXT")
 
+# FIXME: Due to a problem with the font cache generation solution
+# this feature is temporarily blocked by LINGLONG_FONT_CACHE_GENERATOR and it can be removed later when the solution is clear.
+set(ENABLE_FONT_CACHE_GENERATOR
+    OFF
+    CACHE BOOL "enable font cache generator")
+
+if(ENABLE_FONT_CACHE_GENERATOR)
+    add_definitions(-DLINGLONG_FONT_CACHE_GENERATOR)
+endif()
+
 # We need to support both Qt5 and Qt6, and according to the Qt documentation, we
 # should be using versioned targets and functions. These varible must be set
 # before find_package()

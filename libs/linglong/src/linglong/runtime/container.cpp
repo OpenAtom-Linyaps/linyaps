@@ -153,7 +153,7 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
         }
         ofs << "include /run/linglong/cache/ld.so.conf" << std::endl;
     }
-
+#ifdef LINGLONG_FONT_CACHE_GENERATOR
     {
         std::ofstream ofs(bundle.absoluteFilePath("conf.d/99-linglong.conf").toStdString());
         Q_ASSERT(ofs.is_open());
@@ -167,6 +167,7 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
             << std::endl;
         ofs << "</fontconfig>" << std::endl;
     }
+#endif
 
     this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
       .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
@@ -176,7 +177,7 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
       .type = "bind",
       .uidMappings = {},
     });
-
+#ifdef LINGLONG_FONT_CACHE_GENERATOR
     this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
       .destination = "/etc/fonts/conf.d",
       .gidMappings = {},
@@ -185,6 +186,7 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
       .type = "bind",
       .uidMappings = {},
     });
+#endif
 
     nlohmann::json json = this->cfg;
 

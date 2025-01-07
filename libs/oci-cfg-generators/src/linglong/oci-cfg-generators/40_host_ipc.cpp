@@ -28,6 +28,11 @@ bool HostIPC::generate(ocppi::runtime::config::types::Config &config) const noex
         return false;
     }
 
+    auto onlyApp = config.annotations->find("org.deepin.linglong.onlyApp");
+    if (onlyApp != config.annotations->end() && onlyApp->second == "true") {
+        return true;
+    }
+
     auto it = config.annotations->find("org.deepin.linglong.bundleDir");
     if (it == config.annotations->end()) {
         std::cerr << "bundleDir not found." << std::endl;

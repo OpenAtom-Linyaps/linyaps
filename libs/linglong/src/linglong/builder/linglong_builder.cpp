@@ -19,6 +19,7 @@
 #include "linglong/utils/command/env.h"
 #include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/file.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/global/initialize.h"
 #include "linglong/utils/packageinfo_handler.h"
@@ -76,33 +77,6 @@ QString genContainerID(const package::Reference &ref)
     }
 
     return QCryptographicHash::hash(content.toUtf8(), QCryptographicHash::Sha256).toHex();
-}
-
-quint64 sizeOfDir(const QString &srcPath)
-{
-    QDir srcDir(srcPath);
-    quint64 size = 0;
-    QFileInfoList list = srcDir.entryInfoList();
-
-    for (auto info : list) {
-        if (info.fileName() == "." || info.fileName() == "..") {
-            continue;
-        }
-        if (info.isSymLink()) {
-            // FIXME: https://bugreports.qt.io/browse/QTBUG-50301
-            struct stat symlinkStat;
-            lstat(info.absoluteFilePath().toLocal8Bit(), &symlinkStat);
-            size += symlinkStat.st_size;
-        } else if (info.isDir()) {
-            // 一个文件夹大小为4K
-            size += 4 * 1024;
-            size += sizeOfDir(QStringList{ srcPath, info.fileName() }.join("/"));
-        } else {
-            size += info.size();
-        }
-    }
-
-    return size;
 }
 
 /*!
@@ -1125,7 +1099,12 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
     for (const auto &module : modules) {
         QDir moduleOutput = this->workingDir.absoluteFilePath("linglong/output/" + module);
         info.packageInfoV2Module = module.toStdString();
-        info.size = sizeOfDir(moduleOutput.path());
+        auto ret =
+          linglong::utils::calculateDirectorySize(moduleOutput.absolutePath().toStdString());
+        if (!ret) {
+            return LINGLONG_ERR(ret);
+        }
+        info.size = static_cast<int>(*ret);
 
         QFile infoFile = moduleOutput.filePath("info.json");
         if (!infoFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {

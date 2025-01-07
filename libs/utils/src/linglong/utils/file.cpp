@@ -6,10 +6,14 @@
 
 #include "linglong/utils/error/error.h"
 
+#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <system_error>
+
+#include <sys/stat.h>
 
 namespace linglong::utils {
 linglong::utils::error::Result<std::string> readFile(std::string filepath)
@@ -64,5 +68,64 @@ linglong::utils::error::Result<void> writeFile(const std::string &filepath,
         return LINGLONG_ERR(msg.c_str());
     }
     return LINGLONG_OK;
+}
+
+linglong::utils::error::Result<uintmax_t>
+calculateDirectorySize(const std::filesystem::path &dir) noexcept
+{
+    LINGLONG_TRACE("calculate directory size")
+
+    uintmax_t size{ 0 };
+    std::error_code ec;
+
+    auto fsIter = std::filesystem::recursive_directory_iterator{ dir, ec };
+    if (ec) {
+        return LINGLONG_ERR(
+          QString{ "failed to calculate directory size: %1" }.arg(ec.message().c_str()));
+    }
+
+    for (const auto &entry : fsIter) {
+        auto path = entry.path().string();
+        if (entry.is_symlink(ec)) {
+            struct stat64 st
+            {
+            };
+
+            if (::lstat64(path.c_str(), &st) == -1) {
+                return LINGLONG_ERR(
+                  QString{ "failed to get symlink size: %1" }.arg(::strerror(errno)));
+            }
+
+            size += st.st_size;
+            continue;
+        }
+        if (ec) {
+            return LINGLONG_ERR(
+              QString{ "failed to get entry type of %1: %2" }.arg(entry.path().c_str(),
+                                                                  ec.message().c_str()));
+        }
+
+        if (entry.is_directory(ec)) {
+            struct stat64 st
+            {
+            };
+
+            if (::stat64(path.c_str(), &st) == -1) {
+                return LINGLONG_ERR(
+                  QString{ "failed to get directory size: %1" }.arg(::strerror(errno)));
+            }
+            size += st.st_size;
+            continue;
+        }
+        if (ec) {
+            return LINGLONG_ERR(
+              QString{ "failed to get entry type of %1: %2" }.arg(entry.path().c_str(),
+                                                                  ec.message().c_str()));
+        }
+
+        size += entry.file_size();
+    }
+
+    return size;
 }
 } // namespace linglong::utils

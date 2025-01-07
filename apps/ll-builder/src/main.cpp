@@ -285,16 +285,17 @@ You can report bugs to the linyaps team under this project: https://github.com/O
 
     // build export
     bool layerMode = false;
-    std::string iconFile;
-    auto buildExport = commandParser.add_subcommand("export", _("Export to linyaps layer or uab"));
+    linglong::builder::UABOption UABOption{ .exportDevelop = false, .exportI18n = true };
+    auto *buildExport = commandParser.add_subcommand("export", _("Export to linyaps layer or uab"));
     buildExport->usage(_("Usage: ll-builder export [OPTIONS]"));
     buildExport->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")
       ->capture_default_str()
       ->check(CLI::ExistingFile);
-    buildExport->add_option("--icon", iconFile, _("Uab icon (optional)"))
+    buildExport->add_option("--icon", UABOption.iconPath, _("Uab icon (optional)"))
       ->type_name("FILE")
       ->check(CLI::ExistingFile);
+    buildExport->add_flag("--only-app", UABOption.onlyApp, _("Export uab in only-app mode"));
     buildExport->add_flag("--layer", layerMode, _("Export to linyaps layer file"));
 
     // build push
@@ -759,10 +760,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
             return 0;
         }
 
-        auto result = builder.exportUAB(QDir::currentPath(),
-                                        { .iconPath = QString::fromStdString(iconFile),
-                                          .exportDevelop = true,
-                                          .exportI18n = true });
+        auto result = builder.exportUAB(QDir::currentPath(), UABOption);
         if (!result) {
             qCritical() << result.error();
             return -1;

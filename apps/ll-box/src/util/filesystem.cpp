@@ -40,10 +40,11 @@ bool create_directories(const path &p, __mode_t mode)
 
         auto ret = mkdir(fullPath.c_str(), mode);
         if (0 != ret) {
-            logErr() << util::RetErrString(errno) << fullPath << mode;
+            logErr() << util::RetErrString(ret) << fullPath << mode;
             return false;
         }
     }
+
     return true;
 }
 

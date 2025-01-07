@@ -2,7 +2,7 @@
 [encoding: UTF-8]
 
 # ll-cli source files
-
+libs/linglong/src/linglong/cli/cli.cpp
 apps/ll-cli/src/main.cpp
 
 # ll-builder source files

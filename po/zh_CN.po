@@ -8,14 +8,23 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-12-27 11:15+0800\n"
-"PO-Revision-Date: 2024-11-21 18:08+0800\n"
+"POT-Creation-Date: 2025-01-07 17:11+0800\n"
+"PO-Revision-Date: 2025-01-07 17:11+0800\n"
 "Last-Translator:  deepiner, 2024\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: zh_CN\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:55
+msgid "Permission deny, please check whether you are running as root."
+msgstr "权限被拒绝，请检查是否以 root 身份运行。"
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2412
+msgid ""
+"The cache generation failed, please uninstall and reinstall the application."
+msgstr "缓存生成失败，请卸载并重新安装该应用程序。"
 
 #: ../apps/ll-cli/src/main.cpp:179
 msgid ""
@@ -620,19 +629,16 @@ msgid "Layer file path"
 msgstr "layer文件路径"
 
 #: ../apps/ll-builder/src/main.cpp:330
-#, fuzzy
 msgid "Import linyaps layer dir to build repo"
-msgstr "导入如意玲珑layer文件到构建仓库"
+msgstr "导入如意玲珑layer目录到构建仓库"
 
 #: ../apps/ll-builder/src/main.cpp:332
-#, fuzzy
 msgid "Usage: ll-builder import-dir PATH"
-msgstr "用法: ll-builder export [选项]"
+msgstr "用法: ll-builder import-dir PATH"
 
 #: ../apps/ll-builder/src/main.cpp:333
-#, fuzzy
-msgid "layer dir path"
-msgstr "layer文件路径"
+msgid "Layer dir path"
+msgstr "layer目录路径"
 
 #: ../apps/ll-builder/src/main.cpp:339
 msgid "Extract linyaps layer to dir"
@@ -700,6 +706,3 @@ msgstr "玲珑软件包管理器"
 #: ../apps/ll-dialog/src/cache_dialog.cpp:54
 msgid "is starting"
 msgstr "正在启动"
-
-#~ msgid "Migrate repository data"
-#~ msgstr "迁移仓库数据"

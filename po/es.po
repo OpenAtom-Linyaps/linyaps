@@ -8,14 +8,25 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-12-27 11:15+0800\n"
-"PO-Revision-Date: 2024-11-21 18:10+0800\n"
+"POT-Creation-Date: 2025-01-07 17:11+0800\n"
+"PO-Revision-Date: 2025-01-07 17:11+0800\n"
 "Last-Translator: deepiner, 2024\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: es\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:55
+msgid "Permission deny, please check whether you are running as root."
+msgstr "Permiso denegado, por favor verifica si estás ejecutando como root."
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2412
+msgid ""
+"The cache generation failed, please uninstall and reinstall the application."
+msgstr ""
+"La generación de la caché falló, por favor desinstala y reinstala la "
+"aplicación."
 
 #: ../apps/ll-cli/src/main.cpp:179
 msgid ""
@@ -646,19 +657,16 @@ msgid "Layer file path"
 msgstr "Ruta del archivo de la capa"
 
 #: ../apps/ll-builder/src/main.cpp:330
-#, fuzzy
 msgid "Import linyaps layer dir to build repo"
-msgstr "Importar la capa de linyaps para construir el repositorio"
+msgstr "Importar directorio de capa linyaps al repositorio de compilación"
 
 #: ../apps/ll-builder/src/main.cpp:332
-#, fuzzy
 msgid "Usage: ll-builder import-dir PATH"
-msgstr "Uso: ll-builder export [OPCIONES]"
+msgstr "Uso: ll-builder import-dir PATH"
 
 #: ../apps/ll-builder/src/main.cpp:333
-#, fuzzy
-msgid "layer dir path"
-msgstr "Ruta del archivo de la capa"
+msgid "Layer dir path"
+msgstr "Ruta del directorio de capa"
 
 #: ../apps/ll-builder/src/main.cpp:339
 msgid "Extract linyaps layer to dir"
@@ -726,6 +734,3 @@ msgstr "Administrador de paquetes Linglong"
 #: ../apps/ll-dialog/src/cache_dialog.cpp:54
 msgid "is starting"
 msgstr "A partir de"
-
-#~ msgid "Migrate repository data"
-#~ msgstr "Migrate datos del repositorio"

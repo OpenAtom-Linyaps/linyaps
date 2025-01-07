@@ -24,8 +24,8 @@ set(UAB_SPECIAL_INSTALL
     OFF
     CACHE BOOL "enable special installation of UAB")
 
-if (${UAB_SPECIAL_INSTALL})
-    add_definitions(-DUAB_SPECIAL_INSTALL)
+if(${UAB_SPECIAL_INSTALL})
+  add_definitions(-DUAB_SPECIAL_INSTALL)
 endif()
 
 set(ENABLE_UAB
@@ -187,14 +187,17 @@ add_definitions("-DQT_NO_KEYWORDS")
 # NOTE(black_desk): Enable Qt logging with context.
 add_definitions("-DQT_MESSAGELOGCONTEXT")
 
-# FIXME: Due to a problem with the font cache generation solution
-# this feature is temporarily blocked by LINGLONG_FONT_CACHE_GENERATOR and it can be removed later when the solution is clear.
+# FIXME: can not start container since the kernel does not support the
+# CLONE_NEWUSER feature in the chroot environment, reference:
+# https://man7.org/linux/man-pages/man2/unshare.2.html. so we skip font cache
+# generator by LINGLONG_FONT_CACHE_GENERATOR, it can be removed when the above
+# problem is solved.
 set(ENABLE_FONT_CACHE_GENERATOR
     OFF
     CACHE BOOL "enable font cache generator")
 
 if(ENABLE_FONT_CACHE_GENERATOR)
-    add_definitions(-DLINGLONG_FONT_CACHE_GENERATOR)
+  add_definitions(-DLINGLONG_FONT_CACHE_GENERATOR)
 endif()
 
 # We need to support both Qt5 and Qt6, and according to the Qt documentation, we

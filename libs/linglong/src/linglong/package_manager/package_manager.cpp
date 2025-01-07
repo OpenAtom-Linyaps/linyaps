@@ -2305,10 +2305,8 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
     return LINGLONG_OK;
 }
 
-// FIXME: can not start container since the kernel does not support the CLONE_NEWUSER feature in the
-// chroot environment, reference: https://man7.org/linux/man-pages/man2/unshare.2.html. so we allow
-// cache generation to fail, skip it when an error occurs, the function can be removed when the
-// above problem is solved.
+// we should allow cache generation to fail, skip it when an error occurs by. the function can be
+// removed later when the kernel clone new_user problem is solved.
 utils::error::Result<void> PackageManager::tryGenerateCache(const package::Reference &ref) noexcept
 {
     auto ret = generateCache(ref);

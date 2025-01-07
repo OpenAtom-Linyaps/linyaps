@@ -2,9 +2,9 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
+#include "cache_dialog.h"
 #include "linglong/utils/configure.h"
 #include "permissionDialog.h"
-#include "cache_dialog.h"
 #include "tl/expected.hpp"
 
 #include <QApplication>
@@ -159,6 +159,8 @@ int showPermissionDialog()
 
 int main(int argc, char *argv[])
 {
+    bindtextdomain(PACKAGE_LOCALE_DOMAIN, PACKAGE_LOCALE_DIR);
+    textdomain(PACKAGE_LOCALE_DOMAIN);
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QApplication::setAttribute(Qt::ApplicationAttribute::AA_UseHighDpiPixmaps);
     QApplication::setAttribute(Qt::ApplicationAttribute::AA_EnableHighDpiScaling);

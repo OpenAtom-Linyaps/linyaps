@@ -330,7 +330,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
       commandParser.add_subcommand("import-dir", _("Import linyaps layer dir to build repo"))
         ->group(hiddenGroup);
     buildImportDir->usage(_("Usage: ll-builder import-dir PATH"));
-    buildImportDir->add_option("PATH", layerDir, _("layer dir path"))
+    buildImportDir->add_option("PATH", layerDir, _("Layer dir path"))
       ->type_name("PATH")
       ->required();
 

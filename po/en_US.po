@@ -8,14 +8,24 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-12-27 11:15+0800\n"
-"PO-Revision-Date: 2024-11-21 17:58+0800\n"
+"POT-Creation-Date: 2025-01-07 17:11+0800\n"
+"PO-Revision-Date: 2025-01-07 17:11+0800\n"
 "Last-Translator: deepiner, 2024\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: en_US\n"
+"Language: en_GB\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:55
+msgid "Permission deny, please check whether you are running as root."
+msgstr "Permission deny, please check whether you are running as root."
+
+#: ../libs/linglong/src/linglong/cli/cli.cpp:2412
+msgid ""
+"The cache generation failed, please uninstall and reinstall the application."
+msgstr ""
+"The cache generation failed, please uninstall and reinstall the application."
 
 #: ../apps/ll-cli/src/main.cpp:179
 msgid ""
@@ -632,19 +642,16 @@ msgid "Layer file path"
 msgstr "Layer file path"
 
 #: ../apps/ll-builder/src/main.cpp:330
-#, fuzzy
 msgid "Import linyaps layer dir to build repo"
-msgstr "Import linyaps layer to build repo"
+msgstr "Import linyaps layer dir to build repo"
 
 #: ../apps/ll-builder/src/main.cpp:332
-#, fuzzy
 msgid "Usage: ll-builder import-dir PATH"
-msgstr "Usage: ll-builder export [OPTIONS]"
+msgstr "Usage: ll-builder import-dir PATH"
 
 #: ../apps/ll-builder/src/main.cpp:333
-#, fuzzy
-msgid "layer dir path"
-msgstr "Layer file path"
+msgid "Layer dir path"
+msgstr "Layer dir path"
 
 #: ../apps/ll-builder/src/main.cpp:339
 msgid "Extract linyaps layer to dir"
@@ -712,6 +719,3 @@ msgstr "Linglong Package Manager"
 #: ../apps/ll-dialog/src/cache_dialog.cpp:54
 msgid "is starting"
 msgstr "is starting"
-
-#~ msgid "Migrate repository data"
-#~ msgstr "Migrate repository data"

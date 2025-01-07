@@ -664,12 +664,14 @@ int Cli::run()
       .type = "bind",
     });
 
+#ifdef LINGLONG_FONT_CACHE_GENERATOR
     applicationMounts.push_back(ocppi::runtime::config::types::Mount{
       .destination = "/var/cache/fontconfig",
       .options = nlohmann::json::array({ "rbind", "ro" }),
       .source = *appCache + "/fontconfig",
       .type = "bind",
     });
+#endif
 
     auto container = this->containerBuilder.create({
       .appID = curAppRef->id,

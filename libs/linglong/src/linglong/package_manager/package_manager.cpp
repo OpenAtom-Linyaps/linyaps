@@ -334,7 +334,7 @@ PackageManager::removeAfterInstall(const package::Reference &oldRef,
                            << tmp.message();
             }
             if (module == "binary" || module == "runtime") {
-                auto ret = this->generateCache(oldRef);
+                auto ret = this->tryGenerateCache(oldRef);
                 if (!ret) {
                     qCritical() << ret.error().message();
                 }
@@ -691,7 +691,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
                   return;
               }
 
-              auto generateCacheRet = this->generateCache(*newRef);
+              auto generateCacheRet = this->tryGenerateCache(*newRef);
               if (!generateCacheRet) {
                   taskRef.reportError(std::move(generateCacheRet).error());
                   return;
@@ -712,7 +712,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
               return;
           }
 
-          auto generateCacheRet = this->generateCache(*newRef);
+          auto generateCacheRet = this->tryGenerateCache(*newRef);
           if (!generateCacheRet) {
               taskRef.reportError(std::move(generateCacheRet).error());
               return;
@@ -1047,7 +1047,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
             }
 
             this->repo.exportReference(newAppRef);
-            auto result = this->generateCache(newAppRef);
+            auto result = this->tryGenerateCache(newAppRef);
             if (!result) {
                 taskRef.updateState(linglong::api::types::v1::State::Failed,
                                     "Failed to generate some cache.\n" + result.error().message());
@@ -1355,7 +1355,7 @@ void PackageManager::Install(PackageTask &taskContext,
         } else {
             this->repo.exportReference(newRef);
         }
-        auto result = this->generateCache(newRef);
+        auto result = this->tryGenerateCache(newRef);
         if (!result) {
             taskContext.updateState(linglong::api::types::v1::State::Failed,
                                     "Failed to generate some cache.\n" + result.error().message());
@@ -1590,7 +1590,7 @@ void PackageManager::UninstallRef(PackageTask &taskContext,
                             << ref.toString();
             }
             if (module == "binary" || module == "runtime") {
-                auto ret = this->generateCache(ref);
+                auto ret = this->tryGenerateCache(ref);
                 if (!ret) {
                     qCritical() << ret.error().message();
                 }
@@ -1805,7 +1805,7 @@ void PackageManager::Update(PackageTask &taskContext,
             return;
         }
 
-        auto result = this->generateCache(newRef);
+        auto result = this->tryGenerateCache(newRef);
         if (!result) {
             taskContext.updateState(linglong::api::types::v1::State::Failed,
                                     "Failed to generate some cache.\n" + result.error().message());
@@ -2179,19 +2179,22 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
     }
 
     const auto appCache = std::filesystem::path(LINGLONG_ROOT) / "cache" / layerItem->commit;
-    const auto appFontCache = appCache / "fontconfig";
     const std::string appCacheDest = "/run/linglong/cache";
     const std::string generatorDest = "/run/linglong/generator";
     const std::string ldGenerator = generatorDest + "/ld-cache-generator";
-    const std::string fontGenerator = generatorDest + "/font-cache-generator";
 
     utils::Transaction transaction;
+
+#ifdef LINGLONG_FONT_CACHE_GENERATOR
+    const auto appFontCache = appCache / "fontconfig";
+    const std::string fontGenerator = generatorDest + "/font-cache-generator";
+#endif
     std::error_code ec;
-    if (!std::filesystem::exists(appFontCache, ec)) {
+    if (!std::filesystem::exists(appCache, ec)) {
         if (ec) {
             return LINGLONG_ERR(QString::fromStdString(ec.message()));
         }
-        if (!std::filesystem::create_directories(appFontCache, ec)) {
+        if (!std::filesystem::create_directories(appCache, ec)) {
             return LINGLONG_ERR(QString::fromStdString(ec.message()));
         }
     }
@@ -2212,6 +2215,7 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
       .source = appCache,
       .type = "bind",
     });
+#ifdef LINGLONG_FONT_CACHE_GENERATOR
     // bind mount font cache
     applicationMounts.push_back(ocppi::runtime::config::types::Mount{
       .destination = "/var/cache/fontconfig",
@@ -2219,6 +2223,7 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
       .source = appFontCache,
       .type = "bind",
     });
+#endif
     // bind mount generator
     applicationMounts.push_back(ocppi::runtime::config::types::Mount{
       .destination = generatorDest,
@@ -2275,9 +2280,13 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
     //        font-cache-generator [cacheRoot] [id]
     const std::string ldGenerateCmd = ldGenerator + " " + appCacheDest + " " + ref.id.toStdString()
       + " " + currentArch->getTriplet().toStdString();
+#ifdef LINGLONG_FONT_CACHE_GENERATOR
     const std::string fontGenerateCmd =
       fontGenerator + " " + appCacheDest + " " + ref.id.toStdString();
     process.args = std::vector<std::string>{ "bash", "-c", ldGenerateCmd + ";" + fontGenerateCmd };
+#endif
+
+    process.args = std::vector<std::string>{ "bash", "-c", ldGenerateCmd };
 
     // Note: XDG_RUNTIME_DIR is not set in PM, the ll-box will finally fallback to /run/ll-box.
     //       But PM has no write permission in that place, so we should specific the root path.
@@ -2293,6 +2302,20 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
     }
 
     transaction.commit();
+    return LINGLONG_OK;
+}
+
+// FIXME: can not start container since the kernel does not support the CLONE_NEWUSER feature in the
+// chroot environment, reference: https://man7.org/linux/man-pages/man2/unshare.2.html. so we allow
+// cache generation to fail, skip it when an error occurs, the function can be removed when the
+// above problem is solved.
+utils::error::Result<void> PackageManager::tryGenerateCache(const package::Reference &ref) noexcept
+{
+    auto ret = generateCache(ref);
+    if (!ret) {
+        qWarning() << "failed to generate cache" << ret.error();
+    }
+
     return LINGLONG_OK;
 }
 

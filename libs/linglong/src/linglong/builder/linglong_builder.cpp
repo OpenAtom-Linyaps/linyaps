@@ -704,6 +704,10 @@ set -e
 
     // initialize the cache dir
     QDir appCache = this->workingDir.absoluteFilePath("linglong/cache");
+    if (!appCache.mkpath(".")) {
+        return LINGLONG_ERR("make path " + appCache.absolutePath() + ": failed.");
+    }
+#ifdef LINGLONG_FONT_CACHE_GENERATOR
     QDir appFontCache = appCache.absoluteFilePath("fontconfig");
     if (!appFontCache.mkpath(".")) {
         return LINGLONG_ERR("make path " + appFontCache.absolutePath() + ": failed.");
@@ -712,6 +716,7 @@ set -e
     if (!appFonts.mkpath(".")) {
         return LINGLONG_ERR("make path " + appFonts.absolutePath() + ": failed.");
     }
+#endif
     // write ld.so.conf
     QFile ldsoconf = appCache.absoluteFilePath("ld.so.conf");
     if (!ldsoconf.open(QIODevice::WriteOnly)) {
@@ -728,6 +733,7 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
     ldsoconf.write(ldRawConf.toUtf8());
     // must be closed here, this conf will be used later.
     ldsoconf.close();
+#ifdef LINGLONG_FONT_CACHE_GENERATOR
     // write fonts.conf
     QFile fontsConf = appFonts.absoluteFilePath("fonts.conf");
     if (!fontsConf.open(QIODevice::WriteOnly)) {
@@ -741,6 +747,7 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
 </fontconfig>)";
     fontsRawConf.replace("@id@", QString::fromStdString(this->project.package.id));
     fontsConf.write(fontsRawConf.toUtf8());
+#endif
 
     opts.mounts.push_back({
       .destination = "/run/linglong/cache",
@@ -1549,6 +1556,7 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
       .source = this->workingDir.absoluteFilePath("linglong/cache").toStdString(),
       .type = "bind",
     });
+#ifdef LINGLONG_FONT_CACHE_GENERATOR
     // mount font cache
     applicationMounts.push_back(ocppi::runtime::config::types::Mount{
       .destination = "/var/cache/fontconfig",
@@ -1556,24 +1564,27 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
       .source = this->workingDir.absoluteFilePath("linglong/cache/fontconfig").toStdString(),
       .type = "bind",
     });
+#endif
 
     std::vector<ocppi::runtime::config::types::Hook> generateCache{};
     std::vector<std::string> ldconfigCmd = { "/sbin/ldconfig",
                                              "-C",
                                              "/run/linglong/cache/ld.so.cache" };
-    std::vector<std::string> fontconfiCmd = { "fc-cache", "-f" };
     generateCache.push_back(ocppi::runtime::config::types::Hook{
       .args = std::move(ldconfigCmd),
       .env = {},
       .path = "/sbin/ldconfig",
       .timeout = {},
     });
+#ifdef LINGLONG_FONT_CACHE_GENERATOR
+    std::vector<std::string> fontconfiCmd = { "fc-cache", "-f" };
     generateCache.push_back(ocppi::runtime::config::types::Hook{
       .args = std::move(fontconfiCmd),
       .env = {},
       .path = "/bin/fc-cache",
       .timeout = {},
     });
+#endif
     options.hooks.startContainer = std::move(generateCache);
     options.mounts = std::move(applicationMounts);
 

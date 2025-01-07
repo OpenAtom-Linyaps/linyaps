@@ -146,6 +146,7 @@ private:
     utils::error::Result<void>
     Prune(std::vector<api::types::v1::PackageInfoV2> &removedInfo) noexcept;
     utils::error::Result<void> generateCache(const package::Reference &ref) noexcept;
+    utils::error::Result<void> tryGenerateCache(const package::Reference &ref) noexcept;
     utils::error::Result<void> removeCache(const package::Reference &ref) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT
     PackageTaskQueue tasks;

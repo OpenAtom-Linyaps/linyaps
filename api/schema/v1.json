@@ -216,6 +216,10 @@
           "type": "string",
           "const": "1"
         },
+        "onlyApp": {
+          "description": "whether this UAB file has been exported in only-App mode.",
+          "type": "boolean"
+        },
         "sections": {
           "type": "object",
           "required": [

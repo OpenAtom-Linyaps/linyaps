@@ -927,6 +927,7 @@ j["icon"] = x.icon;
 inline void from_json(const json & j, UabMetaInfo& x) {
 x.digest = j.at("digest").get<std::string>();
 x.layers = j.at("layers").get<std::vector<UabLayer>>();
+x.onlyApp = get_stack_optional<bool>(j, "onlyApp");
 x.sections = j.at("sections").get<Sections>();
 x.uuid = j.at("uuid").get<std::string>();
 x.version = j.at("version").get<Version>();
@@ -936,6 +937,9 @@ inline void to_json(json & j, const UabMetaInfo & x) {
 j = json::object();
 j["digest"] = x.digest;
 j["layers"] = x.layers;
+if (x.onlyApp) {
+j["onlyApp"] = x.onlyApp;
+}
 j["sections"] = x.sections;
 j["uuid"] = x.uuid;
 j["version"] = x.version;

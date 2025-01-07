@@ -39,6 +39,11 @@ bool UserHome::generate(ocppi::runtime::config::types::Config &config) const noe
         return false;
     }
 
+    auto onlyApp = config.annotations->find("org.deepin.linglong.onlyApp");
+    if (onlyApp != config.annotations->end() && onlyApp->second == "true") {
+        return true;
+    }
+
     auto appID = config.annotations->find("org.deepin.linglong.appID");
     if (appID == config.annotations->end()) {
         std::cerr << "appID not found." << std::endl;

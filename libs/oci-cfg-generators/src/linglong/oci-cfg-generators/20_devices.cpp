@@ -16,6 +16,16 @@ bool Devices::generate(ocppi::runtime::config::types::Config &config) const noex
         return false;
     }
 
+    if (!config.annotations) {
+        std::cerr << "no annotations." << std::endl;
+        return false;
+    }
+
+    auto onlyApp = config.annotations->find("org.deepin.linglong.onlyApp");
+    if (onlyApp != config.annotations->end() && onlyApp->second == "true") {
+        return true;
+    }
+
     auto mounts = config.mounts.value_or(std::vector<ocppi::runtime::config::types::Mount>{});
 
     auto bindIfExist = [&mounts](std::string_view source, std::string_view destination) mutable {

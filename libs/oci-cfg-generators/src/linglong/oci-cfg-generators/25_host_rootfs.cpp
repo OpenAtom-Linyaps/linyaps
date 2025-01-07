@@ -26,6 +26,16 @@ bool HostRootfs::generate(ocppi::runtime::config::types::Config &config) const n
         return false;
     }
 
+    if (!config.annotations) {
+        std::cerr << "no annotations." << std::endl;
+        return false;
+    }
+
+    auto onlyApp = config.annotations->find("org.deepin.linglong.onlyApp");
+    if (onlyApp != config.annotations->end() && onlyApp->second == "true") {
+        return true;
+    }
+
     try {
         auto rawConfig = nlohmann::json(config);
         rawConfig = rawConfig.patch(rawPatch["patch"]);

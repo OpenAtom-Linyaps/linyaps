@@ -28,57 +28,6 @@
 namespace linglong::runtime {
 
 namespace {
-auto getPatchesForApplication(const QString &appID) noexcept
-  -> std::vector<api::types::v1::OciConfigurationPatch>
-{
-    auto filePath =
-      QStandardPaths::locate(QStandardPaths::ConfigLocation, "linglong/" + appID + "/config.yaml");
-    if (filePath.isEmpty()) {
-        return {};
-    }
-
-    LINGLONG_TRACE(QString("get OCI patches for application %1").arg(appID));
-
-    auto config =
-      utils::serialize::LoadYAMLFile<api::types::v1::ApplicationConfiguration>(filePath);
-    if (!config) {
-        qWarning() << LINGLONG_ERRV(config);
-        Q_ASSERT(false);
-        return {};
-    }
-
-    if (!config->permissions) {
-        return {};
-    }
-
-    if (!config->permissions->binds) {
-        return {};
-    }
-
-    std::vector<api::types::v1::OciConfigurationPatch> patches;
-
-    for (const auto &bind : *config->permissions->binds) {
-        patches.push_back({
-          .ociVersion = "1.0.1",
-          .patch = nlohmann::json::array({
-            { "op", "add" },
-            { "path", "/mounts/-" },
-            { "value",
-              { { "source", bind.source },
-                { "destination", bind.destination },
-                { "options",
-                  nlohmann::json::array({
-                    "rbind",
-                    "nosuid",
-                    "nodev",
-                  }) } } },
-          }),
-        });
-    }
-
-    return patches;
-}
-
 // getBundleDir 用于获取容器的运行目录
 utils::error::Result<QDir> getBundleDir(const QString &containerID)
 {
@@ -258,10 +207,6 @@ auto getOCIConfig(const ContainerOptions &opts, const std::string &bundleDir) no
     Q_ASSERT(configDotDDir.exists());
 
     applyPatches(*config, configDotDDir.entryInfoList(QDir::Files));
-
-    auto appPatches = getPatchesForApplication(opts.appID);
-
-    applyPatches(*config, appPatches);
 
     applyPatches(*config, opts.patches);
 

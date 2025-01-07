@@ -17,8 +17,6 @@
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
-#include "linglong/api/types/v1/ApplicationConfigurationPermissionsBind.hpp"
-#include "linglong/api/types/v1/ApplicationConfigurationPermissionsInnerBind.hpp"
 #include "linglong/api/types/v1/XdgDirectoryPermission.hpp"
 
 namespace linglong {
@@ -35,11 +33,6 @@ using nlohmann::json;
 * application configuration permissions
 */
 struct ApplicationConfigurationPermissions {
-std::optional<std::vector<ApplicationConfigurationPermissionsBind>> binds;
-/**
-* inner binds of container
-*/
-std::optional<std::vector<ApplicationConfigurationPermissionsInnerBind>> innerBinds;
 std::optional<std::vector<XdgDirectoryPermission>> xdgDirectories;
 };
 }

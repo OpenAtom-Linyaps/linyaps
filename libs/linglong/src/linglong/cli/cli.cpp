@@ -617,46 +617,6 @@ int Cli::run()
     }
 
     std::vector<ocppi::runtime::config::types::Mount> applicationMounts{};
-    auto bindMount =
-      [&applicationMounts](const api::types::v1::ApplicationConfigurationPermissionsBind &bind) {
-          applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-            .destination = bind.destination,
-            .gidMappings = {},
-            .options = { { "rbind" } },
-            .source = bind.source,
-            .type = "bind",
-            .uidMappings = {},
-          });
-      };
-
-    auto bindInnerMount =
-      [&applicationMounts](
-        const api::types::v1::ApplicationConfigurationPermissionsInnerBind &bind) {
-          applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-            .destination = bind.destination,
-            .gidMappings = {},
-            .options = { { "rbind" } },
-            .source = "rootfs" + bind.source,
-            .type = "bind",
-            .uidMappings = {},
-          });
-      };
-
-    if (info.permissions) {
-        const auto &perm = info.permissions;
-        if (perm->binds) {
-            const auto &binds = perm->binds;
-            std::for_each(binds->cbegin(), binds->cend(), bindMount);
-        }
-
-        if (perm->innerBinds) {
-            const auto &innerBinds = perm->innerBinds;
-            const auto &hostSourceDir =
-              std::filesystem::path{ appLayerDir->absolutePath().toStdString() };
-            std::for_each(innerBinds->cbegin(), innerBinds->cend(), bindInnerMount);
-        }
-    }
-
     applicationMounts.push_back(ocppi::runtime::config::types::Mount{
       .destination = "/run/linglong/cache",
       .options = nlohmann::json::array({ "rbind", "ro" }),
@@ -2420,7 +2380,7 @@ Cli::ensureCache(const package::Reference &ref,
 
 void Cli::updateAM() noexcept
 {
-    // NOTE: make sure AM refresh the cache of desktop 
+    // NOTE: make sure AM refresh the cache of desktop
     if ((QSysInfo::productType() == "Deepin" || QSysInfo::productType() == "deepin")
         && this->lastState == linglong::api::types::v1::State::Succeed) {
         QDBusConnection conn = QDBusConnection::systemBus();

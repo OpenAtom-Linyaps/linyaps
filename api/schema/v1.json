@@ -47,51 +47,6 @@
       "properties": {
         "xdgDirectories": {
           "$ref": "#/$defs/XDGDirectoryPermissions"
-        },
-        "binds": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "title": "ApplicationConfigurationPermissionsBind",
-            "description": "items of container",
-            "required": [
-              "source",
-              "destination"
-            ],
-            "properties": {
-              "source": {
-                "type": "string",
-                "description": "source file of host"
-              },
-              "destination": {
-                "type": "string",
-                "description": "mount source file to the container"
-              }
-            }
-          }
-        },
-        "innerBinds": {
-          "type": "array",
-          "description": "inner binds of container",
-          "items": {
-            "type": "object",
-            "title": "ApplicationConfigurationPermissionsInnerBind",
-            "description": "items of inner binds of container",
-            "required": [
-              "source",
-              "destination"
-            ],
-            "properties": {
-              "source": {
-                "type": "string",
-                "description": "source file of container"
-              },
-              "destination": {
-                "type": "string",
-                "description": "mount source file to the another position of container"
-              }
-            }
-          }
         }
       }
     },

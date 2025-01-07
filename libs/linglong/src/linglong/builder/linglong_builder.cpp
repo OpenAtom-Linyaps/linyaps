@@ -1468,44 +1468,6 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     }
 
     std::vector<ocppi::runtime::config::types::Mount> applicationMounts{};
-    auto bindMount =
-      [&applicationMounts](const api::types::v1::ApplicationConfigurationPermissionsBind &bind) {
-          applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-            .destination = bind.destination,
-            .gidMappings = {},
-            .options = { { "rbind" } },
-            .source = bind.source,
-            .type = "bind",
-            .uidMappings = {},
-          });
-      };
-    auto bindInnerMount =
-      [&applicationMounts](
-        const api::types::v1::ApplicationConfigurationPermissionsInnerBind &bind) {
-          applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-            .destination = bind.destination,
-            .gidMappings = {},
-            .options = { { "rbind" } },
-            .source = "rootfs" + bind.source,
-            .type = "bind",
-            .uidMappings = {},
-          });
-      };
-
-    if (info->permissions) {
-        auto &perm = info->permissions;
-        if (perm->binds) {
-            const auto &binds = perm->binds;
-            std::for_each(binds->cbegin(), binds->cend(), bindMount);
-        }
-
-        if (perm->innerBinds) {
-            const auto &innerBinds = perm->innerBinds;
-            const auto &hostSourceDir =
-              std::filesystem::path{ curDir->absolutePath().toStdString() };
-            std::for_each(innerBinds->cbegin(), innerBinds->cend(), bindInnerMount);
-        }
-    }
     if (debug) {
         std::filesystem::path workdir = this->workingDir.absolutePath().toStdString();
         // 生成 host_gdbinit 可使用 gdb --init-command=linglong/host_gdbinit 从宿主机调试

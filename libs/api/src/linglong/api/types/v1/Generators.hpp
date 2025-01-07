@@ -64,19 +64,11 @@
 #include "linglong/api/types/v1/ApplicationConfiguration.hpp"
 #include "linglong/api/types/v1/ApplicationConfigurationPermissions.hpp"
 #include "linglong/api/types/v1/XdgDirectoryPermission.hpp"
-#include "linglong/api/types/v1/ApplicationConfigurationPermissionsInnerBind.hpp"
-#include "linglong/api/types/v1/ApplicationConfigurationPermissionsBind.hpp"
 
 namespace linglong {
 namespace api {
 namespace types {
 namespace v1 {
-void from_json(const json & j, ApplicationConfigurationPermissionsBind & x);
-void to_json(json & j, const ApplicationConfigurationPermissionsBind & x);
-
-void from_json(const json & j, ApplicationConfigurationPermissionsInnerBind & x);
-void to_json(json & j, const ApplicationConfigurationPermissionsInnerBind & x);
-
 void from_json(const json & j, XdgDirectoryPermission & x);
 void to_json(json & j, const XdgDirectoryPermission & x);
 
@@ -218,28 +210,6 @@ void to_json(json & j, const SubState & x);
 void from_json(const json & j, Version & x);
 void to_json(json & j, const Version & x);
 
-inline void from_json(const json & j, ApplicationConfigurationPermissionsBind& x) {
-x.destination = j.at("destination").get<std::string>();
-x.source = j.at("source").get<std::string>();
-}
-
-inline void to_json(json & j, const ApplicationConfigurationPermissionsBind & x) {
-j = json::object();
-j["destination"] = x.destination;
-j["source"] = x.source;
-}
-
-inline void from_json(const json & j, ApplicationConfigurationPermissionsInnerBind& x) {
-x.destination = j.at("destination").get<std::string>();
-x.source = j.at("source").get<std::string>();
-}
-
-inline void to_json(json & j, const ApplicationConfigurationPermissionsInnerBind & x) {
-j = json::object();
-j["destination"] = x.destination;
-j["source"] = x.source;
-}
-
 inline void from_json(const json & j, XdgDirectoryPermission& x) {
 x.allowed = j.at("allowed").get<bool>();
 x.dirType = j.at("dirType").get<std::string>();
@@ -252,19 +222,11 @@ j["dirType"] = x.dirType;
 }
 
 inline void from_json(const json & j, ApplicationConfigurationPermissions& x) {
-x.binds = get_stack_optional<std::vector<ApplicationConfigurationPermissionsBind>>(j, "binds");
-x.innerBinds = get_stack_optional<std::vector<ApplicationConfigurationPermissionsInnerBind>>(j, "innerBinds");
 x.xdgDirectories = get_stack_optional<std::vector<XdgDirectoryPermission>>(j, "xdgDirectories");
 }
 
 inline void to_json(json & j, const ApplicationConfigurationPermissions & x) {
 j = json::object();
-if (x.binds) {
-j["binds"] = x.binds;
-}
-if (x.innerBinds) {
-j["innerBinds"] = x.innerBinds;
-}
 if (x.xdgDirectories) {
 j["xdgDirectories"] = x.xdgDirectories;
 }

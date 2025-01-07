@@ -69,14 +69,17 @@ public:
 
     utils::error::Result<void> setIcon(const QFileInfo &icon) noexcept;
     utils::error::Result<void> appendLayer(const LayerDir &layer) noexcept;
-    utils::error::Result<void> pack(const QString &uabFilename) noexcept;
+    utils::error::Result<void> pack(const QString &uabFilename, bool onlyApp) noexcept;
     utils::error::Result<void> exclude(const std::vector<std::string> &files) noexcept;
     utils::error::Result<void> include(const std::vector<std::string> &files) noexcept;
+    utils::error::Result<void> loadBlackList() noexcept;
+    utils::error::Result<void> loadNeededFiles() noexcept;
 
 private:
     [[nodiscard]] utils::error::Result<void> packIcon() noexcept;
-    [[nodiscard]] utils::error::Result<void> packBundle() noexcept;
-    [[nodiscard]] utils::error::Result<void> prepareBundle(const QDir &bundleDir) noexcept;
+    [[nodiscard]] utils::error::Result<void> packBundle(bool onlyApp) noexcept;
+    [[nodiscard]] utils::error::Result<void> prepareBundle(const QDir &bundleDir,
+                                                           bool onlyApp) noexcept;
     [[nodiscard]] utils::error::Result<void> packMetaInfo() noexcept;
     [[nodiscard]] utils::error::Result<std::pair<bool, std::unordered_set<std::string>>>
     filteringFiles(const LayerDir &layer) const noexcept;
@@ -85,8 +88,11 @@ private:
     QList<LayerDir> layers;
     std::unordered_set<std::string> excludeFiles;
     std::unordered_set<std::string> includeFiles;
+    std::unordered_set<std::string> neededFiles;
+    std::unordered_set<std::string> blackList;
     std::optional<QFileInfo> icon{ std::nullopt };
     api::types::v1::UabMetaInfo meta;
     QDir buildDir;
+    std::filesystem::path workDir;
 };
 } // namespace linglong::package

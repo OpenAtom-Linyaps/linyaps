@@ -1180,6 +1180,19 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
         packager.include(project.include.value());
     }
 
+    if (option.onlyApp && project.runtime) {
+        auto ret = packager.loadBlackList();
+        if (!ret) {
+            return LINGLONG_ERR(ret);
+        }
+
+        // load needed libraries
+        ret = packager.loadNeededFiles();
+        if (!ret) {
+            return LINGLONG_ERR(ret);
+        }
+    }
+
     auto baseFuzzyRef = package::FuzzyReference::parse(QString::fromStdString(this->project.base));
     if (!baseFuzzyRef) {
         return LINGLONG_ERR(baseFuzzyRef);
@@ -1234,7 +1247,7 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
                                                     curRef->arch.toString(),
                                                     curRef->version.toString(),
                                                     curRef->channel);
-    if (auto ret = packager.pack(uabFile); !ret) {
+    if (auto ret = packager.pack(uabFile, option.onlyApp); !ret) {
         return LINGLONG_ERR(ret);
     }
 
@@ -1429,8 +1442,8 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     // mergedDir 会自动在释放时删除临时目录，所以要用变量保留住
     utils::error::Result<std::shared_ptr<package::LayerDir>> mergedDir;
     if (modules.size() > 1) {
-        qDebug() << "create temp merge dir."
-                 << "ref: " << curRef->toString() << "modules: " << modules;
+        qDebug() << "create temp merge dir." << "ref: " << curRef->toString()
+                 << "modules: " << modules;
         mergedDir = this->repo.getMergedModuleDir(*curRef, modules);
         if (!mergedDir.has_value()) {
             return LINGLONG_ERR(mergedDir);

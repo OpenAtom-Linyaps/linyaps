@@ -918,6 +918,18 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
             return;
         }
 
+        auto appLayerInfo = std::find_if(layerInfos.begin(),
+                                         layerInfos.end(),
+                                         [](const linglong::api::types::v1::UabLayer &layer) {
+                                             return layer.info.kind == "app";
+                                         });
+        if (appLayerInfo == layerInfos.end()) {
+            taskRef.updateState(linglong::api::types::v1::State::Failed,
+                                "the contents of this uab file are invalid");
+            return;
+        }
+
+        bool onlyApp = metaInfo.get().onlyApp && metaInfo.get().onlyApp.value();
         utils::Transaction transaction;
         for (const auto &layer : layerInfos) {
             if (isTaskDone(taskRef.subState())) {
@@ -973,7 +985,15 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
                 if (!ret->empty()) {
                     overlays.emplace_back(std::move(ret).value());
                 }
+
+                if (onlyApp) {
+                    pullDependency(taskRef, info, "binary");
+                }
             } else {
+                if (onlyApp) { // ignore all non-app layers if onlyApp is true
+                    continue;
+                }
+
                 auto fuzzyString = refRet->id + "/" + refRet->version.toString();
                 auto fuzzyRef = package::FuzzyReference::parse(fuzzyString);
                 auto localRef = this->repo.clearReference(*fuzzyRef,
@@ -1869,8 +1889,6 @@ void PackageManager::pullDependency(PackageTask &taskContext,
             return;
         }
 
-        taskContext.updateSubState(linglong::api::types::v1::SubState::InstallRuntime,
-                                   "Installing runtime " + runtime->toString());
         // 如果runtime已存在，则直接使用, 否则从远程拉取
         auto runtimeLayerDir = repo.getLayerDir(*runtime);
         if (!runtimeLayerDir) {
@@ -1878,8 +1896,10 @@ void PackageManager::pullDependency(PackageTask &taskContext,
                 return;
             }
 
-            this->repo.pull(taskContext, *runtime, module);
+            taskContext.updateSubState(linglong::api::types::v1::SubState::InstallRuntime,
+                                       "Installing runtime " + runtime->toString());
 
+            this->repo.pull(taskContext, *runtime, module);
             if (isTaskDone(taskContext.subState())) {
                 return;
             }
@@ -1912,14 +1932,15 @@ void PackageManager::pullDependency(PackageTask &taskContext,
         return;
     }
 
-    taskContext.updateSubState(linglong::api::types::v1::SubState::InstallBase,
-                               "Installing base " + base->toString());
     // 如果base已存在，则直接使用, 否则从远程拉取
     auto baseLayerDir = repo.getLayerDir(*base, module);
     if (!baseLayerDir) {
         if (isTaskDone(taskContext.subState())) {
             return;
         }
+
+        taskContext.updateSubState(linglong::api::types::v1::SubState::InstallBase,
+                                   "Installing base " + base->toString());
         this->repo.pull(taskContext, *base, module);
         if (isTaskDone(taskContext.subState())) {
             return;

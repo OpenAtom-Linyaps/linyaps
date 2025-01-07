@@ -146,3 +146,8 @@ Copyright: UnionTech Software Technology Co., Ltd.
 Files: misc/image/*.jpeg misc/image/*.svg
 License: LGPL-3.0-or-later
 Copyright: UnionTech Software Technology Co., Ltd.
+
+# uab black list
+Files: misc/share/linglong/builder/uab/blacklist
+License: MIT
+Copyright: AppImageCommunity

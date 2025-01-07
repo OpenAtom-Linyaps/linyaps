@@ -11,7 +11,8 @@ function(configure_files)
 endfunction()
 
 configure_files(
-  # find -regex '\.\/\(script\|share\|lib\|libexec\)\/.*' -type f -printf '%P\n' | sort
+  # find -regex '\.\/\(script\|share\|lib\|libexec\)\/.*' -type f -printf '%P\n'
+  # | sort
   libexec/linglong/app-conf-generator
   libexec/linglong/builder/helper/config-check.sh
   libexec/linglong/builder/helper/ldd-check.sh
@@ -38,9 +39,9 @@ configure_files(
   lib/linglong/container/README.md
   lib/linglong/generate-xdg-data-dirs.sh
   lib/systemd/system-environment-generators/61-linglong
-  lib/systemd/user-generators/linglong-user-systemd-generator
   lib/systemd/system/org.deepin.linglong.PackageManager.service
   lib/systemd/system-preset/91-linglong.preset
+  lib/systemd/user-generators/linglong-user-systemd-generator
   lib/systemd/user/linglong-session-helper.service
   lib/sysusers.d/linglong.conf
   lib/tmpfiles.d/linglong.conf
@@ -50,6 +51,7 @@ configure_files(
   share/dbus-1/system.d/org.deepin.linglong.PackageManager1.conf
   share/dbus-1/system-services/org.deepin.linglong.PackageManager1.service
   share/linglong/builder/templates/example.yaml
+  share/linglong/builder/uab/blacklist
   share/linglong/config.yaml
   share/mime/packages/vnd.linyaps.uab.xml
   share/polkit-1/actions/org.deepin.linglong.PackageManager1.policy)
@@ -87,14 +89,14 @@ install(
   DESTINATION ${LINGLONG_DIALOG_DIR})
 
 # builder helpers
-set(LIBEXEC_LINGLONG_BUILDER_DIR ${LIBEXEC_LINGLONG_DIR}/builder/helper)
+set(LIBEXEC_LINGLONG_BUILDER_DIR ${LIBEXEC_LINGLONG_DIR}/builder)
 install(
   PROGRAMS
     ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/builder/helper/config-check.sh
     ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/builder/helper/ldd-check.sh
     ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/builder/helper/main-check.sh
     ${CMAKE_CURRENT_BINARY_DIR}/libexec/linglong/builder/helper/symbols-strip.sh
-  DESTINATION ${LIBEXEC_LINGLONG_BUILDER_DIR})
+  DESTINATION ${LIBEXEC_LINGLONG_BUILDER_DIR}/helper)
 
 # linglong
 set(LINGLONG_CONFIG_DIR
@@ -127,6 +129,8 @@ install(FILES ${CMAKE_CURRENT_LIST_DIR}/share/linglong/config.yaml
 # builder templates
 install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/share/linglong/builder/templates/
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/linglong/builder/templates)
+install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/share/linglong/builder/uab/
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/linglong/builder/uab)
 
 # systemd
 set(SYSTEMD_SYSTEM_PRESET_PATH

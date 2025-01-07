@@ -362,8 +362,11 @@ struct ContainerPrivate
         // default link
         for (const auto &[from, to] : linkMap) {
             if (auto ret = symlink(from.data(), to.data()); ret == -1) {
-                logErr() << "symlink" << from << "to" << to << "failed:" << util::RetErrString(ret);
-                return -1;
+                if (errno != EEXIST) {
+                    logErr() << "symlink" << from << "to" << to
+                             << "failed:" << util::RetErrString(ret);
+                    return -1;
+                }
             }
         }
 

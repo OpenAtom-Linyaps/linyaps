@@ -64,6 +64,10 @@ std::string resolveRealPath(std::string_view source) noexcept
 
 std::string detectLinglong() noexcept
 {
+    if (::getenv("LINGLONG_UAB_DIRECT_EXEC") != nullptr) {
+        return {};
+    }
+
     auto *pathPtr = ::getenv("PATH");
     if (pathPtr == nullptr) {
         std::cerr << "failed to get PATH" << std::endl;
@@ -464,7 +468,8 @@ int extractBundle(std::string_view destination) noexcept
     return 0;
 }
 
-[[noreturn]] void runAppLoader(const std::vector<std::string_view> &loaderArgs) noexcept
+[[noreturn]] void runAppLoader(bool onlyApp,
+                               const std::vector<std::string_view> &loaderArgs) noexcept
 {
     auto loader = mountPoint / "loader";
     auto loaderStr = loader.string();
@@ -492,6 +497,12 @@ int extractBundle(std::string_view destination) noexcept
     }
 
     if (loaderPid == 0) {
+        std::string_view newEnv{ "LINGLONG_UAB_LOADER_ONLY_APP=true" };
+        if (onlyApp && ::putenv(const_cast<char *>(newEnv.data())) < 0) {
+            std::cerr << "putenv error: " << ::strerror(errno) << std::endl;
+            cleanAndExit(errno);
+        }
+
         if (::execv(loaderStr.c_str(), reinterpret_cast<char *const *>(const_cast<char **>(argv)))
             == -1) {
             std::cerr << "execv(" << loaderStr << ") error: " << ::strerror(errno) << std::endl;
@@ -693,5 +704,5 @@ int main(int argc, char **argv)
         cleanAndExit(-1);
     }
 
-    runAppLoader(opts.loaderArgs);
+    runAppLoader(metaInfo.onlyApp.value_or(false), opts.loaderArgs);
 }

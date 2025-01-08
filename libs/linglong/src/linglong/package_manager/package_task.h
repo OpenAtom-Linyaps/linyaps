@@ -99,7 +99,7 @@ public:
 
     auto cancellable() noexcept { return m_cancelFlag; }
 
-    utils::error::Result<void> run() noexcept;
+    void run() noexcept;
 
     [[nodiscard]] double getPercentage() const noexcept
     {

@@ -176,37 +176,25 @@ void PackageTask::reportError(linglong::utils::error::Error &&err) noexcept
 
 void PackageTask::Cancel() noexcept
 {
-    if (g_cancellable_is_cancelled(m_cancelFlag) == TRUE) {
+    if (m_state == static_cast<int>(linglong::api::types::v1::State::Canceled)) {
         return;
     }
 
-    qInfo() << "task " << taskID() << "has been canceled by user";
-    g_cancellable_cancel(m_cancelFlag);
-
     const auto &id = taskID();
-    auto oldState = state();
+    qInfo() << "task " << id << "has been canceled by user";
     updateState(linglong::api::types::v1::State::Canceled,
                 QString{ "task %1 has been canceled by user" }.arg(id));
-    if (oldState == linglong::api::types::v1::State::Queued) {
-        auto *ptr = parent();
-        if (ptr == nullptr) { // temporary task
-            return;
-        }
 
-        Q_EMIT qobject_cast<PackageTaskQueue *>(ptr)->taskDone(id);
+    if (m_cancelFlag == nullptr || g_cancellable_is_cancelled(m_cancelFlag) == TRUE) {
+        return;
     }
+
+    g_cancellable_cancel(m_cancelFlag);
 }
 
-utils::error::Result<void> PackageTask::run() noexcept
+void PackageTask::run() noexcept
 {
-    LINGLONG_TRACE("run task");
-    if (m_state != static_cast<int>(linglong::api::types::v1::State::Queued)) {
-        qInfo() << "task" << taskID() << " is not in queued state" << static_cast<int>(state());
-        return LINGLONG_ERR("task is not in queued state");
-    }
-
     m_job(*this);
-    return LINGLONG_OK;
 }
 
 PackageTaskQueue::PackageTaskQueue(QObject *parent)
@@ -221,17 +209,13 @@ PackageTaskQueue::PackageTaskQueue(QObject *parent)
                   return;
               }
 
-              if (m_taskQueue.size() > 1) {
+              auto &task = m_taskQueue.front();
+              if (task.state() != linglong::api::types::v1::State::Queued) {
                   qDebug() << "other task is running, wait for it done";
                   return;
               }
 
-              auto &task = m_taskQueue.front();
-              auto ret = task.run();
-              if (!ret) {
-                  qWarning() << ret.error();
-              }
-
+              task.run();
               Q_EMIT taskDone(task.taskID());
           },
           Qt::QueuedConnection);
@@ -250,7 +234,7 @@ PackageTaskQueue::PackageTaskQueue(QObject *parent)
 
         // if queued task is done, only remove it from queue
         // otherwise, remove it and start next task
-        bool isQueuedDone = task == m_taskQueue.begin();
+        bool isQueuedDone = task->state() == linglong::api::types::v1::State::Queued;
         Q_EMIT qobject_cast<PackageManager *>(this->parent())
           ->TaskRemoved(QDBusObjectPath{ task->taskObjectPath() },
                         static_cast<int>(task->state()),
@@ -259,7 +243,7 @@ PackageTaskQueue::PackageTaskQueue(QObject *parent)
                         task->getPercentage());
         m_taskQueue.erase(task);
 
-        if (isQueuedDone) {
+        if (!isQueuedDone) {
             Q_EMIT startTask();
         }
     });

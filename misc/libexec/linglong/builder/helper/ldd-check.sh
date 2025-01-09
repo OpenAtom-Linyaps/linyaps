@@ -130,7 +130,7 @@ main() {
 
         # remove all library which from /runtime
         local oldIFS="${IFS}"
-        IFS=" " read -r -a dependLibs <<<"$(echo "${dependLibs[@]}" | tr ' ' '\n' | grep -v "/runtime" | tr '\n' ' ' || true)"
+        IFS=" " read -r -a dependLibs <<<"$(echo "${dependLibs[@]}" | tr ' ' '\n' | grep -v "^/opt\|^/runtime" | tr '\n' ' ' || true)"
         IFS="${oldIFS}"
 
         # the rest of the library may from /usr/[lib|lib32|lib64]

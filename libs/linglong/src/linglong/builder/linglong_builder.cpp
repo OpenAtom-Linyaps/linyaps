@@ -453,6 +453,11 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     if (!arch) {
         return LINGLONG_ERR(arch);
     }
+
+    if (!QFileInfo::exists(LINGLONG_BUILDER_HELPER)) {
+        return LINGLONG_ERR("builder helper doesn't exists");
+    }
+
     printMessage("[Build Target]");
     printMessage(this->project.package.id, 2);
     printMessage("[Project Info]");
@@ -614,12 +619,8 @@ set -e
     }
     scriptContent.append(project.build);
     scriptContent.push_back('\n');
-    // Do some checks after run container
-    if (!this->buildOptions.skipCheckOutput && this->project.package.kind == "app") {
-        scriptContent.append("# POST BUILD PROCESS\n");
-        scriptContent.append(LINGLONG_BUILDER_HELPER "/main-check.sh\n");
-    }
     if (!this->buildOptions.skipStripSymbols) {
+        scriptContent.append("# POST BUILD PROCESS\n");
         scriptContent.append(LINGLONG_BUILDER_HELPER "/symbols-strip.sh\n");
     }
 
@@ -683,16 +684,14 @@ set -e
       .type = "bind",
       .uidMappings = {},
     });
-    if (QDir(LINGLONG_BUILDER_HELPER).exists()) {
-        opts.mounts.push_back({
-          .destination = LINGLONG_BUILDER_HELPER,
-          .gidMappings = {},
-          .options = { { "rbind", "ro" } },
-          .source = LINGLONG_BUILDER_HELPER,
-          .type = "bind",
-          .uidMappings = {},
-        });
-    }
+    opts.mounts.push_back({
+      .destination = LINGLONG_BUILDER_HELPER,
+      .gidMappings = {},
+      .options = { { "rbind", "ro" } },
+      .source = LINGLONG_BUILDER_HELPER,
+      .type = "bind",
+      .uidMappings = {},
+    });
     opts.mounts.push_back({
       .destination = "/project",
       .gidMappings = {},
@@ -707,16 +706,7 @@ set -e
     if (!appCache.mkpath(".")) {
         return LINGLONG_ERR("make path " + appCache.absolutePath() + ": failed.");
     }
-#ifdef LINGLONG_FONT_CACHE_GENERATOR
-    QDir appFontCache = appCache.absoluteFilePath("fontconfig");
-    if (!appFontCache.mkpath(".")) {
-        return LINGLONG_ERR("make path " + appFontCache.absolutePath() + ": failed.");
-    }
-    QDir appFonts = appCache.absoluteFilePath("fonts");
-    if (!appFonts.mkpath(".")) {
-        return LINGLONG_ERR("make path " + appFonts.absolutePath() + ": failed.");
-    }
-#endif
+
     // write ld.so.conf
     QFile ldsoconf = appCache.absoluteFilePath("ld.so.conf");
     if (!ldsoconf.open(QIODevice::WriteOnly)) {
@@ -733,21 +723,6 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
     ldsoconf.write(ldRawConf.toUtf8());
     // must be closed here, this conf will be used later.
     ldsoconf.close();
-#ifdef LINGLONG_FONT_CACHE_GENERATOR
-    // write fonts.conf
-    QFile fontsConf = appFonts.absoluteFilePath("fonts.conf");
-    if (!fontsConf.open(QIODevice::WriteOnly)) {
-        return LINGLONG_ERR(fontsConf);
-    }
-    QString fontsRawConf = R"(<?xml version="1.0"?>
-<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
-<fontconfig>
-  <dir>/run/linglong/fonts</dir>
-  <include ignore_missing="yes">/opt/apps/@id@/files/etc/fonts/fonts.conf</include>
-</fontconfig>)";
-    fontsRawConf.replace("@id@", QString::fromStdString(this->project.package.id));
-    fontsConf.write(fontsRawConf.toUtf8());
-#endif
 
     opts.mounts.push_back({
       .destination = "/run/linglong/cache",
@@ -1159,6 +1134,12 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
         return mergeRet;
     }
     printMessage("Successfully build " + this->project.package.id);
+
+    ret = runtimeCheck(modules);
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
     return LINGLONG_OK;
 }
 
@@ -1389,7 +1370,8 @@ utils::error::Result<void> Builder::importLayer(repo::OSTreeRepo &ostree, const 
 
 utils::error::Result<void> Builder::run(const QStringList &modules,
                                         const QStringList &args,
-                                        const bool &debug)
+                                        std::optional<runtime::ContainerOptions> init,
+                                        bool debug)
 {
     LINGLONG_TRACE("run application");
 
@@ -1398,16 +1380,9 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
         return LINGLONG_ERR(curRef);
     }
 
-    auto options = runtime::ContainerOptions{
-        .appID = curRef->id,
-        .containerID = genContainerID(*curRef),
-        .runtimeDir = {},
-        .baseDir = {},
-        .appDir = {},
-        .patches = {},
-        .mounts = {},
-        .hooks = {},
-    };
+    auto options = init.value_or(runtime::ContainerOptions{});
+    options.appID = curRef->id;
+    options.containerID = genContainerID(*curRef);
 
     auto fuzzyBase = package::FuzzyReference::parse(QString::fromStdString(this->project.base));
     if (!fuzzyBase) {
@@ -1549,44 +1524,77 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
           .type = "bind",
         });
     }
+
     // mount app cache
+    QDir appCache = this->workingDir.absoluteFilePath("linglong/cache");
     applicationMounts.push_back(ocppi::runtime::config::types::Mount{
       .destination = "/run/linglong/cache",
       .options = { { "rbind", "rw" } },
-      .source = this->workingDir.absoluteFilePath("linglong/cache").toStdString(),
+      .source = appCache.absolutePath().toStdString(),
       .type = "bind",
     });
+
+    // write fonts.conf
+    QDir appFontCache = appCache.absoluteFilePath("fontconfig");
+    if (!appFontCache.mkpath(".")) {
+        return LINGLONG_ERR("make path " + appFontCache.absolutePath() + ": failed.");
+    }
+
+    QDir appFonts = appCache.absoluteFilePath("fonts");
+    if (!appFonts.mkpath(".")) {
+        return LINGLONG_ERR("make path " + appFonts.absolutePath() + ": failed.");
+    }
+
+    QFile fontsConf = appFonts.absoluteFilePath("fonts.conf");
+    if (!fontsConf.open(QIODevice::WriteOnly)) {
+        return LINGLONG_ERR(fontsConf);
+    }
+    QString fontsRawConf = R"(<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
+<fontconfig>
+  <dir>/run/linglong/fonts</dir>
+  <include ignore_missing="yes">/opt/apps/@id@/files/etc/fonts/fonts.conf</include>
+</fontconfig>)";
+    fontsRawConf.replace("@id@", QString::fromStdString(this->project.package.id));
+    fontsConf.write(fontsRawConf.toUtf8());
+    fontsConf.close();
+
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
     // mount font cache
     applicationMounts.push_back(ocppi::runtime::config::types::Mount{
       .destination = "/var/cache/fontconfig",
       .options = { { "rbind", "rw" } },
-      .source = this->workingDir.absoluteFilePath("linglong/cache/fontconfig").toStdString(),
+      .source = appFontCache.absolutePath().toStdString(),
       .type = "bind",
     });
 #endif
 
-    std::vector<ocppi::runtime::config::types::Hook> generateCache{};
-    std::vector<std::string> ldconfigCmd = { "/sbin/ldconfig",
-                                             "-C",
-                                             "/run/linglong/cache/ld.so.cache" };
-    generateCache.push_back(ocppi::runtime::config::types::Hook{
-      .args = std::move(ldconfigCmd),
-      .env = {},
-      .path = "/sbin/ldconfig",
-      .timeout = {},
-    });
+    std::vector<ocppi::runtime::config::types::Hook> generateCache{
+        {
+          .args =
+            std::vector<std::string>{ "/sbin/ldconfig", "-C", "/run/linglong/cache/ld.so.cache" },
+          .env = {},
+          .path = "/sbin/ldconfig",
+          .timeout = {},
+        },
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
-    std::vector<std::string> fontconfiCmd = { "fc-cache", "-f" };
-    generateCache.push_back(ocppi::runtime::config::types::Hook{
-      .args = std::move(fontconfiCmd),
-      .env = {},
-      .path = "/bin/fc-cache",
-      .timeout = {},
-    });
+        {
+          .args = std::vector<std::string>{ "/bin/fc-cache", "-f" },
+          .env = {},
+          .path = "/bin/fc-cache",
+          .timeout = {},
+        }
 #endif
-    options.hooks.startContainer = std::move(generateCache);
-    options.mounts = std::move(applicationMounts);
+    };
+
+    auto startHooks =
+      options.hooks.startContainer.value_or(std::vector<ocppi::runtime::config::types::Hook>{});
+    startHooks.insert(startHooks.begin(), generateCache.begin(), generateCache.end());
+    options.hooks.startContainer = std::move(startHooks);
+
+    options.mounts.insert(options.mounts.begin(),
+                          applicationMounts.begin(),
+                          applicationMounts.end());
 
     auto container = this->containerBuilder.create(options);
     if (!container) {
@@ -1613,6 +1621,45 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
         return LINGLONG_ERR(result);
     }
 
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> Builder::runtimeCheck(const QStringList &modules)
+{
+    LINGLONG_TRACE("runtime check");
+    printMessage("[Runtime Check]");
+    // Do some checks after run container
+    if (!this->buildOptions.skipCheckOutput && this->project.package.kind == "app") {
+        printMessage("Start runtime check", 2);
+        runtime::ContainerOptions opts{ .mounts = {
+                                          ocppi::runtime::config::types::Mount{
+                                            .destination = LINGLONG_BUILDER_HELPER,
+                                            .gidMappings = {},
+                                            .options = { { "rbind", "ro" } },
+                                            .source = LINGLONG_BUILDER_HELPER,
+                                            .type = "bind",
+                                            .uidMappings = {},
+                                          },
+                                          {
+                                            .destination = "/project",
+                                            .gidMappings = {},
+                                            .options = { { "rbind", "rw" } },
+                                            .source = this->workingDir.absolutePath().toStdString(),
+                                            .type = "bind",
+                                            .uidMappings = {},
+                                          } } };
+
+        auto ret =
+          this->run(modules, { { QString{ LINGLONG_BUILDER_HELPER } + "/main-check.sh" } }, opts);
+        if (!ret) {
+            printMessage("Runtime check failed", 2);
+            return LINGLONG_ERR(ret);
+        }
+    } else {
+        printMessage("Skip runtime check", 2);
+    }
+
+    printMessage("Runtime check done", 2);
     return LINGLONG_OK;
 }
 

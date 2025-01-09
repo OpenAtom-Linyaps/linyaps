@@ -56,15 +56,15 @@ public:
 
     auto create(const QString &projectName) -> utils::error::Result<void>;
 
-    auto build(const QStringList &args = { "/project/linglong/entry.sh" }) noexcept
-      -> utils::error::Result<void>;
+    auto build(const QStringList &args = {
+                 "/project/linglong/entry.sh" }) noexcept -> utils::error::Result<void>;
 
-    auto exportUAB(const QString &destination, const UABOption &option)
-      -> utils::error::Result<void>;
+    auto exportUAB(const QString &destination,
+                   const UABOption &option) -> utils::error::Result<void>;
     auto exportLayer(const QString &destination) -> utils::error::Result<void>;
 
-    static auto extractLayer(const QString &layerPath, const QString &destination)
-      -> utils::error::Result<void>;
+    static auto extractLayer(const QString &layerPath,
+                             const QString &destination) -> utils::error::Result<void>;
 
     auto push(const std::string &module,
               const std::string &repoUrl = "",
@@ -72,11 +72,14 @@ public:
 
     auto import() -> utils::error::Result<void>;
 
-    static auto importLayer(repo::OSTreeRepo &repo, const QString &path)
-      -> utils::error::Result<void>;
+    static auto importLayer(repo::OSTreeRepo &repo,
+                            const QString &path) -> utils::error::Result<void>;
 
-    auto run(const QStringList &modules, const QStringList &args, const bool &debug)
-      -> utils::error::Result<void>;
+    auto run(const QStringList &modules,
+             const QStringList &args,
+             std::optional<runtime::ContainerOptions> init = std::nullopt,
+             bool debug = false) -> utils::error::Result<void>;
+    auto runtimeCheck(const QStringList &modules) -> utils::error::Result<void>;
 
     void setBuildOptions(const BuilderBuildOptions &options) noexcept { buildOptions = options; }
 

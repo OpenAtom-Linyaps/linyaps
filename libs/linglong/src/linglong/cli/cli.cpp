@@ -2289,7 +2289,7 @@ int Cli::generateCache(const package::Reference &ref)
     QString jobIDReply = "";
     auto ret = connect(&this->pkgMan,
                        &api::dbus::v1::PackageManager::GenerateCacheFinished,
-                       [this, &loop, &jobIDReply](const QString &jobID, bool success) {
+                       [&loop, &jobIDReply](const QString &jobID, bool success) {
                            if (jobIDReply != jobID) {
                                return;
                            }
@@ -2423,7 +2423,7 @@ Cli::ensureCache(const package::Reference &ref,
 
 void Cli::updateAM() noexcept
 {
-    // NOTE: make sure AM refresh the cache of desktop 
+    // NOTE: make sure AM refresh the cache of desktop
     if ((QSysInfo::productType() == "Deepin" || QSysInfo::productType() == "deepin")
         && this->lastState == linglong::api::types::v1::State::Succeed) {
         QDBusConnection conn = QDBusConnection::systemBus();

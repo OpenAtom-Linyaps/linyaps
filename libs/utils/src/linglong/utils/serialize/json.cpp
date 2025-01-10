@@ -32,7 +32,7 @@ static QVariant decodeQDBusArgument(const QVariant &v)
         complexType >> list;
         QVariantList res;
         res.reserve(list.size());
-        for (const auto &item : qAsConst(list)) {
+        for (const auto &item : std::as_const(list)) {
             res << decodeQDBusArgument(item);
         }
         return res;

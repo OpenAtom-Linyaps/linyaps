@@ -94,7 +94,7 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
     // occurred, copy refs out
     g_hash_table_foreach(
       refsTable,
-      [](gpointer key, gpointer value, gpointer data) {
+      [](gpointer key, [[maybe_unused]] gpointer value, gpointer data) {
           // key,value -> ref,checksum
           auto *vec = static_cast<std::vector<std::string_view> *>(data);
           vec->emplace_back(static_cast<const char *>(key));
@@ -133,7 +133,7 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
     }
 
     // FIXME: ll-cli may initialize repo, it can make states.json own by root
-    if (getuid() == 0) {  
+    if (getuid() == 0) {
         qWarning() << "Rebuild the cache by root, skip to write data to states.json";
         return LINGLONG_OK;
     }

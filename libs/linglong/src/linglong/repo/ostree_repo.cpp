@@ -18,6 +18,7 @@
 #include "linglong/repo/config.h"
 #include "linglong/utils/command/env.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/file.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/gkeyfile_wrapper.h"
 #include "linglong/utils/packageinfo_handler.h"
@@ -1640,8 +1641,37 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                     return LINGLONG_ERR("remove file failed", ec);
                 }
             }
-            auto ret = IniLikeFileRewrite(QFileInfo(source_path.c_str()), appID.c_str());
-            if (!ret) { }
+
+            {
+                auto info = QFileInfo(target_path.c_str());
+                if ((info.path().contains("share/applications") && info.suffix() == "desktop")
+                    || (info.path().contains("share/dbus-1") && info.suffix() == "service")
+                    || (info.path().contains("share/systemd/user") && info.suffix() == "service")
+                    || (info.path().contains("share/applications/context-menus"))) {
+                    // We should not modify the files of the checked application directly, but
+                    // should copy them to root entries directory and then modify.
+                    std::filesystem::copy(source_path, target_path, ec);
+                    if (ec) {
+                        return LINGLONG_ERR("copy file failed: " + target_path.string(), ec);
+                    }
+
+                    exists = std::filesystem::exists(target_path, ec);
+                    if (ec) {
+                        return LINGLONG_ERR("check file exists", ec);
+                    }
+
+                    if (!exists) {
+                        qWarning() << "failed to copy file: " << source_path.c_str();
+                        continue;
+                    }
+
+                    auto ret = IniLikeFileRewrite(QFileInfo(target_path.c_str()), appID.c_str());
+                    if (ret) {
+                        continue;
+                    }
+                }
+            }
+
             std::filesystem::create_symlink(source_path, target_path, ec);
             if (ec) {
                 return LINGLONG_ERR("create symlink failed: " + target_path.string(), ec);
@@ -1732,6 +1762,30 @@ OSTreeRepo::exportEntries(const std::filesystem::path &rootEntriesDir,
             return ret;
         }
     }
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> OSTreeRepo::fixExportAllEntries() noexcept
+{
+    auto exportVersion = repoDir.absoluteFilePath("entries/.version").toStdString();
+    auto data = linglong::utils::readFile(exportVersion);
+    if (data && data == LINGLONG_EXPORT_VERSION) {
+        qDebug() << exportVersion.c_str() << data->c_str();
+        qDebug() << "skip export entry, already exported";
+    } else {
+        auto ret = exportAllEntries();
+        if (!ret.has_value()) {
+            qCritical() << "failed to export entries:" << ret.error();
+            return ret;
+        } else {
+            ret = linglong::utils::writeFile(exportVersion, LINGLONG_EXPORT_VERSION);
+            if (!ret.has_value()) {
+                qCritical() << "failed to write export version:" << ret.error();
+                return ret;
+            }
+        }
+    }
+
     return LINGLONG_OK;
 }
 

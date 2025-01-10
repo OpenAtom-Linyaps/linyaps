@@ -11,7 +11,6 @@
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/configure.h"
 #include "linglong/utils/dbus/register.h"
-#include "linglong/utils/file.h"
 #include "linglong/utils/global/initialize.h"
 #include "ocppi/cli/CLI.hpp"
 #include "ocppi/cli/crun/Crun.hpp"
@@ -51,23 +50,9 @@ void withDBusDaemon(ocppi::cli::CLI &cli)
     }
     auto *ostreeRepo = new linglong::repo::OSTreeRepo(repoRoot, *config, *clientFactory);
     ostreeRepo->setParent(QCoreApplication::instance());
-    {
-        auto exportVersion = repoRoot.absoluteFilePath("entries/.version").toStdString();
-        auto data = linglong::utils::readFile(exportVersion);
-        if (data && data == LINGLONG_EXPORT_VERSION) {
-            qDebug() << exportVersion.c_str() << data->c_str();
-            qDebug() << "skip export entry, already exported";
-        } else {
-            auto ret = ostreeRepo->exportAllEntries();
-            if (!ret.has_value()) {
-                qCritical() << "failed to export entries:" << ret.error();
-            } else {
-                ret = linglong::utils::writeFile(exportVersion, LINGLONG_EXPORT_VERSION);
-                if (!ret.has_value()) {
-                    qCritical() << "failed to write export version:" << ret.error();
-                }
-            }
-        }
+    auto result = ostreeRepo->fixExportAllEntries();
+    if (!result.has_value()) {
+        qCritical() << result.error().message();
     }
 
     auto *containerBuilder = new linglong::runtime::ContainerBuilder(cli);
@@ -78,7 +63,7 @@ void withDBusDaemon(ocppi::cli::CLI &cli)
                                                                  *containerBuilder,
                                                                  QCoreApplication::instance());
     new linglong::adaptors::package_manger::PackageManager1(packageManager);
-    auto result = registerDBusObject(conn, "/org/deepin/linglong/PackageManager1", packageManager);
+    result = registerDBusObject(conn, "/org/deepin/linglong/PackageManager1", packageManager);
     if (!result.has_value()) {
         qCritical().noquote() << "Launching failed:" << Qt::endl << result.error().message();
         QCoreApplication::exit(-1);
@@ -126,6 +111,10 @@ void withoutDBusDaemon(ocppi::cli::CLI &cli)
 
     auto *ostreeRepo = new linglong::repo::OSTreeRepo(repoRoot, *config, *clientFactory);
     ostreeRepo->setParent(QCoreApplication::instance());
+    auto result = ostreeRepo->fixExportAllEntries();
+    if (!result.has_value()) {
+        qCritical() << result.error().message();
+    }
 
     auto *containerBuilder = new linglong::runtime::ContainerBuilder(cli);
     containerBuilder->setParent(QCoreApplication::instance());

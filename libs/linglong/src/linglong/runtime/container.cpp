@@ -203,7 +203,7 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
     qDebug() << "run container in " << bundle.path();
     // 禁用crun自己创建cgroup，便于AM识别和管理玲珑应用
     opt.GlobalOption::extra.emplace_back("--cgroup-manager=disabled");
-    auto result = this->cli.run(ocppi::runtime::ContainerID(this->id.toStdString()),
+    auto result = this->cli.run(this->id.toStdString(),
                                 std::filesystem::path(bundle.absolutePath().toStdString()),
                                 opt);
 

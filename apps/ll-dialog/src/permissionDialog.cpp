@@ -15,13 +15,13 @@
 #include <QTimer>
 
 PermissionDialog::PermissionDialog(
-  const linglong::api::types::v1::ApplicationPermissionsRequest &requires)
+  const linglong::api::types::v1::ApplicationPermissionsRequest &request)
     : QWidget(nullptr)
 {
     // content
     QStringList dirs;
-    std::transform(requires.xdgDirectories.cbegin(),
-                   requires.xdgDirectories.cend(),
+    std::transform(request.xdgDirectories.cbegin(),
+                   request.xdgDirectories.cend(),
                    std::back_inserter(dirs),
                    [](const linglong::api::types::v1::XdgDirectoryPermission &perm) {
                        return QString::fromStdString(perm.dirType);
@@ -31,7 +31,7 @@ PermissionDialog::PermissionDialog(
     content->setWordWrap(true);
     content->setMinimumSize(210, 90);
     auto contentText =
-      QString{ _("Whether to allow %1 to access %2?") }.arg(QString::fromStdString(requires.appID),
+      QString{ _("Whether to allow %1 to access %2?") }.arg(QString::fromStdString(request.appID),
                                                             dirs.join(" "));
     content->setText(contentText);
 

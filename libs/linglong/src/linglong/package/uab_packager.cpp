@@ -664,9 +664,15 @@ utils::error::Result<void> UABPackager::packBundle(bool onlyApp) noexcept
             return ret;
         }
 
+        // https://github.com/erofs/erofs-utils/blob/b526c0d7da46b14f1328594cf1d1b2401770f59b/README#L171-L183
         if (auto ret =
               utils::command::Exec("mkfs.erofs",
-                                   { "-zzstd,11", "-b4096", bundleFile, bundleDir.absolutePath() });
+                                   { "-zzstd,17",
+                                     "-Efragments,dedupe,ztailpacking",
+                                     "-C1048576",
+                                     "-b4096", // force 4096 block size, default is page size
+                                     bundleFile,
+                                     bundleDir.absolutePath() });
             !ret) {
             return LINGLONG_ERR(ret);
         }

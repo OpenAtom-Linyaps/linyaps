@@ -90,8 +90,6 @@ public:
     utils::error::Result<void> prune();
 
     void removeDanglingXDGIntergation() noexcept;
-    // exportEntries will clear the entries/share and export all applications to the entries/share
-    utils::error::Result<void> exportAllEntries() noexcept;
     // exportReference should be called when LayerDir of ref is existed in local repo
     void exportReference(const package::Reference &ref) noexcept;
     // unexportReference should be called when LayerDir of ref is existed in local repo
@@ -121,6 +119,7 @@ public:
     getLayerItem(const package::Reference &ref,
                  std::string module = "binary",
                  const std::optional<std::string> &subRef = std::nullopt) const noexcept;
+    utils::error::Result<void> fixExportAllEntries() noexcept;
 
 private:
     api::types::v1::RepoConfig cfg;
@@ -164,6 +163,8 @@ private:
                                          const std::filesystem::path &source,
                                          const std::filesystem::path &destination,
                                          const int &max_depth);
+    // exportEntries will clear the entries/share and export all applications to the entries/share
+    utils::error::Result<void> exportAllEntries() noexcept;
 };
 
 } // namespace linglong::repo

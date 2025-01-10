@@ -171,28 +171,7 @@ public:
         LINGLONG_TRACE("add new task");
         static_assert(std::is_invocable_r_v<void, Func, PackageTask &>,
                       "mismatch function signature");
-        auto exist =
-          std::any_of(m_taskQueue.begin(), m_taskQueue.end(), [&refs](const PackageTask &task) {
-              QStringList intersection;
-              std::set_intersection(refs.begin(),
-                                    refs.end(),
-                                    task.m_refs.begin(),
-                                    task.m_refs.end(),
-                                    std::back_inserter(intersection));
-              if (intersection.empty()) {
-                  return false;
-              }
 
-              for (const auto &ref : intersection) {
-                  qWarning() << "ref " << ref << " is operating by task " << task.taskID();
-              }
-
-              return true;
-          });
-
-        if (exist) {
-            return LINGLONG_ERR("ref conflict");
-        }
         auto &ref = m_taskQueue.emplace_back(conn, refs, std::forward<Func>(job), this);
 
         Q_EMIT taskAdded();

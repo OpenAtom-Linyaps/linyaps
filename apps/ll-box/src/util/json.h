@@ -38,7 +38,7 @@ template<class T>
 std::optional<T> optional(const nlohmann::json &j, const char *key)
 {
     std::optional<T> o;
-    auto iter = j.template find(key);
+    auto iter = j.find(key);
     if (iter != j.end()) {
         // check object is empty: {}, skip it
         if (iter->is_object() && iter->size() == 0) {

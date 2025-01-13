@@ -71,7 +71,9 @@ runtime: org.deepin.runtime.dtk/23.1.0
 
 ### 源码
 
-描述源码信息。
+描述源信息，获取后的位置在 linglong.yaml 同级路径的 `linglong/sources` 目录下。
+
+#### git 类型
 
 ```yaml
 sources:
@@ -81,12 +83,57 @@ sources:
   commit: d7e207b4a71bbd97f7d818de5044228c1a6e2c92
 ```
 
-| 名称   | 描述                                                                  |
-| ------ | --------------------------------------------------------------------- |
-| kind   | 源码类型，可选类型 file、archive、git                                 |
-| url    | 源码地址，类型为 file、archive、git 时填写                            |
-| digest | 归档文件的 hash 值，使用 sha256 算法加密，类型为 file、archive 时填写 |
-| commit | 源码某次提交 hash 值，类型为 git 时填写                               |
+| 名称    | 描述                     |
+| ------- | ------------------------ |
+| kind    | git，使用 git 工具下载。 |
+| url     | 源码地址                 |
+| version | 源码仓库的分支           |
+| commit  | 源码某次提交的 hash 值   |
+
+#### file 类型
+
+```bash
+sources:
+  kind: file
+  url: https://github.com/linuxdeepin/deepin-calculator/archive/refs/tags/6.5.4.tar.gz
+  digest: 9675e27395891da9d9ee0a6094841410e344027fd81265ab75f83704174bb3a8
+```
+
+| 名称   | 描述                                 |
+| ------ | ------------------------------------ |
+| kind   | file，下载文件                       |
+| url    | 文件下载地址                         |
+| digest | 文件的 hash 值，使用 sha256 算法加密 |
+
+#### archive 类型
+
+```bash
+sources:
+  kind: archive
+  url: https://github.com/linuxdeepin/deepin-calculator/archive/refs/tags/6.5.4.tar.gz
+  digest: 9675e27395891da9d9ee0a6094841410e344027fd81265ab75f83704174bb3a8
+```
+
+| 名称   | 描述                                             |
+| ------ | ------------------------------------------------ |
+| kind   | archive，下载文件为 tar.tz 的压缩包，会自动解压 |
+| url    | 文件下载地址                                     |
+| digest | 文件的 hash 值，使用 sha256 算法加密             |
+
+#### dsc 类型
+
+```bash
+sources:
+  kind: dsc
+  url: https://cdn-community-packages.deepin.com/deepin/beige/pool/main/d/deepin-calculator/deepin-calculator_6.0.1.dsc
+  digest: ce47ed04a427a887a52e3cc098534bba53188ee0f38f59713f4f176374ea2141
+```
+
+| 名称   | 描述                                 |
+| ------ | ------------------------------------ |
+| kind   | dsc，源码包描述文件                  |
+| url    | 文件下载地址                         |
+| digest | 文件的 hash 值，使用 sha256 算法加密 |
 
 ### 导出裁剪规则（UAB）
 

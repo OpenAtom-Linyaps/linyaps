@@ -258,7 +258,7 @@ utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
 
     auto root = tempDir / ("uab-temp-layer-" + tmpName);
 
-    auto destination = root / "entries" / "share" / "deepin-elf-verify" / "linglong" / ".elfsign";
+    auto destination = root / "entries" / "share" / "deepin-elf-verify" / ".elfsign";
     if (!std::filesystem::create_directories(destination, ec) && ec) {
         return LINGLONG_ERR(ec.message().c_str());
     }

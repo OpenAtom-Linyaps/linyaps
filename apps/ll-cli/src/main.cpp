@@ -110,50 +110,29 @@ std::vector<std::string> transformOldExec(int argc, char **argv) noexcept
     return res;
 }
 
-void ensureDirectory(const std::filesystem::path &dir)
-{
-    std::error_code ec;
-    if (!std::filesystem::exists(dir, ec)) {
-        if (ec) {
-            qCritical() << QString{ "get status of" } << dir.c_str()
-                        << "failed:" << ec.message().c_str();
-            std::abort();
-        }
-
-        if (!std::filesystem::create_directory(dir, ec)) {
-            qCritical() << "failed to create directory :" << dir.c_str() << ec.message().c_str();
-            QCoreApplication::exit(ec.value());
-            std::abort();
-        }
-    }
-}
-
 int lockCheck() noexcept
 {
     std::error_code ec;
     constexpr auto lock = "/run/linglong/lock";
-    if (!std::filesystem::exists(lock, ec)) {
-        if (ec) {
-            qCritical() << "failed to get status of" << lock;
-            return -1;
-        }
-
-        return 0;
-    }
-
     auto fd = ::open(lock, O_RDONLY);
     if (fd == -1) {
-        qCritical() << "failed to open lock" << lock;
+        if (errno == ENOENT) {
+            return 0;
+        }
+
+        qCritical() << "failed to open lock" << lock << ::strerror(errno);
         return -1;
     }
+
     auto closeFd = linglong::utils::finally::finally([fd]() {
         ::close(fd);
     });
 
-    struct flock lock_info
-    {
-        .l_type = F_RDLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0, .l_pid = 0
-    };
+    struct flock lock_info{ .l_type = F_RDLCK,
+                            .l_whence = SEEK_SET,
+                            .l_start = 0,
+                            .l_len = 0,
+                            .l_pid = 0 };
 
     if (::fcntl(fd, F_GETLK, &lock_info) == -1) {
         qCritical() << "failed to get lock" << lock;
@@ -552,10 +531,6 @@ ll-cli list --upgradable
               QCoreApplication::exit(-1);
               return;
           }
-
-          auto userContainerDir =
-            std::filesystem::path{ "/run/linglong" } / std::to_string(::getuid());
-          ensureDirectory(userContainerDir);
 
           while (true) {
               auto lockOwner = lockCheck();

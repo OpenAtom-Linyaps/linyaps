@@ -23,9 +23,9 @@
 #include "linglong/package/layer_file.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/utils/configure.h"
-#include "linglong/utils/gettext.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
+#include "linglong/utils/gettext.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/xdg/directory.h"
 #include "ocppi/runtime/ExecOption.hpp"
@@ -55,6 +55,17 @@ static const std::string permissionNotifyMsg =
   _("Permission deny, please check whether you are running as root.");
 
 namespace {
+
+linglong::utils::error::Result<void> ensureDirectory(const std::filesystem::path &dir)
+{
+    LINGLONG_TRACE("ensure runtime directory");
+    std::error_code ec;
+    if (!std::filesystem::create_directory(dir, ec) && ec) {
+        return LINGLONG_ERR("failed to create runtime directory", ec);
+    }
+
+    return LINGLONG_OK;
+}
 
 static std::vector<std::string> getAutoModuleList() noexcept
 {
@@ -260,8 +271,8 @@ void Cli::interaction(QDBusObjectPath object_path, int messageID, QVariantMap ad
     dbusReply.waitForFinished();
     if (dbusReply.isError()) {
         if (dbusReply.error().type() == QDBusError::AccessDenied) {
-            this->notifier->notify(api::types::v1::InteractionRequest{
-              .summary = permissionNotifyMsg });
+            this->notifier->notify(
+              api::types::v1::InteractionRequest{ .summary = permissionNotifyMsg });
             return;
         }
 
@@ -379,6 +390,8 @@ int Cli::run()
     }
 
     auto userContainerDir = std::filesystem::path{ "/run/linglong" } / std::to_string(::getuid());
+    ensureDirectory(userContainerDir);
+
     auto mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
     auto pidFile = userContainerDir / std::to_string(::getpid());
     auto fd = ::open(pidFile.c_str(), O_WRONLY | O_CREAT | O_EXCL, mode);
@@ -989,8 +1002,8 @@ int Cli::installFromFile(const QFileInfo &fileInfo, const api::types::v1::Common
     pendingReply.waitForFinished();
     if (pendingReply.isError()) {
         if (pendingReply.error().type() == QDBusError::AccessDenied) {
-            this->notifier->notify(api::types::v1::InteractionRequest{
-              .summary = permissionNotifyMsg });
+            this->notifier->notify(
+              api::types::v1::InteractionRequest{ .summary = permissionNotifyMsg });
             return -1;
         }
         auto err = LINGLONG_ERRV(pendingReply.error().message());
@@ -1112,8 +1125,8 @@ int Cli::install()
 
     if (pendingReply.isError()) {
         if (pendingReply.error().type() == QDBusError::AccessDenied) {
-            this->notifier->notify(api::types::v1::InteractionRequest{
-              .summary = permissionNotifyMsg });
+            this->notifier->notify(
+              api::types::v1::InteractionRequest{ .summary = permissionNotifyMsg });
             return -1;
         }
 
@@ -1220,8 +1233,8 @@ int Cli::upgrade()
 
     if (pendingReply.isError()) {
         if (pendingReply.error().type() == QDBusError::AccessDenied) {
-            this->notifier->notify(api::types::v1::InteractionRequest{
-              .summary = permissionNotifyMsg });
+            this->notifier->notify(
+              api::types::v1::InteractionRequest{ .summary = permissionNotifyMsg });
             return -1;
         }
 
@@ -1288,8 +1301,8 @@ int Cli::search()
 
     if (pendingReply.isError()) {
         if (pendingReply.error().type() == QDBusError::AccessDenied) {
-            this->notifier->notify(api::types::v1::InteractionRequest{
-              .summary = permissionNotifyMsg });
+            this->notifier->notify(
+              api::types::v1::InteractionRequest{ .summary = permissionNotifyMsg });
             return -1;
         }
 
@@ -1403,8 +1416,8 @@ int Cli::prune()
 
     if (pendingReply.isError()) {
         if (pendingReply.error().type() == QDBusError::AccessDenied) {
-            this->notifier->notify(api::types::v1::InteractionRequest{
-              .summary = permissionNotifyMsg });
+            this->notifier->notify(
+              api::types::v1::InteractionRequest{ .summary = permissionNotifyMsg });
             return -1;
         }
 
@@ -1492,8 +1505,8 @@ int Cli::uninstall()
 
     if (pendingReply.isError()) {
         if (pendingReply.error().type() == QDBusError::AccessDenied) {
-            this->notifier->notify(api::types::v1::InteractionRequest{
-              .summary = permissionNotifyMsg });
+            this->notifier->notify(
+              api::types::v1::InteractionRequest{ .summary = permissionNotifyMsg });
             return -1;
         }
 
@@ -1690,8 +1703,8 @@ int Cli::repo(CLI::App *app)
     // check error here, this operation could be failed
     if (this->pkgMan.lastError().isValid()) {
         if (this->pkgMan.lastError().type() == QDBusError::AccessDenied) {
-            this->notifier->notify(api::types::v1::InteractionRequest{
-              .summary = permissionNotifyMsg });
+            this->notifier->notify(
+              api::types::v1::InteractionRequest{ .summary = permissionNotifyMsg });
             return -1;
         }
 
@@ -1813,8 +1826,8 @@ int Cli::setRepoConfig(const QVariantMap &config)
     this->pkgMan.setConfiguration(config);
     if (this->pkgMan.lastError().isValid()) {
         if (this->pkgMan.lastError().type() == QDBusError::AccessDenied) {
-            this->notifier->notify(api::types::v1::InteractionRequest{
-              .summary = permissionNotifyMsg });
+            this->notifier->notify(
+              api::types::v1::InteractionRequest{ .summary = permissionNotifyMsg });
             return -1;
         }
 
@@ -2135,9 +2148,11 @@ Cli::RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept
         ::close(fd);
     });
 
-    struct flock lock
-    {
-        .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0,
+    struct flock lock{
+        .l_type = F_WRLCK,
+        .l_whence = SEEK_SET,
+        .l_start = 0,
+        .l_len = 0,
     };
 
     // all later processes should be blocked
@@ -2336,10 +2351,7 @@ Cli::ensureCache(const package::Reference &ref,
     auto appCache = std::filesystem::path(LINGLONG_ROOT) / "cache" / appLayerItem.commit;
     const auto fileLock = "/run/linglong/" + appLayerItem.commit + ".lock";
 
-    struct flock locker
-    {
-        .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0
-    };
+    struct flock locker{ .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
 
     // Note: If the cache directory exists, check if there is a file lock.
     //       If the lock file is not exist, it means that the cache has been generated.
@@ -2437,7 +2449,8 @@ void Cli::updateAM() noexcept
         auto reply = peer.Ping();
         reply.waitForFinished();
         if (!reply.isValid()) {
-            qWarning() << "Failed to ping org.desktopspec.ApplicationUpdateNotifier1" << reply.error();
+            qWarning() << "Failed to ping org.desktopspec.ApplicationUpdateNotifier1"
+                       << reply.error();
         }
     }
 }

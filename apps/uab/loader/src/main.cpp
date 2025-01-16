@@ -108,9 +108,7 @@ void handleSig() noexcept
         sigaddset(&blocking_mask, sig);
     }
 
-    struct sigaction sa
-    {
-    };
+    struct sigaction sa{};
 
     sa.sa_handler = handler;
     sa.sa_mask = blocking_mask;
@@ -220,6 +218,87 @@ loadPackageInfoFromJson(const std::filesystem::path &json) noexcept
     }
 
     return std::nullopt;
+}
+
+bool processCaches(ocppi::runtime::config::types::Config &config,
+                   const std::filesystem::path &extraDir,
+                   bool onlyApp) noexcept
+{
+    std::error_code ec;
+    auto cacheDir = containerBundle / "cache";
+    auto ldCacheDir = cacheDir / "ld.so.cache.d";
+    if (!std::filesystem::create_directories(ldCacheDir, ec)) {
+        std::cerr << "failed to create ld cache directory:" << ec.message() << std::endl;
+        return -1;
+    }
+
+    config.mounts->push_back(ocppi::runtime::config::types::Mount{
+      .destination = "/run/linglong/cache",
+      .options = { { "rbind", "rw" } },
+      .source = ldCacheDir,
+      .type = "bind",
+    });
+
+    // append ld conf
+    auto ldConfDir = extraDir / "ld.conf.d";
+    if (!std::filesystem::exists(ldConfDir, ec)) {
+        if (ec) {
+            std::cerr << "failed to check ld conf directory " << ldConfDir << ":" << ec.message()
+                      << " code:" << ec.value() << std::endl;
+            return -1;
+        }
+
+        std::cerr << ldConfDir << " not exist." << std::endl;
+        return -1;
+    }
+
+    config.mounts->push_back(ocppi::runtime::config::types::Mount{
+      .destination = "/run/linglong/cache/ld.so.conf",
+      .options = { { "ro", "rbind" } },
+      .source = ldConfDir / "zz_deepin-linglong-app.ld.so.conf",
+      .type = "bind",
+    });
+
+    auto hooks = config.hooks.value_or(ocppi::runtime::config::types::Hooks{});
+    auto startHooks =
+      hooks.startContainer.value_or(std::vector<ocppi::runtime::config::types::Hook>{});
+    startHooks.push_back(ocppi::runtime::config::types::Hook{
+      .args = std::vector<std::string>{ "/sbin/ldconfig",
+                                        "-f",
+                                        "/run/linglong/cache/ld.so.conf",
+                                        "-C",
+                                        "/run/linglong/cache/ld.so.cache" },
+      .env = {},
+      .path = "/sbin/ldconfig",
+      .timeout = {},
+    });
+
+    if (!onlyApp) {
+        auto fontCacheDir = cacheDir / "fontconfig";
+        if (!std::filesystem::create_directories(fontCacheDir, ec)) {
+            std::cerr << "failed to create font cache directory:" << ec.message() << std::endl;
+            return -1;
+        }
+
+        config.mounts->push_back(ocppi::runtime::config::types::Mount{
+          .destination = "/var/cache/fontconfig",
+          .options = { { "rbind", "rw" } },
+          .source = fontCacheDir,
+          .type = "bind",
+        });
+
+        startHooks.push_back(ocppi::runtime::config::types::Hook{
+          .args = std::vector<std::string>{ "fc-cache", "-f" },
+          .env = {},
+          .path = "/bin/fc-cache",
+          .timeout = {},
+        });
+    }
+
+    hooks.startContainer = std::move(startHooks);
+    config.hooks = std::move(hooks);
+
+    return true;
 }
 
 // DO NOT USE LOADER DIRECTLY
@@ -450,74 +529,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
     config.process->env = std::move(env);
 
     // generate ld.so.cache and font cache at runtime
-    auto cacheDir = containerBundle / "cache";
-    auto ldCacheDir = cacheDir / "ld.so.cache.d";
-    auto fontCacheDir = cacheDir / "fontconfig";
-    if (!std::filesystem::create_directories(ldCacheDir, ec)) {
-        std::cerr << "failed to create ld cache directory:" << ec.message() << std::endl;
+    if (!processCaches(config, extraDir, onlyApp)) {
         return -1;
     }
-
-    if (!std::filesystem::create_directories(fontCacheDir, ec)) {
-        std::cerr << "failed to create font cache directory:" << ec.message() << std::endl;
-        return -1;
-    }
-
-    config.mounts->push_back(ocppi::runtime::config::types::Mount{
-      .destination = "/run/linglong/cache",
-      .options = { { "rbind", "rw" } },
-      .source = ldCacheDir,
-      .type = "bind",
-    });
-
-    config.mounts->push_back(ocppi::runtime::config::types::Mount{
-      .destination = "/var/cache/fontconfig",
-      .options = { { "rbind", "rw" } },
-      .source = fontCacheDir,
-      .type = "bind",
-    });
-
-    // append ld conf
-    auto ldConfDir = extraDir / "ld.conf.d";
-    if (!std::filesystem::exists(ldConfDir, ec)) {
-        if (ec) {
-            std::cerr << "failed to check ld conf directory " << ldConfDir << ":" << ec.message()
-                      << " code:" << ec.value() << std::endl;
-            return -1;
-        }
-
-        std::cerr << ldConfDir << " not exist." << std::endl;
-        return -1;
-    }
-
-    config.mounts->push_back(ocppi::runtime::config::types::Mount{
-      .destination = "/run/linglong/cache/ld.so.conf",
-      .options = { { "ro", "rbind" } },
-      .source = ldConfDir / "zz_deepin-linglong-app.ld.so.conf",
-      .type = "bind",
-    });
-
-    auto hooks = config.hooks.value_or(ocppi::runtime::config::types::Hooks{});
-    auto startHooks =
-      hooks.startContainer.value_or(std::vector<ocppi::runtime::config::types::Hook>{});
-    startHooks.push_back(ocppi::runtime::config::types::Hook{
-      .args = std::vector<std::string>{ "/sbin/ldconfig",
-                                        "-f",
-                                        "/run/linglong/cache/ld.so.conf",
-                                        "-C",
-                                        "/run/linglong/cache/ld.so.cache" },
-      .env = {},
-      .path = "/sbin/ldconfig",
-      .timeout = {},
-    });
-    startHooks.push_back(ocppi::runtime::config::types::Hook{
-      .args = std::vector<std::string>{ "fc-cache", "-f" },
-      .env = {},
-      .path = "/bin/fc-cache",
-      .timeout = {},
-    });
-    hooks.startContainer = std::move(startHooks);
-    config.hooks = std::move(hooks);
 
     // dump to bundle
     auto bundleCfg = containerBundle / "config.json";

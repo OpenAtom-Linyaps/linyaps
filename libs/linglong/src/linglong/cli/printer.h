@@ -8,6 +8,7 @@
 
 #include "linglong/api/types/v1/CliContainer.hpp"
 #include "linglong/api/types/v1/CommonResult.hpp"
+#include "linglong/api/types/v1/InspectResult.hpp"
 #include "linglong/api/types/v1/LayerInfo.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/RepoConfig.hpp"
@@ -86,6 +87,7 @@ public:
                                 api::types::v1::SubState subState) = 0;
     virtual void printContent(const QStringList &filePaths) = 0;
     virtual void printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &) = 0;
+    virtual void printInspect(const api::types::v1::InspectResult &) = 0;
 };
 
 } // namespace linglong::cli

@@ -27,6 +27,7 @@ public:
                         api::types::v1::SubState subState) override;
     void printContent(const QStringList &desktopPaths) override;
     void printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &) override;
+    void printInspect(const api::types::v1::InspectResult &) override;
 };
 
 } // namespace linglong::cli

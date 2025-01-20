@@ -2,6 +2,16 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "description": "Types used as v1 API of linglong D-Bus service, configuration files and CLI output. The top level type is a place holder to make quicktype work.",
   "$defs": {
+    "InspectResult": {
+      "description": "the result of inspecting a container",
+      "type": "object",
+      "properties": {
+        "appID": {
+          "type": "string",
+          "description": "appID of container"
+        }
+      }
+    },
     "ApplicationConfiguration": {
       "title": "ApplicationConfiguration",
       "description": "application configuration",
@@ -1147,6 +1157,9 @@
   },
   "type": "object",
   "properties": {
+    "InspectResult": {
+      "$ref": "#/$defs/InspectResult"
+    },
     "ApplicationConfiguration": {
       "$ref": "#/$defs/ApplicationConfiguration"
     },

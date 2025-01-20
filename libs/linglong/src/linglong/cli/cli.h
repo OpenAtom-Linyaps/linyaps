@@ -20,6 +20,7 @@ namespace linglong::cli {
 
 class Printer;
 
+// TODO: split this into multiple options
 struct CliOptions
 {
     std::vector<std::string> filePaths;
@@ -36,6 +37,7 @@ struct CliOptions
     bool showUpgradeList;
     bool forceOpt;
     bool confirmOpt;
+    std::optional<pid_t> pid;
 };
 
 class Cli : public QObject
@@ -69,6 +71,7 @@ public:
     int info();
     int content();
     int prune();
+    int inspect();
 
     void cancelCurrentTask();
 

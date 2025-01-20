@@ -500,6 +500,31 @@ ll-cli list --upgradable
       ->group(CliAppManagingGroup)
       ->usage(_("Usage: ll-cli prune [OPTIONS]"));
 
+    // add sub command inspect
+    auto *cliInspect =
+      commandParser
+        .add_subcommand("inspect", _("Display the information of installed application"))
+        ->group(CliHiddenGroup)
+        ->usage(_("Usage: ll-cli inspect [OPTIONS]"));
+    cliInspect->footer("This subcommand is for internal use only currently");
+    cliInspect->add_option("-p,--pid", options.pid, _("Specify the process id"))
+      ->check([](const std::string &input) -> std::string {
+          if (input.empty()) {
+              return _("Input parameter is empty, please input valid parameter instead");
+          }
+
+          try {
+              auto pid = std::stoull(input);
+              if (pid <= 0) {
+                  return _("Invalid process id");
+              }
+          } catch (std::exception &e) {
+              return _("Invalid pid format");
+          }
+
+          return {};
+      });
+
     auto res = transformOldExec(argc, argv);
     std::reverse(res.begin(), res.end());
     CLI11_PARSE(commandParser, res);
@@ -679,7 +704,8 @@ ll-cli list --upgradable
               { "list", &Cli::list },
               { "info", &Cli::info },
               { "content", &Cli::content },
-              { "prune", &Cli::prune }
+              { "prune", &Cli::prune },
+              { "inspect", &Cli::inspect }
           };
 
           if (QObject::connect(QCoreApplication::instance(),

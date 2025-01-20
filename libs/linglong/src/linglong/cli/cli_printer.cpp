@@ -199,4 +199,10 @@ void CLIPrinter::printUpgradeList(std::vector<api::types::v1::UpgradeListResult>
     }
 }
 
+void CLIPrinter::printInspect(const api::types::v1::InspectResult &result)
+{
+    std::cout << "appID:\t" << (result.appID.has_value() ? result.appID.value() : "none")
+              << std::endl;
+}
+
 } // namespace linglong::cli

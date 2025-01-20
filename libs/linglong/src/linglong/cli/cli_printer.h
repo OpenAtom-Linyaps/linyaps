@@ -29,7 +29,7 @@ public:
     CLIPrinter(CLIPrinter &&) = delete;
     CLIPrinter &operator=(const CLIPrinter &) = delete;
     CLIPrinter &operator=(CLIPrinter &&) = delete;
-    ~CLIPrinter() = default;
+    ~CLIPrinter() override = default;
 
     void printErr(const utils::error::Error &) override;
     void printPackage(const api::types::v1::PackageInfoV2 &) override;
@@ -45,6 +45,7 @@ public:
                         api::types::v1::SubState subState) override;
     void printContent(const QStringList &filePaths) override;
     void printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &) override;
+    void printInspect(const api::types::v1::InspectResult &result) override;
 };
 
 } // namespace linglong::cli

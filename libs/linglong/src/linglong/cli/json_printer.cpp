@@ -83,4 +83,9 @@ void JSONPrinter::printUpgradeList(std::vector<api::types::v1::UpgradeListResult
     std::cout << nlohmann::json(list).dump(4) << std::endl;
 }
 
+void JSONPrinter::printInspect(const api::types::v1::InspectResult &result)
+{
+    std::cout << nlohmann::json(result).dump(4) << std::endl;
+}
+
 } // namespace linglong::cli

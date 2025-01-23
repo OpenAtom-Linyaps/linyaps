@@ -562,7 +562,7 @@ msgstr "在调试模式下运行（启用开发模块）"
 
 #: ../apps/ll-builder/src/main.cpp:279
 msgid "List builded linyaps app"
-msgstr "运行构建好的应用程序"
+msgstr "列出已构建的应用程序"
 
 #: ../apps/ll-builder/src/main.cpp:280
 msgid "Usage: ll-builder list [OPTIONS]"
@@ -570,7 +570,7 @@ msgstr "用法: ll-builder list [选项]"
 
 #: ../apps/ll-builder/src/main.cpp:282
 msgid "Remove builded linyaps app"
-msgstr "删除构建好的应用程序"
+msgstr "删除已构建的应用程序"
 
 #: ../apps/ll-builder/src/main.cpp:283
 msgid "Usage: ll-builder remove [OPTIONS] [APP...]"

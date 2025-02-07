@@ -236,10 +236,12 @@ ll-cli run org.deepin.demo -- bash
 ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
     cliRun
       ->add_option("--file", options.filePaths, _("Pass file to applications running in a sandbox"))
-      ->type_name("FILE");
+      ->type_name("FILE")
+      ->expected(0, -1);
     cliRun
       ->add_option("--url", options.fileUrls, _("Pass url to applications running in a sandbox"))
-      ->type_name("URL");
+      ->type_name("URL")
+      ->expected(0, -1);
     cliRun->add_option("COMMAND", options.commands, _("Run commands in a running sandbox"));
 
     // add sub command ps

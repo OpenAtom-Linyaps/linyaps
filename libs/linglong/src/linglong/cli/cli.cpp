@@ -2108,6 +2108,10 @@ Cli::filePathMapping(const std::vector<std::string> &command) const noexcept
             }
 
             for (const auto &file : options.filePaths) {
+                if (file.empty()) {
+                    continue;
+                }
+
                 execArgs.emplace_back(mappingFile(file));
             }
 
@@ -2120,6 +2124,10 @@ Cli::filePathMapping(const std::vector<std::string> &command) const noexcept
             }
 
             for (const auto &url : options.fileUrls) {
+                if (url.empty()) {
+                    continue;
+                }
+
                 execArgs.emplace_back(mappingUrl(url));
             }
 

@@ -46,10 +46,11 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
     if (!bundle.mkpath("./rootfs")) {
         return LINGLONG_ERR("make rootfs directory");
     }
-
+#ifdef LINGLONG_FONT_CACHE_GENERATOR
     if (!bundle.mkpath("conf.d")) {
         return LINGLONG_ERR("make conf.d directory");
     }
+#endif
     auto _ = // NOLINT
       utils::finally::finally([&]() {
           if (!qgetenv("LINGLONG_DEBUG").isEmpty()) {
@@ -144,15 +145,7 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
     if (!arch) {
         return LINGLONG_ERR(arch);
     }
-    {
-        std::ofstream ofs(
-          bundle.absoluteFilePath("zz_deepin-linglong-app.ld.so.conf").toStdString());
-        Q_ASSERT(ofs.is_open());
-        if (!ofs.is_open()) {
-            return LINGLONG_ERR("create ld config in bundle directory");
-        }
-        ofs << "include /run/linglong/cache/ld.so.conf" << std::endl;
-    }
+
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
     {
         std::ofstream ofs(bundle.absoluteFilePath("conf.d/99-linglong.conf").toStdString());
@@ -167,17 +160,7 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
             << std::endl;
         ofs << "</fontconfig>" << std::endl;
     }
-#endif
 
-    this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
-      .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
-      .gidMappings = {},
-      .options = { { "ro", "rbind" } },
-      .source = bundle.absoluteFilePath("zz_deepin-linglong-app.ld.so.conf").toStdString(),
-      .type = "bind",
-      .uidMappings = {},
-    });
-#ifdef LINGLONG_FONT_CACHE_GENERATOR
     this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
       .destination = "/etc/fonts/conf.d",
       .gidMappings = {},

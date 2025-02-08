@@ -127,9 +127,7 @@ bool HostIPC::generate(ocppi::runtime::config::types::Config &config) const noex
             return;
         }
 
-        struct stat64 buf
-        {
-        };
+        struct stat64 buf{};
         if (::stat64(hostXDGRuntimeDir.string().c_str(), &buf) != 0) {
             std::cerr << "Failed to get state of " << hostXDGRuntimeDir << ": " << ::strerror(errno)
                       << std::endl;
@@ -274,45 +272,56 @@ bool HostIPC::generate(ocppi::runtime::config::types::Config &config) const noex
         xauthPatch.source = hostXauthFile;
         mounts.emplace_back(std::move(xauthPatch));
     }();
-    // 在容器中把易变的文件挂载成软链接，指向/run/host/rootfs，实现实时响应
 
-    // 如果/etc/localtime是嵌套软链会导致chromium时区异常，需要特殊处理
-    std::string localtimePath = "/run/host/rootfs/etc/localtime";
-    if (std::filesystem::is_symlink("/etc/localtime")) {
-        std::array<char, PATH_MAX + 1> buf{};
-        auto *target = ::realpath("/etc/localtime", buf.data());
-        if (target == nullptr) {
-            std::cerr << "Failed to get realpath of /etc/localtime: " << ::strerror(errno)
-                      << std::endl;
-            return -1;
+    // 在容器中把易变的文件挂载成软链接，指向/run/host/rootfs，实现实时响应
+    std::array<std::filesystem::path, 3> vec{
+        "/etc/localtime",
+        "/etc/resolv.conf",
+        "/etc/timezone",
+    };
+
+    std::error_code ec;
+    for (const auto &destination : vec) {
+        auto target = destination;
+        auto name = target.filename();
+
+        if (!std::filesystem::exists(target, ec)) {
+            if (ec) {
+                std::cerr << "Failed to check existence of " << target << ": " << ec.message()
+                          << std::endl;
+                return false;
+            }
+
+            continue;
         }
 
-        auto absoluteTarget = std::filesystem::path{ target }.lexically_relative("/");
-        localtimePath = "/run/host/rootfs" / absoluteTarget;
-    }
-    // 为 /run/linglong/etc/ld.so.cache 创建父目录
-    mounts.push_back(
-      ocppi::runtime::config::types::Mount{ .destination = "/run/linglong/etc",
-                                            .options = string_list{ "nodev", "nosuid", "mode=700" },
-                                            .source = "tmpfs",
-                                            .type = "tmpfs" });
+        auto status = std::filesystem::symlink_status(target, ec);
+        if (ec) {
+            std::cerr << "Failed to get status of " << target << ": " << ec.message() << std::endl;
+            return false;
+        }
 
-    // [name, destination, target]
-    std::vector<std::array<std::string_view, 3>> vec = {
-        { "ld.so.cache", "/etc/ld.so.cache", "/run/linglong/cache/ld.so.cache" },
-        { "localtime", "/etc/localtime", localtimePath },
-        { "resolv.conf", "/etc/resolv.conf", "/run/host/rootfs/etc/resolv.conf" },
-        { "timezone", "/etc/timezone", "/run/host/rootfs/etc/timezone" },
-    };
-    for (const auto &[name, destination, target] : vec) {
+        if (status.type() == std::filesystem::file_type::symlink) {
+            std::array<char, PATH_MAX + 1> buf{};
+            auto *rpath = ::realpath(target.c_str(), buf.data());
+            if (rpath == nullptr) {
+                std::cerr << "Failed to get realpath of " << target << ": " << ::strerror(errno)
+                          << std::endl;
+                return false;
+            }
+
+            target.assign(rpath);
+        }
+
         auto linkfile = bundleDir / name;
-        std::error_code ec;
-        std::filesystem::create_symlink(target, linkfile.c_str(), ec);
+        target = "/run/host/rootfs" / target.lexically_relative("/");
+        std::filesystem::create_symlink(target, linkfile, ec);
         if (ec) {
             std::cerr << "Failed to create symlink from " << target << " to " << linkfile << ": "
                       << ec.message() << std::endl;
             continue;
         };
+
         mounts.push_back(ocppi::runtime::config::types::Mount{
           .destination = std::string{ destination },
           .options = string_list{ "rbind", "ro", "nosymfollow", "copy-symlink" },
@@ -320,6 +329,22 @@ bool HostIPC::generate(ocppi::runtime::config::types::Config &config) const noex
           .type = "bind",
         });
     }
+
+    // process ld.so.cache
+    auto ldLink = bundleDir / "ld.so.cache";
+    std::filesystem::create_symlink("/run/linglong/cache/ld.so.cache", ldLink, ec);
+    if (ec) {
+        std::cerr << "Failed to create symlink from " << "/run/linglong/cache/ld.so.cache" << " to "
+                  << ldLink << ": " << ec.message() << std::endl;
+        return false;
+    }
+
+    mounts.push_back(ocppi::runtime::config::types::Mount{
+      .destination = "/etc/ld.so.cache",
+      .options = string_list{ "rbind", "ro", "nosymfollow", "copy-symlink" },
+      .source = ldLink,
+      .type = "bind",
+    });
 
     process.env = std::move(env);
     config.process = std::move(process);

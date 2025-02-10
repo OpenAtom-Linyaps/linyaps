@@ -881,7 +881,19 @@ Cli::getCurrentContainers() const noexcept
 
     std::vector<api::types::v1::CliContainer> myContainers;
     auto infoDir = std::filesystem::path{ "/run/linglong" } / std::to_string(::getuid());
-    for (const auto &pidFile : std::filesystem::directory_iterator{ infoDir }) {
+
+    std::error_code ec;
+    auto it = std::filesystem::directory_iterator{ infoDir, ec };
+    if (ec) {
+        if (ec == std::errc::no_such_file_or_directory) {
+            return myContainers;
+        }
+
+        return LINGLONG_ERR(
+          QString{ "failed to list %1: %2" }.arg(infoDir.c_str(), ec.message().c_str()));
+    }
+
+    for (const auto &pidFile : it) {
         const auto &file = pidFile.path();
         const auto &process = "/proc" / file.filename();
 

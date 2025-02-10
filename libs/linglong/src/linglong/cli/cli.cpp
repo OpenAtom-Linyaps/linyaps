@@ -625,18 +625,19 @@ int Cli::run()
     }
     auto execArgs = filePathMapping(commands);
 
-    auto newContainerID = [id = curAppRef->toString() + "-"]() mutable {
-        auto now = std::chrono::steady_clock::now().time_since_epoch().count();
-        id.append(QByteArray::fromStdString(std::to_string(now)));
-        return QCryptographicHash::hash(id.toUtf8(), QCryptographicHash::Sha256).toHex();
-    }();
+    auto newContainerID = runtime::genContainerID(*curAppRef);
+    auto bundle = runtime::getBundleDir(newContainerID);
+    if (!bundle) {
+        this->printer.printErr(LINGLONG_ERRV(bundle));
+        return -1;
+    }
 
     // this lambda will dump reference of containerID, app, base and runtime to
     // /run/linglong/getuid()/getpid() to store these needed infomation
     auto dumpContainerInfo = [app = curAppRef->toString().toStdString(),
                               base = baseRef->toString().toStdString(),
-                              containerID = newContainerID.toStdString(),
-                              runtime = runtimeLayerRef,
+                              &newContainerID,
+                              &runtimeLayerRef,
                               this]() -> bool {
         LINGLONG_TRACE("dump info")
         std::error_code ec;
@@ -656,8 +657,8 @@ int Cli::run()
         auto stateInfo = linglong::api::types::v1::ContainerProcessStateInfo{
             .app = app,
             .base = base,
-            .containerID = containerID,
-            .runtime = runtime,
+            .containerID = newContainerID,
+            .runtime = runtimeLayerRef,
         };
 
         std::ofstream stream{ pidFile };
@@ -775,17 +776,18 @@ int Cli::run()
       .type = "bind",
     });
 #endif
-
     auto container = this->containerBuilder.create({
       .appID = curAppRef->id,
-      .containerID = newContainerID,
+      .containerID = QString::fromStdString(newContainerID),
       .runtimeDir = runtimeLayerDir,
       .baseDir = *baseLayerDir,
       .appDir = *appLayerDir,
+      .bundle = std::move(bundle).value(),
       .patches = {},
       .mounts = std::move(applicationMounts),
       .masks = {},
     });
+
     if (!container) {
         this->printer.printErr(container.error());
         return -1;

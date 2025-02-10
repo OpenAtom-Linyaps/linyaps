@@ -79,18 +79,6 @@ auto getPatchesForApplication(const QString &appID) noexcept
     return patches;
 }
 
-// getBundleDir 用于获取容器的运行目录
-utils::error::Result<QDir> getBundleDir(const QString &containerID)
-{
-    LINGLONG_TRACE("get bundle dir");
-    QDir runtimeDir = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
-    QDir bundle = runtimeDir.absoluteFilePath(QString("linglong/%1").arg(containerID));
-    if (!bundle.mkpath(".")) {
-        return LINGLONG_ERR(QString("make bundle directory failed %1").arg(bundle.absolutePath()));
-    }
-    return bundle;
-}
-
 void applyJSONPatch(ocppi::runtime::config::types::Config &cfg,
                     const api::types::v1::OciConfigurationPatch &patch) noexcept
 {
@@ -432,17 +420,22 @@ auto ContainerBuilder::create(const ContainerOptions &opts) noexcept
 {
     LINGLONG_TRACE("create container");
 
-    auto bundle = getBundleDir(opts.containerID);
-    if (!bundle.has_value()) {
-        return LINGLONG_ERR(bundle);
+    std::error_code ec;
+    const auto &bundle = opts.bundle;
+    if (bundle.empty() || !bundle.is_absolute() || !std::filesystem::exists(bundle, ec)) {
+        if (ec) {
+            return LINGLONG_ERR("failed to check bundle directory", ec);
+        }
+
+        return LINGLONG_ERR(QString{ "invalid bundle directory: %1" }.arg(bundle.c_str()));
     }
 
-    auto originalConfig = getOCIConfig(opts, bundle->absolutePath().toStdString());
+    auto originalConfig = getOCIConfig(opts, bundle);
     if (!originalConfig) {
         return LINGLONG_ERR(originalConfig);
     }
     // save env to /run/user/1000/linglong/xxx/00env.sh, mount it to /etc/profile.d/00env.sh
-    std::string envShFile = bundle->absoluteFilePath("00env.sh").toStdString();
+    auto envShFile = bundle / "00env.sh";
     {
         std::ofstream ofs(envShFile);
         Q_ASSERT(ofs.is_open());

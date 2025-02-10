@@ -20,7 +20,6 @@
 #include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/file.h"
-#include "linglong/utils/finally/finally.h"
 #include "linglong/utils/global/initialize.h"
 #include "linglong/utils/packageinfo_handler.h"
 #include "ocppi/runtime/RunOption.hpp"
@@ -62,22 +61,6 @@
 namespace linglong::builder {
 
 namespace {
-
-// generate a unique id for then container
-QString genContainerID(const package::Reference &ref)
-{
-    auto content = ref.id + "-";
-    auto now = std::chrono::steady_clock::now().time_since_epoch().count();
-    content.append(QString::fromStdString(std::to_string(now)));
-
-    // 如果LINGLONG_DEBUG为true，则对ID进行编码，避免外部依赖该ID规则
-    // 调试模式则不进行二次编码，便于跟踪排查
-    if (::getenv("LINGLONG_DEBUG") != nullptr) {
-        return content;
-    }
-
-    return QCryptographicHash::hash(content.toUtf8(), QCryptographicHash::Sha256).toHex();
-}
 
 /*!
  * 拷贝目录
@@ -657,9 +640,16 @@ set -e
     if (!ref) {
         return LINGLONG_ERR(ref);
     }
+
+    auto containerID = runtime::genContainerID(*ref);
+    auto bundle = runtime::getBundleDir(containerID);
+    if (!bundle) {
+        return LINGLONG_ERR(bundle);
+    }
+
     auto opts = runtime::ContainerOptions{
         .appID = QString::fromStdString(this->project.package.id),
-        .containerID = genContainerID(*ref),
+        .containerID = QString::fromStdString(containerID),
         .runtimeDir = {},
         .baseDir = *baseLayerDir,
         .appDir = {},
@@ -855,7 +845,7 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
         auto ret = installModule(installRules,
                                  buildOutput.path(),
                                  moduleDir.filePath("files"),
-                                 [](int percentage) {});
+                                 [](int percentage) { });
         if (!ret.has_value()) {
             return LINGLONG_ERR("install module", ret);
         }
@@ -918,7 +908,7 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
         auto ret = installModule(installRules,
                                  buildOutput.path(),
                                  moduleDir.filePath("files"),
-                                 [](int percentage) {});
+                                 [](int percentage) { });
         if (!ret.has_value()) {
             return LINGLONG_ERR("install module", ret);
         }
@@ -1380,9 +1370,16 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
         return LINGLONG_ERR(curRef);
     }
 
-    auto options = init.value_or(runtime::ContainerOptions{});
-    options.appID = curRef->id;
-    options.containerID = genContainerID(*curRef);
+    auto containerID = runtime::genContainerID(*curRef);
+    auto bundle = runtime::getBundleDir(containerID);
+    if (!bundle) {
+        return LINGLONG_ERR(bundle);
+    }
+
+    auto options =
+      init.value_or(runtime::ContainerOptions{ .appID = curRef->id,
+                                               .containerID = QString::fromStdString(containerID),
+                                               .bundle = std::move(bundle).value() });
 
     auto fuzzyBase = package::FuzzyReference::parse(QString::fromStdString(this->project.base));
     if (!fuzzyBase) {
@@ -1430,7 +1427,7 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
         if (!mergedDir.has_value()) {
             return LINGLONG_ERR(mergedDir);
         }
-        curDir = *mergedDir->get();
+        curDir = **mergedDir;
     } else {
         curDir = this->repo.getLayerDir(*curRef);
         if (!curDir) {

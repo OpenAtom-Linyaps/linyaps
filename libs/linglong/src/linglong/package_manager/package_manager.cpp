@@ -236,10 +236,7 @@ PackageManager::getAllRunningContainers() noexcept
                             % ::strerror(errno));
     }
 
-    struct flock locker
-    {
-        .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0
-    };
+    struct flock locker{ .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
 
     if (::fcntl(lockFd, F_SETLK, &locker) == -1) {
         return LINGLONG_ERR(QStringLiteral("failed to lock ") % repoLockPath % ": "
@@ -257,10 +254,7 @@ PackageManager::getAllRunningContainers() noexcept
         return LINGLONG_OK;
     }
 
-    struct flock unlocker
-    {
-        .l_type = F_UNLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0
-    };
+    struct flock unlocker{ .l_type = F_UNLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
 
     if (::fcntl(lockFd, F_SETLK, &unlocker)) {
         return LINGLONG_ERR(QStringLiteral("failed to unlock ") % repoLockPath % ": "
@@ -2190,13 +2184,8 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
     const std::string fontGenerator = generatorDest + "/font-cache-generator";
 #endif
     std::error_code ec;
-    if (!std::filesystem::exists(appCache, ec)) {
-        if (ec) {
-            return LINGLONG_ERR(QString::fromStdString(ec.message()));
-        }
-        if (!std::filesystem::create_directories(appCache, ec)) {
-            return LINGLONG_ERR(QString::fromStdString(ec.message()));
-        }
+    if (!std::filesystem::create_directories(appCache, ec)) {
+        return LINGLONG_ERR(QString::fromStdString(ec.message()));
     }
 
     transaction.addRollBack([&appCache]() noexcept {
@@ -2206,6 +2195,22 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
             qCritical() << QString::fromStdString(ec.message());
         }
     });
+
+    auto containerID = runtime::genContainerID(ref);
+    auto bundle = runtime::getBundleDir(containerID);
+    if (!bundle) {
+        return LINGLONG_ERR(bundle);
+    }
+
+    // generate ld config
+    {
+        std::ofstream ofs(*bundle / "zz_deepin-linglong-app.ld.so.conf");
+        Q_ASSERT(ofs.is_open());
+        if (!ofs.is_open()) {
+            return LINGLONG_ERR("create ld config in bundle directory");
+        }
+        ofs << "include /run/linglong/cache/ld.so.conf" << std::endl;
+    }
 
     // bind mount cache root
     std::vector<ocppi::runtime::config::types::Mount> applicationMounts{};
@@ -2232,6 +2237,13 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
       .type = "bind",
     });
 
+    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+      .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
+      .options = { { "rbind", "ro" } },
+      .source = *bundle / "zz_deepin-linglong-app.ld.so.conf",
+      .type = "bind",
+    });
+
     package::LayerDir appLayerDir;
     std::optional<package::LayerDir> runtimeLayerDir;
     package::LayerDir baseLayerDir;
@@ -2255,10 +2267,11 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
 
     auto container = this->containerBuilder.create({
       .appID = ref.id,
-      .containerID = ref.id,
+      .containerID = QString::fromStdString(containerID),
       .runtimeDir = runtimeLayerDir,
       .baseDir = baseLayerDir,
       .appDir = appLayerDir,
+      .bundle = std::move(bundle).value(),
       .patches = {},
       .mounts = std::move(applicationMounts),
       .masks = {},

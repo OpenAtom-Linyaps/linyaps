@@ -1649,25 +1649,37 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                     || (info.path().contains("share/systemd/user") && info.suffix() == "service")
                     || (info.path().contains("share/applications/context-menus"))) {
                     // We should not modify the files of the checked application directly, but
-                    // should copy them to root entries directory and then modify.
-                    std::filesystem::copy(source_path, target_path, ec);
+                    // should copy them and then modify.
+                    auto timestamp = std::chrono::system_clock::now().time_since_epoch().count();
+                    auto sourceNewPath = QString{ "%1/%2_%3.%4" }
+                                           .arg((QFileInfo(source_path.c_str()).absolutePath()))
+                                           .arg(info.baseName())
+                                           .arg(QString::fromStdString(std::to_string(timestamp)))
+                                           .arg(info.suffix())
+                                           .toStdString();
+                    std::filesystem::copy(source_path, sourceNewPath, ec);
                     if (ec) {
-                        return LINGLONG_ERR("copy file failed: " + target_path.string(), ec);
+                        return LINGLONG_ERR("copy file failed: " + sourceNewPath, ec);
                     }
 
-                    exists = std::filesystem::exists(target_path, ec);
+                    exists = std::filesystem::exists(sourceNewPath, ec);
                     if (ec) {
                         return LINGLONG_ERR("check file exists", ec);
                     }
 
                     if (!exists) {
-                        qWarning() << "failed to copy file: " << source_path.c_str();
+                        qWarning() << "failed to copy file: " << sourceNewPath.c_str();
                         continue;
                     }
 
-                    auto ret = IniLikeFileRewrite(QFileInfo(target_path.c_str()), appID.c_str());
+                    auto ret = IniLikeFileRewrite(QFileInfo(sourceNewPath.c_str()), appID.c_str());
                     if (ret) {
-                        continue;
+                        std::filesystem::rename(sourceNewPath, source_path, ec);
+                        if (ec) {
+                            return LINGLONG_ERR("rename new path", ec);
+                        }
+                    } else {
+                        qWarning() << "rewrite file failed: " << ret.error().message();
                     }
                 }
             }

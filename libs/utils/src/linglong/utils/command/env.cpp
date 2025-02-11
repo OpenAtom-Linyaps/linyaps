@@ -67,6 +67,7 @@ linglong::utils::error::Result<QString> Exec(QString command, QStringList args)
     QProcess process;
     process.setProgram(command);
     process.setArguments(args);
+    process.setProcessChannelMode(QProcess::MergedChannels);
     process.start();
 
     if (!process.waitForFinished(-1)) {
@@ -74,7 +75,7 @@ linglong::utils::error::Result<QString> Exec(QString command, QStringList args)
     }
 
     if (process.exitCode() != 0) {
-        return LINGLONG_ERR(process.readAllStandardError(), process.exitCode());
+        return LINGLONG_ERR(process.readAllStandardOutput(), process.exitCode());
     }
 
     return process.readAllStandardOutput();

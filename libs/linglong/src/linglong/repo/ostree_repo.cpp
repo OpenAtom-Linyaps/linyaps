@@ -939,15 +939,15 @@ utils::error::Result<void> OSTreeRepo::pushToRemote(const std::string &remoteRep
                                                     const std::string &module) const noexcept
 {
     LINGLONG_TRACE("push " + reference.toString());
-    qDebug() << "push" << reference.toString() << "to" << url.c_str();
     auto layerDir = this->getLayerDir(reference, module);
     if (!layerDir) {
         return LINGLONG_ERR("layer not found", layerDir);
     }
     auto env = QProcessEnvironment::systemEnvironment();
     auto client = this->m_clientFactory.createClientV2();
-    // apiClient会调用free释放basePath，为避免重复释放这里复制一次url
-    client->basePath = strdup(client->basePath);
+    free(client->basePath); // NOLINT
+    client->basePath = strdup(url.c_str());
+
     // 登录认证
     auto envUsername = env.value("LINGLONG_USERNAME").toUtf8();
     auto envPassword = env.value("LINGLONG_PASSWORD").toUtf8();
@@ -1124,7 +1124,8 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
 
     std::array<const char *, 2> refs{ refString.c_str(), nullptr };
     ostreeUserData data{ .taskContext = &taskContext };
-    auto *progress = ostree_async_progress_new_and_connect(progress_changed, (void *)&data);
+    g_autoptr(OstreeAsyncProgress) progress =
+      ostree_async_progress_new_and_connect(progress_changed, (void *)&data);
     Q_ASSERT(progress != nullptr);
 
     g_autoptr(GError) gErr = nullptr;
@@ -1162,7 +1163,8 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
     }
     // Note: this fallback is only for binary to runtime
     if (shouldFallback && (module == "binary" || module == "runtime")) {
-        auto *progress = ostree_async_progress_new_and_connect(progress_changed, (void *)&data);
+        g_autoptr(OstreeAsyncProgress) progress =
+          ostree_async_progress_new_and_connect(progress_changed, (void *)&data);
         Q_ASSERT(progress != nullptr);
         // fallback to old ref
         refString = ostreeSpecFromReference(reference, std::nullopt, module);
@@ -1401,54 +1403,103 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
     LINGLONG_TRACE("list remote references");
 
     auto client = m_clientFactory.createClientV2();
-    std::string id, repo, channel, version, arch;
-    id = fuzzyRef.id.toStdString();
-    repo = this->cfg.defaultRepo;
-    if (fuzzyRef.channel) {
-        channel = fuzzyRef.channel->toStdString();
-    }
-    if (fuzzyRef.version) {
-        version = fuzzyRef.version->toString().toStdString();
-    }
-    if (fuzzyRef.arch) {
-        arch = fuzzyRef.arch->toString().toStdString();
-    } else {
-        arch = package::Architecture::currentCPUArchitecture()->toString().toStdString();
-    }
-    request_fuzzy_search_req_t req;
-    req.channel = channel.data();
-    req.version = version.data();
-    req.arch = arch.data();
-    req.app_id = id.data();
-    req.repo_name = repo.data();
-    // wait http request to finish
-    auto httpFuture = std::async(std::launch::async, [client, &req]() {
-        return ClientAPI_fuzzySearchApp(client.get(), &req);
+    request_fuzzy_search_req_t req{ nullptr, nullptr, nullptr, nullptr, nullptr };
+    auto freeIfNotNull = utils::finally::finally([&req] {
+        if (req.app_id != nullptr) {
+            free(req.app_id); // NOLINT
+        }
+        if (req.channel != nullptr) {
+            free(req.channel); // NOLINT
+        }
+        if (req.version != nullptr) {
+            free(req.version); // NOLINT
+        }
+        if (req.arch != nullptr) {
+            free(req.arch); // NOLINT
+        }
+        if (req.repo_name != nullptr) {
+            free(req.repo_name); // NOLINT
+        }
     });
-    QEventLoop loop;
-    QTimer timer;
-    connect(&timer, &QTimer::timeout, [&loop, &httpFuture]() {
-        if (httpFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-            loop.quit();
-        };
-    });
-    timer.start(100);
-    loop.exec();
 
-    auto res = httpFuture.get();
-    if (!res) {
-        return LINGLONG_ERR("cannot send request to remote server");
+    auto id = fuzzyRef.id.toLatin1();
+    req.app_id = ::strndup(id.data(), id.size());
+    if (req.app_id == nullptr) {
+        return LINGLONG_ERR(QString{ "strndup app_id failed: %1" }.arg(fuzzyRef.id));
     }
-    if (res->code != 200) {
-        auto msg = res->msg ? res->msg : "cannot send request to remote server";
+
+    req.repo_name = ::strndup(this->cfg.defaultRepo.data(), this->cfg.defaultRepo.size());
+    if (req.repo_name == nullptr) {
+        return LINGLONG_ERR(
+          QString{ "strndup repo_name failed: %1" }.arg(this->cfg.defaultRepo.c_str()));
+    }
+
+    if (fuzzyRef.channel) {
+        auto channel = fuzzyRef.channel->toLatin1();
+        req.channel = strndup(channel.data(), channel.size());
+        if (req.channel == nullptr) {
+            return LINGLONG_ERR(QString{ "strndup channel failed: %1" }.arg(channel));
+        }
+    }
+
+    if (fuzzyRef.version) {
+        auto version = fuzzyRef.version->toString().toLatin1();
+        req.version = strndup(version.data(), version.size());
+        if (req.version == nullptr) {
+            return LINGLONG_ERR(QString{ "strndup version failed: %1" }.arg(version));
+        }
+    }
+
+    auto arch = fuzzyRef.arch.value_or(package::Architecture::currentCPUArchitecture().value());
+    auto archStr = arch.toString().toLatin1();
+    req.arch = strndup(archStr.data(), archStr.size());
+    if (req.arch == nullptr) {
+        return LINGLONG_ERR(QString{ "strndup arch failed: %1" }.arg(archStr));
+    }
+
+    // wait http request to finish
+    fuzzy_search_app_200_response_t *response{ nullptr };
+    QEventLoop loop;
+    auto job = std::thread(
+      [client, &loop, &response](request_fuzzy_search_req_t req) {
+          response = ClientAPI_fuzzySearchApp(client.get(), &req);
+          loop.exit();
+      },
+      req);
+    // transfer ownership
+    req.app_id = nullptr;
+    req.channel = nullptr;
+    req.version = nullptr;
+    req.arch = nullptr;
+    req.repo_name = nullptr;
+
+    loop.exec();
+    if (job.joinable()) {
+        job.join();
+    }
+
+    if (response == nullptr) {
+        return LINGLONG_ERR("failed to send request to remote server");
+    }
+    auto freeResponse = utils::finally::finally([&response] {
+        fuzzy_search_app_200_response_free(response);
+    });
+
+    if (response->code != 200) {
+        QString msg = (response->msg != nullptr)
+          ? response->msg
+          : QString{ "cannot send request to remote server: %1" }.arg(response->code);
         return LINGLONG_ERR(msg);
     }
-    if (!res->data) {
+
+    if (response->data == nullptr) {
         return {};
     }
-    auto pkgInfos = std::vector<api::types::v1::PackageInfoV2>{};
-    for (auto entry = res->data->firstEntry; entry != nullptr; entry = entry->nextListEntry) {
-        auto item = (request_register_struct_t *)entry->data;
+
+    std::vector<api::types::v1::PackageInfoV2> pkgInfos;
+    pkgInfos.reserve(response->data->count);
+    for (auto *entry = response->data->firstEntry; entry != nullptr; entry = entry->nextListEntry) {
+        auto *item = (request_register_struct_t *)entry->data;
         pkgInfos.emplace_back(api::types::v1::PackageInfoV2{
           .arch = { item->arch },
           .channel = item->channel,
@@ -1462,7 +1513,7 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
           .version = item->version,
         });
     }
-    fuzzy_search_app_200_response_free(res);
+
     return pkgInfos;
 }
 

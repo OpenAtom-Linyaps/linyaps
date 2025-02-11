@@ -1449,23 +1449,20 @@ int Cli::search()
                     return;
                 }
 
-                if (!result->packages.has_value()) {
+                if (!result->packages) {
                     this->printer.printPackages({});
                     loop.exit(0);
                     return;
                 }
-                std::vector<api::types::v1::PackageInfoV2> pkgs;
 
-                if (options.showDevel) {
-                    pkgs = *result->packages;
-                } else {
-                    for (const auto &info : result->packages.value()) {
-                        if (info.packageInfoV2Module == "develop") {
-                            continue;
-                        }
-
-                        pkgs.push_back(info);
-                    }
+                auto pkgs = std::move(result->packages).value();
+                if (!options.showDevel) {
+                    auto it = std::remove_if(pkgs.begin(),
+                                             pkgs.end(),
+                                             [](const api::types::v1::PackageInfoV2 &info) {
+                                                 return info.packageInfoV2Module == "develop";
+                                             });
+                    pkgs.erase(it, pkgs.end());
                 }
 
                 if (!options.type.empty()) {

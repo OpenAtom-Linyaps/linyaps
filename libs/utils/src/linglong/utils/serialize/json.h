@@ -28,7 +28,6 @@ template<typename T>
 QJsonDocument toQJsonDocument(const T &x) noexcept
 {
     nlohmann::json json = x;
-    QJsonDocument doc;
     return QJsonDocument::fromJson(json.dump().data());
 }
 
@@ -75,7 +74,7 @@ error::Result<T> LoadJSONFile(GFile *file) noexcept
     LINGLONG_TRACE("load json from " + QString::fromStdString(g_file_get_path(file)));
 
     g_autoptr(GError) gErr = nullptr;
-    gchar *content = nullptr;
+    g_autofree gchar *content = nullptr;
     gsize length;
 
     if (!g_file_load_contents(file, nullptr, &content, &length, nullptr, &gErr)) {

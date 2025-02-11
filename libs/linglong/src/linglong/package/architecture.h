@@ -23,6 +23,7 @@ public:
         ARM64,
         LOONGARCH64,
         LOONG64,
+        SW64,
     };
 
     explicit Architecture(Value value = UNKNOW);

@@ -30,6 +30,8 @@ QString Architecture::toString() const noexcept
         return "loongarch64";
     case LOONG64:
         return "loong64";
+    case SW64:
+        return "sw64";
     case UNKNOW:
         [[fallthrough]];
     default:
@@ -48,6 +50,8 @@ QString Architecture::getTriplet() const noexcept
         return "aarch64-linux-gnu";
     case LOONG64:
         return "loongarch64-linux-gnu";
+    case SW64:
+        return "sw_64-linux-gnu";
     case LOONGARCH64:
         return "loongarch64-linux-gnu";
     }
@@ -79,6 +83,10 @@ Architecture::Architecture(const std::string &raw)
 
         if (raw == "loong64") {
             return LOONG64;
+        }
+
+        if (raw == "sw64") {
+            return SW64;
         }
 
         throw std::runtime_error("unknow architecture");
@@ -146,6 +154,9 @@ utils::error::Result<Architecture> Architecture::currentCPUArchitecture() noexce
     }
     if (interpreter == "/lib64/ld.so.1") {
         return Architecture::parse("loongarch64");
+    }
+    if (interpreter == "/lib/ld-linux-sw-64.so.2") {
+        return Architecture::parse("sw64");
     }
     return Architecture::parse("");
 };

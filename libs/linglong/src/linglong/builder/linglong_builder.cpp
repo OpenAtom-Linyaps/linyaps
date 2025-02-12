@@ -653,6 +653,7 @@ set -e
         .runtimeDir = {},
         .baseDir = *baseLayerDir,
         .appDir = {},
+        .bundle = std::move(bundle).value(),
         .patches = {},
         .mounts = {},
         .hooks = {},
@@ -1364,22 +1365,23 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
                                         bool debug)
 {
     LINGLONG_TRACE("run application");
-
     auto curRef = currentReference(this->project);
     if (!curRef) {
         return LINGLONG_ERR(curRef);
     }
 
-    auto containerID = runtime::genContainerID(*curRef);
-    auto bundle = runtime::getBundleDir(containerID);
-    if (!bundle) {
-        return LINGLONG_ERR(bundle);
-    }
+    runtime::ContainerOptions options = init.value_or(runtime::ContainerOptions{});
+    if (!init) {
+        auto containerID = runtime::genContainerID(*curRef);
+        auto bundle = runtime::getBundleDir(containerID);
+        if (!bundle) {
+            return LINGLONG_ERR(bundle);
+        }
 
-    auto options =
-      init.value_or(runtime::ContainerOptions{ .appID = curRef->id,
-                                               .containerID = QString::fromStdString(containerID),
-                                               .bundle = std::move(bundle).value() });
+        options.appID = curRef->id;
+        options.containerID = QString::fromStdString(containerID);
+        options.bundle = std::move(bundle).value();
+    }
 
     auto fuzzyBase = package::FuzzyReference::parse(QString::fromStdString(this->project.base));
     if (!fuzzyBase) {
@@ -1628,24 +1630,40 @@ utils::error::Result<void> Builder::runtimeCheck(const QStringList &modules)
     // Do some checks after run container
     if (!this->buildOptions.skipCheckOutput && this->project.package.kind == "app") {
         printMessage("Start runtime check", 2);
-        runtime::ContainerOptions opts{ .mounts = {
-                                          ocppi::runtime::config::types::Mount{
-                                            .destination = LINGLONG_BUILDER_HELPER,
-                                            .gidMappings = {},
-                                            .options = { { "rbind", "ro" } },
-                                            .source = LINGLONG_BUILDER_HELPER,
-                                            .type = "bind",
-                                            .uidMappings = {},
-                                          },
-                                          {
-                                            .destination = "/project",
-                                            .gidMappings = {},
-                                            .options = { { "rbind", "rw" } },
-                                            .source = this->workingDir.absolutePath().toStdString(),
-                                            .type = "bind",
-                                            .uidMappings = {},
-                                          } } };
+        auto curRef = currentReference(this->project);
+        if (!curRef) {
+            return LINGLONG_ERR(curRef);
+        }
 
+        auto containerID = runtime::genContainerID(*curRef);
+        auto bundle = runtime::getBundleDir(containerID);
+        if (!bundle) {
+            return LINGLONG_ERR(bundle);
+        }
+
+        std::vector<ocppi::runtime::config::types::Mount> mounts{
+            ocppi::runtime::config::types::Mount{
+              .destination = LINGLONG_BUILDER_HELPER,
+              .gidMappings = {},
+              .options = { { "rbind", "ro" } },
+              .source = LINGLONG_BUILDER_HELPER,
+              .type = "bind",
+              .uidMappings = {},
+            },
+            {
+              .destination = "/project",
+              .gidMappings = {},
+              .options = { { "rbind", "rw" } },
+              .source = this->workingDir.absolutePath().toStdString(),
+              .type = "bind",
+              .uidMappings = {},
+            }
+        };
+
+        runtime::ContainerOptions opts{ .appID = curRef->id,
+                                        .containerID = QString::fromStdString(containerID),
+                                        .bundle = std::move(bundle).value(),
+                                        .mounts = std::move(mounts) };
         auto ret =
           this->run(modules, { { QString{ LINGLONG_BUILDER_HELPER } + "/main-check.sh" } }, opts);
         if (!ret) {

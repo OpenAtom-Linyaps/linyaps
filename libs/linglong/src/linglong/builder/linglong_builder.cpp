@@ -715,6 +715,17 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
     // must be closed here, this conf will be used later.
     ldsoconf.close();
 
+    // generate ld config
+    {
+        std::ofstream ofs(opts.bundle / "zz_deepin-linglong-app.ld.so.conf");
+        Q_ASSERT(ofs.is_open());
+        if (!ofs.is_open()) {
+            return LINGLONG_ERR("create ld config in bundle directory");
+        }
+        ofs << "include /run/linglong/cache/ld.so.conf" << std::endl;
+    }
+
+    // mount app cache
     opts.mounts.push_back({
       .destination = "/run/linglong/cache",
       .gidMappings = {},
@@ -723,6 +734,13 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
       .type = "bind",
       .uidMappings = {},
     });
+    opts.mounts.push_back(ocppi::runtime::config::types::Mount{
+      .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
+      .options = { { "rbind", "ro" } },
+      .source = opts.bundle / "zz_deepin-linglong-app.ld.so.conf",
+      .type = "bind",
+    });
+
     // it seems that generating font cache during build is unnecessary
     std::vector<ocppi::runtime::config::types::Hook> generateCache{};
     std::vector<std::string> ldconfigCmd = { "/sbin/ldconfig",
@@ -1524,6 +1542,16 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
         });
     }
 
+    // generate ld config
+    {
+        std::ofstream ofs(options.bundle / "zz_deepin-linglong-app.ld.so.conf");
+        Q_ASSERT(ofs.is_open());
+        if (!ofs.is_open()) {
+            return LINGLONG_ERR("create ld config in bundle directory");
+        }
+        ofs << "include /run/linglong/cache/ld.so.conf" << std::endl;
+    }
+
     // mount app cache
     QDir appCache = this->workingDir.absoluteFilePath("linglong/cache");
     applicationMounts.push_back(ocppi::runtime::config::types::Mount{
@@ -1532,7 +1560,14 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
       .source = appCache.absolutePath().toStdString(),
       .type = "bind",
     });
+    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+      .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
+      .options = { { "rbind", "ro" } },
+      .source = options.bundle / "zz_deepin-linglong-app.ld.so.conf",
+      .type = "bind",
+    });
 
+#ifdef LINGLONG_FONT_CACHE_GENERATOR
     // write fonts.conf
     QDir appFontCache = appCache.absoluteFilePath("fontconfig");
     if (!appFontCache.mkpath(".")) {
@@ -1558,7 +1593,6 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     fontsConf.write(fontsRawConf.toUtf8());
     fontsConf.close();
 
-#ifdef LINGLONG_FONT_CACHE_GENERATOR
     // mount font cache
     applicationMounts.push_back(ocppi::runtime::config::types::Mount{
       .destination = "/var/cache/fontconfig",

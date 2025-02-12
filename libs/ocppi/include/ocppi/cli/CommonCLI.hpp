@@ -31,7 +31,6 @@ struct DeleteOption;
 struct ExecOption;
 struct KillOption;
 struct ListOption;
-class Signal;
 struct StartOption;
 struct StateOption;
 struct GlobalOption;

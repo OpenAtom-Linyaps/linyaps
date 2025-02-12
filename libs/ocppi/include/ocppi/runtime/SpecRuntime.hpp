@@ -10,6 +10,7 @@
 #include "ocppi/runtime/DeleteOption.hpp"
 #include "ocppi/runtime/FeaturesOption.hpp"
 #include "ocppi/runtime/KillOption.hpp"
+#include "ocppi/runtime/Signal.hpp"
 #include "ocppi/runtime/StartOption.hpp"
 #include "ocppi/runtime/StateOption.hpp"
 #include "ocppi/runtime/features/types/Features.hpp"
@@ -23,8 +24,6 @@ namespace state::types
 {
 struct State;
 }
-
-class Signal;
 
 class SpecRuntime {
     public:

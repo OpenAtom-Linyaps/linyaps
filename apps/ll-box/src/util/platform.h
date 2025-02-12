@@ -5,10 +5,10 @@
  */
 
 #pragma once
-
 #include "common.h"
 
 #include <optional>
+#include <string_view>
 
 namespace linglong {
 
@@ -21,6 +21,8 @@ int Exec(const util::str_vec &args, std::optional<std::vector<std::string>> env_
 int Wait(const int pid);
 int WaitAll();
 int WaitAllUntil(const int pid);
+
+int strToSig(std::string_view str) noexcept;
 
 } // namespace util
 

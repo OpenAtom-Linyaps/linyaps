@@ -7,8 +7,8 @@
 #include "container/container.h"
 #include "container/helper.h"
 #include "util/logger.h"
-#include "util/message_reader.h"
 #include "util/oci_runtime.h"
+#include "util/platform.h"
 
 #include <argp.h>
 
@@ -59,7 +59,7 @@ struct arg_kill
 {
     struct box_args *global{ nullptr };
     std::string container;
-    std::string signal;
+    std::optional<std::string> signal;
 };
 
 struct box_args
@@ -332,11 +332,25 @@ try {
 
 int kill(const arg_kill &arg) noexcept
 {
-    int sig = SIGTERM;
-    if (!arg.signal.empty()) {
-        if (std::all_of(arg.signal.cbegin(), arg.signal.cend(), ::isdigit)) {
-            sig = std::stoi(arg.signal);
+    auto signal = arg.signal.value_or("SIGTERM");
+    int sig{ -1 };
+    while (true) {
+        if (std::all_of(signal.cbegin(), signal.cend(), ::isdigit)) {
+            sig = std::stoi(signal);
+            break;
         }
+
+        if (signal.rfind("SIG", 0) == std::string::npos) {
+            signal.insert(0, "SIG");
+        }
+
+        sig = linglong::util::strToSig(signal);
+        if (sig == -1) {
+            logErr() << "invalid signal" << signal;
+            return -1;
+        }
+
+        break;
     }
 
     auto containers = linglong::readAllContainerJson(arg.global->root);
@@ -346,6 +360,7 @@ int kill(const arg_kill &arg) noexcept
         }
 
         auto pid = container["pid"].get<pid_t>();
+        logDbg() << "kill" << pid << "with" << signal << "(" << sig << ")";
         return ::kill(pid, sig);
     }
 
@@ -432,8 +447,7 @@ int parse_exec(int key, char *arg, struct argp_state *state)
 
 arg_list subCommand_list(struct argp_state *state)
 {
-    struct arg_list list_arg
-    {
+    struct arg_list list_arg{
         .global = reinterpret_cast<struct box_args *>(state->input), // NOLINT
     };
 
@@ -470,8 +484,7 @@ arg_list subCommand_list(struct argp_state *state)
 
 arg_run subCommand_run(struct argp_state *state)
 {
-    struct arg_run run_arg
-    {
+    struct arg_run run_arg{
         .global = reinterpret_cast<struct box_args *>(state->input), // NOLINT
     };
 
@@ -524,8 +537,7 @@ arg_run subCommand_run(struct argp_state *state)
 
 arg_exec subCommand_exec(struct argp_state *state)
 {
-    struct arg_exec exec_arg
-    {
+    struct arg_exec exec_arg{
         .global = reinterpret_cast<struct box_args *>(state->input), // NOLINT
     };
 
@@ -581,8 +593,7 @@ arg_exec subCommand_exec(struct argp_state *state)
 
 arg_kill subCommand_kill(struct argp_state *state)
 {
-    struct arg_kill kill_arg
-    {
+    struct arg_kill kill_arg{
         .global = reinterpret_cast<struct box_args *>(state->input), // NOLINT
     };
 
@@ -772,10 +783,7 @@ int main(int argc, char **argv)
                                 .args_doc = "COMMAND [OPTION...]",
                                 .doc = doc }; // NOLINT
 
-    struct box_args global
-    {
-        .root = defaultRootDir
-    };
+    struct box_args global{ .root = defaultRootDir };
 
     if (argp_parse(&global_argp, argc, argv, ARGP_IN_ORDER, nullptr, &global) != 0) {
         logErr() << "failed to parse arguments";

@@ -288,6 +288,9 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
                       ->group(CliAppManagingGroup)
                       ->fallthrough();
     cliKill->usage(_("Usage: ll-cli kill [OPTIONS] APP"));
+    cliKill
+      ->add_option("-s,--signal", options.signal, _("Specify the signal to send to the application"))
+      ->default_val("SIGTERM");
     cliKill->add_option("APP", options.appid, _("Specify the running application"))
       ->required()
       ->check(validatorString);

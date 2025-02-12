@@ -982,12 +982,10 @@ int Cli::kill()
     }
 
     auto ret = 0;
-
     for (const auto &containerID : containerIDList) {
         qInfo() << "select container id" << QString::fromStdString(containerID);
-
         auto result = this->ociCLI.kill(ocppi::runtime::ContainerID(containerID),
-                                        ocppi::runtime::Signal("SIGTERM"));
+                                        ocppi::runtime::Signal(options.signal));
         if (!result) {
             auto err = LINGLONG_ERRV(result);
             this->printer.printErr(err);

@@ -38,6 +38,7 @@ struct CliOptions
     bool forceOpt;
     bool confirmOpt;
     std::optional<pid_t> pid;
+    std::string signal;
 };
 
 class Cli : public QObject

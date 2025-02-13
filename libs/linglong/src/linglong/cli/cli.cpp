@@ -1467,6 +1467,11 @@ int Cli::search()
                     filterPackageInfosFromType(pkgs, options.type);
                 }
 
+                // default only the latest version is displayed
+                if (!options.showAll) {
+                    filterPackageInfosFromVersion(pkgs);
+                }
+
                 this->printer.printPackages(pkgs);
                 loop.exit(0);
             });
@@ -2195,6 +2200,39 @@ void Cli::filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> 
 
     list.clear();
     std::move(temp.begin(), temp.end(), std::back_inserter(list));
+}
+
+utils::error::Result<void>
+Cli::filterPackageInfosFromVersion(std::vector<api::types::v1::PackageInfoV2> &list) noexcept
+{
+    LINGLONG_TRACE("filter package infos from version");
+
+    std::unordered_map<std::string, api::types::v1::PackageInfoV2> temp;
+    for (const auto &info : list) {
+        auto it = temp.find(info.id);
+        if (it == temp.end()) {
+            temp[info.id] = info;
+            continue;
+        }
+
+        auto oldVersion = package::Version::parse(QString::fromStdString(it->second.version));
+        if (!oldVersion) {
+            return LINGLONG_ERR("failed to parse old version", oldVersion.error());
+        }
+        auto newVersion = package::Version::parse(QString::fromStdString(info.version));
+        if (!newVersion) {
+            return LINGLONG_ERR("failed to parse new version", newVersion.error());
+        }
+
+        if (*oldVersion < *newVersion) {
+            temp[info.id] = info;
+        }
+    }
+    list.clear();
+    std::transform(temp.begin(), temp.end(), std::back_inserter(list), [](const auto &pair) {
+        return pair.second;
+    });
+    return LINGLONG_OK;
 }
 
 utils::error::Result<void> Cli::runningAsRoot()

@@ -1438,7 +1438,7 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
         auto channel = fuzzyRef.channel->toLatin1();
         req.channel = strndup(channel.data(), channel.size());
         if (req.channel == nullptr) {
-            return LINGLONG_ERR(QString{ "strndup channel failed: %1" }.arg(channel));
+            return LINGLONG_ERR(QString{ "strndup channel failed: %1" }.arg(channel.data()));
         }
     }
 
@@ -1446,7 +1446,7 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
         auto version = fuzzyRef.version->toString().toLatin1();
         req.version = strndup(version.data(), version.size());
         if (req.version == nullptr) {
-            return LINGLONG_ERR(QString{ "strndup version failed: %1" }.arg(version));
+            return LINGLONG_ERR(QString{ "strndup version failed: %1" }.arg(version.data()));
         }
     }
 
@@ -1454,7 +1454,7 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
     auto archStr = arch.toString().toLatin1();
     req.arch = strndup(archStr.data(), archStr.size());
     if (req.arch == nullptr) {
-        return LINGLONG_ERR(QString{ "strndup arch failed: %1" }.arg(archStr));
+        return LINGLONG_ERR(QString{ "strndup arch failed: %1" }.arg(archStr.data()));
     }
 
     // wait http request to finish

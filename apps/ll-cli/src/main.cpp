@@ -202,8 +202,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
                         .instance = "",
                         .module = "",
                         .type = "app",
-                        .repoName = "",
-                        .repoUrl = "",
+                        .repoOptions = {},
                         .commands = {},
                         .showDevel = false,
                         .showUpgradeList = false,
@@ -289,7 +288,9 @@ ll-cli run org.deepin.demo -- bash -x /path/to/bash/script)"));
                       ->fallthrough();
     cliKill->usage(_("Usage: ll-cli kill [OPTIONS] APP"));
     cliKill
-      ->add_option("-s,--signal", options.signal, _("Specify the signal to send to the application"))
+      ->add_option("-s,--signal",
+                   options.signal,
+                   _("Specify the signal to send to the application"))
       ->default_val("SIGTERM");
     cliKill->add_option("APP", options.appid, _("Specify the running application"))
       ->required()
@@ -429,37 +430,41 @@ ll-cli list --upgradable
     // add repo sub command add
     auto *repoAdd = cliRepo->add_subcommand("add", _("Add a new repository"));
     repoAdd->usage(_("Usage: ll-cli repo add [OPTIONS] NAME URL"));
-    repoAdd->add_option("NAME", options.repoName, _("Specify the repo name"))
+    repoAdd->add_option("NAME", options.repoOptions.repoName, _("Specify the repo name"))
       ->required()
       ->check(validatorString);
-    repoAdd->add_option("URL", options.repoUrl, _("Url of the repository"))
+    repoAdd->add_option("URL", options.repoOptions.repoUrl, _("Url of the repository"))
       ->required()
+      ->check(validatorString);
+    repoAdd->add_option("--alias", options.repoOptions.repoAlias, _("Alias of the repo name"))
+      ->type_name("ALIAS")
       ->check(validatorString);
 
     // add repo sub command modify
     auto *repoModify =
       cliRepo->add_subcommand("modify", _("Modify repository URL"))->group(CliHiddenGroup);
-    repoModify->add_option("--name", options.repoName, _("Specify the repo name"))
+    repoModify->add_option("--name", options.repoOptions.repoName, _("Specify the repo name"))
       ->type_name("REPO")
       ->check(validatorString);
-    repoModify->add_option("URL", options.repoUrl, _("Url of the repository"))
+    repoModify->add_option("URL", options.repoOptions.repoUrl, _("Url of the repository"))
       ->required()
       ->check(validatorString);
 
     // add repo sub command remove
     auto *repoRemove = cliRepo->add_subcommand("remove", _("Remove a repository"));
     repoRemove->usage(_("Usage: ll-cli repo remove [OPTIONS] NAME"));
-    repoRemove->add_option("NAME", options.repoName, _("Specify the repo name"))
+    repoRemove->add_option("ALIAS", options.repoOptions.repoAlias, _("Alias of the repo name"))
       ->required()
       ->check(validatorString);
 
     // add repo sub command update
+    // TODO: add --repo and --url options
     auto *repoUpdate = cliRepo->add_subcommand("update", _("Update the repository URL"));
     repoUpdate->usage(_("Usage: ll-cli repo update [OPTIONS] NAME URL"));
-    repoUpdate->add_option("NAME", options.repoName, _("Specify the repo name"))
+    repoUpdate->add_option("ALIAS", options.repoOptions.repoAlias, _("Alias of the repo name"))
       ->required()
       ->check(validatorString);
-    repoUpdate->add_option("URL", options.repoUrl, _("Url of the repository"))
+    repoUpdate->add_option("URL", options.repoOptions.repoUrl, _("Url of the repository"))
       ->required()
       ->check(validatorString);
 
@@ -467,7 +472,7 @@ ll-cli list --upgradable
     auto *repoSetDefault =
       cliRepo->add_subcommand("set-default", _("Set a default repository name"));
     repoSetDefault->usage(_("Usage: ll-cli repo set-default [OPTIONS] NAME"));
-    repoSetDefault->add_option("NAME", options.repoName, _("Specify the repo name"))
+    repoSetDefault->add_option("NAME", options.repoOptions.repoName, _("Specify the repo name"))
       ->required()
       ->check(validatorString);
 
@@ -550,7 +555,7 @@ ll-cli list --upgradable
         qCritical() << config.error();
         return -1;
     }
-    linglong::repo::ClientFactory clientFactory(config->repos[config->defaultRepo]);
+    linglong::repo::ClientFactory clientFactory(linglong::repo::getDefaultRepoUrl(*config));
 
     auto ret = QMetaObject::invokeMethod(
       QCoreApplication::instance(),

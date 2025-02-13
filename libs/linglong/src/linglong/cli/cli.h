@@ -21,6 +21,13 @@ namespace linglong::cli {
 class Printer;
 
 // TODO: split this into multiple options
+struct RepoOptions
+{
+    std::string repoName;
+    std::string repoUrl;
+    std::optional<std::string> repoAlias;
+};
+
 struct CliOptions
 {
     std::vector<std::string> filePaths;
@@ -30,8 +37,7 @@ struct CliOptions
     std::string instance;
     std::string module;
     std::string type;
-    std::string repoName;
-    std::string repoUrl;
+    RepoOptions repoOptions;
     std::vector<std::string> commands;
     bool showDevel;
     bool showUpgradeList;

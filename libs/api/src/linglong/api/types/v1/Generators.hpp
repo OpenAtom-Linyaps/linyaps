@@ -28,7 +28,9 @@
 #include "linglong/api/types/v1/RepositoryCache.hpp"
 #include "linglong/api/types/v1/RepositoryCacheMergedItem.hpp"
 #include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
+#include "linglong/api/types/v1/RepoConfigV2.hpp"
 #include "linglong/api/types/v1/RepoConfig.hpp"
+#include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/PackageManager1UpdateParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1SearchResult.hpp"
@@ -183,8 +185,14 @@ void to_json(json & j, const PackageManager1UninstallParameters & x);
 void from_json(const json & j, PackageManager1UpdateParameters & x);
 void to_json(json & j, const PackageManager1UpdateParameters & x);
 
+void from_json(const json & j, Repo & x);
+void to_json(json & j, const Repo & x);
+
 void from_json(const json & j, RepoConfig & x);
 void to_json(json & j, const RepoConfig & x);
+
+void from_json(const json & j, RepoConfigV2 & x);
+void to_json(json & j, const RepoConfigV2 & x);
 
 void from_json(const json & j, RepositoryCacheLayersItem & x);
 void to_json(json & j, const RepositoryCacheLayersItem & x);
@@ -845,6 +853,21 @@ j = json::object();
 j["packages"] = x.packages;
 }
 
+inline void from_json(const json & j, Repo& x) {
+x.alias = get_stack_optional<std::string>(j, "alias");
+x.name = j.at("name").get<std::string>();
+x.url = j.at("url").get<std::string>();
+}
+
+inline void to_json(json & j, const Repo & x) {
+j = json::object();
+if (x.alias) {
+j["alias"] = x.alias;
+}
+j["name"] = x.name;
+j["url"] = x.url;
+}
+
 inline void from_json(const json & j, RepoConfig& x) {
 x.defaultRepo = j.at("defaultRepo").get<std::string>();
 x.repos = j.at("repos").get<std::map<std::string, std::string>>();
@@ -852,6 +875,19 @@ x.version = j.at("version").get<int64_t>();
 }
 
 inline void to_json(json & j, const RepoConfig & x) {
+j = json::object();
+j["defaultRepo"] = x.defaultRepo;
+j["repos"] = x.repos;
+j["version"] = x.version;
+}
+
+inline void from_json(const json & j, RepoConfigV2& x) {
+x.defaultRepo = j.at("defaultRepo").get<std::string>();
+x.repos = j.at("repos").get<std::vector<Repo>>();
+x.version = j.at("version").get<int64_t>();
+}
+
+inline void to_json(json & j, const RepoConfigV2 & x) {
 j = json::object();
 j["defaultRepo"] = x.defaultRepo;
 j["repos"] = x.repos;
@@ -897,7 +933,7 @@ j["name"] = x.name;
 }
 
 inline void from_json(const json & j, RepositoryCache& x) {
-x.config = j.at("config").get<RepoConfig>();
+x.config = j.at("config").get<RepoConfigV2>();
 x.layers = j.at("layers").get<std::vector<RepositoryCacheLayersItem>>();
 x.llVersion = j.at("ll-version").get<std::string>();
 x.merged = get_stack_optional<std::vector<RepositoryCacheMergedItem>>(j, "merged");
@@ -1006,7 +1042,9 @@ x.packageManager1SearchParameters = get_stack_optional<PackageManager1SearchPara
 x.packageManager1SearchResult = get_stack_optional<PackageManager1SearchResult>(j, "PackageManager1SearchResult");
 x.packageManager1UninstallParameters = get_stack_optional<PackageManager1UninstallParameters>(j, "PackageManager1UninstallParameters");
 x.packageManager1UpdateParameters = get_stack_optional<PackageManager1UpdateParameters>(j, "PackageManager1UpdateParameters");
+x.repo = get_stack_optional<Repo>(j, "Repo");
 x.repoConfig = get_stack_optional<RepoConfig>(j, "RepoConfig");
+x.repoConfigV2 = get_stack_optional<RepoConfigV2>(j, "RepoConfigV2");
 x.repositoryCache = get_stack_optional<RepositoryCache>(j, "RepositoryCache");
 x.state = get_stack_optional<State>(j, "State");
 x.subState = get_stack_optional<SubState>(j, "SubState");
@@ -1113,8 +1151,14 @@ j["PackageManager1UninstallParameters"] = x.packageManager1UninstallParameters;
 if (x.packageManager1UpdateParameters) {
 j["PackageManager1UpdateParameters"] = x.packageManager1UpdateParameters;
 }
+if (x.repo) {
+j["Repo"] = x.repo;
+}
 if (x.repoConfig) {
 j["RepoConfig"] = x.repoConfig;
+}
+if (x.repoConfigV2) {
+j["RepoConfigV2"] = x.repoConfigV2;
 }
 if (x.repositoryCache) {
 j["RepositoryCache"] = x.repositoryCache;

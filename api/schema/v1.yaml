@@ -405,6 +405,43 @@ $defs:
         additionalProperties:
           type: string
           description: additional properties of repos
+
+  RepoConfigV2:
+    description: Configuration file for local linglong repository.
+    type: object
+    required:
+      - version
+      - defaultRepo
+      - repos
+    properties:
+      version:
+        type: integer
+        description: version of repo config
+      defaultRepo:
+        type: string
+        description: default repo of repo config
+      repos:
+        type: array
+        description: repos of repo config
+        items:
+          $ref: '#/$defs/Repo'
+        minItems: 1
+  Repo:
+    description: Configuration for a single repository.
+    type: object
+    required:
+      - name
+      - url
+    properties:
+      name:
+        type: string
+        description: repo name
+      url:
+        type: string
+        description: repo url
+      alias:
+        type: string
+        description: alias of repo name
   LayerInfo:
     description: Meta information on the head of layer file.
     type: object
@@ -787,7 +824,7 @@ $defs:
         type: string
         description: version of linglong at the time of generating the file
       config:
-        $ref: '#/$defs/RepoConfig'
+        $ref: '#/$defs/RepoConfigV2'
       layers:
         type: array
         items:

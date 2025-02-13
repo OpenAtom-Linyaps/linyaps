@@ -17,7 +17,7 @@ namespace linglong::repo {
 
 utils::error::Result<std::unique_ptr<RepoCache>>
 RepoCache::create(const std::filesystem::path &cacheFile,
-                  const api::types::v1::RepoConfig &repoConfig,
+                  const api::types::v1::RepoConfigV2 &repoConfig,
                   OstreeRepo &repo)
 {
     LINGLONG_TRACE("load from RepoCache");
@@ -72,7 +72,7 @@ RepoCache::create(const std::filesystem::path &cacheFile,
     return repoCache;
 }
 
-utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoConfig &repoConfig,
+utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoConfigV2 &repoConfig,
                                                    OstreeRepo &repo) noexcept
 {
     LINGLONG_TRACE("rebuild repo cache");

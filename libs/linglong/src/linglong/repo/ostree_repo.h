@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "linglong/api/types/v1/RepoConfig.hpp"
+#include "linglong/api/types/v1/RepoConfigV2.hpp"
 #include "linglong/package/fuzzy_reference.h"
 #include "linglong/package/layer_dir.h"
 #include "linglong/package/reference.h"
@@ -39,13 +39,13 @@ public:
     OSTreeRepo &operator=(const OSTreeRepo &) = delete;
     OSTreeRepo &operator=(OSTreeRepo &&) = delete;
     OSTreeRepo(const QDir &path,
-               const api::types::v1::RepoConfig &cfg,
+               const api::types::v1::RepoConfigV2 &cfg,
                ClientFactory &clientFactory) noexcept;
 
     ~OSTreeRepo() override;
 
-    [[nodiscard]] const api::types::v1::RepoConfig &getConfig() const noexcept;
-    utils::error::Result<void> setConfig(const api::types::v1::RepoConfig &cfg) noexcept;
+    [[nodiscard]] const api::types::v1::RepoConfigV2 &getConfig() const noexcept;
+    utils::error::Result<void> setConfig(const api::types::v1::RepoConfigV2 &cfg) noexcept;
 
     utils::error::Result<package::LayerDir>
     importLayerDir(const package::LayerDir &dir,
@@ -122,7 +122,7 @@ public:
     utils::error::Result<void> fixExportAllEntries() noexcept;
 
 private:
-    api::types::v1::RepoConfig cfg;
+    api::types::v1::RepoConfigV2 cfg;
 
     struct OstreeRepoDeleter
     {
@@ -138,7 +138,7 @@ private:
     std::unique_ptr<linglong::repo::RepoCache> cache{ nullptr };
     ClientFactory &m_clientFactory;
 
-    utils::error::Result<void> updateConfig(const api::types::v1::RepoConfig &newCfg) noexcept;
+    utils::error::Result<void> updateConfig(const api::types::v1::RepoConfigV2 &newCfg) noexcept;
     QDir ostreeRepoDir() const noexcept;
     [[nodiscard]] utils::error::Result<QDir>
     ensureEmptyLayerDir(const std::string &commit) const noexcept;

@@ -19,7 +19,7 @@ public:
     void printPruneResult(const std::vector<api::types::v1::PackageInfoV2> &) override;
     void printContainers(const std::vector<api::types::v1::CliContainer> &) override;
     void printReply(const api::types::v1::CommonResult &) override;
-    void printRepoConfig(const api::types::v1::RepoConfig &) override;
+    void printRepoConfig(const api::types::v1::RepoConfigV2 &) override;
     void printLayerInfo(const api::types::v1::LayerInfo &) override;
     void printTaskState(double percentage,
                         const QString &message,

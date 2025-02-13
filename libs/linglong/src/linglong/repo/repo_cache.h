@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "linglong/api/types/v1/RepoConfig.hpp"
+#include "linglong/api/types/v1/RepoConfigV2.hpp"
 #include "linglong/api/types/v1/RepositoryCache.hpp"
 #include "linglong/api/types/v1/RepositoryCacheMergedItem.hpp"
 #include "linglong/package/architecture.h"
@@ -61,7 +61,7 @@ public:
 
     static utils::error::Result<std::unique_ptr<RepoCache>>
     create(const std::filesystem::path &cacheFile,
-           const api::types::v1::RepoConfig &repoConfig,
+           const api::types::v1::RepoConfigV2 &repoConfig,
            OstreeRepo &repo);
     utils::error::Result<void> addLayerItem(const api::types::v1::RepositoryCacheLayersItem &item);
     utils::error::Result<void>
@@ -82,7 +82,7 @@ public:
         return this->cache.merged;
     }
 
-    utils::error::Result<void> rebuildCache(const api::types::v1::RepoConfig &repoConfig,
+    utils::error::Result<void> rebuildCache(const api::types::v1::RepoConfigV2 &repoConfig,
                                             OstreeRepo &repo) noexcept;
     utils::error::Result<std::vector<api::types::v1::RepositoryCacheLayersItem>::iterator>
     findMatchingItem(const api::types::v1::RepositoryCacheLayersItem &item) noexcept;

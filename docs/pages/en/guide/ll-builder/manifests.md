@@ -67,7 +67,9 @@ runtime: org.deepin.runtime.dtk/23.1.0
 
 ### Source
 
-Describes the source information.
+Describes the source information and retrieve it in the 'linglong/sources' directory of the same level path as linglong.yaml.
+
+#### The kind is Git
 
 ```yaml
 sources:
@@ -77,12 +79,57 @@ sources:
   commit: d7e207b4a71bbd97f7d818de5044228c1a6e2c92
 ```
 
-| name   | description                                                                                               |
-| ------ | --------------------------------------------------------------------------------------------------------- |
-| kind   | Source code type, optional types git, file, archive, git                                                  |
-| url    | Source address, fill in when the type is archive or git                                                   |
-| digest | The Hash value of archive file encrypted using sha256 algorithm, fill in when the type is archive or file |
-| commit | The hash value of a source code commit, fill in when the type is git                                      |
+| name    | description                                                          |
+| ------- | -------------------------------------------------------------------- |
+| kind    | git, Download using the Git tool                                     |
+| url     | Source address, fill in when the type is archive or git              |
+| version | Source repository branches                                           |
+| commit  | The hash value of a source code commit, fill in when the type is git |
+
+#### The kind is file
+
+```yaml
+sources:
+  kind: file
+  url: https://github.com/linuxdeepin/deepin-calculator/archive/refs/tags/6.5.4.tar.gz
+  digest: 9675e27395891da9d9ee0a6094841410e344027fd81265ab75f83704174bb3a8
+```
+
+| name   | description                                                        |
+| ------ | ------------------------------------------------------------------ |
+| kind   | git, Download file                                                 |
+| url    | File download address                                              |
+| digest | The hash value of the file is encrypted using the sha256 algorithm |
+
+#### The kind is archive
+
+```bash
+sources:
+  kind: archive
+  url: https://github.com/linuxdeepin/deepin-calculator/archive/refs/tags/6.5.4.tar.gz
+  digest: 9675e27395891da9d9ee0a6094841410e344027fd81265ab75f83704174bb3a8
+```
+
+| name   | description                                                                       |
+| ------ | --------------------------------------------------------------------------------- |
+| kind   | archive, Download the compressed file tar.tz and it will automatically decompress |
+| url    | File download address                                                             |
+| digest | The hash value of the file is encrypted using the sha256 algorithm                |
+
+#### The kind is dsc
+
+```bash
+sources:
+  kind: dsc
+  url: https://cdn-community-packages.deepin.com/deepin/beige/pool/main/d/deepin-calculator/deepin-calculator_6.0.1.dsc
+  digest: ce47ed04a427a887a52e3cc098534bba53188ee0f38f59713f4f176374ea2141
+```
+
+| name   | description                                                        |
+| ------ | ------------------------------------------------------------------ |
+| kind   | dsc, Source code package description file                          |
+| url    | File download address                                              |
+| digest | The hash value of the file is encrypted using the sha256 algorithm |
 
 ### Build rules
 

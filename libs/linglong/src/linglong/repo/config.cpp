@@ -15,7 +15,7 @@
 
 namespace linglong::repo {
 
-utils::error::Result<api::types::v1::RepoConfig> loadConfig(const QString &file) noexcept
+utils::error::Result<api::types::v1::RepoConfigV2> loadConfig(const QString &file) noexcept
 {
     LINGLONG_TRACE(QString("load repo config from %1").arg(file));
 
@@ -25,13 +25,25 @@ utils::error::Result<api::types::v1::RepoConfig> loadConfig(const QString &file)
             return LINGLONG_ERR("open failed");
         }
 
-        auto config = utils::serialize::LoadYAML<api::types::v1::RepoConfig>(ifs);
-        if (config->version != 1) {
-            return LINGLONG_ERR(
-              QString("wrong configuration file version %1").arg(config->version));
+        // 尝试加载新版本配置
+        auto config = utils::serialize::LoadYAML<api::types::v1::RepoConfigV2>(ifs);
+        if (!config) {
+            ifs.seekg(0);
+            auto configV1 = utils::serialize::LoadYAML<api::types::v1::RepoConfig>(ifs);
+            if (!configV1) {
+                return LINGLONG_ERR("parse yaml failed");
+            }
+
+            // 将旧版本配置转换为新版本
+            config = convertToV2(*configV1);
         }
 
-        if (config->repos.find(config->defaultRepo) == config->repos.end()) {
+        auto repoExists =
+          std::any_of(config->repos.begin(), config->repos.end(), [&config](const auto &repo) {
+              return repo.alias == config->defaultRepo;
+          });
+
+        if (!repoExists) {
             return LINGLONG_ERR(QString("default repo not found in repos"));
         }
 
@@ -41,7 +53,7 @@ utils::error::Result<api::types::v1::RepoConfig> loadConfig(const QString &file)
     }
 }
 
-utils::error::Result<api::types::v1::RepoConfig> loadConfig(const QStringList &files) noexcept
+utils::error::Result<api::types::v1::RepoConfigV2> loadConfig(const QStringList &files) noexcept
 {
     LINGLONG_TRACE(QString("load repo config from %1").arg(files.join(" ")));
 
@@ -59,13 +71,18 @@ utils::error::Result<api::types::v1::RepoConfig> loadConfig(const QStringList &f
     return LINGLONG_ERR("all failed");
 }
 
-utils::error::Result<void> saveConfig(const api::types::v1::RepoConfig &cfg,
+utils::error::Result<void> saveConfig(const api::types::v1::RepoConfigV2 &cfg,
                                       const QString &path) noexcept
 {
     LINGLONG_TRACE(QString("save config to %1").arg(path));
 
     try {
-        if (cfg.repos.find(cfg.defaultRepo) == cfg.repos.end()) {
+        auto defaultRepoExists =
+          std::any_of(cfg.repos.begin(), cfg.repos.end(), [&cfg](const auto &repo) {
+              return repo.alias == cfg.defaultRepo;
+          });
+
+        if (!defaultRepoExists) {
             return LINGLONG_ERR("default repo not found in repos");
         }
 
@@ -81,6 +98,33 @@ utils::error::Result<void> saveConfig(const api::types::v1::RepoConfig &cfg,
     } catch (const std::exception &e) {
         return LINGLONG_ERR(e);
     }
+}
+
+std::string getDefaultRepoUrl(const api::types::v1::RepoConfigV2 &cfg) noexcept
+{
+    const auto &defaultRepo =
+      std::find_if(cfg.repos.begin(), cfg.repos.end(), [&cfg](const auto &repo) {
+          return repo.alias == cfg.defaultRepo;
+      });
+
+    return defaultRepo->url;
+}
+
+api::types::v1::RepoConfigV2 convertToV2(const api::types::v1::RepoConfig &cfg) noexcept
+{
+    api::types::v1::RepoConfigV2 configV2;
+    configV2.version = 2;
+    configV2.defaultRepo = cfg.defaultRepo;
+
+    for (const auto &[name, url] : cfg.repos) {
+        api::types::v1::Repo repoV2;
+        repoV2.name = name;
+        repoV2.alias = name;
+        repoV2.url = url;
+        configV2.repos.push_back(repoV2);
+    }
+
+    return configV2;
 }
 
 } // namespace linglong::repo

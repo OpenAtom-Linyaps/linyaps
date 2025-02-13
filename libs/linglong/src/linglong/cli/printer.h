@@ -11,7 +11,7 @@
 #include "linglong/api/types/v1/InspectResult.hpp"
 #include "linglong/api/types/v1/LayerInfo.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
-#include "linglong/api/types/v1/RepoConfig.hpp"
+#include "linglong/api/types/v1/RepoConfigV2.hpp"
 #include "linglong/api/types/v1/State.hpp"
 #include "linglong/api/types/v1/SubState.hpp"
 #include "linglong/api/types/v1/UpgradeListResult.hpp"
@@ -79,7 +79,7 @@ public:
     virtual void printPruneResult(const std::vector<api::types::v1::PackageInfoV2> &) = 0;
     virtual void printContainers(const std::vector<api::types::v1::CliContainer> &) = 0;
     virtual void printReply(const api::types::v1::CommonResult &) = 0;
-    virtual void printRepoConfig(const api::types::v1::RepoConfig &) = 0;
+    virtual void printRepoConfig(const api::types::v1::RepoConfigV2 &) = 0;
     virtual void printLayerInfo(const api::types::v1::LayerInfo &) = 0;
     virtual void printTaskState(double percentage,
                                 const QString &message,

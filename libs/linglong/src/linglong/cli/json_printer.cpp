@@ -47,7 +47,7 @@ void JSONPrinter::printReply(const api::types::v1::CommonResult &reply)
     std::cout << nlohmann::json(reply).dump() << std::endl;
 }
 
-void JSONPrinter::printRepoConfig(const api::types::v1::RepoConfig &config)
+void JSONPrinter::printRepoConfig(const api::types::v1::RepoConfigV2 &config)
 {
     std::cout << nlohmann::json(config).dump() << std::endl;
 }

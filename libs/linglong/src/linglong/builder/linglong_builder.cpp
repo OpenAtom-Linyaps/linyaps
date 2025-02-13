@@ -452,7 +452,13 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     auto repoCfg = this->repo.getConfig();
     printMessage("[Current Repo]");
     printMessage("Name: " + repoCfg.defaultRepo, 2);
-    printMessage("Url: " + repoCfg.repos.at(repoCfg.defaultRepo), 2);
+    std::string repoUrl;
+    const auto &defaultRepo =
+      std::find_if(repoCfg.repos.begin(), repoCfg.repos.end(), [&repoCfg](const auto &repo) {
+          return repo.alias == repoCfg.defaultRepo;
+      });
+    repoUrl = defaultRepo->url;
+    printMessage("Url: " + repoUrl, 2);
 
     this->workingDir.mkdir("linglong");
     /*** Fetch Source Stage ***/

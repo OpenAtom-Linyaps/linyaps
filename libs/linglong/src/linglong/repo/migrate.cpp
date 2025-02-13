@@ -180,7 +180,7 @@ int migrateRef(OstreeRepo *repo, const MigrateRefData &data)
 
 int dispatchMigrations(const Version &from,
                        const std::filesystem::path &root,
-                       const linglong::api::types::v1::RepoConfig &cfg)
+                       const linglong::api::types::v1::RepoConfigV2 &cfg)
 {
     std::error_code ec;
     std::filesystem::path ostreeRepo = root / "repo";
@@ -214,7 +214,7 @@ int dispatchMigrations(const Version &from,
 
 namespace linglong::repo {
 MigrateResult tryMigrate(const std::filesystem::path &root,
-                         const linglong::api::types::v1::RepoConfig &cfg) noexcept
+                         const linglong::api::types::v1::RepoConfigV2 &cfg) noexcept
 {
     std::error_code ec;
     if (!std::filesystem::exists(root, ec)) {

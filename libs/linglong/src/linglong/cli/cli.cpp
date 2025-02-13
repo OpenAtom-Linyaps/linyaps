@@ -1808,7 +1808,7 @@ int Cli::repo(CLI::App *app)
         return -1;
     }
 
-    auto cfg = utils::serialize::fromQVariantMap<api::types::v1::RepoConfig>(propCfg);
+    auto cfg = utils::serialize::fromQVariantMap<api::types::v1::RepoConfigV2>(propCfg);
     if (!cfg) {
         qCritical() << cfg.error();
         qCritical() << "linglong bug detected.";
@@ -1831,7 +1831,7 @@ int Cli::repo(CLI::App *app)
         return EINVAL;
     }
 
-    std::string url = options.repoUrl;
+    std::string url = options.repoOptions.repoUrl;
 
     if (argsParseFunc("add") || argsParseFunc("update")) {
         if (url.rfind("http", 0) != 0) {
@@ -1840,12 +1840,14 @@ int Cli::repo(CLI::App *app)
         }
 
         // remove last slash
-        if (options.repoUrl.back() == '/') {
-            options.repoUrl.pop_back();
+        if (options.repoOptions.repoUrl.back() == '/') {
+            options.repoOptions.repoUrl.pop_back();
         }
     }
 
-    std::string name = options.repoName;
+    std::string name = options.repoOptions.repoName;
+    // if alias is not set, use name as alias
+    std::string alias = options.repoOptions.repoAlias.value_or(name);
     auto &cfgRef = *cfg;
 
     if (argsParseFunc("add")) {
@@ -1854,26 +1856,51 @@ int Cli::repo(CLI::App *app)
             return EINVAL;
         }
 
-        auto ret = cfgRef.repos.try_emplace(name, url);
-        if (!ret.second) {
+        if (!options.repoOptions.repoAlias.has_value()) {
+            bool exists =
+              std::any_of(cfgRef.repos.begin(), cfgRef.repos.end(), [&name](const auto &repo) {
+                  return repo.name == name;
+              });
+            if (exists) {
+                this->printer.printErr(
+                  LINGLONG_ERRV(QString{ "repo " } + name.c_str()
+                                + " already exist. please use --alias to set a alias."));
+                return -1;
+            }
+        }
+
+        bool isExist =
+          std::any_of(cfgRef.repos.begin(), cfgRef.repos.end(), [&alias](const auto &repo) {
+              return repo.alias == alias;
+          });
+        if (isExist) {
             this->printer.printErr(
-              LINGLONG_ERRV(QString{ "repo " } + name.c_str() + " already exist."));
+              LINGLONG_ERRV(QString{ "repo " } + alias.c_str() + " already exist."));
             return -1;
         }
+        cfgRef.repos.push_back(api::types::v1::Repo{
+          .alias = alias,
+          .name = name,
+          .url = url,
+        });
         return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
     }
 
-    auto existingRepo = cfgRef.repos.find(name);
-    if (existingRepo == cfgRef.repos.cend()) {
+    auto existingRepo =
+      std::find_if(cfgRef.repos.begin(), cfgRef.repos.end(), [&alias](const auto &repo) {
+          return repo.alias == alias;
+      });
+
+    if (existingRepo == cfgRef.repos.end()) {
         this->printer.printErr(
           LINGLONG_ERRV(QString{ "the operated repo " } + name.c_str() + " doesn't exist"));
         return -1;
     }
 
     if (argsParseFunc("remove")) {
-        if (cfgRef.defaultRepo == name) {
+        if (cfgRef.defaultRepo == alias) {
             this->printer.printErr(
-              LINGLONG_ERRV(QString{ "repo " } + name.c_str()
+              LINGLONG_ERRV(QString{ "repo " } + alias.c_str()
                             + "is default repo, please change default repo before removing it."));
             return -1;
         }
@@ -1888,13 +1915,13 @@ int Cli::repo(CLI::App *app)
             return -1;
         }
 
-        existingRepo->second = url;
+        existingRepo->url = url;
         return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
     }
 
     if (argsParseFunc("set-default")) {
-        if (cfgRef.defaultRepo != name) {
-            cfgRef.defaultRepo = name;
+        if (cfgRef.defaultRepo != alias) {
+            cfgRef.defaultRepo = alias;
             return this->setRepoConfig(utils::serialize::toQVariantMap(cfgRef));
         }
 

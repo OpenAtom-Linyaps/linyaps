@@ -133,13 +133,19 @@ void CLIPrinter::printReply(const api::types::v1::CommonResult &reply)
     std::cout << "message:" << std::endl << reply.message << std::endl;
 }
 
-void CLIPrinter::printRepoConfig(const api::types::v1::RepoConfig &repoInfo)
+void CLIPrinter::printRepoConfig(const api::types::v1::RepoConfigV2 &repoInfo)
 {
     std::cout << "Default: " << repoInfo.defaultRepo << std::endl;
-    std::cout << std::left << std::setw(11) << "Name";
-    std::cout << "Url" << std::endl;
+    // get the max length of url
+    size_t maxUrlLength = 0;
     for (const auto &repo : repoInfo.repos) {
-        std::cout << std::left << std::setw(10) << repo.first << " " << repo.second << std::endl;
+        maxUrlLength = std::max(maxUrlLength, repo.url.size());
+    }
+    std::cout << std::left << std::setw(11) << "Name";
+    std::cout << std::setw(maxUrlLength + 2) << "Url" << std::setw(11) << "Alias" << std::endl;
+    for (const auto &repo : repoInfo.repos) {
+        std::cout << std::left << std::setw(11) << repo.name << std::setw(maxUrlLength + 2)
+                  << repo.url << std::setw(11) << repo.alias.value() << std::endl;
     }
 }
 

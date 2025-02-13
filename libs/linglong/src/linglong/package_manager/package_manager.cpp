@@ -460,7 +460,7 @@ auto PackageManager::getConfiguration() const noexcept -> QVariantMap
 
 void PackageManager::setConfiguration(const QVariantMap &parameters) noexcept
 {
-    auto cfg = utils::serialize::fromQVariantMap<api::types::v1::RepoConfig>(parameters);
+    auto cfg = utils::serialize::fromQVariantMap<api::types::v1::RepoConfigV2>(parameters);
     if (!cfg) {
         sendErrorReply(QDBusError::InvalidArgs, cfg.error().message());
         return;
@@ -468,13 +468,28 @@ void PackageManager::setConfiguration(const QVariantMap &parameters) noexcept
 
     const auto &cfgRef = *cfg;
     const auto &curCfg = repo.getConfig();
+    bool reposIsSame = cfgRef.repos.size() == curCfg.repos.size()
+      && std::equal(cfgRef.repos.begin(),
+                    cfgRef.repos.end(),
+                    curCfg.repos.begin(),
+                    curCfg.repos.end(),
+                    [](const auto &cfg1, const auto &cfg2) {
+                        return cfg1.alias == cfg2.alias && cfg1.name == cfg2.name
+                          && cfg1.url == cfg2.url;
+                    });
+
     if (cfgRef.version == curCfg.version && cfgRef.defaultRepo == curCfg.defaultRepo
-        && cfgRef.repos == curCfg.repos) {
+        && reposIsSame) {
         return;
     }
 
-    if (const auto &defaultRepo = cfg->defaultRepo;
-        cfg->repos.find(defaultRepo) == cfg->repos.end()) {
+    if (const auto &defaultRepo = cfg->defaultRepo; std::find_if(cfg->repos.begin(),
+                                                                 cfg->repos.end(),
+                                                                 [&defaultRepo](const auto &repo) {
+                                                                     return repo.alias
+                                                                       == defaultRepo;
+                                                                 })
+        == cfg->repos.end()) {
         sendErrorReply(QDBusError::Failed,
                        "default repository is missing after updating configuration.");
         return;

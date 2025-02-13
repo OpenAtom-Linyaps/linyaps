@@ -46,7 +46,9 @@
 #include "linglong/api/types/v1/PackageManager1SearchResult.hpp"
 #include "linglong/api/types/v1/PackageManager1UninstallParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1UpdateParameters.hpp"
+#include "linglong/api/types/v1/Repo.hpp"
 #include "linglong/api/types/v1/RepoConfig.hpp"
+#include "linglong/api/types/v1/RepoConfigV2.hpp"
 #include "linglong/api/types/v1/RepositoryCache.hpp"
 #include "linglong/api/types/v1/UabMetaInfo.hpp"
 #include "linglong/api/types/v1/UpgradeListResult.hpp"
@@ -112,7 +114,9 @@ std::optional<PackageManager1SearchParameters> packageManager1SearchParameters;
 std::optional<PackageManager1SearchResult> packageManager1SearchResult;
 std::optional<PackageManager1UninstallParameters> packageManager1UninstallParameters;
 std::optional<PackageManager1UpdateParameters> packageManager1UpdateParameters;
+std::optional<Repo> repo;
 std::optional<RepoConfig> repoConfig;
+std::optional<RepoConfigV2> repoConfigV2;
 std::optional<RepositoryCache> repositoryCache;
 std::optional<State> state;
 std::optional<SubState> subState;

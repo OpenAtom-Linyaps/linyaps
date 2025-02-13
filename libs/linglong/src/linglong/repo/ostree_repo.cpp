@@ -670,7 +670,7 @@ QDir OSTreeRepo::ostreeRepoDir() const noexcept
 }
 
 OSTreeRepo::OSTreeRepo(const QDir &path,
-                       const api::types::v1::RepoConfig &cfg,
+                       const api::types::v1::RepoConfigV2 &cfg,
                        ClientFactory &clientFactory) noexcept
     : cfg(cfg)
     , m_clientFactory(clientFactory)
@@ -699,10 +699,9 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
         ostreeRepo = ostree_repo_new(repoPath);
         Q_ASSERT(ostreeRepo != nullptr);
         if (ostree_repo_open(ostreeRepo, nullptr, &gErr) == TRUE) {
-            auto result =
-              updateOstreeRepoConfig(ostreeRepo,
-                                     QString::fromStdString(cfg.defaultRepo),
-                                     QString::fromStdString(cfg.repos.at(cfg.defaultRepo)));
+            auto result = updateOstreeRepoConfig(ostreeRepo,
+                                                 QString::fromStdString(cfg.defaultRepo),
+                                                 QString::fromStdString(getDefaultRepoUrl(cfg)));
             if (!result) {
                 // when ll-cli construct this object, it has no permission to wirte ostree config
                 // we can't abort here.
@@ -733,7 +732,7 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
 
     auto result = createOstreeRepo(this->ostreeRepoDir().absolutePath(),
                                    QString::fromStdString(this->cfg.defaultRepo),
-                                   QString::fromStdString(this->cfg.repos[this->cfg.defaultRepo]));
+                                   QString::fromStdString(getDefaultRepoUrl(this->cfg)));
     if (!result) {
         qCritical() << LINGLONG_ERRV(result);
         qFatal("abort");
@@ -753,13 +752,13 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
     this->cache = std::move(ret).value();
 }
 
-const api::types::v1::RepoConfig &OSTreeRepo::getConfig() const noexcept
+const api::types::v1::RepoConfigV2 &OSTreeRepo::getConfig() const noexcept
 {
     return cfg;
 }
 
 utils::error::Result<void>
-OSTreeRepo::updateConfig(const api::types::v1::RepoConfig &newCfg) noexcept
+OSTreeRepo::updateConfig(const api::types::v1::RepoConfigV2 &newCfg) noexcept
 {
     LINGLONG_TRACE("update underlying config")
 
@@ -771,12 +770,11 @@ OSTreeRepo::updateConfig(const api::types::v1::RepoConfig &newCfg) noexcept
     utils::Transaction transaction;
     result = updateOstreeRepoConfig(this->ostreeRepo.get(),
                                     QString::fromStdString(newCfg.defaultRepo),
-                                    QString::fromStdString(newCfg.repos.at(newCfg.defaultRepo)));
+                                    QString::fromStdString(getDefaultRepoUrl(newCfg)));
     transaction.addRollBack([this]() noexcept {
-        auto result =
-          updateOstreeRepoConfig(this->ostreeRepo.get(),
-                                 QString::fromStdString(this->cfg.defaultRepo),
-                                 QString::fromStdString(this->cfg.repos.at(this->cfg.defaultRepo)));
+        auto result = updateOstreeRepoConfig(this->ostreeRepo.get(),
+                                             QString::fromStdString(this->cfg.defaultRepo),
+                                             QString::fromStdString(getDefaultRepoUrl(this->cfg)));
         if (!result) {
             qCritical() << result.error();
             Q_ASSERT(false);
@@ -788,13 +786,13 @@ OSTreeRepo::updateConfig(const api::types::v1::RepoConfig &newCfg) noexcept
 
     transaction.commit();
 
-    this->m_clientFactory.setServer(QString::fromStdString(newCfg.repos.at(newCfg.defaultRepo)));
+    this->m_clientFactory.setServer(QString::fromStdString(getDefaultRepoUrl(newCfg)));
     this->cfg = newCfg;
 
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfig &cfg) noexcept
+utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfigV2 &cfg) noexcept
 {
     LINGLONG_TRACE("set config");
 
@@ -814,15 +812,14 @@ utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfi
 
     result = updateOstreeRepoConfig(this->ostreeRepo.get(),
                                     QString::fromStdString(cfg.defaultRepo),
-                                    QString::fromStdString(cfg.repos.at(cfg.defaultRepo)));
+                                    QString::fromStdString(getDefaultRepoUrl(cfg)));
     if (!result) {
         return LINGLONG_ERR(result);
     }
     transaction.addRollBack([this]() noexcept {
-        auto result =
-          updateOstreeRepoConfig(this->ostreeRepo.get(),
-                                 QString::fromStdString(this->cfg.defaultRepo),
-                                 QString::fromStdString(this->cfg.repos.at(this->cfg.defaultRepo)));
+        auto result = updateOstreeRepoConfig(this->ostreeRepo.get(),
+                                             QString::fromStdString(this->cfg.defaultRepo),
+                                             QString::fromStdString(getDefaultRepoUrl(this->cfg)));
         if (!result) {
             qCritical() << result.error();
             Q_ASSERT(false);
@@ -833,7 +830,7 @@ utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfi
         return LINGLONG_ERR(ret);
     }
 
-    this->m_clientFactory.setServer(cfg.repos.at(cfg.defaultRepo));
+    this->m_clientFactory.setServer(getDefaultRepoUrl(cfg));
     this->cfg = cfg;
 
     transaction.commit();
@@ -929,7 +926,14 @@ OSTreeRepo::importLayerDir(const package::LayerDir &dir,
                                                           const std::string &module) const noexcept
 {
     const auto &remoteRepo = this->cfg.defaultRepo;
-    const auto &remoteURL = this->cfg.repos.at(remoteRepo);
+    std::string remoteURL;
+    const auto &repo =
+      std::find_if(this->cfg.repos.begin(), this->cfg.repos.end(), [&remoteRepo](const auto &repo) {
+          return repo.alias == remoteRepo;
+      });
+
+    remoteURL = repo->url;
+
     return pushToRemote(remoteRepo, remoteURL, reference, module);
 }
 

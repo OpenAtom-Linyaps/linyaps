@@ -205,6 +205,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
                         .repoOptions = {},
                         .commands = {},
                         .showDevel = false,
+                        .showAll = false,
                         .showUpgradeList = false,
                         .forceOpt = false,
                         .confirmOpt = false };
@@ -390,6 +391,7 @@ ll-cli search . --type=runtime)"));
       ->capture_default_str()
       ->check(validatorString);
     cliSearch->add_flag("--dev", options.showDevel, _("include develop application in result"));
+    cliSearch->add_flag("--all", options.showAll, _("Show all results"));
 
     // add sub command list
     auto *cliList =

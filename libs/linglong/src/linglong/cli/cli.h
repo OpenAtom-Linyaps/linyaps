@@ -40,6 +40,7 @@ struct CliOptions
     RepoOptions repoOptions;
     std::vector<std::string> commands;
     bool showDevel;
+    bool showAll;
     bool showUpgradeList;
     bool forceOpt;
     bool confirmOpt;
@@ -93,6 +94,8 @@ private:
     static std::string mappingUrl(const std::string &url) noexcept;
     static void filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> &list,
                                            const std::string &type) noexcept;
+    static utils::error::Result<void>
+    filterPackageInfosFromVersion(std::vector<api::types::v1::PackageInfoV2> &list) noexcept;
     void printProgress() noexcept;
     [[nodiscard]] utils::error::Result<std::vector<api::types::v1::CliContainer>>
     getCurrentContainers() const noexcept;

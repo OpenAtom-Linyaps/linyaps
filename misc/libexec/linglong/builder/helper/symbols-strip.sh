@@ -16,8 +16,8 @@ while read -r filepath; do
         if ! echo "$fileinfo" | grep -q 'not stripped'; then
                 continue
         fi
-        # skip debug
-        if echo "$fileinfo" | grep -q 'with debug_info'; then
+        # skip debug file
+        if [[ "$filepath" == *.debug ]]; then
                 continue
         fi
         # https://sourceware.org/gdb/current/onlinedocs/gdb.html/Separate-Debug-Files.html

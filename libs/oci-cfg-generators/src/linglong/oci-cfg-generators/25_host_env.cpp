@@ -6,6 +6,8 @@
 
 #include <iostream>
 
+#include <unistd.h>
+
 namespace linglong::generator {
 
 bool HostEnv::generate(ocppi::runtime::config::types::Config &config) const noexcept
@@ -34,7 +36,9 @@ bool HostEnv::generate(ocppi::runtime::config::types::Config &config) const noex
     auto process = config.process.value_or(ocppi::runtime::config::types::Process{});
     auto env = process.env.value_or(std::vector<std::string>{});
 
-    const std::vector<std::string_view> envList = {
+    env.push_back("LINGLONG_APPID=" + appID->second);
+
+    const std::vector<std::string> envList = {
         "DISPLAY",
         "LANG",
         "LANGUAGE",
@@ -66,20 +70,27 @@ bool HostEnv::generate(ocppi::runtime::config::types::Config &config) const noex
         "GDMSESSION",
         "QT_WAYLAND_FORCE_DPI",
         "GIO_LAUNCHED_DESKTOP_FILE", // 系统监视器
-        "GNOME_DESKTOP_SESSION_ID", // gnome 桌面标识，有些应用会读取此变量以使用gsettings配置,
-                                    // 如chrome
+        "GNOME_DESKTOP_SESSION_ID",  // gnome 桌面标识，有些应用会读取此变量以使用gsettings配置,
+                                     // 如chrome
         "TERM"
     };
 
-    // get the environment variables of current process
-    for (const auto filter : envList) {
-        auto *host = ::getenv(filter.data());
-        if (host != nullptr) {
-            env.emplace_back(std::string{ filter } + "=" + host);
+    auto onlyApp = config.annotations->find("org.deepin.linglong.onlyApp");
+    if (onlyApp != config.annotations->end() && onlyApp->second == "true") {
+        // 如果是 onlyApp 模式，直接追加所有环境变量并返回
+        for (char **envp = environ; *envp != nullptr; envp++) {
+            env.emplace_back(*envp);
+        }
+    } else {
+        // get the environment variables of current process
+        for (const auto &filter : envList) {
+            auto *host = ::getenv(filter.data());
+            if (host != nullptr) {
+                env.emplace_back(std::string{ filter } + "=" + host);
+            }
         }
     }
 
-    env.push_back("LINGLONG_APPID=" + appID->second);
     process.env = std::move(env);
     config.process = std::move(process);
 

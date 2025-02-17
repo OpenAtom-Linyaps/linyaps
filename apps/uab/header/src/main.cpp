@@ -62,153 +62,6 @@ std::string resolveRealPath(std::string_view source) noexcept
     return { ptr };
 }
 
-std::string detectLinglong() noexcept
-{
-    if (::getenv("LINGLONG_UAB_DIRECT_EXEC") != nullptr) {
-        return {};
-    }
-
-    auto *pathPtr = ::getenv("PATH");
-    if (pathPtr == nullptr) {
-        std::cerr << "failed to get PATH" << std::endl;
-        return {};
-    }
-
-    struct stat sb
-    {
-    };
-
-    std::string path{ pathPtr };
-    std::string cliPath;
-    size_t startPos = 0;
-    size_t endPos = 0;
-
-    while ((endPos = path.find(':', startPos)) != std::string::npos) {
-        std::string binPath = path.substr(startPos, endPos - startPos) + "/ll-cli";
-        if ((::stat(binPath.c_str(), &sb) == 0) && ((sb.st_mode & S_IXOTH) != 0U)) {
-            cliPath = binPath;
-            break;
-        }
-
-        startPos = endPos + 1;
-    }
-
-    return cliPath;
-}
-
-int importSelf(const std::string &cliBin, std::string_view appRef, const std::string &uab) noexcept
-{
-    std::array<int, 2> out{};
-    if (pipe(out.data()) == -1) {
-        std::cerr << "pipe() failed:" << ::strerror(errno) << std::endl;
-        return -1;
-    }
-
-    auto pid = fork();
-    if (pid < 0) {
-        std::cerr << "fork() failed:" << ::strerror(errno) << std::endl;
-        return -1;
-    }
-
-    if (pid == 0) {
-        ::close(out[0]);
-        if (::dup2(out[1], STDOUT_FILENO) == -1) {
-            std::cerr << "dup2() failed in sub-process:" << ::strerror(errno) << std::endl;
-            return -1;
-        }
-
-        if (::execl(cliBin.data(), cliBin.data(), "--json", "list", nullptr) == -1) {
-            std::cerr << "execl() failed:" << ::strerror(errno) << std::endl;
-            return -1;
-        }
-    }
-
-    ::close(out[1]);
-    auto closeReadPipe = defer([fd = out[0]] {
-        ::close(fd);
-    });
-
-    std::array<char, PIPE_BUF> buf{};
-    std::string content;
-    ssize_t bytesRead{ -1 };
-    while ((bytesRead = ::read(out[0], buf.data(), buf.size())) != 0) {
-        if (bytesRead == -1) {
-            if (errno == EINTR) {
-                continue;
-            }
-
-            std::cerr << "read failed:" << ::strerror(errno) << std::endl;
-            return -1;
-        }
-
-        content.append(buf.data(), bytesRead);
-    }
-
-    int status{ 0 };
-    auto ret = ::waitpid(pid, &status, 0);
-    if (ret == -1) {
-        std::cerr << "waitpid() failed:" << ::strerror(errno) << std::endl;
-        return -1;
-    }
-
-    if (auto result = WEXITSTATUS(status); result != 0) {
-        std::cerr << "ll-cli --json list failed, return code:" << result << std::endl;
-        return -1;
-    }
-
-    std::vector<linglong::api::types::v1::PackageInfoV2> packages;
-    try {
-        auto packagesJson = nlohmann::json::parse(content);
-        packages = packagesJson.get<decltype(packages)>();
-    } catch (nlohmann::detail::parse_error &e) {
-        std::cerr << "parse content from ll-cli list output error:" << e.what() << std::endl;
-        return -1;
-    } catch (std::exception &e) {
-        std::cerr << "catching an exception when parsing output of ll-cli list:" << e.what()
-                  << std::endl;
-        return -1;
-    } catch (...) {
-        std::cerr << "catching unknown value" << std::endl;
-        return -1;
-    }
-
-    for (const auto &package : packages) {
-        auto curRef =
-          package.channel + ":" + package.id + "/" + package.version + "/" + package.arch[0];
-        if (curRef == appRef) {
-            return 0; // already exist
-        }
-    }
-
-    // install a new application
-    pid = fork();
-    if (pid < 0) {
-        std::cerr << "fork() failed:" << ::strerror(errno) << std::endl;
-        return -1;
-    }
-
-    if (pid == 0) {
-        if (::execl(cliBin.data(), cliBin.data(), "install", uab.data(), nullptr) == -1) {
-            std::cerr << "execl() failed:" << ::strerror(errno) << std::endl;
-            return -1;
-        }
-    }
-
-    status = -1;
-    ret = ::waitpid(pid, &status, 0);
-    if (ret == -1) {
-        std::cerr << "waitpid() failed:" << ::strerror(errno) << std::endl;
-        return -1;
-    }
-
-    if (auto result = WEXITSTATUS(status); result != 0) {
-        std::cerr << "ll-cli install failed, return code:" << result << std::endl;
-        return -1;
-    }
-
-    return 0;
-}
-
 std::string calculateDigest(int fd, std::size_t bundleOffset, std::size_t bundleLength) noexcept
 {
     digest::SHA256 sha256;
@@ -379,9 +232,7 @@ void handleSig() noexcept
         sigaddset(&blocking_mask, sig);
     }
 
-    struct sigaction sa
-    {
-    };
+    struct sigaction sa{};
 
     sa.sa_handler = handler;
     sa.sa_mask = blocking_mask;
@@ -520,22 +371,6 @@ int extractBundle(std::string_view destination) noexcept
     cleanAndExit(WEXITSTATUS(status));
 }
 
-[[noreturn]] void
-runAppLinglong(std::string_view cliBin,
-               const linglong::api::types::v1::UabLayer &layer,
-               [[maybe_unused]] const std::vector<std::string_view> &loaderArgs) noexcept
-{
-    const auto &appId = layer.info.id;
-    std::array<const char *, 4> argv{};
-    argv[0] = cliBin.data();
-    argv[1] = "run";
-    argv[2] = appId.c_str();
-    argv[3] = nullptr;
-
-    cleanAndExit(
-      ::execv(cliBin.data(), reinterpret_cast<char *const *>(const_cast<char **>(argv.data()))));
-}
-
 enum uabOption {
     Help = 1,
     Extract,
@@ -669,35 +504,6 @@ int main(int argc, char **argv)
         }
 
         cleanAndExit(extractBundle(opts.extractPath));
-    }
-
-    const auto &layersRef = metaInfo.layers;
-    const auto &appLayer = std::find_if(layersRef.cbegin(),
-                                        layersRef.cend(),
-                                        [](const linglong::api::types::v1::UabLayer &layer) {
-                                            return layer.info.kind == "app";
-                                        });
-
-    if (appLayer == layersRef.cend()) {
-        std::cerr << "couldn't find application layer" << std::endl;
-        return -1;
-    }
-    const auto &appInfo = appLayer->info;
-
-    auto cliPath = detectLinglong();
-    auto appRef =
-      appInfo.channel + ":" + appInfo.id + "/" + appInfo.version + "/" + appInfo.arch[0];
-    if (!cliPath.empty()) {
-        std::string uab{ selfBin.cbegin(), selfBin.cend() };
-        if (importSelf(cliPath, appRef, uab) != 0) {
-            std::cerr << "failed to import uab by ll-cli" << std::endl;
-            return -1;
-        }
-
-        std::cout << "import uab to linglong successfully, delegate running operation to linglong."
-                  << std::endl;
-
-        runAppLinglong(cliPath, *appLayer, opts.loaderArgs);
     }
 
     if (mountSelf(elf, metaInfo) != 0) {

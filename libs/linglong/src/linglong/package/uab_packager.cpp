@@ -381,6 +381,10 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
         }
         const auto &[minified, files] = *ret;
 
+        if (files.empty()) {
+            continue;
+        }
+
         // first step, copy files which in layer directory
         std::error_code ec;
         for (const auto &info :
@@ -417,14 +421,10 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
                                   .arg(QString::fromStdString(ec.message())));
         }
 
-        struct stat moduleFilesDirStat, filesStat = { 0 };
+        struct stat moduleFilesDirStat{}, filesStat{};
         if (stat(moduleFilesDir.c_str(), &moduleFilesDirStat) == -1) {
             return LINGLONG_ERR("couldn't stat module files directory: "
                                 + QString::fromStdString(moduleFilesDir));
-        }
-
-        if (file.empty()) {
-            continue;
         }
 
         if (stat((*files.begin()).c_str(), &filesStat) == -1) {

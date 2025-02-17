@@ -27,6 +27,7 @@
 
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 namespace linglong::package {
@@ -416,6 +417,23 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
                                   .arg(QString::fromStdString(ec.message())));
         }
 
+        struct stat moduleFilesDirStat, filesStat = { 0 };
+        if (stat(moduleFilesDir.c_str(), &moduleFilesDirStat) == -1) {
+            return LINGLONG_ERR("couldn't stat module files directory: "
+                                + QString::fromStdString(moduleFilesDir));
+        }
+
+        if (file.empty()) {
+            continue;
+        }
+
+        if (stat((*files.begin()).c_str(), &filesStat) == -1) {
+            return LINGLONG_ERR("couldn't stat files directory: "
+                                + QString::fromStdString(layer.filesDirPath().toStdString()));
+        }
+
+        const bool shouldCopy = moduleFilesDirStat.st_dev != filesStat.st_dev;
+
         for (const auto &source : files) {
             auto destination =
               moduleFilesDir / std::filesystem::path{ source }.lexically_relative(basePath);
@@ -455,6 +473,20 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
             if (ec) {
                 return LINGLONG_ERR(
                   QString{ "is_directory error:%1" }.arg(QString::fromStdString(ec.message())));
+            }
+
+            if (shouldCopy) {
+                std::filesystem::copy(source,
+                                      destination,
+                                      std::filesystem::copy_options::overwrite_existing,
+                                      ec);
+                if (ec) {
+                    return LINGLONG_ERR("couldn't copy from " % QString::fromStdString(source)
+                                        % " to " % QString::fromStdString(destination.string())
+                                        % " " % QString::fromStdString(ec.message()));
+                }
+
+                continue;
             }
 
             std::filesystem::create_hard_link(source, destination, ec);

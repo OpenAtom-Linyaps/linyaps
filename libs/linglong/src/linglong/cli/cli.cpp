@@ -1861,19 +1861,6 @@ int Cli::repo(CLI::App *app)
             return EINVAL;
         }
 
-        if (!options.repoOptions.repoAlias.has_value()) {
-            bool exists =
-              std::any_of(cfgRef.repos.begin(), cfgRef.repos.end(), [&name](const auto &repo) {
-                  return repo.name == name;
-              });
-            if (exists) {
-                this->printer.printErr(
-                  LINGLONG_ERRV(QString{ "repo " } + name.c_str()
-                                + " already exist. please use --alias to set a alias."));
-                return -1;
-            }
-        }
-
         bool isExist =
           std::any_of(cfgRef.repos.begin(), cfgRef.repos.end(), [&alias](const auto &repo) {
               return repo.alias == alias;
@@ -1884,7 +1871,7 @@ int Cli::repo(CLI::App *app)
             return -1;
         }
         cfgRef.repos.push_back(api::types::v1::Repo{
-          .alias = alias,
+          .alias = options.repoOptions.repoAlias,
           .name = name,
           .url = url,
         });
@@ -1893,7 +1880,7 @@ int Cli::repo(CLI::App *app)
 
     auto existingRepo =
       std::find_if(cfgRef.repos.begin(), cfgRef.repos.end(), [&alias](const auto &repo) {
-          return repo.alias == alias;
+          return repo.alias.value_or(repo.name) == alias;
       });
 
     if (existingRepo == cfgRef.repos.end()) {

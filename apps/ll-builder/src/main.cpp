@@ -366,14 +366,14 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     // add repo sub command remove
     auto buildRepoRemove = buildRepo->add_subcommand("remove", _("Remove a repository"));
     buildRepoRemove->usage(_("Usage: ll-builder repo remove [OPTIONS] NAME"));
-    buildRepoRemove->add_option("Alias", repoOptions.repoName, _("Alias of the repo name"))
+    buildRepoRemove->add_option("Alias", repoOptions.repoAlias, _("Alias of the repo name"))
       ->required()
       ->check(validatorString);
 
     // add repo sub command update
     auto buildRepoUpdate = buildRepo->add_subcommand("update", _("Update the repository URL"));
     buildRepoUpdate->usage(_("Usage: ll-builder repo update [OPTIONS] NAME URL"));
-    buildRepoUpdate->add_option("Alias", repoOptions.repoName, _("Alias of the repo name"))
+    buildRepoUpdate->add_option("Alias", repoOptions.repoAlias, _("Alias of the repo name"))
       ->required()
       ->check(validatorString);
     buildRepoUpdate->add_option("URL", repoOptions.repoUrl, _("Url of the repository"))
@@ -384,7 +384,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     auto buildRepoSetDefault =
       buildRepo->add_subcommand("set-default", _("Set a default repository name"));
     buildRepoSetDefault->usage(_("Usage: ll-builder repo set-default [OPTIONS] NAME"));
-    buildRepoSetDefault->add_option("Alias", repoOptions.repoName, _("Alias of the repo name"))
+    buildRepoSetDefault->add_option("Alias", repoOptions.repoAlias, _("Alias of the repo name"))
       ->required()
       ->check(validatorString);
 
@@ -506,7 +506,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
                 << oldPtr << ", all data will be pulled again.";
     }
 
-    linglong::repo::ClientFactory clientFactory(linglong::repo::getDefaultRepoUrl(*repoCfg));
+    const auto defaultRepo = linglong::repo::getDefaultRepo(*repoCfg);
+    linglong::repo::ClientFactory clientFactory(defaultRepo.url);
     auto repoRoot = QDir{ QString::fromStdString(builderCfg->repo) };
     if (!repoRoot.exists() && !repoRoot.mkpath(".")) {
         qCritical() << "failed to create the repository of builder.";
@@ -605,7 +606,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
                       << std::endl;
             for (const auto &repo : cfg.repos) {
                 std::cout << std::left << std::setw(11) << repo.name << std::setw(maxUrlLength + 2)
-                          << repo.url << std::setw(11) << repo.alias.value() << std::endl;
+                          << repo.url << std::setw(11) << repo.alias.value_or(repo.name)
+                          << std::endl;
             }
             return 0;
         }
@@ -623,28 +625,26 @@ You can report bugs to the linyaps team under this project: https://github.com/O
             }
         }
 
+        std::string name = repoOptions.repoName;
+        std::string alias = repoOptions.repoAlias.value_or(name);
+
         if (buildRepoAdd->parsed()) {
             if (repoOptions.repoUrl.empty()) {
                 std::cerr << "url is empty." << std::endl;
                 return EINVAL;
             }
 
-            std::string alias = repoOptions.repoAlias.value_or(repoOptions.repoName);
-
-            bool repoExist = std::any_of(newCfg.repos.begin(),
-                                         newCfg.repos.end(),
-                                         [&alias, &repoOptions](const auto &r) {
-                                             return (!alias.empty() && r.alias == alias)
-                                               || r.name == repoOptions.repoName;
-                                         });
-
-            if (repoExist) {
-                std::cerr << "repo " + repoOptions.repoName + " already exist." << std::endl;
+            bool isExist =
+              std::any_of(newCfg.repos.begin(), newCfg.repos.end(), [&alias](const auto &repo) {
+                  return repo.alias.value_or(repo.name) == alias;
+              });
+            if (isExist) {
+                std::cerr << "repo " + alias + " already exist." << std::endl;
                 return -1;
             }
 
             newCfg.repos.push_back(linglong::api::types::v1::Repo{
-              .alias = alias,
+              .alias = repoOptions.repoAlias,
               .name = repoOptions.repoName,
               .url = repoOptions.repoUrl,
             });
@@ -659,19 +659,18 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         }
 
         auto existingRepo =
-          std::find_if(newCfg.repos.begin(), newCfg.repos.end(), [&repoOptions](const auto &repo) {
-              return repo.alias == repoOptions.repoName;
+          std::find_if(newCfg.repos.begin(), newCfg.repos.end(), [&alias](const auto &repo) {
+              return repo.alias.value_or(repo.name) == alias;
           });
 
         if (existingRepo == newCfg.repos.cend()) {
-            std::cerr << "the operated repo " + repoOptions.repoName + " doesn't exist."
-                      << std::endl;
+            std::cerr << "the operated repo " + alias + " doesn't exist." << std::endl;
             return -1;
         }
 
         if (buildRepoRemove->parsed()) {
-            if (newCfg.defaultRepo == repoOptions.repoName) {
-                std::cerr << "repo " + repoOptions.repoName
+            if (newCfg.defaultRepo == alias) {
+                std::cerr << "repo " + alias
                     + "is default repo, please change default repo before removing it.";
                 return -1;
             }
@@ -703,8 +702,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         }
 
         if (buildRepoSetDefault->parsed()) {
-            if (newCfg.defaultRepo != repoOptions.repoName) {
-                newCfg.defaultRepo = repoOptions.repoName;
+            if (newCfg.defaultRepo != alias) {
+                newCfg.defaultRepo = alias;
                 auto ret = repo.setConfig(newCfg);
                 if (!ret) {
                     std::cerr << ret.error().message().toStdString() << std::endl;

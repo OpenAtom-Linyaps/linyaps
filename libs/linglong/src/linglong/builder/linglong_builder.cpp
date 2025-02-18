@@ -455,7 +455,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     std::string repoUrl;
     const auto &defaultRepo =
       std::find_if(repoCfg.repos.begin(), repoCfg.repos.end(), [&repoCfg](const auto &repo) {
-          return repo.alias == repoCfg.defaultRepo;
+          return repo.alias.value_or(repo.name) == repoCfg.defaultRepo;
       });
     repoUrl = defaultRepo->url;
     printMessage("Url: " + repoUrl, 2);

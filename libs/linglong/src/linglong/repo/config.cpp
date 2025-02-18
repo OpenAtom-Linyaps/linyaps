@@ -40,7 +40,7 @@ utils::error::Result<api::types::v1::RepoConfigV2> loadConfig(const QString &fil
 
         auto repoExists =
           std::any_of(config->repos.begin(), config->repos.end(), [&config](const auto &repo) {
-              return repo.alias == config->defaultRepo;
+              return repo.alias.value_or(repo.name) == config->defaultRepo;
           });
 
         if (!repoExists) {

@@ -33,7 +33,6 @@ void withDBusDaemon(ocppi::cli::CLI &cli)
         return;
     }
     std::string defaultRepoUrl = linglong::repo::getDefaultRepoUrl(*config);
-    qWarning() << "server" << defaultRepoUrl.c_str();
     auto *clientFactory = new linglong::repo::ClientFactory(defaultRepoUrl);
     clientFactory->setParent(QCoreApplication::instance());
 

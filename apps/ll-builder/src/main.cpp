@@ -289,20 +289,22 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     linglong::builder::UABOption UABOption{ .exportDevelop = false, .exportI18n = true };
     auto *buildExport = commandParser.add_subcommand("export", _("Export to linyaps layer or uab"));
     buildExport->usage(_("Usage: ll-builder export [OPTIONS]"));
-    buildExport->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
-      ->type_name("FILE")
-      ->capture_default_str()
-      ->check(CLI::ExistingFile);
-    buildExport->add_option("--icon", UABOption.iconPath, _("Uab icon (optional)"))
-      ->type_name("FILE")
-      ->check(CLI::ExistingFile);
-    buildExport->add_flag("--only-app", UABOption.onlyApp, _("Export uab in only-app mode"));
-    buildExport->add_flag("--layer", layerMode, _("Export to linyaps layer file"));
+    auto *fileOpt =
+      buildExport->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
+        ->type_name("FILE")
+        ->capture_default_str()
+        ->check(CLI::ExistingFile);
+    auto *iconOpt = buildExport->add_option("--icon", UABOption.iconPath, _("Uab icon (optional)"))
+                      ->type_name("FILE")
+                      ->check(CLI::ExistingFile);
+    auto *fullOpt = buildExport->add_flag("--full", UABOption.full, _("Export uab fully"));
+    buildExport->add_flag("--layer", layerMode, _("Export to linyaps layer file"))
+      ->excludes(fileOpt, iconOpt, fullOpt);
 
     // build push
     std::string pushModule;
     linglong::cli::RepoOptions repoOptions;
-    auto buildPush = commandParser.add_subcommand("push", _("Push linyaps app to remote repo"));
+    auto *buildPush = commandParser.add_subcommand("push", _("Push linyaps app to remote repo"));
     buildPush->usage(_("Usage: ll-builder push [OPTIONS]"));
     buildPush->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
       ->type_name("FILE")

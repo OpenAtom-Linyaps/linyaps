@@ -691,6 +691,7 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
     g_autoptr(OstreeRepo) ostreeRepo = nullptr;
 
     this->repoDir = path;
+    const auto defaultRepo = getDefaultRepo(this->cfg);
 
     {
         LINGLONG_TRACE("use linglong repo at " + path.absolutePath());
@@ -700,8 +701,8 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
         Q_ASSERT(ostreeRepo != nullptr);
         if (ostree_repo_open(ostreeRepo, nullptr, &gErr) == TRUE) {
             auto result = updateOstreeRepoConfig(ostreeRepo,
-                                                 QString::fromStdString(cfg.defaultRepo),
-                                                 QString::fromStdString(getDefaultRepoUrl(cfg)));
+                                                 QString::fromStdString(defaultRepo.name),
+                                                 QString::fromStdString(defaultRepo.url));
             if (!result) {
                 // when ll-cli construct this object, it has no permission to wirte ostree config
                 // we can't abort here.
@@ -731,8 +732,8 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
     LINGLONG_TRACE("init ostree-based linglong repository");
 
     auto result = createOstreeRepo(this->ostreeRepoDir().absolutePath(),
-                                   QString::fromStdString(this->cfg.defaultRepo),
-                                   QString::fromStdString(getDefaultRepoUrl(this->cfg)));
+                                   QString::fromStdString(defaultRepo.name),
+                                   QString::fromStdString(defaultRepo.url));
     if (!result) {
         qCritical() << LINGLONG_ERRV(result);
         qFatal("abort");
@@ -768,13 +769,15 @@ OSTreeRepo::updateConfig(const api::types::v1::RepoConfigV2 &newCfg) noexcept
     }
 
     utils::Transaction transaction;
+    const auto newRepo = getDefaultRepo(newCfg);
     result = updateOstreeRepoConfig(this->ostreeRepo.get(),
-                                    QString::fromStdString(newCfg.defaultRepo),
-                                    QString::fromStdString(getDefaultRepoUrl(newCfg)));
+                                    QString::fromStdString(newRepo.name),
+                                    QString::fromStdString(newRepo.url));
     transaction.addRollBack([this]() noexcept {
+        const auto defaultRepo = getDefaultRepo(this->cfg);
         auto result = updateOstreeRepoConfig(this->ostreeRepo.get(),
-                                             QString::fromStdString(this->cfg.defaultRepo),
-                                             QString::fromStdString(getDefaultRepoUrl(this->cfg)));
+                                             QString::fromStdString(defaultRepo.name),
+                                             QString::fromStdString(defaultRepo.url));
         if (!result) {
             qCritical() << result.error();
             Q_ASSERT(false);
@@ -786,7 +789,7 @@ OSTreeRepo::updateConfig(const api::types::v1::RepoConfigV2 &newCfg) noexcept
 
     transaction.commit();
 
-    this->m_clientFactory.setServer(QString::fromStdString(getDefaultRepoUrl(newCfg)));
+    this->m_clientFactory.setServer(QString::fromStdString(newRepo.url));
     this->cfg = newCfg;
 
     return LINGLONG_OK;
@@ -809,17 +812,18 @@ utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfi
             Q_ASSERT(false);
         }
     });
-
+    const auto newRepo = getDefaultRepo(cfg);
     result = updateOstreeRepoConfig(this->ostreeRepo.get(),
-                                    QString::fromStdString(cfg.defaultRepo),
-                                    QString::fromStdString(getDefaultRepoUrl(cfg)));
+                                    QString::fromStdString(newRepo.name),
+                                    QString::fromStdString(newRepo.url));
     if (!result) {
         return LINGLONG_ERR(result);
     }
     transaction.addRollBack([this]() noexcept {
+        const auto defaultRepo = getDefaultRepo(this->cfg);
         auto result = updateOstreeRepoConfig(this->ostreeRepo.get(),
-                                             QString::fromStdString(this->cfg.defaultRepo),
-                                             QString::fromStdString(getDefaultRepoUrl(this->cfg)));
+                                             QString::fromStdString(defaultRepo.name),
+                                             QString::fromStdString(defaultRepo.url));
         if (!result) {
             qCritical() << result.error();
             Q_ASSERT(false);
@@ -830,7 +834,7 @@ utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfi
         return LINGLONG_ERR(ret);
     }
 
-    this->m_clientFactory.setServer(getDefaultRepoUrl(cfg));
+    this->m_clientFactory.setServer(newRepo.url);
     this->cfg = cfg;
 
     transaction.commit();
@@ -929,7 +933,7 @@ OSTreeRepo::importLayerDir(const package::LayerDir &dir,
     std::string remoteURL;
     const auto &repo =
       std::find_if(this->cfg.repos.begin(), this->cfg.repos.end(), [&remoteRepo](const auto &repo) {
-          return repo.alias == remoteRepo;
+          return repo.alias.value_or(repo.name) == remoteRepo;
       });
 
     remoteURL = repo->url;
@@ -1148,8 +1152,9 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
 
     g_autoptr(GVariant) pull_options = g_variant_ref_sink(g_variant_builder_end(&builder));
     // 这里不能使用g_main_context_push_thread_default，因为会阻塞Qt的事件循环
+    const auto defaultRepo = getDefaultRepo(this->cfg);
     auto status = ostree_repo_pull_with_options(this->ostreeRepo.get(),
-                                                this->cfg.defaultRepo.c_str(),
+                                                defaultRepo.name.c_str(),
                                                 pull_options,
                                                 progress,
                                                 cancellable,
@@ -1191,7 +1196,7 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
         g_autoptr(GVariant) pull_options = g_variant_ref_sink(g_variant_builder_end(&builder));
 
         status = ostree_repo_pull_with_options(this->ostreeRepo.get(),
-                                               this->cfg.defaultRepo.c_str(),
+                                               defaultRepo.name.c_str(),
                                                pull_options,
                                                progress,
                                                cancellable,
@@ -1228,7 +1233,7 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
 
     item.commit = commit;
     item.info = *info;
-    item.repo = this->cfg.defaultRepo;
+    item.repo = defaultRepo.name;
 
     auto layerDir = this->ensureEmptyLayerDir(item.commit);
     if (!layerDir) {
@@ -1431,11 +1436,11 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
     if (req.app_id == nullptr) {
         return LINGLONG_ERR(QString{ "strndup app_id failed: %1" }.arg(fuzzyRef.id));
     }
-
-    req.repo_name = ::strndup(this->cfg.defaultRepo.data(), this->cfg.defaultRepo.size());
+    const auto defaultRepo = getDefaultRepo(this->cfg);
+    req.repo_name = ::strndup(defaultRepo.name.data(), defaultRepo.name.size());
     if (req.repo_name == nullptr) {
         return LINGLONG_ERR(
-          QString{ "strndup repo_name failed: %1" }.arg(this->cfg.defaultRepo.c_str()));
+          QString{ "strndup repo_name failed: %1" }.arg(defaultRepo.name.c_str()));
     }
 
     if (fuzzyRef.channel) {

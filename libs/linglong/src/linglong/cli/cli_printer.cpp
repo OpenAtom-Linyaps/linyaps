@@ -145,7 +145,7 @@ void CLIPrinter::printRepoConfig(const api::types::v1::RepoConfigV2 &repoInfo)
     std::cout << std::setw(maxUrlLength + 2) << "Url" << std::setw(11) << "Alias" << std::endl;
     for (const auto &repo : repoInfo.repos) {
         std::cout << std::left << std::setw(11) << repo.name << std::setw(maxUrlLength + 2)
-                  << repo.url << std::setw(11) << repo.alias.value() << std::endl;
+                  << repo.url << std::setw(11) << repo.alias.value_or(repo.name) << std::endl;
     }
 }
 

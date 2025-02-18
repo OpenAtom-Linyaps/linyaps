@@ -474,7 +474,7 @@ ll-cli list --upgradable
     auto *repoSetDefault =
       cliRepo->add_subcommand("set-default", _("Set a default repository name"));
     repoSetDefault->usage(_("Usage: ll-cli repo set-default [OPTIONS] NAME"));
-    repoSetDefault->add_option("NAME", options.repoOptions.repoName, _("Specify the repo name"))
+    repoSetDefault->add_option("Alias", options.repoOptions.repoAlias, _("Alias the repo name"))
       ->required()
       ->check(validatorString);
 
@@ -557,7 +557,8 @@ ll-cli list --upgradable
         qCritical() << config.error();
         return -1;
     }
-    linglong::repo::ClientFactory clientFactory(linglong::repo::getDefaultRepoUrl(*config));
+    const auto defaultRepo = linglong::repo::getDefaultRepo(*config);
+    linglong::repo::ClientFactory clientFactory(defaultRepo.url);
 
     auto ret = QMetaObject::invokeMethod(
       QCoreApplication::instance(),

@@ -6,6 +6,7 @@
 
 #include "package_manager.h"
 
+#include "linglong/api/types/helper.h"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
 #include "linglong/api/types/v1/State.hpp"
@@ -468,27 +469,17 @@ void PackageManager::setConfiguration(const QVariantMap &parameters) noexcept
 
     const auto &cfgRef = *cfg;
     const auto &curCfg = repo.getConfig();
-    bool reposIsSame = cfgRef.repos.size() == curCfg.repos.size()
-      && std::equal(cfgRef.repos.begin(),
-                    cfgRef.repos.end(),
-                    curCfg.repos.begin(),
-                    curCfg.repos.end(),
-                    [](const auto &cfg1, const auto &cfg2) {
-                        return cfg1.alias == cfg2.alias && cfg1.name == cfg2.name
-                          && cfg1.url == cfg2.url;
-                    });
 
-    if (cfgRef.version == curCfg.version && cfgRef.defaultRepo == curCfg.defaultRepo
-        && reposIsSame) {
+    if (cfgRef == curCfg) {
         return;
     }
 
-    if (const auto &defaultRepo = cfg->defaultRepo; std::find_if(cfg->repos.begin(),
-                                                                 cfg->repos.end(),
-                                                                 [&defaultRepo](const auto &repo) {
-                                                                     return repo.alias
-                                                                       == defaultRepo;
-                                                                 })
+    if (const auto &defaultRepo = cfg->defaultRepo;
+        std::find_if(cfg->repos.begin(),
+                     cfg->repos.end(),
+                     [&defaultRepo](const auto &repo) {
+                         return repo.alias.value_or(repo.name) == defaultRepo;
+                     })
         == cfg->repos.end()) {
         sendErrorReply(QDBusError::Failed,
                        "default repository is missing after updating configuration.");

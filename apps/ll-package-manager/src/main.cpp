@@ -32,8 +32,9 @@ void withDBusDaemon(ocppi::cli::CLI &cli)
         QCoreApplication::exit(-1);
         return;
     }
-    std::string defaultRepoUrl = linglong::repo::getDefaultRepoUrl(*config);
-    auto *clientFactory = new linglong::repo::ClientFactory(defaultRepoUrl);
+    const auto defaultRepo = linglong::repo::getDefaultRepo(*config);
+    qWarning() << "server" << defaultRepo.url.c_str();
+    auto *clientFactory = new linglong::repo::ClientFactory(defaultRepo.url);
     clientFactory->setParent(QCoreApplication::instance());
 
     auto repoRoot = QDir(LINGLONG_ROOT);
@@ -99,8 +100,9 @@ void withoutDBusDaemon(ocppi::cli::CLI &cli)
         QCoreApplication::exit(-1);
         return;
     }
-    auto *clientFactory =
-      new linglong::repo::ClientFactory(linglong::repo::getDefaultRepoUrl(*config));
+
+    const auto defaultRepo = linglong::repo::getDefaultRepo(*config);
+    auto *clientFactory = new linglong::repo::ClientFactory(defaultRepo.url);
     clientFactory->setParent(QCoreApplication::instance());
 
     auto repoRoot = QDir(LINGLONG_ROOT);

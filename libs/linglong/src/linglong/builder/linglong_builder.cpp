@@ -1183,7 +1183,7 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
         packager.include(project.include.value());
     }
 
-    if (option.onlyApp && project.runtime) {
+    if (!option.full && project.runtime) {
         auto ret = packager.loadBlackList();
         if (!ret) {
             return LINGLONG_ERR(ret);
@@ -1250,7 +1250,7 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
                                                     curRef->arch.toString(),
                                                     curRef->version.toString(),
                                                     curRef->channel);
-    if (auto ret = packager.pack(uabFile, option.onlyApp); !ret) {
+    if (auto ret = packager.pack(uabFile, !option.full); !ret) {
         return LINGLONG_ERR(ret);
     }
 

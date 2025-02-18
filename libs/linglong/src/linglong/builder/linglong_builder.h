@@ -21,7 +21,7 @@ struct UABOption
     QString iconPath;
     bool exportDevelop{ false };
     bool exportI18n{ false };
-    bool onlyApp{ false };
+    bool full{ false };
 };
 
 struct BuilderBuildOptions

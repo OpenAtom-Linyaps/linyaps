@@ -5,6 +5,7 @@
 #include "migrate.h"
 
 #include "linglong/package/version.h"
+#include "linglong/repo/config.h"
 #include "linglong/utils/configure.h"
 
 #include <gio/gio.h>
@@ -206,7 +207,8 @@ int dispatchMigrations(const Version &from,
     int ret{ std::numeric_limits<int>::max() };
     auto version_1_7_0 = parseVersion("1.7.0");
     if (from < *version_1_7_0) {
-        ret = migrateRef(repo, MigrateRefData{ .root = root, .repoName = cfg.defaultRepo });
+        const auto defaultRepo = linglong::repo::getDefaultRepo(cfg);
+        ret = migrateRef(repo, MigrateRefData{ .root = root, .repoName = defaultRepo.name });
     }
 
     return ret;

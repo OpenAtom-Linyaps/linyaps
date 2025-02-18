@@ -929,7 +929,8 @@ OSTreeRepo::importLayerDir(const package::LayerDir &dir,
 [[nodiscard]] utils::error::Result<void> OSTreeRepo::push(const package::Reference &reference,
                                                           const std::string &module) const noexcept
 {
-    const auto &remoteRepo = this->cfg.defaultRepo;
+    const auto defaultRepo = getDefaultRepo(this->cfg);
+    const auto &remoteRepo = defaultRepo.name;
     std::string remoteURL;
     const auto &repo =
       std::find_if(this->cfg.repos.begin(), this->cfg.repos.end(), [&remoteRepo](const auto &repo) {

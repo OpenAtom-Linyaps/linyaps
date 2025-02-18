@@ -14,6 +14,7 @@
 #include "linglong/package/layer_packager.h"
 #include "linglong/package/uab_file.h"
 #include "linglong/package_manager/package_task.h"
+#include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/utils/command/env.h"
 #include "linglong/utils/configure.h"
@@ -1227,12 +1228,12 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
         }
     }
 
-    auto refSpec =
-      QString{ "%1:%2/%3/%4/%5" }.arg(QString::fromStdString(this->repo.getConfig().defaultRepo),
-                                      remoteRef.channel,
-                                      remoteRef.id,
-                                      remoteRef.arch.toString(),
-                                      QString::fromStdString(curModule));
+    const auto defaultRepo = linglong::repo::getDefaultRepo(this->repo.getConfig());
+    auto refSpec = QString{ "%1:%2/%3/%4/%5" }.arg(QString::fromStdString(defaultRepo.name),
+                                                   remoteRef.channel,
+                                                   remoteRef.id,
+                                                   remoteRef.arch.toString(),
+                                                   QString::fromStdString(curModule));
     // Note: do not capture any reference of variable which defined in this func.
     // it will be a dangling reference.
     auto installer = [this,
@@ -1525,12 +1526,12 @@ auto PackageManager::Uninstall(const QVariantMap &parameters) noexcept -> QVaria
     }
 
     auto curModule = paras->package.packageManager1PackageModule.value_or("binary");
-    auto refSpec =
-      QString{ "%1:%2/%3/%4/%5" }.arg(QString::fromStdString(this->repo.getConfig().defaultRepo),
-                                      reference.channel,
-                                      reference.id,
-                                      reference.arch.toString(),
-                                      QString::fromStdString(curModule));
+    const auto defaultRepo = linglong::repo::getDefaultRepo(this->repo.getConfig());
+    auto refSpec = QString{ "%1:%2/%3/%4/%5" }.arg(QString::fromStdString(defaultRepo.name),
+                                                   reference.channel,
+                                                   reference.id,
+                                                   reference.arch.toString(),
+                                                   QString::fromStdString(curModule));
 
     auto taskRet = tasks.addNewTask(
       { refSpec },
@@ -1714,13 +1715,13 @@ auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantM
         }
 
         const auto &reference = *ref;
+        const auto defaultRepo = linglong::repo::getDefaultRepo(this->repo.getConfig());
         // FIXME: use sha256 instead of refSpec
-        auto refSpec = QString{ "%1:%2/%3/%4/%5" }.arg(
-          QString::fromStdString(this->repo.getConfig().defaultRepo),
-          reference.channel,
-          reference.id,
-          reference.arch.toString(),
-          "binary");
+        auto refSpec = QString{ "%1:%2/%3/%4/%5" }.arg(QString::fromStdString(defaultRepo.name),
+                                                       reference.channel,
+                                                       reference.id,
+                                                       reference.arch.toString(),
+                                                       "binary");
         refSpecs.append(std::move(refSpec));
         upgrades.emplace(std::move(ref).value(), std::move(newRef).value());
     }

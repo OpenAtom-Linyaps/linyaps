@@ -691,8 +691,6 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
     g_autoptr(OstreeRepo) ostreeRepo = nullptr;
 
     this->repoDir = path;
-    const auto defaultRepo = getDefaultRepo(this->cfg);
-
     {
         LINGLONG_TRACE("use linglong repo at " + path.absolutePath());
 
@@ -700,14 +698,6 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
         ostreeRepo = ostree_repo_new(repoPath);
         Q_ASSERT(ostreeRepo != nullptr);
         if (ostree_repo_open(ostreeRepo, nullptr, &gErr) == TRUE) {
-            auto result = updateOstreeRepoConfig(ostreeRepo,
-                                                 QString::fromStdString(defaultRepo.name),
-                                                 QString::fromStdString(defaultRepo.url));
-            if (!result) {
-                // when ll-cli construct this object, it has no permission to wirte ostree config
-                // we can't abort here.
-                qDebug() << LINGLONG_ERRV(result);
-            }
             this->ostreeRepo.reset(static_cast<OstreeRepo *>(g_steal_pointer(&ostreeRepo)));
 
             auto ret = linglong::repo::RepoCache::create(
@@ -731,6 +721,7 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
 
     LINGLONG_TRACE("init ostree-based linglong repository");
 
+    const auto defaultRepo = getDefaultRepo(this->cfg);
     auto result = createOstreeRepo(this->ostreeRepoDir().absolutePath(),
                                    QString::fromStdString(defaultRepo.name),
                                    QString::fromStdString(defaultRepo.url));

@@ -1734,14 +1734,20 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                         qWarning() << "rewrite file failed: " << ret.error().message();
                     }
                 }
+
+                // 此处应该采用相对路径创建软链接，采用绝对路径对于某些应用(帮助手册）在容器里面是无法访问的
+                std::filesystem::create_symlink(
+                  source_path.lexically_relative(target_path.parent_path()),
+                  target_path,
+                  ec);
+                if (ec) {
+                    return LINGLONG_ERR("create symlink failed: " + target_path.string(), ec);
+                }
             }
 
-            std::filesystem::create_symlink(source_path, target_path, ec);
-            if (ec) {
-                return LINGLONG_ERR("create symlink failed: " + target_path.string(), ec);
-            }
             continue;
         }
+
         // 如果是目录，进行递归导出
         is_directory = std::filesystem::is_directory(source_path, ec);
         if (ec) {

@@ -474,7 +474,7 @@ ll-cli list --upgradable
     auto *repoSetDefault =
       cliRepo->add_subcommand("set-default", _("Set a default repository name"));
     repoSetDefault->usage(_("Usage: ll-cli repo set-default [OPTIONS] NAME"));
-    repoSetDefault->add_option("Alias", options.repoOptions.repoAlias, _("Alias the repo name"))
+    repoSetDefault->add_option("Alias", options.repoOptions.repoAlias, _("Alias of the repo name"))
       ->required()
       ->check(validatorString);
 

@@ -9,6 +9,7 @@
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/State.hpp"
 #include "linglong/package/reference.h"
+#include "linglong/utils/gettext.h"
 
 #include <QJsonArray>
 
@@ -49,15 +50,42 @@ void CLIPrinter::printPruneResult(const std::vector<api::types::v1::PackageInfoV
     std::cout << list.size() << " unused base or runtime have been removed." << std::endl;
 }
 
+// 调整字符串的显示宽度
+std::string adjustDisplayWidth(const QString &str, int targetWidth)
+{
+    int currentWidth{ 0 };
+    for (QChar ch : str) {
+        int charWidth = wcwidth(ch.unicode());
+        if (charWidth > 0) {
+            currentWidth += charWidth;
+        }
+    }
+    if (currentWidth >= targetWidth) {
+        return str.toStdString();
+    }
+    return (str + QString(targetWidth - currentWidth, QChar(' '))).toStdString();
+}
+
 void CLIPrinter::printPackages(const std::vector<api::types::v1::PackageInfoV2> &list)
 {
-    std::cout << "\033[38;5;214m" << std::left << std::setw(33) << qUtf8Printable("ID")
-              << std::setw(33) << qUtf8Printable("Name") << std::setw(16)
-              << qUtf8Printable("Version") << std::setw(12) << qUtf8Printable("Arch")
-              << std::setw(16) << qUtf8Printable("Channel") << std::setw(12)
-              << qUtf8Printable("Module") << qUtf8Printable("Description") << "\033[0m"
-              << std::endl;
+    std::size_t idLen{ 0 }, nameLen{ 0 }, versionLen{ 0 }, channelLen{ 0 }, moduleLen{ 0 };
 
+    std::for_each(list.cbegin(),
+                  list.cend(),
+                  [&idLen, &nameLen, &versionLen, &channelLen, &moduleLen](const auto &info) {
+                      idLen = std::max(idLen, info.id.size()) + 2;
+                      nameLen = std::max(nameLen, info.name.size()) + 2;
+                      versionLen = std::max(versionLen, info.version.size()) + 2;
+                      channelLen = std::max(channelLen, info.channel.size()) + 2;
+                      moduleLen = std::max(moduleLen, info.packageInfoV2Module.size()) + 2;
+                  });
+
+    std::cout << "\033[38;5;214m" << std::left << adjustDisplayWidth(qUtf8Printable(_("ID")), idLen)
+              << adjustDisplayWidth(qUtf8Printable(_("Name")), nameLen)
+              << adjustDisplayWidth(qUtf8Printable(_("Version")), versionLen)
+              << adjustDisplayWidth(qUtf8Printable(_("Channel")), channelLen)
+              << adjustDisplayWidth(qUtf8Printable(_("Module")), moduleLen)
+              << qUtf8Printable(_("Description")) << "\033[0m" << std::endl;
     for (const auto &info : list) {
         auto simpleDescription = QString::fromStdString(info.description.value_or("")).simplified();
         auto simpleDescriptionWStr = simpleDescription.toStdWString();
@@ -67,34 +95,27 @@ void CLIPrinter::printPackages(const std::vector<api::types::v1::PackageInfoV2> 
             simpleDescription = QString::fromStdWString(simpleDescriptionWStr);
         }
 
-        auto id = QString::fromStdString(info.id).simplified();
-        if (id.size() > 32) {
-            id.push_back(" ");
-        }
-
         auto name = QString::fromStdString(info.name).simplified();
         auto nameWStr = name.toStdWString();
         auto nameWcswidth = wcswidth(nameWStr.c_str(), -1);
-        if (nameWcswidth > 32) {
-            nameWStr = subwstr(nameWStr, 29) + L"...";
-            nameWcswidth = wcswidth(nameWStr.c_str(), -1);
+        if (nameWcswidth > nameLen) {
+            nameWStr = subwstr(nameWStr, nameLen - 3) + L"...";
             name = QString::fromStdWString(nameWStr);
         }
         auto nameStr = name.toStdString();
-        auto nameOffset = nameStr.size() - nameWcswidth;
-        std::cout << std::setw(33) << id.toStdString() << std::setw(33 + nameOffset) << nameStr
-                  << std::setw(16) << info.version << std::setw(12) << info.arch[0] << std::setw(16)
-                  << info.channel << std::setw(12) << info.packageInfoV2Module
+        std::cout << std::setw(idLen) << info.id << std::setw(nameLen) << nameStr
+                  << std::setw(versionLen) << info.version << std::setw(channelLen) << info.channel
+                  << std::setw(moduleLen) << info.packageInfoV2Module
                   << simpleDescription.toStdString() << std::endl;
     }
 }
 
 void CLIPrinter::printContainers(const std::vector<api::types::v1::CliContainer> &list)
 {
-    const std::size_t padding{ 5 };
-    const std::string packageSection = qUtf8Printable("App");
-    const std::string idSection = qUtf8Printable("ContainerID");
-    const std::string pidSection = qUtf8Printable("Pid");
+    const std::size_t padding{ 2 };
+    const std::string packageSection = qUtf8Printable(_("App"));
+    const std::string idSection = qUtf8Printable(_("ContainerID"));
+    const std::string pidSection = qUtf8Printable(_("Pid"));
 
     std::size_t packageLen = 0;
     std::size_t idLen = 0;
@@ -117,9 +138,12 @@ void CLIPrinter::printContainers(const std::vector<api::types::v1::CliContainer>
     pidLen += padding;
 
     std::cout << "\033[38;5;214m" << std::left << std::setw(static_cast<int>(packageLen))
-              << packageSection << std::setw(static_cast<int>(idLen)) << idSection
-              << std::setw(static_cast<int>(pidLen)) << pidSection << "\033[0m" << std::endl;
-
+              << adjustDisplayWidth(QString::fromStdString(packageSection), packageLen)
+              << std::setw(static_cast<int>(idLen))
+              << adjustDisplayWidth(QString::fromStdString(idSection), idLen)
+              << std::setw(static_cast<int>(pidLen))
+              << adjustDisplayWidth(QString::fromStdString(pidSection), pidLen) << "\033[0m"
+              << std::endl;
     for (auto const &container : list) {
         std::cout << std::setw(static_cast<int>(packageLen)) << container.package
                   << std::setw(static_cast<int>(idLen)) << container.id
@@ -190,18 +214,21 @@ void CLIPrinter::printPackage(const api::types::v1::PackageInfoV2 &info)
 
 void CLIPrinter::printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &list)
 {
-    std::cout << "\033[38;5;214m" << std::left << std::setw(33) << qUtf8Printable("ID")
-              << std::setw(16) << qUtf8Printable("Installed") << std::setw(16)
-              << qUtf8Printable("New") << "\033[0m" << std::endl;
+    std::size_t idLen{ 0 }, installedLen{ 0 };
+
+    std::for_each(list.cbegin(), list.cend(), [&idLen, &installedLen](const auto &info) {
+        idLen = std::max(idLen, info.id.size()) + 2;
+        installedLen = std::max(installedLen, info.oldVersion.size()) + 2;
+    });
+
+    std::cout << "\033[38;5;214m" << std::left << std::setw(idLen)
+              << adjustDisplayWidth(qUtf8Printable(_("ID")), idLen) << std::setw(installedLen)
+              << adjustDisplayWidth(qUtf8Printable(_("Installed")), installedLen)
+              << qUtf8Printable(_("New")) << "\033[0m" << std::endl;
 
     for (const auto &result : list) {
-        auto id = QString::fromStdString(result.id).simplified();
-        if (id.size() > 32) {
-            id.push_back(" ");
-        }
-
-        std::cout << std::setw(33) << id.toStdString() << std::setw(16) << result.oldVersion
-                  << std::setw(16) << result.newVersion << std::endl;
+        std::cout << std::setw(idLen) << result.id << std::setw(installedLen) << result.oldVersion
+                  << result.newVersion << std::endl;
     }
 }
 

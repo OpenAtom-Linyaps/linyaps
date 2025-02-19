@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-02-19 15:42+0800\n"
+"POT-Creation-Date: 2025-02-19 17:26+0800\n"
 "PO-Revision-Date: 2025-01-07 17:11+0800\n"
 "Last-Translator:  deepiner, 2024\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -483,7 +483,7 @@ msgid "linyaps CLI version "
 msgstr "如意玲珑CLI版本 "
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:83
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:225
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:238
 msgid "ID"
 msgstr "ID"
 
@@ -519,11 +519,11 @@ msgstr "容器ID"
 msgid "Pid"
 msgstr "进程ID"
 
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:226
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:239
 msgid "Installed"
 msgstr "已安装"
 
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:227
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:240
 msgid "New"
 msgstr "新版本"
 

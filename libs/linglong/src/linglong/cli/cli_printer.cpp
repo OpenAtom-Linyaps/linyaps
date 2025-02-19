@@ -121,13 +121,26 @@ void CLIPrinter::printContainers(const std::vector<api::types::v1::CliContainer>
     std::size_t idLen = 0;
     std::size_t pidLen = 0;
 
-    std::for_each(list.cbegin(),
-                  list.cend(),
-                  [&packageLen, &idLen, &pidLen](const api::types::v1::CliContainer &con) {
-                      packageLen = std::max(packageLen, con.package.size());
-                      idLen = std::max(idLen, con.id.size());
-                      pidLen = std::max(pidLen, std::to_string(con.pid).size());
-                  });
+    std::vector<std::string> packageNames;
+    packageNames.reserve(list.size());
+
+    std::for_each(
+      list.cbegin(),
+      list.cend(),
+      [&packageLen, &idLen, &pidLen, &packageNames](const api::types::v1::CliContainer &con) {
+          std::string package = con.package;
+          size_t colonPos = package.find(':');
+          size_t slashPos = package.find('/');
+          std::string packageName = package;
+          if (colonPos != std::string::npos && slashPos != std::string::npos) {
+              packageName = package.substr(colonPos + 1, slashPos - colonPos - 1);
+          }
+
+          packageNames.push_back(packageName);
+          packageLen = std::max(packageLen, packageName.size());
+          idLen = std::max(idLen, con.id.size());
+          pidLen = std::max(pidLen, std::to_string(con.pid).size());
+      });
 
     packageLen = std::max(packageSection.size(), packageLen);
     idLen = std::max(idSection.size(), idLen);
@@ -144,10 +157,10 @@ void CLIPrinter::printContainers(const std::vector<api::types::v1::CliContainer>
               << std::setw(static_cast<int>(pidLen))
               << adjustDisplayWidth(QString::fromStdString(pidSection), pidLen) << "\033[0m"
               << std::endl;
-    for (auto const &container : list) {
-        std::cout << std::setw(static_cast<int>(packageLen)) << container.package
-                  << std::setw(static_cast<int>(idLen)) << container.id
-                  << std::setw(static_cast<int>(pidLen)) << container.pid << std::endl;
+    for (std::size_t i = 0; i < list.size(); ++i) {
+        std::cout << std::setw(static_cast<int>(packageLen)) << packageNames[i]
+                  << std::setw(static_cast<int>(idLen)) << list[i].id
+                  << std::setw(static_cast<int>(pidLen)) << list[i].pid << std::endl;
     }
 }
 

@@ -5,6 +5,7 @@ README.md
 api/ClientAPI.c
 api/ClientAPI.h
 docs/ClientAPI.md
+docs/_api_v1_repos_get_200_response.md
 docs/api_json_result.md
 docs/api_upload_task_file_resp.md
 docs/api_upload_task_layer_file_resp.md
@@ -30,6 +31,8 @@ include/binary.h
 include/keyValuePair.h
 include/list.h
 libcurl.licence
+model/_api_v1_repos_get_200_response.c
+model/_api_v1_repos_get_200_response.h
 model/api_json_result.c
 model/api_json_result.h
 model/api_upload_task_file_resp.c
@@ -71,6 +74,7 @@ src/apiKey.c
 src/binary.c
 src/list.c
 uncrustify-rules.cfg
+unit-test/test__api_v1_repos_get_200_response.c
 unit-test/test_api_json_result.c
 unit-test/test_api_upload_task_file_resp.c
 unit-test/test_api_upload_task_layer_file_resp.c

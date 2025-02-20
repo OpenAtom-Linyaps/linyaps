@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-02-19 17:26+0800\n"
+"POT-Creation-Date: 2025-02-20 14:54+0800\n"
 "PO-Revision-Date: 2025-01-07 17:11+0800\n"
 "Last-Translator: deepiner, 2024\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -368,7 +368,7 @@ msgid "Usage: ll-cli repo SUBCOMMAND [OPTIONS]"
 msgstr "Usage: ll-cli repo SUBCOMMAND [OPTIONS]"
 
 #. add repo sub command add
-#: ../apps/ll-cli/src/main.cpp:433 ../apps/ll-builder/src/main.cpp:354
+#: ../apps/ll-cli/src/main.cpp:433 ../apps/ll-builder/src/main.cpp:356
 msgid "Add a new repository"
 msgstr "Add a new repository"
 
@@ -377,20 +377,20 @@ msgid "Usage: ll-cli repo add [OPTIONS] NAME URL"
 msgstr "Usage: ll-cli repo add [OPTIONS] NAME URL"
 
 #: ../apps/ll-cli/src/main.cpp:435 ../apps/ll-cli/src/main.cpp:448
-#: ../apps/ll-builder/src/main.cpp:356
+#: ../apps/ll-builder/src/main.cpp:358
 msgid "Specify the repo name"
 msgstr "Specify the repo name"
 
 #: ../apps/ll-cli/src/main.cpp:438 ../apps/ll-cli/src/main.cpp:451
-#: ../apps/ll-cli/src/main.cpp:469 ../apps/ll-builder/src/main.cpp:359
-#: ../apps/ll-builder/src/main.cpp:379
+#: ../apps/ll-cli/src/main.cpp:469 ../apps/ll-builder/src/main.cpp:361
+#: ../apps/ll-builder/src/main.cpp:381
 msgid "Url of the repository"
 msgstr "Url of the repository"
 
 #: ../apps/ll-cli/src/main.cpp:441 ../apps/ll-cli/src/main.cpp:458
 #: ../apps/ll-cli/src/main.cpp:466 ../apps/ll-cli/src/main.cpp:477
-#: ../apps/ll-builder/src/main.cpp:362 ../apps/ll-builder/src/main.cpp:369
-#: ../apps/ll-builder/src/main.cpp:376 ../apps/ll-builder/src/main.cpp:387
+#: ../apps/ll-builder/src/main.cpp:364 ../apps/ll-builder/src/main.cpp:371
+#: ../apps/ll-builder/src/main.cpp:378 ../apps/ll-builder/src/main.cpp:389
 msgid "Alias of the repo name"
 msgstr "Alias of the repo name"
 
@@ -399,7 +399,7 @@ msgid "Modify repository URL"
 msgstr "Modify repository URL"
 
 #. add repo sub command remove
-#: ../apps/ll-cli/src/main.cpp:456 ../apps/ll-builder/src/main.cpp:367
+#: ../apps/ll-cli/src/main.cpp:456 ../apps/ll-builder/src/main.cpp:369
 msgid "Remove a repository"
 msgstr "Remove a repository"
 
@@ -410,7 +410,7 @@ msgstr "Usage: ll-cli repo remove [OPTIONS] NAME"
 #. add repo sub command update
 #. TODO: add --repo and --url options
 #. add repo sub command update
-#: ../apps/ll-cli/src/main.cpp:464 ../apps/ll-builder/src/main.cpp:374
+#: ../apps/ll-cli/src/main.cpp:464 ../apps/ll-builder/src/main.cpp:376
 msgid "Update the repository URL"
 msgstr "Update the repository URL"
 
@@ -418,7 +418,7 @@ msgstr "Update the repository URL"
 msgid "Usage: ll-cli repo update [OPTIONS] NAME URL"
 msgstr "Usage: ll-cli repo update [OPTIONS] NAME URL"
 
-#: ../apps/ll-cli/src/main.cpp:475 ../apps/ll-builder/src/main.cpp:385
+#: ../apps/ll-cli/src/main.cpp:475 ../apps/ll-builder/src/main.cpp:387
 msgid "Set a default repository name"
 msgstr "Set a default repository name"
 
@@ -427,7 +427,7 @@ msgid "Usage: ll-cli repo set-default [OPTIONS] NAME"
 msgstr "Usage: ll-cli repo set-default [OPTIONS] NAME"
 
 #. add repo sub command show
-#: ../apps/ll-cli/src/main.cpp:482 ../apps/ll-builder/src/main.cpp:392
+#: ../apps/ll-cli/src/main.cpp:482 ../apps/ll-builder/src/main.cpp:394
 msgid "Show repository information"
 msgstr "Show repository information"
 
@@ -488,52 +488,52 @@ msgstr "Invalid process id"
 msgid "Invalid pid format"
 msgstr "Invalid process id"
 
-#: ../apps/ll-cli/src/main.cpp:548
+#: ../apps/ll-cli/src/main.cpp:552
 msgid "linyaps CLI version "
 msgstr "linyaps CLI version "
 
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:83
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:238
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:71
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:232
 msgid "ID"
 msgstr "ID"
 
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:84
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:72
 msgid "Name"
 msgstr "Name"
 
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:85
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:73
 msgid "Version"
 msgstr "Version"
 
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:86
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:74
 msgid "Channel"
 msgstr "Channel"
 
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:87
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:75
 msgid "Module"
 msgstr "Module"
 
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:88
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:76
 msgid "Description"
 msgstr "Description"
 
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:116
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:110
 msgid "App"
 msgstr "App"
 
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:117
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:111
 msgid "ContainerID"
 msgstr "ContainerID"
 
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:118
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:112
 msgid "Pid"
 msgstr "Pid"
 
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:239
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:233
 msgid "Installed"
 msgstr "Installed"
 
-#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:240
+#: ../libs/linglong/src/linglong/cli/cli_printer.cpp:234
 msgid "New"
 msgstr "New"
 
@@ -580,7 +580,7 @@ msgid "Usage: ll-builder build [OPTIONS] [COMMAND...]"
 msgstr "Usage: ll-builder build [OPTIONS] [COMMAND...]"
 
 #: ../apps/ll-builder/src/main.cpp:215 ../apps/ll-builder/src/main.cpp:258
-#: ../apps/ll-builder/src/main.cpp:292 ../apps/ll-builder/src/main.cpp:307
+#: ../apps/ll-builder/src/main.cpp:293 ../apps/ll-builder/src/main.cpp:309
 msgid "File path of the linglong.yaml"
 msgstr "File path of the linglong.yaml"
 
@@ -677,104 +677,104 @@ msgstr "Export to linyaps layer or uab"
 msgid "Usage: ll-builder export [OPTIONS]"
 msgstr "Usage: ll-builder export [OPTIONS]"
 
-#: ../apps/ll-builder/src/main.cpp:296
+#: ../apps/ll-builder/src/main.cpp:297
 msgid "Uab icon (optional)"
 msgstr "Uab icon (optional)"
 
-#: ../apps/ll-builder/src/main.cpp:299
-msgid "Export uab in only-app mode"
-msgstr "Export uab in only-app mode"
-
 #: ../apps/ll-builder/src/main.cpp:300
+msgid "Export uab fully"
+msgstr "Export uab fully"
+
+#: ../apps/ll-builder/src/main.cpp:301
 msgid "Export to linyaps layer file"
 msgstr "Export to linyaps layer file"
 
-#: ../apps/ll-builder/src/main.cpp:305
+#: ../apps/ll-builder/src/main.cpp:307
 msgid "Push linyaps app to remote repo"
 msgstr "Push linyaps app to remote repo"
 
-#: ../apps/ll-builder/src/main.cpp:306
+#: ../apps/ll-builder/src/main.cpp:308
 msgid "Usage: ll-builder push [OPTIONS]"
 msgstr "Usage: ll-builder push [OPTIONS]"
 
-#: ../apps/ll-builder/src/main.cpp:311
+#: ../apps/ll-builder/src/main.cpp:313
 msgid "Remote repo url"
 msgstr "Remote repo url"
 
-#: ../apps/ll-builder/src/main.cpp:314
+#: ../apps/ll-builder/src/main.cpp:316
 msgid "Remote repo name"
 msgstr "Remote repo name"
 
-#: ../apps/ll-builder/src/main.cpp:317
+#: ../apps/ll-builder/src/main.cpp:319
 msgid "Push single module"
 msgstr "Push single module"
 
-#: ../apps/ll-builder/src/main.cpp:322
+#: ../apps/ll-builder/src/main.cpp:324
 msgid "Import linyaps layer to build repo"
 msgstr "Import linyaps layer to build repo"
 
-#: ../apps/ll-builder/src/main.cpp:323
+#: ../apps/ll-builder/src/main.cpp:325
 msgid "Usage: ll-builder import [OPTIONS] LAYER"
 msgstr "Usage: ll-builder import [OPTIONS] LAYER"
 
-#: ../apps/ll-builder/src/main.cpp:324 ../apps/ll-builder/src/main.cpp:343
+#: ../apps/ll-builder/src/main.cpp:326 ../apps/ll-builder/src/main.cpp:345
 msgid "Layer file path"
 msgstr "Layer file path"
 
-#: ../apps/ll-builder/src/main.cpp:332
+#: ../apps/ll-builder/src/main.cpp:334
 msgid "Import linyaps layer dir to build repo"
 msgstr "Import linyaps layer dir to build repo"
 
-#: ../apps/ll-builder/src/main.cpp:334
+#: ../apps/ll-builder/src/main.cpp:336
 msgid "Usage: ll-builder import-dir PATH"
 msgstr "Usage: ll-builder import-dir PATH"
 
-#: ../apps/ll-builder/src/main.cpp:335
+#: ../apps/ll-builder/src/main.cpp:337
 msgid "Layer dir path"
 msgstr "Layer dir path"
 
-#: ../apps/ll-builder/src/main.cpp:341
+#: ../apps/ll-builder/src/main.cpp:343
 msgid "Extract linyaps layer to dir"
 msgstr "Extract linyaps layer to dir"
 
-#: ../apps/ll-builder/src/main.cpp:342
+#: ../apps/ll-builder/src/main.cpp:344
 msgid "Usage: ll-builder extract [OPTIONS] LAYER DIR"
 msgstr "Usage: ll-builder extract [OPTIONS] LAYER DIR"
 
-#: ../apps/ll-builder/src/main.cpp:346
+#: ../apps/ll-builder/src/main.cpp:348
 msgid "Destination directory"
 msgstr "Destination directory"
 
 #. add build repo
-#: ../apps/ll-builder/src/main.cpp:349
+#: ../apps/ll-builder/src/main.cpp:351
 msgid "Display and manage repositories"
 msgstr "Display and manage repositories"
 
-#: ../apps/ll-builder/src/main.cpp:350
+#: ../apps/ll-builder/src/main.cpp:352
 msgid "Usage: ll-builder repo [OPTIONS] SUBCOMMAND"
 msgstr "Usage: ll-builder repo [OPTIONS] SUBCOMMAND"
 
-#: ../apps/ll-builder/src/main.cpp:355
+#: ../apps/ll-builder/src/main.cpp:357
 msgid "Usage: ll-builder repo add [OPTIONS] NAME URL"
 msgstr "Usage: ll-builder repo add [OPTIONS] NAME URL"
 
-#: ../apps/ll-builder/src/main.cpp:368
+#: ../apps/ll-builder/src/main.cpp:370
 msgid "Usage: ll-builder repo remove [OPTIONS] NAME"
 msgstr "Usage: ll-builder repo remove [OPTIONS] NAME"
 
-#: ../apps/ll-builder/src/main.cpp:375
+#: ../apps/ll-builder/src/main.cpp:377
 msgid "Usage: ll-builder repo update [OPTIONS] NAME URL"
 msgstr "Usage: ll-builder repo update [OPTIONS] NAME URL"
 
-#: ../apps/ll-builder/src/main.cpp:386
+#: ../apps/ll-builder/src/main.cpp:388
 msgid "Usage: ll-builder repo set-default [OPTIONS] NAME"
 msgstr "Usage: ll-builder repo set-default [OPTIONS] NAME"
 
-#: ../apps/ll-builder/src/main.cpp:393
+#: ../apps/ll-builder/src/main.cpp:395
 msgid "Usage: ll-builder repo show [OPTIONS]"
 msgstr "Usage: ll-builder repo show [OPTIONS]"
 
-#: ../apps/ll-builder/src/main.cpp:398
+#: ../apps/ll-builder/src/main.cpp:400
 msgid "linyaps build tool version "
 msgstr "linyaps build tool version "
 

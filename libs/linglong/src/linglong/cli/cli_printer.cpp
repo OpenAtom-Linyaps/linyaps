@@ -68,23 +68,11 @@ std::string adjustDisplayWidth(const QString &str, int targetWidth)
 
 void CLIPrinter::printPackages(const std::vector<api::types::v1::PackageInfoV2> &list)
 {
-    std::size_t idLen{ 0 }, nameLen{ 0 }, versionLen{ 0 }, channelLen{ 0 }, moduleLen{ 0 };
-
-    std::for_each(list.cbegin(),
-                  list.cend(),
-                  [&idLen, &nameLen, &versionLen, &channelLen, &moduleLen](const auto &info) {
-                      idLen = std::max(idLen, info.id.size()) + 2;
-                      nameLen = std::max(nameLen, info.name.size()) + 2;
-                      versionLen = std::max(versionLen, info.version.size()) + 2;
-                      channelLen = std::max(channelLen, info.channel.size()) + 2;
-                      moduleLen = std::max(moduleLen, info.packageInfoV2Module.size()) + 2;
-                  });
-
-    std::cout << "\033[38;5;214m" << std::left << adjustDisplayWidth(qUtf8Printable(_("ID")), idLen)
-              << adjustDisplayWidth(qUtf8Printable(_("Name")), nameLen)
-              << adjustDisplayWidth(qUtf8Printable(_("Version")), versionLen)
-              << adjustDisplayWidth(qUtf8Printable(_("Channel")), channelLen)
-              << adjustDisplayWidth(qUtf8Printable(_("Module")), moduleLen)
+    std::cout << "\033[38;5;214m" << std::left << adjustDisplayWidth(qUtf8Printable(_("ID")), 43)
+              << adjustDisplayWidth(qUtf8Printable(_("Name")), 33)
+              << adjustDisplayWidth(qUtf8Printable(_("Version")), 16)
+              << adjustDisplayWidth(qUtf8Printable(_("Channel")), 16)
+              << adjustDisplayWidth(qUtf8Printable(_("Module")), 12)
               << qUtf8Printable(_("Description")) << "\033[0m" << std::endl;
     for (const auto &info : list) {
         auto simpleDescription = QString::fromStdString(info.description.value_or("")).simplified();
@@ -95,18 +83,24 @@ void CLIPrinter::printPackages(const std::vector<api::types::v1::PackageInfoV2> 
             simpleDescription = QString::fromStdWString(simpleDescriptionWStr);
         }
 
+        auto id = QString::fromStdString(info.id).simplified();
+        if (id.size() > 32) {
+            id.push_back(" ");
+        }
+
         auto name = QString::fromStdString(info.name).simplified();
         auto nameWStr = name.toStdWString();
         auto nameWcswidth = wcswidth(nameWStr.c_str(), -1);
-        if (nameWcswidth > nameLen) {
-            nameWStr = subwstr(nameWStr, nameLen - 3) + L"...";
+        if (nameWcswidth > 33) {
+            nameWStr = subwstr(nameWStr, 29) + L"...";
+            nameWcswidth = wcswidth(nameWStr.c_str(), -1);
             name = QString::fromStdWString(nameWStr);
         }
         auto nameStr = name.toStdString();
-        std::cout << std::setw(idLen) << info.id << std::setw(nameLen) << nameStr
-                  << std::setw(versionLen) << info.version << std::setw(channelLen) << info.channel
-                  << std::setw(moduleLen) << info.packageInfoV2Module
-                  << simpleDescription.toStdString() << std::endl;
+        auto nameOffset = nameStr.size() - nameWcswidth;
+        std::cout << std::setw(43) << info.id << std::setw(33 + nameOffset) << nameStr
+                  << std::setw(16) << info.version << std::setw(16) << info.channel << std::setw(12)
+                  << info.packageInfoV2Module << simpleDescription.toStdString() << std::endl;
     }
 }
 

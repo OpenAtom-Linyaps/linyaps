@@ -24,6 +24,7 @@ public:
         LOONGARCH64,
         LOONG64,
         SW64,
+        MIPS64,
     };
 
     explicit Architecture(Value value = UNKNOW);

@@ -32,6 +32,8 @@ QString Architecture::toString() const noexcept
         return "loong64";
     case SW64:
         return "sw64";
+    case MIPS64:
+        return "mips64";
     case UNKNOW:
         [[fallthrough]];
     default:
@@ -54,6 +56,8 @@ QString Architecture::getTriplet() const noexcept
         return "sw_64-linux-gnu";
     case LOONGARCH64:
         return "loongarch64-linux-gnu";
+    case MIPS64:
+        return "mips64el-linux-gnuabi64";
     }
     return "unknow";
 }
@@ -87,6 +91,10 @@ Architecture::Architecture(const std::string &raw)
 
         if (raw == "sw64") {
             return SW64;
+        }
+
+        if (raw == "mips64") {
+            return MIPS64;
         }
 
         throw std::runtime_error("unknow architecture");
@@ -157,6 +165,9 @@ utils::error::Result<Architecture> Architecture::currentCPUArchitecture() noexce
     }
     if (interpreter == "/lib/ld-linux-sw-64.so.2") {
         return Architecture::parse("sw64");
+    }
+    if (interpreter == "/lib/mips64el-linux-gnuabi64/ld.so.1") {
+        return Architecture::parse("mips64");
     }
     return Architecture::parse("");
 };

@@ -539,6 +539,10 @@ ll-cli list --upgradable
 
     auto res = transformOldExec(argc, argv);
     std::reverse(res.begin(), res.end());
+    if (argc == 1) {
+        std::cout << commandParser.help() << std::endl;
+        return 0;
+    }
     CLI11_PARSE(commandParser, res);
 
     if (versionFlag) {

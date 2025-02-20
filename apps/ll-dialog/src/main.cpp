@@ -4,6 +4,7 @@
 
 #include "cache_dialog.h"
 #include "linglong/utils/configure.h"
+#include "linglong/utils/gettext.h"
 #include "permissionDialog.h"
 #include "tl/expected.hpp"
 

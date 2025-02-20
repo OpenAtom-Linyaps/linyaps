@@ -11,6 +11,7 @@
 #include "linglong/runtime/container.h"
 #include "linglong/utils/error/error.h"
 #include "ocppi/cli/CLI.hpp"
+#include "ocppi/runtime/config/types/Config.hpp"
 #include "ocppi/runtime/config/types/Mount.hpp"
 
 #include <QCryptographicHash>
@@ -78,6 +79,12 @@ public:
 
     auto create(const ContainerOptions &opts) noexcept
       -> utils::error::Result<QSharedPointer<Container>>;
+
+    auto createWithConfig(ocppi::runtime::config::types::Config &originalConfig, QString &containerID) noexcept
+      -> utils::error::Result<QSharedPointer<Container>>;
+
+    auto getOCIConfig(const ContainerOptions &opts) noexcept
+      -> utils::error::Result<ocppi::runtime::config::types::Config>;
 
 private:
     ocppi::cli::CLI &cli;

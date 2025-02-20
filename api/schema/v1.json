@@ -405,6 +405,33 @@
           "description": "build script of builder project",
           "type": "string"
         },
+        "buildext": {
+          "title": "BuilderProjectBuildExt",
+          "description": "build extension for builder project",
+          "type": "object",
+          "properties": {
+            "apt": {
+              "description": "build extension for apt",
+              "type": "object",
+              "properties": {
+                "build_depends": {
+                  "description": "packages to be installed in build environment before build starting",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "depends": {
+                  "description": "packages to be installed in runtime environment",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
         "command": {
           "type": "array",
           "description": "command of builder project",

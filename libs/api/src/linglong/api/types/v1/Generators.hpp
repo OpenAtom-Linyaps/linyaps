@@ -62,6 +62,8 @@
 #include "linglong/api/types/v1/BuilderProjectSource.hpp"
 #include "linglong/api/types/v1/BuilderProjectPackage.hpp"
 #include "linglong/api/types/v1/BuilderProjectModules.hpp"
+#include "linglong/api/types/v1/BuilderProjectBuildEXT.hpp"
+#include "linglong/api/types/v1/Apt.hpp"
 #include "linglong/api/types/v1/BuilderConfig.hpp"
 #include "linglong/api/types/v1/ApplicationPermissionsRequest.hpp"
 #include "linglong/api/types/v1/ApplicationConfiguration.hpp"
@@ -94,6 +96,12 @@ void to_json(json & j, const ApplicationPermissionsRequest & x);
 
 void from_json(const json & j, BuilderConfig & x);
 void to_json(json & j, const BuilderConfig & x);
+
+void from_json(const json & j, Apt & x);
+void to_json(json & j, const Apt & x);
+
+void from_json(const json & j, BuilderProjectBuildEXT & x);
+void to_json(json & j, const BuilderProjectBuildEXT & x);
 
 void from_json(const json & j, BuilderProjectModules & x);
 void to_json(json & j, const BuilderProjectModules & x);
@@ -329,6 +337,32 @@ j["repo"] = x.repo;
 j["version"] = x.version;
 }
 
+inline void from_json(const json & j, Apt& x) {
+x.buildDepends = get_stack_optional<std::vector<std::string>>(j, "build_depends");
+x.depends = get_stack_optional<std::vector<std::string>>(j, "depends");
+}
+
+inline void to_json(json & j, const Apt & x) {
+j = json::object();
+if (x.buildDepends) {
+j["build_depends"] = x.buildDepends;
+}
+if (x.depends) {
+j["depends"] = x.depends;
+}
+}
+
+inline void from_json(const json & j, BuilderProjectBuildEXT& x) {
+x.apt = get_stack_optional<Apt>(j, "apt");
+}
+
+inline void to_json(json & j, const BuilderProjectBuildEXT & x) {
+j = json::object();
+if (x.apt) {
+j["apt"] = x.apt;
+}
+}
+
 inline void from_json(const json & j, BuilderProjectModules& x) {
 x.files = j.at("files").get<std::vector<std::string>>();
 x.name = j.at("name").get<std::string>();
@@ -397,6 +431,7 @@ j["version"] = x.version;
 inline void from_json(const json & j, BuilderProject& x) {
 x.base = j.at("base").get<std::string>();
 x.build = j.at("build").get<std::string>();
+x.buildext = get_stack_optional<BuilderProjectBuildEXT>(j, "buildext");
 x.command = get_stack_optional<std::vector<std::string>>(j, "command");
 x.exclude = get_stack_optional<std::vector<std::string>>(j, "exclude");
 x.include = get_stack_optional<std::vector<std::string>>(j, "include");
@@ -413,6 +448,9 @@ inline void to_json(json & j, const BuilderProject & x) {
 j = json::object();
 j["base"] = x.base;
 j["build"] = x.build;
+if (x.buildext) {
+j["buildext"] = x.buildext;
+}
 if (x.command) {
 j["command"] = x.command;
 }

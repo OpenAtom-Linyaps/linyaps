@@ -25,7 +25,7 @@
 	},
 	"mounts": [],
 	"process": {
-		"env": ["LINGLONG_LD_SO_CACHE=/run/linglong/cache/ld.so.cache"],
+		"env": [],
 		"cwd": "/",
 		"args": ["bash"]
 	}

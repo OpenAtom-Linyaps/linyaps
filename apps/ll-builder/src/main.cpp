@@ -516,7 +516,23 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         return -1;
     }
 
+    // set GIO_USE_VFS to local, avoid glib start thread
+    char* oldEnv = getenv("GIO_USE_VFS");
+    if (-1 == setenv("GIO_USE_VFS", "local", 1)) {
+        qWarning() << "failed to GIO_USE_VFS to local" << errno;
+    }
+
     linglong::repo::OSTreeRepo repo(repoRoot, *repoCfg, clientFactory);
+
+    if (oldEnv) {
+        if (-1 == setenv("GIO_USE_VFS", oldEnv, 1)) {
+            qWarning() << "failed to restore GIO_USE_VFS" << errno;
+        }
+    } else {
+        if (-1 == unsetenv("GIO_USE_VFS")) {
+            qWarning() << "failed to restore GIO_USE_VFS" << errno;
+        }
+    }
 
     // if user use old opt(--exec) passing parameters, pass it to the new commands;
     if (newCommands.empty() && !oldCommands.empty()) {

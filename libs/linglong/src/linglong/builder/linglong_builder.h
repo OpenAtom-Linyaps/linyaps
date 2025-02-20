@@ -84,6 +84,14 @@ public:
     void setBuildOptions(const BuilderBuildOptions &options) noexcept { buildOptions = options; }
 
 private:
+    auto generateEntryScript() noexcept -> utils::error::Result<void>;
+    auto generateBuildDependsScript() noexcept -> utils::error::Result<bool>;
+    auto generateDependsScript() noexcept -> utils::error::Result<bool>;
+    void takeTerminalForeground();
+    void patchBuildPhaseConfig(ocppi::runtime::config::types::Config &config);
+    void mergeOutput(const QList<QDir> &src, const QDir &dest, const QStringList &target);
+
+private:
     repo::OSTreeRepo &repo;
     QDir workingDir;
     api::types::v1::BuilderProject project;

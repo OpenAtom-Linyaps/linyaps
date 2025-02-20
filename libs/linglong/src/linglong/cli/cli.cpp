@@ -6,6 +6,7 @@
 
 #include "linglong/cli/cli.h"
 
+#include "api/ClientAPI.h"
 #include "linglong/api/dbus/v1/dbus_peer.h"
 #include "linglong/api/types/v1/InteractionReply.hpp"
 #include "linglong/api/types/v1/InteractionRequest.hpp"
@@ -1863,13 +1864,48 @@ int Cli::repo(CLI::App *app)
 
         bool isExist =
           std::any_of(cfgRef.repos.begin(), cfgRef.repos.end(), [&alias](const auto &repo) {
-              return repo.alias == alias;
+              return repo.alias.value_or(repo.name) == alias;
           });
         if (isExist) {
             this->printer.printErr(
               LINGLONG_ERRV(QString{ "repo " } + alias.c_str() + " already exist."));
             return -1;
         }
+
+        if (!options.repoOptions.force) {
+            // 校验repoName 和 repoUrl是否有效
+            auto clientFactory = linglong::repo::ClientFactory(url);
+            auto client = clientFactory.createClientV2();
+
+            auto response = ClientAPI_apiV1ReposGet(client.get());
+
+            if (response == nullptr) {
+                this->printer.printErr(LINGLONG_ERRV("Url is invalid."));
+                return -1;
+            }
+            auto freeResponse = utils::finally::finally([&response] {
+                _api_v1_repos_get_200_response_free(response);
+            });
+
+            if (response->code != 200 || response->data == nullptr) {
+                this->printer.printErr(LINGLONG_ERRV("Url is invalid."));
+                return -1;
+            }
+
+            for (auto *entry = response->data->firstEntry; entry != nullptr;
+                 entry = entry->nextListEntry) {
+                auto *item = (schema_repo_info_t *)entry->data;
+                if (item && item->name && std::string(item->name) == name) {
+                    break;
+                }
+
+                if (entry->nextListEntry == nullptr) {
+                    this->printer.printErr(LINGLONG_ERRV("Name is invalid."));
+                    return -1;
+                }
+            }
+        }
+
         cfgRef.repos.push_back(api::types::v1::Repo{
           .alias = options.repoOptions.repoAlias,
           .name = name,

@@ -441,6 +441,7 @@ ll-cli list --upgradable
     repoAdd->add_option("--alias", options.repoOptions.repoAlias, _("Alias of the repo name"))
       ->type_name("ALIAS")
       ->check(validatorString);
+    repoAdd->add_flag("-f", options.repoOptions.force, _("Force add the repository"));
 
     // add repo sub command modify
     auto *repoModify =

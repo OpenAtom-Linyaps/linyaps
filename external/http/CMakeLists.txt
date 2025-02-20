@@ -54,6 +54,7 @@ set(SRCS
     src/binary.c
     external/cJSON.c
     model/object.c
+    model/_api_v1_repos_get_200_response.c
     model/api_json_result.c
     model/api_upload_task_file_resp.c
     model/api_upload_task_layer_file_resp.c
@@ -82,6 +83,7 @@ set(HDRS
     include/keyValuePair.h
     external/cJSON.h
     model/object.h
+    model/_api_v1_repos_get_200_response.h
     model/api_json_result.h
     model/api_upload_task_file_resp.h
     model/api_upload_task_layer_file_resp.h

@@ -66,6 +66,7 @@ All URIs are relative to *http://localhost*
 
 Category | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
+*ClientAPI* | [**ClientAPI_apiV1ReposGet**](docs/ClientAPI.md#ClientAPI_apiV1ReposGet) | **GET** /api/v1/repos | 查看仓库列表
 *ClientAPI* | [**ClientAPI_fuzzySearchApp**](docs/ClientAPI.md#ClientAPI_fuzzySearchApp) | **POST** /api/v0/apps/fuzzysearchapp | 模糊查找App
 *ClientAPI* | [**ClientAPI_getRepo**](docs/ClientAPI.md#ClientAPI_getRepo) | **GET** /api/v1/repos/{repo} | 查看仓库信息
 *ClientAPI* | [**ClientAPI_newUploadTaskID**](docs/ClientAPI.md#ClientAPI_newUploadTaskID) | **POST** /api/v1/upload-tasks | generate a new upload task id
@@ -77,6 +78,7 @@ Category | Method | HTTP request | Description
 
 ## Documentation for Models
 
+ - [_api_v1_repos_get_200_response_t](docs/_api_v1_repos_get_200_response.md)
  - [api_json_result_t](docs/api_json_result.md)
  - [api_upload_task_file_resp_t](docs/api_upload_task_file_resp.md)
  - [api_upload_task_layer_file_resp_t](docs/api_upload_task_layer_file_resp.md)

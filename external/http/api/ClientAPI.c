@@ -12,6 +12,69 @@
 }while(0)
 
 
+// 查看仓库列表
+//
+// returns repository mode and resolve all branches
+//
+_api_v1_repos_get_200_response_t*
+ClientAPI_apiV1ReposGet(apiClient_t *apiClient)
+{
+    list_t    *localVarQueryParameters = NULL;
+    list_t    *localVarHeaderParameters = NULL;
+    list_t    *localVarFormParameters = NULL;
+    list_t *localVarHeaderType = list_createList();
+    list_t *localVarContentType = NULL;
+    char      *localVarBodyParameters = NULL;
+
+    // create the path
+    long sizeOfPath = strlen("/api/v1/repos")+1;
+    char *localVarPath = malloc(sizeOfPath);
+    snprintf(localVarPath, sizeOfPath, "/api/v1/repos");
+
+
+
+    list_addElement(localVarHeaderType,"*/*"); //produces
+    apiClient_invoke(apiClient,
+                    localVarPath,
+                    localVarQueryParameters,
+                    localVarHeaderParameters,
+                    localVarFormParameters,
+                    localVarHeaderType,
+                    localVarContentType,
+                    localVarBodyParameters,
+                    "GET");
+
+    // uncomment below to debug the error response
+    //if (apiClient->response_code == 200) {
+    //    printf("%s\n","OK");
+    //}
+    //nonprimitive not container
+    cJSON *ClientAPIlocalVarJSON = cJSON_Parse(apiClient->dataReceived);
+    _api_v1_repos_get_200_response_t *elementToReturn = _api_v1_repos_get_200_response_parseFromJSON(ClientAPIlocalVarJSON);
+    cJSON_Delete(ClientAPIlocalVarJSON);
+    if(elementToReturn == NULL) {
+        // return 0;
+    }
+
+    //return type
+    if (apiClient->dataReceived) {
+        free(apiClient->dataReceived);
+        apiClient->dataReceived = NULL;
+        apiClient->dataReceivedLen = 0;
+    }
+    
+    
+    
+    list_freeList(localVarHeaderType);
+    
+    free(localVarPath);
+    return elementToReturn;
+end:
+    free(localVarPath);
+    return NULL;
+
+}
+
 // 模糊查找App
 //
 fuzzy_search_app_200_response_t*

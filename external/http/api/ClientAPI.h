@@ -5,6 +5,7 @@
 #include "../external/cJSON.h"
 #include "../include/keyValuePair.h"
 #include "../include/binary.h"
+#include "../model/_api_v1_repos_get_200_response.h"
 #include "../model/api_upload_task_file_resp.h"
 #include "../model/api_upload_task_layer_file_resp.h"
 #include "../model/fuzzy_search_app_200_response.h"
@@ -15,6 +16,14 @@
 #include "../model/schema_new_upload_task_req.h"
 #include "../model/sign_in_200_response.h"
 #include "../model/upload_task_info_200_response.h"
+
+
+// 查看仓库列表
+//
+// returns repository mode and resolve all branches
+//
+_api_v1_repos_get_200_response_t*
+ClientAPI_apiV1ReposGet(apiClient_t *apiClient);
 
 
 // 模糊查找App

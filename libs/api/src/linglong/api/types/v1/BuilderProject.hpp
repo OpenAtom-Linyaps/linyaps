@@ -17,6 +17,7 @@
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
+#include "linglong/api/types/v1/BuilderProjectBuildEXT.hpp"
 #include "linglong/api/types/v1/BuilderProjectModules.hpp"
 #include "linglong/api/types/v1/BuilderProjectPackage.hpp"
 #include "linglong/api/types/v1/ApplicationConfigurationPermissions.hpp"
@@ -44,6 +45,10 @@ std::string base;
 * build script of builder project
 */
 std::string build;
+/**
+* build extension for builder project
+*/
+std::optional<BuilderProjectBuildEXT> buildext;
 /**
 * command of builder project
 */

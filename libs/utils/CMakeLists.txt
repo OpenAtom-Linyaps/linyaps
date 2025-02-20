@@ -30,6 +30,8 @@ pfl_add_library(
   src/linglong/utils/gettext.h
   src/linglong/utils/global/initialize.cpp
   src/linglong/utils/global/initialize.h
+  src/linglong/utils/overlayfs.cpp
+  src/linglong/utils/overlayfs.h
   src/linglong/utils/packageinfo_handler.cpp
   src/linglong/utils/packageinfo_handler.h
   src/linglong/utils/serialize/json.cpp

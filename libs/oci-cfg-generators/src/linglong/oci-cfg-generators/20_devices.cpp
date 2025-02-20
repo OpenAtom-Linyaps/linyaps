@@ -65,7 +65,48 @@ bool Devices::generate(ocppi::runtime::config::types::Config &config) const noex
     // mount location. some linux distros (e.g. ArchLinux) don't have this flag enabled, perhaps
     // we could find a better way to compatible with those distros.
     // https://github.com/storaged-project/udisks/commit/ae2a5ff1e49ae924605502ace170eb831e9c38e4
-    if (std::filesystem::exists("/media")) {
+    std::error_code ec;
+    auto mediaDir = std::filesystem::path("/media");
+    auto status = std::filesystem::symlink_status(mediaDir, ec);
+    if (ec && ec != std::errc::no_such_file_or_directory) {
+        std::cerr << "failed to get /media status of "
+                  << ": " << ec.message() << std::endl;
+        return false;
+    }
+
+    if (status.type() == std::filesystem::file_type::symlink) {
+        auto targetDir = std::filesystem::read_symlink(mediaDir, ec);
+        if (ec) {
+            std::cerr << "failed to resolve symlink." << std::endl;
+            return false;
+        }
+
+        auto destinationDir = "/" + targetDir.string();
+
+        if (!std::filesystem::exists(destinationDir, ec)) {
+            if (ec) {
+                std::cerr << "check destination dir existence." << std::endl;
+                return false;
+            }
+
+            std::cerr << "destination path not found." << std::endl;
+            return false;
+        }
+
+        mounts.push_back(ocppi::runtime::config::types::Mount{
+          .destination = destinationDir,
+          .options = string_list{ "rbind", "rshared" },
+          .source = destinationDir,
+          .type = "bind",
+        });
+
+        mounts.push_back(ocppi::runtime::config::types::Mount{
+          .destination = "/media",
+          .options = string_list{ "rbind", "ro", "nosymfollow", "copy-symlink" },
+          .source = "/media",
+          .type = "bind",
+        });
+    } else {
         mounts.push_back(ocppi::runtime::config::types::Mount{
           .destination = "/media",
           .options = string_list{ "rbind", "rshared" },

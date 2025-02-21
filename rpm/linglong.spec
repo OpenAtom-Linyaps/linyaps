@@ -93,6 +93,7 @@ cd build
 %{_libexecdir}/%{name}/ll-dialog
 %{_libexecdir}/%{name}/dialog/99-linglong-permission
 %{_datadir}/bash-completion/completions/ll-cli
+%{_datadir}/zsh/vendor-completions/_ll-cli
 %{_datadir}/dbus-1/system-services/*.service
 %{_datadir}/dbus-1/system.d/*.conf
 %{_datadir}/polkit-1/actions/org.deepin.linglong.PackageManager1.policy

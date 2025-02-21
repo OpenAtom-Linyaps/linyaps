@@ -17,6 +17,7 @@ usr/libexec/linglong/font-cache-generator
 usr/libexec/linglong/ll-dialog
 usr/libexec/linglong/dialog/99-linglong-permission
 usr/share/bash-completion/completions/ll-cli
+usr/share/zsh/vendor-completions/_ll-cli
 usr/share/dbus-1/system-services/org.deepin.linglong.PackageManager1.service
 usr/share/dbus-1/system.d/org.deepin.linglong.PackageManager1.conf
 usr/share/linglong/config.yaml

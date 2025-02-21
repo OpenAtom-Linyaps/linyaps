@@ -2470,7 +2470,7 @@ QString buildDesktopExec(QString origin, const QString &appID) noexcept
             [[fallthrough]];
         case 'F': {
             origin.insert(next - origin.begin(), '%');
-            auto tmp = QString{ "--file %%1 -- %2" }.arg(std::move(code), std::move(origin));
+            auto tmp = QString{ "--file %%1 -- -- %2" }.arg(std::move(code), std::move(origin));
             newExec.append(tmp);
             return newExec;
         }
@@ -2478,7 +2478,7 @@ QString buildDesktopExec(QString origin, const QString &appID) noexcept
             [[fallthrough]];
         case 'U': {
             origin.insert(next - origin.begin(), '%');
-            auto tmp = QString{ "--url %%1 -- %2" }.arg(std::move(code), std::move(origin));
+            auto tmp = QString{ "--url %%1 -- -- %2" }.arg(std::move(code), std::move(origin));
             newExec.append(tmp);
             return newExec;
         }
@@ -2490,7 +2490,7 @@ QString buildDesktopExec(QString origin, const QString &appID) noexcept
         break;
     }
 
-    return newExec.append(QString{ "-- %1" }.arg(origin));
+    return newExec.append(QString{ "-- -- %1" }.arg(origin));
 }
 
 utils::error::Result<void> desktopFileRewrite(const QString &filePath, const QString &id)
@@ -2574,7 +2574,7 @@ utils::error::Result<void> dbusServiceRewrite(const QString &filePath, const QSt
         rawExec = getOriginRawExec(*originExec, id);
     }
 
-    auto newExec = QString("%1 run %2 -- %3").arg(LINGLONG_CLIENT_PATH, id, rawExec);
+    auto newExec = QString("%1 run %2 -- -- %3").arg(LINGLONG_CLIENT_PATH, id, rawExec);
     file->setValue("Exec", newExec, utils::GKeyFileWrapper::DBusService);
 
     auto ret = file->saveToFile(filePath);
@@ -2618,7 +2618,7 @@ utils::error::Result<void> systemdServiceRewrite(const QString &filePath, const 
             rawExec = getOriginRawExec(*originExec, id);
         }
 
-        auto newExec = QString("%1 run %2 -- %3").arg(LINGLONG_CLIENT_PATH, id, rawExec);
+        auto newExec = QString("%1 run %2 -- -- %3").arg(LINGLONG_CLIENT_PATH, id, rawExec);
         file->setValue(key, newExec, utils::GKeyFileWrapper::SystemdService);
     }
 

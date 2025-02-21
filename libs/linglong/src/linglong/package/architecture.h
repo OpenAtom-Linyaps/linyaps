@@ -10,6 +10,7 @@
 
 #include <QString>
 
+#include <filesystem>
 #include <string>
 
 namespace linglong::package {
@@ -43,7 +44,7 @@ public:
 
 private:
     Value v;
-    static std::string getInterpreter();
+    static const std::filesystem::path &getInterpreter();
 };
 
 } // namespace linglong::package

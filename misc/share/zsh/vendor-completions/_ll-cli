@@ -1,0 +1,207 @@
+#compdef ll-cli
+
+# SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+__ll_cli_get_container_list() {
+    ll-cli ps | tail -n+2 | awk '{print $1}' || echo ""
+}
+
+__ll_cli_get_installed_list() {
+    ll-cli list | tail -n+2 | awk '{print $1line}' || echo ""
+}
+
+__ll_cli_get_app_list() {
+    ll-cli search $1 | tail -n+2 | awk '{print $1}' || echo ""
+}
+
+__ll_cli_get_layer_list() {
+    ls $1*.layer 2>/dev/null | tr '\n' ' '
+}
+
+__ll_cli_get_repo_name_list() {
+    ll-cli repo show | tail -n+3 | awk '{print $1}' || echo ""
+}
+
+_ll-cli() {
+    local state line
+
+    local -a command_options=(
+        '-h'
+        '--help'
+        '--help-all'
+    )
+    local -a global_options=(
+        '--version'
+        '--json'
+    )
+
+    _arguments -C \
+        "${command_options[@]}" \
+        "${global_options[@]}" \
+        ": :{_values 'command' run ps enter kill prune install uninstall upgrade list info content search repo}" \
+        "*::arg:->args"
+
+    case "$line[1]" in
+        run)
+            local installed_list=(${(f)"$(__ll_cli_get_installed_list)"})
+            local run_options=(
+                '--file:file:_files'
+                '--url:url:_urls'
+            )
+            if [[ ${#installed_list[@]} -gt 0 ]]; then
+                _arguments \
+                    '1: :{_values "installed applications" "${installed_list[@]}"}' \
+                    '*:: :->run_args'
+            fi
+            ;;
+        ps)
+            local container_list=(${(f)"$(__ll_cli_get_container_list)"})
+            if [[ ${#container_list[@]} -gt 0 ]]; then
+                _arguments \
+                    '1: :{_values "running applications" "${container_list[@]}"}' \
+                    "${command_options[@]}"
+            fi
+            ;;
+        enter)
+            local enter_options=(
+                '--working-directory'
+            )
+            local container_list=(${(f)"$(__ll_cli_get_container_list)"})
+            if [[ ${#container_list[@]} -gt 0 ]]; then
+                _arguments \
+                    '1: :{_values "running applications" "${container_list[@]}"}' \
+                    "${enter_options[@]}" \
+                    "${command_options[@]}"
+            fi
+            ;;
+        kill)
+            local container_list=(${(f)"$(__ll_cli_get_container_list)"})
+            if [[ ${#container_list[@]} -gt 0 ]]; then
+                _arguments \
+                    '1: :{_values "running applications" "${container_list[@]}"}' \
+                    "${command_options[@]}"
+            fi
+            ;;
+        prune)
+            _arguments "${command_options[@]}"
+            ;;
+        install)
+            local -a install_options=(
+                '--module'
+                '--force'
+                '-y'
+            )
+
+            local search_target="."
+            if [[ -n "${cur}" ]]; then
+                search_target="${cur}"
+            fi
+
+            local app_list=(${(f)"$(__ll_cli_get_app_list ${search_target})"} ${(f)"$(__ll_cli_get_layer_list ${cur})"})
+
+            _arguments \
+                '1: :{_values "available applications" "${app_list[@]}"}' \
+                "${install_options[@]}" \
+                "${command_options[@]}"
+            ;;
+        uninstall)
+            local uninstall_options=(
+                '--module[Specify the module to uninstall]'
+            )
+            local installed_list=(${(f)"$(__ll_cli_get_installed_list)"})
+            if [[ ${#installed_list[@]} -gt 0 ]]; then
+                _arguments \
+                    '1: :{_values "installed applications" "${installed_list[@]}"}' \
+                    "${uninstall_options[@]}" \
+                    "${command_options[@]}"
+            fi
+            ;;
+        upgrade)
+            local installed_list=(${(f)"$(__ll_cli_get_installed_list)"})
+            if [[ ${#installed_list[@]} -gt 0 ]]; then
+                _arguments \
+                    '1: :{_values "installed applications" "${installed_list[@]}"}' \
+                    "${command_options[@]}"
+            fi
+            ;;
+        list)
+            local list_options=(
+                '--type:type:(app runtime all)'
+                '--upgradable'
+            )
+            _arguments \
+                "${list_options[@]}" \
+                "${command_options[@]}"
+            ;;
+        info)
+            local installed_list=(${(f)"$(__ll_cli_get_installed_list)"})
+            local layer_list=(${(f)"$(__ll_cli_get_layer_list ${cur})"})
+            if [[ ${#installed_list[@]} -gt 0 ]]; then
+                _arguments \
+                    '1: :{_values "installed applications" "${installed_list[@]}"}' \
+                    "${command_options[@]}"
+            elif [[ ${#layer_list[@]} -gt 0 ]]; then
+                _arguments \
+                    '1: :{_values "installed layers" "${layer_list[@]}"}' \
+                    "${command_options[@]}"
+            fi
+            ;;
+        content)
+            local installed_list=(${(f)"$(__ll_cli_get_installed_list)"})
+            if [[ ${#installed_list[@]} -gt 0 ]]; then
+                _arguments \
+                    '1: :{_values "installed applications" "${installed_list[@]}"}' \
+                    "${command_options[@]}"
+            fi
+            ;;
+        search)
+            local search_options=(
+                '--type:type:(app runtime all)'
+                '--dev'
+                '--all'
+            )
+
+            _arguments \
+                "${search_options[@]}" \
+                "${command_options[@]}"
+            ;;
+        repo)
+            local -a repo_subcommands=(add remove update set-default show)
+            local -a repo_options=(
+                '--alias:alias'
+                '-f'
+            )
+
+            if [[ ${repo_subcommands[(Ie)${line[2]}]} -gt 0 ]]; then
+                if [[ ${line[2]} == "add" ]]; then
+                    _arguments \
+                        '1:repository name' \
+                        '2:repository URL' \
+                        "${repo_options[@]}" \
+                        "${command_options[@]}"
+                elif [[ ${line[2]} == "show" ]]; then
+                    _arguments \
+                        "${command_options[@]}"
+                else
+                    local repo_name_list=(${(f)"$(__ll_cli_get_repo_name_list)"})
+                    _arguments \
+                        '2: :{_values "repository names" "${repo_name_list[@]}"}' \
+                        "${command_options[@]}"
+                fi
+            else
+                _arguments \
+                    ': :{_values "repo subcommand" "${repo_subcommands[@]}"}' \
+                    "${command_options[@]}"
+            fi
+            ;;
+    esac
+    if [[ "$state" == run_args ]]; then
+        _arguments \
+            "${run_options[@]}" \
+            "${command_options[@]}"
+    fi
+}
+
+compdef _ll-cli ll-cli

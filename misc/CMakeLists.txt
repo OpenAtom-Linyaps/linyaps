@@ -48,6 +48,7 @@ configure_files(
   script/linglong.sh
   share/bash-completion/completions/ll-builder
   share/bash-completion/completions/ll-cli
+  share/zsh/vendor-completions/_ll-cli
   share/dbus-1/system.d/org.deepin.linglong.PackageManager1.conf
   share/dbus-1/system-services/org.deepin.linglong.PackageManager1.service
   share/linglong/builder/templates/example.yaml
@@ -61,6 +62,12 @@ set(BASH_COMPLETIONS_DIR ${CMAKE_INSTALL_DATADIR}/bash-completion)
 
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/share/bash-completion/completions
         DESTINATION ${BASH_COMPLETIONS_DIR})
+
+# zsh-completion
+set(ZSH_COMPLETIONS_DIR ${CMAKE_INSTALL_DATADIR}/zsh)
+
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/share/zsh/vendor-completions
+        DESTINATION ${ZSH_COMPLETIONS_DIR})
 
 # dbus
 set(DBUS_SYSTEM_BUS_DIR ${CMAKE_INSTALL_DATADIR}/dbus-1)

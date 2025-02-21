@@ -8,11 +8,12 @@
 
 #include <elf.h>
 
+#include <QSysInfo>
+
 #include <cstring>
 #include <fstream>
 #include <iostream>
 #include <optional>
-#include <vector>
 
 namespace linglong::package {
 Architecture::Architecture(Value value)
@@ -103,92 +104,54 @@ Architecture::Architecture(const std::string &raw)
 {
 }
 
-const std::filesystem::path &Architecture::getInterpreter()
+namespace {
+bool isNewWorldLoongArch()
 {
-    static std::optional<std::filesystem::path> interpreterPath;
-    if (interpreterPath) {
-        return interpreterPath.value();
+    static std::optional<bool> isLoongArch;
+    if (isLoongArch.has_value()) {
+        return isLoongArch.value();
     }
 
     // 打开可执行文件
     std::ifstream file("/proc/self/exe", std::ios::binary);
     if (!file) {
         qCritical() << "Failed to open executable file";
-        interpreterPath = std::filesystem::path{};
-        return interpreterPath.value();
+        isLoongArch = false;
+        return false;
     }
+
     // 读取 ELF 头
     Elf64_Ehdr ehdr;
     file.read(reinterpret_cast<char *>(&ehdr), sizeof(ehdr));
     if (!file || std::memcmp(ehdr.e_ident, ELFMAG, SELFMAG) != 0) {
         qCritical() << "Not a valid ELF file.";
-        interpreterPath = std::filesystem::path{};
-        return interpreterPath.value();
-    }
-    // 移动到程序头表偏移处
-    file.seekg(ehdr.e_phoff, std::ios::beg);
-    // 读取程序头表
-    std::vector<Elf64_Phdr> phdrs(ehdr.e_phnum);
-    file.read(reinterpret_cast<char *>(phdrs.data()), ehdr.e_phnum * sizeof(Elf64_Phdr));
-    if (!file) {
-        qCritical() << "Failed to read program headers.";
-        interpreterPath = std::filesystem::path{};
-        return interpreterPath.value();
-    }
-    // 查找 PT_INTERP 段
-    for (const auto &phdr : phdrs) {
-        if (phdr.p_type != PT_INTERP) {
-            continue;
-        }
-
-        // 获取解释器的偏移和大小
-        std::vector<char> interpreter(phdr.p_filesz);
-        file.seekg(phdr.p_offset, std::ios::beg);
-        file.read(interpreter.data(), phdr.p_filesz);
-        if (!file) {
-            qCritical() << "Failed to read interpreter.";
-            interpreterPath = std::filesystem::path{};
-            return interpreterPath.value();
-        }
-
-        std::array<char, PATH_MAX + 1> buf{};
-        auto *target = ::realpath(interpreter.data(), buf.data());
-        if (target == nullptr) {
-            qCritical() << "resolve symlink " << interpreter.data()
-                        << " error: " << ::strerror(errno);
-            interpreterPath = std::filesystem::path{};
-            return interpreterPath.value();
-        }
-
-        interpreterPath = std::filesystem::path{ target };
-        break;
+        isLoongArch = false;
+        return false;
     }
 
-    return interpreterPath.value();
+    auto val = ehdr.e_flags >> 6U;
+    isLoongArch = ((val & 1U) == 1);
+    return isLoongArch.value();
 }
+} // namespace
 
 utils::error::Result<Architecture> Architecture::currentCPUArchitecture() noexcept
 {
-    const auto &interpreter = getInterpreter();
-    if (interpreter == "/lib64/ld-linux-x86-64.so.2") {
-        return Architecture::parse("x86_64");
+    auto arch = QSysInfo::currentCpuArchitecture().toStdString();
+
+    if (arch == "sw_64") {
+        arch = "sw64";
     }
-    if (interpreter == "/lib/ld-linux-aarch64.so.1") {
-        return Architecture::parse("arm64");
+
+    if (arch == "loongarch64" || arch == "loong64") {
+        if (isNewWorldLoongArch()) {
+            arch = "loong64";
+        } else {
+            arch = "loongarch64";
+        }
     }
-    if (interpreter == "/lib64/ld-linux-loongarch-lp64d.so.1") {
-        return Architecture::parse("loong64");
-    }
-    if (interpreter == "/lib64/ld.so.1") {
-        return Architecture::parse("loongarch64");
-    }
-    if (interpreter == "/lib/ld-linux-sw-64.so.2") {
-        return Architecture::parse("sw64");
-    }
-    if (interpreter == "/lib/mips64el-linux-gnuabi64/ld.so.1") {
-        return Architecture::parse("mips64");
-    }
-    return Architecture::parse("");
+
+    return Architecture::parse(arch);
 };
 
 } // namespace linglong::package

@@ -44,7 +44,6 @@ public:
 
 private:
     Value v;
-    static const std::filesystem::path &getInterpreter();
 };
 
 } // namespace linglong::package

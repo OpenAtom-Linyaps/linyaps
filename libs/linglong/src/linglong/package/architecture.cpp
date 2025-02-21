@@ -11,6 +11,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <optional>
 #include <vector>
 
 namespace linglong::package {
@@ -102,24 +103,27 @@ Architecture::Architecture(const std::string &raw)
 {
 }
 
-std::string Architecture::getInterpreter()
+const std::filesystem::path &Architecture::getInterpreter()
 {
-    static std::string interpreterPath = "";
-    if (!interpreterPath.empty()) {
-        return interpreterPath;
+    static std::optional<std::filesystem::path> interpreterPath;
+    if (interpreterPath) {
+        return interpreterPath.value();
     }
+
     // 打开可执行文件
     std::ifstream file("/proc/self/exe", std::ios::binary);
     if (!file) {
-        std::cerr << "Failed to open executable file" << std::endl;
-        return "";
+        qCritical() << "Failed to open executable file";
+        interpreterPath = std::filesystem::path{};
+        return interpreterPath.value();
     }
     // 读取 ELF 头
     Elf64_Ehdr ehdr;
     file.read(reinterpret_cast<char *>(&ehdr), sizeof(ehdr));
     if (!file || std::memcmp(ehdr.e_ident, ELFMAG, SELFMAG) != 0) {
-        std::cerr << "Not a valid ELF file." << std::endl;
-        return "";
+        qCritical() << "Not a valid ELF file.";
+        interpreterPath = std::filesystem::path{};
+        return interpreterPath.value();
     }
     // 移动到程序头表偏移处
     file.seekg(ehdr.e_phoff, std::ios::beg);
@@ -127,30 +131,45 @@ std::string Architecture::getInterpreter()
     std::vector<Elf64_Phdr> phdrs(ehdr.e_phnum);
     file.read(reinterpret_cast<char *>(phdrs.data()), ehdr.e_phnum * sizeof(Elf64_Phdr));
     if (!file) {
-        std::cerr << "Failed to read program headers." << std::endl;
-        return "";
+        qCritical() << "Failed to read program headers.";
+        interpreterPath = std::filesystem::path{};
+        return interpreterPath.value();
     }
     // 查找 PT_INTERP 段
     for (const auto &phdr : phdrs) {
-        if (phdr.p_type == PT_INTERP) {
-            // 获取解释器的偏移和大小
-            std::vector<char> interpreter(phdr.p_filesz);
-            file.seekg(phdr.p_offset, std::ios::beg);
-            file.read(interpreter.data(), phdr.p_filesz);
-            if (!file) {
-                std::cerr << "Failed to read interpreter." << std::endl;
-                return "";
-            }
-            interpreterPath = interpreter.data();
-            return interpreterPath;
+        if (phdr.p_type != PT_INTERP) {
+            continue;
         }
+
+        // 获取解释器的偏移和大小
+        std::vector<char> interpreter(phdr.p_filesz);
+        file.seekg(phdr.p_offset, std::ios::beg);
+        file.read(interpreter.data(), phdr.p_filesz);
+        if (!file) {
+            qCritical() << "Failed to read interpreter.";
+            interpreterPath = std::filesystem::path{};
+            return interpreterPath.value();
+        }
+
+        std::array<char, PATH_MAX + 1> buf{};
+        auto *target = ::realpath(interpreter.data(), buf.data());
+        if (target == nullptr) {
+            qCritical() << "resolve symlink " << interpreter.data()
+                        << " error: " << ::strerror(errno);
+            interpreterPath = std::filesystem::path{};
+            return interpreterPath.value();
+        }
+
+        interpreterPath = std::filesystem::path{ target };
+        break;
     }
-    return "";
+
+    return interpreterPath.value();
 }
 
 utils::error::Result<Architecture> Architecture::currentCPUArchitecture() noexcept
 {
-    auto interpreter = getInterpreter();
+    const auto &interpreter = getInterpreter();
     if (interpreter == "/lib64/ld-linux-x86-64.so.2") {
         return Architecture::parse("x86_64");
     }

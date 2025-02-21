@@ -1451,7 +1451,12 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
         }
     }
 
-    auto arch = fuzzyRef.arch.value_or(package::Architecture::currentCPUArchitecture().value());
+    auto defaultArch = package::Architecture::currentCPUArchitecture();
+    if (!defaultArch) {
+        return LINGLONG_ERR(defaultArch);
+    }
+
+    auto arch = fuzzyRef.arch.value_or(*defaultArch);
     auto archStr = arch.toString().toLatin1();
     req.arch = strndup(archStr.data(), archStr.size());
     if (req.arch == nullptr) {

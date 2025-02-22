@@ -154,10 +154,66 @@ parseProjectConfig(const QString &filename)
     return project;
 }
 
+bool runInNamespace()
+{
+    const int innerUid = 0;
+    const int innerGid = 0;
+    int outerUid = getuid();
+    int outerGid = getgid();
+
+    if (-1 == unshare(CLONE_NEWNS | CLONE_NEWUSER)) {
+        perror("unshare");
+        return false;
+    }
+
+    std::ofstream uidMapFile("/proc/self/uid_map");
+    if (!uidMapFile.is_open()) {
+        qCritical() << "failed to open uid_map";
+        return false;
+    }
+    std::ostringstream content;
+    content << innerUid << " " << outerUid << " 1\n";
+    uidMapFile << content.str();
+    uidMapFile.close();
+
+    std::ofstream setgroupsFile("/proc/self/setgroups");
+    if (!setgroupsFile.is_open()) {
+        qCritical() << "failed to open setgroups";
+        return false;
+    }
+    setgroupsFile << "deny";
+    setgroupsFile.close();
+
+    std::ofstream gidMapFile("/proc/self/gid_map");
+    if (!gidMapFile.is_open()) {
+        qCritical() << "failed to open gid_map";
+        return false;
+    }
+    std::ostringstream().swap(content);
+    content << innerGid << " " << outerGid << " 1\n";
+    gidMapFile << content.str();
+    gidMapFile.close();
+
+    return getuid() == innerUid;
+}
+
 } // namespace
 
 int main(int argc, char **argv)
 {
+    // fuse-overlayfs should run in new user_namespaces and
+    // run with CAP_DAC_OVERRIDE capbilities. So we unshare
+    // process to new user_namespaces, and map root/root in
+    // namespace to current user/group.
+    //
+    // mount needs CAP_SYS_ADMIN capbilities in the
+    // user_namespaces associated with current mount_namespaces,
+    // So we also unshare to new mount_namespaces.
+    if (!runInNamespace()) {
+        qCritical() << "failed to run in namespace";
+        return -1;
+    }
+
     bindtextdomain(PACKAGE_LOCALE_DOMAIN, PACKAGE_LOCALE_DIR);
     textdomain(PACKAGE_LOCALE_DOMAIN);
     QCoreApplication app(argc, argv);

@@ -44,6 +44,7 @@ Linglong sandbox with OCI standard.
 export PATH=%{_qt5_bindir}:$PATH
 mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX:PATH=%{_prefix} \
+      -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
       -DINCLUDE_INSTALL_DIR:PATH=%{_includedir} \
       -DLIB_INSTALL_DIR:PATH=%{_libdir} \
       -DSYSCONF_INSTALL_DIR:PATH=%{_sysconfdir} \

@@ -9,7 +9,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
     <comment>Universal application bundle</comment>
     <comment xml:lang="zh_CN">如意玲珑包</comment>
     <sub-class-of type="application/x-executable"/>
-    <generic-icon name="linyaps-uab"/>
+    <generic-icon name="universal-application-bundle"/>
     <glob pattern="*.uab"/>
   </mime-type>
 </mime-info>

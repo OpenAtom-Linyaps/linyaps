@@ -1022,7 +1022,7 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
         auto ret = installModule(installRules,
                                  buildOutput.path(),
                                  moduleDir.filePath("files"),
-                                 [](int percentage) { });
+                                 []([[maybe_unused]] int percentage) { });
         if (!ret.has_value()) {
             return LINGLONG_ERR("install module", ret);
         }
@@ -1085,7 +1085,7 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
         auto ret = installModule(installRules,
                                  buildOutput.path(),
                                  moduleDir.filePath("files"),
-                                 [](int percentage) { });
+                                 []([[maybe_unused]] int percentage) { });
         if (!ret.has_value()) {
             return LINGLONG_ERR("install module", ret);
         }

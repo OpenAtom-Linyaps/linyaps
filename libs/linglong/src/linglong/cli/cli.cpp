@@ -100,7 +100,7 @@ linglong::utils::error::Result<bool> isChildProcess(pid_t parent, pid_t pid) noe
         auto ppidOffset = 3;
         auto left = 0;
         auto right = 0;
-        for (int i = 0; i < content.size(); i++) {
+        for (size_t i = 0; i < content.size(); i++) {
             if (ppidOffset == 0) {
                 left = i;
                 right = i;

@@ -7,3 +7,4 @@ defaultRepo: stable
 repos:
   - name: stable
     url: https://mirror-repo-linglong.deepin.com
+    priority: 0

@@ -40,6 +40,10 @@ std::optional<std::string> alias;
 */
 std::string name;
 /**
+* priority of repo
+*/
+int64_t priority;
+/**
 * repo url
 */
 std::string url;

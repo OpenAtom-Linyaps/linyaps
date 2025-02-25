@@ -26,6 +26,7 @@ struct RepoOptions
     std::string repoName;
     std::string repoUrl;
     std::optional<std::string> repoAlias;
+    std::int64_t repoPriority{ 0 };
 };
 
 struct CliOptions

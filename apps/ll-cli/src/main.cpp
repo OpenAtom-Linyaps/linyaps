@@ -482,6 +482,18 @@ ll-cli list --upgradable
     cliRepo->add_subcommand("show", _("Show repository information"))
       ->usage(_("Usage: ll-cli repo show [OPTIONS]"));
 
+    // add repo sub command set-priority
+    auto *repoSetPriority =
+      cliRepo->add_subcommand("set-priority", _("Set the priority of the repo"));
+    repoSetPriority->usage(_("Usage: ll-cli repo set-priority ALIAS PRIORITY"));
+    repoSetPriority->add_option("ALIAS", options.repoOptions.repoAlias, _("Alias of the repo name"))
+      ->required()
+      ->check(validatorString);
+    repoSetPriority
+      ->add_option("PRIORITY", options.repoOptions.repoPriority, _("Priority of the repo"))
+      ->required()
+      ->check(validatorString);
+
     // add sub command info
     auto *cliInfo =
       commandParser

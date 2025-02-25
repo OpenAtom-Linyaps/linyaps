@@ -172,11 +172,21 @@ void CLIPrinter::printRepoConfig(const api::types::v1::RepoConfigV2 &repoInfo)
     for (const auto &repo : repoInfo.repos) {
         maxUrlLength = std::max(maxUrlLength, repo.url.size());
     }
-    std::cout << std::left << std::setw(11) << "Name";
-    std::cout << std::setw(maxUrlLength + 2) << "Url" << std::setw(11) << "Alias" << std::endl;
-    for (const auto &repo : repoInfo.repos) {
+    std::cout << std::left << std::setw(11) << _("Name");
+    std::cout << std::setw(maxUrlLength + 2) << _("Url") << std::setw(11) << _("Alias")
+              << std::setw(10) << _("Priority") << std::endl;
+
+    auto repos = repoInfo.repos;
+    // 按照优先级从高到低排序
+    std::sort(repos.begin(),
+              repos.end(),
+              [](const api::types::v1::Repo &a, const api::types::v1::Repo &b) {
+                  return a.priority > b.priority;
+              });
+    for (const auto &repo : repos) {
         std::cout << std::left << std::setw(11) << repo.name << std::setw(maxUrlLength + 2)
-                  << repo.url << std::setw(11) << repo.alias.value_or(repo.name) << std::endl;
+                  << repo.url << std::setw(11) << repo.alias.value_or(repo.name) << std::setw(10)
+                  << repo.priority << std::endl;
     }
 }
 

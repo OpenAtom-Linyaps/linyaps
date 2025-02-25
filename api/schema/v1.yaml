@@ -451,6 +451,7 @@ $defs:
     required:
       - name
       - url
+      - priority
     properties:
       name:
         type: string
@@ -461,6 +462,9 @@ $defs:
       alias:
         type: string
         description: alias of repo name
+      priority:
+        type: integer
+        description: priority of repo
   LayerInfo:
     description: Meta information on the head of layer file.
     type: object

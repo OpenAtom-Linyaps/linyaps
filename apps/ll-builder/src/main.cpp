@@ -298,8 +298,13 @@ You can report bugs to the linyaps team under this project: https://github.com/O
                       ->type_name("FILE")
                       ->check(CLI::ExistingFile);
     auto *fullOpt = buildExport->add_flag("--full", UABOption.full, _("Export uab fully"));
-    buildExport->add_flag("--layer", layerMode, _("Export to linyaps layer file"))
-      ->excludes(fileOpt, iconOpt, fullOpt);
+    auto *layerFlag = buildExport->add_flag("--layer", layerMode, _("Export to linyaps layer file"))
+                        ->excludes(fileOpt, iconOpt, fullOpt);
+    std::string appLoader;
+    buildExport->add_option("--loader", appLoader, _("Use custom loader"))
+      ->type_name("FILE")
+      ->check(CLI::ExistingFile)
+      ->excludes(layerFlag, fullOpt);
 
     // build push
     std::string pushModule;
@@ -517,7 +522,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     }
 
     // set GIO_USE_VFS to local, avoid glib start thread
-    char* oldEnv = getenv("GIO_USE_VFS");
+    char *oldEnv = getenv("GIO_USE_VFS");
     if (-1 == setenv("GIO_USE_VFS", "local", 1)) {
         qWarning() << "failed to GIO_USE_VFS to local" << errno;
     }
@@ -807,6 +812,9 @@ You can report bugs to the linyaps team under this project: https://github.com/O
             return 0;
         }
 
+        if (!appLoader.empty()) {
+            UABOption.loader = QString::fromStdString(appLoader);
+        }
         auto result = builder.exportUAB(QDir::currentPath(), UABOption);
         if (!result) {
             qCritical() << result.error();

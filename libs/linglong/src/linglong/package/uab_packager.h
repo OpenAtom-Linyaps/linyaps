@@ -74,6 +74,7 @@ public:
     utils::error::Result<void> include(const std::vector<std::string> &files) noexcept;
     utils::error::Result<void> loadBlackList() noexcept;
     utils::error::Result<void> loadNeededFiles() noexcept;
+    utils::error::Result<void> setLoader(const QString &loader) noexcept;
 
 private:
     [[nodiscard]] utils::error::Result<void> packIcon() noexcept;
@@ -94,5 +95,6 @@ private:
     api::types::v1::UabMetaInfo meta;
     QDir buildDir;
     std::filesystem::path workDir;
+    QString loader;
 };
 } // namespace linglong::package

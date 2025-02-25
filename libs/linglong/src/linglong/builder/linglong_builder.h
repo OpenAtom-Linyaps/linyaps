@@ -19,6 +19,7 @@ namespace linglong::builder {
 struct UABOption
 {
     QString iconPath;
+    QString loader;
     bool exportDevelop{ false };
     bool exportI18n{ false };
     bool full{ false };

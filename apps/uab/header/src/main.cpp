@@ -175,7 +175,8 @@ void cleanResource() noexcept
         }
 
         if (pid == 0) {
-            if (::execlp("fusermount", "fusermount", "-u", mountPoint.c_str(), nullptr) == -1) {
+            if (::execlp("fusermount", "fusermount", "-z", "-u", mountPoint.c_str(), nullptr)
+                == -1) {
                 std::cerr << "fusermount error: " << ::strerror(errno) << std::endl;
                 return false;
             }
@@ -510,5 +511,23 @@ int main(int argc, char **argv)
         cleanAndExit(-1);
     }
 
-    runAppLoader(metaInfo.onlyApp.value_or(false), opts.loaderArgs);
+    bool onlyApp = metaInfo.onlyApp.value_or(false);
+    if (onlyApp) {
+        std::string appID, module;
+        for (const auto &layer : metaInfo.layers) {
+            if (layer.info.kind == "app") {
+                appID = layer.info.id;
+                module = layer.info.packageInfoV2Module;
+                break;
+            }
+        }
+        std::string envAppRoot =
+          std::string(mountPoint) + "/layers/" + appID + "/" + module + "/files";
+        if (-1 == ::setenv("LINGLONG_UAB_APPROOT", const_cast<char *>(envAppRoot.data()), 1)) {
+            std::cerr << "setenv error: " << ::strerror(errno) << std::endl;
+            cleanAndExit(errno);
+        }
+    }
+
+    runAppLoader(onlyApp, opts.loaderArgs);
 }

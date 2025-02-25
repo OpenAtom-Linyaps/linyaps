@@ -563,7 +563,8 @@
       "type": "object",
       "required": [
         "name",
-        "url"
+        "url",
+        "priority"
       ],
       "properties": {
         "name": {
@@ -577,6 +578,10 @@
         "alias": {
           "type": "string",
           "description": "alias of repo name"
+        },
+        "priority": {
+          "type": "integer",
+          "description": "priority of repo"
         }
       }
     },

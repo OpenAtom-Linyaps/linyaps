@@ -894,6 +894,7 @@ j["packages"] = x.packages;
 inline void from_json(const json & j, Repo& x) {
 x.alias = get_stack_optional<std::string>(j, "alias");
 x.name = j.at("name").get<std::string>();
+x.priority = j.at("priority").get<int64_t>();
 x.url = j.at("url").get<std::string>();
 }
 
@@ -903,6 +904,7 @@ if (x.alias) {
 j["alias"] = x.alias;
 }
 j["name"] = x.name;
+j["priority"] = x.priority;
 j["url"] = x.url;
 }
 

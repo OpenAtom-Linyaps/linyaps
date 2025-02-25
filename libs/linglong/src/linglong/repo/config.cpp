@@ -38,15 +38,6 @@ utils::error::Result<api::types::v1::RepoConfigV2> loadConfig(const QString &fil
             config = convertToV2(*configV1);
         }
 
-        auto repoExists =
-          std::any_of(config->repos.begin(), config->repos.end(), [&config](const auto &repo) {
-              return repo.alias.value_or(repo.name) == config->defaultRepo;
-          });
-
-        if (!repoExists) {
-            return LINGLONG_ERR(QString("default repo not found in repos"));
-        }
-
         return config;
     } catch (const std::exception &e) {
         return LINGLONG_ERR(e);
@@ -115,15 +106,63 @@ api::types::v1::RepoConfigV2 convertToV2(const api::types::v1::RepoConfig &cfg) 
     api::types::v1::RepoConfigV2 configV2;
     configV2.version = 2;
     configV2.defaultRepo = cfg.defaultRepo;
+    int64_t priority = 0;
+
+    const auto &defaultRepo =
+      std::find_if(cfg.repos.begin(), cfg.repos.end(), [&cfg, &priority](const auto &repo) {
+          return repo.first == cfg.defaultRepo;
+      });
+
+    api::types::v1::Repo repoV2;
+    repoV2.priority = priority;
+    repoV2.name = defaultRepo->first;
+    repoV2.url = defaultRepo->second;
+    configV2.repos.push_back(repoV2);
+    priority -= 100;
 
     for (const auto &[name, url] : cfg.repos) {
+        if (name == cfg.defaultRepo) {
+            continue;
+        }
+
         api::types::v1::Repo repoV2;
+        repoV2.priority = priority;
         repoV2.name = name;
         repoV2.url = url;
-        configV2.repos.push_back(repoV2);
+        configV2.repos.emplace_back(std::move(repoV2));
+        priority -= 100;
     }
 
     return configV2;
+}
+
+int64_t getRepoMinPriority(const api::types::v1::RepoConfigV2 &cfg) noexcept
+{
+
+    auto minElement = std::min_element(cfg.repos.begin(),
+                                       cfg.repos.end(),
+                                       [](const auto &repo1, const auto &repo2) {
+                                           return repo1.priority < repo2.priority;
+                                       });
+
+    if (minElement != cfg.repos.end()) {
+        return minElement->priority;
+    }
+    return 0;
+}
+
+int64_t getRepoMaxPriority(const api::types::v1::RepoConfigV2 &cfg) noexcept
+{
+    auto maxElement = std::max_element(cfg.repos.begin(),
+                                       cfg.repos.end(),
+                                       [](const auto &repo1, const auto &repo2) {
+                                           return repo1.priority < repo2.priority;
+                                       });
+
+    if (maxElement != cfg.repos.end()) {
+        return maxElement->priority;
+    }
+    return 0;
 }
 
 } // namespace linglong::repo

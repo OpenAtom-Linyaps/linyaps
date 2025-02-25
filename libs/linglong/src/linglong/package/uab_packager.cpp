@@ -311,7 +311,7 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
     std::optional<LayerDir> base;
     if (onlyApp) {
         this->meta.onlyApp = true;
-        for (auto it = this->layers.begin(); it != this->layers.end(); ++it) {
+        for (auto it = this->layers.begin(); it != this->layers.end();) {
             auto infoRet = it->info();
             if (!infoRet) {
                 return LINGLONG_ERR(QString{ "failed export layer %1:" }.arg(it->absolutePath()),
@@ -319,36 +319,25 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
             }
 
             const auto &info = *infoRet;
-            if (info.id == "org.deepin.base") {
+            // the kind of old org.deepin.base and org.deepin.foundation is runtime
+            if (info.kind == "base" || info.id == "org.deepin.base"
+                || info.id == "org.deepin.foundation") {
                 base = *it;
-                this->layers.erase(it);
-                break;
+                it = this->layers.erase(it);
+                continue;
+            } else if (info.kind == "runtime") {
+                // if use custom loader, only app layer will be exported
+                if (!this->loader.isEmpty()) {
+                    it = this->layers.erase(it);
+                    continue;
+                }
             }
+            ++it;
         }
 
         if (!base) {
             return LINGLONG_ERR("couldn't find base layer");
         }
-    }
-
-    auto uabDataDir = QDir{ LINGLONG_UAB_DATA_LOCATION };
-    // copy loader
-    auto srcLoader = QFile{ uabDataDir.absoluteFilePath("uab-loader") };
-    if (!srcLoader.exists()) {
-        return LINGLONG_ERR("the loader of uab application doesn't exist.");
-    }
-
-    auto destLoader = QFile{ bundleDir.absoluteFilePath("loader") };
-    if (!srcLoader.copy(destLoader.fileName())) {
-        return LINGLONG_ERR(QString{ "couldn't copy loader %1 to %2: %3" }
-                              .arg(srcLoader.fileName())
-                              .arg(destLoader.fileName())
-                              .arg(srcLoader.errorString()));
-    }
-
-    if (!destLoader.setPermissions(destLoader.permissions() | QFile::ExeOwner | QFile::ExeGroup
-                                   | QFile::ExeOther)) {
-        return LINGLONG_ERR(destLoader);
     }
 
     // export layers
@@ -358,6 +347,7 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
           QString{ "couldn't create directory %1" }.arg(layersDir.absolutePath()));
     }
 
+    QFile srcLoader;
     QString appID;
     for (const auto &layer : this->layers) {
         auto infoRet = layer.info();
@@ -422,6 +412,7 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
         }
 
         struct stat moduleFilesDirStat{}, filesStat{};
+
         if (stat(moduleFilesDir.c_str(), &moduleFilesDirStat) == -1) {
             return LINGLONG_ERR("couldn't stat module files directory: "
                                 + QString::fromStdString(moduleFilesDir));
@@ -501,6 +492,10 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
 
         // third step, update meta infomation
         if (info.kind == "app") {
+            if (!this->loader.isEmpty()) {
+                srcLoader.setFileName(this->loader);
+            }
+
             appID = QString::fromStdString(info.id);
             auto hasMinifiedDeps = std::any_of(this->meta.layers.cbegin(),
                                                this->meta.layers.cend(),
@@ -630,6 +625,33 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
             stream << nlohmann::json(info).dump();
             layerInfoRef.info = info;
         }
+    }
+
+    if (srcLoader.fileName().isEmpty()) {
+        // default loader
+        auto uabDataDir = QDir{ LINGLONG_UAB_DATA_LOCATION };
+        srcLoader.setFileName(uabDataDir.absoluteFilePath("uab-loader"));
+        if (!srcLoader.exists()) {
+            return LINGLONG_ERR("the loader of uab application doesn't exist.");
+        }
+    }
+
+    auto destLoader = QFile{ bundleDir.absoluteFilePath("loader") };
+    if (!srcLoader.copy(destLoader.fileName())) {
+        return LINGLONG_ERR(QString{ "couldn't copy loader %1 to %2: %3" }
+                              .arg(srcLoader.fileName())
+                              .arg(destLoader.fileName())
+                              .arg(srcLoader.errorString()));
+    }
+
+    if (!destLoader.setPermissions(destLoader.permissions() | QFile::ExeOwner | QFile::ExeGroup
+                                   | QFile::ExeOther)) {
+        return LINGLONG_ERR(destLoader);
+    }
+
+    // use custom loader doesn't need extra layer and ll-box any more
+    if (!this->loader.isEmpty()) {
+        return LINGLONG_OK;
     }
 
     // add extra data
@@ -927,7 +949,11 @@ utils::error::Result<void> UABPackager::loadNeededFiles() noexcept
 
     auto libs = node.as<std::vector<std::string>>();
     for (std::filesystem::path lib : libs) {
-        if (lib.empty() || !lib.is_absolute()) {
+        if (lib.empty()) {
+            continue;
+        }
+
+        if (!lib.is_absolute()) {
             return LINGLONG_ERR(QString{ "invalid format, lib: %1" }.arg(lib.c_str()));
         }
 
@@ -937,6 +963,12 @@ utils::error::Result<void> UABPackager::loadNeededFiles() noexcept
         }
     }
 
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> UABPackager::setLoader(const QString &loader) noexcept
+{
+    this->loader = loader;
     return LINGLONG_OK;
 }
 

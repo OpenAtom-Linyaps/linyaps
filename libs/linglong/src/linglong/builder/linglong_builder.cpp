@@ -1398,6 +1398,10 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
     }
     packager.appendLayer(*appDir); // app layer must be the last of appended layer
 
+    if (!option.loader.isEmpty()) {
+        packager.setLoader(option.loader);
+    }
+
     auto uabFile = QString{ "%1_%2_%3_%4.uab" }.arg(curRef->id,
                                                     curRef->arch.toString(),
                                                     curRef->version.toString(),

@@ -2417,7 +2417,7 @@ OSTreeRepo::listLocalBy(const linglong::repo::repoCacheQuery &query) const noexc
     return this->cache->queryLayerItem(query);
 }
 
-QString getOriginRawExec(const QString &execArgs, const QString &id)
+QString getOriginRawExec(const QString &execArgs, [[maybe_unused]] const QString &id)
 {
     // Note: These strings have appeared in the app-conf-generator.sh of linglong-builder.
     // We need to remove them.

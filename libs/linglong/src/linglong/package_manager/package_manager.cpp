@@ -2082,7 +2082,7 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
     return LINGLONG_OK;
 }
 
-void PackageManager::ReplyInteraction(QDBusObjectPath object_path, const QVariantMap &replies)
+void PackageManager::ReplyInteraction([[maybe_unused]] QDBusObjectPath object_path, const QVariantMap &replies)
 {
     Q_EMIT this->ReplyReceived(replies);
 }

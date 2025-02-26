@@ -15,16 +15,19 @@ utils::error::Result<FuzzyReference> FuzzyReference::parse(const QString &raw) n
 {
     LINGLONG_TRACE("parse fuzz reference string " + raw);
 
-    static QRegularExpression regexp(
-      R"(^(?:(?<channel>[^:]*):)?(?<id>[^\/]*)(?:\/(?<version>[^\/]*)(?:\/(?<architecture>[^\/]*))?)?$)");
+    static auto regexp = []() noexcept {
+        QRegularExpression regexp(
+          R"(^(?:(?<channel>[^:]*):)?(?<id>[^\/]*)(?:\/(?<version>[^\/]*)(?:\/(?<architecture>[^\/]*))?)?$)");
+        regexp.optimize();
+        return regexp;
+    }();
 
     auto matches = regexp.match(raw);
     if (not(matches.isValid() and matches.hasMatch())) {
         return LINGLONG_ERR("regexp mismatched.");
     }
 
-    std::optional<QString> channel;
-    channel = matches.captured("channel");
+    std::optional<QString> channel = matches.captured("channel");
     if (channel->isEmpty() || channel == "unknown") {
         channel = std::nullopt;
     }
@@ -38,7 +41,7 @@ utils::error::Result<FuzzyReference> FuzzyReference::parse(const QString &raw) n
         if (!tmpVersion) {
             return LINGLONG_ERR(tmpVersion);
         }
-        version = *tmpVersion;
+        version = std::move(tmpVersion).value();
     }
 
     std::optional<Architecture> architecture;
@@ -48,7 +51,7 @@ utils::error::Result<FuzzyReference> FuzzyReference::parse(const QString &raw) n
         if (!tmpArchitecture) {
             return LINGLONG_ERR(tmpArchitecture);
         }
-        architecture = *tmpArchitecture;
+        architecture = std::move(tmpArchitecture).value();
     }
 
     return create(channel, id, version, architecture);

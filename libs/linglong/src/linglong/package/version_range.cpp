@@ -20,7 +20,11 @@ try {
 
 VersionRange::VersionRange(const QString &raw)
     : VersionRange([&raw]() -> std::tuple<QString, QString> {
-        static auto regExp = QRegularExpression(R"(\[([^,]+),([^\)]+)\))");
+        static auto regExp = []() noexcept {
+            QRegularExpression reg(R"(\[([^,]+),([^\)]+)\))");
+            reg.optimize();
+            return reg;
+        }();
         auto matched = regExp.match(raw);
         return std::make_tuple(matched.captured(1), matched.captured(2));
     }())

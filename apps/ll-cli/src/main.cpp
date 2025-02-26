@@ -64,18 +64,18 @@ void startProcess(const QString &program, const QStringList &args = {})
 
 std::vector<std::string> transformOldExec(int argc, char **argv) noexcept
 {
-    std::vector<std::string> res{ argv + 1, argv + argc };
-    if (std::find(res.begin(), res.end(), "run") == res.end()) {
+    std::vector<std::string> res;
+    std::reverse_copy(argv + 1, argv + argc, std::back_inserter(res));
+    if (std::find(res.rbegin(), res.rend(), "run") == res.rend()) {
         return res;
     }
 
-    auto exec = std::find(res.begin(), res.end(), "--exec");
-
-    if (exec == res.end()) {
+    auto exec = std::find(res.rbegin(), res.rend(), "--exec");
+    if (exec == res.rend()) {
         return res;
     }
 
-    if ((exec + 1) == res.end() || (exec + 2) != res.end()) {
+    if ((exec + 1) == res.rend() || (exec + 2) != res.rend()) {
         *exec = "--";
         qDebug() << "replace `--exec` with `--`";
         return res;
@@ -86,27 +86,18 @@ std::vector<std::string> transformOldExec(int argc, char **argv) noexcept
         wordfree(&words);
     });
 
-    auto ret = wordexp((exec + 1)->c_str(), &words, 0);
-    if (ret) {
+    if (auto ret = wordexp((exec + 1)->c_str(), &words, 0); ret != 0) {
         qCritical() << "wordexp on" << (exec + 1)->c_str() << "failed with" << ret
                     << "transform old exec arguments failed.";
         return res;
     }
 
-    res.erase(exec, res.end());
-    res.emplace_back("--");
-
-    for (size_t i = 0; i < words.we_wordc; i++) {
-        res.emplace_back(words.we_wordv[i]);
+    auto it = res.erase(res.rend().base(), exec.base());
+    res.emplace(it, "--");
+    for (decltype(words.we_wordc) i = 0; i < words.we_wordc; ++i) {
+        res.emplace(res.begin(), words.we_wordv[i]);
     }
 
-    QStringList list{};
-
-    for (const auto &arg : res) {
-        list.push_back(QString::fromStdString(arg));
-    }
-
-    qDebug() << "using new args" << list;
     return res;
 }
 
@@ -162,6 +153,11 @@ int main(int argc, char **argv)
     QCoreApplication app(argc, argv);
     applicationInitialize();
 
+    if (argc == 1) {
+        std::cout << commandParser.help() << std::endl;
+        return 0;
+    }
+
     commandParser.get_help_ptr()->description(_("Print this help message and exit"));
     commandParser.set_help_all_flag("--help-all", _("Expand all help"));
     commandParser.usage(_("Usage: ll-cli [OPTIONS] [SUBCOMMAND]"));
@@ -172,17 +168,16 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     constexpr auto CliHiddenGroup = "";
 
     // add flags
-    bool versionFlag = false;
-    bool jsonFlag = false;
-    bool noDBus = false;
-    commandParser.add_flag("--version", versionFlag, _("Show version"));
-    commandParser
-      .add_flag("--no-dbus",
-                noDBus,
-                _("Use peer to peer DBus, this is used only in case that DBus daemon is "
-                  "not available"))
-      ->group(CliHiddenGroup);
-    commandParser.add_flag("--json", jsonFlag, _(R"(Use json format to output result)"));
+    const auto &versionDescription = std::string{ _("Show version") };
+    auto *versionFlag = commandParser.add_flag("--version", versionDescription);
+
+    const auto &noDBusDescription = std::string{ _(
+      "Use peer to peer DBus, this is used only in case that DBus daemon is not available") };
+    auto *noDBusFlag =
+      commandParser.add_flag("--no-dbus", noDBusDescription)->group(CliHiddenGroup);
+
+    const auto &jsonDescription = std::string{ _("Use json format to output result") };
+    auto *jsonFlag = commandParser.add_flag("--json", jsonDescription);
 
     CLI::Validator validatorString{
         [](const std::string &parameter) {
@@ -333,8 +328,6 @@ ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
     // add sub command uninstall
     // These two options are used when uninstalling apps in the app Store and need to be
     // retained but hidden.
-    bool pruneOpt = false;
-    bool allOpt = false;
     auto *cliUninstall =
       commandParser.add_subcommand("uninstall", _("Uninstall the application or runtimes"))
         ->group(CliBuildInGroup)
@@ -346,8 +339,15 @@ ll-cli install stable:org.deepin.demo/0.0.0.1/x86_64
     cliUninstall->add_option("--module", options.module, _("Uninstall a specify module"))
       ->type_name("MODULE")
       ->check(validatorString);
-    cliUninstall->add_flag("--prune", pruneOpt, "Remove all unused modules")->group(CliHiddenGroup);
-    cliUninstall->add_flag("--all", allOpt, "Uninstall all modules")->group(CliHiddenGroup);
+
+    // below options are used for compatibility with old ll-cli
+    const auto &pruneDescription = std::string{ _("Remove all unused modules") };
+    [[maybe_unused]] auto *pruneFlag =
+      cliUninstall->add_flag("--prune", pruneDescription)->group(CliHiddenGroup);
+
+    const auto &allDescription = std::string{ _("Uninstall all modules") };
+    [[maybe_unused]] auto *allFlag =
+      cliUninstall->add_flag("--all", allDescription)->group(CliHiddenGroup);
 
     // add sub command upgrade
     auto *cliUpgrade =
@@ -550,15 +550,10 @@ ll-cli list --upgradable
       });
 
     auto res = transformOldExec(argc, argv);
-    std::reverse(res.begin(), res.end());
-    if (argc == 1) {
-        std::cout << commandParser.help() << std::endl;
-        return 0;
-    }
-    CLI11_PARSE(commandParser, res);
+    CLI11_PARSE(commandParser, std::move(res));
 
-    if (versionFlag) {
-        if (jsonFlag) {
+    if (*versionFlag) {
+        if (*jsonFlag) {
             std::cout << nlohmann::json{ { "version", LINGLONG_VERSION } } << std::endl;
         } else {
             std::cout << _("linyaps CLI version ") << LINGLONG_VERSION << std::endl;
@@ -573,12 +568,18 @@ ll-cli list --upgradable
         qCritical() << config.error();
         return -1;
     }
-    const auto defaultRepo = linglong::repo::getDefaultRepo(*config);
-    linglong::repo::ClientFactory clientFactory(defaultRepo.url);
+
+    auto defaultRepo = linglong::repo::getDefaultRepo(*config);
+    linglong::repo::ClientFactory clientFactory(std::move(defaultRepo.url));
 
     auto ret = QMetaObject::invokeMethod(
       QCoreApplication::instance(),
-      [&commandParser, &noDBus, &jsonFlag, &options, &config, &clientFactory]() {
+      [&commandParser,
+       noDBus = !!*noDBusFlag,
+       json = !!*jsonFlag,
+       options = std::move(options),
+       repoConfig = std::move(config).value(),
+       &clientFactory]() mutable {
           auto repoRoot = QDir(LINGLONG_ROOT);
           if (!repoRoot.exists()) {
               qCritical() << "underlying repository doesn't exist:" << repoRoot.absolutePath();
@@ -621,11 +622,7 @@ ll-cli list --upgradable
               }
 
               qInfo() << "some subcommands will failed in --no-dbus mode.";
-
               const auto pkgManAddress = QString("unix:path=/tmp/linglong-package-manager.socket");
-
-              QThread::sleep(1);
-
               startProcess("sudo",
                            { "--user",
                              LINGLONG_USERNAME,
@@ -665,13 +662,14 @@ ll-cli list --upgradable
           }
 
           std::unique_ptr<Printer> printer;
-          if (jsonFlag) {
+          if (json) {
               printer = std::make_unique<JSONPrinter>();
           } else {
               printer = std::make_unique<CLIPrinter>();
           }
 
-          auto *repo = new linglong::repo::OSTreeRepo(repoRoot, *config, clientFactory);
+          auto *repo =
+            new linglong::repo::OSTreeRepo(repoRoot, std::move(repoConfig), clientFactory);
           repo->setParent(QCoreApplication::instance());
 
           auto ociRuntimeCLI = qgetenv("LINGLONG_OCI_RUNTIME");
@@ -689,8 +687,8 @@ ll-cli list --upgradable
           if (!ociRuntime) {
               std::rethrow_exception(ociRuntime.error());
           }
-          auto *containerBuidler = new linglong::runtime::ContainerBuilder(**ociRuntime);
-          containerBuidler->setParent(QCoreApplication::instance());
+          auto *containerBuilder = new linglong::runtime::ContainerBuilder(**ociRuntime);
+          containerBuilder->setParent(QCoreApplication::instance());
 
           std::unique_ptr<InteractiveNotifier> notifier{ nullptr };
 
@@ -707,20 +705,20 @@ ll-cli list --upgradable
           }
 
           if (!notifier) {
-              qInfo()
-                << "Using DummyNotifier, expected interactions and prompts will not be displayed.";
+              qInfo() << "Using DummyNotifier, expected interactions and prompts will not be "
+                         "displayed.";
               notifier = std::make_unique<linglong::cli::DummyNotifier>();
           }
 
           auto *cli = new linglong::cli::Cli(*printer,
                                              **ociRuntime,
-                                             *containerBuidler,
+                                             *containerBuilder,
                                              *pkgMan,
                                              *repo,
                                              std::move(notifier),
                                              QCoreApplication::instance());
-          cli->setCliOptions(options);
-          QMap<QString, std::function<int(Cli *)>> subcommandMap = {
+          cli->setCliOptions(std::move(options));
+          std::unordered_map<std::string_view, int (Cli::*)(CLI::App *)> subcommandMap = {
               { "run", &Cli::run },
               { "exec", &Cli::exec },
               { "enter", &Cli::exec },
@@ -734,7 +732,8 @@ ll-cli list --upgradable
               { "info", &Cli::info },
               { "content", &Cli::content },
               { "prune", &Cli::prune },
-              { "inspect", &Cli::inspect }
+              { "inspect", &Cli::inspect },
+              { "repo", &Cli::repo }
           };
 
           if (QObject::connect(QCoreApplication::instance(),
@@ -747,25 +746,25 @@ ll-cli list --upgradable
               return;
           }
 
-          auto commands = commandParser.get_subcommands();
-
+          const auto &commands = commandParser.get_subcommands();
           auto ret =
             std::find_if(commands.begin(), commands.end(), [&subcommandMap](CLI::App *app) {
-                auto name = app->get_name();
-                return app->parsed()
-                  && (name == "repo" || subcommandMap.contains(QString::fromStdString(name)));
+                if (!app->parsed()) {
+                    return false;
+                }
+
+                return subcommandMap.find(app->get_name()) != subcommandMap.end();
             });
 
           if (ret == commands.end()) {
               std::cout << commandParser.help("", CLI::AppFormatMode::All);
-              return QCoreApplication::exit(-1);
+              QCoreApplication::exit(-1);
+              return;
           }
 
-          auto name = (*ret)->get_name();
-
+          const auto &name = (*ret)->get_name();
           // ll-cli repo need app to parse subcommand
-          return QCoreApplication::exit(
-            name == "repo" ? cli->repo(*ret) : subcommandMap[QString::fromStdString(name)](cli));
+          QCoreApplication::exit(std::invoke(subcommandMap[name], cli, *ret));
       },
       Qt::QueuedConnection);
     Q_ASSERT(ret);

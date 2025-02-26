@@ -9,6 +9,7 @@
 #include "api/ClientAPI.h"
 
 #include <string>
+#include <utility>
 
 namespace linglong::repo {
 
@@ -17,16 +18,16 @@ ClientFactory::ClientFactory(const QString &server)
 {
 }
 
-ClientFactory::ClientFactory(const std::string &server)
-    : m_server(server)
+ClientFactory::ClientFactory(std::string server)
+    : m_server(std::move(server))
 {
 }
 
 std::shared_ptr<apiClient_t> ClientFactory::createClientV2()
 {
-    auto client = apiClient_create_with_base_path(m_server.c_str(), nullptr, nullptr);
+    auto *client = apiClient_create_with_base_path(m_server.c_str(), nullptr, nullptr);
     client->userAgent = m_user_agent.c_str();
-    return std::shared_ptr<apiClient_t>(client, apiClient_free);
+    return { client, apiClient_free };
 }
 
 void ClientFactory::setServer(const QString &server)

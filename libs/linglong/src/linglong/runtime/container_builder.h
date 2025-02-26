@@ -78,10 +78,11 @@ public:
     explicit ContainerBuilder(ocppi::cli::CLI &cli);
 
     auto create(const ContainerOptions &opts) noexcept
-      -> utils::error::Result<QSharedPointer<Container>>;
+      -> utils::error::Result<std::unique_ptr<Container>>;
 
-    auto createWithConfig(ocppi::runtime::config::types::Config &originalConfig, QString &containerID) noexcept
-      -> utils::error::Result<QSharedPointer<Container>>;
+    auto createWithConfig(const ocppi::runtime::config::types::Config &originalConfig,
+                          const QString &containerID) noexcept
+      -> utils::error::Result<std::unique_ptr<Container>>;
 
     auto getOCIConfig(const ContainerOptions &opts) noexcept
       -> utils::error::Result<ocppi::runtime::config::types::Config>;

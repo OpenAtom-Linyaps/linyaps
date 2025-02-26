@@ -2082,7 +2082,8 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
     return LINGLONG_OK;
 }
 
-void PackageManager::ReplyInteraction([[maybe_unused]] QDBusObjectPath object_path, const QVariantMap &replies)
+void PackageManager::ReplyInteraction([[maybe_unused]] QDBusObjectPath object_path,
+                                      const QVariantMap &replies)
 {
     Q_EMIT this->ReplyReceived(replies);
 }
@@ -2272,7 +2273,7 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
         }
     });
 
-    auto container = this->containerBuilder.create({
+    auto containerRet = this->containerBuilder.create({
       .appID = ref.id,
       .containerID = QString::fromStdString(containerID),
       .runtimeDir = runtimeLayerDir,
@@ -2283,9 +2284,10 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
       .mounts = std::move(applicationMounts),
       .masks = {},
     });
-    if (!container) {
-        return LINGLONG_ERR(container);
+    if (!containerRet) {
+        return LINGLONG_ERR(containerRet);
     }
+    auto container = std::move(containerRet).value();
 
     ocppi::runtime::config::types::Process process{};
     process.cwd = "/";
@@ -2298,8 +2300,8 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
     }
     // Usage: ld-cache-generator [cacheRoot] [id] [gnu_arch_triplet]
     //        font-cache-generator [cacheRoot] [id]
-    const std::string ldGenerateCmd = ldGenerator + " " + appCacheDest + " " + ref.id.toStdString()
-      + " " + currentArch->getTriplet().toStdString();
+    const auto ldGenerateCmd = std::string{ "exec" } + " " + ldGenerator + " " + appCacheDest + " "
+      + ref.id.toStdString() + " " + currentArch->getTriplet().toStdString();
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
     const std::string fontGenerateCmd =
       fontGenerator + " " + appCacheDest + " " + ref.id.toStdString();
@@ -2316,7 +2318,7 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
 
     ocppi::runtime::RunOption opt{ "" };
     opt.GlobalOption::root = containerStateRoot;
-    auto result = container->data()->run(process, opt);
+    auto result = container->run(process, opt);
     if (!result) {
         return LINGLONG_ERR(result);
     }

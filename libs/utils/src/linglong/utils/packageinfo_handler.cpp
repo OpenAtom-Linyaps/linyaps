@@ -10,12 +10,9 @@
 
 namespace linglong::utils {
 
-error::Result<api::types::v1::PackageInfoV2>
-toPackageInfoV2(const api::types::v1::PackageInfo &oldInfo)
+api::types::v1::PackageInfoV2 toPackageInfoV2(const api::types::v1::PackageInfo &oldInfo)
 {
-    LINGLONG_TRACE("convert PackageInfo to PackageInfoV2");
-
-    auto info = api::types::v1::PackageInfoV2{
+    return api::types::v1::PackageInfoV2{
         .arch = oldInfo.arch,
         .base = oldInfo.base,
         .channel = oldInfo.channel.value_or("main"),
@@ -33,8 +30,6 @@ toPackageInfoV2(const api::types::v1::PackageInfo &oldInfo)
         .uuid = std::nullopt,
         .version = oldInfo.version,
     };
-
-    return info;
 }
 
 error::Result<api::types::v1::PackageInfoV2> parsePackageInfo(const QString &path)

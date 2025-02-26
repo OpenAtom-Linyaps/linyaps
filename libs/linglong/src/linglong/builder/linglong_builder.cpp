@@ -156,8 +156,11 @@ currentReference(const api::types::v1::BuilderProject &project)
     if (!architecture) {
         return LINGLONG_ERR(architecture);
     }
-
-    auto ref = package::Reference::create("main",
+    std::string channel = "main";
+    if (project.package.channel.has_value()) {
+        channel = *project.package.channel;
+    }
+    auto ref = package::Reference::create(QString::fromStdString(channel),
                                           QString::fromStdString(project.package.id),
                                           *version,
                                           *architecture);
@@ -265,8 +268,7 @@ utils::error::Result<package::Reference> pullDependency(const package::FuzzyRefe
 // 安装模块文件
 utils::error::Result<void> installModule(QStringList installRules,
                                          const QDir &buildOutput,
-                                         const QDir &moduleOutput,
-                                         const std::function<void(int)> &handleProgress)
+                                         const QDir &moduleOutput)
 {
     LINGLONG_TRACE("install module file");
     buildOutput.mkpath(".");
@@ -300,10 +302,6 @@ utils::error::Result<void> installModule(QStringList installRules,
         // 计算进度
         ruleIndex++;
         auto percentage = ruleIndex * 100 / installRules.length(); // NOLINT
-        // 统计进度
-        if (handleProgress) {
-            handleProgress(percentage);
-        }
         // 如果不以^符号开头，当作普通路径使用
         if (!rule.startsWith("^")) {
             // append $PROJECT_ROOT/output/_build/files to prefix
@@ -344,7 +342,6 @@ utils::error::Result<void> installModule(QStringList installRules,
             }
         }
     }
-    handleProgress(100);
     return LINGLONG_OK;
 }
 
@@ -1028,10 +1025,7 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
             installRules.append(file.c_str());
         }
         installRules.removeDuplicates();
-        auto ret = installModule(installRules,
-                                 buildOutput.path(),
-                                 moduleDir.filePath("files"),
-                                 []([[maybe_unused]] int percentage) { });
+        auto ret = installModule(installRules, buildOutput.path(), moduleDir.filePath("files"));
         if (!ret.has_value()) {
             return LINGLONG_ERR("install module", ret);
         }
@@ -1091,10 +1085,7 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
                             .toStdString(),
                           2);
         QDir moduleDir = this->workingDir.absoluteFilePath("linglong/output/binary");
-        auto ret = installModule(installRules,
-                                 buildOutput.path(),
-                                 moduleDir.filePath("files"),
-                                 []([[maybe_unused]] int percentage) { });
+        auto ret = installModule(installRules, buildOutput.path(), moduleDir.filePath("files"));
         if (!ret.has_value()) {
             return LINGLONG_ERR("install module", ret);
         }
@@ -1612,8 +1603,8 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     // mergedDir 会自动在释放时删除临时目录，所以要用变量保留住
     utils::error::Result<std::shared_ptr<package::LayerDir>> mergedDir;
     if (modules.size() > 1) {
-        qDebug() << "create temp merge dir." << "ref: " << curRef->toString()
-                 << "modules: " << modules;
+        qDebug() << "create temp merge dir."
+                 << "ref: " << curRef->toString() << "modules: " << modules;
         mergedDir = this->repo.getMergedModuleDir(*curRef, modules);
         if (!mergedDir.has_value()) {
             return LINGLONG_ERR(mergedDir);

@@ -6,7 +6,6 @@
 
 #include "linglong/runtime/container.h"
 
-#include "linglong/package/architecture.h"
 #include "linglong/utils/finally/finally.h"
 #include "ocppi/runtime/RunOption.hpp"
 #include "ocppi/runtime/config/types/Generators.hpp"
@@ -14,21 +13,92 @@
 #include <QDir>
 #include <QStandardPaths>
 
-#include <filesystem>
 #include <fstream>
+#include <iostream>
+#include <utility>
 
 #include <sys/stat.h>
 #include <unistd.h>
 
+namespace {
+void mergeProcessConfig(ocppi::runtime::config::types::Process &dst,
+                        const ocppi::runtime::config::types::Process &src)
+{
+    if (src.user) {
+        dst.user = src.user;
+    }
+
+    if (src.apparmorProfile) {
+        dst.apparmorProfile = src.apparmorProfile;
+    }
+
+    if (src.args) {
+        dst.args = src.args;
+    }
+
+    if (src.capabilities) {
+        dst.capabilities = src.capabilities;
+    }
+
+    if (src.commandLine) {
+        dst.commandLine = src.commandLine;
+    }
+
+    if (src.consoleSize) {
+        dst.consoleSize = src.consoleSize;
+    }
+
+    if (!src.cwd.empty()) {
+        dst.cwd = src.cwd;
+    }
+
+    if (src.env) {
+        dst.env = src.env;
+    }
+
+    if (src.ioPriority) {
+        dst.ioPriority = src.ioPriority;
+    }
+
+    if (src.noNewPrivileges) {
+        dst.noNewPrivileges = src.noNewPrivileges;
+    }
+
+    if (src.oomScoreAdj) {
+        dst.oomScoreAdj = src.oomScoreAdj;
+    }
+
+    if (src.rlimits) {
+        dst.rlimits = src.rlimits;
+    }
+
+    if (src.scheduler) {
+        dst.scheduler = src.scheduler;
+    }
+
+    if (src.selinuxLabel) {
+        dst.selinuxLabel = src.selinuxLabel;
+    }
+
+    if (src.terminal) {
+        dst.terminal = src.terminal;
+    }
+
+    if (src.user) {
+        dst.user = src.user;
+    }
+}
+} // namespace
+
 namespace linglong::runtime {
 
-Container::Container(const ocppi::runtime::config::types::Config &cfg,
-                     const QString &appID,
-                     const QString &conatinerID,
+Container::Container(ocppi::runtime::config::types::Config cfg,
+                     QString appID,
+                     QString conatinerID,
                      ocppi::cli::CLI &cli)
-    : cfg(cfg)
-    , id(conatinerID)
-    , appID(appID)
+    : cfg(std::move(cfg))
+    , id(std::move(conatinerID))
+    , appID(std::move(appID))
     , cli(cli)
 {
     Q_ASSERT(cfg.process.has_value());
@@ -39,12 +109,14 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
 {
     LINGLONG_TRACE(QString("run container %1").arg(this->id));
 
-    QDir runtimeDir = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+    std::error_code ec;
+    std::filesystem::path runtimeDir =
+      QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation).toStdString();
 
     // bundle dir is already created in ContainerBuilder::create
-    QDir bundle = runtimeDir.absoluteFilePath(QString("linglong/%1").arg(this->id));
-    if (!bundle.mkpath("./rootfs")) {
-        return LINGLONG_ERR("make rootfs directory");
+    auto bundle = runtimeDir / "linglong" / this->id.toStdString();
+    if (!std::filesystem::create_directories(bundle, ec) && ec) {
+        return LINGLONG_ERR("make rootfs directory", ec);
     }
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
     if (!bundle.mkpath("conf.d")) {
@@ -53,97 +125,74 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
 #endif
     auto _ = // NOLINT
       utils::finally::finally([&]() {
-          if (!qgetenv("LINGLONG_DEBUG").isEmpty()) {
-              runtimeDir.mkpath("linglong/debug");
-              auto archive =
-                runtimeDir.absoluteFilePath(QString("linglong/debug/%1").arg(this->id));
-              if (QDir().rename(bundle.absolutePath(), archive)) {
-                  return;
+          std::error_code ec;
+          while (!qgetenv("LINGLONG_DEBUG").isEmpty()) {
+              if (!std::filesystem::create_directories(runtimeDir / "linglong/debug", ec) && ec) {
+                  qCritical() << "failed to create debug directory:" << ec.message().c_str();
+                  break;
               }
-              qCritical() << "failed to archive" << bundle.absolutePath() << "to" << archive;
-          }
-          if (bundle.removeRecursively()) {
+
+              auto archive = runtimeDir / "linglong/debug" / this->id.toStdString();
+              std::filesystem::rename(bundle, archive, ec);
+              if (ec) {
+                  qCritical() << "failed to rename bundle directory:" << ec.message().c_str();
+                  break;
+              }
+
               return;
           }
-          qCritical() << "failed to remove" << runtimeDir.absolutePath();
+
+          if (std::filesystem::remove_all(bundle, ec) == static_cast<std::uintmax_t>(-1)) {
+              qCritical() << "failed to remove " << bundle.c_str() << ": " << ec.message().c_str();
+          }
       });
 
-    if (!this->cfg.process) {
-        // NOTE: process should be set in /usr/lib/linglong/container/config.json,
-        // and configuration generator must not delete it.
-        // So it's a bug if process no has_value at this time.
-        Q_ASSERT(false);
-        return LINGLONG_ERR("process is not set");
-    }
-
-    if (!this->cfg.process->env.has_value()) {
-        // NOTE: same as above.
-        Q_ASSERT(false);
-        return LINGLONG_ERR("process.env is not set");
-    }
-
-    auto originEnvs = this->cfg.process->env.value();
-    this->cfg.process = process;
-
-    if (this->cfg.process->user) {
-        qWarning() << "`user` field is ignored.";
-    }
-
-    if (!this->cfg.process->env) {
-        qDebug() << "user `env` field is not exists.";
-        this->cfg.process->env = std::vector<std::string>{};
-    }
+    auto curProcess =
+      std::move(this->cfg.process).value_or(ocppi::runtime::config::types::Process{});
+    mergeProcessConfig(curProcess, process);
+    this->cfg.process = std::move(curProcess);
 
     if (this->cfg.process->cwd.empty()) {
         qDebug() << "cwd of process is empty, run process in current directory.";
         this->cfg.process->cwd = ("/run/host/rootfs" + QDir::currentPath()).toStdString();
     }
 
-    this->cfg.process->user = ocppi::runtime::config::types::User{};
-    this->cfg.process->user->gid = getgid();
-    this->cfg.process->user->uid = getuid();
+    if (!this->cfg.process->user) {
+        this->cfg.process->user =
+          ocppi::runtime::config::types::User{ .gid = ::getgid(), .uid = ::getuid() };
+    }
 
     if (isatty(fileno(stdin)) != 0) {
         this->cfg.process->terminal = true;
     }
+
     // 在原始args前面添加bash --login -c，这样可以使用/etc/profile配置的环境变量
-    if (process.args.has_value()) {
+    if (process.args) {
+        const auto &args = process.args.value();
         QStringList bashArgs;
+        std::transform(args.begin(),
+                       args.end(),
+                       std::back_inserter(bashArgs),
+                       [](const std::string &arg) {
+                           return QString::fromStdString(arg);
+                       });
+
         // 为避免原始args包含空格，每个arg都使用单引号包裹，并对arg内部的单引号进行转义替换
-        for (const auto &arg : *process.args) {
-            bashArgs.push_back(
-              QString("'%1'").arg(QString::fromStdString(arg).replace("'", "'\\''")));
-        }
+        std::for_each(bashArgs.begin(), bashArgs.end(), [](QString &arg) {
+            arg.replace('\'', "'\\''");
+            arg.prepend('\'');
+            arg.push_back('\'');
+        });
+
         // quickfix: 某些应用在以bash -c启动后，收到SIGTERM后不会完全退出
         bashArgs.push_back("; wait");
         auto arguments = std::vector<std::string>{
             "/bin/bash", "--login", "-e", "-c", bashArgs.join(" ").toStdString(),
         };
-        this->cfg.process->args = arguments;
-    }
 
-    for (const auto &env : *this->cfg.process->env) {
-        auto key = env.substr(0, env.find_first_of('='));
-        auto it = // NOLINT
-          std::find_if(originEnvs.cbegin(), originEnvs.cend(), [&key](const std::string &env) {
-              return env.rfind(key, 0) == 0;
-          });
-
-        if (it != originEnvs.cend()) {
-            qWarning() << "duplicate environment has been detected: ["
-                       << "original:" << QString::fromStdString(*it)
-                       << "user:" << QString::fromStdString(env) << "], choose original.";
-            continue;
-        }
-
-        originEnvs.emplace_back(env);
-    }
-
-    this->cfg.process->env = originEnvs;
-
-    auto arch = package::Architecture::currentCPUArchitecture();
-    if (!arch) {
-        return LINGLONG_ERR(arch);
+        this->cfg.process->args = std::move(arguments);
+    } else {
+        this->cfg.process->args = { "/bin/bash", "--login" };
     }
 
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
@@ -171,24 +220,21 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
     });
 #endif
 
-    nlohmann::json json = this->cfg;
-
     {
-        std::ofstream ofs(bundle.absoluteFilePath("config.json").toStdString());
+        std::ofstream ofs(bundle / "config.json");
         Q_ASSERT(ofs.is_open());
         if (!ofs.is_open()) {
             return LINGLONG_ERR("create config.json in bundle directory");
         }
 
-        ofs << json.dump();
+        ofs << nlohmann::json(this->cfg);
         ofs.close();
     }
-    qDebug() << "run container in " << bundle.path();
+    qDebug() << "run container in " << bundle.c_str();
     // 禁用crun自己创建cgroup，便于AM识别和管理玲珑应用
     opt.GlobalOption::extra.emplace_back("--cgroup-manager=disabled");
-    auto result = this->cli.run(this->id.toStdString(),
-                                std::filesystem::path(bundle.absolutePath().toStdString()),
-                                opt);
+
+    auto result = this->cli.run(this->id.toStdString(), bundle, opt);
 
     if (!result) {
         return LINGLONG_ERR("cli run", result);

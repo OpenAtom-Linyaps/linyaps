@@ -459,7 +459,7 @@ utils::error::Result<package::Reference> clearReferenceLocal(const linglong::rep
         if (!curArch) {
             return LINGLONG_ERR(curArch);
         }
-        if (curArch->toString() != fuzzy.arch->toString()) {
+        if (curArch != *fuzzy.arch) {
             return LINGLONG_ERR("arch mismatch with host arch");
         }
     }
@@ -484,7 +484,7 @@ utils::error::Result<package::Reference> clearReferenceLocal(const linglong::rep
         auto ver = QString::fromStdString(ref.info.version);
         auto pkgVer = linglong::package::Version::parse(ver);
         if (!pkgVer) {
-            qFatal("internal error: broken data of repo cache: %s", ver.toStdString().c_str());
+            qFatal("internal error: broken data of repo cache: %s", ref.info.version.c_str());
         }
 
         qDebug() << "available layer found:" << fuzzy.toString() << ver;
@@ -670,9 +670,9 @@ QDir OSTreeRepo::ostreeRepoDir() const noexcept
 }
 
 OSTreeRepo::OSTreeRepo(const QDir &path,
-                       const api::types::v1::RepoConfigV2 &cfg,
+                       api::types::v1::RepoConfigV2 cfg,
                        ClientFactory &clientFactory) noexcept
-    : cfg(cfg)
+    : cfg(std::move(cfg))
     , m_clientFactory(clientFactory)
 {
     if (!path.exists()) {
@@ -694,7 +694,7 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
     {
         LINGLONG_TRACE("use linglong repo at " + path.absolutePath());
 
-        repoPath = g_file_new_for_path(this->ostreeRepoDir().absolutePath().toUtf8());
+        repoPath = g_file_new_for_path(this->ostreeRepoDir().absolutePath().toLocal8Bit());
         ostreeRepo = ostree_repo_new(repoPath);
         Q_ASSERT(ostreeRepo != nullptr);
         if (ostree_repo_open(ostreeRepo, nullptr, &gErr) == TRUE) {
@@ -712,8 +712,6 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
 
             return;
         }
-
-        qDebug() << LINGLONG_ERRV("ostree_repo_open", gErr);
 
         g_clear_error(&gErr);
         g_clear_object(&ostreeRepo);
@@ -1044,6 +1042,10 @@ utils::error::Result<void> OSTreeRepo::remove(const package::Reference &ref,
                                               const std::optional<std::string> &subRef) noexcept
 {
     LINGLONG_TRACE("remove " + ref.toString());
+
+    if (module.empty()) {
+        return LINGLONG_ERR("module is empty");
+    }
 
     auto layer = this->getLayerItem(ref, module, subRef);
     if (!layer) {
@@ -2004,7 +2006,7 @@ OSTreeRepo::getLayerItem(const package::Reference &ref,
                           .repo = std::nullopt,
                           .channel = ref.channel.toStdString(),
                           .version = ref.version.toString().toStdString(),
-                          .module = module,
+                          .module = std::move(module),
                           .uuid = subRef,
                           .deleted = std::nullopt };
     auto items = this->cache->queryLayerItem(query);
@@ -2026,7 +2028,7 @@ OSTreeRepo::getLayerItem(const package::Reference &ref,
     if (count == 0) {
         if (query.module != "binary") {
             return LINGLONG_ERR("couldn't find layer item " % ref.toString() % "/"
-                                % module.c_str());
+                                % query.module->c_str());
         }
 
         qDebug() << "fallback to runtime:" << query.to_string().c_str();
@@ -2077,7 +2079,8 @@ auto OSTreeRepo::getLayerDir(const package::Reference &ref,
 
 // get all module list
 utils::error::Result<std::vector<std::string>> OSTreeRepo::getRemoteModuleList(
-  const package::Reference &ref, const std::optional<std::vector<std::string>> &filter) noexcept
+  const package::Reference &ref,
+  const std::optional<std::vector<std::string>> &filter) const noexcept
 {
     LINGLONG_TRACE("get remote module list");
     auto fuzzy = package::FuzzyReference::create(ref.channel, ref.id, ref.version, ref.arch);
@@ -2118,7 +2121,7 @@ utils::error::Result<std::vector<std::string>> OSTreeRepo::getRemoteModuleList(
     }
     // 如果想安装binary模块，但远程没有binary模块，就安装runtime模块
     if (include(filter.value(), "binary") && !include(modules, "binary")) {
-        modules.push_back("runtime");
+        modules.emplace_back("runtime");
     }
     std::sort(modules.begin(), modules.end());
     auto it = std::unique(modules.begin(), modules.end());
@@ -2139,13 +2142,15 @@ std::vector<std::string> OSTreeRepo::getModuleList(const package::Reference &ref
     // 按module字母从小到大排序，提前排序以保证后面的commits比较
     std::sort(layers.begin(),
               layers.end(),
-              [](api::types::v1::RepositoryCacheLayersItem lhs,
-                 api::types::v1::RepositoryCacheLayersItem rhs) {
+              [](const api::types::v1::RepositoryCacheLayersItem &lhs,
+                 const api::types::v1::RepositoryCacheLayersItem &rhs) {
                   return lhs.info.packageInfoV2Module < rhs.info.packageInfoV2Module;
               });
+
     std::vector<std::string> modules;
-    for (const auto &item : layers) {
-        modules.push_back(item.info.packageInfoV2Module);
+    modules.reserve(layers.size());
+    for (auto &item : layers) {
+        modules.emplace_back(std::move(item.info.packageInfoV2Module));
     }
     return modules;
 }
@@ -2156,8 +2161,7 @@ OSTreeRepo::getMergedModuleDir(const package::Reference &ref, bool fallbackLayer
 {
     LINGLONG_TRACE("get merge dir from ref " + ref.toString());
     qDebug() << "getMergedModuleDir" << ref.toString();
-    QDir mergedDir = this->repoDir.absoluteFilePath("merged");
-    auto layer = this->getLayerItem(ref, "binary", {});
+    auto layer = this->getLayerItem(ref, "binary");
     if (!layer) {
         qDebug().nospace() << "no such item:" << ref.toString()
                            << "/binary:" << layer.error().message();
@@ -2182,16 +2186,17 @@ utils::error::Result<package::LayerDir> OSTreeRepo::getMergedModuleDir(
         return LINGLONG_ERR("no merged item found");
     }
     // 如果找到layer对应的merge，就返回merge目录，否则回退到layer目录
-    for (auto item : items.value()) {
+    for (const auto &item : items.value()) {
         if (item.binaryCommit == layer.commit) {
             QDir dir = mergedDir.filePath(item.id.c_str());
             if (dir.exists()) {
                 return dir.path();
-            } else {
-                qWarning().nospace() << "not exists merged dir" << dir;
             }
+
+            qWarning().nospace() << "not exists merged dir" << dir;
         }
     }
+
     if (fallbackLayerDir) {
         return getLayerDir(layer);
     }

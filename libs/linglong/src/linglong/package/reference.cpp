@@ -16,8 +16,12 @@ utils::error::Result<Reference> Reference::parse(const QString &raw) noexcept
 {
     LINGLONG_TRACE("parse reference string");
 
-    static QRegularExpression referenceRegExp(
-      R"((?<channel>[^:]+):(?<id>[^\/]+)\/(?<version>[^\/]+)\/(?<architecture>[^\/]+))");
+    static auto referenceRegExp = []() noexcept {
+        QRegularExpression referenceRegExp(
+          R"((?<channel>[^:]+):(?<id>[^\/]+)\/(?<version>[^\/]+)\/(?<architecture>[^\/]+))");
+        referenceRegExp.optimize();
+        return referenceRegExp;
+    }();
 
     auto matches = referenceRegExp.match(raw);
     if (not(matches.isValid() and matches.hasMatch())) {

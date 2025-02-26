@@ -34,8 +34,8 @@ RepoCache::create(const std::filesystem::path &cacheFile,
     std::error_code ec;
     if (!std::filesystem::exists(repoCache->cacheFile, ec)) {
         if (ec) {
-            std::string error = "checking file existence failed: " + ec.message();
-            return LINGLONG_ERR(error.c_str());
+            return LINGLONG_ERR(QString{ "checking file existence failed: " }
+                                % ec.message().c_str());
         }
 
         auto ret = repoCache->rebuildCache(repoConfig, repo);
@@ -45,8 +45,8 @@ RepoCache::create(const std::filesystem::path &cacheFile,
         return repoCache;
     }
 
-    auto result = utils::serialize::LoadJSONFile<api::types::v1::RepositoryCache>(
-      QString::fromStdString(repoCache->cacheFile.string()));
+    auto result =
+      utils::serialize::LoadJSONFile<api::types::v1::RepositoryCache>(repoCache->cacheFile);
     if (!result) {
         std::cout << "invalid cache file, rebuild cache..." << std::endl;
         auto ret = repoCache->rebuildCache(repoConfig, repo);
@@ -57,7 +57,7 @@ RepoCache::create(const std::filesystem::path &cacheFile,
     }
 
     repoCache->cache = std::move(result).value();
-    if (repoCache->cache.version != repoCache->cacheFileVersion
+    if (repoCache->cache.version != enableMaker::cacheFileVersion
         || repoCache->cache.llVersion != LINGLONG_VERSION) {
         std::cout << "The existing cache is outdated, rebuild cache..." << std::endl;
         auto ret = repoCache->rebuildCache(repoConfig, repo);
@@ -127,8 +127,8 @@ utils::error::Result<void> RepoCache::rebuildCache(const api::types::v1::RepoCon
             qWarning() << "invalid info.json:" << info.error();
             continue;
         }
-        item.info = *info;
 
+        item.info = std::move(info).value();
         this->cache.layers.emplace_back(std::move(item));
     }
 

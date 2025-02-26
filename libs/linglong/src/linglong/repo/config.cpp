@@ -109,15 +109,17 @@ api::types::v1::RepoConfigV2 convertToV2(const api::types::v1::RepoConfig &cfg) 
     int64_t priority = 0;
 
     const auto &defaultRepo =
-      std::find_if(cfg.repos.begin(), cfg.repos.end(), [&cfg, &priority](const auto &repo) {
+      std::find_if(cfg.repos.begin(), cfg.repos.end(), [&cfg](const auto &repo) {
           return repo.first == cfg.defaultRepo;
       });
 
-    api::types::v1::Repo repoV2;
-    repoV2.priority = priority;
-    repoV2.name = defaultRepo->first;
-    repoV2.url = defaultRepo->second;
-    configV2.repos.push_back(repoV2);
+    api::types::v1::Repo repoV2{
+        .name = defaultRepo->first,
+        .priority = priority,
+        .url = defaultRepo->second,
+    };
+
+    configV2.repos.emplace_back(std::move(repoV2));
     priority -= 100;
 
     for (const auto &[name, url] : cfg.repos) {
@@ -125,10 +127,7 @@ api::types::v1::RepoConfigV2 convertToV2(const api::types::v1::RepoConfig &cfg) 
             continue;
         }
 
-        api::types::v1::Repo repoV2;
-        repoV2.priority = priority;
-        repoV2.name = name;
-        repoV2.url = url;
+        api::types::v1::Repo repoV2{ .name = name, .priority = priority, .url = url };
         configV2.repos.emplace_back(std::move(repoV2));
         priority -= 100;
     }
@@ -145,10 +144,7 @@ int64_t getRepoMinPriority(const api::types::v1::RepoConfigV2 &cfg) noexcept
                                            return repo1.priority < repo2.priority;
                                        });
 
-    if (minElement != cfg.repos.end()) {
-        return minElement->priority;
-    }
-    return 0;
+    return minElement->priority;
 }
 
 int64_t getRepoMaxPriority(const api::types::v1::RepoConfigV2 &cfg) noexcept
@@ -159,10 +155,7 @@ int64_t getRepoMaxPriority(const api::types::v1::RepoConfigV2 &cfg) noexcept
                                            return repo1.priority < repo2.priority;
                                        });
 
-    if (maxElement != cfg.repos.end()) {
-        return maxElement->priority;
-    }
-    return 0;
+    return maxElement->priority;
 }
 
 } // namespace linglong::repo

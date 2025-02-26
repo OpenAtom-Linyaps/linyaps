@@ -39,7 +39,7 @@ public:
     OSTreeRepo &operator=(const OSTreeRepo &) = delete;
     OSTreeRepo &operator=(OSTreeRepo &&) = delete;
     OSTreeRepo(const QDir &path,
-               const api::types::v1::RepoConfigV2 &cfg,
+               api::types::v1::RepoConfigV2 cfg,
                ClientFactory &clientFactory) noexcept;
 
     ~OSTreeRepo() override;
@@ -111,9 +111,9 @@ public:
     [[nodiscard]] utils::error::Result<std::shared_ptr<package::LayerDir>>
     getMergedModuleDir(const package::Reference &ref, const QStringList &modules) const noexcept;
     std::vector<std::string> getModuleList(const package::Reference &ref) noexcept;
-    utils::error::Result<std::vector<std::string>>
+    [[nodiscard]] utils::error::Result<std::vector<std::string>>
     getRemoteModuleList(const package::Reference &ref,
-                        const std::optional<std::vector<std::string>> &filter) noexcept;
+                        const std::optional<std::vector<std::string>> &filter) const noexcept;
 
     [[nodiscard]] utils::error::Result<api::types::v1::RepositoryCacheLayersItem>
     getLayerItem(const package::Reference &ref,

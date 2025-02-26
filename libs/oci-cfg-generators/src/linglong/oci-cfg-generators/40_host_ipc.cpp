@@ -239,6 +239,10 @@ bool HostIPC::generate(ocppi::runtime::config::types::Config &config) const noex
     ();
 
     [xauthPatch = mountTemplate, &mounts, &env]() mutable {
+        if (::getenv("LINGLONG_SKIP_HOME_GENERATE") != nullptr) {
+            return;
+        }
+
         auto *homeEnv = ::getenv("HOME"); // NOLINT
         if (homeEnv == nullptr) {
             std::cerr << "Couldn't get HOME from env." << std::endl;
@@ -260,7 +264,7 @@ bool HostIPC::generate(ocppi::runtime::config::types::Config &config) const noex
             hostXauthFile = xauthFileEnv;
         }
 
-        if (!std::filesystem::exists(hostXauthFile, ec) || ec) {
+        if (!std::filesystem::exists(hostXauthFile, ec) && ec) {
             std::cerr << "XAUTHORITY file not found at " << hostXauthFile << ":" << ec.message()
                       << std::endl;
             return;

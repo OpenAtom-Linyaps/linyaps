@@ -45,26 +45,14 @@ error::Result<T> LoadJSON(const Source &content) noexcept
     LINGLONG_TRACE("load json");
 
     try {
-        auto json = nlohmann::json::parse(content);
-        return json.template get<T>();
-    } catch (const std::exception &e) {
-        if constexpr (std::is_same_v<Source, std::string>) {
-            return LINGLONG_ERR(QString::fromStdString(content), e);
+        if constexpr (std::is_same_v<Source, nlohmann::basic_json<>>) {
+            return content.template get<T>();
         } else {
-            return LINGLONG_ERR(content, e);
+            const auto &json = nlohmann::json::parse(const_cast<Source &>(content)); // NOLINT
+            return json.template get<T>();
         }
-    }
-}
-
-template<typename T>
-error::Result<T> LoadJSON(const nlohmann::json &content) noexcept
-{
-    LINGLONG_TRACE("load json");
-
-    try {
-        return content.template get<T>();
     } catch (const std::exception &e) {
-        return LINGLONG_ERR(QString::fromStdString(content.dump()), e);
+        return LINGLONG_ERR("failed to parse json", e);
     }
 }
 
@@ -93,14 +81,7 @@ error::Result<T> LoadJSONFile(const std::filesystem::path &filePath) noexcept
         return LINGLONG_ERR("failed to open file");
     }
 
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    if (file.fail()) {
-        return LINGLONG_ERR("failed to read file");
-    }
-
-    std::string content = buffer.str();
-    return LoadJSON<T>(content);
+    return LoadJSON<T>(file);
 }
 
 template<typename T>
@@ -133,12 +114,7 @@ error::Result<T> LoadJSONFile(const QString &filename) noexcept
 template<typename T>
 error::Result<T> fromQJsonDocument(const QJsonDocument &doc) noexcept
 {
-    auto x = LoadJSON<T>(doc.toJson().constData());
-
-    if (!x) {
-        return x;
-    }
-    return x;
+    return LoadJSON<T>(doc.toJson(QJsonDocument::Compact).toStdString());
 }
 
 template<typename T>

@@ -56,6 +56,7 @@ auto getPatchesForApplication(const QString &appID) noexcept
     }
 
     std::vector<api::types::v1::OciConfigurationPatch> patches;
+    patches.reserve(config->permissions->binds->size());
 
     for (const auto &bind : *config->permissions->binds) {
         patches.push_back({
@@ -79,22 +80,13 @@ auto getPatchesForApplication(const QString &appID) noexcept
     return patches;
 }
 
-void applyJSONPatch(ocppi::runtime::config::types::Config &cfg,
+void applyJSONPatch(nlohmann::json &cfg,
                     const api::types::v1::OciConfigurationPatch &patch) noexcept
 {
-    LINGLONG_TRACE(QString("apply oci runtime config patch %1")
-                     .arg(QString::fromStdString(nlohmann::json(patch).dump(-1, ' ', true))));
+    LINGLONG_TRACE("apply oci runtime config patch");
 
-    if (patch.ociVersion != cfg.ociVersion) {
-        qWarning() << LINGLONG_ERRV("ociVersion mismatched");
-        Q_ASSERT(false);
-        return;
-    }
-
-    auto raw = nlohmann::json(cfg);
     try {
-        raw = raw.patch(patch.patch);
-        cfg = raw.get<ocppi::runtime::config::types::Config>();
+        cfg = cfg.patch(patch.patch);
     } catch (...) {
         qCritical() << LINGLONG_ERRV("apply patch", std::current_exception());
         Q_ASSERT(false);
@@ -114,7 +106,16 @@ void applyJSONFilePatch(ocppi::runtime::config::types::Config &cfg, const QFileI
         return;
     }
 
-    applyJSONPatch(cfg, *patch);
+    if (cfg.ociVersion != patch->ociVersion) {
+        qWarning() << "ociVersion mismatched:"
+                   << nlohmann::json(*patch).dump(-1, ' ', true).c_str();
+        Q_ASSERT(false);
+        return;
+    }
+
+    auto raw = nlohmann::json(cfg);
+    applyJSONPatch(raw, *patch);
+    cfg = raw.get<ocppi::runtime::config::types::Config>();
 }
 
 void applyExecutablePatch(ocppi::runtime::config::types::Config &cfg,
@@ -193,9 +194,18 @@ void applyPatches(ocppi::runtime::config::types::Config &cfg, const QFileInfoLis
 void applyPatches(ocppi::runtime::config::types::Config &cfg,
                   const std::vector<api::types::v1::OciConfigurationPatch> &patches) noexcept
 {
+    auto raw = nlohmann::json(cfg);
     for (const auto &patch : patches) {
-        applyJSONPatch(cfg, patch);
+        if (patch.ociVersion != cfg.ociVersion) {
+            qWarning() << "ociVersion mismatched: "
+                       << nlohmann::json(patch).dump(-1, ' ', true).c_str();
+            continue;
+        }
+
+        applyJSONPatch(raw, patch);
     }
+
+    cfg = raw.get<ocppi::runtime::config::types::Config>();
 }
 
 auto fixMount(ocppi::runtime::config::types::Config config) noexcept
@@ -349,7 +359,7 @@ ContainerBuilder::ContainerBuilder(ocppi::cli::CLI &cli)
 }
 
 auto ContainerBuilder::create(const ContainerOptions &opts) noexcept
-  -> utils::error::Result<QSharedPointer<Container>>
+  -> utils::error::Result<std::unique_ptr<Container>>
 {
     LINGLONG_TRACE("create container");
 
@@ -407,28 +417,32 @@ auto ContainerBuilder::create(const ContainerOptions &opts) noexcept
         return LINGLONG_ERR(config);
     }
 
-    return QSharedPointer<Container>::create(*config, opts.appID, opts.containerID, this->cli);
+    return std::make_unique<Container>(std::move(config).value(),
+                                       opts.appID,
+                                       opts.containerID,
+                                       this->cli);
 }
 
-auto ContainerBuilder::createWithConfig(ocppi::runtime::config::types::Config &originalConfig, QString &containerID) noexcept
-  -> utils::error::Result<QSharedPointer<Container>>
+auto ContainerBuilder::createWithConfig(const ocppi::runtime::config::types::Config &originalConfig,
+                                        const QString &containerID) noexcept
+  -> utils::error::Result<std::unique_ptr<Container>>
 {
     LINGLONG_TRACE("create container with config");
 
-    //auto config = fixMount(originalConfig);
-    auto config = utils::error::Result<ocppi::runtime::config::types::Config>(originalConfig);
-    if (!config) {
-        return LINGLONG_ERR(config);
-    }
-
-    if (!config->annotations) {
+    if (!originalConfig.annotations) {
         return LINGLONG_ERR("missing annotations");
     }
 
-    auto annotations = *config->annotations;
-    auto appID = annotations["org.deepin.linglong.appID"];
+    const auto &annotations = originalConfig.annotations.value();
+    auto appID = annotations.find("org.deepin.linglong.appID");
+    if (appID == annotations.end()) {
+        return LINGLONG_ERR("missing appID");
+    }
 
-    return QSharedPointer<Container>::create(*config, QString::fromStdString(appID), containerID, this->cli);
+    return std::make_unique<Container>(originalConfig,
+                                       QString::fromStdString(appID->second),
+                                       containerID,
+                                       this->cli);
 }
 
 auto ContainerBuilder::getOCIConfig(const ContainerOptions &opts) noexcept
@@ -436,17 +450,23 @@ auto ContainerBuilder::getOCIConfig(const ContainerOptions &opts) noexcept
 {
     LINGLONG_TRACE("get origin OCI configuration file");
 
-    QTemporaryDir dir;
-    dir.setAutoRemove(false);
-    QString containerConfigFilePath = qgetenv("LINGLONG_CONTAINER_CONFIG");
-    if (containerConfigFilePath.isEmpty()) {
-        containerConfigFilePath = LINGLONG_INSTALL_PREFIX "/lib/linglong/container/config.json";
-        if (!QFile(containerConfigFilePath).exists()) {
-            return LINGLONG_ERR(
-              QString("The container configuration file doesn't exist: %1\n"
-                      "You can specify a custom location using the LINGLONG_CONTAINER_CONFIG")
-                .arg(containerConfigFilePath));
+    std::filesystem::path containerConfigFilePath{ LINGLONG_INSTALL_PREFIX
+                                                   "/lib/linglong/container/config.json" };
+    auto *containerConfigFile = ::getenv("LINGLONG_CONTAINER_CONFIG");
+    if (containerConfigFile != nullptr) {
+        containerConfigFilePath = containerConfigFile;
+    }
+
+    std::error_code ec;
+    if (!std::filesystem::exists(containerConfigFilePath, ec)) {
+        if (ec) {
+            return LINGLONG_ERR("failed to check container configuration file", ec);
         }
+
+        return LINGLONG_ERR(
+          QString("The container configuration file doesn't exist: %1\n"
+                  "You can specify a custom location using the LINGLONG_CONTAINER_CONFIG")
+            .arg(containerConfigFilePath.c_str()));
     }
 
     auto config = utils::serialize::LoadJSONFile<ocppi::runtime::config::types::Config>(
@@ -475,7 +495,7 @@ auto ContainerBuilder::getOCIConfig(const ContainerOptions &opts) noexcept
     }
     config->annotations = std::move(annotations);
 
-    QDir configDotDDir = QFileInfo(containerConfigFilePath).dir().filePath("config.d");
+    QDir configDotDDir{ (containerConfigFilePath.parent_path() / "config.d").c_str() };
     Q_ASSERT(configDotDDir.exists());
 
     applyPatches(*config, configDotDDir.entryInfoList(QDir::Files));

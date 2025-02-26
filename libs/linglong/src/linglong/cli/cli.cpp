@@ -98,9 +98,9 @@ linglong::utils::error::Result<bool> isChildProcess(pid_t parent, pid_t pid) noe
         }
 
         auto ppidOffset = 3;
-        auto left = 0;
-        auto right = 0;
-        for (size_t i = 0; i < content.size(); i++) {
+        std::string::size_type left = 0;
+        std::string::size_type right = 0;
+        for (std::string::size_type i = 0; i < content.size(); i++) {
             if (ppidOffset == 0) {
                 left = i;
                 right = i;
@@ -455,7 +455,7 @@ Cli::Cli(Printer &printer,
     }
 }
 
-int Cli::run()
+int Cli::run([[maybe_unused]] CLI::App *subcommand)
 {
     LINGLONG_TRACE("command run");
     // NOTE: ll-box is not support running as root for now.
@@ -477,13 +477,17 @@ int Cli::run()
     }
 
     auto userContainerDir = std::filesystem::path{ "/run/linglong" } / std::to_string(::getuid());
-    ensureDirectory(userContainerDir);
+    if (auto ret = ensureDirectory(userContainerDir); !ret) {
+        this->printer.printErr(ret.error());
+        return -1;
+    }
 
     auto mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
     auto pidFile = userContainerDir / std::to_string(::getpid());
+    // placeholder file
     auto fd = ::open(pidFile.c_str(), O_WRONLY | O_CREAT | O_EXCL, mode);
     if (fd == -1) {
-        qCritical() << QString{ "create file " } + pidFile.c_str() + " error:" + ::strerror(errno);
+        qCritical() << QString{ "create file " } % pidFile.c_str() % " error:" % ::strerror(errno);
         QCoreApplication::exit(-1);
         return -1;
     }
@@ -497,10 +501,7 @@ int Cli::run()
         }
     });
 
-    const auto userInputAPP = QString::fromStdString(options.appid);
-    Q_ASSERT(!userInputAPP.isEmpty());
-
-    auto fuzzyRef = package::FuzzyReference::parse(userInputAPP);
+    auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(options.appid));
     if (!fuzzyRef) {
         this->printer.printErr(fuzzyRef.error());
         return -1;
@@ -522,14 +523,14 @@ int Cli::run()
     }
 
     // Note: we should use the info.json which from states.json instead of layer dir
-    auto appLayerItem = this->repository.getLayerItem(*curAppRef);
+    const auto &appLayerItem = this->repository.getLayerItem(*curAppRef);
     if (!appLayerItem) {
         this->printer.printErr(appLayerItem.error());
         return -1;
     }
     const auto &info = appLayerItem->info;
 
-    auto appDataDir = utils::xdg::appDataDir(info.id);
+    const auto &appDataDir = utils::xdg::appDataDir(info.id);
     if (!appDataDir) {
         this->printer.printErr(appDataDir.error());
         return -1;
@@ -559,7 +560,7 @@ int Cli::run()
             this->printer.printErr(runtimeRefRet.error());
             return -1;
         }
-        auto &runtimeRef = *runtimeRefRet;
+        const auto &runtimeRef = *runtimeRefRet;
 
         if (!info.uuid.has_value()) {
             auto runtimeLayerDirRet = this->repository.getMergedModuleDir(runtimeRef);
@@ -567,10 +568,10 @@ int Cli::run()
                 this->printer.printErr(runtimeLayerDirRet.error());
                 return -1;
             }
-            runtimeLayerDir = *runtimeLayerDirRet;
+            runtimeLayerDir = std::move(runtimeLayerDirRet).value();
         } else {
             auto runtimeLayerDirRet =
-              this->repository.getLayerDir(*runtimeRefRet, std::string{ "binary" }, info.uuid);
+              this->repository.getLayerDir(*runtimeRefRet, "binary", info.uuid);
             if (!runtimeLayerDirRet) {
                 this->printer.printErr(runtimeLayerDirRet.error());
                 return -1;
@@ -595,15 +596,16 @@ int Cli::run()
         this->printer.printErr(LINGLONG_ERRV(baseRef));
         return -1;
     }
+
     utils::error::Result<package::LayerDir> baseLayerDir;
     if (!info.uuid.has_value()) {
         qDebug() << "getMergedModuleDir base";
         baseLayerDir = this->repository.getMergedModuleDir(*baseRef);
     } else {
         qDebug() << "getLayerDir base" << info.uuid.value().c_str();
-        baseLayerDir =
-          this->repository.getLayerDir(*baseRef, std::string{ "binary" }, *(info.uuid));
+        baseLayerDir = this->repository.getLayerDir(*baseRef, "binary", info.uuid);
     }
+
     if (!baseLayerDir) {
         this->printer.printErr(LINGLONG_ERRV(baseLayerDir));
         return -1;
@@ -616,15 +618,10 @@ int Cli::run()
     }
 
     auto commands = options.commands;
-    if (commands.empty()) {
-        commands = info.command.value_or(std::vector<std::string>{});
+    if (options.commands.empty()) {
+        commands = info.command.value_or(std::vector<std::string>{ "bash" });
     }
-
-    if (commands.empty()) {
-        qWarning() << "invalid command found in package" << QString::fromStdString(info.id);
-        commands = { "bash" };
-    }
-    auto execArgs = filePathMapping(commands);
+    commands = filePathMapping(commands);
 
     auto newContainerID = runtime::genContainerID(*curAppRef);
     auto bundle = runtime::getBundleDir(newContainerID);
@@ -655,20 +652,18 @@ int Cli::run()
             qFatal("%s", msg.c_str());
         }
 
-        auto stateInfo = linglong::api::types::v1::ContainerProcessStateInfo{
-            .app = app,
-            .base = base,
-            .containerID = newContainerID,
-            .runtime = runtimeLayerRef,
-        };
-
         std::ofstream stream{ pidFile };
         if (!stream.is_open()) {
-            auto msg = QString{ "failed to open " } + pidFile.c_str();
+            auto msg = QString{ "failed to open %1" }.arg(pidFile.c_str());
             this->printer.printErr(LINGLONG_ERRV(msg));
             return false;
         }
-        stream << nlohmann::json(stateInfo).dump();
+        stream << nlohmann::json(linglong::api::types::v1::ContainerProcessStateInfo{
+          .app = app,
+          .base = base,
+          .containerID = newContainerID,
+          .runtime = runtimeLayerRef,
+        });
         stream.close();
 
         return true;
@@ -685,33 +680,38 @@ int Cli::run()
             return -1;
         }
 
-        QStringList bashArgs;
+        QStringList execArgs;
+        std::transform(commands.begin(),
+                       commands.end(),
+                       std::back_inserter(execArgs),
+                       [](const std::string &arg) {
+                           return QString::fromStdString(arg);
+                       });
+
         // 为避免原始args包含空格，每个arg都使用单引号包裹，并对arg内部的单引号进行转义替换
-        for (const auto &arg : execArgs) {
-            bashArgs.push_back(
-              QString("'%1'").arg(QString::fromStdString(arg).replace("'", "'\\''")));
-        }
+        std::for_each(execArgs.begin(), execArgs.end(), [](QString &arg) {
+            arg.replace("'", "'\\''");
+            arg.prepend('\'');
+            arg.push_back('\'');
+        });
 
-        if (!bashArgs.isEmpty()) {
-            // exec命令使用原始args中的进程替换bash进程
-            bashArgs.prepend("exec");
-        }
+        // exec命令使用原始args中的进程替换bash进程
+        execArgs.prepend("exec");
+
         // 在原始args前面添加bash --login -c，这样可以使用/etc/profile配置的环境变量
-        execArgs = std::vector<std::string>{ "/bin/bash",
-                                             "--login",
-                                             "-c",
-                                             bashArgs.join(" ").toStdString(),
-                                             "; wait" };
+        commands = std::vector<std::string>{
+            "/bin/bash", "--login", "-e", "-c", execArgs.join(' ').toStdString(), "; wait"
+        };
 
-        auto opt = ocppi::runtime::ExecOption{};
-        opt.uid = ::getuid();
-        opt.gid = ::getgid();
+        auto opt = ocppi::runtime::ExecOption{
+            .uid = ::getuid(),
+            .gid = ::getgid(),
+        };
 
         auto result = this->ociCLI.exec(container.id,
-                                        execArgs[0],
-                                        { execArgs.cbegin() + 1, execArgs.cend() },
+                                        commands[0],
+                                        { commands.cbegin() + 1, commands.cend() },
                                         opt);
-
         if (!result) {
             auto err = LINGLONG_ERRV(result);
             this->printer.printErr(err);
@@ -778,11 +778,11 @@ int Cli::run()
     });
 #endif
     auto container = this->containerBuilder.create({
-      .appID = curAppRef->id,
+      .appID = std::move(curAppRef->id),
       .containerID = QString::fromStdString(newContainerID),
-      .runtimeDir = runtimeLayerDir,
-      .baseDir = *baseLayerDir,
-      .appDir = *appLayerDir,
+      .runtimeDir = std::move(runtimeLayerDir),
+      .baseDir = std::move(baseLayerDir).value(),
+      .appDir = std::move(appLayerDir).value(),
       .bundle = std::move(bundle).value(),
       .patches = {},
       .mounts = std::move(applicationMounts),
@@ -794,15 +794,13 @@ int Cli::run()
         return -1;
     }
 
-    ocppi::runtime::config::types::Process process{};
-    process.args = execArgs;
-
     if (!dumpContainerInfo()) {
         return -1;
     }
 
     ocppi::runtime::RunOption opt{};
-    auto result = (*container)->run(process, opt);
+    auto result =
+      (*container)->run(ocppi::runtime::config::types::Process{ .args = std::move(commands) }, opt);
     if (!result) {
         this->printer.printErr(result.error());
         return -1;
@@ -811,7 +809,7 @@ int Cli::run()
     return 0;
 }
 
-int Cli::exec()
+int Cli::exec([[maybe_unused]] CLI::App *subcommand)
 {
     LINGLONG_TRACE("ll-cli exec");
     auto containers = getCurrentContainers();
@@ -842,29 +840,16 @@ int Cli::exec()
 
     qInfo() << "select container id" << QString::fromStdString(containerID);
     auto commands = options.commands;
-    if (commands.size() != 0) {
-        QStringList bashArgs;
-        // 为避免原始args包含空格，每个arg都使用单引号包裹，并对arg内部的单引号进行转义替换
-        for (const auto &arg : commands) {
-            bashArgs.push_back(
-              QString("'%1'").arg(QString::fromStdString(arg).replace("'", "'\\''")));
-        }
-        if (!bashArgs.isEmpty()) {
-            // exec命令使用原始args中的进程替换bash进程
-            bashArgs.prepend("exec");
-        }
-        // 在原始args前面添加bash --login -c，这样可以使用/etc/profile配置的环境变量
-        commands = std::vector<std::string>{ "/bin/bash",
-                                             "--login",
-                                             "-c",
-                                             bashArgs.join(" ").toStdString(),
-                                             "; wait" };
-    } else {
-        commands = { "bash", "--login" };
+    if (commands.size() == 0) {
+        commands.emplace_back("bash");
+        commands.emplace_back("--login");
     }
-    auto opt = ocppi::runtime::ExecOption{};
-    opt.uid = ::getuid();
-    opt.gid = ::getgid();
+
+    auto opt = ocppi::runtime::ExecOption{
+        .uid = ::getuid(),
+        .gid = ::getgid(),
+    };
+
     auto result =
       this->ociCLI.exec(containerID, commands[0], { commands.begin() + 1, commands.end() }, opt);
     if (!result) {
@@ -912,8 +897,7 @@ Cli::getCurrentContainers() const noexcept
         }
 
         auto info = linglong::utils::serialize::LoadJSONFile<
-          linglong::api::types::v1::ContainerProcessStateInfo>(
-          QString::fromStdString(file.string()));
+          linglong::api::types::v1::ContainerProcessStateInfo>(file);
         if (!info) {
             qDebug() << "load info from" << file.c_str() << "error:" << info.error().message();
             continue;
@@ -940,7 +924,7 @@ Cli::getCurrentContainers() const noexcept
     return myContainers;
 }
 
-int Cli::ps()
+int Cli::ps([[maybe_unused]] CLI::App *subcommand)
 {
     LINGLONG_TRACE("command ps");
 
@@ -962,7 +946,7 @@ int Cli::ps()
     return 0;
 }
 
-int Cli::kill()
+int Cli::kill([[maybe_unused]] CLI::App *subcommand)
 {
     LINGLONG_TRACE("command kill");
 
@@ -1161,7 +1145,7 @@ int Cli::installFromFile(const QFileInfo &fileInfo, const api::types::v1::Common
     return this->lastState == linglong::api::types::v1::State::Succeed ? 0 : -1;
 }
 
-int Cli::install()
+int Cli::install([[maybe_unused]] CLI::App *subcommand)
 {
     LINGLONG_TRACE("command install");
 
@@ -1279,7 +1263,7 @@ int Cli::install()
     return this->lastState == linglong::api::types::v1::State::Succeed ? 0 : -1;
 }
 
-int Cli::upgrade()
+int Cli::upgrade([[maybe_unused]] CLI::App *subcommand)
 {
     LINGLONG_TRACE("command upgrade");
 
@@ -1398,7 +1382,7 @@ int Cli::upgrade()
     return 0;
 }
 
-int Cli::search()
+int Cli::search([[maybe_unused]] CLI::App *subcommand)
 {
     LINGLONG_TRACE("command search");
 
@@ -1490,7 +1474,7 @@ int Cli::search()
     return loop.exec();
 }
 
-int Cli::prune()
+int Cli::prune([[maybe_unused]] CLI::App *subcommand)
 {
     LINGLONG_TRACE("command prune");
 
@@ -1556,7 +1540,7 @@ int Cli::prune()
     return loop.exec();
 }
 
-int Cli::uninstall()
+int Cli::uninstall([[maybe_unused]] CLI::App *subcommand)
 {
     LINGLONG_TRACE("command uninstall");
 
@@ -1675,7 +1659,7 @@ int Cli::uninstall()
     return this->lastState == linglong::api::types::v1::State::Succeed ? 0 : -1;
 }
 
-int Cli::list()
+int Cli::list([[maybe_unused]] CLI::App *subcommand)
 {
     LINGLONG_TRACE("command list");
 
@@ -1987,7 +1971,7 @@ int Cli::setRepoConfig(const QVariantMap &config)
     return 0;
 }
 
-int Cli::info()
+int Cli::info([[maybe_unused]] CLI::App *subcommand)
 {
     LINGLONG_TRACE("command info");
 
@@ -2053,7 +2037,7 @@ int Cli::info()
     return 0;
 }
 
-int Cli::content()
+int Cli::content([[maybe_unused]] CLI::App *subcommand)
 {
     LINGLONG_TRACE("command content");
 
@@ -2107,38 +2091,34 @@ int Cli::content()
     return 0;
 }
 
-[[nodiscard]] std::filesystem::path Cli::mappingFile(const std::filesystem::path &file) noexcept
+[[nodiscard]] std::string Cli::mappingFile(const std::filesystem::path &file) noexcept
 {
     std::error_code ec;
-    std::filesystem::path target;
-    if (!std::filesystem::is_symlink(file, ec)) {
-        if (ec) {
-            qCritical() << "failed to check symlink " << file.c_str() << ":"
-                        << ec.message().c_str();
-        }
-
-        target = file;
-    } else {
+    auto target = file;
+    if (std::filesystem::is_symlink(file, ec)) {
         std::array<char, PATH_MAX + 1> buf{};
         auto *real = ::realpath(file.c_str(), buf.data());
-        if (real == nullptr) {
-            qCritical() << "resolve symlink " << file.c_str() << " error: " << ::strerror(errno);
-            target = file;
-        } else {
+
+        if (real != nullptr) {
             target = real;
+        } else {
+            qCritical() << "resolve symlink " << file.c_str() << " error: " << ::strerror(errno);
         }
+    }
+
+    if (ec) {
+        qCritical() << "failed to check symlink " << file.c_str() << ":" << ec.message().c_str();
     }
 
     // Dont't mapping the file under /home
-    if (std::string(target.c_str()).rfind("/home/", 0) == 0) {
+    if (auto tmp = target.string(); tmp.rfind("/home/", 0) == 0) {
         return target;
-    } else {
-        return std::filesystem::path{ "/run/host/rootfs" }
-        / std::filesystem::path{ target }.lexically_relative("/");
     }
+
+    return "/run/host/rootfs" / target;
 }
 
-[[nodiscard]] std::string Cli::mappingUrl(const std::string &url) noexcept
+[[nodiscard]] std::string Cli::mappingUrl(std::string_view url) noexcept
 {
     if (url.rfind('/', 0) == 0) {
         return mappingFile(url);
@@ -2149,11 +2129,11 @@ int Cli::content()
     constexpr std::string_view filePrefix = "file://";
     if (url.rfind(filePrefix, 0) == 0) {
         std::filesystem::path nativePath = url.substr(filePrefix.size());
-        auto target = mappingFile(nativePath);
+        std::filesystem::path target = mappingFile(nativePath);
         return std::string{ filePrefix } + target.lexically_relative("/").string();
     }
 
-    return url;
+    return std::string{ url };
 }
 
 std::vector<std::string>
@@ -2499,7 +2479,7 @@ int Cli::generateCache(const package::Reference &ref)
 {
     LINGLONG_TRACE("generate cache for all applications");
     QEventLoop loop;
-    QString jobIDReply = "";
+    QString jobIDReply;
     auto ret = connect(&this->pkgMan,
                        &api::dbus::v1::PackageManager::GenerateCacheFinished,
                        [&loop, &jobIDReply](const QString &jobID, bool success) {
@@ -2544,10 +2524,10 @@ Cli::ensureCache(const package::Reference &ref,
 {
     LINGLONG_TRACE("ensure cache for: " + QString::fromStdString(appLayerItem.info.id));
 
-    int lockfd;
+    int lockfd{ -1 };
     std::error_code ec;
     auto appCache = std::filesystem::path(LINGLONG_ROOT) / "cache" / appLayerItem.commit;
-    const auto fileLock = "/run/linglong/" + appLayerItem.commit + ".lock";
+    const auto fileLock = std::filesystem::path("/run/linglong/") / appLayerItem.commit / ".lock";
 
     struct flock locker{ .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
 
@@ -2563,7 +2543,7 @@ Cli::ensureCache(const package::Reference &ref,
 
         lockfd = open(fileLock.c_str(), O_CREAT | O_RDWR, 0644);
         if (lockfd < 0) {
-            return LINGLONG_ERR("failed to open file lock " + QString::fromStdString(fileLock), -1);
+            return LINGLONG_ERR("failed to open file lock " % QString::fromStdString(fileLock), -1);
         }
         auto closefd = utils::finally::finally([&lockfd] {
             close(lockfd);
@@ -2578,12 +2558,12 @@ Cli::ensureCache(const package::Reference &ref,
             if (errno == EACCES || errno == EAGAIN || errno == EINTR) {
                 std::this_thread::sleep_for(100ms);
             } else {
-                return LINGLONG_ERR(QString("failed to set lock ") + ::strerror(errno), -1);
+                return LINGLONG_ERR(QString("failed to set lock ") % ::strerror(errno), -1);
             }
         }
         locker.l_type = F_UNLCK;
         if (::fcntl(lockfd, F_SETLK, &locker)) {
-            return LINGLONG_ERR("failed to unlock" + QString::fromStdString(appCache), -1);
+            return LINGLONG_ERR("failed to unlock" % QString::fromStdString(appCache), -1);
         }
 
         return appCache;
@@ -2593,9 +2573,16 @@ Cli::ensureCache(const package::Reference &ref,
         return LINGLONG_ERR(QString::fromStdString(ec.message()), ec.value());
     }
 
+    if (!std::filesystem::create_directories(fileLock.parent_path(), ec) && ec) {
+        return LINGLONG_ERR(
+          QString{ "failed to create runtime directory %1: %2" }.arg(fileLock.parent_path().c_str(),
+                                                                     ec.message().c_str()));
+    }
+
     lockfd = open(fileLock.c_str(), O_CREAT | O_RDWR, 0644);
     if (lockfd < 0) {
-        return LINGLONG_ERR("failed to open file lock " + QString::fromStdString(fileLock), -1);
+        return LINGLONG_ERR(
+          QString{ "failed to open file lock %1: %2" }.arg(fileLock.c_str(), ::strerror(errno)));
     }
 
     auto closefd = utils::finally::finally([&lockfd] {
@@ -2609,9 +2596,7 @@ Cli::ensureCache(const package::Reference &ref,
     // Try to generate cache here
     QProcess process;
     process.setProgram(LINGLONG_LIBEXEC_DIR "/ll-dialog");
-    process.setArguments(QStringList() << "-m"
-                                       << "startup"
-                                       << "--id" << QString::fromStdString(appLayerItem.info.id));
+    process.setArguments({ "-m", "startup", "--id", QString::fromStdString(appLayerItem.info.id) });
     process.start();
     qDebug() << process.program() << process.arguments();
 
@@ -2653,7 +2638,7 @@ void Cli::updateAM() noexcept
     }
 }
 
-int Cli::inspect()
+int Cli::inspect([[maybe_unused]] CLI::App *subcommand)
 {
     auto myContainersRet = getCurrentContainers();
     if (!myContainersRet) {

@@ -66,33 +66,35 @@ public:
         std::unique_ptr<InteractiveNotifier> &&notifier,
         QObject *parent = nullptr);
 
-    int run();
-    int exec();
-    int enter();
-    int ps();
-    int kill();
-    int install();
-    int upgrade();
-    int search();
-    int uninstall();
-    int list();
-    int repo(CLI::App *app);
-    int info();
-    int content();
-    int prune();
-    int inspect();
+    int run(CLI::App *subcommand);
+    int exec(CLI::App *subcommand);
+    int enter(CLI::App *subcommand);
+    int ps(CLI::App *subcommand);
+    int kill(CLI::App *subcommand);
+    int install(CLI::App *subcommand);
+    int upgrade(CLI::App *subcommand);
+    int search(CLI::App *subcommand);
+    int uninstall(CLI::App *subcommand);
+    int list(CLI::App *subcommand);
+    int repo(CLI::App *subcommand);
+    int info(CLI::App *subcommand);
+    int content(CLI::App *subcommand);
+    int prune(CLI::App *subcommand);
+    int inspect(CLI::App *subcommand);
 
     void cancelCurrentTask();
 
     void setCliOptions(const CliOptions &options) noexcept { this->options = options; }
+
+    void setCliOptions(CliOptions &&options) noexcept { this->options = std::move(options); }
 
 private:
     [[nodiscard]] static utils::error::Result<void>
     RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept;
     [[nodiscard]] std::vector<std::string>
     filePathMapping(const std::vector<std::string> &command) const noexcept;
-    static std::filesystem::path mappingFile(const std::filesystem::path &file) noexcept;
-    static std::string mappingUrl(const std::string &url) noexcept;
+    static std::string mappingFile(const std::filesystem::path &file) noexcept;
+    static std::string mappingUrl(std::string_view url) noexcept;
     static void filterPackageInfosFromType(std::vector<api::types::v1::PackageInfoV2> &list,
                                            const std::string &type) noexcept;
     static utils::error::Result<void>

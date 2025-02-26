@@ -29,6 +29,7 @@
 #include <nlohmann/json.hpp>
 #include <qdebug.h>
 #include <sys/prctl.h>
+#include <sys/sysmacros.h>
 #include <yaml-cpp/yaml.h>
 
 #include <QCoreApplication>
@@ -58,7 +59,6 @@
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
-#include <sys/sysmacros.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -491,7 +491,6 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         return LINGLONG_ERR("failed to run in namespace");
     }
 
-
     auto arch = package::Architecture::currentCPUArchitecture();
     if (!arch) {
         return LINGLONG_ERR(arch);
@@ -664,10 +663,11 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
 
     // prepare overlayfs
     std::unique_ptr<utils::OverlayFS> baseOverlay, runtimeOverlay;
-    baseOverlay = std::make_unique<utils::OverlayFS>(baseLayerDir->absolutePath(),
-            this->workingDir.absoluteFilePath(overlayPrefix + "build_base/upperdir"),
-            this->workingDir.absoluteFilePath(overlayPrefix + "build_base/workdir"),
-            this->workingDir.absoluteFilePath(overlayPrefix + "build_base/merged"));
+    baseOverlay = std::make_unique<utils::OverlayFS>(
+      baseLayerDir->absolutePath(),
+      this->workingDir.absoluteFilePath(overlayPrefix + "build_base/upperdir"),
+      this->workingDir.absoluteFilePath(overlayPrefix + "build_base/workdir"),
+      this->workingDir.absoluteFilePath(overlayPrefix + "build_base/merged"));
     if (!baseOverlay->mount()) {
         return LINGLONG_ERR("failed to mount build base overlayfs");
     }
@@ -675,10 +675,11 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
 
     QString runtimeDir;
     if (this->project.runtime) {
-        runtimeOverlay = std::make_unique<utils::OverlayFS>(runtimeLayerDir->absolutePath(),
-                this->workingDir.absoluteFilePath(overlayPrefix + "build_runtime/upperdir"),
-                this->workingDir.absoluteFilePath(overlayPrefix + "build_runtime/workdir"),
-                this->workingDir.absoluteFilePath(overlayPrefix + "build_runtime/merged"));
+        runtimeOverlay = std::make_unique<utils::OverlayFS>(
+          runtimeLayerDir->absolutePath(),
+          this->workingDir.absoluteFilePath(overlayPrefix + "build_runtime/upperdir"),
+          this->workingDir.absoluteFilePath(overlayPrefix + "build_runtime/workdir"),
+          this->workingDir.absoluteFilePath(overlayPrefix + "build_runtime/merged"));
         if (!runtimeOverlay->mount()) {
             return LINGLONG_ERR("failed to mount build runtime overlayfs");
         }
@@ -806,11 +807,12 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
 
         if (*res) {
             startContainer.push_back(ocppi::runtime::config::types::Hook{
-                    .args = std::vector({std::string("bash"), std::string("/project/linglong/buildext.sh")}),
-                    .env = {},
-                    .path = "/bin/bash",
-                    .timeout = {},
-                    });
+              .args =
+                std::vector({ std::string("bash"), std::string("/project/linglong/buildext.sh") }),
+              .env = {},
+              .path = "/bin/bash",
+              .timeout = {},
+            });
         }
     }
     opts.hooks.startContainer = std::move(startContainer);
@@ -887,29 +889,34 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
             }
 
             // clean prepare overlay
-            QDir(this->workingDir.absoluteFilePath(overlayPrefix + "prepare_base")).removeRecursively();
+            QDir(this->workingDir.absoluteFilePath(overlayPrefix + "prepare_base"))
+              .removeRecursively();
 
             {
                 // prepare overlay scope
                 std::unique_ptr<utils::OverlayFS> baseOverlay, runtimeOverlay;
-                baseOverlay = std::make_unique<utils::OverlayFS>(baseLayerDir->absolutePath(),
-                        this->workingDir.absoluteFilePath(overlayPrefix + "prepare_base/upperdir"),
-                        this->workingDir.absoluteFilePath(overlayPrefix + "prepare_base/workdir"),
-                        this->workingDir.absoluteFilePath(overlayPrefix + "prepare_base/merged"));
+                baseOverlay = std::make_unique<utils::OverlayFS>(
+                  baseLayerDir->absolutePath(),
+                  this->workingDir.absoluteFilePath(overlayPrefix + "prepare_base/upperdir"),
+                  this->workingDir.absoluteFilePath(overlayPrefix + "prepare_base/workdir"),
+                  this->workingDir.absoluteFilePath(overlayPrefix + "prepare_base/merged"));
                 if (!baseOverlay->mount()) {
                     return LINGLONG_ERR("failed to mount prepare base overlayfs");
                 }
-                opts.baseDir = QDir(this->workingDir.absoluteFilePath(overlayPrefix + "prepare_base/merged"));
+                opts.baseDir =
+                  QDir(this->workingDir.absoluteFilePath(overlayPrefix + "prepare_base/merged"));
 
                 if (this->project.runtime) {
-                    runtimeOverlay = std::make_unique<utils::OverlayFS>(runtimeLayerDir->absolutePath(),
-                            this->workingDir.absoluteFilePath(overlayPrefix + "prepare_runtime/upperdir"),
-                            this->workingDir.absoluteFilePath(overlayPrefix + "prepare_runtime/workdir"),
-                            this->workingDir.absoluteFilePath(overlayPrefix + "prepare_runtime/merged"));
+                    runtimeOverlay = std::make_unique<utils::OverlayFS>(
+                      runtimeLayerDir->absolutePath(),
+                      this->workingDir.absoluteFilePath(overlayPrefix + "prepare_runtime/upperdir"),
+                      this->workingDir.absoluteFilePath(overlayPrefix + "prepare_runtime/workdir"),
+                      this->workingDir.absoluteFilePath(overlayPrefix + "prepare_runtime/merged"));
                     if (!runtimeOverlay->mount()) {
                         return LINGLONG_ERR("failed to mount prepare runtime overlayfs");
                     }
-                    opts.runtimeDir = this->workingDir.absoluteFilePath(overlayPrefix + "prepare_runtime/merged");
+                    opts.runtimeDir =
+                      this->workingDir.absoluteFilePath(overlayPrefix + "prepare_runtime/merged");
                 }
                 opts.hooks = {};
 
@@ -923,10 +930,8 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
                     return LINGLONG_ERR(container);
                 }
 
-                process.args = std::vector {
-                    std::string("bash"),
-                        std::string("/project/linglong/buildext.sh")
-                };
+                process.args =
+                  std::vector{ std::string("bash"), std::string("/project/linglong/buildext.sh") };
                 auto result = (*container)->run(process, opt);
                 if (!result) {
                     return LINGLONG_ERR(result);
@@ -938,13 +943,17 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
             // 1. merge base to runtime, Or
             // 2. merge base and runtime to app,
             // base prefix is /usr, and runtime prefix is /runtime
-            QList<QDir> src = { this->workingDir.absoluteFilePath(overlayPrefix + "prepare_base/upperdir/files/usr") };
+            QList<QDir> src = { this->workingDir.absoluteFilePath(
+              overlayPrefix + "prepare_base/upperdir/files/usr") };
             if (this->project.package.kind == "app") {
-                src.append(this->workingDir.absoluteFilePath(overlayPrefix + "prepare_runtime/upperdir/files"));
+                src.append(this->workingDir.absoluteFilePath(overlayPrefix
+                                                             + "prepare_runtime/upperdir/files"));
             }
-            mergeOutput(src, buildOutput, QStringList({
-                        "bin/",
-                        "lib/",
+            mergeOutput(src,
+                        buildOutput,
+                        QStringList({
+                          "bin/",
+                          "lib/",
                         }));
         }
     }
@@ -1791,10 +1800,11 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
                           applicationMounts.begin(),
                           applicationMounts.end());
 
-    auto container = this->containerBuilder.create(options);
-    if (!container) {
-        return LINGLONG_ERR(container);
+    auto containerRet = this->containerBuilder.create(options);
+    if (!containerRet) {
+        return LINGLONG_ERR(containerRet);
     }
+    auto container = std::move(containerRet).value();
 
     ocppi::runtime::config::types::Process process;
 
@@ -1811,7 +1821,7 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     }
 
     ocppi::runtime::RunOption opt{};
-    auto result = container->data()->run(process, opt);
+    auto result = container->run(process, opt);
     if (!result) {
         return LINGLONG_ERR(result);
     }
@@ -1921,7 +1931,7 @@ set -e
     qDebug() << "build script:" << QString::fromStdString(scriptContent);
 
     if (!entry.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner
-                | QFileDevice::ExeOwner)) {
+                              | QFileDevice::ExeOwner)) {
         return LINGLONG_ERR("set file permission error:", entry);
     }
     qDebug() << "generated entry.sh success";
@@ -1942,14 +1952,15 @@ utils::error::Result<bool> Builder::generateBuildDependsScript() noexcept
             if (apt.buildDepends) {
                 std::string packages;
 
-                for (auto &package: *apt.buildDepends) {
+                for (auto &package : *apt.buildDepends) {
                     packages.append(" ");
                     packages.append(package);
                 }
 
                 if (!packages.empty()) {
                     // ll-box current support single-user mode only, force apt use user
-                    content.append("echo 'APT::Sandbox::User \"root\";' > /etc/apt/apt.conf.d/99linglong-builder.conf\n");
+                    content.append("echo 'APT::Sandbox::User \"root\";' > "
+                                   "/etc/apt/apt.conf.d/99linglong-builder.conf\n");
                     content.append("apt update\n");
                     content.append("apt -y install");
                     content.append(packages);
@@ -1959,7 +1970,9 @@ utils::error::Result<bool> Builder::generateBuildDependsScript() noexcept
         }
 
         if (!content.empty()) {
-            auto res = utils::writeFile(this->workingDir.absoluteFilePath("linglong/buildext.sh").toStdString(), content);
+            auto res = utils::writeFile(
+              this->workingDir.absoluteFilePath("linglong/buildext.sh").toStdString(),
+              content);
 
             return res ? utils::error::Result<bool>(true) : LINGLONG_ERR(res);
         }
@@ -1981,7 +1994,7 @@ utils::error::Result<bool> Builder::generateDependsScript() noexcept
             if (apt.depends) {
                 std::string packages;
 
-                for (auto &package: *apt.depends) {
+                for (auto &package : *apt.depends) {
                     packages.append(" ");
                     packages.append(package);
                 }
@@ -1996,7 +2009,9 @@ utils::error::Result<bool> Builder::generateDependsScript() noexcept
         }
 
         if (!content.empty()) {
-            auto res = utils::writeFile(this->workingDir.absoluteFilePath("linglong/buildext.sh").toStdString(), content);
+            auto res = utils::writeFile(
+              this->workingDir.absoluteFilePath("linglong/buildext.sh").toStdString(),
+              content);
 
             return res ? utils::error::Result<bool>(true) : LINGLONG_ERR(res);
         }
@@ -2035,9 +2050,9 @@ void Builder::patchBuildPhaseConfig(ocppi::runtime::config::types::Config &confi
             std::vector<std::string>::iterator ro{};
             if (it->options) {
                 auto &options = it->options.value();
-                ro = std::find_if(options.begin(), options.end(), [](std::string& option) {
-                        return option == "ro";
-                        });
+                ro = std::find_if(options.begin(), options.end(), [](std::string &option) {
+                    return option == "ro";
+                });
                 is_ro = (ro != options.end());
             }
 
@@ -2046,8 +2061,9 @@ void Builder::patchBuildPhaseConfig(ocppi::runtime::config::types::Config &confi
                     *ro = "rw";
                 }
             } else if (it->destination.find(LINGLONG_BUILDER_HELPER) == 0) {
-            } else if (it->destination == "/etc/ld.so.cache" ||
-                    (is_ro && it->source.has_value() && it->source.value() == it->destination)) {
+            } else if (it->destination == "/etc/ld.so.cache"
+                       || (is_ro && it->source.has_value()
+                           && it->source.value() == it->destination)) {
                 it = mounts.erase(it);
                 continue;
             }
@@ -2064,8 +2080,8 @@ void Builder::mergeOutput(const QList<QDir> &src, const QDir &dest, const QStrin
             continue;
 
         QDirIterator iter(dir.absolutePath(),
-                QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System,
-                QDirIterator::Subdirectories);
+                          QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System,
+                          QDirIterator::Subdirectories);
         while (iter.hasNext()) {
             struct stat st;
             if (-1 == lstat(iter.next().toStdString().c_str(), &st))
@@ -2080,7 +2096,7 @@ void Builder::mergeOutput(const QList<QDir> &src, const QDir &dest, const QStrin
                 continue;
 
             bool found = false;
-            for (auto & target: targets) {
+            for (auto &target : targets) {
                 if (relativePath.startsWith(target))
                     found = true;
             }
@@ -2110,14 +2126,17 @@ void Builder::mergeOutput(const QList<QDir> &src, const QDir &dest, const QStrin
             }
 
             std::array<char, PATH_MAX + 1> buf{};
-            auto size = readlink(from.absoluteFilePath().toStdString().c_str(), buf.data(), PATH_MAX);
+            auto size =
+              readlink(from.absoluteFilePath().toStdString().c_str(), buf.data(), PATH_MAX);
             if (size == -1) {
                 qWarning() << "readlink failed " << from.absoluteFilePath();
                 continue;
             }
 
             if (!QFile::link(QString::fromUtf8(buf.data()), to.absoluteFilePath())) {
-                qWarning() << QString("failed to link from %1 to %2").arg(to.absoluteFilePath()).arg(QString::fromUtf8(buf.data()));
+                qWarning() << QString("failed to link from %1 to %2")
+                                .arg(to.absoluteFilePath())
+                                .arg(QString::fromUtf8(buf.data()));
             }
         } else if (from.isFile()) {
             if (!QDir(to.absolutePath()).mkpath(".")) {
@@ -2126,7 +2145,9 @@ void Builder::mergeOutput(const QList<QDir> &src, const QDir &dest, const QStrin
             }
 
             if (!QFile::copy(from.absoluteFilePath(), to.absoluteFilePath())) {
-                qWarning() << QString("failed to copy %1 to %2").arg(from.absoluteFilePath()).arg(to.absoluteFilePath());
+                qWarning() << QString("failed to copy %1 to %2")
+                                .arg(from.absoluteFilePath())
+                                .arg(to.absoluteFilePath());
             }
         }
     }

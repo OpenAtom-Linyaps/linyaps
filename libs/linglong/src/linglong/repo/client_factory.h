@@ -23,8 +23,8 @@ class ClientFactory : public QObject
 {
     Q_OBJECT
 public:
-    ClientFactory(const QString &server);
-    ClientFactory(const std::string &server);
+    explicit ClientFactory(const QString &server);
+    explicit ClientFactory(std::string server);
 
     std::shared_ptr<apiClient_t> createClientV2();
     void setServer(const QString &server);

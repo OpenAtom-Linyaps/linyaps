@@ -1314,6 +1314,11 @@ int Cli::upgrade()
         }
     }
 
+    if (fuzzyRefs.empty()) {
+        this->printer.printReply({ .code = 0, .message = "All software packages are up to date." });
+        return 0;
+    }
+
     api::types::v1::PackageManager1UpdateParameters params;
     for (const auto &fuzzyRef : fuzzyRefs) {
         api::types::v1::PackageManager1Package package;

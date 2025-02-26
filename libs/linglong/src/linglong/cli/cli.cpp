@@ -823,7 +823,13 @@ int Cli::exec()
 
     std::string containerID;
     for (const auto &container : *containers) {
-        if (container.package == options.instance) {
+        std::string packageName = container.package;
+        std::string::size_type colonPos = packageName.find(':');
+        std::string::size_type slashPos = packageName.find('/');
+        if (colonPos != std::string::npos && slashPos != std::string::npos) {
+            packageName = packageName.substr(colonPos + 1, slashPos - colonPos - 1);
+        }
+        if (packageName == options.instance) {
             containerID = container.id;
             break;
         }

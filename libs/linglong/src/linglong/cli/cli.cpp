@@ -2110,24 +2110,32 @@ int Cli::content()
 [[nodiscard]] std::filesystem::path Cli::mappingFile(const std::filesystem::path &file) noexcept
 {
     std::error_code ec;
+    std::filesystem::path target;
     if (!std::filesystem::is_symlink(file, ec)) {
         if (ec) {
             qCritical() << "failed to check symlink " << file.c_str() << ":"
                         << ec.message().c_str();
         }
 
-        return std::filesystem::path{ "/run/host/rootfs" } / file.lexically_relative("/");
+        target = file;
+    } else {
+        std::array<char, PATH_MAX + 1> buf{};
+        auto *real = ::realpath(file.c_str(), buf.data());
+        if (real == nullptr) {
+            qCritical() << "resolve symlink " << file.c_str() << " error: " << ::strerror(errno);
+            target = file;
+        } else {
+            target = real;
+        }
     }
 
-    std::array<char, PATH_MAX + 1> buf{};
-    auto *target = ::realpath(file.c_str(), buf.data());
-    if (target == nullptr) {
-        qCritical() << "resolve symlink " << file.c_str() << " error: " << ::strerror(errno);
-        return std::filesystem::path{ "/run/host/rootfs" } / file.lexically_relative("/");
+    // Dont't mapping the file under /home
+    if (std::string(target.c_str()).rfind("/home/", 0) == 0) {
+        return target;
+    } else {
+        return std::filesystem::path{ "/run/host/rootfs" }
+        / std::filesystem::path{ target }.lexically_relative("/");
     }
-
-    return std::filesystem::path{ "/run/host/rootfs" }
-    / std::filesystem::path{ target }.lexically_relative("/");
 }
 
 [[nodiscard]] std::string Cli::mappingUrl(const std::string &url) noexcept

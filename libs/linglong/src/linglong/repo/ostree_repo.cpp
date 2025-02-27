@@ -1710,7 +1710,7 @@ utils::error::Result<void> OSTreeRepo::exportDir(const std::string &appID,
                     auto timestamp = std::chrono::system_clock::now().time_since_epoch().count();
                     auto sourceNewPath = QString{ "%1/%2_%3.%4" }
                                            .arg((QFileInfo(source_path.c_str()).absolutePath()))
-                                           .arg(info.baseName())
+                                           .arg(info.completeBaseName())
                                            .arg(QString::fromStdString(std::to_string(timestamp)))
                                            .arg(info.suffix())
                                            .toStdString();

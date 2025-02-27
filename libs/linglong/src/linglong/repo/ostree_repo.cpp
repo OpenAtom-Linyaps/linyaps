@@ -53,6 +53,7 @@
 #include <system_error>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -357,46 +358,76 @@ utils::error::Result<QString> commitDirToRepo(std::vector<GFile *> dirs,
     return commit;
 }
 
-utils::error::Result<void> updateOstreeRepoConfig(OstreeRepo *repo,
-                                                  const QString &remoteName,
-                                                  const QString &url,
-                                                  const QString &parent = "") noexcept
+utils::error::Result<void>
+updateOstreeRepoConfig(OstreeRepo *repo,
+                       const linglong::api::types::v1::RepoConfigV2 &config,
+                       const QString &parent = "") noexcept
 {
     LINGLONG_TRACE("update configuration");
 
-    g_autoptr(GVariant) options = NULL;
-    GVariantBuilder builder;
-    g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
-    g_variant_builder_add(&builder, "{sv}", "gpg-verify", g_variant_new_boolean(FALSE));
-    // NOTE:
-    // libcurl 8.2.1 has a http2 bug https://github.com/curl/curl/issues/11859
-    // We disable http2 for now.
-    g_variant_builder_add(&builder, "{sv}", "http2", g_variant_new_boolean(FALSE));
-    options = g_variant_ref_sink(g_variant_builder_end(&builder));
-
     g_autoptr(GError) gErr = nullptr;
-    if (ostree_repo_remote_change(repo,
-                                  nullptr,
-                                  OSTREE_REPO_REMOTE_CHANGE_DELETE_IF_EXISTS,
-                                  remoteName.toUtf8(),
-                                  nullptr,
-                                  nullptr,
-                                  nullptr,
-                                  &gErr)
-        == FALSE) {
-        return LINGLONG_ERR("ostree_repo_remote_change", gErr);
+
+    g_auto(GStrv) remoteNames = ostree_repo_remote_list(repo, nullptr);
+    if (!remoteNames) {
+        return LINGLONG_ERR("ostree_repo_remote_list Failed to get remote list");
     }
 
-    if (ostree_repo_remote_change(repo,
-                                  nullptr,
-                                  OSTREE_REPO_REMOTE_CHANGE_ADD,
-                                  remoteName.toUtf8(),
-                                  (url + "/repos/" + remoteName).toUtf8(),
-                                  options,
-                                  nullptr,
-                                  &gErr)
-        == FALSE) {
-        return LINGLONG_ERR("ostree_repo_remote_change", gErr);
+    std::unordered_set<std::string> validRemotes;
+    for (const auto &repoCfg : config.repos) {
+        validRemotes.insert(repoCfg.alias.value_or(repoCfg.name));
+    }
+
+    for (auto remoteName = remoteNames; *remoteName != nullptr; remoteName++) {
+        if (validRemotes.find(*remoteName) == validRemotes.end()) {
+            if (ostree_repo_remote_change(repo,
+                                          nullptr,
+                                          OSTREE_REPO_REMOTE_CHANGE_DELETE_IF_EXISTS,
+                                          *remoteName,
+                                          nullptr,
+                                          nullptr,
+                                          nullptr,
+                                          &gErr)
+                == FALSE) {
+                return LINGLONG_ERR("ostree_repo_remote_change", gErr);
+            }
+        }
+    }
+
+    for (const auto &repoCfg : config.repos) {
+        const std::string &remoteUrl = repoCfg.url + "/repos/" + repoCfg.name;
+        g_autoptr(GVariant) options = NULL;
+        GVariantBuilder builder;
+        g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
+        g_variant_builder_add(&builder, "{sv}", "gpg-verify", g_variant_new_boolean(FALSE));
+        // NOTE:
+        // libcurl 8.2.1 has a http2 bug https://github.com/curl/curl/issues/11859
+        // We disable http2 for now.
+        g_variant_builder_add(&builder, "{sv}", "http2", g_variant_new_boolean(FALSE));
+        options = g_variant_ref_sink(g_variant_builder_end(&builder));
+
+        if (ostree_repo_remote_change(repo,
+                                      nullptr,
+                                      OSTREE_REPO_REMOTE_CHANGE_DELETE_IF_EXISTS,
+                                      repoCfg.alias.value_or(repoCfg.name).c_str(),
+                                      nullptr,
+                                      nullptr,
+                                      nullptr,
+                                      &gErr)
+            == FALSE) {
+            return LINGLONG_ERR("ostree_repo_remote_change", gErr);
+        }
+
+        if (ostree_repo_remote_change(repo,
+                                      nullptr,
+                                      OSTREE_REPO_REMOTE_CHANGE_ADD,
+                                      repoCfg.alias.value_or(repoCfg.name).c_str(),
+                                      remoteUrl.c_str(),
+                                      options,
+                                      nullptr,
+                                      &gErr)
+            == FALSE) {
+            return LINGLONG_ERR("ostree_repo_remote_change", gErr);
+        }
     }
 
     GKeyFile *configKeyFile = ostree_repo_get_config(repo);
@@ -417,10 +448,10 @@ utils::error::Result<void> updateOstreeRepoConfig(OstreeRepo *repo,
     return LINGLONG_OK;
 }
 
-utils::error::Result<OstreeRepo *> createOstreeRepo(const QDir &location,
-                                                    const QString &remoteName,
-                                                    const QString &url,
-                                                    const QString &parent = "") noexcept
+utils::error::Result<OstreeRepo *>
+createOstreeRepo(const QDir &location,
+                 const linglong::api::types::v1::RepoConfigV2 &config,
+                 const QString &parent = "") noexcept
 {
     LINGLONG_TRACE("create linglong repository at " + location.absolutePath());
 
@@ -439,7 +470,7 @@ utils::error::Result<OstreeRepo *> createOstreeRepo(const QDir &location,
         return LINGLONG_ERR("ostree_repo_create", gErr);
     }
 
-    auto result = updateOstreeRepoConfig(ostreeRepo, remoteName, url, parent);
+    auto result = updateOstreeRepoConfig(ostreeRepo, config, parent);
 
     if (!result) {
         return LINGLONG_ERR(result);
@@ -719,10 +750,7 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
 
     LINGLONG_TRACE("init ostree-based linglong repository");
 
-    const auto defaultRepo = getDefaultRepo(this->cfg);
-    auto result = createOstreeRepo(this->ostreeRepoDir().absolutePath(),
-                                   QString::fromStdString(defaultRepo.name),
-                                   QString::fromStdString(defaultRepo.url));
+    auto result = createOstreeRepo(this->ostreeRepoDir().absolutePath(), this->cfg);
     if (!result) {
         qCritical() << LINGLONG_ERRV(result);
         qFatal("abort");
@@ -758,15 +786,9 @@ OSTreeRepo::updateConfig(const api::types::v1::RepoConfigV2 &newCfg) noexcept
     }
 
     utils::Transaction transaction;
-    const auto newRepo = getDefaultRepo(newCfg);
-    result = updateOstreeRepoConfig(this->ostreeRepo.get(),
-                                    QString::fromStdString(newRepo.name),
-                                    QString::fromStdString(newRepo.url));
+    result = updateOstreeRepoConfig(this->ostreeRepo.get(), newCfg);
     transaction.addRollBack([this]() noexcept {
-        const auto defaultRepo = getDefaultRepo(this->cfg);
-        auto result = updateOstreeRepoConfig(this->ostreeRepo.get(),
-                                             QString::fromStdString(defaultRepo.name),
-                                             QString::fromStdString(defaultRepo.url));
+        auto result = updateOstreeRepoConfig(this->ostreeRepo.get(), this->cfg);
         if (!result) {
             qCritical() << result.error();
             Q_ASSERT(false);
@@ -778,6 +800,7 @@ OSTreeRepo::updateConfig(const api::types::v1::RepoConfigV2 &newCfg) noexcept
 
     transaction.commit();
 
+    const auto newRepo = getDefaultRepo(newCfg);
     this->m_clientFactory.setServer(QString::fromStdString(newRepo.url));
     this->cfg = newCfg;
 
@@ -801,18 +824,12 @@ utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfi
             Q_ASSERT(false);
         }
     });
-    const auto newRepo = getDefaultRepo(cfg);
-    result = updateOstreeRepoConfig(this->ostreeRepo.get(),
-                                    QString::fromStdString(newRepo.name),
-                                    QString::fromStdString(newRepo.url));
+    result = updateOstreeRepoConfig(this->ostreeRepo.get(), cfg);
     if (!result) {
         return LINGLONG_ERR(result);
     }
     transaction.addRollBack([this]() noexcept {
-        const auto defaultRepo = getDefaultRepo(this->cfg);
-        auto result = updateOstreeRepoConfig(this->ostreeRepo.get(),
-                                             QString::fromStdString(defaultRepo.name),
-                                             QString::fromStdString(defaultRepo.url));
+        auto result = updateOstreeRepoConfig(this->ostreeRepo.get(), this->cfg);
         if (!result) {
             qCritical() << result.error();
             Q_ASSERT(false);
@@ -823,6 +840,7 @@ utils::error::Result<void> OSTreeRepo::setConfig(const api::types::v1::RepoConfi
         return LINGLONG_ERR(ret);
     }
 
+    const auto newRepo = getDefaultRepo(cfg);
     this->m_clientFactory.setServer(newRepo.url);
     this->cfg = cfg;
 
@@ -1147,12 +1165,13 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
     g_autoptr(GVariant) pull_options = g_variant_ref_sink(g_variant_builder_end(&builder));
     // 这里不能使用g_main_context_push_thread_default，因为会阻塞Qt的事件循环
     const auto defaultRepo = getDefaultRepo(this->cfg);
-    auto status = ostree_repo_pull_with_options(this->ostreeRepo.get(),
-                                                defaultRepo.name.c_str(),
-                                                pull_options,
-                                                progress,
-                                                cancellable,
-                                                &gErr);
+    auto status =
+      ostree_repo_pull_with_options(this->ostreeRepo.get(),
+                                    defaultRepo.alias.value_or(defaultRepo.name).c_str(),
+                                    pull_options,
+                                    progress,
+                                    cancellable,
+                                    &gErr);
     ostree_async_progress_finish(progress);
     auto shouldFallback = false;
     if (status == FALSE) {
@@ -1190,7 +1209,7 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
         g_autoptr(GVariant) pull_options = g_variant_ref_sink(g_variant_builder_end(&builder));
 
         status = ostree_repo_pull_with_options(this->ostreeRepo.get(),
-                                               defaultRepo.name.c_str(),
+                                               defaultRepo.alias.value_or(defaultRepo.name).c_str(),
                                                pull_options,
                                                progress,
                                                cancellable,
@@ -1227,7 +1246,7 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
 
     item.commit = commit;
     item.info = *info;
-    item.repo = defaultRepo.name;
+    item.repo = defaultRepo.alias.value_or(defaultRepo.name);
 
     auto layerDir = this->ensureEmptyLayerDir(item.commit);
     if (!layerDir) {

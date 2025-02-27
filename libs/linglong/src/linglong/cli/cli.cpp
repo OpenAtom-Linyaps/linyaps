@@ -1841,8 +1841,8 @@ int Cli::repo(CLI::App *app)
         }
 
         // remove last slash
-        if (options.repoOptions.repoUrl.back() == '/') {
-            options.repoOptions.repoUrl.pop_back();
+        if (url.back() == '/') {
+            url.pop_back();
         }
     }
 

@@ -371,10 +371,6 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
         }
         const auto &[minified, files] = *ret;
 
-        if (files.empty()) {
-            continue;
-        }
-
         // first step, copy files which in layer directory
         std::error_code ec;
         for (const auto &info :
@@ -411,82 +407,85 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
                                   .arg(QString::fromStdString(ec.message())));
         }
 
-        struct stat moduleFilesDirStat{}, filesStat{};
+        if (!files.empty()) {
+            struct stat moduleFilesDirStat{}, filesStat{};
 
-        if (stat(moduleFilesDir.c_str(), &moduleFilesDirStat) == -1) {
-            return LINGLONG_ERR("couldn't stat module files directory: "
-                                + QString::fromStdString(moduleFilesDir));
-        }
-
-        if (stat((*files.begin()).c_str(), &filesStat) == -1) {
-            return LINGLONG_ERR("couldn't stat files directory: "
-                                + QString::fromStdString(layer.filesDirPath().toStdString()));
-        }
-
-        const bool shouldCopy = moduleFilesDirStat.st_dev != filesStat.st_dev;
-
-        for (const auto &source : files) {
-            auto destination =
-              moduleFilesDir / std::filesystem::path{ source }.lexically_relative(basePath);
-
-            // Ensure that the parent directory exists
-            if (!std::filesystem::create_directories(destination.parent_path(), ec) && ec) {
-                return LINGLONG_ERR("couldn't create directories "
-                                    % QString::fromStdString(destination.parent_path().string()
-                                                             + ":" + ec.message()));
+            if (stat(moduleFilesDir.c_str(), &moduleFilesDirStat) == -1) {
+                return LINGLONG_ERR("couldn't stat module files directory: "
+                                    + QString::fromStdString(moduleFilesDir));
             }
 
-            if (std::filesystem::is_symlink(source, ec)) {
-                std::filesystem::copy_symlink(source, destination, ec);
-                if (ec) {
-                    return LINGLONG_ERR("couldn't copy symlink from "
-                                        % QString::fromStdString(source) % " to "
-                                        % QString::fromStdString(destination.string()) % " "
-                                        % QString::fromStdString(ec.message()));
+            if (stat((*files.begin()).c_str(), &filesStat) == -1) {
+                return LINGLONG_ERR("couldn't stat files directory: "
+                                    + QString::fromStdString(layer.filesDirPath().toStdString()));
+            }
+
+            const bool shouldCopy = moduleFilesDirStat.st_dev != filesStat.st_dev;
+
+            for (const auto &source : files) {
+                auto destination =
+                  moduleFilesDir / std::filesystem::path{ source }.lexically_relative(basePath);
+
+                // Ensure that the parent directory exists
+                if (!std::filesystem::create_directories(destination.parent_path(), ec) && ec) {
+                    return LINGLONG_ERR("couldn't create directories "
+                                        % QString::fromStdString(destination.parent_path().string()
+                                                                 + ":" + ec.message()));
                 }
 
-                continue;
-            }
-            if (ec) {
-                return LINGLONG_ERR(
-                  QString{ "is_symlink error:%1" }.arg(QString::fromStdString(ec.message())));
-            }
+                if (std::filesystem::is_symlink(source, ec)) {
+                    std::filesystem::copy_symlink(source, destination, ec);
+                    if (ec) {
+                        return LINGLONG_ERR("couldn't copy symlink from "
+                                            % QString::fromStdString(source) % " to "
+                                            % QString::fromStdString(destination.string()) % " "
+                                            % QString::fromStdString(ec.message()));
+                    }
 
-            if (std::filesystem::is_directory(source, ec)) {
-                if (!std::filesystem::create_directories(destination, ec) && ec) {
-                    return LINGLONG_ERR(QString{ "couldn't create directory: %1, error: %2" }
-                                          .arg(QString::fromStdString(destination.string()))
-                                          .arg(QString::fromStdString(ec.message())));
+                    continue;
+                }
+                if (ec) {
+                    return LINGLONG_ERR(
+                      QString{ "is_symlink error:%1" }.arg(QString::fromStdString(ec.message())));
                 }
 
-                continue;
-            }
-            if (ec) {
-                return LINGLONG_ERR(
-                  QString{ "is_directory error:%1" }.arg(QString::fromStdString(ec.message())));
-            }
+                if (std::filesystem::is_directory(source, ec)) {
+                    if (!std::filesystem::create_directories(destination, ec) && ec) {
+                        return LINGLONG_ERR(QString{ "couldn't create directory: %1, error: %2" }
+                                              .arg(QString::fromStdString(destination.string()))
+                                              .arg(QString::fromStdString(ec.message())));
+                    }
 
-            if (shouldCopy) {
-                std::filesystem::copy(source,
-                                      destination,
-                                      std::filesystem::copy_options::overwrite_existing,
-                                      ec);
+                    continue;
+                }
                 if (ec) {
-                    return LINGLONG_ERR("couldn't copy from " % QString::fromStdString(source)
+                    return LINGLONG_ERR(
+                      QString{ "is_directory error:%1" }.arg(QString::fromStdString(ec.message())));
+                }
+
+                if (shouldCopy) {
+                    std::filesystem::copy(source,
+                                          destination,
+                                          std::filesystem::copy_options::overwrite_existing,
+                                          ec);
+                    if (ec) {
+                        return LINGLONG_ERR("couldn't copy from " % QString::fromStdString(source)
+                                            % " to " % QString::fromStdString(destination.string())
+                                            % " " % QString::fromStdString(ec.message()));
+                    }
+
+                    continue;
+                }
+
+                std::filesystem::create_hard_link(source, destination, ec);
+                if (ec) {
+                    return LINGLONG_ERR("couldn't link from " % QString::fromStdString(source)
                                         % " to " % QString::fromStdString(destination.string())
                                         % " " % QString::fromStdString(ec.message()));
                 }
-
-                continue;
-            }
-
-            std::filesystem::create_hard_link(source, destination, ec);
-            if (ec) {
-                return LINGLONG_ERR("couldn't link from " % QString::fromStdString(source) % " to "
-                                    % QString::fromStdString(destination.string()) % " "
-                                    % QString::fromStdString(ec.message()));
             }
         }
+
         auto &layerInfoRef = this->meta.layers.emplace_back(
           linglong::api::types::v1::UabLayer{ .info = info, .minified = minified });
 

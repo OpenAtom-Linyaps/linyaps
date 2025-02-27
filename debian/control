@@ -54,6 +54,7 @@ Package: linglong-builder
 Architecture: any
 Depends: erofs-utils,
          erofsfuse,
+         fuse-overlayfs,
          git,
          linglong-bin,
          linglong-box | crun,

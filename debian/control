@@ -1,0 +1,71 @@
+Source: linglong
+Section: admin
+Priority: optional
+Maintainer: Deepin Packages Builder <packages@deepin.com>
+Build-Depends: cmake,
+               debhelper-compat (= 12),
+               erofsfuse (>= 1.8.3),
+               intltool,
+               libcli11-dev (>= 2.4.1) | hello,
+               libcurl4-openssl-dev,
+               libdeflate-dev,
+               libelf-dev,
+               libexpected-dev (>= 1.0.0~dfsg-2~bpo10+1) | hello,
+               libfuse3-dev,
+               libglib2.0-dev,
+               libgmock-dev,
+               libgtest-dev,
+               liblz4-dev,
+               liblzma-dev,
+               libostree-dev,
+               libpcre2-dev,
+               libseccomp-dev,
+               libselinux1-dev,
+               libssl-dev,
+               libsystemd-dev,
+               libyaml-cpp-dev (>= 0.6.2),
+               libzstd-dev,
+               nlohmann-json3-dev (>= 3.5.0),
+               pkg-config,
+               qt5-qmake,
+               qtbase5-dev,
+               qtbase5-private-dev,
+               systemd,
+               zlib1g-dev,
+               libcap-dev
+Standards-Version: 4.1.3
+Homepage: http://www.deepin.org
+
+Package: linglong-bin
+Architecture: any
+Depends: desktop-file-utils,
+         erofsfuse,
+         libglib2.0-bin,
+         linglong-box | crun,
+         shared-mime-info,
+         ${misc:Depends},
+         ${shlibs:Depends}
+Replaces: linglong-dbus-proxy
+Conflicts: linglong-dbus-proxy
+Description: Linglong package manager.
+ Linglong package management command line tool.
+
+Package: linglong-builder
+Architecture: any
+Depends: erofs-utils,
+         erofsfuse,
+         fuse-overlayfs,
+         git,
+         linglong-bin,
+         linglong-box | crun,
+         ${misc:Depends},
+         ${shlibs:Depends}
+Recommends: devscripts, linglong-loader
+Description: Linglong application building tools.
+ ll-builder is a tool that makes it easy to build applications and dependencies.
+
+Package: linglong-box
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: Deepin sandbox with OCI standard.
+ Deepin sandbox...

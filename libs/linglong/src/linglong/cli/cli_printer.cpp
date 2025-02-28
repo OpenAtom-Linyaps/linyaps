@@ -83,11 +83,6 @@ void CLIPrinter::printPackages(const std::vector<api::types::v1::PackageInfoV2> 
             simpleDescription = QString::fromStdWString(simpleDescriptionWStr);
         }
 
-        auto id = QString::fromStdString(info.id).simplified();
-        if (id.size() > 32) {
-            id.push_back(" ");
-        }
-
         auto name = QString::fromStdString(info.name).simplified();
         auto nameWStr = name.toStdWString();
         auto nameWcswidth = wcswidth(nameWStr.c_str(), -1);
@@ -98,14 +93,19 @@ void CLIPrinter::printPackages(const std::vector<api::types::v1::PackageInfoV2> 
         }
         auto nameStr = name.toStdString();
         auto nameOffset = nameStr.size() - nameWcswidth;
-        std::cout << std::setw(43) << info.id << std::setw(33 + nameOffset) << nameStr
-                  << std::setw(16) << info.version << std::setw(16) << info.channel << std::setw(12)
-                  << info.packageInfoV2Module << simpleDescription.toStdString() << std::endl;
+        std::cout << std::setw(43) << info.id + " " << std::setw(33 + nameOffset) << nameStr + " "
+                  << std::setw(16) << info.version + " " << std::setw(16) << info.channel + " "
+                  << std::setw(12) << info.packageInfoV2Module + " "
+                  << simpleDescription.toStdString() << std::endl;
     }
 }
 
 void CLIPrinter::printContainers(const std::vector<api::types::v1::CliContainer> &list)
 {
+    if (list.empty()) {
+        std::cout << _("No containers are running.") << std::endl;
+        return;
+    }
     const std::size_t padding{ 2 };
     const std::string packageSection = qUtf8Printable(_("App"));
     const std::string idSection = qUtf8Printable(_("ContainerID"));
@@ -231,6 +231,11 @@ void CLIPrinter::printPackage(const api::types::v1::PackageInfoV2 &info)
 
 void CLIPrinter::printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &list)
 {
+    if (list.empty()) {
+        std::cout << _("No apps available for update.") << std::endl;
+        return;
+    }
+
     std::size_t idLen{ 0 }, installedLen{ 0 };
 
     std::for_each(list.cbegin(), list.cend(), [&idLen, &installedLen](const auto &info) {

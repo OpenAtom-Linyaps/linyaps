@@ -1,0 +1,392 @@
+linglong (1.5.6-1) unstable; urgency=medium
+
+  * fix: layer size error when export layer repeatedly
+  * fix: missed some env variables when reusing container
+  * fix: builder did not exit when the build script failed
+  * feat: add option "--layer" for ll-builder to export layer
+  * fix: failed to run linglong app in ubuntu 24.04
+  * feat: Create dedicated client for HTTP requests
+  * feat: does not use temporary repository when pulling
+  * feat: ll-builder allows manual linglong.yaml selection
+  * fix: builder did not exit when the build script failed
+
+ -- dengbo <dengbo@deepin.org>  Thu, 20 Jun 2024 16:45:51 +0800
+
+linglong (1.5.1-1) unstable; urgency=medium
+
+  * fix: move the reinstall operation to new script
+
+ -- dengbo <dengbo@deepin.org>  Mon, 13 May 2024 11:35:15 +0800
+
+linglong (1.5.0-1) unstable; urgency=medium
+
+  * release after some refactor.
+
+ -- dengbo <dengbo@deepin.org>  Tue, 23 Apr 2024 15:48:14 +0800
+
+linglong (1.4.3-1) unstable; urgency=medium
+
+  * Fix some ll-builder bugs.
+  * Bring `enter` back.
+  * Update postinst scrips to remove x11 session hook.
+
+ -- Chen Linxuan <me@black-desk.cn>  Thu, 18 Jan 2024 15:32:29 +0800
+
+linglong (1.4.1-1) unstable; urgency=medium
+
+  * Enable dh_installsysuser;
+  * Fix a problem caused by new repository location.
+
+ -- Chen Linxuan <me@black-desk.cn>  Fri, 05 Jan 2024 22:51:39 +0800
+
+linglong (1.4.0-1) unstable; urgency=low
+
+  * First release after some refactory.
+
+ -- Chen Linxuan <me@black-desk.cn>  Wed, 03 Jan 2024 15:56:48 +0800
+
+linglong (1.3.5.1-1) unstable; urgency=medium
+
+  * when launching the application for the second time, use the
+    exec parameter in the desktop file instead of the last value.
+
+ -- chenhuixing <chenhuixing@uniontech.com>  Thu, 05 Jan 2023 10:20:21 +0800
+
+linglong (1.3.5-1) unstable; urgency=medium
+
+  * ll-cli repo modify add nodbus mode.
+
+ -- huqinghong <huqinghong@uniontech.com>  Tue, 27 Dec 2022 10:15:00 +0800
+
+linglong (1.3.4-1) unstable; urgency=medium
+
+  * 1. fix ll-cli query prompt in the case of a network failure
+  * 2. fix ll-cli run with special symbol
+  * 3. fix ll-cli support any repo name
+
+ -- huqinghong <huqinghong@uniontech.com>  Wed, 07 Dec 2022 15:50:01 +0800
+
+linglong (1.3.3.23-1) unstable; urgency=medium
+
+  * update version to 1.3.3.23-1 for deepin.
+
+ -- yuanqiliang <yuanqiliang@uniontech.com>  Mon, 05 Dec 2022 11:03:42 +0800
+
+linglong (1.3.3.22-1) unstable; urgency=medium
+
+  * update version to 1.3.3.22-1 for deepin.
+
+ -- yuanqiliang <yuanqiliang@uniontech.com>  Thu, 25 Nov 2022 11:03:42 +0800
+
+linglong (1.3.3.21-1) unstable; urgency=medium
+
+  * update version to 1.3.3.21-1 for deepin.
+
+ -- huqinghong <huqinghong@uniontech.com>  Thu, 24 Nov 2022 11:03:42 +0800
+
+linglong (1.3.3.20-1) unstable; urgency=medium
+
+  * update version to 1.3.3.20-1 for deepin.
+
+ -- chenhuixing <chenhuixing@uniontech.com>  Fri, 18 Nov 2022 18:38:12 +0800
+
+linglong (1.3.3.19-1) unstable; urgency=medium
+
+  * update version to 1.3.3.19-1 for deepin.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Fri, 11 Nov 2022 10:19:28 +0800
+
+linglong (1.3.3.18-1) unstable; urgency=medium
+
+  * update version to 1.3.3.18-1 for deepin.
+
+ -- yuanqiliang <yuanqiliang@uniontech.com>  Wed, 02 Nov 2022 15:22:13 +0800
+
+linglong (1.3.3.17-1) unstable; urgency=medium
+
+  * update version to 1.3.3.17-1 for deepin.
+
+ -- huqinghong <huqinghong@uniontech.com>  Wed, 02 Nov 2022 15:22:13 +0800
+
+linglong (1.3.3.16-1) unstable; urgency=medium
+
+  * update version to 1.3.3.16-1 for deepin.
+
+ -- Chen Linxuan <chenlinxuan@uniontech.com>  Thu, 27 Oct 2022 14:55:00 +0800
+
+linglong (1.3.3.14-1) unstable; urgency=medium
+
+  * update version to 1.3.3.14-1 for deepin.
+
+ -- yuanqiliang <yuanqiliang@uniontech.com>  Thu, 08 Sep 2022 15:55:17 +0800
+
+linglong (1.3.3.8-1) unstable; urgency=medium
+
+  * update version to 1.3.3.8-1 for deepin.
+
+ -- huqinghong <huqinghong@uniontech.com>  Thu, 08 Sep 2022 20:35:17 +0800
+
+linglong (1.3.3.7-1) unstable; urgency=medium
+
+  * update version to 1.3.3.7-1 for deepin.
+
+ -- chenhuixing <chenhuixing@uniontech.com>  Tue, 06 Sep 2022 10:01:10 +0800
+
+linglong (1.3.3.6-1) unstable; urgency=medium
+
+  * update version to 1.3.3.6-1 for deepin.
+
+ -- chenhuixing <chenhuixing@uniontech.com>  Tue, 09 Aug 2022 14:20:18 +0800
+
+linglong (1.3.3.5-1) unstable; urgency=medium
+
+  * update version to 1.3.3.5-1 for deepin.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Mon, 01 Aug 2022 20:47:34 +0800
+
+linglong (1.3.3.4-1) unstable; urgency=medium
+
+  * update version to 1.3.3.4-1 for deepin.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Tue, 26 Jul 2022 10:29:14 +0800
+
+linglong (1.3.3.3-1) unstable; urgency=medium
+
+  * Modify domain name for deepin.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Mon, 25 Jul 2022 10:14:55 +0800
+
+linglong (1.3.3.2-1) unstable; urgency=medium
+
+  * update version to 1.3.3.2-1.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Tue, 19 Jul 2022 08:47:52 +0800
+
+linglong (1.3.3.1-1) unstable; urgency=medium
+
+  * update version to 1.3.3.1-1.
+
+ -- liujianqiang <liujianqiang@uniotech.com>  Wed, 06 Jul 2022 08:26:29 +0800
+
+linglong (1.3.3-1) unstable; urgency=medium
+
+  * change the url of repo.
+  * update version to 1.3.3-1.
+
+ -- huqinghong <huqinghong@uniontech.com>  Wed, 29 Jun 2022 20:48:54 +0800
+
+linglong (1.3.2-1) unstable; urgency=medium
+
+  * update version to 1.3.2-1.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Fri, 24 Jun 2022 16:53:05 +0800
+
+linglong (1.3.1-1) unstable; urgency=medium
+
+  * fixed some bug.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Wed, 27 Apr 2022 15:12:16 +0800
+
+linglong (1.3.0-1) unstable; urgency=medium
+
+  * 1. fix link library failed when using cmake.
+  * 2. fix adjust dependency checkout directory.
+  * 3. fix adjust dependency checkout directory.
+  * 4. modify the inaccurate query results of package management query.
+  * 5. package management arm support.
+  * 6. add faq docs.
+  * 7. remove outputs.
+  * 8. get build status from ll-box.
+  * 9. desktop env support.
+  * 10. When there are multiple versions in the warehouse, update to the
+  *     highest version.
+  * 11. ll-cli run support multi arch.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Fri, 08 Apr 2022 13:56:34 +0800
+
+linglong (1.2.12-1) unstable; urgency=medium
+
+  * 1. add testcase for info header file.
+  * 2. add testcase for runtime app header file.
+  * 3. mount wine runtime /usr/bin/xdg-open.
+  * 4. resolve the crp and dtk dependency conflicts.
+  * 5. edit linglong.yaml by options.
+  * 6. mount ~/.deepinwine.
+  * 7. add docs for builder.
+  * 8. fix an error message is prompted when an ordinary user uninstalls a pre installed user.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Thu, 31 Mar 2022 10:53:40 +0800
+
+linglong (1.2.11-1) unstable; urgency=medium
+
+  * 1. support debian patches.
+  * 2. add dbus proxy.
+  * 3. add agent verifications.
+  * 4. fix matching rule.
+  * 5. add linglng-bin depends linglong-dbus-proxy.
+  * 6. fuse-overlays mount org.deepin.manual.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Fri, 25 Mar 2022 14:25:51 +0800
+
+linglong (1.2.10-1) unstable; urgency=medium
+
+  * 1. revert fix app layer nullptr load for app.yaml.
+  * 2. revert add D_SERIALIZE_DECLARE replace Q_JSON_DECLARE_PTR_METATYPE_NM.
+  * 3. remove mount /user/share/fonts.
+  * 4. remove Qpointer delete.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Wed, 23 Mar 2022 10:03:09 +0800
+
+linglong (1.2.9-1) unstable; urgency=medium
+
+  * update ostree pull timeout.
+
+ -- huqinghong <huqinghong@uniontech.com>  Tue, 22 Mar 2022 15:30:12 +0800
+
+linglong (1.2.8-1) unstable; urgency=medium
+
+  * 1. support mutiple patches.
+  * 2. support serialize with full namespace.
+  * 3. add D_SERIALIZE_DECLARE replace Q_JSON_DECLARE_PTR_METATYPE_NM.
+  * 4. fix app layer nullptr load for app.yaml.
+  * 5. set env XDG_CONFIG_HOME XDG_CACHE_HOME.
+  * 6. multi-threaded start.
+  * 7. add getPathInXdgUserConfig.
+  * 8. mount /dev/video*.
+  * 9. adjust the process of reading environment variables.
+  * 10. implement exportBundle function.
+  * 11. add temp directory mount api.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Tue, 22 Mar 2022 13:25:57 +0800
+
+linglong (1.2.7-1) unstable; urgency=medium
+
+  * 1. add xdg key to dir path.
+  * 2. update build docs.
+  * 3. add permissions on pachage info struct.
+  * 4. format app.cpp.
+  * 5. rename json fields.
+  * 6. add env USER.
+  * 7. app loadconfig load user filesystem permission.
+  * 8. mount bind xdg-open and xdg-email.
+  * 9. add xdg publicshare dir.
+  * 10. fix old info.json miss permission.
+  * 11. add dbus proxy.
+  * 12. add cli update function.
+  * 13. implement ll-builder create function.
+  * 14. add document for builder.
+  * 15. QtWebEngineProcess env.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Tue, 15 Mar 2022 09:46:52 +0800
+
+linglong (1.2.6-1) unstable; urgency=medium
+
+  * 1. fix wine app launch failed.
+  * 2. fix home mounts.
+  * 3. user defalut size limit for /tmp.
+  * 4. add /runtime/bin to env Path.
+  * 5. add env XDG_CONFIG_HOME and XDG_CACHE_HOME.
+  * 6. fix add env variables for QtWebEngine.
+  * 7. fix exec args.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Tue, 08 Mar 2022 13:16:49 +0800
+
+linglong (1.2.5-1) unstable; urgency=medium
+
+  * 1. fix correct permission on runtime directory.
+  * 2. fix host machine mount directory.
+  * 3. fix user the correct qt plugins path.
+  * 4. fix use defalut size limit for /dev/shm.
+  * 5. fix SQLite version number sorting error during multi version scenario
+  *    query.
+  * 6. fix 360 browser startup crash.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Tue, 01 Mar 2022 11:08:48 +0800
+
+linglong (1.2.4-1) unstable; urgency=medium
+
+  * 1. some bug fixed.
+  * 2. add docs for ll-cli.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Fri, 25 Feb 2022 10:40:22 +0800
+
+linglong (1.2.3-1) unstable; urgency=medium
+
+  * fix 61-linglong permission.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Thu, 17 Feb 2022 17:50:15 +0800
+
+linglong (1.2.2-1) unstable; urgency=medium
+
+  * 1. update mime type database.
+  * 2. add docs for builder.
+  * 3. customize environment variable XDG_DATA_HOME.
+  * 4. fix app dbus service files register failed.
+  * 5. support gitbook.
+  * 6. add directory for linglong doc.
+  * 7. add builder for library.
+  * 8. add /runtime/share for XDG_DATA_DIRS.
+  * 9. fix ro bind mount ~/.cache/fontconfig.
+  * 10. fix add rbind to all bind mounts.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Wed, 16 Feb 2022 13:20:33 +0800
+
+linglong (1.2.1-1) unstable; urgency=medium
+
+  *  Code optimization and audio adjustment repair.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Fri, 21 Jan 2022 16:49:56 +0800
+
+linglong (1.2.0-1) unstable; urgency=medium
+
+  *  Some bug fixes and support mime type association.
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Fri, 14 Jan 2022 10:43:27 +0800
+
+linglong (1.0.7-1) unstable; urgency=medium
+
+  * add env XDG_DATA_DIRS
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Fri, 24 Dec 2021 11:42:01 +0800
+
+linglong (1.0.6-1) unstable; urgency=medium
+
+  * update version
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Thu, 23 Dec 2021 14:10:08 +0800
+
+linglong (1.0.5-1) unstable; urgency=medium
+
+  * update version
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Fri, 17 Dec 2021 20:16:56 +0800
+
+linglong (1.0.4-1) unstable; urgency=medium
+
+  * feat: add api pushOuapOrRuntimeToServer
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Mon, 01 Nov 2021 15:44:36 +0800
+
+linglong (1.0.3-1) unstable; urgency=medium
+
+  *fix: add ostree commit timeout 
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Tue, 19 Oct 2021 14:19:04 +0800
+
+linglong (1.0.2-1) unstable; urgency=medium
+
+  * fix: delete test case /tmp/uap-xxx
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Tue, 19 Oct 2021 11:12:04 +0800
+
+linglong (1.0.1-1) unstable; urgency=medium
+
+  * add uap install dbus
+
+ -- liujianqiang <liujianqiang@uniontech.com>  Mon, 18 Oct 2021 13:10:00 +0800
+
+linglong (1.0-1) unstable; urgency=medium
+
+  * Init package.
+
+ -- chenhuixing <chenhuixing@uniontech.com>  Thu, 09 Sep 2021 11:41:48 +0000

@@ -39,6 +39,7 @@
 #include <QCryptographicHash>
 #include <QEventLoop>
 #include <QFileInfo>
+#include <QDBusReply>
 
 #include <charconv>
 #include <cstdlib>

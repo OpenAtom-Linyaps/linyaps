@@ -37,9 +37,9 @@
 #include <nlohmann/json.hpp>
 
 #include <QCryptographicHash>
+#include <QDBusReply>
 #include <QEventLoop>
 #include <QFileInfo>
-#include <QDBusReply>
 
 #include <charconv>
 #include <cstdlib>
@@ -1335,6 +1335,7 @@ int Cli::search([[maybe_unused]] CLI::App *subcommand)
 
     auto params = api::types::v1::PackageManager1SearchParameters{
         .id = options.appid,
+        .repo = options.searchRepo,
     };
 
     auto pendingReply = this->pkgMan.Search(utils::serialize::toQVariantMap(params));
@@ -1366,7 +1367,6 @@ int Cli::search([[maybe_unused]] CLI::App *subcommand)
     }
 
     QEventLoop loop;
-
     connect(&this->pkgMan,
             &api::dbus::v1::PackageManager::SearchFinished,
             [&](const QString &jobID, const QVariantMap &data) {

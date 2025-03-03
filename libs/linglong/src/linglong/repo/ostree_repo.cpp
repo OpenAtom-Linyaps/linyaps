@@ -1797,7 +1797,7 @@ OSTreeRepo::exportEntries(const std::filesystem::path &rootEntriesDir,
                           const api::types::v1::RepositoryCacheLayersItem &item) noexcept
 {
     LINGLONG_TRACE(QString("export %1").arg(item.info.id.c_str()));
-    auto layerDir = getMergedModuleDir(item);
+    auto layerDir = getLayerDir(item);
     if (!layerDir.has_value()) {
         return LINGLONG_ERR("get layer dir", layerDir);
     }

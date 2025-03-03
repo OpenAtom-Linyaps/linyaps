@@ -1835,8 +1835,22 @@ auto PackageManager::Search(const QVariantMap &parameters) noexcept -> QVariantM
     }
     auto jobID = QUuid::createUuid().toString();
     auto ref = *fuzzyRef;
-    m_search_queue.runTask([this, jobID, ref]() {
-        auto pkgInfos = this->repo.listRemote(ref);
+    linglong::api::types::v1::Repo repo{};
+    if (paras->repo.has_value()) {
+        auto repoConfig = this->repo.getConfig();
+        auto it = std::find_if(repoConfig.repos.begin(),
+                               repoConfig.repos.end(),
+                               [&paras](const linglong::api::types::v1::Repo &repo) {
+                                   return repo.alias.value_or(repo.name) == paras->repo.value();
+                               });
+
+        if (it == repoConfig.repos.end()) {
+            return toDBusReply(-1, QString("repo %1 not found").arg(paras->repo.value().c_str()));
+        }
+        repo = *it;
+    }
+    m_search_queue.runTask([this, jobID, ref, repo = std::move(repo)]() {
+        auto pkgInfos = this->repo.listRemote(ref, repo);
         if (!pkgInfos.has_value()) {
             qWarning() << "list remote failed: " << pkgInfos.error().message();
             Q_EMIT this->SearchFinished(jobID, toDBusReply(pkgInfos));

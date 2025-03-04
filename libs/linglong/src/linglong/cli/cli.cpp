@@ -278,7 +278,7 @@ void Cli::onTaskPropertiesChanged(QString interface,                            
                 continue;
             }
 
-            lastPercentage = val;
+            lastPercentage = val > 100 ? 100 : val;
             continue;
         }
 
@@ -2326,9 +2326,11 @@ Cli::RequestDirectories(const api::types::v1::PackageInfoV2 &info) noexcept
         ::close(fd);
     });
 
-    struct flock lock
-    {
-        .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0,
+    struct flock lock{
+        .l_type = F_WRLCK,
+        .l_whence = SEEK_SET,
+        .l_start = 0,
+        .l_len = 0,
     };
 
     // all later processes should be blocked
@@ -2527,10 +2529,7 @@ Cli::ensureCache(const package::Reference &ref,
     auto appCache = std::filesystem::path(LINGLONG_ROOT) / "cache" / appLayerItem.commit;
     const auto fileLock = std::filesystem::path("/run/linglong/") / appLayerItem.commit / ".lock";
 
-    struct flock locker
-    {
-        .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0
-    };
+    struct flock locker{ .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
 
     // Note: If the cache directory exists, check if there is a file lock.
     //       If the lock file is not exist, it means that the cache has been generated.

@@ -172,9 +172,11 @@ void CLIPrinter::printRepoConfig(const api::types::v1::RepoConfigV2 &repoInfo)
     for (const auto &repo : repoInfo.repos) {
         maxUrlLength = std::max(maxUrlLength, repo.url.size());
     }
-    std::cout << std::left << std::setw(11) << _("Name");
-    std::cout << std::setw(maxUrlLength + 2) << _("Url") << std::setw(11) << _("Alias")
-              << std::setw(10) << _("Priority") << std::endl;
+    std::cout << "\033[38;5;214m" << std::left << std::setw(11)
+              << adjustDisplayWidth(_("Name"), 11);
+    std::cout << std::setw(maxUrlLength + 2) << adjustDisplayWidth(_("Url"), maxUrlLength + 2)
+              << std::setw(11) << adjustDisplayWidth(_("Alias"), 11) << std::setw(10)
+              << _("Priority") << "\033[0m" << std::endl;
 
     auto repos = repoInfo.repos;
     // 按照优先级从高到低排序

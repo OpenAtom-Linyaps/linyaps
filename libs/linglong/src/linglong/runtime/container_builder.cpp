@@ -417,6 +417,12 @@ auto ContainerBuilder::create(const ContainerOptions &opts) noexcept
         return LINGLONG_ERR(config);
     }
 
+    // ensure container root exists
+    auto containerRoot = bundle / config->root->path;
+    if (!std::filesystem::create_directories(containerRoot, ec) && ec) {
+        return LINGLONG_ERR("failed to create container root", ec);
+    }
+
     return std::make_unique<Container>(std::move(config).value(),
                                        opts.appID,
                                        opts.containerID,

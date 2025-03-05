@@ -53,7 +53,30 @@ void mergeProcessConfig(ocppi::runtime::config::types::Process &dst,
     }
 
     if (src.env) {
-        dst.env = src.env;
+        if (!dst.env) {
+            dst.env = src.env;
+        } else {
+            auto &dstEnv = dst.env.value();
+            for (const auto &env : src.env.value()) {
+                auto key = env.find_first_of('=');
+                if (key == std::string::npos) {
+                    continue;
+                }
+
+                auto it =
+                  std::find_if(dstEnv.begin(), dstEnv.end(), [&key, &env](const std::string &dst) {
+                      return dst.rfind(std::string_view(env.data(), key + 1), 0) == 0;
+                  });
+
+                if (it != dstEnv.end()) {
+                    qWarning() << "environment set multiple times " << QString::fromStdString(*it)
+                               << QString::fromStdString(env);
+                    *it = env;
+                } else {
+                    dstEnv.emplace_back(env);
+                }
+            }
+        }
     }
 
     if (src.ioPriority) {

@@ -156,6 +156,8 @@ private:
     utils::error::Result<void> generateCache(const package::Reference &ref) noexcept;
     utils::error::Result<void> tryGenerateCache(const package::Reference &ref) noexcept;
     utils::error::Result<void> removeCache(const package::Reference &ref) noexcept;
+    utils::error::Result<void> executePostInstallHooks(const package::Reference &ref) noexcept;
+    utils::error::Result<void> executePostUninstallHooks(const package::Reference &ref) noexcept;
     linglong::repo::OSTreeRepo &repo; // NOLINT
     PackageTaskQueue tasks;
 

@@ -47,6 +47,8 @@ pfl_add_library(
   src/linglong/utils/xdg/desktop_entry.h
   src/linglong/utils/xdg/directory.h
   src/linglong/utils/gkeyfile_wrapper.h
+  src/linglong/utils/hooks.cpp
+  src/linglong/utils/hooks.h
   COMPILE_FEATURES
   PUBLIC
   cxx_std_17

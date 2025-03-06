@@ -26,6 +26,7 @@
 #include "linglong/utils/command/env.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
+#include "linglong/utils/hooks.h"
 #include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/transaction.h"
@@ -738,6 +739,12 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
                           << "after install" << packageRef.toString() << ":"
                           << ret.error().message();
           }
+
+          ret = executePostInstallHooks(*newRef);
+          if (!ret) {
+              taskRef.reportError(std::move(ret).error());
+              return;
+          }
       };
 
     auto refSpec =
@@ -766,6 +773,18 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
 {
     if (!fd.isValid()) {
         return toDBusReply(-1, "invalid file descriptor");
+    }
+
+    std::unique_ptr<utils::InstallHookManager> installHookManager =
+      std::make_unique<utils::InstallHookManager>();
+    auto ret = installHookManager->parseInstallHooks();
+    if (!ret) {
+        return toDBusReply(ret);
+    }
+
+    ret = installHookManager->executeInstallHooks(fd.fileDescriptor());
+    if (!ret) {
+        return toDBusReply(-1, "uab package signature verification failed.");
     }
 
     auto uabRet = package::UABFile::loadFromFile(fd.fileDescriptor());
@@ -1070,6 +1089,12 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
                                     "Failed to generate some cache.\n" + result.error().message());
                 return;
             }
+        }
+
+        auto ret = executePostInstallHooks(newAppRef);
+        if (!ret) {
+            taskRef.reportError(std::move(ret).error());
+            return;
         }
 
         transaction.commit();
@@ -1439,6 +1464,13 @@ void PackageManager::Install(PackageTask &taskContext,
         }
     }
 
+    auto ret = executePostInstallHooks(newRef);
+    if (!ret) {
+        taskContext.updateState(linglong::api::types::v1::State::Failed,
+                                "Failed to execute postInstall hooks.\n" + ret.error().message());
+        return;
+    }
+
     transaction.commit();
     taskContext.updateState(linglong::api::types::v1::State::Succeed,
                             "Install " + newRef.toString() + " (from repo: "
@@ -1713,6 +1745,11 @@ void PackageManager::Uninstall(PackageTask &taskContext,
         return;
     }
 
+    auto ret = executePostUninstallHooks(ref);
+    if (!ret) {
+        qWarning() << "failed to execute postUninstall hooks" << ret.error();
+    }
+
     transaction.commit();
 
     taskContext.updateState(linglong::api::types::v1::State::Succeed,
@@ -1875,6 +1912,12 @@ void PackageManager::Update(PackageTask &taskContext,
             return;
         }
 
+        ret = executePostInstallHooks(newRef);
+        if (!ret) {
+            qCritical() << "failed to execute post install hooks" << ret.error().message();
+            return;
+        }
+
         auto result = this->tryGenerateCache(newRef);
         if (!result) {
             taskContext.reportError(
@@ -2001,8 +2044,21 @@ void PackageManager::pullDependency(PackageTask &taskContext,
                 return;
             }
 
+            auto ret = executePostInstallHooks(runtime->reference);
+            if (!ret) {
+                taskContext.updateState(linglong::api::types::v1::State::Failed,
+                                        LINGLONG_ERRV(ret).message());
+                return;
+            }
+
             transaction.addRollBack([this, runtimeRef = *runtime, module]() noexcept {
                 auto result = this->repo.remove(runtimeRef.reference, module);
+                if (!result) {
+                    qCritical() << result.error();
+                    Q_ASSERT(false);
+                }
+
+                result = executePostUninstallHooks(runtimeRef.reference);
                 if (!result) {
                     qCritical() << result.error();
                     Q_ASSERT(false);
@@ -2041,6 +2097,27 @@ void PackageManager::pullDependency(PackageTask &taskContext,
         if (isTaskDone(taskContext.subState())) {
             return;
         }
+
+        auto ret = executePostInstallHooks(base->reference);
+        if (!ret) {
+            taskContext.updateState(linglong::api::types::v1::State::Failed,
+                                    LINGLONG_ERRV(ret).message());
+            return;
+        }
+
+        transaction.addRollBack([this, baseRef = *base, module]() noexcept {
+            auto result = this->repo.remove(baseRef.reference, module);
+            if (!result) {
+                qCritical() << result.error();
+                Q_ASSERT(false);
+            }
+
+            result = executePostUninstallHooks(baseRef.reference);
+            if (!result) {
+                qCritical() << result.error();
+                Q_ASSERT(false);
+            }
+        });
     }
 
     transaction.commit();
@@ -2429,6 +2506,53 @@ auto PackageManager::GenerateCache(const QString &reference) noexcept -> QVarian
       .message = "",
     });
     return result;
+}
+
+utils::error::Result<void>
+PackageManager::executePostInstallHooks(const package::Reference &ref) noexcept
+{
+    LINGLONG_TRACE("execute post install hooks for: " + ref.toString());
+
+    std::unique_ptr<utils::InstallHookManager> installHookManager =
+      std::make_unique<utils::InstallHookManager>();
+    auto ret = installHookManager->parseInstallHooks();
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    auto layerDir = this->repo.getLayerDir(ref);
+    if (!layerDir) {
+        return LINGLONG_ERR(layerDir);
+    }
+
+    auto appPath = layerDir->absolutePath();
+
+    ret = installHookManager->executePostInstallHooks(ref.id.toStdString(), appPath.toStdString());
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void>
+PackageManager::executePostUninstallHooks(const package::Reference &ref) noexcept
+{
+    LINGLONG_TRACE("execute post uninstall hooks for: " + ref.toString());
+
+    std::unique_ptr<utils::InstallHookManager> installHookManager =
+      std::make_unique<utils::InstallHookManager>();
+    auto ret = installHookManager->parseInstallHooks();
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    ret = installHookManager->executePostUninstallHooks(ref.id.toStdString());
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    return LINGLONG_OK;
 }
 
 } // namespace linglong::service

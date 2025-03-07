@@ -149,7 +149,7 @@ bool Legacy::generate(ocppi::runtime::config::types::Config &config) const noexc
     if (std::filesystem::exists("/usr/share/deepin/distribution.info", ec)) {
         mounts.push_back(ocppi::runtime::config::types::Mount{
           .destination = shareDir / "deepin/distribution.info",
-          .options = string_list{ "nodev", "nosuid", "mode=0644" },
+          .options = string_list{ "ro", "rbind" },
           .source = "/usr/share/deepin/distribution.info",
           .type = "bind",
         });

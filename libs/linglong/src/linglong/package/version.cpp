@@ -5,6 +5,8 @@
  */
 #include "linglong/package/version.h"
 
+#include "linglong/package/versionv2.h"
+
 #include <QRegularExpression>
 #include <QString>
 #include <QStringBuilder>
@@ -16,6 +18,8 @@ static auto SkipEmptyParts = QString::SkipEmptyParts;
 #endif
 
 namespace linglong::package {
+
+// TODO: This class has no practical use and can be removed
 namespace {
 
 struct PreRelease
@@ -194,6 +198,71 @@ bool Version::operator<=(const Version &that) const noexcept
 bool Version::operator>=(const Version &that) const noexcept
 {
     return (*this == that) || (*this > that);
+}
+
+bool Version::operator==(const VersionV2 &that) const noexcept
+{
+    if (std::tie(major, minor, patch) != std::tie(that.major, that.minor, that.patch)) {
+        return false;
+    }
+
+    if (tweak.has_value() && tweak.value() != 0) {
+        return false;
+    }
+
+    if (!that.prerelease.empty()) {
+        return false;
+    }
+
+    if (that.security != 0) {
+        return false;
+    }
+    return true;
+}
+
+bool Version::operator!=(const VersionV2 &that) const noexcept
+{
+    return !(*this == that);
+}
+
+bool Version::operator<(const VersionV2 &that) const noexcept
+{
+    if (std::tie(major, minor, patch) < std::tie(that.major, that.minor, that.patch)) {
+        return true;
+    }
+
+    if (std::tie(major, minor, patch) > std::tie(that.major, that.minor, that.patch)) {
+        return false;
+    }
+
+    if (tweak.has_value() && tweak.value() != 0) {
+        return false;
+    }
+
+    if (!that.prerelease.empty()) {
+        return false;
+    }
+
+    if (that.security != 0) {
+        return true;
+    }
+
+    return false;
+}
+
+bool Version::operator>(const VersionV2 &that) const noexcept
+{
+    return !(*this == that) && !(*this < that);
+}
+
+bool Version::operator<=(const VersionV2 &that) const noexcept
+{
+    return (*this == that) || (*this < that);
+}
+
+bool Version::operator>=(const VersionV2 &that) const noexcept
+{
+    return !(*this < that);
 }
 
 QString Version::toString() const noexcept

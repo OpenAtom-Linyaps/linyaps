@@ -13,6 +13,7 @@
 #include <optional>
 
 namespace linglong::package {
+class VersionV2;
 
 // This is a 4 number semver
 class Version final
@@ -32,6 +33,14 @@ public:
     bool operator>(const Version &that) const noexcept;
     bool operator<=(const Version &that) const noexcept;
     bool operator>=(const Version &that) const noexcept;
+
+    // Compare Version and VersionV2
+    bool operator==(const VersionV2 &that) const noexcept;
+    bool operator!=(const VersionV2 &that) const noexcept;
+    bool operator<(const VersionV2 &that) const noexcept;
+    bool operator>(const VersionV2 &that) const noexcept;
+    bool operator<=(const VersionV2 &that) const noexcept;
+    bool operator>=(const VersionV2 &that) const noexcept;
 
     QString toString() const noexcept;
 };

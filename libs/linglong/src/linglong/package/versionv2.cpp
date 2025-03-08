@@ -14,9 +14,11 @@
 namespace linglong::package {
 utils::error::Result<VersionV2> VersionV2::parse(const QString &raw) noexcept
 {
+    LINGLONG_TRACE("parse version v2 " + raw);
     try {
         auto semverVersion =
           semver::version::parse(raw.toStdString(), !(raw.startsWith('v') || raw.startsWith('V')));
+
         return VersionV2(semverVersion.major(),
                          semverVersion.minor(),
                          semverVersion.patch(),
@@ -24,8 +26,7 @@ utils::error::Result<VersionV2> VersionV2::parse(const QString &raw) noexcept
                          semverVersion.build_meta(),
                          semverVersion.security());
     } catch (const semver::semver_exception &e) {
-        LINGLONG_TRACE("parse versionv2 " + raw);
-        return LINGLONG_ERR(e);
+        return LINGLONG_ERR(e.what());
     }
 }
 
@@ -86,49 +87,65 @@ bool VersionV2::operator>=(const VersionV2 &that) const noexcept
     return !(*this < that);
 }
 
-bool VersionV2::operator==(const Version &that) const noexcept
+bool VersionV2::operator==(const VersionV1 &that) const noexcept
 {
-    return std ::tie(major, minor, patch) == std::tie(that.major, that.minor, that.patch)
-      && prerelease.empty() && security == 0;
+    if (std::tie(major, minor, patch) != std::tie(that.major, that.minor, that.patch)) {
+        return false;
+    }
+
+    if (that.tweak.has_value() && that.tweak.value() != 0) {
+        return false;
+    }
+
+    if (!prerelease.empty()) {
+        return false;
+    }
+
+    if (security != 0) {
+        return false;
+    }
+    return true;
 }
 
-bool VersionV2::operator!=(const Version &that) const noexcept
+bool VersionV2::operator!=(const VersionV1 &that) const noexcept
 {
     return !(*this == that);
 }
 
-bool VersionV2::operator<(const Version &that) const noexcept
+bool VersionV2::operator<(const VersionV1 &that) const noexcept
 {
-    if (std::tie(major, minor, patch) < std::tie(that.major, that.minor, that.patch)) {
-        return true;
-    }
-    if (std::tie(major, minor, patch) == std::tie(that.major, that.minor, that.patch)) {
-        if (!prerelease.empty()) {
-            return true;
-        }
-    }
-    return false;
+    return !(*this == that) && !(*this > that);
 }
 
-bool VersionV2::operator>(const Version &that) const noexcept
+bool VersionV2::operator>(const VersionV1 &that) const noexcept
 {
     if (std::tie(major, minor, patch) > std::tie(that.major, that.minor, that.patch)) {
         return true;
     }
-    if (std::tie(major, minor, patch) == std::tie(that.major, that.minor, that.patch)) {
-        if (prerelease.empty() && security) {
-            return true;
-        }
+
+    if (std::tie(major, minor, patch) < std::tie(that.major, that.minor, that.patch)) {
+        return false;
     }
-    return false;
+
+    if (that.tweak.has_value() && that.tweak.value() != 0) {
+        return false;
+    }
+
+    if (!prerelease.empty()) {
+        return false;
+    }
+
+    if (security != 0) {
+        return true;
+    }
 }
 
-bool VersionV2::operator<=(const Version &that) const noexcept
+bool VersionV2::operator<=(const VersionV1 &that) const noexcept
 {
     return (*this == that) || !(*this > that);
 }
 
-bool VersionV2::operator>=(const Version &that) const noexcept
+bool VersionV2::operator>=(const VersionV1 &that) const noexcept
 {
     return !(*this < that);
 }

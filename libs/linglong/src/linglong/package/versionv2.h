@@ -9,7 +9,7 @@
 #include "linglong/utils/error/error.h"
 
 namespace linglong::package {
-class Version;
+class VersionV1;
 
 class VersionV2 final
 {
@@ -36,12 +36,12 @@ public:
     bool operator>=(const VersionV2 &that) const noexcept;
 
     // 比较Version 和 VersionV2
-    bool operator==(const linglong::package::Version &that) const noexcept;
-    bool operator!=(const linglong::package::Version &that) const noexcept;
-    bool operator<(const linglong::package::Version &that) const noexcept;
-    bool operator>(const linglong::package::Version &that) const noexcept;
-    bool operator<=(const linglong::package::Version &that) const noexcept;
-    bool operator>=(const linglong::package::Version &that) const noexcept;
+    bool operator==(const VersionV1 &that) const noexcept;
+    bool operator!=(const VersionV1 &that) const noexcept;
+    bool operator<(const VersionV1 &that) const noexcept;
+    bool operator>(const VersionV1 &that) const noexcept;
+    bool operator<=(const VersionV1 &that) const noexcept;
+    bool operator>=(const VersionV1 &that) const noexcept;
 
     QString toString() const noexcept;
 };

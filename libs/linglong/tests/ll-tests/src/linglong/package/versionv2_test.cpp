@@ -95,65 +95,66 @@ TEST(VersionV2Test, GreaterThanOrEqualOperatorTest)
 // 测试与 Version 类的 == 运算符
 TEST(VersionV2Test, EqualityWithVersionTest)
 {
-    EXPECT_EQ(Version::parse("1.2.3.0").value(), VersionV2::parse("1.2.3").value());
-    EXPECT_EQ(Version::parse("1.2.3").value(), VersionV2::parse("1.2.3").value());
-    EXPECT_EQ(Version::parse("1.2.3").value(), VersionV2::parse("1.2.3+build123").value());
+    EXPECT_EQ(VersionV1::parse("1.2.3.0").value(), VersionV2::parse("1.2.3").value());
+    EXPECT_EQ(VersionV1::parse("1.2.3").value(), VersionV2::parse("1.2.3").value());
+    EXPECT_EQ(VersionV1::parse("1.2.3").value(), VersionV2::parse("1.2.3+build123").value());
 }
 
 // 测试与 Version 类的 != 运算符
 TEST(VersionV2Test, InequalityWithVersionTest)
 {
-    EXPECT_NE(Version::parse("1.2.3").value(), VersionV2::parse("1.2.3-alpha+build123").value());
-    EXPECT_NE(Version::parse("1.2.3").value(),
+    EXPECT_NE(VersionV1::parse("1.2.3").value(), VersionV2::parse("1.2.3-alpha+build123").value());
+    EXPECT_NE(VersionV1::parse("1.2.3").value(),
               VersionV2::parse("1.2.3-alpha+build123.security.2").value());
-    EXPECT_NE(Version::parse("1.2.3").value(), VersionV2::parse("1.2.3-alpha").value());
-    EXPECT_NE(Version::parse("1.2.3").value(),
+    EXPECT_NE(VersionV1::parse("1.2.3").value(), VersionV2::parse("1.2.3-alpha").value());
+    EXPECT_NE(VersionV1::parse("1.2.3").value(),
               VersionV2::parse("1.2.3+build123.security.2").value());
-    EXPECT_NE(Version::parse("1.2.3").value(), VersionV2::parse("1.2.3+security.2").value());
+    EXPECT_NE(VersionV1::parse("1.2.3").value(), VersionV2::parse("1.2.3+security.2").value());
 }
 
 // 测试与 Version 类的 < 运算符
 TEST(VersionV2Test, LessThanWithVersionTest)
 {
-    EXPECT_LT(VersionV2::parse("1.2.3-alpha+build123").value(), Version::parse("1.2.4").value());
+    EXPECT_LT(VersionV2::parse("1.2.3-alpha+build123").value(), VersionV1::parse("1.2.4").value());
     EXPECT_LT(VersionV2::parse("1.2.3-alpha+build123.security.2").value(),
-              Version::parse("1.2.4.0").value());
-    EXPECT_LT(VersionV2::parse("1.2.3+build123").value(), Version::parse("1.2.4.0").value());
-    EXPECT_LT(VersionV2::parse("1.2.4-alpha").value(), Version::parse("1.2.4.0").value());
+              VersionV1::parse("1.2.4.0").value());
+    EXPECT_LT(VersionV2::parse("1.2.3+build123").value(), VersionV1::parse("1.2.4.0").value());
+    EXPECT_LT(VersionV2::parse("1.2.4-alpha").value(), VersionV1::parse("1.2.4.0").value());
 }
 
 // 测试与 Version 类的 > 运算符
 TEST(VersionV2Test, GreaterThanWithVersionTest)
 {
-    EXPECT_GT(VersionV2::parse("1.2.4-alpha+build123").value(), Version::parse("1.2.3").value());
-    EXPECT_GT(VersionV2::parse("1.2.4-alpha+build123").value(), Version::parse("1.2.3.0").value());
-    EXPECT_GT(VersionV2::parse("1.2.4+build123").value(), Version::parse("1.2.3.1").value());
+    EXPECT_GT(VersionV2::parse("1.2.4-alpha+build123").value(), VersionV1::parse("1.2.3").value());
+    EXPECT_GT(VersionV2::parse("1.2.4-alpha+build123").value(),
+              VersionV1::parse("1.2.3.0").value());
+    EXPECT_GT(VersionV2::parse("1.2.4+build123").value(), VersionV1::parse("1.2.3.1").value());
     EXPECT_GT(VersionV2::parse("1.2.4+build123.security.1").value(),
-              Version::parse("1.2.3").value());
+              VersionV1::parse("1.2.3").value());
     EXPECT_GT(VersionV2::parse("1.2.4+build.1.security.2").value(),
-              Version::parse("1.2.4").value());
+              VersionV1::parse("1.2.4").value());
     EXPECT_GT(VersionV2::parse("1.2.4+build123.security.1").value(),
-              Version::parse("1.2.4.0").value());
+              VersionV1::parse("1.2.4.0").value());
 }
 
 // 测试与 Version 类的 <= 运算符
 TEST(VersionV2Test, LessThanOrEqualWithVersionTest)
 {
-    EXPECT_LE(VersionV2::parse("2.6.8-beta").value(), Version::parse("2.6.8").value());
-    EXPECT_LE(VersionV2::parse("2.6.7").value(), Version::parse("2.6.8").value());
-    EXPECT_LE(VersionV2::parse("2.6.8+build.1").value(), Version::parse("2.6.8").value());
-    EXPECT_LE(VersionV2::parse("2.6.8-beta").value(), Version::parse("2.6.8").value());
-    EXPECT_LE(VersionV2::parse("2.6.8").value(), Version::parse("2.6.8").value());
+    EXPECT_LE(VersionV2::parse("2.6.8-beta").value(), VersionV1::parse("2.6.8").value());
+    EXPECT_LE(VersionV2::parse("2.6.7").value(), VersionV1::parse("2.6.8").value());
+    EXPECT_LE(VersionV2::parse("2.6.8+build.1").value(), VersionV1::parse("2.6.8").value());
+    EXPECT_LE(VersionV2::parse("2.6.8-beta").value(), VersionV1::parse("2.6.8").value());
+    EXPECT_LE(VersionV2::parse("2.6.8").value(), VersionV1::parse("2.6.8").value());
 }
 
 // 测试与 Version 类的 >= 运算符
 TEST(VersionV2Test, GreaterThanOrEqualWithVersionTest)
 {
-    EXPECT_GE(VersionV2::parse("2.6.8").value(), Version::parse("2.6.8").value());
-    EXPECT_GE(VersionV2::parse("2.6.7+security.2").value(), Version::parse("2.6.7").value());
-    EXPECT_GE(VersionV2::parse("2.6.8+build.1").value(), Version::parse("2.6.8").value());
-    EXPECT_GE(VersionV2::parse("2.6.9-alpha.1").value(), Version::parse("2.6.8").value());
-    EXPECT_GE(VersionV2::parse("2.6.9-beta.2").value(), Version::parse("2.6.8").value());
+    EXPECT_GE(VersionV2::parse("2.6.8").value(), VersionV1::parse("2.6.8").value());
+    EXPECT_GE(VersionV2::parse("2.6.7+security.2").value(), VersionV1::parse("2.6.7").value());
+    EXPECT_GE(VersionV2::parse("2.6.8+build.1").value(), VersionV1::parse("2.6.8").value());
+    EXPECT_GE(VersionV2::parse("2.6.9-alpha.1").value(), VersionV1::parse("2.6.8").value());
+    EXPECT_GE(VersionV2::parse("2.6.9-beta.2").value(), VersionV1::parse("2.6.8").value());
 }
 
 // 测试 parse 函数

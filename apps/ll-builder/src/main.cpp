@@ -134,11 +134,16 @@ parseProjectConfig(const QString &filename)
     if (!project) {
         return project;
     }
-    auto version = linglong::package::Version(QString::fromStdString(project->package.version));
-    if (!version.tweak) {
+    auto version = linglong::package::Version::parse(QString::fromStdString(project->package.version));
+    if (!version) {
+        return LINGLONG_ERR(version);
+    }
+
+    if (version->isVersionV1() && !version->hasTweak()) {
         return LINGLONG_ERR("Please ensure the package.version number has three parts formatted as "
                             "'MAJOR.MINOR.PATCH.TWEAK'");
     }
+
     if (project->modules.has_value()) {
         if (std::any_of(project->modules->begin(), project->modules->end(), [](const auto &module) {
                 return module.name == "binary";

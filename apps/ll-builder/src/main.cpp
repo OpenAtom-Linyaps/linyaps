@@ -107,10 +107,16 @@ parseProjectConfig(const QString &filename)
         return project;
     }
     auto version = linglong::package::Version::parse(QString::fromStdString(project->package.version));
-    if (!version || !version->tweak) {
+    if (!version) {
         return LINGLONG_ERR("Please ensure the package.version number has three parts formatted as "
                             "'MAJOR.MINOR.PATCH.TWEAK'");
     }
+
+    if (version->isVersionV1() && !version->hasTweak()) {
+        return LINGLONG_ERR("Please ensure the package.version number has three parts formatted as "
+                            "'MAJOR.MINOR.PATCH.TWEAK'");
+    }
+
     if (project->modules.has_value()) {
         if (std::any_of(project->modules->begin(), project->modules->end(), [](const auto &module) {
                 return module.name == "binary";
@@ -122,6 +128,18 @@ parseProjectConfig(const QString &filename)
     if (project->package.kind == "app" && !project->command.has_value()) {
         return LINGLONG_ERR(
           "'command' field is missing, app should hava command as the default startup command");
+    }
+
+    // 校验bese和runtime版本是否合法
+    auto ret = linglong::package::Version::validateDependVersion(project->base.c_str());
+    if (!ret) {
+        return LINGLONG_ERR("base version is not valid", ret);
+    }
+    if (project->runtime) {
+        ret = linglong::package::Version::validateDependVersion(project->runtime.value().c_str());
+        if (!ret) {
+            return LINGLONG_ERR("runtime version is not valid", ret);
+        }
     }
     return project;
 }

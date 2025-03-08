@@ -35,14 +35,10 @@ utils::error::Result<FuzzyReference> FuzzyReference::parse(const QString &raw) n
 
     auto id = matches.captured("id"); // NOLINT
 
-    std::optional<Version> version;
+    std::optional<QString> version;
     auto versionStr = matches.captured("version");
     if ((!versionStr.isEmpty()) && versionStr != "unknown") {
-        auto tmpVersion = Version::parse(versionStr);
-        if (!tmpVersion) {
-            return LINGLONG_ERR(tmpVersion.error().message(),utils::error::ErrorCode::Unknown);
-        }
-        version = std::move(tmpVersion).value();
+        version = std::move(versionStr);
     }
 
     std::optional<Architecture> architecture;
@@ -61,7 +57,7 @@ utils::error::Result<FuzzyReference> FuzzyReference::parse(const QString &raw) n
 utils::error::Result<FuzzyReference>
 FuzzyReference::create(const std::optional<QString> &channel,
                        const QString &id, // NOLINT
-                       const std::optional<Version> &version,
+                       const std::optional<QString> &version,
                        const std::optional<Architecture> &arch) noexcept
 try {
     return FuzzyReference(channel, id, version, arch);
@@ -72,7 +68,7 @@ try {
 
 FuzzyReference::FuzzyReference(const std::optional<QString> &channel,
                                const QString &id,
-                               const std::optional<Version> &version,
+                               const std::optional<QString> &version,
                                const std::optional<Architecture> &architecture)
     : channel(channel)
     , id(id)
@@ -93,7 +89,7 @@ QString FuzzyReference::toString() const noexcept
     return QString("%1:%2/%3/%4")
       .arg(this->channel.value_or("unknown"),
            this->id,
-           this->version ? this->version->toString() : "unknown",
+           this->version ? this->version.value() : "unknown",
            this->arch ? this->arch->toString() : "unknown");
 }
 

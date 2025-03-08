@@ -60,7 +60,7 @@ Reference::fromPackageInfo(const api::types::v1::PackageInfoV2 &info) noexcept
     if (!version) {
         return LINGLONG_ERR(version);
     }
-    if (!version->tweak) {
+    if (version->isVersionV1() && !version->hasTweak()) {
         return LINGLONG_ERR("version .tweak is required");
     }
 

@@ -100,3 +100,31 @@ ll-cli upgrade org.dde.calendar
 ll-cli list | grep org.dde.calendar | grep -q binary
 ll-cli list | grep org.dde.calendar | grep -q develop
 ll-cli list | grep org.dde.calendar | grep -vq lang-ja
+
+#测试versionV1 升级到 versionV2
+echo "测试versionV1 升级到 versionV2"
+ll-cli repo add stable https://repo-dev.cicd.getdeepin.org --alias test-stable
+ll-cli repo set-default test-stable
+ll-cli search org.deepin.semver.demo
+
+# 安装
+echo "安装"
+ll-cli install org.deepin.semver.demo
+ll-cli list | grep org.deepin.semver.demo
+
+# 升级
+echo "升级"
+ll-cli uninstall org.deepin.semver.demo
+ll-cli install org.deepin.semver.demo/1.0.0.0
+ll-cli upgrade org.deepin.semver.demo
+ll-cli list | grep org.deepin.semver.demo
+
+# 降级
+echo "降级"
+ll-cli uninstall org.deepin.semver.demo
+ll-cli install org.deepin.semver.demo/1.0.0.0 --force
+ll-cli list | grep org.deepin.semver.demo
+
+#重置默认仓库
+ll-cli repo set-default stable
+ll-cli uninstall org.deepin.semver.demo

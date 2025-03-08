@@ -1386,21 +1386,14 @@ utils::error::Result<void> Builder::commitToLocalRepo() noexcept
     auto fuzzyBase = package::FuzzyReference::parse(QString::fromStdString(this->project.base));
     // when the base version is likes 20.0.0.1, warning that it is a full version
     // if the base version is likes 20.0.0, we should also write 20.0.0 to info.json
-    if (fuzzyBase->version->tweak) {
-        qWarning() << fuzzyBase->toString() << "is set a full version.";
-    } else {
-        baseRef->version.tweak = std::nullopt;
-    }
+
+    baseRef->version.ignoreTweak();
     info.base = baseRef->toString().toStdString();
     if (runtimeRef) {
         auto fuzzyRuntime =
           package::FuzzyReference::parse(QString::fromStdString(*this->project.runtime));
         // the runtime version is same as base.
-        if (fuzzyRuntime->version->tweak) {
-            qWarning() << fuzzyRuntime->toString() << "is set a full version.";
-        } else {
-            runtimeRef->version.tweak = std::nullopt;
-        }
+        runtimeRef->version.ignoreTweak();
         info.runtime = runtimeRef->toString().toStdString();
     }
     // 从本地仓库清理旧的ref

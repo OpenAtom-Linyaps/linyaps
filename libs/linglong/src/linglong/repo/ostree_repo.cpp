@@ -484,6 +484,15 @@ utils::error::Result<package::Reference> clearReferenceLocal(const linglong::rep
                             utils::error::ErrorCode::AppNotFoundFromLocal);
     }
 
+    std::optional<linglong::package::Version> version;
+    if (fuzzy.version && !fuzzy.version->isEmpty()) {
+        auto ret = linglong::package::Version::parse(fuzzy.version.value());
+        if (!ret) {
+            return LINGLONG_ERR(ret);
+        }
+        version = *ret;
+    }
+
     utils::error::Result<linglong::api::types::v1::RepositoryCacheLayersItem> foundRef =
       LINGLONG_ERR("compatible layer not found", utils::error::ErrorCode::LayerCompatibilityError);
     for (const auto &ref : availablePackage) {
@@ -499,12 +508,12 @@ utils::error::Result<package::Reference> clearReferenceLocal(const linglong::rep
         }
 
         qDebug() << "available layer found:" << fuzzy.toString() << ver;
-        if (fuzzy.version) {
-            if (!fuzzy.version->tweak) {
-                pkgVer->tweak = std::nullopt;
+        if (version) {
+            if (!version->hasTweak()) {
+                pkgVer->ignoreTweak();
             }
 
-            if (*pkgVer == fuzzy.version.value()) {
+            if (*pkgVer == version.value()) {
                 foundRef = ref;
                 break;
             }
@@ -1439,7 +1448,7 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
     }
 
     if (fuzzyRef.version) {
-        auto version = fuzzyRef.version->toString().toLatin1();
+        auto version = fuzzyRef.version->toLatin1();
         req.version = strndup(version.data(), version.size());
         if (req.version == nullptr) {
             return LINGLONG_ERR(QString{ "strndup version failed: %1" }.arg(version.data()));
@@ -2140,7 +2149,8 @@ utils::error::Result<std::vector<std::string>> OSTreeRepo::getRemoteModuleList(
   const std::optional<std::vector<std::string>> &filter) const noexcept
 {
     LINGLONG_TRACE("get remote module list");
-    auto fuzzy = package::FuzzyReference::create(ref.channel, ref.id, ref.version, ref.arch);
+    auto fuzzy =
+      package::FuzzyReference::create(ref.channel, ref.id, ref.version.toString(), ref.arch);
     if (!fuzzy.has_value()) {
         return LINGLONG_ERR("create fuzzy reference", fuzzy);
     }

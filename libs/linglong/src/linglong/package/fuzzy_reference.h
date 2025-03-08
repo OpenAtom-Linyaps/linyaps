@@ -22,12 +22,12 @@ public:
     static utils::error::Result<FuzzyReference>
     create(const std::optional<QString> &channel,
            const QString &id,
-           const std::optional<Version> &version,
+           const std::optional<QString> &version,
            const std::optional<Architecture> &arch) noexcept;
 
     std::optional<QString> channel;
     QString id;
-    std::optional<Version> version;
+    std::optional<QString> version;
     std::optional<Architecture> arch;
 
     QString toString() const noexcept;
@@ -35,7 +35,7 @@ public:
 private:
     explicit FuzzyReference(const std::optional<QString> &channel,
                             const QString &id,
-                            const std::optional<Version> &version,
+                            const std::optional<QString> &version,
                             const std::optional<Architecture> &arch);
 };
 

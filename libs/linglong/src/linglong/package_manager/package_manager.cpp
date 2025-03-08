@@ -90,14 +90,9 @@ fuzzyReferenceFromPackage(const api::types::v1::PackageManager1Package &pkg) noe
         channel = QString::fromStdString(*pkg.channel);
     }
 
-    std::optional<package::Version> version;
+    std::optional<QString> version;
     if (pkg.version) {
-        auto tmpVersion = package::Version::parse(QString::fromStdString(*pkg.version));
-        if (!tmpVersion) {
-            return tl::unexpected(std::move(tmpVersion.error()));
-        }
-
-        version = *tmpVersion;
+        version = QString::fromStdString(*pkg.version);
     }
 
     auto fuzzyRef = package::FuzzyReference::create(channel,
@@ -1203,13 +1198,14 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     }
 
     // we need latest local reference
-    std::optional<package::Version> version = fuzzyRef->version;
+    std::optional<QString> version = fuzzyRef->version;
     fuzzyRef->version.reset();
     auto localRef = this->repo.clearReference(*fuzzyRef,
                                               {
                                                 .fallbackToRemote = false // NOLINT
                                               });
     // set version back
+
     fuzzyRef->version = version;
 
     api::types::v1::PackageManager1RequestInteractionAdditionalMessage additionalMessage;

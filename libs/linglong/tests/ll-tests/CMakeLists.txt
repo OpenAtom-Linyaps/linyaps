@@ -15,6 +15,12 @@ pfl_add_executable(
   src/linglong/package/reference_test.cpp
   src/linglong/package/version_range_test.cpp
   src/linglong/package/version_test.cpp
+  src/linglong/package/versionv2_test.cpp
+  src/linglong/package/semver_compare_test.cpp
+  src/linglong/package/semver_increment_test.cpp
+  src/linglong/package/semver_prerelease_test.cpp
+  src/linglong/package/semver_serialization_test.cpp
+  src/linglong/package/semver_version_test.cpp
   src/linglong/utils/error/result_test.cpp
   src/linglong/utils/sha256_test.cpp
   src/linglong/utils/transaction_test.cpp

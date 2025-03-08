@@ -51,12 +51,17 @@ pfl_add_library(
   src/linglong/package_manager/package_task.h
   src/linglong/package/reference.cpp
   src/linglong/package/reference.h
+  src/linglong/package/semver.hpp
   src/linglong/package/uab_file.cpp
   src/linglong/package/uab_file.h
   src/linglong/package/uab_packager.cpp
   src/linglong/package/uab_packager.h
   src/linglong/package/version.cpp
   src/linglong/package/version.h
+  src/linglong/package/versionv1.cpp
+  src/linglong/package/versionv1.h
+  src/linglong/package/versionv2.cpp
+  src/linglong/package/versionv2.h
   src/linglong/package/version_range.cpp
   src/linglong/package/version_range.h
   src/linglong/repo/client_factory.cpp

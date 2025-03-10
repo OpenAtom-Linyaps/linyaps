@@ -2095,6 +2095,11 @@ int Cli::content([[maybe_unused]] CLI::App *subcommand)
 {
     std::error_code ec;
     auto target = file;
+
+    if (!target.is_absolute()) {
+        return target;
+    }
+
     if (std::filesystem::is_symlink(file, ec)) {
         std::array<char, PATH_MAX + 1> buf{};
         auto *real = ::realpath(file.c_str(), buf.data());
@@ -2115,7 +2120,8 @@ int Cli::content([[maybe_unused]] CLI::App *subcommand)
         return target;
     }
 
-    return "/run/host/rootfs" / target;
+    return std::filesystem::path{ "/run/host/rootfs" }
+    / std::filesystem::path{ target }.lexically_relative("/");
 }
 
 [[nodiscard]] std::string Cli::mappingUrl(std::string_view url) noexcept

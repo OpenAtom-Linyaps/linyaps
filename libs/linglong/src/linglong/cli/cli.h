@@ -39,6 +39,7 @@ struct CliOptions
     std::string module;
     std::string type;
     RepoOptions repoOptions;
+    std::optional<std::string> searchRepo;
     std::vector<std::string> commands;
     bool showDevel;
     bool showAll;

@@ -158,4 +158,11 @@ int64_t getRepoMaxPriority(const api::types::v1::RepoConfigV2 &cfg) noexcept
     return maxElement->priority;
 }
 
+void sortRepoByPriority(api::types::v1::RepoConfigV2 &cfg) noexcept
+{
+    std::sort(cfg.repos.begin(), cfg.repos.end(),[](const auto &repo1, const auto &repo2) {
+        return repo1.priority > repo2.priority;
+    });
+}
+
 } // namespace linglong::repo

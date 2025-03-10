@@ -11,7 +11,8 @@
 #include <QString>
 
 namespace linglong::package {
-
+// TODO: This class is currently not used. Consider using it in the future or removing it if not
+// needed.
 class VersionRange final
 {
 public:
@@ -25,6 +26,6 @@ public:
     bool contains(const Version &ver) const noexcept;
 
 private:
-    explicit VersionRange(const std::tuple<QString, QString> &raw);
+    explicit VersionRange(const std::tuple<Version, Version> &raw);
 };
 } // namespace linglong::package

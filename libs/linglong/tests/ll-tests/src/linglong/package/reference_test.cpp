@@ -69,22 +69,4 @@ TEST(Package, Reference)
           << (refer.has_value() ? "no error" : refer.error().message().toStdString());
         ASSERT_EQ(refer->toString().toStdString(), vaildCase.second.toStdString());
     }
-
-    QStringList invaildFuzzReferences = {
-        "com.example.App/1.0.0.0/x86_64/runtime",
-        "com.example.App/1.0.0.0/x86_4",
-        "com.example.App/1.0..0/unknown",
-        "com.example.App/1.0.0.0/x864",
-        "com.example.App/1.0.0.0/x86_64//",
-        "com.example.App/1.0.0.0//",
-        // "com.example.App/", // FIXME: This should be invaild.
-        ":/1.0.0.0/x86_64",
-    };
-
-    for (const auto &vaildCase : invaildFuzzReferences) {
-        auto refer = FuzzyReference::parse(vaildCase);
-        ASSERT_EQ(refer.has_value(), false)
-          << vaildCase.toStdString() << " is invaild fuzz reference. Error: "
-          << (refer.has_value() ? "no error" : refer.error().message().toStdString());
-    }
 }

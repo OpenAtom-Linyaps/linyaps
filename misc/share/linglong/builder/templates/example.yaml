@@ -3,7 +3,7 @@ version: "1"
 package:
   id: @ID@
   name: your name #set your application name
-  version: 0.0.0.1 #set your version
+  version: 0.0.1 #set your version
   kind: app
   description: |
     your description #set a brief text to introduce your application.

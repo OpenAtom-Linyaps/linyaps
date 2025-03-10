@@ -126,7 +126,7 @@ void initDefaultBuildConfig()
 }
 
 linglong::utils::error::Result<linglong::api::types::v1::BuilderProject>
-parseProjectConfig(const QString &filename)
+parseProjectConfig(const QString &filename, const bool &fallback = true)
 {
     LINGLONG_TRACE(QString("parse project config %1").arg(filename));
     auto project =
@@ -134,10 +134,11 @@ parseProjectConfig(const QString &filename)
     if (!project) {
         return project;
     }
-    auto version = linglong::package::Version(QString::fromStdString(project->package.version));
-    if (!version.tweak) {
-        return LINGLONG_ERR("Please ensure the package.version number has three parts formatted as "
-                            "'MAJOR.MINOR.PATCH.TWEAK'");
+    auto version =
+      linglong::package::Version::parse(QString::fromStdString(project->package.version), fallback);
+    if (!version) {
+        return LINGLONG_ERR("Invalid version format in project config file: %1. Expected format: "
+                            "x.y.z or x.y.z[-prerelease][+build_meta[.security.x]]");
     }
     if (project->modules.has_value()) {
         if (std::any_of(project->modules->begin(), project->modules->end(), [](const auto &module) {
@@ -556,7 +557,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
 
     if (buildBuilder->parsed()) {
         auto yamlFile = QString::fromStdString(filePath);
-        auto project = parseProjectConfig(QDir().absoluteFilePath(yamlFile));
+        auto project = parseProjectConfig(QDir().absoluteFilePath(yamlFile), false);
         if (!project) {
             qCritical() << project.error();
             return -1;

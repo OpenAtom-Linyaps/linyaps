@@ -1,44 +1,32 @@
 {
-    "ociVersion": "1.0.1",
-    "hostname": "linglong",
-    "annotations": {
-        "org.deepin.linglong.appID": ""
-    },
-    "root": {
-        "path": ""
-    },
-    "linux": {
-        "namespaces": [
-            {
-                "type": "pid"
-            },
-            {
-                "type": "mount"
-            },
-            {
-                "type": "uts"
-            },
-            {
-                "type": "user"
-            }
-        ]
-    },
-    "hooks": {
-        "startContainer": [
-            {
-                "path": "/sbin/ldconfig",
-                "args": [
-                    "/sbin/ldconfig",
-                    "-C",
-                    "/run/linglong/etc/ld.so.cache"
-                ]
-            }
-        ]
-    },
-    "mounts": [],
-    "process": {
-        "env": ["LINGLONG_LD_SO_CACHE=/run/linglong/etc/ld.so.cache"],
-        "cwd": "/",
-        "args": ["bash"]
-    }
+	"ociVersion": "1.0.1",
+	"hostname": "linglong",
+	"annotations": {
+		"org.deepin.linglong.appID": ""
+	},
+	"root": {
+		"path": ""
+	},
+	"linux": {
+		"namespaces": [
+			{
+				"type": "pid"
+			},
+			{
+				"type": "mount"
+			},
+			{
+				"type": "uts"
+			},
+			{
+				"type": "user"
+			}
+		]
+	},
+	"mounts": [],
+	"process": {
+		"env": [],
+		"cwd": "/",
+		"args": ["bash"]
+	}
 }

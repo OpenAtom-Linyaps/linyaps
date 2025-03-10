@@ -9,6 +9,7 @@
 #include "util/logger.h"
 #include "util/platform.h"
 
+#include <cerrno>
 #include <utility>
 
 #include <sys/wait.h>
@@ -97,7 +98,10 @@ int NativeFilesystemDriver::CreateDestinationPath(const util::fs::path &containe
 
     auto host_destination_path = util::fs::path(root_path_) / container_destination_path;
 
-    util::fs::create_directories(host_destination_path, dest_mode);
+    if (!util::fs::create_directories(host_destination_path, dest_mode)) {
+        logErr() << "failed to create" << host_destination_path;
+        return -1;
+    }
 
     return 0;
 }

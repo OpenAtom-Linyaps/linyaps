@@ -14,9 +14,14 @@
 
 namespace linglong::repo {
 
-utils::error::Result<api::types::v1::RepoConfig> loadConfig(const QString &file) noexcept;
-utils::error::Result<api::types::v1::RepoConfig> loadConfig(const QStringList &files) noexcept;
-utils::error::Result<void> saveConfig(const api::types::v1::RepoConfig &cfg,
+utils::error::Result<api::types::v1::RepoConfigV2> loadConfig(const QString &file) noexcept;
+utils::error::Result<api::types::v1::RepoConfigV2> loadConfig(const QStringList &files) noexcept;
+utils::error::Result<void> saveConfig(const api::types::v1::RepoConfigV2 &cfg,
                                       const QString &path) noexcept;
+int64_t getRepoMinPriority(const api::types::v1::RepoConfigV2 &cfg) noexcept;
+int64_t getRepoMaxPriority(const api::types::v1::RepoConfigV2 &cfg) noexcept;
+api::types::v1::Repo getDefaultRepo(const api::types::v1::RepoConfigV2 &cfg) noexcept;
+
+api::types::v1::RepoConfigV2 convertToV2(const api::types::v1::RepoConfig &cfg) noexcept;
 
 } // namespace linglong::repo

@@ -1,0 +1,184 @@
+version = 1
+SPDX-PackageName = "linglong"
+SPDX-PackageSupplier = "UnionTech Software Technology Co., Ltd. <>"
+SPDX-PackageDownloadLocation = "https://github.com/OpenAtom-Linyaps/linyaps"
+
+[[annotations]]
+path = [".github/**", ".obs/**", "OWNERS"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "None"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = "external/tl-expected/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "None"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = "external/CLI11/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2017-2024 University of Cincinnati, developed by Henry"
+SPDX-License-Identifier = "BSD-3-Clause"
+
+[[annotations]]
+path = "external/ytj/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Chen Linxuan <me@black-desk.cn>"
+SPDX-License-Identifier = "LGPL-3.0-only"
+
+[[annotations]]
+path = "external/http/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "None"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = ["tools/openapi-c-libcurl-client/*", "tools/no-cmake.patch", "tools/no-qt-keywords.patch", "tools/openapitools.json"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "None"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = "api/http/client_swagger.json"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "None"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = ["api/JSON", "Schema/**.json"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "None"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = "misc/lib/linglong/container/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "None"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = "libs/api/src/linglong/api/types/v**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "None"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = "cmake/CPM.cmake"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2019-2022 Lars Melchior and contributors"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "misc/linglong/permission/**.json"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "None"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = ["docs/**", "**.md"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "UnionTech Software Technology Co., Ltd."
+SPDX-License-Identifier = "CC-BY-4.0"
+
+[[annotations]]
+path = "CMakePresets.json"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "None"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = "debian/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "None"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = "rpm/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "None"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = "archlinux/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "None"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = "src/linglong/runtime/resource/**json"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "UnionTech Software Technology Co., Ltd."
+SPDX-License-Identifier = "LGPL-3.0-only"
+
+[[annotations]]
+path = "libs/linglong/tests/ll-tests/data/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "None"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = "tools/qdbusxml2cpp/qdbusxml2cpp_5.cpp"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2020 The Qt Company Ltd."
+SPDX-License-Identifier = "GPL-3.0-only"
+
+[[annotations]]
+path = "tools/qdbusxml2cpp/qdbusxml2cpp_6.h"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2021 The Qt Company Ltd."
+SPDX-License-Identifier = "GPL-3.0-only"
+
+[[annotations]]
+path = "libs/ocppi/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "UnionTech Software Technology Co., Ltd."
+SPDX-License-Identifier = "LGPL-3.0-only"
+
+[[annotations]]
+path = "api/schema/**.json"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "None"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = "misc/share/linglong/builder/templates/**.yaml"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "None"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = "misc/share/polkit-1/actions/org.deepin.linglong.PackageManager1.policy"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "UnionTech Software Technology Co., Ltd."
+SPDX-License-Identifier = "LGPL-3.0-only"
+
+[[annotations]]
+path = "tools/layer-icon-checker.sh"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "None"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = "po/CMakeLists.txt"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2018 Xiphos Development Team"
+SPDX-License-Identifier = "GPL-2.0-or-later"
+
+[[annotations]]
+path = ["po/**.po", "po/**.pot", "po/POTFILES.in", "po/LINGUAS"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "UnionTech Software Technology Co., Ltd."
+SPDX-License-Identifier = "LGPL-3.0-only"
+
+[[annotations]]
+path = ["misc/image/**.jpeg", "misc/image/**.svg"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "UnionTech Software Technology Co., Ltd."
+SPDX-License-Identifier = "LGPL-3.0-or-later"
+
+[[annotations]]
+path = "misc/share/linglong/builder/uab/blacklist"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "AppImageCommunity"
+SPDX-License-Identifier = "MIT"

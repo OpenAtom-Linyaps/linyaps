@@ -16,12 +16,13 @@ namespace linglong::runtime {
 class Container
 {
 public:
-    Container(const ocppi::runtime::config::types::Config &cfg,
-              const QString &appID,
-              const QString &conatinerID,
+    Container(ocppi::runtime::config::types::Config cfg,
+              QString appID,
+              QString conatinerID,
               ocppi::cli::CLI &cli);
 
-    utils::error::Result<void> run(const ocppi::runtime::config::types::Process &process) noexcept;
+    utils::error::Result<void> run(const ocppi::runtime::config::types::Process &process,
+                                   ocppi::runtime::RunOption &opt) noexcept;
 
 private:
     ocppi::runtime::config::types::Config cfg;

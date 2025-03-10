@@ -12,6 +12,7 @@ if(${STATIC_BOX})
 endif()
 
 pkg_search_module(SECCOMP REQUIRED IMPORTED_TARGET libseccomp)
+pkg_search_module(CAP REQUIRED IMPORTED_TARGET libcap)
 
 pfl_add_executable(
   SOURCES
@@ -51,6 +52,7 @@ pfl_add_executable(
   nlohmann_json::nlohmann_json
   linglong::ocppi
   PkgConfig::SECCOMP
+  PkgConfig::CAP
   COMPILE_OPTIONS
   PRIVATE
   -DJSON_USE_IMPLICIT_CONVERSIONS=0)

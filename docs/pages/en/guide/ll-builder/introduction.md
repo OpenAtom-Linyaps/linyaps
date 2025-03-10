@@ -6,7 +6,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # ll-builder Introduction
 
-`ll-builder` is a tool for developers for building Linglong applications.
+`ll-builder` is a tool for developers for building linyaps applications.
 
 The main functions are as follows:
 
@@ -27,20 +27,26 @@ ll-builder --help
 Here is the output:
 
 ```text
-Usage: ll-builder [options] subcommand [sub-option]
+linyaps builder CLI
+A CLI program to build linyaps application
+
+Usage: ll-builder [OPTIONS] [SUBCOMMAND]
 
 Options:
-  -v, --verbose  show detail log
-  -h, --help     Displays help on commandline options.
-  --help-all     Displays help including Qt specific options.
+  -h,--help                   Print this help message and exit
+  --help-all                  Expand all help
+  --version                   Show version
 
-Arguments:
-  subcommand     create
-                 build
-                 run
-                 export
-                 push
-                 convert
-                 import
-                 extract
+Subcommands:
+  create                      Create linyaps build template project
+  build                       Build a linyaps project
+  run                         Run builded linyaps app
+  export                      Export to linyaps layer or uab
+  push                        Push linyaps app to remote repo
+  import                      Import linyaps layer to build repo
+  extract                     Extract linyaps layer to dir
+  repo                        Display and manage repositories
+
+If you found any problems during use
+You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues
 ```

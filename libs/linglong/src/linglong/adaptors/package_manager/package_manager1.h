@@ -4,13 +4,10 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-#ifndef LINGLONG_ADAPTORS_PACKAGEMANAGER1_H_
-#define LINGLONG_ADAPTORS_PACKAGEMANAGER1_H_
+#pragma once
 
 #include "linglong/adaptors/package_manager/gen_org_deepin_linglong_packagemanager1.h"
 
 namespace linglong::adaptors::package_manger {
 using PackageManager1 = OrgDeepinLinglongPackagemanager1Adaptor;
 }
-
-#endif

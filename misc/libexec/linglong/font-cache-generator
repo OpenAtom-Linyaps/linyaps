@@ -1,0 +1,40 @@
+#!/bin/sh
+
+# SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+set -e
+
+font_conf_generator()
+{
+	local font_conf_prefix="$1/fonts"
+	local font_conf="${font_conf_prefix}/fonts.conf"
+	local app_id=$2
+	mkdir ${font_conf_prefix} || true
+
+cat << EOF > ${font_conf}
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
+<fontconfig>
+  <dir>/run/linglong/fonts</dir>
+  <include ignore_missing="yes">/opt/apps/${app_id}/files/etc/fonts/fonts.conf</include>
+</fontconfig>
+EOF
+}
+
+font_cache_generator()
+{
+	fc-cache -f
+}
+
+main()
+{
+	local cache_root=$1
+	local id=$2
+	# conf should be generated before cache
+	font_conf_generator ${cache_root} ${id}
+	font_cache_generator ${cache_root}
+}
+
+main $@

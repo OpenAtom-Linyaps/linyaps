@@ -25,13 +25,17 @@ public:
                                                   const Architecture &architecture) noexcept;
     static utils::error::Result<Reference>
     fromPackageInfo(const api::types::v1::PackageInfoV2 &info) noexcept;
+    static QVariantMap toVariantMap(const Reference &ref) noexcept;
+    static utils::error::Result<Reference> fromVariantMap(const QVariantMap &data) noexcept;
 
     QString channel;
     QString id;
     Version version;
     Architecture arch;
 
-    QString toString() const noexcept;
+    [[nodiscard]] QString toString() const noexcept;
+    friend bool operator!=(const Reference &lhs, const Reference &rhs) noexcept;
+    friend bool operator==(const Reference &lhs, const Reference &rhs) noexcept;
 
 private:
     Reference(const QString &channel,
@@ -41,3 +45,18 @@ private:
 };
 
 } // namespace linglong::package
+
+// Note: declare here, so we can use std::unordered_map<Reference, ...> in other place
+template<>
+struct std::hash<linglong::package::Reference>
+{
+    size_t operator()(const linglong::package::Reference &ref) const noexcept
+    {
+        size_t hash = 0;
+        hash ^= qHash(ref.channel);
+        hash ^= qHash(ref.id) << 1;
+        hash ^= qHash(ref.version.toString()) << 2;
+        hash ^= qHash(ref.arch.toString()) << 3;
+        return hash;
+    }
+};

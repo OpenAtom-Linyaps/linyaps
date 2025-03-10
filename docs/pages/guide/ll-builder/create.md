@@ -6,7 +6,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # 创建项目
 
-`ll-builder create`命令用来创建玲珑项目。
+`ll-builder create`命令用来创建如意玲珑项目。
 
 查看 `ll-builder create`命令的帮助信息：
 
@@ -17,32 +17,31 @@ ll-builder create --help
 `ll-builder create`命令的帮助信息如下：
 
 ```text
-Usage: ll-builder [options] create <org.deepin.demo>
+创建如意玲珑构建模板
+用法: ll-builder create [选项] 名称
+
+Positionals:
+  NAME TEXT REQUIRED          项目名称
 
 Options:
-  -v, --verbose  show detail log
-  -h, --help     Displays help on commandline options.
-  --help-all     Displays help including Qt specific options.
-
-Arguments:
-  create         create build template project
-  name           project name
+  -h,--help                   打印帮助信息并退出
+  --help-all                  展开所有帮助
 ```
 
 `ll-builder create`命令根据输入的项目名称在当前目录创建对应的文件夹，同时生成构建所需的 `linglong.yaml`模板文件。示例如下：
 
 ```bash
-ll-builder create org.deepin.hello
+ll-builder create org.deepin.demo
 ```
 
-`ll-builder create org.deepin.hello`命令输出如下：
+`ll-builder create org.deepin.demo`命令输出如下：
 
 ```text
-org.deepin.hello/
+org.deepin.demo/
 └── linglong.yaml
 ```
 
-## 编辑linglong.yaml
+## 编辑 linglong.yaml
 
 ### linglong.yaml 文件语法的版本
 
@@ -54,7 +53,7 @@ version: "1"
 
 ```yaml
 package:
-  id: org.deepin.hello
+  id: org.deepin.demo
   name: hello
   version: 0.0.0.1
   kind: app
@@ -67,7 +66,7 @@ package:
 最小的根文件系统。
 
 ```yaml
-base: org.deepin.foundation/23.0.0
+base: org.deepin.base/23.1.0
 ```
 
 ### 运行时
@@ -75,12 +74,12 @@ base: org.deepin.foundation/23.0.0
 在根文件系统基础上添加 Qt 等基础环境。
 
 ```yaml
-runtime: org.deepin.Runtime/23.0.1
+runtime: org.deepin.runtime.dtk/23.1.0
 ```
 
 ### 启动命令
 
-玲珑应用的启动命令。
+如意玲珑应用的启动命令。
 
 ```yaml
 command: [echo, -e, hello world]
@@ -88,7 +87,7 @@ command: [echo, -e, hello world]
 
 ### 源码
 
-使用git源码
+使用 git 源码
 
 ```yaml
 sources:
@@ -110,7 +109,7 @@ build: |
   make install
 ```
 
-### 完整的linglong.yaml配置
+### 完整的 linglong.yaml 配置
 
 `linglong.yaml`文件内容如下：
 
@@ -127,11 +126,11 @@ package:
 
 command: [echo, -e, hello world] #the commands that your application need to run.
 
-base: org.deepin.foundation/23.0.0 #set the base environment, this can be changed.
+base: org.deepin.base/23.1.0 #set the base environment, this can be changed.
 
 #set the runtime environment if you need, a example of setting deepin runtime is as follows.
 #runtime:
-#org.deepin.Runtime/23.0.1
+#org.deepin.runtime.dtk/23.1.0
 
 #set the source if you need, a simple example of git is as follows.
 #sources:

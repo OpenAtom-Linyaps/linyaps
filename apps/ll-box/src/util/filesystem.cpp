@@ -44,14 +44,13 @@ bool create_directories(const path &p, __mode_t mode)
             return false;
         }
     }
+
     return true;
 }
 
 bool is_dir(const std::string &s)
 {
-    struct stat st
-    {
-    };
+    struct stat st{};
 
     if (0 != lstat(s.c_str(), &st)) {
         return false;
@@ -67,9 +66,7 @@ bool is_dir(const std::string &s)
 
 bool exists(const std::string &s)
 {
-    struct stat st
-    {
-    };
+    struct stat st{};
 
     if (0 != lstat(s.c_str(), &st)) {
         return false;
@@ -89,14 +86,12 @@ path read_symlink(const path &p)
     }
 }
 
-file_status status(const path &p, std::error_code &ec)
+file_status status(const path &p, [[maybe_unused]] std::error_code &ec)
 {
     file_type ft;
     perms perm = no_perms;
 
-    struct stat st
-    {
-    };
+    struct stat st{};
 
     if (0 != lstat(p.string().c_str(), &st)) {
         if (errno == ENOENT) {

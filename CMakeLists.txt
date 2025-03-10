@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.11.4)
 
 project(
   linglong
-  VERSION 1.7.0
+  VERSION 1.6.1
   DESCRIPTION "a container based application package manager for Linux desktop"
   HOMEPAGE_URL "https://github.com/OpenAtom-Linyaps/linyaps"
   LANGUAGES CXX)
@@ -20,8 +20,24 @@ if(NOT ("${LINGLONG_VERSION}" STREQUAL ""))
   set(PROJECT_VERSION ${LINGLONG_VERSION})
 endif()
 
-set(ENABLE_UAB OFF CACHE BOOL "enable building UAB")
-set(ENABLE_LINGLONG_INSTALLER OFF CACHE BOOL "enable linglong installer")
+set(UAB_SPECIAL_INSTALL
+    OFF
+    CACHE BOOL "enable special installation of UAB")
+
+if(${UAB_SPECIAL_INSTALL})
+  add_definitions(-DUAB_SPECIAL_INSTALL)
+endif()
+
+set(ENABLE_UAB
+    OFF
+    CACHE BOOL "enable building UAB")
+set(ENABLE_LINGLONG_INSTALLER
+    OFF
+    CACHE BOOL "enable linglong installer")
+
+set(ENABLE_TESTING
+    ON
+    CACHE BOOL "enable testing")
 
 set(LINGLONG_USERNAME
     "deepin-linglong"
@@ -29,15 +45,26 @@ set(LINGLONG_USERNAME
 set(LINGLONG_ROOT
     "/var/lib/linglong"
     CACHE STRING "The location where linglong related program puts their data")
-set(LINGLONG_HOST_PATH
-    "/run/host"
-    CACHE STRING "The location where linglong host path mapping")
 set(LINGLONG_DEFAULT_OCI_RUNTIME
     "ll-box"
     CACHE STRING "The oci runtime which linglong use by default")
 
+set(LINGLONG_CLI_BIN
+    "ll-cli"
+    CACHE STRING "The client of package management.")
+set(GETTEXT_DOMAIN_NAME
+    "linyaps"
+    CACHE STRING "The name of gettext domain.")
+set(QT_VERSION_MAJOR
+    5
+    CACHE STRING "The major version of qt.")
+
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(PFL)
+
+if(${QT_VERSION_MAJOR} EQUAL 6)
+  include(Qt6DBusMacro)
+endif()
 
 set(ENABLE_CPM YES)
 
@@ -53,15 +80,6 @@ endif()
 
 if(ENABLE_CPM)
   include(CPM)
-  CPMFindPackage(
-    NAME docopt
-    VERSION 0.6.1 # NOTE: Upstream cmake version doesn't match git tag, we need
-                  # https://github.com/docopt/docopt.cpp/pull/102 in v0.6.3, but
-                  # cmake version of v0.6.3 is 0.6.1.
-    GITHUB_REPOSITORY docopt/docopt.cpp
-    GIT_SHALLOW ON
-    GIT_TAG v0.6.3
-    EXCLUDE_FROM_ALL ON)
   CPMFindPackage(
     NAME tl-expected
     VERSION 1.0.0 # NOTE: Upstream cmake version doesn't match git tag, we need
@@ -86,19 +104,29 @@ if(ENABLE_CPM)
     URL "https://github.com/nlohmann/json/archive/refs/tags/v3.5.0.tar.gz"
     EXCLUDE_FROM_ALL ON
     OPTIONS "JSON_BuildTests OFF")
+  CPMFindPackage(
+    NAME CLI11
+    VERSION 2.4.1
+    GITHUB_REPOSITORY CLIUtils/CLI11
+    GIT_TAG v2.4.1
+    EXCLUDE_FROM_ALL ON
+    OPTIONS "CLI11_BUILD_TESTS OFF")
+
+  if(ENABLE_TESTING)
+    include(CTest)
+    CPMFindPackage(
+      NAME googletest
+      GITHUB_REPOSITORY google/googletest
+      GIT_TAG v1.14.0
+      VERSION 1.12.1
+      OPTIONS "INSTALL_GTEST OFF" "gtest_force_shared_crt"
+      FIND_PACKAGE_ARGUMENTS "NAMES GTest"
+      GIT_SHALLOW ON
+      EXCLUDE_FROM_ALL ON)
+  endif()
 endif()
 
-set(linglong_EXTERNALS "ytj ytj::ytj" "http/client client")
-
-# NOTE: UOS v20 do not have docopt packaged.
-find_package(docopt 0.6.1 QUIET)
-if(NOT docopt_FOUND)
-  # list(APPEND linglong_EXTERNALS "docopt.cpp docopt.cpp") # we use header only
-  add_library(docopt INTERFACE)
-  target_compile_definitions(docopt INTERFACE DOCOPT_HEADER_ONLY)
-  target_include_directories(docopt INTERFACE ./external/docopt.cpp)
-  list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake.external)
-endif()
+set(linglong_EXTERNALS "ytj ytj::ytj")
 
 # NOTE: UOS v20 do not have tl-expected packaged.
 find_package(tl-expected 1.0.0 QUIET)
@@ -115,6 +143,25 @@ find_package(nlohmann_json 3.5.0 QUIET)
 if(NOT nlohmann_json_FOUND)
   list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake.fix)
   find_package(nlohmann_json 3.5.0 REQUIRED)
+endif()
+
+# NOTE: UOS v20 do not have cli11 packaged.
+find_package(CLI11 2.4.1 QUIET)
+if(NOT CLI11_FOUND)
+  list(APPEND linglong_EXTERNALS "CLI11 CLI11::CLI11")
+endif()
+
+find_package(PkgConfig REQUIRED)
+
+if(ENABLE_TESTING)
+  pkg_search_module(CRYPTO REQUIRED IMPORTED_TARGET libcrypto)
+  find_package(GTest REQUIRED)
+
+  # compatible with old gtest
+  if(NOT TARGET GTest::gmock)
+    message(STATUS "GTest::gmock not found, alias GTest::gtest")
+    add_library(GTest::gmock ALIAS GTest::GTest) # available since 3.5
+  endif()
 endif()
 
 function(get_real_target_name output target)
@@ -140,12 +187,31 @@ add_definitions("-DQT_NO_KEYWORDS")
 # NOTE(black_desk): Enable Qt logging with context.
 add_definitions("-DQT_MESSAGELOGCONTEXT")
 
-find_package(
-  Qt5
-  COMPONENTS Core Concurrent DBus Network WebSockets
-  REQUIRED)
+# FIXME: can not start container since the kernel does not support the
+# CLONE_NEWUSER feature in the chroot environment, reference:
+# https://man7.org/linux/man-pages/man2/unshare.2.html. so we skip font cache
+# generator by LINGLONG_FONT_CACHE_GENERATOR, it can be removed when the above
+# problem is solved.
+set(ENABLE_FONT_CACHE_GENERATOR
+    OFF
+    CACHE BOOL "enable font cache generator")
 
-find_package(PkgConfig REQUIRED)
+if(ENABLE_FONT_CACHE_GENERATOR)
+  add_definitions(-DLINGLONG_FONT_CACHE_GENERATOR)
+endif()
+
+# We need to support both Qt5 and Qt6, and according to the Qt documentation, we
+# should be using versioned targets and functions. These varible must be set
+# before find_package()
+# https://doc.qt.io/qt-6/cmake-qt5-and-qt6-compatibility.html#recommended-practices
+set(QT_DEFAULT_MAJOR_VERSION ${QT_VERSION_MAJOR})
+set(QT_NO_CREATE_VERSIONLESS_FUNCTIONS ON)
+set(QT_NO_CREATE_VERSIONLESS_TARGETS ON)
+
+find_package(
+  Qt${QT_VERSION_MAJOR}
+  COMPONENTS Core DBus
+  REQUIRED)
 
 pkg_search_module(glib2 REQUIRED IMPORTED_TARGET glib-2.0)
 pkg_search_module(ostree1 REQUIRED IMPORTED_TARGET ostree-1)
@@ -157,6 +223,7 @@ set(ytj_ENABLE_INSTALL NO)
 
 pfl_init(AUTO)
 
+add_subdirectory(external/http)
 add_subdirectory(tools/qdbusxml2cpp)
 
 include(GNUInstallDirs)
@@ -168,21 +235,16 @@ pfl_add_libraries(
   utils
   ocppi
   linglong
+  oci-cfg-generators
   APPS
-  generators/00-id-mapping
-  generators/05-initialize
-  generators/20-devices
-  generators/25-host-env
-  generators/30-user-home
-  generators/40-host-ipc
-  generators/90-legacy
+  ll-dialog
   ll-box
   ll-builder
   ll-cli
   ll-package-manager
   llpkg
   uab
-  ll-session-helper
-  ll-store-installer)
+  ll-session-helper)
 
 add_subdirectory(misc)
+add_subdirectory(po)

@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-## Initialize Linglong Projects
+## Initialize linyaps Projects
 
 ```text
 ll-builder create org.deepin.calculator
@@ -28,8 +28,8 @@ package:
 
 ```text
 runtime:
-  id: org.deepin.Runtime
-  version: 23.0.0
+  id: org.deepin.runtime.dtk
+  version: 23.1.0
 ```
 
 ### Fill in the source code info
@@ -88,7 +88,7 @@ build:
   manual :
     build: |
       cd ${build_dir} && make -j8
- 
+
 ```
 
 ### Complete linglong.yaml
@@ -106,8 +106,8 @@ variables:
     -DVERSION=${VERSION} \
     -DAPP_VERSION=5.7.21
 runtime:
-  id: org.deepin.Runtime
-  version: 23.0.0
+  id: org.deepin.runtime.dtk
+  version: 23.1.0
 depends:
   - id: "dde-qt-dbus-factory"
     version: 5.5.12
@@ -128,7 +128,7 @@ build:
 
 ## Start building
 
-Execute the build subcommand in the root directory of Linglong projects:
+Execute the build subcommand in the root directory of linyaps projects:
 
 ```text
 ll-builder build
@@ -136,7 +136,7 @@ ll-builder build
 
 ## Export build content
 
-Execute the export subcommand in the root directory of Linglong projects to check out the build content and generate the bundle package.
+Execute the export subcommand in the root directory of linyaps projects to check out the build content and generate the bundle package.
 
 ```text
 ll-builder export --layer

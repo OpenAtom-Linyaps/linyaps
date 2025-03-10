@@ -7,7 +7,6 @@
 #include "platform.h"
 
 #include "logger.h"
-#include "util/debug/debug.h"
 
 #include <cstdlib>
 
@@ -136,6 +135,35 @@ int Wait(const int pid)
 int WaitAllUntil(const int pid)
 {
     return DoWait(-1, pid);
+}
+
+int strToSig(std::string_view str) noexcept
+{
+    // Only support standard signals for now, maybe support real-time signal in the future
+    static const std::unordered_map<std::string_view, int> sigMap{
+        { "SIGABRT", SIGABRT },     { "SIGALRM", SIGALRM }, { "SIGBUS", SIGBUS },
+        { "SIGCHLD", SIGCHLD },     { "SIGCONT", SIGCONT }, { "SIGFPE", SIGFPE },
+        { "SIGHUP", SIGHUP },       { "SIGILL", SIGILL },   { "SIGINT", SIGINT },
+        { "SIGKILL", SIGKILL },     { "SIGPIPE", SIGPIPE }, { "SIGPOLL", SIGPOLL },
+        { "SIGPROF", SIGPROF },     { "SIGPWR", SIGPWR },   { "SIGQUIT", SIGQUIT },
+        { "SIGSEGV", SIGSEGV },     { "SIGSTOP", SIGSTOP }, { "SIGSYS", SIGSYS },
+        { "SIGTERM", SIGTERM },     { "SIGTRAP", SIGTRAP }, { "SIGTSTP", SIGTSTP },
+        { "SIGTTIN", SIGTTIN },     { "SIGTTOU", SIGTTOU }, { "SIGURG", SIGURG },
+        { "SIGUSR1", SIGUSR1 },     { "SIGUSR2", SIGUSR2 }, { "SIGVTALRM", SIGVTALRM },
+        { "SIGWINCH", SIGWINCH },   { "SIGXCPU", SIGXCPU }, { "SIGXFSZ", SIGXFSZ },
+        { "SIGIO", SIGIO },         { "SIGIOT", SIGIOT },   { "SIGCLD", SIGCLD },
+// this signal is not available on sw64
+#ifdef SIGSTKFLT
+        { "SIGSTKFLT", SIGSTKFLT },
+#endif
+    };
+
+    auto it = sigMap.find(str);
+    if (it == sigMap.end()) {
+        return -1;
+    }
+
+    return it->second;
 }
 
 } // namespace util

@@ -4,11 +4,11 @@ SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-# Build Linglong applications
+# Build linyaps applications
 
-Taking [deepin-calculator](https://github.com/linuxdeepin/deepin-calculator.git) as an example, introduce the process of building a Linglong package from source code.
+Taking [deepin-calculator](https://github.com/linuxdeepin/deepin-calculator.git) as an example, introduce the process of building a linyaps package from source code.
 
-## Create Linglong project
+## Create linyaps project
 
 ```bash
 mkdir org.deepin.calculator
@@ -29,7 +29,7 @@ cd org.deepin.calculator
 Edit the linglong.yaml file using a text editor.
 
 ```bash
-version: "1"
+version: '1'
 
 package:
   id: org.deepin.calculator
@@ -54,6 +54,7 @@ sources:
   - kind: git
     url: https://github.com/linuxdeepin/dde-qt-dbus-factory.git
     version: master
+    commit: d952e1913172c5507af080f644a654f9ba5fed95
 
 build: |
   # build dde-qt-dbus-factory
@@ -70,7 +71,7 @@ build: |
   cd /project/linglong/sources/deepin-calculator.git
   cmake -Bbuild \
         -DCMAKE_INSTALL_PREFIX=${PREFIX} \
-        -DCMAKE_INSTALL_LIBDIR=${PREFIX}/lib/${TRIPLET}
+        -DCMAKE_INSTALL_LIBDIR=${PREFIX}/lib/${TRIPLET} \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_SAFETYTEST_ARG="CMAKE_SAFETYTEST_ARG_OFF" \
         -DAPP_VERSION=5.7.21 \
@@ -108,7 +109,7 @@ ll-builder run --exec /bin/bash
 
 # Conversion application
 
-Here, we use  baidunetdisk as an example. We will introduce the process of converting DEB packages into Linglong packages
+Here, we use  baidunetdisk as an example. We will introduce the process of converting DEB packages into linyaps packages
 
 ## Obtain software package
 

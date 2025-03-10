@@ -6,10 +6,7 @@
 
 # linglong cli completion
 
-__ll_cli_find_subcommand() {
-        lines=$(ll-cli --help | wc -l)
-        ll-cli --help | grep "Subcommands:" -A $lines | tail -n+2 | awk -F\  '{print $1}' | tr '\n' ' '
-}
+#set -x
 
 __ll_cli_get_container_list() {
         ll-cli ps | tail -n+2 | awk '{print $1}' | tr '\n' ' '
@@ -20,82 +17,147 @@ __ll_cli_get_installed_list() {
 }
 
 __ll_cli_get_app_list() {
-        ll-cli search . | tail -n+2 | awk '{print $1}' | tr '\n' ' '
+        ll-cli search $1 | tail -n+2 | awk '{print $1}' | sort | uniq | tr '\n' ' '
 }
 
 __ll_cli_get_layer_list() {
-        ls $1* 2>/dev/null | tr '\n' ' '
+        ls $1*.layer 2>/dev/null | tr '\n' ' '
 }
 
-_ll_cli() {
-        local wordlist
+__ll_cli_get_repo_name_list() {
+        ll-cli repo show | tail -n+3 | awk '{print $1}' | tr "\n" " "
+}
 
-        common_option="--version --json --help -h"
-        if [[ "${#COMP_WORDS[@]}" == "2" ]]; then
-                wordlist=$(__ll_cli_find_subcommand)
+__filter_exist_options() {
+        local aviable_opts
+        for opt in $1; do
+                local blank=" "
+                for word in "${COMP_WORDS[@]}"; do
+                        if [[ "x${word}" == "x${opt}" ]]; then
+                                opt=""
+                                blank=""
+                                break
+                        fi
+                done
+                aviable_opts+="${opt}"
+                aviable_opts+="${blank}"
+        done
+        echo ${aviable_opts}
+}
+
+_ll_cli_complete() {
+        local cur prev output_options subcommand
+        COMPREPLY=()
+        cur="${COMP_WORDS[COMP_CWORD]}"
+        prev="${COMP_WORDS[COMP_CWORD - 1]}"
+
+        # Define the options and subcommands
+        local common_options="-h --help --help-all"
+        local global_options="--version --json"
+        local subcommands="run ps enter kill prune install uninstall upgrade list info content search repo"
+
+        output_options="$common_options"
+        # For the first word (command or options)
+        if [[ ${COMP_CWORD} -lt 2 ]]; then
+                output_options="${output_options} ${global_options} ${subcommands}"
+                COMPREPLY=($(compgen -W "${output_options}" -- "${cur}"))
+                return 0
+        elif [[ ${COMP_CWORD} -eq 2 && ${COMP_WORDS[1]} == -* ]]; then
+                output_options="${output_options} ${subcommands}"
+                COMPREPLY=($(compgen -W "${output_options}" -- "${cur}"))
+                return 0
         fi
-        wordlist="$wordlist $common_option"
 
-        case "${COMP_WORDS[1]}" in
+        if [[ ${COMP_WORDS[1]} != -* ]]; then
+                subcommand=${COMP_WORDS[1]}
+        else
+                subcommand=${COMP_WORDS[2]}
+        fi
+
+        case ${subcommand} in
         run)
-                run_option="--no-dbus-proxy --dbus-proxy-cfg"
-                wordlist="$wordlist $run_option $(__ll_cli_get_installed_list)"
+                local run_options="--file --url"
+                local installed_list
+                if [[ "${prev}" == "run" ]]; then
+                        installed_list="$(__ll_cli_get_installed_list)"
+                fi
+                output_options="${output_options} ${run_options} ${installed_list}"
                 ;;
         ps)
-                wordlist=$wordlist
-                ;;
-        exec)
-                exec_option="--working-directory"
-                wordlist="$wordlist $exec_option $(__ll_cli_get_container_list)"
+                # Nothing here
                 ;;
         enter)
-                enter_option="--working-directory"
-                wordlist="$wordlist $enter_option $(__ll_cli_get_container_list)"
+                local enter_options="--working-directory"
+                local container_list
+                if [[ "${prev}" == "enter" ]]; then
+                        container_list="$(__ll_cli_get_container_list)"
+                fi
+                output_options="${output_options} ${enter_options} ${container_list}"
                 ;;
         kill)
-                wordlist="$wordlist $(__ll_cli_get_container_list)"
+                output_options="${output_options} $(__ll_cli_get_container_list)"
+                ;;
+        prune)
+                # Nothing here
                 ;;
         install)
-                install_option="--no-dbus"
-                wordlist="$wordlist $install_option $(__ll_cli_get_app_list) $(__ll_cli_get_layer_list ${COMP_WORDS[2]})"
+                install_options="--module --force -y"
+                search_target="."
+                local app_list
+                if [[ x${cur} != x ]]; then
+                        search_target=${cur}
+                fi
+
+                if [[ "${prev}" == "install" ]]; then
+                        app_list="$(__ll_cli_get_app_list ${search_target}) $(__ll_cli_get_layer_list ${cur})"
+                fi
+                output_options="${output_options} ${install_options} ${app_list}"
                 ;;
         uninstall)
-                uninstall_option="--all --prune"
-                wordlist="$wordlist $uninstall_option $(__ll_cli_get_installed_list)"
+                local uninstall_options
+                local installed_list
+                if [[ "${prev}" == "uninstall" ]]; then
+                        installed_list="$(__ll_cli_get_installed_list)"
+                fi
+                output_options="${output_options} ${uninstall_options} ${installed_list}"
                 ;;
         upgrade)
-                wordlist="$wordlist $(__ll_cli_get_installed_list)"
-                ;;
-        search)
-                search_option="--type"
-                wordlist="$wordlist $search_option $(__ll_cli_get_app_list)"
+                output_options="${output_options} $(__ll_cli_get_installed_list)"
                 ;;
         list)
-                list_option="--no-dbus --type"
-                wordlist="$wordlist $list_option"
-                ;;
-        repo)
-                subcommand="modify list"
-                repo_option=""
-                if [[ "${COMP_WORDS[2]}" == "modify" ]]; then
-                        subcommand=""
-                        repo_option="--name"
-                elif [[ "${COMP_WORDS[2]}" == "show" ]]; then
-                        subcommand=""
-                        repo_option=""
-                fi
-                wordlist="$wordlist $subcommand $repo_option"
+                list_options="--type --upgradable"
+                output_options="${output_options} ${list_options}"
                 ;;
         info)
-                wordlist="$wordlist $(__ll_cli_get_installed_list) $(__ll_cli_get_layer_list ${COMP_WORDS[2]})"
+                output_options="${output_options} $(__ll_cli_get_installed_list) $(__ll_cli_get_layer_list ${cur}))"
+                ;;
+        content)
+                output_options="${output_options} $(__ll_cli_get_installed_list)"
+                ;;
+        search)
+                search_target="."
+                if [[ x${cur} != x ]]; then
+                        search_target=${cur}
+                fi
+                search_options="--type --dev"
+                output_options="${output_options} ${search_options} $(__ll_cli_get_app_list ${search_target})"
+                ;;
+        repo)
+                local repo_subcommands="add remove update set-default show"
+                if [[ ${prev} == "repo" ]]; then
+                        output_options="${output_options} ${repo_subcommands}"
+                fi
+
+                if [[ ${prev} == "remove" || ${prev} == "set-default" ]]; then
+                        output_options="${output_options} $(__ll_cli_get_repo_name_list)"
+                fi
                 ;;
         esac
 
-        local cur=${COMP_WORDS[COMP_CWORD]}
-        COMPREPLY=($(compgen -W "${wordlist}" -- "${cur}"))
+        output_options="$(__filter_exist_options "${output_options}")"
+        COMPREPLY=($(compgen -W "${output_options}" -- "${cur}"))
 
         return 0
 }
 
-complete -F _ll_cli ll-cli
-complete -F _ll_cli llpkg
+complete -F _ll_cli_complete ll-cli

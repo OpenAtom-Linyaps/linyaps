@@ -6,7 +6,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # 构建配置文件简介
 
-`linglong.yaml` 是玲珑项目工程的描述文件，记录构建所需的相关信息。如构建产物的名称、版本、源码地址、构建依赖等。
+`linglong.yaml` 是如意玲珑项目工程的描述文件，记录构建所需的相关信息。如构建产物的名称、版本、源码地址、构建依赖等。
 
 ## 工程目录结构
 
@@ -46,13 +46,13 @@ package:
 ### 基础环境（base）
 
 ```bash
-base: org.deepin.foundation/23.0.0
+base: org.deepin.base/23.1.0
 ```
 
 最小根文件系统。
 
-| 名称    | 描述                                     |
-| ------- | ---------------------------------------- |
+| 名称    | 描述                                      |
+| ------- | ----------------------------------------- |
 | id      | base  的唯一名称                         |
 | version | base 的版本号,  三位数可以模糊匹配第四位 |
 
@@ -61,7 +61,7 @@ base: org.deepin.foundation/23.0.0
 应用运行时依赖，同时也是构建依赖。
 
 ```text
-runtime: org.deepin.Runtime/23.0.1
+runtime: org.deepin.runtime.dtk/23.1.0
 ```
 
 | 名称    | 描述                                            |
@@ -71,7 +71,9 @@ runtime: org.deepin.Runtime/23.0.1
 
 ### 源码
 
-描述源码信息。
+描述源信息，获取后的位置在 linglong.yaml 同级路径的 `linglong/sources` 目录下。
+
+#### git 类型
 
 ```yaml
 sources:
@@ -81,12 +83,57 @@ sources:
   commit: d7e207b4a71bbd97f7d818de5044228c1a6e2c92
 ```
 
-| 名称   | 描述                                                                  |
-| ------ | --------------------------------------------------------------------- |
-| kind   | 源码类型，可选类型 file、archive、git                                 |
-| url    | 源码地址，类型为 file、archive、git 时填写                            |
-| digest | 归档文件的 hash 值，使用 sha256 算法加密，类型为 file、archive 时填写 |
-| commit | 源码某次提交 hash 值，类型为 git 时填写                               |
+| 名称    | 描述                     |
+| ------- | ------------------------ |
+| kind    | git，使用 git 工具下载。 |
+| url     | 源码地址                 |
+| version | 源码仓库的分支           |
+| commit  | 源码某次提交的 hash 值   |
+
+#### file 类型
+
+```bash
+sources:
+  kind: file
+  url: https://github.com/linuxdeepin/deepin-calculator/archive/refs/tags/6.5.4.tar.gz
+  digest: 9675e27395891da9d9ee0a6094841410e344027fd81265ab75f83704174bb3a8
+```
+
+| 名称   | 描述                                 |
+| ------ | ------------------------------------ |
+| kind   | file，下载文件                       |
+| url    | 文件下载地址                         |
+| digest | 文件的 hash 值，使用 sha256 算法加密 |
+
+#### archive 类型
+
+```bash
+sources:
+  kind: archive
+  url: https://github.com/linuxdeepin/deepin-calculator/archive/refs/tags/6.5.4.tar.gz
+  digest: 9675e27395891da9d9ee0a6094841410e344027fd81265ab75f83704174bb3a8
+```
+
+| 名称   | 描述                                             |
+| ------ | ------------------------------------------------ |
+| kind   | archive，下载文件为 tar.tz 的压缩包，会自动解压 |
+| url    | 文件下载地址                                     |
+| digest | 文件的 hash 值，使用 sha256 算法加密             |
+
+#### dsc 类型
+
+```bash
+sources:
+  kind: dsc
+  url: https://cdn-community-packages.deepin.com/deepin/beige/pool/main/d/deepin-calculator/deepin-calculator_6.0.1.dsc
+  digest: ce47ed04a427a887a52e3cc098534bba53188ee0f38f59713f4f176374ea2141
+```
+
+| 名称   | 描述                                 |
+| ------ | ------------------------------------ |
+| kind   | dsc，源码包描述文件                  |
+| url    | 文件下载地址                         |
+| digest | 文件的 hash 值，使用 sha256 算法加密 |
 
 ### 导出裁剪规则（UAB）
 
@@ -140,7 +187,7 @@ cd org.deepin.foundation
 bash build_base.sh beige amd64
 ```
 
-该项目用来构建玲珑使用的根文件系统。eagle 指发行版代号，amd64 指架构。
+该项目用来构建如意玲珑使用的根文件系统。eagle 指发行版代号，amd64 指架构。
 
 | 发行版            | 架构                      |
 | ----------------- | ------------------------- |
@@ -176,8 +223,8 @@ package:
 command:
   - /opt/apps/org.deepin.calculator/files/bin/deepin-calculator
 
-base: org.deepin.foundation/23.0.0
-runtime: org.deepin.Runtime/23.0.1
+base: org.deepin.base/23.1.0
+runtime: org.deepin.runtime.dtk/23.1.0
 
 sources:
   - kind: git
@@ -188,6 +235,7 @@ sources:
   - kind: git
     url: https://github.com/linuxdeepin/dde-qt-dbus-factory.git
     version: master
+    commit: d952e1913172c5507af080f644a654f9ba5fed95
 
 build: |
   # build dde-qt-dbus-factory
@@ -204,7 +252,7 @@ build: |
   cd /project/linglong/sources/deepin-calculator.git
   cmake -Bbuild \
         -DCMAKE_INSTALL_PREFIX=${PREFIX} \
-        -DCMAKE_INSTALL_LIBDIR=${PREFIX}/lib/${TRIPLET}
+        -DCMAKE_INSTALL_LIBDIR=${PREFIX}/lib/${TRIPLET} \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_SAFETYTEST_ARG="CMAKE_SAFETYTEST_ARG_OFF" \
         -DAPP_VERSION=5.7.21 \

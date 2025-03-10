@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="240px" height="240px" viewBox="0 0 240 240" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>LOGO-svg</title>
+    <g id="LOGO-svg" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="编组" transform="translate(20.000000, 10.000000)">
+            <polygon id="路径-10" fill="#7EAAFC" points="200 60 150 80 150 139.456303 100 160 100 220 200 179.837676"></polygon>
+            <polygon id="路径-11" fill="#025BFF" points="150 139.456303 100 119.567991 100.104796 60 150 80"></polygon>
+            <polygon id="路径-12" fill="#99BDFF" opacity="0.3" points="200 60 150 38 100.104796 60 150 80"></polygon>
+            <polygon id="路径-13" fill="#025BFF" points="100 220 50 200 50 140 100 160"></polygon>
+            <polygon id="路径-14" fill="#E0EBFF" points="50 140 100 119.567991 150 139.456303 100 160"></polygon>
+            <polygon id="矩形" fill="#025BFF" points="5.68434189e-14 40 50 60 50 180 5.68434189e-14 160"></polygon>
+            <polygon id="路径-8" fill="#99BDFF" opacity="0.3" points="50 60 150 20 100 6.39488462e-13 0 40"></polygon>
+            <polygon id="路径-9" fill="#7EAAFC" points="50 60 50 180 100 160 100 100 150 80 150 20"></polygon>
+        </g>
+    </g>
+</svg>

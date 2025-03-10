@@ -111,13 +111,18 @@ try {
 Version::Version(const QString &raw)
 {
     // modified from https://regex101.com/r/vkijKf/1/
-    static QRegularExpression regexExp(
-      R"(^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d*))?$)");
+    static auto regexExp = []() noexcept {
+        QRegularExpression regexExp(
+          R"(^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d*))?$)");
+        regexExp.optimize();
+        return regexExp;
+    }();
 
     QRegularExpressionMatch matched = regexExp.match(raw);
 
     if (!matched.hasMatch()) {
-        throw std::runtime_error("version regex mismatched, please use four digits version like 1.0.0.0");
+        throw std::runtime_error(
+          "version regex mismatched, please use four digits version like 1.0.0.0");
     }
 
     bool ok = false;

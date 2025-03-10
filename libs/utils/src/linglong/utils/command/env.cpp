@@ -35,7 +35,6 @@ const QStringList envList = {
     "SOCKS_SERVER", // 网络系统代理手动socks代理
     "no_proxy",     // 网络系统代理手动配置代理
     "USER",         // wine应用会读取此环境变量
-    "PATH",
     "HOME",
     "QT_IM_MODULE",    // 输入法
     "LINGLONG_ROOT",   // 玲珑安装位置
@@ -68,6 +67,7 @@ linglong::utils::error::Result<QString> Exec(QString command, QStringList args)
     QProcess process;
     process.setProgram(command);
     process.setArguments(args);
+    process.setProcessChannelMode(QProcess::MergedChannels);
     process.start();
 
     if (!process.waitForFinished(-1)) {
@@ -75,7 +75,7 @@ linglong::utils::error::Result<QString> Exec(QString command, QStringList args)
     }
 
     if (process.exitCode() != 0) {
-        return LINGLONG_ERR(process.readAllStandardError(), process.exitCode());
+        return LINGLONG_ERR(process.readAllStandardOutput(), process.exitCode());
     }
 
     return process.readAllStandardOutput();

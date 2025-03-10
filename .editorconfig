@@ -15,6 +15,7 @@ tab_width = 4
 [*.{xml,yaml,qrc}]
 indent_size = 2
 tab_width = 2
+quote_type = single
 
 [misc/dbus/*.conf.in]
 indent_size = 2

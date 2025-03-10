@@ -21,6 +21,13 @@ description: Types used as v1 API of linglong
   D-Bus service, configuration files and CLI output.
   The top level type is a place holder to make quicktype work.
 $defs:
+  InspectResult:
+    description: the result of inspecting a container
+    type: object
+    properties:
+      appID:
+        type: string
+        description: appID of container
   ApplicationConfiguration:
     title: ApplicationConfiguration
     description: application configuration
@@ -32,12 +39,29 @@ $defs:
         type: string
         description: version of configuration file
       permissions:
-        $ref: "#/$defs/ApplicationConfigurationPermissions"
+        $ref: '#/$defs/ApplicationConfigurationPermissions'
+  XDGDirectoryPermissions:
+    title: XDGDirectoryPermissions
+    type: array
+    items:
+      type: object
+      required:
+        - allowed
+        - dirType
+      properties:
+        allowed:
+          type: boolean
+          description: whether the xdg dir is allowed
+        dirType:
+          type: string
+          description: type of xdg dir, could be one of [Desktop, Downloads, Documents, Music, Pictures, Videos]
   ApplicationConfigurationPermissions:
     title: ApplicationConfigurationPermissions
     description: application configuration permissions
     type: object
     properties:
+      xdgDirectories:
+        $ref: '#/$defs/XDGDirectoryPermissions'
       binds:
         type: array
         items:
@@ -71,6 +95,53 @@ $defs:
             destination:
               type: string
               description: mount source file to the another position of container
+  ContainerProcessStateInfo:
+    description: |
+      information about process which in container that start by ll-cli, all content
+      will write to /run/linglong/UID/PID
+    type: object
+    required:
+      - containerID
+      - app
+      - base
+    properties:
+      containerID:
+        type: string
+      app:
+        type: string
+      base:
+        type: string
+      runtime:
+        type: string
+  InteractionRequest:
+    description: |
+      structured message which inspired by freedesktop Notification Spec.
+      refer: https://specifications.freedesktop.org/notification-spec/latest/protocol.html#id-1.10.3.3.4
+    type: object
+    required:
+      - appName
+      - summary
+      - timeout
+    properties:
+      appName:
+        type: string
+      summary:
+        type: string
+      body:
+        type: string
+      actions:
+        type: array
+        items:
+          type: string
+      timeout:
+        type: integer
+  InteractionReply:
+    description: message from user reply
+    type: object
+    properties:
+      action:
+        description: choice which in requested actions
+        type: string
   OCIConfigurationPatch:
     title: OCIConfigurationPatch
     description: oci configuration patch
@@ -116,7 +187,10 @@ $defs:
       version:
         description: The format version of linglong.meta data.
         type: string
-        const: "1"
+        const: '1'
+      onlyApp:
+        description: whether this UAB file has been exported in only-App mode.
+        type: boolean
       sections:
         type: object
         required:
@@ -151,7 +225,7 @@ $defs:
             - minified
           properties:
             info:
-              $ref: "#/$defs/PackageInfoV2"
+              $ref: '#/$defs/PackageInfoV2'
             minified:
               description: Whether this layer file is minified or not.
               type: boolean
@@ -170,18 +244,20 @@ $defs:
         description: version of build file
       exclude:
         type: array
-        description: exclude files during exporting UAB. Every item should be absolute path in container.
-                     It could be a directory or a regular file.
-                     e.g. - /usr/share/locale (exclude all files which in this directory)
-                          - /usr/lib/libavfs.a (exclude one file)
+        description:
+          exclude files during exporting UAB. Every item should be absolute path in container.
+          It could be a directory or a regular file.
+          e.g. - /usr/share/locale (exclude all files which in this directory)
+          - /usr/lib/libavfs.a (exclude one file)
         items:
           type: string
       include:
         type: array
-        description: include files during exporting UAB. For example, the packer can declare a
-                     file/directory (e.g. /usr/share/locale/zh_CN) in the excluded directory
-                     (e.g. /usr/share/locale)  to exclude all files in /usr/share/locale
-                     except /usr/share/locale/zh_CN.
+        description:
+          include files during exporting UAB. For example, the packer can declare a
+          file/directory (e.g. /usr/share/locale/zh_CN) in the excluded directory
+          (e.g. /usr/share/locale)  to exclude all files in /usr/share/locale
+          except /usr/share/locale/zh_CN.
         items:
           type: string
       package:
@@ -217,7 +293,7 @@ $defs:
             type: string
             description: channel of package
       permissions:
-        $ref: "#/$defs/ApplicationConfigurationPermissions"
+        $ref: '#/$defs/ApplicationConfigurationPermissions'
       runtime:
         type: string
         description: used runtime of package
@@ -256,6 +332,25 @@ $defs:
         title: BuilderProjectBuildScript
         description: build script of builder project
         type: string
+      buildext:
+        title: BuilderProjectBuildExt
+        description: build extension for builder project
+        type: object
+        properties:
+          apt:
+            description: build extension for apt
+            type: object
+            properties:
+              build_depends:
+                description: packages to be installed in build environment before build starting
+                type: array
+                items:
+                  type: string
+              depends:
+                description: packages to be installed in runtime environment
+                type: array
+                items:
+                  type: string
       command:
         type: array
         description: command of builder project
@@ -269,11 +364,24 @@ $defs:
         title: BuilderProjectModules
         description: |
           Specify how to split application into modules.
-        type: object
-        additionalProperties:
-          type: array
-          items:
-            type: string
+        type: array
+        items:
+          title: BuilderProjectModules
+          description: items of modules of builder project
+          type: object
+          required:
+            - name
+            - files
+          properties:
+            name:
+              type: string
+              description: module name
+            files:
+              type: array
+              description: module install files
+              items:
+                type: string
+                description: module install file
   BuilderConfig:
     description: Configuration file for ll-builder.
     type: object
@@ -287,18 +395,6 @@ $defs:
       offline:
         type: boolean
         description: use offline mode when build
-      skip_fetch_source:
-        type: boolean
-        description: skip fetch source when build
-      skip_pull_depend:
-        type: boolean
-        description: skip pull depend when build
-      skip_run_container:
-        type: boolean
-        description: skip run container when build
-      skip_commit_output:
-        type: boolean
-        description: skip commit output when build
       arch:
         type: string
         description: arch of builder config
@@ -328,6 +424,47 @@ $defs:
         additionalProperties:
           type: string
           description: additional properties of repos
+
+  RepoConfigV2:
+    description: Configuration file for local linglong repository.
+    type: object
+    required:
+      - version
+      - defaultRepo
+      - repos
+    properties:
+      version:
+        type: integer
+        description: version of repo config
+      defaultRepo:
+        type: string
+        description: default repo of repo config
+      repos:
+        type: array
+        description: repos of repo config
+        items:
+          $ref: '#/$defs/Repo'
+        minItems: 1
+  Repo:
+    description: Configuration for a single repository.
+    type: object
+    required:
+      - name
+      - url
+      - priority
+    properties:
+      name:
+        type: string
+        description: repo name
+      url:
+        type: string
+        description: repo url
+      alias:
+        type: string
+        description: alias of repo name
+      priority:
+        type: integer
+        description: priority of repo
   LayerInfo:
     description: Meta information on the head of layer file.
     type: object
@@ -358,28 +495,6 @@ $defs:
       module:
         type: string
         description: module of package manager
-  MinifiedInfo: # minifiedInfo is an internal api and some break changes may occur in the future
-    title: MinifiedInfo
-    description: this is used to associate application with specific dependencies
-    type: object
-    required:
-      - infos
-    properties:
-      infos:
-        type: array
-        minItems: 1
-        items:
-          type: object
-          required:
-            - appRef
-            - uuid
-          properties:
-            appRef:
-              type: string
-              description: reference of application
-            uuid:
-              type: string
-              description: uuid of imported uab
   PackageInfoV2:
     title: PackageInfoV2
     description: this is the each item output of ll-cli list --json
@@ -396,6 +511,10 @@ $defs:
       - size
       - base
     properties:
+      uuid:
+        type: string
+        description: this property is only used for app which instead from UAB
+          and it should be null in other conditions.
       channel:
         type: string
         description: channel of package info
@@ -437,16 +556,18 @@ $defs:
         items:
           type: string
       permissions:
-        $ref: "#/$defs/ApplicationConfigurationPermissions"
+        $ref: '#/$defs/ApplicationConfigurationPermissions'
       description:
         type: string
         description: description of package info
+      compatible_version:
+        type: string
+        description: record linyaps package is compatible with linyaps component version
   PackageInfo:
     title: PackageInfo
     description: this is the each item output of ll-cli list --json
     type: object
     required:
-      - channel
       - appid
       - module
       - arch
@@ -494,10 +615,34 @@ $defs:
         items:
           type: string
       permissions:
-        $ref: "#/$defs/ApplicationConfigurationPermissions"
+        $ref: '#/$defs/ApplicationConfigurationPermissions'
       description:
         type: string
         description: description of package info
+  ApplicationPermissionsRequest:
+    type: object
+    required:
+      - appID
+      - xdgDirectories
+    properties:
+      appID:
+        type: string
+      xdgDirectories:
+        $ref: '#/$defs/XDGDirectoryPermissions'
+  CommonOptions:
+    title: CommonOptions
+    description: this is common option for Install and InstallFromFile
+    type: object
+    required:
+      - skipInteraction
+      - force
+    properties:
+      skipInteraction:
+        description: skip interaction, such as 'apt install aa -y'
+        type: boolean
+      force:
+        description: force to overwrite
+        type: boolean
   CommonResult:
     title: CommonResult
     description: this is common error result of ll-cli command --json
@@ -505,7 +650,11 @@ $defs:
     required:
       - message
       - code
+      - type
     properties:
+      type:
+        description: error type, to indicate client what should be done.
+        type: string
       message:
         description: Human readable result message.
         type: string
@@ -514,25 +663,82 @@ $defs:
           Non-zero code indicated errors occurs
           and message should be displayed to user.
         type: integer
+  InteractionMessageType:
+    description: To identify what message to print during interaction.
+    enum: ['Unknown', 'Install', 'Uninstall', 'Upgrade', 'Downgrade']
+  PackageManager1RequestInteractionAdditionalMessage:
+    type: object
+    description: fill ref string to additional message in requestInteraction
+    required:
+      - LocalRef
+      - RemoteRef
+    properties:
+      LocalRef:
+        type: string
+      RemoteRef:
+        type: string
+  State:
+    description: main state of current task,
+    enum:
+      [
+        'Unknown',
+        'Queued',
+        'Pending',
+        'Processing',
+        'PartCompleted',
+        'Succeed',
+        'Failed',
+        'Canceled',
+      ]
+  SubState:
+    description: subState of current task,
+    enum:
+      [
+        'Unknown',
+        'PreAction',
+        'InstallRuntime',
+        'InstallBase',
+        'InstallApplication',
+        'PostAction',
+        'Uninstall',
+        'AllDone',
+        'PackageManagerDone',
+      ]
   PackageManager1InstallLayerFDResult:
-    $ref: "#/$defs/CommonResult"
+    $ref: '#/$defs/CommonResult'
   PackageManager1InstallParameters:
     type: object
     description: package manager install parameters
     required:
       - package
+      - options
     properties:
       package:
-        $ref: "#/$defs/PackageManager1Package"
-  PackageManager1InstallResult:
-    title: PackageManager1ResultWithTaskID
-    description: package manager install result
+        title: PackageManager1InstallParametersPacakge
+        type: object
+        required:
+          - id
+        properties:
+          channel:
+            type: string
+          id:
+            type: string
+          version:
+            type: string
+          modules:
+            type: array
+            items:
+              type: string
+      options:
+        $ref: '#/$defs/CommonOptions'
+  PackageManager1PackageTaskResult:
+    description: package manager task result
     allOf:
-      - $ref: "#/$defs/CommonResult"
+      - $ref: '#/$defs/CommonResult'
     properties:
-      taskID:
+      taskObjectPath:
         type: string
-        description: task id of package manager install
+        description: task dbus object path of package manager install
   PackageManager1UninstallParameters:
     type: object
     description: package manager uninstall parameters
@@ -540,9 +746,7 @@ $defs:
       - package
     properties:
       package:
-        $ref: "#/$defs/PackageManager1Package"
-  PackageManager1UninstallResult:
-    $ref: "#/$defs/CommonResult"
+        $ref: '#/$defs/PackageManager1Package'
   PackageManager1UpdateParameters:
     type: object
     description: package manager update result
@@ -553,11 +757,7 @@ $defs:
         type: array
         description: packages of package manager update
         items:
-          $ref: "#/$defs/PackageManager1Package"
-  PackageManager1UpdateResult:
-    title: PackageManager1UpdateResult
-    description: package manager update result
-    $ref: "#/$defs/PackageManager1InstallResult"
+          $ref: '#/$defs/PackageManager1Package'
   PackageManager1ModifyRepoParameters:
     type: object
     required:
@@ -573,7 +773,7 @@ $defs:
         additionalProperties:
           type: string
   PackageManager1ModifyRepoResult:
-    $ref: "#/$defs/CommonResult"
+    $ref: '#/$defs/CommonResult'
   PackageManager1SearchParameters:
     type: object
     description: package manager search parameters
@@ -583,21 +783,30 @@ $defs:
       id:
         type: string
         description: id of package manager search
+  PackageManager1JobInfo:
+    type: object
+    description: Get the job result using an ID
+    allOf:
+      - $ref: '#/$defs/CommonResult'
+    properties:
+      id:
+        type: string
+        description: id of job info
   PackageManager1SearchResult:
     type: object
     description: result of package manager search
     allOf:
-      - $ref: "#/$defs/CommonResult"
+      - $ref: '#/$defs/CommonResult'
     properties:
       packages:
         type: array
         items:
-          $ref: "#/$defs/PackageInfoV2"
+          $ref: '#/$defs/PackageInfoV2'
   PackageManager1GetRepoInfoResult:
     type: object
     description: result of package manager get repo info
     allOf:
-      - $ref: "#/$defs/CommonResult"
+      - $ref: '#/$defs/CommonResult'
     required:
       - repoInfo
     properties:
@@ -631,27 +840,118 @@ $defs:
       version:
         type: string
         description: version of storage
+        # const: "1"
+        # FIXME: quicktype will generate enum class and ignore the hierarchy
+        # so comparing this value inside code
       ll-version:
         type: string
         description: version of linglong at the time of generating the file
       config:
-        $ref: '#/$defs/RepoConfig'
+        $ref: '#/$defs/RepoConfigV2'
       layers:
-        title: RepositoryCacheLayers
-        type: object
-        description: stores the full module name with repo name and the corresponding ostree commit
-        additionalProperties:
-          title: RepositoryCacheLayersItem
+        type: array
+        items:
           type: object
+          description: stores the full module name with repo name and the corresponding ostree commit
+          title: RepositoryCacheLayersItem
           required:
+            - repo
             - commit
             - info
+          # TODO: maybe we should add the map of module which depends by this item in the future
           properties:
+            repo:
+              type: string
+              description: which repo is this app belongs to
+            deleted:
+              description: deleted mark
+              type: boolean
             commit:
               type: string
               description: ostree commit hash
             info:
               $ref: '#/$defs/PackageInfoV2'
+      merged:
+        type: array
+        items:
+          type: object
+          description: Merge multiple modules into one directory
+          title: RepositoryCacheMergedItem
+          required:
+            - id
+            - modules
+            - commits
+          properties:
+            id:
+              type: string
+              description: binary module ostree commit hash
+            name:
+              type: string
+              description: human readable name
+            binaryCommit:
+              type: string
+              description: binary module ostree commit hash
+            modules:
+              type: array
+              description: list of merged module names
+              items:
+                type: string
+            commits:
+              type: array
+              description: list of ostree commit hashes for each module
+              items:
+                type: string
+  UpgradeListResult:
+    title: UpgradeListResult
+    description: this is upgrade list result of ll-cli upgrade --json
+    type: object
+    required:
+      - id
+      - old_version
+      - new_version
+    properties:
+      id:
+        description: id of package.
+        type: string
+      old_version:
+        description: version of current installed.
+        type: string
+      new_version:
+        description: version of latest version in remote repo.
+        type: string
+  DialogMessage:
+    description: |
+      For interactive with frontend dialog. All message exchange between dialog and
+      caller should use stdin and stdout. The first four bytes indicate the length
+      of the message. The rest of the payload is the actual payload.
+    type: object
+    required:
+      - type
+      - payload
+    properties:
+      type:
+        description: type of dialog message, possible values are ['Handshake', 'Request']
+        type: string
+      payload:
+        description: payload of dialog message, the real payload depends on type
+        type: string
+  DialogHandShakePayload:
+    type: object
+    required:
+      - version
+    properties:
+      version:
+        description: |
+          Minimum protocol version supported by the client.
+          Current version is 1.0.
+          1.0 behavior: dialog MUST report self minimal protocol version at program start.
+              if client not reported protocol version, caller SHOULD kill dialog after timeout.
+              then, caller will send a directory permission request to dialog. if timeout,
+              client SHOULD exit immediately. after that, caller will wait for dialog exit
+              and use dialog exit code to know user allow the request or not. dialog MUST exit
+              with 0, any other value means user reject the request or dialog internal error and
+              dialog could output any message to stderr.
+        type: string
 type: object
 properties:
   # NOTE: "properties" is auto generated by referring all types is $defs

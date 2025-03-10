@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+SPDX-License-Identifier: LGPL-3.0-or-later
+-->
+<RCC>
+  <qresource prefix="/">
+    <file alias="background.jpeg">../../../misc/image/background.jpeg</file>
+    <file alias="logo.svg">../../../misc/image/logo.svg</file>
+  </qresource>
+</RCC>

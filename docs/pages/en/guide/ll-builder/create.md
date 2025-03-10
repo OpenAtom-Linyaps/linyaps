@@ -4,9 +4,9 @@ SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-# Create Linglong project
+# Create linyaps project
 
-Use `ll-builder create` to create a Linglong project.
+Use `ll-builder create` to create a linyaps project.
 
 View the help information for the `ll-builder create` command:
 
@@ -17,28 +17,27 @@ ll-builder create --help
 Here is the output:
 
 ```text
-Usage: ll-builder [options] create <org.deepin.demo>
+Create linyaps build template project
+Usage: ll-builder create [OPTIONS] NAME
+
+Positionals:
+  NAME TEXT REQUIRED          Project name
 
 Options:
-  -v, --verbose show detail log
-  -h, --help Displays help on commandline options.
-  --help-all Displays help including Qt specific options.
-
-Arguments:
-  create create build template project
-  name project name
+  -h,--help                   Print this help message and exit
+  --help-all                  Expand all help
 ```
 
 The `ll-builder create` command creates a folder in the current directory according to the project name, and generates the `linglong.yaml` template file required for the build. Here is an example:
 
 ```bash
-ll-builder create org.deepin.hello
+ll-builder create org.deepin.demo
 ```
 
 Here is the output:
 
 ```text
-org.deepin.hello/
+org.deepin.demo/
 └── linglong.yaml
 ```
 
@@ -54,7 +53,7 @@ version: "1"
 
 ```yaml
 package:
-  id: org.deepin.hello
+  id: org.deepin.demo
   name: hello
   version: 0.0.0.1
   kind: app
@@ -67,7 +66,7 @@ package:
 The minimum root filesystem.
 
 ```yaml
-base: org.deepin.foundation/23.0.0
+base: org.deepin.base/23.1.0
 ```
 
 ### Runtime
@@ -75,12 +74,12 @@ base: org.deepin.foundation/23.0.0
 On the basis of the rootfs, add fundamental environments such as Qt.
 
 ```yaml
-runtime: org.deepin.Runtime/23.0.1
+runtime: org.deepin.runtime.dtk/23.1.0
 ```
 
 ### Command
 
-Linglong application startup command.
+linyaps application startup command.
 
 ```yaml
 command: [echo, -e, hello world]
@@ -126,11 +125,11 @@ package:
 
 command: [echo, -e, hello world] #the commands that your application need to run.
 
-base: org.deepin.foundation/23.0.0 #set the base environment, this can be changed.
+base: org.deepin.base/23.1.0 #set the base environment, this can be changed.
 
 #set the runtime environment if you need, a example of setting deepin runtime is as follows.
 #runtime:
-#org.deepin.Runtime/23.0.1
+#runtime: org.deepin.runtime.dtk/23.1.0
 
 #set the source if you need, a simple example of git is as follows.
 #sources:

@@ -7,19 +7,23 @@
 #include "linglong/runtime/container_builder.h"
 
 #include "linglong/api/types/v1/ApplicationConfiguration.hpp"
+#include "linglong/oci-cfg-generators/builtins.h"
 #include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/finally/finally.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/serialize/yaml.h"
 #include "ocppi/runtime/config/types/Generators.hpp"
 #include "ocppi/runtime/config/types/Mount.hpp"
 
-#include <qglobal.h>
-#include <qstandardpaths.h>
-#include <qtemporarydir.h>
+#include <QProcess>
+#include <QStandardPaths>
+#include <QTemporaryDir>
 
 #include <fstream>
 #include <unordered_set>
+
+#include <fcntl.h>
 
 namespace linglong::runtime {
 
@@ -52,6 +56,7 @@ auto getPatchesForApplication(const QString &appID) noexcept
     }
 
     std::vector<api::types::v1::OciConfigurationPatch> patches;
+    patches.reserve(config->permissions->binds->size());
 
     for (const auto &bind : *config->permissions->binds) {
         patches.push_back({
@@ -75,34 +80,13 @@ auto getPatchesForApplication(const QString &appID) noexcept
     return patches;
 }
 
-// getBundleDir 用于获取容器的运行目录
-utils::error::Result<QDir> getBundleDir(QString containerID)
-{
-    LINGLONG_TRACE("get bundle dir");
-    QDir runtimeDir = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
-    QDir bundle = runtimeDir.absoluteFilePath(QString("linglong/%1").arg(containerID));
-    if (!bundle.mkpath(".")) {
-        return LINGLONG_ERR(QString("make bundle directory failed %1").arg(bundle.absolutePath()));
-    }
-    return bundle;
-}
-
-void applyJSONPatch(ocppi::runtime::config::types::Config &cfg,
+void applyJSONPatch(nlohmann::json &cfg,
                     const api::types::v1::OciConfigurationPatch &patch) noexcept
 {
-    LINGLONG_TRACE(QString("apply oci runtime config patch %1")
-                     .arg(QString::fromStdString(nlohmann::json(patch).dump(-1, ' ', true))));
+    LINGLONG_TRACE("apply oci runtime config patch");
 
-    if (patch.ociVersion != cfg.ociVersion) {
-        qWarning() << LINGLONG_ERRV("ociVersion mismatched");
-        Q_ASSERT(false);
-        return;
-    }
-
-    auto raw = nlohmann::json(cfg);
     try {
-        raw = raw.patch(patch.patch);
-        cfg = raw.get<ocppi::runtime::config::types::Config>();
+        cfg = cfg.patch(patch.patch);
     } catch (...) {
         qCritical() << LINGLONG_ERRV("apply patch", std::current_exception());
         Q_ASSERT(false);
@@ -112,17 +96,7 @@ void applyJSONPatch(ocppi::runtime::config::types::Config &cfg,
 
 void applyJSONFilePatch(ocppi::runtime::config::types::Config &cfg, const QFileInfo &info) noexcept
 {
-    if (!info.isFile()) {
-        return;
-    }
-
     LINGLONG_TRACE(QString("apply oci runtime config patch file %1").arg(info.absoluteFilePath()));
-
-    if (!info.absoluteFilePath().endsWith(".json")) {
-        qWarning() << LINGLONG_ERRV("file not ends with .json");
-        Q_ASSERT(false);
-        return;
-    }
 
     auto patch = utils::serialize::LoadJSONFile<api::types::v1::OciConfigurationPatch>(
       info.absoluteFilePath());
@@ -132,18 +106,25 @@ void applyJSONFilePatch(ocppi::runtime::config::types::Config &cfg, const QFileI
         return;
     }
 
-    applyJSONPatch(cfg, *patch);
+    if (cfg.ociVersion != patch->ociVersion) {
+        qWarning() << "ociVersion mismatched:"
+                   << nlohmann::json(*patch).dump(-1, ' ', true).c_str();
+        Q_ASSERT(false);
+        return;
+    }
+
+    auto raw = nlohmann::json(cfg);
+    applyJSONPatch(raw, *patch);
+    cfg = raw.get<ocppi::runtime::config::types::Config>();
 }
 
-void applyExecutablePatch(QString workdir,
-                          ocppi::runtime::config::types::Config &cfg,
+void applyExecutablePatch(ocppi::runtime::config::types::Config &cfg,
                           const QFileInfo &info) noexcept
 {
     LINGLONG_TRACE(QString("process oci configuration generator %1").arg(info.absoluteFilePath()));
 
     QProcess generatorProcess;
     generatorProcess.setProgram(info.absoluteFilePath());
-    generatorProcess.setWorkingDirectory(workdir);
     generatorProcess.start();
     generatorProcess.write(QByteArray::fromStdString(nlohmann::json(cfg).dump()));
     generatorProcess.closeWriteChannel();
@@ -158,9 +139,9 @@ void applyExecutablePatch(QString workdir,
     auto error = generatorProcess.readAllStandardError();
     if (generatorProcess.exitCode() != 0) {
         qCritical() << "generator" << info.absoluteFilePath() << "return"
-                    << generatorProcess.exitCode() << Qt::endl
-                    << "input:" << nlohmann::json(cfg).dump().c_str() << Qt::endl
-                    << "stderr:" << error;
+                    << generatorProcess.exitCode() << "\ninput:\n"
+                    << nlohmann::json(cfg).dump().c_str() << "\n\nstderr:\n"
+                    << qPrintable(error);
         Q_ASSERT(false);
         return;
     }
@@ -179,96 +160,52 @@ void applyExecutablePatch(QString workdir,
     cfg = *modified;
 }
 
-void applyPatches(const ContainerOptions &opts,
-                  ocppi::runtime::config::types::Config &cfg,
-                  const QFileInfoList &patches) noexcept
+void applyPatches(ocppi::runtime::config::types::Config &cfg, const QFileInfoList &patches) noexcept
 {
-    auto bundleDir = getBundleDir(opts.containerID);
-
+    const auto &builtins = linglong::generator::builtin_generators();
     for (const auto &info : patches) {
         if (!info.isFile()) {
+            qWarning() << "info is not file:" << info.absoluteFilePath();
+            continue;
+        }
+
+        if (info.completeSuffix() == "json") {
+            applyJSONFilePatch(cfg, info);
             continue;
         }
 
         if (info.isExecutable()) {
-            applyExecutablePatch(bundleDir->path(), cfg, info);
+            applyExecutablePatch(cfg, info);
             continue;
         }
 
-        applyJSONFilePatch(cfg, info);
+        auto gen = builtins.find(info.completeBaseName().toStdString());
+        if (gen == builtins.cend()) {
+            qDebug() << "unsupported generator:" << info.absoluteFilePath();
+            continue;
+        }
+
+        if (!gen->second->generate(cfg)) {
+            qDebug() << "builtin generator failed:" << gen->first.data();
+        }
     }
 }
 
 void applyPatches(ocppi::runtime::config::types::Config &cfg,
                   const std::vector<api::types::v1::OciConfigurationPatch> &patches) noexcept
 {
+    auto raw = nlohmann::json(cfg);
     for (const auto &patch : patches) {
-        applyJSONPatch(cfg, patch);
-    }
-}
-
-auto getOCIConfig(const ContainerOptions &opts) noexcept
-  -> utils::error::Result<ocppi::runtime::config::types::Config>
-{
-    LINGLONG_TRACE("get origin OCI configuration file");
-
-    QTemporaryDir dir;
-    dir.setAutoRemove(false);
-    QString containerConfigFilePath = qgetenv("LINGLONG_CONTAINER_CONFIG");
-    if (containerConfigFilePath.isEmpty()) {
-        containerConfigFilePath = LINGLONG_INSTALL_PREFIX "/lib/linglong/container/config.json";
-        if (!QFile(containerConfigFilePath).exists()) {
-            return LINGLONG_ERR(
-              QString("The container configuration file doesn't exist: %1\n"
-                      "You can specify a custom location using the LINGLONG_CONTAINER_CONFIG")
-                .arg(containerConfigFilePath));
+        if (patch.ociVersion != cfg.ociVersion) {
+            qWarning() << "ociVersion mismatched: "
+                       << nlohmann::json(patch).dump(-1, ' ', true).c_str();
+            continue;
         }
+
+        applyJSONPatch(raw, patch);
     }
 
-    auto config = utils::serialize::LoadJSONFile<ocppi::runtime::config::types::Config>(
-      containerConfigFilePath);
-    if (!config) {
-        Q_ASSERT(false);
-        return LINGLONG_ERR(config);
-    }
-
-    config->root = ocppi::runtime::config::types::Root{
-        .path = opts.baseDir.absoluteFilePath("files").toStdString(),
-        .readonly = true,
-    };
-
-    auto annotations = config->annotations.value_or(std::map<std::string, std::string>{});
-    annotations["org.deepin.linglong.appID"] = opts.appID.toStdString();
-    annotations["org.deepin.linglong.baseDir"] = opts.baseDir.absolutePath().toStdString();
-
-    if (opts.runtimeDir) {
-        annotations["org.deepin.linglong.runtimeDir"] =
-          opts.runtimeDir->absolutePath().toStdString();
-    }
-    if (opts.appDir) {
-        annotations["org.deepin.linglong.appDir"] = opts.appDir->absolutePath().toStdString();
-    }
-    config->annotations = std::move(annotations);
-
-    QDir configDotDDir = QFileInfo(containerConfigFilePath).dir().filePath("config.d");
-    Q_ASSERT(configDotDDir.exists());
-
-    applyPatches(opts, *config, configDotDDir.entryInfoList(QDir::Files));
-
-    auto appPatches = getPatchesForApplication(opts.appID);
-
-    applyPatches(*config, appPatches);
-
-    applyPatches(*config, opts.patches);
-
-    Q_ASSERT(config->mounts.has_value());
-    auto &mounts = *config->mounts;
-
-    mounts.insert(mounts.end(), opts.mounts.begin(), opts.mounts.end());
-
-    config->linux_->maskedPaths = opts.masks;
-
-    return config;
+    cfg = raw.get<ocppi::runtime::config::types::Config>();
 }
 
 auto fixMount(ocppi::runtime::config::types::Config config) noexcept
@@ -422,20 +359,26 @@ ContainerBuilder::ContainerBuilder(ocppi::cli::CLI &cli)
 }
 
 auto ContainerBuilder::create(const ContainerOptions &opts) noexcept
-  -> utils::error::Result<QSharedPointer<Container>>
+  -> utils::error::Result<std::unique_ptr<Container>>
 {
     LINGLONG_TRACE("create container");
 
-    auto bundle = getBundleDir(opts.containerID);
-    if (!bundle.has_value()) {
-        return LINGLONG_ERR(bundle);
+    std::error_code ec;
+    const auto &bundle = opts.bundle;
+    if (bundle.empty() || !bundle.is_absolute() || !std::filesystem::exists(bundle, ec)) {
+        if (ec) {
+            return LINGLONG_ERR("failed to check bundle directory", ec);
+        }
+
+        return LINGLONG_ERR(QString{ "invalid bundle directory: %1" }.arg(bundle.c_str()));
     }
+
     auto originalConfig = getOCIConfig(opts);
     if (!originalConfig) {
         return LINGLONG_ERR(originalConfig);
     }
     // save env to /run/user/1000/linglong/xxx/00env.sh, mount it to /etc/profile.d/00env.sh
-    std::string envShFile = bundle->absoluteFilePath("00env.sh").toStdString();
+    auto envShFile = bundle / "00env.sh";
     {
         std::ofstream ofs(envShFile);
         Q_ASSERT(ofs.is_open());
@@ -474,7 +417,110 @@ auto ContainerBuilder::create(const ContainerOptions &opts) noexcept
         return LINGLONG_ERR(config);
     }
 
-    return QSharedPointer<Container>::create(*config, opts.appID, opts.containerID, this->cli);
+    // ensure container root exists
+    auto containerRoot = bundle / config->root->path;
+    if (!std::filesystem::create_directories(containerRoot, ec) && ec) {
+        return LINGLONG_ERR("failed to create container root", ec);
+    }
+
+    return std::make_unique<Container>(std::move(config).value(),
+                                       opts.appID,
+                                       opts.containerID,
+                                       this->cli);
 }
 
+auto ContainerBuilder::createWithConfig(const ocppi::runtime::config::types::Config &originalConfig,
+                                        const QString &containerID) noexcept
+  -> utils::error::Result<std::unique_ptr<Container>>
+{
+    LINGLONG_TRACE("create container with config");
+
+    if (!originalConfig.annotations) {
+        return LINGLONG_ERR("missing annotations");
+    }
+
+    const auto &annotations = originalConfig.annotations.value();
+    auto appID = annotations.find("org.deepin.linglong.appID");
+    if (appID == annotations.end()) {
+        return LINGLONG_ERR("missing appID");
+    }
+
+    return std::make_unique<Container>(originalConfig,
+                                       QString::fromStdString(appID->second),
+                                       containerID,
+                                       this->cli);
+}
+
+auto ContainerBuilder::getOCIConfig(const ContainerOptions &opts) noexcept
+  -> utils::error::Result<ocppi::runtime::config::types::Config>
+{
+    LINGLONG_TRACE("get origin OCI configuration file");
+
+    std::filesystem::path containerConfigFilePath{ LINGLONG_INSTALL_PREFIX
+                                                   "/lib/linglong/container/config.json" };
+    auto *containerConfigFile = ::getenv("LINGLONG_CONTAINER_CONFIG");
+    if (containerConfigFile != nullptr) {
+        containerConfigFilePath = containerConfigFile;
+    }
+
+    std::error_code ec;
+    if (!std::filesystem::exists(containerConfigFilePath, ec)) {
+        if (ec) {
+            return LINGLONG_ERR("failed to check container configuration file", ec);
+        }
+
+        return LINGLONG_ERR(
+          QString("The container configuration file doesn't exist: %1\n"
+                  "You can specify a custom location using the LINGLONG_CONTAINER_CONFIG")
+            .arg(containerConfigFilePath.c_str()));
+    }
+
+    auto config = utils::serialize::LoadJSONFile<ocppi::runtime::config::types::Config>(
+      containerConfigFilePath);
+    if (!config) {
+        Q_ASSERT(false);
+        return LINGLONG_ERR(config);
+    }
+
+    config->root = ocppi::runtime::config::types::Root{
+        .path = opts.baseDir.absoluteFilePath("files").toStdString(),
+        .readonly = true,
+    };
+
+    auto annotations = config->annotations.value_or(std::map<std::string, std::string>{});
+    annotations["org.deepin.linglong.appID"] = opts.appID.toStdString();
+    annotations["org.deepin.linglong.baseDir"] = opts.baseDir.absolutePath().toStdString();
+    annotations["org.deepin.linglong.bundleDir"] = opts.bundle;
+
+    if (opts.runtimeDir) {
+        annotations["org.deepin.linglong.runtimeDir"] =
+          opts.runtimeDir->absolutePath().toStdString();
+    }
+    if (opts.appDir) {
+        annotations["org.deepin.linglong.appDir"] = opts.appDir->absolutePath().toStdString();
+    }
+    config->annotations = std::move(annotations);
+
+    QDir configDotDDir{ (containerConfigFilePath.parent_path() / "config.d").c_str() };
+    Q_ASSERT(configDotDDir.exists());
+
+    applyPatches(*config, configDotDDir.entryInfoList(QDir::Files));
+
+    auto appPatches = getPatchesForApplication(opts.appID);
+
+    applyPatches(*config, appPatches);
+
+    applyPatches(*config, opts.patches);
+
+    Q_ASSERT(config->mounts.has_value());
+    auto &mounts = *config->mounts;
+
+    mounts.insert(mounts.end(), opts.mounts.begin(), opts.mounts.end());
+
+    config->linux_->maskedPaths = opts.masks;
+
+    config->hooks = opts.hooks;
+
+    return config;
+}
 } // namespace linglong::runtime

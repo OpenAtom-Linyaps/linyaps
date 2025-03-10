@@ -54,6 +54,9 @@ tag_build:
     - trigger_services:
         project: deepin:Unstable:dde
         package: %{SCM_REPOSITORY_NAME}
+    - trigger_services:
+        project: linglong:CI:release
+        package: %{SCM_REPOSITORY_NAME}
   filters:
     event: tag_push
 
@@ -61,6 +64,9 @@ commit_build:
   steps:
     - trigger_services:
         project: deepin:Develop:dde
+        package: %{SCM_REPOSITORY_NAME}
+    - trigger_services:
+        project: linglong:CI:master
         package: %{SCM_REPOSITORY_NAME}
   filters:
     event: push

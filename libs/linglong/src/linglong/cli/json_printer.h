@@ -16,12 +16,18 @@ public:
     void printErr(const utils::error::Error &) override;
     void printPackage(const api::types::v1::PackageInfoV2 &) override;
     void printPackages(const std::vector<api::types::v1::PackageInfoV2> &) override;
+    void printPruneResult(const std::vector<api::types::v1::PackageInfoV2> &) override;
     void printContainers(const std::vector<api::types::v1::CliContainer> &) override;
     void printReply(const api::types::v1::CommonResult &) override;
-    void printRepoConfig(const api::types::v1::RepoConfig &) override;
+    void printRepoConfig(const api::types::v1::RepoConfigV2 &) override;
     void printLayerInfo(const api::types::v1::LayerInfo &) override;
-    void printTaskStatus(const QString &percentage, const QString &message, int status) override;
+    void printTaskState(double percentage,
+                        const QString &message,
+                        api::types::v1::State state,
+                        api::types::v1::SubState subState) override;
     void printContent(const QStringList &desktopPaths) override;
+    void printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &) override;
+    void printInspect(const api::types::v1::InspectResult &) override;
 };
 
 } // namespace linglong::cli

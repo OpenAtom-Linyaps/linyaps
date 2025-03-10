@@ -17,7 +17,8 @@
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
-#include "linglong/api/types/v1/PackageManager1Package.hpp"
+#include "linglong/api/types/v1/CommonOptions.hpp"
+#include "linglong/api/types/v1/PackageManager1InstallParametersPacakge.hpp"
 
 namespace linglong {
 namespace api {
@@ -33,7 +34,8 @@ using nlohmann::json;
 * package manager install parameters
 */
 struct PackageManager1InstallParameters {
-PackageManager1Package package;
+CommonOptions options;
+PackageManager1InstallParametersPacakge package;
 };
 }
 }

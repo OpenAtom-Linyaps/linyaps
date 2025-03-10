@@ -10,6 +10,7 @@
 
 #include <QString>
 
+#include <filesystem>
 #include <string>
 
 namespace linglong::package {
@@ -23,6 +24,8 @@ public:
         ARM64,
         LOONGARCH64,
         LOONG64,
+        SW64,
+        MIPS64,
     };
 
     explicit Architecture(Value value = UNKNOW);
@@ -41,7 +44,6 @@ public:
 
 private:
     Value v;
-    static std::string getInterpreter();
 };
 
 } // namespace linglong::package

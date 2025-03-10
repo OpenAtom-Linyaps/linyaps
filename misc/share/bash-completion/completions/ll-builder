@@ -6,31 +6,108 @@
 
 # linglong builder completion
 
-__ll_builder_find_subcommand()
-{
-        for i in "${COMP_WORDS[@]}"
-        do
-                if ! [[ $i = -* ]] && ! [[ $i = ll-builder ]]
-                then
-                        echo "$i"
-                        return
-                fi
-        done
-        echo ""
-        return
+#set -x
+
+__ll_builder_get_layer_list() {
+        ls $1*.layer 2>/dev/null | tr '\n' ' '
 }
 
-_ll_builder()
-{
-        local wordlist
+__ll_builder_get_repo_name_list() {
+        ll-builder repo show | tail -n+3 | awk '{print $1}' | tr "\n" " "
+}
 
-        subcommand=$(__ll_builder_find_subcommand)
-        wordlist=$(ll-builder "$subcommand" --help | grep -Po '((?<= )-\w|(?<= )--[\w-]+)|(?<=subcommand  )\w+|^ +  \w+$' | tr '\n' ' ')
+__filter_exist_options() {
+        local aviable_opts
+        for opt in $1; do
+                local blank=" "
+                for word in "${COMP_WORDS[@]}"; do
+                        if [[ "x$word" == "x$opt" ]]; then
+                                opt=""
+                                blank=""
+                                break
+                        fi
+                done
+                aviable_opts+="$opt"
+                aviable_opts+="$blank"
+        done
+        echo $aviable_opts
+}
 
-        local cur=${COMP_WORDS[COMP_CWORD]};
-        COMPREPLY=( $(compgen -W "${wordlist}" -- "${cur}") )
+_ll_builder_complete() {
+        local cur prev output_options subcommand
+        COMPREPLY=()
+        cur="${COMP_WORDS[COMP_CWORD]}"
+        prev="${COMP_WORDS[COMP_CWORD - 1]}"
+
+        # Define the options and subcommands
+        local common_options="-h --help --help-all"
+        local subcommands="create build run export push import extract repo migrate"
+
+        output_options="$common_options"
+        # For the first word (command or options)
+        if [[ ${COMP_CWORD} -lt 2 ]]; then
+                output_options="${output_options} ${subcommands}"
+                COMPREPLY=($(compgen -W "${output_options}" -- "${cur}"))
+                return 0
+        fi
+
+        case ${COMP_WORDS[1]} in
+        create)
+                # Nothing here
+                ;;
+        build)
+                local build_options="--file --arch --exec --offline"
+                build_options+=" --full-develop-module"
+                build_options+=" --skip-fetch-source"
+                build_options+=" --skip-pull-depend"
+                build_options+=" --skip-run-container"
+                build_options+=" --skip-commit-output"
+                build_options+=" --skip-output-check"
+                build_options+=" --skip-strip-symbols"
+
+                output_options="${output_options} ${build_options}"
+                ;;
+        run)
+                local run_options="--file --url"
+                output_options="${output_options} ${run_options}"
+                ;;
+        export)
+                local export_options="--file --icon --layer"
+                output_options="${output_options} ${export_options}"
+                ;;
+        push)
+                local push_options="--file --repo-url --repo-name --channel --module"
+                output_options="${output_options} ${push_options}"
+                ;;
+        import)
+                if [[ ${prev} == "import" ]]; then
+                        output_options="${output_options} $(__ll_builder_get_layer_list)"
+                fi
+                ;;
+        extract)
+                if [[ ${prev} == "extract" ]]; then
+                        output_options="${output_options} $(__ll_builder_get_layer_list)"
+                fi
+                ;;
+        repo)
+                local repo_subcommands="add remove update set-default show"
+                if [[ ${prev} == "repo" ]]; then
+                        output_options="${output_options} ${repo_subcommands}"
+                fi
+
+                if [[ ${prev} == "remove" || ${prev} == "set-default" ]]; then
+                        output_options="${output_options} $(__ll_cli_get_repo_name_list)"
+                fi
+                ;;
+        migrate)
+                # Nothing here
+                ;;
+        esac
+
+        output_options="$(__filter_exist_options "${output_options}")"
+        COMPREPLY=($(compgen -W "${output_options}" -- "${cur}"))
 
         return 0
 }
 
-complete -F _ll_builder ll-builder
+complete -F _ll_builder_complete ll-builder

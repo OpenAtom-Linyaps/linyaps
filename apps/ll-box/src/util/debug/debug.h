@@ -14,6 +14,8 @@ namespace linglong {
 
 #define DUMP_FILE_INFO(path) DumpFileInfo1(path, __FUNCTION__, __LINE__)
 
+void DumpCap();
+
 void DumpIDMap();
 
 void DumpUidGidGroup();

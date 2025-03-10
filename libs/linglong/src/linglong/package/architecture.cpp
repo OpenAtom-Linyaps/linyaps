@@ -8,11 +8,12 @@
 
 #include <elf.h>
 
+#include <QSysInfo>
+
 #include <cstring>
 #include <fstream>
 #include <iostream>
-#include <string>
-#include <vector>
+#include <optional>
 
 namespace linglong::package {
 Architecture::Architecture(Value value)
@@ -31,6 +32,10 @@ QString Architecture::toString() const noexcept
         return "loongarch64";
     case LOONG64:
         return "loong64";
+    case SW64:
+        return "sw64";
+    case MIPS64:
+        return "mips64";
     case UNKNOW:
         [[fallthrough]];
     default:
@@ -49,8 +54,12 @@ QString Architecture::getTriplet() const noexcept
         return "aarch64-linux-gnu";
     case LOONG64:
         return "loongarch64-linux-gnu";
+    case SW64:
+        return "sw_64-linux-gnu";
     case LOONGARCH64:
         return "loongarch64-linux-gnu";
+    case MIPS64:
+        return "mips64el-linux-gnuabi64";
     }
     return "unknow";
 }
@@ -82,73 +91,67 @@ Architecture::Architecture(const std::string &raw)
             return LOONG64;
         }
 
+        if (raw == "sw64") {
+            return SW64;
+        }
+
+        if (raw == "mips64") {
+            return MIPS64;
+        }
+
         throw std::runtime_error("unknow architecture");
     }())
 {
 }
 
-std::string Architecture::getInterpreter()
+namespace {
+bool isNewWorldLoongArch()
 {
-    static std::string interpreterPath = "";
-    if (!interpreterPath.empty()) {
-        return interpreterPath;
+    static std::optional<bool> isLoongArch;
+    if (isLoongArch.has_value()) {
+        return isLoongArch.value();
     }
+
     // 打开可执行文件
     std::ifstream file("/proc/self/exe", std::ios::binary);
     if (!file) {
-        std::cerr << "Failed to open executable file" << std::endl;
-        return "";
+        qCritical() << "Failed to open executable file";
+        isLoongArch = false;
+        return false;
     }
+
     // 读取 ELF 头
     Elf64_Ehdr ehdr;
     file.read(reinterpret_cast<char *>(&ehdr), sizeof(ehdr));
     if (!file || std::memcmp(ehdr.e_ident, ELFMAG, SELFMAG) != 0) {
-        std::cerr << "Not a valid ELF file." << std::endl;
-        return "";
+        qCritical() << "Not a valid ELF file.";
+        isLoongArch = false;
+        return false;
     }
-    // 移动到程序头表偏移处
-    file.seekg(ehdr.e_phoff, std::ios::beg);
-    // 读取程序头表
-    std::vector<Elf64_Phdr> phdrs(ehdr.e_phnum);
-    file.read(reinterpret_cast<char *>(phdrs.data()), ehdr.e_phnum * sizeof(Elf64_Phdr));
-    if (!file) {
-        std::cerr << "Failed to read program headers." << std::endl;
-        return "";
-    }
-    // 查找 PT_INTERP 段
-    for (const auto &phdr : phdrs) {
-        if (phdr.p_type == PT_INTERP) {
-            // 获取解释器的偏移和大小
-            std::vector<char> interpreter(phdr.p_filesz);
-            file.seekg(phdr.p_offset, std::ios::beg);
-            file.read(interpreter.data(), phdr.p_filesz);
-            if (!file) {
-                std::cerr << "Failed to read interpreter." << std::endl;
-                return "";
-            }
-            interpreterPath = interpreter.data();
-            return interpreterPath;
-        }
-    }
-    return "";
+
+    auto val = ehdr.e_flags >> 6U;
+    isLoongArch = ((val & 1U) == 1);
+    return isLoongArch.value();
 }
+} // namespace
 
 utils::error::Result<Architecture> Architecture::currentCPUArchitecture() noexcept
 {
-    auto interpreter = getInterpreter();
-    if (interpreter == "/lib64/ld-linux-x86-64.so.2") {
-        return Architecture::parse("x86_64");
+    auto arch = QSysInfo::currentCpuArchitecture().toStdString();
+
+    if (arch == "sw_64") {
+        arch = "sw64";
     }
-    if (interpreter == "/lib/ld-linux-aarch64.so.1") {
-        return Architecture::parse("arm64");
+
+    if (arch == "loongarch64" || arch == "loong64") {
+        if (isNewWorldLoongArch()) {
+            arch = "loong64";
+        } else {
+            arch = "loongarch64";
+        }
     }
-    if (interpreter == "/lib64/ld-linux-loongarch-lp64d.so.1") {
-        return Architecture::parse("loong64");
-    }
-    if (interpreter == "/lib64/ld.so.1") {
-        return Architecture::parse("loongarch64");
-    }
-    return Architecture::parse("");
+
+    return Architecture::parse(arch);
 };
 
 } // namespace linglong::package

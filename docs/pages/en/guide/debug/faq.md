@@ -8,22 +8,22 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 1. When the application runs to read the application installation resource file under `/usr/share`, why does the reading fail?
 
-   Linglong applications run in a container, and the application data will be mounted to `/opt/apps/<appid>`/. Only system data will exist in the `/usr/share` directory, and there will be no application-related data. Therefore, reading directly from `/usr/share` will fail. Suggested processing: Use the `XDG_DATA_DIRS` environment variable to read resources, and `/opt/apps/<appid>/files/share` will exist in this environment variable search path.
+   linyaps applications run in a container, and the application data will be mounted to `/opt/apps/<appid>`/. Only system data will exist in the `/usr/share` directory, and there will be no application-related data. Therefore, reading directly from `/usr/share` will fail. Suggested processing: Use the `XDG_DATA_DIRS` environment variable to read resources, and `/opt/apps/<appid>/files/share` will exist in this environment variable search path.
 2. The font library file cannot be found when the application is running. Why can the corresponding font library be read when the `deb` package is installed?
 
-   When the `deb` package is installed, it will depend on the corresponding font library file. The Linglong package format adopts a self-sufficient packaging format. Except for the basic system library, `Qt` library and `DTK` library files provided in `runtime`, do not need to be provided by yourself, other dependent data files need to be provided by yourself. It is recommended to put the corresponding data file under `files/share`, and use the environment variable `XDG_DATA_DIRS` to read the path.
-3. What is in the Linglong application `runtime`? Can you add some library files to it?
+   When the `deb` package is installed, it will depend on the corresponding font library file. The linyaps package format adopts a self-sufficient packaging format. Except for the basic system library, `Qt` library and `DTK` library files provided in `runtime`, do not need to be provided by yourself, other dependent data files need to be provided by yourself. It is recommended to put the corresponding data file under `files/share`, and use the environment variable `XDG_DATA_DIRS` to read the path.
+3. What is in the linyaps application `runtime`? Can you add some library files to it?
 
-   At present, the `runtime` that Linglong application depends on provides the `Qt` library and the `DTK` library. Because `runtime` has a strict size limit, adding additional library files to `runtime` is currently not allowed.
+   At present, the `runtime` that linyaps application depends on provides the `Qt` library and the `DTK` library. Because `runtime` has a strict size limit, adding additional library files to `runtime` is currently not allowed.
 4. The application runs in the container. Can a configuration file be created in any path of the container during the running process?
 
    You can create configuration files under `XDG_CONFIG_HOME`.
 5. Where is app data saved? Where can I find it outside the container?
 
-   Because Linglong applications follow the principle of non-interference, the `XDG_DATA_HOME`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME` environment variables are defined in the corresponding path of the host machine, `~/.linglong/<appid>`/. So the user application data will be saved under this path. When writing data while the application is running, it should also be able to read the corresponding environment variable to write the data. Prohibit reading and writing configurations of other applications.
+   Because linyaps applications follow the principle of non-interference, the `XDG_DATA_HOME`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME` environment variables are defined in the corresponding path of the host machine, `~/.linglong/<appid>`/. So the user application data will be saved under this path. When writing data while the application is running, it should also be able to read the corresponding environment variable to write the data. Prohibit reading and writing configurations of other applications.
 6. The application provides the `dbus service` file, where do I place it? What does the `Exec` field write?
 
-   When the application provides the `dbus service` file, it needs to be placed in the `entries/dbus-1/services` directory. If `Exec` executes the binary in the Linglong package, use the `--exec` option parameter to execute the corresponding binary.
+   When the application provides the `dbus service` file, it needs to be placed in the `entries/dbus-1/services` directory. If `Exec` executes the binary in the linyaps package, use the `--exec` option parameter to execute the corresponding binary.
 7. After the app is installed, the launcher cannot find it?
 
    TryExec=xxx, if xxx does not exist in the $PATH, the application is considered non-existent and will not be displayed.
@@ -42,10 +42,10 @@ SPDX-License-Identifier: LGPL-3.0-or-later
     png/xpm → $PREFIX/share/icons/hicolor/16X16/apps/
 11. Why do `xdg-open` and `xdg-email` that come with the application fail?
 
-    Linglong specially handles `xdg-open` and `xdg-email` in `runtime`, so the application is forbidden to execute the executable file or script of `xdg-open` and `xdg-email` that it carries.
+    linyaps specially handles `xdg-open` and `xdg-email` in `runtime`, so the application is forbidden to execute the executable file or script of `xdg-open` and `xdg-email` that it carries.
 12. Why doesn't the system environment variable used by the application take effect?
 
-    When using environment variables, you need to confirm whether there are corresponding environment variables in the container. If not, you need to contact the Linglong team for processing.
+    When using environment variables, you need to confirm whether there are corresponding environment variables in the container. If not, you need to contact the linyaps team for processing.
 13. The library files required for the application to run were not found. How can I provide them?
 
     The resource files that the application needs to use and the library files both need to be provided by the application itself. The library files are placed in the `$PREFIX/lib` path.
@@ -60,10 +60,13 @@ SPDX-License-Identifier: LGPL-3.0-or-later
     The file system in the container is a read-only file system and does not allow data to be written to application resource files.
 17. Why does the execution of binary with `suid` and `guid` permissions fail?
 
-    In order to ensure system security, Linglong container prohibits the execution of such permission binaries in the container.
+    In order to ensure system security, linyaps container prohibits the execution of such permission binaries in the container.
 18. Can the input method of uab offline package format not be used under Debian and Ubuntu?
 
     It is recommended to install the `fictx` input method to experience it.
 19. How can I know which packages are installed in a container environment?
 
     Enter the container environment using the command `ll-builder run --exec bash`. To view the pre-installed packages, utilize the command `cat /var/lib/dpkg/status | grep "^Package: "`. Additionally, for libraries compiled from source code, you can inspect them using `cat /runtime/packages.list`.
+20. Why is the application tray not displayed after the application is launched?
+
+    This issue might be caused by applications registering to the system tray using the same service name. According to the KDE/freedesktop StatusNotifierItem specification, applications register with a service name in the format of org.kde.StatusNotifierItem-`<process id>`-`<instance number>`. In the case of the linyaps application, the PID during runtime is 19. You can check whether there's a registered service using the following command: `dbus-send --session --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.NameHasOwner string:org.kde.StatusNotifierItem-19-1` If the reply contains boolean true, it indicates that the service has been registered.

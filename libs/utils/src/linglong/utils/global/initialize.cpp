@@ -8,7 +8,9 @@
 
 #include "linglong/utils/configure.h"
 
+#include <qcoreapplication.h>
 #include <qloggingcategory.h>
+#include <qobjectdefs.h>
 #include <systemd/sd-journal.h>
 
 #include <QCoreApplication>
@@ -27,6 +29,7 @@ void catchUnixSignals(std::initializer_list<int> quitSignals)
     auto handler = [](int sig) -> void {
         qInfo().noquote() << QString("Quit the application by signal(%1).").arg(sig);
         QCoreApplication::quit();
+        GlobalTaskControl::cancel();
     };
 
     sigset_t blocking_mask;
@@ -111,7 +114,7 @@ void linglong_message_handler(QtMsgType type,
 }
 } // namespace
 
-void applicationInitializte(bool appForceStderrLogging)
+void applicationInitialize(bool appForceStderrLogging)
 {
     QCoreApplication::setOrganizationName("deepin");
     QLoggingCategory::setFilterRules("*.debug=false");
@@ -133,6 +136,24 @@ void installMessageHandler()
 bool linglongInstalled()
 {
     return QCoreApplication::applicationDirPath() == BINDIR;
+}
+
+auto globalTaskControl = GlobalTaskControl{};
+
+const GlobalTaskControl *GlobalTaskControl::instance()
+{
+    return &globalTaskControl;
+}
+
+void GlobalTaskControl::cancel()
+{
+    globalTaskControl.cancelFlag.store(true);
+    Q_EMIT globalTaskControl.OnCancel();
+}
+
+bool GlobalTaskControl::canceled()
+{
+    return globalTaskControl.cancelFlag.load();
 }
 
 } // namespace linglong::utils::global

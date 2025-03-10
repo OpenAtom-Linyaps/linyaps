@@ -6,7 +6,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # Summary
 
-Linglong, an open source package format developed by UnionTech Software, is designed to manage, distribute, create a sandbox for packages, and integrate development tools, instead of using package management tools such as `deb` or `rpm`.
+linyaps, an open source package format developed by UnionTech Software, is designed to manage, distribute, create a sandbox for packages, and integrate development tools, instead of using package management tools such as `deb` or `rpm`.
 
 ## Problems with current package management
 
@@ -17,7 +17,7 @@ Linglong, an open source package format developed by UnionTech Software, is desi
 5. The permissions of `deb` and `rpm` are loosely controlled with big security risks.
 6. The current package updates do not support incremental updates, which is a great waste of resources.
 
-## Linglong advantages
+## linyaps advantages
 
 1. Improve usability and solve the dependency conflict problem of `deb` and `rpm`.
 2. Perform the application permission management mechanism to strengthen security.

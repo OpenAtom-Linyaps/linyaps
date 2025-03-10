@@ -1,0 +1,14 @@
+
+[encoding: UTF-8]
+
+# ll-cli source files
+libs/linglong/src/linglong/cli/cli.cpp
+apps/ll-cli/src/main.cpp
+libs/linglong/src/linglong/cli/cli_printer.cpp
+
+# ll-builder source files
+apps/ll-builder/src/main.cpp
+
+# ll-dialog
+apps/ll-dialog/src/permissionDialog.cpp
+apps/ll-dialog/src/cache_dialog.cpp

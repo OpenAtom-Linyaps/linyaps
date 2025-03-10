@@ -17,8 +17,9 @@
 #include <nlohmann/json.hpp>
 #include "linglong/api/types/v1/helper.hpp"
 
-#include "linglong/api/types/v1/RepoConfig.hpp"
+#include "linglong/api/types/v1/RepoConfigV2.hpp"
 #include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
+#include "linglong/api/types/v1/RepositoryCacheMergedItem.hpp"
 
 namespace linglong {
 namespace api {
@@ -34,15 +35,13 @@ using nlohmann::json;
 * storing information of all packages and config of repo
 */
 struct RepositoryCache {
-RepoConfig config;
-/**
-* stores the full module name with repo name and the corresponding ostree commit
-*/
-std::map<std::string, RepositoryCacheLayersItem> layers;
+RepoConfigV2 config;
+std::vector<RepositoryCacheLayersItem> layers;
 /**
 * version of linglong at the time of generating the file
 */
 std::string llVersion;
+std::optional<std::vector<RepositoryCacheMergedItem>> merged;
 /**
 * version of storage
 */

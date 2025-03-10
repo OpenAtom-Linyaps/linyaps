@@ -1,0 +1,21 @@
+// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+#pragma once
+
+#include "linglong/oci-cfg-generators/generator.h"
+
+namespace linglong::generator {
+
+struct HostRootfs : public Generator
+{
+    [[nodiscard]] std::string_view name() const override { return "25-host-rootfs"; }
+
+    bool generate(ocppi::runtime::config::types::Config &config) const noexcept override;
+
+private:
+    static constexpr std::string_view hostRootfsPatch{ R"(@LINGLONG_OCI_CFG_GEN_25_HOST_ROOTFS@)" };
+};
+
+} // namespace linglong::generator

@@ -6,7 +6,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # Manifests
 
-`linglong.yaml` is the description file of a Linglong project, which stores the relevant information required for building. Such as the name, version, source address, build dependencies, etc., of the build product.
+`linglong.yaml` is the description file of a linyaps project, which stores the relevant information required for building. Such as the name, version, source address, build dependencies, etc., of the build product.
 
 ## Project directory structure
 
@@ -57,7 +57,7 @@ The minimum root filesystem.
 Describes the build and run dependencies of the application.
 
 ```text
-runtime: org.deepin.Runtime/23.0.1
+runtime: org.deepin.runtime.dtk/23.1.0
 ```
 
 | name    | description                                                                                |
@@ -67,7 +67,9 @@ runtime: org.deepin.Runtime/23.0.1
 
 ### Source
 
-Describes the source information.
+Describes the source information and retrieve it in the 'linglong/sources' directory of the same level path as linglong.yaml.
+
+#### The kind is Git
 
 ```yaml
 sources:
@@ -77,12 +79,57 @@ sources:
   commit: d7e207b4a71bbd97f7d818de5044228c1a6e2c92
 ```
 
-| name   | description                                                                                               |
-| ------ | --------------------------------------------------------------------------------------------------------- |
-| kind   | Source code type, optional types git, file, archive, git                                                  |
-| url    | Source address, fill in when the type is archive or git                                                   |
-| digest | The Hash value of archive file encrypted using sha256 algorithm, fill in when the type is archive or file |
-| commit | The hash value of a source code commit, fill in when the type is git                                      |
+| name    | description                                                          |
+| ------- | -------------------------------------------------------------------- |
+| kind    | git, Download using the Git tool                                     |
+| url     | Source address, fill in when the type is archive or git              |
+| version | Source repository branches                                           |
+| commit  | The hash value of a source code commit, fill in when the type is git |
+
+#### The kind is file
+
+```yaml
+sources:
+  kind: file
+  url: https://github.com/linuxdeepin/deepin-calculator/archive/refs/tags/6.5.4.tar.gz
+  digest: 9675e27395891da9d9ee0a6094841410e344027fd81265ab75f83704174bb3a8
+```
+
+| name   | description                                                        |
+| ------ | ------------------------------------------------------------------ |
+| kind   | git, Download file                                                 |
+| url    | File download address                                              |
+| digest | The hash value of the file is encrypted using the sha256 algorithm |
+
+#### The kind is archive
+
+```bash
+sources:
+  kind: archive
+  url: https://github.com/linuxdeepin/deepin-calculator/archive/refs/tags/6.5.4.tar.gz
+  digest: 9675e27395891da9d9ee0a6094841410e344027fd81265ab75f83704174bb3a8
+```
+
+| name   | description                                                                       |
+| ------ | --------------------------------------------------------------------------------- |
+| kind   | archive, Download the compressed file tar.tz and it will automatically decompress |
+| url    | File download address                                                             |
+| digest | The hash value of the file is encrypted using the sha256 algorithm                |
+
+#### The kind is dsc
+
+```bash
+sources:
+  kind: dsc
+  url: https://cdn-community-packages.deepin.com/deepin/beige/pool/main/d/deepin-calculator/deepin-calculator_6.0.1.dsc
+  digest: ce47ed04a427a887a52e3cc098534bba53188ee0f38f59713f4f176374ea2141
+```
+
+| name   | description                                                        |
+| ------ | ------------------------------------------------------------------ |
+| kind   | dsc, Source code package description file                          |
+| url    | File download address                                              |
+| digest | The hash value of the file is encrypted using the sha256 algorithm |
 
 ### Build rules
 
@@ -118,7 +165,7 @@ cd org.deepin.foundation
 bash build_base.sh eagle amd64
 ```
 
-The project is designed to construct the root filesystem utilized by Linglong, with "eagle" referring to the codename of the distribution and "amd64" indicating the architecture.
+The project is designed to construct the root filesystem utilized by linyaps, with "eagle" referring to the codename of the distribution and "amd64" indicating the architecture.
 
 | Distribution version | Arch                      |
 | -------------------- | ------------------------- |
@@ -152,10 +199,10 @@ package:
     calculator for deepin os.
 
 command:
-  - /opt/apps/org.deepin.demo/files/bin/deepin-calculator
+  - /opt/apps/org.deepin.calculator/files/bin/deepin-calculator
 
-base: org.deepin.foundation/23.0.0
-runtime: org.deepin.Runtime/23.0.1
+base: org.deepin.base/23.1.0
+runtime: org.deepin.runtime.dtk/23.1.0
 
 sources:
   - kind: git
@@ -166,6 +213,7 @@ sources:
   - kind: git
     url: https://github.com/linuxdeepin/dde-qt-dbus-factory.git
     version: master
+    commit: d952e1913172c5507af080f644a654f9ba5fed95
 
 build: |
   # build dde-qt-dbus-factory
@@ -182,7 +230,7 @@ build: |
   cd /project/linglong/sources/deepin-calculator.git
   cmake -Bbuild \
         -DCMAKE_INSTALL_PREFIX=${PREFIX} \
-        -DCMAKE_INSTALL_LIBDIR=${PREFIX}/lib/${TRIPLET}
+        -DCMAKE_INSTALL_LIBDIR=${PREFIX}/lib/${TRIPLET} \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_SAFETYTEST_ARG="CMAKE_SAFETYTEST_ARG_OFF" \
         -DAPP_VERSION=5.7.21 \

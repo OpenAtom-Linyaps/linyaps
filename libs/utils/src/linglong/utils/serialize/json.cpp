@@ -10,7 +10,7 @@
 
 namespace linglong::utils::serialize {
 namespace {
-static QVariant decodeQDBusArgument(const QVariant &v)
+QVariant decodeQDBusArgument(const QVariant &v)
 {
     if (!v.canConvert<QDBusArgument>()) {
         return v;
@@ -21,21 +21,22 @@ static QVariant decodeQDBusArgument(const QVariant &v)
     case QDBusArgument::MapType: {
         QVariantMap list;
         complexType >> list;
-        QVariantMap res;
+
         for (auto iter = list.begin(); iter != list.end(); iter++) {
-            res[iter.key()] = decodeQDBusArgument(iter.value());
+            iter.value() = decodeQDBusArgument(iter.value());
         }
-        return res;
+
+        return list;
     }
     case QDBusArgument::ArrayType: {
         QVariantList list;
         complexType >> list;
-        QVariantList res;
-        res.reserve(list.size());
-        for (const auto &item : qAsConst(list)) {
-            res << decodeQDBusArgument(item);
+
+        for (auto &item : list) {
+            item = decodeQDBusArgument(item);
         }
-        return res;
+
+        return list;
     }
     default:
         Q_ASSERT(false);
@@ -48,7 +49,7 @@ static QVariant decodeQDBusArgument(const QVariant &v)
 QJsonObject QJsonObjectfromVariantMap(const QVariantMap &map) noexcept
 {
     QVariantMap newMap;
-    for (auto it = map.constBegin(); it != map.end(); it++) {
+    for (auto it = map.constBegin(); it != map.constEnd(); it++) {
         newMap.insert(it.key(), decodeQDBusArgument(it.value()));
     }
     return QJsonObject::fromVariantMap(newMap);

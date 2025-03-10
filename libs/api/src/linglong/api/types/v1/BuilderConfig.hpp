@@ -48,22 +48,6 @@ std::optional<bool> offline;
 */
 std::string repo;
 /**
-* skip commit output when build
-*/
-std::optional<bool> skipCommitOutput;
-/**
-* skip fetch source when build
-*/
-std::optional<bool> skipFetchSource;
-/**
-* skip pull depend when build
-*/
-std::optional<bool> skipPullDepend;
-/**
-* skip run container when build
-*/
-std::optional<bool> skipRunContainer;
-/**
 * version of builder config
 */
 int64_t version;

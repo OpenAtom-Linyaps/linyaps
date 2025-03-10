@@ -28,14 +28,14 @@ inline void printProgress(const size_t num = 0)
 {
     std::cout << "\33[2K\r"
               << "[";
-    for (int i = 0; i < num; ++i) {
+    for (size_t i = 0; i < num; ++i) {
         std::cout << "=";
     }
     if (num != 0)
         std::cout << ">";
     else
         std::cout << " ";
-    for (int i = 0; i < 100 - num; ++i) {
+    for (size_t i = 0; i < 100 - num; ++i) {
         std::cout << " ";
     }
     std::cout << "] " << num << "%" << std::flush;

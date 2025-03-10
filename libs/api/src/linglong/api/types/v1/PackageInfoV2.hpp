@@ -50,6 +50,10 @@ std::string channel;
 */
 std::optional<std::vector<std::string>> command;
 /**
+* record linyaps package is compatible with linyaps component version
+*/
+std::optional<std::string> compatibleVersion;
+/**
 * description of package info
 */
 std::optional<std::string> description;
@@ -82,6 +86,11 @@ std::string schemaVersion;
 * Uncompressed package size in bytes
 */
 int64_t size;
+/**
+* this property is only used for app which instead from UAB and it should be null in other
+* conditions.
+*/
+std::optional<std::string> uuid;
 /**
 * version of package info
 */

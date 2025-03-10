@@ -15,6 +15,12 @@
 #include <QFileInfo>
 #include <QStandardPaths>
 
+#include <random>
+#include <string_view>
+
+#include <fcntl.h>
+#include <unistd.h>
+
 namespace linglong::package {
 
 /**
@@ -57,10 +63,11 @@ utils::error::Result<std::shared_ptr<UABFile>> UABFile::loadFromFile(const QStri
 
 UABFile::~UABFile()
 {
-    if (!mountPoint.isEmpty()) {
-        auto ret = utils::command::Exec("umount", { mountPoint });
+    if (!mountPoint.empty()) {
+        auto ret = utils::command::Exec("umount", { mountPoint.c_str() });
         if (!ret) {
-            qCritical() << "failed to umount " << mountPoint << ", please umount it manually";
+            qCritical() << "failed to umount " << mountPoint.c_str()
+                        << ", please umount it manually";
         }
     }
 
@@ -178,7 +185,7 @@ utils::error::Result<bool> UABFile::verify() noexcept
     return (expectedDigest == digest);
 }
 
-utils::error::Result<QDir> UABFile::mountUab() noexcept
+utils::error::Result<std::filesystem::path> UABFile::mountUab() noexcept
 {
     LINGLONG_TRACE("mount uab bundle")
 
@@ -195,25 +202,140 @@ utils::error::Result<QDir> UABFile::mountUab() noexcept
     auto bundleOffset = bundleSh->sh_offset;
     auto metaInfo = metaInfoRet->get();
     auto uuid = metaInfo.uuid;
-    QDir destination{ QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation) };
-    QDir uabDir = destination.absoluteFilePath("linglong" % QDir::separator() % "UAB"
-                                               % QDir::separator() % QString::fromStdString(uuid));
+    auto destination = std::filesystem::path{
+        QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation).toStdString()
+    };
+    auto uabDir = destination / "linglong" / "UAB" / uuid;
 
-    if (!uabDir.mkpath(".")) {
-        return LINGLONG_ERR(QString{ "failed mkpath %1" }.arg(uabDir.absolutePath()));
+    std::error_code ec;
+    if (!std::filesystem::create_directories(uabDir, ec) && ec) {
+        return LINGLONG_ERR(QString{ "failed create directory" } % uabDir.c_str() % ":"
+                            % ec.message().c_str());
     }
 
     auto ret = utils::command::Exec(
       "erofsfuse",
-      { QString{ "--offset=%1" }.arg(bundleOffset), fileName(), uabDir.absolutePath() });
+      QStringList{ QString{ "--offset=%1" }.arg(bundleOffset), fileName(), uabDir.c_str() });
     if (!ret) {
         return LINGLONG_ERR(ret.error());
     }
 
-    this->mountPoint = uabDir.absolutePath();
+    this->mountPoint = uabDir;
     qDebug() << "erofsfuse output:" << *ret;
 
     return mountPoint;
+}
+
+utils::error::Result<std::filesystem::path> UABFile::extractSignData() noexcept
+{
+    LINGLONG_TRACE("extract sign data from uab")
+    if (mountPoint.empty()) {
+        return LINGLONG_ERR("uab is not mounted");
+    }
+
+    auto signSection = getSectionHeader("linglong.bundle.sign");
+    if (!signSection) {
+        qInfo() << "couldn't get sign data:" << signSection.error().message() << "skip";
+        return {};
+    }
+
+    std::error_code ec;
+    auto tempDir = std::filesystem::temp_directory_path(ec);
+    if (ec) {
+        return LINGLONG_ERR(ec.message().c_str());
+    }
+
+    constexpr std::string_view charSet =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    std::random_device rd;
+    std::mt19937 rng(rd());
+    std::uniform_int_distribution<> dist(0, charSet.size() - 1);
+
+    std::string tmpName;
+    for (std::size_t i = 0; i < 8; ++i) {
+        tmpName += charSet[dist(rng)];
+    }
+
+    auto root = tempDir / ("uab-temp-layer-" + tmpName);
+
+    auto destination = root / "entries" / "share" / "deepin-elf-verify" / ".elfsign";
+    if (!std::filesystem::create_directories(destination, ec) && ec) {
+        return LINGLONG_ERR(ec.message().c_str());
+    }
+
+    auto tarFile = destination / "sign.tar";
+    auto tarFd = ::open(tarFile.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (tarFd == -1) {
+        return LINGLONG_ERR(QString{ "open" } % tarFile.c_str() % " failed:" % strerror(errno));
+    }
+
+    auto removeTar = utils::finally::finally([&tarFd, &tarFile] {
+        // return in while loop, tar file isn't closed
+        if (tarFd != -1) {
+            ::close(tarFd);
+        }
+
+        std::error_code ec;
+        if (!std::filesystem::remove(tarFile, ec) && ec) {
+            qWarning() << "remove" << tarFile.c_str() << "failed:" << ec.message().c_str();
+        }
+    });
+
+    seek(signSection->sh_offset);
+    auto backToHead = utils::finally::finally([this] {
+        seek(0);
+    });
+
+    auto selfFd = handle();
+    auto totalBytes = signSection->sh_size;
+    std::array<unsigned char, 4096> buf{};
+    while (totalBytes > 0) {
+        auto bytesRead = totalBytes > buf.size() ? buf.size() : totalBytes;
+        auto readBytes = ::read(selfFd, buf.data(), bytesRead);
+        if (readBytes == -1) {
+            if (errno == EINTR) {
+                errno = 0;
+                continue;
+            }
+            return LINGLONG_ERR(QString{ "read from sign section error:" } % ::strerror(errno));
+        }
+
+        while (true) {
+            auto writeBytes = ::write(tarFd, buf.data(), readBytes);
+            if (writeBytes == -1) {
+                if (errno == EINTR) {
+                    errno = 0;
+                    continue;
+                }
+                return LINGLONG_ERR(QString{ "write to sign.tar error:" } % ::strerror(errno));
+            }
+
+            if (writeBytes != readBytes) {
+                return LINGLONG_ERR("write to sign.tar failed: byte mismatch");
+            }
+
+            totalBytes -= writeBytes;
+            break;
+        }
+    }
+
+    if (::fsync(tarFd) == -1) {
+        return LINGLONG_ERR(QString{ "fsync sign.tar error: " } % ::strerror(errno));
+    }
+
+    if (::close(tarFd) == -1) {
+        tarFd = -1; // no need to try twice
+        return LINGLONG_ERR(QString{ "failed to close tar: " } % ::strerror(errno));
+    }
+    tarFd = -1;
+
+    auto ret =
+      utils::command::Exec("tar", QStringList{ "-xf", tarFile.c_str(), "-C", destination.c_str() });
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    return root;
 }
 
 } // namespace linglong::package

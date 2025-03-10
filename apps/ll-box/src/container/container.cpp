@@ -9,13 +9,11 @@
 #include "container/helper.h"
 #include "container/mount/filesystem_driver.h"
 #include "container/mount/host_mount.h"
-#include "container/seccomp.h"
-#include "util/debug/debug.h"
 #include "util/filesystem.h"
 #include "util/logger.h"
 #include "util/platform.h"
-#include "util/semaphore.h"
 
+#include <sys/capability.h>
 #include <sys/epoll.h>
 #include <sys/mount.h>
 #include <sys/prctl.h>
@@ -217,6 +215,82 @@ static bool parse_wstatus(const int &wstatus, std::string &info)
     }
 }
 
+int setCapabilities(const Capabilities &capabilities)
+{
+    auto get_cap_list = [](const util::str_vec &cap_str_vec) -> std::vector<cap_value_t> {
+        std::vector<cap_value_t> cap_list;
+        for (const auto &cap : cap_str_vec) {
+            if (auto it = capsMap.find(cap); it != capsMap.end()) {
+                cap_list.push_back(it->second);
+            }
+        }
+
+        return cap_list;
+    };
+
+    std::unique_ptr<_cap_struct, decltype(&cap_free)> caps(cap_get_proc(), cap_free);
+    if (caps == nullptr) {
+        logErr() << "call cap_get_proc failed" << util::RetErrString(0);
+        return 1;
+    }
+
+    if (!capabilities.effective.empty()
+        && cap_set_flag(caps.get(),
+                        CAP_EFFECTIVE,
+                        capabilities.effective.size(),
+                        get_cap_list(capabilities.effective).data(),
+                        CAP_SET)
+          == -1) {
+        logErr() << "cap_set_flag CAP_EFFECTIVE" << util::RetErrString(-1);
+        return -1;
+    }
+
+    if (!capabilities.permitted.empty()
+        && cap_set_flag(caps.get(),
+                        CAP_PERMITTED,
+                        capabilities.permitted.size(),
+                        get_cap_list(capabilities.permitted).data(),
+                        CAP_SET)
+          == -1) {
+        logErr() << "cap_set_flag CAP_PERMITTED" << util::RetErrString(-1);
+        return -1;
+    }
+
+    if (!capabilities.inheritable.empty()
+        && cap_set_flag(caps.get(),
+                        CAP_INHERITABLE,
+                        capabilities.inheritable.size(),
+                        get_cap_list(capabilities.inheritable).data(),
+                        CAP_SET)
+          == -1) {
+        logErr() << "cap_set_flag CAP_INHERITABLE" << util::RetErrString(-1);
+        return -1;
+    }
+
+    // apply the modified capabilities to the process
+    if (cap_set_proc(caps.get()) == -1) {
+        logErr() << "cap_set_proc" << util::RetErrString(-1);
+        return -1;
+    }
+
+    for (auto cap : get_cap_list(capabilities.ambient)) {
+        if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, cap, 0, 0) == -1) {
+            logErr() << "prctl PR_CAP_AMBIENT PR_CAP_AMBIENT_RAISE" << cap
+                     << util::RetErrString(-1);
+            return -1;
+        }
+    }
+
+    for (auto cap : get_cap_list(capabilities.bounding)) {
+        if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_LOWER, cap, 0, 0) == -1) {
+            logErr() << "prctl PR_CAP_AMBIENT PR_CAP_AMBIENT_LOWER" << util::RetErrString(-1);
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
 struct ContainerPrivate
 {
     ContainerPrivate(Runtime r, const std::string &bundle, Container * /*unused*/)
@@ -288,8 +362,11 @@ struct ContainerPrivate
         // default link
         for (const auto &[from, to] : linkMap) {
             if (auto ret = symlink(from.data(), to.data()); ret == -1) {
-                logErr() << "symlink" << from << "to" << to << "failed:" << util::RetErrString(ret);
-                return -1;
+                if (errno != EEXIST) {
+                    logErr() << "symlink" << from << "to" << to
+                             << "failed:" << util::RetErrString(ret);
+                    return -1;
+                }
             }
         }
 
@@ -471,49 +548,44 @@ struct ContainerPrivate
             return -1;
         }
 
-        int flag = MS_BIND | MS_REC;
-        ret = mount(".", ".", "bind", flag, nullptr);
-        if (0 != ret) {
+        int flag = MS_SILENT | MS_BIND | MS_REC;
+        ret = mount(".", ".", nullptr, flag, nullptr);
+        if (ret < 0) {
             logErr() << "mount / failed" << util::RetErrString(ret);
             return -1;
         }
 
-        const auto *llHostFilename = "ll-host";
-        auto llHostInPath = std::string{ "/run/" } + llHostFilename;
-        auto llHostOutPath = hostRoot + llHostInPath;
-        ret = mkdir(llHostOutPath.c_str(), 0755);
-        if (ret != 0) {
-            logErr() << "mkdir" << llHostOutPath << "err:" << util::RetErrString(ret);
+        // pivot with fd
+        int oldRootFd = open("/", O_DIRECTORY | O_PATH | O_CLOEXEC);
+        int newRootFd = open(hostRoot.c_str(), O_DIRECTORY | O_RDONLY | O_CLOEXEC);
+        ret = fchdir(newRootFd);
+        if (ret < 0) {
+            logErr() << "fchdir new root" << newRootFd << "failed:" << util::RetErrString(ret);
             return -1;
         }
 
-        ret = syscall(SYS_pivot_root, hostRoot.c_str(), llHostOutPath.c_str());
-        if (0 != ret) {
-            logErr() << "SYS_pivot_root failed" << hostRoot << util::errnoString() << errno << ret;
+        ret = syscall(SYS_pivot_root, ".", ".");
+        if (ret < 0) {
+            logErr() << "SYS_pivot_root" << hostRoot << "failed:" << util::errnoString() << errno
+                     << ret;
             return -1;
         }
 
-        ret = chdir("/");
-        if (ret != 0) {
-            logErr() << "chdir to root [before chroot]:" << util::RetErrString(ret);
+        ret = fchdir(oldRootFd);
+        if (ret < 0) {
+            logErr() << "fchdir old root" << oldRootFd << "failed:" << util::RetErrString(ret);
             return -1;
         }
 
-        ret = chroot(".");
-        if (0 != ret) {
-            logErr() << "chroot failed" << hostRoot << util::errnoString() << errno;
+        ret = mount(".", ".", NULL, MS_SILENT | MS_REC | MS_PRIVATE, NULL);
+        if (ret < 0) {
+            logErr() << "mount old root" << oldRootFd << "failed:" << util::RetErrString(ret);
             return -1;
         }
 
-        ret = chdir("/");
-        if (ret != 0) {
-            logErr() << "chdir to root [after chroot]:" << util::RetErrString(ret);
-            return -1;
-        }
-
-        ret = umount2(llHostInPath.c_str(), MNT_DETACH);
-        if (ret != 0) {
-            logErr() << "umount2" << llHostInPath << "err:" << util::RetErrString(ret);
+        ret = umount2(".", MNT_DETACH);
+        if (ret < 0) {
+            logErr() << "umount old root" << oldRootFd << "failed:" << util::RetErrString(ret);
             return -1;
         }
 
@@ -583,12 +655,22 @@ int NonePrivilegeProc(void *arg)
     idMap.size = 1;
     linux.gidMappings.push_back(idMap);
 
-    if (auto ret = ConfigUserNamespace(linux, 0); ret != 0) {
-        return ret;
+    int ret{ -1 };
+    if (containerPrivate.runtime.process.capabilities) {
+        ret = setCapabilities(containerPrivate.runtime.process.capabilities.value());
+        if (ret == -1) {
+            logErr() << "setCapabilities failed";
+            return -1;
+        }
     }
 
-    auto ret = mount("proc", "/proc", "proc", 0, nullptr);
-    if (0 != ret) {
+    if (ret = ConfigUserNamespace(linux, 0); ret != 0) {
+        logErr() << "ConfigUserNamespace failed";
+        return -1;
+    }
+
+    ret = mount("proc", "/proc", "proc", 0, nullptr);
+    if (ret == -1) {
         logErr() << "mount proc failed" << util::RetErrString(ret);
         return -1;
     }
@@ -689,8 +771,12 @@ int EntryProc(void *arg)
     return util::WaitAllUntil(noPrivilegePid);
 }
 
-Container::Container(const std::string &bundle, const std::string &id, const Runtime &r)
-    : bundle(bundle)
+Container::Container(const std::string &bundle,
+                     const std::string &id,
+                     const std::string &stateDir,
+                     const Runtime &r)
+    : stateDir(stateDir)
+    , bundle(bundle)
     , id(id)
     , dd_ptr(new ContainerPrivate(r, bundle, this))
 {
@@ -742,13 +828,12 @@ int Container::Start()
     // FIXME: parent may dead before this return.
     prctl(PR_SET_PDEATHSIG, SIGKILL);
 
-    writeContainerJson(this->bundle, this->id, entryPid);
+    writeContainerJson(stateDir, this->bundle, this->id, entryPid);
 
     // FIXME(interactive bash): if need keep interactive shell
     auto ret = util::WaitAllUntil(entryPid);
 
-    auto dir =
-      std::filesystem::path("/run") / "user" / std::to_string(getuid()) / "linglong" / "box";
+    std::filesystem::path dir = stateDir;
     if (!std::filesystem::remove(dir / (this->id + ".json"))) {
         logErr() << "remove" << dir / (this->id + ".json") << "failed";
     }

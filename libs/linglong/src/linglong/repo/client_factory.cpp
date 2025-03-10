@@ -6,29 +6,37 @@
 
 #include "client_factory.h"
 
+#include "api/ClientAPI.h"
+
+#include <string>
+#include <utility>
+
 namespace linglong::repo {
 
 ClientFactory::ClientFactory(const QString &server)
-    : m_server(server)
+    : m_server(server.toStdString())
 {
 }
 
-ClientFactory::ClientFactory(const std::string &server)
-    : m_server(QString::fromStdString(server))
+ClientFactory::ClientFactory(std::string server)
+    : m_server(std::move(server))
 {
 }
 
-QSharedPointer<api::client::ClientApi> ClientFactory::createClient() const
+std::shared_ptr<apiClient_t> ClientFactory::createClientV2()
 {
-    auto api = QSharedPointer<linglong::api::client::ClientApi>::create();
-    api->setTimeOut(5000);
-    api->setNewServerForAllOperations(m_server);
-    return api;
+    auto *client = apiClient_create_with_base_path(m_server.c_str(), nullptr, nullptr);
+    client->userAgent = m_user_agent.c_str();
+    return { client, apiClient_free };
 }
 
-void ClientFactory::setServer(QString server)
+void ClientFactory::setServer(const QString &server)
+{
+    m_server = server.toStdString();
+}
+
+void ClientFactory::setServer(const std::string &server)
 {
     m_server = server;
 }
-
 } // namespace linglong::repo

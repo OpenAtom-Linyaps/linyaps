@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-add_link_options(-static -static-libgcc -static-libstdc++)
-
 pfl_add_executable(
   DISABLE_INSTALL
   SOURCES
@@ -12,9 +10,25 @@ pfl_add_executable(
   uab-loader
   LINK_LIBRARIES
   PRIVATE
-  linglong::ocppi
-  linglong::api
+  linglong::oci-cfg-generators
   nlohmann_json::nlohmann_json)
+
+set(UAB_LOADER_TARGET)
+get_real_target_name(UAB_LOADER_TARGET linglong::loader)
+
+target_link_options(${UAB_LOADER_TARGET} PRIVATE -static -static-libgcc
+                    -static-libstdc++)
+
+if(${AGGRESSIVE_UAB_SIZE})
+  message(STATUS "minify size of uab loader aggressively")
+  target_compile_options(
+    ${UAB_LOADER_TARGET} PRIVATE -Os -fno-asynchronous-unwind-tables -fno-rtti
+                                 -fdata-sections -ffunction-sections -flto=auto)
+
+  target_link_options(
+    ${UAB_LOADER_TARGET} PRIVATE
+    -Wl,--gc-sections,--as-needed,--strip-all,--exclude-libs,ALL -flto=auto)
+endif()
 
 include(GNUInstallDirs)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/uab-loader

@@ -9,6 +9,7 @@
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/package/architecture.h"
 #include "linglong/package/version.h"
+#include "linglong/api/types/v1/Repo.hpp"
 
 #include <QString>
 
@@ -22,7 +23,8 @@ public:
     static utils::error::Result<Reference> create(const QString &channel,
                                                   const QString &id,
                                                   const Version &version,
-                                                  const Architecture &architecture) noexcept;
+                                                  const Architecture &architecture,
+                                                  const linglong::api::types::v1::Repo &repo = {}) noexcept;
     static utils::error::Result<Reference>
     fromPackageInfo(const api::types::v1::PackageInfoV2 &info) noexcept;
     static QVariantMap toVariantMap(const Reference &ref) noexcept;
@@ -32,6 +34,7 @@ public:
     QString id;
     Version version;
     Architecture arch;
+    linglong::api::types::v1::Repo repo;
 
     [[nodiscard]] QString toString() const noexcept;
     friend bool operator!=(const Reference &lhs, const Reference &rhs) noexcept;
@@ -41,7 +44,8 @@ private:
     Reference(const QString &channel,
               const QString &id,
               const Version &version,
-              const Architecture &architecture);
+              const Architecture &architecture,
+              const api::types::v1::Repo &repo = {});
 };
 
 } // namespace linglong::package

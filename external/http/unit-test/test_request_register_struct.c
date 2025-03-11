@@ -31,12 +31,16 @@ request_register_struct_t* instantiate_request_register_struct(int include_optio
       "0",
       "0",
       "0",
+      "0",
+      "0",
       56,
       "0",
       "0"
     );
   } else {
     request_register_struct = request_register_struct_create(
+      "0",
+      "0",
       "0",
       "0",
       "0",

@@ -19,18 +19,18 @@ typedef struct request_fuzzy_search_req_t request_fuzzy_search_req_t;
 
 
 typedef struct request_fuzzy_search_req_t {
-    char *channel; // string
     char *app_id; // string
     char *arch; // string
+    char *channel; // string
     char *repo_name; // string
     char *version; // string
 
 } request_fuzzy_search_req_t;
 
 request_fuzzy_search_req_t *request_fuzzy_search_req_create(
-    char *channel,
     char *app_id,
     char *arch,
+    char *channel,
     char *repo_name,
     char *version
 );

@@ -21,14 +21,16 @@ typedef struct request_register_struct_t request_register_struct_t;
 typedef struct request_register_struct_t {
     char *app_id; // string
     char *arch; // string
+    char *base; // string
     char *channel; // string
     char *description; // string
+    char *id; // string
     char *kind; // string
     char *module; // string
     char *name; // string
     char *repo_name; // string
     char *runtime; // string
-    int size; //numeric
+    long size; //numeric
     char *uab_url; // string
     char *version; // string
 
@@ -37,14 +39,16 @@ typedef struct request_register_struct_t {
 request_register_struct_t *request_register_struct_create(
     char *app_id,
     char *arch,
+    char *base,
     char *channel,
     char *description,
+    char *id,
     char *kind,
     char *module,
     char *name,
     char *repo_name,
     char *runtime,
-    int size,
+    long size,
     char *uab_url,
     char *version
 );

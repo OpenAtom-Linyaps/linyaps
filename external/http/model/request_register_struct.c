@@ -8,14 +8,16 @@
 request_register_struct_t *request_register_struct_create(
     char *app_id,
     char *arch,
+    char *base,
     char *channel,
     char *description,
+    char *id,
     char *kind,
     char *module,
     char *name,
     char *repo_name,
     char *runtime,
-    int size,
+    long size,
     char *uab_url,
     char *version
     ) {
@@ -25,8 +27,10 @@ request_register_struct_t *request_register_struct_create(
     }
     request_register_struct_local_var->app_id = app_id;
     request_register_struct_local_var->arch = arch;
+    request_register_struct_local_var->base = base;
     request_register_struct_local_var->channel = channel;
     request_register_struct_local_var->description = description;
+    request_register_struct_local_var->id = id;
     request_register_struct_local_var->kind = kind;
     request_register_struct_local_var->module = module;
     request_register_struct_local_var->name = name;
@@ -53,6 +57,10 @@ void request_register_struct_free(request_register_struct_t *request_register_st
         free(request_register_struct->arch);
         request_register_struct->arch = NULL;
     }
+    if (request_register_struct->base) {
+        free(request_register_struct->base);
+        request_register_struct->base = NULL;
+    }
     if (request_register_struct->channel) {
         free(request_register_struct->channel);
         request_register_struct->channel = NULL;
@@ -60,6 +68,10 @@ void request_register_struct_free(request_register_struct_t *request_register_st
     if (request_register_struct->description) {
         free(request_register_struct->description);
         request_register_struct->description = NULL;
+    }
+    if (request_register_struct->id) {
+        free(request_register_struct->id);
+        request_register_struct->id = NULL;
     }
     if (request_register_struct->kind) {
         free(request_register_struct->kind);
@@ -111,6 +123,14 @@ cJSON *request_register_struct_convertToJSON(request_register_struct_t *request_
     }
 
 
+    // request_register_struct->base
+    if(request_register_struct->base) {
+    if(cJSON_AddStringToObject(item, "base", request_register_struct->base) == NULL) {
+    goto fail; //String
+    }
+    }
+
+
     // request_register_struct->channel
     if(request_register_struct->channel) {
     if(cJSON_AddStringToObject(item, "channel", request_register_struct->channel) == NULL) {
@@ -122,6 +142,14 @@ cJSON *request_register_struct_convertToJSON(request_register_struct_t *request_
     // request_register_struct->description
     if(request_register_struct->description) {
     if(cJSON_AddStringToObject(item, "description", request_register_struct->description) == NULL) {
+    goto fail; //String
+    }
+    }
+
+
+    // request_register_struct->id
+    if(request_register_struct->id) {
+    if(cJSON_AddStringToObject(item, "id", request_register_struct->id) == NULL) {
     goto fail; //String
     }
     }
@@ -220,6 +248,15 @@ request_register_struct_t *request_register_struct_parseFromJSON(cJSON *request_
     }
     }
 
+    // request_register_struct->base
+    cJSON *base = cJSON_GetObjectItemCaseSensitive(request_register_structJSON, "base");
+    if (base) { 
+    if(!cJSON_IsString(base) && !cJSON_IsNull(base))
+    {
+    goto end; //String
+    }
+    }
+
     // request_register_struct->channel
     cJSON *channel = cJSON_GetObjectItemCaseSensitive(request_register_structJSON, "channel");
     if (channel) { 
@@ -233,6 +270,15 @@ request_register_struct_t *request_register_struct_parseFromJSON(cJSON *request_
     cJSON *description = cJSON_GetObjectItemCaseSensitive(request_register_structJSON, "description");
     if (description) { 
     if(!cJSON_IsString(description) && !cJSON_IsNull(description))
+    {
+    goto end; //String
+    }
+    }
+
+    // request_register_struct->id
+    cJSON *id = cJSON_GetObjectItemCaseSensitive(request_register_structJSON, "id");
+    if (id) { 
+    if(!cJSON_IsString(id) && !cJSON_IsNull(id))
     {
     goto end; //String
     }
@@ -314,8 +360,10 @@ request_register_struct_t *request_register_struct_parseFromJSON(cJSON *request_
     request_register_struct_local_var = request_register_struct_create (
         app_id && !cJSON_IsNull(app_id) ? strdup(app_id->valuestring) : NULL,
         arch && !cJSON_IsNull(arch) ? strdup(arch->valuestring) : NULL,
+        base && !cJSON_IsNull(base) ? strdup(base->valuestring) : NULL,
         channel && !cJSON_IsNull(channel) ? strdup(channel->valuestring) : NULL,
         description && !cJSON_IsNull(description) ? strdup(description->valuestring) : NULL,
+        id && !cJSON_IsNull(id) ? strdup(id->valuestring) : NULL,
         kind && !cJSON_IsNull(kind) ? strdup(kind->valuestring) : NULL,
         module && !cJSON_IsNull(module) ? strdup(module->valuestring) : NULL,
         name && !cJSON_IsNull(name) ? strdup(name->valuestring) : NULL,

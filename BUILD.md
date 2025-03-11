@@ -1,5 +1,40 @@
 # Build instructions
 
+Before building Linglong, ensure that the following dependencies are installed:
+
+- cmake
+- debhelper-compat (= 12)
+- erofsfuse (>= 1.8.3)
+- fuse-overlayfs
+- intltool
+- libcli11-dev (>= 2.4.1)
+- libcurl4-openssl-dev
+- libdeflate-dev
+- libelf-dev
+- libexpected-dev (>= 1.0.0~dfsg-2~bpo10+1)
+- libfuse3-dev
+- libglib2.0-dev
+- libgmock-dev
+- libgtest-dev
+- liblz4-dev
+- liblzma-dev
+- libostree-dev
+- libpcre2-dev
+- libseccomp-dev
+- libselinux1-dev
+- libssl-dev
+- libsystemd-dev
+- libyaml-cpp-dev (>= 0.6.2)
+- libzstd-dev
+- nlohmann-json3-dev (>= 3.5.0)
+- pkg-config
+- qt5-qmake
+- qtbase5-dev
+- qtbase5-private-dev
+- systemd
+- zlib1g-dev
+- libcap-dev
+
 linglong use [cmake presets], you can build and install linglong by running:
 
 ```bash

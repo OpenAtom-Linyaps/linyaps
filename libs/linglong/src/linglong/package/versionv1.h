@@ -14,6 +14,8 @@
 
 namespace linglong::package {
 class VersionV2;
+class FallbackVersion;
+
 // This is a 4 number semver
 class VersionV1 final
 {
@@ -39,6 +41,14 @@ public:
     friend bool operator>(const VersionV1 &v1, const VersionV2 &v2) noexcept;
     friend bool operator<=(const VersionV1 &v1, const VersionV2 &v2) noexcept;
     friend bool operator>=(const VersionV1 &v1, const VersionV2 &v2) noexcept;
+
+    // Compare Version and FallbackVersion
+    friend bool operator==(const VersionV1 &v1, const FallbackVersion &fv) noexcept;
+    friend bool operator!=(const VersionV1 &v1, const FallbackVersion &fv) noexcept;
+    friend bool operator<(const VersionV1 &v1, const FallbackVersion &fv) noexcept;
+    friend bool operator>(const VersionV1 &v1, const FallbackVersion &fv) noexcept;
+    friend bool operator<=(const VersionV1 &v1, const FallbackVersion &fv) noexcept;
+    friend bool operator>=(const VersionV1 &v1, const FallbackVersion &fv) noexcept;
 
     QString toString() const noexcept;
 };

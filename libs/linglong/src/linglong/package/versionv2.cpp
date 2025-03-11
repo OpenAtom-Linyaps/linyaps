@@ -6,6 +6,7 @@
 
 #include "linglong/package/versionv2.h"
 
+#include "linglong/package/fallback_version.h"
 #include "linglong/package/semver.hpp"
 #include "linglong/package/versionv1.h"
 
@@ -16,8 +17,7 @@ utils::error::Result<VersionV2> VersionV2::parse(const QString &raw, bool strict
 {
     LINGLONG_TRACE("parse version v2 " + raw);
     try {
-        auto semverVersion =
-          semver::version::parse(raw.toStdString(), strict);
+        auto semverVersion = semver::version::parse(raw.toStdString(), strict);
 
         return VersionV2(semverVersion.major(),
                          semverVersion.minor(),
@@ -118,6 +118,36 @@ bool operator<=(const VersionV2 &v2, const VersionV1 &v1) noexcept
 bool operator>=(const VersionV2 &v2, const VersionV1 &v1) noexcept
 {
     return v1 <= v2;
+}
+
+bool operator==(const VersionV2 &v2, const FallbackVersion &fv) noexcept
+{
+    return fv.compareWithOtherVersion(v2.toString()) == 0;
+}
+
+bool operator!=(const VersionV2 &v2, const FallbackVersion &fv) noexcept
+{
+    return !(v2 == fv);
+}
+
+bool operator<(const VersionV2 &v2, const FallbackVersion &fv) noexcept
+{
+    return fv.compareWithOtherVersion(v2.toString()) > 0;
+}
+
+bool operator>(const VersionV2 &v2, const FallbackVersion &fv) noexcept
+{
+    return !(v2 == fv) && !(v2 < fv);
+}
+
+bool operator<=(const VersionV2 &v2, const FallbackVersion &fv) noexcept
+{
+    return !(v2 > fv);
+}
+
+bool operator>=(const VersionV2 &v2, const FallbackVersion &fv) noexcept
+{
+    return !(v2 < fv);
 }
 
 QString VersionV2::toString() const noexcept

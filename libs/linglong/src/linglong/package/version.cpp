@@ -4,10 +4,13 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #include "linglong/package/version.h"
+#include "linglong/package/fallback_version.h"
+#include "linglong/package/versionv2.h"
 
 #include <QRegularExpression>
 #include <QString>
 #include <QStringBuilder>
+#include <variant>
 
 #if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
 namespace Qt {
@@ -105,7 +108,7 @@ struct PreRelease
 utils::error::Result<Version> Version::parse(const QString &raw,
                                              const ParseOptions parseOpt) noexcept
 {
-    LINGLONG_TRACE("parse version " + raw);
+    LINGLONG_TRACE(QString("parse version %1").arg(raw));
 
     auto versionV2 = VersionV2::parse(raw, parseOpt.strict);
     if (versionV2) {
@@ -117,11 +120,15 @@ utils::error::Result<Version> Version::parse(const QString &raw,
     }
 
     auto versionV1 = VersionV1::parse(raw);
-    if (!versionV1) {
-        return LINGLONG_ERR("parse version failed");
+    if (versionV1) {
+        return Version(*versionV1);
     }
 
-    return Version(*versionV1);
+    auto fallbackVersion = FallbackVersion::parse(raw);
+    if (fallbackVersion) {
+        return Version(*fallbackVersion);
+    }
+    return LINGLONG_ERR("parse version failed");
 }
 
 utils::error::Result<void> Version::validateDependVersion(const QString &raw) noexcept
@@ -206,7 +213,15 @@ QString Version::toString() const noexcept
     if (std::holds_alternative<VersionV1>(version)) {
         return std::get<VersionV1>(version).toString();
     }
-    return std::get<VersionV2>(version).toString();
-}
 
+    if (std::holds_alternative<VersionV2>(version)) {
+        return std::get<VersionV2>(version).toString();
+    }
+
+    if (std::holds_alternative<FallbackVersion>(version)) {
+        return std::get<FallbackVersion>(version).toString();
+    }
+
+    return QString("unknown version type");
+}
 } // namespace linglong::package

@@ -100,7 +100,6 @@ origin  https://ghp.ci/https://github.com/qbittorrent/qBittorrent.git (push)
 \* 此处需要维护者根据经验判断具体需要合入哪些提交
 
 4. 修改完成后, 返回源码根目录, 执行 `git diff` 可以查看存在的差异比对:
-![git-diff](image/4-git-diff.png)
 
 5. 确认无误后, 将此差异保存到本地中, 形成patch文件
 ```bash

@@ -55,7 +55,8 @@ configure_files(
   share/linglong/builder/uab/blacklist
   share/linglong/config.yaml
   share/mime/packages/vnd.linyaps.uab.xml
-  share/polkit-1/actions/org.deepin.linglong.PackageManager1.policy)
+  share/polkit-1/actions/org.deepin.linglong.PackageManager1.policy
+  share/applications/linyaps.desktop)
 
 # bash-completion
 set(BASH_COMPLETIONS_DIR ${CMAKE_INSTALL_DATADIR}/bash-completion)
@@ -180,6 +181,8 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/tmpfiles.d/
 # xdg
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/share/mime/packages
         DESTINATION ${CMAKE_INSTALL_DATADIR}/mime)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/share/applications/linyaps.desktop
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
 
 # set linglong XDG_DATA_DIRS environtment
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/script/linglong.sh

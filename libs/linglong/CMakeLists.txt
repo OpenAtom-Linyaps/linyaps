@@ -37,6 +37,8 @@ pfl_add_library(
   src/linglong/cli/terminal_notifier.h
   src/linglong/package/architecture.cpp
   src/linglong/package/architecture.h
+  src/linglong/package/fallback_version.cpp
+  src/linglong/package/fallback_version.h
   src/linglong/package/fuzzy_reference.cpp
   src/linglong/package/fuzzy_reference.h
   src/linglong/package/layer_dir.cpp

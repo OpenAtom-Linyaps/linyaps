@@ -10,6 +10,7 @@
 
 namespace linglong::package {
 class VersionV1;
+class FallbackVersion;
 
 class VersionV2 final
 {
@@ -42,6 +43,14 @@ public:
     bool operator>(const VersionV1 &that) const noexcept;
     bool operator<=(const VersionV1 &that) const noexcept;
     bool operator>=(const VersionV1 &that) const noexcept;
+
+    // 比较VersionV2 和 FallbackVersion
+    bool operator==(const FallbackVersion &that) const noexcept;
+    bool operator!=(const FallbackVersion &that) const noexcept;
+    bool operator<(const FallbackVersion &that) const noexcept;
+    bool operator>(const FallbackVersion &that) const noexcept;
+    bool operator<=(const FallbackVersion &that) const noexcept;
+    bool operator>=(const FallbackVersion &that) const noexcept;
 
     QString toString() const noexcept;
 };

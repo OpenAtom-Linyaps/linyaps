@@ -104,7 +104,7 @@ struct PreRelease
 
 utils::error::Result<Version> Version::parse(const QString &raw, const bool &fallback) noexcept
 {
-    LINGLONG_TRACE("parse version " + raw);
+    LINGLONG_TRACE(QString("parse version %1").arg(raw));
 
     auto versionV2 = VersionV2::parse(raw);
     if (versionV2) {
@@ -116,11 +116,15 @@ utils::error::Result<Version> Version::parse(const QString &raw, const bool &fal
     }
 
     auto versionV1 = VersionV1::parse(raw);
-    if (!versionV1) {
-        return LINGLONG_ERR("parse version failed");
+    if (versionV1) {
+        return Version(*versionV1);
     }
 
-    return Version(*versionV1);
+    auto fallbackVersion = FallbackVersion::parse(raw);
+    if (fallbackVersion) {
+        return Version(*fallbackVersion);
+    }
+    return LINGLONG_ERR("parse version failed");
 }
 
 void Version::ignoreTweak() noexcept
@@ -350,6 +354,36 @@ bool VersionV1::operator<=(const VersionV2 &that) const noexcept
 bool VersionV1::operator>=(const VersionV2 &that) const noexcept
 {
     return !(*this < that);
+}
+
+bool VersionV1::operator==(const FallbackVersion &that) const noexcept
+{
+    return that.compareWithOtherVersion(toString()) == 0;
+}
+
+bool VersionV1::operator!=(const FallbackVersion &that) const noexcept
+{
+    return !(*this == that);
+}
+
+bool VersionV1::operator<(const FallbackVersion &that) const noexcept
+{
+    return that.compareWithOtherVersion(toString()) > 0;
+}
+
+bool VersionV1::operator>(const FallbackVersion &that) const noexcept
+{
+    return that.compareWithOtherVersion(toString()) < 0;
+}
+
+bool VersionV1::operator<=(const FallbackVersion &that) const noexcept
+{
+    return *this == that || *this < that;
+}
+
+bool VersionV1::operator>=(const FallbackVersion &that) const noexcept
+{
+    return *this == that || *this > that;
 }
 
 QString VersionV1::toString() const noexcept

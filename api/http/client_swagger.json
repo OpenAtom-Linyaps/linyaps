@@ -13,15 +13,9 @@
     "paths": {
         "/api/v0/apps/fuzzysearchapp": {
             "post": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Client"
-                ],
+                "consumes": ["application/json"],
+                "produces": ["application/json"],
+                "tags": ["Client"],
                 "summary": "模糊查找App",
                 "operationId": "FuzzySearchApp",
                 "parameters": [
@@ -60,13 +54,40 @@
                 }
             }
         },
+        "/api/v1/repos": {
+            "get": {
+                "description": "returns repository mode and resolve all branches",
+                "tags": ["Client", "Repo"],
+                "summary": "查看仓库列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/schema.RepoInfo"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/repos/{repo}": {
             "get": {
                 "description": "returns repository mode and resolve all branches",
-                "tags": [
-                    "Client",
-                    "Repo"
-                ],
+                "tags": ["Client", "Repo"],
                 "summary": "查看仓库信息",
                 "operationId": "GetRepo",
                 "parameters": [
@@ -100,12 +121,76 @@
                 }
             }
         },
+        "/api/v1/repos/{repo}/refs/{channel}/{app_id}/{version}/{arch}/{module}": {
+            "delete": {
+                "description": "delete a ref from repo",
+                "tags": ["Client", "Ref"],
+                "summary": "delete a ref from repo",
+                "operationId": "RefDelete",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "31a165ba1be6dec616b1f8f3207b4273",
+                        "name": "X-Token",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "repo name",
+                        "name": "repo",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "channel",
+                        "name": "channel",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "app id",
+                        "name": "app_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "version",
+                        "name": "version",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "arch",
+                        "name": "arch",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "module",
+                        "name": "module",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "hard delete",
+                        "name": "hard",
+                        "in": "query"
+                    }
+                ],
+                "responses": {},
+                "X-Role": ["admin", "owner"]
+            }
+        },
         "/api/v1/sign-in": {
             "post": {
-                "tags": [
-                    "Client",
-                    "Auth"
-                ],
+                "tags": ["Client", "Auth"],
                 "summary": "登陆帐号",
                 "operationId": "SignIn",
                 "parameters": [
@@ -144,10 +229,7 @@
         "/api/v1/upload-tasks": {
             "post": {
                 "description": "generate a new upload task id",
-                "tags": [
-                    "Client",
-                    "UploadTask"
-                ],
+                "tags": ["Client", "UploadTask"],
                 "summary": "generate a new upload task id",
                 "operationId": "NewUploadTaskID",
                 "parameters": [
@@ -188,20 +270,12 @@
                         }
                     }
                 },
-                "X-Role": [
-                    "admin",
-                    "owner",
-                    "maintainer",
-                    "developer"
-                ]
+                "X-Role": ["admin", "owner", "maintainer", "developer"]
             }
         },
         "/api/v1/upload-tasks/{task_id}/layer": {
             "put": {
-                "tags": [
-                    "Client",
-                    "UploadTask"
-                ],
+                "tags": ["Client", "UploadTask"],
                 "summary": "upload layer file to upload task",
                 "operationId": "UploadTaskLayerFile",
                 "parameters": [
@@ -235,21 +309,13 @@
                         }
                     }
                 },
-                "X-Role": [
-                    "admin",
-                    "owner",
-                    "maintainer",
-                    "developer"
-                ]
+                "X-Role": ["admin", "owner", "maintainer", "developer"]
             }
         },
         "/api/v1/upload-tasks/{task_id}/status": {
             "get": {
                 "description": "get upload task status",
-                "tags": [
-                    "Client",
-                    "UploadTask"
-                ],
+                "tags": ["Client", "UploadTask"],
                 "summary": "get upload task status",
                 "operationId": "UploadTaskInfo",
                 "parameters": [
@@ -293,10 +359,7 @@
         "/api/v1/upload-tasks/{task_id}/tar": {
             "put": {
                 "description": "upload tgz file to upload task",
-                "tags": [
-                    "Client",
-                    "UploadTask"
-                ],
+                "tags": ["Client", "UploadTask"],
                 "summary": "upload tgz file to upload task",
                 "operationId": "UploadTaskFile",
                 "parameters": [
@@ -330,12 +393,79 @@
                         }
                     }
                 },
-                "X-Role": [
-                    "admin",
-                    "owner",
-                    "maintainer",
-                    "developer"
-                ]
+                "X-Role": ["admin", "owner", "maintainer", "developer"]
+            }
+        },
+        "/api/v2/search/apps": {
+            "get": {
+                "consumes": ["application/json"],
+                "produces": ["application/json"],
+                "tags": ["Client"],
+                "summary": "查找App",
+                "operationId": "SearchApp",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "repo name",
+                        "name": "repo_name",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "app channel",
+                        "name": "channel",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "app id",
+                        "name": "app_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "app arch",
+                        "name": "arch",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "app module",
+                        "name": "module",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "app version",
+                        "name": "version",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apiv2.SearchAppResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apiv2.JSONError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apiv2.JSONError"
+                        }
+                    }
+                }
             }
         }
     },
@@ -389,6 +519,43 @@
                 }
             }
         },
+        "apiv2.JSONError": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "fields": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "msg": {
+                    "type": "string"
+                },
+                "trace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "apiv2.SearchAppResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/request.RegisterStruct"
+                    }
+                },
+                "trace_id": {
+                    "type": "string"
+                }
+            }
+        },
         "request.Auth": {
             "type": "object",
             "properties": {
@@ -405,13 +572,13 @@
         "request.FuzzySearchReq": {
             "type": "object",
             "properties": {
-                "channel": {
-                    "type": "string"
-                },
                 "appId": {
                     "type": "string"
                 },
                 "arch": {
+                    "type": "string"
+                },
+                "channel": {
                     "type": "string"
                 },
                 "repoName": {
@@ -431,10 +598,16 @@
                 "arch": {
                     "type": "string"
                 },
+                "base": {
+                    "type": "string"
+                },
                 "channel": {
                     "type": "string"
                 },
                 "description": {
+                    "type": "string"
+                },
+                "id": {
                     "type": "string"
                 },
                 "kind": {
@@ -453,7 +626,8 @@
                     "type": "string"
                 },
                 "size": {
-                    "type": "integer"
+                    "type": "integer",
+                    "format": "int64"
                 },
                 "uabUrl": {
                     "type": "string"

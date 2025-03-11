@@ -24,8 +24,8 @@ __ll_cli_get_layer_list() {
         ls $1*.layer 2>/dev/null | tr '\n' ' '
 }
 
-__ll_cli_get_repo_name_list() {
-        ll-cli repo show | tail -n+3 | awk '{print $1}' | tr "\n" " "
+__ll_cli_get_repo_alias_list() {
+        ll-cli repo show | tail -n+3 | awk '{print $3}' | tr "\n" " "
 }
 
 __filter_exist_options() {
@@ -149,7 +149,7 @@ _ll_cli_complete() {
                 fi
 
                 if [[ ${prev} == "remove" || ${prev} == "set-default" ]]; then
-                        output_options="${output_options} $(__ll_cli_get_repo_name_list)"
+                        output_options="${output_options} $(__ll_cli_get_repo_alias_list)"
                 fi
                 ;;
         esac

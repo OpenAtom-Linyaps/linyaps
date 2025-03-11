@@ -5,6 +5,8 @@
  */
 
 #include "linglong/package/versionv1.h"
+
+#include "linglong/package/fallback_version.h"
 #include "linglong/package/versionv2.h"
 
 #include <QRegularExpression>
@@ -161,6 +163,36 @@ bool operator<=(const VersionV1 &v1, const VersionV2 &v2) noexcept
 bool operator>=(const VersionV1 &v1, const VersionV2 &v2) noexcept
 {
     return !(v1 < v2);
+}
+
+bool operator==(const VersionV1 &v1, const FallbackVersion &fv) noexcept
+{
+    return fv.compareWithOtherVersion(v1.toString()) == 0;
+}
+
+bool operator!=(const VersionV1 &v1, const FallbackVersion &fv) noexcept
+{
+    return !(v1 == fv);
+}
+
+bool operator<(const VersionV1 &v1, const FallbackVersion &fv) noexcept
+{
+    return fv.compareWithOtherVersion(v1.toString()) > 0;
+}
+
+bool operator>(const VersionV1 &v1, const FallbackVersion &fv) noexcept
+{
+    return !(v1 == fv) && !(v1 < fv);
+}
+
+bool operator<=(const VersionV1 &v1, const FallbackVersion &fv) noexcept
+{
+    return !(v1 > fv);
+}
+
+bool operator>=(const VersionV1 &v1, const FallbackVersion &fv) noexcept
+{
+    return !(v1 < fv);
 }
 
 QString VersionV1::toString() const noexcept

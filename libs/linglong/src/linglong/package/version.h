@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "linglong/package/fallback_version.h"
 #include "linglong/package/versionv2.h"
 #include "linglong/utils/error/error.h"
 
@@ -41,6 +42,14 @@ public:
     bool operator<=(const VersionV2 &that) const noexcept;
     bool operator>=(const VersionV2 &that) const noexcept;
 
+    // Compare Version and FallbackVersion
+    bool operator==(const FallbackVersion &that) const noexcept;
+    bool operator!=(const FallbackVersion &that) const noexcept;
+    bool operator<(const FallbackVersion &that) const noexcept;
+    bool operator>(const FallbackVersion &that) const noexcept;
+    bool operator<=(const FallbackVersion &that) const noexcept;
+    bool operator>=(const FallbackVersion &that) const noexcept;
+
     QString toString() const noexcept;
 };
 
@@ -54,6 +63,8 @@ public:
     explicit Version(const VersionV1 &version) { this->version = version; };
 
     explicit Version(const VersionV2 &version) { this->version = version; };
+
+    explicit Version(const FallbackVersion &version) { this->version = version; };
 
     void ignoreTweak() noexcept;
     bool isVersionV1() noexcept;
@@ -69,7 +80,7 @@ public:
     QString toString() const noexcept;
 
 private:
-    std::variant<VersionV2, VersionV1> version;
+    std::variant<VersionV2, VersionV1, FallbackVersion> version;
 };
 
 } // namespace linglong::package

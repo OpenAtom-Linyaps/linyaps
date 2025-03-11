@@ -35,10 +35,8 @@ TEST(Package, Reference)
 
     QStringList invaildReferences = {
         "main:com.example.App//1.0.0.0/x86_64",
-        "main:com.example.App/1.0.0.-alpha/arm64",
         "main:1111/1.0.0.0/ x86_64",
         "main:2222/1.0.0.0/unknown",
-        "main:3333/1.0.0.0-()/arm64",
         ":1.0.0.1-beta/arm64",
         ":com.example.App/1.0.0.0/x86_64",
     };

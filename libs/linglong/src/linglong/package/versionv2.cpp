@@ -6,6 +6,7 @@
 
 #include "linglong/package/versionv2.h"
 
+#include "linglong/package/fallback_version.h"
 #include "linglong/package/semver.hpp"
 #include "linglong/package/version.h"
 
@@ -142,6 +143,36 @@ bool VersionV2::operator<=(const VersionV1 &that) const noexcept
 bool VersionV2::operator>=(const VersionV1 &that) const noexcept
 {
     return !(*this < that);
+}
+
+bool VersionV2::operator==(const FallbackVersion &that) const noexcept
+{
+    return that.compareWithOtherVersion(toString()) == 0;
+}
+
+bool VersionV2::operator!=(const FallbackVersion &that) const noexcept
+{
+    return !(*this == that);
+}
+
+bool VersionV2::operator<(const FallbackVersion &that) const noexcept
+{
+    return that.compareWithOtherVersion(toString()) > 0;
+}
+
+bool VersionV2::operator>(const FallbackVersion &that) const noexcept
+{
+    return that.compareWithOtherVersion(toString()) < 0;
+}
+
+bool VersionV2::operator<=(const FallbackVersion &that) const noexcept
+{
+    return *this == that || *this < that;
+}
+
+bool VersionV2::operator>=(const FallbackVersion &that) const noexcept
+{
+    return *this == that || *this > that;
 }
 
 QString VersionV2::toString() const noexcept

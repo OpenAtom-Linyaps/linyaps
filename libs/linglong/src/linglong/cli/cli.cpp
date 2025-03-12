@@ -2170,10 +2170,15 @@ Cli::filterPackageInfosFromVersion(std::vector<api::types::v1::PackageInfoV2> &l
     LINGLONG_TRACE("filter package infos from version");
 
     std::unordered_map<std::string, api::types::v1::PackageInfoV2> temp;
+
     for (const auto &info : list) {
-        auto it = temp.find(info.id);
+        auto key = QString("%1-%2")
+                     .arg(QString::fromStdString(info.id))
+                     .arg(QString::fromStdString(info.packageInfoV2Module))
+                     .toStdString();
+        auto it = temp.find(key);
         if (it == temp.end()) {
-            temp[info.id] = info;
+            temp[key] = info;
             continue;
         }
 
@@ -2187,13 +2192,15 @@ Cli::filterPackageInfosFromVersion(std::vector<api::types::v1::PackageInfoV2> &l
         }
 
         if (*oldVersion < *newVersion) {
-            temp[info.id] = info;
+            temp[key] = info;
         }
     }
+
     list.clear();
     std::transform(temp.begin(), temp.end(), std::back_inserter(list), [](const auto &pair) {
         return pair.second;
     });
+
     return LINGLONG_OK;
 }
 

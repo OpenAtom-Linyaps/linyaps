@@ -20,14 +20,6 @@ if(NOT ("${LINGLONG_VERSION}" STREQUAL ""))
   set(PROJECT_VERSION ${LINGLONG_VERSION})
 endif()
 
-set(UAB_SPECIAL_INSTALL
-    OFF
-    CACHE BOOL "enable special installation of UAB")
-
-if(${UAB_SPECIAL_INSTALL})
-  add_definitions(-DUAB_SPECIAL_INSTALL)
-endif()
-
 set(ENABLE_UAB
     OFF
     CACHE BOOL "enable building UAB")

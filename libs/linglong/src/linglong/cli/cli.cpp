@@ -464,18 +464,6 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
         return -1;
     }
 
-    // NOTE: this is for the new behavior of 'll-cli install xxx.uab'.
-    // old behavior: install->installFromFile->PM
-    // new behavior: install->installFromFile->(Execute xxx.uab)->install->installFromFile->PM
-    // We want to let uab check itself once by executing it. But executing uab will cause it to run
-    // directly. So we use an environment variable to skip the running step. Another implementation
-    // is to add other parameters to uab.
-    auto skipRunning = qgetenv("LINGLONG_UAB_SKIP_RUNNING");
-    if (!skipRunning.isEmpty()) {
-        qDebug() << "LINGLONG_UAB_SKIP_RUNNING is set, skip running";
-        return 0;
-    }
-
     auto userContainerDir = std::filesystem::path{ "/run/linglong" } / std::to_string(::getuid());
     if (auto ret = ensureDirectory(userContainerDir); !ret) {
         this->printer.printErr(ret.error());
@@ -997,52 +985,10 @@ void Cli::cancelCurrentTask()
     }
 }
 
-bool isUAB(const QString &file)
-{
-    return file.endsWith(".uab");
-}
-
 int Cli::installFromFile(const QFileInfo &fileInfo, const api::types::v1::CommonOptions &options)
 {
     auto filePath = fileInfo.absoluteFilePath();
     LINGLONG_TRACE(QString{ "install from file %1" }.arg(filePath));
-
-#ifdef UAB_SPECIAL_INSTALL
-    if (fileInfo.suffix() == "uab") {
-        auto parent = getppid();
-
-        QFileInfo info(QString("/proc/%1/exe").arg(parent));
-        auto parentBin = info.symLinkTarget();
-        if (!isUAB(parentBin)) {
-            qDebug() << "The parent" << parentBin << "is not UAB.";
-            auto newParentBin = fileInfo.absoluteFilePath();
-            char *argv[] = { newParentBin.toLocal8Bit().data(), NULL };
-
-            QProcessEnvironment sysEnv = QProcessEnvironment::systemEnvironment();
-            QStringList envList = sysEnv.toStringList();
-
-            auto targetEnvc = envList.size();
-            std::vector<const char *> targetEnvv;
-
-            for (int i = 0; i < targetEnvc; i++) {
-                targetEnvv.push_back(envList.at(i).toLocal8Bit().constData());
-            }
-            targetEnvv.push_back("LINGLONG_UAB_SKIP_RUNNING=true");
-            targetEnvv.push_back(nullptr);
-
-            auto ret = ::execve(newParentBin.toLocal8Bit().constData(),
-                                argv,
-                                const_cast<char **>(targetEnvv.data()));
-            if (ret < 0) {
-                this->printer.printErr(
-                  LINGLONG_ERRV(QString("execve %1 failed, errno: %2")
-                                  .arg(newParentBin, QString::fromStdString(::strerror(errno)))));
-                return ret;
-            }
-        }
-        qDebug() << "The parent is UAB:" << parentBin;
-    }
-#endif
 
     QDBusReply<QString> authReply = this->authorization();
     if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {

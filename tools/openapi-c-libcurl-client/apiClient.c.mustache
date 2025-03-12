@@ -494,6 +494,7 @@ void apiClient_invoke(apiClient_t    *apiClient,
                          apiClient);
         curl_easy_setopt(handle, CURLOPT_HTTPHEADER, headers);
         curl_easy_setopt(handle, CURLOPT_VERBOSE, 0); // to get curl debug msg 0: to disable, 1L:to enable
+        curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT, 1);
 
         {{#hasAuthMethods}}
         {{#authMethods}}

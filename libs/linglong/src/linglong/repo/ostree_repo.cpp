@@ -358,50 +358,6 @@ utils::error::Result<QString> commitDirToRepo(std::vector<GFile *> dirs,
     return commit;
 }
 
-utils::error::Result<void> initOstreeRepoConfig(
-  OstreeRepo *repo, const linglong::api::types::v1::RepoConfigV2 &config) noexcept
-{
-    LINGLONG_TRACE("init ostree repo config");
-    g_autoptr(GError) gErr = nullptr;
-
-    const auto &defaultRepo = getDefaultRepo(config);
-
-    g_auto(GStrv) remoteNames = ostree_repo_remote_list(repo, nullptr);
-    if (remoteNames) {
-        return LINGLONG_OK;
-    }
-    const std::string &remoteUrl = defaultRepo.url + "/repos/" + defaultRepo.name;
-    g_autoptr(GVariant) options = NULL;
-    GVariantBuilder builder;
-    g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
-    g_variant_builder_add(&builder, "{sv}", "gpg-verify", g_variant_new_boolean(FALSE));
-    g_variant_builder_add(&builder, "{sv}", "http2", g_variant_new_boolean(FALSE));
-    options = g_variant_ref_sink(g_variant_builder_end(&builder));
-
-    if (ostree_repo_remote_change(repo,
-                                  nullptr,
-                                  OSTREE_REPO_REMOTE_CHANGE_ADD,
-                                  defaultRepo.alias.value_or(defaultRepo.name).c_str(),
-                                  remoteUrl.c_str(),
-                                  options,
-                                  nullptr,
-                                  &gErr)
-        == FALSE) {
-        return LINGLONG_ERR("ostree_repo_remote_change", gErr);
-    }
-
-    GKeyFile *configKeyFile = ostree_repo_get_config(repo);
-    Q_ASSERT(configKeyFile != nullptr);
-
-    g_key_file_set_string(configKeyFile, "core", "min-free-space-size", "600MB");
-
-    if (ostree_repo_write_config(repo, configKeyFile, &gErr) == FALSE) {
-        return LINGLONG_ERR("ostree_repo_write_config", gErr);
-    }
-
-    return LINGLONG_OK;
-}
-
 utils::error::Result<void>
 updateOstreeRepoConfig(OstreeRepo *repo,
                        const linglong::api::types::v1::RepoConfigV2 &config,
@@ -412,20 +368,13 @@ updateOstreeRepoConfig(OstreeRepo *repo,
     g_autoptr(GError) gErr = nullptr;
 
     g_auto(GStrv) remoteNames = ostree_repo_remote_list(repo, nullptr);
-    if (!remoteNames) {
-        return LINGLONG_ERR("ostree_repo_remote_list Failed to get remote list");
-    }
 
-    std::unordered_set<std::string> validRemotes;
-    for (const auto &repoCfg : config.repos) {
-        validRemotes.insert(repoCfg.alias.value_or(repoCfg.name));
-    }
-
-    for (auto remoteName = remoteNames; *remoteName != nullptr; remoteName++) {
-        if (validRemotes.find(*remoteName) == validRemotes.end()) {
+    // 删除全部仓库
+    if (remoteNames != nullptr) {
+        for (auto remoteName = remoteNames; *remoteName != nullptr; remoteName++) {
             if (ostree_repo_remote_change(repo,
                                           nullptr,
-                                          OSTREE_REPO_REMOTE_CHANGE_DELETE_IF_EXISTS,
+                                          OSTREE_REPO_REMOTE_CHANGE_DELETE,
                                           *remoteName,
                                           nullptr,
                                           nullptr,
@@ -448,18 +397,6 @@ updateOstreeRepoConfig(OstreeRepo *repo,
         // We disable http2 for now.
         g_variant_builder_add(&builder, "{sv}", "http2", g_variant_new_boolean(FALSE));
         options = g_variant_ref_sink(g_variant_builder_end(&builder));
-
-        if (ostree_repo_remote_change(repo,
-                                      nullptr,
-                                      OSTREE_REPO_REMOTE_CHANGE_DELETE_IF_EXISTS,
-                                      repoCfg.alias.value_or(repoCfg.name).c_str(),
-                                      nullptr,
-                                      nullptr,
-                                      nullptr,
-                                      &gErr)
-            == FALSE) {
-            return LINGLONG_ERR("ostree_repo_remote_change", gErr);
-        }
 
         if (ostree_repo_remote_change(repo,
                                       nullptr,
@@ -774,11 +711,6 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
         ostreeRepo = ostree_repo_new(repoPath);
         Q_ASSERT(ostreeRepo != nullptr);
         if (ostree_repo_open(ostreeRepo, nullptr, &gErr) == TRUE) {
-            auto result = initOstreeRepoConfig(ostreeRepo, this->cfg);
-            if (!result) {
-                qCritical() << LINGLONG_ERRV(result);
-                qFatal("abort");
-            }
 
             this->ostreeRepo.reset(static_cast<OstreeRepo *>(g_steal_pointer(&ostreeRepo)));
 

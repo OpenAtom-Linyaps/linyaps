@@ -91,8 +91,7 @@ utils::error::Result<void> inline copyDir(const QString &src, const QString &dst
         if (info.fileName() == "." || info.fileName() == "..") {
             continue;
         }
-
-        if (info.isDir()) {
+        if (info.isDir() && !info.isSymLink()) {
             // 穿件文件夹，递归调用
             auto ret = copyDir(info.filePath(), dst + "/" + info.fileName());
             if (!ret.has_value()) {
@@ -280,6 +279,20 @@ utils::error::Result<void> installModule(QStringList installRules,
     auto installFile = [&](const QFileInfo &info,
                            const QString &dstPath) -> utils::error::Result<void> {
         LINGLONG_TRACE("install file");
+        std::error_code ec;
+        if (info.isSymLink()) {
+            auto target = std::filesystem::read_symlink(info.filePath().toStdString());
+            std::filesystem::create_symlink(target, dstPath.toStdString(), ec);
+
+            if (ec) {
+                return LINGLONG_ERR(QString("Failed to create symlink: %1 -> %2: %3")
+                                      .arg(info.filePath())
+                                      .arg(target.c_str())
+                                      .arg(ec.message().c_str()));
+            }
+            return LINGLONG_OK;
+        }
+
         if (info.isDir()) {
             QDir().mkpath(dstPath);
             return LINGLONG_OK;
@@ -305,7 +318,7 @@ utils::error::Result<void> installModule(QStringList installRules,
         // 如果不以^符号开头，当作普通路径使用
         if (!rule.startsWith("^")) {
             // append $PROJECT_ROOT/output/_build/files to prefix
-            rule = src + "/" + rule;
+            rule = QDir::cleanPath(src + "/" + rule);
             QFileInfo info(rule);
             // 链接指向的文件如果不存在，info.exists会返回false
             // 所以要先判断文件是否是链接

@@ -85,12 +85,10 @@ utils::error::Result<void> inline copyDir(const QString &src, const QString &dst
         };
     }
 
-    QFileInfoList list = srcDir.entryInfoList();
+    QFileInfoList list =
+      srcDir.entryInfoList(QDir::System | QDir::AllEntries | QDir::NoDotAndDotDot);
 
     for (const auto &info : list) {
-        if (info.fileName() == "." || info.fileName() == "..") {
-            continue;
-        }
         if (info.isDir() && !info.isSymLink()) {
             // 穿件文件夹，递归调用
             auto ret = copyDir(info.filePath(), dst + "/" + info.fileName());

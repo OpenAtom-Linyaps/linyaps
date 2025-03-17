@@ -24,7 +24,6 @@
 #include "linglong/utils/transaction.h"
 #include "ocppi/runtime/RunOption.hpp"
 
-#include <QDBusInterface>
 #include <QDBusReply>
 #include <QDBusUnixFileDescriptor>
 #include <QDebug>
@@ -1228,12 +1227,13 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
         }
     }
 
-    const auto defaultRepo = linglong::repo::getDefaultRepo(this->repo.getConfig());
-    auto refSpec = QString{ "%1:%2/%3/%4/%5" }.arg(QString::fromStdString(defaultRepo.name),
-                                                   remoteRef.channel,
-                                                   remoteRef.id,
-                                                   remoteRef.arch.toString(),
-                                                   QString::fromStdString(curModule));
+    auto refSpec = QString{ "%1:%2/%3/%4/%5" }.arg(
+      QString::fromStdString(remoteRef.repo.alias.value_or(remoteRef.repo.name)),
+      remoteRef.channel,
+      remoteRef.id,
+      remoteRef.arch.toString(),
+      QString::fromStdString(curModule));
+
     // Note: do not capture any reference of variable which defined in this func.
     // it will be a dangling reference.
     auto installer = [this,
@@ -1316,6 +1316,7 @@ void PackageManager::Install(PackageTask &taskContext,
                                   + QString::fromStdString(list));
         return;
     }
+
     transaction.addRollBack([this, &newRef, installModules = *installModules]() noexcept {
         auto tmp = PackageTask::createTemporaryTask();
         UninstallRef(tmp, newRef, installModules);
@@ -1655,7 +1656,8 @@ utils::error::Result<package::Reference> PackageManager::latestRemoteReference(
         fuzzyRef.version.reset();
         auto ref = this->repo.clearReference(fuzzyRef,
                                              {
-                                               .forceRemote = true // NOLINT
+                                               .forceRemote = true, // NOLINT
+                                               .findLatest = true   // NOLINT
                                              });
         if (!ref) {
             return LINGLONG_ERR(ref);
@@ -1664,7 +1666,8 @@ utils::error::Result<package::Reference> PackageManager::latestRemoteReference(
     }
     auto ref = this->repo.clearReference(fuzzyRef,
                                          {
-                                           .forceRemote = true // NOLINT
+                                           .forceRemote = true, // NOLINT
+                                           .findLatest = true   // NOLINT
                                          });
     if (!ref) {
         return LINGLONG_ERR(ref);
@@ -1834,8 +1837,22 @@ auto PackageManager::Search(const QVariantMap &parameters) noexcept -> QVariantM
     }
     auto jobID = QUuid::createUuid().toString();
     auto ref = *fuzzyRef;
-    m_search_queue.runTask([this, jobID, ref]() {
-        auto pkgInfos = this->repo.listRemote(ref);
+    linglong::api::types::v1::Repo repo{};
+    if (paras->repo.has_value()) {
+        auto repoConfig = this->repo.getConfig();
+        auto it = std::find_if(repoConfig.repos.begin(),
+                               repoConfig.repos.end(),
+                               [&paras](const linglong::api::types::v1::Repo &repo) {
+                                   return repo.alias.value_or(repo.name) == paras->repo.value();
+                               });
+
+        if (it == repoConfig.repos.end()) {
+            return toDBusReply(-1, QString("repo %1 not found").arg(paras->repo.value().c_str()));
+        }
+        repo = *it;
+    }
+    m_search_queue.runTask([this, jobID, ref, repo = std::move(repo)]() {
+        auto pkgInfos = this->repo.listRemote(ref, repo);
         if (!pkgInfos.has_value()) {
             qWarning() << "list remote failed: " << pkgInfos.error().message();
             Q_EMIT this->SearchFinished(jobID, toDBusReply(pkgInfos));
@@ -1899,7 +1916,6 @@ void PackageManager::pullDependency(PackageTask &taskContext,
 
             taskContext.updateSubState(linglong::api::types::v1::SubState::InstallRuntime,
                                        "Installing runtime " + runtime->toString());
-
             this->repo.pull(taskContext, *runtime, module);
             if (isTaskDone(taskContext.subState())) {
                 return;

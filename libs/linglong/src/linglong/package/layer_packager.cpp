@@ -13,6 +13,8 @@
 #include <QDataStream>
 #include <QSysInfo>
 
+#include <string>
+
 namespace linglong::package {
 
 LayerPackager::LayerPackager(const QDir &workDir)
@@ -105,7 +107,7 @@ LayerPackager::pack(const LayerDir &dir, const QString &layerFilePath) const
     // loongarch64默认使用(16384)2^14, 在x86和arm64不受支持, 会导致无法推包
     auto ret = utils::command::Exec(
       "mkfs.erofs",
-      { "-zzstd,11", "-b4096", compressedFilePath, ignoreRegex, dir.absolutePath() });
+      { "-z" + compressor, "-b4096", compressedFilePath, ignoreRegex, dir.absolutePath() });
     if (!ret) {
         return LINGLONG_ERR(ret);
     }
@@ -146,6 +148,12 @@ utils::error::Result<LayerDir> LayerPackager::unpack(LayerFile &file)
     }
 
     return unpackDir.absolutePath();
+}
+
+utils::error::Result<void> LayerPackager::setCompressor(const QString &compressor) noexcept
+{
+    this->compressor = compressor;
+    return LINGLONG_OK;
 }
 
 } // namespace linglong::package

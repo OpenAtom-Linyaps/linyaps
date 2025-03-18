@@ -286,20 +286,26 @@ You can report bugs to the linyaps team under this project: https://github.com/O
 
     // build export
     bool layerMode = false;
-    linglong::builder::UABOption UABOption{ .exportDevelop = false, .exportI18n = true };
+    linglong::builder::ExportOption ExportOption{ .exportDevelop = false, .exportI18n = true };
     auto *buildExport = commandParser.add_subcommand("export", _("Export to linyaps layer or uab"));
     buildExport->usage(_("Usage: ll-builder export [OPTIONS]"));
-    auto *fileOpt =
-      buildExport->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
+
+    buildExport->add_option("-f, --file", filePath, _("File path of the linglong.yaml"))
+      ->type_name("FILE")
+      ->capture_default_str()
+      ->check(CLI::ExistingFile);
+    buildExport
+      ->add_option("-z, --compressor",
+                   ExportOption.compressor,
+                   "supported compressors are: lz4(uab default), lzam(layer default), zstd")
+      ->type_name("X");
+    auto *iconOpt =
+      buildExport->add_option("--icon", ExportOption.iconPath, _("Uab icon (optional)"))
         ->type_name("FILE")
-        ->capture_default_str()
         ->check(CLI::ExistingFile);
-    auto *iconOpt = buildExport->add_option("--icon", UABOption.iconPath, _("Uab icon (optional)"))
-                      ->type_name("FILE")
-                      ->check(CLI::ExistingFile);
-    auto *fullOpt = buildExport->add_flag("--full", UABOption.full, _("Export uab fully"));
+    auto *fullOpt = buildExport->add_flag("--full", ExportOption.full, _("Export uab fully"));
     auto *layerFlag = buildExport->add_flag("--layer", layerMode, _("Export to linyaps layer file"))
-                        ->excludes(fileOpt, iconOpt, fullOpt);
+                        ->excludes(iconOpt, fullOpt);
     std::string appLoader;
     buildExport->add_option("--loader", appLoader, _("Use custom loader"))
       ->type_name("FILE")
@@ -803,7 +809,12 @@ You can report bugs to the linyaps team under this project: https://github.com/O
                                            *builderCfg);
 
         if (layerMode) {
-            auto result = builder.exportLayer(QDir::currentPath());
+            // layer 默认使用lzma有更高压缩率
+            QString compressor = "lzma";
+            if (!ExportOption.compressor.empty()) {
+                compressor = ExportOption.compressor.c_str();
+            }
+            auto result = builder.exportLayer(QDir::currentPath(), compressor);
             if (!result) {
                 qCritical() << result.error();
                 return -1;
@@ -813,9 +824,14 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         }
 
         if (!appLoader.empty()) {
-            UABOption.loader = QString::fromStdString(appLoader);
+            ExportOption.loader = appLoader;
         }
-        auto result = builder.exportUAB(QDir::currentPath(), UABOption);
+        // uab 默认使用lz4可以更快解压速度，避免影响应用自运行
+        QString compressor = "lz4";
+        if (!ExportOption.compressor.empty()) {
+            compressor = ExportOption.compressor.c_str();
+        }
+        auto result = builder.exportUAB(QDir::currentPath(), ExportOption);
         if (!result) {
             qCritical() << result.error();
             return -1;

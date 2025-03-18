@@ -16,10 +16,11 @@
 
 namespace linglong::builder {
 
-struct UABOption
+struct ExportOption
 {
-    QString iconPath;
-    QString loader;
+    std::string iconPath;
+    std::string loader;
+    std::string compressor;
     bool exportDevelop{ false };
     bool exportI18n{ false };
     bool full{ false };
@@ -57,15 +58,16 @@ public:
 
     auto create(const QString &projectName) -> utils::error::Result<void>;
 
-    auto build(const QStringList &args = {
-                 "/project/linglong/entry.sh" }) noexcept -> utils::error::Result<void>;
+    auto build(const QStringList &args = { "/project/linglong/entry.sh" }) noexcept
+      -> utils::error::Result<void>;
 
-    auto exportUAB(const QString &destination,
-                   const UABOption &option) -> utils::error::Result<void>;
-    auto exportLayer(const QString &destination) -> utils::error::Result<void>;
+    auto exportUAB(const QString &destination, const ExportOption &option)
+      -> utils::error::Result<void>;
+    auto exportLayer(const QString &destination, const QString &compressor)
+      -> utils::error::Result<void>;
 
-    static auto extractLayer(const QString &layerPath,
-                             const QString &destination) -> utils::error::Result<void>;
+    static auto extractLayer(const QString &layerPath, const QString &destination)
+      -> utils::error::Result<void>;
 
     auto push(const std::string &module,
               const std::string &repoUrl = "",
@@ -73,8 +75,8 @@ public:
 
     auto import() -> utils::error::Result<void>;
 
-    static auto importLayer(repo::OSTreeRepo &repo,
-                            const QString &path) -> utils::error::Result<void>;
+    static auto importLayer(repo::OSTreeRepo &repo, const QString &path)
+      -> utils::error::Result<void>;
 
     auto run(const QStringList &modules,
              const QStringList &args,

@@ -59,6 +59,15 @@ bool Initialize::generate(ocppi::runtime::config::types::Config &config) const n
           .type = "bind" });
     }
 
+    std::srand(std::time(0));
+    auto tmpDir =
+      std::filesystem::temp_directory_path() / ("linglong_tmp_" + std::to_string(std::rand()));
+    std::filesystem::create_directory(tmpDir.string());
+    mounts.push_back(ocppi::runtime::config::types::Mount{ .destination = "/tmp",
+                                                           .options = string_list{ "rbind", "rw" },
+                                                           .source = tmpDir,
+                                                           .type = "bind" });
+
     config.mounts = std::move(mounts);
 
     return true;

@@ -1799,7 +1799,8 @@ OSTreeRepo::exportEntries(const std::filesystem::path &rootEntriesDir,
                          // maybe used by the host dde-file-manager.
         "share/deepin-manual",     // copy deepin-manual files
         "share/deepin-elf-verify", // for uab signature
-
+        "share/dsg" // Copy dsg conf，the configuration file is used for self-developed
+                    // applications.
     };
     // 如果存在lib/systemd目录，则导出lib/systemd，否则导出share/systemd
     exists = std::filesystem::exists(appEntriesDir / "lib/systemd", ec);

@@ -1126,17 +1126,19 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
     if (this->project.package.kind != "runtime") {
         // 仅导出名单中的目录，以避免意外文件影响系统功能
         const QStringList exportPaths = {
-            "share/applications", // Copy desktop files
-            "share/mime",         // Copy MIME Type files
-            "share/icons",        // Icons
-            "share/dbus-1",       // D-Bus service files
-            "share/gnome-shell",  // Search providers
-            "share/appdata",      // Copy appdata/metainfo files (legacy path)
-            "share/metainfo",     // Copy appdata/metainfo files
-            "share/plugins",      // Copy plugins conf，The configuration files provided by some
-                                  // applications maybe used by the host dde-file-manager.
-            "share/systemd",      // copy systemd service files
-            "share/deepin-manual" // copy deepin-manual files
+            "share/applications",  // Copy desktop files
+            "share/mime",          // Copy MIME Type files
+            "share/icons",         // Icons
+            "share/dbus-1",        // D-Bus service files
+            "share/gnome-shell",   // Search providers
+            "share/appdata",       // Copy appdata/metainfo files (legacy path)
+            "share/metainfo",      // Copy appdata/metainfo files
+            "share/plugins",       // Copy plugins conf，The configuration files provided by some
+                                   // applications maybe used by the host dde-file-manager.
+            "share/systemd",       // copy systemd service files
+            "share/deepin-manual", // copy deepin-manual files
+            "share/dsg" // Copy dsg conf，the configuration file is used for self-developed
+                        // applications.
         };
 
         QDir binaryFiles = this->workingDir.absoluteFilePath("linglong/output/binary/files");

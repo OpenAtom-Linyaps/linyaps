@@ -1587,6 +1587,33 @@ void OSTreeRepo::unexportReference(const package::Reference &ref) noexcept
             Q_ASSERT(false);
         }
     }
+
+    std::function<void(const QString &path)> removeEmptySubdirectories =
+      [&removeEmptySubdirectories](const QString &path) {
+          QDir dir(path);
+
+          // 获取目录下的所有子目录
+          QFileInfoList entries = dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
+
+          // 遍历子目录
+          for (const QFileInfo &entry : entries) {
+              QString subDirPath = entry.absoluteFilePath();
+
+              // 递归调用，先处理子目录
+              removeEmptySubdirectories(subDirPath);
+
+              // 检查子目录是否为空
+              QDir subDir(subDirPath);
+              if (subDir.isEmpty()) {
+                  // 如果子目录为空，则删除它
+                  if (!subDir.rmdir(subDirPath)) {
+                      qDebug() << "Failed to remove directory:" << subDirPath;
+                      continue;
+                  }
+              }
+          }
+      };
+    removeEmptySubdirectories(entriesDir.absolutePath());
     this->updateSharedInfo();
 }
 

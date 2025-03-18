@@ -28,9 +28,11 @@ public:
     utils::error::Result<QSharedPointer<LayerFile>> pack(const LayerDir &dir,
                                                          const QString &layerFilePath) const;
     utils::error::Result<LayerDir> unpack(LayerFile &file);
+    utils::error::Result<void> setCompressor(const QString &compressor) noexcept;
 
 private:
     QDir workDir;
+    QString compressor = "lzma";
 };
 
 } // namespace linglong::package

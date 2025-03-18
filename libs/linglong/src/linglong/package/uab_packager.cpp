@@ -408,7 +408,9 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
         }
 
         if (!files.empty()) {
-            struct stat moduleFilesDirStat{}, filesStat{};
+            struct stat moduleFilesDirStat
+            {
+            }, filesStat{};
 
             if (stat(moduleFilesDir.c_str(), &moduleFilesDirStat) == -1) {
                 return LINGLONG_ERR("couldn't stat module files directory: "
@@ -720,7 +722,7 @@ utils::error::Result<void> UABPackager::packBundle(bool onlyApp) noexcept
         // https://github.com/erofs/erofs-utils/blob/b526c0d7da46b14f1328594cf1d1b2401770f59b/README#L171-L183
         if (auto ret =
               utils::command::Exec("mkfs.erofs",
-                                   { "-zzstd,17",
+                                   { "-z" + compressor,
                                      "-Efragments,dedupe,ztailpacking",
                                      "-C1048576",
                                      "-b4096", // force 4096 block size, default is page size
@@ -968,6 +970,12 @@ utils::error::Result<void> UABPackager::loadNeededFiles() noexcept
 utils::error::Result<void> UABPackager::setLoader(const QString &loader) noexcept
 {
     this->loader = loader;
+    return LINGLONG_OK;
+}
+
+utils::error::Result<void> UABPackager::setCompressor(const QString &compressor) noexcept
+{
+    this->compressor = compressor;
     return LINGLONG_OK;
 }
 

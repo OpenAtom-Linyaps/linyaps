@@ -75,6 +75,7 @@ public:
     utils::error::Result<void> loadBlackList() noexcept;
     utils::error::Result<void> loadNeededFiles() noexcept;
     utils::error::Result<void> setLoader(const QString &loader) noexcept;
+    utils::error::Result<void> setCompressor(const QString &compressor) noexcept;
 
 private:
     [[nodiscard]] utils::error::Result<void> packIcon() noexcept;
@@ -96,5 +97,6 @@ private:
     QDir buildDir;
     std::filesystem::path workDir;
     QString loader;
+    QString compressor = "lz4";
 };
 } // namespace linglong::package

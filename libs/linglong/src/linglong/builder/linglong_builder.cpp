@@ -1323,7 +1323,8 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> Builder::exportUAB(const QString &destination, const UABOption &option)
+utils::error::Result<void> Builder::exportUAB(const QString &destination,
+                                              const ExportOption &option)
 {
     LINGLONG_TRACE("export uab file");
 
@@ -1334,8 +1335,8 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
 
     package::UABPackager packager{ destDir };
 
-    if (!option.iconPath.isEmpty()) {
-        if (auto ret = packager.setIcon(QFileInfo{ option.iconPath }); !ret) {
+    if (!option.iconPath.empty()) {
+        if (auto ret = packager.setIcon(QFileInfo{ option.iconPath.c_str() }); !ret) {
             return LINGLONG_ERR(ret);
         }
     }
@@ -1379,6 +1380,9 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
     }
     packager.appendLayer(*baseDir);
 
+    if (!option.compressor.empty()) {
+        packager.setCompressor(option.compressor.c_str());
+    }
     if (this->project.runtime) {
         auto runtimeFuzzyRef =
           package::FuzzyReference::parse(QString::fromStdString(this->project.runtime.value()));
@@ -1411,8 +1415,8 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
     }
     packager.appendLayer(*appDir); // app layer must be the last of appended layer
 
-    if (!option.loader.isEmpty()) {
-        packager.setLoader(option.loader);
+    if (!option.loader.empty()) {
+        packager.setLoader(option.loader.c_str());
     }
 
     auto uabFile = QString{ "%1_%2_%3_%4.uab" }.arg(curRef->id,
@@ -1426,7 +1430,8 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination, const 
     return LINGLONG_OK;
 }
 
-utils::error::Result<void> Builder::exportLayer(const QString &destination)
+utils::error::Result<void> Builder::exportLayer(const QString &destination,
+                                                const QString &compressor)
 {
     LINGLONG_TRACE("export layer file");
 
@@ -1445,6 +1450,9 @@ utils::error::Result<void> Builder::exportLayer(const QString &destination)
     auto modules = this->repo.getModuleList(*ref);
 
     package::LayerPackager pkger;
+    if (!compressor.isEmpty()) {
+        pkger.setCompressor(compressor);
+    }
     for (const auto &module : modules) {
         auto layerDir = this->repo.getLayerDir(*ref, module);
         if (!layerDir) {

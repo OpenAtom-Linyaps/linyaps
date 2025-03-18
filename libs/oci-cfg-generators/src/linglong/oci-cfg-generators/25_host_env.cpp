@@ -70,9 +70,10 @@ bool HostEnv::generate(ocppi::runtime::config::types::Config &config) const noex
         "GDMSESSION",
         "QT_WAYLAND_FORCE_DPI",
         "GIO_LAUNCHED_DESKTOP_FILE", // 系统监视器
-        "GNOME_DESKTOP_SESSION_ID",  // gnome 桌面标识，有些应用会读取此变量以使用gsettings配置,
-                                     // 如chrome
-        "TERM"
+        "GNOME_DESKTOP_SESSION_ID", // gnome 桌面标识，有些应用会读取此变量以使用gsettings配置,
+                                    // 如chrome
+        "TERM",
+        "DSG_APP_ID" // DSG 配置文件环境变量
     };
 
     auto onlyApp = config.annotations->find("org.deepin.linglong.onlyApp");

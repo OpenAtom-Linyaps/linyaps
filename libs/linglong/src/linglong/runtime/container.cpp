@@ -6,6 +6,7 @@
 
 #include "linglong/runtime/container.h"
 
+#include "linglong/utils/configure.h"
 #include "linglong/utils/finally/finally.h"
 #include "ocppi/runtime/RunOption.hpp"
 #include "ocppi/runtime/config/types/Generators.hpp"
@@ -14,7 +15,6 @@
 #include <QStandardPaths>
 
 #include <fstream>
-#include <iostream>
 #include <utility>
 
 #include <sys/stat.h>
@@ -189,34 +189,51 @@ utils::error::Result<void> Container::run(const ocppi::runtime::config::types::P
         this->cfg.process->terminal = true;
     }
 
-    // 在原始args前面添加bash --login -c，这样可以使用/etc/profile配置的环境变量
-    if (process.args) {
-        const auto &args = process.args.value();
-        QStringList bashArgs;
-        std::transform(args.begin(),
-                       args.end(),
-                       std::back_inserter(bashArgs),
-                       [](const std::string &arg) {
-                           return QString::fromStdString(arg);
-                       });
+    this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
+      .destination = "/run/linglong/container-init",
+      .options = { { "ro", "rbind" } },
+      .source = std::string{ LINGLONG_CONTAINER_INIT },
+      .type = "bind",
+    });
 
-        // 为避免原始args包含空格，每个arg都使用单引号包裹，并对arg内部的单引号进行转义替换
-        std::for_each(bashArgs.begin(), bashArgs.end(), [](QString &arg) {
-            arg.replace('\'', "'\\''");
-            arg.prepend('\'');
-            arg.push_back('\'');
-        });
+    auto originalArgs =
+      this->cfg.process->args.value_or(std::vector<std::string>{ "echo", "'noting to run'" });
+    QStringList appArgs;
+    std::transform(originalArgs.begin(),
+                   originalArgs.end(),
+                   std::back_inserter(appArgs),
+                   QString::fromStdString);
+    appArgs.prepend("exec");
 
-        // quickfix: 某些应用在以bash -c启动后，收到SIGTERM后不会完全退出
-        bashArgs.push_back("; wait");
-        auto arguments = std::vector<std::string>{
-            "/bin/bash", "--login", "-e", "-c", bashArgs.join(" ").toStdString(),
-        };
+    auto entrypoint = bundle / "entrypoint.sh";
+    {
+        std::ofstream ofs(entrypoint);
+        Q_ASSERT(ofs.is_open());
+        if (!ofs.is_open()) {
+            return LINGLONG_ERR("create font config in bundle directory");
+        }
 
-        this->cfg.process->args = std::move(arguments);
-    } else {
-        this->cfg.process->args = { "/bin/bash", "--login" };
+        // TODO: maybe we could use a symlink '/usr/bin/ll-init' points to
+        // '/run/linglong/container-init' will be better
+        ofs << "#!/run/linglong/container-init /bin/bash\n";
+        ofs << "source /etc/profile\n"; // we need use /etc/profile to generate all needed
+                                        // environment variables
+        ofs << appArgs.join(' ').toStdString();
     }
+
+    std::filesystem::permissions(entrypoint, std::filesystem::perms::owner_all, ec);
+    if (ec) {
+        return LINGLONG_ERR("make entrypoint executable", ec);
+    }
+
+    this->cfg.mounts->push_back(ocppi::runtime::config::types::Mount{
+      .destination = "/run/linglong/entrypoint.sh",
+      .options = { { "ro", "rbind" } },
+      .source = entrypoint,
+      .type = "bind",
+    });
+
+    this->cfg.process->args = { "/run/linglong/entrypoint.sh" };
 
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
     {

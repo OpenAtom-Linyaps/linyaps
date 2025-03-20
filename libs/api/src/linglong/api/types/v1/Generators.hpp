@@ -37,6 +37,7 @@
 #include "linglong/api/types/v1/PackageManager1SearchParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1RequestInteractionAdditionalMessage.hpp"
 #include "linglong/api/types/v1/PackageManager1PackageTaskResult.hpp"
+#include "linglong/api/types/v1/PackageManager1PackageExportTaskResult.hpp"
 #include "linglong/api/types/v1/PackageManager1Package.hpp"
 #include "linglong/api/types/v1/PackageManager1ModifyRepoParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
@@ -44,6 +45,7 @@
 #include "linglong/api/types/v1/PackageManager1InstallParametersPacakge.hpp"
 #include "linglong/api/types/v1/PackageManager1GetRepoInfoResult.hpp"
 #include "linglong/api/types/v1/PackageManager1GetRepoInfoResultRepoInfo.hpp"
+#include "linglong/api/types/v1/PackageManager1ExportParameters.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/PackageInfo.hpp"
 #include "linglong/api/types/v1/OciConfigurationPatch.hpp"
@@ -158,6 +160,9 @@ void to_json(json & j, const PackageInfo & x);
 void from_json(const json & j, PackageInfoV2 & x);
 void to_json(json & j, const PackageInfoV2 & x);
 
+void from_json(const json & j, PackageManager1ExportParameters & x);
+void to_json(json & j, const PackageManager1ExportParameters & x);
+
 void from_json(const json & j, PackageManager1GetRepoInfoResultRepoInfo & x);
 void to_json(json & j, const PackageManager1GetRepoInfoResultRepoInfo & x);
 
@@ -178,6 +183,9 @@ void to_json(json & j, const PackageManager1ModifyRepoParameters & x);
 
 void from_json(const json & j, PackageManager1Package & x);
 void to_json(json & j, const PackageManager1Package & x);
+
+void from_json(const json & j, PackageManager1PackageExportTaskResult & x);
+void to_json(json & j, const PackageManager1PackageExportTaskResult & x);
 
 void from_json(const json & j, PackageManager1PackageTaskResult & x);
 void to_json(json & j, const PackageManager1PackageTaskResult & x);
@@ -725,6 +733,23 @@ j["uuid"] = x.uuid;
 j["version"] = x.version;
 }
 
+inline void from_json(const json & j, PackageManager1ExportParameters& x) {
+x.appID = j.at("appID").get<std::string>();
+x.iconPath = get_stack_optional<std::string>(j, "iconPath");
+x.loader = get_stack_optional<std::string>(j, "loader");
+}
+
+inline void to_json(json & j, const PackageManager1ExportParameters & x) {
+j = json::object();
+j["appID"] = x.appID;
+if (x.iconPath) {
+j["iconPath"] = x.iconPath;
+}
+if (x.loader) {
+j["loader"] = x.loader;
+}
+}
+
 inline void from_json(const json & j, PackageManager1GetRepoInfoResultRepoInfo& x) {
 x.defaultRepo = j.at("defaultRepo").get<std::string>();
 x.repos = j.at("repos").get<std::map<std::string, std::string>>();
@@ -830,6 +855,27 @@ j["module"] = x.packageManager1PackageModule;
 if (x.version) {
 j["version"] = x.version;
 }
+}
+
+inline void from_json(const json & j, PackageManager1PackageExportTaskResult& x) {
+x.exportPath = get_stack_optional<std::string>(j, "exportPath");
+x.taskObjectPath = get_stack_optional<std::string>(j, "taskObjectPath");
+x.code = j.at("code").get<int64_t>();
+x.message = j.at("message").get<std::string>();
+x.type = j.at("type").get<std::string>();
+}
+
+inline void to_json(json & j, const PackageManager1PackageExportTaskResult & x) {
+j = json::object();
+if (x.exportPath) {
+j["exportPath"] = x.exportPath;
+}
+if (x.taskObjectPath) {
+j["taskObjectPath"] = x.taskObjectPath;
+}
+j["code"] = x.code;
+j["message"] = x.message;
+j["type"] = x.type;
 }
 
 inline void from_json(const json & j, PackageManager1PackageTaskResult& x) {
@@ -1083,6 +1129,7 @@ x.layerInfo = get_stack_optional<LayerInfo>(j, "LayerInfo");
 x.ociConfigurationPatch = get_stack_optional<OciConfigurationPatch>(j, "OCIConfigurationPatch");
 x.packageInfo = get_stack_optional<PackageInfo>(j, "PackageInfo");
 x.packageInfoV2 = get_stack_optional<PackageInfoV2>(j, "PackageInfoV2");
+x.packageManager1ExportParameters = get_stack_optional<PackageManager1ExportParameters>(j, "PackageManager1ExportParameters");
 x.packageManager1GetRepoInfoResult = get_stack_optional<PackageManager1GetRepoInfoResult>(j, "PackageManager1GetRepoInfoResult");
 x.packageManager1InstallLayerFDResult = get_stack_optional<CommonResult>(j, "PackageManager1InstallLayerFDResult");
 x.packageManager1InstallParameters = get_stack_optional<PackageManager1InstallParameters>(j, "PackageManager1InstallParameters");
@@ -1090,6 +1137,7 @@ x.packageManager1JobInfo = get_stack_optional<PackageManager1JobInfo>(j, "Packag
 x.packageManager1ModifyRepoParameters = get_stack_optional<PackageManager1ModifyRepoParameters>(j, "PackageManager1ModifyRepoParameters");
 x.packageManager1ModifyRepoResult = get_stack_optional<CommonResult>(j, "PackageManager1ModifyRepoResult");
 x.packageManager1Package = get_stack_optional<PackageManager1Package>(j, "PackageManager1Package");
+x.packageManager1PackageExportTaskResult = get_stack_optional<PackageManager1PackageExportTaskResult>(j, "PackageManager1PackageExportTaskResult");
 x.packageManager1PackageTaskResult = get_stack_optional<PackageManager1PackageTaskResult>(j, "PackageManager1PackageTaskResult");
 x.packageManager1RequestInteractionAdditionalMessage = get_stack_optional<PackageManager1RequestInteractionAdditionalMessage>(j, "PackageManager1RequestInteractionAdditionalMessage");
 x.packageManager1SearchParameters = get_stack_optional<PackageManager1SearchParameters>(j, "PackageManager1SearchParameters");
@@ -1169,6 +1217,9 @@ j["PackageInfo"] = x.packageInfo;
 if (x.packageInfoV2) {
 j["PackageInfoV2"] = x.packageInfoV2;
 }
+if (x.packageManager1ExportParameters) {
+j["PackageManager1ExportParameters"] = x.packageManager1ExportParameters;
+}
 if (x.packageManager1GetRepoInfoResult) {
 j["PackageManager1GetRepoInfoResult"] = x.packageManager1GetRepoInfoResult;
 }
@@ -1189,6 +1240,9 @@ j["PackageManager1ModifyRepoResult"] = x.packageManager1ModifyRepoResult;
 }
 if (x.packageManager1Package) {
 j["PackageManager1Package"] = x.packageManager1Package;
+}
+if (x.packageManager1PackageExportTaskResult) {
+j["PackageManager1PackageExportTaskResult"] = x.packageManager1PackageExportTaskResult;
 }
 if (x.packageManager1PackageTaskResult) {
 j["PackageManager1PackageTaskResult"] = x.packageManager1PackageTaskResult;

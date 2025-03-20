@@ -7,12 +7,13 @@
 #include "package_manager.h"
 
 #include "linglong/api/types/helper.h"
-#include "linglong/api/types/v1/Generators.hpp"
+#include "linglong/api/types/v1/PackageManager1ExportParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
 #include "linglong/api/types/v1/State.hpp"
 #include "linglong/package/layer_file.h"
 #include "linglong/package/layer_packager.h"
 #include "linglong/package/uab_file.h"
+#include "linglong/package/uab_packager.h"
 #include "linglong/package_manager/package_task.h"
 #include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
@@ -785,11 +786,12 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
 
     const auto &metaInfo = *metaInfoRet;
     auto layerInfos = metaInfo.get().layers;
-    auto appLayerIt = std::find_if(layerInfos.cbegin(),
-                                   layerInfos.cend(),
-                                   [](const api::types::v1::UabLayer &layer) {
-                                       return layer.info.kind == "app";
-                                   });
+    auto appLayerIt =
+      std::find_if(layerInfos.cbegin(),
+                   layerInfos.cend(),
+                   [](const api::types::v1::UabLayer &layer) {
+                       return layer.info.kind == "app" || layer.info.kind == "runtime";
+                   });
     if (appLayerIt == layerInfos.cend()) {
         return toDBusReply(-1, "couldn't find application layer in this uab");
     }
@@ -929,11 +931,12 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
             return;
         }
 
-        auto appLayerInfo = std::find_if(layerInfos.begin(),
-                                         layerInfos.end(),
-                                         [](const linglong::api::types::v1::UabLayer &layer) {
-                                             return layer.info.kind == "app";
-                                         });
+        auto appLayerInfo =
+          std::find_if(layerInfos.begin(),
+                       layerInfos.end(),
+                       [](const linglong::api::types::v1::UabLayer &layer) {
+                           return layer.info.kind == "app" || layer.info.kind == "runtime";
+                       });
         if (appLayerInfo == layerInfos.end()) {
             taskRef.updateState(linglong::api::types::v1::State::Failed,
                                 "the contents of this uab file are invalid");
@@ -984,7 +987,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
             auto &ref = *refRet;
 
             std::vector<std::filesystem::path> overlays;
-            bool isAppLayer = layer.info.kind == "app";
+            bool isAppLayer = layer.info.kind == "app" || layer.info.kind == "runtime";
             if (isAppLayer) { // it's meaningless for app layer that declare minified is true
                 subRef = std::nullopt;
                 auto ret = uab->extractSignData();
@@ -997,7 +1000,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
                     overlays.emplace_back(std::move(ret).value());
                 }
 
-                if (onlyApp) {
+                if (onlyApp && layer.info.kind != "runtime") {
                     pullDependency(taskRef, info, "binary");
                 }
             } else {
@@ -2098,6 +2101,165 @@ PackageManager::Prune(std::vector<api::types::v1::PackageInfoV2> &removed) noexc
         return LINGLONG_ERR(pruneRet);
     }
     return LINGLONG_OK;
+}
+
+auto PackageManager::Export(const QVariantMap &parameters) noexcept -> QVariantMap
+{
+    auto paras = utils::serialize::fromQVariantMap<api::types::v1::PackageManager1ExportParameters>(
+      parameters);
+    if (!paras) {
+        return toDBusReply(paras);
+    }
+    auto params = *paras;
+
+    auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(params.appID));
+    if (!fuzzyRef) {
+        return toDBusReply(fuzzyRef);
+    }
+
+    auto ref =
+      this->repo.clearReference(*fuzzyRef, { .forceRemote = false, .fallbackToRemote = false });
+    if (!ref) {
+        return toDBusReply(ref);
+    }
+
+    QDir destDir = QDir(LINGLONG_ROOT).filePath("export");
+    destDir.mkpath(".");
+
+    if (!destDir.exists()) {
+        return toDBusReply(-1, QString("mkpath %1: failed").arg(destDir.absolutePath()));
+    }
+
+    auto uabFile = QString{ "%1_%2_%3_%4.uab" }.arg(ref->id,
+                                                    ref->arch.toString(),
+                                                    ref->version.toString(),
+                                                    ref->channel);
+
+    std::filesystem::path exportPath = (destDir.absolutePath() + "/" + uabFile).toStdString();
+
+    auto taskID = QUuid::createUuid().toString();
+    auto installer =
+      [this, taskID, ref = std::move(ref).value(), params, exportPath](PackageTask &taskRef) {
+          if (isTaskDone(taskRef.subState())) {
+              return;
+          }
+
+          this->ExportUab(taskRef, ref, exportPath, params);
+      };
+    auto taskRet = tasks.addNewTask({ taskID }, std::move(installer), connection());
+    if (!taskRet) {
+        return toDBusReply(taskRet);
+    }
+
+    auto &taskRef = taskRet->get();
+    Q_EMIT TaskAdded(QDBusObjectPath{ taskRef.taskObjectPath() });
+    taskRef.updateState(linglong::api::types::v1::State::Queued, "queued to export uab");
+    return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageExportTaskResult{
+      .exportPath = exportPath,
+      .taskObjectPath = taskRef.taskObjectPath().toStdString(),
+      .code = 0,
+      .message = (ref->toString() + " is now exporting").toStdString(),
+    });
+}
+
+void PackageManager::ExportUab(
+  PackageTask &taskContext,
+  const package::Reference &ref,
+  const std::filesystem::path &exportPath,
+  const api::types::v1::PackageManager1ExportParameters &params) noexcept
+{
+    LINGLONG_TRACE("command export uab");
+
+    auto layer = this->repo.getLayerDir(ref);
+    if (!layer) {
+        taskContext.reportError(std::move(layer).error());
+        return;
+    }
+
+    linglong::package::UABPackager packager{ QDir(exportPath.parent_path().c_str()),
+                                             layer->info()->kind != "app" };
+
+    if (params.iconPath) {
+        if (auto ret = packager.setIcon(QFileInfo{ QString::fromStdString(params.iconPath.value()) });
+            !ret) {
+            taskContext.updateState(linglong::api::types::v1::State::Failed,
+                                    "icon not exist in " + ret.error().message());
+            return;
+        }
+    }
+
+    if (layer->info()->kind != "app") {
+        packager.appendLayer(*layer);
+        if (auto ret = packager.pack(exportPath.filename().c_str(), true); !ret) {
+            taskContext.updateState(linglong::api::types::v1::State::Failed,
+                                    "export uab failed: " + ret.error().message());
+            return;
+        }
+        taskContext.updateState(linglong::api::types::v1::State::Succeed, "export uab success");
+        return;
+    }
+
+    auto baseFuzzyRef = package::FuzzyReference::parse(QString::fromStdString(layer->info()->base));
+    if (!baseFuzzyRef) {
+        taskContext.updateState(linglong::api::types::v1::State::Failed,
+                                baseFuzzyRef.error().message());
+        return;
+    }
+
+    auto baseRef =
+      this->repo.clearReference(*baseFuzzyRef,
+                                linglong::repo::clearReferenceOption{ .fallbackToRemote = false });
+    if (!baseRef) {
+        taskContext.updateState(linglong::api::types::v1::State::Failed, baseRef.error().message());
+        return;
+    }
+
+    auto baseDir = this->repo.getLayerDir(*baseRef);
+    if (!baseDir) {
+        taskContext.updateState(linglong::api::types::v1::State::Failed, baseDir.error().message());
+        return;
+    }
+    packager.appendLayer(*baseDir);
+
+    if (layer->info()->runtime) {
+        auto runtimeFuzzyRef =
+          package::FuzzyReference::parse(QString::fromStdString(layer->info()->runtime.value()));
+        if (!runtimeFuzzyRef) {
+            taskContext.updateState(linglong::api::types::v1::State::Failed,
+                                    runtimeFuzzyRef.error().message());
+            return;
+        }
+
+        auto runtimeRef = this->repo.clearReference(
+          *runtimeFuzzyRef,
+          linglong::repo::clearReferenceOption{ .fallbackToRemote = false });
+        if (!runtimeRef) {
+            taskContext.updateState(linglong::api::types::v1::State::Failed,
+                                    runtimeRef.error().message());
+            return;
+        }
+
+        auto runtimeDir = this->repo.getLayerDir(*runtimeRef);
+        if (!runtimeDir) {
+            taskContext.updateState(linglong::api::types::v1::State::Failed,
+                                    runtimeDir.error().message());
+            return;
+        }
+        packager.appendLayer(*runtimeDir);
+    }
+    if (params.loader) {
+        packager.setLoader(QString::fromStdString(params.loader.value()));
+    }
+
+    packager.appendLayer(*layer);
+
+    if (auto ret = packager.pack(exportPath.filename().c_str(), true); !ret) {
+        taskContext.updateState(linglong::api::types::v1::State::Failed,
+                                "export uab failed: " + ret.error().message());
+        return;
+    }
+
+    taskContext.updateState(linglong::api::types::v1::State::Succeed, "export uab success");
 }
 
 void PackageManager::ReplyInteraction([[maybe_unused]] QDBusObjectPath object_path,

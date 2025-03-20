@@ -739,6 +739,14 @@ $defs:
       taskObjectPath:
         type: string
         description: task dbus object path of package manager install
+  PackageManager1PackageExportTaskResult:
+    description: package manager export uab task result
+    allOf:
+      - $ref: '#/$defs/PackageManager1PackageTaskResult'
+    properties:
+      exportPath:
+        type: string
+        description: export uab path of installed app
   PackageManager1UninstallParameters:
     type: object
     description: package manager uninstall parameters
@@ -802,6 +810,21 @@ $defs:
         type: array
         items:
           $ref: '#/$defs/PackageInfoV2'
+  PackageManager1ExportParameters:
+    type: object
+    description: Export path
+    properties:
+      appID:
+        type: string
+        description: export's app id
+      iconPath:
+        type: string
+        description: Path to icon
+      loader:
+        type: string
+        description: Path to loader
+    required:
+      - appID
   PackageManager1GetRepoInfoResult:
     type: object
     description: result of package manager get repo info

@@ -49,6 +49,9 @@ struct CliOptions
     std::optional<pid_t> pid;
     std::string signal;
     bool verbose;
+    std::optional<std::string> loader;
+    std::optional<std::string> iconPath;
+    std::optional<std::string> filePath;
 };
 
 class Cli : public QObject
@@ -84,6 +87,7 @@ public:
     int prune(CLI::App *subcommand);
     int inspect(CLI::App *subcommand);
     int dir(CLI::App *subcommand);
+    int exportUab(CLI::App *subcommand);
 
     void cancelCurrentTask();
 

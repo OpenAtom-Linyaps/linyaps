@@ -12,8 +12,8 @@
 #include "linglong/utils/configure.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/file.h"
-#include "linglong/utils/serialize/json.h"
 
+#include <qdir.h>
 #include <qglobal.h>
 #include <yaml-cpp/yaml.h>
 
@@ -24,6 +24,7 @@
 #include <fstream>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -124,7 +125,7 @@ utils::error::Result<void> elfHelper::addNewSection(const QByteArray &sectionNam
     return LINGLONG_OK;
 }
 
-UABPackager::UABPackager(const QDir &workingDir)
+UABPackager::UABPackager(const QDir &workingDir, bool isExportBase)
 {
     auto buildDir = QDir{ workingDir.absoluteFilePath(".uabBuild") };
     if (!buildDir.mkpath(".")) {
@@ -133,6 +134,7 @@ UABPackager::UABPackager(const QDir &workingDir)
 
     this->buildDir = std::move(buildDir);
     this->workDir = workingDir.absolutePath().toStdString();
+    this->isExportBase = isExportBase;
 
     meta.version = api::types::v1::Version::The1;
     meta.uuid = QUuid::createUuid().toString(QUuid::WithoutBraces).toStdString();
@@ -400,9 +402,7 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
         }
 
         if (!files.empty()) {
-            struct stat moduleFilesDirStat
-            {
-            }, filesStat{};
+            struct stat moduleFilesDirStat{}, filesStat{};
 
             if (stat(moduleFilesDir.c_str(), &moduleFilesDirStat) == -1) {
                 return LINGLONG_ERR("couldn't stat module files directory: "
@@ -478,6 +478,22 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
                                         % " " % QString::fromStdString(ec.message()));
                 }
             }
+        }
+
+        // 更正base 的base字段
+        if (info.kind == "base" || info.id == "org.deepin.base"
+            || info.id == "org.deepin.foundation") {
+            auto arch = Architecture::currentCPUArchitecture();
+            if (!arch) {
+                return LINGLONG_ERR(arch);
+            }
+            info.base = QString("%1:%2/%3/%4")
+                          .arg(info.channel.c_str())
+                          .arg(info.id.c_str())
+                          .arg(info.version.c_str())
+                          .arg(arch->toString())
+                          .toStdString();
+            info.runtime = std::nullopt;
         }
 
         auto &layerInfoRef = this->meta.layers.emplace_back(
@@ -696,6 +712,147 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
     return LINGLONG_OK;
 }
 
+utils::error::Result<void> UABPackager::prepareBundleBaseOrRuntime(const QDir &bundleDir) noexcept
+{
+    LINGLONG_TRACE("prepare base for make a bundle")
+
+    this->meta.onlyApp = true;
+    auto layersDir = QDir{ bundleDir.absoluteFilePath("layers") };
+    if (!layersDir.mkpath(".")) {
+        return LINGLONG_ERR(
+          QString{ "couldn't create directory %1" }.arg(layersDir.absolutePath()));
+    }
+
+    QString appID;
+    QFile srcLoader;
+    for (const auto &layer : this->layers) {
+        auto refInfo = layer.info();
+        if (!refInfo) {
+            return LINGLONG_ERR(QString{ "failed export layer %1" }.arg(layer.absolutePath()),
+                                refInfo.error());
+        }
+
+        auto info = *refInfo;
+        auto moduleDir =
+          QDir{ layersDir.absoluteFilePath(QString::fromStdString(info.id) % QDir::separator()
+                                           % QString::fromStdString(info.packageInfoV2Module)) };
+        if (!moduleDir.mkpath(".")) {
+            return LINGLONG_ERR(
+              QString{ "couldn't create directory %1" }.arg(moduleDir.absolutePath()));
+        }
+
+        std::error_code ec;
+        for (const auto &info :
+             layer.entryInfoList(QDir::Files | QDir::Dirs | QDir::Hidden | QDir::NoDotAndDotDot)) {
+            std::filesystem::copy(info.absoluteFilePath().toStdString(),
+                                  moduleDir.absoluteFilePath(info.fileName()).toStdString(),
+                                  std::filesystem::copy_options::copy_symlinks
+                                    | std::filesystem::copy_options::recursive,
+                                  ec);
+            if (ec) {
+                return LINGLONG_ERR("couldn't copy from " % info.absoluteFilePath() % " to "
+                                    % moduleDir.absoluteFilePath(info.fileName()) % " "
+                                    % QString::fromStdString(ec.message()));
+            }
+        }
+
+        auto &layerInfoRef = this->meta.layers.emplace_back(
+          linglong::api::types::v1::UabLayer{ .info = info, .minified = false });
+
+        // update metainfo
+        if (!this->loader.isEmpty()) {
+            srcLoader.setFileName(this->loader);
+        }
+        appID = QString::fromStdString(info.id);
+        auto appInfoPath = moduleDir.absoluteFilePath("info.json");
+        std::vector<std::string> command = {
+            "echo",
+            "This app is not supported to run. Please install it."
+        };
+        info.command = command;
+
+        if (info.kind == "base" || info.id == "org.deepin.base"
+            || info.id == "org.deepin.foundation") {
+            auto arch = package::Architecture::currentCPUArchitecture();
+            if (!arch) {
+                return LINGLONG_ERR("unsupported architecture");
+            }
+            auto base = QString("%1:%2/%3/%4")
+                          .arg(info.channel.c_str())
+                          .arg(info.id.c_str())
+                          .arg(info.version.c_str())
+                          .arg(arch->toString());
+            info.base = base.toStdString();
+        }
+        info.runtime = std::nullopt;
+        std::ofstream stream;
+        stream.open(appInfoPath.toStdString(), std::ios_base::out | std::ios_base::trunc);
+        if (!stream.is_open()) {
+            return LINGLONG_ERR("couldn't open file: " + appInfoPath);
+        }
+        stream << nlohmann::json(info).dump();
+        layerInfoRef.info = info;
+    }
+    if (srcLoader.fileName().isEmpty()) {
+        auto uabDataDir = QDir{ LINGLONG_UAB_DATA_LOCATION };
+        srcLoader.setFileName(uabDataDir.absoluteFilePath("uab-loader"));
+        if (!srcLoader.exists()) {
+            return LINGLONG_ERR("the loader of uab application doesn't exist.");
+        }
+    }
+
+    auto destLoader = QFile{ bundleDir.absoluteFilePath("loader") };
+    if (!srcLoader.copy(destLoader.fileName())) {
+        return LINGLONG_ERR(QString{ "couldn't copy loader %1 to %2: %3" }
+                              .arg(srcLoader.fileName())
+                              .arg(destLoader.fileName())
+                              .arg(srcLoader.errorString()));
+    }
+
+    if (!destLoader.setPermissions(destLoader.permissions() | QFile::ExeOwner | QFile::ExeGroup
+                                   | QFile::ExeOther)) {
+        return LINGLONG_ERR(destLoader);
+    }
+
+    if (!this->loader.isEmpty()) {
+        return LINGLONG_OK;
+    }
+
+    auto extraDir = QDir{ bundleDir.absoluteFilePath("extra") };
+    if (!extraDir.mkpath(".")) {
+        return LINGLONG_ERR(QString{ "couldn't create directory %1" }.arg(extraDir.absolutePath()));
+    }
+
+    auto arch = Architecture::currentCPUArchitecture();
+    auto ldConfsDir = QDir{ extraDir.absoluteFilePath("ld.conf.d") };
+    if (!ldConfsDir.mkpath(".")) {
+        return LINGLONG_ERR(
+          QString{ "couldn't create directory %1" }.arg(ldConfsDir.absolutePath()));
+    }
+
+    QString filePath = ldConfsDir.absoluteFilePath("zz_deepin-linglong-app.ld.so.conf");
+    QFile file(filePath);
+
+    if (!file.open(QIODevice::WriteOnly)) {
+        return LINGLONG_ERR(file);
+    }
+    file.close();
+
+    auto boxBin = QStandardPaths::findExecutable("ll-box");
+    if (boxBin.isEmpty()) {
+        return LINGLONG_ERR("couldn't find ll-box");
+    }
+    auto srcBoxBin = QFile{ boxBin };
+    auto destBoxBin = extraDir.filePath("ll-box");
+    if (!srcBoxBin.copy(destBoxBin)) {
+        return LINGLONG_ERR(QString{ "couldn't copy %1 to %2: %3" }
+                              .arg(boxBin)
+                              .arg(destBoxBin)
+                              .arg(srcBoxBin.errorString()));
+    }
+    return LINGLONG_OK;
+}
+
 utils::error::Result<void> UABPackager::packBundle(bool onlyApp) noexcept
 {
     LINGLONG_TRACE("add layers to uab")
@@ -708,7 +865,12 @@ utils::error::Result<void> UABPackager::packBundle(bool onlyApp) noexcept
 
     auto bundleFile = this->uab.parentDir().absoluteFilePath("bundle.ef");
     if (!QFileInfo::exists(bundleFile)) {
-        auto ret = prepareBundle(bundleDir, onlyApp);
+        utils::error::Result<void> ret;
+        if (!this->isExportBase) {
+            ret = prepareBundle(bundleDir, onlyApp);
+        } else {
+            ret = prepareBundleBaseOrRuntime(bundleDir);
+        }
         if (!ret) {
             return ret;
         }

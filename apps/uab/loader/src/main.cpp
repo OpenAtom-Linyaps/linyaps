@@ -305,6 +305,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
     // This 'bundle' means uab bundle instead of OCI bundle
     const auto &bundleDir = std::filesystem::read_symlink("/proc/self/exe").parent_path();
     const auto &layersDir = bundleDir / "layers";
+    bool onlyApp = ::getenv("LINGLONG_UAB_LOADER_ONLY_APP") != nullptr;
 
     std::error_code ec;
     if (!std::filesystem::exists(layersDir, ec) || ec) {
@@ -333,8 +334,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
                 std::cerr << "couldn't get meta info, exit" << std::endl;
                 return -1;
             }
-
-            if (info->kind == "app") {
+            // onlyApp or only pack base or runtime
+            if (info->kind == "app" || (onlyApp && info->kind == "runtime")) {
                 appInfo = std::move(info);
                 foundApp = true;
                 break;
@@ -467,7 +468,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) // NOLINT
     auto annotations = config.annotations.value_or(std::map<std::string, std::string>{});
     annotations["org.deepin.linglong.appID"] = appID;
 
-    bool onlyApp = ::getenv("LINGLONG_UAB_LOADER_ONLY_APP") != nullptr;
     std::string baseLayerFilesDir;
     if (!onlyApp) {
         baseLayerFilesDir = compatibleFilePath(baseID);

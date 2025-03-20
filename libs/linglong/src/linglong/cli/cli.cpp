@@ -687,9 +687,11 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
         execArgs.prepend("exec");
 
         // 在原始args前面添加bash --login -c，这样可以使用/etc/profile配置的环境变量
-        commands = std::vector<std::string>{
-            "/bin/bash", "--login", "-e", "-c", execArgs.join(' ').toStdString(), "; wait"
-        };
+        commands = std::vector<std::string>{ "/bin/bash",
+                                             "--login",
+                                             "-e",
+                                             "-c",
+                                             execArgs.join(' ').toStdString() };
 
         auto opt = ocppi::runtime::ExecOption{
             .uid = uid,

@@ -230,7 +230,6 @@ pfl_add_libraries(
   oci-cfg-generators
   APPS
   ll-dialog
-  ll-box
   ll-builder
   ll-cli
   ll-package-manager

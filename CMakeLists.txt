@@ -9,7 +9,7 @@ project(
   VERSION 1.6.1
   DESCRIPTION "a container based application package manager for Linux desktop"
   HOMEPAGE_URL "https://github.com/OpenAtom-Linyaps/linyaps"
-  LANGUAGES CXX)
+  LANGUAGES CXX C)
 
 set(LINGLONG_VERSION
     ""
@@ -229,6 +229,7 @@ pfl_add_libraries(
   linglong
   oci-cfg-generators
   APPS
+  dumb-init
   ll-dialog
   ll-builder
   ll-cli

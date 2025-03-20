@@ -62,7 +62,7 @@ private:
 class UABPackager
 {
 public:
-    explicit UABPackager(const QDir &workingDir);
+    explicit UABPackager(const QDir &workingDir, bool isExportBase = false);
     ~UABPackager();
 
     UABPackager(UABPackager &&) = delete;
@@ -82,6 +82,8 @@ private:
     [[nodiscard]] utils::error::Result<void> packBundle(bool onlyApp) noexcept;
     [[nodiscard]] utils::error::Result<void> prepareBundle(const QDir &bundleDir,
                                                            bool onlyApp) noexcept;
+    // 打包Base或者Runtime
+    utils::error::Result<void> prepareBundleBaseOrRuntime(const QDir &bundleDir) noexcept;
     [[nodiscard]] utils::error::Result<void> packMetaInfo() noexcept;
     [[nodiscard]] utils::error::Result<std::pair<bool, std::unordered_set<std::string>>>
     filteringFiles(const LayerDir &layer) const noexcept;
@@ -98,5 +100,6 @@ private:
     std::filesystem::path workDir;
     QString loader;
     QString compressor = "lz4";
+    bool isExportBase;
 };
 } // namespace linglong::package

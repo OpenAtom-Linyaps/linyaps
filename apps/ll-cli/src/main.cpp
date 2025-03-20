@@ -119,10 +119,11 @@ int lockCheck() noexcept
         ::close(fd);
     });
 
-    struct flock lock_info
-    {
-        .l_type = F_RDLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0, .l_pid = 0
-    };
+    struct flock lock_info{ .l_type = F_RDLCK,
+                            .l_whence = SEEK_SET,
+                            .l_start = 0,
+                            .l_len = 0,
+                            .l_pid = 0 };
 
     if (::fcntl(fd, F_GETLK, &lock_info) == -1) {
         qCritical() << "failed to get lock" << lock;
@@ -189,20 +190,26 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         ""
     };
 
-    CliOptions options{ .filePaths = {},
-                        .fileUrls = {},
-                        .workDir = "",
-                        .appid = "",
-                        .instance = "",
-                        .module = "",
-                        .type = "app",
-                        .repoOptions = {},
-                        .commands = {},
-                        .showDevel = false,
-                        .showAll = false,
-                        .showUpgradeList = false,
-                        .forceOpt = false,
-                        .confirmOpt = false };
+    CliOptions options{
+        .filePaths = {},
+        .fileUrls = {},
+        .workDir = "",
+        .appid = "",
+        .instance = "",
+        .module = "",
+        .type = "app",
+        .repoOptions = {},
+        .commands = {},
+        .showDevel = false,
+        .showAll = false,
+        .showUpgradeList = false,
+        .forceOpt = false,
+        .confirmOpt = false,
+        .loader = "",
+        .full = false,
+        .iconPath = "",
+        .filePath = "",
+    };
 
     // groups
     auto *CliBuildInGroup = _("Managing installed applications and runtimes");
@@ -556,6 +563,23 @@ ll-cli list --upgradable
       ->required()
       ->check(validatorString);
 
+    // add sub command export
+    auto *cliExport =
+      commandParser.add_subcommand("export", _("Exported to the uab for installed app"));
+    cliExport->add_option("APP", options.appid, _("Specify the installed app"))
+      ->required()
+      ->check(validatorString);
+    cliExport->add_option("--loader", options.loader, _("Specify the loader for the uab"))
+      ->type_name("FILE")
+      ->check(CLI::ExistingFile);
+    cliExport->add_option("--icon", options.iconPath, _("Specify the icon path for the uab"))
+      ->type_name("FILE")
+      ->check(CLI::ExistingFile);
+    cliExport->add_option("--file", options.filePath, _("Specify the file path for the uab"))
+      ->type_name("FILE")
+      ->check(validatorString);
+    cliExport->add_flag("--full", options.full, _("Export the full app"));
+
     auto res = transformOldExec(argc, argv);
     CLI11_PARSE(commandParser, std::move(res));
 
@@ -741,7 +765,8 @@ ll-cli list --upgradable
               { "prune", &Cli::prune },
               { "inspect", &Cli::inspect },
               { "repo", &Cli::repo },
-              { "dir", &Cli::dir }
+              { "dir", &Cli::dir },
+              { "export", &Cli::exportUab },
           };
 
           if (QObject::connect(QCoreApplication::instance(),

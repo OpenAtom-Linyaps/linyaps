@@ -194,3 +194,9 @@ path = "misc/share/linglong/builder/uab/blacklist"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "AppImageCommunity"
 SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "apps/dumb-init/src/*"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Yelp Inc."
+SPDX-License-Identifier = "MIT"

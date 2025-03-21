@@ -9,6 +9,7 @@
 #include "linglong/api/dbus/v1/dbus_peer.h"
 #include "linglong/api/types/v1/InteractionReply.hpp"
 #include "linglong/api/types/v1/InteractionRequest.hpp"
+#include "linglong/api/types/v1/PackageManager1ExportParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1InstallParameters.hpp"
 #include "linglong/api/types/v1/PackageManager1JobInfo.hpp"
 #include "linglong/api/types/v1/PackageManager1Package.hpp"
@@ -35,6 +36,9 @@
 #include "ocppi/types/ContainerListItem.hpp"
 
 #include <nlohmann/json.hpp>
+#include <qbuffer.h>
+#include <qcoreapplication.h>
+#include <qfileinfo.h>
 
 #include <QCryptographicHash>
 #include <QEventLoop>
@@ -2214,7 +2218,7 @@ utils::error::Result<void> Cli::runningAsRoot(const QList<QString> &args)
     LINGLONG_TRACE("run with pkexec");
 
     const char *pkexecBin = "pkexec";
-    QStringList argv{ pkexecBin };
+    QStringList argv{ pkexecBin, "--keep-cwd" };
     argv.append(args);
     qDebug() << "run with pkexec:" << argv;
     std::vector<char *> targetArgv;
@@ -2654,6 +2658,156 @@ int Cli::dir([[maybe_unused]] CLI::App *subcommand)
 
     std::cout << layerItem->commit << std::endl;
     return 0;
+}
+
+int Cli::exportUab([[maybe_unused]] CLI::App *subcommand)
+{
+    LINGLONG_TRACE("command export uab");
+
+    auto fuzzyRef = package::FuzzyReference::parse(QString::fromStdString(options.appid));
+    if (!fuzzyRef) {
+        this->printer.printErr(fuzzyRef.error());
+        return -1;
+    }
+
+    auto ref = this->repository.clearReference(*fuzzyRef,
+                                               { .forceRemote = false, .fallbackToRemote = false });
+    if (!ref) {
+        this->printer.printErr(ref.error());
+        return -1;
+    }
+
+    auto uabFileName = QString{ "%1_%2_%3_%4.uab" }.arg(ref->id,
+                                                        ref->arch.toString(),
+                                                        ref->version.toString(),
+                                                        ref->channel);
+
+    QFileInfo uabFileInfo(uabFileName);
+    if (!options.filePath.empty()) {
+        uabFileInfo.setFile(QDir::currentPath() + "/" + options.filePath.c_str());
+    }
+
+    auto params = api::types::v1::PackageManager1ExportParameters{ .appID = options.appid,
+                                                                   .full = options.full,
+                                                                   .iconPath = options.iconPath,
+                                                                   .loader = options.loader };
+
+    QDBusReply<QString> authReply = this->authorization();
+    if (!authReply.isValid() && authReply.error().type() == QDBusError::AccessDenied) {
+        auto path = uabFileInfo.absoluteFilePath();
+        std::cout << "Access denied. Attempting to write to " << path.toStdString() << std::endl;
+
+        auto args = QCoreApplication::instance()->arguments();
+
+        // 检查是否传递了 --file 选项
+        bool hasFileOption = false;
+        for (int i = 0; i < args.size(); ++i) {
+            if (args[i].startsWith("--file")) {
+                hasFileOption = true;
+                if (i + 1 < args.size() && !args[i + 1].startsWith("--")) {
+                    args[i + 1] = path;
+                } else {
+                    args[i] = "--file=" + path;
+                }
+                break;
+            }
+        }
+
+        if (!hasFileOption) {
+            args.append("--file");
+            args.append(path);
+        }
+        auto ret = this->runningAsRoot();
+        if (!ret) {
+            this->printer.printErr(ret.error());
+        }
+        return -1;
+    }
+
+    auto conn = this->pkgMan.connection();
+    auto con = conn.connect(this->pkgMan.service(),
+                            this->pkgMan.path(),
+                            this->pkgMan.interface(),
+                            "RequestInteraction",
+                            this,
+                            SLOT(interaction(QDBusObjectPath, int, QVariantMap)));
+    if (!con) {
+        qCritical() << "Failed to connect signal: RequestInteraction. state may be incorrect.";
+        return -1;
+    }
+
+    auto pendingReply =
+      this->pkgMan.Export(utils::serialize::toQVariantMap(params));
+    pendingReply.waitForFinished();
+
+    if (pendingReply.isError()) {
+        if (pendingReply.error().type() == QDBusError::AccessDenied) {
+            this->notifier->notify(
+              api::types::v1::InteractionRequest{ .summary = permissionNotifyMsg });
+            return -1;
+        }
+
+        this->printer.printErr(
+          LINGLONG_ERRV(pendingReply.error().message(), pendingReply.error().type()));
+        return -1;
+    }
+
+    auto result =
+      utils::serialize::fromQVariantMap<api::types::v1::PackageManager1PackageExportTaskResult>(
+        pendingReply.value());
+    if (!result) {
+        qCritical() << "bug detected:" << result.error().message();
+        std::abort();
+    }
+
+    if (result->code != 0) {
+        this->printer.printReply({ .code = result->code, .message = result->message });
+        return -1;
+    }
+
+    this->taskObjectPath = QString::fromStdString(result->taskObjectPath.value());
+    task = new api::dbus::v1::Task1(pkgMan.service(), taskObjectPath, conn);
+    this->lastState = linglong::api::types::v1::State::Queued;
+
+    if (!conn.connect(pkgMan.service(),
+                      taskObjectPath,
+                      "org.freedesktop.DBus.Properties",
+                      "PropertiesChanged",
+                      this,
+                      SLOT(onTaskPropertiesChanged(QString, QVariantMap, QStringList)))) {
+        qCritical() << "connect PropertiesChanged failed:" << conn.lastError();
+        Q_ASSERT(false);
+        return -1;
+    }
+
+    QEventLoop loop;
+    if (QObject::connect(this, &Cli::taskDone, &loop, &QEventLoop::quit) == nullptr) {
+        qCritical() << "connect taskDone failed";
+        return -1;
+    }
+    loop.exec();
+    
+    if (!result->exportPath) {
+        qCritical() << "exportPath is empty";
+        return -1;
+    }
+    
+    std::filesystem::path exportPath = result->exportPath.value();
+    std::filesystem::path destPath = uabFileInfo.absoluteFilePath().toStdString().c_str();
+    try {
+        std::filesystem::rename(exportPath, destPath);
+    } catch (const std::filesystem::filesystem_error &e) {
+        std::cerr << "Failed to move file: " << e.what() << std::endl;
+    }
+    
+    // 移除export 目录
+    try {
+        std::filesystem::remove_all(exportPath.parent_path());
+    } catch (const std::filesystem::filesystem_error &e) {
+        std::cerr << "Failed to remove export directory: " << e.what() << std::endl;
+    }
+
+    return this->lastState == linglong::api::types::v1::State::Succeed ? 0 : -1;
 }
 
 } // namespace linglong::cli

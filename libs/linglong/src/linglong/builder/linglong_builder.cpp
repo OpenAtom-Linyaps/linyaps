@@ -1135,7 +1135,6 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
             "share/metainfo",      // Copy appdata/metainfo files
             "share/plugins",       // Copy plugins conf，The configuration files provided by some
                                    // applications maybe used by the host dde-file-manager.
-            "share/systemd",       // copy systemd service files
             "share/deepin-manual", // copy deepin-manual files
             "share/dsg" // Copy dsg conf，the configuration file is used for self-developed
                         // applications.
@@ -1179,11 +1178,15 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
         if (binaryFiles.exists("lib/systemd/user")) {
             // 配置放到share/systemd/user或lib/systemd/user对systemd来说基本等价
             // 但玲珑仅将share导出到XDG_DATA_DIR，所以要将lib/systemd/user的内容复制到share/systemd/user
-            if (!binaryEntries.mkpath("share/systemd/user")) {
-                qWarning() << "mkpath files/share/systemd/user: failed";
+            // 2025-03-24 修订
+            // XDG_DATA_DIR的优先级高于/usr/lib/systemd，如果应用意外导出了系统服务文件，例如dbus.service，会导致系统功能异常
+            // 现在安装应用时会通过generator脚本将lib/systemd/user下的文件复制到优先级最低的generator.late目录
+            // 因此构建时将files/lib/systemd/user的内容复制到entries/lib/systemd/user
+            if (!binaryEntries.mkpath("lib/systemd/user")) {
+                qWarning() << "mkpath files/lib/systemd/user: failed";
             }
             auto ret = copyDir(binaryFiles.filePath("lib/systemd/user"),
-                               binaryEntries.absoluteFilePath("share/systemd/user"));
+                               binaryEntries.absoluteFilePath("lib/systemd/user"));
             if (!ret.has_value()) {
                 return LINGLONG_ERR(ret);
             }

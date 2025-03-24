@@ -265,15 +265,9 @@ auto fixMount(ocppi::runtime::config::types::Config config) noexcept
             continue;
         }
 
-        for (auto it = tmpfsPath.cbegin(); it != tmpfsPath.cend(); ++it) {
-            if (existsPath == *it) {
+        for (const auto &it : tmpfsPath) {
+            if (existsPath == it) {
                 newTmp = false;
-                continue;
-            }
-
-            if (auto common = commonParent(existsPath, *it); common > originalRootPath) {
-                newTmp = false;
-                tmpfsPath.replace(it - tmpfsPath.cbegin(), common);
                 break;
             }
         }

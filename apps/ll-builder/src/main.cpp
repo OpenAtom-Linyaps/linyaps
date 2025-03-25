@@ -490,6 +490,12 @@ You can report bugs to the linyaps team under this project: https://github.com/O
         return -1;
     }
 
+    // set GIO_USE_VFS to local, avoid glib start thread
+    char *oldEnv = getenv("GIO_USE_VFS");
+    if (-1 == setenv("GIO_USE_VFS", "local", 1)) {
+        qWarning() << "failed to GIO_USE_VFS to local" << errno;
+    }
+
     auto result = linglong::repo::tryMigrate(builderCfg->repo, *repoCfg);
     if (result == linglong::repo::MigrateResult::Failed) {
         auto pathTemp = (std::filesystem::path{ builderCfg->repo }.parent_path()
@@ -525,12 +531,6 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     if (!repoRoot.exists() && !repoRoot.mkpath(".")) {
         qCritical() << "failed to create the repository of builder.";
         return -1;
-    }
-
-    // set GIO_USE_VFS to local, avoid glib start thread
-    char *oldEnv = getenv("GIO_USE_VFS");
-    if (-1 == setenv("GIO_USE_VFS", "local", 1)) {
-        qWarning() << "failed to GIO_USE_VFS to local" << errno;
     }
 
     linglong::repo::OSTreeRepo repo(repoRoot, *repoCfg, clientFactory);

@@ -2095,14 +2095,19 @@ void Builder::mergeOutput(const QList<QDir> &src, const QDir &dest, const QStrin
                           QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System,
                           QDirIterator::Subdirectories);
         while (iter.hasNext()) {
+            QString path = iter.next();
+
+            if (iter.fileName().startsWith(".wh."))
+                continue;
+
             struct stat st;
-            if (-1 == lstat(iter.next().toStdString().c_str(), &st))
+            if (-1 == lstat(path.toStdString().c_str(), &st))
                 continue;
 
             if (st.st_size == 0 && st.st_rdev == 0 && st.st_mode == S_IFCHR)
                 continue;
 
-            QString relativePath = dir.relativeFilePath(iter.filePath());
+            QString relativePath = dir.relativeFilePath(path);
 
             if (dest.exists(relativePath))
                 continue;
@@ -2116,7 +2121,7 @@ void Builder::mergeOutput(const QList<QDir> &src, const QDir &dest, const QStrin
             if (!found)
                 continue;
 
-            copys[relativePath] = iter.filePath();
+            copys[relativePath] = std::move(path);
         }
     }
 

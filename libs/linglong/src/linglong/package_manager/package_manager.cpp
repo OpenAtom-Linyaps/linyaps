@@ -19,6 +19,7 @@
 #include "linglong/utils/command/env.h"
 #include "linglong/utils/configure.h"
 #include "linglong/utils/finally/finally.h"
+#include "linglong/utils/hooks.h"
 #include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/transaction.h"
@@ -725,6 +726,11 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
                           << "after install" << packageRef.toString() << ":"
                           << ret.error().message();
           }
+
+          ret = executePostInstallHooks(*newRef);
+          if (!ret) {
+              qWarning() << "failed to set security attributes for app.";
+          }
       };
 
     auto refSpec =
@@ -751,6 +757,18 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
 QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
                                            const api::types::v1::CommonOptions &options) noexcept
 {
+    std::unique_ptr<utils::InstallHookManager> installHookManager =
+      std::make_unique<utils::InstallHookManager>();
+    auto ret = installHookManager->parseInstallHooks();
+    if (!ret) {
+        return toDBusReply(ret);
+    }
+
+    ret = installHookManager->executeInstallHooks(fd.fileDescriptor());
+    if (!ret) {
+        return toDBusReply(-1, "uab package signature verification failed.");
+    }
+
     auto uabRet = package::UABFile::loadFromFile(
       QString("/proc/%1/fd/%2").arg(getpid()).arg(fd.fileDescriptor()));
     if (!uabRet) {
@@ -1362,6 +1380,11 @@ void PackageManager::Install(PackageTask &taskContext,
                                     "Failed to generate some cache.\n" + result.error().message());
             return;
         }
+    }
+
+    auto ret = executePostInstallHooks(newRef);
+    if (!ret) {
+        qWarning() << "failed to set security attributes.";
     }
 
     transaction.commit();
@@ -2385,6 +2408,35 @@ auto PackageManager::GenerateCache(const QString &reference) noexcept -> QVarian
       .message = "",
     });
     return result;
+}
+
+utils::error::Result<void>
+PackageManager::executePostInstallHooks(const package::Reference &ref) noexcept
+{
+    LINGLONG_TRACE("execute post install hooks for: " + ref.toString());
+
+    auto layerDir = this->repo.getLayerDir(ref);
+    if (!layerDir) {
+        return LINGLONG_ERR(layerDir);
+    }
+
+    std::unique_ptr<utils::InstallHookManager> installHookManager =
+      std::make_unique<utils::InstallHookManager>();
+    auto ret = installHookManager->parseInstallHooks();
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    auto appPath = layerDir->absolutePath();
+    auto appSignPath = layerDir->filesDirPath() + "/share/deepin-elf-verify/.elfsign";
+
+    ret =
+      installHookManager->executePostInstallHooks(appPath.toStdString(), appSignPath.toStdString());
+    if (!ret) {
+        return LINGLONG_ERR(ret);
+    }
+
+    return LINGLONG_OK;
 }
 
 } // namespace linglong::service

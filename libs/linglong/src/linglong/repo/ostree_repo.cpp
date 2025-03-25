@@ -26,7 +26,7 @@
 
 #include <gio/gio.h>
 #include <glib.h>
-#include <nlohmann/json_fwd.hpp>
+#include <nlohmann/json.hpp>
 #include <ostree-repo.h>
 
 #include <QCryptographicHash>

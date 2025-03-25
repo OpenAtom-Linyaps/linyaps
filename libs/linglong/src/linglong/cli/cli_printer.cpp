@@ -9,6 +9,7 @@
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/State.hpp"
 #include "linglong/package/reference.h"
+#include "linglong/utils/error/details/error_impl.h"
 #include "linglong/utils/gettext.h"
 
 #include <QJsonArray>
@@ -32,8 +33,12 @@ std::wstring subwstr(std::wstring wstr, int width)
 
 void CLIPrinter::printErr(const utils::error::Error &err)
 {
-    std::cout << "Error: CODE=" << err.code() << std::endl
-              << err.message().toStdString() << std::endl;
+    if (linglong::utils::error::isVerboseMessageEnabled()) {
+        std::cout << "Error: CODE=" << err.code() << std::endl
+                  << err.message().toStdString() << std::endl;
+    } else {
+        std::cout << err.message().toStdString() << std::endl;
+    }
 }
 
 void CLIPrinter::printPruneResult(const std::vector<api::types::v1::PackageInfoV2> &list)
@@ -160,8 +165,12 @@ void CLIPrinter::printContainers(const std::vector<api::types::v1::CliContainer>
 
 void CLIPrinter::printReply(const api::types::v1::CommonResult &reply)
 {
-    std::cout << "code: " << reply.code << std::endl;
-    std::cout << "message:" << std::endl << reply.message << std::endl;
+    if (linglong::utils::error::isVerboseMessageEnabled()) {
+        std::cout << "code: " << reply.code << std::endl;
+        std::cout << "message:" << std::endl << reply.message << std::endl;
+    } else {
+        std::cout << reply.message << std::endl;
+    }
 }
 
 void CLIPrinter::printRepoConfig(const api::types::v1::RepoConfigV2 &repoInfo)

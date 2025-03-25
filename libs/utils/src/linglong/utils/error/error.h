@@ -25,6 +25,10 @@
 
 namespace linglong::utils::error {
 
+#define TRACE_MSG(trace_msg, msg) ((trace_msg).isEmpty() ? (msg) : (trace_msg) + ": " + (msg))
+
+bool isVerboseMessageEnabled();
+
 class Error
 {
 public:
@@ -43,12 +47,13 @@ public:
     Err(const char *file, int line, const QString &trace_msg, const QString &msg, int code = -1)
       -> Error
     {
-        return Error(std::make_unique<details::ErrorImpl>(file,
-                                                          line,
-                                                          "default",
-                                                          code,
-                                                          trace_msg + ": " + msg,
-                                                          nullptr));
+        return Error(
+          std::make_unique<linglong::utils::error::details::ErrorImpl>(file,
+                                                                       line,
+                                                                       "default",
+                                                                       code,
+                                                                       TRACE_MSG(trace_msg, msg),
+                                                                       nullptr));
     }
 
     static auto Err(const char *file,
@@ -57,32 +62,32 @@ public:
                     const QString &msg,
                     const QFile &qfile) -> Error
     {
-        return Error(
-          std::make_unique<details::ErrorImpl>(file,
-                                               line,
-                                               "default",
-                                               qfile.error(),
-                                               trace_msg + ": " + msg + ": " + qfile.errorString(),
-                                               nullptr));
+        return Error(std::make_unique<linglong::utils::error::details::ErrorImpl>(
+          file,
+          line,
+          "default",
+          qfile.error(),
+          TRACE_MSG(trace_msg, msg + ": " + qfile.errorString()),
+          nullptr));
     }
 
     static auto Err(const char *file, int line, const QString &trace_msg, const QFile &qfile)
       -> Error
     {
-        return Error(std::make_unique<details::ErrorImpl>(file,
-                                                          line,
-                                                          "default",
-                                                          qfile.error(),
-                                                          trace_msg + ": " + qfile.fileName() + ": "
-                                                            + qfile.errorString(),
-                                                          nullptr));
+        return Error(std::make_unique<linglong::utils::error::details::ErrorImpl>(
+          file,
+          line,
+          "default",
+          qfile.error(),
+          TRACE_MSG(trace_msg, qfile.fileName() + ": " + qfile.errorString()),
+          nullptr));
     }
 
     static auto
     Err(const char *file, int line, const QString &trace_msg, std::exception_ptr err, int code = -1)
       -> Error
     {
-        QString what = trace_msg + ": ";
+        QString what = TRACE_MSG(trace_msg, "");
         try {
             std::rethrow_exception(std::move(err));
         } catch (const std::exception &e) {
@@ -91,8 +96,12 @@ public:
             what += "unknown";
         }
 
-        return Error(
-          std::make_unique<details::ErrorImpl>(file, line, "default", code, what, nullptr));
+        return Error(std::make_unique<linglong::utils::error::details::ErrorImpl>(file,
+                                                                                  line,
+                                                                                  "default",
+                                                                                  code,
+                                                                                  what,
+                                                                                  nullptr));
     }
 
     static auto Err(const char *file,
@@ -102,7 +111,7 @@ public:
                     std::exception_ptr err,
                     int code = -1) -> Error
     {
-        QString what = trace_msg + ": " + msg + ": ";
+        QString what = TRACE_MSG(trace_msg, msg + ": ");
         try {
             std::rethrow_exception(std::move(err));
         } catch (const std::exception &e) {
@@ -111,19 +120,24 @@ public:
             what += "unknown";
         }
 
-        return Error(
-          std::make_unique<details::ErrorImpl>(file, line, "default", code, what, nullptr));
+        return Error(std::make_unique<linglong::utils::error::details::ErrorImpl>(file,
+                                                                                  line,
+                                                                                  "default",
+                                                                                  code,
+                                                                                  what,
+                                                                                  nullptr));
     }
 
     static auto Err(const char *file, int line, const QString &trace_msg, const std::exception &e)
       -> Error
     {
-        return Error(std::make_unique<details::ErrorImpl>(file,
-                                                          line,
-                                                          "default",
-                                                          -1,
-                                                          trace_msg + ": " + e.what(),
-                                                          nullptr));
+        return Error(std::make_unique<linglong::utils::error::details::ErrorImpl>(
+          file,
+          line,
+          "default",
+          -1,
+          TRACE_MSG(trace_msg, e.what()),
+          nullptr));
     }
 
     static auto Err(const char *file,
@@ -133,10 +147,14 @@ public:
                     const std::exception &e,
                     int code = -1) -> Error
     {
-        QString what = trace_msg + ": " + msg + ": " + e.what();
+        QString what = TRACE_MSG(trace_msg, msg + ": " + e.what());
 
-        return Error(
-          std::make_unique<details::ErrorImpl>(file, line, "default", code, what, nullptr));
+        return Error(std::make_unique<linglong::utils::error::details::ErrorImpl>(file,
+                                                                                  line,
+                                                                                  "default",
+                                                                                  code,
+                                                                                  what,
+                                                                                  nullptr));
     }
 
     static auto Err(const char *file,
@@ -189,12 +207,13 @@ public:
     {
         Q_ASSERT(!cause.has_value());
 
-        return Error(std::make_unique<details::ErrorImpl>(file,
-                                                          line,
-                                                          "default",
-                                                          cause.error().code(),
-                                                          trace_msg + ": " + msg,
-                                                          std::move(cause.error().pImpl)));
+        return Error(std::make_unique<linglong::utils::error::details::ErrorImpl>(
+          file,
+          line,
+          "default",
+          cause.error().code(),
+          TRACE_MSG(trace_msg, msg),
+          std::move(cause.error().pImpl)));
     }
 
     template<typename Value>
@@ -205,35 +224,38 @@ public:
     {
         Q_ASSERT(!cause.has_value());
 
-        return Error(std::make_unique<details::ErrorImpl>(file,
-                                                          line,
-                                                          "default",
-                                                          cause.error().code(),
-                                                          trace_msg,
-                                                          std::move(cause.error().pImpl)));
+        return Error(std::make_unique<linglong::utils::error::details::ErrorImpl>(
+          file,
+          line,
+          "default",
+          cause.error().code(),
+          trace_msg,
+          std::move(cause.error().pImpl)));
     }
 
     static auto
     Err(const char *file, int line, const QString &trace_msg, const QString &msg, Error &&cause)
       -> Error
     {
-        return Error(std::make_unique<details::ErrorImpl>(file,
-                                                          line,
-                                                          "default",
-                                                          cause.code(),
-                                                          trace_msg + ": " + msg,
-                                                          std::move(cause.pImpl)));
+        return Error(
+          std::make_unique<linglong::utils::error::details::ErrorImpl>(file,
+                                                                       line,
+                                                                       "default",
+                                                                       cause.code(),
+                                                                       TRACE_MSG(trace_msg, msg),
+                                                                       std::move(cause.pImpl)));
     }
 
     static auto Err(const char *file, int line, const QString &trace_msg, Error &&cause) -> Error
     {
 
-        return Error(std::make_unique<details::ErrorImpl>(file,
-                                                          line,
-                                                          "default",
-                                                          cause.code(),
-                                                          trace_msg,
-                                                          std::move(cause.pImpl)));
+        return Error(
+          std::make_unique<linglong::utils::error::details::ErrorImpl>(file,
+                                                                       line,
+                                                                       "default",
+                                                                       cause.code(),
+                                                                       trace_msg,
+                                                                       std::move(cause.pImpl)));
     }
 
     template<typename Value>
@@ -261,12 +283,12 @@ public:
     }
 
 private:
-    explicit Error(std::unique_ptr<details::ErrorImpl> pImpl)
+    explicit Error(std::unique_ptr<linglong::utils::error::details::ErrorImpl> pImpl)
         : pImpl(std::move(pImpl))
     {
     }
 
-    std::unique_ptr<details::ErrorImpl> pImpl;
+    std::unique_ptr<linglong::utils::error::details::ErrorImpl> pImpl;
 };
 
 template<typename Value>
@@ -275,7 +297,14 @@ using Result = tl::expected<Value, Error>;
 } // namespace linglong::utils::error
 
 // Use this macro to define trace message at the begining of function
-#define LINGLONG_TRACE(message) QString linglong_trace_message = message;
+#define LINGLONG_TRACE(message)                                  \
+    QString linglong_trace_message = [](auto msg) -> QString {   \
+        if (linglong::utils::error::isVerboseMessageEnabled()) { \
+            return QString(msg);                                 \
+        } else {                                                 \
+            return QString{};                                    \
+        }                                                        \
+    }(message);
 
 // Use this macro to create new error or wrap an existing error
 // LINGLONG_ERR(message, code =-1)

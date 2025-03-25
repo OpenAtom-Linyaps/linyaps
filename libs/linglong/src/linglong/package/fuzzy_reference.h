@@ -31,6 +31,7 @@ public:
     std::optional<Architecture> arch;
 
     QString toString() const noexcept;
+    QString toErrString() const noexcept;
 
 private:
     explicit FuzzyReference(const std::optional<QString> &channel,

@@ -20,6 +20,7 @@
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/file.h"
 #include "linglong/utils/finally/finally.h"
+#include "linglong/utils/gettext.h"
 #include "linglong/utils/gkeyfile_wrapper.h"
 #include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/transaction.h"
@@ -45,15 +46,11 @@
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
-#include <future>
-#include <iostream>
 #include <map>
 #include <memory>
 #include <string>
 #include <system_error>
 #include <thread>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -482,7 +479,7 @@ utils::error::Result<package::Reference> clearReferenceLocal(const linglong::rep
     query.id = fuzzy.id.toStdString();
     const auto availablePackage = cache.queryLayerItem(query);
     if (availablePackage.empty()) {
-        return LINGLONG_ERR("package not found:" % fuzzy.toString());
+        return LINGLONG_ERR(QString{_("package not found: %1")}.arg(fuzzy.toErrString()));
     }
 
     utils::error::Result<linglong::api::types::v1::RepositoryCacheLayersItem> foundRef =
@@ -1316,8 +1313,8 @@ OSTreeRepo::clearReference(const package::FuzzyReference &fuzzy,
     }
 
     if (!reference) {
-        auto msg = QString("not found ref:%1 module:%2 from remote repo")
-                     .arg(fuzzy.toString())
+        auto msg = QString(_("Cannot find %1/%2 from remote repo"))
+                     .arg(fuzzy.toErrString())
                      .arg(module.c_str());
         return LINGLONG_ERR(msg);
     }
@@ -1480,7 +1477,7 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
     }
 
     if (response == nullptr) {
-        return LINGLONG_ERR("failed to send request to remote server");
+        return LINGLONG_ERR(_("Failed to get response from remote server (network error or server unavailable)"));
     }
     auto freeResponse = utils::finally::finally([&response] {
         fuzzy_search_app_200_response_free(response);
@@ -1489,7 +1486,7 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
     if (response->code != 200) {
         QString msg = (response->msg != nullptr)
           ? response->msg
-          : QString{ "cannot send request to remote server: %1" }.arg(response->code);
+          : QString{ _("Remote server returned error code: %1 (network error or server unavailable)") }.arg(response->code);
         return LINGLONG_ERR(msg);
     }
 

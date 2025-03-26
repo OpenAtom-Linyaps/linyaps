@@ -7,6 +7,7 @@
 #pragma once
 
 #include "linglong/api/types/v1/OciConfigurationPatch.hpp"
+#include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/package/reference.h"
 #include "linglong/runtime/container.h"
 #include "linglong/utils/error/error.h"
@@ -76,6 +77,10 @@ class ContainerBuilder : public QObject
     Q_OBJECT
 public:
     explicit ContainerBuilder(ocppi::cli::CLI &cli);
+
+    auto
+    create(const linglong::generator::ContainerCfgBuilder &cfgBuilder,
+           const QString &containerID) noexcept -> utils::error::Result<std::unique_ptr<Container>>;
 
     auto create(const ContainerOptions &opts) noexcept
       -> utils::error::Result<std::unique_ptr<Container>>;

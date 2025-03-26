@@ -1014,6 +1014,10 @@
         "id": {
           "type": "string",
           "description": "id of package manager search"
+        },
+        "repo": {
+          "type": "string",
+          "description": "search packages in specified repo."
         }
       }
     },

@@ -37,6 +37,7 @@
 #include <nlohmann/json.hpp>
 
 #include <QCryptographicHash>
+#include <QDBusReply>
 #include <QEventLoop>
 #include <QFileInfo>
 
@@ -1334,6 +1335,7 @@ int Cli::search([[maybe_unused]] CLI::App *subcommand)
 
     auto params = api::types::v1::PackageManager1SearchParameters{
         .id = options.appid,
+        .repo = options.searchRepo,
     };
 
     auto pendingReply = this->pkgMan.Search(utils::serialize::toQVariantMap(params));
@@ -1365,7 +1367,6 @@ int Cli::search([[maybe_unused]] CLI::App *subcommand)
     }
 
     QEventLoop loop;
-
     connect(&this->pkgMan,
             &api::dbus::v1::PackageManager::SearchFinished,
             [&](const QString &jobID, const QVariantMap &data) {
@@ -1643,21 +1644,16 @@ Cli::listUpgradable(const std::string &type)
     }
 
     if (!type.empty()) {
-        filterPackageInfosFromType(*pkgs, options.type);
+        filterPackageInfosFromType(*pkgs, type);
     }
 
     std::vector<api::types::v1::UpgradeListResult> upgradeList;
-    auto fullFuzzyRef = package::FuzzyReference::parse(QString::fromStdString("."));
-    if (!fullFuzzyRef) {
-        return LINGLONG_ERR(fullFuzzyRef);
-    }
 
-    auto remotePkgs = this->repository.listRemote(*fullFuzzyRef);
-    if (!remotePkgs) {
-        return LINGLONG_ERR(remotePkgs);
-    }
+    // 获取仓库配置并排序
+    auto cfg = this->repository.getConfig();
+    linglong::repo::sortRepoByPriority(cfg);
 
-    utils::error::Result<package::Reference> reference = LINGLONG_ERR("reference not exists");
+    // 遍历本地包列表
     for (const auto &pkg : *pkgs) {
         auto fuzzy = package::FuzzyReference::parse(QString::fromStdString(pkg.id));
         if (!fuzzy) {
@@ -1665,75 +1661,85 @@ Cli::listUpgradable(const std::string &type)
             continue;
         }
 
-        reference = LINGLONG_ERR("reference not exists");
-
-        for (auto record : *remotePkgs) {
-            auto recordStr = nlohmann::json(record).dump();
-            if (fuzzy->channel && fuzzy->channel->toStdString() != record.channel) {
-                continue;
-            }
-            if (fuzzy->id.toStdString() != record.id) {
-                continue;
-            }
-            auto version = package::Version::parse(QString::fromStdString(record.version));
-            if (!version) {
-                qWarning() << "Ignore invalid package record" << recordStr.c_str()
-                           << version.error();
-                continue;
-            }
-            if (record.arch.empty()) {
-                qWarning() << "Ignore invalid package record";
-                continue;
+        for (const auto &repo : cfg.repos) {
+            auto remotePkgs = this->repository.listRemote(*fuzzy, repo);
+            if (!remotePkgs) {
+                return LINGLONG_ERR(remotePkgs);
             }
 
-            auto arch = package::Architecture::parse(record.arch[0]);
-            if (!arch) {
-                qWarning() << "Ignore invalid package record" << recordStr.c_str() << arch.error();
-                continue;
+            utils::error::Result<package::Reference> reference =
+              LINGLONG_ERR("reference not exists");
+
+            for (const auto &record : *remotePkgs) {
+                auto recordStr = nlohmann::json(record).dump();
+
+                if (fuzzy->channel && fuzzy->channel->toStdString() != record.channel) {
+                    continue;
+                }
+
+                if (fuzzy->id.toStdString() != record.id) {
+                    continue;
+                }
+
+                auto version = package::Version::parse(QString::fromStdString(record.version));
+                if (!version) {
+                    qWarning() << "Ignore invalid package record" << recordStr.c_str()
+                               << version.error();
+                    continue;
+                }
+
+                if (record.arch.empty()) {
+                    qWarning() << "Ignore invalid package record";
+                    continue;
+                }
+
+                auto arch = package::Architecture::parse(record.arch[0]);
+                if (!arch) {
+                    qWarning() << "Ignore invalid package record" << recordStr.c_str()
+                               << arch.error();
+                    continue;
+                }
+
+                auto channel = QString::fromStdString(record.channel);
+                auto currentRef = package::Reference::create(channel, fuzzy->id, *version, *arch);
+                if (!currentRef) {
+                    qWarning() << "Ignore invalid package record" << recordStr.c_str()
+                               << currentRef.error();
+                    continue;
+                }
+
+                if (!reference || reference->version < currentRef->version) {
+                    reference = *currentRef;
+                }
             }
-            auto channel = QString::fromStdString(record.channel);
-            auto currentRef = package::Reference::create(channel, fuzzy->id, *version, *arch);
-            if (!currentRef) {
-                qWarning() << "Ignore invalid package record" << recordStr.c_str()
-                           << currentRef.error();
-                continue;
-            }
+
             if (!reference) {
-                reference = *currentRef;
+                qDebug() << "Failed to find the package: "
+                         << QString::fromStdString(fuzzy->id.toStdString())
+                         << ", maybe it is local package, skip it.";
                 continue;
             }
 
-            if (reference->version >= currentRef->version) {
+            auto oldVersion = package::Version::parse(QString::fromStdString(pkg.version));
+            if (!oldVersion) {
+                std::cerr << "failed to parse old version:"
+                          << oldVersion.error().message().toStdString() << std::endl;
                 continue;
             }
 
-            reference = *currentRef;
-        }
+            if (reference->version <= *oldVersion) {
+                qDebug() << "The local package" << QString::fromStdString(pkg.id)
+                         << "version is higher than the remote repository version, skip it.";
+                continue;
+            }
 
-        if (!reference) {
-            qDebug() << "Failed to find the package: "
-                     << QString::fromStdString(fuzzy->id.toStdString())
-                     << ", maybe it is local package, skip it.";
-            continue;
+            upgradeList.emplace_back(api::types::v1::UpgradeListResult{
+              .id = pkg.id,
+              .newVersion = reference->version.toString().toStdString(),
+              .oldVersion = oldVersion->toString().toStdString() });
         }
-
-        auto oldVersion = package::Version::parse(QString::fromStdString(pkg.version));
-        if (!oldVersion) {
-            std::cerr << "failed to parse old version:"
-                      << oldVersion.error().message().toStdString() << std::endl;
-        }
-
-        if (reference->version <= *oldVersion) {
-            qDebug() << "The local package" << QString::fromStdString(pkg.id)
-                     << "version is higher than the remote repository version, skip it.";
-            continue;
-        }
-
-        upgradeList.emplace_back(api::types::v1::UpgradeListResult{
-          .id = pkg.id,
-          .newVersion = reference->version.toString().toStdString(),
-          .oldVersion = oldVersion->toString().toStdString() });
     }
+
     return upgradeList;
 }
 

@@ -23,5 +23,6 @@ int64_t getRepoMaxPriority(const api::types::v1::RepoConfigV2 &cfg) noexcept;
 api::types::v1::Repo getDefaultRepo(const api::types::v1::RepoConfigV2 &cfg) noexcept;
 
 api::types::v1::RepoConfigV2 convertToV2(const api::types::v1::RepoConfig &cfg) noexcept;
+void sortRepoByPriority(api::types::v1::RepoConfigV2 &cfg) noexcept;
 
 } // namespace linglong::repo

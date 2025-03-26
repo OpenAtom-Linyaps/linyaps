@@ -27,7 +27,6 @@
 #include <QtGlobal>
 
 #include <algorithm>
-#include <cstddef>
 #include <functional>
 #include <memory>
 #include <thread>

@@ -170,7 +170,7 @@ void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
 
         if (data->caught_error) {
             data->taskContext->reportError(
-              LINGLONG_ERRV("Caught error during pulling data, waiting for outstanding task"));
+              LINGLONG_ERRV(_("Caught error during pulling data, waiting for outstanding task")));
             return;
         }
 
@@ -205,7 +205,7 @@ void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
             data->last_was_metadata = true;
         }
 
-        data->status = "Downloading metadata";
+        data->status = _("Downloading metadata");
         new_progress = 0;
         if (data->progress > 0) {
             new_progress = (data->fetched * 5.0) / data->requested;
@@ -213,7 +213,7 @@ void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
     } else {
         if (data->total_delta_parts > 0) {
             total = data->total_delta_part_size - data->fetched_delta_part_size;
-            data->status = "Downloading delta part";
+            data->status = _("Downloading delta part");
         } else {
             auto average_object_size{ 1.0 };
             if (data->fetched > 0) {
@@ -221,7 +221,7 @@ void progress_changed(OstreeAsyncProgress *progress, gpointer user_data)
             }
 
             total = average_object_size * data->requested;
-            data->status = "Downloading files";
+            data->status = _("Downloading files");
         }
     }
     Q_EMIT data->taskContext->PartChanged(data->fetched, data->requested);

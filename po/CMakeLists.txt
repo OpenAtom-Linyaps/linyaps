@@ -47,9 +47,11 @@ if(GETTEXT_FOUND)
   get_real_target_name(TARGET linglong::ll-cli)
   get_real_target_name(BUILD_TARGET linglong::ll-builder)
   get_real_target_name(DIALOG linglong::ll-dialog)
+  get_real_target_name(PACKAGE_MANAGER linglong::ll-package-manager)
   add_dependencies("${TARGET}" process-pot-file)
   add_dependencies("${BUILD_TARGET}" process-pot-file)
   add_dependencies("${DIALOG}" process-pot-file)
+  add_dependencies("${PACKAGE_MANAGER}" process-pot-file)
 
   # Custom targets for updating translation files NOTE: these targets will
   # update files in the source tree

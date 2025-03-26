@@ -19,6 +19,7 @@
 #include "linglong/utils/command/env.h"
 #include "linglong/utils/configure.h"
 #include "linglong/utils/finally/finally.h"
+#include "linglong/utils/gettext.h"
 #include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/serialize/json.h"
 #include "linglong/utils/transaction.h"
@@ -522,7 +523,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
     if (packageInfo.packageInfoV2Module != "binary"
         && packageInfo.packageInfoV2Module != "runtime") {
         return toDBusReply(-1,
-                           "The current version does not support the develop module installation.");
+                           _("The current version does not support the develop module installation."));
     }
 
     auto architectureRet = package::Architecture::parse(packageInfo.arch[0]);
@@ -537,8 +538,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
 
     if (*architectureRet != *currentArch) {
         return toDBusReply(-1,
-                           "app arch:" + architectureRet->toString()
-                             + " not match host architecture");
+                           QString{_("app arch: %1 not match host architecture")}.arg(architectureRet->toString()));
     }
 
     auto versionRet = package::Version::parse(QString::fromStdString(packageInfo.version));
@@ -578,7 +578,7 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
 
     if (!additionalMessage.localRef.empty()) {
         if (packageRef.version == localRef->version) {
-            return toDBusReply(-1, localRef->toString() + " is already installed");
+            return toDBusReply(-1, QString{"%1 is already installed"}.arg(localRef->toString()));
         }
 
         if (packageRef.version > localRef->version) {
@@ -589,8 +589,8 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
                                .arg(packageRef.version.toString())
                                .arg(architectureRet->toString())
                                .arg(packageInfo.packageInfoV2Module.c_str());
-            auto err = QString("The latest version has been installed. If you want to "
-                               "replace it, try using 'll-cli install %1 --force'")
+            auto err = QString(_("The latest version has been installed. If you want to "
+                               "replace it, try using 'll-cli install %1 --force'"))
                          .arg(layerName);
             return toDBusReply(-1, err);
         }
@@ -633,9 +633,9 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
               return;
           }
 
-          taskRef.updateState(linglong::api::types::v1::State::Processing, "installing layer");
+          taskRef.updateState(linglong::api::types::v1::State::Processing, _("installing layer"));
           taskRef.updateSubState(linglong::api::types::v1::SubState::PreAction,
-                                 "preparing environment");
+                                 _("preparing environment"));
 
           package::LayerPackager layerPackager;
           auto layerDir = layerPackager.unpack(*layerFile);
@@ -674,12 +674,12 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
           // develop module only need to import
           if (module != "binary" && module != "runtime") {
               taskRef.updateState(linglong::api::types::v1::State::Succeed,
-                                  "install layer successfully");
+                                  _("install layer successfully"));
               return;
           }
 
           taskRef.updateState(linglong::api::types::v1::State::Succeed,
-                              "install layer successfully");
+                              _("install layer successfully"));
 
           if (info->kind != "app") {
               return;
@@ -740,11 +740,11 @@ QVariantMap PackageManager::installFromLayer(const QDBusUnixFileDescriptor &fd,
 
     auto &taskRef = taskRet->get();
     Q_EMIT TaskAdded(QDBusObjectPath{ taskRef.taskObjectPath() });
-    taskRef.updateState(linglong::api::types::v1::State::Queued, "queued to install from layer");
+    taskRef.updateState(linglong::api::types::v1::State::Queued, _("queued to install from layer"));
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
       .taskObjectPath = taskRef.taskObjectPath().toStdString(),
       .code = 0,
-      .message = (realFile + " is now installing").toStdString(),
+      .message = QString{_("%1 is now installing")}.arg(realFile).toStdString(),
     });
 }
 
@@ -763,7 +763,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
         return toDBusReply(verifyRet);
     }
     if (!*verifyRet) {
-        return toDBusReply(-1, "couldn't pass uab verification");
+        return toDBusReply(-1, _("couldn't pass uab verification"));
     }
 
     auto realFile = uab->symLinkTarget();
@@ -781,7 +781,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
                                        return layer.info.kind == "app";
                                    });
     if (appLayerIt == layerInfos.cend()) {
-        return toDBusReply(-1, "couldn't find application layer in this uab");
+        return toDBusReply(-1, _("couldn't find application layer in this uab"));
     }
 
     auto appLayer = *appLayerIt;
@@ -802,8 +802,8 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
 
     if (*architectureRet != *currentArch) {
         return toDBusReply(-1,
-                           "app arch:" + architectureRet->toString()
-                             + " not match host architecture");
+                           QString{ _("app arch: %1 not match host architecture") }.arg(
+                             architectureRet->toString()));
     }
 
     auto versionRet = package::Version::parse(QString::fromStdString(app->info.version));
@@ -841,7 +841,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
 
     if (!additionalMessage.localRef.empty()) {
         if (appRef.version == localAppRef->version) {
-            return toDBusReply(-1, localAppRef->toString() + " is already installed");
+            return toDBusReply(-1, QString{_("%1 is already installed")}.arg(localAppRef->toString()));
         }
 
         if (appRef.version > localAppRef->version) {
@@ -851,9 +851,10 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
                                                             architectureRet->toString(),
                                                             appRef.version.toString(),
                                                             app->info.packageInfoV2Module.c_str());
-            auto err = QString("The latest version has been installed. If you want to "
-                               "replace it, try using 'll-cli install %1 --force'")
-                         .arg(uabName);
+            auto err =
+              QString(_("The latest version has been installed. If you want to replace it, "
+                        "try using 'll-cli install %1 --force'"))
+                .arg(uabName);
             return toDBusReply(-1, err);
         }
     }
@@ -897,9 +898,9 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
             return;
         }
 
-        taskRef.updateState(linglong::api::types::v1::State::Processing, "installing uab");
+        taskRef.updateState(linglong::api::types::v1::State::Processing, _("installing uab"));
         taskRef.updateSubState(linglong::api::types::v1::SubState::PreAction,
-                               "prepare environment");
+                               _("prepare environment"));
 
         auto mountPoint = uab->mountUab();
         if (!mountPoint) {
@@ -915,7 +916,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
         const auto &uabLayersDirInfo = QFileInfo{ uabLayersDir.c_str() };
         if (!uabLayersDirInfo.exists() || !uabLayersDirInfo.isDir()) {
             taskRef.updateState(linglong::api::types::v1::State::Failed,
-                                "the contents of this uab file are invalid");
+                                _("the contents of this uab file are invalid"));
             return;
         }
 
@@ -926,7 +927,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
                                          });
         if (appLayerInfo == layerInfos.end()) {
             taskRef.updateState(linglong::api::types::v1::State::Failed,
-                                "the contents of this uab file are invalid");
+                                _("the contents of this uab file are invalid"));
             return;
         }
 
@@ -942,14 +943,12 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
             if (!std::filesystem::exists(layerDirPath, ec)) {
                 if (ec) {
                     taskRef.updateState(linglong::api::types::v1::State::Failed,
-                                        QString{ "get status of" } % layerDirPath.c_str()
-                                          % "failed:" % ec.message().c_str());
+                                        QString{ _("get status of %1 failed: %2") }.arg(layerDirPath.c_str()).arg(ec.message().c_str()));
                     return;
                 }
 
                 taskRef.updateState(linglong::api::types::v1::State::Failed,
-                                    QString{ "layer directory " } % layerDirPath.c_str()
-                                      % " doesn't exist");
+                                    QString{ _("layer directory %1 doesn't exist") }.arg(layerDirPath.c_str()));
                 return;
             }
 
@@ -1051,7 +1050,7 @@ QVariantMap PackageManager::installFromUAB(const QDBusUnixFileDescriptor &fd,
             auto result = this->tryGenerateCache(newAppRef);
             if (!result) {
                 taskRef.updateState(linglong::api::types::v1::State::Failed,
-                                    "Failed to generate some cache.\n" + result.error().message());
+                                    _("Failed to generate some cache.\n") + result.error().message());
                 return;
             }
         }
@@ -1138,7 +1137,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     if (curModule != "binary") {
         // 安装module必须是和binary相同的版本，所以不允许指定
         if (fuzzyRef->version) {
-            return toDBusReply(-1, "cannot specify a version when installing a module");
+            return toDBusReply(-1, _("cannot specify a version when installing a module"));
         }
 
         auto ret = tasks.addNewTask(
@@ -1147,12 +1146,12 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
               auto localRef = this->repo.clearReference(fuzzyRef, { .fallbackToRemote = false });
               if (!localRef.has_value()) {
                   taskRef.updateState(api::types::v1::State::Failed,
-                                      "to install the module, one must first install the app");
+                                      _("to install the module, one must first install the app"));
                   return;
               }
               auto modules = this->repo.getModuleList(*localRef);
               if (std::find(modules.begin(), modules.end(), curModule) != modules.end()) {
-                  taskRef.updateState(api::types::v1::State::Failed, "module is already installed");
+                  taskRef.updateState(api::types::v1::State::Failed, _("module is already installed"));
                   return;
               }
               this->Install(taskRef, *localRef, std::nullopt, std::vector{ curModule });
@@ -1165,7 +1164,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
         auto &taskRef = ret->get();
         Q_EMIT TaskAdded(QDBusObjectPath{ taskRef.taskObjectPath() });
         taskRef.updateState(linglong::api::types::v1::State::Queued,
-                            "queued to install from remote");
+                            _("queued to install from remote"));
         return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
           .taskObjectPath = taskRef.taskObjectPath().toStdString(),
           .code = 0,
@@ -1180,7 +1179,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
                                                .fallbackToRemote = false // NOLINT
                                              });
         if (ref) {
-            return toDBusReply(-1, ref->toString() + " is already installed.");
+            return toDBusReply(-1, QString{_("%1 is already installed.")}.arg(ref->toString()));
         }
     }
 
@@ -1214,14 +1213,14 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
     auto msgType = api::types::v1::InteractionMessageType::Install;
     if (!additionalMessage.localRef.empty()) {
         if (remoteRef.version == localRef->version) {
-            return toDBusReply(-1, localRef->toString() + " is already installed");
+            return toDBusReply(-1, QString{"%1 is already installed"}.arg(localRef->toString()));
         }
 
         if (remoteRef.version > localRef->version) {
             msgType = api::types::v1::InteractionMessageType::Upgrade;
         } else if (!paras->options.force) {
-            auto err = QString("The latest version has been installed. If you want to "
-                               "replace it, try using 'll-cli install %1/%2 --force'")
+            auto err = QString(_("The latest version has been installed. If you want to "
+                               "replace it, try using 'll-cli install %1/%2 --force'"))
                          .arg(remoteRef.id)
                          .arg(remoteRef.version.toString());
             return toDBusReply(-1, err);
@@ -1265,7 +1264,7 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
                     });
             loop.exec();
             if (interactionReply.action != "yes") {
-                taskRef.updateState(linglong::api::types::v1::State::Canceled, "canceled");
+                taskRef.updateState(linglong::api::types::v1::State::Canceled, _("canceled"));
             }
         }
 
@@ -1286,11 +1285,11 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
 
     auto &taskRef = taskRet->get();
     Q_EMIT TaskAdded(QDBusObjectPath{ taskRef.taskObjectPath() });
-    taskRef.updateState(linglong::api::types::v1::State::Queued, "queued to install from remote");
+    taskRef.updateState(linglong::api::types::v1::State::Queued, _("queued to install from remote"));
     return utils::serialize::toQVariantMap(api::types::v1::PackageManager1PackageTaskResult{
       .taskObjectPath = taskRef.taskObjectPath().toStdString(),
       .code = 0,
-      .message = (remoteRef.toString() + " is now installing").toStdString(),
+      .message = QString{_("%1 is now installing")}.arg(remoteRef.toString()).toStdString(),
     });
 }
 
@@ -1300,7 +1299,7 @@ void PackageManager::Install(PackageTask &taskContext,
                              const std::vector<std::string> &modules) noexcept
 {
     taskContext.updateState(linglong::api::types::v1::State::Processing,
-                            "Installing " + newRef.toString());
+                            QString{_("Installing %1")}.arg(newRef.toString()));
 
     utils::Transaction transaction;
     // 仅安装远程存在的modules
@@ -1312,8 +1311,7 @@ void PackageManager::Install(PackageTask &taskContext,
     if (installModules->empty()) {
         auto list = std::accumulate(modules.begin(), modules.end(), std::string(","));
         taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                "These modules do not exist remotely: "
-                                  + QString::fromStdString(list));
+                                QString{_("These modules do not exist remotely: %1")}.arg(list.c_str()));
         return;
     }
     transaction.addRollBack([this, &newRef, installModules = *installModules]() noexcept {
@@ -1329,7 +1327,7 @@ void PackageManager::Install(PackageTask &taskContext,
     }
 
     taskContext.updateSubState(linglong::api::types::v1::SubState::PostAction,
-                               "processing after install");
+                               _("processing after install"));
 
     auto mergeRet = this->repo.mergeModules();
     if (!mergeRet) {
@@ -1348,9 +1346,7 @@ void PackageManager::Install(PackageTask &taskContext,
             auto ret = this->removeAfterInstall(*oldRef, newRef, modules);
             if (!ret) {
                 taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                        "Failed to remove old reference " % oldRef->toString()
-                                          % " after install " % newRef.toString() % ": "
-                                          % ret.error().message());
+                                        QString{_("Failed to remove old reference %1 after install %2 : %3")}.arg(oldRef->toString()).arg(newRef.toString()).arg(ret.error().message()));
                 return;
             }
         } else {
@@ -1359,14 +1355,14 @@ void PackageManager::Install(PackageTask &taskContext,
         auto result = this->tryGenerateCache(newRef);
         if (!result) {
             taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                    "Failed to generate some cache.\n" + result.error().message());
+                                    _("Failed to generate some cache.\n") + result.error().message());
             return;
         }
     }
 
     transaction.commit();
     taskContext.updateState(linglong::api::types::v1::State::Succeed,
-                            "Install " + newRef.toString() + " success");
+                            QString{_("Install %1 success")}.arg(newRef.toString()));
 }
 
 void PackageManager::InstallRef(PackageTask &taskContext,
@@ -1376,7 +1372,7 @@ void PackageManager::InstallRef(PackageTask &taskContext,
     LINGLONG_TRACE("install " + ref.toString());
 
     taskContext.updateSubState(linglong::api::types::v1::SubState::PreAction,
-                               "Beginning to install");
+                               _("Beginning to install"));
     auto currentArch = package::Architecture::currentCPUArchitecture();
     if (!currentArch) {
         taskContext.updateState(linglong::api::types::v1::State::Failed,
@@ -1385,11 +1381,11 @@ void PackageManager::InstallRef(PackageTask &taskContext,
 
     if (ref.arch != *currentArch) {
         taskContext.updateState(linglong::api::types::v1::State::Failed,
-                                "app arch:" + ref.arch.toString() + " not match host architecture");
+                                QString{_("app arch: %1 not match host architecture")}.arg(ref.arch.toString()));
     }
 
     taskContext.updateSubState(linglong::api::types::v1::SubState::InstallApplication,
-                               "Installing application " + ref.toString());
+                               QString{_("Installing application %1")}.arg(ref.toString()));
 
     auto deletedList = this->repo.listLocalBy(
       linglong::repo::repoCacheQuery{ .id = ref.id.toStdString(),
@@ -1430,7 +1426,7 @@ void PackageManager::InstallRef(PackageTask &taskContext,
         if (!ret) {
             qCritical() << "Failed to mark old package as deleted" << ref.toString() << ":"
                         << ret.error().message();
-            taskContext.updateState(linglong::api::types::v1::State::Failed, "install failed");
+            taskContext.updateState(linglong::api::types::v1::State::Failed, _("install failed"));
             Q_ASSERT(false);
         }
 
@@ -1898,7 +1894,7 @@ void PackageManager::pullDependency(PackageTask &taskContext,
             }
 
             taskContext.updateSubState(linglong::api::types::v1::SubState::InstallRuntime,
-                                       "Installing runtime " + runtime->toString());
+                                       QString{_("Installing runtime %1")}.arg(runtime->toString()));
 
             this->repo.pull(taskContext, *runtime, module);
             if (isTaskDone(taskContext.subState())) {
@@ -1941,7 +1937,7 @@ void PackageManager::pullDependency(PackageTask &taskContext,
         }
 
         taskContext.updateSubState(linglong::api::types::v1::SubState::InstallBase,
-                                   "Installing base " + base->toString());
+                                   QString{_("Installing base ")}.arg(base->toString()));
         this->repo.pull(taskContext, *base, module);
         if (isTaskDone(taskContext.subState())) {
             return;

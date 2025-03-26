@@ -20,6 +20,7 @@
 #include "linglong/api/types/v1/SubState.hpp"
 #include "linglong/api/types/v1/UpgradeListResult.hpp"
 #include "linglong/cli/printer.h"
+#include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/package/layer_file.h"
 #include "linglong/repo/config.h"
 #include "linglong/runtime/container_builder.h"
@@ -458,8 +459,12 @@ Cli::Cli(Printer &printer,
 int Cli::run([[maybe_unused]] CLI::App *subcommand)
 {
     LINGLONG_TRACE("command run");
+
+    int64_t uid = getuid();
+    int64_t gid = getgid();
+
     // NOTE: ll-box is not support running as root for now.
-    if (getuid() == 0) {
+    if (uid == 0) {
         qInfo() << "'ll-cli run' currently does not support running as root.";
         return -1;
     }
@@ -517,12 +522,6 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
         return -1;
     }
     const auto &info = appLayerItem->info;
-
-    const auto &appDataDir = utils::xdg::appDataDir(info.id);
-    if (!appDataDir) {
-        this->printer.printErr(appDataDir.error());
-        return -1;
-    }
 
     auto ret = RequestDirectories(info);
     if (!ret) {
@@ -624,10 +623,11 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
                               base = baseRef->toString().toStdString(),
                               &newContainerID,
                               &runtimeLayerRef,
+                              uid,
                               this]() -> bool {
         LINGLONG_TRACE("dump info")
         std::error_code ec;
-        auto pidFile = std::filesystem::path{ "/run/linglong" } / std::to_string(::getuid())
+        auto pidFile = std::filesystem::path{ "/run/linglong" } / std::to_string(uid)
           / std::to_string(::getpid());
         if (!std::filesystem::exists(pidFile, ec)) {
             if (ec) {
@@ -692,8 +692,8 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
         };
 
         auto opt = ocppi::runtime::ExecOption{
-            .uid = ::getuid(),
-            .gid = ::getgid(),
+            .uid = uid,
+            .gid = gid,
         };
 
         auto result = this->ociCLI.exec(container.id,
@@ -723,13 +723,13 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
       };
 
     auto bindInnerMount =
-      [&applicationMounts](
-        const api::types::v1::ApplicationConfigurationPermissionsInnerBind &bind) {
+      [&applicationMounts,
+       &bundle](const api::types::v1::ApplicationConfigurationPermissionsInnerBind &bind) {
           applicationMounts.push_back(ocppi::runtime::config::types::Mount{
             .destination = bind.destination,
             .gidMappings = {},
             .options = { { "rbind" } },
-            .source = "rootfs" + bind.source,
+            .source = bundle->string() + "/rootfs" + bind.source,
             .type = "bind",
             .uidMappings = {},
           });
@@ -750,32 +750,56 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
         }
     }
 
-    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-      .destination = "/run/linglong/cache",
-      .options = nlohmann::json::array({ "rbind", "ro" }),
-      .source = *appCache,
-      .type = "bind",
-    });
+    auto *homeEnv = ::getenv("HOME");
+    auto *userNameEnv = ::getenv("USER");
+    if (homeEnv == nullptr || userNameEnv == nullptr) {
+        qCritical() << "Couldn't get HOME or USER from env.";
+        return -1;
+    }
 
+    linglong::generator::ContainerCfgBuilder cfgBuilder;
+    cfgBuilder.setAppId(curAppRef->id.toStdString())
+      .setAppPath(appLayerDir->absolutePath().toStdString())
+      .setBasePath(baseLayerDir->absolutePath().toStdString())
+      .setAppCache(*appCache)
+      .enableLDCache()
+      .setBundlePath(std::move(bundle).value())
+      .addUIdMapping(uid, uid, 1)
+      .addGIdMapping(gid, gid, 1)
+      .bindSys()
+      .bindProc()
+      .bindDev()
+      .bindDevNode()
+      .bindCgroup()
+      .bindRun()
+      .bindTmp()
+      .bindUserGroup()
+      .bindMedia()
+      .bindHostRoot()
+      .bindHostStatics()
+      .bindHome(homeEnv, userNameEnv)
+      .enablePrivateDir()
+      .mapPrivate(std::string("/home/") + userNameEnv + "/.ssh", true)
+      .mapPrivate(std::string("/home/") + userNameEnv + "/.gnupg", true)
+      .bindIPC()
+      .forwordDefaultEnv()
+      .addExtraMounts(applicationMounts)
+      .enableSelfAdjustingMount();
+    if (info.runtime) {
+        cfgBuilder.setRuntimePath(runtimeLayerDir->absolutePath().toStdString());
+    }
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
-    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-      .destination = "/var/cache/fontconfig",
-      .options = nlohmann::json::array({ "rbind", "ro" }),
-      .source = *appCache + "/fontconfig",
-      .type = "bind",
-    });
+    cfgBuilder.enableFontCache();
 #endif
-    auto container = this->containerBuilder.create({
-      .appID = std::move(curAppRef->id),
-      .containerID = QString::fromStdString(newContainerID),
-      .runtimeDir = std::move(runtimeLayerDir),
-      .baseDir = std::move(baseLayerDir).value(),
-      .appDir = std::move(appLayerDir).value(),
-      .bundle = std::move(bundle).value(),
-      .patches = {},
-      .mounts = std::move(applicationMounts),
-      .masks = {},
-    });
+
+    if (!cfgBuilder.build()) {
+        auto err = cfgBuilder.getError();
+        qCritical() << "build cfg error: " << QString::fromStdString(err.reason);
+        return -1;
+    }
+
+    auto container =
+      this->containerBuilder.create(cfgBuilder, QString::fromStdString(newContainerID));
 
     if (!container) {
         this->printer.printErr(container.error());

@@ -17,6 +17,7 @@
 #include <QUuid>
 
 #include <filesystem>
+#include <string>
 #include <unordered_set>
 
 namespace linglong::package {
@@ -85,6 +86,7 @@ private:
     [[nodiscard]] utils::error::Result<void> packMetaInfo() noexcept;
     [[nodiscard]] utils::error::Result<std::pair<bool, std::unordered_set<std::string>>>
     filteringFiles(const LayerDir &layer) const noexcept;
+    const std::string getDataLocation();
 
     elfHelper uab;
     QList<LayerDir> layers;

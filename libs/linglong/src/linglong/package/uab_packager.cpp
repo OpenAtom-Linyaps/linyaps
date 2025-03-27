@@ -22,6 +22,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <string>
 #include <unordered_set>
 #include <utility>
 
@@ -218,7 +219,7 @@ utils::error::Result<void> UABPackager::pack(const QString &uabFilename, bool on
 {
     LINGLONG_TRACE("package uab")
 
-    auto uabHeader = QDir{ LINGLONG_UAB_DATA_LOCATION }.filePath("uab-header");
+    auto uabHeader = QDir{ getDataLocation().c_str() }.absoluteFilePath("uab-header");
     if (!QFileInfo::exists(uabHeader)) {
         return LINGLONG_ERR("uab-header is missing");
     }
@@ -630,7 +631,7 @@ utils::error::Result<void> UABPackager::prepareBundle(const QDir &bundleDir, boo
 
     if (srcLoader.fileName().isEmpty()) {
         // default loader
-        auto uabDataDir = QDir{ LINGLONG_UAB_DATA_LOCATION };
+        auto uabDataDir = QDir{ getDataLocation().c_str() };
         srcLoader.setFileName(uabDataDir.absoluteFilePath("uab-loader"));
         if (!srcLoader.exists()) {
             return LINGLONG_ERR("the loader of uab application doesn't exist.");
@@ -977,6 +978,15 @@ utils::error::Result<void> UABPackager::setCompressor(const QString &compressor)
 {
     this->compressor = compressor;
     return LINGLONG_OK;
+}
+
+const std::string UABPackager::getDataLocation()
+{
+    auto env = std::getenv("LINGLONG_UAB_DATA_LOCATION");
+    if (env != nullptr) {
+        return env;
+    }
+    return LINGLONG_UAB_DATA_LOCATION;
 }
 
 } // namespace linglong::package

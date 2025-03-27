@@ -64,7 +64,7 @@ utils::error::Result<std::shared_ptr<UABFile>> UABFile::loadFromFile(const QStri
 UABFile::~UABFile()
 {
     if (!mountPoint.empty()) {
-        auto ret = utils::command::Exec("umount", { mountPoint.c_str() });
+        auto ret = utils::command::Exec("fusermount", { "-z", "-u", mountPoint.c_str() });
         if (!ret) {
             qCritical() << "failed to umount " << mountPoint.c_str()
                         << ", please umount it manually";

@@ -20,7 +20,7 @@ OverlayFS::OverlayFS(QString lowerdir, QString upperdir, QString workdir, QStrin
 
 OverlayFS::~OverlayFS()
 {
-    auto res = utils::command::Exec("umount", QStringList() << merged_);
+    auto res = utils::command::Exec("fusermount", { "-z", "-u", merged_ });
     if (!res) {
         qWarning() << QString("failed to umount %1 ").arg(merged_) << res.error();
     }
@@ -43,7 +43,7 @@ bool OverlayFS::mount()
         return false;
     }
 
-    utils::command::Exec("umount", QStringList() << merged_);
+    utils::command::Exec("fusermount", { "-z", "-u", merged_ });
 
     auto ret = utils::command::Exec("fuse-overlayfs",
             QStringList() <<
@@ -60,7 +60,7 @@ bool OverlayFS::mount()
 
 void OverlayFS::unmount(bool clean)
 {
-    auto res = utils::command::Exec("umount", QStringList() << merged_);
+    auto res = utils::command::Exec("fusermount", { "-z", "-u", merged_ });
     if (!res) {
         qWarning() << QString("failed to umount %1 ").arg(merged_) << res.error();
     }

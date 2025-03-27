@@ -6,6 +6,7 @@
 
 #include "repo_cache.h"
 
+#include "linglong/package/version.h"
 #include "linglong/utils/configure.h"
 #include "linglong/utils/packageinfo_handler.h"
 #include "linglong/utils/serialize/json.h"
@@ -272,7 +273,17 @@ RepoCache::queryLayerItem(const repoCacheQuery &query) const noexcept
     }
 
     std::sort(layers_view.begin(), layers_view.end(), [](itemRef lhs, itemRef rhs) {
-        return lhs.get().info.version > rhs.get().info.version;
+        auto lhsVersion = linglong::package::Version::parse(lhs.get().info.version.c_str());
+        if (!lhsVersion) {
+            qCritical() << "Failed to parse lhs version: " << lhs.get().info.version.c_str();
+            return false;
+        }
+        auto rhsVersion = linglong::package::Version::parse(rhs.get().info.version.c_str());
+        if (!rhsVersion) {
+            qCritical() << "Failed to parse rhs version: " << rhs.get().info.version.c_str();
+            return false;
+        }
+        return *lhsVersion > *rhsVersion;
     });
 
     return { layers_view.cbegin(), layers_view.cend() };

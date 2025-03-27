@@ -12,7 +12,7 @@
 
 namespace linglong::utils::command {
 
-error::Result<QString> Exec(QString command, QStringList args);
+linglong::utils::error::Result<QString> Exec(QString command, QStringList args);
 QStringList getUserEnv(const QStringList &filters);
 extern const QStringList envList;
 

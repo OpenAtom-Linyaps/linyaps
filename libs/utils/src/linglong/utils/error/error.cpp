@@ -5,3 +5,16 @@
  */
 
 #include "linglong/utils/error/error.h"
+
+namespace linglong::utils::error {
+
+bool isVerboseMessageEnabled()
+{
+    static bool cached = []() {
+        const char *verboseEnv = std::getenv("LINGLONG_VERBOSE_MESSAGE");
+        return (verboseEnv != nullptr && QString(verboseEnv).toLower() == "true");
+    }();
+    return cached;
+}
+
+} // namespace linglong::utils::error

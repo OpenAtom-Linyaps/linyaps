@@ -24,6 +24,7 @@
 #include "linglong/repo/config.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/utils/configure.h"
+#include "linglong/utils/error/details/error_impl.h"
 #include "linglong/utils/error/error.h"
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/gettext.h"
@@ -1384,7 +1385,7 @@ int Cli::search([[maybe_unused]] CLI::App *subcommand)
                 // Note: should check return code of PackageManager1SearchResult
                 if (result->code != 0) {
                     this->printer.printErr(
-                      LINGLONG_ERRV("\n" + QString::fromStdString(result->message), result->code));
+                      LINGLONG_ERRV(QString::fromStdString(result->message), result->code));
                     loop.exit(result->code);
                     return;
                 }
@@ -1945,7 +1946,7 @@ int Cli::info([[maybe_unused]] CLI::App *subcommand)
                                           { .forceRemote = false, .fallbackToRemote = false });
         if (!ref) {
             qDebug() << ref.error();
-            this->printer.printErr(LINGLONG_ERRV("Can not find such application."));
+            this->printer.printErr(LINGLONG_ERRV("Cannot find such application."));
             return -1;
         }
 
@@ -1999,7 +2000,7 @@ int Cli::content([[maybe_unused]] CLI::App *subcommand)
                                                { .forceRemote = false, .fallbackToRemote = false });
     if (!ref) {
         qDebug() << ref.error();
-        this->printer.printErr(LINGLONG_ERRV("Can not find such application."));
+        this->printer.printErr(LINGLONG_ERRV("Cannot find such application."));
         return -1;
     }
 
@@ -2215,6 +2216,10 @@ utils::error::Result<void> Cli::runningAsRoot(const QList<QString> &args)
 
     const char *pkexecBin = "pkexec";
     QStringList argv{ pkexecBin };
+    // 如果有设置LINGLONG_VERBOSE_MESSAGE环境变量，通过env传递过去
+    if (linglong::utils::error::isVerboseMessageEnabled()) {
+        argv << "env" << "LINGLONG_VERBOSE_MESSAGE=true";
+    }
     argv.append(args);
     qDebug() << "run with pkexec:" << argv;
     std::vector<char *> targetArgv;
@@ -2642,7 +2647,7 @@ int Cli::dir([[maybe_unused]] CLI::App *subcommand)
                                                { .forceRemote = false, .fallbackToRemote = false });
     if (!ref) {
         qDebug() << ref.error();
-        this->printer.printErr(LINGLONG_ERRV("Can not find such application."));
+        this->printer.printErr(LINGLONG_ERRV("Cannot find such application."));
         return -1;
     }
 

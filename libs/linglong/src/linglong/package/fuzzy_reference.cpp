@@ -96,4 +96,20 @@ QString FuzzyReference::toString() const noexcept
            this->arch ? this->arch->toString() : "unknown");
 }
 
+QString FuzzyReference::toErrString() const noexcept
+{
+    QString errString;
+    if (channel) {
+        errString += this->channel.value() + ":";
+    }
+    errString += this->id;
+    if (version) {
+        errString += "/" + version.value().toString();
+    }
+    if (arch) {
+        errString += "/" + arch.value().toString();
+    }
+    return errString;
+}
+
 } // namespace linglong::package

@@ -15,6 +15,10 @@
 #include <memory>
 #include <utility>
 
+namespace linglong::utils::error {
+extern bool isVerboseMessageEnabled();
+}
+
 namespace linglong::utils::error::details {
 
 class ErrorImpl
@@ -42,7 +46,12 @@ public:
             if (!msg.isEmpty()) {
                 msg += "\n";
             }
-            msg += QString("%1:%2 %4").arg(err->context.file).arg(err->context.line).arg(err->msg);
+            if (linglong::utils::error::isVerboseMessageEnabled()) {
+                msg +=
+                  QString("%1:%2 %3").arg(err->context.file).arg(err->context.line).arg(err->msg);
+            } else {
+                msg += err->msg;
+            }
         }
         return msg;
     }

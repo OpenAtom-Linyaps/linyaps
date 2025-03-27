@@ -12,3 +12,7 @@ apps/ll-builder/src/main.cpp
 # ll-dialog
 apps/ll-dialog/src/permissionDialog.cpp
 apps/ll-dialog/src/cache_dialog.cpp
+
+# ll-package-manager
+libs/linglong/src/linglong/package_manager/package_manager.cpp
+libs/linglong/src/linglong/repo/ostree_repo.cpp

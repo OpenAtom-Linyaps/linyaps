@@ -156,6 +156,8 @@ void withoutDBusDaemon(ocppi::cli::CLI &cli)
 
 auto main(int argc, char *argv[]) -> int
 {
+    bindtextdomain(PACKAGE_LOCALE_DOMAIN, PACKAGE_LOCALE_DIR);
+    textdomain(PACKAGE_LOCALE_DOMAIN);
     QCoreApplication app(argc, argv);
 
     applicationInitialize();

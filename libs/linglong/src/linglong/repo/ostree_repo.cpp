@@ -1814,6 +1814,9 @@ OSTreeRepo::exportEntries(const std::filesystem::path &rootEntriesDir,
                     << appEntriesDir.c_str() << "not exists.";
         return LINGLONG_OK;
     }
+
+    // TODO: The current whitelist logic is not very flexible.
+    // The application configuration file can be exported after configuring it in the build configuration file(linglong.yaml).
     std::vector<std::string> exportPaths = {
         "share/applications", // Copy desktop files
         "share/mime",         // Copy MIME Type files
@@ -1826,8 +1829,9 @@ OSTreeRepo::exportEntries(const std::filesystem::path &rootEntriesDir,
                          // maybe used by the host dde-file-manager.
         "share/deepin-manual",     // copy deepin-manual files
         "share/deepin-elf-verify", // for uab signature
-        "share/dsg" // Copy dsg conf，the configuration file is used for self-developed
-                    // applications.
+        "share/dsg",      // Copy dsg conf，the configuration file is used for self-developed
+                          // applications.
+        "share/templates" // Copy templates file for some applications such as wps
     };
     // 如果存在lib/systemd目录，优先导出lib/systemd，否则导出share/systemd（为兼容旧应用，新应用应该逐步将配置文件放在lib/systemd目录下）
     exists = std::filesystem::exists(appEntriesDir / "lib/systemd/user", ec);

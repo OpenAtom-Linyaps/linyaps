@@ -1123,6 +1123,8 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
     printMessage("");
 
     qDebug() << "generate entries";
+    // TODO: The current whitelist logic is not very flexible.
+    // The application configuration file can be exported after configuring it in the build configuration file(linglong.yaml).
     if (this->project.package.kind != "runtime") {
         // 仅导出名单中的目录，以避免意外文件影响系统功能
         const QStringList exportPaths = {
@@ -1136,8 +1138,10 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
             "share/plugins",       // Copy plugins conf，The configuration files provided by some
                                    // applications maybe used by the host dde-file-manager.
             "share/deepin-manual", // copy deepin-manual files
-            "share/dsg" // Copy dsg conf，the configuration file is used for self-developed
-                        // applications.
+            "share/dsg", // Copy dsg conf，the configuration file is used for self-developed
+                         // applications.
+            "share/templates" // Copy templates file for some applications such as wps
+
         };
 
         QDir binaryFiles = this->workingDir.absoluteFilePath("linglong/output/binary/files");

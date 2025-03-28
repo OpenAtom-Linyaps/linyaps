@@ -43,6 +43,8 @@ pfl_add_library(
   src/linglong/oci-cfg-generators/90_legacy.cpp
   src/linglong/oci-cfg-generators/90_legacy.h
   src/linglong/oci-cfg-generators/builtins.h.in
+  src/linglong/oci-cfg-generators/container_cfg_builder.cpp
+  src/linglong/oci-cfg-generators/container_cfg_builder.h
   src/linglong/oci-cfg-generators/generator.h
   COMPILE_FEATURES
   PUBLIC

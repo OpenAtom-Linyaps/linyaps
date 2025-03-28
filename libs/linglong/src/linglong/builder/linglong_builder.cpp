@@ -277,8 +277,13 @@ utils::error::Result<void> installModule(QStringList installRules,
     auto installFile = [&](const QFileInfo &info,
                            const QString &dstPath) -> utils::error::Result<void> {
         LINGLONG_TRACE("install file");
-        std::error_code ec;
-        if (info.isSymLink()) {
+
+        if (info.isDir()) {
+            if (!info.isSymLink()) {
+                QDir().mkpath(dstPath);
+                return LINGLONG_OK;
+            }
+            std::error_code ec;
             auto target = std::filesystem::read_symlink(info.filePath().toStdString());
             std::filesystem::create_symlink(target, dstPath.toStdString(), ec);
 
@@ -288,11 +293,6 @@ utils::error::Result<void> installModule(QStringList installRules,
                                       .arg(target.c_str())
                                       .arg(ec.message().c_str()));
             }
-            return LINGLONG_OK;
-        }
-
-        if (info.isDir()) {
-            QDir().mkpath(dstPath);
             return LINGLONG_OK;
         } else {
             QDir(dstPath.left(dstPath.lastIndexOf('/'))).mkpath(".");

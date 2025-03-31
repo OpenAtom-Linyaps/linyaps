@@ -802,7 +802,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
 
         builder.setBuildOptions(options);
 
-        auto result = builder.run(modules, exec, std::nullopt, debug);
+        auto result = builder.run(modules, exec, debug);
         if (!result) {
             qCritical() << result.error();
             return -1;

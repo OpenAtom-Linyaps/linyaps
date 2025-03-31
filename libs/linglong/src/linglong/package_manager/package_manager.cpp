@@ -2221,38 +2221,6 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
         ofs << "include /run/linglong/cache/ld.so.conf" << std::endl;
     }
 
-    // bind mount cache root
-    std::vector<ocppi::runtime::config::types::Mount> applicationMounts{};
-    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-      .destination = appCacheDest,
-      .options = nlohmann::json::array({ "rbind", "rw" }),
-      .source = appCache,
-      .type = "bind",
-    });
-#ifdef LINGLONG_FONT_CACHE_GENERATOR
-    // bind mount font cache
-    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-      .destination = "/var/cache/fontconfig",
-      .options = nlohmann::json::array({ "rbind", "rw" }),
-      .source = appFontCache,
-      .type = "bind",
-    });
-#endif
-    // bind mount generator
-    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-      .destination = generatorDest,
-      .options = nlohmann::json::array({ "rbind", "ro" }),
-      .source = LINGLONG_LIBEXEC_DIR,
-      .type = "bind",
-    });
-
-    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-      .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
-      .options = { { "rbind", "ro" } },
-      .source = *bundle / "zz_deepin-linglong-app.ld.so.conf",
-      .type = "bind",
-    });
-
     package::LayerDir appLayerDir;
     std::optional<package::LayerDir> runtimeLayerDir;
     package::LayerDir baseLayerDir;
@@ -2274,21 +2242,53 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
         }
     });
 
-    auto containerRet = this->containerBuilder.create({
-      .appID = ref.id,
-      .containerID = QString::fromStdString(containerID),
-      .runtimeDir = runtimeLayerDir,
-      .baseDir = baseLayerDir,
-      .appDir = appLayerDir,
-      .bundle = std::move(bundle).value(),
-      .patches = {},
-      .mounts = std::move(applicationMounts),
-      .masks = {},
-    });
-    if (!containerRet) {
-        return LINGLONG_ERR(containerRet);
+    int64_t uid = getuid();
+    int64_t gid = getgid();
+
+    linglong::generator::ContainerCfgBuilder cfgBuilder;
+    cfgBuilder.setAppId(ref.id.toStdString())
+      .setAppPath(appLayerDir.absoluteFilePath("files").toStdString())
+      .setBasePath(baseLayerDir.absoluteFilePath("files").toStdString())
+      .setAppCache(appCache, false)
+      .setBundlePath(*bundle)
+      .addUIdMapping(uid, uid, 1)
+      .addGIdMapping(gid, gid, 1)
+      .bindSys()
+      .bindProc()
+      .bindDev()
+      .bindCgroup()
+      .bindRun()
+      .bindUserGroup()
+      .forwordDefaultEnv()
+      .setExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{
+        ocppi::runtime::config::types::Mount{ .destination = generatorDest,
+                                              .options = { { "rbind", "ro" } },
+                                              .source = LINGLONG_LIBEXEC_DIR,
+                                              .type = "bind" },
+        ocppi::runtime::config::types::Mount{
+          .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
+          .options = { { "rbind", "ro" } },
+          .source = *bundle / "zz_deepin-linglong-app.ld.so.conf",
+          .type = "bind",
+        } })
+      .enableSelfAdjustingMount();
+
+    if (runtimeLayerDir) {
+        cfgBuilder.setRuntimePath(runtimeLayerDir->absoluteFilePath("files").toStdString());
     }
-    auto container = std::move(containerRet).value();
+#ifdef LINGLONG_FONT_CACHE_GENERATOR
+    cfgBuilder.enableFontCache();
+#endif
+
+    if (!cfgBuilder.build()) {
+        auto err = cfgBuilder.getError();
+        return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
+    }
+
+    auto container = this->containerBuilder.create(cfgBuilder, QString::fromStdString(containerID));
+    if (!container) {
+        return LINGLONG_ERR(container);
+    }
 
     ocppi::runtime::config::types::Process process{};
     process.cwd = "/";
@@ -2319,7 +2319,7 @@ utils::error::Result<void> PackageManager::generateCache(const package::Referenc
 
     ocppi::runtime::RunOption opt{ "" };
     opt.GlobalOption::root = containerStateRoot;
-    auto result = container->run(process, opt);
+    auto result = (*container)->run(process, opt);
     if (!result) {
         return LINGLONG_ERR(result);
     }

@@ -80,7 +80,6 @@ public:
 
     auto run(const QStringList &modules,
              const QStringList &args,
-             std::optional<runtime::ContainerOptions> init = std::nullopt,
              bool debug = false) -> utils::error::Result<void>;
     auto runtimeCheck(const QStringList &modules) -> utils::error::Result<void>;
 
@@ -93,6 +92,7 @@ private:
     void takeTerminalForeground();
     void patchBuildPhaseConfig(ocppi::runtime::config::types::Config &config);
     void mergeOutput(const QList<QDir> &src, const QDir &dest, const QStringList &target);
+    void printRepo();
 
 private:
     repo::OSTreeRepo &repo;

@@ -501,6 +501,9 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
         return LINGLONG_ERR("failed to run in namespace");
     }
 
+    int64_t uid = getuid();
+    int64_t gid = getgid();
+
     auto arch = package::Architecture::currentCPUArchitecture();
     if (!arch) {
         return LINGLONG_ERR(arch);
@@ -518,16 +521,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     printMessage("Package Type: " + this->project.package.kind, 2);
     printMessage("Build Arch: " + arch->toString().toStdString(), 2);
 
-    auto repoCfg = this->repo.getConfig();
-    printMessage("[Current Repo]");
-    printMessage("Name: " + repoCfg.defaultRepo, 2);
-    std::string repoUrl;
-    const auto &defaultRepo =
-      std::find_if(repoCfg.repos.begin(), repoCfg.repos.end(), [&repoCfg](const auto &repo) {
-          return repo.alias.value_or(repo.name) == repoCfg.defaultRepo;
-      });
-    repoUrl = defaultRepo->url;
-    printMessage("Url: " + repoUrl, 2);
+    printRepo();
 
     this->workingDir.mkdir("linglong");
     /*** Fetch Source Stage ***/
@@ -674,7 +668,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     // prepare overlayfs
     std::unique_ptr<utils::OverlayFS> baseOverlay, runtimeOverlay;
     baseOverlay = std::make_unique<utils::OverlayFS>(
-      baseLayerDir->absolutePath(),
+      baseLayerDir->absoluteFilePath("files"),
       this->workingDir.absoluteFilePath(overlayPrefix + "build_base/upperdir"),
       this->workingDir.absoluteFilePath(overlayPrefix + "build_base/workdir"),
       this->workingDir.absoluteFilePath(overlayPrefix + "build_base/merged"));
@@ -686,7 +680,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     QString runtimeDir;
     if (this->project.runtime) {
         runtimeOverlay = std::make_unique<utils::OverlayFS>(
-          runtimeLayerDir->absolutePath(),
+          runtimeLayerDir->absoluteFilePath("files"),
           this->workingDir.absoluteFilePath(overlayPrefix + "build_runtime/upperdir"),
           this->workingDir.absoluteFilePath(overlayPrefix + "build_runtime/workdir"),
           this->workingDir.absoluteFilePath(overlayPrefix + "build_runtime/merged"));
@@ -706,49 +700,6 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     if (!bundle) {
         return LINGLONG_ERR(bundle);
     }
-
-    auto opts = runtime::ContainerOptions{
-        .appID = QString::fromStdString(this->project.package.id),
-        .containerID = QString::fromStdString(containerID),
-        .runtimeDir = runtimeLayerDir ? std::optional<QDir>(runtimeDir) : std::nullopt,
-        .baseDir = baseDir,
-        .appDir = {},
-        .bundle = std::move(bundle).value(),
-        .patches = {},
-        .mounts = {},
-        .hooks = {},
-        .masks = {},
-    };
-
-    // 构建安装路径
-    QString installPrefix = "/runtime";
-    if (this->project.package.kind != "runtime") {
-        installPrefix = QString::fromStdString("/opt/apps/" + this->project.package.id + "/files");
-    }
-    opts.mounts.push_back({
-      .destination = installPrefix.toStdString(),
-      .gidMappings = {},
-      .options = { { "rbind", "rw" } },
-      .source = buildOutput.path().toStdString(),
-      .type = "bind",
-      .uidMappings = {},
-    });
-    opts.mounts.push_back({
-      .destination = LINGLONG_BUILDER_HELPER,
-      .gidMappings = {},
-      .options = { { "rbind", "ro" } },
-      .source = LINGLONG_BUILDER_HELPER,
-      .type = "bind",
-      .uidMappings = {},
-    });
-    opts.mounts.push_back({
-      .destination = "/project",
-      .gidMappings = {},
-      .options = { { "rbind", "rw" } },
-      .source = this->workingDir.absolutePath().toStdString(),
-      .type = "bind",
-      .uidMappings = {},
-    });
 
     // initialize the cache dir
     QDir appCache = this->workingDir.absoluteFilePath("linglong/cache");
@@ -772,32 +723,6 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
     ldsoconf.write(ldRawConf.toUtf8());
     // must be closed here, this conf will be used later.
     ldsoconf.close();
-
-    // generate ld config
-    {
-        std::ofstream ofs(opts.bundle / "zz_deepin-linglong-app.ld.so.conf");
-        Q_ASSERT(ofs.is_open());
-        if (!ofs.is_open()) {
-            return LINGLONG_ERR("create ld config in bundle directory");
-        }
-        ofs << "include /run/linglong/cache/ld.so.conf" << std::endl;
-    }
-
-    // mount app cache
-    opts.mounts.push_back({
-      .destination = "/run/linglong/cache",
-      .gidMappings = {},
-      .options = { { "rbind", "rw" } },
-      .source = appCache.absolutePath().toStdString(),
-      .type = "bind",
-      .uidMappings = {},
-    });
-    opts.mounts.push_back(ocppi::runtime::config::types::Mount{
-      .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
-      .options = { { "rbind", "ro" } },
-      .source = opts.bundle / "zz_deepin-linglong-app.ld.so.conf",
-      .type = "bind",
-    });
 
     std::vector<ocppi::runtime::config::types::Hook> startContainer{};
 
@@ -825,16 +750,56 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
             });
         }
     }
-    opts.hooks.startContainer = std::move(startContainer);
 
-    opts.masks.emplace_back("/project/linglong/output");
+    linglong::generator::ContainerCfgBuilder cfgBuilder;
+    cfgBuilder.setAppId(this->project.package.id)
+      .setBasePath(baseDir.toStdString(), false)
+      .setBundlePath(*bundle)
+      .addUIdMapping(uid, uid, 1)
+      .addGIdMapping(gid, gid, 1)
+      .bindSys()
+      .bindProc()
+      .setExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{
+        ocppi::runtime::config::types::Mount{ .destination = LINGLONG_BUILDER_HELPER,
+                                              .options = { { "rbind", "ro" } },
+                                              .source = LINGLONG_BUILDER_HELPER,
+                                              .type = "bind" },
+        ocppi::runtime::config::types::Mount{ .destination = "/project",
+                                              .options = { { "rbind", "rw" } },
+                                              .source =
+                                                this->workingDir.absolutePath().toStdString(),
+                                              .type = "bind" },
+        ocppi::runtime::config::types::Mount{
+          .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
+          .options = { { "rbind", "ro" } },
+          .source = appCache.absoluteFilePath("ld.so.conf").toStdString(),
+          .type = "bind" },
+      })
+      .setStartContainerHooks(std::move(startContainer))
+      .forwordDefaultEnv()
+      .addMask({
+        "/project/linglong/output",
+        "/project/linglong/overlay",
+      });
 
-    auto config = this->containerBuilder.getOCIConfig(opts);
-    if (!config) {
-        return LINGLONG_ERR(config);
+    QString installPrefix;
+    if (this->project.package.kind != "runtime") {
+        installPrefix = QString::fromStdString("/opt/apps/" + this->project.package.id + "/files");
+        cfgBuilder.setAppPath(buildOutput.path().toStdString(), false);
+        if (runtimeLayerDir) {
+            cfgBuilder.setRuntimePath(runtimeDir.toStdString(), false);
+        }
+    } else {
+        cfgBuilder.setRuntimePath(buildOutput.path().toStdString(), false);
+        installPrefix = "/runtime";
     }
-    patchBuildPhaseConfig(*config);
-    auto container = this->containerBuilder.createWithConfig(*config, opts.containerID);
+
+    if (!cfgBuilder.build()) {
+        auto err = cfgBuilder.getError();
+        return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
+    }
+
+    auto container = this->containerBuilder.create(cfgBuilder, QString::fromStdString(containerID));
     if (!container) {
         return LINGLONG_ERR(container);
     }
@@ -888,54 +853,87 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
                 return LINGLONG_ERR(bundle);
             }
 
-            // generate ld config
-            {
-                std::ofstream ofs(*bundle / "zz_deepin-linglong-app.ld.so.conf");
-                Q_ASSERT(ofs.is_open());
-                if (!ofs.is_open()) {
-                    return LINGLONG_ERR("create ld config in bundle directory");
-                }
-                ofs << "include /run/linglong/cache/ld.so.conf" << std::endl;
-            }
-
             // clean prepare overlay
             QDir(this->workingDir.absoluteFilePath(overlayPrefix + "prepare_base"))
+              .removeRecursively();
+            QDir(this->workingDir.absoluteFilePath(overlayPrefix + "prepare_runtime"))
               .removeRecursively();
 
             {
                 // prepare overlay scope
                 std::unique_ptr<utils::OverlayFS> baseOverlay, runtimeOverlay;
                 baseOverlay = std::make_unique<utils::OverlayFS>(
-                  baseLayerDir->absolutePath(),
+                  baseLayerDir->absoluteFilePath("files"),
                   this->workingDir.absoluteFilePath(overlayPrefix + "prepare_base/upperdir"),
                   this->workingDir.absoluteFilePath(overlayPrefix + "prepare_base/workdir"),
                   this->workingDir.absoluteFilePath(overlayPrefix + "prepare_base/merged"));
                 if (!baseOverlay->mount()) {
                     return LINGLONG_ERR("failed to mount prepare base overlayfs");
                 }
-                opts.baseDir =
-                  QDir(this->workingDir.absoluteFilePath(overlayPrefix + "prepare_base/merged"));
 
                 if (this->project.runtime) {
                     runtimeOverlay = std::make_unique<utils::OverlayFS>(
-                      runtimeLayerDir->absolutePath(),
+                      runtimeLayerDir->absoluteFilePath("files"),
                       this->workingDir.absoluteFilePath(overlayPrefix + "prepare_runtime/upperdir"),
                       this->workingDir.absoluteFilePath(overlayPrefix + "prepare_runtime/workdir"),
                       this->workingDir.absoluteFilePath(overlayPrefix + "prepare_runtime/merged"));
                     if (!runtimeOverlay->mount()) {
                         return LINGLONG_ERR("failed to mount prepare runtime overlayfs");
                     }
-                    opts.runtimeDir =
-                      this->workingDir.absoluteFilePath(overlayPrefix + "prepare_runtime/merged");
                 }
-                opts.hooks = {};
 
-                auto config = this->containerBuilder.getOCIConfig(opts);
-                if (!config) {
-                    return LINGLONG_ERR(config);
+                linglong::generator::ContainerCfgBuilder cfgBuilder;
+                cfgBuilder.setAppId(this->project.package.id)
+                  .setBasePath(
+                    this->workingDir.absoluteFilePath(overlayPrefix + "prepare_base/merged")
+                      .toStdString())
+                  .setBundlePath(*bundle)
+                  .addUIdMapping(uid, uid, 1)
+                  .addGIdMapping(gid, gid, 1)
+                  .bindSys()
+                  .bindProc()
+                  .setExtraMounts(std::vector<ocppi::runtime::config::types::Mount>{
+                    ocppi::runtime::config::types::Mount{ .destination = LINGLONG_BUILDER_HELPER,
+                                                          .options = { { "rbind", "ro" } },
+                                                          .source = LINGLONG_BUILDER_HELPER,
+                                                          .type = "bind" },
+                    ocppi::runtime::config::types::Mount{
+                      .destination = "/project",
+                      .options = { { "rbind", "rw" } },
+                      .source = this->workingDir.absolutePath().toStdString(),
+                      .type = "bind" },
+                    ocppi::runtime::config::types::Mount{
+                      .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
+                      .options = { { "rbind", "ro" } },
+                      .source = appCache.absoluteFilePath("ld.so.conf").toStdString(),
+                      .type = "bind" },
+                  })
+                  .forwordDefaultEnv()
+                  .addMask({
+                    "/project/linglong/output",
+                    "/project/linglong/overlay",
+                  });
+
+                if (this->project.package.kind != "runtime") {
+                    cfgBuilder.setAppPath(buildOutput.path().toStdString(), false);
+                    if (this->project.runtime) {
+                        cfgBuilder.setRuntimePath(
+                          this->workingDir
+                            .absoluteFilePath(overlayPrefix + "prepare_runtime/merged")
+                            .toStdString(),
+                          false);
+                    }
+                } else {
+                    cfgBuilder.setRuntimePath(buildOutput.path().toStdString(), false);
                 }
-                patchBuildPhaseConfig(*config);
-                auto container = this->containerBuilder.createWithConfig(*config, opts.containerID);
+
+                if (!cfgBuilder.build()) {
+                    auto err = cfgBuilder.getError();
+                    return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
+                }
+
+                auto container =
+                  this->containerBuilder.create(cfgBuilder, QString::fromStdString(containerID));
                 if (!container) {
                     return LINGLONG_ERR(container);
                 }
@@ -953,11 +951,11 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
             // 1. merge base to runtime, Or
             // 2. merge base and runtime to app,
             // base prefix is /usr, and runtime prefix is /runtime
-            QList<QDir> src = { this->workingDir.absoluteFilePath(
-              overlayPrefix + "prepare_base/upperdir/files/usr") };
+            QList<QDir> src = { this->workingDir.absoluteFilePath(overlayPrefix
+                                                                  + "prepare_base/upperdir/usr") };
             if (this->project.package.kind == "app") {
-                src.append(this->workingDir.absoluteFilePath(overlayPrefix
-                                                             + "prepare_runtime/upperdir/files"));
+                src.append(
+                  this->workingDir.absoluteFilePath(overlayPrefix + "prepare_runtime/upperdir"));
             }
             mergeOutput(src,
                         buildOutput,
@@ -1574,7 +1572,6 @@ utils::error::Result<void> Builder::importLayer(repo::OSTreeRepo &ostree, const 
 
 utils::error::Result<void> Builder::run(const QStringList &modules,
                                         const QStringList &args,
-                                        std::optional<runtime::ContainerOptions> init,
                                         bool debug)
 {
     LINGLONG_TRACE("run application");
@@ -1583,17 +1580,10 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
         return LINGLONG_ERR(curRef);
     }
 
-    runtime::ContainerOptions options = init.value_or(runtime::ContainerOptions{});
-    if (!init) {
-        auto containerID = runtime::genContainerID(*curRef);
-        auto bundle = runtime::getBundleDir(containerID);
-        if (!bundle) {
-            return LINGLONG_ERR(bundle);
-        }
-
-        options.appID = curRef->id;
-        options.containerID = QString::fromStdString(containerID);
-        options.bundle = std::move(bundle).value();
+    auto containerID = runtime::genContainerID(*curRef);
+    auto bundle = runtime::getBundleDir(containerID);
+    if (!bundle) {
+        return LINGLONG_ERR(bundle);
     }
 
     auto fuzzyBase = package::FuzzyReference::parse(QString::fromStdString(this->project.base));
@@ -1610,8 +1600,8 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     if (!baseDir) {
         return LINGLONG_ERR(baseDir);
     }
-    options.baseDir = *baseDir;
 
+    utils::error::Result<package::LayerDir> runtimeDir;
     if (this->project.runtime) {
         auto fuzzyRuntime =
           package::FuzzyReference::parse(QString::fromStdString(this->project.runtime.value()));
@@ -1624,12 +1614,11 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
         if (!runtimeRef) {
             return LINGLONG_ERR(runtimeRef);
         }
-        auto runtimeDir = debug ? this->repo.getMergedModuleDir(*runtimeRef)
-                                : this->repo.getLayerDir(*runtimeRef, "binary");
+        runtimeDir = debug ? this->repo.getMergedModuleDir(*runtimeRef)
+                           : this->repo.getLayerDir(*runtimeRef, "binary");
         if (!runtimeDir) {
             return LINGLONG_ERR(runtimeDir);
         }
-        options.runtimeDir = *runtimeDir;
     }
 
     utils::error::Result<package::LayerDir> curDir;
@@ -1655,10 +1644,8 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
         return LINGLONG_ERR(info);
     }
 
-    if (this->project.package.kind == "app") {
-        options.appDir = QDir(curDir->absolutePath());
-    } else {
-        return LINGLONG_ERR("when kind equals to runtime, it cannot run");
+    if (this->project.package.kind != "app") {
+        return LINGLONG_ERR("only app can run");
     }
 
     std::vector<ocppi::runtime::config::types::Mount> applicationMounts{};
@@ -1674,13 +1661,13 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
           });
       };
     auto bindInnerMount =
-      [&applicationMounts](
-        const api::types::v1::ApplicationConfigurationPermissionsInnerBind &bind) {
+      [&applicationMounts,
+       &bundle](const api::types::v1::ApplicationConfigurationPermissionsInnerBind &bind) {
           applicationMounts.push_back(ocppi::runtime::config::types::Mount{
             .destination = bind.destination,
             .gidMappings = {},
             .options = { { "rbind" } },
-            .source = "rootfs" + bind.source,
+            .source = bundle->string() + "/rootfs" + bind.source,
             .type = "bind",
             .uidMappings = {},
           });
@@ -1700,6 +1687,13 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
             std::for_each(innerBinds->cbegin(), innerBinds->cend(), bindInnerMount);
         }
     }
+
+    auto *homeEnv = ::getenv("HOME");
+    auto *userNameEnv = ::getenv("USER");
+    if (homeEnv == nullptr || userNameEnv == nullptr) {
+        return LINGLONG_ERR("Couldn't get HOME or USER from env.");
+    }
+
     if (debug) {
         std::filesystem::path workdir = this->workingDir.absolutePath().toStdString();
         // 生成 host_gdbinit 可使用 gdb --init-command=linglong/host_gdbinit 从宿主机调试
@@ -1719,85 +1713,38 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
             std::ofstream f(gdbinit);
             f << "set debug-file-directory " + debugDir << std::endl;
 
-            auto *homeEnv = ::getenv("HOME");
-            auto hostHomeDir = std::filesystem::path(homeEnv);
             applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-              .destination = hostHomeDir / ".gdbinit",
+              .destination = std::string("/home/") + userNameEnv + "/.gdbinit",
               .options = { { "ro", "rbind" } },
               .source = gdbinit,
               .type = "bind",
             });
         }
-        // 挂载项目目录，便于gdb查看源码
-        applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-          .destination = "/project",
-          .options = { { "rbind", "ro" } },
-          .source = this->workingDir.absolutePath().toStdString(),
-          .type = "bind",
-        });
     }
 
-    // generate ld config
-    {
-        std::ofstream ofs(options.bundle / "zz_deepin-linglong-app.ld.so.conf");
-        Q_ASSERT(ofs.is_open());
-        if (!ofs.is_open()) {
-            return LINGLONG_ERR("create ld config in bundle directory");
-        }
-        ofs << "include /run/linglong/cache/ld.so.conf" << std::endl;
-    }
-
-    // mount app cache
-    QDir appCache = this->workingDir.absoluteFilePath("linglong/cache");
     applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-      .destination = "/run/linglong/cache",
+      .destination = "/project",
       .options = { { "rbind", "rw" } },
-      .source = appCache.absolutePath().toStdString(),
+      .source = this->workingDir.absolutePath().toStdString(),
       .type = "bind",
     });
+
+    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
+      .destination = LINGLONG_BUILDER_HELPER,
+      .options = { { "rbind", "ro" } },
+      .source = LINGLONG_BUILDER_HELPER,
+      .type = "bind",
+    });
+
+    QDir appCache = this->workingDir.absoluteFilePath("linglong/cache");
     applicationMounts.push_back(ocppi::runtime::config::types::Mount{
       .destination = "/etc/ld.so.conf.d/zz_deepin-linglong-app.conf",
       .options = { { "rbind", "ro" } },
-      .source = options.bundle / "zz_deepin-linglong-app.ld.so.conf",
+      .source = appCache.absoluteFilePath("ld.so.conf").toStdString(),
       .type = "bind",
     });
 
-#ifdef LINGLONG_FONT_CACHE_GENERATOR
-    // write fonts.conf
-    QDir appFontCache = appCache.absoluteFilePath("fontconfig");
-    if (!appFontCache.mkpath(".")) {
-        return LINGLONG_ERR("make path " + appFontCache.absolutePath() + ": failed.");
-    }
-
-    QDir appFonts = appCache.absoluteFilePath("fonts");
-    if (!appFonts.mkpath(".")) {
-        return LINGLONG_ERR("make path " + appFonts.absolutePath() + ": failed.");
-    }
-
-    QFile fontsConf = appFonts.absoluteFilePath("fonts.conf");
-    if (!fontsConf.open(QIODevice::WriteOnly)) {
-        return LINGLONG_ERR(fontsConf);
-    }
-    QString fontsRawConf = R"(<?xml version="1.0"?>
-<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
-<fontconfig>
-  <dir>/run/linglong/fonts</dir>
-  <include ignore_missing="yes">/opt/apps/@id@/files/etc/fonts/fonts.conf</include>
-</fontconfig>)";
-    fontsRawConf.replace("@id@", QString::fromStdString(this->project.package.id));
-    fontsConf.write(fontsRawConf.toUtf8());
-    fontsConf.close();
-
-    // mount font cache
-    applicationMounts.push_back(ocppi::runtime::config::types::Mount{
-      .destination = "/var/cache/fontconfig",
-      .options = { { "rbind", "rw" } },
-      .source = appFontCache.absolutePath().toStdString(),
-      .type = "bind",
-    });
-#endif
-
-    std::vector<ocppi::runtime::config::types::Hook> generateCache{
+    std::vector<ocppi::runtime::config::types::Hook> startContainer{
         {
           .args =
             std::vector<std::string>{ "/sbin/ldconfig", "-C", "/run/linglong/cache/ld.so.cache" },
@@ -1805,30 +1752,57 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
           .path = "/sbin/ldconfig",
           .timeout = {},
         },
-#ifdef LINGLONG_FONT_CACHE_GENERATOR
-        {
-          .args = std::vector<std::string>{ "/bin/fc-cache", "-f" },
-          .env = {},
-          .path = "/bin/fc-cache",
-          .timeout = {},
-        }
-#endif
     };
 
-    auto startHooks =
-      options.hooks.startContainer.value_or(std::vector<ocppi::runtime::config::types::Hook>{});
-    startHooks.insert(startHooks.begin(), generateCache.begin(), generateCache.end());
-    options.hooks.startContainer = std::move(startHooks);
+    int64_t uid = getuid();
+    int64_t gid = getgid();
 
-    options.mounts.insert(options.mounts.begin(),
-                          applicationMounts.begin(),
-                          applicationMounts.end());
-
-    auto containerRet = this->containerBuilder.create(options);
-    if (!containerRet) {
-        return LINGLONG_ERR(containerRet);
+    linglong::generator::ContainerCfgBuilder cfgBuilder;
+    cfgBuilder.setAppId(curRef->id.toStdString())
+      .setAppPath(curDir->absoluteFilePath("files").toStdString())
+      .setBasePath(baseDir->absoluteFilePath("files").toStdString())
+      .setAppCache(appCache.absolutePath().toStdString(), false)
+      .enableLDCache()
+      .setBundlePath(std::move(bundle).value())
+      .addUIdMapping(uid, uid, 1)
+      .addGIdMapping(gid, gid, 1)
+      .bindSys()
+      .bindProc()
+      .bindDev()
+      .bindDevNode()
+      .bindCgroup()
+      .bindRun()
+      .bindTmp()
+      .bindUserGroup()
+      .bindMedia()
+      .bindHostRoot()
+      .bindHostStatics()
+      .bindHome(homeEnv, userNameEnv)
+      .enablePrivateDir()
+      .mapPrivate(std::string("/home/") + userNameEnv + "/.ssh", true)
+      .mapPrivate(std::string("/home/") + userNameEnv + "/.gnupg", true)
+      .bindIPC()
+      .forwordDefaultEnv()
+      .setExtraMounts(applicationMounts)
+      .setStartContainerHooks(std::move(startContainer))
+      .enableSelfAdjustingMount();
+    if (this->project.runtime) {
+        cfgBuilder.setRuntimePath(runtimeDir->absoluteFilePath("files").toStdString());
     }
-    auto container = std::move(containerRet).value();
+#ifdef LINGLONG_FONT_CACHE_GENERATOR
+    cfgBuilder.enableFontCache();
+#endif
+
+    if (!cfgBuilder.build()) {
+        auto err = cfgBuilder.getError();
+        return LINGLONG_ERR("build cfg error: " + QString::fromStdString(err.reason));
+    }
+
+    auto container = this->containerBuilder.create(cfgBuilder, QString::fromStdString(containerID));
+
+    if (!container) {
+        return LINGLONG_ERR(container);
+    }
 
     ocppi::runtime::config::types::Process process;
 
@@ -1845,7 +1819,7 @@ utils::error::Result<void> Builder::run(const QStringList &modules,
     }
 
     ocppi::runtime::RunOption opt{};
-    auto result = container->run(process, opt);
+    auto result = (*container)->run(process, opt);
     if (!result) {
         return LINGLONG_ERR(result);
     }
@@ -1860,42 +1834,8 @@ utils::error::Result<void> Builder::runtimeCheck(const QStringList &modules)
     // Do some checks after run container
     if (!this->buildOptions.skipCheckOutput && this->project.package.kind == "app") {
         printMessage("Start runtime check", 2);
-        auto curRef = currentReference(this->project);
-        if (!curRef) {
-            return LINGLONG_ERR(curRef);
-        }
-
-        auto containerID = runtime::genContainerID(*curRef);
-        auto bundle = runtime::getBundleDir(containerID);
-        if (!bundle) {
-            return LINGLONG_ERR(bundle);
-        }
-
-        std::vector<ocppi::runtime::config::types::Mount> mounts{
-            ocppi::runtime::config::types::Mount{
-              .destination = LINGLONG_BUILDER_HELPER,
-              .gidMappings = {},
-              .options = { { "rbind", "ro" } },
-              .source = LINGLONG_BUILDER_HELPER,
-              .type = "bind",
-              .uidMappings = {},
-            },
-            {
-              .destination = "/project",
-              .gidMappings = {},
-              .options = { { "rbind", "rw" } },
-              .source = this->workingDir.absolutePath().toStdString(),
-              .type = "bind",
-              .uidMappings = {},
-            }
-        };
-
-        runtime::ContainerOptions opts{ .appID = curRef->id,
-                                        .containerID = QString::fromStdString(containerID),
-                                        .bundle = std::move(bundle).value(),
-                                        .mounts = std::move(mounts) };
         auto ret =
-          this->run(modules, { { QString{ LINGLONG_BUILDER_HELPER } + "/main-check.sh" } }, opts);
+          this->run(modules, { { QString{ LINGLONG_BUILDER_HELPER } + "/main-check.sh" } });
         if (!ret) {
             printMessage("Runtime check failed", 2);
             return LINGLONG_ERR(ret);
@@ -2100,6 +2040,7 @@ void Builder::mergeOutput(const QList<QDir> &src, const QDir &dest, const QStrin
 {
     QMap<QString, QString> copys;
     for (auto &dir : src) {
+        qDebug() << "mergeOutput " << dir.absolutePath();
         if (!dir.exists())
             continue;
 
@@ -2180,6 +2121,20 @@ void Builder::mergeOutput(const QList<QDir> &src, const QDir &dest, const QStrin
             }
         }
     }
+}
+
+void Builder::printRepo()
+{
+    auto repoCfg = this->repo.getConfig();
+    printMessage("[Current Repo]");
+    printMessage("Name: " + repoCfg.defaultRepo, 2);
+    std::string repoUrl;
+    const auto &defaultRepo =
+      std::find_if(repoCfg.repos.begin(), repoCfg.repos.end(), [&repoCfg](const auto &repo) {
+          return repo.alias.value_or(repo.name) == repoCfg.defaultRepo;
+      });
+    repoUrl = defaultRepo->url;
+    printMessage("Url: " + repoUrl, 2);
 }
 
 } // namespace linglong::builder

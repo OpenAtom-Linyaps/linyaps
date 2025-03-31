@@ -37,7 +37,9 @@ public:
         BUILD_MOUNT_CACHE_ERROR,
         BUILD_MOUNT_VOLATILE_ERROR,
         BUILD_MOUNT_ERROR,
+        BUILD_LDCONF_ERROR,
         BUILD_LDCACHE_ERROR,
+        BUILD_ENV_ERROR,
     };
 
     class Error
@@ -67,21 +69,24 @@ public:
 
     std::string getAppId() const { return appId; }
 
-    ContainerCfgBuilder &setAppPath(std::filesystem::path path) noexcept
+    ContainerCfgBuilder &setAppPath(std::filesystem::path path, bool isRo = true) noexcept
     {
         appPath = path;
+        appPathRo = isRo;
         return *this;
     }
 
-    ContainerCfgBuilder &setRuntimePath(std::filesystem::path path) noexcept
+    ContainerCfgBuilder &setRuntimePath(std::filesystem::path path, bool isRo = true) noexcept
     {
         runtimePath = path;
+        runtimePathRo = isRo;
         return *this;
     }
 
-    ContainerCfgBuilder &setBasePath(std::filesystem::path path) noexcept
+    ContainerCfgBuilder &setBasePath(std::filesystem::path path, bool isRo = true) noexcept
     {
         basePath = path;
+        basePathRo = isRo;
         return *this;
     }
 
@@ -91,9 +96,10 @@ public:
         return *this;
     }
 
-    ContainerCfgBuilder &setAppCache(std::filesystem::path path) noexcept
+    ContainerCfgBuilder &setAppCache(std::filesystem::path path, bool isRo = true) noexcept
     {
         appCache = path;
+        appCacheRo = isRo;
         return *this;
     }
 
@@ -130,13 +136,18 @@ public:
 
     ContainerCfgBuilder &enableQuirkVolatile() noexcept;
 
-    ContainerCfgBuilder &addExtraMounts(std::vector<ocppi::runtime::config::types::Mount>) noexcept;
+    ContainerCfgBuilder &setExtraMounts(std::vector<ocppi::runtime::config::types::Mount>) noexcept;
+
+    ContainerCfgBuilder &
+      setStartContainerHooks(std::vector<ocppi::runtime::config::types::Hook>) noexcept;
 
     ContainerCfgBuilder &enableSelfAdjustingMount() noexcept
     {
         selfAdjustingMountEnabled = true;
         return *this;
     }
+
+    ContainerCfgBuilder &addMask(const std::vector<std::string> &masks) noexcept;
 
     bool build() noexcept;
 
@@ -151,7 +162,6 @@ public:
     // utils::error::Result<void> useHostRootFSConfig() noexcept;
     // utils::error::Result<void> useHostStaticsConfig() noexcept;
 
-    // utils::error::Result<void> addMask(std::vector<std::string> masks) noexcept;
     // utils::error::Result<void> addEnv(std::map<std::string, std::string> env) noexcept;
 
 private:
@@ -170,6 +180,7 @@ private:
     bool buildQuirkVolatile() noexcept;
     bool buildEnv() noexcept;
     bool mergeMount() noexcept;
+    bool finalize() noexcept;
     bool selfAdjustingMount(std::vector<ocppi::runtime::config::types::Mount> &mounts) noexcept;
     std::vector<ocppi::runtime::config::types::Mount>
     generateMounts(const std::vector<MountNode> &mountpoints,
@@ -182,6 +193,11 @@ private:
     std::optional<std::filesystem::path> basePath;
     std::optional<std::filesystem::path> bundlePath;
     std::optional<std::filesystem::path> appCache;
+
+    bool runtimePathRo = true;
+    bool appPathRo = true;
+    bool basePathRo = true;
+    bool appCacheRo = true;
 
     // id mappings
     std::optional<std::vector<ocppi::runtime::config::types::IdMapping>> uidMappings;
@@ -210,6 +226,7 @@ private:
     // environment
     std::optional<std::vector<std::string>> envForword;
     std::map<std::string, std::string> environment;
+    std::optional<ocppi::runtime::config::types::Mount> envMount;
 
     // home dir
     std::optional<std::filesystem::path> homePath;
@@ -229,7 +246,7 @@ private:
     std::optional<std::vector<ocppi::runtime::config::types::Mount>> extraMount;
 
     // self-adjusting mount
-    bool selfAdjustingMountEnabled;
+    bool selfAdjustingMountEnabled = false;
 
     std::vector<std::string> maskedPaths;
     ocppi::runtime::config::types::Config config;

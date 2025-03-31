@@ -8,6 +8,7 @@
 
 #include "ocppi/runtime/config/types/Generators.hpp"
 
+#include <fstream>
 #include <iostream>
 
 #include <sys/stat.h>
@@ -19,6 +20,8 @@ namespace linglong::generator {
 using string_list = std::vector<std::string>;
 
 using ocppi::runtime::config::types::Config;
+using ocppi::runtime::config::types::Hook;
+using ocppi::runtime::config::types::Hooks;
 using ocppi::runtime::config::types::IdMapping;
 using ocppi::runtime::config::types::Mount;
 using ocppi::runtime::config::types::NamespaceReference;
@@ -380,9 +383,24 @@ ContainerCfgBuilder &ContainerCfgBuilder::enableQuirkVolatile() noexcept
     return *this;
 }
 
-ContainerCfgBuilder &ContainerCfgBuilder::addExtraMounts(std::vector<Mount> extra) noexcept
+ContainerCfgBuilder &ContainerCfgBuilder::setExtraMounts(std::vector<Mount> extra) noexcept
 {
     extraMount = extra;
+    return *this;
+}
+
+ContainerCfgBuilder &ContainerCfgBuilder::setStartContainerHooks(std::vector<Hook> hooks) noexcept
+{
+    config.hooks = Hooks{};
+    config.hooks->startContainer = hooks;
+
+    return *this;
+}
+
+ContainerCfgBuilder &ContainerCfgBuilder::addMask(const std::vector<std::string> &masks) noexcept
+{
+    maskedPaths.insert(maskedPaths.end(), masks.begin(), masks.end());
+
     return *this;
 }
 
@@ -432,7 +450,7 @@ bool ContainerCfgBuilder::prepare() noexcept
     auto process = Process{ .args = string_list{ "bash" }, .cwd = "/" };
     config.process = std::move(process);
 
-    config.root = { .path = *basePath / "files", .readonly = true };
+    config.root = { .path = *basePath, .readonly = basePathRo };
 
     return true;
 }
@@ -452,16 +470,15 @@ bool ContainerCfgBuilder::buildMountRuntime() noexcept
     }
 
     std::error_code ec;
-    auto runtimeFilePath = *runtimePath / "files";
-    if (!std::filesystem::exists(runtimeFilePath, ec)) {
+    if (!std::filesystem::exists(*runtimePath, ec)) {
         error_.reason = "runtime files is not exist";
         error_.code = BUILD_MOUNT_RUNTIME_ERROR;
         return false;
     }
 
     runtimeMount = Mount{ .destination = "/runtime",
-                          .options = string_list{ "rbind", "ro" },
-                          .source = runtimeFilePath,
+                          .options = string_list{ "rbind", runtimePathRo ? "ro" : "rw" },
+                          .source = *runtimePath,
                           .type = "bind" };
 
     return true;
@@ -470,8 +487,7 @@ bool ContainerCfgBuilder::buildMountRuntime() noexcept
 bool ContainerCfgBuilder::buildMountApp() noexcept
 {
     std::error_code ec;
-    auto appFilePath = *appPath / "files";
-    if (!std::filesystem::exists(appFilePath, ec)) {
+    if (!std::filesystem::exists(*appPath, ec)) {
         error_.reason = "app files is not exist";
         error_.code = BUILD_MOUNT_APP_ERROR;
         return false;
@@ -482,8 +498,8 @@ bool ContainerCfgBuilder::buildMountApp() noexcept
                         .source = "tmpfs",
                         .type = "tmpfs" },
                  Mount{ .destination = std::filesystem::path("/opt/apps") / appId / "files",
-                        .options = string_list{ "rbind", "rw" },
-                        .source = appFilePath,
+                        .options = string_list{ "rbind", appPathRo ? "ro" : "rw" },
+                        .source = *appPath,
                         .type = "bind" } };
 
     return true;
@@ -995,7 +1011,7 @@ bool ContainerCfgBuilder::buildMountCache() noexcept
     }
 
     cacheMount = { Mount{ .destination = "/run/linglong/cache",
-                          .options = string_list{ "rbind", "ro" },
+                          .options = string_list{ "rbind", appCacheRo ? "ro" : "rw" },
                           .source = *appCache,
                           .type = "bind" } };
 
@@ -1051,12 +1067,38 @@ bool ContainerCfgBuilder::buildEnv() noexcept
 
     environment["LINGLONG_APPID"] = appId;
 
+    auto envShFile = *bundlePath / "00env.sh";
+    std::ofstream ofs(envShFile);
+    if (!ofs.is_open()) {
+        error_.reason = envShFile.string() + " can't be created";
+        error_.code = BUILD_ENV_ERROR;
+        return false;
+    }
+
     auto env = std::vector<std::string>{};
     for (const auto &[key, value] : environment) {
         env.emplace_back(key + "=" + value);
+
+        // here we process environment variables with single quotes.
+        // A=a'b ===> A='a'\''b'
+        std::string escaped;
+        for (auto it = value.begin(); it != value.end(); ++it) {
+            if (*it == '\'') {
+                escaped.append(R"('\'')");
+            } else {
+                escaped.push_back(*it);
+            }
+        }
+        ofs << "export " << key << "='" << escaped << "'" << std::endl;
     }
+    ofs.close();
 
     config.process->env = std::move(env);
+
+    envMount = Mount{ .destination = "/etc/profile.d/00env.sh",
+                      .options = string_list{ "rbind", "ro" },
+                      .source = envShFile,
+                      .type = "bind" };
 
     return true;
 }
@@ -1136,6 +1178,10 @@ bool ContainerCfgBuilder::mergeMount() noexcept
 
     if (privateMount) {
         std::move(privateMount->begin(), privateMount->end(), std::back_inserter(mounts));
+    }
+
+    if (envMount) {
+        mounts.insert(mounts.end(), std::move(*envMount));
     }
 
     if (extraMount) {
@@ -1445,6 +1491,12 @@ bool ContainerCfgBuilder::selfAdjustingMount(std::vector<Mount> &mounts) noexcep
     return true;
 }
 
+bool ContainerCfgBuilder::finalize() noexcept
+{
+    config.linux_->maskedPaths = maskedPaths;
+    return true;
+}
+
 bool ContainerCfgBuilder::build() noexcept
 {
     if (!checkValid()) {
@@ -1480,6 +1532,10 @@ bool ContainerCfgBuilder::build() noexcept
     }
 
     if (!mergeMount()) {
+        return false;
+    }
+
+    if (!finalize()) {
         return false;
     }
 

@@ -759,8 +759,8 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
 
     linglong::generator::ContainerCfgBuilder cfgBuilder;
     cfgBuilder.setAppId(curAppRef->id.toStdString())
-      .setAppPath(appLayerDir->absolutePath().toStdString())
-      .setBasePath(baseLayerDir->absolutePath().toStdString())
+      .setAppPath(appLayerDir->absoluteFilePath("files").toStdString())
+      .setBasePath(baseLayerDir->absoluteFilePath("files").toStdString())
       .setAppCache(*appCache)
       .enableLDCache()
       .setBundlePath(std::move(bundle).value())
@@ -783,10 +783,10 @@ int Cli::run([[maybe_unused]] CLI::App *subcommand)
       .mapPrivate(std::string("/home/") + userNameEnv + "/.gnupg", true)
       .bindIPC()
       .forwordDefaultEnv()
-      .addExtraMounts(applicationMounts)
+      .setExtraMounts(applicationMounts)
       .enableSelfAdjustingMount();
     if (info.runtime) {
-        cfgBuilder.setRuntimePath(runtimeLayerDir->absolutePath().toStdString());
+        cfgBuilder.setRuntimePath(runtimeLayerDir->absoluteFilePath("files").toStdString());
     }
 #ifdef LINGLONG_FONT_CACHE_GENERATOR
     cfgBuilder.enableFontCache();

@@ -7,6 +7,7 @@
 #pragma once
 
 #include "linglong/api/types/v1/OciConfigurationPatch.hpp"
+#include "linglong/oci-cfg-generators/container_cfg_builder.h"
 #include "linglong/package/reference.h"
 #include "linglong/runtime/container.h"
 #include "linglong/utils/error/error.h"
@@ -55,37 +56,15 @@ inline utils::error::Result<std::filesystem::path> getBundleDir(const std::strin
     return bundle;
 }
 
-struct ContainerOptions
-{
-    QString appID;
-    QString containerID;
-
-    std::optional<QDir> runtimeDir; // mount to /runtime
-    QDir baseDir;                   // mount to /
-    std::optional<QDir> appDir;     // mount to /opt/apps/${info.appid}/files
-    std::filesystem::path bundle;
-
-    std::vector<api::types::v1::OciConfigurationPatch> patches;
-    std::vector<ocppi::runtime::config::types::Mount> mounts; // extra mounts
-    ocppi::runtime::config::types::Hooks hooks;
-    std::vector<std::string> masks;
-};
-
 class ContainerBuilder : public QObject
 {
     Q_OBJECT
 public:
     explicit ContainerBuilder(ocppi::cli::CLI &cli);
 
-    auto create(const ContainerOptions &opts) noexcept
-      -> utils::error::Result<std::unique_ptr<Container>>;
-
-    auto createWithConfig(const ocppi::runtime::config::types::Config &originalConfig,
-                          const QString &containerID) noexcept
-      -> utils::error::Result<std::unique_ptr<Container>>;
-
-    auto getOCIConfig(const ContainerOptions &opts) noexcept
-      -> utils::error::Result<ocppi::runtime::config::types::Config>;
+    auto
+    create(const linglong::generator::ContainerCfgBuilder &cfgBuilder,
+           const QString &containerID) noexcept -> utils::error::Result<std::unique_ptr<Container>>;
 
 private:
     ocppi::cli::CLI &cli;

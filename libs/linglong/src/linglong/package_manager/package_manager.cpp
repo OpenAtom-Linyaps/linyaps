@@ -124,10 +124,11 @@ PackageManager::PackageManager(linglong::repo::OSTreeRepo &repo,
 
     auto *timer = new QTimer(this);
     timer->setInterval(deferredTimeOut);
-    timer->callOnTimeout([this, timer] {
+    connect(timer, &QTimer::timeout, [this, timer] {
         this->deferredUninstall();
         timer->start();
     });
+
     timer->start();
 }
 

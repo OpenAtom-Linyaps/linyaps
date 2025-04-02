@@ -109,7 +109,7 @@ function(
 
   set(DBUS_ADAPTOR_SOURCE)
 
-  if(${QT_VERSION_MAJOR} EQUAL 6)
+  if("${QT_VERSION_MAJOR}" STREQUAL "6")
     qt6_add_dbus_adaptor_override(
       qdbusxml2cpp
       DBUS_ADAPTOR_SOURCE

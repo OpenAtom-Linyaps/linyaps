@@ -1482,7 +1482,9 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
     }
 
     if (response == nullptr) {
-        return LINGLONG_ERR("failed to send request to remote server");
+        return LINGLONG_ERR("failed to send request to remote server\nIf the network is slow, "
+                            "set a longer timeout via the LINGLONG_CONNECT_TIMEOUT environment "
+                            "variable (current default: 5 seconds).");
     }
     auto freeResponse = utils::finally::finally([&response] {
         fuzzy_search_app_200_response_free(response);
@@ -1491,7 +1493,10 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
     if (response->code != 200) {
         QString msg = (response->msg != nullptr)
           ? response->msg
-          : QString{ "cannot send request to remote server: %1" }.arg(response->code);
+          : QString{ "cannot send request to remote server: %1\nIf the network is slow, "
+                     "set a longer timeout via the LINGLONG_CONNECT_TIMEOUT environment "
+                     "variable (current default: 5 seconds)." }
+              .arg(response->code);
         return LINGLONG_ERR(msg);
     }
 

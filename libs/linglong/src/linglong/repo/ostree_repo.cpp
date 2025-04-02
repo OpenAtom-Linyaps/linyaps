@@ -1847,6 +1847,10 @@ OSTreeRepo::exportEntries(const std::filesystem::path &rootEntriesDir,
     for (const auto &path : exportPaths) {
         auto source = appEntriesDir / path;
         auto destination = rootEntriesDir / path;
+        // 将desktop安装到 entries/linglong/share/application下面
+        if (path == "share/applications") {
+            destination = rootEntriesDir / "linglong" / path;
+        }
         // 将 share/systemd 目录下的文件导出到 lib/systemd 目录下
         if (path == "share/systemd/user") {
             destination = rootEntriesDir / "lib/systemd/user";
@@ -1949,6 +1953,8 @@ void OSTreeRepo::updateSharedInfo() noexcept
     LINGLONG_TRACE("update shared info");
 
     auto applicationDir = QDir(this->repoDir.absoluteFilePath("entries/share/applications"));
+    auto newApplicationDir =
+      QDir(this->repoDir.absoluteFilePath("entries/linglong/share/applications"));
     auto mimeDataDir = QDir(this->repoDir.absoluteFilePath("entries/share/mime"));
     auto glibSchemasDir = QDir(this->repoDir.absoluteFilePath("entries/share/glib-2.0/schemas"));
     // 更新 desktop database
@@ -1958,6 +1964,15 @@ void OSTreeRepo::updateSharedInfo() noexcept
         if (!ret) {
             qWarning() << "warning: failed to update desktop database in "
                 + applicationDir.absolutePath() + ": " + ret.error().message();
+        }
+    }
+
+    if (newApplicationDir.exists()) {
+        auto ret =
+          utils::command::Exec("update-desktop-database", { newApplicationDir.absolutePath() });
+        if (!ret) {
+            qWarning() << "warning: failed to update desktop database in "
+                + newApplicationDir.absolutePath() + ": " + ret.error().message();
         }
     }
 

@@ -13,10 +13,24 @@
 LINGLONG_ROOT="@LINGLONG_ROOT@"
 
 LINGLONG_DATA_DIR=${LINGLONG_ROOT}/entries/share
-case ":$XDG_DATA_DIRS:" in
-*":$LINGLONG_DATA_DIR:"*) : ;;
-*":$LINGLONG_DATA_DIR/:"*) : ;;
-*)
-        XDG_DATA_DIRS="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}:${LINGLONG_DATA_DIR}"
+LINGLONG_DATA_DIR_DESKTOP=${LINGLONG_ROOT}/entries/linglong/share
+
+# 初始化默认值（不覆盖已有值）
+: "${XDG_DATA_DIRS:=/usr/local/share:/usr/share}"
+
+# 检查是否需要添加 LINGLONG_DATA_DIR_DESKTOP
+case ":${XDG_DATA_DIRS}:" in
+    *":${LINGLONG_DATA_DIR_DESKTOP}:"* | *":${LINGLONG_DATA_DIR_DESKTOP}/:"*) ;;
+    *)
+        # 在 /usr/local/share 后插入（兼容末尾斜杠）
+        XDG_DATA_DIRS=$(echo "$XDG_DATA_DIRS" | sed -E "s@(/usr/local/share/?)(:|$)@\1:$LINGLONG_DATA_DIR_DESKTOP\2@g")
+        ;;
+esac
+
+# 检查是否需要添加 LINGLONG_DATA_DIR
+case ":${XDG_DATA_DIRS}:" in
+    *":${LINGLONG_DATA_DIR}:"* | *":${LINGLONG_DATA_DIR}/:"*) ;;
+    *)
+        XDG_DATA_DIRS="${XDG_DATA_DIRS}:${LINGLONG_DATA_DIR}"
         ;;
 esac

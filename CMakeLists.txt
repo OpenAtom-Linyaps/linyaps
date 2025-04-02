@@ -47,16 +47,10 @@ set(LINGLONG_CLI_BIN
 set(GETTEXT_DOMAIN_NAME
     "linyaps"
     CACHE STRING "The name of gettext domain.")
-set(QT_VERSION_MAJOR
-    5
-    CACHE STRING "The major version of qt.")
+set(QT_VERSION_MAJOR CACHE STRING "The major version of qt.")
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(PFL)
-
-if(${QT_VERSION_MAJOR} EQUAL 6)
-  include(Qt6DBusMacro)
-endif()
 
 set(ENABLE_CPM YES)
 
@@ -192,18 +186,39 @@ if(ENABLE_FONT_CACHE_GENERATOR)
   add_definitions(-DLINGLONG_FONT_CACHE_GENERATOR)
 endif()
 
-# We need to support both Qt5 and Qt6, and according to the Qt documentation, we
-# should be using versioned targets and functions. These varible must be set
-# before find_package()
-# https://doc.qt.io/qt-6/cmake-qt5-and-qt6-compatibility.html#recommended-practices
-set(QT_DEFAULT_MAJOR_VERSION ${QT_VERSION_MAJOR})
-set(QT_NO_CREATE_VERSIONLESS_FUNCTIONS ON)
-set(QT_NO_CREATE_VERSIONLESS_TARGETS ON)
+# we need support Qt 5 versions older than 5.15
+# https://doc.qt.io/qt-6/cmake-qt5-and-qt6-compatibility.html#supporting-qt-5-versions-older-than-5-15
+if(${QT_VERSION_MAJOR})
+  message(STATUS "trying specified Qt version: ${QT_VERSION_MAJOR}")
+  find_package(
+    Qt${QT_VERSION_MAJOR}
+    COMPONENTS Core DBus
+    REQUIRED)
+else()
+  message(STATUS "resolving Qt version automatically")
 
-find_package(
-  Qt${QT_VERSION_MAJOR}
-  COMPONENTS Core DBus
-  REQUIRED)
+  while(true)
+    find_package(Qt6 COMPONENTS Core DBus)
+    if(Qt6_FOUND)
+      set(QT_VERSION_MAJOR "6")
+      break()
+    endif()
+
+    find_package(Qt5 COMPONENTS Core DBus)
+    if(Qt5_FOUND)
+      set(QT_VERSION_MAJOR "5")
+      break()
+    endif()
+
+    message(FATAL_ERROR "Qt not found")
+  endwhile()
+endif()
+
+message(STATUS "compiling with Qt${QT_VERSION_MAJOR}")
+
+if("${QT_VERSION_MAJOR}" STREQUAL "6")
+  include(Qt6DBusMacro)
+endif()
 
 pkg_search_module(glib2 REQUIRED IMPORTED_TARGET glib-2.0)
 pkg_search_module(ostree1 REQUIRED IMPORTED_TARGET ostree-1)

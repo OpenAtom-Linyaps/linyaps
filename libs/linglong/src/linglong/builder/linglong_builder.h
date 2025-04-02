@@ -21,7 +21,7 @@ struct ExportOption
     std::string iconPath;
     std::string loader;
     std::string compressor;
-    bool exportDevelop{ false };
+    bool noExportDevelop{ false };
     bool exportI18n{ false };
     bool full{ false };
 };
@@ -63,7 +63,7 @@ public:
 
     auto exportUAB(const QString &destination, const ExportOption &option)
       -> utils::error::Result<void>;
-    auto exportLayer(const QString &destination, const QString &compressor)
+    auto exportLayer(const QString &destination, const QString &compressor, const bool &noExportDevelop)
       -> utils::error::Result<void>;
 
     static auto extractLayer(const QString &layerPath, const QString &destination)

@@ -1438,7 +1438,8 @@ utils::error::Result<void> Builder::exportUAB(const QString &destination,
 }
 
 utils::error::Result<void> Builder::exportLayer(const QString &destination,
-                                                const QString &compressor)
+                                                const QString &compressor,
+                                                const bool &noExportDevelop)
 {
     LINGLONG_TRACE("export layer file");
 
@@ -1461,6 +1462,10 @@ utils::error::Result<void> Builder::exportLayer(const QString &destination,
         pkger.setCompressor(compressor);
     }
     for (const auto &module : modules) {
+        if (noExportDevelop && module == "develop") {
+            continue;
+        }
+        
         auto layerDir = this->repo.getLayerDir(*ref, module);
         if (!layerDir) {
             qCritical().nospace() << "resolve layer " << ref->toString() << "/" << module.c_str()

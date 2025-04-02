@@ -286,7 +286,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
 
     // build export
     bool layerMode = false;
-    linglong::builder::ExportOption ExportOption{ .exportDevelop = false, .exportI18n = true };
+    linglong::builder::ExportOption ExportOption{ .exportI18n = true };
     auto *buildExport = commandParser.add_subcommand("export", _("Export to linyaps layer or uab"));
     buildExport->usage(_("Usage: ll-builder export [OPTIONS]"));
 
@@ -311,6 +311,8 @@ You can report bugs to the linyaps team under this project: https://github.com/O
       ->type_name("FILE")
       ->check(CLI::ExistingFile)
       ->excludes(layerFlag, fullOpt);
+    buildExport->add_flag("--no-develop", ExportOption.noExportDevelop, _("Don't export the develop module"))
+        ->needs(layerFlag);
 
     // build push
     std::string pushModule;
@@ -814,7 +816,7 @@ You can report bugs to the linyaps team under this project: https://github.com/O
             if (!ExportOption.compressor.empty()) {
                 compressor = ExportOption.compressor.c_str();
             }
-            auto result = builder.exportLayer(QDir::currentPath(), compressor);
+            auto result = builder.exportLayer(QDir::currentPath(), compressor, ExportOption.noExportDevelop);
             if (!result) {
                 qCritical() << result.error();
                 return -1;

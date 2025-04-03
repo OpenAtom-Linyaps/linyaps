@@ -18,6 +18,7 @@
 #include <QJsonObject>
 #include <QObject>
 #include <QString>
+#include <string>
 
 namespace linglong::cli {
 
@@ -42,10 +43,12 @@ public:
     void printTaskState(double percentage,
                         const QString &message,
                         api::types::v1::State state,
-                        api::types::v1::SubState subState) override;
+                        api::types::v1::SubState subState,
+                        utils::error::ErrorCode errCode) override;
     void printContent(const QStringList &filePaths) override;
     void printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &) override;
     void printInspect(const api::types::v1::InspectResult &result) override;
+    void printMessage(const QString &message) override;
 };
 
 } // namespace linglong::cli

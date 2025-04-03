@@ -1,0 +1,13 @@
+{
+    "export-paths": [
+        "share/applications",
+        "share/mime",
+        "share/icons",
+        "share/dbus-1",
+        "share/gnome-shell",
+        "share/appdata",
+        "share/metainfo",
+        "share/plugins",
+        "share/templates"
+    ]
+}

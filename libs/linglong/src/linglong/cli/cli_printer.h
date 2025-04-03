@@ -18,6 +18,7 @@
 #include <QJsonObject>
 #include <QObject>
 #include <QString>
+#include <string>
 
 namespace linglong::cli {
 
@@ -46,6 +47,7 @@ public:
     void printContent(const QStringList &filePaths) override;
     void printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &) override;
     void printInspect(const api::types::v1::InspectResult &result) override;
+    void printMessage(const QString &message) override;
 };
 
 } // namespace linglong::cli

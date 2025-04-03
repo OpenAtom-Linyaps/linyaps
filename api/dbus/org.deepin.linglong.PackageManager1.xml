@@ -83,6 +83,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
       <arg name="subState" type="i" />
       <arg name="message" type="s" />
       <arg name="percentage" type="d" />
+      <arg name="code" type="i" />
     </signal>
     <signal name="RequestInteraction">
       <arg name="task" type="o" />

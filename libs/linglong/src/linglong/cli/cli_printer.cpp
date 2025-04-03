@@ -262,4 +262,9 @@ void CLIPrinter::printInspect(const api::types::v1::InspectResult &result)
               << std::endl;
 }
 
+void CLIPrinter::printMessage(const QString &message)
+{
+    std::cout << message.toStdString() << std::endl;
+}
+
 } // namespace linglong::cli

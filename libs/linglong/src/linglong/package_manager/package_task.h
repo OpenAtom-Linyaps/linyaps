@@ -37,6 +37,7 @@ public:
     Q_PROPERTY(int SubState MEMBER m_subState NOTIFY SubStateChanged)
     Q_PROPERTY(double Percentage READ getPercentage NOTIFY PercentageChanged)
     Q_PROPERTY(QString Message MEMBER m_message NOTIFY MessageChanged)
+    Q_PROPERTY(int Code MEMBER m_code NOTIFY CodeChanged)
 
     explicit PackageTask(const QDBusConnection &connection,
                          QStringList refs,
@@ -90,6 +91,13 @@ public:
 
     void setMessage(const QString &message) noexcept { m_message = message; }
 
+    [[nodiscard]] utils::error::ErrorCode code() const noexcept
+    {
+        return static_cast<utils::error::ErrorCode>(m_code);
+    }
+
+    void setCode(utils::error::ErrorCode code) noexcept { m_code = static_cast<int>(code); }
+
     [[nodiscard]] QString taskID() const noexcept { return m_taskID.toString(QUuid::Id128); }
 
     [[nodiscard]] QString taskObjectPath() const noexcept
@@ -123,12 +131,14 @@ Q_SIGNALS:
     void PercentageChanged(double newPercentage);
     void MessageChanged(QString newMessage);
     void PartChanged(uint fetched, uint request);
+    void CodeChanged(int newCode);
 
 private:
     friend class PackageTaskQueue;
     PackageTask();
     int m_state{ static_cast<int>(linglong::api::types::v1::State::Queued) };
     int m_subState{ static_cast<int>(linglong::api::types::v1::SubState::Unknown) };
+    int m_code{ static_cast<int>(linglong::utils::error::ErrorCode::Unknown) };
     utils::error::Error m_err;
     double m_totalPercentage{ 0 };
     double m_curStagePercentage{ 0 };

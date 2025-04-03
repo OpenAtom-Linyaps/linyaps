@@ -6,6 +6,7 @@
 
 #include "linglong_builder.h"
 
+#include "linglong/api/types/v1/ExportDirs.hpp"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/builder/printer.h"
 #include "linglong/package/architecture.h"
@@ -23,6 +24,7 @@
 #include "linglong/utils/global/initialize.h"
 #include "linglong/utils/overlayfs.h"
 #include "linglong/utils/packageinfo_handler.h"
+#include "linglong/utils/serialize/json.h"
 #include "ocppi/runtime/RunOption.hpp"
 #include "source_fetcher.h"
 
@@ -1124,25 +1126,22 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
 
     qDebug() << "generate entries";
     // TODO: The current whitelist logic is not very flexible.
-    // The application configuration file can be exported after configuring it in the build configuration file(linglong.yaml).
+    // The application configuration file can be exported after configuring it in the build
+    // configuration file(linglong.yaml).
     if (this->project.package.kind != "runtime") {
         // 仅导出名单中的目录，以避免意外文件影响系统功能
-        const QStringList exportPaths = {
-            "share/applications",  // Copy desktop files
-            "share/mime",          // Copy MIME Type files
-            "share/icons",         // Icons
-            "share/dbus-1",        // D-Bus service files
-            "share/gnome-shell",   // Search providers
-            "share/appdata",       // Copy appdata/metainfo files (legacy path)
-            "share/metainfo",      // Copy appdata/metainfo files
-            "share/plugins",       // Copy plugins conf，The configuration files provided by some
-                                   // applications maybe used by the host dde-file-manager.
-            "share/deepin-manual", // copy deepin-manual files
-            "share/dsg", // Copy dsg conf，the configuration file is used for self-developed
-                         // applications.
-            "share/templates" // Copy templates file for some applications such as wps
-
-        };
+        const std::filesystem::path exportDirConfigPath = LINGLONG_DATA_DIR "/export-dirs.json";
+        if (!std::filesystem::exists(exportDirConfigPath)) {
+            return LINGLONG_ERR(QString{ "this export config file doesn't exist: %1" }.arg(
+              exportDirConfigPath.c_str()));
+        }
+        auto exportDirConfig =
+          linglong::utils::serialize::LoadJSONFile<linglong::api::types::v1::ExportDirs>(
+            exportDirConfigPath);
+        if (!exportDirConfig) {
+            return LINGLONG_ERR(
+              QString{ "failed to load export config file: %1" }.arg(exportDirConfigPath.c_str()));
+        }
 
         QDir binaryFiles = this->workingDir.absoluteFilePath("linglong/output/binary/files");
         QDir binaryEntries = this->workingDir.absoluteFilePath("linglong/output/binary/entries");
@@ -1157,7 +1156,8 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
             }
         }
 
-        for (const auto &path : exportPaths) {
+        for (const auto &exportPath : exportDirConfig->exportPaths) {
+            const auto &path = QString::fromStdString(exportPath);
             if (!binaryFiles.exists(path)) {
                 continue;
             }

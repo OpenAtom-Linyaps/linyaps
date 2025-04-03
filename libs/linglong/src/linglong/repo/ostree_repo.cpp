@@ -7,6 +7,7 @@
 #include "ostree_repo.h"
 
 #include "api/ClientAPI.h"
+#include "linglong/api/types/v1/ExportDirs.hpp"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
 #include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
@@ -22,6 +23,7 @@
 #include "linglong/utils/finally/finally.h"
 #include "linglong/utils/gkeyfile_wrapper.h"
 #include "linglong/utils/packageinfo_handler.h"
+#include "linglong/utils/serialize/json.h"
 #include "linglong/utils/transaction.h"
 
 #include <gio/gio.h>
@@ -1816,35 +1818,33 @@ OSTreeRepo::exportEntries(const std::filesystem::path &rootEntriesDir,
     }
 
     // TODO: The current whitelist logic is not very flexible.
-    // The application configuration file can be exported after configuring it in the build configuration file(linglong.yaml).
-    std::vector<std::string> exportPaths = {
-        "share/applications", // Copy desktop files
-        "share/mime",         // Copy MIME Type files
-        "share/icons",        // Icons
-        "share/dbus-1",       // D-Bus service files
-        "share/gnome-shell",  // Search providers
-        "share/appdata",      // Copy appdata/metainfo files (legacy path)
-        "share/metainfo",     // Copy appdata/metainfo files
-        "share/plugins", // Copy plugins conf，The configuration files provided by some applications
-                         // maybe used by the host dde-file-manager.
-        "share/deepin-manual",     // copy deepin-manual files
-        "share/deepin-elf-verify", // for uab signature
-        "share/dsg",      // Copy dsg conf，the configuration file is used for self-developed
-                          // applications.
-        "share/templates" // Copy templates file for some applications such as wps
-    };
+    // The application configuration file can be exported after configuring it in the build
+    // configuration file(linglong.yaml).
+    const std::filesystem::path exportDirConfigPath = LINGLONG_DATA_DIR "/export-dirs.json";
+    if (!std::filesystem::exists(exportDirConfigPath)) {
+        return LINGLONG_ERR(
+          QString{ "this export config file doesn't exist: %1" }.arg(exportDirConfigPath.c_str()));
+    }
+    auto exportDirConfig =
+      linglong::utils::serialize::LoadJSONFile<linglong::api::types::v1::ExportDirs>(
+        exportDirConfigPath);
+    if (!exportDirConfig) {
+        return LINGLONG_ERR(
+          QString{ "failed to load export config file: %1" }.arg(exportDirConfigPath.c_str()));
+    }
+
     // 如果存在lib/systemd目录，优先导出lib/systemd，否则导出share/systemd（为兼容旧应用，新应用应该逐步将配置文件放在lib/systemd目录下）
     exists = std::filesystem::exists(appEntriesDir / "lib/systemd/user", ec);
     if (ec) {
         return LINGLONG_ERR("Failed to check the existence of lib/systemd directory: {}", ec);
     }
     if (exists) {
-        exportPaths.push_back("lib/systemd/user");
+        exportDirConfig->exportPaths.push_back("lib/systemd/user");
     } else {
-        exportPaths.push_back("share/systemd/user");
+        exportDirConfig->exportPaths.push_back("share/systemd/user");
     }
     // 导出应用entries目录下的所有文件到玲珑仓库的entries目录下
-    for (const auto &path : exportPaths) {
+    for (const auto &path : exportDirConfig->exportPaths) {
         auto source = appEntriesDir / path;
         auto destination = rootEntriesDir / path;
         // 将 share/systemd 目录下的文件导出到 lib/systemd 目录下

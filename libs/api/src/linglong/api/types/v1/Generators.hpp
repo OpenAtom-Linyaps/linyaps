@@ -52,6 +52,7 @@
 #include "linglong/api/types/v1/InteractionReply.hpp"
 #include "linglong/api/types/v1/InteractionMessageType.hpp"
 #include "linglong/api/types/v1/InspectResult.hpp"
+#include "linglong/api/types/v1/ExportDirs.hpp"
 #include "linglong/api/types/v1/DialogMessage.hpp"
 #include "linglong/api/types/v1/DialogHandShakePayload.hpp"
 #include "linglong/api/types/v1/ContainerProcessStateInfo.hpp"
@@ -132,6 +133,9 @@ void to_json(json & j, const DialogHandShakePayload & x);
 
 void from_json(const json & j, DialogMessage & x);
 void to_json(json & j, const DialogMessage & x);
+
+void from_json(const json & j, ExportDirs & x);
+void to_json(json & j, const ExportDirs & x);
 
 void from_json(const json & j, InspectResult & x);
 void to_json(json & j, const InspectResult & x);
@@ -551,6 +555,15 @@ inline void to_json(json & j, const DialogMessage & x) {
 j = json::object();
 j["payload"] = x.payload;
 j["type"] = x.type;
+}
+
+inline void from_json(const json & j, ExportDirs& x) {
+x.exportPaths = j.at("export-paths").get<std::vector<std::string>>();
+}
+
+inline void to_json(json & j, const ExportDirs & x) {
+j = json::object();
+j["export-paths"] = x.exportPaths;
 }
 
 inline void from_json(const json & j, InspectResult& x) {
@@ -1061,6 +1074,7 @@ x.commonResult = get_stack_optional<CommonResult>(j, "CommonResult");
 x.containerProcessStateInfo = get_stack_optional<ContainerProcessStateInfo>(j, "ContainerProcessStateInfo");
 x.dialogHandShakePayload = get_stack_optional<DialogHandShakePayload>(j, "DialogHandShakePayload");
 x.dialogMessage = get_stack_optional<DialogMessage>(j, "DialogMessage");
+x.exportDirs = get_stack_optional<ExportDirs>(j, "ExportDirs");
 x.inspectResult = get_stack_optional<InspectResult>(j, "InspectResult");
 x.interactionMessageType = get_stack_optional<InteractionMessageType>(j, "InteractionMessageType");
 x.interactionReply = get_stack_optional<InteractionReply>(j, "InteractionReply");
@@ -1127,6 +1141,9 @@ j["DialogHandShakePayload"] = x.dialogHandShakePayload;
 }
 if (x.dialogMessage) {
 j["DialogMessage"] = x.dialogMessage;
+}
+if (x.exportDirs) {
+j["ExportDirs"] = x.exportDirs;
 }
 if (x.inspectResult) {
 j["InspectResult"] = x.inspectResult;

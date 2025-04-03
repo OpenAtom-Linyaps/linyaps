@@ -1234,6 +1234,21 @@
           "type": "string"
         }
       }
+    },
+    "ExportDirs": {
+      "type": "object",
+      "required": [
+        "export-paths"
+      ],
+      "properties": {
+        "export-paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "path to export"
+          }
+        }
+      }
     }
   },
   "type": "object",
@@ -1360,6 +1375,9 @@
     },
     "DialogHandShakePayload": {
       "$ref": "#/$defs/DialogHandShakePayload"
+    },
+    "ExportDirs": {
+      "$ref": "#/$defs/ExportDirs"
     }
   }
 }

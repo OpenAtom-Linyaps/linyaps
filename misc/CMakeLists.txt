@@ -51,6 +51,7 @@ configure_files(
   share/zsh/vendor-completions/_ll-cli
   share/dbus-1/system.d/org.deepin.linglong.PackageManager1.conf
   share/dbus-1/system-services/org.deepin.linglong.PackageManager1.service
+  share/linglong/export-dirs.json
   share/linglong/builder/templates/example.yaml
   share/linglong/builder/uab/blacklist
   share/linglong/config.yaml
@@ -132,6 +133,10 @@ install(
 
 # linglong default configuration
 install(FILES ${CMAKE_CURRENT_LIST_DIR}/share/linglong/config.yaml
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/linglong)
+
+# builder export dirs
+install(FILES ${CMAKE_CURRENT_LIST_DIR}/share/linglong/export-dirs.json
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/linglong)
 
 # builder templates

@@ -1234,6 +1234,34 @@
           "type": "string"
         }
       }
+    },
+    "BuilderExportDirs": {
+      "type": "object",
+      "required": [
+        "export-paths"
+      ],
+      "properties": {
+        "export-paths": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "path",
+              "desc"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "path to export"
+              },
+              "desc": {
+                "type": "string",
+                "description": "description of the path to export"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "type": "object",
@@ -1360,6 +1388,9 @@
     },
     "DialogHandShakePayload": {
       "$ref": "#/$defs/DialogHandShakePayload"
+    },
+    "BuilderExportDirs": {
+      "$ref": "#/$defs/BuilderExportDirs"
     }
   }
 }

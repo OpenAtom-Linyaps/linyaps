@@ -107,7 +107,7 @@ error::Result<T> LoadJSONFile(QFile &file) noexcept
 template<typename T>
 error::Result<T> LoadJSONFile(const QString &filename) noexcept
 {
-    QFile file = filename;
+    QFile file{ filename };
     return LoadJSONFile<T>(file);
 }
 

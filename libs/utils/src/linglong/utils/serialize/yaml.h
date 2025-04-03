@@ -36,7 +36,7 @@ error::Result<T> LoadYAMLFile(const QString &filename) noexcept
 {
     LINGLONG_TRACE("load yaml from file");
 
-    QFile file = filename;
+    QFile file{ filename };
 
     file.open(QFile::ReadOnly);
     if (!file.isOpen()) {

@@ -755,7 +755,7 @@ utils::error::Result<void> Builder::build(const QStringList &args) noexcept
     }
 
     // write ld.so.conf
-    QFile ldsoconf = appCache.absoluteFilePath("ld.so.conf");
+    QFile ldsoconf{ appCache.absoluteFilePath("ld.so.conf") };
     if (!ldsoconf.open(QIODevice::WriteOnly)) {
         return LINGLONG_ERR(ldsoconf);
     }
@@ -1275,7 +1275,7 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
         }
         info.size = static_cast<int>(*ret);
 
-        QFile infoFile = moduleOutput.filePath("info.json");
+        QFile infoFile{ moduleOutput.filePath("info.json") };
         if (!infoFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
             return LINGLONG_ERR(infoFile);
         }
@@ -1465,7 +1465,7 @@ utils::error::Result<void> Builder::exportLayer(const QString &destination,
         if (noExportDevelop && module == "develop") {
             continue;
         }
-        
+
         auto layerDir = this->repo.getLayerDir(*ref, module);
         if (!layerDir) {
             qCritical().nospace() << "resolve layer " << ref->toString() << "/" << module.c_str()
@@ -1912,7 +1912,7 @@ utils::error::Result<void> Builder::generateEntryScript() noexcept
 {
     LINGLONG_TRACE("generate entry script");
 
-    QFile entry = this->workingDir.absoluteFilePath("linglong/entry.sh");
+    QFile entry{ this->workingDir.absoluteFilePath("linglong/entry.sh") };
     if (entry.exists() && !entry.remove()) {
         return LINGLONG_ERR(entry);
     }

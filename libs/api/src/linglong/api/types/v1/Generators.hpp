@@ -64,6 +64,8 @@
 #include "linglong/api/types/v1/BuilderProjectModules.hpp"
 #include "linglong/api/types/v1/BuilderProjectBuildEXT.hpp"
 #include "linglong/api/types/v1/Apt.hpp"
+#include "linglong/api/types/v1/BuilderExportDirs.hpp"
+#include "linglong/api/types/v1/ExportPath.hpp"
 #include "linglong/api/types/v1/BuilderConfig.hpp"
 #include "linglong/api/types/v1/ApplicationPermissionsRequest.hpp"
 #include "linglong/api/types/v1/ApplicationConfiguration.hpp"
@@ -96,6 +98,12 @@ void to_json(json & j, const ApplicationPermissionsRequest & x);
 
 void from_json(const json & j, BuilderConfig & x);
 void to_json(json & j, const BuilderConfig & x);
+
+void from_json(const json & j, ExportPath & x);
+void to_json(json & j, const ExportPath & x);
+
+void from_json(const json & j, BuilderExportDirs & x);
+void to_json(json & j, const BuilderExportDirs & x);
 
 void from_json(const json & j, Apt & x);
 void to_json(json & j, const Apt & x);
@@ -335,6 +343,26 @@ j["offline"] = x.offline;
 }
 j["repo"] = x.repo;
 j["version"] = x.version;
+}
+
+inline void from_json(const json & j, ExportPath& x) {
+x.desc = j.at("desc").get<std::string>();
+x.path = j.at("path").get<std::string>();
+}
+
+inline void to_json(json & j, const ExportPath & x) {
+j = json::object();
+j["desc"] = x.desc;
+j["path"] = x.path;
+}
+
+inline void from_json(const json & j, BuilderExportDirs& x) {
+x.exportPaths = j.at("export-paths").get<std::vector<ExportPath>>();
+}
+
+inline void to_json(json & j, const BuilderExportDirs & x) {
+j = json::object();
+j["export-paths"] = x.exportPaths;
 }
 
 inline void from_json(const json & j, Apt& x) {
@@ -1054,6 +1082,7 @@ x.applicationConfiguration = get_stack_optional<ApplicationConfiguration>(j, "Ap
 x.applicationConfigurationPermissions = get_stack_optional<ApplicationConfigurationPermissions>(j, "ApplicationConfigurationPermissions");
 x.applicationPermissionsRequest = get_stack_optional<ApplicationPermissionsRequest>(j, "ApplicationPermissionsRequest");
 x.builderConfig = get_stack_optional<BuilderConfig>(j, "BuilderConfig");
+x.builderExportDirs = get_stack_optional<BuilderExportDirs>(j, "BuilderExportDirs");
 x.builderProject = get_stack_optional<BuilderProject>(j, "BuilderProject");
 x.cliContainer = get_stack_optional<CliContainer>(j, "CLIContainer");
 x.commonOptions = get_stack_optional<CommonOptions>(j, "CommonOptions");
@@ -1106,6 +1135,9 @@ j["ApplicationPermissionsRequest"] = x.applicationPermissionsRequest;
 }
 if (x.builderConfig) {
 j["BuilderConfig"] = x.builderConfig;
+}
+if (x.builderExportDirs) {
+j["BuilderExportDirs"] = x.builderExportDirs;
 }
 if (x.builderProject) {
 j["BuilderProject"] = x.builderProject;

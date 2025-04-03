@@ -1,0 +1,40 @@
+{
+    "export-paths": [
+        {
+            "path": "share/applications",
+            "desc": "Copy desktop files"
+        },
+        {
+            "path": "share/mime",
+            "desc": "Copy MIME Type files"
+        },
+        {
+            "path": "share/icons",
+            "desc": "Icons"
+        },
+        {
+            "path": "share/dbus-1",
+            "desc": "D-Bus service files"
+        },
+        {
+            "path": "share/gnome-shell",
+            "desc": "Search providers"
+        },
+        {
+            "path": "share/appdata",
+            "desc": "Copy appdata/metainfo files (legacy path)"
+        },
+        {
+            "path": "share/metainfo",
+            "desc": "Copy appdata/metainfo files"
+        },
+        {
+            "path": "share/plugins",
+            "desc": "Copy plugins conf，The configuration files provided by some applications maybe used by the host dde-file-manager."
+        },
+        {
+            "path": "share/templates",
+            "desc": "Copy templates file for some applications such as wps"
+        }
+    ]
+}

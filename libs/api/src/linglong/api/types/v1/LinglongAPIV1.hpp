@@ -21,6 +21,7 @@
 #include "linglong/api/types/v1/ApplicationConfigurationPermissions.hpp"
 #include "linglong/api/types/v1/ApplicationPermissionsRequest.hpp"
 #include "linglong/api/types/v1/BuilderConfig.hpp"
+#include "linglong/api/types/v1/BuilderExportDirs.hpp"
 #include "linglong/api/types/v1/BuilderProject.hpp"
 #include "linglong/api/types/v1/CliContainer.hpp"
 #include "linglong/api/types/v1/CommonOptions.hpp"
@@ -86,6 +87,7 @@ std::optional<ApplicationConfiguration> applicationConfiguration;
 std::optional<ApplicationConfigurationPermissions> applicationConfigurationPermissions;
 std::optional<ApplicationPermissionsRequest> applicationPermissionsRequest;
 std::optional<BuilderConfig> builderConfig;
+std::optional<BuilderExportDirs> builderExportDirs;
 std::optional<BuilderProject> builderProject;
 std::optional<CliContainer> cliContainer;
 std::optional<CommonOptions> commonOptions;

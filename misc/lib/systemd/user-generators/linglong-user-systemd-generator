@@ -6,4 +6,4 @@
 
 # https://www.freedesktop.org/software/systemd/man/latest/systemd.generator.html
 late="$3"
-cp -rs @LINGLONG_ROOT@/entries/lib/systemd/user/* "$late/"
+cp -rs @LINGLONG_ROOT@/entries/lib/systemd/user/* "${late}/" || true

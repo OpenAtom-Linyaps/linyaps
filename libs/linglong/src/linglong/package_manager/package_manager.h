@@ -102,7 +102,7 @@ public
 Q_SIGNALS:
     void TaskAdded(QDBusObjectPath object_path);
     void TaskRemoved(
-      QDBusObjectPath object_path, int state, int subState, QString message, double percentage);
+      QDBusObjectPath object_path, int state, int subState, QString message, double percentage, int code);
     void TaskListChanged(const QString &taskObjectPath, const QString &taskDescription);
     void RequestInteraction(QDBusObjectPath object_path,
                             int messageID,

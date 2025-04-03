@@ -25,6 +25,37 @@
 
 namespace linglong::utils::error {
 
+enum class ErrorCode : int {
+    Failed = -1,                            // 通用失败错误码
+    Success = 0,                            // 成功
+    /* 通用错误层 */
+    Unknown = 1000,                         // 未知错误
+    AppNotFoundFromRemote = 1001,           // 从远程找不到对应应用
+    AppNotFoundFromLocal = 1002,            // 从本地找不到对应应用
+
+    /* 安装 */
+    AppInstallFailed = 2001,                // 安装失败
+    AppInstallNotFoundFromRemote = 2002,    // 远程不存在对应应用
+    AppInstallAlreadyInstalled = 2003,      // 本地已安装相同版本的应用
+    AppInstallNeedDowngrade = 2004,         // 安装app需要降级
+    AppInstallModuleNoVersion = 2005,       // 安装模块时不允许指定版本
+    AppInstallModuleRequireAppFirst = 2006, // 安装模块时需要先安装应用
+    AppInstallModuleAlreadyExists = 2007,   // 安装模块时已存在相同版本的模块
+    AppInstallArchNotMatch = 2008,          // 安装app的架构不匹配
+    /* 卸载 */
+    AppUninstallFailed = 2101,              // 卸载失败
+    AppUninstallNotFoundFromLocal = 2102,   // 本地不存在对应应用
+    AppUninstallAppIsRunning = 2103,        // 卸载的app正在运行
+    LayerCompatibilityError = 2104,         // 找不到兼容的layer
+    /* 升级 */
+    AppUpgradeFailed = 2201,                // 升级失败
+    AppUpgradeNotFound = 2202,              // 本地不存在对应应用
+    AppUpgradeLatestInstalled = 2203,       // 已安装最新版本
+
+    /* 网络 */
+    NetworkError = 3001,                    // 网络错误
+};
+
 class Error
 {
 public:
@@ -38,6 +69,20 @@ public:
     [[nodiscard]] auto code() const { return pImpl->code(); };
 
     [[nodiscard]] auto message() const { return pImpl->message(); }
+
+    static auto Err(const char *file,
+                    int line,
+                    const QString &trace_msg,
+                    const QString &msg,
+                    const ErrorCode &code) -> Error
+    {
+        return Error(std::make_unique<details::ErrorImpl>(file,
+                                                          line,
+                                                          "default",
+                                                          static_cast<int>(code),
+                                                          trace_msg + ": " + msg,
+                                                          nullptr));
+    }
 
     static auto
     Err(const char *file, int line, const QString &trace_msg, const QString &msg, int code = -1)

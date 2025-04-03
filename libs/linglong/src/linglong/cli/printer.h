@@ -88,6 +88,7 @@ public:
     virtual void printContent(const QStringList &filePaths) = 0;
     virtual void printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &) = 0;
     virtual void printInspect(const api::types::v1::InspectResult &) = 0;
+    virtual void printMessage(const QString &message) = 0;
 };
 
 } // namespace linglong::cli

@@ -13,6 +13,7 @@
 #include "linglong/cli/printer.h"
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
+#include "linglong/utils/error/error.h"
 
 #include <CLI/App.hpp>
 
@@ -47,6 +48,7 @@ struct CliOptions
     bool confirmOpt;
     std::optional<pid_t> pid;
     std::string signal;
+    bool verbose;
 };
 
 class Cli : public QObject
@@ -122,7 +124,7 @@ private Q_SLOTS:
     // maybe use in the future
     void onTaskAdded(QDBusObjectPath object_path);
     void onTaskRemoved(
-      QDBusObjectPath object_path, int state, int subState, QString message, double percentage);
+      QDBusObjectPath object_path, int state, int subState, QString message, double percentage, int code);
     void onTaskPropertiesChanged(QString interface,
                                  QVariantMap changed_properties,
                                  QStringList invalidated_properties);
@@ -144,6 +146,7 @@ private:
     linglong::api::types::v1::SubState lastSubState{ linglong::api::types::v1::SubState::Unknown };
     QString lastMessage;
     double lastPercentage{ 0 };
+    linglong::utils::error::ErrorCode lastErrorCode;
     linglong::cli::CliOptions options;
 };
 

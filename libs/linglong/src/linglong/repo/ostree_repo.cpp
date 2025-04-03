@@ -2339,7 +2339,8 @@ utils::error::Result<void> OSTreeRepo::mergeModules() const noexcept
             commits.push_back(layer.commit);
             modules.push_back(layer.info.packageInfoV2Module);
             hash.addData(QString::fromStdString(layer.commit).toUtf8());
-            if (layer.info.packageInfoV2Module == "binary") {
+            if (layer.info.packageInfoV2Module == "binary"
+                || layer.info.packageInfoV2Module == "runtime") {
                 binaryCommit = layer.commit;
             }
         }

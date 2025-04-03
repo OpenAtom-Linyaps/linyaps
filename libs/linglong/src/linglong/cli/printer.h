@@ -84,10 +84,12 @@ public:
     virtual void printTaskState(double percentage,
                                 const QString &message,
                                 api::types::v1::State state,
-                                api::types::v1::SubState subState) = 0;
+                                api::types::v1::SubState subState,
+                                utils::error::ErrorCode errCode) = 0;
     virtual void printContent(const QStringList &filePaths) = 0;
     virtual void printUpgradeList(std::vector<api::types::v1::UpgradeListResult> &) = 0;
     virtual void printInspect(const api::types::v1::InspectResult &) = 0;
+    virtual void printMessage(const QString &message) {};
 };
 
 } // namespace linglong::cli

@@ -45,15 +45,11 @@
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
-#include <future>
-#include <iostream>
 #include <map>
 #include <memory>
 #include <string>
 #include <system_error>
 #include <thread>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -469,10 +465,10 @@ utils::error::Result<package::Reference> clearReferenceLocal(const linglong::rep
     if (fuzzy.arch) {
         auto curArch = linglong::package::Architecture::currentCPUArchitecture();
         if (!curArch) {
-            return LINGLONG_ERR(curArch);
+            return LINGLONG_ERR(curArch.error().message(),static_cast<int>(utils::error::ErrorCode::Unknown));
         }
         if (curArch != *fuzzy.arch) {
-            return LINGLONG_ERR("arch mismatch with host arch");
+            return LINGLONG_ERR("arch mismatch with host arch",static_cast<int>(utils::error::ErrorCode::Unknown));
         }
     }
 
@@ -482,11 +478,11 @@ utils::error::Result<package::Reference> clearReferenceLocal(const linglong::rep
     query.id = fuzzy.id.toStdString();
     const auto availablePackage = cache.queryLayerItem(query);
     if (availablePackage.empty()) {
-        return LINGLONG_ERR("package not found:" % fuzzy.toString());
+        return LINGLONG_ERR("package not found:" % fuzzy.toString(),static_cast<int>(utils::error::ErrorCode::AppNotFoundFromLocal));
     }
 
     utils::error::Result<linglong::api::types::v1::RepositoryCacheLayersItem> foundRef =
-      LINGLONG_ERR("compatible layer not found");
+      LINGLONG_ERR("compatible layer not found", static_cast<int>(utils::error::ErrorCode::LayerCompatibilityError));
     for (const auto &ref : availablePackage) {
         // we should ignore deleted layers
         if (ref.deleted && ref.deleted.value()) {
@@ -1262,7 +1258,8 @@ OSTreeRepo::clearReference(const package::FuzzyReference &fuzzy,
 
     auto list = this->listRemote(fuzzy);
     if (!list.has_value()) {
-        return LINGLONG_ERR("get ref list from remote", list);
+        return LINGLONG_ERR("get ref list from remote " + list.error().message(),
+                            list.error().code());
     }
 
     for (auto record : *list) {
@@ -1319,7 +1316,7 @@ OSTreeRepo::clearReference(const package::FuzzyReference &fuzzy,
         auto msg = QString("not found ref:%1 module:%2 from remote repo")
                      .arg(fuzzy.toString())
                      .arg(module.c_str());
-        return LINGLONG_ERR(msg);
+        return LINGLONG_ERR(msg, static_cast<int>(utils::error::ErrorCode::AppNotFoundFromRemote));
     }
 
     return reference;
@@ -1480,7 +1477,8 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
     }
 
     if (response == nullptr) {
-        return LINGLONG_ERR("failed to send request to remote server");
+        return LINGLONG_ERR("failed to send request to remote server",
+                            static_cast<int>(utils::error::ErrorCode::NetworkError));
     }
     auto freeResponse = utils::finally::finally([&response] {
         fuzzy_search_app_200_response_free(response);
@@ -1490,7 +1488,10 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
         QString msg = (response->msg != nullptr)
           ? response->msg
           : QString{ "cannot send request to remote server: %1" }.arg(response->code);
-        return LINGLONG_ERR(msg);
+        return LINGLONG_ERR(msg,
+                            (response->msg != nullptr
+                               ? -1
+                               : static_cast<int>(utils::error::ErrorCode::NetworkError)));
     }
 
     if (response->data == nullptr) {

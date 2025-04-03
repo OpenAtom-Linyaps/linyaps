@@ -67,7 +67,8 @@ void JSONPrinter::printContent(const QStringList &filePaths)
 void JSONPrinter::printTaskState(const double percentage,
                                  const QString &message,
                                  api::types::v1::State state,
-                                 api::types::v1::SubState subState)
+                                 api::types::v1::SubState subState,
+                                 [[maybe_unused]] utils::error::ErrorCode errCode)
 {
     nlohmann::json json;
     json["percentage"] = percentage;

@@ -202,7 +202,12 @@ You can report bugs to the linyaps team under this project: https://github.com/O
                         .showAll = false,
                         .showUpgradeList = false,
                         .forceOpt = false,
-                        .confirmOpt = false };
+                        .confirmOpt = false,
+                        .verbose = false };
+
+    commandParser.add_flag("-v,--verbose",
+                           options.verbose,
+                           _("Enable verbose output (show debug logs)"));
 
     // groups
     auto *CliBuildInGroup = _("Managing installed applications and runtimes");

@@ -11,6 +11,7 @@
 #include "linglong/repo/ostree_repo.h"
 #include "linglong/runtime/container_builder.h"
 #include "linglong/utils/error/error.h"
+#include "linglong/utils/overlayfs.h"
 
 #include <string>
 
@@ -81,17 +82,34 @@ public:
     auto run(const QStringList &modules,
              const QStringList &args,
              bool debug = false) -> utils::error::Result<void>;
-    auto runtimeCheck(const QStringList &modules) -> utils::error::Result<void>;
+    auto runtimeCheck() -> utils::error::Result<void>;
 
     void setBuildOptions(const BuilderBuildOptions &options) noexcept { buildOptions = options; }
 
 private:
+    auto buildStagePrepare() noexcept -> utils::error::Result<void>;
+    auto buildStageFetchSource() noexcept -> utils::error::Result<void>;
+    utils::error::Result<void> buildStagePullDependency() noexcept;
+    utils::error::Result<bool> buildStageBuild(const QStringList &args) noexcept;
+    utils::error::Result<void> buildStagePreBuild() noexcept;
+    utils::error::Result<void> buildStagePreCommit() noexcept;
+    utils::error::Result<bool> buildStageCommit() noexcept;
+
+    utils::error::Result<void> generateAppConf() noexcept;
+    utils::error::Result<void> installFiles() noexcept;
+    utils::error::Result<void> generateEntries() noexcept;
+    utils::error::Result<void> processBuildDepends() noexcept;
+    utils::error::Result<void> commitToLocalRepo() noexcept;
+    std::unique_ptr<utils::OverlayFS> makeOverlay(QString lowerdir, QString overlayDir) noexcept;
+    utils::error::Result<package::Reference> clearDependency(const std::string &ref,
+                                                             bool onlyLocal) noexcept;
     auto generateEntryScript() noexcept -> utils::error::Result<void>;
     auto generateBuildDependsScript() noexcept -> utils::error::Result<bool>;
     auto generateDependsScript() noexcept -> utils::error::Result<bool>;
     void takeTerminalForeground();
     void patchBuildPhaseConfig(ocppi::runtime::config::types::Config &config);
     void mergeOutput(const QList<QDir> &src, const QDir &dest, const QStringList &target);
+    void printBasicInfo();
     void printRepo();
 
 private:
@@ -101,6 +119,20 @@ private:
     runtime::ContainerBuilder &containerBuilder;
     api::types::v1::BuilderConfig cfg;
     BuilderBuildOptions buildOptions;
+
+    int64_t uid;
+    int64_t gid;
+
+    std::optional<package::Reference> projectRef;
+    QStringList packageModules;
+    std::optional<package::Reference> baseRef;
+    std::optional<package::LayerDir> baseLayerDir;
+    std::optional<package::Reference> runtimeRef;
+    std::optional<package::LayerDir> runtimeLayerDir;
+    std::unique_ptr<utils::OverlayFS> baseOverlay;
+    std::unique_ptr<utils::OverlayFS> runtimeOverlay;
+    QDir buildOutput;
+    QString installPrefix;
 };
 
 } // namespace linglong::builder

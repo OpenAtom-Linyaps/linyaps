@@ -412,12 +412,6 @@ bool ContainerCfgBuilder::checkValid() noexcept
         return false;
     }
 
-    if (!appPath) {
-        error_.reason = "app path is not set";
-        error_.code = BUILD_PARAM_ERROR;
-        return false;
-    }
-
     if (!basePath) {
         error_.reason = "base path is not set";
         error_.code = BUILD_PARAM_ERROR;
@@ -486,6 +480,10 @@ bool ContainerCfgBuilder::buildMountRuntime() noexcept
 
 bool ContainerCfgBuilder::buildMountApp() noexcept
 {
+    if (!appPath) {
+        return true;
+    }
+
     std::error_code ec;
     if (!std::filesystem::exists(*appPath, ec)) {
         error_.reason = "app files is not exist";

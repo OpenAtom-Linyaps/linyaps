@@ -13,13 +13,17 @@ class OverlayFS
 public:
     OverlayFS() = delete;
     OverlayFS(const OverlayFS &) = delete;
-    OverlayFS& operator=(const OverlayFS &) = delete;
+    OverlayFS &operator=(const OverlayFS &) = delete;
 
     OverlayFS(QString lowerdir, QString upperdir, QString workdir, QString merged);
     ~OverlayFS();
 
     bool mount();
     void unmount(bool clean = false);
+
+    QString upperDirPath() { return upperdir_; }
+
+    QString mergedDirPath() { return merged_; }
 
 private:
     QString lowerdir_;
@@ -28,4 +32,4 @@ private:
     QString merged_;
 };
 
-}
+} // namespace linglong::utils

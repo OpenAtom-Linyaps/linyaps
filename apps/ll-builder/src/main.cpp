@@ -493,9 +493,14 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     }
 
     // set GIO_USE_VFS to local, avoid glib start thread
-    char *oldEnv = getenv("GIO_USE_VFS");
+    char *oldEnvGioUseVFS = getenv("GIO_USE_VFS");
     if (-1 == setenv("GIO_USE_VFS", "local", 1)) {
         qWarning() << "failed to GIO_USE_VFS to local" << errno;
+    }
+
+    char *oldEnvRemoteIgnore = getenv("GVFS_REMOTE_VOLUME_MONITOR_IGNORE");
+    if (-1 == setenv("GVFS_REMOTE_VOLUME_MONITOR_IGNORE", "1", 1)) {
+        qWarning() << "failed to GVFS_REMOTE_VOLUME_MONITOR_IGNORE to local" << errno;
     }
 
     auto result = linglong::repo::tryMigrate(builderCfg->repo, *repoCfg);
@@ -537,13 +542,23 @@ You can report bugs to the linyaps team under this project: https://github.com/O
 
     linglong::repo::OSTreeRepo repo(repoRoot, *repoCfg, clientFactory);
 
-    if (oldEnv) {
-        if (-1 == setenv("GIO_USE_VFS", oldEnv, 1)) {
+    if (oldEnvGioUseVFS) {
+        if (-1 == setenv("GIO_USE_VFS", oldEnvGioUseVFS, 1)) {
             qWarning() << "failed to restore GIO_USE_VFS" << errno;
         }
     } else {
         if (-1 == unsetenv("GIO_USE_VFS")) {
             qWarning() << "failed to restore GIO_USE_VFS" << errno;
+        }
+    }
+
+    if (oldEnvRemoteIgnore) {
+        if (-1 == setenv("GVFS_REMOTE_VOLUME_MONITOR_IGNORE", oldEnvRemoteIgnore, 1)) {
+            qWarning() << "failed to restore GVFS_REMOTE_VOLUME_MONITOR_IGNORE" << errno;
+        }
+    } else {
+        if (-1 == unsetenv("GVFS_REMOTE_VOLUME_MONITOR_IGNORE")) {
+            qWarning() << "failed to restore GVFS_REMOTE_VOLUME_MONITOR_IGNORE" << errno;
         }
     }
 

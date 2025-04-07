@@ -293,9 +293,9 @@ int exec(const arg_exec &arg) noexcept
     auto boxPidStr = std::to_string(lastBox);
     auto wdns = linglong::util::format("--wdns=%s", arg.cwd.c_str());
 
-    std::vector<const char *> newArgv{
-        "nsenter", "-t", boxPidStr.c_str(), "-U", "-m", "-p", wdns.c_str(), "--preserve-credentials"
-    };
+    std::vector<const char *> newArgv{ "nsenter", "-t",         boxPidStr.c_str(),
+                                       "-U",      "-m",         "-p",
+                                       "-u",      wdns.c_str(), "--preserve-credentials" };
 
     for (const auto &str : arg.cmd) {
         newArgv.push_back(str.c_str());

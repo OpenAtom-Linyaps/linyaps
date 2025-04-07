@@ -24,6 +24,7 @@
 #include <cerrno>
 #include <filesystem>
 #include <map>
+#include <thread>
 #include <utility>
 
 #include <fcntl.h>
@@ -691,7 +692,57 @@ int NonePrivilegeProc(void *arg)
         return -1;
     }
 
-    return util::WaitAllUntil(containerPrivate.pidMap.begin()->first);
+    ret = util::WaitAllUntil(containerPrivate.pidMap.begin()->first);
+    // NOTE: it's not standard oci action, just a workaround for temporary
+    auto has_other_process = [self_pid = ::getpid()] {
+        auto iter = std::filesystem::directory_iterator{ "/proc" };
+        std::error_code ec;
+        for (auto const &entry : iter) {
+            if (!entry.is_directory(ec)) {
+                if (ec) {
+                    throw std::runtime_error("couldn't read " + entry.path().string()
+                                             + ec.message());
+                }
+
+                continue;
+            }
+
+            const auto &filename = entry.path().filename();
+            try {
+                auto pid = std::stoi(filename);
+                if (pid == self_pid) {
+                    continue;
+                }
+
+                logDbg() << "process " << pid << " still exists";
+                return true;
+            } catch (...) { // NOLINT
+            }
+        }
+
+        return false;
+    };
+
+    try {
+        using namespace std::chrono_literals;
+        auto interval = 5s;
+        if (auto *env = std::getenv("LINGLONG_BOX_WAIT_INTERVAL"); env != nullptr) {
+            try {
+                interval = std::chrono::seconds(std::stoi(env));
+            } catch (const std::logic_error &e) { // NOLINT
+                // ignore
+            }
+        }
+
+        while (has_other_process()) {
+            std::this_thread::sleep_for(interval);
+        }
+    } catch (const std::logic_error &e) {
+        logErr() << e.what();
+        return -1;
+    }
+
+    return ret;
 }
 
 void sigtermHandler(int)

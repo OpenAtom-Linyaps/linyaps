@@ -249,6 +249,9 @@ You can report bugs to the linyaps team under this project: https://github.com/O
     buildBuilder->add_flag("--skip-strip-symbols",
                            options.skipStripSymbols,
                            _("Skip strip debug symbols"));
+    buildBuilder->add_flag("--isolate-network",
+                           options.isolateNetWork,
+                           _("Build in an isolated network environment"));
 
     // add builder run
     bool debugMode = false;

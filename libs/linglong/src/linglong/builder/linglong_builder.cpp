@@ -900,6 +900,10 @@ include /opt/apps/@id@/files/etc/ld.so.conf)";
         "/project/linglong/overlay",
       });
 
+    if (this->buildOptions.isolateNetWork) {
+        cfgBuilder.isolateNetWork();
+    }
+
     if (this->project.package.kind != "runtime") {
         cfgBuilder.setAppPath(buildOutput.path().toStdString(), false);
         if (runtimeLayerDir) {

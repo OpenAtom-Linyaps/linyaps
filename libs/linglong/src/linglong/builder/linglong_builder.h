@@ -38,6 +38,7 @@ struct BuilderBuildOptions
     bool skipCommitOutput{ false };
     bool skipCheckOutput{ false };
     bool skipStripSymbols{ false };
+    bool isolateNetWork{ false };
 };
 
 utils::error::Result<void> cmdListApp(repo::OSTreeRepo &repo);

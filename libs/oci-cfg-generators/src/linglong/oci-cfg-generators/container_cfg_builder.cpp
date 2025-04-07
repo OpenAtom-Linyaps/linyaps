@@ -439,6 +439,9 @@ bool ContainerCfgBuilder::prepare() noexcept
         NamespaceReference{ .type = NamespaceType::Uts },
         NamespaceReference{ .type = NamespaceType::User },
     };
+    if (isolateNetWorkEnabled) {
+        linux_.namespaces->push_back(NamespaceReference{ .type = NamespaceType::Network });
+    }
     config.linux_ = std::move(linux_);
 
     auto process = Process{ .args = string_list{ "bash" }, .cwd = "/" };

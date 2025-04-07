@@ -149,6 +149,12 @@ public:
 
     ContainerCfgBuilder &addMask(const std::vector<std::string> &masks) noexcept;
 
+    ContainerCfgBuilder &isolateNetWork() noexcept
+    {
+        isolateNetWorkEnabled = true;
+        return *this;
+    }
+
     bool build() noexcept;
 
     const ocppi::runtime::config::types::Config &getConfig() const { return config; }
@@ -247,6 +253,8 @@ private:
 
     // self-adjusting mount
     bool selfAdjustingMountEnabled = false;
+
+    bool isolateNetWorkEnabled = false;
 
     std::vector<std::string> maskedPaths;
     ocppi::runtime::config::types::Config config;

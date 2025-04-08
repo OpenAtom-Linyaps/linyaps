@@ -783,6 +783,9 @@ $defs:
       id:
         type: string
         description: id of package manager search
+      repo:
+        type: string
+        description: search packages in specified repo.
   PackageManager1JobInfo:
     type: object
     description: Get the job result using an ID

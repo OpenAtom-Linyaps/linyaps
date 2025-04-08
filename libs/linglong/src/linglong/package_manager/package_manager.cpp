@@ -1905,21 +1905,69 @@ auto PackageManager::Search(const QVariantMap &parameters) noexcept -> QVariantM
         return toDBusReply(fuzzyRef);
     }
     auto jobID = QUuid::createUuid().toString();
-    auto ref = *fuzzyRef;
-    m_search_queue.runTask([this, jobID, ref]() {
-        auto pkgInfos = this->repo.listRemote(ref);
-        if (!pkgInfos.has_value()) {
-            qWarning() << "list remote failed: " << pkgInfos.error().message();
-            Q_EMIT this->SearchFinished(jobID, toDBusReply(pkgInfos));
-            return;
+    auto repoConfig = this->repo.getConfig();
+    // 如果指定了repo，就只搜索指定的repo
+    if (paras->repo.has_value()) {
+        auto it = std::find_if(repoConfig.repos.begin(),
+                               repoConfig.repos.end(),
+                               [&paras](const linglong::api::types::v1::Repo &repo) {
+                                   return repo.alias.value_or(repo.name) == paras->repo.value();
+                               });
+
+        if (it == repoConfig.repos.end()) {
+            return toDBusReply(-1, QString("repo %1 not found").arg(paras->repo.value().c_str()));
         }
-        auto result = api::types::v1::PackageManager1SearchResult{
-            .packages = *pkgInfos,
-            .code = 0,
-            .message = "",
-        };
-        Q_EMIT this->SearchFinished(jobID, utils::serialize::toQVariantMap(result));
-    });
+        // 提交查询任务（只查指定的 repo）
+        m_search_queue.runTask([this, jobID, ref = *fuzzyRef, repo = *it]() {
+            auto pkgInfos = this->repo.listRemote(ref, repo);
+            if (!pkgInfos.has_value()) {
+                Q_EMIT this->SearchFinished(jobID, toDBusReply(pkgInfos));
+                return;
+            }
+            Q_EMIT this->SearchFinished(
+              jobID,
+              utils::serialize::toQVariantMap(api::types::v1::PackageManager1SearchResult{
+                .packages = *pkgInfos,
+                .code = 0,
+                .message = "",
+              }));
+        });
+    } else {
+        // 未指定 repo，按优先级查询所有仓库
+        m_search_queue.runTask([this, jobID, ref = *fuzzyRef, repoConfig]() {
+            std::vector<linglong::api::types::v1::PackageInfo> foundPackages;
+
+            for (const auto &repo : repoConfig.repos) {
+                auto pkgInfos = this->repo.listRemote(ref, repo);
+                if (!pkgInfos.has_value()) {
+                    qWarning() << "Failed to query repo" << repo.name.c_str()
+                               << "error:" << pkgInfos.error().message();
+                    continue;
+                }
+
+                // 如果当前仓库有匹配的包，直接返回
+                if (!pkgInfos->empty()) {
+                    Q_EMIT this->SearchFinished(
+                      jobID,
+                      utils::serialize::toQVariantMap(api::types::v1::PackageManager1SearchResult{
+                        .packages = *pkgInfos,
+                        .code = 0,
+                        .message = "",
+                      }));
+                    return;
+                }
+            }
+
+            // 所有仓库都查完了，但没有找到匹配的包
+            Q_EMIT this->SearchFinished(
+              jobID,
+              utils::serialize::toQVariantMap(api::types::v1::PackageManager1SearchResult{
+                .packages = {},
+                .code = 0,
+                .message = "Package not found in any repository",
+              }));
+        });
+    }
     auto result = utils::serialize::toQVariantMap(api::types::v1::PackageManager1JobInfo{
       .id = jobID.toStdString(),
       .code = 0,

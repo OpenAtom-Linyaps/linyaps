@@ -862,11 +862,15 @@ j["RemoteRef"] = x.remoteRef;
 
 inline void from_json(const json & j, PackageManager1SearchParameters& x) {
 x.id = j.at("id").get<std::string>();
+x.repo = get_stack_optional<std::string>(j, "repo");
 }
 
 inline void to_json(json & j, const PackageManager1SearchParameters & x) {
 j = json::object();
 j["id"] = x.id;
+if (x.repo) {
+j["repo"] = x.repo;
+}
 }
 
 inline void from_json(const json & j, PackageManager1SearchResult& x) {

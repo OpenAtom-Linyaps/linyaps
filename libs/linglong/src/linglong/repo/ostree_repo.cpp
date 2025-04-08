@@ -10,6 +10,7 @@
 #include "linglong/api/types/v1/ExportDirs.hpp"
 #include "linglong/api/types/v1/Generators.hpp"
 #include "linglong/api/types/v1/PackageInfoV2.hpp"
+#include "linglong/api/types/v1/RepoConfigV2.hpp"
 #include "linglong/api/types/v1/RepositoryCacheLayersItem.hpp"
 #include "linglong/api/types/v1/RepositoryCacheMergedItem.hpp"
 #include "linglong/package/fuzzy_reference.h"
@@ -463,7 +464,8 @@ createOstreeRepo(const QDir &location,
 }
 
 utils::error::Result<package::Reference> clearReferenceLocal(const linglong::repo::RepoCache &cache,
-                                                             package::FuzzyReference fuzzy) noexcept
+                                                             package::FuzzyReference fuzzy,
+                                                             const api::types::v1::RepoConfigV2 &cfg) noexcept
 {
     LINGLONG_TRACE("clear fuzzy reference locally");
 
@@ -525,10 +527,18 @@ utils::error::Result<package::Reference> clearReferenceLocal(const linglong::rep
 
     auto ver = linglong::package::Version::parse(QString::fromStdString(foundRef->info.version));
     auto arch = linglong::package::Architecture::parse(foundRef->info.arch[0]);
+    api::types::v1::Repo repo = repo::getDefaultRepo(cfg);
+    auto it = std::find_if(cfg.repos.begin(),cfg.repos.end(),[&foundRef](const api::types::v1::Repo &repo){
+        return repo.alias.value_or(repo.name) == foundRef->repo || repo.name == foundRef->repo;
+    });
+    if (it != cfg.repos.end()) {
+        repo = *it;
+    }
     return package::Reference::create(QString::fromStdString(foundRef->info.channel),
                                       QString::fromStdString(foundRef->info.id),
                                       *ver,
-                                      *arch);
+                                      *arch,
+                                      repo);
 };
 
 } // namespace
@@ -755,8 +765,11 @@ OSTreeRepo::OSTreeRepo(const QDir &path,
     this->cache = std::move(ret).value();
 }
 
-const api::types::v1::RepoConfigV2 &OSTreeRepo::getConfig() const noexcept
+const api::types::v1::RepoConfigV2 &OSTreeRepo::getConfig() noexcept
 {
+    std::sort(cfg.repos.begin(), cfg.repos.end(), [](const auto &repo1, const auto &repo2) {
+        return repo1.priority > repo2.priority;
+    });
     return cfg;
 }
 
@@ -1141,13 +1154,14 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
     g_autoptr(GVariant) pull_options = g_variant_ref_sink(g_variant_builder_end(&builder));
     // 这里不能使用g_main_context_push_thread_default，因为会阻塞Qt的事件循环
     const auto defaultRepo = getDefaultRepo(this->cfg);
-    auto status =
-      ostree_repo_pull_with_options(this->ostreeRepo.get(),
-                                    defaultRepo.alias.value_or(defaultRepo.name).c_str(),
-                                    pull_options,
-                                    progress,
-                                    cancellable,
-                                    &gErr);
+    auto status = ostree_repo_pull_with_options(
+      this->ostreeRepo.get(),
+      !reference.repo.name.empty() ? reference.repo.alias.value_or(reference.repo.name).c_str()
+                                   : defaultRepo.name.c_str(),
+      pull_options,
+      progress,
+      cancellable,
+      &gErr);
     ostree_async_progress_finish(progress);
     auto shouldFallback = false;
     if (status == FALSE) {
@@ -1184,12 +1198,14 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
 
         g_autoptr(GVariant) pull_options = g_variant_ref_sink(g_variant_builder_end(&builder));
 
-        status = ostree_repo_pull_with_options(this->ostreeRepo.get(),
-                                               defaultRepo.alias.value_or(defaultRepo.name).c_str(),
-                                               pull_options,
-                                               progress,
-                                               cancellable,
-                                               &gErr);
+        status = ostree_repo_pull_with_options(
+          this->ostreeRepo.get(),
+          !reference.repo.name.empty() ? reference.repo.alias.value_or(reference.repo.name).c_str()
+                                       : defaultRepo.name.c_str(),
+          pull_options,
+          progress,
+          cancellable,
+          &gErr);
         ostree_async_progress_finish(progress);
         if (status == FALSE) {
             taskContext.reportError(LINGLONG_ERRV("ostree_repo_pull", gErr));
@@ -1222,7 +1238,9 @@ void OSTreeRepo::pull(service::PackageTask &taskContext,
 
     item.commit = commit;
     item.info = *info;
-    item.repo = defaultRepo.alias.value_or(defaultRepo.name);
+    item.repo = !reference.repo.name.empty()
+      ? reference.repo.alias.value_or(reference.repo.name).c_str()
+      : defaultRepo.alias.value_or(defaultRepo.name).c_str();
 
     auto layerDir = this->ensureEmptyLayerDir(item.commit);
     if (!layerDir) {
@@ -1249,7 +1267,7 @@ OSTreeRepo::clearReference(const package::FuzzyReference &fuzzy,
     utils::error::Result<package::Reference> reference = LINGLONG_ERR("reference not exists");
 
     if (!opts.forceRemote) {
-        reference = clearReferenceLocal(*cache, fuzzy);
+        reference = clearReferenceLocal(*cache, fuzzy, this->cfg);
         if (reference) {
             return reference;
         }
@@ -1262,59 +1280,69 @@ OSTreeRepo::clearReference(const package::FuzzyReference &fuzzy,
         qInfo() << "fallback to Remote";
     }
 
-    auto list = this->listRemote(fuzzy);
-    if (!list.has_value()) {
-        return LINGLONG_ERR("get ref list from remote", list);
-    }
+    auto repoConfig = this->cfg;
 
-    for (auto record : *list) {
-        auto recordStr = nlohmann::json(record).dump();
-        if (fuzzy.channel && fuzzy.channel->toStdString() != record.channel) {
-            continue;
+    for (const auto &repo : repoConfig.repos) {
+        qDebug() << "find " << fuzzy.toString() << " in " << repo.alias.value_or(repo.name).c_str();
+        auto list = this->listRemote(fuzzy, repo);
+        if (!list.has_value()) {
+            return LINGLONG_ERR("get ref list from remote", list);
         }
-        if (fuzzy.id.toStdString() != record.id) {
-            continue;
-        }
-        auto version = package::Version::parse(QString::fromStdString(record.version));
-        if (!version) {
-            qWarning() << "Ignore invalid package record" << recordStr.c_str() << version.error();
-            continue;
-        }
-        if (record.arch.empty()) {
-            qWarning() << "Ignore invalid package record";
-            continue;
-        }
-        if (module == "binary") {
-            if (record.packageInfoV2Module != "binary" && record.packageInfoV2Module != "runtime") {
+
+        for (const auto &record : *list) {
+            auto recordStr = nlohmann::json(record).dump();
+            if (fuzzy.channel && fuzzy.channel->toStdString() != record.channel) {
                 continue;
             }
-        } else {
-            if (record.packageInfoV2Module != module) {
+            if (fuzzy.id.toStdString() != record.id) {
                 continue;
             }
-        }
-        auto arch = package::Architecture::parse(record.arch[0]);
-        if (!arch) {
-            qWarning() << "Ignore invalid package record" << recordStr.c_str() << arch.error();
-            continue;
-        }
-        auto channel = QString::fromStdString(record.channel);
-        auto currentRef = package::Reference::create(channel, fuzzy.id, *version, *arch);
-        if (!currentRef) {
-            qWarning() << "Ignore invalid package record" << recordStr.c_str()
-                       << currentRef.error();
-            continue;
-        }
-        if (!reference) {
-            reference = *currentRef;
-            continue;
+            auto version = package::Version::parse(QString::fromStdString(record.version));
+            if (!version) {
+                qWarning() << "Ignore invalid package record" << recordStr.c_str()
+                           << version.error();
+                continue;
+            }
+            if (record.arch.empty()) {
+                qWarning() << "Ignore invalid package record";
+                continue;
+            }
+
+            if (module == "binary") {
+                if (record.packageInfoV2Module != "binary"
+                    && record.packageInfoV2Module != "runtime") {
+                    continue;
+                }
+            } else {
+                if (record.packageInfoV2Module != module) {
+                    continue;
+                }
+            }
+            auto arch = package::Architecture::parse(record.arch[0]);
+            if (!arch) {
+                qWarning() << "Ignore invalid package record" << recordStr.c_str() << arch.error();
+                continue;
+            }
+            auto channel = QString::fromStdString(record.channel);
+            auto currentRef = package::Reference::create(channel, fuzzy.id, *version, *arch, repo);
+            if (!currentRef) {
+                qWarning() << "Ignore invalid package record" << recordStr.c_str()
+                           << currentRef.error();
+                continue;
+            }
+            if (!reference) {
+                reference = *currentRef;
+                continue;
+            }
+
+            if (!reference || reference->version < currentRef->version) {
+                reference = *currentRef;
+            }
         }
 
-        if (reference->version >= currentRef->version) {
-            continue;
+        if (reference) {
+            return reference;
         }
-
-        reference = *currentRef;
     }
 
     if (!reference) {
@@ -1396,9 +1424,14 @@ OSTreeRepo::listLocalLatest() const noexcept
 }
 
 utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
-OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
+OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef,
+                       const linglong::api::types::v1::Repo &repo) const noexcept
 {
     LINGLONG_TRACE("list remote references");
+
+    if (!repo.url.empty()) {
+        m_clientFactory.setServer(repo.url);
+    }
 
     auto client = m_clientFactory.createClientV2();
     request_fuzzy_search_req_t req{ nullptr, nullptr, nullptr, nullptr, nullptr };
@@ -1426,7 +1459,11 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
         return LINGLONG_ERR(QString{ "strndup app_id failed: %1" }.arg(fuzzyRef.id));
     }
     const auto defaultRepo = getDefaultRepo(this->cfg);
-    req.repo_name = ::strndup(defaultRepo.name.data(), defaultRepo.name.size());
+    if (!repo.name.empty()) {
+        req.repo_name = ::strndup(repo.name.data(), repo.name.size());
+    } else {
+        req.repo_name = ::strndup(defaultRepo.name.data(), defaultRepo.name.size());
+    }
     if (req.repo_name == nullptr) {
         return LINGLONG_ERR(
           QString{ "strndup repo_name failed: %1" }.arg(defaultRepo.name.c_str()));
@@ -1521,6 +1558,8 @@ OSTreeRepo::listRemote(const package::FuzzyReference &fuzzyRef) const noexcept
           .version = item->version,
         });
     }
+
+    m_clientFactory.setServer(defaultRepo.url);
 
     return pkgInfos;
 }
@@ -2117,7 +2156,7 @@ utils::error::Result<std::vector<std::string>> OSTreeRepo::getRemoteModuleList(
     if (!fuzzy.has_value()) {
         return LINGLONG_ERR("create fuzzy reference", fuzzy);
     }
-    auto list = this->listRemote(*fuzzy);
+    auto list = this->listRemote(*fuzzy, ref.repo);
     if (!list.has_value()) {
         return LINGLONG_ERR("list remote reference", fuzzy);
     }

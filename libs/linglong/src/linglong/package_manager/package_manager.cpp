@@ -24,7 +24,6 @@
 #include "linglong/utils/transaction.h"
 #include "ocppi/runtime/RunOption.hpp"
 
-#include <QDBusInterface>
 #include <QDBusReply>
 #include <QDBusUnixFileDescriptor>
 #include <QDebug>
@@ -1229,12 +1228,13 @@ auto PackageManager::Install(const QVariantMap &parameters) noexcept -> QVariant
         }
     }
 
-    const auto defaultRepo = linglong::repo::getDefaultRepo(this->repo.getConfig());
-    auto refSpec = QString{ "%1:%2/%3/%4/%5" }.arg(QString::fromStdString(defaultRepo.name),
-                                                   remoteRef.channel,
-                                                   remoteRef.id,
-                                                   remoteRef.arch.toString(),
-                                                   QString::fromStdString(curModule));
+    auto refSpec = QString{ "%1:%2/%3/%4/%5" }.arg(
+      QString::fromStdString(remoteRef.repo.alias.value_or(remoteRef.repo.name)),
+      remoteRef.channel,
+      remoteRef.id,
+      remoteRef.arch.toString(),
+      QString::fromStdString(curModule));
+
     // Note: do not capture any reference of variable which defined in this func.
     // it will be a dangling reference.
     auto installer = [this,
@@ -1317,6 +1317,7 @@ void PackageManager::Install(PackageTask &taskContext,
                                   + QString::fromStdString(list));
         return;
     }
+
     transaction.addRollBack([this, &newRef, installModules = *installModules]() noexcept {
         auto tmp = PackageTask::createTemporaryTask();
         UninstallRef(tmp, newRef, installModules);
@@ -1652,25 +1653,90 @@ utils::error::Result<package::Reference> PackageManager::latestRemoteReference(
     // Note: 应用更新策略与base/runtime不一致
     // 对于应用来说，不应该带着版本去查询, 允许从0.0.1更新到1.0.0
     // 对于base/runtime，应该带着版本去查询，只允许从0.0.1更新到0.0.2
+    if (!fuzzyRef.version) {
+        return LINGLONG_ERR("ref version not exists");
+    }
+
+    auto repoConfig = this->repo.getConfig();
+
+    auto oldVersion = fuzzyRef.version.value();
+
     if (kind == "app") {
         fuzzyRef.version.reset();
-        auto ref = this->repo.clearReference(fuzzyRef,
-                                             {
-                                               .forceRemote = true // NOLINT
-                                             });
-        if (!ref) {
-            return LINGLONG_ERR(ref);
+    }
+
+    for (const auto &repo : repoConfig.repos) {
+        qDebug() << "find " << fuzzyRef.toString() << " in "
+                 << repo.alias.value_or(repo.name).c_str();
+        auto list = this->repo.listRemote(fuzzyRef, repo);
+        if (!list.has_value()) {
+            return LINGLONG_ERR("get ref list from remote", list);
         }
-        return ref;
+
+        utils::error::Result<package::Reference> latestRefInRepo =
+          LINGLONG_ERR("latest ref not exists");
+
+        for (const auto &record : *list) {
+            auto recordStr = nlohmann::json(record).dump();
+            if (fuzzyRef.channel && fuzzyRef.channel->toStdString() != record.channel) {
+                continue;
+            }
+            if (fuzzyRef.id.toStdString() != record.id) {
+                continue;
+            }
+            auto version = package::Version::parse(QString::fromStdString(record.version));
+            if (!version) {
+                qWarning() << "Ignore invalid package record" << recordStr.c_str()
+                           << version.error();
+                continue;
+            }
+            if (record.arch.empty()) {
+                qWarning() << "Ignore invalid package record";
+                continue;
+            }
+
+            if (record.packageInfoV2Module != "binary" && record.packageInfoV2Module != "runtime") {
+                continue;
+            }
+            auto arch = package::Architecture::parse(record.arch[0]);
+            if (!arch) {
+                qWarning() << "Ignore invalid package record" << recordStr.c_str() << arch.error();
+                continue;
+            }
+            auto channel = QString::fromStdString(record.channel);
+            auto currentRef =
+              package::Reference::create(channel, fuzzyRef.id, *version, *arch, repo);
+            if (!currentRef) {
+                qWarning() << "Ignore invalid package record" << recordStr.c_str()
+                           << currentRef.error();
+                continue;
+            }
+            if (!latestRefInRepo) {
+                latestRefInRepo = *currentRef;
+                continue;
+            }
+
+            if (!latestRefInRepo || latestRefInRepo->version < currentRef->version) {
+                latestRefInRepo = *currentRef;
+            }
+        }
+
+        if (!latestRefInRepo) {
+            qDebug() << QString("not found ref:%1 module:%2 from remote repo")
+                          .arg(fuzzyRef.toString())
+                          .arg("binary");
+            continue;
+        }
+
+        if (latestRefInRepo->version > oldVersion) {
+            return latestRefInRepo;
+        }
+
     }
-    auto ref = this->repo.clearReference(fuzzyRef,
-                                         {
-                                           .forceRemote = true // NOLINT
-                                         });
-    if (!ref) {
-        return LINGLONG_ERR(ref);
-    }
-    return ref;
+
+    return LINGLONG_ERR(QString("not found ref:%1 module:%2 from remote repo")
+                          .arg(fuzzyRef.toString())
+                          .arg("binary"));
 }
 
 auto PackageManager::Update(const QVariantMap &parameters) noexcept -> QVariantMap
@@ -1780,8 +1846,13 @@ void PackageManager::Update(PackageTask &taskContext,
         return;
     }
 
-    taskContext.updateState(linglong::api::types::v1::State::PartCompleted,
-                            "Upgrade " + ref.toString() + " to " + newRef.toString() + " success");
+    taskContext.updateState(
+      linglong::api::types::v1::State::PartCompleted,
+      QString{ "Upgrade %1 (from repo: %2) to %3 (from repo: %4) success" }.arg(
+        ref.toString(),
+        ref.repo.alias.value_or(ref.repo.name).c_str(),
+        newRef.toString(),
+        newRef.repo.alias.value_or(newRef.repo.name).c_str()));
 
     auto ret = this->isRefBusy(ref);
     if (ret.has_value() && *ret == true) {

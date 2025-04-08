@@ -83,9 +83,10 @@ Reference::fromPackageInfo(const api::types::v1::PackageInfoV2 &info) noexcept
 utils::error::Result<Reference> Reference::create(const QString &channel,
                                                   const QString &id,
                                                   const Version &version,
-                                                  const Architecture &arch) noexcept
+                                                  const Architecture &arch,
+                                                  const linglong::api::types::v1::Repo &repo) noexcept
 try {
-    return Reference(channel, id, version, arch);
+    return Reference(channel, id, version, arch,repo);
 } catch (const std::exception &e) {
     LINGLONG_TRACE("create reference");
     return LINGLONG_ERR("invalid reference", e);
@@ -94,11 +95,13 @@ try {
 Reference::Reference(const QString &channel,
                      const QString &id,
                      const Version &version,
-                     const Architecture &arch)
+                     const Architecture &arch,
+                     const linglong::api::types::v1::Repo &repo)
     : channel(channel)
     , id(id)
     , version(version)
     , arch(arch)
+    , repo(repo)
 {
     if (channel.isEmpty()) {
         throw std::runtime_error("empty channel");

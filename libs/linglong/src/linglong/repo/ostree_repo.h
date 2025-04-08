@@ -44,7 +44,7 @@ public:
 
     ~OSTreeRepo() override;
 
-    [[nodiscard]] const api::types::v1::RepoConfigV2 &getConfig() const noexcept;
+    [[nodiscard]] const api::types::v1::RepoConfigV2 &getConfig() noexcept;
     utils::error::Result<void> setConfig(const api::types::v1::RepoConfigV2 &cfg) noexcept;
 
     utils::error::Result<package::LayerDir>
@@ -78,7 +78,8 @@ public:
     utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
     listLocalLatest() const noexcept;
     utils::error::Result<std::vector<api::types::v1::PackageInfoV2>>
-    listRemote(const package::FuzzyReference &fuzzyRef) const noexcept;
+    listRemote(const package::FuzzyReference &fuzzyRef,
+               const linglong::api::types::v1::Repo &repo = {}) const noexcept;
     [[nodiscard]] utils::error::Result<std::vector<api::types::v1::RepositoryCacheLayersItem>>
     listLocalBy(const linglong::repo::repoCacheQuery &query) const noexcept;
 

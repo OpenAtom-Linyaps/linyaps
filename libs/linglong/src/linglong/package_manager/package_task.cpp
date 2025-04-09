@@ -7,6 +7,7 @@
 #include "linglong/adaptors/task/task1.h"
 #include "linglong/package_manager/package_manager.h"
 #include "linglong/utils/dbus/register.h"
+#include "linglong/utils/error/error.h"
 #include "linglong/utils/global/initialize.h"
 
 #include <QDebug>
@@ -171,6 +172,7 @@ void PackageTask::reportError(linglong::utils::error::Error &&err) noexcept
     m_err = std::move(err);
 
     this->setProperty("Message", m_err.message());
+    this->setProperty("Code", m_err.code());
     changePropertiesDone();
 }
 
@@ -240,7 +242,8 @@ PackageTaskQueue::PackageTaskQueue(QObject *parent)
                         static_cast<int>(task->state()),
                         static_cast<int>(task->subState()),
                         task->message(),
-                        task->getPercentage());
+                        task->getPercentage(),
+                        static_cast<int>(task->code()));
         m_taskQueue.erase(task);
 
         if (!isQueuedDone) {

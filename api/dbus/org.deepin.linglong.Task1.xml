@@ -11,5 +11,6 @@ SPDX-License-Identifier: LGPL-3.0-or-later
         <property name="SubState" type="i" access="read" />
         <property name="Percentage" type="d" access="read" />
         <property name="Message" type="s" access="read" />
+        <property name="Code" type="i" access="read" />
     </interface>
 </node>

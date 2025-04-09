@@ -207,7 +207,8 @@ void CLIPrinter::printContent(const QStringList &filePaths)
 void CLIPrinter::printTaskState(double percentage,
                                 const QString &message,
                                 api::types::v1::State state,
-                                api::types::v1::SubState subState)
+                                api::types::v1::SubState subState,
+                                utils::error::ErrorCode errCode)
 {
     auto &stdout = std::cout;
     if (state == api::types::v1::State::Failed) {
@@ -260,6 +261,11 @@ void CLIPrinter::printInspect(const api::types::v1::InspectResult &result)
 {
     std::cout << "appID:\t" << (result.appID.has_value() ? result.appID.value() : "none")
               << std::endl;
+}
+
+void CLIPrinter::printMessage(const QString &message)
+{
+    std::cout << message.toStdString() << std::endl;
 }
 
 } // namespace linglong::cli

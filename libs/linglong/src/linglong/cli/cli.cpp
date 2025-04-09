@@ -292,6 +292,18 @@ void Cli::onTaskPropertiesChanged(QString interface,                            
             lastMessage = value.toString();
             continue;
         }
+
+        if (key == "Code") {
+            bool ok{ false };
+            auto val = value.toInt(&ok);
+            if (!ok) {
+                qCritical() << "dbus ipc error, Percentage couldn't convert to int";
+                continue;
+            }
+
+            lastErrorCode = static_cast<utils::error::ErrorCode>(val);
+            continue;
+        }
     }
 
     printProgress();
@@ -374,8 +386,12 @@ void Cli::onTaskAdded([[maybe_unused]] QDBusObjectPath object_path)
     qDebug() << "task added" << object_path.path();
 }
 
-void Cli::onTaskRemoved(
-  QDBusObjectPath object_path, int state, int subState, QString message, double percentage)
+void Cli::onTaskRemoved(QDBusObjectPath object_path,
+                        int state,
+                        int subState,
+                        QString message,
+                        double percentage,
+                        int code)
 {
     if (object_path.path() != taskObjectPath) {
         return;
@@ -396,6 +412,7 @@ void Cli::onTaskRemoved(
     this->lastSubState = static_cast<api::types::v1::SubState>(subState);
     this->lastMessage = std::move(message);
     this->lastPercentage = percentage;
+    this->lastErrorCode = static_cast<utils::error::ErrorCode>(code);
 
     if (this->lastSubState == api::types::v1::SubState::AllDone) {
         this->printProgress();
@@ -415,10 +432,61 @@ void Cli::printProgress() noexcept
         return;
     }
 
+    if (this->lastState == api::types::v1::State::Failed) {
+        switch (this->lastErrorCode) {
+        case utils::error::ErrorCode::AppInstallModuleRequireAppFirst:
+            this->printer.printMessage(_("to install the module, one must first install the app"));
+            break;
+        case utils::error::ErrorCode::AppInstallModuleAlreadyExists:
+            this->printer.printMessage(_("module is already installed"));
+            break;
+        case utils::error::ErrorCode::AppInstallFailed:
+            this->printer.printMessage(
+              _("Install failed, internal error.\n Please add --verbose option, and feedback error "
+                "information to the developer"));
+            break;
+        case utils::error::ErrorCode::AppUninstallFailed:
+            this->printer.printMessage(_(
+              "Uninstall failed, internal error.\n Please add --verbose option, and feedback error "
+              "information to the developer"));
+            break;
+        case utils::error::ErrorCode::AppUpgradeFailed:
+            this->printer.printMessage(
+              _("Upgrade failed, internal error.\n Please add --verbose option, and feedback error "
+                "information to the developer"));
+            break;
+        case utils::error::ErrorCode::AppUpgradeNotFound:
+            this->printer.printMessage(_(
+              "Upgrade failed, app not installed"));
+            break;
+        case utils::error::ErrorCode::AppUpgradeLatestInstalled:
+            this->printer.printMessage(_(
+              "Upgrade failed, latest version already installed"));
+            break;
+        default:
+            this->printer.printTaskState(this->lastPercentage,
+                                         this->lastMessage,
+                                         this->lastState,
+                                         this->lastSubState,
+                                         this->lastErrorCode);
+            return;
+        }
+
+        if (options.verbose) {
+            this->printer.printTaskState(this->lastPercentage,
+                                         this->lastMessage,
+                                         this->lastState,
+                                         this->lastSubState,
+                                         this->lastErrorCode);
+        }
+        return;
+    }
+
     this->printer.printTaskState(this->lastPercentage,
                                  this->lastMessage,
                                  this->lastState,
-                                 this->lastSubState);
+                                 this->lastSubState,
+                                 this->lastErrorCode);
 }
 
 Cli::Cli(Printer &printer,
@@ -451,7 +519,7 @@ Cli::Cli(Printer &printer,
                       pkgMan.interface(),
                       "TaskRemoved",
                       this,
-                      SLOT(onTaskRemoved(QDBusObjectPath, int, int, QString, double)))) {
+                      SLOT(onTaskRemoved(QDBusObjectPath, int, int, QString, double, int)))) {
         qFatal("couldn't connect to package manager signal 'TaskRemoved'");
     }
 }
@@ -1201,9 +1269,50 @@ int Cli::install([[maybe_unused]] CLI::App *subcommand)
         qCritical() << "bug detected:" << result.error().message();
         std::abort();
     }
+    
+    auto resultCode = static_cast<utils::error::ErrorCode>(result->code);
 
-    if (result->code != 0) {
-        this->printer.printReply({ .code = result->code, .message = result->message });
+    if (resultCode != utils::error::ErrorCode::Success) {
+        if (resultCode == utils::error::ErrorCode::Failed) {
+            this->printer.printReply({ .code = result->code, .message = result->message });
+            return -1;
+        }
+
+        if (resultCode == utils::error::ErrorCode::NetworkError) {
+            this->printer.printMessage(_("Network connection failed. Please:"
+                                         "\n1. Check your internet connection"
+                                         "\n2. Verify network proxy settings if used"));
+        }
+
+        if (resultCode == utils::error::ErrorCode::AppInstallAlreadyInstalled) {
+            this->printer.printMessage(_("Application already installed"));
+        }
+
+        if (resultCode == utils::error::ErrorCode::AppInstallNotFoundFromRemote) {
+            this->printer.printMessage(QString{ _("Application %1 not found in remote repo.") }.arg(
+              params.package.id.c_str()));
+        }
+
+        if (resultCode == utils::error::ErrorCode::AppInstallModuleNoVersion) {
+            this->printer.printMessage(_("Cannot specify a version when installing a module"));
+        }
+
+        if (resultCode == utils::error::ErrorCode::AppInstallNeedDowngrade) {
+            this->printer.printMessage(_("The latest version has been installed. If you want to "
+                                         "replace it, try using 'll-cli install %1/%2 --force'"));
+        }
+
+        if (resultCode == utils::error::ErrorCode::Unknown
+            || resultCode == utils::error::ErrorCode::AppInstallFailed) {
+            this->printer.printMessage(
+              _("Install failed, internal error.\n Please add --verbose option, and feedback error "
+                "information to the developer"));
+        }
+
+        if (options.verbose) {
+            this->printer.printReply({ .code = result->code, .message = result->message });
+        }
+
         return -1;
     }
 
@@ -1406,9 +1515,24 @@ int Cli::search([[maybe_unused]] CLI::App *subcommand)
                     return;
                 }
                 // Note: should check return code of PackageManager1SearchResult
-                if (result->code != 0) {
-                    this->printer.printErr(
-                      LINGLONG_ERRV("\n" + QString::fromStdString(result->message), result->code));
+                auto resultCode = static_cast<utils::error::ErrorCode>(result->code);
+                if (resultCode != utils::error::ErrorCode::Success) {
+                    if (resultCode == utils::error::ErrorCode::Failed) {
+                        this->printer.printErr(
+                            LINGLONG_ERRV("\n" + QString::fromStdString(result->message), result->code));
+                    }
+                
+                    if (resultCode == utils::error::ErrorCode::NetworkError) {
+                        this->printer.printMessage(_("Network connection failed. Please:"
+                                                    "\n1. Check your internet connection"
+                                                    "\n2. Verify network proxy settings if used"));
+                    }
+                
+                    if (options.verbose) {
+                        this->printer.printErr(
+                            LINGLONG_ERRV("\n" + QString::fromStdString(result->message), result->code));
+                    }
+                
                     loop.exit(result->code);
                     return;
                 }
@@ -1535,7 +1659,10 @@ int Cli::uninstall([[maybe_unused]] CLI::App *subcommand)
                                                  .fallbackToRemote = false,
                                                });
     if (!ref) {
-        this->printer.printErr(ref.error());
+        this->printer.printMessage(QString{ _("Application %1 not found.") }.arg(fuzzyRef->id));
+        if (options.verbose) {
+            this->printer.printErr(ref.error());
+        }
         return -1;
     }
 
@@ -1588,14 +1715,34 @@ int Cli::uninstall([[maybe_unused]] CLI::App *subcommand)
         this->printer.printErr(result.error());
         return -1;
     }
-
-    if (result->code != 0) {
+    
+    auto resultCode = static_cast<utils::error::ErrorCode>(result->code);
+    if (resultCode != utils::error::ErrorCode::Success) {
         auto err = LINGLONG_ERRV(QString::fromStdString(result->message), result->code);
         if (result->type == "notification") {
             this->notifier->notify(
               api::types::v1::InteractionRequest{ .appName = "ll-cli",
                                                   .summary = result->message });
-        } else {
+            return -1;
+        }
+
+        if (resultCode == utils::error::ErrorCode::Failed) {
+            this->printer.printErr(err);
+            return -1;
+        }
+        
+        if (resultCode == utils::error::ErrorCode::AppUninstallNotFoundFromLocal) {
+            this->printer.printMessage(QString{ _("Application %1 not found.") }.arg(fuzzyRef->id));
+        }
+
+        if (resultCode == utils::error::ErrorCode::AppUninstallFailed
+            || resultCode == utils::error::ErrorCode::Unknown) {
+            this->printer.printMessage(_(
+              "Uninstall failed, internal error.\n Please add --verbose option, and feedback error "
+              "information to the developer"));
+        }
+
+        if (options.verbose) {
             this->printer.printErr(err);
         }
 

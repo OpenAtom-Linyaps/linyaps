@@ -225,7 +225,7 @@ utils::error::Result<void> pullDependency(const package::Reference &ref,
         auto percentage = (uint)((((double)fetched) / requested) * 100);
         auto progress = QString("(%1/%2 %3%)").arg(fetched).arg(requested).arg(percentage);
         printReplacedText(QString("%1%2%3%4 %5")
-                            .arg(ref.id, -25)                         // NOLINT
+                            .arg(ref.id, -35)                         // NOLINT
                             .arg(ref.version.toString(), -15)         // NOLINT
                             .arg(QString::fromStdString(module), -15) // NOLINT
                             .arg("downloading")
@@ -235,7 +235,7 @@ utils::error::Result<void> pullDependency(const package::Reference &ref,
     };
     QObject::connect(&tmpTask, &service::PackageTask::PartChanged, partChanged);
     printReplacedText(QString("%1%2%3%4 %5")
-                        .arg(ref.id, -25)                         // NOLINT
+                        .arg(ref.id, -35)                         // NOLINT
                         .arg(ref.version.toString(), -15)         // NOLINT
                         .arg(QString::fromStdString(module), -15) // NOLINT
                         .arg("waiting")
@@ -608,7 +608,7 @@ utils::error::Result<void> Builder::buildStagePullDependency() noexcept
         }
 
         printReplacedText(QString("%1%2%3%4")
-                            .arg(baseRef->id, -25)                 // NOLINT
+                            .arg(baseRef->id, -35)                 // NOLINT
                             .arg(baseRef->version.toString(), -15) // NOLINT
                             .arg("binary", -15)                    // NOLINT
                             .arg("complete\n")
@@ -620,7 +620,7 @@ utils::error::Result<void> Builder::buildStagePullDependency() noexcept
         }
 
         printReplacedText(QString("%1%2%3%4")
-                            .arg(baseRef->id, -25)                 // NOLINT
+                            .arg(baseRef->id, -35)                 // NOLINT
                             .arg(baseRef->version.toString(), -15) // NOLINT
                             .arg("develop", -15)                   // NOLINT
                             .arg("complete\n")
@@ -633,7 +633,7 @@ utils::error::Result<void> Builder::buildStagePullDependency() noexcept
             }
 
             printReplacedText(QString("%1%2%3%4")
-                                .arg(runtimeRef->id, -25)                 // NOLINT
+                                .arg(runtimeRef->id, -35)                 // NOLINT
                                 .arg(runtimeRef->version.toString(), -15) // NOLINT
                                 .arg("binary", -15)                       // NOLINT
                                 .arg("complete\n")
@@ -645,7 +645,7 @@ utils::error::Result<void> Builder::buildStagePullDependency() noexcept
             }
 
             printReplacedText(QString("%1%2%3%4")
-                                .arg(runtimeRef->id, -25)                 // NOLINT
+                                .arg(runtimeRef->id, -35)                 // NOLINT
                                 .arg(runtimeRef->version.toString(), -15) // NOLINT
                                 .arg("develop", -15)                      // NOLINT
                                 .arg("complete\n")

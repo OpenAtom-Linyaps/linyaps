@@ -601,32 +601,37 @@ msgid ""
 "linyaps builder CLI \n"
 "A CLI program to build linyaps application\n"
 msgstr ""
+"CLI del constructor de linyaps \n"
+"Un programa CLI per crear una aplicació de linyaps.\n"
 
 #: ../apps/ll-builder/src/main.cpp:175
 msgid "Usage: ll-builder [OPTIONS] [SUBCOMMAND]"
-msgstr ""
+msgstr "Ús: ll-builder [OPCIONS] [SUBORDRE]"
 
 #: ../apps/ll-builder/src/main.cpp:177
 msgid ""
 "If you found any problems during use\n"
 "You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
+"Si heu trobat algun problema durant l'ús,\n"
+"podeu informar d'errors a l'equip de linyaps en aquest projecte: \n"
+"https://github.com/OpenAtom-Linyaps/linyaps/issues"
 
 #: ../apps/ll-builder/src/main.cpp:199
 msgid "Create linyaps build template project"
-msgstr ""
+msgstr "Crea un projecte de plantilla de compilació de linyaps."
 
 #: ../apps/ll-builder/src/main.cpp:200
 msgid "Usage: ll-builder create [OPTIONS] NAME"
-msgstr ""
+msgstr "Ús: ll-builder create [OPCIONS] NOM"
 
 #: ../apps/ll-builder/src/main.cpp:201
 msgid "Project name"
-msgstr ""
+msgstr "Nom del projecte"
 
 #: ../apps/ll-builder/src/main.cpp:213
 msgid "Build a linyaps project"
-msgstr ""
+msgstr "Construeix un projecte de linyaps."
 
 #: ../apps/ll-builder/src/main.cpp:214
 msgid "Usage: ll-builder build [OPTIONS] [COMMAND...]"

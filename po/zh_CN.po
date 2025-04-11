@@ -556,19 +556,19 @@ msgstr "进程ID"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:177
 msgid "Url"
-msgstr ""
+msgstr "地址"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:178
 msgid "Alias"
-msgstr ""
+msgstr "别名"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:179
 msgid "Priority"
-msgstr ""
+msgstr "优先级"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:237
 msgid "No apps available for update."
-msgstr ""
+msgstr "没有可更新的应用"
 
 #: ../libs/linglong/src/linglong/cli/cli_printer.cpp:250
 msgid "Installed"
@@ -668,7 +668,7 @@ msgstr "跳过剥离调试符号"
 
 #: ../apps/ll-builder/src/main.cpp:254
 msgid "Build in an isolated network environment"
-msgstr ""
+msgstr "在隔离网络的环境中构建"
 
 #: ../apps/ll-builder/src/main.cpp:259
 msgid "Run builded linyaps app"
@@ -708,7 +708,7 @@ msgstr "删除已构建的应用程序"
 
 #: ../apps/ll-builder/src/main.cpp:287
 msgid "Usage: ll-builder remove [OPTIONS] [APP...]"
-msgstr "用法: ll-builder remove [选项] 应用A 应用B"
+msgstr "用法: ll-builder remove [OPTIONS] [APP...]"
 
 #: ../apps/ll-builder/src/main.cpp:293
 msgid "Export to linyaps layer or uab"
@@ -732,11 +732,11 @@ msgstr "导出如意玲珑layer文件"
 
 #: ../apps/ll-builder/src/main.cpp:313
 msgid "Use custom loader"
-msgstr ""
+msgstr "使用自定义的loader"
 
 #: ../apps/ll-builder/src/main.cpp:317
 msgid "Don't export the develop module"
-msgstr ""
+msgstr "不导出develop模块"
 
 #: ../apps/ll-builder/src/main.cpp:323
 msgid "Push linyaps app to remote repo"

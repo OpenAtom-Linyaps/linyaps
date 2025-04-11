@@ -2,20 +2,24 @@
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
-#
+# 
+# Translators:
+# Gary Wang <wzc782970009@gmail.com>, 2025
+# 
 #, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-02-20 14:54+0800\n"
-"PO-Revision-Date: 2025-01-07 17:11+0800\n"
-"Last-Translator: deepiner, 2024\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: en_GB\n"
+"PO-Revision-Date: 2025-04-11 01:38+0000\n"
+"Last-Translator: Gary Wang <wzc782970009@gmail.com>, 2025\n"
+"Language-Team: English (United Kingdom) (https://app.transifex.com/linuxdeepin/teams/3976/en_GB/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Language: en_GB\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:56
 msgid "Permission deny, please check whether you are running as root."
@@ -50,12 +54,10 @@ msgstr "Usage: ll-cli [OPTIONS] [SUBCOMMAND]"
 #: ../apps/ll-cli/src/main.cpp:168
 msgid ""
 "If you found any problems during use,\n"
-"You can report bugs to the linyaps team under this project: https://github."
-"com/OpenAtom-Linyaps/linyaps/issues"
+"You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
 "If you found any problems during use,\n"
-"You can report bugs to the linyaps team under this project: https://github."
-"com/OpenAtom-Linyaps/linyaps/issues"
+"You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 
 #: ../apps/ll-cli/src/main.cpp:178 ../apps/ll-builder/src/main.cpp:194
 msgid "Show version"
@@ -155,7 +157,8 @@ msgstr "Execute commands in the currently running sandbox"
 
 #: ../apps/ll-cli/src/main.cpp:261 ../apps/ll-cli/src/main.cpp:279
 msgid "Specify the application running instance(you can get it by ps command)"
-msgstr "Specify the application running instance(you can get it by ps command)"
+msgstr ""
+"Specify the application running instance(you can get it by ps command)"
 
 #: ../apps/ll-cli/src/main.cpp:264 ../apps/ll-cli/src/main.cpp:281
 msgid "Specify working directory"
@@ -314,8 +317,7 @@ msgstr "Specify the Keywords"
 
 #: ../apps/ll-cli/src/main.cpp:389 ../apps/ll-cli/src/main.cpp:414
 msgid "Filter result with specify type. One of \"runtime\", \"app\" or \"all\""
-msgstr ""
-"Filter result with specify type. One of \"runtime\", \"app\" or \"all\""
+msgstr "Filter result with specify type. One of \"runtime\", \"app\" or \"all\""
 
 #: ../apps/ll-cli/src/main.cpp:393
 msgid "include develop application in result"
@@ -552,12 +554,10 @@ msgstr "Usage: ll-builder [OPTIONS] [SUBCOMMAND]"
 #: ../apps/ll-builder/src/main.cpp:177
 msgid ""
 "If you found any problems during use\n"
-"You can report bugs to the linyaps team under this project: https://github."
-"com/OpenAtom-Linyaps/linyaps/issues"
+"You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
 "If you found any problems during use,\n"
-"You can report bugs to the linyaps team under this project: https://github."
-"com/OpenAtom-Linyaps/linyaps/issues"
+"You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 
 #: ../apps/ll-builder/src/main.cpp:199
 msgid "Create linyaps build template project"
@@ -589,7 +589,8 @@ msgid "Set the build arch"
 msgstr "Set the build arch"
 
 #: ../apps/ll-builder/src/main.cpp:225 ../apps/ll-builder/src/main.cpp:229
-msgid "Enter the container to execute command instead of building applications"
+msgid ""
+"Enter the container to execute command instead of building applications"
 msgstr ""
 "Enter the container to execute command instead of building applications"
 

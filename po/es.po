@@ -462,7 +462,7 @@ msgstr "Establecer prioridad del repositorio"
 
 #: ../apps/ll-cli/src/main.cpp:487
 msgid "Usage: ll-cli repo set-priority ALIAS PRIORITY"
-msgstr ""
+msgstr "Usage: ll-cli repo set-priority ALIAS PRIORITY"
 
 #: ../apps/ll-cli/src/main.cpp:492
 msgid "Priority of the repo"
@@ -758,11 +758,11 @@ msgstr "Exportar al archivo de capa de linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:313
 msgid "Use custom loader"
-msgstr ""
+msgstr "Utilice un cargador personalizado"
 
 #: ../apps/ll-builder/src/main.cpp:317
 msgid "Don't export the develop module"
-msgstr ""
+msgstr "No exportar el módulo de desarrollo"
 
 #: ../apps/ll-builder/src/main.cpp:323
 msgid "Push linyaps app to remote repo"

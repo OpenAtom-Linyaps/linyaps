@@ -662,7 +662,7 @@ msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:238
 msgid "Build full develop packages, runtime requires"
-msgstr "Crea paquets de desenvolupament complets, cal entorn d'execució"
+msgstr "Crea paquets de desenvolupament complets, cal entorn d'execució."
 
 #: ../apps/ll-builder/src/main.cpp:240
 msgid "Skip fetch sources"
@@ -670,27 +670,27 @@ msgstr "Omet fonts d'obtenció."
 
 #: ../apps/ll-builder/src/main.cpp:241
 msgid "Skip pull dependency"
-msgstr "Omet la dependència de l'ordre pull"
+msgstr "Omet la dependència de l'ordre pull."
 
 #: ../apps/ll-builder/src/main.cpp:244
 msgid "Skip run container"
-msgstr "Omet el contenidor d'execució"
+msgstr "Omet el contenidor d'execució."
 
 #: ../apps/ll-builder/src/main.cpp:247
 msgid "Skip commit build output"
-msgstr ""
+msgstr "Omet la sortida d'enviament de la compilació."
 
 #: ../apps/ll-builder/src/main.cpp:248
 msgid "Skip output check"
-msgstr ""
+msgstr "Omet la comprovació de sortida."
 
 #: ../apps/ll-builder/src/main.cpp:251
 msgid "Skip strip debug symbols"
-msgstr ""
+msgstr "Omet els símbols de depuració."
 
 #: ../apps/ll-builder/src/main.cpp:254
 msgid "Build in an isolated network environment"
-msgstr ""
+msgstr "Construeix en un entorn de xarxa aïllat."
 
 #: ../apps/ll-builder/src/main.cpp:259
 msgid "Run builded linyaps app"

@@ -635,35 +635,38 @@ msgstr "Construeix un projecte de linyaps."
 
 #: ../apps/ll-builder/src/main.cpp:214
 msgid "Usage: ll-builder build [OPTIONS] [COMMAND...]"
-msgstr ""
+msgstr "Ús: ll-builder build [OPCIONS] [ORDRE...]"
 
 #: ../apps/ll-builder/src/main.cpp:215 ../apps/ll-builder/src/main.cpp:261
 #: ../apps/ll-builder/src/main.cpp:296 ../apps/ll-builder/src/main.cpp:325
 msgid "File path of the linglong.yaml"
-msgstr ""
+msgstr "Camí del fitxer linglong.yaml"
 
 #: ../apps/ll-builder/src/main.cpp:219
 msgid "Set the build arch"
-msgstr ""
+msgstr "Estableix l'arc de construcció."
 
 #: ../apps/ll-builder/src/main.cpp:225 ../apps/ll-builder/src/main.cpp:229
 msgid ""
 "Enter the container to execute command instead of building applications"
 msgstr ""
+"Entreu al contenidor per executar l'ordre en lloc de construir aplicacions."
 
 #: ../apps/ll-builder/src/main.cpp:233
 msgid ""
 "Only use local files. This implies --skip-fetch-source and --skip-pull-"
 "depend will be set"
 msgstr ""
+"Usa només fitxers locals. Això implica que s'establiran --skip-fetch-source "
+"i --skip-pull-depend."
 
 #: ../apps/ll-builder/src/main.cpp:238
 msgid "Build full develop packages, runtime requires"
-msgstr ""
+msgstr "Crea paquets de desenvolupament complets, cal entorn d'execució"
 
 #: ../apps/ll-builder/src/main.cpp:240
 msgid "Skip fetch sources"
-msgstr ""
+msgstr "Omet fonts d'obtenció."
 
 #: ../apps/ll-builder/src/main.cpp:241
 msgid "Skip pull dependency"

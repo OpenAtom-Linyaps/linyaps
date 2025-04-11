@@ -223,7 +223,7 @@ msgstr ""
 "Exemple:\n"
 "# instal·la l'aplicació mitjançant l'appid\n"
 "ll-cli install org.deepin.demo\n"
-"# instal·la l'aplicació mitjançant la capa linyaps\n"
+"# instal·la l'aplicació mitjançant la capa de linyaps\n"
 "ll-cli install demo_0.0.0.1_x86_64_binary.layer\n"
 "# instal·la l'aplicació per linyaps uab\n"
 "ll-cli install demo_x86_64_0.0.0.1_main.uab\n"
@@ -399,7 +399,7 @@ msgstr "Ús: ll-cli repo add [OPCIONS] NOM DE L'URL"
 #: ../apps/ll-cli/src/main.cpp:434 ../apps/ll-cli/src/main.cpp:447
 #: ../apps/ll-builder/src/main.cpp:374
 msgid "Specify the repo name"
-msgstr "Especifiqueu el nom del repositori"
+msgstr "Especifiqueu el nom del repositori."
 
 #: ../apps/ll-cli/src/main.cpp:437 ../apps/ll-cli/src/main.cpp:450
 #: ../apps/ll-cli/src/main.cpp:468 ../apps/ll-builder/src/main.cpp:377
@@ -433,7 +433,7 @@ msgstr "Ús: ll-cli repo remove [OPCIONS] NOM"
 #. add repo sub command update
 #: ../apps/ll-cli/src/main.cpp:463 ../apps/ll-builder/src/main.cpp:392
 msgid "Update the repository URL"
-msgstr "Actualitza l'URL del repositori"
+msgstr "Actualitza l'URL del repositori."
 
 #: ../apps/ll-cli/src/main.cpp:464
 msgid "Usage: ll-cli repo update [OPTIONS] NAME URL"
@@ -441,7 +441,7 @@ msgstr "Ús: ll-cli repo update [OPCIONS] NOM D'URL"
 
 #: ../apps/ll-cli/src/main.cpp:474 ../apps/ll-builder/src/main.cpp:403
 msgid "Set a default repository name"
-msgstr "Estableix un nom de repositori per defecte"
+msgstr "Estableix un nom de repositori per defecte."
 
 #: ../apps/ll-cli/src/main.cpp:475
 msgid "Usage: ll-cli repo set-default [OPTIONS] NAME"
@@ -450,7 +450,7 @@ msgstr "Ús: ll-cli repo set-default [OPCIONS] NOM"
 #. add repo sub command show
 #: ../apps/ll-cli/src/main.cpp:481 ../apps/ll-builder/src/main.cpp:410
 msgid "Show repository information"
-msgstr "Mostra la informació del repositori"
+msgstr "Mostra la informació del repositori."
 
 #: ../apps/ll-cli/src/main.cpp:482
 msgid "Usage: ll-cli repo show [OPTIONS]"
@@ -458,7 +458,7 @@ msgstr "Ús: ll-cli repo show [OPCIONS]"
 
 #: ../apps/ll-cli/src/main.cpp:486
 msgid "Set the priority of the repo"
-msgstr "Estableix la prioritat del repositori"
+msgstr "Estableix la prioritat del repositori."
 
 #: ../apps/ll-cli/src/main.cpp:487
 msgid "Usage: ll-cli repo set-priority ALIAS PRIORITY"
@@ -470,7 +470,8 @@ msgstr "Prioritat del repositori"
 
 #: ../apps/ll-cli/src/main.cpp:499
 msgid "Display information about installed apps or runtimes"
-msgstr "Mostra informació sobre aplicacions instal·lades o entorns d'execució"
+msgstr ""
+"Mostra informació sobre aplicacions instal·lades o entorns d'execució."
 
 #: ../apps/ll-cli/src/main.cpp:502
 msgid "Usage: ll-cli info [OPTIONS] APP"
@@ -478,11 +479,11 @@ msgstr "Ús: ll-cli info [OPCIONS] APLICACIÓ"
 
 #: ../apps/ll-cli/src/main.cpp:506
 msgid "Specify the application ID, and it can also be a .layer file"
-msgstr "Especifiqueu l'ID de l'aplicació. També pot ser un fitxer .layer"
+msgstr "Especifiqueu l'ID de l'aplicació. També pot ser un fitxer .layer."
 
 #: ../apps/ll-cli/src/main.cpp:513
 msgid "Display the exported files of installed application"
-msgstr "Mostra els fitxers exportats de l'aplicació instal·lada"
+msgstr "Mostra els fitxers exportats de l'aplicació instal·lada."
 
 #: ../apps/ll-cli/src/main.cpp:516
 msgid "Usage: ll-cli content [OPTIONS] APP"
@@ -820,7 +821,7 @@ msgstr "Directori de destinació"
 #. add build repo
 #: ../apps/ll-builder/src/main.cpp:367
 msgid "Display and manage repositories"
-msgstr "Mostra i gestiona els repositoris"
+msgstr "Mostra i gestiona els repositoris."
 
 #: ../apps/ll-builder/src/main.cpp:368
 msgid "Usage: ll-builder repo [OPTIONS] SUBCOMMAND"
@@ -852,17 +853,17 @@ msgstr "Versió de l'eina de construcció de linyaps"
 
 #: ../apps/ll-dialog/src/permissionDialog.cpp:34
 msgid "Whether to allow %1 to access %2?"
-msgstr "Voleu permetre a %1 accedir a %2?"
+msgstr "Voleu permetre que %1 accedeixi a %2?"
 
 #. button
 #: ../apps/ll-dialog/src/permissionDialog.cpp:43
 msgid "Allow"
-msgstr "Permet"
+msgstr "Permet-ho"
 
 #: ../apps/ll-dialog/src/permissionDialog.cpp:48
 #, c-format
 msgid "Deny (%1s)"
-msgstr "Denega (%1s)"
+msgstr "Denega-ho (%1s)"
 
 #: ../apps/ll-dialog/src/cache_dialog.cpp:53
 msgid "Linglong Package Manager"
@@ -870,4 +871,4 @@ msgstr "Gestor de paquets Linglong"
 
 #: ../apps/ll-dialog/src/cache_dialog.cpp:54
 msgid "is starting"
-msgstr "s'està iniciant"
+msgstr "s'inicia"

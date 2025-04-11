@@ -687,7 +687,7 @@ msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:286
 msgid "Remove builded linyaps app"
-msgstr ""
+msgstr "Remover aplicativo linyaps compilado"
 
 #: ../apps/ll-builder/src/main.cpp:287
 msgid "Usage: ll-builder remove [OPTIONS] [APP...]"
@@ -715,15 +715,15 @@ msgstr "Exportar para arquivo de camada linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:313
 msgid "Use custom loader"
-msgstr ""
+msgstr "Usar carregador personalizado"
 
 #: ../apps/ll-builder/src/main.cpp:317
 msgid "Don't export the develop module"
-msgstr ""
+msgstr "Não exporte o módulo de desenvolvimento"
 
 #: ../apps/ll-builder/src/main.cpp:323
 msgid "Push linyaps app to remote repo"
-msgstr ""
+msgstr "Enviar aplicativo Linyaps para repositório remoto"
 
 #: ../apps/ll-builder/src/main.cpp:324
 msgid "Usage: ll-builder push [OPTIONS]"
@@ -731,19 +731,19 @@ msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:329
 msgid "Remote repo url"
-msgstr ""
+msgstr "URL do repositório remoto"
 
 #: ../apps/ll-builder/src/main.cpp:332
 msgid "Remote repo name"
-msgstr ""
+msgstr "Nome do repositório remoto"
 
 #: ../apps/ll-builder/src/main.cpp:335
 msgid "Push single module"
-msgstr ""
+msgstr "Empurre um único módulo"
 
 #: ../apps/ll-builder/src/main.cpp:340
 msgid "Import linyaps layer to build repo"
-msgstr ""
+msgstr "Importar camada linyaps para construir repositório"
 
 #: ../apps/ll-builder/src/main.cpp:341
 msgid "Usage: ll-builder import [OPTIONS] LAYER"
@@ -751,15 +751,15 @@ msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:342 ../apps/ll-builder/src/main.cpp:361
 msgid "Layer file path"
-msgstr ""
+msgstr "Caminho do arquivo de camada"
 
 #: ../apps/ll-builder/src/main.cpp:350
 msgid "Import linyaps layer dir to build repo"
-msgstr ""
+msgstr "Importar diretório da camada linyaps para construir repositório"
 
 #: ../apps/ll-builder/src/main.cpp:352
 msgid "Usage: ll-builder import-dir PATH"
-msgstr ""
+msgstr "Uso: ll-builder import-dir PATH"
 
 #: ../apps/ll-builder/src/main.cpp:353
 msgid "Layer dir path"

@@ -634,27 +634,27 @@ msgstr "Pular dependência de pull"
 
 #: ../apps/ll-builder/src/main.cpp:244
 msgid "Skip run container"
-msgstr ""
+msgstr "Pular execução do contêiner"
 
 #: ../apps/ll-builder/src/main.cpp:247
 msgid "Skip commit build output"
-msgstr ""
+msgstr "Pular saída de confirmação de compilação"
 
 #: ../apps/ll-builder/src/main.cpp:248
 msgid "Skip output check"
-msgstr ""
+msgstr "Pular verificação de saída"
 
 #: ../apps/ll-builder/src/main.cpp:251
 msgid "Skip strip debug symbols"
-msgstr ""
+msgstr "Símbolos de depuração de faixa de salto"
 
 #: ../apps/ll-builder/src/main.cpp:254
 msgid "Build in an isolated network environment"
-msgstr ""
+msgstr "Construir em um ambiente de rede isolado"
 
 #: ../apps/ll-builder/src/main.cpp:259
 msgid "Run builded linyaps app"
-msgstr ""
+msgstr "Execute o aplicativo Linyaps criado"
 
 #: ../apps/ll-builder/src/main.cpp:260
 msgid "Usage: ll-builder run [OPTIONS] [COMMAND...]"
@@ -662,15 +662,16 @@ msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:265
 msgid "Only use local files"
-msgstr ""
+msgstr "Use apenas arquivos locais"
 
 #: ../apps/ll-builder/src/main.cpp:269
 msgid "Run specified module. eg: --modules binary,develop"
-msgstr ""
+msgstr "Execute o módulo especificado. Por exemplo: --modules binary,develop"
 
 #: ../apps/ll-builder/src/main.cpp:275 ../apps/ll-builder/src/main.cpp:279
 msgid "Enter the container to execute command instead of running application"
 msgstr ""
+"Entre no contêiner para executar o comando em vez de executar o aplicativo"
 
 #: ../apps/ll-builder/src/main.cpp:281
 msgid "Run in debug mode (enable develop module)"
@@ -678,7 +679,7 @@ msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:283
 msgid "List builded linyaps app"
-msgstr ""
+msgstr "Lista de aplicativos Linyaps criados"
 
 #: ../apps/ll-builder/src/main.cpp:284
 msgid "Usage: ll-builder list [OPTIONS]"
@@ -694,7 +695,7 @@ msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:293
 msgid "Export to linyaps layer or uab"
-msgstr ""
+msgstr "Exportar para camada linyaps ou uab"
 
 #: ../apps/ll-builder/src/main.cpp:294
 msgid "Usage: ll-builder export [OPTIONS]"
@@ -702,15 +703,15 @@ msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:306
 msgid "Uab icon (optional)"
-msgstr ""
+msgstr "Ícone Uab (opcional)"
 
 #: ../apps/ll-builder/src/main.cpp:309
 msgid "Export uab fully"
-msgstr ""
+msgstr "Exportar uab completamente"
 
 #: ../apps/ll-builder/src/main.cpp:310
 msgid "Export to linyaps layer file"
-msgstr ""
+msgstr "Exportar para arquivo de camada linyaps"
 
 #: ../apps/ll-builder/src/main.cpp:313
 msgid "Use custom loader"
@@ -762,11 +763,11 @@ msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:353
 msgid "Layer dir path"
-msgstr ""
+msgstr "Caminho do diretório da camada"
 
 #: ../apps/ll-builder/src/main.cpp:359
 msgid "Extract linyaps layer to dir"
-msgstr ""
+msgstr "Extrair camada linyaps para diretório"
 
 #: ../apps/ll-builder/src/main.cpp:360
 msgid "Usage: ll-builder extract [OPTIONS] LAYER DIR"
@@ -774,12 +775,12 @@ msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:364
 msgid "Destination directory"
-msgstr ""
+msgstr "Diretório de destino"
 
 #. add build repo
 #: ../apps/ll-builder/src/main.cpp:367
 msgid "Display and manage repositories"
-msgstr ""
+msgstr "Exibir e gerenciar repositórios"
 
 #: ../apps/ll-builder/src/main.cpp:368
 msgid "Usage: ll-builder repo [OPTIONS] SUBCOMMAND"
@@ -807,26 +808,26 @@ msgstr ""
 
 #: ../apps/ll-builder/src/main.cpp:416
 msgid "linyaps build tool version "
-msgstr ""
+msgstr "versão da ferramenta de construção linyaps"
 
 #: ../apps/ll-dialog/src/permissionDialog.cpp:34
 msgid "Whether to allow %1 to access %2?"
-msgstr ""
+msgstr "Permitir que %1 acesse %2?"
 
 #. button
 #: ../apps/ll-dialog/src/permissionDialog.cpp:43
 msgid "Allow"
-msgstr ""
+msgstr "Permitir"
 
 #: ../apps/ll-dialog/src/permissionDialog.cpp:48
 #, c-format
 msgid "Deny (%1s)"
-msgstr ""
+msgstr "Negar (%1s)"
 
 #: ../apps/ll-dialog/src/cache_dialog.cpp:53
 msgid "Linglong Package Manager"
-msgstr ""
+msgstr "Gerenciador de Pacotes Linglong"
 
 #: ../apps/ll-dialog/src/cache_dialog.cpp:54
 msgid "is starting"
-msgstr ""
+msgstr "está iniciando"

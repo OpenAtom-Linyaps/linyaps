@@ -848,26 +848,26 @@ msgstr "Ús: ll-builder repo show [OPCIONS]"
 
 #: ../apps/ll-builder/src/main.cpp:416
 msgid "linyaps build tool version "
-msgstr ""
+msgstr "Versió de l'eina de creació del linyaps"
 
 #: ../apps/ll-dialog/src/permissionDialog.cpp:34
 msgid "Whether to allow %1 to access %2?"
-msgstr ""
+msgstr "Voleu permetre a %1 accedir a %2?"
 
 #. button
 #: ../apps/ll-dialog/src/permissionDialog.cpp:43
 msgid "Allow"
-msgstr ""
+msgstr "Permet"
 
 #: ../apps/ll-dialog/src/permissionDialog.cpp:48
 #, c-format
 msgid "Deny (%1s)"
-msgstr ""
+msgstr "Denega (%1s)"
 
 #: ../apps/ll-dialog/src/cache_dialog.cpp:53
 msgid "Linglong Package Manager"
-msgstr ""
+msgstr "Gestor de paquets Linglong"
 
 #: ../apps/ll-dialog/src/cache_dialog.cpp:54
 msgid "is starting"
-msgstr ""
+msgstr "s'està iniciant"

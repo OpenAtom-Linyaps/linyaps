@@ -2,20 +2,24 @@
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
-#
+# 
+# Translators:
+# Gary Wang <wzc782970009@gmail.com>, 2025
+# 
 #, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-02-20 14:54+0800\n"
-"PO-Revision-Date: 2025-01-07 17:11+0800\n"
-"Last-Translator:  deepiner, 2024\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: zh_CN\n"
+"PO-Revision-Date: 2025-04-11 01:38+0000\n"
+"Last-Translator: Gary Wang <wzc782970009@gmail.com>, 2025\n"
+"Language-Team: Chinese (China) (https://app.transifex.com/linuxdeepin/teams/3976/zh_CN/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Language: zh_CN\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
 
 #: ../libs/linglong/src/linglong/cli/cli.cpp:56
 msgid "Permission deny, please check whether you are running as root."
@@ -49,12 +53,10 @@ msgstr "用法: ll-cli [选项] [子命令]"
 #: ../apps/ll-cli/src/main.cpp:168
 msgid ""
 "If you found any problems during use,\n"
-"You can report bugs to the linyaps team under this project: https://github."
-"com/OpenAtom-Linyaps/linyaps/issues"
+"You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
 "如果在使用过程中遇到任何问题，\n"
-"您可以通过此项目向如意玲珑项目团队报告错误：https://github.com/OpenAtom-"
-"Linyaps/linyaps/issues"
+"您可以通过此项目向如意玲珑项目团队报告错误：https://github.com/OpenAtom-Linyaps/linyaps/issues"
 
 #: ../apps/ll-cli/src/main.cpp:178 ../apps/ll-builder/src/main.cpp:194
 msgid "Show version"
@@ -542,12 +544,10 @@ msgstr "用法: ll-builder [选项] [子命令]"
 #: ../apps/ll-builder/src/main.cpp:177
 msgid ""
 "If you found any problems during use\n"
-"You can report bugs to the linyaps team under this project: https://github."
-"com/OpenAtom-Linyaps/linyaps/issues"
+"You can report bugs to the linyaps team under this project: https://github.com/OpenAtom-Linyaps/linyaps/issues"
 msgstr ""
 "如果在使用过程中遇到任何问题，\n"
-"您可以通过此项目向如意玲珑项目团队报告错误：https://github.com/OpenAtom-"
-"Linyaps/linyaps/issues"
+"您可以通过此项目向如意玲珑项目团队报告错误：https://github.com/OpenAtom-Linyaps/linyaps/issues"
 
 #: ../apps/ll-builder/src/main.cpp:199
 msgid "Create linyaps build template project"
@@ -579,7 +579,8 @@ msgid "Set the build arch"
 msgstr "设置构建架构"
 
 #: ../apps/ll-builder/src/main.cpp:225 ../apps/ll-builder/src/main.cpp:229
-msgid "Enter the container to execute command instead of building applications"
+msgid ""
+"Enter the container to execute command instead of building applications"
 msgstr "进入容器执行命令而不是构建应用"
 
 #: ../apps/ll-builder/src/main.cpp:233

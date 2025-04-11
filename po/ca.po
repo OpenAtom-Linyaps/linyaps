@@ -176,7 +176,7 @@ msgstr "Introduïu l'espai de noms on s'executa l'aplicació."
 
 #: ../apps/ll-cli/src/main.cpp:269
 msgid "Usage: ll-cli enter [OPTIONS] INSTANCE [COMMAND...]"
-msgstr "Ús: ll-cli introduïu [OPCIONS] INSTÀNCIA [ORDRE...]"
+msgstr "Ús: ll-cli enter [OPCIONS] INSTÀNCIA [ORDRE...]"
 
 #. add sub command kill
 #: ../apps/ll-cli/src/main.cpp:281
@@ -723,35 +723,35 @@ msgstr "Llista les aplicacions de linyaps creades."
 
 #: ../apps/ll-builder/src/main.cpp:284
 msgid "Usage: ll-builder list [OPTIONS]"
-msgstr ""
+msgstr "Ús: ll-builder list [OPCIONS]"
 
 #: ../apps/ll-builder/src/main.cpp:286
 msgid "Remove builded linyaps app"
-msgstr ""
+msgstr "Elimina l'aplicació linyaps creada."
 
 #: ../apps/ll-builder/src/main.cpp:287
 msgid "Usage: ll-builder remove [OPTIONS] [APP...]"
-msgstr ""
+msgstr "Ús: ll-builder remove [OPCIONS] [APLICACIÓ...]"
 
 #: ../apps/ll-builder/src/main.cpp:293
 msgid "Export to linyaps layer or uab"
-msgstr ""
+msgstr "Exporta a la capa linyaps o uab."
 
 #: ../apps/ll-builder/src/main.cpp:294
 msgid "Usage: ll-builder export [OPTIONS]"
-msgstr ""
+msgstr "Ús: ll-builder export [OPCIONS]"
 
 #: ../apps/ll-builder/src/main.cpp:306
 msgid "Uab icon (optional)"
-msgstr ""
+msgstr "Icona d'uab (opcional)"
 
 #: ../apps/ll-builder/src/main.cpp:309
 msgid "Export uab fully"
-msgstr ""
+msgstr "Exporta uab completament."
 
 #: ../apps/ll-builder/src/main.cpp:310
 msgid "Export to linyaps layer file"
-msgstr ""
+msgstr "Exporta al fitxer de capa linyaps."
 
 #: ../apps/ll-builder/src/main.cpp:313
 msgid "Use custom loader"

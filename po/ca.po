@@ -670,11 +670,11 @@ msgstr "Omet fonts d'obtenció."
 
 #: ../apps/ll-builder/src/main.cpp:241
 msgid "Skip pull dependency"
-msgstr ""
+msgstr "Omet la dependència de l'ordre pull"
 
 #: ../apps/ll-builder/src/main.cpp:244
 msgid "Skip run container"
-msgstr ""
+msgstr "Omet el contenidor d'execució"
 
 #: ../apps/ll-builder/src/main.cpp:247
 msgid "Skip commit build output"
